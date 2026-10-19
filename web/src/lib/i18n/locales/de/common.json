@@ -786,7 +786,7 @@
       "iconLast": "Symbol zuletzt",
       "iconDisable": "Aus",
       "toggleModeLabel": "Toggle-Modus",
-      "toggleModeHint": "Toggle-Überschrift = Kartenvorderseite; Inhalt = Kartenrückseite. Verschachtelte Toggles werden zu eigenen Karten. Offen klappt verschachtelte Inhalte auf; Geschlossen hält sie eingeklappt für schrittweises Wiederholen.",
+      "toggleModeHint": "Toggle-Überschrift = Kartenvorderseite; Inhalt = Kartenrückseite. Ein verschachtelter Toggle bleibt auf der Rückseite der übergeordneten Karte, statt eine eigene Karte zu werden. Offen klappt verschachtelte Inhalte auf; Geschlossen hält sie eingeklappt für schrittweises Wiederholen.",
       "toggleOpen": "Verschachtelte Toggles öffnen",
       "toggleClose": "Verschachtelte Toggles schließen",
       "removeNumberingLabel": "Nummerierung aus Stapelnamen entfernen",

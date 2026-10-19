@@ -111,7 +111,7 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'max-one-toggle-per-card',
       'Maximum one toggle per card',
-      'Keep each card focused on a single toggle. Combine with Use all toggle lists to turn every nested toggle into its own card.',
+      "Each top-level toggle becomes one card. A toggle nested inside another stays on the parent card's back, not a card of its own. To get a card per toggle, keep them at the top level instead of nesting them.",
       defaultFor('max-one-toggle-per-card')
     ),
     new CardOptionDetail(

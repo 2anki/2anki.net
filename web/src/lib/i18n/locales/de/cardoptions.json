@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Maximal ein Toggle pro Karte",
-      "description": "Halte jede Karte auf einen einzelnen Toggle fokussiert. Kombiniere das mit Alle Toggle-Listen verwenden, damit jeder verschachtelte Toggle eine eigene Karte wird."
+      "description": "Jeder Toggle auf oberster Ebene wird zu einer Karte. Ein Toggle, der in einem anderen verschachtelt ist, bleibt auf der Rückseite der übergeordneten Karte und wird keine eigene Karte. Damit jeder Toggle eine eigene Karte wird, lass sie auf oberster Ebene, statt sie zu verschachteln."
     },
     "remove-mp3-links": {
       "label": "MP3-Links aus Audiodateien entfernen",

@@ -786,7 +786,7 @@
       "iconLast": "Icon last",
       "iconDisable": "Disable",
       "toggleModeLabel": "Toggle mode",
-      "toggleModeHint": "Toggle header = card front; contents = card back. Nested toggles become their own cards. Open expands nested contents; Close keeps them collapsed for step-by-step review.",
+      "toggleModeHint": "Toggle header = card front; contents = card back. A nested toggle stays on the parent card's back rather than becoming its own card. Open expands nested contents; Close keeps them collapsed for step-by-step review.",
       "toggleOpen": "Open nested toggles",
       "toggleClose": "Close nested toggles",
       "removeNumberingLabel": "Remove numbering from deck names",

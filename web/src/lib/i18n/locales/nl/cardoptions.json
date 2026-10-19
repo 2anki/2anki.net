@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Maximaal één toggle per kaart",
-      "description": "Houd elke kaart gericht op één toggle. Combineer met Alle togglelijsten gebruiken om van elke geneste toggle een eigen kaart te maken."
+      "description": "Elke toggle op het hoogste niveau wordt één kaart. Een toggle die in een andere is genest, blijft op de achterkant van de bovenliggende kaart en wordt geen eigen kaart. Wil je een kaart per toggle, houd ze dan op het hoogste niveau in plaats van ze te nesten."
     },
     "remove-mp3-links": {
       "label": "MP3-links uit audiobestanden verwijderen",

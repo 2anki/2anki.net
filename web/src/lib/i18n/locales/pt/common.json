@@ -786,7 +786,7 @@
       "iconLast": "Ícone por último",
       "iconDisable": "Desativar",
       "toggleModeLabel": "Modo toggle",
-      "toggleModeHint": "Cabeçalho do toggle = frente do cartão; conteúdo = verso do cartão. Toggles aninhados viram cartões próprios. Aberto expande o conteúdo aninhado; Fechado mantém recolhido para revisão passo a passo.",
+      "toggleModeHint": "Cabeçalho do toggle = frente do cartão; conteúdo = verso do cartão. Um toggle aninhado permanece no verso do cartão principal em vez de virar um cartão próprio. Aberto expande o conteúdo aninhado; Fechado mantém recolhido para revisão passo a passo.",
       "toggleOpen": "Abrir toggles aninhados",
       "toggleClose": "Fechar toggles aninhados",
       "removeNumberingLabel": "Remover a numeração dos nomes dos baralhos",

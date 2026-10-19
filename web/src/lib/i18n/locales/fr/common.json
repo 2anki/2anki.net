@@ -786,7 +786,7 @@
       "iconLast": "Icône à la fin",
       "iconDisable": "Désactiver",
       "toggleModeLabel": "Mode bascule",
-      "toggleModeHint": "En-tête de bascule = recto de la carte ; contenu = verso de la carte. Les bascules imbriquées deviennent leurs propres cartes. Ouvrir déplie le contenu imbriqué ; Fermer le garde replié pour une révision pas à pas.",
+      "toggleModeHint": "En-tête de bascule = recto de la carte ; contenu = verso de la carte. Une bascule imbriquée reste au verso de la carte parente au lieu de devenir une carte à part. Ouvrir déplie le contenu imbriqué ; Fermer le garde replié pour une révision pas à pas.",
       "toggleOpen": "Ouvrir les bascules imbriquées",
       "toggleClose": "Fermer les bascules imbriquées",
       "removeNumberingLabel": "Supprimer la numérotation des noms de paquets",

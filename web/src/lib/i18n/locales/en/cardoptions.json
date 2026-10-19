@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Maximum one toggle per card",
-      "description": "Keep each card focused on a single toggle. Combine with Use all toggle lists to turn every nested toggle into its own card."
+      "description": "Each top-level toggle becomes one card. A toggle nested inside another stays on the parent card's back, not a card of its own. To get a card per toggle, keep them at the top level instead of nesting them."
     },
     "remove-mp3-links": {
       "label": "Remove MP3 links from audio files",

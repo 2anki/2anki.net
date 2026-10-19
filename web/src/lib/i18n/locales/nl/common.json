@@ -786,7 +786,7 @@
       "iconLast": "Icoon laatst",
       "iconDisable": "Uitschakelen",
       "toggleModeLabel": "Togglemodus",
-      "toggleModeHint": "Toggletitel = voorkant van de kaart; inhoud = achterkant. Geneste toggles worden hun eigen kaarten. Open klapt geneste inhoud uit; Sluiten houdt ze ingeklapt voor stap-voor-stap leren.",
+      "toggleModeHint": "Toggletitel = voorkant van de kaart; inhoud = achterkant. Een geneste toggle blijft op de achterkant van de bovenliggende kaart in plaats van een eigen kaart te worden. Open klapt geneste inhoud uit; Sluiten houdt ze ingeklapt voor stap-voor-stap leren.",
       "toggleOpen": "Geneste toggles openen",
       "toggleClose": "Geneste toggles sluiten",
       "removeNumberingLabel": "Nummering uit decknamen verwijderen",
