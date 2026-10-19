@@ -349,5 +349,11 @@
     "signInNext": "Inloggen bij AnkiWeb (volgende)",
     "takeoverTitle": "Stel Anki in je browser in.",
     "takeoverSubtitle": "Ongeveer een minuut, twee stappen."
+  },
+  "plan": {
+    "title": "Auto Sync is een apart abonnement",
+    "subtitle": "Je abonnement bevat het niet.",
+    "what": "Auto Sync houdt een privé-Anki voor je draaiende, meldt zich aan bij AnkiWeb en werkt je kaarten bij telkens als een Notion-pagina verandert.",
+    "seePricing": "Auto Sync-prijzen bekijken"
   }
 }

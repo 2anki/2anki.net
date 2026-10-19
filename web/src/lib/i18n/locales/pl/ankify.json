@@ -359,5 +359,11 @@
     "signInNext": "Zaloguj się do AnkiWeb (dalej)",
     "takeoverTitle": "Skonfiguruj Anki w przeglądarce.",
     "takeoverSubtitle": "Około minuty, dwa kroki."
+  },
+  "plan": {
+    "title": "Auto Sync to osobny plan",
+    "subtitle": "Twój plan go nie obejmuje.",
+    "what": "Auto Sync utrzymuje dla Ciebie prywatne Anki, loguje się do AnkiWeb i aktualizuje Twoje karty za każdym razem, gdy zmienia się strona Notion.",
+    "seePricing": "Zobacz cennik Auto Sync"
   }
 }

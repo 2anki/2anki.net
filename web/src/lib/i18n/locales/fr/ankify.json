@@ -349,5 +349,11 @@
     "signInNext": "Se connecter à AnkiWeb (suivant)",
     "takeoverTitle": "Configure Anki dans ton navigateur.",
     "takeoverSubtitle": "Environ une minute, deux étapes."
+  },
+  "plan": {
+    "title": "Auto Sync est un forfait à part",
+    "subtitle": "Ton forfait ne l'inclut pas.",
+    "what": "Auto Sync garde un Anki privé en marche pour toi, se connecte à AnkiWeb et met à jour tes cartes chaque fois qu'une page Notion change.",
+    "seePricing": "Voir les tarifs d'Auto Sync"
   }
 }

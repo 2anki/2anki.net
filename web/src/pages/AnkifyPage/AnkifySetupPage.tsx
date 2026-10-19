@@ -14,6 +14,7 @@ import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { Backend } from '../../lib/backend/Backend';
 import AnkifyClient from '../../lib/interfaces/AnkifyClient';
 import { Skeleton } from '../../components/Skeleton/Skeleton';
+import AnkifyPlanPanel from './components/AnkifyPlanPanel';
 
 const QUERY_KEY = ['ankify-clients'];
 const READINESS_QUERY_KEY = ['ankify-active-ready'];
@@ -272,6 +273,14 @@ export default function AnkifySetupPage({ backend }: Props) {
         <Skeleton width="80%" height="1rem" />
       </main>
     );
+  }
+
+  const provisionStatus = (provision.error as { status?: number } | undefined)
+    ?.status;
+  const lacksAutoSync =
+    userLocals?.autoSyncActive === false || provisionStatus === 403;
+  if (lacksAutoSync) {
+    return <AnkifyPlanPanel />;
   }
 
   const ankiUrlFor = (client: AnkifyClient): string | null => {

@@ -344,5 +344,11 @@
     "signInNext": "AnkiWeb にサインイン（次）",
     "takeoverTitle": "ブラウザで Anki を設定しましょう。",
     "takeoverSubtitle": "約 1 分、2 ステップです。"
+  },
+  "plan": {
+    "title": "Auto Sync は独立したプラン",
+    "subtitle": "お使いのプランには含まれていません。",
+    "what": "Auto Sync は専用の Anki を起動し続け、AnkiWeb にサインインして、Notion ページが変わるたびにカードを更新します。",
+    "seePricing": "Auto Sync の料金を見る"
   }
 }

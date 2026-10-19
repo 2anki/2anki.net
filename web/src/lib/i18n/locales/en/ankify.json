@@ -349,5 +349,11 @@
     "signInNext": "Sign in to AnkiWeb (next)",
     "takeoverTitle": "Set up Anki in your browser.",
     "takeoverSubtitle": "About a minute, two steps."
+  },
+  "plan": {
+    "title": "Auto Sync is its own plan",
+    "subtitle": "Your plan doesn't include it.",
+    "what": "Auto Sync keeps a private Anki running for you, signs in to AnkiWeb, and updates your cards every time a Notion page changes.",
+    "seePricing": "See Auto Sync pricing"
   }
 }

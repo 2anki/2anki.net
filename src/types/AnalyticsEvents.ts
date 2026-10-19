@@ -119,6 +119,7 @@ export const KNOWN_EVENTS = new Set([
   'ankify_review_session_started',
   'ankify_review_completed',
   'ankify_review_session_exited',
+  'ankify_plan_required_viewed',
   'image_drop_notice_shown',
   'columns_guessed_notice_shown',
   'structure_rescued_notice_shown',

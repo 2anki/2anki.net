@@ -349,5 +349,11 @@
     "signInNext": "Fazer login no AnkiWeb (próximo)",
     "takeoverTitle": "Configure o Anki no seu navegador.",
     "takeoverSubtitle": "Cerca de um minuto, dois passos."
+  },
+  "plan": {
+    "title": "O Auto Sync é um plano à parte",
+    "subtitle": "Seu plano não o inclui.",
+    "what": "O Auto Sync mantém um Anki privado em execução para você, entra no AnkiWeb e atualiza seus cartões sempre que uma página do Notion muda.",
+    "seePricing": "Ver preços do Auto Sync"
   }
 }

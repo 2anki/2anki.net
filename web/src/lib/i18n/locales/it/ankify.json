@@ -349,5 +349,11 @@
     "signInNext": "Accedi ad AnkiWeb (dopo)",
     "takeoverTitle": "Configura Anki nel tuo browser.",
     "takeoverSubtitle": "Circa un minuto, due passi."
+  },
+  "plan": {
+    "title": "Auto Sync è un piano a sé",
+    "subtitle": "Il tuo piano non lo include.",
+    "what": "Auto Sync tiene attivo un Anki privato per te, accede ad AnkiWeb e aggiorna le tue carte ogni volta che una pagina di Notion cambia.",
+    "seePricing": "Vedi i prezzi di Auto Sync"
   }
 }
