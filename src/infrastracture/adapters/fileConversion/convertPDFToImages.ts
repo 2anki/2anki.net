@@ -13,6 +13,7 @@ interface ConvertPDFToImagesInput {
   contents?: Buffer | Uint8Array | string;
   name?: string;
   settings?: CardOption;
+  pairPages?: boolean;
 }
 
 export const PDF_FREE_MAX_PAGES = 100;
@@ -28,7 +29,12 @@ export async function convertPDFToImages(
     return '';
   }
   const { imagePaths, title } = await renderPdfPageImages(input);
-  return combineIntoHTML(imagePaths, title, input.workspace.location);
+  return combineIntoHTML(
+    imagePaths,
+    title,
+    input.workspace.location,
+    input.pairPages ?? true
+  );
 }
 
 export async function renderPdfPageImages(

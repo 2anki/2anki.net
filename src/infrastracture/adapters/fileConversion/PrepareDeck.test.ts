@@ -739,6 +739,35 @@ describe('PrepareDeck — PDF text-vs-image gate', () => {
     expect(convertPdfTextToHtml).not.toHaveBeenCalled();
     expect(convertPdfTextToHtmlAuto).not.toHaveBeenCalled();
   });
+
+  it('pairs page images when pdf-page-pairs is on', async () => {
+    await runPdf(makeSettings({ 'pdf-page-pairs': 'true' }));
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ pairPages: true })
+    );
+  });
+
+  it('makes one card per page when auto-detection falls back to images', async () => {
+    await runPdf(makeSettings());
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ pairPages: false })
+    );
+  });
+
+  it('makes one card per page when extract-text over-splits and falls back', async () => {
+    convertPdfTextToHtml.mockResolvedValueOnce({
+      html: '',
+      cardCount: 400,
+      isDrmLocked: false,
+      needsCredential: false,
+      overSplit: true,
+    });
+
+    await runPdf(makeSettings({ 'pdf-extract-text': 'true' }));
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ pairPages: false })
+    );
+  });
 });
 
 describe('PrepareDeck — Claude PDF dropped-image reporting', () => {

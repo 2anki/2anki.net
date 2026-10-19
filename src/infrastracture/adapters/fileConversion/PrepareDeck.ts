@@ -524,6 +524,7 @@ async function convertPdfPagesToImagesFile(
     noLimits: input.noLimits,
     contents: file.contents as Buffer,
     settings: input.settings,
+    pairPages: input.settings.pdfPagePairs,
   });
   return {
     name: `${file.name}.html`,

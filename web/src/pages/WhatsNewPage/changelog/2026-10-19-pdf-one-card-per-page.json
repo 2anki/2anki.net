@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-pdf-one-card-per-page",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "PDF uploads make one card per page when Two pages make one card is off"
+}

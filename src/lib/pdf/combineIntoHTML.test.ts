@@ -58,4 +58,43 @@ describe('combineIntoHTML', () => {
 
     expect(imgSrcs(html)).toEqual(['doc.pdf-page1-1.png']);
   });
+
+  it('makes one card per page with no back when pairing is off', () => {
+    const html = combineIntoHTML(
+      [
+        '/ws/doc.pdf-page1-1.png',
+        '/ws/doc.pdf-page2-2.png',
+        '/ws/doc.pdf-page3-3.png',
+        '/ws/doc.pdf-page4-4.png',
+      ],
+      'doc.pdf',
+      '/ws',
+      false
+    );
+
+    const $ = cheerio.load(html);
+    expect(toggleCount(html)).toBe(4);
+    expect(imgSrcs(html)).toEqual([
+      'doc.pdf-page1-1.png',
+      'doc.pdf-page2-2.png',
+      'doc.pdf-page3-3.png',
+      'doc.pdf-page4-4.png',
+    ]);
+    expect($('summary img').length).toBe(4);
+    expect($('details > img').length).toBe(0);
+  });
+
+  it('still pairs when pairing is explicitly on', () => {
+    const html = combineIntoHTML(
+      ['/ws/doc.pdf-page1-1.png', '/ws/doc.pdf-page2-2.png'],
+      'doc.pdf',
+      '/ws',
+      true
+    );
+
+    const $ = cheerio.load(html);
+    expect(toggleCount(html)).toBe(1);
+    expect($('summary img').attr('src')).toBe('doc.pdf-page1-1.png');
+    expect($('details > img').attr('src')).toBe('doc.pdf-page2-2.png');
+  });
 });

@@ -133,3 +133,36 @@ describe('convertPDFToImages — concurrent-run isolation', () => {
     );
   });
 });
+
+describe('convertPDFToImages — page pairing mode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('makes one card per page when pairPages is false', async () => {
+    const html = await convertPDFToImages({
+      name: 'slides.pdf',
+      workspace: makeWorkspace(),
+      noLimits: true,
+      contents: Buffer.from('%PDF-1.4'),
+      settings: makeSettings(),
+      pairPages: false,
+    });
+
+    expect([...html.matchAll(/<details>/g)]).toHaveLength(2);
+    expect([...html.matchAll(/<img /g)]).toHaveLength(2);
+  });
+
+  it('pairs two pages into one front/back card by default', async () => {
+    const html = await convertPDFToImages({
+      name: 'slides.pdf',
+      workspace: makeWorkspace(),
+      noLimits: true,
+      contents: Buffer.from('%PDF-1.4'),
+      settings: makeSettings(),
+    });
+
+    expect([...html.matchAll(/<details>/g)]).toHaveLength(1);
+    expect([...html.matchAll(/<img /g)]).toHaveLength(2);
+  });
+});
