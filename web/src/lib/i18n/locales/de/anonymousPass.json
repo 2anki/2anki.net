@@ -4,5 +4,6 @@
   "afterPay": "Lade die Datei nach dem Bezahlen noch einmal hoch, dann bekommst du alle Karten.",
   "afterPayTotal": "Lade die Datei nach dem Bezahlen noch einmal hoch, dann bekommst du alle {{total}} Karten.",
   "cta": "Day Pass für {{price}} holen",
-  "checkoutError": "Der Checkout ließ sich nicht starten. Versuch es noch einmal oder schreib an support@2anki.net."
+  "checkoutError": "Der Checkout ließ sich nicht starten. Versuch es noch einmal oder schreib an support@2anki.net.",
+  "starting": "Checkout wird gestartet"
 }

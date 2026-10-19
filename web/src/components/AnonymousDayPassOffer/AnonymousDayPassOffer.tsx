@@ -63,7 +63,7 @@ export function AnonymousDayPassOffer({ surface, totalCards }: Props) {
         disabled={pending}
         onClick={() => void buy()}
       >
-        {t('cta', { price: prices['24h'] })}
+        {pending ? t('starting') : t('cta', { price: prices['24h'] })}
       </button>
     </div>
   );

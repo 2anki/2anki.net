@@ -4,5 +4,6 @@
   "afterPay": "Po zapłacie wrzuć plik jeszcze raz, aby dostać wszystkie fiszki.",
   "afterPayTotal": "Po zapłacie wrzuć plik jeszcze raz, aby dostać wszystkie fiszki ({{total}}).",
   "cta": "Kup Day Pass za {{price}}",
-  "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net."
+  "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net.",
+  "starting": "Rozpoczynanie płatności"
 }

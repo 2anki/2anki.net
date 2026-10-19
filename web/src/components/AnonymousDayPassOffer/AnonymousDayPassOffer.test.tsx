@@ -68,6 +68,17 @@ describe('AnonymousDayPassOffer', () => {
     });
   });
 
+  it('says checkout is starting while the session is created', async () => {
+    startPassCheckout.mockReturnValue(new Promise(() => {}));
+    render(<AnonymousDayPassOffer surface="limit-wall" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Day Pass/ }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Starting checkout' })
+    ).toBeDisabled();
+  });
+
   it('shows an error and stays on the page when checkout fails', async () => {
     startPassCheckout.mockResolvedValue({ status: 'error' });
     render(<AnonymousDayPassOffer surface="limit-wall" />);

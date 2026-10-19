@@ -98,7 +98,7 @@ function AnonymousLimit() {
             </Link>
           </div>
           <p className={styles.planNote}>{t('limit.browserNote')}</p>
-          <AnonymousDayPassOffer surface={REF} />
+          <AnonymousDayPassOffer surface="anonymous-limit-wall" />
         </div>
       </div>
     </div>

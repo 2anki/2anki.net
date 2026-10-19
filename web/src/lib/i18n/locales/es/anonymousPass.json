@@ -4,5 +4,6 @@
   "afterPay": "Después de pagar, vuelve a subir el archivo para obtener todas las tarjetas.",
   "afterPayTotal": "Después de pagar, vuelve a subir el archivo para obtener las {{total}} tarjetas.",
   "cta": "Consigue un Day Pass por {{price}}",
-  "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net."
+  "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net.",
+  "starting": "Abriendo el pago"
 }

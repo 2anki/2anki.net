@@ -7,6 +7,9 @@ import { AnonymousPartialGate } from './AnonymousPartialGate';
 import { track } from '../../lib/analytics/track';
 
 vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
+vi.mock('../../lib/hooks/usePassPrices', () => ({
+  usePassPrices: () => ({ '24h': '$6', '7d': '$12', '120d': '$29' }),
+}));
 
 function renderGate(
   held = { cardCount: 21, cardsHeldBack: 13, totalCards: 34 }
@@ -40,7 +43,7 @@ describe('AnonymousPartialGate', () => {
       screen.getByText(/drop the file again to get all 34 cards/)
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /Get a Day Pass for/ })
+      screen.getByRole('button', { name: 'Get a Day Pass for $6' })
     ).toBeInTheDocument();
   });
 
