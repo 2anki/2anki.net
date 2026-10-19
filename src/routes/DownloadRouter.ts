@@ -1,6 +1,6 @@
 import express from 'express';
 
-import RequireAuthentication from './middleware/RequireAuthentication';
+import { RequireAuthenticationOrLogin } from './middleware/RequireAuthentication';
 import DownloadController from '../controllers/DownloadController';
 import DownloadService from '../services/DownloadService';
 import DownloadRepository from '../data_layer/DownloadRepository';
@@ -56,10 +56,14 @@ const DownloadRouter = () => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get('/api/download/u/:key', RequireAuthentication, (req, res) => {
-    const storage = new StorageHandler();
-    controller.getFile(req, res, storage);
-  });
+  router.get(
+    '/api/download/u/:key',
+    RequireAuthenticationOrLogin,
+    (req, res) => {
+      const storage = new StorageHandler();
+      controller.getFile(req, res, storage);
+    }
+  );
 
   /**
    * @swagger

@@ -65,6 +65,7 @@ function mockResponse(delayMs = 0): StreamingMockResponse {
       headers[name] = value;
     }),
     send: vi.fn(),
+    json: vi.fn().mockReturnThis(),
     status: vi.fn().mockReturnThis(),
     redirect: vi.fn(),
     _headers: headers,
@@ -686,21 +687,51 @@ describe('DownloadController.getFile storage error handling', () => {
 });
 
 describe('DownloadController.getFile expired link logging', () => {
-  it('returns the 404 expire page when the file is absent', async () => {
+  it('serves the styled expired page to a browser when the file is absent', async () => {
     const service = makeService({
       getFileStream: vi.fn().mockResolvedValue(null),
       isTransientStorageError: () => false,
     });
     const controller = new DownloadController(service as never);
-    const req = { params: { key: 'expired-deck.apkg' } } as unknown as Request;
+    const req = {
+      method: 'GET',
+      headers: { accept: 'text/html' },
+      params: { key: 'expired-deck.apkg' },
+    } as unknown as Request;
     const res = mockResponse();
 
     await controller.getFile(req, res, {} as never);
 
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.send).toHaveBeenCalledWith(
-      "Download link expire, try converting again <a href='/upload'>upload</a>"
-    );
+    const sent = (res.send as unknown as Mock).mock.calls[0][0] as string;
+    expect(sent).toContain('This download link has expired');
+    expect(sent).toContain('href="/upload"');
+    expect(sent).toContain('href="/downloads"');
+    expect(res.json).not.toHaveBeenCalled();
+    expect(res._headers['Cache-Control']).toBe('no-store');
+    expect(res._headers['Vary']).toBe('Accept');
+  });
+
+  it('returns a 404 JSON body to an API client when the file is absent', async () => {
+    const service = makeService({
+      getFileStream: vi.fn().mockResolvedValue(null),
+      isTransientStorageError: () => false,
+    });
+    const controller = new DownloadController(service as never);
+    const req = {
+      method: 'GET',
+      headers: { accept: 'application/json' },
+      params: { key: 'expired-deck.apkg' },
+    } as unknown as Request;
+    const res = mockResponse();
+
+    await controller.getFile(req, res, {} as never);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Download link expired' });
+    expect(res.send).not.toHaveBeenCalled();
+    expect(res._headers['Cache-Control']).toBe('no-store');
+    expect(res._headers['Vary']).toBe('Accept');
   });
 
   it('does not log an error for an absent file (expected expired link)', async () => {

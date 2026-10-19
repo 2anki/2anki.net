@@ -136,6 +136,48 @@ describe('getRedirect security tests', () => {
     });
   });
 
+  describe('should carry the deck-ready download link through sign in', () => {
+    it('keeps the full download path so the email link survives login', () => {
+      const req = createMockRequest('/api/download/u/owner-1234-uuid.apkg');
+      expect(getRedirect(req)).toBe('/api/download/u/owner-1234-uuid.apkg');
+    });
+
+    it('reads the download path from the request body as well', () => {
+      const req = createMockRequest(
+        undefined,
+        '/api/download/u/owner-1234-uuid.apkg'
+      );
+      expect(getRedirect(req)).toBe('/api/download/u/owner-1234-uuid.apkg');
+    });
+
+    const unsafeDownloadTargets = [
+      '/api/download/u/../../../admin',
+      '/api/download/u/..',
+      '/api/download/u/%2e%2e',
+      '/api/download/u/%2F%2F',
+      '/api/download/u/deck.apkg?next=/admin',
+      '/api/download/u/deck.apkg#/admin',
+      '/api/download/u/..\\evil',
+      '/api/download/u/deck\r\nSet-Cookie: x=1',
+      '/api/download/u/deck\nLocation: //evil.com',
+      'https://evil.com/api/download/u/x',
+    ];
+    unsafeDownloadTargets.forEach((target) => {
+      it(`blocks an unsafe download target: ${JSON.stringify(target)}`, () => {
+        const req = createMockRequest(target);
+        expect(getRedirect(req)).toBe('/upload');
+      });
+    });
+
+    const offSiteTargets = ['/\\evil', '//evil', '/\r\n/evil'];
+    offSiteTargets.forEach((target) => {
+      it(`blocks an off-site target: ${JSON.stringify(target)}`, () => {
+        const req = createMockRequest(target);
+        expect(getRedirect(req)).toBe('/upload');
+      });
+    });
+  });
+
   describe('should read redirect from request body as fallback', () => {
     it('returns body redirect when query param is absent', () => {
       const req = createMockRequest(undefined, '/card-options');
