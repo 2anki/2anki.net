@@ -33,6 +33,19 @@ In HTML:
 
 Du bekommst außerdem **Basic and Reversed** als Kartenoption — das erzeugt die Vorder-/Rückseiten-Karte und eine zweite Karte mit vertauschter Vorder- und Rückseite. Nützlich für Vokabeln. Siehe [Kartenoptionen](/documentation/cards/card-options).
 
+### Nur einzelne Karten umkehren
+
+Setz 🔄 irgendwo in die Frage eines Toggles, dann bekommst du genau diese Karte in beide Richtungen. 2anki entfernt das 🔄 aus dem Kartentext und fügt eine zweite Karte mit vertauschter Vorder- und Rückseite hinzu. Alle anderen Karten bleiben einseitig, du brauchst also kein **Basic and Reversed** für den ganzen Stapel.
+
+```html
+<details>
+  <summary>🔄 Hund</summary>
+  <p>dog</p>
+</details>
+```
+
+Das ergibt zwei Karten: "Hund" mit "dog" auf der Rückseite und "dog" mit "Hund" auf der Rückseite. Das funktioniert bei Datei-Uploads und bei Notion-Seiten, die du mit verbundenem Notion konvertierst.
+
 ## Cloze
 
 Cloze versteckt einen Teil eines Satzes. Du siehst "The capital of France is [...]" und tippst oder rufst "Paris" ab.

@@ -59,7 +59,7 @@
     },
     "basic-reversed": {
       "label": "Básica e invertida",
-      "description": "Crea dos tarjetas por alternancia: de pregunta a respuesta y de respuesta a pregunta."
+      "description": "Crea dos tarjetas por alternancia: de pregunta a respuesta y de respuesta a pregunta. Para invertir solo algunas tarjetas, pon 🔄 en su pregunta."
     },
     "reversed": {
       "label": "Solo invertida",

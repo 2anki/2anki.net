@@ -59,7 +59,7 @@
     },
     "basic-reversed": {
       "label": "Podstawowa i odwrócona",
-      "description": "Twórz dwie karty na listę rozwijaną: od pytania do odpowiedzi i od odpowiedzi do pytania."
+      "description": "Twórz dwie karty na listę rozwijaną: od pytania do odpowiedzi i od odpowiedzi do pytania. Aby odwrócić tylko niektóre fiszki, wstaw 🔄 do ich pytania."
     },
     "reversed": {
       "label": "Tylko odwrócona",

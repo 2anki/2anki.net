@@ -59,7 +59,7 @@
     },
     "basic-reversed": {
       "label": "Básico e invertido",
-      "description": "Cria dois cartões por toggle: pergunta para resposta e resposta para pergunta."
+      "description": "Cria dois cartões por toggle: pergunta para resposta e resposta para pergunta. Para inverter só alguns cartões, coloque 🔄 na pergunta deles."
     },
     "reversed": {
       "label": "Somente invertido",

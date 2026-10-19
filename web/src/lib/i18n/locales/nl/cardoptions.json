@@ -59,7 +59,7 @@
     },
     "basic-reversed": {
       "label": "Basic en omgekeerd",
-      "description": "Maak twee kaarten per toggle: van vraag naar antwoord en van antwoord naar vraag."
+      "description": "Maak twee kaarten per toggle: van vraag naar antwoord en van antwoord naar vraag. Wil je maar een paar kaarten omdraaien, zet dan 🔄 in hun vraag."
     },
     "reversed": {
       "label": "Alleen omgekeerd",
