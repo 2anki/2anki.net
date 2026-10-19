@@ -127,7 +127,7 @@
     },
     "ai-comprehensive": {
       "label": "Modo de IA abrangente",
-      "description": "Lê todas as seções de documentos longos para que nada importante fique de fora. Ideal para estudo aprofundado de material denso. Leva mais tempo para gerar. Somente planos pagos."
+      "description": "Lê um documento longo do começo ao fim. Em um documento muito longo, mantém cartões de todo o documento em vez de cortar o final. Ideal para estudo aprofundado de material denso. Leva mais tempo para gerar. Somente planos pagos."
     },
     "share-files-for-debugging": {
       "label": "Compartilhar arquivos para depuração quando a conversão falha",

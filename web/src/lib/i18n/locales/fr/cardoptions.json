@@ -127,7 +127,7 @@
     },
     "ai-comprehensive": {
       "label": "Mode IA exhaustif",
-      "description": "Lit chaque section des longs documents pour que rien d'important ne soit ignoré. Idéal pour étudier en profondeur une matière dense. Prend plus de temps. Offres payantes uniquement."
+      "description": "Lit un long document du début à la fin. Sur un document très long, il conserve des cartes de tout le document au lieu de couper la fin. Idéal pour étudier en profondeur une matière dense. Prend plus de temps. Offres payantes uniquement."
     },
     "share-files-for-debugging": {
       "label": "Partager les fichiers pour le débogage quand la conversion échoue",

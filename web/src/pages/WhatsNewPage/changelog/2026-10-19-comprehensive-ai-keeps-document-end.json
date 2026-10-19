@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-comprehensive-ai-keeps-document-end",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Comprehensive AI mode keeps cards from across a long document instead of dropping the end"
+}

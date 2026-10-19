@@ -195,7 +195,7 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'ai-comprehensive',
       'Comprehensive AI mode',
-      'Reads every section of long documents so nothing important gets skipped. Best for thorough study of dense material. Takes longer to make. Paid plans only.',
+      'Reads a long document from start to end. On a very long document it keeps cards from across the whole document instead of cutting off the end. Best for thorough study of dense material. Takes longer to make. Paid plans only.',
       defaultFor('ai-comprehensive')
     ),
     new CardOptionDetail(

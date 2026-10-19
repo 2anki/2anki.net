@@ -127,7 +127,7 @@
     },
     "ai-comprehensive": {
       "label": "Volledige AI-modus",
-      "description": "Leest elke sectie van lange documenten, zodat niets belangrijks wordt overgeslagen. Het best voor grondig studeren van informatiedichte stof. Het maken duurt langer. Alleen voor betaalde abonnementen."
+      "description": "Leest een lang document van begin tot eind. Bij een heel lang document houdt het kaarten uit het hele document aan in plaats van het einde af te kappen. Het best voor grondig studeren van informatiedichte stof. Het maken duurt langer. Alleen voor betaalde abonnementen."
     },
     "share-files-for-debugging": {
       "label": "Bestanden delen voor debuggen als de conversie mislukt",

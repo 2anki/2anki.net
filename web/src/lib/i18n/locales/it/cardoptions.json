@@ -127,7 +127,7 @@
     },
     "ai-comprehensive": {
       "label": "Modalità IA completa",
-      "description": "Legge ogni sezione dei documenti lunghi così nulla di importante viene saltato. Ideale per studiare a fondo materiale denso. Richiede più tempo per la creazione. Solo piani a pagamento."
+      "description": "Legge un documento lungo dall'inizio alla fine. Con un documento molto lungo mantiene carte da tutto il documento invece di tagliare la parte finale. Ideale per studiare a fondo materiale denso. Richiede più tempo per la creazione. Solo piani a pagamento."
     },
     "share-files-for-debugging": {
       "label": "Condividi i file per il debug quando la conversione fallisce",

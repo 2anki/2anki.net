@@ -1814,32 +1814,135 @@ async function runFloorV1(
   let clampedFrom: number | undefined;
   const preClampCount = totalCardCount(merged);
   if (preClampCount > bounds.ceiling) {
-    console.log('[Claude] floor v1 ceiling clamp', {
+    merged = thinDecksToCeiling(merged, bounds.ceiling);
+    clampedFrom = preClampCount;
+    const keptCards = totalCardCount(merged);
+    console.log('[Claude] floor v1 ceiling thin', {
       preClampCount,
       ceiling: bounds.ceiling,
+      keptCards,
+      trimmedCards: preClampCount - keptCards,
+      chunksRepresented: cardCountByChunk(merged, chunks.length).filter(
+        (count) => count > 0
+      ).length,
+      totalChunks: chunks.length,
     });
-    merged = clampDeckTotal(merged, bounds.ceiling);
-    clampedFrom = preClampCount;
   }
 
   return { deckInfo: merged, usages, topUpRounds, clampedFrom };
 }
 
-function clampDeckTotal(decks: DeckInfo[], ceiling: number): DeckInfo[] {
-  const clamped: DeckInfo[] = [];
-  let remaining = ceiling;
-  for (const deck of decks) {
-    if (remaining <= 0) {
-      clamped.push({ ...deck, cards: [] });
-      continue;
-    }
-    if (deck.cards.length <= remaining) {
-      clamped.push(deck);
-      remaining -= deck.cards.length;
-    } else {
-      clamped.push({ ...deck, cards: deck.cards.slice(0, remaining) });
-      remaining = 0;
+function chunkKeyOf(card: CardInfo): number {
+  return card.chunkIndex ?? -1;
+}
+
+function evenlySpacedIndices(length: number, keep: number): number[] {
+  if (keep <= 0) return [];
+  if (keep >= length) return Array.from({ length }, (_, i) => i);
+  const indices: number[] = [];
+  for (let j = 0; j < keep; j++) {
+    indices.push(Math.floor((j * length) / keep));
+  }
+  return indices;
+}
+
+// Decide how many cards to keep from each chunk when the total overruns the
+// ceiling. Every chunk that produced cards keeps at least one so the end of a
+// long document is never dropped wholesale; the rest of the budget is handed
+// out in proportion to each chunk's card count by the largest-remainder method,
+// capped at the chunk's own count and tie-broken by chunk order so the result
+// is deterministic. When the ceiling is smaller than the number of chunks the
+// keepers are spread evenly across the document rather than taken from the
+// front.
+export function allocateCeilingKeepCounts(
+  counts: number[],
+  ceiling: number
+): number[] {
+  const keep = new Array<number>(counts.length).fill(0);
+  const nonEmpty = counts
+    .map((count, index) => ({ count, index }))
+    .filter((entry) => entry.count > 0)
+    .map((entry) => entry.index);
+
+  if (ceiling <= nonEmpty.length) {
+    for (const index of sampleEvenly(nonEmpty, ceiling)) keep[index] = 1;
+    return keep;
+  }
+
+  for (const index of nonEmpty) keep[index] = 1;
+
+  const headroom = counts.map((count, index) => count - keep[index]);
+  const totalHeadroom = headroom.reduce((sum, value) => sum + value, 0);
+  let budget = Math.min(ceiling - nonEmpty.length, totalHeadroom);
+  if (budget <= 0) return keep;
+
+  const ideal = headroom.map((value) => (value / totalHeadroom) * budget);
+  const extra = ideal.map((value) => Math.floor(value));
+  let leftover = budget - extra.reduce((sum, value) => sum + value, 0);
+
+  const byRemainder = ideal
+    .map((value, index) => ({ index, frac: value - Math.floor(value) }))
+    .sort((a, b) => b.frac - a.frac || a.index - b.index);
+  for (const { index } of byRemainder) {
+    if (leftover <= 0) break;
+    if (extra[index] < headroom[index]) {
+      extra[index] += 1;
+      leftover -= 1;
     }
   }
-  return clamped;
+  for (let index = 0; index < counts.length && leftover > 0; index++) {
+    while (extra[index] < headroom[index] && leftover > 0) {
+      extra[index] += 1;
+      leftover -= 1;
+    }
+  }
+
+  for (let index = 0; index < counts.length; index++)
+    keep[index] += extra[index];
+  return keep;
+}
+
+// Thin an overrun deck set down to the ceiling by dropping cards evenly across
+// the document's chunks instead of truncating in chunk order. The old clamp
+// kept cards front to back and emptied every chunk past the ceiling, cutting
+// the end of long documents; this keeps a balanced sample from each chunk so
+// every section stays represented. Deterministic: no randomness, same input
+// yields the same kept cards.
+export function thinDecksToCeiling(
+  decks: DeckInfo[],
+  ceiling: number
+): DeckInfo[] {
+  if (totalCardCount(decks) <= ceiling && ceiling > 0) return decks;
+
+  const chunkKeys: number[] = [];
+  const cardsByChunk = new Map<number, CardInfo[]>();
+  for (const deck of decks) {
+    for (const card of deck.cards) {
+      const key = chunkKeyOf(card);
+      let bucket = cardsByChunk.get(key);
+      if (!bucket) {
+        bucket = [];
+        cardsByChunk.set(key, bucket);
+        chunkKeys.push(key);
+      }
+      bucket.push(card);
+    }
+  }
+  chunkKeys.sort((a, b) => a - b);
+
+  const counts = chunkKeys.map((key) => cardsByChunk.get(key)!.length);
+  const keepCounts = allocateCeilingKeepCounts(counts, ceiling);
+
+  const kept = new Set<CardInfo>();
+  chunkKeys.forEach((key, i) => {
+    const bucket = cardsByChunk.get(key)!;
+    for (const index of evenlySpacedIndices(bucket.length, keepCounts[i])) {
+      kept.add(bucket[index]);
+    }
+  });
+
+  return decks.map((deck) => ({
+    ...deck,
+    cards: deck.cards.filter((card) => kept.has(card)),
+  }));
 }

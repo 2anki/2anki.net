@@ -127,7 +127,7 @@
     },
     "ai-comprehensive": {
       "label": "Umfassender KI-Modus",
-      "description": "Liest jeden Abschnitt langer Dokumente, damit nichts Wichtiges übersprungen wird. Am besten für gründliches Lernen von dichtem Material. Die Erstellung dauert länger. Nur in bezahlten Tarifen."
+      "description": "Liest ein langes Dokument von Anfang bis Ende. Bei einem sehr langen Dokument behält es Karten aus dem gesamten Dokument, statt das Ende abzuschneiden. Am besten für gründliches Lernen von dichtem Material. Die Erstellung dauert länger. Nur in bezahlten Tarifen."
     },
     "share-files-for-debugging": {
       "label": "Dateien zur Fehlersuche teilen, wenn die Konvertierung fehlschlägt",
