@@ -236,7 +236,19 @@ class BlockHandler implements IBlockRenderer {
 
   resolvedDatabasePath?: { viaPageLinkSelfHeal: boolean };
 
-  droppedAssetCount = 0;
+  droppedImageAssetCount = 0;
+
+  droppedAudioAssetCount = 0;
+
+  droppedFileAssetCount = 0;
+
+  get droppedAssetCount(): number {
+    return (
+      this.droppedImageAssetCount +
+      this.droppedAudioAssetCount +
+      this.droppedFileAssetCount
+    );
+  }
 
   emptyBackCount = 0;
 
@@ -332,7 +344,7 @@ class BlockHandler implements IBlockRenderer {
         getImageUrl(fresh as ImageBlockObjectResponse),
     });
     if (contents == null) {
-      this.droppedAssetCount += 1;
+      this.droppedImageAssetCount += 1;
       return '';
     }
     this.exporter.addMedia(newName, contents);
@@ -360,7 +372,7 @@ class BlockHandler implements IBlockRenderer {
         getAudioUrl(fresh as AudioBlockObjectResponse),
     });
     if (contents == null) {
-      this.droppedAssetCount += 1;
+      this.droppedAudioAssetCount += 1;
       return '';
     }
     this.exporter.addMedia(newName, contents);
@@ -384,7 +396,7 @@ class BlockHandler implements IBlockRenderer {
         getFileUrl(fresh as FileBlockObjectResponse | PdfBlockObjectResponse),
     });
     if (contents == null) {
-      this.droppedAssetCount += 1;
+      this.droppedFileAssetCount += 1;
       return '';
     }
     this.exporter.addMedia(newName, contents);

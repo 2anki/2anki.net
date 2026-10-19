@@ -72,7 +72,7 @@ describe('ImageDropNotice', () => {
       screen.getByText(/images from your PDF aren't in this deck/)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/we don't include images from PDFs yet/)
+      screen.getByText(/We include the images we can read from a PDF/)
     ).toBeInTheDocument();
   });
 

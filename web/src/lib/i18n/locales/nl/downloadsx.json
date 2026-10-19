@@ -49,8 +49,8 @@
     "uploadSingleDeck_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in dit pakket. Je bestand linkt ernaar op andere sites die we niet konden bereiken. Sla de afbeeldingen op in het bestand zelf en upload opnieuw.",
     "uploadMultiDeck_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in je pakketten. Je bestand linkt ernaar op een andere site die we niet konden bereiken. Sla de afbeelding op in het bestand zelf en upload opnieuw.",
     "uploadMultiDeck_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in je pakketten. Je bestand linkt ernaar op andere sites die we niet konden bereiken. Sla de afbeeldingen op in het bestand zelf en upload opnieuw.",
-    "pdf_one": "{{count}} afbeelding uit je PDF zit niet in dit pakket — afbeeldingen uit PDF's nemen we nog niet over. Exporteer je Notion-pagina als HTML en upload die om haar te behouden.",
-    "pdf_other": "{{count}} afbeeldingen uit je PDF zitten niet in dit pakket — afbeeldingen uit PDF's nemen we nog niet over. Exporteer je Notion-pagina als HTML en upload die om ze te behouden.",
+    "pdf_one": "{{count}} afbeelding uit je PDF zit niet in dit pakket. We nemen de afbeeldingen over die we uit een PDF kunnen lezen, maar deze kwam er niet door. Als de PDF uit Notion komt, exporteer die pagina als HTML en upload die om alle afbeeldingen te behouden.",
+    "pdf_other": "{{count}} afbeeldingen uit je PDF zitten niet in dit pakket. We nemen de afbeeldingen over die we uit een PDF kunnen lezen, maar deze kwamen er niet door. Als de PDF uit Notion komt, exporteer die pagina als HTML en upload die om alle afbeeldingen te behouden.",
     "notionExportExpired_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in dit pakket. De afbeeldingslink in deze Notion-export is verlopen — deze links blijven ongeveer een uur geldig. Exporteer de pagina opnieuw en upload het nieuwe bestand kort daarna.",
     "notionExportExpired_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in dit pakket. De afbeeldingslinks in deze Notion-export zijn verlopen — deze links blijven ongeveer een uur geldig. Exporteer de pagina opnieuw en upload het nieuwe bestand kort daarna.",
     "notionExportExpiredMultiDeck_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in je pakketten. De afbeeldingslink in deze Notion-export is verlopen — deze links blijven ongeveer een uur geldig. Exporteer de pagina opnieuw en upload het nieuwe bestand kort daarna.",
@@ -128,7 +128,11 @@
     "reasonUnsupported_one": "{{count}} {{type}}-blok kan nog geen kaarten worden.",
     "reasonUnsupported_other": "{{count}} {{type}}-blokken kunnen nog geen kaarten worden.",
     "omitted_one": "{{count}} ander blok is om andere redenen overgeslagen.",
-    "omitted_other": "{{count}} andere blokken zijn om andere redenen overgeslagen."
+    "omitted_other": "{{count}} andere blokken zijn om andere redenen overgeslagen.",
+    "reasonAudioDropped_one": "{{count}} audiobestand kon niet worden gedownload en zit niet in dit pakket. De link ernaar in Notion is waarschijnlijk verlopen. Converteer de pagina opnieuw om het op te halen.",
+    "reasonAudioDropped_other": "{{count}} audiobestanden konden niet worden gedownload en zitten niet in dit pakket. De links ernaar in Notion zijn waarschijnlijk verlopen. Converteer de pagina opnieuw om ze op te halen.",
+    "reasonFilesDropped_one": "{{count}} bestand kon niet worden gedownload en zit niet in dit pakket. De link ernaar in Notion is waarschijnlijk verlopen. Converteer de pagina opnieuw om het op te halen.",
+    "reasonFilesDropped_other": "{{count}} bestanden konden niet worden gedownload en zitten niet in dit pakket. De links ernaar in Notion zijn waarschijnlijk verlopen. Converteer de pagina opnieuw om ze op te halen."
   },
   "thinDeck": {
     "emptyToggles_one": "Er kwam maar {{count}} kaart uit deze pagina. {{skipped}} toggles hadden binnenin geen antwoord en zijn overgeslagen — voeg in elk een antwoord toe en converteer opnieuw.",

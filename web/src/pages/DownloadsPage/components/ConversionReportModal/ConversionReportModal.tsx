@@ -55,8 +55,14 @@ function entryCopy(t: TFunction, entry: ConversionReportEntry): string {
   if (code === 'blocks_forbidden') {
     return t('blocksForbidden.notion', { count: entry.count });
   }
-  if (code === 'assets_dropped') {
+  if (code === 'assets_dropped' || code === 'assets_dropped:image') {
     return t('imageDrop.notion', { count: entry.count });
+  }
+  if (code === 'assets_dropped:audio') {
+    return t('report.reasonAudioDropped', { count: entry.count });
+  }
+  if (code === 'assets_dropped:file') {
+    return t('report.reasonFilesDropped', { count: entry.count });
   }
   if (code === 'empty_back') {
     return t('report.reasonEmptyBack', { count: entry.count });
