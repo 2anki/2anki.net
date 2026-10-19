@@ -5,6 +5,7 @@ import notionColorToHex, {
   isNotionColorBackground,
   notionBackgroundColor,
 } from '../NotionColors';
+import safeLinkHref from '../helpers/safeLinkHref';
 
 interface Annotations {
   underline: boolean;
@@ -69,6 +70,14 @@ const HandleBlockAnnotations = (
         <span style={{ color: notionColorToHex(color) }}>{styledContent}</span>
       );
     }
+  }
+  const href = safeLinkHref(text.href);
+  if (href) {
+    styledContent = (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {styledContent}
+      </a>
+    );
   }
   return <>{styledContent}</>;
 };
