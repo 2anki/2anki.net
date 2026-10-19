@@ -616,7 +616,6 @@ describe('McpToolsService.convertToDeck', () => {
         tags: ['bio'],
         deckName: 'Cells',
         styleTemplate: 'nostyle',
-        splitByHeadings: false,
         tts: { enabled: false },
       },
     });

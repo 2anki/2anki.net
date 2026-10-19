@@ -673,7 +673,6 @@ export class McpToolsService {
     const applied: AppliedOptions = {
       noteType: 'basic',
       tags: [],
-      splitByHeadings: false,
       tts: { enabled: false },
       subdecks,
     };

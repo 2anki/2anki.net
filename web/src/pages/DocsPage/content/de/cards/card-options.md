@@ -69,13 +69,12 @@ Kartenoptionen ändern, wie 2anki deine Quelle in Karteikarten verwandelt. Die m
 
 ## PDF und KI
 
-| Option                                          | Standard | Was sie macht                                                                                                                                                       |
-| ----------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Process PDF Files                               | On       | Konvertiert PDFs, die in ZIP-Uploads gefunden werden. Ausschalten, um PDFs zu überspringen und große Archive zu beschleunigen.                                      |
-| Generate Questions from Single PDF File Uploads | Off      | Schickt das PDF an Anthropic Claude, um Fragen zu erzeugen. Kostenpflichtig; schickt Inhalt an Anthropic.                                                           |
-| Generate Flashcards with Claude AI              | Off      | Schickt Inhalt an Anthropic Claude und nutzt dessen Ausgabe als Deck. Kostenpflichtig.                                                                              |
-| User instructions                               | —        | Freiform-Prompt, der an Claude geschickt wird, wenn **Generate Flashcards with Claude AI** ein ist. Beispiel: _"Focus on USMLE high-yield. Skip the introduction."_ |
-| Convert Image Quiz HTML to Anki Cards           | Off      | Nutzt OCR, um Bild-und-Antwort-Paare aus HTML-Quizzen zu ziehen. Premium, experimentell.                                                                            |
+| Option                                | Standard | Was sie macht                                                                                                                                                       |
+| ------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Process PDF Files                     | On       | Konvertiert PDFs, die in ZIP-Uploads gefunden werden. Ausschalten, um PDFs zu überspringen und große Archive zu beschleunigen.                                      |
+| Generate Flashcards with Claude AI    | Off      | Schickt Inhalt an Anthropic Claude und nutzt dessen Ausgabe als Deck. Kostenpflichtig.                                                                              |
+| User instructions                     | —        | Freiform-Prompt, der an Claude geschickt wird, wenn **Generate Flashcards with Claude AI** ein ist. Beispiel: _"Focus on USMLE high-yield. Skip the introduction."_ |
+| Convert Image Quiz HTML to Anki Cards | Off      | Nutzt OCR, um Bild-und-Antwort-Paare aus HTML-Quizzen zu ziehen. Premium, experimentell.                                                                            |
 
 ## Medien
 

@@ -109,21 +109,7 @@ describe('convertWithClaude', () => {
     ]);
   });
 
-  it('uses client.beta.messages.stream with pdfs-2024-09-25 beta when pdf flag is set', async () => {
-    const mock = makeAnthropicMock('<p>result</p>');
-    await convertWithClaude(
-      mock as unknown as Anthropic,
-      'system prompt',
-      [{ type: 'text', text: 'user text' }],
-      { pdf: true }
-    );
-
-    expect(mock.messages.stream).not.toHaveBeenCalled();
-    const callArg = (mock.beta.messages.stream as Mock).mock.calls[0][0];
-    expect(callArg.betas).toContain('pdfs-2024-09-25');
-  });
-
-  it('uses client.messages.stream (not beta) when pdf flag is not set', async () => {
+  it('uses the streaming messages API, never the beta surface', async () => {
     const mock = makeAnthropicMock('<p>result</p>');
     await convertWithClaude(mock as unknown as Anthropic, 'system prompt', [
       { type: 'text', text: 'user text' },
@@ -138,12 +124,6 @@ describe('convertWithClaude', () => {
     await convertWithClaude(mock as unknown as Anthropic, 'system prompt', [
       { type: 'text', text: 'user text' },
     ]);
-    await convertWithClaude(
-      mock as unknown as Anthropic,
-      'system prompt',
-      [{ type: 'text', text: 'user text' }],
-      { pdf: true }
-    );
 
     expect(mock.messages.create).not.toHaveBeenCalled();
     expect(mock.beta.messages.create).not.toHaveBeenCalled();
@@ -167,19 +147,6 @@ describe('convertWithClaude', () => {
       convertWithClaude(mock as unknown as Anthropic, 'system prompt', [
         { type: 'text', text: 'user text' },
       ])
-    ).rejects.toThrow(/too large to convert in one pass/);
-  });
-
-  it('throws on truncation on the PDF path too', async () => {
-    const mock = makeAnthropicMock('<p>first half', 'max_tokens');
-
-    await expect(
-      convertWithClaude(
-        mock as unknown as Anthropic,
-        'system prompt',
-        [{ type: 'text', text: 'user text' }],
-        { pdf: true }
-      )
     ).rejects.toThrow(/too large to convert in one pass/);
   });
 
