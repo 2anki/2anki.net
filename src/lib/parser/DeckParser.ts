@@ -1075,6 +1075,8 @@ export class DeckParser {
       const originalName = dom(elem).attr('src');
       if (!originalName) return;
 
+      DeckParser.unwrapExportImageLink(dom, elem, originalName);
+
       const handled = this.embedLocalOrZipImage(
         dom,
         elem,
@@ -1087,6 +1089,42 @@ export class DeckParser {
       await this.embedRemoteImage(dom, elem, originalName, card);
     });
     return dom.html();
+  }
+
+  private static hrefTargetsImageFile(href: string, imageSrc: string): boolean {
+    if (href === imageSrc) return true;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(href)) return false;
+    if (href.startsWith('//')) return false;
+    if (href.startsWith('#')) return false;
+    if (isValidAudioFile(href)) return false;
+    const pathOnly = href.split(/[?#]/)[0];
+    return /\.(png|jpe?g|gif|webp|svg|bmp|tiff?|heic|heif|avif|ico|apng|jfif)$/i.test(
+      pathOnly
+    );
+  }
+
+  private static anchorHoldsOnlyImage(
+    anchor: cheerio.Cheerio<Element>,
+    elem: Element
+  ): boolean {
+    const children = anchor.children().toArray();
+    if (children.length !== 1) return false;
+    if (children[0] !== elem) return false;
+    return anchor.text().trim() === '';
+  }
+
+  private static unwrapExportImageLink(
+    dom: cheerio.CheerioAPI,
+    elem: Element,
+    imageSrc: string
+  ): void {
+    const anchor = dom(elem).parent('a');
+    if (anchor.length === 0) return;
+    const href = anchor.attr('href');
+    if (href == null || href === '') return;
+    if (!DeckParser.hrefTargetsImageFile(href, imageSrc)) return;
+    if (!DeckParser.anchorHoldsOnlyImage(anchor, elem)) return;
+    anchor.replaceWith(dom(elem));
   }
 
   private async embedCardImages(card: Note, ws: Workspace): Promise<void> {
