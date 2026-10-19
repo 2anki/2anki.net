@@ -150,7 +150,7 @@ const csvToAnki: LandingCopy = {
     },
     {
       q: 'Can I import an Excel .xlsx file directly?',
-      a: 'Yes — upload the .xlsx file and we convert it. If the spreadsheet has multiple sheets, the first sheet is used. A header row that looks like labels (short non-numeric text in every column) is detected and skipped.',
+      a: 'Yes, upload the .xlsx file and we convert it. Every visible sheet in the workbook is converted into the same deck, and hidden tabs are skipped. A header row whose columns are recognized field names, like front and back or question and answer, is detected and skipped.',
     },
     {
       q: 'How do I name the deck?',
@@ -674,7 +674,7 @@ const excelToAnki: LandingCopy = {
     },
     {
       q: 'My workbook has several tabs — will all of them convert?',
-      a: 'The first sheet is the one converted. If you have multiple tabs, split each into its own .xlsx file and upload them separately.',
+      a: 'Yes. Every visible sheet converts into the same deck, so you can keep all your tabs in one file. Hidden tabs, like lookup tables and helper sheets, are skipped.',
     },
     {
       q: 'What if my file is a .csv instead of an .xlsx?',
