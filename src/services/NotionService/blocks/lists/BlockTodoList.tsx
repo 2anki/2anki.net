@@ -14,7 +14,7 @@ export const BlockTodoList = async (
   handler: IBlockRenderer
 ) => {
   const list = block.to_do;
-  const items = await getListItems(response, handler, 'to_do');
+  const items = await getListItems(response, handler, 'to_do', block);
   const listItems = items.filter(Boolean);
   const markup = ReactDOMServer.renderToStaticMarkup(
     <ul id={block.id} className={`to-do-list${styleWithColors(list.color)}`}>

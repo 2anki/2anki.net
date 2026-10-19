@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-notion-bullets-stay-under-their-own-heading",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Notion bullets stay under their own heading instead of piling into the first list"
+}

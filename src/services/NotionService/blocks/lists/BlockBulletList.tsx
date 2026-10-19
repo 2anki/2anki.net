@@ -14,7 +14,12 @@ export const BlockBulletList = async (
   handler: IBlockRenderer
 ) => {
   const list = block.bulleted_list_item;
-  const items = await getListItems(response, handler, 'bulleted_list_item');
+  const items = await getListItems(
+    response,
+    handler,
+    'bulleted_list_item',
+    block
+  );
   const listItems = items.filter(Boolean);
   const markup = ReactDOMServer.renderToStaticMarkup(
     <ul id={block.id} className={`bulleted-list${styleWithColors(list.color)}`}>
