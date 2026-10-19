@@ -762,7 +762,7 @@
     },
     "userInstructions": {
       "summary": "Instructions utilisateur pour la conversion PDF",
-      "placeholder": "Instructions pour la conversion PDF...",
+      "placeholder": "ex. : Crée une carte distincte pour chaque élément de la liste",
       "presetsLabel": "Instructions rapides",
       "presetsHint": "Ajoute un point de départ, puis modifie-le dans le champ ci-dessous.",
       "presets": {

@@ -736,7 +736,7 @@
     },
     "userInstructions": {
       "summary": "PDF 変換のユーザー指示",
-      "placeholder": "PDF 変換の指示...",
+      "placeholder": "例: リストの各項目ごとにカードを分ける",
       "presetsLabel": "クイック指示",
       "presetsHint": "出発点を追加してから、下の入力欄で編集できます。",
       "presets": {

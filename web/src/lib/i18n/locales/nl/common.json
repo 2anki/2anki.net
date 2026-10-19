@@ -762,7 +762,7 @@
     },
     "userInstructions": {
       "summary": "Gebruikersinstructies voor PDF-conversie",
-      "placeholder": "Instructies voor PDF-conversie...",
+      "placeholder": "bijv. Maak een aparte kaart voor elk lijstitem",
       "presetsLabel": "Snelle instructies",
       "presetsHint": "Voeg een startpunt toe en pas het daarna aan in het vak hieronder.",
       "presets": {

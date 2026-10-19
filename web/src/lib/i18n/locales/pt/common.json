@@ -762,7 +762,7 @@
     },
     "userInstructions": {
       "summary": "Instruções do usuário para conversão de PDF",
-      "placeholder": "Instruções para conversão de PDF...",
+      "placeholder": "ex.: Crie um cartão separado para cada item da lista",
       "presetsLabel": "Instruções rápidas",
       "presetsHint": "Adicione um ponto de partida e depois edite-o na caixa abaixo.",
       "presets": {

@@ -110,7 +110,7 @@ const MCQ_TTS_LANGUAGE_OPTIONS = [
   { label: 'Mandarin (Simplified)', value: 'zh_CN' },
   { label: 'Portuguese (Brazil)', value: 'pt_BR' },
 ] as const;
-export const DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanations:
+export const LEGACY_DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanations:
 - Read the document from start to finish and identify any question and answers.
 - Use the same language as the document or infer the language based on what is mostly used.
 - Use the same text as in the document and do not make up any questions or answers.
@@ -119,6 +119,24 @@ export const DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanations:
 - Do not limit the number of number of questions and answer but create all of them!
 - Do not make up any questions and use the questions in the document!
 - Create a ul for every question pair, not one ul for all of them with li!`;
+
+function collapseWhitespace(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+export function normalizeStoredInstructions(
+  stored: string | null | undefined
+): string {
+  if (stored == null) return '';
+  if (stored.trim() === '') return '';
+  if (
+    collapseWhitespace(stored) ===
+    collapseWhitespace(LEGACY_DEFAULT_USER_INSTRUCTIONS)
+  ) {
+    return '';
+  }
+  return stored;
+}
 
 export const INSTRUCTION_PRESETS = [
   {
@@ -398,10 +416,8 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       getLocalStorageValue('input_model_name', '', settings)
     );
     const [userInstructions, setUserInstructions] = useState(
-      getLocalStorageValue(
-        'user-instructions',
-        DEFAULT_USER_INSTRUCTIONS,
-        settings
+      normalizeStoredInstructions(
+        getLocalStorageValue('user-instructions', '', settings)
       )
     );
     const [instructionsOpen, setInstructionsOpen] = useState(
@@ -505,7 +521,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       setClozeName(localStorage.getItem('cloze_model_name') ?? '');
       setInputName(localStorage.getItem('input_model_name') ?? '');
       setUserInstructions(
-        localStorage.getItem('user-instructions') ?? DEFAULT_USER_INSTRUCTIONS
+        normalizeStoredInstructions(localStorage.getItem('user-instructions'))
       );
       setMcqEnabled(
         (localStorage.getItem('mcq-enabled') ??
@@ -723,7 +739,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       setBasicName('');
       setClozeName('');
       setInputName('');
-      setUserInstructions(DEFAULT_USER_INSTRUCTIONS);
+      setUserInstructions('');
       setMcqEnabled(DEFAULT_MCQ_ENABLED);
       setMcqTtsQuestion(DEFAULT_MCQ_TTS_LANG);
       setMcqTtsCorrectAnswer(DEFAULT_MCQ_TTS_LANG);

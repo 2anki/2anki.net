@@ -762,7 +762,7 @@
     },
     "userInstructions": {
       "summary": "Istruzioni utente per la conversione dei PDF",
-      "placeholder": "Istruzioni per la conversione dei PDF...",
+      "placeholder": "es. Crea una scheda separata per ogni voce dell'elenco",
       "presetsLabel": "Istruzioni rapide",
       "presetsHint": "Aggiungi un punto di partenza, poi modificalo nel riquadro qui sotto.",
       "presets": {

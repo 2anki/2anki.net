@@ -814,7 +814,7 @@
     },
     "userInstructions": {
       "summary": "Instrukcje użytkownika dla konwersji PDF",
-      "placeholder": "Instrukcje dla konwersji PDF…",
+      "placeholder": "np. Utwórz osobną kartę dla każdego elementu listy",
       "presetsLabel": "Szybkie instrukcje",
       "presetsHint": "Dodaj punkt wyjścia, a następnie edytuj go w polu poniżej.",
       "presets": {
