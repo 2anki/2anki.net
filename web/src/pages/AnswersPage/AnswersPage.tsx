@@ -1,7 +1,12 @@
+import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import NotFoundPage from '../NotFoundPage';
+import UploadForm from '../UploadPage/components/UploadForm/UploadForm';
+import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
+import { track } from '../../lib/analytics/track';
+import { landingViewProps } from '../../lib/adClick';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { AnswerFigure } from './AnswerFigures';
 import { ANSWERS_PAGES } from './answersConfig';
@@ -10,10 +15,19 @@ import { buildArticleJsonLd, buildFaqJsonLd } from './answersJsonLd';
 
 export { buildArticleJsonLd, buildFaqJsonLd };
 
-function AnswersPage() {
+interface Props {
+  setErrorMessage: ErrorHandlerType;
+}
+
+function AnswersPage({ setErrorMessage }: Readonly<Props>) {
   const { t } = useTranslation('landing');
   const { slug } = useParams<{ slug: string }>();
   const config = slug == null ? undefined : ANSWERS_PAGES.get(slug);
+
+  useEffect(() => {
+    if (config == null) return;
+    track('landing_page_viewed', landingViewProps(`/answers/${config.slug}`));
+  }, [config]);
 
   if (config == null) {
     return <NotFoundPage />;
@@ -44,6 +58,13 @@ function AnswersPage() {
       <p className={styles.intro}>
         {t(`answers.${config.slug}.intro`, { defaultValue: config.intro })}
       </p>
+
+      {config.uploadPrompt != null && (
+        <section className={styles.upload}>
+          <h2 className={styles.sectionHeading}>{config.uploadPrompt}</h2>
+          <UploadForm setErrorMessage={setErrorMessage} />
+        </section>
+      )}
 
       {config.sections.map((section) => (
         <div key={section.heading} className={styles.section}>

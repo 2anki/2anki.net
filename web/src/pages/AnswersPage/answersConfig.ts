@@ -25,6 +25,7 @@ export interface AnswerConfig {
   sections: AnswerSection[];
   relatedLinks: ReadonlyArray<{ label: string; href: string }>;
   faqs?: AnswerFaq[];
+  uploadPrompt?: string;
 }
 
 const convertNotionToAnki: AnswerConfig = {
@@ -882,6 +883,8 @@ const chatgptToAnki: AnswerConfig = {
   description:
     'Turn on ChatGPT developer mode, add the 2anki connector, ask for flashcards, and get a download link for a ready .apkg deck you open in Anki.',
   h1: 'Turn ChatGPT conversations into Anki flashcards',
+  uploadPrompt:
+    'No ChatGPT developer mode? Drop a PDF or your notes here and get a deck now.',
   intro:
     '2anki runs a hosted MCP connector. Turn on developer mode in ChatGPT, add https://2anki.net/mcp as a connector, then ask for flashcards on any topic or paste in your notes — ChatGPT hands back a download link for a ready .apkg deck you open in Anki.',
   sections: [
