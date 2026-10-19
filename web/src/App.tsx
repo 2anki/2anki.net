@@ -723,7 +723,10 @@ function AppContent({
               }
             />
             <Route path="/notion-marketplace" element={<NotionLandingPage />} />
-            <Route path="/answers/:slug" element={<AnswersPage />} />
+            <Route
+              path="/answers/:slug"
+              element={<AnswersPage setErrorMessage={setErrorMessage} />}
+            />
             <Route path="/convert" element={<ConvertHubPage />} />
             <Route
               path="/convert/:slug"

@@ -1,23 +1,58 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { track } from '../../lib/analytics/track';
 import AnswersPage, { buildArticleJsonLd, buildFaqJsonLd } from './AnswersPage';
 import { ANSWERS_PAGES } from './answersConfig';
 
+vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
+
 function renderAtSlug(slug: string) {
   return render(
-    <HelmetProvider>
-      <MemoryRouter initialEntries={[`/answers/${slug}`]}>
-        <Routes>
-          <Route path="/answers/:slug" element={<AnswersPage />} />
-        </Routes>
-      </MemoryRouter>
-    </HelmetProvider>
+    <QueryClientProvider client={new QueryClient()}>
+      <HelmetProvider>
+        <MemoryRouter initialEntries={[`/answers/${slug}`]}>
+          <Routes>
+            <Route
+              path="/answers/:slug"
+              element={<AnswersPage setErrorMessage={vi.fn()} />}
+            />
+          </Routes>
+        </MemoryRouter>
+      </HelmetProvider>
+    </QueryClientProvider>
   );
 }
 
 describe('AnswersPage', () => {
+  beforeEach(() => {
+    vi.mocked(track).mockClear();
+  });
+
+  it('records the page view with its answers path', () => {
+    renderAtSlug('pdf-to-anki');
+    expect(track).toHaveBeenCalledWith('landing_page_viewed', {
+      path: '/answers/pdf-to-anki',
+    });
+  });
+
+  it('puts an upload box on the ChatGPT page so a visitor can convert there', () => {
+    renderAtSlug('chatgpt-to-anki');
+    expect(
+      screen.getByRole('heading', {
+        name: 'No ChatGPT developer mode? Drop a PDF or your notes here and get a deck now.',
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Drop your files here/)).toBeInTheDocument();
+  });
+
+  it('keeps pages without an upload prompt as articles', () => {
+    renderAtSlug('pdf-to-anki');
+    expect(screen.queryByText(/Drop your files here/)).not.toBeInTheDocument();
+  });
+
   it('renders the h1 for a known slug', () => {
     const config = ANSWERS_PAGES.get('convert-notion-to-anki');
     renderAtSlug('convert-notion-to-anki');
