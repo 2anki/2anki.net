@@ -252,6 +252,150 @@ describe('renderNotionBlocks — recursion', () => {
   });
 });
 
+describe('renderNotionBlocks — nested lists', () => {
+  const bullet = (
+    text: string,
+    extra: Partial<NotionRenderableBlock> = {}
+  ): NotionRenderableBlock => ({
+    type: 'bulleted_list_item',
+    bulleted_list_item: { rich_text: [{ plain_text: text }] },
+    ...extra,
+  });
+
+  const numbered = (
+    text: string,
+    extra: Partial<NotionRenderableBlock> = {}
+  ): NotionRenderableBlock => ({
+    type: 'numbered_list_item',
+    numbered_list_item: { rich_text: [{ plain_text: text }] },
+    ...extra,
+  });
+
+  it('nests a bulleted item’s sub-bullets as a <ul> inside its <li>', async () => {
+    const parent = bullet('parent', { id: 'p1', has_children: true });
+    const fetch = fetcherFor({ p1: [bullet('childA'), bullet('childB')] });
+    const out = await renderNotionBlocks([parent], fetch);
+    expect(out.html).toBe(
+      '<ul><li>parent<ul><li>childA</li><li>childB</li></ul></li></ul>'
+    );
+  });
+
+  it('nests a numbered item’s children as an <ol> inside its <li>', async () => {
+    const parent = numbered('Step one', { id: 'n1', has_children: true });
+    const fetch = fetcherFor({ n1: [numbered('sub')] });
+    const out = await renderNotionBlocks([parent], fetch);
+    expect(out.html).toBe('<ol><li>Step one<ol><li>sub</li></ol></li></ol>');
+  });
+
+  it('nests a non-list child (paragraph) inside the list item', async () => {
+    const parent = bullet('point', { id: 'p2', has_children: true });
+    const fetch = fetcherFor({ p2: [para('detail')] });
+    const out = await renderNotionBlocks([parent], fetch);
+    expect(out.html).toBe('<ul><li>point<p>detail</p></li></ul>');
+  });
+
+  it('keeps sibling grouping while nesting one item’s children', async () => {
+    const blocks: NotionRenderableBlock[] = [
+      bullet('parent', { id: 'p3', has_children: true }),
+      bullet('sibling'),
+    ];
+    const fetch = fetcherFor({ p3: [bullet('child')] });
+    const out = await renderNotionBlocks(blocks, fetch);
+    expect(out.html).toBe(
+      '<ul><li>parent<ul><li>child</li></ul></li><li>sibling</li></ul>'
+    );
+  });
+
+  it('recurses through multiple levels of sub-bullets', async () => {
+    const fetch = fetcherFor({
+      l1: [bullet('level2', { id: 'l2', has_children: true })],
+      l2: [bullet('level3')],
+    });
+    const out = await renderNotionBlocks(
+      [bullet('level1', { id: 'l1', has_children: true })],
+      fetch
+    );
+    expect(out.html).toBe(
+      '<ul><li>level1<ul><li>level2<ul><li>level3</li></ul></li></ul></li></ul>'
+    );
+  });
+
+  it('does not fetch children for a flat list item without has_children', async () => {
+    const calls: string[] = [];
+    const fetch: NotionBlockChildrenFetcher = async (id) => {
+      calls.push(id);
+      return [];
+    };
+    const out = await renderNotionBlocks(
+      [bullet('flat', { id: 'flat1' })],
+      fetch
+    );
+    expect(out.html).toBe('<ul><li>flat</li></ul>');
+    expect(calls).toEqual([]);
+  });
+
+  it('stops nesting at maxDepth', async () => {
+    const fetch = fetcherFor({
+      a: [bullet('b', { id: 'b', has_children: true })],
+      b: [bullet('deep-child')],
+    });
+    const out = await renderNotionBlocks(
+      [bullet('a', { id: 'a', has_children: true })],
+      fetch,
+      { maxDepth: 1 }
+    );
+    expect(out.html).not.toContain('deep-child');
+  });
+
+  it('skips an empty coloured bullet with no children (no empty <li>)', async () => {
+    const empty: NotionRenderableBlock = {
+      type: 'bulleted_list_item',
+      bulleted_list_item: { rich_text: [], color: 'red' },
+    };
+    const out = await renderNotionBlocks([empty], noChildren);
+    expect(out.html).toBe('');
+  });
+
+  it('wraps only the text of a coloured bullet, not its nested children', async () => {
+    const parent: NotionRenderableBlock = {
+      type: 'bulleted_list_item',
+      id: 'c1',
+      has_children: true,
+      bulleted_list_item: {
+        rich_text: [{ plain_text: 'parent' }],
+        color: 'red',
+      },
+    };
+    const fetch = fetcherFor({ c1: [bullet('kid')] });
+    const out = await renderNotionBlocks([parent], fetch);
+    expect(out.html).toBe(
+      '<ul><li><span class="n2a-highlight-red" style="color: #E03E3E">parent</span>' +
+        '<ul><li>kid</li></ul></li></ul>'
+    );
+  });
+
+  it('renders a toggle child of a list item as <details> inside the <li>', async () => {
+    const fetch = fetcherFor({
+      p: [
+        {
+          id: 'tog',
+          type: 'toggle',
+          has_children: true,
+          toggle: { rich_text: [{ plain_text: 'T' }] },
+        },
+      ],
+      tog: [para('ans')],
+    });
+    const out = await renderNotionBlocks(
+      [bullet('point', { id: 'p', has_children: true })],
+      fetch
+    );
+    expect(out.html).toBe(
+      '<ul><li>point<details><summary>T</summary><p>ans</p></details></li></ul>'
+    );
+  });
+});
+
 describe('renderNotionBlocks — media', () => {
   it('rewrites an external image to a local filename and emits a media ref carrying that filename', async () => {
     const block: NotionRenderableBlock = {

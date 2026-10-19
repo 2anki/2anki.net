@@ -4,7 +4,7 @@ Pure Notion-block → card-HTML renderer for the Ankify Auto-Sync product. `rend
 
 ## What's here
 
-- `renderBlocks.ts` — the block-type `switch`. Emits card HTML for every supported type and recurses into container blocks (`toggle`, `callout`, `column_list`, `column`) via `ctx.fetchChildren`, respecting `ctx.maxDepth` (default 8).
+- `renderBlocks.ts` — the block-type `switch`. Emits card HTML for every supported type and recurses into container blocks (`toggle`, `callout`, `column_list`, `column`) via `ctx.fetchChildren`, respecting `ctx.maxDepth` (default 8). List items (`bulleted_list_item`, `numbered_list_item`) recurse the same way: an item with `has_children` nests its rendered children inside its own `<li>` (a sub-bullet list becomes a nested `<ul>`/`<ol>`), so sub-bullets are no longer dropped.
 - `richText.ts` — inline rich-text renderer shared across block types (annotations, colors, inline equations, links).
 - `escape.ts`, `highlightCode.ts`, `embedUrl.ts` — HTML escaping, code highlighting, embed/video URL resolution.
 - `types.ts` — `NotionRenderableBlock` (the subset of Notion block shapes the renderer reads) and `RenderedBlocks`.

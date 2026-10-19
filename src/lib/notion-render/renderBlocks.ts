@@ -394,16 +394,20 @@ const renderBlockList = async (
         break;
       case 'bulleted_list_item': {
         const holder = block.bulleted_list_item;
-        const text = renderRichText(holder?.rich_text);
-        if (text !== '')
-          pushListItem(buf, 'ul', wrapWithColorClass(holder?.color, text), out);
+        const rendered = renderRichText(holder?.rich_text);
+        const text =
+          rendered === '' ? '' : wrapWithColorClass(holder?.color, rendered);
+        const itemHtml = text + (await renderChildren(block, ctx, depth));
+        if (itemHtml !== '') pushListItem(buf, 'ul', itemHtml, out);
         break;
       }
       case 'numbered_list_item': {
         const holder = block.numbered_list_item;
-        const text = renderRichText(holder?.rich_text);
-        if (text !== '')
-          pushListItem(buf, 'ol', wrapWithColorClass(holder?.color, text), out);
+        const rendered = renderRichText(holder?.rich_text);
+        const text =
+          rendered === '' ? '' : wrapWithColorClass(holder?.color, rendered);
+        const itemHtml = text + (await renderChildren(block, ctx, depth));
+        if (itemHtml !== '') pushListItem(buf, 'ol', itemHtml, out);
         break;
       }
       case 'to_do':
