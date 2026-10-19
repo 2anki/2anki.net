@@ -33,7 +33,10 @@ import {
   IMAGE_ONLY_USER_MESSAGE,
   isImageOnlyContent,
   resolveFloorV1Bounds,
+  thinDecksToCeiling,
+  allocateCeilingKeepCounts,
   type DeckInfo,
+  type CardInfo,
 } from './ClaudeService';
 
 const FAKE_DECK_JSON = JSON.stringify([
@@ -1968,6 +1971,29 @@ describe('floor v1 — card-size scaled bounds', () => {
     expect(total).toBe(250);
   });
 
+  it('detailed run over the ceiling keeps cards from every chunk, not just the start', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      deckResponse(60, `D${call++}`)
+    );
+    const result = await convertWithSize('detailed');
+
+    const total = result.reduce((sum, d) => sum + d.cards.length, 0);
+    expect(total).toBe(250);
+
+    const perChunk = new Map<number, number>();
+    for (const deck of result) {
+      for (const card of deck.cards) {
+        const idx = card.chunkIndex ?? -1;
+        perChunk.set(idx, (perChunk.get(idx) ?? 0) + 1);
+      }
+    }
+    expect(perChunk.size).toBe(6);
+    for (const count of perChunk.values()) {
+      expect(count).toBeGreaterThan(0);
+    }
+  });
+
   it('emits clamped_from on ai_conversion_completed only when the ceiling clamped', async () => {
     const trackSpy = vi
       .spyOn(trackModule, 'track')
@@ -2356,5 +2382,104 @@ describe('generateDeckInfo — conversion result cache', () => {
     );
     expect(mockStreamFn).toHaveBeenCalledTimes(1);
     expect(result.length).toBeGreaterThan(0);
+  });
+});
+
+describe('thinDecksToCeiling', () => {
+  function card(name: string, chunkIndex: number): CardInfo {
+    return {
+      name,
+      back: `back ${name}`,
+      tags: [],
+      cloze: false,
+      number: 0,
+      enableInput: false,
+      answer: '',
+      media: [],
+      chunkIndex,
+    };
+  }
+
+  function deckOfChunk(chunkIndex: number, count: number): DeckInfo {
+    return {
+      name: `Chunk ${chunkIndex}`,
+      image: '',
+      style: null,
+      id: chunkIndex,
+      settings: {},
+      cards: Array.from({ length: count }, (_, i) =>
+        card(`c${chunkIndex}-${i}`, chunkIndex)
+      ),
+    };
+  }
+
+  function perChunkCounts(decks: DeckInfo[]): Map<number, number> {
+    const counts = new Map<number, number>();
+    for (const deck of decks) {
+      for (const c of deck.cards) {
+        const key = c.chunkIndex ?? -1;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }
+
+  function total(decks: DeckInfo[]): number {
+    return decks.reduce((sum, d) => sum + d.cards.length, 0);
+  }
+
+  it('returns the decks unchanged when the total is within the ceiling', () => {
+    const decks = [deckOfChunk(0, 10), deckOfChunk(1, 10)];
+    expect(thinDecksToCeiling(decks, 250)).toBe(decks);
+  });
+
+  it('thins to exactly the ceiling and keeps at least one card per chunk', () => {
+    const decks = Array.from({ length: 6 }, (_, i) => deckOfChunk(i, 60));
+    const thinned = thinDecksToCeiling(decks, 250);
+
+    expect(total(thinned)).toBe(250);
+    const counts = perChunkCounts(thinned);
+    expect(counts.size).toBe(6);
+    for (const count of counts.values()) {
+      expect(count).toBeGreaterThanOrEqual(1);
+    }
+    const values = [...counts.values()];
+    expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1);
+  });
+
+  it('keeps a tiny chunk that proportional rounding would drop to zero', () => {
+    const decks = [deckOfChunk(0, 1), deckOfChunk(1, 500)];
+    const thinned = thinDecksToCeiling(decks, 100);
+
+    expect(total(thinned)).toBe(100);
+    const counts = perChunkCounts(thinned);
+    expect(counts.get(0)).toBe(1);
+    expect(counts.get(1)).toBe(99);
+  });
+
+  it('is deterministic — identical input yields identical kept cards', () => {
+    const build = () => Array.from({ length: 5 }, (_, i) => deckOfChunk(i, 40));
+    const first = thinDecksToCeiling(build(), 120);
+    const second = thinDecksToCeiling(build(), 120);
+    const fronts = (decks: DeckInfo[]) =>
+      decks.flatMap((d) => d.cards.map((c) => c.name));
+    expect(fronts(first)).toEqual(fronts(second));
+  });
+
+  it('spreads the keepers across chunks when the ceiling is below the chunk count', () => {
+    const counts = [5, 5, 5, 5, 5, 5];
+    const keep = allocateCeilingKeepCounts(counts, 3);
+    expect(keep.reduce((sum, value) => sum + value, 0)).toBe(3);
+    expect(keep).toEqual([1, 0, 1, 0, 1, 0]);
+  });
+
+  it('allocation sums to the ceiling and never exceeds any chunk count', () => {
+    const counts = [60, 60, 60, 60, 60, 60];
+    const keep = allocateCeilingKeepCounts(counts, 250);
+    expect(keep.reduce((sum, value) => sum + value, 0)).toBe(250);
+    keep.forEach((value, index) => {
+      expect(value).toBeGreaterThanOrEqual(1);
+      expect(value).toBeLessThanOrEqual(counts[index]);
+    });
   });
 });

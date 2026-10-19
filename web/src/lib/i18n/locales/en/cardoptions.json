@@ -127,7 +127,7 @@
     },
     "ai-comprehensive": {
       "label": "Comprehensive AI mode",
-      "description": "Reads every section of long documents so nothing important gets skipped. Best for thorough study of dense material. Takes longer to make. Paid plans only."
+      "description": "Reads every section of a long document, start to end, and makes cards from all of it. On a very long document it keeps a balanced set of cards from every section instead of cutting off the end. Best for thorough study of dense material. Takes longer to make. Paid plans only."
     },
     "share-files-for-debugging": {
       "label": "Share files for debugging when conversion fails",
