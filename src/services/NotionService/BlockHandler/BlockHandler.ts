@@ -29,6 +29,10 @@ import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import { withFontSize } from '../../../lib/parser/withFontSize';
 import { withTextColor } from '../../../lib/parser/withTextColor';
 import { withTextAlign } from '../../../lib/parser/withTextAlign';
+import {
+  wrapBlockWithColorClass,
+  wrapWithColorClass,
+} from '../../../lib/notion-render/richText';
 import get16DigitRandomId from '../../../shared/helpers/get16DigitRandomId';
 import { NOTION_STYLE, getCodeThemeCss } from '../../../templates/helper';
 import NotionAPIWrapper from '../NotionAPIWrapper';
@@ -36,6 +40,7 @@ import type { IBlockRenderer } from './types';
 import BlockColumn from '../blocks/lists/BlockColumn';
 import { tableRowsToCards } from '../blocks/lists/BlockTable';
 import { blockToStaticMarkup } from '../helpers/blockToStaticMarkup';
+import { getToggleColor } from '../helpers/getToggleColor';
 import { getToggleSummaryRichText } from '../helpers/getToggleSummaryRichText';
 import { isToggleHeading } from '../helpers/isToggleHeading';
 import { NotionDatabaseColumnsError } from '../helpers/NotionDatabaseColumnsError';
@@ -615,6 +620,13 @@ class BlockHandler implements IBlockRenderer {
           name = await this.getToggleFrontMedia(fullBlock);
         }
         back = await this.getBackSide(fullBlock);
+        const toggleColor = getToggleColor(fullBlock);
+        if (name) {
+          name = wrapWithColorClass(toggleColor, name);
+        }
+        if (back) {
+          back = wrapBlockWithColorClass(toggleColor, back);
+        }
       } else if (isColumnList(block) && rules.useColums()) {
         const card = await this.buildColumnListCard(block.id);
         name = card.name;

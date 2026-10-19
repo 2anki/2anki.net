@@ -2159,9 +2159,12 @@ export class DeckParser {
 
               const b = toggleHTML.replace(summary.html() || '', '');
               const builtBack = this.buildToggleBackSide(b, isNewFormat);
-              const backSide = this.settings.isTextOnlyBack
+              const plainOrRichBack = this.settings.isTextOnlyBack
                 ? toPlainTextBack(builtBack)
                 : builtBack;
+              const backSide = /\bblock-color-/.test(parentClass)
+                ? `<div class='${parentClass}'>${plainOrRichBack}</div>`
+                : plainOrRichBack;
               const note = new Note(front || '', backSide);
               note.notionId = this.resolveToggleBlockId(parentUL);
               note.sourcePageId = pageId;
@@ -2205,7 +2208,7 @@ export class DeckParser {
         ? this.removeNestedTogglesNewFormat(body)
         : this.removeNestedTogglesLegacy(body);
     }
-    back = back.replaceAll('<summary class="toggle"></summary>', '');
+    back = back.replace(/<summary\b[^>]*><\/summary>/g, '');
     if (this.settings.perserveNewLines) {
       back = replaceAll(back, '\n', '<br />');
     }

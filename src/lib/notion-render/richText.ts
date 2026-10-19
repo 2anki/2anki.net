@@ -19,18 +19,33 @@ const colorStyle = (color: string): string | null => {
   return `color: ${notionColorToHex(color)}`;
 };
 
+const colorStyleOrNull = (color: string | undefined): string | null => {
+  if (color == null || color === 'default' || !COLOR_NAMES.has(color)) {
+    return null;
+  }
+  return colorStyle(color);
+};
+
 export const wrapWithColorClass = (
   color: string | undefined,
   inner: string
 ): string => {
-  if (color == null || color === 'default' || !COLOR_NAMES.has(color)) {
-    return inner;
-  }
-  const style = colorStyle(color);
+  const style = colorStyleOrNull(color);
   if (style == null) {
     return inner;
   }
   return `<span class="n2a-highlight-${color}" style="${style}">${inner}</span>`;
+};
+
+export const wrapBlockWithColorClass = (
+  color: string | undefined,
+  inner: string
+): string => {
+  const style = colorStyleOrNull(color);
+  if (style == null) {
+    return inner;
+  }
+  return `<div class="block-color-${color}" style="${style}">${inner}</div>`;
 };
 
 export const renderRichTextItem = (item: NotionRichTextItem): string => {
