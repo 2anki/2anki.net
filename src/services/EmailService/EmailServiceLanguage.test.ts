@@ -265,6 +265,46 @@ describe('EmailService renders copy in the recipient language', () => {
     });
   });
 
+  describe('pass ending', () => {
+    it('renders German copy with the pass name and unsubscribe footer', async () => {
+      await serviceFor('de').sendPassEndingEmail(
+        'de-user@example.com',
+        'tok-pass',
+        'Week Pass'
+      );
+
+      const msg = lastMessage();
+      expect(msg.subject).toBe('Dein Week Pass endet morgen');
+      expect(msg.html).toContain('Dein Week Pass endet in etwa einem Tag.');
+      expect(msg.html).toContain('Mit Pro');
+      expect(msg.html).toContain('Pro starten');
+      expect(msg.html).toContain('Das 2anki-Team');
+      expect(msg.html).toContain('Keine E-Mails wie diese? Abmelden');
+      expect(msg.html).toContain(
+        'href="https://2anki.net/unsubscribe?uid=tok-pass"'
+      );
+      expect(msg.html).not.toContain('{{passLabel}}');
+      expect(msg.html).not.toContain('{{cta}}');
+      expect(msg.html).not.toContain('{{unsubscribeUrl}}');
+      expect(msg.html).not.toContain('Unlimited');
+    });
+
+    it('renders English copy that says Pro for an unknown recipient', async () => {
+      await serviceFor(null).sendPassEndingEmail(
+        'unknown@example.com',
+        'tok-pass2',
+        'Day Pass'
+      );
+
+      const msg = lastMessage();
+      expect(msg.subject).toBe('Your Day Pass ends tomorrow');
+      expect(msg.html).toContain('With Pro');
+      expect(msg.html).toContain('Start Pro');
+      expect(msg.html).not.toContain('Unlimited');
+      expect(msg.html).toContain("Don't want emails like this? Unsubscribe");
+    });
+  });
+
   describe('required structural blocks survive substitution', () => {
     it('keeps the mascot header, support address, and footer in German', async () => {
       await serviceFor('de').sendConversionEmail(

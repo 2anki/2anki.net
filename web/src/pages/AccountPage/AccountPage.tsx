@@ -24,8 +24,9 @@ export default function AccountPage() {
   const { t } = useTranslation();
   const { t: tCredits, i18n } = useTranslation('aicredits');
   const { isLoading, data, refetch } = useUserLocals();
-  const { subscriptionType, hasActivePlan } = useSubscriptionStatus(
-    data?.locals
+  const { plan, hasActivePlan, passExpiresAt } = useSubscriptionStatus(
+    data?.locals,
+    data?.autoSyncActive ?? false
   );
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -146,7 +147,7 @@ export default function AccountPage() {
         <CookieSettings />
       </section>
 
-      <PlanDetails subscriptionType={subscriptionType} />
+      <PlanDetails plan={plan} passExpiresAt={passExpiresAt} />
 
       {canClaimSubscription && <ClaimSubscription />}
 

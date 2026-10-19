@@ -9,7 +9,7 @@ vi.mock('../../../lib/hooks/useAiCredits', () => ({
 }));
 
 vi.mock('../utils/formatLongDate', () => ({
-  formatLongDate: vi.fn(() => 'a date'),
+  formatLongDate: vi.fn(() => '18 November 2026'),
 }));
 
 import { useAiCredits } from '../../../lib/hooks/useAiCredits';
@@ -34,15 +34,46 @@ describe('PlanDetails', () => {
 
   it('shows the paused pack line in the free/lapsed branch', () => {
     mockHook.mockReturnValue(pausedState);
-    render(<PlanDetails subscriptionType="free" />);
+    render(<PlanDetails plan="free" />);
     expect(screen.getByText(/180 AI credits, paused/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'See plans' })).toBeInTheDocument();
   });
 
   it('renders no paused line for a free user without pack credits', () => {
     mockHook.mockReturnValue({ ...pausedState, credits: 0 });
-    render(<PlanDetails subscriptionType="free" />);
+    render(<PlanDetails plan="free" />);
     expect(screen.queryByText(/paused/)).toBeNull();
     expect(screen.getByRole('link', { name: 'See plans' })).toBeInTheDocument();
+  });
+
+  it('names the Pro plan without saying Premium or Unlimited', () => {
+    mockHook.mockReturnValue(null);
+    render(<PlanDetails plan="pro" />);
+    expect(screen.getByText('Pro')).toBeInTheDocument();
+    expect(screen.queryByText(/Premium/i)).toBeNull();
+    expect(screen.queryByText(/Unlimited/i)).toBeNull();
+    expect(screen.queryByRole('link', { name: 'See plans' })).toBeNull();
+  });
+
+  it('names the Auto Sync plan', () => {
+    mockHook.mockReturnValue(null);
+    render(<PlanDetails plan="autoSync" />);
+    expect(screen.getByText('Auto Sync')).toBeInTheDocument();
+  });
+
+  it('keeps the Lifetime plan name', () => {
+    mockHook.mockReturnValue(null);
+    render(<PlanDetails plan="lifetime" />);
+    expect(screen.getByText('Lifetime')).toBeInTheDocument();
+  });
+
+  it('names a Week Pass and shows its end date', () => {
+    mockHook.mockReturnValue(null);
+    render(
+      <PlanDetails plan="weekPass" passExpiresAt="2026-11-18T00:00:00.000Z" />
+    );
+    expect(screen.getByText('Week Pass')).toBeInTheDocument();
+    expect(screen.getByText(/18 November 2026/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'See plans' })).toBeNull();
   });
 });

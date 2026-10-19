@@ -8,7 +8,7 @@
     "other": "Anders"
   },
   "subscription": {
-    "premium": "Premium",
+    "premium": "Pro",
     "unknownDate": "een onbekende datum",
     "endsPrefix": "Eindigt",
     "endedPrefix": "Geëindigd",
@@ -109,7 +109,9 @@
   },
   "planDetails": {
     "lifetimeMeta": "Alle huidige en toekomstige functies.",
-    "premiumMeta": "Onbeperkt kaarten, alle formaten.",
+    "proMeta": "Alle formaten, geen maandelijkse kaartlimiet.",
+    "autoSyncMeta": "Live Notion-synchronisatie, geen maandelijkse kaartlimiet.",
+    "passEnds": "Eindigt op {{date}}",
     "free": "Free",
     "freeMeta": "100 kaarten per maand.",
     "seePlans": "Bekijk abonnementen"

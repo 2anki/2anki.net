@@ -4,15 +4,16 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '../../../lib/i18n';
 import { PlanDetails } from './PlanDetails';
+import type { PlanName } from '../hooks/useSubscriptionStatus';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
 
-const renderPlan = (subscriptionType: 'subscriber' | 'lifetime' | 'free') =>
+const renderPlan = (plan: PlanName) =>
   render(
     <QueryClientProvider client={queryClient}>
-      <PlanDetails subscriptionType={subscriptionType} />
+      <PlanDetails plan={plan} />
     </QueryClientProvider>
   );
 

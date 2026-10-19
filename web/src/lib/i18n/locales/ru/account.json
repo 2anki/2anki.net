@@ -8,7 +8,7 @@
     "other": "Другое"
   },
   "subscription": {
-    "premium": "Premium",
+    "premium": "Pro",
     "unknownDate": "неизвестную дату",
     "endsPrefix": "Заканчивается",
     "endedPrefix": "Закончилась",
@@ -109,7 +109,9 @@
   },
   "planDetails": {
     "lifetimeMeta": "Все текущие и будущие функции.",
-    "premiumMeta": "Безлимит карт, все форматы.",
+    "proMeta": "Все форматы, без месячного лимита карточек.",
+    "autoSyncMeta": "Живая синхронизация с Notion, без месячного лимита карточек.",
+    "passEnds": "Заканчивается {{date}}",
     "free": "Бесплатно",
     "freeMeta": "100 карт в месяц.",
     "seePlans": "Посмотреть планы"
