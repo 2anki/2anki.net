@@ -127,7 +127,7 @@
     },
     "ai-comprehensive": {
       "label": "Mode IA exhaustif",
-      "description": "Lit chaque section d'un long document, du début à la fin, et crée des cartes à partir de l'ensemble. Sur un document très long, il conserve un ensemble équilibré de cartes de chaque section au lieu de couper la fin. Idéal pour étudier en profondeur une matière dense. Prend plus de temps. Offres payantes uniquement."
+      "description": "Lit un long document du début à la fin. Sur un document très long, il conserve des cartes de tout le document au lieu de couper la fin. Idéal pour étudier en profondeur une matière dense. Prend plus de temps. Offres payantes uniquement."
     },
     "share-files-for-debugging": {
       "label": "Partager les fichiers pour le débogage quand la conversion échoue",

@@ -127,7 +127,7 @@
     },
     "ai-comprehensive": {
       "label": "Kompleksowy tryb AI",
-      "description": "Czyta każdą sekcję długiego dokumentu od początku do końca i tworzy karty z całości. W bardzo długim dokumencie zachowuje zrównoważony zestaw kart z każdej sekcji, zamiast ucinać końcówkę. Najlepszy do gruntownej nauki gęstego materiału. Tworzenie trwa dłużej. Tylko w płatnych planach."
+      "description": "Czyta długi dokument od początku do końca. W bardzo długim dokumencie zachowuje karty z całego dokumentu, zamiast ucinać końcówkę. Najlepszy do gruntownej nauki gęstego materiału. Tworzenie trwa dłużej. Tylko w płatnych planach."
     },
     "share-files-for-debugging": {
       "label": "Udostępniaj pliki do debugowania, gdy konwersja się nie powiedzie",

@@ -127,7 +127,7 @@
     },
     "ai-comprehensive": {
       "label": "Modo de IA exhaustivo",
-      "description": "Lee cada sección de un documento largo, de principio a fin, y crea tarjetas de todo él. En un documento muy largo mantiene un conjunto equilibrado de tarjetas de cada sección en lugar de cortar el final. Ideal para estudiar a fondo material denso. Tarda más en crearse. Solo planes de pago."
+      "description": "Lee un documento largo de principio a fin. En un documento muy largo mantiene tarjetas de todo el documento en lugar de cortar el final. Ideal para estudiar a fondo material denso. Tarda más en crearse. Solo planes de pago."
     },
     "share-files-for-debugging": {
       "label": "Compartir archivos para depuración cuando falla la conversión",
