@@ -51,6 +51,13 @@ function plainToggle(id: string, text: string) {
   };
 }
 
+function headingBlock(id: string, text: string) {
+  return {
+    ...baseBlock(id, 'heading_1', true),
+    heading_1: { rich_text: richText(text), color: 'default' },
+  };
+}
+
 function bullet(id: string, text: string, bold = false) {
   return {
     ...baseBlock(id, 'bulleted_list_item', false),
@@ -98,6 +105,36 @@ async function convert(
   });
 }
 
+async function convertSubDecks(
+  children: Record<string, unknown[]>,
+  options: Record<string, string>
+) {
+  const api = buildApi(children, 'Root page');
+  const settings = new CardOption({
+    ...CardOption.LoadDefaultOptions(),
+    'split-sections-into-decks': 'true',
+    ...options,
+  });
+  const exporter = new CustomExporter('', new Workspace(true, 'fs').location);
+  const bl = new BlockHandler(exporter, api, settings);
+  bl.useAll = true;
+  const rules = new ParserRules();
+  rules.setDeckTypes(['page', 'database', 'heading_1']);
+  return bl.findFlashcardsFromPage({
+    parentType: 'page',
+    topLevelId: 'page-1',
+    rules,
+    decks: [],
+    parentName: '',
+  });
+}
+
+const numberedSection = {
+  'page-1': [headingBlock('sec', '7. Section')],
+  sec: [plainToggle('t1', 'Front text')],
+  t1: [bullet('b1', 'Back text')],
+};
+
 const oneToggle = {
   'page-1': [plainToggle('t1', 'Front text')],
   t1: [bullet('b1', 'Back text')],
@@ -109,7 +146,9 @@ describe('BlockHandler reversed-only option', () => {
     const cards = decks.flatMap((d) => d.cards);
     expect(cards).toHaveLength(1);
     expect(cards[0].name).toContain('Back text');
+    expect(cards[0].name).not.toContain('Front text');
     expect(cards[0].back).toContain('Front text');
+    expect(cards[0].back).not.toContain('Back text');
   });
 
   it('still adds a reversed companion for basic-and-reversed', async () => {
@@ -122,31 +161,29 @@ describe('BlockHandler reversed-only option', () => {
 });
 
 describe('BlockHandler deck-name numbering option', () => {
-  it('strips leading numbering from a derived Notion deck name when on', async () => {
-    const decks = await convert(
-      oneToggle,
-      {
-        'remove-deck-name-numbering': 'true',
-      },
-      '3. Cell Biology'
-    );
-    expect(decks[0].name).toBe('Cell Biology');
+  it('strips leading numbering from a derived sub-deck name when on', async () => {
+    const decks = await convertSubDecks(numberedSection, {
+      'remove-deck-name-numbering': 'true',
+    });
+    const subDeck = decks.find((d) => d.name.includes('Section'));
+    expect(subDeck?.name).toBe('Root page::Section');
   });
 
-  it('leaves the derived Notion deck name untouched when off', async () => {
-    const decks = await convert(oneToggle, {}, '3. Cell Biology');
-    expect(decks[0].name).toBe('3. Cell Biology');
+  it('leaves the derived sub-deck name untouched when off', async () => {
+    const decks = await convertSubDecks(numberedSection, {
+      'remove-deck-name-numbering': 'false',
+    });
+    const subDeck = decks.find((d) => d.name.includes('Section'));
+    expect(subDeck?.name).toBe('Root page::7. Section');
   });
 
-  it('keeps a title that only starts with a number when on', async () => {
-    const decks = await convert(
-      oneToggle,
-      {
-        'remove-deck-name-numbering': 'true',
-      },
-      '3D Anatomy'
-    );
-    expect(decks[0].name).toBe('3D Anatomy');
+  it('keeps a user-typed deck name as typed while stripping the derived sub-deck name', async () => {
+    const decks = await convertSubDecks(numberedSection, {
+      'remove-deck-name-numbering': 'true',
+      deckName: '3. My Typed Deck',
+    });
+    const subDeck = decks.find((d) => d.name.includes('Section'));
+    expect(subDeck?.name).toBe('3. My Typed Deck::Section');
   });
 });
 

@@ -817,9 +817,7 @@ class BlockHandler implements IBlockRenderer {
     const { topLevelId, decks } = locator;
     const dbResult = await this.api.queryDatabase(topLevelId, true);
     const database = await this.api.getDatabase(topLevelId);
-    const dbName = this.applyDeckNameNumbering(
-      await this.api.getDatabaseTitle(database, this.settings)
-    );
+    const dbName = await this.api.getDatabaseTitle(database, this.settings);
 
     const firstRow = dbResult.results[0] as
       | { properties?: Record<string, unknown> }
@@ -1227,9 +1225,7 @@ class BlockHandler implements IBlockRenderer {
         ? blocks
         : await this.expandColumnLists(blocks);
 
-    const title = this.applyDeckNameNumbering(
-      await this.api.getPageTitle(page, this.settings)
-    );
+    const title = await this.api.getPageTitle(page, this.settings);
     if (!this.firstPageTitle) {
       this.firstPageTitle = title;
     }
@@ -1671,9 +1667,7 @@ class BlockHandler implements IBlockRenderer {
   ): Promise<Deck[]> {
     const dbResult = await this.api.queryDatabase(sd.id, true);
     const database = await this.api.getDatabase(sd.id);
-    const dbName = this.applyDeckNameNumbering(
-      await this.api.getDatabaseTitle(database, this.settings)
-    );
+    const dbName = await this.api.getDatabaseTitle(database, this.settings);
     let dbDecks: Deck[] = [];
 
     for (const entry of dbResult.results) {

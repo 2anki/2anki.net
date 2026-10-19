@@ -56,3 +56,51 @@ describe('NotionAPIWrapper.getPageTitle', () => {
     expect(title.toLowerCase()).not.toContain('gmt');
   });
 });
+
+describe('NotionAPIWrapper deck-name numbering with a page icon', () => {
+  const numberingOn = new CardOption({ 'remove-deck-name-numbering': 'true' });
+
+  function buildWrapper(): NotionAPIWrapper {
+    return new NotionAPIWrapper('test-key', 'test-owner');
+  }
+
+  function makeIconPage(): GetPageResponse {
+    return {
+      id: 'page-id',
+      object: 'page',
+      icon: { type: 'emoji', emoji: '📘' },
+      properties: {},
+    } as unknown as GetPageResponse;
+  }
+
+  beforeEach(() => {
+    (getNotionObjectTitle as Mock).mockReset();
+  });
+
+  it('strips the leading number before the icon with the default page emoji', async () => {
+    (getNotionObjectTitle as Mock).mockReturnValue('3. Cell Biology');
+    const title = await buildWrapper().getPageTitle(
+      makeIconPage(),
+      numberingOn
+    );
+    expect(title).toBe('<span class="icon">📘</span>Cell Biology');
+  });
+
+  it('keeps the number behind the icon when the option is off', async () => {
+    (getNotionObjectTitle as Mock).mockReturnValue('3. Cell Biology');
+    const title = await buildWrapper().getPageTitle(
+      makeIconPage(),
+      new CardOption({})
+    );
+    expect(title).toBe('<span class="icon">📘</span>3. Cell Biology');
+  });
+
+  it('leaves a number-then-letter title untouched behind the icon', async () => {
+    (getNotionObjectTitle as Mock).mockReturnValue('3D Anatomy');
+    const title = await buildWrapper().getPageTitle(
+      makeIconPage(),
+      numberingOn
+    );
+    expect(title).toBe('<span class="icon">📘</span>3D Anatomy');
+  });
+});
