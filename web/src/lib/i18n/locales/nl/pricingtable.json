@@ -58,6 +58,10 @@
       "question": "Kan ik altijd opzeggen?",
       "answer": "Zeg met één klik op vanuit je account — geen e-mail naar support nodig. Bij een jaarabonnement stopt opzeggen de volgende verlenging en blijft je toegang gedurende het reeds betaalde jaar behouden; ongebruikte tijd wordt niet terugbetaald. Passes zijn eenmalig, dus er is niets op te zeggen."
     },
+    "q8": {
+      "question": "Hoe kan ik betalen?",
+      "answer": "Bij het afrekenen kun je betalen met creditcards en debitcards uit elk land, en met Apple Pay, Google Pay, Link en PayPal als je apparaat en regio die ondersteunen. Afhankelijk van je land en abonnement zijn er ook lokale betaalmethoden zoals Klarna, Bancontact, BLIK, EPS, Przelewy24, MobilePay, TWINT, Alipay en WeChat Pay. De prijzen zijn in USD, en bij het afrekenen kunnen ze in je eigen valuta worden getoond en afgeschreven."
+    },
     "q6": {
       "question": "Is er een app?",
       "answer": "Ja — 2anki is gratis in de App Store voor iPhone, iPad en Mac, naast de webapp. Bestanden worden op het apparaat verwerkt. Dezelfde abonnementen gelden: Day Pass, Week Pass en Pro zijn beschikbaar als in-app-aankopen."

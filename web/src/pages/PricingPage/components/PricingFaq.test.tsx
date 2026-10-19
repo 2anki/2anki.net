@@ -45,6 +45,16 @@ describe('PricingFaq', () => {
     expect(passes?.answer).not.toMatch(/full access/i);
   });
 
+  it('answers how to pay, with PayPal and cards from any country', () => {
+    render(<PricingFaq />);
+    expect(screen.getByText('How can I pay?')).toBeInTheDocument();
+    const payment = PRICING_FAQ.find(
+      (item) => item.question === 'How can I pay?'
+    );
+    expect(payment?.answer).toContain('PayPal');
+    expect(payment?.answer).toContain('issued in any country');
+  });
+
   it('shows answers in collapsible details elements', () => {
     const { container } = render(<PricingFaq />);
     expect(container.querySelectorAll('details').length).toBe(
