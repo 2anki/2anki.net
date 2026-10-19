@@ -351,9 +351,10 @@
     "takeoverSubtitle": "Etwa eine Minute, zwei Schritte."
   },
   "plan": {
-    "title": "Auto Sync ist ein eigener Plan",
-    "subtitle": "Dein Plan enthält ihn nicht.",
-    "what": "Auto Sync hält ein privates Anki für dich bereit, meldet sich bei AnkiWeb an und aktualisiert deine Karten, sobald sich eine Notion-Seite ändert.",
-    "seePricing": "Auto Sync-Preise ansehen"
+    "title": "Auto Sync ist ein eigener Tarif",
+    "subtitle": "Dein Tarif enthält ihn nicht.",
+    "what": "Auto Sync betreibt ein privates Anki für dich, prüft Notion alle 5 Minuten und hält deine Karten und AnkiWeb aktuell.",
+    "seePricing": "Auto Sync-Preise ansehen",
+    "appleSupport": "Auto Sync gibt es nicht über den App Store. Schreib an support@2anki.net, um ihn zu bekommen."
   }
 }

@@ -353,7 +353,8 @@
   "plan": {
     "title": "O Auto Sync é um plano à parte",
     "subtitle": "Seu plano não o inclui.",
-    "what": "O Auto Sync mantém um Anki privado em execução para você, entra no AnkiWeb e atualiza seus cartões sempre que uma página do Notion muda.",
-    "seePricing": "Ver preços do Auto Sync"
+    "what": "O Auto Sync mantém um Anki privado em execução para você, verifica o Notion a cada 5 minutos e mantém seus cartões e o AnkiWeb atualizados.",
+    "seePricing": "Ver preços do Auto Sync",
+    "appleSupport": "O Auto Sync não está disponível pela App Store. Escreva para support@2anki.net para obtê-lo."
   }
 }

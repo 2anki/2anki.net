@@ -353,7 +353,8 @@
   "plan": {
     "title": "Auto Sync is een apart abonnement",
     "subtitle": "Je abonnement bevat het niet.",
-    "what": "Auto Sync houdt een privé-Anki voor je draaiende, meldt zich aan bij AnkiWeb en werkt je kaarten bij telkens als een Notion-pagina verandert.",
-    "seePricing": "Auto Sync-prijzen bekijken"
+    "what": "Auto Sync draait een privé-Anki voor je, controleert Notion elke 5 minuten en houdt je kaarten en AnkiWeb up-to-date.",
+    "seePricing": "Auto Sync-prijzen bekijken",
+    "appleSupport": "Auto Sync is niet beschikbaar via de App Store. Mail support@2anki.net om het te krijgen."
   }
 }

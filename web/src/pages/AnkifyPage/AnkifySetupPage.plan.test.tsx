@@ -23,7 +23,10 @@ vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
 
 import { getUserLocals } from '../../lib/backend/getUserLocals';
 
-const localsWith = (autoSyncActive: boolean | undefined) =>
+const localsWith = (
+  autoSyncActive: boolean | undefined,
+  planSource?: 'stripe' | 'apple' | 'lifetime' | null
+) =>
   ({
     user: { id: 7, email: 'learner@example.com' },
     locals: {
@@ -31,6 +34,7 @@ const localsWith = (autoSyncActive: boolean | undefined) =>
       patreon: false,
       subscriber: false,
       subscriptionInfo: { active: false, email: '', linked_email: '' },
+      planSource,
     },
     linked_email: '',
     autoSyncActive,
@@ -113,6 +117,49 @@ describe('AnkifySetupPage plan panel', () => {
       screen.queryByRole('heading', { name: /auto sync is its own plan/i })
     ).not.toBeInTheDocument();
     expect(track).not.toHaveBeenCalledWith('ankify_plan_required_viewed');
+  });
+
+  test('a 403 from the clients list shows the panel without retrying', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(undefined));
+    const forbidden = Object.assign(new Error('Forbidden'), { status: 403 });
+    const listAnkifyClients = vi.fn(async () => {
+      throw forbidden;
+    });
+    const backend = makeBackend({ listAnkifyClients });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: 3, retryDelay: 0 } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/ankify/setup']}>
+          <Routes>
+            <Route
+              path="/ankify/setup"
+              element={<AnkifySetupPage backend={backend} />}
+            />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /auto sync is its own plan/i,
+      })
+    ).toBeInTheDocument();
+    expect(listAnkifyClients).toHaveBeenCalledTimes(1);
+  });
+
+  test('points Apple-plan users to support instead of pricing', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(false, 'apple'));
+
+    renderSetup(makeBackend());
+
+    expect(await screen.findByText(/support@2anki\.net/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /see auto sync pricing/i })
+    ).not.toBeInTheDocument();
   });
 
   test('a 403 on provisioning swaps the generic error for the plan panel', async () => {

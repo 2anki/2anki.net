@@ -66,6 +66,9 @@ export default function AnkifyPage({ backend }: Readonly<AnkifyPageProps>) {
   const { data, isLoading } = useQuery<AnkifyClient[]>({
     queryKey: QUERY_KEY,
     queryFn: () => api.listAnkifyClients(),
+    retry: (failureCount, error) =>
+      (error as { status?: number } | undefined)?.status !== 403 &&
+      failureCount < 3,
   });
 
   const conflicts = useQuery({

@@ -363,7 +363,8 @@
   "plan": {
     "title": "Auto Sync продаётся отдельно",
     "subtitle": "Твой план его не включает.",
-    "what": "Auto Sync держит для тебя личный Anki запущенным, входит в AnkiWeb и обновляет твои карточки каждый раз, когда меняется страница Notion.",
-    "seePricing": "Посмотреть тарифы Auto Sync"
+    "what": "Auto Sync запускает для тебя личный Anki, проверяет Notion каждые 5 минут и поддерживает твои карточки и AnkiWeb в актуальном состоянии.",
+    "seePricing": "Посмотреть тарифы Auto Sync",
+    "appleSupport": "Auto Sync нельзя получить через App Store. Напиши на support@2anki.net, чтобы его подключить."
   }
 }

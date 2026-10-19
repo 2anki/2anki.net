@@ -65,9 +65,16 @@ export default function AnkifySetupPage({ backend }: Props) {
     readSignedInAcknowledged
   );
 
-  const { data, isLoading } = useQuery<AnkifyClient[]>({
+  const {
+    data,
+    isLoading,
+    error: clientsError,
+  } = useQuery<AnkifyClient[]>({
     queryKey: QUERY_KEY,
     queryFn: () => api.listAnkifyClients(),
+    retry: (failureCount, error) =>
+      (error as { status?: number } | undefined)?.status !== 403 &&
+      failureCount < 3,
   });
 
   const activeClient = (data ?? []).find((c) => c.status === 'active');
@@ -266,6 +273,16 @@ export default function AnkifySetupPage({ backend }: Props) {
     }
   }, [isLoading, hasActiveClient, signedInAcknowledged, navigate]);
 
+  const isForbidden = (error: unknown) =>
+    (error as { status?: number } | undefined)?.status === 403;
+  const lacksAutoSync =
+    userLocals?.autoSyncActive === false ||
+    isForbidden(clientsError) ||
+    isForbidden(provision.error);
+  if (lacksAutoSync) {
+    return <AnkifyPlanPanel planSource={userLocals?.locals?.planSource} />;
+  }
+
   if (isLoading) {
     return (
       <main className={styles.setupTakeover}>
@@ -273,14 +290,6 @@ export default function AnkifySetupPage({ backend }: Props) {
         <Skeleton width="80%" height="1rem" />
       </main>
     );
-  }
-
-  const provisionStatus = (provision.error as { status?: number } | undefined)
-    ?.status;
-  const lacksAutoSync =
-    userLocals?.autoSyncActive === false || provisionStatus === 403;
-  if (lacksAutoSync) {
-    return <AnkifyPlanPanel />;
   }
 
   const ankiUrlFor = (client: AnkifyClient): string | null => {
