@@ -31,7 +31,10 @@ export interface ConversionReportInput {
   blocksSeen: number;
   cardsCreated: number;
   emptyBackCount: number;
-  droppedAssetCount: number;
+  droppedAssetCount?: number;
+  droppedImageAssetCount?: number;
+  droppedAudioAssetCount?: number;
+  droppedFileAssetCount?: number;
   forbiddenBlockCount: number;
   unsupportedBlockTypeCounts?: Map<string, number>;
   truncation?: ConversionTruncation;
@@ -81,7 +84,25 @@ export function buildConversionReport(
     stage: 'media',
     reason_code: 'assets_dropped',
     human_reason: 'Images or files that could not be included',
-    count: input.droppedAssetCount,
+    count: input.droppedAssetCount ?? 0,
+  });
+  push({
+    stage: 'media',
+    reason_code: 'assets_dropped:image',
+    human_reason: 'Images that could not be downloaded',
+    count: input.droppedImageAssetCount ?? 0,
+  });
+  push({
+    stage: 'media',
+    reason_code: 'assets_dropped:audio',
+    human_reason: 'Audio that could not be downloaded',
+    count: input.droppedAudioAssetCount ?? 0,
+  });
+  push({
+    stage: 'media',
+    reason_code: 'assets_dropped:file',
+    human_reason: 'Files that could not be downloaded',
+    count: input.droppedFileAssetCount ?? 0,
   });
   push({
     stage: 'card',

@@ -57,4 +57,22 @@ describe('image-drop notice i18n key parity', () => {
     expect(typeof value).toBe('string');
     expect((value as string).length).toBeGreaterThan(0);
   });
+
+  it.each(LANGS)('%s defines the pdf plural forms with {{count}}', (lang) => {
+    const keys = imageDrop(lang);
+    for (const suffix of PLURAL_FORMS[lang]) {
+      const value = keys[`pdf_${suffix}`];
+      expect(typeof value).toBe('string');
+      expect(value).toContain('{{count}}');
+    }
+  });
+
+  it('en pdf notice no longer claims PDF images are unsupported', () => {
+    const keys = imageDrop('en');
+    for (const suffix of PLURAL_FORMS.en) {
+      const value = keys[`pdf_${suffix}`] as string;
+      expect(value).not.toMatch(/don't include images from PDFs/i);
+      expect(value).not.toMatch(/\byet\b/i);
+    }
+  });
 });

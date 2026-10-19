@@ -145,6 +145,75 @@ describe('ConversionReportModal', () => {
     expect(screen.getAllByText('Skipped')).not.toHaveLength(0);
   });
 
+  it('names the dropped kind for audio and file assets, not images', async () => {
+    mockGetJobReport.mockResolvedValue({
+      summary: { blocks_seen: 10, cards_created: 4, blocks_skipped: 3 },
+      entries: [
+        {
+          stage: 'media',
+          reason_code: 'assets_dropped:audio',
+          human_reason: 'Audio that could not be downloaded',
+          count: 1,
+        },
+        {
+          stage: 'media',
+          reason_code: 'assets_dropped:file',
+          human_reason: 'Files that could not be downloaded',
+          count: 2,
+        },
+      ],
+    });
+
+    render(<ConversionReportModal job={buildJob()} onClose={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/1 audio file couldn't be downloaded/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/2 files couldn't be downloaded/)
+    ).toBeInTheDocument();
+  });
+
+  it('renders the image copy for the image asset kind', async () => {
+    mockGetJobReport.mockResolvedValue({
+      summary: { blocks_seen: 10, cards_created: 4, blocks_skipped: 2 },
+      entries: [
+        {
+          stage: 'media',
+          reason_code: 'assets_dropped:image',
+          human_reason: 'Images that could not be downloaded',
+          count: 2,
+        },
+      ],
+    });
+
+    render(<ConversionReportModal job={buildJob()} onClose={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/2 images couldn't be downloaded/)
+    ).toBeInTheDocument();
+  });
+
+  it('still renders older lumped assets_dropped reports', async () => {
+    mockGetJobReport.mockResolvedValue({
+      summary: { blocks_seen: 10, cards_created: 4, blocks_skipped: 1 },
+      entries: [
+        {
+          stage: 'media',
+          reason_code: 'assets_dropped',
+          human_reason: 'Images or files that could not be included',
+          count: 1,
+        },
+      ],
+    });
+
+    render(<ConversionReportModal job={buildJob()} onClose={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/1 image couldn't be downloaded/)
+    ).toBeInTheDocument();
+  });
+
   it('renders the clean line when the report has no entries', async () => {
     mockGetJobReport.mockResolvedValue({
       summary: { blocks_seen: 52, cards_created: 34, blocks_skipped: 0 },

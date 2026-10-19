@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-drop-notices-name-the-kind",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Conversion notices name what was left out, whether an image, audio, or a file, and explain how to keep images from a PDF"
+}

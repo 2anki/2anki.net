@@ -49,8 +49,8 @@
     "uploadSingleDeck_other": "Non è stato possibile scaricare {{count}} immagini e non sono in questo mazzo. Il tuo file rimanda a esse su altri siti che non siamo riusciti a raggiungere. Salva le immagini nel file, poi caricalo di nuovo.",
     "uploadMultiDeck_one": "Non è stato possibile scaricare {{count}} immagine e non è nei tuoi mazzi. Il tuo file rimanda a essa su un altro sito che non siamo riusciti a raggiungere. Salva l'immagine nel file, poi caricalo di nuovo.",
     "uploadMultiDeck_other": "Non è stato possibile scaricare {{count}} immagini e non sono nei tuoi mazzi. Il tuo file rimanda a esse su altri siti che non siamo riusciti a raggiungere. Salva le immagini nel file, poi caricalo di nuovo.",
-    "pdf_one": "{{count}} immagine del tuo PDF non è in questo mazzo — non includiamo ancora le immagini dei PDF. Esporta la tua pagina Notion come HTML e caricala per conservarla.",
-    "pdf_other": "{{count}} immagini del tuo PDF non sono in questo mazzo — non includiamo ancora le immagini dei PDF. Esporta la tua pagina Notion come HTML e caricala per conservarle.",
+    "pdf_one": "{{count}} immagine del tuo PDF non è in questo mazzo. Includiamo le immagini che riusciamo a leggere da un PDF, ma questa non è stata recuperata. Se il PDF viene da Notion, esporta quella pagina come HTML e caricala per conservare tutte le immagini.",
+    "pdf_other": "{{count}} immagini del tuo PDF non sono in questo mazzo. Includiamo le immagini che riusciamo a leggere da un PDF, ma queste non sono state recuperate. Se il PDF viene da Notion, esporta quella pagina come HTML e caricala per conservare tutte le immagini.",
     "notionExportExpired_one": "Non è stato possibile scaricare {{count}} immagine e non è in questo mazzo. Il link all'immagine in questa esportazione di Notion è scaduto — questi link durano circa un'ora. Esporta di nuovo la pagina e carica il nuovo file subito dopo.",
     "notionExportExpired_other": "Non è stato possibile scaricare {{count}} immagini e non sono in questo mazzo. I link alle immagini in questa esportazione di Notion sono scaduti — questi link durano circa un'ora. Esporta di nuovo la pagina e carica il nuovo file subito dopo.",
     "notionExportExpiredMultiDeck_one": "Non è stato possibile scaricare {{count}} immagine e non è nei tuoi mazzi. Il link all'immagine in questa esportazione di Notion è scaduto — questi link durano circa un'ora. Esporta di nuovo la pagina e carica il nuovo file subito dopo.",
@@ -128,7 +128,11 @@
     "reasonUnsupported_one": "{{count}} blocco {{type}} non può ancora diventare carte.",
     "reasonUnsupported_other": "{{count}} blocchi {{type}} non possono ancora diventare carte.",
     "omitted_one": "{{count}} altro blocco è stato saltato per altri motivi.",
-    "omitted_other": "{{count}} altri blocchi sono stati saltati per altri motivi."
+    "omitted_other": "{{count}} altri blocchi sono stati saltati per altri motivi.",
+    "reasonAudioDropped_one": "Non è stato possibile scaricare {{count}} file audio e non è in questo mazzo. Il link a esso in Notion è probabilmente scaduto. Converti di nuovo la pagina per provare a recuperarlo.",
+    "reasonAudioDropped_other": "Non è stato possibile scaricare {{count}} file audio e non sono in questo mazzo. I link a essi in Notion sono probabilmente scaduti. Converti di nuovo la pagina per provare a recuperarli.",
+    "reasonFilesDropped_one": "Non è stato possibile scaricare {{count}} file e non è in questo mazzo. Il link a esso in Notion è probabilmente scaduto. Converti di nuovo la pagina per provare a recuperarlo.",
+    "reasonFilesDropped_other": "Non è stato possibile scaricare {{count}} file e non sono in questo mazzo. I link a essi in Notion sono probabilmente scaduti. Converti di nuovo la pagina per provare a recuperarli."
   },
   "thinDeck": {
     "emptyToggles_one": "Solo {{count}} carta è nata da questa pagina. {{skipped}} interruttori non avevano una risposta all'interno e sono stati saltati — aggiungi una risposta dentro ciascuno, poi converti di nuovo.",

@@ -49,8 +49,8 @@
     "uploadSingleDeck_other": "{{count}} images couldn't be downloaded and aren't in this deck. Your file links to them on other sites we couldn't reach. Save the images into the file itself, then upload again.",
     "uploadMultiDeck_one": "{{count}} image couldn't be downloaded and isn't in your decks. Your file links to it on another site we couldn't reach. Save the image into the file itself, then upload again.",
     "uploadMultiDeck_other": "{{count}} images couldn't be downloaded and aren't in your decks. Your file links to them on other sites we couldn't reach. Save the images into the file itself, then upload again.",
-    "pdf_one": "{{count}} image from your PDF isn't in this deck — we don't include images from PDFs yet. Export your Notion page as HTML and upload that to keep it.",
-    "pdf_other": "{{count}} images from your PDF aren't in this deck — we don't include images from PDFs yet. Export your Notion page as HTML and upload that to keep them.",
+    "pdf_one": "{{count}} image from your PDF isn't in this deck. We include the images we can read from a PDF, but this one wouldn't come through. If the PDF came from Notion, export that page as HTML and upload it to keep every image.",
+    "pdf_other": "{{count}} images from your PDF aren't in this deck. We include the images we can read from a PDF, but these wouldn't come through. If the PDF came from Notion, export that page as HTML and upload it to keep every image.",
     "notionExportExpired_one": "{{count}} image couldn't be downloaded and isn't in this deck. The image link in this Notion export expired — these links last about an hour. Export the page again and upload the new file soon after.",
     "notionExportExpired_other": "{{count}} images couldn't be downloaded and aren't in this deck. The image links in this Notion export expired — these links last about an hour. Export the page again and upload the new file soon after.",
     "notionExportExpiredMultiDeck_one": "{{count}} image couldn't be downloaded and isn't in your decks. The image link in this Notion export expired — these links last about an hour. Export the page again and upload the new file soon after.",
@@ -128,7 +128,11 @@
     "reasonUnsupported_one": "{{count}} {{type}} block can't become cards yet.",
     "reasonUnsupported_other": "{{count}} {{type}} blocks can't become cards yet.",
     "omitted_one": "{{count}} more block was skipped for other reasons.",
-    "omitted_other": "{{count}} more blocks were skipped for other reasons."
+    "omitted_other": "{{count}} more blocks were skipped for other reasons.",
+    "reasonAudioDropped_one": "{{count}} audio file couldn't be downloaded and isn't in this deck. The link to it in Notion most likely expired. Convert the page again to try fetching it.",
+    "reasonAudioDropped_other": "{{count}} audio files couldn't be downloaded and aren't in this deck. The links to them in Notion most likely expired. Convert the page again to try fetching them.",
+    "reasonFilesDropped_one": "{{count}} file couldn't be downloaded and isn't in this deck. The link to it in Notion most likely expired. Convert the page again to try fetching it.",
+    "reasonFilesDropped_other": "{{count}} files couldn't be downloaded and aren't in this deck. The links to them in Notion most likely expired. Convert the page again to try fetching them."
   },
   "thinDeck": {
     "emptyToggles_one": "Only {{count}} card came from this page. {{skipped}} toggles had no answer inside and were skipped — add an answer inside each, then convert again.",

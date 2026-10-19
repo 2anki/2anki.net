@@ -49,8 +49,8 @@
     "uploadSingleDeck_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans ce paquet. Votre fichier renvoie vers celles-ci sur d'autres sites que nous n'avons pas pu atteindre. Enregistrez les images dans le fichier, puis téléversez à nouveau.",
     "uploadMultiDeck_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans vos paquets. Votre fichier renvoie vers celle-ci sur un autre site que nous n'avons pas pu atteindre. Enregistrez l'image dans le fichier, puis téléversez à nouveau.",
     "uploadMultiDeck_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans vos paquets. Votre fichier renvoie vers celles-ci sur d'autres sites que nous n'avons pas pu atteindre. Enregistrez les images dans le fichier, puis téléversez à nouveau.",
-    "pdf_one": "{{count}} image de votre PDF n'est pas dans ce paquet — nous n'incluons pas encore les images des PDF. Exportez votre page Notion au format HTML et téléversez-la pour la conserver.",
-    "pdf_other": "{{count}} images de votre PDF ne sont pas dans ce paquet — nous n'incluons pas encore les images des PDF. Exportez votre page Notion au format HTML et téléversez-la pour les conserver.",
+    "pdf_one": "{{count}} image de votre PDF n'est pas dans ce paquet. Nous intégrons les images que nous pouvons lire d'un PDF, mais celle-ci n'a pas pu être récupérée. Si le PDF vient de Notion, exportez cette page au format HTML et téléversez-la pour conserver toutes les images.",
+    "pdf_other": "{{count}} images de votre PDF ne sont pas dans ce paquet. Nous intégrons les images que nous pouvons lire d'un PDF, mais celles-ci n'ont pas pu être récupérées. Si le PDF vient de Notion, exportez cette page au format HTML et téléversez-la pour conserver toutes les images.",
     "notionExportExpired_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans ce paquet. Le lien vers l'image dans cet export Notion a expiré — ces liens ne durent qu'environ une heure. Exportez à nouveau la page et téléversez le nouveau fichier peu après.",
     "notionExportExpired_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans ce paquet. Les liens vers les images dans cet export Notion ont expiré — ces liens ne durent qu'environ une heure. Exportez à nouveau la page et téléversez le nouveau fichier peu après.",
     "notionExportExpiredMultiDeck_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans vos paquets. Le lien vers l'image dans cet export Notion a expiré — ces liens ne durent qu'environ une heure. Exportez à nouveau la page et téléversez le nouveau fichier peu après.",
@@ -128,7 +128,11 @@
     "reasonUnsupported_one": "{{count}} bloc {{type}} ne peut pas encore devenir des cartes.",
     "reasonUnsupported_other": "{{count}} blocs {{type}} ne peuvent pas encore devenir des cartes.",
     "omitted_one": "{{count}} bloc de plus a été ignoré pour d'autres raisons.",
-    "omitted_other": "{{count}} blocs de plus ont été ignorés pour d'autres raisons."
+    "omitted_other": "{{count}} blocs de plus ont été ignorés pour d'autres raisons.",
+    "reasonAudioDropped_one": "{{count}} fichier audio n'a pas pu être téléchargé et n'est pas dans ce paquet. Le lien vers celui-ci dans Notion a probablement expiré. Convertissez à nouveau la page pour tenter de le récupérer.",
+    "reasonAudioDropped_other": "{{count}} fichiers audio n'ont pas pu être téléchargés et ne sont pas dans ce paquet. Les liens vers ceux-ci dans Notion ont probablement expiré. Convertissez à nouveau la page pour tenter de les récupérer.",
+    "reasonFilesDropped_one": "{{count}} fichier n'a pas pu être téléchargé et n'est pas dans ce paquet. Le lien vers celui-ci dans Notion a probablement expiré. Convertissez à nouveau la page pour tenter de le récupérer.",
+    "reasonFilesDropped_other": "{{count}} fichiers n'ont pas pu être téléchargés et ne sont pas dans ce paquet. Les liens vers ceux-ci dans Notion ont probablement expiré. Convertissez à nouveau la page pour tenter de les récupérer."
   },
   "thinDeck": {
     "emptyToggles_one": "Seulement {{count}} carte est issue de cette page. {{skipped}} bascules n'avaient pas de réponse à l'intérieur et ont été ignorées — ajoute une réponse dans chacune, puis relance la conversion.",

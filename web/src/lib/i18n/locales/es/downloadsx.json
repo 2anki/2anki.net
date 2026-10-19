@@ -49,8 +49,8 @@
     "uploadSingleDeck_other": "No se pudieron descargar {{count}} imágenes y no están en este mazo. Tu archivo enlaza a ellas en otros sitios que no pudimos alcanzar. Guarda las imágenes en el archivo y súbelo de nuevo.",
     "uploadMultiDeck_one": "No se pudo descargar {{count}} imagen y no está en tus mazos. Tu archivo enlaza a ella en otro sitio que no pudimos alcanzar. Guarda la imagen en el archivo y súbelo de nuevo.",
     "uploadMultiDeck_other": "No se pudieron descargar {{count}} imágenes y no están en tus mazos. Tu archivo enlaza a ellas en otros sitios que no pudimos alcanzar. Guarda las imágenes en el archivo y súbelo de nuevo.",
-    "pdf_one": "{{count}} imagen de tu PDF no está en este mazo — todavía no incluimos imágenes de los PDF. Exporta tu página de Notion como HTML y súbela para conservarla.",
-    "pdf_other": "{{count}} imágenes de tu PDF no están en este mazo — todavía no incluimos imágenes de los PDF. Exporta tu página de Notion como HTML y súbela para conservarlas.",
+    "pdf_one": "{{count}} imagen de tu PDF no está en este mazo. Incluimos las imágenes que podemos leer de un PDF, pero esta no se pudo incorporar. Si el PDF viene de Notion, exporta esa página como HTML y súbela para conservar todas las imágenes.",
+    "pdf_other": "{{count}} imágenes de tu PDF no están en este mazo. Incluimos las imágenes que podemos leer de un PDF, pero estas no se pudieron incorporar. Si el PDF viene de Notion, exporta esa página como HTML y súbela para conservar todas las imágenes.",
     "notionExportExpired_one": "No se pudo descargar {{count}} imagen y no está en este mazo. El enlace a la imagen en esta exportación de Notion caducó — estos enlaces duran alrededor de una hora. Exporta la página de nuevo y sube el archivo nuevo poco después.",
     "notionExportExpired_other": "No se pudieron descargar {{count}} imágenes y no están en este mazo. Los enlaces a las imágenes en esta exportación de Notion caducaron — estos enlaces duran alrededor de una hora. Exporta la página de nuevo y sube el archivo nuevo poco después.",
     "notionExportExpiredMultiDeck_one": "No se pudo descargar {{count}} imagen y no está en tus mazos. El enlace a la imagen en esta exportación de Notion caducó — estos enlaces duran alrededor de una hora. Exporta la página de nuevo y sube el archivo nuevo poco después.",
@@ -128,7 +128,11 @@
     "reasonUnsupported_one": "{{count}} bloque {{type}} aún no puede convertirse en tarjetas.",
     "reasonUnsupported_other": "{{count}} bloques {{type}} aún no pueden convertirse en tarjetas.",
     "omitted_one": "{{count}} bloque más se omitió por otros motivos.",
-    "omitted_other": "{{count}} bloques más se omitieron por otros motivos."
+    "omitted_other": "{{count}} bloques más se omitieron por otros motivos.",
+    "reasonAudioDropped_one": "No se pudo descargar {{count}} archivo de audio y no está en este mazo. El enlace a él en Notion probablemente caducó. Convierte la página de nuevo para intentar obtenerlo.",
+    "reasonAudioDropped_other": "No se pudieron descargar {{count}} archivos de audio y no están en este mazo. Los enlaces a ellos en Notion probablemente caducaron. Convierte la página de nuevo para intentar obtenerlos.",
+    "reasonFilesDropped_one": "No se pudo descargar {{count}} archivo y no está en este mazo. El enlace a él en Notion probablemente caducó. Convierte la página de nuevo para intentar obtenerlo.",
+    "reasonFilesDropped_other": "No se pudieron descargar {{count}} archivos y no están en este mazo. Los enlaces a ellos en Notion probablemente caducaron. Convierte la página de nuevo para intentar obtenerlos."
   },
   "thinDeck": {
     "emptyToggles_one": "Solo salió {{count}} tarjeta de esta página. {{skipped}} alternadores no tenían respuesta dentro y se omitieron — añade una respuesta dentro de cada uno y vuelve a convertir.",

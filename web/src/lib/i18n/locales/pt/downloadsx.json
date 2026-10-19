@@ -49,8 +49,8 @@
     "uploadSingleDeck_other": "Não foi possível baixar {{count}} imagens e elas não estão neste baralho. Seu arquivo aponta para elas em outros sites que não conseguimos acessar. Salve as imagens no próprio arquivo e envie novamente.",
     "uploadMultiDeck_one": "Não foi possível baixar {{count}} imagem e ela não está nos seus baralhos. Seu arquivo aponta para ela em outro site que não conseguimos acessar. Salve a imagem no próprio arquivo e envie novamente.",
     "uploadMultiDeck_other": "Não foi possível baixar {{count}} imagens e elas não estão nos seus baralhos. Seu arquivo aponta para elas em outros sites que não conseguimos acessar. Salve as imagens no próprio arquivo e envie novamente.",
-    "pdf_one": "{{count}} imagem do seu PDF não está neste baralho — ainda não incluímos imagens de PDFs. Exporte sua página do Notion como HTML e envie esse arquivo para mantê-la.",
-    "pdf_other": "{{count}} imagens do seu PDF não estão neste baralho — ainda não incluímos imagens de PDFs. Exporte sua página do Notion como HTML e envie esse arquivo para mantê-las.",
+    "pdf_one": "{{count}} imagem do seu PDF não está neste baralho. Incluímos as imagens que conseguimos ler de um PDF, mas esta não foi incorporada. Se o PDF veio do Notion, exporte essa página como HTML e envie o arquivo para manter todas as imagens.",
+    "pdf_other": "{{count}} imagens do seu PDF não estão neste baralho. Incluímos as imagens que conseguimos ler de um PDF, mas estas não foram incorporadas. Se o PDF veio do Notion, exporte essa página como HTML e envie o arquivo para manter todas as imagens.",
     "notionExportExpired_one": "Não foi possível baixar {{count}} imagem e ela não está neste baralho. O link para a imagem nesta exportação do Notion expirou — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
     "notionExportExpired_other": "Não foi possível baixar {{count}} imagens e elas não estão neste baralho. Os links para as imagens nesta exportação do Notion expiraram — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
     "notionExportExpiredMultiDeck_one": "Não foi possível baixar {{count}} imagem e ela não está nos seus baralhos. O link para a imagem nesta exportação do Notion expirou — esses links duram cerca de uma hora. Exporte a página novamente e envie o novo arquivo logo em seguida.",
@@ -128,7 +128,11 @@
     "reasonUnsupported_one": "{{count}} bloco {{type}} ainda não pode virar cartões.",
     "reasonUnsupported_other": "{{count}} blocos {{type}} ainda não podem virar cartões.",
     "omitted_one": "Mais {{count}} bloco foi ignorado por outros motivos.",
-    "omitted_other": "Mais {{count}} blocos foram ignorados por outros motivos."
+    "omitted_other": "Mais {{count}} blocos foram ignorados por outros motivos.",
+    "reasonAudioDropped_one": "Não foi possível baixar {{count}} arquivo de áudio e ele não está neste baralho. O link para ele no Notion provavelmente expirou. Converta a página novamente para tentar obtê-lo.",
+    "reasonAudioDropped_other": "Não foi possível baixar {{count}} arquivos de áudio e eles não estão neste baralho. Os links para eles no Notion provavelmente expiraram. Converta a página novamente para tentar obtê-los.",
+    "reasonFilesDropped_one": "Não foi possível baixar {{count}} arquivo e ele não está neste baralho. O link para ele no Notion provavelmente expirou. Converta a página novamente para tentar obtê-lo.",
+    "reasonFilesDropped_other": "Não foi possível baixar {{count}} arquivos e eles não estão neste baralho. Os links para eles no Notion provavelmente expiraram. Converta a página novamente para tentar obtê-los."
   },
   "thinDeck": {
     "emptyToggles_one": "Só saiu {{count}} cartão desta página. {{skipped}} alternadores não tinham resposta dentro e foram ignorados — adicione uma resposta dentro de cada um e converta de novo.",

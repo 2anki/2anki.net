@@ -68,6 +68,51 @@ describe('buildConversionReport', () => {
     expect(report.truncated).toBeUndefined();
   });
 
+  it('names each dropped asset kind in its own entry', () => {
+    const report = buildConversionReport({
+      ...baseInput,
+      droppedImageAssetCount: 2,
+      droppedAudioAssetCount: 1,
+      droppedFileAssetCount: 3,
+    });
+
+    expect(report.entries).toEqual([
+      expect.objectContaining({
+        stage: 'media',
+        reason_code: 'assets_dropped:image',
+        count: 2,
+      }),
+      expect.objectContaining({
+        stage: 'media',
+        reason_code: 'assets_dropped:audio',
+        count: 1,
+      }),
+      expect.objectContaining({
+        stage: 'media',
+        reason_code: 'assets_dropped:file',
+        count: 3,
+      }),
+    ]);
+    expect(report.summary.blocks_skipped).toBe(6);
+  });
+
+  it('omits an asset kind with no drops', () => {
+    const report = buildConversionReport({
+      ...baseInput,
+      droppedImageAssetCount: 0,
+      droppedAudioAssetCount: 2,
+      droppedFileAssetCount: 0,
+    });
+
+    expect(report.entries).toEqual([
+      expect.objectContaining({
+        stage: 'media',
+        reason_code: 'assets_dropped:audio',
+        count: 2,
+      }),
+    ]);
+  });
+
   it('drops zero-count signals instead of writing noise entries', () => {
     const report = buildConversionReport({
       ...baseInput,
