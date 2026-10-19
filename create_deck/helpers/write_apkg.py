@@ -103,10 +103,30 @@ def _add_notes(collection, deck_id, n2a_notes, registered):
     ]
 
 
+def _normalize_media_entry(entry):
+    """
+    A media entry is either a plain path (the parser path, bundled under its
+    own basename) or a {"path", "name"} mapping (the AI path, where "name" is a
+    collision-free filename that two same-named files from different folders can
+    each keep). Return the (source path to read, basename to bundle under) pair.
+    """
+    if isinstance(entry, dict):
+        return entry["path"], os.path.basename(entry["name"])
+    return entry, os.path.basename(entry)
+
+
 def _copy_media(collection, media_files):
     media_dir = collection.media.dir()
-    for path in media_files:
-        shutil.copyfile(path, os.path.join(media_dir, os.path.basename(path)))
+    cwd_real = os.path.realpath(os.getcwd())
+    for source_path, bundled_name in media_files:
+        source_real = os.path.realpath(source_path)
+        if source_real != cwd_real and not source_real.startswith(cwd_real + os.sep):
+            print(
+                f"Skipping media outside the working directory: {source_path}",
+                file=sys.stderr,
+            )
+            continue
+        shutil.copyfile(source_real, os.path.join(media_dir, bundled_name))
 
 
 def fill_collection(collection, deck_payloads, media_files):
@@ -230,10 +250,13 @@ def _write_new_apkg(deck_payloads, media_files):
         deck_payloads (list): List of dictionaries containing deck information.
         media_files (list): List of media files to be included in the package.
     """
-    missing = {f for f in media_files if not os.path.exists(f)}
+    normalized = [_normalize_media_entry(entry) for entry in media_files]
+    missing = {source for source, _ in normalized if not os.path.exists(source)}
     if missing:
         print(f"Skipping {len(missing)} missing media file(s): {missing}", file=sys.stderr)
-    existing_media = list(dict.fromkeys(f for f in media_files if os.path.exists(f)))
+    existing_media = list(
+        dict.fromkeys(pair for pair in normalized if os.path.exists(pair[0]))
+    )
 
     sanitized_name = sanitize_filename(deck_payloads[0]["name"]) if deck_payloads else "default"
     first_deck_id = str(deck_payloads[0]["id"]) if deck_payloads else ""

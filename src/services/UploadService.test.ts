@@ -96,7 +96,10 @@ import {
 } from '../lib/workerTermination';
 import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
-import UploadService, { resolveUploadWarning } from './UploadService';
+import UploadService, {
+  resolveUploadWarning,
+  walkMediaFiles,
+} from './UploadService';
 import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
 import {
   AiCreditsTrippedWithSalvage,
@@ -3833,7 +3836,10 @@ describe('UploadService.restartClaudeJob — replays the PDF-image-fallback flag
 
     const args = await restartAndWaitForGenerate();
 
-    expect(args[1]).toEqual(['page-1.png']);
+    // Workspace-relative, matching the HTML's <img src="scan.pdf/page-1.png">.
+    // The bare basename this used to assert could never match that nested src
+    // on the non-fallback resolution path; the marker file stays excluded.
+    expect(args[1]).toEqual(['scan.pdf/page-1.png']);
   });
 });
 
@@ -6560,5 +6566,20 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
     expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
     expect(capturedStatus()).toBe(200);
     expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 30);
+  });
+});
+
+describe('walkMediaFiles', () => {
+  it('returns workspace-relative paths so nested media keep their folder', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'walk-media-'));
+    fs.mkdirSync(path.join(dir, 'folderA'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'root.png'), 'a');
+    fs.writeFileSync(path.join(dir, 'folderA', 'image.png'), 'b');
+    fs.writeFileSync(path.join(dir, 'page.html'), '<html></html>');
+    fs.writeFileSync(path.join(dir, 'guids.json'), '[]');
+
+    const media = walkMediaFiles(dir).sort();
+
+    expect(media).toEqual(['folderA/image.png', 'root.png']);
   });
 });

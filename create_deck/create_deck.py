@@ -81,6 +81,17 @@ def _content_guid(deck_name, guid_value, card_type, back, seen):
     return guid
 
 
+def _media_field_value(media):
+    """
+    The comma-joined filenames for the note's MyMedia field. An entry is either
+    a plain filename (parser path) or a {"path", "name"} mapping (AI path); the
+    field shows the bundled name in both cases.
+    """
+    return ",".join(
+        entry["name"] if isinstance(entry, dict) else entry for entry in media
+    )
+
+
 def build_one_deck(data_file, template_dir):
     # pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements,import-outside-toplevel
     """
@@ -197,7 +208,7 @@ def build_one_deck(data_file, template_dir):
             tags = sanitize_tags(card.get('tags', []))
             front = card.get("name", "")
             back = card.get("back", "")
-            fields = [front, back, ",".join(card["media"])]
+            fields = [front, back, _media_field_value(card["media"])]
             model = get_model(("basic", basic_model_id, basic_model_name,
                                BASIC_STYLE, BASIC_FRONT, BASIC_BACK),
                               front_lang=front_lang, back_lang=back_lang)
@@ -236,7 +247,7 @@ def build_one_deck(data_file, template_dir):
                     front.replace("{{type:Input}}", ""),
                     back,
                     card["answer"],
-                    ",".join(card["media"]),
+                    _media_field_value(card["media"]),
                 ]
             elif card.get('hierarchy', False):
                 model = get_model(
@@ -249,7 +260,7 @@ def build_one_deck(data_file, template_dir):
                     get_safe_value(card.get("h3", "")),
                     get_safe_value(front),
                     get_safe_value(back),
-                    ",".join(card["media"]),
+                    _media_field_value(card["media"]),
                 ]
 
             if len(fields) > 0:

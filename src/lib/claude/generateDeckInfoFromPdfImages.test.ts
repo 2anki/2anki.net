@@ -242,8 +242,11 @@ describe('generateDeckInfoFromPdfImages', () => {
     expect(cards.length).toBeGreaterThan(0);
     for (const card of cards) {
       expect(card.media).toHaveLength(1);
-      expect(card.media[0]).toMatch(/^pdf-abc\/page-[12]\.png$/);
-      expect(card.back).toMatch(/<img[^>]+src="page-[12]\.png"/);
+      expect(card.media[0]).toEqual({
+        path: expect.stringMatching(/^pdf-abc\/page-[12]\.png$/),
+        name: expect.stringMatching(/^pdf-abc_page-[12]\.png$/),
+      });
+      expect(card.back).toMatch(/<img[^>]+src="pdf-abc_page-[12]\.png"/);
     }
   });
 
@@ -274,8 +277,12 @@ describe('generateDeckInfoFromPdfImages', () => {
     const cards = decks.flatMap((d) => d.cards);
     const pageOneCard = cards.find((c) => c.name.includes('from-page-1'));
     const pageTwoCard = cards.find((c) => c.name.includes('from-page-2'));
-    expect(pageOneCard?.media).toEqual(['pdf-abc/page-1.png']);
-    expect(pageTwoCard?.media).toEqual(['pdf-abc/page-2.png']);
+    expect(pageOneCard?.media).toEqual([
+      { path: 'pdf-abc/page-1.png', name: 'pdf-abc_page-1.png' },
+    ]);
+    expect(pageTwoCard?.media).toEqual([
+      { path: 'pdf-abc/page-2.png', name: 'pdf-abc_page-2.png' },
+    ]);
   });
 
   it('omits page images when attachPageImages is false', async () => {

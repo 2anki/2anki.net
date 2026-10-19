@@ -193,6 +193,71 @@ def test_repeated_media_paths_are_packaged_once(capsys):
     assert "Skipping 1 missing media file(s)" in capsys.readouterr().err
 
 
+def test_object_media_entry_bundles_source_under_its_declared_name():
+    workdir = tempfile.mkdtemp()
+    os.makedirs(os.path.join(workdir, "folderA"))
+    source = os.path.join(workdir, "folderA", "image.png")
+    with open(source, "wb") as handle:
+        handle.write(b"folderA-bytes")
+    note = _note('<img src="folderA_image.png">', "")
+
+    apkg = _build(
+        [_deck(1, "Deck", [note])],
+        [{"path": source, "name": "folderA_image.png"}],
+        workdir,
+    )
+
+    assert _media(apkg) == {"folderA_image.png": b"folderA-bytes"}
+
+
+def test_same_basename_from_different_folders_both_survive():
+    workdir = tempfile.mkdtemp()
+    os.makedirs(os.path.join(workdir, "folderA"))
+    os.makedirs(os.path.join(workdir, "folderB"))
+    source_a = os.path.join(workdir, "folderA", "image.png")
+    source_b = os.path.join(workdir, "folderB", "image.png")
+    with open(source_a, "wb") as handle:
+        handle.write(b"A-bytes")
+    with open(source_b, "wb") as handle:
+        handle.write(b"B-bytes")
+    note = _note(
+        '<img src="folderA_image.png"><img src="folderB_image.png">', ""
+    )
+
+    apkg = _build(
+        [_deck(1, "Deck", [note])],
+        [
+            {"path": source_a, "name": "folderA_image.png"},
+            {"path": source_b, "name": "folderB_image.png"},
+        ],
+        workdir,
+    )
+
+    assert _media(apkg) == {
+        "folderA_image.png": b"A-bytes",
+        "folderB_image.png": b"B-bytes",
+    }
+
+
+def test_media_outside_the_working_directory_is_skipped(capsys):
+    parent = tempfile.mkdtemp()
+    workdir = os.path.join(parent, "deck")
+    os.makedirs(workdir)
+    outside = os.path.join(parent, "secret.png")
+    with open(outside, "wb") as handle:
+        handle.write(b"secret")
+    note = _note('<img src="secret.png">', "")
+
+    apkg = _build(
+        [_deck(1, "Deck", [note])],
+        [{"path": outside, "name": "secret.png"}],
+        workdir,
+    )
+
+    assert _media(apkg) == {}
+    assert "outside the working directory" in capsys.readouterr().err
+
+
 def test_note_mod_is_pinned_when_given_and_stamped_otherwise():
     before = int(time.time())
     notes = [_note("Q1", "A1", mod=1_600_000_000), _note("Q2", "A2")]
