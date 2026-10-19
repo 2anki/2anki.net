@@ -299,6 +299,56 @@ describe('BlockHandler', () => {
     );
   }, 30000);
 
+  test('a block-coloured toggle carries its colour to the card front and back', async () => {
+    const toggleId = 'block-coloured-toggle';
+    const coloured = {
+      ...buildToggleBlock(toggleId, [richText('A red toggle')]),
+      toggle: {
+        rich_text: [richText('A red toggle')],
+        color: 'red' as const,
+      },
+    };
+    const childApi = new ChildStubApi(api, toggleId, [
+      paragraphBlock('answer-block', [richText('This should be red')]),
+    ]);
+    const exporter = new CustomExporter('', new Workspace(true, 'fs').location);
+    const bl = new BlockHandler(exporter, childApi, new CardOption({}));
+    const flashcards = await bl.getFlashcards(
+      new ParserRules(),
+      [coloured],
+      [],
+      undefined
+    );
+    const card = flashcards[0];
+    expect(card.name).toContain('color: #E03E3E');
+    expect(card.back).toContain('color: #E03E3E');
+  });
+
+  test('a background-coloured toggle renders a background on the card front and back', async () => {
+    const toggleId = 'background-coloured-toggle';
+    const coloured = {
+      ...buildToggleBlock(toggleId, [richText('A red background toggle')]),
+      toggle: {
+        rich_text: [richText('A red background toggle')],
+        color: 'red_background' as const,
+      },
+    };
+    const childApi = new ChildStubApi(api, toggleId, [
+      paragraphBlock('answer-block', [richText('This sits on red')]),
+    ]);
+    const exporter = new CustomExporter('', new Workspace(true, 'fs').location);
+    const bl = new BlockHandler(exporter, childApi, new CardOption({}));
+    const flashcards = await bl.getFlashcards(
+      new ParserRules(),
+      [coloured],
+      [],
+      undefined
+    );
+    const card = flashcards[0];
+    expect(card.name).toContain('background-color: rgb(253, 235, 236)');
+    expect(card.back).toContain('background-color: rgb(253, 235, 236)');
+  });
+
   test('Multi-line Toggle with Cloze and Newlines', async () => {
     // Test cloze deletion with the exact data from the user's issue
     const flashcards = await loadCards(

@@ -176,6 +176,25 @@ describe('card style cascade against the default template', () => {
       );
       expect(winner).toMatchObject({ value: RED, important: false });
     });
+
+    it('lets a block-colored toggle wrapper keep its color over the card override', () => {
+      const blockColorRedRule = /\.block-color-red\s*\{[^}]*\}/.exec(
+        notionCss
+      )![0];
+      const blockRed = /color:\s*([^;}]+)/.exec(blockColorRedRule)![1].trim();
+      const base = `body { color: rgb(55, 53, 47) }\n${blockColorRedRule}\n.card {}`;
+      const css = withTextColor(base, '#d1242f')! + customCss;
+      const toggleWrapper: Element = {
+        tag: 'div',
+        classes: ['block-color-red', 'toggle'],
+      };
+      const winner = resolveInherited(
+        css,
+        [body, card, toggleWrapper],
+        'color'
+      );
+      expect(winner).toMatchObject({ value: blockRed, important: false });
+    });
   });
 
   describe('text align override', () => {

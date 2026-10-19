@@ -625,6 +625,24 @@ test('Colours', async () => {
   expect(deck.cards[0].back.includes('block-color')).toBe(true);
 });
 
+test('a block-coloured toggle carries its colour onto the back without leaking the summary', () => {
+  const fileName = 'Colours 0519bf7e86d84ee4ba710c1b7ff7438e.html';
+  const contents = fs
+    .readFileSync(path.join(__dirname, '../../test/fixtures', fileName))
+    .toString();
+  const parser = new DeckParser({
+    name: fileName,
+    settings: new CardOption({ cherry: 'false' }),
+    files: [{ name: fileName, contents }],
+    noLimits: true,
+    workspace: new Workspace(true, 'fs'),
+  });
+  const back = parser.payload[0].cards[0].back;
+  expect(back).toContain("<div class='block-color-red_background toggle'>");
+  expect(back).toContain('This basic card should be red?');
+  expect(back).not.toContain('</summary>');
+});
+
 test('Nested Toggles', async () => {
   const deck = await getDeck(
     'Nested Toggles.html',
