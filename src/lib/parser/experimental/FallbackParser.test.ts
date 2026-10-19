@@ -586,4 +586,21 @@ describe('FallbackParser dropped-image counting on flattened HTML', () => {
     expect(decks.every((deck) => deck.cards.length === 0)).toBe(true);
     expect(parser.droppedImageCount).toBe(0);
   });
+
+  it('excludes page icons, cover images, and empty-src images from the count', () => {
+    const html = [
+      '<html><head><title>Deck</title></head><body>',
+      '<ul><li>Capital of France - Paris</li></ul>',
+      '<img class="icon" src="icon.png" />',
+      '<img class="page-cover-image" src="cover.png" />',
+      '<img src="" />',
+      '<img src="diagram.png" />',
+      '</body></html>',
+    ].join('\n');
+    const parser = new FallbackParser([
+      { name: 'deck.html', contents: Buffer.from(html) },
+    ]);
+    parser.run({ embedImages: true } as any);
+    expect(parser.droppedImageCount).toBe(1);
+  });
 });

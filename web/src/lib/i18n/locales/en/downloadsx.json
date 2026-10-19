@@ -58,7 +58,9 @@
     "notionExportExpiredMultiDeck_one": "{{count}} image couldn't be downloaded and isn't in your decks. The image link in this Notion export expired — these links last about an hour. Export the page again and upload the new file soon after.",
     "notionExportExpiredMultiDeck_other": "{{count}} images couldn't be downloaded and aren't in your decks. The image links in this Notion export expired — these links last about an hour. Export the page again and upload the new file soon after.",
     "notionHtmlUpload_one": "{{count}} image isn't in this deck. The file you uploaded is the HTML page from a Notion export, without its image folder. Upload the whole .zip from your Notion export instead to keep images.",
-    "notionHtmlUpload_other": "{{count}} images aren't in this deck. The file you uploaded is the HTML page from a Notion export, without its image folder. Upload the whole .zip from your Notion export instead to keep images."
+    "notionHtmlUpload_other": "{{count}} images aren't in this deck. The file you uploaded is the HTML page from a Notion export, without its image folder. Upload the whole .zip from your Notion export instead to keep images.",
+    "plainTextFallback_one": "{{count}} image isn't in this deck. This file had no card structure, so we read it as plain text, and plain text can't carry images. To keep images, nest each answer under its question so it becomes a card, and upload the images with the file.",
+    "plainTextFallback_other": "{{count}} images aren't in this deck. This file had no card structure, so we read it as plain text, and plain text can't carry images. To keep images, nest each answer under its question so each becomes a card, and upload the images with the file."
   },
   "cardLimitPartial": {
     "heldBack_one": "Your deck has {{delivered}} of your {{limit}} monthly cards. {{count}} more card is ready — <pricingLink>upgrade for unlimited cards</pricingLink>.",

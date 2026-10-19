@@ -52,6 +52,19 @@ describe('image-drop notice i18n key parity', () => {
     }
   );
 
+  it.each(LANGS)(
+    '%s defines the plainTextFallback plural forms with {{count}} and no .zip advice',
+    (lang) => {
+      const keys = imageDrop(lang);
+      for (const suffix of PLURAL_FORMS[lang]) {
+        const value = keys[`plainTextFallback_${suffix}`];
+        expect(typeof value).toBe('string');
+        expect(value).toContain('{{count}}');
+        expect(value).not.toContain('.zip');
+      }
+    }
+  );
+
   it.each(LANGS)('%s defines downloads.badge.imagesMissing', (lang) => {
     const value = downloadsBadge(lang).imagesMissing;
     expect(typeof value).toBe('string');

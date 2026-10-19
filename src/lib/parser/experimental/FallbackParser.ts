@@ -413,7 +413,16 @@ class FallbackParser {
   }
 
   private countHtmlImages(html: string): number {
-    return cheerio.load(html)('img').length;
+    const $ = cheerio.load(html);
+    return $('img[src]').filter((_i, element) => {
+      const image = $(element);
+      const src = image.attr('src') ?? '';
+      return (
+        src.trim() !== '' &&
+        !image.hasClass('icon') &&
+        !image.hasClass('page-cover-image')
+      );
+    }).length;
   }
 
   run(settings: CardOption) {

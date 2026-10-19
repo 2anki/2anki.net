@@ -2261,6 +2261,7 @@ describe('plain-text fallback reports dropped images', () => {
     const pending = parser.tryExperimental();
     expect(parser.payload[0].cards.length).toBeGreaterThan(0);
     expect(parser.droppedImageCount).toBe(3);
+    expect(parser.plainTextFallbackImageCount).toBe(3);
     await pending.catch(() => undefined);
   });
 

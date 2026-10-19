@@ -1988,9 +1988,12 @@ function UploadForm({
   const currentFilename = (): string =>
     driveFilename ?? dropboxFilename ?? displayFilename(fileInputRef.current);
 
-  const imageDropSource = (): 'pdf' | 'upload' | 'notionHtml' => {
+  const imageDropSource = (): 'pdf' | 'upload' | 'notionHtml' | 'plainText' => {
     if (imageDropReason === 'notion_html_no_folder') {
       return 'notionHtml';
+    }
+    if (imageDropReason === 'plain_text_fallback') {
+      return 'plainText';
     }
     const remote = driveFilename ?? dropboxFilename;
     if (remote) {

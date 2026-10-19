@@ -81,6 +81,14 @@ const VALID_FILTERS = new Set<FilterValue>([
 ]);
 const APKG_PATTERN = /\.apkg$/i;
 const NOTION_HTML_NO_FOLDER_REASON = 'notion_html_no_folder';
+const PLAIN_TEXT_FALLBACK_REASON = 'plain_text_fallback';
+
+function explainsImageDrop(reason: string | null | undefined): boolean {
+  return (
+    reason === NOTION_HTML_NO_FOLDER_REASON ||
+    reason === PLAIN_TEXT_FALLBACK_REASON
+  );
+}
 const EMPTY_DECK_REASON_PREFIX = 'No cards in this deck yet.';
 const ACTIVE_STATUSES = new Set(['done', 'failed', 'cancelled', 'interrupted']);
 
@@ -956,8 +964,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       {t('downloads.badge.shared')}
                                     </Link>
                                   )}
-                                  {row.imageDropReason ===
-                                    NOTION_HTML_NO_FOLDER_REASON &&
+                                  {explainsImageDrop(row.imageDropReason) &&
                                     row.droppedImageCount > 0 && (
                                       <span
                                         className={sharedStyles.badgeWarning}
@@ -1060,8 +1067,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                   </td>
                                 </tr>
                               )}
-                              {row.imageDropReason ===
-                                NOTION_HTML_NO_FOLDER_REASON &&
+                              {explainsImageDrop(row.imageDropReason) &&
                                 row.droppedImageCount > 0 && (
                                   <tr key={`upload-${u.key}-image-drop`}>
                                     <td
@@ -1070,7 +1076,12 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     >
                                       <ImageDropNotice
                                         count={row.droppedImageCount}
-                                        source="notionHtml"
+                                        source={
+                                          row.imageDropReason ===
+                                          PLAIN_TEXT_FALLBACK_REASON
+                                            ? 'plainText'
+                                            : 'notionHtml'
+                                        }
                                         surface="downloads_row"
                                       />
                                     </td>
