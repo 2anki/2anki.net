@@ -21,9 +21,14 @@ export function hashIp(raw: string): string {
   return crypto.createHash('sha256').update(raw).digest('hex');
 }
 
+const HEXTET = /^[0-9a-f]{1,4}$/i;
+
 function toFullHextets(ip: string): number[] | null {
   const noZone = ip.split('%')[0];
   if (!noZone.includes(':')) {
+    return null;
+  }
+  if (noZone.indexOf('::') !== noZone.lastIndexOf('::')) {
     return null;
   }
   let normalized = noZone;
@@ -60,14 +65,10 @@ function toFullHextets(ip: string): number[] | null {
     }
     groups = [...left, ...Array<string>(missing).fill('0'), ...right];
   }
-  if (groups.length !== 8) {
+  if (groups.length !== 8 || groups.some((group) => !HEXTET.test(group))) {
     return null;
   }
-  const hextets = groups.map((group) => parseInt(group, 16));
-  if (hextets.some((n) => Number.isNaN(n) || n < 0 || n > 0xffff)) {
-    return null;
-  }
-  return hextets;
+  return groups.map((group) => parseInt(group, 16));
 }
 
 // A single IPv6 /64 or NAT64 prefix can mint unlimited addresses, so rate

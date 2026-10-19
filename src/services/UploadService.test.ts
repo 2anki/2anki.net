@@ -5817,8 +5817,9 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(heldDeck.rows).toHaveLength(0);
   });
 
-  it('walls instead of 500ing when the prune delete fails', async () => {
+  it('still returns the held deck when the best-effort prune fails', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
     mockPartial([{ name: 'deck', cardCount: 21 }], 13);
     const heldDeck = new InMemoryHeldDeckRepository();
     const service = serviceUnderTest(heldDeck);
@@ -5830,11 +5831,45 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     vi.spyOn(heldDeck, 'deleteUnclaimedByIds').mockRejectedValueOnce(
       new Error('db down')
     );
-    const { res, redirectedTo } = responseWithRedirect();
+    const { res, capturedStatus, capturedJson } = buildResponse();
 
     await service.handleUpload(buildEligibleRequest(TREATMENT_ID), res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toMatchObject({ kind: 'held' });
+    const newest = heldDeck.rows[heldDeck.rows.length - 1];
+    expect(newest.claimed_at).toBeNull();
+    expect(mockStorageDelete).not.toHaveBeenCalledWith(newest.storage_key);
+  });
+
+  it('logs an orphan count when a superseded object fails to delete', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    const firstKey = heldDeck.rows[0].storage_key;
+    mockStorageDelete.mockResolvedValueOnce(false);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      const { res, capturedStatus } = buildResponse();
+      await service.handleUpload(buildEligibleRequest(TREATMENT_ID), res);
+
+      expect(capturedStatus()).toBe(200);
+      expect(mockStorageDelete).toHaveBeenCalledWith(firstKey);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[UploadService] superseded held objects left in storage',
+        expect.objectContaining({ count: 1 })
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('never writes a signup hold under an anon_id forged as a plan key', async () => {

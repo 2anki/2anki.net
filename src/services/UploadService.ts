@@ -2228,29 +2228,51 @@ class UploadService {
   // storage flat. The row goes first, guarded by claimed_at IS NULL, and only a
   // row the delete actually removed has its object deleted. A claim landing in
   // another tab between the lookup and here sets claimed_at, so that row is left
-  // alone and keeps its file rather than losing it to a stale snapshot.
+  // alone and keeps its file rather than losing it to a stale snapshot. This is
+  // best-effort housekeeping: the hold the visitor just made is already stored,
+  // so any failure here logs and returns rather than costing them that hold.
+  // A row whose object delete returns false is left orphaned under held/ (its
+  // row is already gone), so that count is logged for a storage audit.
   private async pruneSupersededHolds(
     holds: ExpiredHeldDeck[],
-    storage: StorageHandler
+    storage: StorageHandler,
+    requestId: string | undefined
   ): Promise<void> {
     if (holds.length === 0) {
       return;
     }
-    const removedIds = await this.heldDeckRepository.deleteUnclaimedByIds(
-      holds.map((hold) => hold.id)
-    );
-    if (removedIds.length === 0) {
-      return;
-    }
-    const removed = new Set(removedIds);
-    for (const hold of holds) {
-      if (removed.has(hold.id)) {
-        await storage.delete(hold.storageKey);
+    try {
+      const removedIds = await this.heldDeckRepository.deleteUnclaimedByIds(
+        holds.map((hold) => hold.id)
+      );
+      if (removedIds.length === 0) {
+        return;
       }
+      const removed = new Set(removedIds);
+      let orphaned = 0;
+      for (const hold of holds) {
+        if (removed.has(hold.id) && !(await storage.delete(hold.storageKey))) {
+          orphaned += 1;
+        }
+      }
+      if (orphaned > 0) {
+        console.warn(
+          '[UploadService] superseded held objects left in storage',
+          {
+            requestId,
+            count: orphaned,
+          }
+        );
+      }
+      console.info('[UploadService] pruned superseded held decks', {
+        count: removedIds.length,
+      });
+    } catch (error) {
+      console.error('[UploadService] could not prune superseded holds', {
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
-    console.info('[UploadService] pruned superseded held decks', {
-      count: removedIds.length,
-    });
   }
 
   private async holdDeckForSignup(
@@ -2298,10 +2320,12 @@ class UploadService {
     }
     const storage = new StorageHandler();
     const storageKey = `held/${randomUUID()}`;
-    // The lookup and the prune share the fallback with the write: a DB error in
-    // any of them ends in the limit wall, never a 500 bubbling to the client.
+    // The lookup and the write share one fallback: a DB error in either ends in
+    // the limit wall, never a 500. The prune runs only once the hold is safely
+    // stored, so it is best-effort and never converts a held deck into a wall.
+    let supersededHolds: ExpiredHeldDeck[] = [];
     try {
-      const supersededHolds =
+      supersededHolds =
         await this.heldDeckRepository.findUnclaimedByAnonId(anonId);
       await storage.uploadFile(storageKey, bytes);
       await this.heldDeckRepository.insert({
@@ -2312,7 +2336,6 @@ class UploadService {
         cardsHeldBack,
         expiresAt: new Date(Date.now() + HELD_DECK_TTL_MS),
       });
-      await this.pruneSupersededHolds(supersededHolds, storage);
     } catch (error) {
       console.error('[UploadService] could not hold the deck for signup', {
         requestId: res.locals.requestId,
@@ -2323,6 +2346,11 @@ class UploadService {
         ANONYMOUS_CARD_CAP
       );
     }
+    await this.pruneSupersededHolds(
+      supersededHolds,
+      storage,
+      res.locals.requestId
+    );
     track('conversion_succeeded', {
       userId: null,
       anonymousId: anonId,

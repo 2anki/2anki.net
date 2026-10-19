@@ -135,4 +135,14 @@ describe('ipRateLimitBucket', () => {
   it('passes a non-IP string through unchanged', () => {
     expect(ipRateLimitBucket('unknown')).toBe('unknown');
   });
+
+  it('passes a malformed address with two :: groups through unchanged', () => {
+    expect(ipRateLimitBucket('2001::db8::1')).toBe('2001::db8::1');
+  });
+
+  it('passes an address with a non-hex group through unchanged', () => {
+    expect(ipRateLimitBucket('2001:db8:zz:2:3:4:5:6')).toBe(
+      '2001:db8:zz:2:3:4:5:6'
+    );
+  });
 });
