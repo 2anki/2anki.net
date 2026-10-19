@@ -218,6 +218,32 @@
     })();
   </script>
   <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/Fraunces/Fraunces-600.woff2">
+  <!-- Declared here, not in a bundled stylesheet: the bundles are served from the asset CDN, which would resolve /fonts/ against the CDN host. -->
+  <style>
+    @font-face {
+      font-family: 'Fraunces';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url('/fonts/Fraunces/Fraunces-500.woff2') format('woff2');
+      size-adjust: 99.88%;
+      ascent-override: 91.7%;
+      descent-override: 21.92%;
+      line-gap-override: 0%;
+    }
+
+    @font-face {
+      font-family: 'Fraunces';
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url('/fonts/Fraunces/Fraunces-600.woff2') format('woff2');
+      size-adjust: 99.88%;
+      ascent-override: 91.7%;
+      descent-override: 21.92%;
+      line-gap-override: 0%;
+    }
+  </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
