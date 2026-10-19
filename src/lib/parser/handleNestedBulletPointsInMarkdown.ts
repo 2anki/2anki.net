@@ -80,21 +80,34 @@ function buildNoteFromBack(
   return { note, mcqShapedWithoutMarker: mcq.isMcqShape };
 }
 
-const TOP_LEVEL_ITEM_REGEX = /^(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/;
+const DASH_ITEM_REGEX = /^-/;
 
-const SEPARATOR_RULE_REGEX = /^[ \t]{0,3}([-*+])(?:[ \t]*\1){2,}[ \t]*$/;
+const NEW_ITEM_REGEX = /^(?:[*+]|\d{1,9}[.)])(?:[ \t]|$)/;
 
-const SUBHEADING_REGEX = /^#{2,6}[ \t]/m;
+const NEW_ITEM_SEPARATOR_REGEX = /^[ \t]{0,3}([*+])(?:[ \t]*\1){2,}[ \t]*$/;
 
-function startsTopLevelItem(line: string): boolean {
-  return TOP_LEVEL_ITEM_REGEX.test(line) && !SEPARATOR_RULE_REGEX.test(line);
+const SUBHEADING_REGEX = /^#{2,}[ \t]/m;
+
+// `-` at column 0 is an unconditional card boundary, exactly as the original
+// parser: it always starts a card. The other markers (*, +, and ordered) are a
+// newer addition, so they start a card only in a bullet-shaped document and
+// never when the line is a decorative rule (* * *, + + +).
+function startsCardFront(line: string, allowNewMarkers: boolean): boolean {
+  if (DASH_ITEM_REGEX.test(line)) {
+    return true;
+  }
+  return (
+    allowNewMarkers &&
+    NEW_ITEM_REGEX.test(line) &&
+    !NEW_ITEM_SEPARATOR_REGEX.test(line)
+  );
 }
 
-// A document that leads its content with `##`+ headings is heading-body shaped,
-// not bullet shaped: its list lines belong on a card back, so only
-// guessMarkdownCards should own it. Treating list markers as card fronts there
-// would drop the heading and split a single answer into empty cards.
-function documentIsBulletShaped(body: string): boolean {
+// A document that carries a `##`+ heading is heading-body shaped: its *, +, and
+// ordered list lines belong on a card back, so the new markers decline and only
+// guessMarkdownCards owns it. `-` is intentionally unaffected — a `## Chapter`
+// over a dash list still yields one card per dash item, as it did before.
+function allowsNewMarkers(body: string): boolean {
   return !SUBHEADING_REGEX.test(body);
 }
 
@@ -150,7 +163,7 @@ export const handleNestedBulletPointsInMarkdown = (
 
   decks.push(deck);
 
-  const bulletShaped = documentIsBulletShaped(body);
+  const newMarkersAllowed = allowsNewMarkers(body);
   const lines = dedent(body.replace(/^<\/?aside[^>]*>\s*$/gim, '')).split('\n');
   let isCreating = false;
   let currentFront = '';
@@ -179,7 +192,7 @@ export const handleNestedBulletPointsInMarkdown = (
       continue;
     }
 
-    const startsCard = bulletShaped && startsTopLevelItem(line);
+    const startsCard = startsCardFront(line, newMarkersAllowed);
 
     if (startsCard && isCreating) {
       flushCurrent();

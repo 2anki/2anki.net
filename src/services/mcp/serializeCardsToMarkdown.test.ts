@@ -41,12 +41,24 @@ describe('serializeCardsToMarkdown', () => {
 
   it('renders markdown in the front and back', () => {
     const markdown = serializeCardsToMarkdown([
-      { front: 'Bold **term**', back: 'A list:\n\n- one\n- two' },
+      { front: 'Bold **term**', back: 'A list:\n\n* one\n* two' },
     ]);
     const { notes } = parseCards(markdown);
     expect(notes).toHaveLength(1);
     expect(notes[0].name).toContain('<strong>term</strong>');
     expect(notes[0].back).toContain('<li>one</li>');
+  });
+
+  it('escapes a leading dash in the body so a - list on a back does not split the card', () => {
+    const markdown = serializeCardsToMarkdown([
+      { front: 'First card', back: '- one\n- two' },
+      { front: 'Second card', back: 'Plain answer' },
+    ]);
+    expect(markdown).toContain('\\- one');
+    const { format, notes } = parseCards(markdown);
+    expect(format).toBe('heading-body');
+    expect(notes).toHaveLength(2);
+    expect(notes[0].back).toContain('one');
   });
 
   it('keeps a card body containing :: as one card, not a colon split', () => {

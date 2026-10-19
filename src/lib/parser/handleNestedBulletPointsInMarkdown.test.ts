@@ -291,19 +291,35 @@ describe('handleNestedBulletPointsInMarkdown', () => {
       expect(decks[0].cards[1].back).toContain('Second answer');
     });
 
-    it('does not start cards on separator rules like * * *, + + + or - - -', () => {
+    it('does not start new cards on * * * or + + + separator rules', () => {
       const contents = [
-        '- Real question',
-        '    Real answer',
+        '* Real question',
+        'Real answer stays here',
         '* * *',
         '+ + +',
-        '- - -',
       ].join('\n');
 
       const decks = makeDecks(contents);
 
       expect(decks[0].cards).toHaveLength(1);
       expect(decks[0].cards[0].name).toContain('Real question');
+      expect(decks[0].cards[0].back).toContain('<hr');
+    });
+
+    it('keeps - bullets as cards even under a ## heading (dash is ungated)', () => {
+      const contents = [
+        '## Chapter 1',
+        '- Question one',
+        '    Answer one',
+        '- Question two',
+        '    Answer two',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('Question one');
+      expect(decks[0].cards[1].name).toContain('Question two');
     });
 
     it('keeps a --- rule inside a back on the same card', () => {

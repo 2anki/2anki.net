@@ -1782,6 +1782,44 @@ describe('heading-body markdown with lists stays on the heading fallback (regres
     expect(parser.payload[0].cards[0].back).toContain('use a kettle');
     expect(parser.payload[0].cards[1].name).toContain('What is DNA');
   });
+
+  it('round-trips an MCP card whose back starts with a - item as one card', () => {
+    const markdown = serializeCardsToMarkdown([
+      { front: 'Name a mitochondrion fact', back: '- it makes ATP' },
+      { front: 'What is DNA', back: 'The molecule of heredity' },
+    ]);
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.payload[0].cards).toHaveLength(2);
+    expect(parser.payload[0].cards[0].name).toContain(
+      'Name a mitochondrion fact'
+    );
+    expect(parser.payload[0].cards[0].back).toContain('it makes ATP');
+    expect(parser.payload[0].cards[1].name).toContain('What is DNA');
+  });
+
+  it('keeps - bullets under ## headings as one card per dash item (same as before)', () => {
+    const markdown = [
+      '## Chapter 1',
+      '- Q1',
+      '  - A1',
+      '- Q2',
+      '  - A2',
+      '## Chapter 2',
+      '- Q3',
+      '  - A3',
+    ].join('\n');
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.usedHeuristic).toBe(false);
+    expect(parser.payload[0].cards).toHaveLength(3);
+    const fronts = parser.payload[0].cards.map((card) => card.name).join('\n');
+    expect(fronts).toContain('Q1');
+    expect(fronts).toContain('Q2');
+    expect(fronts).toContain('Q3');
+  });
 });
 
 describe('embed-images opt-out', () => {

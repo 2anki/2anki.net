@@ -12,6 +12,10 @@ function escapeLeadingHeadings(text: string): string {
   return text.replace(/^(#+)/gm, '\\$1');
 }
 
+function escapeLeadingDash(text: string): string {
+  return text.replace(/^-/gm, '\\-');
+}
+
 function flattenFront(front: string): string {
   const oneLine = front
     .replace(/[\r\n]+/g, ' ')
@@ -21,7 +25,9 @@ function flattenFront(front: string): string {
 }
 
 function guardBack(back: string): string {
-  return escapeLeadingHeadings(escapeDetailsTags(back.trim()));
+  return escapeLeadingDash(
+    escapeLeadingHeadings(escapeDetailsTags(back.trim()))
+  );
 }
 
 export function serializeCardsToMarkdown(cards: McpCard[]): string {
