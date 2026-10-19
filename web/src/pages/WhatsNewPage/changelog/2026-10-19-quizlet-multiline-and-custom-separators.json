@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-quizlet-multiline-and-custom-separators",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Quizlet exports with multi-line definitions and semicolon or comma separators convert to cards"
+}

@@ -62,7 +62,7 @@ describe('FallbackParser tab-separated text', () => {
     expect(decks[0].cards[1].back).toBe('4');
   });
 
-  it('skips lines without tabs in tab-separated text', () => {
+  it('continues the previous card when a tab-separated line has no tab', () => {
     const tabContent = 'What is 1+1?\t2\nThis line has no tab\nWhat is 3+3?\t6';
     const parser = new FallbackParser([
       { name: 'deck.txt', contents: Buffer.from(tabContent) },
@@ -70,6 +70,10 @@ describe('FallbackParser tab-separated text', () => {
     const decks = parser.run({} as any);
     expect(decks).toHaveLength(1);
     expect(decks[0].cards).toHaveLength(2);
+    expect(decks[0].cards[0].name).toBe('What is 1+1?');
+    expect(decks[0].cards[0].back).toBe('2\nThis line has no tab');
+    expect(decks[0].cards[1].name).toBe('What is 3+3?');
+    expect(decks[0].cards[1].back).toBe('6');
   });
 
   it('prefers tab-separated parsing over bullet list parsing for tab content', () => {
@@ -145,6 +149,87 @@ describe('FallbackParser comma-separated text (Quizlet comma export)', () => {
     ]);
     const decks = parser.run({} as any);
     expect(decks).toHaveLength(0);
+  });
+});
+
+describe('FallbackParser Quizlet multi-line and custom separators', () => {
+  it('attaches a definition that wraps onto the next line to its term', () => {
+    const content =
+      'photosynthesis\tprocess plants use to make food\nit happens in the chloroplasts\nrespiration\tbreaks down glucose for energy\nosmosis\tdiffusion of water across a membrane';
+    const parser = new FallbackParser([
+      { name: 'biology.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(3);
+    expect(decks[0].cards[0].name).toBe('photosynthesis');
+    expect(decks[0].cards[0].back).toBe(
+      'process plants use to make food\nit happens in the chloroplasts'
+    );
+    expect(decks[0].cards[1].name).toBe('respiration');
+    expect(decks[0].cards[2].name).toBe('osmosis');
+  });
+
+  it('keeps a bulleted definition on its term instead of fanning out cards', () => {
+    const content =
+      'mitosis\tcell division that yields two identical cells:\n- prophase\n- metaphase\nmeiosis\tproduces four gametes\nosmosis\twater diffusion\ndiffusion\tparticles spreading out';
+    const parser = new FallbackParser([
+      { name: 'cell.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(4);
+    expect(decks[0].cards[0].name).toBe('mitosis');
+    expect(decks[0].cards[0].back).toBe(
+      'cell division that yields two identical cells:\n- prophase\n- metaphase'
+    );
+    expect(decks[0].cards.map((card) => card.name)).not.toContain('- prophase');
+  });
+
+  it('splits semicolon-separated rows with a tab between term and definition', () => {
+    const content =
+      'mitochondria\tpowerhouse of the cell;osmosis\tdiffusion of water;ATP\tenergy currency of the cell;ribosome\tmakes proteins';
+    const parser = new FallbackParser([
+      { name: 'quizlet_semicolon.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(4);
+    expect(decks[0].cards[0].name).toBe('mitochondria');
+    expect(decks[0].cards[0].back).toBe('powerhouse of the cell');
+    expect(decks[0].cards[3].name).toBe('ribosome');
+    expect(decks[0].cards[3].back).toBe('makes proteins');
+  });
+
+  it('splits semicolon-separated rows with a comma between term and definition', () => {
+    const content =
+      'mitochondria,powerhouse of the cell;osmosis,diffusion of water;ATP,energy currency;ribosome,makes proteins';
+    const parser = new FallbackParser([
+      { name: 'quizlet_semicolon_comma.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(4);
+    expect(decks[0].cards[0].name).toBe('mitochondria');
+    expect(decks[0].cards[0].back).toBe('powerhouse of the cell');
+    expect(decks[0].cards[2].name).toBe('ATP');
+  });
+
+  it('parses comma rows where most definitions contain their own commas', () => {
+    const content =
+      'aorta,largest artery, carries oxygenated blood\nvena cava,largest vein, returns blood to the heart\ncapillary,smallest vessel, site of gas exchange\nalveolus,air sac, where gas exchange happens';
+    const parser = new FallbackParser([
+      { name: 'anatomy_commas.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(4);
+    expect(decks[0].cards[0].name).toBe('aorta');
+    expect(decks[0].cards[0].back).toBe(
+      'largest artery, carries oxygenated blood'
+    );
+    expect(decks[0].cards[3].name).toBe('alveolus');
+    expect(decks[0].cards[3].back).toBe('air sac, where gas exchange happens');
   });
 });
 

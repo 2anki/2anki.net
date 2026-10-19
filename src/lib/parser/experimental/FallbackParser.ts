@@ -148,18 +148,26 @@ class FallbackParser {
   }
 
   parseTabSeparated(contents: string): Note[] {
-    return contents
-      .split('\n')
-      .filter((line) => line.includes('\t'))
-      .map((line, index) => {
+    const notes: Note[] = [];
+    for (const line of contents.split('\n')) {
+      if (line.trim().length === 0) {
+        continue;
+      }
+      if (line.includes('\t')) {
         const [front, ...rest] = line.split('\t');
-        const back = rest.join('\t');
         const note = new Note(front.trim(), '');
-        note.back = back.trim();
-        note.number = index;
-        return note;
-      })
-      .filter((note) => note.name.length > 0 && note.back.length > 0);
+        note.back = rest.join('\t').trim();
+        note.number = notes.length;
+        notes.push(note);
+      } else if (notes.length > 0) {
+        this.appendDefinitionLine(notes[notes.length - 1], line.trim());
+      }
+    }
+    return notes.filter((note) => note.name.length > 0 && note.back.length > 0);
+  }
+
+  private appendDefinitionLine(note: Note, line: string): void {
+    note.back = note.back.length > 0 ? `${note.back}\n${line}` : line;
   }
 
   isCommaSeparated(contents: string): boolean {
@@ -178,13 +186,58 @@ class FallbackParser {
     }
     const pairLines = lines.filter((line) => {
       const commaIndex = line.indexOf(',');
-      return (
-        line.split(',').length === 2 &&
-        line.slice(0, commaIndex).trim().length > 0 &&
-        line.slice(commaIndex + 1).trim().length > 0
-      );
+      return commaIndex > 0 && line.slice(commaIndex + 1).trim().length > 0;
     });
     return pairLines.length >= lines.length * 0.9;
+  }
+
+  private readonly fieldSeparators = ['\t', ' - ', ' = ', ','] as const;
+
+  private detectFieldSeparator(segments: string[]): string | null {
+    for (const separator of this.fieldSeparators) {
+      const withSeparator = segments.filter((segment) =>
+        segment.includes(separator)
+      );
+      if (withSeparator.length >= segments.length * 0.9) {
+        return separator;
+      }
+    }
+    return null;
+  }
+
+  private rowSegments(contents: string): string[] {
+    return contents
+      .split(';')
+      .map((segment) => segment.trim())
+      .filter((segment) => segment.length > 0);
+  }
+
+  isSemicolonRowSeparated(contents: string): boolean {
+    const lines = contents
+      .split(/\r?\n/)
+      .filter((line) => line.trim().length > 0);
+    const segments = this.rowSegments(contents);
+    if (segments.length < 3 || segments.length < lines.length * 3) {
+      return false;
+    }
+    return this.detectFieldSeparator(segments) != null;
+  }
+
+  parseSemicolonRows(contents: string): Note[] {
+    const segments = this.rowSegments(contents);
+    const separator = this.detectFieldSeparator(segments);
+    if (separator == null) {
+      return [];
+    }
+    return segments
+      .map((segment, index) => {
+        const separatorIndex = segment.indexOf(separator);
+        const note = new Note(segment.slice(0, separatorIndex).trim(), '');
+        note.back = segment.slice(separatorIndex + separator.length).trim();
+        note.number = index;
+        return note;
+      })
+      .filter((note) => note.name.length > 0 && note.back.length > 0);
   }
 
   parseCommaSeparated(contents: string): Note[] {
@@ -219,6 +272,12 @@ class FallbackParser {
     contents: string,
     fileName: string
   ): { cards: Note[]; deckName: string } | null {
+    if (this.isSemicolonRowSeparated(contents)) {
+      return {
+        cards: this.parseSemicolonRows(contents),
+        deckName: fileName.replace(/\.[^/.]+$/, ''),
+      };
+    }
     if (this.isTabSeparated(contents)) {
       return {
         cards: this.parseTabSeparated(contents),
