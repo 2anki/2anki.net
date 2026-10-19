@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
   AD_CLICK_COOKIE,
   buildAdClickCookie,
   captureAdClick,
   hasMarketingConsent,
+  landingViewProps,
   readAdClickParams,
+  readCampaignParams,
 } from './adClick';
 
 const CONSENT = 'cookie_consent=granted';
@@ -197,5 +199,38 @@ describe('captureAdClick', () => {
     };
     captureAdClick(doc);
     expect(doc.cookie).toBe('cookie_consent=denied');
+  });
+});
+
+describe('readCampaignParams', () => {
+  it('keeps the campaign tags and drops click ids and utm_content', () => {
+    expect(
+      readCampaignParams(
+        '?utm_source=Google&utm_medium=cpc&utm_campaign=ai&utm_term=anki+ai&utm_content=ad1&gclid=Cj0'
+      )
+    ).toEqual({
+      utm_source: 'google',
+      utm_medium: 'cpc',
+      utm_campaign: 'ai',
+      utm_term: 'anki ai',
+    });
+  });
+
+  it('drops a tag that fails the server pattern', () => {
+    expect(readCampaignParams('?utm_campaign=%3Cscript%3E')).toEqual({});
+  });
+});
+
+describe('landingViewProps', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('adds the campaign tags in the URL to the landing path', () => {
+    vi.stubGlobal('location', { search: '?utm_campaign=pdf' });
+    expect(landingViewProps('/pdf-to-anki')).toEqual({
+      path: '/pdf-to-anki',
+      utm_campaign: 'pdf',
+    });
   });
 });

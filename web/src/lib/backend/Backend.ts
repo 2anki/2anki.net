@@ -29,6 +29,7 @@ import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
 import { CONFLICT, NOT_FOUND, OK, UNAUTHORIZED } from './http';
+import { landingCampaignParams } from '../adClick';
 import {
   CheckoutConflict,
   readCheckoutConflict,
@@ -749,6 +750,7 @@ export class Backend {
         interval,
         variant,
         surface,
+        campaign: landingCampaignParams(),
       });
       if (response.status === 503) {
         return { status: 'unavailable' };
@@ -789,6 +791,7 @@ export class Backend {
       const response = await post(`${this.baseURL}checkout/auto-sync`, {
         variant,
         surface,
+        campaign: landingCampaignParams(),
       });
       if (response.status === CONFLICT) {
         return (await readCheckoutConflict(response)) ?? { status: 'error' };
@@ -869,6 +872,7 @@ export class Backend {
       const response = await post(`${this.baseURL}${path}`, {
         variant,
         surface,
+        campaign: landingCampaignParams(),
       });
       if (response.status === 503) {
         return { status: 'unavailable' };
@@ -897,6 +901,7 @@ export class Backend {
     try {
       const response = await post(`${this.baseURL}checkout/credit-pack`, {
         source,
+        campaign: landingCampaignParams(),
       });
       if (response.status === 503) {
         return { status: 'unavailable' };

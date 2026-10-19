@@ -3,9 +3,10 @@ import { consentRegionForRequest } from '../http/consentRegion';
 
 /**
  * Attribution the web app stores in the `ad_click` cookie when a visitor lands
- * from an ad (Google click ids + utm_* + landing path). Parsed here once so the
- * same sanitized shape reaches Stripe Checkout metadata, the signup row and the
- * funnel events.
+ * from an ad (Google click ids + utm_* + landing path). Parsed here once so
+ * the same sanitized shape reaches Stripe Checkout metadata, the signup row
+ * and the funnel events. Checkout also accepts the campaign tags the page
+ * sends in the body (readCheckoutAttribution).
  */
 export type AdClickAttribution = Partial<
   Record<
@@ -163,4 +164,45 @@ export function readAdClickCookie(
   }
   const parsed = parseAdClick(raw);
   return Object.keys(parsed).length > 0 ? parsed : undefined;
+}
+
+const CAMPAIGN_KEYS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_term',
+] as const;
+
+/**
+ * Campaign tags name our own campaign and keyword, never the visitor, so the
+ * page sends them with a checkout even without marketing consent. Click ids
+ * and the landing path stay behind consent in the ad_click cookie.
+ */
+function parseCampaign(raw: unknown): AdClickAttribution {
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+    return {};
+  }
+  const record = raw as Record<string, unknown>;
+  const result: AdClickAttribution = {};
+  for (const key of CAMPAIGN_KEYS) {
+    const value = Object.prototype.hasOwnProperty.call(record, key)
+      ? record[key]
+      : undefined;
+    if (typeof value === 'string' && UTM.pattern.test(value)) {
+      result[key] = value.toLowerCase();
+    }
+  }
+  return result;
+}
+
+export function readCheckoutAttribution(
+  req: express.Request
+): AdClickAttribution | undefined {
+  const fromCookie = readAdClickCookie(req) ?? {};
+  if (CAMPAIGN_KEYS.some((key) => fromCookie[key] != null)) {
+    return fromCookie;
+  }
+  const body = req.body as Record<string, unknown> | undefined;
+  const merged = { ...fromCookie, ...parseCampaign(body?.campaign) };
+  return Object.keys(merged).length > 0 ? merged : undefined;
 }

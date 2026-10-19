@@ -3,7 +3,7 @@ import { CreatePassCheckoutUseCase } from '../usecases/checkout/CreatePassChecko
 import { parsePricingVariant } from '../usecases/checkout/pricingVariant';
 import { parseCheckoutSurface } from '../usecases/checkout/checkoutSurface';
 import { readGaMeasurement } from '../usecases/checkout/gaClientId';
-import { readAdClickCookie } from '../lib/attribution/adClick';
+import { readCheckoutAttribution } from '../lib/attribution/adClick';
 import type { PassKind } from '../data_layer/UserPassRepository';
 import type { EventsSink } from '../services/events/EventsSink';
 
@@ -22,7 +22,7 @@ class PassCheckoutController {
     const anonId = (req.cookies?.anon_id as string | undefined) ?? undefined;
     const surface = parseCheckoutSurface(req.body?.surface);
     const { gaClientId, gaSessionId } = readGaMeasurement(req);
-    const adClick = readAdClickCookie(req);
+    const adClick = readCheckoutAttribution(req);
 
     const result = await this.useCase.execute({
       userId,

@@ -190,3 +190,55 @@ export function rememberLanding(
   }
   return { search: doc.location.search, pathname: doc.location.pathname };
 }
+
+const CAMPAIGN_PARAMS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_term',
+] as const;
+
+export type CampaignParams = Partial<
+  Record<(typeof CAMPAIGN_PARAMS)[number], string>
+>;
+
+/**
+ * Campaign tags name our own campaign and keyword, not the visitor, so they
+ * are read without marketing consent and kept in memory only, never in a
+ * cookie or storage, so a full page load (an OAuth round trip) drops them.
+ * Lowercased like the server does. utm_content is left out because the events
+ * sink drops any key containing "content".
+ */
+export function readCampaignParams(search: string): CampaignParams {
+  const query = new URLSearchParams(search);
+  const found: CampaignParams = {};
+  for (const key of CAMPAIGN_PARAMS) {
+    const value = query.get(key);
+    if (value != null && UTM_PATTERN.test(value)) {
+      found[key] = value.toLowerCase();
+    }
+  }
+  return found;
+}
+
+let landingCampaign: CampaignParams | undefined;
+
+export function rememberLandingCampaign(search: string): void {
+  const found = readCampaignParams(search);
+  if (Object.keys(found).length > 0) {
+    landingCampaign = found;
+  }
+}
+
+export function landingCampaignParams(): CampaignParams | undefined {
+  return landingCampaign;
+}
+
+export function forgetLandingCampaign(): void {
+  landingCampaign = undefined;
+}
+
+export function landingViewProps(path: string): Record<string, string> {
+  const search = typeof location === 'undefined' ? '' : location.search;
+  return { path, ...readCampaignParams(search) };
+}
