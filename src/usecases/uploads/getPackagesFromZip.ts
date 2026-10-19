@@ -235,6 +235,7 @@ async function buildDeckBatch(
       pkg.uploadIdentityStats = result.uploadIdentityStats;
       pkg.expiredNotionImageCount = result.expiredNotionImageCount ?? 0;
       pkg.missingLocalImageCount = result.missingLocalImageCount ?? 0;
+      pkg.plainTextFallbackImageCount = result.plainTextFallbackImageCount ?? 0;
       pkg.coloredTextPageCount = result.coloredTextPageCount ?? 0;
       packages.push(pkg);
       if (result.warning) warnings.push(result.warning);
@@ -325,6 +326,8 @@ async function buildStragglerDecks(
       pkg.uploadIdentityStats = outcome.uploadIdentityStats;
       pkg.expiredNotionImageCount = outcome.expiredNotionImageCount ?? 0;
       pkg.missingLocalImageCount = outcome.missingLocalImageCount ?? 0;
+      pkg.plainTextFallbackImageCount =
+        outcome.plainTextFallbackImageCount ?? 0;
       pkg.coloredTextPageCount = outcome.coloredTextPageCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
@@ -380,6 +383,7 @@ async function buildClaudeFlashcardDeck(
     );
     pkg.expiredNotionImageCount = deck.expiredNotionImageCount ?? 0;
     pkg.missingLocalImageCount = deck.missingLocalImageCount ?? 0;
+    pkg.plainTextFallbackImageCount = deck.plainTextFallbackImageCount ?? 0;
     pkg.coloredTextPageCount = deck.coloredTextPageCount ?? 0;
     packages.push(pkg);
     if (deck.warning) warnings.push(deck.warning);
@@ -493,6 +497,8 @@ async function buildAllInOneSlot(
       pkg.uploadIdentityStats = outcome.uploadIdentityStats;
       pkg.expiredNotionImageCount = outcome.expiredNotionImageCount ?? 0;
       pkg.missingLocalImageCount = outcome.missingLocalImageCount ?? 0;
+      pkg.plainTextFallbackImageCount =
+        outcome.plainTextFallbackImageCount ?? 0;
       pkg.coloredTextPageCount = outcome.coloredTextPageCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);

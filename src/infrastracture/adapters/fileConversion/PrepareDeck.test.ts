@@ -1069,6 +1069,25 @@ describe('PrepareDeck — expired Notion image reporting', () => {
     expect(result?.droppedImageCount).toBe(1);
     expect(result?.expiredNotionImageCount).toBe(1);
   });
+
+  it('reports the plain-text fallback image count when the main parse finds no cards', async () => {
+    const html = `<html><head><title>Deck</title></head><body>
+<details><ul><li>Capital of France - Paris</li><li>Largest planet - Jupiter</li></ul></details>
+<img src="a.png" /><img src="b.png" />
+</body></html>`;
+
+    const result = await PrepareDeck({
+      name: 'deck.html',
+      files: [{ name: 'deck.html', contents: html }],
+      settings: makeSettings(),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBeGreaterThan(0);
+    expect(result?.droppedImageCount).toBe(2);
+    expect(result?.plainTextFallbackImageCount).toBe(2);
+  });
 });
 
 describe('PrepareDeck — duplicate-name dedup', () => {

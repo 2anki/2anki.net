@@ -213,4 +213,28 @@ describe('ImageDropNotice', () => {
       reason: 'notion_html_no_folder',
     });
   });
+
+  it('uses the plain-text fallback copy for the plainText source', () => {
+    render(<ImageDropNotice count={2} source="plainText" />);
+    expect(screen.getByText(/we read it as plain text/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/put each answer under its question/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/upload the page and its images together in one \.zip/)
+    ).toBeInTheDocument();
+  });
+
+  it('fires the usage event with the plain_text_fallback reason', () => {
+    render(
+      <ImageDropNotice count={2} source="plainText" surface="downloads_row" />
+    );
+    expect(track).toHaveBeenCalledWith('image_drop_notice_shown', {
+      dropped_count: 2,
+      source: 'plainText',
+      expired_count: 0,
+      surface: 'downloads_row',
+      reason: 'plain_text_fallback',
+    });
+  });
 });

@@ -340,7 +340,18 @@ function sumMissingLocalImages(
   return packages.reduce((sum, p) => sum + (p.missingLocalImageCount ?? 0), 0);
 }
 
+function sumPlainTextFallbackImages(
+  packages: { plainTextFallbackImageCount?: number }[]
+): number {
+  return packages.reduce(
+    (sum, p) => sum + (p.plainTextFallbackImageCount ?? 0),
+    0
+  );
+}
+
 export const NOTION_HTML_NO_FOLDER_REASON = 'notion_html_no_folder';
+
+export const PLAIN_TEXT_FALLBACK_REASON = 'plain_text_fallback';
 
 function isHtmlOnlyUpload(files: UploadedFile[]): boolean {
   return files.length > 0 && files.every((f) => isHTMLFile(f.originalname));
@@ -348,14 +359,23 @@ function isHtmlOnlyUpload(files: UploadedFile[]): boolean {
 
 // A relative-path image drop in an HTML-only upload means the user dropped the
 // Notion export's .html page without its image folder — the fix is to upload
-// the whole .zip, not to edit the file. A remote/expired drop keeps the generic
-// guidance, so it is deliberately excluded here.
+// the whole .zip, not to edit the file. The plain-text fallback is a different
+// cause: it reads a file with no recognised card structure as text, which keeps
+// no images at all, so re-uploading the same file drops them again. It gets its
+// own reason and honest copy. A remote/expired drop keeps the generic guidance,
+// so it is deliberately excluded here.
 function resolveImageDropReason(
-  packages: { missingLocalImageCount?: number }[],
+  packages: {
+    missingLocalImageCount?: number;
+    plainTextFallbackImageCount?: number;
+  }[],
   files: UploadedFile[]
 ): string | null {
   if (sumMissingLocalImages(packages) > 0 && isHtmlOnlyUpload(files)) {
     return NOTION_HTML_NO_FOLDER_REASON;
+  }
+  if (sumPlainTextFallbackImages(packages) > 0) {
+    return PLAIN_TEXT_FALLBACK_REASON;
   }
   return null;
 }

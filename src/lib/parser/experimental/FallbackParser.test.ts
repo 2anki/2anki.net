@@ -549,3 +549,58 @@ describe('FallbackParser TSV uploads', () => {
     expect(decks[0].cards[1].back).toBe('Goodbye');
   });
 });
+
+describe('FallbackParser dropped-image counting on flattened HTML', () => {
+  const htmlWithImages = [
+    '<html><head><title>Deck</title></head><body>',
+    '<ul><li>Capital of France - Paris</li><li>Largest planet - Jupiter</li></ul>',
+    '<img src="a.png" /><img src="b.png" />',
+    '</body></html>',
+  ].join('\n');
+
+  it('reports every image the plain-text flatten drops from an HTML upload', () => {
+    const parser = new FallbackParser([
+      { name: 'deck.html', contents: Buffer.from(htmlWithImages) },
+    ]);
+    const decks = parser.run({ embedImages: true } as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards.length).toBeGreaterThan(0);
+    expect(parser.droppedImageCount).toBe(2);
+  });
+
+  it('counts no dropped images when embed-images is off', () => {
+    const parser = new FallbackParser([
+      { name: 'deck.html', contents: Buffer.from(htmlWithImages) },
+    ]);
+    parser.run({ embedImages: false } as any);
+    expect(parser.droppedImageCount).toBe(0);
+  });
+
+  it('does not count images from an HTML file that produced no cards', () => {
+    const prose =
+      '<html><body><p>Just prose, no pairs.</p><img src="a.png" /></body></html>';
+    const parser = new FallbackParser([
+      { name: 'deck.html', contents: Buffer.from(prose) },
+    ]);
+    const decks = parser.run({ embedImages: true } as any);
+    expect(decks.every((deck) => deck.cards.length === 0)).toBe(true);
+    expect(parser.droppedImageCount).toBe(0);
+  });
+
+  it('excludes page icons, cover images, and empty-src images from the count', () => {
+    const html = [
+      '<html><head><title>Deck</title></head><body>',
+      '<ul><li>Capital of France - Paris</li></ul>',
+      '<img class="icon" src="icon.png" />',
+      '<img class="page-cover-image" src="cover.png" />',
+      '<img src="" />',
+      '<img src="diagram.png" />',
+      '</body></html>',
+    ].join('\n');
+    const parser = new FallbackParser([
+      { name: 'deck.html', contents: Buffer.from(html) },
+    ]);
+    parser.run({ embedImages: true } as any);
+    expect(parser.droppedImageCount).toBe(1);
+  });
+});

@@ -33,6 +33,8 @@ function isStructuredFlashcard(card: Flashcard): boolean {
 }
 
 class FallbackParser {
+  droppedImageCount = 0;
+
   constructor(private readonly files: File[]) {}
 
   htmlToTextWithNewlines(html: string) {
@@ -410,6 +412,19 @@ class FallbackParser {
       : derived;
   }
 
+  private countHtmlImages(html: string): number {
+    const $ = cheerio.load(html);
+    return $('img[src]').filter((_i, element) => {
+      const image = $(element);
+      const src = image.attr('src') ?? '';
+      return (
+        src.trim() !== '' &&
+        !image.hasClass('icon') &&
+        !image.hasClass('page-cover-image')
+      );
+    }).length;
+  }
+
   run(settings: CardOption) {
     const decks = [];
 
@@ -421,9 +436,13 @@ class FallbackParser {
 
       let result: { cards: Note[]; deckName: string; clean?: boolean } | null =
         null;
+      let imagesDroppedByFlatten = 0;
 
       if (isHTMLFile(file.name)) {
         result = this.parseHTMLFile(contents, file.name);
+        if (settings.embedImages) {
+          imagesDroppedByFlatten = this.countHtmlImages(contents);
+        }
       } else if (isMarkdownFile(file.name) || isPlainText(file.name)) {
         result = this.parseTextFile(contents, file.name);
       } else if (isCSVFile(file.name)) {
@@ -435,20 +454,18 @@ class FallbackParser {
       }
 
       const clean = result.clean !== false;
+      const cards = clean ? Deck.CleanCards(result.cards) : result.cards;
+
+      if (cards.length > 0) {
+        this.droppedImageCount += imagesDroppedByFlatten;
+      }
 
       // An explicit deck name wins over the filename, matching DeckParser and
       // making the `applied.deckName` the API reports back actually true.
       const deckName = this.resolveDeckName(settings, result.deckName);
 
       decks.push(
-        new Deck(
-          deckName,
-          clean ? Deck.CleanCards(result.cards) : result.cards,
-          '',
-          '',
-          get16DigitRandomId(),
-          settings
-        )
+        new Deck(deckName, cards, '', '', get16DigitRandomId(), settings)
       );
     }
     return decks;

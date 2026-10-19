@@ -2243,6 +2243,52 @@ describe('local and markdown images that cannot be resolved from the export', ()
   });
 });
 
+describe('plain-text fallback reports dropped images', () => {
+  test('counts images an HTML upload loses when it falls back to plain text', async () => {
+    const html = `<html><head><title>Deck</title></head><body>
+<ul><li>Capital of France - Paris</li><li>Largest planet - Jupiter</li></ul>
+<img src="a.png" /><img src="b.png" /><img src="c.png" />
+</body></html>`;
+    const ws = new Workspace(true, 'fs');
+    const parser = new DeckParser({
+      name: 'deck.html',
+      settings: new CardOption({ cherry: 'false' }),
+      files: [{ name: 'deck.html', contents: html }],
+      noLimits: true,
+      workspace: ws,
+    });
+
+    const pending = parser.tryExperimental();
+    expect(parser.payload[0].cards.length).toBeGreaterThan(0);
+    expect(parser.droppedImageCount).toBe(3);
+    expect(parser.plainTextFallbackImageCount).toBe(3);
+    await pending.catch(() => undefined);
+  });
+
+  test('a nested-bullet markdown upload reports a missing local image as dropped', async () => {
+    const md = [
+      '- What is shown here?',
+      '    The answer ![diagram](missing.png)',
+    ].join('\n');
+    const ws = new Workspace(true, 'fs');
+    const parser = new DeckParser({
+      name: 'notes.md',
+      settings: new CardOption({
+        cherry: 'false',
+        'markdown-nested-bullet-points': 'true',
+      }),
+      files: [{ name: 'notes.md', contents: md }],
+      noLimits: true,
+      workspace: ws,
+    });
+
+    await parser.writeDeckInfo(ws);
+
+    expect(parser.droppedImageCount).toBe(1);
+    expect(parser.missingLocalImageCount).toBe(1);
+  });
+});
+
 describe('Notion export image with host glued to relative path', () => {
   function buildParser(imgSrc: string) {
     const html = `<html><head><title>Deck</title></head><body><article>

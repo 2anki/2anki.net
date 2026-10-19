@@ -196,6 +196,8 @@ export class DeckParser {
 
   missingLocalImageCount: number;
 
+  plainTextFallbackImageCount: number;
+
   emptyBackCount: number;
 
   // Basic-mode cards that carry {{cN::…}} markup; Anki renders the braces
@@ -260,6 +262,7 @@ export class DeckParser {
     this.droppedAudioCount = 0;
     this.expiredNotionImageCount = 0;
     this.missingLocalImageCount = 0;
+    this.plainTextFallbackImageCount = 0;
     this.emptyBackCount = 0;
     this.strayClozeCount = 0;
     this.recognizedCardStructureCount = 0;
@@ -1847,6 +1850,8 @@ export class DeckParser {
     const fallback = new FallbackParser(this.files);
 
     this.payload = fallback.run(this.settings);
+    this.droppedImageCount += fallback.droppedImageCount;
+    this.plainTextFallbackImageCount += fallback.droppedImageCount;
     if (
       !this.payload ||
       this.payload.length === 0 ||

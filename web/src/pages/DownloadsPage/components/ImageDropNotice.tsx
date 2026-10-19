@@ -7,9 +7,16 @@ type ImageDropSource =
   | 'notionAsset'
   | 'upload'
   | 'pdf'
-  | 'notionHtml';
+  | 'notionHtml'
+  | 'plainText';
 
 type ImageDropSurface = 'upload_form' | 'downloads_row';
+
+function reasonForImageDropSource(source: ImageDropSource): string | null {
+  if (source === 'notionHtml') return 'notion_html_no_folder';
+  if (source === 'plainText') return 'plain_text_fallback';
+  return null;
+}
 
 interface ImageDropNoticeProps {
   count: number;
@@ -25,6 +32,7 @@ function resolveImageDropKey(
 ): string {
   if (source === 'notionHtml') return 'imageDrop.notionHtmlUpload';
   if (source === 'notionAsset') return 'imageDrop.notionAsset';
+  if (source === 'plainText') return 'imageDrop.plainTextFallback';
   if (source === 'pdf') return 'imageDrop.pdf';
   if (source === 'upload') {
     return multipleDecks
@@ -50,7 +58,7 @@ export function ImageDropNotice({
       source,
       expired_count: expired,
       surface,
-      reason: source === 'notionHtml' ? 'notion_html_no_folder' : null,
+      reason: reasonForImageDropSource(source),
     });
   }, [count, source, expired, surface]);
 

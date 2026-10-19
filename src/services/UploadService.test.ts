@@ -1703,6 +1703,61 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('flags plain_text_fallback and persists it when the plain-text fallback drops images', async () => {
+    const update = vi.fn().mockResolvedValue([] as Uploads[]);
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 5,
+              droppedImageCount: 2,
+              missingLocalImageCount: 0,
+              plainTextFallbackImageCount: 2,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      { ...buildRepository(), update },
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'notes.html',
+          mimetype: 'text/html',
+          size: 1024,
+          path: '/tmp/notes.html',
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(res.set).toHaveBeenCalledWith(
+      'X-Image-Drop-Reason',
+      'plain_text_fallback'
+    );
+    expect(update).toHaveBeenCalledWith(
+      42,
+      'deck',
+      expect.any(String),
+      expect.any(Number),
+      null,
+      { droppedImageCount: 2, imageDropReason: 'plain_text_fallback' }
+    );
+  });
+
   it('keeps the generic guidance when a dropped image on an HTML upload is a remote drop, not a missing local path', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {
