@@ -12,9 +12,9 @@ describe('withTextColor', () => {
     expect(withTextColor(baseStyle, undefined)).toBe(baseStyle);
   });
 
-  it('appends a container-scoped color rule for a valid swatch hex', () => {
+  it('appends an important container-scoped color rule for a valid swatch hex', () => {
     expect(withTextColor(baseStyle, '#1f6feb')).toBe(
-      `${baseStyle}\n.card { color:#1f6feb }`
+      `${baseStyle}\n.card { color:#1f6feb !important }`
     );
   });
 
