@@ -12,16 +12,23 @@ describe('withTextAlign', () => {
     expect(withTextAlign(baseStyle, undefined)).toBe(baseStyle);
   });
 
-  it('appends a universal text-align rule for left', () => {
+  const wrapperSelectors =
+    '.card, .card .front-text-pre, .card .front-text-post, .card .back-text, .card .extra';
+
+  it('appends a text-align rule targeting the card and its text wrappers for left', () => {
     expect(withTextAlign(baseStyle, 'left')).toBe(
-      `${baseStyle}\n* { text-align:left }`
+      `${baseStyle}\n${wrapperSelectors} { text-align:left }`
     );
   });
 
-  it('appends a universal text-align rule for right', () => {
+  it('appends a text-align rule targeting the card and its text wrappers for right', () => {
     expect(withTextAlign(baseStyle, 'right')).toBe(
-      `${baseStyle}\n* { text-align:right }`
+      `${baseStyle}\n${wrapperSelectors} { text-align:right }`
     );
+  });
+
+  it('scopes the alignment to the card container, not every element', () => {
+    expect(withTextAlign(baseStyle, 'center')).not.toContain('* { text-align');
   });
 
   it('rejects a CSS-injection payload and emits no alignment rule', () => {

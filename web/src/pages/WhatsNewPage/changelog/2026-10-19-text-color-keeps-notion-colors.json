@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-text-color-keeps-notion-colors",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Card text color keeps your Notion colors on bold, italic, and linked text, and text alignment reaches the card"
+}
