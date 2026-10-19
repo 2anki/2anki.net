@@ -31,7 +31,6 @@ export interface ConversionReportInput {
   blocksSeen: number;
   cardsCreated: number;
   emptyBackCount: number;
-  droppedAssetCount?: number;
   droppedImageAssetCount?: number;
   droppedAudioAssetCount?: number;
   droppedFileAssetCount?: number;
@@ -79,12 +78,6 @@ export function buildConversionReport(
     reason_code: 'empty_back',
     human_reason: 'Cards whose back came out empty',
     count: input.emptyBackCount,
-  });
-  push({
-    stage: 'media',
-    reason_code: 'assets_dropped',
-    human_reason: 'Images or files that could not be included',
-    count: input.droppedAssetCount ?? 0,
   });
   push({
     stage: 'media',

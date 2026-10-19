@@ -7,7 +7,6 @@ const baseInput = {
   blocksSeen: 52,
   cardsCreated: 34,
   emptyBackCount: 0,
-  droppedAssetCount: 0,
   forbiddenBlockCount: 0,
 };
 
@@ -25,7 +24,7 @@ describe('buildConversionReport', () => {
     const report = buildConversionReport({
       ...baseInput,
       emptyBackCount: 2,
-      droppedAssetCount: 1,
+      droppedImageAssetCount: 1,
       forbiddenBlockCount: 3,
       truncation: { blocksConverted: 40, subDeckRulesSkipped: false },
       unsupportedBlockTypeCounts: new Map([
@@ -48,7 +47,7 @@ describe('buildConversionReport', () => {
       }),
       expect.objectContaining({
         stage: 'media',
-        reason_code: 'assets_dropped',
+        reason_code: 'assets_dropped:image',
         count: 1,
       }),
       expect.objectContaining({
