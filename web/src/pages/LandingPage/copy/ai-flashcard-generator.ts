@@ -11,6 +11,7 @@ const aiFlashcardGeneratorCopy: LandingCopy = {
     { label: 'See plans and AI credits', href: '/pricing' },
   ],
   pathname: '/ai-flashcard-generator',
+  homeHero: true,
   title: 'AI flashcard generator for Anki: your notes in, cards out | 2anki',
   description:
     'Upload a PDF or your notes and Claude writes Anki cards from them. AI cards come with any paid plan, starting with a Day Pass. Converting without AI is free up to 100 cards a month.',

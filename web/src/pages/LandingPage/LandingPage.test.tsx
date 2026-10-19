@@ -321,6 +321,32 @@ describe('LandingPage', () => {
   });
 });
 
+describe('LandingPage home hero', () => {
+  it('gives the AI page the mascot, a sample deck and the trust note', () => {
+    const { container } = renderLandingPage(
+      <LandingPage copy={aiFlashcardGeneratorCopy} setErrorMessage={vi.fn()} />
+    );
+    expect(
+      container.querySelector('img[src="/mascot/Notion 1.png"]')
+    ).not.toBeNull();
+    expect(screen.getByText(/Try a sample/)).toBeInTheDocument();
+    expect(screen.getByText(/Independent since 2020/)).toBeInTheDocument();
+  });
+
+  it('keeps the plain hero on pages without it', () => {
+    const { container } = renderLandingPage(
+      <LandingPage copy={notionCopy} setErrorMessage={vi.fn()} />
+    );
+    expect(
+      container.querySelector('img[src="/mascot/Notion 1.png"]')
+    ).toBeNull();
+    expect(screen.queryByText(/Try a sample/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Independent since 2020/)
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('LandingPage funnel instrumentation', () => {
   it.each([
     [notionCopy, notionCopy.pathname],

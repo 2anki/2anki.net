@@ -9,6 +9,7 @@ import { landingViewProps } from '../../lib/adClick';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
+import { TrustNote } from '../../components/TrustNote/TrustNote';
 import styles from './LandingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import type { LandingCopy } from './types';
@@ -37,6 +38,13 @@ const STEP_FALLBACK: Record<
 
 const FORMATS = DEFAULT_LANDING_FORMATS;
 
+function heroClassName(withTool: boolean, homeHero: boolean): string {
+  const classes = [styles.hero];
+  if (withTool) classes.push(styles.heroWithTool);
+  if (homeHero) classes.push(styles.heroCentered);
+  return classes.join(' ');
+}
+
 function pageKeyFromPathname(pathname: string): string {
   return pathname.replace(/^\//, '').replace(/\//g, '-');
 }
@@ -48,6 +56,7 @@ interface HeroActionProps {
   setErrorMessage: ErrorHandlerType;
   registerHref: string;
   dayPassPrice: string;
+  sample: boolean;
   t: TFunction<'landing'>;
 }
 
@@ -58,6 +67,7 @@ function renderHeroAction({
   setErrorMessage,
   registerHref,
   dayPassPrice,
+  sample,
   t,
 }: Readonly<HeroActionProps>) {
   if (heroSlot != null) {
@@ -80,7 +90,7 @@ function renderHeroAction({
   return (
     <>
       <div className={styles.uploadWrapper}>
-        <UploadForm setErrorMessage={setErrorMessage} />
+        <UploadForm setErrorMessage={setErrorMessage} sample={sample} />
       </div>
       <p className={styles.secondaryLink}>
         {t('hero.orPrefix', { defaultValue: 'or ' })}
@@ -143,13 +153,12 @@ function LandingPage({
 
       <section
         id="upload"
-        className={
-          heroSlot == null
-            ? styles.hero
-            : `${styles.hero} ${styles.heroWithTool}`
-        }
+        className={heroClassName(heroSlot != null, copy.homeHero === true)}
       >
         <div className={styles.heroInner}>
+          {copy.homeHero === true && (
+            <img src="/mascot/Notion 1.png" alt="" className={styles.mascot} />
+          )}
           <h1 className={styles.heroTitle}>
             {t(`pages.${pageKey}.h1`, { defaultValue: copy.h1 })}
           </h1>
@@ -181,8 +190,10 @@ function LandingPage({
             setErrorMessage,
             registerHref,
             dayPassPrice: passPrices['24h'],
+            sample: copy.homeHero === true,
             t,
           })}
+          {copy.homeHero === true && <TrustNote />}
         </div>
       </section>
 
