@@ -348,6 +348,17 @@
     "restartAnkiError": "Impossible de redémarrer Anki. Réessaie, ou écris à support@2anki.net.",
     "signInNext": "Se connecter à AnkiWeb (suivant)",
     "takeoverTitle": "Configure Anki dans ton navigateur.",
-    "takeoverSubtitle": "Environ une minute, deux étapes."
+    "takeoverSubtitle": "Environ une minute, deux étapes.",
+    "activatingTitle": "Activation d'Auto Sync.",
+    "activatingHint": "Cela prend quelques secondes.",
+    "checkoutStuckTitle": "Auto Sync prend plus de temps que d'habitude.",
+    "checkoutStuckHint": "Ton abonnement est confirmé. Si Auto Sync n'est pas prêt dans quelques minutes, écris à support@2anki.net."
+  },
+  "plan": {
+    "title": "Auto Sync est un forfait à part",
+    "subtitle": "Ton forfait ne l'inclut pas.",
+    "what": "Auto Sync fait tourner un Anki privé pour toi, vérifie Notion toutes les 5 minutes et garde tes cartes et AnkiWeb à jour.",
+    "seePricing": "Voir les tarifs d'Auto Sync",
+    "appleSupport": "Auto Sync n'est pas disponible via l'App Store. Écris à support@2anki.net pour l'obtenir."
   }
 }

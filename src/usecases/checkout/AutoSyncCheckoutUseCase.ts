@@ -177,7 +177,7 @@ export class AutoSyncCheckoutUseCase {
         },
         after_completion: {
           type: 'redirect',
-          redirect: { return_url: `${appUrl}/ankify/setup` },
+          redirect: { return_url: `${appUrl}/ankify/setup?checkout=success` },
         },
       },
     });

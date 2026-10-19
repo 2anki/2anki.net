@@ -80,6 +80,7 @@ export const KNOWN_EVENTS = new Set([
   'ankify_review_completed',
   'ankify_review_session_exited',
   'ankify_decklist_sorted',
+  'ankify_plan_required_viewed',
   'image_drop_notice_shown',
   'empty_back_notice_shown',
   'color_flatten_notice_shown',

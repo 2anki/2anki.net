@@ -358,6 +358,17 @@
     "restartAnkiError": "Nie udało się ponownie uruchomić Anki. Spróbuj ponownie albo napisz na support@2anki.net.",
     "signInNext": "Zaloguj się do AnkiWeb (dalej)",
     "takeoverTitle": "Skonfiguruj Anki w przeglądarce.",
-    "takeoverSubtitle": "Około minuty, dwa kroki."
+    "takeoverSubtitle": "Około minuty, dwa kroki.",
+    "activatingTitle": "Aktywowanie Auto Sync.",
+    "activatingHint": "To zajmuje kilka sekund.",
+    "checkoutStuckTitle": "Auto Sync trwa dłużej niż zwykle.",
+    "checkoutStuckHint": "Twoja subskrypcja jest potwierdzona. Jeśli Auto Sync nie będzie gotowy za kilka minut, napisz na support@2anki.net."
+  },
+  "plan": {
+    "title": "Auto Sync to osobny plan",
+    "subtitle": "Twój plan go nie obejmuje.",
+    "what": "Auto Sync uruchamia dla Ciebie prywatne Anki, sprawdza Notion co 5 minut i utrzymuje Twoje karty oraz AnkiWeb w aktualnym stanie.",
+    "seePricing": "Zobacz cennik Auto Sync",
+    "appleSupport": "Auto Sync nie jest dostępny przez App Store. Napisz na support@2anki.net, aby go uzyskać."
   }
 }

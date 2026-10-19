@@ -13,6 +13,7 @@ import WorkspaceBar from './components/WorkspaceBar';
 import ConflictsModal from './components/ConflictsModal';
 import StudyStatsSection from './stats/StudyStatsSection';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { isForbidden } from '../../lib/backend/isForbidden';
 
 const QUERY_KEY = ['ankify-clients'];
 const ANKI_WEB_ACK_KEY = 'ankify_anki_web_acknowledged';
@@ -66,6 +67,7 @@ export default function AnkifyPage({ backend }: Readonly<AnkifyPageProps>) {
   const { data, isLoading } = useQuery<AnkifyClient[]>({
     queryKey: QUERY_KEY,
     queryFn: () => api.listAnkifyClients(),
+    retry: (failureCount, error) => !isForbidden(error) && failureCount < 3,
   });
 
   const conflicts = useQuery({

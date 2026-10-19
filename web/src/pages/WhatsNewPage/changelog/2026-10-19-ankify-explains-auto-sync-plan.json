@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-ankify-explains-auto-sync-plan",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Opening Ankify without Auto Sync now explains the plan instead of a start error"
+}
