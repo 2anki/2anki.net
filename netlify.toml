@@ -2,16 +2,13 @@
   publish = "deploy/netlify-redirect"
   command = "echo 'redirect-only site; no build'"
 
-# Production stays a redirect-only mirror — bounce everything to the real app.
-[[context.production.redirects]]
-  from = "/*"
-  to = "https://2anki.net/:splat"
-  status = 301
-  force = true
+# Production stays a redirect-only mirror. Netlify does not apply redirects
+# scoped to a deploy context, so the rule that bounces every path to the real
+# app lives in deploy/netlify-redirect/_redirects, which only the production
+# publish dir contains.
 
 # Deploy previews and branch deploys build and serve the real web app, so the
-# frontend can be tested on a Netlify URL. Production is unaffected: its publish
-# dir still meta-refreshes to 2anki.net even without the redirect rule above.
+# frontend can be tested on a Netlify URL.
 [context.deploy-preview]
   command = "corepack enable && pnpm install --frozen-lockfile && pnpm --filter 2anki-web build"
   publish = "web/build"
