@@ -9,6 +9,7 @@ import Workspace from '../../../lib/parser/WorkSpace';
 import { setupTests } from '../../../test/configure-jest';
 import MockNotionAPI from '../_mock/MockNotionAPI';
 import BlockHandler from '../BlockHandler/BlockHandler';
+import getListItems from '../helpers/getListItems';
 import { BlockCallout } from './BlockCallout';
 
 beforeEach(() => setupTests());
@@ -22,102 +23,130 @@ function makeHandler(options: Record<string, string>): BlockHandler {
   );
 }
 
+function textOf(content: string) {
+  return [
+    {
+      type: 'text',
+      text: { content, link: null },
+      annotations: {
+        bold: false,
+        italic: false,
+        strikethrough: false,
+        underline: false,
+        code: false,
+        color: 'default',
+      },
+      plain_text: content,
+      href: null,
+    },
+  ];
+}
+
+const blockBase = {
+  object: 'block',
+  parent: { type: 'page_id', page_id: 'page-1' },
+  created_time: '2026-06-22T07:46:00.000Z',
+  last_edited_time: '2026-06-22T07:46:00.000Z',
+  created_by: { object: 'user', id: 'user-1' },
+  last_edited_by: { object: 'user', id: 'user-1' },
+  archived: false,
+  in_trash: false,
+};
+
 function makeCallout(
+  id: string,
   ownText: string,
   hasChildren: boolean
 ): CalloutBlockObjectResponse {
   return {
-    object: 'block',
-    id: 'callout-1',
+    ...blockBase,
+    id,
     type: 'callout',
     callout: {
-      rich_text: [
-        {
-          type: 'text',
-          text: { content: ownText, link: null },
-          annotations: {
-            bold: false,
-            italic: false,
-            strikethrough: false,
-            underline: false,
-            code: false,
-            color: 'default',
-          },
-          plain_text: ownText,
-          href: null,
-        },
-      ],
+      rich_text: textOf(ownText),
       icon: { type: 'emoji', emoji: '💡' },
       color: 'default',
     },
-    parent: { type: 'page_id', page_id: 'page-1' },
-    created_time: '2026-06-22T07:46:00.000Z',
-    last_edited_time: '2026-06-22T07:46:00.000Z',
-    created_by: { object: 'user', id: 'user-1' },
-    last_edited_by: { object: 'user', id: 'user-1' },
     has_children: hasChildren,
-    archived: false,
-    in_trash: false,
   } as unknown as CalloutBlockObjectResponse;
 }
 
-function makeParagraphChild(content: string): BlockObjectResponse {
+function makeParagraph(id: string, content: string): BlockObjectResponse {
   return {
-    object: 'block',
-    id: `para-${content}`,
+    ...blockBase,
+    id,
     type: 'paragraph',
-    paragraph: {
-      rich_text: [
-        {
-          type: 'text',
-          text: { content, link: null },
-          annotations: {
-            bold: false,
-            italic: false,
-            strikethrough: false,
-            underline: false,
-            code: false,
-            color: 'default',
-          },
-          plain_text: content,
-          href: null,
-        },
-      ],
-      color: 'default',
-    },
-    parent: { type: 'block_id', block_id: 'callout-1' },
-    created_time: '2026-06-22T07:46:00.000Z',
-    last_edited_time: '2026-06-22T07:46:00.000Z',
-    created_by: { object: 'user', id: 'user-1' },
-    last_edited_by: { object: 'user', id: 'user-1' },
+    paragraph: { rich_text: textOf(content), color: 'default' },
     has_children: false,
-    archived: false,
-    in_trash: false,
   } as unknown as BlockObjectResponse;
+}
+
+function makeDivider(id: string): BlockObjectResponse {
+  return {
+    ...blockBase,
+    id,
+    type: 'divider',
+    divider: {},
+    has_children: false,
+  } as unknown as BlockObjectResponse;
+}
+
+function makeImage(id: string): BlockObjectResponse {
+  return {
+    ...blockBase,
+    id,
+    type: 'image',
+    image: {
+      type: 'external',
+      external: { url: 'https://example.com/figure.png' },
+      caption: [],
+    },
+    has_children: false,
+  } as unknown as BlockObjectResponse;
+}
+
+function makeBullet(id: string): BlockObjectResponse {
+  return {
+    ...blockBase,
+    id,
+    type: 'bulleted_list_item',
+    bulleted_list_item: { rich_text: textOf(id), color: 'default' },
+    has_children: true,
+  } as unknown as BlockObjectResponse;
+}
+
+function listResponse(results: BlockObjectResponse[]) {
+  return {
+    object: 'list',
+    results,
+    next_cursor: null,
+    has_more: false,
+    type: 'block',
+    block: {},
+  } as never;
 }
 
 function stubChildren(
   handler: BlockHandler,
-  childrenById: Record<string, BlockObjectResponse[]>
+  childrenById: Record<string, BlockObjectResponse[]>,
+  delayById: Record<string, number> = {}
 ) {
   vi.spyOn(handler.api, 'getBlocks').mockImplementation(
-    async ({ id }: { id: string }) =>
-      ({
-        object: 'list',
-        results: childrenById[id] ?? [],
-        next_cursor: null,
-        has_more: false,
-        type: 'block',
-        block: {},
-      }) as never
+    async ({ id }: { id: string }) => {
+      const delay = delayById[id] ?? 0;
+      if (delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+      return listResponse(childrenById[id] ?? []);
+    }
   );
 }
 
 describe('BlockCallout plain-text back', () => {
   it('keeps the callout children in the plain-text back', async () => {
     const handler = makeHandler({ paragraph: 'true' });
-    const callout = makeCallout('Remember', true);
-    stubChildren(handler, { 'callout-1': [makeParagraphChild('Key fact')] });
+    const callout = makeCallout('callout-1', 'Remember', true);
+    stubChildren(handler, { 'callout-1': [makeParagraph('p1', 'Key fact')] });
 
     const back = await BlockCallout(callout, handler);
 
@@ -126,11 +155,11 @@ describe('BlockCallout plain-text back', () => {
 
   it('keeps each callout child as its own line, not glued together', async () => {
     const handler = makeHandler({ paragraph: 'true' });
-    const callout = makeCallout('Remember', true);
+    const callout = makeCallout('callout-1', 'Remember', true);
     stubChildren(handler, {
       'callout-1': [
-        makeParagraphChild('First point'),
-        makeParagraphChild('Second point'),
+        makeParagraph('p1', 'First point'),
+        makeParagraph('p2', 'Second point'),
       ],
     });
 
@@ -141,7 +170,7 @@ describe('BlockCallout plain-text back', () => {
 
   it('returns the callout text alone when it has no children', async () => {
     const handler = makeHandler({ paragraph: 'true' });
-    const callout = makeCallout('Remember', false);
+    const callout = makeCallout('callout-1', 'Remember', false);
     stubChildren(handler, {});
 
     const back = await BlockCallout(callout, handler);
@@ -151,7 +180,7 @@ describe('BlockCallout plain-text back', () => {
 
   it('keeps text that looks like HTML escaped in the plain-text back', async () => {
     const handler = makeHandler({ paragraph: 'true' });
-    const callout = makeCallout('Keep <b>this</b>', false);
+    const callout = makeCallout('callout-1', 'Keep <b>this</b>', false);
     stubChildren(handler, {});
 
     const back = await BlockCallout(callout, handler);
@@ -160,9 +189,26 @@ describe('BlockCallout plain-text back', () => {
     expect(back).not.toContain('<b>');
   });
 
+  it('strips markup from a child type without a plain-text branch', async () => {
+    const handler = makeHandler({ paragraph: 'true' });
+    const callout = makeCallout('callout-1', 'Remember', true);
+    stubChildren(handler, {
+      'callout-1': [
+        makeParagraph('p1', 'Alpha'),
+        makeDivider('divider-1'),
+        makeParagraph('p2', 'Beta'),
+      ],
+    });
+
+    const back = await BlockCallout(callout, handler);
+
+    expect(back).toBe('Remember<br>Alpha<br>Beta');
+    expect(back.replace(/<br>/g, '')).not.toContain('<');
+  });
+
   it('does not append "null" when the children fetch fails', async () => {
     const handler = makeHandler({ paragraph: 'true' });
-    const callout = makeCallout('Remember', true);
+    const callout = makeCallout('callout-1', 'Remember', true);
     vi.spyOn(handler.api, 'getBlocks').mockRejectedValue(
       new Error('Notion is unreachable')
     );
@@ -173,10 +219,71 @@ describe('BlockCallout plain-text back', () => {
     expect(back).not.toContain('null');
   });
 
+  it('never embeds media for callout children in plain-text mode', async () => {
+    const handler = makeHandler({ paragraph: 'true' });
+    const callout = makeCallout('callout-1', 'Remember', true);
+    stubChildren(handler, { 'callout-1': [makeImage('image-1')] });
+    const embedImage = vi.spyOn(handler, 'embedImage');
+
+    const back = await BlockCallout(callout, handler);
+
+    expect(embedImage).not.toHaveBeenCalled();
+    expect(back).toBe('Remember');
+  });
+
+  it('leaves the shared handler settings and embed methods unchanged', async () => {
+    const handler = makeHandler({ paragraph: 'true' });
+    const callout = makeCallout('callout-1', 'Remember', true);
+    stubChildren(handler, { 'callout-1': [makeParagraph('p1', 'Key fact')] });
+    const settings = handler.settings;
+    const embedImage = handler.embedImage;
+    const embedAudioFile = handler.embedAudioFile;
+    const embedFile = handler.embedFile;
+
+    await BlockCallout(callout, handler);
+
+    expect(handler.settings).toBe(settings);
+    expect(handler.settings.isTextOnlyBack).toBe(true);
+    expect(handler.embedImage).toBe(embedImage);
+    expect(handler.embedAudioFile).toBe(embedAudioFile);
+    expect(handler.embedFile).toBe(embedFile);
+  });
+
+  it('keeps the handler intact when two list items render callouts out of order', async () => {
+    const handler = makeHandler({ paragraph: 'true' });
+    const bulletA = makeBullet('bullet-a');
+    const bulletB = makeBullet('bullet-b');
+    stubChildren(
+      handler,
+      {
+        'bullet-a': [makeCallout('callout-a', 'A note', true)],
+        'bullet-b': [makeCallout('callout-b', 'B note', true)],
+        'callout-a': [makeParagraph('pa', 'Answer A')],
+        'callout-b': [makeParagraph('pb', 'Answer B')],
+      },
+      { 'callout-a': 20 }
+    );
+
+    const items = await getListItems(
+      listResponse([bulletA, bulletB]),
+      handler,
+      'bulleted_list_item',
+      bulletA
+    );
+    const html = items
+      .filter(Boolean)
+      .map((node) => String((node as { props: { id: string } }).props.id))
+      .join(',');
+
+    expect(handler.settings.isTextOnlyBack).toBe(true);
+    expect(html).toContain('bullet-a');
+    expect(html).toContain('bullet-b');
+  });
+
   it('renders the full figure with children when the option is off', async () => {
     const handler = makeHandler({});
-    const callout = makeCallout('Remember', true);
-    stubChildren(handler, { 'callout-1': [makeParagraphChild('Key fact')] });
+    const callout = makeCallout('callout-1', 'Remember', true);
+    stubChildren(handler, { 'callout-1': [makeParagraph('p1', 'Key fact')] });
 
     const back = await BlockCallout(callout, handler);
 

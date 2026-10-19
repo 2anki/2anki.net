@@ -4,11 +4,12 @@ import {
 } from '@notionhq/client/build/src/api-endpoints';
 import ReactDOMServer from 'react-dom/server';
 import type { IBlockRenderer } from '../BlockHandler/types';
-import type CardOption from '../../../lib/parser/Settings/CardOption';
 import getChildren from '../helpers/getChildren';
 import { toPlainTextBack } from '../../../lib/parser/toPlainTextBack';
 import { styleWithColors } from '../NotionColors';
 import HandleBlockAnnotations from './HandleBlockAnnotations';
+
+const dropMedia = async (): Promise<string> => '';
 
 const renderOwnText = (
   richText: RichTextItemResponse[],
@@ -33,24 +34,18 @@ const renderChildrenAsHtmlWithoutMedia = async (
   if (!block.has_children) {
     return '';
   }
-  const restore = {
-    settings: handler.settings,
-    embedImage: handler.embedImage,
-    embedAudioFile: handler.embedAudioFile,
-    embedFile: handler.embedFile,
-  };
-  const dropMedia = async () => '';
-  handler.settings = Object.create(handler.settings, {
-    isTextOnlyBack: { value: false, enumerable: true },
-  }) as CardOption;
-  handler.embedImage = dropMedia;
-  handler.embedAudioFile = dropMedia;
-  handler.embedFile = dropMedia;
-  try {
-    return (await handler.getBackSide(block, true)) ?? '';
-  } finally {
-    Object.assign(handler, restore);
-  }
+  const plainTextHandler = Object.create(handler, {
+    settings: {
+      value: Object.create(handler.settings, {
+        isTextOnlyBack: { value: false, enumerable: true },
+      }),
+      enumerable: true,
+    },
+    embedImage: { value: dropMedia, enumerable: true },
+    embedAudioFile: { value: dropMedia, enumerable: true },
+    embedFile: { value: dropMedia, enumerable: true },
+  }) as IBlockRenderer;
+  return (await plainTextHandler.getBackSide(block, true)) ?? '';
 };
 
 export const BlockCallout = async (
