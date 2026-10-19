@@ -42,6 +42,55 @@ function makePageApi(hasMore: boolean): NotionAPIWrapper {
   } as unknown as NotionAPIWrapper;
 }
 
+const defaultAnnotations = {
+  bold: false,
+  italic: false,
+  strikethrough: false,
+  underline: false,
+  code: false,
+  color: 'default' as const,
+};
+
+function richText(content: string) {
+  return {
+    type: 'text' as const,
+    text: { content, link: null },
+    annotations: { ...defaultAnnotations },
+    plain_text: content,
+    href: null,
+  };
+}
+
+function toggleBlock(id: string, summary: string) {
+  return {
+    object: 'block' as const,
+    id,
+    parent: { type: 'page_id' as const, page_id: 'page-1' },
+    created_time: '2026-06-01T00:00:00.000Z',
+    last_edited_time: '2026-06-01T00:00:00.000Z',
+    created_by: { object: 'user' as const, id: 'user-id' },
+    last_edited_by: { object: 'user' as const, id: 'user-id' },
+    has_children: true,
+    archived: false,
+    in_trash: false,
+    type: 'toggle' as const,
+    toggle: { rich_text: [richText(summary)], color: 'default' as const },
+  };
+}
+
+function makeChildApi(hasMore: boolean): NotionAPIWrapper {
+  return {
+    getBlocks: vi.fn().mockResolvedValue({
+      object: 'list',
+      type: 'block',
+      block: {},
+      results: [paragraphBlock('c1')],
+      next_cursor: hasMore ? 'cursor-child' : null,
+      has_more: hasMore,
+    }),
+  } as unknown as NotionAPIWrapper;
+}
+
 function makeHandler(api: NotionAPIWrapper, useAll: boolean): BlockHandler {
   const settings = new CardOption({});
   const exporter = new CustomExporter('', new Workspace(true, 'fs').location);
@@ -99,5 +148,94 @@ describe('BlockHandler truncation accumulation', () => {
     await convertPage(handler, new ParserRules());
 
     expect(handler.truncation).toBeUndefined();
+  });
+});
+
+describe('BlockHandler nested truncation', () => {
+  it('flags truncation when a toggle back-side fetch is cut short on the free plan', async () => {
+    const handler = makeHandler(makeChildApi(true), false);
+
+    await handler.getFlashcards(
+      new ParserRules(),
+      [toggleBlock('toggle-1', 'Front')],
+      [],
+      undefined
+    );
+
+    expect(handler.truncation).toEqual({
+      blocksConverted: 0,
+      subDeckRulesSkipped: false,
+    });
+  });
+
+  it('does not flag nested truncation on the paid path', async () => {
+    const handler = makeHandler(makeChildApi(true), true);
+
+    await handler.getFlashcards(
+      new ParserRules(),
+      [toggleBlock('toggle-1', 'Front')],
+      [],
+      undefined
+    );
+
+    expect(handler.truncation).toBeUndefined();
+  });
+
+  it('does not flag nested truncation when the back-side fits in the free window', async () => {
+    const handler = makeHandler(makeChildApi(false), false);
+
+    await handler.getFlashcards(
+      new ParserRules(),
+      [toggleBlock('toggle-1', 'Front')],
+      [],
+      undefined
+    );
+
+    expect(handler.truncation).toBeUndefined();
+  });
+
+  it('leaves the page block count unchanged when a nested fetch truncates after the page did', async () => {
+    const api = {
+      getPage: vi.fn().mockResolvedValue({
+        object: 'page',
+        id: 'page-1',
+        created_time: '2026-06-01T00:00:00.000Z',
+        last_edited_time: '2026-06-01T00:00:00.000Z',
+      }),
+      getPageTitle: vi.fn().mockResolvedValue('Long Page'),
+      getTopLevelTags: vi.fn().mockResolvedValue([]),
+      getBlocks: vi.fn().mockImplementation(({ id }: { id: string }) => {
+        if (id === 'page-1') {
+          return Promise.resolve({
+            object: 'list',
+            type: 'block',
+            block: {},
+            results: [
+              toggleBlock('toggle-1', 'Front'),
+              paragraphBlock('b2'),
+              paragraphBlock('b3'),
+            ],
+            next_cursor: 'cursor-page',
+            has_more: true,
+          });
+        }
+        return Promise.resolve({
+          object: 'list',
+          type: 'block',
+          block: {},
+          results: [paragraphBlock('c1')],
+          next_cursor: id === 'toggle-1' ? 'cursor-child' : null,
+          has_more: id === 'toggle-1',
+        });
+      }),
+    } as unknown as NotionAPIWrapper;
+    const handler = makeHandler(api, false);
+
+    await convertPage(handler, new ParserRules());
+
+    expect(handler.truncation).toEqual({
+      blocksConverted: 3,
+      subDeckRulesSkipped: false,
+    });
   });
 });

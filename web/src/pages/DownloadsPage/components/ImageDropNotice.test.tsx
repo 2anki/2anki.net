@@ -158,6 +158,37 @@ describe('ImageDropNotice', () => {
     });
   });
 
+  it('uses kind-neutral copy for the notionAsset source', () => {
+    render(<ImageDropNotice count={2} source="notionAsset" />);
+    expect(
+      screen.getByText(
+        /2 files or images couldn't be downloaded and aren't in this deck\./
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('uses singular kind-neutral copy for one dropped asset', () => {
+    render(<ImageDropNotice count={1} source="notionAsset" />);
+    expect(
+      screen.getByText(
+        /1 file or image couldn't be downloaded and isn't in this deck\./
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('fires the usage event with the notionAsset source and downloads_row surface', () => {
+    render(
+      <ImageDropNotice count={2} source="notionAsset" surface="downloads_row" />
+    );
+    expect(track).toHaveBeenCalledWith('image_drop_notice_shown', {
+      dropped_count: 2,
+      source: 'notionAsset',
+      expired_count: 0,
+      surface: 'downloads_row',
+      reason: null,
+    });
+  });
+
   it('uses the Notion-HTML-no-folder copy for the notionHtml source', () => {
     render(<ImageDropNotice count={2} source="notionHtml" />);
     expect(

@@ -1367,8 +1367,14 @@ describe('DownloadsPage conversion note toggles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Conversion report/ }));
     expect(await screen.findByText(/2 parts of this page/)).toBeInTheDocument();
+    // The modal names the image kind; the row keeps kind-neutral wording. Both
+    // share "couldn't be downloaded", so exactly two dropped-asset notices show.
+    expect(screen.getAllByText(/couldn't be downloaded/)).toHaveLength(2);
     expect(
       screen.getByText(/1 image couldn't be downloaded/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 file or image couldn't be downloaded/)
     ).toBeInTheDocument();
     expect(screen.getByText(/4 blocks on this page/)).toBeInTheDocument();
   });
@@ -1507,6 +1513,85 @@ describe('DownloadsPage missing-images notice on upload rows', () => {
       screen.queryByText(
         /The file you uploaded is the HTML page from a Notion export/
       )
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('DownloadsPage Notion row partial and dropped-asset notices', () => {
+  beforeEach(() => {
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    mockUploads = [];
+    mockDropboxUploads = [];
+    mockGoogleDriveUploads = [];
+  });
+
+  afterEach(() => {
+    delete (globalThis as AnalyticsGlobals).hj;
+    delete (globalThis as AnalyticsGlobals).gtag;
+  });
+
+  it('shows the partial-deck notice on a truncated Notion done row', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        download_key: 'deck.apkg',
+        job_reason_failure: JSON.stringify({
+          code: 'notion_truncated',
+          blocks_converted: 100,
+          sub_deck_rules_skipped: false,
+        }),
+      }),
+    ];
+    renderAt('/downloads');
+
+    expect(
+      screen.getByText(
+        /Only part of this page converted, so the rest isn't in this deck\./
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('shows the dropped-images notice on a Notion done row that dropped assets', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        download_key: 'deck.apkg',
+        job_reason_failure: JSON.stringify({
+          code: 'notion_assets_dropped',
+          dropped_assets: 3,
+        }),
+      }),
+    ];
+    renderAt('/downloads');
+
+    expect(
+      screen.getByText(
+        /3 files or images couldn't be downloaded and aren't in this deck\./
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('shows neither notice for a clean Notion done row', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        download_key: 'deck.apkg',
+        job_reason_failure: null,
+      }),
+    ];
+    renderAt('/downloads');
+
+    expect(
+      screen.queryByText(
+        /Only part of this page converted, so the rest isn't in this deck\./
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/couldn't be downloaded and aren't in this deck/)
     ).not.toBeInTheDocument();
   });
 });

@@ -45,6 +45,8 @@
   "imageDrop": {
     "notion_one": "Non è stato possibile scaricare {{count}} immagine e non è in questo mazzo. Il link a essa in Notion è probabilmente scaduto. Converti di nuovo la pagina per provare a recuperarla.",
     "notion_other": "Non è stato possibile scaricare {{count}} immagini e non sono in questo mazzo. I link a esse in Notion sono probabilmente scaduti. Converti di nuovo la pagina per provare a recuperarle.",
+    "notionAsset_one": "Non è stato possibile scaricare {{count}} file o immagine e non è in questo mazzo. Il link in Notion è probabilmente scaduto. Converti di nuovo la pagina per provare a recuperarlo.",
+    "notionAsset_other": "Non è stato possibile scaricare {{count}} file o immagini e non sono in questo mazzo. I link in Notion sono probabilmente scaduti. Converti di nuovo la pagina per provare a recuperarli.",
     "uploadSingleDeck_one": "Non è stato possibile scaricare {{count}} immagine e non è in questo mazzo. Il tuo file rimanda a essa su un altro sito che non siamo riusciti a raggiungere. Salva l'immagine nel file, poi caricalo di nuovo.",
     "uploadSingleDeck_other": "Non è stato possibile scaricare {{count}} immagini e non sono in questo mazzo. Il tuo file rimanda a esse su altri siti che non siamo riusciti a raggiungere. Salva le immagini nel file, poi caricalo di nuovo.",
     "uploadMultiDeck_one": "Non è stato possibile scaricare {{count}} immagine e non è nei tuoi mazzi. Il tuo file rimanda a essa su un altro sito che non siamo riusciti a raggiungere. Salva l'immagine nel file, poi caricalo di nuovo.",
@@ -65,6 +67,9 @@
   "truncation": {
     "converted": "Convertiti i primi {{count}} blocchi. Il piano gratuito si ferma qui — <pricingLink>passa a un piano superiore per convertire l'intera pagina</pricingLink>.",
     "subDeckSkipped": "Le regole dei sottomazzi da interruttori, intestazioni e database si applicano ai piani a pagamento — questo mazzo è stato convertito senza di esse."
+  },
+  "partialDeck": {
+    "notice": "È stata convertita solo una parte di questa pagina, quindi il resto non è in questo mazzo."
   },
   "unsupportedBlocks": {
     "text_one": "Non è stato possibile convertire {{count}} blocco di questa pagina ({{types}}).",

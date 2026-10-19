@@ -45,6 +45,8 @@
   "imageDrop": {
     "notion_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans ce paquet. Le lien vers celle-ci dans Notion a probablement expiré. Convertissez à nouveau la page pour tenter de la récupérer.",
     "notion_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans ce paquet. Les liens vers celles-ci dans Notion ont probablement expiré. Convertissez à nouveau la page pour tenter de les récupérer.",
+    "notionAsset_one": "{{count}} fichier ou image n'a pas pu être téléchargé et n'est pas dans ce paquet. Le lien dans Notion a probablement expiré. Convertissez à nouveau la page pour tenter de le récupérer.",
+    "notionAsset_other": "{{count}} fichiers ou images n'ont pas pu être téléchargés et ne sont pas dans ce paquet. Les liens dans Notion ont probablement expiré. Convertissez à nouveau la page pour tenter de les récupérer.",
     "uploadSingleDeck_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans ce paquet. Votre fichier renvoie vers celle-ci sur un autre site que nous n'avons pas pu atteindre. Enregistrez l'image dans le fichier, puis téléversez à nouveau.",
     "uploadSingleDeck_other": "{{count}} images n'ont pas pu être téléchargées et ne sont pas dans ce paquet. Votre fichier renvoie vers celles-ci sur d'autres sites que nous n'avons pas pu atteindre. Enregistrez les images dans le fichier, puis téléversez à nouveau.",
     "uploadMultiDeck_one": "{{count}} image n'a pas pu être téléchargée et n'est pas dans vos paquets. Votre fichier renvoie vers celle-ci sur un autre site que nous n'avons pas pu atteindre. Enregistrez l'image dans le fichier, puis téléversez à nouveau.",
@@ -65,6 +67,9 @@
   "truncation": {
     "converted": "Les {{count}} premiers blocs ont été convertis. Le forfait gratuit s'arrête là — <pricingLink>passez à un forfait supérieur pour convertir toute la page</pricingLink>.",
     "subDeckSkipped": "Les règles de sous-paquets issues des bascules, titres et bases de données s'appliquent aux forfaits payants — ce paquet a été converti sans elles."
+  },
+  "partialDeck": {
+    "notice": "Seule une partie de cette page a été convertie, le reste n'est pas dans ce paquet."
   },
   "unsupportedBlocks": {
     "text_one": "{{count}} bloc de cette page n'a pas pu être converti ({{types}}).",

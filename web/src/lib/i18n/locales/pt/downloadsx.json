@@ -45,6 +45,8 @@
   "imageDrop": {
     "notion_one": "Não foi possível baixar {{count}} imagem e ela não está neste baralho. O link para ela no Notion provavelmente expirou. Converta a página novamente para tentar obtê-la.",
     "notion_other": "Não foi possível baixar {{count}} imagens e elas não estão neste baralho. Os links para elas no Notion provavelmente expiraram. Converta a página novamente para tentar obtê-las.",
+    "notionAsset_one": "Não foi possível baixar {{count}} arquivo ou imagem e ele não está neste baralho. O link no Notion provavelmente expirou. Converta a página novamente para tentar obtê-lo.",
+    "notionAsset_other": "Não foi possível baixar {{count}} arquivos ou imagens e eles não estão neste baralho. Os links no Notion provavelmente expiraram. Converta a página novamente para tentar obtê-los.",
     "uploadSingleDeck_one": "Não foi possível baixar {{count}} imagem e ela não está neste baralho. Seu arquivo aponta para ela em outro site que não conseguimos acessar. Salve a imagem no próprio arquivo e envie novamente.",
     "uploadSingleDeck_other": "Não foi possível baixar {{count}} imagens e elas não estão neste baralho. Seu arquivo aponta para elas em outros sites que não conseguimos acessar. Salve as imagens no próprio arquivo e envie novamente.",
     "uploadMultiDeck_one": "Não foi possível baixar {{count}} imagem e ela não está nos seus baralhos. Seu arquivo aponta para ela em outro site que não conseguimos acessar. Salve a imagem no próprio arquivo e envie novamente.",
@@ -65,6 +67,9 @@
   "truncation": {
     "converted": "Os primeiros {{count}} blocos foram convertidos. O plano gratuito para por aí — <pricingLink>faça upgrade para converter a página inteira</pricingLink>.",
     "subDeckSkipped": "As regras de subbaralhos de alternadores, títulos e bancos de dados se aplicam nos planos pagos — este baralho foi convertido sem elas."
+  },
+  "partialDeck": {
+    "notice": "Apenas parte desta página foi convertida, então o restante não está neste baralho."
   },
   "unsupportedBlocks": {
     "text_one": "Não foi possível converter {{count}} bloco desta página ({{types}}).",
