@@ -22,6 +22,13 @@ function richTextProp(text: string): unknown {
   return { type: 'rich_text', rich_text: [{ plain_text: text }] };
 }
 
+function multiSelectProp(...names: string[]): unknown {
+  return {
+    type: 'multi_select',
+    multi_select: names.map((name) => ({ name })),
+  };
+}
+
 function makeApi(opts: { rows: FakeRow[]; dbName?: string }): NotionAPIWrapper {
   return {
     queryDatabase: vi.fn().mockResolvedValue({ results: opts.rows }),
@@ -317,7 +324,7 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
         parentName: '',
       })
     ).rejects.toThrow(
-      'This database has only one column, "Notes". Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.'
+      'This database has only one column, "Notes". Add a text column for the back and fill it in, or put the card content in toggles inside each row\'s page, then convert again.'
     );
   });
 
@@ -351,10 +358,13 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       'Lectures::Lecture 2',
     ]);
     expect(decks[0].cards.map((c) => c.name)).toEqual(['What is a neuron?']);
+    expect(decks[0].cards[0].back).toContain('A nerve cell.');
     expect(decks[1].cards.map((c) => c.name)).toEqual(['What is a synapse?']);
+    expect(decks[1].cards[0].back).toContain('A junction between neurons.');
     expect(bl.resolvedDatabasePath).toEqual({
       viaPageLinkSelfHeal: false,
       rowPageWalk: true,
+      rowPagesSkipped: 0,
     });
   });
 
@@ -394,6 +404,210 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       ['Lectures::Lecture 1', 'First?'],
       ['Lectures::Lecture 3', 'Third?'],
     ]);
+  });
+
+  it('walks row pages when a multi-property database (Name + Tags) has no text back column', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [
+        {
+          id: 'row-1',
+          properties: {
+            Name: titleProp('Lecture 1'),
+            Tags: multiSelectProp('biology'),
+          },
+        },
+      ],
+      titlesByPage: { 'row-1': 'Lecture 1' },
+      blocksByPage: {
+        'row-1': [toggleBlock('t-1', 'What is a neuron?')],
+        't-1': [paragraphBlock('p-1', 'A nerve cell.')],
+      },
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.map((d) => d.name)).toEqual(['Lectures::Lecture 1']);
+    expect(decks[0].cards.map((c) => c.name)).toEqual(['What is a neuron?']);
+    expect(bl.guessedColumnMapping).toBeUndefined();
+    expect(bl.resolvedDatabasePath).toEqual({
+      viaPageLinkSelfHeal: false,
+      rowPageWalk: true,
+      rowPagesSkipped: 0,
+    });
+  });
+
+  it('caps the free-plan walk at 25 row pages and records the rest as skipped', async () => {
+    const rows = Array.from({ length: 30 }, (_, i) => ({
+      id: `row-${i}`,
+      properties: { Name: titleProp(`Lecture ${i}`) },
+    }));
+    const blocksByPage: Record<string, unknown[]> = {};
+    for (let i = 0; i < 30; i += 1) {
+      blocksByPage[`row-${i}`] = [toggleBlock(`t-${i}`, `Q${i}?`)];
+      blocksByPage[`t-${i}`] = [paragraphBlock(`a-${i}`, `A${i}.`)];
+    }
+    const api = makeRowPageApi({ rows, blocksByPage });
+    const bl = makeHandler(api);
+    bl.useAll = false;
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.filter((d) => d.cards.length > 0)).toHaveLength(25);
+    expect(bl.resolvedDatabasePath).toEqual({
+      viaPageLinkSelfHeal: false,
+      rowPageWalk: true,
+      rowPagesSkipped: 5,
+    });
+  });
+
+  it('walks up to 250 row pages on a paid conversion', async () => {
+    const rows = Array.from({ length: 30 }, (_, i) => ({
+      id: `row-${i}`,
+      properties: { Name: titleProp(`Lecture ${i}`) },
+    }));
+    const blocksByPage: Record<string, unknown[]> = {};
+    for (let i = 0; i < 30; i += 1) {
+      blocksByPage[`row-${i}`] = [toggleBlock(`t-${i}`, `Q${i}?`)];
+      blocksByPage[`t-${i}`] = [paragraphBlock(`a-${i}`, `A${i}.`)];
+    }
+    const api = makeRowPageApi({ rows, blocksByPage });
+    const bl = makeHandler(api);
+    bl.useAll = true;
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.filter((d) => d.cards.length > 0)).toHaveLength(30);
+    expect(bl.resolvedDatabasePath).toEqual({
+      viaPageLinkSelfHeal: false,
+      rowPageWalk: true,
+      rowPagesSkipped: 0,
+    });
+  });
+
+  it('bumps the job heartbeat every ten row pages during the walk', async () => {
+    const rows = Array.from({ length: 22 }, (_, i) => ({
+      id: `row-${i}`,
+      properties: { Name: titleProp(`Lecture ${i}`) },
+    }));
+    const blocksByPage: Record<string, unknown[]> = {};
+    for (let i = 0; i < 22; i += 1) {
+      blocksByPage[`row-${i}`] = [toggleBlock(`t-${i}`, `Q${i}?`)];
+      blocksByPage[`t-${i}`] = [paragraphBlock(`a-${i}`, `A${i}.`)];
+    }
+    const api = makeRowPageApi({ rows, blocksByPage });
+    const bl = makeHandler(api);
+    bl.useAll = true;
+    const heartbeat = vi.fn().mockResolvedValue(undefined);
+    bl.heartbeat = heartbeat;
+
+    await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(heartbeat).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops the walk once the per-conversion fetch budget is spent', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [
+        { id: 'row-1', properties: { Name: titleProp('Lecture 1') } },
+        { id: 'row-2', properties: { Name: titleProp('Lecture 2') } },
+        { id: 'row-3', properties: { Name: titleProp('Lecture 3') } },
+      ],
+      titlesByPage: {
+        'row-1': 'Lecture 1',
+        'row-2': 'Lecture 2',
+        'row-3': 'Lecture 3',
+      },
+      blocksByPage: {
+        'row-1': [toggleBlock('t-1', 'First?')],
+        'row-2': [toggleBlock('t-2', 'Second?')],
+        'row-3': [toggleBlock('t-3', 'Third?')],
+        't-1': [paragraphBlock('a-1', 'First answer.')],
+        't-2': [paragraphBlock('a-2', 'Second answer.')],
+        't-3': [paragraphBlock('a-3', 'Third answer.')],
+      },
+    });
+    const bl = makeHandler(api);
+    bl.useAll = true;
+    bl.maxRowWalkFetches = 2;
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.filter((d) => d.cards.length > 0).map((d) => d.name)).toEqual([
+      'Lectures::Lecture 1',
+    ]);
+    expect(bl.resolvedDatabasePath).toEqual({
+      viaPageLinkSelfHeal: false,
+      rowPageWalk: true,
+      rowPagesSkipped: 2,
+    });
+  });
+
+  it('keeps walking the remaining rows when one row page fetch throws', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [
+        { id: 'row-1', properties: { Name: titleProp('Lecture 1') } },
+        { id: 'row-2', properties: { Name: titleProp('Lecture 2') } },
+      ],
+      titlesByPage: { 'row-1': 'Lecture 1', 'row-2': 'Lecture 2' },
+      blocksByPage: {
+        'row-2': [toggleBlock('t-2', 'Survivor?')],
+        't-2': [paragraphBlock('p-2', 'Still here.')],
+      },
+    });
+    (api.getPage as ReturnType<typeof vi.fn>).mockImplementation(
+      async (id: string) => {
+        if (id === 'row-1') {
+          throw new Error('boom');
+        }
+        return { id, object: 'page', created_time: '', last_edited_time: '' };
+      }
+    );
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    const withCards = decks.filter((d) => d.cards.length > 0);
+    expect(withCards.map((d) => d.name)).toEqual(['Lectures::Lecture 2']);
   });
 
   it('does not walk row pages when the user explicitly picked columns that do not exist', async () => {
@@ -571,19 +785,24 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     });
   });
 
-  it('leaves the deck empty when no column pair yields a card', async () => {
-    const api = makeApi({
+  it('leaves the deck empty when no column pair yields a card and the row pages are empty too', async () => {
+    const api = makeRowPageApi({
       rows: [
         {
+          id: 'row-1',
           properties: {
             Status: richTextProp(''),
             Owner: richTextProp(''),
           },
         },
       ],
+      blocksByPage: {
+        'row-1': [paragraphBlock('p-1', 'just prose, nothing card-shaped')],
+      },
     });
+    const bl = makeHandler(api);
 
-    const decks = await makeHandler(api).findFlashcards({
+    const decks = await bl.findFlashcards({
       parentType: 'notion-database',
       topLevelId: 'db-1',
       rules: new ParserRules(),
@@ -591,6 +810,8 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       parentName: '',
     });
 
-    expect(decks[0].cards).toHaveLength(0);
+    expect(decks.every((d) => d.cards.length === 0)).toBe(true);
+    expect(api.getPage).toHaveBeenCalledWith('row-1');
+    expect(bl.resolvedDatabasePath).toEqual({ viaPageLinkSelfHeal: false });
   });
 });

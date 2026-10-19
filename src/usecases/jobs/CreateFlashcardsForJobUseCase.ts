@@ -32,6 +32,16 @@ export class CreateFlashcardsForJobUseCase {
       throw new Error('Failed to update job status');
     }
 
+    // Long database row-page walks bump this between rows so the stale-job
+    // reclaim window cannot elapse mid-walk and dispatch a duplicate.
+    bl.heartbeat = () =>
+      this.jobRepository.updateJobStatus(
+        id,
+        owner,
+        'step2_creating_flashcards',
+        ''
+      );
+
     return bl.findFlashcards({
       parentType: type ?? 'page',
       topLevelId: id.replace(/-/g, ''),

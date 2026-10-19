@@ -113,11 +113,26 @@ const PAGE_LIKE_DECK_TYPES = new Set([
 // nested in a column keeps its existing behaviour instead of becoming a sub-deck.
 const NON_CARD_DECK_TYPES = new Set(['child_page', 'child_database']);
 
-// Mirrors MAX_DATABASE_PAGES in services/ankify/notionPageWalker — the shared
-// ceiling on how many database row pages one conversion walks. Kept local so
-// the one-shot converter does not pull the Ankify notion-render module graph
-// into its load path for a single number.
-const MAX_DATABASE_ROW_PAGES = 250;
+// How many database row pages the one-shot row-page walk considers, by plan.
+// The free slice mirrors the spirit of the Ankify database walk's flat
+// MAX_DATABASE_PAGES ceiling (250) while keeping free conversions cheap; it is
+// defined locally so the converter does not pull the Ankify notion-render
+// module graph into its load path for a constant.
+const FREE_DATABASE_ROW_PAGES = 25;
+const PAID_DATABASE_ROW_PAGES = 250;
+
+// Hard per-conversion ceiling on the Notion block fetches the row-page walk may
+// spend, modelled on MAX_NESTED_TOGGLE_WRAPPER_FETCHES. Notion sustains roughly
+// 3 requests/second (withRetry honours 429 Retry-After), so 2000 fetches is
+// about 11 minutes of Notion time worst case; the per-row heartbeat keeps the
+// job fresh so the 15-minute stale reclaim cannot fire, and this ceiling stops
+// a toggle-dense database from running unbounded. It clears a typical paid
+// 250-row database (~8 fetches/row) and only bites pathological toggle counts.
+const MAX_DATABASE_ROW_WALK_FETCHES = 2000;
+
+// Bump the job heartbeat this often (in row pages) during the walk so the
+// stale-job reclaim window (15 min) cannot elapse and dispatch a second walk.
+const DATABASE_ROW_WALK_HEARTBEAT_EVERY = 10;
 
 // Container blocks that Notion lets a user nest a toggle inside but which the
 // top-level walk never recurses into, so a toggle wrapped in one was dropped
@@ -269,6 +284,19 @@ class BlockHandler implements IBlockRenderer {
   inducedRule?: InducedRescue;
 
   resolvedDatabasePath?: ResolvedDatabasePath;
+
+  heartbeat?: () => Promise<unknown>;
+
+  // Per-conversion Notion-fetch ceiling for the database row-page walk. Defaults
+  // to the production constant; exposed so a test can lower it without faking
+  // thousands of fetches.
+  maxRowWalkFetches = MAX_DATABASE_ROW_WALK_FETCHES;
+
+  private databaseRowWalkActive = false;
+
+  private databaseRowWalkFetches = 0;
+
+  private databaseRowPagesSkipped = 0;
 
   droppedImageAssetCount = 0;
 
@@ -469,6 +497,7 @@ class BlockHandler implements IBlockRenderer {
     requestChildren: Awaited<ReturnType<typeof expandSyncedBlocks>>;
     response: ListBlockChildrenResponse;
   }> {
+    this.recordRowWalkFetch();
     const response = await this.api.getBlocks({
       createdAt: block.created_time,
       lastEditedAt: block.last_edited_time,
@@ -834,6 +863,8 @@ class BlockHandler implements IBlockRenderer {
 
     let frontField = locator.frontField;
     let backField = locator.backField;
+    const explicitFields =
+      locator.frontField != null || locator.backField != null;
 
     if (frontField == null || backField == null) {
       const inferred = inferColumnMapping(columnNames);
@@ -855,21 +886,16 @@ class BlockHandler implements IBlockRenderer {
       !columnNames.includes(frontField) ||
       !columnNames.includes(backField)
     ) {
-      const explicitFields =
-        locator.frontField != null || locator.backField != null;
       if (!explicitFields) {
-        const rowPageDecks = await this.findFlashcardsFromDatabaseRowPages(
+        const walked = await this.tryRowPageWalk(
           dbResult.results,
           dbName,
-          locator.rules
+          locator.rules,
+          viaPageLinkSelfHeal,
+          decks
         );
-        if (rowPageDecks.some((rowDeck) => rowDeck.cards.length > 0)) {
-          this.resolvedDatabasePath = {
-            viaPageLinkSelfHeal,
-            rowPageWalk: true,
-          };
-          decks.push(...rowPageDecks);
-          return decks;
+        if (walked != null) {
+          return walked;
         }
       }
       throw new NotionDatabaseColumnsError(columnNames, {
@@ -906,6 +932,23 @@ class BlockHandler implements IBlockRenderer {
       }
     }
 
+    // Columns resolve but no pair yields a card — a title plus only non-text
+    // columns, e.g. Name + a multi_select — so the content lives in the row
+    // pages, not the columns. Walk them before shipping an empty deck, the
+    // same auto-infer-only fallback as the no-column case above.
+    if (notes.length === 0 && !explicitFields) {
+      const walked = await this.tryRowPageWalk(
+        dbResult.results,
+        dbName,
+        locator.rules,
+        viaPageLinkSelfHeal,
+        decks
+      );
+      if (walked != null) {
+        return walked;
+      }
+    }
+
     const deck = new Deck(
       dbName,
       Deck.CleanCards(notes),
@@ -918,14 +961,51 @@ class BlockHandler implements IBlockRenderer {
     return decks;
   }
 
-  // No column pair yields a front and a back — a Name-only database, say, where
-  // the real content lives in toggles inside each row's page. Walk those pages
-  // the way Auto Sync does (walkNotionDatabaseForFlashcards): a database row is
-  // a Notion page, so the existing page path turns its toggles into cards.
-  // Each row becomes a sub-deck under the database deck, in database order.
-  // Capped at MAX_DATABASE_ROW_PAGES, the ceiling the Ankify database walk
-  // shares; each row page's block fetch still honours this.useAll (the plan
-  // budget), and the monthly card limit truncates the combined decks downstream.
+  // Walks the database's row pages into one sub-deck each and, when any produced
+  // a card, finalizes the conversion as a row-page walk: the two-column mapping
+  // is abandoned (guessedColumnMapping cleared), the resolved-path signal
+  // records the walk and how many rows it had to leave out, and the sub-decks
+  // are appended. Returns null when the row pages held no cards, so the caller
+  // falls back to its column-error or empty-deck behaviour.
+  private async tryRowPageWalk(
+    rows: unknown[],
+    databaseName: string,
+    rules: ParserRules,
+    viaPageLinkSelfHeal: boolean,
+    decks: Deck[]
+  ): Promise<Deck[] | null> {
+    const rowPageDecks = await this.findFlashcardsFromDatabaseRowPages(
+      rows,
+      databaseName,
+      rules
+    );
+    if (!rowPageDecks.some((rowDeck) => rowDeck.cards.length > 0)) {
+      return null;
+    }
+    this.guessedColumnMapping = undefined;
+    this.resolvedDatabasePath = {
+      viaPageLinkSelfHeal,
+      rowPageWalk: true,
+      rowPagesSkipped: this.databaseRowPagesSkipped,
+    };
+    decks.push(...rowPageDecks);
+    return decks;
+  }
+
+  // No column pair yields a front and a back — a Name-only database, say, or a
+  // title plus only non-text columns — where the real content lives in toggles
+  // inside each row's page. Walk those pages the way Auto Sync does
+  // (walkNotionDatabaseForFlashcards): a database row is a Notion page, so the
+  // existing page path turns its toggles into cards. Each row becomes a sub-deck
+  // under the database deck, in database order. The dataset is sliced by plan
+  // (free: FREE_DATABASE_ROW_PAGES, paid: PAID_DATABASE_ROW_PAGES) and the walk
+  // stops once it has spent MAX_DATABASE_ROW_WALK_FETCHES Notion fetches, so a
+  // toggle-dense database cannot run unbounded; rows left out are counted in
+  // databaseRowPagesSkipped and surfaced on the report. The job heartbeat is
+  // bumped every DATABASE_ROW_WALK_HEARTBEAT_EVERY rows so the stale-job reclaim
+  // cannot dispatch a second walk mid-run. Each row page's own block fetch still
+  // honours this.useAll, and the monthly card limit truncates downstream. The
+  // database title claims the download filename before the first row page can.
   private async findFlashcardsFromDatabaseRowPages(
     rows: unknown[],
     databaseName: string,
@@ -933,30 +1013,65 @@ class BlockHandler implements IBlockRenderer {
   ): Promise<Deck[]> {
     const rowDecks: Deck[] = [];
     const globalSeenIds = new Set<string>();
-    const limit = Math.min(rows.length, MAX_DATABASE_ROW_PAGES);
-    for (let i = 0; i < limit; i += 1) {
-      const rowId = (rows[i] as { id?: unknown }).id;
-      if (typeof rowId !== 'string') {
-        continue;
-      }
-      await this.findFlashcardsFromPage(
-        {
-          parentType: 'page',
-          topLevelId: rowId,
-          rules,
-          decks: rowDecks,
-          parentName: databaseName,
-        },
-        globalSeenIds
-      );
+    if (!this.firstPageTitle) {
+      this.firstPageTitle = databaseName;
     }
+    const planCap = this.useAll
+      ? PAID_DATABASE_ROW_PAGES
+      : FREE_DATABASE_ROW_PAGES;
+    const limit = Math.min(rows.length, planCap);
+    this.databaseRowWalkActive = true;
+    let walked = 0;
+    try {
+      for (let i = 0; i < limit; i += 1) {
+        if (this.databaseRowWalkFetches >= this.maxRowWalkFetches) {
+          break;
+        }
+        const rowId = (rows[i] as { id?: unknown }).id;
+        if (typeof rowId !== 'string') {
+          continue;
+        }
+        try {
+          await this.findFlashcardsFromPage(
+            {
+              parentType: 'page',
+              topLevelId: rowId,
+              rules,
+              decks: rowDecks,
+              parentName: databaseName,
+            },
+            globalSeenIds
+          );
+        } catch (error) {
+          // One unreadable row page (deleted, access revoked mid-walk, a
+          // transient Notion error past its retries) must not sink the whole
+          // database conversion — skip it and keep the rows that do convert.
+          console.info(`[notion] row page ${rowId} failed, skipping`);
+          console.error(error);
+          continue;
+        }
+        walked += 1;
+        if (walked % DATABASE_ROW_WALK_HEARTBEAT_EVERY === 0) {
+          await this.heartbeat?.();
+        }
+      }
+    } finally {
+      this.databaseRowWalkActive = false;
+    }
+    this.databaseRowPagesSkipped = Math.max(0, rows.length - walked);
     const withCards = rowDecks.filter((deck) => deck.cards.length > 0).length;
     if (withCards > 0) {
       console.info(
-        `[notion] database row-page walk produced ${withCards} sub-deck(s) with cards`
+        `[notion] database row-page walk produced ${withCards} sub-deck(s) with cards, ${this.databaseRowPagesSkipped} row(s) skipped`
       );
     }
     return rowDecks;
+  }
+
+  private recordRowWalkFetch(): void {
+    if (this.databaseRowWalkActive) {
+      this.databaseRowWalkFetches += 1;
+    }
   }
 
   async findFlashcardsFromPage(
@@ -1244,6 +1359,7 @@ class BlockHandler implements IBlockRenderer {
       createdAt,
       lastEditedAt
     );
+    this.recordRowWalkFetch();
     const response = await this.api.getBlocks({
       createdAt,
       lastEditedAt,

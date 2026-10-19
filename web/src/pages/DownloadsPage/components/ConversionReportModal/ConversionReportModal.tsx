@@ -43,7 +43,8 @@ function entryTone(entry: ConversionReportEntry): ReportTone {
   }
   if (
     entry.reason_code === 'truncated' ||
-    entry.reason_code === 'oversized_package'
+    entry.reason_code === 'oversized_package' ||
+    entry.reason_code === 'row_pages_skipped'
   ) {
     return 'note';
   }
@@ -75,6 +76,9 @@ function entryCopy(t: TFunction, entry: ConversionReportEntry): string {
   }
   if (code === 'oversized_package') {
     return t('report.reasonOversize');
+  }
+  if (code === 'row_pages_skipped') {
+    return t('report.reasonRowPagesSkipped', { count: entry.count });
   }
   if (code.startsWith(UNSUPPORTED_PREFIX)) {
     return t('report.reasonUnsupported', {

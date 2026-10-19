@@ -131,6 +131,8 @@
     "reasonDuplicateGuid_one": "1 carte répète la question d'une autre carte dans ce paquet. Anki ne garde que la première et ignore celle-ci. Donne-lui une question différente, puis convertis à nouveau.",
     "reasonDuplicateGuid_other": "{{count}} cartes répètent la question d'une autre carte dans ce paquet. Anki ne garde que la première de chaque groupe et ignore les autres. Change le texte des questions répétées, puis convertis à nouveau.",
     "reasonTruncated": "La conversion s'est arrêtée avant la fin de la page.",
+    "reasonRowPagesSkipped_one": "1 ligne de la base de données a été ignorée car la conversion a atteint sa limite de lignes.",
+    "reasonRowPagesSkipped_other": "{{count}} lignes de la base de données ont été ignorées car la conversion a atteint sa limite de lignes.",
     "reasonOversize": "Ce paquet dépasse 100 Mo. AnkiWeb ne synchronise pas les fichiers aussi volumineux — il s'importe quand même dans Anki sur ton ordinateur.",
     "reasonUnsupported_one": "{{count}} bloc {{type}} ne peut pas encore devenir des cartes.",
     "reasonUnsupported_other": "{{count}} blocs {{type}} ne peuvent pas encore devenir des cartes.",

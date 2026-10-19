@@ -131,6 +131,8 @@
     "reasonDuplicateGuid_one": "1 kaart herhaalt de vraag van een andere kaart in dit pakket. Anki bewaart alleen de eerste en slaat deze over. Geef hem een andere vraag en converteer opnieuw.",
     "reasonDuplicateGuid_other": "{{count}} kaarten herhalen de vraag van een andere kaart in dit pakket. Anki bewaart alleen de eerste van elke groep en slaat de rest over. Verander de tekst van de herhaalde vragen en converteer opnieuw.",
     "reasonTruncated": "De conversie stopte voor het einde van de pagina.",
+    "reasonRowPagesSkipped_one": "1 databaserij is weggelaten omdat de conversie zijn rijlimiet bereikte.",
+    "reasonRowPagesSkipped_other": "{{count}} databaserijen zijn weggelaten omdat de conversie zijn rijlimiet bereikte.",
     "reasonOversize": "Dit pakket is groter dan 100 MB. AnkiWeb synchroniseert geen zulke grote bestanden — het importeert nog wel in Anki op je computer.",
     "reasonUnsupported_one": "{{count}} {{type}}-blok kan nog geen kaarten worden.",
     "reasonUnsupported_other": "{{count}} {{type}}-blokken kunnen nog geen kaarten worden.",
