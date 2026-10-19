@@ -104,8 +104,8 @@
   },
   "pages": {
     "ai-flashcard-generator": {
-      "h1": "Transforme suas anotações em cartões do Anki",
-      "subhead": "Anotações reais entram, cartões reais saem. O 2anki cria seu baralho a partir do que você envia — ele nunca inventa fatos."
+      "h1": "Flashcards de IA para o Anki, escritos a partir das suas anotações",
+      "subhead": "Envie um PDF ou suas anotações. Com um plano pago, o Claude lê o arquivo e escreve os cartões, a partir de um Day Pass. Contas gratuitas recebem um baralho montado com os títulos e listas do arquivo, até 100 cartões por mês."
     },
     "anki-to-notion": {
       "h1": "Importe baralhos do Anki para o Notion em um clique.",

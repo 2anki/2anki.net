@@ -104,8 +104,8 @@
   },
   "pages": {
     "ai-flashcard-generator": {
-      "h1": "Turn your notes into Anki cards",
-      "subhead": "Real notes in, real cards out. 2anki builds your deck from what you upload — it never invents facts."
+      "h1": "AI flashcards for Anki, written from your notes",
+      "subhead": "Drop a PDF or your notes. On a paid plan, Claude reads the file and writes the cards, starting with a Day Pass. Free accounts get a deck built from the file's headings and lists, up to 100 cards a month."
     },
     "anki-to-notion": {
       "h1": "Import Anki decks into Notion in one click.",

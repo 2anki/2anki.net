@@ -304,6 +304,21 @@ describe('LandingPage', () => {
       `/register?source=${encodeURIComponent(aiFlashcardGeneratorCopy.pathname)}`
     );
   });
+
+  it('tells AI flashcard visitors that AI cards come with a paid plan', () => {
+    renderLandingPage(
+      <LandingPage copy={aiFlashcardGeneratorCopy} setErrorMessage={vi.fn()} />
+    );
+    expect(
+      screen.getByText(/On a paid plan, Claude reads the file/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/AI cards from uploads need a paid plan/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /get a Day Pass/i })
+    ).toHaveAttribute('href', '/pricing');
+  });
 });
 
 describe('LandingPage funnel instrumentation', () => {
