@@ -161,7 +161,8 @@
       "or": "oppure",
       "chooseFiles": "Scegli i file",
       "csvHint": "Chiama le colonne fronte e retro (o domanda e risposta) così 2anki le mappa nel modo giusto — altrimenti usa la prima colonna come fronte e la seconda come retro.",
-      "folderHint": "Anche le cartelle funzionano — se il browser ha decompresso un export di Notion, trascina l'intera cartella."
+      "folderHint": "Anche le cartelle funzionano — se il browser ha decompresso un export di Notion, trascina l'intera cartella.",
+      "anonCapHint": "Senza account ottieni fino a {{cap}} carte per conversione. Un account gratuito sblocca {{monthly}} carte al mese."
     },
     "form": {
       "makingDeck": "Sto creando il tuo mazzo...",

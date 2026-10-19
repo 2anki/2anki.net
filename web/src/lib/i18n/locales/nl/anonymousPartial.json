@@ -1,9 +1,11 @@
 {
   "gateAria": "Maak een gratis account om je deck te downloaden",
-  "gateHeadline": "Je eerste {{count}} kaarten zijn klaar",
+  "gateHeadlineAll": "Alle {{total}} kaarten zijn klaar",
+  "gateHeadlineCapped": "Je eerste {{monthly}} kaarten zijn klaar",
   "gateBody": "Maak een gratis account om ze te downloaden. Tot {{monthly}} kaarten per maand, gratis.",
   "gateContext": "Dit bestand leverde {{total}} kaarten op.",
-  "gateLive": "Je {{count}} kaarten zijn klaar. Maak een gratis account om ze te downloaden.",
+  "gateLiveAll": "Alle {{total}} kaarten zijn klaar. Maak een gratis account om ze te downloaden.",
+  "gateLiveCapped": "Je eerste {{monthly}} kaarten zijn klaar. Maak een gratis account om ze te downloaden.",
   "preparing": "Je download wordt voorbereid",
   "readyBody": "Je bent ingelogd. Download je deck hieronder.",
   "expiredHeadline": "Dit deck is niet langer opgeslagen",

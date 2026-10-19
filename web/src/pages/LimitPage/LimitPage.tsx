@@ -9,6 +9,7 @@ import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { AnonymousDayPassOffer } from '../../components/AnonymousDayPassOffer/AnonymousDayPassOffer';
 import {
+  ANONYMOUS_CARD_CAP,
   FREE_MONTHLY_CARDS,
   LimitWall,
   type PassKind,
@@ -17,8 +18,6 @@ import {
 import styles from './LimitPage.module.css';
 
 const REF = 'limit-wall';
-
-const ANONYMOUS_CARD_CAP = 21;
 
 const WALL_ORDER: WallOrder = 'unlimited-first';
 

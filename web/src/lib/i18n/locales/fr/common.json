@@ -161,7 +161,8 @@
       "or": "ou",
       "chooseFiles": "Choisir des fichiers",
       "csvHint": "Nomme tes colonnes front et back (ou question et answer) pour que 2anki les associe correctement — sinon il utilise la première colonne comme recto et la deuxième comme verso.",
-      "folderHint": "Les dossiers fonctionnent aussi — si ton navigateur a décompressé un export Notion, dépose le dossier entier."
+      "folderHint": "Les dossiers fonctionnent aussi — si ton navigateur a décompressé un export Notion, dépose le dossier entier.",
+      "anonCapHint": "Sans compte, tu obtiens jusqu'à {{cap}} cartes par conversion. Un compte gratuit débloque {{monthly}} cartes par mois."
     },
     "form": {
       "makingDeck": "Création de ton paquet...",

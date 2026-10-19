@@ -6,6 +6,7 @@ import { PassCards } from '../PricingPage/components/PassCards';
 import styles from './LimitPage.module.css';
 
 export const FREE_MONTHLY_CARDS = 100;
+export const ANONYMOUS_CARD_CAP = 21;
 
 export type PassKind = '24h' | '7d' | '120d';
 export type WallOrder = 'passes-first' | 'unlimited-first';

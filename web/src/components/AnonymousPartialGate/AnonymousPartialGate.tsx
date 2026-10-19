@@ -25,6 +25,7 @@ export function AnonymousPartialGate({ held }: Props) {
   const { t } = useTranslation('anonymousPartial');
   const shownRef = useRef(false);
   const [error, setError] = useState('');
+  const fitsFreeMonth = held.totalCards <= FREE_MONTHLY_CARDS;
 
   useEffect(() => {
     if (shownRef.current) return;
@@ -52,14 +53,18 @@ export function AnonymousPartialGate({ held }: Props) {
         </svg>
       </span>
       <p className={styles.headline}>
-        {t('gateHeadline', { count: held.cardCount })}
+        {fitsFreeMonth
+          ? t('gateHeadlineAll', { total: held.totalCards })
+          : t('gateHeadlineCapped', { monthly: FREE_MONTHLY_CARDS })}
       </p>
       <p className={styles.body}>
         {t('gateBody', { monthly: FREE_MONTHLY_CARDS })}
       </p>
-      <p className={styles.context}>
-        {t('gateContext', { total: held.totalCards })}
-      </p>
+      {!fitsFreeMonth && (
+        <p className={styles.context}>
+          {t('gateContext', { total: held.totalCards })}
+        </p>
+      )}
       {error && (
         <p className={styles.error} role="alert">
           {error}

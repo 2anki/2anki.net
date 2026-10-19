@@ -2684,6 +2684,67 @@ describe('UploadForm multi-deck batch', () => {
   });
 });
 
+describe('signed-out card-cap hint on the idle drop zone', () => {
+  beforeEach(() => {
+    mockUseCardUsage.mockReturnValue(null);
+    mockGet2ankiApi.mockReturnValue({
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getUploads: vi.fn().mockResolvedValue([]),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function setLocals(data: ReturnType<typeof useUserLocals>['data']) {
+    mockUseUserLocals.mockReturnValue({
+      data,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  }
+
+  const capHint =
+    'Signed out, you get up to 21 cards per conversion. A free account unlocks 100 cards a month.';
+
+  it('tells a signed-out visitor the per-conversion cap and the free monthly allowance', () => {
+    setLocals({
+      user: null,
+      locals: {},
+    } as unknown as ReturnType<typeof useUserLocals>['data']);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    expect(screen.getByText(capHint)).toBeInTheDocument();
+  });
+
+  it('hides the cap hint once the visitor is signed in', () => {
+    setLocals({
+      user: { id: 7 },
+      locals: {},
+    } as unknown as ReturnType<typeof useUserLocals>['data']);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    expect(
+      screen.queryByText(/you get up to 21 cards per conversion/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the cap hint out while the session is still loading', () => {
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    expect(
+      screen.queryByText(/you get up to 21 cards per conversion/)
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('limit state', () => {
   beforeEach(() => {
     mockGet2ankiApi.mockReturnValue({

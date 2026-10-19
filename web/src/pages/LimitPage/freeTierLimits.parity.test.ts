@@ -29,7 +29,7 @@ describe('free-tier limit parity', () => {
   });
 
   it('the anonymous conversion cap matches the server', () => {
-    const web = num(readWeb('LimitPage.tsx'), 'ANONYMOUS_CARD_CAP');
+    const web = num(readWeb('LimitWall.tsx'), 'ANONYMOUS_CARD_CAP');
     expect(web).toBe(num(serverSource, 'ANONYMOUS_CARD_CAP'));
   });
 });

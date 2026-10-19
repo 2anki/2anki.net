@@ -161,7 +161,8 @@
       "or": "oder",
       "chooseFiles": "Dateien auswählen",
       "csvHint": "Benenne deine Spalten front und back (oder question und answer), damit 2anki sie richtig zuordnet — sonst wird die erste Spalte als Vorderseite und die zweite als Rückseite verwendet.",
-      "folderHint": "Ordner funktionieren auch — wenn dein Browser einen Notion-Export entpackt hat, zieh einfach den ganzen Ordner hierher."
+      "folderHint": "Ordner funktionieren auch — wenn dein Browser einen Notion-Export entpackt hat, zieh einfach den ganzen Ordner hierher.",
+      "anonCapHint": "Ohne Anmeldung bekommst du bis zu {{cap}} Karten pro Konvertierung. Ein kostenloses Konto schaltet {{monthly}} Karten pro Monat frei."
     },
     "form": {
       "makingDeck": "Dein Stapel wird erstellt",

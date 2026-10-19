@@ -73,6 +73,10 @@ import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/
 import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
 import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
 import { MonthlyLimitPartialOffer } from '../../../../components/MonthlyLimitPartialOffer/MonthlyLimitPartialOffer';
+import {
+  ANONYMOUS_CARD_CAP,
+  FREE_MONTHLY_CARDS,
+} from '../../../LimitPage/LimitWall';
 import { resolveSuccessOffer } from '../../../../lib/promo/resolveSuccessOffer';
 import formStyles from './UploadForm.module.css';
 import DocsLink from './DocsLink';
@@ -2322,6 +2326,14 @@ function UploadForm({
           <span className={formStyles.shapeHint}>
             {t('upload.dropzone.folderHint')}
           </span>
+          {showSignInPrompt && (
+            <span className={formStyles.shapeHint}>
+              {t('upload.dropzone.anonCapHint', {
+                cap: ANONYMOUS_CARD_CAP,
+                monthly: FREE_MONTHLY_CARDS,
+              })}
+            </span>
+          )}
           {sample && (
             <div className={formStyles.sampleRow}>
               <span className={formStyles.sampleLead}>
@@ -2701,7 +2713,9 @@ function UploadForm({
       });
     }
     if (zoneState === 'heldForSignup' && heldDeck != null) {
-      return t('anonymousPartial:gateLive', { count: heldDeck.cardCount });
+      return heldDeck.totalCards <= FREE_MONTHLY_CARDS
+        ? t('anonymousPartial:gateLiveAll', { total: heldDeck.totalCards })
+        : t('anonymousPartial:gateLiveCapped', { monthly: FREE_MONTHLY_CARDS });
     }
     if (zoneState === 'heldExpired') {
       const expiredBody = isPaying

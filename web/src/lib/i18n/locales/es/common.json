@@ -161,7 +161,8 @@
       "or": "o",
       "chooseFiles": "Elegir archivos",
       "csvHint": "Nombra tus columnas anverso y reverso (o pregunta y respuesta) para que 2anki las asigne bien — de lo contrario, usa la primera columna como anverso y la segunda como reverso.",
-      "folderHint": "Las carpetas también funcionan — si tu navegador descomprimió una exportación de Notion, suelta la carpeta completa."
+      "folderHint": "Las carpetas también funcionan — si tu navegador descomprimió una exportación de Notion, suelta la carpeta completa.",
+      "anonCapHint": "Sin cuenta, obtienes hasta {{cap}} tarjetas por conversión. Una cuenta gratuita te da {{monthly}} tarjetas al mes."
     },
     "form": {
       "makingDeck": "Creando tu mazo...",
