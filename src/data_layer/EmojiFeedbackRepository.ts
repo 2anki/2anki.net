@@ -1,9 +1,15 @@
 import type { Knex } from 'knex';
 
+import { LOW_RATING_MAX } from '../lib/feedback/lowRating';
 import type {
   EmojiFeedbackCommentEntry,
   EmojiFeedbackRatingCount,
 } from '../types/ops/feedbackRows';
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const startOfUtcDay = (day: Date): Date =>
+  new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate()));
 
 export type { EmojiFeedbackCommentEntry, EmojiFeedbackRatingCount };
 
@@ -18,6 +24,7 @@ export interface IEmojiFeedbackRepository {
   insert(entry: EmojiFeedbackEntry): Promise<void>;
   countByRating(since: Date): Promise<EmojiFeedbackRatingCount[]>;
   recentComments(limit: number): Promise<EmojiFeedbackCommentEntry[]>;
+  countLowRatingsFromEmailOnDay(email: string, day: Date): Promise<number>;
 }
 
 interface RatingRow {
@@ -76,6 +83,22 @@ export class EmojiFeedbackRepository implements IEmojiFeedbackRepository {
       created_at: toIso(row.created_at),
     }));
   }
+
+  async countLowRatingsFromEmailOnDay(
+    email: string,
+    day: Date
+  ): Promise<number> {
+    const start = startOfUtcDay(day);
+    const end = new Date(start.getTime() + MS_PER_DAY);
+    const row = await this.database(this.table)
+      .whereRaw('LOWER(TRIM(email)) = LOWER(?)', [email.trim()])
+      .andWhere('rating', '<=', LOW_RATING_MAX)
+      .andWhere('created_at', '>=', start)
+      .andWhere('created_at', '<', end)
+      .count<{ count: string | number }[]>('* as count')
+      .first();
+    return Number(row?.count ?? 0);
+  }
 }
 
 export class InMemoryEmojiFeedbackRepository implements IEmojiFeedbackRepository {
@@ -124,5 +147,22 @@ export class InMemoryEmojiFeedbackRepository implements IEmojiFeedbackRepository
         page: r.page,
         created_at: r.created_at.toISOString(),
       }));
+  }
+
+  async countLowRatingsFromEmailOnDay(
+    email: string,
+    day: Date
+  ): Promise<number> {
+    const normalized = email.trim().toLowerCase();
+    const start = startOfUtcDay(day);
+    const end = new Date(start.getTime() + MS_PER_DAY);
+    return this.rows.filter(
+      (r) =>
+        r.email != null &&
+        r.email.trim().toLowerCase() === normalized &&
+        r.rating <= LOW_RATING_MAX &&
+        r.created_at >= start &&
+        r.created_at < end
+    ).length;
   }
 }

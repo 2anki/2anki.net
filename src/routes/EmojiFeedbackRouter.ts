@@ -2,13 +2,21 @@ import express from 'express';
 
 import EmojiFeedbackController from '../controllers/EmojiFeedbackController';
 import { EmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
+import { LowRatingContextRepository } from '../data_layer/LowRatingContextRepository';
 import { getDatabase } from '../data_layer';
+import { getDefaultEmailService } from '../services/EmailService/EmailService';
+import { NotifyLowRatingUseCase } from '../usecases/feedback/NotifyLowRatingUseCase';
 
 const EmojiFeedbackRouter = () => {
   const router = express.Router();
   const database = getDatabase();
   const repo = new EmojiFeedbackRepository(database);
-  const controller = new EmojiFeedbackController(repo);
+  const notifier = new NotifyLowRatingUseCase(
+    repo,
+    new LowRatingContextRepository(database),
+    getDefaultEmailService()
+  );
+  const controller = new EmojiFeedbackController(repo, notifier);
 
   /**
    * @swagger

@@ -43,6 +43,17 @@ type EmailResponse = { didSend: boolean; error?: Error };
 
 export type MagicLinkSendResult = { suppressed: boolean };
 
+export interface LowRatingFeedbackEmailParams {
+  rating: number;
+  comment: string | null;
+  page: string;
+  replyTo: string;
+  userId: string | null;
+  latestJobId: number | null;
+  latestJobStatus: string | null;
+  plan: string;
+}
+
 export interface IEmailService {
   sendResetEmail(email: string, token: string): Promise<void>;
   sendConversionEmail(
@@ -136,6 +147,9 @@ export interface IEmailService {
   sendEmailChangeNotificationEmail(
     oldEmail: string,
     newEmail: string
+  ): Promise<void>;
+  sendLowRatingFeedbackEmail(
+    params: LowRatingFeedbackEmailParams
   ): Promise<void>;
 }
 
@@ -1083,6 +1097,61 @@ export class EmailService implements IEmailService {
       throw error;
     }
   }
+
+  async sendLowRatingFeedbackEmail(
+    params: LowRatingFeedbackEmailParams
+  ): Promise<void> {
+    const comment =
+      params.comment != null && params.comment.trim().length > 0
+        ? params.comment
+        : null;
+    const latestJob =
+      params.latestJobId == null
+        ? '(none)'
+        : `${params.latestJobId} (${params.latestJobStatus ?? 'unknown'})`;
+    const userId = params.userId ?? '(no matching account)';
+
+    const textLines = [
+      `A user left a ${params.rating}/5 rating and asked to be contacted.`,
+      'Reply to this email to answer them.',
+      '',
+      `Rating: ${params.rating}/5`,
+      `Plan: ${params.plan}`,
+      `Page: ${params.page}`,
+      `User ID: ${userId}`,
+      `Latest job: ${latestJob}`,
+      '',
+      'Comment:',
+      comment ?? '(no comment)',
+    ];
+
+    const html = [
+      `<p>A user left a ${params.rating}/5 rating and asked to be contacted.</p>`,
+      '<p><strong>Reply to this email to answer them.</strong></p>',
+      '<ul>',
+      `<li>Rating: ${params.rating}/5</li>`,
+      `<li>Plan: ${escapeHtml(params.plan)}</li>`,
+      `<li>Page: ${escapeHtml(params.page)}</li>`,
+      `<li>User ID: ${escapeHtml(userId)}</li>`,
+      `<li>Latest job: ${escapeHtml(latestJob)}</li>`,
+      '</ul>',
+      '<p>Comment:</p>',
+      `<blockquote>${comment == null ? '(no comment)' : escapeHtml(comment)}</blockquote>`,
+    ].join('\n');
+
+    const msg = {
+      to: SUPPORT_EMAIL_ADDRESS,
+      cc: SUPPORT_CC_ADDRESS,
+      from: DEFAULT_SENDER,
+      replyTo: params.replyTo,
+      subject: `Low rating ${params.rating}/5 needs a follow-up`,
+      text: textLines.join('\n'),
+      html,
+      categories: [EMAIL_CATEGORIES.lowRatingFeedback],
+    };
+
+    await sendWithRetry(() => sgMail.send(msg));
+  }
 }
 
 export class UnimplementedEmailService implements IEmailService {
@@ -1307,6 +1376,12 @@ export class UnimplementedEmailService implements IEmailService {
     _newEmail: string
   ): Promise<void> {
     console.info('sendEmailChangeNotificationEmail not handled');
+  }
+
+  async sendLowRatingFeedbackEmail(
+    _params: LowRatingFeedbackEmailParams
+  ): Promise<void> {
+    console.info('sendLowRatingFeedbackEmail not handled');
   }
 }
 
