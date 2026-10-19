@@ -110,7 +110,7 @@ const MCQ_TTS_LANGUAGE_OPTIONS = [
   { label: 'Mandarin (Simplified)', value: 'zh_CN' },
   { label: 'Portuguese (Brazil)', value: 'pt_BR' },
 ] as const;
-export const DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanations:
+export const LEGACY_DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanations:
 - Read the document from start to finish and identify any question and answers.
 - Use the same language as the document or infer the language based on what is mostly used.
 - Use the same text as in the document and do not make up any questions or answers.
@@ -119,6 +119,54 @@ export const DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanations:
 - Do not limit the number of number of questions and answer but create all of them!
 - Do not make up any questions and use the questions in the document!
 - Create a ul for every question pair, not one ul for all of them with li!`;
+
+const INSTRUCTIONS_WHITESPACE = /\s/;
+
+function stripLegacyDefaultPrefix(value: string): string | null {
+  const legacyDefault = LEGACY_DEFAULT_USER_INSTRUCTIONS.trim();
+  let valueIndex = 0;
+  let defaultIndex = 0;
+  while (defaultIndex < legacyDefault.length) {
+    if (INSTRUCTIONS_WHITESPACE.test(legacyDefault[defaultIndex])) {
+      if (
+        valueIndex >= value.length ||
+        !INSTRUCTIONS_WHITESPACE.test(value[valueIndex])
+      ) {
+        return null;
+      }
+      while (
+        defaultIndex < legacyDefault.length &&
+        INSTRUCTIONS_WHITESPACE.test(legacyDefault[defaultIndex])
+      ) {
+        defaultIndex += 1;
+      }
+      while (
+        valueIndex < value.length &&
+        INSTRUCTIONS_WHITESPACE.test(value[valueIndex])
+      ) {
+        valueIndex += 1;
+      }
+      continue;
+    }
+    if (value[valueIndex] !== legacyDefault[defaultIndex]) {
+      return null;
+    }
+    valueIndex += 1;
+    defaultIndex += 1;
+  }
+  return value.slice(valueIndex);
+}
+
+export function normalizeStoredInstructions(
+  stored: string | null | undefined
+): string {
+  if (stored == null) return '';
+  const trimmed = stored.trim();
+  if (trimmed === '') return '';
+  const remainder = stripLegacyDefaultPrefix(trimmed);
+  if (remainder == null) return stored;
+  return remainder.trim();
+}
 
 export const INSTRUCTION_PRESETS = [
   {
@@ -398,10 +446,8 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       getLocalStorageValue('input_model_name', '', settings)
     );
     const [userInstructions, setUserInstructions] = useState(
-      getLocalStorageValue(
-        'user-instructions',
-        DEFAULT_USER_INSTRUCTIONS,
-        settings
+      normalizeStoredInstructions(
+        getLocalStorageValue('user-instructions', '', settings)
       )
     );
     const [instructionsOpen, setInstructionsOpen] = useState(
@@ -505,7 +551,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       setClozeName(localStorage.getItem('cloze_model_name') ?? '');
       setInputName(localStorage.getItem('input_model_name') ?? '');
       setUserInstructions(
-        localStorage.getItem('user-instructions') ?? DEFAULT_USER_INSTRUCTIONS
+        normalizeStoredInstructions(localStorage.getItem('user-instructions'))
       );
       setMcqEnabled(
         (localStorage.getItem('mcq-enabled') ??
@@ -552,7 +598,10 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           ['basic_model_name', setBasicName],
           ['cloze_model_name', setClozeName],
           ['input_model_name', setInputName],
-          ['user-instructions', setUserInstructions],
+          [
+            'user-instructions',
+            (value) => setUserInstructions(normalizeStoredInstructions(value)),
+          ],
           ['mcq-tts-question', setMcqTtsQuestion],
           ['mcq-tts-correct-answer', setMcqTtsCorrectAnswer],
           ['mcq-tts-extra', setMcqTtsExtra],
@@ -723,7 +772,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       setBasicName('');
       setClozeName('');
       setInputName('');
-      setUserInstructions(DEFAULT_USER_INSTRUCTIONS);
+      setUserInstructions('');
       setMcqEnabled(DEFAULT_MCQ_ENABLED);
       setMcqTtsQuestion(DEFAULT_MCQ_TTS_LANG);
       setMcqTtsCorrectAnswer(DEFAULT_MCQ_TTS_LANG);

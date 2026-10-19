@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-ai-instructions-empty-default",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "AI card instructions start empty, so lecture PDFs get the full set of cards"
+}

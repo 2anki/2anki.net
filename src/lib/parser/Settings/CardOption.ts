@@ -1,7 +1,7 @@
-import { getDefaultUserInstructions } from '../../../infrastracture/adapters/fileConversion/convertPDFToHTML';
 import { isRescueRule, type RescueRule } from '../../../types/RescueCandidate';
 import { validateCardStylePicker } from '../../claude/getCardStylePromptFragment';
 import { parseTemplate } from './helpers/parseTemplate';
+import { normalizeUserInstructions } from './helpers/normalizeUserInstructions';
 import { validateCardSize } from '../../claude/cardSize';
 import type { FieldMapping } from '../../claude/ClaudeService';
 
@@ -210,8 +210,9 @@ class CardOption {
 
     this.nestedBulletPoints = input['markdown-nested-bullet-points'] === 'true';
     this.splitSectionsIntoDecks = input['split-sections-into-decks'] === 'true';
-    this.userInstructions =
-      input['user-instructions'] ?? getDefaultUserInstructions();
+    this.userInstructions = normalizeUserInstructions(
+      input['user-instructions']
+    );
     this.cardStyle = validateCardStylePicker(input['card-style']);
     this.codeTheme = validateCodeTheme(input['code-theme']);
     this.mcqEnabled = input['mcq-enabled'] === 'true';

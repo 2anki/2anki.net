@@ -1,4 +1,40 @@
 import CardOption from './CardOption';
+import { getDefaultUserInstructions } from '../../../infrastracture/adapters/fileConversion/convertPDFToHTML';
+
+describe('CardOption userInstructions', () => {
+  it('is undefined when no instructions are posted', () => {
+    expect(new CardOption({}).userInstructions).toBeUndefined();
+  });
+
+  it('does not fall back to the old PDF-to-HTML default', () => {
+    expect(new CardOption({}).userInstructions).not.toBe(
+      getDefaultUserInstructions()
+    );
+  });
+
+  it('treats a stored copy of the old default as empty', () => {
+    const option = new CardOption({
+      'user-instructions': getDefaultUserInstructions(),
+    });
+    expect(option.userInstructions).toBeUndefined();
+  });
+
+  it('keeps real instructions, trimmed', () => {
+    const option = new CardOption({
+      'user-instructions': '  Make one card per list item.  ',
+    });
+    expect(option.userInstructions).toBe('Make one card per list item.');
+  });
+
+  it('keeps only the line a user added on top of the old default', () => {
+    const option = new CardOption({
+      'user-instructions': `${getDefaultUserInstructions()}\nMake a separate card for each list item.`,
+    });
+    expect(option.userInstructions).toBe(
+      'Make a separate card for each list item.'
+    );
+  });
+});
 
 describe('CardOption rescueRule', () => {
   it('is undefined when the option is absent', () => {

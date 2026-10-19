@@ -763,7 +763,7 @@
     },
     "userInstructions": {
       "summary": "Nutzeranweisungen für die PDF-Konvertierung",
-      "placeholder": "Anweisungen für die PDF-Konvertierung...",
+      "placeholder": "z. B. Erstelle für jeden Listenpunkt eine eigene Karte",
       "presetsLabel": "Schnellanweisungen",
       "presetsHint": "Füge einen Ausgangspunkt hinzu und passe ihn dann im Feld unten an.",
       "presets": {

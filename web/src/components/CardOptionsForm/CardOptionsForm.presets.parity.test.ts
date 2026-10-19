@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  DEFAULT_USER_INSTRUCTIONS,
+  LEGACY_DEFAULT_USER_INSTRUCTIONS,
   INSTRUCTION_PRESETS,
 } from './CardOptionsForm';
 
@@ -25,9 +25,9 @@ function readServerDefaultInstructions(): string {
   return match[1];
 }
 
-describe('web/server default user instructions parity', () => {
-  it('matches the server default so a chip tap never freezes a drifted copy', () => {
-    expect(DEFAULT_USER_INSTRUCTIONS.trim()).toEqual(
+describe('web/server legacy default user instructions parity', () => {
+  it('matches the server default so both sides collapse the same stored copy to empty', () => {
+    expect(LEGACY_DEFAULT_USER_INSTRUCTIONS.trim()).toEqual(
       readServerDefaultInstructions().trim()
     );
   });

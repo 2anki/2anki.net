@@ -1106,7 +1106,7 @@ describe('CardOptionsForm AI instruction presets', () => {
     expect(chip).toHaveAttribute('aria-pressed', 'false');
 
     const textarea = screen.getByPlaceholderText(
-      'Instructions for PDF conversion...'
+      'e.g. Make a separate card for each list item'
     );
     fireEvent.change(textarea, { target: { value: ONE_CARD_SENTENCE } });
     expect(chip).toHaveAttribute('aria-pressed', 'true');
