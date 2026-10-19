@@ -104,8 +104,8 @@
   },
   "pages": {
     "ai-flashcard-generator": {
-      "h1": "Verwandle deine Notizen in Anki-Karten",
-      "subhead": "Echte Notizen rein, echte Karten raus. 2anki baut deinen Stapel aus dem, was du hochlädst — Fakten werden nie erfunden."
+      "h1": "KI-Karteikarten für Anki, aus deinen Notizen geschrieben",
+      "subhead": "Lade ein PDF oder deine Notizen hoch. Mit jedem bezahlten Plan, schon ab einem Day Pass, liest Claude die Datei und schreibt die Karten. Kostenlose Konten bekommen einen Stapel, der aus dem Aufbau der Datei entsteht, bis zu 100 Karten im Monat."
     },
     "anki-to-notion": {
       "h1": "Importiere Anki-Stapel mit einem Klick in Notion.",

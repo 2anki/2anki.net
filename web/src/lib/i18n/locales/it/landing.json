@@ -104,8 +104,8 @@
   },
   "pages": {
     "ai-flashcard-generator": {
-      "h1": "Trasforma i tuoi appunti in carte Anki",
-      "subhead": "Appunti veri dentro, carte vere fuori. 2anki costruisce il tuo mazzo da ciò che carichi — non inventa mai i fatti."
+      "h1": "Flashcard Anki scritte dall'IA a partire dai tuoi appunti",
+      "subhead": "Carica un PDF o i tuoi appunti. Con qualsiasi piano a pagamento, a partire da un Day Pass, Claude legge il file e scrive le carte. Gli account gratuiti ricevono un mazzo creato dalla struttura del file, fino a 100 carte al mese."
     },
     "anki-to-notion": {
       "h1": "Importa mazzi Anki in Notion con un clic.",

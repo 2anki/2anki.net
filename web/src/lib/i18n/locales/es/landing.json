@@ -104,8 +104,8 @@
   },
   "pages": {
     "ai-flashcard-generator": {
-      "h1": "Convierte tus notas en tarjetas de Anki",
-      "subhead": "Notas reales entran, tarjetas reales salen. 2anki crea tu mazo a partir de lo que subes — nunca inventa datos."
+      "h1": "Tarjetas de IA para Anki, escritas a partir de tus apuntes",
+      "subhead": "Sube un PDF o tus apuntes. Con cualquier plan de pago, desde un Day Pass, Claude lee el archivo y escribe las tarjetas. Las cuentas gratuitas reciben un mazo creado a partir de la estructura del archivo, hasta 100 tarjetas al mes."
     },
     "anki-to-notion": {
       "h1": "Importa mazos de Anki a Notion con un solo clic.",

@@ -104,8 +104,8 @@
   },
   "pages": {
     "ai-flashcard-generator": {
-      "h1": "Zet je notities om in Anki-kaarten",
-      "subhead": "Echte notities erin, echte kaarten eruit. 2anki bouwt je deck op basis van wat je uploadt — het verzint nooit feiten."
+      "h1": "AI-flashcards voor Anki, geschreven uit je eigen aantekeningen",
+      "subhead": "Upload een pdf of je aantekeningen. Met elk betaald plan, al vanaf een Day Pass, leest Claude het bestand en schrijft de kaarten. Gratis accounts krijgen een deck opgebouwd uit de structuur van het bestand, tot 100 kaarten per maand."
     },
     "anki-to-notion": {
       "h1": "Importeer Anki-decks met één klik in Notion.",

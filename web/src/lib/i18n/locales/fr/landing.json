@@ -104,8 +104,8 @@
   },
   "pages": {
     "ai-flashcard-generator": {
-      "h1": "Transforme tes notes en cartes Anki",
-      "subhead": "De vraies notes en entrée, de vraies cartes en sortie. 2anki crée ton paquet à partir de ce que tu téléverses — il n'invente jamais de faits."
+      "h1": "Des cartes Anki écrites par l'IA à partir de tes notes",
+      "subhead": "Dépose un PDF ou tes notes. Avec n'importe quelle offre payante, dès le Day Pass, Claude lit le fichier et écrit les cartes. Les comptes gratuits reçoivent un paquet construit à partir de la structure du fichier, jusqu'à 100 cartes par mois."
     },
     "anki-to-notion": {
       "h1": "Importe des paquets Anki dans Notion en un clic.",
