@@ -93,7 +93,7 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'basic-reversed',
       'Basic and reversed',
-      'Create two cards per toggle: question to answer, and answer to question.',
+      'Create two cards per toggle: question to answer, and answer to question. To reverse only some cards, put 🔄 in their question instead.',
       defaultFor('basic-reversed')
     ),
     new CardOptionDetail(
