@@ -39,7 +39,7 @@ function parsePageNumber(token: string, part: string): number {
 }
 
 function parseSegment(part: string): PdfPageSegment {
-  const range = /^(\d+)\s*-\s*(\d+)$/.exec(part);
+  const range = /^(\d+)\s*[-–]\s*(\d+)$/.exec(part);
   if (range) {
     const start = parsePageNumber(range[1], part);
     const end = parsePageNumber(range[2], part);

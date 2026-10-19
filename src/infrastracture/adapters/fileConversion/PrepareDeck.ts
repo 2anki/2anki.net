@@ -1206,7 +1206,8 @@ export async function PrepareDeck(
     dedupeFilesByName(input.files),
     input.settings.pdfPageRange,
     input.userId ?? null,
-    input.workspace.location
+    input.workspace.location,
+    input.name
   );
 
   const fileSummary = summarizeFileNames(files.map((f) => f.name));
@@ -1309,7 +1310,8 @@ export async function prepareDeckInfoOnly(
     dedupeFilesByName(input.files),
     input.settings.pdfPageRange,
     input.userId ?? null,
-    input.workspace.location
+    input.workspace.location,
+    input.name
   );
   const aiGate = await resolveAiConversionGate(input, files);
   const ai: AiConversionState = {

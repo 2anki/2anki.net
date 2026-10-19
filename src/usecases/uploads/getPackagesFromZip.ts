@@ -28,6 +28,7 @@ import {
   isPdfPasswordSentinel,
   parsePdfPasswordSentinel,
 } from '../../lib/pdf/pdfPasswordSentinel';
+import { isPdfPageRangeError } from '../../lib/pdf/pdfPageRange';
 import { buildLockedPdfWarning } from '../../lib/pdf/lockedPdfWarning';
 import { buildConversionFailureWarning } from './conversionFailureWarning';
 import {
@@ -101,6 +102,17 @@ function rescueFromRejection(error: unknown): RescueCandidate[] {
   return error instanceof EmptyDeckError ? error.rescueCandidates : [];
 }
 
+// A bad Pages value carries its own user-facing message. Surface it as a
+// warning instead of letting Promise.allSettled flatten it into the generic
+// "we could not convert this file" failure, where the reason would be lost.
+function pageRangeWarning(error: unknown, warnings: string[]): boolean {
+  if (isPdfPageRangeError(error)) {
+    warnings.push(error.message);
+    return true;
+  }
+  return false;
+}
+
 function reasonFromZeroCardResult(result: {
   cardCount?: number;
   emptyReason?: EmptyDeckReason;
@@ -164,6 +176,7 @@ async function buildDeckBatch(
   const preparedResults: DeckInfoOnlyResult[] = [];
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
+      if (pageRangeWarning(result.reason, warnings)) return;
       failedFiles.push(fileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -298,6 +311,7 @@ async function buildStragglerDecks(
         })
       );
     } catch (error) {
+      if (pageRangeWarning(error, warnings)) continue;
       failedFiles.push(straggler.inputFileName);
       const reason = reasonFromRejection(error);
       if (reason != null) emptyReasons.push(reason);
@@ -468,6 +482,7 @@ async function buildAllInOneSlot(
   let cardsHeldBack: number | undefined;
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
+      if (pageRangeWarning(result.reason, warnings)) return;
       failedFiles.push(supportedFileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -659,6 +674,7 @@ export const getPackagesFromZip = async (
   const rescueCandidateSets: RescueCandidate[][] = [];
   settledChunks.forEach((result, index) => {
     if (result.status === 'rejected') {
+      if (pageRangeWarning(result.reason, warnings)) return;
       failedFiles.push(...chunks[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);

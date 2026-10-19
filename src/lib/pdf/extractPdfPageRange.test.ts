@@ -7,11 +7,12 @@ import {
   PdfPageRangeRunner,
   runPdfTool,
 } from './extractPdfPageRange';
+import { isPdfPageRangeError } from './pdfPageRange';
 import { PAYING_MAX_UPLOAD_SIZE } from '../misc/getUploadLimits';
 
-// A fake poppler that writes one recognisable file per page in the range and
-// concatenates the selected files on unite, so the returned bytes reveal which
-// pages were chosen and in what order.
+// A fake poppler that honours -f/-l per call: each separate writes one file per
+// page in that run only, so a sparse selection reveals a request for a giant
+// span. Unite concatenates its inputs so the bytes show the chosen order.
 function fakeRunner(): PdfPageRangeRunner {
   return {
     separate: vi.fn(async (_inputPath, outputPattern, first, last) => {
@@ -29,6 +30,11 @@ function fakeRunner(): PdfPageRangeRunner {
   };
 }
 
+const separateCalls = (runner: PdfPageRangeRunner) =>
+  (runner.separate as ReturnType<typeof vi.fn>).mock.calls;
+const uniteCalls = (runner: PdfPageRangeRunner) =>
+  (runner.unite as ReturnType<typeof vi.fn>).mock.calls;
+
 describe('extractPdfPageRange', () => {
   let workspace: string;
 
@@ -42,25 +48,36 @@ describe('extractPdfPageRange', () => {
     await fs.promises.rm(workspace, { recursive: true, force: true });
   });
 
-  it('separates across the full span and unites only the requested pages in order', async () => {
+  it('separates a contiguous run once and unites in page order', async () => {
     const runner = fakeRunner();
     const result = await extractPdfPageRange(
       Buffer.from('%PDF'),
-      [2, 4],
+      [2, 3, 4],
       10,
       workspace,
       runner
     );
 
-    expect(result.toString()).toBe('PAGE:2\nPAGE:4\n');
-    const separateArgs = (runner.separate as ReturnType<typeof vi.fn>).mock
-      .calls[0];
-    expect(separateArgs[2]).toBe(2);
-    expect(separateArgs[3]).toBe(4);
-    const uniteArgs = (runner.unite as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(uniteArgs[0].map((p: string) => path.basename(p))).toEqual([
-      'out-2.pdf',
-      'out-4.pdf',
+    expect(result.toString()).toBe('PAGE:2\nPAGE:3\nPAGE:4\n');
+    expect(separateCalls(runner)).toHaveLength(1);
+    expect(separateCalls(runner)[0].slice(2)).toEqual([2, 4]);
+  });
+
+  it('separates each run of a sparse selection without requesting a giant span', async () => {
+    const runner = fakeRunner();
+    const result = await extractPdfPageRange(
+      Buffer.from('%PDF'),
+      [1, 5000],
+      5000,
+      workspace,
+      runner
+    );
+
+    expect(result.toString()).toBe('PAGE:1\nPAGE:5000\n');
+    expect(separateCalls(runner)).toHaveLength(2);
+    expect(separateCalls(runner).map((c) => c.slice(2))).toEqual([
+      [1, 1],
+      [5000, 5000],
     ]);
   });
 
@@ -78,6 +95,25 @@ describe('extractPdfPageRange', () => {
     expect(runner.unite).not.toHaveBeenCalled();
   });
 
+  it('unites a large selection in batches so pdfunite never opens too many files at once', async () => {
+    const runner = fakeRunner();
+    const pages = Array.from({ length: 600 }, (_, i) => i + 1);
+    const result = await extractPdfPageRange(
+      Buffer.from('%PDF'),
+      pages,
+      600,
+      workspace,
+      runner
+    );
+
+    expect(result.toString().trim().split('\n')).toHaveLength(600);
+    // 600 pages -> batches of 500 + 100, then one final merge of the two parts.
+    expect(uniteCalls(runner)).toHaveLength(3);
+    expect(uniteCalls(runner)[0][0]).toHaveLength(500);
+    expect(uniteCalls(runner)[1][0]).toHaveLength(100);
+    expect(uniteCalls(runner)[2][0]).toHaveLength(2);
+  });
+
   it('writes its temp files inside the workspace and cleans them up', async () => {
     const runner = fakeRunner();
     await extractPdfPageRange(
@@ -88,9 +124,9 @@ describe('extractPdfPageRange', () => {
       runner
     );
 
-    const inputPathArg = (runner.separate as ReturnType<typeof vi.fn>).mock
-      .calls[0][0];
-    expect(inputPathArg.startsWith(workspace + path.sep)).toBe(true);
+    expect(separateCalls(runner)[0][0].startsWith(workspace + path.sep)).toBe(
+      true
+    );
     expect(await fs.promises.readdir(workspace)).toEqual([]);
   });
 
@@ -121,10 +157,14 @@ describe('extractPdfPageRange', () => {
 });
 
 describe('runPdfTool', () => {
-  it('kills a subprocess that overruns the timeout', async () => {
-    await expect(runPdfTool('/bin/sleep', ['5'], 50)).rejects.toThrow(
-      'timed out'
-    );
+  it('kills a subprocess that overruns the timeout and reports it as a page-range error', async () => {
+    try {
+      await runPdfTool('/bin/sleep', ['5'], 50);
+      throw new Error('expected runPdfTool to reject');
+    } catch (error) {
+      expect(isPdfPageRangeError(error)).toBe(true);
+      expect((error as Error).message).toContain('took too long');
+    }
   });
 
   it('resolves when the subprocess exits cleanly', async () => {

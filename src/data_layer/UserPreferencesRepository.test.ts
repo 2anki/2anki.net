@@ -144,7 +144,6 @@ const CLIENT_CARD_OPTION_KEYS = [
   'process-pdfs',
   'pdf-extract-text',
   'pdf-page-pairs',
-  'pdf-page-range',
   'download-pdfs',
   'markdown-nested-bullet-points',
   'disable-indented-bullets',

@@ -832,7 +832,7 @@
     "pdfPageRange": {
       "label": "Páginas",
       "placeholder": "p. ej. 12-30, 45",
-      "hint": "Convierte solo estas páginas. Usa números y rangos como 12-30, 45. Déjalo vacío para convertir todo el PDF."
+      "hint": "Convierte solo estas páginas en tu próxima subida. Usa números y rangos como 12-30, 45. Déjalo vacío para convertir todo el PDF."
     },
     "mcq": {
       "heading": "Preguntas tipo test (MCQ)",

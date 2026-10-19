@@ -1319,6 +1319,10 @@ function UploadForm({
         return true;
       }
       return handleUploadError(error, uploadedFiles, isRetry, submittedAt);
+    } finally {
+      // The page range is a one-upload-only, unsynced value; clear it so the
+      // next upload converts the whole PDF unless the user asks again.
+      globalThis.localStorage?.removeItem('pdf-page-range');
     }
     return true;
   };

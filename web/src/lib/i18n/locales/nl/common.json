@@ -832,7 +832,7 @@
     "pdfPageRange": {
       "label": "Pagina's",
       "placeholder": "bijv. 12-30, 45",
-      "hint": "Converteer alleen deze pagina's. Gebruik nummers en reeksen zoals 12-30, 45. Laat leeg om de hele PDF te converteren."
+      "hint": "Converteer alleen deze pagina's bij je volgende upload. Gebruik nummers en reeksen zoals 12-30, 45. Laat leeg om de hele PDF te converteren."
     },
     "mcq": {
       "heading": "Meerkeuzevragen (MCQ)",

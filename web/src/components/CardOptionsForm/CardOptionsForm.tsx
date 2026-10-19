@@ -300,7 +300,6 @@ function computeSnapshot(values: {
   clozeName: string;
   inputName: string;
   userInstructions: string;
-  pdfPageRange: string;
   checkboxValues: Record<string, boolean>;
   mcqEnabled: boolean;
   mcqTtsQuestion: string;
@@ -604,7 +603,6 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
             'user-instructions',
             (value) => setUserInstructions(normalizeStoredInstructions(value)),
           ],
-          ['pdf-page-range', setPdfPageRange],
           ['mcq-tts-question', setMcqTtsQuestion],
           ['mcq-tts-correct-answer', setMcqTtsCorrectAnswer],
           ['mcq-tts-extra', setMcqTtsExtra],
@@ -679,7 +677,6 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           clozeName,
           inputName,
           userInstructions,
-          pdfPageRange,
           checkboxValues,
           mcqEnabled,
           mcqTtsQuestion,
@@ -706,7 +703,6 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         clozeName,
         inputName,
         userInstructions,
-        pdfPageRange,
         checkboxValues,
         mcqEnabled,
         mcqTtsQuestion,
@@ -821,7 +817,6 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       payload['text-align'] = textAlign;
       payload['page-emoji'] = pageEmoji;
       payload['user-instructions'] = userInstructions;
-      payload['pdf-page-range'] = pdfPageRange;
       payload['mcq-enabled'] = mcqEnabled.toString();
       payload['mcq-tts-question'] = mcqTtsQuestion;
       payload['mcq-tts-correct-answer'] = mcqTtsCorrectAnswer;
@@ -1232,7 +1227,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                       badge={PREMIUM_KEYS.has(o.key) ? premiumBadge : undefined}
                     />
                   ))}
-                  {isPdfAiGroup && pdfPageRangeField}
+                  {isPdfAiGroup && pageId == null && pdfPageRangeField}
                   {isPdfAiGroup &&
                     (checkboxValues['pdf-page-pairs'] ?? false) &&
                     (checkboxValues['claude-ai-flashcards'] ?? false) &&

@@ -6,6 +6,7 @@ import { resolveSafeEntryPath } from '../../../lib/vocab/safeEntryPath';
 import {
   parsePdfPageRange,
   resolvePdfPages,
+  PdfPageRangeError,
   PdfPageSegment,
 } from '../../../lib/pdf/pdfPageRange';
 import { extractPdfPageRange } from '../../../lib/pdf/extractPdfPageRange';
@@ -42,33 +43,56 @@ const defaultAdapters: PdfPageRangeAdapters = {
   extract: extractPdfPageRange,
 };
 
-function pdfBytes(file: File): Buffer | null {
-  if (!isPDFFile(file.name)) return null;
+function primaryPdfBytes(file: File, primaryName: string): Buffer | null {
+  if (file.name !== primaryName || !isPDFFile(file.name)) return null;
   if (Buffer.isBuffer(file.contents)) return file.contents;
   if (file.contents instanceof Uint8Array) return Buffer.from(file.contents);
   return null;
 }
 
-// The single choke point for the Pages card option. Every PDF the user chose a
-// range for is sliced down to those pages up front, so text, page images, page
-// pairs and AI all inherit the range and AI credits drop with it. A malformed
-// range or a page past the end of the document throws PdfPageRangeError, which
-// the upload surfaces as a clear message; it never silently converts the whole
-// file instead. A range set with no PDF in the upload is ignored so a stale
-// value never fails an unrelated upload. Ranges are only expanded after the
-// real page count is known, so a hostile value cannot drive an unbounded
-// allocation or spawn.
+async function pageCountOrLockedError(
+  adapters: PdfPageRangeAdapters,
+  buffer: Buffer,
+  workspaceLocation: string
+): Promise<number> {
+  try {
+    return await adapters.getPageCount(buffer, workspaceLocation);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith('pdfinfo_password')
+    ) {
+      throw new PdfPageRangeError(
+        "Page ranges don't work on password-protected PDFs. Clear Pages to convert the whole file."
+      );
+    }
+    throw error;
+  }
+}
+
+// The single choke point for the Pages card option. Only the top-level uploaded
+// PDF (the file whose name is the one being converted) is sliced, so a range
+// never touches PDFs pulled into a Notion export by getRelevantFiles; a
+// standalone PDF that is itself the converted file (a direct upload, or a PDF
+// content file in a zip) is sliced. Slicing happens up front so text, page
+// images, page pairs and AI all inherit the range and AI credits drop with it.
+// A malformed range, a page past the end, or a password-protected PDF throws
+// PdfPageRangeError, which the upload surfaces as a clear message; it never
+// silently converts the whole file. Ranges expand only after the real page
+// count is known, so a hostile value cannot drive an unbounded allocation or
+// spawn.
 export async function applyPdfPageRange(
   files: File[],
   pageRange: string | undefined,
   userId: number | null,
   workspaceLocation: string,
+  primaryName: string,
   adapters: PdfPageRangeAdapters = defaultAdapters
 ): Promise<File[]> {
   if (pageRange == null || pageRange.trim() === '') {
     return files;
   }
-  if (!files.some((file) => pdfBytes(file) != null)) {
+  if (!files.some((file) => primaryPdfBytes(file, primaryName) != null)) {
     return files;
   }
 
@@ -81,12 +105,16 @@ export async function applyPdfPageRange(
   let requestedPages = 0;
   const result: File[] = [];
   for (const file of files) {
-    const buffer = pdfBytes(file);
+    const buffer = primaryPdfBytes(file, primaryName);
     if (buffer == null) {
       result.push(file);
       continue;
     }
-    const pageCount = await adapters.getPageCount(buffer, workspaceLocation);
+    const pageCount = await pageCountOrLockedError(
+      adapters,
+      buffer,
+      workspaceLocation
+    );
     const pages = resolvePdfPages(segments, pageCount);
     const sliced = await adapters.extract(
       buffer,
@@ -96,7 +124,7 @@ export async function applyPdfPageRange(
     );
     result.push({ ...file, contents: sliced, size: sliced.length });
     slicedPdfCount += 1;
-    requestedPages = pages.length;
+    requestedPages += pages.length;
   }
 
   if (slicedPdfCount > 0) {

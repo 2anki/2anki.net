@@ -832,7 +832,7 @@
     "pdfPageRange": {
       "label": "Seiten",
       "placeholder": "z. B. 12-30, 45",
-      "hint": "Nur diese Seiten umwandeln. Verwende Zahlen und Bereiche wie 12-30, 45. Leer lassen, um das ganze PDF umzuwandeln."
+      "hint": "Beim nächsten Upload nur diese Seiten umwandeln. Verwende Zahlen und Bereiche wie 12-30, 45. Leer lassen, um das ganze PDF umzuwandeln."
     },
     "mcq": {
       "heading": "Multiple-Choice-Fragen (MCQ)",
