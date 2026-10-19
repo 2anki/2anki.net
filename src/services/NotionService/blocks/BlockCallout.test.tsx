@@ -22,7 +22,10 @@ function makeHandler(options: Record<string, string>): BlockHandler {
   );
 }
 
-function makeCalloutWithChildren(): CalloutBlockObjectResponse {
+function makeCallout(
+  ownText: string,
+  hasChildren: boolean
+): CalloutBlockObjectResponse {
   return {
     object: 'block',
     id: 'callout-1',
@@ -31,7 +34,7 @@ function makeCalloutWithChildren(): CalloutBlockObjectResponse {
       rich_text: [
         {
           type: 'text',
-          text: { content: 'Remember', link: null },
+          text: { content: ownText, link: null },
           annotations: {
             bold: false,
             italic: false,
@@ -40,7 +43,7 @@ function makeCalloutWithChildren(): CalloutBlockObjectResponse {
             code: false,
             color: 'default',
           },
-          plain_text: 'Remember',
+          plain_text: ownText,
           href: null,
         },
       ],
@@ -52,7 +55,7 @@ function makeCalloutWithChildren(): CalloutBlockObjectResponse {
     last_edited_time: '2026-06-22T07:46:00.000Z',
     created_by: { object: 'user', id: 'user-1' },
     last_edited_by: { object: 'user', id: 'user-1' },
-    has_children: true,
+    has_children: hasChildren,
     archived: false,
     in_trash: false,
   } as unknown as CalloutBlockObjectResponse;
@@ -113,7 +116,7 @@ function stubChildren(
 describe('BlockCallout plain-text back', () => {
   it('keeps the callout children in the plain-text back', async () => {
     const handler = makeHandler({ paragraph: 'true' });
-    const callout = makeCalloutWithChildren();
+    const callout = makeCallout('Remember', true);
     stubChildren(handler, { 'callout-1': [makeParagraphChild('Key fact')] });
 
     const back = await BlockCallout(callout, handler);
@@ -121,9 +124,9 @@ describe('BlockCallout plain-text back', () => {
     expect(back).toBe('Remember<br>Key fact');
   });
 
-  it('keeps every callout child line in the plain-text back', async () => {
+  it('keeps each callout child as its own line, not glued together', async () => {
     const handler = makeHandler({ paragraph: 'true' });
-    const callout = makeCalloutWithChildren();
+    const callout = makeCallout('Remember', true);
     stubChildren(handler, {
       'callout-1': [
         makeParagraphChild('First point'),
@@ -133,19 +136,56 @@ describe('BlockCallout plain-text back', () => {
 
     const back = await BlockCallout(callout, handler);
 
-    expect(back).toContain('First point');
-    expect(back).toContain('Second point');
-    expect(back).not.toContain('<figure');
+    expect(back).toBe('Remember<br>First point<br>Second point');
   });
 
   it('returns the callout text alone when it has no children', async () => {
     const handler = makeHandler({ paragraph: 'true' });
-    const callout = makeCalloutWithChildren();
-    callout.has_children = false;
+    const callout = makeCallout('Remember', false);
     stubChildren(handler, {});
 
     const back = await BlockCallout(callout, handler);
 
     expect(back).toBe('Remember');
+  });
+
+  it('keeps text that looks like HTML escaped in the plain-text back', async () => {
+    const handler = makeHandler({ paragraph: 'true' });
+    const callout = makeCallout('Keep <b>this</b>', false);
+    stubChildren(handler, {});
+
+    const back = await BlockCallout(callout, handler);
+
+    expect(back).toBe('Keep &lt;b&gt;this&lt;/b&gt;');
+    expect(back).not.toContain('<b>');
+  });
+
+  it('does not append "null" when the children fetch fails', async () => {
+    const handler = makeHandler({ paragraph: 'true' });
+    const callout = makeCallout('Remember', true);
+    vi.spyOn(handler.api, 'getBlocks').mockRejectedValue(
+      new Error('Notion is unreachable')
+    );
+
+    const back = await BlockCallout(callout, handler);
+
+    expect(back).toBe('Remember');
+    expect(back).not.toContain('null');
+  });
+
+  it('renders the full figure with children when the option is off', async () => {
+    const handler = makeHandler({});
+    const callout = makeCallout('Remember', true);
+    stubChildren(handler, { 'callout-1': [makeParagraphChild('Key fact')] });
+
+    const back = await BlockCallout(callout, handler);
+
+    expect(back).toContain('class="callout');
+    expect(back).toContain('Key fact');
+    const figureClose = back.indexOf('</figure>');
+    expect(figureClose).toBeGreaterThan(-1);
+    expect(back.slice(figureClose + '</figure>'.length)).not.toContain(
+      'Key fact'
+    );
   });
 });

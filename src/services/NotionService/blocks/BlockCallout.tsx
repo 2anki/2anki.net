@@ -4,10 +4,54 @@ import {
 } from '@notionhq/client/build/src/api-endpoints';
 import ReactDOMServer from 'react-dom/server';
 import type { IBlockRenderer } from '../BlockHandler/types';
+import type CardOption from '../../../lib/parser/Settings/CardOption';
 import getChildren from '../helpers/getChildren';
-import getPlainText from '../helpers/getPlainText';
+import { toPlainTextBack } from '../../../lib/parser/toPlainTextBack';
 import { styleWithColors } from '../NotionColors';
 import HandleBlockAnnotations from './HandleBlockAnnotations';
+
+const renderOwnText = (
+  richText: RichTextItemResponse[],
+  handler: IBlockRenderer
+) =>
+  ReactDOMServer.renderToStaticMarkup(
+    <>
+      {richText.map((t: RichTextItemResponse) => {
+        const { annotations } = t;
+        return HandleBlockAnnotations(annotations, t, {
+          noUnderline: handler.settings?.noUnderline,
+          tagRegistry: handler.tagRegistry,
+        });
+      })}
+    </>
+  );
+
+const renderChildrenAsHtmlWithoutMedia = async (
+  block: CalloutBlockObjectResponse,
+  handler: IBlockRenderer
+): Promise<string> => {
+  if (!block.has_children) {
+    return '';
+  }
+  const restore = {
+    settings: handler.settings,
+    embedImage: handler.embedImage,
+    embedAudioFile: handler.embedAudioFile,
+    embedFile: handler.embedFile,
+  };
+  const dropMedia = async () => '';
+  handler.settings = Object.create(handler.settings, {
+    isTextOnlyBack: { value: false, enumerable: true },
+  }) as CardOption;
+  handler.embedImage = dropMedia;
+  handler.embedAudioFile = dropMedia;
+  handler.embedFile = dropMedia;
+  try {
+    return (await handler.getBackSide(block, true)) ?? '';
+  } finally {
+    Object.assign(handler, restore);
+  }
+};
 
 export const BlockCallout = async (
   block: CalloutBlockObjectResponse,
@@ -17,15 +61,14 @@ export const BlockCallout = async (
   const { icon } = callout;
   const { rich_text: richText } = callout;
 
-  const childrenHtml = await getChildren(block, handler);
-
   if (handler.settings?.isTextOnlyBack) {
-    const ownText = getPlainText(richText);
-    if (!childrenHtml) {
-      return ownText;
-    }
-    return ownText ? `${ownText}<br>${childrenHtml}` : childrenHtml;
+    const childrenHtml = await renderChildrenAsHtmlWithoutMedia(block, handler);
+    return toPlainTextBack(
+      `${renderOwnText(richText, handler)}${childrenHtml}`
+    );
   }
+
+  const childrenHtml = await getChildren(block, handler);
 
   const figureWithoutChildren = ReactDOMServer.renderToStaticMarkup(
     <figure
