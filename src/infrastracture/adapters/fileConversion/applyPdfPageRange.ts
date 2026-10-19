@@ -70,11 +70,9 @@ async function pageCountOrLockedError(
   }
 }
 
-// The single choke point for the Pages card option. Only the top-level uploaded
-// PDF (the file whose name is the one being converted) is sliced, so a range
-// never touches PDFs pulled into a Notion export by getRelevantFiles; a
-// standalone PDF that is itself the converted file (a direct upload, or a PDF
-// content file in a zip) is sliced. Slicing happens up front so text, page
+// The single choke point for the Pages card option. The worker calls this only
+// for a single-file upload, and only the file whose name is the one being
+// converted is sliced; zips and multi-file uploads never reach it. Slicing happens up front so text, page
 // images, page pairs and AI all inherit the range and AI credits drop with it.
 // A malformed range, a page past the end, or a password-protected PDF throws
 // PdfPageRangeError, which the upload surfaces as a clear message; it never

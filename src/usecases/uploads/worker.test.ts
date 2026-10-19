@@ -342,11 +342,17 @@ describe('runUploadGenerationInWorker', () => {
     });
 
     it('applies the range to a single uploaded PDF', async () => {
+      const rangedFiles = [
+        { name: 'lecture.pdf', contents: Buffer.from('%PDF-ranged') },
+      ];
+      mockApplyPdfPageRange.mockResolvedValueOnce(rangedFiles);
+
       await runUploadGenerationInWorker(rangeTask([makePdf('lecture.pdf')]));
 
       expect(mockApplyPdfPageRange).toHaveBeenCalledTimes(1);
       expect(mockApplyPdfPageRange.mock.calls[0][1]).toBe('2-3');
       expect(mockApplyPdfPageRange.mock.calls[0][4]).toBe('lecture.pdf');
+      expect(mockPrepareDeck.mock.calls[0][0].files).toBe(rangedFiles);
     });
 
     it('leaves every PDF whole when two PDFs are uploaded together', async () => {
