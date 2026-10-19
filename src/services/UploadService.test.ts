@@ -5694,6 +5694,37 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(props).not.toHaveProperty('arm');
   });
 
+  it('does not refuse an over-cap upload from an anonymous pass holder when the flag is off', async () => {
+    mockGetFeatureFlag.mockResolvedValue(false);
+    mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus, redirectedTo } = responseWithRedirect();
+    res.locals.subscriber = true;
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(redirectedTo()).toBeNull();
+    expect(capturedStatus()).toBe(200);
+  });
+
+  it('delivers the whole deck to an anonymous visitor with a valid pass', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus, redirectedTo } = responseWithRedirect();
+    res.locals.subscriber = true;
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
+    expect(redirectedTo()).toBeNull();
+    expect(capturedStatus()).toBe(200);
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBeUndefined();
+    const props = conversionSucceededProps();
+    expect(props).not.toHaveProperty('card_limit_partial');
+    expect(props).not.toHaveProperty('arm');
+  });
+
   it('delivers an at-cap upload with no anonymous id unchanged with no held-back header', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }]);
