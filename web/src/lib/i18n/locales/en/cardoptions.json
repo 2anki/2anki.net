@@ -59,7 +59,7 @@
     },
     "basic-reversed": {
       "label": "Basic and reversed",
-      "description": "Create two cards per toggle: question to answer, and answer to question."
+      "description": "Create two cards per toggle: question to answer, and answer to question. To reverse only some cards, put 🔄 in their question instead."
     },
     "reversed": {
       "label": "Reversed only",

@@ -59,7 +59,7 @@
     },
     "basic-reversed": {
       "label": "Basic e inversa",
-      "description": "Crea due carte per toggle: dalla domanda alla risposta e dalla risposta alla domanda."
+      "description": "Crea due carte per toggle: dalla domanda alla risposta e dalla risposta alla domanda. Per invertire solo alcune carte, metti invece 🔄 nella loro domanda."
     },
     "reversed": {
       "label": "Solo inversa",

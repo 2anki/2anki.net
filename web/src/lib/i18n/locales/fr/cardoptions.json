@@ -59,7 +59,7 @@
     },
     "basic-reversed": {
       "label": "Basic et inversée",
-      "description": "Crée deux cartes par bascule : question vers réponse, et réponse vers question."
+      "description": "Crée deux cartes par bascule : question vers réponse, et réponse vers question. Pour n’inverser que certaines cartes, mets plutôt 🔄 dans leur question."
     },
     "reversed": {
       "label": "Inversée uniquement",

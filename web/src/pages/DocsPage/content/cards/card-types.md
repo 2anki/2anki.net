@@ -33,6 +33,19 @@ In HTML:
 
 You also get **Basic and Reversed** as a card option — that creates the front/back card and a second card with front and back swapped. Useful for vocabulary. See [Card options](/documentation/cards/card-options).
 
+### Reverse only some cards
+
+Put 🔄 anywhere in a toggle's question to get that one card in both directions. 2anki removes the 🔄 from the card text and adds a second card with front and back swapped. The other cards stay one-way, so you don't need **Basic and Reversed** for the whole deck.
+
+```html
+<details>
+  <summary>🔄 Hund</summary>
+  <p>dog</p>
+</details>
+```
+
+This gives two cards: "Hund" with "dog" on the back, and "dog" with "Hund" on the back. It works on file uploads and on Notion pages you convert while connected.
+
 ## Cloze
 
 Cloze hides part of a sentence. You see "The capital of France is [...]" and type or recall "Paris".

@@ -59,7 +59,7 @@
     },
     "basic-reversed": {
       "label": "Basic und umgekehrt",
-      "description": "Erstelle pro Toggle zwei Karten: Frage zu Antwort und Antwort zu Frage."
+      "description": "Erstelle pro Toggle zwei Karten: Frage zu Antwort und Antwort zu Frage. Um nur einzelne Karten umzukehren, setz stattdessen 🔄 in ihre Frage."
     },
     "reversed": {
       "label": "Nur umgekehrt",
