@@ -7,6 +7,7 @@ import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
 import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { AnonymousDayPassOffer } from '../../components/AnonymousDayPassOffer/AnonymousDayPassOffer';
 import {
   FREE_MONTHLY_CARDS,
   LimitWall,
@@ -97,6 +98,7 @@ function AnonymousLimit() {
             </Link>
           </div>
           <p className={styles.planNote}>{t('limit.browserNote')}</p>
+          <AnonymousDayPassOffer surface="anonymous-limit-wall" />
         </div>
       </div>
     </div>

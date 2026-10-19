@@ -300,6 +300,16 @@ describe('LimitPage — anonymous variant', () => {
     ).toBeTruthy();
   });
 
+  it('offers a Day Pass with no account while sign-up stays the primary action', () => {
+    renderPage();
+    expect(
+      screen.getByRole('button', { name: /Get a Day Pass for/ })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('link', { name: 'Create a free account' }).className
+    ).toContain('planCtaPrimary');
+  });
+
   it('does not show the monthly-limit upgrade UI for anonymous users', () => {
     renderPage();
     expect(screen.queryByText('You reached 100 cards this month')).toBeNull();
