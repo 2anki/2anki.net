@@ -11,7 +11,7 @@
     },
     "all": {
       "label": "Usar todas las listas de alternancias",
-      "description": "Toma las alternancias de cualquier parte de la página, incluidas las anidadas. Desactivado, solo las alternancias de primer nivel se convierten en tarjetas."
+      "description": "Toma las alternancias de cualquier parte de la página, incluidas las que están dentro de listas, llamadas o columnas. Desactivado, solo las alternancias de primer nivel se convierten en tarjetas."
     },
     "paragraph": {
       "label": "Usar texto sin formato en el reverso",
@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Máximo una alternancia por tarjeta",
-      "description": "Cada alternancia de nivel superior se convierte en una tarjeta. Una alternancia anidada dentro de otra permanece en el reverso de la tarjeta principal y no se convierte en su propia tarjeta. Para obtener una tarjeta por alternancia, mantenlas en el nivel superior en lugar de anidarlas."
+      "description": "Cada alternancia de nivel superior se convierte en una tarjeta. Una alternancia anidada dentro de otra permanece en el reverso de la tarjeta principal y no se convierte en su propia tarjeta, salvo que la selecciones con Cherry-pick. Para obtener una tarjeta por alternancia, mantenlas en el nivel superior en lugar de anidarlas."
     },
     "remove-mp3-links": {
       "label": "Quitar los enlaces MP3 de los archivos de audio",

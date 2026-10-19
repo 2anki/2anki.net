@@ -27,16 +27,16 @@ Kartenoptionen ändern, wie 2anki deine Quelle in Karteikarten verwandelt. Die m
 
 ## Karteninhalt
 
-| Option                                          | Standard | Was sie macht                                                                                                                                                      |
-| ----------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Use All Toggle Lists                            | On       | Greift Toggle-Listen auf, die irgendwo in der Seite verschachtelt sind. Off bedeutet, nur Toggles auf oberster Ebene werden genutzt.                               |
-| Use Plain Text for Back                         | Off      | Entfernt Formatierung von der Rückseite der Karten, sodass nur der Textinhalt bleibt.                                                                              |
-| Maximum One Toggle Per Card                     | On       | Hält jede Karte auf einen einzelnen Toggle der obersten Ebene. Verschachtelte Toggles bleiben auf der Rückseite der übergeordneten Karte, nicht als eigene Karten. |
-| Preserve Newlines in the Toggle Header and Body | On       | Behält SHIFT-Enter-Zeilenumbrüche in Toggles, statt sie zusammenzufalten.                                                                                          |
-| Markdown Nested Bullet Points                   | On       | Liest Markdown-Aufzählungshierarchien (Obsidian-Stil) als Vorder-/Rückseiten-Paare.                                                                                |
-| Disable Indented Bullets                        | Off      | Verhindert, dass eingerückte Aufzählungen jeweils zu ihrer eigenen Karte werden.                                                                                   |
+| Option                                          | Standard | Was sie macht                                                                                                                                                            |
+| ----------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Use All Toggle Lists                            | On       | Greift auch Toggles in Listen, Callouts oder Spalten auf, nicht nur die auf oberster Ebene. Off bedeutet, nur Toggles auf oberster Ebene werden genutzt.                 |
+| Use Plain Text for Back                         | Off      | Entfernt Formatierung von der Rückseite der Karten, sodass nur der Textinhalt bleibt.                                                                                    |
+| Maximum One Toggle Per Card                     | On       | Beschränkt jede Karte auf einen einzelnen Toggle der obersten Ebene. Verschachtelte Toggles bleiben auf der Rückseite der übergeordneten Karte, nicht als eigene Karten. |
+| Preserve Newlines in the Toggle Header and Body | On       | Behält SHIFT-Enter-Zeilenumbrüche in Toggles, statt sie zusammenzufalten.                                                                                                |
+| Markdown Nested Bullet Points                   | On       | Liest Markdown-Aufzählungshierarchien (Obsidian-Stil) als Vorder-/Rückseiten-Paare.                                                                                      |
+| Disable Indented Bullets                        | Off      | Verhindert, dass eingerückte Aufzählungen jeweils zu ihrer eigenen Karte werden.                                                                                         |
 
-Ein Toggle, der in einem anderen verschachtelt ist, zählt als Antworttext der übergeordneten Karte und bleibt deshalb auf deren Rückseite (offen oder eingeklappt, je nach **Toggle mode**), statt eine eigene Karte zu werden. Damit jeder Toggle eine eigene Karte wird, lass sie auf oberster Ebene, statt sie zu verschachteln. Für einen verschachtelten Toggle, dessen Titel Inline-`code` enthält, macht **Nested toggles with inline code become their own cards** (braucht **Cloze Deletion**) genau diesen zu einer eigenen Cloze-Karte.
+Ein Toggle, der in einem anderen verschachtelt ist, zählt als Antworttext der übergeordneten Karte und bleibt deshalb auf deren Rückseite (offen oder eingeklappt, je nach **Toggle mode**), statt eine eigene Karte zu werden. Damit jeder Toggle eine eigene Karte wird, lass sie auf oberster Ebene statt sie zu verschachteln, oder aktiviere **Cherry-pick** und markiere jeden Toggle mit 🍒. Bei einem hochgeladenen Notion-Export (nicht bei der Notion-Sync-Integration) kann ein verschachtelter Toggle, dessen Titel Inline-`code` enthält, mit **Nested toggles with inline code become their own cards** zu einer eigenen Cloze-Karte werden; dafür muss **Cloze Deletion** an sein.
 
 ## Kartentypen
 

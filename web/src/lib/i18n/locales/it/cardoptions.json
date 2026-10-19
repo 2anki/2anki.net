@@ -11,7 +11,7 @@
     },
     "all": {
       "label": "Usa tutti gli elenchi toggle",
-      "description": "Prende i toggle da qualsiasi punto della pagina, anche quelli annidati. Se disattivato, solo i toggle di primo livello diventano carte."
+      "description": "Prende i toggle da qualsiasi punto della pagina, anche quelli dentro elenchi, callout o colonne. Se disattivato, solo i toggle di primo livello diventano carte."
     },
     "paragraph": {
       "label": "Usa testo semplice per il retro",
@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Massimo un toggle per carta",
-      "description": "Ogni toggle di primo livello diventa una carta. Un toggle annidato dentro un altro resta sul retro della carta principale e non diventa una carta a sé. Per ottenere una carta per ogni toggle, tienili al primo livello invece di annidarli."
+      "description": "Ogni toggle di primo livello diventa una carta. Un toggle annidato dentro un altro resta sul retro della carta principale e non diventa una carta a sé, a meno che tu non lo selezioni con Cherry-pick. Per ottenere una carta per ogni toggle, tienili al primo livello invece di annidarli."
     },
     "remove-mp3-links": {
       "label": "Rimuovi i link MP3 dai file audio",

@@ -27,16 +27,16 @@ Card options change how 2anki turns your source into flashcards. Most are off-or
 
 ## Card content
 
-| Option                                          | Default | What it does                                                                                                        |
-| ----------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| Use All Toggle Lists                            | On      | Picks up toggle lists nested anywhere in the page. Off means only top-level toggles are used.                       |
-| Use Plain Text for Back                         | Off     | Strips formatting from the back of cards so only the text content remains.                                          |
-| Maximum One Toggle Per Card                     | On      | Keeps each card to a single top-level toggle. Nested toggles stay on the parent card's back, not as separate cards. |
-| Preserve Newlines in the Toggle Header and Body | On      | Keeps SHIFT-Enter line breaks inside toggles instead of collapsing them.                                            |
-| Markdown Nested Bullet Points                   | On      | Reads Markdown bullet hierarchies (Obsidian-style) as front/back pairs.                                             |
-| Disable Indented Bullets                        | Off     | Stops indented bullets from each becoming their own card.                                                           |
+| Option                                          | Default | What it does                                                                                                            |
+| ----------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Use All Toggle Lists                            | On      | Picks up toggles inside lists, callouts or columns, not just top-level ones. Off means only top-level toggles are used. |
+| Use Plain Text for Back                         | Off     | Strips formatting from the back of cards so only the text content remains.                                              |
+| Maximum One Toggle Per Card                     | On      | Keeps each card to a single top-level toggle. Nested toggles stay on the parent card's back, not as separate cards.     |
+| Preserve Newlines in the Toggle Header and Body | On      | Keeps SHIFT-Enter line breaks inside toggles instead of collapsing them.                                                |
+| Markdown Nested Bullet Points                   | On      | Reads Markdown bullet hierarchies (Obsidian-style) as front/back pairs.                                                 |
+| Disable Indented Bullets                        | Off     | Stops indented bullets from each becoming their own card.                                                               |
 
-A toggle nested inside another is answer text for its parent, so it stays on the parent card's back (shown open or collapsed by **Toggle mode**) rather than becoming its own card. To get a card per toggle, keep each one at the top level instead of nesting them. For a nested toggle whose title holds inline `code`, **Nested toggles with inline code become their own cards** (needs **Cloze Deletion**) splits just that one into its own cloze card.
+A toggle nested inside another is answer text for its parent, so it stays on the parent card's back (shown open or collapsed by **Toggle mode**) rather than becoming its own card. To get a card per toggle, keep each one at the top level instead of nesting them, or turn on **Cherry-pick** and mark each toggle with 🍒. On an uploaded Notion export (not the Notion sync integration), a nested toggle whose title holds inline `code` can become its own cloze card with **Nested toggles with inline code become their own cards**, which needs **Cloze Deletion** on.
 
 ## Card types
 
