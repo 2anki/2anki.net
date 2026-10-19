@@ -20,6 +20,7 @@ import { getNotionObjectTitle } from 'get-notion-object-title';
 import sanitizeTags from '../../lib/anki/sanitizeTags';
 import ParserRules from '../../lib/parser/ParserRules';
 import CardOption from '../../lib/parser/Settings/CardOption';
+import { stripLeadingDeckNumbering } from '../../lib/parser/helpers/stripLeadingDeckNumbering';
 import { getParagraphBlocks } from './helpers/getParagraphBlocks';
 import renderIcon from './helpers/renderIcon';
 import getBlockIcon, { WithIcon } from './blocks/getBlockIcon';
@@ -641,14 +642,17 @@ class NotionAPIWrapper {
   }
 
   getBlockTitle(icon: string | null, title: string, settings: CardOption) {
+    const named = settings.removeDeckNameNumbering
+      ? stripLeadingDeckNumbering(title)
+      : title;
     if (!icon) {
-      return title;
+      return named;
     }
 
     // the order here matters due to icon not being set and last not being default
     return settings.pageEmoji !== 'last_emoji'
-      ? `${icon}${title}`
-      : `${title}${icon}`;
+      ? `${icon}${named}`
+      : `${named}${icon}`;
   }
 
   async getPageTitle(

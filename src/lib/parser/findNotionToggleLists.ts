@@ -59,18 +59,19 @@ export interface MarkdownMcqResult {
 
 export function detectNotionApiMCQ(bodyHtml: string): MarkdownMcqResult {
   const $ = cheerio.load(bodyHtml);
-  const items = $('ul.to-do-list > li').toArray() as Element[];
+  const todoItems = $('ul.to-do-list > li').toArray() as Element[];
+  const hasTodoItems = todoItems.length > 0;
+  const items = hasTodoItems
+    ? todoItems
+    : ($('ul.bulleted-list > li').toArray() as Element[]);
 
   if (items.length < MCQ_MIN_OPTIONS || items.length > MCQ_MAX_OPTIONS) {
     return { isMcqShape: false, correctIndex: -1, options: [] };
   }
 
-  const checkedIndices: number[] = [];
-  items.forEach((li, idx) => {
-    if ($(li).find('.checkbox-on').length > 0) {
-      checkedIndices.push(idx);
-    }
-  });
+  const correctIndex = hasTodoItems
+    ? checkedTodoIndex(items, $)
+    : fullyBoldedIndex(items, $);
 
   const options = items.map((li) => {
     const $li = $(li);
@@ -78,7 +79,6 @@ export function detectNotionApiMCQ(bodyHtml: string): MarkdownMcqResult {
     return $li.text().trim();
   });
 
-  const correctIndex = checkedIndices.length === 1 ? checkedIndices[0] : -1;
   return { isMcqShape: true, correctIndex, options };
 }
 

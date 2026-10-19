@@ -19,6 +19,7 @@ import { S3FileName, SuffixFrom } from '../../../lib/misc/file';
 import getUniqueFileName from '../../../lib/misc/getUniqueFileName';
 import Deck from '../../../lib/parser/Deck';
 import { detectNotionApiMCQ } from '../../../lib/parser/findNotionToggleLists';
+import { stripLeadingDeckNumbering } from '../../../lib/parser/helpers/stripLeadingDeckNumbering';
 import Note from '../../../lib/parser/Note';
 import type { EmptyDeckReason } from '../../../usecases/jobs/EmptyDeckError';
 import { countEmptyBacks } from '../../../lib/parser/countEmptyBacks';
@@ -335,6 +336,12 @@ class BlockHandler implements IBlockRenderer {
         this.settings.textAlign
       ) ?? themed
     );
+  }
+
+  private applyDeckNameNumbering(name: string): string {
+    return this.settings.removeDeckNameNumbering
+      ? stripLeadingDeckNumbering(name)
+      : name;
   }
 
   private async resolvePageSettings(pageId: string): Promise<CardOption> {
@@ -724,6 +731,11 @@ class BlockHandler implements IBlockRenderer {
         isBasicType
       ) {
         cards.push(ankiNote.reversed(ankiNote));
+      }
+      if (this.settings.reversed && isBasicType) {
+        const swapped = ankiNote.back;
+        ankiNote.back = ankiNote.name;
+        ankiNote.name = swapped;
       }
       if (refreshIconRequested) {
         ankiNote.stripRefreshIcon();
@@ -1611,7 +1623,7 @@ class BlockHandler implements IBlockRenderer {
     return new Deck(
       getDeckName(
         this.settings.deckName || this.firstPageTitle || '',
-        getSubDeckName(block)
+        this.applyDeckNameNumbering(getSubDeckName(block))
       ),
       cards,
       undefined,
