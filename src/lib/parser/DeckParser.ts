@@ -1075,6 +1075,8 @@ export class DeckParser {
       const originalName = dom(elem).attr('src');
       if (!originalName) return;
 
+      DeckParser.unwrapExportImageLink(dom, elem, originalName);
+
       const handled = this.embedLocalOrZipImage(
         dom,
         elem,
@@ -1087,6 +1089,31 @@ export class DeckParser {
       await this.embedRemoteImage(dom, elem, originalName, card);
     });
     return dom.html();
+  }
+
+  private static isExternalImageLink(href: string): boolean {
+    return /^(?:https?:)?\/\//i.test(href);
+  }
+
+  private static shouldUnwrapImageLink(
+    href: string | undefined,
+    imageSrc: string
+  ): href is string {
+    if (href == null || href === '') return false;
+    if (href === imageSrc) return true;
+    return !DeckParser.isExternalImageLink(href);
+  }
+
+  private static unwrapExportImageLink(
+    dom: cheerio.CheerioAPI,
+    elem: Element,
+    imageSrc: string
+  ): void {
+    const anchor = dom(elem).closest('a');
+    if (anchor.length === 0) return;
+    if (!DeckParser.shouldUnwrapImageLink(anchor.attr('href'), imageSrc))
+      return;
+    anchor.replaceWith(dom(elem));
   }
 
   private async embedCardImages(card: Note, ws: Workspace): Promise<void> {

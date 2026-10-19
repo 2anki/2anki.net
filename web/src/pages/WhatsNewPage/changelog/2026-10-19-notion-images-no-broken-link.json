@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-notion-images-no-broken-link",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Images from Notion exports no longer hide a broken link on your cards"
+}

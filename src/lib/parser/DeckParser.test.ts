@@ -1065,6 +1065,52 @@ test('Notion figure image: img src uses filename not full subfolder path', async
   expect(deck.cards[0].back).not.toContain('src="Test Deck/');
 });
 
+test('Notion figure image: unwraps the local image link so the card has no dead anchor', async () => {
+  const htmlPath = path.join(
+    __dirname,
+    '../../test/fixtures/notion-figure-image.html'
+  );
+  const htmlContents = fs.readFileSync(htmlPath).toString();
+  const ws = new Workspace(true, 'fs');
+
+  const parser = new DeckParser({
+    name: 'notion-figure-image.html',
+    settings: new CardOption({ cherry: 'false' }),
+    files: [{ name: 'notion-figure-image.html', contents: htmlContents }],
+    noLimits: true,
+    workspace: ws,
+  });
+  await parser.writeDeckInfo(ws);
+  const back = parser.payload[0].cards[0].back;
+
+  expect(parser.payload[0].cards.length).toBe(1);
+  expect(back).toContain('<img');
+  expect(back).toContain('src="screenshot.png"');
+  expect(back).not.toMatch(/<a\s/);
+  expect(back).not.toContain('href="Test%20Deck/screenshot.png"');
+});
+
+test('Notion figure image: keeps the link when the image points at a different external URL', async () => {
+  const html = `<html><head><title>Deck</title></head><body><article class="page sans">
+<header><h1 class="page-title">Deck</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>Question</summary>
+<div style="display:contents" dir="ltr"><figure class="image"><a href="https://example.com/article"><img src="Test%20Deck/screenshot.png"></a></figure></div>
+</details></li></ul></div></article></body></html>`;
+  const ws = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'deck.html',
+    settings: new CardOption({ cherry: 'false' }),
+    files: [{ name: 'deck.html', contents: html }],
+    noLimits: true,
+    workspace: ws,
+  });
+  await parser.writeDeckInfo(ws);
+  const back = parser.payload[0].cards[0].back;
+
+  expect(back).toContain('href="https://example.com/article"');
+  expect(back).toContain('<img');
+});
+
 test('Notion figure image: embeds image when file found via backslash path (Windows ZIP)', async () => {
   const htmlPath = path.join(
     __dirname,
