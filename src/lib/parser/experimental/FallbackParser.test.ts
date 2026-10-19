@@ -215,21 +215,66 @@ describe('FallbackParser Quizlet multi-line and custom separators', () => {
     expect(decks[0].cards[2].name).toBe('ATP');
   });
 
-  it('parses comma rows where most definitions contain their own commas', () => {
+  it('keeps a tab file whose definitions contain semicolons and commas as tab cards', () => {
     const content =
-      'aorta,largest artery, carries oxygenated blood\nvena cava,largest vein, returns blood to the heart\ncapillary,smallest vessel, site of gas exchange\nalveolus,air sac, where gas exchange happens';
+      'ir\tto go, really; and so forth\nver\tto see, truly; and so on\ncomer\tto eat, indeed; and such';
     const parser = new FallbackParser([
-      { name: 'anatomy_commas.txt', contents: Buffer.from(content) },
+      { name: 'verbs.txt', contents: Buffer.from(content) },
     ]);
     const decks = parser.run({} as any);
     expect(decks).toHaveLength(1);
-    expect(decks[0].cards).toHaveLength(4);
-    expect(decks[0].cards[0].name).toBe('aorta');
-    expect(decks[0].cards[0].back).toBe(
-      'largest artery, carries oxygenated blood'
+    expect(decks[0].cards).toHaveLength(3);
+    expect(decks[0].cards[0].name).toBe('ir');
+    expect(decks[0].cards[0].back).toBe('to go, really; and so forth');
+    expect(decks[0].cards[2].name).toBe('comer');
+  });
+
+  it('drops a markdown heading sitting between tab rows', () => {
+    const content =
+      'mitochondria\tpowerhouse of the cell\n# Organelles\nosmosis\twater diffusion\nnucleus\tstores DNA';
+    const parser = new FallbackParser([
+      { name: 'organelles.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].cards).toHaveLength(3);
+    expect(decks[0].cards[0].name).toBe('mitochondria');
+    expect(decks[0].cards[0].back).toBe('powerhouse of the cell');
+    expect(decks[0].cards.map((card) => card.name)).not.toContain(
+      '# Organelles'
     );
-    expect(decks[0].cards[3].name).toBe('alveolus');
-    expect(decks[0].cards[3].back).toBe('air sac, where gas exchange happens');
+  });
+});
+
+describe('FallbackParser conservative rejection of prose and CSV shapes', () => {
+  it('keeps prose where every line has its own commas an empty deck', () => {
+    const content =
+      'The cell membrane regulates transport, signaling, and adhesion.\nThe nucleus, dense and central, stores the DNA.\nMitochondria, small and numerous, produce the ATP.';
+    const parser = new FallbackParser([
+      { name: 'notes.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(0);
+  });
+
+  it('keeps a single prose paragraph with semicolons an empty deck', () => {
+    const content =
+      'The mitochondria produces energy, called ATP; the nucleus stores material, called DNA; ribosomes assemble the proteins, from amino acids';
+    const parser = new FallbackParser([
+      { name: 'paragraph.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(0);
+  });
+
+  it('keeps a CSV-shaped .txt with quoted fields an empty deck', () => {
+    const content =
+      '"Paris, France","Capital of France"\n"Berlin, Germany","Capital of Germany"\n"Tokyo, Japan","Capital of Japan"';
+    const parser = new FallbackParser([
+      { name: 'capitals.txt', contents: Buffer.from(content) },
+    ]);
+    const decks = parser.run({} as any);
+    expect(decks).toHaveLength(0);
   });
 });
 

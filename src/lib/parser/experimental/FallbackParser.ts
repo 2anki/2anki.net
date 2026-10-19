@@ -159,11 +159,15 @@ class FallbackParser {
         note.back = rest.join('\t').trim();
         note.number = notes.length;
         notes.push(note);
-      } else if (notes.length > 0) {
+      } else if (notes.length > 0 && !this.isHeadingLine(line)) {
         this.appendDefinitionLine(notes[notes.length - 1], line.trim());
       }
     }
     return notes.filter((note) => note.name.length > 0 && note.back.length > 0);
+  }
+
+  private isHeadingLine(line: string): boolean {
+    return /^#{1,6}\s/.test(line.trim());
   }
 
   private appendDefinitionLine(note: Note, line: string): void {
@@ -179,14 +183,21 @@ class FallbackParser {
     if (
       lines.some(
         (line) =>
-          line.includes('\t') || line.includes(' - ') || line.includes(' = ')
+          line.includes('\t') ||
+          line.includes(' - ') ||
+          line.includes(' = ') ||
+          line.startsWith('"')
       )
     ) {
       return false;
     }
     const pairLines = lines.filter((line) => {
       const commaIndex = line.indexOf(',');
-      return commaIndex > 0 && line.slice(commaIndex + 1).trim().length > 0;
+      return (
+        line.split(',').length === 2 &&
+        line.slice(0, commaIndex).trim().length > 0 &&
+        line.slice(commaIndex + 1).trim().length > 0
+      );
     });
     return pairLines.length >= lines.length * 0.9;
   }
@@ -212,15 +223,34 @@ class FallbackParser {
       .filter((segment) => segment.length > 0);
   }
 
-  isSemicolonRowSeparated(contents: string): boolean {
-    const lines = contents
-      .split(/\r?\n/)
-      .filter((line) => line.trim().length > 0);
-    const segments = this.rowSegments(contents);
-    if (segments.length < 3 || segments.length < lines.length * 3) {
+  private isTermLikeFront(front: string): boolean {
+    const trimmed = front.trim();
+    if (trimmed.length === 0 || /[.!?]/.test(trimmed)) {
       return false;
     }
-    return this.detectFieldSeparator(segments) != null;
+    return trimmed.split(/\s+/).length <= 3;
+  }
+
+  isSemicolonRowSeparated(contents: string): boolean {
+    const segments = this.rowSegments(contents);
+    if (
+      segments.length < 3 ||
+      segments.some((segment) => segment.includes('\n'))
+    ) {
+      return false;
+    }
+    const separator = this.detectFieldSeparator(segments);
+    if (separator == null) {
+      return false;
+    }
+    const termLikeFronts = segments.filter((segment) => {
+      const separatorIndex = segment.indexOf(separator);
+      return (
+        separatorIndex > 0 &&
+        this.isTermLikeFront(segment.slice(0, separatorIndex))
+      );
+    });
+    return termLikeFronts.length >= segments.length * 0.9;
   }
 
   parseSemicolonRows(contents: string): Note[] {
@@ -230,6 +260,7 @@ class FallbackParser {
       return [];
     }
     return segments
+      .filter((segment) => segment.indexOf(separator) > 0)
       .map((segment, index) => {
         const separatorIndex = segment.indexOf(separator);
         const note = new Note(segment.slice(0, separatorIndex).trim(), '');
