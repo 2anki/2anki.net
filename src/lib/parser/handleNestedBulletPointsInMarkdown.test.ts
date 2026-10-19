@@ -275,5 +275,89 @@ describe('handleNestedBulletPointsInMarkdown', () => {
       expect(decks[0].cards).toHaveLength(1);
       expect(decks[0].cards[0].back).toContain('important closing note');
     });
+
+    it('treats a 1) numbered marker as a card front', () => {
+      const contents = [
+        '1) First question',
+        '    First answer',
+        '2) Second question',
+        '    Second answer',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].back).toContain('First answer');
+      expect(decks[0].cards[1].back).toContain('Second answer');
+    });
+
+    it('does not start cards on separator rules like * * *, + + + or - - -', () => {
+      const contents = [
+        '- Real question',
+        '    Real answer',
+        '* * *',
+        '+ + +',
+        '- - -',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].name).toContain('Real question');
+    });
+
+    it('keeps a --- rule inside a back on the same card', () => {
+      const contents = [
+        '- Only question',
+        '    First part of the answer',
+        '    ---',
+        '    Second part of the answer',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].back).toContain('First part');
+      expect(decks[0].cards[0].back).toContain('Second part');
+    });
+
+    it('declines a heading-body document so the list stays on one back', () => {
+      const contents = [
+        '## What are the steps?',
+        '',
+        'Follow these:',
+        '1. Boil the water',
+        '2. Add the tea',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(0);
+    });
+
+    it('declines a heading-body document that uses * list markers', () => {
+      const contents = [
+        '## What are the options?',
+        '',
+        '* first option',
+        '* second option',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(0);
+    });
+
+    it('keeps a prose line that begins with a year on the back under a heading', () => {
+      const contents = [
+        '## History',
+        '',
+        '1984. A pivotal year in the account.',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(0);
+    });
   });
 });

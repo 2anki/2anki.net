@@ -80,7 +80,23 @@ function buildNoteFromBack(
   return { note, mcqShapedWithoutMarker: mcq.isMcqShape };
 }
 
-const BULLET_POINT_REGEX = /^(?:[-*+]|\d+[.)])(?:[ \t]|$)/;
+const TOP_LEVEL_ITEM_REGEX = /^(?:[-*+]|\d{1,9}[.)])(?:[ \t]|$)/;
+
+const SEPARATOR_RULE_REGEX = /^[ \t]{0,3}([-*+])(?:[ \t]*\1){2,}[ \t]*$/;
+
+const SUBHEADING_REGEX = /^#{2,6}[ \t]/m;
+
+function startsTopLevelItem(line: string): boolean {
+  return TOP_LEVEL_ITEM_REGEX.test(line) && !SEPARATOR_RULE_REGEX.test(line);
+}
+
+// A document that leads its content with `##`+ headings is heading-body shaped,
+// not bullet shaped: its list lines belong on a card back, so only
+// guessMarkdownCards should own it. Treating list markers as card fronts there
+// would drop the heading and split a single answer into empty cards.
+function documentIsBulletShaped(body: string): boolean {
+  return !SUBHEADING_REGEX.test(body);
+}
 
 // A YAML front-matter fence is a run of dashes. Without stripping it, the
 // metadata between the fences would be read as card content, so DeckParser
@@ -134,6 +150,7 @@ export const handleNestedBulletPointsInMarkdown = (
 
   decks.push(deck);
 
+  const bulletShaped = documentIsBulletShaped(body);
   const lines = dedent(body.replace(/^<\/?aside[^>]*>\s*$/gim, '')).split('\n');
   let isCreating = false;
   let currentFront = '';
@@ -162,14 +179,16 @@ export const handleNestedBulletPointsInMarkdown = (
       continue;
     }
 
-    if (BULLET_POINT_REGEX.exec(line) && isCreating) {
+    const startsCard = bulletShaped && startsTopLevelItem(line);
+
+    if (startsCard && isCreating) {
       flushCurrent();
       isCreating = false;
       currentFront = '';
       currentBack = '';
     }
 
-    if (BULLET_POINT_REGEX.exec(line) && !isCreating) {
+    if (startsCard && !isCreating) {
       isCreating = true;
       currentFront = markdownToHTML(line, true);
       currentBack = '';

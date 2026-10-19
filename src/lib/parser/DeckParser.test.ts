@@ -8,6 +8,7 @@ import CardOption from './Settings/CardOption';
 import { DeckParser } from './DeckParser';
 import Workspace from './WorkSpace';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
+import { serializeCardsToMarkdown } from '../../services/mcp/serializeCardsToMarkdown';
 
 const downloadMediaOrSkipMock = vi.hoisted(() =>
   vi.fn<(url: string) => Promise<Buffer | null>>()
@@ -1702,6 +1703,84 @@ describe('heuristic markdown path — entity preservation', () => {
     const hasEntity = back.includes('&nbsp;');
     const hasChar = back.includes(nbsp);
     expect(hasEntity || hasChar).toBe(true);
+  });
+});
+
+describe('heading-body markdown with lists stays on the heading fallback (regression: #4834)', () => {
+  const parseMarkdown = (markdown: string) =>
+    new DeckParser({
+      name: 'notes.md',
+      settings: new CardOption({ cherry: 'false' }),
+      files: [{ name: 'notes.md', contents: markdown }],
+      noLimits: true,
+      workspace: new Workspace(true, 'fs'),
+    });
+
+  it('keeps a numbered list under a heading on one back, not one card per item', () => {
+    const markdown = [
+      '## What are the steps?',
+      '',
+      'Follow these:',
+      '1. Boil the water',
+      '2. Add the tea',
+    ].join('\n');
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.usedHeuristic).toBe(true);
+    expect(parser.payload[0].cards).toHaveLength(1);
+    expect(parser.payload[0].cards[0].name).toContain('What are the steps');
+    expect(parser.payload[0].cards[0].back).toContain('Boil the water');
+    expect(parser.payload[0].cards[0].back).toContain('Add the tea');
+  });
+
+  it('keeps a * list under a heading on one back, not one card per item', () => {
+    const markdown = [
+      '## What are the options?',
+      '',
+      '* first option',
+      '* second option',
+    ].join('\n');
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.usedHeuristic).toBe(true);
+    expect(parser.payload[0].cards).toHaveLength(1);
+    expect(parser.payload[0].cards[0].name).toContain('What are the options');
+    expect(parser.payload[0].cards[0].back).toContain('first option');
+    expect(parser.payload[0].cards[0].back).toContain('second option');
+  });
+
+  it('round-trips an MCP card whose back is a numbered list as one card', () => {
+    const markdown = serializeCardsToMarkdown([
+      { front: 'List the first two steps', back: '1. Boil water\n2. Add tea' },
+    ]);
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.payload[0].cards).toHaveLength(1);
+    expect(parser.payload[0].cards[0].name).toContain(
+      'List the first two steps'
+    );
+    expect(parser.payload[0].cards[0].back).toContain('Boil water');
+    expect(parser.payload[0].cards[0].back).toContain('Add tea');
+  });
+
+  it('round-trips MCP cards whose backs contain nested lists without splitting', () => {
+    const markdown = serializeCardsToMarkdown([
+      {
+        front: 'How do you brew tea',
+        back: '1. Boil water\n   - use a kettle\n2. Add tea',
+      },
+      { front: 'What is DNA', back: 'The molecule of heredity' },
+    ]);
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.payload[0].cards).toHaveLength(2);
+    expect(parser.payload[0].cards[0].name).toContain('How do you brew tea');
+    expect(parser.payload[0].cards[0].back).toContain('use a kettle');
+    expect(parser.payload[0].cards[1].name).toContain('What is DNA');
   });
 });
 
