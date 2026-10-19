@@ -310,10 +310,10 @@ describe('LandingPage', () => {
       <LandingPage copy={aiFlashcardGeneratorCopy} setErrorMessage={vi.fn()} />
     );
     expect(
-      screen.getByText(/On a paid plan, Claude reads the file/)
+      screen.getByText(/from a Day Pass up, lets Claude read the file/)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/AI cards from uploads need a paid plan/)
+      screen.getByText(/AI cards from PDFs and notes need a paid plan/)
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: /get a Day Pass/i })

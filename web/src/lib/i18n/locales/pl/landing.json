@@ -105,7 +105,7 @@
   "pages": {
     "ai-flashcard-generator": {
       "h1": "Fiszki Anki pisane przez AI na podstawie Twoich notatek",
-      "subhead": "Wrzuć PDF albo swoje notatki. W płatnym planie Claude czyta plik i pisze fiszki, już od Day Pass. Konta darmowe dostają talię zbudowaną z nagłówków i list w pliku, do 100 fiszek miesięcznie."
+      "subhead": "Wrzuć PDF albo swoje notatki. W każdym płatnym planie, już od Day Pass, Claude czyta plik i pisze fiszki. Konta darmowe dostają talię zbudowaną na podstawie struktury pliku, do 100 fiszek miesięcznie."
     },
     "anki-to-notion": {
       "h1": "Zaimportuj talie Anki do Notion jednym kliknięciem.",

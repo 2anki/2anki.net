@@ -105,7 +105,7 @@
   "pages": {
     "ai-flashcard-generator": {
       "h1": "AI-flashcards voor Anki, geschreven uit je eigen aantekeningen",
-      "subhead": "Zet een pdf of je aantekeningen neer. Met een betaald abonnement leest Claude het bestand en schrijft de kaarten, al vanaf een Day Pass. Gratis accounts krijgen een stapel opgebouwd uit de koppen en lijsten van het bestand, tot 100 kaarten per maand."
+      "subhead": "Upload een pdf of je aantekeningen. Met elk betaald plan, al vanaf een Day Pass, leest Claude het bestand en schrijft de kaarten. Gratis accounts krijgen een deck opgebouwd uit de structuur van het bestand, tot 100 kaarten per maand."
     },
     "anki-to-notion": {
       "h1": "Importeer Anki-decks met één klik in Notion.",

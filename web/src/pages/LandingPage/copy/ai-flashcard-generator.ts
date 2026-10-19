@@ -2,7 +2,10 @@ import type { LandingCopy } from '../types';
 
 const aiFlashcardGeneratorCopy: LandingCopy = {
   relatedLinks: [
-    { label: 'Turn a photo of your notes into cards', href: '/photo-to-deck' },
+    {
+      label: 'Turn a photo of your notes into cards',
+      href: '/convert/photo-to-anki',
+    },
     { label: 'Convert a PDF to Anki', href: '/pdf-to-anki' },
     { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
     { label: 'See plans and AI credits', href: '/pricing' },
@@ -10,10 +13,10 @@ const aiFlashcardGeneratorCopy: LandingCopy = {
   pathname: '/ai-flashcard-generator',
   title: 'AI flashcard generator for Anki: your notes in, cards out | 2anki',
   description:
-    'Upload a PDF or your notes and Claude writes Anki cards from them. AI cards come with any paid plan, starting with a Day Pass. Converting without AI is free.',
+    'Upload a PDF or your notes and Claude writes Anki cards from them. AI cards come with any paid plan, starting with a Day Pass. Converting without AI is free up to 100 cards a month.',
   h1: 'AI flashcards for Anki, written from your notes',
   subhead:
-    "Drop a PDF or your notes. On a paid plan, Claude reads the file and writes the cards, starting with a Day Pass. Free accounts get a deck built from the file's headings and lists, up to 100 cards a month.",
+    "Drop a PDF or your notes. Any paid plan, from a Day Pass up, lets Claude read the file and write the cards. Free accounts get a deck built from the file's structure, up to 100 cards a month.",
   faqs: [
     {
       q: 'What does the AI do?',
@@ -21,7 +24,7 @@ const aiFlashcardGeneratorCopy: LandingCopy = {
     },
     {
       q: 'Is the AI free?',
-      a: 'AI cards from uploads need a paid plan: a Day Pass, a Week or Semester Pass, or a subscription. Each plan includes AI credits. A free account can turn photos of notes into cards with Photo to Deck, 5 photos a month. Converting a file without AI is free up to 100 cards a month.',
+      a: 'AI cards from PDFs and notes need a paid plan: a Day Pass, a Week or Semester Pass, or a Pro subscription. Each plan includes AI credits. A free account can turn photos of notes into cards with Photo to Deck, 5 photos a month. Converting a file without AI is free up to 100 cards a month.',
     },
     {
       q: 'Can it make a deck from a topic on its own?',

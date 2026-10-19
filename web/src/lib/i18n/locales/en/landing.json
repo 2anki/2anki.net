@@ -105,7 +105,7 @@
   "pages": {
     "ai-flashcard-generator": {
       "h1": "AI flashcards for Anki, written from your notes",
-      "subhead": "Drop a PDF or your notes. On a paid plan, Claude reads the file and writes the cards, starting with a Day Pass. Free accounts get a deck built from the file's headings and lists, up to 100 cards a month."
+      "subhead": "Drop a PDF or your notes. Any paid plan, from a Day Pass up, lets Claude read the file and write the cards. Free accounts get a deck built from the file's structure, up to 100 cards a month."
     },
     "anki-to-notion": {
       "h1": "Import Anki decks into Notion in one click.",

@@ -105,7 +105,7 @@
   "pages": {
     "ai-flashcard-generator": {
       "h1": "Flashcard Anki scritte dall'IA a partire dai tuoi appunti",
-      "subhead": "Carica un PDF o i tuoi appunti. Con un piano a pagamento, Claude legge il file e scrive le carte, a partire da un Day Pass. Gli account gratuiti ricevono un mazzo creato dai titoli e dagli elenchi del file, fino a 100 carte al mese."
+      "subhead": "Carica un PDF o i tuoi appunti. Con qualsiasi piano a pagamento, a partire da un Day Pass, Claude legge il file e scrive le carte. Gli account gratuiti ricevono un mazzo creato dalla struttura del file, fino a 100 carte al mese."
     },
     "anki-to-notion": {
       "h1": "Importa mazzi Anki in Notion con un clic.",

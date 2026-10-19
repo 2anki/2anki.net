@@ -105,7 +105,7 @@
   "pages": {
     "ai-flashcard-generator": {
       "h1": "KI-Karteikarten für Anki, aus deinen Notizen geschrieben",
-      "subhead": "Lade ein PDF oder deine Notizen hoch. Mit einem bezahlten Plan liest Claude die Datei und schreibt die Karten, schon ab einem Day Pass. Kostenlose Konten bekommen einen Stapel aus den Überschriften und Listen der Datei, bis zu 100 Karten im Monat."
+      "subhead": "Lade ein PDF oder deine Notizen hoch. Mit jedem bezahlten Plan, schon ab einem Day Pass, liest Claude die Datei und schreibt die Karten. Kostenlose Konten bekommen einen Stapel, der aus dem Aufbau der Datei entsteht, bis zu 100 Karten im Monat."
     },
     "anki-to-notion": {
       "h1": "Importiere Anki-Stapel mit einem Klick in Notion.",

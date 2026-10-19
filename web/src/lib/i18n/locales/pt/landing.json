@@ -105,7 +105,7 @@
   "pages": {
     "ai-flashcard-generator": {
       "h1": "Flashcards de IA para o Anki, escritos a partir das suas anotações",
-      "subhead": "Envie um PDF ou suas anotações. Com um plano pago, o Claude lê o arquivo e escreve os cartões, a partir de um Day Pass. Contas gratuitas recebem um baralho montado com os títulos e listas do arquivo, até 100 cartões por mês."
+      "subhead": "Envie um PDF ou suas anotações. Com qualquer plano pago, a partir de um Day Pass, o Claude lê o arquivo e escreve os cartões. Contas gratuitas recebem um baralho montado a partir da estrutura do arquivo, até 100 cartões por mês."
     },
     "anki-to-notion": {
       "h1": "Importe baralhos do Anki para o Notion em um clique.",
