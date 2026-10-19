@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { isMCQ } from './findNotionToggleLists';
+import { detectNotionApiMCQ, isMCQ } from './findNotionToggleLists';
 
 function loadToggleDetails(html: string) {
   const dom = cheerio.load(html);
@@ -116,5 +116,74 @@ describe('isMCQ', () => {
       </details>
     `);
     expect(isMCQ(details, dom)).toBe(-1);
+  });
+});
+
+describe('detectNotionApiMCQ', () => {
+  test('detects the checked to-do shape the live API renders', () => {
+    const result = detectNotionApiMCQ(`
+      <ul class="to-do-list">
+        <li><div class="checkbox checkbox-off"></div>Three</li>
+        <li><div class="checkbox checkbox-on"></div>Four</li>
+        <li><div class="checkbox checkbox-off"></div>Five</li>
+      </ul>
+    `);
+    expect(result).toEqual({
+      isMcqShape: true,
+      correctIndex: 1,
+      options: ['Three', 'Four', 'Five'],
+    });
+  });
+
+  test('detects the fully-bolded bulleted shape the live API renders', () => {
+    const result = detectNotionApiMCQ(`
+      <ul class="bulleted-list">
+        <li><div>London</div></li>
+        <li><div><strong>Paris</strong></div></li>
+        <li><div>Berlin</div></li>
+      </ul>
+    `);
+    expect(result).toEqual({
+      isMcqShape: true,
+      correctIndex: 1,
+      options: ['London', 'Paris', 'Berlin'],
+    });
+  });
+
+  test('leaves a plain bulleted list without a bold option unclassified', () => {
+    const result = detectNotionApiMCQ(`
+      <ul class="bulleted-list">
+        <li><div>London</div></li>
+        <li><div>Paris</div></li>
+        <li><div>Berlin</div></li>
+      </ul>
+    `);
+    expect(result.correctIndex).toBe(-1);
+  });
+
+  test('returns -1 when more than one bulleted option is fully bolded', () => {
+    const result = detectNotionApiMCQ(`
+      <ul class="bulleted-list">
+        <li><div><strong>London</strong></div></li>
+        <li><div><strong>Paris</strong></div></li>
+        <li><div>Berlin</div></li>
+      </ul>
+    `);
+    expect(result.correctIndex).toBe(-1);
+  });
+
+  test('prefers the to-do shape when both shapes are present', () => {
+    const result = detectNotionApiMCQ(`
+      <ul class="to-do-list">
+        <li><div class="checkbox checkbox-off"></div><strong>A</strong></li>
+        <li><div class="checkbox checkbox-on"></div>B</li>
+      </ul>
+      <ul class="bulleted-list">
+        <li><div><strong>C</strong></div></li>
+        <li><div>D</div></li>
+      </ul>
+    `);
+    expect(result.correctIndex).toBe(1);
+    expect(result.options).toEqual(['A', 'B']);
   });
 });

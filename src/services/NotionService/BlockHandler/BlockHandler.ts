@@ -19,6 +19,7 @@ import { S3FileName, SuffixFrom } from '../../../lib/misc/file';
 import getUniqueFileName from '../../../lib/misc/getUniqueFileName';
 import Deck from '../../../lib/parser/Deck';
 import { detectNotionApiMCQ } from '../../../lib/parser/findNotionToggleLists';
+import { stripLeadingDeckNumbering } from '../../../lib/parser/helpers/stripLeadingDeckNumbering';
 import Note from '../../../lib/parser/Note';
 import type { EmptyDeckReason } from '../../../usecases/jobs/EmptyDeckError';
 import { countEmptyBacks } from '../../../lib/parser/countEmptyBacks';
@@ -335,6 +336,12 @@ class BlockHandler implements IBlockRenderer {
         this.settings.textAlign
       ) ?? themed
     );
+  }
+
+  private applyDeckNameNumbering(name: string): string {
+    return this.settings.removeDeckNameNumbering
+      ? stripLeadingDeckNumbering(name)
+      : name;
   }
 
   private async resolvePageSettings(pageId: string): Promise<CardOption> {
@@ -725,6 +732,11 @@ class BlockHandler implements IBlockRenderer {
       ) {
         cards.push(ankiNote.reversed(ankiNote));
       }
+      if (this.settings.reversed && isBasicType) {
+        const swapped = ankiNote.back;
+        ankiNote.back = ankiNote.name;
+        ankiNote.name = swapped;
+      }
       if (refreshIconRequested) {
         ankiNote.stripRefreshIcon();
       }
@@ -805,7 +817,9 @@ class BlockHandler implements IBlockRenderer {
     const { topLevelId, decks } = locator;
     const dbResult = await this.api.queryDatabase(topLevelId, true);
     const database = await this.api.getDatabase(topLevelId);
-    const dbName = await this.api.getDatabaseTitle(database, this.settings);
+    const dbName = this.applyDeckNameNumbering(
+      await this.api.getDatabaseTitle(database, this.settings)
+    );
 
     const firstRow = dbResult.results[0] as
       | { properties?: Record<string, unknown> }
@@ -1213,7 +1227,9 @@ class BlockHandler implements IBlockRenderer {
         ? blocks
         : await this.expandColumnLists(blocks);
 
-    const title = await this.api.getPageTitle(page, this.settings);
+    const title = this.applyDeckNameNumbering(
+      await this.api.getPageTitle(page, this.settings)
+    );
     if (!this.firstPageTitle) {
       this.firstPageTitle = title;
     }
@@ -1611,7 +1627,7 @@ class BlockHandler implements IBlockRenderer {
     return new Deck(
       getDeckName(
         this.settings.deckName || this.firstPageTitle || '',
-        getSubDeckName(block)
+        this.applyDeckNameNumbering(getSubDeckName(block))
       ),
       cards,
       undefined,
@@ -1655,7 +1671,9 @@ class BlockHandler implements IBlockRenderer {
   ): Promise<Deck[]> {
     const dbResult = await this.api.queryDatabase(sd.id, true);
     const database = await this.api.getDatabase(sd.id);
-    const dbName = await this.api.getDatabaseTitle(database, this.settings);
+    const dbName = this.applyDeckNameNumbering(
+      await this.api.getDatabaseTitle(database, this.settings)
+    );
     let dbDecks: Deck[] = [];
 
     for (const entry of dbResult.results) {
