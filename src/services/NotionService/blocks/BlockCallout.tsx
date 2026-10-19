@@ -17,11 +17,15 @@ export const BlockCallout = async (
   const { icon } = callout;
   const { rich_text: richText } = callout;
 
-  if (handler.settings?.isTextOnlyBack) {
-    return getPlainText(richText);
-  }
-
   const childrenHtml = await getChildren(block, handler);
+
+  if (handler.settings?.isTextOnlyBack) {
+    const ownText = getPlainText(richText);
+    if (!childrenHtml) {
+      return ownText;
+    }
+    return ownText ? `${ownText}<br>${childrenHtml}` : childrenHtml;
+  }
 
   const figureWithoutChildren = ReactDOMServer.renderToStaticMarkup(
     <figure
