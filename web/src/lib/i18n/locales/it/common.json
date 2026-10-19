@@ -829,6 +829,11 @@
     "comprehensiveHint": "Con un documento lungo può nascere un mazzo enorme. Per carte meno numerose e più complete, imposta la dimensione della carta su Dettagliata.",
     "comprehensiveHintLink": "Vai a Dimensione della carta",
     "pagePairsAiNote": "Due pagine fanno una carta è attivo, quindi un caricamento di soli PDF salta la conversione con IA. Ogni due pagine diventano una carta immagine.",
+    "pdfPageRange": {
+      "label": "Pagine",
+      "placeholder": "es. 12-30, 45",
+      "hint": "Funziona solo caricando un singolo PDF. Converti solo queste pagine; usa intervalli come 12-30, 45. Lascia vuoto per convertire tutto il PDF."
+    },
     "mcq": {
       "heading": "Domande a scelta multipla (MCQ)",
       "aria": "Attiva le domande a scelta multipla",

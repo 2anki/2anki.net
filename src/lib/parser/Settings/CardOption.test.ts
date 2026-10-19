@@ -91,6 +91,29 @@ describe('CardOption downloadPdfs', () => {
   });
 });
 
+describe('CardOption pdfPageRange', () => {
+  it('defaults to an empty string when the option is absent', () => {
+    const option = new CardOption({});
+    expect(option.pdfPageRange).toBe('');
+  });
+
+  it('reads the raw range string from the payload', () => {
+    const option = new CardOption({ 'pdf-page-range': '12-30, 45' });
+    expect(option.pdfPageRange).toBe('12-30, 45');
+  });
+
+  it('ships pdf-page-range as empty in the default options payload', () => {
+    expect(CardOption.LoadDefaultOptions()['pdf-page-range']).toBe('');
+  });
+
+  it('coerces a non-string pdf-page-range to empty', () => {
+    const option = new CardOption({
+      'pdf-page-range': ['12-30'],
+    } as unknown as { [key: string]: string });
+    expect(option.pdfPageRange).toBe('');
+  });
+});
+
 describe('CardOption groupClozePerToggle', () => {
   it('defaults to false when the option is absent', () => {
     const option = new CardOption({});

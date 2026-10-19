@@ -829,6 +829,11 @@
     "comprehensiveHint": "Bij een lang document kan dit een grote stapel opleveren. Voor minder, vollere kaarten zet je de kaartgrootte op Uitgebreid.",
     "comprehensiveHintLink": "Naar Kaartgrootte",
     "pagePairsAiNote": "Twee pagina's maken één kaart staat aan, dus een upload met alleen PDF's slaat AI-conversie over. Elke twee pagina's worden één afbeeldingskaart.",
+    "pdfPageRange": {
+      "label": "Pagina's",
+      "placeholder": "bijv. 12-30, 45",
+      "hint": "Werkt alleen bij het uploaden van één PDF. Converteer alleen deze pagina's; gebruik reeksen zoals 12-30, 45. Laat leeg om de hele PDF te converteren."
+    },
     "mcq": {
       "heading": "Meerkeuzevragen (MCQ)",
       "aria": "Meerkeuzevragen inschakelen",

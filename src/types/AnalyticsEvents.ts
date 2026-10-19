@@ -75,6 +75,7 @@ export const KNOWN_EVENTS = new Set([
   'pdf_print_options_used',
   'pdf_render_timed_out',
   'pdf_export_failed',
+  'pdf_page_range_used',
   'ai_conversion_completed',
   'ai_fallback_triggered',
   'feature_flag_changed',

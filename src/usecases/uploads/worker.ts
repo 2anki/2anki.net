@@ -12,6 +12,7 @@ import { processUploadedPdf } from './processUploadedPdf';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
+import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
   isImageFile,
   isCompressedFile,
@@ -197,7 +198,8 @@ async function processFile(
   crossFileDedup?: CrossFileDedupState,
   requestId?: string,
   uploadIdentity?: UploadIdentityContext,
-  cardLimit?: number
+  cardLimit?: number,
+  singleFileUpload: boolean = false
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -267,9 +269,23 @@ async function processFile(
     isDocxFile(filename);
 
   if (isValidSingleFile) {
+    // The Pages option applies only when the upload is a single PDF. A
+    // multi-file pick (local, Dropbox, or Drive) converts every file whole, and
+    // the zip and Claude-zip paths never reach here, so a range there is
+    // ignored too.
+    const singleFile = [{ name: filename, contents: fileContents }];
+    const rangedFiles = singleFileUpload
+      ? await applyPdfPageRange(
+          singleFile,
+          settings.pdfPageRange,
+          userId,
+          workspace.location,
+          filename
+        )
+      : singleFile;
     const d = await PrepareDeck({
       name: filename,
-      files: [{ name: filename, contents: fileContents }],
+      files: rangedFiles,
       settings: processUploadedPdf(filename, settings),
       noLimits: paying,
       workspace,
@@ -391,7 +407,8 @@ async function doGenerationWork(
       crossFileDedup,
       requestId,
       uploadIdentity,
-      cardLimit
+      cardLimit,
+      files.length === 1
     );
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);

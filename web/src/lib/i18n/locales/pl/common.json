@@ -881,6 +881,11 @@
     "comprehensiveHint": "Przy długim dokumencie może powstać bardzo duża talia. Aby mieć mniej, ale pełniejszych kart, ustaw rozmiar karty na Szczegółowy.",
     "comprehensiveHintLink": "Przejdź do rozmiaru karty",
     "pagePairsAiNote": "Dwie strony tworzą jedną kartę jest włączone, więc przesłanie zawierające tylko pliki PDF pomija konwersję AI. Co dwie strony tworzą jedną kartę z obrazem.",
+    "pdfPageRange": {
+      "label": "Strony",
+      "placeholder": "np. 12-30, 45",
+      "hint": "Działa tylko przy przesyłaniu pojedynczego pliku PDF. Przekonwertuj tylko te strony; użyj zakresów jak 12-30, 45. Pozostaw puste, aby przekonwertować cały plik PDF."
+    },
     "mcq": {
       "heading": "Pytania wielokrotnego wyboru (MCQ)",
       "aria": "Włącz pytania wielokrotnego wyboru",

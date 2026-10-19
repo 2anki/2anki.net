@@ -241,6 +241,102 @@ describe('UploadForm Google Drive picker interaction', () => {
 
     await waitFor(() => expect(driveButton).toHaveFocus());
   });
+
+  function stubGoogleDrivePicked() {
+    (window as unknown as { gapi: unknown }).gapi = {
+      load: (_lib: string, cb: () => void) => cb(),
+    };
+    (window as unknown as { google: GoogleGlobal }).google = {
+      picker: {
+        PickerBuilder: function PickerBuilder() {
+          const builder: Record<string, unknown> = {};
+          builder.setAppId = vi.fn().mockReturnValue(builder);
+          builder.setOAuthToken = vi.fn().mockReturnValue(builder);
+          builder.setDeveloperKey = vi.fn().mockReturnValue(builder);
+          builder.addView = vi.fn().mockReturnValue(builder);
+          builder.setCallback = vi.fn().mockImplementation((cb) => {
+            queueMicrotask(() =>
+              cb({
+                action: 'picked',
+                docs: [
+                  {
+                    id: 'd1',
+                    name: 'notes.pdf',
+                    mimeType: 'application/pdf',
+                    iconUrl: '',
+                    url: '',
+                    sizeBytes: 1000,
+                  },
+                ],
+              })
+            );
+            return builder;
+          });
+          builder.build = vi.fn().mockReturnValue({ setVisible: vi.fn() });
+          return builder;
+        },
+        ViewId: { DOCS: 'DOCS' },
+        Action: { PICKED: 'picked', CANCEL: 'cancel', LOADED: 'loaded' },
+        DocsView: function DocsView() {
+          return { setIncludeFolders: vi.fn().mockReturnThis() };
+        },
+      },
+      accounts: {
+        oauth2: {
+          initTokenClient: ({
+            callback,
+          }: {
+            callback: (resp: { access_token?: string }) => void;
+          }) => ({
+            callback,
+            requestAccessToken: () => callback({ access_token: 'tok' }),
+          }),
+        },
+      },
+    };
+  }
+
+  it('sends the captured page range on the Drive upload and clears localStorage', async () => {
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="deck.apkg"',
+        'X-Card-Count': '3',
+      }),
+      blob: () => Promise.resolve(new Blob(['fake'])),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.localStorage.setItem('pdf-page-range', '2-4');
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    fireEvent.click(
+      within(container).getByRole('button', { name: 'Google Drive' })
+    );
+    const driveButton = await screen.findByRole('button', {
+      name: 'Choose from Google Drive',
+    });
+    fireEvent.click(driveButton);
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.find(
+          (call) => call[0] === '/api/upload/google_drive'
+        )
+      ).toBeDefined()
+    );
+    const driveCall = fetchMock.mock.calls.find(
+      (call) => call[0] === '/api/upload/google_drive'
+    )!;
+    const body = driveCall[1].body as FormData;
+    expect(body.get('pdf-page-range')).toBe('2-4');
+    expect(globalThis.localStorage.getItem('pdf-page-range')).toBeNull();
+  });
 });
 
 describe('UploadForm analytics events', () => {
@@ -3408,6 +3504,41 @@ describe('UploadForm network-failure retry', () => {
         'No empty backs, no stray characters. Ready for Anki.'
       )
     ).toBeInTheDocument();
+  });
+
+  it('sends the page range on the first upload, clears localStorage, and reuses it on Try again', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue(successResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.localStorage.setItem('pdf-page-range', '2-4');
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'big.pdf', SMALL);
+    await submitForm(container);
+
+    const firstBody = fetchMock.mock.calls.filter(
+      ([url]) => url === '/api/upload/file'
+    )[0][1].body as FormData;
+    expect(firstBody.get('pdf-page-range')).toBe('2-4');
+    expect(globalThis.localStorage.getItem('pdf-page-range')).toBeNull();
+
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    fireEvent.click(retry);
+
+    await waitFor(() => {
+      const uploadCalls = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/upload/file'
+      );
+      expect(uploadCalls).toHaveLength(2);
+    });
+    const retryBody = fetchMock.mock.calls.filter(
+      ([url]) => url === '/api/upload/file'
+    )[1][1].body as FormData;
+    expect(retryBody.get('pdf-page-range')).toBe('2-4');
   });
 
   it('shows big-file copy when the failed upload is 10 MB or larger', async () => {
