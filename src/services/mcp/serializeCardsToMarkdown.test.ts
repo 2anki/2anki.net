@@ -49,16 +49,36 @@ describe('serializeCardsToMarkdown', () => {
     expect(notes[0].back).toContain('<li>one</li>');
   });
 
-  it('escapes a leading dash in the body so a - list on a back does not split the card', () => {
+  it('rewrites a dash list on a back to a * list so it stays one card and renders', () => {
     const markdown = serializeCardsToMarkdown([
       { front: 'First card', back: '- one\n- two' },
       { front: 'Second card', back: 'Plain answer' },
     ]);
-    expect(markdown).toContain('\\- one');
+    expect(markdown).toContain('* one');
+    expect(markdown).not.toContain('- one');
     const { format, notes } = parseCards(markdown);
     expect(format).toBe('heading-body');
     expect(notes).toHaveLength(2);
-    expect(notes[0].back).toContain('one');
+    expect(notes[0].back).toContain('<li>one</li>');
+  });
+
+  it('rewrites a dash rule on a back to *** and escapes a non-bullet leading dash', () => {
+    const markdown = serializeCardsToMarkdown([
+      { front: 'Card', back: '---\n-5 degrees is cold' },
+    ]);
+    expect(markdown).toContain('***');
+    expect(markdown).toContain('\\-5 degrees');
+    const { notes } = parseCards(markdown);
+    expect(notes).toHaveLength(1);
+  });
+
+  it('leaves a leading dash inside a fenced code block untouched', () => {
+    const back = ['```yaml', '- item', '# comment', '```'].join('\n');
+    const markdown = serializeCardsToMarkdown([{ front: 'Card', back }]);
+    expect(markdown).toContain('- item');
+    expect(markdown).toContain('# comment');
+    expect(markdown).not.toContain('* item');
+    expect(markdown).not.toContain('\\# comment');
   });
 
   it('keeps a card body containing :: as one card, not a colon split', () => {

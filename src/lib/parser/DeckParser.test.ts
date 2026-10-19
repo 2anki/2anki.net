@@ -1710,7 +1710,10 @@ describe('heading-body markdown with lists stays on the heading fallback (regres
   const parseMarkdown = (markdown: string) =>
     new DeckParser({
       name: 'notes.md',
-      settings: new CardOption({ cherry: 'false' }),
+      settings: new CardOption({
+        cherry: 'false',
+        'markdown-nested-bullet-points': 'true',
+      }),
       files: [{ name: 'notes.md', contents: markdown }],
       noLimits: true,
       workspace: new Workspace(true, 'fs'),
@@ -1783,9 +1786,12 @@ describe('heading-body markdown with lists stays on the heading fallback (regres
     expect(parser.payload[0].cards[1].name).toContain('What is DNA');
   });
 
-  it('round-trips an MCP card whose back starts with a - item as one card', () => {
+  it('round-trips an MCP card whose back is a dash list as one card that renders as a list', () => {
     const markdown = serializeCardsToMarkdown([
-      { front: 'Name a mitochondrion fact', back: '- it makes ATP' },
+      {
+        front: 'Name two mitochondrion facts',
+        back: '- it makes ATP\n- it has its own DNA',
+      },
       { front: 'What is DNA', back: 'The molecule of heredity' },
     ]);
 
@@ -1793,9 +1799,9 @@ describe('heading-body markdown with lists stays on the heading fallback (regres
 
     expect(parser.payload[0].cards).toHaveLength(2);
     expect(parser.payload[0].cards[0].name).toContain(
-      'Name a mitochondrion fact'
+      'Name two mitochondrion facts'
     );
-    expect(parser.payload[0].cards[0].back).toContain('it makes ATP');
+    expect(parser.payload[0].cards[0].back).toContain('<li>it makes ATP</li>');
     expect(parser.payload[0].cards[1].name).toContain('What is DNA');
   });
 

@@ -15,15 +15,21 @@ import { File } from '../zip/zip';
 import { detectMarkdownMCQ } from './findNotionToggleLists';
 import { stripLeadingDeckNumbering } from './helpers/stripLeadingDeckNumbering';
 
-function dedent(text: string): string {
-  const lines = text.split('\n');
-  const nonEmptyLines = lines.filter((l) => l.trim().length > 0);
-  if (nonEmptyLines.length === 0) return text;
-  const minIndent = Math.min(
+function commonIndent(text: string): number {
+  const nonEmptyLines = text.split('\n').filter((l) => l.trim().length > 0);
+  if (nonEmptyLines.length === 0) return 0;
+  return Math.min(
     ...nonEmptyLines.map((l) => /^[ \t]*/.exec(l)?.[0].length ?? 0)
   );
+}
+
+function dedent(text: string): string {
+  const minIndent = commonIndent(text);
   if (minIndent === 0) return text;
-  return lines.map((l) => l.slice(minIndent)).join('\n');
+  return text
+    .split('\n')
+    .map((l) => l.slice(minIndent))
+    .join('\n');
 }
 
 interface BuildNoteResult {
@@ -88,18 +94,13 @@ const NEW_ITEM_SEPARATOR_REGEX = /^[ \t]{0,3}([*+])(?:[ \t]*\1){2,}[ \t]*$/;
 
 const SUBHEADING_REGEX = /^#{2,}[ \t]/m;
 
-// `-` at column 0 is an unconditional card boundary, exactly as the original
-// parser: it always starts a card. The other markers (*, +, and ordered) are a
-// newer addition, so they start a card only in a bullet-shaped document and
-// never when the line is a decorative rule (* * *, + + +).
-function startsCardFront(line: string, allowNewMarkers: boolean): boolean {
-  if (DASH_ITEM_REGEX.test(line)) {
-    return true;
-  }
+// A `*`, `+`, or ordered marker starts a card only in a bullet-shaped document
+// and never when the line is a decorative rule (* * *, + + +). `-` is handled
+// separately — it is always a card boundary, exactly as the original parser.
+function startsNewMarkerItem(dedentedLine: string): boolean {
   return (
-    allowNewMarkers &&
-    NEW_ITEM_REGEX.test(line) &&
-    !NEW_ITEM_SEPARATOR_REGEX.test(line)
+    NEW_ITEM_REGEX.test(dedentedLine) &&
+    !NEW_ITEM_SEPARATOR_REGEX.test(dedentedLine)
   );
 }
 
@@ -163,8 +164,10 @@ export const handleNestedBulletPointsInMarkdown = (
 
   decks.push(deck);
 
-  const newMarkersAllowed = allowsNewMarkers(body);
-  const lines = dedent(body.replace(/^<\/?aside[^>]*>\s*$/gim, '')).split('\n');
+  const withoutAside = body.replace(/^<\/?aside[^>]*>\s*$/gim, '');
+  const indent = commonIndent(withoutAside);
+  const newMarkersAllowed = allowsNewMarkers(dedent(withoutAside));
+  const rawLines = withoutAside.split('\n');
   let isCreating = false;
   let currentFront = '';
   let currentBack = '';
@@ -187,12 +190,16 @@ export const handleNestedBulletPointsInMarkdown = (
     }
   };
 
-  for (const line of lines) {
-    if (line.trim().length === 0) {
+  for (const rawLine of rawLines) {
+    if (rawLine.trim().length === 0) {
       continue;
     }
 
-    const startsCard = startsCardFront(line, newMarkersAllowed);
+    const dedentedLine = indent === 0 ? rawLine : rawLine.slice(indent);
+    const dashFront = DASH_ITEM_REGEX.test(rawLine);
+    const newFront =
+      !dashFront && newMarkersAllowed && startsNewMarkerItem(dedentedLine);
+    const startsCard = dashFront || newFront;
 
     if (startsCard && isCreating) {
       flushCurrent();
@@ -203,10 +210,10 @@ export const handleNestedBulletPointsInMarkdown = (
 
     if (startsCard && !isCreating) {
       isCreating = true;
-      currentFront = markdownToHTML(line, true);
+      currentFront = markdownToHTML(dashFront ? rawLine : dedentedLine, true);
       currentBack = '';
     } else if (isCreating) {
-      currentBack += line + '\n';
+      currentBack += rawLine + '\n';
     }
   }
 

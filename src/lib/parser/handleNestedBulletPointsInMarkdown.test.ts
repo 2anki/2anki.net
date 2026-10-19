@@ -248,12 +248,12 @@ describe('handleNestedBulletPointsInMarkdown', () => {
       expect(decks[0].cards[1].back).toContain('mitochondrion');
     });
 
-    it('treats a uniformly indented bullet list as top-level cards', () => {
+    it('treats a uniformly indented new-marker list as top-level cards', () => {
       const contents = [
-        '    - What supplies the SA node?',
-        '        - The right coronary artery',
-        '    - What is the powerhouse of the cell?',
-        '        - The mitochondrion',
+        '    * What supplies the SA node?',
+        '        The right coronary artery',
+        '    * What is the powerhouse of the cell?',
+        '        The mitochondrion',
       ].join('\n');
 
       const decks = makeDecks(contents);
@@ -261,6 +261,17 @@ describe('handleNestedBulletPointsInMarkdown', () => {
       expect(decks[0].cards).toHaveLength(2);
       expect(decks[0].cards[0].name).toContain('SA node');
       expect(decks[0].cards[1].name).toContain('powerhouse');
+    });
+
+    it('does not treat a fully indented dash list as cards (dash matches raw lines)', () => {
+      const contents = [
+        '    - What supplies the SA node?',
+        '        The right coronary artery',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(0);
     });
 
     it('does not treat a column-0 emphasis span as a new card front', () => {
