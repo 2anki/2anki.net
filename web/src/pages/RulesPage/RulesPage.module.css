@@ -154,6 +154,22 @@
   padding: 0.5rem 0.75rem;
 }
 
+.planNote {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-info-text);
+  background: var(--color-info-light);
+  border-left: 3px solid var(--color-info-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+}
+
+.scopeNote {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
 .loadingCard {
   align-items: center;
   justify-content: center;

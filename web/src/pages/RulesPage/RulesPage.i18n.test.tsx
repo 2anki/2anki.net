@@ -15,6 +15,10 @@ vi.mock('../../components/CardOptionsForm/CardOptionsForm', () => ({
   CardOptionsForm: vi.fn(() => <div data-testid="card-options-form" />),
 }));
 
+vi.mock('../../lib/hooks/useUserLocals', () => ({
+  useUserLocals: () => ({ data: { locals: { subscriber: false } } }),
+}));
+
 const mockApi = {
   getRules: vi.fn(async () => null),
   getFavorites: vi.fn(async () => []),

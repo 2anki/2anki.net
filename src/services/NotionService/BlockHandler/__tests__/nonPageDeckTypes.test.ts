@@ -71,11 +71,51 @@ function buildApi(
   return api as unknown as NotionAPIWrapper;
 }
 
-function newHandler(api: NotionAPIWrapper, settings: CardOption): BlockHandler {
+function newHandler(
+  api: NotionAPIWrapper,
+  settings: CardOption,
+  useAll = true
+): BlockHandler {
   const exporter = new CustomExporter('', '/tmp');
   const handler = new BlockHandler(exporter, api, settings);
-  handler.useAll = true;
+  handler.useAll = useAll;
   return handler;
+}
+
+function bulletedList(id: string, text: string, hasChildren = true): FakeBlock {
+  return {
+    object: 'block',
+    id,
+    type: 'bulleted_list_item',
+    has_children: hasChildren,
+    created_time: TS,
+    last_edited_time: TS,
+    bulleted_list_item: { rich_text: richText(text), color: 'default' },
+  };
+}
+
+function columnList(id: string): FakeBlock {
+  return {
+    object: 'block',
+    id,
+    type: 'column_list',
+    has_children: true,
+    created_time: TS,
+    last_edited_time: TS,
+    column_list: {},
+  };
+}
+
+function column(id: string): FakeBlock {
+  return {
+    object: 'block',
+    id,
+    type: 'column',
+    has_children: true,
+    created_time: TS,
+    last_edited_time: TS,
+    column: {},
+  };
 }
 
 function rulesWithDeckTypes(deckTypes: string[]): ParserRules {
@@ -269,5 +309,150 @@ describe('findFlashcardsFromPage non-page deck types', () => {
     const mathsDeck = decks.find((d) => d.name.includes('Maths'));
     expect(germanDeck?.cards.map((c) => c.name)).toEqual(['German question']);
     expect(mathsDeck?.cards.map((c) => c.name)).toEqual(['Maths question']);
+  });
+});
+
+describe('findFlashcardsFromPage non-page deck types on the free plan', () => {
+  it('cards a toggle deck type instead of dropping it when useAll is false', async () => {
+    const childCard = toggle('child-card', 'Child question');
+    const deckToggle = toggle('deck-toggle', 'A toggle', true);
+    const makeApi = () =>
+      buildApi({ root: [deckToggle], 'deck-toggle': [childCard] });
+
+    const freeHandler = newHandler(makeApi(), settingsWithSplit(false), false);
+    const freeDecks = await freeHandler.findFlashcardsFromPage({
+      parentType: 'page',
+      topLevelId: 'root',
+      rules: rulesWithDeckTypes(['page', 'database', 'toggle']),
+      decks: [],
+      parentName: '',
+    });
+
+    const noRuleHandler = newHandler(
+      makeApi(),
+      settingsWithSplit(false),
+      false
+    );
+    const noRuleDecks = await noRuleHandler.findFlashcardsFromPage({
+      parentType: 'page',
+      topLevelId: 'root',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    const freeRoot = freeDecks.find((d) => d.name === 'Root page');
+    const noRuleRoot = noRuleDecks.find((d) => d.name === 'Root page');
+    expect(freeRoot?.cards.map((c) => c.name)).toEqual(['A toggle']);
+    expect(freeRoot?.cards.map((c) => c.name)).toEqual(
+      noRuleRoot?.cards.map((c) => c.name)
+    );
+    expect(freeDecks.map((d) => d.name)).toEqual(
+      noRuleDecks.map((d) => d.name)
+    );
+  });
+
+  it('lifts a toggle nested in a bulleted list even when the bullet is a deck type', async () => {
+    const nestedAnswer = toggle('nested-answer', 'Inner answer');
+    const nested = toggle('nested', 'Nested question', true);
+    const bullet = bulletedList('bullet', 'A bullet', true);
+    const makeApi = () =>
+      buildApi({ root: [bullet], bullet: [nested], nested: [nestedAnswer] });
+
+    const freeHandler = newHandler(makeApi(), settingsWithSplit(false), false);
+    const freeDecks = await freeHandler.findFlashcardsFromPage({
+      parentType: 'page',
+      topLevelId: 'root',
+      rules: rulesWithDeckTypes(['page', 'database', 'bulleted_list_item']),
+      decks: [],
+      parentName: '',
+    });
+
+    const noRuleHandler = newHandler(
+      makeApi(),
+      settingsWithSplit(false),
+      false
+    );
+    const noRuleDecks = await noRuleHandler.findFlashcardsFromPage({
+      parentType: 'page',
+      topLevelId: 'root',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    const noRuleRoot = noRuleDecks.find((d) => d.name === 'Root page');
+    const freeRoot = freeDecks.find((d) => d.name === 'Root page');
+    expect(noRuleRoot?.cards.map((c) => c.name)).toEqual(['Nested question']);
+    expect(freeRoot?.cards.map((c) => c.name)).toEqual(
+      noRuleRoot?.cards.map((c) => c.name)
+    );
+    expect(freeDecks.map((d) => d.name)).toEqual(
+      noRuleDecks.map((d) => d.name)
+    );
+  });
+
+  it('cards a toggle inside a column even when column_list is set as a deck type', async () => {
+    const colAnswer = toggle('col-answer', 'Column answer');
+    const colToggle = toggle('col-toggle', 'Column question', true);
+    const makeApi = () =>
+      buildApi({
+        root: [columnList('collist')],
+        collist: [column('col1')],
+        col1: [colToggle],
+        'col-toggle': [colAnswer],
+      });
+
+    const freeHandler = newHandler(makeApi(), settingsWithSplit(false), false);
+    const freeDecks = await freeHandler.findFlashcardsFromPage({
+      parentType: 'page',
+      topLevelId: 'root',
+      rules: rulesWithDeckTypes(['page', 'database', 'column_list']),
+      decks: [],
+      parentName: '',
+    });
+
+    const noRuleHandler = newHandler(
+      makeApi(),
+      settingsWithSplit(false),
+      false
+    );
+    const noRuleDecks = await noRuleHandler.findFlashcardsFromPage({
+      parentType: 'page',
+      topLevelId: 'root',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    const noRuleRoot = noRuleDecks.find((d) => d.name === 'Root page');
+    const freeRoot = freeDecks.find((d) => d.name === 'Root page');
+    expect(noRuleRoot?.cards.map((c) => c.name)).toEqual(['Column question']);
+    expect(freeRoot?.cards.map((c) => c.name)).toEqual(
+      noRuleRoot?.cards.map((c) => c.name)
+    );
+    expect(freeDecks.map((d) => d.name)).toEqual(
+      noRuleDecks.map((d) => d.name)
+    );
+  });
+
+  it('still splits the toggle into its own deck on a paid plan', async () => {
+    const childCard = toggle('child-card', 'Child question');
+    const deckToggle = toggle('deck-toggle', 'A toggle', true);
+    const api = buildApi({ root: [deckToggle], 'deck-toggle': [childCard] });
+
+    const handler = newHandler(api, settingsWithSplit(false), true);
+    const decks = await handler.findFlashcardsFromPage({
+      parentType: 'page',
+      topLevelId: 'root',
+      rules: rulesWithDeckTypes(['page', 'database', 'toggle']),
+      decks: [],
+      parentName: '',
+    });
+
+    const rootDeck = decks.find((d) => d.name === 'Root page');
+    expect(rootDeck?.cards.map((c) => c.name)).toEqual([]);
+    const toggleDeck = decks.find((d) => d.name.includes('A toggle'));
+    expect(toggleDeck?.cards.map((c) => c.name)).toEqual(['Child question']);
   });
 });

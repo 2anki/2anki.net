@@ -1181,7 +1181,14 @@ class BlockHandler implements IBlockRenderer {
       this.useAll
     );
     const flashCardTypes = rules.flaschardTypeNames();
-    const nonPageDeckTypes = activeNonPageDeckTypes(rules);
+    // Non-page deck types only split into their own decks when the whole page is
+    // walked (`useAll`, i.e. a paid plan). On the free plan the deck-building loop
+    // below never runs, so excluding these blocks from carding would silently drop
+    // them. Keep the set empty on the free plan so a free conversion cards exactly
+    // what it would with no deck rule, while the paid split stays gated. (#4832)
+    const nonPageDeckTypes = this.useAll
+      ? activeNonPageDeckTypes(rules)
+      : new Set<string>();
     // A toggle nested in a list item or callout is hoisted into `blocks` in its
     // document position (`expandNestedToggles`), so it is carded in reading
     // order by the base walk and sees the heading tag/hierarchy maps like any
@@ -1197,9 +1204,12 @@ class BlockHandler implements IBlockRenderer {
     // heading tag/breadcrumb maps and the sub-deck / child-page walks run over
     // `blocks`, so a column's own headings never retag cards outside it and a
     // child page inside a column is not turned into a sub-deck. Skipped when the
-    // user made column_list a flashcard or deck type — those paths own the block.
+    // user made column_list a flashcard type, or — only on a paid plan, via
+    // `nonPageDeckTypes` — a deck type: those paths own the block. On the free
+    // plan `nonPageDeckTypes` is empty, so the flattening still runs and toggles
+    // inside columns are carded instead of dropped (#4832).
     const cardSource =
-      rules.useColums() || rules.deckTypes().includes('column_list')
+      rules.useColums() || nonPageDeckTypes.has('column_list')
         ? blocks
         : await this.expandColumnLists(blocks);
 
