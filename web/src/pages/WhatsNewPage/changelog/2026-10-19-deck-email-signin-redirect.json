@@ -2,5 +2,5 @@
   "id": "2026-10-19-deck-email-signin-redirect",
   "date": "2026-10-19",
   "type": "fix",
-  "title": "Deck-ready email links send you to sign in and back to your download when signed out"
+  "title": "Deck-ready email links bring you back to your download after you sign in with email and password or a login link"
 }

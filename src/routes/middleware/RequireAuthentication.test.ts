@@ -14,16 +14,19 @@ const configureUserLocalMock = configureUserLocal as unknown as Mock;
 interface FakeResponse {
   statusCode: number;
   body: unknown;
+  headers: Record<string, string>;
   locals: Record<string, unknown>;
   status: Mock;
   json: Mock;
   redirect: Mock;
+  setHeader: Mock;
 }
 
 const makeResponse = (): FakeResponse => {
   const state = {
     statusCode: 200,
     body: undefined,
+    headers: {},
     locals: {},
   } as FakeResponse;
   state.status = vi.fn((code: number) => {
@@ -35,6 +38,9 @@ const makeResponse = (): FakeResponse => {
     return state;
   });
   state.redirect = vi.fn();
+  state.setHeader = vi.fn((name: string, value: string) => {
+    state.headers[name] = value;
+  });
   return state;
 };
 
@@ -92,6 +98,7 @@ describe('RequireAuthenticationOrLogin', () => {
       302,
       '/login?redirect=%2Fapi%2Fdownload%2Fu%2Fabc'
     );
+    expect(res.headers['Cache-Control']).toBe('no-store');
   });
 
   it('returns 401 JSON to an unauthenticated API client', async () => {

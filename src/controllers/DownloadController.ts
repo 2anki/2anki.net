@@ -136,6 +136,8 @@ class DownloadController {
   }
 
   private sendExpiredResponse(req: Request, res: Response) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Vary', 'Accept');
     if (prefersHtml(req)) {
       res.status(404).send(DownloadExpiredPage());
       return;

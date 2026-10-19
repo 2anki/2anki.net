@@ -708,6 +708,8 @@ describe('DownloadController.getFile expired link logging', () => {
     expect(sent).toContain('href="/upload"');
     expect(sent).toContain('href="/downloads"');
     expect(res.json).not.toHaveBeenCalled();
+    expect(res._headers['Cache-Control']).toBe('no-store');
+    expect(res._headers['Vary']).toBe('Accept');
   });
 
   it('returns a 404 JSON body to an API client when the file is absent', async () => {
@@ -728,6 +730,8 @@ describe('DownloadController.getFile expired link logging', () => {
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ message: 'Download link expired' });
     expect(res.send).not.toHaveBeenCalled();
+    expect(res._headers['Cache-Control']).toBe('no-store');
+    expect(res._headers['Vary']).toBe('Accept');
   });
 
   it('does not log an error for an absent file (expected expired link)', async () => {

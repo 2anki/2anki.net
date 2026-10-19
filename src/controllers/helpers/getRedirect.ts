@@ -1,7 +1,10 @@
 import { Request } from 'express';
 import { ALLOWED_ORIGINS } from '../../lib/constants';
+import { sanitizeRelativeRedirect } from './sanitizeRelativeRedirect';
 
 const DEFAULT_REDIRECT = '/upload';
+
+const DOWNLOAD_PATH_PREFIX = '/api/download/u/';
 
 const ALLOWED_REDIRECT_PATHS = [
   '/notion',
@@ -25,6 +28,9 @@ const ALLOWED_REDIRECT_ORIGINS = ALLOWED_ORIGINS.map((origin) => {
 });
 
 const resolveInternalPath = (candidate: string): string | null => {
+  if (candidate.startsWith(DOWNLOAD_PATH_PREFIX)) {
+    return sanitizeRelativeRedirect(candidate) ?? null;
+  }
   const match = ALLOWED_REDIRECT_PATHS.find(
     (allowedPath) =>
       candidate === allowedPath || candidate.startsWith(`${allowedPath}/`)

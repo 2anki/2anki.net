@@ -52,6 +52,7 @@ export const RequireAuthenticationOrLogin = async (
     return next();
   }
   if (prefersHtml(req)) {
+    res.setHeader('Cache-Control', 'no-store');
     return res.redirect(302, buildLoginRedirect(req));
   }
   return res.status(401).json({ message: 'Authentication required' });
