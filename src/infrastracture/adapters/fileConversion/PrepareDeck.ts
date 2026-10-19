@@ -21,7 +21,6 @@ import {
   isXLSXFile,
   isDocxFile,
 } from '../../../lib/storage/checks';
-import { convertPDFToHTML } from './convertPDFToHTML';
 import { convertPPTToPDF } from './ConvertPPTToPDF';
 import { convertImageToHTML } from './convertImageToHTML';
 import { convertPDFToImages, renderPdfPageImages } from './convertPDFToImages';
@@ -330,33 +329,6 @@ async function convertFile(
   }
 
   if (!isPDFFile(file.name) && !isPPTFile(file.name)) return null;
-
-  if (
-    isPDFFile(file.name) &&
-    input.noLimits &&
-    input.settings.vertexAIPDFQuestions &&
-    input.settings.processPDFs !== false &&
-    !ai.exhausted
-  ) {
-    return runVisionConversion(ai, async () => {
-      const result = {
-        name: `${file.name}.html`,
-        contents: Buffer.from(
-          await convertPDFToHTML(
-            (file.contents as Buffer).toString('base64'),
-            input.settings.userInstructions,
-            input.userId ?? null,
-            input.requestId
-          )
-        ),
-      };
-      console.log('[PrepareDeck] convertFile pdf→html (vertex)', {
-        file: file.name,
-        durationMs: Date.now() - t0,
-      });
-      return result;
-    });
-  }
 
   if (isPPTFile(file.name)) {
     const pdContents = await convertPPTToPDF(
@@ -1131,10 +1103,10 @@ async function buildClaudeDeck(
 
 // Whether this upload's actual files will reach Claude, not merely whether an
 // AI toggle is persisted on the account. claudeAIFlashcards routes every file
-// through the AI branch; the vision toggles only reach Claude when a matching
-// file type is present. Gating the pre-check on this keeps a plain
-// markdown/HTML upload from getting a false "built without AI" credits notice
-// when a PDF/image toggle happens to be left on.
+// through the AI branch; the image-quiz toggle only reaches Claude when an
+// image is present. Gating the pre-check on this keeps a plain markdown/HTML
+// upload from getting a false "built without AI" credits notice when the image
+// toggle happens to be left on.
 export function conversionInvokesAi(
   settings: DeckParserInput['settings'],
   files: DeckParserInput['files']
@@ -1145,13 +1117,6 @@ export function conversionInvokesAi(
   if (
     settings.imageQuizHtmlToAnki &&
     files.some((file) => isImageFile(file.name))
-  ) {
-    return true;
-  }
-  if (
-    settings.vertexAIPDFQuestions &&
-    settings.processPDFs !== false &&
-    files.some((file) => isPDFFile(file.name))
   ) {
     return true;
   }

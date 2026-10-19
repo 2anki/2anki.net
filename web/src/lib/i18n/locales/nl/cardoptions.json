@@ -101,14 +101,6 @@
       "label": "Geneste opsommingstekens in Markdown",
       "description": "Zet opsommingstekens en hun subpunten om in kaarten met voor- en achterkant. Aanbevolen voor Obsidian-exports."
     },
-    "split-sections-into-decks": {
-      "label": "Elke sectie in een eigen deck splitsen",
-      "description": "Aan: elke kop, toggle en lijst op de pagina wordt een eigen deck in plaats van dat alle kaarten in één deck belanden."
-    },
-    "vertex-ai-pdf-questions": {
-      "label": "Vragen genereren uit PDF-uploads",
-      "description": "Maakt conceptvragen van je PDF met Claude (Anthropic). De inhoud van je PDF wordt ter verwerking naar Anthropic gestuurd."
-    },
     "disable-indented-bullets": {
       "label": "Ingesprongen opsommingstekens uitschakelen",
       "description": "Houd ingesprongen opsommingstekens bij hun bovenliggende punt in plaats van er aparte kaarten van te maken."

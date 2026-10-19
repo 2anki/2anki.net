@@ -157,18 +157,6 @@ const supportedOptions = (): CardOptionDetail[] => {
       defaultFor('markdown-nested-bullet-points')
     ),
     new CardOptionDetail(
-      'split-sections-into-decks',
-      'Split each section into its own deck',
-      'When on, each heading, toggle, and list on the page becomes its own deck instead of all cards landing in one.',
-      defaultFor('split-sections-into-decks')
-    ),
-    new CardOptionDetail(
-      'vertex-ai-pdf-questions',
-      'Generate questions from PDF uploads',
-      'Drafts questions from your PDF using Claude (Anthropic). Your PDF content is sent to Anthropic for processing.',
-      defaultFor('vertex-ai-pdf-questions')
-    ),
-    new CardOptionDetail(
       'disable-indented-bullets',
       'Disable indented bullets',
       'Keep indented bullets attached to their parent instead of becoming separate cards.',

@@ -48,8 +48,6 @@ export type CardOptions = Partial<{
   'pdf-page-pairs': string;
   'download-pdfs': string;
   'markdown-nested-bullet-points': string;
-  'split-sections-into-decks': string;
-  'vertex-ai-pdf-questions': string;
   'disable-indented-bullets': string;
   'image-quiz-html-to-anki': string;
   'embed-images': string;
@@ -133,8 +131,6 @@ export const ALLOWED_CARD_OPTION_KEYS = new Set([
   'pdf-page-pairs',
   'download-pdfs',
   'markdown-nested-bullet-points',
-  'split-sections-into-decks',
-  'vertex-ai-pdf-questions',
   'disable-indented-bullets',
   'image-quiz-html-to-anki',
   'embed-images',

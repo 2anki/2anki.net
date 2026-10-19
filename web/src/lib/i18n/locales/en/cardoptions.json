@@ -101,14 +101,6 @@
       "label": "Markdown nested bullet points",
       "description": "Turn bullets and their sub-bullets into front-and-back cards. Recommended for Obsidian exports."
     },
-    "split-sections-into-decks": {
-      "label": "Split each section into its own deck",
-      "description": "When on, each heading, toggle, and list on the page becomes its own deck instead of all cards landing in one."
-    },
-    "vertex-ai-pdf-questions": {
-      "label": "Generate questions from PDF uploads",
-      "description": "Drafts questions from your PDF using Claude (Anthropic). Your PDF content is sent to Anthropic for processing."
-    },
     "disable-indented-bullets": {
       "label": "Disable indented bullets",
       "description": "Keep indented bullets attached to their parent instead of becoming separate cards."

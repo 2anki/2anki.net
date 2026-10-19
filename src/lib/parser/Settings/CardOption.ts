@@ -91,9 +91,6 @@ class CardOption {
 
   readonly nestedBulletPoints: boolean;
 
-  readonly splitSectionsIntoDecks: boolean;
-
-  readonly vertexAIPDFQuestions: boolean;
   readonly disableIndentedBulletPoints: boolean;
 
   readonly imageQuizHtmlToAnki: boolean;
@@ -188,7 +185,6 @@ class CardOption {
     this.parentBlockId = input.parentBlockId;
     this.pageEmoji = input['page-emoji'] || 'first_emoji';
     this.addNotionLink = input['add-notion-link'] === 'true';
-    this.vertexAIPDFQuestions = input['vertex-ai-pdf-questions'] === 'true';
     this.disableIndentedBulletPoints =
       input['disable-indented-bullets'] === 'true';
     this.imageQuizHtmlToAnki = input['image-quiz-html-to-anki'] === 'true';
@@ -209,7 +205,6 @@ class CardOption {
     }
 
     this.nestedBulletPoints = input['markdown-nested-bullet-points'] === 'true';
-    this.splitSectionsIntoDecks = input['split-sections-into-decks'] === 'true';
     this.userInstructions = normalizeUserInstructions(
       input['user-instructions']
     );

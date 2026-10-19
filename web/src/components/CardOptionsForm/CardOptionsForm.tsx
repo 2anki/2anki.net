@@ -267,13 +267,11 @@ const OPTION_GROUPS: Array<{ id: string; labelKey: string; keys: string[] }> = [
 ];
 
 const HIDDEN_KEYS = [
-  'vertex-ai-pdf-questions',
   'remove-mp3-links',
   'cloze-from-toggle-content',
   'promote-nested-cloze',
   'group-cloze-per-toggle',
   'remove-deck-name-numbering',
-  'split-sections-into-decks',
 ];
 const GROUPED_KEYS = new Set([
   ...OPTION_GROUPS.flatMap((g) => g.keys),
@@ -281,7 +279,6 @@ const GROUPED_KEYS = new Set([
 ]);
 
 const PREMIUM_KEYS = new Set([
-  'vertex-ai-pdf-questions',
   'claude-ai-flashcards',
   'image-quiz-html-to-anki',
   'ai-comprehensive',

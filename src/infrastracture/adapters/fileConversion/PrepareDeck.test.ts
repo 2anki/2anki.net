@@ -1233,31 +1233,11 @@ describe('conversionInvokesAi', () => {
     ).toBe(true);
   });
 
-  it('is false for a markdown upload when only the PDF toggle is on', () => {
-    expect(
-      conversionInvokesAi(withToggle('vertex-ai-pdf-questions'), [
-        file('notes.md'),
-      ])
-    ).toBe(false);
-  });
-
-  it('is true when the PDF toggle is on and the upload has a PDF', () => {
+  it('ignores the retired vertex-ai-pdf-questions key on a PDF upload', () => {
     expect(
       conversionInvokesAi(withToggle('vertex-ai-pdf-questions'), [
         file('lecture.pdf'),
       ])
-    ).toBe(true);
-  });
-
-  it('is false when the PDF toggle is on but PDF processing is disabled', () => {
-    expect(
-      conversionInvokesAi(
-        makeSettings({
-          'vertex-ai-pdf-questions': 'true',
-          'process-pdfs': 'false',
-        }),
-        [file('lecture.pdf')]
-      )
     ).toBe(false);
   });
 
