@@ -54,6 +54,17 @@ describe('HeldDeckRepository generated SQL', () => {
     expect(bindings).toEqual(['anon-1', 1]);
   });
 
+  it('lists every unclaimed hold for an anonymous id with its storage key', () => {
+    const { sql, bindings } = repository
+      .buildFindUnclaimedByAnonIdQuery('anon-1')
+      .toSQL();
+
+    expect(sql).toBe(
+      'select "id", "storage_key" from "held_decks" where "anon_id" = ? and "claimed_at" is null'
+    );
+    expect(bindings).toEqual(['anon-1']);
+  });
+
   it('stamps the claim only on a row nobody has claimed yet', () => {
     const claimedAt = new Date('2026-09-29T01:00:00.000Z');
     const { sql, bindings } = repository

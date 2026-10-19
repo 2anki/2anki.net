@@ -20,6 +20,7 @@ export interface IHeldDeckRepository {
   insert(row: HeldDeckInsert): Promise<HeldDecks>;
   findNewestClaimable(anonId: string, now: Date): Promise<HeldDecks | null>;
   findNewestByAnonId(anonId: string): Promise<HeldDecks | null>;
+  findUnclaimedByAnonId(anonId: string): Promise<ExpiredHeldDeck[]>;
   /** Claims the row only if nobody has; false means another claim won. */
   markClaimed(id: number, claimedBy: number, claimedAt: Date): Promise<boolean>;
   /** Clears a claim, but only the claimant's own. */
@@ -82,6 +83,21 @@ export class HeldDeckRepository implements IHeldDeckRepository {
       | HeldDecks
       | undefined;
     return row ?? null;
+  }
+
+  buildFindUnclaimedByAnonIdQuery(anonId: string): Knex.QueryBuilder {
+    return this.database(this.table)
+      .select('id', 'storage_key')
+      .where('anon_id', anonId)
+      .whereNull('claimed_at');
+  }
+
+  async findUnclaimedByAnonId(anonId: string): Promise<ExpiredHeldDeck[]> {
+    const rows = (await this.buildFindUnclaimedByAnonIdQuery(anonId)) as {
+      id: number;
+      storage_key: string;
+    }[];
+    return rows.map((row) => ({ id: row.id, storageKey: row.storage_key }));
   }
 
   buildMarkClaimedQuery(
@@ -192,6 +208,12 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
 
   async findNewestByAnonId(anonId: string): Promise<HeldDecks | null> {
     return this.newestForAnon(anonId)[0] ?? null;
+  }
+
+  async findUnclaimedByAnonId(anonId: string): Promise<ExpiredHeldDeck[]> {
+    return this.rows
+      .filter((row) => row.anon_id === anonId && row.claimed_at == null)
+      .map((row) => ({ id: row.id as number, storageKey: row.storage_key }));
   }
 
   async markClaimed(

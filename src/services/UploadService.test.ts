@@ -113,6 +113,7 @@ import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 import { InMemoryHeldDeckRepository } from '../data_layer/HeldDeckRepository';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import {
   ANONYMOUS_CARD_CAP,
   MONTHLY_CARD_LIMIT,
@@ -5614,6 +5615,86 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(JSON.stringify(capturedJson())).not.toContain(
       heldDeck.rows[0].storage_key
     );
+  });
+
+  it('keeps only the newest unclaimed hold per anon and deletes the superseded object', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    expect(heldDeck.rows).toHaveLength(1);
+    const firstKey = heldDeck.rows[0].storage_key;
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+
+    const unclaimed = heldDeck.rows.filter((row) => row.claimed_at == null);
+    expect(unclaimed).toHaveLength(1);
+    expect(unclaimed[0].storage_key).not.toBe(firstKey);
+    expect(mockStorageDelete).toHaveBeenCalledWith(firstKey);
+  });
+
+  it('does not delete a claimed hold when a new one is written for the anon', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    const claimedKey = heldDeck.rows[0].storage_key;
+    await heldDeck.markClaimed(heldDeck.rows[0].id as number, 7, new Date());
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+
+    expect(heldDeck.rows).toHaveLength(2);
+    expect(mockStorageDelete).not.toHaveBeenCalledWith(claimedKey);
+  });
+
+  it('walls a new hold once the per-IP daily cap is reached', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 60_000,
+      perKeyMax: 1,
+      globalMax: 100,
+    });
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck }),
+      limiter
+    );
+
+    const first = buildResponse();
+    await service.handleUpload(buildEligibleRequest(TREATMENT_ID), first.res);
+    expect(first.capturedStatus()).toBe(200);
+    expect(heldDeck.rows).toHaveLength(1);
+
+    const second = responseWithRedirect();
+    await service.handleUpload(buildEligibleRequest(TREATMENT_ID), second.res);
+    expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(heldDeck.rows).toHaveLength(1);
+    expect(conversionFailedProps()).toMatchObject({
+      reason: 'anonymous_cap',
+      arm: 'treatment',
+    });
   });
 
   it('never writes a signup hold under an anon_id forged as a plan key', async () => {
