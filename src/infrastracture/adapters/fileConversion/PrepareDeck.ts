@@ -1205,7 +1205,8 @@ export async function PrepareDeck(
   const files = await applyPdfPageRange(
     dedupeFilesByName(input.files),
     input.settings.pdfPageRange,
-    input.userId ?? null
+    input.userId ?? null,
+    input.workspace.location
   );
 
   const fileSummary = summarizeFileNames(files.map((f) => f.name));
@@ -1307,7 +1308,8 @@ export async function prepareDeckInfoOnly(
   const files = await applyPdfPageRange(
     dedupeFilesByName(input.files),
     input.settings.pdfPageRange,
-    input.userId ?? null
+    input.userId ?? null,
+    input.workspace.location
   );
   const aiGate = await resolveAiConversionGate(input, files);
   const ai: AiConversionState = {

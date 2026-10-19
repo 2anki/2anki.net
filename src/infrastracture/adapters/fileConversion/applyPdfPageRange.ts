@@ -1,27 +1,35 @@
 import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import type { File } from '../../../lib/zip/zip';
 import { isPDFFile } from '../../../lib/storage/checks';
 import { getPageCount } from '../../../lib/pdf/getPageCount';
+import { resolveSafeEntryPath } from '../../../lib/vocab/safeEntryPath';
 import {
-  assertPagesWithinDocument,
   parsePdfPageRange,
+  resolvePdfPages,
+  PdfPageSegment,
 } from '../../../lib/pdf/pdfPageRange';
 import { extractPdfPageRange } from '../../../lib/pdf/extractPdfPageRange';
 import { track } from '../../../services/events/track';
 
 export interface PdfPageRangeAdapters {
-  getPageCount(pdf: Buffer): Promise<number>;
-  extract(pdf: Buffer, pages: number[]): Promise<Buffer>;
+  getPageCount(pdf: Buffer, workspaceLocation: string): Promise<number>;
+  extract(
+    pdf: Buffer,
+    pages: number[],
+    pageCount: number,
+    workspaceLocation: string
+  ): Promise<Buffer>;
 }
 
-async function pageCountFromBuffer(pdf: Buffer): Promise<number> {
+async function pageCountFromBuffer(
+  pdf: Buffer,
+  workspaceLocation: string
+): Promise<number> {
   const dir = await fs.promises.mkdtemp(
-    path.join(os.tmpdir(), 'pdf-page-count-')
+    resolveSafeEntryPath('pdf-page-count-', workspaceLocation)
   );
   try {
-    const pdfPath = path.join(dir, 'input.pdf');
+    const pdfPath = resolveSafeEntryPath('input.pdf', dir);
     await fs.promises.writeFile(pdfPath, pdf);
     return await getPageCount(pdfPath);
   } finally {
@@ -47,11 +55,14 @@ function pdfBytes(file: File): Buffer | null {
 // range or a page past the end of the document throws PdfPageRangeError, which
 // the upload surfaces as a clear message; it never silently converts the whole
 // file instead. A range set with no PDF in the upload is ignored so a stale
-// value never fails an unrelated upload.
+// value never fails an unrelated upload. Ranges are only expanded after the
+// real page count is known, so a hostile value cannot drive an unbounded
+// allocation or spawn.
 export async function applyPdfPageRange(
   files: File[],
   pageRange: string | undefined,
   userId: number | null,
+  workspaceLocation: string,
   adapters: PdfPageRangeAdapters = defaultAdapters
 ): Promise<File[]> {
   if (pageRange == null || pageRange.trim() === '') {
@@ -61,12 +72,13 @@ export async function applyPdfPageRange(
     return files;
   }
 
-  const pages = parsePdfPageRange(pageRange);
-  if (pages == null) {
+  const segments: PdfPageSegment[] | null = parsePdfPageRange(pageRange);
+  if (segments == null) {
     return files;
   }
 
   let slicedPdfCount = 0;
+  let requestedPages = 0;
   const result: File[] = [];
   for (const file of files) {
     const buffer = pdfBytes(file);
@@ -74,17 +86,23 @@ export async function applyPdfPageRange(
       result.push(file);
       continue;
     }
-    const pageCount = await adapters.getPageCount(buffer);
-    assertPagesWithinDocument(pages, pageCount);
-    const sliced = await adapters.extract(buffer, pages);
+    const pageCount = await adapters.getPageCount(buffer, workspaceLocation);
+    const pages = resolvePdfPages(segments, pageCount);
+    const sliced = await adapters.extract(
+      buffer,
+      pages,
+      pageCount,
+      workspaceLocation
+    );
     result.push({ ...file, contents: sliced, size: sliced.length });
     slicedPdfCount += 1;
+    requestedPages = pages.length;
   }
 
   if (slicedPdfCount > 0) {
     track('pdf_page_range_used', {
       userId,
-      props: { requested_pages: pages.length, pdf_count: slicedPdfCount },
+      props: { requested_pages: requestedPages, pdf_count: slicedPdfCount },
     });
   }
 

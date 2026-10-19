@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  assertPagesWithinDocument,
   isPdfPageRangeError,
   parsePdfPageRange,
   PdfPageRangeError,
+  resolvePdfPages,
 } from './pdfPageRange';
 
 describe('parsePdfPageRange', () => {
@@ -14,19 +14,18 @@ describe('parsePdfPageRange', () => {
     expect(parsePdfPageRange(null)).toBeNull();
   });
 
-  it('expands ranges and single pages into a sorted de-duped list', () => {
+  it('parses ranges and single pages into segments without expanding them', () => {
     expect(parsePdfPageRange('12-30, 45')).toEqual([
-      12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-      30, 45,
+      { start: 12, end: 30 },
+      { start: 45, end: 45 },
     ]);
   });
 
-  it('de-duplicates overlapping ranges and reorders out-of-order input', () => {
-    expect(parsePdfPageRange('5, 1-3, 2')).toEqual([1, 2, 3, 5]);
-  });
-
   it('accepts whitespace around separators and hyphens', () => {
-    expect(parsePdfPageRange(' 2 - 4 ,  7 ')).toEqual([2, 3, 4, 7]);
+    expect(parsePdfPageRange(' 2 - 4 ,  7 ')).toEqual([
+      { start: 2, end: 4 },
+      { start: 7, end: 7 },
+    ]);
   });
 
   it('rejects a malformed token with a message that names it', () => {
@@ -54,19 +53,53 @@ describe('parsePdfPageRange', () => {
       expect((error as Error).message).toContain('12-30');
     }
   });
+
+  it('rejects a page number with too many digits before expanding anything', () => {
+    expect(() => parsePdfPageRange('1-999999999')).toThrow(PdfPageRangeError);
+    expect(() => parsePdfPageRange('1234567')).toThrow(PdfPageRangeError);
+  });
+
+  it('rejects an input string that is too long', () => {
+    const huge = '1,'.repeat(200);
+    expect(() => parsePdfPageRange(huge)).toThrow(PdfPageRangeError);
+  });
+
+  it('rejects too many comma-separated parts', () => {
+    const manyParts = Array.from({ length: 51 }, (_, i) => i + 1).join(',');
+    expect(() => parsePdfPageRange(manyParts)).toThrow(PdfPageRangeError);
+  });
 });
 
-describe('assertPagesWithinDocument', () => {
-  it('passes when every page is within the document', () => {
-    expect(() => assertPagesWithinDocument([1, 2, 98], 98)).not.toThrow();
+describe('resolvePdfPages', () => {
+  it('expands segments into a sorted de-duped page list', () => {
+    const pages = resolvePdfPages(
+      [
+        { start: 12, end: 14 },
+        { start: 13, end: 13 },
+        { start: 45, end: 45 },
+      ],
+      50
+    );
+    expect(pages).toEqual([12, 13, 14, 45]);
+  });
+
+  it('rejects a huge range against a small page count without expanding it', () => {
+    try {
+      resolvePdfPages([{ start: 1, end: 999999 }], 10);
+      throw new Error('expected resolve to throw');
+    } catch (error) {
+      expect(isPdfPageRangeError(error)).toBe(true);
+      expect((error as Error).message).toBe(
+        'Pages 11-999999 are past the end of this 10-page PDF.'
+      );
+    }
   });
 
   it('names the out-of-range span and the real page count', () => {
     try {
-      assertPagesWithinDocument([120, 125, 130], 98);
-      throw new Error('expected assertion to throw');
+      resolvePdfPages([{ start: 120, end: 130 }], 98);
+      throw new Error('expected resolve to throw');
     } catch (error) {
-      expect(isPdfPageRangeError(error)).toBe(true);
       expect((error as Error).message).toBe(
         'Pages 120-130 are past the end of this 98-page PDF.'
       );
@@ -75,8 +108,14 @@ describe('assertPagesWithinDocument', () => {
 
   it('uses the singular form for a single out-of-range page', () => {
     try {
-      assertPagesWithinDocument([5, 99], 98);
-      throw new Error('expected assertion to throw');
+      resolvePdfPages(
+        [
+          { start: 5, end: 5 },
+          { start: 99, end: 99 },
+        ],
+        98
+      );
+      throw new Error('expected resolve to throw');
     } catch (error) {
       expect((error as Error).message).toBe(
         'Page 99 is past the end of this 98-page PDF.'
