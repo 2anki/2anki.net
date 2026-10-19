@@ -2,13 +2,33 @@ import express from 'express';
 
 import EmojiFeedbackController from '../controllers/EmojiFeedbackController';
 import { EmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
+import { LowRatingContextRepository } from '../data_layer/LowRatingContextRepository';
 import { getDatabase } from '../data_layer';
+import { getDefaultEmailService } from '../services/EmailService/EmailService';
+import { NotifyLowRatingUseCase } from '../usecases/feedback/NotifyLowRatingUseCase';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
+import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
+
+const HOUR_MS = 60 * 60 * 1000;
+const NOTIFICATIONS_PER_IP_PER_HOUR = 5;
+const NOTIFICATIONS_PER_HOUR = 30;
 
 const EmojiFeedbackRouter = () => {
   const router = express.Router();
   const database = getDatabase();
   const repo = new EmojiFeedbackRepository(database);
-  const controller = new EmojiFeedbackController(repo);
+  const notificationLimiter = new InMemoryRateLimiter({
+    windowMs: HOUR_MS,
+    perKeyMax: NOTIFICATIONS_PER_IP_PER_HOUR,
+    globalMax: NOTIFICATIONS_PER_HOUR,
+  });
+  const notifier = new NotifyLowRatingUseCase(
+    repo,
+    new LowRatingContextRepository(database),
+    getDefaultEmailService(),
+    notificationLimiter
+  );
+  const controller = new EmojiFeedbackController(repo, notifier);
 
   /**
    * @swagger
@@ -40,7 +60,9 @@ const EmojiFeedbackRouter = () => {
    *       400:
    *         description: Invalid input
    */
-  router.post('/api/emoji-feedback', (req, res) => controller.submit(req, res));
+  router.post('/api/emoji-feedback', optionalAuthMiddleware, (req, res) =>
+    controller.submit(req, res)
+  );
 
   return router;
 };

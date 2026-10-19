@@ -3,20 +3,50 @@ import { Request, Response } from 'express';
 
 import EmojiFeedbackController from './EmojiFeedbackController';
 import { IEmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
+import type { ILowRatingContextRepository } from '../data_layer/LowRatingContextRepository';
+import type { IEmailService } from '../services/EmailService/EmailService';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
+import { NotifyLowRatingUseCase } from '../usecases/feedback/NotifyLowRatingUseCase';
 
 function buildMocks() {
   const repo: Mocked<IEmojiFeedbackRepository> = {
     insert: vi.fn().mockResolvedValue(undefined),
     countByRating: vi.fn().mockResolvedValue([]),
     recentComments: vi.fn().mockResolvedValue([]),
+    countLowRatingsFromEmailOnDay: vi.fn().mockResolvedValue(1),
   };
-  const controller = new EmojiFeedbackController(repo);
+  const contextRepo: Mocked<ILowRatingContextRepository> = {
+    getByOwner: vi.fn().mockResolvedValue(null),
+  };
+  const sendLowRatingFeedbackEmail = vi.fn().mockResolvedValue(undefined);
+  const emailService = {
+    sendLowRatingFeedbackEmail,
+  } as unknown as IEmailService;
+  const rateLimiter = new InMemoryRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    perKeyMax: 100,
+    globalMax: 100,
+  });
+  const notifier = new NotifyLowRatingUseCase(
+    repo,
+    contextRepo,
+    emailService,
+    rateLimiter
+  );
+  const controller = new EmojiFeedbackController(repo, notifier);
   const req = { body: {} } as Request;
   const res = {
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
   } as unknown as Response;
-  return { repo, controller, req, res };
+  return {
+    repo,
+    contextRepo,
+    sendLowRatingFeedbackEmail,
+    controller,
+    req,
+    res,
+  };
 }
 
 describe('EmojiFeedbackController', () => {
@@ -112,11 +142,70 @@ describe('EmojiFeedbackController', () => {
     expect(insertCall.comment).toHaveLength(2000);
   });
 
-  it('returns 500 when repository throws', async () => {
-    const { controller, req, res, repo } = buildMocks();
+  it('returns 500 when repository throws and does not notify', async () => {
+    const { controller, req, res, repo, sendLowRatingFeedbackEmail } =
+      buildMocks();
     repo.insert.mockRejectedValueOnce(new Error('db error'));
-    req.body = { rating: 2, page: '/upload' };
+    req.body = { rating: 2, page: '/upload', email: 'learner@example.com' };
     await controller.submit(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
+    expect(sendLowRatingFeedbackEmail).not.toHaveBeenCalled();
+  });
+
+  it('emails support when a low rating leaves an email', async () => {
+    const { controller, req, res, sendLowRatingFeedbackEmail } = buildMocks();
+    req.body = {
+      rating: 1,
+      page: '/upload',
+      comment: 'cards are wrong',
+      email: 'learner@example.com',
+    };
+    await controller.submit(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(sendLowRatingFeedbackEmail).toHaveBeenCalledTimes(1);
+    expect(sendLowRatingFeedbackEmail.mock.calls[0][0]).toMatchObject({
+      rating: 1,
+      comment: 'cards are wrong',
+      page: '/upload',
+      replyTo: 'learner@example.com',
+      emailVerified: false,
+    });
+  });
+
+  it('does not email a satisfied rating that leaves an email', async () => {
+    const { controller, req, res, sendLowRatingFeedbackEmail } = buildMocks();
+    req.body = { rating: 5, page: '/upload', email: 'learner@example.com' };
+    await controller.submit(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(sendLowRatingFeedbackEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not email a low rating without an email', async () => {
+    const { controller, req, res, sendLowRatingFeedbackEmail } = buildMocks();
+    req.body = { rating: 2, page: '/upload' };
+    await controller.submit(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(sendLowRatingFeedbackEmail).not.toHaveBeenCalled();
+  });
+
+  it('folds a second same-day low rating from the same email', async () => {
+    const { controller, req, res, repo, sendLowRatingFeedbackEmail } =
+      buildMocks();
+    repo.countLowRatingsFromEmailOnDay.mockResolvedValue(2);
+    req.body = { rating: 1, page: '/upload', email: 'learner@example.com' };
+    await controller.submit(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(sendLowRatingFeedbackEmail).not.toHaveBeenCalled();
+  });
+
+  it('still returns 201 when the support email fails', async () => {
+    const { controller, req, res, sendLowRatingFeedbackEmail } = buildMocks();
+    sendLowRatingFeedbackEmail.mockRejectedValueOnce(
+      new Error('sendgrid down')
+    );
+    req.body = { rating: 1, page: '/upload', email: 'learner@example.com' };
+    await controller.submit(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(sendLowRatingFeedbackEmail).toHaveBeenCalledTimes(1);
   });
 });
