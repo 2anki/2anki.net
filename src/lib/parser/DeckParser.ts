@@ -365,6 +365,118 @@ export class DeckParser {
     return dom(selector).toArray();
   }
 
+  // A Notion toggleable heading exports as a bare <details> directly under
+  // .page-body — regular toggles are normalised to ul.toggle before this runs,
+  // so a leftover bare details is always a heading. When such a heading wraps
+  // ONLY toggles (directly or through sub-headings) it is a section, not a card:
+  // each nested toggle is promoted to the page body so it becomes its own card,
+  // similar to the Notion API path (#3950). The fold boundary is ul.toggle only,
+  // so a toggle nested inside a regular toggle stays folded into its parent
+  // (#3515) while a toggle nested inside a sub-heading is still promoted.
+  //
+  // All-or-nothing per page (#4877): the expansion only runs when EVERY
+  // .page-body > details heading on the page qualifies. If any one bails — plain
+  // content, non-toggle content beside the toggles, a cherry/cloze summary, or
+  // no toggles at all — the whole page is left untouched, byte-identical to not
+  // running this pass. Expanding one heading promotes a ul.toggle into the page
+  // body, which makes extractToggleLists skip transformDetailsTagToNotionToggleList;
+  // a different plain heading would then come through findIndentedToggleLists
+  // only, and in the new display:contents shape its flattened body is empty, so
+  // its card would be silently dropped (and in the old shape its markup would
+  // change, breaking content-GUID dedup). Cherry mode is skipped wholesale: its
+  // descendant toggles already become distinct cards, so the collapse never
+  // happens there.
+  private expandToggleHeadingSections(dom: cheerio.CheerioAPI): void {
+    if (this.settings.isCherry) {
+      return;
+    }
+    const headings = dom('.page-body > details').toArray();
+    if (headings.length === 0) {
+      return;
+    }
+    const plans: { heading: Element; toggles: Element[] }[] = [];
+    for (const heading of headings) {
+      const toggles = this.planToggleHeadingExpansion(dom, heading);
+      if (toggles == null) {
+        return;
+      }
+      plans.push({ heading, toggles });
+    }
+    for (const { heading, toggles } of plans) {
+      const promoted = toggles.map((toggle) => dom.html(toggle)).join('');
+      dom(heading).replaceWith(promoted);
+    }
+  }
+
+  // Returns the outermost toggles to promote, or null when the heading must keep
+  // its single card (see expandToggleHeadingSections).
+  private planToggleHeadingExpansion(
+    dom: cheerio.CheerioAPI,
+    heading: Element
+  ): Element[] | null {
+    const summaryHTML = dom(heading).children('summary').first().html() ?? '';
+    if (this.headingSummaryOptsOutOfExpansion(summaryHTML)) {
+      return null;
+    }
+    const toggles = dom(heading)
+      .find('ul.toggle')
+      .toArray()
+      .filter(
+        (toggle) =>
+          dom(toggle).parentsUntil(heading).filter('ul.toggle').length === 0
+      );
+    if (toggles.length === 0) {
+      return null;
+    }
+    if (!this.toggleHeadingHoldsOnlyToggles(dom, heading)) {
+      return null;
+    }
+    return toggles;
+  }
+
+  private headingSummaryOptsOutOfExpansion(summaryHTML: string): boolean {
+    if (summaryHTML.includes('&#x1F352;') || summaryHTML.includes('🍒')) {
+      return true;
+    }
+    return hasClozeMarkup(summaryHTML) || hasInlineClozeCode(summaryHTML);
+  }
+
+  // True only when the heading's body is nothing but toggles (and sub-heading
+  // wrappers around toggles). From a clone, every summary (the heading's own and
+  // any sub-heading titles) and every ul.toggle is removed; the heading holds
+  // only toggles when no visible text and no element other than a bare wrapper
+  // (details / div / p / br) remains. A denylist, not a media allowlist, so any
+  // other content — an image, table, callout, hr, link, equation, bullet list, a
+  // plain heading — keeps the heading as a single card rather than dropping it.
+  private static readonly TOGGLE_HEADING_WRAPPER_TAGS = new Set([
+    'details',
+    'div',
+    'p',
+    'br',
+  ]);
+
+  private toggleHeadingHoldsOnlyToggles(
+    dom: cheerio.CheerioAPI,
+    heading: Element
+  ): boolean {
+    const body = dom(heading).clone();
+    body.find('summary').remove();
+    body.find('ul.toggle').remove();
+    if (body.text().replace(/\s+/g, '').length > 0) {
+      return false;
+    }
+    let onlyWrappers = true;
+    body.find('*').each((_i, element) => {
+      const tag = element.tagName?.toLowerCase();
+      if (tag == null || !DeckParser.TOGGLE_HEADING_WRAPPER_TAGS.has(tag)) {
+        onlyWrappers = false;
+        return false;
+      }
+      return undefined;
+    });
+    return onlyWrappers;
+  }
+
   removeNestedTogglesLegacy(input: string): string {
     return input
       .replace(/<details[^>]*>([\s\S]*?)<\/details>/g, (_match, inner) =>
@@ -1847,6 +1959,7 @@ export class DeckParser {
     this.reshapeBareToggleDetails(dom);
     const isNewFormat = this.hasNotionNewExportFormat(dom);
     this.normalizeNotionNewExportFormat(dom);
+    this.expandToggleHeadingSections(dom);
     this.applyCodeBlockContainer(dom);
     return { dom, isNewFormat };
   }

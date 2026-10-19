@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-toggle-heading-cards-on-upload",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Uploaded Notion pages turn each toggle under a toggle heading into its own card"
+}
