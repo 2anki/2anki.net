@@ -349,7 +349,7 @@
     "explore": {
       "heading": "Crea mejores mazos",
       "sub": "Tres ajustes que vale la pena conocer.",
-      "mcqBody": "Activa MCQ y cualquier pregunta que marcaste como opción múltiple (una opción marcada o una viñeta en negrita) se convierte en una tarjeta de opción múltiple. Convierte lo que marcaste, no escribe preguntas nuevas.",
+      "mcqBody": "Convierte las preguntas que hayas marcado en tarjetas de opción múltiple: una opción seleccionada o, en una exportación de Notion, una viñeta en negrita. No escribe preguntas nuevas.",
       "mcqCta": "Activar MCQ",
       "photoBody": "Haz una foto de una página de un libro, una diapositiva de clase o notas escritas a mano — 2anki crea las tarjetas a partir de la imagen.",
       "freePhotoHint": "Plan gratuito: 5 fotos al mes",

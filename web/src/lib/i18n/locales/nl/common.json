@@ -349,7 +349,7 @@
     "explore": {
       "heading": "Maak betere decks",
       "sub": "Drie instellingen die het waard zijn om te kennen.",
-      "mcqBody": "Schakel MCQ in en elke vraag die je als meerkeuze hebt gemarkeerd (één optie aangevinkt of één opsommingspunt vetgedrukt) wordt een meerkeuzekaart. Het zet om wat je hebt gemarkeerd, het schrijft geen nieuwe.",
+      "mcqBody": "Zet vragen die je hebt gemarkeerd om in meerkeuzekaarten: één optie aangevinkt of, in een Notion-export, één opsommingspunt vetgedrukt. Het schrijft geen nieuwe vragen.",
       "mcqCta": "MCQ inschakelen",
       "photoBody": "Maak een foto van een boekpagina, collegeslide of handgeschreven notities — 2anki maakt de kaarten van de afbeelding.",
       "freePhotoHint": "Gratis plan: 5 foto's per maand",

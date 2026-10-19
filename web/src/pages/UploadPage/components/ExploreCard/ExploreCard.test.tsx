@@ -64,10 +64,12 @@ describe('ExploreCard', () => {
     expect(screen.getByText('Deck defaults')).toBeInTheDocument();
   });
 
-  it('describes MCQ as converting source-marked questions, not generating new ones', () => {
+  it('describes MCQ as converting source-marked questions, scoping bold bullets to Notion exports', () => {
     renderCard({ paying: false });
     expect(
-      screen.getByText(/one option checked or one bullet bolded/i)
+      screen.getByText(
+        /one option checked, or in a Notion export one bullet bolded/i
+      )
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/your next conversion includes multiple-choice cards/i)

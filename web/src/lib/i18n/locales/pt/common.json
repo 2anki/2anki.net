@@ -349,7 +349,7 @@
     "explore": {
       "heading": "Crie baralhos melhores",
       "sub": "Três configurações que vale a pena conhecer.",
-      "mcqBody": "Ative o MCQ e qualquer pergunta que você marcou como múltipla escolha (uma opção marcada ou um item em negrito) vira um cartão de múltipla escolha. Ele converte o que você marcou, não escreve novas.",
+      "mcqBody": "Qualquer pergunta que você marcou como múltipla escolha se torna um cartão de múltipla escolha: uma opção selecionada ou, em uma exportação do Notion, um item em negrito. Não escreve novas perguntas.",
       "mcqCta": "Ativar MCQ",
       "photoBody": "Fotografe uma página de livro, um slide de aula ou anotações à mão — o 2anki cria os cartões a partir da imagem.",
       "freePhotoHint": "Plano gratuito: 5 fotos por mês",

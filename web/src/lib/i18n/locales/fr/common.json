@@ -349,7 +349,7 @@
     "explore": {
       "heading": "Crée de meilleurs paquets",
       "sub": "Trois réglages à connaître.",
-      "mcqBody": "Active MCQ et toute question que tu as marquée comme choix multiple (une option cochée ou une puce en gras) devient une carte à choix multiple. Il convertit ce que tu as marqué, il n'en écrit pas de nouvelles.",
+      "mcqBody": "Transforme les questions que tu as marquées en cartes à choix multiple : une option cochée ou, dans un export Notion, une puce en gras. Il n'écrit pas de nouvelles questions.",
       "mcqCta": "Activer MCQ",
       "photoBody": "Prends en photo une page de manuel, une diapo de cours ou des notes manuscrites — 2anki crée les cartes à partir de l'image.",
       "freePhotoHint": "Offre gratuite : 5 photos par mois",
