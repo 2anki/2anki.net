@@ -279,7 +279,7 @@ exports[`produces a stable deck for Notion page with an image 1`] = `
         "type": "cloze",
       },
       {
-        "back": "<html><head></head><body><figure id="202b0d67-c058-4bc6-b1ce-9e35b753128b" class="image"><a href="HTML%20test%20202b0d67c0584bc6b1ce9e35b753128b/Skjermbilde_2020-05-13_kl._19.45.08.png"><img style="width:532px" src="Skjermbilde_2020-05-13_kl._19.45.08.png"></a></figure></body></html>",
+        "back": "<html><head></head><body><figure id="202b0d67-c058-4bc6-b1ce-9e35b753128b" class="image"><img style="width:532px" src="Skjermbilde_2020-05-13_kl._19.45.08.png"></figure></body></html>",
         "front": "<div class='toggle'>With an image</div>",
         "media": [],
         "tags": [],
