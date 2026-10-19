@@ -14,16 +14,23 @@ import Workspace from './WorkSpace';
 import { File } from '../zip/zip';
 import { detectMarkdownMCQ } from './findNotionToggleLists';
 import { stripLeadingDeckNumbering } from './helpers/stripLeadingDeckNumbering';
+import { matchesMarkdownHeuristic } from './guessMarkdownCards';
 
-function dedent(text: string): string {
-  const lines = text.split('\n');
-  const nonEmptyLines = lines.filter((l) => l.trim().length > 0);
-  if (nonEmptyLines.length === 0) return text;
-  const minIndent = Math.min(
+function commonIndent(text: string): number {
+  const nonEmptyLines = text.split('\n').filter((l) => l.trim().length > 0);
+  if (nonEmptyLines.length === 0) return 0;
+  return Math.min(
     ...nonEmptyLines.map((l) => /^[ \t]*/.exec(l)?.[0].length ?? 0)
   );
+}
+
+function dedent(text: string): string {
+  const minIndent = commonIndent(text);
   if (minIndent === 0) return text;
-  return lines.map((l) => l.slice(minIndent)).join('\n');
+  return text
+    .split('\n')
+    .map((l) => l.slice(minIndent))
+    .join('\n');
 }
 
 interface BuildNoteResult {
@@ -80,14 +87,44 @@ function buildNoteFromBack(
   return { note, mcqShapedWithoutMarker: mcq.isMcqShape };
 }
 
-const BULLET_POINT_REGEX = /^-/;
+const DASH_ITEM_REGEX = /^-/;
 
-// A YAML front-matter fence is a run of dashes, so BULLET_POINT_REGEX reads it
-// as a card boundary: the opening fence becomes a card whose front is an <hr />
-// and whose back is the metadata, and the closing fence becomes a card holding
-// the rest of the file. Two junk cards are enough to look like a successful
-// parse, so DeckParser never falls through to guessMarkdownCards, which strips
-// front matter correctly. Every Obsidian and Logseq export hits this.
+const NEW_ITEM_REGEX = /^(?:[*+]|\d{1,9}[.)])(?:[ \t]|$)/;
+
+const NEW_ITEM_SEPARATOR_REGEX = /^[ \t]{0,3}([*+])(?:[ \t]*\1){2,}[ \t]*$/;
+
+const SUBHEADING_REGEX = /^#{2,}[ \t]/m;
+
+// A `*`, `+`, or ordered marker starts a card only in a bullet-shaped document
+// and never when the line is a decorative rule (* * *, + + +). `-` is handled
+// separately — it is always a card boundary, exactly as the original parser.
+function startsNewMarkerItem(dedentedLine: string): boolean {
+  return (
+    NEW_ITEM_REGEX.test(dedentedLine) &&
+    !NEW_ITEM_SEPARATOR_REGEX.test(dedentedLine)
+  );
+}
+
+// The new markers (*, +, ordered) are enabled only for a document that is
+// unambiguously one of their lists: no `##`+ heading (that is heading-body
+// shape, whose list lines belong on a card back), no column-0 `-` front (that
+// is a dash-style document, where a `*`/`+`/ordered line is sub-content, not a
+// separate card), and no match for any guessMarkdownCards pattern (Q:/A:,
+// <details>, `::`, separators) — those documents converted well before and must
+// keep falling through to guessMarkdownCards. Every other document then behaves
+// exactly as before: `-` still starts cards, and the rest falls through.
+function documentHasSubheading(body: string): boolean {
+  return SUBHEADING_REGEX.test(body);
+}
+
+function hasColumnZeroDashFront(rawLines: string[]): boolean {
+  return rawLines.some((line) => DASH_ITEM_REGEX.test(line));
+}
+
+// A YAML front-matter fence is a run of dashes. Without stripping it, the
+// metadata between the fences would be read as card content, so DeckParser
+// never falls through to guessMarkdownCards, which strips front matter
+// correctly. Every Obsidian and Logseq export hits this.
 const YAML_FRONT_MATTER_REGEX = /^---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/;
 
 function stripYamlFrontMatter(contents: string): string {
@@ -136,7 +173,13 @@ export const handleNestedBulletPointsInMarkdown = (
 
   decks.push(deck);
 
-  const lines = body.replace(/^<\/?aside[^>]*>\s*$/gim, '').split('\n');
+  const withoutAside = body.replace(/^<\/?aside[^>]*>\s*$/gim, '');
+  const indent = commonIndent(withoutAside);
+  const rawLines = withoutAside.split('\n');
+  const newMarkersAllowed =
+    !documentHasSubheading(dedent(withoutAside)) &&
+    !hasColumnZeroDashFront(rawLines) &&
+    !matchesMarkdownHeuristic(body);
   let isCreating = false;
   let currentFront = '';
   let currentBack = '';
@@ -159,24 +202,30 @@ export const handleNestedBulletPointsInMarkdown = (
     }
   };
 
-  for (const line of lines) {
-    if (line.trim().length === 0) {
+  for (const rawLine of rawLines) {
+    if (rawLine.trim().length === 0) {
       continue;
     }
 
-    if (BULLET_POINT_REGEX.exec(line) && isCreating) {
+    const dedentedLine = indent === 0 ? rawLine : rawLine.slice(indent);
+    const dashFront = DASH_ITEM_REGEX.test(rawLine);
+    const newFront =
+      !dashFront && newMarkersAllowed && startsNewMarkerItem(dedentedLine);
+    const startsCard = dashFront || newFront;
+
+    if (startsCard && isCreating) {
       flushCurrent();
       isCreating = false;
       currentFront = '';
       currentBack = '';
     }
 
-    if (BULLET_POINT_REGEX.exec(line) && !isCreating) {
+    if (startsCard && !isCreating) {
       isCreating = true;
-      currentFront = markdownToHTML(line, true);
+      currentFront = markdownToHTML(dashFront ? rawLine : dedentedLine, true);
       currentBack = '';
     } else if (isCreating) {
-      currentBack += line + '\n';
+      currentBack += rawLine + '\n';
     }
   }
 

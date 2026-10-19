@@ -178,4 +178,259 @@ describe('handleNestedBulletPointsInMarkdown', () => {
       expect(decks[0].name).not.toBe('---');
     });
   });
+
+  describe('top-level bullet markers beyond dash (regression: #4834)', () => {
+    it('treats - top-level bullets as card fronts', () => {
+      const contents = [
+        '- What supplies the SA node?',
+        '    - The right coronary artery',
+        '- What is the powerhouse of the cell?',
+        '    - The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[0].back).toContain('coronary');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+      expect(decks[0].cards[1].back).toContain('mitochondrion');
+    });
+
+    it('treats * top-level bullets as card fronts', () => {
+      const contents = [
+        '* What supplies the SA node?',
+        '    * The right coronary artery',
+        '* What is the powerhouse of the cell?',
+        '    * The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[0].back).toContain('coronary');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+      expect(decks[0].cards[1].back).toContain('mitochondrion');
+    });
+
+    it('treats + top-level bullets as card fronts', () => {
+      const contents = [
+        '+ What supplies the SA node?',
+        '    + The right coronary artery',
+        '+ What is the powerhouse of the cell?',
+        '    + The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[0].back).toContain('coronary');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+      expect(decks[0].cards[1].back).toContain('mitochondrion');
+    });
+
+    it('treats numbered top-level bullets as card fronts', () => {
+      const contents = [
+        '1. What supplies the SA node?',
+        '    - The right coronary artery',
+        '2. What is the powerhouse of the cell?',
+        '    - The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[0].back).toContain('coronary');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+      expect(decks[0].cards[1].back).toContain('mitochondrion');
+    });
+
+    it('treats a uniformly indented new-marker list as top-level cards', () => {
+      const contents = [
+        '    * What supplies the SA node?',
+        '        The right coronary artery',
+        '    * What is the powerhouse of the cell?',
+        '        The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+    });
+
+    it('does not treat a fully indented dash list as cards (dash matches raw lines)', () => {
+      const contents = [
+        '    - What supplies the SA node?',
+        '        The right coronary artery',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(0);
+    });
+
+    it('does not treat a column-0 emphasis span as a new card front', () => {
+      const contents = [
+        '* Question one',
+        '    first back line',
+        '*important closing note*',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].back).toContain('important closing note');
+    });
+
+    it('turns off new markers when the document has a column-0 - front', () => {
+      const contents = [
+        '- What are the steps?',
+        '1. step one',
+        '2. step two',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].name).toContain('What are the steps');
+      expect(decks[0].cards[0].back).toContain('step one');
+      expect(decks[0].cards[0].back).toContain('step two');
+    });
+
+    it('keeps a * or + line under a dash item on the back, not a new card', () => {
+      const contents = [
+        '- A dash question',
+        '* star sub-point',
+        '+ plus sub-point',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].name).toContain('A dash question');
+    });
+
+    it('treats a 1) numbered marker as a card front', () => {
+      const contents = [
+        '1) First question',
+        '    First answer',
+        '2) Second question',
+        '    Second answer',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].back).toContain('First answer');
+      expect(decks[0].cards[1].back).toContain('Second answer');
+    });
+
+    it('does not start new cards on * * * or + + + separator rules', () => {
+      const contents = [
+        '* Real question',
+        'Real answer stays here',
+        '* * *',
+        '+ + +',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].name).toContain('Real question');
+      expect(decks[0].cards[0].back).toContain('<hr');
+    });
+
+    it('keeps - bullets as cards even under a ## heading (dash is ungated)', () => {
+      const contents = [
+        '## Chapter 1',
+        '- Question one',
+        '    Answer one',
+        '- Question two',
+        '    Answer two',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('Question one');
+      expect(decks[0].cards[1].name).toContain('Question two');
+    });
+
+    it('keeps a --- rule inside a back on the same card', () => {
+      const contents = [
+        '- Only question',
+        '    First part of the answer',
+        '    ---',
+        '    Second part of the answer',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].back).toContain('First part');
+      expect(decks[0].cards[0].back).toContain('Second part');
+    });
+
+    it('declines a heading-body document so the list stays on one back', () => {
+      const contents = [
+        '## What are the steps?',
+        '',
+        'Follow these:',
+        '1. Boil the water',
+        '2. Add the tea',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(0);
+    });
+
+    it('declines a heading-body document that uses * list markers', () => {
+      const contents = [
+        '## What are the options?',
+        '',
+        '* first option',
+        '* second option',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(0);
+    });
+
+    it('keeps a prose line that begins with a year on the back under a heading', () => {
+      const contents = [
+        '## History',
+        '',
+        '1984. A pivotal year in the account.',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(0);
+    });
+
+    it.each([
+      [
+        'Q:/A: labels with a * list in the answer',
+        ['Q: What are the steps?', 'A: Do these:', '* step one', '* step two'],
+      ],
+      [
+        'term :: definition using * markers',
+        ['* apple :: a fruit', '* dog :: an animal'],
+      ],
+    ])(
+      'declines a document that guessMarkdownCards owns (%s)',
+      (_label, lines) => {
+        const decks = makeDecks(lines.join('\n'));
+
+        expect(decks[0].cards).toHaveLength(0);
+      }
+    );
+  });
 });

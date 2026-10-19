@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-markdown-bullet-lists-star-plus-numbered",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Markdown bullet lists convert to one card per item when they use *, +, or numbered markers"
+}
