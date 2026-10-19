@@ -23,7 +23,27 @@ const fakeApi = {
   getBlocks: vi.fn(),
 } as unknown as NotionAPIWrapper;
 
-function makeImageBlock(url: string): ImageBlockObjectResponse {
+function captionText(content: string): unknown {
+  return {
+    type: 'text',
+    text: { content, link: null },
+    annotations: {
+      bold: false,
+      italic: false,
+      strikethrough: false,
+      underline: false,
+      code: false,
+      color: 'default',
+    },
+    plain_text: content,
+    href: null,
+  };
+}
+
+function makeImageBlock(
+  url: string,
+  caption: unknown[] = []
+): ImageBlockObjectResponse {
   return {
     object: 'block',
     id: 'img-1',
@@ -39,7 +59,7 @@ function makeImageBlock(url: string): ImageBlockObjectResponse {
     image: {
       type: 'external',
       external: { url },
-      caption: [],
+      caption,
     },
   } as unknown as ImageBlockObjectResponse;
 }
@@ -76,5 +96,45 @@ describe('BlockHandler.embedImage embed-images gate', () => {
 
     expect(result).toBe('');
     expect(addMediaSpy).not.toHaveBeenCalled();
+  });
+
+  test('a captioned image renders its caption after the img tag', async () => {
+    const settings = new CardOption({});
+    const handler = new BlockHandler(exporter, fakeApi, settings);
+    const block = makeImageBlock('https://example.com/diagram.png', [
+      captionText('Figure 1'),
+    ]);
+
+    const result = await handler.embedImage(block);
+
+    expect(result).toMatch(
+      /^<img src="[^"]+\.png" \/><figcaption>Figure 1<\/figcaption>$/
+    );
+  });
+
+  test('an empty caption emits nothing beyond the img tag', async () => {
+    const settings = new CardOption({});
+    const handler = new BlockHandler(exporter, fakeApi, settings);
+    const block = makeImageBlock('https://example.com/diagram.png', []);
+
+    const result = await handler.embedImage(block);
+
+    expect(result).not.toContain('figcaption');
+    expect(result).toMatch(/^<img src="[^"]+\.png" \/>$/);
+  });
+
+  test('caption text from Notion rich text is HTML-escaped', async () => {
+    const settings = new CardOption({});
+    const handler = new BlockHandler(exporter, fakeApi, settings);
+    const block = makeImageBlock('https://example.com/diagram.png', [
+      captionText('<b>x</b> & y'),
+    ]);
+
+    const result = await handler.embedImage(block);
+
+    expect(result).toContain(
+      '<figcaption>&lt;b&gt;x&lt;/b&gt; &amp; y</figcaption>'
+    );
+    expect(result).not.toContain('<b>x</b>');
   });
 });
