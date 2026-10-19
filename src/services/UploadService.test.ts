@@ -113,6 +113,7 @@ import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 import { InMemoryHeldDeckRepository } from '../data_layer/HeldDeckRepository';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import {
   ANONYMOUS_CARD_CAP,
   MONTHLY_CARD_LIMIT,
@@ -5614,6 +5615,261 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(JSON.stringify(capturedJson())).not.toContain(
       heldDeck.rows[0].storage_key
     );
+  });
+
+  it('keeps only the newest unclaimed hold per anon and deletes the superseded object', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    expect(heldDeck.rows).toHaveLength(1);
+    const firstKey = heldDeck.rows[0].storage_key;
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+
+    const unclaimed = heldDeck.rows.filter((row) => row.claimed_at == null);
+    expect(unclaimed).toHaveLength(1);
+    expect(unclaimed[0].storage_key).not.toBe(firstKey);
+    expect(mockStorageDelete).toHaveBeenCalledWith(firstKey);
+  });
+
+  it('does not delete a claimed hold when a new one is written for the anon', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    const claimedKey = heldDeck.rows[0].storage_key;
+    await heldDeck.markClaimed(heldDeck.rows[0].id as number, 7, new Date());
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+
+    expect(heldDeck.rows).toHaveLength(2);
+    expect(mockStorageDelete).not.toHaveBeenCalledWith(claimedKey);
+  });
+
+  it('walls a new hold once the per-IP daily cap is reached', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 60_000,
+      perKeyMax: 1,
+      globalMax: 100,
+    });
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck }),
+      limiter
+    );
+
+    const first = buildResponse();
+    await service.handleUpload(buildEligibleRequest(TREATMENT_ID), first.res);
+    expect(first.capturedStatus()).toBe(200);
+    expect(heldDeck.rows).toHaveLength(1);
+
+    const second = responseWithRedirect();
+    await service.handleUpload(buildEligibleRequest(TREATMENT_ID), second.res);
+    expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(heldDeck.rows).toHaveLength(1);
+    expect(conversionFailedProps()).toMatchObject({
+      reason: 'anonymous_cap',
+      arm: 'treatment',
+    });
+  });
+
+  function requestFromIp(forwardedFor: string): express.Request {
+    const req = buildEligibleRequest(TREATMENT_ID);
+    (req as unknown as { headers: Record<string, string> }).headers = {
+      'x-forwarded-for': forwardedFor,
+    };
+    return req;
+  }
+
+  it('shares one per-IP bucket across addresses in the same IPv6 /64', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 60_000,
+      perKeyMax: 1,
+      globalMax: 100,
+    });
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck }),
+      limiter
+    );
+
+    const first = buildResponse();
+    await service.handleUpload(requestFromIp('2001:db8:1:2::1'), first.res);
+    expect(first.capturedStatus()).toBe(200);
+
+    const second = responseWithRedirect();
+    await service.handleUpload(
+      requestFromIp('2001:db8:1:2:aaaa::9'),
+      second.res
+    );
+    expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(heldDeck.rows).toHaveLength(1);
+  });
+
+  it('logs the global-budget wall separately from the per-IP cap', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 60_000,
+      perKeyMax: 10,
+      globalMax: 1,
+    });
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck }),
+      limiter
+    );
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    try {
+      await service.handleUpload(
+        requestFromIp('198.51.100.1'),
+        buildResponse().res
+      );
+      const second = responseWithRedirect();
+      await service.handleUpload(requestFromIp('198.51.100.2'), second.res);
+
+      expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+      const messages = infoSpy.mock.calls.map(([message]) => message);
+      expect(messages).toContain(
+        '[UploadService] held deck throttled by global daily budget'
+      );
+      expect(messages).not.toContain(
+        '[UploadService] held deck throttled by per-IP daily cap'
+      );
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('keeps a claimed hold and its file when a claim lands mid-prune', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    const first = heldDeck.rows[0];
+    await heldDeck.markClaimed(first.id as number, 7, new Date());
+
+    vi.spyOn(heldDeck, 'findUnclaimedByAnonId').mockResolvedValueOnce([
+      { id: first.id as number, storageKey: first.storage_key },
+    ]);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+
+    expect(heldDeck.rows.some((row) => row.id === first.id)).toBe(true);
+    expect(mockStorageDelete).not.toHaveBeenCalledWith(first.storage_key);
+  });
+
+  it('walls instead of 500ing when the unclaimed lookup fails', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    vi.spyOn(heldDeck, 'findUnclaimedByAnonId').mockRejectedValueOnce(
+      new Error('db down')
+    );
+    const service = serviceUnderTest(heldDeck);
+    const { res, redirectedTo } = responseWithRedirect();
+
+    await service.handleUpload(buildEligibleRequest(TREATMENT_ID), res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(heldDeck.rows).toHaveLength(0);
+  });
+
+  it('still returns the held deck when the best-effort prune fails', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    vi.spyOn(heldDeck, 'deleteUnclaimedByIds').mockRejectedValueOnce(
+      new Error('db down')
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(buildEligibleRequest(TREATMENT_ID), res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toMatchObject({ kind: 'held' });
+    const newest = heldDeck.rows[heldDeck.rows.length - 1];
+    expect(newest.claimed_at).toBeNull();
+    expect(mockStorageDelete).not.toHaveBeenCalledWith(newest.storage_key);
+  });
+
+  it('logs an orphan count when a superseded object fails to delete', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockStorageDelete.mockClear();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = serviceUnderTest(heldDeck);
+
+    await service.handleUpload(
+      buildEligibleRequest(TREATMENT_ID),
+      buildResponse().res
+    );
+    const firstKey = heldDeck.rows[0].storage_key;
+    mockStorageDelete.mockResolvedValueOnce(false);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      const { res, capturedStatus } = buildResponse();
+      await service.handleUpload(buildEligibleRequest(TREATMENT_ID), res);
+
+      expect(capturedStatus()).toBe(200);
+      expect(mockStorageDelete).toHaveBeenCalledWith(firstKey);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[UploadService] superseded held objects left in storage',
+        expect.objectContaining({ count: 1 })
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('never writes a signup hold under an anon_id forged as a plan key', async () => {

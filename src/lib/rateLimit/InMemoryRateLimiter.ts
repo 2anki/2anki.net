@@ -3,6 +3,8 @@ interface RateBucket {
   resetAt: number;
 }
 
+export type RateLimitDecision = 'allowed' | 'per_key' | 'global';
+
 export interface RateLimiter {
   check(key: string): boolean;
 }
@@ -31,26 +33,33 @@ export class InMemoryRateLimiter implements RateLimiter {
   }
 
   check(key: string): boolean {
+    return this.evaluate(key) === 'allowed';
+  }
+
+  // Distinguishes a per-key rejection from a global-budget rejection so callers
+  // can log and react to them separately; check() keeps the boolean contract
+  // the other call sites rely on.
+  evaluate(key: string): RateLimitDecision {
     const now = this.now();
 
     if (now >= this.globalBucket.resetAt) {
       this.globalBucket = { count: 0, resetAt: now + this.windowMs };
     }
     if (this.globalBucket.count >= this.globalMax) {
-      return false;
+      return 'global';
     }
     this.globalBucket.count += 1;
 
     const existing = this.buckets.get(key);
     if (existing == null || now >= existing.resetAt) {
       this.buckets.set(key, { count: 1, resetAt: now + this.windowMs });
-      return true;
+      return 'allowed';
     }
     if (existing.count >= this.perKeyMax) {
       this.globalBucket.count -= 1;
-      return false;
+      return 'per_key';
     }
     existing.count += 1;
-    return true;
+    return 'allowed';
   }
 }

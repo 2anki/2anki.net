@@ -4,7 +4,10 @@ import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { IUploadRepository } from '../data_layer/UploadRespository';
-import { IHeldDeckRepository } from '../data_layer/HeldDeckRepository';
+import {
+  ExpiredHeldDeck,
+  IHeldDeckRepository,
+} from '../data_layer/HeldDeckRepository';
 import JobRepository from '../data_layer/JobRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import { ISettingsRepository } from '../data_layer/SettingsRepository';
@@ -145,6 +148,12 @@ import {
 import { readEmptyUpload } from '../usecases/uploads/readEmptyUpload';
 import type { EmptyUploadReading } from '../types/EmptyUploadReading';
 import type { RescueCandidate } from '../types/RescueCandidate';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
+import {
+  hashIp,
+  ipRateLimitBucket,
+  resolveClientIp,
+} from '../lib/rateLimit/ipHelpers';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -208,6 +217,9 @@ export interface HeldUploadResponse {
 }
 
 const HELD_DECK_TTL_MS = 24 * 60 * 60 * 1000;
+const HELD_DECK_IP_WINDOW_MS = 24 * 60 * 60 * 1000;
+const HELD_DECK_PER_IP_MAX = 20;
+const HELD_DECK_GLOBAL_MAX = 5000;
 const SERVER_WRITE_ERRORS = new Set([
   'ENOSPC',
   'EACCES',
@@ -600,6 +612,7 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
 
 class UploadService {
   private readonly inFlightConversions = new Set<string>();
+  private readonly holdRateLimiter: InMemoryRateLimiter;
 
   getUploadsByOwner(owner: number) {
     return this.uploadRepository.getUploadsByOwner(owner);
@@ -617,8 +630,17 @@ class UploadService {
     private readonly aiCardFingerprintRepository: IAiCardFingerprintRepository,
     private readonly photoToFlashcardsUseCase: PhotoToFlashcardsUseCase,
     private readonly aiRequestCostReader: IAiRequestCostReader,
-    private readonly heldDeckRepository: IHeldDeckRepository
-  ) {}
+    private readonly heldDeckRepository: IHeldDeckRepository,
+    holdRateLimiter?: InMemoryRateLimiter
+  ) {
+    this.holdRateLimiter =
+      holdRateLimiter ??
+      new InMemoryRateLimiter({
+        windowMs: HELD_DECK_IP_WINDOW_MS,
+        perKeyMax: HELD_DECK_PER_IP_MAX,
+        globalMax: HELD_DECK_GLOBAL_MAX,
+      });
+  }
 
   private async resolveSyncCreditsUsed(
     userId: number | null,
@@ -2201,6 +2223,58 @@ class UploadService {
     return resolveAnonymousPartialArm(this.resolveAnonId(req), flagEnabled);
   }
 
+  // One visitor only ever needs their latest unclaimed hold; the earlier ones
+  // can never be claimed once a newer file is stored, so they are swept to keep
+  // storage flat. The row goes first, guarded by claimed_at IS NULL, and only a
+  // row the delete actually removed has its object deleted. A claim landing in
+  // another tab between the lookup and here sets claimed_at, so that row is left
+  // alone and keeps its file rather than losing it to a stale snapshot. This is
+  // best-effort housekeeping: the hold the visitor just made is already stored,
+  // so any failure here logs and returns rather than costing them that hold.
+  // A row whose object delete returns false is left orphaned under held/ (its
+  // row is already gone), so that count is logged for a storage audit.
+  private async pruneSupersededHolds(
+    holds: ExpiredHeldDeck[],
+    storage: StorageHandler,
+    requestId: string | undefined
+  ): Promise<void> {
+    if (holds.length === 0) {
+      return;
+    }
+    try {
+      const removedIds = await this.heldDeckRepository.deleteUnclaimedByIds(
+        holds.map((hold) => hold.id)
+      );
+      if (removedIds.length === 0) {
+        return;
+      }
+      const removed = new Set(removedIds);
+      let orphaned = 0;
+      for (const hold of holds) {
+        if (removed.has(hold.id) && !(await storage.delete(hold.storageKey))) {
+          orphaned += 1;
+        }
+      }
+      if (orphaned > 0) {
+        console.warn(
+          '[UploadService] superseded held objects left in storage',
+          {
+            requestId,
+            count: orphaned,
+          }
+        );
+      }
+      console.info('[UploadService] pruned superseded held decks', {
+        count: removedIds.length,
+      });
+    } catch (error) {
+      console.error('[UploadService] could not prune superseded holds', {
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   private async holdDeckForSignup(
     req: express.Request,
     res: express.Response,
@@ -2217,9 +2291,42 @@ class UploadService {
         ANONYMOUS_CARD_CAP
       );
     }
+    // The anon_id cookie is client-controlled, so a script can mint a fresh id
+    // per request and defeat the per-anon prune below. The per-IP daily cap is
+    // the backstop: past it the visitor falls back to the limit wall instead of
+    // writing another source file to storage (#4802). The IP is bucketed by /64
+    // first so one IPv6 prefix cannot rotate addresses to burn the budget.
+    const decision = this.holdRateLimiter.evaluate(
+      hashIp(ipRateLimitBucket(resolveClientIp(req)))
+    );
+    if (decision === 'global') {
+      console.info(
+        '[UploadService] held deck throttled by global daily budget',
+        { requestId: res.locals.requestId }
+      );
+      throw new AnonymousCardCapError(
+        cardCount + cardsHeldBack,
+        ANONYMOUS_CARD_CAP
+      );
+    }
+    if (decision === 'per_key') {
+      console.info('[UploadService] held deck throttled by per-IP daily cap', {
+        requestId: res.locals.requestId,
+      });
+      throw new AnonymousCardCapError(
+        cardCount + cardsHeldBack,
+        ANONYMOUS_CARD_CAP
+      );
+    }
     const storage = new StorageHandler();
     const storageKey = `held/${randomUUID()}`;
+    // The lookup and the write share one fallback: a DB error in either ends in
+    // the limit wall, never a 500. The prune runs only once the hold is safely
+    // stored, so it is best-effort and never converts a held deck into a wall.
+    let supersededHolds: ExpiredHeldDeck[] = [];
     try {
+      supersededHolds =
+        await this.heldDeckRepository.findUnclaimedByAnonId(anonId);
       await storage.uploadFile(storageKey, bytes);
       await this.heldDeckRepository.insert({
         storageKey,
@@ -2239,6 +2346,11 @@ class UploadService {
         ANONYMOUS_CARD_CAP
       );
     }
+    await this.pruneSupersededHolds(
+      supersededHolds,
+      storage,
+      res.locals.requestId
+    );
     track('conversion_succeeded', {
       userId: null,
       anonymousId: anonId,
