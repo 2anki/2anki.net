@@ -190,6 +190,8 @@ export class DeckParser {
 
   droppedImageCount: number;
 
+  droppedAudioCount: number;
+
   expiredNotionImageCount: number;
 
   missingLocalImageCount: number;
@@ -255,6 +257,7 @@ export class DeckParser {
     this.noLimits = input.noLimits;
     this.usedHeuristic = false;
     this.droppedImageCount = 0;
+    this.droppedAudioCount = 0;
     this.expiredNotionImageCount = 0;
     this.missingLocalImageCount = 0;
     this.emptyBackCount = 0;
@@ -1199,12 +1202,17 @@ export class DeckParser {
       else element.remove();
     });
 
+    const resolvedResults = Array.from(resolved.values());
+    const droppedAudio = resolvedResults.filter((name) => name == null).length;
+    if (droppedAudio > 0) {
+      this.droppedAudioCount += droppedAudio;
+      console.warn(
+        `Skipping ${droppedAudio} local audio file(s) that could not be found in the upload`
+      );
+    }
+
     const embedded = Array.from(
-      new Set(
-        Array.from(resolved.values()).filter(
-          (name): name is string => name != null
-        )
-      )
+      new Set(resolvedResults.filter((name): name is string => name != null))
     );
     if (embedded.length === 0) return;
 

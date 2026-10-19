@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { jsonrepair } from 'jsonrepair';
 import { detect } from '../cardStyle/headingDriven/detect';
 import { splitByHeadings } from '../cardStyle/headingDriven/splitByHeadings';
+import { AUDIO_FILE_SUFFIXES } from '../anki/format';
 import { getCardStylePromptFragment } from './getCardStylePromptFragment';
 import { ANKI_MATH_FRAGMENT } from './ankiMathFragment';
 import { recordClaudeUsage } from './recordClaudeUsage';
@@ -290,7 +291,10 @@ function stripPathsFromCardHtml(html: string): string {
   return body.length ? (body.html() ?? html) : html;
 }
 
-const AUDIO_EXTENSIONS = /\.(mp3|ogg|oga|opus|wav|flac|m4a|aac)$/i;
+const AUDIO_EXTENSIONS = new RegExp(
+  `\\.(${AUDIO_FILE_SUFFIXES.join('|')})$`,
+  'i'
+);
 
 function isLocalAudioHref(href: string): boolean {
   if (!href) return false;

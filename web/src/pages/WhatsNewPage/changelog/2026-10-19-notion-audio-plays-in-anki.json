@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-notion-audio-plays-in-anki",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Audio from your Notion pages plays in the Anki deck instead of staying silent"
+}
