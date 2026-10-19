@@ -45,6 +45,8 @@
   "imageDrop": {
     "notion_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in dit pakket. De link ernaar in Notion is waarschijnlijk verlopen. Converteer de pagina opnieuw om deze op te halen.",
     "notion_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in dit pakket. De links ernaar in Notion zijn waarschijnlijk verlopen. Converteer de pagina opnieuw om ze op te halen.",
+    "notionAsset_one": "{{count}} bestand of afbeelding kon niet worden gedownload en zit niet in dit pakket. De link ernaar in Notion is waarschijnlijk verlopen. Converteer de pagina opnieuw om deze op te halen.",
+    "notionAsset_other": "{{count}} bestanden of afbeeldingen konden niet worden gedownload en zitten niet in dit pakket. De links ernaar in Notion zijn waarschijnlijk verlopen. Converteer de pagina opnieuw om ze op te halen.",
     "uploadSingleDeck_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in dit pakket. Je bestand linkt ernaar op een andere site die we niet konden bereiken. Sla de afbeelding op in het bestand zelf en upload opnieuw.",
     "uploadSingleDeck_other": "{{count}} afbeeldingen konden niet worden gedownload en zitten niet in dit pakket. Je bestand linkt ernaar op andere sites die we niet konden bereiken. Sla de afbeeldingen op in het bestand zelf en upload opnieuw.",
     "uploadMultiDeck_one": "{{count}} afbeelding kon niet worden gedownload en zit niet in je pakketten. Je bestand linkt ernaar op een andere site die we niet konden bereiken. Sla de afbeelding op in het bestand zelf en upload opnieuw.",

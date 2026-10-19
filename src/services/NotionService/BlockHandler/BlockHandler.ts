@@ -1010,7 +1010,6 @@ class BlockHandler implements IBlockRenderer {
     blocks: GetBlockResponse[],
     flashCardTypes: string[],
     nonPageDeckTypes: Set<string>,
-    rules: ParserRules,
     depth = 0,
     seen: Set<string> = new Set<string>()
   ): Promise<GetBlockResponse[]> {
@@ -1057,7 +1056,7 @@ class BlockHandler implements IBlockRenderer {
           all: this.useAll,
           type: block.type,
         });
-        this.recordTruncation(response, rules);
+        this.recordNestedTruncation(response);
         children = await expandSyncedBlocks(
           response.results,
           this.api,
@@ -1075,7 +1074,6 @@ class BlockHandler implements IBlockRenderer {
         children,
         flashCardTypes,
         nonPageDeckTypes,
-        rules,
         depth + 1,
         seen
       );
@@ -1192,8 +1190,7 @@ class BlockHandler implements IBlockRenderer {
     const blocks = await this.expandNestedToggles(
       await this.expandToggleHeadingSections(topLevelBlocks, flashCardTypes),
       flashCardTypes,
-      nonPageDeckTypes,
-      rules
+      nonPageDeckTypes
     );
     // `cardSource` flattens top-level column layouts so toggles nested in a
     // two-column layout become cards. It is kept separate from `blocks`: the

@@ -319,7 +319,7 @@ describe('toggles nested in list items and callouts on the convert path', () => 
     expect(getBlocksCalls).toBeLessThanOrEqual(41);
   });
 
-  it('records truncation when a free-plan wrapper fetch is partial', async () => {
+  it('records truncation when a free-plan wrapper fetch is partial without inflating the page count', async () => {
     const childrenById: Record<string, unknown[]> = {
       'page-1': [textBlock('b-1', 'bulleted_list_item', 'A bullet', true)],
       'b-1': [textBlock('t-1', 'toggle', 'Question', true)],
@@ -352,7 +352,10 @@ describe('toggles nested in list items and callouts on the convert path', () => 
       parentName: '',
     });
 
-    expect(handler.truncation?.blocksConverted).toBe(1);
+    expect(handler.truncation).toEqual({
+      blocksConverted: 0,
+      subDeckRulesSkipped: false,
+    });
   });
 });
 

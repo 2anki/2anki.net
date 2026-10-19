@@ -2,7 +2,12 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { track } from '../../../lib/analytics/track';
 
-type ImageDropSource = 'notion' | 'upload' | 'pdf' | 'notionHtml';
+type ImageDropSource =
+  | 'notion'
+  | 'notionAsset'
+  | 'upload'
+  | 'pdf'
+  | 'notionHtml';
 
 type ImageDropSurface = 'upload_form' | 'downloads_row';
 
@@ -19,6 +24,7 @@ function resolveImageDropKey(
   multipleDecks: boolean
 ): string {
   if (source === 'notionHtml') return 'imageDrop.notionHtmlUpload';
+  if (source === 'notionAsset') return 'imageDrop.notionAsset';
   if (source === 'pdf') return 'imageDrop.pdf';
   if (source === 'upload') {
     return multipleDecks

@@ -45,6 +45,8 @@
   "imageDrop": {
     "notion_one": "No se pudo descargar {{count}} imagen y no está en este mazo. El enlace a ella en Notion probablemente caducó. Convierte la página de nuevo para intentar obtenerla.",
     "notion_other": "No se pudieron descargar {{count}} imágenes y no están en este mazo. Los enlaces a ellas en Notion probablemente caducaron. Convierte la página de nuevo para intentar obtenerlas.",
+    "notionAsset_one": "No se pudo descargar {{count}} archivo o imagen y no está en este mazo. El enlace en Notion probablemente caducó. Convierte la página de nuevo para intentar obtenerlo.",
+    "notionAsset_other": "No se pudieron descargar {{count}} archivos o imágenes y no están en este mazo. Los enlaces en Notion probablemente caducaron. Convierte la página de nuevo para intentar obtenerlos.",
     "uploadSingleDeck_one": "No se pudo descargar {{count}} imagen y no está en este mazo. Tu archivo enlaza a ella en otro sitio que no pudimos alcanzar. Guarda la imagen en el archivo y súbelo de nuevo.",
     "uploadSingleDeck_other": "No se pudieron descargar {{count}} imágenes y no están en este mazo. Tu archivo enlaza a ellas en otros sitios que no pudimos alcanzar. Guarda las imágenes en el archivo y súbelo de nuevo.",
     "uploadMultiDeck_one": "No se pudo descargar {{count}} imagen y no está en tus mazos. Tu archivo enlaza a ella en otro sitio que no pudimos alcanzar. Guarda la imagen en el archivo y súbelo de nuevo.",

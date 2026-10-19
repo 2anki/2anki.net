@@ -856,7 +856,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                   >
                                     <ImageDropNotice
                                       count={droppedAssetCount}
-                                      source="notion"
+                                      source="notionAsset"
                                       surface="downloads_row"
                                     />
                                   </td>

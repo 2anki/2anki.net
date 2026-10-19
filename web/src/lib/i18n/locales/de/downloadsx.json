@@ -45,6 +45,8 @@
   "imageDrop": {
     "notion_one": "{{count}} Bild konnte nicht heruntergeladen werden und ist nicht in diesem Stapel. Der Link dazu in Notion ist höchstwahrscheinlich abgelaufen. Konvertiere die Seite erneut, um es abzurufen.",
     "notion_other": "{{count}} Bilder konnten nicht heruntergeladen werden und sind nicht in diesem Stapel. Die Links dazu in Notion sind höchstwahrscheinlich abgelaufen. Konvertiere die Seite erneut, um sie abzurufen.",
+    "notionAsset_one": "{{count}} Datei oder Bild konnte nicht heruntergeladen werden und ist nicht in diesem Stapel. Der Link dazu in Notion ist höchstwahrscheinlich abgelaufen. Konvertiere die Seite erneut, um es abzurufen.",
+    "notionAsset_other": "{{count}} Dateien oder Bilder konnten nicht heruntergeladen werden und sind nicht in diesem Stapel. Die Links dazu in Notion sind höchstwahrscheinlich abgelaufen. Konvertiere die Seite erneut, um sie abzurufen.",
     "uploadSingleDeck_one": "{{count}} Bild konnte nicht heruntergeladen werden und ist nicht in diesem Stapel. Deine Datei verweist darauf auf einer anderen Seite, die wir nicht erreichen konnten. Speichere das Bild in der Datei selbst und lade sie erneut hoch.",
     "uploadSingleDeck_other": "{{count}} Bilder konnten nicht heruntergeladen werden und sind nicht in diesem Stapel. Deine Datei verweist darauf auf anderen Seiten, die wir nicht erreichen konnten. Speichere die Bilder in der Datei selbst und lade sie erneut hoch.",
     "uploadMultiDeck_one": "{{count}} Bild konnte nicht heruntergeladen werden und ist nicht in deinen Stapeln. Deine Datei verweist darauf auf einer anderen Seite, die wir nicht erreichen konnten. Speichere das Bild in der Datei selbst und lade sie erneut hoch.",

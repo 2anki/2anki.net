@@ -1367,9 +1367,15 @@ describe('DownloadsPage conversion note toggles', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Conversion report/ }));
     expect(await screen.findByText(/2 parts of this page/)).toBeInTheDocument();
+    // The modal names the image kind; the row keeps kind-neutral wording. Both
+    // share "couldn't be downloaded", so exactly two dropped-asset notices show.
+    expect(screen.getAllByText(/couldn't be downloaded/)).toHaveLength(2);
     expect(
-      screen.getAllByText(/1 image couldn't be downloaded/).length
-    ).toBeGreaterThanOrEqual(1);
+      screen.getByText(/1 image couldn't be downloaded/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 file or image couldn't be downloaded/)
+    ).toBeInTheDocument();
     expect(screen.getByText(/4 blocks on this page/)).toBeInTheDocument();
   });
 
@@ -1563,7 +1569,7 @@ describe('DownloadsPage Notion row partial and dropped-asset notices', () => {
 
     expect(
       screen.getByText(
-        /3 images couldn't be downloaded and aren't in this deck\./
+        /3 files or images couldn't be downloaded and aren't in this deck\./
       )
     ).toBeInTheDocument();
   });

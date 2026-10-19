@@ -193,4 +193,49 @@ describe('BlockHandler nested truncation', () => {
 
     expect(handler.truncation).toBeUndefined();
   });
+
+  it('leaves the page block count unchanged when a nested fetch truncates after the page did', async () => {
+    const api = {
+      getPage: vi.fn().mockResolvedValue({
+        object: 'page',
+        id: 'page-1',
+        created_time: '2026-06-01T00:00:00.000Z',
+        last_edited_time: '2026-06-01T00:00:00.000Z',
+      }),
+      getPageTitle: vi.fn().mockResolvedValue('Long Page'),
+      getTopLevelTags: vi.fn().mockResolvedValue([]),
+      getBlocks: vi.fn().mockImplementation(({ id }: { id: string }) => {
+        if (id === 'page-1') {
+          return Promise.resolve({
+            object: 'list',
+            type: 'block',
+            block: {},
+            results: [
+              toggleBlock('toggle-1', 'Front'),
+              paragraphBlock('b2'),
+              paragraphBlock('b3'),
+            ],
+            next_cursor: 'cursor-page',
+            has_more: true,
+          });
+        }
+        return Promise.resolve({
+          object: 'list',
+          type: 'block',
+          block: {},
+          results: [paragraphBlock('c1')],
+          next_cursor: id === 'toggle-1' ? 'cursor-child' : null,
+          has_more: id === 'toggle-1',
+        });
+      }),
+    } as unknown as NotionAPIWrapper;
+    const handler = makeHandler(api, false);
+
+    await convertPage(handler, new ParserRules());
+
+    expect(handler.truncation).toEqual({
+      blocksConverted: 3,
+      subDeckRulesSkipped: false,
+    });
+  });
 });
