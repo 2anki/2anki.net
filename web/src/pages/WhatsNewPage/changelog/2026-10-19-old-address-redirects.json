@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-old-address-redirects",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Bookmarks to the old 2anki.netlify.app and notion2anki addresses open the same page on 2anki.net again"
+}
