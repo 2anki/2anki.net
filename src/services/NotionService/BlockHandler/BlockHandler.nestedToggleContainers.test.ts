@@ -222,6 +222,138 @@ describe('toggles nested in list items and callouts on the convert path', () => 
     expect(decks[0].cards).toHaveLength(1);
     expect(decks[0].cards[0].name).toContain('Top question');
   });
+
+  it('keeps a hoisted toggle in document order among top-level toggles', async () => {
+    const api = makeApi({
+      'page-1': [
+        textBlock('t-x', 'toggle', 'Top one', true),
+        textBlock('b-1', 'bulleted_list_item', 'A bullet', true),
+        textBlock('t-z', 'toggle', 'Top two', true),
+      ],
+      't-x': [textBlock('p-x', 'paragraph', 'Answer one')],
+      'b-1': [textBlock('t-y', 'toggle', 'Nested toggle', true)],
+      't-y': [textBlock('p-y', 'paragraph', 'Nested answer')],
+      't-z': [textBlock('p-z', 'paragraph', 'Answer two')],
+    });
+    const handler = makeHandler(api);
+
+    const decks = await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks[0].cards.map((c) => stripTags(c.name))).toEqual([
+      'Top one',
+      'Nested toggle',
+      'Top two',
+    ]);
+  });
+
+  it('skips a wrapper the user made a deck type instead of double-carding', async () => {
+    const api = makeApi({
+      'page-1': [
+        textBlock('b-1', 'bulleted_list_item', 'Section bullet', true),
+      ],
+      'b-1': [textBlock('t-1', 'toggle', 'Inner question', true)],
+      't-1': [textBlock('p-1', 'paragraph', 'Inner answer')],
+    });
+    const handler = makeHandler(api);
+    handler.useAll = true;
+    const rules = new ParserRules();
+    rules.setDeckTypes(['page', 'bulleted_list_item']);
+
+    const decks = await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules,
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks[0].cards).toHaveLength(0);
+    const total = decks
+      .flatMap((d) => d.cards)
+      .filter((c) => c.name.includes('Inner question'));
+    expect(total).toHaveLength(1);
+  });
+
+  it('bounds wrapper fetches on a large toggle-free outline', async () => {
+    const childrenById: Record<string, unknown[]> = { 'page-1': [] };
+    for (let i = 0; i < 100; i += 1) {
+      const id = `b-${i}`;
+      (childrenById['page-1'] as unknown[]).push(
+        textBlock(id, 'bulleted_list_item', `Item ${i}`, true)
+      );
+      childrenById[id] = [
+        textBlock(`leaf-${i}`, 'bulleted_list_item', `Leaf ${i}`, false),
+      ];
+    }
+    let getBlocksCalls = 0;
+    const api = {
+      getPage: vi.fn().mockResolvedValue({
+        id: 'page-1',
+        object: 'page',
+        created_time: '',
+        last_edited_time: '',
+      }),
+      getPageTitle: vi.fn().mockResolvedValue('Outline'),
+      getTopLevelTags: vi.fn().mockResolvedValue([]),
+      getBlocks: vi.fn().mockImplementation(({ id }: { id: string }) => {
+        getBlocksCalls += 1;
+        return Promise.resolve(blockList(childrenById[id] ?? []));
+      }),
+    } as unknown as NotionAPIWrapper;
+    const handler = makeHandler(api);
+
+    await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(getBlocksCalls).toBeLessThanOrEqual(41);
+  });
+
+  it('records truncation when a free-plan wrapper fetch is partial', async () => {
+    const childrenById: Record<string, unknown[]> = {
+      'page-1': [textBlock('b-1', 'bulleted_list_item', 'A bullet', true)],
+      'b-1': [textBlock('t-1', 'toggle', 'Question', true)],
+      't-1': [textBlock('p-1', 'paragraph', 'Answer')],
+    };
+    const api = {
+      getPage: vi.fn().mockResolvedValue({
+        id: 'page-1',
+        object: 'page',
+        created_time: '',
+        last_edited_time: '',
+      }),
+      getPageTitle: vi.fn().mockResolvedValue('Notes'),
+      getTopLevelTags: vi.fn().mockResolvedValue([]),
+      getBlocks: vi.fn().mockImplementation(({ id }: { id: string }) =>
+        Promise.resolve({
+          ...blockList(childrenById[id] ?? []),
+          has_more: id === 'b-1',
+        })
+      ),
+    } as unknown as NotionAPIWrapper;
+    const handler = makeHandler(api);
+    handler.useAll = false;
+
+    await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(handler.truncation?.blocksConverted).toBe(1);
+  });
 });
 
 describe('parity with the upload path for a toggle inside a callout', () => {

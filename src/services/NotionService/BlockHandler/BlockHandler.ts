@@ -116,6 +116,15 @@ const TOGGLE_CONTAINER_TYPES = new Set([
   'callout',
 ]);
 
+// `expandNestedToggles` costs one `getBlocks` per wrapper with children (Notion
+// does not expose a child's type without fetching it), and free conversions
+// bypass the block cache, so the recursion is bounded two ways: it descends at
+// most one level below the page (a top-level wrapper and its direct children),
+// and the whole conversion spends at most this many wrapper fetches before it
+// stops expanding and leaves the rest of the wrappers as-is.
+const NESTED_TOGGLE_MAX_DEPTH = 2;
+const MAX_NESTED_TOGGLE_WRAPPER_FETCHES = 40;
+
 function activeNonPageDeckTypes(rules: ParserRules): Set<string> {
   return new Set(
     rules.deckTypes().filter((type) => !PAGE_LIKE_DECK_TYPES.has(type))
@@ -256,6 +265,10 @@ class BlockHandler implements IBlockRenderer {
   cardsRemovedByUserFilter = 0;
 
   blocksSeen = 0;
+
+  private nestedToggleWrapperFetches = 0;
+
+  private nestedToggleBudgetLogged = false;
 
   unsupportedBlockTypeCounts: Map<string, number> = new Map();
 
@@ -953,23 +966,30 @@ class BlockHandler implements IBlockRenderer {
   // A toggle nested inside a bulleted/numbered list item or a callout is a card
   // on the upload path but was dropped on the Notion-connected path: the wrapper
   // is not a flashcard type and the walk never recursed into it (#4827).
-  // Replace each such wrapper with itself followed by the toggle blocks hoisted
-  // out of its subtree (recursively, depth cap 5, seen-set cycle guard), so the
-  // card-extraction list finds them. The wrapper stays in the list as an inert
-  // non-card block; only the toggles become cards, matching how the upload path
-  // cards every toggle not nested inside another toggle. A wrapper whose type
-  // the user made a flashcard or deck type is left untouched — those paths own
-  // the block (card it with the toggle in its back, or turn it into a sub-deck),
-  // so hoisting would double-card. A failed fetch keeps the wrapper as-is.
+  // Splice the toggle blocks hoisted out of such a wrapper in right after the
+  // wrapper's own position, so the base walk cards them in reading order. The
+  // wrapper stays in the list as an inert non-card block; only the toggles
+  // become cards, matching how the upload path cards every toggle not nested
+  // inside another toggle. A wrapper whose type the user made a flashcard or
+  // deck type is left untouched — those paths own the block (card it with the
+  // toggle in its back, or turn it into a sub-deck), so hoisting would
+  // double-card. Bounded for cost (see the constants above): descends at most
+  // `NESTED_TOGGLE_MAX_DEPTH` levels and spends at most
+  // `MAX_NESTED_TOGGLE_WRAPPER_FETCHES` wrapper fetches per conversion. A failed
+  // fetch keeps the wrapper as-is; a partial fetch on the free plan records
+  // truncation like any page-level fetch.
   private async expandNestedToggles(
     blocks: GetBlockResponse[],
     flashCardTypes: string[],
     nonPageDeckTypes: Set<string>,
+    rules: ParserRules,
     depth = 0,
     seen: Set<string> = new Set<string>()
   ): Promise<GetBlockResponse[]> {
-    const maxDepth = 5;
-    if (!flashCardTypes.includes('toggle') || depth >= maxDepth) {
+    if (
+      !flashCardTypes.includes('toggle') ||
+      depth >= NESTED_TOGGLE_MAX_DEPTH
+    ) {
       return blocks;
     }
 
@@ -986,7 +1006,20 @@ class BlockHandler implements IBlockRenderer {
         expanded.push(block);
         continue;
       }
+      if (
+        this.nestedToggleWrapperFetches >= MAX_NESTED_TOGGLE_WRAPPER_FETCHES
+      ) {
+        if (!this.nestedToggleBudgetLogged) {
+          this.nestedToggleBudgetLogged = true;
+          console.info(
+            `[nested-toggle] wrapper fetch budget of ${MAX_NESTED_TOGGLE_WRAPPER_FETCHES} reached, leaving remaining wrappers unexpanded`
+          );
+        }
+        expanded.push(block);
+        continue;
+      }
       seen.add(block.id);
+      this.nestedToggleWrapperFetches += 1;
       let children: GetBlockResponse[];
       try {
         const response = await this.api.getBlocks({
@@ -996,6 +1029,7 @@ class BlockHandler implements IBlockRenderer {
           all: this.useAll,
           type: block.type,
         });
+        this.recordTruncation(response, rules);
         children = await expandSyncedBlocks(
           response.results,
           this.api,
@@ -1013,6 +1047,7 @@ class BlockHandler implements IBlockRenderer {
         children,
         flashCardTypes,
         nonPageDeckTypes,
+        rules,
         depth + 1,
         seen
       );
@@ -1120,27 +1155,27 @@ class BlockHandler implements IBlockRenderer {
     );
     const flashCardTypes = rules.flaschardTypeNames();
     const nonPageDeckTypes = activeNonPageDeckTypes(rules);
-    const blocks = await this.expandToggleHeadingSections(
-      topLevelBlocks,
-      flashCardTypes
+    // A toggle nested in a list item or callout is hoisted into `blocks` in its
+    // document position (`expandNestedToggles`), so it is carded in reading
+    // order by the base walk and sees the heading tag/hierarchy maps like any
+    // top-level toggle. Runs before column flattening, so a wrapper still inside
+    // an un-flattened column_list here is not reached (a documented limitation).
+    const blocks = await this.expandNestedToggles(
+      await this.expandToggleHeadingSections(topLevelBlocks, flashCardTypes),
+      flashCardTypes,
+      nonPageDeckTypes,
+      rules
     );
-    // `cardSource` surfaces card blocks the plain top-level walk cannot reach:
-    // toggles arranged in a two-column layout (`expandColumnLists`) and toggles
-    // nested inside a list item or callout (`expandNestedToggles`). It is kept
-    // separate from `blocks`: the heading tag/breadcrumb maps and the sub-deck /
-    // child-page walks run over `blocks`, so a container's own headings never
-    // retag cards outside it and a child page inside a container is not turned
-    // into a sub-deck. Column flattening is skipped when the user made
-    // column_list a flashcard or deck type — those paths own the block.
-    const columnFlattened =
+    // `cardSource` flattens top-level column layouts so toggles nested in a
+    // two-column layout become cards. It is kept separate from `blocks`: the
+    // heading tag/breadcrumb maps and the sub-deck / child-page walks run over
+    // `blocks`, so a column's own headings never retag cards outside it and a
+    // child page inside a column is not turned into a sub-deck. Skipped when the
+    // user made column_list a flashcard or deck type — those paths own the block.
+    const cardSource =
       rules.useColums() || rules.deckTypes().includes('column_list')
         ? blocks
         : await this.expandColumnLists(blocks);
-    const cardSource = await this.expandNestedToggles(
-      columnFlattened,
-      flashCardTypes,
-      nonPageDeckTypes
-    );
 
     const title = await this.api.getPageTitle(page, this.settings);
     if (!this.firstPageTitle) {
@@ -1169,13 +1204,12 @@ class BlockHandler implements IBlockRenderer {
       // Base cards are exactly what the un-flattened walk produces — the same
       // card blocks and the same rescue input main uses — so the rescue decision
       // (empty-deck vs degenerate) and its induction see only `blocks`, never the
-      // hoisted cards. Hoisted cards (from a column layout or a list item /
-      // callout wrapper) are produced separately and appended, so a toggle
-      // inside a container can never suppress a rescue the headings on the page
-      // would otherwise earn.
+      // column-derived cards. Column cards are produced separately and appended,
+      // so a toggle inside a column can never suppress a rescue the headings on
+      // the page would otherwise earn.
       const baseCardBlocks = blocks.filter(isCardBlock);
       const baseCardIds = new Set<string>(baseCardBlocks.map((b) => b.id));
-      const extraCardBlocks = cardSource
+      const columnCardBlocks = cardSource
         .filter(isCardBlock)
         .filter((b) => !baseCardIds.has(b.id));
       const headingTagMap =
@@ -1218,18 +1252,18 @@ class BlockHandler implements IBlockRenderer {
         )
       );
       cards = this.rescueEmptyCards(cards, blocks);
-      if (extraCardBlocks.length > 0) {
-        const extraCards = dropAlreadySeen(
+      if (columnCardBlocks.length > 0) {
+        const columnCards = dropAlreadySeen(
           await this.getFlashcards(
             rules,
-            extraCardBlocks,
+            columnCardBlocks,
             tags,
             notionBaseLink,
             headingTagMap,
             headingContextMap
           )
         );
-        cards = cards.concat(extraCards);
+        cards = cards.concat(columnCards);
       }
       const deck = new Deck(
         currentDeckName,
