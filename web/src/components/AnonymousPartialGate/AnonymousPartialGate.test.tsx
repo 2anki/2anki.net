@@ -35,6 +35,12 @@ describe('AnonymousPartialGate', () => {
     expect(screen.queryByText(/This file made/)).not.toBeInTheDocument();
   });
 
+  it('promises the whole file at exactly the free monthly limit', () => {
+    renderGate({ cardCount: 21, cardsHeldBack: 79, totalCards: 100 });
+    expect(screen.getByText('All 100 cards are ready')).toBeInTheDocument();
+    expect(screen.queryByText(/This file made/)).not.toBeInTheDocument();
+  });
+
   it('promises the first 100 and names the total when the file is over a month', () => {
     renderGate({ cardCount: 21, cardsHeldBack: 100, totalCards: 121 });
     expect(

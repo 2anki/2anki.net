@@ -162,7 +162,7 @@
       "chooseFiles": "Choose files",
       "csvHint": "Name your columns front and back (or question and answer) so 2anki maps them right — otherwise it uses the first column as the front and the second as the back.",
       "folderHint": "Folders work too — if your browser unzipped a Notion export, drop the whole folder.",
-      "anonCapHint": "Signed out, you get up to {{cap}} cards per conversion. A free account unlocks {{monthly}} cards a month."
+      "anonCapHint": "Without an account, you get up to {{cap}} cards per conversion. A free account unlocks {{monthly}} cards a month."
     },
     "form": {
       "makingDeck": "Making your deck...",

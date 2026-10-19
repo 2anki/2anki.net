@@ -2708,7 +2708,7 @@ describe('signed-out card-cap hint on the idle drop zone', () => {
   }
 
   const capHint =
-    'Signed out, you get up to 21 cards per conversion. A free account unlocks 100 cards a month.';
+    'Without an account, you get up to 21 cards per conversion. A free account unlocks 100 cards a month.';
 
   it('tells a signed-out visitor the per-conversion cap and the free monthly allowance', () => {
     setLocals({
@@ -2742,6 +2742,92 @@ describe('signed-out card-cap hint on the idle drop zone', () => {
     expect(
       screen.queryByText(/you get up to 21 cards per conversion/)
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('held-deck gate screen-reader announcement', () => {
+  const anonymousLocals = {
+    user: null,
+    locals: {},
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    mockUseCardUsage.mockReturnValue(null);
+    mockUseUserLocals.mockReturnValue({
+      data: anonymousLocals,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function stubHeldFetch(held: {
+    cardCount: number;
+    cardsHeldBack: number;
+    totalCards: number;
+  }) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        json: () => Promise.resolve({ kind: 'held', ...held }),
+      })
+    );
+  }
+
+  async function submitHeld(held: {
+    cardCount: number;
+    cardsHeldBack: number;
+    totalCards: number;
+  }) {
+    stubHeldFetch(held);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+    return container;
+  }
+
+  it('announces the whole file when it fits a free month', async () => {
+    const container = await submitHeld({
+      cardCount: 21,
+      cardsHeldBack: 13,
+      totalCards: 34,
+    });
+    await waitFor(() => {
+      const live = container.querySelector('output[aria-live="polite"]');
+      expect(live?.textContent).toBe(
+        'All 34 cards are ready. Create a free account to download them.'
+      );
+    });
+  });
+
+  it('announces the first 100 when the file is over a free month', async () => {
+    const container = await submitHeld({
+      cardCount: 21,
+      cardsHeldBack: 100,
+      totalCards: 121,
+    });
+    await waitFor(() => {
+      const live = container.querySelector('output[aria-live="polite"]');
+      expect(live?.textContent).toBe(
+        'Your first 100 cards are ready. Create a free account to download them.'
+      );
+    });
   });
 });
 
