@@ -5,6 +5,7 @@ import type { TFunction } from 'i18next';
 import UploadForm from '../UploadPage/components/UploadForm/UploadForm';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { track } from '../../lib/analytics/track';
+import { landingViewProps } from '../../lib/adClick';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
@@ -113,7 +114,7 @@ function LandingPage({
   useEffect(() => {
     if (landingViewedRef.current) return;
     landingViewedRef.current = true;
-    track('landing_page_viewed', { path: copy.pathname });
+    track('landing_page_viewed', landingViewProps(copy.pathname));
   }, [copy.pathname]);
 
   const pageUrl = canonicalUrl(copy.pathname);

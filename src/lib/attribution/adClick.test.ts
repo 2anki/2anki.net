@@ -1,5 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
-import { adClickEventProps, parseAdClick, readAdClickCookie } from './adClick';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  adClickEventProps,
+  parseAdClick,
+  readAdClickCookie,
+  readCheckoutAttribution,
+} from './adClick';
 import { consentRegionForRequest } from '../http/consentRegion';
 
 vi.mock('../http/consentRegion', () => ({
@@ -162,5 +167,73 @@ describe('readAdClickCookie', () => {
         },
       } as never)
     ).toBeUndefined();
+  });
+});
+
+describe('readCheckoutAttribution', () => {
+  beforeEach(() => {
+    vi.mocked(consentRegionForRequest).mockReset().mockReturnValue('eea');
+  });
+
+  it('prefers the consented ad_click cookie over the campaign in the body', () => {
+    const req = {
+      cookies: {
+        cookie_consent: 'granted',
+        ad_click: cookie({ gclid: 'abc', utm_campaign: 'cookie' }),
+      },
+      body: { campaign: { utm_campaign: 'body' } },
+    } as never;
+    expect(readCheckoutAttribution(req)).toEqual({
+      gclid: 'abc',
+      utm_campaign: 'cookie',
+    });
+  });
+
+  it('falls back to the campaign tags the page sent when there is no consent', () => {
+    const req = {
+      cookies: { ad_click: cookie({ gclid: 'abc' }) },
+      body: {
+        campaign: {
+          utm_source: 'Google',
+          utm_medium: 'cpc',
+          utm_campaign: 'ai-search',
+          utm_term: 'anki ai',
+        },
+      },
+    } as never;
+    expect(readCheckoutAttribution(req)).toEqual({
+      utm_source: 'google',
+      utm_medium: 'cpc',
+      utm_campaign: 'ai-search',
+      utm_term: 'anki ai',
+    });
+  });
+
+  it('never takes click ids, the landing path or utm_content from the body', () => {
+    const req = {
+      body: {
+        campaign: {
+          gclid: 'abc',
+          gbraid: 'def',
+          landing: '/pricing',
+          utm_content: 'ad-1',
+          utm_campaign: 'brand',
+        },
+      },
+    } as never;
+    expect(readCheckoutAttribution(req)).toEqual({ utm_campaign: 'brand' });
+  });
+
+  it.each([
+    ['no body', {}],
+    ['a string campaign', { body: { campaign: 'utm_campaign=x' } }],
+    ['an array campaign', { body: { campaign: ['x'] } }],
+    ['an invalid value', { body: { campaign: { utm_campaign: '<script>' } } }],
+    [
+      'an inherited key',
+      { body: { campaign: Object.create({ utm_campaign: 'proto' }) } },
+    ],
+  ])('returns undefined for %s', (_label, req) => {
+    expect(readCheckoutAttribution(req as never)).toBeUndefined();
   });
 });

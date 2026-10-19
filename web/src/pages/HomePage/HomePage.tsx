@@ -16,6 +16,7 @@ import RectangleGroupIcon from '../../components/icons/RectangleGroupIcon';
 import ShareIcon from '../../components/icons/ShareIcon';
 import SwatchIcon from '../../components/icons/SwatchIcon';
 import { track } from '../../lib/analytics/track';
+import { landingViewProps } from '../../lib/adClick';
 import { TrustNote } from '../../components/TrustNote/TrustNote';
 import { ShowcaseSection } from './ShowcaseSection';
 import sharedStyles from '../../styles/shared.module.css';
@@ -169,7 +170,7 @@ export function HomePage({
   useEffect(() => {
     if (isLoggedIn || landingViewedRef.current) return;
     landingViewedRef.current = true;
-    track('landing_page_viewed', { path: '/' });
+    track('landing_page_viewed', landingViewProps('/'));
   }, [isLoggedIn]);
 
   if (isLoggedIn) {

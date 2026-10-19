@@ -170,6 +170,22 @@ describe('PassCheckoutController ad-click attribution', () => {
       })
     );
   });
+
+  it('forwards the campaign tags from the body when there is no ad_click cookie', async () => {
+    const execute = vi.fn().mockResolvedValue({ url: 'https://s' });
+    const { controller } = makeController(execute);
+    const req = {
+      cookies: { anon_id: 'anon-1' },
+      body: { campaign: { utm_source: 'google', utm_campaign: 'ai-search' } },
+    } as never;
+    await controller.createSession(req, makeRes({}));
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        anonId: 'anon-1',
+        adClick: { utm_source: 'google', utm_campaign: 'ai-search' },
+      })
+    );
+  });
 });
 
 describe('PassCheckoutController GA measurement', () => {

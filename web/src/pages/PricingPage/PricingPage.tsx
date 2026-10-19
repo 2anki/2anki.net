@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import TopMessage from '../../components/TopMessage/TopMessage';
 import { firePaywallEvent } from '../../lib/analytics/firePaywallEvent';
 import { track } from '../../lib/analytics/track';
+import { landingViewProps } from '../../lib/adClick';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import type { CheckoutConflict } from '../../lib/checkout/checkoutConflict';
 import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
@@ -129,7 +130,7 @@ export default function PricingPage({
   useEffect(() => {
     if (landingViewedRef.current) return;
     landingViewedRef.current = true;
-    track('landing_page_viewed', { path: '/pricing' });
+    track('landing_page_viewed', landingViewProps('/pricing'));
   }, []);
 
   // The interval lives in the URL as well as in state. Component state alone
