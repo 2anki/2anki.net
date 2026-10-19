@@ -120,22 +120,52 @@ export const LEGACY_DEFAULT_USER_INSTRUCTIONS = `Some extra rules and explanatio
 - Do not make up any questions and use the questions in the document!
 - Create a ul for every question pair, not one ul for all of them with li!`;
 
-function collapseWhitespace(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
+const INSTRUCTIONS_WHITESPACE = /\s/;
+
+function stripLegacyDefaultPrefix(value: string): string | null {
+  const legacyDefault = LEGACY_DEFAULT_USER_INSTRUCTIONS.trim();
+  let valueIndex = 0;
+  let defaultIndex = 0;
+  while (defaultIndex < legacyDefault.length) {
+    if (INSTRUCTIONS_WHITESPACE.test(legacyDefault[defaultIndex])) {
+      if (
+        valueIndex >= value.length ||
+        !INSTRUCTIONS_WHITESPACE.test(value[valueIndex])
+      ) {
+        return null;
+      }
+      while (
+        defaultIndex < legacyDefault.length &&
+        INSTRUCTIONS_WHITESPACE.test(legacyDefault[defaultIndex])
+      ) {
+        defaultIndex += 1;
+      }
+      while (
+        valueIndex < value.length &&
+        INSTRUCTIONS_WHITESPACE.test(value[valueIndex])
+      ) {
+        valueIndex += 1;
+      }
+      continue;
+    }
+    if (value[valueIndex] !== legacyDefault[defaultIndex]) {
+      return null;
+    }
+    valueIndex += 1;
+    defaultIndex += 1;
+  }
+  return value.slice(valueIndex);
 }
 
 export function normalizeStoredInstructions(
   stored: string | null | undefined
 ): string {
   if (stored == null) return '';
-  if (stored.trim() === '') return '';
-  if (
-    collapseWhitespace(stored) ===
-    collapseWhitespace(LEGACY_DEFAULT_USER_INSTRUCTIONS)
-  ) {
-    return '';
-  }
-  return stored;
+  const trimmed = stored.trim();
+  if (trimmed === '') return '';
+  const remainder = stripLegacyDefaultPrefix(trimmed);
+  if (remainder == null) return stored;
+  return remainder.trim();
 }
 
 export const INSTRUCTION_PRESETS = [
@@ -568,7 +598,10 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           ['basic_model_name', setBasicName],
           ['cloze_model_name', setClozeName],
           ['input_model_name', setInputName],
-          ['user-instructions', setUserInstructions],
+          [
+            'user-instructions',
+            (value) => setUserInstructions(normalizeStoredInstructions(value)),
+          ],
           ['mcq-tts-question', setMcqTtsQuestion],
           ['mcq-tts-correct-answer', setMcqTtsCorrectAnswer],
           ['mcq-tts-extra', setMcqTtsExtra],

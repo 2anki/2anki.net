@@ -32,4 +32,24 @@ describe('normalizeUserInstructions', () => {
       'Make one card per list item.'
     );
   });
+
+  it('strips the old default when a line is appended on top', () => {
+    const withChip = `${getDefaultUserInstructions()}\nMake a separate card for each list item.`;
+    expect(normalizeUserInstructions(withChip)).toBe(
+      'Make a separate card for each list item.'
+    );
+  });
+
+  it('strips a reflowed old default and keeps the appended line', () => {
+    const reflowed = getDefaultUserInstructions().replace(/\n/g, '\n  ');
+    const withChip = `${reflowed}\nWrite multiple-choice questions.`;
+    expect(normalizeUserInstructions(withChip)).toBe(
+      'Write multiple-choice questions.'
+    );
+  });
+
+  it('keeps instructions that merely mention the old wording', () => {
+    const value = 'Do not make up any questions and keep answers short.';
+    expect(normalizeUserInstructions(value)).toBe(value);
+  });
 });

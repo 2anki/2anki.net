@@ -29,4 +29,11 @@ describe('normalizeStoredInstructions', () => {
     const custom = 'Make a separate card for each list item.';
     expect(normalizeStoredInstructions(custom)).toBe(custom);
   });
+
+  it('strips the old default and keeps a line added on top', () => {
+    const withChip = `${LEGACY_DEFAULT_USER_INSTRUCTIONS}\nWrite multiple-choice questions.`;
+    expect(normalizeStoredInstructions(withChip)).toBe(
+      'Write multiple-choice questions.'
+    );
+  });
 });

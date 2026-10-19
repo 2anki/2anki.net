@@ -25,6 +25,15 @@ describe('CardOption userInstructions', () => {
     });
     expect(option.userInstructions).toBe('Make one card per list item.');
   });
+
+  it('keeps only the line a user added on top of the old default', () => {
+    const option = new CardOption({
+      'user-instructions': `${getDefaultUserInstructions()}\nMake a separate card for each list item.`,
+    });
+    expect(option.userInstructions).toBe(
+      'Make a separate card for each list item.'
+    );
+  });
 });
 
 describe('CardOption rescueRule', () => {
