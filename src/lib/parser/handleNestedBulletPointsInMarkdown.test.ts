@@ -178,4 +178,102 @@ describe('handleNestedBulletPointsInMarkdown', () => {
       expect(decks[0].name).not.toBe('---');
     });
   });
+
+  describe('top-level bullet markers beyond dash (regression: #4834)', () => {
+    it('treats - top-level bullets as card fronts', () => {
+      const contents = [
+        '- What supplies the SA node?',
+        '    - The right coronary artery',
+        '- What is the powerhouse of the cell?',
+        '    - The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[0].back).toContain('coronary');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+      expect(decks[0].cards[1].back).toContain('mitochondrion');
+    });
+
+    it('treats * top-level bullets as card fronts', () => {
+      const contents = [
+        '* What supplies the SA node?',
+        '    * The right coronary artery',
+        '* What is the powerhouse of the cell?',
+        '    * The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[0].back).toContain('coronary');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+      expect(decks[0].cards[1].back).toContain('mitochondrion');
+    });
+
+    it('treats + top-level bullets as card fronts', () => {
+      const contents = [
+        '+ What supplies the SA node?',
+        '    + The right coronary artery',
+        '+ What is the powerhouse of the cell?',
+        '    + The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[0].back).toContain('coronary');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+      expect(decks[0].cards[1].back).toContain('mitochondrion');
+    });
+
+    it('treats numbered top-level bullets as card fronts', () => {
+      const contents = [
+        '1. What supplies the SA node?',
+        '    - The right coronary artery',
+        '2. What is the powerhouse of the cell?',
+        '    - The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[0].back).toContain('coronary');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+      expect(decks[0].cards[1].back).toContain('mitochondrion');
+    });
+
+    it('treats a uniformly indented bullet list as top-level cards', () => {
+      const contents = [
+        '    - What supplies the SA node?',
+        '        - The right coronary artery',
+        '    - What is the powerhouse of the cell?',
+        '        - The mitochondrion',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(2);
+      expect(decks[0].cards[0].name).toContain('SA node');
+      expect(decks[0].cards[1].name).toContain('powerhouse');
+    });
+
+    it('does not treat a column-0 emphasis span as a new card front', () => {
+      const contents = [
+        '- Question one',
+        '    first back line',
+        '*important closing note*',
+      ].join('\n');
+
+      const decks = makeDecks(contents);
+
+      expect(decks[0].cards).toHaveLength(1);
+      expect(decks[0].cards[0].back).toContain('important closing note');
+    });
+  });
 });
