@@ -8,6 +8,8 @@ import StorageHandler from '../lib/storage/StorageHandler';
 import DownloadService from '../services/DownloadService';
 import { canAccess } from '../lib/misc/canAccess';
 import { DownloadPage } from '../ui/pages/DownloadPage';
+import { DownloadExpiredPage } from '../ui/pages/DownloadExpiredPage';
+import { prefersHtml } from '../lib/http/prefersHtml';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
 import { getSafeFilename } from '../lib/getSafeFilename';
 import { formatDeckName } from '../lib/formatDeckName';
@@ -108,11 +110,7 @@ class DownloadController {
         return;
       }
       console.info('Download link expired', { owner });
-      res
-        .status(404)
-        .send(
-          "Download link expire, try converting again <a href='/upload'>upload</a>"
-        );
+      this.sendExpiredResponse(req, res);
     } catch (error) {
       if (this.service.isMissingDownloadError(error)) {
         this.service.deleteMissingFile(owner, key);
@@ -133,12 +131,16 @@ class DownloadController {
       }
       console.info('Download failed');
       console.error(error);
-      res
-        .status(404)
-        .send(
-          "Download link expire, try converting again <a href='/upload'>upload</a>"
-        );
+      this.sendExpiredResponse(req, res);
     }
+  }
+
+  private sendExpiredResponse(req: Request, res: Response) {
+    if (prefersHtml(req)) {
+      res.status(404).send(DownloadExpiredPage());
+      return;
+    }
+    res.status(404).json({ message: 'Download link expired' });
   }
 
   // Serves the copy an anonymous sync upload left behind (#4651). Both the
