@@ -113,13 +113,6 @@ export function mcpOptionsToCardSettings(
   }
 
   if (
-    options.splitByHeadings === true ||
-    options.splitSectionsIntoDecks === true
-  ) {
-    settings['split-sections-into-decks'] = 'true';
-  }
-
-  if (
     options.styleTemplate != null &&
     STYLE_TEMPLATES.includes(options.styleTemplate)
   ) {

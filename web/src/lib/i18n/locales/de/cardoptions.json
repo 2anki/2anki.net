@@ -101,14 +101,6 @@
       "label": "Verschachtelte Markdown-Aufzählungspunkte",
       "description": "Wandle Aufzählungspunkte und ihre Unterpunkte in Karten mit Vorder- und Rückseite um. Empfohlen für Obsidian-Exporte."
     },
-    "split-sections-into-decks": {
-      "label": "Jeden Abschnitt in einen eigenen Stapel aufteilen",
-      "description": "Wenn aktiviert, wird jede Überschrift, jeder Toggle und jede Liste auf der Seite zu einem eigenen Stapel, statt dass alle Karten in einem landen."
-    },
-    "vertex-ai-pdf-questions": {
-      "label": "Fragen aus PDF-Uploads erzeugen",
-      "description": "Entwirft Fragen aus deinem PDF mit Claude (Anthropic). Der Inhalt deines PDFs wird zur Verarbeitung an Anthropic gesendet."
-    },
     "disable-indented-bullets": {
       "label": "Eingerückte Aufzählungspunkte deaktivieren",
       "description": "Lass eingerückte Aufzählungspunkte an ihrem übergeordneten Punkt hängen, statt eigene Karten zu werden."

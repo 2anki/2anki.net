@@ -65,13 +65,11 @@ describe('mcpOptionsToCardSettings', () => {
     expect(mcpOptionsToCardSettings({ deckName: '   ' })).toEqual({});
   });
 
-  it('maps splitByHeadings and splitSectionsIntoDecks to the split flag', () => {
-    expect(mcpOptionsToCardSettings({ splitByHeadings: true })).toEqual({
-      'split-sections-into-decks': 'true',
-    });
-    expect(mcpOptionsToCardSettings({ splitSectionsIntoDecks: true })).toEqual({
-      'split-sections-into-decks': 'true',
-    });
+  it('does not write the retired split key for splitByHeadings or splitSectionsIntoDecks', () => {
+    expect(mcpOptionsToCardSettings({ splitByHeadings: true })).toEqual({});
+    expect(mcpOptionsToCardSettings({ splitSectionsIntoDecks: true })).toEqual(
+      {}
+    );
   });
 
   it('maps a known styleTemplate and ignores an unknown one', () => {
@@ -119,7 +117,6 @@ describe('mcpOptionsToCardSettings', () => {
         noteType: 'cloze',
         tags: ['bio'],
         deckName: 'Bio',
-        splitByHeadings: true,
         styleTemplate: 'specialstyle',
         tts: { enabled: true, language: 'en-US' },
       })
@@ -127,7 +124,6 @@ describe('mcpOptionsToCardSettings', () => {
       cloze: 'true',
       'global-tags': 'bio',
       deckName: 'Bio',
-      'split-sections-into-decks': 'true',
       template: 'specialstyle',
       'tts-manual-lang': 'en-US',
     });

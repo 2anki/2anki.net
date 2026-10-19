@@ -29,8 +29,6 @@ export const CARD_OPTION_DEFAULTS: Record<string, string> = {
   'image-quiz-html-to-anki': 'false',
   'embed-images': 'true',
   'markdown-nested-bullet-points': 'true',
-  'split-sections-into-decks': 'false',
-  'vertex-ai-pdf-questions': 'false',
   'disable-indented-bullets': 'false',
   'claude-ai-flashcards': 'false',
   'ai-comprehensive': 'false',

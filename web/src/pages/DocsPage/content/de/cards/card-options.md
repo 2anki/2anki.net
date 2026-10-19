@@ -69,13 +69,12 @@ Kartenoptionen ändern, wie 2anki deine Quelle in Karteikarten verwandelt. Die m
 
 ## PDF und KI
 
-| Option                                          | Standard | Was sie macht                                                                                                                                                       |
-| ----------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Process PDF Files                               | On       | Konvertiert PDFs, die in ZIP-Uploads gefunden werden. Ausschalten, um PDFs zu überspringen und große Archive zu beschleunigen.                                      |
-| Generate Questions from Single PDF File Uploads | Off      | Schickt das PDF an Anthropic Claude, um Fragen zu erzeugen. Kostenpflichtig; schickt Inhalt an Anthropic.                                                           |
-| Generate Flashcards with Claude AI              | Off      | Schickt Inhalt an Anthropic Claude und nutzt dessen Ausgabe als Deck. Kostenpflichtig.                                                                              |
-| User instructions                               | —        | Freiform-Prompt, der an Claude geschickt wird, wenn **Generate Flashcards with Claude AI** ein ist. Beispiel: _"Focus on USMLE high-yield. Skip the introduction."_ |
-| Convert Image Quiz HTML to Anki Cards           | Off      | Nutzt OCR, um Bild-und-Antwort-Paare aus HTML-Quizzen zu ziehen. Premium, experimentell.                                                                            |
+| Option                                | Standard | Was sie macht                                                                                                                                                       |
+| ------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Process PDF Files                     | On       | Konvertiert PDFs, die in ZIP-Uploads gefunden werden. Ausschalten, um PDFs zu überspringen und große Archive zu beschleunigen.                                      |
+| Generate Flashcards with Claude AI    | Off      | Schickt Inhalt an Anthropic Claude und nutzt dessen Ausgabe als Deck. Kostenpflichtig.                                                                              |
+| User instructions                     | —        | Freiform-Prompt, der an Claude geschickt wird, wenn **Generate Flashcards with Claude AI** ein ist. Beispiel: _"Focus on USMLE high-yield. Skip the introduction."_ |
+| Convert Image Quiz HTML to Anki Cards | Off      | Nutzt OCR, um Bild-und-Antwort-Paare aus HTML-Quizzen zu ziehen. Premium, experimentell.                                                                            |
 
 ## Medien
 
@@ -115,4 +114,4 @@ Diese greifen nur, wenn **Enable MCQ** ein ist. Siehe [Multiple-Choice-Fragen](/
 
 ## Interne Optionsschlüssel
 
-Die Optionsschlüssel, die 2anki intern nutzt (praktisch, wenn du einen Fehlerbericht einreichst): `add-notion-link`, `all`, `paragraph`, `cherry`, `avocado`, `tags`, `cloze`, `enable-input`, `basic-reversed`, `reversed`, `no-underline`, `max-one-toggle-per-card`, `remove-mp3-links`, `perserve-newlines`, `process-pdfs`, `markdown-nested-bullet-points`, `vertex-ai-pdf-questions`, `disable-indented-bullets`, `image-quiz-html-to-anki`, `embed-images`, `claude-ai-flashcards`, `share-files-for-debugging`, `mcq-enabled`, `mcq-tts-question`, `mcq-tts-correct-answer`, `mcq-tts-extra`, `tts-auto-detect`, `tts-manual-lang`, `tts-manual-side`, `font-size`, `toggle-mode`, `code-theme`, `page-emoji`, `basic_model_name`, `cloze_model_name`, `input_model_name`, `user-instructions`.
+Die Optionsschlüssel, die 2anki intern nutzt (praktisch, wenn du einen Fehlerbericht einreichst): `add-notion-link`, `all`, `paragraph`, `cherry`, `avocado`, `tags`, `cloze`, `enable-input`, `basic-reversed`, `reversed`, `no-underline`, `max-one-toggle-per-card`, `remove-mp3-links`, `perserve-newlines`, `process-pdfs`, `markdown-nested-bullet-points`, `disable-indented-bullets`, `image-quiz-html-to-anki`, `embed-images`, `claude-ai-flashcards`, `share-files-for-debugging`, `mcq-enabled`, `mcq-tts-question`, `mcq-tts-correct-answer`, `mcq-tts-extra`, `tts-auto-detect`, `tts-manual-lang`, `tts-manual-side`, `font-size`, `toggle-mode`, `code-theme`, `page-emoji`, `basic_model_name`, `cloze_model_name`, `input_model_name`, `user-instructions`.

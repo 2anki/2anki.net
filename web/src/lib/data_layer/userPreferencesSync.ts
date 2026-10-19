@@ -50,8 +50,6 @@ export const CARD_OPTION_KEYS = [
   'pdf-page-pairs',
   'download-pdfs',
   'markdown-nested-bullet-points',
-  'split-sections-into-decks',
-  'vertex-ai-pdf-questions',
   'disable-indented-bullets',
   'image-quiz-html-to-anki',
   'embed-images',

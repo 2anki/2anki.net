@@ -101,14 +101,6 @@
       "label": "Zagnieżdżone punkty w Markdown",
       "description": "Zamień punkty i ich podpunkty w karty z przodem i tyłem. Zalecane dla eksportów z Obsidian."
     },
-    "split-sections-into-decks": {
-      "label": "Podziel każdą sekcję na osobną talię",
-      "description": "Gdy włączone, każdy nagłówek, lista rozwijana i lista na stronie staje się osobną talią, zamiast wszystkich kart w jednej."
-    },
-    "vertex-ai-pdf-questions": {
-      "label": "Generuj pytania z przesłanych plików PDF",
-      "description": "Tworzy szkice pytań z Twojego pliku PDF za pomocą Claude (Anthropic). Zawartość Twojego pliku PDF jest wysyłana do Anthropic w celu przetworzenia."
-    },
     "disable-indented-bullets": {
       "label": "Wyłącz wcięte punkty",
       "description": "Zostaw wcięte punkty przypisane do ich rodzica, zamiast tworzyć z nich osobne karty."

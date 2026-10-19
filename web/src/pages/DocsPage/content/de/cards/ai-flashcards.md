@@ -1,9 +1,9 @@
 ---
 title: KI-Karteikartenerstellung
-description: Wann 2anki die Karten für dich schreiben soll — Claude für jedes PDF und ein PDF-only-Fragengenerator, der ebenfalls Claude nutzt.
+description: Wann 2anki die Karten für dich schreiben soll mit Claude AI, und wie du die Ausgabe mit User instructions steuerst.
 ---
 
-Zwei Kartenoptionen schicken deine Quelle an ein KI-Modell, statt den normalen Toggle-/Aufzählungs-Parser laufen zu lassen. Nutze sie, wenn deine Quelle nicht schon wie Karteikarten geformt ist — lange PDFs, Vorlesungstranskripte, dichtes Lernmaterial — und du willst, dass das Modell die Frage-Antwort-Paare für dich herauszieht.
+Die Option Generate Flashcards with Claude AI schickt deine Quelle an ein KI-Modell, statt den normalen Toggle-/Aufzählungs-Parser laufen zu lassen. Nutze sie, wenn deine Quelle nicht schon wie Karteikarten geformt ist (lange PDFs, Vorlesungstranskripte, dichtes Lernmaterial) und du willst, dass das Modell die Frage-Antwort-Paare für dich herauszieht.
 
 **Plan:** Subscription oder Lifetime. Kostenlose Konten sehen die Toggles, aber die Konvertierung fällt auf den Standard-Parser zurück.
 
@@ -41,15 +41,7 @@ Nützliche Anweisungen:
 
 Überspringe Anweisungen wie "make great flashcards" oder "explain everything" — das versucht das Modell ohnehin schon.
 
-## Generate Questions from Single PDF File Uploads
-
-Eine engere Option, auf einzelne PDFs beschränkt. Schickt das PDF an Anthropic Claude, um Seite für Seite Frage-und-Antwort-Paare zu erzeugen.
-
-1. Öffne das Einstellungspanel vor dem Hochladen.
-2. Schalte **Generate Questions from Single PDF File Uploads** ein.
-3. Lade ein einzelnes PDF hoch. ZIPs und Markdown nutzen diesen Weg nicht.
-
-Nutze das, wenn du eine Fragenerstellung willst, die auf einen bestimmten Seite-für-Seite-Rhythmus abgestimmt ist. Die Ausgabe läuft durch denselben Verpackungsschritt, sodass die resultierende `.apkg` sich in Anki wie jede andere öffnet.
+PDFs funktionieren genauso: Schalte Generate Flashcards with Claude AI ein, lade das PDF hoch, und das Modell liest es und entwirft die Karten. Es gibt keinen separaten PDF-only-Schalter.
 
 ## Speicherung und Datenschutz
 

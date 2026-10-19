@@ -1,5 +1,4 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import type { BetaContentBlockParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 
 import { recordClaudeUsage } from '../../../lib/claude/recordClaudeUsage';
 import { withAiBudget } from '../../../lib/claude/aiSpendGuard';
@@ -49,7 +48,6 @@ export class FileConversionError extends Error {
 }
 
 interface ConvertOptions {
-  pdf?: boolean;
   userId?: number | null;
   requestId?: string;
 }
@@ -78,29 +76,6 @@ export async function convertWithClaude(
   // pre-call balance, mirroring the chunk and PDF-page fan-outs.
   return withAiBudget(options.userId, async () => {
     try {
-      if (options.pdf) {
-        const response = await client.beta.messages
-          .stream({
-            model: getModel(),
-            max_tokens: MAX_TOKENS,
-            system: [systemBlock],
-            messages: [
-              { role: 'user', content: userContent as BetaContentBlockParam[] },
-            ],
-            betas: ['pdfs-2024-09-25'],
-          })
-          .finalMessage();
-        recordClaudeUsage({
-          surface: 'file_conversion',
-          model: response.model,
-          usage: response.usage,
-          userId: options.userId,
-          requestId: options.requestId,
-        });
-        assertNotTruncated(response.stop_reason);
-        return joinTextBlocks(response.content);
-      }
-
       const response = await client.messages
         .stream({
           model: getModel(),

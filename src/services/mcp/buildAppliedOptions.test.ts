@@ -7,7 +7,6 @@ describe('buildAppliedOptions', () => {
         noteType: 'basic-reversed',
         tags: [' bio ', '', 'cells'],
         deckName: '  Cell biology  ',
-        splitByHeadings: true,
         styleTemplate: 'nostyle',
         tts: { enabled: true, language: ' ja-JP ', side: 'back' },
       },
@@ -18,7 +17,6 @@ describe('buildAppliedOptions', () => {
       noteType: 'basic-reversed',
       tags: ['bio', 'cells'],
       deckName: 'Cell biology',
-      splitByHeadings: true,
       styleTemplate: 'nostyle',
       tts: { enabled: true, language: 'ja-JP', side: 'back' },
     });
@@ -30,19 +28,29 @@ describe('buildAppliedOptions', () => {
     expect(applied).toEqual({
       noteType: 'basic',
       tags: [],
-      splitByHeadings: false,
       tts: { enabled: false },
     });
     expect(ignored).toBeUndefined();
   });
 
-  it('treats splitSectionsIntoDecks as splitByHeadings', () => {
-    const { applied } = buildAppliedOptions(
-      { splitSectionsIntoDecks: true },
-      false
-    );
-    expect(applied.splitByHeadings).toBe(true);
-  });
+  it.each([['splitByHeadings'], ['splitSectionsIntoDecks']] as const)(
+    'reports %s under ignored and never on applied',
+    (option) => {
+      const { applied, ignored } = buildAppliedOptions(
+        { [option]: true },
+        false
+      );
+      expect(applied).not.toHaveProperty('splitByHeadings');
+      expect(ignored).toEqual([
+        {
+          option: 'splitByHeadings',
+          requested: true,
+          reason:
+            'Deck splitting is controlled by the deck_is rule on your Rules page, not by this option, so it had no effect.',
+        },
+      ]);
+    }
+  );
 
   it('falls back cloze to basic and records an ignored entry when markup is absent', () => {
     const { applied, ignored } = buildAppliedOptions(

@@ -86,7 +86,7 @@ export const DECK_CAPABILITIES: DeckCapabilities = {
       name: 'splitByHeadings',
       type: 'boolean',
       description:
-        'Turn each heading, toggle, and list on the page into its own subdeck instead of one deck.',
+        'Ignored. Deck splitting is controlled by the deck_is rule on the Rules page, not by this option. Accepted for compatibility and reported under ignored.',
     },
     {
       name: 'styleTemplate',

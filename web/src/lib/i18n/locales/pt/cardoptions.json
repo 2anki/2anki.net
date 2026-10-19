@@ -101,14 +101,6 @@
       "label": "Marcadores aninhados em Markdown",
       "description": "Transforma marcadores e seus submarcadores em cartões de frente e verso. Recomendado para exportações do Obsidian."
     },
-    "split-sections-into-decks": {
-      "label": "Dividir cada seção em seu próprio baralho",
-      "description": "Ligado, cada título, toggle e lista da página vira seu próprio baralho, em vez de todos os cartões irem para um só."
-    },
-    "vertex-ai-pdf-questions": {
-      "label": "Gerar perguntas a partir de PDFs enviados",
-      "description": "Rascunha perguntas do seu PDF usando o Claude (Anthropic). O conteúdo do seu PDF é enviado à Anthropic para processamento."
-    },
     "disable-indented-bullets": {
       "label": "Desativar marcadores indentados",
       "description": "Mantém os marcadores indentados ligados ao marcador pai em vez de virarem cartões separados."

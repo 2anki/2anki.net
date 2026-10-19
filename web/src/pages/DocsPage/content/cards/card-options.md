@@ -69,13 +69,12 @@ Card options change how 2anki turns your source into flashcards. Most are off-or
 
 ## PDF and AI
 
-| Option                                          | Default | What it does                                                                                                                                      |
-| ----------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Process PDF Files                               | On      | Converts PDFs found in ZIP uploads. Turn off to skip PDFs and speed up large archives.                                                            |
-| Generate Questions from Single PDF File Uploads | Off     | Sends the PDF to Anthropic Claude to generate questions. Paid; sends content to Anthropic.                                                        |
-| Generate Flashcards with Claude AI              | Off     | Sends content to Anthropic Claude and uses its output as the deck. Paid.                                                                          |
-| User instructions                               | —       | Free-form prompt sent to Claude when **Generate Flashcards with Claude AI** is on. Example: _"Focus on USMLE high-yield. Skip the introduction."_ |
-| Convert Image Quiz HTML to Anki Cards           | Off     | Uses OCR to pull image-and-answer pairs from HTML quizzes. Premium experimental.                                                                  |
+| Option                                | Default | What it does                                                                                                                                      |
+| ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Process PDF Files                     | On      | Converts PDFs found in ZIP uploads. Turn off to skip PDFs and speed up large archives.                                                            |
+| Generate Flashcards with Claude AI    | Off     | Sends content to Anthropic Claude and uses its output as the deck. Paid.                                                                          |
+| User instructions                     | —       | Free-form prompt sent to Claude when **Generate Flashcards with Claude AI** is on. Example: _"Focus on USMLE high-yield. Skip the introduction."_ |
+| Convert Image Quiz HTML to Anki Cards | Off     | Uses OCR to pull image-and-answer pairs from HTML quizzes. Premium experimental.                                                                  |
 
 ## Media
 
@@ -115,4 +114,4 @@ These only fire when **Enable MCQ** is on. See [Multiple choice questions](/docu
 
 ## Internal option keys
 
-The option keys 2anki uses internally (handy if you're filing a bug report): `add-notion-link`, `all`, `paragraph`, `cherry`, `avocado`, `tags`, `cloze`, `enable-input`, `basic-reversed`, `reversed`, `no-underline`, `max-one-toggle-per-card`, `remove-mp3-links`, `perserve-newlines`, `process-pdfs`, `markdown-nested-bullet-points`, `vertex-ai-pdf-questions`, `disable-indented-bullets`, `image-quiz-html-to-anki`, `embed-images`, `claude-ai-flashcards`, `share-files-for-debugging`, `mcq-enabled`, `mcq-tts-question`, `mcq-tts-correct-answer`, `mcq-tts-extra`, `tts-auto-detect`, `tts-manual-lang`, `tts-manual-side`, `font-size`, `toggle-mode`, `code-theme`, `page-emoji`, `basic_model_name`, `cloze_model_name`, `input_model_name`, `user-instructions`.
+The option keys 2anki uses internally (handy if you're filing a bug report): `add-notion-link`, `all`, `paragraph`, `cherry`, `avocado`, `tags`, `cloze`, `enable-input`, `basic-reversed`, `reversed`, `no-underline`, `max-one-toggle-per-card`, `remove-mp3-links`, `perserve-newlines`, `process-pdfs`, `markdown-nested-bullet-points`, `disable-indented-bullets`, `image-quiz-html-to-anki`, `embed-images`, `claude-ai-flashcards`, `share-files-for-debugging`, `mcq-enabled`, `mcq-tts-question`, `mcq-tts-correct-answer`, `mcq-tts-extra`, `tts-auto-detect`, `tts-manual-lang`, `tts-manual-side`, `font-size`, `toggle-mode`, `code-theme`, `page-emoji`, `basic_model_name`, `cloze_model_name`, `input_model_name`, `user-instructions`.

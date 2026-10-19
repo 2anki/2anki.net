@@ -20,7 +20,6 @@ export interface AppliedOptions {
   noteType: McpNoteType;
   tags: string[];
   deckName?: string;
-  splitByHeadings: boolean;
   styleTemplate?: McpStyleTemplate;
   tts: AppliedTts;
   subdecks?: AppliedSubdeck[];
@@ -116,12 +115,21 @@ export function buildAppliedOptions(
     });
   }
 
+  if (
+    options?.splitByHeadings === true ||
+    options?.splitSectionsIntoDecks === true
+  ) {
+    ignored.push({
+      option: 'splitByHeadings',
+      requested: true,
+      reason:
+        'Deck splitting is controlled by the deck_is rule on your Rules page, not by this option, so it had no effect.',
+    });
+  }
+
   const applied: AppliedOptions = {
     noteType,
     tags: resolveTags(options?.tags),
-    splitByHeadings:
-      options?.splitByHeadings === true ||
-      options?.splitSectionsIntoDecks === true,
     tts: resolveTts(options?.tts),
   };
 

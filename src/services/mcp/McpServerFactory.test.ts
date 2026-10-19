@@ -98,7 +98,6 @@ describe('create_deck handler', () => {
       applied: {
         noteType: 'basic' as const,
         tags: [],
-        splitByHeadings: false,
         tts: { enabled: false },
         subdecks: [
           { deck: 'JLPT N5::Grammar', cards: 1 },

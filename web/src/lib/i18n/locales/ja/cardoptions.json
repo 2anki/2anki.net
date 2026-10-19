@@ -101,14 +101,6 @@
       "label": "Markdown の入れ子の箇条書き",
       "description": "箇条書きとその下位の箇条書きを、表と裏のカードにします。Obsidian のエクスポートにおすすめです。"
     },
-    "split-sections-into-decks": {
-      "label": "各セクションを独自のデッキに分割",
-      "description": "オンにすると、すべてのカードが 1 つのデッキに入るのではなく、ページ上の各見出し、トグル、リストがそれぞれ独自のデッキになります。"
-    },
-    "vertex-ai-pdf-questions": {
-      "label": "PDF アップロードから質問を生成",
-      "description": "Claude（Anthropic）を使って PDF から質問の下書きを作ります。PDF の内容は処理のために Anthropic に送信されます。"
-    },
     "disable-indented-bullets": {
       "label": "インデントされた箇条書きを無効にする",
       "description": "インデントされた箇条書きを、別のカードにせず親に付けたままにします。"

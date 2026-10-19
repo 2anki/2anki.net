@@ -101,14 +101,6 @@
       "label": "Puces imbriquées en Markdown",
       "description": "Transforme les puces et leurs sous-puces en cartes recto-verso. Recommandé pour les exports Obsidian."
     },
-    "split-sections-into-decks": {
-      "label": "Diviser chaque section en son propre paquet",
-      "description": "Activé, chaque titre, bascule et liste de la page devient son propre paquet au lieu que toutes les cartes se retrouvent dans un seul."
-    },
-    "vertex-ai-pdf-questions": {
-      "label": "Générer des questions à partir des PDF téléversés",
-      "description": "Rédige des questions à partir de ton PDF avec Claude (Anthropic). Le contenu de ton PDF est envoyé à Anthropic pour traitement."
-    },
     "disable-indented-bullets": {
       "label": "Désactiver les puces indentées",
       "description": "Garde les puces indentées rattachées à leur parent au lieu d'en faire des cartes séparées."
