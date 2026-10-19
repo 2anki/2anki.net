@@ -73,9 +73,20 @@ export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
   return sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
 }
 
+// SheetJS keeps hidden and very hidden sheets in SheetNames, marking them in
+// the parallel Workbook.Sheets array with Hidden === 1 (hidden) or 2 (very
+// hidden). Those are lookup tables and helper tabs the author hid on purpose,
+// so converting them turns junk rows into cards counted against the free limit.
+function visibleSheetNames(workbook: XLSX.WorkBook): string[] {
+  const properties = workbook.Workbook?.Sheets;
+  return workbook.SheetNames.filter(
+    (_name, index) => (properties?.[index]?.Hidden ?? 0) === 0
+  );
+}
+
 export function sheetsFromBuffer(buffer: Buffer, fileName = ''): SheetRows[] {
   const workbook = readWorkbook(buffer, fileName);
-  return workbook.SheetNames.map((name) => ({
+  return visibleSheetNames(workbook).map((name) => ({
     name,
     rows: sheetRows(workbook.Sheets[name]),
   }));

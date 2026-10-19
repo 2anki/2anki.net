@@ -1,6 +1,9 @@
 import * as XLSX from 'xlsx';
 import { rowsFromBuffer, sheetsFromBuffer } from './tabularRows';
 
+const SHEET_HIDDEN = 1;
+const SHEET_VERY_HIDDEN = 2;
+
 describe('rowsFromBuffer', () => {
   it('splits a .tsv on tabs even when the cells hold commas', () => {
     const tsv = 'What is osmosis, really?\tWater, crossing a membrane\n';
@@ -77,6 +80,50 @@ describe('sheetsFromBuffer', () => {
     const buffer = buildWorkbook({ Sheet1: [['a', 'b']] });
     expect(sheetsFromBuffer(buffer, 'x.xlsx')).toEqual([
       { name: 'Sheet1', rows: [['a', 'b']] },
+    ]);
+  });
+
+  it('skips hidden and very hidden sheets', () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([['hola', 'hello']]),
+      'Cards'
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([['lookup', 'value']]),
+      'Helper'
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([['secret', 'value']]),
+      'Config'
+    );
+    XLSX.utils.book_set_sheet_visibility(workbook, 'Helper', SHEET_HIDDEN);
+    XLSX.utils.book_set_sheet_visibility(workbook, 'Config', SHEET_VERY_HIDDEN);
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    expect(sheetsFromBuffer(buffer, 'vocab.xlsx')).toEqual([
+      { name: 'Cards', rows: [['hola', 'hello']] },
+    ]);
+  });
+
+  it('keeps the first visible sheet when an earlier sheet is hidden', () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([['lookup', 'value']]),
+      'Helper'
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([['hola', 'hello']]),
+      'Cards'
+    );
+    XLSX.utils.book_set_sheet_visibility(workbook, 'Helper', SHEET_HIDDEN);
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    expect(sheetsFromBuffer(buffer, 'vocab.xlsx')).toEqual([
+      { name: 'Cards', rows: [['hola', 'hello']] },
     ]);
   });
 });

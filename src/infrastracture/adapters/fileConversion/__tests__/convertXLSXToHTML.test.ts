@@ -73,6 +73,39 @@ describe('convertXLSXToHTML multi-sheet', () => {
     expect(html).toContain('<summary>hola</summary>');
     expect(html).toContain('<summary>Dog</summary>');
   });
+
+  it('ignores a hidden helper sheet', () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([['hola', 'hello']]),
+      'Cards'
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([['lookupKey', 'lookupValue']]),
+      'Helper'
+    );
+    XLSX.utils.book_set_sheet_visibility(
+      workbook,
+      'Helper',
+      XLSX.utils.consts.SHEET_HIDDEN
+    );
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const html = convertXLSXToHTML(buffer, 'vocab.xlsx');
+    expect(html).toContain('<summary>hola</summary>');
+    expect(html).not.toContain('lookupKey');
+  });
+
+  it('produces no cards for an empty sheet', () => {
+    const buffer = buildMultiSheetXlsxBuffer({
+      Cards: [['hola', 'hello']],
+      Blank: [],
+    });
+    const html = convertXLSXToHTML(buffer, 'vocab.xlsx');
+    expect(html).toContain('<summary>hola</summary>');
+    expect(html.match(/<ul class="toggle">/g)).toHaveLength(1);
+  });
 });
 
 describe('convertXLSXToHTML line breaks', () => {
