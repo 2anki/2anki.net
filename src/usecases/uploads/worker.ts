@@ -12,6 +12,7 @@ import { processUploadedPdf } from './processUploadedPdf';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
+import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
   isImageFile,
   isCompressedFile,
@@ -267,9 +268,19 @@ async function processFile(
     isDocxFile(filename);
 
   if (isValidSingleFile) {
+    // The Pages option applies only to a single uploaded PDF. Slice here, on
+    // the one-file path, so a range never reaches the zip, Claude-zip, or
+    // multi-file cloud-import paths (those convert the whole file).
+    const rangedFiles = await applyPdfPageRange(
+      [{ name: filename, contents: fileContents }],
+      settings.pdfPageRange,
+      userId,
+      workspace.location,
+      filename
+    );
     const d = await PrepareDeck({
       name: filename,
-      files: [{ name: filename, contents: fileContents }],
+      files: rangedFiles,
       settings: processUploadedPdf(filename, settings),
       noLimits: paying,
       workspace,

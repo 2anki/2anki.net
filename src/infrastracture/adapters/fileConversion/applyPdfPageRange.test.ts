@@ -134,6 +134,23 @@ describe('applyPdfPageRange', () => {
     expect(deps.extract).not.toHaveBeenCalled();
   });
 
+  it('returns the original file unchanged when the range covers every page', async () => {
+    const deps = adapters(3);
+    const files = [pdf('notes.pdf', '%PDF-full')];
+
+    const result = await applyPdfPageRange(
+      files,
+      '1-3',
+      7,
+      WORKSPACE,
+      'notes.pdf',
+      deps
+    );
+
+    expect(result[0]).toBe(files[0]);
+    expect(deps.extract).not.toHaveBeenCalled();
+  });
+
   it('does not expand a hostile huge range; it is rejected against the page count', async () => {
     const deps = adapters(10);
     const files = [pdf('notes.pdf', '%PDF-full')];

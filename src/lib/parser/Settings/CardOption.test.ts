@@ -105,6 +105,13 @@ describe('CardOption pdfPageRange', () => {
   it('ships pdf-page-range as empty in the default options payload', () => {
     expect(CardOption.LoadDefaultOptions()['pdf-page-range']).toBe('');
   });
+
+  it('coerces a non-string pdf-page-range to empty', () => {
+    const option = new CardOption({
+      'pdf-page-range': ['12-30'],
+    } as unknown as { [key: string]: string });
+    expect(option.pdfPageRange).toBe('');
+  });
 });
 
 describe('CardOption groupClozePerToggle', () => {

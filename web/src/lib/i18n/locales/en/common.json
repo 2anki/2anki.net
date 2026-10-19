@@ -832,7 +832,7 @@
     "pdfPageRange": {
       "label": "Pages",
       "placeholder": "e.g. 12-30, 45",
-      "hint": "Convert only these pages on your next upload. Use numbers and ranges like 12-30, 45. Leave empty to convert the whole PDF."
+      "hint": "Only works on a single PDF upload. Convert just these pages; use ranges like 12-30, 45. Leave empty to convert the whole PDF."
     },
     "mcq": {
       "heading": "Multiple choice questions (MCQ)",

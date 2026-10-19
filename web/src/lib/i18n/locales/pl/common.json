@@ -884,7 +884,7 @@
     "pdfPageRange": {
       "label": "Strony",
       "placeholder": "np. 12-30, 45",
-      "hint": "Przy następnym przesłaniu przekonwertuj tylko te strony. Użyj numerów i zakresów, np. 12-30, 45. Pozostaw puste, aby przekonwertować cały plik PDF."
+      "hint": "Działa tylko przy przesyłaniu pojedynczego pliku PDF. Przekonwertuj tylko te strony; użyj zakresów jak 12-30, 45. Pozostaw puste, aby przekonwertować cały plik PDF."
     },
     "mcq": {
       "heading": "Pytania wielokrotnego wyboru (MCQ)",

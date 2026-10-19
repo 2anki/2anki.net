@@ -194,7 +194,10 @@ class CardOption {
     this.processPDFs = input['process-pdfs'] !== 'false';
     this.pdfExtractText = input['pdf-extract-text'] === 'true';
     this.pdfPagePairs = input['pdf-page-pairs'] === 'true';
-    this.pdfPageRange = input['pdf-page-range'] ?? '';
+    this.pdfPageRange =
+      typeof input['pdf-page-range'] === 'string'
+        ? input['pdf-page-range']
+        : '';
     this.downloadPdfs = input['download-pdfs'] === 'true';
     this.claudeAIFlashcards = input['claude-ai-flashcards'] === 'true';
     this.rescueRule = isRescueRule(input['rescue-rule'])

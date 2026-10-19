@@ -116,6 +116,12 @@ export async function applyPdfPageRange(
       workspaceLocation
     );
     const pages = resolvePdfPages(segments, pageCount);
+    // The selection covers the whole document: nothing to slice, so hand back
+    // the original bytes rather than paying for a separate + unite round-trip.
+    if (pages.length === pageCount) {
+      result.push(file);
+      continue;
+    }
     const sliced = await adapters.extract(
       buffer,
       pages,

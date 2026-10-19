@@ -505,6 +505,24 @@ function UploadForm({
   const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
   const recoveryTokenRef = useRef<string | null>(null);
   const recoverySubmittedAtRef = useRef(0);
+  const pdfPageRangeRef = useRef<string | null>(null);
+
+  // Pages is an attempt-scoped value: capture it from localStorage when an
+  // upload starts and clear it right away, so follow-ups for the same file
+  // (retry, rescue, unlock) reuse the captured value while the next fresh
+  // upload starts clean.
+  const capturePdfPageRange = () => {
+    const stored = globalThis.localStorage?.getItem('pdf-page-range') ?? null;
+    pdfPageRangeRef.current =
+      stored != null && stored.trim() !== '' ? stored : null;
+    globalThis.localStorage?.removeItem('pdf-page-range');
+  };
+
+  const attachPdfPageRange = (formData: FormData) => {
+    if (pdfPageRangeRef.current != null) {
+      formData.set('pdf-page-range', pdfPageRangeRef.current);
+    }
+  };
   const [dayPassError, setDayPassError] = useState<string | null>(null);
   const showSignInPrompt = userLocals != null && !isAuthenticated;
   const cardUsage = useCardUsage(isAuthenticated);
@@ -860,6 +878,7 @@ function UploadForm({
     for (const [key, value] of Object.entries(globalThis.localStorage)) {
       formData.append(key, value);
     }
+    attachPdfPageRange(formData);
     formData.set('claude-ai-flashcards', 'true');
     setLocalError(null);
     setZoneState('converting');
@@ -940,6 +959,7 @@ function UploadForm({
   const handleDropboxFiles = async (files: DropboxFile[]) => {
     const first = files[0];
     setRescueFiles([]);
+    capturePdfPageRange();
     setDropboxFilename(first?.name ?? null);
     setDropboxError(null);
     setSampleRun(false);
@@ -954,6 +974,7 @@ function UploadForm({
       for (const [key, value] of Object.entries(globalThis.localStorage)) {
         formData.append(key, value);
       }
+      attachPdfPageRange(formData);
       const request = await globalThis.fetch('/api/upload/dropbox', {
         method: 'post',
         body: formData,
@@ -993,6 +1014,7 @@ function UploadForm({
   ) => {
     const first = files[0];
     setRescueFiles([]);
+    capturePdfPageRange();
     setDriveFilename(first?.name ?? null);
     setDriveMimeType(first?.mimeType ?? null);
     setDriveError(null);
@@ -1009,6 +1031,7 @@ function UploadForm({
       for (const [key, value] of Object.entries(globalThis.localStorage)) {
         formData.append(key, value);
       }
+      attachPdfPageRange(formData);
       const request = await globalThis.fetch('/api/upload/google_drive', {
         method: 'post',
         body: formData,
@@ -1319,10 +1342,6 @@ function UploadForm({
         return true;
       }
       return handleUploadError(error, uploadedFiles, isRetry, submittedAt);
-    } finally {
-      // The page range is a one-upload-only, unsynced value; clear it so the
-      // next upload converts the whole PDF unless the user asks again.
-      globalThis.localStorage?.removeItem('pdf-page-range');
     }
     return true;
   };
@@ -1330,7 +1349,9 @@ function UploadForm({
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
+    capturePdfPageRange();
     const formData = buildFormData(form);
+    attachPdfPageRange(formData);
     const uploadedFiles = Array.from(fileInputRef.current?.files ?? []);
     return runFileUpload(formData, uploadedFiles, false);
   };
@@ -1374,6 +1395,7 @@ function UploadForm({
     for (const [key, value] of Object.entries(globalThis.localStorage)) {
       formData.append(key, value);
     }
+    attachPdfPageRange(formData);
     formData.set('rescue-rule', rule);
     setLocalError(null);
     setZoneState('converting');
@@ -1401,6 +1423,7 @@ function UploadForm({
     for (const [key, value] of Object.entries(globalThis.localStorage)) {
       formData.append(key, value);
     }
+    attachPdfPageRange(formData);
     void runFileUpload(formData, networkRetryFiles, true);
   };
 
@@ -2381,6 +2404,7 @@ function UploadForm({
         formData.append(key, value);
       }
 
+      attachPdfPageRange(formData);
       const request = await globalThis.fetch(
         '/api/upload/retry-with-credential',
         {

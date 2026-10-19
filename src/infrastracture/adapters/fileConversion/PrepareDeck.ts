@@ -73,7 +73,6 @@ import { writeWorkspaceFile } from './writeWorkspaceFile';
 import { writePdfImageFallbackMarker } from './pdfImageFallbackMarker';
 import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
 import { isResourceForkEntry } from './documentStructureCensus';
-import { applyPdfPageRange } from './applyPdfPageRange';
 import { track } from '../../../services/events/track';
 
 const HTML_GENERATION_CONCURRENCY = 3;
@@ -1202,13 +1201,7 @@ export async function PrepareDeck(
 ): Promise<PrepareDeckResult | undefined> {
   const tTotal = Date.now();
 
-  const files = await applyPdfPageRange(
-    dedupeFilesByName(input.files),
-    input.settings.pdfPageRange,
-    input.userId ?? null,
-    input.workspace.location,
-    input.name
-  );
+  const files = dedupeFilesByName(input.files);
 
   const fileSummary = summarizeFileNames(files.map((f) => f.name));
   console.info('[PrepareDeck] received', fileSummary);
@@ -1306,13 +1299,7 @@ export async function prepareDeckInfoOnly(
   deckSubWorkspace: Workspace,
   outputWorkspace: Workspace
 ): Promise<DeckInfoOnlyResult> {
-  const files = await applyPdfPageRange(
-    dedupeFilesByName(input.files),
-    input.settings.pdfPageRange,
-    input.userId ?? null,
-    input.workspace.location,
-    input.name
-  );
+  const files = dedupeFilesByName(input.files);
   const aiGate = await resolveAiConversionGate(input, files);
   const ai: AiConversionState = {
     exhausted: aiGate.exhausted,

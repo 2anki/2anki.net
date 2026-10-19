@@ -832,7 +832,7 @@
     "pdfPageRange": {
       "label": "Pages",
       "placeholder": "ex. 12-30, 45",
-      "hint": "Convertis seulement ces pages lors de ton prochain envoi. Utilise des numéros et des plages comme 12-30, 45. Laisse vide pour convertir tout le PDF."
+      "hint": "Fonctionne seulement pour l'envoi d'un seul PDF. Convertis uniquement ces pages; utilise des plages comme 12-30, 45. Laisse vide pour convertir tout le PDF."
     },
     "mcq": {
       "heading": "Questions à choix multiple (QCM)",

@@ -832,7 +832,7 @@
     "pdfPageRange": {
       "label": "Páginas",
       "placeholder": "ex. 12-30, 45",
-      "hint": "Converte apenas estas páginas no próximo envio. Use números e intervalos como 12-30, 45. Deixe em branco para converter o PDF inteiro."
+      "hint": "Funciona apenas ao enviar um único PDF. Converte apenas estas páginas; use intervalos como 12-30, 45. Deixe em branco para converter o PDF inteiro."
     },
     "mcq": {
       "heading": "Perguntas de múltipla escolha (MCQ)",

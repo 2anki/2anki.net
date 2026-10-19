@@ -5,7 +5,6 @@ import { getPackagesFromZip } from './getPackagesFromZip';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import Workspace from '../../lib/parser/WorkSpace';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
-import { PdfPageRangeError } from '../../lib/pdf/pdfPageRange';
 
 vi.mock('node:fs', { spy: true });
 vi.mock('../../infrastracture/adapters/fileConversion/PrepareDeck');
@@ -1086,34 +1085,5 @@ describe('getPackagesFromZip — Anki package renamed as zip', () => {
 
     expect(mockPrepareDeck).not.toHaveBeenCalled();
     expect(mockPrepareDeckInfoOnly).not.toHaveBeenCalled();
-  });
-});
-
-describe('getPackagesFromZip — page range error', () => {
-  it('surfaces a PdfPageRangeError as a warning instead of a generic failure', async () => {
-    mockZipHandlerClass.mockImplementation(function () {
-      return {
-        build: vi.fn().mockResolvedValue(undefined),
-        getFileNames: vi.fn().mockReturnValue(['chapter.pdf']),
-        files: [{ name: 'chapter.pdf', contents: Buffer.from('%PDF') }],
-      };
-    });
-    mockPrepareDeck.mockRejectedValue(
-      new PdfPageRangeError(
-        'Pages 120-130 are past the end of this 98-page PDF.'
-      )
-    );
-
-    const result = await getPackagesFromZip(
-      Buffer.from('fake-zip') as unknown as Uint8Array,
-      false,
-      new CardOption({ 'pdf-page-range': '120-130' }),
-      { location: FAKE_WORKSPACE_LOCATION } as Workspace
-    );
-
-    expect(result.packages).toEqual([]);
-    expect(result.warnings).toContain(
-      'Pages 120-130 are past the end of this 98-page PDF.'
-    );
   });
 });
