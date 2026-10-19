@@ -3,7 +3,7 @@ import {
   TabularRow,
   cellText,
   detectFieldColumns,
-  rowsFromBuffer,
+  sheetsFromBuffer,
 } from './tabularRows';
 
 interface FrontBackColumns {
@@ -30,19 +30,19 @@ function resolveColumns(rows: TabularRow[]): FrontBackColumns {
   return { rows, frontIndex: 0, backIndex: 1 };
 }
 
-export function convertXLSXToHTML(buffer: Buffer, title: string): string {
-  const { rows, frontIndex, backIndex } = resolveColumns(
-    rowsFromBuffer(buffer, title)
-  );
+// A line break inside a cell (alt+enter in the spreadsheet) carries meaning the
+// learner put there, so it becomes a <br> after escaping rather than collapsing
+// into a space that merges two lines into one run of text.
+function cellHtml(cell: unknown): string {
+  return escapeHtml(cellText(cell)).replace(/\r\n|\r|\n/g, '<br>');
+}
 
-  return `<!DOCTYPE html>
-<html>
-<head><title>${escapeHtml(title)}</title></head>
-<body>
-  ${rows
+function toggleListForSheet(rows: TabularRow[]): string {
+  const { rows: cardRows, frontIndex, backIndex } = resolveColumns(rows);
+  return cardRows
     .map((row: TabularRow) => {
-      const front = escapeHtml(cellText(row[frontIndex]));
-      const back = escapeHtml(cellText(row[backIndex]));
+      const front = cellHtml(row[frontIndex]);
+      const back = cellHtml(row[backIndex]);
       return `<ul class="toggle">
     <li>
       <details>
@@ -52,7 +52,20 @@ export function convertXLSXToHTML(buffer: Buffer, title: string): string {
     </li>
     </ul>`;
     })
-    .join('\n')}
+    .join('\n');
+}
+
+export function convertXLSXToHTML(buffer: Buffer, title: string): string {
+  const body = sheetsFromBuffer(buffer, title)
+    .map((sheet) => toggleListForSheet(sheet.rows))
+    .filter((html) => html.length > 0)
+    .join('\n');
+
+  return `<!DOCTYPE html>
+<html>
+<head><title>${escapeHtml(title)}</title></head>
+<body>
+  ${body}
 </body>
 </html>`;
 }

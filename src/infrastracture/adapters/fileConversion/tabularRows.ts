@@ -40,26 +40,45 @@ export function cellText(cell: unknown): string {
 
 const UTF8_BOM = Buffer.from([0xef, 0xbb, 0xbf]);
 
+export interface SheetRows {
+  name: string;
+  rows: TabularRow[];
+}
+
 // SheetJS keeps a UTF-8 byte order mark inside the first cell and, for a
 // text file, guesses the separator by counting characters, so a .tsv whose
 // cells hold commas splits on the commas. A .tsv whose first line holds a
 // tab is read with the tab fixed as the separator (a mislabeled comma file
 // keeps the guess); the mark is stripped for every text file.
-export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
+function readWorkbook(buffer: Buffer, fileName: string): XLSX.WorkBook {
   const bytes = buffer.subarray(0, 3).equals(UTF8_BOM)
     ? buffer.subarray(3)
     : buffer;
-  const workbook = XLSX.read(bytes, {
+  return XLSX.read(bytes, {
     type: 'buffer',
     codepage: 65001,
     ...(isTsvFile(fileName) && firstLineHoldsTab(bytes) ? { FS: '\t' } : {}),
   });
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
+}
+
+function sheetRows(worksheet: XLSX.WorkSheet): TabularRow[] {
   return XLSX.utils.sheet_to_json(worksheet, {
     header: 1,
     raw: false,
   }) as TabularRow[];
+}
+
+export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
+  const workbook = readWorkbook(buffer, fileName);
+  return sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
+}
+
+export function sheetsFromBuffer(buffer: Buffer, fileName = ''): SheetRows[] {
+  const workbook = readWorkbook(buffer, fileName);
+  return workbook.SheetNames.map((name) => ({
+    name,
+    rows: sheetRows(workbook.Sheets[name]),
+  }));
 }
 
 export function detectFieldColumns(row: TabularRow): FieldColumns | null {
