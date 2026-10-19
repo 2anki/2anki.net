@@ -67,6 +67,18 @@ describe('image-drop notice i18n key parity', () => {
     }
   });
 
+  it.each(LANGS)(
+    '%s defines the notionAsset plural forms with {{count}}',
+    (lang) => {
+      const keys = imageDrop(lang);
+      for (const suffix of PLURAL_FORMS[lang]) {
+        const value = keys[`notionAsset_${suffix}`];
+        expect(typeof value).toBe('string');
+        expect(value).toContain('{{count}}');
+      }
+    }
+  );
+
   it('en pdf notice no longer claims PDF images are unsupported', () => {
     const keys = imageDrop('en');
     for (const suffix of PLURAL_FORMS.en) {

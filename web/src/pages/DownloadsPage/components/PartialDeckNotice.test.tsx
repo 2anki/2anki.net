@@ -17,7 +17,7 @@ describe('PartialDeckNotice', () => {
     render(<PartialDeckNotice />);
     expect(
       screen.getByText(
-        /Only part of this page converted, so the rest is not in this deck\./
+        /Only part of this page converted, so the rest isn't in this deck\./
       )
     ).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /upgrade|pricing/i })).toBeNull();

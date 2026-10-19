@@ -1548,7 +1548,7 @@ describe('DownloadsPage Notion row partial and dropped-asset notices', () => {
 
     expect(
       screen.getByText(
-        /Only part of this page converted, so the rest is not in this deck\./
+        /Only part of this page converted, so the rest isn't in this deck\./
       )
     ).toBeInTheDocument();
   });
@@ -1587,7 +1587,7 @@ describe('DownloadsPage Notion row partial and dropped-asset notices', () => {
 
     expect(
       screen.queryByText(
-        /Only part of this page converted, so the rest is not in this deck\./
+        /Only part of this page converted, so the rest isn't in this deck\./
       )
     ).not.toBeInTheDocument();
     expect(

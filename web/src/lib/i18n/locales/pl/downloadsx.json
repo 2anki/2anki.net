@@ -52,6 +52,8 @@
     "notion_many": "{{count}} obrazów nie zostało pobranych i nie ma ich w tej talii. Linki do nich w Notion prawdopodobnie wygasły. Przekonwertuj stronę ponownie, aby spróbować je pobrać.",
     "notion_other": "{{count}} obrazów nie zostało pobranych i nie ma ich w tej talii. Linki do nich w Notion prawdopodobnie wygasły. Przekonwertuj stronę ponownie, aby spróbować je pobrać.",
     "notionAsset_one": "{{count}} plik lub obraz nie został pobrany i nie ma go w tej talii. Link do niego w Notion prawdopodobnie wygasł. Przekonwertuj stronę ponownie, aby spróbować go pobrać.",
+    "notionAsset_few": "{{count}} pliki lub obrazy nie zostały pobrane i nie ma ich w tej talii. Linki do nich w Notion prawdopodobnie wygasły. Przekonwertuj stronę ponownie, aby spróbować je pobrać.",
+    "notionAsset_many": "{{count}} plików lub obrazów nie zostało pobranych i nie ma ich w tej talii. Linki do nich w Notion prawdopodobnie wygasły. Przekonwertuj stronę ponownie, aby spróbować je pobrać.",
     "notionAsset_other": "{{count}} plików lub obrazów nie zostało pobranych i nie ma ich w tej talii. Linki do nich w Notion prawdopodobnie wygasły. Przekonwertuj stronę ponownie, aby spróbować je pobrać.",
     "uploadSingleDeck_one": "{{count}} obraz nie został pobrany i nie ma go w tej talii. Twój plik odwołuje się do niego w innej witrynie, do której nie mogliśmy dotrzeć. Zapisz obraz w samym pliku, a następnie prześlij go ponownie.",
     "uploadSingleDeck_few": "{{count}} obrazy nie zostały pobrane i nie ma ich w tej talii. Twój plik odwołuje się do nich w innych witrynach, do których nie mogliśmy dotrzeć. Zapisz obrazy w samym pliku, a następnie prześlij go ponownie.",
