@@ -9,6 +9,7 @@ import { SkeletonPage } from './components/Skeleton/Skeleton';
 import { RootErrorBoundary } from './components/RootErrorBoundary/RootErrorBoundary';
 import { initTheme } from './lib/theme';
 import { initI18n } from './lib/i18n';
+import { rememberLandingCampaign } from './lib/adClick';
 import { isChunkLoadError, recoverFromChunkError } from './lib/chunkReload';
 import {
   reportClientError,
@@ -30,6 +31,7 @@ window.addEventListener('vite:preloadError', (event) => {
 });
 
 function main() {
+  rememberLandingCampaign(window.location.search);
   initTheme();
   initI18n();
 

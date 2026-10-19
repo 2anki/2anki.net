@@ -48,7 +48,7 @@ Necessary cookies keep you signed in and remember choices you made on this site;
 
 With advertising cookies allowed we also tell Google Ads when a visit that started from one of our ads leads to a sign-up or a purchase (amount, currency and an order reference, and, for signed-in users, a hashed email address Google uses to match the conversion). We never share the content of your notes or decks.
 
-When a link to 2anki carries campaign tags (`utm_source`, `utm_medium`, `utm_campaign`, `utm_term`), we record them on the page view and, if you buy in the same visit, on the payment record, whatever your cookie choice. These tags name our ad campaign and the keyword we bid on, not you. They are kept in the page's memory only, never in a cookie, and the Google click id stays under the advertising cookie above.
+When a link to 2anki carries campaign tags (`utm_source`, `utm_medium`, `utm_campaign`, `utm_term`), we record them on the page view and, if you buy in the same visit, on the payment record and in our purchase analytics, whatever your cookie choice. These tags name the campaign and keyword the link was made for, not you. They are kept in the page's memory only, never in a cookie, and the Google click id stays under the advertising cookie above.
 
 With analytics cookies allowed we also send Google Analytics a record from our own servers when you sign up or make a purchase, tagged with the Google Analytics identifiers already stored in those cookies so Google can match it to your visit. For a sign-up we include how you signed up (for example with Google, or with an email and password); for a purchase we include the amount, the currency, and an order reference. We never send your name, your email, or the content of your notes or decks.
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
   AD_CLICK_COOKIE,
   buildAdClickCookie,
@@ -206,7 +206,7 @@ describe('readCampaignParams', () => {
   it('keeps the campaign tags and drops click ids and utm_content', () => {
     expect(
       readCampaignParams(
-        '?utm_source=google&utm_medium=cpc&utm_campaign=ai&utm_term=anki+ai&utm_content=ad1&gclid=Cj0'
+        '?utm_source=Google&utm_medium=cpc&utm_campaign=ai&utm_term=anki+ai&utm_content=ad1&gclid=Cj0'
       )
     ).toEqual({
       utm_source: 'google',
@@ -222,12 +222,15 @@ describe('readCampaignParams', () => {
 });
 
 describe('landingViewProps', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('adds the campaign tags in the URL to the landing path', () => {
     vi.stubGlobal('location', { search: '?utm_campaign=pdf' });
     expect(landingViewProps('/pdf-to-anki')).toEqual({
       path: '/pdf-to-anki',
       utm_campaign: 'pdf',
     });
-    vi.unstubAllGlobals();
   });
 });

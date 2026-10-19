@@ -197,11 +197,10 @@ function parseCampaign(raw: unknown): AdClickAttribution {
 export function readCheckoutAttribution(
   req: express.Request
 ): AdClickAttribution | undefined {
-  const fromCookie = readAdClickCookie(req);
-  if (fromCookie != null) {
-    return fromCookie;
-  }
   const body = req.body as Record<string, unknown> | undefined;
-  const campaign = parseCampaign(body?.campaign);
-  return Object.keys(campaign).length > 0 ? campaign : undefined;
+  const merged = {
+    ...parseCampaign(body?.campaign),
+    ...readAdClickCookie(req),
+  };
+  return Object.keys(merged).length > 0 ? merged : undefined;
 }

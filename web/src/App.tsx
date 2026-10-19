@@ -26,7 +26,6 @@ import {
   captureAdClick,
   marketingCookiesAllowed,
   rememberLanding,
-  rememberLandingCampaign,
 } from './lib/adClick';
 import { CONSENT_CHANGE_EVENT } from './lib/consent/consent';
 import i18n from './lib/i18n';
@@ -747,7 +746,6 @@ function AppWithCookies() {
 
   useEffect(() => {
     const landing = rememberLanding();
-    rememberLandingCampaign(globalThis.location?.search ?? '');
     if (marketingCookiesAllowed()) {
       captureFirstTouch();
     }

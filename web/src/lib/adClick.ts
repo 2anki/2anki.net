@@ -205,8 +205,9 @@ export type CampaignParams = Partial<
 /**
  * Campaign tags name our own campaign and keyword, not the visitor, so they
  * are read without marketing consent and kept in memory only, never in a
- * cookie or storage. utm_content is left out because the events sink drops
- * any key containing "content".
+ * cookie or storage, so a full page load (an OAuth round trip) drops them.
+ * Lowercased like the server does. utm_content is left out because the events
+ * sink drops any key containing "content".
  */
 export function readCampaignParams(search: string): CampaignParams {
   const query = new URLSearchParams(search);
@@ -214,7 +215,7 @@ export function readCampaignParams(search: string): CampaignParams {
   for (const key of CAMPAIGN_PARAMS) {
     const value = query.get(key);
     if (value != null && UTM_PATTERN.test(value)) {
-      found[key] = value;
+      found[key] = value.toLowerCase();
     }
   }
   return found;

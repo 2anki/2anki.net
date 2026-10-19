@@ -175,7 +175,7 @@ describe('readCheckoutAttribution', () => {
     vi.mocked(consentRegionForRequest).mockReset().mockReturnValue('eea');
   });
 
-  it('prefers the consented ad_click cookie over the campaign in the body', () => {
+  it('lets the consented ad_click cookie win a tag both carry', () => {
     const req = {
       cookies: {
         cookie_consent: 'granted',
@@ -186,6 +186,20 @@ describe('readCheckoutAttribution', () => {
     expect(readCheckoutAttribution(req)).toEqual({
       gclid: 'abc',
       utm_campaign: 'cookie',
+    });
+  });
+
+  it("keeps this visit's campaign tags when the cookie holds only a click id", () => {
+    const req = {
+      cookies: {
+        cookie_consent: 'granted',
+        ad_click: cookie({ gclid: 'abc' }),
+      },
+      body: { campaign: { utm_campaign: 'ai-search' } },
+    } as never;
+    expect(readCheckoutAttribution(req)).toEqual({
+      gclid: 'abc',
+      utm_campaign: 'ai-search',
     });
   });
 
