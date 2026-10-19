@@ -5,9 +5,48 @@ import {
 import ReactDOMServer from 'react-dom/server';
 import type { IBlockRenderer } from '../BlockHandler/types';
 import getChildren from '../helpers/getChildren';
-import getPlainText from '../helpers/getPlainText';
+import { toPlainTextBack } from '../../../lib/parser/toPlainTextBack';
 import { styleWithColors } from '../NotionColors';
 import HandleBlockAnnotations from './HandleBlockAnnotations';
+
+const dropMedia = async (): Promise<string> => '';
+
+const renderOwnText = (
+  richText: RichTextItemResponse[],
+  handler: IBlockRenderer
+) =>
+  ReactDOMServer.renderToStaticMarkup(
+    <>
+      {richText.map((t: RichTextItemResponse) => {
+        const { annotations } = t;
+        return HandleBlockAnnotations(annotations, t, {
+          noUnderline: handler.settings?.noUnderline,
+          tagRegistry: handler.tagRegistry,
+        });
+      })}
+    </>
+  );
+
+const renderChildrenAsHtmlWithoutMedia = async (
+  block: CalloutBlockObjectResponse,
+  handler: IBlockRenderer
+): Promise<string> => {
+  if (!block.has_children) {
+    return '';
+  }
+  const plainTextHandler = Object.create(handler, {
+    settings: {
+      value: Object.create(handler.settings, {
+        isTextOnlyBack: { value: false, enumerable: true },
+      }),
+      enumerable: true,
+    },
+    embedImage: { value: dropMedia, enumerable: true },
+    embedAudioFile: { value: dropMedia, enumerable: true },
+    embedFile: { value: dropMedia, enumerable: true },
+  }) as IBlockRenderer;
+  return (await plainTextHandler.getBackSide(block, true)) ?? '';
+};
 
 export const BlockCallout = async (
   block: CalloutBlockObjectResponse,
@@ -18,7 +57,10 @@ export const BlockCallout = async (
   const { rich_text: richText } = callout;
 
   if (handler.settings?.isTextOnlyBack) {
-    return getPlainText(richText);
+    const childrenHtml = await renderChildrenAsHtmlWithoutMedia(block, handler);
+    return toPlainTextBack(
+      `${renderOwnText(richText, handler)}${childrenHtml}`
+    );
   }
 
   const childrenHtml = await getChildren(block, handler);

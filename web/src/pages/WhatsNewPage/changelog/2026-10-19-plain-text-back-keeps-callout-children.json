@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-plain-text-back-keeps-callout-children",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Notion callouts keep the text inside them on cards when the back is set to plain text"
+}
