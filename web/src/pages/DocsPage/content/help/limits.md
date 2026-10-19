@@ -76,7 +76,7 @@ What "storage" means depends on which path you used.
 
 ### File upload (no Claude AI)
 
-Your file lives on disk only long enough to build the deck. The `.apkg` is sent straight back as the response — we don't keep a copy. The temporary working files are wiped after **two hours**.
+Your file lives on disk only long enough to build the deck. The `.apkg` is sent straight back as the response — we don't keep a copy. The temporary working files are wiped after **two hours**. One exception: when an upload without an account goes over the 21-card cap, we keep the file for **24 hours** so the deck can be built after you sign up. The nightly cleanup deletes it within a day after that.
 
 **Plan:** any (anonymous, Free account, Subscription, Lifetime — same window for all).
 
