@@ -151,9 +151,16 @@ describe('getRedirect security tests', () => {
     });
 
     const unsafeDownloadTargets = [
+      '/api/download/u/../../../admin',
+      '/api/download/u/..',
+      '/api/download/u/%2e%2e',
+      '/api/download/u/%2F%2F',
+      '/api/download/u/deck.apkg?next=/admin',
+      '/api/download/u/deck.apkg#/admin',
       '/api/download/u/..\\evil',
       '/api/download/u/deck\r\nSet-Cookie: x=1',
       '/api/download/u/deck\nLocation: //evil.com',
+      'https://evil.com/api/download/u/x',
     ];
     unsafeDownloadTargets.forEach((target) => {
       it(`blocks an unsafe download target: ${JSON.stringify(target)}`, () => {

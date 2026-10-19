@@ -99,6 +99,7 @@ describe('RequireAuthenticationOrLogin', () => {
       '/login?redirect=%2Fapi%2Fdownload%2Fu%2Fabc'
     );
     expect(res.headers['Cache-Control']).toBe('no-store');
+    expect(res.headers['Vary']).toBe('Accept');
   });
 
   it('returns 401 JSON to an unauthenticated API client', async () => {
