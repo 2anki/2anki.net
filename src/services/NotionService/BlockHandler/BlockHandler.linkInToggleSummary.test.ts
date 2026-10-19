@@ -16,9 +16,17 @@ const defaultAnnotations = {
   color: 'default' as const,
 };
 
-function linkText(content: string, href: string) {
+type TestRichText = {
+  type: 'text';
+  text: { content: string; link: { url: string } | null };
+  annotations: typeof defaultAnnotations;
+  plain_text: string;
+  href: string | null;
+};
+
+function linkText(content: string, href: string): TestRichText {
   return {
-    type: 'text' as const,
+    type: 'text',
     text: { content, link: { url: href } },
     annotations: { ...defaultAnnotations },
     plain_text: content,
@@ -26,9 +34,9 @@ function linkText(content: string, href: string) {
   };
 }
 
-function plainText(content: string) {
+function plainText(content: string): TestRichText {
   return {
-    type: 'text' as const,
+    type: 'text',
     text: { content, link: null },
     annotations: { ...defaultAnnotations },
     plain_text: content,
@@ -36,7 +44,7 @@ function plainText(content: string) {
   };
 }
 
-function toggleWithSummary(id: string, summary: ReturnType<typeof linkText>[]) {
+function toggleWithSummary(id: string, summary: TestRichText[]) {
   return {
     object: 'block' as const,
     id,
@@ -70,6 +78,26 @@ function paragraphChild(id: string, content: string) {
   };
 }
 
+function linkParagraphChild(id: string, content: string, href: string) {
+  return {
+    object: 'block' as const,
+    id,
+    parent: { type: 'block_id' as const, block_id: 'summary-toggle' },
+    created_time: '',
+    last_edited_time: '',
+    created_by: { object: 'user' as const, id: 'user-id' },
+    last_edited_by: { object: 'user' as const, id: 'user-id' },
+    has_children: false,
+    archived: false,
+    in_trash: false,
+    type: 'paragraph' as const,
+    paragraph: {
+      rich_text: [linkText(content, href)],
+      color: 'default' as const,
+    },
+  };
+}
+
 class ChildStubApi extends MockNotionAPI {
   constructor(
     private readonly toggleId: string,
@@ -95,12 +123,13 @@ class ChildStubApi extends MockNotionAPI {
 
 async function runToggle(
   toggleId: string,
-  summary: ReturnType<typeof linkText>[],
-  children: unknown[]
+  summary: TestRichText[],
+  children: unknown[],
+  settings: CardOption = new CardOption({})
 ): Promise<Note[]> {
   const api = new ChildStubApi(toggleId, children);
   const exporter = new CustomExporter('', new Workspace(true, 'fs').location);
-  const bl = new BlockHandler(exporter, api, new CardOption({}));
+  const bl = new BlockHandler(exporter, api, settings);
   return bl.getFlashcards(
     new ParserRules(),
     [toggleWithSummary(toggleId, summary)],
@@ -124,5 +153,25 @@ describe('link inside a toggle summary', () => {
       '<a href="https://example.com/paper" target="_blank" rel="noopener noreferrer">Source paper</a>'
     );
     expect(cards[0].back).toContain('the answer');
+  });
+
+  it('shows only the link text on a plain-text back, not the url in brackets', async () => {
+    const cards = await runToggle(
+      'summary-toggle',
+      [plainText('What is the source?')],
+      [
+        linkParagraphChild(
+          'answer-child',
+          'Source paper',
+          'https://example.com/paper'
+        ),
+      ],
+      new CardOption({ paragraph: 'true' })
+    );
+
+    expect(cards).toHaveLength(1);
+    expect(cards[0].back).toContain('Source paper');
+    expect(cards[0].back).not.toContain('[https://example.com/paper]');
+    expect(cards[0].back).not.toContain('<a');
   });
 });

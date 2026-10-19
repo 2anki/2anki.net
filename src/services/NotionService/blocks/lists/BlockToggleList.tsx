@@ -1,8 +1,7 @@
 import { ToggleBlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import ReactDOMServer from 'react-dom/server';
-import { convert } from 'html-to-text';
-
 import type { IBlockRenderer } from '../../BlockHandler/types';
+import convertTextOnlyBack from '../../helpers/convertTextOnlyBack';
 import renderTextChildren from '../../helpers/renderTextChildren';
 import getChildren from '../../helpers/getChildren';
 import { ReactNode } from 'react';
@@ -52,7 +51,7 @@ export async function BlockToggleList(
   );
 
   if (handler.settings?.isTextOnlyBack) {
-    return convert(markup);
+    return convertTextOnlyBack(markup);
   }
 
   return markup;

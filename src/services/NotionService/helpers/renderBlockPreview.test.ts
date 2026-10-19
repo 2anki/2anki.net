@@ -301,6 +301,14 @@ describe('renderBlockPreview — rich-text hyperlinks', () => {
     );
     expect(html).not.toContain('<a');
   });
+
+  it('escapes a double quote in the href so it cannot break out of the attribute', () => {
+    const html = renderBlockPreview(
+      makeParagraph([makeLinkItem('q', 'https://example.com/?q="x"')])
+    );
+    expect(html).toContain('href="https://example.com/?q=&quot;x&quot;"');
+    expect(html).not.toContain('?q="x"');
+  });
 });
 
 describe('renderBlockPreview — parity with the conversion renderer', () => {

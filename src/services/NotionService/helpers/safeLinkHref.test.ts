@@ -39,6 +39,24 @@ describe('safeLinkHref', () => {
     expect(safeLinkHref('java\tscript:alert(1)')).toBeNull();
   });
 
+  it('rejects a javascript: url with a leading space', () => {
+    expect(safeLinkHref(' javascript:alert(1)')).toBeNull();
+  });
+
+  it('rejects a javascript: url with a leading tab', () => {
+    expect(safeLinkHref('\tjavascript:alert(1)')).toBeNull();
+  });
+
+  it('rejects an uppercase JAVASCRIPT: url', () => {
+    expect(safeLinkHref('JAVASCRIPT:alert(1)')).toBeNull();
+  });
+
+  it('keeps an http(s) url that contains a double quote', () => {
+    expect(safeLinkHref('https://example.com/?q="x"')).toBe(
+      'https://example.com/?q="x"'
+    );
+  });
+
   it('rejects a relative or scheme-less link', () => {
     expect(safeLinkHref('/2f0abc#block')).toBeNull();
   });

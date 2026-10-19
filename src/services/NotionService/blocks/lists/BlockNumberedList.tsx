@@ -3,8 +3,8 @@ import {
   NumberedListItemBlockObjectResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 import ReactDOMServer from 'react-dom/server';
-import { convert } from 'html-to-text';
 import type { IBlockRenderer } from '../../BlockHandler/types';
+import convertTextOnlyBack from '../../helpers/convertTextOnlyBack';
 import getListItems from '../../helpers/getListItems';
 import { styleWithColors } from '../../NotionColors';
 
@@ -27,7 +27,7 @@ export const BlockNumberedList = async (
     </ol>
   );
   if (handler.settings?.isTextOnlyBack) {
-    return convert(markup);
+    return convertTextOnlyBack(markup);
   }
   return markup;
 };
