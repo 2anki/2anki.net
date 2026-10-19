@@ -33,7 +33,11 @@ export function buildConversionCacheKey(
   input: ConversionCacheKeyInput
 ): string {
   const canonical = JSON.stringify({
-    v: 1,
+    // v:2 retires every v:1 entry, which stored card media as plain strings
+    // before the #4809 image-bundling fix; a hit on one would both serve the
+    // old broken output and crash the {path, name} consumers. The bump makes
+    // those decks regenerate under the fix.
+    v: 2,
     content: normalizeContent(input.content),
     mediaFiles: input.mediaFiles,
     userInstructions: input.userInstructions ?? '',

@@ -1023,9 +1023,18 @@ async function buildClaudeDeck(
   }
 
   const deckInfo = aiDecks as unknown as Deck[];
-  const offeredImagesNotUsed = countOfferedImagesNotUsed(
-    deckInfoArrays.flat(),
-    [...mediaFiles, ...perFileFigureNames]
+  // Counted per file against the media that file was actually offered, so an
+  // image handed to one file but skipped there is not masked by another file
+  // using a different image.
+  const htmlFileNames = htmlFiles.map((h) => h.name);
+  const offeredImagesNotUsed = deckInfoArrays.reduce(
+    (sum, decks, i) =>
+      sum +
+      countOfferedImagesNotUsed(decks, [
+        ...mediaFilesForHtmlFile(htmlFiles[i].name, mediaFiles, htmlFileNames),
+        ...(pdfFigureNamesByHtml.get(htmlFiles[i].name) ?? []),
+      ]),
+    0
   );
   console.log('[PrepareDeck] Claude branch: generateDeckInfo done', {
     durationMs: Date.now() - tClaude,

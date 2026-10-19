@@ -2507,6 +2507,16 @@ describe('bundledMediaName', () => {
   it('normalises backslashes and leading slashes', () => {
     expect(bundledMediaName('/a\\b/image.png')).toBe('a_b_image.png');
   });
+
+  it('keeps paths that would otherwise collide distinct by escaping _', () => {
+    const names = [
+      bundledMediaName('a_b/c.png'),
+      bundledMediaName('a/b_c.png'),
+      bundledMediaName('a_b_c.png'),
+    ];
+    expect(names).toEqual(['a__b_c.png', 'a_b__c.png', 'a__b__c.png']);
+    expect(new Set(names).size).toBe(3);
+  });
 });
 
 describe('expandCompactDeckInfo — media bundling', () => {
@@ -2590,6 +2600,58 @@ describe('expandCompactDeckInfo — media bundling', () => {
       '<img src="https://example.com/x.png">'
     );
   });
+
+  it('matches a folder-prefixed reference to a root-level upload file', () => {
+    const decks = expandCompactDeckInfo(
+      [
+        {
+          deck: 'Deck',
+          cards: [{ q: 'Q', a: '<img src="sub/image.png">' }],
+        },
+      ],
+      ['image.png'],
+      null
+    );
+
+    const card = decks[0].cards[0];
+    expect(card.media).toEqual([{ path: 'image.png', name: 'image.png' }]);
+    expect(card.back).toContain('<img src="image.png">');
+  });
+
+  it('leaves data:, protocol-relative and upper-case scheme srcs untouched', () => {
+    const srcs = [
+      'data:image/png;base64,AAAA',
+      '//cdn.example.com/x.png',
+      'HTTPS://example.com/y.png',
+    ];
+    const decks = expandCompactDeckInfo(
+      [
+        {
+          deck: 'Deck',
+          cards: srcs.map((src) => ({ q: 'Q', a: `<img src="${src}">` })),
+        },
+      ],
+      ['x.png', 'y.png'],
+      null
+    );
+
+    decks[0].cards.forEach((card, i) => {
+      expect(card.media).toEqual([]);
+      expect(card.back).toContain(`src="${srcs[i]}"`);
+    });
+  });
+
+  it('does not throw on a stray percent in a filename', () => {
+    const decks = expandCompactDeckInfo(
+      [{ deck: 'Deck', cards: [{ q: 'Q', a: '<img src="100%.png">' }] }],
+      ['100%.png'],
+      null
+    );
+
+    expect(decks[0].cards[0].media).toEqual([
+      { path: '100%.png', name: '100%.png' },
+    ]);
+  });
 });
 
 describe('countOfferedImagesNotUsed', () => {
@@ -2617,5 +2679,33 @@ describe('countOfferedImagesNotUsed', () => {
     );
 
     expect(countOfferedImagesNotUsed(decks, ['notes.pdf'])).toBe(0);
+  });
+
+  it('reads legacy string media without throwing (cached decks)', () => {
+    const legacyDecks = [
+      {
+        name: 'Deck',
+        image: '',
+        style: null,
+        id: 1,
+        settings: {},
+        cards: [
+          {
+            name: 'Q',
+            back: '<img src="used.png">',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: ['used.png'],
+          },
+        ],
+      },
+    ] as unknown as DeckInfo[];
+
+    expect(
+      countOfferedImagesNotUsed(legacyDecks, ['used.png', 'skipped.png'])
+    ).toBe(1);
   });
 });

@@ -472,12 +472,16 @@ function walkHtmlFiles(dir: string): string[] {
   return results;
 }
 
-function walkMediaFiles(dir: string): string[] {
+// Workspace-relative paths, not bare basenames: a restarted Claude job resolves
+// each card's <img src> against this list, and a nested `folderA/image.png`
+// referenced by its full path can only match when the folder survives. Dropping
+// the folder here silently lost those images on the retry path (#4809).
+export function walkMediaFiles(dir: string, root: string = dir): string[] {
   const results: string[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      results.push(...walkMediaFiles(full));
+      results.push(...walkMediaFiles(full, root));
     } else if (
       !isHTMLFile(entry.name) &&
       !isMarkdownFile(entry.name) &&
@@ -486,7 +490,7 @@ function walkMediaFiles(dir: string): string[] {
       entry.name !== CONVERSION_FALLBACK_FILENAME &&
       entry.name !== 'guids.json'
     ) {
-      results.push(entry.name);
+      results.push(path.relative(root, full).replaceAll('\\', '/'));
     }
   }
   return results;

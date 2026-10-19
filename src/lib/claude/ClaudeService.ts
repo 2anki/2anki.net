@@ -269,33 +269,60 @@ export function normalizeTag(raw: string): string {
     .slice(0, 32);
 }
 
+// A stray `%` in a filename (`100%.png`) makes decodeURIComponent throw; the
+// raw value is the right fallback for a name that was never percent-encoded.
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+// A src we should resolve against the upload: a relative path, not a remote
+// URL, a data: URI, or a protocol-relative `//host/...`. Anything carrying a
+// scheme (`https:`, `HTTP:`, `data:`) or a `//` prefix is left exactly as the
+// model emitted it. Matched case-insensitively so `HTTPS://` is not mistaken
+// for a local file.
+function isLocalMediaSrc(src: string): boolean {
+  if (src.startsWith('//')) return false;
+  return !/^[a-z][a-z0-9+.-]*:/i.test(src);
+}
+
 // Resolve a reference the model emitted (an <img src> or a declared media
 // filename) to the actual file in the upload. An exact relative-path match
-// wins; otherwise fall back to the first file whose basename matches, which
-// is how the model's bare `image.png` resolves to `Folder/image.png`. Returns
-// null when nothing in the upload matches so the caller can leave it alone.
+// wins; otherwise fall back to the first file whose basename matches — both a
+// nested `Folder/image.png` and a root-level `image.png`, so the model's bare
+// `image.png` resolves either way. Returns null when nothing matches so the
+// caller can leave the reference alone.
 function matchMediaFile(
   ref: string,
   availableMediaFiles: string[]
 ): string | null {
-  const normalized = decodeURIComponent(ref).replaceAll('\\', '/');
+  const normalized = safeDecodeURIComponent(ref).replaceAll('\\', '/');
   if (availableMediaFiles.includes(normalized)) return normalized;
   const filename = normalized.split('/').pop() ?? normalized;
-  const match = availableMediaFiles.find((f) =>
-    f.replaceAll('\\', '/').endsWith('/' + filename)
-  );
+  const match = availableMediaFiles.find((f) => {
+    const normalizedFile = f.replaceAll('\\', '/');
+    return (
+      normalizedFile === filename || normalizedFile.endsWith('/' + filename)
+    );
+  });
   return match ?? null;
 }
 
-// The collision-free filename a media file is bundled under. Folder-qualifying
-// the name keeps two different `image.png` files from different folders from
-// overwriting each other in the deck's media folder. A file already at the
-// upload root (no folder) keeps its own name, so the common case is unchanged.
+// The collision-free filename a media file is bundled under. `/` becomes `_`
+// so a nested path flattens to one filename, and a literal `_` is first
+// doubled so the transform stays reversible: `a_b/c.png`, `a/b_c.png` and a
+// root `a_b_c.png` each map to a distinct name instead of colliding. A file at
+// the upload root with no `_` keeps its own name, so the common case is
+// unchanged.
 export function bundledMediaName(sourcePath: string): string {
   return sourcePath
     .replaceAll('\\', '/')
     .replace(/^\/+/, '')
-    .replace(/\/+/g, '_');
+    .replaceAll('_', '__')
+    .replaceAll('/', '_');
 }
 
 interface CardMediaRewrite {
@@ -317,10 +344,10 @@ function rewriteCardMediaImages(
   const seen = new Set<string>();
   $('img[src]').each((_, el) => {
     const src = $(el).attr('src') ?? '';
-    if (src.startsWith('http://') || src.startsWith('https://')) return;
+    if (!isLocalMediaSrc(src)) return;
     const matched = matchMediaFile(src, availableMediaFiles);
     if (matched == null) {
-      const filename = decodeURIComponent(src).split('/').pop() ?? src;
+      const filename = safeDecodeURIComponent(src).split('/').pop() ?? src;
       $(el).attr('src', filename);
       return;
     }
@@ -333,8 +360,8 @@ function rewriteCardMediaImages(
   });
   $('a[href]').each((_, el) => {
     const href = $(el).attr('href') ?? '';
-    if (!href.startsWith('http://') && !href.startsWith('https://')) {
-      const filename = decodeURIComponent(href).split('/').pop() ?? href;
+    if (isLocalMediaSrc(href)) {
+      const filename = safeDecodeURIComponent(href).split('/').pop() ?? href;
       $(el).attr('href', filename);
     }
   });
@@ -442,6 +469,13 @@ export function expandCompactDeckInfo(
   }));
 }
 
+// The source path of a media entry. Entries are {path, name} today, but a
+// deck served from the conversion cache can still carry the old string form
+// for the life of its 30-day entry, so read both shapes rather than assume.
+function mediaEntryPath(entry: MediaEntry | string): string {
+  return typeof entry === 'string' ? entry : entry.path;
+}
+
 // How many image files were handed to the model but never referenced by any
 // card it produced. The model skips decorative or redundant images; this is
 // the count of what it left on the table, logged so a user who notices a
@@ -452,9 +486,8 @@ export function countOfferedImagesNotUsed(
 ): number {
   const used = new Set<string>();
   for (const deck of decks) {
-    for (const card of deck.cards) {
-      for (const entry of card.media)
-        used.add(entry.path.replaceAll('\\', '/'));
+    for (const entry of deck.cards.flatMap((card) => card.media)) {
+      used.add(mediaEntryPath(entry).replaceAll('\\', '/'));
     }
   }
   const offeredImages = new Set(

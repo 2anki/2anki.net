@@ -117,8 +117,16 @@ def _normalize_media_entry(entry):
 
 def _copy_media(collection, media_files):
     media_dir = collection.media.dir()
+    cwd_real = os.path.realpath(os.getcwd())
     for source_path, bundled_name in media_files:
-        shutil.copyfile(source_path, os.path.join(media_dir, bundled_name))
+        source_real = os.path.realpath(source_path)
+        if source_real != cwd_real and not source_real.startswith(cwd_real + os.sep):
+            print(
+                f"Skipping media outside the working directory: {source_path}",
+                file=sys.stderr,
+            )
+            continue
+        shutil.copyfile(source_real, os.path.join(media_dir, bundled_name))
 
 
 def fill_collection(collection, deck_payloads, media_files):

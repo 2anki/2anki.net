@@ -239,6 +239,25 @@ def test_same_basename_from_different_folders_both_survive():
     }
 
 
+def test_media_outside_the_working_directory_is_skipped(capsys):
+    parent = tempfile.mkdtemp()
+    workdir = os.path.join(parent, "deck")
+    os.makedirs(workdir)
+    outside = os.path.join(parent, "secret.png")
+    with open(outside, "wb") as handle:
+        handle.write(b"secret")
+    note = _note('<img src="secret.png">', "")
+
+    apkg = _build(
+        [_deck(1, "Deck", [note])],
+        [{"path": outside, "name": "secret.png"}],
+        workdir,
+    )
+
+    assert _media(apkg) == {}
+    assert "outside the working directory" in capsys.readouterr().err
+
+
 def test_note_mod_is_pinned_when_given_and_stamped_otherwise():
     before = int(time.time())
     notes = [_note("Q1", "A1", mod=1_600_000_000), _note("Q2", "A2")]
