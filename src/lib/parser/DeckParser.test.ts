@@ -1111,6 +1111,75 @@ test('Notion figure image: keeps the link when the image points at a different e
   expect(back).toContain('<img');
 });
 
+test('Notion figure image: keeps a page link that wraps an icon and text', async () => {
+  const html = `<html><head><title>Deck</title></head><body><article class="page sans">
+<header><h1 class="page-title">Deck</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>Question</summary>
+<div style="display:contents" dir="ltr"><a href="Other%20Page.html"><img class="icon" src="icon.png">Planets</a></div>
+</details></li></ul></div></article></body></html>`;
+  const ws = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'deck.html',
+    settings: new CardOption({ cherry: 'false' }),
+    files: [{ name: 'deck.html', contents: html }],
+    noLimits: true,
+    workspace: ws,
+  });
+  await parser.writeDeckInfo(ws);
+  const back = parser.payload[0].cards[0].back;
+
+  expect(back).toContain('Planets');
+  expect(back).toContain('href="Other%20Page.html"');
+  expect(back).toContain('<img');
+});
+
+test('Notion figure image: keeps a link that wraps leading text and an image', async () => {
+  const html = `<html><head><title>Deck</title></head><body><article class="page sans">
+<header><h1 class="page-title">Deck</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>Question</summary>
+<div style="display:contents" dir="ltr"><a href="shot.png">See this <img src="shot.png"></a></div>
+</details></li></ul></div></article></body></html>`;
+  const ws = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'deck.html',
+    settings: new CardOption({ cherry: 'false' }),
+    files: [{ name: 'deck.html', contents: html }],
+    noLimits: true,
+    workspace: ws,
+  });
+  await parser.writeDeckInfo(ws);
+  const back = parser.payload[0].cards[0].back;
+
+  expect(back).toContain('See this');
+  expect(back).toContain('href="shot.png"');
+  expect(back).toContain('<img');
+});
+
+test('Notion figure image: an audio link wrapping an image still becomes a sound tag', async () => {
+  const html = `<html><head><title>Deck</title></head><body><article class="page sans">
+<header><h1 class="page-title">Deck</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>Question</summary>
+<div style="display:contents" dir="ltr"><figure><a href="song.mp3"><img src="play.png"></a></figure></div>
+</details></li></ul></div></article></body></html>`;
+  const ws = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'deck.html',
+    settings: new CardOption({ cherry: 'false' }),
+    files: [
+      { name: 'deck.html', contents: html },
+      { name: 'song.mp3', contents: Buffer.from('fake-audio') },
+      { name: 'play.png', contents: Buffer.from('fake-image') },
+    ],
+    noLimits: true,
+    workspace: ws,
+  });
+  await parser.writeDeckInfo(ws);
+  const back = parser.payload[0].cards[0].back;
+
+  expect(back).toContain('[sound:');
+  expect(back).toContain('<img');
+});
+
 test('Notion figure image: embeds image when file found via backslash path (Windows ZIP)', async () => {
   const htmlPath = path.join(
     __dirname,
