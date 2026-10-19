@@ -32,15 +32,19 @@ export class CreateFlashcardsForJobUseCase {
       throw new Error('Failed to update job status');
     }
 
-    // Long database row-page walks bump this between rows so the stale-job
-    // reclaim window cannot elapse mid-walk and dispatch a duplicate.
-    bl.heartbeat = () =>
-      this.jobRepository.updateJobStatus(
+    // Long database row-page walks bump this after each row so the stale-job
+    // reclaim window cannot elapse mid-walk and dispatch a duplicate. A missing
+    // row means the job left the non-terminal states (cancelled or already
+    // reclaimed), so the walk should stop.
+    bl.heartbeat = async () => {
+      const row = await this.jobRepository.updateJobStatus(
         id,
         owner,
         'step2_creating_flashcards',
         ''
       );
+      return row != null;
+    };
 
     return bl.findFlashcards({
       parentType: type ?? 'page',

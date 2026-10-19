@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { APIErrorCode, APIResponseError } from '@notionhq/client';
 import BlockHandler from './BlockHandler';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
@@ -31,6 +32,9 @@ function multiSelectProp(...names: string[]): unknown {
 
 function makeApi(opts: { rows: FakeRow[]; dbName?: string }): NotionAPIWrapper {
   return {
+    notionRequestCount: 0,
+    captureForbiddenBlocks: vi.fn(() => new Set<string>()),
+    restoreForbiddenBlocks: vi.fn(),
     queryDatabase: vi.fn().mockResolvedValue({ results: opts.rows }),
     getDatabase: vi.fn().mockResolvedValue({ id: 'db-1' }),
     getDatabaseTitle: vi.fn().mockResolvedValue(opts.dbName ?? 'Vocabulary'),
@@ -39,6 +43,12 @@ function makeApi(opts: { rows: FakeRow[]; dbName?: string }): NotionAPIWrapper {
 
 interface IdentifiedRow extends FakeRow {
   id: string;
+}
+
+function makeAPIResponseError(code: string): APIResponseError {
+  const err = Object.create(APIResponseError.prototype) as APIResponseError;
+  Object.assign(err, { name: 'APIResponseError', message: code, code });
+  return err;
 }
 
 function richText(content: string) {
@@ -104,29 +114,48 @@ function makeRowPageApi(opts: {
   blocksByPage: Record<string, unknown[]>;
   titlesByPage?: Record<string, string>;
 }): NotionAPIWrapper {
-  return {
-    queryDatabase: vi.fn().mockResolvedValue({ results: opts.rows }),
-    getDatabase: vi.fn().mockResolvedValue({ id: 'db-1' }),
+  // Mirror NotionAPIWrapper's API-layer request counter: every fetch the walk
+  // makes bumps it, so the fetch-budget check behaves as it does in production.
+  let notionRequestCount = 0;
+  const api = {
+    get notionRequestCount() {
+      return notionRequestCount;
+    },
+    captureForbiddenBlocks: vi.fn(() => new Set<string>()),
+    restoreForbiddenBlocks: vi.fn(),
+    queryDatabase: vi.fn(async () => {
+      notionRequestCount += 1;
+      return { results: opts.rows };
+    }),
+    getDatabase: vi.fn(async () => {
+      notionRequestCount += 1;
+      return { id: 'db-1' };
+    }),
     getDatabaseTitle: vi.fn().mockResolvedValue(opts.dbName ?? 'Lectures'),
-    getPage: vi.fn(async (id: string) => ({
-      id,
-      object: 'page',
-      created_time: '',
-      last_edited_time: '',
-    })),
+    getPage: vi.fn(async (id: string) => {
+      notionRequestCount += 1;
+      return { id, object: 'page', created_time: '', last_edited_time: '' };
+    }),
     getPageTitle: vi.fn(
       async (page: { id: string }) => opts.titlesByPage?.[page.id] ?? 'Untitled'
     ),
-    getTopLevelTags: vi.fn().mockResolvedValue([]),
-    getBlocks: vi.fn(async ({ id }: { id: string }) => ({
-      object: 'list',
-      results: opts.blocksByPage[id] ?? [],
-      next_cursor: null,
-      has_more: false,
-      type: 'block',
-      block: {},
-    })),
-  } as unknown as NotionAPIWrapper;
+    getTopLevelTags: vi.fn(async () => {
+      notionRequestCount += 1;
+      return [];
+    }),
+    getBlocks: vi.fn(async ({ id }: { id: string }) => {
+      notionRequestCount += 1;
+      return {
+        object: 'list',
+        results: opts.blocksByPage[id] ?? [],
+        next_cursor: null,
+        has_more: false,
+        type: 'block',
+        block: {},
+      };
+    }),
+  };
+  return api as unknown as NotionAPIWrapper;
 }
 
 function makeHandler(api: NotionAPIWrapper): BlockHandler {
@@ -365,6 +394,7 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       viaPageLinkSelfHeal: false,
       rowPageWalk: true,
       rowPagesSkipped: 0,
+      rowPagesErrored: 0,
     });
   });
 
@@ -441,6 +471,7 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       viaPageLinkSelfHeal: false,
       rowPageWalk: true,
       rowPagesSkipped: 0,
+      rowPagesErrored: 0,
     });
   });
 
@@ -471,6 +502,7 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       viaPageLinkSelfHeal: false,
       rowPageWalk: true,
       rowPagesSkipped: 5,
+      rowPagesErrored: 0,
     });
   });
 
@@ -501,23 +533,66 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       viaPageLinkSelfHeal: false,
       rowPageWalk: true,
       rowPagesSkipped: 0,
+      rowPagesErrored: 0,
     });
   });
 
-  it('bumps the job heartbeat every ten row pages during the walk', async () => {
-    const rows = Array.from({ length: 22 }, (_, i) => ({
+  function rowsWithToggles(count: number): {
+    rows: IdentifiedRow[];
+    blocksByPage: Record<string, unknown[]>;
+  } {
+    const rows = Array.from({ length: count }, (_, i) => ({
       id: `row-${i}`,
       properties: { Name: titleProp(`Lecture ${i}`) },
     }));
     const blocksByPage: Record<string, unknown[]> = {};
-    for (let i = 0; i < 22; i += 1) {
+    for (let i = 0; i < count; i += 1) {
       blocksByPage[`row-${i}`] = [toggleBlock(`t-${i}`, `Q${i}?`)];
       blocksByPage[`t-${i}`] = [paragraphBlock(`a-${i}`, `A${i}.`)];
     }
-    const api = makeRowPageApi({ rows, blocksByPage });
+    return { rows, blocksByPage };
+  }
+
+  it('fires the job heartbeat after every row, even with fewer than ten rows', async () => {
+    const api = makeRowPageApi(rowsWithToggles(3));
     const bl = makeHandler(api);
     bl.useAll = true;
-    const heartbeat = vi.fn().mockResolvedValue(undefined);
+    const heartbeat = vi.fn().mockResolvedValue(true);
+    bl.heartbeat = heartbeat;
+
+    await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(heartbeat).toHaveBeenCalledTimes(3);
+  });
+
+  it('still fires the heartbeat for a row page that throws', async () => {
+    const api = makeRowPageApi({
+      rows: [
+        { id: 'row-1', properties: { Name: titleProp('Lecture 1') } },
+        { id: 'row-2', properties: { Name: titleProp('Lecture 2') } },
+      ],
+      blocksByPage: {
+        'row-2': [toggleBlock('t-2', 'Survivor?')],
+        't-2': [paragraphBlock('p-2', 'Still here.')],
+      },
+    });
+    (api.getPage as ReturnType<typeof vi.fn>).mockImplementation(
+      async (id: string) => {
+        if (id === 'row-1') {
+          throw makeAPIResponseError(APIErrorCode.ObjectNotFound);
+        }
+        return { id, object: 'page', created_time: '', last_edited_time: '' };
+      }
+    );
+    const bl = makeHandler(api);
+    bl.useAll = true;
+    const heartbeat = vi.fn().mockResolvedValue(true);
     bl.heartbeat = heartbeat;
 
     await bl.findFlashcards({
@@ -531,31 +606,15 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     expect(heartbeat).toHaveBeenCalledTimes(2);
   });
 
-  it('stops the walk once the per-conversion fetch budget is spent', async () => {
-    const api = makeRowPageApi({
-      dbName: 'Lectures',
-      rows: [
-        { id: 'row-1', properties: { Name: titleProp('Lecture 1') } },
-        { id: 'row-2', properties: { Name: titleProp('Lecture 2') } },
-        { id: 'row-3', properties: { Name: titleProp('Lecture 3') } },
-      ],
-      titlesByPage: {
-        'row-1': 'Lecture 1',
-        'row-2': 'Lecture 2',
-        'row-3': 'Lecture 3',
-      },
-      blocksByPage: {
-        'row-1': [toggleBlock('t-1', 'First?')],
-        'row-2': [toggleBlock('t-2', 'Second?')],
-        'row-3': [toggleBlock('t-3', 'Third?')],
-        't-1': [paragraphBlock('a-1', 'First answer.')],
-        't-2': [paragraphBlock('a-2', 'Second answer.')],
-        't-3': [paragraphBlock('a-3', 'Third answer.')],
-      },
-    });
+  it('stops the walk when the heartbeat reports the job is gone', async () => {
+    const api = makeRowPageApi(rowsWithToggles(5));
     const bl = makeHandler(api);
     bl.useAll = true;
-    bl.maxRowWalkFetches = 2;
+    let calls = 0;
+    bl.heartbeat = vi.fn(async () => {
+      calls += 1;
+      return calls < 2;
+    });
 
     const decks = await bl.findFlashcards({
       parentType: 'notion-database',
@@ -565,17 +624,53 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       parentName: '',
     });
 
-    expect(decks.filter((d) => d.cards.length > 0).map((d) => d.name)).toEqual([
-      'Lectures::Lecture 1',
-    ]);
+    expect(decks.filter((d) => d.cards.length > 0)).toHaveLength(2);
+    expect(bl.resolvedDatabasePath?.rowPagesSkipped).toBe(3);
+  });
+
+  it('a DB error in the heartbeat does not fail or stop the walk', async () => {
+    const api = makeRowPageApi(rowsWithToggles(3));
+    const bl = makeHandler(api);
+    bl.useAll = true;
+    bl.heartbeat = vi.fn().mockRejectedValue(new Error('db down'));
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.filter((d) => d.cards.length > 0)).toHaveLength(3);
+  });
+
+  it('stops the walk once the per-conversion fetch budget is spent', async () => {
+    const api = makeRowPageApi(rowsWithToggles(3));
+    const bl = makeHandler(api);
+    bl.useAll = true;
+    bl.maxRowWalkFetches = 4;
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    const withCards = decks.filter((d) => d.cards.length > 0);
+    expect(withCards).toHaveLength(1);
+    expect(withCards[0].cards).toHaveLength(1);
     expect(bl.resolvedDatabasePath).toEqual({
       viaPageLinkSelfHeal: false,
       rowPageWalk: true,
       rowPagesSkipped: 2,
+      rowPagesErrored: 0,
     });
   });
 
-  it('keeps walking the remaining rows when one row page fetch throws', async () => {
+  it('skips a row page that 404s and keeps the rest', async () => {
     const api = makeRowPageApi({
       dbName: 'Lectures',
       rows: [
@@ -591,12 +686,13 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     (api.getPage as ReturnType<typeof vi.fn>).mockImplementation(
       async (id: string) => {
         if (id === 'row-1') {
-          throw new Error('boom');
+          throw makeAPIResponseError(APIErrorCode.ObjectNotFound);
         }
         return { id, object: 'page', created_time: '', last_edited_time: '' };
       }
     );
     const bl = makeHandler(api);
+    bl.useAll = true;
 
     const decks = await bl.findFlashcards({
       parentType: 'notion-database',
@@ -608,6 +704,79 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
 
     const withCards = decks.filter((d) => d.cards.length > 0);
     expect(withCards.map((d) => d.name)).toEqual(['Lectures::Lecture 2']);
+    expect(bl.resolvedDatabasePath).toEqual({
+      viaPageLinkSelfHeal: false,
+      rowPageWalk: true,
+      rowPagesSkipped: 0,
+      rowPagesErrored: 1,
+    });
+  });
+
+  it('rethrows a rate-limited row error instead of skipping it', async () => {
+    const api = makeRowPageApi(rowsWithToggles(3));
+    (api.getPage as ReturnType<typeof vi.fn>).mockRejectedValue(
+      makeAPIResponseError(APIErrorCode.RateLimited)
+    );
+    const bl = makeHandler(api);
+    bl.useAll = true;
+
+    await expect(
+      bl.findFlashcards({
+        parentType: 'notion-database',
+        topLevelId: 'db-1',
+        rules: new ParserRules(),
+        decks: [],
+        parentName: '',
+      })
+    ).rejects.toBeInstanceOf(APIResponseError);
+  });
+
+  it('abandons the walk after three consecutive row failures', async () => {
+    const api = makeRowPageApi(rowsWithToggles(10));
+    (api.getPage as ReturnType<typeof vi.fn>).mockRejectedValue(
+      makeAPIResponseError(APIErrorCode.ObjectNotFound)
+    );
+    const bl = makeHandler(api);
+    bl.useAll = true;
+
+    await expect(
+      bl.findFlashcards({
+        parentType: 'notion-database',
+        topLevelId: 'db-1',
+        rules: new ParserRules(),
+        decks: [],
+        parentName: '',
+      })
+    ).rejects.toThrow();
+    expect(api.getPage).toHaveBeenCalledTimes(3);
+  });
+
+  it('never walks row pages when the two columns already produce cards', async () => {
+    const api = makeRowPageApi({
+      rows: [
+        {
+          id: 'row-1',
+          properties: {
+            Term: titleProp('aller'),
+            Definition: richTextProp('to go'),
+          },
+        },
+      ],
+      blocksByPage: {},
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks[0].cards.map((c) => c.name)).toEqual(['aller']);
+    expect(api.getPage).not.toHaveBeenCalled();
+    expect(bl.resolvedDatabasePath).toEqual({ viaPageLinkSelfHeal: false });
   });
 
   it('does not walk row pages when the user explicitly picked columns that do not exist', async () => {

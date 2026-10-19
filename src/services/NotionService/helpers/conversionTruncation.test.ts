@@ -207,6 +207,27 @@ describe('buildNotionConversionSignalPayload', () => {
     expect(JSON.parse(payload as string).row_pages_skipped).toBeUndefined();
   });
 
+  it('records row_pages_errored separately from skipped rows', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      {
+        viaPageLinkSelfHeal: false,
+        rowPageWalk: true,
+        rowPagesSkipped: 2,
+        rowPagesErrored: 1,
+      }
+    );
+    expect(JSON.parse(payload as string)).toEqual({
+      code: 'notion_database_resolved',
+      via_page_link_selfheal: false,
+      row_page_walk: true,
+      row_pages_skipped: 2,
+      row_pages_errored: 1,
+    });
+  });
+
   it('adds via_page_link_selfheal onto the guessed-columns payload rather than competing with it', () => {
     const payload = buildNotionConversionSignalPayload(
       undefined,

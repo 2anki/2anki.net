@@ -25,7 +25,7 @@ import { getParagraphBlocks } from './helpers/getParagraphBlocks';
 import renderIcon from './helpers/renderIcon';
 import getBlockIcon, { WithIcon } from './blocks/getBlockIcon';
 import { uniqueTimerLabel } from './helpers/uniqueTimerLabel';
-import { withRetry } from './helpers/withRetry';
+import { withRetry, WithRetryOptions } from './helpers/withRetry';
 import { fetchPageOrStopOnCursorInvalidation } from './helpers/tolerateCursorInvalidation';
 import { collapseDataSourcesToDatabases } from './helpers/collapseDataSourcesToDatabases';
 import type { IBlocksCacheRepository } from '../../data_layer/BlocksCacheRepository';
@@ -57,6 +57,12 @@ class NotionAPIWrapper {
 
   private forbiddenBlockIds = new Set<string>();
 
+  // Per-instance count of Notion SDK operations issued through countedRetry —
+  // every wrapper method routes through it, so this captures page/block fetches,
+  // pagination pages, database queries, searches, and single-block refreshes.
+  // The database row-page walk reads it to enforce its per-conversion budget.
+  notionRequestCount = 0;
+
   constructor(
     key: string,
     owner: string,
@@ -69,6 +75,16 @@ class NotionAPIWrapper {
 
   get forbiddenBlockCount(): number {
     return this.forbiddenBlockIds.size;
+  }
+
+  // Snapshot/restore the forbidden-block set so a speculative pass (the database
+  // row-page walk) can roll back the ids it recorded if it decides not to ship.
+  captureForbiddenBlocks(): Set<string> {
+    return new Set(this.forbiddenBlockIds);
+  }
+
+  restoreForbiddenBlocks(snapshot: Set<string>): void {
+    this.forbiddenBlockIds = snapshot;
   }
 
   // Notion answers 403 restricted_resource for blocks the integration can see
@@ -86,6 +102,14 @@ class NotionAPIWrapper {
     }
   }
 
+  private countedRetry<T>(
+    operation: () => Promise<T>,
+    options?: WithRetryOptions
+  ): Promise<T> {
+    this.notionRequestCount += 1;
+    return withRetry(operation, options);
+  }
+
   getPage(id: string): Promise<GetPageResponse | null> {
     if (!isValidNotionId(id)) {
       console.info(
@@ -94,9 +118,12 @@ class NotionAPIWrapper {
       );
       return Promise.resolve(null);
     }
-    return withRetry(() => this.notion.pages.retrieve({ page_id: id }), {
-      label: 'pages.retrieve',
-    }).then((result) => {
+    return this.countedRetry(
+      () => this.notion.pages.retrieve({ page_id: id }),
+      {
+        label: 'pages.retrieve',
+      }
+    ).then((result) => {
       notionCallRingBuffer.record();
       return result;
     });
@@ -138,7 +165,7 @@ class NotionAPIWrapper {
     }
     let response: ListBlockChildrenResponse;
     try {
-      response = await withRetry(
+      response = await this.countedRetry(
         () =>
           this.notion.blocks.children.list({
             block_id: id,
@@ -157,7 +184,7 @@ class NotionAPIWrapper {
       while (true) {
         const nextPage = await fetchPageOrStopOnCursorInvalidation(
           () =>
-            withRetry(
+            this.countedRetry(
               () =>
                 this.notion.blocks.children.list({
                   block_id: id,
@@ -202,7 +229,7 @@ class NotionAPIWrapper {
 
   async getBlock(id: string): Promise<GetBlockResponse> {
     try {
-      return await withRetry(
+      return await this.countedRetry(
         () => this.notion.blocks.retrieve({ block_id: id }),
         { label: 'blocks.retrieve' }
       );
@@ -221,7 +248,7 @@ class NotionAPIWrapper {
     id: string,
     options: { pageSize?: number; startCursor?: string } = {}
   ): Promise<ListBlockChildrenResponse> {
-    return withRetry(
+    return this.countedRetry(
       () =>
         this.notion.blocks.children.list({
           block_id: id,
@@ -252,7 +279,7 @@ class NotionAPIWrapper {
     parentId: string,
     children: BlockObjectRequest[]
   ): Promise<ListBlockChildrenResponse> {
-    return withRetry(
+    return this.countedRetry(
       () =>
         this.notion.blocks.children.append({
           block_id: parentId,
@@ -263,7 +290,7 @@ class NotionAPIWrapper {
   }
 
   createPage(parentPageId: string, title: string): Promise<CreatePageResponse> {
-    return withRetry(
+    return this.countedRetry(
       () =>
         this.notion.pages.create({
           parent: { page_id: parentPageId },
@@ -300,7 +327,7 @@ class NotionAPIWrapper {
   }
 
   getDatabase(id: string): Promise<GetDatabaseResponse> {
-    return withRetry(
+    return this.countedRetry(
       () => this.notion.databases.retrieve({ database_id: id }),
       { label: 'databases.retrieve' }
     );
@@ -313,7 +340,7 @@ class NotionAPIWrapper {
     const queryLabel = uniqueTimerLabel(`queryDatabasePreview:${id}`);
     console.time(queryLabel);
 
-    const database = await withRetry(
+    const database = await this.countedRetry(
       () => this.notion.databases.retrieve({ database_id: id }),
       { label: 'databases.retrieve:queryDatabasePreview' }
     );
@@ -325,7 +352,7 @@ class NotionAPIWrapper {
     }
 
     const firstDataSource = dataSources[0];
-    const response = await withRetry(
+    const response = await this.countedRetry(
       () =>
         this.notion.dataSources.query({
           data_source_id: firstDataSource.id,
@@ -348,7 +375,7 @@ class NotionAPIWrapper {
     const queryLabel = uniqueTimerLabel(`queryDatabase:${id}${all}`);
     console.time(queryLabel);
 
-    const database = await withRetry(
+    const database = await this.countedRetry(
       () => this.notion.databases.retrieve({ database_id: id }),
       { label: 'databases.retrieve:queryDatabase' }
     );
@@ -369,7 +396,7 @@ class NotionAPIWrapper {
         const response: QueryDataSourceResponse | null =
           await fetchPageOrStopOnCursorInvalidation(
             () =>
-              withRetry(
+              this.countedRetry(
                 () =>
                   this.notion.dataSources.query({
                     data_source_id: dataSource.id,
@@ -420,7 +447,7 @@ class NotionAPIWrapper {
     for (let page = 0; page < maxPages; page++) {
       const response = await fetchPageOrStopOnCursorInvalidation(
         () =>
-          withRetry(
+          this.countedRetry(
             () =>
               this.notion.search({
                 page_size: DEFAULT_PAGE_SIZE_LIMIT,
@@ -495,7 +522,7 @@ class NotionAPIWrapper {
       parent: { type: string };
     }>
   > {
-    const response: SearchResponse = await withRetry(
+    const response: SearchResponse = await this.countedRetry(
       () =>
         this.notion.search({
           page_size: DEFAULT_PAGE_SIZE_LIMIT,
@@ -567,7 +594,7 @@ class NotionAPIWrapper {
     for (let page = 0; page < SEARCH_MAX_PAGES; page++) {
       const response = await fetchPageOrStopOnCursorInvalidation(
         () =>
-          withRetry(
+          this.countedRetry(
             () =>
               this.notion.search({
                 page_size: DEFAULT_PAGE_SIZE_LIMIT,
