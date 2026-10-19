@@ -42,6 +42,9 @@ import {
   shouldShowThinDeckNotice,
 } from './components/ThinDeckNotice';
 import { ImageDropNotice } from './components/ImageDropNotice';
+import { PartialDeckNotice } from './components/PartialDeckNotice';
+import { parseDroppedAssetsPayload } from './helpers/parseDroppedAssetsPayload';
+import { hasTruncationSignal } from './helpers/hasTruncationSignal';
 import { NotionColumnMappingModal } from '../../components/NotionColumnMappingModal/NotionColumnMappingModal';
 import {
   parseAmbiguousColumnsPayload,
@@ -594,6 +597,11 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                               row.job.type === 'database');
                           const { candidateSkips, reason: thinDeckReason } =
                             getThinDeckSignal(row.job);
+                          const droppedAssetCount = isNotionDoneRow
+                            ? (parseDroppedAssetsPayload(row.job) ?? 0)
+                            : 0;
+                          const isTruncatedRow =
+                            isNotionDoneRow && hasTruncationSignal(row.job);
                           const doneDownloadKey =
                             isDoneJob(row.job.status) &&
                             row.job.download_key != null
@@ -826,6 +834,34 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     </td>
                                   </tr>
                                 )}
+                              {isTruncatedRow && (
+                                <tr key={`job-${row.job.id}-partial`}>
+                                  <td
+                                    colSpan={4}
+                                    className={styles.emptyTogglePanel}
+                                  >
+                                    <PartialDeckNotice
+                                      onSeeReport={() =>
+                                        setReportModalJob(row.job)
+                                      }
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                              {droppedAssetCount > 0 && (
+                                <tr key={`job-${row.job.id}-dropped-assets`}>
+                                  <td
+                                    colSpan={4}
+                                    className={styles.emptyTogglePanel}
+                                  >
+                                    <ImageDropNotice
+                                      count={droppedAssetCount}
+                                      source="notion"
+                                      surface="downloads_row"
+                                    />
+                                  </td>
+                                </tr>
+                              )}
                               {doneDownloadKey != null &&
                                 distributionPanelKey === doneDownloadKey && (
                                   <tr key={`job-${row.job.id}-distribution`}>

@@ -66,6 +66,9 @@
     "converted": "Converted the first {{count}} blocks. The free plan stops there — <pricingLink>upgrade to convert the whole page</pricingLink>.",
     "subDeckSkipped": "Sub-deck rules from toggles, headings, and databases apply on paid plans — this deck converted without them."
   },
+  "partialDeck": {
+    "notice": "Only part of this page converted, so the rest is not in this deck."
+  },
   "unsupportedBlocks": {
     "text_one": "{{count}} block on this page couldn't be converted ({{types}}).",
     "text_other": "{{count}} blocks on this page couldn't be converted ({{types}})."

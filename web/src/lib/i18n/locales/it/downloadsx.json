@@ -66,6 +66,9 @@
     "converted": "Convertiti i primi {{count}} blocchi. Il piano gratuito si ferma qui — <pricingLink>passa a un piano superiore per convertire l'intera pagina</pricingLink>.",
     "subDeckSkipped": "Le regole dei sottomazzi da interruttori, intestazioni e database si applicano ai piani a pagamento — questo mazzo è stato convertito senza di esse."
   },
+  "partialDeck": {
+    "notice": "È stata convertita solo una parte di questa pagina, quindi il resto non è in questo mazzo."
+  },
   "unsupportedBlocks": {
     "text_one": "Non è stato possibile convertire {{count}} blocco di questa pagina ({{types}}).",
     "text_other": "Non è stato possibile convertire {{count}} blocchi di questa pagina ({{types}})."

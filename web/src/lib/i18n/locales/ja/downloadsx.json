@@ -56,6 +56,9 @@
     "converted": "最初の {{count}} ブロックを変換しました。無料プランはここまでです — <pricingLink>アップグレードしてページ全体を変換</pricingLink>。",
     "subDeckSkipped": "トグル、見出し、データベースによるサブデッキのルールは有料プランで適用されます — このデッキはそれらなしで変換されました。"
   },
+  "partialDeck": {
+    "notice": "このページの一部だけが変換されたため、残りはこのデッキに含まれていません。"
+  },
   "unsupportedBlocks": {
     "text_other": "このページの {{count}} 個のブロックを変換できませんでした（{{types}}）。"
   },

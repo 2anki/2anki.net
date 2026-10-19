@@ -66,6 +66,9 @@
     "converted": "Die ersten {{count}} Blöcke konvertiert. Der kostenlose Tarif endet dort — <pricingLink>upgrade, um die ganze Seite zu konvertieren</pricingLink>.",
     "subDeckSkipped": "Unterstapel-Regeln aus Umschaltern, Überschriften und Datenbanken gelten in kostenpflichtigen Tarifen — dieser Stapel wurde ohne sie konvertiert."
   },
+  "partialDeck": {
+    "notice": "Nur ein Teil dieser Seite wurde konvertiert, der Rest ist nicht in diesem Stapel."
+  },
   "unsupportedBlocks": {
     "text_one": "{{count}} Block auf dieser Seite konnte nicht konvertiert werden ({{types}}).",
     "text_other": "{{count}} Blöcke auf dieser Seite konnten nicht konvertiert werden ({{types}})."

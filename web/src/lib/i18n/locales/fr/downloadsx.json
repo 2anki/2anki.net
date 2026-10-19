@@ -66,6 +66,9 @@
     "converted": "Les {{count}} premiers blocs ont été convertis. Le forfait gratuit s'arrête là — <pricingLink>passez à un forfait supérieur pour convertir toute la page</pricingLink>.",
     "subDeckSkipped": "Les règles de sous-paquets issues des bascules, titres et bases de données s'appliquent aux forfaits payants — ce paquet a été converti sans elles."
   },
+  "partialDeck": {
+    "notice": "Seule une partie de cette page a été convertie, le reste n'est pas dans ce paquet."
+  },
   "unsupportedBlocks": {
     "text_one": "{{count}} bloc de cette page n'a pas pu être converti ({{types}}).",
     "text_other": "{{count}} blocs de cette page n'ont pas pu être convertis ({{types}})."

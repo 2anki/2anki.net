@@ -66,6 +66,9 @@
     "converted": "De eerste {{count}} blokken zijn geconverteerd. Het gratis abonnement stopt daar — <pricingLink>upgrade om de hele pagina te converteren</pricingLink>.",
     "subDeckSkipped": "Subpakketregels uit schakelaars, koppen en databases gelden bij betaalde abonnementen — dit pakket is zonder deze geconverteerd."
   },
+  "partialDeck": {
+    "notice": "Slechts een deel van deze pagina is geconverteerd, dus de rest zit niet in dit pakket."
+  },
   "unsupportedBlocks": {
     "text_one": "{{count}} blok op deze pagina kon niet worden geconverteerd ({{types}}).",
     "text_other": "{{count}} blokken op deze pagina konden niet worden geconverteerd ({{types}})."

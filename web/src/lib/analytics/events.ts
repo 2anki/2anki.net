@@ -85,6 +85,7 @@ export const KNOWN_EVENTS = new Set([
   'empty_back_notice_shown',
   'color_flatten_notice_shown',
   'thin_deck_notice_shown',
+  'partial_deck_notice_shown',
   'mindmap_created',
   'mindmap_export_excluded_nodes',
   'image_only_photo_deck_shown',

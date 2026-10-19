@@ -66,6 +66,9 @@
     "converted": "Os primeiros {{count}} blocos foram convertidos. O plano gratuito para por aí — <pricingLink>faça upgrade para converter a página inteira</pricingLink>.",
     "subDeckSkipped": "As regras de subbaralhos de alternadores, títulos e bancos de dados se aplicam nos planos pagos — este baralho foi convertido sem elas."
   },
+  "partialDeck": {
+    "notice": "Apenas parte desta página foi convertida, então o restante não está neste baralho."
+  },
   "unsupportedBlocks": {
     "text_one": "Não foi possível converter {{count}} bloco desta página ({{types}}).",
     "text_other": "Não foi possível converter {{count}} blocos desta página ({{types}})."

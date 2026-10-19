@@ -462,6 +462,7 @@ class BlockHandler implements IBlockRenderer {
       all: this.useAll,
       type: block.type,
     });
+    this.recordNestedTruncation(response);
     const requestChildren = await expandSyncedBlocks(
       response.results,
       this.api,
@@ -576,6 +577,7 @@ class BlockHandler implements IBlockRenderer {
           all: this.useAll,
           type: tableBlock.type,
         });
+        this.recordNestedTruncation(tableChildren);
         const tableCards = tableRowsToCards(tableBlock, tableChildren, this);
         for (const { front, back: tableBack, isCloze } of tableCards) {
           const ankiNote = new Note(front, tableBack);
@@ -973,6 +975,7 @@ class BlockHandler implements IBlockRenderer {
         all: this.useAll,
         type: column.type,
       });
+      this.recordNestedTruncation(response);
       const children = await expandSyncedBlocks(
         response.results,
         this.api,
@@ -1116,6 +1119,7 @@ class BlockHandler implements IBlockRenderer {
           all: this.useAll,
           type: block.type,
         });
+        this.recordNestedTruncation(response);
         children = await expandSyncedBlocks(
           response.results,
           this.api,
@@ -1554,6 +1558,7 @@ class BlockHandler implements IBlockRenderer {
       all: this.useAll,
       type: block.type,
     });
+    this.recordNestedTruncation(res);
     const childBlocks = await expandSyncedBlocks(
       res.results,
       this.api,
@@ -1623,6 +1628,18 @@ class BlockHandler implements IBlockRenderer {
         this.truncation?.subDeckRulesSkipped === true ||
         hasRuleBasedSubDecks(rules),
     };
+  }
+
+  // A toggle body, table, column, section, or sub-deck can itself run past the
+  // free window even when the page's own block list fit. That content is lost
+  // the same way, so flag the partial signal here. blocksConverted stays the
+  // count of page-level blocks (recordTruncation owns it) — a nested fetch only
+  // marks that the conversion stopped short, it never inflates the page count.
+  private recordNestedTruncation(response: ListBlockChildrenResponse): void {
+    if (!isTruncatedBlockFetch(this.useAll, response)) {
+      return;
+    }
+    this.truncation ??= { blocksConverted: 0, subDeckRulesSkipped: false };
   }
 
   private async handleChildDatabase(

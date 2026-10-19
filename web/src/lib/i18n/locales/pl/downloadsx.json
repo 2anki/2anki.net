@@ -86,6 +86,9 @@
     "converted": "Przekonwertowano pierwsze {{count}} bloków. Darmowy plan kończy się tutaj — <pricingLink>przejdź na wyższy plan, aby przekonwertować całą stronę</pricingLink>.",
     "subDeckSkipped": "Reguły podtalii z przełączników, nagłówków i baz danych obowiązują w planach płatnych — ta talia została przekonwertowana bez nich."
   },
+  "partialDeck": {
+    "notice": "Przekonwertowano tylko część tej strony, więc reszta nie znajduje się w tej talii."
+  },
   "unsupportedBlocks": {
     "text_one": "{{count}} blok na tej stronie nie mógł zostać przekonwertowany ({{types}}).",
     "text_few": "{{count}} bloki na tej stronie nie mogły zostać przekonwertowane ({{types}}).",
