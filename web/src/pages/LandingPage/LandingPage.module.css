@@ -34,6 +34,29 @@
   margin-bottom: 1rem;
 }
 
+.heroCentered {
+  text-align: center;
+}
+
+.heroCentered .heroTitle,
+.heroCentered .heroSubhead {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mascot {
+  display: block;
+  width: auto;
+  height: 140px;
+  margin: 0 auto 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .mascot {
+    height: 100px;
+  }
+}
+
 .secondaryLink {
   font-size: var(--text-sm);
   color: var(--color-text-tertiary);
