@@ -175,13 +175,13 @@ describe('readCheckoutAttribution', () => {
     vi.mocked(consentRegionForRequest).mockReset().mockReturnValue('eea');
   });
 
-  it('lets the consented ad_click cookie win a tag both carry', () => {
+  it('takes every campaign tag from the cookie when it carries any, so campaigns never mix', () => {
     const req = {
       cookies: {
         cookie_consent: 'granted',
         ad_click: cookie({ gclid: 'abc', utm_campaign: 'cookie' }),
       },
-      body: { campaign: { utm_campaign: 'body' } },
+      body: { campaign: { utm_source: 'news', utm_campaign: 'body' } },
     } as never;
     expect(readCheckoutAttribution(req)).toEqual({
       gclid: 'abc',
@@ -230,6 +230,8 @@ describe('readCheckoutAttribution', () => {
           gclid: 'abc',
           gbraid: 'def',
           landing: '/pricing',
+          pass_kind: '120d',
+          user_id: '1',
           utm_content: 'ad-1',
           utm_campaign: 'brand',
         },

@@ -3,9 +3,10 @@ import { consentRegionForRequest } from '../http/consentRegion';
 
 /**
  * Attribution the web app stores in the `ad_click` cookie when a visitor lands
- * from an ad (Google click ids + utm_* + landing path). Parsed here once so the
- * same sanitized shape reaches Stripe Checkout metadata, the signup row and the
- * funnel events.
+ * from an ad (Google click ids + utm_* + landing path). Parsed here once so
+ * the same sanitized shape reaches Stripe Checkout metadata, the signup row
+ * and the funnel events. Checkout also accepts the campaign tags the page
+ * sends in the body (readCheckoutAttribution).
  */
 export type AdClickAttribution = Partial<
   Record<
@@ -197,10 +198,11 @@ function parseCampaign(raw: unknown): AdClickAttribution {
 export function readCheckoutAttribution(
   req: express.Request
 ): AdClickAttribution | undefined {
+  const fromCookie = readAdClickCookie(req) ?? {};
+  if (CAMPAIGN_KEYS.some((key) => fromCookie[key] != null)) {
+    return fromCookie;
+  }
   const body = req.body as Record<string, unknown> | undefined;
-  const merged = {
-    ...parseCampaign(body?.campaign),
-    ...readAdClickCookie(req),
-  };
+  const merged = { ...fromCookie, ...parseCampaign(body?.campaign) };
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
