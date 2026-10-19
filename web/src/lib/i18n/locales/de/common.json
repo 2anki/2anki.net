@@ -832,7 +832,7 @@
     "pdfPageRange": {
       "label": "Seiten",
       "placeholder": "z. B. 12-30, 45",
-      "hint": "Funktioniert nur beim Hochladen einer einzelnen PDF. Wandelt nur diese Seiten um; nutze Bereiche wie 12-30, 45. Leer lassen, um das ganze PDF umzuwandeln."
+      "hint": "Funktioniert nur beim Hochladen eines einzelnen PDFs. Wandelt nur diese Seiten um; nutze Bereiche wie 12-30, 45. Leer lassen, um das ganze PDF umzuwandeln."
     },
     "mcq": {
       "heading": "Multiple-Choice-Fragen (MCQ)",

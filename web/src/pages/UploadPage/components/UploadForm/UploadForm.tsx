@@ -521,6 +521,8 @@ function UploadForm({
   const attachPdfPageRange = (formData: FormData) => {
     if (pdfPageRangeRef.current != null) {
       formData.set('pdf-page-range', pdfPageRangeRef.current);
+    } else {
+      formData.delete('pdf-page-range');
     }
   };
   const [dayPassError, setDayPassError] = useState<string | null>(null);
@@ -959,6 +961,8 @@ function UploadForm({
   const handleDropboxFiles = async (files: DropboxFile[]) => {
     const first = files[0];
     setRescueFiles([]);
+    setNetworkRetryFiles(null);
+    setLockedPdfInfo(null);
     capturePdfPageRange();
     setDropboxFilename(first?.name ?? null);
     setDropboxError(null);
@@ -1014,6 +1018,8 @@ function UploadForm({
   ) => {
     const first = files[0];
     setRescueFiles([]);
+    setNetworkRetryFiles(null);
+    setLockedPdfInfo(null);
     capturePdfPageRange();
     setDriveFilename(first?.name ?? null);
     setDriveMimeType(first?.mimeType ?? null);
@@ -2404,7 +2410,6 @@ function UploadForm({
         formData.append(key, value);
       }
 
-      attachPdfPageRange(formData);
       const request = await globalThis.fetch(
         '/api/upload/retry-with-credential',
         {
