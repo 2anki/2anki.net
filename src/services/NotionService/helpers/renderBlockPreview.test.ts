@@ -3,7 +3,12 @@ import {
   renderBlockSummary,
   renderBlockPreview,
 } from './renderBlockPreview';
-import { BlockObjectResponse } from '@notionhq/client/build/src/api-endpoints';
+import {
+  BlockObjectResponse,
+  RichTextItemResponse,
+} from '@notionhq/client/build/src/api-endpoints';
+import renderTextChildren from './renderTextChildren';
+import CardOption from '../../../lib/parser/Settings';
 
 function makeBlock(
   type: string,
@@ -15,6 +20,27 @@ function makeBlock(
     object: 'block',
     id: 'test-id',
   } as unknown as BlockObjectResponse; // minimal fixture; Notion SDK types require full shape
+}
+
+function makeLinkItem(plainText: string, href: string): RichTextItemResponse {
+  return {
+    type: 'text',
+    plain_text: plainText,
+    href,
+    annotations: {
+      bold: false,
+      italic: false,
+      strikethrough: false,
+      underline: false,
+      code: false,
+      color: 'default',
+    },
+    text: { content: plainText, link: { url: href } },
+  } as unknown as RichTextItemResponse;
+}
+
+function makeParagraph(items: RichTextItemResponse[]): BlockObjectResponse {
+  return makeBlock('paragraph', { rich_text: items, color: 'default' });
 }
 
 describe('isExpandable', () => {
@@ -247,6 +273,57 @@ describe('renderBlockPreview — link_preview', () => {
       url: 'https://x.com/"onload=alert(1)',
     });
     expect(renderBlockPreview(block)).toContain('&quot;');
+  });
+});
+
+describe('renderBlockPreview — rich-text hyperlinks', () => {
+  it('renders a link with rel="noopener noreferrer"', () => {
+    const html = renderBlockPreview(
+      makeParagraph([makeLinkItem('Anki docs', 'https://docs.ankiweb.net/')])
+    );
+    expect(html).toContain('href="https://docs.ankiweb.net/"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+
+  it('drops a javascript: href and keeps the plain text', () => {
+    const html = renderBlockPreview(
+      makeParagraph([makeLinkItem('click me', 'javascript:alert(1)')])
+    );
+    expect(html).toBe('<p>click me</p>');
+    expect(html).not.toContain('<a');
+  });
+
+  it('drops a data: href and keeps the plain text', () => {
+    const html = renderBlockPreview(
+      makeParagraph([
+        makeLinkItem('payload', 'data:text/html,<script>alert(1)</script>'),
+      ])
+    );
+    expect(html).not.toContain('<a');
+  });
+
+  it('escapes a double quote in the href so it cannot break out of the attribute', () => {
+    const html = renderBlockPreview(
+      makeParagraph([makeLinkItem('q', 'https://example.com/?q="x"')])
+    );
+    expect(html).toContain('href="https://example.com/?q=&quot;x&quot;"');
+    expect(html).not.toContain('?q="x"');
+  });
+});
+
+describe('renderBlockPreview — parity with the conversion renderer', () => {
+  const settings = new CardOption(CardOption.LoadDefaultOptions());
+
+  it('produces the same anchor markup as renderTextChildren for a plain link', () => {
+    const item = makeLinkItem(
+      'Anki documentation',
+      'https://docs.ankiweb.net/'
+    );
+    const converted = renderTextChildren([item], settings);
+
+    expect(renderBlockPreview(makeParagraph([item]))).toBe(
+      `<p>${converted}</p>`
+    );
   });
 });
 

@@ -2,6 +2,7 @@ import {
   BlockObjectResponse,
   RichTextItemResponse,
 } from '@notionhq/client/build/src/api-endpoints';
+import safeLinkHref from './safeLinkHref';
 
 function escapeHtml(input: string): string {
   return input
@@ -20,8 +21,9 @@ function applyAnnotations(item: RichTextItemResponse, text: string): string {
   if (annotations.italic) html = `<em>${html}</em>`;
   if (annotations.underline) html = `<u>${html}</u>`;
   if (annotations.strikethrough) html = `<s>${html}</s>`;
-  if (item.href) {
-    html = `<a href="${escapeHtml(item.href)}" target="_blank" rel="noreferrer">${html}</a>`;
+  const href = safeLinkHref(item.href);
+  if (href) {
+    html = `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${html}</a>`;
   }
   return html;
 }

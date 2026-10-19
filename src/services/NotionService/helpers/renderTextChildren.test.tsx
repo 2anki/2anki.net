@@ -43,6 +43,20 @@ function makeText(
   } as unknown as RichTextItemResponse;
 }
 
+function makeLink(
+  plainText: string,
+  href: string,
+  annotations: Partial<typeof baseAnnotations> = {}
+): RichTextItemResponse {
+  return {
+    type: 'text',
+    plain_text: plainText,
+    href,
+    annotations: { ...baseAnnotations, ...annotations },
+    text: { content: plainText, link: { url: href } },
+  } as unknown as RichTextItemResponse;
+}
+
 function makeEquation(
   expression: string,
   annotations: Partial<typeof baseAnnotations> = {}
@@ -170,6 +184,60 @@ describe('renderTextChildren — inline colors', () => {
     );
     expect(result).toContain('color:#0B6E99');
     expect(result).toContain('<strong>');
+  });
+});
+
+describe('renderTextChildren — hyperlinks', () => {
+  it('renders a rich-text link as an anchor with its href', () => {
+    const result = renderTextChildren(
+      [makeLink('Anki documentation', 'https://docs.ankiweb.net/')],
+      defaultSettings
+    );
+
+    expect(result).toBe(
+      '<a href="https://docs.ankiweb.net/" target="_blank" rel="noopener noreferrer">Anki documentation</a>'
+    );
+  });
+
+  it('wraps the full annotation stack so a bold link stays bold and linked', () => {
+    const result = renderTextChildren(
+      [makeLink('source', 'https://example.com/paper', { bold: true })],
+      defaultSettings
+    );
+
+    expect(result).toContain(
+      '<a href="https://example.com/paper" target="_blank" rel="noopener noreferrer">'
+    );
+    expect(result).toContain('<strong>source</strong>');
+  });
+
+  it('renders a mailto link', () => {
+    const result = renderTextChildren(
+      [makeLink('email us', 'mailto:study@example.com')],
+      defaultSettings
+    );
+
+    expect(result).toContain('href="mailto:study@example.com"');
+  });
+
+  it('drops a javascript: href and keeps the plain text', () => {
+    const result = renderTextChildren(
+      [makeLink('click me', 'javascript:alert(1)')],
+      defaultSettings
+    );
+
+    expect(result).toBe('click me');
+    expect(result).not.toContain('<a');
+  });
+
+  it('drops a data: href and keeps the plain text', () => {
+    const result = renderTextChildren(
+      [makeLink('payload', 'data:text/html,<script>alert(1)</script>')],
+      defaultSettings
+    );
+
+    expect(result).toBe('payload');
+    expect(result).not.toContain('<a');
   });
 });
 
