@@ -112,7 +112,6 @@ import { ISettingsRepository } from '../data_layer/SettingsRepository';
 import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
-import { resolveAnonymousPartialArm } from '../lib/upload/anonymousPartialDelivery';
 import { InMemoryHeldDeckRepository } from '../data_layer/HeldDeckRepository';
 import {
   ANONYMOUS_CARD_CAP,
@@ -5395,16 +5394,7 @@ describe('UploadService.handleUpload — failure events for the success-rate til
 describe('UploadService.handleSyncUpload — anonymous partial delivery', () => {
   const originalWorkspaceBase = process.env.WORKSPACE_BASE;
 
-  function anonIdForArm(target: 'control' | 'treatment'): string {
-    for (let i = 0; i < 10000; i += 1) {
-      const id = `probe-${i}`;
-      if (resolveAnonymousPartialArm(id, true) === target) return id;
-    }
-    throw new Error(`no anonymous id resolved to ${target}`);
-  }
-
-  const TREATMENT_ID = anonIdForArm('treatment');
-  const CONTROL_ID = anonIdForArm('control');
+  const TREATMENT_ID = 'anon-held';
 
   beforeAll(() => {
     process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
@@ -5704,10 +5694,10 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(props).not.toHaveProperty('arm');
   });
 
-  it('delivers an at-cap control upload unchanged with no held-back header', async () => {
+  it('delivers an at-cap upload with no anonymous id unchanged with no held-back header', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }]);
-    const req = buildEligibleRequest(CONTROL_ID);
+    const req = buildEligibleRequest();
     const { res, capturedStatus } = buildResponse();
 
     await serviceUnderTest().handleUpload(req, res);
@@ -5720,10 +5710,10 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(props).not.toHaveProperty('arm');
   });
 
-  it('refuses an over-cap control upload with the arm and card-count bucket props', async () => {
+  it('refuses an over-cap upload with no anonymous id with the arm and card-count bucket props', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
-    const req = buildEligibleRequest(CONTROL_ID);
+    const req = buildEligibleRequest();
     const { res, capturedSend, redirectedTo } = responseWithRedirect();
 
     await serviceUnderTest().handleUpload(req, res);

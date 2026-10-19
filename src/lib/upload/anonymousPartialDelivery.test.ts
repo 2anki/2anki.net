@@ -6,24 +6,17 @@ describe('resolveAnonymousPartialArm', () => {
     expect(resolveAnonymousPartialArm(null, false)).toBe('off');
   });
 
-  it('puts a request with no anonymous id in the control arm when enabled', () => {
+  it('keeps the limit wall for a request with no anonymous id', () => {
     expect(resolveAnonymousPartialArm(null, true)).toBe('control');
     expect(resolveAnonymousPartialArm('', true)).toBe('control');
   });
 
-  it('assigns a stable arm for the same id', () => {
-    const first = resolveAnonymousPartialArm('anon-stable', true);
-    const second = resolveAnonymousPartialArm('anon-stable', true);
-    expect(second).toBe(first);
-    expect(['control', 'treatment']).toContain(first);
-  });
-
-  it('splits ids across both arms when enabled', () => {
+  it('holds the deck for every visitor with an anonymous id', () => {
     const arms = new Set(
       Array.from({ length: 200 }, (_, i) =>
         resolveAnonymousPartialArm(`anon-${i}`, true)
       )
     );
-    expect(arms).toEqual(new Set(['control', 'treatment']));
+    expect(arms).toEqual(new Set(['treatment']));
   });
 });

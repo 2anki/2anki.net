@@ -15,7 +15,7 @@ description: What's allowed on each plan, and how long your decks stick around.
 
 The free monthly limit counts cards across **every** conversion path — file uploads, `.zip`, Notion, all of them — not just Notion. The counter resets at the start of each calendar month.
 
-Without an account, each conversion is capped at 21 cards. Sign up for a free account to get the full 100 cards per month.
+Without an account, each conversion is capped at 21 cards. When a single file makes more, the first 21 are ready and the rest are kept for 24 hours: sign up for a free account to get the rest, up to 100 cards per month.
 
 ## File size
 
