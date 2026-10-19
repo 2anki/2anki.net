@@ -349,7 +349,7 @@
     "explore": {
       "heading": "Crea mazzi migliori",
       "sub": "Tre impostazioni che vale la pena conoscere.",
-      "mcqBody": "Attiva MCQ e la tua prossima conversione includerà carte a scelta multipla accanto a quelle standard.",
+      "mcqBody": "Trasforma le domande che hai contrassegnato in carte a scelta multipla: un'opzione spuntata o, in un export di Notion, un punto elenco in grassetto. Non scrive nuove domande.",
       "mcqCta": "Attiva MCQ",
       "photoBody": "Scatta una foto a una pagina di libro, a una slide di lezione o ad appunti scritti a mano — 2anki crea le carte dall'immagine.",
       "freePhotoHint": "Piano gratuito: 5 foto al mese",

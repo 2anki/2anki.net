@@ -349,7 +349,7 @@
     "explore": {
       "heading": "Make better decks",
       "sub": "Three settings worth knowing about.",
-      "mcqBody": "Turn on MCQ and your next conversion includes multiple-choice cards alongside standard ones.",
+      "mcqBody": "Turns questions you marked into multiple-choice cards: one option checked, or in a Notion export one bullet bolded. It doesn't write new questions.",
       "mcqCta": "Turn on MCQ",
       "photoBody": "Snap a textbook page, lecture slide, or handwritten notes — 2anki builds the cards from the image.",
       "freePhotoHint": "Free plan: 5 photos per month",

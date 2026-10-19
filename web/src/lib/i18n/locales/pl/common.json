@@ -393,7 +393,7 @@
     "explore": {
       "heading": "Twórz lepsze talie",
       "sub": "Trzy ustawienia, które warto znać.",
-      "mcqBody": "Włącz MCQ, a Twoja następna konwersja obejmie karty wielokrotnego wyboru obok standardowych.",
+      "mcqBody": "Zamienia pytania oznaczone jako pytanie wielokrotnego wyboru w karty wielokrotnego wyboru: jedna opcja zaznaczona lub, w eksporcie Notion, jeden punkt pogrubiony. Nie pisze nowych pytań.",
       "mcqCta": "Włącz MCQ",
       "photoBody": "Zrób zdjęcie strony podręcznika, slajdu z wykładu lub odręcznych notatek — 2anki tworzy karty z obrazu.",
       "freePhotoHint": "Plan darmowy: 5 zdjęć miesięcznie",

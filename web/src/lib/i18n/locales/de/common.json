@@ -349,7 +349,7 @@
     "explore": {
       "heading": "Bessere Stapel erstellen",
       "sub": "Drei Einstellungen, die du kennen solltest.",
-      "mcqBody": "Aktiviere MCQ, und deine nächste Konvertierung enthält neben den Standardkarten auch Multiple-Choice-Karten.",
+      "mcqBody": "Macht aus den von dir markierten Fragen Multiple-Choice-Karten: eine Option angehakt oder in einem Notion-Export ein Aufzählungspunkt fett. Neue Fragen werden nicht geschrieben.",
       "mcqCta": "MCQ aktivieren",
       "photoBody": "Fotografiere eine Lehrbuchseite, eine Vorlesungsfolie oder handschriftliche Notizen — 2anki erstellt die Karten aus dem Bild.",
       "freePhotoHint": "Kostenloser Plan: 5 Fotos pro Monat",
