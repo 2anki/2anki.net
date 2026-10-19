@@ -3836,7 +3836,10 @@ describe('UploadService.restartClaudeJob — replays the PDF-image-fallback flag
 
     const args = await restartAndWaitForGenerate();
 
-    expect(args[1]).toEqual(['page-1.png']);
+    // Workspace-relative, matching the HTML's <img src="scan.pdf/page-1.png">.
+    // The bare basename this used to assert could never match that nested src
+    // on the non-fallback resolution path; the marker file stays excluded.
+    expect(args[1]).toEqual(['scan.pdf/page-1.png']);
   });
 });
 
