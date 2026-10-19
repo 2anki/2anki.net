@@ -111,5 +111,7 @@
     "keepReading": "Je eerdere chats blijven hier leesbaar.",
     "seePlans": "Bekijk abonnementen"
   },
-  "aiCreditsExhausted": "Je AI-credits zijn op. Een eenmalige bijvulling, geen abonnement, is genoeg voor meerdere decks extra en blijft 90 dagen geldig. Of wacht op je gratis reset."
+  "aiCreditsExhausted": "Je AI-credits zijn op. Een eenmalige bijvulling, geen abonnement, is genoeg voor meerdere decks extra en blijft 90 dagen geldig. Of wacht op je gratis reset.",
+  "aiCreditsExhaustedPlan": "Je AI-credits zijn op. Een eenmalige bijvulling is genoeg voor meerdere decks extra en blijft 90 dagen geldig. Of wacht tot de credits van je plan weer worden aangevuld.",
+  "aiCreditsExhaustedPass": "De AI-credits van je pass zijn op. Een eenmalige bijvulling is genoeg voor meerdere decks extra."
 }

@@ -138,9 +138,10 @@ import {
 } from '../lib/pdf/pdfPasswordSentinel';
 import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
-  AI_CREDITS_EXHAUSTED_WARNING_TEXT,
+  aiCreditsExhaustedWarningText,
   includesAiCreditsWarning,
 } from '../lib/claude/aiCredits/uploadWarning';
+import { CreditWindowReset } from '../lib/claude/aiCredits/allowance';
 import {
   AiCreditsExhaustedError,
   getAiBudgetStatus,
@@ -239,15 +240,34 @@ function strayClozeWarning(count: number): string {
   return `${subject} cloze syntax like {{c1::text}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.`;
 }
 
-function aiCreditsWarningText(warnings: string[]): string | null {
+function aiCreditsWarningText(
+  warnings: string[],
+  resets: CreditWindowReset | null
+): string | null {
   if (warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE)) {
-    return AI_CREDITS_EXHAUSTED_WARNING_TEXT;
+    return aiCreditsExhaustedWarningText(resets);
   }
   return null;
 }
 
+// The exhausted copy promises a reset only when one is real. Pass holders
+// (`resets: 'pass'`) have `isPaying` true but no reset inside the pass window,
+// so the word chosen must come from the credit window's reset type, read from
+// the same balance the guard uses, not from whether the user is paying.
+async function aiCreditsResetType(
+  warnings: string[] | undefined,
+  userId: number | null
+): Promise<CreditWindowReset | null> {
+  if (userId == null || !includesAiCreditsWarning(warnings)) {
+    return null;
+  }
+  const status = await getAiBudgetStatus(userId);
+  return status.balance?.resets ?? null;
+}
+
 export function resolveUploadWarning(
-  warnings: string[] | undefined
+  warnings: string[] | undefined,
+  resets: CreditWindowReset | null
 ): string | null {
   if (!warnings || warnings.length === 0) return null;
   for (const warning of warnings) {
@@ -258,7 +278,7 @@ export function resolveUploadWarning(
     w.includes('password-protected')
   );
   if (passwordWarning) return passwordWarning;
-  const creditsWarning = aiCreditsWarningText(warnings);
+  const creditsWarning = aiCreditsWarningText(warnings, resets);
   if (creditsWarning) return creditsWarning;
   let duplicateGuids = 0;
   for (const warning of warnings) {
@@ -1921,7 +1941,10 @@ class UploadService {
         res.set('X-Structure-Rescued', rescuedRule);
         exposedHeaders.push('X-Structure-Rescued');
       }
-      const warningText = resolveUploadWarning(syncWarnings);
+      const warningText = resolveUploadWarning(
+        syncWarnings,
+        await aiCreditsResetType(syncWarnings, syncOwnerId)
+      );
       if (warningText) {
         res.set('X-Warning', latin1HeaderValue(warningText));
         exposedHeaders.push('X-Warning');
@@ -1993,12 +2016,16 @@ class UploadService {
     if (owner != null) {
       await this.usersRepository.incrementCardUsage(owner, totalCards);
     }
+    const batchResetType = await aiCreditsResetType(
+      warnings,
+      syncOwnerIdOrNull
+    );
     return res
       .status(200)
       .json(
         await this.buildBatchResponse(
           ws,
-          resolveUploadWarning(warnings),
+          resolveUploadWarning(warnings, batchResetType),
           sumDroppedImages(packages),
           totalEmptyBackCount,
           shippedRescueRule(packages),

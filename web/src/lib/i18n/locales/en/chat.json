@@ -111,5 +111,7 @@
     "keepReading": "Your past chats stay here to read.",
     "seePlans": "See plans"
   },
-  "aiCreditsExhausted": "You're out of AI credits. A one-time top-up, no subscription, adds enough for several more decks and stays good for 90 days. Or wait for your free reset."
+  "aiCreditsExhausted": "You're out of AI credits. A one-time top-up, no subscription, adds enough for several more decks and stays good for 90 days. Or wait for your free reset.",
+  "aiCreditsExhaustedPlan": "You're out of AI credits. A one-time top-up adds enough for several more decks and stays good for 90 days. Or wait for your plan's credits to reset.",
+  "aiCreditsExhaustedPass": "Your pass's AI credits are used up. A one-time top-up adds enough for several more decks."
 }

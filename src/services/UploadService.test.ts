@@ -5077,20 +5077,20 @@ describe('UploadService.handleUpload — image drops without a vision path (#440
 
 describe('resolveUploadWarning — stray cloze markup', () => {
   it('turns the coded count into user copy, summing across decks', () => {
-    expect(resolveUploadWarning(['stray-cloze:2', 'stray-cloze:1'])).toBe(
+    expect(resolveUploadWarning(['stray-cloze:2', 'stray-cloze:1'], null)).toBe(
       '3 cards contain cloze syntax like {{c1::text}} but cloze mode is off, so the braces show on the card. Turn on cloze mode and convert again.'
     );
   });
 
   it('uses the singular for one card', () => {
-    expect(resolveUploadWarning(['stray-cloze:1'])).toMatch(
+    expect(resolveUploadWarning(['stray-cloze:1'], null)).toMatch(
       /^1 card contains cloze syntax/
     );
   });
 
   it('keeps the markdown heuristic warning ahead of stray cloze', () => {
     expect(
-      resolveUploadWarning(['stray-cloze:1', 'markdown-heuristic'])
+      resolveUploadWarning(['stray-cloze:1', 'markdown-heuristic'], null)
     ).toMatch(/heuristic detection/);
   });
 });
@@ -5098,7 +5098,10 @@ describe('resolveUploadWarning — stray cloze markup', () => {
 describe('resolveUploadWarning — package over the AnkiWeb sync limit', () => {
   it('turns the coded size into the sync warning and ranks it first', () => {
     expect(
-      resolveUploadWarning(['markdown-heuristic', 'apkg-over-100mb:210.4'])
+      resolveUploadWarning(
+        ['markdown-heuristic', 'apkg-over-100mb:210.4'],
+        null
+      )
     ).toBe(
       "This deck is 210.4 MB. AnkiWeb won't sync packages over 100 MB, so split it into smaller decks before syncing."
     );
@@ -5108,45 +5111,71 @@ describe('resolveUploadWarning — package over the AnkiWeb sync limit', () => {
 describe('resolveUploadWarning — notes sharing a guid', () => {
   it('turns the coded count into user copy, summing across packages', () => {
     expect(
-      resolveUploadWarning(['duplicate-guid:2', 'duplicate-guid:1'])
+      resolveUploadWarning(['duplicate-guid:2', 'duplicate-guid:1'], null)
     ).toMatch(/^3 cards are exact duplicates/);
   });
 
   it('ranks below the sync-size warning and above the markdown heuristic', () => {
     expect(
-      resolveUploadWarning(['duplicate-guid:1', 'apkg-over-100mb:210.4'])
+      resolveUploadWarning(['duplicate-guid:1', 'apkg-over-100mb:210.4'], null)
     ).toMatch(/^This deck is 210.4 MB/);
     expect(
-      resolveUploadWarning([
-        'markdown-heuristic',
-        'stray-cloze:2',
-        'duplicate-guid:1',
-      ])
+      resolveUploadWarning(
+        ['markdown-heuristic', 'stray-cloze:2', 'duplicate-guid:1'],
+        null
+      )
     ).toMatch(/^1 card is an exact duplicate/);
   });
 });
 
 describe('resolveUploadWarning — AI credits exhausted', () => {
-  it('explains the deck was built without AI and ranks above markdown', () => {
-    expect(
-      resolveUploadWarning(['markdown-heuristic', 'ai-credits-exhausted'])
-    ).toBe(
-      "You're out of AI credits, so this deck was built without AI. A one-time top-up, no subscription, adds enough for several more decks and stays good for 90 days. Or wait for your free reset."
+  it('falls back to the no-reset line when the balance read fails (null)', () => {
+    const text = resolveUploadWarning(
+      ['markdown-heuristic', 'ai-credits-exhausted'],
+      null
     );
+    expect(text).toMatch(/built without AI/);
+    expect(text).not.toMatch(/free/);
+    expect(text).not.toMatch(/reset/);
+    expect(text).not.toMatch(/90 days/);
+  });
+
+  it('points a subscription plan at its own reset, never a free one', () => {
+    const text = resolveUploadWarning(
+      ['markdown-heuristic', 'ai-credits-exhausted'],
+      'period'
+    );
+    expect(text).toMatch(/built without AI/);
+    expect(text).not.toMatch(/free/);
+    expect(text).toMatch(/Or wait for your plan's credits to reset\./);
+  });
+
+  it('promises a pass holder no reset, since a pass does not reset', () => {
+    const text = resolveUploadWarning(
+      ['markdown-heuristic', 'ai-credits-exhausted'],
+      'pass'
+    );
+    expect(text).toMatch(/built without AI/);
+    expect(text).not.toMatch(/free/);
+    expect(text).not.toMatch(/reset/);
+    expect(text).not.toMatch(/90 days/);
   });
 
   it('keeps the oversize warning ahead of the credits notice', () => {
     expect(
-      resolveUploadWarning(['ai-credits-exhausted', 'apkg-over-100mb:210.4'])
+      resolveUploadWarning(
+        ['ai-credits-exhausted', 'apkg-over-100mb:210.4'],
+        null
+      )
     ).toMatch(/AnkiWeb won't sync/);
   });
 
   it('keeps the locked-PDF notice ahead of the credits notice', () => {
     expect(
-      resolveUploadWarning([
-        'ai-credits-exhausted',
-        'This PDF is password-protected.',
-      ])
+      resolveUploadWarning(
+        ['ai-credits-exhausted', 'This PDF is password-protected.'],
+        null
+      )
     ).toMatch(/password-protected/);
   });
 });

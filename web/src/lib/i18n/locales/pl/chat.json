@@ -121,5 +121,7 @@
     "keepReading": "Twoje wcześniejsze czaty nadal możesz tu czytać.",
     "seePlans": "Zobacz plany"
   },
-  "aiCreditsExhausted": "Skończyły Ci się kredyty AI. Jednorazowe doładowanie, bez subskrypcji, wystarczy na kilka kolejnych talii i jest ważne 90 dni. Albo poczekaj na darmowe odnowienie."
+  "aiCreditsExhausted": "Skończyły Ci się kredyty AI. Jednorazowe doładowanie, bez subskrypcji, wystarczy na kilka kolejnych talii i jest ważne 90 dni. Albo poczekaj na darmowe odnowienie.",
+  "aiCreditsExhaustedPlan": "Skończyły Ci się kredyty AI. Jednorazowe doładowanie wystarczy na kilka kolejnych talii i jest ważne 90 dni. Albo poczekaj na odnowienie kredytów z Twojego planu.",
+  "aiCreditsExhaustedPass": "Kredyty AI z Twojego karnetu się skończyły. Jednorazowe doładowanie wystarczy na kilka kolejnych talii."
 }
