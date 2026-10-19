@@ -158,6 +158,30 @@ describe('buildNotionConversionSignalPayload', () => {
     });
   });
 
+  it('flags a row-page walk on an otherwise-clean database conversion', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      { viaPageLinkSelfHeal: false, rowPageWalk: true }
+    );
+    expect(JSON.parse(payload as string)).toEqual({
+      code: 'notion_database_resolved',
+      via_page_link_selfheal: false,
+      row_page_walk: true,
+    });
+  });
+
+  it('omits row_page_walk when the database resolved as two-column rows', () => {
+    const payload = buildNotionConversionSignalPayload(
+      undefined,
+      0,
+      undefined,
+      { viaPageLinkSelfHeal: false }
+    );
+    expect(JSON.parse(payload as string).row_page_walk).toBeUndefined();
+  });
+
   it('adds via_page_link_selfheal onto the guessed-columns payload rather than competing with it', () => {
     const payload = buildNotionConversionSignalPayload(
       undefined,

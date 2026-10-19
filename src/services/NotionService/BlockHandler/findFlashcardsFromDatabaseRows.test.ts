@@ -5,6 +5,7 @@ import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
 import ParserRules from '../../../lib/parser/ParserRules';
 import Workspace from '../../../lib/parser/WorkSpace';
 import NotionAPIWrapper from '../NotionAPIWrapper';
+import { NotionDatabaseColumnsError } from '../helpers/NotionDatabaseColumnsError';
 import { setupTests } from '../../../test/configure-jest';
 
 beforeEach(() => setupTests());
@@ -26,6 +27,98 @@ function makeApi(opts: { rows: FakeRow[]; dbName?: string }): NotionAPIWrapper {
     queryDatabase: vi.fn().mockResolvedValue({ results: opts.rows }),
     getDatabase: vi.fn().mockResolvedValue({ id: 'db-1' }),
     getDatabaseTitle: vi.fn().mockResolvedValue(opts.dbName ?? 'Vocabulary'),
+  } as unknown as NotionAPIWrapper;
+}
+
+interface IdentifiedRow extends FakeRow {
+  id: string;
+}
+
+function richText(content: string) {
+  return {
+    type: 'text' as const,
+    text: { content, link: null },
+    annotations: {
+      bold: false,
+      italic: false,
+      strikethrough: false,
+      underline: false,
+      code: false,
+      color: 'default' as const,
+    },
+    plain_text: content,
+    href: null,
+  };
+}
+
+function toggleBlock(id: string, front: string) {
+  return {
+    object: 'block',
+    id,
+    parent: { type: 'page_id', page_id: 'row' },
+    created_time: '',
+    last_edited_time: '',
+    created_by: { object: 'user', id: 'u' },
+    last_edited_by: { object: 'user', id: 'u' },
+    has_children: true,
+    archived: false,
+    in_trash: false,
+    type: 'toggle',
+    toggle: {
+      rich_text: [richText(front)],
+      color: 'default',
+    },
+  };
+}
+
+function paragraphBlock(id: string, text: string) {
+  return {
+    object: 'block',
+    id,
+    parent: { type: 'block_id', block_id: 'parent' },
+    created_time: '',
+    last_edited_time: '',
+    created_by: { object: 'user', id: 'u' },
+    last_edited_by: { object: 'user', id: 'u' },
+    has_children: false,
+    archived: false,
+    in_trash: false,
+    type: 'paragraph',
+    paragraph: {
+      rich_text: [richText(text)],
+      color: 'default',
+    },
+  };
+}
+
+function makeRowPageApi(opts: {
+  rows: IdentifiedRow[];
+  dbName?: string;
+  blocksByPage: Record<string, unknown[]>;
+  titlesByPage?: Record<string, string>;
+}): NotionAPIWrapper {
+  return {
+    queryDatabase: vi.fn().mockResolvedValue({ results: opts.rows }),
+    getDatabase: vi.fn().mockResolvedValue({ id: 'db-1' }),
+    getDatabaseTitle: vi.fn().mockResolvedValue(opts.dbName ?? 'Lectures'),
+    getPage: vi.fn(async (id: string) => ({
+      id,
+      object: 'page',
+      created_time: '',
+      last_edited_time: '',
+    })),
+    getPageTitle: vi.fn(
+      async (page: { id: string }) => opts.titlesByPage?.[page.id] ?? 'Untitled'
+    ),
+    getTopLevelTags: vi.fn().mockResolvedValue([]),
+    getBlocks: vi.fn(async ({ id }: { id: string }) => ({
+      object: 'list',
+      results: opts.blocksByPage[id] ?? [],
+      next_cursor: null,
+      has_more: false,
+      type: 'block',
+      block: {},
+    })),
   } as unknown as NotionAPIWrapper;
 }
 
@@ -206,9 +299,12 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     expect(bl.guessedColumnMapping).toBeUndefined();
   });
 
-  it('still fails when the database has only one column to map', async () => {
-    const api = makeApi({
-      rows: [{ properties: { Notes: titleProp('x') } }],
+  it('still fails with the column error when the single column and its row pages are both empty of cards', async () => {
+    const api = makeRowPageApi({
+      rows: [{ id: 'row-1', properties: { Notes: titleProp('x') } }],
+      blocksByPage: {
+        'row-1': [paragraphBlock('p-1', 'just prose, nothing card-shaped')],
+      },
     });
     const bl = makeHandler(api);
 
@@ -223,6 +319,102 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     ).rejects.toThrow(
       'This database has only one column, "Notes". Cards need a front and a back column. Add a text column for the back, fill it in, then convert again.'
     );
+  });
+
+  it('walks row pages into sub-decks when a Name-only database has toggles in its rows', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [
+        { id: 'row-1', properties: { Name: titleProp('Lecture 1') } },
+        { id: 'row-2', properties: { Name: titleProp('Lecture 2') } },
+      ],
+      titlesByPage: { 'row-1': 'Lecture 1', 'row-2': 'Lecture 2' },
+      blocksByPage: {
+        'row-1': [toggleBlock('t-1', 'What is a neuron?')],
+        'row-2': [toggleBlock('t-2', 'What is a synapse?')],
+        't-1': [paragraphBlock('p-1', 'A nerve cell.')],
+        't-2': [paragraphBlock('p-2', 'A junction between neurons.')],
+      },
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.map((d) => d.name)).toEqual([
+      'Lectures::Lecture 1',
+      'Lectures::Lecture 2',
+    ]);
+    expect(decks[0].cards.map((c) => c.name)).toEqual(['What is a neuron?']);
+    expect(decks[1].cards.map((c) => c.name)).toEqual(['What is a synapse?']);
+    expect(bl.resolvedDatabasePath).toEqual({
+      viaPageLinkSelfHeal: false,
+      rowPageWalk: true,
+    });
+  });
+
+  it('keeps row pages in database order and skips rows whose page has no cards', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [
+        { id: 'row-1', properties: { Name: titleProp('Lecture 1') } },
+        { id: 'row-2', properties: { Name: titleProp('Lecture 2') } },
+        { id: 'row-3', properties: { Name: titleProp('Lecture 3') } },
+      ],
+      titlesByPage: {
+        'row-1': 'Lecture 1',
+        'row-2': 'Lecture 2',
+        'row-3': 'Lecture 3',
+      },
+      blocksByPage: {
+        'row-1': [toggleBlock('t-1', 'First?')],
+        'row-2': [paragraphBlock('p-2', 'empty row, no toggles')],
+        'row-3': [toggleBlock('t-3', 'Third?')],
+        't-1': [paragraphBlock('a-1', 'First answer.')],
+        't-3': [paragraphBlock('a-3', 'Third answer.')],
+      },
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    const decksWithCards = decks.filter((d) => d.cards.length > 0);
+    expect(decksWithCards.map((d) => [d.name, d.cards[0].name])).toEqual([
+      ['Lectures::Lecture 1', 'First?'],
+      ['Lectures::Lecture 3', 'Third?'],
+    ]);
+  });
+
+  it('does not walk row pages when the user explicitly picked columns that do not exist', async () => {
+    const api = makeRowPageApi({
+      rows: [{ id: 'row-1', properties: { Name: titleProp('Lecture 1') } }],
+      blocksByPage: { 'row-1': [toggleBlock('t-1', 'Would be a card')] },
+    });
+    const bl = makeHandler(api);
+
+    await expect(
+      bl.findFlashcards({
+        parentType: 'notion-database',
+        topLevelId: 'db-1',
+        rules: new ParserRules(),
+        decks: [],
+        parentName: '',
+        frontField: 'Nope',
+        backField: 'Also Nope',
+      })
+    ).rejects.toThrow(NotionDatabaseColumnsError);
+    expect(api.getPage).not.toHaveBeenCalled();
   });
 
   it('asks for rows when the database has none', async () => {

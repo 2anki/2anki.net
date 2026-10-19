@@ -67,6 +67,7 @@ import {
   ConversionTruncation,
   hasRuleBasedSubDecks,
   isTruncatedBlockFetch,
+  ResolvedDatabasePath,
 } from '../helpers/conversionTruncation';
 import { downloadWithFreshUrlRetry } from '../helpers/downloadWithFreshUrlRetry';
 import { expandSyncedBlocks } from '../helpers/expandSyncedBlocks';
@@ -111,6 +112,12 @@ const PAGE_LIKE_DECK_TYPES = new Set([
 // than cards. They are excluded when flattening a column layout so a child page
 // nested in a column keeps its existing behaviour instead of becoming a sub-deck.
 const NON_CARD_DECK_TYPES = new Set(['child_page', 'child_database']);
+
+// Mirrors MAX_DATABASE_PAGES in services/ankify/notionPageWalker — the shared
+// ceiling on how many database row pages one conversion walks. Kept local so
+// the one-shot converter does not pull the Ankify notion-render module graph
+// into its load path for a single number.
+const MAX_DATABASE_ROW_PAGES = 250;
 
 // Container blocks that Notion lets a user nest a toggle inside but which the
 // top-level walk never recurses into, so a toggle wrapped in one was dropped
@@ -261,7 +268,7 @@ class BlockHandler implements IBlockRenderer {
 
   inducedRule?: InducedRescue;
 
-  resolvedDatabasePath?: { viaPageLinkSelfHeal: boolean };
+  resolvedDatabasePath?: ResolvedDatabasePath;
 
   droppedImageAssetCount = 0;
 
@@ -848,6 +855,23 @@ class BlockHandler implements IBlockRenderer {
       !columnNames.includes(frontField) ||
       !columnNames.includes(backField)
     ) {
+      const explicitFields =
+        locator.frontField != null || locator.backField != null;
+      if (!explicitFields) {
+        const rowPageDecks = await this.findFlashcardsFromDatabaseRowPages(
+          dbResult.results,
+          dbName,
+          locator.rules
+        );
+        if (rowPageDecks.some((rowDeck) => rowDeck.cards.length > 0)) {
+          this.resolvedDatabasePath = {
+            viaPageLinkSelfHeal,
+            rowPageWalk: true,
+          };
+          decks.push(...rowPageDecks);
+          return decks;
+        }
+      }
       throw new NotionDatabaseColumnsError(columnNames, {
         frontField: locator.frontField,
         backField: locator.backField,
@@ -892,6 +916,47 @@ class BlockHandler implements IBlockRenderer {
     );
     decks.push(deck);
     return decks;
+  }
+
+  // No column pair yields a front and a back — a Name-only database, say, where
+  // the real content lives in toggles inside each row's page. Walk those pages
+  // the way Auto Sync does (walkNotionDatabaseForFlashcards): a database row is
+  // a Notion page, so the existing page path turns its toggles into cards.
+  // Each row becomes a sub-deck under the database deck, in database order.
+  // Capped at MAX_DATABASE_ROW_PAGES, the ceiling the Ankify database walk
+  // shares; each row page's block fetch still honours this.useAll (the plan
+  // budget), and the monthly card limit truncates the combined decks downstream.
+  private async findFlashcardsFromDatabaseRowPages(
+    rows: unknown[],
+    databaseName: string,
+    rules: ParserRules
+  ): Promise<Deck[]> {
+    const rowDecks: Deck[] = [];
+    const globalSeenIds = new Set<string>();
+    const limit = Math.min(rows.length, MAX_DATABASE_ROW_PAGES);
+    for (let i = 0; i < limit; i += 1) {
+      const rowId = (rows[i] as { id?: unknown }).id;
+      if (typeof rowId !== 'string') {
+        continue;
+      }
+      await this.findFlashcardsFromPage(
+        {
+          parentType: 'page',
+          topLevelId: rowId,
+          rules,
+          decks: rowDecks,
+          parentName: databaseName,
+        },
+        globalSeenIds
+      );
+    }
+    const withCards = rowDecks.filter((deck) => deck.cards.length > 0).length;
+    if (withCards > 0) {
+      console.info(
+        `[notion] database row-page walk produced ${withCards} sub-deck(s) with cards`
+      );
+    }
+    return rowDecks;
   }
 
   async findFlashcardsFromPage(
