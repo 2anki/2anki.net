@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-19-nested-toggle-card-options-copy",
+  "date": "2026-10-19",
+  "type": "fix",
+  "title": "Card options now explain that a nested toggle stays on its parent card's back, so keep toggles at the top level to get one card each"
+}

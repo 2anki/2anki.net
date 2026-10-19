@@ -11,7 +11,7 @@
     },
     "all": {
       "label": "Usa tutti gli elenchi toggle",
-      "description": "Prende i toggle da qualsiasi punto della pagina, anche quelli annidati. Se disattivato, solo i toggle di primo livello diventano carte."
+      "description": "Sugli export Notion caricati, prende i toggle da qualsiasi punto della pagina, anche quelli dentro elenchi, callout o colonne. Se disattivato, solo i toggle di primo livello diventano carte."
     },
     "paragraph": {
       "label": "Usa testo semplice per il retro",
@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Massimo un toggle per carta",
-      "description": "Mantiene ogni carta concentrata su un solo toggle. Combinalo con Usa tutti gli elenchi toggle per trasformare ogni toggle annidato in una carta a sé."
+      "description": "Ogni toggle di primo livello diventa una carta. Un toggle annidato dentro un altro resta sul retro della carta principale e non diventa una carta a sé. Per ottenere una carta per ogni toggle, tienili al primo livello invece di annidarli."
     },
     "remove-mp3-links": {
       "label": "Rimuovi i link MP3 dai file audio",

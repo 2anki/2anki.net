@@ -11,7 +11,7 @@
     },
     "all": {
       "label": "Użyj wszystkich list rozwijanych",
-      "description": "Pobieraj listy rozwijane z całej strony, także zagnieżdżone. Wyłączone: kartami stają się tylko listy rozwijane najwyższego poziomu."
+      "description": "W przesłanych eksportach Notion pobieraj listy rozwijane z całej strony, także te w listach, wyróżnieniach lub kolumnach. Wyłączone: kartami stają się tylko listy rozwijane najwyższego poziomu."
     },
     "paragraph": {
       "label": "Użyj zwykłego tekstu na tyle",
@@ -71,7 +71,7 @@
     },
     "max-one-toggle-per-card": {
       "label": "Maksymalnie jedna lista rozwijana na kartę",
-      "description": "Każda karta skupia się na jednej liście rozwijanej. Połącz z opcją Użyj wszystkich list rozwijanych, aby każda zagnieżdżona lista rozwijana stała się osobną kartą."
+      "description": "Każda lista rozwijana na najwyższym poziomie staje się jedną kartą. Lista rozwijana zagnieżdżona w innej pozostaje na tyle karty nadrzędnej i nie staje się osobną kartą. Aby uzyskać kartę na każdą listę rozwijaną, zostaw je na najwyższym poziomie, zamiast je zagnieżdżać."
     },
     "remove-mp3-links": {
       "label": "Usuń linki MP3 z plików audio",

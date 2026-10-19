@@ -786,7 +786,7 @@
       "iconLast": "Icono al final",
       "iconDisable": "Desactivar",
       "toggleModeLabel": "Modo de alternancia",
-      "toggleModeHint": "Encabezado de la alternancia = anverso de la tarjeta; contenido = reverso. Las alternancias anidadas se convierten en sus propias tarjetas. Abrir expande el contenido anidado; Cerrar lo mantiene contraído para un repaso paso a paso.",
+      "toggleModeHint": "Encabezado de la alternancia = anverso de la tarjeta; contenido = reverso. Una alternancia anidada permanece en el reverso de la tarjeta principal en lugar de convertirse en su propia tarjeta. Abrir expande el contenido anidado; Cerrar lo mantiene contraído para un repaso paso a paso.",
       "toggleOpen": "Abrir alternancias anidadas",
       "toggleClose": "Cerrar alternancias anidadas",
       "removeNumberingLabel": "Quitar la numeración de los nombres de mazos",

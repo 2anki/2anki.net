@@ -786,7 +786,7 @@
       "iconLast": "Icona alla fine",
       "iconDisable": "Disattiva",
       "toggleModeLabel": "Modalità toggle",
-      "toggleModeHint": "Intestazione del toggle = fronte della carta; contenuto = retro della carta. I toggle annidati diventano carte a sé. Apri espande i contenuti annidati; Chiudi li tiene compressi per uno studio passo passo.",
+      "toggleModeHint": "Intestazione del toggle = fronte della carta; contenuto = retro della carta. Un toggle annidato resta sul retro della carta principale invece di diventare una carta a sé. Apri espande i contenuti annidati; Chiudi li tiene compressi per uno studio passo passo.",
       "toggleOpen": "Apri i toggle annidati",
       "toggleClose": "Chiudi i toggle annidati",
       "removeNumberingLabel": "Rimuovi la numerazione dai nomi dei mazzi",
