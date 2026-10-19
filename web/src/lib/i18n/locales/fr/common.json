@@ -828,6 +828,7 @@
     },
     "comprehensiveHint": "Sur un long document, cela peut produire un très grand paquet. Pour des cartes moins nombreuses mais plus complètes, règle la taille de la carte sur Détaillé.",
     "comprehensiveHintLink": "Aller à Taille de la carte",
+    "pagePairsAiNote": "L'option Deux pages font une carte est activée, donc un envoi composé uniquement de PDF ignore la conversion par IA. Toutes les deux pages forment une carte image.",
     "mcq": {
       "heading": "Questions à choix multiple (QCM)",
       "aria": "Activer les questions à choix multiple",

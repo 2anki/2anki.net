@@ -828,6 +828,7 @@
     },
     "comprehensiveHint": "Con un documento largo esto puede crear un mazo enorme. Para menos tarjetas y más completas, pon el tamaño de la tarjeta en Detallado.",
     "comprehensiveHintLink": "Ir a Tamaño de la tarjeta",
+    "pagePairsAiNote": "Dos páginas forman una tarjeta está activado, así que una subida de solo PDF omite la conversión con IA. Cada dos páginas forman una tarjeta de imagen.",
     "mcq": {
       "heading": "Preguntas tipo test (MCQ)",
       "aria": "Activar preguntas tipo test",

@@ -20,6 +20,7 @@ import {
   isPptxFile,
   isXLSXFile,
   isDocxFile,
+  isHiddenFileOrDirectory,
 } from '../../../lib/storage/checks';
 import { convertPPTToPDF } from './ConvertPPTToPDF';
 import { convertImageToHTML } from './convertImageToHTML';
@@ -71,6 +72,7 @@ import {
 import { writeWorkspaceFile } from './writeWorkspaceFile';
 import { writePdfImageFallbackMarker } from './pdfImageFallbackMarker';
 import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
+import { isResourceForkEntry } from './documentStructureCensus';
 import { track } from '../../../services/events/track';
 
 const HTML_GENERATION_CONCURRENCY = 3;
@@ -1116,17 +1118,44 @@ async function buildClaudeDeck(
   };
 }
 
+// Page pairs is a PDF-only, saved preference, so it must not silence AI on the
+// other formats a user also uploads. It wins over AI only when PDF processing is
+// on and every content file in the upload is a PDF: those PDFs convert to
+// deterministic page-pair image cards with no AI. Only zip artefacts (a macOS
+// __MACOSX fork, .DS_Store, Thumbs.db, stray dotfiles, directory entries) are
+// dropped; every other file — pptx, images, markdown — counts as content, so a
+// single non-PDF keeps AI on. A mixed or non-PDF upload still reaches Claude;
+// with PDF processing off the page-pair branch produces nothing, so suppressing
+// AI would ship an empty deck.
+function pagePairsSuppressesAi(
+  settings: DeckParserInput['settings'],
+  files: DeckParserInput['files']
+): boolean {
+  if (!settings.pdfPagePairs || settings.processPDFs === false) {
+    return false;
+  }
+  const contentFiles = files.filter(
+    (file) =>
+      !isResourceForkEntry(file.name) && !isHiddenFileOrDirectory(file.name)
+  );
+  return (
+    contentFiles.length > 0 &&
+    contentFiles.every((file) => isPDFFile(file.name))
+  );
+}
+
 // Whether this upload's actual files will reach Claude, not merely whether an
 // AI toggle is persisted on the account. claudeAIFlashcards routes every file
 // through the AI branch; the image-quiz toggle only reaches Claude when an
 // image is present. Gating the pre-check on this keeps a plain markdown/HTML
 // upload from getting a false "built without AI" credits notice when the image
-// toggle happens to be left on.
+// toggle happens to be left on. An all-PDF page-pairs upload skips Claude, so it
+// does not invoke AI at all.
 export function conversionInvokesAi(
   settings: DeckParserInput['settings'],
   files: DeckParserInput['files']
 ): boolean {
-  if (settings.claudeAIFlashcards) {
+  if (settings.claudeAIFlashcards && !pagePairsSuppressesAi(settings, files)) {
     return true;
   }
   if (
@@ -1213,7 +1242,8 @@ export async function PrepareDeck(
   if (
     input.settings.claudeAIFlashcards &&
     input.noLimits &&
-    !aiCreditsExhausted
+    !aiCreditsExhausted &&
+    !pagePairsSuppressesAi(input.settings, files)
   ) {
     return buildClaudeDeck(
       input,

@@ -1198,6 +1198,14 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                     />
                   ))}
                   {isPdfAiGroup &&
+                    (checkboxValues['pdf-page-pairs'] ?? false) &&
+                    (checkboxValues['claude-ai-flashcards'] ?? false) &&
+                    (checkboxValues['process-pdfs'] ?? true) && (
+                      <p className={fieldStyles.sectionHint}>
+                        {t('cardOptions.pagePairsAiNote')}
+                      </p>
+                    )}
+                  {isPdfAiGroup &&
                     (checkboxValues['ai-comprehensive'] ?? false) && (
                       <p className={fieldStyles.sectionHint}>
                         {t('cardOptions.comprehensiveHint')}{' '}

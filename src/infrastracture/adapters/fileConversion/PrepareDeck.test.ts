@@ -20,6 +20,7 @@ import {
   convertPDFToImages as convertPDFToImagesImport,
   renderPdfPageImages as renderPdfPageImagesImport,
 } from './convertPDFToImages';
+import { combineIntoHTML } from '../../../lib/pdf/combineIntoHTML';
 import { convertDocxToHTML as convertDocxToHTMLImport } from './convertDocxToHTML';
 import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
 import { downloadMediaOrSkip as downloadMediaOrSkipImport } from '../../../services/NotionService/helpers/downloadMediaOrSkip';
@@ -741,6 +742,182 @@ describe('PrepareDeck — PDF text-vs-image gate', () => {
   });
 });
 
+describe('PrepareDeck — page pairs wins over AI conversion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function pdfDeckInfo() {
+    return [
+      {
+        name: 'AI Deck',
+        image: '',
+        style: null,
+        id: 111222333444555,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Front',
+            back: 'Back',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ];
+  }
+
+  function runPdf(settings: CardOption) {
+    return PrepareDeck({
+      name: 'cards.pdf',
+      files: [{ name: 'cards.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+  }
+
+  it('builds page-pair image cards without calling Claude when every file is a PDF', async () => {
+    const result = await runPdf(
+      makeSettings({ 'pdf-page-pairs': 'true', 'claude-ai-flashcards': 'true' })
+    );
+
+    expect(generateDeckInfo).not.toHaveBeenCalled();
+    expect(convertPDFToImages).toHaveBeenCalledTimes(1);
+    expect(result?.engine).toBe('parser');
+  });
+
+  it('still sends a mixed markdown + PDF upload to Claude', async () => {
+    generateDeckInfo.mockResolvedValue(pdfDeckInfo());
+
+    await PrepareDeck({
+      name: 'export.zip',
+      files: [
+        { name: 'notes.md', contents: '# Mitosis\n- phases: four' },
+        { name: 'cards.pdf', contents: Buffer.from('%PDF-1.4 fake') },
+      ],
+      settings: makeSettings({
+        'pdf-page-pairs': 'true',
+        'claude-ai-flashcards': 'true',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(generateDeckInfo).toHaveBeenCalled();
+  });
+
+  it('still sends a non-PDF upload to Claude when page pairs is on', async () => {
+    generateDeckInfo.mockResolvedValue(pdfDeckInfo());
+
+    await PrepareDeck({
+      name: 'notes.md',
+      files: [{ name: 'notes.md', contents: '# Mitosis' }],
+      settings: makeSettings({
+        'pdf-page-pairs': 'true',
+        'claude-ai-flashcards': 'true',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+  });
+
+  it('turns a four-page PDF into two page-pair cards via the parser', async () => {
+    convertPDFToImages.mockResolvedValueOnce(
+      combineIntoHTML(
+        [
+          '/tmp/test-workspace/pdf-1/page-1.png',
+          '/tmp/test-workspace/pdf-1/page-2.png',
+          '/tmp/test-workspace/pdf-1/page-3.png',
+          '/tmp/test-workspace/pdf-1/page-4.png',
+        ],
+        'cards.pdf',
+        '/tmp/test-workspace'
+      )
+    );
+
+    const result = await runPdf(
+      makeSettings({
+        'pdf-page-pairs': 'true',
+        'claude-ai-flashcards': 'true',
+        'embed-images': 'false',
+      })
+    );
+
+    expect(convertPDFToImages).toHaveBeenCalledTimes(1);
+    expect(result?.engine).toBe('parser');
+    expect(result?.cardCount).toBe(2);
+  });
+
+  it('ignores zip junk so an all-PDF zip still skips Claude', async () => {
+    generateDeckInfo.mockResolvedValue(pdfDeckInfo());
+
+    const result = await PrepareDeck({
+      name: 'cards.zip',
+      files: [
+        { name: 'cards.pdf', contents: Buffer.from('%PDF-1.4 fake') },
+        { name: '.DS_Store', contents: Buffer.from('junk') },
+        { name: '__MACOSX/._cards.pdf', contents: Buffer.from('junk') },
+      ],
+      settings: makeSettings({
+        'pdf-page-pairs': 'true',
+        'claude-ai-flashcards': 'true',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(generateDeckInfo).not.toHaveBeenCalled();
+    expect(result?.engine).toBe('parser');
+  });
+
+  it('still sends a PDF + PPTX zip to Claude', async () => {
+    generateDeckInfo.mockResolvedValue(pdfDeckInfo());
+
+    await PrepareDeck({
+      name: 'bundle.zip',
+      files: [
+        { name: 'cards.pdf', contents: Buffer.from('%PDF-1.4 fake') },
+        { name: 'slides.pptx', contents: Buffer.from('PK slides') },
+      ],
+      settings: makeSettings({
+        'pdf-page-pairs': 'true',
+        'claude-ai-flashcards': 'true',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(generateDeckInfo).toHaveBeenCalled();
+  });
+
+  it('still sends a PDF + PNG zip to Claude', async () => {
+    generateDeckInfo.mockResolvedValue(pdfDeckInfo());
+
+    await PrepareDeck({
+      name: 'bundle.zip',
+      files: [
+        { name: 'cards.pdf', contents: Buffer.from('%PDF-1.4 fake') },
+        { name: 'figure.png', contents: Buffer.from('png-bytes') },
+      ],
+      settings: makeSettings({
+        'pdf-page-pairs': 'true',
+        'claude-ai-flashcards': 'true',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(generateDeckInfo).toHaveBeenCalled();
+  });
+});
+
 describe('PrepareDeck — Claude PDF dropped-image reporting', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1259,6 +1436,103 @@ describe('conversionInvokesAi', () => {
 
   it('is false when no AI toggle is set', () => {
     expect(conversionInvokesAi(makeSettings(), [file('notes.md')])).toBe(false);
+  });
+
+  it('is false when page pairs is on and every file is a PDF, even with Claude on', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'claude-ai-flashcards': 'true',
+          'pdf-page-pairs': 'true',
+        }),
+        [file('cards.pdf')]
+      )
+    ).toBe(false);
+  });
+
+  it('is true for a non-PDF upload even when page pairs and Claude are both on', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'claude-ai-flashcards': 'true',
+          'pdf-page-pairs': 'true',
+        }),
+        [file('notes.md')]
+      )
+    ).toBe(true);
+  });
+
+  it('is true for a mixed upload with page pairs and Claude on', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'claude-ai-flashcards': 'true',
+          'pdf-page-pairs': 'true',
+        }),
+        [file('notes.md'), file('cards.pdf')]
+      )
+    ).toBe(true);
+  });
+
+  it('still invokes the image vision path when page pairs is on', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'image-quiz-html-to-anki': 'true',
+          'pdf-page-pairs': 'true',
+        }),
+        [file('scan.png')]
+      )
+    ).toBe(true);
+  });
+
+  it('is true for an all-PDF page-pairs upload when PDF processing is off', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'claude-ai-flashcards': 'true',
+          'pdf-page-pairs': 'true',
+          'process-pdfs': 'false',
+        }),
+        [file('cards.pdf')]
+      )
+    ).toBe(true);
+  });
+
+  it('ignores zip junk when deciding an all-PDF page-pairs upload', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'claude-ai-flashcards': 'true',
+          'pdf-page-pairs': 'true',
+        }),
+        [file('cards.pdf'), file('.DS_Store'), file('__MACOSX/._cards.pdf')]
+      )
+    ).toBe(false);
+  });
+
+  it('keeps AI for a PDF + PPTX page-pairs upload', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'claude-ai-flashcards': 'true',
+          'pdf-page-pairs': 'true',
+        }),
+        [file('cards.pdf'), file('slides.pptx')]
+      )
+    ).toBe(true);
+  });
+
+  it('keeps AI for a PDF + PNG page-pairs upload', () => {
+    expect(
+      conversionInvokesAi(
+        makeSettings({
+          'claude-ai-flashcards': 'true',
+          'pdf-page-pairs': 'true',
+        }),
+        [file('cards.pdf'), file('figure.png')]
+      )
+    ).toBe(true);
   });
 });
 

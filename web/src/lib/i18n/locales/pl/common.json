@@ -880,6 +880,7 @@
     },
     "comprehensiveHint": "Przy długim dokumencie może powstać bardzo duża talia. Aby mieć mniej, ale pełniejszych kart, ustaw rozmiar karty na Szczegółowy.",
     "comprehensiveHintLink": "Przejdź do rozmiaru karty",
+    "pagePairsAiNote": "Dwie strony tworzą jedną kartę jest włączone, więc przesłanie zawierające tylko pliki PDF pomija konwersję AI. Co dwie strony tworzą jedną kartę z obrazem.",
     "mcq": {
       "heading": "Pytania wielokrotnego wyboru (MCQ)",
       "aria": "Włącz pytania wielokrotnego wyboru",
