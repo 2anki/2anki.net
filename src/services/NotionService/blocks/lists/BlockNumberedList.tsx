@@ -14,7 +14,12 @@ export const BlockNumberedList = async (
   handler: IBlockRenderer
 ) => {
   const list = block.numbered_list_item;
-  const items = await getListItems(response, handler, 'numbered_list_item');
+  const items = await getListItems(
+    response,
+    handler,
+    'numbered_list_item',
+    block
+  );
   const listItems = items.filter(Boolean);
   const markup = ReactDOMServer.renderToStaticMarkup(
     <ol id={block.id} className={`numbered-list${styleWithColors(list.color)}`}>

@@ -1,5 +1,7 @@
 import {
+  BlockObjectResponse,
   ListBlockChildrenResponse,
+  PartialBlockObjectResponse,
   ToDoBlockObjectResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 
@@ -13,16 +15,40 @@ import { styleWithColors } from '../NotionColors';
 
 type ListType = 'numbered_list_item' | 'bulleted_list_item' | 'to_do';
 
+type ListChild = PartialBlockObjectResponse | BlockObjectResponse;
+
+function getConsecutiveRun(
+  results: ListChild[],
+  type: ListType,
+  startBlock: BlockObjectResponse
+): ListChild[] {
+  const startIndex = results.findIndex((r) => r.id === startBlock.id);
+  if (startIndex === -1) {
+    return [startBlock];
+  }
+  const run: ListChild[] = [];
+  for (let i = startIndex; i < results.length; i += 1) {
+    const list = getListBlock(results[i]);
+    if (!list || list.type !== type) {
+      break;
+    }
+    run.push(results[i]);
+  }
+  return run;
+}
+
 export default function getListItems(
   response: ListBlockChildrenResponse | undefined,
   handler: IBlockRenderer,
-  type: ListType
+  type: ListType,
+  startBlock: BlockObjectResponse
 ) {
   if (!response) {
     return [];
   }
+  const run = getConsecutiveRun(response.results, type, startBlock);
   return Promise.all(
-    response.results.map(async (result) => {
+    run.map(async (result) => {
       const list = getListBlock(result);
       if (!list) {
         return null;
