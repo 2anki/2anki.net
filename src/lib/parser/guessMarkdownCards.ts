@@ -159,3 +159,7 @@ export function guessMarkdownCards(
 
   return null;
 }
+
+export function matchesMarkdownHeuristic(content: string): boolean {
+  return guessMarkdownCards(content) !== null;
+}

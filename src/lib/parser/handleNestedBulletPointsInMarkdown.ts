@@ -14,6 +14,7 @@ import Workspace from './WorkSpace';
 import { File } from '../zip/zip';
 import { detectMarkdownMCQ } from './findNotionToggleLists';
 import { stripLeadingDeckNumbering } from './helpers/stripLeadingDeckNumbering';
+import { matchesMarkdownHeuristic } from './guessMarkdownCards';
 
 function commonIndent(text: string): number {
   const nonEmptyLines = text.split('\n').filter((l) => l.trim().length > 0);
@@ -106,10 +107,12 @@ function startsNewMarkerItem(dedentedLine: string): boolean {
 
 // The new markers (*, +, ordered) are enabled only for a document that is
 // unambiguously one of their lists: no `##`+ heading (that is heading-body
-// shape, whose list lines belong on a card back) and no column-0 `-` front
-// (that is a dash-style document, where a `*`/`+`/ordered line is sub-content,
-// not a separate card). Every other document then behaves exactly as before:
-// `-` still starts cards, and the rest falls through to guessMarkdownCards.
+// shape, whose list lines belong on a card back), no column-0 `-` front (that
+// is a dash-style document, where a `*`/`+`/ordered line is sub-content, not a
+// separate card), and no match for any guessMarkdownCards pattern (Q:/A:,
+// <details>, `::`, separators) — those documents converted well before and must
+// keep falling through to guessMarkdownCards. Every other document then behaves
+// exactly as before: `-` still starts cards, and the rest falls through.
 function documentHasSubheading(body: string): boolean {
   return SUBHEADING_REGEX.test(body);
 }
@@ -175,7 +178,8 @@ export const handleNestedBulletPointsInMarkdown = (
   const rawLines = withoutAside.split('\n');
   const newMarkersAllowed =
     !documentHasSubheading(dedent(withoutAside)) &&
-    !hasColumnZeroDashFront(rawLines);
+    !hasColumnZeroDashFront(rawLines) &&
+    !matchesMarkdownHeuristic(body);
   let isCreating = false;
   let currentFront = '';
   let currentBack = '';

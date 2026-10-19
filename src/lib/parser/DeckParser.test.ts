@@ -1774,6 +1774,70 @@ describe('heading-body markdown with lists stays on the heading fallback (regres
     expect(fronts).toContain('Q2');
     expect(fronts).toContain('Q3');
   });
+
+  it('keeps a Q:/A: note with a * list answer on the heuristic, as one card', () => {
+    const markdown = [
+      'Q: What are the steps?',
+      'A: Do these:',
+      '* step one',
+      '* step two',
+    ].join('\n');
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.usedHeuristic).toBe(true);
+    expect(parser.payload[0].cards).toHaveLength(1);
+    expect(parser.payload[0].cards[0].name).toContain('What are the steps');
+    expect(parser.payload[0].cards[0].back).toContain('step one');
+    expect(parser.payload[0].cards[0].back).toContain('step two');
+  });
+
+  it('keeps a <details> note with a * list inside on the heuristic, as one card', () => {
+    const markdown = [
+      '<details><summary>Question here</summary>',
+      '* point one',
+      '* point two',
+      '</details>',
+    ].join('\n');
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.usedHeuristic).toBe(true);
+    expect(parser.payload[0].cards).toHaveLength(1);
+    expect(parser.payload[0].cards[0].name).toContain('Question here');
+    expect(parser.payload[0].cards[0].back).toContain('point one');
+  });
+
+  it('splits a * term :: definition list on the heuristic, not into empty-back cards', () => {
+    const markdown = ['* apple :: a fruit', '* dog :: an animal'].join('\n');
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.usedHeuristic).toBe(true);
+    expect(parser.payload[0].cards).toHaveLength(2);
+    expect(parser.payload[0].cards[0].name).toContain('apple');
+    expect(parser.payload[0].cards[0].back).toContain('a fruit');
+    expect(parser.payload[0].cards[1].back).toContain('an animal');
+  });
+
+  it('keeps a code fence with 1. lines inside on one back, not split into cards', () => {
+    const markdown = [
+      'Q: What does it print?',
+      'A: The sequence:',
+      '```',
+      '1. first',
+      '2. second',
+      '```',
+    ].join('\n');
+
+    const parser = parseMarkdown(markdown);
+
+    expect(parser.usedHeuristic).toBe(true);
+    expect(parser.payload[0].cards).toHaveLength(1);
+    expect(parser.payload[0].cards[0].name).toContain('What does it print');
+    expect(parser.payload[0].cards[0].back).toContain('first');
+    expect(parser.payload[0].cards[0].back).toContain('second');
+  });
 });
 
 describe('embed-images opt-out', () => {

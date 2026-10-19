@@ -414,5 +414,23 @@ describe('handleNestedBulletPointsInMarkdown', () => {
 
       expect(decks[0].cards).toHaveLength(0);
     });
+
+    it.each([
+      [
+        'Q:/A: labels with a * list in the answer',
+        ['Q: What are the steps?', 'A: Do these:', '* step one', '* step two'],
+      ],
+      [
+        'term :: definition using * markers',
+        ['* apple :: a fruit', '* dog :: an animal'],
+      ],
+    ])(
+      'declines a document that guessMarkdownCards owns (%s)',
+      (_label, lines) => {
+        const decks = makeDecks(lines.join('\n'));
+
+        expect(decks[0].cards).toHaveLength(0);
+      }
+    );
   });
 });
