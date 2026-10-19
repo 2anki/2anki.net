@@ -828,6 +828,7 @@
     },
     "comprehensiveHint": "On a long document this can make a large deck. For fewer, fuller cards, set Card size to Detailed.",
     "comprehensiveHintLink": "Go to Card size",
+    "pagePairsAiNote": "Two pages make one card is on, so a PDF-only upload skips AI conversion. Every two pages become one image card.",
     "mcq": {
       "heading": "Multiple choice questions (MCQ)",
       "aria": "Enable multiple choice questions",

@@ -43,7 +43,7 @@ const IMAGE_ENTRY = /\.(png|jpe?g|gif|webp|bmp|svg|heic|tiff?)$/i;
 // A zip made on macOS carries a __MACOSX/ twin of every entry plus ._ resource
 // forks, and one made on Windows a Thumbs.db; a Finder folder adds .DS_Store.
 // They are metadata, not pages or images the user put in.
-function isResourceForkEntry(name: string): boolean {
+export function isResourceForkEntry(name: string): boolean {
   return (
     name.startsWith('__MACOSX/') ||
     /(^|\/)(\._[^/]*|\.DS_Store|Thumbs\.db|desktop\.ini)$/i.test(name)
