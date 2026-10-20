@@ -62,6 +62,7 @@ export const KNOWN_EVENTS = new Set([
   'home_card_options_link_clicked',
   'home_native_app_link_clicked',
   'tts_lang_injected',
+  'parent_context_enabled',
   'paywall_dismissed',
   'pricing_left',
   'pricing_try_clicked',

@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-20-parent-context-option",
+  "date": "2026-10-20",
+  "type": "feature",
+  "title": "Show parent as context keeps the bullet or toggle above a nested card on its front, so an outline card like an abbreviation makes sense on its own"
+}

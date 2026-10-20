@@ -45,6 +45,10 @@
       "label": "Toggles aninhados com código inline viram cartões próprios",
       "description": "Quando um toggle aninhado dentro de outro tem código inline no título, ele vira um cartão cloze próprio e o título aparece em negrito no cartão principal. Funciona apenas quando a omissão cloze está ligada."
     },
+    "parent-context": {
+      "label": "Mostrar o item pai como contexto",
+      "description": "Em um cartão aninhado, mostra o marcador ou toggle pai mais próximo como uma linha suave acima da pergunta, para que um cartão de esboço faça sentido sozinho. Apenas exportações HTML do Notion. Os cartões podem ser reimportados como novos."
+    },
     "group-cloze-per-toggle": {
       "label": "Agrupar lacunas cloze por toggle",
       "description": "Quando um único toggle do Notion tem várias lacunas ::, coloca todas em um só cartão e as revela juntas. Desligado por padrão — cada :: cria seu próprio cartão."

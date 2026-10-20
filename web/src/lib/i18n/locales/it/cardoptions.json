@@ -45,6 +45,10 @@
       "label": "I toggle annidati con codice in linea diventano schede a sé",
       "description": "Quando un toggle annidato in un altro ha codice in linea nel titolo, diventa una scheda cloze a sé e il suo titolo appare in grassetto nella scheda principale. Funziona solo con la cancellazione cloze attiva."
     },
+    "parent-context": {
+      "label": "Mostra l'elemento superiore come contesto",
+      "description": "Su una carta annidata, mostra il punto elenco o il toggle superiore più vicino come riga attenuata sopra la domanda, così una carta a scaletta ha senso da sola. Solo per le esportazioni HTML di Notion. Le carte potrebbero essere reimportate come nuove."
+    },
     "group-cloze-per-toggle": {
       "label": "Raggruppa le cloze per toggle",
       "description": "Quando un toggle di Notion contiene più spazi ::, mettili tutti su un'unica carta e rivelali insieme. Disattivato di default — ogni :: crea la sua carta."

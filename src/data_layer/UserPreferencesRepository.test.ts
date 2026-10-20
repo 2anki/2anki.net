@@ -133,6 +133,7 @@ const CLIENT_CARD_OPTION_KEYS = [
   'section-tags',
   'cloze',
   'cloze-from-toggle-content',
+  'parent-context',
   'group-cloze-per-toggle',
   'enable-input',
   'basic-reversed',
