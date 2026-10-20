@@ -6,8 +6,8 @@ import { spawn } from 'child_process';
 import { getRandomUUID } from '../../../shared/helpers/getRandomUUID';
 import { createWorkerTerminationError } from '../../../lib/workerTermination';
 
-// A deploy's graceful shutdown signals the whole process group, so LibreOffice
-// dies with SIGINT/SIGTERM mid-conversion. That is a restart, not a bad file:
+// A deploy's graceful shutdown reaches LibreOffice through pm2's tree kill, so
+// it dies with SIGINT/SIGTERM mid-conversion. That is a restart, not a bad file:
 // report it as an interrupted conversion so the upload answers 503 and the
 // client retries. SIGKILL stays a failure (the OOM killer uses it).
 const RESTART_SIGNALS: ReadonlySet<NodeJS.Signals> = new Set([
@@ -72,6 +72,7 @@ export function convertPPTToPDF(
 
         sofficeProcess.on('close', async (code, signal) => {
           if (code === null && signal != null && RESTART_SIGNALS.has(signal)) {
+            console.info('[convertPPTToPDF] interrupted by', signal);
             reject(createWorkerTerminationError());
             return;
           }

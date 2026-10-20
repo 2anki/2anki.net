@@ -81,6 +81,7 @@ describe('convertPPTToPDF', () => {
   it.each(['SIGINT', 'SIGTERM'] as const)(
     'reports a %s kill during a restart as an interrupted conversion',
     async (signal) => {
+      vi.spyOn(console, 'info').mockImplementation(() => {});
       mockedSpawn.mockReturnValue(makeProcess('', null, signal));
 
       const err = await convertPPTToPDF(
