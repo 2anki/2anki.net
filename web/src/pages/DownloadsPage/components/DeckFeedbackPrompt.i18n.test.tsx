@@ -9,6 +9,10 @@ vi.mock('../../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: () => ({ submitEmojiFeedback: vi.fn() }),
 }));
 
+vi.mock('../../../lib/hooks/useUserLocals', () => ({
+  useUserLocals: () => ({ data: { locals: {}, user: null } }),
+}));
+
 describe('DeckFeedbackPrompt in German', () => {
   beforeEach(async () => {
     localStorage.clear();

@@ -210,10 +210,13 @@ class UsersRepository {
       'dropbox_uploads',
       'google_drive_uploads',
       'cancellation_feedback',
+      'emoji_feedback',
     ];
-    // Feedback and email-log tables key on the raw address, not the user id;
-    // hashed tables (suppression_events, deleted_user_usage, claim audit
-    // hashes) are pseudonymized on purpose and stay.
+    // Email-log tables key on the raw address, not the user id; hashed tables
+    // (suppression_events, deleted_user_usage, claim audit hashes) are
+    // pseudonymized on purpose and stay. emoji_feedback carries both an owner
+    // (when the rater was signed in) and the address they left, so it is purged
+    // by owner above and by email here.
     const emailTables: Array<[string, string]> = [
       ['feedback', 'email'],
       ['emoji_feedback', 'email'],

@@ -119,6 +119,28 @@
   border-color: var(--color-primary);
 }
 
+.email {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+
+.email:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.emailHint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
 .status {
   margin: 0;
   font-size: var(--text-sm);

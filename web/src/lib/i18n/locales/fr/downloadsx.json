@@ -18,7 +18,11 @@
     "reasonImagesMissing": "Images manquantes",
     "reasonWrongCards": "Mauvaises cartes",
     "reasonTooFewCards": "Trop peu de cartes",
-    "reasonOther": "Autre chose"
+    "reasonOther": "Autre chose",
+    "emailPlaceholder": "E-mail (facultatif)",
+    "emailHint": "Utilisé uniquement pour donner suite à cet avis.",
+    "negativeNextStep": "Nous allons examiner ce paquet.",
+    "negativeReply": "Nous répondrons à {{email}}."
   },
   "ankify": {
     "sending": "Envoi vers votre Anki…",

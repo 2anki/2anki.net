@@ -17,6 +17,14 @@ export default interface EmojiFeedback {
   created_at: Date;
 
   email: string | null;
+
+  job_id: number | null;
+
+  upload_id: number | null;
+
+  owner: number | null;
+
+  input_format: string | null;
 }
 
 /** Represents the initializer for the table public.emoji_feedback */
@@ -35,6 +43,15 @@ export interface EmojiFeedbackInitializer {
 
   /** Default value: NULL::character varying */
   email?: string | null;
+
+  job_id?: number | null;
+
+  upload_id?: number | null;
+
+  owner?: number | null;
+
+  /** Default value: NULL::character varying */
+  input_format?: string | null;
 }
 
 /** Represents the mutator for the table public.emoji_feedback */
@@ -50,4 +67,12 @@ export interface EmojiFeedbackMutator {
   created_at?: Date;
 
   email?: string | null;
+
+  job_id?: number | null;
+
+  upload_id?: number | null;
+
+  owner?: number | null;
+
+  input_format?: string | null;
 }

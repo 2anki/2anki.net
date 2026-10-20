@@ -7,6 +7,7 @@ import type { ILowRatingContextRepository } from '../data_layer/LowRatingContext
 import type { IEmailService } from '../services/EmailService/EmailService';
 import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import { NotifyLowRatingUseCase } from '../usecases/feedback/NotifyLowRatingUseCase';
+import type { IRatedConversionResolver } from '../usecases/feedback/ResolveRatedConversionUseCase';
 
 function buildMocks() {
   const repo: Mocked<IEmojiFeedbackRepository> = {
@@ -33,15 +34,24 @@ function buildMocks() {
     emailService,
     rateLimiter
   );
-  const controller = new EmojiFeedbackController(repo, notifier);
+  const conversionResolver: Mocked<IRatedConversionResolver> = {
+    resolve: vi.fn().mockResolvedValue({ jobId: null, uploadId: null }),
+  };
+  const controller = new EmojiFeedbackController(
+    repo,
+    notifier,
+    conversionResolver
+  );
   const req = { body: {} } as Request;
   const res = {
+    locals: {},
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
   } as unknown as Response;
   return {
     repo,
     contextRepo,
+    conversionResolver,
     sendLowRatingFeedbackEmail,
     controller,
     req,
@@ -88,6 +98,10 @@ describe('EmojiFeedbackController', () => {
       comment: null,
       page: '/upload',
       email: null,
+      owner: null,
+      jobId: null,
+      uploadId: null,
+      inputFormat: null,
     });
   });
 
@@ -101,6 +115,10 @@ describe('EmojiFeedbackController', () => {
       comment: 'Great tool!',
       page: '/notion',
       email: null,
+      owner: null,
+      jobId: null,
+      uploadId: null,
+      inputFormat: null,
     });
   });
 
@@ -207,5 +225,63 @@ describe('EmojiFeedbackController', () => {
     await controller.submit(req, res);
     expect(res.status).toHaveBeenCalledWith(201);
     expect(sendLowRatingFeedbackEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('stores the owner from the session, never from the body', async () => {
+    const { controller, req, res, repo } = buildMocks();
+    (res.locals as Record<string, unknown>).owner = 21770;
+    req.body = { rating: 5, page: 'downloads/deck_done', owner: 99999 };
+    await controller.submit(req, res);
+    expect(repo.insert.mock.calls[0][0].owner).toBe(21770);
+  });
+
+  it('resolves the rated conversion and stores the verified ids', async () => {
+    const { controller, req, res, repo, conversionResolver } = buildMocks();
+    (res.locals as Record<string, unknown>).owner = 21770;
+    conversionResolver.resolve.mockResolvedValue({ jobId: 10, uploadId: null });
+    req.body = {
+      rating: 1,
+      page: 'downloads/deck_done',
+      job_id: 10,
+      upload_id: 20,
+      input_format: 'notion',
+    };
+    await controller.submit(req, res);
+    expect(conversionResolver.resolve).toHaveBeenCalledWith({
+      owner: 21770,
+      jobId: 10,
+      uploadId: 20,
+    });
+    const inserted = repo.insert.mock.calls[0][0];
+    expect(inserted.jobId).toBe(10);
+    expect(inserted.uploadId).toBeNull();
+    expect(inserted.inputFormat).toBe('notion');
+  });
+
+  it('stores a null conversion when the resolver rejects the ids', async () => {
+    const { controller, req, res, repo, conversionResolver } = buildMocks();
+    (res.locals as Record<string, unknown>).owner = 21770;
+    conversionResolver.resolve.mockResolvedValue({
+      jobId: null,
+      uploadId: null,
+    });
+    req.body = {
+      rating: 1,
+      page: 'downloads/deck_done',
+      job_id: 777,
+      input_format: 'upload',
+    };
+    await controller.submit(req, res);
+    const inserted = repo.insert.mock.calls[0][0];
+    expect(inserted.jobId).toBeNull();
+    expect(inserted.uploadId).toBeNull();
+    expect(inserted.inputFormat).toBe('upload');
+  });
+
+  it('stores a null input format when the body omits it', async () => {
+    const { controller, req, res, repo } = buildMocks();
+    req.body = { rating: 5, page: 'downloads/deck_done' };
+    await controller.submit(req, res);
+    expect(repo.insert.mock.calls[0][0].inputFormat).toBeNull();
   });
 });

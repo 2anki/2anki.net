@@ -1511,13 +1511,21 @@ export class Backend {
     rating: number,
     page: string,
     comment?: string,
-    email?: string
+    email?: string,
+    context?: {
+      jobId?: number | null;
+      uploadId?: number | null;
+      inputFormat?: string | null;
+    }
   ): Promise<void> {
     const response = await post(`${this.baseURL}emoji-feedback`, {
       rating,
       page,
       comment: comment ?? null,
       email: email ?? null,
+      job_id: context?.jobId ?? null,
+      upload_id: context?.uploadId ?? null,
+      input_format: context?.inputFormat ?? null,
     });
     if (!response.ok) {
       throw new Error('Failed to submit feedback');

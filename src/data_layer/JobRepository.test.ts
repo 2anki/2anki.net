@@ -831,3 +831,33 @@ describe('JobRepository boot-time stranded-job handling', () => {
     expect(row.status).toBe('done');
   });
 });
+
+describe('JobRepository.existsByIdAndOwner', () => {
+  let db: Knex;
+  let repo: JobRepository;
+
+  beforeEach(async () => {
+    db = await makeDb();
+    repo = new JobRepository(db);
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('is true for a job the owner owns', async () => {
+    const [id] = await insertJob(db, { owner: '21770', object_id: 'job-1' });
+
+    expect(await repo.existsByIdAndOwner(id, '21770')).toBe(true);
+  });
+
+  it('is false for a job owned by another user', async () => {
+    const [id] = await insertJob(db, { owner: '21770', object_id: 'job-1' });
+
+    expect(await repo.existsByIdAndOwner(id, '99999')).toBe(false);
+  });
+
+  it('is false for an unknown job id', async () => {
+    expect(await repo.existsByIdAndOwner(123456, '21770')).toBe(false);
+  });
+});

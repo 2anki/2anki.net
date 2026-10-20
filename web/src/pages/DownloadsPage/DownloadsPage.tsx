@@ -31,6 +31,7 @@ import SendToAnkifyButton from './components/SendToAnkifyButton';
 import {
   DeckFeedbackPrompt,
   isDeckFeedbackSuppressed,
+  type DeckFeedbackContext,
 } from './components/DeckFeedbackPrompt';
 import { useActiveShares } from './hooks/useActiveShares';
 import { fireAnalyticsEvent } from '../../lib/analytics/fireAnalyticsEvent';
@@ -113,6 +114,20 @@ function isGeneratingStatus(status: string): boolean {
     status === 'step2_creating_flashcards' ||
     /^claude:chunk:\d+:\d+$/.test(status)
   );
+}
+
+function feedbackContextForRow(row: DeckRow): DeckFeedbackContext {
+  if (row.kind === 'job') {
+    return { jobId: row.job.id, inputFormat: row.source };
+  }
+  if (row.kind === 'file') {
+    const uploadId = Number(row.upload.id);
+    return {
+      uploadId: Number.isInteger(uploadId) ? uploadId : null,
+      inputFormat: row.source,
+    };
+  }
+  return { inputFormat: row.source };
 }
 
 function getSourceLabel(source: DeckRow['source'], t: TFunction): string {
@@ -368,6 +383,9 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
     null
   );
   const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [ratedContext, setRatedContext] = useState<
+    DeckFeedbackContext | undefined
+  >(undefined);
   const [distributionPanelKey, setDistributionPanelKey] = useState<
     string | null
   >(null);
@@ -465,6 +483,11 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
 
   const activeJobs = jobs.filter((j) => isActiveJob(j.status));
   const showDeckFeedback = hasDownloaded && !isDeckFeedbackSuppressed();
+
+  const markDownloaded = (row: DeckRow) => {
+    setHasDownloaded(true);
+    setRatedContext(feedbackContextForRow(row));
+  };
 
   const handleDeleteJob = async (id: Parameters<typeof deleteJob>[0]) => {
     const job = jobs.find((j) => j.id === id);
@@ -669,7 +692,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     ) : (
                                       <>
                                         {renderJobStatusCell(row.job, t, () =>
-                                          setHasDownloaded(true)
+                                          markDownloaded(row)
                                         )}
                                         {isNotionDoneRow && (
                                           <button
@@ -997,7 +1020,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       )}
                                       title={t('downloads.actions.download')}
                                       onClick={() => {
-                                        setHasDownloaded(true);
+                                        markDownloaded(row);
                                         fireAnalyticsEvent('deck_downloaded');
                                         track('deck_downloaded');
                                       }}
@@ -1214,7 +1237,9 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                 </div>
               )}
 
-              {showDeckFeedback && <DeckFeedbackPrompt />}
+              {showDeckFeedback && (
+                <DeckFeedbackPrompt context={ratedContext} />
+              )}
 
               <ProducerPrompt uploads={uploads ?? []} />
 

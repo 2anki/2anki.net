@@ -18,6 +18,10 @@ interface EmojiFeedbackEntry {
   comment: string | null;
   page: string;
   email: string | null;
+  owner?: number | null;
+  jobId?: number | null;
+  uploadId?: number | null;
+  inputFormat?: string | null;
 }
 
 export interface IEmojiFeedbackRepository {
@@ -53,6 +57,10 @@ export class EmojiFeedbackRepository implements IEmojiFeedbackRepository {
       comment: entry.comment,
       page: entry.page,
       email: entry.email,
+      owner: entry.owner ?? null,
+      job_id: entry.jobId ?? null,
+      upload_id: entry.uploadId ?? null,
+      input_format: entry.inputFormat ?? null,
     });
   }
 
@@ -108,14 +116,12 @@ export class EmojiFeedbackRepository implements IEmojiFeedbackRepository {
   }
 }
 
+interface InMemoryEmojiFeedbackRow extends EmojiFeedbackEntry {
+  created_at: Date;
+}
+
 export class InMemoryEmojiFeedbackRepository implements IEmojiFeedbackRepository {
-  private readonly rows: Array<{
-    rating: number;
-    comment: string | null;
-    page: string;
-    email: string | null;
-    created_at: Date;
-  }> = [];
+  private readonly rows: InMemoryEmojiFeedbackRow[] = [];
 
   async insert(entry: EmojiFeedbackEntry): Promise<void> {
     this.rows.push({ ...entry, created_at: new Date() });
@@ -136,15 +142,8 @@ export class InMemoryEmojiFeedbackRepository implements IEmojiFeedbackRepository
   async recentComments(limit: number): Promise<EmojiFeedbackCommentEntry[]> {
     return this.rows
       .filter(
-        (
-          r
-        ): r is {
-          rating: number;
-          comment: string;
-          page: string;
-          email: string | null;
-          created_at: Date;
-        } => r.comment != null && r.comment !== ''
+        (r): r is InMemoryEmojiFeedbackRow & { comment: string } =>
+          r.comment != null && r.comment !== ''
       )
       .sort((a, b) => b.created_at.getTime() - a.created_at.getTime())
       .slice(0, limit)

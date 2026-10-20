@@ -18,7 +18,11 @@
     "reasonImagesMissing": "画像がない",
     "reasonWrongCards": "カードが間違っている",
     "reasonTooFewCards": "カードが少なすぎる",
-    "reasonOther": "その他"
+    "reasonOther": "その他",
+    "emailPlaceholder": "メールアドレス（任意）",
+    "emailHint": "このフィードバックへの返信にのみ使います。",
+    "negativeNextStep": "このデッキを確認します。",
+    "negativeReply": "{{email}} に返信します。"
   },
   "ankify": {
     "sending": "あなたの Anki に送信中…",

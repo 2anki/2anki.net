@@ -18,7 +18,11 @@
     "reasonImagesMissing": "Brak obrazów",
     "reasonWrongCards": "Błędne karty",
     "reasonTooFewCards": "Za mało kart",
-    "reasonOther": "Coś innego"
+    "reasonOther": "Coś innego",
+    "emailPlaceholder": "E-mail (opcjonalnie)",
+    "emailHint": "Używamy tylko po to, by wrócić do tej opinii.",
+    "negativeNextStep": "Przyjrzymy się tej talii.",
+    "negativeReply": "Odpowiemy na {{email}}."
   },
   "ankify": {
     "sending": "Wysyłanie do Twojego Anki…",

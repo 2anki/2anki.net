@@ -18,7 +18,11 @@
     "reasonImagesMissing": "Imagens faltando",
     "reasonWrongCards": "Cartões errados",
     "reasonTooFewCards": "Poucos cartões",
-    "reasonOther": "Outra coisa"
+    "reasonOther": "Outra coisa",
+    "emailPlaceholder": "E-mail (opcional)",
+    "emailHint": "Usado apenas para dar retorno sobre este feedback.",
+    "negativeNextStep": "Vamos analisar este baralho.",
+    "negativeReply": "Responderemos para {{email}}."
   },
   "ankify": {
     "sending": "Enviando para o seu Anki…",

@@ -3,9 +3,12 @@ import express from 'express';
 import EmojiFeedbackController from '../controllers/EmojiFeedbackController';
 import { EmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
 import { LowRatingContextRepository } from '../data_layer/LowRatingContextRepository';
+import JobRepository from '../data_layer/JobRepository';
+import UploadRepository from '../data_layer/UploadRespository';
 import { getDatabase } from '../data_layer';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { NotifyLowRatingUseCase } from '../usecases/feedback/NotifyLowRatingUseCase';
+import { ResolveRatedConversionUseCase } from '../usecases/feedback/ResolveRatedConversionUseCase';
 import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
 
@@ -28,7 +31,15 @@ const EmojiFeedbackRouter = () => {
     getDefaultEmailService(),
     notificationLimiter
   );
-  const controller = new EmojiFeedbackController(repo, notifier);
+  const conversionResolver = new ResolveRatedConversionUseCase(
+    new JobRepository(database),
+    new UploadRepository(database)
+  );
+  const controller = new EmojiFeedbackController(
+    repo,
+    notifier,
+    conversionResolver
+  );
 
   /**
    * @swagger
@@ -53,6 +64,12 @@ const EmojiFeedbackRouter = () => {
    *               email:
    *                 type: string
    *               page:
+   *                 type: string
+   *               job_id:
+   *                 type: integer
+   *               upload_id:
+   *                 type: integer
+   *               input_format:
    *                 type: string
    *     responses:
    *       201:
