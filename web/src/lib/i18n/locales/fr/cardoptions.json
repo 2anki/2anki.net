@@ -45,6 +45,10 @@
       "label": "Les bascules imbriquées avec du code en ligne deviennent leurs propres cartes",
       "description": "Quand une bascule imbriquée dans une autre contient du code en ligne dans son titre, elle devient sa propre carte cloze et son titre apparaît en gras sur la carte parente. Fonctionne uniquement quand le Cloze est activé."
     },
+    "parent-context": {
+      "label": "Afficher le parent comme contexte",
+      "description": "Sur une carte imbriquée, affiche la puce ou la bascule parente la plus proche comme une ligne atténuée au-dessus de la question, pour qu'une carte issue d'un plan ait du sens seule. Exports HTML de Notion uniquement. Les cartes peuvent être réimportées comme nouvelles."
+    },
     "group-cloze-per-toggle": {
       "label": "Grouper les trous de cloze par bascule",
       "description": "Quand une bascule Notion contient plusieurs trous ::, mets-les tous sur une seule carte et révèle-les ensemble. Désactivé par défaut — chaque :: crée sa propre carte."

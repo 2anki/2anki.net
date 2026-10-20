@@ -45,6 +45,10 @@
       "label": "Verschachtelte Toggles mit Inline-Code werden eigene Karten",
       "description": "Wenn ein Toggle innerhalb eines anderen Toggles Inline-Code im Titel hat, wird er zu einer eigenen Cloze-Karte, und sein Titel erscheint als fetter Text auf der übergeordneten Karte. Funktioniert nur, wenn Cloze-Löschung aktiv ist."
     },
+    "parent-context": {
+      "label": "Übergeordnetes als Kontext anzeigen",
+      "description": "Zeigt bei einer verschachtelten Karte das nächste übergeordnete Aufzählungszeichen oder Toggle als gedämpfte Zeile über der Frage, damit eine Gliederungskarte für sich allein verständlich ist. Nur bei Notion-HTML-Exporten. Karten werden möglicherweise als neu importiert."
+    },
     "group-cloze-per-toggle": {
       "label": "Cloze-Lücken pro Toggle gruppieren",
       "description": "Wenn ein Notion-Toggle mehrere ::-Lücken enthält, kommen alle auf eine einzelne Karte und werden zusammen aufgedeckt. Standardmäßig aus — jedes :: erzeugt eine eigene Karte."

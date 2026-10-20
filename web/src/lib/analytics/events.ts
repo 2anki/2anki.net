@@ -6,6 +6,7 @@ export const KNOWN_EVENTS = new Set([
   'conversion_succeeded',
   'conversion_failed',
   'conversion_report_opened',
+  'parent_context_enabled',
   'pdf_page_range_used',
   'deck_downloaded',
   'upload_error_chat_shown',

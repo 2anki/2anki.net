@@ -45,6 +45,10 @@
       "label": "Nested toggles with inline code become their own cards",
       "description": "When a toggle nested inside another toggle has inline code in its title, make it its own cloze card and show its title as bold text on the parent card. Works only when Cloze deletion is on."
     },
+    "parent-context": {
+      "label": "Show parent as context",
+      "description": "On a nested card, show the nearest parent bullet or toggle as a muted line above the question, so an outline card makes sense on its own. Notion HTML exports only. Cards may be re-imported as new."
+    },
     "group-cloze-per-toggle": {
       "label": "Group cloze blanks per toggle",
       "description": "When one Notion toggle holds several :: blanks, put them all on a single card and reveal them together. Off by default — each :: makes its own card."
