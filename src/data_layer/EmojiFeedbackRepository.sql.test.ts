@@ -5,6 +5,51 @@ import { LowRatingContextRepository } from './LowRatingContextRepository';
 
 const pg = knex({ client: 'pg' });
 
+describe('EmojiFeedbackRepository insert generated SQL', () => {
+  it('maps the conversion fields to their columns', () => {
+    const repo = new EmojiFeedbackRepository(pg);
+
+    const sql = repo
+      .buildInsertQuery({
+        rating: 1,
+        comment: null,
+        page: 'downloads/deck_done',
+        email: null,
+        owner: 21770,
+        jobId: 918,
+        uploadId: null,
+        inputFormat: 'notion',
+      })
+      .toString();
+
+    expect(sql).toContain('insert into "emoji_feedback"');
+    expect(sql).toContain('"owner"');
+    expect(sql).toContain('"job_id"');
+    expect(sql).toContain('"upload_id"');
+    expect(sql).toContain('"input_format"');
+    expect(sql).toContain('21770');
+    expect(sql).toContain('918');
+    expect(sql).toContain("'notion'");
+  });
+
+  it('writes null for the conversion fields when they are omitted', () => {
+    const repo = new EmojiFeedbackRepository(pg);
+
+    const sql = repo
+      .buildInsertQuery({
+        rating: 5,
+        comment: null,
+        page: 'downloads/deck_done',
+        email: null,
+      })
+      .toString();
+
+    expect(sql).toContain('insert into "emoji_feedback"');
+    expect(sql).toMatch(/"input_format"/);
+    expect(sql).toContain('NULL');
+  });
+});
+
 describe('EmojiFeedbackRepository dedupe-count generated SQL', () => {
   it('filters by email, low rating and a day range with bound params', () => {
     const repo = new EmojiFeedbackRepository(pg);

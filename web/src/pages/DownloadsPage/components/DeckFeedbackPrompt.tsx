@@ -211,11 +211,13 @@ export function DeckFeedbackPrompt({
             rows={2}
             maxLength={COMMENT_MAX}
           />
+          <label className={styles.emailLabel} htmlFor="deck-feedback-email">
+            {t('feedback.emailPlaceholder')}
+          </label>
           <input
+            id="deck-feedback-email"
             type="email"
             className={styles.email}
-            placeholder={t('feedback.emailPlaceholder')}
-            aria-label={t('feedback.emailPlaceholder')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             maxLength={254}

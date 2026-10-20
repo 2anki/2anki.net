@@ -3,7 +3,11 @@ import type { ILowRatingContextRepository } from '../../data_layer/LowRatingCont
 import type { IEmailService } from '../../services/EmailService/EmailService';
 import type { RateLimiter } from '../../lib/rateLimit/InMemoryRateLimiter';
 import { ipRateLimitBucket } from '../../lib/rateLimit/ipHelpers';
-import { isLowRating, isSafeReplyTo } from '../../lib/feedback/lowRating';
+import {
+  isLowRating,
+  isSafeReplyTo,
+  resolveFeedbackLink,
+} from '../../lib/feedback/lowRating';
 
 export interface LowRatingNotificationInput {
   rating: number;
@@ -32,7 +36,8 @@ export class NotifyLowRatingUseCase implements ILowRatingNotifier {
     if (!isLowRating(input.rating) || email == null) {
       return;
     }
-    if (!isSafeReplyTo(email) || !input.page.startsWith('/')) {
+    const link = resolveFeedbackLink(input.page);
+    if (!isSafeReplyTo(email) || link == null) {
       return;
     }
 
@@ -63,7 +68,7 @@ export class NotifyLowRatingUseCase implements ILowRatingNotifier {
       await this.emailService.sendLowRatingFeedbackEmail({
         rating: input.rating,
         comment: input.comment,
-        page: input.page,
+        page: link,
         replyTo: email,
         emailVerified: matched != null,
         userId: matched?.userId ?? null,

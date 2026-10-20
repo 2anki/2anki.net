@@ -2,13 +2,28 @@ import { Request, Response } from 'express';
 
 import { IEmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
 import { ILowRatingNotifier } from '../usecases/feedback/NotifyLowRatingUseCase';
-import { IRatedConversionResolver } from '../usecases/feedback/ResolveRatedConversionUseCase';
+import {
+  IRatedConversionResolver,
+  ResolvedRatedConversion,
+} from '../usecases/feedback/ResolveRatedConversionUseCase';
 import { getOwnerId } from '../lib/User/getOwner';
 import { resolveClientIp } from '../lib/rateLimit/ipHelpers';
 
 const EMAIL_MAX_LENGTH = 254;
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const INPUT_FORMAT_MAX_LENGTH = 64;
+const MAX_SIGNED_INT = 2147483647;
+
+// The client sends the rated deck row's source. It must be one of the known
+// DeckRow sources; anything else is dropped so a stray string never lands in
+// the column.
+const INPUT_FORMATS = new Set([
+  'notion',
+  'upload',
+  'mcp',
+  'app',
+  'dropbox',
+  'drive',
+]);
 
 const parseEmail = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
@@ -23,13 +38,13 @@ const parseId = (value: unknown): number | null => {
       : typeof value === 'string'
         ? Number(value)
         : NaN;
-  return Number.isInteger(id) && id > 0 ? id : null;
+  return Number.isInteger(id) && id > 0 && id <= MAX_SIGNED_INT ? id : null;
 };
 
 const parseInputFormat = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
-  const trimmed = value.trim().slice(0, INPUT_FORMAT_MAX_LENGTH);
-  return trimmed.length > 0 ? trimmed : null;
+  const trimmed = value.trim();
+  return INPUT_FORMATS.has(trimmed) ? trimmed : null;
 };
 
 class EmojiFeedbackController {
@@ -65,11 +80,11 @@ class EmojiFeedbackController {
     const sanitizedEmail = parseEmail(email);
     const owner = getOwnerId(res);
     const inputFormat = parseInputFormat(req.body.input_format);
-    const conversion = await this.conversionResolver.resolve({
+    const conversion = await this.resolveConversion(
       owner,
-      jobId: parseId(req.body.job_id),
-      uploadId: parseId(req.body.upload_id),
-    });
+      parseId(req.body.job_id),
+      parseId(req.body.upload_id)
+    );
 
     try {
       await this.repo.insert({
@@ -98,6 +113,19 @@ class EmojiFeedbackController {
       ip: resolveClientIp(req),
       now: new Date(),
     });
+  }
+
+  private async resolveConversion(
+    owner: number | null,
+    jobId: number | null,
+    uploadId: number | null
+  ): Promise<ResolvedRatedConversion> {
+    try {
+      return await this.conversionResolver.resolve({ owner, jobId, uploadId });
+    } catch (error) {
+      console.error('[emoji-feedback] conversion resolve failed', error);
+      return { jobId: null, uploadId: null };
+    }
   }
 }
 

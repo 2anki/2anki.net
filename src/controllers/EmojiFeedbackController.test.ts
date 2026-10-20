@@ -190,6 +190,23 @@ describe('EmojiFeedbackController', () => {
     });
   });
 
+  it('emails support for a low Downloads-prompt rating that leaves an email', async () => {
+    const { controller, req, res, sendLowRatingFeedbackEmail } = buildMocks();
+    req.body = {
+      rating: 1,
+      page: 'downloads/deck_done',
+      email: 'learner@example.com',
+    };
+    await controller.submit(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(sendLowRatingFeedbackEmail).toHaveBeenCalledTimes(1);
+    expect(sendLowRatingFeedbackEmail.mock.calls[0][0]).toMatchObject({
+      rating: 1,
+      page: '/downloads',
+      replyTo: 'learner@example.com',
+    });
+  });
+
   it('does not email a satisfied rating that leaves an email', async () => {
     const { controller, req, res, sendLowRatingFeedbackEmail } = buildMocks();
     req.body = { rating: 5, page: '/upload', email: 'learner@example.com' };
@@ -283,5 +300,44 @@ describe('EmojiFeedbackController', () => {
     req.body = { rating: 5, page: 'downloads/deck_done' };
     await controller.submit(req, res);
     expect(repo.insert.mock.calls[0][0].inputFormat).toBeNull();
+  });
+
+  it('drops an input format outside the known deck sources', async () => {
+    const { controller, req, res, repo } = buildMocks();
+    req.body = {
+      rating: 5,
+      page: 'downloads/deck_done',
+      input_format: 'constructor',
+    };
+    await controller.submit(req, res);
+    expect(repo.insert.mock.calls[0][0].inputFormat).toBeNull();
+  });
+
+  it('rejects an id above the signed 32-bit range before resolving', async () => {
+    const { controller, req, res, conversionResolver } = buildMocks();
+    (res.locals as Record<string, unknown>).owner = 21770;
+    req.body = {
+      rating: 1,
+      page: 'downloads/deck_done',
+      job_id: 2147483648,
+    };
+    await controller.submit(req, res);
+    expect(conversionResolver.resolve).toHaveBeenCalledWith({
+      owner: 21770,
+      jobId: null,
+      uploadId: null,
+    });
+  });
+
+  it('still stores the rating when resolving the conversion throws', async () => {
+    const { controller, req, res, repo, conversionResolver } = buildMocks();
+    (res.locals as Record<string, unknown>).owner = 21770;
+    conversionResolver.resolve.mockRejectedValueOnce(new Error('db down'));
+    req.body = { rating: 1, page: 'downloads/deck_done', job_id: 10 };
+    await controller.submit(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    const inserted = repo.insert.mock.calls[0][0];
+    expect(inserted.jobId).toBeNull();
+    expect(inserted.uploadId).toBeNull();
   });
 });

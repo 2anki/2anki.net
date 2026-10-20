@@ -51,8 +51,8 @@ export class EmojiFeedbackRepository implements IEmojiFeedbackRepository {
 
   constructor(private readonly database: Knex) {}
 
-  async insert(entry: EmojiFeedbackEntry): Promise<void> {
-    await this.database(this.table).insert({
+  buildInsertQuery(entry: EmojiFeedbackEntry): Knex.QueryBuilder {
+    return this.database(this.table).insert({
       rating: entry.rating,
       comment: entry.comment,
       page: entry.page,
@@ -62,6 +62,10 @@ export class EmojiFeedbackRepository implements IEmojiFeedbackRepository {
       upload_id: entry.uploadId ?? null,
       input_format: entry.inputFormat ?? null,
     });
+  }
+
+  async insert(entry: EmojiFeedbackEntry): Promise<void> {
+    await this.buildInsertQuery(entry);
   }
 
   async countByRating(since: Date): Promise<EmojiFeedbackRatingCount[]> {
