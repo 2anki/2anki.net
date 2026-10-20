@@ -4,6 +4,7 @@ import * as childProcess from 'child_process';
 import fsPromises from 'fs/promises';
 import { convertPPTToPDF } from './ConvertPPTToPDF';
 import Workspace from '../../../lib/parser/WorkSpace';
+import { isWorkerTerminationError } from '../../../lib/workerTermination';
 
 vi.mock('child_process', async () => ({
   ...(await vi.importActual<typeof import('child_process')>('child_process')),
@@ -25,7 +26,8 @@ const mockedSpawn = childProcess.spawn as MockedFunction<
 
 function makeProcess(
   stderr: string,
-  exitCode: number
+  exitCode: number | null,
+  signal: NodeJS.Signals | null = null
 ): childProcess.ChildProcess {
   const proc = new EventEmitter() as childProcess.ChildProcess;
   const stdoutEmitter = new EventEmitter();
@@ -39,7 +41,7 @@ function makeProcess(
     if (stderr) {
       stderrEmitter.emit('data', Buffer.from(stderr));
     }
-    proc.emit('close', exitCode);
+    proc.emit('close', exitCode, signal);
   });
 
   return proc;
@@ -74,6 +76,35 @@ describe('convertPPTToPDF', () => {
     expect(result.rejected).toBe(true);
     expect(result.message).toContain('251');
     expect(result.message).toContain(stderr);
+  });
+
+  it.each(['SIGINT', 'SIGTERM'] as const)(
+    'reports a %s kill during a restart as an interrupted conversion',
+    async (signal) => {
+      mockedSpawn.mockReturnValue(makeProcess('', null, signal));
+
+      const err = await convertPPTToPDF(
+        'slides.pptx',
+        Buffer.from('fake'),
+        workspace
+      ).catch((e: unknown) => e);
+
+      expect(isWorkerTerminationError(err)).toBe(true);
+    }
+  );
+
+  it('still reports a SIGKILL as a failed conversion', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockedSpawn.mockReturnValue(makeProcess('', null, 'SIGKILL'));
+
+    const err = await convertPPTToPDF(
+      'slides.pptx',
+      Buffer.from('fake'),
+      workspace
+    ).catch((e: unknown) => e);
+
+    expect(isWorkerTerminationError(err)).toBe(false);
+    expect((err as Error).message).toContain('Conversion failed');
   });
 
   it('logs the subprocess stderr to the server console on failure', async () => {
