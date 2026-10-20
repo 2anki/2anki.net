@@ -55,6 +55,15 @@ const base = {
 };
 
 describe('NotifyLowRatingUseCase', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(base.now);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('does not email a satisfied rating even with an email', async () => {
     const { useCase, sendLowRatingFeedbackEmail } = build();
     await useCase.notifyIfLowRating({ ...base, rating: 5 });
