@@ -18,7 +18,11 @@
     "reasonImagesMissing": "Bilder fehlen",
     "reasonWrongCards": "Falsche Karten",
     "reasonTooFewCards": "Zu wenige Karten",
-    "reasonOther": "Etwas anderes"
+    "reasonOther": "Etwas anderes",
+    "emailPlaceholder": "E-Mail (optional)",
+    "emailHint": "Wird nur genutzt, um auf dieses Feedback zu antworten.",
+    "negativeNextStep": "Wir sehen uns diesen Stapel an.",
+    "negativeReply": "Wir antworten an {{email}}."
   },
   "ankify": {
     "sending": "Wird an dein Anki gesendet…",

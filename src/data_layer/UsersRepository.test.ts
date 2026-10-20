@@ -409,6 +409,46 @@ describe('UsersRepository.deleteUser', () => {
     expect(touchedTables).not.toContain('feedback');
     expect(touchedTables).not.toContain('subscriptions');
   });
+
+  it('purges emoji_feedback rows by owner id', async () => {
+    const emojiWhereArgs: unknown[] = [];
+    const trx: any = vi.fn().mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          where: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              first: vi.fn().mockResolvedValue({ email: null }),
+            }),
+            del: vi.fn().mockResolvedValue(1),
+          }),
+        };
+      }
+      const chain: any = { del: vi.fn().mockResolvedValue(1) };
+      chain.orWhereRaw = vi.fn().mockReturnValue(chain);
+      chain.whereRaw = vi.fn().mockReturnValue(chain);
+      chain.whereIn = vi.fn().mockReturnValue(chain);
+      return {
+        where: vi.fn().mockImplementation((arg: unknown) => {
+          if (table === 'emoji_feedback') emojiWhereArgs.push(arg);
+          return chain;
+        }),
+        whereRaw: vi.fn().mockReturnValue(chain),
+        whereIn: vi.fn().mockReturnValue(chain),
+      };
+    });
+    const transaction = vi.fn().mockImplementation(async (cb) => cb(trx));
+    const knex: any = vi.fn();
+    knex.transaction = transaction;
+    const tombstoneRepo = {
+      snapshot: vi.fn(),
+      consumeIfCurrentMonth: vi.fn(),
+    };
+
+    const repo = new UsersRepository(knex as any, tombstoneRepo as any);
+    await repo.deleteUser('42');
+
+    expect(emojiWhereArgs).toContainEqual({ owner: '42' });
+  });
 });
 
 describe('UsersRepository.countTotalUsers', () => {

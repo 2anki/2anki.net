@@ -73,6 +73,14 @@ class JobRepository {
       .first();
   }
 
+  async existsByIdAndOwner(id: number, owner: string): Promise<boolean> {
+    const row = await this.database(this.tableName)
+      .where({ id, owner })
+      .select('id')
+      .first();
+    return row != null;
+  }
+
   findConversionReportRow(
     objectId: string,
     owner: string

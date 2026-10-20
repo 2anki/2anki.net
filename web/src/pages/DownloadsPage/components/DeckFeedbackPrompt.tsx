@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { track } from '../../../lib/analytics/track';
 import { get2ankiApi } from '../../../lib/backend/get2ankiApi';
+import { useUserLocals } from '../../../lib/hooks/useUserLocals';
 import styles from './DeckFeedbackPrompt.module.css';
 
 const SUPPRESSED_UNTIL_KEY = '2anki_deck_feedback_suppressed_until';
@@ -30,11 +31,21 @@ export function tagComment(reason: ReasonTag | null, comment: string): string {
   return text.length > 0 ? `[${reason}] ${text}` : `[${reason}]`;
 }
 
+export interface DeckFeedbackContext {
+  jobId?: number | null;
+  uploadId?: number | null;
+  inputFormat?: string | null;
+}
+
+interface DeckFeedbackPromptProps {
+  context?: DeckFeedbackContext;
+}
+
 type Stage =
   | { kind: 'prompt' }
   | { kind: 'follow-up'; rating: number }
   | { kind: 'sending' }
-  | { kind: 'sent'; rating: number }
+  | { kind: 'sent'; rating: number; email: string | null }
   | { kind: 'error'; retry: () => void };
 
 function suppressFor(durationMs: number): void {
@@ -58,16 +69,27 @@ export function isDeckFeedbackSuppressed(): boolean {
   }
 }
 
-export function DeckFeedbackPrompt() {
+export function DeckFeedbackPrompt({
+  context,
+}: Readonly<DeckFeedbackPromptProps>) {
   const { t } = useTranslation('downloadsx');
+  const { data: userLocals } = useUserLocals();
+  const userEmail = userLocals?.user?.email;
   const [stage, setStage] = useState<Stage>({ kind: 'prompt' });
   const [comment, setComment] = useState('');
+  const [email, setEmail] = useState('');
   const [reason, setReason] = useState<ReasonTag | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     track(HAPPY_SCORE_ASK_EVENT);
   }, []);
+
+  useEffect(() => {
+    if (userEmail) {
+      setEmail((prev) => (prev === '' ? userEmail : prev));
+    }
+  }, [userEmail]);
 
   if (dismissed) return null;
 
@@ -77,15 +99,19 @@ export function DeckFeedbackPrompt() {
   };
 
   const sendRating = async (rating: number, withComment?: string) => {
+    const trimmedEmail = email.trim();
+    const replyEmail = trimmedEmail.length > 0 ? trimmedEmail : null;
     setStage({ kind: 'sending' });
     try {
       await get2ankiApi().submitEmojiFeedback(
         rating,
         FEEDBACK_PAGE,
-        withComment != null && withComment.length > 0 ? withComment : undefined
+        withComment != null && withComment.length > 0 ? withComment : undefined,
+        replyEmail ?? undefined,
+        context
       );
       suppressFor(ANSWERED_SUPPRESSION_MS);
-      setStage({ kind: 'sent', rating });
+      setStage({ kind: 'sent', rating, email: replyEmail });
     } catch {
       setStage({
         kind: 'error',
@@ -185,6 +211,20 @@ export function DeckFeedbackPrompt() {
             rows={2}
             maxLength={COMMENT_MAX}
           />
+          <label className={styles.emailLabel} htmlFor="deck-feedback-email">
+            {t('feedback.emailPlaceholder')}
+          </label>
+          <input
+            id="deck-feedback-email"
+            type="email"
+            className={styles.email}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            maxLength={254}
+            autoComplete="email"
+            data-hj-suppress
+          />
+          <p className={styles.emailHint}>{t('feedback.emailHint')}</p>
           <div className={styles.actions}>
             <button
               type="button"
@@ -209,7 +249,18 @@ export function DeckFeedbackPrompt() {
       )}
 
       {stage.kind === 'sent' && (
-        <p className={styles.status}>{t('feedback.received')}</p>
+        <>
+          <p className={styles.status}>
+            {stage.rating === NEGATIVE_RATING
+              ? t('feedback.negativeNextStep')
+              : t('feedback.received')}
+          </p>
+          {stage.rating === NEGATIVE_RATING && stage.email != null && (
+            <p className={styles.status}>
+              {t('feedback.negativeReply', { email: stage.email })}
+            </p>
+          )}
+        </>
       )}
 
       {stage.kind === 'error' && (

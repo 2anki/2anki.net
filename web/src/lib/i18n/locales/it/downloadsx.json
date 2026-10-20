@@ -18,7 +18,11 @@
     "reasonImagesMissing": "Immagini mancanti",
     "reasonWrongCards": "Carte sbagliate",
     "reasonTooFewCards": "Troppo poche carte",
-    "reasonOther": "Altro"
+    "reasonOther": "Altro",
+    "emailPlaceholder": "Email (facoltativa)",
+    "emailHint": "Usata solo per dare seguito a questo feedback.",
+    "negativeNextStep": "Daremo un'occhiata a questo mazzo.",
+    "negativeReply": "Ti risponderemo a {{email}}."
   },
   "ankify": {
     "sending": "Invio al tuo Anki…",

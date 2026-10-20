@@ -91,7 +91,9 @@ describe('DeckFeedbackPrompt', () => {
       expect(submitEmojiFeedback).toHaveBeenCalledWith(
         5,
         'downloads/deck_done',
-        'add a tag to each card'
+        'add a tag to each card',
+        'free@example.com',
+        undefined
       );
     });
     expect(await screen.findByText('Feedback received.')).toBeInTheDocument();
@@ -105,6 +107,8 @@ describe('DeckFeedbackPrompt', () => {
       expect(submitEmojiFeedback).toHaveBeenCalledWith(
         5,
         'downloads/deck_done',
+        undefined,
+        'free@example.com',
         undefined
       );
     });
@@ -130,10 +134,14 @@ describe('DeckFeedbackPrompt', () => {
       expect(submitEmojiFeedback).toHaveBeenCalledWith(
         1,
         'downloads/deck_done',
-        'images were missing'
+        'images were missing',
+        'free@example.com',
+        undefined
       );
     });
-    expect(await screen.findByText('Feedback received.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('We\u0027ll look at this deck.')
+    ).toBeInTheDocument();
   });
 
   it('posts rating 1 with no comment when the user skips the follow-up', async () => {
@@ -144,10 +152,14 @@ describe('DeckFeedbackPrompt', () => {
       expect(submitEmojiFeedback).toHaveBeenCalledWith(
         1,
         'downloads/deck_done',
+        undefined,
+        'free@example.com',
         undefined
       );
     });
-    expect(await screen.findByText('Feedback received.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('We\u0027ll look at this deck.')
+    ).toBeInTheDocument();
   });
 
   it('fires the ask event once when the prompt is shown', () => {
@@ -160,15 +172,20 @@ describe('DeckFeedbackPrompt', () => {
     render(<DeckFeedbackPrompt />);
     fireEvent.click(screen.getByRole('button', { name: 'Something was off' }));
     fireEvent.click(screen.getByRole('button', { name: 'Images missing' }));
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'captions vanished' },
-    });
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'What went wrong?' }),
+      {
+        target: { value: 'captions vanished' },
+      }
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => {
       expect(submitEmojiFeedback).toHaveBeenCalledWith(
         1,
         'downloads/deck_done',
-        '[images_missing] captions vanished'
+        '[images_missing] captions vanished',
+        'free@example.com',
+        undefined
       );
     });
   });
@@ -184,7 +201,9 @@ describe('DeckFeedbackPrompt', () => {
       expect(submitEmojiFeedback).toHaveBeenCalledWith(
         1,
         'downloads/deck_done',
-        '[too_few_cards]'
+        '[too_few_cards]',
+        'free@example.com',
+        undefined
       );
     });
   });
@@ -274,5 +293,94 @@ describe('DeckFeedbackPrompt — no upsell after feedback', () => {
       'paywall_shown',
       expect.objectContaining({ surface: 'deck_feedback_sent' })
     );
+  });
+});
+
+describe('DeckFeedbackPrompt — email and conversion context', () => {
+  it('pre-fills the email field with the signed-in address', () => {
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Something was off' }));
+    expect(screen.getByLabelText('Email (optional)')).toHaveValue(
+      'free@example.com'
+    );
+  });
+
+  it('leaves the email empty for an anonymous visitor and posts no email', async () => {
+    mockUseUserLocals.mockReturnValue({ data: { locals: {}, user: null } });
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, it worked' }));
+    expect(screen.getByLabelText('Email (optional)')).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    await waitFor(() => {
+      expect(submitEmojiFeedback).toHaveBeenCalledWith(
+        5,
+        'downloads/deck_done',
+        undefined,
+        undefined,
+        undefined
+      );
+    });
+  });
+
+  it('sends the cleared email as undefined', async () => {
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, it worked' }));
+    fireEvent.change(screen.getByLabelText('Email (optional)'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    await waitFor(() => {
+      expect(submitEmojiFeedback).toHaveBeenCalledWith(
+        5,
+        'downloads/deck_done',
+        undefined,
+        undefined,
+        undefined
+      );
+    });
+  });
+
+  it('passes the rated conversion context through to the API', async () => {
+    render(
+      <DeckFeedbackPrompt
+        context={{ jobId: 7, uploadId: null, inputFormat: 'notion' }}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Something was off' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    await waitFor(() => {
+      expect(submitEmojiFeedback).toHaveBeenCalledWith(
+        1,
+        'downloads/deck_done',
+        undefined,
+        'free@example.com',
+        { jobId: 7, uploadId: null, inputFormat: 'notion' }
+      );
+    });
+  });
+
+  it('offers a next step and a reply line after a negative rating with an email', async () => {
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Something was off' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(
+      await screen.findByText('We\u0027ll look at this deck.')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("We'll reply to free@example.com.")
+    ).toBeInTheDocument();
+  });
+
+  it('shows the next step but no reply line when the email is cleared', async () => {
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Something was off' }));
+    fireEvent.change(screen.getByLabelText('Email (optional)'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(
+      await screen.findByText('We\u0027ll look at this deck.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/We'll reply to/)).not.toBeInTheDocument();
   });
 });

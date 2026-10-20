@@ -18,7 +18,11 @@
     "reasonImagesMissing": "Нет изображений",
     "reasonWrongCards": "Неправильные карточки",
     "reasonTooFewCards": "Слишком мало карточек",
-    "reasonOther": "Другое"
+    "reasonOther": "Другое",
+    "emailPlaceholder": "E-mail (необязательно)",
+    "emailHint": "Используется только для ответа на этот отзыв.",
+    "negativeNextStep": "Мы посмотрим эту колоду.",
+    "negativeReply": "Мы ответим на {{email}}."
   },
   "ankify": {
     "sending": "Отправка в ваш Anki…",

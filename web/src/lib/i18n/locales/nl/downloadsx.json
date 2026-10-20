@@ -18,7 +18,11 @@
     "reasonImagesMissing": "Afbeeldingen ontbreken",
     "reasonWrongCards": "Verkeerde kaarten",
     "reasonTooFewCards": "Te weinig kaarten",
-    "reasonOther": "Iets anders"
+    "reasonOther": "Iets anders",
+    "emailPlaceholder": "E-mail (optioneel)",
+    "emailHint": "Alleen gebruikt om op deze feedback terug te komen.",
+    "negativeNextStep": "We bekijken dit pakket.",
+    "negativeReply": "We reageren naar {{email}}."
   },
   "ankify": {
     "sending": "Verzenden naar je Anki…",

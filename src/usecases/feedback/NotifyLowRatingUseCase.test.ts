@@ -85,6 +85,21 @@ describe('NotifyLowRatingUseCase', () => {
     expect(sendLowRatingFeedbackEmail).not.toHaveBeenCalled();
   });
 
+  it('emails an allowlisted Downloads prompt rating and links to the in-app path', async () => {
+    const { useCase, sendLowRatingFeedbackEmail } = build();
+    await useCase.notifyIfLowRating({
+      ...base,
+      comment: null,
+      page: 'downloads/deck_done',
+    });
+    expect(sendLowRatingFeedbackEmail).toHaveBeenCalledTimes(1);
+    expect(sendLowRatingFeedbackEmail.mock.calls[0][0]).toMatchObject({
+      rating: 1,
+      page: '/downloads',
+      replyTo: 'typed@example.com',
+    });
+  });
+
   it('does not email when the address is not a safe single address', async () => {
     const { useCase, sendLowRatingFeedbackEmail } = build();
     await useCase.notifyIfLowRating({
