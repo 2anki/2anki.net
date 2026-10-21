@@ -356,7 +356,7 @@ const notionTogglesToAnki: LandingCopy = {
     },
     {
       q: 'Do toggle headings (H1, H2, H3) work the same?',
-      a: 'A toggle heading with its own content makes one card, heading on the front. A toggle heading that holds other toggles instead makes one card per inner toggle, with the heading grouping them.',
+      a: 'A toggle heading with its own content makes one card, heading on the front. A toggle heading that holds other toggles instead makes one card per inner toggle instead of one large card.',
     },
     {
       q: 'How do I make a cloze card from a toggle?',
@@ -421,7 +421,7 @@ const notionExportToAnki: LandingCopy = {
     },
     {
       q: 'Can I upload a Markdown or CSV export instead?',
-      a: 'You can, but HTML is the cleanest. Notion exports toggles to Markdown as plain bullet lists, so the front and back structure is lost, and a CSV export drops embedded images. Use the Markdown or CSV converters if that is all you have.',
+      a: 'You can, but HTML is the most faithful. Markdown works too, since nested bullets become front and back, but some Notion formatting does not carry over, and a CSV export drops embedded images. Use the Markdown or CSV converters if that is all you have.',
     },
   ],
 };

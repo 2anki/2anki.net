@@ -69,7 +69,7 @@ const notionCopy: LandingCopy = {
     },
     {
       q: 'How do I make cloze cards from Notion?',
-      a: 'Wrap the answer in inline code in a toggle heading, or write {{c1::...}} there, and 2anki makes a real Anki cloze card where {{c1::...}} stays clickable. Reading a cloze from a toggle content is a separate option that is off by default.',
+      a: 'Wrap the answer in inline code in a toggle heading, or write {{c1::...}} there, and 2anki makes a real Anki cloze card where {{c1::...}} stays clickable. Reading a cloze from the toggle content is a separate option that is off by default.',
     },
   ],
 };

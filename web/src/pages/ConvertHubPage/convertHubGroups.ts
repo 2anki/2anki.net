@@ -35,13 +35,13 @@ const NOTE_APPS: RawEntry[] = [
     slug: 'notion-toggles-to-anki',
     anchor: 'Convert Notion toggles to Anki',
     blurb:
-      'Each toggle becomes a card — heading on the front, content on the back.',
+      'Each toggle becomes a card: heading on the front, content on the back.',
   },
   {
     slug: 'notion-export-to-anki',
     anchor: 'Convert a Notion export to Anki',
     blurb:
-      'Already exported a .zip or HTML? Upload it and get a deck — no connection.',
+      'Already exported a .zip or HTML? Upload it and get a deck, no connection needed.',
   },
   {
     slug: 'markdown-to-anki',
