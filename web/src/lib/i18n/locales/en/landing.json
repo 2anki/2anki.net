@@ -136,8 +136,8 @@
       "subhead": "Drop a PDF or Notion export of your Saunders, UWorld, or ATI notes — lab values, med suffixes, priority and delegation. 2anki builds clean cards from your material, not from a guess."
     },
     "notion-to-anki": {
-      "h1": "Notion to Anki — free, no add-on required",
-      "subhead": "Connect Notion once, paste any page link, get a .apkg deck. No software to install."
+      "h1": "Notion to Anki — turn pages, toggles, and tables into cards",
+      "subhead": "Connect Notion and paste a page link, or upload an export. Toggles become front-and-back cards. Download a .apkg."
     },
     "nursing-flashcards": {
       "h1": "Anki flashcards from nursing lecture slides and notes",
@@ -190,6 +190,14 @@
     "convert-notion-tables-to-anki": {
       "h1": "Notion tables to Anki — one row, one card",
       "subhead": "Paste a Notion page with a table. Column 1 becomes the front, column 2 becomes the back."
+    },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Notion toggles to Anki — one toggle, one card",
+      "subhead": "Write your notes as toggles in Notion. The heading becomes the front, the hidden content becomes the back. Connect, paste a link, get a .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Notion export to Anki — upload a .zip, get a deck",
+      "subhead": "Already exported your Notion page? Drop the .zip or HTML file and download a .apkg. No connection, no reformatting."
     },
     "convert-brainscape-to-anki": {
       "h1": "Move your Brainscape flashcards to Anki",

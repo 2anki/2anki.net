@@ -136,8 +136,8 @@
       "subhead": "Suelta un PDF o una exportación de Notion de tus apuntes de Saunders, UWorld o ATI — valores de laboratorio, sufijos de medicamentos, prioridad y delegación. 2anki crea tarjetas limpias a partir de tu material, no de una suposición."
     },
     "notion-to-anki": {
-      "h1": "Notion a Anki — gratis, sin complementos",
-      "subhead": "Conecta Notion una vez, pega el enlace de cualquier página y obtén un mazo .apkg. Sin software que instalar."
+      "h1": "Notion a Anki — convierte páginas, toggles y tablas en tarjetas",
+      "subhead": "Conecta Notion y pega el enlace de una página, o sube una exportación. Los toggles se convierten en tarjetas de anverso y reverso. Descarga un .apkg."
     },
     "nursing-flashcards": {
       "h1": "Tarjetas de Anki a partir de diapositivas y apuntes de enfermería",
@@ -190,6 +190,14 @@
     "convert-notion-tables-to-anki": {
       "h1": "Tablas de Notion a Anki — una fila, una tarjeta",
       "subhead": "Pega una página de Notion con una tabla. La columna 1 pasa al anverso, la columna 2 al reverso."
+    },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Toggles de Notion a Anki — un toggle, una tarjeta",
+      "subhead": "Escribe tus notas en Notion como toggles. El título pasa al anverso, el contenido oculto al reverso. Conecta, pega un enlace y obtén un .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Exportación de Notion a Anki — sube un .zip y obtén un mazo",
+      "subhead": "¿Ya exportaste tu página de Notion? Suelta el archivo .zip o HTML y descarga un .apkg. Sin conexión, sin reformatear."
     },
     "convert-brainscape-to-anki": {
       "h1": "Lleva tus tarjetas de Brainscape a Anki",

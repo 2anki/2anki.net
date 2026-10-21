@@ -136,8 +136,8 @@
       "subhead": "Leg ein PDF oder einen Notion-Export deiner Saunders-, UWorld- oder ATI-Notizen ab — Laborwerte, Medikamenten-Endungen, Priorisierung und Delegation. 2anki baut saubere Karten aus deinem Material, nicht aus Vermutungen."
     },
     "notion-to-anki": {
-      "h1": "Notion zu Anki — kostenlos, kein Add-on nötig",
-      "subhead": "Verbinde Notion einmal, füge einen beliebigen Seitenlink ein und erhalte einen .apkg-Stapel. Keine Software zu installieren."
+      "h1": "Notion zu Anki — Seiten, Toggles und Tabellen werden zu Karten",
+      "subhead": "Verbinde Notion und füge einen Seitenlink ein oder lade einen Export hoch. Toggles werden zu Vorder- und Rückseitenkarten. Lade eine .apkg herunter."
     },
     "nursing-flashcards": {
       "h1": "Anki-Karteikarten aus Pflege-Vorlesungsfolien und -Notizen",
@@ -190,6 +190,14 @@
     "convert-notion-tables-to-anki": {
       "h1": "Notion-Tabellen zu Anki — eine Zeile, eine Karte",
       "subhead": "Füge eine Notion-Seite mit einer Tabelle ein. Spalte 1 wird zur Vorderseite, Spalte 2 zur Rückseite."
+    },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Notion-Toggles zu Anki — ein Toggle, eine Karte",
+      "subhead": "Schreibe deine Notizen in Notion als Toggles. Die Überschrift wird zur Vorderseite, der eingeklappte Inhalt zur Rückseite. Verbinde Notion, füge einen Link ein, hol dir eine .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Notion-Export zu Anki — lade eine .zip hoch, hol dir einen Stapel",
+      "subhead": "Deine Notion-Seite schon exportiert? Lege die .zip- oder HTML-Datei ab und lade eine .apkg herunter. Keine Verbindung, kein Umformatieren."
     },
     "convert-brainscape-to-anki": {
       "h1": "Übertrage deine Brainscape-Karteikarten zu Anki",

@@ -139,6 +139,12 @@
       "heading": "Fait pour ce que tu étudies",
       "nursingSchool": "Soins infirmiers",
       "japanese": "Japonais"
+    },
+    "popularConversions": {
+      "heading": "Conversions populaires",
+      "notion": "Convertir Notion en Anki",
+      "pdf": "Convertir un PDF en Anki",
+      "browseAll": "Voir tous les convertisseurs"
     }
   },
   "upload": {

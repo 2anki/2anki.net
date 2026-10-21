@@ -139,6 +139,12 @@
       "heading": "Made for what you study",
       "nursingSchool": "Nursing school",
       "japanese": "Japanese"
+    },
+    "popularConversions": {
+      "heading": "Popular conversions",
+      "notion": "Convert Notion to Anki",
+      "pdf": "Convert a PDF to Anki",
+      "browseAll": "Browse every converter"
     }
   },
   "upload": {

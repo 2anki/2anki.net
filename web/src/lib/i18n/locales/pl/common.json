@@ -141,6 +141,12 @@
       "heading": "Stworzone dla tego, czego się uczysz",
       "nursingSchool": "Pielęgniarstwo",
       "japanese": "Japoński"
+    },
+    "popularConversions": {
+      "heading": "Popularne konwersje",
+      "notion": "Konwertuj Notion do Anki",
+      "pdf": "Konwertuj PDF do Anki",
+      "browseAll": "Przeglądaj wszystkie konwertery"
     }
   },
   "upload": {

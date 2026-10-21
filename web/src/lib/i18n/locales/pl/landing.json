@@ -136,8 +136,8 @@
       "subhead": "Upuść PDF lub eksport Notion z notatkami z Saunders, UWorld lub ATI — wartości laboratoryjne, końcówki nazw leków, priorytety i delegowanie. 2anki tworzy czyste karty z Twojego materiału, a nie ze zgadywania."
     },
     "notion-to-anki": {
-      "h1": "Notion do Anki — za darmo, bez dodatku",
-      "subhead": "Połącz Notion raz, wklej dowolny link do strony, odbierz talię .apkg. Nic nie trzeba instalować."
+      "h1": "Notion do Anki — strony, toggle i tabele zmieniają się w karty",
+      "subhead": "Połącz Notion i wklej link do strony albo prześlij eksport. Toggle zmieniają się w karty z przodem i tyłem. Pobierz plik .apkg."
     },
     "nursing-flashcards": {
       "h1": "Fiszki Anki ze slajdów i notatek z wykładów pielęgniarskich",
@@ -190,6 +190,14 @@
     "convert-notion-tables-to-anki": {
       "h1": "Tabele Notion do Anki — jeden wiersz, jedna karta",
       "subhead": "Wklej stronę Notion z tabelą. Kolumna 1 staje się przodem, kolumna 2 staje się tyłem."
+    },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Toggle Notion do Anki — jeden toggle, jedna karta",
+      "subhead": "Zapisuj notatki w Notion jako toggle. Nagłówek staje się przodem, ukryta treść tyłem. Połącz, wklej link, odbierz plik .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Eksport Notion do Anki — prześlij .zip, odbierz talię",
+      "subhead": "Masz już wyeksportowaną stronę Notion? Upuść plik .zip lub HTML i pobierz .apkg. Bez łączenia, bez formatowania od nowa."
     },
     "convert-brainscape-to-anki": {
       "h1": "Przenieś swoje fiszki Brainscape do Anki",

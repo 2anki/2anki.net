@@ -139,6 +139,12 @@
       "heading": "Gemaakt voor wat jij studeert",
       "nursingSchool": "Verpleegkunde",
       "japanese": "Japans"
+    },
+    "popularConversions": {
+      "heading": "Populaire conversies",
+      "notion": "Notion naar Anki converteren",
+      "pdf": "Een PDF naar Anki converteren",
+      "browseAll": "Alle converters bekijken"
     }
   },
   "upload": {

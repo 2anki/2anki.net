@@ -147,7 +147,61 @@ describe('ConvertLandingPage', () => {
   });
 
   it('covers all supported input types', () => {
-    expect(CONVERT_LANDING_PAGES.size).toBe(26);
+    expect(CONVERT_LANDING_PAGES.size).toBe(28);
+  });
+
+  const notionIntentSlugs = ['notion-toggles-to-anki', 'notion-export-to-anki'];
+
+  it.each(notionIntentSlugs)(
+    'serves the Notion intent page "%s" with a self-referencing canonical',
+    (slug) => {
+      const copy = CONVERT_LANDING_PAGES.get(slug);
+      expect(copy?.pathname).toBe(`/convert/${slug}`);
+      expect(copy?.canonicalPathname).toBeUndefined();
+    }
+  );
+
+  it('gives the Notion toggles page its own title and H1', () => {
+    const copy = CONVERT_LANDING_PAGES.get('notion-toggles-to-anki');
+    expect(copy?.title).toBe(
+      'Notion toggles to Anki — toggle lists into cards | 2anki'
+    );
+    expect(copy?.h1).toBe('Notion toggles to Anki — one toggle, one card');
+    renderAtSlug('notion-toggles-to-anki');
+    expect(
+      screen.getByRole('heading', { level: 1, name: copy?.h1 })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Drop your files here/i)).toBeInTheDocument();
+  });
+
+  it('gives the Notion export page its own title and H1', () => {
+    const copy = CONVERT_LANDING_PAGES.get('notion-export-to-anki');
+    expect(copy?.title).toBe(
+      'Notion export to Anki — .zip or HTML into a deck | 2anki'
+    );
+    expect(copy?.h1).toBe('Notion export to Anki — upload a .zip, get a deck');
+    renderAtSlug('notion-export-to-anki');
+    expect(
+      screen.getByRole('heading', { level: 1, name: copy?.h1 })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Drop your files here/i)).toBeInTheDocument();
+  });
+
+  it('cross-links the two new Notion intent pages to the pillar and each other', () => {
+    const toggles = CONVERT_LANDING_PAGES.get('notion-toggles-to-anki');
+    const exportPage = CONVERT_LANDING_PAGES.get('notion-export-to-anki');
+    const togglesHrefs = (toggles?.relatedLinks ?? []).map((l) => l.href);
+    const exportHrefs = (exportPage?.relatedLinks ?? []).map((l) => l.href);
+    expect(togglesHrefs).toContain('/notion-to-anki');
+    expect(togglesHrefs).toContain('/convert/notion-export-to-anki');
+    expect(exportHrefs).toContain('/notion-to-anki');
+    expect(exportHrefs).toContain('/convert/notion-toggles-to-anki');
+  });
+
+  it('cross-links the Notion tables page to the new toggles page', () => {
+    const tables = CONVERT_LANDING_PAGES.get('notion-tables-to-anki');
+    const hrefs = (tables?.relatedLinks ?? []).map((l) => l.href);
+    expect(hrefs).toContain('/convert/notion-toggles-to-anki');
   });
 
   const newConvertSlugs = [

@@ -136,8 +136,8 @@
       "subhead": "Sleep een PDF of Notion-export van je Saunders-, UWorld- of ATI-notities hierheen — labwaarden, med-suffixen, prioriteit en delegatie. 2anki bouwt nette kaarten van jouw materiaal, niet van een gok."
     },
     "notion-to-anki": {
-      "h1": "Notion naar Anki — gratis, geen add-on nodig",
-      "subhead": "Verbind Notion één keer, plak elke paginalink, krijg een .apkg-deck. Geen software te installeren."
+      "h1": "Notion naar Anki — pagina's, toggles en tabellen worden kaarten",
+      "subhead": "Verbind Notion en plak een paginalink, of upload een export. Toggles worden voor- en achterkantkaarten. Download een .apkg."
     },
     "nursing-flashcards": {
       "h1": "Anki-flashcards van verpleegkundige collegeslides en notities",
@@ -190,6 +190,14 @@
     "convert-notion-tables-to-anki": {
       "h1": "Notion-tabellen naar Anki — één rij, één kaart",
       "subhead": "Plak een Notion-pagina met een tabel. Kolom 1 wordt de voorkant, kolom 2 wordt de achterkant."
+    },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Notion-toggles naar Anki — één toggle, één kaart",
+      "subhead": "Schrijf je notities in Notion als toggles. De kop wordt de voorkant, de verborgen inhoud de achterkant. Verbind, plak een link, krijg een .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Notion-export naar Anki — upload een .zip, krijg een deck",
+      "subhead": "Je Notion-pagina al geëxporteerd? Zet het .zip- of HTML-bestand neer en download een .apkg. Geen verbinding, geen herformatteren."
     },
     "convert-brainscape-to-anki": {
       "h1": "Verplaats je Brainscape-flashcards naar Anki",

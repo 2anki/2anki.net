@@ -91,6 +91,8 @@ const CONVERT_SLUGS = new Set<string>([
   'html-to-anki',
   'apkg-to-csv',
   'notion-tables-to-anki',
+  'notion-toggles-to-anki',
+  'notion-export-to-anki',
   'brainscape-to-anki',
   'lingvist-to-anki',
   'studystack-to-anki',

@@ -136,8 +136,8 @@
       "subhead": "Saunders、UWorld、ATI のノートの PDF や Notion エクスポートをドロップ — 検査値、薬剤の接尾辞、優先順位と委譲。2anki は推測ではなく、あなたの素材からきれいなカードを作ります。"
     },
     "notion-to-anki": {
-      "h1": "Notion から Anki へ — 無料、アドオン不要",
-      "subhead": "Notion を一度接続し、どのページのリンクでも貼れば、.apkg デッキが手に入ります。インストールするソフトはありません。"
+      "h1": "Notion から Anki へ — ページ・トグル・テーブルをカードに",
+      "subhead": "Notion を接続してページのリンクを貼るか、エクスポートをアップロードします。トグルは表裏のカードになります。.apkg をダウンロードできます。"
     },
     "nursing-flashcards": {
       "h1": "看護の講義スライドとノートから Anki フラッシュカード",
@@ -190,6 +190,14 @@
     "convert-notion-tables-to-anki": {
       "h1": "Notion のテーブルを Anki に — 1 行が 1 枚のカード",
       "subhead": "テーブルのある Notion ページを貼り付け。1 列目が表、2 列目が裏になります。"
+    },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Notion のトグルを Anki に — 1 つのトグルが 1 枚のカード",
+      "subhead": "Notion でメモをトグルとして書きます。見出しが表、折りたたまれた内容が裏になります。接続してリンクを貼り、.apkg を入手できます。"
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Notion のエクスポートを Anki に — .zip をアップロードしてデッキを入手",
+      "subhead": "Notion ページをもうエクスポート済みですか？ .zip または HTML ファイルを置いて .apkg をダウンロードします。接続も再整形も不要です。"
     },
     "convert-brainscape-to-anki": {
       "h1": "Brainscape のフラッシュカードを Anki に移す",

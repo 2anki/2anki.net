@@ -136,8 +136,8 @@
       "subhead": "Solte um PDF ou exportação do Notion das suas anotações do Saunders, UWorld ou ATI — valores laboratoriais, sufixos de medicamentos, prioridade e delegação. O 2anki cria cartões limpos a partir do seu material, não de um chute."
     },
     "notion-to-anki": {
-      "h1": "Notion para Anki — grátis, sem add-on",
-      "subhead": "Conecte o Notion uma vez, cole o link de qualquer página, receba um baralho .apkg. Nada para instalar."
+      "h1": "Notion para Anki — páginas, toggles e tabelas viram cartões",
+      "subhead": "Conecte o Notion e cole o link de uma página, ou envie uma exportação. Os toggles viram cartões de frente e verso. Baixe um .apkg."
     },
     "nursing-flashcards": {
       "h1": "Flashcards do Anki a partir de slides e anotações de enfermagem",
@@ -190,6 +190,14 @@
     "convert-notion-tables-to-anki": {
       "h1": "Tabelas do Notion para Anki — uma linha, um cartão",
       "subhead": "Cole uma página do Notion com uma tabela. A coluna 1 vira a frente, a coluna 2 vira o verso."
+    },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Toggles do Notion para Anki — um toggle, um cartão",
+      "subhead": "Escreva suas notas no Notion como toggles. O título vira a frente, o conteúdo oculto vira o verso. Conecte, cole um link, receba um .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Exportação do Notion para Anki — envie um .zip, receba um baralho",
+      "subhead": "Já exportou sua página do Notion? Solte o arquivo .zip ou HTML e baixe um .apkg. Sem conexão, sem reformatação."
     },
     "convert-brainscape-to-anki": {
       "h1": "Migre seus flashcards do Brainscape para o Anki",

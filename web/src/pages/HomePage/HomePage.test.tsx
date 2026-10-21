@@ -102,6 +102,19 @@ describe('HomePage (anonymous)', () => {
     expect(link).toHaveAttribute('href', '/card-options');
   });
 
+  it('lists popular conversions linking the Notion pillar, PDF, and the hub', () => {
+    renderHome();
+    expect(
+      screen.getByRole('link', { name: 'Convert Notion to Anki' })
+    ).toHaveAttribute('href', '/notion-to-anki');
+    expect(
+      screen.getByRole('link', { name: 'Convert a PDF to Anki' })
+    ).toHaveAttribute('href', '/pdf-to-anki');
+    expect(
+      screen.getByRole('link', { name: 'Browse every converter' })
+    ).toHaveAttribute('href', '/convert');
+  });
+
   it('renders the three how-it-works steps with icons', () => {
     renderHome();
     expect(screen.getByText('Upload')).toBeInTheDocument();

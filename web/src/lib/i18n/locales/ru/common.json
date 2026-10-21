@@ -141,6 +141,12 @@
       "heading": "Для того, что ты учишь",
       "nursingSchool": "Сестринское дело",
       "japanese": "Японский"
+    },
+    "popularConversions": {
+      "heading": "Популярные конвертации",
+      "notion": "Конвертировать Notion в Anki",
+      "pdf": "Конвертировать PDF в Anki",
+      "browseAll": "Все конвертеры"
     }
   },
   "upload": {

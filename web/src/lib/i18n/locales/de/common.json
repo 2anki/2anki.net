@@ -139,6 +139,12 @@
       "heading": "Für dein Studium gemacht",
       "nursingSchool": "Pflegeausbildung",
       "japanese": "Japanisch"
+    },
+    "popularConversions": {
+      "heading": "Beliebte Konvertierungen",
+      "notion": "Notion zu Anki konvertieren",
+      "pdf": "PDF zu Anki konvertieren",
+      "browseAll": "Alle Konverter ansehen"
     }
   },
   "upload": {
