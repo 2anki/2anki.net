@@ -16,8 +16,9 @@ export interface AnonymousPassBalanceReaders {
 // claimed pass row: the pass kind's allowance over its [expiresAt − duration,
 // expiresAt] window, minus the AI spend recorded against that pass id in the
 // same window. No grants — an anonymous pass cannot hold credit packs. Returns
-// null for an unknown, expired, or non-metered pass so the caller fails open,
-// matching the signed-in guard's null-balance behaviour.
+// null for an unknown, expired, non-metered, or allowance-less pass; the guard
+// treats a null pass balance as exhausted (fails CLOSED), so an unresolvable
+// pass never yields unmetered AI.
 export async function computeAnonymousPassBalance(
   anonymousPassId: number,
   now: Date,

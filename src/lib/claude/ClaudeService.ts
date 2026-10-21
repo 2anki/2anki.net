@@ -1915,7 +1915,7 @@ async function runFloorV1(
       targetChunks.map(
         (idx) => () =>
           runChunkWithTruncationRetry(chunks[idx], (content) =>
-            withAiBudget(attribution?.userId, () =>
+            withAiBudget(aiSubjectOf(attribution), () =>
               generateDeckInfoFromChunk(
                 content,
                 pageStyle,
