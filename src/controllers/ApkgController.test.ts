@@ -888,6 +888,34 @@ describe('ApkgController.exportCsv', () => {
   });
 });
 
+describe('ApkgController.previewPdf — temp upload cleanup', () => {
+  it.each([
+    ['a non-.apkg upload', { originalname: 'notes.zip' }, {}],
+    ['an invalid background color', {}, { backgroundColor: 'not-a-hex' }],
+  ])(
+    'deletes the uploaded file when rejecting %s',
+    async (_label, fileOverrides, body) => {
+      const fs = await import('node:fs/promises');
+      const unlinkMock = fs.unlink as Mock;
+      unlinkMock.mockClear();
+      const controller = makeController();
+      const res = makeRes() as Response;
+      const req = makeReq({
+        body,
+        file: {
+          ...(makeReq().file as Express.Multer.File),
+          ...fileOverrides,
+        },
+      }) as Request;
+
+      await controller.previewPdf(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(unlinkMock).toHaveBeenCalledWith('/tmp/deck.apkg');
+    }
+  );
+});
+
 describe('ApkgController.previewPdf', () => {
   let previewMock: Mock;
 

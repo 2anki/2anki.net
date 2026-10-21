@@ -41,6 +41,13 @@ describe('PrintPreview', () => {
     expect(screen.queryByText(/of 2 cards/i)).not.toBeInTheDocument();
   });
 
+  it('captions a one-card deck in the singular', () => {
+    renderPreview({ totalCards: 1, previewedCards: 1 });
+    expect(
+      screen.getByText(/your 1 card, exactly as it'll print/i)
+    ).toBeInTheDocument();
+  });
+
   it('shows the download action and free-PDF hint for a free user with the print available', () => {
     const onDownload = vi.fn();
     renderPreview({ onDownload });

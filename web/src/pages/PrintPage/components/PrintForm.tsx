@@ -101,7 +101,7 @@ interface PreviewResponse {
 }
 
 export default function PrintForm() {
-  const { t } = useTranslation('tools');
+  const { t } = useTranslation(['tools', 'accountx']);
   const messages: PrintMessages = {
     wrongType: t('print.wrongType'),
     corrupted: t('print.corrupted'),
@@ -270,7 +270,10 @@ export default function PrintForm() {
         globalThis.location.href = result.url;
         return;
       }
-      setDownloadError({ status: 0, message: messages.genericError });
+      setDownloadError({
+        status: 0,
+        message: t('limit.checkoutError', { ns: 'accountx' }),
+      });
     } finally {
       setPassBusy(false);
     }

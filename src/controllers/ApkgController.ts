@@ -320,11 +320,13 @@ class ApkgController {
         return;
       }
       if (!isApkg(file.originalname)) {
+        await tryUnlink(file.path);
         res.status(400).json({ message: 'File must be an .apkg file.' });
         return;
       }
       const pdfOptions = parsePdfOptions(req.body as Record<string, unknown>);
       if (pdfOptions == null) {
+        await tryUnlink(file.path);
         res.status(400).json({
           message:
             'Invalid background color. Use a six-digit hex value like #ffffff.',
@@ -336,7 +338,7 @@ class ApkgController {
       try {
         fileBuffer = await fs.readFile(file.path);
       } finally {
-        await fs.unlink(file.path).catch(() => {});
+        await tryUnlink(file.path);
       }
       const useCase = new ExportApkgToPdfUseCase(
         this.previewService,

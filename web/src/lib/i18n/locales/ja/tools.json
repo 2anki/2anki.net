@@ -33,7 +33,7 @@
     "printAnother": "別のデッキを印刷",
     "previewIsFree": "プレビューは無料です。デッキ全体のダウンロードにのみ料金がかかります。",
     "previewOfTotal": "プレビュー — {{total}}枚中、最初の{{count}}枚、印刷されるとおりに表示",
-    "previewAll": "プレビュー — {{count}}枚すべて、印刷されるとおりに表示",
+    "previewAll_other": "プレビュー — {{count}}枚すべて、印刷されるとおりに表示",
     "previewPaperNote": "改ページは上で選んだ用紙サイズに従います。",
     "updatePreview": "プレビューを更新",
     "downloadFullPdf": "PDF全体をダウンロード",

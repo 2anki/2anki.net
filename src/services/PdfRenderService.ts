@@ -314,6 +314,11 @@ export default class PdfRenderService {
     options?: PdfOptions
   ): Promise<Buffer> {
     await page.emulateMediaType('print');
+    const marginValue = MARGIN_VALUES[options?.margins ?? 'normal'] ?? '1cm';
+    await page.evaluate((padding) => {
+      document.body.style.padding = padding;
+      document.body.style.boxSizing = 'border-box';
+    }, marginValue);
     const clip = previewClip(options);
     await page.setViewport({
       width: clip.width,
