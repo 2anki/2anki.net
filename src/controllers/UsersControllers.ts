@@ -368,7 +368,7 @@ class UsersController {
       anonymousDayPassCard: await getFeatureFlag(
         ANONYMOUS_DAY_PASS_CARD_FLAG,
         false
-      ),
+      ).catch(() => false),
     };
 
     // featureFlags.kiUI = user?.patreon || res.locals.subscriber;

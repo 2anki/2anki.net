@@ -10,7 +10,7 @@
   "reason": "This deck has {{total}} cards. A free account covers {{monthly}} a month. A Day Pass gives you all of them now, no account.",
   "cardCtaTotal": "Get all {{total}} cards now",
   "cardCtaEvery": "Get every card now",
-  "passActive": "Day Pass active. Drop your file again to get every card.",
+  "passActive": "Your Day Pass starts once the payment goes through. Then drop your file again to get every card.",
   "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
   "starting": "Starting checkout"
 }

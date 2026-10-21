@@ -669,7 +669,7 @@ describe('UploadPage checkout return', () => {
     await waitFor(() =>
       expect(
         screen.getByText(
-          'Day Pass active. Drop your file again to get every card.'
+          'Your Day Pass starts once the payment goes through. Then drop your file again to get every card.'
         )
       ).toBeInTheDocument()
     );
@@ -684,7 +684,7 @@ describe('UploadPage checkout return', () => {
     );
     expect(
       screen.queryByText(
-        'Day Pass active. Drop your file again to get every card.'
+        'Your Day Pass starts once the payment goes through. Then drop your file again to get every card.'
       )
     ).toBeNull();
   });

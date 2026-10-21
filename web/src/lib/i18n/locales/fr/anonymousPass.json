@@ -10,7 +10,7 @@
   "reason": "Ce paquet a {{total}} cartes. Un compte gratuit couvre {{monthly}} par mois. Un Day Pass te les donne toutes tout de suite, sans compte.",
   "cardCtaTotal": "Obtenir les {{total}} cartes maintenant",
   "cardCtaEvery": "Obtenir toutes les cartes maintenant",
-  "passActive": "Day Pass actif. Dépose à nouveau ton fichier pour obtenir toutes les cartes.",
+  "passActive": "Ton Day Pass démarre dès que le paiement est validé. Dépose ensuite à nouveau ton fichier pour obtenir toutes les cartes.",
   "checkoutError": "Impossible de lancer le paiement. Réessaie ou écris à support@2anki.net.",
   "starting": "Ouverture du paiement"
 }
