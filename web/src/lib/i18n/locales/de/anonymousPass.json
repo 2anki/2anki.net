@@ -4,6 +4,12 @@
   "afterPay": "Lade die Datei nach dem Bezahlen noch einmal hoch, dann bekommst du alle Karten.",
   "afterPayTotal": "Lade die Datei nach dem Bezahlen noch einmal hoch, dann bekommst du alle {{total}} Karten.",
   "cta": "Day Pass für {{price}} holen",
+  "cardTitle": "Day Pass",
+  "cardLine": "Alle deine Karten sofort, ohne Konto.",
+  "cardPrice": "{{price}} für 24 Stunden.",
+  "reason": "Dieser Stapel hat {{total}} Karten. Ein kostenloses Konto deckt {{monthly}} pro Monat ab. Ein Day Pass gibt dir alle sofort, ohne Konto.",
+  "cardCtaTotal": "Alle {{total}} Karten jetzt holen",
+  "cardCtaEvery": "Jetzt jede Karte holen",
   "checkoutError": "Der Checkout ließ sich nicht starten. Versuch es noch einmal oder schreib an support@2anki.net.",
   "starting": "Checkout wird gestartet"
 }

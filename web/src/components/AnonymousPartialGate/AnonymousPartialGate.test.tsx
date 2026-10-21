@@ -96,4 +96,53 @@ describe('AnonymousPartialGate', () => {
         .mock.calls.filter(([name]) => name === 'anonymous_partial_gate_shown')
     ).toHaveLength(1);
   });
+
+  describe('lead with the Day Pass over a free month', () => {
+    const overMonthHeld = {
+      cardCount: 21,
+      cardsHeldBack: 100,
+      totalCards: 121,
+      dayPassCard: true,
+    };
+
+    it('shows the whole-deck headline instead of the capped one', () => {
+      renderGate(overMonthHeld);
+      expect(
+        screen.getByText('Your deck is ready — 121 cards')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('Your first 100 cards are ready')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('This file made 121 cards.')
+      ).not.toBeInTheDocument();
+    });
+
+    it('leads with the Day Pass reason and a solid button', () => {
+      renderGate(overMonthHeld);
+      expect(
+        screen.getByText(
+          'This deck has 121 cards. A free account covers 100 a month. A Day Pass gives you all of them now, no account.'
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Get all 121 cards now' }).className
+      ).toContain('buttonPrimary');
+    });
+
+    it('keeps the free sign-up as a full option below the Day Pass', () => {
+      renderGate(overMonthHeld);
+      expect(
+        screen.getByText(
+          'Or create a free account for your first 100 cards, free.'
+        )
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    });
+
+    it('still renders no form element so it can sit inside the upload form', () => {
+      const { container } = renderGate(overMonthHeld);
+      expect(container.querySelector('form')).toBeNull();
+    });
+  });
 });

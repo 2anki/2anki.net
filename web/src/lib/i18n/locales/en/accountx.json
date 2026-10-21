@@ -111,6 +111,7 @@
     "statusLine": "Conversion stopped — you reached the {{count}}-card limit",
     "anonHeading": "You hit the limit for converting without an account",
     "freeAccount": "Free account",
+    "freeSubtitle": "Up to {{monthly}} cards every month.",
     "saveRedownload": "Save and re-download your decks",
     "connectServices": "Connect Notion, Dropbox, and Google Drive",
     "anonSubheading": "Without an account, conversions stop at {{cap}} cards. A free account raises that to {{monthly}} cards a month — or sign in to the one you have.",

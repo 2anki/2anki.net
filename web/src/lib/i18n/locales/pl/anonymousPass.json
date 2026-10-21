@@ -4,6 +4,12 @@
   "afterPay": "Po zapłacie wrzuć plik jeszcze raz, aby dostać wszystkie fiszki.",
   "afterPayTotal": "Po zapłacie wrzuć plik jeszcze raz, aby dostać wszystkie fiszki ({{total}}).",
   "cta": "Kup Day Pass za {{price}}",
+  "cardTitle": "Day Pass",
+  "cardLine": "Wszystkie fiszki od razu, bez konta.",
+  "cardPrice": "{{price}} na 24 godziny.",
+  "reason": "Ta talia ma {{total}} fiszek. Darmowe konto obejmuje {{monthly}} miesięcznie. Day Pass daje ci je wszystkie od razu, bez konta.",
+  "cardCtaTotal": "Weź wszystkie {{total}} fiszek teraz",
+  "cardCtaEvery": "Weź wszystkie fiszki teraz",
   "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net.",
   "starting": "Rozpoczynanie płatności"
 }

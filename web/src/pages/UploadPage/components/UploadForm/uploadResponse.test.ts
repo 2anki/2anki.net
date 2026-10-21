@@ -102,10 +102,35 @@ describe('applyConversionSuccess', () => {
       cardCount: 21,
       cardsHeldBack: 13,
       totalCards: 34,
+      dayPassCard: false,
     });
     expect(handlers.setZoneState).toHaveBeenCalledWith('heldForSignup');
     expect(handlers.setDownloadLink).not.toHaveBeenCalled();
     expect(handlers.setZoneState).not.toHaveBeenCalledWith('success');
+  });
+
+  it('carries the dayPassCard flag from an over-a-month held response', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          kind: 'held',
+          cardCount: 21,
+          cardsHeldBack: 100,
+          totalCards: 121,
+          dayPassCard: true,
+        }),
+    } as unknown as Response;
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.setHeldDeck).toHaveBeenCalledWith({
+      cardCount: 21,
+      cardsHeldBack: 100,
+      totalCards: 121,
+      dayPassCard: true,
+    });
   });
 
   it('does not fire conversion_success on the single-deck success path', async () => {

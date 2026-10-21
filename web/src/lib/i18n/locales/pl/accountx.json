@@ -91,6 +91,7 @@
     "statusLine": "Konwersja zatrzymana — osiągnięto limit {{count}} kart",
     "anonHeading": "Osiągnięto limit konwersji bez konta",
     "freeAccount": "Darmowe konto",
+    "freeSubtitle": "Do {{monthly}} fiszek miesięcznie.",
     "saveRedownload": "Zapisz i pobierz ponownie swoje talie",
     "connectServices": "Połącz Notion, Dropbox i Google Drive",
     "anonSubheading": "Bez konta konwersja zatrzymuje się na {{cap}} kartach. Darmowe konto podnosi limit do {{monthly}} kart miesięcznie — albo zaloguj się na konto, które już masz.",

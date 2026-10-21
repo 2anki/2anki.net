@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { track } from '../../lib/analytics/track';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
@@ -8,6 +8,7 @@ import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMess
 import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { AnonymousDayPassOffer } from '../../components/AnonymousDayPassOffer/AnonymousDayPassOffer';
+import { deckCardsBucket } from './deckCardsBucket';
 import {
   ANONYMOUS_CARD_CAP,
   FREE_MONTHLY_CARDS,
@@ -16,6 +17,12 @@ import {
   type WallOrder,
 } from './LimitWall';
 import styles from './LimitPage.module.css';
+
+function parseTotalCards(raw: string | null): number | null {
+  if (raw == null) return null;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
 
 const REF = 'limit-wall';
 
@@ -34,12 +41,104 @@ const PASS_CLICK_PLAN: Record<PassKind, string> = {
   '120d': 'semester',
 };
 
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+function FreeAccountCard({ t, featured }: { t: Translate; featured: boolean }) {
+  return (
+    <div
+      className={`${styles.planCard} ${featured ? styles.planCardFeatured : ''}`}
+    >
+      <p className={styles.planTitle}>{t('limit.freeAccount')}</p>
+      <p className={styles.planSubtitle}>
+        {t('limit.freeSubtitle', { monthly: FREE_MONTHLY_CARDS })}
+      </p>
+      <ul className={styles.planBenefits}>
+        <li className={styles.planBenefit}>{t('limit.saveRedownload')}</li>
+        <li className={styles.planBenefit}>{t('limit.connectServices')}</li>
+      </ul>
+      <div className={styles.planCtas}>
+        <Link
+          to="/register?redirect=/upload"
+          className={featured ? styles.planCtaPrimary : styles.planCtaSecondary}
+          onClick={() =>
+            track('paywall_upgrade_clicked', {
+              surface: REF,
+              plan: 'free_signup',
+            })
+          }
+        >
+          {t('limit.signUpFree')}
+        </Link>
+        <Link
+          to="/login?redirect=/upload"
+          className={featured ? styles.planCtaSecondary : styles.signInLink}
+          onClick={() =>
+            track('paywall_upgrade_clicked', {
+              surface: REF,
+              plan: 'sign_in',
+            })
+          }
+        >
+          {t('limit.signIn')}
+        </Link>
+      </div>
+      <p className={styles.planNote}>{t('limit.browserNote')}</p>
+    </div>
+  );
+}
+
+function DayPassCard({ totalCards }: { totalCards: number }) {
+  const overMonth = totalCards > FREE_MONTHLY_CARDS;
+  return (
+    <div
+      className={`${styles.planCard} ${overMonth ? styles.planCardFeatured : ''}`}
+    >
+      <AnonymousDayPassOffer
+        surface="anonymous-limit-wall"
+        totalCards={totalCards}
+        dayPassCard
+        emphasis={overMonth ? 'primary' : 'secondary'}
+      />
+    </div>
+  );
+}
+
+function AnonymousLimitCards({ totalCards }: { totalCards: number }) {
+  const { t } = useTranslation('accountx');
+  const overMonth = totalCards > FREE_MONTHLY_CARDS;
+  const freeCard = <FreeAccountCard t={t} featured={!overMonth} />;
+  const dayPassCard = <DayPassCard totalCards={totalCards} />;
+  return (
+    <div className={styles.plans}>
+      {overMonth ? (
+        <>
+          {dayPassCard}
+          {freeCard}
+        </>
+      ) : (
+        <>
+          {freeCard}
+          {dayPassCard}
+        </>
+      )}
+    </div>
+  );
+}
+
 function AnonymousLimit() {
   const { t } = useTranslation('accountx');
+  const [searchParams] = useSearchParams();
+  const totalCards = parseTotalCards(searchParams.get('cards'));
 
   useEffect(() => {
-    track('paywall_shown', { surface: REF, variant: 'anonymous' });
-  }, []);
+    track('paywall_shown', {
+      surface: REF,
+      variant: 'anonymous',
+      ...(totalCards != null
+        ? { deck_cards: deckCardsBucket(totalCards) }
+        : {}),
+    });
+  }, [totalCards]);
 
   return (
     <div className={styles.page}>
@@ -60,46 +159,54 @@ function AnonymousLimit() {
         </p>
       </header>
 
-      <div className={styles.singlePlan}>
-        <div className={`${styles.planCard} ${styles.planCardFeatured}`}>
-          <p className={styles.planTitle}>{t('limit.freeAccount')}</p>
-          <ul className={styles.planBenefits}>
-            <li className={styles.planBenefit}>
-              {t('limit.freeBenefitCards', { monthly: FREE_MONTHLY_CARDS })}
-            </li>
-            <li className={styles.planBenefit}>{t('limit.saveRedownload')}</li>
-            <li className={styles.planBenefit}>{t('limit.connectServices')}</li>
-          </ul>
-          <div className={styles.planCtas}>
-            <Link
-              to="/register?redirect=/upload"
-              className={styles.planCtaPrimary}
-              onClick={() =>
-                track('paywall_upgrade_clicked', {
-                  surface: REF,
-                  plan: 'free_signup',
-                })
-              }
-            >
-              {t('limit.signUpFree')}
-            </Link>
-            <Link
-              to="/login?redirect=/upload"
-              className={styles.planCtaSecondary}
-              onClick={() =>
-                track('paywall_upgrade_clicked', {
-                  surface: REF,
-                  plan: 'sign_in',
-                })
-              }
-            >
-              {t('limit.signIn')}
-            </Link>
+      {totalCards != null ? (
+        <AnonymousLimitCards totalCards={totalCards} />
+      ) : (
+        <div className={styles.singlePlan}>
+          <div className={`${styles.planCard} ${styles.planCardFeatured}`}>
+            <p className={styles.planTitle}>{t('limit.freeAccount')}</p>
+            <ul className={styles.planBenefits}>
+              <li className={styles.planBenefit}>
+                {t('limit.freeBenefitCards', { monthly: FREE_MONTHLY_CARDS })}
+              </li>
+              <li className={styles.planBenefit}>
+                {t('limit.saveRedownload')}
+              </li>
+              <li className={styles.planBenefit}>
+                {t('limit.connectServices')}
+              </li>
+            </ul>
+            <div className={styles.planCtas}>
+              <Link
+                to="/register?redirect=/upload"
+                className={styles.planCtaPrimary}
+                onClick={() =>
+                  track('paywall_upgrade_clicked', {
+                    surface: REF,
+                    plan: 'free_signup',
+                  })
+                }
+              >
+                {t('limit.signUpFree')}
+              </Link>
+              <Link
+                to="/login?redirect=/upload"
+                className={styles.planCtaSecondary}
+                onClick={() =>
+                  track('paywall_upgrade_clicked', {
+                    surface: REF,
+                    plan: 'sign_in',
+                  })
+                }
+              >
+                {t('limit.signIn')}
+              </Link>
+            </div>
+            <p className={styles.planNote}>{t('limit.browserNote')}</p>
+            <AnonymousDayPassOffer surface="anonymous-limit-wall" />
           </div>
-          <p className={styles.planNote}>{t('limit.browserNote')}</p>
-          <AnonymousDayPassOffer surface="anonymous-limit-wall" />
         </div>
-      </div>
+      )}
     </div>
   );
 }

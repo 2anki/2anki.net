@@ -129,6 +129,7 @@ export async function applyConversionSuccess(
         cardCount: body.cardCount,
         cardsHeldBack: body.cardsHeldBack,
         totalCards: body.totalCards,
+        dayPassCard: body.dayPassCard === true,
       });
       handlers.setProgressWidth(100);
       handlers.setZoneState('heldForSignup');

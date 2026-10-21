@@ -90,4 +90,107 @@ describe('AnonymousDayPassOffer', () => {
     );
     expect(screen.getByRole('button', { name: /Day Pass/ })).toBeEnabled();
   });
+
+  describe('card rendering', () => {
+    it('shows the title, generic line, and price when a free month covers the deck', () => {
+      render(
+        <AnonymousDayPassOffer
+          surface="anonymous-limit-wall"
+          totalCards={40}
+          dayPassCard
+        />
+      );
+
+      expect(screen.getByText('Day Pass')).toBeInTheDocument();
+      expect(
+        screen.getByText('All your cards now, no account.')
+      ).toBeInTheDocument();
+      expect(screen.getByText('$6 for 24 hours.')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Get all 40 cards now' })
+      ).toBeInTheDocument();
+    });
+
+    it('leads with the plain-words reason when the deck is over a free month', () => {
+      render(
+        <AnonymousDayPassOffer
+          surface="anonymous-limit-wall"
+          totalCards={340}
+          dayPassCard
+        />
+      );
+
+      expect(
+        screen.getByText(
+          'This deck has 340 cards. A free account covers 100 a month. A Day Pass gives you all of them now, no account.'
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('All your cards now, no account.')
+      ).not.toBeInTheDocument();
+    });
+
+    it('says every card when the total is unknown', () => {
+      render(
+        <AnonymousDayPassOffer surface="anonymous-limit-wall" dayPassCard />
+      );
+
+      expect(
+        screen.getByRole('button', { name: 'Get every card now' })
+      ).toBeInTheDocument();
+    });
+
+    it('renders a solid button for the primary emphasis', () => {
+      render(
+        <AnonymousDayPassOffer
+          surface="anonymous-limit-wall"
+          totalCards={340}
+          dayPassCard
+          emphasis="primary"
+        />
+      );
+
+      expect(
+        screen.getByRole('button', { name: 'Get all 340 cards now' }).className
+      ).toContain('buttonPrimary');
+    });
+
+    it('renders an outline button for the secondary emphasis', () => {
+      render(
+        <AnonymousDayPassOffer
+          surface="anonymous-limit-wall"
+          totalCards={40}
+          dayPassCard
+          emphasis="secondary"
+        />
+      );
+
+      expect(
+        screen.getByRole('button', { name: 'Get all 40 cards now' }).className
+      ).toContain('buttonSecondary');
+    });
+
+    it('starts the same anonymous checkout from the card button', async () => {
+      const location = { href: '' };
+      vi.stubGlobal('location', location);
+      startPassCheckout.mockResolvedValue({ url: 'https://stripe/day' });
+      render(
+        <AnonymousDayPassOffer
+          surface="anonymous-limit-wall"
+          totalCards={340}
+          dayPassCard
+          emphasis="primary"
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Get all 340/ }));
+
+      await waitFor(() => expect(location.href).toBe('https://stripe/day'));
+      expect(startPassCheckout).toHaveBeenCalledWith(
+        '24h',
+        undefined,
+        'anonymous-limit-wall'
+      );
+    });
+  });
 });

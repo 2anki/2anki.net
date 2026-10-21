@@ -317,6 +317,77 @@ describe('LimitPage — anonymous variant', () => {
   });
 });
 
+describe('LimitPage — anonymous Day Pass card variant', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    asAnonymous();
+  });
+
+  it('keeps today single-card layout when no card count is passed', () => {
+    renderPage(['/limit']);
+    expect(screen.queryByRole('button', { name: /Get all/ })).toBeNull();
+    expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
+      surface: 'limit-wall',
+      variant: 'anonymous',
+    });
+  });
+
+  it('shows the Day Pass as its own card next to the free account', () => {
+    renderPage(['/limit?cards=40']);
+    expect(screen.getByText('Day Pass')).toBeTruthy();
+    expect(screen.getByText('Up to 100 cards every month.')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get all 40 cards now' })
+    ).toBeTruthy();
+  });
+
+  it('keeps the free account the featured option within a free month', () => {
+    renderPage(['/limit?cards=40']);
+    const signUp = screen.getByRole('link', { name: 'Create a free account' });
+    expect(signUp.className).toContain('planCtaPrimary');
+    expect(
+      screen.getByRole('button', { name: 'Get all 40 cards now' }).className
+    ).toContain('buttonSecondary');
+  });
+
+  it('leads with the Day Pass when the deck is over a free month', () => {
+    renderPage(['/limit?cards=340']);
+    expect(
+      screen.getByText(
+        'This deck has 340 cards. A free account covers 100 a month. A Day Pass gives you all of them now, no account.'
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get all 340 cards now' }).className
+    ).toContain('buttonPrimary');
+  });
+
+  it('keeps free sign-up a full, visible option when the Day Pass leads', () => {
+    renderPage(['/limit?cards=340']);
+    const signUp = screen.getByRole('link', { name: 'Create a free account' });
+    expect(signUp.getAttribute('href')).toBe('/register?redirect=/upload');
+    expect(signUp.className).toContain('planCtaSecondary');
+  });
+
+  it('tags paywall_shown with the over-a-month deck bucket', () => {
+    renderPage(['/limit?cards=340']);
+    expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
+      surface: 'limit-wall',
+      variant: 'anonymous',
+      deck_cards: 'over_free_month',
+    });
+  });
+
+  it('tags paywall_shown with the within-a-month deck bucket', () => {
+    renderPage(['/limit?cards=40']);
+    expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
+      surface: 'limit-wall',
+      variant: 'anonymous',
+      deck_cards: 'within_free_month',
+    });
+  });
+});
+
 describe('LimitPage — loading state', () => {
   beforeEach(() => {
     vi.clearAllMocks();

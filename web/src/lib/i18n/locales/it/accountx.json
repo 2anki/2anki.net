@@ -87,6 +87,7 @@
     "statusLine": "Conversione interrotta — hai raggiunto il limite di {{count}} carte",
     "anonHeading": "Hai raggiunto il limite per convertire senza un account",
     "freeAccount": "Account gratuito",
+    "freeSubtitle": "Fino a {{monthly}} carte al mese.",
     "saveRedownload": "Salva e riscarica i tuoi mazzi",
     "connectServices": "Connetti Notion, Dropbox e Google Drive",
     "anonSubheading": "Senza account la conversione si ferma a {{cap}} carte. Un account gratuito porta il limite a {{monthly}} carte al mese — oppure accedi a quello che hai già.",

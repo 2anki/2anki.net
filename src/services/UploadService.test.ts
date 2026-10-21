@@ -5649,6 +5649,25 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('marks an over-a-month held deck for the Day Pass card when the flag is on', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 120);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toEqual({
+      kind: 'held',
+      cardCount: 21,
+      cardsHeldBack: 120,
+      totalCards: 141,
+      dayPassCard: true,
+    });
+  });
+
   it('holds a single zip upload for the treatment arm', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
@@ -5779,7 +5798,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     const second = responseWithRedirect();
     await service.handleUpload(buildEligibleRequest(TREATMENT_ID), second.res);
-    expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(second.redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(heldDeck.rows).toHaveLength(1);
     expect(conversionFailedProps()).toMatchObject({
       reason: 'anonymous_cap',
@@ -5821,7 +5840,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       requestFromIp('2001:db8:1:2:aaaa::9'),
       second.res
     );
-    expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(second.redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(heldDeck.rows).toHaveLength(1);
   });
 
@@ -5851,7 +5870,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       const second = responseWithRedirect();
       await service.handleUpload(requestFromIp('198.51.100.2'), second.res);
 
-      expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+      expect(second.redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
       const messages = infoSpy.mock.calls.map(([message]) => message);
       expect(messages).toContain(
         '[UploadService] held deck throttled by global daily budget'
@@ -5903,7 +5922,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     await service.handleUpload(buildEligibleRequest(TREATMENT_ID), res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(heldDeck.rows).toHaveLength(0);
   });
 
@@ -5972,7 +5991,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     await serviceUnderTest(heldDeck).handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(capturedSend()).toBeNull();
     expect(heldDeck.rows).toHaveLength(0);
   });
@@ -5987,7 +6006,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     await serviceUnderTest(heldDeck).handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(capturedSend()).toBeNull();
     expect(heldDeck.rows).toHaveLength(0);
     expect(conversionFailedProps()).toMatchObject({
@@ -6096,7 +6115,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     await serviceUnderTest().handleUpload(req, res);
 
     expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=30');
     expect(capturedSend()).toBeNull();
     const props = conversionFailedProps();
     expect(props.reason).toBe('anonymous_cap');
@@ -6113,7 +6132,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     await serviceUnderTest().handleUpload(req, res);
 
     expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=30');
     const props = conversionFailedProps();
     expect(props.reason).toBe('anonymous_cap');
     expect(props.arm).toBe('control');
@@ -6143,7 +6162,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     await serviceUnderTest().handleUpload(req, res);
 
     expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=30');
     expect(capturedSend()).toBeNull();
     const props = conversionFailedProps();
     expect(props.reason).toBe('anonymous_cap');
@@ -6172,7 +6191,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(execute.mock.calls[0][6]).toMatchObject({
       cardLimit: ANONYMOUS_CARD_CAP,
     });
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=30');
     expect(capturedSend()).toBeNull();
     const props = conversionFailedProps();
     expect(props.reason).toBe('anonymous_cap');
