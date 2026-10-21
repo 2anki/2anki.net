@@ -528,4 +528,66 @@ describe('anonymous pass metering', () => {
     expect(deps.computeAnonymousPassBalance).not.toHaveBeenCalled();
     expect(deps.computeBalance).not.toHaveBeenCalled();
   });
+
+  it('fails CLOSED for a pass with no resolvable balance (unknown/expired/non-metered)', async () => {
+    const deps = makePassDeps({ balance: null });
+    await expect(
+      assertAiBudget({ anonymousPassId: 7 }, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+  });
+
+  it('reports a pass with no resolvable balance as exhausted', async () => {
+    const status = await getAiBudgetStatus(
+      { anonymousPassId: 7 },
+      makePassDeps({ balance: null })
+    );
+    expect(status).toEqual({ exhausted: true, balance: null });
+  });
+
+  it('fails CLOSED for a pass when the balance read throws', async () => {
+    const deps = makePassDeps({ balance: passBalanceWith(400) });
+    (deps.computeAnonymousPassBalance as Mock).mockRejectedValue(
+      new Error('db down')
+    );
+    await expect(
+      assertAiBudget({ anonymousPassId: 7 }, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+  });
+
+  it('refuses a pass call while the pass balance is fully reserved (matches the signed-in guard)', async () => {
+    const deps = makePassDeps({
+      balance: passBalanceWith(RESERVED_CREDITS_PER_INFLIGHT_CALL),
+    });
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const first = withAiBudget(
+      { anonymousPassId: 7 },
+      async () => {
+        await gate;
+        return 'first';
+      },
+      deps
+    );
+    await flushAsync();
+    expect(reservedCreditsForPass(7)).toBe(RESERVED_CREDITS_PER_INFLIGHT_CALL);
+
+    const second = vi.fn().mockResolvedValue('second');
+    await expect(
+      withAiBudget({ anonymousPassId: 7 }, second, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    expect(second).not.toHaveBeenCalled();
+
+    release();
+    await expect(first).resolves.toBe('first');
+    expect(reservedCreditsForPass(7)).toBe(0);
+  });
+
+  it('keeps the signed-in path failing OPEN on a null balance', async () => {
+    const deps = makePassDeps({ balance: null });
+    const status = await getAiBudgetStatus(42, deps);
+    expect(status).toEqual({ exhausted: false, balance: null });
+  });
 });

@@ -233,11 +233,18 @@ async function budgetStatusFor(
   if (subject.kind === 'none') {
     return { exhausted: false, balance: null };
   }
+  // A signed-in user fails OPEN: a metrics outage never blocks a paying
+  // conversion, and the isPaying gate still bounds who reaches AI. An anonymous
+  // pass holder fails CLOSED: with no account to fall back on, an unresolvable
+  // balance (unknown, expired, non-metered, or allowance-less pass) or a reader
+  // error must not hand out unmetered AI — it stops and the conversion uses the
+  // standard parser.
+  const exhaustedOnNoBalance = subject.kind === 'pass';
   try {
     const now = deps.now?.() ?? new Date();
     const balance = await balanceForSubject(deps, subject, now);
     if (balance == null) {
-      return { exhausted: false, balance: null };
+      return { exhausted: exhaustedOnNoBalance, balance: null };
     }
     // Boundary matches the number the user sees: the rounded `credits`, not
     // `rawCredits`, so "0 AI credits left" and "out of credits" always agree.
@@ -247,15 +254,19 @@ async function budgetStatusFor(
     }
     return { exhausted: false, balance };
   } catch (error) {
-    console.error('[ai-credits] balance read failed, failing open', error);
-    return { exhausted: false, balance: null };
+    console.error(
+      `[ai-credits] balance read failed, failing ${exhaustedOnNoBalance ? 'closed' : 'open'}`,
+      error
+    );
+    return { exhausted: exhaustedOnNoBalance, balance: null };
   }
 }
 
 // Reads the caller's credit balance and, when it is spent, records the
 // exhausted event once per window. This is the single place the event fires;
-// the badge read (computeAiCreditBalance) never does. Fails open — a metrics
-// outage never blocks a paying conversion.
+// the badge read (computeAiCreditBalance) never does. A signed-in user fails
+// open (a metrics outage never blocks a paying conversion); an anonymous pass
+// fails closed (no balance means no AI).
 export async function getAiBudgetStatus(
   subject: AiSpendSubject,
   deps?: AiBudgetDeps
@@ -268,8 +279,9 @@ export async function getAiBudgetStatus(
   try {
     resolved = deps ?? defaultDeps();
   } catch (error) {
-    console.error('[ai-credits] guard init failed, failing open', error);
-    return { exhausted: false, balance: null };
+    // Pass fails closed, user fails open (see budgetStatusFor).
+    console.error('[ai-credits] guard init failed', error);
+    return { exhausted: normalized.kind === 'pass', balance: null };
   }
   return budgetStatusFor(normalized, resolved);
 }
@@ -369,11 +381,12 @@ function isBudgetSpent(
 // Pre-call guard for every metered Claude surface. Throws
 // AiCreditsExhaustedError once the caller's allowance is spent; the interactive
 // surfaces render that as a calm stop, and the upload path catches it to ship
-// what was produced so a conversion never hard-fails at zero. Fails open on a
-// read error. A caller with neither a user id nor an anonymous pass id is
-// skipped — the isPaying AI gate already excludes the truly anonymous, and an
-// anonymous pass holder (isPaying but signed out) is metered against their
-// pass row.
+// what was produced so a conversion never hard-fails at zero. A caller with
+// neither a user id nor an anonymous pass id is skipped — the isPaying AI gate
+// already excludes the truly anonymous. A signed-in user fails open on a read
+// error; an anonymous pass holder (isPaying but signed out) is metered against
+// their pass row and fails closed, so an unresolvable balance never yields
+// unmetered AI.
 export async function assertAiBudget(
   subject: AiSpendSubject,
   deps?: AiBudgetDeps
@@ -386,7 +399,12 @@ export async function assertAiBudget(
   try {
     resolved = deps ?? defaultDeps();
   } catch (error) {
-    console.error('[ai-credits] guard init failed, failing open', error);
+    // An anonymous pass fails closed: no readers means no way to prove the
+    // pass has headroom, so it gets no AI rather than unmetered AI.
+    console.error('[ai-credits] guard init failed', error);
+    if (normalized.kind === 'pass') {
+      throw new AiCreditsExhaustedError();
+    }
     return;
   }
   const status = await budgetStatusFor(normalized, resolved);
@@ -419,7 +437,11 @@ export async function withAiBudget<T>(
   try {
     resolved = deps ?? defaultDeps();
   } catch (error) {
-    console.error('[ai-credits] guard init failed, failing open', error);
+    // An anonymous pass fails closed (see assertAiBudget); a user fails open.
+    console.error('[ai-credits] guard init failed', error);
+    if (normalized.kind === 'pass') {
+      throw new AiCreditsExhaustedError();
+    }
     return run();
   }
   const status = await budgetStatusFor(normalized, resolved);
