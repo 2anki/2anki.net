@@ -1842,6 +1842,7 @@ describe('WebhookRouter — ad-click attribution and GA4 purchase for passes', (
     );
     expect(call?.[1].props).toMatchObject({
       gclid: 'Cj0abc',
+      order_source: 'stripe_webhook',
       order_id: 'cs_paid_ad',
       value_cents: 600,
       currency: 'usd',

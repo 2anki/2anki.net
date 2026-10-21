@@ -1,6 +1,10 @@
 import type { Knex } from 'knex';
 
 import { GoogleAdsClickConversion } from '../lib/googleAds/clickConversionsCsv';
+import {
+  ORDER_SOURCE_PROP,
+  ORDER_SOURCE_STRIPE_WEBHOOK,
+} from '../lib/events/serverEventProps';
 
 export interface GoogleAdsConversionRow {
   gclid: string | null;
@@ -60,6 +64,9 @@ export class GoogleAdsConversionsRepository implements IGoogleAdsConversionsRepo
       )
       .where('name', 'checkout_completed')
       .where('created_at', '>=', since)
+      .whereRaw(`props->>'${ORDER_SOURCE_PROP}' = ?`, [
+        ORDER_SOURCE_STRIPE_WEBHOOK,
+      ])
       .where((qb) =>
         qb
           .whereRaw("props->>'gclid' is not null")

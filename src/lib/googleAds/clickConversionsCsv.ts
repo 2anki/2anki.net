@@ -23,11 +23,28 @@ const HEADER_LINE = [
   'Order ID',
 ].join(',');
 
+// Click ids originate in a user-controlled cookie. Accept only the Google
+// click-id charset so a hostile value (=HYPERLINK(...), embedded commas,
+// quotes or newlines) is dropped rather than written to the feed.
+const CLICK_ID_CHARSET = /^[A-Za-z0-9_-]+$/;
+
+// A spreadsheet treats a cell beginning with any of these as a formula, so
+// neutralise it with a leading apostrophe before quoting (OWASP CSV-injection).
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+
 function escapeCsvField(value: string): string {
-  if (/[",\r\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const neutralized = FORMULA_TRIGGER.test(value) ? `'${value}` : value;
+  if (/[",\r\n]/.test(neutralized)) {
+    return `"${neutralized.replace(/"/g, '""')}"`;
   }
-  return value;
+  return neutralized;
+}
+
+function validClickId(id: string | null): string | null {
+  if (id != null && CLICK_ID_CHARSET.test(id)) {
+    return id;
+  }
+  return null;
 }
 
 function formatConversionTime(date: Date): string {
@@ -39,14 +56,17 @@ function formatConversionTime(date: Date): string {
 function clickIdColumns(
   conversion: GoogleAdsClickConversion
 ): [string, string, string] | null {
-  if (conversion.gclid != null && conversion.gclid !== '') {
-    return [conversion.gclid, '', ''];
+  const gclid = validClickId(conversion.gclid);
+  if (gclid != null) {
+    return [gclid, '', ''];
   }
-  if (conversion.gbraid != null && conversion.gbraid !== '') {
-    return ['', conversion.gbraid, ''];
+  const gbraid = validClickId(conversion.gbraid);
+  if (gbraid != null) {
+    return ['', gbraid, ''];
   }
-  if (conversion.wbraid != null && conversion.wbraid !== '') {
-    return ['', '', conversion.wbraid];
+  const wbraid = validClickId(conversion.wbraid);
+  if (wbraid != null) {
+    return ['', '', wbraid];
   }
   return null;
 }

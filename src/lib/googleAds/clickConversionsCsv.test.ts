@@ -88,4 +88,36 @@ describe('buildClickConversionsCsv', () => {
     const dataLine = csv.split('\n')[2];
     expect(dataLine).toContain(',0.00,USD,');
   });
+
+  it('drops a row whose only click id is a spreadsheet formula', () => {
+    const csv = buildClickConversionsCsv([
+      conversion({ gclid: '=HYPERLINK("http://evil","x")' }),
+    ]);
+    expect(csv.split('\n').filter((line) => line.length > 0)).toHaveLength(2);
+  });
+
+  it('drops a row whose click id contains a comma, quote or newline', () => {
+    const csv = buildClickConversionsCsv([
+      conversion({ gclid: 'a,b' }),
+      conversion({ gclid: 'a"b' }),
+      conversion({ gclid: 'a\nb' }),
+    ]);
+    expect(csv.split('\n').filter((line) => line.length > 0)).toHaveLength(2);
+  });
+
+  it('falls back to a valid gbraid when the gclid fails the charset check', () => {
+    const csv = buildClickConversionsCsv([
+      conversion({ gclid: '=cmd', gbraid: 'gb_ok' }),
+    ]);
+    const dataLine = csv.split('\n')[2];
+    expect(dataLine.startsWith(',gb_ok,,')).toBe(true);
+  });
+
+  it('neutralises a click id that begins with a formula trigger', () => {
+    const csv = buildClickConversionsCsv([
+      conversion({ gclid: '-leadingdash' }),
+    ]);
+    const dataLine = csv.split('\n')[2];
+    expect(dataLine.startsWith("'-leadingdash,,,")).toBe(true);
+  });
 });

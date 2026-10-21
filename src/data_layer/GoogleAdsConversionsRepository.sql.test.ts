@@ -38,6 +38,15 @@ describe('GoogleAdsConversionsRepository generated SQL', () => {
     expect(bindings).toContain(since);
   });
 
+  it('counts only rows the Stripe webhook marked, never a client-tracked event', () => {
+    const { sql, bindings } = repository
+      .buildClickConversionsQuery(since)
+      .toSQL();
+
+    expect(sql).toContain("props->>'order_source' = ?");
+    expect(bindings).toContain('stripe_webhook');
+  });
+
   it('requires at least one click id and a stored order id, value and currency', () => {
     const { sql } = repository.buildClickConversionsQuery(since).toSQL();
 
