@@ -1,6 +1,7 @@
 import { EventsSink } from '../../services/events/EventsSink';
 import { KnownEvent } from '../../types/AnalyticsEvents';
 import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
+import { SERVER_ONLY_EVENT_PROP_KEYS } from '../../lib/events/serverEventProps';
 
 const PII_KEY_PATTERN = /email|token|password|filename|content|title/i;
 const PROPS_MAX_BYTES = 1024;
@@ -21,7 +22,7 @@ export class TrackEventUseCase {
     if (unknown) {
       console.warn(`[events] unknown event received: ${sanitizeForLog(name)}`);
     }
-    const safeProps = this.stripPiiKeys(props);
+    const safeProps = this.sanitizeClientProps(props);
     const serialized = JSON.stringify(safeProps);
     if (serialized.length > PROPS_MAX_BYTES) {
       throw new Error('Event props exceed 1 KB limit');
@@ -35,12 +36,12 @@ export class TrackEventUseCase {
     });
   }
 
-  private stripPiiKeys(
+  private sanitizeClientProps(
     props: Record<string, unknown>
   ): Record<string, unknown> {
     const stripped: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(props)) {
-      if (!PII_KEY_PATTERN.test(key)) {
+      if (!PII_KEY_PATTERN.test(key) && !SERVER_ONLY_EVENT_PROP_KEYS.has(key)) {
         stripped[key] = value;
       }
     }

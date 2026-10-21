@@ -91,6 +91,28 @@ describe('TrackEventUseCase', () => {
     });
   });
 
+  it('strips the server-only order_source marker a client tries to forge', async () => {
+    const { repo } = makeFakeRepository();
+    const sink = new EventsSink(repo, { flushThreshold: 1 });
+    const useCase = new TrackEventUseCase(sink);
+    useCase.execute({
+      name: 'checkout_completed',
+      unknown: false,
+      userId: null,
+      anonymousId: 'anon-attacker',
+      props: {
+        order_source: 'stripe_webhook',
+        gclid: 'forged',
+        order_id: 'cs_forged',
+        value_cents: 99999,
+        currency: 'usd',
+      },
+    });
+    await sink.flush();
+    const [call] = (repo.insertEvents as Mock).mock.calls;
+    expect(call[0][0].props).not.toHaveProperty('order_source');
+  });
+
   it('throws when props exceed 1KB', () => {
     const { repo } = makeFakeRepository();
     const sink = new EventsSink(repo);
