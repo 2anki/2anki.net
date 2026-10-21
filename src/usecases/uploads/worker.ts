@@ -11,6 +11,7 @@ import CardOption from '../../lib/parser/Settings/CardOption';
 import { processUploadedPdf } from './processUploadedPdf';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
+import pLimit from 'p-limit';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
@@ -27,6 +28,8 @@ import {
   isXmlFile,
 } from '../../lib/storage/checks';
 import { getPackagesFromZip } from './getPackagesFromZip';
+import { liftDecksToParent } from './liftDecksToParent';
+import { resolvePerWorkerPythonCap } from '../../lib/pythonWorkerBudget';
 import Workspace from '../../lib/parser/WorkSpace';
 import { detectOverSplit } from '../../lib/parser/detectOverSplit';
 import { isZipContentFileSupported } from './isZipContentFileSupported';
@@ -393,23 +396,45 @@ async function doGenerationWork(
       ? createCrossFileDedupState(existingCardFingerprints ?? [])
       : undefined;
 
-  for (const file of files) {
-    const fileContents = getFileContents(file, enqueuedAt);
-    const result = await processFile(
-      file,
-      fileContents,
-      paying,
-      settings,
-      workspace,
-      onProgress,
-      userId,
-      knownGuids,
-      crossFileDedup,
-      requestId,
-      uploadIdentity,
-      cardLimit,
-      files.length === 1
-    );
+  // Files in one upload are independent conversions, so they run side by side,
+  // as the files inside a zip already do. Each gets its own workspace because
+  // CustomExporter writes deck_info.json at a fixed path. The cross-file dedup
+  // state is order-dependent, so an upload that carries one stays sequential.
+  const parallel = files.length > 1 && crossFileDedup == null;
+  const limit = pLimit(parallel ? resolvePerWorkerPythonCap() : 1);
+  const fileWorkspaces = files.map(() =>
+    parallel ? Workspace.subdir(workspace.location) : workspace
+  );
+  const settled = await Promise.allSettled(
+    files.map((file, index) =>
+      limit(() =>
+        processFile(
+          file,
+          getFileContents(file, enqueuedAt),
+          paying,
+          settings,
+          fileWorkspaces[index],
+          onProgress,
+          userId,
+          knownGuids,
+          crossFileDedup,
+          requestId,
+          uploadIdentity,
+          cardLimit,
+          files.length === 1
+        )
+      )
+    )
+  );
+  if (parallel) {
+    for (const fileWorkspace of fileWorkspaces) {
+      await liftDecksToParent(fileWorkspace, workspace);
+    }
+  }
+
+  for (const outcome of settled) {
+    if (outcome.status === 'rejected') throw outcome.reason;
+    const result = outcome.value;
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);
     cardsHeldBack += result.cardsHeldBack ?? 0;

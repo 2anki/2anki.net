@@ -373,6 +373,136 @@ describe('runUploadGenerationInWorker', () => {
   });
 });
 
+describe('runUploadGenerationInWorker — files converted in parallel', () => {
+  const mockSubdir = vi.mocked(Workspace.subdir);
+
+  const makeHtml = (name: string) =>
+    makeFile({
+      originalname: name,
+      filename: name,
+      key: name,
+      path: '',
+      buffer: Buffer.from('<p>hi</p>'),
+    });
+
+  const deckFor = (name: string) => ({
+    name,
+    cardCount: 1,
+    deck: [],
+  });
+
+  const task = (files: UploadedFile[]): UploadGenerationTask => ({
+    paying: false,
+    files,
+    settings: new CardOption({}),
+    workspace: { location: '/tmp/ws-parent' } as Workspace,
+    enqueuedAt: Date.now(),
+    userId: null,
+  });
+
+  let infoSpy: MockInstance;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+    let n = 0;
+    mockSubdir.mockImplementation((parent: string) => {
+      n += 1;
+      return { id: `sub-${n}`, location: `${parent}/sub-${n}` } as Workspace;
+    });
+  });
+
+  afterEach(() => {
+    infoSpy.mockRestore();
+  });
+
+  it('starts the second file before the first one finishes', async () => {
+    let releaseFirst: () => void = () => {};
+    const started: string[] = [];
+    mockPrepareDeck.mockImplementation(async (input) => {
+      started.push(input.name);
+      if (input.name === 'a.html') {
+        await new Promise<void>((resolve) => {
+          releaseFirst = resolve;
+        });
+      }
+      return deckFor(input.name) as never;
+    });
+
+    const run = runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+    await vi.waitFor(() => expect(started).toEqual(['a.html', 'b.html']));
+    releaseFirst();
+    const result = await run;
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('keeps packages in upload order when a later file finishes first', async () => {
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.name === 'a.html') {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      return deckFor(input.name) as never;
+    });
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html'), makeHtml('c.html')])
+    );
+
+    expect(result.ok).toBe(true);
+    const names = result.ok ? result.packages.map((p) => p.name) : [];
+    expect(names).toEqual(['a.html', 'b.html', 'c.html']);
+  });
+
+  it('gives each file its own workspace so decks never overwrite each other', async () => {
+    mockPrepareDeck.mockImplementation(
+      async (input) => deckFor(input.name) as never
+    );
+
+    await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    const locations = mockPrepareDeck.mock.calls.map(
+      ([input]) => input.workspace.location
+    );
+    expect(locations).toEqual(['/tmp/ws-parent/sub-1', '/tmp/ws-parent/sub-2']);
+  });
+
+  it('reports the first failing file in upload order', async () => {
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.name === 'a.html') {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        throw new Error('first file broke');
+      }
+      throw new Error('second file broke');
+    });
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.error.message).toBe('first file broke');
+  });
+
+  it('converts a single file in the shared workspace, as before', async () => {
+    mockPrepareDeck.mockImplementation(
+      async (input) => deckFor(input.name) as never
+    );
+
+    await runUploadGenerationInWorker(task([makeHtml('a.html')]));
+
+    expect(mockSubdir).not.toHaveBeenCalled();
+    expect(mockPrepareDeck.mock.calls[0][0].workspace.location).toBe(
+      '/tmp/ws-parent'
+    );
+  });
+});
+
 describe('countAiContentFiles', () => {
   it('counts files that reach the Claude path: html/md/pdf and zips, not xml', () => {
     const files = [
