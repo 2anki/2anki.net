@@ -29,6 +29,12 @@
     "signUpFree": "無料で登録",
     "getDayPass": "{{price}} の Day Pass を購入"
   },
+  "passPrices": {
+    "heading": "無料の上限では足りませんか？",
+    "dayPass": "{{dayPrice}} の Day Pass で、24 時間カードの上限がなくなります。アカウントは不要です。",
+    "semesterPass": "{{semesterPrice}} の Semester Pass は約 4 か月をカバーします。",
+    "footnote": "買い切り、サブスクリプションなし。"
+  },
   "footer": {
     "readyPrefix": "試してみますか？ ",
     "dropLink": "このページの上部にファイルをドロップしてください。"

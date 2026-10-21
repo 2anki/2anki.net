@@ -8,7 +8,7 @@ vi.mock('../backend/getPassPricing', () => ({
 }));
 
 import { getPassPricing } from '../backend/getPassPricing';
-import { usePassPrices } from './usePassPrices';
+import { usePassPrices, useLivePassPrices } from './usePassPrices';
 
 function buildWrapper() {
   const queryClient = new QueryClient({
@@ -80,5 +80,64 @@ describe('usePassPrices', () => {
 
     await waitFor(() => expect(getPassPricing).toHaveBeenCalled());
     expect(result.current).toEqual({ '24h': '$6', '7d': '$12', '120d': '$29' });
+  });
+});
+
+describe('useLivePassPrices', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns nothing before the endpoint resolves', () => {
+    vi.mocked(getPassPricing).mockReturnValue(new Promise(() => {}));
+
+    const { result } = renderHook(() => useLivePassPrices(), {
+      wrapper: buildWrapper(),
+    });
+
+    expect(result.current).toEqual({});
+  });
+
+  it('returns only the live display strings, never the fallback', async () => {
+    vi.mocked(getPassPricing).mockResolvedValue({
+      passes: {
+        '24h': { amount: 700, currency: 'usd', display: '$7' },
+        '120d': { amount: 3200, currency: 'usd', display: '$32' },
+      },
+    });
+
+    const { result } = renderHook(() => useLivePassPrices(), {
+      wrapper: buildWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current).toEqual({ '24h': '$7', '120d': '$32' })
+    );
+  });
+
+  it('omits a pass the endpoint does not return rather than filling it', async () => {
+    vi.mocked(getPassPricing).mockResolvedValue({
+      passes: {
+        '24h': { amount: 700, currency: 'usd', display: '$7' },
+      },
+    });
+
+    const { result } = renderHook(() => useLivePassPrices(), {
+      wrapper: buildWrapper(),
+    });
+
+    await waitFor(() => expect(result.current['24h']).toBe('$7'));
+    expect(result.current['120d']).toBeUndefined();
+  });
+
+  it('returns nothing when the endpoint request fails', async () => {
+    vi.mocked(getPassPricing).mockRejectedValue(new Error('network'));
+
+    const { result } = renderHook(() => useLivePassPrices(), {
+      wrapper: buildWrapper(),
+    });
+
+    await waitFor(() => expect(getPassPricing).toHaveBeenCalled());
+    expect(result.current).toEqual({});
   });
 });

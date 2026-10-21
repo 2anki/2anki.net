@@ -29,6 +29,12 @@
     "signUpFree": "meld je gratis aan",
     "getDayPass": "koop een Day Pass voor {{price}}"
   },
+  "passPrices": {
+    "heading": "Meer nodig dan de gratis limiet?",
+    "dayPass": "Een Day Pass voor {{dayPrice}} haalt de kaartlimiet 24 uur weg, zonder account.",
+    "semesterPass": "Een Semester Pass voor {{semesterPrice}} dekt ongeveer 4 maanden.",
+    "footnote": "Eenmalige betaling, geen abonnement."
+  },
   "footer": {
     "readyPrefix": "Klaar om het te proberen? ",
     "dropLink": "Sleep een bestand naar boven aan deze pagina."

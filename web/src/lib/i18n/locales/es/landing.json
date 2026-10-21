@@ -29,6 +29,12 @@
     "signUpFree": "regístrate gratis",
     "getDayPass": "consigue un Day Pass por {{price}}"
   },
+  "passPrices": {
+    "heading": "¿Necesitas más que el límite gratuito?",
+    "dayPass": "Un Day Pass por {{dayPrice}} quita el límite de tarjetas durante 24 horas, sin cuenta.",
+    "semesterPass": "Un Semester Pass por {{semesterPrice}} cubre unos 4 meses.",
+    "footnote": "Pago único, sin suscripción."
+  },
   "footer": {
     "readyPrefix": "¿Listo para probarlo? ",
     "dropLink": "Suelta un archivo en la parte superior de esta página."

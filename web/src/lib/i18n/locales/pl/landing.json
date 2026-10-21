@@ -29,6 +29,12 @@
     "signUpFree": "zarejestruj się za darmo",
     "getDayPass": "kup Day Pass za {{price}}"
   },
+  "passPrices": {
+    "heading": "Potrzebujesz więcej niż darmowy limit?",
+    "dayPass": "Day Pass za {{dayPrice}} znosi limit fiszek na 24 godziny, bez konta.",
+    "semesterPass": "Semester Pass za {{semesterPrice}} obejmuje około 4 miesięcy.",
+    "footnote": "Płatność jednorazowa, bez subskrypcji."
+  },
   "footer": {
     "readyPrefix": "Gotowy, aby spróbować? ",
     "dropLink": "Upuść plik na górze tej strony."

@@ -10,6 +10,7 @@ import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { TrustNote } from '../../components/TrustNote/TrustNote';
+import { LandingPassPrices } from '../../components/LandingPassPrices/LandingPassPrices';
 import styles from './LandingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import type { LandingCopy } from './types';
@@ -194,6 +195,7 @@ function LandingPage({
             t,
           })}
           {copy.homeHero === true && <TrustNote />}
+          <LandingPassPrices centered={copy.homeHero === true} />
         </div>
       </section>
 
