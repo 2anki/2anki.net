@@ -113,11 +113,24 @@ describe('buildClickConversionsCsv', () => {
     expect(dataLine.startsWith(',gb_ok,,')).toBe(true);
   });
 
-  it('neutralises a click id that begins with a formula trigger', () => {
+  it('writes a valid click id that begins with a dash unchanged so Google can match it', () => {
     const csv = buildClickConversionsCsv([
       conversion({ gclid: '-leadingdash' }),
     ]);
     const dataLine = csv.split('\n')[2];
-    expect(dataLine.startsWith("'-leadingdash,,,")).toBe(true);
+    expect(dataLine.startsWith('-leadingdash,,,')).toBe(true);
+  });
+
+  it('writes one row per order when Stripe redelivers the same purchase', () => {
+    const csv = buildClickConversionsCsv([
+      conversion({ orderId: 'cs_dup' }),
+      conversion({ orderId: 'cs_dup' }),
+      conversion({ orderId: 'cs_other' }),
+    ]);
+    const dataLines = csv
+      .split('\n')
+      .slice(2)
+      .filter((line) => line !== '');
+    expect(dataLines).toHaveLength(2);
   });
 });

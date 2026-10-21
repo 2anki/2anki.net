@@ -79,25 +79,31 @@ function toRow(conversion: GoogleAdsClickConversion): string | null {
   if (!Number.isFinite(conversion.valueCents) || conversion.valueCents < 0) {
     return null;
   }
-  const [gclid, gbraid, wbraid] = clickId;
-  return [
-    gclid,
-    gbraid,
-    wbraid,
+  // The click ids already passed CLICK_ID_CHARSET, which leaves no room for
+  // a formula or a delimiter; prefixing one that starts with "-" would make
+  // Google fail to match the click.
+  const rest = [
     GOOGLE_ADS_CONVERSION_NAME,
     formatConversionTime(conversion.conversionTime),
     (conversion.valueCents / 100).toFixed(2),
     conversion.currency.toUpperCase(),
     conversion.orderId,
-  ]
-    .map(escapeCsvField)
-    .join(',');
+  ].map(escapeCsvField);
+  return [...clickId, ...rest].join(',');
 }
 
 export function buildClickConversionsCsv(
   conversions: GoogleAdsClickConversion[]
 ): string {
+  const seenOrderIds = new Set<string>();
   const rows = conversions
+    .filter((conversion) => {
+      if (seenOrderIds.has(conversion.orderId)) {
+        return false;
+      }
+      seenOrderIds.add(conversion.orderId);
+      return true;
+    })
     .map(toRow)
     .filter((row): row is string => row != null);
   return [PARAMETERS_LINE, HEADER_LINE, ...rows].join('\n') + '\n';
