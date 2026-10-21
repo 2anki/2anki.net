@@ -136,8 +136,8 @@
       "subhead": "Drop a PDF or Notion export of your Saunders, UWorld, or ATI notes — lab values, med suffixes, priority and delegation. 2anki builds clean cards from your material, not from a guess."
     },
     "notion-to-anki": {
-      "h1": "Notion to Anki — free, no add-on required",
-      "subhead": "Connect Notion once, paste any page link, get a .apkg deck. No software to install."
+      "h1": "Notion to Anki — turn pages, toggles, and tables into cards",
+      "subhead": "Connect Notion and paste a page link, or upload an export. Toggles become front-and-back cards. Download a .apkg."
     },
     "nursing-flashcards": {
       "h1": "Anki flashcards from nursing lecture slides and notes",

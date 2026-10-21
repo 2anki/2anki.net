@@ -136,8 +136,8 @@
       "subhead": "Leg ein PDF oder einen Notion-Export deiner Saunders-, UWorld- oder ATI-Notizen ab — Laborwerte, Medikamenten-Endungen, Priorisierung und Delegation. 2anki baut saubere Karten aus deinem Material, nicht aus Vermutungen."
     },
     "notion-to-anki": {
-      "h1": "Notion zu Anki — kostenlos, kein Add-on nötig",
-      "subhead": "Verbinde Notion einmal, füge einen beliebigen Seitenlink ein und erhalte einen .apkg-Stapel. Keine Software zu installieren."
+      "h1": "Notion zu Anki — Seiten, Toggles und Tabellen werden zu Karten",
+      "subhead": "Verbinde Notion und füge einen Seitenlink ein oder lade einen Export hoch. Toggles werden zu Vorder- und Rückseitenkarten. Lade eine .apkg herunter."
     },
     "nursing-flashcards": {
       "h1": "Anki-Karteikarten aus Pflege-Vorlesungsfolien und -Notizen",

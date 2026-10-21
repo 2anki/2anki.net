@@ -265,6 +265,10 @@ const notionTablesToAnki: LandingCopy = {
   relatedLinks: [
     { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
     {
+      label: 'Convert Notion toggles to Anki',
+      href: '/convert/notion-toggles-to-anki',
+    },
+    {
       label: 'Convert a CSV or Excel sheet to Anki',
       href: '/convert/csv-to-anki',
     },
@@ -297,6 +301,127 @@ const notionTablesToAnki: LandingCopy = {
     {
       q: 'Will images inside cells convert?',
       a: 'Not yet — image-in-cell support is on the roadmap. For now, cells with only an image render as empty; cells with text + image keep the text.',
+    },
+  ],
+};
+
+const notionTogglesToAnki: LandingCopy = {
+  relatedLinks: [
+    { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
+    {
+      label: 'Convert Notion tables to Anki',
+      href: '/convert/notion-tables-to-anki',
+    },
+    {
+      label: 'Convert a Notion export to Anki',
+      href: '/convert/notion-export-to-anki',
+    },
+    {
+      label: 'Which Notion blocks convert',
+      href: '/documentation/cards/notion-blocks',
+    },
+    { label: 'Browse every converter', href: '/convert' },
+  ],
+  pathname: '/convert/notion-toggles-to-anki',
+  title: 'Notion toggles to Anki — toggle lists into cards | 2anki',
+  description:
+    'Turn Notion toggle lists into Anki flashcards. The toggle heading becomes the front, the content inside becomes the back. Paste a link, get a .apkg.',
+  h1: 'Notion toggles to Anki — one toggle, one card',
+  subhead:
+    'Write your notes as toggles in Notion. The heading becomes the front, the hidden content becomes the back. Connect, paste a link, get a .apkg.',
+  steps: [
+    {
+      title: 'Write toggles in Notion',
+      body: 'Each toggle is a card: the heading is the question, the content inside is the answer. Nest a toggle to make a subdeck.',
+    },
+    {
+      title: 'Connect and paste the link',
+      body: 'Connect Notion once on the upload page, paste the page URL, and convert.',
+    },
+    {
+      title: 'Open it in Anki',
+      body: 'Double-click the .apkg. Front-and-back cards, ready to review.',
+    },
+  ],
+  formats: ['Notion page link', 'Notion HTML export'],
+  whatComesAcross: ankiFidelityProof,
+  faqs: [
+    {
+      q: 'How does a toggle become a card?',
+      a: 'The toggle heading is the front of the card and everything inside the toggle is the back. One toggle makes one card.',
+    },
+    {
+      q: 'Can I make subdecks from nested toggles?',
+      a: 'Yes. A toggle nested inside another becomes a subdeck, so you can mirror your Notion outline as a deck tree in Anki.',
+    },
+    {
+      q: 'Do toggle headings (H1, H2, H3) work the same?',
+      a: 'Yes. A toggle on a heading block behaves like any other toggle — the heading text is the front, the revealed content is the back.',
+    },
+    {
+      q: 'Can I put a cloze inside a toggle?',
+      a: 'Yes. Write a cloze in the toggle content and it converts to a real Anki cloze card — {{c1::...}} stays clickable, not plain text.',
+    },
+    {
+      q: 'Do I have to use toggles?',
+      a: 'No. Tables and headings can also source cards from the same page. Turn each one on or off from the Rules page.',
+    },
+  ],
+};
+
+const notionExportToAnki: LandingCopy = {
+  relatedLinks: [
+    { label: 'Convert Notion pages to Anki', href: '/notion-to-anki' },
+    {
+      label: 'Convert Notion toggles to Anki',
+      href: '/convert/notion-toggles-to-anki',
+    },
+    { label: 'Convert an HTML file to Anki', href: '/convert/html-to-anki' },
+    {
+      label: 'Keep decks in sync with Notion',
+      href: '/answers/notion-to-anki-sync',
+    },
+    { label: 'Browse every converter', href: '/convert' },
+  ],
+  pathname: '/convert/notion-export-to-anki',
+  title: 'Notion export to Anki — .zip or HTML into a deck | 2anki',
+  description:
+    'Exported a Notion page as a .zip or HTML? Upload it and get an Anki deck — no connection needed. Toggles become cards, images embed, cloze stays clickable.',
+  h1: 'Notion export to Anki — upload a .zip, get a deck',
+  subhead:
+    'Already exported your Notion page? Drop the .zip or HTML file and download a .apkg. No connection, no reformatting.',
+  steps: [
+    {
+      title: 'Export from Notion',
+      body: 'Open the … menu, choose Export, and pick HTML with subpages. Notion gives you a .zip.',
+    },
+    {
+      title: 'Upload the .zip',
+      body: 'Drop it on the upload page. Images and subpages inside the export come along.',
+    },
+    {
+      title: 'Open it in Anki',
+      body: 'Double-click the .apkg. Your cards are ready to study.',
+    },
+  ],
+  formats: ['.zip (HTML export)', 'HTML'],
+  whatComesAcross: ankiFidelityProof,
+  faqs: [
+    {
+      q: 'Do I need to connect Notion to convert an export?',
+      a: 'No. The export path works without a connection — you already have the file. Connecting Notion is only for pasting a live page link and for Auto Sync, which both re-read the page for you.',
+    },
+    {
+      q: 'How do I export a Notion page as HTML?',
+      a: 'Open the page, click the … menu in the top-right, choose Export, set the format to HTML, and include subpages. Notion builds a .zip you upload here.',
+    },
+    {
+      q: 'Do images and subpages survive the export?',
+      a: 'Yes. An HTML export bundles images and every included subpage, so the deck keeps them. Each subpage becomes its own deck or tag, depending on your Rules.',
+    },
+    {
+      q: 'Can I upload a Markdown or CSV export instead?',
+      a: 'You can, but HTML is the cleanest — Markdown and CSV exports drop toggles and embedded images. Use those paths through the Markdown or CSV converters if that is all you have.',
     },
   ],
 };
@@ -1135,6 +1260,8 @@ export const CONVERT_LANDING_PAGES: ReadonlyMap<string, LandingCopy> = new Map([
   ['html-to-anki', htmlToAnki],
   ['apkg-to-csv', apkgToCsv],
   ['notion-tables-to-anki', notionTablesToAnki],
+  ['notion-toggles-to-anki', notionTogglesToAnki],
+  ['notion-export-to-anki', notionExportToAnki],
   ['brainscape-to-anki', brainscapeToAnki],
   ['lingvist-to-anki', lingvistToAnki],
   ['studystack-to-anki', studystackToAnki],

@@ -10,6 +10,14 @@ const notionCopy: LandingCopy = {
   ],
   relatedLinks: [
     {
+      label: 'Convert Notion toggles to Anki',
+      href: '/convert/notion-toggles-to-anki',
+    },
+    {
+      label: 'Convert a Notion export to Anki',
+      href: '/convert/notion-export-to-anki',
+    },
+    {
       label: 'Convert Notion tables to Anki',
       href: '/convert/notion-tables-to-anki',
     },
@@ -30,9 +38,9 @@ const notionCopy: LandingCopy = {
   title: 'Notion to Anki — decks that open clean in Anki | 2anki',
   description:
     'Convert any Notion page to an Anki deck that opens clean — cloze stays clickable, images render, toggles become cards. Paste a link, get a .apkg.',
-  h1: 'Notion to Anki — free, no add-on required',
+  h1: 'Notion to Anki — turn pages, toggles, and tables into cards',
   subhead:
-    'Connect Notion once, paste any page link, get a .apkg deck. No software to install.',
+    'Connect Notion and paste a page link, or upload an export. Toggles become front-and-back cards. Download a .apkg.',
   whatComesAcross: ankiFidelityProof,
   faqs: [
     {
@@ -50,6 +58,18 @@ const notionCopy: LandingCopy = {
     {
       q: 'Will it sync when I edit the Notion page later?',
       a: 'A one-time conversion is a snapshot. Re-paste the link to make a fresh deck. If you want changes to flow automatically, see Auto Sync on the pricing page — it polls Notion every few minutes.',
+    },
+    {
+      q: 'Can I convert a Notion export without connecting?',
+      a: 'Yes. Export the page from Notion (the … menu → Export → HTML), then upload the .zip on the upload page — no connection needed. The Notion export to Anki page has the full walkthrough.',
+    },
+    {
+      q: 'Can I convert a Notion database?',
+      a: 'Yes. A database shown as a table converts one row per card — column 1 is the front, column 2 is the back. See the Notion tables to Anki page for how multi-column tables map.',
+    },
+    {
+      q: 'How do I make cloze cards from Notion?',
+      a: 'Write a cloze on the Notion page and it converts to a real Anki cloze card — {{c1::...}} stays clickable, not plain text.',
     },
   ],
 };

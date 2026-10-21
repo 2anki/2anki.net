@@ -347,6 +347,23 @@ describe('LandingPage home hero', () => {
   });
 });
 
+describe('Notion pillar page', () => {
+  it('routes authority to the toggle and export intent pages', () => {
+    const hrefs = (notionCopy.relatedLinks ?? []).map((link) => link.href);
+    expect(hrefs).toContain('/convert/notion-toggles-to-anki');
+    expect(hrefs).toContain('/convert/notion-export-to-anki');
+  });
+
+  it('answers the export, database, and cloze intents in its FAQ', () => {
+    const questions = notionCopy.faqs.map((faq) => faq.q);
+    expect(questions).toContain(
+      'Can I convert a Notion export without connecting?'
+    );
+    expect(questions).toContain('Can I convert a Notion database?');
+    expect(questions).toContain('How do I make cloze cards from Notion?');
+  });
+});
+
 describe('LandingPage funnel instrumentation', () => {
   it.each([
     [notionCopy, notionCopy.pathname],

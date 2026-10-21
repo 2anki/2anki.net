@@ -50,6 +50,12 @@ const STUDY_LINKS = [
   { href: '/anki-for-japanese', labelKey: 'home.studyLinks.japanese' },
 ] as const;
 
+const POPULAR_CONVERSIONS = [
+  { href: '/notion-to-anki', label: 'Convert Notion to Anki' },
+  { href: '/pdf-to-anki', label: 'Convert a PDF to Anki' },
+  { href: '/convert', label: 'Browse every converter' },
+] as const;
+
 const STEPS = [
   {
     id: 'upload',
@@ -297,6 +303,28 @@ export function HomePage({
           </button>
         </div>
       </section>
+
+      <nav
+        className={styles.studyLinks}
+        aria-label={t('home.popularConversions.heading', {
+          defaultValue: 'Popular conversions',
+        })}
+      >
+        <h2 className={styles.studyLinksHeading}>
+          {t('home.popularConversions.heading', {
+            defaultValue: 'Popular conversions',
+          })}
+        </h2>
+        <ul className={styles.studyLinksList}>
+          {POPULAR_CONVERSIONS.map((link) => (
+            <li key={link.href}>
+              <a href={link.href} className={styles.studyLink}>
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       <nav
         className={styles.studyLinks}

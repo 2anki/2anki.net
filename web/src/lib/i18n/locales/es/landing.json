@@ -136,8 +136,8 @@
       "subhead": "Suelta un PDF o una exportación de Notion de tus apuntes de Saunders, UWorld o ATI — valores de laboratorio, sufijos de medicamentos, prioridad y delegación. 2anki crea tarjetas limpias a partir de tu material, no de una suposición."
     },
     "notion-to-anki": {
-      "h1": "Notion a Anki — gratis, sin complementos",
-      "subhead": "Conecta Notion una vez, pega el enlace de cualquier página y obtén un mazo .apkg. Sin software que instalar."
+      "h1": "Notion a Anki — convierte páginas, toggles y tablas en tarjetas",
+      "subhead": "Conecta Notion y pega el enlace de una página, o sube una exportación. Los toggles se convierten en tarjetas de anverso y reverso. Descarga un .apkg."
     },
     "nursing-flashcards": {
       "h1": "Tarjetas de Anki a partir de diapositivas y apuntes de enfermería",

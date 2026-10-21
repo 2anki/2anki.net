@@ -34,7 +34,7 @@
   </url>
   <url>
     <loc>https://2anki.net/notion-to-anki/</loc>
-    <lastmod>2026-05-25</lastmod>
+    <lastmod>2026-10-21</lastmod>
   </url>
   <url>
     <loc>https://2anki.net/notion-zu-anki/</loc>
@@ -123,6 +123,14 @@
   <url>
     <loc>https://2anki.net/convert/notion-tables-to-anki/</loc>
     <lastmod>2026-05-19</lastmod>
+  </url>
+  <url>
+    <loc>https://2anki.net/convert/notion-toggles-to-anki/</loc>
+    <lastmod>2026-10-21</lastmod>
+  </url>
+  <url>
+    <loc>https://2anki.net/convert/notion-export-to-anki/</loc>
+    <lastmod>2026-10-21</lastmod>
   </url>
   <url>
     <loc>https://2anki.net/convert/lingvist-to-anki/</loc>
