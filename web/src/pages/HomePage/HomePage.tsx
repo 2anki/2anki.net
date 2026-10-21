@@ -51,9 +51,9 @@ const STUDY_LINKS = [
 ] as const;
 
 const POPULAR_CONVERSIONS = [
-  { href: '/notion-to-anki', label: 'Convert Notion to Anki' },
-  { href: '/pdf-to-anki', label: 'Convert a PDF to Anki' },
-  { href: '/convert', label: 'Browse every converter' },
+  { href: '/notion-to-anki', labelKey: 'home.popularConversions.notion' },
+  { href: '/pdf-to-anki', labelKey: 'home.popularConversions.pdf' },
+  { href: '/convert', labelKey: 'home.popularConversions.browseAll' },
 ] as const;
 
 const STEPS = [
@@ -319,7 +319,7 @@ export function HomePage({
           {POPULAR_CONVERSIONS.map((link) => (
             <li key={link.href}>
               <a href={link.href} className={styles.studyLink}>
-                {link.label}
+                {t(link.labelKey)}
               </a>
             </li>
           ))}

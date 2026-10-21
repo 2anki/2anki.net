@@ -143,7 +143,10 @@
       "japanese": "Японский"
     },
     "popularConversions": {
-      "heading": "Популярные конвертации"
+      "heading": "Популярные конвертации",
+      "notion": "Конвертировать Notion в Anki",
+      "pdf": "Конвертировать PDF в Anki",
+      "browseAll": "Все конвертеры"
     }
   },
   "upload": {

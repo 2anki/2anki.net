@@ -332,7 +332,7 @@ const notionTogglesToAnki: LandingCopy = {
   steps: [
     {
       title: 'Write toggles in Notion',
-      body: 'Each toggle is a card: the heading is the question, the content inside is the answer. Nest a toggle to make a subdeck.',
+      body: 'Each toggle is a card: the heading is the question, the content inside is the answer. Group toggles under subpages to split them into subdecks.',
     },
     {
       title: 'Connect and paste the link',
@@ -340,7 +340,7 @@ const notionTogglesToAnki: LandingCopy = {
     },
     {
       title: 'Open it in Anki',
-      body: 'Double-click the .apkg. Front-and-back cards, ready to review.',
+      body: 'Double-click the .apkg. Front and back cards, ready to review.',
     },
   ],
   formats: ['Notion page link', 'Notion HTML export'],
@@ -351,16 +351,16 @@ const notionTogglesToAnki: LandingCopy = {
       a: 'The toggle heading is the front of the card and everything inside the toggle is the back. One toggle makes one card.',
     },
     {
-      q: 'Can I make subdecks from nested toggles?',
-      a: 'Yes. A toggle nested inside another becomes a subdeck, so you can mirror your Notion outline as a deck tree in Anki.',
+      q: 'Can nested toggles become subdecks?',
+      a: 'No. A toggle nested inside another folds into the parent card answer. To split cards into subdecks, put them on separate subpages, which do become subdecks.',
     },
     {
       q: 'Do toggle headings (H1, H2, H3) work the same?',
-      a: 'Yes. A toggle on a heading block behaves like any other toggle — the heading text is the front, the revealed content is the back.',
+      a: 'A toggle heading with its own content makes one card, heading on the front. A toggle heading that holds other toggles instead makes one card per inner toggle, with the heading grouping them.',
     },
     {
-      q: 'Can I put a cloze inside a toggle?',
-      a: 'Yes. Write a cloze in the toggle content and it converts to a real Anki cloze card — {{c1::...}} stays clickable, not plain text.',
+      q: 'How do I make a cloze card from a toggle?',
+      a: 'Wrap the answer in inline code in the toggle heading, or write {{c1::...}} there, and you get a real Anki cloze card. Reading a cloze from the toggle content is a separate option that is off by default.',
     },
     {
       q: 'Do I have to use toggles?',
@@ -386,7 +386,7 @@ const notionExportToAnki: LandingCopy = {
   pathname: '/convert/notion-export-to-anki',
   title: 'Notion export to Anki — .zip or HTML into a deck | 2anki',
   description:
-    'Exported a Notion page as a .zip or HTML? Upload it and get an Anki deck — no connection needed. Toggles become cards, images embed, cloze stays clickable.',
+    'Exported a Notion page as a .zip or HTML? Upload it and get an Anki deck, no connection needed. Toggles become cards, images embed, cloze stays clickable.',
   h1: 'Notion export to Anki — upload a .zip, get a deck',
   subhead:
     'Already exported your Notion page? Drop the .zip or HTML file and download a .apkg. No connection, no reformatting.',
@@ -409,7 +409,7 @@ const notionExportToAnki: LandingCopy = {
   faqs: [
     {
       q: 'Do I need to connect Notion to convert an export?',
-      a: 'No. The export path works without a connection — you already have the file. Connecting Notion is only for pasting a live page link and for Auto Sync, which both re-read the page for you.',
+      a: 'No. The export path works without a connection: you already have the file. Connecting Notion is only for pasting a live page link and for Auto Sync, which both re-read the page for you.',
     },
     {
       q: 'How do I export a Notion page as HTML?',
@@ -417,11 +417,11 @@ const notionExportToAnki: LandingCopy = {
     },
     {
       q: 'Do images and subpages survive the export?',
-      a: 'Yes. An HTML export bundles images and every included subpage, so the deck keeps them. Each subpage becomes its own deck or tag, depending on your Rules.',
+      a: 'Yes. An HTML export bundles images and every included subpage, so the deck keeps them. Each subpage becomes its own subdeck.',
     },
     {
       q: 'Can I upload a Markdown or CSV export instead?',
-      a: 'You can, but HTML is the cleanest — Markdown and CSV exports drop toggles and embedded images. Use those paths through the Markdown or CSV converters if that is all you have.',
+      a: 'You can, but HTML is the cleanest. Notion exports toggles to Markdown as plain bullet lists, so the front and back structure is lost, and a CSV export drops embedded images. Use the Markdown or CSV converters if that is all you have.',
     },
   ],
 };

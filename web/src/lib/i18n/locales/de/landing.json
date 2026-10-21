@@ -191,6 +191,14 @@
       "h1": "Notion-Tabellen zu Anki — eine Zeile, eine Karte",
       "subhead": "Füge eine Notion-Seite mit einer Tabelle ein. Spalte 1 wird zur Vorderseite, Spalte 2 zur Rückseite."
     },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Notion-Toggles zu Anki — ein Toggle, eine Karte",
+      "subhead": "Schreibe deine Notizen in Notion als Toggles. Die Überschrift wird zur Vorderseite, der eingeklappte Inhalt zur Rückseite. Verbinde Notion, füge einen Link ein, hol dir eine .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Notion-Export zu Anki — lade eine .zip hoch, hol dir einen Stapel",
+      "subhead": "Deine Notion-Seite schon exportiert? Lege die .zip- oder HTML-Datei ab und lade eine .apkg herunter. Keine Verbindung, kein Umformatieren."
+    },
     "convert-brainscape-to-anki": {
       "h1": "Übertrage deine Brainscape-Karteikarten zu Anki",
       "subhead": "Exportiere deinen Brainscape-Stapel als CSV, leg ihn hier ab und erhalte einen .apkg-Stapel, der sauber in Anki öffnet."

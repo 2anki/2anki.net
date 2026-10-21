@@ -191,6 +191,14 @@
       "h1": "Notion-tabellen naar Anki — één rij, één kaart",
       "subhead": "Plak een Notion-pagina met een tabel. Kolom 1 wordt de voorkant, kolom 2 wordt de achterkant."
     },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Notion-toggles naar Anki — één toggle, één kaart",
+      "subhead": "Schrijf je notities in Notion als toggles. De kop wordt de voorkant, de verborgen inhoud de achterkant. Verbind, plak een link, krijg een .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Notion-export naar Anki — upload een .zip, krijg een deck",
+      "subhead": "Je Notion-pagina al geëxporteerd? Zet het .zip- of HTML-bestand neer en download een .apkg. Geen verbinding, geen herformatteren."
+    },
     "convert-brainscape-to-anki": {
       "h1": "Verplaats je Brainscape-flashcards naar Anki",
       "subhead": "Exporteer je Brainscape-deck als CSV, sleep het hierheen, krijg een .apkg-deck dat netjes in Anki opent."

@@ -102,13 +102,7 @@ describe('HomePage (anonymous)', () => {
     expect(link).toHaveAttribute('href', '/card-options');
   });
 
-  it('gives crawlers a path to the Notion pillar from the home page', () => {
-    renderHome();
-    const link = screen.getByRole('link', { name: 'Convert Notion to Anki' });
-    expect(link).toHaveAttribute('href', '/notion-to-anki');
-  });
-
-  it('lists popular conversions linking the pillar, PDF, and the hub', () => {
+  it('lists popular conversions linking the Notion pillar, PDF, and the hub', () => {
     renderHome();
     expect(
       screen.getByRole('link', { name: 'Convert Notion to Anki' })

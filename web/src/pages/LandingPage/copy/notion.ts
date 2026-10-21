@@ -61,15 +61,15 @@ const notionCopy: LandingCopy = {
     },
     {
       q: 'Can I convert a Notion export without connecting?',
-      a: 'Yes. Export the page from Notion (the … menu → Export → HTML), then upload the .zip on the upload page — no connection needed. The Notion export to Anki page has the full walkthrough.',
+      a: 'Yes. Export the page from Notion (the … menu, then Export, then HTML), then upload the .zip on the upload page, no connection needed. The Notion export to Anki page has the full walkthrough.',
     },
     {
       q: 'Can I convert a Notion database?',
-      a: 'Yes. A database shown as a table converts one row per card — column 1 is the front, column 2 is the back. See the Notion tables to Anki page for how multi-column tables map.',
+      a: 'Yes. 2anki turns one row into one card and picks the front and back columns by name, matching headers like Term and Definition, and falling back to the first two columns when it cannot. See the Notion tables to Anki page for how multi-column tables map.',
     },
     {
       q: 'How do I make cloze cards from Notion?',
-      a: 'Write a cloze on the Notion page and it converts to a real Anki cloze card — {{c1::...}} stays clickable, not plain text.',
+      a: 'Wrap the answer in inline code in a toggle heading, or write {{c1::...}} there, and 2anki makes a real Anki cloze card where {{c1::...}} stays clickable. Reading a cloze from a toggle content is a separate option that is off by default.',
     },
   ],
 };

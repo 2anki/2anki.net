@@ -191,6 +191,14 @@
       "h1": "Tableaux Notion vers Anki — une ligne, une carte",
       "subhead": "Colle une page Notion avec un tableau. La colonne 1 devient le recto, la colonne 2 devient le verso."
     },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Toggles Notion vers Anki — un toggle, une carte",
+      "subhead": "Écris tes notes dans Notion sous forme de toggles. Le titre devient le recto, le contenu masqué le verso. Connecte, colle un lien, obtiens un .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Export Notion vers Anki — téléverse un .zip, obtiens un paquet",
+      "subhead": "Déjà exporté ta page Notion ? Dépose le fichier .zip ou HTML et télécharge un .apkg. Sans connexion, sans reformatage."
+    },
     "convert-brainscape-to-anki": {
       "h1": "Transfère tes cartes Brainscape vers Anki",
       "subhead": "Exporte ton paquet Brainscape en CSV, dépose-le ici, obtiens un paquet .apkg qui s'ouvre proprement dans Anki."

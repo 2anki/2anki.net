@@ -141,7 +141,10 @@
       "japanese": "Japonés"
     },
     "popularConversions": {
-      "heading": "Conversiones populares"
+      "heading": "Conversiones populares",
+      "notion": "Convertir Notion a Anki",
+      "pdf": "Convertir un PDF a Anki",
+      "browseAll": "Ver todos los conversores"
     }
   },
   "upload": {

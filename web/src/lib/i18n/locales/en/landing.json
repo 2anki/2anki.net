@@ -191,6 +191,14 @@
       "h1": "Notion tables to Anki — one row, one card",
       "subhead": "Paste a Notion page with a table. Column 1 becomes the front, column 2 becomes the back."
     },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Notion toggles to Anki — one toggle, one card",
+      "subhead": "Write your notes as toggles in Notion. The heading becomes the front, the hidden content becomes the back. Connect, paste a link, get a .apkg."
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Notion export to Anki — upload a .zip, get a deck",
+      "subhead": "Already exported your Notion page? Drop the .zip or HTML file and download a .apkg. No connection, no reformatting."
+    },
     "convert-brainscape-to-anki": {
       "h1": "Move your Brainscape flashcards to Anki",
       "subhead": "Export your Brainscape deck as CSV, drop it here, get a .apkg deck that opens clean in Anki."

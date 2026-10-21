@@ -191,6 +191,14 @@
       "h1": "Notion のテーブルを Anki に — 1 行が 1 枚のカード",
       "subhead": "テーブルのある Notion ページを貼り付け。1 列目が表、2 列目が裏になります。"
     },
+    "convert-notion-toggles-to-anki": {
+      "h1": "Notion のトグルを Anki に — 1 つのトグルが 1 枚のカード",
+      "subhead": "Notion でメモをトグルとして書きます。見出しが表、折りたたまれた内容が裏になります。接続してリンクを貼り、.apkg を入手できます。"
+    },
+    "convert-notion-export-to-anki": {
+      "h1": "Notion のエクスポートを Anki に — .zip をアップロードしてデッキを入手",
+      "subhead": "Notion ページをもうエクスポート済みですか？ .zip または HTML ファイルを置いて .apkg をダウンロードします。接続も再整形も不要です。"
+    },
     "convert-brainscape-to-anki": {
       "h1": "Brainscape のフラッシュカードを Anki に移す",
       "subhead": "Brainscape のデッキを CSV としてエクスポートし、ここにドロップすれば、Anki できれいに開ける .apkg デッキが手に入ります。"
