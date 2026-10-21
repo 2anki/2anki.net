@@ -260,6 +260,30 @@ describe('ClientMetadataDocumentResolver', () => {
     });
   });
 
+  it.each([301, 302, 307, 308])(
+    'refuses to follow a %d redirect to another host',
+    async (status) => {
+      const error = new Error(`status ${status}`) as AxiosError;
+      error.isAxiosError = true;
+      error.response = {
+        status,
+        statusText: '',
+        headers: { location: 'https://attacker.example/doc.json' },
+        config: {} as never,
+        data: null,
+      };
+      mockedAxios.get.mockRejectedValueOnce(error);
+      mockedAxios.get.mockResolvedValue(
+        okResponse(JSON.stringify(documentFor()))
+      );
+
+      await expect(makeResolver().resolve(CLIENT_ID)).rejects.toMatchObject({
+        reason: 'bad_status',
+      });
+      expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it('rejects a non-200 response', async () => {
     const error = new Error('Request failed') as AxiosError;
     error.isAxiosError = true;

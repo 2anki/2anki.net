@@ -332,8 +332,12 @@ export class ClientMetadataDocumentResolver {
     });
     // instrumentedAxios enforces https, rejects private, loopback and
     // link-local hosts and resolved IPs, and pins the vetted address for the
-    // connection, re-checking every redirect hop.
+    // connection. Redirects are refused: a document served from anywhere but
+    // the client_id URL itself must not be accepted as that client's
+    // metadata (an open redirect on the client's host would otherwise let
+    // another host impersonate it).
     const request = this.http.get<string>('mcp', clientId, {
+      maxRedirects: 0,
       timeout: this.timeoutMs,
       signal: controller.signal,
       responseType: 'text',
