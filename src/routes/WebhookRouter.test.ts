@@ -1826,6 +1826,44 @@ describe('WebhookRouter — ad-click attribution and GA4 purchase for passes', (
     expect(call?.[1].props).not.toHaveProperty('fbclid');
   });
 
+  it('carries the session id, value and currency on a paid ad-attributed purchase', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      id: 'cs_paid_ad',
+      payment_status: 'paid',
+      amount_total: 600,
+      currency: 'usd',
+      metadata: { user_id: '42', pass_kind: '24h', gclid: 'Cj0abc' },
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    const call = mockTrack.mock.calls.find(
+      (c) => c[0] === 'checkout_completed'
+    );
+    expect(call?.[1].props).toMatchObject({
+      gclid: 'Cj0abc',
+      order_id: 'cs_paid_ad',
+      value_cents: 600,
+      currency: 'usd',
+    });
+  });
+
+  it('omits the purchase props when the session is not paid', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      id: 'cs_unpaid_ad',
+      payment_status: 'unpaid',
+      metadata: { user_id: '42', pass_kind: '24h', gclid: 'Cj0abc' },
+    });
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    const call = mockTrack.mock.calls.find(
+      (c) => c[0] === 'checkout_completed'
+    );
+    expect(call?.[1].props).not.toHaveProperty('order_id');
+    expect(call?.[1].props).not.toHaveProperty('value_cents');
+  });
+
   it('sends the GA4 purchase once for a paid pass session instead of returning early', async () => {
     mockWebhookEvent = makePassSessionEvent({
       id: 'cs_pass_ga4',
