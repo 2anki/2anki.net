@@ -1,5 +1,9 @@
 import { vi } from 'vitest';
-import { buildMcpServer, type McpRequestContext } from './McpServerFactory';
+import {
+  buildMcpServer,
+  MCP_SERVER_INSTRUCTIONS,
+  type McpRequestContext,
+} from './McpServerFactory';
 import type { McpToolsService } from './McpToolsService';
 
 const buildContext = (
@@ -59,6 +63,18 @@ describe('buildMcpServer', () => {
         /\b(call|read it yourself|do not ask|treat it as)\b/i
       );
     }
+  });
+
+  it('states what the server does in its instructions without directing the model', () => {
+    const server = buildMcpServer(buildContext());
+    const instructions = (
+      server as unknown as { server: { _instructions?: string } }
+    ).server._instructions;
+    expect(instructions).toBe(MCP_SERVER_INSTRUCTIONS);
+    expect(instructions).toMatch(/Anki/);
+    expect(instructions).not.toMatch(
+      /\b(call|always|never use|instead of|prefer)\b/i
+    );
   });
 
   it('mirrors each tool title into annotations.title', () => {
