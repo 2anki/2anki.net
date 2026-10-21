@@ -21,6 +21,7 @@ import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/Prepar
 import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import { getPackagesFromZip } from './getPackagesFromZip';
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
+import { createWorkerTerminationError } from '../../lib/workerTermination';
 
 vi.mock('fs');
 vi.mock('../../lib/parser/WorkSpace');
@@ -489,6 +490,67 @@ describe('runUploadGenerationInWorker — files converted in parallel', () => {
     expect(result.ok ? '' : result.error.message).toBe('first file broke');
   });
 
+  it('does not start queued files after one fails', async () => {
+    const started: string[] = [];
+    mockPrepareDeck.mockImplementation(async (input) => {
+      started.push(input.name);
+      if (input.name === 'a.html') throw new Error('a broke');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return deckFor(input.name) as never;
+    });
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html'), makeHtml('c.html')])
+    );
+
+    expect(result.ok).toBe(false);
+    expect(started).toEqual(['a.html', 'b.html']);
+  });
+
+  it('reports a restart over an ordinary failure in the same upload', async () => {
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.name === 'a.html') throw new Error('a broke');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      throw createWorkerTerminationError();
+    });
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    expect(result.ok ? '' : result.error.message).toBe(
+      createWorkerTerminationError().message
+    );
+  });
+
+  it('keeps an upload that includes a zip sequential', async () => {
+    const events: string[] = [];
+    mockPrepareDeck.mockImplementation(async (input) => {
+      events.push(`start ${input.name}`);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      events.push(`end ${input.name}`);
+      return deckFor(input.name) as never;
+    });
+    mockGetPackagesFromZip.mockImplementation(async () => {
+      events.push('start zip');
+      return { packages: [], warnings: [] };
+    });
+
+    await runUploadGenerationInWorker(
+      task([
+        makeHtml('a.html'),
+        makeFile({
+          originalname: 'b.zip',
+          key: 'b.zip',
+          buffer: Buffer.from('PK'),
+        }),
+      ])
+    );
+
+    expect(events).toEqual(['start a.html', 'end a.html', 'start zip']);
+    expect(mockSubdir).not.toHaveBeenCalled();
+  });
+
   it('converts a single file in the shared workspace, as before', async () => {
     mockPrepareDeck.mockImplementation(
       async (input) => deckFor(input.name) as never
@@ -639,6 +701,15 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
       userId: 7,
     };
   }
+
+  it('stops at the first failing file so later AI files spend nothing', async () => {
+    mockPrepareDeck.mockRejectedValueOnce(new Error('chapter broke'));
+
+    const result = await runUploadGenerationInWorker(makeMultiFileTask());
+
+    expect(result.ok).toBe(false);
+    expect(mockPrepareDeck).toHaveBeenCalledTimes(1);
+  });
 
   it('threads one dedup state across loose files and emits the suppressed count', async () => {
     const trackMod = trackModule;
