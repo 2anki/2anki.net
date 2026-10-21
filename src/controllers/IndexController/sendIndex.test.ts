@@ -3,9 +3,13 @@ import { Response } from 'express';
 
 import { sendIndex, withConsentRegion } from './sendIndex';
 import { getIndexFileContents } from './getIndexFileContents';
+import { getPrerenderedPage } from './getPrerenderedPage';
 import { INDEX_HTML_CACHE_CONTROL } from '../../lib/mountWebBuild';
 
 vi.mock('./getIndexFileContents');
+vi.mock('./getPrerenderedPage', () => ({
+  getPrerenderedPage: vi.fn().mockReturnValue(null),
+}));
 
 const mockedGet = getIndexFileContents as MockedFunction<
   typeof getIndexFileContents
@@ -33,6 +37,21 @@ describe('sendIndex', () => {
     expect(res.status).not.toHaveBeenCalled();
     expect(res.send).toHaveBeenCalledWith(
       '<html data-consent-region="eea">ready</html>'
+    );
+  });
+
+  it('sends the prerendered landing page, stamped, instead of the shell', () => {
+    mockedGet.mockReturnValue('<html>shell</html>');
+    vi.mocked(getPrerenderedPage).mockReturnValueOnce(
+      '<html lang="en">pdf page</html>'
+    );
+    const res = buildResponse();
+
+    sendIndex(res, '/pdf-to-anki/', 'other');
+
+    expect(getPrerenderedPage).toHaveBeenCalledWith('/pdf-to-anki/');
+    expect(res.send).toHaveBeenCalledWith(
+      '<html lang="en" data-consent-region="other">pdf page</html>'
     );
   });
 
