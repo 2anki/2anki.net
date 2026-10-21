@@ -47,6 +47,22 @@ describe('buildMcpServer', () => {
     ]);
   });
 
+  it('mirrors each tool title into annotations.title', () => {
+    const server = buildMcpServer(buildContext());
+    const registered = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          { title?: string; annotations?: { title?: string } }
+        >;
+      }
+    )._registeredTools;
+    for (const tool of Object.values(registered)) {
+      expect(tool.title).toBeTruthy();
+      expect(tool.annotations?.title).toBe(tool.title);
+    }
+  });
+
   it('records the tool call and returns the note types and options for deck_capabilities', async () => {
     const calls: string[] = [];
     const server = buildMcpServer({

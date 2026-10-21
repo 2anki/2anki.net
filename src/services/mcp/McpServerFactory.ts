@@ -48,6 +48,7 @@ interface ToolConfig {
   inputSchema: ToolShape;
   outputSchema?: ToolShape;
   annotations: {
+    title?: string;
     readOnlyHint: boolean;
     destructiveHint: boolean;
     openWorldHint: boolean;
@@ -69,9 +70,11 @@ function registerTool<Args>(
   const erasedServer = server as unknown as {
     registerTool: ErasedRegisterTool;
   };
+  // Directory listings read the human name from annotations.title, not the
+  // top-level title, so mirror it there for every tool.
   erasedServer.registerTool(
     name,
-    config,
+    { ...config, annotations: { title: config.title, ...config.annotations } },
     handler as (args: Record<string, unknown>) => Promise<ToolResult>
   );
 }
