@@ -1,23 +1,15 @@
 import { vi, type Mock } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 
-import { concurrencyLimit, ownerRateLimit } from './previewRenderLimit';
+import { ownerRateLimit } from './previewRenderLimit';
 import { InMemoryRateLimiter } from '../../lib/rateLimit/InMemoryRateLimiter';
-import { ConcurrencyLimiter } from '../../lib/rateLimit/ConcurrencyLimiter';
 
 function makeRes(locals: Record<string, unknown>): Response {
-  const handlers: Record<string, Array<() => void>> = {};
-  const res = {
+  return {
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
     locals,
-    on: vi.fn((event: string, handler: () => void) => {
-      (handlers[event] ??= []).push(handler);
-      return res;
-    }),
-    emit: (event: string) => (handlers[event] ?? []).forEach((h) => h()),
-  } as unknown as Response & { emit: (event: string) => void };
-  return res;
+  } as unknown as Response;
 }
 
 describe('ownerRateLimit', () => {
@@ -76,44 +68,5 @@ describe('ownerRateLimit', () => {
 
     expect(next).toHaveBeenCalledTimes(1);
     expect((limiter.check as Mock).mock.calls).toHaveLength(0);
-  });
-});
-
-describe('concurrencyLimit', () => {
-  it('acquires a slot and releases it when the response finishes', () => {
-    const limiter = new ConcurrencyLimiter(1);
-    const next = vi.fn() as NextFunction;
-    const res = makeRes({}) as Response & { emit: (event: string) => void };
-
-    concurrencyLimit(limiter)({} as Request, res, next);
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(limiter.inFlight).toBe(1);
-
-    res.emit('finish');
-    expect(limiter.inFlight).toBe(0);
-  });
-
-  it('answers 503 when the render pool is full', () => {
-    const limiter = new ConcurrencyLimiter(1);
-    const next = vi.fn() as NextFunction;
-
-    concurrencyLimit(limiter)({} as Request, makeRes({}), next);
-    const blocked = makeRes({});
-    concurrencyLimit(limiter)({} as Request, blocked, next);
-
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(blocked.status).toHaveBeenCalledWith(503);
-  });
-
-  it('frees the slot once even if finish and close both fire', () => {
-    const limiter = new ConcurrencyLimiter(1);
-    const next = vi.fn() as NextFunction;
-    const res = makeRes({}) as Response & { emit: (event: string) => void };
-
-    concurrencyLimit(limiter)({} as Request, res, next);
-    res.emit('finish');
-    res.emit('close');
-
-    expect(limiter.inFlight).toBe(0);
   });
 });

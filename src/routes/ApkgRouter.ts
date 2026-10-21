@@ -5,12 +5,8 @@ import RequireAuthentication from './middleware/RequireAuthentication';
 import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import { printQuotaMiddleware } from './middleware/PrintQuotaMiddleware';
 import { ipRateLimit } from './middleware/ipRateLimit';
-import {
-  concurrencyLimit,
-  ownerRateLimit,
-} from './middleware/previewRenderLimit';
+import { ownerRateLimit } from './middleware/previewRenderLimit';
 import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
-import { ConcurrencyLimiter } from '../lib/rateLimit/ConcurrencyLimiter';
 import ApkgController from '../controllers/ApkgController';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
 import DownloadService from '../services/DownloadService';
@@ -271,16 +267,15 @@ const ApkgRouter = () => {
     limits: { fileSize: 100 * 1024 * 1024 },
   });
 
-  // Bound the free preview three ways, since it launches a fresh Chrome per
-  // request without spending the user's monthly print: per IP, per owner, and
-  // a process-wide cap on concurrent renders. The concurrency slot is taken
-  // before the upload so a rejected request never writes a temp file.
+  // Bound the free preview, since it launches a fresh Chrome per request
+  // without spending the user's monthly print: per IP (ipRateLimit), per owner
+  // (here), and a process-wide cap on concurrent Chrome renders (inside the
+  // controller, held for the render's lifetime).
   const previewOwnerLimiter = new InMemoryRateLimiter({
     windowMs: 60_000,
     perKeyMax: 10,
     globalMax: 120,
   });
-  const previewRenderConcurrency = new ConcurrencyLimiter(2);
 
   // Free, un-metered preview of the first cards: no printQuotaMiddleware and
   // never increments print usage.
@@ -290,7 +285,6 @@ const ApkgRouter = () => {
     RequireAuthentication,
     ipRateLimit(20),
     ownerRateLimit(previewOwnerLimiter),
-    concurrencyLimit(previewRenderConcurrency),
     previewUpload.single('file'),
     normalizeUploadFilenames,
     (req, res) => controller.previewPdf(req, res)

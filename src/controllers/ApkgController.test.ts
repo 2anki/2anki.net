@@ -21,6 +21,7 @@ import ExportApkgToCsvUseCase, {
 } from '../usecases/apkg/ExportApkgToCsvUseCase';
 import { track } from '../services/events/track';
 import { InvalidApkgError } from '../services/ApkgPreviewService/extractApkg';
+import { ConcurrencyLimiter } from '../lib/rateLimit/ConcurrencyLimiter';
 
 vi.mock('../usecases/apkg/ImportApkgToNotionUseCase');
 vi.mock('../usecases/apkg/ExportApkgToPdfUseCase');
@@ -91,7 +92,10 @@ function makeAPIResponseError(code: string, status: number): APIResponseError {
   return err;
 }
 
-function makeController(recordServerError?: ServerErrorRecorder) {
+function makeController(
+  recordServerError?: ServerErrorRecorder,
+  previewConcurrency?: ConcurrencyLimiter
+) {
   const downloadService = {
     getFileBody: vi.fn(),
     isMissingDownloadError: vi.fn().mockReturnValue(false),
@@ -123,7 +127,8 @@ function makeController(recordServerError?: ServerErrorRecorder) {
     pdfRenderService,
     notionService,
     jobRepository,
-    recordServerError
+    recordServerError,
+    previewConcurrency
   );
 }
 
@@ -1043,5 +1048,94 @@ describe('ApkgController.previewPdf', () => {
       'pdf_export_failed',
       expect.anything()
     );
+  });
+
+  it('answers 503 when the render pool is already full', async () => {
+    const limiter = new ConcurrencyLimiter(1);
+    limiter.tryAcquire();
+    const controller = makeController(undefined, limiter);
+    const res = makePreviewRes({ owner: 42 });
+
+    await controller.previewPdf(makeReq({ body: {} }) as Request, res);
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(previewMock).not.toHaveBeenCalled();
+  });
+
+  it('releases the render slot after the render settles', async () => {
+    const limiter = new ConcurrencyLimiter(1);
+    const controller = makeController(undefined, limiter);
+
+    await controller.previewPdf(
+      makeReq({ body: {} }) as Request,
+      makePreviewRes({ owner: 42 })
+    );
+
+    expect(limiter.inFlight).toBe(0);
+  });
+
+  it('releases the render slot even when the render throws', async () => {
+    previewMock.mockRejectedValueOnce(new PdfRenderCrashedError());
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const limiter = new ConcurrencyLimiter(1);
+    const controller = makeController(undefined, limiter);
+
+    await controller.previewPdf(
+      makeReq({ body: {} }) as Request,
+      makePreviewRes({ owner: 42 })
+    );
+
+    expect(limiter.inFlight).toBe(0);
+    errorSpy.mockRestore();
+  });
+
+  it('never acquires a render slot for a request that fails validation', async () => {
+    const limiter = new ConcurrencyLimiter(1);
+    const controller = makeController(undefined, limiter);
+
+    await controller.previewPdf(
+      makeReq({ body: {}, file: undefined }) as Request,
+      makePreviewRes()
+    );
+
+    expect(limiter.inFlight).toBe(0);
+    expect(limiter.tryAcquire()).toBe(true);
+  });
+
+  it('holds the render slot until the render settles, so a client abort cannot free it early', async () => {
+    const limiter = new ConcurrencyLimiter(1);
+    let resolveRender!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      resolveRender = resolve;
+    });
+    previewMock.mockReturnValueOnce(
+      pending.then(() => ({
+        image: Buffer.from('a'),
+        totalCards: 1,
+        previewedCards: 1,
+        deckName: 'a',
+      }))
+    );
+    const controller = makeController(undefined, limiter);
+
+    const inFlight = controller.previewPdf(
+      makeReq({ body: {} }) as Request,
+      makePreviewRes({ owner: 1 })
+    );
+    await vi.waitFor(() => expect(limiter.inFlight).toBe(1));
+
+    // A second request while the first is still rendering (the client of the
+    // first may have aborted — nothing released the slot) must be rejected.
+    const blocked = makePreviewRes({ owner: 2 });
+    await controller.previewPdf(makeReq({ body: {} }) as Request, blocked);
+    expect(blocked.status).toHaveBeenCalledWith(503);
+
+    resolveRender();
+    await inFlight;
+    expect(limiter.inFlight).toBe(0);
+
+    const afterSettle = makePreviewRes({ owner: 3 });
+    await controller.previewPdf(makeReq({ body: {} }) as Request, afterSettle);
+    expect(afterSettle.json).toHaveBeenCalled();
   });
 });

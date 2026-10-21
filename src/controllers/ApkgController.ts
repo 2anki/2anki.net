@@ -35,6 +35,7 @@ import {
   InvalidApkgError,
 } from '../services/ApkgPreviewService/extractApkg';
 import { NotionService } from '../services/NotionService/NotionService';
+import { ConcurrencyLimiter } from '../lib/rateLimit/ConcurrencyLimiter';
 import JobRepository from '../data_layer/JobRepository';
 import sendErrorResponse from '../lib/sendErrorResponse';
 import { isPaying } from '../lib/isPaying';
@@ -143,7 +144,13 @@ class ApkgController {
     private readonly pdfRenderService: PdfRenderService = new PdfRenderService(),
     private readonly notionService?: NotionService,
     private readonly jobRepository?: JobRepository,
-    private readonly recordServerError?: ServerErrorRecorder
+    private readonly recordServerError?: ServerErrorRecorder,
+    // Caps concurrent Chrome renders on the process. Held for the render's
+    // lifetime (acquired before preview, released in a finally after it
+    // settles), so a client abort cannot free the slot while Chrome runs.
+    private readonly previewConcurrency: ConcurrencyLimiter = new ConcurrencyLimiter(
+      2
+    )
   ) {}
 
   private async loadForKey(req: Request, res: Response) {
@@ -335,19 +342,30 @@ class ApkgController {
         this.previewService,
         this.pdfRenderService
       );
-      const result = await useCase.preview(
-        fileBuffer,
-        pdfOptions,
-        PREVIEW_CARD_LIMIT
-      );
-      res.json({
-        image:
-          result.image == null
-            ? null
-            : `data:image/png;base64,${result.image.toString('base64')}`,
-        totalCards: result.totalCards,
-        previewedCards: result.previewedCards,
-      });
+      if (!this.previewConcurrency.tryAcquire()) {
+        res.status(503).json({
+          message:
+            'Too many previews are rendering right now. Try again in a moment.',
+        });
+        return;
+      }
+      try {
+        const result = await useCase.preview(
+          fileBuffer,
+          pdfOptions,
+          PREVIEW_CARD_LIMIT
+        );
+        res.json({
+          image:
+            result.image == null
+              ? null
+              : `data:image/png;base64,${result.image.toString('base64')}`,
+          totalCards: result.totalCards,
+          previewedCards: result.previewedCards,
+        });
+      } finally {
+        this.previewConcurrency.release();
+      }
     } catch (error) {
       await sendPdfPreviewError(req, res, error, this.recordServerError);
     }
