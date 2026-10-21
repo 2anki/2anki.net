@@ -4,6 +4,7 @@ import multer from 'multer';
 import RequireAuthentication from './middleware/RequireAuthentication';
 import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import { printQuotaMiddleware } from './middleware/PrintQuotaMiddleware';
+import { ipRateLimit } from './middleware/ipRateLimit';
 import ApkgController from '../controllers/ApkgController';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
 import DownloadService from '../services/DownloadService';
@@ -257,6 +258,24 @@ const ApkgRouter = () => {
     pdfUpload.single('file'),
     normalizeUploadFilenames,
     (req, res) => controller.exportPdf(req, res)
+  );
+
+  const previewUpload = multer({
+    dest: process.env.UPLOAD_BASE ?? '/tmp',
+    limits: { fileSize: 100 * 1024 * 1024 },
+  });
+
+  // Free, un-metered preview of the first cards: no printQuotaMiddleware and
+  // never increments print usage. ipRateLimit guards the render cost since any
+  // signed-in user can call it without spending their monthly print.
+  router.post(
+    '/api/apkg/pdf/preview',
+    RequireAllowedOrigin,
+    RequireAuthentication,
+    ipRateLimit(20),
+    previewUpload.single('file'),
+    normalizeUploadFilenames,
+    (req, res) => controller.previewPdf(req, res)
   );
 
   const csvUpload = multer({

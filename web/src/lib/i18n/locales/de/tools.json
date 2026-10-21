@@ -30,7 +30,19 @@
     "viewPlans": "Tarife ansehen",
     "logIn": "Anmelden",
     "upgradeUnlimited": "Für unbegrenzt upgraden",
-    "printAnother": "Weiteren Stapel drucken"
+    "printAnother": "Weiteren Stapel drucken",
+    "previewIsFree": "Die Vorschau ist kostenlos. Du zahlst nur, um den ganzen Stapel herunterzuladen.",
+    "previewOfTotal": "Vorschau — die ersten {{count}} von {{total}} Karten, genau wie im Druck",
+    "previewAll": "Vorschau — alle {{count}} Karten, genau wie im Druck",
+    "previewPaperNote": "Die Seitenumbrüche richten sich nach dem oben gewählten Papierformat.",
+    "updatePreview": "Vorschau aktualisieren",
+    "downloadFullPdf": "Vollständiges PDF herunterladen",
+    "usesFreePdf": "Verbraucht dein 1 kostenloses PDF diesen Monat",
+    "unlockWithPass": "Mit einem Tagespass den ganzen Stapel drucken",
+    "seeAllPlans": "Alle Tarife ansehen",
+    "previewAnother": "Andere Vorschau",
+    "emptyDeck": "Dieser Stapel hat keine Karten zum Drucken. Wähle eine andere .apkg.",
+    "makingPreview": "Vorschau wird erstellt"
   },
   "import": {
     "title": "Nach Notion importieren",

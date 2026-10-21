@@ -882,3 +882,166 @@ describe('ApkgController.exportCsv', () => {
     expect(body.requires_account).toBe(false);
   });
 });
+
+describe('ApkgController.previewPdf', () => {
+  let previewMock: Mock;
+
+  beforeEach(() => {
+    trackMock.mockClear();
+    previewMock = vi.fn().mockResolvedValue({
+      image: Buffer.from('fake-png'),
+      totalCards: 42,
+      previewedCards: 3,
+      deckName: 'deck',
+    });
+    (ExportApkgToPdfUseCase as Mock).mockImplementation(function () {
+      return { preview: previewMock };
+    });
+  });
+
+  function makePreviewRes(locals: Record<string, unknown> = {}): Response {
+    const res = makeRes(locals) as Partial<Response> & { send?: Mock };
+    res.send = vi.fn();
+    return res as Response;
+  }
+
+  it('returns 400 when no file is uploaded', async () => {
+    const controller = makeController();
+    const res = makePreviewRes();
+
+    await controller.previewPdf(
+      makeReq({ body: {}, file: undefined }) as Request,
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(previewMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when the file is not an .apkg by extension', async () => {
+    const controller = makeController();
+    const res = makePreviewRes();
+    const req = makeReq({
+      body: {},
+      file: {
+        ...(makeReq().file as Express.Multer.File),
+        originalname: 'notes.zip',
+      },
+    }) as Request;
+
+    await controller.previewPdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'File must be an .apkg file.',
+    });
+    expect(previewMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for an invalid background color before rendering', async () => {
+    const controller = makeController();
+    const res = makePreviewRes();
+    const req = makeReq({ body: { backgroundColor: 'not-a-hex' } }) as Request;
+
+    await controller.previewPdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(previewMock).not.toHaveBeenCalled();
+  });
+
+  it('returns the first page as a data URL with the card counts', async () => {
+    const controller = makeController();
+    const res = makePreviewRes({ owner: 42 });
+
+    await controller.previewPdf(makeReq({ body: {} }) as Request, res);
+
+    expect(previewMock).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      expect.any(Object),
+      3
+    );
+    expect(res.json).toHaveBeenCalledWith({
+      image: `data:image/png;base64,${Buffer.from('fake-png').toString('base64')}`,
+      totalCards: 42,
+      previewedCards: 3,
+    });
+  });
+
+  it('returns a null image and zero counts for an empty deck', async () => {
+    previewMock.mockResolvedValueOnce({
+      image: null,
+      totalCards: 0,
+      previewedCards: 0,
+      deckName: 'deck',
+    });
+    const controller = makeController();
+    const res = makePreviewRes({ owner: 42 });
+
+    await controller.previewPdf(makeReq({ body: {} }) as Request, res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      image: null,
+      totalCards: 0,
+      previewedCards: 0,
+    });
+  });
+
+  it('answers 400 Invalid .apkg file for a corrupted upload', async () => {
+    previewMock.mockRejectedValueOnce(
+      new InvalidApkgError(
+        'End of central directory record signature not found'
+      )
+    );
+    const controller = makeController();
+    const res = makePreviewRes({ owner: 42 });
+
+    await controller.previewPdf(makeReq({ body: {} }) as Request, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid .apkg file' });
+  });
+
+  it('answers 400 with the render message when the preview render fails', async () => {
+    previewMock.mockRejectedValueOnce(new PdfRenderCrashedError());
+    const controller = makeController();
+    const res = makePreviewRes({ owner: 42 });
+
+    await controller.previewPdf(makeReq({ body: {} }) as Request, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      message:
+        'This deck is too big to print in one go. Split it into smaller decks in Anki and print them one at a time.',
+    });
+  });
+
+  it('records an unexpected failure and answers 500 Preview failed', async () => {
+    const boom = new Error('something unexpected');
+    previewMock.mockRejectedValueOnce(boom);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const record = vi.fn().mockResolvedValue(undefined);
+    const controller = makeController(record);
+    const req = makeReq({ body: {} }) as Request;
+    const res = makePreviewRes({ owner: 42 });
+
+    await controller.previewPdf(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Preview failed.' });
+    expect(record).toHaveBeenCalledWith(boom, req, res);
+    errorSpy.mockRestore();
+  });
+
+  it('never fires the pdf_export_failed funnel event on a preview failure', async () => {
+    previewMock.mockRejectedValueOnce(new PdfRenderTimeoutError());
+    const controller = makeController();
+    const res = makePreviewRes({ owner: 42 });
+
+    await controller.previewPdf(makeReq({ body: {} }) as Request, res);
+
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'pdf_export_failed',
+      expect.anything()
+    );
+  });
+});

@@ -30,7 +30,19 @@
     "viewPlans": "Bekijk abonnementen",
     "logIn": "Inloggen",
     "upgradeUnlimited": "Upgraden voor onbeperkt",
-    "printAnother": "Nog een deck printen"
+    "printAnother": "Nog een deck printen",
+    "previewIsFree": "De preview is gratis. Je betaalt alleen om het hele deck te downloaden.",
+    "previewOfTotal": "Preview — de eerste {{count}} van {{total}} kaarten, precies zoals ze printen",
+    "previewAll": "Preview — alle {{count}} kaarten, precies zoals ze printen",
+    "previewPaperNote": "De pagina-einden volgen het papierformaat dat je hierboven kiest.",
+    "updatePreview": "Preview bijwerken",
+    "downloadFullPdf": "Het volledige PDF downloaden",
+    "usesFreePdf": "Gebruikt je 1 gratis PDF van deze maand",
+    "unlockWithPass": "Haal een dagpas om het hele deck te printen",
+    "seeAllPlans": "Alle abonnementen bekijken",
+    "previewAnother": "Andere preview",
+    "emptyDeck": "Dit deck heeft geen kaarten om te printen. Kies een andere .apkg.",
+    "makingPreview": "Je preview wordt gemaakt"
   },
   "import": {
     "title": "Importeren in Notion",

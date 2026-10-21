@@ -1,10 +1,19 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 import i18n from '../../../lib/i18n';
 import PrintForm from './PrintForm';
+
+vi.mock('../../../lib/hooks/useUserLocals', () => ({
+  useUserLocals: () => ({
+    data: {
+      locals: { patreon: false, subscriber: false },
+      freePrintAvailable: true,
+    },
+  }),
+}));
 
 describe('PrintForm in German', () => {
   beforeEach(async () => {

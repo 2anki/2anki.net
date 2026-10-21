@@ -30,7 +30,19 @@
     "viewPlans": "プランを見る",
     "logIn": "ログイン",
     "upgradeUnlimited": "アップグレードして無制限に",
-    "printAnother": "別のデッキを印刷"
+    "printAnother": "別のデッキを印刷",
+    "previewIsFree": "プレビューは無料です。デッキ全体のダウンロードにのみ料金がかかります。",
+    "previewOfTotal": "プレビュー — {{total}}枚中、最初の{{count}}枚、印刷されるとおりに表示",
+    "previewAll": "プレビュー — {{count}}枚すべて、印刷されるとおりに表示",
+    "previewPaperNote": "改ページは上で選んだ用紙サイズに従います。",
+    "updatePreview": "プレビューを更新",
+    "downloadFullPdf": "PDF全体をダウンロード",
+    "usesFreePdf": "今月の無料PDF 1件を使います",
+    "unlockWithPass": "デイパスを取得してデッキ全体を印刷",
+    "seeAllPlans": "すべてのプランを見る",
+    "previewAnother": "別のプレビュー",
+    "emptyDeck": "このデッキには印刷するカードがありません。別の.apkgを選んでください。",
+    "makingPreview": "プレビューを作成しています"
   },
   "import": {
     "title": "Notion にインポート",

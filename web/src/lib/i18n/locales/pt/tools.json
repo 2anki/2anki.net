@@ -30,7 +30,19 @@
     "viewPlans": "Ver planos",
     "logIn": "Entrar",
     "upgradeUnlimited": "Faça upgrade para uso ilimitado",
-    "printAnother": "Imprimir outro baralho"
+    "printAnother": "Imprimir outro baralho",
+    "previewIsFree": "A pré-visualização é gratuita. Você só paga para baixar o baralho completo.",
+    "previewOfTotal": "Pré-visualização — os primeiros {{count}} de {{total}} cartões, exatamente como serão impressos",
+    "previewAll": "Pré-visualização — os {{count}} cartões, exatamente como serão impressos",
+    "previewPaperNote": "As quebras de página seguem o tamanho de papel que você escolher acima.",
+    "updatePreview": "Atualizar pré-visualização",
+    "downloadFullPdf": "Baixar o PDF completo",
+    "usesFreePdf": "Usa o seu 1 PDF gratuito deste mês",
+    "unlockWithPass": "Adquira um passe de dia para imprimir o baralho completo",
+    "seeAllPlans": "Ver todos os planos",
+    "previewAnother": "Outra pré-visualização",
+    "emptyDeck": "Este baralho não tem cartões para imprimir. Escolha outro .apkg.",
+    "makingPreview": "Criando sua pré-visualização"
   },
   "import": {
     "title": "Importar para o Notion",

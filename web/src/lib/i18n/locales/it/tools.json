@@ -30,7 +30,19 @@
     "viewPlans": "Vedi i piani",
     "logIn": "Accedi",
     "upgradeUnlimited": "Fai l'upgrade per l'illimitato",
-    "printAnother": "Stampa un altro mazzo"
+    "printAnother": "Stampa un altro mazzo",
+    "previewIsFree": "L'anteprima è gratuita. Paghi solo per scaricare l'intero mazzo.",
+    "previewOfTotal": "Anteprima — le prime {{count}} di {{total}} carte, esattamente come verranno stampate",
+    "previewAll": "Anteprima — tutte le {{count}} carte, esattamente come verranno stampate",
+    "previewPaperNote": "Le interruzioni di pagina seguono il formato carta che scegli sopra.",
+    "updatePreview": "Aggiorna anteprima",
+    "downloadFullPdf": "Scarica il PDF completo",
+    "usesFreePdf": "Usa il tuo 1 PDF gratuito di questo mese",
+    "unlockWithPass": "Prendi un pass giornaliero per stampare l'intero mazzo",
+    "seeAllPlans": "Vedi tutti i piani",
+    "previewAnother": "Un'altra anteprima",
+    "emptyDeck": "Questo mazzo non ha carte da stampare. Scegli un altro .apkg.",
+    "makingPreview": "Creazione dell'anteprima"
   },
   "import": {
     "title": "Importa in Notion",

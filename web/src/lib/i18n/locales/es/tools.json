@@ -30,7 +30,19 @@
     "viewPlans": "Ver planes",
     "logIn": "Iniciar sesión",
     "upgradeUnlimited": "Mejora para tenerlo ilimitado",
-    "printAnother": "Imprimir otro mazo"
+    "printAnother": "Imprimir otro mazo",
+    "previewIsFree": "La vista previa es gratis. Solo pagas para descargar el mazo completo.",
+    "previewOfTotal": "Vista previa — las primeras {{count}} de {{total}} tarjetas, tal como se imprimirán",
+    "previewAll": "Vista previa — las {{count}} tarjetas, tal como se imprimirán",
+    "previewPaperNote": "Los saltos de página siguen el tamaño de papel que elijas arriba.",
+    "updatePreview": "Actualizar vista previa",
+    "downloadFullPdf": "Descargar el PDF completo",
+    "usesFreePdf": "Usa tu 1 PDF gratis de este mes",
+    "unlockWithPass": "Consigue un pase de día para imprimir el mazo completo",
+    "seeAllPlans": "Ver todos los planes",
+    "previewAnother": "Otra vista previa",
+    "emptyDeck": "Este mazo no tiene tarjetas para imprimir. Elige otro .apkg.",
+    "makingPreview": "Creando tu vista previa"
   },
   "import": {
     "title": "Importar a Notion",
