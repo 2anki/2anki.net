@@ -29,6 +29,12 @@
     "signUpFree": "sign up free",
     "getDayPass": "get a Day Pass for {{price}}"
   },
+  "passPrices": {
+    "heading": "Need more than the free limit?",
+    "dayPass": "Day Pass {{dayPrice}} lifts the card limit for 24 hours, no account needed.",
+    "semesterPass": "Semester Pass {{semesterPrice}} covers about 4 months.",
+    "footnote": "One-time payments, no subscription."
+  },
   "footer": {
     "readyPrefix": "Ready to try it? ",
     "dropLink": "Drop a file at the top of this page."
