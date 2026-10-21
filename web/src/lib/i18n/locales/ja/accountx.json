@@ -85,6 +85,7 @@
     "statusLine": "変換を停止しました — {{count}} 枚のカードの上限に達しました",
     "anonHeading": "アカウントなしでの変換の上限に達しました",
     "freeAccount": "無料アカウント",
+    "freeSubtitle": "毎月 {{monthly}} 枚まで。",
     "saveRedownload": "デッキを保存して再ダウンロード",
     "connectServices": "Notion、Dropbox、Google Drive を接続",
     "anonSubheading": "アカウントなしでは変換は {{cap}} 枚で止まります。無料アカウントなら月 {{monthly}} 枚まで増えます。すでにアカウントがある場合はサインインしてください。",

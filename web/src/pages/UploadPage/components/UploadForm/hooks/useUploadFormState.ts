@@ -23,6 +23,7 @@ export interface HeldDeckState {
   cardCount: number;
   cardsHeldBack: number;
   totalCards: number;
+  dayPassCard?: boolean;
 }
 
 export interface BatchDeck {

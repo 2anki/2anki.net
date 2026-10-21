@@ -108,6 +108,7 @@ import {
   resolveAnonymousPartialArm,
   type PartialDeliveryArm,
 } from '../lib/upload/anonymousPartialDelivery';
+import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
 import {
   anonRecoveryKey,
   readRecoveryToken,
@@ -216,6 +217,7 @@ export interface HeldUploadResponse {
   cardCount: number;
   cardsHeldBack: number;
   totalCards: number;
+  dayPassCard?: boolean;
 }
 
 const HELD_DECK_TTL_MS = 24 * 60 * 60 * 1000;
@@ -1307,7 +1309,15 @@ class UploadService {
           anonymousId,
           props: { source, kind: 'anonymous' },
         });
-        return res.redirect('/limit?kind=anonymous');
+        const dayPassCard = await getFeatureFlag(
+          ANONYMOUS_DAY_PASS_CARD_FLAG,
+          false
+        );
+        return res.redirect(
+          dayPassCard
+            ? `/limit?kind=anonymous&cards=${err.cardsFound}`
+            : '/limit?kind=anonymous'
+        );
       } else if (isLimitError(err as Error)) {
         handleUploadLimitError(req, res);
       } else if (err instanceof EmptyDeckError) {
@@ -2422,11 +2432,16 @@ class UploadService {
         held: true,
       },
     });
+    const totalCards = cardCount + cardsHeldBack;
+    const dayPassCard =
+      totalCards > MONTHLY_CARD_LIMIT &&
+      (await getFeatureFlag(ANONYMOUS_DAY_PASS_CARD_FLAG, false));
     const body: HeldUploadResponse = {
       kind: 'held',
       cardCount,
       cardsHeldBack,
-      totalCards: cardCount + cardsHeldBack,
+      totalCards,
+      ...(dayPassCard ? { dayPassCard: true } : {}),
     };
     return res.status(200).json(body);
   }

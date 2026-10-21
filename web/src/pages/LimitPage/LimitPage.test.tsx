@@ -48,6 +48,13 @@ function asAnonymous() {
   } as ReturnType<typeof useUserLocals>);
 }
 
+function asAnonymousWithCardFlag() {
+  mockedUseUserLocals.mockReturnValue({
+    data: { features: { anonymousDayPassCard: true } },
+    isLoading: false,
+  } as ReturnType<typeof useUserLocals>);
+}
+
 function asLoading() {
   mockedUseUserLocals.mockReturnValue({
     data: undefined,
@@ -314,6 +321,99 @@ describe('LimitPage — anonymous variant', () => {
     renderPage();
     expect(screen.queryByText('You reached 100 cards this month')).toBeNull();
     expect(screen.queryByText('Get Auto Sync')).toBeNull();
+  });
+});
+
+describe('LimitPage — anonymous Day Pass card variant', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    asAnonymousWithCardFlag();
+  });
+
+  it('keeps today single-card layout when the flag is off, even with a card count', () => {
+    asAnonymous();
+    renderPage(['/limit?cards=340']);
+    expect(screen.queryByRole('button', { name: /Get all/ })).toBeNull();
+    expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
+      surface: 'limit-wall',
+      variant: 'anonymous',
+    });
+  });
+
+  it('shows the Day Pass as its own card next to the free account', () => {
+    renderPage(['/limit?cards=40']);
+    expect(screen.getByText('Day Pass')).toBeTruthy();
+    expect(screen.getByText('Up to 100 cards every month.')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get all 40 cards now' })
+    ).toBeTruthy();
+  });
+
+  it('renders the Day Pass card before the free account so it leads on mobile', () => {
+    renderPage(['/limit?cards=40']);
+    const dayPass = screen.getByText('Day Pass');
+    const freeAccount = screen.getByText('Free account');
+    expect(
+      Boolean(
+        dayPass.compareDocumentPosition(freeAccount) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+      )
+    ).toBe(true);
+  });
+
+  it('ignores a non-numeric or oversized card count', () => {
+    renderPage(['/limit?cards=99999']);
+    expect(screen.getByText('Day Pass')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get every card now' })
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Get all/ })).toBeNull();
+  });
+
+  it('keeps the free account the featured option within a free month', () => {
+    renderPage(['/limit?cards=40']);
+    const signUp = screen.getByRole('link', { name: 'Create a free account' });
+    expect(signUp.className).toContain('planCtaPrimary');
+    expect(
+      screen.getByRole('button', { name: 'Get all 40 cards now' }).className
+    ).toContain('buttonSecondary');
+  });
+
+  it('leads with the Day Pass when the deck is over a free month', () => {
+    renderPage(['/limit?cards=340']);
+    expect(
+      screen.getByText(
+        'This deck has 340 cards. A free account covers 100 a month. A Day Pass gives you all of them now, no account.'
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get all 340 cards now' }).className
+    ).toContain('buttonPrimary');
+  });
+
+  it('keeps free sign-up a full, visible option when the Day Pass leads', () => {
+    renderPage(['/limit?cards=340']);
+    const signUp = screen.getByRole('link', { name: 'Create a free account' });
+    expect(signUp.getAttribute('href')).toBe('/register?redirect=/upload');
+    expect(signUp.className).toContain('planCtaSecondary');
+  });
+
+  it('tags paywall_shown with the over-a-month deck bucket', () => {
+    renderPage(['/limit?cards=340']);
+    expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
+      surface: 'limit-wall',
+      variant: 'anonymous',
+      deck_cards: 'over_free_month',
+    });
+  });
+
+  it('tags paywall_shown with the within-a-month deck bucket', () => {
+    renderPage(['/limit?cards=40']);
+    expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
+      surface: 'limit-wall',
+      variant: 'anonymous',
+      deck_cards: 'within_free_month',
+    });
   });
 });
 

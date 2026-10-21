@@ -87,6 +87,7 @@
     "statusLine": "Conversie gestopt — je hebt de limiet van {{count}} kaarten bereikt",
     "anonHeading": "Je hebt de limiet bereikt om zonder account te converteren",
     "freeAccount": "Gratis account",
+    "freeSubtitle": "Tot {{monthly}} kaarten per maand.",
     "saveRedownload": "Bewaar en download je decks opnieuw",
     "connectServices": "Verbind Notion, Dropbox en Google Drive",
     "anonSubheading": "Zonder account stopt de conversie bij {{cap}} kaarten. Een gratis account verhoogt dat naar {{monthly}} kaarten per maand — of meld je aan bij het account dat je al hebt.",

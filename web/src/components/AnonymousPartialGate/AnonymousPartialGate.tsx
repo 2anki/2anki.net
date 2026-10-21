@@ -21,11 +21,32 @@ function errorText(error: unknown): string {
   return '';
 }
 
+function LockIcon() {
+  return (
+    <span className={styles.icon} aria-hidden="true">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        width="36"
+        height="36"
+      >
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    </span>
+  );
+}
+
 export function AnonymousPartialGate({ held }: Props) {
   const { t } = useTranslation('anonymousPartial');
   const shownRef = useRef(false);
   const [error, setError] = useState('');
   const fitsFreeMonth = held.totalCards <= FREE_MONTHLY_CARDS;
+  const leadWithDayPass = held.dayPassCard === true;
 
   useEffect(() => {
     if (shownRef.current) return;
@@ -35,23 +56,49 @@ export function AnonymousPartialGate({ held }: Props) {
     });
   }, [held.cardsHeldBack]);
 
+  const registerForm = (
+    <div className={styles.form}>
+      <RegisterForm
+        variant="inline"
+        redirect="/upload"
+        setErrorMessage={(e) => setError(errorText(e))}
+      />
+    </div>
+  );
+
+  const errorMessage = error && (
+    <p className={styles.error} role="alert">
+      {error}
+    </p>
+  );
+
+  if (leadWithDayPass) {
+    return (
+      <section className={styles.gate} aria-label={t('gateAria')}>
+        <LockIcon />
+        <p className={styles.headline}>
+          {t('gateHeadlineCappedTotal', { total: held.totalCards })}
+        </p>
+        {errorMessage}
+        <div className={styles.leadCard}>
+          <AnonymousDayPassOffer
+            surface="anonymous-gate"
+            totalCards={held.totalCards}
+            dayPassCard
+            emphasis="primary"
+          />
+        </div>
+        <p className={styles.leadIn}>
+          {t('gateFreeLeadIn', { monthly: FREE_MONTHLY_CARDS })}
+        </p>
+        {registerForm}
+      </section>
+    );
+  }
+
   return (
     <section className={styles.gate} aria-label={t('gateAria')}>
-      <span className={styles.icon} aria-hidden="true">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          width="36"
-          height="36"
-        >
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-      </span>
+      <LockIcon />
       <p className={styles.headline}>
         {fitsFreeMonth
           ? t('gateHeadlineAll', { total: held.totalCards })
@@ -65,18 +112,8 @@ export function AnonymousPartialGate({ held }: Props) {
           {t('gateContext', { total: held.totalCards })}
         </p>
       )}
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
-      <div className={styles.form}>
-        <RegisterForm
-          variant="inline"
-          redirect="/upload"
-          setErrorMessage={(e) => setError(errorText(e))}
-        />
-      </div>
+      {errorMessage}
+      {registerForm}
       <AnonymousDayPassOffer
         surface="anonymous-gate"
         totalCards={held.totalCards}

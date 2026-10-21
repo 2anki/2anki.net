@@ -87,6 +87,7 @@
     "statusLine": "Conversão interrompida — você atingiu o limite de {{count}} cartões",
     "anonHeading": "Você atingiu o limite para converter sem uma conta",
     "freeAccount": "Conta gratuita",
+    "freeSubtitle": "Até {{monthly}} cartões por mês.",
     "saveRedownload": "Salve e baixe novamente seus baralhos",
     "connectServices": "Conecte Notion, Dropbox e Google Drive",
     "anonSubheading": "Sem conta, a conversão para em {{cap}} cartões. Uma conta gratuita aumenta isso para {{monthly}} cartões por mês — ou faça login na conta que você já tem.",
