@@ -94,6 +94,14 @@ describe('McpRouter discovery', () => {
     });
   });
 
+  it('advertises the iss parameter on authorization responses', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/.well-known/oauth-authorization-server`);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.authorization_response_iss_parameter_supported).toBe(true);
+    });
+  });
+
   it('serves protected-resource metadata for the /mcp resource', async () => {
     await withServer(async (base) => {
       const res = await fetch(
@@ -194,6 +202,94 @@ describe('McpRouter endpoint namespacing (no /register collision)', () => {
       });
       expect(resource.status).toBe(401);
     });
+  });
+});
+
+const REDIRECT_URI = 'https://chatgpt.com/connector_platform_oauth_redirect';
+
+function providerRedirectingTo(
+  buildRedirect: (redirectUri: string, state?: string) => string
+): OAuthServerProvider {
+  return {
+    ...fakeProvider(),
+    clientsStore: {
+      getClient: async (clientId) => ({
+        client_id: clientId,
+        redirect_uris: [REDIRECT_URI],
+      }),
+    },
+    authorize: async (_client, params, res) => {
+      res.redirect(buildRedirect(params.redirectUri, params.state));
+    },
+  };
+}
+
+async function authorizeLocation(
+  provider: OAuthServerProvider,
+  query: Record<string, string>
+): Promise<URL> {
+  let location = '';
+  await withServer(
+    async (base) => {
+      const res = await fetch(
+        `${base}/mcp/authorize?${new URLSearchParams(query).toString()}`,
+        { redirect: 'manual' }
+      );
+      location = res.headers.get('location') ?? '';
+    },
+    undefined,
+    undefined,
+    { provider }
+  );
+  return new URL(location);
+}
+
+const AUTHORIZE_QUERY = {
+  client_id: 'client-1',
+  redirect_uri: REDIRECT_URI,
+  response_type: 'code',
+  code_challenge: 'challenge',
+  code_challenge_method: 'S256',
+  state: 'state-1',
+};
+
+describe('McpRouter authorization responses (RFC 9207)', () => {
+  it('names the issuer on a success redirect', async () => {
+    const url = await authorizeLocation(
+      providerRedirectingTo(
+        (uri, state) => `${uri}?code=code-1&state=${state ?? ''}`
+      ),
+      AUTHORIZE_QUERY
+    );
+
+    expect(url.origin + url.pathname).toBe(REDIRECT_URI);
+    expect(url.searchParams.get('iss')).toBe('https://2anki.net/');
+    expect(url.searchParams.get('code')).toBe('code-1');
+    expect(url.searchParams.get('state')).toBe('state-1');
+  });
+
+  it('names the issuer when the user denies access', async () => {
+    const url = await authorizeLocation(
+      providerRedirectingTo(
+        (uri, state) => `${uri}?error=access_denied&state=${state ?? ''}`
+      ),
+      AUTHORIZE_QUERY
+    );
+
+    expect(url.searchParams.get('iss')).toBe('https://2anki.net/');
+    expect(url.searchParams.get('error')).toBe('access_denied');
+    expect(url.searchParams.get('state')).toBe('state-1');
+  });
+
+  it('names the issuer on an error redirect the SDK builds', async () => {
+    const { code_challenge: _omitted, ...withoutChallenge } = AUTHORIZE_QUERY;
+    const url = await authorizeLocation(
+      providerRedirectingTo((uri) => uri),
+      withoutChallenge
+    );
+
+    expect(url.searchParams.get('iss')).toBe('https://2anki.net/');
+    expect(url.searchParams.get('error')).toBe('invalid_request');
   });
 });
 
