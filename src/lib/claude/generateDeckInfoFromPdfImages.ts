@@ -129,7 +129,8 @@ async function visionCardsForPage(
   prompt: string,
   pageIndex: number,
   userId?: number | null,
-  requestId?: string
+  requestId?: string,
+  anonymousPassId?: number | null
 ): Promise<CompactDeck[]> {
   const client = getAnthropicClient();
 
@@ -169,6 +170,7 @@ async function visionCardsForPage(
     model: response.model,
     usage: response.usage,
     userId,
+    anonymousPassId,
     requestId,
   });
   if (response.stop_reason === 'max_tokens') {
@@ -183,6 +185,7 @@ async function visionCardsForPage(
       model: response.model,
       usage: response.usage,
       userId,
+      anonymousPassId,
       requestId,
     });
   }
@@ -215,7 +218,8 @@ async function runPagesWithConcurrency(
   attachPageImages: boolean,
   onProgress?: (step: string) => void,
   userId?: number | null,
-  requestId?: string
+  requestId?: string,
+  anonymousPassId?: number | null
 ): Promise<PageVisionResult> {
   const compactDecks: CompactDeck[] = [];
   const failures: unknown[] = [];
@@ -232,8 +236,15 @@ async function runPagesWithConcurrency(
       if (index >= images.length) return;
       onProgress?.(`claude:vision:page:${index + 1}:${images.length}`);
       try {
-        const decks = await withAiBudget(userId, () =>
-          visionCardsForPage(images[index], prompt, index, userId, requestId)
+        const decks = await withAiBudget({ userId, anonymousPassId }, () =>
+          visionCardsForPage(
+            images[index],
+            prompt,
+            index,
+            userId,
+            requestId,
+            anonymousPassId
+          )
         );
         const attributed = attachPageImages
           ? attachPageImageToCompactDecks(decks, images[index].relPath)
@@ -277,10 +288,11 @@ export async function generateDeckInfoFromPdfImages(
   userInstructions?: string,
   onProgress?: (step: string) => void,
   userId?: number | null,
-  requestId?: string
+  requestId?: string,
+  anonymousPassId?: number | null
 ): Promise<DeckInfo[]> {
   const t0 = Date.now();
-  await assertAiBudget(userId);
+  await assertAiBudget({ userId, anonymousPassId });
   const images = resolvePageImages(htmlContent, context.mediaBaseDir);
 
   if (images.length === 0) {
@@ -302,7 +314,8 @@ export async function generateDeckInfoFromPdfImages(
     attachPageImages,
     onProgress,
     userId,
-    requestId
+    requestId,
+    anonymousPassId
   );
   const deckInfo = mergeDeckInfoArrays(
     expandCompactDeckInfo(

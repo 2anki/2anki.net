@@ -14,6 +14,7 @@ export interface UploadGenerationTask {
   workspace: Workspace;
   enqueuedAt: number;
   userId: number | null;
+  anonymousPassId?: number | null;
   knownGuids?: KnownGuids;
   uploadIdentity?: UploadIdentityContext;
   existingCardFingerprints?: string[];

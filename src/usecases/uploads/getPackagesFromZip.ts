@@ -120,6 +120,7 @@ interface BatchBuildContext {
   paying: boolean;
   workspace: Workspace;
   userId: number | null;
+  anonymousPassId?: number | null;
   knownGuids?: KnownGuids;
   uploadIdentity?: UploadIdentityContext;
 }
@@ -129,8 +130,15 @@ async function buildDeckBatch(
   zipHandler: ZipHandler,
   ctx: BatchBuildContext
 ): Promise<BatchOutcome> {
-  const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
-    ctx;
+  const {
+    settings,
+    paying,
+    workspace,
+    userId,
+    anonymousPassId,
+    knownGuids,
+    uploadIdentity,
+  } = ctx;
   const packages: Package[] = [];
   const warnings: string[] = [];
 
@@ -147,6 +155,7 @@ async function buildDeckBatch(
             noLimits: paying,
             workspace: deckSubWorkspace,
             userId,
+            anonymousPassId,
             knownGuids,
             uploadIdentity,
           },
@@ -269,8 +278,15 @@ async function buildStragglerDecks(
   zipHandler: ZipHandler,
   ctx: BatchBuildContext
 ): Promise<BatchOutcome> {
-  const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
-    ctx;
+  const {
+    settings,
+    paying,
+    workspace,
+    userId,
+    anonymousPassId,
+    knownGuids,
+    uploadIdentity,
+  } = ctx;
   const packages: Package[] = [];
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
@@ -293,6 +309,7 @@ async function buildStragglerDecks(
           noLimits: paying,
           workspace,
           userId,
+          anonymousPassId,
           knownGuids,
           uploadIdentity,
         })
@@ -353,6 +370,7 @@ async function buildClaudeFlashcardDeck(
   onProgress: ((step: string) => void) | undefined,
   ctx: {
     userId: number | null;
+    anonymousPassId?: number | null;
     requestId?: string;
     crossFileDedup?: CrossFileDedupState;
   }
@@ -365,6 +383,7 @@ async function buildClaudeFlashcardDeck(
     workspace,
     onProgress,
     userId: ctx.userId,
+    anonymousPassId: ctx.anonymousPassId,
     requestId: ctx.requestId,
     crossFileDedup: ctx.crossFileDedup,
   });
@@ -398,8 +417,15 @@ async function buildAllInOneSlot(
   ctx: BatchBuildContext,
   cardLimit?: number
 ): Promise<PackageResult> {
-  const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
-    ctx;
+  const {
+    settings,
+    paying,
+    workspace,
+    userId,
+    anonymousPassId,
+    knownGuids,
+    uploadIdentity,
+  } = ctx;
   // Partial delivery only has a coherent "first N cards" meaning for a zip that
   // resolves to a single deck; a per-file limit on a multi-deck zip would cap
   // every deck at N and over-deliver, so it only applies to a lone content file.
@@ -424,6 +450,7 @@ async function buildAllInOneSlot(
             noLimits: paying,
             workspace: deckWorkspace,
             userId,
+            anonymousPassId,
             knownGuids,
             uploadIdentity,
             cardLimit: perFileCardLimit,
@@ -541,6 +568,7 @@ export interface GetPackagesFromZipOptions {
   requestId?: string;
   crossFileDedup?: CrossFileDedupState;
   cardLimit?: number;
+  anonymousPassId?: number | null;
 }
 
 export const getPackagesFromZip = async (
@@ -552,8 +580,14 @@ export const getPackagesFromZip = async (
   userId: number | null = null,
   options: GetPackagesFromZipOptions = {}
 ): Promise<PackageResult> => {
-  const { knownGuids, uploadIdentity, requestId, crossFileDedup, cardLimit } =
-    options;
+  const {
+    knownGuids,
+    uploadIdentity,
+    requestId,
+    crossFileDedup,
+    cardLimit,
+    anonymousPassId,
+  } = options;
   if (!fileContents) {
     return { packages: [] };
   }
@@ -593,7 +627,7 @@ export const getPackagesFromZip = async (
       paying,
       workspace,
       onProgress,
-      { userId, requestId, crossFileDedup }
+      { userId, requestId, crossFileDedup, anonymousPassId }
     );
   }
 
@@ -604,6 +638,7 @@ export const getPackagesFromZip = async (
     paying,
     workspace,
     userId,
+    anonymousPassId,
     knownGuids,
     uploadIdentity,
   };

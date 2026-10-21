@@ -53,7 +53,8 @@ export function removeFirstAndLastLine(content: string): string {
 export const convertImageToHTML = async (
   imageData: string,
   userId?: number | null,
-  requestId?: string
+  requestId?: string,
+  anonymousPassId?: number | null
 ): Promise<string> => {
   const client = getAnthropicClient();
   const htmlContent = await convertWithClaude(
@@ -69,7 +70,7 @@ export const convertImageToHTML = async (
         },
       },
     ],
-    { userId, requestId }
+    { userId, requestId, anonymousPassId }
   );
   return removeFirstAndLastLine(htmlContent);
 };

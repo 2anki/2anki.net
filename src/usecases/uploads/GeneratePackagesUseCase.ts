@@ -67,6 +67,7 @@ export interface GenerationContext {
   existingCardFingerprints?: string[];
   requestId?: string;
   cardLimit?: number;
+  anonymousPassId?: number | null;
 }
 
 class GeneratePackagesUseCase {
@@ -85,6 +86,7 @@ class GeneratePackagesUseCase {
       existingCardFingerprints,
       requestId,
       cardLimit,
+      anonymousPassId,
     } = context;
     ensureUploadBytes(files);
     const unavailable = findUnavailableUpload(files);
@@ -100,6 +102,7 @@ class GeneratePackagesUseCase {
         workspace,
         enqueuedAt,
         userId,
+        anonymousPassId,
         knownGuids,
         uploadIdentity,
         existingCardFingerprints,

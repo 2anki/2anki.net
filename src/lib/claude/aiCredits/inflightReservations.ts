@@ -7,6 +7,7 @@
 export const RESERVED_CREDITS_PER_INFLIGHT_CALL = 10;
 
 const reservedByUser = new Map<number, number>();
+const reservedByPass = new Map<number, number>();
 
 export function reservedCreditsFor(userId: number): number {
   return reservedByUser.get(userId) ?? 0;
@@ -25,6 +26,36 @@ export function releaseInflightCredits(userId: number, credits: number): void {
   reservedByUser.set(userId, next);
 }
 
+// The pass-keyed twin of the reservation ledger. Anonymous pass ids and user
+// ids are both numbers, so they get their own map to keep one keyspace from
+// masking the other's in-flight holds.
+export function reservedCreditsForPass(anonymousPassId: number): number {
+  return reservedByPass.get(anonymousPassId) ?? 0;
+}
+
+export function reserveInflightCreditsForPass(
+  anonymousPassId: number,
+  credits: number
+): void {
+  reservedByPass.set(
+    anonymousPassId,
+    reservedCreditsForPass(anonymousPassId) + credits
+  );
+}
+
+export function releaseInflightCreditsForPass(
+  anonymousPassId: number,
+  credits: number
+): void {
+  const next = reservedCreditsForPass(anonymousPassId) - credits;
+  if (next <= 0) {
+    reservedByPass.delete(anonymousPassId);
+    return;
+  }
+  reservedByPass.set(anonymousPassId, next);
+}
+
 export function resetInflightReservations(): void {
   reservedByUser.clear();
+  reservedByPass.clear();
 }

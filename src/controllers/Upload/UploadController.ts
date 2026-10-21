@@ -2,7 +2,11 @@ import express from 'express';
 import fs from 'node:fs';
 import multer from 'multer';
 
-import { getOwner, getOwnerId } from '../../lib/User/getOwner';
+import {
+  getAnonymousPassId,
+  getOwner,
+  getOwnerId,
+} from '../../lib/User/getOwner';
 import {
   InMemoryRateLimiter,
   RateLimiter,
@@ -330,7 +334,8 @@ class UploadController {
       paying,
       settings,
       workspace,
-      getOwnerId(res)
+      getOwnerId(res),
+      getAnonymousPassId(res)
     );
 
     if ('needsCredential' in outcome) {

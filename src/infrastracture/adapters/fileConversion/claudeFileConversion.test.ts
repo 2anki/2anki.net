@@ -60,7 +60,10 @@ describe('convertWithClaude budget guard', () => {
       [{ type: 'text', text: 'user text' }],
       { userId: 7 }
     );
-    expect(withAiBudgetMock).toHaveBeenCalledWith(7, expect.any(Function));
+    expect(withAiBudgetMock).toHaveBeenCalledWith(
+      { userId: 7, anonymousPassId: undefined },
+      expect.any(Function)
+    );
   });
 });
 

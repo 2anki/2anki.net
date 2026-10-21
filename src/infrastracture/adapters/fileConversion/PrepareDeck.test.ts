@@ -8,7 +8,10 @@ import {
   assembleParserFiles,
 } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
-import { AiCreditsExhaustedError } from '../../../lib/claude/aiSpendGuard';
+import {
+  AiCreditsExhaustedError,
+  getAiBudgetStatus as getAiBudgetStatusImport,
+} from '../../../lib/claude/aiSpendGuard';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import { generateDeckInfo as generateDeckInfoImport } from '../../../lib/claude/ClaudeService';
 import CustomExporterDefault from '../../../lib/parser/exporters/CustomExporter';
@@ -31,6 +34,18 @@ vi.mock('../../../lib/claude/ClaudeService', async () => {
     typeof import('../../../lib/claude/ClaudeService')
   >('../../../lib/claude/ClaudeService');
   return { ...actual, generateDeckInfo: vi.fn() };
+});
+
+vi.mock('../../../lib/claude/aiSpendGuard', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../lib/claude/aiSpendGuard')
+  >('../../../lib/claude/aiSpendGuard');
+  return {
+    ...actual,
+    getAiBudgetStatus: vi
+      .fn()
+      .mockResolvedValue({ exhausted: false, balance: null }),
+  };
 });
 
 vi.mock('../../../lib/parser/exporters/CustomExporter', () => {
@@ -120,6 +135,7 @@ vi.mock('../../../services/events/track', () => ({
 
 const downloadMediaOrSkip = downloadMediaOrSkipImport as unknown as Mock;
 const generateDeckInfo = generateDeckInfoImport as unknown as Mock;
+const getAiBudgetStatus = getAiBudgetStatusImport as unknown as Mock;
 const CustomExporterMock = CustomExporterDefault as unknown as Mock;
 
 function makeSettings(overrides: Record<string, string> = {}): CardOption {
@@ -172,6 +188,27 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     expect(result?.name).toContain('My Deck');
     expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
+  });
+
+  it('falls back to the standard parser for an anonymous pass holder past their allowance', async () => {
+    getAiBudgetStatus.mockResolvedValueOnce({ exhausted: true, balance: null });
+
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    const result = await PrepareDeck({
+      name: 'test.html',
+      files: [{ name: 'test.html', contents: '<p>Front</p>' }],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+      anonymousPassId: 7,
+    });
+
+    expect(getAiBudgetStatus).toHaveBeenCalledWith({
+      userId: null,
+      anonymousPassId: 7,
+    });
+    expect(generateDeckInfo).not.toHaveBeenCalled();
+    expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
   });
 
   it('never fails when the credit guard trips mid-run; ships the produced cards with the warning', async () => {

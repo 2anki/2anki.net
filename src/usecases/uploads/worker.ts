@@ -203,7 +203,8 @@ async function processFile(
   requestId?: string,
   uploadIdentity?: UploadIdentityContext,
   cardLimit?: number,
-  singleFileUpload: boolean = false
+  singleFileUpload: boolean = false,
+  anonymousPassId?: number | null
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -295,6 +296,7 @@ async function processFile(
       workspace,
       onProgress,
       userId,
+      anonymousPassId,
       requestId,
       knownGuids,
       uploadIdentity,
@@ -344,7 +346,14 @@ async function processFile(
       workspace,
       onProgress,
       userId,
-      { knownGuids, uploadIdentity, requestId, crossFileDedup, cardLimit }
+      {
+        knownGuids,
+        uploadIdentity,
+        requestId,
+        crossFileDedup,
+        cardLimit,
+        anonymousPassId,
+      }
     );
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);
@@ -443,6 +452,7 @@ async function doGenerationWork(
     workspace,
     enqueuedAt,
     userId,
+    anonymousPassId,
     knownGuids,
     uploadIdentity,
     existingCardFingerprints,
@@ -480,7 +490,8 @@ async function doGenerationWork(
       requestId,
       uploadIdentity,
       cardLimit,
-      files.length === 1
+      files.length === 1,
+      anonymousPassId
     );
   const results = canConvertInParallel(files, crossFileDedup)
     ? await convertInParallel(files, workspace, convert)

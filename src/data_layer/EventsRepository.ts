@@ -10,6 +10,7 @@ export interface EventRow {
   name: string;
   user_id?: number | null;
   anonymous_id?: string | null;
+  anonymous_pass_id?: number | null;
   props: Record<string, unknown>;
   created_at?: Date;
 }

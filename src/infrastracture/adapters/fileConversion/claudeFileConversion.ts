@@ -49,6 +49,7 @@ export class FileConversionError extends Error {
 
 interface ConvertOptions {
   userId?: number | null;
+  anonymousPassId?: number | null;
   requestId?: string;
 }
 
@@ -74,29 +75,33 @@ export async function convertWithClaude(
   // conversions (PrepareDeck fans these out at FILE_CONVERSION_CONCURRENCY)
   // coordinate through the in-flight ledger instead of all passing on the same
   // pre-call balance, mirroring the chunk and PDF-page fan-outs.
-  return withAiBudget(options.userId, async () => {
-    try {
-      const response = await client.messages
-        .stream({
-          model: getModel(),
-          max_tokens: MAX_TOKENS,
-          system: [systemBlock],
-          messages: [{ role: 'user', content: userContent }],
-        })
-        .finalMessage();
-      recordClaudeUsage({
-        surface: 'file_conversion',
-        model: response.model,
-        usage: response.usage,
-        userId: options.userId,
-        requestId: options.requestId,
-      });
-      assertNotTruncated(response.stop_reason);
-      return joinTextBlocks(response.content);
-    } catch (error) {
-      if (error instanceof FileConversionError) throw error;
-      const message = error instanceof Error ? error.message : String(error);
-      throw new FileConversionError(message);
+  return withAiBudget(
+    { userId: options.userId, anonymousPassId: options.anonymousPassId },
+    async () => {
+      try {
+        const response = await client.messages
+          .stream({
+            model: getModel(),
+            max_tokens: MAX_TOKENS,
+            system: [systemBlock],
+            messages: [{ role: 'user', content: userContent }],
+          })
+          .finalMessage();
+        recordClaudeUsage({
+          surface: 'file_conversion',
+          model: response.model,
+          usage: response.usage,
+          userId: options.userId,
+          anonymousPassId: options.anonymousPassId,
+          requestId: options.requestId,
+        });
+        assertNotTruncated(response.stop_reason);
+        return joinTextBlocks(response.content);
+      } catch (error) {
+        if (error instanceof FileConversionError) throw error;
+        const message = error instanceof Error ? error.message : String(error);
+        throw new FileConversionError(message);
+      }
     }
-  });
+  );
 }

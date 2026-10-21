@@ -32,6 +32,15 @@ export interface IAiSpendReader {
   eventCountSince(name: string, userId: number, since: Date): Promise<number>;
 }
 
+export interface IAnonymousPassSpendReader {
+  anonymousPassCostSince(anonymousPassId: number, since: Date): Promise<number>;
+  anonymousPassEventCountSince(
+    name: string,
+    anonymousPassId: number,
+    since: Date
+  ): Promise<number>;
+}
+
 export interface IAiRequestCostReader {
   costByRequestId(
     userId: number,
@@ -63,7 +72,11 @@ export function mapAiUsageGroupRows(rows: AiUsageGroupRow[]): AiUsageGroup[] {
 const TOP_USER_ROWS = 20;
 
 export class AiUsageMetricsRepository
-  implements IAiUsageMetricsRepository, IAiSpendReader, IAiRequestCostReader
+  implements
+    IAiUsageMetricsRepository,
+    IAiSpendReader,
+    IAnonymousPassSpendReader,
+    IAiRequestCostReader
 {
   constructor(private readonly database: Knex) {}
 
@@ -133,6 +146,31 @@ export class AiUsageMetricsRepository
       );
   }
 
+  buildAnonymousPassCostQuery(
+    anonymousPassId: number,
+    since: Date
+  ): Knex.QueryBuilder {
+    return this.baseQuery(since)
+      .where('anonymous_pass_id', anonymousPassId)
+      .select(
+        this.database.raw(
+          "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
+        )
+      );
+  }
+
+  buildAnonymousPassEventCountQuery(
+    name: string,
+    anonymousPassId: number,
+    since: Date
+  ): Knex.QueryBuilder {
+    return this.database('events')
+      .where('name', name)
+      .where('anonymous_pass_id', anonymousPassId)
+      .where('created_at', '>=', since)
+      .count('* as count');
+  }
+
   buildCostByRequestQuery(
     userId: number,
     requestId: string,
@@ -199,6 +237,30 @@ export class AiUsageMetricsRepository
       | { cost_usd: number | string }
       | undefined;
     return Number(row?.cost_usd ?? 0);
+  }
+
+  async anonymousPassCostSince(
+    anonymousPassId: number,
+    since: Date
+  ): Promise<number> {
+    const row = (await this.buildAnonymousPassCostQuery(
+      anonymousPassId,
+      since
+    ).first()) as { cost_usd: number | string } | undefined;
+    return Number(row?.cost_usd ?? 0);
+  }
+
+  async anonymousPassEventCountSince(
+    name: string,
+    anonymousPassId: number,
+    since: Date
+  ): Promise<number> {
+    const row = (await this.buildAnonymousPassEventCountQuery(
+      name,
+      anonymousPassId,
+      since
+    ).first()) as { count: number | string } | undefined;
+    return Number(row?.count ?? 0);
   }
 
   async costByRequestId(

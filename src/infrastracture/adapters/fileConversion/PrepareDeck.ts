@@ -321,7 +321,8 @@ async function convertFile(
         contents: await convertImageToHTML(
           (file.contents as Buffer).toString('base64'),
           input.userId ?? null,
-          input.requestId
+          input.requestId,
+          input.anonymousPassId ?? null
         ),
       };
       console.log('[PrepareDeck] convertFile image', {
@@ -956,6 +957,7 @@ async function buildClaudeDeck(
   const baseGenerateDeckInfoOptions = {
     isPaying: input.noLimits,
     userId: input.userId ?? null,
+    anonymousPassId: input.anonymousPassId ?? null,
     requestId: input.requestId,
     comprehensive: input.settings.aiComprehensive,
     conversionResultCache: getConversionResultCache(),
@@ -1188,7 +1190,10 @@ async function resolveAiConversionGate(
   const willInvokeAi =
     input.noLimits && conversionInvokesAi(input.settings, files);
   if (willInvokeAi) {
-    const status = await getAiBudgetStatus(input.userId ?? null);
+    const status = await getAiBudgetStatus({
+      userId: input.userId ?? null,
+      anonymousPassId: input.anonymousPassId ?? null,
+    });
     if (status.exhausted) {
       return { exhausted: true, warning: AI_CREDITS_EXHAUSTED_WARNING_CODE };
     }

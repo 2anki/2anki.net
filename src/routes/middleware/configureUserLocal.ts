@@ -109,6 +109,7 @@ export async function configureUserLocal(
       res.locals.subscriber = true;
       res.locals.passKind = result.pass.kind;
       res.locals.passExpiresAt = result.pass.expires_at.toISOString();
+      res.locals.anonymousPassId = result.pass.id;
     }
   }
 }
