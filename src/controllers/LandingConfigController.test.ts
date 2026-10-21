@@ -11,9 +11,11 @@ import { LANDING_PASS_PRICES_FLAG } from '../lib/featureFlags/landingPassPrices'
 const makeRes = () => {
   const json = vi.fn();
   const status = vi.fn().mockReturnValue({ json });
-  return { json, status } as unknown as Response & {
+  const set = vi.fn();
+  return { json, status, set } as unknown as Response & {
     json: Mock;
     status: Mock;
+    set: Mock;
   };
 };
 
@@ -65,6 +67,15 @@ describe('LandingConfigController', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ showPassPrices: true });
+  });
+
+  it('sets a short public cache header', async () => {
+    __setFeatureFlagDependencies({ repository: repoReturning(false) });
+    const res = makeRes();
+
+    await new LandingConfigController().getConfig({} as never, res);
+
+    expect(res.set).toHaveBeenCalledWith('Cache-Control', 'public, max-age=60');
   });
 
   it('reads the landing pass prices flag key', () => {

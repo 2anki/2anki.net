@@ -195,7 +195,7 @@ function LandingPage({
             t,
           })}
           {copy.homeHero === true && <TrustNote />}
-          <LandingPassPrices />
+          <LandingPassPrices centered={copy.homeHero === true} />
         </div>
       </section>
 

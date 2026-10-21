@@ -1,26 +1,39 @@
 import { useTranslation } from 'react-i18next';
 
-import { usePassPrices } from '../../lib/hooks/usePassPrices';
+import { useLivePassPrices } from '../../lib/hooks/usePassPrices';
 import { useLandingPassPricesEnabled } from '../../lib/hooks/useLandingPassPrices';
 import styles from './LandingPassPrices.module.css';
 
-export function LandingPassPrices() {
+const HEADING_ID = 'landing-pass-prices-heading';
+
+interface Props {
+  readonly centered?: boolean;
+}
+
+export function LandingPassPrices({ centered = false }: Readonly<Props>) {
   const { t } = useTranslation('landing');
   const enabled = useLandingPassPricesEnabled();
-  const prices = usePassPrices();
+  const prices = useLivePassPrices();
+  const dayPrice = prices['24h'];
+  const semesterPrice = prices['120d'];
 
-  if (!enabled) {
+  const canShow = enabled && dayPrice != null && semesterPrice != null;
+  if (!canShow) {
     return null;
   }
 
+  const className = centered
+    ? `${styles.passPrices} ${styles.centered}`
+    : styles.passPrices;
+
   return (
-    <aside className={styles.passPrices}>
-      <p className={styles.heading}>{t('passPrices.heading')}</p>
+    <aside className={className} aria-labelledby={HEADING_ID}>
+      <p id={HEADING_ID} className={styles.heading}>
+        {t('passPrices.heading')}
+      </p>
       <ul className={styles.list}>
-        <li>{t('passPrices.dayPass', { dayPrice: prices['24h'] })}</li>
-        <li>
-          {t('passPrices.semesterPass', { semesterPrice: prices['120d'] })}
-        </li>
+        <li>{t('passPrices.dayPass', { dayPrice })}</li>
+        <li>{t('passPrices.semesterPass', { semesterPrice })}</li>
       </ul>
       <p className={styles.footnote}>{t('passPrices.footnote')}</p>
     </aside>
