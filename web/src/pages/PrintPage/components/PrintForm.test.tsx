@@ -5,6 +5,37 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import PrintForm from './PrintForm';
 
+const { localsHolder, trackMock } = vi.hoisted(() => ({
+  localsHolder: {
+    value: {
+      data: {
+        locals: { patreon: false, subscriber: false },
+        freePrintAvailable: true as boolean | null,
+      },
+    } as unknown,
+  },
+  trackMock: vi.fn(),
+}));
+
+vi.mock('../../../lib/hooks/useUserLocals', () => ({
+  useUserLocals: () => localsHolder.value,
+}));
+
+vi.mock('../../../lib/analytics/track', () => ({
+  track: trackMock,
+}));
+
+function jsonResponse(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+    clone() {
+      return { json: async () => body };
+    },
+  } as unknown as Response;
+}
+
 const renderForm = () =>
   render(
     <MemoryRouter>
@@ -20,11 +51,32 @@ const pickApkg = (name = 'deck.apkg') => {
   fireEvent.change(input, { target: { files: [file] } });
 };
 
+function routeFetch(responses: {
+  preview?: Response;
+  download?: Response;
+}): void {
+  (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(
+    (url: string) => {
+      if (String(url).includes('/api/apkg/pdf/preview')) {
+        return Promise.resolve(responses.preview ?? jsonResponse(500, {}));
+      }
+      return Promise.resolve(responses.download ?? jsonResponse(500, {}));
+    }
+  );
+}
+
 describe('PrintForm', () => {
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
     globalThis.fetch = vi.fn();
+    trackMock.mockClear();
+    localsHolder.value = {
+      data: {
+        locals: { patreon: false, subscriber: false },
+        freePrintAvailable: true,
+      },
+    };
   });
 
   afterEach(() => {
@@ -32,46 +84,90 @@ describe('PrintForm', () => {
     vi.restoreAllMocks();
   });
 
-  test('shows the server card-limit message verbatim plus an Upgrade for unlimited link', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: false,
-      status: 400,
-      clone() {
-        return {
-          json: async () => ({
-            message:
-              'This deck has 1873 cards. PDF export supports up to 1000 cards.',
-          }),
-        };
-      },
-    } as unknown as Response);
+  test('previews the first cards and offers the free PDF download for a free user', async () => {
+    routeFetch({
+      preview: jsonResponse(200, {
+        image: 'data:image/png;base64,AAA',
+        totalCards: 42,
+        previewedCards: 3,
+      }),
+    });
 
     renderForm();
     pickApkg();
 
     await waitFor(() => {
-      expect(screen.getByText(/1873 cards/)).toBeInTheDocument();
+      expect(screen.getByText(/first 3 of 42 cards/i)).toBeInTheDocument();
     });
     expect(
-      screen.getByText(/PDF export supports up to 1000 cards/)
+      screen.getByRole('button', { name: /Download the full PDF/i })
     ).toBeInTheDocument();
-
-    const upgrade = screen.getByRole('link', {
-      name: /Upgrade for unlimited/i,
-    });
-    expect(upgrade).toHaveAttribute('href', '/pricing');
+    expect(
+      screen.getByText(/Uses your 1 free PDF this month/i)
+    ).toBeInTheDocument();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/apkg/pdf/preview',
+      expect.objectContaining({ method: 'POST' })
+    );
   });
 
-  test('shows a friendly corrupted-file message when the server reports Invalid .apkg', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: false,
-      status: 400,
-      clone() {
-        return {
-          json: async () => ({ message: 'Invalid .apkg file' }),
-        };
+  test('fires print_preview_shown once with the deck counts', async () => {
+    routeFetch({
+      preview: jsonResponse(200, {
+        image: 'data:image/png;base64,AAA',
+        totalCards: 42,
+        previewedCards: 3,
+      }),
+    });
+
+    renderForm();
+    pickApkg();
+
+    await waitFor(() => {
+      expect(trackMock).toHaveBeenCalledWith('print_preview_shown', {
+        totalCards: 42,
+        previewedCards: 3,
+        freePrintAvailable: true,
+      });
+    });
+    expect(trackMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('offers a day pass instead of the free PDF once the print is used', async () => {
+    localsHolder.value = {
+      data: {
+        locals: { patreon: false, subscriber: false },
+        freePrintAvailable: false,
       },
-    } as unknown as Response);
+    };
+    routeFetch({
+      preview: jsonResponse(200, {
+        image: 'data:image/png;base64,AAA',
+        totalCards: 10,
+        previewedCards: 3,
+      }),
+    });
+
+    renderForm();
+    pickApkg();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Get a day pass/i })
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('link', { name: /See all plans/i })
+    ).toHaveAttribute('href', '/pricing');
+    expect(
+      screen.queryByRole('button', { name: /Download the full PDF/i })
+    ).not.toBeInTheDocument();
+  });
+
+  test('shows a friendly corrupted message with no payment ask when preview reports Invalid .apkg', async () => {
+    routeFetch({
+      preview: jsonResponse(400, { message: 'Invalid .apkg file' }),
+    });
 
     renderForm();
     pickApkg();
@@ -80,19 +176,72 @@ describe('PrintForm', () => {
       expect(screen.getByText(/Couldn't read this file/i)).toBeInTheDocument();
     });
     expect(
-      screen.queryByRole('link', { name: /Upgrade for unlimited/i })
+      screen.queryByRole('button', { name: /Download the full PDF/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Get a day pass/i })
     ).not.toBeInTheDocument();
   });
-  test('accepts a dropped deck and posts it like a picked one', async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: false,
-      status: 400,
-      clone() {
-        return {
-          json: async () => ({ message: 'Invalid .apkg file' }),
-        };
-      },
-    } as unknown as Response);
+
+  test('shows the empty-deck message with no payment ask for a 0-card deck', async () => {
+    routeFetch({
+      preview: jsonResponse(200, {
+        image: null,
+        totalCards: 0,
+        previewedCards: 0,
+      }),
+    });
+
+    renderForm();
+    pickApkg();
+
+    await waitFor(() => {
+      expect(screen.getByText(/no cards to print/i)).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: /Download the full PDF/i })
+    ).not.toBeInTheDocument();
+  });
+
+  test('keeps the card-limit message with an Upgrade link on the download step', async () => {
+    routeFetch({
+      preview: jsonResponse(200, {
+        image: 'data:image/png;base64,AAA',
+        totalCards: 1873,
+        previewedCards: 3,
+      }),
+      download: jsonResponse(400, {
+        message:
+          'This deck has 1873 cards. PDF export supports up to 1000 cards.',
+      }),
+    });
+
+    renderForm();
+    pickApkg();
+
+    const download = await screen.findByRole('button', {
+      name: /Download the full PDF/i,
+    });
+    fireEvent.click(download);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/PDF export supports up to 1000 cards/)
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('link', { name: /Upgrade for unlimited/i })
+    ).toHaveAttribute('href', '/pricing');
+  });
+
+  test('previews a dropped deck through the preview endpoint', async () => {
+    routeFetch({
+      preview: jsonResponse(200, {
+        image: 'data:image/png;base64,AAA',
+        totalCards: 5,
+        previewedCards: 3,
+      }),
+    });
 
     renderForm();
     const zone = screen.getByText(/Drop an Anki deck/i).closest('label');
@@ -105,9 +254,21 @@ describe('PrintForm', () => {
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        '/api/apkg/pdf',
+        '/api/apkg/pdf/preview',
         expect.objectContaining({ method: 'POST' })
       );
     });
+  });
+
+  test('rejects a non-.apkg pick without calling the preview endpoint', async () => {
+    renderForm();
+    pickApkg('notes.pdf');
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/works with Anki deck files/i)
+      ).toBeInTheDocument();
+    });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });

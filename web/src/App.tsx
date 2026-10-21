@@ -103,6 +103,9 @@ const UploadSuccessPreviewPage = import.meta.env.DEV
 const DownloadsPreviewPage = import.meta.env.DEV
   ? lazy(() => import('./pages/DownloadsPreviewPage/DownloadsPreviewPage'))
   : null;
+const PrintPreviewPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/PrintPreviewPage/PrintPreviewPage'))
+  : null;
 const PricingPreviewPage = import.meta.env.DEV
   ? lazy(() => import('./pages/PricingPreviewPage/PricingPreviewPage'))
   : null;
@@ -549,6 +552,9 @@ function AppContent({
                 path="/dev/downloads-preview"
                 element={<DownloadsPreviewPage />}
               />
+            )}
+            {PrintPreviewPage && (
+              <Route path="/dev/print-preview" element={<PrintPreviewPage />} />
             )}
             <Route
               path="/import"

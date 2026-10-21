@@ -30,7 +30,22 @@
     "viewPlans": "Zobacz plany",
     "logIn": "Zaloguj się",
     "upgradeUnlimited": "Ulepsz plan, aby mieć nieograniczoną liczbę",
-    "printAnother": "Wydrukuj kolejną talię"
+    "printAnother": "Wydrukuj kolejną talię",
+    "previewIsFree": "Podgląd jest bezpłatny. Płacisz tylko za pobranie całej talii.",
+    "previewOfTotal": "Podgląd — pierwsze {{count}} z {{total}} kart, dokładnie tak, jak się wydrukują",
+    "previewAll_one": "Podgląd — Twoja 1 karta, dokładnie tak, jak się wydrukuje",
+    "previewAll_few": "Podgląd — wszystkie {{count}} karty, dokładnie tak, jak się wydrukują",
+    "previewAll_many": "Podgląd — wszystkie {{count}} kart, dokładnie tak, jak się wydrukują",
+    "previewAll_other": "Podgląd — wszystkie {{count}} karty, dokładnie tak, jak się wydrukują",
+    "previewPaperNote": "Podziały stron zależą od rozmiaru papieru wybranego powyżej.",
+    "updatePreview": "Zaktualizuj podgląd",
+    "downloadFullPdf": "Pobierz pełny PDF",
+    "usesFreePdf": "Zużywa Twój 1 bezpłatny PDF w tym miesiącu",
+    "unlockWithPass": "Weź przepustkę dzienną, aby wydrukować całą talię",
+    "seeAllPlans": "Zobacz wszystkie plany",
+    "previewAnother": "Inny podgląd",
+    "emptyDeck": "Ta talia nie ma kart do druku. Wybierz inny plik .apkg.",
+    "makingPreview": "Tworzenie podglądu"
   },
   "import": {
     "title": "Importuj do Notion",

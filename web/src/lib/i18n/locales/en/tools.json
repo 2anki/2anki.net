@@ -30,7 +30,20 @@
     "viewPlans": "View plans",
     "logIn": "Log in",
     "upgradeUnlimited": "Upgrade for unlimited",
-    "printAnother": "Print another deck"
+    "printAnother": "Print another deck",
+    "previewIsFree": "Previewing is free. You only pay to download the whole deck.",
+    "previewOfTotal": "Preview — first {{count}} of {{total}} cards, exactly as they'll print",
+    "previewAll_one": "Preview — your 1 card, exactly as it'll print",
+    "previewAll_other": "Preview — all {{count}} cards, exactly as they'll print",
+    "previewPaperNote": "Page breaks follow the paper size you pick above.",
+    "updatePreview": "Update preview",
+    "downloadFullPdf": "Download the full PDF",
+    "usesFreePdf": "Uses your 1 free PDF this month",
+    "unlockWithPass": "Get a day pass to print the whole deck",
+    "seeAllPlans": "See all plans",
+    "previewAnother": "Preview another",
+    "emptyDeck": "This deck has no cards to print. Pick another .apkg.",
+    "makingPreview": "Making your preview"
   },
   "import": {
     "title": "Import to Notion",

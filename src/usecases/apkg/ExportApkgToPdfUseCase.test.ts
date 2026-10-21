@@ -74,6 +74,7 @@ describe('ExportApkgToPdfUseCase', () => {
 
     pdfRenderService = {
       renderDocument: vi.fn(),
+      renderPreviewImage: vi.fn(),
     } as unknown as Mocked<PdfRenderService>;
 
     useCase = new ExportApkgToPdfUseCase(previewService, pdfRenderService);
@@ -297,5 +298,186 @@ describe('ExportApkgToPdfUseCase', () => {
       expect.objectContaining({ html: expect.any(String) }),
       options
     );
+  });
+
+  it('uses a unique cache key per export so a frozen clock cannot cross decks', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-21T00:00:00.000Z'));
+    try {
+      previewService.parse.mockResolvedValue(makeParsed(1));
+      previewService.getMeta.mockReturnValue(makeMeta(1));
+      previewService.getCardsPage.mockReturnValue({
+        cards: [makeCard(1)],
+        nextCursor: null,
+        total: 1,
+      });
+      pdfRenderService.renderDocument.mockResolvedValue(Buffer.from('%PDF'));
+
+      await useCase.execute(Buffer.from('deck-a'));
+      await useCase.execute(Buffer.from('deck-b'));
+
+      const keyA = previewService.parse.mock.calls[0][0];
+      const keyB = previewService.parse.mock.calls[1][0];
+      expect(keyA).not.toBe(keyB);
+      expect(keyA).toMatch(/^pdf-export:/);
+      expect(keyB).toMatch(/^pdf-export:/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('ExportApkgToPdfUseCase.preview', () => {
+  let previewService: Mocked<ApkgPreviewService>;
+  let pdfRenderService: Mocked<PdfRenderService>;
+  let useCase: ExportApkgToPdfUseCase;
+
+  beforeEach(() => {
+    previewService = {
+      parse: vi.fn(),
+      getMeta: vi.fn(),
+      getCardsPage: vi.fn(),
+      getMediaEntry: vi.fn(),
+    } as unknown as Mocked<ApkgPreviewService>;
+
+    pdfRenderService = {
+      renderDocument: vi.fn(),
+      renderPreviewImage: vi.fn(),
+    } as unknown as Mocked<PdfRenderService>;
+
+    useCase = new ExportApkgToPdfUseCase(previewService, pdfRenderService);
+  });
+
+  it('renders the first 3 cards as a PNG without a card limit check', async () => {
+    const parsed = makeParsed(1873);
+    const image = Buffer.from('fake-png');
+    previewService.parse.mockResolvedValue(parsed);
+    previewService.getMeta.mockReturnValue(makeMeta(1873));
+    previewService.getCardsPage.mockReturnValueOnce({
+      cards: [makeCard(1), makeCard(2), makeCard(3)],
+      nextCursor: 3,
+      total: 1873,
+    });
+    pdfRenderService.renderPreviewImage.mockResolvedValue(image);
+
+    const result = await useCase.preview(
+      Buffer.from('fake-apkg'),
+      undefined,
+      3
+    );
+
+    expect(result.image).toBe(image);
+    expect(result.totalCards).toBe(1873);
+    expect(result.previewedCards).toBe(3);
+    expect(previewService.getCardsPage).toHaveBeenCalledWith(
+      parsed,
+      0,
+      3,
+      '',
+      null,
+      { print: true }
+    );
+    expect(pdfRenderService.renderPreviewImage).toHaveBeenCalledTimes(1);
+    expect(pdfRenderService.renderDocument).not.toHaveBeenCalled();
+  });
+
+  it('previews every card when the deck has fewer than the limit', async () => {
+    const parsed = makeParsed(2);
+    previewService.parse.mockResolvedValue(parsed);
+    previewService.getMeta.mockReturnValue(makeMeta(2));
+    previewService.getCardsPage.mockReturnValueOnce({
+      cards: [makeCard(1), makeCard(2)],
+      nextCursor: null,
+      total: 2,
+    });
+    pdfRenderService.renderPreviewImage.mockResolvedValue(Buffer.from('png'));
+
+    const result = await useCase.preview(
+      Buffer.from('fake-apkg'),
+      undefined,
+      3
+    );
+
+    expect(result.totalCards).toBe(2);
+    expect(result.previewedCards).toBe(2);
+  });
+
+  it('returns a null image and zero counts for an empty deck without rendering', async () => {
+    const parsed = makeParsed(0);
+    previewService.parse.mockResolvedValue(parsed);
+    previewService.getMeta.mockReturnValue({ totalCards: 0, decks: [] });
+
+    const result = await useCase.preview(
+      Buffer.from('fake-apkg'),
+      undefined,
+      3
+    );
+
+    expect(result.image).toBeNull();
+    expect(result.totalCards).toBe(0);
+    expect(result.previewedCards).toBe(0);
+    expect(pdfRenderService.renderPreviewImage).not.toHaveBeenCalled();
+  });
+
+  it('forwards the pdf options to renderPreviewImage', async () => {
+    const parsed = makeParsed(1);
+    previewService.parse.mockResolvedValue(parsed);
+    previewService.getMeta.mockReturnValue(makeMeta(1));
+    previewService.getCardsPage.mockReturnValueOnce({
+      cards: [makeCard(1)],
+      nextCursor: null,
+      total: 1,
+    });
+    pdfRenderService.renderPreviewImage.mockResolvedValue(Buffer.from('png'));
+
+    const options = {
+      backgroundColor: '#1a2b3c',
+      paperSize: 'Letter' as const,
+      orientation: 'landscape' as const,
+      margins: 'wide' as const,
+    };
+    await useCase.preview(Buffer.from('fake-apkg'), options, 3);
+
+    const [doc, forwarded] = pdfRenderService.renderPreviewImage.mock.calls[0];
+    expect(doc.html).toContain('background:#1a2b3c');
+    expect(forwarded).toEqual(options);
+  });
+
+  it('uses a unique cache key per preview so a frozen clock cannot cross decks', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-21T00:00:00.000Z'));
+    try {
+      previewService.parse
+        .mockResolvedValueOnce(makeParsed(1))
+        .mockResolvedValueOnce(makeParsed(2));
+      previewService.getMeta
+        .mockReturnValueOnce(makeMeta(1))
+        .mockReturnValueOnce(makeMeta(2));
+      previewService.getCardsPage
+        .mockReturnValueOnce({
+          cards: [makeCard(1)],
+          nextCursor: null,
+          total: 1,
+        })
+        .mockReturnValueOnce({
+          cards: [makeCard(2), makeCard(3)],
+          nextCursor: null,
+          total: 2,
+        });
+      pdfRenderService.renderPreviewImage.mockResolvedValue(Buffer.from('png'));
+
+      const first = await useCase.preview(Buffer.from('deck-a'), undefined, 3);
+      const second = await useCase.preview(Buffer.from('deck-b'), undefined, 3);
+
+      const keyA = previewService.parse.mock.calls[0][0];
+      const keyB = previewService.parse.mock.calls[1][0];
+      expect(keyA).not.toBe(keyB);
+      expect(keyA).toMatch(/^pdf-preview:/);
+      expect(keyB).toMatch(/^pdf-preview:/);
+      expect(first.previewedCards).toBe(1);
+      expect(second.previewedCards).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -13,6 +13,7 @@ import PdfRenderService, {
 import ExportApkgToPdfUseCase, {
   CardLimitExceededError,
   DEFAULT_PDF_OPTIONS,
+  PREVIEW_CARD_LIMIT,
   type Margins,
   type Orientation,
   type PaperSize,
@@ -34,6 +35,7 @@ import {
   InvalidApkgError,
 } from '../services/ApkgPreviewService/extractApkg';
 import { NotionService } from '../services/NotionService/NotionService';
+import { ConcurrencyLimiter } from '../lib/rateLimit/ConcurrencyLimiter';
 import JobRepository from '../data_layer/JobRepository';
 import sendErrorResponse from '../lib/sendErrorResponse';
 import { isPaying } from '../lib/isPaying';
@@ -142,7 +144,13 @@ class ApkgController {
     private readonly pdfRenderService: PdfRenderService = new PdfRenderService(),
     private readonly notionService?: NotionService,
     private readonly jobRepository?: JobRepository,
-    private readonly recordServerError?: ServerErrorRecorder
+    private readonly recordServerError?: ServerErrorRecorder,
+    // Caps concurrent Chrome renders on the process. Held for the render's
+    // lifetime (acquired before preview, released in a finally after it
+    // settles), so a client abort cannot free the slot while Chrome runs.
+    private readonly previewConcurrency: ConcurrencyLimiter = new ConcurrencyLimiter(
+      2
+    )
   ) {}
 
   private async loadForKey(req: Request, res: Response) {
@@ -301,6 +309,67 @@ class ApkgController {
       res.send(result.pdf);
     } catch (error) {
       await sendPdfExportError(req, res, error, this.recordServerError);
+    }
+  }
+
+  async previewPdf(req: Request, res: Response) {
+    try {
+      const file = req.file;
+      if (file == null) {
+        res.status(400).json({ message: 'No file uploaded.' });
+        return;
+      }
+      if (!isApkg(file.originalname)) {
+        await tryUnlink(file.path);
+        res.status(400).json({ message: 'File must be an .apkg file.' });
+        return;
+      }
+      const pdfOptions = parsePdfOptions(req.body as Record<string, unknown>);
+      if (pdfOptions == null) {
+        await tryUnlink(file.path);
+        res.status(400).json({
+          message:
+            'Invalid background color. Use a six-digit hex value like #ffffff.',
+        });
+        return;
+      }
+      const fs = await import('node:fs/promises');
+      let fileBuffer: Buffer;
+      try {
+        fileBuffer = await fs.readFile(file.path);
+      } finally {
+        await tryUnlink(file.path);
+      }
+      const useCase = new ExportApkgToPdfUseCase(
+        this.previewService,
+        this.pdfRenderService
+      );
+      if (!this.previewConcurrency.tryAcquire()) {
+        res.status(503).json({
+          message:
+            'Too many previews are rendering right now. Try again in a moment.',
+        });
+        return;
+      }
+      try {
+        const result = await useCase.preview(
+          fileBuffer,
+          pdfOptions,
+          PREVIEW_CARD_LIMIT
+        );
+        res.json({
+          image:
+            result.image == null
+              ? null
+              : `data:image/png;base64,${result.image.toString('base64')}`,
+          totalCards: result.totalCards,
+          previewedCards: result.previewedCards,
+        });
+      } finally {
+        this.previewConcurrency.release();
+      }
+    } catch (error) {
+      await sendPdfPreviewError(req, res, error, this.recordServerError);
     }
   }
 
@@ -641,6 +710,36 @@ async function sendPdfExportError(
   console.error(error);
   trackPdfExportFailed(res, 'unexpected');
   res.status(500).json({ message: 'PDF generation failed.' });
+  await recordServerError?.(
+    error instanceof Error ? error : new Error(String(error)),
+    req,
+    res
+  );
+}
+
+// The preview is free and un-metered, so its failures do not belong in the
+// pdf_export_failed funnel — map the known deck/render errors to the same
+// status codes the download uses, without firing an export-failure event.
+async function sendPdfPreviewError(
+  req: Request,
+  res: Response,
+  error: unknown,
+  recordServerError?: ServerErrorRecorder
+): Promise<void> {
+  if (sendApkgTooLarge(res, error)) return;
+  if (
+    error instanceof PdfRenderTimeoutError ||
+    error instanceof PdfRenderCrashedError
+  ) {
+    res.status(400).json({ message: error.message });
+    return;
+  }
+  if (isInvalidApkgError(error)) {
+    res.status(400).json({ message: 'Invalid .apkg file' });
+    return;
+  }
+  console.error(error);
+  res.status(500).json({ message: 'Preview failed.' });
   await recordServerError?.(
     error instanceof Error ? error : new Error(String(error)),
     req,

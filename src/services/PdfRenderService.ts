@@ -3,8 +3,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import puppeteer, { ProtocolError, TimeoutError } from 'puppeteer';
-import type { HTTPRequest } from 'puppeteer';
-import type { PdfOptions } from '../usecases/apkg/ExportApkgToPdfUseCase';
+import type { HTTPRequest, Page } from 'puppeteer';
+import type {
+  PaperSize,
+  PdfOptions,
+} from '../usecases/apkg/ExportApkgToPdfUseCase';
 
 const PDF_TIMEOUT_MS = 30_000;
 const MATHJAX_SETTLE_MS = 2_000;
@@ -17,6 +20,41 @@ const MARGIN_VALUES: Record<string, string> = {
   normal: '1cm',
   wide: '2cm',
 };
+
+// CSS-pixel width of each paper size at 96dpi, per orientation. The preview
+// screenshot sets the viewport to this so card columns wrap the way they will
+// in the PDF. Page margins and page breaks are not reproduced in the image —
+// the caption tells the user page breaks follow the paper size they pick.
+const PREVIEW_WIDTH_PX: Record<
+  PaperSize,
+  { portrait: number; landscape: number }
+> = {
+  A4: { portrait: 794, landscape: 1123 },
+  Letter: { portrait: 816, landscape: 1056 },
+  Legal: { portrait: 816, landscape: 1344 },
+};
+
+export interface PreviewClip {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// The preview promises the FIRST page only, so the screenshot is clipped to a
+// single page for the chosen paper size and orientation. Without the clip a
+// tall card (huge back, many images) would screenshot the whole document and
+// spike memory at deviceScaleFactor 2.
+export function previewClip(options?: PdfOptions): PreviewClip {
+  const paper = PREVIEW_WIDTH_PX[options?.paperSize ?? 'A4'];
+  const landscape = options?.orientation === 'landscape';
+  return {
+    x: 0,
+    y: 0,
+    width: landscape ? paper.landscape : paper.portrait,
+    height: landscape ? paper.portrait : paper.landscape,
+  };
+}
 
 // Asset names land on disk inside the render directory, so only a flat name
 // is allowed: no separators, no traversal.
@@ -167,19 +205,44 @@ export default class PdfRenderService {
     doc: PdfDocument,
     options?: PdfOptions
   ): Promise<Buffer> {
+    return this.withDocumentDir(doc, (htmlPath, dir) =>
+      this.withRenderedPage(htmlPath, dir, (page) =>
+        this.printPdf(page, options)
+      )
+    );
+  }
+
+  // Free preview path: a PNG of the rendered first page, same CSP, nonce,
+  // asset handling and guardLocalFiles backstop as the PDF. The viewport is
+  // sized to the chosen paper so card columns wrap as they will when printed.
+  async renderPreviewImage(
+    doc: PdfDocument,
+    options?: PdfOptions
+  ): Promise<Buffer> {
+    return this.withDocumentDir(doc, (htmlPath, dir) =>
+      this.withRenderedPage(htmlPath, dir, (page) =>
+        this.screenshotFirstPage(page, options)
+      )
+    );
+  }
+
+  private async withDocumentDir(
+    doc: PdfDocument,
+    produce: (htmlPath: string, dir: string) => Promise<Buffer>
+  ): Promise<Buffer> {
     const dir = await mkdtemp(path.join(os.tmpdir(), '2anki-pdf-'));
     try {
       const htmlPath = await writeDocument(dir, doc);
-      return await this.renderFile(htmlPath, dir, options);
+      return await produce(htmlPath, dir);
     } finally {
       await rm(dir, { recursive: true, force: true }).catch(() => {});
     }
   }
 
-  private async renderFile(
+  private async withRenderedPage(
     htmlPath: string,
     dir: string,
-    options?: PdfOptions
+    produce: (page: Page) => Promise<Buffer>
   ): Promise<Buffer> {
     const browser = await puppeteer.launch({
       headless: true,
@@ -215,20 +278,7 @@ export default class PdfRenderService {
         })`,
         { timeout: PDF_TIMEOUT_MS }
       );
-      const marginValue = MARGIN_VALUES[options?.margins ?? 'normal'] ?? '1cm';
-      const pdf = await page.pdf({
-        format: options?.paperSize ?? 'A4',
-        landscape: options?.orientation === 'landscape',
-        printBackground: true,
-        margin: {
-          top: marginValue,
-          right: marginValue,
-          bottom: marginValue,
-          left: marginValue,
-        },
-        timeout: PDF_TIMEOUT_MS,
-      });
-      return Buffer.from(pdf);
+      return await produce(page);
     } catch (error) {
       if (error instanceof TimeoutError || isProtocolTimeout(error)) {
         throw new PdfRenderTimeoutError();
@@ -240,5 +290,42 @@ export default class PdfRenderService {
     } finally {
       await browser.close().catch(() => {});
     }
+  }
+
+  private async printPdf(page: Page, options?: PdfOptions): Promise<Buffer> {
+    const marginValue = MARGIN_VALUES[options?.margins ?? 'normal'] ?? '1cm';
+    const pdf = await page.pdf({
+      format: options?.paperSize ?? 'A4',
+      landscape: options?.orientation === 'landscape',
+      printBackground: true,
+      margin: {
+        top: marginValue,
+        right: marginValue,
+        bottom: marginValue,
+        left: marginValue,
+      },
+      timeout: PDF_TIMEOUT_MS,
+    });
+    return Buffer.from(pdf);
+  }
+
+  private async screenshotFirstPage(
+    page: Page,
+    options?: PdfOptions
+  ): Promise<Buffer> {
+    await page.emulateMediaType('print');
+    const marginValue = MARGIN_VALUES[options?.margins ?? 'normal'] ?? '1cm';
+    await page.evaluate((padding) => {
+      document.body.style.padding = padding;
+      document.body.style.boxSizing = 'border-box';
+    }, marginValue);
+    const clip = previewClip(options);
+    await page.setViewport({
+      width: clip.width,
+      height: clip.height,
+      deviceScaleFactor: 2,
+    });
+    const png = await page.screenshot({ type: 'png', clip });
+    return Buffer.from(png);
   }
 }

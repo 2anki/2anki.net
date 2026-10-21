@@ -4,6 +4,9 @@ import multer from 'multer';
 import RequireAuthentication from './middleware/RequireAuthentication';
 import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import { printQuotaMiddleware } from './middleware/PrintQuotaMiddleware';
+import { ipRateLimit } from './middleware/ipRateLimit';
+import { ownerRateLimit } from './middleware/previewRenderLimit';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import ApkgController from '../controllers/ApkgController';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
 import DownloadService from '../services/DownloadService';
@@ -257,6 +260,34 @@ const ApkgRouter = () => {
     pdfUpload.single('file'),
     normalizeUploadFilenames,
     (req, res) => controller.exportPdf(req, res)
+  );
+
+  const previewUpload = multer({
+    dest: process.env.UPLOAD_BASE ?? '/tmp',
+    limits: { fileSize: 100 * 1024 * 1024 },
+  });
+
+  // Bound the free preview, since it launches a fresh Chrome per request
+  // without spending the user's monthly print: per IP (ipRateLimit), per owner
+  // (here), and a process-wide cap on concurrent Chrome renders (inside the
+  // controller, held for the render's lifetime).
+  const previewOwnerLimiter = new InMemoryRateLimiter({
+    windowMs: 60_000,
+    perKeyMax: 10,
+    globalMax: 120,
+  });
+
+  // Free, un-metered preview of the first cards: no printQuotaMiddleware and
+  // never increments print usage.
+  router.post(
+    '/api/apkg/pdf/preview',
+    RequireAllowedOrigin,
+    RequireAuthentication,
+    ipRateLimit(20),
+    ownerRateLimit(previewOwnerLimiter),
+    previewUpload.single('file'),
+    normalizeUploadFilenames,
+    (req, res) => controller.previewPdf(req, res)
   );
 
   const csvUpload = multer({

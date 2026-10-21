@@ -1,14 +1,32 @@
-import { SyntheticEvent, useRef, useState } from 'react';
+import { ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import styles from './PrintForm.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
 import { useDropZone } from '../../../lib/hooks/useDropZone';
+import { useUserLocals } from '../../../lib/hooks/useUserLocals';
+import { isPayingUser } from '../../../components/NavigationBar/helpers/getPlanLabel';
+import { get2ankiApi } from '../../../lib/backend/get2ankiApi';
+import { track } from '../../../lib/analytics/track';
+import PrintPreview, { PrintPreviewState } from './PrintPreview';
 
-type PrintState = 'idle' | 'uploading' | 'done' | 'error';
+type PrintState =
+  | 'idle'
+  | 'previewing'
+  | 'preview'
+  | 'empty'
+  | 'error'
+  | 'done';
 type PaperSize = 'A4' | 'Letter' | 'Legal';
 type Orientation = 'portrait' | 'landscape';
 type Margins = 'narrow' | 'normal' | 'wide';
+
+interface PrintOptions {
+  backgroundColor: string;
+  paperSize: PaperSize;
+  orientation: Orientation;
+  margins: Margins;
+}
 
 interface PrintMessages {
   wrongType: string;
@@ -18,10 +36,19 @@ interface PrintMessages {
   upgrade: string;
 }
 
+interface DownloadError {
+  status: number;
+  message: string;
+}
+
 const CARD_LIMIT_PATTERN = /PDF export supports up to/i;
 
 function isApkgFile(name: string): boolean {
   return /\.apkg$/i.test(name);
+}
+
+function optionsKey(options: PrintOptions): string {
+  return `${options.backgroundColor}|${options.paperSize}|${options.orientation}|${options.margins}`;
 }
 
 async function extractErrorMessage(
@@ -50,8 +77,31 @@ function toUserMessage(
   return serverMessage;
 }
 
+function toPreviewErrorMessage(
+  serverMessage: string,
+  status: number,
+  messages: PrintMessages
+): string {
+  if (status === 401) return messages.auth;
+  if (/Invalid .apkg/i.test(serverMessage)) return messages.corrupted;
+  return messages.genericError;
+}
+
+function toPreviewState(state: PrintState): PrintPreviewState {
+  if (state === 'previewing') return 'rendering';
+  if (state === 'empty') return 'empty';
+  if (state === 'error') return 'error';
+  return 'ready';
+}
+
+interface PreviewResponse {
+  image: string | null;
+  totalCards: number;
+  previewedCards: number;
+}
+
 export default function PrintForm() {
-  const { t } = useTranslation('tools');
+  const { t } = useTranslation(['tools', 'accountx']);
   const messages: PrintMessages = {
     wrongType: t('print.wrongType'),
     corrupted: t('print.corrupted'),
@@ -60,76 +110,173 @@ export default function PrintForm() {
     upgrade: t('print.upgradeMessage'),
   };
 
+  const { data } = useUserLocals();
+  const paying = isPayingUser(data?.locals);
+  const freePrintAvailable = data?.freePrintAvailable ?? null;
+
   const [state, setState] = useState<PrintState>('idle');
-  const [cardCount, setCardCount] = useState<number | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pickError, setPickError] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<DownloadError | null>(
+    null
+  );
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [totalCards, setTotalCards] = useState(0);
+  const [previewedCards, setPreviewedCards] = useState(0);
+  const [previewedKey, setPreviewedKey] = useState<string | null>(null);
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [passBusy, setPassBusy] = useState(false);
+  const [freePrintUsedOverride, setFreePrintUsedOverride] = useState(false);
+  const selectedFileRef = useRef<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const submitRef = useRef<HTMLButtonElement>(null);
+
   const [backgroundColor, setBackgroundColor] = useState('#ffffff');
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
   const [orientation, setOrientation] = useState<Orientation>('portrait');
   const [margins, setMargins] = useState<Margins>('normal');
 
-  const resetForm = () => {
-    setState('idle');
-    setCardCount(null);
-    setErrorMessage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const currentOptions: PrintOptions = {
+    backgroundColor,
+    paperSize,
+    orientation,
+    margins,
   };
 
-  const handleFile = async (file: File) => {
-    if (!isApkgFile(file.name)) {
-      setState('error');
-      setErrorMessage(messages.wrongType);
-      return;
-    }
-
-    setState('uploading');
-    setErrorMessage(null);
-
+  const buildFormData = (file: File): FormData => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('backgroundColor', backgroundColor);
     formData.append('paperSize', paperSize);
     formData.append('orientation', orientation);
     formData.append('margins', margins);
+    return formData;
+  };
 
+  const resetForm = () => {
+    setState('idle');
+    setPickError(null);
+    setPreviewError(null);
+    setDownloadError(null);
+    setPreviewImage(null);
+    setTotalCards(0);
+    setPreviewedCards(0);
+    setPreviewedKey(null);
+    setFreePrintUsedOverride(false);
+    selectedFileRef.current = null;
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const runPreview = async (file: File) => {
+    const keyAtRequest = optionsKey(currentOptions);
+    setState('previewing');
+    setPreviewError(null);
+    setDownloadError(null);
+
+    try {
+      const response = await globalThis.fetch('/api/apkg/pdf/preview', {
+        method: 'POST',
+        body: buildFormData(file),
+      });
+      if (response.ok) {
+        const body = (await response.json()) as PreviewResponse;
+        if (body.image == null || body.totalCards === 0) {
+          setState('empty');
+          return;
+        }
+        setPreviewImage(body.image);
+        setTotalCards(body.totalCards);
+        setPreviewedCards(body.previewedCards);
+        setPreviewedKey(keyAtRequest);
+        setState('preview');
+        track('print_preview_shown', {
+          totalCards: body.totalCards,
+          previewedCards: body.previewedCards,
+          freePrintAvailable: paying || freePrintAvailable !== false,
+        });
+      } else {
+        const raw = await extractErrorMessage(response, messages.genericError);
+        setPreviewError(toPreviewErrorMessage(raw, response.status, messages));
+        setState('error');
+      }
+    } catch {
+      setPreviewError(messages.genericError);
+      setState('error');
+    }
+  };
+
+  const handleFile = async (file: File) => {
+    if (!isApkgFile(file.name)) {
+      setPickError(messages.wrongType);
+      setState('idle');
+      return;
+    }
+    setPickError(null);
+    selectedFileRef.current = file;
+    await runPreview(file);
+  };
+
+  const handleUpdatePreview = async () => {
+    const file = selectedFileRef.current;
+    if (file == null) return;
+    await runPreview(file);
+  };
+
+  const downloadFullPdf = async () => {
+    const file = selectedFileRef.current;
+    if (file == null) return;
+    setDownloadBusy(true);
+    setDownloadError(null);
     try {
       const response = await globalThis.fetch('/api/apkg/pdf', {
         method: 'POST',
-        body: formData,
+        body: buildFormData(file),
       });
-
       if (response.ok) {
         const blob = await response.blob();
         const url = globalThis.URL.createObjectURL(blob);
         const link = document.createElement('a');
-        const name = file.name.replace(/\.apkg$/i, '.pdf');
         link.href = url;
-        link.download = name;
+        link.download = file.name.replace(/\.apkg$/i, '.pdf');
         link.click();
         globalThis.URL.revokeObjectURL(url);
-
         setState('done');
-        setCardCount(null);
+      } else if (response.status === 402) {
+        setFreePrintUsedOverride(true);
       } else {
         const raw = await extractErrorMessage(response, messages.genericError);
-        setState('error');
-        setErrorMessage(toUserMessage(raw, response.status, messages));
+        setDownloadError({
+          status: response.status,
+          message: toUserMessage(raw, response.status, messages),
+        });
       }
     } catch {
-      setState('error');
-      setErrorMessage(messages.genericError);
+      setDownloadError({ status: 0, message: messages.genericError });
+    } finally {
+      setDownloadBusy(false);
     }
   };
 
-  const handleSubmit = async (event: SyntheticEvent) => {
-    event.preventDefault();
-    const files = fileInputRef.current?.files;
-    if (files == null || files.length === 0) return;
-    await handleFile(files[0]);
+  const handlePass = async () => {
+    setPassBusy(true);
+    try {
+      const result = await get2ankiApi().startPassCheckout(
+        '24h',
+        undefined,
+        'print'
+      );
+      if ('url' in result) {
+        globalThis.location.href = result.url;
+        return;
+      }
+      setDownloadError({
+        status: 0,
+        message: t('limit.checkoutError', { ns: 'accountx' }),
+      });
+    } finally {
+      setPassBusy(false);
+    }
   };
 
   const { dropHover, dragProps } = useDropZone<HTMLLabelElement>({
@@ -141,10 +288,39 @@ export default function PrintForm() {
     },
   });
 
-  const isUploading = state === 'uploading';
+  const previewState = toPreviewState(state);
+  const optionsChanged =
+    state === 'preview' && previewedKey !== optionsKey(currentOptions);
+  const effectiveFreePrintAvailable = freePrintUsedOverride
+    ? false
+    : freePrintAvailable;
+
+  const downloadErrorNode: ReactNode = downloadError && (
+    <p className={sharedStyles.notificationDanger}>
+      {downloadError.message}
+      {CARD_LIMIT_PATTERN.test(downloadError.message) && (
+        <>
+          {' '}
+          <Link to="/pricing">{t('print.upgradeUnlimited')}</Link>
+        </>
+      )}
+      {downloadError.status === 401 && (
+        <>
+          {' '}
+          <Link to="/login">{t('print.logIn')}</Link>
+        </>
+      )}
+      {downloadError.status === 403 && (
+        <>
+          {' '}
+          <Link to="/pricing">{t('print.viewPlans')}</Link>
+        </>
+      )}
+    </p>
+  );
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={(event) => event.preventDefault()}>
       <div className={styles.optionsGrid}>
         <div>
           <label htmlFor="print-paper-size" className={sharedStyles.fieldLabel}>
@@ -212,94 +388,78 @@ export default function PrintForm() {
         </div>
       </div>
 
-      <label
-        htmlFor="print-file"
-        className={`${styles.dropZone} ${dropHover ? styles.dropZoneActive : ''}`}
-        {...dragProps}
-      >
-        <span className={styles.dropLabel}>{t('print.dropLabel')}</span>
-        <span className={styles.dropHint}>{t('print.or')}</span>
-        <span className={styles.chooseButton}>
-          {isUploading ? t('print.makingPdf') : t('print.selectFile')}
-        </span>
-        <input
-          ref={fileInputRef}
-          className={styles.fileInput}
-          id="print-file"
-          type="file"
-          accept=".apkg"
-          disabled={isUploading}
-          onChange={() => submitRef.current?.click()}
-        />
-      </label>
-
-      {isUploading && (
-        <div
-          className={sharedStyles.notificationInfo}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            marginTop: '1rem',
-          }}
-        >
-          <div className={sharedStyles.spinnerSmall} />
-          <span>{t('print.makingPdfHint')}</span>
-        </div>
-      )}
-
-      {state === 'done' && (
-        <p className={sharedStyles.notificationSuccess}>
-          {t('print.doneMessage')}
-          {cardCount == null
-            ? ''
-            : ` — ${t('print.doneCards', { count: cardCount })}`}
-        </p>
-      )}
-
-      {state === 'error' && errorMessage && (
-        <p className={sharedStyles.notificationDanger}>
-          {errorMessage}
-          {errorMessage === messages.wrongType && (
-            <>
-              {' '}
-              <Link to="/upload">{t('print.goToUpload')}</Link>
-            </>
-          )}
-          {errorMessage === messages.upgrade && (
-            <>
-              {' '}
-              <Link to="/pricing">{t('print.viewPlans')}</Link>
-            </>
-          )}
-          {errorMessage === messages.auth && (
-            <>
-              {' '}
-              <Link to="/login">{t('print.logIn')}</Link>
-            </>
-          )}
-          {CARD_LIMIT_PATTERN.test(errorMessage) && (
-            <>
-              {' '}
-              <Link to="/pricing">{t('print.upgradeUnlimited')}</Link>
-            </>
-          )}
-        </p>
-      )}
-
-      {state === 'done' && (
-        <div className={styles.doneActions}>
-          <button
-            type="button"
-            className={sharedStyles.btnSecondary}
-            onClick={resetForm}
+      {state === 'idle' && (
+        <>
+          <label
+            htmlFor="print-file"
+            className={`${styles.dropZone} ${dropHover ? styles.dropZoneActive : ''}`}
+            {...dragProps}
           >
-            {t('print.printAnother')}
-          </button>
-        </div>
+            <span className={styles.dropLabel}>{t('print.dropLabel')}</span>
+            <span className={styles.dropHint}>{t('print.or')}</span>
+            <span className={styles.chooseButton}>{t('print.selectFile')}</span>
+            <input
+              ref={fileInputRef}
+              className={styles.fileInput}
+              id="print-file"
+              type="file"
+              accept=".apkg"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+              }}
+            />
+          </label>
+          {pickError != null && (
+            <p className={sharedStyles.notificationDanger}>
+              {pickError}
+              {pickError === messages.wrongType && (
+                <>
+                  {' '}
+                  <Link to="/upload">{t('print.goToUpload')}</Link>
+                </>
+              )}
+            </p>
+          )}
+        </>
       )}
 
-      <button ref={submitRef} type="submit" className={sharedStyles.hidden} />
+      {state === 'done' && (
+        <>
+          <p className={sharedStyles.notificationSuccess}>
+            {t('print.doneMessage')}
+          </p>
+          <div className={styles.doneActions}>
+            <button
+              type="button"
+              className={sharedStyles.btnSecondary}
+              onClick={resetForm}
+            >
+              {t('print.printAnother')}
+            </button>
+          </div>
+        </>
+      )}
+
+      {state !== 'idle' && state !== 'done' && (
+        <PrintPreview
+          state={previewState}
+          imageSrc={previewImage}
+          totalCards={totalCards}
+          previewedCards={previewedCards}
+          paying={paying}
+          freePrintAvailable={effectiveFreePrintAvailable}
+          optionsChanged={optionsChanged}
+          downloadBusy={downloadBusy}
+          passBusy={passBusy}
+          errorMessage={previewError}
+          downloadError={downloadErrorNode}
+          onUpdatePreview={handleUpdatePreview}
+          onDownload={downloadFullPdf}
+          onPass={handlePass}
+          onPreviewAnother={resetForm}
+        />
+      )}
     </form>
   );
 }

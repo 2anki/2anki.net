@@ -30,7 +30,20 @@
     "viewPlans": "Voir les offres",
     "logIn": "Se connecter",
     "upgradeUnlimited": "Passer à l'illimité",
-    "printAnother": "Imprimer un autre paquet"
+    "printAnother": "Imprimer un autre paquet",
+    "previewIsFree": "L'aperçu est gratuit. Tu ne paies que pour télécharger le paquet complet.",
+    "previewOfTotal": "Aperçu — les {{count}} premières cartes sur {{total}}, exactement comme à l'impression",
+    "previewAll_one": "Aperçu — ta carte, exactement comme à l'impression",
+    "previewAll_other": "Aperçu — les {{count}} cartes, exactement comme à l'impression",
+    "previewPaperNote": "Les sauts de page suivent le format de papier choisi ci-dessus.",
+    "updatePreview": "Mettre à jour l'aperçu",
+    "downloadFullPdf": "Télécharger le PDF complet",
+    "usesFreePdf": "Utilise ton 1 PDF gratuit de ce mois",
+    "unlockWithPass": "Prends un pass journée pour imprimer tout le paquet",
+    "seeAllPlans": "Voir tous les forfaits",
+    "previewAnother": "Autre aperçu",
+    "emptyDeck": "Ce paquet n'a aucune carte à imprimer. Choisis un autre .apkg.",
+    "makingPreview": "Création de ton aperçu"
   },
   "import": {
     "title": "Importer dans Notion",

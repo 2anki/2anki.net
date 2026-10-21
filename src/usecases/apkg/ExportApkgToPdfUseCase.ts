@@ -303,6 +303,15 @@ export interface ExportApkgToPdfResult {
   cardCount: number;
 }
 
+export const PREVIEW_CARD_LIMIT = 3;
+
+export interface ExportApkgToPdfPreviewResult {
+  image: Buffer | null;
+  totalCards: number;
+  previewedCards: number;
+  deckName: string;
+}
+
 export default class ExportApkgToPdfUseCase {
   constructor(
     private readonly previewService: ApkgPreviewService,
@@ -314,7 +323,7 @@ export default class ExportApkgToPdfUseCase {
     unlimitedAccess = false,
     options: PdfOptions = DEFAULT_PDF_OPTIONS
   ): Promise<ExportApkgToPdfResult> {
-    const cacheKey = `pdf-export:${Date.now()}`;
+    const cacheKey = `pdf-export:${crypto.randomUUID()}`;
     const parsed = await this.previewService.parse(cacheKey, fileBuffer);
     const meta = this.previewService.getMeta(parsed);
 
@@ -337,6 +346,54 @@ export default class ExportApkgToPdfUseCase {
       }
       throw error;
     }
+  }
+
+  // A free, un-metered look at how the deck prints: the first `limit` cards
+  // (all of them when the deck is smaller) rendered through the same buildHtml
+  // path as the paid PDF, returned as a PNG of the first page. No card limit —
+  // a deck over MAX_CARDS still previews; the limit lives on the download.
+  async preview(
+    fileBuffer: Buffer,
+    options: PdfOptions = DEFAULT_PDF_OPTIONS,
+    limit = PREVIEW_CARD_LIMIT
+  ): Promise<ExportApkgToPdfPreviewResult> {
+    const cacheKey = `pdf-preview:${crypto.randomUUID()}`;
+    const parsed = await this.previewService.parse(cacheKey, fileBuffer);
+    const meta = this.previewService.getMeta(parsed);
+    const deckName =
+      meta.decks.length > 0 ? meta.decks[0].fullName : 'Flashcards';
+
+    if (meta.totalCards === 0) {
+      return { image: null, totalCards: 0, previewedCards: 0, deckName };
+    }
+
+    const { cards } = this.previewService.getCardsPage(
+      parsed,
+      0,
+      limit,
+      '',
+      null,
+      { print: true }
+    );
+
+    const assets = new PdfAssets(parsed);
+    let html: string;
+    try {
+      html = buildHtml(deckName, cards, assets, options.backgroundColor);
+    } catch (error) {
+      if (error instanceof RangeError) throw new PdfRenderCrashedError(error);
+      throw error;
+    }
+    const image = await this.pdfRenderService.renderPreviewImage(
+      { html, assets: assets.files },
+      options
+    );
+    return {
+      image,
+      totalCards: meta.totalCards,
+      previewedCards: cards.length,
+      deckName,
+    };
   }
 
   private async render(
