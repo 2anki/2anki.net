@@ -28,6 +28,7 @@ import {
 import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
+import { getStoredPassToken } from '../anonymousPass';
 import { CONFLICT, NOT_FOUND, OK, UNAUTHORIZED } from './http';
 import { landingCampaignParams } from '../adClick';
 import {
@@ -440,6 +441,17 @@ export class Backend {
     }
     const deck = await response.blob();
     return deck.size > 0 ? deck : null;
+  }
+
+  async resumeAiPreview(): Promise<Response> {
+    const passToken = getStoredPassToken();
+    const headers: Record<string, string> =
+      passToken == null ? {} : { 'X-Pass-Token': passToken };
+    return fetch(`${this.baseURL}upload/ai-preview/resume`, {
+      method: 'post',
+      credentials: 'include',
+      headers,
+    });
   }
 
   async claimHeldDeck(): Promise<ClaimHeldDeckResult> {

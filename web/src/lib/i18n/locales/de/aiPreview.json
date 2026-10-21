@@ -1,0 +1,18 @@
+{
+  "gateAria": "Preview of AI cards and ways to get the full deck",
+  "heading": "Here's what AI made from your file",
+  "sampleNote": "A sample AI wrote from the first part of your file.",
+  "front": "Front",
+  "back": "Back",
+  "primaryCta": "Get all the AI cards — Day Pass {{price}}, no account",
+  "primaryNote": "Builds the full AI deck for this file. The Day Pass lasts 24 hours — no account needed.",
+  "starting": "Starting checkout",
+  "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
+  "secondaryCta": "Continue without AI",
+  "secondaryNote": "Make a deck from your file now, free. No AI, no account needed.",
+  "signupLeadIn": "Or create a free account to save your decks and raise your free limit.",
+  "resuming": "Day Pass active. Building your full AI deck now.",
+  "previewError": "Couldn't make an AI preview from this file. Make your deck without AI, or try a different file.",
+  "badgeIntro": "Turn on AI to see a free sample of the cards Claude writes from your file, then unlock the full deck with a Day Pass.",
+  "toggleLabel": "Write the cards with AI"
+}

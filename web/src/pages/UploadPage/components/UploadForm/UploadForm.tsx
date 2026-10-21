@@ -72,6 +72,7 @@ import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
 import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
 import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
+import { AiPreviewGate } from '../../../../components/AiPreviewGate/AiPreviewGate';
 import { MonthlyLimitPartialOffer } from '../../../../components/MonthlyLimitPartialOffer/MonthlyLimitPartialOffer';
 import {
   ANONYMOUS_CARD_CAP,
@@ -379,6 +380,8 @@ function UploadForm({
     setHeldForPlan,
     heldDeck,
     setHeldDeck,
+    aiPreviewCards,
+    setAiPreviewCards,
     setOverSplit,
     creditsUsed,
     setCreditsUsed,
@@ -480,6 +483,7 @@ function UploadForm({
     setProgressWidth,
     setBatchResult,
     setHeldDeck,
+    setAiPreviewCards,
     setZoneState,
     setStructureRescuedRule,
     recoverDownload: (recoveryUrl, errorMessage) => {
@@ -548,6 +552,13 @@ function UploadForm({
       params.get('from') === 'pass' || params.get('checkout') === 'success'
     );
   });
+  const [returnedFromPassSession] = useState(() => {
+    const params = new URLSearchParams(globalThis.location?.search ?? '');
+    const session = params.get('pass_session');
+    return session != null && session.length > 0;
+  });
+  const [resumingPreview, setResumingPreview] = useState(false);
+  const aiPreviewResumeRef = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated || claimAttemptedRef.current) return;
@@ -616,6 +627,43 @@ function UploadForm({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
+
+  // A visitor who bought a Day Pass from the AI preview comes back with a pass
+  // token and a pass_session marker. Resume the AI conversion of the file they
+  // already uploaded, so they never upload it again. A 404/403 (no preview was
+  // waiting) just drops back to the normal upload form — the pass still works.
+  useEffect(() => {
+    if (aiPreviewResumeRef.current) return;
+    if (!returnedFromPassSession || isAuthenticated) return;
+    if (getStoredPassToken() == null) return;
+    aiPreviewResumeRef.current = true;
+    let cancelled = false;
+    (async () => {
+      setResumingPreview(true);
+      setZoneState('converting');
+      setProgressWidth(10);
+      try {
+        const response = await get2ankiApi().resumeAiPreview();
+        if (cancelled) return;
+        if (response.status === 200) {
+          await applyConversionSuccess(response, conversionSuccessHandlers);
+          return;
+        }
+        setZoneState('idle');
+        setProgressWidth(10);
+      } catch {
+        if (cancelled) return;
+        setZoneState('idle');
+        setProgressWidth(10);
+      } finally {
+        if (!cancelled) setResumingPreview(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returnedFromPassSession, isAuthenticated]);
 
   const leavingRef = useRef(false);
   const leaveTo = (url: string): void => {
@@ -1403,6 +1451,30 @@ function UploadForm({
     }
     attachPdfPageRange(formData);
     formData.set('rescue-rule', rule);
+    setLocalError(null);
+    setZoneState('converting');
+    setProgressWidth(10);
+    setProgressSlow(false);
+    setShowFallback(false);
+    void runFileUpload(formData, files, false);
+  };
+
+  // From the AI preview gate: build the deck from the same file without AI, the
+  // free path up to the no-account cap. The AI flag is forced off so the server
+  // runs the standard parser instead of another preview.
+  const handleContinueWithoutAi = () => {
+    const files = rescueFiles;
+    if (files.length === 0) return;
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('pakker', file, file.name);
+    }
+    for (const [key, value] of Object.entries(globalThis.localStorage)) {
+      formData.append(key, value);
+    }
+    attachPdfPageRange(formData);
+    formData.set('claude-ai-flashcards', 'false');
+    setAiPreviewCards(null);
     setLocalError(null);
     setZoneState('converting');
     setProgressWidth(10);
@@ -2507,6 +2579,16 @@ function UploadForm({
       </div>
     );
 
+  const renderAiPreviewGateState = () =>
+    aiPreviewCards == null ? null : (
+      <div className={formStyles.stateContent}>
+        <AiPreviewGate
+          cards={aiPreviewCards}
+          onContinueWithoutAi={handleContinueWithoutAi}
+        />
+      </div>
+    );
+
   const renderClaimingHeldState = () => (
     <div className={formStyles.stateContent}>
       <p className={formStyles.successPrimary}>
@@ -2697,6 +2779,7 @@ function UploadForm({
     if (zoneState === 'limitReached' && limitInfo) return renderLimitState();
     if (zoneState === 'lockedPdf') return renderLockedPdfState();
     if (zoneState === 'heldForSignup') return null;
+    if (zoneState === 'aiPreviewGate') return null;
     if (zoneState === 'claimingHeld') return renderClaimingHeldState();
     if (zoneState === 'heldReady') return renderHeldReadyState();
     if (zoneState === 'heldExpired') return renderHeldExpiredState();
@@ -2715,7 +2798,10 @@ function UploadForm({
   };
 
   const showChips = zoneState === 'idle' && !validation && !isUploadLocked;
-  const gateVisible = zoneState === 'heldForSignup' && heldDeck != null;
+  const aiPreviewVisible =
+    zoneState === 'aiPreviewGate' && aiPreviewCards != null;
+  const gateVisible =
+    (zoneState === 'heldForSignup' && heldDeck != null) || aiPreviewVisible;
   const showDropboxPanel = showChips && source === 'dropbox';
   const showGoogleDrivePanel = showChips && source === 'google_drive';
   const showLocalPanel = !showChips || source === 'local';
@@ -2764,8 +2850,16 @@ function UploadForm({
 
   return (
     <>
-      {gateVisible && (
+      {resumingPreview && (
+        <p className={formStyles.stateContent} role="status" aria-live="polite">
+          {t('aiPreview:resuming')}
+        </p>
+      )}
+      {zoneState === 'heldForSignup' && heldDeck != null && (
         <div className={zoneClassName}>{renderHeldForSignupState()}</div>
+      )}
+      {aiPreviewVisible && (
+        <div className={zoneClassName}>{renderAiPreviewGateState()}</div>
       )}
       <form encType="multipart/form-data" method="post" onSubmit={handleSubmit}>
         <output aria-live="polite" className={sharedStyles.srOnly}>

@@ -1,10 +1,12 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import UploadForm from '../UploadPage/components/UploadForm/UploadForm';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { track } from '../../lib/analytics/track';
+import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
 import { landingViewProps } from '../../lib/adClick';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
@@ -58,6 +60,9 @@ interface HeroActionProps {
   registerHref: string;
   dayPassPrice: string;
   sample: boolean;
+  showAiToggle: boolean;
+  aiOn: boolean;
+  onToggleAi: () => void;
   t: TFunction<'landing'>;
 }
 
@@ -69,6 +74,9 @@ function renderHeroAction({
   registerHref,
   dayPassPrice,
   sample,
+  showAiToggle,
+  aiOn,
+  onToggleAi,
   t,
 }: Readonly<HeroActionProps>) {
   if (heroSlot != null) {
@@ -90,8 +98,18 @@ function renderHeroAction({
   }
   return (
     <>
+      {showAiToggle && (
+        <label className={styles.aiToggle}>
+          <input type="checkbox" checked={aiOn} onChange={onToggleAi} />
+          <span>{t('aiPreview:toggleLabel')}</span>
+        </label>
+      )}
       <div className={styles.uploadWrapper}>
-        <UploadForm setErrorMessage={setErrorMessage} sample={sample} />
+        <UploadForm
+          setErrorMessage={setErrorMessage}
+          sample={sample}
+          aiOn={showAiToggle && aiOn}
+        />
       </div>
       <p className={styles.secondaryLink}>
         {t('hero.orPrefix', { defaultValue: 'or ' })}
@@ -117,6 +135,19 @@ function LandingPage({
 }: Readonly<LandingPageProps>) {
   const { t } = useTranslation('landing');
   const passPrices = usePassPrices();
+  const { data: userLocals } = useUserLocals();
+  const isSignedIn = userLocals?.user?.id != null;
+  const showAiToggle =
+    !isSignedIn && userLocals?.features?.anonymousAiPreview === true;
+  const [aiOn, setAiOn] = useState(
+    () => globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true'
+  );
+  const toggleAi = () => {
+    const next = !aiOn;
+    saveValueInLocalStorage('claude-ai-flashcards', String(next), null);
+    setAiOn(next);
+    track(next ? 'upload_ai_turned_on' : 'upload_ai_turned_off');
+  };
   const landingViewedRef = useRef(false);
   useEffect(() => {
     persistSignupOrigin(copy.pathname, globalThis.sessionStorage ?? null);
@@ -192,6 +223,9 @@ function LandingPage({
             registerHref,
             dayPassPrice: passPrices['24h'],
             sample: copy.homeHero === true,
+            showAiToggle,
+            aiOn,
+            onToggleAi: toggleAi,
             t,
           })}
           {copy.homeHero === true && <TrustNote />}

@@ -30,6 +30,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setProgressWidth: vi.fn(),
     setBatchResult: vi.fn(),
     setHeldDeck: vi.fn(),
+    setAiPreviewCards: vi.fn(),
     setZoneState: vi.fn(),
     setStructureRescuedRule: vi.fn(),
     recoverDownload: vi.fn(),
@@ -105,6 +106,32 @@ describe('applyConversionSuccess', () => {
       dayPassCard: false,
     });
     expect(handlers.setZoneState).toHaveBeenCalledWith('heldForSignup');
+    expect(handlers.setDownloadLink).not.toHaveBeenCalled();
+    expect(handlers.setZoneState).not.toHaveBeenCalledWith('success');
+  });
+
+  it('routes an ai_preview response to the aiPreviewGate zone with the cards', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          kind: 'ai_preview',
+          cardCount: 2,
+          cards: [
+            { front: 'q1', back: 'a1' },
+            { front: 'q2', back: 'a2' },
+          ],
+        }),
+    } as unknown as Response;
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.setAiPreviewCards).toHaveBeenCalledWith([
+      { front: 'q1', back: 'a1' },
+      { front: 'q2', back: 'a2' },
+    ]);
+    expect(handlers.setZoneState).toHaveBeenCalledWith('aiPreviewGate');
     expect(handlers.setDownloadLink).not.toHaveBeenCalled();
     expect(handlers.setZoneState).not.toHaveBeenCalledWith('success');
   });

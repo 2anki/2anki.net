@@ -157,6 +157,15 @@ import {
   ipRateLimitBucket,
   resolveClientIp,
 } from '../lib/rateLimit/ipHelpers';
+import { generateAiPreview, type AiPreviewCard } from '../lib/claude/aiPreview';
+import { extractPreviewText } from '../lib/upload/extractPreviewText';
+import {
+  anonymousAiPreviewEnabled,
+  previewHoldKey,
+} from '../lib/upload/anonymousAiPreview';
+import { AiPreviewRateLimiter } from '../lib/upload/aiPreviewRateLimiter';
+import { generateAnonymousAiPreview } from '../usecases/uploads/GenerateAnonymousAiPreviewUseCase';
+import type { AiPreviewConversion } from '../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -218,6 +227,12 @@ export interface HeldUploadResponse {
   cardsHeldBack: number;
   totalCards: number;
   dayPassCard?: boolean;
+}
+
+export interface AiPreviewUploadResponse {
+  kind: 'ai_preview';
+  cardCount: number;
+  cards: AiPreviewCard[];
 }
 
 const HELD_DECK_TTL_MS = 24 * 60 * 60 * 1000;
@@ -660,6 +675,7 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
 class UploadService {
   private readonly inFlightConversions = new Set<string>();
   private readonly holdRateLimiter: InMemoryRateLimiter;
+  private readonly aiPreviewRateLimiter: AiPreviewRateLimiter;
 
   getUploadsByOwner(owner: number) {
     return this.uploadRepository.getUploadsByOwner(owner);
@@ -687,6 +703,7 @@ class UploadService {
         perKeyMax: HELD_DECK_PER_IP_MAX,
         globalMax: HELD_DECK_GLOBAL_MAX,
       });
+    this.aiPreviewRateLimiter = new AiPreviewRateLimiter();
   }
 
   private async resolveSyncCreditsUsed(
@@ -1264,6 +1281,13 @@ class UploadService {
           String(owner),
           paying
         );
+      }
+
+      if (owner == null && !paying && settings.claudeAIFlashcards) {
+        const preview = await this.runAnonymousAiPreview(req, res, files);
+        if (preview != null) {
+          return res.status(200).json(preview);
+        }
       }
 
       return await this.handleSyncUpload(req, res, settings, ws, paying);
@@ -2269,6 +2293,120 @@ class UploadService {
     const cookies = req.cookies as Record<string, unknown> | undefined;
     const anonId = cookies?.anon_id;
     return typeof anonId === 'string' && anonId.length > 0 ? anonId : null;
+  }
+
+  // A visitor without an account who turned AI on: run the capped preview and,
+  // when it produces cards, answer with them so the client can show the sample
+  // and the Day Pass offer. Returns null to mean "nothing new" — the caller then
+  // runs today's free conversion. The feature flag is read here first so a
+  // flag-off upload never reads the file bytes for a preview it won't run.
+  private async runAnonymousAiPreview(
+    req: express.Request,
+    res: express.Response,
+    files: UploadedFile[]
+  ): Promise<AiPreviewUploadResponse | null> {
+    if (files.length !== 1 || isImageOnlyUpload(files)) {
+      return null;
+    }
+    if (!(await anonymousAiPreviewEnabled())) {
+      return null;
+    }
+    const file = files[0];
+    const bytes = await readUploadBytes(file);
+    if (bytes == null) {
+      return null;
+    }
+    const requestId = res.locals.requestId as string | undefined;
+    const cards = await generateAnonymousAiPreview(
+      {
+        anonId: this.resolveAnonId(req),
+        ipKey: hashIp(ipRateLimitBucket(resolveClientIp(req))),
+        filename: file.originalname,
+        bytes,
+        requestId,
+      },
+      {
+        isEnabled: anonymousAiPreviewEnabled,
+        allow: (anonId, ipKey) =>
+          this.aiPreviewRateLimiter.allow(anonId, ipKey),
+        preview: async (filename, fileBytes, rid) => {
+          const text = await extractPreviewText(filename, fileBytes);
+          if (text == null) {
+            return [];
+          }
+          return generateAiPreview(text, { requestId: rid });
+        },
+        storeSource: (anonId, filename, fileBytes) =>
+          this.storeAiPreviewSource(anonId, filename, fileBytes),
+        onShown: (anonId, cardCount) => {
+          track('ai_preview_shown', {
+            anonymousId: anonId,
+            props: { ...this.baseFunnelProps(req), card_count: cardCount },
+          });
+        },
+      }
+    );
+    if (cards == null) {
+      return null;
+    }
+    return { kind: 'ai_preview', cardCount: cards.length, cards };
+  }
+
+  // Keep the uploaded source for the resume, keyed to the visitor under the
+  // preview namespace so the sign-up claim never matches it. Reuses the held
+  // deck storage and 24h TTL; a failure throws to the caller, which still shows
+  // the preview (only the later one-click resume is lost).
+  private async storeAiPreviewSource(
+    anonId: string,
+    filename: string,
+    bytes: Buffer
+  ): Promise<void> {
+    const storage = new StorageHandler();
+    const storageKey = `held/${randomUUID()}`;
+    await storage.uploadFile(storageKey, bytes);
+    await this.heldDeckRepository.insert({
+      storageKey,
+      anonId: previewHoldKey(anonId),
+      filename,
+      cardCount: 0,
+      cardsHeldBack: 0,
+      expiresAt: new Date(Date.now() + HELD_DECK_TTL_MS),
+    });
+  }
+
+  // Runs the full AI conversion of a stored preview source for an anonymous
+  // pass holder. paying is true so PrepareDeck takes the Claude branch and the
+  // no-account cap does not apply; anonymousPassId threads through so the credit
+  // guard meters the call against the pass and fails closed on an exhausted one.
+  async convertStoredFileWithAiForPass(
+    anonymousPassId: number,
+    file: UploadedFile,
+    requestId: string | undefined
+  ): Promise<AiPreviewConversion> {
+    const settings = new CardOption({ 'claude-ai-flashcards': 'true' });
+    const ws = new Workspace(true, 'fs');
+    const useCase = new GeneratePackagesUseCase();
+    const { packages } = await useCase.execute(
+      true,
+      [file],
+      settings,
+      ws,
+      undefined,
+      null,
+      { requestId, anonymousPassId }
+    );
+    const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
+    if (totalCards === 0) {
+      throw new EmptyDeckError();
+    }
+    const first = packages[0];
+    const apkg = await ws.getFirstAPKG();
+    if (!apkg) {
+      throw new Error(
+        `Could not produce APKG for ${first?.name ?? 'untitled'}`
+      );
+    }
+    return { apkg, cardCount: totalCards, deckName: toText(first.name) };
   }
 
   private async resolveAnonymousPartialArm(

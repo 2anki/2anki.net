@@ -33,7 +33,7 @@ const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
 const SIGNUP_RECENCY_MS = 10 * 60 * 1000;
 const AI_FLAG_KEY = 'claude-ai-flashcards';
 
-type AiBadgeState = 'anon' | 'free' | 'on' | 'off';
+type AiBadgeState = 'anon' | 'anonPreview' | 'free' | 'on' | 'off';
 
 interface Props {
   setErrorMessage: ErrorHandlerType;
@@ -42,9 +42,10 @@ interface Props {
 function deriveAiBadgeState(
   isSignedIn: boolean,
   isPaying: boolean,
-  isAiOn: boolean
+  isAiOn: boolean,
+  previewEnabled: boolean
 ): AiBadgeState {
-  if (!isSignedIn) return 'anon';
+  if (!isSignedIn) return previewEnabled ? 'anonPreview' : 'anon';
   if (!isPaying) return 'free';
   if (isAiOn) return 'on';
   return 'off';
@@ -95,8 +96,14 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     setAiFlag(globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true');
   }, [isSignedIn]);
 
-  const isAiOn = isPaying && aiFlag;
-  const aiBadgeState = deriveAiBadgeState(isSignedIn, isPaying, isAiOn);
+  const previewEnabled = userLocals?.features?.anonymousAiPreview === true;
+  const isAiOn = isSignedIn ? isPaying && aiFlag : previewEnabled && aiFlag;
+  const aiBadgeState = deriveAiBadgeState(
+    isSignedIn,
+    isPaying,
+    isAiOn,
+    previewEnabled
+  );
   const aiCredits = useAiCredits(aiBadgeState === 'on');
 
   const toggleAi = () => {
@@ -350,6 +357,28 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             </Link>
             <span>.</span>
           </span>
+        )}
+        {aiBadgeState === 'anonPreview' && (
+          <>
+            <button
+              type="button"
+              className={styles.aiToggle}
+              aria-pressed={isAiOn}
+              aria-label={
+                isAiOn ? t('upload.page.turnAiOff') : t('upload.page.turnAiOn')
+              }
+              onClick={toggleAi}
+            >
+              <span
+                className={isAiOn ? styles.badgeSuccess : styles.badgeWarning}
+              >
+                {isAiOn ? t('upload.page.aiOn') : t('upload.page.aiOff')}
+              </span>
+            </button>
+            <span className={styles.aiOffBadgeBody}>
+              <span> {t('aiPreview:badgeIntro')}</span>
+            </span>
+          </>
         )}
       </div>
       <UploadForm setErrorMessage={setErrorMessage} aiOn={isAiOn} />
