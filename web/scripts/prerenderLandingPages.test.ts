@@ -54,7 +54,13 @@ beforeEach(() => {
 describe('emitLandingPages', () => {
   it('writes one HTML file per landing path', () => {
     const files = emitLandingPages(buildDir);
-    expect(files).toHaveLength(44);
+    expect(files).toHaveLength(46);
+    expect(
+      files.some((p) => p.endsWith('convert/notion-toggles-to-anki/index.html'))
+    ).toBe(true);
+    expect(
+      files.some((p) => p.endsWith('convert/notion-export-to-anki/index.html'))
+    ).toBe(true);
     expect(files.some((p) => p.endsWith('notion-to-anki/index.html'))).toBe(
       true
     );
