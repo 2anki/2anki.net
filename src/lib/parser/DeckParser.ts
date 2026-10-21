@@ -139,6 +139,7 @@ export interface DeckParserInput {
   onProgress?: (step: string) => void;
   pdfCredential?: string;
   userId?: number | null;
+  anonymousPassId?: number | null;
   requestId?: string;
   knownGuids?: KnownGuids;
   uploadIdentity?: UploadIdentityContext;

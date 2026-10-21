@@ -34,6 +34,7 @@ describe('recordClaudeUsage', () => {
 
     expect(trackMock).toHaveBeenCalledWith('ai_usage_recorded', {
       userId: 42,
+      anonymousPassId: null,
       props: {
         surface: 'chat',
         model: 'claude-sonnet-5',
@@ -60,10 +61,39 @@ describe('recordClaudeUsage', () => {
 
     expect(trackMock).toHaveBeenCalledWith('ai_usage_recorded', {
       userId: 42,
+      anonymousPassId: null,
       props: expect.objectContaining({
         request_id: '0f1e2d3c-4b5a-4697-8877-665544332211',
       }),
     });
+  });
+
+  it('attributes usage to an anonymous pass when no user id is present', () => {
+    recordClaudeUsage({
+      surface: 'conversion',
+      model: 'claude-sonnet-5',
+      usage: { input_tokens: 100, output_tokens: 50 },
+      anonymousPassId: 7,
+    });
+
+    expect(trackMock).toHaveBeenCalledWith('ai_usage_recorded', {
+      userId: null,
+      anonymousPassId: 7,
+      props: expect.objectContaining({ surface: 'conversion' }),
+    });
+  });
+
+  it('stamps the pass id into the log line when billing an anonymous pass', () => {
+    recordClaudeUsage({
+      surface: 'conversion',
+      model: 'claude-sonnet-5',
+      usage: { input_tokens: 100, output_tokens: 50 },
+      anonymousPassId: 7,
+    });
+
+    expect(console.info).toHaveBeenCalledWith(
+      expect.stringContaining('user=pass:7 input=100')
+    );
   });
 
   it('omits request_id from the tracked props when none is known', () => {

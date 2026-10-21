@@ -7,6 +7,7 @@ const PROPS_MAX_BYTES = 1024;
 export interface TrackOptions {
   userId?: number | null;
   anonymousId?: string | null;
+  anonymousPassId?: number | null;
   props?: Record<string, unknown>;
 }
 
@@ -21,7 +22,7 @@ function stripPiiKeys(props: Record<string, unknown>): Record<string, unknown> {
 }
 
 export function track(name: KnownEvent, options: TrackOptions = {}): void {
-  const { userId, anonymousId, props = {} } = options;
+  const { userId, anonymousId, anonymousPassId, props = {} } = options;
   const safeProps = stripPiiKeys(props);
   const serialized = JSON.stringify(safeProps);
   if (serialized.length > PROPS_MAX_BYTES) {
@@ -34,6 +35,7 @@ export function track(name: KnownEvent, options: TrackOptions = {}): void {
     name,
     user_id: userId ?? null,
     anonymous_id: anonymousId ?? null,
+    anonymous_pass_id: anonymousPassId ?? null,
     props: safeProps,
     created_at: new Date(),
   });

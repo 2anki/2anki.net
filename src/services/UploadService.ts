@@ -84,7 +84,7 @@ import {
   PDF_UNREADABLE_REASON,
 } from '../usecases/jobs/jobFailureReason';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
-import { getOwner } from '../lib/User/getOwner';
+import { getAnonymousPassId, getOwner } from '../lib/User/getOwner';
 import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import { censusUploadedFile } from '../infrastracture/adapters/fileConversion/documentStructureCensus';
 import { formatDeckName } from '../lib/formatDeckName';
@@ -1499,6 +1499,7 @@ class UploadService {
           uploadIdentity,
           existingCardFingerprints,
           requestId: res.locals.requestId,
+          anonymousPassId: getAnonymousPassId(res),
         }
       )
       .then(async ({ packages, warnings, cardFingerprints }) => {
@@ -1735,6 +1736,7 @@ class UploadService {
         uploadIdentity,
         existingCardFingerprints,
         requestId: res.locals.requestId,
+        anonymousPassId: getAnonymousPassId(res),
         ...(cardLimit != null ? { cardLimit } : {}),
       }
     );

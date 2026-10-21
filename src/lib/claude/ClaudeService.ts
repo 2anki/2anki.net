@@ -1064,6 +1064,7 @@ async function generateDeckInfoFromChunk(
 ): Promise<DeckInfo[]> {
   const tChunk0 = Date.now();
   const userId = attribution?.userId;
+  const anonymousPassId = attribution?.anonymousPassId;
   const requestId = attribution?.requestId;
   const client = getAnthropicClient();
 
@@ -1172,6 +1173,7 @@ async function generateDeckInfoFromChunk(
     model: response.model,
     usage: response.usage,
     userId,
+    anonymousPassId,
     requestId,
     durationMs: apiMs,
   });
@@ -1258,6 +1260,7 @@ export interface PdfImageFallbackContext {
 export interface GenerateDeckInfoOptions {
   isPaying?: boolean;
   userId?: number | null;
+  anonymousPassId?: number | null;
   requestId?: string;
   comprehensive?: boolean;
   pdfImageFallback?: PdfImageFallbackContext;
@@ -1266,15 +1269,35 @@ export interface GenerateDeckInfoOptions {
 
 // Who to bill and which request started it: the pair every [Claude] and
 // [claude-usage] line carries so spend can be joined back to a request (#4198).
+// An anonymous pass holder bills against their pass row instead of a user id.
 export interface SpendAttribution {
   userId?: number | null;
+  anonymousPassId?: number | null;
   requestId?: string;
 }
 
 function spendAttributionOf(
   options: GenerateDeckInfoOptions | undefined
 ): SpendAttribution {
-  return { userId: options?.userId, requestId: options?.requestId };
+  return {
+    userId: options?.userId,
+    anonymousPassId: options?.anonymousPassId,
+    requestId: options?.requestId,
+  };
+}
+
+// The credit-guard subject for a conversion: a signed-in user, an anonymous
+// pass holder, or neither (truly anonymous — the guard then no-ops and the
+// upstream isPaying gate is what keeps AI off).
+function aiSubjectOf(
+  source:
+    | { userId?: number | null; anonymousPassId?: number | null }
+    | undefined
+): { userId: number | null; anonymousPassId: number | null } {
+  return {
+    userId: source?.userId ?? null,
+    anonymousPassId: source?.anonymousPassId ?? null,
+  };
 }
 
 interface ChunkUsage {
@@ -1635,11 +1658,12 @@ async function generateDeckInfoUncached(
       userInstructions,
       onProgress,
       options.userId,
-      options.requestId
+      options.requestId,
+      options.anonymousPassId
     );
   }
 
-  await assertAiBudget(options?.userId);
+  await assertAiBudget(aiSubjectOf(options));
 
   if (isImageOnlyContent(htmlContent)) {
     console.info('[Claude] Skipping conversion: image-only input', {
@@ -1693,7 +1717,7 @@ async function generateDeckInfoUncached(
             runChunkWithTruncationRetry(
               `<h1>${chunk.anchor}</h1>\n${chunk.bodyChunk}`,
               (content) =>
-                withAiBudget(options?.userId, () =>
+                withAiBudget(aiSubjectOf(options), () =>
                   generateDeckInfoFromChunk(
                     content,
                     pageStyle,
@@ -1776,7 +1800,7 @@ async function generateDeckInfoUncached(
     chunks.map(
       (chunk, i) => () =>
         runChunkWithTruncationRetry(chunk, (content) =>
-          withAiBudget(options?.userId, () =>
+          withAiBudget(aiSubjectOf(options), () =>
             generateDeckInfoFromChunk(
               content,
               pageStyle,
@@ -1833,7 +1857,7 @@ async function runFloorV1(
     chunks.map(
       (chunk, i) => () =>
         runChunkWithTruncationRetry(chunk, (content) =>
-          withAiBudget(attribution?.userId, () =>
+          withAiBudget(aiSubjectOf(attribution), () =>
             generateDeckInfoFromChunk(
               content,
               pageStyle,

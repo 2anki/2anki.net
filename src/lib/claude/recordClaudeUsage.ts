@@ -8,12 +8,21 @@ export interface RecordClaudeUsageOptions {
   model: string | undefined | null;
   usage: ClaudeUsage | undefined | null;
   userId?: number | null;
+  anonymousPassId?: number | null;
   requestId?: string;
   durationMs?: number;
 }
 
 export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
-  const { surface, model, usage, userId, requestId, durationMs } = options;
+  const {
+    surface,
+    model,
+    usage,
+    userId,
+    anonymousPassId,
+    requestId,
+    durationMs,
+  } = options;
   if (usage == null) return;
   const input = usage.input_tokens ?? 0;
   const output = usage.output_tokens ?? 0;
@@ -21,12 +30,15 @@ export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
   const cacheRead = usage.cache_read_input_tokens ?? 0;
   const costUsd = computeUsageCostUsd(model, usage);
   const request = requestId ? ` request=${requestId}` : '';
+  const biller =
+    userId ?? (anonymousPassId != null ? `pass:${anonymousPassId}` : 'anon');
   console.info(
-    `[claude-usage] surface=${surface} model=${model ?? 'unknown'} user=${userId ?? 'anon'}${request} input=${input} output=${output} cache_create=${cacheCreate} cache_read=${cacheRead} cost_usd=${costUsd}`
+    `[claude-usage] surface=${surface} model=${model ?? 'unknown'} user=${biller}${request} input=${input} output=${output} cache_create=${cacheCreate} cache_read=${cacheRead} cost_usd=${costUsd}`
   );
   try {
     track('ai_usage_recorded', {
       userId: userId ?? null,
+      anonymousPassId: anonymousPassId ?? null,
       props: {
         surface,
         model: model ?? 'unknown',

@@ -49,6 +49,7 @@ describe('configureUserLocal — anonymous pass token', () => {
 
     expect(res.locals.subscriber).toBe(true);
     expect(res.locals.passKind).toBe('24h');
+    expect(res.locals.anonymousPassId).toBe(1);
   });
 
   it('does not set subscriber=true for an expired anonymous pass token', async () => {
@@ -74,6 +75,7 @@ describe('configureUserLocal — anonymous pass token', () => {
     );
 
     expect(res.locals.subscriber).toBeUndefined();
+    expect(res.locals.anonymousPassId).toBeUndefined();
   });
 
   it('does not set subscriber=true when no X-Pass-Token header is present', async () => {
