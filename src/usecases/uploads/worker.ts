@@ -11,6 +11,7 @@ import CardOption from '../../lib/parser/Settings/CardOption';
 import { processUploadedPdf } from './processUploadedPdf';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
+import pLimit from 'p-limit';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
@@ -27,6 +28,9 @@ import {
   isXmlFile,
 } from '../../lib/storage/checks';
 import { getPackagesFromZip } from './getPackagesFromZip';
+import { liftDecksToParent } from './liftDecksToParent';
+import { resolvePerWorkerPythonCap } from '../../lib/pythonWorkerBudget';
+import { isWorkerTerminationError } from '../../lib/workerTermination';
 import Workspace from '../../lib/parser/WorkSpace';
 import { detectOverSplit } from '../../lib/parser/detectOverSplit';
 import { isZipContentFileSupported } from './isZipContentFileSupported';
@@ -352,6 +356,75 @@ async function processFile(
   return { packages, warnings, cardsHeldBack, emptyReason, rescueCandidates };
 }
 
+// Files in one upload are independent conversions, so they can run side by
+// side. Two cases stay sequential: the AI cross-file dedup state depends on
+// file order, and each zip already converts its own decks in parallel under
+// the per-worker Python cap and sizes its in-memory extraction for one archive
+// at a time, so two zips at once would exceed both budgets.
+function canConvertInParallel(
+  files: UploadedFile[],
+  crossFileDedup: CrossFileDedupState | undefined
+): boolean {
+  return (
+    files.length > 1 &&
+    crossFileDedup == null &&
+    !files.some(
+      (file) =>
+        isCompressedFile(file.originalname) || isCompressedFile(file.key)
+    )
+  );
+}
+
+async function convertInSequence(
+  files: UploadedFile[],
+  workspace: Workspace,
+  convert: (file: UploadedFile, ws: Workspace) => Promise<FileResult>
+): Promise<FileResult[]> {
+  const results: FileResult[] = [];
+  for (const file of files) {
+    results.push(await convert(file, workspace));
+  }
+  return results;
+}
+
+// Each file gets its own workspace because CustomExporter writes
+// deck_info.json at a fixed path. Decks are lifted back and results returned
+// in upload order, so the output matches the sequential path. The first
+// failure stops queued files from starting, and a restart outranks an
+// ordinary failure so the upload is reported as interrupted.
+async function convertInParallel(
+  files: UploadedFile[],
+  workspace: Workspace,
+  convert: (file: UploadedFile, ws: Workspace) => Promise<FileResult>
+): Promise<FileResult[]> {
+  const limit = pLimit(resolvePerWorkerPythonCap());
+  const fileWorkspaces = files.map(() => Workspace.subdir(workspace.location));
+  const failures = new Map<number, unknown>();
+  const results = await Promise.all(
+    files.map((file, index) =>
+      limit(async (): Promise<FileResult | null> => {
+        if (failures.size > 0) return null;
+        try {
+          return await convert(file, fileWorkspaces[index]);
+        } catch (error) {
+          failures.set(index, error);
+          return null;
+        }
+      })
+    )
+  );
+  if (failures.size > 0) {
+    const inUploadOrder = [...failures.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, error]) => error);
+    throw inUploadOrder.find(isWorkerTerminationError) ?? inUploadOrder[0];
+  }
+  for (const fileWorkspace of fileWorkspaces) {
+    await liftDecksToParent(fileWorkspace, workspace);
+  }
+  return results.filter((result): result is FileResult => result != null);
+}
+
 async function doGenerationWork(
   task: UploadGenerationTask,
   onProgress: (step: string) => void
@@ -393,14 +466,13 @@ async function doGenerationWork(
       ? createCrossFileDedupState(existingCardFingerprints ?? [])
       : undefined;
 
-  for (const file of files) {
-    const fileContents = getFileContents(file, enqueuedAt);
-    const result = await processFile(
+  const convert = (file: UploadedFile, fileWorkspace: Workspace) =>
+    processFile(
       file,
-      fileContents,
+      getFileContents(file, enqueuedAt),
       paying,
       settings,
-      workspace,
+      fileWorkspace,
       onProgress,
       userId,
       knownGuids,
@@ -410,6 +482,11 @@ async function doGenerationWork(
       cardLimit,
       files.length === 1
     );
+  const results = canConvertInParallel(files, crossFileDedup)
+    ? await convertInParallel(files, workspace, convert)
+    : await convertInSequence(files, workspace, convert);
+
+  for (const result of results) {
     packages = packages.concat(result.packages);
     warnings.push(...result.warnings);
     cardsHeldBack += result.cardsHeldBack ?? 0;
