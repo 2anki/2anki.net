@@ -323,7 +323,7 @@ export default class ExportApkgToPdfUseCase {
     unlimitedAccess = false,
     options: PdfOptions = DEFAULT_PDF_OPTIONS
   ): Promise<ExportApkgToPdfResult> {
-    const cacheKey = `pdf-export:${Date.now()}`;
+    const cacheKey = `pdf-export:${crypto.randomUUID()}`;
     const parsed = await this.previewService.parse(cacheKey, fileBuffer);
     const meta = this.previewService.getMeta(parsed);
 
@@ -357,7 +357,7 @@ export default class ExportApkgToPdfUseCase {
     options: PdfOptions = DEFAULT_PDF_OPTIONS,
     limit = PREVIEW_CARD_LIMIT
   ): Promise<ExportApkgToPdfPreviewResult> {
-    const cacheKey = `pdf-preview:${Date.now()}`;
+    const cacheKey = `pdf-preview:${crypto.randomUUID()}`;
     const parsed = await this.previewService.parse(cacheKey, fileBuffer);
     const meta = this.previewService.getMeta(parsed);
     const deckName =

@@ -299,6 +299,32 @@ describe('ExportApkgToPdfUseCase', () => {
       options
     );
   });
+
+  it('uses a unique cache key per export so a frozen clock cannot cross decks', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-21T00:00:00.000Z'));
+    try {
+      previewService.parse.mockResolvedValue(makeParsed(1));
+      previewService.getMeta.mockReturnValue(makeMeta(1));
+      previewService.getCardsPage.mockReturnValue({
+        cards: [makeCard(1)],
+        nextCursor: null,
+        total: 1,
+      });
+      pdfRenderService.renderDocument.mockResolvedValue(Buffer.from('%PDF'));
+
+      await useCase.execute(Buffer.from('deck-a'));
+      await useCase.execute(Buffer.from('deck-b'));
+
+      const keyA = previewService.parse.mock.calls[0][0];
+      const keyB = previewService.parse.mock.calls[1][0];
+      expect(keyA).not.toBe(keyB);
+      expect(keyA).toMatch(/^pdf-export:/);
+      expect(keyB).toMatch(/^pdf-export:/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('ExportApkgToPdfUseCase.preview', () => {
@@ -415,5 +441,43 @@ describe('ExportApkgToPdfUseCase.preview', () => {
     const [doc, forwarded] = pdfRenderService.renderPreviewImage.mock.calls[0];
     expect(doc.html).toContain('background:#1a2b3c');
     expect(forwarded).toEqual(options);
+  });
+
+  it('uses a unique cache key per preview so a frozen clock cannot cross decks', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-21T00:00:00.000Z'));
+    try {
+      previewService.parse
+        .mockResolvedValueOnce(makeParsed(1))
+        .mockResolvedValueOnce(makeParsed(2));
+      previewService.getMeta
+        .mockReturnValueOnce(makeMeta(1))
+        .mockReturnValueOnce(makeMeta(2));
+      previewService.getCardsPage
+        .mockReturnValueOnce({
+          cards: [makeCard(1)],
+          nextCursor: null,
+          total: 1,
+        })
+        .mockReturnValueOnce({
+          cards: [makeCard(2), makeCard(3)],
+          nextCursor: null,
+          total: 2,
+        });
+      pdfRenderService.renderPreviewImage.mockResolvedValue(Buffer.from('png'));
+
+      const first = await useCase.preview(Buffer.from('deck-a'), undefined, 3);
+      const second = await useCase.preview(Buffer.from('deck-b'), undefined, 3);
+
+      const keyA = previewService.parse.mock.calls[0][0];
+      const keyB = previewService.parse.mock.calls[1][0];
+      expect(keyA).not.toBe(keyB);
+      expect(keyA).toMatch(/^pdf-preview:/);
+      expect(keyB).toMatch(/^pdf-preview:/);
+      expect(first.previewedCards).toBe(1);
+      expect(second.previewedCards).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

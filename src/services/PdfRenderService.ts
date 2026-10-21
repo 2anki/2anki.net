@@ -34,11 +34,26 @@ const PREVIEW_WIDTH_PX: Record<
   Legal: { portrait: 816, landscape: 1344 },
 };
 
-function previewWidthPx(options?: PdfOptions): number {
+export interface PreviewClip {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// The preview promises the FIRST page only, so the screenshot is clipped to a
+// single page for the chosen paper size and orientation. Without the clip a
+// tall card (huge back, many images) would screenshot the whole document and
+// spike memory at deviceScaleFactor 2.
+export function previewClip(options?: PdfOptions): PreviewClip {
   const paper = PREVIEW_WIDTH_PX[options?.paperSize ?? 'A4'];
-  return options?.orientation === 'landscape'
-    ? paper.landscape
-    : paper.portrait;
+  const landscape = options?.orientation === 'landscape';
+  return {
+    x: 0,
+    y: 0,
+    width: landscape ? paper.landscape : paper.portrait,
+    height: landscape ? paper.portrait : paper.landscape,
+  };
 }
 
 // Asset names land on disk inside the render directory, so only a flat name
@@ -299,12 +314,13 @@ export default class PdfRenderService {
     options?: PdfOptions
   ): Promise<Buffer> {
     await page.emulateMediaType('print');
+    const clip = previewClip(options);
     await page.setViewport({
-      width: previewWidthPx(options),
-      height: 1024,
+      width: clip.width,
+      height: clip.height,
       deviceScaleFactor: 2,
     });
-    const png = await page.screenshot({ type: 'png', fullPage: true });
+    const png = await page.screenshot({ type: 'png', clip });
     return Buffer.from(png);
   }
 }

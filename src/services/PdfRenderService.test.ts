@@ -1,6 +1,47 @@
-import PdfRenderService from './PdfRenderService';
+import PdfRenderService, { previewClip } from './PdfRenderService';
+import type { PdfOptions } from '../usecases/apkg/ExportApkgToPdfUseCase';
 
 const PUPPETEER_AVAILABLE = process.env.PUPPETEER_AVAILABLE === 'true';
+
+function options(overrides: Partial<PdfOptions>): PdfOptions {
+  return {
+    backgroundColor: '#ffffff',
+    paperSize: 'A4',
+    orientation: 'portrait',
+    margins: 'normal',
+    ...overrides,
+  };
+}
+
+describe('previewClip', () => {
+  it('clips to one A4 portrait page by default', () => {
+    expect(previewClip()).toEqual({ x: 0, y: 0, width: 794, height: 1123 });
+  });
+
+  it('swaps width and height for landscape', () => {
+    expect(previewClip(options({ orientation: 'landscape' }))).toEqual({
+      x: 0,
+      y: 0,
+      width: 1123,
+      height: 794,
+    });
+  });
+
+  it('matches Letter and Legal page sizes', () => {
+    expect(previewClip(options({ paperSize: 'Letter' }))).toEqual({
+      x: 0,
+      y: 0,
+      width: 816,
+      height: 1056,
+    });
+    expect(previewClip(options({ paperSize: 'Legal' }))).toEqual({
+      x: 0,
+      y: 0,
+      width: 816,
+      height: 1344,
+    });
+  });
+});
 
 (PUPPETEER_AVAILABLE ? describe : describe.skip)('PdfRenderService', () => {
   it('renders simple HTML to a PDF buffer', async () => {

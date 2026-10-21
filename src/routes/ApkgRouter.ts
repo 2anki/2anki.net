@@ -5,6 +5,12 @@ import RequireAuthentication from './middleware/RequireAuthentication';
 import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import { printQuotaMiddleware } from './middleware/PrintQuotaMiddleware';
 import { ipRateLimit } from './middleware/ipRateLimit';
+import {
+  concurrencyLimit,
+  ownerRateLimit,
+} from './middleware/previewRenderLimit';
+import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
+import { ConcurrencyLimiter } from '../lib/rateLimit/ConcurrencyLimiter';
 import ApkgController from '../controllers/ApkgController';
 import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
 import DownloadService from '../services/DownloadService';
@@ -265,14 +271,26 @@ const ApkgRouter = () => {
     limits: { fileSize: 100 * 1024 * 1024 },
   });
 
+  // Bound the free preview three ways, since it launches a fresh Chrome per
+  // request without spending the user's monthly print: per IP, per owner, and
+  // a process-wide cap on concurrent renders. The concurrency slot is taken
+  // before the upload so a rejected request never writes a temp file.
+  const previewOwnerLimiter = new InMemoryRateLimiter({
+    windowMs: 60_000,
+    perKeyMax: 10,
+    globalMax: 120,
+  });
+  const previewRenderConcurrency = new ConcurrencyLimiter(2);
+
   // Free, un-metered preview of the first cards: no printQuotaMiddleware and
-  // never increments print usage. ipRateLimit guards the render cost since any
-  // signed-in user can call it without spending their monthly print.
+  // never increments print usage.
   router.post(
     '/api/apkg/pdf/preview',
     RequireAllowedOrigin,
     RequireAuthentication,
     ipRateLimit(20),
+    ownerRateLimit(previewOwnerLimiter),
+    concurrencyLimit(previewRenderConcurrency),
     previewUpload.single('file'),
     normalizeUploadFilenames,
     (req, res) => controller.previewPdf(req, res)
