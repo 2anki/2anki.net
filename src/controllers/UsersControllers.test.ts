@@ -2757,6 +2757,31 @@ describe('UsersController.getLocals', () => {
     );
   });
 
+  it('answers with the Day Pass card off when the flag read fails', async () => {
+    vi.mocked(getFeatureFlag).mockRejectedValueOnce(new Error('db down'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const userService = {
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UsersService;
+    const authService = {
+      getUserFrom: vi.fn().mockResolvedValue(null),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const req = { cookies: {} } as unknown as express.Request;
+    const res = {
+      locals: {},
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
+
+    await controller.getLocals(req, res);
+
+    expect(res.json.mock.calls[0][0].features.anonymousDayPassCard).toBe(false);
+  });
+
   it('includes email_verified in the user object', async () => {
     const mockUser = {
       id: 1,

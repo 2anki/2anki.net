@@ -368,7 +368,10 @@ class UsersController {
       anonymousDayPassCard: await getFeatureFlag(
         ANONYMOUS_DAY_PASS_CARD_FLAG,
         false
-      ).catch(() => false),
+      ).catch((error: unknown) => {
+        console.error('[locals] feature flag read failed', error);
+        return false;
+      }),
     };
 
     // featureFlags.kiUI = user?.patreon || res.locals.subscriber;

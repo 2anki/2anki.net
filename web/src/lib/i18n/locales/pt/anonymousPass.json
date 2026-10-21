@@ -10,7 +10,7 @@
   "reason": "Este baralho tem {{total}} cartões. Uma conta gratuita cobre {{monthly}} por mês. Um Day Pass dá todos eles agora, sem conta.",
   "cardCtaTotal": "Obter os {{total}} cartões agora",
   "cardCtaEvery": "Obter todos os cartões agora",
-  "passActive": "O seu Day Pass começa assim que o pagamento for concluído. Depois, solte o arquivo de novo para receber todos os cartões.",
+  "passActive": "Assim que o pagamento for concluído, solte o arquivo de novo para começar seu Day Pass e receber todos os cartões.",
   "checkoutError": "Não foi possível iniciar o pagamento. Tente de novo ou escreva para support@2anki.net.",
   "starting": "Iniciando o checkout"
 }
