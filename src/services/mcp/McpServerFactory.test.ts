@@ -47,6 +47,20 @@ describe('buildMcpServer', () => {
     ]);
   });
 
+  it('describes each tool without instructing the model', () => {
+    const server = buildMcpServer(buildContext());
+    const registered = (
+      server as unknown as {
+        _registeredTools: Record<string, { description?: string }>;
+      }
+    )._registeredTools;
+    for (const tool of Object.values(registered)) {
+      expect(tool.description).not.toMatch(
+        /\b(call|read it yourself|do not ask|treat it as)\b/i
+      );
+    }
+  });
+
   it('mirrors each tool title into annotations.title', () => {
     const server = buildMcpServer(buildContext());
     const registered = (
