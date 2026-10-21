@@ -48,6 +48,13 @@ function asAnonymous() {
   } as ReturnType<typeof useUserLocals>);
 }
 
+function asAnonymousWithCardFlag() {
+  mockedUseUserLocals.mockReturnValue({
+    data: { features: { anonymousDayPassCard: true } },
+    isLoading: false,
+  } as ReturnType<typeof useUserLocals>);
+}
+
 function asLoading() {
   mockedUseUserLocals.mockReturnValue({
     data: undefined,
@@ -320,11 +327,12 @@ describe('LimitPage — anonymous variant', () => {
 describe('LimitPage — anonymous Day Pass card variant', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    asAnonymous();
+    asAnonymousWithCardFlag();
   });
 
-  it('keeps today single-card layout when no card count is passed', () => {
-    renderPage(['/limit']);
+  it('keeps today single-card layout when the flag is off, even with a card count', () => {
+    asAnonymous();
+    renderPage(['/limit?cards=340']);
     expect(screen.queryByRole('button', { name: /Get all/ })).toBeNull();
     expect(mockTrack).toHaveBeenCalledWith('paywall_shown', {
       surface: 'limit-wall',
@@ -339,6 +347,27 @@ describe('LimitPage — anonymous Day Pass card variant', () => {
     expect(
       screen.getByRole('button', { name: 'Get all 40 cards now' })
     ).toBeTruthy();
+  });
+
+  it('renders the Day Pass card before the free account so it leads on mobile', () => {
+    renderPage(['/limit?cards=40']);
+    const dayPass = screen.getByText('Day Pass');
+    const freeAccount = screen.getByText('Free account');
+    expect(
+      Boolean(
+        dayPass.compareDocumentPosition(freeAccount) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+      )
+    ).toBe(true);
+  });
+
+  it('ignores a non-numeric or oversized card count', () => {
+    renderPage(['/limit?cards=99999']);
+    expect(screen.getByText('Day Pass')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get every card now' })
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Get all/ })).toBeNull();
   });
 
   it('keeps the free account the featured option within a free month', () => {

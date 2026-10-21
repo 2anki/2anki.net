@@ -18,10 +18,13 @@ import {
 } from './LimitWall';
 import styles from './LimitPage.module.css';
 
+const MAX_SHOWN_CARDS = 10000;
+
 function parseTotalCards(raw: string | null): number | null {
-  if (raw == null) return null;
+  if (raw == null || !/^\d+$/.test(raw)) return null;
   const parsed = Number.parseInt(raw, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  if (parsed < 1 || parsed > MAX_SHOWN_CARDS) return null;
+  return parsed;
 }
 
 const REF = 'limit-wall';
@@ -43,10 +46,24 @@ const PASS_CLICK_PLAN: Record<PassKind, string> = {
 
 type Translate = ReturnType<typeof useTranslation>['t'];
 
-function FreeAccountCard({ t, featured }: { t: Translate; featured: boolean }) {
+function FreeAccountCard({
+  t,
+  featured,
+  desktopFirst,
+}: {
+  t: Translate;
+  featured: boolean;
+  desktopFirst: boolean;
+}) {
   return (
     <div
-      className={`${styles.planCard} ${featured ? styles.planCardFeatured : ''}`}
+      className={[
+        styles.planCard,
+        featured ? styles.planCardFeatured : '',
+        desktopFirst ? styles.freeFirstDesktop : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       <p className={styles.planTitle}>{t('limit.freeAccount')}</p>
       <p className={styles.planSubtitle}>
@@ -87,58 +104,60 @@ function FreeAccountCard({ t, featured }: { t: Translate; featured: boolean }) {
   );
 }
 
-function DayPassCard({ totalCards }: { totalCards: number }) {
-  const overMonth = totalCards > FREE_MONTHLY_CARDS;
+function DayPassCard({
+  totalCards,
+  featured,
+}: {
+  totalCards: number | null;
+  featured: boolean;
+}) {
   return (
     <div
-      className={`${styles.planCard} ${overMonth ? styles.planCardFeatured : ''}`}
+      className={`${styles.planCard} ${featured ? styles.planCardFeatured : ''}`}
     >
       <AnonymousDayPassOffer
         surface="anonymous-limit-wall"
-        totalCards={totalCards}
+        totalCards={totalCards ?? undefined}
         dayPassCard
-        emphasis={overMonth ? 'primary' : 'secondary'}
+        emphasis={featured ? 'primary' : 'secondary'}
       />
     </div>
   );
 }
 
-function AnonymousLimitCards({ totalCards }: { totalCards: number }) {
+// The Day Pass card is first in the DOM so it leads on mobile in every state;
+// on desktop a free-month deck pulls the free account back to the first column.
+function AnonymousLimitCards({ totalCards }: { totalCards: number | null }) {
   const { t } = useTranslation('accountx');
-  const overMonth = totalCards > FREE_MONTHLY_CARDS;
-  const freeCard = <FreeAccountCard t={t} featured={!overMonth} />;
-  const dayPassCard = <DayPassCard totalCards={totalCards} />;
+  const overMonth = totalCards != null && totalCards > FREE_MONTHLY_CARDS;
   return (
     <div className={styles.plans}>
-      {overMonth ? (
-        <>
-          {dayPassCard}
-          {freeCard}
-        </>
-      ) : (
-        <>
-          {freeCard}
-          {dayPassCard}
-        </>
-      )}
+      <DayPassCard totalCards={totalCards} featured={overMonth} />
+      <FreeAccountCard t={t} featured={!overMonth} desktopFirst={!overMonth} />
     </div>
   );
 }
 
-function AnonymousLimit() {
+function AnonymousLimit({
+  dayPassCardEnabled,
+}: {
+  dayPassCardEnabled: boolean;
+}) {
   const { t } = useTranslation('accountx');
   const [searchParams] = useSearchParams();
-  const totalCards = parseTotalCards(searchParams.get('cards'));
+  const totalCards = dayPassCardEnabled
+    ? parseTotalCards(searchParams.get('cards'))
+    : null;
 
   useEffect(() => {
     track('paywall_shown', {
       surface: REF,
       variant: 'anonymous',
-      ...(totalCards != null
+      ...(dayPassCardEnabled && totalCards != null
         ? { deck_cards: deckCardsBucket(totalCards) }
         : {}),
     });
-  }, [totalCards]);
+  }, [dayPassCardEnabled, totalCards]);
 
   return (
     <div className={styles.page}>
@@ -159,7 +178,7 @@ function AnonymousLimit() {
         </p>
       </header>
 
-      {totalCards != null ? (
+      {dayPassCardEnabled ? (
         <AnonymousLimitCards totalCards={totalCards} />
       ) : (
         <div className={styles.singlePlan}>
@@ -230,7 +249,11 @@ export function LimitPage() {
   }
 
   if (showAnonymous) {
-    return <AnonymousLimit />;
+    return (
+      <AnonymousLimit
+        dayPassCardEnabled={userLocals?.features?.anonymousDayPassCard === true}
+      />
+    );
   }
 
   const handlePassCheckout = async (passKind: PassKind) => {

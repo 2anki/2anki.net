@@ -5,7 +5,7 @@
   "gateHeadlineCappedTotal": "Ton paquet est prêt — {{total}} cartes",
   "gateBody": "Crée un compte gratuit pour les télécharger. Jusqu'à {{monthly}} cartes par mois, gratuitement.",
   "gateContext": "Ce fichier a produit {{total}} cartes.",
-  "gateFreeLeadIn": "Ou crée un compte gratuit pour tes {{monthly}} premières cartes, gratuitement.",
+  "gateFreeLeadIn": "Ou crée un compte gratuit pour tes {{monthly}} premières cartes.",
   "gateLiveAll": "Tes {{total}} cartes sont prêtes. Crée un compte gratuit pour les télécharger.",
   "gateLiveCapped": "Tes {{monthly}} premières cartes sont prêtes. Crée un compte gratuit pour les télécharger.",
   "preparing": "Préparation de ton téléchargement",

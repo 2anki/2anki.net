@@ -29,7 +29,7 @@ export function AnonymousDayPassOffer({
     track('paywall_pass_clicked', {
       surface,
       plan: 'day',
-      variant: 'anonymous',
+      variant: dayPassCard ? 'card' : 'anonymous',
     });
     setError(null);
     setPending(true);
@@ -86,6 +86,11 @@ export function AnonymousDayPassOffer({
           >
             {pending ? t('starting') : idleLabel}
           </button>
+          <p className={styles.cardNote}>
+            {totalCards == null
+              ? t('afterPay')
+              : t('afterPayTotal', { total: totalCards })}
+          </p>
         </div>
       </div>
     );

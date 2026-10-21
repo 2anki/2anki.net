@@ -34,6 +34,7 @@ type FakeUser = {
 
 let fakeUser: FakeUser = null;
 let fakeLocals: { patreon?: boolean; subscriber?: boolean } | undefined;
+let fakeFeatures: { anonymousDayPassCard?: boolean } | undefined;
 let fakeLocalsLoading = false;
 const reportPurchaseConversion = vi.fn();
 const replayPendingPurchaseConversions = vi.fn();
@@ -49,7 +50,14 @@ vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
 }));
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({
-    data: fakeUser == null ? undefined : { user: fakeUser, locals: fakeLocals },
+    data:
+      fakeUser == null && fakeFeatures == null
+        ? undefined
+        : {
+            user: fakeUser ?? undefined,
+            locals: fakeLocals,
+            features: fakeFeatures,
+          },
     isLoading: fakeLocalsLoading,
     error: null,
     isError: false,
@@ -583,6 +591,7 @@ describe('UploadPage checkout return', () => {
     fakeLocalsLoading = false;
     fakeUser = null;
     fakeLocals = undefined;
+    fakeFeatures = undefined;
   });
 
   it('replays any purchase held across a reload once locals resolve', () => {
@@ -608,6 +617,7 @@ describe('UploadPage checkout return', () => {
   afterEach(() => {
     fakeLocalsLoading = false;
     fakeUser = null;
+    fakeFeatures = undefined;
   });
 
   it('keeps the checkout params in the URL and reports nothing while user locals load', () => {
@@ -649,6 +659,34 @@ describe('UploadPage checkout return', () => {
       )
     );
     expect(storePassToken).toHaveBeenCalledWith('cs_test_anon456');
+  });
+
+  it('confirms the active Day Pass and the next step when the flag is on', async () => {
+    fakeFeatures = { anonymousDayPassCard: true };
+
+    renderPage('/upload?pass_session=cs_test_flag_on');
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          'Day Pass active. Drop your file again to get every card.'
+        )
+      ).toBeInTheDocument()
+    );
+    expect(storePassToken).toHaveBeenCalledWith('cs_test_flag_on');
+  });
+
+  it('shows no Day Pass confirmation when the flag is off', async () => {
+    renderPage('/upload?pass_session=cs_test_flag_off');
+
+    await waitFor(() =>
+      expect(storePassToken).toHaveBeenCalledWith('cs_test_flag_off')
+    );
+    expect(
+      screen.queryByText(
+        'Day Pass active. Drop your file again to get every card.'
+      )
+    ).toBeNull();
   });
 
   it('stores an anonymous pass before user locals resolve, and strips it after', async () => {

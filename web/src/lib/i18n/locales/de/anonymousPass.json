@@ -10,6 +10,7 @@
   "reason": "Dieser Stapel hat {{total}} Karten. Ein kostenloses Konto deckt {{monthly}} pro Monat ab. Ein Day Pass gibt dir alle sofort, ohne Konto.",
   "cardCtaTotal": "Alle {{total}} Karten jetzt holen",
   "cardCtaEvery": "Jetzt jede Karte holen",
+  "passActive": "Day Pass aktiv. Lege deine Datei noch einmal ab, um alle Karten zu bekommen.",
   "checkoutError": "Der Checkout ließ sich nicht starten. Versuch es noch einmal oder schreib an support@2anki.net.",
   "starting": "Checkout wird gestartet"
 }

@@ -46,6 +46,10 @@
     margin-right: auto;
     margin-bottom: 2.5rem;
   }
+
+  .freeFirstDesktop {
+    order: -1;
+  }
 }
 
 .sectionLabel {

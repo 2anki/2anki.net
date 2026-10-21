@@ -64,6 +64,7 @@ function isFreshSignup(
 export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const { t } = useTranslation();
   const { t: tCredits, i18n } = useTranslation('aicredits');
+  const { t: tPass } = useTranslation('anonymousPass');
   const query = useQuery();
   const view = query.get('view');
   const navigate = useNavigate();
@@ -72,6 +73,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const [creditsConfirmation, setCreditsConfirmation] = useState<string | null>(
     null
   );
+  const [passConfirmation, setPassConfirmation] = useState<string | null>(null);
   const [reattachFilename, setReattachFilename] = useState<string | null>(
     () => {
       const stored = globalThis.sessionStorage?.getItem(REATTACH_KEY) ?? null;
@@ -184,11 +186,14 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     // Owner decision: anonymous passes live in the browser (localStorage is sanctioned for this use case)
     storePassToken(passSession);
     if (userLocalsLoading) return;
+    if (userLocals?.features?.anonymousDayPassCard === true) {
+      setPassConfirmation(tPass('passActive'));
+    }
     const next = new URLSearchParams(searchParams);
     next.delete('pass_session');
     const qs = next.toString();
     navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
-  }, [searchParams, navigate, userLocalsLoading]);
+  }, [searchParams, navigate, userLocalsLoading, userLocals, tPass]);
 
   useEffect(() => {
     if (userLocalsLoading) return;
@@ -238,6 +243,15 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           aria-live="polite"
         >
           <span>{creditsConfirmation}</span>
+        </div>
+      )}
+      {passConfirmation != null && (
+        <div
+          className={pageStyles.reattachBanner}
+          role="status"
+          aria-live="polite"
+        >
+          <span>{passConfirmation}</span>
         </div>
       )}
       {reattachFilename != null && (

@@ -28,6 +28,7 @@ interface GetUserLocalsResponse {
   features?: {
     kiUI: boolean;
     ops?: boolean;
+    anonymousDayPassCard?: boolean;
   };
   autoSyncActive?: boolean;
   autoSyncCapReached?: boolean;

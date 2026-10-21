@@ -5,7 +5,7 @@
   "gateHeadlineCappedTotal": "Je deck is klaar — {{total}} kaarten",
   "gateBody": "Maak een gratis account om ze te downloaden. Tot {{monthly}} kaarten per maand, gratis.",
   "gateContext": "Dit bestand leverde {{total}} kaarten op.",
-  "gateFreeLeadIn": "Of maak een gratis account voor je eerste {{monthly}} kaarten, gratis.",
+  "gateFreeLeadIn": "Of maak een gratis account voor je eerste {{monthly}} kaarten.",
   "gateLiveAll": "Alle {{total}} kaarten zijn klaar. Maak een gratis account om ze te downloaden.",
   "gateLiveCapped": "Je eerste {{monthly}} kaarten zijn klaar. Maak een gratis account om ze te downloaden.",
   "preparing": "Je download wordt voorbereid",

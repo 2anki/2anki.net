@@ -133,9 +133,7 @@ describe('AnonymousPartialGate', () => {
     it('keeps the free sign-up as a full option below the Day Pass', () => {
       renderGate(overMonthHeld);
       expect(
-        screen.getByText(
-          'Or create a free account for your first 100 cards, free.'
-        )
+        screen.getByText('Or create a free account for your first 100 cards.')
       ).toBeInTheDocument();
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     });

@@ -109,6 +109,11 @@ describe('AnonymousDayPassOffer', () => {
       expect(
         screen.getByRole('button', { name: 'Get all 40 cards now' })
       ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'After paying, drop the file again to get all 40 cards.'
+        )
+      ).toBeInTheDocument();
     });
 
     it('leads with the plain-words reason when the deck is over a free month', () => {
@@ -137,6 +142,9 @@ describe('AnonymousDayPassOffer', () => {
 
       expect(
         screen.getByRole('button', { name: 'Get every card now' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('After paying, drop the file again to get every card.')
       ).toBeInTheDocument();
     });
 
@@ -191,6 +199,11 @@ describe('AnonymousDayPassOffer', () => {
         undefined,
         'anonymous-limit-wall'
       );
+      expect(track).toHaveBeenCalledWith('paywall_pass_clicked', {
+        surface: 'anonymous-limit-wall',
+        plan: 'day',
+        variant: 'card',
+      });
     });
   });
 });

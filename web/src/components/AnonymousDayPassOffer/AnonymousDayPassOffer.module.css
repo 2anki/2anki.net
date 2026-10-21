@@ -96,6 +96,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+.cardNote {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-normal);
+}
+
 .buttonPrimary,
 .buttonSecondary {
   display: flex;

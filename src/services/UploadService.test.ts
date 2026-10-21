@@ -5668,6 +5668,47 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     });
   });
 
+  it('leaves an over-a-month held deck unmarked when only partial delivery is on', async () => {
+    mockGetFeatureFlag.mockImplementation((key: unknown) =>
+      Promise.resolve(key === 'anonymous_partial_delivery')
+    );
+    mockPartial([{ name: 'deck', cardCount: 21 }], 120);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toEqual({
+      kind: 'held',
+      cardCount: 21,
+      cardsHeldBack: 120,
+      totalCards: 141,
+    });
+    expect(mockGetFeatureFlag).toHaveBeenCalledWith(
+      'anonymous_day_pass_card',
+      false
+    );
+  });
+
+  it('does not append the card count to the wall when only partial delivery is on', async () => {
+    mockGetFeatureFlag.mockImplementation((key: unknown) =>
+      Promise.resolve(key === 'anonymous_partial_delivery')
+    );
+    mockPartial([{ name: 'deck', cardCount: 130 }]);
+    const req = buildEligibleRequest();
+    const { res, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(mockGetFeatureFlag).toHaveBeenCalledWith(
+      'anonymous_day_pass_card',
+      false
+    );
+  });
+
   it('holds a single zip upload for the treatment arm', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);

@@ -63,6 +63,10 @@ vi.mock('../lib/misc/hashToken', () => ({
 
 vi.mock('../services/events/track', () => ({ track: vi.fn() }));
 
+vi.mock('../lib/featureFlags/getFeatureFlag', () => ({
+  getFeatureFlag: vi.fn().mockResolvedValue(false),
+}));
+
 const mockGetById = vi.fn().mockResolvedValue({ patreon: false });
 
 vi.mock('../data_layer/UsersRepository', () => {
@@ -109,6 +113,7 @@ import OauthIdentitiesRepository from '../data_layer/OauthIdentitiesRepository';
 import NotionRepository from '../data_layer/NotionRespository';
 import { SESSION_MAX_AGE_MS } from '../shared/session';
 import { track } from '../services/events/track';
+import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 
 const trackMock = track as Mock;
 
@@ -2723,6 +2728,35 @@ describe('UsersController cookie options — 30-day persistent session', () => {
 });
 
 describe('UsersController.getLocals', () => {
+  it('surfaces the anonymous Day Pass card flag to anonymous callers', async () => {
+    vi.mocked(getFeatureFlag).mockResolvedValueOnce(true);
+    const userService = {
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UsersService;
+    const authService = {
+      getUserFrom: vi.fn().mockResolvedValue(null),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const req = { cookies: {} } as unknown as express.Request;
+    const res = {
+      locals: {},
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
+
+    await controller.getLocals(req, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.features.anonymousDayPassCard).toBe(true);
+    expect(getFeatureFlag).toHaveBeenCalledWith(
+      'anonymous_day_pass_card',
+      false
+    );
+  });
+
   it('includes email_verified in the user object', async () => {
     const mockUser = {
       id: 1,
