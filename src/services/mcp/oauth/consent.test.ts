@@ -34,6 +34,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
+      redirectHost: 'claude.ai',
       scopes: ['mcp'],
       csrf: 'csrf-token-123',
       fields: {
@@ -56,6 +57,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: '<script>alert(1)</script>',
+      redirectHost: 'claude.ai',
       scopes: [],
       csrf: 'x',
       fields: {},
@@ -68,6 +70,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
+      redirectHost: 'claude.ai',
       scopes: ['mcp'],
       csrf: 'x',
       fields: {},
@@ -84,6 +87,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
+      redirectHost: 'claude.ai',
       scopes: ['unknown-scope'],
       csrf: 'x',
       fields: {},
@@ -95,6 +99,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
+      redirectHost: 'claude.ai',
       scopes: ['mcp'],
       csrf: 'x',
       fields: {},
@@ -107,6 +112,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
+      redirectHost: 'claude.ai',
       scopes: ['mcp'],
       csrf: 'x',
       fields: {},
@@ -115,5 +121,33 @@ describe('renderConsentPage', () => {
     expect(html).toContain('name="consent" value="deny"');
     expect(html).toContain('>Allow access</button>');
     expect(html).toContain('>Cancel</button>');
+  });
+
+  it('shows the redirect host and, for metadata-document clients, the client host', () => {
+    const html = renderConsentPage({
+      actionPath: '/authorize',
+      clientName: 'Claude',
+      redirectHost: 'localhost:5000',
+      clientHost: '<b>claude.ai</b>',
+      scopes: ['mcp'],
+      csrf: 'x',
+      fields: {},
+    });
+    expect(html).toContain('you return to <strong>localhost:5000</strong>');
+    expect(html).toContain(
+      'Claude is identified by <strong>&lt;b&gt;claude.ai&lt;/b&gt;</strong>'
+    );
+  });
+
+  it('omits the client host line for registered clients', () => {
+    const html = renderConsentPage({
+      actionPath: '/authorize',
+      clientName: 'Claude',
+      redirectHost: 'claude.ai',
+      scopes: ['mcp'],
+      csrf: 'x',
+      fields: {},
+    });
+    expect(html).not.toContain('is identified by');
   });
 });

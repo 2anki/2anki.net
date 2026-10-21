@@ -15,6 +15,7 @@ export interface StoredMcpClient {
 
 export interface IMcpOAuthClientRepository {
   create(client: StoredMcpClient): Promise<StoredMcpClient>;
+  upsert(client: StoredMcpClient): Promise<void>;
   findById(clientId: string): Promise<StoredMcpClient | null>;
   deleteOrphaned(issuedBeforeUnixSeconds: number): Promise<number>;
 }
@@ -53,6 +54,35 @@ export class McpOAuthClientRepository implements IMcpOAuthClientRepository {
       })
       .returning('*');
     return toStored(row as McpOauthClients);
+  }
+
+  buildUpsertQuery(client: StoredMcpClient): Knex.QueryBuilder {
+    return this.database(this.table)
+      .insert({
+        client_id: client.client_id,
+        client_name: client.client_name,
+        redirect_uris: JSON.stringify(client.redirect_uris),
+        grant_types: JSON.stringify(client.grant_types),
+        response_types: JSON.stringify(client.response_types),
+        scope: client.scope,
+        token_endpoint_auth_method: client.token_endpoint_auth_method,
+        metadata: JSON.stringify(client.metadata),
+        client_id_issued_at: client.client_id_issued_at,
+      })
+      .onConflict('client_id')
+      .merge([
+        'client_name',
+        'redirect_uris',
+        'grant_types',
+        'response_types',
+        'scope',
+        'metadata',
+        'client_id_issued_at',
+      ]);
+  }
+
+  async upsert(client: StoredMcpClient): Promise<void> {
+    await this.buildUpsertQuery(client);
   }
 
   async findById(clientId: string): Promise<StoredMcpClient | null> {

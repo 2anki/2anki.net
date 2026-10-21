@@ -109,6 +109,16 @@ export function createMcpRouter(deps: McpRouterDeps): express.Router {
     authorization_endpoint: new URL(MCP_AUTHORIZE_PATH, issuerUrl).href,
     token_endpoint: new URL(MCP_TOKEN_PATH, issuerUrl).href,
     authorization_response_iss_parameter_supported: true,
+    // Claude uses CIMD only when this flag AND "none" in
+    // token_endpoint_auth_methods_supported are both advertised; otherwise
+    // it falls back to registration_endpoint (DCR).
+    client_id_metadata_document_supported: true,
+    token_endpoint_auth_methods_supported: Array.from(
+      new Set([
+        ...(baseMetadata.token_endpoint_auth_methods_supported ?? []),
+        'none',
+      ])
+    ),
     ...(baseMetadata.registration_endpoint
       ? { registration_endpoint: new URL(MCP_REGISTER_PATH, issuerUrl).href }
       : {}),

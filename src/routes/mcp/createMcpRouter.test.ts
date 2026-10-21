@@ -94,6 +94,16 @@ describe('McpRouter discovery', () => {
     });
   });
 
+  it('advertises Client ID Metadata Documents alongside DCR', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/.well-known/oauth-authorization-server`);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.client_id_metadata_document_supported).toBe(true);
+      expect(body.token_endpoint_auth_methods_supported).toContain('none');
+      expect(body.registration_endpoint).toBe('https://2anki.net/mcp/register');
+    });
+  });
+
   it('advertises the iss parameter on authorization responses', async () => {
     await withServer(async (base) => {
       const res = await fetch(`${base}/.well-known/oauth-authorization-server`);
