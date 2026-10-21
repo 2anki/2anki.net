@@ -413,14 +413,14 @@ async function convertInParallel(
       })
     )
   );
-  for (const fileWorkspace of fileWorkspaces) {
-    await liftDecksToParent(fileWorkspace, workspace);
-  }
   if (failures.size > 0) {
     const inUploadOrder = [...failures.entries()]
       .sort(([a], [b]) => a - b)
       .map(([, error]) => error);
     throw inUploadOrder.find(isWorkerTerminationError) ?? inUploadOrder[0];
+  }
+  for (const fileWorkspace of fileWorkspaces) {
+    await liftDecksToParent(fileWorkspace, workspace);
   }
   return results.filter((result): result is FileResult => result != null);
 }

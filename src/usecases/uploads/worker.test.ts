@@ -34,6 +34,10 @@ vi.mock(
     applyPdfPageRange: vi.fn(async (files: unknown) => files),
   })
 );
+vi.mock('../../lib/pythonWorkerBudget', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/pythonWorkerBudget')>()),
+  resolvePerWorkerPythonCap: () => 2,
+}));
 vi.mock('./getPackagesFromZip', () => ({
   getPackagesFromZip: vi.fn(),
 }));
