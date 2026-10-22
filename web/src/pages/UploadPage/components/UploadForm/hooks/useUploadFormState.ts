@@ -17,13 +17,19 @@ export type ZoneState =
   | 'heldForSignup'
   | 'claimingHeld'
   | 'heldReady'
-  | 'heldExpired';
+  | 'heldExpired'
+  | 'aiPreviewGate';
 
 export interface HeldDeckState {
   cardCount: number;
   cardsHeldBack: number;
   totalCards: number;
   dayPassCard?: boolean;
+}
+
+export interface AiPreviewCard {
+  front: string;
+  back: string;
 }
 
 export interface BatchDeck {
@@ -76,6 +82,10 @@ export function useUploadFormState(onReset: () => void) {
   const [cardsHeldBack, setCardsHeldBack] = useState<number>(0);
   const [heldForPlan, setHeldForPlan] = useState(false);
   const [heldDeck, setHeldDeck] = useState<HeldDeckState | null>(null);
+  const [aiPreviewCards, setAiPreviewCards] = useState<AiPreviewCard[] | null>(
+    null
+  );
+  const [aiPreviewUnavailable, setAiPreviewUnavailable] = useState(false);
   const [overSplit, setOverSplit] = useState(false);
   const [creditsUsed, setCreditsUsed] = useState<number>(0);
   const [structureRescuedRule, setStructureRescuedRule] =
@@ -127,6 +137,8 @@ export function useUploadFormState(onReset: () => void) {
     setCardsHeldBack(0);
     setHeldForPlan(false);
     setHeldDeck(null);
+    setAiPreviewCards(null);
+    setAiPreviewUnavailable(false);
     setOverSplit(false);
     setCreditsUsed(0);
     setStructureRescuedRule(null);
@@ -189,6 +201,10 @@ export function useUploadFormState(onReset: () => void) {
     setHeldForPlan,
     heldDeck,
     setHeldDeck,
+    aiPreviewCards,
+    setAiPreviewCards,
+    aiPreviewUnavailable,
+    setAiPreviewUnavailable,
     overSplit,
     setOverSplit,
     creditsUsed,

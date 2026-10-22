@@ -39,6 +39,7 @@ import {
 import { MONTHLY_CARD_LIMIT } from '../lib/limits';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
+import { ANONYMOUS_AI_PREVIEW_FLAG } from '../lib/upload/anonymousAiPreview';
 import {
   GetAiCreditsUseCase,
   createAiCreditReaders,
@@ -367,6 +368,13 @@ class UsersController {
       ops: user?.email?.toLowerCase() === OPS_OWNER_EMAIL,
       anonymousDayPassCard: await getFeatureFlag(
         ANONYMOUS_DAY_PASS_CARD_FLAG,
+        false
+      ).catch((error: unknown) => {
+        console.error('[locals] feature flag read failed', error);
+        return false;
+      }),
+      anonymousAiPreview: await getFeatureFlag(
+        ANONYMOUS_AI_PREVIEW_FLAG,
         false
       ).catch((error: unknown) => {
         console.error('[locals] feature flag read failed', error);

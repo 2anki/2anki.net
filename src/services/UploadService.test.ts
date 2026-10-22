@@ -20,6 +20,14 @@ vi.mock('../lib/claude/ClaudeService', async () => ({
   generateDeckInfo: (...args: unknown[]) => mockGenerateDeckInfo(...args),
 }));
 
+const mockGenerateAiPreview = vi.fn();
+vi.mock('../lib/claude/aiPreview', async () => ({
+  ...(await vi.importActual<typeof import('../lib/claude/aiPreview')>(
+    '../lib/claude/aiPreview'
+  )),
+  generateAiPreview: (...args: unknown[]) => mockGenerateAiPreview(...args),
+}));
+
 vi.mock('../lib/integrations/stripe', () => ({
   getStripe: vi.fn().mockReturnValue({
     customers: { retrieve: vi.fn() },
@@ -250,6 +258,105 @@ describe('UploadService.handleUpload — error paths', () => {
   beforeEach(() => {
     MockGeneratePackagesUseCase.mockClear();
     trackMock.mockClear();
+    mockGenerateAiPreview.mockReset();
+    mockGetFeatureFlag.mockResolvedValue(false);
+  });
+
+  function anonAiMarkdownRequest(anonId: string): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'notes.md',
+          mimetype: 'text/markdown',
+          size: 20,
+          buffer: Buffer.from('# Heading\n\nSome notes to study'),
+        },
+      ],
+      body: { 'claude-ai-flashcards': 'true' },
+      cookies: { anon_id: anonId },
+    } as unknown as Partial<express.Request>);
+  }
+
+  it('does not run the AI preview for an anonymous AI upload when the flag is off', async () => {
+    const executeMock = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute: executeMock } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    mockGetFeatureFlag.mockResolvedValue(false);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(anonAiMarkdownRequest('visitor-off'), res);
+
+    // Today's behaviour: the standard sync path runs, no AI preview is made.
+    expect(executeMock).toHaveBeenCalledTimes(1);
+    expect(mockGenerateAiPreview).not.toHaveBeenCalled();
+    expect(capturedJson()).not.toMatchObject({ kind: 'ai_preview' });
+  });
+
+  it('returns an AI preview for an anonymous AI upload when the flag is on', async () => {
+    const executeMock = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute: executeMock } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGenerateAiPreview.mockResolvedValue([{ front: 'q', back: 'a' }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(anonAiMarkdownRequest('visitor-on'), res);
+
+    expect(mockGenerateAiPreview).toHaveBeenCalledTimes(1);
+    expect(capturedJson()).toMatchObject({
+      kind: 'ai_preview',
+      cards: [{ front: 'q', back: 'a' }],
+    });
+    // The preview short-circuits the sync/parser path.
+    expect(executeMock).not.toHaveBeenCalled();
+  });
+
+  it('does not run the AI preview when the request carries a pass token that did not validate', async () => {
+    const executeMock = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute: executeMock } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGenerateAiPreview.mockResolvedValue([{ front: 'q', back: 'a' }]);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = anonAiMarkdownRequest('visitor-stale-pass');
+    (req as unknown as { headers: Record<string, string> }).headers = {
+      'x-pass-token': 'cs_expired',
+    };
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(mockGenerateAiPreview).not.toHaveBeenCalled();
+    expect(capturedJson()).not.toMatchObject({ kind: 'ai_preview' });
+    expect(executeMock).toHaveBeenCalledTimes(1);
   });
 
   it('emits upload_started and conversion_failed sharing the anonymous_id from the cookie', async () => {
@@ -6028,6 +6135,20 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     const heldDeck = new InMemoryHeldDeckRepository();
     // 'plan:42' hashes into the treatment arm, so only the key guard stops it.
     const req = buildEligibleRequest('plan:42');
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
+    expect(capturedSend()).toBeNull();
+    expect(heldDeck.rows).toHaveLength(0);
+  });
+
+  it('never writes a signup hold under an anon_id forged as a preview key', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest('preview:victim');
     const { res, capturedSend, redirectedTo } = responseWithRedirect();
 
     await serviceUnderTest(heldDeck).handleUpload(req, res);

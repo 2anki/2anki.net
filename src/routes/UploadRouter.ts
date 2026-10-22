@@ -42,6 +42,11 @@ import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUse
 import { RecentSourcesController } from '../controllers/Upload/RecentSourcesController';
 import { ClaimHeldDeckController } from '../controllers/Upload/ClaimHeldDeckController';
 import { ClaimHeldDeckUseCase } from '../usecases/uploads/ClaimHeldDeckUseCase';
+import { AiPreviewResumeController } from '../controllers/Upload/AiPreviewResumeController';
+import { ResumeAnonymousAiPreviewUseCase } from '../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
+import { AnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
+import { getCheckoutSessionBinding } from '../usecases/checkout/getCheckoutSessionBinding';
+import { getStripe } from '../lib/integrations/stripe';
 import { SampleUploadController } from '../controllers/Upload/SampleUploadController';
 import { ConvertSampleDeckUseCase } from '../usecases/uploads/ConvertSampleDeckUseCase';
 
@@ -87,6 +92,19 @@ const UploadRouter = () => {
       new HeldDeckRepository(database),
       new StorageHandler(),
       uploadService
+    )
+  );
+  const aiPreviewResumeController = new AiPreviewResumeController(
+    new ResumeAnonymousAiPreviewUseCase(
+      new HeldDeckRepository(database),
+      new StorageHandler(),
+      uploadService,
+      new AnonymousPassRepository(database),
+      (sessionId) => {
+        const key = process.env.STRIPE_KEY;
+        const stripe = key == null || key === '' ? undefined : getStripe();
+        return getCheckoutSessionBinding(stripe, sessionId);
+      }
     )
   );
   const sampleUploadController = new SampleUploadController(
@@ -212,6 +230,29 @@ const UploadRouter = () => {
   );
   router.post('/api/upload/claim', RequireAuthentication, (req, res) =>
     claimHeldDeckController.claim(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/upload/ai-preview/resume:
+   *   post:
+   *     summary: Resume an AI preview with a Day Pass
+   *     description: Runs the full AI conversion of the source file a visitor uploaded before buying, using the anonymous Day Pass sent as X-Pass-Token. Requires a valid active pass; returns the apkg on success.
+   *     tags: [Upload]
+   *     responses:
+   *       200:
+   *         description: Full AI deck built from the stored source
+   *       403:
+   *         description: No valid pass on the request
+   *       404:
+   *         description: No AI preview is waiting for this visitor
+   *       410:
+   *         description: The held source file is no longer available
+   */
+  router.post(
+    '/api/upload/ai-preview/resume',
+    RequireAllowedOrigin,
+    (req, res) => aiPreviewResumeController.resume(req, res)
   );
 
   /**

@@ -150,7 +150,7 @@ export async function convertPdfTextToHtml(
   loadImages?: LoadPdfImages
 ): Promise<ConvertPdfTextToHtmlResult> {
   const title = path.basename(name, path.extname(name));
-  const extraction = await extractPdfText(buffer, credential);
+  const extraction = await extractPdfText(buffer, { credential });
 
   if (extraction.needsCredential || extraction.isDrmLocked) {
     return {
@@ -208,7 +208,7 @@ export async function convertPdfTextToHtmlAuto(
   loadImages?: LoadPdfImages
 ): Promise<ConvertPdfTextToHtmlAutoResult> {
   const title = path.basename(name, path.extname(name));
-  const extraction = await extractPdfText(buffer, credential);
+  const extraction = await extractPdfText(buffer, { credential });
 
   if (extraction.needsCredential) {
     return {

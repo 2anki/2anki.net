@@ -88,6 +88,40 @@ describe('ClaimHeldDeckUseCase', () => {
     ).rejects.toBeInstanceOf(NoHeldDeckError);
   });
 
+  it('never claims a preview-namespace hold via a crafted preview: cookie', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    // A victim's AI-preview source, stored under the reserved preview: prefix.
+    await seedHold(repo, { anonId: 'preview:victim' });
+    const { converter, convertHeldFileForOwner } = buildConverter();
+    const useCase = new ClaimHeldDeckUseCase(
+      repo,
+      buildStore().store,
+      converter
+    );
+
+    await expect(
+      useCase.execute({
+        anonId: 'preview:victim',
+        owner: OWNER,
+        paying: false,
+        requestId: undefined,
+      })
+    ).rejects.toBeInstanceOf(NoHeldDeckError);
+    expect(convertHeldFileForOwner).not.toHaveBeenCalled();
+  });
+
+  it('never peeks a preview-namespace hold via a crafted preview: cookie', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo, { anonId: 'preview:victim' });
+    const useCase = new ClaimHeldDeckUseCase(
+      repo,
+      buildStore().store,
+      buildConverter().converter
+    );
+
+    expect(await useCase.peek('preview:victim', OWNER, false)).toBeNull();
+  });
+
   it('410s (HeldDeckExpiredError) when the only hold has expired', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo, { expiresAt: new Date(Date.now() - 60_000) });

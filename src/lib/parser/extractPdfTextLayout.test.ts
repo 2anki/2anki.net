@@ -93,3 +93,16 @@ describe('extractPdfText layout logging', () => {
     spy.mockRestore();
   });
 });
+
+describe('extractPdfText maxPages cap', () => {
+  it('parses only the first page when capped, splitting over the parsed page', async () => {
+    const full = await extractPdfText(loadFixture('pdf-plain-text.pdf'));
+    expect(full.pages).toHaveLength(2);
+
+    const capped = await extractPdfText(loadFixture('pdf-plain-text.pdf'), {
+      maxPages: 1,
+    });
+    expect(capped.pages).toHaveLength(1);
+    expect(capped.pages[0].text).toBe(full.pages[0].text);
+  });
+});

@@ -34,7 +34,9 @@ type FakeUser = {
 
 let fakeUser: FakeUser = null;
 let fakeLocals: { patreon?: boolean; subscriber?: boolean } | undefined;
-let fakeFeatures: { anonymousDayPassCard?: boolean } | undefined;
+let fakeFeatures:
+  | { anonymousDayPassCard?: boolean; anonymousAiPreview?: boolean }
+  | undefined;
 let fakeLocalsLoading = false;
 const reportPurchaseConversion = vi.fn();
 const replayPendingPurchaseConversions = vi.fn();
@@ -236,6 +238,7 @@ describe('UploadPage AI toggle', () => {
     scheduleSyncMock.mockClear();
     fakeUser = null;
     fakeLocals = undefined;
+    fakeFeatures = undefined;
     globalThis.localStorage.clear();
     globalThis.sessionStorage.clear();
   });
@@ -243,7 +246,26 @@ describe('UploadPage AI toggle', () => {
   afterEach(() => {
     fakeUser = null;
     fakeLocals = undefined;
+    fakeFeatures = undefined;
     globalThis.localStorage.clear();
+  });
+
+  it('shows the anonymous AI preview toggle with the agreed Claude AI label', () => {
+    fakeUser = null;
+    fakeFeatures = { anonymousAiPreview: true };
+    renderPage();
+    expect(
+      screen.getByText('Generate flashcards with Claude AI')
+    ).toBeInTheDocument();
+  });
+
+  it('hides the anonymous AI preview toggle when the flag is off', () => {
+    fakeUser = null;
+    fakeFeatures = { anonymousAiPreview: false };
+    renderPage();
+    expect(
+      screen.queryByText('Generate flashcards with Claude AI')
+    ).not.toBeInTheDocument();
   });
 
   it('syncs the AI preference to the server so it follows the user across devices', async () => {
