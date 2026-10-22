@@ -132,6 +132,7 @@ describe('createAiCreditReaders userCostSince wiring', () => {
       where: () => builder,
       select: () => builder,
       first: async () => ({ cost_usd: '1.25' }),
+      then: (resolve: (rows: unknown[]) => unknown) => resolve([]),
     };
     const fakeDb = Object.assign(() => builder, {
       raw: () => 'sum',

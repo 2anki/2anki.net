@@ -12,7 +12,9 @@ import {
   AnonymousPassRepository,
 } from '../../data_layer/AnonymousPassRepository';
 import { ValidateAnonymousPassUseCase } from '../../usecases/checkout/ValidateAnonymousPassUseCase';
+import { ClaimPassFromTokenUseCase } from '../../usecases/passes/ClaimPassFromTokenUseCase';
 import { getStripe } from '../../lib/integrations/stripe';
+import { getEventsSink } from '../../services/events/eventsSinkInstance';
 
 export type PlanSource = 'stripe' | 'apple' | 'lifetime' | null;
 
@@ -82,6 +84,37 @@ export async function applyUserLocals(
   );
 }
 
+// The locals read sends the token as X-Pass-Claim, which only a signed-in
+// request acts on, so loading a page without an account never starts the pass
+// clock. Uploads send X-Pass-Token, which counts here too.
+function resolveClaimToken(req: Request): string | null {
+  for (const header of ['x-pass-claim', 'x-pass-token']) {
+    const value = req.headers[header];
+    if (typeof value === 'string' && value.length > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
+// A buyer who paid without an account and then signs up in the same browser
+// still holds the pass token. Claiming it here is what keeps the pass working
+// on the first signed-in request. A failed claim must not fail the request:
+// the emailed claim link and the ops grant still reach the same pass.
+async function claimPassForUser(
+  buildClaimPass: () => ClaimPassFromTokenUseCase,
+  owner: number,
+  email: string,
+  passToken: string,
+  now?: Date
+) {
+  try {
+    await buildClaimPass().execute(owner, email, passToken, now ?? new Date());
+  } catch (error) {
+    console.error('[pass] session claim failed', error);
+  }
+}
+
 export async function configureUserLocal(
   req: Request,
   res: Response,
@@ -90,21 +123,41 @@ export async function configureUserLocal(
   anonPassRepo?: IAnonymousPassRepository,
   now?: Date,
   validateAnonymousPass?: ValidateAnonymousPassUseCase,
-  userPassRepo?: IUserPassRepository
+  userPassRepo?: IUserPassRepository,
+  claimPass?: ClaimPassFromTokenUseCase
 ) {
+  const passToken = req.headers['x-pass-token'];
+  const hasPassToken = typeof passToken === 'string' && passToken.length > 0;
+  const repo = () => anonPassRepo ?? new AnonymousPassRepository(database);
+  const validator = () =>
+    validateAnonymousPass ??
+    new ValidateAnonymousPassUseCase(repo(), resolveStripe());
+
   const user = await authService.getUserFrom(req.cookies.token);
   if (user) {
+    const claimToken = resolveClaimToken(req);
+    if (claimToken != null && user.email != null) {
+      await claimPassForUser(
+        () =>
+          claimPass ??
+          new ClaimPassFromTokenUseCase(
+            validator(),
+            repo(),
+            userPassRepo ?? new UserPassRepository(database),
+            getEventsSink()
+          ),
+        user.owner,
+        user.email,
+        claimToken,
+        now
+      );
+    }
     await applyUserLocals(res, user, authService, database, now, userPassRepo);
     return;
   }
 
-  const passToken = req.headers['x-pass-token'];
-  if (typeof passToken === 'string' && passToken.length > 0) {
-    const repo = anonPassRepo ?? new AnonymousPassRepository(database);
-    const validator =
-      validateAnonymousPass ??
-      new ValidateAnonymousPassUseCase(repo, resolveStripe());
-    const result = await validator.execute(passToken, now ?? new Date());
+  if (hasPassToken) {
+    const result = await validator().execute(passToken, now ?? new Date());
     if (result.valid && result.pass != null) {
       res.locals.subscriber = true;
       res.locals.passKind = result.pass.kind;
