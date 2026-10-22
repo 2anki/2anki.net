@@ -15,7 +15,7 @@
   "previewError": "Couldn't make an AI preview from this file. Make your deck without AI, or try a different file.",
   "badgeIntro": "Turn on AI to see a free sample of the cards Claude writes from your file, then unlock the full deck with a Day Pass.",
   "toggleLabel": "Generate flashcards with Claude AI",
-  "unavailableNotice": "AI preview isn't available right now, so here are cards from your file's structure.",
+  "unavailableNotice": "AI preview isn't available right now, so here are cards from your file's structure. Try AI again later, or keep this deck.",
   "resumeActiveDropAgain": "Your Day Pass is active. Drop your file again to get every card.",
   "resumeOutOfCredits": "Your Day Pass has no AI credits left right now. Email support@2anki.net and we'll help.",
   "resumeEmpty": "We couldn't find cards in that file. Try a different file, or email support@2anki.net.",

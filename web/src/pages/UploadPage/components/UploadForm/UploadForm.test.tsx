@@ -7,7 +7,16 @@ import {
   within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  test,
+  vi,
+  type Mock,
+} from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -78,7 +87,48 @@ function renderUploadForm(ui: React.ReactElement) {
   );
 }
 
+function stubPassReturn(passSession: string): void {
+  vi.stubGlobal('location', {
+    search: `?pass_session=${passSession}`,
+    href: `http://localhost/upload?pass_session=${passSession}`,
+    origin: 'http://localhost',
+  });
+  globalThis.URL.createObjectURL = vi.fn(() => 'blob:deck');
+}
+
+function apkgResumeResponse(): Response {
+  return {
+    status: 200,
+    redirected: false,
+    headers: new Headers({
+      'Content-Type': 'application/octet-stream',
+      'X-Card-Count': '58',
+      'File-Name': 'notes.apkg',
+    }),
+    blob: () => Promise.resolve(new Blob(['APKG'])),
+  } as unknown as Response;
+}
+
+function installResumeApi(resumeAiPreview: Mock): () => void {
+  const previousImpl = mockGet2ankiApi.getMockImplementation();
+  mockGet2ankiApi.mockReturnValue({
+    startPassCheckout: vi.fn(),
+    getUploads: vi.fn().mockResolvedValue([]),
+    getHeldDeck: vi.fn().mockResolvedValue(null),
+    resumeAiPreview,
+  } as unknown as ReturnType<typeof get2ankiApi>);
+  return () => {
+    mockGet2ankiApi.mockReset();
+    if (previousImpl) mockGet2ankiApi.mockImplementation(previousImpl);
+  };
+}
+
 describe('UploadForm', () => {
+  afterEach(() => {
+    globalThis.localStorage.removeItem('2anki_pass_token');
+    vi.unstubAllGlobals();
+  });
+
   test('no null classes', () => {
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />
@@ -89,29 +139,9 @@ describe('UploadForm', () => {
   test('resumes the AI preview on return from checkout, using the fresh pass token', async () => {
     // A stale token from a previous visit must not win over this return's.
     globalThis.localStorage.setItem('2anki_pass_token', 'cs_stale');
-    vi.stubGlobal('location', {
-      search: '?pass_session=cs_fresh',
-      href: 'http://localhost/upload?pass_session=cs_fresh',
-      origin: 'http://localhost',
-    });
-    globalThis.URL.createObjectURL = vi.fn(() => 'blob:deck');
-    const resumeAiPreview = vi.fn().mockResolvedValue({
-      status: 200,
-      redirected: false,
-      headers: new Headers({
-        'Content-Type': 'application/octet-stream',
-        'X-Card-Count': '58',
-        'File-Name': 'notes.apkg',
-      }),
-      blob: () => Promise.resolve(new Blob(['APKG'])),
-    });
-    const previousImpl = mockGet2ankiApi.getMockImplementation();
-    mockGet2ankiApi.mockReturnValue({
-      startPassCheckout: vi.fn(),
-      getUploads: vi.fn().mockResolvedValue([]),
-      getHeldDeck: vi.fn().mockResolvedValue(null),
-      resumeAiPreview,
-    } as unknown as ReturnType<typeof get2ankiApi>);
+    stubPassReturn('cs_fresh');
+    const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+    const restore = installResumeApi(resumeAiPreview);
 
     try {
       renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
@@ -119,9 +149,102 @@ describe('UploadForm', () => {
         expect(resumeAiPreview).toHaveBeenCalledWith('cs_fresh')
       );
     } finally {
-      globalThis.localStorage.removeItem('2anki_pass_token');
-      mockGet2ankiApi.mockReset();
-      if (previousImpl) mockGet2ankiApi.mockImplementation(previousImpl);
+      restore();
+    }
+  });
+
+  test('resumes for a first-time buyer with no stored token, using the return token', async () => {
+    // No token in localStorage: the only source is this return's URL param.
+    const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+    stubPassReturn('cs_firsttime');
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await waitFor(() =>
+        expect(resumeAiPreview).toHaveBeenCalledWith('cs_firsttime')
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  test('shows the drop-again notice when the resume finds no preview', async () => {
+    stubPassReturn('cs_gone');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 404,
+      redirected: false,
+      headers: new Headers(),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          /Your Day Pass is active\. Drop your file again to get every card\./
+        )
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('shows the out-of-credits notice when the resume is refused for credits', async () => {
+    stubPassReturn('cs_nocredits');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 402,
+      redirected: false,
+      headers: new Headers(),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(/no AI credits left right now/)
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('a signed-out upload with a hidden toggle sends AI off, ignoring a leftover localStorage key', async () => {
+    // Simulates a landing page other than the AI page: the toggle is hidden
+    // (no aiOn prop) but an old session left claude-ai-flashcards=true.
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="deck.apkg"',
+        'X-Card-Count': '5',
+      }),
+      blob: () => Promise.resolve(new Blob(['fake'])),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+
+      const call = fetchMock.mock.calls.find(
+        (c) => c[0] === '/api/upload/file'
+      );
+      expect(call).toBeDefined();
+      const body = call![1].body as FormData;
+      expect(body.get('claude-ai-flashcards')).toBe('false');
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
     }
   });
 

@@ -1,3 +1,19 @@
+.aiPreviewToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.aiPreviewToggle input {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
 /* ── Re-attach banner (shown after trial-on-register redirect) ── */
 
 .reattachBanner {

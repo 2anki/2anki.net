@@ -15,7 +15,7 @@
   "previewError": "Nie udało się utworzyć podglądu z AI dla tego pliku. Utwórz talię bez AI albo spróbuj innego pliku.",
   "badgeIntro": "Włącz AI, aby zobaczyć darmową próbkę fiszek, które Claude pisze z Twojego pliku, a potem odblokuj pełną talię za pomocą Day Pass.",
   "toggleLabel": "Generuj fiszki za pomocą Claude AI",
-  "unavailableNotice": "Podgląd z AI jest teraz niedostępny, więc oto fiszki na podstawie struktury Twojego pliku.",
+  "unavailableNotice": "Podgląd z AI jest teraz niedostępny, więc oto fiszki na podstawie struktury Twojego pliku. Spróbuj AI później albo zostaw tę talię.",
   "resumeActiveDropAgain": "Twój Day Pass jest aktywny. Upuść plik ponownie, aby otrzymać wszystkie fiszki.",
   "resumeOutOfCredits": "Twój Day Pass nie ma teraz kredytów AI. Napisz na support@2anki.net, a pomożemy.",
   "resumeEmpty": "Nie znaleźliśmy fiszek w tym pliku. Spróbuj innego pliku lub napisz na support@2anki.net.",

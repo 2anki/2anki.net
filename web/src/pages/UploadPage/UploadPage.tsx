@@ -360,21 +360,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         )}
         {aiBadgeState === 'anonPreview' && (
           <>
-            <button
-              type="button"
-              className={styles.aiToggle}
-              aria-pressed={isAiOn}
-              aria-label={
-                isAiOn ? t('upload.page.turnAiOff') : t('upload.page.turnAiOn')
-              }
-              onClick={toggleAi}
-            >
-              <span
-                className={isAiOn ? styles.badgeSuccess : styles.badgeWarning}
-              >
-                {isAiOn ? t('upload.page.aiOn') : t('upload.page.aiOff')}
-              </span>
-            </button>
+            <label className={pageStyles.aiPreviewToggle}>
+              <input type="checkbox" checked={isAiOn} onChange={toggleAi} />
+              <span>{t('aiPreview:toggleLabel')}</span>
+            </label>
             <span className={styles.aiOffBadgeBody}>
               <span> {t('aiPreview:badgeIntro')}</span>
             </span>

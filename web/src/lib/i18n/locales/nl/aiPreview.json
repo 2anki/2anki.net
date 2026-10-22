@@ -15,7 +15,7 @@
   "previewError": "Kon van dit bestand geen AI-voorbeeld maken. Maak het pakket zonder AI of probeer een ander bestand.",
   "badgeIntro": "Zet AI aan om een gratis voorbeeld te zien van de kaarten die Claude uit je bestand schrijft, en ontgrendel daarna het volledige pakket met een Day Pass.",
   "toggleLabel": "Flashcards genereren met Claude AI",
-  "unavailableNotice": "Het AI-voorbeeld is nu niet beschikbaar, dus hier zijn kaarten op basis van de structuur van je bestand.",
+  "unavailableNotice": "Het AI-voorbeeld is nu niet beschikbaar, dus hier zijn kaarten op basis van de structuur van je bestand. Probeer AI later opnieuw of houd dit pakket.",
   "resumeActiveDropAgain": "Je Day Pass is actief. Zet je bestand opnieuw neer om alle kaarten te krijgen.",
   "resumeOutOfCredits": "Je Day Pass heeft nu geen AI-credits meer. Mail naar support@2anki.net en we helpen je.",
   "resumeEmpty": "We vonden geen kaarten in dat bestand. Probeer een ander bestand of mail naar support@2anki.net.",

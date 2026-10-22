@@ -694,6 +694,9 @@ function UploadForm({
     })();
     return () => {
       cancelled = true;
+      // Allow a remount (React StrictMode double-invoke) to run the resume
+      // again rather than leaving the spinner stuck on the first, cancelled run.
+      aiPreviewResumeRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passSessionToken, userLocalsLoading, isAuthenticated]);
@@ -1438,6 +1441,14 @@ function UploadForm({
     const form = event.currentTarget as HTMLFormElement;
     capturePdfPageRange();
     const formData = buildFormData(form);
+    // For a signed-out visitor the AI setting is the explicit toggle state, not
+    // a leftover `claude-ai-flashcards` key in localStorage (from an old
+    // signed-in session or another page). buildFormData copies all of
+    // localStorage, so without this a hidden-toggle page would still ask for
+    // the preview. Signed-in users keep the localStorage-driven setting.
+    if (!isAuthenticated) {
+      formData.set('claude-ai-flashcards', aiOn ? 'true' : 'false');
+    }
     attachPdfPageRange(formData);
     const uploadedFiles = Array.from(fileInputRef.current?.files ?? []);
     return runFileUpload(formData, uploadedFiles, false);
@@ -1484,6 +1495,12 @@ function UploadForm({
     }
     attachPdfPageRange(formData);
     formData.set('rescue-rule', rule);
+    // Rescue builds the chosen structure, never AI — keep a leftover
+    // localStorage AI key from turning this into a preview for a signed-out
+    // visitor.
+    if (!isAuthenticated) {
+      formData.set('claude-ai-flashcards', 'false');
+    }
     setLocalError(null);
     setZoneState('converting');
     setProgressWidth(10);
