@@ -45,7 +45,7 @@ import { ClaimHeldDeckUseCase } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import { AiPreviewResumeController } from '../controllers/Upload/AiPreviewResumeController';
 import { ResumeAnonymousAiPreviewUseCase } from '../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
 import { AnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
-import { getCheckoutSessionAnonId } from '../usecases/checkout/getCheckoutSessionAnonId';
+import { getCheckoutSessionBinding } from '../usecases/checkout/getCheckoutSessionBinding';
 import { getStripe } from '../lib/integrations/stripe';
 import { SampleUploadController } from '../controllers/Upload/SampleUploadController';
 import { ConvertSampleDeckUseCase } from '../usecases/uploads/ConvertSampleDeckUseCase';
@@ -103,7 +103,7 @@ const UploadRouter = () => {
       (sessionId) => {
         const key = process.env.STRIPE_KEY;
         const stripe = key == null || key === '' ? undefined : getStripe();
-        return getCheckoutSessionAnonId(stripe, sessionId);
+        return getCheckoutSessionBinding(stripe, sessionId);
       }
     )
   );

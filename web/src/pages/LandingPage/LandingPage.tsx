@@ -137,8 +137,13 @@ function LandingPage({
   const passPrices = usePassPrices();
   const { data: userLocals } = useUserLocals();
   const isSignedIn = userLocals?.user?.id != null;
+  // Only the AI landing page offers the preview toggle: that is where a visitor
+  // arrives wanting AI cards, and where the free-text/PDF upload the preview can
+  // read is the point. Other landing pages keep their structure-first flow.
   const showAiToggle =
-    !isSignedIn && userLocals?.features?.anonymousAiPreview === true;
+    !isSignedIn &&
+    userLocals?.features?.anonymousAiPreview === true &&
+    copy.pathname === '/ai-flashcard-generator';
   const [aiOn, setAiOn] = useState(
     () => globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true'
   );

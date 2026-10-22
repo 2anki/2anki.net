@@ -28,39 +28,53 @@ const input = {
 };
 
 describe('generateAnonymousAiPreview', () => {
-  it('returns today’s behaviour (null) and runs no AI when the flag is off', async () => {
+  it('skips (today’s behaviour, no AI) when the flag is off', async () => {
     const d = deps({ isEnabled: vi.fn().mockResolvedValue(false) });
     const result = await generateAnonymousAiPreview(input, d);
-    expect(result).toBeNull();
+    expect(result).toEqual({ kind: 'skip' });
     expect(d.preview).not.toHaveBeenCalled();
     expect(d.storeSource).not.toHaveBeenCalled();
     expect(d.onShown).not.toHaveBeenCalled();
   });
 
-  it('returns null without a visitor id (nothing to key the resume on)', async () => {
+  it('skips without a visitor id (nothing to key the resume on)', async () => {
     const d = deps();
     const result = await generateAnonymousAiPreview(
       { ...input, anonId: null },
       d
     );
-    expect(result).toBeNull();
+    expect(result).toEqual({ kind: 'skip' });
     expect(d.preview).not.toHaveBeenCalled();
   });
 
-  it('runs no preview for an unsupported file type', async () => {
+  it.each(['preview:victim', 'plan:4242'])(
+    'skips and writes no hold for a reserved-namespace cookie %s',
+    async (cookie) => {
+      const d = deps();
+      const result = await generateAnonymousAiPreview(
+        { ...input, anonId: cookie },
+        d
+      );
+      expect(result).toEqual({ kind: 'skip' });
+      expect(d.preview).not.toHaveBeenCalled();
+      expect(d.storeSource).not.toHaveBeenCalled();
+    }
+  );
+
+  it('skips (no preview attempted) for an unsupported file type', async () => {
     const d = deps();
     const result = await generateAnonymousAiPreview(
       { ...input, filename: 'slides.pptx' },
       d
     );
-    expect(result).toBeNull();
+    expect(result).toEqual({ kind: 'skip' });
     expect(d.preview).not.toHaveBeenCalled();
   });
 
-  it('runs no preview when the visitor or IP is over the daily limit', async () => {
+  it('reports unavailable (not skip) when the visitor or IP is over the daily limit', async () => {
     const d = deps({ allow: vi.fn().mockReturnValue(false) });
     const result = await generateAnonymousAiPreview(input, d);
-    expect(result).toBeNull();
+    expect(result).toEqual({ kind: 'unavailable' });
     expect(d.preview).not.toHaveBeenCalled();
     expect(d.storeSource).not.toHaveBeenCalled();
   });
@@ -68,7 +82,7 @@ describe('generateAnonymousAiPreview', () => {
   it('shows the cards, stores the source, and fires the shown event on success', async () => {
     const d = deps();
     const result = await generateAnonymousAiPreview(input, d);
-    expect(result).toEqual(CARDS);
+    expect(result).toEqual({ kind: 'preview', cards: CARDS });
     expect(d.preview).toHaveBeenCalledWith('notes.pdf', input.bytes, 'r1');
     expect(d.storeSource).toHaveBeenCalledWith(
       'visitor-1',
@@ -78,20 +92,20 @@ describe('generateAnonymousAiPreview', () => {
     expect(d.onShown).toHaveBeenCalledWith('visitor-1', 1);
   });
 
-  it('falls through to null when the preview produced no cards', async () => {
+  it('reports unavailable when the preview produced no cards', async () => {
     const d = deps({ preview: vi.fn().mockResolvedValue([]) });
     const result = await generateAnonymousAiPreview(input, d);
-    expect(result).toBeNull();
+    expect(result).toEqual({ kind: 'unavailable' });
     expect(d.storeSource).not.toHaveBeenCalled();
     expect(d.onShown).not.toHaveBeenCalled();
   });
 
-  it('falls through to null when preview generation throws', async () => {
+  it('reports unavailable when preview generation throws', async () => {
     const d = deps({
       preview: vi.fn().mockRejectedValue(new Error('claude down')),
     });
     const result = await generateAnonymousAiPreview(input, d);
-    expect(result).toBeNull();
+    expect(result).toEqual({ kind: 'unavailable' });
     expect(d.onShown).not.toHaveBeenCalled();
   });
 
@@ -100,7 +114,7 @@ describe('generateAnonymousAiPreview', () => {
       storeSource: vi.fn().mockRejectedValue(new Error('storage down')),
     });
     const result = await generateAnonymousAiPreview(input, d);
-    expect(result).toEqual(CARDS);
+    expect(result).toEqual({ kind: 'preview', cards: CARDS });
     expect(d.onShown).toHaveBeenCalledWith('visitor-1', 1);
   });
 });

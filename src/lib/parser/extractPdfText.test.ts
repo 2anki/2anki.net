@@ -88,7 +88,9 @@ describe('extractPdfText', () => {
     passwordError.name = 'PasswordException';
     mockPdfParse.mockRejectedValueOnce(passwordError);
 
-    const result = await extractPdfText(FIXTURE_BUFFER, 'wrong-password');
+    const result = await extractPdfText(FIXTURE_BUFFER, {
+      credential: 'wrong-password',
+    });
 
     expect(result.needsCredential).toBe(true);
     expect(result.isDrmLocked).toBe(false);
@@ -139,7 +141,9 @@ describe('extractPdfText', () => {
       numrender: 2,
     });
 
-    const result = await extractPdfText(FIXTURE_BUFFER, 'correct-password');
+    const result = await extractPdfText(FIXTURE_BUFFER, {
+      credential: 'correct-password',
+    });
 
     expect(mockPdfParse).toHaveBeenCalledWith(
       FIXTURE_BUFFER,

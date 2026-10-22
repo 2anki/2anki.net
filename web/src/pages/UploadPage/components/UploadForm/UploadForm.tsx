@@ -7,7 +7,10 @@ import {
   ErrorHandlerType,
 } from '../../../../components/errors/helpers/getErrorMessage';
 import handleRedirect from '../../../../lib/handleRedirect';
-import { getStoredPassToken } from '../../../../lib/anonymousPass';
+import {
+  getStoredPassToken,
+  storePassToken,
+} from '../../../../lib/anonymousPass';
 import type { UploadErrorBody } from '../../../../types/UploadErrorBody';
 import type UserUpload from '../../../../lib/interfaces/UserUpload';
 import getAcceptedContentTypes, {
@@ -217,6 +220,21 @@ function buildFormData(form: HTMLFormElement): FormData {
   return formData;
 }
 
+// The next step to show when an AI-preview resume did not return a deck. A pass
+// is active either way, so the message always points somewhere useful.
+function resumeNoticeFor(status: number, t: (key: string) => string): string {
+  if (status === 404 || status === 410) {
+    return t('aiPreview:resumeActiveDropAgain');
+  }
+  if (status === 402) {
+    return t('aiPreview:resumeOutOfCredits');
+  }
+  if (status === 400) {
+    return t('aiPreview:resumeEmpty');
+  }
+  return t('aiPreview:resumeError');
+}
+
 function displayFilename(fileInput: HTMLInputElement | null): string {
   const files = fileInput?.files;
   if (!files || files.length === 0) return '';
@@ -382,6 +400,8 @@ function UploadForm({
     setHeldDeck,
     aiPreviewCards,
     setAiPreviewCards,
+    aiPreviewUnavailable,
+    setAiPreviewUnavailable,
     setOverSplit,
     creditsUsed,
     setCreditsUsed,
@@ -484,6 +504,7 @@ function UploadForm({
     setBatchResult,
     setHeldDeck,
     setAiPreviewCards,
+    setAiPreviewUnavailable,
     setZoneState,
     setStructureRescuedRule,
     recoverDownload: (recoveryUrl, errorMessage) => {
@@ -500,7 +521,7 @@ function UploadForm({
     },
   };
 
-  const { data: userLocals } = useUserLocals();
+  const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
   const passPrices = usePassPrices();
   const queryClient = useQueryClient();
   const isAuthenticated = userLocals?.user?.id != null;
@@ -552,12 +573,16 @@ function UploadForm({
       params.get('from') === 'pass' || params.get('checkout') === 'success'
     );
   });
-  const [returnedFromPassSession] = useState(() => {
-    const params = new URLSearchParams(globalThis.location?.search ?? '');
-    const session = params.get('pass_session');
-    return session != null && session.length > 0;
+  // Captured at first render, before UploadPage strips pass_session from the
+  // URL, so the resume always has the token from THIS return (not a stale one).
+  const [passSessionToken] = useState(() => {
+    const session = new URLSearchParams(globalThis.location?.search ?? '').get(
+      'pass_session'
+    );
+    return session != null && session.length > 0 ? session : null;
   });
   const [resumingPreview, setResumingPreview] = useState(false);
+  const [passResumeNotice, setPassResumeNotice] = useState<string | null>(null);
   const aiPreviewResumeRef = useRef(false);
 
   useEffect(() => {
@@ -628,31 +653,39 @@ function UploadForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  // A visitor who bought a Day Pass from the AI preview comes back with a pass
-  // token and a pass_session marker. Resume the AI conversion of the file they
-  // already uploaded, so they never upload it again. A 404/403 (no preview was
-  // waiting) just drops back to the normal upload form — the pass still works.
+  // A visitor who bought a Day Pass from the AI preview comes back with the
+  // pass session in the URL. Resume the AI conversion of the file they already
+  // uploaded, using THIS return's token, so they never upload it again. Waits
+  // for user locals so a signed-in visitor (who has no anonymous pass) is not
+  // sent down this path. A failed resume shows a clear next step instead of a
+  // silent reset.
   useEffect(() => {
     if (aiPreviewResumeRef.current) return;
-    if (!returnedFromPassSession || isAuthenticated) return;
-    if (getStoredPassToken() == null) return;
+    if (passSessionToken == null || userLocalsLoading || isAuthenticated) {
+      return;
+    }
     aiPreviewResumeRef.current = true;
+    // Persist the fresh token so a follow-up upload also carries the pass.
+    storePassToken(passSessionToken);
     let cancelled = false;
     (async () => {
       setResumingPreview(true);
+      setPassResumeNotice(null);
       setZoneState('converting');
       setProgressWidth(10);
       try {
-        const response = await get2ankiApi().resumeAiPreview();
+        const response = await get2ankiApi().resumeAiPreview(passSessionToken);
         if (cancelled) return;
         if (response.status === 200) {
           await applyConversionSuccess(response, conversionSuccessHandlers);
           return;
         }
+        setPassResumeNotice(resumeNoticeFor(response.status, t));
         setZoneState('idle');
         setProgressWidth(10);
       } catch {
         if (cancelled) return;
+        setPassResumeNotice(t('aiPreview:resumeError'));
         setZoneState('idle');
         setProgressWidth(10);
       } finally {
@@ -663,7 +696,7 @@ function UploadForm({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [returnedFromPassSession, isAuthenticated]);
+  }, [passSessionToken, userLocalsLoading, isAuthenticated]);
 
   const leavingRef = useRef(false);
   const leaveTo = (url: string): void => {
@@ -1680,6 +1713,11 @@ function UploadForm({
       {sampleRun && (
         <p className={formStyles.successSecondary}>
           {t('upload.form.sampleSuccessNote')}
+        </p>
+      )}
+      {aiPreviewUnavailable && (
+        <p className={formStyles.successSecondary} role="status">
+          {t('aiPreview:unavailableNotice')}
         </p>
       )}
       {mcqCount > 0 && (
@@ -2853,6 +2891,11 @@ function UploadForm({
       {resumingPreview && (
         <p className={formStyles.stateContent} role="status" aria-live="polite">
           {t('aiPreview:resuming')}
+        </p>
+      )}
+      {passResumeNotice != null && !resumingPreview && (
+        <p className={formStyles.stateContent} role="status" aria-live="polite">
+          {passResumeNotice}
         </p>
       )}
       {zoneState === 'heldForSignup' && heldDeck != null && (

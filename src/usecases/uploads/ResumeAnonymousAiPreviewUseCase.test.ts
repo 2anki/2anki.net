@@ -7,7 +7,8 @@ import {
   NoAiPreviewHoldError,
   ResumeAnonymousAiPreviewUseCase,
   type AiPreviewPassConverter,
-  type BuyerAnonIdReader,
+  type CheckoutBindingReader,
+  type CheckoutPreviewBinding,
   type HeldFileStore,
 } from './ResumeAnonymousAiPreviewUseCase';
 
@@ -61,11 +62,16 @@ function fakeConverter(): AiPreviewPassConverter & {
   };
 }
 
-// A reader that maps each pass session id to the anon id it was bought under,
-// standing in for the Stripe-session-metadata lookup.
-function buyerAnonReader(bySession: Record<string, string>): BuyerAnonIdReader {
-  return async (sessionId: string) => bySession[sessionId] ?? null;
+// Maps each pass session id to the binding it was bought with, standing in for
+// the Stripe-session-metadata lookup.
+function bindingReader(
+  bySession: Record<string, CheckoutPreviewBinding>
+): CheckoutBindingReader {
+  return async (sessionId: string) =>
+    bySession[sessionId] ?? { anonId: null, surface: null };
 }
+
+const AI_PREVIEW: CheckoutPreviewBinding['surface'] = 'ai-preview';
 
 describe('ResumeAnonymousAiPreviewUseCase', () => {
   it('converts the hold the pass was bought for, metered against the pass, then consumes it', async () => {
@@ -80,7 +86,7 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       store,
       converter,
       passes,
-      buyerAnonReader({ cs_buyer1: 'visitor-1' })
+      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
     );
 
     const result = await useCase.execute({
@@ -102,12 +108,37 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
     expect(repo.rows).toHaveLength(0);
   });
 
+  it('refuses a pass not bought from the ai-preview surface', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedPreviewHold(repo, 'visitor-1');
+    const passes = new InMemoryAnonymousPassRepository();
+    const passId = await seedPass(passes, 'cs_limitwall');
+    const converter = fakeConverter();
+    const useCase = new ResumeAnonymousAiPreviewUseCase(
+      repo,
+      fakeStore(Buffer.from('x')),
+      converter,
+      passes,
+      bindingReader({
+        cs_limitwall: { anonId: 'visitor-1', surface: 'anonymous-limit-wall' },
+      })
+    );
+
+    await expect(
+      useCase.execute({
+        anonymousPassId: passId,
+        anonId: 'visitor-1',
+        requestId: 'r',
+      })
+    ).rejects.toBeInstanceOf(NoAiPreviewHoldError);
+    expect(converter.convertStoredFileWithAiForPass).not.toHaveBeenCalled();
+    expect(repo.rows).toHaveLength(1);
+  });
+
   it('never converts another visitor’s hold even when their anon_id is presented', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedPreviewHold(repo, 'victim', 'held/victim', 'secret.pdf');
     const passes = new InMemoryAnonymousPassRepository();
-    // The attacker holds a real pass, bought under their own anon id, and
-    // presents the victim's anon_id cookie.
     const passId = await seedPass(passes, 'cs_attacker');
     const converter = fakeConverter();
     const useCase = new ResumeAnonymousAiPreviewUseCase(
@@ -115,7 +146,9 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       fakeStore(Buffer.from('x')),
       converter,
       passes,
-      buyerAnonReader({ cs_attacker: 'attacker' })
+      bindingReader({
+        cs_attacker: { anonId: 'attacker', surface: AI_PREVIEW },
+      })
     );
 
     await expect(
@@ -142,7 +175,7 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       store,
       converter,
       passes,
-      buyerAnonReader({ cs_a: 'buyer-a' })
+      bindingReader({ cs_a: { anonId: 'buyer-a', surface: AI_PREVIEW } })
     );
 
     await useCase.execute({
@@ -151,7 +184,6 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       requestId: 'r',
     });
 
-    // Converted buyer-a's own file; buyer-b's hold is untouched.
     expect(
       converter.convertStoredFileWithAiForPass.mock.calls[0][1].buffer
     ).toEqual(Buffer.from('A BYTES'));
@@ -168,7 +200,7 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       fakeStore(Buffer.from('bytes')),
       fakeConverter(),
       passes,
-      buyerAnonReader({ cs_buyer1: 'visitor-1' })
+      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
     );
 
     await useCase.execute({
@@ -185,6 +217,84 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
     ).rejects.toBeInstanceOf(NoAiPreviewHoldError);
   });
 
+  it('bills the pass once when two resumes race, the loser gets nothing', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedPreviewHold(repo, 'visitor-1');
+    const passes = new InMemoryAnonymousPassRepository();
+    const passId = await seedPass(passes, 'cs_buyer1');
+    const converter = fakeConverter();
+    // Hold the conversion open so the second resume runs while the first is
+    // mid-flight (after it has claimed the hold).
+    let release: () => void = () => {};
+    converter.convertStoredFileWithAiForPass.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () =>
+            resolve({ apkg: Buffer.from('A'), cardCount: 1, deckName: 'n' });
+        })
+    );
+    const useCase = new ResumeAnonymousAiPreviewUseCase(
+      repo,
+      fakeStore(Buffer.from('bytes')),
+      converter,
+      passes,
+      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
+    );
+
+    const first = useCase.execute({
+      anonymousPassId: passId,
+      anonId: 'visitor-1',
+      requestId: 'r1',
+    });
+    await expect(
+      useCase.execute({
+        anonymousPassId: passId,
+        anonId: 'visitor-1',
+        requestId: 'r2',
+      })
+    ).rejects.toBeInstanceOf(NoAiPreviewHoldError);
+    release();
+    await first;
+    expect(converter.convertStoredFileWithAiForPass).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases the claim when conversion fails so the visitor can retry', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedPreviewHold(repo, 'visitor-1');
+    const passes = new InMemoryAnonymousPassRepository();
+    const passId = await seedPass(passes, 'cs_buyer1');
+    const converter = fakeConverter();
+    converter.convertStoredFileWithAiForPass
+      .mockRejectedValueOnce(new Error('claude blip'))
+      .mockResolvedValueOnce({
+        apkg: Buffer.from('OK'),
+        cardCount: 3,
+        deckName: 'n',
+      });
+    const useCase = new ResumeAnonymousAiPreviewUseCase(
+      repo,
+      fakeStore(Buffer.from('bytes')),
+      converter,
+      passes,
+      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
+    );
+
+    await expect(
+      useCase.execute({
+        anonymousPassId: passId,
+        anonId: 'visitor-1',
+        requestId: 'r',
+      })
+    ).rejects.toThrow('claude blip');
+    // The hold was released, so a retry succeeds.
+    const retry = await useCase.execute({
+      anonymousPassId: passId,
+      anonId: 'visitor-1',
+      requestId: 'r',
+    });
+    expect(retry.cardCount).toBe(3);
+  });
+
   it('gets nothing when the buyer anon id cannot be resolved from the pass', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedPreviewHold(repo, 'visitor-1');
@@ -196,7 +306,7 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       fakeStore(Buffer.from('x')),
       converter,
       passes,
-      buyerAnonReader({})
+      bindingReader({})
     );
 
     await expect(
@@ -207,25 +317,6 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       })
     ).rejects.toBeInstanceOf(NoAiPreviewHoldError);
     expect(converter.convertStoredFileWithAiForPass).not.toHaveBeenCalled();
-  });
-
-  it('throws when the buyer has no preview hold', async () => {
-    const passes = new InMemoryAnonymousPassRepository();
-    const passId = await seedPass(passes, 'cs_buyer1');
-    const useCase = new ResumeAnonymousAiPreviewUseCase(
-      new InMemoryHeldDeckRepository(),
-      fakeStore(Buffer.from('x')),
-      fakeConverter(),
-      passes,
-      buyerAnonReader({ cs_buyer1: 'nobody' })
-    );
-    await expect(
-      useCase.execute({
-        anonymousPassId: passId,
-        anonId: 'nobody',
-        requestId: 'r',
-      })
-    ).rejects.toBeInstanceOf(NoAiPreviewHoldError);
   });
 
   it('never reads a bare-anon-id sign-up hold as a preview hold', async () => {
@@ -246,7 +337,7 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       fakeStore(Buffer.from('x')),
       converter,
       passes,
-      buyerAnonReader({ cs_buyer1: 'visitor-1' })
+      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
     );
     await expect(
       useCase.execute({
@@ -258,9 +349,9 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
     expect(converter.convertStoredFileWithAiForPass).not.toHaveBeenCalled();
   });
 
-  it('throws expired and leaves the hold when the stored object is gone', async () => {
+  it('throws expired and releases the claim when the stored object is gone', async () => {
     const repo = new InMemoryHeldDeckRepository();
-    await seedPreviewHold(repo, 'visitor-1');
+    const hold = await seedPreviewHold(repo, 'visitor-1');
     const passes = new InMemoryAnonymousPassRepository();
     const passId = await seedPass(passes, 'cs_buyer1');
     const store = fakeStore(undefined);
@@ -270,7 +361,7 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       store,
       converter,
       passes,
-      buyerAnonReader({ cs_buyer1: 'visitor-1' })
+      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
     );
 
     await expect(
@@ -281,5 +372,7 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       })
     ).rejects.toBeInstanceOf(AiPreviewHoldExpiredError);
     expect(converter.convertStoredFileWithAiForPass).not.toHaveBeenCalled();
+    // Claim released: the row survives for the TTL sweep, not consumed.
+    expect(repo.rows.find((r) => r.id === hold.id)?.claimed_at).toBeNull();
   });
 });

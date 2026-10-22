@@ -34,10 +34,14 @@ async function extractPdfPreview(
   bytes: Buffer,
   deps: PreviewTextDeps
 ): Promise<string | null> {
-  const extract =
-    deps.extractPdf ??
-    (await import('../parser/extractPdfText')).extractPdfText;
-  const result = await extract(bytes);
+  const result =
+    deps.extractPdf != null
+      ? await deps.extractPdf(bytes)
+      : await (
+          await import('../parser/extractPdfText')
+        ).extractPdfText(bytes, {
+          maxPages: AI_PREVIEW_MAX_PAGES,
+        });
   if (result.isDrmLocked || result.needsCredential) {
     return null;
   }

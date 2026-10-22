@@ -443,10 +443,10 @@ export class Backend {
     return deck.size > 0 ? deck : null;
   }
 
-  async resumeAiPreview(): Promise<Response> {
-    const passToken = getStoredPassToken();
+  async resumeAiPreview(passToken?: string): Promise<Response> {
+    const token = passToken ?? getStoredPassToken();
     const headers: Record<string, string> =
-      passToken == null ? {} : { 'X-Pass-Token': passToken };
+      token == null ? {} : { 'X-Pass-Token': token };
     return fetch(`${this.baseURL}upload/ai-preview/resume`, {
       method: 'post',
       credentials: 'include',

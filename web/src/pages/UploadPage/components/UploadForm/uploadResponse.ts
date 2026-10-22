@@ -59,6 +59,7 @@ export interface ConversionSuccessHandlers {
   setBatchResult: (value: BatchResult) => void;
   setHeldDeck: (value: HeldDeckState | null) => void;
   setAiPreviewCards: (value: AiPreviewCard[] | null) => void;
+  setAiPreviewUnavailable: (value: boolean) => void;
   setZoneState: (value: ZoneState) => void;
   setStructureRescuedRule: (value: StructureRescueRule | null) => void;
   /**
@@ -197,6 +198,9 @@ export async function applyConversionSuccess(
     parseNonNegativeIntHeader(response.headers, 'X-Cards-Held-Back')
   );
   handlers.setHeldForPlan(response.headers.get('X-Held-For-Plan') === '1');
+  handlers.setAiPreviewUnavailable(
+    response.headers.get('X-AI-Preview-Unavailable') === '1'
+  );
   handlers.setOverSplit(response.headers.get('X-Over-Split') === '1');
   handlers.setCreditsUsed(
     parseNonNegativeIntHeader(response.headers, 'X-Credits-Used')

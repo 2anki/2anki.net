@@ -5,6 +5,7 @@ import RegisterForm from '../forms/RegisterForm';
 import { track } from '../../lib/analytics/track';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
+import { ANONYMOUS_CARD_CAP } from '../../pages/LimitPage/LimitWall';
 import type { AiPreviewCard } from '../../pages/UploadPage/components/UploadForm/hooks/useUploadFormState';
 import styles from './AiPreviewGate.module.css';
 
@@ -107,7 +108,9 @@ export function AiPreviewGate({ cards, onContinueWithoutAi }: Props) {
       >
         {t('secondaryCta')}
       </button>
-      <p className={styles.secondaryNote}>{t('secondaryNote')}</p>
+      <p className={styles.secondaryNote}>
+        {t('secondaryNote', { cap: ANONYMOUS_CARD_CAP })}
+      </p>
 
       <p className={styles.leadIn}>{t('signupLeadIn')}</p>
       <div className={styles.form}>

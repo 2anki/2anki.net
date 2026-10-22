@@ -357,10 +357,19 @@ function isPasswordException(error: unknown): boolean {
   return error instanceof Error && error.name === 'PasswordException';
 }
 
+export interface ExtractPdfTextOptions {
+  credential?: string;
+  // Parse at most this many leading pages. The AI preview only needs the first
+  // few, so a huge PDF is never fully parsed for a short sample. 0/undefined =
+  // all pages (the default for the full conversion path).
+  maxPages?: number;
+}
+
 export async function extractPdfText(
   buffer: Buffer,
-  credential?: string
+  opts: ExtractPdfTextOptions = {}
 ): Promise<PdfExtractionResult> {
+  const { credential, maxPages } = opts;
   const t0 = Date.now();
 
   const imageCounts: number[] = [];
@@ -384,10 +393,12 @@ export async function extractPdfText(
 
   const credentialOption =
     credential == null ? {} : { userPassword: credential };
+  const maxOption = maxPages != null && maxPages > 0 ? { max: maxPages } : {};
   const options = {
     pagerender,
     version: PDFJS_BUILD,
     ...credentialOption,
+    ...maxOption,
   } as Parameters<typeof pdfParse>[1];
 
   let result;
@@ -412,15 +423,24 @@ export async function extractPdfText(
   }
 
   const pageCount = result.numpages;
+  // When `max` caps parsing, only the leading pages were rendered, so the text
+  // and the per-page metadata cover just those. Split and average over the
+  // pages actually parsed (the render count), not the document's full length,
+  // or the leading pages' text gets spread thin across all pages.
+  const parsedPageCount =
+    maxPages != null && maxPages > 0
+      ? Math.min(pageCount, imageCounts.length)
+      : pageCount;
   const totalChars = result.text.length;
-  const avgCharsPerPage = pageCount > 0 ? totalChars / pageCount : 0;
+  const avgCharsPerPage =
+    parsedPageCount > 0 ? totalChars / parsedPageCount : 0;
   const isDrmLocked = avgCharsPerPage < DRM_CHARS_PER_PAGE_THRESHOLD;
   const pages = isDrmLocked
-    ? Array.from({ length: pageCount }, (_, i) => ({
+    ? Array.from({ length: parsedPageCount }, (_, i) => ({
         text: '',
         imagePaintCount: imageCounts[i] ?? 0,
       }))
-    : splitIntoPages(result.text, pageCount, imageCounts);
+    : splitIntoPages(result.text, parsedPageCount, imageCounts);
 
   const pagesWithImage = pages.filter((p) => p.imagePaintCount > 0).length;
   const coloredTextPageCount = coloredTextFlags.filter(Boolean).length;

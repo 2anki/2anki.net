@@ -23,6 +23,11 @@ vi.mock('../../lib/analytics/track', () => ({
   track: vi.fn(),
 }));
 
+let mockUserLocals: unknown = undefined;
+vi.mock('../../lib/hooks/useUserLocals', () => ({
+  useUserLocals: () => ({ data: mockUserLocals, isLoading: false }),
+}));
+
 function renderLandingPage(children: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -383,4 +388,45 @@ describe('LandingPage funnel instrumentation', () => {
       expect(calls).toEqual([['landing_page_viewed', { path: expectedPath }]]);
     }
   );
+});
+
+describe('LandingPage anonymous AI preview toggle', () => {
+  const TOGGLE = 'Generate flashcards with Claude AI';
+
+  afterEach(() => {
+    mockUserLocals = undefined;
+  });
+
+  it('does not show the AI toggle on the AI page when the flag is off', () => {
+    mockUserLocals = { features: { anonymousAiPreview: false } };
+    renderLandingPage(
+      <LandingPage copy={aiFlashcardGeneratorCopy} setErrorMessage={vi.fn()} />
+    );
+    expect(screen.queryByText(TOGGLE)).toBeNull();
+  });
+
+  it('shows the AI toggle on the AI page for an anonymous visitor when the flag is on', () => {
+    mockUserLocals = { features: { anonymousAiPreview: true } };
+    renderLandingPage(
+      <LandingPage copy={aiFlashcardGeneratorCopy} setErrorMessage={vi.fn()} />
+    );
+    expect(screen.getByText(TOGGLE)).toBeInTheDocument();
+  });
+
+  it('hides the AI toggle for a signed-in visitor even with the flag on', () => {
+    mockUserLocals = {
+      user: { id: 7 },
+      features: { anonymousAiPreview: true },
+    };
+    renderLandingPage(
+      <LandingPage copy={aiFlashcardGeneratorCopy} setErrorMessage={vi.fn()} />
+    );
+    expect(screen.queryByText(TOGGLE)).toBeNull();
+  });
+
+  it('does not show the AI toggle on other landing pages even with the flag on', () => {
+    mockUserLocals = { features: { anonymousAiPreview: true } };
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+    expect(screen.queryByText(TOGGLE)).toBeNull();
+  });
 });

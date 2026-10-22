@@ -11,8 +11,10 @@ export function anonymousAiPreviewEnabled(): Promise<boolean> {
 }
 
 // The source file is held for the resume under an anon_id namespaced like the
-// plan-hold key, so a preview hold is never matched by the sign-up claim lookup
-// (which reads the bare anon_id) and vice versa.
+// plan-hold key. The sign-up claim/peek lookup and the hold-write paths reject
+// any cookie carrying this prefix (see ClaimHeldDeckUseCase.holdKeys and
+// UploadService), so a preview hold and a sign-up hold can never cross
+// namespaces and a crafted cookie cannot reach another flow's holds.
 const PREVIEW_HOLD_PREFIX = 'preview:';
 
 export function previewHoldKey(anonId: string): string {

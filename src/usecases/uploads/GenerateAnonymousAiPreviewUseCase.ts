@@ -1,5 +1,7 @@
 import type { AiPreviewCard } from '../../lib/claude/aiPreview';
 import { isAiPreviewExtractable } from '../../lib/upload/extractPreviewText';
+import { isPreviewHoldKey } from '../../lib/upload/anonymousAiPreview';
+import { isPlanHoldKey } from './ClaimHeldDeckUseCase';
 
 export interface AnonymousAiPreviewInput {
   anonId: string | null;
@@ -21,29 +23,45 @@ export interface AnonymousAiPreviewDeps {
   onShown(anonId: string, cardCount: number): void;
 }
 
+// `preview` — show the sample cards. `unavailable` — AI was asked for and the
+// file could be read, but no preview came back (daily limit, empty, or error),
+// so the caller ships the free deck AND tells the visitor the AI preview wasn't
+// available. `skip` — nothing was attempted (flag off, no visitor id, reserved
+// cookie, or an unreadable file type), so the caller just runs today's path
+// with no notice.
+export type AnonymousAiPreviewOutcome =
+  | { kind: 'preview'; cards: AiPreviewCard[] }
+  | { kind: 'unavailable' }
+  | { kind: 'skip' };
+
 // Decides whether a no-account AI upload gets the capped preview, and runs it.
-// Returns the sample cards to show, or null to mean "do nothing new" so the
-// caller falls back to today's behaviour. The order matters: the flag, the
-// visitor id, the file type and the rate limits are all checked before the
-// (billable) preview call, so an over-limit or ineligible request never reaches
-// the model. The source file is stored only after cards exist, so a held file
-// always has a preview behind it; a storage failure degrades the later resume
-// but never costs the visitor the preview they are looking at.
+// The order matters: the flag, the visitor id, the cookie namespace, the file
+// type and the rate limits are all checked before the (billable) preview call,
+// so an over-limit or ineligible request never reaches the model. The source
+// file is stored only after cards exist, so a held file always has a preview
+// behind it; a storage failure degrades the later resume but never costs the
+// visitor the preview they are looking at.
 export async function generateAnonymousAiPreview(
   input: AnonymousAiPreviewInput,
   deps: AnonymousAiPreviewDeps
-): Promise<AiPreviewCard[] | null> {
+): Promise<AnonymousAiPreviewOutcome> {
   if (!(await deps.isEnabled())) {
-    return null;
+    return { kind: 'skip' };
   }
   if (input.anonId == null) {
-    return null;
+    return { kind: 'skip' };
+  }
+  // A reserved-namespace cookie (`plan:` or `preview:`) must never become a
+  // preview hold key — storing under it would plant into another flow's or
+  // visitor's namespace. Fall through to today's behaviour instead.
+  if (isPlanHoldKey(input.anonId) || isPreviewHoldKey(input.anonId)) {
+    return { kind: 'skip' };
   }
   if (!isAiPreviewExtractable(input.filename)) {
-    return null;
+    return { kind: 'skip' };
   }
   if (!deps.allow(input.anonId, input.ipKey)) {
-    return null;
+    return { kind: 'unavailable' };
   }
   let cards: AiPreviewCard[];
   try {
@@ -53,10 +71,10 @@ export async function generateAnonymousAiPreview(
       requestId: input.requestId,
       error: error instanceof Error ? error.message : String(error),
     });
-    return null;
+    return { kind: 'unavailable' };
   }
   if (cards.length === 0) {
-    return null;
+    return { kind: 'unavailable' };
   }
   try {
     await deps.storeSource(input.anonId, input.filename, input.bytes);
@@ -67,5 +85,5 @@ export async function generateAnonymousAiPreview(
     });
   }
   deps.onShown(input.anonId, cards.length);
-  return cards;
+  return { kind: 'preview', cards };
 }

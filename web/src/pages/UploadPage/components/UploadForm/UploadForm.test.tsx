@@ -86,6 +86,45 @@ describe('UploadForm', () => {
     expect(container.querySelector('.null')).toBeNull();
   });
 
+  test('resumes the AI preview on return from checkout, using the fresh pass token', async () => {
+    // A stale token from a previous visit must not win over this return's.
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_stale');
+    vi.stubGlobal('location', {
+      search: '?pass_session=cs_fresh',
+      href: 'http://localhost/upload?pass_session=cs_fresh',
+      origin: 'http://localhost',
+    });
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:deck');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 200,
+      redirected: false,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'X-Card-Count': '58',
+        'File-Name': 'notes.apkg',
+      }),
+      blob: () => Promise.resolve(new Blob(['APKG'])),
+    });
+    const previousImpl = mockGet2ankiApi.getMockImplementation();
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      resumeAiPreview,
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await waitFor(() =>
+        expect(resumeAiPreview).toHaveBeenCalledWith('cs_fresh')
+      );
+    } finally {
+      globalThis.localStorage.removeItem('2anki_pass_token');
+      mockGet2ankiApi.mockReset();
+      if (previousImpl) mockGet2ankiApi.mockImplementation(previousImpl);
+    }
+  });
+
   test('opts the drop zone out of browser translation', () => {
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />

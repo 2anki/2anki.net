@@ -161,6 +161,7 @@ import { generateAiPreview, type AiPreviewCard } from '../lib/claude/aiPreview';
 import { extractPreviewText } from '../lib/upload/extractPreviewText';
 import {
   anonymousAiPreviewEnabled,
+  isPreviewHoldKey,
   previewHoldKey,
 } from '../lib/upload/anonymousAiPreview';
 import { AiPreviewRateLimiter } from '../lib/upload/aiPreviewRateLimiter';
@@ -1962,6 +1963,10 @@ class UploadService {
         'X-MCQ-Count',
         'X-MCQ-Skipped-Count',
       ];
+      if (res.locals.aiPreviewUnavailable === true) {
+        res.set('X-AI-Preview-Unavailable', '1');
+        exposedHeaders.push('X-AI-Preview-Unavailable');
+      }
       if (totalDroppedImageCount > 0) {
         res.set('X-Dropped-Assets', totalDroppedImageCount.toString());
         exposedHeaders.push('X-Dropped-Assets');
@@ -2317,7 +2322,7 @@ class UploadService {
       return null;
     }
     const requestId = res.locals.requestId as string | undefined;
-    const cards = await generateAnonymousAiPreview(
+    const outcome = await generateAnonymousAiPreview(
       {
         anonId: this.resolveAnonId(req),
         ipKey: hashIp(ipRateLimitBucket(resolveClientIp(req))),
@@ -2346,10 +2351,20 @@ class UploadService {
         },
       }
     );
-    if (cards == null) {
-      return null;
+    if (outcome.kind === 'preview') {
+      return {
+        kind: 'ai_preview',
+        cardCount: outcome.cards.length,
+        cards: outcome.cards,
+      };
     }
-    return { kind: 'ai_preview', cardCount: cards.length, cards };
+    // AI was asked for and the file was readable, but no sample came back.
+    // Flag it so the free deck that follows tells the visitor why, rather than
+    // silently dropping them to a non-AI deck.
+    if (outcome.kind === 'unavailable') {
+      res.locals.aiPreviewUnavailable = true;
+    }
+    return null;
   }
 
   // Keep the uploaded source for the resume, keyed to the visitor under the
@@ -2492,7 +2507,12 @@ class UploadService {
     const anonId = this.resolveAnonId(req);
     const file = (req.files as UploadedFile[])[0];
     const bytes = await readUploadBytes(file);
-    if (anonId == null || isPlanHoldKey(anonId) || bytes == null) {
+    if (
+      anonId == null ||
+      isPlanHoldKey(anonId) ||
+      isPreviewHoldKey(anonId) ||
+      bytes == null
+    ) {
       throw new AnonymousCardCapError(
         cardCount + cardsHeldBack,
         ANONYMOUS_CARD_CAP

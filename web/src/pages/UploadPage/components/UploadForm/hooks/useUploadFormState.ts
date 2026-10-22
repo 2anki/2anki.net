@@ -85,6 +85,7 @@ export function useUploadFormState(onReset: () => void) {
   const [aiPreviewCards, setAiPreviewCards] = useState<AiPreviewCard[] | null>(
     null
   );
+  const [aiPreviewUnavailable, setAiPreviewUnavailable] = useState(false);
   const [overSplit, setOverSplit] = useState(false);
   const [creditsUsed, setCreditsUsed] = useState<number>(0);
   const [structureRescuedRule, setStructureRescuedRule] =
@@ -137,6 +138,7 @@ export function useUploadFormState(onReset: () => void) {
     setHeldForPlan(false);
     setHeldDeck(null);
     setAiPreviewCards(null);
+    setAiPreviewUnavailable(false);
     setOverSplit(false);
     setCreditsUsed(0);
     setStructureRescuedRule(null);
@@ -201,6 +203,8 @@ export function useUploadFormState(onReset: () => void) {
     setHeldDeck,
     aiPreviewCards,
     setAiPreviewCards,
+    aiPreviewUnavailable,
+    setAiPreviewUnavailable,
     overSplit,
     setOverSplit,
     creditsUsed,

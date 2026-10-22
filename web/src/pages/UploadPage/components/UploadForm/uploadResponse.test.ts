@@ -31,6 +31,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setBatchResult: vi.fn(),
     setHeldDeck: vi.fn(),
     setAiPreviewCards: vi.fn(),
+    setAiPreviewUnavailable: vi.fn(),
     setZoneState: vi.fn(),
     setStructureRescuedRule: vi.fn(),
     recoverDownload: vi.fn(),
@@ -361,6 +362,26 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(response, handlers);
 
     expect(handlers.setEmptyBackCount).toHaveBeenCalledWith(5);
+  });
+
+  it('flags an unavailable AI preview from the X-AI-Preview-Unavailable header', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-AI-Preview-Unavailable': '1' }),
+      handlers
+    );
+
+    expect(handlers.setAiPreviewUnavailable).toHaveBeenCalledWith(true);
+    expect(handlers.setZoneState).toHaveBeenCalledWith('success');
+  });
+
+  it('reports the AI preview available when the header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setAiPreviewUnavailable).toHaveBeenCalledWith(false);
   });
 
   it('flags over-split output from the X-Over-Split header', async () => {

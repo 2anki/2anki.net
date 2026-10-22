@@ -61,7 +61,7 @@ describe('AiPreviewGate', () => {
     renderGate();
     expect(
       screen.getByRole('button', {
-        name: 'Get all the AI cards — Day Pass $6, no account',
+        name: 'Get all the AI cards for this file: Day Pass $6, no account',
       })
     ).toBeInTheDocument();
     expect(
