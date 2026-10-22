@@ -331,6 +331,34 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(executeMock).not.toHaveBeenCalled();
   });
 
+  it('does not run the AI preview when the request carries a pass token that did not validate', async () => {
+    const executeMock = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute: executeMock } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGenerateAiPreview.mockResolvedValue([{ front: 'q', back: 'a' }]);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = anonAiMarkdownRequest('visitor-stale-pass');
+    (req as unknown as { headers: Record<string, string> }).headers = {
+      'x-pass-token': 'cs_expired',
+    };
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(mockGenerateAiPreview).not.toHaveBeenCalled();
+    expect(capturedJson()).not.toMatchObject({ kind: 'ai_preview' });
+    expect(executeMock).toHaveBeenCalledTimes(1);
+  });
+
   it('emits upload_started and conversion_failed sharing the anonymous_id from the cookie', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {

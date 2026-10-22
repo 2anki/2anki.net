@@ -1284,7 +1284,16 @@ class UploadService {
         );
       }
 
-      if (owner == null && !paying && settings.claudeAIFlashcards) {
+      // A request that carries a pass token meant to use a pass; when that
+      // token no longer validates (expired, refused) it must not fall into
+      // the free preview instead.
+      const presentedPassToken = req.headers?.['x-pass-token'] != null;
+      if (
+        owner == null &&
+        !paying &&
+        !presentedPassToken &&
+        settings.claudeAIFlashcards
+      ) {
         const preview = await this.runAnonymousAiPreview(req, res, files);
         if (preview != null) {
           return res.status(200).json(preview);

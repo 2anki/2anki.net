@@ -1077,9 +1077,12 @@ function UploadForm({
       }
       applyAnonymousAiFlag(formData, aiOn);
       attachPdfPageRange(formData);
+      const remotePassToken = getStoredPassToken();
       const request = await globalThis.fetch('/api/upload/dropbox', {
         method: 'post',
         body: formData,
+        headers:
+          remotePassToken == null ? {} : { 'X-Pass-Token': remotePassToken },
       });
       await applyRemoteUploadResponse(request, {
         filename: first?.name ?? null,
@@ -1137,9 +1140,12 @@ function UploadForm({
       }
       applyAnonymousAiFlag(formData, aiOn);
       attachPdfPageRange(formData);
+      const remotePassToken = getStoredPassToken();
       const request = await globalThis.fetch('/api/upload/google_drive', {
         method: 'post',
         body: formData,
+        headers:
+          remotePassToken == null ? {} : { 'X-Pass-Token': remotePassToken },
       });
       await applyRemoteUploadResponse(request, {
         filename: first?.name ?? null,

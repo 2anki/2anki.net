@@ -325,7 +325,7 @@ describe('UploadForm', () => {
     globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
     try {
       const { container } = renderUploadForm(
-        <UploadForm setErrorMessage={vi.fn()} aiOn />
+        <UploadForm setErrorMessage={vi.fn()} />
       );
       const form = container.querySelector('form')!;
       await act(async () => {
