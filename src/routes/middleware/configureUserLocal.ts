@@ -84,18 +84,32 @@ export async function applyUserLocals(
   );
 }
 
+// The locals read sends the token as X-Pass-Claim, which only a signed-in
+// request acts on, so loading a page without an account never starts the pass
+// clock. Uploads send X-Pass-Token, which counts here too.
+function resolveClaimToken(req: Request): string | null {
+  for (const header of ['x-pass-claim', 'x-pass-token']) {
+    const value = req.headers[header];
+    if (typeof value === 'string' && value.length > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
 // A buyer who paid without an account and then signs up in the same browser
-// still sends the pass token. Claiming it here is what keeps the pass working
+// still holds the pass token. Claiming it here is what keeps the pass working
 // on the first signed-in request. A failed claim must not fail the request:
 // the emailed claim link and the ops grant still reach the same pass.
 async function claimPassForUser(
   claimPass: ClaimPassFromTokenUseCase,
   owner: number,
+  email: string,
   passToken: string,
   now?: Date
 ) {
   try {
-    await claimPass.execute(owner, passToken, now ?? new Date());
+    await claimPass.execute(owner, email, passToken, now ?? new Date());
   } catch (error) {
     console.error('[pass] session claim failed', error);
   }
@@ -109,7 +123,8 @@ export async function configureUserLocal(
   anonPassRepo?: IAnonymousPassRepository,
   now?: Date,
   validateAnonymousPass?: ValidateAnonymousPassUseCase,
-  userPassRepo?: IUserPassRepository
+  userPassRepo?: IUserPassRepository,
+  claimPass?: ClaimPassFromTokenUseCase
 ) {
   const passToken = req.headers['x-pass-token'];
   const hasPassToken = typeof passToken === 'string' && passToken.length > 0;
@@ -120,16 +135,19 @@ export async function configureUserLocal(
 
   const user = await authService.getUserFrom(req.cookies.token);
   if (user) {
-    if (hasPassToken) {
+    const claimToken = resolveClaimToken(req);
+    if (claimToken != null && user.email != null) {
       await claimPassForUser(
-        new ClaimPassFromTokenUseCase(
-          validator(),
-          repo(),
-          userPassRepo ?? new UserPassRepository(database),
-          getEventsSink()
-        ),
+        claimPass ??
+          new ClaimPassFromTokenUseCase(
+            validator(),
+            repo(),
+            userPassRepo ?? new UserPassRepository(database),
+            getEventsSink()
+          ),
         user.owner,
-        passToken,
+        user.email,
+        claimToken,
         now
       );
     }

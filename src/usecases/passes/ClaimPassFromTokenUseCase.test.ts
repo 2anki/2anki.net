@@ -4,9 +4,11 @@ import { InMemoryAnonymousPassRepository } from '../../data_layer/AnonymousPassR
 import { InMemoryUserPassRepository } from '../../data_layer/UserPassRepository';
 import { ValidateAnonymousPassUseCase } from '../checkout/ValidateAnonymousPassUseCase';
 import type { EventsSink } from '../../services/events/EventsSink';
+import { emailHash } from '../../lib/emailHash';
 
 const NOW = new Date('2026-10-22T00:28:00Z');
 const DAY_MS = 24 * 60 * 60 * 1000;
+const BUYER_EMAIL = 'buyer@example.com';
 
 function build(refunded: ReadonlySet<string> = new Set()) {
   const anonRepo = new InMemoryAnonymousPassRepository(refunded);
@@ -24,13 +26,15 @@ function build(refunded: ReadonlySet<string> = new Set()) {
 async function insertActivePass(
   anonRepo: InMemoryAnonymousPassRepository,
   sessionId: string,
-  paymentIntentId: string
+  paymentIntentId: string,
+  buyerEmail: string | null = BUYER_EMAIL
 ) {
   const pass = await anonRepo.insert({
     stripeSessionId: sessionId,
     kind: '24h',
     expiresAt: new Date(NOW.getTime() + 30 * DAY_MS),
     paymentIntentId,
+    buyerEmailHash: buyerEmail == null ? undefined : emailHash(buyerEmail),
   });
   const activatedExpiry = new Date(NOW.getTime() - 60_000 + DAY_MS);
   await anonRepo.activate(
@@ -50,7 +54,7 @@ describe('ClaimPassFromTokenUseCase', () => {
       'pi_buyer'
     );
 
-    const claimed = await useCase.execute(42, 'cs_buyer', NOW);
+    const claimed = await useCase.execute(42, BUYER_EMAIL, 'cs_buyer', NOW);
 
     expect(claimed).toBe(true);
     expect((await anonRepo.findById(pass.id))?.claimed_by_user_id).toBe(42);
@@ -69,12 +73,48 @@ describe('ClaimPassFromTokenUseCase', () => {
     );
   });
 
+  it('matches the buyer email regardless of case and spacing', async () => {
+    const { anonRepo, useCase } = build();
+    await insertActivePass(anonRepo, 'cs_case', 'pi_case');
+
+    const claimed = await useCase.execute(
+      42,
+      ' Buyer@Example.com',
+      'cs_case',
+      NOW
+    );
+
+    expect(claimed).toBe(true);
+  });
+
+  it.each([
+    ['a different email', 'someone-else@example.com'],
+    ['no buyer email on the pass', null],
+  ])(
+    'leaves the pass unclaimed when the account has %s',
+    async (_label, buyerEmail) => {
+      const { anonRepo, userPassRepo, useCase } = build();
+      const { pass } = await insertActivePass(
+        anonRepo,
+        'cs_shared',
+        'pi_shared',
+        buyerEmail === null ? null : buyerEmail
+      );
+
+      const claimed = await useCase.execute(42, BUYER_EMAIL, 'cs_shared', NOW);
+
+      expect(claimed).toBe(false);
+      expect((await anonRepo.findById(pass.id))?.claimed_by_user_id).toBeNull();
+      expect(await userPassRepo.findActive(42, NOW)).toBeNull();
+    }
+  );
+
   it('leaves a pass claimed by another account where it is', async () => {
     const { anonRepo, userPassRepo, useCase } = build();
     const { pass } = await insertActivePass(anonRepo, 'cs_other', 'pi_other');
     await anonRepo.claim(pass.id, 7);
 
-    const claimed = await useCase.execute(42, 'cs_other', NOW);
+    const claimed = await useCase.execute(42, BUYER_EMAIL, 'cs_other', NOW);
 
     expect(claimed).toBe(false);
     expect((await anonRepo.findById(pass.id))?.claimed_by_user_id).toBe(7);
@@ -88,9 +128,10 @@ describe('ClaimPassFromTokenUseCase', () => {
       kind: '24h',
       expiresAt: new Date(NOW.getTime() + DAY_MS),
       paymentIntentId: 'pi_refunded',
+      buyerEmailHash: emailHash(BUYER_EMAIL),
     });
 
-    const claimed = await useCase.execute(42, 'cs_refunded', NOW);
+    const claimed = await useCase.execute(42, BUYER_EMAIL, 'cs_refunded', NOW);
 
     expect(claimed).toBe(false);
     expect(await userPassRepo.findActive(42, NOW)).toBeNull();
@@ -99,7 +140,7 @@ describe('ClaimPassFromTokenUseCase', () => {
   it('does not claim an unknown token', async () => {
     const { userPassRepo, useCase } = build();
 
-    const claimed = await useCase.execute(42, 'cs_unknown', NOW);
+    const claimed = await useCase.execute(42, BUYER_EMAIL, 'cs_unknown', NOW);
 
     expect(claimed).toBe(false);
     expect(await userPassRepo.findActive(42, NOW)).toBeNull();
@@ -112,7 +153,9 @@ describe('ClaimPassFromTokenUseCase', () => {
       new Error('db down')
     );
 
-    await expect(useCase.execute(42, 'cs_fail', NOW)).rejects.toThrow(Error);
+    await expect(
+      useCase.execute(42, BUYER_EMAIL, 'cs_fail', NOW)
+    ).rejects.toThrow(Error);
     expect((await anonRepo.findById(pass.id))?.claimed_by_user_id).toBeNull();
   });
 });

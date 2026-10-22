@@ -33,7 +33,7 @@ describe('getUserLocals', () => {
       expect.stringContaining('users/debug/locals'),
       expect.objectContaining({
         credentials: 'include',
-        headers: { 'X-Pass-Token': 'cs_bought_anon' },
+        headers: { 'X-Pass-Claim': 'cs_bought_anon' },
       })
     );
   });

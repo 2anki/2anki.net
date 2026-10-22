@@ -41,13 +41,13 @@ interface GetUserLocalsResponse {
   } | null;
 }
 
-// The pass token rides along so a Day Pass bought before signing up moves to
-// the account on the first signed-in read, before the upload page decides
-// whether to show the limit wall.
+// A pass bought before signing up moves to the account on the first signed-in
+// read. X-Pass-Claim, not X-Pass-Token: the server ignores it without an
+// account, so a page view never starts the pass clock.
 export const getUserLocals = async (): Promise<GetUserLocalsResponse> => {
   const passToken = getStoredPassToken();
   return get(`${get2ankiApi().baseURL}users/debug/locals`, {
     redirect: true,
-    headers: passToken == null ? undefined : { 'X-Pass-Token': passToken },
+    headers: passToken == null ? undefined : { 'X-Pass-Claim': passToken },
   });
 };

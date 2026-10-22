@@ -138,24 +138,26 @@ export class AiUsageMetricsRepository
 
   // Spend made on a pass before its buyer had an account is recorded against
   // the pass id. Once the account claims that pass, the spend is the
-  // account's too, or claiming a pass would hand its allowance back.
-  buildUserCostQuery(userId: number, since: Date): Knex.QueryBuilder {
-    return this.baseQuery(since)
-      .where((scope) =>
-        scope
-          .where('user_id', userId)
-          .orWhereIn(
-            'anonymous_pass_id',
-            this.database('anonymous_passes')
-              .select('id')
-              .where('claimed_by_user_id', userId)
-          )
+  // account's too, or claiming a pass would hand its allowance back. The
+  // claimed ids are read first so both halves of the OR stay index scans.
+  buildUserCostQuery(
+    userId: number,
+    since: Date,
+    claimedPassIds: number[] = []
+  ): Knex.QueryBuilder {
+    const scoped =
+      claimedPassIds.length === 0
+        ? this.baseQuery(since).where('user_id', userId)
+        : this.baseQuery(since).where((scope) =>
+            scope
+              .where('user_id', userId)
+              .orWhereIn('anonymous_pass_id', claimedPassIds)
+          );
+    return scoped.select(
+      this.database.raw(
+        "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
       )
-      .select(
-        this.database.raw(
-          "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
-        )
-      );
+    );
   }
 
   buildAnonymousPassCostQuery(
@@ -245,9 +247,15 @@ export class AiUsageMetricsRepository
   }
 
   async userCostSince(userId: number, since: Date): Promise<number> {
-    const row = (await this.buildUserCostQuery(userId, since).first()) as
-      | { cost_usd: number | string }
-      | undefined;
+    const claimed = (await this.database('anonymous_passes')
+      .select('id')
+      .where('claimed_by_user_id', userId)) as { id: number | string }[];
+    const claimedPassIds = claimed.map((row) => Number(row.id));
+    const row = (await this.buildUserCostQuery(
+      userId,
+      since,
+      claimedPassIds
+    ).first()) as { cost_usd: number | string } | undefined;
     return Number(row?.cost_usd ?? 0);
   }
 

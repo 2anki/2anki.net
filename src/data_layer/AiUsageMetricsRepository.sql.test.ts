@@ -65,13 +65,24 @@ describe('AiUsageMetricsRepository generated SQL', () => {
     expect(bindings).toEqual(['ai_usage_recorded', since, 20]);
   });
 
-  it('sums a user cost over the window, including spend on passes the user claimed', () => {
+  it('sums a single user cost over the window', () => {
     const { sql, bindings } = repository.buildUserCostQuery(42, since).toSQL();
 
     expect(sql).toBe(
-      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and ("user_id" = ? or "anonymous_pass_id" in (select "id" from "anonymous_passes" where "claimed_by_user_id" = ?))`
+      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and "user_id" = ?`
     );
-    expect(bindings).toEqual(['ai_usage_recorded', since, 42, 42]);
+    expect(bindings).toEqual(['ai_usage_recorded', since, 42]);
+  });
+
+  it('adds spend on the passes the user claimed', () => {
+    const { sql, bindings } = repository
+      .buildUserCostQuery(42, since, [7, 9])
+      .toSQL();
+
+    expect(sql).toBe(
+      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and ("user_id" = ? or "anonymous_pass_id" in (?, ?))`
+    );
+    expect(bindings).toEqual(['ai_usage_recorded', since, 42, 7, 9]);
   });
 
   it('sums one request cost for a user, bounded to a start time', () => {

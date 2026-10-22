@@ -1,14 +1,16 @@
 import type { IAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import type { IUserPassRepository } from '../../data_layer/UserPassRepository';
 import type { EventsSink } from '../../services/events/EventsSink';
+import { emailHash } from '../../lib/emailHash';
 import type { ValidateAnonymousPassUseCase } from '../checkout/ValidateAnonymousPassUseCase';
 
-// The pass token is the Stripe session id the buyer's browser holds, the same
-// bearer credential that already unlocks the pass without an account. A
-// signed-in request that presents it proves the same ownership, so the pass
-// moves to that account and keeps its current window. The validator only
-// answers valid for an active pass no account has claimed, so a pass already
-// claimed elsewhere, refunded or ended is left alone.
+// The pass token is the Stripe session id the buyer's browser holds. A
+// signed-in request that presents it moves the pass to that account, keeping
+// its current window, but only when the account email is the one the pass was
+// bought with: a token left in a shared browser must not hand the pass to
+// whoever signs in next. Any other case keeps the emailed claim link. The
+// validator only answers valid for an active pass no account has claimed, so a
+// pass already claimed elsewhere, refunded or ended is left alone.
 export class ClaimPassFromTokenUseCase {
   constructor(
     private readonly validator: Pick<ValidateAnonymousPassUseCase, 'execute'>,
@@ -19,6 +21,7 @@ export class ClaimPassFromTokenUseCase {
 
   async execute(
     userId: number,
+    userEmail: string,
     passToken: string,
     now: Date = new Date()
   ): Promise<boolean> {
@@ -27,6 +30,12 @@ export class ClaimPassFromTokenUseCase {
       return false;
     }
     const pass = result.pass;
+    if (
+      pass.buyer_email_hash == null ||
+      pass.buyer_email_hash !== emailHash(userEmail)
+    ) {
+      return false;
+    }
 
     const claimed = await this.anonPassRepo.claim(pass.id, userId);
     if (!claimed) {
