@@ -25,17 +25,22 @@ export class ClaimPassFromTokenUseCase {
     passToken: string,
     now: Date = new Date()
   ): Promise<boolean> {
-    const result = await this.validator.execute(passToken, now);
-    if (!result.valid || result.pass == null) {
-      return false;
-    }
-    const pass = result.pass;
+    // Checked before validating, because validating starts an unstarted
+    // pass: a request from the wrong account must leave the clock alone.
+    const stored = await this.anonPassRepo.findBySessionId(passToken);
     if (
-      pass.buyer_email_hash == null ||
-      pass.buyer_email_hash !== emailHash(userEmail)
+      stored?.buyer_email_hash == null ||
+      stored.claimed_by_user_id != null ||
+      stored.buyer_email_hash !== emailHash(userEmail)
     ) {
       return false;
     }
+
+    const result = await this.validator.execute(passToken, now);
+    if (!result.valid || result.pass?.id !== stored.id) {
+      return false;
+    }
+    const pass = result.pass;
 
     const claimed = await this.anonPassRepo.claim(pass.id, userId);
     if (!claimed) {

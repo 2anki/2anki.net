@@ -102,14 +102,14 @@ function resolveClaimToken(req: Request): string | null {
 // on the first signed-in request. A failed claim must not fail the request:
 // the emailed claim link and the ops grant still reach the same pass.
 async function claimPassForUser(
-  claimPass: ClaimPassFromTokenUseCase,
+  buildClaimPass: () => ClaimPassFromTokenUseCase,
   owner: number,
   email: string,
   passToken: string,
   now?: Date
 ) {
   try {
-    await claimPass.execute(owner, email, passToken, now ?? new Date());
+    await buildClaimPass().execute(owner, email, passToken, now ?? new Date());
   } catch (error) {
     console.error('[pass] session claim failed', error);
   }
@@ -138,7 +138,8 @@ export async function configureUserLocal(
     const claimToken = resolveClaimToken(req);
     if (claimToken != null && user.email != null) {
       await claimPassForUser(
-        claimPass ??
+        () =>
+          claimPass ??
           new ClaimPassFromTokenUseCase(
             validator(),
             repo(),

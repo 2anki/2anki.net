@@ -109,6 +109,22 @@ describe('ClaimPassFromTokenUseCase', () => {
     }
   );
 
+  it('leaves an unstarted pass unstarted when the account email does not match', async () => {
+    const { anonRepo, useCase } = build();
+    const pass = await anonRepo.insert({
+      stripeSessionId: 'cs_unstarted',
+      kind: '24h',
+      expiresAt: new Date(NOW.getTime() + 30 * DAY_MS),
+      paymentIntentId: 'pi_unstarted',
+      buyerEmailHash: emailHash('someone-else@example.com'),
+    });
+
+    const claimed = await useCase.execute(42, BUYER_EMAIL, 'cs_unstarted', NOW);
+
+    expect(claimed).toBe(false);
+    expect((await anonRepo.findById(pass.id))?.activated_at).toBeNull();
+  });
+
   it('leaves a pass claimed by another account where it is', async () => {
     const { anonRepo, userPassRepo, useCase } = build();
     const { pass } = await insertActivePass(anonRepo, 'cs_other', 'pi_other');
@@ -147,7 +163,7 @@ describe('ClaimPassFromTokenUseCase', () => {
   });
 
   it('releases the claim when the account pass cannot be written', async () => {
-    const { anonRepo, userPassRepo, useCase } = build();
+    const { anonRepo, userPassRepo, eventsSink, useCase } = build();
     const { pass } = await insertActivePass(anonRepo, 'cs_fail', 'pi_fail');
     vi.spyOn(userPassRepo, 'upsertWithAbsoluteExpiry').mockRejectedValue(
       new Error('db down')
@@ -157,5 +173,6 @@ describe('ClaimPassFromTokenUseCase', () => {
       useCase.execute(42, BUYER_EMAIL, 'cs_fail', NOW)
     ).rejects.toThrow(Error);
     expect((await anonRepo.findById(pass.id))?.claimed_by_user_id).toBeNull();
+    expect(eventsSink.record).not.toHaveBeenCalled();
   });
 });
