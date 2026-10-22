@@ -6116,6 +6116,20 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(heldDeck.rows).toHaveLength(0);
   });
 
+  it('never writes a signup hold under an anon_id forged as a preview key', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest('preview:victim');
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
+    expect(capturedSend()).toBeNull();
+    expect(heldDeck.rows).toHaveLength(0);
+  });
+
   it('falls back to the wall when the held file cannot be stored', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 13);
