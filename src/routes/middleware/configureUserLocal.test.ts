@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { configureUserLocal } from './configureUserLocal';
 import { InMemoryAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import { InMemoryUserPassRepository } from '../../data_layer/UserPassRepository';
@@ -217,5 +218,112 @@ describe('configureUserLocal — planSource', () => {
 
     expect(res.locals.subscriber).toBe(true);
     expect(res.locals.planSource).toBeNull();
+  });
+});
+
+describe('configureUserLocal — pass bought before signing up', () => {
+  const now = new Date('2026-10-22T00:30:00Z');
+  const signedIn = {
+    getUserFrom: async () => ({
+      owner: 29,
+      email: 'buyer@example.com',
+      patreon: false,
+      chat_consent_at: null,
+    }),
+    getIsSubscriber: async () => false,
+    getSubscriptionInfo: async () => null,
+  } as never;
+
+  async function seedActivePass(anonRepo: InMemoryAnonymousPassRepository) {
+    const pass = await anonRepo.insert({
+      stripeSessionId: 'cs_bought_anon',
+      kind: '24h',
+      expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+      paymentIntentId: 'pi_bought_anon',
+    });
+    await anonRepo.activate(
+      pass.id,
+      new Date(now.getTime() - 3 * 60 * 1000),
+      new Date(now.getTime() + 23 * 60 * 60 * 1000)
+    );
+    return pass;
+  }
+
+  it('claims the pass for the new account and treats the request as paying', async () => {
+    const anonRepo = new InMemoryAnonymousPassRepository();
+    const userPassRepo = new InMemoryUserPassRepository();
+    const pass = await seedActivePass(anonRepo);
+    const res = makeRes();
+
+    await configureUserLocal(
+      makeReq({ 'x-pass-token': 'cs_bought_anon' }, { token: 't' }),
+      res,
+      signedIn,
+      noDatabase,
+      anonRepo,
+      now,
+      undefined,
+      userPassRepo
+    );
+
+    expect(res.locals.subscriber).toBe(true);
+    expect(res.locals.passKind).toBe('24h');
+    expect(res.locals.passExpiresAt).toBe(
+      new Date(now.getTime() + 23 * 60 * 60 * 1000).toISOString()
+    );
+    expect(res.locals.anonymousPassId).toBeUndefined();
+    expect((await anonRepo.findById(pass.id))?.claimed_by_user_id).toBe(29);
+  });
+
+  it('keeps a pass another account claimed and leaves this one free', async () => {
+    const anonRepo = new InMemoryAnonymousPassRepository();
+    const userPassRepo = new InMemoryUserPassRepository();
+    const pass = await seedActivePass(anonRepo);
+    await anonRepo.claim(pass.id, 7);
+    const res = makeRes();
+
+    await configureUserLocal(
+      makeReq({ 'x-pass-token': 'cs_bought_anon' }, { token: 't' }),
+      res,
+      signedIn,
+      noDatabase,
+      anonRepo,
+      now,
+      undefined,
+      userPassRepo
+    );
+
+    expect(res.locals.subscriber).toBe(false);
+    expect((await anonRepo.findById(pass.id))?.claimed_by_user_id).toBe(7);
+  });
+
+  it('still answers the request when the claim fails', async () => {
+    const anonRepo = new InMemoryAnonymousPassRepository();
+    const userPassRepo = new InMemoryUserPassRepository();
+    await seedActivePass(anonRepo);
+    vi.spyOn(userPassRepo, 'upsertWithAbsoluteExpiry').mockRejectedValue(
+      new Error('db down')
+    );
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeRes();
+
+    await configureUserLocal(
+      makeReq({ 'x-pass-token': 'cs_bought_anon' }, { token: 't' }),
+      res,
+      signedIn,
+      noDatabase,
+      anonRepo,
+      now,
+      undefined,
+      userPassRepo
+    );
+
+    expect(res.locals.owner).toBe(29);
+    expect(res.locals.subscriber).toBe(false);
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[pass] session claim failed',
+      expect.any(Error)
+    );
+    errorSpy.mockRestore();
   });
 });

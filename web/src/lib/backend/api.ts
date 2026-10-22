@@ -4,6 +4,7 @@ import { NOT_FOUND, UNAUTHORIZED } from './http';
 
 interface ClientSideOptions {
   redirect?: boolean;
+  headers?: Record<string, string>;
 }
 
 // Pages reachable without a session. A 401 fired from any of these
@@ -78,7 +79,10 @@ export const get = async (
 ) => {
   let response: Response;
   try {
-    response = await fetch(url, { credentials: 'include' });
+    response = await fetch(url, {
+      credentials: 'include',
+      headers: options.headers,
+    });
   } catch (cause) {
     throw taggedHttpError(
       `Network error on GET ${pathOf(url)}: ${cause instanceof Error ? cause.message : String(cause)}`,

@@ -1,4 +1,5 @@
 import type Users from '@server/data_layer/public/Users';
+import { getStoredPassToken } from '../anonymousPass';
 import { get } from './api';
 import { get2ankiApi } from './get2ankiApi';
 
@@ -40,5 +41,13 @@ interface GetUserLocalsResponse {
   } | null;
 }
 
-export const getUserLocals = async (): Promise<GetUserLocalsResponse> =>
-  get(`${get2ankiApi().baseURL}users/debug/locals`);
+// The pass token rides along so a Day Pass bought before signing up moves to
+// the account on the first signed-in read, before the upload page decides
+// whether to show the limit wall.
+export const getUserLocals = async (): Promise<GetUserLocalsResponse> => {
+  const passToken = getStoredPassToken();
+  return get(`${get2ankiApi().baseURL}users/debug/locals`, {
+    redirect: true,
+    headers: passToken == null ? undefined : { 'X-Pass-Token': passToken },
+  });
+};

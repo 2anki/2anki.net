@@ -136,9 +136,21 @@ export class AiUsageMetricsRepository
       .limit(TOP_USER_ROWS);
   }
 
+  // Spend made on a pass before its buyer had an account is recorded against
+  // the pass id. Once the account claims that pass, the spend is the
+  // account's too, or claiming a pass would hand its allowance back.
   buildUserCostQuery(userId: number, since: Date): Knex.QueryBuilder {
     return this.baseQuery(since)
-      .where('user_id', userId)
+      .where((scope) =>
+        scope
+          .where('user_id', userId)
+          .orWhereIn(
+            'anonymous_pass_id',
+            this.database('anonymous_passes')
+              .select('id')
+              .where('claimed_by_user_id', userId)
+          )
+      )
       .select(
         this.database.raw(
           "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
