@@ -747,6 +747,19 @@ function UploadForm({
     zoneStateRef.current = zoneState;
   }, [zoneState]);
 
+  // The AI setting a signed-out submit carries. buildFormData and the folder/
+  // Dropbox/Drive/retry paths all copy localStorage, which can hold a stale
+  // `claude-ai-flashcards` from an old signed-in session or the AI landing
+  // page. Signed-in users and anonymous pass holders keep that stored setting
+  // (a pass holder is treated as paying, so flag-off must still give them AI);
+  // everyone else gets the explicit toggle intent, so the preview never runs on
+  // a page that hides the toggle. Every signed-out submit path calls this after
+  // building its form.
+  const applyAnonymousAiFlag = (formData: FormData, aiRequested: boolean) => {
+    if (isAuthenticated || getStoredPassToken() != null) return;
+    formData.set('claude-ai-flashcards', aiRequested ? 'true' : 'false');
+  };
+
   const submitFiles = () => {
     if (zoneStateRef.current === 'converting') return;
     convertRef.current?.click();
@@ -1062,6 +1075,7 @@ function UploadForm({
       for (const [key, value] of Object.entries(globalThis.localStorage)) {
         formData.append(key, value);
       }
+      applyAnonymousAiFlag(formData, aiOn);
       attachPdfPageRange(formData);
       const request = await globalThis.fetch('/api/upload/dropbox', {
         method: 'post',
@@ -1121,6 +1135,7 @@ function UploadForm({
       for (const [key, value] of Object.entries(globalThis.localStorage)) {
         formData.append(key, value);
       }
+      applyAnonymousAiFlag(formData, aiOn);
       attachPdfPageRange(formData);
       const request = await globalThis.fetch('/api/upload/google_drive', {
         method: 'post',
@@ -1441,14 +1456,7 @@ function UploadForm({
     const form = event.currentTarget as HTMLFormElement;
     capturePdfPageRange();
     const formData = buildFormData(form);
-    // For a signed-out visitor the AI setting is the explicit toggle state, not
-    // a leftover `claude-ai-flashcards` key in localStorage (from an old
-    // signed-in session or another page). buildFormData copies all of
-    // localStorage, so without this a hidden-toggle page would still ask for
-    // the preview. Signed-in users keep the localStorage-driven setting.
-    if (!isAuthenticated) {
-      formData.set('claude-ai-flashcards', aiOn ? 'true' : 'false');
-    }
+    applyAnonymousAiFlag(formData, aiOn);
     attachPdfPageRange(formData);
     const uploadedFiles = Array.from(fileInputRef.current?.files ?? []);
     return runFileUpload(formData, uploadedFiles, false);
@@ -1495,12 +1503,8 @@ function UploadForm({
     }
     attachPdfPageRange(formData);
     formData.set('rescue-rule', rule);
-    // Rescue builds the chosen structure, never AI — keep a leftover
-    // localStorage AI key from turning this into a preview for a signed-out
-    // visitor.
-    if (!isAuthenticated) {
-      formData.set('claude-ai-flashcards', 'false');
-    }
+    // Rescue builds the chosen structure, never AI.
+    applyAnonymousAiFlag(formData, false);
     setLocalError(null);
     setZoneState('converting');
     setProgressWidth(10);
@@ -1523,7 +1527,8 @@ function UploadForm({
       formData.append(key, value);
     }
     attachPdfPageRange(formData);
-    formData.set('claude-ai-flashcards', 'false');
+    // The gate's explicit "continue without AI" choice.
+    applyAnonymousAiFlag(formData, false);
     setAiPreviewCards(null);
     setLocalError(null);
     setZoneState('converting');
@@ -1551,6 +1556,7 @@ function UploadForm({
     for (const [key, value] of Object.entries(globalThis.localStorage)) {
       formData.append(key, value);
     }
+    applyAnonymousAiFlag(formData, aiOn);
     attachPdfPageRange(formData);
     void runFileUpload(formData, networkRetryFiles, true);
   };

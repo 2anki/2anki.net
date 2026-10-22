@@ -109,6 +109,25 @@ function apkgResumeResponse(): Response {
   } as unknown as Response;
 }
 
+function okApkgFetch(): Mock {
+  return vi.fn().mockResolvedValue({
+    redirected: false,
+    status: 200,
+    headers: new Headers({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': 'attachment; filename="deck.apkg"',
+      'X-Card-Count': '5',
+    }),
+    blob: () => Promise.resolve(new Blob(['fake'])),
+  });
+}
+
+function aiFlagFromFetch(fetchMock: Mock, url: string): string | null {
+  const call = fetchMock.mock.calls.find((c) => c[0] === url);
+  const body = call?.[1]?.body as FormData | undefined;
+  return body ? (body.get('claude-ai-flashcards') as string | null) : null;
+}
+
 function installResumeApi(resumeAiPreview: Mock): () => void {
   const previousImpl = mockGet2ankiApi.getMockImplementation();
   mockGet2ankiApi.mockReturnValue({
@@ -244,6 +263,129 @@ describe('UploadForm', () => {
       const body = call![1].body as FormData;
       expect(body.get('claude-ai-flashcards')).toBe('false');
     } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+    }
+  });
+
+  test('a signed-out upload with the toggle on sends AI on', async () => {
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+    expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true');
+  });
+
+  test('a signed-out pass holder keeps their stored AI setting even with the flag off', async () => {
+    // A pass holder is treated as paying; flag-off must not strip their AI.
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_pass');
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+      expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true');
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
+  test('a signed-in upload keeps the localStorage AI setting', async () => {
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 1 },
+        locals: { patreon: true, subscriber: false },
+        features: {},
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn />
+      );
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+      expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true');
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+      // Restore a clean signed-out default so later tests don't inherit a
+      // signed-in user (mockReset would leave an undefined return).
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+    }
+  });
+
+  test('a signed-out Dropbox upload sends AI off despite a leftover key', async () => {
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
+    process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
+    (window as unknown as { Dropbox?: unknown }).Dropbox = {
+      choose: ({ success }: { success: (files: unknown[]) => void }) => {
+        success([
+          {
+            id: 'id:2',
+            name: 'notes.pdf',
+            bytes: 100,
+            icon: 'page',
+            isDir: false,
+            link: 'https://dl.dropboxusercontent.com/x/notes.pdf',
+            linkType: 'direct',
+          },
+        ]);
+      },
+    };
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const button = container.querySelector(
+        'button[aria-label="Choose from Dropbox"]'
+      ) as HTMLButtonElement;
+      await act(async () => {
+        button.click();
+      });
+      await waitFor(() =>
+        expect(aiFlagFromFetch(fetchMock, '/api/upload/dropbox')).toBe('false')
+      );
+    } finally {
+      delete (window as unknown as { Dropbox?: unknown }).Dropbox;
+      process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
       globalThis.localStorage.removeItem('claude-ai-flashcards');
     }
   });
@@ -498,6 +640,34 @@ describe('UploadForm Google Drive picker interaction', () => {
     const body = driveCall[1].body as FormData;
     expect(body.get('pdf-page-range')).toBe('2-4');
     expect(globalThis.localStorage.getItem('pdf-page-range')).toBeNull();
+  });
+
+  it('sends AI off on a signed-out Drive upload despite a leftover localStorage key', async () => {
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      fireEvent.click(
+        within(container).getByRole('button', { name: 'Google Drive' })
+      );
+      const driveButton = await screen.findByRole('button', {
+        name: 'Choose from Google Drive',
+      });
+      fireEvent.click(driveButton);
+      await waitFor(() =>
+        expect(aiFlagFromFetch(fetchMock, '/api/upload/google_drive')).toBe(
+          'false'
+        )
+      );
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+    }
   });
 });
 
@@ -3701,6 +3871,47 @@ describe('UploadForm network-failure retry', () => {
       ([url]) => url === '/api/upload/file'
     )[1][1].body as FormData;
     expect(retryBody.get('pdf-page-range')).toBe('2-4');
+  });
+
+  it('keeps AI off on Try again for a signed-out visitor with a leftover key', async () => {
+    globalThis.localStorage.removeItem('2anki_pass_token');
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue(successResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      selectFile(container, 'notes.pdf', SMALL);
+      await submitForm(container);
+
+      const retry = await screen.findByRole('button', { name: 'Try again' });
+      fireEvent.click(retry);
+
+      await waitFor(() => {
+        const uploadCalls = fetchMock.mock.calls.filter(
+          ([url]) => url === '/api/upload/file'
+        );
+        expect(uploadCalls).toHaveLength(2);
+      });
+      const retryBody = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/upload/file'
+      )[1][1].body as FormData;
+      expect(retryBody.get('claude-ai-flashcards')).toBe('false');
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+    }
   });
 
   it('shows big-file copy when the failed upload is 10 MB or larger', async () => {
