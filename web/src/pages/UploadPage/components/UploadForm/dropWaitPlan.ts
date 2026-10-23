@@ -4,7 +4,7 @@
 // request that died within seconds most likely never reached the server, so
 // the wait is short; one that ran for a while was probably converting.
 const EARLY_FAILURE_MS = 5_000;
-const EARLY_WAIT_MS = 60_000;
+const EARLY_WAIT_MS = 20_000;
 const LONG_WAIT_MS = 6 * 60_000;
 const FAST_CHECK_MS = 4_000;
 const SLOW_CHECK_MS = 10_000;

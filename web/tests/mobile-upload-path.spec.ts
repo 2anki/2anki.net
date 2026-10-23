@@ -173,6 +173,12 @@ test('backgrounding then a dropped connection surfaces a retry at 375px', async 
     window.dispatchEvent(new Event('pagehide'));
   });
 
+  // The page was told it is hidden, so animation frames never run and the
+  // stability check would hang, and the cookie banner sits over the button
+  // at this width; dispatching the click is what is under test.
+  await page
+    .getByRole('button', { name: 'Stop waiting', exact: true })
+    .dispatchEvent('click');
   const retry = page.getByRole('button', { name: 'Try again', exact: true });
   await expect(retry).toBeVisible({ timeout: 10_000 });
   await noOverflow(page, 'network-error');

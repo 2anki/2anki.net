@@ -5,9 +5,9 @@ import { dropWaitDelays } from './dropWaitPlan';
 const total = (delays: number[]) => delays.reduce((sum, d) => sum + d, 0);
 
 describe('dropWaitDelays', () => {
-  it('waits about a minute when the upload died within seconds', () => {
+  it('waits about twenty seconds when the upload died within seconds', () => {
     const delays = dropWaitDelays(1_000);
-    expect(total(delays)).toBe(60_000);
+    expect(total(delays)).toBe(20_000);
     expect(new Set(delays)).toEqual(new Set([4_000]));
   });
 
