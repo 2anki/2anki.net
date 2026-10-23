@@ -100,6 +100,20 @@ describe('snapshotUploadBody', () => {
     expect((error as UnreadableFileError).reason).toBe('partial');
   });
 
+  it('sends the files from disk when copying them fails for another reason', async () => {
+    const original = new File(['abc'], 'big.zip');
+    Object.defineProperty(original, 'arrayBuffer', {
+      value: () =>
+        Promise.reject(new RangeError('Array buffer allocation failed')),
+    });
+    const form = new FormData();
+    form.append('pakker', original);
+
+    const snapshot = await snapshotUploadBody(form, [original]);
+
+    expect(snapshot).toBe(form);
+  });
+
   it('streams files above the in-memory cap from disk as before', async () => {
     const big = new File(['abc'], 'big.zip');
     Object.defineProperty(big, 'size', { value: SNAPSHOT_MAX_BYTES + 1 });

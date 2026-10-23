@@ -42,15 +42,25 @@ export async function assertFilesReadable(files: File[]): Promise<void> {
 // picks stream from disk as before, so a huge upload cannot exhaust the tab.
 export const SNAPSHOT_MAX_BYTES = 100 * 1024 * 1024;
 
-async function copyIntoMemory(file: File): Promise<File> {
+// Only the browser refusing the file is the file's fault. Running out of
+// memory on a phone is not: that upload goes from disk as before.
+const UNREADABLE_FILE_ERRORS = new Set(['NotReadableError', 'NotFoundError']);
+
+async function copyIntoMemory(file: File): Promise<File | null> {
   try {
     const bytes = await file.arrayBuffer();
     return new File([bytes], file.name, {
       type: file.type,
       lastModified: file.lastModified,
     });
-  } catch {
-    throw new UnreadableFileError(file, 'partial');
+  } catch (error) {
+    if (
+      error instanceof DOMException &&
+      UNREADABLE_FILE_ERRORS.has(error.name)
+    ) {
+      throw new UnreadableFileError(file, 'partial');
+    }
+    return null;
   }
 }
 
@@ -69,7 +79,9 @@ export async function snapshotUploadBody(
   if (totalBytes > SNAPSHOT_MAX_BYTES) return formData;
   const copies: File[] = [];
   for (const file of files) {
-    copies.push(await copyIntoMemory(file));
+    const copy = await copyIntoMemory(file);
+    if (copy == null) return formData;
+    copies.push(copy);
   }
   // The form's file entries are the picked files in pick order; each one is
   // swapped for its copy, and an entry that does not line up is sent as is.
