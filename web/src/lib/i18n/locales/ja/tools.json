@@ -85,7 +85,7 @@
   },
   "photo": {
     "overLimit": "写真が 10 MB の上限を超えています。より小さな画像を試してください。",
-    "handoffSkipped": "アップロードから最初の {{loaded}} 枚の写真を読み込みました。これらでカードを作ってから、残りの {{skipped}} 枚を追加してください。",
+    "handoffSkipped": "アップロードから {{loaded}} 枚の写真を読み込みました。読み込んでいない写真: {{skipped}} 枚。これらのカードを作ってから追加してください。",
     "badFormat": "JPEG、PNG、WebP、GIF、HEIC などの写真形式をご利用ください。",
     "readError": "画像を読み取れませんでした",
     "notAvailable": "写真からデッキはまだ利用できません。",

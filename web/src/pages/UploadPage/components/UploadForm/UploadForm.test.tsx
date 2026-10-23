@@ -2712,6 +2712,7 @@ describe('UploadForm analytics events', () => {
         return Promise.resolve(new Response('{}'));
       })
     );
+    sessionStorage.setItem('upload_pending_filename', 'older.pdf');
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />
     );
@@ -2734,6 +2735,7 @@ describe('UploadForm analytics events', () => {
       await screen.findByText('Photo to Deck turns images into cards')
     ).toBeInTheDocument();
     expect(requests).not.toContain('/api/upload/file');
+    expect(sessionStorage.getItem('upload_pending_filename')).toBeNull();
   });
 
   it('tracks upload_failed with reason=network when fetch throws a TypeError', async () => {

@@ -86,7 +86,7 @@
   },
   "photo": {
     "overLimit": "La foto supera el límite de 10 MB. Prueba con una imagen más pequeña.",
-    "handoffSkipped": "Cargamos las primeras {{loaded}} fotos de tu subida. Haz tarjetas con ellas y luego añade las otras {{skipped}}.",
+    "handoffSkipped": "Cargamos {{loaded}} fotos de tu subida. Sin cargar: {{skipped}}. Añádelas cuando termines estas tarjetas.",
     "badFormat": "Usa un formato de foto como JPEG, PNG, WebP, GIF o HEIC.",
     "readError": "No se pudo leer la imagen",
     "notAvailable": "Foto a mazo aún no está disponible.",

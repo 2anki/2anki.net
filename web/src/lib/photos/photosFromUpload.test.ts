@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isPhotoName,
+  MAX_HANDOFF_PHOTO_BYTES,
   MAX_HANDOFF_PHOTOS,
   photosFromUpload,
 } from './photosFromUpload';
@@ -55,6 +56,17 @@ describe('photosFromUpload', () => {
 
     expect(photos).toHaveLength(MAX_HANDOFF_PHOTOS);
     expect(skipped).toBe(3);
+  });
+
+  it('counts photos too large for Photo to Deck as left out', async () => {
+    const big = new File(['b'], 'huge.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(big, 'size', { value: MAX_HANDOFF_PHOTO_BYTES + 1 });
+    const small = new File(['s'], 'small.jpg', { type: 'image/jpeg' });
+
+    expect(await photosFromUpload([big, small])).toEqual({
+      photos: [small],
+      skipped: 1,
+    });
   });
 
   it('ignores files that are neither photos nor zips', async () => {

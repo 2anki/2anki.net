@@ -86,7 +86,7 @@
   },
   "photo": {
     "overLimit": "Foto is groter dan de 10 MB-limiet. Probeer een kleinere afbeelding.",
-    "handoffSkipped": "De eerste {{loaded}} foto's uit je upload zijn geladen. Maak hier kaarten van en voeg daarna de andere {{skipped}} toe.",
+    "handoffSkipped": "{{loaded}} foto's uit je upload zijn geladen. Niet geladen: {{skipped}}. Voeg ze toe als deze kaarten klaar zijn.",
     "badFormat": "Gebruik een fotoformaat zoals JPEG, PNG, WebP, GIF of HEIC.",
     "readError": "Kon de afbeelding niet lezen",
     "notAvailable": "Foto naar deck is nog niet beschikbaar.",

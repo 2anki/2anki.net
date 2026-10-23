@@ -13,6 +13,8 @@ const PHOTO_TYPES = new Map<string, string>([
 // Photo to Deck reads each photo with one AI call when the person presses
 // Make cards, so a handed-over zip loads at most this many.
 export const MAX_HANDOFF_PHOTOS = 20;
+// Photo to Deck refuses photos over this size, so they are not handed over.
+export const MAX_HANDOFF_PHOTO_BYTES = 10 * 1024 * 1024;
 
 export interface UploadPhotos {
   photos: File[];
@@ -71,10 +73,9 @@ export async function photosFromUpload(files: File[]): Promise<UploadPhotos> {
       }
     }
   }
-  return {
-    photos: found.slice(0, MAX_HANDOFF_PHOTOS),
-    skipped: Math.max(0, found.length - MAX_HANDOFF_PHOTOS),
-  };
+  const usable = found.filter((photo) => photo.size <= MAX_HANDOFF_PHOTO_BYTES);
+  const photos = usable.slice(0, MAX_HANDOFF_PHOTOS);
+  return { photos, skipped: found.length - photos.length };
 }
 
 // Router state the upload page hands to Photo to Deck.

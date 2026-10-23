@@ -86,7 +86,7 @@
   },
   "photo": {
     "overLimit": "La foto supera il limite di 10 MB. Prova un'immagine più piccola.",
-    "handoffSkipped": "Abbiamo caricato le prime {{loaded}} foto del tuo caricamento. Crea le schede con queste, poi aggiungi le altre {{skipped}}.",
+    "handoffSkipped": "Abbiamo caricato {{loaded}} foto del tuo caricamento. Non caricate: {{skipped}}. Aggiungile quando hai finito queste schede.",
     "badFormat": "Usa un formato foto come JPEG, PNG, WebP, GIF o HEIC.",
     "readError": "Non è stato possibile leggere l'immagine",
     "notAvailable": "Da foto a mazzo non è ancora disponibile.",

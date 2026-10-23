@@ -86,7 +86,7 @@
   },
   "photo": {
     "overLimit": "Das Foto überschreitet das Limit von 10 MB. Versuch ein kleineres Bild.",
-    "handoffSkipped": "Die ersten {{loaded}} Fotos aus deinem Upload sind geladen. Mach daraus Karten und füge danach die anderen {{skipped}} hinzu.",
+    "handoffSkipped": "{{loaded}} Fotos aus deinem Upload sind geladen. Nicht geladen: {{skipped}}. Füge sie hinzu, wenn diese Karten fertig sind.",
     "badFormat": "Verwende ein Fotoformat wie JPEG, PNG, WebP, GIF oder HEIC.",
     "readError": "Das Bild konnte nicht gelesen werden",
     "notAvailable": "Foto zu Stapel ist noch nicht verfügbar.",

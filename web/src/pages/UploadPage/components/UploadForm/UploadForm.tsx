@@ -1459,7 +1459,7 @@ function UploadForm({
     // The server has no HEIC reader, so an iPhone photo would come back as an
     // empty deck; Photo to Deck reads it in the browser instead.
     if (uploadedFiles.length > 0 && uploadedFiles.every(isHeicPhoto)) {
-      saveFilenameForReattach(uploadedFiles[0].name);
+      clearPendingUpload();
       setZoneState('imageOnly');
       return true;
     }
@@ -3055,7 +3055,10 @@ function UploadForm({
   // The photos ride along to Photo to Deck, taken out of the zip here, so the
   // person does not unzip and pick them again. Nothing is sent to AI until
   // they press Make cards there.
+  const [handingOffPhotos, setHandingOffPhotos] = useState(false);
   const handOffPhotos = async () => {
+    if (handingOffPhotos) return;
+    setHandingOffPhotos(true);
     let handoff: UploadPhotos = { photos: [], skipped: 0 };
     try {
       handoff = await photosFromUpload(rescueFiles);
@@ -3093,6 +3096,8 @@ function UploadForm({
             type="button"
             className={formStyles.actionButton}
             onClick={handOffPhotos}
+            disabled={handingOffPhotos}
+            aria-busy={handingOffPhotos}
           >
             {t('upload.form.tryPhotoToDeck')}
           </button>
