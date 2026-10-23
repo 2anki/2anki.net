@@ -45,3 +45,11 @@ export function buildDeckStyle(settings: DeckStyleSettings): string {
     ) ?? base
   );
 }
+
+export function withDeckStyle<T extends { style: string | null }>(
+  decks: T[],
+  settings: DeckStyleSettings
+): T[] {
+  const style = buildDeckStyle(settings);
+  return decks.map((deck) => ({ ...deck, style }));
+}

@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import Note from '../../lib/parser/Note';
+import { buildDeckStyle } from '../../lib/parser/buildDeckStyle';
+import CardOption from '../../lib/parser/Settings/CardOption';
 
 function randomDeckId(): number {
   const hex = randomUUID().replace(/-/g, '').slice(0, 13);
@@ -12,7 +14,7 @@ export function buildMindmapDeckInfo(deckName: string, notes: Note[]) {
     {
       name: deckName,
       image: '',
-      style: null,
+      style: buildDeckStyle(new CardOption({})),
       id: randomDeckId(),
       settings: {
         template: 'specialstyle',

@@ -25,6 +25,8 @@ import { track } from '../../services/events/track';
 import { recordClaudeUsage } from '../../lib/claude/recordClaudeUsage';
 import { computeUsageCostUsd } from '../../lib/claude/pricing';
 import type { IEventsRepository } from '../../data_layer/EventsRepository';
+import { buildDeckStyle } from '../../lib/parser/buildDeckStyle';
+import CardOption from '../../lib/parser/Settings/CardOption';
 import {
   asValidMcq,
   classifyVerbatimShape,
@@ -564,7 +566,7 @@ function buildDeckInfo(
         )
       ),
       cards,
-      style: null,
+      style: buildDeckStyle(new CardOption({})),
       settings: {
         template: 'specialstyle',
         clozeModelName: 'n2a-cloze',

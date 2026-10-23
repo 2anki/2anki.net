@@ -2,5 +2,5 @@
   "id": "2026-10-23-notion-colours-in-anki",
   "date": "2026-10-23",
   "type": "fix",
-  "title": "Notion highlight colours and callout backgrounds show in Anki again, whichever 2anki deck you imported first. Your next import refreshes the 2anki card styling once, so redo any CSS you changed by hand on the n2a note types"
+  "title": "Notion highlight colours and callout backgrounds show in Anki again, whichever 2anki deck you imported first. Your next import refreshes 2anki's card styling once, so redo any CSS you changed by hand on the n2a note types."
 }
