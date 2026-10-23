@@ -80,7 +80,7 @@ async function readDeckUpload(
   const chosen = typeof body?.deck_entry === 'string' ? body.deck_entry : null;
   const userId = typeof res.locals.owner === 'number' ? res.locals.owner : null;
   try {
-    const resolved = resolveDeckUpload(upload, file.originalname, chosen);
+    const resolved = await resolveDeckUpload(upload, file.originalname, chosen);
     if (resolved.kind === 'choose') {
       track('deck_upload_resolved', {
         userId,

@@ -1,5 +1,5 @@
 import path from 'path';
-import { unzipSync } from 'fflate';
+import yauzl from 'yauzl';
 
 import { isAnkiPackageZip } from '../../usecases/uploads/isAnkiPackageZip';
 import { isHiddenFileOrDirectory } from '../storage/checks';
@@ -27,8 +27,7 @@ export class DeckUploadError extends Error {
 
 const MAX_INNER_DECK_BYTES = 100 * 1024 * 1024;
 const MAX_COMPRESSION_RATIO = 100;
-// fflate trusts the zip's own entry count, so a tiny crafted zip can claim
-// billions of entries; real decks and exports hold far fewer.
+// A zip states its own entry count; real decks and exports hold far fewer.
 const MAX_ZIP_ENTRIES = 10_000;
 
 export const UNREADABLE_ZIP_MESSAGE =
@@ -50,83 +49,93 @@ function isInnerDeck(name: string): boolean {
   );
 }
 
-function listEntryNames(zip: Uint8Array): string[] {
-  const names: string[] = [];
-  unzipSync(zip, {
-    filter: (file) => {
-      if (names.length >= MAX_ZIP_ENTRIES) {
-        throw new DeckUploadError(UNREADABLE_ZIP_MESSAGE);
+function openZip(upload: Buffer): Promise<yauzl.ZipFile> {
+  return new Promise((resolve, reject) => {
+    yauzl.fromBuffer(upload, { lazyEntries: true }, (error, zipfile) => {
+      if (error || !zipfile) {
+        reject(new DeckUploadError(UNREADABLE_ZIP_MESSAGE));
+        return;
       }
-      names.push(file.name);
-      return false;
-    },
-  });
-  return names;
-}
-
-function extractEntry(zip: Uint8Array, entryName: string): Buffer {
-  let tooLarge = false;
-  let taken = false;
-  let files: Record<string, Uint8Array>;
-  try {
-    files = unzipSync(zip, {
-      filter: (file) => {
-        // A directory can list one name many times over the same data;
-        // inflate it once.
-        if (taken || file.name !== entryName) return false;
-        // The header's sizes are claims: a compressed size larger than the
-        // whole upload is a lie meant to pass the ratio check, and fflate
-        // allocates the claimed uncompressed size up front.
-        if (file.size > zip.length) {
-          tooLarge = true;
-          return false;
-        }
-        if (
-          file.originalSize > MAX_INNER_DECK_BYTES ||
-          file.originalSize > file.size * MAX_COMPRESSION_RATIO + 1024
-        ) {
-          tooLarge = true;
-          return false;
-        }
-        taken = true;
-        return true;
-      },
+      resolve(zipfile);
     });
-  } catch {
-    throw new DeckUploadError(UNREADABLE_ZIP_MESSAGE);
-  }
-  if (tooLarge) throw new DeckUploadError(INNER_DECK_TOO_LARGE_MESSAGE);
-  const contents = files[entryName];
-  if (contents == null) throw new DeckUploadError(UNREADABLE_ZIP_MESSAGE);
-  // A short stream inside a larger claimed size leaves the bytes as a small
-  // view of a big buffer; copy it so the rest can be freed.
-  return contents.byteLength === contents.buffer.byteLength
-    ? Buffer.from(contents.buffer, contents.byteOffset, contents.byteLength)
-    : Buffer.from(contents);
+  });
 }
 
-function readZip(upload: Buffer): { zip: Uint8Array; names: string[] } {
-  const zip = new Uint8Array(
-    upload.buffer,
-    upload.byteOffset,
-    upload.byteLength
-  );
-  try {
-    return { zip, names: listEntryNames(zip) };
-  } catch {
-    throw new DeckUploadError(UNREADABLE_ZIP_MESSAGE);
+// Only the central directory is read here; no entry is inflated.
+function listEntries(
+  zipfile: yauzl.ZipFile
+): Promise<Map<string, yauzl.Entry>> {
+  return new Promise((resolve, reject) => {
+    const entries = new Map<string, yauzl.Entry>();
+    let seen = 0;
+    zipfile.on('entry', (entry: yauzl.Entry) => {
+      seen += 1;
+      if (seen > MAX_ZIP_ENTRIES) {
+        zipfile.close();
+        reject(new DeckUploadError(UNREADABLE_ZIP_MESSAGE));
+        return;
+      }
+      // A directory can list one name many times; the first one counts.
+      if (!entries.has(entry.fileName)) entries.set(entry.fileName, entry);
+      zipfile.readEntry();
+    });
+    zipfile.on('end', () => resolve(entries));
+    zipfile.on('error', () =>
+      reject(new DeckUploadError(UNREADABLE_ZIP_MESSAGE))
+    );
+    zipfile.readEntry();
+  });
+}
+
+// Inflation runs in zlib off the event loop and stops at the size the entry
+// declares (yauzl checks the real size against it), so a header that lies
+// about its sizes cannot buy more memory or CPU than the cap.
+function readDeck(
+  zipfile: yauzl.ZipFile,
+  entry: yauzl.Entry,
+  uploadBytes: number
+): Promise<Buffer> {
+  if (
+    entry.compressedSize > uploadBytes ||
+    entry.uncompressedSize > MAX_INNER_DECK_BYTES ||
+    entry.uncompressedSize > entry.compressedSize * MAX_COMPRESSION_RATIO + 1024
+  ) {
+    return Promise.reject(new DeckUploadError(INNER_DECK_TOO_LARGE_MESSAGE));
   }
+  return new Promise((resolve, reject) => {
+    zipfile.openReadStream(entry, (error, stream) => {
+      if (error || !stream) {
+        reject(new DeckUploadError(UNREADABLE_ZIP_MESSAGE));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      let received = 0;
+      stream.on('data', (chunk: Buffer) => {
+        received += chunk.length;
+        if (received > entry.uncompressedSize) {
+          stream.destroy();
+          reject(new DeckUploadError(UNREADABLE_ZIP_MESSAGE));
+          return;
+        }
+        chunks.push(chunk);
+      });
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+      stream.on('error', () =>
+        reject(new DeckUploadError(UNREADABLE_ZIP_MESSAGE))
+      );
+    });
+  });
 }
 
 // Decks reach us as .apkg, as an .apkg the browser or OS saved with a .zip
 // name, or zipped up with other files. All of them are the same deck to the
 // person printing it, so all of them open. `chosenEntry` is the deck the
 // person picked when the zip held several.
-export function resolveDeckUpload(
+export async function resolveDeckUpload(
   upload: Buffer,
   filename: string,
   chosenEntry?: string | null
-): DeckUpload {
+): Promise<DeckUpload> {
   if (/\.apkg$/i.test(filename)) {
     return {
       kind: 'deck',
@@ -137,33 +146,35 @@ export function resolveDeckUpload(
   }
   if (!/\.zip$/i.test(filename)) return { kind: 'not_a_deck' };
 
-  const { zip, names } = readZip(upload);
-  if (isAnkiPackageZip(names)) {
+  const zipfile = await openZip(upload);
+  try {
+    const entries = await listEntries(zipfile);
+    const names = [...entries.keys()];
+    if (isAnkiPackageZip(names)) {
+      return {
+        kind: 'deck',
+        deck: upload,
+        deckName: stripExtension(filename),
+        shape: 'zip_is_deck',
+      };
+    }
+
+    const decks = names.filter(isInnerDeck);
+    if (decks.length === 0) return { kind: 'not_a_deck' };
+
+    const picked =
+      chosenEntry != null && decks.includes(chosenEntry) ? chosenEntry : null;
+    if (picked == null && decks.length > 1) return { kind: 'choose', decks };
+
+    const name = picked ?? decks[0];
+    const entry = entries.get(name) as yauzl.Entry;
     return {
       kind: 'deck',
-      deck: upload,
-      deckName: stripExtension(filename),
-      shape: 'zip_is_deck',
+      deck: await readDeck(zipfile, entry, upload.length),
+      deckName: stripExtension(name),
+      shape: picked == null ? 'zip_one_deck' : 'zip_chosen_deck',
     };
+  } finally {
+    zipfile.close();
   }
-
-  const decks = [...new Set(names.filter(isInnerDeck))];
-  if (decks.length === 0) return { kind: 'not_a_deck' };
-
-  if (chosenEntry != null && decks.includes(chosenEntry)) {
-    return {
-      kind: 'deck',
-      deck: extractEntry(zip, chosenEntry),
-      deckName: stripExtension(chosenEntry),
-      shape: 'zip_chosen_deck',
-    };
-  }
-  if (decks.length > 1) return { kind: 'choose', decks };
-
-  return {
-    kind: 'deck',
-    deck: extractEntry(zip, decks[0]),
-    deckName: stripExtension(decks[0]),
-    shape: 'zip_one_deck',
-  };
 }
