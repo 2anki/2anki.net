@@ -172,6 +172,9 @@
     },
     "form": {
       "makingDeck": "Criando seu baralho...",
+      "waitingForDeck": "Sua conexão caiu, mas ainda estamos criando seu baralho. Deixe esta aba aberta e ele aparecerá aqui.",
+      "waitingForDeckSignedIn": "Sua conexão caiu, mas ainda estamos criando seu baralho. Deixe esta aba aberta ou procure em Meus baralhos quando ficar pronto.",
+      "stopWaiting": "Parar de esperar",
       "fetching": "Buscando {{filename}} em {{source}}",
       "deckReady": "Seu baralho está pronto",
       "savedToDownloads": "{{deckName}} foi salvo nos seus downloads",

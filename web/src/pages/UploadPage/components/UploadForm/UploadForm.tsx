@@ -68,6 +68,7 @@ import {
 } from '../../../../lib/reportClientError';
 import { UserNotice } from '../../../../lib/errors/UserNotice';
 import { snapshotUploadBody, UnreadableFileError } from './assertFilesReadable';
+import { dropWaitDelays } from './dropWaitPlan';
 import {
   HANDOFF_PHOTOS_STATE_KEY,
   HANDOFF_SKIPPED_STATE_KEY,
@@ -377,6 +378,16 @@ function UploadForm({
   // them back with the chosen rule. Remote (Dropbox, Drive) submits clear it:
   // those bytes never reach the browser, so no button is offered for them.
   const [rescueFiles, setRescueFiles] = useState<File[]>([]);
+  const [waitingForDeck, setWaitingForDeck] = useState(false);
+  const stopWaitingRef = useRef<(() => void) | null>(null);
+  const unmountedRef = useRef(false);
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      stopWaitingRef.current?.();
+    };
+  }, []);
   // True while the last submit was the AI resend from the empty state, so a
   // second empty result after Claude tried never offers AI again.
   const [lastSubmitUsedAi, setLastSubmitUsedAi] = useState(false);
@@ -1391,7 +1402,7 @@ function UploadForm({
   const fetchAnonymousCopy = async (
     target: { name: string; size: number },
     recoveryToken: string,
-    trigger: 'error' | 'retry' | 'reload',
+    trigger: 'error' | 'retry' | 'reload' | 'wait',
     stillWanted: () => boolean = () => true
   ): Promise<boolean> => {
     let deck: Blob | null;
@@ -1428,13 +1439,68 @@ function UploadForm({
   const recoverAnonymousDeck = async (
     error: unknown,
     uploadedFiles: File[],
-    recoveryToken: string | null
+    recoveryToken: string | null,
+    trigger: 'error' | 'wait' = 'error'
   ): Promise<boolean> => {
     if (!isNetworkThrownError(error)) return false;
     if (isAuthenticated || recoveryToken == null) return false;
     const target = uploadedFiles[0];
     if (target == null) return false;
-    return fetchAnonymousCopy(target, recoveryToken, 'error');
+    return fetchAnonymousCopy(target, recoveryToken, trigger);
+  };
+
+  // The server finishes a conversion after the connection drops, so the deck
+  // may only appear minutes later. Keep looking for it, with the status shown,
+  // until it turns up, the wait runs out, or the person stops waiting.
+  const waitForDroppedDeck = async (
+    error: unknown,
+    uploadedFiles: File[],
+    submittedAt: number,
+    recoveryToken: string | null
+  ): Promise<boolean> => {
+    if (!isNetworkThrownError(error)) return false;
+    const canLook = isAuthenticated || recoveryToken != null;
+    if (!canLook) return false;
+
+    const lookOnce = async (trigger: 'error' | 'wait') =>
+      (await recoverSignedInDeck(error, uploadedFiles, submittedAt)) ||
+      (await recoverAnonymousDeck(
+        error,
+        uploadedFiles,
+        recoveryToken,
+        trigger
+      ));
+    if (await lookOnce('error')) return true;
+
+    const delays = dropWaitDelays(Date.now() - submittedAt);
+    if (delays.length === 0) return false;
+
+    let stopped = false;
+    let wake: (() => void) | null = null;
+    stopWaitingRef.current = () => {
+      stopped = true;
+      wake?.();
+    };
+    setWaitingForDeck(true);
+    setProgressSlow(true);
+    try {
+      for (const delay of delays) {
+        await new Promise<void>((resolve) => {
+          const timer = globalThis.setTimeout(resolve, delay);
+          wake = () => {
+            globalThis.clearTimeout(timer);
+            resolve();
+          };
+        });
+        if (stopped || zoneStateRef.current !== 'converting') return false;
+        if (await lookOnce('wait')) return true;
+        if (stopped) return false;
+      }
+      return false;
+    } finally {
+      stopWaitingRef.current = null;
+      setWaitingForDeck(false);
+    }
   };
 
   // A retry of the same files keeps the token: the server finishes a
@@ -1509,12 +1575,17 @@ function UploadForm({
       }
       await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {
-      if (await recoverSignedInDeck(error, uploadedFiles, submittedAt)) {
+      if (
+        await waitForDroppedDeck(
+          error,
+          uploadedFiles,
+          submittedAt,
+          recoveryToken
+        )
+      ) {
         return true;
       }
-      if (await recoverAnonymousDeck(error, uploadedFiles, recoveryToken)) {
-        return true;
-      }
+      if (unmountedRef.current) return false;
       return handleUploadError(error, uploadedFiles, isRetry, submittedAt);
     }
     return true;
@@ -1931,6 +2002,24 @@ function UploadForm({
               })
             : t('upload.form.makingDeck')}
         </p>
+        {waitingForDeck && (
+          <>
+            <p className={formStyles.statusText} role="status">
+              {t(
+                isAuthenticated
+                  ? 'upload.form.waitingForDeckSignedIn'
+                  : 'upload.form.waitingForDeck'
+              )}
+            </p>
+            <button
+              type="button"
+              className={formStyles.resetLink}
+              onClick={() => stopWaitingRef.current?.()}
+            >
+              {t('upload.form.stopWaiting')}
+            </button>
+          </>
+        )}
       </div>
     );
   };

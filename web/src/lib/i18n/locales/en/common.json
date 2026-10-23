@@ -172,6 +172,9 @@
     },
     "form": {
       "makingDeck": "Making your deck...",
+      "waitingForDeck": "Your connection dropped, but we're still building your deck. Keep this tab open and it will appear here.",
+      "waitingForDeckSignedIn": "Your connection dropped, but we're still building your deck. Keep this tab open, or find it in My Decks when it's done.",
+      "stopWaiting": "Stop waiting",
       "fetching": "Fetching {{filename}} from {{source}}",
       "deckReady": "Your deck is ready",
       "savedToDownloads": "{{deckName}} was saved to your downloads",

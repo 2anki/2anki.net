@@ -172,6 +172,9 @@
     },
     "form": {
       "makingDeck": "Je deck wordt gemaakt...",
+      "waitingForDeck": "Je verbinding viel weg, maar we maken je deck nog steeds. Laat dit tabblad open staan, dan verschijnt het hier.",
+      "waitingForDeckSignedIn": "Je verbinding viel weg, maar we maken je deck nog steeds. Laat dit tabblad open staan, of vind het in Mijn decks als het klaar is.",
+      "stopWaiting": "Stop met wachten",
       "fetching": "{{filename}} ophalen van {{source}}",
       "deckReady": "Je deck is klaar",
       "savedToDownloads": "{{deckName}} is opgeslagen in je downloads",

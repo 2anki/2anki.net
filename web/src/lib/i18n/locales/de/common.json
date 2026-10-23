@@ -172,6 +172,9 @@
     },
     "form": {
       "makingDeck": "Dein Stapel wird erstellt",
+      "waitingForDeck": "Deine Verbindung ist abgebrochen, aber wir erstellen deinen Stapel weiter. Lass diesen Tab offen, dann erscheint er hier.",
+      "waitingForDeckSignedIn": "Deine Verbindung ist abgebrochen, aber wir erstellen deinen Stapel weiter. Lass diesen Tab offen oder such ihn später unter Meine Stapel.",
+      "stopWaiting": "Nicht mehr warten",
       "fetching": "{{filename}} wird von {{source}} geladen",
       "deckReady": "Dein Stapel ist fertig",
       "savedToDownloads": "{{deckName}} wurde in deinen Downloads gespeichert",

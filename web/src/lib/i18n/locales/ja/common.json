@@ -171,6 +171,9 @@
     },
     "form": {
       "makingDeck": "デッキを作成しています...",
+      "waitingForDeck": "接続が切れましたが、デッキの作成は続いています。このタブを開いたままにすると、ここに表示されます。",
+      "waitingForDeckSignedIn": "接続が切れましたが、デッキの作成は続いています。このタブを開いたままにするか、完成後にマイデッキで探してください。",
+      "stopWaiting": "待つのをやめる",
       "fetching": "{{source}} から {{filename}} を取得しています",
       "deckReady": "デッキの準備ができました",
       "savedToDownloads": "{{deckName}} をダウンロードに保存しました",

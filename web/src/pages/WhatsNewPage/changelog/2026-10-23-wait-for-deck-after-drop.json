@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-wait-for-deck-after-drop",
+  "date": "2026-10-23",
+  "type": "fix",
+  "title": "Upload: if your connection drops while a deck is being built, the page now keeps looking for it for a few minutes and shows it when it's ready, instead of asking you to start over. You can stop waiting at any time."
+}
