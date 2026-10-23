@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-nested-toggles-own-cards",
+  "date": "2026-10-23",
+  "type": "feature",
+  "title": "Card options: a new option, Nested toggles become their own cards, turns every toggle inside another toggle into a card of its own, with the toggle's title as the question. It is off by default and works on uploaded files and Notion HTML exports."
+}

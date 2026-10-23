@@ -77,6 +77,10 @@
       "label": "Maximum une bascule par carte",
       "description": "Chaque bascule de premier niveau devient une carte. Une bascule imbriquée dans une autre reste au verso de la carte parente et ne devient pas une carte à part. Pour obtenir une carte par bascule, garde-les au premier niveau au lieu de les imbriquer."
     },
+    "promote-nested-toggles": {
+      "label": "Les toggles imbriqués deviennent des cartes à part",
+      "description": "Transforme chaque toggle imbriqué dans un autre toggle en carte à part, avec le titre du toggle comme question. Les toggles vides sont ignorés. Uniquement pour les exports HTML de Notion et les fichiers importés."
+    },
     "remove-mp3-links": {
       "label": "Retirer les liens MP3 des fichiers audio",
       "description": "Masque les URL MP3 brutes sur les cartes tout en gardant l'audio lisible."

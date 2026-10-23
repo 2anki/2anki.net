@@ -77,6 +77,10 @@
       "label": "Massimo un toggle per carta",
       "description": "Ogni toggle di primo livello diventa una carta. Un toggle annidato dentro un altro resta sul retro della carta principale e non diventa una carta a sé. Per ottenere una carta per ogni toggle, tienili al primo livello invece di annidarli."
     },
+    "promote-nested-toggles": {
+      "label": "I toggle annidati diventano carte a sé",
+      "description": "Trasforma ogni toggle annidato in un altro toggle in una carta a sé, con il titolo del toggle come domanda. I toggle vuoti vengono saltati. Solo per esportazioni HTML di Notion e file caricati."
+    },
     "remove-mp3-links": {
       "label": "Rimuovi i link MP3 dai file audio",
       "description": "Nasconde gli URL MP3 grezzi sulle carte lasciando l'audio riproducibile."

@@ -121,6 +121,12 @@ const supportedOptions = (): CardOptionDetail[] => {
       defaultFor('max-one-toggle-per-card')
     ),
     new CardOptionDetail(
+      'promote-nested-toggles',
+      'Nested toggles become their own cards',
+      "Turn every toggle nested inside another toggle into its own card, with the toggle's title as the question. Toggles with nothing inside are skipped. Notion HTML exports and uploaded files only.",
+      defaultFor('promote-nested-toggles')
+    ),
+    new CardOptionDetail(
       'remove-mp3-links',
       'Remove MP3 links from audio files',
       'Hide raw MP3 URLs on cards while keeping the audio playable.',

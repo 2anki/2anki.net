@@ -77,6 +77,10 @@
       "label": "Maximum one toggle per card",
       "description": "Each top-level toggle becomes one card. A toggle nested inside another stays on the parent card's back, not a card of its own. To get a card per toggle, keep them at the top level instead of nesting them."
     },
+    "promote-nested-toggles": {
+      "label": "Nested toggles become their own cards",
+      "description": "Turn every toggle nested inside another toggle into its own card, with the toggle's title as the question. Toggles with nothing inside are skipped. Notion HTML exports and uploaded files only."
+    },
     "remove-mp3-links": {
       "label": "Remove MP3 links from audio files",
       "description": "Hide raw MP3 URLs on cards while keeping the audio playable."
