@@ -144,7 +144,13 @@ export function CardFrame({
   const [draftBack, setDraftBack] = useState('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const [srcDoc, setSrcDoc] = useState('');
+  // Each document gets a freshly mounted frame: Chrome leaves a sandboxed
+  // frame blank when its srcdoc changes a few milliseconds after it was
+  // inserted with an empty one.
+  const [frameDoc, setFrameDoc] = useState<{
+    srcDoc: string;
+    version: number;
+  } | null>(null);
   const theme = useTheme();
   const isDark = theme === 'dark';
   const deckSegments = useMemo(() => resolveDeckSegments(card), [card]);
@@ -159,7 +165,9 @@ export function CardFrame({
     const cardId = String(card.id);
     const html = showBack ? effectiveBack : effectiveFront;
     inlineApkgMedia(html, fetchMediaAsDataUrl, mediaCache).then((inlined) => {
-      if (!cancelled) setSrcDoc(buildSrcDoc(inlined, card.css, cardId, isDark));
+      if (cancelled) return;
+      const srcDoc = buildSrcDoc(inlined, card.css, cardId, isDark);
+      setFrameDoc((prev) => ({ srcDoc, version: (prev?.version ?? 0) + 1 }));
     });
     return () => {
       cancelled = true;
@@ -288,18 +296,23 @@ export function CardFrame({
           </button>
         </div>
       </header>
-      <iframe
-        ref={iframeRef}
-        className={styles.cardFrame}
-        title={t('card.frameTitle', {
-          deck: card.deckName,
-          template: card.templateName,
-          side: showBack ? t('card.back') : t('card.front'),
-        })}
-        sandbox="allow-scripts"
-        srcDoc={srcDoc}
-        style={{ height: frameHeight }}
-      />
+      {frameDoc == null ? (
+        <div className={styles.cardFrame} style={{ height: frameHeight }} />
+      ) : (
+        <iframe
+          key={frameDoc.version}
+          ref={iframeRef}
+          className={styles.cardFrame}
+          title={t('card.frameTitle', {
+            deck: card.deckName,
+            template: card.templateName,
+            side: showBack ? t('card.back') : t('card.front'),
+          })}
+          sandbox="allow-scripts"
+          srcDoc={frameDoc.srcDoc}
+          style={{ height: frameHeight }}
+        />
+      )}
       {isEditable && (
         <div className={styles.editPanel}>
           <div className={styles.editFieldGroup}>
