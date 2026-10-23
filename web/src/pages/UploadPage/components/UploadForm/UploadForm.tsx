@@ -1991,25 +1991,27 @@ function UploadForm({
           >
             {t('upload.validation.pickDifferent')}
           </button>
-          <button
-            type="button"
-            className={formStyles.resetLink}
-            onClick={(e) => {
-              e.preventDefault();
-              if (
-                validation?.code === 'markdown' ||
-                validation?.code === 'markdown_zip'
-              ) {
-                track('upload_guardrail_overridden', {
-                  kind: validation.code,
-                });
-              }
-              resetValidation();
-              submitFiles();
-            }}
-          >
-            {validation?.continueLabel}
-          </button>
+          {validation?.blocking !== true && (
+            <button
+              type="button"
+              className={formStyles.resetLink}
+              onClick={(e) => {
+                e.preventDefault();
+                if (
+                  validation?.code === 'markdown' ||
+                  validation?.code === 'markdown_zip'
+                ) {
+                  track('upload_guardrail_overridden', {
+                    kind: validation.code,
+                  });
+                }
+                resetValidation();
+                submitFiles();
+              }}
+            >
+              {validation?.continueLabel}
+            </button>
+          )}
         </div>
       </div>
     );

@@ -421,6 +421,18 @@
         "title": "Reading-format support",
         "body": "Kindle highlights from My Clippings.txt and DRM-free EPUBs are supported. To export your Kindle highlights, connect your Kindle by USB and copy the My Clippings.txt file from the device’s documents folder.",
         "continue": "Make cards from these highlights"
+      },
+      "shortcut": {
+        "title": "That is a shortcut, not the file",
+        "body": "This is a shortcut to your file, not the file itself. Choose the file it points to."
+      },
+      "internetShortcut": {
+        "title": "That is a link, not a file",
+        "body": "This is an internet shortcut, a saved link. Open the link, download the file (PDF, Word, HTML or a Notion export) and upload that. For a Notion page, use the Notion tab to convert it directly."
+      },
+      "goodnotes": {
+        "title": "GoodNotes notebooks cannot be read directly",
+        "body": "Export the notebook from GoodNotes as a PDF (Share, Export, PDF) and upload that PDF instead. 2anki turns PDFs into cards."
       }
     }
   },

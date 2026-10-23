@@ -421,6 +421,18 @@
         "title": "Suporte a formatos de leitura",
         "body": "Destaques do Kindle em My Clippings.txt e EPUBs sem DRM são aceitos. Para exportar seus destaques do Kindle, conecte o Kindle por USB e copie o arquivo My Clippings.txt da pasta documents do aparelho.",
         "continue": "Criar cartões destes destaques"
+      },
+      "shortcut": {
+        "title": "Isso é um atalho, não o arquivo",
+        "body": "Este é um atalho para o seu arquivo, não o arquivo em si. Escolha o arquivo para o qual ele aponta."
+      },
+      "internetShortcut": {
+        "title": "Isso é um link, não um arquivo",
+        "body": "Este é um atalho de internet, um link salvo. Abra o link, baixe o arquivo (PDF, Word, HTML ou uma exportação do Notion) e envie esse. Para uma página do Notion, use a aba Notion para converter diretamente."
+      },
+      "goodnotes": {
+        "title": "Cadernos do GoodNotes não podem ser lidos diretamente",
+        "body": "Exporte o caderno do GoodNotes como PDF (Compartilhar, Exportar, PDF) e envie esse PDF. O 2anki transforma PDFs em cartões."
       }
     }
   },

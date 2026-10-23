@@ -465,6 +465,18 @@
         "title": "Obsługa formatów do czytania",
         "body": "Obsługiwane są zakreślenia z Kindle (My Clippings.txt) i pliki EPUB bez DRM. Aby wyeksportować zakreślenia z Kindle, podłącz Kindle przez USB i skopiuj plik My Clippings.txt z folderu documents na urządzeniu.",
         "continue": "Utwórz karty z tych zakreśleń"
+      },
+      "shortcut": {
+        "title": "To jest skrót, a nie plik",
+        "body": "To skrót do twojego pliku, a nie sam plik. Wybierz plik, na który wskazuje."
+      },
+      "internetShortcut": {
+        "title": "To jest link, a nie plik",
+        "body": "To skrót internetowy, czyli zapisany link. Otwórz link, pobierz plik (PDF, Word, HTML lub eksport z Notion) i wgraj go. Stronę Notion przekonwertujesz bezpośrednio na karcie Notion."
+      },
+      "goodnotes": {
+        "title": "Notatników GoodNotes nie da się wczytać bezpośrednio",
+        "body": "Wyeksportuj notatnik z GoodNotes jako PDF (Udostępnij, Eksportuj, PDF) i wgraj ten PDF. 2anki zamienia pliki PDF na karty."
       }
     }
   },

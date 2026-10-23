@@ -421,6 +421,18 @@
         "title": "Ondersteuning voor leesformaten",
         "body": "Kindle-markeringen uit My Clippings.txt en DRM-vrije EPUB's worden ondersteund. Om je Kindle-markeringen te exporteren, sluit je de Kindle aan via USB en kopieer je het bestand My Clippings.txt uit de map documents op het apparaat.",
         "continue": "Kaarten maken van deze markeringen"
+      },
+      "shortcut": {
+        "title": "Dit is een snelkoppeling, niet het bestand",
+        "body": "Dit is een snelkoppeling naar je bestand, niet het bestand zelf. Kies het bestand waar de snelkoppeling naar verwijst."
+      },
+      "internetShortcut": {
+        "title": "Dit is een link, geen bestand",
+        "body": "Dit is een internetsnelkoppeling, een opgeslagen link. Open de link, download het bestand (PDF, Word, HTML of een Notion-export) en upload dat. Een Notion-pagina zet je direct om via het Notion-tabblad."
+      },
+      "goodnotes": {
+        "title": "GoodNotes-notitieboeken kunnen niet direct worden gelezen",
+        "body": "Exporteer het notitieboek vanuit GoodNotes als PDF (Delen, Exporteren, PDF) en upload die PDF. 2anki maakt kaarten van PDF’s."
       }
     }
   },
