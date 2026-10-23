@@ -20,6 +20,8 @@ import ExportApkgToCsvUseCase, {
   EmptyDeckError as CsvEmptyDeckError,
 } from '../usecases/apkg/ExportApkgToCsvUseCase';
 import { track } from '../services/events/track';
+import { readFile } from 'node:fs/promises';
+import { strToU8, zipSync } from 'fflate';
 import { InvalidApkgError } from '../services/ApkgPreviewService/extractApkg';
 import { ConcurrencyLimiter } from '../lib/rateLimit/ConcurrencyLimiter';
 
@@ -461,7 +463,9 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
 
     await controller.exportPdf(req, res);
 
-    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'pdf_print_options_used')
+    ).toHaveLength(1);
     expect(trackMock).toHaveBeenCalledWith('pdf_print_options_used', {
       userId: 42,
       props: {
@@ -480,7 +484,9 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
 
     await controller.exportPdf(req, res);
 
-    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'pdf_print_options_used')
+    ).toHaveLength(1);
     expect(trackMock).toHaveBeenCalledWith('pdf_print_options_used', {
       userId: 42,
       props: {
@@ -499,7 +505,9 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
 
     await controller.exportPdf(req, res);
 
-    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'pdf_print_options_used')
+    ).toHaveLength(1);
     expect(trackMock).toHaveBeenCalledWith('pdf_print_options_used', {
       userId: 42,
       props: {
@@ -518,7 +526,9 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
 
     await controller.exportPdf(req, res);
 
-    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'pdf_print_options_used')
+    ).toHaveLength(1);
     expect(trackMock).toHaveBeenCalledWith('pdf_print_options_used', {
       userId: 42,
       props: {
@@ -537,7 +547,9 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
 
     await controller.exportPdf(req, res);
 
-    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'pdf_print_options_used')
+    ).toHaveLength(1);
     expect(trackMock).toHaveBeenCalledWith('pdf_print_options_used', {
       userId: 42,
       props: {
@@ -556,7 +568,9 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
 
     await controller.exportPdf(req, res);
 
-    expect(trackMock).toHaveBeenCalledTimes(1);
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'pdf_print_options_used')
+    ).toHaveLength(1);
     expect(trackMock).toHaveBeenCalledWith(
       'pdf_print_options_used',
       expect.objectContaining({ userId: null })
@@ -580,6 +594,98 @@ describe('ApkgController.exportPdf — pdf_print_options_used event', () => {
     expect(decodeURIComponent(disposition.split("UTF-8''")[1])).toBe(
       'PEDİATRİ _1_.pdf'
     );
+  });
+
+  describe('decks that arrive in a zip', () => {
+    const deck = Buffer.from(
+      zipSync({ 'collection.anki2': strToU8('sqlite'), media: strToU8('{}') })
+    );
+
+    function pdfReqFor(
+      originalname: string,
+      body: Record<string, unknown> = {}
+    ) {
+      const req = makeReq({ body }) as Request;
+      req.file = { ...req.file, originalname } as Express.Multer.File;
+      return req;
+    }
+
+    function useCaseInput(): Buffer {
+      const results = (ExportApkgToPdfUseCase as Mock).mock.results;
+      const instance = results[results.length - 1]?.value as { execute: Mock };
+      return instance.execute.mock.calls[0][0] as Buffer;
+    }
+
+    it('prints a deck that was saved with a .zip name', async () => {
+      vi.mocked(readFile).mockResolvedValueOnce(deck);
+      const res = makePdfRes({ owner: 42 });
+
+      await makeController().exportPdf(pdfReqFor('Biology.zip'), res);
+
+      expect(useCaseInput().equals(deck)).toBe(true);
+      const disposition = (res.setHeader as Mock).mock.calls.find(
+        ([name]) => name === 'Content-Disposition'
+      )?.[1] as string;
+      expect(disposition).toContain('Biology.pdf');
+    });
+
+    it('prints the one deck inside a zip of other files, named after that deck', async () => {
+      vi.mocked(readFile).mockResolvedValueOnce(
+        Buffer.from(
+          zipSync({
+            'readme.txt': strToU8('hi'),
+            'export/Chemistry.apkg': deck,
+          })
+        )
+      );
+      const res = makePdfRes({ owner: 42 });
+
+      await makeController().exportPdf(pdfReqFor('download.zip'), res);
+
+      expect(useCaseInput().equals(deck)).toBe(true);
+      const disposition = (res.setHeader as Mock).mock.calls.find(
+        ([name]) => name === 'Content-Disposition'
+      )?.[1] as string;
+      expect(disposition).toContain('Chemistry.pdf');
+    });
+
+    it('asks which deck to print when the zip holds several, without a 200', async () => {
+      vi.mocked(readFile).mockResolvedValueOnce(
+        Buffer.from(zipSync({ 'One.apkg': deck, 'Two.apkg': deck }))
+      );
+      const res = makePdfRes({ owner: 42 });
+
+      await makeController().exportPdf(pdfReqFor('decks.zip'), res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'choose_deck',
+          decks: ['One.apkg', 'Two.apkg'],
+        })
+      );
+      expect(trackMock).toHaveBeenCalledWith('deck_upload_resolved', {
+        userId: 42,
+        props: { shape: 'zip_many_decks', tool: 'print' },
+      });
+    });
+
+    it('prints the deck the person picked from several', async () => {
+      const other = Buffer.from(
+        zipSync({ 'collection.anki2': strToU8('other') })
+      );
+      vi.mocked(readFile).mockResolvedValueOnce(
+        Buffer.from(zipSync({ 'One.apkg': other, 'Two.apkg': deck }))
+      );
+      const res = makePdfRes({ owner: 42 });
+
+      await makeController().exportPdf(
+        pdfReqFor('decks.zip', { deck_entry: 'Two.apkg' }),
+        res
+      );
+
+      expect(useCaseInput().equals(deck)).toBe(true);
+    });
   });
 
   it('does not fire when the request is rejected before parsePdfOptions succeeds', async () => {
@@ -750,17 +856,20 @@ describe('ApkgController.exportCsv', () => {
     expect(executeMock).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when the file is not an .apkg by extension', async () => {
+  it('sends a file that is not a deck to deck making instead of refusing it', async () => {
     const controller = makeController();
     const req = makeReq({
       file: {
         ...(makeReq().file as Express.Multer.File),
-        originalname: 'notes.zip',
+        originalname: 'notes.pdf',
       },
     }) as Request;
     const res = makeCsvRes();
     await controller.exportCsv(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'not_a_deck' })
+    );
     expect(executeMock).not.toHaveBeenCalled();
   });
 
@@ -951,23 +1060,23 @@ describe('ApkgController.previewPdf', () => {
     expect(previewMock).not.toHaveBeenCalled();
   });
 
-  it('returns 400 when the file is not an .apkg by extension', async () => {
+  it('sends a file that is not a deck to deck making instead of refusing it', async () => {
     const controller = makeController();
     const res = makePreviewRes();
     const req = makeReq({
       body: {},
       file: {
         ...(makeReq().file as Express.Multer.File),
-        originalname: 'notes.zip',
+        originalname: 'notes.pdf',
       },
     }) as Request;
 
     await controller.previewPdf(req, res);
 
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({
-      message: 'File must be an .apkg file.',
-    });
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'not_a_deck' })
+    );
     expect(previewMock).not.toHaveBeenCalled();
   });
 

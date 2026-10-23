@@ -1,6 +1,6 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   classifyUploadError,
@@ -93,6 +93,10 @@ import {
 } from './helpers/collectDroppedEntries';
 import { zipDroppedFiles } from './helpers/zipDroppedEntries';
 import { findRecoveredUpload } from './helpers/findRecoveredUpload';
+import {
+  HANDOFF_FILE_STATE_KEY,
+  readHandoffFile,
+} from '../../../../lib/deckUpload/deckUploadAnswer';
 import {
   getPendingUploadStore,
   withinStorableSize,
@@ -360,6 +364,8 @@ function UploadForm({
   sample = false,
 }: Readonly<UploadFormProps>) {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const convertRef = useRef<HTMLButtonElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
@@ -1657,6 +1663,25 @@ function UploadForm({
     void runFileUpload(formData, upload.files, false);
   };
 
+  // A zip of notes handed over from Print or CSV: convert it straight away.
+  const handoffTakenRef = useRef(false);
+  useEffect(() => {
+    if (handoffTakenRef.current || userLocalsLoading) return;
+    const handedOff = readHandoffFile(location.state);
+    if (handedOff == null) return;
+    handoffTakenRef.current = true;
+    capturePdfPageRange();
+    const formData = new FormData();
+    formData.append('pakker', handedOff, handedOff.name);
+    for (const [key, value] of Object.entries(globalThis.localStorage)) {
+      formData.append(key, value);
+    }
+    attachPdfPageRange(formData);
+    applyAnonymousAiFlag(formData, aiOn);
+    void runFileUpload(formData, [handedOff], false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, userLocalsLoading]);
+
   const handleResumeDismiss = () => {
     setResumeOffer(null);
     clearPendingUpload();
@@ -2612,6 +2637,18 @@ function UploadForm({
     );
   };
 
+  // A finished deck goes to the tools that open decks, with the same file, so
+  // the person never picks it twice.
+  const handOffDeck = (to: string, tool: 'print' | 'csv') => {
+    const file = rescueFiles[0];
+    track('apkg_upload_handoff_clicked', { to: tool });
+    if (tool === 'print') track('apkg_print_cta_clicked');
+    navigate(
+      to,
+      file == null ? undefined : { state: { [HANDOFF_FILE_STATE_KEY]: file } }
+    );
+  };
+
   const renderErrorState = () => {
     const isExistingApkg =
       localError != null && /already an Anki deck/i.test(localError.message);
@@ -2622,12 +2659,28 @@ function UploadForm({
             {t('upload.form.apkgRejectHeading')}
           </p>
           <p className={formStyles.apkgRedirectIntro}>
-            {t('upload.form.apkgRejectBody')}
+            {t('upload.form.apkgHandoffBody')}
           </p>
           <div className={formStyles.apkgRedirectActions}>
             <button
               type="button"
               className={formStyles.apkgRedirectPrimary}
+              onClick={() => handOffDeck('/print', 'print')}
+            >
+              {t('upload.form.apkgHandoffPrint')}
+            </button>
+            <button
+              type="button"
+              className={formStyles.apkgRedirectSecondary}
+              onClick={() => handOffDeck('/convert/apkg-to-csv', 'csv')}
+            >
+              {t('upload.form.apkgHandoffCsv')}
+            </button>
+          </div>
+          <p className={formStyles.apkgRedirectFootnote}>
+            <button
+              type="button"
+              className={formStyles.apkgRedirectFootnoteLink}
               onClick={() => {
                 resetForm();
                 fileInputRef.current?.click();
@@ -2635,17 +2688,6 @@ function UploadForm({
             >
               {t('upload.form.apkgRejectPrimary')}
             </button>
-          </div>
-          <p className={formStyles.apkgRedirectFootnote}>
-            {t('upload.form.apkgRejectSecondaryPrefix')}
-            <Link
-              to="/print"
-              className={formStyles.apkgRedirectFootnoteLink}
-              onClick={() => track('apkg_print_cta_clicked')}
-            >
-              {t('upload.form.apkgRejectPrintLink')}
-            </Link>
-            {t('upload.form.apkgRejectSecondarySuffix')}
           </p>
         </div>
       );

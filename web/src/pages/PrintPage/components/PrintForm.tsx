@@ -1,6 +1,6 @@
-import { ReactNode, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import styles from './PrintForm.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
 import { useDropZone } from '../../../lib/hooks/useDropZone';
@@ -9,6 +9,14 @@ import { isPayingUser } from '../../../components/NavigationBar/helpers/getPlanL
 import { get2ankiApi } from '../../../lib/backend/get2ankiApi';
 import { track } from '../../../lib/analytics/track';
 import PrintPreview, { PrintPreviewState } from './PrintPreview';
+import DeckChoice from '../../../components/DeckUpload/DeckChoice';
+import NotADeckHandoff from '../../../components/DeckUpload/NotADeckHandoff';
+import {
+  isDeckUploadName,
+  readDeckUploadAnswer,
+  readHandoffFile,
+  stripDeckExtension,
+} from '../../../lib/deckUpload/deckUploadAnswer';
 
 type PrintState =
   | 'idle'
@@ -16,7 +24,9 @@ type PrintState =
   | 'preview'
   | 'empty'
   | 'error'
-  | 'done';
+  | 'done'
+  | 'choose'
+  | 'notADeck';
 type PaperSize = 'A4' | 'Letter' | 'Legal';
 type Orientation = 'portrait' | 'landscape';
 type Margins = 'narrow' | 'normal' | 'wide';
@@ -42,10 +52,6 @@ interface DownloadError {
 }
 
 const CARD_LIMIT_PATTERN = /PDF export supports up to/i;
-
-function isApkgFile(name: string): boolean {
-  return /\.apkg$/i.test(name);
-}
 
 function optionsKey(options: PrintOptions): string {
   return `${options.backgroundColor}|${options.paperSize}|${options.orientation}|${options.margins}`;
@@ -128,6 +134,8 @@ export default function PrintForm() {
   const [passBusy, setPassBusy] = useState(false);
   const [freePrintUsedOverride, setFreePrintUsedOverride] = useState(false);
   const selectedFileRef = useRef<File | null>(null);
+  const chosenEntryRef = useRef<string | null>(null);
+  const [deckChoices, setDeckChoices] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [backgroundColor, setBackgroundColor] = useState('#ffffff');
@@ -149,6 +157,9 @@ export default function PrintForm() {
     formData.append('paperSize', paperSize);
     formData.append('orientation', orientation);
     formData.append('margins', margins);
+    if (chosenEntryRef.current != null) {
+      formData.append('deck_entry', chosenEntryRef.current);
+    }
     return formData;
   };
 
@@ -162,10 +173,26 @@ export default function PrintForm() {
     setPreviewedCards(0);
     setPreviewedKey(null);
     setFreePrintUsedOverride(false);
+    setDeckChoices([]);
     selectedFileRef.current = null;
+    chosenEntryRef.current = null;
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  // A zip with several decks asks which one; a zip of notes goes to the
+  // converter. Both are answers, not errors.
+  const answerDeckUpload = async (response: Response): Promise<boolean> => {
+    const answer = await readDeckUploadAnswer(response);
+    if (answer == null) return false;
+    if (answer.kind === 'choose_deck') {
+      setDeckChoices(answer.decks);
+      setState('choose');
+    } else {
+      setState('notADeck');
+    }
+    return true;
   };
 
   const runPreview = async (file: File) => {
@@ -195,7 +222,7 @@ export default function PrintForm() {
           previewedCards: body.previewedCards,
           freePrintAvailable: paying || freePrintAvailable !== false,
         });
-      } else {
+      } else if (!(await answerDeckUpload(response))) {
         const raw = await extractErrorMessage(response, messages.genericError);
         setPreviewError(toPreviewErrorMessage(raw, response.status, messages));
         setState('error');
@@ -207,15 +234,34 @@ export default function PrintForm() {
   };
 
   const handleFile = async (file: File) => {
-    if (!isApkgFile(file.name)) {
+    if (!isDeckUploadName(file.name)) {
       setPickError(messages.wrongType);
       setState('idle');
       return;
     }
     setPickError(null);
     selectedFileRef.current = file;
+    chosenEntryRef.current = null;
     await runPreview(file);
   };
+
+  const handleDeckChosen = async (entry: string) => {
+    const file = selectedFileRef.current;
+    if (file == null) return;
+    chosenEntryRef.current = entry;
+    await runPreview(file);
+  };
+
+  const location = useLocation();
+  const handoffTakenRef = useRef(false);
+  useEffect(() => {
+    if (handoffTakenRef.current) return;
+    const handedOff = readHandoffFile(location.state);
+    if (handedOff == null) return;
+    handoffTakenRef.current = true;
+    void handleFile(handedOff);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const handleUpdatePreview = async () => {
     const file = selectedFileRef.current;
@@ -238,12 +284,14 @@ export default function PrintForm() {
         const url = globalThis.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = file.name.replace(/\.apkg$/i, '.pdf');
+        link.download = `${stripDeckExtension(file.name)}.pdf`;
         link.click();
         globalThis.URL.revokeObjectURL(url);
         setState('done');
       } else if (response.status === 402) {
         setFreePrintUsedOverride(true);
+      } else if (await answerDeckUpload(response)) {
+        return;
       } else {
         const raw = await extractErrorMessage(response, messages.genericError);
         setDownloadError({
@@ -403,7 +451,7 @@ export default function PrintForm() {
               className={styles.fileInput}
               id="print-file"
               type="file"
-              accept=".apkg"
+              accept=".apkg,.zip"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);
@@ -441,25 +489,41 @@ export default function PrintForm() {
         </>
       )}
 
-      {state !== 'idle' && state !== 'done' && (
-        <PrintPreview
-          state={previewState}
-          imageSrc={previewImage}
-          totalCards={totalCards}
-          previewedCards={previewedCards}
-          paying={paying}
-          freePrintAvailable={effectiveFreePrintAvailable}
-          optionsChanged={optionsChanged}
-          downloadBusy={downloadBusy}
-          passBusy={passBusy}
-          errorMessage={previewError}
-          downloadError={downloadErrorNode}
-          onUpdatePreview={handleUpdatePreview}
-          onDownload={downloadFullPdf}
-          onPass={handlePass}
-          onPreviewAnother={resetForm}
+      {state === 'choose' && (
+        <DeckChoice
+          decks={deckChoices}
+          actionLabel={t('deckUpload.printThis')}
+          onChoose={(entry) => void handleDeckChosen(entry)}
+          onCancel={resetForm}
         />
       )}
+
+      {state === 'notADeck' && selectedFileRef.current != null && (
+        <NotADeckHandoff file={selectedFileRef.current} onCancel={resetForm} />
+      )}
+
+      {state !== 'idle' &&
+        state !== 'done' &&
+        state !== 'choose' &&
+        state !== 'notADeck' && (
+          <PrintPreview
+            state={previewState}
+            imageSrc={previewImage}
+            totalCards={totalCards}
+            previewedCards={previewedCards}
+            paying={paying}
+            freePrintAvailable={effectiveFreePrintAvailable}
+            optionsChanged={optionsChanged}
+            downloadBusy={downloadBusy}
+            passBusy={passBusy}
+            errorMessage={previewError}
+            downloadError={downloadErrorNode}
+            onUpdatePreview={handleUpdatePreview}
+            onDownload={downloadFullPdf}
+            onPass={handlePass}
+            onPreviewAnother={resetForm}
+          />
+        )}
     </form>
   );
 }

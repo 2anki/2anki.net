@@ -502,6 +502,14 @@
     "removeConnection": "Убрать соединение",
     "addNodeHere": "Добавить узел здесь"
   },
+  "deckUpload": {
+    "chooseTitle": "В этом zip {{n}} колоды. Какую выбрать?",
+    "chooseAnother": "Выбрать другой файл",
+    "printThis": "Распечатать эту колоду",
+    "exportThis": "Экспортировать эту колоду",
+    "notADeckBody": "В этом zip заметки, а не колода Anki. 2anki может сделать из них колоду.",
+    "notADeckAction": "Сделать колоду"
+  },
   "apkgCsv": {
     "formAria": "Экспорт .apkg в CSV",
     "changeFile": "Изменить файл",

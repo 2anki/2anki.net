@@ -468,6 +468,14 @@
     "removeConnection": "Rimuovi il collegamento",
     "addNodeHere": "Aggiungi un nodo qui"
   },
+  "deckUpload": {
+    "chooseTitle": "Questo zip contiene {{n}} mazzi. Quale vuoi?",
+    "chooseAnother": "Scegli un altro file",
+    "printThis": "Stampa questo mazzo",
+    "exportThis": "Esporta questo mazzo",
+    "notADeckBody": "Questo zip contiene appunti, non un mazzo Anki. 2anki può crearne un mazzo.",
+    "notADeckAction": "Crea un mazzo"
+  },
   "apkgCsv": {
     "formAria": "Esporta .apkg in CSV",
     "changeFile": "Cambia file",

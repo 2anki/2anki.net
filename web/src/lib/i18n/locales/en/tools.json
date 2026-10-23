@@ -468,6 +468,14 @@
     "removeConnection": "Remove connection",
     "addNodeHere": "Add node here"
   },
+  "deckUpload": {
+    "chooseTitle": "This zip has {{n}} decks. Which one?",
+    "chooseAnother": "Choose a different file",
+    "printThis": "Print this deck",
+    "exportThis": "Export this deck",
+    "notADeckBody": "This zip has notes, not an Anki deck. 2anki can make a deck from them.",
+    "notADeckAction": "Make a deck from it"
+  },
   "apkgCsv": {
     "formAria": "Export .apkg to CSV",
     "changeFile": "Change file",

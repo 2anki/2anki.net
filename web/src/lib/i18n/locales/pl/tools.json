@@ -502,6 +502,14 @@
     "removeConnection": "Usuń połączenie",
     "addNodeHere": "Dodaj węzeł tutaj"
   },
+  "deckUpload": {
+    "chooseTitle": "Ten plik zip zawiera {{n}} talie. Którą wybierasz?",
+    "chooseAnother": "Wybierz inny plik",
+    "printThis": "Drukuj tę talię",
+    "exportThis": "Eksportuj tę talię",
+    "notADeckBody": "Ten plik zip zawiera notatki, a nie talię Anki. 2anki może zrobić z nich talię.",
+    "notADeckAction": "Zrób z niego talię"
+  },
   "apkgCsv": {
     "formAria": "Eksportuj .apkg do CSV",
     "changeFile": "Zmień plik",

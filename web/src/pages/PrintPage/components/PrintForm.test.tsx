@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import PrintForm from './PrintForm';
@@ -270,5 +270,106 @@ describe('PrintForm', () => {
       ).toBeInTheDocument();
     });
     expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('PrintForm with decks that arrive in a zip', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+    localsHolder.value = {
+      data: {
+        locals: { patreon: false, subscriber: false },
+        freePrintAvailable: true,
+      },
+    };
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  test('asks which deck to print and previews the one picked', async () => {
+    const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse(409, {
+          code: 'choose_deck',
+          decks: ['a/Biology.apkg', 'b/Chemistry.apkg'],
+        })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          image: 'data:image/png;base64,AAA',
+          totalCards: 3,
+          previewedCards: 3,
+        })
+      );
+    renderForm();
+
+    pickApkg('decks.zip');
+    fireEvent.click(await screen.findByLabelText('Chemistry'));
+    fireEvent.click(screen.getByRole('button', { name: 'Print this deck' }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const body = fetchMock.mock.calls[1][1].body as FormData;
+    expect(body.get('deck_entry')).toBe('b/Chemistry.apkg');
+  });
+
+  test('takes a zip of notes to the upload page with the same file', async () => {
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      jsonResponse(422, { code: 'not_a_deck' })
+    );
+    let handedOff: unknown = null;
+    function UploadProbe() {
+      handedOff = (useLocation().state as { handoffFile?: File } | null)
+        ?.handoffFile;
+      return <p>upload page</p>;
+    }
+    render(
+      <MemoryRouter initialEntries={['/print']}>
+        <Routes>
+          <Route path="/print" element={<PrintForm />} />
+          <Route path="/upload" element={<UploadProbe />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    pickApkg('notes.zip');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Make a deck from it' })
+    );
+
+    expect(await screen.findByText('upload page')).toBeInTheDocument();
+    expect((handedOff as File).name).toBe('notes.zip');
+  });
+
+  test('starts the preview for a deck handed over from the upload page', async () => {
+    const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        image: 'data:image/png;base64,AAA',
+        totalCards: 1,
+        previewedCards: 1,
+      })
+    );
+    const file = new File(['deck'], 'Biology.zip');
+    render(
+      <MemoryRouter
+        initialEntries={[{ pathname: '/print', state: { handoffFile: file } }]}
+      >
+        <PrintForm />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/apkg/pdf/preview',
+        expect.objectContaining({ method: 'POST' })
+      )
+    );
+    const body = fetchMock.mock.calls[0][1].body as FormData;
+    expect((body.get('file') as File).name).toBe('Biology.zip');
   });
 });

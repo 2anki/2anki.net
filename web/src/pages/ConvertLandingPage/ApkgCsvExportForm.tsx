@@ -1,8 +1,17 @@
-import { type SyntheticEvent, useRef, useState } from 'react';
+import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { track } from '../../lib/analytics/track';
 import styles from './ApkgCsvExportForm.module.css';
+import DeckChoice from '../../components/DeckUpload/DeckChoice';
+import NotADeckHandoff from '../../components/DeckUpload/NotADeckHandoff';
+import {
+  isDeckUploadName,
+  readDeckUploadAnswer,
+  readHandoffFile,
+  stripDeckExtension,
+} from '../../lib/deckUpload/deckUploadAnswer';
 
 type FormState =
   | { kind: 'idle' }
@@ -23,6 +32,8 @@ type FormState =
       noteLimit: number;
       needsAccount: boolean;
     }
+  | { kind: 'choose'; file: File; decks: string[] }
+  | { kind: 'notADeck'; file: File }
   | { kind: 'error'; message: string };
 
 interface ServerError {
@@ -103,14 +114,8 @@ function ApkgCsvExportForm() {
     downloadRef.current.click();
   };
 
-  const handleSubmit = async (event: SyntheticEvent) => {
-    event.preventDefault();
-    const file = inputRef.current?.files?.[0];
-    if (file == null) {
-      setState({ kind: 'error', message: t('apkgCsv.pickFile') });
-      return;
-    }
-    if (!/\.apkg$/i.test(file.name)) {
+  const exportFile = async (file: File, deckEntry: string | null = null) => {
+    if (!isDeckUploadName(file.name)) {
       setState({
         kind: 'error',
         message: t('apkgCsv.notApkg'),
@@ -120,12 +125,22 @@ function ApkgCsvExportForm() {
     setState({ kind: 'uploading' });
     const formData = new FormData();
     formData.append('file', file);
+    if (deckEntry != null) formData.append('deck_entry', deckEntry);
     try {
       const response = await globalThis.fetch('/api/apkg/csv', {
         method: 'post',
         body: formData,
       });
       if (!response.ok) {
+        const answer = await readDeckUploadAnswer(response);
+        if (answer?.kind === 'choose_deck') {
+          setState({ kind: 'choose', file, decks: answer.decks });
+          return;
+        }
+        if (answer?.kind === 'not_a_deck') {
+          setState({ kind: 'notADeck', file });
+          return;
+        }
         const capped = await readCapExceeded(response);
         if (capped) {
           setState(capped);
@@ -135,7 +150,7 @@ function ApkgCsvExportForm() {
         setState({ kind: 'error', message });
         return;
       }
-      const fallback = file.name.replace(/\.apkg$/i, '');
+      const fallback = stripDeckExtension(file.name);
       const deckName = readDeckName(response.headers, fallback);
       const noteCount = readNoteCount(response.headers);
       const blob = await response.blob();
@@ -152,6 +167,28 @@ function ApkgCsvExportForm() {
       setState({ kind: 'error', message });
     }
   };
+
+  const handleSubmit = async (event: SyntheticEvent) => {
+    event.preventDefault();
+    const file = inputRef.current?.files?.[0];
+    if (file == null) {
+      setState({ kind: 'error', message: t('apkgCsv.pickFile') });
+      return;
+    }
+    await exportFile(file);
+  };
+
+  const location = useLocation();
+  const handoffTakenRef = useRef(false);
+  useEffect(() => {
+    if (handoffTakenRef.current) return;
+    const handedOff = readHandoffFile(location.state);
+    if (handedOff == null) return;
+    handoffTakenRef.current = true;
+    setFilename(handedOff.name);
+    void exportFile(handedOff);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const showFileLabel =
     state.kind === 'idle' ||
@@ -178,7 +215,7 @@ function ApkgCsvExportForm() {
             ref={inputRef}
             id="apkg-csv-file"
             type="file"
-            accept=".apkg"
+            accept=".apkg,.zip"
             className={styles.fileInput}
             onChange={onFileChange}
             required
@@ -220,6 +257,20 @@ function ApkgCsvExportForm() {
             </a>
           </div>
         </div>
+      )}
+      {state.kind === 'choose' && (
+        <DeckChoice
+          decks={state.decks}
+          actionLabel={t('deckUpload.exportThis')}
+          onChoose={(entry) => void exportFile(state.file, entry)}
+          onCancel={() => setState({ kind: 'idle' })}
+        />
+      )}
+      {state.kind === 'notADeck' && (
+        <NotADeckHandoff
+          file={state.file}
+          onCancel={() => setState({ kind: 'idle' })}
+        />
       )}
       {state.kind === 'error' && (
         <p className={styles.error} role="alert">

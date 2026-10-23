@@ -97,6 +97,7 @@ export const KNOWN_EVENTS = new Set([
   'image_only_photo_deck_clicked',
   'apkg_reject_shown',
   'apkg_print_cta_clicked',
+  'apkg_upload_handoff_clicked',
   'print_preview_shown',
   'columns_guessed_notice_shown',
   'structure_rescued_notice_shown',
