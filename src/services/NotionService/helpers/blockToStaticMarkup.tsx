@@ -140,7 +140,7 @@ export const blockToStaticMarkup = async (
       back += await BlockBookmark(c, handler);
       break;
     case 'video':
-      back += BlockVideo(c, handler);
+      back += (await BlockVideo(c, handler)) ?? '';
       break;
     case 'embed':
       back += BlockEmbed(c, handler);

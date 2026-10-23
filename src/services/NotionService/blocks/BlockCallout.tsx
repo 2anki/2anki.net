@@ -43,6 +43,7 @@ const renderChildrenAsHtmlWithoutMedia = async (
     },
     embedImage: { value: dropMedia, enumerable: true },
     embedAudioFile: { value: dropMedia, enumerable: true },
+    embedVideoFile: { value: dropMedia, enumerable: true },
     embedFile: { value: dropMedia, enumerable: true },
   }) as IBlockRenderer;
   return (await plainTextHandler.getBackSide(block, true)) ?? '';

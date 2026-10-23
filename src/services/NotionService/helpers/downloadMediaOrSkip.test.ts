@@ -89,6 +89,22 @@ describe('downloadMediaOrSkip', () => {
     warn.mockRestore();
   });
 
+  test('asks axios to stop at the byte limit and treats an oversize body as skipped', async () => {
+    const tooBig = new Error(
+      'maxContentLength size of 10 exceeded'
+    ) as AxiosError;
+    tooBig.isAxiosError = true;
+    mockedAxios.get.mockRejectedValueOnce(tooBig);
+
+    const result = await downloadMediaOrSkip('https://example.test/v.mp4', 10);
+
+    expect(result).toBeNull();
+    expect(mockedAxios.get).toHaveBeenCalledWith(
+      'https://example.test/v.mp4',
+      expect.objectContaining({ maxContentLength: 10, maxBodyLength: 10 })
+    );
+  });
+
   test('rethrows non-4xx axios errors', async () => {
     mockedAxios.get.mockRejectedValueOnce(makeAxiosError(500));
 
