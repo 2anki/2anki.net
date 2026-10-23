@@ -28,6 +28,7 @@ import { StatusTag, JobStatus } from './components/ListJobs/StatusTag';
 import { StepIndicator } from '../../components/StepIndicator/StepIndicator';
 import { jobStepFromStatus } from '../../components/StepIndicator/jobStepFromStatus';
 import SendToAnkifyButton from './components/SendToAnkifyButton';
+import { parseMonthlyLimitPartialPayload } from './helpers/parseMonthlyLimitPartialPayload';
 import {
   DeckFeedbackPrompt,
   isDeckFeedbackSuppressed,
@@ -383,6 +384,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
     null
   );
   const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [downloadedCutDeck, setDownloadedCutDeck] = useState(false);
   const [ratedContext, setRatedContext] = useState<
     DeckFeedbackContext | undefined
   >(undefined);
@@ -482,10 +484,14 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   );
 
   const activeJobs = jobs.filter((j) => isActiveJob(j.status));
-  const showDeckFeedback = hasDownloaded && !isDeckFeedbackSuppressed();
+  const showDeckFeedback =
+    hasDownloaded && !downloadedCutDeck && !isDeckFeedbackSuppressed();
 
   const markDownloaded = (row: DeckRow) => {
     setHasDownloaded(true);
+    setDownloadedCutDeck(
+      row.kind === 'job' && parseMonthlyLimitPartialPayload(row.job) != null
+    );
     setRatedContext(feedbackContextForRow(row));
   };
 

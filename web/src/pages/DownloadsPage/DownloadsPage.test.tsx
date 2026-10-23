@@ -497,6 +497,28 @@ describe('DownloadsPage deck feedback prompt', () => {
     ).toBeInTheDocument();
   });
 
+  it('does not ask about a deck that was cut at the card limit', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Pharmacology Ch. 4',
+        download_key: 'deck-abc123.apkg',
+        job_reason_failure: JSON.stringify({
+          code: 'monthly_limit_partial',
+          cards_delivered: 100,
+          cards_held_back: 40,
+          limit: 100,
+        }),
+      }),
+    ];
+    renderAt('/downloads');
+    fireEvent.click(screen.getByLabelText('Download Pharmacology Ch. 4'));
+    expect(
+      screen.queryByText('Did this deck come out right?')
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps the feedback prompt hidden after download when suppressed', () => {
     localStorage.setItem(
       '2anki_deck_feedback_suppressed_until',
