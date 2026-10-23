@@ -1,6 +1,18 @@
 import { Knex } from 'knex';
 import NotionTokens from './public/NotionTokens';
 import unHashToken from '../lib/misc/unHashToken';
+import { NOTION_RECONNECT_NEEDED } from '../lib/ankify/notionReconnectNeeded';
+
+// Reconnecting Notion resumes the syncs that were paused because Notion
+// rejected the old connection, and only those.
+export function buildResumePausedSyncsQuery(
+  db: Knex,
+  owner: number
+): Knex.QueryBuilder {
+  return db('ankify_notion_subscriptions')
+    .where({ owner, enabled: false, last_error: NOTION_RECONNECT_NEEDED })
+    .update({ enabled: true, last_error: null, updated_at: db.fn.now() });
+}
 
 export interface INotionRepository {
   getNotionData(owner: number | string): Promise<NotionTokens | null>;
@@ -56,6 +68,7 @@ class NotionRepository implements INotionRepository {
         })
         .onConflict('owner')
         .merge()
+        .then(() => buildResumePausedSyncsQuery(this.database, user))
         .then(() => {
           resolve(true);
         })

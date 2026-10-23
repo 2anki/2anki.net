@@ -45,6 +45,8 @@
     },
     "offlineError": "Cliente do Anki offline — vamos tentar de novo no próximo ciclo",
     "lastCheckFailed": "A última verificação falhou — vamos tentar de novo em breve",
+    "reconnectNeeded": "Pausado: o Notion precisa ser reconectado",
+    "reconnectNotion": "Reconectar o Notion",
     "nextExport": "Próxima exportação às {{time}}",
     "tabs": {
       "decks": "Baralhos",

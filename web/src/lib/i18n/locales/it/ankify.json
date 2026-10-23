@@ -45,6 +45,8 @@
     },
     "offlineError": "Client Anki offline — riproveremo al prossimo giro",
     "lastCheckFailed": "L'ultimo controllo non è riuscito — riproveremo presto",
+    "reconnectNeeded": "In pausa: Notion va ricollegato",
+    "reconnectNotion": "Ricollega Notion",
     "nextExport": "Prossima esportazione alle {{time}}",
     "tabs": {
       "decks": "Mazzi",

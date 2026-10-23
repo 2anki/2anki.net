@@ -203,11 +203,16 @@ const extractNotionId = (input: string): string => {
   return urlMatch == null ? trimmed : urlMatch[1];
 };
 
+const NOTION_RECONNECT_NEEDED = 'notion_reconnect_needed';
+
 const normalizeId = (id: string): string =>
   id.replaceAll('-', '').toLowerCase();
 
 const isCalmOfflineError = (lastError: string | null | undefined): boolean =>
   lastError != null && lastError.startsWith('Anki client offline');
+
+const isReconnectNeeded = (lastError: string | null | undefined): boolean =>
+  lastError === NOTION_RECONNECT_NEEDED;
 
 type DeckStatus = 'success' | 'syncing' | 'error' | 'offline';
 
@@ -236,6 +241,14 @@ const renderSecondLine = (
   if (isCalmOfflineError(lastError)) {
     return (
       <p className={styles.decksItemError}>{t('subscriptions.offlineError')}</p>
+    );
+  }
+  if (isReconnectNeeded(lastError)) {
+    return (
+      <p className={styles.decksItemErrorDanger}>
+        {t('subscriptions.reconnectNeeded')}{' '}
+        <a href="/notion">{t('subscriptions.reconnectNotion')}</a>
+      </p>
     );
   }
   if (lastError != null) {

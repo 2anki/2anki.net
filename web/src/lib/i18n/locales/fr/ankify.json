@@ -45,6 +45,8 @@
     },
     "offlineError": "Client Anki hors ligne — nouvel essai au prochain cycle",
     "lastCheckFailed": "Dernière vérification échouée — nouvel essai bientôt",
+    "reconnectNeeded": "En pause : Notion doit être reconnecté",
+    "reconnectNotion": "Reconnecter Notion",
     "nextExport": "Prochain export à {{time}}",
     "tabs": {
       "decks": "Paquets",

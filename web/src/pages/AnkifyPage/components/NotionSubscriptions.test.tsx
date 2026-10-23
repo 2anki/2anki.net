@@ -155,6 +155,31 @@ describe('NotionSubscriptions sync copy', () => {
     );
   });
 
+  test('says the sync is paused and offers Reconnect when Notion rejected the connection', async () => {
+    const backend = makeBackend({
+      listAnkifySubscriptions: vi.fn(async () => [
+        sampleSubscription({
+          id: 1,
+          notion_page_id: 'a'.repeat(32),
+          enabled: false,
+          last_error: 'notion_reconnect_needed',
+        }),
+      ]),
+    });
+
+    renderSubs(backend);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/paused — notion needs to be reconnected/i)
+      ).toBeInTheDocument()
+    );
+    expect(
+      screen.getByRole('link', { name: 'Reconnect Notion' })
+    ).toHaveAttribute('href', '/notion');
+    expect(screen.queryByText(/last check failed/i)).not.toBeInTheDocument();
+  });
+
   test('renders next-export line when schedule matches and is enabled', async () => {
     const matchingId = 'a'.repeat(32);
     const backend = makeBackend({

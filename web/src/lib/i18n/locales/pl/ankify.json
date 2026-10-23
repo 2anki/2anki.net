@@ -49,6 +49,8 @@
     },
     "offlineError": "Klient Anki offline — spróbujemy przy następnym cyklu",
     "lastCheckFailed": "Ostatnie sprawdzenie nieudane — spróbujemy wkrótce ponownie",
+    "reconnectNeeded": "Wstrzymano: trzeba ponownie połączyć Notion",
+    "reconnectNotion": "Połącz Notion ponownie",
     "nextExport": "Następny eksport o {{time}}",
     "tabs": {
       "decks": "Talie",

@@ -45,6 +45,8 @@
     },
     "offlineError": "Anki-Client offline — nächster Durchlauf versucht es erneut",
     "lastCheckFailed": "Letzte Prüfung fehlgeschlagen — wir versuchen es bald erneut",
+    "reconnectNeeded": "Pausiert – Notion muss neu verbunden werden",
+    "reconnectNotion": "Notion neu verbinden",
     "nextExport": "Nächster Export um {{time}}",
     "tabs": {
       "decks": "Stapel",

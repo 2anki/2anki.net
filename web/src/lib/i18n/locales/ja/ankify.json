@@ -43,6 +43,8 @@
     },
     "offlineError": "Anki クライアントがオフラインです — 次回のチェックで再試行します",
     "lastCheckFailed": "前回のチェックに失敗しました — まもなく再試行します",
+    "reconnectNeeded": "一時停止中：Notion の再接続が必要です",
+    "reconnectNotion": "Notion を再接続",
     "nextExport": "次のエクスポートは {{time}}",
     "tabs": {
       "decks": "デッキ",
