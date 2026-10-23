@@ -1,4 +1,5 @@
 import { isRtfFile } from '../storage/checks';
+import { nameFromContent } from '../storage/sniffUpload';
 import type { UploadedFile } from '../storage/types';
 import { rtfToText } from './rtfToText';
 
@@ -7,9 +8,14 @@ import { rtfToText } from './rtfToText';
 // link pictures and fields to local paths and URLs, and following those would
 // read files or hosts on the server.
 export function asReadableUpload(
-  file: UploadedFile,
+  uploaded: UploadedFile,
   contents: Buffer
 ): { file: UploadedFile; contents: Buffer } {
+  const namedByContent = nameFromContent(uploaded.originalname, contents);
+  const file =
+    namedByContent === uploaded.originalname
+      ? uploaded
+      : { ...uploaded, originalname: namedByContent };
   if (!isRtfFile(file.originalname)) return { file, contents };
   return {
     file: {
