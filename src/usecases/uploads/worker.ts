@@ -13,6 +13,7 @@ import Package from '../../lib/parser/Package';
 import fs from 'fs';
 import pLimit from 'p-limit';
 import { asReadableUpload } from '../../lib/rtf/readableUpload';
+import { hasUnknownExtension } from '../../lib/storage/sniffUpload';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
@@ -148,7 +149,9 @@ export function reachesClaudeContentPath(
     paying && settings.imageQuizHtmlToAnki && isImageFile(name);
   const isSingleContent =
     isZipContentFileSupported(name) || isPPTFile(name) || isImageQuiz;
-  return Boolean(isSingleContent || isCompressedFile(name));
+  return Boolean(
+    isSingleContent || isCompressedFile(name) || hasUnknownExtension(name)
+  );
 }
 
 export function countAiContentFiles(
@@ -381,7 +384,9 @@ function canConvertInParallel(
     crossFileDedup == null &&
     !files.some(
       (file) =>
-        isCompressedFile(file.originalname) || isCompressedFile(file.key)
+        isCompressedFile(file.originalname) ||
+        isCompressedFile(file.key) ||
+        hasUnknownExtension(file.originalname)
     )
   );
 }
