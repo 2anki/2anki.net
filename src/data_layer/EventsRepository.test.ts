@@ -3,6 +3,7 @@ import {
   EventsRepository,
   EventRow,
   buildConversionFailedByReasonQuery,
+  buildDistinctAsksQuery,
 } from './EventsRepository';
 
 interface FakeStore {
@@ -249,6 +250,19 @@ describe('EventsRepository SQL generation', () => {
     );
     expect(sql).toContain("group by props->>'signup_origin', name");
     expect(sql).not.toContain('anonymous_id) as distinct_identities)');
+  });
+
+  it('counts asks once per deck, falling back to the person', () => {
+    const sql = buildDistinctAsksQuery(
+      knexLib({ client: 'pg' }),
+      'happy_score_ask_shown',
+      new Date('2026-05-01')
+    ).toString();
+
+    expect(sql).toContain(
+      "count(distinct coalesce('j' || (props->>'job_id'), 'u' || (props->>'upload_id'), 'p' || user_id::text, 'a' || anonymous_id, 'e' || id::text)) as \"count\""
+    );
+    expect(sql).toContain('"name" = \'happy_score_ask_shown\'');
   });
 
   it('groupConversionFailedByReason buckets reasons with valid PG LIKE classification', () => {

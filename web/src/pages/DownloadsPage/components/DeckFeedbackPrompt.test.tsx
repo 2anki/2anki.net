@@ -165,7 +165,18 @@ describe('DeckFeedbackPrompt', () => {
   it('fires the ask event once when the prompt is shown', () => {
     render(<DeckFeedbackPrompt />);
     expect(mockTrack).toHaveBeenCalledTimes(1);
-    expect(mockTrack).toHaveBeenCalledWith('happy_score_ask_shown');
+    expect(mockTrack).toHaveBeenCalledWith('happy_score_ask_shown', {
+      job_id: null,
+      upload_id: null,
+    });
+  });
+
+  it('names the deck on the ask event so asks count once per deck', () => {
+    render(<DeckFeedbackPrompt context={{ jobId: 12, uploadId: null }} />);
+    expect(mockTrack).toHaveBeenCalledWith('happy_score_ask_shown', {
+      job_id: 12,
+      upload_id: null,
+    });
   });
 
   it('tags the comment with the reason chip the user picked', async () => {
