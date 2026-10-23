@@ -111,7 +111,7 @@ class EmojiFeedbackController {
     res.status(201).json({
       message: 'Thank you for your feedback!',
       id,
-      token: id == null ? null : followUpToken(id),
+      token: id == null ? null : this.safeFollowUpToken(id),
     });
 
     await this.notifier.notifyIfLowRating({
@@ -123,6 +123,15 @@ class EmojiFeedbackController {
       ip: resolveClientIp(req),
       now: new Date(),
     });
+  }
+
+  private safeFollowUpToken(id: number): string | null {
+    try {
+      return followUpToken(id);
+    } catch (error) {
+      console.error('[emoji-feedback] follow-up token unavailable', error);
+      return null;
+    }
   }
 
   // The rating is saved on the first tap; the comment and reply email follow

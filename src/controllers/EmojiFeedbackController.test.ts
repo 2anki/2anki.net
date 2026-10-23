@@ -96,6 +96,22 @@ describe('EmojiFeedbackController follow-up', () => {
     });
   });
 
+  it('still saves the rating when the follow-up token cannot be made', async () => {
+    const saved = process.env.THE_HASHING_SECRET;
+    delete process.env.THE_HASHING_SECRET;
+    try {
+      const { controller, req, res } = buildMocks();
+      req.body = { rating: 5, page: 'downloads/deck_done' };
+      await controller.submit(req, res);
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 7, token: null })
+      );
+    } finally {
+      process.env.THE_HASHING_SECRET = saved;
+    }
+  });
+
   it('refuses a token that belongs to another row', async () => {
     const { token } = await tokenFor();
     const { controller, req, res, repo } = buildMocks();

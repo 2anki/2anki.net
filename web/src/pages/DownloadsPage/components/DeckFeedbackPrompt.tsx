@@ -141,6 +141,7 @@ export function DeckFeedbackPrompt({
   };
 
   const saveTap = (rating: number) => {
+    if (tapSave.current != null) return;
     track('deck_feedback_tapped', { rating });
     tapSave.current = get2ankiApi()
       .submitEmojiFeedback(rating, FEEDBACK_PAGE, undefined, undefined, context)

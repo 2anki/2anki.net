@@ -323,6 +323,14 @@ describe('DeckFeedbackPrompt — rating saved on the first tap', () => {
     await waitFor(() => expect(isDeckFeedbackSuppressed()).toBe(true));
   });
 
+  it('saves a double tap once', () => {
+    render(<DeckFeedbackPrompt />);
+    const yes = screen.getByRole('button', { name: 'Yes, it worked' });
+    fireEvent.click(yes);
+    fireEvent.click(yes);
+    expect(submitEmojiFeedback).toHaveBeenCalledTimes(1);
+  });
+
   it('attaches the comment to the saved row instead of rating again', async () => {
     render(<DeckFeedbackPrompt />);
     fireEvent.click(screen.getByRole('button', { name: 'Something was off' }));
