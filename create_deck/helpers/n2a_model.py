@@ -41,7 +41,7 @@ _ID_SPACE = 10 ** 13
 # overwrites the local copy when the incoming mod is newer, so a re-export
 # with the same constant leaves a returning user's own template/CSS edits
 # alone; bumping it is what pushes a real 2anki-side template fix to them.
-NOTETYPE_MOD = 1789650998
+NOTETYPE_MOD = 1792759489
 
 FRONT_BACK = 0
 CLOZE = 1

@@ -1,5 +1,7 @@
 import { vi } from 'vitest';
 import FallbackParser from './FallbackParser';
+import CardOption from '../Settings/CardOption';
+import { buildDeckStyle } from '../buildDeckStyle';
 
 describe('FallbackParser.htmlToTextWithNewlines', () => {
   it('returns empty array and logs warning when html is undefined', () => {
@@ -60,6 +62,16 @@ describe('FallbackParser tab-separated text', () => {
     expect(decks[0].cards[0].back).toBe('Paris');
     expect(decks[0].cards[1].name).toBe('What is 2+2?');
     expect(decks[0].cards[1].back).toBe('4');
+  });
+
+  it('gives a .txt deck the same style as a Notion deck', () => {
+    const settings = new CardOption({});
+    const parser = new FallbackParser([
+      { name: 'my_deck.txt', contents: Buffer.from('Q\tA\nQ2\tA2') },
+    ]);
+    const decks = parser.run(settings);
+    expect(decks[0].style).toBe(buildDeckStyle(settings));
+    expect(decks[0].style).toContain('.highlight-red_background');
   });
 
   it('continues the previous card when a tab-separated line has no tab', () => {

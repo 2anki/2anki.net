@@ -8,6 +8,7 @@ import CardOption from './Settings/CardOption';
 import { DeckParser } from './DeckParser';
 import Workspace from './WorkSpace';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
+import { buildDeckStyle } from './buildDeckStyle';
 
 const downloadMediaOrSkipMock = vi.hoisted(() =>
   vi.fn<(url: string) => Promise<Buffer | null>>()
@@ -96,6 +97,35 @@ test('deck style includes Notion highlight color rules for file uploads', async 
   const style = parser.payload[0].style ?? '';
   expect(style).toContain('.highlight-red');
 });
+
+test.each([
+  [
+    'colors.html',
+    `<html><head><title>Colors</title><style>body { font-size: 16px; } .highlight-red_background { background: hotpink; }</style></head>
+<body><article><ul class="toggle"><li><details open=""><summary>Q</summary><p>A</p></details></li></ul></article></body></html>`,
+  ],
+  ['notes.md', '- Q\n  - A\n'],
+])(
+  'deck style does not depend on the source file (%s)',
+  async (name, contents) => {
+    const settings = new CardOption({ cherry: 'false' });
+    const workspace = new Workspace(true, 'fs');
+    const parser = new DeckParser({
+      name,
+      settings,
+      files: [{ name, contents }],
+      noLimits: true,
+      workspace,
+    });
+    await parser.build(workspace);
+
+    const style = parser.payload[0].style ?? '';
+    expect(style).toBe(buildDeckStyle(settings));
+    expect(style).toContain('.highlight-red_background');
+    expect(style).toContain('.block-color-gray_background');
+    expect(style).not.toContain('hotpink');
+  }
+);
 
 test('code blocks from HTML uploads get the themed hljs container', async () => {
   const html = `<html><head><title>Code</title></head>

@@ -80,11 +80,7 @@ import {
   MarkdownHeuristicResult,
 } from './guessMarkdownCards';
 import { getTitleFromMarkdown } from './getTitleFromMarkdown';
-import { extractStyles } from './extractStyles';
-import { withFontSize } from './withFontSize';
-import { withTextColor } from './withTextColor';
-import { withTextAlign } from './withTextAlign';
-import { NOTION_STYLE, getCodeThemeCss } from '../../templates/helper';
+import { buildDeckStyle } from './buildDeckStyle';
 import { highlightCode } from '../notion-render/highlightCode';
 import { transformDetailsTagToNotionToggleList } from './transformDetailsTagToNotionToggleList';
 import { findNotionToggleLists, isMCQ } from './findNotionToggleLists';
@@ -113,13 +109,6 @@ import {
 } from './induction/induceCardsFromDom';
 
 const MARKDOWN_SOURCE_RATIO_THRESHOLD = 0.8;
-
-// Notion code blocks export as <pre class="code code-wrap"> and rely on
-// .code-wrap { white-space: pre-wrap } to wrap long lines. extractStyles
-// strips every white-space: pre-wrap rule (it harms body/toggle text), which
-// left code blocks running off the edge of narrow cards. Re-apply wrapping to
-// code blocks only, appended last so it wins the cascade over the stripped rule.
-const CODE_WRAP_STYLE = '.code-wrap, pre { white-space: pre-wrap; }';
 
 function isMarkdownSourcedFiles(files: File[]): boolean {
   const contentFiles = files.filter(
@@ -553,7 +542,7 @@ export class DeckParser {
         this.applyDeckNameNumbering(getTitleFromMarkdown(contentsStr) ?? name),
       heuristic.notes,
       '',
-      '',
+      buildDeckStyle(this.settings),
       get16DigitRandomId(),
       this.settings
     );
@@ -680,22 +669,7 @@ export class DeckParser {
       this.unpackDataUriImages(contents)
     );
 
-    const extractedStyle = extractStyles(dom);
-    const codeThemeStyle = getCodeThemeCss(this.settings.codeTheme);
-    const themedNotionStyle = `${NOTION_STYLE}\n${codeThemeStyle}`;
-    const baseStyle = extractedStyle
-      ? `${themedNotionStyle}\n${extractedStyle}`
-      : themedNotionStyle;
-    const style = withTextAlign(
-      withTextColor(
-        withFontSize(
-          `${baseStyle}\n${CODE_WRAP_STYLE}`,
-          this.settings.fontSize
-        ),
-        this.settings.textColor
-      ),
-      this.settings.textAlign
-    );
+    const style = buildDeckStyle(this.settings);
     let image: string | undefined = this.extractCoverImage(dom);
 
     const name = extractName({

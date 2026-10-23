@@ -13,6 +13,7 @@ import {
   parseMyClippings,
 } from '../../lib/vocab/MyClippingsParser';
 import { EpubHighlight, walkEpub } from '../../lib/vocab/EpubWalker';
+import { buildDeckStyle } from '../../lib/parser/buildDeckStyle';
 
 export interface VocabDeckResult {
   readonly name: string;
@@ -75,7 +76,7 @@ function buildDecks(
         name,
         Array.from(only.notes),
         undefined,
-        null,
+        buildDeckStyle(settings),
         Date.now(),
         settings
       ),
@@ -89,7 +90,7 @@ function buildDecks(
       subDeckName,
       Array.from(bookCards.notes),
       undefined,
-      null,
+      buildDeckStyle(settings),
       id,
       settings
     );
