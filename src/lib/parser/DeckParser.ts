@@ -105,6 +105,7 @@ import {
   domPlainTextLength,
   hasDominantTable,
   induceCardsFromDom,
+  OFFER_ONLY_RULES,
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
 
@@ -192,6 +193,8 @@ const MEDIA_IN_BODY = /<(img|audio|video|figure|embed)\b/i;
 function bodyHasContent(body: string): boolean {
   return MEDIA_IN_BODY.test(body) || body.replace(/<[^>]*>/g, '').trim() !== '';
 }
+
+const OFFER_ONLY_MIN_CARDS = 3;
 
 export class DeckParser {
   firstDeckName: string;
@@ -954,7 +957,8 @@ export class DeckParser {
       domPlainTextLength(dom)
     );
     if (winner == null) {
-      const chosen = this.induceChosenRule(dom, rules);
+      const offered = [...rules, ...OFFER_ONLY_RULES];
+      const chosen = this.induceChosenRule(dom, offered);
       if (chosen != null) {
         return chosen;
       }
@@ -968,6 +972,7 @@ export class DeckParser {
       this.rescueCandidates = mergeRescueCandidates([
         this.rescueCandidates,
         candidates,
+        this.offerOnlyCandidates(dom),
       ]);
       return null;
     }
@@ -977,6 +982,13 @@ export class DeckParser {
       score: winner.score,
     });
     return winner.cards;
+  }
+
+  private offerOnlyCandidates(dom: cheerio.CheerioAPI): RescueCandidate[] {
+    return OFFER_ONLY_RULES.map((rule) => ({
+      rule,
+      cards: induceCardsFromDom(dom, rule).length,
+    })).filter(({ cards }) => cards >= OFFER_ONLY_MIN_CARDS);
   }
 
   private recordInducedRule(next: InducedRescue): void {

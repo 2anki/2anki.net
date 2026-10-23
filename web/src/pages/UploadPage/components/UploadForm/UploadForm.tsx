@@ -227,6 +227,7 @@ const RESCUE_LABEL_KEYS = new Map<RescueRule, string>([
   ['numbered', 'rescueNumbered'],
   ['bullets', 'rescueBullets'],
   ['guess', 'rescueGuess'],
+  ['paragraphs', 'rescueParagraphs'],
 ]);
 
 function toPageBucket(pageCount: number): string {

@@ -316,6 +316,8 @@
       "rescueBullets_other": "Crea {{n}} carte dagli elenchi puntati",
       "rescueGuess_one": "Crea {{n}} carta dalle righe di domanda e risposta",
       "rescueGuess_other": "Crea {{n}} carte dalle righe di domanda e risposta",
+      "rescueParagraphs_one": "Crea {{n}} carta dai paragrafi",
+      "rescueParagraphs_other": "Crea {{n}} carte dai paragrafi",
       "readingLead": "Abbiamo letto {{parts}}.",
       "readingNoCards": "Niente ha la forma di una carta: nessun toggle e nessuna coppia di domanda e risposta.",
       "readingNoText": "Questo file non contiene testo che possiamo leggere. Carica il file che contiene i tuoi appunti.",

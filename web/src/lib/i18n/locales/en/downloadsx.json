@@ -89,7 +89,8 @@
       "numbered": "numbered lists",
       "columns": "table columns",
       "quote": "quotes",
-      "guess": "question and answer text"
+      "guess": "question and answer text",
+      "paragraphs": "paragraphs"
     }
   },
   "columnsGuessed": {

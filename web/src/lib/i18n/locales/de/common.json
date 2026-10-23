@@ -316,6 +316,8 @@
       "rescueBullets_other": "{{n}} Karten aus den Aufzählungspunkten erstellen",
       "rescueGuess_one": "{{n}} Karte aus den Frage- und Antwortzeilen erstellen",
       "rescueGuess_other": "{{n}} Karten aus den Frage- und Antwortzeilen erstellen",
+      "rescueParagraphs_one": "{{n}} Karte aus den Absätzen erstellen",
+      "rescueParagraphs_other": "{{n}} Karten aus den Absätzen erstellen",
       "readingLead": "Wir haben {{parts}} gelesen.",
       "readingNoCards": "Nichts davon hat die Form einer Karte: keine Toggles und keine Frage-Antwort-Paare.",
       "readingNoText": "Diese Datei enthält keinen Text, den wir lesen können. Lade die Datei hoch, in der deine Notizen stehen.",

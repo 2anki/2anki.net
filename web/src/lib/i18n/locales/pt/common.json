@@ -316,6 +316,8 @@
       "rescueBullets_other": "Criar {{n}} cartões com os marcadores",
       "rescueGuess_one": "Criar {{n}} cartão com as linhas de pergunta e resposta",
       "rescueGuess_other": "Criar {{n}} cartões com as linhas de pergunta e resposta",
+      "rescueParagraphs_one": "Criar {{n}} cartão a partir dos parágrafos",
+      "rescueParagraphs_other": "Criar {{n}} cartões a partir dos parágrafos",
       "readingLead": "Lemos {{parts}}.",
       "readingNoCards": "Nada tem a forma de um cartão: nenhum toggle e nenhum par de pergunta e resposta.",
       "readingNoText": "Este arquivo não tem texto que possamos ler. Envie o arquivo que contém suas anotações.",

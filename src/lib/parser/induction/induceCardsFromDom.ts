@@ -344,6 +344,46 @@ function induceTextPatternCards(dom: CheerioAPI): Note[] {
   return notes;
 }
 
+// Offered to the person on the empty-deck screen, never shipped on its own:
+// cutting prose into cards is a guess about what matters, so only a pick made
+// after seeing the count may set the quality floor aside.
+export const OFFER_ONLY_RULES: readonly InducedRule[] = ['paragraphs'];
+
+const PARAGRAPH_MIN_CHARS = 40;
+const EMPHASIS_MAX_CHARS = 120;
+const FIRST_SENTENCE_MAX_CHARS = 120;
+const EMPHASIS_SELECTOR = 'strong,b,mark';
+const SENTENCE_END = /^(.{8,}?[.!?])(\s|$)/s;
+
+function paragraphFront(dom: CheerioAPI, paragraph: Element): string {
+  const text = textOf(dom, paragraph);
+  const emphasis = dom(paragraph).find(EMPHASIS_SELECTOR).first();
+  const emphasised = emphasis.text().trim();
+  if (
+    emphasised.length >= 3 &&
+    emphasised.length <= EMPHASIS_MAX_CHARS &&
+    emphasised.length < text.length
+  ) {
+    return (emphasis.html() ?? '').trim();
+  }
+  const sentence = SENTENCE_END.exec(text)?.[1] ?? text;
+  return sentence.length > FIRST_SENTENCE_MAX_CHARS
+    ? `${sentence.slice(0, FIRST_SENTENCE_MAX_CHARS).trimEnd()}…`
+    : sentence;
+}
+
+// One card per prose paragraph: the bold or highlighted term (or the first
+// sentence) is the prompt, the paragraph is the answer.
+function induceParagraphCards(dom: CheerioAPI): Note[] {
+  const notes: Note[] = [];
+  for (const block of topLevelBlocks(dom)) {
+    if (tagName(block) !== 'p') continue;
+    if (textOf(dom, block).length < PARAGRAPH_MIN_CHARS) continue;
+    pushCard(notes, paragraphFront(dom, block), innerHtml(dom, block));
+  }
+  return notes;
+}
+
 export function induceCardsFromDom(dom: CheerioAPI, rule: InducedRule): Note[] {
   const notes = runRule(dom, rule);
   notes.forEach((note, order) => {
@@ -366,6 +406,8 @@ function runRule(dom: CheerioAPI, rule: InducedRule): Note[] {
       return induceColumnCards(dom);
     case 'guess':
       return induceTextPatternCards(dom);
+    case 'paragraphs':
+      return induceParagraphCards(dom);
     default:
       return [];
   }

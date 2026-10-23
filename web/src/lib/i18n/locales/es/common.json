@@ -316,6 +316,8 @@
       "rescueBullets_other": "Hacer {{n}} tarjetas con las viñetas",
       "rescueGuess_one": "Hacer {{n}} tarjeta con las líneas de pregunta y respuesta",
       "rescueGuess_other": "Hacer {{n}} tarjetas con las líneas de pregunta y respuesta",
+      "rescueParagraphs_one": "Crear {{n}} tarjeta a partir de los párrafos",
+      "rescueParagraphs_other": "Crear {{n}} tarjetas a partir de los párrafos",
       "readingLead": "Leímos {{parts}}.",
       "readingNoCards": "Nada tiene forma de tarjeta: no hay toggles ni pares de pregunta y respuesta.",
       "readingNoText": "Este archivo no tiene texto que podamos leer. Sube el archivo que contiene tus apuntes.",

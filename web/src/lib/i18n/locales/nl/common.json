@@ -316,6 +316,8 @@
       "rescueBullets_other": "Maak {{n}} kaarten van de opsommingen",
       "rescueGuess_one": "Maak {{n}} kaart van de vraag- en antwoordregels",
       "rescueGuess_other": "Maak {{n}} kaarten van de vraag- en antwoordregels",
+      "rescueParagraphs_one": "{{n}} kaart maken van de alinea's",
+      "rescueParagraphs_other": "{{n}} kaarten maken van de alinea's",
       "readingLead": "We hebben {{parts}} gelezen.",
       "readingNoCards": "Niets heeft de vorm van een kaart: geen toggles en geen vraag-antwoordparen.",
       "readingNoText": "Dit bestand bevat geen tekst die we kunnen lezen. Upload het bestand waarin je aantekeningen staan.",
