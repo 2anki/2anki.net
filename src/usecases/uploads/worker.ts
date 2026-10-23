@@ -12,6 +12,7 @@ import { processUploadedPdf } from './processUploadedPdf';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
 import pLimit from 'p-limit';
+import { asReadableUpload } from '../../lib/rtf/readableUpload';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
@@ -476,10 +477,14 @@ async function doGenerationWork(
       ? createCrossFileDedupState(existingCardFingerprints ?? [])
       : undefined;
 
-  const convert = (file: UploadedFile, fileWorkspace: Workspace) =>
-    processFile(
+  const convert = (upload: UploadedFile, fileWorkspace: Workspace) => {
+    const { file, contents } = asReadableUpload(
+      upload,
+      getFileContents(upload, enqueuedAt)
+    );
+    return processFile(
       file,
-      getFileContents(file, enqueuedAt),
+      contents,
       paying,
       settings,
       fileWorkspace,
@@ -493,6 +498,7 @@ async function doGenerationWork(
       files.length === 1,
       anonymousPassId
     );
+  };
   const results = canConvertInParallel(files, crossFileDedup)
     ? await convertInParallel(files, workspace, convert)
     : await convertInSequence(files, workspace, convert);

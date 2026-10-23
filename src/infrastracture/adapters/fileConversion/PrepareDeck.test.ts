@@ -1406,6 +1406,29 @@ describe('PrepareDeck — AI media matching (#3946)', () => {
   });
 });
 
+describe('PrepareDeck — Word variants', () => {
+  const convertDocxToHTML = convertDocxToHTMLImport as unknown as Mock;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    convertDocxToHTML.mockResolvedValue('<ul><li>Term: definition</li></ul>');
+  });
+
+  it('reads a Word template (.dotx) with the .docx reader', async () => {
+    const contents = Buffer.from('PK-dotx');
+
+    await PrepareDeck({
+      name: 'template.dotx',
+      files: [{ name: 'template.dotx', contents }],
+      settings: makeSettings({}),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch(() => {});
+
+    expect(convertDocxToHTML.mock.calls[0][0]).toEqual(contents);
+  });
+});
+
 describe('assembleParserFiles — both build paths share one file set', () => {
   it('includes originals, converted HTML, and extracted figure images', () => {
     const original = { name: 'notes.pdf', contents: Buffer.from('%PDF') };

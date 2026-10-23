@@ -9,7 +9,9 @@ import {
   isImageFile,
   isMarkdownFile,
   isPDFFile,
+  isRtfFile,
 } from '../storage/checks';
+import { rtfEntryAsText } from '../rtf/readableUpload';
 import { processAndPrepareArchiveData } from './fallback/processAndPrepareArchiveData';
 import { isSafeZipEntryName } from './isSafeZipEntryName';
 import { isZipContentFileSupported } from '../../usecases/uploads/isZipContentFileSupported';
@@ -203,7 +205,9 @@ class ZipHandler {
     paying: boolean,
     settings: CardOption
   ): boolean {
-    if (isHTMLFile(name) || isMarkdownFile(name)) return true;
+    if (isHTMLFile(name) || isMarkdownFile(name) || isRtfFile(name)) {
+      return true;
+    }
     return paying && settings.imageQuizHtmlToAnki && isImageFile(name);
   }
 
@@ -278,7 +282,7 @@ class ZipHandler {
 
       if (noSuffixCount === census.length) {
         throw new Error(
-          'The zip file contains only files with no suffix. Supported file types are: .zip, .html, .csv, .md, .pdf, .ppt, and .pptx.'
+          'The zip file contains only files with no extension, so 2anki can’t tell what they are. Add the extension back (for example .txt, .md, .html, .csv, .pdf, .docx, .rtf, .xlsx or .pptx) and upload the zip again.'
         );
       }
 
@@ -307,7 +311,10 @@ class ZipHandler {
       return;
     }
 
-    if (isHTMLFile(name) || isMarkdownFile(name)) {
+    if (isRtfFile(name)) {
+      this.trackInMemoryBytes(file.length);
+      this.files.push(rtfEntryAsText(name, file));
+    } else if (isHTMLFile(name) || isMarkdownFile(name)) {
       this.trackInMemoryBytes(file.length);
       this.files.push({ name, contents: strFromU8(file) });
     } else if (paying && settings.imageQuizHtmlToAnki && isImageFile(name)) {
