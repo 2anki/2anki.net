@@ -51,4 +51,16 @@ describe('rtfToText', () => {
     const long = `{\\rtf1 ${'x'.repeat(2_000_000)}}`;
     expect(rtfToText(long)).toHaveLength(2_000_000);
   });
+
+  it('caps list indents so a tiny file cannot ask for gigabytes of spaces', () => {
+    const rtf = `{\\rtf1 ${'\\par\\li400000000 {\\listtext \\bullet\\tab}x'.repeat(1000)}}`;
+    const text = rtfToText(rtf);
+    expect(text.length).toBeLessThan(40_000);
+    expect(text.split('\n')[0]).toBe('- x');
+  });
+
+  it('reads a file with a very large list', () => {
+    const rtf = `{\\rtf1 ${'{\\listtext \\bullet\\tab}item\\par '.repeat(200_000)}}`;
+    expect(rtfToText(rtf).split('\n')).toHaveLength(200_000);
+  });
 });

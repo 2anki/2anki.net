@@ -59,6 +59,7 @@ function toMarkdownLine(line: string): string {
 // part of their parent so a crafted file cannot grow the stack without end.
 const MAX_GROUP_DEPTH = 256;
 const MAX_CODE_POINT = 0x10ffff;
+const MAX_LIST_LEVEL = 8;
 const PLAIN_RUN = /[^\\{}\r\n]+/y;
 
 export function rtfToText(rtf: string): string {
@@ -165,7 +166,11 @@ export function rtfToText(rtf: string): string {
     } else if (word === 'li' && param != null && param > 0) {
       const atLineStart = out.length === 0 || out[out.length - 1] === '\n';
       if (atLineStart && !group.skip) {
-        out.push('  '.repeat(Math.round(param / TWIPS_PER_LEVEL)));
+        const level = Math.min(
+          Math.round(param / TWIPS_PER_LEVEL),
+          MAX_LIST_LEVEL
+        );
+        out.push('  '.repeat(level));
       }
     } else if (word === 'par' || word === 'line' || word === 'sect') {
       emit('\n');
@@ -197,7 +202,10 @@ export function rtfToText(rtf: string): string {
   const listIndents = lines
     .filter((line) => /^ *- /.test(line))
     .map((line) => line.length - line.trimStart().length);
-  const base = listIndents.length > 0 ? Math.min(...listIndents) : 0;
+  const base = listIndents.reduce(
+    (lowest, indent) => Math.min(lowest, indent),
+    listIndents.length > 0 ? Number.POSITIVE_INFINITY : 0
+  );
   return lines
     .map((line) => (/^ *- /.test(line) ? line.slice(base) : line))
     .join('\n')
