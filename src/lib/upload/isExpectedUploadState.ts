@@ -1,5 +1,6 @@
 import { CONVERSION_TRUNCATED_MESSAGE } from '../../infrastracture/adapters/fileConversion/claudeFileConversion';
 import { isExpectedClientFault } from '../misc/isExpectedClientFault';
+import { isPdfFallbackChoiceSentinel } from '../pdf/pdfFallbackChoice';
 import { isPdfPasswordSentinel } from '../pdf/pdfPasswordSentinel';
 
 // Uploads convert in a worker that serialises an error down to { message, name },
@@ -39,6 +40,7 @@ export function isExpectedUploadState(err: unknown): boolean {
     EXPECTED_ERROR_NAMES.has(err.name) ||
     err.message === CONVERSION_TRUNCATED_MESSAGE ||
     isPdfPasswordSentinel(err.message) ||
+    isPdfFallbackChoiceSentinel(err.message) ||
     EXPECTED_MESSAGE_PATTERNS.some((pattern) => pattern.test(err.message)) ||
     isExpectedClientFault(err)
   );

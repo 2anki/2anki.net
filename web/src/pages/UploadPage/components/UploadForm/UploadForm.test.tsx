@@ -5769,3 +5769,214 @@ describe('claiming a held deck after sign-in', () => {
     });
   });
 });
+
+describe('UploadForm PDF with no readable text', () => {
+  beforeEach(() => {
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    globalThis.localStorage.clear();
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  });
+
+  afterEach(() => {
+    delete (globalThis as AnalyticsGlobals).gtag;
+    delete (globalThis as AnalyticsGlobals).hj;
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    globalThis.localStorage.clear();
+  });
+
+  function selectFile(container: HTMLElement, name: string) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['x'], name, { type: 'application/pdf' });
+    Object.defineProperty(fileInput, 'files', {
+      value: [file],
+      configurable: true,
+    });
+    fileInput.removeAttribute('required');
+  }
+
+  async function submitForm(container: HTMLElement) {
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  function sentFallback(fetchMock: ReturnType<typeof vi.fn>, call = 0) {
+    const calls = fetchMock.mock.calls.filter(
+      ([url]) => url === '/api/upload/file'
+    );
+    const body = calls[call]?.[1]?.body as FormData | undefined;
+    return body?.get('pdf-fallback') ?? null;
+  }
+
+  const choiceResponse = () => ({
+    redirected: false,
+    status: 409,
+    clone: () => ({
+      json: () =>
+        Promise.resolve({
+          code: 'choose_pdf_mode',
+          reason: 'no_text',
+          page_count: 14,
+        }),
+    }),
+    text: () => Promise.resolve(JSON.stringify({ code: 'choose_pdf_mode' })),
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+  });
+
+  const deckResponse = (headers: Record<string, string> = {}) => ({
+    redirected: false,
+    status: 200,
+    headers: new Headers({
+      'Content-Type': 'application/octet-stream',
+      'File-Name': encodeURIComponent('scan.apkg'),
+      'X-Card-Count': '7',
+      ...headers,
+    }),
+    blob: () => Promise.resolve(new Blob(['apkg'])),
+  });
+
+  it('tells the server to ask for a PDF, but not for other files', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(choiceResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+
+    expect(sentFallback(fetchMock)).toBe('ask');
+  });
+
+  it('does not ask about files that cannot be a scanned PDF', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(deckResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'notes.md');
+    await submitForm(container);
+
+    expect(sentFallback(fetchMock)).toBeNull();
+  });
+
+  it('offers the choices, and resends the same file with the one picked', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(choiceResponse())
+      .mockResolvedValueOnce(deckResponse({ 'X-Pdf-Fallback': 'single' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+
+    expect(
+      (await screen.findAllByText('This PDF has no text we can read')).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('button', { name: 'Two pages per card' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Make cards with AI' })
+    ).toBeNull();
+    expect(trackMock).toHaveBeenCalledWith('pdf_fallback_choice_shown', {
+      reason: 'no_text',
+      pageBucket: '11-50',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'One card per page' }));
+
+    expect(
+      await screen.findByText(
+        'This PDF had no text we could read, so every page became one card.'
+      )
+    ).toBeInTheDocument();
+    expect(sentFallback(fetchMock, 1)).toBe('single');
+    const second = fetchMock.mock.calls[1][1].body as FormData;
+    expect((second.get('pakker') as File).name).toBe('scan.pdf');
+    expect(globalThis.localStorage.getItem('pdf-fallback')).toBeNull();
+  });
+
+  it('remembers the choice when asked, and uses it without asking again', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(choiceResponse())
+      .mockResolvedValueOnce(deckResponse({ 'X-Pdf-Fallback': 'pairs' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+    await screen.findAllByText('This PDF has no text we can read');
+
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'Remember my choice on this device',
+      })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Two pages per card' }));
+
+    await screen.findByText(
+      'This PDF had no text we could read, so every two pages became one card.'
+    );
+    expect(globalThis.localStorage.getItem('pdf-fallback')).toBe('pairs');
+    expect(
+      screen.getByRole('button', { name: 'Ask me next time' })
+    ).toBeInTheDocument();
+  });
+
+  it('sends a remembered choice instead of asking', async () => {
+    globalThis.localStorage.setItem('pdf-fallback', 'single');
+    const fetchMock = vi.fn().mockResolvedValue(deckResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+
+    expect(sentFallback(fetchMock)).toBe('single');
+  });
+
+  it('lets the person take a remembered choice back', async () => {
+    globalThis.localStorage.setItem('pdf-fallback', 'single');
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(deckResponse({ 'X-Pdf-Fallback': 'single' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Ask me next time' })
+    );
+
+    expect(globalThis.localStorage.getItem('pdf-fallback')).toBeNull();
+    expect(trackMock).toHaveBeenCalledWith('pdf_fallback_forgotten');
+    expect(
+      screen.queryByRole('button', { name: 'Ask me next time' })
+    ).toBeNull();
+  });
+});

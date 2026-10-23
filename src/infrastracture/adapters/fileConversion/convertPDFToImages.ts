@@ -4,7 +4,10 @@ import crypto from 'crypto';
 import Workspace from '../../../lib/parser/WorkSpace';
 import { getPageCount } from '../../../lib/pdf/getPageCount';
 import { convertPage } from '../../../lib/pdf/convertPage';
-import { combineIntoHTML } from '../../../lib/pdf/combineIntoHTML';
+import {
+  combineIntoHTML,
+  type PageImageCardMode,
+} from '../../../lib/pdf/combineIntoHTML';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 
 interface ConvertPDFToImagesInput {
@@ -13,6 +16,7 @@ interface ConvertPDFToImagesInput {
   contents?: Buffer | Uint8Array | string;
   name?: string;
   settings?: CardOption;
+  pageMode?: PageImageCardMode;
 }
 
 export const PDF_FREE_MAX_PAGES = 100;
@@ -28,7 +32,12 @@ export async function convertPDFToImages(
     return '';
   }
   const { imagePaths, title } = await renderPdfPageImages(input);
-  return combineIntoHTML(imagePaths, title, input.workspace.location);
+  return combineIntoHTML(
+    imagePaths,
+    title,
+    input.workspace.location,
+    input.pageMode
+  );
 }
 
 export async function renderPdfPageImages(

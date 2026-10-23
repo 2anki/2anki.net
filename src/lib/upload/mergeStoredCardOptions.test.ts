@@ -61,4 +61,10 @@ describe('mergeStoredCardOptions', () => {
       });
     }
   );
+
+  it('never merges a stored pdf-fallback into a conversion', () => {
+    expect(
+      mergeStoredCardOptions({ 'pdf-fallback': 'single', cloze: 'true' }, {})
+    ).toEqual({ cloze: 'true' });
+  });
 });

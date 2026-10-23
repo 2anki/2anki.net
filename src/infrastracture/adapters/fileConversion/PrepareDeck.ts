@@ -41,6 +41,12 @@ import {
 } from '../../../lib/claude/aiSpendGuard';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import { buildPdfPasswordSentinel } from '../../../lib/pdf/pdfPasswordSentinel';
+import {
+  buildPdfFallbackChoiceSentinel,
+  type PdfFallbackChoice,
+  type PdfFallbackReason,
+} from '../../../lib/pdf/pdfFallbackChoice';
+import type { PageImageCardMode } from '../../../lib/pdf/combineIntoHTML';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
 import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
@@ -178,8 +184,19 @@ interface PrepareDeckResult {
   guidEntries?: IssuedCardGuid[];
   uploadIdentityStats?: UploadIdentityStats;
   pdfPageCount?: number;
+  pdfFallbackMode?: 'pairs' | 'single';
   emptyReason?: EmptyDeckReason;
   rescueCandidates?: RescueCandidate[];
+}
+
+function pdfFallbackModeOf(
+  convertedFiles: ConvertedFile[]
+): 'pairs' | 'single' | undefined {
+  const modes = convertedFiles.flatMap((f) =>
+    f.pdfFallbackMode == null ? [] : [f.pdfFallbackMode]
+  );
+  if (modes.length === 0) return undefined;
+  return modes.includes('single') ? 'single' : 'pairs';
 }
 
 function sumPdfPageCount(convertedFiles: ConvertedFile[]): number | undefined {
@@ -472,6 +489,7 @@ interface ConvertedFile {
   coloredTextPageCount?: number;
   extraFiles?: PdfHtmlImage[];
   pdfPageCount?: number;
+  pdfFallbackMode?: 'pairs' | 'single';
 }
 
 function sumColoredTextPages(convertedFiles: ConvertedFile[]): number {
@@ -494,7 +512,8 @@ function pdfImageLoader(
 
 async function convertPdfPagesToImagesFile(
   file: DeckParserInput['files'][number],
-  input: DeckParserInput
+  input: DeckParserInput,
+  pageMode: PageImageCardMode = 'pairs'
 ): Promise<ConvertedFile> {
   const html = await convertPDFToImages({
     name: file.name,
@@ -502,6 +521,7 @@ async function convertPdfPagesToImagesFile(
     noLimits: input.noLimits,
     contents: file.contents as Buffer,
     settings: input.settings,
+    pageMode,
   });
   return {
     name: `${file.name}.html`,
@@ -511,6 +531,29 @@ async function convertPdfPagesToImagesFile(
       ? 0
       : (html.match(/<img /g) ?? []).length,
   };
+}
+
+// A PDF with no usable text becomes page images. The upload page asks which
+// kind of cards the person wants ('ask'); everything else keeps page pairs.
+async function convertPdfFallbackToImages(
+  file: DeckParserInput['files'][number],
+  input: DeckParserInput,
+  choice: PdfFallbackChoice
+): Promise<ConvertedFile> {
+  const mode = input.settings.pdfFallback;
+  if (mode === 'ask') {
+    throw new Error(buildPdfFallbackChoiceSentinel(choice));
+  }
+  const imagesFile = await convertPdfPagesToImagesFile(file, input, mode);
+  return { ...imagesFile, pdfFallbackMode: mode };
+}
+
+function fallbackReason(result: {
+  isDrmLocked: boolean;
+  overSplit: boolean;
+}): PdfFallbackReason {
+  if (result.isDrmLocked) return 'locked';
+  return result.overSplit ? 'over_split' : 'no_text';
 }
 
 async function convertPdfByPagePairs(
@@ -567,7 +610,10 @@ async function convertPdfByManualTextFlag(
     cardCount: textResult.cardCount,
     durationMs: Date.now() - t0,
   });
-  return convertPdfPagesToImagesFile(file, input);
+  return convertPdfFallbackToImages(file, input, {
+    reason: fallbackReason(textResult),
+    pageCount: 0,
+  });
 }
 
 async function convertPdfByAutoDetection(
@@ -623,7 +669,10 @@ async function convertPdfByAutoDetection(
     cardsPerPage,
     durationMs: Date.now() - t0,
   });
-  const imagesFile = await convertPdfPagesToImagesFile(file, input);
+  const imagesFile = await convertPdfFallbackToImages(file, input, {
+    reason: fallbackReason(autoResult),
+    pageCount: autoResult.pageCount,
+  });
   return { ...imagesFile, pdfPageCount: autoResult.pageCount };
 }
 
@@ -842,6 +891,7 @@ async function buildParserResult(
         uploadIdentityStats: uploadIdentityStatsFor(input, parser),
         cardsHeldBack: parser.cardsHeldBack,
         pdfPageCount: sumPdfPageCount(convertedFiles),
+        pdfFallbackMode: pdfFallbackModeOf(convertedFiles),
       };
     }
   }
@@ -880,6 +930,7 @@ async function buildParserResult(
     uploadIdentityStats: uploadIdentityStatsFor(input, parser),
     cardsHeldBack: parser.cardsHeldBack,
     pdfPageCount: sumPdfPageCount(convertedFiles),
+    pdfFallbackMode: pdfFallbackModeOf(convertedFiles),
     emptyReason:
       parser.totalCardCount() === 0 ? parser.emptyDeckReason() : undefined,
     rescueCandidates:
@@ -1122,6 +1173,7 @@ async function buildClaudeDeck(
     plainTextFallbackImageCount: 0,
     emptyBackCount: 0,
     pdfPageCount: sumPdfPageCount(convertedFiles),
+    pdfFallbackMode: pdfFallbackModeOf(convertedFiles),
   };
 }
 

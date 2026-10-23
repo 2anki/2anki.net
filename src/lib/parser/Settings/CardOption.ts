@@ -105,6 +105,8 @@ class CardOption {
 
   readonly pdfPagePairs: boolean;
 
+  readonly pdfFallback: PdfFallback;
+
   readonly pdfPageRange: string;
 
   readonly downloadPdfs: boolean;
@@ -197,6 +199,7 @@ class CardOption {
     this.processPDFs = input['process-pdfs'] !== 'false';
     this.pdfExtractText = input['pdf-extract-text'] === 'true';
     this.pdfPagePairs = input['pdf-page-pairs'] === 'true';
+    this.pdfFallback = validatePdfFallback(input['pdf-fallback']);
     this.pdfPageRange =
       typeof input['pdf-page-range'] === 'string'
         ? input['pdf-page-range']
@@ -269,6 +272,14 @@ function parseGlobalTags(raw: string | undefined): string[] {
 }
 
 const CODE_THEME_VALUES = ['github', 'one-dark', 'solarized', 'dracula'];
+
+export type PdfFallback = 'ask' | 'pairs' | 'single';
+
+// What to do with a PDF that has no usable text. Only the upload page asks
+// ('ask'); every other caller keeps the page pairs it always made.
+function validatePdfFallback(raw: string | undefined): PdfFallback {
+  return raw === 'ask' || raw === 'single' ? raw : 'pairs';
+}
 
 function validateCodeTheme(raw: string | undefined): string {
   return raw && CODE_THEME_VALUES.includes(raw) ? raw : 'github';
