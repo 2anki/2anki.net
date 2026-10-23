@@ -44,10 +44,13 @@ export default function PreviewPage({ setError }: Readonly<PreviewPageProps>) {
     refetch,
   } = usePreviewStream(id);
 
-  // Without any blocks the page shows the error itself; the global banner is
-  // only for a failure after something loaded.
+  // A deliberate answer (Notion disconnected) with nothing loaded is already
+  // shown on the page; everything else still goes to the banner and the
+  // error report.
   useEffect(() => {
-    if (error && data) setError(error);
+    if (error == null) return;
+    if (data == null && error instanceof UserNotice) return;
+    setError(error);
   }, [error, data, setError]);
 
   useEffect(() => {

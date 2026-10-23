@@ -249,6 +249,74 @@ describe('NotionController', () => {
     });
   });
 
+  it('flags the connection when Notion rejects the token on a database query', async () => {
+    const unauthorized = new APIResponseError({
+      code: APIErrorCode.Unauthorized,
+      message: 'API token is invalid.',
+      status: 401,
+      rawBodyText: '',
+      headers: {},
+    } as any);
+    (service.getNotionAPI as Mock).mockResolvedValue(
+      buildApi({ queryDatabase: vi.fn().mockRejectedValue(unauthorized) })
+    );
+    const notionRepo = buildNotionRepo();
+    controller = new NotionController(
+      service,
+      notionRepo,
+      buildUsersRepo(),
+      buildEmailService()
+    );
+    res = { ...res, locals: { owner: 42 } } as any;
+
+    await controller.queryDatabase(
+      req as express.Request,
+      res as express.Response
+    );
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    await vi.waitFor(() =>
+      expect(notionRepo.markTokenInvalid).toHaveBeenCalledWith(42)
+    );
+  });
+
+  it('still answers when flagging the dead token fails', async () => {
+    const unauthorized = new APIResponseError({
+      code: APIErrorCode.Unauthorized,
+      message: 'API token is invalid.',
+      status: 401,
+      rawBodyText: '',
+      headers: {},
+    } as any);
+    (service.getNotionAPI as Mock).mockResolvedValue(
+      buildApi({ listBlocksPage: vi.fn().mockRejectedValue(unauthorized) })
+    );
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const notionRepo = buildNotionRepo({
+      markTokenInvalid: vi.fn().mockRejectedValue(new Error('db down')),
+    });
+    controller = new NotionController(
+      service,
+      notionRepo,
+      buildUsersRepo(),
+      buildEmailService()
+    );
+
+    await controller.previewPage(
+      req as express.Request,
+      res as express.Response
+    );
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    await vi.waitFor(() =>
+      expect(logged).toHaveBeenCalledWith(
+        '[notion] could not flag the dead token',
+        expect.any(Error)
+      )
+    );
+    logged.mockRestore();
+  });
+
   it('answers a Notion outage on preview without flagging the connection', async () => {
     const outage = Object.assign(
       Object.create(UnknownHTTPResponseError.prototype),

@@ -128,9 +128,17 @@ class NotionController {
         this.notionRepo,
         this.usersRepo,
         this.emailService
-      ).execute(owner, source);
+      )
+        .execute(owner, source)
+        .catch((error) =>
+          console.error('[notion] could not flag the dead token', error)
+        );
     } else {
-      void this.service.markTokenInvalid(owner);
+      void this.service
+        .markTokenInvalid(owner)
+        .catch((error) =>
+          console.error('[notion] could not flag the dead token', error)
+        );
     }
   }
 

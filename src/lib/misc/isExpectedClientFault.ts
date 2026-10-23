@@ -67,5 +67,10 @@ export const isExpectedClientFault = (error?: Error): boolean => {
   if (error.name === 'MulterError') {
     return true;
   }
+  // No usable Notion connection is the account's state, answered with a
+  // reconnect prompt, not a server fault.
+  if (error.name === 'NotionNotConnectedError') {
+    return true;
+  }
   return error.name === 'AnkiAppExportError';
 };

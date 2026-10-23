@@ -254,7 +254,10 @@ export class Backend {
     });
     const data = await response.json();
     if ('message' in data) {
-      if (isIntentionalBackendNotice(data.message)) {
+      if (
+        data.code === 'notion_unauthorized' ||
+        isIntentionalBackendNotice(data.message)
+      ) {
         throw new UserNotice(data.message, data.code);
       }
       throw new Error(data.message);
@@ -294,7 +297,10 @@ export class Backend {
       typeof data.message === 'string'
         ? data.message
         : `Search failed (${status})`;
-    if (isIntentionalBackendNotice(message)) {
+    if (
+      data.code === 'notion_unauthorized' ||
+      isIntentionalBackendNotice(message)
+    ) {
       return new UserNotice(
         message,
         typeof data.code === 'string' ? data.code : undefined
@@ -348,7 +354,10 @@ export class Backend {
     }
 
     if ('message' in data) {
-      if (isIntentionalBackendNotice(data.message)) {
+      if (
+        data.code === 'notion_unauthorized' ||
+        isIntentionalBackendNotice(data.message)
+      ) {
         throw new UserNotice(data.message, data.code);
       }
       throw new Error(data.message);
