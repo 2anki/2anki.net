@@ -37,6 +37,8 @@ function escapeHtml(value: string): string {
 export interface ConsentPageInput {
   actionPath: string;
   clientName: string;
+  redirectHost: string;
+  clientHost?: string;
   scopes: string[];
   csrf: string;
   fields: Record<string, string | undefined>;
@@ -191,6 +193,13 @@ export function renderConsentPage(input: ConsentPageInput): string {
     )
     .join('\n        ');
   const clientName = escapeHtml(input.clientName);
+  const redirectHost = escapeHtml(input.redirectHost);
+  const clientIdentity =
+    input.clientHost == null
+      ? ''
+      : `\n      <p class="consent-reassure">${clientName} is identified by <strong>${escapeHtml(
+          input.clientHost
+        )}</strong>.</p>`;
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -209,6 +218,7 @@ export function renderConsentPage(input: ConsentPageInput): string {
       <ul class="consent-scopes">
         ${scopeList}
       </ul>
+      <p class="consent-reassure">After you allow access, you return to <strong>${redirectHost}</strong>.</p>${clientIdentity}
       <p class="consent-reassure">New decks count toward your monthly card limit, the same as on the web.</p>
       <form method="post" action="${escapeHtml(input.actionPath)}">
         ${hidden}

@@ -38,8 +38,15 @@ import {
   consentTokenMatches,
   renderConsentPage,
 } from './consent';
+import { assertValidRedirectUris } from './redirectUris';
+import {
+  ClientMetadataDocumentError,
+  ClientMetadataDocumentResolver,
+  isCimdStorageId,
+  isClientMetadataDocumentId,
+  storageClientIdFor,
+} from './clientMetadataDocument';
 
-const MAX_REDIRECT_URIS = 10;
 const MAX_CLIENT_NAME_LENGTH = 255;
 
 export interface McpOAuthConfig {
@@ -57,35 +64,7 @@ export interface McpOAuthDeps {
   usersRepo: UsersRepository;
   config: McpOAuthConfig;
   now?: () => Date;
-}
-
-function isLoopbackHost(host: string): boolean {
-  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
-}
-
-export function assertValidRedirectUris(uris: string[]): void {
-  if (uris.length === 0 || uris.length > MAX_REDIRECT_URIS) {
-    throw new InvalidRequestError('Invalid number of redirect_uris');
-  }
-  for (const uri of uris) {
-    let parsed: URL;
-    try {
-      parsed = new URL(uri);
-    } catch {
-      throw new InvalidRequestError(`Invalid redirect_uri: ${uri}`);
-    }
-    if (parsed.hash !== '') {
-      throw new InvalidRequestError('redirect_uri must not contain a fragment');
-    }
-    const isHttps = parsed.protocol === 'https:';
-    const isHttpLoopback =
-      parsed.protocol === 'http:' && isLoopbackHost(parsed.hostname);
-    if (!isHttps && !isHttpLoopback) {
-      throw new InvalidRequestError(
-        'redirect_uri must use https, or http only for loopback'
-      );
-    }
-  }
+  clientMetadataResolver?: ClientMetadataDocumentResolver;
 }
 
 function canonicalResource(value: URL): string {
@@ -95,11 +74,20 @@ function canonicalResource(value: URL): string {
 }
 
 class KnexClientsStore implements OAuthRegisteredClientsStore {
-  constructor(private readonly clientRepo: IMcpOAuthClientRepository) {}
+  constructor(
+    private readonly clientRepo: IMcpOAuthClientRepository,
+    private readonly metadataResolver: ClientMetadataDocumentResolver
+  ) {}
 
   async getClient(
     clientId: string
   ): Promise<OAuthClientInformationFull | undefined> {
+    if (isClientMetadataDocumentId(clientId)) {
+      return this.resolveMetadataDocument(clientId);
+    }
+    if (isCimdStorageId(clientId)) {
+      return undefined;
+    }
     const stored = await this.clientRepo.findById(clientId);
     if (stored == null) {
       return undefined;
@@ -114,6 +102,22 @@ class KnexClientsStore implements OAuthRegisteredClientsStore {
       client_name: stored.client_name ?? undefined,
       client_id_issued_at: stored.client_id_issued_at,
     };
+  }
+
+  private async resolveMetadataDocument(
+    clientId: string
+  ): Promise<OAuthClientInformationFull | undefined> {
+    try {
+      return await this.metadataResolver.resolve(clientId);
+    } catch (error) {
+      if (error instanceof ClientMetadataDocumentError) {
+        console.warn(
+          `[mcp-oauth] rejected client metadata document (${error.reason}): ${error.message}`
+        );
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   async registerClient(
@@ -163,7 +167,10 @@ export class KnexOAuthProvider implements OAuthServerProvider {
   private readonly now: () => Date;
 
   constructor(private readonly deps: McpOAuthDeps) {
-    this.store = new KnexClientsStore(deps.clientRepo);
+    this.store = new KnexClientsStore(
+      deps.clientRepo,
+      deps.clientMetadataResolver ?? new ClientMetadataDocumentResolver()
+    );
     this.now = deps.now ?? (() => new Date());
   }
 
@@ -273,6 +280,10 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     const html = renderConsentPage({
       actionPath: this.deps.config.authorizePath,
       clientName: client.client_name ?? 'An application',
+      redirectHost: new URL(params.redirectUri).host,
+      clientHost: isClientMetadataDocumentId(client.client_id)
+        ? new URL(client.client_id).host
+        : undefined,
       scopes: params.scopes ?? [],
       csrf,
       fields: {
@@ -295,13 +306,14 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     userId: number,
     res: Response
   ): Promise<void> {
+    const clientId = await this.storedClientIdFor(client);
     const code = generateAuthorizationCode();
     const expiresAt = new Date(
       this.now().getTime() + AUTH_CODE_TTL_SECONDS * 1000
     );
     await this.deps.codeRepo.create({
       code_hash: hashSecret(code),
-      client_id: client.client_id,
+      client_id: clientId,
       user_id: userId,
       redirect_uri: params.redirectUri,
       code_challenge: params.codeChallenge,
@@ -325,7 +337,10 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     const stored = await this.deps.codeRepo.findByHash(
       hashSecret(authorizationCode)
     );
-    if (stored == null || stored.client_id !== client.client_id) {
+    if (
+      stored == null ||
+      stored.client_id !== storageClientIdFor(client.client_id)
+    ) {
       throw new InvalidGrantError('Invalid authorization code');
     }
     return stored.code_challenge;
@@ -341,7 +356,10 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     const stored = await this.deps.codeRepo.findByHash(
       hashSecret(authorizationCode)
     );
-    if (stored == null || stored.client_id !== client.client_id) {
+    if (
+      stored == null ||
+      stored.client_id !== storageClientIdFor(client.client_id)
+    ) {
       throw new InvalidGrantError('Invalid authorization code');
     }
     if (stored.consumed_at != null) {
@@ -360,7 +378,7 @@ export class KnexOAuthProvider implements OAuthServerProvider {
       throw new InvalidGrantError('Authorization code already used');
     }
 
-    return this.issueTokenPair(client.client_id, stored.user_id, stored.scopes);
+    return this.issueTokenPair(stored.client_id, stored.user_id, stored.scopes);
   }
 
   async exchangeRefreshToken(
@@ -372,7 +390,10 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     const stored = await this.deps.tokenRepo.findRefreshTokenByHash(
       hashSecret(refreshToken)
     );
-    if (stored == null || stored.client_id !== client.client_id) {
+    if (
+      stored == null ||
+      stored.client_id !== storageClientIdFor(client.client_id)
+    ) {
       throw new InvalidGrantError('Invalid refresh token');
     }
     if (stored.revoked_at != null) {
@@ -388,7 +409,7 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     );
     const nextScopes =
       scopes != null && scopes.length > 0 ? scopes : stored.scopes;
-    return this.issueTokenPair(client.client_id, stored.user_id, nextScopes);
+    return this.issueTokenPair(stored.client_id, stored.user_id, nextScopes);
   }
 
   async verifyAccessToken(token: string): Promise<AuthInfo> {
@@ -426,15 +447,44 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     request: OAuthTokenRevocationRequest
   ): Promise<void> {
     const tokenHash = hashSecret(request.token);
+    const clientId = storageClientIdFor(client.client_id);
     const access = await this.deps.tokenRepo.findAccessTokenByHash(tokenHash);
-    if (access != null && access.client_id === client.client_id) {
+    if (access != null && access.client_id === clientId) {
       await this.deps.tokenRepo.revokeAccessTokenByHash(tokenHash);
       return;
     }
     const refresh = await this.deps.tokenRepo.findRefreshTokenByHash(tokenHash);
-    if (refresh != null && refresh.client_id === client.client_id) {
+    if (refresh != null && refresh.client_id === clientId) {
       await this.deps.tokenRepo.revokeRefreshTokenByHash(tokenHash);
     }
+  }
+
+  // CIMD clients have no registration row, but the code and token tables
+  // reference mcp_oauth_clients. Upsert one row per metadata document URL
+  // (not per connection) under its storage id before the first code is
+  // written; later authorizations refresh its name and redirect URIs.
+  private async storedClientIdFor(
+    client: OAuthClientInformationFull
+  ): Promise<string> {
+    const clientId = storageClientIdFor(client.client_id);
+    if (clientId === client.client_id) {
+      return clientId;
+    }
+    await this.deps.clientRepo.upsert({
+      client_id: clientId,
+      client_name: client.client_name ?? null,
+      redirect_uris: client.redirect_uris,
+      grant_types: client.grant_types ?? [
+        'authorization_code',
+        'refresh_token',
+      ],
+      response_types: client.response_types ?? ['code'],
+      scope: client.scope ?? null,
+      token_endpoint_auth_method: 'none',
+      metadata: { client_id_metadata_document: client.client_id },
+      client_id_issued_at: Math.floor(this.now().getTime() / 1000),
+    });
+    return clientId;
   }
 
   private assertResourceMatches(

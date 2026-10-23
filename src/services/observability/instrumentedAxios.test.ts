@@ -510,6 +510,43 @@ describe('instrumentedAxios', () => {
     expect(mockedAxios.get).toHaveBeenCalledTimes(2);
   });
 
+  it('does not follow a redirect when the caller passes maxRedirects: 0', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    const redirect = makeRedirectError(
+      'https://uc9.dl.dropboxusercontent.com/cd/0/final'
+    );
+    mockedAxios.get.mockRejectedValueOnce(redirect);
+    mockPublicLookup();
+
+    await expect(
+      client.get(
+        'dropbox',
+        'https://uc8.dl.dropboxusercontent.com/cd/0/get/abc',
+        { maxRedirects: 0 }
+      )
+    ).rejects.toBe(redirect);
+    expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a resolved 3xx when the caller passes maxRedirects: 0', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    mockedAxios.get.mockResolvedValueOnce({
+      status: 301,
+      headers: { location: 'https://uc9.dl.dropboxusercontent.com/cd/0/x' },
+      data: null,
+    });
+    mockPublicLookup();
+
+    await expect(
+      client.get(
+        'dropbox',
+        'https://uc8.dl.dropboxusercontent.com/cd/0/get/abc',
+        { maxRedirects: 0, validateStatus: () => true }
+      )
+    ).rejects.toThrow(/redirect not followed/i);
+    expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+  });
+
   it('passes maxRedirects: 0 to axios so the wrapper owns redirect following', async () => {
     const repo = new FakeRepo();
     const sink = new ObservabilitySink(repo);

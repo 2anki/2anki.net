@@ -384,7 +384,8 @@ const measure = async <T>(
     hopUrl: string,
     lookup: AxiosLookup,
     sameHost: boolean
-  ) => Promise<AxiosResponse<T>>
+  ) => Promise<AxiosResponse<T>>,
+  followRedirects = true
 ): Promise<AxiosResponse<T>> => {
   if (!isAllowedService(service)) {
     throw new Error(
@@ -416,7 +417,7 @@ const measure = async <T>(
         extractStatusFromError(error),
         Date.now() - start
       );
-      if (redirectTarget == null) throw error;
+      if (redirectTarget == null || !followRedirects) throw error;
       ({ currentUrl, endpoint, lookup } = await resolveNextHop(
         redirectTarget,
         service
@@ -436,6 +437,11 @@ const measure = async <T>(
       return response;
     }
     recordSafely(sink, service, endpoint, response.status, Date.now() - start);
+    if (!followRedirects) {
+      throw new Error(
+        `[observability] redirect not followed for service "${service}" (HTTP ${response.status})`
+      );
+    }
     ({ currentUrl, endpoint, lookup } = await resolveNextHop(
       redirectTarget,
       service
@@ -447,6 +453,12 @@ const measure = async <T>(
   );
 };
 
+// Redirects are followed (and re-validated) by default. A caller that passes
+// maxRedirects: 0 gets the 3xx back as a failure instead, for fetches where
+// the response must come from the exact URL requested.
+const followsRedirects = (config: AxiosRequestConfig | undefined): boolean =>
+  config?.maxRedirects !== 0;
+
 const configForHop = (
   config: AxiosRequestConfig | undefined,
   sameHost: boolean
@@ -457,11 +469,16 @@ export const makeInstrumentedAxios = (
   sink: ObservabilitySink
 ): InstrumentedAxios => ({
   get: (service, url, config) =>
-    measure(sink, service, url, (hopUrl, lookup, sameHost) =>
-      axios.get(
-        hopUrl,
-        mergeRequestOptions(configForHop(config, sameHost), lookup)
-      )
+    measure(
+      sink,
+      service,
+      url,
+      (hopUrl, lookup, sameHost) =>
+        axios.get(
+          hopUrl,
+          mergeRequestOptions(configForHop(config, sameHost), lookup)
+        ),
+      followsRedirects(config)
     ),
   post: (service, url, data, config) =>
     measure(sink, service, url, (hopUrl, lookup, sameHost) =>
