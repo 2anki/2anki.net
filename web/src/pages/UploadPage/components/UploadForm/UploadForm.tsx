@@ -93,6 +93,11 @@ import {
 } from './helpers/collectDroppedEntries';
 import { zipDroppedFiles } from './helpers/zipDroppedEntries';
 import { findRecoveredUpload } from './helpers/findRecoveredUpload';
+import {
+  getPendingUploadStore,
+  withinStorableSize,
+  type PendingUpload,
+} from '../../../../lib/upload/pendingUpload';
 
 import type {
   ZoneState,
@@ -111,6 +116,15 @@ const REJECTED_FALLBACK =
 const NETWORK_FALLBACK =
   "Couldn't upload your file. Check your connection and try again.";
 const REATTACH_FILENAME_KEY = 'upload_pending_filename';
+
+function clearPendingUpload(): void {
+  globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
+  void getPendingUploadStore().clear();
+}
+
+type ResumeOffer =
+  | { kind: 'continue'; upload: PendingUpload }
+  | { kind: 'reattach'; filename: string };
 const CHECKOUT_CLAIM_RETRIES = 5;
 const CHECKOUT_CLAIM_RETRY_MS = 3000;
 
@@ -469,6 +483,13 @@ function UploadForm({
     setSampleRun(false);
   });
 
+  // Choosing to start over gives up on the pending file too, so the next
+  // visit does not offer it again.
+  const startOver = () => {
+    clearPendingUpload();
+    resetForm();
+  };
+
   const handleSourceChange = (next: UploadSource) => {
     const { clearDrive, clearDropbox } = getStaleSourceState(next);
     if (clearDrive) {
@@ -521,10 +542,15 @@ function UploadForm({
     },
   };
 
-  const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
+  const {
+    data: userLocals,
+    isLoading: userLocalsLoading,
+    isError: userLocalsFailed,
+  } = useUserLocals();
   const passPrices = usePassPrices();
   const queryClient = useQueryClient();
   const isAuthenticated = userLocals?.user?.id != null;
+  const currentOwnerId = userLocals?.user?.id ?? null;
   const isPaying = isPayingUser(userLocals?.locals);
   const [dayPassPending, setDayPassPending] = useState(false);
   const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
@@ -867,7 +893,7 @@ function UploadForm({
 
   useEffect(() => {
     if (zoneState === 'success' && downloadLink && !showFallback) {
-      globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
+      clearPendingUpload();
       queryClient.invalidateQueries({ queryKey: CARD_USAGE_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: AI_CREDITS_QUERY_KEY });
       // A recovered download is a server copy behind a visible button: the
@@ -1010,9 +1036,16 @@ function UploadForm({
       uploadCancelledFiredRef.current = true;
       track('upload_cancelled', { stage: 'converting' });
     };
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      if (leavingRef.current) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
     globalThis.addEventListener('pagehide', fireUploadCancelled);
+    globalThis.addEventListener('beforeunload', warnBeforeLeaving);
     return () => {
       globalThis.removeEventListener('pagehide', fireUploadCancelled);
+      globalThis.removeEventListener('beforeunload', warnBeforeLeaving);
     };
   }, [zoneState, sampleRun]);
 
@@ -1269,6 +1302,7 @@ function UploadForm({
         : null;
     const fileSizeBytes = failedFile?.size ?? null;
     if (error instanceof UnreadableFileError) {
+      clearPendingUpload();
       track('upload_file_unreadable', {
         reason: error.reason,
         fileSizeBytes,
@@ -1303,6 +1337,17 @@ function UploadForm({
     return false;
   };
 
+  const showMyDecksCopy = (recovered: UserUpload) => {
+    clearPendingUpload();
+    setDeckName(recovered.filename);
+    setCardCount(null);
+    setDownloadLink(`/api/download/u/${encodeURIComponent(recovered.key)}`);
+    setDownloadRecovered(true);
+    setProgressWidth(100);
+    setZoneState('success');
+    queryClient.invalidateQueries({ queryKey: CARD_USAGE_QUERY_KEY });
+  };
+
   const recoverSignedInDeck = async (
     error: unknown,
     uploadedFiles: File[],
@@ -1322,14 +1367,7 @@ function UploadForm({
     const recovered = findRecoveredUpload(uploads, target.name, submittedAt);
     if (recovered == null) return false;
 
-    globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
-    setDeckName(recovered.filename);
-    setCardCount(null);
-    setDownloadLink(`/api/download/u/${encodeURIComponent(recovered.key)}`);
-    setDownloadRecovered(true);
-    setProgressWidth(100);
-    setZoneState('success');
-    queryClient.invalidateQueries({ queryKey: CARD_USAGE_QUERY_KEY });
+    showMyDecksCopy(recovered);
     track('upload_failed', {
       reason: 'network',
       recovered: true,
@@ -1341,9 +1379,10 @@ function UploadForm({
   };
 
   const fetchAnonymousCopy = async (
-    target: File,
+    target: { name: string; size: number },
     recoveryToken: string,
-    trigger: 'error' | 'retry'
+    trigger: 'error' | 'retry' | 'reload',
+    stillWanted: () => boolean = () => true
   ): Promise<boolean> => {
     let deck: Blob | null;
     try {
@@ -1351,9 +1390,9 @@ function UploadForm({
     } catch {
       return false;
     }
-    if (deck == null) return false;
+    if (deck == null || !stillWanted()) return false;
 
-    globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
+    clearPendingUpload();
     setDeckName(target.name.replace(/\.[^.]+$/, ''));
     setCardCount(null);
     setDownloadLink(globalThis.URL.createObjectURL(deck));
@@ -1414,6 +1453,13 @@ function UploadForm({
     setSampleRun(false);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
+    const aiFlagSent = formData.get('claude-ai-flashcards');
+    savePendingUpload(
+      uploadedFiles,
+      submittedAt,
+      recoveryToken,
+      typeof aiFlagSent === 'string' ? aiFlagSent : null
+    );
     setNetworkRetryFiles(null);
     setUnreadableFile(null);
     fireAnalyticsEvent('upload_started');
@@ -1433,7 +1479,7 @@ function UploadForm({
         headers: uploadHeaders,
         body: formData,
       });
-      globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
+      clearPendingUpload();
       if (request.redirected) {
         return handleUploadRedirect(request, uploadedFiles);
       }
@@ -1455,6 +1501,165 @@ function UploadForm({
       return handleUploadError(error, uploadedFiles, isRetry, submittedAt);
     }
     return true;
+  };
+
+  const savePendingUpload = (
+    files: File[],
+    submittedAt: number,
+    recoveryToken: string | null,
+    aiFlagSent: string | null
+  ) => {
+    const first = files[0];
+    if (first == null) return;
+    void getPendingUploadStore().save({
+      files: withinStorableSize(files),
+      filename: first.name,
+      sizeBytes: files.reduce((sum, file) => sum + file.size, 0),
+      submittedAt,
+      recoveryToken,
+      ownerId: currentOwnerId,
+      pdfPageRange: pdfPageRangeRef.current,
+      aiFlag: aiFlagSent,
+    });
+  };
+
+  // A refresh can land after the server already made the deck, so look for
+  // it before offering to send the files again: a second send converts and
+  // counts the cards twice.
+  const restoreFinishedDeck = async (
+    upload: PendingUpload,
+    expectedState: ZoneState
+  ): Promise<boolean> => {
+    // Another flow (a held-deck claim, a pass resume, a new drop) may have
+    // started while this looked: never put a recovered deck over it.
+    const stillWanted = () => zoneStateRef.current === expectedState;
+    if (isAuthenticated && upload.ownerId != null) {
+      let uploads: UserUpload[];
+      try {
+        uploads = await get2ankiApi().getUploads();
+      } catch {
+        return false;
+      }
+      const recovered = findRecoveredUpload(
+        uploads,
+        upload.filename,
+        upload.submittedAt
+      );
+      if (recovered == null || !stillWanted()) return false;
+      showMyDecksCopy(recovered);
+      return true;
+    }
+    if (!isAuthenticated && upload.recoveryToken != null) {
+      recoverySubmittedAtRef.current = upload.submittedAt;
+      return fetchAnonymousCopy(
+        { name: upload.filename, size: upload.sizeBytes },
+        upload.recoveryToken,
+        'reload',
+        stillWanted
+      );
+    }
+    return false;
+  };
+
+  const [resumeOffer, setResumeOffer] = useState<ResumeOffer | null>(null);
+  const resumeCheckedRef = useRef(false);
+  const resumedUploadRef = useRef(false);
+
+  const offerReattach = (filename: string) => {
+    setResumeOffer({ kind: 'reattach', filename });
+    track('upload_reattach_shown');
+    track('upload_resume_shown', { state: 'reattach' });
+  };
+
+  useEffect(() => {
+    if (userLocalsLoading || sample || resumeCheckedRef.current) return;
+    // Signed-out visitors get locals too, so a failed lookup means the viewer
+    // is unknown: offer nothing rather than risk sending one person's file
+    // under another person's account.
+    if (userLocalsFailed) return;
+    resumeCheckedRef.current = true;
+    void (async () => {
+      const upload = await getPendingUploadStore().load();
+      if (zoneStateRef.current !== 'idle') return;
+      if (upload == null) {
+        const filename =
+          globalThis.sessionStorage?.getItem(REATTACH_FILENAME_KEY) ?? '';
+        if (filename.length > 0) offerReattach(filename);
+        return;
+      }
+      // A file left by someone else on this browser is never offered: on a
+      // shared computer it would land in the next person's account.
+      if (upload.ownerId !== currentOwnerId) {
+        clearPendingUpload();
+        return;
+      }
+      if (await restoreFinishedDeck(upload, 'idle')) {
+        track('upload_resume_shown', { state: 'ready' });
+        return;
+      }
+      if (zoneStateRef.current !== 'idle') return;
+      if (upload.files.length > 0) {
+        setResumeOffer({ kind: 'continue', upload });
+        track('upload_resume_shown', { state: 'continue' });
+      } else {
+        offerReattach(upload.filename);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocalsLoading, userLocalsFailed]);
+
+  useEffect(() => {
+    if (zoneState !== 'idle') setResumeOffer(null);
+  }, [zoneState]);
+
+  useEffect(() => {
+    if (zoneState === 'success' && resumedUploadRef.current) {
+      resumedUploadRef.current = false;
+      track('upload_resume_succeeded');
+    }
+  }, [zoneState]);
+
+  const handleResumeContinue = async () => {
+    if (resumeOffer?.kind !== 'continue') return;
+    const offered = resumeOffer.upload;
+    setResumeOffer(null);
+    track('upload_resume_clicked');
+    setZoneState('converting');
+    setProgressWidth(10);
+    // Re-read the store: a logout in another tab empties it, another tab can
+    // replace it, and the files must never go out under an account that did
+    // not send them.
+    const upload = await getPendingUploadStore().load();
+    if (
+      upload == null ||
+      upload.ownerId !== currentOwnerId ||
+      upload.submittedAt !== offered.submittedAt
+    ) {
+      setZoneState('idle');
+      return;
+    }
+    if (await restoreFinishedDeck(upload, 'converting')) return;
+    if (zoneStateRef.current !== 'converting') return;
+    const formData = new FormData();
+    for (const file of upload.files) {
+      formData.append('pakker', file, file.name);
+    }
+    for (const [key, value] of Object.entries(globalThis.localStorage)) {
+      formData.append(key, value);
+    }
+    pdfPageRangeRef.current = upload.pdfPageRange;
+    attachPdfPageRange(formData);
+    applyAnonymousAiFlag(formData, aiOn);
+    if (upload.aiFlag != null) {
+      formData.set('claude-ai-flashcards', upload.aiFlag);
+    }
+    resumedUploadRef.current = true;
+    void runFileUpload(formData, upload.files, false);
+  };
+
+  const handleResumeDismiss = () => {
+    setResumeOffer(null);
+    clearPendingUpload();
   };
 
   const handleSubmit = async (event: SyntheticEvent) => {
@@ -2001,7 +2206,7 @@ function UploadForm({
         <button
           type="button"
           className={formStyles.resetLink}
-          onClick={resetForm}
+          onClick={startOver}
         >
           {t('upload.form.makeMore')}
         </button>
@@ -2205,7 +2410,7 @@ function UploadForm({
           <button
             type="button"
             className={formStyles.resetLink}
-            onClick={resetForm}
+            onClick={startOver}
           >
             {t('upload.form.tryDifferent')}
           </button>
@@ -2297,7 +2502,7 @@ function UploadForm({
           <button
             type="button"
             className={formStyles.resetLink}
-            onClick={resetForm}
+            onClick={startOver}
           >
             {t('upload.form.tryDifferent')}
           </button>
@@ -2364,7 +2569,7 @@ function UploadForm({
       <button
         type="button"
         className={formStyles.actionButton}
-        onClick={resetForm}
+        onClick={startOver}
       >
         {t('upload.form.unreadableChooseAgain')}
       </button>
@@ -2399,7 +2604,7 @@ function UploadForm({
         <button
           type="button"
           className={formStyles.resetLink}
-          onClick={resetForm}
+          onClick={startOver}
         >
           {t('upload.form.networkChooseDifferent')}
         </button>
@@ -2466,7 +2671,7 @@ function UploadForm({
         <button
           type="button"
           className={formStyles.actionButton}
-          onClick={resetForm}
+          onClick={startOver}
         >
           {t('upload.form.tryAgain')}
         </button>
@@ -2632,7 +2837,7 @@ function UploadForm({
       <button
         type="button"
         className={formStyles.resetLink}
-        onClick={resetForm}
+        onClick={startOver}
       >
         {t('upload.form.skipFile')}
       </button>
@@ -2723,7 +2928,7 @@ function UploadForm({
       <button
         type="button"
         className={sharedStyles.btnSecondary}
-        onClick={resetForm}
+        onClick={startOver}
       >
         {t('anonymousPartial:expiredCta')}
       </button>
@@ -2827,7 +3032,7 @@ function UploadForm({
         <button
           type="button"
           className={formStyles.resetLink}
-          onClick={resetForm}
+          onClick={startOver}
         >
           {t('upload.form.tryDifferent')}
         </button>
@@ -2926,6 +3131,42 @@ function UploadForm({
         <p className={formStyles.stateContent} role="status" aria-live="polite">
           {passResumeNotice}
         </p>
+      )}
+      {resumeOffer?.kind === 'continue' &&
+        zoneState === 'idle' &&
+        !isUploadLocked && (
+          <div className={formStyles.resumeBanner} role="status">
+            <p className={formStyles.resumeText}>
+              {t('upload.form.resumeContinueBody', {
+                filename: resumeOffer.upload.filename,
+              })}
+            </p>
+            <div className={formStyles.resumeActions}>
+              <button
+                type="button"
+                className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+                onClick={() => void handleResumeContinue()}
+              >
+                {t('upload.form.resumeContinue')}
+              </button>
+              <button
+                type="button"
+                className={formStyles.resetLink}
+                onClick={handleResumeDismiss}
+              >
+                {t('upload.form.resumeDismiss')}
+              </button>
+            </div>
+          </div>
+        )}
+      {resumeOffer?.kind === 'reattach' && zoneState === 'idle' && (
+        <div className={formStyles.resumeBanner} role="status">
+          <p className={formStyles.resumeText}>
+            <span>{t('upload.page.reattachPrefix')} </span>
+            <strong>{resumeOffer.filename}</strong>
+            <span> {t('upload.page.reattachSuffix')}</span>
+          </p>
+        </div>
       )}
       {zoneState === 'heldForSignup' && heldDeck != null && (
         <div className={zoneClassName}>{renderHeldForSignupState()}</div>
