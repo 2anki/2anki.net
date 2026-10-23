@@ -381,13 +381,13 @@ function UploadForm({
   const [waitingForDeck, setWaitingForDeck] = useState(false);
   const stopWaitingRef = useRef<(() => void) | null>(null);
   const unmountedRef = useRef(false);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
       unmountedRef.current = true;
       stopWaitingRef.current?.();
-    },
-    []
-  );
+    };
+  }, []);
   // True while the last submit was the AI resend from the empty state, so a
   // second empty result after Claude tried never offers AI again.
   const [lastSubmitUsedAi, setLastSubmitUsedAi] = useState(false);
@@ -1481,7 +1481,6 @@ function UploadForm({
       stopped = true;
       wake?.();
     };
-    unmountedRef.current = false;
     setWaitingForDeck(true);
     setProgressSlow(true);
     try {
