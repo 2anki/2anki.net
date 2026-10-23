@@ -355,14 +355,21 @@ describe('PrintForm with decks that arrive in a zip', () => {
       })
     );
     const file = new File(['deck'], 'Biology.zip');
+    let latestState: unknown = 'unset';
+    function StateProbe() {
+      latestState = useLocation().state;
+      return null;
+    }
     render(
       <MemoryRouter
         initialEntries={[{ pathname: '/print', state: { handoffFile: file } }]}
       >
         <PrintForm />
+        <StateProbe />
       </MemoryRouter>
     );
 
+    await waitFor(() => expect(latestState).toBeNull());
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/apkg/pdf/preview',

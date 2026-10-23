@@ -143,4 +143,38 @@ describe('resolveDeckUpload', () => {
       deckName: 'Biology',
     });
   });
+
+  function withEntryHeader(
+    entryName: string,
+    patch: (view: Buffer, central: number, local: number) => void
+  ): Buffer {
+    const view = Buffer.from(
+      zipSync({ [entryName]: strToU8('deck bytes '.repeat(50)) })
+    );
+    const central = view.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    patch(view, central, 0);
+    return view;
+  }
+
+  it('refuses an inner deck whose header claims more data than the upload holds', () => {
+    const lying = withEntryHeader('a.apkg', (view, central) => {
+      view.writeUInt32LE(2_000_000, central + 20);
+      view.writeUInt32LE(100 * 1024 * 1024, central + 24);
+    });
+    expect(() => resolveDeckUpload(lying, 'lie.zip')).toThrow(DeckUploadError);
+  });
+
+  it('explains a deck inside the zip whose data is corrupt', () => {
+    const corrupt = withEntryHeader('a.apkg', (view, central) => {
+      const local = view.readUInt32LE(central + 42);
+      const nameLength = view.readUInt16LE(local + 26);
+      const extra = view.readUInt16LE(local + 28);
+      const data = local + 30 + nameLength + extra;
+      view.fill(0xff, data, data + 8);
+      view.writeUInt16LE(8, central + 10);
+    });
+    expect(() => resolveDeckUpload(corrupt, 'corrupt.zip')).toThrow(
+      DeckUploadError
+    );
+  });
 });

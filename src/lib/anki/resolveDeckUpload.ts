@@ -67,26 +67,42 @@ function listEntryNames(zip: Uint8Array): string[] {
 function extractEntry(zip: Uint8Array, entryName: string): Buffer {
   let tooLarge = false;
   let taken = false;
-  const files = unzipSync(zip, {
-    filter: (file) => {
-      // A directory can list one name many times over the same data; inflate
-      // it once.
-      if (taken || file.name !== entryName) return false;
-      if (
-        file.originalSize > MAX_INNER_DECK_BYTES ||
-        file.originalSize > file.size * MAX_COMPRESSION_RATIO + 1024
-      ) {
-        tooLarge = true;
-        return false;
-      }
-      taken = true;
-      return true;
-    },
-  });
+  let files: Record<string, Uint8Array>;
+  try {
+    files = unzipSync(zip, {
+      filter: (file) => {
+        // A directory can list one name many times over the same data;
+        // inflate it once.
+        if (taken || file.name !== entryName) return false;
+        // The header's sizes are claims: a compressed size larger than the
+        // whole upload is a lie meant to pass the ratio check, and fflate
+        // allocates the claimed uncompressed size up front.
+        if (file.size > zip.length) {
+          tooLarge = true;
+          return false;
+        }
+        if (
+          file.originalSize > MAX_INNER_DECK_BYTES ||
+          file.originalSize > file.size * MAX_COMPRESSION_RATIO + 1024
+        ) {
+          tooLarge = true;
+          return false;
+        }
+        taken = true;
+        return true;
+      },
+    });
+  } catch {
+    throw new DeckUploadError(UNREADABLE_ZIP_MESSAGE);
+  }
   if (tooLarge) throw new DeckUploadError(INNER_DECK_TOO_LARGE_MESSAGE);
   const contents = files[entryName];
   if (contents == null) throw new DeckUploadError(UNREADABLE_ZIP_MESSAGE);
-  return Buffer.from(contents.buffer, contents.byteOffset, contents.byteLength);
+  // A short stream inside a larger claimed size leaves the bytes as a small
+  // view of a big buffer; copy it so the rest can be freed.
+  return contents.byteLength === contents.buffer.byteLength
+    ? Buffer.from(contents.buffer, contents.byteOffset, contents.byteLength)
+    : Buffer.from(contents);
 }
 
 function readZip(upload: Buffer): { zip: Uint8Array; names: string[] } {
