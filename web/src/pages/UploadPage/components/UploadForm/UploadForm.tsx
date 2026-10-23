@@ -68,6 +68,13 @@ import {
 } from '../../../../lib/reportClientError';
 import { UserNotice } from '../../../../lib/errors/UserNotice';
 import { snapshotUploadBody, UnreadableFileError } from './assertFilesReadable';
+import {
+  HANDOFF_PHOTOS_STATE_KEY,
+  HANDOFF_SKIPPED_STATE_KEY,
+  isHeicPhoto,
+  photosFromUpload,
+  type UploadPhotos,
+} from '../../../../lib/photos/photosFromUpload';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
 import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
@@ -1449,6 +1456,13 @@ function UploadForm({
     isRetry: boolean
   ): Promise<boolean> => {
     setRescueFiles(uploadedFiles);
+    // The server has no HEIC reader, so an iPhone photo would come back as an
+    // empty deck; Photo to Deck reads it in the browser instead.
+    if (uploadedFiles.length > 0 && uploadedFiles.every(isHeicPhoto)) {
+      clearPendingUpload();
+      setZoneState('imageOnly');
+      return true;
+    }
     setLastSubmitUsedAi(formData.get('claude-ai-flashcards') === 'true');
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
@@ -3038,12 +3052,37 @@ function UploadForm({
     );
   };
 
+  // The photos ride along to Photo to Deck, taken out of the zip here, so the
+  // person does not unzip and pick them again. Nothing is sent to AI until
+  // they press Make cards there.
+  const [handingOffPhotos, setHandingOffPhotos] = useState(false);
+  const handOffPhotos = async () => {
+    if (handingOffPhotos) return;
+    setHandingOffPhotos(true);
+    let handoff: UploadPhotos = { photos: [], skipped: 0 };
+    try {
+      handoff = await photosFromUpload(rescueFiles);
+    } catch {
+      // An unreadable zip still opens Photo to Deck, empty.
+    }
+    track('image_only_photo_deck_clicked', {
+      context: 'signed_in',
+      photos: handoff.photos.length,
+    });
+    navigate('/photo-to-deck', {
+      state: {
+        [HANDOFF_PHOTOS_STATE_KEY]: handoff.photos,
+        [HANDOFF_SKIPPED_STATE_KEY]: handoff.skipped,
+      },
+    });
+  };
+
   const renderImageOnlyState = () => (
     <div className={formStyles.stateContent}>
       <WarningIcon className={formStyles.iconWarning} />
       <p className={formStyles.emptyTitle}>{t('upload.form.imagesTitle')}</p>
       <p className={formStyles.emptyBody}>{t('upload.form.imagesBody')}</p>
-      {/\.zip$/i.test(currentFilename()) && (
+      {!isAuthenticated && /\.zip$/i.test(currentFilename()) && (
         <p className={formStyles.emptyBody}>{t('upload.form.imagesUnzip')}</p>
       )}
       {!isAuthenticated && (
@@ -3053,15 +3092,15 @@ function UploadForm({
       )}
       <div className={formStyles.emptyActions}>
         {isAuthenticated ? (
-          <Link
-            to="/photo-to-deck"
+          <button
+            type="button"
             className={formStyles.actionButton}
-            onClick={() =>
-              track('image_only_photo_deck_clicked', { context: 'signed_in' })
-            }
+            onClick={handOffPhotos}
+            disabled={handingOffPhotos}
+            aria-busy={handingOffPhotos}
           >
             {t('upload.form.tryPhotoToDeck')}
-          </Link>
+          </button>
         ) : (
           <Link
             to="/register?redirect=/photo-to-deck"

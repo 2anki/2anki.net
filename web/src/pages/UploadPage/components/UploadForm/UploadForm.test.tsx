@@ -2576,8 +2576,9 @@ describe('UploadForm analytics events', () => {
 
     await submitImageOnly();
 
-    const cta = await screen.findByRole('link', { name: 'Open Photo to Deck' });
-    expect(cta).toHaveAttribute('href', '/photo-to-deck');
+    expect(
+      await screen.findByRole('button', { name: 'Open Photo to Deck' })
+    ).toBeInTheDocument();
     expect(screen.queryByText('Create a free account')).toBeNull();
     expect(
       screen.queryByText('5 photos a month are free with an account.')
@@ -2626,12 +2627,115 @@ describe('UploadForm analytics events', () => {
 
     await submitImageOnly();
 
-    const cta = await screen.findByRole('link', { name: 'Open Photo to Deck' });
+    const cta = await screen.findByRole('button', {
+      name: 'Open Photo to Deck',
+    });
     fireEvent.click(cta);
 
-    expect(trackMock).toHaveBeenCalledWith('image_only_photo_deck_clicked', {
-      context: 'signed_in',
+    await waitFor(() =>
+      expect(trackMock).toHaveBeenCalledWith('image_only_photo_deck_clicked', {
+        context: 'signed_in',
+        photos: 0,
+      })
+    );
+  });
+
+  it('hands the photos inside an uploaded zip to Photo to Deck', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: { user: { id: 42 }, locals: { owner: 42 } },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    stubImageOnlyFetch();
+    const { zipSync } = await import('fflate');
+    const zip = new File(
+      [
+        zipSync({
+          'slides/02.png': new TextEncoder().encode('two'),
+          'slides/01.png': new TextEncoder().encode('one'),
+        }),
+      ],
+      'slides.zip',
+      { type: 'application/zip' }
+    );
+    function PhotoProbe() {
+      const location = useLocation();
+      const photos = (location.state as { handoffPhotos?: File[] } | null)
+        ?.handoffPhotos;
+      return <p>handed: {(photos ?? []).map((p) => p.name).join(',')}</p>;
+    }
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
     });
+    const { container } = render(
+      <MemoryRouter initialEntries={['/upload']}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route
+              path="/upload"
+              element={<UploadForm setErrorMessage={vi.fn()} />}
+            />
+            <Route path="/photo-to-deck" element={<PhotoProbe />} />
+          </Routes>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [zip], configurable: true });
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open Photo to Deck' })
+    );
+
+    expect(
+      await screen.findByText('handed: 01.png,02.png')
+    ).toBeInTheDocument();
+  });
+
+  it('shows the Photo to Deck state for an iPhone HEIC photo without uploading it', async () => {
+    const requests: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        requests.push(url);
+        return Promise.resolve(new Response('{}'));
+      })
+    );
+    sessionStorage.setItem('upload_pending_filename', 'older.pdf');
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [new File(['h'], 'IMG_0001.HEIC', { type: 'image/heic' })],
+      configurable: true,
+    });
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+
+    expect(
+      await screen.findByText('Photo to Deck turns images into cards')
+    ).toBeInTheDocument();
+    expect(requests).not.toContain('/api/upload/file');
+    expect(sessionStorage.getItem('upload_pending_filename')).toBeNull();
   });
 
   it('tracks upload_failed with reason=network when fetch throws a TypeError', async () => {

@@ -88,6 +88,7 @@
   },
   "photo": {
     "overLimit": "Zdjęcie przekracza limit 10 MB. Spróbuj z mniejszym obrazem.",
+    "handoffSkipped": "Wczytane zdjęcia: {{loaded}}. Niewczytane: {{skipped}}. Dodaj je, gdy zrobisz te fiszki.",
     "badFormat": "Użyj formatu zdjęcia takiego jak JPEG, PNG, WebP, GIF lub HEIC.",
     "readError": "Nie udało się odczytać obrazu",
     "notAvailable": "Zdjęcie na talię nie jest jeszcze dostępne.",
