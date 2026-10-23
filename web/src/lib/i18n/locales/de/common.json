@@ -421,6 +421,18 @@
         "title": "Unterstützung für Leseformate",
         "body": "Kindle-Markierungen aus My Clippings.txt und DRM-freie EPUBs werden unterstützt. Um deine Kindle-Markierungen zu exportieren, schließ den Kindle per USB an und kopiere die Datei My Clippings.txt aus dem Ordner „documents“ des Geräts.",
         "continue": "Karten aus diesen Markierungen erstellen"
+      },
+      "shortcut": {
+        "title": "Das ist eine Verknüpfung, nicht die Datei",
+        "body": "Das ist eine Verknüpfung zu deiner Datei, nicht die Datei selbst. Wähle die Datei, auf die sie zeigt."
+      },
+      "internetShortcut": {
+        "title": "Das ist ein Link, keine Datei",
+        "body": "Das ist eine Internetverknüpfung, ein gespeicherter Link. Öffne den Link, lade die Datei herunter (PDF, Word, HTML oder einen Notion-Export) und lade diese hoch. Eine Notion-Seite konvertierst du direkt über den Notion-Tab."
+      },
+      "goodnotes": {
+        "title": "GoodNotes-Notizbücher können nicht direkt gelesen werden",
+        "body": "Exportiere das Notizbuch in GoodNotes als PDF (Teilen, Exportieren, PDF) und lade stattdessen dieses PDF hoch. 2anki macht aus PDFs Karten."
       }
     }
   },

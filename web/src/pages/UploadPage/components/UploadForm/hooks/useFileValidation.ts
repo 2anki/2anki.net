@@ -15,7 +15,16 @@ export interface FileValidationResult {
   // measurable — they size the population the folder-drop path addresses.
   // markdown / markdown_zip mark the Notion-Markdown guardrails so
   // overridden÷shown reads as the crying-wolf ratio.
-  code?: 'unbundled_html' | 'markdown' | 'markdown_zip';
+  code?:
+    | 'unbundled_html'
+    | 'markdown'
+    | 'markdown_zip'
+    | 'shortcut'
+    | 'internet_shortcut'
+    | 'goodnotes';
+  // A file 2anki cannot read at all: the only way forward is another file, so
+  // there is no convert-anyway button.
+  blocking?: boolean;
 }
 
 const ZIP_PEEK_BUDGET_BYTES = 200 * 1024 * 1024;
@@ -44,6 +53,31 @@ function markdownZipResult(t?: ValidationTranslator): FileValidationResult {
   };
 }
 
+const WRONG_FILE_RULES = [
+  { extension: '.lnk', key: 'shortcut', code: 'shortcut' },
+  { extension: '.url', key: 'internetShortcut', code: 'internet_shortcut' },
+  { extension: '.goodnotes', key: 'goodnotes', code: 'goodnotes' },
+] as const;
+
+function wrongFileResult(
+  files: File[],
+  t?: ValidationTranslator
+): FileValidationResult | null {
+  for (const rule of WRONG_FILE_RULES) {
+    if (files.every((f) => f.name.toLowerCase().endsWith(rule.extension))) {
+      return {
+        status: 'error',
+        title: translate(t, `upload.validation.${rule.key}.title`),
+        body: translate(t, `upload.validation.${rule.key}.body`),
+        continueLabel: '',
+        code: rule.code,
+        blocking: true,
+      };
+    }
+  }
+  return null;
+}
+
 export function detectUploadIssues(
   files: FileList | File[],
   aiOn = false,
@@ -51,6 +85,9 @@ export function detectUploadIssues(
 ): FileValidationResult | null {
   const fileArray = Array.from(files);
   if (fileArray.length === 0) return null;
+
+  const wrongFile = wrongFileResult(fileArray, t);
+  if (wrongFile) return wrongFile;
 
   const allMarkdown = fileArray.every((f) =>
     f.name.toLowerCase().endsWith('.md')
@@ -173,6 +210,10 @@ export function trackValidationShown(result: FileValidationResult): void {
   }
   if (result.code === 'markdown_zip') {
     track('upload_guardrail_shown', { kind: 'markdown_zip' });
+    return;
+  }
+  if (result.blocking && result.code != null) {
+    track('upload_guardrail_shown', { kind: result.code });
   }
 }
 

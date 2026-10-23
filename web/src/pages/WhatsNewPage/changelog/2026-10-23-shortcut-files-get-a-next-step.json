@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-shortcut-files-get-a-next-step",
+  "date": "2026-10-23",
+  "type": "fix",
+  "title": "Upload: dropping a shortcut (.lnk), a saved link (.url) or a GoodNotes notebook now tells you what to do next, such as choosing the real file or exporting the notebook as a PDF, instead of ending in an empty deck."
+}
