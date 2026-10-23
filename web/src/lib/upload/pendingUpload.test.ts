@@ -20,6 +20,7 @@ function pending(overrides: Partial<PendingUpload> = {}): PendingUpload {
     recoveryToken: null,
     ownerId: null,
     pdfPageRange: null,
+    aiFlag: null,
     ...overrides,
   };
 }

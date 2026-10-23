@@ -4176,6 +4176,47 @@ describe('UploadForm reattach recovery', () => {
     );
   });
 
+  it('forgets the sent file when the server rejects it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        json: () => Promise.resolve({ message: 'Bad file' }),
+        text: () => Promise.resolve('{"message":"Bad file"}'),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+  });
+
+  it('keeps the sent file after a dropped connection, since the deck may still arrive', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(await getPendingUploadStore().load()).toMatchObject({
+      filename: 'biochem.pdf',
+    });
+  });
+
   it('warns before the page unloads while the upload is in flight', async () => {
     vi.stubGlobal(
       'fetch',
@@ -4206,6 +4247,7 @@ describe('UploadForm reattach recovery', () => {
       recoveryToken: ownerId == null ? 'token-1' : null,
       ownerId,
       pdfPageRange: '2-4',
+      aiFlag: null,
     });
   }
 
@@ -4413,6 +4455,7 @@ describe('UploadForm signed-in deck recovery', () => {
       recoveryToken: null,
       ownerId: 1,
       pdfPageRange: null,
+      aiFlag: null,
     });
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

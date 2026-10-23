@@ -710,6 +710,7 @@ describe('Backend', () => {
         recoveryToken: null,
         ownerId: 7,
         pdfPageRange: null,
+        aiFlag: null,
       });
 
       await backend.logout();

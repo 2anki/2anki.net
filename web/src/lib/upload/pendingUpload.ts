@@ -13,6 +13,7 @@ export interface PendingUpload {
   recoveryToken: string | null;
   ownerId: number | null;
   pdfPageRange: string | null;
+  aiFlag: string | null;
 }
 
 export interface PendingUploadStore {
@@ -63,6 +64,11 @@ function openDatabase(
   version?: number
 ): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const fail = (error: unknown) => {
+      settled = true;
+      reject(error);
+    };
     const request =
       version == null ? factory.open(DB_NAME) : factory.open(DB_NAME, version);
     request.onupgradeneeded = () => {
@@ -72,6 +78,11 @@ function openDatabase(
     };
     request.onsuccess = () => {
       const db = request.result;
+      if (settled) {
+        db.close();
+        return;
+      }
+      settled = true;
       if (db.objectStoreNames.contains(STORE_NAME)) {
         resolve(db);
         return;
@@ -80,8 +91,8 @@ function openDatabase(
       db.close();
       openDatabase(factory, nextVersion).then(resolve, reject);
     };
-    request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('pending upload store blocked'));
+    request.onerror = () => fail(request.error);
+    request.onblocked = () => fail(new Error('pending upload store blocked'));
   });
 }
 
