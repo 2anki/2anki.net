@@ -37,6 +37,7 @@ import {
 } from './buildAppliedOptions';
 import type { ParsedApkg } from '../ApkgPreviewService/ApkgPreviewService';
 import type { RenderedCard } from '../ApkgPreviewService/types';
+import { cardTags, deckFacts } from './deckViewerFields';
 import { detectFileMime } from '../../lib/detectFileMime';
 import { mcpBaseUrl } from './mcpBaseUrl';
 import { isPaying } from '../../lib/isPaying';
@@ -241,6 +242,8 @@ export interface SampleCard {
   front: string;
   back: string;
   direction?: 'forward' | 'reverse';
+  tags?: string[];
+  deck?: string;
 }
 
 export interface DeckPreview {
@@ -249,7 +252,17 @@ export interface DeckPreview {
   deckCount: number;
   decks: { name: string; cardCount: number }[];
   sampleCards: SampleCard[];
+  noteCount?: number;
+  noteTypes?: string[];
+  tts?: true;
+  title?: string;
+  downloadUrl?: string;
 }
+
+type DeckPreviewFields = Pick<
+  DeckPreview,
+  'deckCount' | 'decks' | 'sampleCards' | 'noteCount' | 'noteTypes' | 'tts'
+>;
 
 export type ConvertResult =
   | { kind: 'processing'; jobId: string; summary: string }
@@ -268,6 +281,9 @@ export type ConvertResult =
       deckCount?: number;
       decks?: { name: string; cardCount: number }[];
       sampleCards?: SampleCard[];
+      noteCount?: number;
+      noteTypes?: string[];
+      tts?: true;
       applied?: AppliedOptions;
       ignored?: IgnoredOption[];
       summary: string;
@@ -430,9 +446,7 @@ export class McpToolsService {
       title: job.title ?? 'Untitled deck',
       status: job.status,
       downloadUrl:
-        job.download_key != null
-          ? `${this.baseUrl}/api/upload/jobs/${job.object_id}/download`
-          : null,
+        job.download_key != null ? this.jobDownloadUrl(job.object_id) : null,
     }));
     const result: { decks: DeckSummary[]; total: number; note?: string } = {
       decks,
@@ -450,7 +464,7 @@ export class McpToolsService {
     page = 0,
     pageSize = PREVIEW_CARD_LIMIT
   ): Promise<DeckPreview> {
-    const key = await this.resolveDeckKey(owner, identifier);
+    const { key, job } = await this.resolveDeckKey(owner, identifier);
     const body = await this.downloadService.getFileBody(
       owner,
       key,
@@ -474,8 +488,10 @@ export class McpToolsService {
       mediaBaseUrl
     );
     const sampleCards = this.toSampleCards(
+      parsed,
       cardsPage.cards,
-      this.deckIsReversible(parsed)
+      this.deckIsReversible(parsed),
+      meta.decks.length > 1
     );
     const shownThrough = safePage * cappedPageSize + sampleCards.length;
     const preview: DeckPreview = {
@@ -486,7 +502,17 @@ export class McpToolsService {
         cardCount: deck.cardCount,
       })),
       sampleCards,
+      ...deckFacts(parsed),
     };
+    if (job != null) {
+      if (job.title != null) preview.title = job.title;
+      // A deck this server built keeps its no-login capability link; any
+      // other job gets the signed-in link list_my_decks already returns.
+      preview.downloadUrl =
+        job.type === 'mcp'
+          ? this.mcpDeckDownloadUrl(job.object_id)
+          : this.jobDownloadUrl(job.object_id);
+    }
     if (meta.totalCards > shownThrough) {
       preview.note = `Showing cards ${safePage * cappedPageSize + 1}–${shownThrough} of ${meta.totalCards}. Pass page (0-based) and pageSize for more.`;
     }
@@ -496,7 +522,7 @@ export class McpToolsService {
   private async resolveDeckKey(
     owner: string,
     identifier: string
-  ): Promise<string> {
+  ): Promise<{ key: string; job?: JobWithDownloadKey }> {
     const jobs = await this.jobLister.getJobsByOwner(owner);
     const job = jobs.find((entry) => entry.object_id === identifier);
     if (job) {
@@ -504,12 +530,20 @@ export class McpToolsService {
       if (key == null || !APKG_KEY_PATTERN.test(key)) {
         throw new Error('This deck has no .apkg to preview yet.');
       }
-      return key;
+      return { key, job };
     }
     if (APKG_KEY_PATTERN.test(identifier)) {
-      return identifier;
+      return { key: identifier };
     }
     throw new Error('Deck not found.');
+  }
+
+  private jobDownloadUrl(objectId: string): string {
+    return `${this.baseUrl}/api/upload/jobs/${objectId}/download`;
+  }
+
+  private mcpDeckDownloadUrl(objectId: string): string {
+    return `${this.baseUrl}/api/mcp/decks/${objectId}/download`;
   }
 
   async convertToDeck(
@@ -682,7 +716,7 @@ export class McpToolsService {
       jobId: objectId,
       cardCount: totalCards,
       filename,
-      downloadUrl: `${this.baseUrl}/api/mcp/decks/${objectId}/download`,
+      downloadUrl: this.mcpDeckDownloadUrl(objectId),
       ...preview,
       applied,
       ...(ignored ? { ignored } : {}),
@@ -740,7 +774,7 @@ export class McpToolsService {
   private async previewFromBytes(
     buffer: Buffer,
     cacheKey: string
-  ): Promise<Pick<DeckPreview, 'deckCount' | 'decks' | 'sampleCards'> | null> {
+  ): Promise<DeckPreviewFields | null> {
     try {
       const parsed = await this.previewService.parse(cacheKey, buffer);
       const meta = this.previewService.getMeta(parsed);
@@ -751,8 +785,14 @@ export class McpToolsService {
         ''
       );
       const reversible = this.deckIsReversible(parsed);
-      const sampleCards = this.toSampleCards(page.cards, reversible);
-      this.ensureReverseSample(parsed, reversible, sampleCards);
+      const multiDeck = meta.decks.length > 1;
+      const sampleCards = this.toSampleCards(
+        parsed,
+        page.cards,
+        reversible,
+        multiDeck
+      );
+      this.ensureReverseSample(parsed, reversible, multiDeck, sampleCards);
       return {
         deckCount: meta.decks.length,
         decks: meta.decks.map((deck) => ({
@@ -760,6 +800,7 @@ export class McpToolsService {
           cardCount: deck.cardCount,
         })),
         sampleCards,
+        ...deckFacts(parsed),
       };
     } catch {
       return null;
@@ -784,24 +825,38 @@ export class McpToolsService {
   }
 
   private toSampleCards(
+    parsed: ParsedApkg,
     cards: RenderedCard[],
-    reversible: boolean
+    reversible: boolean,
+    multiDeck: boolean
   ): SampleCard[] {
-    return cards.map((card) => this.toSampleCard(card, reversible));
+    return cards.map((card) =>
+      this.toSampleCard(parsed, card, reversible, multiDeck)
+    );
   }
 
-  private toSampleCard(card: RenderedCard, reversible: boolean): SampleCard {
-    if (!reversible) {
-      return { front: card.front, back: card.back };
+  // tags and deck are set only when they carry information, so a plain
+  // single-deck sample keeps the { front, back } shape it always had.
+  private toSampleCard(
+    parsed: ParsedApkg,
+    card: RenderedCard,
+    reversible: boolean,
+    multiDeck: boolean
+  ): SampleCard {
+    const sample: SampleCard = { front: card.front, back: card.back };
+    if (reversible) {
+      sample.direction = card.ord === 0 ? 'forward' : 'reverse';
     }
-    const direction: 'forward' | 'reverse' =
-      card.ord === 0 ? 'forward' : 'reverse';
-    return { front: card.front, back: card.back, direction };
+    const tags = cardTags(parsed, card.id);
+    if (tags.length > 0) sample.tags = tags;
+    if (multiDeck && card.deckName.length > 0) sample.deck = card.deckName;
+    return sample;
   }
 
   private ensureReverseSample(
     parsed: ParsedApkg,
     reversible: boolean,
+    multiDeck: boolean,
     sampleCards: SampleCard[]
   ): void {
     if (!reversible) {
@@ -819,7 +874,7 @@ export class McpToolsService {
     const extra = this.previewService.getCardsPage(parsed, reverseIndex, 1, '');
     const card = extra.cards[0];
     if (card) {
-      sampleCards.push(this.toSampleCard(card, true));
+      sampleCards.push(this.toSampleCard(parsed, card, true, multiDeck));
     }
   }
 
@@ -908,7 +963,7 @@ export class McpToolsService {
     const title = filename ?? fallbackTitle;
     const objectId = randomUUID();
     await this.deckPersistence.persist(owner, objectId, title, bytes);
-    const downloadUrl = `${this.baseUrl}/api/mcp/decks/${objectId}/download`;
+    const downloadUrl = this.mcpDeckDownloadUrl(objectId);
     const preview = await this.previewFromBytes(bytes, `mcp:${objectId}`);
     const summary =
       cardCount != null

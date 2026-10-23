@@ -288,6 +288,100 @@ describe('McpToolsService.getDeckPreview', () => {
     expect(preview.cardCount).toBe(3);
   });
 
+  it('adds the deck viewer fields: notes, note types, tags, subdeck and download link', async () => {
+    const parsed = {
+      collection: {
+        noteTypes: new Map([
+          [
+            1,
+            {
+              id: 1,
+              name: 'n2a-cloze',
+              type: 1,
+              css: '',
+              fields: [],
+              templates: [{ name: 'Cloze', ord: 0, qfmt: '', afmt: '' }],
+            },
+          ],
+        ]),
+        notes: new Map([
+          [10, { id: 10, mid: 1, tags: 'pharm cardio', fields: [] }],
+          [11, { id: 11, mid: 1, tags: '', fields: [] }],
+        ]),
+        decks: new Map(),
+        cards: [
+          { id: 1, nid: 10, did: 1, ord: 0 },
+          { id: 2, nid: 11, did: 2, ord: 0 },
+        ],
+      },
+    };
+    const { service } = makeService({
+      jobs: [
+        jobFixture({
+          object_id: 'job-1',
+          title: 'Pharm',
+          type: 'mcp',
+        } as Partial<JobWithDownloadKey>),
+      ],
+      getFileBody: vi.fn(async () => Buffer.from('apkg')),
+      preview: {
+        parse: vi.fn(async () => parsed as never),
+        getMeta: vi.fn(() => ({
+          totalCards: 2,
+          decks: [
+            { id: 1, fullName: 'Pharm::A', path: [], cardCount: 1 },
+            { id: 2, fullName: 'Pharm::B', path: [], cardCount: 1 },
+          ],
+        })),
+        getCardsPage: vi.fn(
+          () =>
+            ({
+              cards: [
+                {
+                  id: 1,
+                  ord: 0,
+                  front: 'q1',
+                  back: 'a1',
+                  deckName: 'Pharm::A',
+                },
+                {
+                  id: 2,
+                  ord: 0,
+                  front: 'q2',
+                  back: 'a2',
+                  deckName: 'Pharm::B',
+                },
+              ],
+              nextCursor: null,
+              total: 2,
+            }) as never
+        ),
+      },
+    });
+    const preview = await service.getDeckPreview('owner', 'job-1');
+    expect(preview).toMatchObject({
+      noteCount: 2,
+      noteTypes: ['n2a-cloze'],
+      title: 'Pharm',
+      downloadUrl: 'https://mcp.test/api/mcp/decks/job-1/download',
+    });
+    expect(preview.sampleCards).toEqual([
+      { front: 'q1', back: 'a1', tags: ['pharm', 'cardio'], deck: 'Pharm::A' },
+      { front: 'q2', back: 'a2', deck: 'Pharm::B' },
+    ]);
+  });
+
+  it('links a web-converted deck through the signed-in download route', async () => {
+    const { service } = makeService({
+      jobs: [jobFixture({ object_id: 'job-2', type: 'upload' } as never)],
+      getFileBody: vi.fn(async () => Buffer.from('apkg')),
+    });
+    const preview = await service.getDeckPreview('owner', 'job-2');
+    expect(preview.downloadUrl).toBe(
+      'https://mcp.test/api/upload/jobs/job-2/download'
+    );
+  });
+
   it('rejects an unknown identifier that is not an .apkg key', async () => {
     const { service, downloadService } = makeService({
       jobs: [jobFixture({ object_id: 'job-1' })],
