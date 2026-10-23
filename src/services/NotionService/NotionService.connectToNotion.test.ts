@@ -2,6 +2,9 @@ import { vi } from 'vitest';
 import { NotionService } from './NotionService';
 import { __resetTopLevelPagesCacheForTests } from './topLevelPagesCache';
 import { __resetTopLevelPagesRefreshGateForTests } from './topLevelPagesRefreshGate';
+import { track } from '../events/track';
+
+vi.mock('../events/track', () => ({ track: vi.fn() }));
 
 const OWNER = 1;
 
@@ -108,6 +111,16 @@ describe('NotionService.connectToNotion', () => {
       'before',
       'after',
     ]);
+  });
+
+  it('records the connection once the token is saved', async () => {
+    const { service, notionRepository } = makeService();
+    vi.mocked(track).mockClear();
+
+    await service.connectToNotion('auth-code', OWNER);
+
+    expect(notionRepository.saveNotionToken).toHaveBeenCalled();
+    expect(track).toHaveBeenCalledWith('notion_connected', { userId: OWNER });
   });
 
   it('still saves the token when clearing the cached page list fails', async () => {

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
 import { SearchPage } from './SearchPage';
+import { UserNotice } from '../../lib/errors/UserNotice';
 
 const mockUseNotionData = vi.fn();
 
@@ -11,8 +12,12 @@ vi.mock('./helpers/useNotionData', () => ({
   default: () => mockUseNotionData(),
 }));
 
+const searchContainerProps: { setError?: (error: unknown) => void } = {};
 vi.mock('./components/SearchContainer', () => ({
-  default: () => <div data-testid="search-container" />,
+  default: (props: { setError: (error: unknown) => void }) => {
+    searchContainerProps.setError = props.setError;
+    return <div data-testid="search-container" />;
+  },
 }));
 
 vi.mock('../../lib/backend/get2ankiApi', () => ({
@@ -91,5 +96,56 @@ describe('SearchPage Hotjar suppression', () => {
     expect(screen.getByText('Pristine’s Notion')).toHaveAttribute(
       'data-hj-suppress'
     );
+  });
+});
+
+describe('SearchPage when Notion rejects the token mid-search', () => {
+  it('re-reads the connection so Connect Notion replaces the search box', () => {
+    const refetch = vi.fn();
+    mockUseNotionData.mockReturnValue({
+      connected: true,
+      connectionLink: '/api/notion/connect',
+      error: null,
+      loading: false,
+      refetch,
+      workSpace: 'Workspace',
+    });
+    mockUseUserLocals.mockReturnValue({
+      data: { user: { id: 1 }, locals: { patreon: true, subscriber: true } },
+    } as unknown);
+    mockUseCardUsage.mockReturnValue(null);
+    const setError = vi.fn();
+    render(
+      <MemoryRouter>
+        <SearchPage setError={setError} />
+      </MemoryRouter>
+    );
+
+    const dead = new UserNotice('API token is invalid.', 'notion_unauthorized');
+    searchContainerProps.setError?.(dead);
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(setError).toHaveBeenCalledWith(dead);
+  });
+
+  it('leaves the connection alone for other search errors', () => {
+    const refetch = vi.fn();
+    mockUseNotionData.mockReturnValue({
+      connected: true,
+      connectionLink: '/api/notion/connect',
+      error: null,
+      loading: false,
+      refetch,
+      workSpace: 'Workspace',
+    });
+    render(
+      <MemoryRouter>
+        <SearchPage setError={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    searchContainerProps.setError?.(new Error('Failed to fetch'));
+
+    expect(refetch).not.toHaveBeenCalled();
   });
 });

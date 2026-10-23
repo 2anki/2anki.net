@@ -3,6 +3,9 @@ import { MarkNotionTokenInvalidUseCase } from './MarkNotionTokenInvalidUseCase';
 import { INotionRepository } from '../../data_layer/NotionRespository';
 import { IEmailService } from '../../services/EmailService/EmailService';
 import { IMarkNotionTokenInvalidUsers } from './MarkNotionTokenInvalidUseCase';
+import { track } from '../../services/events/track';
+
+vi.mock('../../services/events/track', () => ({ track: vi.fn() }));
 
 function buildNotionRepo(
   overrides: Partial<INotionRepository> = {}
@@ -64,6 +67,30 @@ function buildEmailService(
 describe('MarkNotionTokenInvalidUseCase', () => {
   const OWNER = 42;
 
+  it('records where the dead token was found, once per dead token', async () => {
+    vi.mocked(track).mockClear();
+    const notion = buildNotionRepo({
+      setReconnectEmailSent: vi
+        .fn()
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false),
+    });
+    const useCase = new MarkNotionTokenInvalidUseCase(
+      notion,
+      buildUsers(),
+      buildEmailService()
+    );
+
+    await useCase.execute(OWNER, 'preview');
+    await useCase.execute(OWNER, 'preview');
+
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith('notion_token_invalidated', {
+      userId: OWNER,
+      props: { source: 'preview' },
+    });
+  });
+
   it('calls markTokenInvalid on the repository', async () => {
     const notion = buildNotionRepo();
     const useCase = new MarkNotionTokenInvalidUseCase(
@@ -72,7 +99,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       buildEmailService()
     );
 
-    await useCase.execute(OWNER);
+    await useCase.execute(OWNER, 'preview');
 
     expect(notion.markTokenInvalid).toHaveBeenCalledWith(OWNER);
   });
@@ -85,7 +112,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       buildEmailService()
     );
 
-    await useCase.execute(OWNER);
+    await useCase.execute(OWNER, 'preview');
 
     expect(users.getEmailById).toHaveBeenCalledWith(OWNER);
   });
@@ -109,7 +136,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       emailService
     );
 
-    await useCase.execute(OWNER);
+    await useCase.execute(OWNER, 'preview');
 
     expect(sendOrder).toEqual(['gate', 'send']);
   });
@@ -124,7 +151,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       emailService
     );
 
-    await useCase.execute(OWNER);
+    await useCase.execute(OWNER, 'preview');
 
     expect(emailService.sendNotionReconnectEmail).toHaveBeenCalledWith(
       'alice@example.com'
@@ -141,7 +168,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       emailService
     );
 
-    await useCase.execute(OWNER);
+    await useCase.execute(OWNER, 'preview');
 
     expect(emailService.sendNotionReconnectEmail).not.toHaveBeenCalled();
   });
@@ -154,7 +181,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       emailService
     );
 
-    await useCase.execute(OWNER);
+    await useCase.execute(OWNER, 'preview');
 
     expect(emailService.sendNotionReconnectEmail).not.toHaveBeenCalled();
   });
@@ -171,7 +198,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       emailService
     );
 
-    await expect(useCase.execute(OWNER)).resolves.not.toThrow();
+    await expect(useCase.execute(OWNER, 'preview')).resolves.not.toThrow();
   });
 
   it('does NOT log the recipient email address on failure', async () => {
@@ -189,7 +216,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       emailService
     );
 
-    await useCase.execute(OWNER);
+    await useCase.execute(OWNER, 'preview');
 
     const allWarnArgs = warnSpy.mock.calls.flat();
     const allText = allWarnArgs.map((a) => JSON.stringify(a)).join(' ');
@@ -208,7 +235,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       buildUsers(undefined),
       buildEmailService()
     );
-    await useCaseNoEmail.execute(OWNER);
+    await useCaseNoEmail.execute(OWNER, 'preview');
     expect(warnSpy).toHaveBeenCalledWith(
       '[notion-reconnect] no_email_on_file',
       expect.objectContaining({ owner: OWNER })
@@ -224,7 +251,7 @@ describe('MarkNotionTokenInvalidUseCase', () => {
       buildUsers('someone@example.com'),
       failingEmailService
     );
-    await useCaseSendFail.execute(OWNER);
+    await useCaseSendFail.execute(OWNER, 'preview');
     expect(warnSpy).toHaveBeenCalledWith(
       '[notion-reconnect] email_send_failed',
       expect.objectContaining({ owner: OWNER })

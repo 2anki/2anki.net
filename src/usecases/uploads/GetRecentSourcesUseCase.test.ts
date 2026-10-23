@@ -27,7 +27,8 @@ function notionPage(
 
 function buildUseCase(
   pages: NotionTopLevelPageRow[],
-  lastUpload: LastReconvertibleUpload | null
+  lastUpload: LastReconvertibleUpload | null,
+  connection: { invalidated_at: Date | null } | null = { invalidated_at: null }
 ) {
   const recentByOwner = vi.fn().mockResolvedValue(pages);
   const notionRepo = {
@@ -51,13 +52,38 @@ function buildUseCase(
   } as unknown as IUploadRepository;
 
   return {
-    useCase: new GetRecentSourcesUseCase(notionRepo, uploadRepo),
+    useCase: new GetRecentSourcesUseCase(notionRepo, uploadRepo, {
+      getNotionData: vi.fn().mockResolvedValue(connection),
+    } as never),
     recentByOwner,
     lastReconvertible,
   };
 }
 
 describe('GetRecentSourcesUseCase', () => {
+  it.each([
+    ['rejected by Notion', { invalidated_at: new Date() }],
+    ['disconnected', null],
+  ])(
+    'leaves out cached Notion pages when the connection is %s',
+    async (_label, connection) => {
+      const lastUpload = {
+        key: 'up-1',
+        filename: 'deck.zip',
+        created_at: new Date('2026-06-01T00:00:00.000Z'),
+      } as unknown as LastReconvertibleUpload;
+      const { useCase } = buildUseCase(
+        [notionPage({ notion_page_id: 'p' })],
+        lastUpload,
+        connection
+      );
+
+      const result = await useCase.execute(1);
+
+      expect(result.map((source) => source.type)).toEqual(['remote_upload']);
+    }
+  );
+
   it('maps Notion pages to the DTO shape sorted by recency desc', async () => {
     const { useCase } = buildUseCase(
       [

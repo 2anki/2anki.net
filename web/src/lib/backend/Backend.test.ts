@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobsId } from '@server/data_layer/public/Jobs';
 import * as api from './api';
 import { Backend } from './Backend';
+import { UserNotice } from '../errors/UserNotice';
 import {
   getPendingUploadStore,
   resetPendingUploadStoreForTests,
@@ -162,6 +163,22 @@ describe('Backend', () => {
       expect(results.map((r) => r.id)).toEqual(['page-named', 'db-row']);
       expect(results[0].parent).toEqual({ type: 'page_id' });
       expect(results[1].parent).toEqual({ type: 'database_id' });
+    });
+
+    it('answers a dead Notion connection as a notice without bouncing to login', async () => {
+      vi.mocked(api.post).mockResolvedValue(
+        createMockResponse(401, false, 'Unauthorized', {
+          code: 'notion_unauthorized',
+          message:
+            'Your Notion connection expired. Reconnect Notion and try again.',
+        })
+      );
+
+      const error = await backend.search('biology').catch((e) => e);
+
+      expect(error).toBeInstanceOf(UserNotice);
+      expect(error.code).toBe('notion_unauthorized');
+      expect(api.redirectToLogin).not.toHaveBeenCalled();
     });
 
     it('tags an expired-session 401 as a client fault and bounces to login', async () => {

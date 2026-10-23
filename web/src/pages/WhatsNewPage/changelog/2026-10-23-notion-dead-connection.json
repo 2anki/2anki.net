@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-notion-dead-connection",
+  "date": "2026-10-23",
+  "type": "fix",
+  "title": "Notion: when Notion stops accepting your connection, 2anki now asks you to connect again right away instead of failing on every page, and a short Notion outage is retried instead of showing an error"
+}

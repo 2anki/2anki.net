@@ -14,6 +14,7 @@ import ConnectNotion from './components/ConnectNotion';
 import SearchContainer from './components/SearchContainer';
 import useNotionData from './helpers/useNotionData';
 import searchStyles from './SearchPage.module.css';
+import { isNotionUnauthorized } from '../../components/errors/helpers/getErrorMessage';
 
 interface SearchPageProps {
   setError: ErrorHandlerType;
@@ -122,7 +123,12 @@ export function SearchPage({ setError }: Readonly<SearchPageProps>) {
     content = (
       <SearchContainer
         backend={get2ankiApi()}
-        setError={setError}
+        setError={(error) => {
+          // Notion rejected the token mid-search: re-read the connection so
+          // the Connect button replaces a search box that can only fail.
+          if (isNotionUnauthorized(error)) notionData.refetch();
+          setError(error);
+        }}
         workSpace={notionData.workSpace}
         isLoggedIn={notionData.connected}
       />

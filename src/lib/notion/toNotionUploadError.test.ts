@@ -1,6 +1,33 @@
-import { APIErrorCode, APIResponseError } from '@notionhq/client';
+import {
+  APIErrorCode,
+  APIResponseError,
+  UnknownHTTPResponseError,
+} from '@notionhq/client';
 
+import { NotionNotConnectedError } from './NotionNotConnectedError';
 import { toNotionUploadError } from './toNotionUploadError';
+
+function makeUnknownHttpError(status: number): UnknownHTTPResponseError {
+  const err = Object.create(
+    UnknownHTTPResponseError.prototype
+  ) as UnknownHTTPResponseError;
+  Object.assign(err, {
+    name: 'UnknownHTTPResponseError',
+    message: '<html>cf-error-522</html>',
+    code: 'notionhq_client_response_error',
+    status,
+    headers: {},
+  });
+  return err;
+}
+
+const NOTION_UNAVAILABLE = {
+  status: 503,
+  body: {
+    code: 'notion_unavailable',
+    message: 'Notion is having trouble right now. Try again in a minute.',
+  },
+};
 
 function makeAPIResponseError(code: string, status: number): APIResponseError {
   const err = Object.create(APIResponseError.prototype) as APIResponseError;
@@ -65,6 +92,36 @@ describe('toNotionUploadError', () => {
     );
 
     expect(result?.body.message).not.toContain('notion internal detail');
+  });
+
+  it('answers a missing or rejected connection as notion_unauthorized', () => {
+    expect(toNotionUploadError(new NotionNotConnectedError())).toMatchObject({
+      status: 401,
+      body: { code: 'notion_unauthorized' },
+    });
+  });
+
+  it.each([522, 500, 503])(
+    'answers a Notion %i outage as notion_unavailable without its HTML body',
+    (status) => {
+      expect(toNotionUploadError(makeUnknownHttpError(status))).toEqual(
+        NOTION_UNAVAILABLE
+      );
+    }
+  );
+
+  it.each([
+    APIErrorCode.InternalServerError,
+    APIErrorCode.ServiceUnavailable,
+    APIErrorCode.ServiceOverload,
+  ])('answers Notion %s as notion_unavailable', (code) => {
+    expect(toNotionUploadError(makeAPIResponseError(code, 503))).toEqual(
+      NOTION_UNAVAILABLE
+    );
+  });
+
+  it('leaves a 4xx unknown HTTP answer unmapped', () => {
+    expect(toNotionUploadError(makeUnknownHttpError(400))).toBeNull();
   });
 
   it('returns null for other Notion API error codes', () => {

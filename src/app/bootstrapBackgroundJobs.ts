@@ -152,7 +152,7 @@ export const bootstrapBackgroundJobs = async (database: Knex) => {
         notionRepo,
         new UsersRepository(database),
         getDefaultEmailService()
-      ).execute(owner),
+      ).execute(owner, 'ankify'),
     makeAnkifyTemplateOverridesProvider(new SettingsRepository(database)),
     undefined,
     new UnsupportedNotionBlockRepository(database)

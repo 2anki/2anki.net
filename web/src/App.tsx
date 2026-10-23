@@ -40,6 +40,7 @@ import FavoritesPage from './pages/FavoritesPage';
 import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
 import UploadPage from './pages/UploadPage';
+import { shouldRetryQuery } from './lib/shouldRetryQuery';
 
 const RegisterPage = lazyWithRetry(
   () => import('./pages/RegisterPage'),
@@ -332,7 +333,9 @@ const NativeAppPage = lazyWithRetry(
   './pages/NativeAppPage/NativeAppPage'
 );
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: shouldRetryQuery } },
+});
 
 function surfaceFromPathname(pathname: string): string {
   const segment = pathname.split('/').filter(Boolean)[0];

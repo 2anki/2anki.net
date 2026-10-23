@@ -1,4 +1,5 @@
-import { APIErrorCode } from '@notionhq/client';
+import { NotionNotConnectedError } from '../../lib/notion/NotionNotConnectedError';
+import { track } from '../events/track';
 
 import { INotionRepository } from '../../data_layer/NotionRespository';
 import instrumentedAxios from '../observability/instrumentedAxios';
@@ -77,10 +78,16 @@ export class NotionService {
     return regex.exec(id);
   }
 
+  // A token Notion already rejected is as good as none: every call with it
+  // fails, so callers get the reconnect answer instead of another 401.
   getNotionAPI = async (owner: string): Promise<NotionAPIWrapper> => {
+    const data = await this.notionRepository.getNotionData(owner);
+    if (data?.invalidated_at != null) {
+      throw new NotionNotConnectedError();
+    }
     const token = await this.notionRepository.getNotionToken(owner);
     if (!token) {
-      throw new Error(APIErrorCode.Unauthorized);
+      throw new NotionNotConnectedError();
     }
     return new NotionAPIWrapper(token, owner, this.blocksCacheRepository);
   };
@@ -217,6 +224,7 @@ export class NotionService {
   async connectToNotion(authorizationCode: string, owner: number) {
     const accessData = await this.getAccessData(authorizationCode.toString());
     await this.notionRepository.saveNotionToken(owner, accessData, hashToken);
+    track('notion_connected', { userId: owner });
     invalidateTopLevelPagesForOwner(owner);
     if (this.topLevelPagesRepository) {
       try {

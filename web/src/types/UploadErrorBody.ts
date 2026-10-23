@@ -25,6 +25,7 @@ export const UPLOAD_ERROR_CODES = [
   'notion_rate_limit',
   'notion_object_not_found',
   'notion_unauthorized',
+  'notion_unavailable',
   'apkg_too_large_for_anki',
   'zip_invalid',
   'ai_credits_exhausted',
