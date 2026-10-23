@@ -41,6 +41,8 @@ export const UNREADABLE_ZIP_MESSAGE =
   'This zip couldn’t be opened. It may still be downloading; wait for it to finish and try again.';
 export const LEGACY_STUB_COLLECTION_MESSAGE =
   'This collection.anki2 is the empty placeholder inside an Anki deck. Upload the .apkg file itself, or the collection.anki21b or collection.anki21 file next to this one.';
+export const NOT_A_COLLECTION_MESSAGE =
+  'This file is named like an Anki collection but isn’t one. Upload the .apkg file itself.';
 export const INNER_DECK_TOO_LARGE_MESSAGE =
   'The deck inside this zip is over 100 MB. Open it in Anki and export a smaller deck.';
 
@@ -61,20 +63,36 @@ const LEGACY_STUB_MARKER = Buffer.from(
 // Safari opens a downloaded deck into a folder, and people then upload the
 // collection file from inside it. Zipping it back with an empty media list
 // gives the deck readers the package they expect.
+const SQLITE_HEADER = Buffer.from('SQLite format 3\0', 'latin1');
+const ZSTD_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd]);
+
+function startsWith(data: Buffer, prefix: Buffer): boolean {
+  return data.subarray(0, prefix.length).equals(prefix);
+}
+
 function packBareCollection(collection: Buffer, filename: string): Buffer {
+  const extension = (
+    BARE_COLLECTION.exec(filename) as RegExpExecArray
+  )[1].toLowerCase();
+  const header = extension === 'anki21b' ? ZSTD_MAGIC : SQLITE_HEADER;
+  if (!startsWith(collection, header)) {
+    throw new DeckUploadError(NOT_A_COLLECTION_MESSAGE);
+  }
   if (collection.includes(LEGACY_STUB_MARKER)) {
     throw new DeckUploadError(LEGACY_STUB_COLLECTION_MESSAGE);
   }
-  const extension = (BARE_COLLECTION.exec(filename) as RegExpExecArray)[1];
-  return Buffer.from(
-    zipSync(
-      {
-        [`collection.${extension.toLowerCase()}`]: new Uint8Array(collection),
-        media: new TextEncoder().encode('{}'),
-      },
-      { level: 0 }
-    )
+  const packed = zipSync(
+    {
+      [`collection.${extension}`]: new Uint8Array(
+        collection.buffer,
+        collection.byteOffset,
+        collection.length
+      ),
+      media: new TextEncoder().encode('{}'),
+    },
+    { level: 0 }
   );
+  return Buffer.from(packed.buffer, packed.byteOffset, packed.length);
 }
 
 function isInnerDeck(name: string): boolean {

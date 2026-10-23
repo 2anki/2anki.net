@@ -4,6 +4,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import {
   DeckUploadError,
   LEGACY_STUB_COLLECTION_MESSAGE,
+  NOT_A_COLLECTION_MESSAGE,
   resolveDeckUpload,
   UNREADABLE_ZIP_MESSAGE,
 } from './resolveDeckUpload';
@@ -37,10 +38,14 @@ describe('resolveDeckUpload', () => {
     });
   });
 
-  it.each(['collection.anki21b', 'collection.anki21', 'collection.anki2'])(
+  it.each([
+    ['collection.anki21b', '\u0028\u00b5\u002f\u00fd zstd frame'],
+    ['collection.anki21', 'SQLite format 3\u0000 real notes'],
+    ['collection.anki2', 'SQLite format 3\u0000 real notes'],
+  ])(
     'packs a bare %s, taken out of a deck folder, back into a deck',
-    async (name) => {
-      const collection = Buffer.from('SQLite format 3\u0000 real notes');
+    async (name, body) => {
+      const collection = Buffer.from(body, 'latin1');
 
       const result = await resolveDeckUpload(collection, name);
 
@@ -52,7 +57,7 @@ describe('resolveDeckUpload', () => {
       const entries =
         result.kind === 'deck' ? unzipSync(new Uint8Array(result.deck)) : {};
       expect(Object.keys(entries).sort()).toEqual([name, 'media'].sort());
-      expect(strFromU8(entries[name])).toBe(collection.toString('latin1'));
+      expect(Buffer.from(entries[name]).equals(collection)).toBe(true);
       expect(strFromU8(entries.media)).toBe('{}');
     }
   );
@@ -69,6 +74,19 @@ describe('resolveDeckUpload', () => {
     expect(error).toBeInstanceOf(DeckUploadError);
     expect((error as Error).message).toBe(LEGACY_STUB_COLLECTION_MESSAGE);
   });
+
+  it.each(['collection.anki2', 'collection.anki21b'])(
+    'refuses a %s that is not a collection with a clear message',
+    async (name) => {
+      const error = await resolveDeckUpload(
+        Buffer.from('just some notes'),
+        name
+      ).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DeckUploadError);
+      expect((error as Error).message).toBe(NOT_A_COLLECTION_MESSAGE);
+    }
+  );
 
   it('takes a .colpkg out of a zip like an .apkg', async () => {
     const upload = zip({ 'backup/Profile.colpkg': APKG });
