@@ -77,6 +77,10 @@
       "label": "No máximo um toggle por cartão",
       "description": "Cada toggle de nível superior vira um cartão. Um toggle aninhado dentro de outro permanece no verso do cartão principal e não vira um cartão próprio. Para ter um cartão por toggle, mantenha-os no nível superior em vez de aninhá-los."
     },
+    "promote-nested-toggles": {
+      "label": "Toggles aninhados viram cartões próprios",
+      "description": "Transforma cada toggle aninhado dentro de outro toggle em um cartão próprio, com o título do toggle como pergunta. Toggles vazios são ignorados. Apenas para exportações HTML do Notion e arquivos enviados."
+    },
     "remove-mp3-links": {
       "label": "Remover links de MP3 dos arquivos de áudio",
       "description": "Esconde URLs de MP3 brutas nos cartões e mantém o áudio tocável."

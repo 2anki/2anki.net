@@ -77,6 +77,10 @@
       "label": "Máximo una alternancia por tarjeta",
       "description": "Cada alternancia de nivel superior se convierte en una tarjeta. Una alternancia anidada dentro de otra permanece en el reverso de la tarjeta principal y no se convierte en su propia tarjeta. Para obtener una tarjeta por alternancia, mantenlas en el nivel superior en lugar de anidarlas."
     },
+    "promote-nested-toggles": {
+      "label": "Los toggles anidados se convierten en tarjetas propias",
+      "description": "Convierte cada toggle anidado dentro de otro toggle en una tarjeta propia, con el título del toggle como pregunta. Los toggles vacíos se omiten. Solo para exportaciones HTML de Notion y archivos subidos."
+    },
     "remove-mp3-links": {
       "label": "Quitar los enlaces MP3 de los archivos de audio",
       "description": "Oculta las URL de MP3 sin procesar en las tarjetas y mantiene el audio reproducible."

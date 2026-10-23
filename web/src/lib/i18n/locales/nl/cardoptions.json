@@ -77,6 +77,10 @@
       "label": "Maximaal één toggle per kaart",
       "description": "Elke toggle op het hoogste niveau wordt één kaart. Een toggle die in een andere is genest, blijft op de achterkant van de bovenliggende kaart en wordt geen eigen kaart. Wil je een kaart per toggle, houd ze dan op het hoogste niveau in plaats van ze te nesten."
     },
+    "promote-nested-toggles": {
+      "label": "Geneste toggles worden eigen kaarten",
+      "description": "Maakt van elke toggle binnen een andere toggle een eigen kaart, met de titel van de toggle als vraag. Lege toggles worden overgeslagen. Alleen voor Notion-HTML-exports en geüploade bestanden."
+    },
     "remove-mp3-links": {
       "label": "MP3-links uit audiobestanden verwijderen",
       "description": "Verberg ruwe MP3-URL's op kaarten terwijl de audio afspeelbaar blijft."

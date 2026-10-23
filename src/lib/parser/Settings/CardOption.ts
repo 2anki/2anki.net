@@ -43,6 +43,8 @@ class CardOption {
 
   readonly promoteNestedCloze: boolean;
 
+  readonly promoteNestedToggles: boolean;
+
   readonly parentContext: boolean;
 
   readonly removeDeckNameNumbering: boolean;
@@ -170,6 +172,7 @@ class CardOption {
     this.clozeFromToggleContent = input['cloze-from-toggle-content'] === 'true';
     this.groupClozePerToggle = input['group-cloze-per-toggle'] === 'true';
     this.promoteNestedCloze = input['promote-nested-cloze'] === 'true';
+    this.promoteNestedToggles = input['promote-nested-toggles'] === 'true';
     this.parentContext = input['parent-context'] === 'true';
     this.removeDeckNameNumbering =
       input['remove-deck-name-numbering'] === 'true';

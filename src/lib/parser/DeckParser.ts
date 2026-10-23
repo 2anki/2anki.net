@@ -2321,12 +2321,21 @@ export class DeckParser {
             ? `<div class='${parentClass}'>${validSummary}</div>`
             : validSummary;
           if (toggle || this.settings.maxOne) {
-            const promoted = this.promoteNestedClozeToggles(
+            const nestedToggleCards = this.promoteNestedToggles(
               toggle,
               dom,
               parentClass,
               isNewFormat
             );
+            const promoted = [
+              ...nestedToggleCards,
+              ...this.promoteNestedClozeToggles(
+                toggle,
+                dom,
+                parentClass,
+                isNewFormat
+              ),
+            ];
             promotedCount += promoted.length;
             const toggleHTML = toggle.html();
             if (toggleHTML) {
@@ -2419,6 +2428,52 @@ export class DeckParser {
       back = replaceAll(back, '\n', '<br />');
     }
     return back;
+  }
+
+  // Opt-in (promote-nested-toggles): every toggle nested inside this one with
+  // something inside it becomes its own card, title as the question. The
+  // parent keeps its own card. A nested toggle that the cloze option promotes
+  // is left to it, and is skipped here so it never becomes two cards.
+  private promoteNestedToggles(
+    toggle: cheerio.Cheerio<Element>,
+    dom: cheerio.CheerioAPI,
+    parentClass: string,
+    isNewFormat: boolean
+  ): Note[] {
+    if (!this.settings.promoteNestedToggles) {
+      return [];
+    }
+    const clozePromotes =
+      this.settings.isCloze && this.settings.promoteNestedCloze;
+    const captured = toggle
+      .find('details')
+      .toArray()
+      .map((el) => {
+        const $details = dom(el);
+        const $summary = $details.children('summary').first();
+        const body = ($details.html() ?? '').replace($summary.toString(), '');
+        return {
+          $details,
+          summaryHTML: $summary.html() ?? '',
+          summaryText: $summary.text().trim(),
+          body,
+        };
+      })
+      .filter(
+        ({ summaryText, summaryHTML, body }) =>
+          summaryText.length > 0 &&
+          body.replace(/<[^>]*>/g, '').trim().length > 0 &&
+          !(clozePromotes && hasInlineClozeCode(summaryHTML))
+      );
+    return captured.map(({ $details, summaryHTML, body }) => {
+      const front = preserveNewlinesIfApplicable(summaryHTML, this.settings);
+      const note = new Note(
+        parentClass ? `<div class='${parentClass}'>${front}</div>` : front,
+        this.buildToggleBackSide(body, isNewFormat)
+      );
+      note.notionId = this.resolveNestedToggleBlockId($details);
+      return note;
+    });
   }
 
   // A nested toggle whose title carries the inline-code cloze marker is a
