@@ -2722,6 +2722,38 @@ describe('UploadForm analytics events', () => {
       expect(reports).toEqual([]);
     });
 
+    it('asks for a fresh pick when the first byte reads but the rest of the file does not, without uploading', async () => {
+      const { track } = await import('../../../../lib/analytics/track');
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const requests: string[] = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string) => {
+          requests.push(url);
+          return Promise.resolve(new Response(null));
+        })
+      );
+      const file = new File(['xyz'], 'cloud.pdf');
+      Object.defineProperty(file, 'arrayBuffer', {
+        value: () =>
+          Promise.reject(new DOMException('partial', 'NotReadableError')),
+      });
+
+      await submitUpload(file);
+
+      await waitFor(() =>
+        expect(
+          screen.getByText("We couldn't read this file")
+        ).toBeInTheDocument()
+      );
+      expect(requests).not.toContain('/api/upload/file');
+      expect(trackMock).toHaveBeenCalledWith(
+        'upload_file_unreadable',
+        expect.objectContaining({ reason: 'partial', fileExt: '.pdf' })
+      );
+    });
+
     it('asks for a fresh pick when the browser can no longer read the file, without uploading', async () => {
       const { track } = await import('../../../../lib/analytics/track');
       const trackMock = vi.mocked(track);
@@ -2746,7 +2778,7 @@ describe('UploadForm analytics events', () => {
 
       await waitFor(() =>
         expect(
-          screen.getByText('This file changed since you picked it')
+          screen.getByText("We couldn't read this file")
         ).toBeInTheDocument()
       );
       expect(

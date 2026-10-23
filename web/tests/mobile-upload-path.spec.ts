@@ -221,3 +221,33 @@ test('a tab discarded mid-upload offers to continue the file on reload at 375px'
   await noOverflow(page, 'resume-banner');
   expect(realErrors(errors)).toEqual([]);
 });
+
+test('sends the picked file in the upload request at 375px', async ({
+  page,
+}) => {
+  const errors = collectConsoleErrors(page);
+  await mockBackend(page);
+  let sentBody = '';
+  await page.route('**/api/upload/file', async (route) => {
+    sentBody = route.request().postDataBuffer()?.toString('latin1') ?? '';
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/octet-stream',
+      headers: { 'X-Card-Count': '3' },
+      body: Buffer.from('fake-apkg'),
+    });
+  });
+
+  await page.goto('/upload');
+  await expect(page.locator('#upload-panel-local')).toBeVisible();
+  await page.setInputFiles('#pakker', {
+    name: 'export.zip',
+    mimeType: 'application/zip',
+    buffer: Buffer.from('zip bytes that must reach the server'),
+  });
+
+  await expect(page.getByText('3 cards')).toBeVisible({ timeout: 10_000 });
+  expect(sentBody).toContain('filename="export.zip"');
+  expect(sentBody).toContain('zip bytes that must reach the server');
+  expect(realErrors(errors)).toEqual([]);
+});

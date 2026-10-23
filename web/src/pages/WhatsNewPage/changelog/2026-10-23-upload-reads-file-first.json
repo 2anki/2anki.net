@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-upload-reads-file-first",
+  "date": "2026-10-23",
+  "type": "fix",
+  "title": "Upload: a file that only partly downloaded from OneDrive, iCloud Drive or Google Drive now gets a clear next step instead of a connection error that no retry could fix."
+}

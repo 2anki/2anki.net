@@ -6,7 +6,7 @@
  * Reading one byte before the request turns that into a `NotReadableError`
  * we can name, so the form asks for a fresh pick instead of a retry.
  */
-export type UnreadableFileReason = 'changed' | 'empty';
+export type UnreadableFileReason = 'changed' | 'empty' | 'partial';
 
 export class UnreadableFileError extends Error {
   constructor(
@@ -36,4 +36,64 @@ export async function assertFilesReadable(files: File[]): Promise<void> {
       throw new UnreadableFileError(file);
     }
   }
+}
+
+// Files up to this size are copied into memory before the request; larger
+// picks stream from disk as before, so a huge upload cannot exhaust the tab.
+export const SNAPSHOT_MAX_BYTES = 100 * 1024 * 1024;
+
+// Only the browser refusing the file is the file's fault. Running out of
+// memory on a phone is not: that upload goes from disk as before.
+const UNREADABLE_FILE_ERRORS = new Set(['NotReadableError', 'NotFoundError']);
+
+async function copyIntoMemory(file: File): Promise<File | null> {
+  try {
+    const bytes = await file.arrayBuffer();
+    return new File([bytes], file.name, {
+      type: file.type,
+      lastModified: file.lastModified,
+    });
+  } catch (error) {
+    if (
+      error instanceof DOMException &&
+      UNREADABLE_FILE_ERRORS.has(error.name)
+    ) {
+      throw new UnreadableFileError(file, 'partial');
+    }
+    return null;
+  }
+}
+
+// The one-byte probe above passes for a cloud file whose first bytes are on
+// the disk and whose rest is not, and for a file saved again after the pick;
+// the request then dies a second in with "Failed to fetch" or Safari's "Load
+// failed" before the server sees a byte, and every retry dies the same way.
+// Reading the whole file first names that case, and the request then sends a
+// copy that no later change on the disk can break.
+export async function snapshotUploadBody(
+  formData: FormData,
+  files: File[]
+): Promise<FormData> {
+  await assertFilesReadable(files);
+  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  if (totalBytes > SNAPSHOT_MAX_BYTES) return formData;
+  const copies: File[] = [];
+  for (const file of files) {
+    const copy = await copyIntoMemory(file);
+    if (copy == null) return formData;
+    copies.push(copy);
+  }
+  // The form's file entries are the picked files in pick order; each one is
+  // swapped for its copy, and an entry that does not line up is sent as is.
+  const snapshot = new FormData();
+  let fileIndex = 0;
+  for (const [key, value] of formData.entries()) {
+    const copy = value instanceof File ? copies[fileIndex++] : undefined;
+    if (copy != null && copy.name === (value as File).name) {
+      snapshot.append(key, copy);
+    } else {
+      snapshot.append(key, value);
+    }
+  }
+  return snapshot;
 }
