@@ -43,6 +43,42 @@ const threeLevels = page(
 );
 
 describe('promote-nested-toggles card option', () => {
+  it('adds no duplicates under cherry-pick, which already reaches nested toggles', async () => {
+    const cherryPage = page(
+      details(
+        ID(1),
+        '🍒 Heart',
+        '<p>Pumps blood.</p>' +
+          details(
+            ID(2),
+            '🍒 Chambers',
+            '<p>Four.</p>' + details(ID(3), '🍒 Left ventricle', '<p>Body.</p>')
+          )
+      )
+    );
+    const without = await cardsFor(cherryPage, { cherry: 'true' });
+    const withOption = await cardsFor(cherryPage, {
+      cherry: 'true',
+      'promote-nested-toggles': 'true',
+    });
+    expect(withOption.map((card) => card.name)).toEqual(
+      without.map((card) => card.name)
+    );
+  });
+
+  it('keeps a nested toggle whose body is only a picture', async () => {
+    const picture = page(
+      details(
+        ID(1),
+        'Anatomy',
+        '<p>Overview.</p>' +
+          details(ID(2), 'Diagram', '<figure><img src="heart.png"></figure>')
+      )
+    );
+    const cards = await cardsFor(picture, { 'promote-nested-toggles': 'true' });
+    expect(cards.some((card) => card.name.includes('Diagram'))).toBe(true);
+  });
+
   it('is off by default: one card, nested toggles stay inside it', async () => {
     const cards = await cardsFor(threeLevels, {});
     expect(cards).toHaveLength(1);

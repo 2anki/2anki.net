@@ -187,6 +187,12 @@ function bulletOwnText(li: cheerio.Cheerio<Element>): string {
   return collapseContextWhitespace(clone.text());
 }
 
+const MEDIA_IN_BODY = /<(img|audio|video|figure|embed)\b/i;
+
+function bodyHasContent(body: string): boolean {
+  return MEDIA_IN_BODY.test(body) || body.replace(/<[^>]*>/g, '').trim() !== '';
+}
+
 export class DeckParser {
   firstDeckName: string;
 
@@ -2402,9 +2408,12 @@ export class DeckParser {
       }
     });
     if (promotedCount > 0) {
-      console.info('[nested-cloze] promoted nested toggles to cloze cards', {
-        count: promotedCount,
-      });
+      console.info(
+        '[nested-toggles] promoted nested toggles to their own cards',
+        {
+          count: promotedCount,
+        }
+      );
     }
     return { cards, mcqCount, mcqSkippedCount };
   }
@@ -2431,7 +2440,9 @@ export class DeckParser {
   }
 
   // Opt-in (promote-nested-toggles): every toggle nested inside this one with
-  // something inside it becomes its own card, title as the question. The
+  // something inside it becomes its own card, title as the question. Under
+  // cherry-pick every toggle is already a candidate on its own, so it is a
+  // no-op there rather than a source of duplicate cards. The
   // parent keeps its own card. A nested toggle that the cloze option promotes
   // is left to it, and is skipped here so it never becomes two cards.
   private promoteNestedToggles(
@@ -2440,7 +2451,7 @@ export class DeckParser {
     parentClass: string,
     isNewFormat: boolean
   ): Note[] {
-    if (!this.settings.promoteNestedToggles) {
+    if (!this.settings.promoteNestedToggles || this.settings.isCherry) {
       return [];
     }
     const clozePromotes =
@@ -2462,7 +2473,7 @@ export class DeckParser {
       .filter(
         ({ summaryText, summaryHTML, body }) =>
           summaryText.length > 0 &&
-          body.replace(/<[^>]*>/g, '').trim().length > 0 &&
+          bodyHasContent(body) &&
           !(clozePromotes && hasInlineClozeCode(summaryHTML))
       );
     return captured.map(({ $details, summaryHTML, body }) => {
