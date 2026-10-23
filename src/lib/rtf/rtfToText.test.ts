@@ -42,4 +42,13 @@ describe('rtfToText', () => {
   it('keeps escaped braces and backslashes as text', () => {
     expect(rtfToText('{\\rtf1 a \\{b\\} c\\\\d}')).toBe('a {b} c\\d');
   });
+
+  it('survives hostile input: deep nesting, huge code points and long runs', () => {
+    const deep = `{\\rtf1 ${'{'.repeat(100_000)}inside${'}'.repeat(100_000)} after}`;
+    expect(rtfToText(deep)).toBe('inside after');
+    expect(rtfToText('{\\rtf1 a\\u99999999?b}')).toBe('a\ufffdb');
+    expect(rtfToText('{\\rtf1 \\uc999999 \\u65?c}')).toBe('A');
+    const long = `{\\rtf1 ${'x'.repeat(2_000_000)}}`;
+    expect(rtfToText(long)).toHaveLength(2_000_000);
+  });
 });

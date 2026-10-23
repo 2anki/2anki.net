@@ -312,9 +312,8 @@ class ZipHandler {
     }
 
     if (isRtfFile(name)) {
-      const text = rtfEntryAsText(name, file);
-      this.trackInMemoryBytes(text.contents.length);
-      this.files.push(text);
+      this.trackInMemoryBytes(file.length);
+      this.files.push(rtfEntryAsText(name, file));
     } else if (isHTMLFile(name) || isMarkdownFile(name)) {
       this.trackInMemoryBytes(file.length);
       this.files.push({ name, contents: strFromU8(file) });

@@ -55,10 +55,17 @@ function toMarkdownLine(line: string): string {
   return `${leading.replace(/\t/g, '')}${rest.replace(LIST_MARKER, '- ')}`;
 }
 
+// Real documents nest a few dozen groups deep; deeper groups are read as
+// part of their parent so a crafted file cannot grow the stack without end.
+const MAX_GROUP_DEPTH = 256;
+const MAX_CODE_POINT = 0x10ffff;
+const PLAIN_RUN = /[^\\{}\r\n]+/y;
+
 export function rtfToText(rtf: string): string {
   const out: string[] = [];
   const stack: Group[] = [];
   let group: Group = { skip: false, unicodeSkip: 1 };
+  let flattenedDepth = 0;
   let pendingSkip = 0;
   let i = 0;
 
@@ -70,17 +77,33 @@ export function rtfToText(rtf: string): string {
     }
     out.push(text);
   };
+  // A run of plain characters: the first pendingSkip of them are the \\uN
+  // fallback text and are dropped.
+  const emitRun = (run: string) => {
+    if (group.skip) return;
+    const dropped = Math.min(pendingSkip, run.length);
+    pendingSkip -= dropped;
+    if (dropped < run.length) out.push(run.slice(dropped));
+  };
 
   while (i < rtf.length) {
     const ch = rtf[i];
     if (ch === '{') {
-      stack.push(group);
-      group = { ...group };
+      if (stack.length < MAX_GROUP_DEPTH) {
+        stack.push(group);
+        group = { ...group };
+      } else {
+        flattenedDepth += 1;
+      }
       i += 1;
       continue;
     }
     if (ch === '}') {
-      group = stack.pop() ?? { skip: false, unicodeSkip: 1 };
+      if (flattenedDepth > 0) {
+        flattenedDepth -= 1;
+      } else {
+        group = stack.pop() ?? { skip: false, unicodeSkip: 1 };
+      }
       i += 1;
       continue;
     }
@@ -89,8 +112,10 @@ export function rtfToText(rtf: string): string {
       continue;
     }
     if (ch !== '\\') {
-      emit(ch);
-      i += 1;
+      PLAIN_RUN.lastIndex = i;
+      const run = PLAIN_RUN.exec(rtf)?.[0] ?? ch;
+      emitRun(run);
+      i += run.length;
       continue;
     }
 
@@ -155,9 +180,14 @@ export function rtfToText(rtf: string): string {
     } else if (word === 'ldblquote' || word === 'rdblquote') {
       emit('"');
     } else if (word === 'uc' && param != null) {
-      group.unicodeSkip = param;
+      group.unicodeSkip = Math.min(Math.max(param, 0), 16);
     } else if (word === 'u' && param != null) {
-      emit(String.fromCodePoint(param < 0 ? param + 65536 : param));
+      const codePoint = param < 0 ? param + 65536 : param;
+      emit(
+        codePoint >= 0 && codePoint <= MAX_CODE_POINT
+          ? String.fromCodePoint(codePoint)
+          : '\ufffd'
+      );
       pendingSkip = group.unicodeSkip;
     }
   }
