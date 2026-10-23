@@ -1180,3 +1180,29 @@
   text-decoration: underline;
   margin-top: 0.25rem;
 }
+
+.resumeBanner {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-secondary);
+  border-left: 3px solid var(--color-text-link);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.resumeText {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.resumeActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}

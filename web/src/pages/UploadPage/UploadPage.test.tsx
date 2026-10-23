@@ -134,46 +134,6 @@ describe('UploadPage header', () => {
   });
 });
 
-describe('UploadPage reattach banner', () => {
-  beforeEach(() => {
-    globalThis.sessionStorage.clear();
-  });
-
-  it('shows the reattach banner when upload_pending_filename is set in sessionStorage', async () => {
-    renderPageWithSession('upload_pending_filename', 'biochemistry.zip');
-    const reattachText = await screen.findByText(/Re-attach/);
-    const banner = reattachText.closest('[role="status"]') as HTMLElement;
-    expect(banner).toBeInTheDocument();
-    expect(banner.textContent).toContain('biochemistry.zip');
-    expect(banner.textContent).toContain('to convert');
-    globalThis.sessionStorage.removeItem('upload_pending_filename');
-  });
-
-  it('does not show the reattach banner when upload_pending_filename is absent', async () => {
-    renderPageWithSession('upload_pending_filename', null);
-    await waitFor(() => {
-      expect(screen.queryByText(/Re-attach/)).not.toBeInTheDocument();
-    });
-  });
-
-  it('fires upload_reattach_shown when the banner is displayed', async () => {
-    trackMock.mockClear();
-    renderPageWithSession('upload_pending_filename', 'biochemistry.zip');
-    await screen.findByText(/Re-attach/);
-    expect(trackMock).toHaveBeenCalledWith('upload_reattach_shown');
-    globalThis.sessionStorage.removeItem('upload_pending_filename');
-  });
-
-  it('does not fire upload_reattach_shown when no pending filename is set', async () => {
-    trackMock.mockClear();
-    renderPageWithSession('upload_pending_filename', null);
-    await waitFor(() => {
-      expect(screen.queryByText(/Re-attach/)).not.toBeInTheDocument();
-    });
-    expect(trackMock).not.toHaveBeenCalledWith('upload_reattach_shown');
-  });
-});
-
 describe('UploadPage explore card', () => {
   beforeEach(() => {
     globalThis.sessionStorage.clear();

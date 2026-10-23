@@ -65,11 +65,19 @@ import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { track } from '../../../../lib/analytics/track';
 import { reportClientError } from '../../../../lib/reportClientError';
 import { UserNotice } from '../../../../lib/errors/UserNotice';
+import {
+  getPendingUploadStore,
+  resetPendingUploadStoreForTests,
+} from '../../../../lib/upload/pendingUpload';
 
 const mockReportClientError = vi.mocked(reportClientError);
 const mockUseUserLocals = vi.mocked(useUserLocals);
 const mockUseCardUsage = vi.mocked(useCardUsage);
 const mockGet2ankiApi = vi.mocked(get2ankiApi);
+
+beforeEach(() => {
+  resetPendingUploadStoreForTests();
+});
 
 type AnalyticsGlobals = {
   hj?: ReturnType<typeof vi.fn>;
@@ -4135,6 +4143,161 @@ describe('UploadForm reattach recovery', () => {
       'biochem.pdf'
     );
   });
+
+  it('keeps the sent file on this device while the request is pending', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const pending = await getPendingUploadStore().load();
+    expect(pending).toMatchObject({ filename: 'biochem.pdf', signedIn: false });
+    expect(pending?.files.map((file) => file.name)).toEqual(['biochem.pdf']);
+  });
+
+  it('forgets the sent file once the server responds', async () => {
+    vi.stubGlobal('fetch', okApkgFetch());
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:deck');
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+  });
+
+  it('warns before the page unloads while the upload is in flight', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const idleUnload = new Event('beforeunload', { cancelable: true });
+    globalThis.dispatchEvent(idleUnload);
+    expect(idleUnload.defaultPrevented).toBe(false);
+
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const busyUnload = new Event('beforeunload', { cancelable: true });
+    globalThis.dispatchEvent(busyUnload);
+    expect(busyUnload.defaultPrevented).toBe(true);
+  });
+
+  async function savePending(name: string, signedIn = false) {
+    await getPendingUploadStore().save({
+      files: [new File(['x'], name, { type: 'application/pdf' })],
+      filename: name,
+      sizeBytes: 1,
+      submittedAt: Date.now(),
+      recoveryToken: signedIn ? null : 'token-1',
+      signedIn,
+      pdfPageRange: '2-4',
+    });
+  }
+
+  it('offers to continue a file that did not finish uploading before the reload', async () => {
+    await savePending('biochem.pdf');
+    const fetchMock = vi.fn().mockImplementation(() => new Promise(() => {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText("biochem.pdf didn't finish uploading.")
+    ).toBeInTheDocument();
+    expect(track).toHaveBeenCalledWith('upload_resume_shown', {
+      state: 'continue',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/upload/file',
+        expect.objectContaining({ method: 'post' })
+      )
+    );
+    const body = fetchMock.mock.calls[0][1].body as FormData;
+    expect((body.get('pakker') as File).name).toBe('biochem.pdf');
+    expect(body.get('pdf-page-range')).toBe('2-4');
+    expect(track).toHaveBeenCalledWith('upload_resume_clicked');
+  });
+
+  it('forgets the file when the user dismisses the offer', async () => {
+    await savePending('biochem.pdf');
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss' }));
+
+    expect(
+      screen.queryByText("biochem.pdf didn't finish uploading.")
+    ).not.toBeInTheDocument();
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+  });
+
+  it('hands back the deck the server already made instead of converting again', async () => {
+    await savePending('biochem.pdf');
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:recovered');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getAnonymousRecoveredDeck: vi.fn().mockResolvedValue(new Blob(['APKG'])),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', 'blob:recovered');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(track).toHaveBeenCalledWith('upload_resume_shown', {
+      state: 'ready',
+    });
+    expect(await getPendingUploadStore().load()).toBeNull();
+  });
+
+  it('asks to re-attach the file when only its name survived the reload', async () => {
+    globalThis.sessionStorage.setItem('upload_pending_filename', 'big.zip');
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    const banner = (await screen.findByText(/Re-attach/)).closest(
+      '[role="status"]'
+    ) as HTMLElement;
+    expect(banner.textContent).toContain('big.zip');
+    expect(banner.textContent).toContain('to convert');
+    expect(track).toHaveBeenCalledWith('upload_reattach_shown');
+  });
+
+  it('shows no offer when nothing was pending', async () => {
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await act(async () => {});
+    expect(screen.queryByText(/Re-attach/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Continue' })
+    ).not.toBeInTheDocument();
+    expect(track).not.toHaveBeenCalledWith(
+      'upload_resume_shown',
+      expect.anything()
+    );
+  });
 });
 
 describe('UploadForm signed-in deck recovery', () => {
@@ -4204,6 +4367,37 @@ describe('UploadForm signed-in deck recovery', () => {
       source: null,
     };
   }
+
+  it('finds the deck in My Decks after a reload instead of offering to send it again', async () => {
+    await getPendingUploadStore().save({
+      files: [new File(['x'], 'biochem.pdf', { type: 'application/pdf' })],
+      filename: 'biochem.pdf',
+      sizeBytes: 1,
+      submittedAt: Date.now() - 5_000,
+      recoveryToken: null,
+      signedIn: true,
+      pdfPageRange: null,
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getUploads: vi.fn().mockResolvedValue([makeUpload()]),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', '/api/download/u/recovered-key');
+    expect(
+      screen.queryByRole('button', { name: 'Continue' })
+    ).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/upload/file',
+      expect.anything()
+    );
+  });
 
   it('recovers a signed-in deck from My Decks when the response is lost', async () => {
     vi.stubGlobal(

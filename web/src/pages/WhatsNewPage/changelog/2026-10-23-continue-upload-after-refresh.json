@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-continue-upload-after-refresh",
+  "date": "2026-10-23",
+  "type": "feature",
+  "title": "Uploads: if the page reloads or closes mid-upload, come back and press Continue to finish it without picking the file again. If your deck was already done, it's waiting for you"
+}

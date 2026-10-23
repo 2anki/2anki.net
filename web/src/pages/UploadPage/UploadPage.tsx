@@ -28,7 +28,6 @@ import { RecentSources } from './components/RecentSources/RecentSources';
 import UploadForm from './components/UploadForm/UploadForm';
 import pageStyles from './UploadPage.module.css';
 
-const REATTACH_KEY = 'upload_pending_filename';
 const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
 const SIGNUP_RECENCY_MS = 10 * 60 * 1000;
 const AI_FLAG_KEY = 'claude-ai-flashcards';
@@ -75,16 +74,9 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     null
   );
   const [passConfirmation, setPassConfirmation] = useState<string | null>(null);
-  const [reattachFilename, setReattachFilename] = useState<string | null>(
-    () => {
-      const stored = globalThis.sessionStorage?.getItem(REATTACH_KEY) ?? null;
-      return stored != null && stored.length > 0 ? stored : null;
-    }
-  );
   const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
   const pageViewTracked = useRef(false);
   const signupTracked = useRef(false);
-  const reattachTracked = useRef(false);
 
   const isSignedIn = userLocals?.user?.id != null;
   const isPaying = isPayingUser(userLocals?.locals);
@@ -118,13 +110,6 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     pageViewTracked.current = true;
     track('upload_page_viewed');
   }, []);
-
-  useEffect(() => {
-    if (reattachTracked.current) return;
-    if (reattachFilename == null) return;
-    reattachTracked.current = true;
-    track('upload_reattach_shown');
-  }, [reattachFilename]);
 
   useEffect(() => {
     if (signupTracked.current) return;
@@ -259,13 +244,6 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           aria-live="polite"
         >
           <span>{passConfirmation}</span>
-        </div>
-      )}
-      {reattachFilename != null && (
-        <div className={pageStyles.reattachBanner} role="status">
-          <span>{t('upload.page.reattachPrefix')} </span>
-          <strong>{reattachFilename}</strong>
-          <span> {t('upload.page.reattachSuffix')}</span>
         </div>
       )}
       <div className={styles.aiOffBadge} role="status">
