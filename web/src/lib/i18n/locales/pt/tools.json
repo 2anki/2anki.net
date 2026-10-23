@@ -86,6 +86,7 @@
   },
   "photo": {
     "overLimit": "A foto passa do limite de 10 MB. Tente uma imagem menor.",
+    "handoffSkipped": "Carregamos as primeiras {{loaded}} fotos do seu envio. Faça cartões com elas e depois adicione as outras {{skipped}}.",
     "badFormat": "Use um formato de foto como JPEG, PNG, WebP, GIF ou HEIC.",
     "readError": "Não foi possível ler a imagem",
     "notAvailable": "O foto para baralho ainda não está disponível.",

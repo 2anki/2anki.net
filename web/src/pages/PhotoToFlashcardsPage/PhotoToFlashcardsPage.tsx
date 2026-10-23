@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
@@ -9,6 +9,7 @@ import { isPayingUser } from '../../components/NavigationBar/helpers/getPlanLabe
 import { track } from '../../lib/analytics/track';
 import styles from '../../styles/shared.module.css';
 import pageStyles from './PhotoToFlashcardsPage.module.css';
+import { readPhotoHandoff } from '../../lib/photos/photosFromUpload';
 import {
   prepareImageForVision,
   type PreparedImage,
@@ -117,6 +118,12 @@ export function PhotoToFlashcardsPage() {
   const [mode, setMode] = useState<PhotoMode>('generative');
   const [includeMcq, setIncludeMcq] = useState<boolean>(readStoredMcqEnabled);
   const [verbatimEmptyState, setVerbatimEmptyState] = useState(false);
+  const [handoffNotice, setHandoffNotice] = useState<{
+    loaded: number;
+    skipped: number;
+  } | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
   const card1Ref = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -135,6 +142,7 @@ export function PhotoToFlashcardsPage() {
     setCardCount(0);
     setError(null);
     setVerbatimEmptyState(false);
+    setHandoffNotice(null);
     resetInputs();
   };
 
@@ -171,6 +179,27 @@ export function PhotoToFlashcardsPage() {
     setVerbatimEmptyState(false);
     resetInputs();
   };
+
+  // Photos handed over from the upload page arrive in router state; they are
+  // loaded once, the same way picked photos are, and nothing runs until the
+  // person presses Make cards.
+  const handoffTakenRef = useRef(false);
+  useEffect(() => {
+    if (handoffTakenRef.current) return;
+    const handoff = readPhotoHandoff(location.state);
+    if (handoff == null) return;
+    handoffTakenRef.current = true;
+    appendPhotos(handoff.photos, 'library');
+    if (handoff.skipped > 0) {
+      setHandoffNotice({
+        loaded: handoff.photos.length,
+        skipped: handoff.skipped,
+      });
+    }
+    navigate(location.pathname, { replace: true, state: null });
+    // Read once on arrival; later state changes are this page's own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = Array.from(e.target.files ?? []);
@@ -618,6 +647,12 @@ export function PhotoToFlashcardsPage() {
           )}
         </p>
       </div>
+
+      {handoffNotice != null && (
+        <div className={styles.notificationWarning}>
+          {t('photo.handoffSkipped', handoffNotice)}
+        </div>
+      )}
 
       {error != null && (
         <div className={styles.notificationDanger}>{error}</div>

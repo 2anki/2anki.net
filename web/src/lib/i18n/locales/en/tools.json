@@ -86,6 +86,7 @@
   },
   "photo": {
     "overLimit": "Photo is over the 10 MB limit. Try a smaller image.",
+    "handoffSkipped": "Loaded the first {{loaded}} photos from your upload. Make cards from these, then add the other {{skipped}}.",
     "badFormat": "Use a photo format like JPEG, PNG, WebP, GIF, or HEIC.",
     "readError": "Could not read the image",
     "notAvailable": "Photo to deck isn't available yet.",

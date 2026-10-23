@@ -86,6 +86,7 @@
   },
   "photo": {
     "overLimit": "La photo dépasse la limite de 10 MB. Essaie une image plus petite.",
+    "handoffSkipped": "Les {{loaded}} premières photos de ton envoi sont chargées. Crée des cartes avec, puis ajoute les {{skipped}} autres.",
     "badFormat": "Utilise un format photo comme JPEG, PNG, WebP, GIF ou HEIC.",
     "readError": "Impossible de lire l'image",
     "notAvailable": "Photo vers paquet n'est pas encore disponible.",
