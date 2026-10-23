@@ -238,6 +238,7 @@ describe('BlockCallout plain-text back', () => {
     const settings = handler.settings;
     const embedImage = handler.embedImage;
     const embedAudioFile = handler.embedAudioFile;
+    const embedVideoFile = handler.embedVideoFile;
     const embedFile = handler.embedFile;
 
     await BlockCallout(callout, handler);
@@ -246,6 +247,7 @@ describe('BlockCallout plain-text back', () => {
     expect(handler.settings.isTextOnlyBack).toBe(true);
     expect(handler.embedImage).toBe(embedImage);
     expect(handler.embedAudioFile).toBe(embedAudioFile);
+    expect(handler.embedVideoFile).toBe(embedVideoFile);
     expect(handler.embedFile).toBe(embedFile);
   });
 

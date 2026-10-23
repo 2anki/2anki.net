@@ -289,6 +289,10 @@ function applyHierarchyFields(
   ankiNote.h3 = context?.h3 ?? '';
 }
 
+// Held in memory while it is downloaded, so an oversized video is counted as
+// a dropped asset instead of risking the conversion process.
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+
 class BlockHandler implements IBlockRenderer {
   api: NotionAPIWrapper;
 
@@ -480,6 +484,7 @@ class BlockHandler implements IBlockRenderer {
       sourceType: 'file',
       extractFreshUrl: (fresh) =>
         getVideoUrl(fresh as VideoBlockObjectResponse),
+      maxBytes: MAX_VIDEO_BYTES,
     });
     if (contents == null) {
       this.droppedFileAssetCount += 1;

@@ -5,7 +5,10 @@ import instrumentedAxios from '../../observability/instrumentedAxios';
 const isExpiredOrMissing = (status: number | undefined): boolean =>
   status === 403 || status === 404;
 
-export async function downloadMediaOrSkip(url: string): Promise<Buffer | null> {
+export async function downloadMediaOrSkip(
+  url: string,
+  maxBytes?: number
+): Promise<Buffer | null> {
   if (url.startsWith('data:')) {
     const commaIndex = url.indexOf(',');
     if (commaIndex < 0) return null;
@@ -17,12 +20,16 @@ export async function downloadMediaOrSkip(url: string): Promise<Buffer | null> {
   try {
     const response = await instrumentedAxios.get<Buffer>('notion', url, {
       responseType: 'arraybuffer',
+      ...(maxBytes == null
+        ? {}
+        : { maxContentLength: maxBytes, maxBodyLength: maxBytes }),
     });
     return response.data;
   } catch (error) {
     if (
       axios.isAxiosError(error) &&
-      isExpiredOrMissing(error.response?.status)
+      (isExpiredOrMissing(error.response?.status) ||
+        (maxBytes != null && error.message.includes('maxContentLength')))
     ) {
       return null;
     }

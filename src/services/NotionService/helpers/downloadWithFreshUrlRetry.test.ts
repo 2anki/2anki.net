@@ -74,11 +74,13 @@ describe('downloadWithFreshUrlRetry', () => {
     expect(extractFreshUrl).toHaveBeenCalledWith(freshBlock);
     expect(mockedDownload).toHaveBeenNthCalledWith(
       1,
-      'https://notion.s3/expired.png'
+      'https://notion.s3/expired.png',
+      undefined
     );
     expect(mockedDownload).toHaveBeenNthCalledWith(
       2,
-      'https://notion.s3/fresh.png'
+      'https://notion.s3/fresh.png',
+      undefined
     );
     expect(info).toHaveBeenCalledWith(expect.stringContaining('Recovered'));
     expect(warn).not.toHaveBeenCalled();
