@@ -1,5 +1,6 @@
 import type {
   AudioBlockObjectResponse,
+  VideoBlockObjectResponse,
   BlockObjectResponse,
   FileBlockObjectResponse,
   PdfBlockObjectResponse,
@@ -28,6 +29,7 @@ export interface IBlockRenderer {
   ): Promise<string | null>;
   embedImage(c: BlockObjectResponse): Promise<string>;
   embedAudioFile(c: AudioBlockObjectResponse): Promise<string>;
+  embedVideoFile(c: VideoBlockObjectResponse): Promise<string>;
   embedFile(
     block: FileBlockObjectResponse | PdfBlockObjectResponse
   ): Promise<string>;

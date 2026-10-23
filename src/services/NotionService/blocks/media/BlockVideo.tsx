@@ -4,11 +4,14 @@ import type { IBlockRenderer } from '../../BlockHandler/types';
 import { getVideoUrl } from './helpers/getVideoUrl';
 import { isVimeoLink } from './helpers/isVimeoLink';
 
-export const BlockVideo = (
+export const BlockVideo = async (
   c: VideoBlockObjectResponse,
   handler: IBlockRenderer
 ) => {
-  let url = getVideoUrl(c);
+  if (c.video.type === 'file') {
+    return handler.embedVideoFile(c);
+  }
+  const url = getVideoUrl(c);
   if (handler.settings?.isTextOnlyBack || !url) {
     return null;
   }

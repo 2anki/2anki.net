@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-notion-videos-stay-in-the-deck",
+  "date": "2026-10-23",
+  "type": "fix",
+  "title": "Notion: videos you uploaded to a page are now saved inside the deck and play offline in Anki. Before, they were linked and stopped playing about an hour after conversion."
+}

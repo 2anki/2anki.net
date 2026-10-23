@@ -6,6 +6,7 @@ import {
 } from '@notionhq/client';
 import {
   AudioBlockObjectResponse,
+  VideoBlockObjectResponse,
   BlockObjectResponse,
   FileBlockObjectResponse,
   GetBlockResponse,
@@ -74,6 +75,7 @@ import {
 import { downloadWithFreshUrlRetry } from '../helpers/downloadWithFreshUrlRetry';
 import { expandSyncedBlocks } from '../helpers/expandSyncedBlocks';
 import { getAudioSourceType, getAudioUrl } from '../helpers/getAudioUrl';
+import { getVideoUrl } from '../blocks/media/helpers/getVideoUrl';
 import getClozeDeletionCard from '../helpers/getClozeDeletionCard';
 import handleClozeDeletions from '../../../lib/parser/helpers/handleClozeDeletions';
 import hasInlineClozeCode from '../../../lib/parser/helpers/hasInlineClozeCode';
@@ -460,6 +462,31 @@ class BlockHandler implements IBlockRenderer {
     }
     this.exporter.addMedia(newName, contents);
     return `[sound:${newName}]`;
+  }
+
+  // A video uploaded to Notion is a signed link that dies after an hour, so
+  // the file is bundled and played from the deck instead of embedded by link.
+  async embedVideoFile(c: VideoBlockObjectResponse): Promise<string> {
+    const url = getVideoUrl(c);
+    if (this.settings.isTextOnlyBack || isTesting() || !url) {
+      return '';
+    }
+    const suffix = SuffixFrom(S3FileName(url));
+    const newName = getUniqueFileName(url) + (suffix ?? '.mp4');
+    const contents = await downloadWithFreshUrlRetry({
+      api: this.api,
+      blockId: c.id,
+      url,
+      sourceType: 'file',
+      extractFreshUrl: (fresh) =>
+        getVideoUrl(fresh as VideoBlockObjectResponse),
+    });
+    if (contents == null) {
+      this.droppedFileAssetCount += 1;
+      return '';
+    }
+    this.exporter.addMedia(newName, contents);
+    return `<video controls src="${newName}"></video>`;
   }
 
   async embedFile(
