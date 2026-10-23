@@ -299,9 +299,12 @@ const ApkgRouter = () => {
   // the landing page for "export anki deck to csv" search traffic, and a 401
   // after the file picker spent their intent for nothing. RequireAllowedOrigin
   // already populates res.locals, so the controller can still read the tier.
+  // Bounded per IP: the export is open to anonymous visitors and now unzips
+  // the upload before reading the deck.
   router.post(
     '/api/apkg/csv',
     RequireAllowedOrigin,
+    ipRateLimit(20),
     csvUpload.single('file'),
     normalizeUploadFilenames,
     (req, res) => controller.exportCsv(req, res)

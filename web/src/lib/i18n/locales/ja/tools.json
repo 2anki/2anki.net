@@ -451,6 +451,14 @@
     "removeConnection": "接続を削除",
     "addNodeHere": "ここにノードを追加"
   },
+  "deckUpload": {
+    "chooseTitle": "このZIPには{{n}}個のデッキがあります。どれを使いますか？",
+    "chooseAnother": "別のファイルを選ぶ",
+    "printThis": "このデッキを印刷",
+    "exportThis": "このデッキをエクスポート",
+    "notADeckBody": "このZIPに入っているのはノートで、Ankiデッキではありません。2ankiでデッキを作れます。",
+    "notADeckAction": "デッキを作る"
+  },
   "apkgCsv": {
     "formAria": ".apkg を CSV にエクスポート",
     "changeFile": "ファイルを変更",

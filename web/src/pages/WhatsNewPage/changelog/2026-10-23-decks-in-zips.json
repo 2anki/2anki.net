@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-decks-in-zips",
+  "date": "2026-10-23",
+  "type": "feature",
+  "title": "Print & CSV: an Anki deck saved as .zip or zipped with other files now opens, you pick the deck when there are several, and dropping an Anki deck on Upload offers Print or CSV with the same file"
+}

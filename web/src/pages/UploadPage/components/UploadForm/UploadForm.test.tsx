@@ -18,7 +18,7 @@ import {
   type Mock,
 } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import UploadForm from './UploadForm';
 
@@ -1654,7 +1654,7 @@ describe('UploadForm analytics events', () => {
     });
   });
 
-  it('leads an apkg-reject error with pick-a-different-file, and keeps /print as a quiet secondary link', async () => {
+  it('hands a finished deck to Print and CSV, and keeps choosing another file as a quiet option', async () => {
     const jsonBody = {
       code: 'unsupported_format',
       message: 'This file is already an Anki deck.',
@@ -1686,18 +1686,114 @@ describe('UploadForm analytics events', () => {
       );
     });
 
-    expect(container.textContent).toMatch(
-      /it cannot convert a deck that is already built/
-    );
-
-    const primary = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === 'Choose a different file'
-    );
-    expect(primary).toBeDefined();
-
-    const print = container.querySelector('a[href="/print"]');
+    expect(
+      screen.getByRole('button', { name: 'Print it as a PDF' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Export it to CSV' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Choose a different file' })
+    ).toBeInTheDocument();
     expect(container.querySelector('a[href="/transform"]')).toBeNull();
-    expect(print?.textContent).toMatch(/print it as a PDF/);
+  });
+
+  it('takes the same deck file to Print without choosing it again', async () => {
+    const jsonBody = {
+      code: 'unsupported_format',
+      message: 'This file is already an Anki deck.',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+        text: () => Promise.resolve(JSON.stringify(jsonBody)),
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      })
+    );
+    let handedOff: unknown = null;
+    function PrintProbe() {
+      handedOff = (useLocation().state as { handoffFile?: File } | null)
+        ?.handoffFile;
+      return <p>print page</p>;
+    }
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { container } = render(
+      <MemoryRouter initialEntries={['/upload']}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route
+              path="/upload"
+              element={<UploadForm setErrorMessage={vi.fn()} />}
+            />
+            <Route path="/print" element={<PrintProbe />} />
+          </Routes>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+    const deck = new File(['zip'], 'Biology.zip', { type: 'application/zip' });
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [deck],
+      configurable: true,
+    });
+    input.removeAttribute('required');
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Print it as a PDF' })
+    );
+
+    expect(await screen.findByText('print page')).toBeInTheDocument();
+    expect(handedOff).toBe(deck);
+    expect(track).toHaveBeenCalledWith('apkg_upload_handoff_clicked', {
+      to: 'print',
+    });
+  });
+
+  it('converts notes handed over from a deck tool straight away', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => new Promise(() => {}));
+    vi.stubGlobal('fetch', fetchMock);
+    const notes = new File(['# notes'], 'notes.zip', {
+      type: 'application/zip',
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: '/upload', state: { handoffFile: notes } },
+        ]}
+      >
+        <QueryClientProvider client={queryClient}>
+          <UploadForm setErrorMessage={vi.fn()} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/upload/file',
+        expect.objectContaining({ method: 'post' })
+      )
+    );
+    const body = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/upload/file'
+    )?.[1].body as FormData;
+    expect((body.get('pakker') as File).name).toBe('notes.zip');
   });
 
   it('clicking the apkg-reject primary action resets the form and opens the file picker', async () => {

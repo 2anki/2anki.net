@@ -468,6 +468,14 @@
     "removeConnection": "Remover conexão",
     "addNodeHere": "Adicionar nó aqui"
   },
+  "deckUpload": {
+    "chooseTitle": "Este zip tem {{n}} baralhos. Qual você quer?",
+    "chooseAnother": "Escolher outro arquivo",
+    "printThis": "Imprimir este baralho",
+    "exportThis": "Exportar este baralho",
+    "notADeckBody": "Este zip tem anotações, não um baralho do Anki. O 2anki pode criar um baralho com elas.",
+    "notADeckAction": "Criar um baralho com ele"
+  },
   "apkgCsv": {
     "formAria": "Exportar .apkg para CSV",
     "changeFile": "Trocar arquivo",

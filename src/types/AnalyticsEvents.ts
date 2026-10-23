@@ -154,6 +154,8 @@ export const KNOWN_EVENTS = new Set([
   'image_only_photo_deck_clicked',
   'apkg_reject_shown',
   'apkg_print_cta_clicked',
+  'apkg_upload_handoff_clicked',
+  'deck_upload_resolved',
   'print_preview_shown',
   'ankify_decklist_sorted',
   'empty_back_notice_shown',

@@ -468,6 +468,14 @@
     "removeConnection": "Retirer la connexion",
     "addNodeHere": "Ajouter un nœud ici"
   },
+  "deckUpload": {
+    "chooseTitle": "Ce zip contient {{n}} paquets. Lequel voulez-vous ?",
+    "chooseAnother": "Choisir un autre fichier",
+    "printThis": "Imprimer ce paquet",
+    "exportThis": "Exporter ce paquet",
+    "notADeckBody": "Ce zip contient des notes, pas un paquet Anki. 2anki peut en faire un paquet.",
+    "notADeckAction": "En faire un paquet"
+  },
   "apkgCsv": {
     "formAria": "Exporter le .apkg en CSV",
     "changeFile": "Changer de fichier",

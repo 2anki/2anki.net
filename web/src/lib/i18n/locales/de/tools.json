@@ -468,6 +468,14 @@
     "removeConnection": "Verbindung entfernen",
     "addNodeHere": "Hier Knoten hinzufügen"
   },
+  "deckUpload": {
+    "chooseTitle": "Diese ZIP-Datei enthält {{n}} Stapel. Welchen möchtest du?",
+    "chooseAnother": "Andere Datei wählen",
+    "printThis": "Diesen Stapel drucken",
+    "exportThis": "Diesen Stapel exportieren",
+    "notADeckBody": "Diese ZIP-Datei enthält Notizen, keinen Anki-Stapel. 2anki kann daraus einen Stapel machen.",
+    "notADeckAction": "Stapel daraus machen"
+  },
   "apkgCsv": {
     "formAria": ".apkg als CSV exportieren",
     "changeFile": "Datei ändern",
