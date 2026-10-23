@@ -68,7 +68,13 @@ class NotionRepository implements INotionRepository {
         })
         .onConflict('owner')
         .merge()
-        .then(() => buildResumePausedSyncsQuery(this.database, user))
+        .then(async () => {
+          try {
+            await buildResumePausedSyncsQuery(this.database, user);
+          } catch (error) {
+            console.error('[notion] resuming paused syncs failed', error);
+          }
+        })
         .then(() => {
           resolve(true);
         })
