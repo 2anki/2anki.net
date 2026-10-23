@@ -1,5 +1,6 @@
 export const KNOWN_EVENTS = new Set([
   'happy_score_ask_shown',
+  'deck_feedback_tapped',
   'upload_started',
   'sample_conversion_started',
   'sample_deck_downloaded',

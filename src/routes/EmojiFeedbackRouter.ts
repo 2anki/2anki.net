@@ -81,6 +81,45 @@ const EmojiFeedbackRouter = () => {
     controller.submit(req, res)
   );
 
+  /**
+   * @swagger
+   * /api/emoji-feedback/{id}:
+   *   patch:
+   *     summary: Add a comment and reply email to a rating saved earlier
+   *     tags: [Feedback]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [token]
+   *             properties:
+   *               token:
+   *                 type: string
+   *                 description: Returned when the rating was saved
+   *               comment:
+   *                 type: string
+   *               email:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Follow-up saved
+   *       400:
+   *         description: Invalid input
+   *       403:
+   *         description: Token does not match the rating
+   */
+  router.patch('/api/emoji-feedback/:id', optionalAuthMiddleware, (req, res) =>
+    controller.followUp(req, res)
+  );
+
   return router;
 };
 

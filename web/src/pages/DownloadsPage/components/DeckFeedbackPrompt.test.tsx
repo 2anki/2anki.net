@@ -3,10 +3,15 @@ import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const submitEmojiFeedback = vi.fn();
+const followUpEmojiFeedback = vi.fn();
 const startPassCheckout = vi.fn();
 
 vi.mock('../../../lib/backend/get2ankiApi', () => ({
-  get2ankiApi: () => ({ submitEmojiFeedback, startPassCheckout }),
+  get2ankiApi: () => ({
+    submitEmojiFeedback,
+    followUpEmojiFeedback,
+    startPassCheckout,
+  }),
 }));
 
 const mockUseUserLocals = vi.fn();
@@ -41,6 +46,8 @@ const freeUser = {
 beforeEach(() => {
   submitEmojiFeedback.mockReset();
   submitEmojiFeedback.mockResolvedValue(undefined);
+  followUpEmojiFeedback.mockReset();
+  followUpEmojiFeedback.mockResolvedValue(undefined);
   startPassCheckout.mockReset();
   mockTrack.mockClear();
   mockUseUserLocals.mockReturnValue(freeUser);
@@ -266,7 +273,7 @@ describe('DeckFeedbackPrompt', () => {
   });
 
   it('shows a retry button when the submit fails', async () => {
-    submitEmojiFeedback.mockRejectedValueOnce(new Error('network'));
+    submitEmojiFeedback.mockRejectedValue(new Error('network'));
     render(<DeckFeedbackPrompt />);
     fireEvent.click(screen.getByRole('button', { name: 'Yes, it worked' }));
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
@@ -288,6 +295,66 @@ describe('DeckFeedbackPrompt', () => {
   it('isDeckFeedbackSuppressed returns true when timestamp is in the future', () => {
     localStorage.setItem(SUPPRESSED_UNTIL_KEY, String(Date.now() + 1000));
     expect(isDeckFeedbackSuppressed()).toBe(true);
+  });
+});
+
+describe('DeckFeedbackPrompt — rating saved on the first tap', () => {
+  const receipt = { id: 7, token: 'tok' };
+
+  beforeEach(() => {
+    submitEmojiFeedback.mockResolvedValue(receipt);
+  });
+
+  it('saves the rating the moment it is tapped, before any follow-up', async () => {
+    render(<DeckFeedbackPrompt context={{ jobId: 3 }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, it worked' }));
+    await waitFor(() => {
+      expect(submitEmojiFeedback).toHaveBeenCalledWith(
+        5,
+        'downloads/deck_done',
+        undefined,
+        undefined,
+        { jobId: 3 }
+      );
+    });
+    expect(mockTrack).toHaveBeenCalledWith('deck_feedback_tapped', {
+      rating: 5,
+    });
+    await waitFor(() => expect(isDeckFeedbackSuppressed()).toBe(true));
+  });
+
+  it('saves a double tap once', () => {
+    render(<DeckFeedbackPrompt />);
+    const yes = screen.getByRole('button', { name: 'Yes, it worked' });
+    fireEvent.click(yes);
+    fireEvent.click(yes);
+    expect(submitEmojiFeedback).toHaveBeenCalledTimes(1);
+  });
+
+  it('attaches the comment to the saved row instead of rating again', async () => {
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Something was off' }));
+    fireEvent.change(screen.getByLabelText('What went wrong?'), {
+      target: { value: 'images were missing' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByText("We'll look at this deck.")).toBeVisible();
+    expect(submitEmojiFeedback).toHaveBeenCalledTimes(1);
+    expect(followUpEmojiFeedback).toHaveBeenCalledWith(
+      receipt,
+      'images were missing',
+      'free@example.com'
+    );
+  });
+
+  it('adds nothing more when a saved rating is skipped without a reply address', async () => {
+    mockUseUserLocals.mockReturnValue({ data: { locals: {}, user: null } });
+    render(<DeckFeedbackPrompt />);
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, it worked' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    expect(await screen.findByText('Feedback received.')).toBeInTheDocument();
+    expect(followUpEmojiFeedback).not.toHaveBeenCalled();
+    expect(submitEmojiFeedback).toHaveBeenCalledTimes(1);
   });
 });
 
