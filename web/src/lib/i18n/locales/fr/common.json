@@ -172,6 +172,9 @@
     },
     "form": {
       "makingDeck": "Création de ton paquet...",
+      "waitingForDeck": "Ta connexion s'est coupée, mais nous continuons à créer ton paquet. Laisse cet onglet ouvert et il apparaîtra ici.",
+      "waitingForDeckSignedIn": "Ta connexion s'est coupée, mais nous continuons à créer ton paquet. Laisse cet onglet ouvert, ou retrouve-le dans Mes paquets quand il sera prêt.",
+      "stopWaiting": "Arrêter d'attendre",
       "fetching": "Récupération de {{filename}} depuis {{source}}",
       "deckReady": "Ton paquet est prêt",
       "savedToDownloads": "{{deckName}} a été enregistré dans tes téléchargements",

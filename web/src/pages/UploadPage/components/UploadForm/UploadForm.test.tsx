@@ -59,6 +59,11 @@ vi.mock('../../../../lib/hooks/usePassPrices', () => ({
   usePassPrices: () => ({ '24h': '$6', '7d': '$12', '120d': '$29' }),
 }));
 
+vi.mock('./dropWaitPlan', () => ({
+  dropWaitDelays: vi.fn(() => []),
+}));
+
+import { dropWaitDelays } from './dropWaitPlan';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
 import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
@@ -4765,6 +4770,34 @@ describe('UploadForm signed-in deck recovery', () => {
     ).toBeNull();
   });
 
+  it('keeps checking My Decks while the deck is built, and says it will be there', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    vi.mocked(dropWaitDelays).mockReturnValueOnce([0, 0]);
+    const getUploads = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([makeUpload()]);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getUploads,
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', '/api/download/u/recovered-key');
+    expect(getUploads).toHaveBeenCalledTimes(3);
+  });
+
   it('falls back to the retry state when My Decks has no matching deck', async () => {
     vi.stubGlobal(
       'fetch',
@@ -4890,6 +4923,68 @@ describe('UploadForm anonymous deck recovery', () => {
     expect(
       screen.queryByRole('button', { name: 'Try again' })
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps looking while the server finishes the deck, then shows it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    vi.mocked(dropWaitDelays).mockReturnValueOnce([0, 0, 0]);
+    const getAnonymousRecoveredDeck = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(new Blob(['apkg']));
+    stubApi(getAnonymousRecoveredDeck);
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', 'blob:recovered');
+    expect(getAnonymousRecoveredDeck).toHaveBeenCalledTimes(3);
+    expect(
+      screen.queryByRole('button', { name: 'Try again' })
+    ).not.toBeInTheDocument();
+    expect(trackMock).toHaveBeenCalledWith(
+      'upload_failed',
+      expect.objectContaining({
+        reason: 'network',
+        recovered: true,
+        trigger: 'wait',
+      })
+    );
+  });
+
+  it('tells the visitor the deck is still being built and lets them stop waiting', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    vi.mocked(dropWaitDelays).mockReturnValueOnce([60_000]);
+    stubApi(vi.fn().mockResolvedValue(null));
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    expect(
+      await screen.findByText(
+        "Your connection dropped, but we're still building your deck. Keep this tab open and it will appear here."
+      )
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Stop waiting' }));
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(screen.queryByRole('button', { name: 'Stop waiting' })).toBeNull();
   });
 
   it('falls back to the retry state when no deck was stored', async () => {

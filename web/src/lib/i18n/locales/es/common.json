@@ -172,6 +172,9 @@
     },
     "form": {
       "makingDeck": "Creando tu mazo...",
+      "waitingForDeck": "Se cortó tu conexión, pero seguimos creando tu mazo. Deja esta pestaña abierta y aparecerá aquí.",
+      "waitingForDeckSignedIn": "Se cortó tu conexión, pero seguimos creando tu mazo. Deja esta pestaña abierta o búscalo en Mis mazos cuando termine.",
+      "stopWaiting": "Dejar de esperar",
       "fetching": "Obteniendo {{filename}} de {{source}}",
       "deckReady": "Tu mazo está listo",
       "savedToDownloads": "{{deckName}} se guardó en tus descargas",

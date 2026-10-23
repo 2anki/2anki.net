@@ -251,3 +251,43 @@ test('sends the picked file in the upload request at 375px', async ({
   expect(sentBody).toContain('zip bytes that must reach the server');
   expect(realErrors(errors)).toEqual([]);
 });
+
+test('keeps waiting for the deck after the connection drops at 375px', async ({
+  page,
+}) => {
+  const errors = collectConsoleErrors(page);
+  await mockBackend(page);
+  await page.route('**/api/upload/file', (route) => route.abort('failed'));
+  let recoveryChecks = 0;
+  await page.route('**/api/download/recover/**', (route) => {
+    recoveryChecks += 1;
+    if (recoveryChecks < 3) {
+      return route.fulfill({ status: 404, body: '' });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/octet-stream',
+      body: Buffer.from('fake-apkg'),
+    });
+  });
+
+  await page.goto('/upload');
+  await expect(page.locator('#upload-panel-local')).toBeVisible();
+  await page.setInputFiles('#pakker', {
+    name: 'notes.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('some notes'),
+  });
+
+  await expect(
+    page.getByText(
+      "Your connection dropped, but we're still building your deck."
+    )
+  ).toBeVisible({ timeout: 10_000 });
+  await noOverflow(page, 'waiting');
+  await expect(page.getByRole('link', { name: 'Download deck' })).toBeVisible({
+    timeout: 20_000,
+  });
+  expect(recoveryChecks).toBe(3);
+  expect(realErrors(errors)).toEqual([]);
+});

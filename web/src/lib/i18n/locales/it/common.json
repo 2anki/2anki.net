@@ -172,6 +172,9 @@
     },
     "form": {
       "makingDeck": "Sto creando il tuo mazzo...",
+      "waitingForDeck": "La connessione si è interrotta, ma stiamo ancora creando il tuo mazzo. Lascia aperta questa scheda e comparirà qui.",
+      "waitingForDeckSignedIn": "La connessione si è interrotta, ma stiamo ancora creando il tuo mazzo. Lascia aperta questa scheda, oppure trovalo in I miei mazzi quando è pronto.",
+      "stopWaiting": "Smetti di aspettare",
       "fetching": "Sto recuperando {{filename}} da {{source}}",
       "deckReady": "Il tuo mazzo è pronto",
       "savedToDownloads": "{{deckName}} è stato salvato nei tuoi download",
