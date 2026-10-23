@@ -1,4 +1,4 @@
-import { isAnkiPackageZip } from './isAnkiPackageZip';
+import { isAnkiPackageZip, isZipOfAnkiDecks } from './isAnkiPackageZip';
 
 describe('isAnkiPackageZip', () => {
   it.each([
@@ -20,5 +20,27 @@ describe('isAnkiPackageZip', () => {
     expect(isAnkiPackageZip(['deck/collection.anki2', 'deck/media'])).toBe(
       true
     );
+  });
+});
+
+describe('isZipOfAnkiDecks', () => {
+  it('detects a zip that holds only decks', () => {
+    expect(
+      isZipOfAnkiDecks([
+        'Biology.apkg',
+        'Chemistry.apkg',
+        'backup/Profile.colpkg',
+        '__MACOSX/._Biology.apkg',
+        '.DS_Store',
+      ])
+    ).toBe(true);
+  });
+
+  it('leaves a zip with notes beside a deck to the converter', () => {
+    expect(isZipOfAnkiDecks(['Biology.apkg', 'notes.md'])).toBe(false);
+  });
+
+  it('is false for a zip with no files', () => {
+    expect(isZipOfAnkiDecks(['folder/', '.DS_Store'])).toBe(false);
   });
 });

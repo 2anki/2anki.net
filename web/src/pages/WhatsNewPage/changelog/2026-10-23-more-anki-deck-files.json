@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-more-anki-deck-files",
+  "date": "2026-10-23",
+  "type": "feature",
+  "title": "Print & CSV: .colpkg collection exports, a collection file from an unpacked deck folder, and the zip of decks from a bulk download now open. Dropping any of them on Upload offers Print or CSV with the same file instead of saying no cards were found."
+}

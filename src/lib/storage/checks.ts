@@ -90,7 +90,7 @@ export const isAnkiDeckFile = (
   fileName: string | null | undefined
 ): boolean => {
   if (typeof fileName !== 'string') return false;
-  return fileName.toLowerCase().endsWith('.apkg');
+  return /\.(apkg|colpkg|anki2|anki21|anki21b)$/i.test(fileName);
 };
 
 export const isXmlFile = (fileName: string) => /\.xml$/i.test(fileName);

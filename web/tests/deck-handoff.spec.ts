@@ -76,3 +76,37 @@ test('a deck saved as .zip goes from Upload to a print preview without picking i
     errors.filter((text) => !/status of (400|401|404)/.test(text))
   ).toEqual([]);
 });
+
+test('a collection file from an unpacked deck folder previews on Print', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await mockBackend(page);
+  let previewedName: string | null = null;
+  await page.route('**/api/apkg/pdf/preview', async (route) => {
+    const body = route.request().postDataBuffer()?.toString('latin1') ?? '';
+    previewedName = /filename="([^"]+)"/.exec(body)?.[1] ?? null;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ image: null, totalCards: 0, previewedCards: 0 }),
+    });
+  });
+
+  await page.goto('/print');
+  const picker = page.locator('input[type="file"]').first();
+  await expect(picker).toHaveAttribute('accept', /\.anki21b/);
+  await picker.setInputFiles({
+    name: 'collection.anki21b',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from('zstd'),
+  });
+
+  await expect.poll(() => previewedName).toBe('collection.anki21b');
+  expect(
+    errors.filter((text) => !/status of (400|401|404)/.test(text))
+  ).toEqual([]);
+});

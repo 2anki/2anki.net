@@ -1,7 +1,9 @@
 import { strToU8, zipSync } from 'fflate';
+import { strFromU8, unzipSync } from 'fflate';
 
 import {
   DeckUploadError,
+  LEGACY_STUB_COLLECTION_MESSAGE,
   resolveDeckUpload,
   UNREADABLE_ZIP_MESSAGE,
 } from './resolveDeckUpload';
@@ -23,6 +25,57 @@ describe('resolveDeckUpload', () => {
       deck: APKG,
       deckName: 'Biology',
       shape: 'apkg',
+    });
+  });
+
+  it('passes a .colpkg collection export straight through', async () => {
+    expect(await resolveDeckUpload(APKG, 'Profile.colpkg')).toEqual({
+      kind: 'deck',
+      deck: APKG,
+      deckName: 'Profile',
+      shape: 'colpkg',
+    });
+  });
+
+  it.each(['collection.anki21b', 'collection.anki21', 'collection.anki2'])(
+    'packs a bare %s, taken out of a deck folder, back into a deck',
+    async (name) => {
+      const collection = Buffer.from('SQLite format 3\u0000 real notes');
+
+      const result = await resolveDeckUpload(collection, name);
+
+      expect(result).toMatchObject({
+        kind: 'deck',
+        deckName: 'collection',
+        shape: 'collection_file',
+      });
+      const entries =
+        result.kind === 'deck' ? unzipSync(new Uint8Array(result.deck)) : {};
+      expect(Object.keys(entries).sort()).toEqual([name, 'media'].sort());
+      expect(strFromU8(entries[name])).toBe(collection.toString('latin1'));
+      expect(strFromU8(entries.media)).toBe('{}');
+    }
+  );
+
+  it('explains the placeholder collection.anki2 instead of printing it', async () => {
+    const stub = Buffer.from(
+      'SQLite format 3\u0000 Please update to the latest Anki version, then import the .colpkg/.apkg file again.'
+    );
+
+    const error = await resolveDeckUpload(stub, 'collection.anki2').catch(
+      (e: unknown) => e
+    );
+
+    expect(error).toBeInstanceOf(DeckUploadError);
+    expect((error as Error).message).toBe(LEGACY_STUB_COLLECTION_MESSAGE);
+  });
+
+  it('takes a .colpkg out of a zip like an .apkg', async () => {
+    const upload = zip({ 'backup/Profile.colpkg': APKG });
+    expect(await resolveDeckUpload(upload, 'backup.zip')).toMatchObject({
+      kind: 'deck',
+      deckName: 'Profile',
+      shape: 'zip_one_deck',
     });
   });
 

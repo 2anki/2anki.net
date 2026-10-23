@@ -18,7 +18,11 @@ import { liftDecksToParent } from './liftDecksToParent';
 import { getMaxUploadCount } from '../../lib/misc/getMaxUploadCount';
 
 import { isZipContentFileSupported } from './isZipContentFileSupported';
-import { ANKI_PACKAGE_ZIP_MESSAGE, isAnkiPackageZip } from './isAnkiPackageZip';
+import {
+  ANKI_PACKAGE_ZIP_MESSAGE,
+  isAnkiPackageZip,
+  isZipOfAnkiDecks,
+} from './isAnkiPackageZip';
 import { convertAnkiAppDecksFromZip } from './convertAnkiAppDecksFromZip';
 import { getRelevantFiles } from './getRelevantFiles';
 import { enableMarkdownForMarkdownUploads } from './enableMarkdownForMarkdownUploads';
@@ -600,7 +604,8 @@ export const getPackagesFromZip = async (
     workspace.location
   );
 
-  if (isAnkiPackageZip(zipHandler.getFileNames())) {
+  const zipFileNames = zipHandler.getFileNames();
+  if (isAnkiPackageZip(zipFileNames) || isZipOfAnkiDecks(zipFileNames)) {
     throw new Error(ANKI_PACKAGE_ZIP_MESSAGE);
   }
 

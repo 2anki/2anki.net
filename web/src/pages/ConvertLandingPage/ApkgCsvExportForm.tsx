@@ -7,6 +7,7 @@ import styles from './ApkgCsvExportForm.module.css';
 import DeckChoice from '../../components/DeckUpload/DeckChoice';
 import NotADeckHandoff from '../../components/DeckUpload/NotADeckHandoff';
 import {
+  DECK_UPLOAD_ACCEPT,
   isDeckUploadName,
   readDeckUploadAnswer,
   readHandoffFile,
@@ -221,7 +222,7 @@ function ApkgCsvExportForm() {
             ref={inputRef}
             id="apkg-csv-file"
             type="file"
-            accept=".apkg,.zip"
+            accept={DECK_UPLOAD_ACCEPT}
             className={styles.fileInput}
             onChange={onFileChange}
             required

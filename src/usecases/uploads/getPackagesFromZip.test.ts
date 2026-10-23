@@ -1061,6 +1061,27 @@ describe('getPackagesFromZip — empty-deck reason', () => {
 });
 
 describe('getPackagesFromZip — Anki package renamed as zip', () => {
+  it('answers a zip of decks as a deck upload, not as an empty source', async () => {
+    const fileNames = ['Biology.apkg', 'Chemistry.apkg', '.DS_Store'];
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: 'x' })),
+      };
+    });
+
+    await expect(
+      getPackagesFromZip(
+        Buffer.from('fake-zip') as unknown as Uint8Array,
+        false,
+        new CardOption({}),
+        { location: FAKE_WORKSPACE_LOCATION } as Workspace
+      )
+    ).rejects.toThrow(/already an Anki deck/);
+    expect(mockPrepareDeck).not.toHaveBeenCalled();
+  });
+
   it('rejects the upload before any conversion runs', async () => {
     const fileNames = ['collection.anki2', 'media', '0', '1', '2'];
     mockZipHandlerClass.mockImplementation(function () {
