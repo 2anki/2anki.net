@@ -38,6 +38,11 @@ import {
 } from '../checkout/checkoutConflict';
 import type { ConversionReport } from '../interfaces/ConversionReport';
 
+export interface EmojiFeedbackReceipt {
+  id: number;
+  token: string;
+}
+
 export class TrackerSchemaError extends Error {
   readonly missing: string[];
 
@@ -1541,7 +1546,7 @@ export class Backend {
       uploadId?: number | null;
       inputFormat?: string | null;
     }
-  ): Promise<void> {
+  ): Promise<EmojiFeedbackReceipt | null> {
     const response = await post(`${this.baseURL}emoji-feedback`, {
       rating,
       page,
@@ -1553,6 +1558,28 @@ export class Backend {
     });
     if (!response.ok) {
       throw new Error('Failed to submit feedback');
+    }
+    try {
+      const body = (await response.json()) as Partial<EmojiFeedbackReceipt>;
+      return typeof body.id === 'number' && typeof body.token === 'string'
+        ? { id: body.id, token: body.token }
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async followUpEmojiFeedback(
+    receipt: EmojiFeedbackReceipt,
+    comment?: string,
+    email?: string
+  ): Promise<void> {
+    const response = await patch(
+      `${this.baseURL}emoji-feedback/${receipt.id}`,
+      { token: receipt.token, comment: comment ?? null, email: email ?? null }
+    );
+    if (!response.ok) {
+      throw new Error('Failed to submit feedback follow-up');
     }
   }
 

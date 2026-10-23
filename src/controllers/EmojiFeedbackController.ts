@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { Request, Response } from 'express';
 
 import { IEmojiFeedbackRepository } from '../data_layer/EmojiFeedbackRepository';
@@ -7,6 +8,7 @@ import {
   ResolvedRatedConversion,
 } from '../usecases/feedback/ResolveRatedConversionUseCase';
 import { getOwnerId } from '../lib/User/getOwner';
+import hmacToken from '../lib/misc/hmacToken';
 import { resolveClientIp } from '../lib/rateLimit/ipHelpers';
 
 const EMAIL_MAX_LENGTH = 254;
@@ -47,6 +49,9 @@ const parseInputFormat = (value: unknown): string | null => {
   return INPUT_FORMATS.has(trimmed) ? trimmed : null;
 };
 
+const followUpToken = (id: number): string =>
+  hmacToken(`emoji-feedback-follow-up:${id}`);
+
 class EmojiFeedbackController {
   constructor(
     private readonly repo: IEmojiFeedbackRepository,
@@ -86,8 +91,9 @@ class EmojiFeedbackController {
       parseId(req.body.upload_id)
     );
 
+    let id: number | null;
     try {
-      await this.repo.insert({
+      id = await this.repo.insert({
         rating,
         comment: sanitizedComment,
         page: sanitizedPage,
@@ -102,7 +108,11 @@ class EmojiFeedbackController {
       return;
     }
 
-    res.status(201).json({ message: 'Thank you for your feedback!' });
+    res.status(201).json({
+      message: 'Thank you for your feedback!',
+      id,
+      token: id == null ? null : followUpToken(id),
+    });
 
     await this.notifier.notifyIfLowRating({
       rating,
@@ -110,6 +120,55 @@ class EmojiFeedbackController {
       page: sanitizedPage,
       email: sanitizedEmail,
       owner,
+      ip: resolveClientIp(req),
+      now: new Date(),
+    });
+  }
+
+  // The rating is saved on the first tap; the comment and reply email follow
+  // later against the same row, proved by the token the first call returned.
+  async followUp(req: Request, res: Response) {
+    const id = parseId(req.params.id);
+    const token = req.body?.token;
+    if (id == null || typeof token !== 'string') {
+      res.status(400).json({ message: 'Invalid follow-up.' });
+      return;
+    }
+    const expected = followUpToken(id);
+    const given = Buffer.from(token);
+    const wanted = Buffer.from(expected);
+    if (given.length !== wanted.length || !timingSafeEqual(given, wanted)) {
+      res.status(403).json({ message: 'Invalid follow-up.' });
+      return;
+    }
+
+    const { comment, email } = req.body;
+    const sanitizedComment =
+      typeof comment === 'string' && comment.trim().length > 0
+        ? comment.trim().slice(0, 2000)
+        : null;
+    const sanitizedEmail = parseEmail(email);
+
+    let target;
+    try {
+      target = await this.repo.attachFollowUp(id, {
+        comment: sanitizedComment,
+        email: sanitizedEmail,
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to save feedback.' });
+      return;
+    }
+
+    res.status(200).json({ message: 'Thank you for your feedback!' });
+    if (target == null) return;
+
+    await this.notifier.notifyIfLowRating({
+      rating: target.rating,
+      comment: sanitizedComment,
+      page: target.page,
+      email: sanitizedEmail,
+      owner: target.owner,
       ip: resolveClientIp(req),
       now: new Date(),
     });

@@ -81,6 +81,10 @@ const EmojiFeedbackRouter = () => {
     controller.submit(req, res)
   );
 
+  router.patch('/api/emoji-feedback/:id', optionalAuthMiddleware, (req, res) =>
+    controller.followUp(req, res)
+  );
+
   return router;
 };
 
