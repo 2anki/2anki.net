@@ -1,4 +1,4 @@
-import { nameFromContent } from './sniffUpload';
+import { hasUnknownExtension, nameFromContent } from './sniffUpload';
 
 const text = (value: string) => Buffer.from(value, 'utf-8');
 
@@ -55,5 +55,26 @@ describe('nameFromContent', () => {
     expect(
       nameFromContent('cut', Buffer.concat([cut, text('é').subarray(0, 1)]))
     ).toBe('cut.txt');
+  });
+
+  it('reads an HTML page with an unknown extension as html', () => {
+    expect(
+      nameFromContent('Chapter 1.2', text('<!DOCTYPE html><p>x</p>'))
+    ).toBe('Chapter 1.2.html');
+  });
+
+  it('leaves .doc to the Word converter', () => {
+    expect(nameFromContent('old.doc', text('plain'))).toBe('old.doc');
+  });
+});
+
+describe('hasUnknownExtension', () => {
+  it.each([
+    ['notes.zip (1)', true],
+    ['lecture', true],
+    ['deck.pdf', false],
+    ['notes.text', false],
+  ])('%s -> %s', (name, expected) => {
+    expect(hasUnknownExtension(name)).toBe(expected);
   });
 });

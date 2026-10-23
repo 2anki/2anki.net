@@ -13,6 +13,7 @@ const KNOWN_EXTENSIONS = new Set([
   'txt',
   'csv',
   'tsv',
+  'doc',
   'docx',
   'dotx',
   'docm',
@@ -62,12 +63,18 @@ function extensionOf(name: string): string | null {
   return match == null ? null : match[1].toLowerCase();
 }
 
+// A zip lists its entry names in the central directory at the end.
+const ZIP_DIRECTORY_BYTES = 4 * 1024 * 1024;
+
 function zipKind(contents: Buffer): string {
-  if (contents.includes('word/document.xml')) return 'docx';
-  if (contents.includes('xl/workbook.xml')) return 'xlsx';
-  if (contents.includes('ppt/presentation.xml')) return 'pptx';
+  const directory = contents.subarray(-ZIP_DIRECTORY_BYTES);
+  if (directory.includes('word/document.xml')) return 'docx';
+  if (directory.includes('xl/workbook.xml')) return 'xlsx';
+  if (directory.includes('ppt/presentation.xml')) return 'pptx';
   return 'zip';
 }
+
+const HTML_START = /^\s*(<!doctype html|<html)/i;
 
 function isReadableText(head: Buffer): boolean {
   if (head.includes(NUL)) return false;
@@ -94,7 +101,8 @@ function sniffExtension(contents: Buffer): string | null {
   }
   if (contents.subarray(0, RTF_MAGIC.length).equals(RTF_MAGIC)) return 'rtf';
   const head = contents.subarray(0, SNIFF_BYTES);
-  return head.length > 0 && isReadableText(head) ? 'txt' : null;
+  if (head.length === 0 || !isReadableText(head)) return null;
+  return HTML_START.test(head.toString('utf-8')) ? 'html' : 'txt';
 }
 
 // The format is picked from the file name, so a browser-renamed copy
@@ -109,4 +117,12 @@ export function nameFromContent(name: string, contents: Buffer): string {
   if (extension != null && KNOWN_EXTENSIONS.has(extension)) return name;
   const sniffed = sniffExtension(contents);
   return sniffed == null ? name : `${name}.${sniffed}`;
+}
+
+export function hasUnknownExtension(name: string): boolean {
+  const extension = extensionOf(name);
+  return (
+    extension == null ||
+    !(KNOWN_EXTENSIONS.has(extension) || ALIASES.has(extension))
+  );
 }
