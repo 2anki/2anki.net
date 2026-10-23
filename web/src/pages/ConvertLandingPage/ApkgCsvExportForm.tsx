@@ -1,5 +1,5 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { track } from '../../lib/analytics/track';
@@ -179,12 +179,18 @@ function ApkgCsvExportForm() {
   };
 
   const location = useLocation();
+  const navigate = useNavigate();
   const handoffTakenRef = useRef(false);
   useEffect(() => {
     if (handoffTakenRef.current) return;
     const handedOff = readHandoffFile(location.state);
     if (handedOff == null) return;
     handoffTakenRef.current = true;
+    // Back, Forward or a reload must not export the same file again.
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: null,
+    });
     setFilename(handedOff.name);
     void exportFile(handedOff);
     // eslint-disable-next-line react-hooks/exhaustive-deps

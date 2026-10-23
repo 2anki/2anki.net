@@ -353,7 +353,9 @@ class ApkgController {
       });
       const upload = await readDeckUpload(req, res, 'print');
       if (upload == null) {
-        trackPdfExportFailed(res, 'not_apkg');
+        // A deck choice (409) is a question, not a failure.
+        if (res.statusCode === 422) trackPdfExportFailed(res, 'not_apkg');
+        if (res.statusCode === 400) trackPdfExportFailed(res, 'invalid_apkg');
         return;
       }
       const useCase = new ExportApkgToPdfUseCase(

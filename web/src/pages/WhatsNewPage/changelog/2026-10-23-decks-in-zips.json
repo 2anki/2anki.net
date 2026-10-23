@@ -2,5 +2,5 @@
   "id": "2026-10-23-decks-in-zips",
   "date": "2026-10-23",
   "type": "feature",
-  "title": "Print and Anki to CSV now open a deck saved as .zip or zipped with other files, ask which deck to use when there are several, and send a zip of notes to Upload. Dropping a finished deck on Upload takes you to Print or CSV with the same file"
+  "title": "Print & CSV: an Anki deck saved as .zip or zipped with other files now opens, you pick the deck when there are several, and dropping an Anki deck on Upload offers Print or CSV with the same file"
 }

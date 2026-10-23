@@ -92,4 +92,55 @@ describe('resolveDeckUpload', () => {
     expect(broken).toThrow(DeckUploadError);
     expect(broken).toThrow(UNREADABLE_ZIP_MESSAGE);
   });
+
+  it('refuses a tiny zip that claims billions of entries, quickly', () => {
+    const bomb = Buffer.alloc(98);
+    bomb.writeUInt32LE(0x06064b50, 0);
+    bomb.writeUInt32LE(0xffffffff, 32);
+    bomb.writeUInt32LE(0, 48);
+    bomb.writeUInt32LE(0x07064b50, 56);
+    bomb.writeUInt32LE(0, 64);
+    bomb.writeUInt32LE(0x06054b50, 76);
+    bomb.writeUInt16LE(0xffff, 84);
+
+    const started = Date.now();
+    expect(() => resolveDeckUpload(bomb, 'x.zip')).toThrow(
+      UNREADABLE_ZIP_MESSAGE
+    );
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
+  it('inflates a deck listed many times over only once', () => {
+    const single = zipSync({ 'a.apkg': APKG });
+    const view = Buffer.from(single);
+    const eocd = view.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+    const cdOffset = view.readUInt32LE(eocd + 16);
+    const cdSize = view.readUInt32LE(eocd + 12);
+    const entry = view.subarray(cdOffset, cdOffset + cdSize);
+    const copies = 50;
+    const directory = Buffer.concat(
+      Array.from({ length: copies }, () => entry)
+    );
+    const end = Buffer.from(view.subarray(eocd));
+    end.writeUInt16LE(copies, 8);
+    end.writeUInt16LE(copies, 10);
+    end.writeUInt32LE(directory.length, 12);
+    end.writeUInt32LE(cdOffset, 16);
+    const repeated = Buffer.concat([
+      view.subarray(0, cdOffset),
+      directory,
+      end,
+    ]);
+
+    const result = resolveDeckUpload(repeated, 'dup.zip');
+
+    expect(result).toMatchObject({ kind: 'deck', deckName: 'a' });
+    expect(result.kind === 'deck' && result.deck.equals(APKG)).toBe(true);
+  });
+
+  it('names a deck saved as .apkg.zip without either extension', () => {
+    expect(resolveDeckUpload(APKG, 'Biology.apkg.zip')).toMatchObject({
+      deckName: 'Biology',
+    });
+  });
 });

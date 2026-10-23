@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styles from './PrintForm.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
 import { useDropZone } from '../../../lib/hooks/useDropZone';
@@ -12,6 +12,7 @@ import PrintPreview, { PrintPreviewState } from './PrintPreview';
 import DeckChoice from '../../../components/DeckUpload/DeckChoice';
 import NotADeckHandoff from '../../../components/DeckUpload/NotADeckHandoff';
 import {
+  deckLabel,
   isDeckUploadName,
   readDeckUploadAnswer,
   readHandoffFile,
@@ -253,12 +254,18 @@ export default function PrintForm() {
   };
 
   const location = useLocation();
+  const navigate = useNavigate();
   const handoffTakenRef = useRef(false);
   useEffect(() => {
     if (handoffTakenRef.current) return;
     const handedOff = readHandoffFile(location.state);
     if (handedOff == null) return;
     handoffTakenRef.current = true;
+    // Back, Forward or a reload must not hand the same file over again.
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: null,
+    });
     void handleFile(handedOff);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
@@ -284,7 +291,11 @@ export default function PrintForm() {
         const url = globalThis.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${stripDeckExtension(file.name)}.pdf`;
+        const pdfName =
+          chosenEntryRef.current == null
+            ? stripDeckExtension(file.name)
+            : deckLabel(chosenEntryRef.current);
+        link.download = `${pdfName}.pdf`;
         link.click();
         globalThis.URL.revokeObjectURL(url);
         setState('done');

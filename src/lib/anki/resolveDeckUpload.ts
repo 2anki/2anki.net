@@ -27,6 +27,9 @@ export class DeckUploadError extends Error {
 
 const MAX_INNER_DECK_BYTES = 100 * 1024 * 1024;
 const MAX_COMPRESSION_RATIO = 100;
+// fflate trusts the zip's own entry count, so a tiny crafted zip can claim
+// billions of entries; real decks and exports hold far fewer.
+const MAX_ZIP_ENTRIES = 10_000;
 
 export const UNREADABLE_ZIP_MESSAGE =
   'This zip couldn’t be opened. It may still be downloading; wait for it to finish and try again.';
@@ -34,7 +37,7 @@ export const INNER_DECK_TOO_LARGE_MESSAGE =
   'The deck inside this zip is over 100 MB. Open it in Anki and export a smaller deck.';
 
 function stripExtension(name: string): string {
-  return path.posix.basename(name).replace(/\.(apkg|zip)$/i, '');
+  return path.posix.basename(name).replace(/(\.(apkg|zip))+$/i, '');
 }
 
 function isInnerDeck(name: string): boolean {
@@ -51,6 +54,9 @@ function listEntryNames(zip: Uint8Array): string[] {
   const names: string[] = [];
   unzipSync(zip, {
     filter: (file) => {
+      if (names.length >= MAX_ZIP_ENTRIES) {
+        throw new DeckUploadError(UNREADABLE_ZIP_MESSAGE);
+      }
       names.push(file.name);
       return false;
     },
@@ -60,9 +66,12 @@ function listEntryNames(zip: Uint8Array): string[] {
 
 function extractEntry(zip: Uint8Array, entryName: string): Buffer {
   let tooLarge = false;
+  let taken = false;
   const files = unzipSync(zip, {
     filter: (file) => {
-      if (file.name !== entryName) return false;
+      // A directory can list one name many times over the same data; inflate
+      // it once.
+      if (taken || file.name !== entryName) return false;
       if (
         file.originalSize > MAX_INNER_DECK_BYTES ||
         file.originalSize > file.size * MAX_COMPRESSION_RATIO + 1024
@@ -70,17 +79,22 @@ function extractEntry(zip: Uint8Array, entryName: string): Buffer {
         tooLarge = true;
         return false;
       }
+      taken = true;
       return true;
     },
   });
   if (tooLarge) throw new DeckUploadError(INNER_DECK_TOO_LARGE_MESSAGE);
   const contents = files[entryName];
   if (contents == null) throw new DeckUploadError(UNREADABLE_ZIP_MESSAGE);
-  return Buffer.from(contents);
+  return Buffer.from(contents.buffer, contents.byteOffset, contents.byteLength);
 }
 
 function readZip(upload: Buffer): { zip: Uint8Array; names: string[] } {
-  const zip = new Uint8Array(upload);
+  const zip = new Uint8Array(
+    upload.buffer,
+    upload.byteOffset,
+    upload.byteLength
+  );
   try {
     return { zip, names: listEntryNames(zip) };
   } catch {
@@ -117,7 +131,7 @@ export function resolveDeckUpload(
     };
   }
 
-  const decks = names.filter(isInnerDeck);
+  const decks = [...new Set(names.filter(isInnerDeck))];
   if (decks.length === 0) return { kind: 'not_a_deck' };
 
   if (chosenEntry != null && decks.includes(chosenEntry)) {

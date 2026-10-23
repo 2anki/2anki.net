@@ -1666,10 +1666,15 @@ function UploadForm({
   // A zip of notes handed over from Print or CSV: convert it straight away.
   const handoffTakenRef = useRef(false);
   useEffect(() => {
-    if (handoffTakenRef.current || userLocalsLoading) return;
+    if (handoffTakenRef.current || userLocalsLoading || sample) return;
     const handedOff = readHandoffFile(location.state);
     if (handedOff == null) return;
     handoffTakenRef.current = true;
+    // Back, Forward or a reload must not convert the same file again.
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: null,
+    });
     capturePdfPageRange();
     const formData = new FormData();
     formData.append('pakker', handedOff, handedOff.name);
