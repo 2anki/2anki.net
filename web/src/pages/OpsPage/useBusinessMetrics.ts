@@ -7,6 +7,7 @@ const REFRESH_MS = 30_000;
 const fetchBusinessMetrics = async (): Promise<BusinessMetricsResponse> => {
   const response = await fetch('/api/ops/business/metrics', {
     credentials: 'include',
+    cache: 'no-store',
   });
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`);

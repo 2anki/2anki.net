@@ -387,13 +387,11 @@ describe('OpsRouter /api/ops/business/metrics', () => {
     }
   });
 
-  it('lets business metrics keep its deliberate day-long cache header', async () => {
+  it('keeps business metrics out of the browser cache', async () => {
     const { url, close } = await startServer(true);
     try {
       const response = await fetch(`${url}/api/ops/business/metrics`);
-      expect(response.headers.get('cache-control')).toBe(
-        'private, max-age=86400'
-      );
+      expect(response.headers.get('cache-control')).toBe('no-store');
     } finally {
       await close();
     }

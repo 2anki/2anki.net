@@ -285,7 +285,6 @@ class OpsController {
     }
     try {
       const result = await this.getBusinessMetricsUseCase.execute();
-      res.set('Cache-Control', 'private, max-age=86400');
       res.status(200).json(result);
     } catch (error) {
       console.error('[ops] getBusinessMetrics failed', error);
