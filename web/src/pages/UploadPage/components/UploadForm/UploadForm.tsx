@@ -542,7 +542,11 @@ function UploadForm({
     },
   };
 
-  const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
+  const {
+    data: userLocals,
+    isLoading: userLocalsLoading,
+    isError: userLocalsFailed,
+  } = useUserLocals();
   const passPrices = usePassPrices();
   const queryClient = useQueryClient();
   const isAuthenticated = userLocals?.user?.id != null;
@@ -1569,6 +1573,10 @@ function UploadForm({
 
   useEffect(() => {
     if (userLocalsLoading || sample || resumeCheckedRef.current) return;
+    // Signed-out visitors get locals too, so a failed lookup means the viewer
+    // is unknown: offer nothing rather than risk sending one person's file
+    // under another person's account.
+    if (userLocalsFailed) return;
     resumeCheckedRef.current = true;
     void (async () => {
       const upload = await getPendingUploadStore().load();
@@ -1598,7 +1606,7 @@ function UploadForm({
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocalsLoading]);
+  }, [userLocalsLoading, userLocalsFailed]);
 
   useEffect(() => {
     if (zoneState !== 'idle') setResumeOffer(null);
@@ -1631,6 +1639,7 @@ function UploadForm({
       return;
     }
     if (await restoreFinishedDeck(upload, 'converting')) return;
+    if (zoneStateRef.current !== 'converting') return;
     const formData = new FormData();
     for (const file of upload.files) {
       formData.append('pakker', file, file.name);
@@ -3123,31 +3132,33 @@ function UploadForm({
           {passResumeNotice}
         </p>
       )}
-      {resumeOffer?.kind === 'continue' && zoneState === 'idle' && (
-        <div className={formStyles.resumeBanner} role="status">
-          <p className={formStyles.resumeText}>
-            {t('upload.form.resumeContinueBody', {
-              filename: resumeOffer.upload.filename,
-            })}
-          </p>
-          <div className={formStyles.resumeActions}>
-            <button
-              type="button"
-              className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
-              onClick={() => void handleResumeContinue()}
-            >
-              {t('upload.form.resumeContinue')}
-            </button>
-            <button
-              type="button"
-              className={formStyles.resetLink}
-              onClick={handleResumeDismiss}
-            >
-              {t('upload.form.resumeDismiss')}
-            </button>
+      {resumeOffer?.kind === 'continue' &&
+        zoneState === 'idle' &&
+        !isUploadLocked && (
+          <div className={formStyles.resumeBanner} role="status">
+            <p className={formStyles.resumeText}>
+              {t('upload.form.resumeContinueBody', {
+                filename: resumeOffer.upload.filename,
+              })}
+            </p>
+            <div className={formStyles.resumeActions}>
+              <button
+                type="button"
+                className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+                onClick={() => void handleResumeContinue()}
+              >
+                {t('upload.form.resumeContinue')}
+              </button>
+              <button
+                type="button"
+                className={formStyles.resetLink}
+                onClick={handleResumeDismiss}
+              >
+                {t('upload.form.resumeDismiss')}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       {resumeOffer?.kind === 'reattach' && zoneState === 'idle' && (
         <div className={formStyles.resumeBanner} role="status">
           <p className={formStyles.resumeText}>

@@ -12,9 +12,9 @@ async function mockSignedOutBackend(page: Page) {
   );
   await page.route('**/api/users/debug/locals**', (route) =>
     route.fulfill({
-      status: 401,
+      status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ message: 'Not authenticated' }),
+      body: JSON.stringify({ locals: {}, linked_email: '' }),
     })
   );
   await page.route('**/api/download/recover/**', (route) =>

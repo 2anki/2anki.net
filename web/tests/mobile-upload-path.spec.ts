@@ -187,6 +187,15 @@ test('a tab discarded mid-upload offers to continue the file on reload at 375px'
 }) => {
   const errors = collectConsoleErrors(page);
   await mockBackend(page);
+  // Signed-out visitors get locals with no user; the resume offer needs to
+  // know who is looking before it shows anyone a file.
+  await page.route('**/api/users/debug/locals**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ locals: {}, linked_email: '' }),
+    })
+  );
   await page.route('**/api/upload/file', async () => {
     await new Promise((r) => setTimeout(r, 30_000));
   });

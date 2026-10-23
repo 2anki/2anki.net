@@ -4217,6 +4217,34 @@ describe('UploadForm reattach recovery', () => {
     });
   });
 
+  it('offers nothing and keeps the file when the account lookup failed', async () => {
+    await savePending('biochem.pdf');
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('down'),
+      isError: true,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await act(async () => {});
+
+    expect(
+      screen.queryByRole('button', { name: 'Continue' })
+    ).not.toBeInTheDocument();
+    expect(await getPendingUploadStore().load()).toMatchObject({
+      filename: 'biochem.pdf',
+    });
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  });
+
   it('warns before the page unloads while the upload is in flight', async () => {
     vi.stubGlobal(
       'fetch',
