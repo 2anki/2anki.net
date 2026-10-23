@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-deck-preview-blank-cards",
+  "date": "2026-10-23",
+  "type": "fix",
+  "title": "Deck preview: cards no longer show up as an empty box in Chrome"
+}
