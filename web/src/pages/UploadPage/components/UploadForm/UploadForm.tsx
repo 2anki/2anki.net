@@ -380,7 +380,14 @@ function UploadForm({
   const [rescueFiles, setRescueFiles] = useState<File[]>([]);
   const [waitingForDeck, setWaitingForDeck] = useState(false);
   const stopWaitingRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => stopWaitingRef.current?.(), []);
+  const unmountedRef = useRef(false);
+  useEffect(
+    () => () => {
+      unmountedRef.current = true;
+      stopWaitingRef.current?.();
+    },
+    []
+  );
   // True while the last submit was the AI resend from the empty state, so a
   // second empty result after Claude tried never offers AI again.
   const [lastSubmitUsedAi, setLastSubmitUsedAi] = useState(false);
@@ -1474,6 +1481,7 @@ function UploadForm({
       stopped = true;
       wake?.();
     };
+    unmountedRef.current = false;
     setWaitingForDeck(true);
     setProgressSlow(true);
     try {
@@ -1487,6 +1495,7 @@ function UploadForm({
         });
         if (stopped || zoneStateRef.current !== 'converting') return false;
         if (await lookOnce('wait')) return true;
+        if (stopped) return false;
       }
       return false;
     } finally {
@@ -1577,6 +1586,7 @@ function UploadForm({
       ) {
         return true;
       }
+      if (unmountedRef.current) return false;
       return handleUploadError(error, uploadedFiles, isRetry, submittedAt);
     }
     return true;
@@ -1995,7 +2005,7 @@ function UploadForm({
         </p>
         {waitingForDeck && (
           <>
-            <p className={formStyles.statusText}>
+            <p className={formStyles.statusText} role="status">
               {t(
                 isAuthenticated
                   ? 'upload.form.waitingForDeckSignedIn'

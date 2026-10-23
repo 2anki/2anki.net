@@ -4987,6 +4987,32 @@ describe('UploadForm anonymous deck recovery', () => {
     expect(screen.queryByRole('button', { name: 'Stop waiting' })).toBeNull();
   });
 
+  it('records no upload failure when the page is closed while waiting', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    vi.mocked(dropWaitDelays).mockReturnValueOnce([60_000]);
+    stubApi(vi.fn().mockResolvedValue(null));
+    const trackMock = vi.mocked(track);
+
+    const { container, unmount } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+    await screen.findByRole('button', { name: 'Stop waiting' });
+    trackMock.mockClear();
+
+    unmount();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'upload_failed',
+      expect.anything()
+    );
+  });
+
   it('falls back to the retry state when no deck was stored', async () => {
     vi.stubGlobal(
       'fetch',
