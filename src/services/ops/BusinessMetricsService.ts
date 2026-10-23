@@ -83,8 +83,11 @@ export const SIGNUPS_24H_LOOKBACK_DAYS = 1;
 export const SIGNUPS_7D_LOOKBACK_DAYS = 7;
 
 export interface IHappyScoreAskRepository {
-  countByName(name: string, since: Date): Promise<number>;
+  countDistinctAsks(name: string, since: Date): Promise<number>;
+  firstEventAt(name: string): Promise<Date | null>;
 }
+
+const DECK_DONE_FEEDBACK_PAGE = 'downloads/deck_done';
 
 export interface BusinessMetricsServiceDeps {
   stripeFactory?: () => Stripe;
@@ -365,12 +368,25 @@ export class BusinessMetricsService {
   private async fetchHappyScoreWindows(now: Date): Promise<HappyScoreWindow[]> {
     return Promise.all(
       HAPPY_SCORE_WINDOWS.map(async ({ label, days }) => {
-        const since = new Date(now.getTime() - days * SECONDS_PER_DAY * 1000);
+        const windowStart = new Date(
+          now.getTime() - days * SECONDS_PER_DAY * 1000
+        );
+        const firstAsk =
+          this.happyScoreAskRepository == null
+            ? null
+            : await this.happyScoreAskRepository.firstEventAt(
+                HAPPY_SCORE_ASK_EVENT
+              );
+        const since =
+          firstAsk != null && firstAsk > windowStart ? firstAsk : windowStart;
         const [counts, asks] = await Promise.all([
-          this.emojiFeedbackRepository.countByRating(since),
+          this.emojiFeedbackRepository.countByRating(
+            since,
+            DECK_DONE_FEEDBACK_PAGE
+          ),
           this.happyScoreAskRepository == null
             ? Promise.resolve(null)
-            : this.happyScoreAskRepository.countByName(
+            : this.happyScoreAskRepository.countDistinctAsks(
                 HAPPY_SCORE_ASK_EVENT,
                 since
               ),

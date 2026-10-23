@@ -81,9 +81,14 @@ export function DeckFeedbackPrompt({
   const [reason, setReason] = useState<ReasonTag | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
+  const askedJobId = context?.jobId ?? null;
+  const askedUploadId = context?.uploadId ?? null;
   useEffect(() => {
-    track(HAPPY_SCORE_ASK_EVENT);
-  }, []);
+    track(HAPPY_SCORE_ASK_EVENT, {
+      job_id: askedJobId,
+      upload_id: askedUploadId,
+    });
+  }, [askedJobId, askedUploadId]);
 
   useEffect(() => {
     if (userEmail) {

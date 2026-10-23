@@ -26,7 +26,10 @@ interface EmojiFeedbackEntry {
 
 export interface IEmojiFeedbackRepository {
   insert(entry: EmojiFeedbackEntry): Promise<void>;
-  countByRating(since: Date): Promise<EmojiFeedbackRatingCount[]>;
+  countByRating(
+    since: Date,
+    page?: string
+  ): Promise<EmojiFeedbackRatingCount[]>;
   recentComments(limit: number): Promise<EmojiFeedbackCommentEntry[]>;
   countLowRatingsFromEmailOnDay(email: string, day: Date): Promise<number>;
 }
@@ -68,13 +71,16 @@ export class EmojiFeedbackRepository implements IEmojiFeedbackRepository {
     await this.buildInsertQuery(entry);
   }
 
-  async countByRating(since: Date): Promise<EmojiFeedbackRatingCount[]> {
-    const rows = await this.database(this.table)
+  async countByRating(
+    since: Date,
+    page?: string
+  ): Promise<EmojiFeedbackRatingCount[]> {
+    const query = this.database(this.table)
       .select('rating')
       .count<RatingRow[]>('* as count')
-      .where('created_at', '>=', since)
-      .groupBy('rating')
-      .orderBy('rating', 'asc');
+      .where('created_at', '>=', since);
+    if (page != null) query.andWhere('page', page);
+    const rows = await query.groupBy('rating').orderBy('rating', 'asc');
     return rows.map((row) => ({
       rating: row.rating,
       count: Number(row.count),
@@ -131,10 +137,13 @@ export class InMemoryEmojiFeedbackRepository implements IEmojiFeedbackRepository
     this.rows.push({ ...entry, created_at: new Date() });
   }
 
-  async countByRating(since: Date): Promise<EmojiFeedbackRatingCount[]> {
+  async countByRating(
+    since: Date,
+    page?: string
+  ): Promise<EmojiFeedbackRatingCount[]> {
     const counts = new Map<number, number>();
     for (const row of this.rows) {
-      if (row.created_at >= since) {
+      if (row.created_at >= since && (page == null || row.page === page)) {
         counts.set(row.rating, (counts.get(row.rating) ?? 0) + 1);
       }
     }

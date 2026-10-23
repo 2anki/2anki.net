@@ -214,8 +214,9 @@ export default function BusinessTab() {
       >
         <p className={styles.sectionHint}>
           Positive share of deck-done ratings, among people who answered. Hidden
-          under 10 answers. Asked and response rate start counting from this
-          release.
+          under 10 answers. Only ratings from the deck-done prompt count, and
+          every window starts at the first recorded ask. Asked counts one per
+          deck (one per person for asks before the deck was recorded).
         </p>
         <div className={styles.tableScroll}>
           <table className={styles.table}>
