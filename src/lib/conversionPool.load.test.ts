@@ -53,7 +53,7 @@ function buildJobSpecs(): JobSpec[] {
   for (let i = 0; i < 3; i++) {
     specs.push({
       label: `unsupported-${i}.xyz`,
-      file: makeFile(`unsupported-${i}.xyz`, `payload ${i}`),
+      file: makeFile(`unsupported-${i}.xyz`, `payload ${i}\0`),
       expect: 'empty-success',
       withProgressChannel: false,
     });
