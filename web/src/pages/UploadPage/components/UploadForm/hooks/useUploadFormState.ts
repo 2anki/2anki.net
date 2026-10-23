@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import type { UploadErrorBody } from '../../../../../types/UploadErrorBody';
+import type {
+  PdfChoicePrompt,
+  PdfFallbackMode,
+} from '../../../../../lib/upload/pdfFallback';
 import type { StructureRescueRule } from '../../../../DownloadsPage/helpers/parseStructureRescuedPayload';
 import type { UploadSource } from '../UploadSourceChips';
 
@@ -18,7 +22,8 @@ export type ZoneState =
   | 'claimingHeld'
   | 'heldReady'
   | 'heldExpired'
-  | 'aiPreviewGate';
+  | 'aiPreviewGate'
+  | 'choosePdfMode';
 
 export interface HeldDeckState {
   cardCount: number;
@@ -90,6 +95,9 @@ export function useUploadFormState(onReset: () => void) {
   const [creditsUsed, setCreditsUsed] = useState<number>(0);
   const [structureRescuedRule, setStructureRescuedRule] =
     useState<StructureRescueRule | null>(null);
+  const [pdfChoice, setPdfChoice] = useState<PdfChoicePrompt | null>(null);
+  const [pdfFallbackMode, setPdfFallbackMode] =
+    useState<PdfFallbackMode | null>(null);
   const [mcqDrawerOpen, setMcqDrawerOpen] = useState(false);
   const [mcqShowAnswer, setMcqShowAnswer] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
@@ -142,6 +150,8 @@ export function useUploadFormState(onReset: () => void) {
     setOverSplit(false);
     setCreditsUsed(0);
     setStructureRescuedRule(null);
+    setPdfChoice(null);
+    setPdfFallbackMode(null);
     setMcqDrawerOpen(false);
     setMcqShowAnswer(false);
     setWarningMessage(null);
@@ -211,6 +221,10 @@ export function useUploadFormState(onReset: () => void) {
     setCreditsUsed,
     structureRescuedRule,
     setStructureRescuedRule,
+    pdfChoice,
+    setPdfChoice,
+    pdfFallbackMode,
+    setPdfFallbackMode,
     mcqDrawerOpen,
     setMcqDrawerOpen,
     mcqShowAnswer,

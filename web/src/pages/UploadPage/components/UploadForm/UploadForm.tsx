@@ -70,6 +70,15 @@ import { UserNotice } from '../../../../lib/errors/UserNotice';
 import { snapshotUploadBody, UnreadableFileError } from './assertFilesReadable';
 import { dropWaitDelays } from './dropWaitPlan';
 import {
+  forgetPdfFallback,
+  mayNeedPdfQuestion,
+  PDF_FALLBACK_OPTION,
+  readPdfChoicePrompt,
+  readRememberedPdfFallback,
+  rememberPdfFallback,
+  type PdfFallbackMode,
+} from '../../../../lib/upload/pdfFallback';
+import {
   HANDOFF_PHOTOS_STATE_KEY,
   HANDOFF_SKIPPED_STATE_KEY,
   isHeicPhoto,
@@ -219,6 +228,13 @@ const RESCUE_LABEL_KEYS = new Map<RescueRule, string>([
   ['bullets', 'rescueBullets'],
   ['guess', 'rescueGuess'],
 ]);
+
+function toPageBucket(pageCount: number): string {
+  if (pageCount <= 0) return 'unknown';
+  if (pageCount <= 10) return '1-10';
+  if (pageCount <= 50) return '11-50';
+  return '51+';
+}
 
 function zoneStateForUploadError(
   message: UploadErrorBody
@@ -378,6 +394,7 @@ function UploadForm({
   // them back with the chosen rule. Remote (Dropbox, Drive) submits clear it:
   // those bytes never reach the browser, so no button is offered for them.
   const [rescueFiles, setRescueFiles] = useState<File[]>([]);
+  const lastFormDataRef = useRef<FormData | null>(null);
   const [waitingForDeck, setWaitingForDeck] = useState(false);
   const stopWaitingRef = useRef<(() => void) | null>(null);
   const unmountedRef = useRef(false);
@@ -442,6 +459,10 @@ function UploadForm({
     setCreditsUsed,
     structureRescuedRule,
     setStructureRescuedRule,
+    pdfChoice,
+    setPdfChoice,
+    pdfFallbackMode,
+    setPdfFallbackMode,
     mcqDrawerOpen,
     setMcqDrawerOpen,
     mcqShowAnswer,
@@ -549,6 +570,7 @@ function UploadForm({
     setAiPreviewUnavailable,
     setZoneState,
     setStructureRescuedRule,
+    setPdfFallbackMode,
     recoverDownload: (recoveryUrl, errorMessage) => {
       setDownloadLink(recoveryUrl);
       setDownloadRecovered(true);
@@ -1298,6 +1320,16 @@ function UploadForm({
         showLockedPdfState(firstFile);
         return false;
       }
+      const prompt = readPdfChoicePrompt(body);
+      if (prompt != null) {
+        setPdfChoice(prompt);
+        setZoneState('choosePdfMode');
+        track('pdf_fallback_choice_shown', {
+          reason: prompt.reason,
+          pageBucket: toPageBucket(prompt.pageCount),
+        });
+        return false;
+      }
     } catch {
       // non-JSON response — fall through to error
     }
@@ -1522,6 +1554,15 @@ function UploadForm({
     isRetry: boolean
   ): Promise<boolean> => {
     setRescueFiles(uploadedFiles);
+    // A PDF with no readable text is the one thing the server will not guess
+    // about: it asks which cards to make, unless this device already said.
+    if (
+      !formData.has(PDF_FALLBACK_OPTION) &&
+      mayNeedPdfQuestion(uploadedFiles)
+    ) {
+      formData.set(PDF_FALLBACK_OPTION, 'ask');
+    }
+    lastFormDataRef.current = formData;
     // The server has no HEIC reader, so an iPhone photo would come back as an
     // empty deck; Photo to Deck reads it in the browser instead.
     if (uploadedFiles.length > 0 && uploadedFiles.every(isHeicPhoto)) {
@@ -2181,6 +2222,26 @@ function UploadForm({
       {structureRescuedRule != null && (
         <div className={formStyles.warningInline}>
           <StructureRescuedNotice rule={structureRescuedRule} source="upload" />
+        </div>
+      )}
+      {pdfFallbackMode != null && (
+        <div className={formStyles.warningInline}>
+          <p>
+            {t(
+              pdfFallbackMode === 'single'
+                ? 'upload.form.pdfFallbackSingleNote'
+                : 'upload.form.pdfFallbackPairsNote'
+            )}
+          </p>
+          {readRememberedPdfFallback() != null && (
+            <button
+              type="button"
+              className={formStyles.resetLink}
+              onClick={handleForgetPdfFallback}
+            >
+              {t('upload.form.pdfFallbackAskAgain')}
+            </button>
+          )}
         </div>
       )}
       {!aiOn &&
@@ -3141,6 +3202,101 @@ function UploadForm({
     );
   };
 
+  const handlePdfChoice = (mode: PdfFallbackMode, remember: boolean) => {
+    const source = lastFormDataRef.current;
+    if (rescueFiles.length === 0 || source == null) return;
+    const next = new FormData();
+    for (const [key, value] of source.entries()) next.append(key, value);
+    const carriesFiles = next
+      .getAll('pakker')
+      .some((entry) => entry instanceof File && entry.name !== '');
+    if (!carriesFiles) {
+      next.delete('pakker');
+      for (const file of rescueFiles) next.append('pakker', file, file.name);
+    }
+    next.set(PDF_FALLBACK_OPTION, mode);
+    if (remember) rememberPdfFallback(mode);
+    track('pdf_fallback_chosen', {
+      mode,
+      reason: pdfChoice?.reason ?? 'no_text',
+      remembered: remember,
+    });
+    setPdfChoice(null);
+    void runFileUpload(next, rescueFiles, false);
+  };
+
+  const handleForgetPdfFallback = () => {
+    forgetPdfFallback();
+    track('pdf_fallback_forgotten');
+    setPdfFallbackMode(null);
+  };
+
+  const [rememberPdfChoice, setRememberPdfChoice] = useState(false);
+
+  const renderPdfChoiceState = () => {
+    const bodyKey =
+      pdfChoice?.reason === 'locked'
+        ? 'upload.form.pdfChoiceBodyLocked'
+        : pdfChoice?.reason === 'over_split'
+          ? 'upload.form.pdfChoiceBodyOverSplit'
+          : 'upload.form.pdfChoiceBodyNoText';
+    return (
+      <div className={formStyles.stateContent}>
+        <WarningIcon className={formStyles.iconWarning} />
+        <p className={formStyles.emptyTitle}>
+          {t('upload.form.pdfChoiceTitle')}
+        </p>
+        <p className={formStyles.emptyBody}>{t(bodyKey)}</p>
+        <div className={formStyles.emptyActions}>
+          <button
+            type="button"
+            className={formStyles.actionButton}
+            onClick={() => handlePdfChoice('pairs', rememberPdfChoice)}
+          >
+            {t('upload.form.pdfChoicePairs')}
+          </button>
+          <p className={formStyles.emptyBody}>
+            {t('upload.form.pdfChoicePairsHint')}
+          </p>
+          <button
+            type="button"
+            className={formStyles.actionButton}
+            onClick={() => handlePdfChoice('single', rememberPdfChoice)}
+          >
+            {t('upload.form.pdfChoiceSingle')}
+          </button>
+          <p className={formStyles.emptyBody}>
+            {t('upload.form.pdfChoiceSingleHint')}
+          </p>
+          {isAuthenticated && isPaying && rescueFiles.length === 1 && (
+            <button
+              type="button"
+              className={formStyles.actionButton}
+              onClick={handleAiRescue}
+            >
+              {t('upload.form.aiRescueMake')}
+            </button>
+          )}
+          <label className={formStyles.emptyBody}>
+            <input
+              type="checkbox"
+              checked={rememberPdfChoice}
+              onChange={(event) => setRememberPdfChoice(event.target.checked)}
+            />{' '}
+            {t('upload.form.pdfChoiceRemember')}
+          </label>
+          <button
+            type="button"
+            className={formStyles.resetLink}
+            onClick={startOver}
+          >
+            {t('upload.form.tryDifferent')}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // The photos ride along to Photo to Deck, taken out of the zip here, so the
   // person does not unzip and pick them again. Nothing is sent to AI until
   // they press Make cards there.
@@ -3216,6 +3372,7 @@ function UploadForm({
     if (isUploadLocked && zoneState === 'idle') return renderLockedState();
     if (validation && zoneState === 'idle') return renderValidationState();
     if (zoneState === 'converting') return renderConvertingState();
+    if (zoneState === 'choosePdfMode') return renderPdfChoiceState();
     if (zoneState === 'success') return renderSuccessState();
     if (zoneState === 'multiDeck') return renderMultiDeckState();
     if (zoneState === 'emptyDeck') return renderEmptyDeckState();
@@ -3255,6 +3412,7 @@ function UploadForm({
     converting: 'upload.form.liveConverting',
     emptyDeck: 'upload.form.liveEmptyDeck',
     imageOnly: 'upload.form.liveImageOnly',
+    choosePdfMode: 'upload.form.pdfChoiceTitle',
     error: 'upload.form.liveError',
     limitReached: 'upload.form.liveLimitReached',
     lockedPdf: 'upload.form.liveLockedPdf',

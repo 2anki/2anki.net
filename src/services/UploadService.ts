@@ -138,6 +138,7 @@ import {
   isPdfPasswordSentinel,
   parsePdfPasswordSentinel,
 } from '../lib/pdf/pdfPasswordSentinel';
+import { parsePdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
 import { isPdfPageRangeError } from '../lib/pdf/pdfPageRange';
 import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
@@ -1278,7 +1279,7 @@ class UploadService {
         return await this.handleAsyncUpload(
           req,
           res,
-          settings,
+          UploadService.withoutPdfQuestion(req, settings),
           ws,
           String(owner),
           paying
@@ -1428,6 +1429,16 @@ class UploadService {
         return res.status(400).json({
           code: 'pdf_page_range',
           message: err.message,
+        });
+      } else if (
+        err instanceof Error &&
+        parsePdfFallbackChoiceSentinel(err.message) != null
+      ) {
+        const choice = parsePdfFallbackChoiceSentinel(err.message);
+        return res.status(409).json({
+          code: 'choose_pdf_mode',
+          reason: choice?.reason,
+          page_count: choice?.pageCount,
         });
       } else if (err instanceof Error && isPdfPasswordSentinel(err.message)) {
         const filename = parsePdfPasswordSentinel(err.message) ?? 'your file';
@@ -1694,6 +1705,23 @@ class UploadService {
     return mergeStoredCardOptions(stored, requestOptions);
   }
 
+  // A background job has nobody to answer "what should the PDF become", so it
+  // keeps the page pairs it always made.
+  private static withoutPdfQuestion(
+    req: express.Request,
+    settings: CardOption
+  ): CardOption {
+    if (settings.pdfFallback !== 'ask') return settings;
+    const copy = new CardOption({
+      ...((req.body ?? {}) as Record<string, string>),
+      'pdf-fallback': 'pairs',
+    });
+    copy.n2aBasic = settings.n2aBasic;
+    copy.n2aCloze = settings.n2aCloze;
+    copy.n2aInput = settings.n2aInput;
+    return copy;
+  }
+
   private buildClaudeFallbackSettings(
     req: express.Request,
     base: CardOption
@@ -1702,6 +1730,7 @@ class UploadService {
     const fallback = new CardOption({
       ...body,
       'claude-ai-flashcards': 'true',
+      'pdf-fallback': 'pairs',
     });
     fallback.n2aBasic = base.n2aBasic;
     fallback.n2aCloze = base.n2aCloze;
@@ -2021,6 +2050,13 @@ class UploadService {
       if (rescuedRule != null) {
         res.set('X-Structure-Rescued', rescuedRule);
         exposedHeaders.push('X-Structure-Rescued');
+      }
+      const pdfFallbackMode = packages.find(
+        (p) => p.pdfFallbackMode != null
+      )?.pdfFallbackMode;
+      if (pdfFallbackMode != null) {
+        res.set('X-Pdf-Fallback', pdfFallbackMode);
+        exposedHeaders.push('X-Pdf-Fallback');
       }
       const warningText = resolveUploadWarning(
         syncWarnings,

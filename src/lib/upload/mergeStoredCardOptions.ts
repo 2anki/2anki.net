@@ -12,10 +12,13 @@ function stringEntries(stored: unknown): Record<string, string> {
   }
   return Object.fromEntries(
     Object.entries(stored).filter(
-      // pdf-page-range is an attempt-scoped value carried only by the browser;
-      // a stored copy (e.g. a legacy row) must never merge into a conversion.
+      // pdf-page-range and pdf-fallback are attempt-scoped values carried only
+      // by the browser; a stored copy (e.g. a legacy row) must never merge
+      // into a conversion.
       (entry): entry is [string, string] =>
-        typeof entry[1] === 'string' && entry[0] !== 'pdf-page-range'
+        typeof entry[1] === 'string' &&
+        entry[0] !== 'pdf-page-range' &&
+        entry[0] !== 'pdf-fallback'
     )
   );
 }

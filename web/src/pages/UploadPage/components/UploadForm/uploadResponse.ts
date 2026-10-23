@@ -1,3 +1,7 @@
+import {
+  parsePdfFallbackHeader,
+  type PdfFallbackMode,
+} from '../../../../lib/upload/pdfFallback';
 import getHeadersFilename from '../../helpers/getHeadersFilename';
 import {
   STRUCTURE_RESCUE_RULES,
@@ -62,6 +66,7 @@ export interface ConversionSuccessHandlers {
   setAiPreviewUnavailable: (value: boolean) => void;
   setZoneState: (value: ZoneState) => void;
   setStructureRescuedRule: (value: StructureRescueRule | null) => void;
+  setPdfFallbackMode: (value: PdfFallbackMode | null) => void;
   /**
    * The body read failed but the server kept a copy: point the download at
    * it and let the form record what happened.
@@ -207,6 +212,9 @@ export async function applyConversionSuccess(
   );
   handlers.setStructureRescuedRule(
     parseStructureRescuedValue(response.headers.get('X-Structure-Rescued'))
+  );
+  handlers.setPdfFallbackMode(
+    parsePdfFallbackHeader(response.headers.get('X-Pdf-Fallback'))
   );
   // Read before the body: once blob() throws the headers are all we have.
   const downloadKey = response.headers.get('X-Download-Key');

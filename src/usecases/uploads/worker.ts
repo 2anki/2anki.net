@@ -333,6 +333,7 @@ async function processFile(
       singleFilePackage.plainTextFallbackImageCount =
         d.plainTextFallbackImageCount ?? 0;
       singleFilePackage.pdfPageCount = d.pdfPageCount;
+      singleFilePackage.pdfFallbackMode = d.pdfFallbackMode;
       singleFilePackage.coloredTextPageCount = d.coloredTextPageCount ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);

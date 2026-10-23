@@ -34,6 +34,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setAiPreviewUnavailable: vi.fn(),
     setZoneState: vi.fn(),
     setStructureRescuedRule: vi.fn(),
+    setPdfFallbackMode: vi.fn(),
     recoverDownload: vi.fn(),
   };
 }
@@ -401,6 +402,32 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(singleDeckResponse(), handlers);
 
     expect(handlers.setOverSplit).toHaveBeenCalledWith(false);
+  });
+
+  it.each([
+    ['pairs', 'pairs'],
+    ['single', 'single'],
+    ['weird', null],
+  ])(
+    'reads the PDF fallback mode %s from the X-Pdf-Fallback header',
+    async (header, expected) => {
+      const handlers = buildHandlers();
+
+      await applyConversionSuccess(
+        singleDeckResponse({ 'X-Pdf-Fallback': header }),
+        handlers
+      );
+
+      expect(handlers.setPdfFallbackMode).toHaveBeenCalledWith(expected);
+    }
+  );
+
+  it('reports no PDF fallback mode when the header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setPdfFallbackMode).toHaveBeenCalledWith(null);
   });
 
   it('reads the rescue rule from the X-Structure-Rescued header on a single deck', async () => {

@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-pdf-without-text-choice",
+  "date": "2026-10-23",
+  "type": "feature",
+  "title": "Upload: when a PDF has no text we can read, such as scans or slides saved as pictures, you now choose what the cards should be: two pages per card or one card per page. Tick Remember to skip the question next time. The result also says which one you got."
+}

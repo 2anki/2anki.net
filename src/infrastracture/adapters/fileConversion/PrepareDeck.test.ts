@@ -26,6 +26,7 @@ import {
 import { combineIntoHTML } from '../../../lib/pdf/combineIntoHTML';
 import { convertDocxToHTML as convertDocxToHTMLImport } from './convertDocxToHTML';
 import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
+import { parsePdfFallbackChoiceSentinel } from '../../../lib/pdf/pdfFallbackChoice';
 import { downloadMediaOrSkip as downloadMediaOrSkipImport } from '../../../services/NotionService/helpers/downloadMediaOrSkip';
 import * as trackModule from '../../../services/events/track';
 
@@ -1403,6 +1404,101 @@ describe('PrepareDeck — AI media matching (#3946)', () => {
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     const mediaArg = generateDeckInfo.mock.calls[0][1] as string[];
     expect(mediaArg.some((m: string) => m.endsWith('.png'))).toBe(true);
+  });
+});
+
+describe('PrepareDeck — a PDF with no usable text', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const noText = {
+    html: '',
+    cardCount: 0,
+    isDrmLocked: false,
+    needsCredential: false,
+    isTextShaped: false,
+    pageCount: 12,
+  };
+
+  function runPdf(settings: CardOption) {
+    return PrepareDeck({
+      name: 'scan.pdf',
+      files: [{ name: 'scan.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+  }
+
+  it('stops and asks which cards to make when the upload page asks', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+
+    const error = await runPdf(makeSettings({ 'pdf-fallback': 'ask' })).catch(
+      (e: unknown) => e
+    );
+
+    expect(parsePdfFallbackChoiceSentinel((error as Error).message)).toEqual({
+      reason: 'no_text',
+      pageCount: 12,
+    });
+    expect(convertPDFToImages).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['locked', { isDrmLocked: true }],
+    ['over_split', { isTextShaped: true, cardCount: 40, overSplit: true }],
+  ])('says why it is asking: %s', async (reason, extra) => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce({ ...noText, ...extra });
+
+    const error = await runPdf(makeSettings({ 'pdf-fallback': 'ask' })).catch(
+      (e: unknown) => e
+    );
+
+    expect(
+      parsePdfFallbackChoiceSentinel((error as Error).message)?.reason
+    ).toBe(reason);
+  });
+
+  it('pairs pages and names that in the result when nothing is said', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+
+    const result = await runPdf(makeSettings()).catch(() => undefined);
+
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ pageMode: 'pairs' })
+    );
+    expect(result?.pdfFallbackMode).toBe('pairs');
+  });
+
+  it('makes one card per page when that is the choice, and names it', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+
+    const result = await runPdf(
+      makeSettings({ 'pdf-fallback': 'single' })
+    ).catch(() => undefined);
+
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ pageMode: 'single' })
+    );
+    expect(result?.pdfFallbackMode).toBe('single');
+  });
+
+  it('never asks about a PDF that has text', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce({
+      html: '<p>auto text card</p>',
+      cardCount: 5,
+      isDrmLocked: false,
+      needsCredential: false,
+      isTextShaped: true,
+    });
+
+    const result = await runPdf(makeSettings({ 'pdf-fallback': 'ask' })).catch(
+      () => undefined
+    );
+
+    expect(convertPDFToImages).not.toHaveBeenCalled();
+    expect(result?.pdfFallbackMode).toBeUndefined();
   });
 });
 

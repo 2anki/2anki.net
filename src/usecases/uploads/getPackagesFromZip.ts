@@ -28,6 +28,7 @@ import { getRelevantFiles } from './getRelevantFiles';
 import { enableMarkdownForMarkdownUploads } from './enableMarkdownForMarkdownUploads';
 import CardGenerator from '../../lib/anki/CardGenerator';
 import { resolvePerWorkerPythonCap } from '../../lib/pythonWorkerBudget';
+import { isPdfFallbackChoiceSentinel } from '../../lib/pdf/pdfFallbackChoice';
 import {
   isPdfPasswordSentinel,
   parsePdfPasswordSentinel,
@@ -97,6 +98,15 @@ interface BatchOutcome {
 // EmptyDeckError (prose text, a page with no toggles) or returned a zero-card
 // result carrying the parser's classification. Capturing both keeps the reason
 // from being flattened to unknown when the whole upload comes out empty.
+// The upload page asks what a PDF with no readable text should become; that
+// question belongs to the whole upload, so it is never recorded as one file's
+// failure.
+function rethrowPdfChoice(error: unknown): void {
+  if (error instanceof Error && isPdfFallbackChoiceSentinel(error.message)) {
+    throw error;
+  }
+}
+
 function reasonFromRejection(error: unknown): EmptyDeckReason | undefined {
   return error instanceof EmptyDeckError ? error.reason : undefined;
 }
@@ -177,6 +187,7 @@ async function buildDeckBatch(
   const preparedResults: DeckInfoOnlyResult[] = [];
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
+      rethrowPdfChoice(result.reason);
       failedFiles.push(fileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -319,6 +330,7 @@ async function buildStragglerDecks(
         })
       );
     } catch (error) {
+      rethrowPdfChoice(error);
       failedFiles.push(straggler.inputFileName);
       const reason = reasonFromRejection(error);
       if (reason != null) emptyReasons.push(reason);
@@ -475,6 +487,7 @@ async function buildAllInOneSlot(
   let cardsHeldBack: number | undefined;
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
+      rethrowPdfChoice(result.reason);
       failedFiles.push(supportedFileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -675,6 +688,7 @@ export const getPackagesFromZip = async (
   const rescueCandidateSets: RescueCandidate[][] = [];
   settledChunks.forEach((result, index) => {
     if (result.status === 'rejected') {
+      rethrowPdfChoice(result.reason);
       failedFiles.push(...chunks[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
