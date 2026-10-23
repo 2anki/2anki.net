@@ -89,7 +89,8 @@
       "numbered": "liste numerate",
       "columns": "colonne della tabella",
       "quote": "citazioni",
-      "guess": "domande e risposte"
+      "guess": "domande e risposte",
+      "paragraphs": "i paragrafi"
     }
   },
   "columnsGuessed": {

@@ -89,7 +89,8 @@
       "numbered": "den nummerierten Listen",
       "columns": "den Tabellenspalten",
       "quote": "den Zitaten",
-      "guess": "dem Frage-und-Antwort-Text"
+      "guess": "dem Frage-und-Antwort-Text",
+      "paragraphs": "den Absätzen"
     }
   },
   "columnsGuessed": {

@@ -316,6 +316,8 @@
       "rescueBullets_other": "Make {{n}} cards from the bullet points",
       "rescueGuess_one": "Make {{n}} card from the question-and-answer lines",
       "rescueGuess_other": "Make {{n}} cards from the question-and-answer lines",
+      "rescueParagraphs_one": "Make {{n}} card from the paragraphs",
+      "rescueParagraphs_other": "Make {{n}} cards from the paragraphs",
       "readingLead": "We read {{parts}}.",
       "readingNoCards": "Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.",
       "readingNoText": "This file has no text we can read. Upload the file that holds your notes.",

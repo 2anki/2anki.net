@@ -303,6 +303,7 @@
       "rescueNumbered_other": "番号付きリストから {{n}} 枚のカードを作る",
       "rescueBullets_other": "箇条書きから {{n}} 枚のカードを作る",
       "rescueGuess_other": "質問と答えの行から {{n}} 枚のカードを作る",
+      "rescueParagraphs_other": "段落から {{n}} 枚のカードを作る",
       "readingLead": "{{parts}}を読み取りました。",
       "readingNoCards": "カードの形になっているものはありません。トグルも、質問と答えのペアもありません。",
       "readingNoText": "このファイルには読み取れるテキストがありません。ノートが入っているファイルをアップロードしてください。",

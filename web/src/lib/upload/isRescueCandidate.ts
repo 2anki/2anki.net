@@ -14,6 +14,7 @@ export const RESCUE_RULES = [
   'numbered',
   'bullets',
   'guess',
+  'paragraphs',
 ] as const satisfies readonly RescueRule[];
 
 export function isRescueCandidate(value: unknown): value is RescueCandidate {

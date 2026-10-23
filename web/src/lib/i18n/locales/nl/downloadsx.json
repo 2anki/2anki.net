@@ -89,7 +89,8 @@
       "numbered": "genummerde lijsten",
       "columns": "tabelkolommen",
       "quote": "citaten",
-      "guess": "vraag-en-antwoordtekst"
+      "guess": "vraag-en-antwoordtekst",
+      "paragraphs": "de alinea's"
     }
   },
   "columnsGuessed": {

@@ -8,6 +8,7 @@ export const RESCUE_RULES = [
   'numbered',
   'bullets',
   'guess',
+  'paragraphs',
 ] as const;
 
 export type RescueRule = (typeof RESCUE_RULES)[number];

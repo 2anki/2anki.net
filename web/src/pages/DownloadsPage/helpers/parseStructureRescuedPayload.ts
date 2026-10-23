@@ -8,6 +8,7 @@ export const STRUCTURE_RESCUE_RULES = [
   'columns',
   'quote',
   'guess',
+  'paragraphs',
 ] as const;
 
 export type StructureRescueRule = (typeof STRUCTURE_RESCUE_RULES)[number];

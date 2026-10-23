@@ -89,7 +89,8 @@
       "numbered": "listes numérotées",
       "columns": "colonnes du tableau",
       "quote": "citations",
-      "guess": "textes de question et réponse"
+      "guess": "textes de question et réponse",
+      "paragraphs": "les paragraphes"
     }
   },
   "columnsGuessed": {

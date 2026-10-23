@@ -316,6 +316,8 @@
       "rescueBullets_other": "Faire {{n}} cartes à partir des puces",
       "rescueGuess_one": "Faire {{n}} carte à partir des lignes de question et de réponse",
       "rescueGuess_other": "Faire {{n}} cartes à partir des lignes de question et de réponse",
+      "rescueParagraphs_one": "Créer {{n}} carte à partir des paragraphes",
+      "rescueParagraphs_other": "Créer {{n}} cartes à partir des paragraphes",
       "readingLead": "Nous avons lu {{parts}}.",
       "readingNoCards": "Rien n'a la forme d'une carte : aucun toggle et aucune paire de question et de réponse.",
       "readingNoText": "Ce fichier ne contient aucun texte que nous puissions lire. Envoie le fichier qui contient tes notes.",
