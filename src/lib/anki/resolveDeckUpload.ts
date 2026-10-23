@@ -1,3 +1,4 @@
+import { zipSync } from 'fflate';
 import path from 'path';
 import yauzl from 'yauzl';
 
@@ -12,6 +13,8 @@ export type DeckUpload =
 
 export type DeckUploadShape =
   | 'apkg'
+  | 'colpkg'
+  | 'collection_file'
   | 'zip_is_deck'
   | 'zip_one_deck'
   | 'zip_chosen_deck';
@@ -36,18 +39,67 @@ const MAX_DECK_CHOICES = 50;
 
 export const UNREADABLE_ZIP_MESSAGE =
   'This zip couldn’t be opened. It may still be downloading; wait for it to finish and try again.';
+export const LEGACY_STUB_COLLECTION_MESSAGE =
+  'This collection.anki2 is the empty placeholder inside an Anki deck. Upload the .apkg file itself, or the collection.anki21b or collection.anki21 file next to this one.';
+export const NOT_A_COLLECTION_MESSAGE =
+  'This file is named like an Anki collection but isn’t one. Upload the .apkg file itself.';
 export const INNER_DECK_TOO_LARGE_MESSAGE =
   'The deck inside this zip is over 100 MB. Open it in Anki and export a smaller deck.';
 
 function stripExtension(name: string): string {
-  return path.posix.basename(name).replace(/(\.(apkg|zip))+$/i, '');
+  return path.posix
+    .basename(name)
+    .replace(/(\.(apkg|colpkg|zip|anki2|anki21|anki21b))+$/i, '');
+}
+
+const BARE_COLLECTION = /\.(anki21b|anki21|anki2)$/i;
+
+// Anki writes this text into the placeholder collection.anki2 it ships beside
+// the real collection, for Anki versions too old to read the new one.
+const LEGACY_STUB_MARKER = Buffer.from(
+  'Please update to the latest Anki version'
+);
+
+// Safari opens a downloaded deck into a folder, and people then upload the
+// collection file from inside it. Zipping it back with an empty media list
+// gives the deck readers the package they expect.
+const SQLITE_HEADER = Buffer.from('SQLite format 3\0', 'latin1');
+const ZSTD_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd]);
+
+function startsWith(data: Buffer, prefix: Buffer): boolean {
+  return data.subarray(0, prefix.length).equals(prefix);
+}
+
+function packBareCollection(collection: Buffer, filename: string): Buffer {
+  const extension = (
+    BARE_COLLECTION.exec(filename) as RegExpExecArray
+  )[1].toLowerCase();
+  const header = extension === 'anki21b' ? ZSTD_MAGIC : SQLITE_HEADER;
+  if (!startsWith(collection, header)) {
+    throw new DeckUploadError(NOT_A_COLLECTION_MESSAGE);
+  }
+  if (collection.includes(LEGACY_STUB_MARKER)) {
+    throw new DeckUploadError(LEGACY_STUB_COLLECTION_MESSAGE);
+  }
+  const packed = zipSync(
+    {
+      [`collection.${extension}`]: new Uint8Array(
+        collection.buffer,
+        collection.byteOffset,
+        collection.length
+      ),
+      media: new TextEncoder().encode('{}'),
+    },
+    { level: 0 }
+  );
+  return Buffer.from(packed.buffer, packed.byteOffset, packed.length);
 }
 
 function isInnerDeck(name: string): boolean {
   const base = path.posix.basename(name);
   return (
     name.length <= MAX_DECK_NAME_LENGTH &&
-    /\.apkg$/i.test(base) &&
+    /\.(apkg|colpkg)$/i.test(base) &&
     !base.startsWith('._') &&
     !isHiddenFileOrDirectory(name) &&
     isSafeZipEntryName(name)
@@ -147,6 +199,22 @@ export async function resolveDeckUpload(
       deck: upload,
       deckName: stripExtension(filename),
       shape: 'apkg',
+    };
+  }
+  if (/\.colpkg$/i.test(filename)) {
+    return {
+      kind: 'deck',
+      deck: upload,
+      deckName: stripExtension(filename),
+      shape: 'colpkg',
+    };
+  }
+  if (BARE_COLLECTION.test(filename)) {
+    return {
+      kind: 'deck',
+      deck: packBareCollection(upload, filename),
+      deckName: stripExtension(filename),
+      shape: 'collection_file',
     };
   }
   if (!/\.zip$/i.test(filename)) return { kind: 'not_a_deck' };

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   deckLabel,
   readDeckUploadAnswer,
+  isDeckUploadName,
   readHandoffFile,
+  stripDeckExtension,
 } from './deckUploadAnswer';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -49,5 +51,27 @@ describe('readHandoffFile', () => {
     expect(readHandoffFile({ handoffFile: file })).toBe(file);
     expect(readHandoffFile({ handoffFile: 'deck.zip' })).toBeNull();
     expect(readHandoffFile(null)).toBeNull();
+  });
+});
+
+describe('isDeckUploadName', () => {
+  it.each([
+    'Biology.apkg',
+    'Profile.colpkg',
+    'Biology.zip',
+    'collection.anki2',
+    'collection.anki21',
+    'collection.anki21b',
+  ])('takes %s as a deck', (name) => {
+    expect(isDeckUploadName(name)).toBe(true);
+  });
+
+  it('leaves other files to the converter', () => {
+    expect(isDeckUploadName('notes.pdf')).toBe(false);
+  });
+
+  it('strips the deck extension for the download name', () => {
+    expect(stripDeckExtension('Profile.colpkg')).toBe('Profile');
+    expect(stripDeckExtension('collection.anki21b')).toBe('collection');
   });
 });

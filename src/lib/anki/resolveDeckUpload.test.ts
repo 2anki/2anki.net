@@ -1,7 +1,10 @@
 import { strToU8, zipSync } from 'fflate';
+import { strFromU8, unzipSync } from 'fflate';
 
 import {
   DeckUploadError,
+  LEGACY_STUB_COLLECTION_MESSAGE,
+  NOT_A_COLLECTION_MESSAGE,
   resolveDeckUpload,
   UNREADABLE_ZIP_MESSAGE,
 } from './resolveDeckUpload';
@@ -23,6 +26,74 @@ describe('resolveDeckUpload', () => {
       deck: APKG,
       deckName: 'Biology',
       shape: 'apkg',
+    });
+  });
+
+  it('passes a .colpkg collection export straight through', async () => {
+    expect(await resolveDeckUpload(APKG, 'Profile.colpkg')).toEqual({
+      kind: 'deck',
+      deck: APKG,
+      deckName: 'Profile',
+      shape: 'colpkg',
+    });
+  });
+
+  it.each([
+    ['collection.anki21b', '\u0028\u00b5\u002f\u00fd zstd frame'],
+    ['collection.anki21', 'SQLite format 3\u0000 real notes'],
+    ['collection.anki2', 'SQLite format 3\u0000 real notes'],
+  ])(
+    'packs a bare %s, taken out of a deck folder, back into a deck',
+    async (name, body) => {
+      const collection = Buffer.from(body, 'latin1');
+
+      const result = await resolveDeckUpload(collection, name);
+
+      expect(result).toMatchObject({
+        kind: 'deck',
+        deckName: 'collection',
+        shape: 'collection_file',
+      });
+      const entries =
+        result.kind === 'deck' ? unzipSync(new Uint8Array(result.deck)) : {};
+      expect(Object.keys(entries).sort()).toEqual([name, 'media'].sort());
+      expect(Buffer.from(entries[name]).equals(collection)).toBe(true);
+      expect(strFromU8(entries.media)).toBe('{}');
+    }
+  );
+
+  it('explains the placeholder collection.anki2 instead of printing it', async () => {
+    const stub = Buffer.from(
+      'SQLite format 3\u0000 Please update to the latest Anki version, then import the .colpkg/.apkg file again.'
+    );
+
+    const error = await resolveDeckUpload(stub, 'collection.anki2').catch(
+      (e: unknown) => e
+    );
+
+    expect(error).toBeInstanceOf(DeckUploadError);
+    expect((error as Error).message).toBe(LEGACY_STUB_COLLECTION_MESSAGE);
+  });
+
+  it.each(['collection.anki2', 'collection.anki21b'])(
+    'refuses a %s that is not a collection with a clear message',
+    async (name) => {
+      const error = await resolveDeckUpload(
+        Buffer.from('just some notes'),
+        name
+      ).catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DeckUploadError);
+      expect((error as Error).message).toBe(NOT_A_COLLECTION_MESSAGE);
+    }
+  );
+
+  it('takes a .colpkg out of a zip like an .apkg', async () => {
+    const upload = zip({ 'backup/Profile.colpkg': APKG });
+    expect(await resolveDeckUpload(upload, 'backup.zip')).toMatchObject({
+      kind: 'deck',
+      deckName: 'Profile',
+      shape: 'zip_one_deck',
     });
   });
 

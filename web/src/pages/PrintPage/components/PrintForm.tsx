@@ -13,6 +13,7 @@ import DeckChoice from '../../../components/DeckUpload/DeckChoice';
 import NotADeckHandoff from '../../../components/DeckUpload/NotADeckHandoff';
 import {
   deckLabel,
+  DECK_UPLOAD_ACCEPT,
   isDeckUploadName,
   readDeckUploadAnswer,
   readHandoffFile,
@@ -462,7 +463,7 @@ export default function PrintForm() {
               className={styles.fileInput}
               id="print-file"
               type="file"
-              accept=".apkg,.zip"
+              accept={DECK_UPLOAD_ACCEPT}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFile(file);

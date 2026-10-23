@@ -39,13 +39,17 @@ export async function readDeckUploadAnswer(
 
 export function deckLabel(entry: string): string {
   const base = entry.slice(entry.lastIndexOf('/') + 1);
-  return base.replace(/\.apkg$/i, '') || entry;
+  return base.replace(/\.(apkg|colpkg)$/i, '') || entry;
 }
 
+const DECK_UPLOAD_NAME = /\.(apkg|colpkg|zip|anki2|anki21|anki21b)$/i;
+
+export const DECK_UPLOAD_ACCEPT = '.apkg,.colpkg,.zip,.anki2,.anki21,.anki21b';
+
 export function isDeckUploadName(name: string): boolean {
-  return /\.(apkg|zip)$/i.test(name);
+  return DECK_UPLOAD_NAME.test(name);
 }
 
 export function stripDeckExtension(name: string): string {
-  return name.replace(/\.(apkg|zip)$/i, '');
+  return name.replace(DECK_UPLOAD_NAME, '');
 }
