@@ -9,7 +9,9 @@ import {
   isImageFile,
   isMarkdownFile,
   isPDFFile,
+  isRtfFile,
 } from '../storage/checks';
+import { rtfEntryAsText } from '../rtf/readableUpload';
 import { processAndPrepareArchiveData } from './fallback/processAndPrepareArchiveData';
 import { isSafeZipEntryName } from './isSafeZipEntryName';
 import { isZipContentFileSupported } from '../../usecases/uploads/isZipContentFileSupported';
@@ -203,7 +205,9 @@ class ZipHandler {
     paying: boolean,
     settings: CardOption
   ): boolean {
-    if (isHTMLFile(name) || isMarkdownFile(name)) return true;
+    if (isHTMLFile(name) || isMarkdownFile(name) || isRtfFile(name)) {
+      return true;
+    }
     return paying && settings.imageQuizHtmlToAnki && isImageFile(name);
   }
 
@@ -307,7 +311,11 @@ class ZipHandler {
       return;
     }
 
-    if (isHTMLFile(name) || isMarkdownFile(name)) {
+    if (isRtfFile(name)) {
+      const text = rtfEntryAsText(name, file);
+      this.trackInMemoryBytes(text.contents.length);
+      this.files.push(text);
+    } else if (isHTMLFile(name) || isMarkdownFile(name)) {
       this.trackInMemoryBytes(file.length);
       this.files.push({ name, contents: strFromU8(file) });
     } else if (paying && settings.imageQuizHtmlToAnki && isImageFile(name)) {

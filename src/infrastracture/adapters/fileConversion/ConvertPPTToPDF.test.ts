@@ -2,7 +2,7 @@ import { vi, type Mock, type MockedFunction } from 'vitest';
 import { EventEmitter } from 'node:events';
 import * as childProcess from 'child_process';
 import fsPromises from 'fs/promises';
-import { convertPPTToPDF, convertWithLibreOffice } from './ConvertPPTToPDF';
+import { convertPPTToPDF } from './ConvertPPTToPDF';
 import Workspace from '../../../lib/parser/WorkSpace';
 import { isWorkerTerminationError } from '../../../lib/workerTermination';
 
@@ -170,32 +170,5 @@ describe('convertPPTToPDF', () => {
     await expect(
       convertPPTToPDF('slides.pptx', Buffer.from('fake'), workspace)
     ).rejects.toThrow(/no PDF/i);
-  });
-});
-
-describe('convertWithLibreOffice', () => {
-  const workspace = { location: '/tmp/test-ws' } as Workspace;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('asks LibreOffice for a .docx and reads that file back', async () => {
-    mockedSpawn.mockReturnValue(makeProcess('', 0));
-
-    const output = await convertWithLibreOffice(
-      'notes.rtf',
-      Buffer.from('{\\rtf1 hi}'),
-      workspace,
-      'docx'
-    );
-
-    const args = spawnedArgs(0);
-    expect(args[args.indexOf('--convert-to') + 1]).toBe('docx');
-    expect(args[args.length - 1]).toBe('/tmp/test-ws/notes.rtf');
-    expect(vi.mocked(fsPromises.readFile)).toHaveBeenCalledWith(
-      '/tmp/test-ws/notes.docx'
-    );
-    expect(output.toString()).toBe('pdf-bytes');
   });
 });

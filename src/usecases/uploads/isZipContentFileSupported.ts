@@ -6,7 +6,6 @@ import {
   isPDFFile,
   isXLSXFile,
   isDocxFile,
-  isLibreOfficeDocumentFile,
 } from '../../lib/storage/checks';
 
 const isFileWithoutExtension = (filename: string) =>
@@ -21,6 +20,5 @@ export const isZipContentFileSupported = (filename: string) =>
     isPDFFile,
     isXLSXFile,
     isDocxFile,
-    isLibreOfficeDocumentFile,
     isFileWithoutExtension,
   ].some((check) => Boolean(check(filename)));

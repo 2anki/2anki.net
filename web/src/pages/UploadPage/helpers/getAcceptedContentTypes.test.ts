@@ -29,7 +29,6 @@ describe('accepted formats single source of truth', () => {
       '.htm',
       '.tsv',
       '.rtf',
-      '.odt',
       '.dotx',
       '.doc',
       '.ppt',

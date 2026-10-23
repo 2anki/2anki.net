@@ -18,7 +18,6 @@ const KNOWN_INPUT_FORMATS = new Set([
   'docx',
   'dotx',
   'rtf',
-  'odt',
   'doc',
   'pptx',
   'ppt',

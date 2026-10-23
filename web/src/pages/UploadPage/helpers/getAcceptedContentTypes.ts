@@ -18,7 +18,6 @@ const PICKER_ONLY_EXTENSIONS = [
   '.doc',
   '.dotx',
   '.rtf',
-  '.odt',
   '.ppt',
   '.xml',
   '.brainstorms.json',
