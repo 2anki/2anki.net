@@ -49,6 +49,8 @@
     },
     "offlineError": "Клиент Anki офлайн — повторим на следующем цикле",
     "lastCheckFailed": "Последняя проверка не удалась — скоро попробуем снова",
+    "reconnectNeeded": "Приостановлено: нужно заново подключить Notion",
+    "reconnectNotion": "Подключить Notion заново",
     "nextExport": "Следующий экспорт в {{time}}",
     "tabs": {
       "decks": "Колоды",

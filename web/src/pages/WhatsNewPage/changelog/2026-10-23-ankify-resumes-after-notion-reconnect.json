@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-ankify-resumes-after-notion-reconnect",
+  "date": "2026-10-23",
+  "type": "fix",
+  "title": "Auto Sync: when Notion drops the connection, your decks now show as paused with a Reconnect Notion link, and they resume on their own once you reconnect."
+}

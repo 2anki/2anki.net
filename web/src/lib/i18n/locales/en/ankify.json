@@ -45,6 +45,8 @@
     },
     "offlineError": "Anki client offline — will retry next tick",
     "lastCheckFailed": "Last check failed — we'll try again soon",
+    "reconnectNeeded": "Paused — Notion needs to be reconnected",
+    "reconnectNotion": "Reconnect Notion",
     "nextExport": "Next export at {{time}}",
     "tabs": {
       "decks": "Decks",

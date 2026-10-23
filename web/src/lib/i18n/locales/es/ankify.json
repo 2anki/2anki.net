@@ -45,6 +45,8 @@
     },
     "offlineError": "Cliente de Anki sin conexión — se reintentará en el próximo ciclo",
     "lastCheckFailed": "La última comprobación falló — lo intentaremos pronto",
+    "reconnectNeeded": "En pausa: hay que volver a conectar Notion",
+    "reconnectNotion": "Volver a conectar Notion",
     "nextExport": "Próxima exportación a las {{time}}",
     "tabs": {
       "decks": "Mazos",
