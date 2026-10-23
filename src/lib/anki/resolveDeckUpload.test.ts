@@ -201,4 +201,17 @@ describe('resolveDeckUpload', () => {
     );
     expect(Date.now() - started).toBeLessThan(2000);
   });
+
+  it('keeps the deck list short and ignores absurdly long names', async () => {
+    const entries: Record<string, Uint8Array> = {};
+    for (let i = 0; i < 80; i += 1) entries[`deck-${i}.apkg`] = APKG;
+    entries[`${'x'.repeat(600)}.apkg`] = APKG;
+
+    const result = await resolveDeckUpload(zip(entries), 'many.zip');
+
+    expect(result.kind).toBe('choose');
+    if (result.kind !== 'choose') return;
+    expect(result.decks).toHaveLength(50);
+    expect(result.decks.every((deck) => deck.length < 600)).toBe(true);
+  });
 });

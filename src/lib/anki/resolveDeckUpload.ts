@@ -29,6 +29,10 @@ const MAX_INNER_DECK_BYTES = 100 * 1024 * 1024;
 const MAX_COMPRESSION_RATIO = 100;
 // A zip states its own entry count; real decks and exports hold far fewer.
 const MAX_ZIP_ENTRIES = 10_000;
+// The deck list goes back to the browser to pick from, so it stays small no
+// matter how many or how long the names in a crafted zip are.
+const MAX_DECK_NAME_LENGTH = 512;
+const MAX_DECK_CHOICES = 50;
 
 export const UNREADABLE_ZIP_MESSAGE =
   'This zip couldn’t be opened. It may still be downloading; wait for it to finish and try again.';
@@ -42,6 +46,7 @@ function stripExtension(name: string): string {
 function isInnerDeck(name: string): boolean {
   const base = path.posix.basename(name);
   return (
+    name.length <= MAX_DECK_NAME_LENGTH &&
     /\.apkg$/i.test(base) &&
     !base.startsWith('._') &&
     !isHiddenFileOrDirectory(name) &&
@@ -164,7 +169,9 @@ export async function resolveDeckUpload(
 
     const picked =
       chosenEntry != null && decks.includes(chosenEntry) ? chosenEntry : null;
-    if (picked == null && decks.length > 1) return { kind: 'choose', decks };
+    if (picked == null && decks.length > 1) {
+      return { kind: 'choose', decks: decks.slice(0, MAX_DECK_CHOICES) };
+    }
 
     const name = picked ?? decks[0];
     const entry = entries.get(name) as yauzl.Entry;
