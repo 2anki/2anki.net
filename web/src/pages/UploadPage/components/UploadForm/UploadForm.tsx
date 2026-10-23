@@ -67,10 +67,7 @@ import {
   reportClientError,
 } from '../../../../lib/reportClientError';
 import { UserNotice } from '../../../../lib/errors/UserNotice';
-import {
-  assertFilesReadable,
-  UnreadableFileError,
-} from './assertFilesReadable';
+import { snapshotUploadBody, UnreadableFileError } from './assertFilesReadable';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
 import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
@@ -1473,7 +1470,7 @@ function UploadForm({
     setProgressSlow(false);
     setShowFallback(false);
     try {
-      await assertFilesReadable(uploadedFiles);
+      const body = await snapshotUploadBody(formData, uploadedFiles);
       const passToken = getStoredPassToken();
       const uploadHeaders: Record<string, string> =
         passToken == null ? {} : { 'X-Pass-Token': passToken };
@@ -1483,7 +1480,7 @@ function UploadForm({
       const request = await globalThis.fetch('/api/upload/file', {
         method: 'post',
         headers: uploadHeaders,
-        body: formData,
+        body,
       });
       clearPendingUpload();
       if (request.redirected) {
