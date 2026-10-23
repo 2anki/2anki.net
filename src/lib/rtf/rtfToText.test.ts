@@ -63,4 +63,8 @@ describe('rtfToText', () => {
     const rtf = `{\\rtf1 ${'{\\listtext \\bullet\\tab}item\\par '.repeat(200_000)}}`;
     expect(rtfToText(rtf).split('\n')).toHaveLength(200_000);
   });
+
+  it('drops a malformed hex escape instead of emitting a NUL, and keeps the braces', () => {
+    expect(rtfToText("{\\rtf1 a\\'zzb \\'4}c}")).toBe('azzb 4c');
+  });
 });

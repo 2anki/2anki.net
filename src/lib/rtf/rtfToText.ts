@@ -47,6 +47,8 @@ function decodeHexByte(hex: string): string {
   return WINDOWS_1252.decode(Uint8Array.of(Number.parseInt(hex, 16)));
 }
 
+const HEX_PAIR = /^[0-9a-fA-F]{2}$/;
+
 // List lines keep their nesting as markdown; other lines lose stray indent.
 function toMarkdownLine(line: string): string {
   const leading = /^[ \t]*/.exec(line)?.[0] ?? '';
@@ -127,8 +129,13 @@ export function rtfToText(rtf: string): string {
       continue;
     }
     if (next === "'") {
-      emit(decodeHexByte(rtf.slice(i + 2, i + 4)));
-      i += 4;
+      const hex = rtf.slice(i + 2, i + 4);
+      if (HEX_PAIR.test(hex)) {
+        emit(decodeHexByte(hex));
+        i += 4;
+      } else {
+        i += 2;
+      }
       continue;
     }
     if (next === '*') {
