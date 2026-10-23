@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createIndexedDbPendingUploadStore,
   createMemoryPendingUploadStore,
+  forgetPendingUpload,
   getPendingUploadStore,
   PENDING_UPLOAD_MAX_BYTES,
   PENDING_UPLOAD_TTL_MS,
@@ -41,6 +42,16 @@ describe('createMemoryPendingUploadStore', () => {
       () => 1_000 + PENDING_UPLOAD_TTL_MS
     );
     await store.save(pending());
+    expect(await store.load()).toBeNull();
+  });
+
+  it('deletes an expired upload instead of keeping it on disk', async () => {
+    let clock = 2_000;
+    const store = createMemoryPendingUploadStore(() => clock);
+    await store.save(pending());
+    clock = 1_000 + PENDING_UPLOAD_TTL_MS;
+    expect(await store.load()).toBeNull();
+    clock = 2_000;
     expect(await store.load()).toBeNull();
   });
 
@@ -100,5 +111,24 @@ describe('createIndexedDbPendingUploadStore', () => {
     } as unknown as IDBFactory;
     const store = createIndexedDbPendingUploadStore(factory);
     await expect(store.load()).rejects.toThrow('blocked');
+  });
+});
+
+describe('forgetPendingUpload', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    resetPendingUploadStoreForTests();
+  });
+
+  it('moves on when the browser store never answers', async () => {
+    vi.useFakeTimers();
+    const open = vi.fn(() => ({}) as IDBOpenDBRequest);
+    vi.stubGlobal('indexedDB', { open } as unknown as IDBFactory);
+
+    const forgotten = forgetPendingUpload(500);
+    await vi.advanceTimersByTimeAsync(500);
+
+    await expect(forgotten).resolves.toBeUndefined();
   });
 });

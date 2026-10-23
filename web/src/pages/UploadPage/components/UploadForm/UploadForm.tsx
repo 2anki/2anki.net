@@ -1591,9 +1591,12 @@ function UploadForm({
 
   const handleResumeContinue = async () => {
     if (resumeOffer?.kind !== 'continue') return;
-    const { upload } = resumeOffer;
     setResumeOffer(null);
     track('upload_resume_clicked');
+    // Re-read the store: a logout in another tab empties it, and the files
+    // must never go out under an account that did not send them.
+    const upload = await getPendingUploadStore().load();
+    if (upload == null || upload.ownerId !== currentOwnerId) return;
     if (await restoreFinishedDeck(upload)) return;
     const formData = new FormData();
     for (const file of upload.files) {

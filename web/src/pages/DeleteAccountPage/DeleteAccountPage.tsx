@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import Cookies from 'universal-cookie';
-import { getPendingUploadStore } from '../../lib/upload/pendingUpload';
+import { forgetPendingUpload } from '../../lib/upload/pendingUpload';
 import { redirectToFrontPage } from '../../lib/redirects';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
@@ -31,7 +31,7 @@ export function DeleteAccountPage({ setError }: Readonly<Prop>) {
       await get2ankiApi().deleteAccount(count === 2);
       localStorage.clear();
       sessionStorage.clear();
-      await getPendingUploadStore().clear();
+      await forgetPendingUpload();
       new Cookies().remove('token');
       redirectToFrontPage();
     } catch (error) {

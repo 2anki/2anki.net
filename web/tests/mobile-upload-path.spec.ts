@@ -13,7 +13,9 @@ function collectConsoleErrors(page: Page): string[] {
 
 const IGNORED = ['hotjar', 'youtube', 'favicon', 'failed to load resource'];
 function realErrors(errors: string[]): string[] {
-  return errors.filter((e) => !IGNORED.some((n) => e.toLowerCase().includes(n)));
+  return errors.filter(
+    (e) => !IGNORED.some((n) => e.toLowerCase().includes(n))
+  );
 }
 
 async function noOverflow(page: Page, label: string): Promise<void> {
@@ -92,7 +94,9 @@ for (const f of FILES) {
   });
 }
 
-test('a thin PDF deck shows the few-cards notice at 375px', async ({ page }) => {
+test('a thin PDF deck shows the few-cards notice at 375px', async ({
+  page,
+}) => {
   const errors = collectConsoleErrors(page);
   await mockBackend(page);
   await page.route('**/api/upload/file', async (route) => {
@@ -178,7 +182,7 @@ test('backgrounding then a dropped connection surfaces a retry at 375px', async 
   expect(realErrors(errors)).toEqual([]);
 });
 
-test('a tab discarded mid-upload recovers the file on reload at 375px', async ({
+test('a tab discarded mid-upload offers to continue the file on reload at 375px', async ({
   page,
 }) => {
   const errors = collectConsoleErrors(page);
@@ -202,9 +206,9 @@ test('a tab discarded mid-upload recovers the file on reload at 375px', async ({
 
   await page.reload();
 
-  const banner = page.getByText('Re-attach');
+  const banner = page.getByText("lecture-notes.txt didn't finish uploading.");
   await expect(banner).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('lecture-notes.txt')).toBeVisible();
-  await noOverflow(page, 'reattach-banner');
+  await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
+  await noOverflow(page, 'resume-banner');
   expect(realErrors(errors)).toEqual([]);
 });

@@ -4254,6 +4254,25 @@ describe('UploadForm reattach recovery', () => {
     expect(track).toHaveBeenCalledWith('upload_resume_clicked');
   });
 
+  it('sends nothing when the pending file was cleared in another tab', async () => {
+    await savePending('biochem.pdf');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    const continueButton = await screen.findByRole('button', {
+      name: 'Continue',
+    });
+    await getPendingUploadStore().clear();
+    fireEvent.click(continueButton);
+
+    await act(async () => {});
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/upload/file',
+      expect.anything()
+    );
+  });
+
   it('forgets the file when the user dismisses the offer', async () => {
     await savePending('biochem.pdf');
 

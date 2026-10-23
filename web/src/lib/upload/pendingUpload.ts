@@ -46,7 +46,7 @@ export function createMemoryPendingUploadStore(
       current = upload;
     },
     load: async () => {
-      if (current == null || !isFresh(current, now())) return null;
+      if (current != null && !isFresh(current, now())) current = null;
       return current;
     },
     clear: async () => {
@@ -81,6 +81,7 @@ function openDatabase(
       openDatabase(factory, nextVersion).then(resolve, reject);
     };
     request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('pending upload store blocked'));
   });
 }
 
@@ -124,8 +125,12 @@ export function createIndexedDbPendingUploadStore(
       const upload = (await runRequest(factory, 'readonly', (store) =>
         store.get(RECORD_KEY)
       )) as PendingUpload | undefined;
-      if (upload == null || !isFresh(upload, now())) return null;
-      return upload;
+      if (upload == null) return null;
+      if (isFresh(upload, now())) return upload;
+      await runRequest(factory, 'readwrite', (store) =>
+        store.delete(RECORD_KEY)
+      );
+      return null;
     },
     clear: async () => {
       await runRequest(factory, 'readwrite', (store) =>
@@ -165,6 +170,15 @@ export function getPendingUploadStore(): PendingUploadStore {
     );
   }
   return defaultStore;
+}
+
+// Logout and account deletion must not wait on a browser store that never
+// answers: they move on after a short wait either way.
+export function forgetPendingUpload(waitMs = 500): Promise<void> {
+  return Promise.race([
+    getPendingUploadStore().clear(),
+    new Promise<void>((resolve) => setTimeout(resolve, waitMs)),
+  ]);
 }
 
 export function resetPendingUploadStoreForTests(): void {
