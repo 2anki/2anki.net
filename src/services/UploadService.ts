@@ -54,6 +54,7 @@ import { handleUploadLimitError } from '../controllers/Upload/helpers/handleUplo
 import { getUploadValidationError } from '../lib/upload/getUploadValidationError';
 import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
 import { mergeStoredCardOptions } from '../lib/upload/mergeStoredCardOptions';
+import { withDeckStyle } from '../lib/parser/buildDeckStyle';
 import { decodeUploadImage } from '../lib/upload/decodeUploadImage';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import {
@@ -572,7 +573,7 @@ async function runClaudeRestartFiles(
           settings?.cardSize,
           settings?.fieldMapping,
           options
-        )
+        ).then((decks) => withDeckStyle(decks, settings ?? new CardOption({})))
       );
     } catch (error) {
       if (error instanceof AiCreditsExhaustedError) {

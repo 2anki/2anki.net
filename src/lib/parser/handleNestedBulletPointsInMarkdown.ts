@@ -15,6 +15,7 @@ import { File } from '../zip/zip';
 import { detectMarkdownMCQ } from './findNotionToggleLists';
 import { stripLeadingDeckNumbering } from './helpers/stripLeadingDeckNumbering';
 import { matchesMarkdownHeuristic } from './guessMarkdownCards';
+import { buildDeckStyle } from './buildDeckStyle';
 
 function commonIndent(text: string): number {
   const nonEmptyLines = text.split('\n').filter((l) => l.trim().length > 0);
@@ -166,7 +167,7 @@ export const handleNestedBulletPointsInMarkdown = (
     resolvedDeckName,
     [],
     '',
-    '',
+    buildDeckStyle(settings),
     get16DigitRandomId(),
     settings
   );

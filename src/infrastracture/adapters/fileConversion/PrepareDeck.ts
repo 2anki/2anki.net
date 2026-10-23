@@ -74,6 +74,7 @@ import { writePdfImageFallbackMarker } from './pdfImageFallbackMarker';
 import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
 import { isResourceForkEntry } from './documentStructureCensus';
 import { track } from '../../../services/events/track';
+import { withDeckStyle } from '../../../lib/parser/buildDeckStyle';
 
 const HTML_GENERATION_CONCURRENCY = 3;
 
@@ -992,7 +993,7 @@ async function buildClaudeDeck(
       input.settings.cardSize,
       fieldMapping,
       optionsForFile(f)
-    );
+    ).then((decks) => withDeckStyle(decks, input.settings));
 
   const { deckInfoArrays, crossFileDedup, ownsDedup, tripped } =
     await runClaudeConversion(

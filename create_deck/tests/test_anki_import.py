@@ -331,3 +331,87 @@ def test_reexport_does_not_clobber_a_users_local_css_edit(tmp_path):
         assert "user's own edit" in notetype["css"]
     finally:
         collection.close()
+
+
+def _build_apkg_with_style(build_dir: Path, style: str, card_prefix: str = "") -> str:
+    decks = json.loads(FIXTURE.read_text())
+    for deck in decks:
+        deck["style"] = style
+        for card in deck["cards"]:
+            card["name"] = card_prefix + card["name"]
+    (build_dir / "deck_info.json").write_text(json.dumps(decks))
+    previous_dir = os.getcwd()
+    os.chdir(build_dir)
+    try:
+        return build_one_deck(str(build_dir / "deck_info.json"), TEMPLATE_DIR)
+    finally:
+        os.chdir(previous_dir)
+
+
+def _backdate_notetype_mod(apkg_path: str, out_path: str, mod: int) -> str:
+    extract_dir = Path(out_path).with_suffix(".extract")
+    extract_dir.mkdir()
+    with zipfile.ZipFile(apkg_path) as archive:
+        archive.extractall(extract_dir)
+    db_path = extract_dir / _collection_db_name(extract_dir)
+    connection = sqlite3.connect(db_path)
+    try:
+        models = json.loads(connection.execute("SELECT models FROM col").fetchone()[0])
+        for notetype in models.values():
+            notetype["mod"] = mod
+        connection.execute("UPDATE col SET models = ?", (json.dumps(models),))
+        connection.commit()
+    finally:
+        connection.close()
+    with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for entry in extract_dir.iterdir():
+            archive.write(entry, entry.name)
+    return out_path
+
+
+def _n2a_basic_css(collection_path: str) -> str:
+    # Read from a freshly opened collection: the open one caches notetypes and
+    # an import does not refresh that cache.
+    collection = Collection(collection_path)
+    try:
+        return next(nt["css"] for nt in collection.models.all() if nt["name"] == "n2a-basic")
+    finally:
+        collection.close()
+
+
+def test_notion_styles_replace_a_bare_copy_from_before_the_style_fix(tmp_path):
+    """
+    #4934: before card CSS stopped depending on the source file, a txt deck
+    shipped n2a-basic with bare CSS under the same id and the same pinned mod
+    as a Notion deck, and Anki kept whichever came first. The bumped
+    NOTETYPE_MOD has to push the full Notion CSS over that bare copy once.
+    """
+    bare_dir = tmp_path / "bare"
+    bare_dir.mkdir()
+    bare_apkg = _backdate_notetype_mod(
+        _build_apkg_with_style(bare_dir, ""),
+        str(tmp_path / "bare-old.apkg"),
+        1789650998,
+    )
+    notion_dir = tmp_path / "notion"
+    notion_dir.mkdir()
+    notion_apkg = _build_apkg_with_style(
+        notion_dir,
+        ".highlight-red_background { background: rgba(244, 171, 159, 0.4); }",
+        card_prefix="From Notion: ",
+    )
+    collection_path = str(tmp_path / "collection.anki2")
+
+    _import_and_close(collection_path, bare_apkg)
+    assert ".highlight-red_background" not in _n2a_basic_css(collection_path)
+
+    _import_and_close(collection_path, notion_apkg)
+    assert ".highlight-red_background" in _n2a_basic_css(collection_path)
+
+
+def _import_and_close(collection_path: str, apkg_path: str):
+    collection = Collection(collection_path)
+    try:
+        _import(collection, apkg_path)
+    finally:
+        collection.close()

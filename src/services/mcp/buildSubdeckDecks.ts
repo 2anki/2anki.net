@@ -4,6 +4,7 @@ import { guessMarkdownCards } from '../../lib/parser/guessMarkdownCards';
 import get16DigitRandomId from '../../shared/helpers/get16DigitRandomId';
 import { serializeCardsToMarkdown } from './serializeCardsToMarkdown';
 import { SubdeckGroup } from './composeSubdecks';
+import { buildDeckStyle } from '../../lib/parser/buildDeckStyle';
 
 function buildDeck(group: SubdeckGroup): Deck {
   const markdown = serializeCardsToMarkdown(group.cards);
@@ -13,7 +14,14 @@ function buildDeck(group: SubdeckGroup): Deck {
     note.media = [];
   }
   const settings = new CardOption({ deckName: group.deck });
-  return new Deck(group.deck, notes, '', '', get16DigitRandomId(), settings);
+  return new Deck(
+    group.deck,
+    notes,
+    '',
+    buildDeckStyle(settings),
+    get16DigitRandomId(),
+    settings
+  );
 }
 
 export function buildSubdeckDecks(groups: SubdeckGroup[]): Deck[] {

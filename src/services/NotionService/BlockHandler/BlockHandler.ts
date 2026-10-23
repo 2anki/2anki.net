@@ -32,15 +32,12 @@ import ParserRules from '../../../lib/parser/ParserRules';
 import CardOption from '../../../lib/parser/Settings';
 import TagRegistry from '../../../lib/parser/TagRegistry';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
-import { withFontSize } from '../../../lib/parser/withFontSize';
-import { withTextColor } from '../../../lib/parser/withTextColor';
-import { withTextAlign } from '../../../lib/parser/withTextAlign';
+import { buildDeckStyle } from '../../../lib/parser/buildDeckStyle';
 import {
   wrapBlockWithColorClass,
   wrapWithColorClass,
 } from '../../../lib/notion-render/richText';
 import get16DigitRandomId from '../../../shared/helpers/get16DigitRandomId';
-import { NOTION_STYLE, getCodeThemeCss } from '../../../templates/helper';
 import NotionAPIWrapper from '../NotionAPIWrapper';
 import type { IBlockRenderer } from './types';
 import BlockColumn from '../blocks/lists/BlockColumn';
@@ -385,19 +382,6 @@ class BlockHandler implements IBlockRenderer {
     this.settingsRepository = settingsRepository;
     this.owner = owner;
     this.tagRegistry = new TagRegistry();
-  }
-
-  private buildDeckStyle(): string {
-    const themed = `${NOTION_STYLE}\n${getCodeThemeCss(this.settings.codeTheme)}`;
-    return (
-      withTextAlign(
-        withTextColor(
-          withFontSize(themed, this.settings.fontSize),
-          this.settings.textColor
-        ),
-        this.settings.textAlign
-      ) ?? themed
-    );
   }
 
   private applyDeckNameNumbering(name: string): string {
@@ -982,7 +966,7 @@ class BlockHandler implements IBlockRenderer {
       dbName,
       Deck.CleanCards(notes),
       undefined,
-      this.buildDeckStyle(),
+      buildDeckStyle(this.settings),
       get16DigitRandomId(),
       this.settings
     );
@@ -1583,7 +1567,7 @@ class BlockHandler implements IBlockRenderer {
         currentDeckName,
         Deck.CleanCards(cards),
         undefined,
-        this.buildDeckStyle(),
+        buildDeckStyle(this.settings),
         get16DigitRandomId(),
         this.settings
       );
@@ -1896,7 +1880,7 @@ class BlockHandler implements IBlockRenderer {
       ),
       cards,
       undefined,
-      this.buildDeckStyle(),
+      buildDeckStyle(this.settings),
       get16DigitRandomId(),
       this.settings
     );

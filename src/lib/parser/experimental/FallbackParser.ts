@@ -15,6 +15,7 @@ import { PlainTextParser } from './PlainTextParser/PlainTextParser';
 import { stripLeadingDeckNumbering } from '../helpers/stripLeadingDeckNumbering';
 import { Flashcard, isClozeFlashcard } from './PlainTextParser/types';
 import get16DigitRandomId from '../../../shared/helpers/get16DigitRandomId';
+import { buildDeckStyle } from '../buildDeckStyle';
 import {
   cellText,
   detectFieldColumns,
@@ -465,7 +466,14 @@ class FallbackParser {
       const deckName = this.resolveDeckName(settings, result.deckName);
 
       decks.push(
-        new Deck(deckName, cards, '', '', get16DigitRandomId(), settings)
+        new Deck(
+          deckName,
+          cards,
+          '',
+          buildDeckStyle(settings),
+          get16DigitRandomId(),
+          settings
+        )
       );
     }
     return decks;
