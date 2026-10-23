@@ -1,5 +1,6 @@
 import { getNotionObjectTitle } from 'get-notion-object-title';
 import Cookies from 'universal-cookie';
+import { getPendingUploadStore } from '../upload/pendingUpload';
 import { NotionResource } from '../interfaces/NotionResource';
 import type JobResponse from '@server/types/JobResponse';
 import type { JobsId } from '@server/data_layer/public/Jobs';
@@ -128,6 +129,7 @@ export class Backend {
     cancelPendingSync();
     localStorage.clear();
     sessionStorage.clear();
+    await getPendingUploadStore().clear();
     if (!isOffline) {
       const endpoint = `${this.baseURL}users/logout`;
       await post(endpoint, {});
@@ -142,6 +144,7 @@ export class Backend {
     await post(`${this.baseURL}users/logout-everywhere`, {});
     localStorage.clear();
     sessionStorage.clear();
+    await getPendingUploadStore().clear();
     const cookies = new Cookies();
     cookies.remove('token');
     globalThis.location.href = '/login';

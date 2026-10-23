@@ -4157,7 +4157,7 @@ describe('UploadForm reattach recovery', () => {
     await submitForm(container);
 
     const pending = await getPendingUploadStore().load();
-    expect(pending).toMatchObject({ filename: 'biochem.pdf', signedIn: false });
+    expect(pending).toMatchObject({ filename: 'biochem.pdf', ownerId: null });
     expect(pending?.files.map((file) => file.name)).toEqual(['biochem.pdf']);
   });
 
@@ -4197,17 +4197,34 @@ describe('UploadForm reattach recovery', () => {
     expect(busyUnload.defaultPrevented).toBe(true);
   });
 
-  async function savePending(name: string, signedIn = false) {
+  async function savePending(name: string, ownerId: number | null = null) {
     await getPendingUploadStore().save({
       files: [new File(['x'], name, { type: 'application/pdf' })],
       filename: name,
       sizeBytes: 1,
       submittedAt: Date.now(),
-      recoveryToken: signedIn ? null : 'token-1',
-      signedIn,
+      recoveryToken: ownerId == null ? 'token-1' : null,
+      ownerId,
       pdfPageRange: '2-4',
     });
   }
+
+  it('never offers a file an account left behind to the next signed-out visitor', async () => {
+    await savePending('private-notes.pdf', 42);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+    expect(screen.queryByText(/private-notes\.pdf/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Continue' })
+    ).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 
   it('offers to continue a file that did not finish uploading before the reload', async () => {
     await savePending('biochem.pdf');
@@ -4375,7 +4392,7 @@ describe('UploadForm signed-in deck recovery', () => {
       sizeBytes: 1,
       submittedAt: Date.now() - 5_000,
       recoveryToken: null,
-      signedIn: true,
+      ownerId: 1,
       pdfPageRange: null,
     });
     const fetchMock = vi.fn();

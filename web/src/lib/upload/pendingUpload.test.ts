@@ -17,7 +17,7 @@ function pending(overrides: Partial<PendingUpload> = {}): PendingUpload {
     sizeBytes: 1,
     submittedAt: 1_000,
     recoveryToken: null,
-    signedIn: false,
+    ownerId: null,
     pdfPageRange: null,
     ...overrides,
   };

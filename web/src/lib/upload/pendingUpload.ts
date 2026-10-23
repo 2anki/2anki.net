@@ -1,7 +1,9 @@
 // An upload the browser sent but never got an answer for. It is kept on this
 // device only, so a refresh, a closed tab or a lost connection can hand the
 // same files back with one click instead of a trip to the file picker. It is
-// cleared as soon as the server answers, and ignored once it is a day old.
+// cleared as soon as the server answers and on logout, offered only to the
+// same account (or the same signed-out visitor) that sent it, and ignored
+// once it is a day old.
 
 export interface PendingUpload {
   files: File[];
@@ -9,7 +11,7 @@ export interface PendingUpload {
   sizeBytes: number;
   submittedAt: number;
   recoveryToken: string | null;
-  signedIn: boolean;
+  ownerId: number | null;
   pdfPageRange: string | null;
 }
 

@@ -539,6 +539,7 @@ function UploadForm({
   const passPrices = usePassPrices();
   const queryClient = useQueryClient();
   const isAuthenticated = userLocals?.user?.id != null;
+  const currentOwnerId = userLocals?.user?.id ?? null;
   const isPaying = isPayingUser(userLocals?.locals);
   const [dayPassPending, setDayPassPending] = useState(false);
   const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
@@ -1496,7 +1497,7 @@ function UploadForm({
       sizeBytes: files.reduce((sum, file) => sum + file.size, 0),
       submittedAt,
       recoveryToken,
-      signedIn: isAuthenticated,
+      ownerId: currentOwnerId,
       pdfPageRange: pdfPageRangeRef.current,
     });
   };
@@ -1507,7 +1508,7 @@ function UploadForm({
   const restoreFinishedDeck = async (
     upload: PendingUpload
   ): Promise<boolean> => {
-    if (isAuthenticated && upload.signedIn) {
+    if (isAuthenticated && upload.ownerId != null) {
       let uploads: UserUpload[];
       try {
         uploads = await get2ankiApi().getUploads();
@@ -1554,6 +1555,12 @@ function UploadForm({
         const filename =
           globalThis.sessionStorage?.getItem(REATTACH_FILENAME_KEY) ?? '';
         if (filename.length > 0) offerReattach(filename);
+        return;
+      }
+      // A file left by someone else on this browser is never offered: on a
+      // shared computer it would land in the next person's account.
+      if (upload.ownerId !== currentOwnerId) {
+        clearPendingUpload();
         return;
       }
       if (await restoreFinishedDeck(upload)) {

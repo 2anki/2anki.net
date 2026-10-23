@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobsId } from '@server/data_layer/public/Jobs';
 import * as api from './api';
 import { Backend } from './Backend';
+import {
+  getPendingUploadStore,
+  resetPendingUploadStoreForTests,
+} from '../upload/pendingUpload';
 
 // Mock the api module
 vi.mock('./api', () => ({
@@ -680,6 +684,37 @@ describe('Backend', () => {
       await expect(backend.getCheckoutReceipt('cs_bad')).resolves.toEqual({
         status: 'not_found',
       });
+    });
+  });
+
+  describe('logout', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetPendingUploadStoreForTests();
+    });
+
+    it('forgets an upload the account left pending on this device', async () => {
+      resetPendingUploadStoreForTests();
+      vi.stubGlobal('location', { href: '' });
+      vi.stubGlobal('localStorage', {
+        clear: vi.fn(),
+        getItem: vi.fn(() => null),
+      });
+      vi.stubGlobal('sessionStorage', { clear: vi.fn() });
+      vi.mocked(api.post).mockResolvedValue(createMockResponse(200, true));
+      await getPendingUploadStore().save({
+        files: [new File(['x'], 'notes.pdf')],
+        filename: 'notes.pdf',
+        sizeBytes: 1,
+        submittedAt: Date.now(),
+        recoveryToken: null,
+        ownerId: 7,
+        pdfPageRange: null,
+      });
+
+      await backend.logout();
+
+      expect(await getPendingUploadStore().load()).toBeNull();
     });
   });
 });
