@@ -14,6 +14,8 @@ export const KNOWN_EVENTS = new Set([
   'upload_resume_shown',
   'upload_resume_clicked',
   'upload_resume_succeeded',
+  'notion_token_invalidated',
+  'notion_connected',
   'deck_downloaded',
   'upload_error_chat_shown',
   'upload_error_chat_engaged',

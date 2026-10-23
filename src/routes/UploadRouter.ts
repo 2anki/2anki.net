@@ -78,7 +78,8 @@ const UploadRouter = () => {
   const recentSourcesController = new RecentSourcesController(
     new GetRecentSourcesUseCase(
       new NotionTopLevelPagesRepository(database),
-      new UploadRepository(database)
+      new UploadRepository(database),
+      new NotionRepository(database)
     )
   );
   const saveNativeDeckController = new SaveNativeDeckController(

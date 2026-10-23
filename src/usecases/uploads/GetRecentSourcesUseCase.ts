@@ -6,6 +6,7 @@ import type {
   IUploadRepository,
   LastReconvertibleUpload,
 } from '../../data_layer/UploadRespository';
+import type { INotionRepository } from '../../data_layer/NotionRespository';
 
 export type RecentSourceType = 'notion' | 'remote_upload';
 
@@ -48,16 +49,22 @@ function uploadToDto(upload: LastReconvertibleUpload): RecentSourceDto {
 export class GetRecentSourcesUseCase {
   constructor(
     private readonly notionPages: INotionTopLevelPagesRepository,
-    private readonly uploads: IUploadRepository
+    private readonly uploads: IUploadRepository,
+    private readonly notionConnection: Pick<INotionRepository, 'getNotionData'>
   ) {}
 
   async execute(userId: number): Promise<RecentSourceDto[]> {
-    const [pages, lastUpload] = await Promise.all([
+    const [pages, lastUpload, connection] = await Promise.all([
       this.notionPages.getRecentByOwner(userId, RECENT_LIMIT),
       this.uploads.getLastReconvertibleUpload(userId),
+      this.notionConnection.getNotionData(userId),
     ]);
 
-    const sources = pages.map(notionToDto);
+    // Cached pages outlive the connection: with no working Notion token every
+    // one of these links would open a failure.
+    const notionUsable =
+      connection != null && connection.invalidated_at == null;
+    const sources = notionUsable ? pages.map(notionToDto) : [];
     if (lastUpload != null) {
       sources.push(uploadToDto(lastUpload));
     }

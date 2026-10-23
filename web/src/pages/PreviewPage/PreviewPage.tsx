@@ -44,9 +44,11 @@ export default function PreviewPage({ setError }: Readonly<PreviewPageProps>) {
     refetch,
   } = usePreviewStream(id);
 
+  // Without any blocks the page shows the error itself; the global banner is
+  // only for a failure after something loaded.
   useEffect(() => {
-    if (error) setError(error);
-  }, [error, setError]);
+    if (error && data) setError(error);
+  }, [error, data, setError]);
 
   useEffect(() => {
     if (!sentinelRef.current) return;

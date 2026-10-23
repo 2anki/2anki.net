@@ -20,6 +20,7 @@ const RETRYABLE_NOTION_CODES = new Set<string>([
   APIErrorCode.InternalServerError,
   APIErrorCode.ServiceUnavailable,
   'gateway_timeout',
+  APIErrorCode.ServiceOverload,
 ]);
 
 const RETRYABLE_NETWORK_CODES = new Set<string>([
@@ -36,7 +37,11 @@ const RETRYABLE_NETWORK_CODES = new Set<string>([
 
 // Transient HTTP statuses the Notion client surfaces as UnknownHTTPResponseError
 // (no known APIErrorCode) — gateway/upstream blips worth one more attempt.
-const RETRYABLE_HTTP_STATUSES = new Set<number>([429, 500, 502, 503, 504]);
+// 520-524 are Cloudflare's own edge errors in front of Notion (522: Notion's
+// origin timed out).
+const RETRYABLE_HTTP_STATUSES = new Set<number>([
+  429, 500, 502, 503, 504, 520, 521, 522, 523, 524,
+]);
 
 function isRetryableAxiosError(error: unknown): boolean {
   if (!axios.isAxiosError(error)) {

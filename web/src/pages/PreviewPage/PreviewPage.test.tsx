@@ -304,6 +304,24 @@ describe('PreviewPage Convert to Anki CTA', () => {
     );
   }
 
+  it('shows a dead Notion connection once, on the page, not also in the global banner', async () => {
+    const setError = vi.fn();
+    mockUsePreviewStream.mockReturnValue({
+      ...makeStreamReturn([]),
+      data: undefined,
+      isLoading: false,
+      error: new UserNotice(
+        'Your Notion connection expired. Reconnect Notion and try again.',
+        'notion_unauthorized'
+      ),
+    });
+
+    renderPreviewWithError(setError);
+
+    expect(await screen.findAllByText(/Reconnect Notion/)).not.toHaveLength(0);
+    expect(setError).not.toHaveBeenCalled();
+  });
+
   it('shows friendly copy and not raw JSON on a 409 already_in_progress', async () => {
     const setError = vi.fn();
     mockConvert.mockResolvedValue({

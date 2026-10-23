@@ -321,7 +321,7 @@ const AnkifyRouter = () => {
         ankifyNotionRepo,
         new UsersRepository(db),
         getDefaultEmailService()
-      ).execute(owner),
+      ).execute(owner, 'ankify'),
     templateOverridesProvider,
     undefined,
     new UnsupportedNotionBlockRepository(db)
