@@ -5904,7 +5904,7 @@ describe('UploadForm PDF with no readable text', () => {
 
     expect(
       await screen.findByText(
-        'This PDF had no text we could read, so every page became one card.'
+        'This PDF was made from page images, so every page became one card.'
       )
     ).toBeInTheDocument();
     expect(sentFallback(fetchMock, 1)).toBe('single');
@@ -5934,7 +5934,7 @@ describe('UploadForm PDF with no readable text', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Two pages per card' }));
 
     await screen.findByText(
-      'This PDF had no text we could read, so every two pages became one card.'
+      'This PDF was made from page images, so every two pages became one card.'
     );
     expect(globalThis.localStorage.getItem('pdf-fallback')).toBe('pairs');
     expect(

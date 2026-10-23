@@ -87,9 +87,7 @@ test.describe('Pro checkout', () => {
     ).toBeVisible();
   });
 
-  test('Get Pro starts a monthly checkout by default', async ({
-    page,
-  }) => {
+  test('Get Pro starts a monthly checkout by default', async ({ page }) => {
     await routePrices(page, v2Prices);
     let checkoutBody: { interval?: string } = {};
     await page.route('**/api/checkout/unlimited', async (route) => {
@@ -125,9 +123,7 @@ test.describe('Pro checkout', () => {
 
     await page.goto('/pricing');
     await page.getByRole('radio', { name: /Yearly/ }).click();
-    await page
-      .getByRole('button', { name: 'Get Pro — billed yearly' })
-      .click();
+    await page.getByRole('button', { name: 'Get Pro — billed yearly' }).click();
 
     await expect.poll(() => checkoutBody.interval).toBe('year');
   });

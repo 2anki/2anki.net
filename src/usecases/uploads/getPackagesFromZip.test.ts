@@ -1,3 +1,4 @@
+import { buildPdfFallbackChoiceSentinel } from '../../lib/pdf/pdfFallbackChoice';
 import { vi, type Mock } from 'vitest';
 import * as nodeFsModule from 'node:fs';
 import { setupTests } from '../../test/configure-jest';
@@ -1017,6 +1018,40 @@ describe('getPackagesFromZip — empty-deck reason', () => {
       new CardOption({}),
       { location: FAKE_WORKSPACE_LOCATION } as Workspace
     );
+
+  it('lets a PDF that needs the person to choose reach the upload, not become a failed file', async () => {
+    singleFileZip('scan.pdf');
+    const sentinel = buildPdfFallbackChoiceSentinel({
+      reason: 'no_text',
+      pageCount: 9,
+    });
+    mockPrepareDeck.mockRejectedValue(new Error(sentinel));
+
+    await expect(runSingleFile()).rejects.toThrow(sentinel);
+  });
+
+  it('does the same when the scanned PDF sits beside other files', async () => {
+    const names = ['notes.txt', 'scan.pdf', 'more.txt'];
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(names),
+        files: names.map((name) => ({ name, contents: 'x' })),
+      };
+    });
+    const sentinel = buildPdfFallbackChoiceSentinel({
+      reason: 'no_text',
+      pageCount: 9,
+    });
+    const convert = async ({ name }: { name: string }) => {
+      if (name === 'scan.pdf') throw new Error(sentinel);
+      return { name, cardCount: 2, deck: [] };
+    };
+    mockPrepareDeck.mockImplementation(convert);
+    mockPrepareDeckInfoOnly.mockImplementation(convert);
+
+    await expect(runSingleFile()).rejects.toThrow(sentinel);
+  });
 
   it('carries no_toggles when the only file threw an EmptyDeckError', async () => {
     singleFileZip('notes.txt');
