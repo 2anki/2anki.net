@@ -122,6 +122,7 @@ const renderPdfPageImages = renderPdfPageImagesImport as unknown as Mock;
 const extractPptxSourceUnits = extractPptxSourceUnitsImport as unknown as Mock;
 
 vi.mock('./ConvertPPTToPDF', () => ({
+  convertWithLibreOffice: vi.fn().mockResolvedValue(Buffer.from('PK-docx')),
   convertPPTToPDF: vi.fn().mockResolvedValue(Buffer.from('%PDF-1.4 slides')),
 }));
 
@@ -1403,6 +1404,57 @@ describe('PrepareDeck — AI media matching (#3946)', () => {
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     const mediaArg = generateDeckInfo.mock.calls[0][1] as string[];
     expect(mediaArg.some((m: string) => m.endsWith('.png'))).toBe(true);
+  });
+});
+
+describe('PrepareDeck — RTF, OpenDocument and Word variants', () => {
+  const convertDocxToHTML = convertDocxToHTMLImport as unknown as Mock;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    convertDocxToHTML.mockResolvedValue('<ul><li>Term: definition</li></ul>');
+  });
+
+  it.each(['notes.rtf', 'notes.odt'])(
+    'turns %s into .docx with LibreOffice, then reads it like a .docx',
+    async (name) => {
+      const { convertWithLibreOffice } = await import('./ConvertPPTToPDF');
+      const contents = Buffer.from('{\\rtf1 Term: definition}');
+
+      await PrepareDeck({
+        name,
+        files: [{ name, contents }],
+        settings: makeSettings({}),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      }).catch(() => {});
+
+      expect(convertWithLibreOffice).toHaveBeenCalledWith(
+        name,
+        contents,
+        expect.anything(),
+        'docx'
+      );
+      expect(convertDocxToHTML.mock.calls[0][0]).toEqual(
+        Buffer.from('PK-docx')
+      );
+    }
+  );
+
+  it('reads a Word template (.dotx) with the .docx reader directly', async () => {
+    const { convertWithLibreOffice } = await import('./ConvertPPTToPDF');
+    const contents = Buffer.from('PK-dotx');
+
+    await PrepareDeck({
+      name: 'template.dotx',
+      files: [{ name: 'template.dotx', contents }],
+      settings: makeSettings({}),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch(() => {});
+
+    expect(convertWithLibreOffice).not.toHaveBeenCalled();
+    expect(convertDocxToHTML.mock.calls[0][0]).toEqual(contents);
   });
 });
 

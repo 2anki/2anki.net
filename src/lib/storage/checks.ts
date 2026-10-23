@@ -24,7 +24,12 @@ export const isImageFileEmbedable = (url: string) => {
 
 export const isCSVFile = (fileName: string) => /\.(csv|tsv)$/i.exec(fileName);
 
-export const isDocxFile = (fileName: string) => /\.(docx|doc)$/i.exec(fileName);
+export const isDocxFile = (fileName: string) =>
+  /\.(docx|doc|dotx|docm|dotm)$/i.exec(fileName);
+
+// Text documents mammoth cannot read; LibreOffice turns them into .docx.
+export const isLibreOfficeDocumentFile = (fileName: string) =>
+  /\.(rtf|odt)$/i.test(fileName);
 
 export const isPDFFile = (fileName: string) => /.pdf$/i.exec(fileName);
 

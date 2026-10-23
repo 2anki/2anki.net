@@ -15,10 +15,23 @@ const RESTART_SIGNALS: ReadonlySet<NodeJS.Signals> = new Set([
   'SIGTERM',
 ]);
 
+export type LibreOfficeTarget = 'pdf' | 'docx';
+
 export function convertPPTToPDF(
   name: string,
   contents: Buffer | Uint8Array | string,
   workspace: Workspace
+): Promise<Buffer> {
+  return convertWithLibreOffice(name, contents, workspace, 'pdf');
+}
+
+// Headless LibreOffice turns a file it can open into `target` in the
+// workspace: PowerPoint into PDF, RTF and OpenDocument text into .docx.
+export function convertWithLibreOffice(
+  name: string,
+  contents: Buffer | Uint8Array | string,
+  workspace: Workspace,
+  target: LibreOfficeTarget
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const sofficeBin =
@@ -37,9 +50,10 @@ export function convertPPTToPDF(
 
     fs.writeFile(tempFile, Buffer.from(contents as Buffer))
       .then(() => {
-        const pdfFile = path.join(
+        const outputFile = path.join(
           workspace.location,
-          path.basename(normalizedName, path.extname(normalizedName)) + '.pdf'
+          path.basename(normalizedName, path.extname(normalizedName)) +
+            `.${target}`
         );
 
         const sofficeProcess = spawn(
@@ -49,7 +63,7 @@ export function convertPPTToPDF(
             '--headless',
             '--norestore',
             '--convert-to',
-            'pdf',
+            target,
             '--outdir',
             workspace.location,
             tempFile,
@@ -72,7 +86,7 @@ export function convertPPTToPDF(
 
         sofficeProcess.on('close', async (code, signal) => {
           if (code === null && signal != null && RESTART_SIGNALS.has(signal)) {
-            console.info('[convertPPTToPDF] interrupted by', signal);
+            console.info('[convertWithLibreOffice] interrupted by', signal);
             reject(createWorkerTerminationError());
             return;
           }
@@ -93,7 +107,7 @@ export function convertPPTToPDF(
                 `Conversion failed with code ${code}`
               );
               console.error(
-                `PPT to PDF conversion failed with exit code ${code}:`,
+                `LibreOffice conversion to ${target} failed with exit code ${code}:`,
                 detail
               );
               reject(
@@ -101,15 +115,19 @@ export function convertPPTToPDF(
               );
               return;
             }
-            resolve(await fs.readFile(pdfFile));
+            resolve(await fs.readFile(outputFile));
           } catch (err) {
             const detail = stderr.trim() || stdout.trim() || '(no output)';
             console.error(
-              'PPT to PDF conversion produced no PDF output:',
+              `LibreOffice conversion produced no ${target} output:`,
               detail,
               err
             );
-            reject(new Error(`Conversion produced no PDF output: ${detail}`));
+            reject(
+              new Error(
+                `Conversion produced no ${target.toUpperCase()} output: ${detail}`
+              )
+            );
           }
         });
       })

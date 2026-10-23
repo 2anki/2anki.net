@@ -20,9 +20,10 @@ import {
   isPptxFile,
   isXLSXFile,
   isDocxFile,
+  isLibreOfficeDocumentFile,
   isHiddenFileOrDirectory,
 } from '../../../lib/storage/checks';
-import { convertPPTToPDF } from './ConvertPPTToPDF';
+import { convertPPTToPDF, convertWithLibreOffice } from './ConvertPPTToPDF';
 import { convertImageToHTML } from './convertImageToHTML';
 import { convertPDFToImages, renderPdfPageImages } from './convertPDFToImages';
 import { extractPptxSourceUnits } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
@@ -278,36 +279,20 @@ async function convertFile(
     return result;
   }
 
-  if (isDocxFile(file.name)) {
-    const mediaSink = createWorkspaceDocxImageMediaSink(
-      input.workspace.location
+  if (isLibreOfficeDocumentFile(file.name)) {
+    // RTF (TextEdit, WordPad) and OpenDocument text become .docx first, so
+    // headings, lists and bold keep the structure the card rules read.
+    const docx = await convertWithLibreOffice(
+      file.name,
+      file.contents as Buffer,
+      input.workspace,
+      'docx'
     );
-    // Record what the sink writes: the flat hash-named images never match the
-    // <html-base>/ media convention, so without carrying them as extraFiles
-    // the AI branch converts DOCX text without its images (#3946).
-    const writtenImages: PdfHtmlImage[] = [];
-    const recordingSink: typeof mediaSink = {
-      write(bytes, contentType) {
-        const fileName = mediaSink.write(bytes, contentType);
-        writtenImages.push({ name: fileName, contents: bytes });
-        return fileName;
-      },
-    };
-    const result = {
-      name: `${file.name}.html`,
-      contents: Buffer.from(
-        await convertDocxToHTML(file.contents as Buffer, recordingSink, {
-          bulletFanOut: input.settings.overlappingCloze === 'off',
-        })
-      ),
-      extraFiles: writtenImages.length > 0 ? writtenImages : undefined,
-    };
-    console.log('[PrepareDeck] convertFile docx', {
-      file: file.name,
-      imageCount: writtenImages.length,
-      durationMs: Date.now() - t0,
-    });
-    return result;
+    return convertDocxFile(file.name, docx, input, t0);
+  }
+
+  if (isDocxFile(file.name)) {
+    return convertDocxFile(file.name, file.contents as Buffer, input, t0);
   }
 
   if (
@@ -511,6 +496,41 @@ async function convertPdfPagesToImagesFile(
       ? 0
       : (html.match(/<img /g) ?? []).length,
   };
+}
+
+async function convertDocxFile(
+  name: string,
+  contents: Buffer,
+  input: DeckParserInput,
+  t0: number
+): Promise<ConvertedFile> {
+  const mediaSink = createWorkspaceDocxImageMediaSink(input.workspace.location);
+  // Record what the sink writes: the flat hash-named images never match the
+  // <html-base>/ media convention, so without carrying them as extraFiles
+  // the AI branch converts DOCX text without its images (#3946).
+  const writtenImages: PdfHtmlImage[] = [];
+  const recordingSink: typeof mediaSink = {
+    write(bytes, contentType) {
+      const fileName = mediaSink.write(bytes, contentType);
+      writtenImages.push({ name: fileName, contents: bytes });
+      return fileName;
+    },
+  };
+  const result = {
+    name: `${name}.html`,
+    contents: Buffer.from(
+      await convertDocxToHTML(contents, recordingSink, {
+        bulletFanOut: input.settings.overlappingCloze === 'off',
+      })
+    ),
+    extraFiles: writtenImages.length > 0 ? writtenImages : undefined,
+  };
+  console.log('[PrepareDeck] convertFile docx', {
+    file: name,
+    imageCount: writtenImages.length,
+    durationMs: Date.now() - t0,
+  });
+  return result;
 }
 
 async function convertPdfByPagePairs(

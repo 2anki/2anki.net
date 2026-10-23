@@ -278,7 +278,7 @@ class ZipHandler {
 
       if (noSuffixCount === census.length) {
         throw new Error(
-          'The zip file contains only files with no suffix. Supported file types are: .zip, .html, .csv, .md, .pdf, .ppt, and .pptx.'
+          'The zip file contains only files with no extension, so 2anki can’t tell what they are. Add the extension back (for example .txt, .md, .html, .csv, .pdf, .docx, .rtf, .xlsx or .pptx) and upload the zip again.'
         );
       }
 
