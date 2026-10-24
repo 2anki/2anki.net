@@ -20,6 +20,14 @@ const NOTION_EXPORT_STYLE = fs.readFileSync(
 // it wins the cascade.
 const CODE_WRAP_STYLE = '.code-wrap, pre { white-space: pre-wrap; }';
 
+// Notion spaces every bullet the same, nested ones included. The list items
+// export as <li><div>text</div><div><ul>…</ul></div></li>, so the nested list
+// never matched the `li > ul` margin rule and sat tighter than its parent.
+const LIST_SPACING_STYLE = [
+  'li { margin-block: 0.25em; }',
+  'li > div > ul, li > div > ol { margin-block: 0.25em 0; }',
+].join('\n');
+
 interface DeckStyleSettings {
   codeTheme: string;
   fontSize?: string;
@@ -37,6 +45,7 @@ export function buildDeckStyle(settings: DeckStyleSettings): string {
     getCodeThemeCss(settings.codeTheme),
     NOTION_EXPORT_STYLE,
     CODE_WRAP_STYLE,
+    LIST_SPACING_STYLE,
   ].join('\n');
   return (
     withTextAlign(
