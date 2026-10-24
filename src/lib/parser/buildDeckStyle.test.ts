@@ -9,6 +9,12 @@ describe('buildDeckStyle', () => {
     expect(style).toContain('.callout');
   });
 
+  it('spaces nested bullets like top-level ones', () => {
+    const style = buildDeckStyle(new CardOption({}));
+    expect(style).toContain('li { margin-block: 0.25em; }');
+    expect(style).toContain('li > div > ul, li > div > ol');
+  });
+
   it('applies the font size setting', () => {
     expect(buildDeckStyle(new CardOption({ 'font-size': '32' }))).toContain(
       '* { font-size:32px}'

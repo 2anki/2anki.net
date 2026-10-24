@@ -298,3 +298,27 @@ describe('BlockCallout plain-text back', () => {
     );
   });
 });
+
+describe('BlockCallout icon', () => {
+  it.each([
+    [{ type: 'emoji', emoji: '💡' }, '<span class="icon">💡</span>'],
+    [
+      {
+        type: 'custom_emoji',
+        custom_emoji: { id: '1', name: 'x', url: 'https://example.com/e.png' },
+      },
+      '<img class="icon" src="https://example.com/e.png" alt=""/>',
+    ],
+    [
+      { type: 'external', external: { url: 'https://example.com/i.png' } },
+      '<img class="icon" src="https://example.com/i.png" alt=""/>',
+    ],
+  ])('draws the %j icon', async (icon, markup) => {
+    const handler = makeHandler({});
+    const callout = makeCallout('callout-1', 'Remember', false);
+    (callout.callout as { icon: unknown }).icon = icon;
+    stubChildren(handler, {});
+
+    expect(await BlockCallout(callout, handler)).toContain(markup);
+  });
+});
