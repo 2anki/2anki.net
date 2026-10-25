@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-25-callout-icons-in-notion-exports",
+  "date": "2026-10-25",
+  "type": "fix",
+  "title": "Notion callouts keep their icon on the card. Notion's current export left the symbol out, so a callout showed without its lightbulb."
+}
