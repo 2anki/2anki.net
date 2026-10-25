@@ -48,17 +48,17 @@ describe('authorizationResponseIssuer', () => {
 
   it('leaves the relative login redirect unchanged', async () => {
     const location = await redirectFrom((_req, res) => {
-      res.redirect('/login?next=%2Fmcp%2Fauthorize%3Fcode%3Dx');
+      res.redirect('/login?redirect=%2Fmcp%2Fauthorize%3Fcode%3Dx');
     });
 
-    expect(location).toBe('/login?next=%2Fmcp%2Fauthorize%3Fcode%3Dx');
+    expect(location).toBe('/login?redirect=%2Fmcp%2Fauthorize%3Fcode%3Dx');
   });
 
   it('leaves an absolute redirect with neither code nor error unchanged', async () => {
     const location = await redirectFrom((_req, res) => {
-      res.redirect('https://2anki.net/login?next=x');
+      res.redirect('https://2anki.net/login?redirect=x');
     });
 
-    expect(location).toBe('https://2anki.net/login?next=x');
+    expect(location).toBe('https://2anki.net/login?redirect=x');
   });
 });

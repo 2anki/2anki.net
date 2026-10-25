@@ -237,6 +237,25 @@ describe('LoginForm', () => {
     ).toHaveAttribute('href', '/register');
   });
 
+  it('keeps the redirect on the sign-up link so a new account returns to the connector', () => {
+    const authorizeUrl =
+      '/mcp/authorize?client_id=c1&redirect_uri=https%3A%2F%2Fchatgpt.com%2Fcb&state=s1';
+    renderLoginForm(`/login?redirect=${encodeURIComponent(authorizeUrl)}`);
+    expect(
+      screen.getByText("Sign up — it's free").closest('a')
+    ).toHaveAttribute(
+      'href',
+      `/register?redirect=${encodeURIComponent(authorizeUrl)}`
+    );
+  });
+
+  it('drops an unsafe redirect from the sign-up link', () => {
+    renderLoginForm('/login?redirect=%2F%2Fevil.example');
+    expect(
+      screen.getByText("Sign up — it's free").closest('a')
+    ).toHaveAttribute('href', '/register');
+  });
+
   it('shows forgot password link on the email step', () => {
     renderLoginForm();
     const link = screen.getByRole('link', { name: 'Forgot your password?' });

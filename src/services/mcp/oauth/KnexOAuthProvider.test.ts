@@ -24,6 +24,12 @@ import {
 } from '../../../data_layer/McpOAuthClientRepository';
 import { hashSecret } from './tokens';
 import { computeConsentToken } from './consent';
+import UsersController from '../../../controllers/UsersControllers';
+import type UsersService from '../../UsersService';
+import type AuthenticationService from '../../AuthenticationService';
+import { MCP_AUTHORIZE_PATH } from '../../../lib/mcp/loginReturn';
+
+vi.mock('../../events/track', () => ({ track: vi.fn() }));
 
 const RESOURCE = 'https://2anki.net/mcp';
 const TEST_CONSENT_SECRET = 'test-consent-secret';
@@ -158,11 +164,17 @@ function fakeResponse(
     method?: string;
     body?: Record<string, unknown>;
     consent?: 'granted' | 'denied';
+    cookies?: Record<string, string>;
   } = {}
 ) {
   const calls = {
     redirectedTo: null as string | null,
-    cookies: [] as { name: string; value: string }[],
+    cookies: [] as {
+      name: string;
+      value: string;
+      options?: Record<string, unknown>;
+    }[],
+    clearedCookies: [] as string[],
     statusCode: null as number | null,
     body: null as unknown,
     headers: {} as Record<string, string>,
@@ -174,16 +186,20 @@ function fakeResponse(
         ...(reqOverrides.consent != null
           ? { cookie_consent: reqOverrides.consent }
           : {}),
+        ...reqOverrides.cookies,
       },
-      originalUrl: '/authorize?client_id=abc&state=xyz',
+      originalUrl: '/mcp/authorize?client_id=abc&state=xyz',
       method: reqOverrides.method ?? 'GET',
       body: reqOverrides.body ?? {},
     },
     redirect(target: string) {
       calls.redirectedTo = target;
     },
-    cookie(name: string, value: string) {
-      calls.cookies.push({ name, value });
+    cookie(name: string, value: string, options?: Record<string, unknown>) {
+      calls.cookies.push({ name, value, options });
+    },
+    clearCookie(name: string) {
+      calls.clearedCookies.push(name);
     },
     status(code: number) {
       calls.statusCode = code;
@@ -295,7 +311,9 @@ describe('KnexOAuthProvider authorize', () => {
       },
       res
     );
-    expect(calls.redirectedTo).toContain('/login?next=');
+    expect(calls.redirectedTo).toBe(
+      '/login?redirect=%2Fmcp%2Fauthorize%3Fclient_id%3Dabc%26state%3Dxyz'
+    );
     expect(calls.cookies[0].name).toBe('first_touch');
     expect(calls.cookies[0].value).toContain('/mcp');
   });
@@ -312,8 +330,71 @@ describe('KnexOAuthProvider authorize', () => {
       },
       res
     );
-    expect(calls.redirectedTo).toContain('/login?next=');
-    expect(calls.cookies).toEqual([]);
+    expect(calls.redirectedTo).toBe(
+      '/login?redirect=%2Fmcp%2Fauthorize%3Fclient_id%3Dabc%26state%3Dxyz'
+    );
+    expect(calls.cookies.map((c) => c.name)).not.toContain('first_touch');
+  });
+
+  it('remembers the authorize URL in a short-lived return cookie when not signed in', async () => {
+    const { provider } = makeProvider();
+    const { res, calls } = fakeResponse();
+    await provider.authorize(
+      CLIENT,
+      {
+        codeChallenge: 'chal',
+        redirectUri: 'https://claude.ai/callback',
+        state: 'xyz',
+      },
+      res
+    );
+    expect(calls.cookies).toEqual([
+      {
+        name: 'mcp_login_return',
+        value: '/mcp/authorize?client_id=abc&state=xyz',
+        options: {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'none',
+          path: '/',
+          maxAge: 10 * 60 * 1000,
+        },
+      },
+    ]);
+  });
+
+  it('sends a signed-out POST to plain login, since its parameters are not in the URL', async () => {
+    const { provider } = makeProvider();
+    const { res, calls } = fakeResponse(undefined, { method: 'POST' });
+    await provider.authorize(
+      CLIENT,
+      {
+        codeChallenge: 'chal',
+        redirectUri: 'https://claude.ai/callback',
+        state: 'xyz',
+      },
+      res
+    );
+    expect(calls.redirectedTo).toBe('/login');
+    expect(calls.cookies.map((c) => c.name)).not.toContain('mcp_login_return');
+  });
+
+  it('clears the return cookie once the user is back at authorize signed in', async () => {
+    const { provider } = makeProvider();
+    const { res, calls } = fakeResponse('valid-session', {
+      cookies: { mcp_login_return: '/mcp/authorize?client_id=abc' },
+    });
+    await provider.authorize(
+      CLIENT,
+      {
+        codeChallenge: 'chal',
+        redirectUri: 'https://claude.ai/callback',
+        state: 'xyz',
+      },
+      res
+    );
+    expect(calls.clearedCookies).toEqual(['mcp_login_return']);
+    expect(calls.redirectedTo).toBeNull();
   });
 
   const AUTHORIZE_PARAMS = {
@@ -630,6 +711,135 @@ describe('authorize endpoint through the SDK handler (CSRF gate)', () => {
       expect(res.status).toBe(200);
       expect(await res.text()).toContain('name="consent"');
       expect(codeRepo.rows).toHaveLength(0);
+    });
+  });
+});
+
+describe('signed-out connect: authorize -> sign in -> back to authorize', () => {
+  const query = new URLSearchParams({
+    client_id: 'client-1',
+    redirect_uri: 'https://claude.ai/callback',
+    response_type: 'code',
+    code_challenge: 'chal',
+    code_challenge_method: 'S256',
+    state: 'xyz',
+  }).toString();
+  const authorizeUrl = `${MCP_AUTHORIZE_PATH}?${query}`;
+
+  async function withSigninServer(run: (base: string) => Promise<void>) {
+    const { provider, clientRepo } = makeProvider();
+    await clientRepo.create({
+      client_id: 'client-1',
+      client_name: 'Claude',
+      redirect_uris: ['https://claude.ai/callback'],
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      scope: 'mcp',
+      token_endpoint_auth_method: 'none',
+      metadata: {},
+      client_id_issued_at: 1,
+    });
+    const user = { id: 42, email: 'a@b.co', password: 'hash' };
+    const controller = new UsersController(
+      {
+        getUserFrom: vi.fn().mockResolvedValue(user),
+        markEmailVerified: vi.fn().mockResolvedValue(1),
+        updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+      } as unknown as UsersService,
+      {
+        isValidLogin: vi.fn().mockReturnValue(true),
+        comparePassword: vi.fn().mockReturnValue(true),
+        // The provider's fake auth service accepts this session token.
+        newJWTToken: vi.fn().mockResolvedValue('valid-session'),
+        persistToken: vi.fn().mockResolvedValue(undefined),
+        loginWithGoogle: vi
+          .fn()
+          .mockResolvedValue({ ok: true, email: 'a@b.co', name: 'A' }),
+      } as unknown as AuthenticationService,
+      {} as ReturnType<typeof import('../../../data_layer').getDatabase>
+    );
+    const app = express();
+    app.use(cookieParser());
+    app.use(
+      MCP_AUTHORIZE_PATH,
+      authorizationHandler({ provider, rateLimit: false })
+    );
+    app.post('/api/users/login', express.json(), (req, res, next) =>
+      controller.login(req, res, next)
+    );
+    app.get('/api/users/auth/google', (req, res) =>
+      controller.loginWithGoogle(req, res)
+    );
+    const server = http.createServer(app);
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const { port } = server.address() as AddressInfo;
+    try {
+      await run(`http://127.0.0.1:${port}`);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }
+
+  async function startSignedOut(base: string) {
+    const res = await fetch(`${base}${authorizeUrl}`, { redirect: 'manual' });
+    const location = res.headers.get('location') ?? '';
+    const returnCookie = res.headers
+      .getSetCookie()
+      .find((c) => c.startsWith('mcp_login_return='));
+    return { status: res.status, location, returnCookie };
+  }
+
+  it('password sign-in lands back on the consent screen with the same query', async () => {
+    await withSigninServer(async (base) => {
+      const start = await startSignedOut(base);
+      expect(start.status).toBe(302);
+      const loginUrl = new URL(start.location, base);
+      expect(loginUrl.pathname).toBe('/login');
+      expect(loginUrl.searchParams.get('redirect')).toBe(authorizeUrl);
+
+      // The login page posts to the API with its own query string.
+      const login = await fetch(`${base}/api/users/login${loginUrl.search}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'a@b.co', password: 'pw' }),
+      });
+      const { redirect } = (await login.json()) as { redirect: string };
+      expect(redirect).toBe(authorizeUrl);
+
+      const back = await fetch(`${base}${redirect}`, {
+        headers: { cookie: 'token=valid-session' },
+        redirect: 'manual',
+      });
+      expect(back.status).toBe(200);
+      expect(await back.text()).toContain('name="consent"');
+    });
+  });
+
+  it('Google sign-in comes back to the consent screen through the return cookie', async () => {
+    await withSigninServer(async (base) => {
+      const start = await startSignedOut(base);
+      expect(start.returnCookie).toContain('HttpOnly');
+      expect(start.returnCookie).toContain('Secure');
+      const cookiePair = (start.returnCookie ?? '').split(';')[0];
+
+      const google = await fetch(`${base}/api/users/auth/google?code=g1`, {
+        headers: { cookie: cookiePair },
+        redirect: 'manual',
+      });
+      expect(google.status).toBe(302);
+      expect(google.headers.get('location')).toBe(authorizeUrl);
+      expect(
+        google.headers
+          .getSetCookie()
+          .some((c) => c.startsWith('mcp_login_return=;'))
+      ).toBe(true);
+
+      const back = await fetch(`${base}${authorizeUrl}`, {
+        headers: { cookie: 'token=valid-session' },
+        redirect: 'manual',
+      });
+      expect(back.status).toBe(200);
+      expect(await back.text()).toContain('name="consent"');
     });
   });
 });

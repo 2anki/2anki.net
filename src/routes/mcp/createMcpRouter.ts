@@ -18,8 +18,9 @@ import {
 import { hashIp, resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import { mcpFirstTouchMiddleware } from './mcpFirstTouch';
 import { authorizationResponseIssuer } from './authorizationResponseIssuer';
+import { MCP_AUTHORIZE_PATH } from '../../lib/mcp/loginReturn';
 
-export const MCP_AUTHORIZE_PATH = '/mcp/authorize';
+export { MCP_AUTHORIZE_PATH };
 export const MCP_TOKEN_PATH = '/mcp/token';
 export const MCP_REGISTER_PATH = '/mcp/register';
 export const MCP_REVOKE_PATH = '/mcp/revoke';
