@@ -1,6 +1,6 @@
 {
   "id": "2026-10-25-preview-claude-cards-for-thin-decks",
   "date": "2026-10-25",
-  "type": "feat",
-  "title": "When a file gives only a few cards, you can now preview the cards Claude would write from it. It only runs when you tap the button, and if you want the full deck a Day Pass picks the same file up again with no re-upload."
+  "type": "feature",
+  "title": "When a file gives only a few cards, you can preview the cards Claude would write from it. It runs only when you tap the button, and the file's text is sent to Claude. A Day Pass checkout then converts the same file with AI on, with no re-upload."
 }
