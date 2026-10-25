@@ -65,6 +65,10 @@ vi.mock('./dropWaitPlan', () => ({
 
 import { dropWaitDelays } from './dropWaitPlan';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
+import {
+  clearThinDeckResume,
+  markThinDeckResume,
+} from '../ThinDeckAiOffer/thinDeckResume';
 import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { track } from '../../../../lib/analytics/track';
@@ -5978,5 +5982,136 @@ describe('UploadForm PDF with no readable text', () => {
     expect(
       screen.queryByRole('button', { name: 'Ask me next time' })
     ).toBeNull();
+  });
+});
+
+describe('UploadForm thin deck resume after the Day Pass checkout', () => {
+  beforeEach(() => {
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  });
+
+  afterEach(() => {
+    clearThinDeckResume();
+    globalThis.localStorage.removeItem('2anki_pass_token');
+    vi.unstubAllGlobals();
+  });
+
+  async function saveWithAi(ownerId: number | null) {
+    await getPendingUploadStore().save({
+      files: [new File(['x'], 'lecture.pdf', { type: 'application/pdf' })],
+      filename: 'lecture.pdf',
+      sizeBytes: 1,
+      submittedAt: Date.now(),
+      recoveryToken: null,
+      ownerId,
+      pdfPageRange: null,
+      aiFlag: 'true',
+    });
+  }
+
+  function stubSignedInReturn(): void {
+    vi.stubGlobal('location', {
+      search: '?from=pass&session_id=cs_thin',
+      href: 'http://localhost/upload?from=pass&session_id=cs_thin',
+      origin: 'http://localhost',
+    });
+  }
+
+  function signedIn(paying: boolean) {
+    return {
+      data: {
+        user: { id: 7 },
+        locals: { patreon: false, subscriber: paying },
+        features: {},
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>;
+  }
+
+  test('sends the saved file again with AI on for a visitor back from checkout', async () => {
+    stubPassReturn('cs_thin');
+    markThinDeckResume();
+    await saveWithAi(null);
+    const resumeAiPreview = vi.fn();
+    const restore = installResumeApi(resumeAiPreview);
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+      await waitFor(() =>
+        expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true')
+      );
+      const body = fetchMock.mock.calls[0][1].body as FormData;
+      expect((body.get('pakker') as File).name).toBe('lecture.pdf');
+      expect(resumeAiPreview).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+
+  test('sends nothing for a signed in buyer until the account shows as paying', async () => {
+    stubSignedInReturn();
+    markThinDeckResume();
+    await saveWithAi(7);
+    mockUseUserLocals.mockReturnValue(signedIn(false));
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { rerender } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    mockUseUserLocals.mockReturnValue(signedIn(true));
+    rerender(
+      <MemoryRouter>
+        <QueryClientProvider client={new QueryClient()}>
+          <UploadForm setErrorMessage={vi.fn()} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true')
+    );
+  });
+
+  test('does not send a file saved by another account', async () => {
+    stubSignedInReturn();
+    markThinDeckResume();
+    await saveWithAi(99);
+    mockUseUserLocals.mockReturnValue(signedIn(true));
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test('does not resume a return from checkout that did not start from the offer', async () => {
+    stubSignedInReturn();
+    await saveWithAi(7);
+    mockUseUserLocals.mockReturnValue(signedIn(true));
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

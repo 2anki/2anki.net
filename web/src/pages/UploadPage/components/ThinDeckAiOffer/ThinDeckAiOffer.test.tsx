@@ -19,7 +19,11 @@ vi.mock('../../../../lib/hooks/usePassPrices', () => ({
 
 const file = new File(['text'], 'lecture.pdf', { type: 'application/pdf' });
 
-function renderOffer(isPaying = false, onMakeFullDeck = vi.fn()) {
+function renderOffer(
+  isPaying = false,
+  onMakeFullDeck = vi.fn(),
+  onBeforeCheckout = vi.fn().mockResolvedValue(undefined)
+) {
   const client = new QueryClient();
   render(
     <QueryClientProvider client={client}>
@@ -28,10 +32,11 @@ function renderOffer(isPaying = false, onMakeFullDeck = vi.fn()) {
         cardCount={2}
         isPaying={isPaying}
         onMakeFullDeck={onMakeFullDeck}
+        onBeforeCheckout={onBeforeCheckout}
       />
     </QueryClientProvider>
   );
-  return { onMakeFullDeck };
+  return { onMakeFullDeck, onBeforeCheckout };
 }
 
 describe('ThinDeckAiOffer', () => {
@@ -109,8 +114,32 @@ describe('ThinDeckAiOffer', () => {
     });
   });
 
+  it('keeps the file for the return before it leaves for checkout', async () => {
+    startPassCheckout.mockResolvedValue({ status: 'error' });
+    const order: string[] = [];
+    const onBeforeCheckout = vi.fn().mockImplementation(async () => {
+      order.push('saved');
+    });
+    startPassCheckout.mockImplementation(async () => {
+      order.push('checkout');
+      return { status: 'error' };
+    });
+    renderOffer(false, vi.fn(), onBeforeCheckout);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Preview cards Claude would write' })
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Get every card: Day Pass $6',
+      })
+    );
+
+    await waitFor(() => expect(order).toEqual(['saved', 'checkout']));
+  });
+
   it('lets a paying person make the full AI deck without a checkout', async () => {
-    const { onMakeFullDeck } = renderOffer(true);
+    const { onMakeFullDeck, onBeforeCheckout } = renderOffer(true);
     fireEvent.click(
       screen.getByRole('button', { name: 'Preview cards Claude would write' })
     );
@@ -121,5 +150,6 @@ describe('ThinDeckAiOffer', () => {
 
     expect(onMakeFullDeck).toHaveBeenCalledTimes(1);
     expect(startPassCheckout).not.toHaveBeenCalled();
+    expect(onBeforeCheckout).not.toHaveBeenCalled();
   });
 });
