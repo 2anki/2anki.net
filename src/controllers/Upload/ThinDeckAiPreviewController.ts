@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 
 import { generateAiPreview } from '../../lib/claude/aiPreview';
 import { getFeatureFlag } from '../../lib/featureFlags/getFeatureFlag';
@@ -22,6 +22,19 @@ import {
 export const THIN_DECK_CONSENT_FIELD = 'consent';
 export const THIN_DECK_CONSENT_VALUE = 'claude';
 
+// Multer buffers the whole body in memory before the controller runs, and the
+// origin check is only an allowlist a script can spoof. So the flag and a small
+// in-flight cap are checked first, and a refused request never buffers a file.
+export const THIN_DECK_MAX_IN_FLIGHT = 4;
+
+// Only a PDF needs the whole file; text types are cut before they are decoded
+// so a huge text upload cannot stall the event loop on its way to a 12k sample.
+const TEXT_DECODE_MAX_BYTES = 1024 * 1024;
+
+function isPdfName(filename: string): boolean {
+  return /\.pdf$/i.test(filename);
+}
+
 function readAnonId(req: Request): string | null {
   const cookies = req.cookies as Record<string, unknown> | undefined;
   const value = cookies?.anon_id;
@@ -42,6 +55,34 @@ export class ThinDeckAiPreviewController {
     private readonly limiter: AiPreviewRateLimiter = new AiPreviewRateLimiter(),
     private readonly deps: Partial<ThinDeckAiPreviewDeps> = {}
   ) {}
+
+  private inFlight = 0;
+
+  guard = async (
+    _req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    if (!(await getFeatureFlag(THIN_DECK_AI_OFFER_FLAG, false))) {
+      res.status(404).json({ code: 'not_available' });
+      return;
+    }
+    if (this.inFlight >= THIN_DECK_MAX_IN_FLIGHT) {
+      res.status(429).json({ code: 'busy' });
+      return;
+    }
+    this.inFlight += 1;
+    let released = false;
+    const release = () => {
+      if (!released) {
+        released = true;
+        this.inFlight -= 1;
+      }
+    };
+    res.once('finish', release);
+    res.once('close', release);
+    next();
+  };
 
   async preview(req: Request, res: Response): Promise<Response> {
     const consent = (req.body as Record<string, unknown> | undefined)?.[
@@ -68,7 +109,10 @@ export class ThinDeckAiPreviewController {
         isEnabled: () => getFeatureFlag(THIN_DECK_AI_OFFER_FLAG, false),
         allow: (key, ipKey) => this.limiter.allow(key, ipKey),
         preview: async (filename, bytes, rid) => {
-          const text = await extractPreviewText(filename, bytes);
+          const readable = isPdfName(filename)
+            ? bytes
+            : bytes.subarray(0, TEXT_DECODE_MAX_BYTES);
+          const text = await extractPreviewText(filename, readable);
           return text == null
             ? []
             : generateAiPreview(text, { requestId: rid });

@@ -1,7 +1,10 @@
 import { vi } from 'vitest';
 import type { Request, Response } from 'express';
 import { AiPreviewRateLimiter } from '../../lib/upload/aiPreviewRateLimiter';
-import { ThinDeckAiPreviewController } from './ThinDeckAiPreviewController';
+import {
+  THIN_DECK_MAX_IN_FLIGHT,
+  ThinDeckAiPreviewController,
+} from './ThinDeckAiPreviewController';
 
 vi.mock('../../lib/featureFlags/getFeatureFlag', () => ({
   getFeatureFlag: vi.fn().mockResolvedValue(true),
@@ -17,6 +20,7 @@ vi.mock('../../lib/upload/extractPreviewText', async (importActual) => ({
   extractPreviewText: vi.fn().mockResolvedValue('some study text'),
 }));
 
+import { extractPreviewText } from '../../lib/upload/extractPreviewText';
 import { getFeatureFlag } from '../../lib/featureFlags/getFeatureFlag';
 import { generateAiPreview } from '../../lib/claude/aiPreview';
 import { track } from '../../services/events/track';
@@ -133,5 +137,94 @@ describe('ThinDeckAiPreviewController', () => {
 
     expect(last.json).toHaveBeenLastCalledWith({ kind: 'unavailable' });
     expect(generateAiPreview).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([['true'], [['claude', 'claude']], [undefined]])(
+    'rejects consent sent as %j',
+    async (consent) => {
+      const res = makeRes();
+
+      await new ThinDeckAiPreviewController().preview(
+        makeReq({ body: { consent } }),
+        res
+      );
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(generateAiPreview).not.toHaveBeenCalled();
+    }
+  );
+
+  it('still stops a visitor who rotates the anon id from the same address', async () => {
+    const controller = new ThinDeckAiPreviewController(
+      new AiPreviewRateLimiter()
+    );
+    for (let i = 0; i < 25; i++) {
+      await controller.preview(
+        makeReq({ cookies: { anon_id: `rotated-${i}` } }),
+        makeRes()
+      );
+    }
+
+    expect(generateAiPreview).toHaveBeenCalledTimes(20);
+  });
+
+  it('cuts a text upload before it is decoded', async () => {
+    const big = Buffer.alloc(5 * 1024 * 1024, 'a');
+
+    await new ThinDeckAiPreviewController().preview(
+      makeReq({ file: { originalname: 'notes.txt', buffer: big } }),
+      makeRes()
+    );
+
+    const passed = vi.mocked(extractPreviewText).mock.calls[0][1];
+    expect(passed.length).toBe(1024 * 1024);
+  });
+});
+
+describe('ThinDeckAiPreviewController.guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getFeatureFlag).mockResolvedValue(true);
+  });
+
+  it('answers 404 before any file is read when the flag is off', async () => {
+    vi.mocked(getFeatureFlag).mockResolvedValue(false);
+    const res = makeRes();
+    const next = vi.fn();
+
+    await new ThinDeckAiPreviewController().guard(makeReq(), res, next);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('refuses new uploads while the in-flight cap is full and frees a slot on finish', async () => {
+    const controller = new ThinDeckAiPreviewController();
+    const finishers: Array<() => void> = [];
+    const resWithFinish = () => {
+      const res = makeRes();
+      (res as unknown as { once: unknown }).once = (
+        event: string,
+        cb: () => void
+      ) => {
+        if (event === 'finish') finishers.push(cb);
+      };
+      return res;
+    };
+    const next = vi.fn();
+    for (let i = 0; i < THIN_DECK_MAX_IN_FLIGHT; i++) {
+      await controller.guard(makeReq(), resWithFinish(), next);
+    }
+    const refused = makeRes();
+
+    await controller.guard(makeReq(), refused, next);
+
+    expect(refused.status).toHaveBeenCalledWith(429);
+    expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT);
+
+    finishers[0]();
+    await controller.guard(makeReq(), resWithFinish(), next);
+
+    expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT + 1);
   });
 });

@@ -344,6 +344,7 @@ const UploadRouter = () => {
   router.post(
     '/api/upload/thin-deck-preview',
     RequireAllowedOrigin,
+    thinDeckAiPreviewController.guard,
     multer({
       storage: multer.memoryStorage(),
       limits: { fileSize: 50 * 1024 * 1024, files: 1 },
