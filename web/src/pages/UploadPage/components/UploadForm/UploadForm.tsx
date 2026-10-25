@@ -2257,9 +2257,15 @@ function UploadForm({
         </div>
       )}
       {!aiOn &&
+        !lastSubmitUsedAi &&
+        !sampleRun &&
         cardsHeldBack === 0 &&
         thinDeckOfferFile != null &&
-        isThinDeck(cardCount, currentFilename(), thinDeckOfferFile.size) && (
+        isThinDeck(
+          cardCount,
+          thinDeckOfferFile.name,
+          thinDeckOfferFile.size
+        ) && (
           <ThinDeckAiOffer
             file={thinDeckOfferFile}
             cardCount={cardCount}
@@ -2269,7 +2275,7 @@ function UploadForm({
         )}
       {!aiOn &&
         cardsHeldBack === 0 &&
-        thinDeckOfferFile == null &&
+        (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
         isThinPdfOrTxtDeck(cardCount, currentFilename()) && (
           <div className={formStyles.warningInline}>
             <ThinDeckNotice

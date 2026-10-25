@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { track } from '../../../../lib/analytics/track';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
@@ -32,6 +32,13 @@ export function ThinDeckAiOffer({
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
   const [checkoutPending, setCheckoutPending] = useState(false);
   const [checkoutError, setCheckoutError] = useState(false);
+  const resultRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (phase.name === 'preview' || phase.name === 'unavailable') {
+      resultRef.current?.focus();
+    }
+  }, [phase.name]);
 
   useEffect(() => {
     track('thin_deck_ai_offer_shown', { cards: cardCount });
@@ -95,13 +102,15 @@ export function ThinDeckAiOffer({
         </p>
       )}
       {phase.name === 'unavailable' && (
-        <p className={styles.lead} role="status">
+        <p ref={resultRef} tabIndex={-1} className={styles.lead} role="status">
           {t('unavailable')}
         </p>
       )}
       {phase.name === 'preview' && (
         <>
-          <p className={styles.lead}>{t('heading')}</p>
+          <p ref={resultRef} tabIndex={-1} className={styles.lead}>
+            {t('heading')}
+          </p>
           <ul className={styles.list}>
             {phase.cards.map((card, index) => (
               <li key={`${index}-${card.front}`} className={styles.row}>
