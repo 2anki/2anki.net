@@ -104,6 +104,7 @@
     "benefitPdf": "PDF e grandi esportazioni da Notion",
     "benefitCancel": "Annulla quando vuoi",
     "upgradeToUnlimited": "Passa a Pro",
+    "unlimitedPriceLine": "{{price}} al mese, fatturato ogni mese",
     "checkoutError": "Impossibile avviare il pagamento. Riprova o scrivi a support@2anki.net.",
     "backToUpload": "Torna al caricamento",
     "headline": "Hai raggiunto {{limit}} carte questo mese",

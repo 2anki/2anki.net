@@ -168,6 +168,13 @@
   margin: 0.75rem 0 0;
 }
 
+.planPrice {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: -0.25rem 0 0.75rem;
+}
+
 .planCtaPrimary {
   display: flex;
   align-items: center;

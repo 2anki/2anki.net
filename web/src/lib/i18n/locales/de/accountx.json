@@ -104,6 +104,7 @@
     "benefitPdf": "PDFs und große Notion-Exporte",
     "benefitCancel": "Jederzeit kündbar",
     "upgradeToUnlimited": "Auf Pro upgraden",
+    "unlimitedPriceLine": "{{price}} pro Monat, monatlich abgerechnet",
     "checkoutError": "Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.",
     "backToUpload": "Zurück zum Upload",
     "headline": "Du hast diesen Monat {{limit}} Karten erreicht",

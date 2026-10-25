@@ -2757,6 +2757,36 @@ describe('UsersController.getLocals', () => {
     );
   });
 
+  it('reads the limit wall Pro price flag, off by default', async () => {
+    vi.mocked(getFeatureFlag).mockImplementation(async (key: string) =>
+      key === 'limit_wall_pro_price' ? true : false
+    );
+    const userService = {
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UsersService;
+    const authService = {
+      getUserFrom: vi.fn().mockResolvedValue(null),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const req = { cookies: {} } as unknown as express.Request;
+    const res = {
+      locals: {},
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
+
+    await controller.getLocals(req, res);
+
+    const { features } = res.json.mock.calls[0][0];
+    expect(features.limitWallProPrice).toBe(true);
+    expect(features.anonymousDayPassCard).toBe(false);
+    expect(getFeatureFlag).toHaveBeenCalledWith('limit_wall_pro_price', false);
+    vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
+  });
+
   it('answers with the Day Pass card off when the flag read fails', async () => {
     vi.mocked(getFeatureFlag).mockRejectedValueOnce(new Error('db down'));
     vi.spyOn(console, 'error').mockImplementation(() => {});

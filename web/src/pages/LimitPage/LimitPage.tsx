@@ -16,6 +16,7 @@ import {
   type PassKind,
   type WallOrder,
 } from './LimitWall';
+import { useUnlimitedMonthlyPrice } from './useUnlimitedMonthlyPrice';
 import styles from './LimitPage.module.css';
 
 const MAX_SHOWN_CARDS = 10000;
@@ -238,6 +239,9 @@ export function LimitPage() {
   const [passError, setPassError] = useState<string | null>(null);
 
   const showAnonymous = !isLoggedIn;
+  const unlimitedPrice = useUnlimitedMonthlyPrice(
+    isLoggedIn && userLocals?.features?.limitWallProPrice === true
+  );
 
   useEffect(() => {
     if (isLoading || showAnonymous) return;
@@ -311,6 +315,7 @@ export function LimitPage() {
       onPass={handlePassCheckout}
       passError={passError}
       unlimitedHref={unlimitedLink}
+      unlimitedPrice={unlimitedPrice}
       onUnlimitedClick={handleUnlimitedClick}
     />
   );
