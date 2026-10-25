@@ -6,6 +6,7 @@ import {
   THIN_DECK_MAX_IN_FLIGHT_PER_IP,
   THIN_DECK_SLOT_DEADLINE_MS,
   THIN_DECK_WORK_DEADLINE_MS,
+  THIN_DECK_WORK_HOLD_MAX_MS,
   ThinDeckAiPreviewController,
 } from './ThinDeckAiPreviewController';
 
@@ -196,7 +197,7 @@ describe('ThinDeckAiPreviewController work deadline', () => {
   it('answers unavailable when reading the file and the model take too long', async () => {
     vi.useFakeTimers();
     try {
-      vi.mocked(generateAiPreview).mockReturnValue(new Promise(() => {}));
+      vi.mocked(generateAiPreview).mockReturnValueOnce(new Promise(() => {}));
       const res = makeRes();
 
       const done = new ThinDeckAiPreviewController().preview(makeReq(), res);
@@ -204,6 +205,77 @@ describe('ThinDeckAiPreviewController work deadline', () => {
       await done;
 
       expect(res.json).toHaveBeenCalledWith({ kind: 'unavailable' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('ThinDeckAiPreviewController slot hold', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getFeatureFlag).mockResolvedValue(true);
+  });
+
+  async function runHungPreview(controller: ThinDeckAiPreviewController) {
+    const closers: Array<() => void> = [];
+    const res = makeRes();
+    (res as unknown as { once: unknown }).once = (
+      event: string,
+      cb: () => void
+    ) => {
+      if (event === 'close') closers.push(cb);
+    };
+    const req = makeReq();
+    await controller.guard(req, res, vi.fn());
+    const done = controller.preview(req, res);
+    await vi.advanceTimersByTimeAsync(THIN_DECK_WORK_DEADLINE_MS);
+    await done;
+    closers.forEach((cb) => cb());
+  }
+
+  it('keeps the slot until orphaned work ends, then frees it', async () => {
+    vi.useFakeTimers();
+    try {
+      let finish: (
+        cards: Array<{ front: string; back: string }>
+      ) => void = () => {};
+      vi.mocked(generateAiPreview).mockReturnValueOnce(
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+      );
+      const controller = new ThinDeckAiPreviewController();
+      await runHungPreview(controller);
+      const next = vi.fn();
+      for (let i = 0; i < THIN_DECK_MAX_IN_FLIGHT_PER_IP; i++) {
+        await controller.guard(makeReq(), makeRes(), next);
+      }
+      expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT_PER_IP - 1);
+
+      finish([{ front: 'q', back: 'a' }]);
+      await vi.advanceTimersByTimeAsync(0);
+      await controller.guard(makeReq(), makeRes(), next);
+
+      expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT_PER_IP);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('frees the slot after the cap even if the work never ends', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(generateAiPreview).mockReturnValueOnce(new Promise(() => {}));
+      const controller = new ThinDeckAiPreviewController();
+      await runHungPreview(controller);
+
+      await vi.advanceTimersByTimeAsync(THIN_DECK_WORK_HOLD_MAX_MS);
+      const next = vi.fn();
+      await controller.guard(makeReq(), makeRes(), next);
+      await controller.guard(makeReq(), makeRes(), next);
+
+      expect(next).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }

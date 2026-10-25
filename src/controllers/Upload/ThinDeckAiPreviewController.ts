@@ -38,6 +38,11 @@ export const THIN_DECK_SLOT_DEADLINE_MS = 60_000;
 // already counted against the rate limits, so an orphaned call stays bounded.
 export const THIN_DECK_WORK_DEADLINE_MS = 40_000;
 const CLEAR_DEADLINE_KEY = 'thinDeckClearUploadDeadline';
+const HOLD_WORK_KEY = 'thinDeckHoldSlotUntil';
+// A slot stays taken until the work it started has really ended, so a request
+// answered "unavailable" at the work deadline cannot leave a parse running
+// behind a free slot. Capped, so one hung parse cannot take a slot forever.
+export const THIN_DECK_WORK_HOLD_MAX_MS = 5 * 60_000;
 
 // Only a PDF needs the whole file; text types are cut before they are decoded
 // so a huge text upload cannot stall the event loop on its way to a 12k sample.
@@ -99,6 +104,25 @@ export class ThinDeckAiPreviewController {
       }
       released = true;
       clearTimeout(deadline);
+      const work = res.locals[HOLD_WORK_KEY] as Promise<unknown> | undefined;
+      if (work == null) {
+        giveBack();
+        return;
+      }
+      const cap = setTimeout(giveBack, THIN_DECK_WORK_HOLD_MAX_MS);
+      cap.unref();
+      const done = () => {
+        clearTimeout(cap);
+        giveBack();
+      };
+      work.then(done, done);
+    };
+    let givenBack = false;
+    const giveBack = () => {
+      if (givenBack) {
+        return;
+      }
+      givenBack = true;
       this.inFlight -= 1;
       const remaining = (this.inFlightByIp.get(ipKey) ?? 1) - 1;
       if (remaining > 0) {
@@ -188,6 +212,7 @@ export class ThinDeckAiPreviewController {
         ...this.deps,
       }
     );
+    res.locals[HOLD_WORK_KEY] = work;
     const outcome = await this.withinWorkDeadline(work);
     if (outcome.kind === 'preview') {
       return res.status(200).json({ kind: 'preview', cards: outcome.cards });
