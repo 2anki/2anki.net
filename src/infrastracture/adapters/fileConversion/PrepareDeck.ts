@@ -81,8 +81,9 @@ import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
 import { isResourceForkEntry } from './documentStructureCensus';
 import { track } from '../../../services/events/track';
 import { withDeckStyle } from '../../../lib/parser/buildDeckStyle';
+import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 
-const HTML_GENERATION_CONCURRENCY = 3;
+const HTML_GENERATION_CONCURRENCY = AI_FILE_CONCURRENCY;
 
 // Bound how many files convert at once. An unbounded Promise.all over a
 // large image/PDF deck holds every converter's working memory (base64 copies,
@@ -713,6 +714,10 @@ interface ClaudeConversionResult {
   deckInfoArrays: DeckInfo[][];
   crossFileDedup: CrossFileDedupState | undefined;
   ownsDedup: boolean;
+  // Cards this call's own files lost to the dedup backstop. Concurrent files
+  // share one state, so a delta on `state.suppressed` would also count a
+  // sibling's drops.
+  ownSuppressed: number;
   // The credit guard tripped mid-run; the caller ships the cards produced so
   // far and attaches the credits warning.
   tripped: boolean;
@@ -729,6 +734,10 @@ function salvagedDecksOf(error: AiCreditsExhaustedError): DeckInfo[] {
     : [];
 }
 
+// Files convert at AI_FILE_CONCURRENCY at a time. A file that starts after
+// others finished still gets their fronts in its prompt; the exact-match
+// backstop in absorbFileIntoCrossFileDedup runs as each file lands, so no
+// duplicate survives whichever order the files finish in.
 async function runCrossFileDedupConversion(
   htmlFiles: DeckParserInput['files'],
   generateForFile: (
@@ -738,31 +747,43 @@ async function runCrossFileDedupConversion(
   userInstructions: string | undefined,
   cardSize: string | undefined,
   crossFileDedup: CrossFileDedupState
-): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
-  const deckInfoArrays: DeckInfo[][] = [];
+): Promise<{
+  deckInfoArrays: DeckInfo[][];
+  tripped: boolean;
+  ownSuppressed: number;
+}> {
   let tripped = false;
-  for (const file of htmlFiles) {
-    if (tripped) break;
-    const instructions = composeCrossFileInstructions(
-      crossFileDedup.fronts,
-      userInstructions,
-      cardSize
-    );
-    try {
-      const decks = await generateForFile(file, instructions);
-      deckInfoArrays.push(absorbFileIntoCrossFileDedup(crossFileDedup, decks));
-    } catch (error) {
-      if (error instanceof AiCreditsExhaustedError) {
-        deckInfoArrays.push(
-          absorbFileIntoCrossFileDedup(crossFileDedup, salvagedDecksOf(error))
-        );
-        tripped = true;
-        break;
+  let failed = false;
+  let ownSuppressed = 0;
+  const absorb = (decks: DeckInfo[]): DeckInfo[] => {
+    const before = crossFileDedup.suppressed;
+    const kept = absorbFileIntoCrossFileDedup(crossFileDedup, decks);
+    ownSuppressed += crossFileDedup.suppressed - before;
+    return kept;
+  };
+  const deckInfoArrays = await mapWithConcurrency(
+    htmlFiles,
+    AI_FILE_CONCURRENCY,
+    async (file) => {
+      if (tripped || failed) return [] as DeckInfo[];
+      const instructions = composeCrossFileInstructions(
+        crossFileDedup.fronts,
+        userInstructions,
+        cardSize
+      );
+      try {
+        return absorb(await generateForFile(file, instructions));
+      } catch (error) {
+        if (error instanceof AiCreditsExhaustedError) {
+          tripped = true;
+          return absorb(salvagedDecksOf(error));
+        }
+        failed = true;
+        throw error;
       }
-      throw error;
     }
-  }
-  return { deckInfoArrays, tripped };
+  );
+  return { deckInfoArrays, tripped, ownSuppressed };
 }
 
 async function runConcurrentClaudeConversion(
@@ -809,7 +830,7 @@ async function runClaudeConversion(
   const crossFileDedup =
     threadedDedup ?? (ownsDedup ? createCrossFileDedupState() : undefined);
 
-  const { deckInfoArrays, tripped } = crossFileDedup
+  const { deckInfoArrays, tripped, ownSuppressed } = crossFileDedup
     ? await runCrossFileDedupConversion(
         htmlFiles,
         generateForFile,
@@ -817,13 +838,16 @@ async function runClaudeConversion(
         cardSize,
         crossFileDedup
       )
-    : await runConcurrentClaudeConversion(
-        htmlFiles,
-        generateForFile,
-        userInstructions
-      );
+    : {
+        ...(await runConcurrentClaudeConversion(
+          htmlFiles,
+          generateForFile,
+          userInstructions
+        )),
+        ownSuppressed: 0,
+      };
 
-  return { deckInfoArrays, crossFileDedup, ownsDedup, tripped };
+  return { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped };
 }
 
 function emitCrossFileConversionEvent(
@@ -1005,7 +1029,6 @@ async function buildClaudeDeck(
     hasFieldMapping: fieldMapping != null,
   });
   const tClaude = Date.now();
-  const suppressedBefore = input.crossFileDedup?.suppressed ?? 0;
   const baseGenerateDeckInfoOptions = {
     isPaying: input.noLimits,
     userId: input.userId ?? null,
@@ -1046,7 +1069,7 @@ async function buildClaudeDeck(
       optionsForFile(f)
     ).then((decks) => withDeckStyle(decks, input.settings));
 
-  const { deckInfoArrays, crossFileDedup, ownsDedup, tripped } =
+  const { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped } =
     await runClaudeConversion(
       htmlFiles,
       generateForFile,
@@ -1109,11 +1132,7 @@ async function buildClaudeDeck(
     // In a multi-file upload a later file whose cards were all covered by
     // earlier files has nothing of its own to export; drop it and let the
     // earlier files carry the upload.
-    if (
-      crossFileDedup &&
-      crossFileDedup.suppressed > suppressedBefore &&
-      !tripped
-    ) {
+    if (crossFileDedup && ownSuppressed > 0 && !tripped) {
       console.info(
         '[PrepareDeck] Claude branch: file fully covered by earlier files',
         {

@@ -32,6 +32,7 @@ import {
 import { getPackagesFromZip } from './getPackagesFromZip';
 import { liftDecksToParent } from './liftDecksToParent';
 import { resolvePerWorkerPythonCap } from '../../lib/pythonWorkerBudget';
+import { AI_FILE_CONCURRENCY } from '../../lib/claude/aiFileConcurrency';
 import { isWorkerTerminationError } from '../../lib/workerTermination';
 import Workspace from '../../lib/parser/WorkSpace';
 import { detectOverSplit } from '../../lib/parser/detectOverSplit';
@@ -371,17 +372,14 @@ async function processFile(
 }
 
 // Files in one upload are independent conversions, so they can run side by
-// side. Two cases stay sequential: the AI cross-file dedup state depends on
-// file order, and each zip already converts its own decks in parallel under
-// the per-worker Python cap and sizes its in-memory extraction for one archive
-// at a time, so two zips at once would exceed both budgets.
-function canConvertInParallel(
-  files: UploadedFile[],
-  crossFileDedup: CrossFileDedupState | undefined
-): boolean {
+// side. An upload that includes a zip stays sequential: each zip already
+// converts its own decks in parallel under the per-worker Python cap and sizes
+// its in-memory extraction for one archive at a time, so two zips at once would
+// exceed both budgets. AI uploads share one dedup state across the concurrent
+// files, which absorb their cards synchronously as each file lands.
+function canConvertInParallel(files: UploadedFile[]): boolean {
   return (
     files.length > 1 &&
-    crossFileDedup == null &&
     !files.some(
       (file) =>
         isCompressedFile(file.originalname) ||
@@ -411,9 +409,10 @@ async function convertInSequence(
 async function convertInParallel(
   files: UploadedFile[],
   workspace: Workspace,
-  convert: (file: UploadedFile, ws: Workspace) => Promise<FileResult>
+  convert: (file: UploadedFile, ws: Workspace) => Promise<FileResult>,
+  concurrency: number
 ): Promise<FileResult[]> {
-  const limit = pLimit(resolvePerWorkerPythonCap());
+  const limit = pLimit(concurrency);
   const fileWorkspaces = files.map(() => Workspace.subdir(workspace.location));
   const failures = new Map<number, unknown>();
   const results = await Promise.all(
@@ -505,8 +504,10 @@ async function doGenerationWork(
       anonymousPassId
     );
   };
-  const results = canConvertInParallel(files, crossFileDedup)
-    ? await convertInParallel(files, workspace, convert)
+  const concurrency =
+    crossFileDedup == null ? resolvePerWorkerPythonCap() : AI_FILE_CONCURRENCY;
+  const results = canConvertInParallel(files)
+    ? await convertInParallel(files, workspace, convert, concurrency)
     : await convertInSequence(files, workspace, convert);
 
   for (const result of results) {

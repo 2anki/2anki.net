@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-25-ai-converts-several-files-at-once",
+  "date": "2026-10-25",
+  "type": "fix",
+  "title": "Uploading many files with AI cards is faster. Files now convert three at a time instead of one after another, and duplicate cards across files are still removed."
+}
