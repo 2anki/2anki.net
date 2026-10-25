@@ -600,11 +600,12 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     );
 
     let releaseEmpty: () => void = () => {};
+    const emptyMayFinish = new Promise<void>((resolve) => {
+      releaseEmpty = resolve;
+    });
     generateDeckInfo.mockImplementation(async (html: string) => {
       if (html.includes('empty page')) {
-        await new Promise<void>((resolve) => {
-          releaseEmpty = resolve;
-        });
+        await emptyMayFinish;
         return [];
       }
       releaseEmpty();
