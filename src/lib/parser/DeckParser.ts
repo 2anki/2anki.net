@@ -55,6 +55,7 @@ import { isValidAudioFile } from '../anki/format';
 import FallbackParser from './experimental/FallbackParser';
 import { embedFile } from './exporters/embedFile';
 import { extractDataUriImages } from './extractDataUriImages';
+import { SPLIT_HTML_ABOVE_BYTES, splitLargeHtml } from './splitLargeHtml';
 import {
   resolveNotionS3ImageFromZip,
   isNotionSignedFileUrl,
@@ -262,6 +263,10 @@ export class DeckParser {
 
   private readonly cardLimit?: number;
 
+  private parsingInParts = false;
+
+  private readonly classifiedCardCounts = new WeakMap<Deck, number>();
+
   cardsHeldBack = 0;
 
   workspace: Workspace;
@@ -336,12 +341,7 @@ export class DeckParser {
     } else if (isHTMLFile(name)) {
       const contents = getFileContents(firstFile, true);
       this.payload = contents
-        ? this.handleHTML(
-            name,
-            contents.toString(),
-            this.settings.deckName || '',
-            []
-          )
+        ? this.handleHTMLInParts(name, contents.toString())
         : [];
     } else {
       // A plain-text file carries real content even when the fallback parser
@@ -668,6 +668,89 @@ export class DeckParser {
       : name;
   }
 
+  // Whole-page decisions (the zero-card fallbacks, the degenerate-yield
+  // rescue) must not run per slice: a prose-only slice would invent cards the
+  // whole page never would. A slice with no classified card of its own has
+  // only fallback cards, so those are kept only when no slice found any.
+  private handleHTMLInParts(fileName: string, contents: string): Deck[] {
+    const deckName = this.settings.deckName || '';
+    const parts = splitLargeHtml(contents);
+    if (parts == null) {
+      if (contents.length > SPLIT_HTML_ABOVE_BYTES) {
+        console.info('[DeckParser] large page could not be split', {
+          bytes: contents.length,
+        });
+      }
+      return this.handleHTML(fileName, contents, deckName, []);
+    }
+    console.info('[DeckParser] parsing a large page in parts', {
+      bytes: contents.length,
+      parts: parts.length,
+    });
+    this.parsingInParts = true;
+    try {
+      return this.mergeParts(fileName, parts, deckName);
+    } finally {
+      this.parsingInParts = false;
+    }
+  }
+
+  private mergeParts(
+    fileName: string,
+    parts: string[],
+    deckName: string
+  ): Deck[] {
+    const decks = this.handleHTML(fileName, parts[0], deckName, []);
+    const [pageDeck] = decks;
+    if (pageDeck == null) {
+      return decks;
+    }
+    const slices = [
+      {
+        deck: pageDeck,
+        classified: this.classifiedCardCounts.get(pageDeck) ?? 0,
+      },
+    ];
+    for (const part of parts.slice(1)) {
+      const [partDeck, ...partSubDecks] = this.handleHTML(
+        fileName,
+        part,
+        deckName,
+        [],
+        pageDeck.globalTags
+      );
+      decks.push(...partSubDecks);
+      if (partDeck != null) {
+        slices.push({
+          deck: partDeck,
+          classified: this.classifiedCardCounts.get(partDeck) ?? 0,
+        });
+      }
+    }
+    const anyClassified = slices.some((slice) => slice.classified > 0);
+    const seen = new Set<string>();
+    const cards: Note[] = [];
+    for (const { deck, classified } of slices) {
+      pageDeck.mcqCount += deck === pageDeck ? 0 : deck.mcqCount;
+      pageDeck.mcqSkippedCount += deck === pageDeck ? 0 : deck.mcqSkippedCount;
+      pageDeck.globalTags = [
+        ...new Set([...pageDeck.globalTags, ...deck.globalTags]),
+      ];
+      if (anyClassified && classified === 0) {
+        continue;
+      }
+      for (const card of deck.cards) {
+        const key = `${card.name}\u0000${card.back}`;
+        if (anyClassified || !seen.has(key)) {
+          seen.add(key);
+          cards.push(card);
+        }
+      }
+    }
+    pageDeck.cards = cards;
+    return decks;
+  }
+
   handleHTML(
     fileName: string,
     contents: string,
@@ -701,6 +784,7 @@ export class DeckParser {
     const toggleList = this.extractToggleLists(dom);
     const paragraphs = this.extractCardsFromParagraph(dom);
     const extractResult = this.extractCards(dom, toggleList, isNewFormat);
+    const classifiedCount = extractResult.cards.length;
     let cards: Note[] = extractResult.cards;
 
     const disableIndentedBullets = this.settings.disableIndentedBulletPoints;
@@ -758,7 +842,7 @@ export class DeckParser {
       if (rescued != null) {
         cards = rescued;
       }
-    } else if (this.isDegenerateYield(cards, dom)) {
+    } else if (!this.parsingInParts && this.isDegenerateYield(cards, dom)) {
       const richer = this.induceRicherDeck(cards, dom);
       if (richer != null) {
         cards = richer;
@@ -774,6 +858,7 @@ export class DeckParser {
       this.settings
     );
     deck.globalTags = fileGlobalTags;
+    this.classifiedCardCounts.set(deck, classifiedCount);
     deck.mcqCount = extractResult.mcqCount;
     deck.mcqSkippedCount = extractResult.mcqSkippedCount;
     decks.push(deck);
