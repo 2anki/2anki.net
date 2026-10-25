@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { mergePdfImageFallbackMarker } from '../../infrastracture/adapters/fileConversion/pdfImageFallbackMarker';
 import type Workspace from '../../lib/parser/WorkSpace';
 
 // The downloader lists decks by reading the top-level workspace, so a deck
@@ -8,6 +9,7 @@ import type Workspace from '../../lib/parser/WorkSpace';
 // first — silently overwriting is the failure this whole change removes.
 export async function liftDecksToParent(from: Workspace, to: Workspace) {
   if (!fs.existsSync(from.location)) return;
+  mergePdfImageFallbackMarker(from.location, to.location);
   const entries = await fs.promises.readdir(from.location);
   for (const entry of entries) {
     if (!entry.endsWith('.apkg')) continue;

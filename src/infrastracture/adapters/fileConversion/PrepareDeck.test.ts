@@ -589,6 +589,98 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     expect(crossFileDedup.suppressed).toBe(1);
   });
 
+  it("does not treat a sibling file's suppression as its own when it made no cards", async () => {
+    const { createCrossFileDedupState, cardFingerprint } =
+      await vi.importActual<typeof import('../../../lib/claude/ClaudeService')>(
+        '../../../lib/claude/ClaudeService'
+      );
+    const crossFileDedup = createCrossFileDedupState();
+    crossFileDedup.seenKeys.add(
+      cardFingerprint({ name: 'Known fact', back: 'Known answer' })
+    );
+
+    let releaseEmpty: () => void = () => {};
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('empty page')) {
+        await new Promise<void>((resolve) => {
+          releaseEmpty = resolve;
+        });
+        return [];
+      }
+      releaseEmpty();
+      return deckWithCards('Sibling', [
+        { name: 'Known fact', back: 'Known answer' },
+      ]);
+    });
+
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    const [empty] = await Promise.all([
+      PrepareDeck({
+        name: 'empty.html',
+        files: [{ name: 'empty.html', contents: '<p>empty page</p>' }],
+        settings,
+        noLimits: true,
+        workspace: makeWorkspace(),
+        crossFileDedup,
+      }),
+      PrepareDeck({
+        name: 'sibling.html',
+        files: [{ name: 'sibling.html', contents: '<p>sibling page</p>' }],
+        settings,
+        noLimits: true,
+        workspace: makeWorkspace(),
+        crossFileDedup,
+      }),
+    ]);
+
+    expect(crossFileDedup.suppressed).toBe(1);
+    expect(empty?.engine).toBe('parser');
+  });
+
+  it('drops the duplicate whichever file finishes first', async () => {
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('page 0')) {
+        await new Promise((r) => setTimeout(r, 15));
+      }
+      return deckWithCards('Shared', [{ name: 'Same fact', back: 'Same' }]);
+    });
+
+    await PrepareDeck({
+      name: 'export.zip',
+      files: [
+        { name: 'a.html', contents: '<p>page 0</p>' },
+        { name: 'b.html', contents: '<p>page 1</p>' },
+      ],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    const configuredDecks = CustomExporterMock.mock.results[0].value.configure
+      .mock.calls[0][0] as Array<{ cards: Array<{ name: string }> }>;
+    expect(configuredDecks.flatMap((d) => d.cards)).toHaveLength(1);
+  });
+
+  it('does not start queued files after one file fails', async () => {
+    const files = Array.from({ length: AI_FILE_CONCURRENCY + 2 }, (_, i) => ({
+      name: `page-${i}.html`,
+      contents: `<p>page ${i}</p>`,
+    }));
+    generateDeckInfo.mockRejectedValue(new Error('Claude is down'));
+
+    await expect(
+      PrepareDeck({
+        name: 'export.zip',
+        files,
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      })
+    ).rejects.toThrow();
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(AI_FILE_CONCURRENCY);
+  });
+
   it('falls back to the standard parser when a single upload gets no AI cards and nothing was suppressed', async () => {
     const { createCrossFileDedupState } = await vi.importActual<
       typeof import('../../../lib/claude/ClaudeService')

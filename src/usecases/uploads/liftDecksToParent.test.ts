@@ -3,6 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import type Workspace from '../../lib/parser/WorkSpace';
 import { liftDecksToParent } from './liftDecksToParent';
+import {
+  loadPdfImageFallbackNames,
+  writePdfImageFallbackMarker,
+} from '../../infrastracture/adapters/fileConversion/pdfImageFallbackMarker';
 
 function makeWorkspace(location: string): Workspace {
   fs.mkdirSync(location, { recursive: true });
@@ -51,6 +55,22 @@ describe('liftDecksToParent', () => {
     expect(
       fs.readFileSync(path.join(parent.location, 'Notes (2).apkg'), 'utf8')
     ).toBe('second');
+  });
+
+  it("merges each child's PDF image fallback names into the parent marker", async () => {
+    const parent = makeWorkspace(root);
+    const first = makeWorkspace(path.join(root, 'first'));
+    const second = makeWorkspace(path.join(root, 'second'));
+    writePdfImageFallbackMarker(first.location, ['a.pdf.html']);
+    writePdfImageFallbackMarker(second.location, ['b.pdf.html']);
+
+    await liftDecksToParent(first, parent);
+    await liftDecksToParent(second, parent);
+
+    expect([...loadPdfImageFallbackNames(parent.location)].sort()).toEqual([
+      'a.pdf.html',
+      'b.pdf.html',
+    ]);
   });
 
   it('does nothing when the child workspace was never created', async () => {
