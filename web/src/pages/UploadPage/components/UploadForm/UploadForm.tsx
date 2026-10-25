@@ -31,6 +31,8 @@ import { EmptyBackNotice } from '../../../DownloadsPage/components/EmptyBackNoti
 import { ColorFlattenedNotice } from '../../../DownloadsPage/components/ColorFlattenedNotice';
 import { StructureRescuedNotice } from '../../../DownloadsPage/components/StructureRescuedNotice';
 import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice';
+import { ThinDeckAiOffer } from '../ThinDeckAiOffer/ThinDeckAiOffer';
+import { isThinDeck } from '../ThinDeckAiOffer/isThinDeck';
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
@@ -596,6 +598,10 @@ function UploadForm({
   const isAuthenticated = userLocals?.user?.id != null;
   const currentOwnerId = userLocals?.user?.id ?? null;
   const isPaying = isPayingUser(userLocals?.locals);
+  const thinDeckOfferFile =
+    userLocals?.features?.thinDeckAiOffer === true && rescueFiles.length === 1
+      ? rescueFiles[0]
+      : null;
   const [dayPassPending, setDayPassPending] = useState(false);
   const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
   const recoveryTokenRef = useRef<string | null>(null);
@@ -1037,9 +1043,12 @@ function UploadForm({
   }, [aiRescueState]);
 
   const handleAiRescue = () => {
-    const files = rescueFiles;
-    if (files.length !== 1) return;
+    if (rescueFiles.length !== 1) return;
     track('upload_ai_rescue_clicked', { state: 'paying' });
+    rerunWithAi(rescueFiles);
+  };
+
+  const rerunWithAi = (files: File[]) => {
     const formData = new FormData();
     for (const file of files) {
       formData.append('pakker', file, file.name);
@@ -2249,6 +2258,18 @@ function UploadForm({
       )}
       {!aiOn &&
         cardsHeldBack === 0 &&
+        thinDeckOfferFile != null &&
+        isThinDeck(cardCount, currentFilename(), thinDeckOfferFile.size) && (
+          <ThinDeckAiOffer
+            file={thinDeckOfferFile}
+            cardCount={cardCount}
+            isPaying={isPaying}
+            onMakeFullDeck={() => rerunWithAi(rescueFiles)}
+          />
+        )}
+      {!aiOn &&
+        cardsHeldBack === 0 &&
+        thinDeckOfferFile == null &&
         isThinPdfOrTxtDeck(cardCount, currentFilename()) && (
           <div className={formStyles.warningInline}>
             <ThinDeckNotice

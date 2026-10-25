@@ -1,0 +1,16 @@
+{
+  "ariaLabel": "このファイルからClaudeが作るカードのプレビュー",
+  "lead": "Claudeはこのファイルを読んで、さらに多くのカードを作れます。",
+  "cta": "Claudeが作るカードをプレビュー",
+  "consent": "ファイルのテキストはサンプル作成のためにClaude（Anthropic）に送信されます。それ以外は共有されず、何も保存されません。",
+  "loading": "ファイルを読み込んでいます",
+  "heading": "ファイルの冒頭からClaudeが書いたサンプルです",
+  "front": "表",
+  "back": "裏",
+  "unlockPaying": "完全なAIデッキを作成",
+  "unlockPayingNote": "AIクレジットを使用します。",
+  "unlockFree": "すべてのカードを入手：Day Pass {{price}}",
+  "unlockFreeNote": "24時間有効、サブスクリプションなし。すでにあるデッキは引き続き無料でダウンロードできます。",
+  "unavailable": "現在このファイルからプレビューを作成できませんでした。すでにあるデッキはそのままダウンロードできます。",
+  "checkoutError": "決済を開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。"
+}

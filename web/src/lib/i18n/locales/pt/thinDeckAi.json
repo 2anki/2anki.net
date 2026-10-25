@@ -1,0 +1,16 @@
+{
+  "ariaLabel": "Prévia do que o Claude escreveria a partir deste arquivo",
+  "lead": "O Claude pode ler este arquivo e escrever mais cartas a partir dele.",
+  "cta": "Veja uma prévia das cartas que o Claude escreveria",
+  "consent": "O texto do seu arquivo é enviado ao Claude (Anthropic) para escrever a amostra. Nada mais é compartilhado e nada é guardado.",
+  "loading": "Lendo seu arquivo",
+  "heading": "Uma amostra que o Claude escreveu a partir do início do seu arquivo",
+  "front": "Frente",
+  "back": "Verso",
+  "unlockPaying": "Criar o baralho completo com IA",
+  "unlockPayingNote": "Usa seus créditos de IA.",
+  "unlockFree": "Garanta todas as cartas: Day Pass {{price}}",
+  "unlockFreeNote": "Dura 24 horas, sem assinatura. O baralho que você já tem continua grátis para baixar.",
+  "unavailable": "Não foi possível fazer uma prévia deste arquivo agora. O baralho que você já tem continua pronto para baixar.",
+  "checkoutError": "Não foi possível iniciar o pagamento. Tente de novo ou escreva para support@2anki.net."
+}
