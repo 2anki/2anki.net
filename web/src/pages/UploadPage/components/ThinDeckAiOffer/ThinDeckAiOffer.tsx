@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { track } from '../../../../lib/analytics/track';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { usePassPrices } from '../../../../lib/hooks/usePassPrices';
+import { clearThinDeckResume } from './thinDeckResume';
 import styles from './ThinDeckAiOffer.module.css';
 
 type Card = { front: string; back: string };
@@ -17,6 +18,7 @@ interface ThinDeckAiOfferProps {
   cardCount: number;
   isPaying: boolean;
   onMakeFullDeck: () => void;
+  onBeforeCheckout: () => Promise<void>;
 }
 
 const SURFACE = 'thin-deck';
@@ -26,6 +28,7 @@ export function ThinDeckAiOffer({
   cardCount,
   isPaying,
   onMakeFullDeck,
+  onBeforeCheckout,
 }: Readonly<ThinDeckAiOfferProps>) {
   const { t } = useTranslation('thinDeckAi');
   const prices = usePassPrices();
@@ -66,6 +69,7 @@ export function ThinDeckAiOffer({
     setCheckoutError(false);
     setCheckoutPending(true);
     try {
+      await onBeforeCheckout();
       const result = await get2ankiApi().startPassCheckout(
         '24h',
         undefined,
@@ -75,6 +79,7 @@ export function ThinDeckAiOffer({
         globalThis.location.href = result.url;
         return;
       }
+      clearThinDeckResume();
       setCheckoutError(true);
     } finally {
       setCheckoutPending(false);

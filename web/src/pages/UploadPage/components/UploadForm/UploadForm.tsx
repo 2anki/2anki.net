@@ -33,6 +33,13 @@ import { StructureRescuedNotice } from '../../../DownloadsPage/components/Struct
 import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice';
 import { ThinDeckAiOffer } from '../ThinDeckAiOffer/ThinDeckAiOffer';
 import { isThinDeck } from '../ThinDeckAiOffer/isThinDeck';
+import {
+  THIN_DECK_RESUME_POLL_MS,
+  THIN_DECK_RESUME_WAIT_MS,
+  clearThinDeckResume,
+  markThinDeckResume,
+  thinDeckResumeMarked,
+} from '../ThinDeckAiOffer/thinDeckResume';
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
@@ -592,6 +599,7 @@ function UploadForm({
     data: userLocals,
     isLoading: userLocalsLoading,
     isError: userLocalsFailed,
+    refetch: refetchUserLocals,
   } = useUserLocals();
   const passPrices = usePassPrices();
   const queryClient = useQueryClient();
@@ -738,6 +746,11 @@ function UploadForm({
   useEffect(() => {
     if (aiPreviewResumeRef.current) return;
     if (passSessionToken == null || userLocalsLoading || isAuthenticated) {
+      return;
+    }
+    if (thinDeckResumeMarked()) {
+      // The file waits on this device; the thin deck resume below sends it.
+      storePassToken(passSessionToken);
       return;
     }
     aiPreviewResumeRef.current = true;
@@ -1763,6 +1776,10 @@ function UploadForm({
     const offered = resumeOffer.upload;
     setResumeOffer(null);
     track('upload_resume_clicked');
+    await resumePendingUpload(offered);
+  };
+
+  const resumePendingUpload = async (offered: PendingUpload) => {
     setZoneState('converting');
     setProgressWidth(10);
     // Re-read the store: a logout in another tab empties it, another tab can
@@ -1778,7 +1795,14 @@ function UploadForm({
       return;
     }
     if (await restoreFinishedDeck(upload, 'converting')) return;
-    if (zoneStateRef.current !== 'converting') return;
+    // 'idle' is allowed: the converting state set above may not have been
+    // rendered yet when this runs from an effect rather than a click.
+    if (
+      zoneStateRef.current !== 'converting' &&
+      zoneStateRef.current !== 'idle'
+    ) {
+      return;
+    }
     const formData = new FormData();
     for (const file of upload.files) {
       formData.append('pakker', file, file.name);
@@ -1795,6 +1819,89 @@ function UploadForm({
     resumedUploadRef.current = true;
     void runFileUpload(formData, upload.files, false);
   };
+
+  // The file a free person left behind to buy a Day Pass from the thin deck
+  // offer. Saved before checkout so the return can send it again with AI on.
+  const saveThinDeckForCheckout = async (): Promise<void> => {
+    const file = thinDeckOfferFile;
+    if (file == null) return;
+    await getPendingUploadStore().save({
+      files: withinStorableSize([file]),
+      filename: file.name,
+      sizeBytes: file.size,
+      submittedAt: Date.now(),
+      recoveryToken: null,
+      ownerId: currentOwnerId,
+      pdfPageRange: pdfPageRangeRef.current,
+      aiFlag: 'true',
+    });
+    // The store swallows write errors, so mark only a file that is really there.
+    const saved = await getPendingUploadStore().load();
+    if (saved != null && saved.files.length > 0) {
+      markThinDeckResume();
+    }
+  };
+
+  // Back from the Day Pass checkout of the thin deck offer: send the saved
+  // file again with AI on, no re-upload. A signed-in pass only counts once the
+  // account shows as paying, which the webhook can lag behind the return by a
+  // moment, so the page asks again for a few seconds; past that the saved file
+  // is left on the one-tap Continue banner.
+  const thinDeckResumeRef = useRef(false);
+  const thinDeckResumeStartedAt = useRef<number | null>(null);
+  const [thinDeckPollTick, setThinDeckPollTick] = useState(0);
+  // The marker only belongs to the return it was set for. A page opened any
+  // other way (cancelled checkout, a reload, a later visit) drops it.
+  useEffect(() => {
+    if (!(returnedFromCheckout || passSessionToken != null)) {
+      clearThinDeckResume();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (thinDeckResumeRef.current || userLocalsLoading || sample) return;
+    if (!(returnedFromCheckout || passSessionToken != null)) return;
+    if (!thinDeckResumeMarked()) return;
+    const waitingForPass = isAuthenticated && !isPaying;
+    if (waitingForPass) {
+      thinDeckResumeStartedAt.current ??= Date.now();
+      if (
+        Date.now() - thinDeckResumeStartedAt.current >=
+        THIN_DECK_RESUME_WAIT_MS
+      ) {
+        clearThinDeckResume();
+        return;
+      }
+      const timer = setTimeout(() => {
+        void refetchUserLocals();
+        setThinDeckPollTick((tick) => tick + 1);
+      }, THIN_DECK_RESUME_POLL_MS);
+      return () => clearTimeout(timer);
+    }
+    thinDeckResumeRef.current = true;
+    clearThinDeckResume();
+    void (async () => {
+      const upload = await getPendingUploadStore().load();
+      if (
+        upload == null ||
+        upload.aiFlag !== 'true' ||
+        upload.files.length === 0 ||
+        upload.ownerId !== currentOwnerId ||
+        zoneStateRef.current !== 'idle'
+      ) {
+        return;
+      }
+      track('thin_deck_ai_unlock_clicked', { plan: 'resumed' });
+      await resumePendingUpload(upload);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    userLocalsLoading,
+    isAuthenticated,
+    isPaying,
+    userLocals,
+    thinDeckPollTick,
+  ]);
 
   // A zip of notes handed over from Print or CSV: convert it straight away.
   const handoffTakenRef = useRef(false);
@@ -2271,6 +2378,7 @@ function UploadForm({
             cardCount={cardCount}
             isPaying={isPaying}
             onMakeFullDeck={() => rerunWithAi(rescueFiles)}
+            onBeforeCheckout={saveThinDeckForCheckout}
           />
         )}
       {!aiOn &&
