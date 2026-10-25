@@ -47,6 +47,7 @@ import { ResumeAnonymousAiPreviewUseCase } from '../usecases/uploads/ResumeAnony
 import { AnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
 import { getCheckoutSessionBinding } from '../usecases/checkout/getCheckoutSessionBinding';
 import { getStripe } from '../lib/integrations/stripe';
+import { ThinDeckAiPreviewController } from '../controllers/Upload/ThinDeckAiPreviewController';
 import { SampleUploadController } from '../controllers/Upload/SampleUploadController';
 import { ConvertSampleDeckUseCase } from '../usecases/uploads/ConvertSampleDeckUseCase';
 
@@ -95,6 +96,7 @@ const UploadRouter = () => {
       uploadService
     )
   );
+  const thinDeckAiPreviewController = new ThinDeckAiPreviewController();
   const aiPreviewResumeController = new AiPreviewResumeController(
     new ResumeAnonymousAiPreviewUseCase(
       new HeldDeckRepository(database),
@@ -320,6 +322,34 @@ const UploadRouter = () => {
     }).single('file'),
     normalizeUploadFilenames,
     (req, res) => saveNativeDeckController.save(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/upload/thin-deck-preview:
+   *   post:
+   *     summary: Sample the cards Claude would write from a file
+   *     description: Sends the text of the first pages to Claude and returns at most five sample cards. Runs only when the form field consent is claude, which the page sets when the person taps the preview button. Nothing is stored.
+   *     tags: [Upload]
+   *     responses:
+   *       200:
+   *         description: Sample cards, or kind unavailable or unsupported
+   *       400:
+   *         description: Consent or file missing
+   *       403:
+   *         description: Origin not allowed
+   *       404:
+   *         description: Not available
+   */
+  router.post(
+    '/api/upload/thin-deck-preview',
+    RequireAllowedOrigin,
+    multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 50 * 1024 * 1024, files: 1 },
+    }).single('file'),
+    normalizeUploadFilenames,
+    (req, res) => thinDeckAiPreviewController.preview(req, res)
   );
 
   router.post(
