@@ -350,6 +350,7 @@ const UploadRouter = () => {
       limits: { fileSize: 50 * 1024 * 1024, files: 1 },
     }).single('file'),
     normalizeUploadFilenames,
+    thinDeckAiPreviewController.bodyReceived,
     (req, res) => thinDeckAiPreviewController.preview(req, res)
   );
 

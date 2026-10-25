@@ -26,10 +26,13 @@ export const THIN_DECK_CONSENT_VALUE = 'claude';
 // origin check is only an allowlist a script can spoof. So the flag and a small
 // in-flight cap are checked first, and a refused request never buffers a file.
 export const THIN_DECK_MAX_IN_FLIGHT = 4;
-// One address cannot hold every slot, and a slot is never held longer than the
-// deadline, so a stalled upload cannot starve the endpoint for everyone else.
+// One address cannot hold every slot, and a body that has not arrived within
+// the deadline is cut off (the socket is destroyed, which frees the slot), so a
+// stalled upload cannot starve the endpoint. The deadline covers only the
+// upload; once the body is in, the slot is held until the response ends.
 export const THIN_DECK_MAX_IN_FLIGHT_PER_IP = 2;
 export const THIN_DECK_SLOT_DEADLINE_MS = 60_000;
+const CLEAR_DEADLINE_KEY = 'thinDeckClearUploadDeadline';
 
 // Only a PDF needs the whole file; text types are cut before they are decoded
 // so a huge text upload cannot stall the event loop on its way to a 12k sample.
@@ -100,14 +103,21 @@ export class ThinDeckAiPreviewController {
       }
     };
     const deadline = setTimeout(() => {
-      release();
       if (!res.headersSent) {
         res.status(408).json({ code: 'too_slow' });
       }
+      req.destroy();
     }, THIN_DECK_SLOT_DEADLINE_MS);
     deadline.unref();
+    res.locals[CLEAR_DEADLINE_KEY] = () => clearTimeout(deadline);
     res.once('finish', release);
     res.once('close', release);
+    next();
+  };
+
+  bodyReceived = (_req: Request, res: Response, next: NextFunction): void => {
+    const clear = res.locals[CLEAR_DEADLINE_KEY] as (() => void) | undefined;
+    clear?.();
     next();
   };
 

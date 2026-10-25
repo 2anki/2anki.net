@@ -35,6 +35,7 @@ function makeReq(overrides: Record<string, unknown> = {}): Request {
     file: { originalname: 'notes.pdf', buffer: Buffer.from('x') },
     cookies: { anon_id: 'visitor-1' },
     headers: {},
+    destroy: vi.fn(),
     socket: { remoteAddress: '203.0.113.5' },
     ...overrides,
   } as unknown as Request;
@@ -248,21 +249,48 @@ describe('ThinDeckAiPreviewController.guard', () => {
     expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT_PER_IP);
   });
 
-  it('frees a stalled slot after the deadline and answers 408', async () => {
+  it('cuts off a body that has not arrived by the deadline and frees its slot on close', async () => {
     vi.useFakeTimers();
     try {
       const controller = new ThinDeckAiPreviewController();
       const next = vi.fn();
+      const closers: Array<() => void> = [];
       const stalled = makeRes();
-      for (let i = 0; i < THIN_DECK_MAX_IN_FLIGHT_PER_IP; i++) {
-        await controller.guard(makeReq(), i === 0 ? stalled : makeRes(), next);
-      }
+      (stalled as unknown as { once: unknown }).once = (
+        event: string,
+        cb: () => void
+      ) => {
+        if (event === 'close') closers.push(cb);
+      };
+      const stalledReq = makeReq({ destroy: vi.fn() });
+      await controller.guard(stalledReq, stalled, next);
+      await controller.guard(makeReq(), makeRes(), next);
 
       vi.advanceTimersByTime(THIN_DECK_SLOT_DEADLINE_MS);
 
       expect(stalled.status).toHaveBeenCalledWith(408);
+      expect(stalledReq.destroy).toHaveBeenCalled();
+      closers[0]();
       await controller.guard(makeReq(), makeRes(), next);
       expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT_PER_IP + 1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not cut off a request whose body arrived in time', async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new ThinDeckAiPreviewController();
+      const res = makeRes();
+      const req = makeReq({ destroy: vi.fn() });
+      await controller.guard(req, res, vi.fn());
+
+      controller.bodyReceived(req, res, vi.fn());
+      vi.advanceTimersByTime(THIN_DECK_SLOT_DEADLINE_MS * 2);
+
+      expect(req.destroy).not.toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }

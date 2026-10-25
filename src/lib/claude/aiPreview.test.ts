@@ -4,6 +4,7 @@ import {
   AI_PREVIEW_MAX_INPUT_CHARS,
   AI_PREVIEW_MAX_TOKENS,
   AI_PREVIEW_SURFACE,
+  AI_PREVIEW_TIMEOUT_MS,
   generateAiPreview,
 } from './aiPreview';
 
@@ -35,6 +36,16 @@ describe('generateAiPreview', () => {
     const sentContent = params.messages[0].content as string;
     expect(sentContent.length).toBe(AI_PREVIEW_MAX_INPUT_CHARS);
     expect(sentContent.length).toBeLessThan(huge.length);
+  });
+
+  it('cuts a hung call off with a request timeout', async () => {
+    const { create, client } = fakeClient(
+      jsonMessage([{ front: 'q', back: 'a' }])
+    );
+
+    await generateAiPreview('some text', { client });
+
+    expect(create.mock.calls[0][1]).toEqual({ timeout: AI_PREVIEW_TIMEOUT_MS });
   });
 
   it('returns at most AI_PREVIEW_CARD_COUNT parsed cards', async () => {

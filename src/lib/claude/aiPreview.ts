@@ -11,6 +11,9 @@ export const AI_PREVIEW_MAX_INPUT_CHARS = 12_000;
 export const AI_PREVIEW_MAX_TOKENS = 1_536;
 export const AI_PREVIEW_CARD_COUNT = 5;
 export const AI_PREVIEW_SURFACE = 'ai_preview';
+// A preview is a short sample, so a hung call is cut off well before a person
+// would wait that long and before it can hold an upload slot for minutes.
+export const AI_PREVIEW_TIMEOUT_MS = 30_000;
 
 const PREVIEW_SYSTEM_PROMPT = `You write a short sample of Anki flashcards from study material a learner uploaded.
 Read the text and write at most ${AI_PREVIEW_CARD_COUNT} clear question-and-answer cards drawn from the most important points near the start.
@@ -24,7 +27,10 @@ export interface AiPreviewCard {
 
 export interface AiPreviewClient {
   messages: {
-    create(params: Anthropic.MessageCreateParamsNonStreaming): Promise<{
+    create(
+      params: Anthropic.MessageCreateParamsNonStreaming,
+      options?: { timeout?: number }
+    ): Promise<{
       model?: string;
       usage?: ClaudeUsage | null;
       content?: Array<{ type?: string; text?: string }>;
@@ -103,12 +109,15 @@ export async function generateAiPreview(
   const client =
     deps.client ?? (getAnthropicClient() as unknown as AiPreviewClient);
   const start = Date.now();
-  const response = await client.messages.create({
-    model: CONVERSION_MODEL,
-    max_tokens: AI_PREVIEW_MAX_TOKENS,
-    system: [{ type: 'text', text: PREVIEW_SYSTEM_PROMPT }],
-    messages: [{ role: 'user', content: input }],
-  } as Anthropic.MessageCreateParamsNonStreaming);
+  const response = await client.messages.create(
+    {
+      model: CONVERSION_MODEL,
+      max_tokens: AI_PREVIEW_MAX_TOKENS,
+      system: [{ type: 'text', text: PREVIEW_SYSTEM_PROMPT }],
+      messages: [{ role: 'user', content: input }],
+    } as Anthropic.MessageCreateParamsNonStreaming,
+    { timeout: AI_PREVIEW_TIMEOUT_MS }
+  );
   (deps.recordUsage ?? recordClaudeUsage)({
     surface: AI_PREVIEW_SURFACE,
     model: response.model,
