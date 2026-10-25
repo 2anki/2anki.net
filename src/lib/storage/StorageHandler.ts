@@ -2,13 +2,10 @@ import {
   S3Client,
   DeleteObjectCommand,
   DeleteObjectsCommand,
-  GetBucketLifecycleConfigurationCommand,
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
-  PutBucketLifecycleConfigurationCommand,
   PutObjectCommand,
-  type LifecycleRule,
   type _Object,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -239,33 +236,6 @@ class StorageHandler {
       await this.deleteObjects(keys.slice(start, start + batchSize));
     }
     return keys.length;
-  }
-
-  async getLifecycleRules(): Promise<LifecycleRule[]> {
-    try {
-      const response = await this.s3.send(
-        new GetBucketLifecycleConfigurationCommand({
-          Bucket: StorageHandler.DefaultBucketName(),
-        })
-      );
-      return response.Rules ?? [];
-    } catch (error) {
-      if (
-        (error as { name?: string }).name === 'NoSuchLifecycleConfiguration'
-      ) {
-        return [];
-      }
-      throw error;
-    }
-  }
-
-  async setLifecycleRules(rules: LifecycleRule[]): Promise<void> {
-    await this.s3.send(
-      new PutBucketLifecycleConfigurationCommand({
-        Bucket: StorageHandler.DefaultBucketName(),
-        LifecycleConfiguration: { Rules: rules },
-      })
-    );
   }
 
   async listMindmapObjects(): Promise<{ key: string; size: number }[]> {

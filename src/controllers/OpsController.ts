@@ -8,7 +8,6 @@ import { GetReturnRateMetricsUseCase } from '../usecases/ops/GetReturnRateMetric
 import { GetMindmapStorageMetricsUseCase } from '../usecases/ops/GetMindmapStorageMetricsUseCase';
 import { PopulateShowcaseUseCase } from '../usecases/ops/PopulateShowcaseUseCase';
 import { SendInactivityWarningsUseCase } from '../usecases/ops/SendInactivityWarningsUseCase';
-import { SendPassWinbackUseCase } from '../usecases/ops/SendPassWinbackUseCase';
 import { DeleteInactiveUsersUseCase } from '../usecases/ops/DeleteInactiveUsersUseCase';
 import { IShowcaseRepository } from '../data_layer/ShowcaseRepository';
 import { SyncStripeSubscriptionsUseCase } from '../usecases/ops/SyncStripeSubscriptionsUseCase';
@@ -27,7 +26,6 @@ import { GetPassUnlockMonitorUseCase } from '../usecases/ops/GetPassUnlockMonito
 import { GetPaidValueMonitorUseCase } from '../usecases/ops/GetPaidValueMonitorUseCase';
 import { GetAiUsageMetricsUseCase } from '../usecases/ops/GetAiUsageMetricsUseCase';
 import { GetEmailDeliveryMetricsUseCase } from '../usecases/ops/GetEmailDeliveryMetricsUseCase';
-import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
 import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
@@ -58,11 +56,9 @@ class OpsController {
     private readonly getLandingPageYieldUseCase?: GetLandingPageYieldUseCase,
     private readonly getCustomerSignalsUseCase?: GetCustomerSignalsUseCase,
     private readonly getPassUnlockMonitorUseCase?: GetPassUnlockMonitorUseCase,
-    private readonly sendPassWinbackUseCase?: SendPassWinbackUseCase,
     private readonly getCancelFunnelUseCase?: GetCancelFunnelUseCase,
     private readonly getPaidValueMonitorUseCase?: GetPaidValueMonitorUseCase,
     private readonly getAiUsageMetricsUseCase?: GetAiUsageMetricsUseCase,
-    private readonly setChatAttachmentsLifecycleUseCase?: SetChatAttachmentsLifecycleUseCase,
     private readonly grantUnclaimedPassUseCase?: GrantUnclaimedPassUseCase,
     private readonly setBlockIdIdentityUseCase?: SetBlockIdIdentityUseCase,
     private readonly changeUserEmailUseCase?: ChangeUserEmailUseCase,
@@ -191,25 +187,6 @@ class OpsController {
       res
         .status(500)
         .json({ message: 'Failed to load email delivery metrics' });
-    }
-  }
-
-  async setChatAttachmentsLifecycle(
-    _req: express.Request,
-    res: express.Response
-  ) {
-    if (this.setChatAttachmentsLifecycleUseCase == null) {
-      res
-        .status(500)
-        .json({ message: 'Chat attachment lifecycle not configured' });
-      return;
-    }
-    try {
-      const result = await this.setChatAttachmentsLifecycleUseCase.execute();
-      res.status(200).json(result);
-    } catch (error) {
-      console.error('[ops] setChatAttachmentsLifecycle failed', error);
-      res.status(500).json({ message: 'Failed to apply the lifecycle rule' });
     }
   }
 
@@ -386,30 +363,6 @@ class OpsController {
     } catch (error) {
       console.error('[ops] sendInactivityWarnings failed', error);
       res.status(500).json({ message: 'Failed to run inactivity warnings' });
-    }
-  }
-
-  async sendPassWinback(req: express.Request, res: express.Response) {
-    if (this.sendPassWinbackUseCase == null) {
-      res.status(500).json({ message: 'Pass win-back not configured' });
-      return;
-    }
-    const campaign =
-      typeof req.query.campaign === 'string' ? req.query.campaign.trim() : '';
-    if (campaign.length === 0) {
-      res.status(400).json({ message: 'campaign is required' });
-      return;
-    }
-    try {
-      const dryRun = req.query.dryRun !== 'false';
-      const result = await this.sendPassWinbackUseCase.execute(
-        campaign,
-        dryRun
-      );
-      res.status(200).json(result);
-    } catch (error) {
-      console.error('[ops] sendPassWinback failed', error);
-      res.status(500).json({ message: 'Failed to run pass win-back' });
     }
   }
 
