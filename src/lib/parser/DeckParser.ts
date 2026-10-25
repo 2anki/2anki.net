@@ -55,6 +55,7 @@ import { isValidAudioFile } from '../anki/format';
 import FallbackParser from './experimental/FallbackParser';
 import { embedFile } from './exporters/embedFile';
 import { extractDataUriImages } from './extractDataUriImages';
+import { splitLargeHtml } from './splitLargeHtml';
 import {
   resolveNotionS3ImageFromZip,
   isNotionSignedFileUrl,
@@ -336,12 +337,7 @@ export class DeckParser {
     } else if (isHTMLFile(name)) {
       const contents = getFileContents(firstFile, true);
       this.payload = contents
-        ? this.handleHTML(
-            name,
-            contents.toString(),
-            this.settings.deckName || '',
-            []
-          )
+        ? this.handleHTMLInParts(name, contents.toString())
         : [];
     } else {
       // A plain-text file carries real content even when the fallback parser
@@ -666,6 +662,38 @@ export class DeckParser {
     return this.settings.removeDeckNameNumbering
       ? stripLeadingDeckNumbering(name)
       : name;
+  }
+
+  private handleHTMLInParts(fileName: string, contents: string): Deck[] {
+    const deckName = this.settings.deckName || '';
+    const parts = splitLargeHtml(contents);
+    if (parts == null) {
+      return this.handleHTML(fileName, contents, deckName, []);
+    }
+    console.info('[DeckParser] parsing a large page in parts', {
+      bytes: contents.length,
+      parts: parts.length,
+    });
+    const decks = this.handleHTML(fileName, parts[0], deckName, []);
+    const [pageDeck] = decks;
+    for (const part of parts.slice(1)) {
+      const [partDeck, ...partSubDecks] = this.handleHTML(
+        fileName,
+        part,
+        deckName,
+        []
+      );
+      if (pageDeck != null && partDeck != null) {
+        pageDeck.cards.push(...partDeck.cards);
+        pageDeck.mcqCount += partDeck.mcqCount;
+        pageDeck.mcqSkippedCount += partDeck.mcqSkippedCount;
+        pageDeck.globalTags = [
+          ...new Set([...pageDeck.globalTags, ...partDeck.globalTags]),
+        ];
+      }
+      decks.push(...partSubDecks);
+    }
+    return decks;
   }
 
   handleHTML(

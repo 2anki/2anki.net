@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-25-very-large-html-pages-convert",
+  "date": "2026-10-25",
+  "type": "fix",
+  "title": "Very large HTML pages (tens of megabytes) now convert instead of failing. The page is read in parts and the cards end up in one deck."
+}
