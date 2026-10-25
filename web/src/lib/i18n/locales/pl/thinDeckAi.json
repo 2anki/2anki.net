@@ -1,0 +1,16 @@
+{
+  "ariaLabel": "Podgląd tego, co Claude napisałby z tego pliku",
+  "lead": "Claude może przeczytać ten plik i napisać z niego więcej fiszek.",
+  "cta": "Zobacz podgląd fiszek, które napisałby Claude",
+  "consent": "Tekst Twojego pliku jest wysyłany do Claude (Anthropic), aby napisać próbkę. Nic więcej nie jest udostępniane i nic nie jest zapisywane.",
+  "loading": "Czytam Twój plik",
+  "heading": "Próbka, którą Claude napisał z początku Twojego pliku",
+  "front": "Przód",
+  "back": "Tył",
+  "unlockPaying": "Utwórz pełną talię z AI",
+  "unlockPayingNote": "Zużywa Twoje kredyty AI.",
+  "unlockFree": "Zdobądź wszystkie fiszki: Day Pass {{price}}",
+  "unlockFreeNote": "Działa 24 godziny, bez subskrypcji. Talię, którą już masz, nadal pobierzesz za darmo.",
+  "unavailable": "Nie udało się teraz zrobić podglądu z tego pliku. Talia, którą już masz, nadal czeka do pobrania.",
+  "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie lub napisz na support@2anki.net."
+}

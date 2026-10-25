@@ -1,0 +1,16 @@
+{
+  "ariaLabel": "Preview what Claude would write from this file",
+  "lead": "Claude can read this file and write more cards from it.",
+  "cta": "Preview cards Claude would write",
+  "consent": "The text of your file is sent to Claude (Anthropic) to write the sample. Nothing else is shared, and nothing is stored.",
+  "loading": "Reading your file",
+  "heading": "A sample Claude wrote from the first part of your file",
+  "front": "Front",
+  "back": "Back",
+  "unlockPaying": "Make the full AI deck",
+  "unlockPayingNote": "Uses your AI credits.",
+  "unlockFree": "Get every card: Day Pass {{price}}",
+  "unlockFreeNote": "Lasts 24 hours, no subscription. The deck you already have stays free to download.",
+  "unavailable": "Couldn't make a preview from this file right now. The deck you already have is still ready to download.",
+  "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net."
+}

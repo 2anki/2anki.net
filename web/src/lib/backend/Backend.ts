@@ -126,6 +126,10 @@ export interface CheckoutPrices {
   lockInDeadline: string | null;
 }
 
+export type ThinDeckPreviewResult =
+  | { kind: 'preview'; cards: Array<{ front: string; back: string }> }
+  | { kind: 'unavailable' };
+
 export class Backend {
   public baseURL = '/api/';
 
@@ -921,6 +925,40 @@ export class Backend {
       return { status: 'error' };
     } catch {
       return { status: 'error' };
+    }
+  }
+
+  // Samples the cards Claude would write from a file. Only called from the
+  // preview button: the consent field is the server's proof of the tap.
+  async previewThinDeckAi(file: File): Promise<ThinDeckPreviewResult> {
+    const form = new FormData();
+    form.append('consent', 'claude');
+    form.append('file', file, file.name);
+    try {
+      const response = await fetch(`${this.baseURL}upload/thin-deck-preview`, {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+      if (!response.ok) {
+        return { kind: 'unavailable' };
+      }
+      const body = (await response.json().catch(() => null)) as {
+        kind?: string;
+        cards?: Array<{ front?: unknown; back?: unknown }>;
+      } | null;
+      if (body?.kind === 'preview' && Array.isArray(body.cards)) {
+        const cards = body.cards.filter(
+          (card): card is { front: string; back: string } =>
+            typeof card.front === 'string' && typeof card.back === 'string'
+        );
+        return cards.length > 0
+          ? { kind: 'preview', cards }
+          : { kind: 'unavailable' };
+      }
+      return { kind: 'unavailable' };
+    } catch {
+      return { kind: 'unavailable' };
     }
   }
 

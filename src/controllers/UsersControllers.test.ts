@@ -2782,6 +2782,7 @@ describe('UsersController.getLocals', () => {
 
     const { features } = res.json.mock.calls[0][0];
     expect(features.limitWallProPrice).toBe(true);
+    expect(features.thinDeckAiOffer).toBe(false);
     expect(features.anonymousDayPassCard).toBe(false);
     expect(getFeatureFlag).toHaveBeenCalledWith('limit_wall_pro_price', false);
     vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);

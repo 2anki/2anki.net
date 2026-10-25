@@ -1,0 +1,16 @@
+{
+  "ariaLabel": "Voorbeeld van wat Claude uit dit bestand zou schrijven",
+  "lead": "Claude kan dit bestand lezen en er meer kaarten uit schrijven.",
+  "cta": "Bekijk een voorbeeld van kaarten die Claude zou schrijven",
+  "consent": "De tekst van je bestand wordt naar Claude (Anthropic) gestuurd om het voorbeeld te schrijven. Er wordt verder niets gedeeld en niets opgeslagen.",
+  "loading": "Je bestand wordt gelezen",
+  "heading": "Een voorbeeld dat Claude uit het begin van je bestand schreef",
+  "front": "Voorkant",
+  "back": "Achterkant",
+  "unlockPaying": "Maak het volledige AI-pakket",
+  "unlockPayingNote": "Gebruikt je AI-tegoed.",
+  "unlockFree": "Krijg alle kaarten: Day Pass {{price}}",
+  "unlockFreeNote": "Duurt 24 uur, geen abonnement. Het pakket dat je al hebt blijft gratis te downloaden.",
+  "unavailable": "Er kon nu geen voorbeeld van dit bestand worden gemaakt. Het pakket dat je al hebt staat nog klaar om te downloaden.",
+  "checkoutError": "Kon het afrekenen niet starten. Probeer het opnieuw of mail naar support@2anki.net."
+}
