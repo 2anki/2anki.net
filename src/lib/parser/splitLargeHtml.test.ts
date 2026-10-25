@@ -89,4 +89,23 @@ describe('splitLargeHtml', () => {
     const one = `<ul class="toggle"><li>${'<p>text</p>'.repeat(30)}</li></ul>`;
     expect(splitLargeHtml(page(one), small)).toBeNull();
   });
+
+  it('gives up at once on an unterminated tag instead of rescanning the page', () => {
+    const children = `${toggle(1)}${'<a href="x '.repeat(100000)}`;
+    const started = Date.now();
+
+    expect(splitLargeHtml(page(children), small)).toBeNull();
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it('treats a bare less-than sign in text as text', () => {
+    const children = Array.from(
+      { length: 10 },
+      (_, i) => `<p>1 < 2 and 3 <4</p>${toggle(i)}`
+    ).join('');
+    const parts = splitLargeHtml(page(children), small);
+
+    expect(parts).not.toBeNull();
+    expect(countOf(parts!, 'Front 9<')).toBe(1);
+  });
 });

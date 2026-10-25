@@ -20,6 +20,7 @@ const VOID_TAGS = new Set([
   'track',
   'wbr',
 ]);
+const TAG_START = /^<\/?[a-zA-Z]/;
 const RAW_TEXT_TAGS = new Set(['script', 'style']);
 const PAGE_BODY =
   /<div\b[^>]*\bclass\s*=\s*["'][^"']*\bpage-body\b[^"']*["'][^>]*>/i;
@@ -85,10 +86,13 @@ function scanTopLevelElements(
       cursor = close + 3;
       continue;
     }
-    const tag = readTag(html, lt);
-    if (tag == null) {
+    if (!TAG_START.test(html.slice(lt, lt + 3))) {
       cursor = lt + 1;
       continue;
+    }
+    const tag = readTag(html, lt);
+    if (tag == null) {
+      return null;
     }
     cursor = tag.end;
     if (tag.closing) {
