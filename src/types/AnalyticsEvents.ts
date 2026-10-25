@@ -193,6 +193,7 @@ export const KNOWN_EVENTS = new Set([
   'deck_distribution_intent_clicked',
   'ai_preview_shown',
   'ai_preview_pass_clicked',
+  'thin_deck_ai_preview_shown',
 ] as const);
 
 export type KnownEvent = typeof KNOWN_EVENTS extends Set<infer T> ? T : never;
