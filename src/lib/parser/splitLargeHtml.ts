@@ -5,6 +5,10 @@
 export const SPLIT_HTML_ABOVE_BYTES = 12_000_000;
 export const SPLIT_HTML_CHUNK_BYTES = 6_000_000;
 
+// A stray closing tag at the top ends the container early; the rest of the
+// page would then be repeated in every slice.
+const MAX_SUFFIX_BYTES = 64_000;
+
 const VOID_TAGS = new Set([
   'area',
   'base',
@@ -147,6 +151,9 @@ export function splitLargeHtml(
   }
   const prefix = html.slice(0, contentStart);
   const suffix = html.slice(scan.contentEnd);
+  if (suffix.length > MAX_SUFFIX_BYTES) {
+    return null;
+  }
   const parts: string[] = [];
   let partStart = contentStart;
   for (const boundary of scan.boundaries) {

@@ -57,3 +57,38 @@ describe('DeckParser on a page above the split size', () => {
     expect(parts).toEqual(whole);
   });
 });
+
+describe(
+  'DeckParser on a large page whose slices differ',
+  { timeout: 60_000 },
+  () => {
+    const prose = `<p>${'a plain sentence of prose. '.repeat(40)}</p>`;
+
+    function mixed(proseBlocks: number, withToggles: boolean): string {
+      const toggles = withToggles
+        ? Array.from({ length: 6 }, (_, i) => toggle(i)).join('')
+        : '';
+      return `<!DOCTYPE html><html><head><title>Mixed</title></head><body><article class="page sans"><header><h1 class="page-title">Mixed</h1></header><div class="page-body">${prose.repeat(proseBlocks)}${toggles}${prose.repeat(proseBlocks)}</div></article></body></html>`;
+    }
+
+    const bigBlocks = Math.ceil(SPLIT_HTML_ABOVE_BYTES / prose.length / 2) + 10;
+
+    function backs(parser: DeckParser): string[] {
+      return parser.payload[0].cards.map((card) => `${card.name}|${card.back}`);
+    }
+
+    it('does not turn prose slices into cards when toggles exist elsewhere', () => {
+      const split = parse(mixed(bigBlocks, true));
+      const whole = parse(mixed(3, true));
+
+      expect(backs(split)).toEqual(backs(whole));
+    });
+
+    it('keeps going on a prose only page without repeating cards', () => {
+      const cards = parse(mixed(bigBlocks * 2, false)).payload[0].cards;
+      const keys = cards.map((card) => `${card.name}|${card.back}`);
+
+      expect(new Set(keys).size).toBe(keys.length);
+    });
+  }
+);

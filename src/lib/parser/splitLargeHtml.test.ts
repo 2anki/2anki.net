@@ -108,4 +108,12 @@ describe('splitLargeHtml', () => {
     expect(parts).not.toBeNull();
     expect(countOf(parts!, 'Front 9<')).toBe(1);
   });
+
+  it('declines when a stray closing tag would repeat the rest of the page', () => {
+    const html = page(`${toggle(1)}</div>${toggle(2).repeat(2000)}`);
+
+    expect(
+      splitLargeHtml(html, { aboveBytes: 100, chunkBytes: 200 })
+    ).toBeNull();
+  });
 });
