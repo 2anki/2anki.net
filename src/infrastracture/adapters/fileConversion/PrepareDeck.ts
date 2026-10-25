@@ -81,8 +81,9 @@ import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
 import { isResourceForkEntry } from './documentStructureCensus';
 import { track } from '../../../services/events/track';
 import { withDeckStyle } from '../../../lib/parser/buildDeckStyle';
+import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 
-const HTML_GENERATION_CONCURRENCY = 3;
+const HTML_GENERATION_CONCURRENCY = AI_FILE_CONCURRENCY;
 
 // Bound how many files convert at once. An unbounded Promise.all over a
 // large image/PDF deck holds every converter's working memory (base64 copies,
@@ -729,6 +730,10 @@ function salvagedDecksOf(error: AiCreditsExhaustedError): DeckInfo[] {
     : [];
 }
 
+// Files convert at AI_FILE_CONCURRENCY at a time. A file that starts after
+// others finished still gets their fronts in its prompt; the exact-match
+// backstop in absorbFileIntoCrossFileDedup runs as each file lands, so no
+// duplicate survives whichever order the files finish in.
 async function runCrossFileDedupConversion(
   htmlFiles: DeckParserInput['files'],
   generateForFile: (
@@ -739,29 +744,32 @@ async function runCrossFileDedupConversion(
   cardSize: string | undefined,
   crossFileDedup: CrossFileDedupState
 ): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
-  const deckInfoArrays: DeckInfo[][] = [];
   let tripped = false;
-  for (const file of htmlFiles) {
-    if (tripped) break;
-    const instructions = composeCrossFileInstructions(
-      crossFileDedup.fronts,
-      userInstructions,
-      cardSize
-    );
-    try {
-      const decks = await generateForFile(file, instructions);
-      deckInfoArrays.push(absorbFileIntoCrossFileDedup(crossFileDedup, decks));
-    } catch (error) {
-      if (error instanceof AiCreditsExhaustedError) {
-        deckInfoArrays.push(
-          absorbFileIntoCrossFileDedup(crossFileDedup, salvagedDecksOf(error))
-        );
-        tripped = true;
-        break;
+  const deckInfoArrays = await mapWithConcurrency(
+    htmlFiles,
+    AI_FILE_CONCURRENCY,
+    async (file) => {
+      if (tripped) return [] as DeckInfo[];
+      const instructions = composeCrossFileInstructions(
+        crossFileDedup.fronts,
+        userInstructions,
+        cardSize
+      );
+      try {
+        const decks = await generateForFile(file, instructions);
+        return absorbFileIntoCrossFileDedup(crossFileDedup, decks);
+      } catch (error) {
+        if (error instanceof AiCreditsExhaustedError) {
+          tripped = true;
+          return absorbFileIntoCrossFileDedup(
+            crossFileDedup,
+            salvagedDecksOf(error)
+          );
+        }
+        throw error;
       }
-      throw error;
     }
-  }
+  );
   return { deckInfoArrays, tripped };
 }
 

@@ -1,3 +1,4 @@
+import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 import { vi, type Mock, type MockInstance } from 'vitest';
 import fsModule from 'node:fs';
 import {
@@ -341,8 +342,9 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     ];
   }
 
-  it('converts multiple files sequentially and threads earlier fronts into later prompts', async () => {
-    const files = Array.from({ length: 3 }, (_, i) => ({
+  it('converts files side by side and threads finished fronts into later prompts', async () => {
+    const fileCount = AI_FILE_CONCURRENCY + 2;
+    const files = Array.from({ length: fileCount }, (_, i) => ({
       name: `page-${i}.html`,
       contents: `<p>page ${i}</p>`,
     }));
@@ -372,21 +374,21 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
       workspace: makeWorkspace(),
     });
 
-    expect(generateDeckInfo).toHaveBeenCalledTimes(3);
-    expect(maxInFlight).toBe(1);
+    expect(generateDeckInfo).toHaveBeenCalledTimes(fileCount);
+    expect(maxInFlight).toBe(AI_FILE_CONCURRENCY);
 
     const instructionsFor = (call: number) =>
       generateDeckInfo.mock.calls[call][2] as string;
 
     expect(instructionsFor(0)).toBe('Focus on definitions');
-    expect(instructionsFor(0)).not.toContain('Do NOT repeat');
+    expect(instructionsFor(AI_FILE_CONCURRENCY - 1)).not.toContain(
+      'Do NOT repeat'
+    );
 
-    expect(instructionsFor(1)).toContain('Focus on definitions');
-    expect(instructionsFor(1)).toContain('Do NOT repeat any of these fronts');
-    expect(instructionsFor(1)).toContain('Fact from file 0');
-
-    expect(instructionsFor(2)).toContain('Fact from file 0');
-    expect(instructionsFor(2)).toContain('Fact from file 1');
+    const lastCall = instructionsFor(fileCount - 1);
+    expect(lastCall).toContain('Focus on definitions');
+    expect(lastCall).toContain('Do NOT repeat any of these fronts');
+    expect(lastCall).toContain('Fact from file 0');
   });
 
   it('suppresses a later file card duplicating an earlier file, keeping sub-deck names', async () => {
