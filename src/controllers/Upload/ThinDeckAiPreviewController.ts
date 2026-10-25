@@ -15,6 +15,7 @@ import { track } from '../../services/events/track';
 import {
   generateThinDeckAiPreview,
   type ThinDeckAiPreviewDeps,
+  type ThinDeckAiPreviewOutcome,
 } from '../../usecases/uploads/GenerateThinDeckAiPreviewUseCase';
 
 // The consent field is the proof that the person tapped the preview button.
@@ -32,6 +33,10 @@ export const THIN_DECK_MAX_IN_FLIGHT = 4;
 // upload; once the body is in, the slot is held until the response ends.
 export const THIN_DECK_MAX_IN_FLIGHT_PER_IP = 2;
 export const THIN_DECK_SLOT_DEADLINE_MS = 60_000;
+// After the body is in, reading the file and the Claude call must finish inside
+// this budget or the person gets "unavailable" and the slot frees. The work is
+// already counted against the rate limits, so an orphaned call stays bounded.
+export const THIN_DECK_WORK_DEADLINE_MS = 40_000;
 const CLEAR_DEADLINE_KEY = 'thinDeckClearUploadDeadline';
 
 // Only a PDF needs the whole file; text types are cut before they are decoded
@@ -121,6 +126,24 @@ export class ThinDeckAiPreviewController {
     next();
   };
 
+  private async withinWorkDeadline(
+    work: Promise<ThinDeckAiPreviewOutcome>
+  ): Promise<ThinDeckAiPreviewOutcome> {
+    work.catch(() => undefined);
+    let timer: NodeJS.Timeout | undefined;
+    const late = new Promise<ThinDeckAiPreviewOutcome>((resolve) => {
+      timer = setTimeout(
+        () => resolve({ kind: 'unavailable' }),
+        THIN_DECK_WORK_DEADLINE_MS
+      );
+    });
+    try {
+      return await Promise.race([work, late]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async preview(req: Request, res: Response): Promise<Response> {
     const consent = (req.body as Record<string, unknown> | undefined)?.[
       THIN_DECK_CONSENT_FIELD
@@ -134,7 +157,7 @@ export class ThinDeckAiPreviewController {
       return res.status(400).json({ code: 'file_required' });
     }
     const requestId = res.locals.requestId as string | undefined;
-    const outcome = await generateThinDeckAiPreview(
+    const work = generateThinDeckAiPreview(
       {
         visitorKey,
         ipKey: hashIp(ipRateLimitBucket(resolveClientIp(req))),
@@ -165,6 +188,7 @@ export class ThinDeckAiPreviewController {
         ...this.deps,
       }
     );
+    const outcome = await this.withinWorkDeadline(work);
     if (outcome.kind === 'preview') {
       return res.status(200).json({ kind: 'preview', cards: outcome.cards });
     }

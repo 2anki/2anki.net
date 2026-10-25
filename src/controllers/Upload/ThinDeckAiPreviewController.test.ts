@@ -5,6 +5,7 @@ import {
   THIN_DECK_MAX_IN_FLIGHT,
   THIN_DECK_MAX_IN_FLIGHT_PER_IP,
   THIN_DECK_SLOT_DEADLINE_MS,
+  THIN_DECK_WORK_DEADLINE_MS,
   ThinDeckAiPreviewController,
 } from './ThinDeckAiPreviewController';
 
@@ -183,6 +184,29 @@ describe('ThinDeckAiPreviewController', () => {
 
     const passed = vi.mocked(extractPreviewText).mock.calls[0][1];
     expect(passed.length).toBe(1024 * 1024);
+  });
+});
+
+describe('ThinDeckAiPreviewController work deadline', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getFeatureFlag).mockResolvedValue(true);
+  });
+
+  it('answers unavailable when reading the file and the model take too long', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(generateAiPreview).mockReturnValue(new Promise(() => {}));
+      const res = makeRes();
+
+      const done = new ThinDeckAiPreviewController().preview(makeReq(), res);
+      await vi.advanceTimersByTimeAsync(THIN_DECK_WORK_DEADLINE_MS);
+      await done;
+
+      expect(res.json).toHaveBeenCalledWith({ kind: 'unavailable' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

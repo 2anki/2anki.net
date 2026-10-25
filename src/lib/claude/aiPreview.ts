@@ -12,7 +12,8 @@ export const AI_PREVIEW_MAX_TOKENS = 1_536;
 export const AI_PREVIEW_CARD_COUNT = 5;
 export const AI_PREVIEW_SURFACE = 'ai_preview';
 // A preview is a short sample, so a hung call is cut off well before a person
-// would wait that long and before it can hold an upload slot for minutes.
+// would wait that long and before it can hold an upload slot for minutes. No
+// retries: a retry would double the worst-case hold and the cost of one sample.
 export const AI_PREVIEW_TIMEOUT_MS = 30_000;
 
 const PREVIEW_SYSTEM_PROMPT = `You write a short sample of Anki flashcards from study material a learner uploaded.
@@ -29,7 +30,7 @@ export interface AiPreviewClient {
   messages: {
     create(
       params: Anthropic.MessageCreateParamsNonStreaming,
-      options?: { timeout?: number }
+      options?: { timeout?: number; maxRetries?: number }
     ): Promise<{
       model?: string;
       usage?: ClaudeUsage | null;
@@ -116,7 +117,7 @@ export async function generateAiPreview(
       system: [{ type: 'text', text: PREVIEW_SYSTEM_PROMPT }],
       messages: [{ role: 'user', content: input }],
     } as Anthropic.MessageCreateParamsNonStreaming,
-    { timeout: AI_PREVIEW_TIMEOUT_MS }
+    { timeout: AI_PREVIEW_TIMEOUT_MS, maxRetries: 0 }
   );
   (deps.recordUsage ?? recordClaudeUsage)({
     surface: AI_PREVIEW_SURFACE,

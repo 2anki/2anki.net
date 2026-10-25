@@ -45,7 +45,10 @@ describe('generateAiPreview', () => {
 
     await generateAiPreview('some text', { client });
 
-    expect(create.mock.calls[0][1]).toEqual({ timeout: AI_PREVIEW_TIMEOUT_MS });
+    expect(create.mock.calls[0][1]).toEqual({
+      timeout: AI_PREVIEW_TIMEOUT_MS,
+      maxRetries: 0,
+    });
   });
 
   it('returns at most AI_PREVIEW_CARD_COUNT parsed cards', async () => {
