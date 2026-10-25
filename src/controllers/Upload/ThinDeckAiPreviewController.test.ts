@@ -3,6 +3,8 @@ import type { Request, Response } from 'express';
 import { AiPreviewRateLimiter } from '../../lib/upload/aiPreviewRateLimiter';
 import {
   THIN_DECK_MAX_IN_FLIGHT,
+  THIN_DECK_MAX_IN_FLIGHT_PER_IP,
+  THIN_DECK_SLOT_DEADLINE_MS,
   ThinDeckAiPreviewController,
 } from './ThinDeckAiPreviewController';
 
@@ -43,6 +45,8 @@ function makeRes(locals: Record<string, unknown> = {}) {
     locals,
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
+    once: vi.fn(),
+    headersSent: false,
   };
   return res as unknown as Response & {
     status: ReturnType<typeof vi.fn>;
@@ -212,19 +216,75 @@ describe('ThinDeckAiPreviewController.guard', () => {
       return res;
     };
     const next = vi.fn();
+    const fromIp = (n: number) =>
+      makeReq({ socket: { remoteAddress: `203.0.113.${n}` } });
     for (let i = 0; i < THIN_DECK_MAX_IN_FLIGHT; i++) {
-      await controller.guard(makeReq(), resWithFinish(), next);
+      await controller.guard(fromIp(i + 1), resWithFinish(), next);
+    }
+    const refused = makeRes();
+
+    await controller.guard(fromIp(99), refused, next);
+
+    expect(refused.status).toHaveBeenCalledWith(429);
+    expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT);
+
+    finishers[0]();
+    await controller.guard(fromIp(99), resWithFinish(), next);
+
+    expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT + 1);
+  });
+
+  it('stops one address holding every slot', async () => {
+    const controller = new ThinDeckAiPreviewController();
+    const next = vi.fn();
+    for (let i = 0; i < THIN_DECK_MAX_IN_FLIGHT_PER_IP; i++) {
+      await controller.guard(makeReq(), makeRes(), next);
     }
     const refused = makeRes();
 
     await controller.guard(makeReq(), refused, next);
 
     expect(refused.status).toHaveBeenCalledWith(429);
-    expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT);
+    expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT_PER_IP);
+  });
 
-    finishers[0]();
-    await controller.guard(makeReq(), resWithFinish(), next);
+  it('frees a stalled slot after the deadline and answers 408', async () => {
+    vi.useFakeTimers();
+    try {
+      const controller = new ThinDeckAiPreviewController();
+      const next = vi.fn();
+      const stalled = makeRes();
+      for (let i = 0; i < THIN_DECK_MAX_IN_FLIGHT_PER_IP; i++) {
+        await controller.guard(makeReq(), i === 0 ? stalled : makeRes(), next);
+      }
 
-    expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT + 1);
+      vi.advanceTimersByTime(THIN_DECK_SLOT_DEADLINE_MS);
+
+      expect(stalled.status).toHaveBeenCalledWith(408);
+      await controller.guard(makeReq(), makeRes(), next);
+      expect(next).toHaveBeenCalledTimes(THIN_DECK_MAX_IN_FLIGHT_PER_IP + 1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('releases a slot once when both finish and close fire', async () => {
+    const controller = new ThinDeckAiPreviewController();
+    const handlers: Array<() => void> = [];
+    const res = makeRes();
+    (res as unknown as { once: unknown }).once = (_e: string, cb: () => void) =>
+      handlers.push(cb);
+    const next = vi.fn();
+    await controller.guard(makeReq(), res, next);
+    await controller.guard(makeReq(), makeRes(), next);
+
+    handlers.forEach((cb) => cb());
+    const admitted = makeRes();
+    await controller.guard(makeReq(), admitted, next);
+    const refused = makeRes();
+    await controller.guard(makeReq(), refused, next);
+
+    expect(admitted.status).not.toHaveBeenCalled();
+    expect(refused.status).toHaveBeenCalledWith(429);
   });
 });

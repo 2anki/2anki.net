@@ -26,6 +26,10 @@ export const THIN_DECK_CONSENT_VALUE = 'claude';
 // origin check is only an allowlist a script can spoof. So the flag and a small
 // in-flight cap are checked first, and a refused request never buffers a file.
 export const THIN_DECK_MAX_IN_FLIGHT = 4;
+// One address cannot hold every slot, and a slot is never held longer than the
+// deadline, so a stalled upload cannot starve the endpoint for everyone else.
+export const THIN_DECK_MAX_IN_FLIGHT_PER_IP = 2;
+export const THIN_DECK_SLOT_DEADLINE_MS = 60_000;
 
 // Only a PDF needs the whole file; text types are cut before they are decoded
 // so a huge text upload cannot stall the event loop on its way to a 12k sample.
@@ -58,8 +62,10 @@ export class ThinDeckAiPreviewController {
 
   private inFlight = 0;
 
+  private readonly inFlightByIp = new Map<string, number>();
+
   guard = async (
-    _req: Request,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -67,18 +73,39 @@ export class ThinDeckAiPreviewController {
       res.status(404).json({ code: 'not_available' });
       return;
     }
-    if (this.inFlight >= THIN_DECK_MAX_IN_FLIGHT) {
+    const ipKey = hashIp(ipRateLimitBucket(resolveClientIp(req)));
+    const fromThisIp = this.inFlightByIp.get(ipKey) ?? 0;
+    if (
+      this.inFlight >= THIN_DECK_MAX_IN_FLIGHT ||
+      fromThisIp >= THIN_DECK_MAX_IN_FLIGHT_PER_IP
+    ) {
       res.status(429).json({ code: 'busy' });
       return;
     }
     this.inFlight += 1;
+    this.inFlightByIp.set(ipKey, fromThisIp + 1);
     let released = false;
     const release = () => {
-      if (!released) {
-        released = true;
-        this.inFlight -= 1;
+      if (released) {
+        return;
+      }
+      released = true;
+      clearTimeout(deadline);
+      this.inFlight -= 1;
+      const remaining = (this.inFlightByIp.get(ipKey) ?? 1) - 1;
+      if (remaining > 0) {
+        this.inFlightByIp.set(ipKey, remaining);
+      } else {
+        this.inFlightByIp.delete(ipKey);
       }
     };
+    const deadline = setTimeout(() => {
+      release();
+      if (!res.headersSent) {
+        res.status(408).json({ code: 'too_slow' });
+      }
+    }, THIN_DECK_SLOT_DEADLINE_MS);
+    deadline.unref();
     res.once('finish', release);
     res.once('close', release);
     next();
