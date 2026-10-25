@@ -534,7 +534,6 @@ describe('OpsController.getCancelFunnel', () => {
       undefined,
       undefined,
       undefined,
-      undefined,
       useCase
     );
 
@@ -601,8 +600,6 @@ describe('OpsController.grantUnclaimedPass', () => {
   const buildController = (execute: Mock) =>
     new OpsController(
       {} as unknown as GetOpsMetricsUseCase,
-      undefined,
-      undefined,
       undefined,
       undefined,
       undefined,
@@ -757,8 +754,6 @@ describe('OpsController.setBlockIdIdentity', () => {
       undefined,
       undefined,
       undefined,
-      undefined,
-      undefined,
       useCase
     );
 
@@ -842,8 +837,6 @@ describe('OpsController.changeUserEmail', () => {
   const buildController = (useCase?: ChangeUserEmailUseCase) =>
     new OpsController(
       {} as unknown as GetOpsMetricsUseCase,
-      undefined,
-      undefined,
       undefined,
       undefined,
       undefined,

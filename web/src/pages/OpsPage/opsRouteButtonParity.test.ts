@@ -28,7 +28,7 @@ describe('every POST /api/ops route in OpsRouter has an OpsPage client trigger',
   const clientSource = opsClientSource();
 
   it('extraction reads router.post("/api/ops/…") paths from OpsRouter source text', () => {
-    expect(routes).toContain('/api/ops/send-pass-winback');
+    expect(routes).toContain('/api/ops/send-inactivity-warnings');
     expect(routes).toContain('/api/ops/delete-inactive-users');
     expect(routes.length).toBeGreaterThanOrEqual(7);
   });
