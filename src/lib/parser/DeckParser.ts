@@ -72,6 +72,7 @@ import {
   isPlainText,
 } from '../storage/checks';
 import { getFileContents } from './getFileContents';
+import { fillCalloutIcons } from './fillCalloutIcons';
 import { normalizeNotionEquations } from './normalizeNotionEquations';
 import { unwrapNotionDefaultHighlights } from './unwrapNotionDefaultHighlights';
 import { handleNestedBulletPointsInMarkdown } from './handleNestedBulletPointsInMarkdown';
@@ -2007,6 +2008,7 @@ export class DeckParser {
   } {
     const dom = this.loadDOM(contents);
     normalizeNotionEquations(dom);
+    fillCalloutIcons(dom);
     unwrapNotionDefaultHighlights(dom);
     this.reshapeBareToggleDetails(dom);
     const isNewFormat = this.hasNotionNewExportFormat(dom);
