@@ -66,8 +66,10 @@ vi.mock('./dropWaitPlan', () => ({
 import { dropWaitDelays } from './dropWaitPlan';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
 import {
+  THIN_DECK_RESUME_WAIT_MS,
   clearThinDeckResume,
   markThinDeckResume,
+  thinDeckResumeMarked,
 } from '../ThinDeckAiOffer/thinDeckResume';
 import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
@@ -6113,5 +6115,43 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test('keeps asking until the account pays, then gives up after the wait and clears the marker', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      stubSignedInReturn();
+      markThinDeckResume();
+      await saveWithAi(7);
+      const refetch = vi.fn();
+      mockUseUserLocals.mockReturnValue({
+        ...signedIn(false),
+        refetch,
+      } as unknown as ReturnType<typeof useUserLocals>);
+      const fetchMock = okApkgFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      for (let i = 0; i < 20; i++) {
+        await vi.advanceTimersByTimeAsync(2000);
+      }
+
+      expect(refetch.mock.calls.length).toBeGreaterThan(5);
+      expect(thinDeckResumeMarked()).toBe(false);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(THIN_DECK_RESUME_WAIT_MS).toBeLessThanOrEqual(40_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('drops a marker left behind when the page is not a return from checkout', async () => {
+    markThinDeckResume();
+    await saveWithAi(null);
+    vi.stubGlobal('fetch', okApkgFetch());
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    await waitFor(() => expect(thinDeckResumeMarked()).toBe(false));
   });
 });

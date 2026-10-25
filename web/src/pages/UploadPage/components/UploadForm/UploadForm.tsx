@@ -1835,7 +1835,11 @@ function UploadForm({
       pdfPageRange: pdfPageRangeRef.current,
       aiFlag: 'true',
     });
-    markThinDeckResume();
+    // The store swallows write errors, so mark only a file that is really there.
+    const saved = await getPendingUploadStore().load();
+    if (saved != null && saved.files.length > 0) {
+      markThinDeckResume();
+    }
   };
 
   // Back from the Day Pass checkout of the thin deck offer: send the saved
@@ -1844,13 +1848,23 @@ function UploadForm({
   // moment, so the page asks again for a few seconds; past that the saved file
   // is left on the one-tap Continue banner.
   const thinDeckResumeRef = useRef(false);
-  const thinDeckResumeStartedAt = useRef(Date.now());
+  const thinDeckResumeStartedAt = useRef<number | null>(null);
+  const [thinDeckPollTick, setThinDeckPollTick] = useState(0);
+  // The marker only belongs to the return it was set for. A page opened any
+  // other way (cancelled checkout, a reload, a later visit) drops it.
+  useEffect(() => {
+    if (!(returnedFromCheckout || passSessionToken != null)) {
+      clearThinDeckResume();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (thinDeckResumeRef.current || userLocalsLoading || sample) return;
     if (!(returnedFromCheckout || passSessionToken != null)) return;
     if (!thinDeckResumeMarked()) return;
     const waitingForPass = isAuthenticated && !isPaying;
     if (waitingForPass) {
+      thinDeckResumeStartedAt.current ??= Date.now();
       if (
         Date.now() - thinDeckResumeStartedAt.current >=
         THIN_DECK_RESUME_WAIT_MS
@@ -1858,10 +1872,10 @@ function UploadForm({
         clearThinDeckResume();
         return;
       }
-      const timer = setTimeout(
-        () => void refetchUserLocals(),
-        THIN_DECK_RESUME_POLL_MS
-      );
+      const timer = setTimeout(() => {
+        void refetchUserLocals();
+        setThinDeckPollTick((tick) => tick + 1);
+      }, THIN_DECK_RESUME_POLL_MS);
       return () => clearTimeout(timer);
     }
     thinDeckResumeRef.current = true;
@@ -1881,7 +1895,13 @@ function UploadForm({
       await resumePendingUpload(upload);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocalsLoading, isAuthenticated, isPaying, userLocals]);
+  }, [
+    userLocalsLoading,
+    isAuthenticated,
+    isPaying,
+    userLocals,
+    thinDeckPollTick,
+  ]);
 
   // A zip of notes handed over from Print or CSV: convert it straight away.
   const handoffTakenRef = useRef(false);

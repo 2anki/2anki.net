@@ -7,17 +7,29 @@ const KEY = '2anki-thin-deck-resume';
 export const THIN_DECK_RESUME_WAIT_MS = 30_000;
 export const THIN_DECK_RESUME_POLL_MS = 2_000;
 
-export function markThinDeckResume(): void {
+// A marker older than this is a leftover from an abandoned checkout.
+export const THIN_DECK_RESUME_MAX_AGE_MS = 30 * 60 * 1000;
+
+export function markThinDeckResume(now: number = Date.now()): void {
   try {
-    globalThis.sessionStorage?.setItem(KEY, '1');
+    globalThis.sessionStorage?.setItem(KEY, String(now));
   } catch {
     // The offer still works; the person gets the one-tap Continue banner.
   }
 }
 
-export function thinDeckResumeMarked(): boolean {
+export function thinDeckResumeMarked(now: number = Date.now()): boolean {
   try {
-    return globalThis.sessionStorage?.getItem(KEY) === '1';
+    const raw = globalThis.sessionStorage?.getItem(KEY);
+    const markedAt = raw == null ? Number.NaN : Number(raw);
+    if (!Number.isFinite(markedAt)) {
+      return false;
+    }
+    if (now - markedAt > THIN_DECK_RESUME_MAX_AGE_MS) {
+      clearThinDeckResume();
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
