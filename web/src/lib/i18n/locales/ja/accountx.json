@@ -102,6 +102,7 @@
     "benefitPdf": "PDF と大きな Notion エクスポート",
     "benefitCancel": "いつでもキャンセル可能",
     "upgradeToUnlimited": "Pro にアップグレード",
+    "unlimitedPriceLine": "月額{{price}}、毎月のお支払い",
     "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までメールしてください。",
     "backToUpload": "アップロードに戻る",
     "headline": "今月のカード {{limit}} 枚に達しました",

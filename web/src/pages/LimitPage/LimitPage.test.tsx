@@ -14,10 +14,12 @@ vi.mock('../../lib/analytics/track', () => ({
 const mockTrack = vi.mocked(track);
 
 const mockStartPassCheckout = vi.fn();
+const mockGetCheckoutPrices = vi.fn();
 
 vi.mock('../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: vi.fn(() => ({
     startPassCheckout: mockStartPassCheckout,
+    getCheckoutPrices: mockGetCheckoutPrices,
   })),
 }));
 
@@ -37,6 +39,16 @@ const mockedUseUserLocals = vi.mocked(useUserLocals);
 function asLoggedIn() {
   mockedUseUserLocals.mockReturnValue({
     data: { user: { id: 1, email: 'test@example.com' } },
+    isLoading: false,
+  } as ReturnType<typeof useUserLocals>);
+}
+
+function asLoggedInWithProPrice() {
+  mockedUseUserLocals.mockReturnValue({
+    data: {
+      user: { id: 1, email: 'test@example.com' },
+      features: { limitWallProPrice: true },
+    },
     isLoading: false,
   } as ReturnType<typeof useUserLocals>);
 }
@@ -99,6 +111,34 @@ describe('LimitPage', () => {
     expect(screen.queryByText('Auto Sync')).toBeNull();
     expect(screen.queryByText('$30')).toBeNull();
     expect(screen.queryByText('Get Auto Sync')).toBeNull();
+  });
+
+  it('shows the Pro monthly price from the checkout prices when the flag is on', async () => {
+    asLoggedInWithProPrice();
+    mockGetCheckoutPrices.mockResolvedValue({
+      monthly: { cents: 799 },
+      annual: { cents: 6400 },
+      legacy: false,
+      lockInDeadline: null,
+    });
+    renderPage();
+    expect(
+      await screen.findByText('$7.99 per month, billed monthly')
+    ).toBeTruthy();
+  });
+
+  it('never asks for the Pro price when the flag is off', () => {
+    renderPage();
+    expect(mockGetCheckoutPrices).not.toHaveBeenCalled();
+    expect(screen.queryByText(/per month, billed monthly/)).toBeNull();
+  });
+
+  it('leaves the Pro card without a price when the price cannot be read', async () => {
+    asLoggedInWithProPrice();
+    mockGetCheckoutPrices.mockResolvedValue(null);
+    renderPage();
+    await screen.findByText('Upgrade to Pro');
+    expect(screen.queryByText(/per month, billed monthly/)).toBeNull();
   });
 
   it('does not show a hardcoded Pro monthly price', () => {

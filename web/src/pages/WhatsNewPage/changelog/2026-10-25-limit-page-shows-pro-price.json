@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-25-limit-page-shows-pro-price",
+  "date": "2026-10-25",
+  "type": "fix",
+  "title": "The Pro option on the monthly limit page now shows its price and says it renews every month, so it is clear before you reach checkout."
+}
