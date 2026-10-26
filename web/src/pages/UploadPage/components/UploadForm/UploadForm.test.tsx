@@ -2039,7 +2039,11 @@ describe('UploadForm analytics events', () => {
       docsLink: '/documentation/help/common-problems',
       empty_reason: 'no_toggles',
       rescue: [
-        { rule: 'heading', cards: 14 },
+        {
+          rule: 'heading',
+          cards: 14,
+          sample: [{ front: 'Krebs cycle', back: 'Makes ATP in the matrix.' }],
+        },
         { rule: 'bullets', cards: 40 },
       ],
     };
@@ -2083,6 +2087,9 @@ describe('UploadForm analytics events', () => {
     expect(
       container.querySelector('[class*="emptyBody"]')?.textContent
     ).not.toContain('Put each question');
+    const samples = container.querySelectorAll('[class*="rescueSample"] li');
+    expect(samples).toHaveLength(1);
+    expect(samples[0].textContent).toBe('Krebs cycleMakes ATP in the matrix.');
 
     await act(async () => {
       buttons[1].click();

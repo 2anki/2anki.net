@@ -2,6 +2,7 @@ import {
   isRescueCandidate,
   isRescueRule,
   mergeRescueCandidates,
+  toRescueSample,
 } from './RescueCandidate';
 
 describe('RescueCandidate', () => {
@@ -32,6 +33,32 @@ describe('RescueCandidate', () => {
     ).toEqual([
       { rule: 'heading', cards: 2 },
       { rule: 'bullets', cards: 8 },
+    ]);
+  });
+});
+
+describe('rescue samples', () => {
+  const strip = (html: string) => html.replace(/<[^>]*>/g, '');
+
+  it('keeps at most three cards and shortens long text', () => {
+    const cards = Array.from({ length: 5 }, (_, i) => ({
+      name: `Front ${i}`,
+      back: 'x'.repeat(400),
+    }));
+    const sample = toRescueSample(cards, strip);
+    expect(sample).toHaveLength(3);
+    expect(sample[0].back.length).toBeLessThanOrEqual(160);
+    expect(sample[0].back.endsWith('…')).toBe(true);
+  });
+
+  it('merges samples per rule and keeps the first three', () => {
+    const one = { front: 'a', back: 'b' };
+    const merged = mergeRescueCandidates([
+      [{ rule: 'bullets', cards: 2, sample: [one, one] }],
+      [{ rule: 'bullets', cards: 2, sample: [one, one] }],
+    ]);
+    expect(merged).toEqual([
+      { rule: 'bullets', cards: 4, sample: [one, one, one] },
     ]);
   });
 });

@@ -34,6 +34,21 @@ describe('paragraph cards for a page with nothing else to build from', () => {
     expect(parser.rescueCandidates).toContainEqual({
       rule: 'paragraphs',
       cards: 3,
+      sample: [
+        {
+          front: 'mitochondrion',
+          back: 'The mitochondrion produces most of the energy a cell uses.',
+        },
+        {
+          front: 'ribosome',
+          back: 'A ribosome builds proteins by reading messenger RNA in the cytoplasm.',
+        },
+        {
+          front:
+            'Water crosses a membrane by osmosis, moving toward the higher solute concentration.',
+          back: 'Water crosses a membrane by osmosis, moving toward the higher solute concentration.',
+        },
+      ],
     });
     expect(parser.inducedRule).toBeUndefined();
   });

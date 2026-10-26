@@ -416,10 +416,12 @@ describe('DeckParser dominant table documents', () => {
     const parser = parse(page(REPEATED_FRONTS), new CardOption({}));
 
     expect(parser.payload[0].cards).toHaveLength(0);
-    expect(parser.rescueCandidates).toContainEqual({
-      rule: 'columns',
-      cards: 4,
-    });
+    expect(parser.rescueCandidates).toContainEqual(
+      expect.objectContaining({
+        rule: 'columns',
+        cards: 4,
+      })
+    );
   });
 
   it('ships the structure the user chose even below the floor', () => {
@@ -449,10 +451,12 @@ describe('DeckParser dominant table documents', () => {
     );
 
     expect(parser.payload[0].cards).toHaveLength(0);
-    expect(parser.rescueCandidates).toContainEqual({
-      rule: 'columns',
-      cards: 4,
-    });
+    expect(parser.rescueCandidates).toContainEqual(
+      expect.objectContaining({
+        rule: 'columns',
+        cards: 4,
+      })
+    );
   });
 
   it('lets a candidate that clears the floor win over a chosen rule', () => {
@@ -502,10 +506,12 @@ describe('DeckParser dominant table documents', () => {
       thrown = error;
     }
     expect(thrown).toBeInstanceOf(EmptyDeckError);
-    expect((thrown as EmptyDeckError).rescueCandidates).toContainEqual({
-      rule: 'heading',
-      cards: 2,
-    });
+    expect((thrown as EmptyDeckError).rescueCandidates).toContainEqual(
+      expect.objectContaining({
+        rule: 'heading',
+        cards: 2,
+      })
+    );
   });
 
   it('does not append fan-out lists when disable-indented-bullets is on', () => {
