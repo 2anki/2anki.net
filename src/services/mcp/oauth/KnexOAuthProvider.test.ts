@@ -415,6 +415,15 @@ describe('KnexOAuthProvider authorize', () => {
     expect(codeRepo.rows).toHaveLength(0);
   });
 
+  it('shows the redirect host of the authorize request on the consent page', async () => {
+    const { provider } = makeProvider();
+    const { res, calls } = fakeResponse('valid-session');
+    await provider.authorize(CLIENT, AUTHORIZE_PARAMS, res);
+    expect(String(calls.body)).toContain(
+      `<strong>${new URL(AUTHORIZE_PARAMS.redirectUri).hostname}</strong>`
+    );
+  });
+
   it('mints a code only after a POST approval with a valid CSRF token', async () => {
     const { provider, codeRepo } = makeProvider();
     const csrf = computeConsentToken('valid-session', TEST_CONSENT_SECRET);

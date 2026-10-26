@@ -293,6 +293,7 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     const html = renderConsentPage({
       actionPath: this.deps.config.authorizePath,
       clientName: client.client_name ?? 'An application',
+      redirectUri: params.redirectUri,
       scopes: params.scopes ?? [],
       csrf,
       fields: {
