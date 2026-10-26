@@ -3416,7 +3416,7 @@ describe('signed-out card-cap hint on the idle drop zone', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps the cap hint out while the session is still loading', () => {
+  function setLocalsLoading() {
     mockUseUserLocals.mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -3424,10 +3424,25 @@ describe('signed-out card-cap hint on the idle drop zone', () => {
       isError: false,
       refetch: vi.fn(),
     });
+  }
+
+  it('shows the cap hint while the session loads for a visitor with no session', () => {
+    setLocalsLoading();
     renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
-    expect(
-      screen.queryByText(/you get up to 21 cards per conversion/)
-    ).not.toBeInTheDocument();
+    expect(screen.getByText(capHint)).toBeInTheDocument();
+  });
+
+  it('keeps the cap hint out while the session loads on a page marked signed in', () => {
+    setLocalsLoading();
+    document.documentElement.dataset.auth = '1';
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        screen.queryByText(/you get up to 21 cards per conversion/)
+      ).not.toBeInTheDocument();
+    } finally {
+      delete document.documentElement.dataset.auth;
+    }
   });
 });
 

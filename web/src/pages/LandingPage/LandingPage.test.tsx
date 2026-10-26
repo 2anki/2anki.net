@@ -24,8 +24,12 @@ vi.mock('../../lib/analytics/track', () => ({
 }));
 
 let mockUserLocals: unknown = undefined;
+let mockUserLocalsLoading = false;
 vi.mock('../../lib/hooks/useUserLocals', () => ({
-  useUserLocals: () => ({ data: mockUserLocals, isLoading: false }),
+  useUserLocals: () => ({
+    data: mockUserLocals,
+    isLoading: mockUserLocalsLoading,
+  }),
 }));
 
 function renderLandingPage(children: React.ReactElement) {
@@ -489,6 +493,32 @@ describe('LandingPage anonymous AI choice', () => {
       user: { id: 7 },
       features: { anonymousAiPreview: true, anonymousAiChoice: true },
     };
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+    expect(screen.queryByLabelText(CLAUDE_OPTION)).toBeNull();
+  });
+});
+
+describe('LandingPage AI choice while user locals load', () => {
+  const CLAUDE_OPTION = 'Claude writes the cards: free sample first';
+
+  beforeEach(() => {
+    mockUserLocals = undefined;
+    mockUserLocalsLoading = true;
+  });
+
+  afterEach(() => {
+    mockUserLocalsLoading = false;
+    delete document.documentElement.dataset.auth;
+    globalThis.localStorage.clear();
+  });
+
+  it('shows the choice from the first render for a visitor with no session', () => {
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+    expect(screen.getByLabelText(CLAUDE_OPTION)).not.toBeChecked();
+  });
+
+  it('shows no choice on a page the server marked signed in', () => {
+    document.documentElement.dataset.auth = '1';
     renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
     expect(screen.queryByLabelText(CLAUDE_OPTION)).toBeNull();
   });

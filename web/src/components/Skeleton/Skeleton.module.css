@@ -57,7 +57,7 @@
   max-width: 960px;
   margin: 0 auto;
   padding: 3rem 1.5rem;
-  min-height: 70vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;

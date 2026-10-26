@@ -242,6 +242,56 @@
       descent-override: 21.92%;
       line-gap-override: 0%;
     }
+
+    /* Inter loads late from Google Fonts and Fraunces from /fonts/. Until they
+       arrive, text renders in these local faces (named in --font-sans and
+       --font-display), scaled to the web fonts' widths and line metrics so the
+       swap does not rewrap lines and move the page. size-adjust is the width
+       ratio of the landing and home page copy set in each pair; the overrides
+       are the web fonts' hhea ascent and descent over that ratio (Fraunces as
+       rendered with the overrides on its faces above). */
+    @font-face {
+      font-family: 'Inter Fallback';
+      font-weight: 100 500;
+      src:
+        local('Arial'), local('ArialMT'), local('Roboto'), local('Roboto-Regular');
+      size-adjust: 106.8%;
+      ascent-override: 90.71%;
+      descent-override: 22.58%;
+      line-gap-override: 0%;
+    }
+
+    @font-face {
+      font-family: 'Inter Fallback';
+      font-weight: 600 900;
+      src:
+        local('Arial Bold'), local('Arial-BoldMT'), local('Roboto Bold'),
+        local('Roboto-Bold');
+      size-adjust: 101.2%;
+      ascent-override: 95.73%;
+      descent-override: 23.84%;
+      line-gap-override: 0%;
+    }
+
+    @font-face {
+      font-family: 'Fraunces Fallback';
+      font-weight: 100 500;
+      src: local('Georgia');
+      size-adjust: 106.56%;
+      ascent-override: 85.95%;
+      descent-override: 20.55%;
+      line-gap-override: 0%;
+    }
+
+    @font-face {
+      font-family: 'Fraunces Fallback';
+      font-weight: 600 900;
+      src: local('Georgia Bold'), local('Georgia-Bold');
+      size-adjust: 93.39%;
+      ascent-override: 98.07%;
+      descent-override: 23.44%;
+      line-gap-override: 0%;
+    }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,9 +19,12 @@ vi.mock('../controllers/IndexController/getIndexFileContents', () => ({
   getIndexFileContents: vi.fn(() => SHELL_HTML),
 }));
 
-async function buildServer() {
+async function buildServer(...middleware: express.RequestHandler[]) {
   const { default: DefaultRouter } = await import('./DefaultRouter');
   const app = express();
+  for (const handler of middleware) {
+    app.use(handler);
+  }
   app.use(DefaultRouter());
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
@@ -103,6 +107,29 @@ describe('DefaultRouter catch-all status', () => {
       expect(body).toBe(SERVED_SHELL);
     }
   );
+});
+
+describe('DefaultRouter session hint', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    ({ server, url } = await buildServer(cookieParser()));
+  });
+
+  afterAll(() => server.close());
+
+  it('marks the shell signed in when the request carries a token cookie', async () => {
+    const res = await fetch(`${url}/`, { headers: { cookie: 'token=abc' } });
+    const body = await res.text();
+    expect(body).toContain('<html data-consent-region="eea" data-auth="1">');
+  });
+
+  it('serves the plain shell without a token cookie', async () => {
+    const res = await fetch(`${url}/`);
+    const body = await res.text();
+    expect(body).toBe(SERVED_SHELL);
+  });
 });
 
 describe('sitemap parity with isKnownAppRoute', () => {

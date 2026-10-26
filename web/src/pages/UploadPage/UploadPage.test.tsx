@@ -196,6 +196,52 @@ describe('UploadPage AI badge placement', () => {
   });
 });
 
+describe('UploadPage AI badge while user locals load', () => {
+  beforeEach(() => {
+    fakeUser = null;
+    fakeLocals = undefined;
+    fakeFeatures = undefined;
+    fakeLocalsLoading = true;
+    globalThis.localStorage.clear();
+  });
+
+  afterEach(() => {
+    fakeLocalsLoading = false;
+    delete document.documentElement.dataset.auth;
+  });
+
+  it('shows the AI choice from the first render for a visitor with no session', () => {
+    renderPage();
+    expect(
+      screen.getByLabelText("Cards from your file's structure: free, no AI")
+    ).toBeChecked();
+    expect(
+      screen.queryByRole('link', { name: /sign in to turn on AI/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the visitor saved choice while locals load', () => {
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    renderPage();
+    expect(
+      screen.getByLabelText('Claude writes the cards: free sample first')
+    ).toBeChecked();
+  });
+
+  it('holds the signed-in badge space hidden when the page is marked signed in', () => {
+    document.documentElement.dataset.auth = '1';
+    const { container } = renderPage();
+    const badge = container.querySelector('[role="status"]');
+    expect(badge).toHaveAttribute('aria-hidden', 'true');
+    expect(
+      screen.queryByLabelText('Claude writes the cards: free sample first')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /sign in to turn on AI/i })
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('UploadPage AI toggle', () => {
   beforeEach(() => {
     trackMock.mockClear();

@@ -41,8 +41,10 @@
   --color-code-bg: #0b1020;
   --color-code-text: #e5e7eb;
   --font-sans:
-    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
+  --font-display:
+    'Fraunces', 'Fraunces Fallback', Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Type scale */

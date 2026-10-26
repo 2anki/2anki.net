@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-26-drop-zone-holds-place-on-load",
+  "date": "2026-10-26",
+  "type": "fix",
+  "title": "The drop zone on the upload and landing pages stays in place while the page loads"
+}
