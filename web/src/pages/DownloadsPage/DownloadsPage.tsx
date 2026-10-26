@@ -43,6 +43,7 @@ import {
   ThinDeckNotice,
   shouldShowThinDeckNotice,
 } from './components/ThinDeckNotice';
+import { EmptyBackNotice } from './components/EmptyBackNotice';
 import { ImageDropNotice } from './components/ImageDropNotice';
 import { PartialDeckNotice } from './components/PartialDeckNotice';
 import { parseDroppedAssetsPayload } from './helpers/parseDroppedAssetsPayload';
@@ -878,6 +879,24 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                         onSeeReport={() =>
                                           setReportModalJob(row.job)
                                         }
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
+                              {isNotionDoneRow &&
+                                (row.job.empty_back_count ?? 0) >= 1 &&
+                                !shouldShowThinDeckNotice(
+                                  candidateSkips,
+                                  row.job.card_count ?? 0
+                                ) && (
+                                  <tr key={`job-${row.job.id}-empty-back`}>
+                                    <td
+                                      colSpan={4}
+                                      className={styles.emptyTogglePanel}
+                                    >
+                                      <EmptyBackNotice
+                                        count={row.job.empty_back_count ?? 0}
+                                        source="notion"
                                       />
                                     </td>
                                   </tr>

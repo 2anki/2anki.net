@@ -1263,7 +1263,7 @@ describe('DownloadsPage truncation notice', () => {
     ).toBeInTheDocument();
   });
 
-  it('stays quiet about a few empty toggles on a healthy deck', () => {
+  it('tells the person about a few empty toggles on a healthy deck without the thin-deck banner', () => {
     mockJobs = [
       buildJob({
         status: 'done',
@@ -1275,10 +1275,45 @@ describe('DownloadsPage truncation notice', () => {
       }),
     ];
     renderAt('/downloads');
-    expect(screen.queryByText(/toggles had no answer inside/)).toBeNull();
+    expect(
+      screen.getByText(
+        "2 toggles had no answer inside and were skipped, so they aren't in this deck. Add an answer to each in Notion, then convert again."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Only 34 cards came from this page/)).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'See full report' })
     ).toBeNull();
+  });
+
+  it('says nothing about empty toggles when none were skipped', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Clean Page',
+        download_key: 'deck-clean.apkg',
+        card_count: 12,
+        empty_back_count: 0,
+      }),
+    ];
+    renderAt('/downloads');
+    expect(screen.queryByText(/had no answer inside/)).toBeNull();
+  });
+
+  it('shows one empty-toggle message, not two, when the thin-deck banner is up', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Thin Page',
+        download_key: 'deck-thin2.apkg',
+        card_count: 3,
+        empty_back_count: 5,
+      }),
+    ];
+    renderAt('/downloads');
+    expect(screen.getAllByText(/had no answer inside/)).toHaveLength(1);
   });
 
   it('shows the same candidate-skip count on the pill and the thin-deck notice', () => {

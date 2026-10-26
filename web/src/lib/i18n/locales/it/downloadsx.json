@@ -112,7 +112,9 @@
     "uploadSingleDeck_one": "{{count}} carta non aveva una risposta ed è stata saltata, quindi non è in questo mazzo. Aggiungi un retro nel tuo file e converti di nuovo.",
     "uploadSingleDeck_other": "{{count}} carte non avevano una risposta e sono state saltate, quindi non sono in questo mazzo. Aggiungi un retro a ciascuna nel tuo file e converti di nuovo.",
     "uploadMultiDeck_one": "{{count}} carta non aveva una risposta ed è stata saltata, quindi non è nei tuoi mazzi. Aggiungi un retro nel tuo file e converti di nuovo.",
-    "uploadMultiDeck_other": "{{count}} carte non avevano una risposta e sono state saltate, quindi non sono nei tuoi mazzi. Aggiungi un retro a ciascuna nel tuo file e converti di nuovo."
+    "uploadMultiDeck_other": "{{count}} carte non avevano una risposta e sono state saltate, quindi non sono nei tuoi mazzi. Aggiungi un retro a ciascuna nel tuo file e converti di nuovo.",
+    "notion_one": "{{count}} toggle non aveva una risposta ed è stato saltato, quindi non è in questo mazzo. Aggiungi una risposta in Notion e converti di nuovo.",
+    "notion_other": "{{count}} toggle non avevano una risposta e sono stati saltati, quindi non sono in questo mazzo. Aggiungi una risposta a ciascuno in Notion e converti di nuovo."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} parte di questa pagina non è collegata a 2anki, quindi non è in questo mazzo. Aggiungi 2anki a questa pagina e alle sue sottopagine nel menu Connessioni di Notion, poi converti di nuovo.",
