@@ -181,6 +181,59 @@ describe('promote-nested-toggles on the Notion API path', () => {
 
     const decks = await handler.findFlashcards(locator());
 
-    expect(decks[0].cards.length).toBeLessThanOrEqual(1);
+    expect(decks[0].cards).toHaveLength(0);
+  });
+
+  it('swaps front and back of nested cards when reversed is on', async () => {
+    const handler = makeHandler(
+      makeApi(threeLevels),
+      new CardOption({ 'promote-nested-toggles': 'true', reversed: 'true' })
+    );
+
+    const decks = await handler.findFlashcards(locator());
+
+    const second = decks[0].cards[1];
+    expect(stripTags(second.name)).toContain('Answer two');
+    expect(stripTags(second.back)).toBe('Level two');
+  });
+
+  it('adds a reversed copy of nested cards with basic reversed on', async () => {
+    const handler = makeHandler(
+      makeApi(threeLevels),
+      new CardOption({
+        'promote-nested-toggles': 'true',
+        'basic-reversed': 'true',
+      })
+    );
+
+    const decks = await handler.findFlashcards(locator());
+
+    expect(decks[0].cards).toHaveLength(6);
+  });
+
+  it('stops promoting below the depth cap', async () => {
+    const levels: Record<string, unknown[]> = {
+      'page-1': [textBlock('t-1', 'toggle', 'L1', true)],
+    };
+    for (let i = 1; i <= 6; i += 1) {
+      levels[`t-${i}`] = [
+        textBlock(`p-${i}`, 'paragraph', `Answer ${i}`),
+        textBlock(`t-${i + 1}`, 'toggle', `L${i + 1}`, true),
+      ];
+    }
+    levels['t-7'] = [textBlock('p-7', 'paragraph', 'Answer 7')];
+    const handler = makeHandler(
+      makeApi(levels),
+      new CardOption({ 'promote-nested-toggles': 'true' })
+    );
+
+    const decks = await handler.findFlashcards(locator());
+
+    expect(decks[0].cards.map((c) => stripTags(c.name))).toEqual([
+      'L1',
+      'L2',
+      'L3',
+      'L4',
+    ]);
   });
 });

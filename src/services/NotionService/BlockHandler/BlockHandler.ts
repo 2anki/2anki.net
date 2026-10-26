@@ -183,7 +183,7 @@ const MAX_NESTED_TOGGLE_WRAPPER_FETCHES = 40;
 // one conversion scans at most this many parents before leaving the rest as
 // part of their parent card.
 const PROMOTE_NESTED_TOGGLE_MAX_DEPTH = 3;
-const MAX_PROMOTE_NESTED_TOGGLE_SCANS = 60;
+const MAX_PROMOTE_NESTED_TOGGLE_SCANS = 150;
 
 interface PromotedToggleCard {
   block: BlockObjectResponse;
@@ -371,6 +371,8 @@ class BlockHandler implements IBlockRenderer {
   private nestedToggleBudgetLogged = false;
 
   private promoteNestedToggleScans = 0;
+
+  private promoteNestedToggleBudgetLogged = false;
 
   unsupportedBlockTypeCounts: Map<string, number> = new Map();
 
@@ -582,10 +584,16 @@ class BlockHandler implements IBlockRenderer {
     parent: BlockObjectResponse,
     depth = 1
   ): Promise<PromotedToggleCard[]> {
-    if (
-      depth > PROMOTE_NESTED_TOGGLE_MAX_DEPTH ||
-      this.promoteNestedToggleScans >= MAX_PROMOTE_NESTED_TOGGLE_SCANS
-    ) {
+    if (depth > PROMOTE_NESTED_TOGGLE_MAX_DEPTH) {
+      return [];
+    }
+    if (this.promoteNestedToggleScans >= MAX_PROMOTE_NESTED_TOGGLE_SCANS) {
+      if (!this.promoteNestedToggleBudgetLogged) {
+        this.promoteNestedToggleBudgetLogged = true;
+        console.warn(
+          `[promote-nested-toggles] scan budget of ${MAX_PROMOTE_NESTED_TOGGLE_SCANS} reached, leaving remaining nested toggles in their parent card`
+        );
+      }
       return [];
     }
     this.promoteNestedToggleScans += 1;
@@ -911,12 +919,31 @@ class BlockHandler implements IBlockRenderer {
             notionBaseLink
           );
           nestedNote.notionId = nested.block.id;
+          if (this.settings.addNotionLink) {
+            nestedNote.back += RenderNotionLink(nestedNote.notionLink!, this);
+          }
+          nestedNote.name = perserveNewlinesIfApplicable(
+            nestedNote.name,
+            this.settings
+          );
+          nestedNote.back = perserveNewlinesIfApplicable(
+            nestedNote.back,
+            this.settings
+          );
           nestedNote.tags =
             rules.TAGS === 'heading'
               ? headingTagsFor(nested.block.id, headingTagMap)
               : nested.tags;
           nestedNote.number = counter++;
           cards.push(nestedNote);
+          if (this.settings.basicReversed) {
+            cards.push(nestedNote.reversed(nestedNote));
+          }
+          if (this.settings.reversed) {
+            const swapped = nestedNote.back;
+            nestedNote.back = nestedNote.name;
+            nestedNote.name = swapped;
+          }
         }
       }
     }
