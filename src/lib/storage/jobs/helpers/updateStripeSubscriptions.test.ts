@@ -83,7 +83,10 @@ type Spies = {
   updateUsersSpy: Mock;
 };
 
-function setupDbMock(existingRow: Record<string, unknown> | null): Spies {
+function setupDbMock(
+  existingRow: Record<string, unknown> | null,
+  customerIdHolder: Record<string, unknown> | null = null
+): Spies {
   const insertSpy = vi.fn().mockResolvedValue([1]);
   const updateSubscriptionSpy = vi.fn().mockResolvedValue(1);
   const updateUsersSpy = vi.fn().mockResolvedValue(1);
@@ -102,6 +105,9 @@ function setupDbMock(existingRow: Record<string, unknown> | null): Spies {
       return {
         where: vi.fn().mockReturnValue({
           update: updateUsersSpy,
+          whereNot: vi.fn().mockReturnValue({
+            first: vi.fn().mockResolvedValue(customerIdHolder),
+          }),
         }),
       };
     }
@@ -218,6 +224,19 @@ describe('updateStripeSubscriptions — batch provisioning fields', () => {
     expect(updateUsersSpy).toHaveBeenCalledWith(
       expect.objectContaining({ stripe_customer_id: 'cus_test456' })
     );
+  });
+
+  it('leaves users.stripe_customer_id alone when another account already holds it', async () => {
+    const { updateUsersSpy } = setupDbMock(
+      { email: 'user@example.com', active: true, payload: '{}' },
+      { id: 99 }
+    );
+    setupStripeMock([buildSubscription()]);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await updateStripeSubscriptions();
+    expect(updateUsersSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 
   it('inserts stripe_product_id as null when product is absent from subscription', async () => {

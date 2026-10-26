@@ -86,6 +86,33 @@ async function getCustomer(
 }
 
 /**
+ * Records the Stripe customer id on the payer's own account, unless another
+ * account already holds it. That happens when someone pays for a subscription
+ * linked to a different account, and the unique constraint would reject it.
+ */
+async function stampCustomerId(
+  db: Knex,
+  email: string,
+  customerId: string
+): Promise<void> {
+  const holder = await db
+    .table('users')
+    .where({ stripe_customer_id: customerId })
+    .whereNot({ email })
+    .first();
+  if (holder) {
+    console.info(
+      `[stripe-sync] customer id already linked to another account customer=${shortHash(customerId)}`
+    );
+    return;
+  }
+  await db
+    .table('users')
+    .where({ email })
+    .update({ stripe_customer_id: customerId });
+}
+
+/**
  * Updates or creates a subscription record in the database
  */
 /**
@@ -232,10 +259,7 @@ async function updateSubscriptionRecord(
       );
     }
 
-    await db
-      .table('users')
-      .where({ email })
-      .update({ stripe_customer_id: customer.id });
+    await stampCustomerId(db, email, customer.id);
   } catch (error) {
     console.error(
       'Error updating subscription record',
