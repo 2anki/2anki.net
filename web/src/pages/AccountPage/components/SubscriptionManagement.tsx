@@ -577,6 +577,9 @@ function StripeSubscriptionManagement({
                       })
                     : t('subscription.pastDueBodyNoPlan')}
                 </p>
+                <p className={sharedStyles.smallDescription}>
+                  {t('subscription.pastDueAccessPaused')}
+                </p>
               </div>
               {!confirming && (
                 <div className={styles.actions}>

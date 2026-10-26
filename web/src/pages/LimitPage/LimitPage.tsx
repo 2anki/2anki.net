@@ -7,6 +7,7 @@ import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
 import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { PastDueNotice } from '../../components/PastDueNotice/PastDueNotice';
 import { AnonymousDayPassOffer } from '../../components/AnonymousDayPassOffer/AnonymousDayPassOffer';
 import { deckCardsBucket } from './deckCardsBucket';
 import {
@@ -317,6 +318,7 @@ export function LimitPage() {
       unlimitedHref={unlimitedLink}
       unlimitedPrice={unlimitedPrice}
       onUnlimitedClick={handleUnlimitedClick}
+      notice={isLoggedIn ? <PastDueNotice surface={REF} /> : null}
     />
   );
 }

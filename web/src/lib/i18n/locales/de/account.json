@@ -35,6 +35,7 @@
     "pastDueTitle": "Deine Zahlung ist nicht durchgegangen",
     "pastDueBody": "Wir konnten deine Karte für {{plan}} nicht belasten. Wir versuchen es in den nächsten Tagen erneut. Aktualisiere deine Zahlungsdaten, um dein Abo zu behalten.",
     "pastDueBodyNoPlan": "Wir konnten deine Karte nicht belasten. Wir versuchen es in den nächsten Tagen erneut. Aktualisiere deine Zahlungsdaten, um dein Abo zu behalten.",
+    "pastDueAccessPaused": "Pro ist pausiert, bis diese Zahlung durchgeht. Sobald das passiert, ist Pro automatisch wieder da.",
     "endedPaymentFailed": "Dein Abo wurde beendet, weil deine Zahlung nicht durchgegangen ist.",
     "statusLoadFailed": "Wir konnten dein Abo gerade nicht laden. Lade die Seite neu, um es noch einmal zu versuchen.",
     "linkedEmailHeading": "Verknüpfte 2anki.net-E-Mail",
