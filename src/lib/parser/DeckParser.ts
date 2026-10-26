@@ -1722,6 +1722,49 @@ export class DeckParser {
     return this.notesFromOverlappingItems(lines);
   }
 
+  // basic-reversed (or a 🔄 on the card) returns a mirrored note for the
+  // caller to add; reversed swaps the sides in place. Shared by processPayload
+  // and the plain-text fallback, so a CSV upload honours the same options as
+  // a Notion export.
+  private applyReversal(card: Note): Note | null {
+    const refreshIconRequested = card.hasRefreshIcon();
+    const reversible = card.isReversibleBasic();
+    let mirrored: Note | null = null;
+    if ((this.settings.basicReversed || refreshIconRequested) && reversible) {
+      mirrored = card.reversed(card);
+    }
+
+    if (this.settings.reversed && reversible) {
+      const tmp = card.back;
+      card.back = card.name;
+      card.name = tmp;
+    }
+
+    if (refreshIconRequested) {
+      card.stripRefreshIcon();
+    }
+    return mirrored;
+  }
+
+  // The fallback skips processPayload, which needs a workspace for media, so
+  // it applies the options that are pure note edits here. Without this a CSV
+  // upload with basic-reversed or global tags built plain notes.
+  private applyFallbackCardOptions(): void {
+    for (const deck of this.payload) {
+      let counter = deck.cards.length;
+      const mirrored: Note[] = [];
+      for (const card of deck.cards) {
+        const note = this.applyReversal(card);
+        if (note) {
+          note.number = counter++;
+          mirrored.push(note);
+        }
+      }
+      deck.cards = deck.cards.concat(Deck.CleanCards(mirrored));
+      this.applyGlobalTags(deck.cards);
+    }
+  }
+
   private async processPayload(ws: Workspace): Promise<void> {
     if (this.payload.length === 0) {
       const markdownSourced =
@@ -1760,25 +1803,10 @@ export class DeckParser {
           return;
         }
 
-        const refreshIconRequested = card.hasRefreshIcon();
-        const reversible = card.isReversibleBasic();
-        if (
-          (this.settings.basicReversed || refreshIconRequested) &&
-          reversible
-        ) {
-          const note = card.reversed(card);
-          note.number = counter++;
-          addThese.push(note);
-        }
-
-        if (this.settings.reversed && reversible) {
-          const tmp = card.back;
-          card.back = card.name;
-          card.name = tmp;
-        }
-
-        if (refreshIconRequested) {
-          card.stripRefreshIcon();
+        const mirrored = this.applyReversal(card);
+        if (mirrored) {
+          mirrored.number = counter++;
+          addThese.push(mirrored);
         }
       });
       const kept = deck.cards.filter((card) => !replaced.has(card));
@@ -2005,6 +2033,7 @@ export class DeckParser {
       );
     }
 
+    this.applyFallbackCardOptions();
     this.applyCardLimit();
     this.markUploadDecks();
     this.applyUploadIdentityGuids();

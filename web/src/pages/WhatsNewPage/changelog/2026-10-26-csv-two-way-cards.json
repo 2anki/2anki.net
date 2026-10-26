@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-26-csv-two-way-cards",
+  "date": "2026-10-26",
+  "type": "fix",
+  "title": "CSV and TSV uploads with Basic and reversed build a card in each direction, and deck-wide tags reach every row"
+}
