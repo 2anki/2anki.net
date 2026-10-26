@@ -19,6 +19,11 @@ import {
 
 import AuthenticationService from '../../AuthenticationService';
 import { trackingAllowedFor } from '../../../lib/http/consentRegion';
+import {
+  asMcpAuthorizeReturn,
+  rememberMcpLoginReturn,
+  takeMcpLoginReturn,
+} from '../../../lib/mcp/loginReturn';
 import UsersRepository from '../../../data_layer/UsersRepository';
 import { IMcpOAuthClientRepository } from '../../../data_layer/McpOAuthClientRepository';
 import { IMcpAuthorizationCodeRepository } from '../../../data_layer/McpAuthorizationCodeRepository';
@@ -205,10 +210,20 @@ export class KnexOAuthProvider implements OAuthServerProvider {
         maxAge: 1000 * 60 * 30,
       });
     }
-    const target = `${this.deps.config.loginPath}?next=${encodeURIComponent(
-      originalUrl
-    )}`;
-    res.redirect(target);
+    // The web login reads `redirect`; the cookie covers the sign-in methods
+    // that leave the site (Google, Microsoft, Apple, Notion) and come back
+    // without it. Only a GET carries its authorize parameters in the URL, so
+    // only a GET can be resumed from it.
+    const returnTo =
+      req?.method === 'GET' ? asMcpAuthorizeReturn(originalUrl) : undefined;
+    if (returnTo == null) {
+      res.redirect(this.deps.config.loginPath);
+      return;
+    }
+    rememberMcpLoginReturn(res, returnTo);
+    res.redirect(
+      `${this.deps.config.loginPath}?redirect=${encodeURIComponent(returnTo)}`
+    );
   }
 
   private redirectWithError(
@@ -235,6 +250,11 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     if (user == null) {
       this.redirectToLogin(res);
       return;
+    }
+    // Back at authorize signed in: the remembered return has done its job,
+    // whichever way the user got here (including a fresh registration).
+    if (res.req != null) {
+      takeMcpLoginReturn(res.req, res);
     }
 
     const body = (res.req?.body ?? {}) as Record<string, unknown>;

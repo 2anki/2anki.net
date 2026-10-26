@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-25-connector-sign-in-returns-to-consent",
+  "date": "2026-10-25",
+  "type": "fix",
+  "title": "Connecting 2anki to ChatGPT or Claude while signed out takes you back to the approval screen after you sign in"
+}

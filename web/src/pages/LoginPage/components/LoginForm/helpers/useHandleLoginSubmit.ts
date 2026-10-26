@@ -14,6 +14,7 @@ import {
   migrateToServer,
   hydrateFromServer,
 } from '../../../../../lib/data_layer/userPreferencesSync';
+import { sanitizeRelativeRedirect } from '../../../../../lib/auth/sanitizeRelativeRedirect';
 
 interface LoginState {
   email: string;
@@ -24,14 +25,9 @@ interface LoginState {
   setPassword: React.Dispatch<SetStateAction<string>>;
 }
 
-const isSafeRedirect = (value: string): boolean =>
-  value.startsWith('/') && !value.startsWith('//') && !value.includes(':');
-
 const getUrlRedirect = (): string | undefined => {
   const params = new URLSearchParams(globalThis.location.search);
-  const value = params.get('redirect');
-  if (value == null) return undefined;
-  return isSafeRedirect(value) ? value : undefined;
+  return sanitizeRelativeRedirect(params.get('redirect'));
 };
 
 export const useHandleLoginSubmit = (onError: ErrorHandlerType): LoginState => {

@@ -178,6 +178,35 @@ describe('getRedirect security tests', () => {
     });
   });
 
+  describe('should return a connector to the authorize screen after sign in', () => {
+    const authorizeUrl =
+      '/mcp/authorize?response_type=code&client_id=c1&redirect_uri=https%3A%2F%2Fchatgpt.com%2Fcb&state=s1&code_challenge=abc&code_challenge_method=S256';
+
+    it('keeps the full authorize URL, query included', () => {
+      const req = createMockRequest(authorizeUrl);
+      expect(getRedirect(req)).toBe(authorizeUrl);
+    });
+
+    it('keeps the full authorize URL from the request body', () => {
+      const req = createMockRequest(undefined, authorizeUrl);
+      expect(getRedirect(req)).toBe(authorizeUrl);
+    });
+
+    const lookAlikes = [
+      '//evil.com/mcp/authorize?client_id=c1',
+      '/\\evil.com/mcp/authorize',
+      'https://evil.com/mcp/authorize?client_id=c1',
+      '/mcp/authorizeX?client_id=c1',
+      '/mcp/authorize/../admin',
+    ];
+    lookAlikes.forEach((target) => {
+      it(`blocks an authorize look-alike: ${JSON.stringify(target)}`, () => {
+        const req = createMockRequest(target);
+        expect(getRedirect(req)).toBe('/upload');
+      });
+    });
+  });
+
   describe('should read redirect from request body as fallback', () => {
     it('returns body redirect when query param is absent', () => {
       const req = createMockRequest(undefined, '/card-options');

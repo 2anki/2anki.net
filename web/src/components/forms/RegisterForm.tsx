@@ -16,6 +16,7 @@ import { WithNotionLink } from './WithNotionLink';
 import { WithAppleLink } from './WithAppleLink';
 import { WithMicrosoftLink } from './WithMicrosoftLink';
 import { getVisibleText } from '../../lib/text/getVisibleText';
+import { sanitizeRelativeRedirect } from '../../lib/auth/sanitizeRelativeRedirect';
 import { readSignupOrigin } from '../../lib/signupOrigin';
 import { fireSignupConversion } from '../../lib/analytics/googleAds';
 import { track } from '../../lib/analytics/track';
@@ -168,9 +169,8 @@ function RegisterForm({ setErrorMessage, redirect, variant = 'page' }: Props) {
         track('signup_completed', { method: 'email' });
         fireSignupConversion();
         globalThis.sessionStorage?.setItem(SIGNUP_FLAG_KEY, '1');
-        globalThis.location.href = redirect
-          ? `/${redirect.replace(/^\//, '')}`
-          : '/upload';
+        globalThis.location.href =
+          sanitizeRelativeRedirect(redirect) ?? '/upload';
       } else {
         const body = await res.json().catch(() => null);
         const backendMessage =

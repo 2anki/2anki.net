@@ -18,6 +18,7 @@ import UsersService from '../services/UsersService';
 import { getRedirect } from './helpers/getRedirect';
 import { recordUnverifiedSignin } from './helpers/recordUnverifiedSignin';
 import { sanitizeRelativeRedirect } from './helpers/sanitizeRelativeRedirect';
+import { takeMcpLoginReturn } from '../lib/mcp/loginReturn';
 import { parseSignupOrigin } from './helpers/parseSignupOrigin';
 import {
   parseFirstTouch,
@@ -233,7 +234,7 @@ class UsersController {
         await this.authService.persistToken(token, user.id.toString());
         await this.userService.updateLastLoginAt(user.id.toString());
         res.cookie('token', token, sessionCookieOptions());
-        const redirect = await this.landingForUser(req, user.id);
+        const redirect = await this.landingForUser(req, res, user.id);
         res.status(200).json({ token, redirect });
       }
     } catch (error) {
@@ -845,7 +846,7 @@ class UsersController {
     await this.authService.persistToken(token, user.id.toString());
     await this.userService.updateLastLoginAt(user.id.toString());
     res.cookie('token', token, sessionCookieOptions());
-    res.status(200).redirect(await this.landingForUser(req, user.id));
+    res.status(200).redirect(await this.landingForUser(req, res, user.id));
   }
 
   async loginWithMicrosoft(req: express.Request, res: express.Response) {
@@ -972,7 +973,7 @@ class UsersController {
     await this.authService.persistToken(token, user.id.toString());
     await this.userService.updateLastLoginAt(user.id.toString());
     res.cookie('token', token, sessionCookieOptions());
-    res.status(200).redirect(await this.landingForUser(req, user.id));
+    res.status(200).redirect(await this.landingForUser(req, res, user.id));
   }
 
   async loginWithApple(req: express.Request, res: express.Response) {
@@ -1057,7 +1058,7 @@ class UsersController {
     res.cookie('token', result.token, sessionCookieOptions());
     return res
       .status(200)
-      .redirect(await this.landingForUser(req, result.user.id));
+      .redirect(await this.landingForUser(req, res, result.user.id));
   }
 
   async loginWithAppleNative(req: express.Request, res: express.Response) {
@@ -1343,7 +1344,7 @@ class UsersController {
     await notionRepository.saveNotionToken(user.id, accessData, hashToken);
 
     res.cookie('token', token, sessionCookieOptions());
-    return res.status(200).redirect('/notion');
+    return res.status(200).redirect(takeMcpLoginReturn(req, res) ?? '/notion');
   }
 
   async requestMagicLink(
@@ -1458,7 +1459,9 @@ class UsersController {
           'magic_link'
         );
         res.cookie('token', jwtToken, sessionCookieOptions());
-        const redirect = sanitizeRelativeRedirect(req.query?.redirect);
+        const mcpReturn = takeMcpLoginReturn(req, res);
+        const redirect =
+          sanitizeRelativeRedirect(req.query?.redirect) ?? mcpReturn;
         if (redirect != null) {
           return res.status(200).json({ token: jwtToken, redirect });
         }
@@ -1517,10 +1520,15 @@ class UsersController {
 
   private async landingForUser(
     req: express.Request,
+    res: express.Response,
     userId: number
   ): Promise<string> {
+    const mcpReturn = takeMcpLoginReturn(req, res);
     if (this.hasExplicitRedirect(req)) {
       return getRedirect(req);
+    }
+    if (mcpReturn != null) {
+      return mcpReturn;
     }
     const notionData = await new NotionRepository(this.db).getNotionData(
       userId

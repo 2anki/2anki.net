@@ -132,6 +132,58 @@ describe('useHandleLoginSubmit redirect behavior', () => {
     expect(globalThis.location.href).not.toBe('//evil.com');
   });
 
+  it('lands on the connector authorize URL the server returns, query intact', async () => {
+    const authorizeUrl =
+      '/mcp/authorize?response_type=code&client_id=c1&redirect_uri=https%3A%2F%2Fchatgpt.com%2Fcb&state=s1&code_challenge=abc&code_challenge_method=S256';
+    setSearchParams(`?redirect=${encodeURIComponent(authorizeUrl)}`);
+    mockLogin.mockResolvedValue({
+      status: 200,
+      json: () => Promise.resolve({ token: 'tok', redirect: authorizeUrl }),
+    });
+
+    const { result } = renderHook(() => useHandleLoginSubmit(vi.fn()));
+
+    await act(async () => {
+      await result.current.onSubmit(fakeSubmitEvent);
+    });
+
+    expect(globalThis.location.href).toBe(authorizeUrl);
+  });
+
+  it('falls back to an authorize URL in ?redirect= whose query holds a raw https://', async () => {
+    const authorizeUrl =
+      '/mcp/authorize?client_id=c1&redirect_uri=https://chatgpt.com/cb&state=s1';
+    setSearchParams(`?redirect=${encodeURIComponent(authorizeUrl)}`);
+    mockLogin.mockResolvedValue({
+      status: 200,
+      json: () => Promise.resolve({ token: 'tok' }),
+    });
+
+    const { result } = renderHook(() => useHandleLoginSubmit(vi.fn()));
+
+    await act(async () => {
+      await result.current.onSubmit(fakeSubmitEvent);
+    });
+
+    expect(globalThis.location.href).toBe(authorizeUrl);
+  });
+
+  it('rejects a backslash open redirect in URL ?redirect= param', async () => {
+    setSearchParams('?redirect=%2F%5Cevil.com');
+    mockLogin.mockResolvedValue({
+      status: 200,
+      json: () => Promise.resolve({ token: 'tok' }),
+    });
+
+    const { result } = renderHook(() => useHandleLoginSubmit(vi.fn()));
+
+    await act(async () => {
+      await result.current.onSubmit(fakeSubmitEvent);
+    });
+
+    expect(globalThis.location.href).toBe('/search');
+  });
+
   it('rejects javascript: scheme in URL ?redirect= param', async () => {
     setSearchParams('?redirect=javascript%3Aalert(1)');
     mockLogin.mockResolvedValue({
