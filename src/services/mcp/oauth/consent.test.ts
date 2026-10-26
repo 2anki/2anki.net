@@ -167,5 +167,28 @@ describe('renderConsentPage', () => {
       expect(html).toContain('Connect claude.ai.evil.example to 2anki');
       expect(html).toContain("hasn't verified this app");
     });
+
+    it.each([
+      'https://claude.ai@evil.example/cb',
+      'http://claude.ai/cb',
+      'not a url',
+    ])('does not verify %s', (uri) => {
+      expect(render('Claude', uri)).toContain("hasn't verified this app");
+    });
+
+    it.each(['http://127.0.0.1:8080/cb', 'http://[::1]:8080/cb'])(
+      'verifies loopback %s',
+      (uri) => {
+        expect(render('Claude Code', uri)).not.toContain(
+          "hasn't verified this app"
+        );
+      }
+    );
+
+    it('treats a client named 2anki on another host as a brand spoof', () => {
+      expect(render('2anki', 'https://evil.example/cb')).toContain(
+        'Connect evil.example to 2anki'
+      );
+    });
   });
 });

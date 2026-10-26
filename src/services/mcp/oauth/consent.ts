@@ -43,16 +43,14 @@ export interface ConsentPageInput {
   fields: Record<string, string | undefined>;
 }
 
-const KNOWN_REDIRECT_HOSTS = new Set([
+const KNOWN_WEB_HOSTS = new Set([
   'claude.ai',
   'chatgpt.com',
   'chat.openai.com',
-  'localhost',
-  '127.0.0.1',
-  '[::1]',
 ]);
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
-const BRAND_NAME_PATTERN = /claude|chatgpt|openai|anthropic/i;
+const BRAND_NAME_PATTERN = /claude|chatgpt|openai|anthropic|2anki/i;
 
 export interface ClientIdentity {
   label: string;
@@ -65,12 +63,17 @@ export function describeClient(
   redirectUri: string
 ): ClientIdentity {
   let host = '';
+  let protocol = '';
   try {
-    host = new URL(redirectUri).hostname.toLowerCase();
+    const parsed = new URL(redirectUri);
+    host = parsed.hostname.toLowerCase();
+    protocol = parsed.protocol;
   } catch {
     host = '';
   }
-  const verified = KNOWN_REDIRECT_HOSTS.has(host);
+  const verified =
+    LOOPBACK_HOSTS.has(host) ||
+    (protocol === 'https:' && KNOWN_WEB_HOSTS.has(host));
   const claimsBrand = BRAND_NAME_PATTERN.test(clientName);
   const label = claimsBrand && !verified && host !== '' ? host : clientName;
   return { label, host, verified };
