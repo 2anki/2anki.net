@@ -1,3 +1,4 @@
+import { AiChoice } from '../../components/AiChoice/AiChoice';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
@@ -98,12 +99,19 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   );
   const aiCredits = useAiCredits(aiBadgeState === 'on');
 
-  const toggleAi = () => {
-    const next = !isAiOn;
+  const showAiChoice =
+    !isSignedIn &&
+    previewEnabled &&
+    userLocals?.features?.anonymousAiChoice === true;
+
+  const setAi = (next: boolean) => {
     saveValueInLocalStorage(AI_FLAG_KEY, String(next), null);
     setAiFlag(next);
-    track(next ? 'upload_ai_turned_on' : 'upload_ai_turned_off');
+    track(next ? 'upload_ai_turned_on' : 'upload_ai_turned_off', {
+      surface: 'upload',
+    });
   };
+  const toggleAi = () => setAi(!isAiOn);
 
   useEffect(() => {
     if (pageViewTracked.current) return;
@@ -336,7 +344,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             <span>.</span>
           </span>
         )}
-        {aiBadgeState === 'anonPreview' && (
+        {aiBadgeState === 'anonPreview' && showAiChoice && (
+          <AiChoice aiOn={isAiOn} onChange={setAi} />
+        )}
+        {aiBadgeState === 'anonPreview' && !showAiChoice && (
           <>
             <label className={pageStyles.aiPreviewToggle}>
               <input type="checkbox" checked={isAiOn} onChange={toggleAi} />

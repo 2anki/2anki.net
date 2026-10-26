@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -35,7 +35,11 @@ type FakeUser = {
 let fakeUser: FakeUser = null;
 let fakeLocals: { patreon?: boolean; subscriber?: boolean } | undefined;
 let fakeFeatures:
-  | { anonymousDayPassCard?: boolean; anonymousAiPreview?: boolean }
+  | {
+      anonymousDayPassCard?: boolean;
+      anonymousAiPreview?: boolean;
+      anonymousAiChoice?: boolean;
+    }
   | undefined;
 let fakeLocalsLoading = false;
 const reportPurchaseConversion = vi.fn();
@@ -217,6 +221,37 @@ describe('UploadPage AI toggle', () => {
     expect(
       screen.getByText('Generate flashcards with Claude AI')
     ).toBeInTheDocument();
+  });
+
+  it('shows the two-option AI choice with consent text instead of the checkbox when the choice flag is on', () => {
+    fakeUser = null;
+    fakeFeatures = { anonymousAiPreview: true, anonymousAiChoice: true };
+    renderPage();
+    expect(
+      screen.getByLabelText('Claude writes the cards: free sample first')
+    ).not.toBeChecked();
+    expect(
+      screen.getByLabelText("Cards from your file's structure: free, no AI")
+    ).toBeChecked();
+    expect(
+      screen.getByText(/Text from your file is sent to Claude \(Anthropic\)/)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Generate flashcards with Claude AI')
+    ).not.toBeInTheDocument();
+  });
+
+  it('records the upload page as the surface when the visitor picks Claude', () => {
+    fakeUser = null;
+    fakeFeatures = { anonymousAiPreview: true, anonymousAiChoice: true };
+    trackMock.mockClear();
+    renderPage();
+    fireEvent.click(
+      screen.getByLabelText('Claude writes the cards: free sample first')
+    );
+    expect(trackMock).toHaveBeenCalledWith('upload_ai_turned_on', {
+      surface: 'upload',
+    });
   });
 
   it('hides the anonymous AI preview toggle when the flag is off', () => {

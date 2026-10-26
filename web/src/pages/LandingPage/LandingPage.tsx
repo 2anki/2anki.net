@@ -13,6 +13,7 @@ import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { TrustNote } from '../../components/TrustNote/TrustNote';
 import { LandingPassPrices } from '../../components/LandingPassPrices/LandingPassPrices';
+import { AiChoice } from '../../components/AiChoice/AiChoice';
 import styles from './LandingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import type { LandingCopy } from './types';
@@ -61,8 +62,10 @@ interface HeroActionProps {
   dayPassPrice: string;
   sample: boolean;
   showAiToggle: boolean;
+  showAiChoice: boolean;
   aiOn: boolean;
   onToggleAi: () => void;
+  onChooseAi: (next: boolean) => void;
   t: TFunction<'landing'>;
 }
 
@@ -75,8 +78,10 @@ function renderHeroAction({
   dayPassPrice,
   sample,
   showAiToggle,
+  showAiChoice,
   aiOn,
   onToggleAi,
+  onChooseAi,
   t,
 }: Readonly<HeroActionProps>) {
   if (heroSlot != null) {
@@ -98,7 +103,8 @@ function renderHeroAction({
   }
   return (
     <>
-      {showAiToggle && (
+      {showAiChoice && <AiChoice aiOn={aiOn} onChange={onChooseAi} />}
+      {showAiToggle && !showAiChoice && (
         <label className={styles.aiToggle}>
           <input type="checkbox" checked={aiOn} onChange={onToggleAi} />
           <span>{t('aiPreview:toggleLabel')}</span>
@@ -108,7 +114,7 @@ function renderHeroAction({
         <UploadForm
           setErrorMessage={setErrorMessage}
           sample={sample}
-          aiOn={showAiToggle && aiOn}
+          aiOn={(showAiToggle || showAiChoice) && aiOn}
         />
       </div>
       <p className={styles.secondaryLink}>
@@ -140,19 +146,23 @@ function LandingPage({
   // Only the AI landing page offers the preview toggle: that is where a visitor
   // arrives wanting AI cards, and where the free-text/PDF upload the preview can
   // read is the point. Other landing pages keep their structure-first flow.
-  const showAiToggle =
-    !isSignedIn &&
-    userLocals?.features?.anonymousAiPreview === true &&
-    copy.pathname === '/ai-flashcard-generator';
+  const previewOn =
+    !isSignedIn && userLocals?.features?.anonymousAiPreview === true;
+  const showAiChoice =
+    previewOn && userLocals?.features?.anonymousAiChoice === true;
+  const showAiToggle = previewOn && copy.pathname === '/ai-flashcard-generator';
   const [aiOn, setAiOn] = useState(
     () => globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true'
   );
-  const toggleAi = () => {
-    const next = !aiOn;
+  const chooseAi = (next: boolean) => {
+    if (next === aiOn) return;
     saveValueInLocalStorage('claude-ai-flashcards', String(next), null);
     setAiOn(next);
-    track(next ? 'upload_ai_turned_on' : 'upload_ai_turned_off');
+    track(next ? 'upload_ai_turned_on' : 'upload_ai_turned_off', {
+      surface: copy.pathname,
+    });
   };
+  const toggleAi = () => chooseAi(!aiOn);
   const landingViewedRef = useRef(false);
   useEffect(() => {
     persistSignupOrigin(copy.pathname, globalThis.sessionStorage ?? null);
@@ -229,8 +239,10 @@ function LandingPage({
             dayPassPrice: passPrices['24h'],
             sample: copy.homeHero === true,
             showAiToggle,
+            showAiChoice,
             aiOn,
             onToggleAi: toggleAi,
+            onChooseAi: chooseAi,
             t,
           })}
           {copy.homeHero === true && <TrustNote />}

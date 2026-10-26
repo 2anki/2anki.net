@@ -1,6 +1,7 @@
 import { getFeatureFlag } from '../featureFlags/getFeatureFlag';
 
 export const ANONYMOUS_AI_PREVIEW_FLAG = 'anonymous_ai_preview';
+export const ANONYMOUS_AI_CHOICE_FLAG = 'anonymous_ai_choice';
 
 // Gates the no-account AI preview: a visitor without an account who turns on AI
 // gets a small, cost-capped sample of the cards Claude would write, then the
