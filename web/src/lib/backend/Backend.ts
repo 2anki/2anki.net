@@ -774,7 +774,8 @@ export class Backend {
   async startUnlimitedCheckout(
     interval: 'month' | 'year',
     variant?: string,
-    surface?: string
+    surface?: string,
+    replaceLapsed = false
   ): Promise<
     { url: string } | { status: 'unavailable' | 'error' } | CheckoutConflict
   > {
@@ -784,6 +785,7 @@ export class Backend {
         variant,
         surface,
         campaign: landingCampaignParams(),
+        ...(replaceLapsed === true ? { replaceLapsed: true } : {}),
       });
       if (response.status === 503) {
         return { status: 'unavailable' };

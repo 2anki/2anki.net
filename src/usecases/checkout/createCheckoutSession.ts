@@ -16,6 +16,17 @@ export const isStaleCustomerError = (error: unknown): boolean => {
   );
 };
 
+// Stripe refuses a subscription in one currency for a customer that still has
+// an open subscription, invoice item or discount in another. It carries no
+// error code of its own, so the message is the only signal.
+export const isCurrencyConflictError = (error: unknown): boolean => {
+  const stripeError = error as { type?: string; message?: string };
+  return (
+    stripeError?.type === 'StripeInvalidRequestError' &&
+    /combine currencies/i.test(stripeError?.message ?? '')
+  );
+};
+
 // Centralises Checkout Session creation so a stored customer id that has gone
 // stale cannot hard-fail checkout: on a missing-customer error the caller's
 // recovery clears the stale id and resolves a fresh one, and the session is

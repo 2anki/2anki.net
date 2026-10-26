@@ -976,7 +976,21 @@
       "already_unlimited_until": "Tu as un accès illimité jusqu'au {{date}}.",
       "billed_through_apple": "Ton forfait est facturé via Apple. Gère-le dans tes abonnements Apple.",
       "pass_still_active": "Ton pass est encore actif. Achète le suivant quand il expire.",
-      "pass_still_active_until": "Ton pass est valable jusqu'au {{date}}. Achète le suivant quand il expire."
+      "pass_still_active_until": "Ton pass est valable jusqu'au {{date}}. Achète le suivant quand il expire.",
+      "lapsed_subscription": "Le dernier paiement de ton forfait actuel n'a pas abouti. Paie-le ou arrête-le sur ta page de compte, puis réessaie.",
+      "currency_conflict": "Ton ancien forfait est facturé dans une autre devise, donc celui-ci ne peut pas encore démarrer. Arrête-le sur ta page de compte, ou écris à support@2anki.net et on te fait passer."
+    },
+    "lapsed": {
+      "title": "Le dernier paiement de ton forfait actuel n'a pas abouti",
+      "body": "Tu as {{plan}}, et son dernier paiement est toujours impayé. Choisis ce qu'il devient :",
+      "planMonth": "{{price}} par mois",
+      "planYear": "{{price}} par an",
+      "planUnknown": "un ancien forfait",
+      "payButton": "Payer et garder mon forfait",
+      "payNote": "Ouvre la facture impayée. Tu gardes {{plan}}.",
+      "payNoteAccount": "Mets à jour ta carte sur ta page de compte. Tu gardes ton forfait actuel.",
+      "switchButton": "L'arrêter et passer à Pro",
+      "switchNote": "On arrête ton forfait actuel maintenant et on annule son paiement impayé, puis tu paies Pro au paiement. {{plan}} ne sera plus disponible."
     }
   }
 }

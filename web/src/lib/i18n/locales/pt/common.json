@@ -976,7 +976,21 @@
       "already_unlimited_until": "Você tem acesso ilimitado até {{date}}.",
       "billed_through_apple": "Seu plano é cobrado pela Apple. Gerencie nas suas assinaturas da Apple.",
       "pass_still_active": "Seu passe ainda está ativo. Compre o próximo quando ele acabar.",
-      "pass_still_active_until": "Seu passe vale até {{date}}. Compre o próximo quando ele acabar."
+      "pass_still_active_until": "Seu passe vale até {{date}}. Compre o próximo quando ele acabar.",
+      "lapsed_subscription": "O último pagamento do seu plano atual não foi concluído. Pague ou encerre o plano na sua página de conta e tente de novo.",
+      "currency_conflict": "Seu plano anterior é cobrado em outra moeda, então este ainda não pode começar. Encerre-o na sua página de conta ou escreva para support@2anki.net que fazemos a troca para você."
+    },
+    "lapsed": {
+      "title": "O último pagamento do seu plano atual não foi concluído",
+      "body": "Você está no {{plan}}, e o último pagamento dele continua em aberto. Escolha o que fazer:",
+      "planMonth": "{{price}} por mês",
+      "planYear": "{{price}} por ano",
+      "planUnknown": "um plano anterior",
+      "payButton": "Pagar e manter meu plano",
+      "payNote": "Abre a fatura em aberto. Você continua no {{plan}}.",
+      "payNoteAccount": "Atualize seu cartão na sua página de conta. Você mantém seu plano atual.",
+      "switchButton": "Encerrar e mudar para o Pro",
+      "switchNote": "Encerramos seu plano atual agora e cancelamos o pagamento em aberto; depois você paga o Pro no checkout. O {{plan}} não estará mais disponível."
     }
   }
 }

@@ -20,6 +20,7 @@ import { FeatureGrid } from './components/FeatureGrid';
 import { PassCards } from './components/PassCards';
 import { PricingFaq } from './components/PricingFaq';
 import { UnlimitedCard } from './components/UnlimitedCard';
+import { LapsedPlanChoice } from './components/LapsedPlanChoice';
 import { ProducerCaptureModal } from '../../components/ProducerCaptureModal/ProducerCaptureModal';
 import { TrustNote } from '../../components/TrustNote/TrustNote';
 import { useInViewOnce } from '../../lib/hooks/useInViewOnce';
@@ -227,7 +228,7 @@ export default function PricingPage({
     setPassState('error');
   };
 
-  const handleUnlimitedUpgrade = async () => {
+  const handleUnlimitedUpgrade = async (replaceLapsed = false) => {
     track('paywall_upgrade_clicked', {
       surface: 'pricing_page',
       plan: 'unlimited',
@@ -245,7 +246,8 @@ export default function PricingPage({
     const result = await get2ankiApi().startUnlimitedCheckout(
       billingCycle,
       pricingOrder,
-      'pricing_page'
+      'pricing_page',
+      replaceLapsed
     );
     if ('url' in result) {
       globalThis.location.href = result.url;
@@ -253,6 +255,12 @@ export default function PricingPage({
     }
     setUnlimitedPending(false);
     if (result.status === 'conflict') {
+      if (result.lapsedPlan != null) {
+        track('checkout_lapsed_plan_shown', {
+          interval: billingCycle,
+          has_pay_link: result.lapsedPlan.payUrl != null,
+        });
+      }
       setConflict(result);
       return;
     }
@@ -361,7 +369,7 @@ export default function PricingPage({
         billingCycle={billingCycle}
         onBillingCycleChange={selectBillingCycle}
         yearlyAvailable={yearlyAvailable}
-        onUpgrade={handleUnlimitedUpgrade}
+        onUpgrade={() => void handleUnlimitedUpgrade()}
         pending={unlimitedPending}
         monthlyCents={pricing.monthlyCents}
         annualCents={pricing.annualCents}
@@ -416,10 +424,22 @@ export default function PricingPage({
 
       <OwnedPlanNotice entitlement={entitlement} />
 
-      {conflict && (
-        <div className={styles.contextBanner} role="alert">
-          {purchaseConflictMessage(t, conflict, i18n.language)}
-        </div>
+      {conflict?.lapsedPlan == null ? (
+        conflict && (
+          <div className={styles.contextBanner} role="alert">
+            {purchaseConflictMessage(t, conflict, i18n.language)}
+          </div>
+        )
+      ) : (
+        <LapsedPlanChoice
+          plan={conflict.lapsedPlan}
+          pending={unlimitedPending}
+          onPay={() => track('checkout_lapsed_plan_choice', { choice: 'pay' })}
+          onSwitch={() => {
+            track('checkout_lapsed_plan_choice', { choice: 'switch' });
+            void handleUnlimitedUpgrade(true);
+          }}
+        />
       )}
 
       {ownsOngoingAccess(entitlement) ? null : unlimitedFirst ? (

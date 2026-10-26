@@ -151,6 +151,8 @@ export const KNOWN_EVENTS = new Set([
   'subscription_manage_billing_clicked',
   'subscription_cancelled',
   'subscription_past_due_shown',
+  'checkout_lapsed_plan_shown',
+  'checkout_lapsed_plan_choice',
   'subscription_ended_shown',
   'language_changed',
   'mcp_deck_download',

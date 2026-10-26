@@ -1030,7 +1030,21 @@
       "already_unlimited_until": "Masz nieograniczony dostęp do {{date}}.",
       "billed_through_apple": "Twój plan jest rozliczany przez Apple. Zarządzaj nim w subskrypcjach Apple.",
       "pass_still_active": "Twój pass jest wciąż aktywny. Kup kolejny, gdy wygaśnie.",
-      "pass_still_active_until": "Twój pass jest ważny do {{date}}. Kup kolejny, gdy wygaśnie."
+      "pass_still_active_until": "Twój pass jest ważny do {{date}}. Kup kolejny, gdy wygaśnie.",
+      "lapsed_subscription": "Ostatnia płatność za twój obecny plan nie przeszła. Opłać go albo zakończ na stronie konta i spróbuj ponownie.",
+      "currency_conflict": "Twój wcześniejszy plan jest rozliczany w innej walucie, więc ten nie może jeszcze wystartować. Zakończ go na stronie konta albo napisz na support@2anki.net, a przeniesiemy cię."
+    },
+    "lapsed": {
+      "title": "Ostatnia płatność za twój obecny plan nie przeszła",
+      "body": "Masz {{plan}}, a ostatnia płatność za niego jest wciąż nieopłacona. Wybierz, co z nim zrobić:",
+      "planMonth": "{{price}} miesięcznie",
+      "planYear": "{{price}} rocznie",
+      "planUnknown": "wcześniejszy plan",
+      "payButton": "Zapłać i zachowaj plan",
+      "payNote": "Otwiera nieopłaconą fakturę. Zostajesz przy {{plan}}.",
+      "payNoteAccount": "Zaktualizuj kartę na stronie konta. Zachowujesz obecny plan.",
+      "switchButton": "Zakończ i przejdź na Pro",
+      "switchNote": "Kończymy teraz twój obecny plan i anulujemy jego nieopłaconą płatność, a potem płacisz za Pro przy kasie. {{plan}} nie będzie już dostępny."
     }
   }
 }

@@ -5,6 +5,7 @@ import UnlimitedCheckoutController, {
 } from './UnlimitedCheckoutController';
 import { UnlimitedCheckoutUseCase } from '../usecases/checkout/UnlimitedCheckoutUseCase';
 import { PricingResolutionError } from '../usecases/checkout/PricingResolutionError';
+import { LapsedSubscriptionError } from '../usecases/checkout/LapsedSubscriptions';
 
 const makeResponse = (locals: Record<string, unknown> = {}) => {
   const res = {
@@ -286,5 +287,90 @@ describe('UnlimitedCheckoutController GA measurement', () => {
         gaSessionId: '1744000000',
       })
     );
+  });
+});
+
+describe('UnlimitedCheckoutController with a lapsed or foreign-currency plan', () => {
+  it('returns 409 lapsed_subscription with the old plan and its pay link', async () => {
+    const execute = vi.fn().mockRejectedValue(
+      new LapsedSubscriptionError({
+        subscriptionId: 'sub_old',
+        amount: 200,
+        currency: 'eur',
+        interval: 'month',
+        openInvoiceId: 'in_open',
+        payUrl: 'https://invoice.stripe.com/i/test',
+      })
+    );
+    const uc = { execute } as unknown as UnlimitedCheckoutUseCase;
+    const req = { body: { interval: 'year' } } as Request;
+    const res = makeResponse();
+    const sink = makeSink();
+    const controller = new UnlimitedCheckoutController(uc, makeContext(), sink);
+
+    await controller.createSession(req, res as unknown as Response);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({
+      code: 'lapsed_subscription',
+      message: expect.any(String),
+      expiresAt: null,
+      lapsedPlan: {
+        amount: 200,
+        currency: 'eur',
+        interval: 'month',
+        payUrl: 'https://invoice.stripe.com/i/test',
+      },
+    });
+    expect(sink.record).not.toHaveBeenCalled();
+  });
+
+  it('forwards replaceLapsed only when the body sets it to true', async () => {
+    const uc = makeUseCase();
+    const controller = new UnlimitedCheckoutController(
+      uc,
+      makeContext(),
+      makeSink()
+    );
+
+    await controller.createSession(
+      { body: { interval: 'year', replaceLapsed: true } } as Request,
+      makeResponse() as unknown as Response
+    );
+    await controller.createSession(
+      { body: { interval: 'year', replaceLapsed: 'yes' } } as Request,
+      makeResponse() as unknown as Response
+    );
+
+    const calls = (uc.execute as Mock).mock.calls;
+    expect(calls[0][0]).toMatchObject({ replaceLapsed: true });
+    expect(calls[1][0]).toMatchObject({ replaceLapsed: false });
+  });
+
+  it('returns 409 currency_conflict when Stripe refuses to mix currencies', async () => {
+    const execute = vi.fn().mockRejectedValue({
+      type: 'StripeInvalidRequestError',
+      message:
+        'You cannot combine currencies on a single customer. This customer has an active subscription with currency eur.',
+    });
+    const uc = { execute } as unknown as UnlimitedCheckoutUseCase;
+    const res = makeResponse();
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const controller = new UnlimitedCheckoutController(
+      uc,
+      makeContext(),
+      makeSink()
+    );
+
+    await controller.createSession(
+      { body: { interval: 'year' } } as Request,
+      res as unknown as Response
+    );
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toMatchObject({
+      code: 'currency_conflict',
+      expiresAt: null,
+    });
   });
 });

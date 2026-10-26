@@ -976,7 +976,21 @@
       "already_unlimited_until": "Je hebt onbeperkte toegang tot {{date}}.",
       "billed_through_apple": "Je plan wordt via Apple gefactureerd. Beheer het in je Apple-abonnementen.",
       "pass_still_active": "Je pas is nog actief. Koop de volgende wanneer deze afloopt.",
-      "pass_still_active_until": "Je pas loopt tot {{date}}. Koop de volgende wanneer deze afloopt."
+      "pass_still_active_until": "Je pas loopt tot {{date}}. Koop de volgende wanneer deze afloopt.",
+      "lapsed_subscription": "De laatste betaling voor je huidige abonnement is niet gelukt. Betaal of beëindig het op je accountpagina en probeer het opnieuw.",
+      "currency_conflict": "Je eerdere abonnement wordt in een andere valuta gefactureerd, dus dit kan nog niet starten. Beëindig het op je accountpagina, of mail support@2anki.net en we zetten je over."
+    },
+    "lapsed": {
+      "title": "De laatste betaling voor je huidige abonnement is niet gelukt",
+      "body": "Je hebt {{plan}}, en de laatste betaling staat nog open. Kies wat ermee gebeurt:",
+      "planMonth": "{{price}} per maand",
+      "planYear": "{{price}} per jaar",
+      "planUnknown": "een eerder abonnement",
+      "payButton": "Betalen en abonnement houden",
+      "payNote": "Opent de openstaande factuur. Je houdt {{plan}}.",
+      "payNoteAccount": "Werk je kaart bij op je accountpagina. Je houdt je huidige abonnement.",
+      "switchButton": "Beëindigen en overstappen op Pro",
+      "switchNote": "We beëindigen je huidige abonnement nu en annuleren de openstaande betaling, daarna betaal je Pro bij het afrekenen. {{plan}} is daarna niet meer beschikbaar."
     }
   }
 }
