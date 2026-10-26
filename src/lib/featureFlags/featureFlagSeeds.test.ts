@@ -5,8 +5,8 @@ const ROOT = path.resolve(__dirname, '../../..');
 const MIGRATIONS_DIR = path.join(ROOT, 'migrations');
 const SRC_DIR = path.join(ROOT, 'src');
 
-// Read straight from the repository and deliberately not flippable from /ops:
-// flipping it changes which Stripe prices checkout sells.
+// Read through the flag repository directly rather than getFeatureFlag, so the
+// literal scan cannot see it; its row already exists on prod and is flippable.
 const NOT_SEEDED_ON_PURPOSE = new Set(['pricing_v2']);
 
 function sourceFiles(dir: string): string[] {

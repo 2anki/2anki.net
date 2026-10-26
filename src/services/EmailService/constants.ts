@@ -65,11 +65,6 @@ export const ABANDONED_CHECKOUT_RECOVERY_TEMPLATE = fs.readFileSync(
   'utf8'
 );
 
-export const PASS_WINBACK_TEMPLATE = fs.readFileSync(
-  path.join(EMAIL_TEMPLATES_DIRECTORY, 'pass-winback.html'),
-  'utf8'
-);
-
 export const PASS_ENDING_TEMPLATE = fs.readFileSync(
   path.join(EMAIL_TEMPLATES_DIRECTORY, 'pass-ending.html'),
   'utf8'
