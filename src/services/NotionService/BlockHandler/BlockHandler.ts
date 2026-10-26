@@ -177,6 +177,22 @@ const TOGGLE_CONTAINER_TYPES = new Set([
 const NESTED_TOGGLE_MAX_DEPTH = 2;
 const MAX_NESTED_TOGGLE_WRAPPER_FETCHES = 40;
 
+// Opt-in `promote-nested-toggles` reads each card's children once more (the
+// back-side render does not hand them back) and renders every nested toggle's
+// own back. That is bounded the same way: toggles nest at most this deep and
+// one conversion scans at most this many parents before leaving the rest as
+// part of their parent card.
+const PROMOTE_NESTED_TOGGLE_MAX_DEPTH = 3;
+const MAX_PROMOTE_NESTED_TOGGLE_SCANS = 150;
+
+interface PromotedToggleCard {
+  block: BlockObjectResponse;
+  name: string;
+  back: string;
+  tags: string[];
+  media: string[];
+}
+
 function activeNonPageDeckTypes(rules: ParserRules): Set<string> {
   return new Set(
     rules.deckTypes().filter((type) => !PAGE_LIKE_DECK_TYPES.has(type))
@@ -353,6 +369,10 @@ class BlockHandler implements IBlockRenderer {
   private nestedToggleWrapperFetches = 0;
 
   private nestedToggleBudgetLogged = false;
+
+  private promoteNestedToggleScans = 0;
+
+  private promoteNestedToggleBudgetLogged = false;
 
   unsupportedBlockTypeCounts: Map<string, number> = new Map();
 
@@ -554,6 +574,68 @@ class BlockHandler implements IBlockRenderer {
       this.useAll
     );
     return { requestChildren, response };
+  }
+
+  // Every toggle nested inside this one with something inside it, as its own
+  // card (title as the front, its body as the back). The parent keeps its card
+  // with the nested toggles in its back, so this only adds cards. A toggle
+  // with an empty body is skipped so no blank-back card is added (#4932).
+  private async promotedNestedToggleCards(
+    parent: BlockObjectResponse,
+    depth = 1
+  ): Promise<PromotedToggleCard[]> {
+    if (depth > PROMOTE_NESTED_TOGGLE_MAX_DEPTH) {
+      return [];
+    }
+    if (this.promoteNestedToggleScans >= MAX_PROMOTE_NESTED_TOGGLE_SCANS) {
+      if (!this.promoteNestedToggleBudgetLogged) {
+        this.promoteNestedToggleBudgetLogged = true;
+        console.warn(
+          `[promote-nested-toggles] scan budget of ${MAX_PROMOTE_NESTED_TOGGLE_SCANS} reached, leaving remaining nested toggles in their parent card`
+        );
+      }
+      return [];
+    }
+    this.promoteNestedToggleScans += 1;
+    let children: Awaited<ReturnType<typeof this.fetchBackSideChildren>>;
+    try {
+      children = await this.fetchBackSideChildren(parent);
+    } catch {
+      return [];
+    }
+    const promoted: PromotedToggleCard[] = [];
+    for (const child of children.requestChildren) {
+      if (!isFullBlock(child) || !child.has_children) {
+        continue;
+      }
+      const summary = getToggleSummaryRichText(child);
+      if (!summary) {
+        continue;
+      }
+      const name = renderTextChildren(
+        summary,
+        this.settings,
+        this.tagRegistry
+      ).replaceAll('\n', '<br />');
+      const tags = [...this.tagRegistry.strikethroughs];
+      this.tagRegistry.clear();
+      const back = await this.getBackSide(child);
+      const media = this.exporter.media;
+      this.exporter.media = [];
+      if (name && back?.trim()) {
+        promoted.push({
+          block: child,
+          name: wrapWithColorClass(getToggleColor(child), name),
+          back: wrapBlockWithColorClass(getToggleColor(child), back),
+          tags,
+          media,
+        });
+      }
+      promoted.push(
+        ...(await this.promotedNestedToggleCards(child, depth + 1))
+      );
+    }
+    return promoted;
   }
 
   /**
@@ -822,6 +904,48 @@ class BlockHandler implements IBlockRenderer {
         ankiNote.stripRefreshIcon();
       }
       tr.clear();
+
+      if (
+        this.settings.promoteNestedToggles &&
+        !this.settings.isCherry &&
+        fullBlock &&
+        toggleSummary
+      ) {
+        for (const nested of await this.promotedNestedToggleCards(fullBlock)) {
+          const nestedNote = new Note(nested.name, nested.back);
+          nestedNote.media = nested.media;
+          nestedNote.notionLink = this.__notionLink(
+            nested.block.id,
+            notionBaseLink
+          );
+          nestedNote.notionId = nested.block.id;
+          if (this.settings.addNotionLink) {
+            nestedNote.back += RenderNotionLink(nestedNote.notionLink!, this);
+          }
+          nestedNote.name = perserveNewlinesIfApplicable(
+            nestedNote.name,
+            this.settings
+          );
+          nestedNote.back = perserveNewlinesIfApplicable(
+            nestedNote.back,
+            this.settings
+          );
+          nestedNote.tags =
+            rules.TAGS === 'heading'
+              ? headingTagsFor(nested.block.id, headingTagMap)
+              : nested.tags;
+          nestedNote.number = counter++;
+          cards.push(nestedNote);
+          if (this.settings.basicReversed) {
+            cards.push(nestedNote.reversed(nestedNote));
+          }
+          if (this.settings.reversed) {
+            const swapped = nestedNote.back;
+            nestedNote.back = nestedNote.name;
+            nestedNote.name = swapped;
+          }
+        }
+      }
     }
 
     const beforeUserFilter = cards.length;

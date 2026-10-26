@@ -79,7 +79,7 @@
     },
     "promote-nested-toggles": {
       "label": "Zagnieżdżone przełączniki stają się osobnymi kartami",
-      "description": "Zamienia każdy przełącznik zagnieżdżony w innym przełączniku w osobną kartę, z tytułem przełącznika jako pytaniem. Puste przełączniki są pomijane. Tylko dla eksportów HTML z Notion i wgranych plików."
+      "description": "Zamienia każdy przełącznik zagnieżdżony w innym przełączniku w osobną kartę, z tytułem przełącznika jako pytaniem. Puste przełączniki są pomijane."
     },
     "remove-mp3-links": {
       "label": "Usuń linki MP3 z plików audio",

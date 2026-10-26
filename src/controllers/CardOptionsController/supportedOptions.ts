@@ -123,7 +123,7 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'promote-nested-toggles',
       'Nested toggles become their own cards',
-      "Turn every toggle nested inside another toggle into its own card, with the toggle's title as the question. Toggles with nothing inside are skipped. Notion HTML exports and uploaded files only.",
+      "Turn every toggle nested inside another toggle into its own card, with the toggle's title as the question. Toggles with nothing inside are skipped.",
       defaultFor('promote-nested-toggles')
     ),
     new CardOptionDetail(

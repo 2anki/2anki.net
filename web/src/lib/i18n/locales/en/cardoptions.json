@@ -79,7 +79,7 @@
     },
     "promote-nested-toggles": {
       "label": "Nested toggles become their own cards",
-      "description": "Turn every toggle nested inside another toggle into its own card, with the toggle's title as the question. Toggles with nothing inside are skipped. Notion HTML exports and uploaded files only."
+      "description": "Turn every toggle nested inside another toggle into its own card, with the toggle's title as the question. Toggles with nothing inside are skipped."
     },
     "remove-mp3-links": {
       "label": "Remove MP3 links from audio files",

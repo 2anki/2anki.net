@@ -79,7 +79,7 @@
     },
     "promote-nested-toggles": {
       "label": "I toggle annidati diventano carte a sé",
-      "description": "Trasforma ogni toggle annidato in un altro toggle in una carta a sé, con il titolo del toggle come domanda. I toggle vuoti vengono saltati. Solo per esportazioni HTML di Notion e file caricati."
+      "description": "Trasforma ogni toggle annidato in un altro toggle in una carta a sé, con il titolo del toggle come domanda. I toggle vuoti vengono saltati."
     },
     "remove-mp3-links": {
       "label": "Rimuovi i link MP3 dai file audio",
