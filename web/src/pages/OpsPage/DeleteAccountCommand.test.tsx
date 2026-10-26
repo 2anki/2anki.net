@@ -37,7 +37,7 @@ const previewFor = async (email: string) => {
   fireEvent.change(screen.getByLabelText('Account email to delete'), {
     target: { value: email },
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Preview account' }));
   await screen.findByLabelText('Confirm account email');
 };
 
@@ -139,7 +139,7 @@ describe('DeleteAccountCommand', () => {
     fireEvent.change(screen.getByLabelText('Account email to delete'), {
       target: { value: 'nobody@example.com' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Preview account' }));
 
     expect(
       await screen.findByText('No account found for that email.')

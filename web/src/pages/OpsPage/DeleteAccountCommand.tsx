@@ -127,7 +127,7 @@ export default function DeleteAccountCommand() {
             onClick={() => preview()}
             disabled={status === 'loading'}
           >
-            {status === 'loading' && account == null ? 'Working…' : 'Preview'}
+            {status === 'loading' && account == null ? 'Working…' : 'Preview account'}
           </button>
         </div>
         {account != null && (
