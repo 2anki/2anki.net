@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useTranslation } from 'react-i18next';
 import { DocsSidebar } from './DocsSidebar';
@@ -8,14 +8,22 @@ import { DocsHome } from './DocsHome';
 import { DocsSearchTrigger } from './DocsSearchTrigger';
 import { DocsSearch } from './DocsSearch';
 import { WipBanner } from './WipBanner';
-import { loadDoc } from './loader';
+import { loadDoc, resolveSlug } from './loader';
 import { buildDocDescription, buildDocTitle } from './docMeta';
+import { canonicalUrl } from '../../lib/seo/canonicalUrl';
+import { useCanonicalLink } from '../../lib/seo/useCanonicalLink';
 import styles from './DocsPage.module.css';
 
 function stripTrailingSlashes(value: string): string {
   let end = value.length;
   while (end > 0 && value.codePointAt(end - 1) === 47) end--;
   return end === value.length ? value : value.slice(0, end);
+}
+
+function docCanonical(slug: string, found: boolean): string | undefined {
+  if (slug === '') return canonicalUrl('/documentation');
+  if (found) return canonicalUrl(`/documentation/${resolveSlug(slug)}`);
+  return undefined;
 }
 
 const LEGAL_SLUGS = new Set(['reference/privacy', 'reference/terms']);
@@ -28,7 +36,6 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 export default function DocsPage() {
   const params = useParams();
-  const { pathname } = useLocation();
   const { i18n } = useTranslation();
   const slug = stripTrailingSlashes(params['*'] ?? '');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -37,7 +44,7 @@ export default function DocsPage() {
   const metaTitle = buildDocTitle(doc?.frontmatter.title);
   const metaDescription =
     doc != null ? buildDocDescription(doc.frontmatter, doc.body) : undefined;
-  const canonical = `https://2anki.net${pathname}`;
+  useCanonicalLink(docCanonical(slug, doc != null));
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
@@ -65,7 +72,6 @@ export default function DocsPage() {
         {metaDescription != null && (
           <meta name="description" content={metaDescription} />
         )}
-        <link rel="canonical" href={canonical} />
       </Helmet>
 
       <div className={styles.mobileSearch}>

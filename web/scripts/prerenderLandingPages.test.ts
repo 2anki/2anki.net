@@ -605,3 +605,34 @@ describe('emitAnswersPages', () => {
     expect(html).toContain(config.h1);
   });
 });
+
+describe('a shell without a canonical', () => {
+  beforeEach(() => {
+    writeFileSync(
+      join(buildDir, 'index.html'),
+      SOURCE_INDEX.replace(
+        '  <link rel="canonical" href="https://2anki.net" />\n',
+        ''
+      ),
+      'utf8'
+    );
+  });
+
+  it.each<[string, (dir: string) => unknown, string]>([
+    ['a landing page', emitLandingPages, 'pdf-to-anki'],
+    ['an answers page', emitAnswersPages, 'answers/quizlet-to-anki'],
+    ['a meta-only page', emitMetaOnlyPages, 'pricing'],
+    [
+      'the Notion marketplace page',
+      emitNotionMarketplacePage,
+      'notion-marketplace',
+    ],
+  ])('gets one self canonical inserted on %s', (_label, emit, slug) => {
+    emit(buildDir);
+    const html = readFileSync(join(buildDir, slug, 'index.html'), 'utf8');
+    expect(countMatches(html, /<link\s+rel="canonical"/g)).toBe(1);
+    expect(html).toContain(
+      `<link rel="canonical" href="https://2anki.net/${slug}/">`
+    );
+  });
+});

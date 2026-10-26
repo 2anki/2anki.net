@@ -52,6 +52,58 @@ describe('injectLegalDocument', () => {
   });
 });
 
+describe('legal page canonical', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'legal-canonical-'));
+    fs.writeFileSync(path.join(dir, 'privacy.md'), PRIVACY_MD);
+    fs.writeFileSync(path.join(dir, 'terms.md'), PRIVACY_MD);
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it.each([
+    ['/documentation/misc/privacy-policy', 'reference/privacy'],
+    ['/documentation/misc/privacy-policy/', 'reference/privacy'],
+    ['/documentation/reference/privacy', 'reference/privacy'],
+    ['/documentation/reference/privacy/', 'reference/privacy'],
+    ['/documentation/misc/terms-of-service', 'reference/terms'],
+    ['/documentation/misc/terms-of-service/', 'reference/terms'],
+    ['/documentation/reference/terms', 'reference/terms'],
+    ['/documentation/reference/terms/', 'reference/terms'],
+  ])('renders %s with a canonical to its docs page', (routePath, slug) => {
+    const html = legalPrerenderFor(routePath, SHELL, dir);
+    expect(html).toContain('<h2>Signing in with Google</h2>');
+    expect(html).toContain(
+      `<link rel="canonical" href="https://2anki.net/documentation/${slug}/">`
+    );
+  });
+
+  it('replaces a canonical the shell already carries', () => {
+    const shell = SHELL.replace(
+      '</head>',
+      '<link rel="canonical" href="https://2anki.net" /></head>'
+    );
+    const html =
+      legalPrerenderFor('/documentation/misc/privacy-policy', shell, dir) ?? '';
+    expect(html.match(/<link\s+rel="canonical"/g)).toHaveLength(1);
+    expect(html).not.toContain('href="https://2anki.net"');
+  });
+
+  it('leaves an already prerendered docs page to its own head and body', () => {
+    const prerendered = SHELL.replace(
+      '<div id="root"></div>',
+      '<div id="root"><main class="docs-prerender">doc</main></div>'
+    );
+    expect(
+      legalPrerenderFor('/documentation/reference/privacy', prerendered, dir)
+    ).toBeNull();
+  });
+});
+
 describe('legalPrerenderFor', () => {
   let dir: string;
 

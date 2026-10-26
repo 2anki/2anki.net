@@ -8,11 +8,11 @@ import type { AddressInfo } from 'node:net';
 import { isKnownAppRoute } from './knownRoutes';
 
 const SHELL_HTML =
-  '<!doctype html><html><body><div id="root"></div></body></html>';
+  '<!doctype html><html><head></head><body><div id="root"></div></body></html>';
 // sendIndex stamps the consent region on the shell before sending it; the
 // test requests carry no country header, so the region falls back to eea.
 const SERVED_SHELL =
-  '<!doctype html><html data-consent-region="eea"><body><div id="root"></div></body></html>';
+  '<!doctype html><html data-consent-region="eea"><head></head><body><div id="root"></div></body></html>';
 
 vi.mock('../controllers/IndexController/getIndexFileContents', () => ({
   getIndexFileContents: vi.fn(() => SHELL_HTML),
@@ -59,6 +59,9 @@ describe('DefaultRouter catch-all status', () => {
   it.each([
     '/documentation/misc/privacy-policy',
     '/documentation/misc/terms-of-service',
+    '/documentation/misc/terms-of-service/',
+    '/documentation/reference/privacy',
+    '/documentation/reference/terms/',
   ])(
     'prerenders the legal page text into the shell for %s',
     async (legalPath) => {
@@ -68,6 +71,9 @@ describe('DefaultRouter catch-all status', () => {
       expect(body).toContain('<main class="legal-prerender"');
       expect(body).toContain('</main></div>');
       expect(body).not.toBe(SERVED_SHELL);
+      expect(body).toMatch(
+        /<link rel="canonical" href="https:\/\/2anki\.net\/documentation\/reference\/(privacy|terms)\/">/
+      );
     }
   );
 
@@ -79,7 +85,16 @@ describe('DefaultRouter catch-all status', () => {
     expect(res.headers.get('location')).toBe('/documentation/reference/mcp/');
   });
 
-  it.each(['/pricing', '/pricing/', '/convert/csv-to-anki', '/account', '/'])(
+  it('gives the homepage its own canonical on top of the shell', async () => {
+    const res = await fetch(`${url}/`);
+    const body = await res.text();
+    expect(res.status).toBe(200);
+    expect(body).toContain(
+      '<head><link rel="canonical" href="https://2anki.net/"></head>'
+    );
+  });
+
+  it.each(['/pricing', '/pricing/', '/convert/csv-to-anki', '/account'])(
     'returns 200 for known route %s',
     async (knownPath) => {
       const res = await fetch(`${url}${knownPath}`);

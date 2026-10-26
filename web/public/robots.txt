@@ -21,5 +21,7 @@ Disallow: /search
 Disallow: /uploads
 Disallow: /debug
 Disallow: /s/
+Disallow: /photo-to-deck
+Disallow: /mcp
 
 Sitemap: https://2anki.net/sitemap.xml

@@ -10,6 +10,7 @@ import {
   emitMetaOnlyPages,
   emitNotionMarketplacePage,
 } from './scripts/prerenderLandingPages';
+import { emitDocsPages } from './scripts/prerenderDocsPages';
 import { keepRootAssetsSameOrigin } from './scripts/keepRootAssetsSameOrigin';
 import { sameOriginBuiltUrl } from './scripts/sameOriginBuiltUrl';
 
@@ -49,6 +50,7 @@ function landingPrerender(): Plugin {
       emitConvertHubPage(buildDir);
       emitAnswersPages(buildDir);
       emitMetaOnlyPages(buildDir);
+      emitDocsPages(buildDir);
     },
   };
 }

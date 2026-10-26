@@ -67,8 +67,40 @@ describe('DocsPage metadata', () => {
     const canonical = document.head.querySelector('link[rel="canonical"]');
     expect(canonical).toHaveAttribute(
       'href',
-      'https://2anki.net/documentation/start-here/connect-notion'
+      'https://2anki.net/documentation/start-here/connect-notion/'
     );
+  });
+
+  it('keeps the trailing-slash canonical when the URL already has one', async () => {
+    renderAt('/documentation/start-here/connect-notion/');
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('link[rel="canonical"]')
+      ).toHaveAttribute(
+        'href',
+        'https://2anki.net/documentation/start-here/connect-notion/'
+      );
+    });
+  });
+
+  it('canonicalizes a legacy slug to the page it redirects to', async () => {
+    renderAt('/documentation/misc/privacy-policy');
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('link[rel="canonical"]')
+      ).toHaveAttribute(
+        'href',
+        'https://2anki.net/documentation/reference/privacy/'
+      );
+    });
+  });
+
+  it('sets no canonical on a doc that does not exist', async () => {
+    renderAt('/documentation/not-a-real/page');
+    await waitFor(() => {
+      expect(document.title).toBe('Documentation — 2anki docs');
+    });
+    expect(document.head.querySelector('link[rel="canonical"]')).toBeNull();
   });
 
   it('uses the generic docs title on the documentation home', async () => {
@@ -79,7 +111,7 @@ describe('DocsPage metadata', () => {
     const canonical = document.head.querySelector('link[rel="canonical"]');
     expect(canonical).toHaveAttribute(
       'href',
-      'https://2anki.net/documentation'
+      'https://2anki.net/documentation/'
     );
   });
 });
