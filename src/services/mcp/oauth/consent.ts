@@ -38,6 +38,7 @@ export interface ConsentPageInput {
   actionPath: string;
   clientName: string;
   redirectUri: string;
+  clientHost?: string;
   scopes: string[];
   csrf: string;
   fields: Record<string, string | undefined>;
@@ -254,6 +255,12 @@ export function renderConsentPage(input: ConsentPageInput): string {
   const unverifiedNotice = identity.verified
     ? ''
     : `<p class="consent-warning" role="note">2anki hasn't verified this app. Only approve if you started this connection yourself.</p>`;
+  const clientIdentity =
+    input.clientHost == null
+      ? ''
+      : `<p class="consent-reassure">${clientName} is identified by <strong>${escapeHtml(
+          input.clientHost
+        )}</strong>.</p>`;
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -274,6 +281,7 @@ export function renderConsentPage(input: ConsentPageInput): string {
       <ul class="consent-scopes">
         ${scopeList}
       </ul>
+      ${clientIdentity}
       <p class="consent-reassure">New decks count toward your monthly card limit, the same as on the web.</p>
       <form method="post" action="${escapeHtml(input.actionPath)}">
         ${hidden}

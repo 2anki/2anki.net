@@ -3,9 +3,12 @@ import express, { Response } from 'express';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import cookieParser from 'cookie-parser';
+import crypto from 'node:crypto';
 import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
+import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/token.js';
 import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import type { OAuthClientInformationFull } from '@modelcontextprotocol/sdk/shared/auth.js';
+import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 import { KnexOAuthProvider, McpOAuthDeps } from './KnexOAuthProvider';
 import {
@@ -24,6 +27,11 @@ import {
 } from '../../../data_layer/McpOAuthClientRepository';
 import { hashSecret } from './tokens';
 import { computeConsentToken } from './consent';
+import {
+  ClientMetadataDocumentResolver,
+  storageClientIdFor,
+} from './clientMetadataDocument';
+import type { InstrumentedAxios } from '../../observability/instrumentedAxios';
 import UsersController from '../../../controllers/UsersControllers';
 import type UsersService from '../../UsersService';
 import type AuthenticationService from '../../AuthenticationService';
@@ -39,6 +47,9 @@ class FakeClientRepo implements IMcpOAuthClientRepository {
   async create(client: StoredMcpClient): Promise<StoredMcpClient> {
     this.clients.set(client.client_id, client);
     return client;
+  }
+  async upsert(client: StoredMcpClient): Promise<void> {
+    this.clients.set(client.client_id, client);
   }
   async findById(clientId: string): Promise<StoredMcpClient | null> {
     return this.clients.get(clientId) ?? null;
@@ -967,4 +978,343 @@ describe('bearer auth through the SDK middleware', () => {
       });
     }
   );
+});
+
+describe('Client ID Metadata Document clients', () => {
+  const CIMD_ID = 'https://claude.ai/oauth/mcp-client-metadata';
+  const STORAGE_ID = storageClientIdFor(CIMD_ID);
+  const VERIFIER = 'cimd-test-verifier-0123456789abcdefghijklmnopqrstuvwxyz';
+  const CHALLENGE = crypto
+    .createHash('sha256')
+    .update(VERIFIER)
+    .digest('base64url');
+
+  function metadataHttp(doc: Record<string, unknown>) {
+    const get = vi.fn(async () => ({
+      status: 200,
+      statusText: 'OK',
+      headers: { 'content-type': 'application/json' },
+      config: {} as never,
+      data: JSON.stringify(doc),
+    }));
+    return { get, http: { get } as unknown as InstrumentedAxios };
+  }
+
+  function makeCimdProvider(redirectUris: string[]) {
+    const { get, http } = metadataHttp({
+      client_id: CIMD_ID,
+      client_name: 'Claude',
+      redirect_uris: redirectUris,
+      token_endpoint_auth_method: 'none',
+    });
+    const built = makeProvider({
+      clientMetadataResolver: new ClientMetadataDocumentResolver({ http }),
+    });
+    return { ...built, fetchDocument: get };
+  }
+
+  async function withOAuthServer(
+    redirectUris: string[],
+    run: (
+      base: string,
+      ctx: ReturnType<typeof makeCimdProvider>
+    ) => Promise<void>
+  ) {
+    const ctx = makeCimdProvider(redirectUris);
+    const app = express();
+    app.use(cookieParser());
+    app.use(
+      '/authorize',
+      authorizationHandler({ provider: ctx.provider, rateLimit: false })
+    );
+    app.use(
+      '/token',
+      tokenHandler({ provider: ctx.provider, rateLimit: false })
+    );
+    const server = http.createServer(app);
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const { port } = server.address() as AddressInfo;
+    try {
+      await run(`http://127.0.0.1:${port}`, ctx);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }
+
+  function authorizeQuery(redirectUri: string): Record<string, string> {
+    return {
+      client_id: CIMD_ID,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      code_challenge: CHALLENGE,
+      code_challenge_method: 'S256',
+      scope: 'mcp',
+      state: 'xyz',
+    };
+  }
+
+  async function approve(base: string, redirectUri: string): Promise<string> {
+    const csrf = computeConsentToken('valid-session', TEST_CONSENT_SECRET);
+    const res = await fetch(`${base}/authorize`, {
+      method: 'POST',
+      headers: {
+        cookie: 'token=valid-session',
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        ...authorizeQuery(redirectUri),
+        consent: 'approve',
+        csrf,
+      }).toString(),
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get('location') ?? '');
+    const code = location.searchParams.get('code');
+    if (code == null) throw new Error(`no code in ${location.toString()}`);
+    return code;
+  }
+
+  function tokenRequest(base: string, params: Record<string, string>) {
+    return fetch(`${base}/token`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: CIMD_ID, ...params }).toString(),
+    });
+  }
+
+  it('resolves the client from its metadata document without registering it', async () => {
+    const { provider, clientRepo } = makeCimdProvider([
+      'https://claude.ai/api/mcp/auth_callback',
+    ]);
+
+    const client = await provider.clientsStore.getClient(CIMD_ID);
+
+    expect(client).toMatchObject({
+      client_id: CIMD_ID,
+      client_name: 'Claude',
+      redirect_uris: ['https://claude.ai/api/mcp/auth_callback'],
+      token_endpoint_auth_method: 'none',
+    });
+    expect(clientRepo.clients.size).toBe(0);
+  });
+
+  it('never accepts a storage id as a client_id on the wire', async () => {
+    const { provider, clientRepo } = makeCimdProvider([
+      'https://claude.ai/api/mcp/auth_callback',
+    ]);
+    await clientRepo.upsert({
+      client_id: STORAGE_ID,
+      client_name: 'Claude',
+      redirect_uris: ['https://claude.ai/api/mcp/auth_callback'],
+      grant_types: ['authorization_code'],
+      response_types: ['code'],
+      scope: null,
+      token_endpoint_auth_method: 'none',
+      metadata: {},
+      client_id_issued_at: 1,
+    });
+
+    expect(await provider.clientsStore.getClient(STORAGE_ID)).toBeUndefined();
+  });
+
+  it('treats a rejected metadata document as an unknown client', async () => {
+    const { http } = metadataHttp({
+      client_id: 'https://evil.example/doc',
+      redirect_uris: ['https://evil.example/cb'],
+    });
+    const { provider } = makeProvider({
+      clientMetadataResolver: new ClientMetadataDocumentResolver({ http }),
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    expect(await provider.clientsStore.getClient(CIMD_ID)).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('client_id_mismatch')
+    );
+    warn.mockRestore();
+  });
+
+  it('shows the client name, redirect host and document host on consent', async () => {
+    await withOAuthServer(
+      ['https://claude.ai/api/mcp/auth_callback'],
+      async (base) => {
+        const query = new URLSearchParams(
+          authorizeQuery('https://claude.ai/api/mcp/auth_callback')
+        );
+        const res = await fetch(`${base}/authorize?${query.toString()}`, {
+          headers: { cookie: 'token=valid-session' },
+          redirect: 'manual',
+        });
+
+        expect(res.status).toBe(200);
+        const html = await res.text();
+        expect(html).toContain('Connect Claude to 2anki');
+        expect(html).toContain("you'll go back to <strong>claude.ai</strong>");
+        expect(html).toContain('identified by <strong>claude.ai</strong>');
+      }
+    );
+  });
+
+  it.each([
+    ['http://localhost/callback', 'http://localhost:53682/callback'],
+    ['http://127.0.0.1/callback', 'http://127.0.0.1:9000/callback'],
+    ['http://localhost:3118/callback', 'http://localhost:4000/callback'],
+    [
+      'https://claude.ai/api/mcp/auth_callback',
+      'https://claude.ai/api/mcp/auth_callback',
+    ],
+  ])(
+    'accepts redirect %s when the request uses %s',
+    async (registered, requested) => {
+      await withOAuthServer([registered], async (base) => {
+        const query = new URLSearchParams(authorizeQuery(requested));
+        const res = await fetch(`${base}/authorize?${query.toString()}`, {
+          headers: { cookie: 'token=valid-session' },
+          redirect: 'manual',
+        });
+
+        expect(res.status).toBe(200);
+      });
+    }
+  );
+
+  it.each([
+    ['https://claude.ai/api/mcp/auth_callback', 'https://claude.ai/other'],
+    [
+      'https://claude.ai/api/mcp/auth_callback',
+      'https://claude.ai:8443/api/mcp/auth_callback',
+    ],
+    ['http://localhost/callback', 'http://localhost:53682/elsewhere'],
+    ['http://localhost/callback', 'http://127.0.0.1:53682/callback'],
+  ])(
+    'rejects redirect %s when the request uses %s',
+    async (registered, requested) => {
+      await withOAuthServer([registered], async (base, { codeRepo }) => {
+        const query = new URLSearchParams(authorizeQuery(requested));
+        const res = await fetch(`${base}/authorize?${query.toString()}`, {
+          headers: { cookie: 'token=valid-session' },
+          redirect: 'manual',
+        });
+
+        expect(res.status).toBe(400);
+        expect(await res.json()).toMatchObject({ error: 'invalid_request' });
+        expect(codeRepo.rows).toHaveLength(0);
+      });
+    }
+  );
+
+  it('stores one client row per document across connections', async () => {
+    await withOAuthServer(
+      ['http://localhost/callback'],
+      async (base, { clientRepo, codeRepo }) => {
+        await approve(base, 'http://localhost:5000/callback');
+        await approve(base, 'http://localhost:6000/callback');
+
+        expect([...clientRepo.clients.keys()]).toEqual([STORAGE_ID]);
+        expect(clientRepo.clients.get(STORAGE_ID)).toMatchObject({
+          client_name: 'Claude',
+          token_endpoint_auth_method: 'none',
+          metadata: { client_id_metadata_document: CIMD_ID },
+        });
+        expect(codeRepo.rows.map((row) => row.client_id)).toEqual([
+          STORAGE_ID,
+          STORAGE_ID,
+        ]);
+      }
+    );
+  });
+
+  it('exchanges the code with PKCE and no client secret, then rotates refresh tokens', async () => {
+    await withOAuthServer(
+      ['http://localhost/callback'],
+      async (base, { fetchDocument }) => {
+        const redirectUri = 'http://localhost:5000/callback';
+        const code = await approve(base, redirectUri);
+
+        const exchanged = await tokenRequest(base, {
+          grant_type: 'authorization_code',
+          code,
+          code_verifier: VERIFIER,
+          redirect_uri: redirectUri,
+        });
+        expect(exchanged.status).toBe(200);
+        const tokens = (await exchanged.json()) as {
+          access_token: string;
+          refresh_token: string;
+        };
+
+        const refreshed = await tokenRequest(base, {
+          grant_type: 'refresh_token',
+          refresh_token: tokens.refresh_token,
+        });
+        expect(refreshed.status).toBe(200);
+
+        const reused = await tokenRequest(base, {
+          grant_type: 'refresh_token',
+          refresh_token: tokens.refresh_token,
+        });
+        expect(reused.status).toBe(400);
+        expect(await reused.json()).toMatchObject({ error: 'invalid_grant' });
+        expect(fetchDocument).toHaveBeenCalledTimes(1);
+      }
+    );
+  });
+
+  it('rejects a code exchange with the wrong PKCE verifier', async () => {
+    await withOAuthServer(['http://localhost/callback'], async (base) => {
+      const redirectUri = 'http://localhost:5000/callback';
+      const code = await approve(base, redirectUri);
+
+      const res = await tokenRequest(base, {
+        grant_type: 'authorization_code',
+        code,
+        code_verifier: `${VERIFIER}-wrong`,
+        redirect_uri: redirectUri,
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: 'invalid_grant' });
+    });
+  });
+
+  it('does not let a DCR client redeem a CIMD client code', async () => {
+    const { provider, clientRepo, codeRepo } = makeCimdProvider([
+      'https://claude.ai/api/mcp/auth_callback',
+    ]);
+    const cimdClient = await provider.clientsStore.getClient(CIMD_ID);
+    const csrf = computeConsentToken('valid-session', TEST_CONSENT_SECRET);
+    const { res, calls } = fakeResponse('valid-session', {
+      method: 'POST',
+      body: { consent: 'approve', csrf },
+    });
+    await provider.authorize(
+      cimdClient!,
+      {
+        codeChallenge: CHALLENGE,
+        redirectUri: 'https://claude.ai/api/mcp/auth_callback',
+      },
+      res
+    );
+    const code = new URL(calls.redirectedTo!).searchParams.get('code')!;
+    expect(clientRepo.clients.has(STORAGE_ID)).toBe(true);
+    expect(codeRepo.rows).toHaveLength(1);
+
+    await expect(
+      provider.exchangeAuthorizationCode(
+        CLIENT,
+        code,
+        undefined,
+        'https://claude.ai/api/mcp/auth_callback'
+      )
+    ).rejects.toThrow(InvalidGrantError);
+    await expect(
+      provider.exchangeAuthorizationCode(
+        cimdClient!,
+        code,
+        undefined,
+        'https://claude.ai/api/mcp/auth_callback'
+      )
+    ).resolves.toMatchObject({ token_type: 'bearer' });
+  });
 });

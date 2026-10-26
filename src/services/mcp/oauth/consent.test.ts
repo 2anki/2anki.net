@@ -191,4 +191,32 @@ describe('renderConsentPage', () => {
       );
     });
   });
+
+  it('shows the redirect host and, for metadata-document clients, the client host', () => {
+    const html = renderConsentPage({
+      actionPath: '/authorize',
+      clientName: 'Claude',
+      redirectUri: 'http://localhost:5000/callback',
+      clientHost: '<b>claude.ai</b>',
+      scopes: ['mcp'],
+      csrf: 'x',
+      fields: {},
+    });
+    expect(html).toContain('<strong>localhost</strong>');
+    expect(html).toContain(
+      'Claude is identified by <strong>&lt;b&gt;claude.ai&lt;/b&gt;</strong>'
+    );
+  });
+
+  it('omits the client host line for registered clients', () => {
+    const html = renderConsentPage({
+      actionPath: '/authorize',
+      clientName: 'Claude',
+      redirectUri: 'https://claude.ai/api/mcp/auth_callback',
+      scopes: ['mcp'],
+      csrf: 'x',
+      fields: {},
+    });
+    expect(html).not.toContain('is identified by');
+  });
 });
