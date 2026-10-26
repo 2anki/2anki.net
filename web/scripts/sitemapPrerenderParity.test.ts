@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import {
@@ -10,16 +10,15 @@ import {
   emitMetaOnlyPages,
   emitNotionMarketplacePage,
 } from './prerenderLandingPages';
+import {
+  emitDocsPages,
+  SERVER_RENDERED_DOC_SLUGS,
+} from './prerenderDocsPages';
 
-const SOURCE_INDEX = `<!DOCTYPE html>
-<html>
-<head>
-  <link rel="canonical" href="https://2anki.net" />
-  <title>Create Anki Flashcards - 2anki.net</title>
-  <meta name="description" content="Original description">
-</head>
-<body><div id="root"></div></body>
-</html>`;
+// The real shell, so a canonical added back to it or a renamed shell title
+// shows up here rather than in Search Console.
+const SOURCE_INDEX = readFileSync(join(__dirname, '../index.html'), 'utf8');
+const SHELL_TITLE = /<title>([\s\S]*?)<\/title>/.exec(SOURCE_INDEX)?.[1] ?? '';
 
 function emitEverything(): string {
   const buildDir = mkdtempSync(join(tmpdir(), 'parity-'));
@@ -30,14 +29,25 @@ function emitEverything(): string {
   emitConvertHubPage(buildDir);
   emitAnswersPages(buildDir);
   emitMetaOnlyPages(buildDir);
+  emitDocsPages(buildDir);
   return buildDir;
 }
 
-function sitemapPaths(): string[] {
+function allSitemapPaths(): string[] {
   const xml = readFileSync(join(__dirname, '../public/sitemap.xml'), 'utf8');
   return [...xml.matchAll(/<loc>https:\/\/2anki\.net([^<]*)<\/loc>/g)].map(
     (m) => m[1]
   );
+}
+
+// The legal pages get their head and body from the server at request time
+// (src/lib/legalPrerender.ts, covered by its own tests), not from a file here.
+const SERVER_RENDERED_PATHS = new Set(
+  [...SERVER_RENDERED_DOC_SLUGS].map((slug) => `/documentation/${slug}/`)
+);
+
+function sitemapPaths(): string[] {
+  return allSitemapPaths().filter((path) => !SERVER_RENDERED_PATHS.has(path));
 }
 
 describe('sitemap ↔ prerender parity', () => {
@@ -66,11 +76,15 @@ describe('sitemap ↔ prerender parity', () => {
       const title = /<title>([\s\S]*?)<\/title>/.exec(html)?.[1] ?? '';
       const canonical =
         /<link rel="canonical" href="([^"]*)">/.exec(html)?.[1] ?? '';
+      expect(
+        html.match(/<link\s+rel="canonical"/g),
+        `${path} must carry exactly one canonical`
+      ).toHaveLength(1);
       expect(title, `title missing for ${path}`).not.toBe('');
       expect(
         title,
         `duplicate title between ${titles.get(title)} and ${path}`
-      ).not.toBe('Create Anki Flashcards - 2anki.net');
+      ).not.toBe(SHELL_TITLE);
       if (titles.has(title)) {
         expect.fail(
           `duplicate title "${title}" on ${titles.get(title)} and ${path}`
@@ -96,8 +110,28 @@ describe('sitemap ↔ prerender parity', () => {
     }
   });
 
+  it('every prerendered docs page is listed in the sitemap', () => {
+    const buildDir = emitEverything();
+    const docsDir = join(buildDir, 'documentation');
+    const prerendered = readdirSync(docsDir, { recursive: true })
+      .map(String)
+      .filter((file) => file.endsWith('index.html'))
+      .map((file) => {
+        const dir = relative(buildDir, join(docsDir, file, '..'));
+        return `/${dir.split(sep).join('/')}/`;
+      });
+    expect(prerendered.length).toBeGreaterThan(40);
+    const listed = new Set(sitemapPaths());
+    expect(prerendered.filter((path) => !listed.has(path))).toEqual([]);
+  });
+
+  it('the shell itself carries no canonical for unprerendered routes to inherit', () => {
+    expect(SHELL_TITLE).not.toBe('');
+    expect(SOURCE_INDEX).not.toMatch(/<link\s+rel="canonical"/);
+  });
+
   it('sitemap URLs all use the trailing-slash form the server serves without a redirect hop', () => {
-    for (const path of sitemapPaths()) {
+    for (const path of allSitemapPaths()) {
       expect(path.endsWith('/'), `${path} misses its trailing slash`).toBe(
         true
       );

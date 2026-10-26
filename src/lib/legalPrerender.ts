@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import MarkdownIt from 'markdown-it';
+import { setCanonicalLink } from './setCanonicalLink';
 
 // Google's OAuth brand check fetches the privacy and terms URLs without running
 // JavaScript, and the app is a SPA whose raw HTML is an empty root. These two
@@ -17,6 +18,10 @@ export const LEGAL_ROUTES: Readonly<Record<string, string>> = {
   '/documentation/reference/privacy': 'privacy.md',
   '/documentation/reference/terms': 'terms.md',
 };
+
+// Both the legacy and current URLs point crawlers at the current docs page.
+const canonicalFor = (file: string): string =>
+  `https://2anki.net/documentation/reference/${path.basename(file, '.md')}/`;
 
 const md = new MarkdownIt({ html: false, linkify: true });
 
@@ -62,6 +67,11 @@ export function injectLegalDocument(
   );
 }
 
+const withoutTrailingSlash = (routePath: string): string =>
+  routePath.length > 1 && routePath.endsWith('/')
+    ? routePath.slice(0, -1)
+    : routePath;
+
 const cache = new Map<string, LegalDocument>();
 
 export function legalPrerenderFor(
@@ -69,10 +79,14 @@ export function legalPrerenderFor(
   indexHtml: string,
   contentDir: string = LEGAL_CONTENT_DIR
 ): string | null {
-  if (!Object.prototype.hasOwnProperty.call(LEGAL_ROUTES, routePath)) {
+  const route = withoutTrailingSlash(routePath);
+  if (
+    !Object.prototype.hasOwnProperty.call(LEGAL_ROUTES, route) ||
+    !ROOT_RE.test(indexHtml)
+  ) {
     return null;
   }
-  const file = LEGAL_ROUTES[routePath];
+  const file = LEGAL_ROUTES[route];
   const cacheKey = path.join(contentDir, file);
   let doc = cache.get(cacheKey);
   if (doc == null) {
@@ -85,5 +99,8 @@ export function legalPrerenderFor(
     doc = renderLegalDocument(raw);
     cache.set(cacheKey, doc);
   }
-  return injectLegalDocument(indexHtml, doc);
+  return setCanonicalLink(
+    injectLegalDocument(indexHtml, doc),
+    canonicalFor(file)
+  );
 }

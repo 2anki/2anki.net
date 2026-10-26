@@ -5,6 +5,7 @@ import { useCookies } from 'react-cookie';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { sanitizeRelativeRedirect } from '../../lib/auth/sanitizeRelativeRedirect';
 import { stripUrlParam } from '../../lib/stripUrlParam';
+import { NoIndex } from '../../components/NoIndex/NoIndex';
 import styles from '../../styles/auth.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 
@@ -13,7 +14,7 @@ type MagicLinkState =
   | { status: 'error'; message: string }
   | { status: 'success' };
 
-function MagicLinkPage() {
+function MagicLinkVerification() {
   const { t } = useTranslation('accountx');
   const [searchParams] = useSearchParams();
   const [, setCookie] = useCookies(['token']);
@@ -168,6 +169,15 @@ function MagicLinkPage() {
   }
 
   return null;
+}
+
+function MagicLinkPage() {
+  return (
+    <>
+      <NoIndex />
+      <MagicLinkVerification />
+    </>
+  );
 }
 
 export default MagicLinkPage;

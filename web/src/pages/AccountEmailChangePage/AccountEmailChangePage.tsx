@@ -4,11 +4,12 @@ import { useSearchParams } from 'react-router-dom';
 import { post } from '../../lib/backend/api';
 import { track } from '../../lib/analytics/track';
 import { SkeletonPage } from '../../components/Skeleton/Skeleton';
+import { NoIndex } from '../../components/NoIndex/NoIndex';
 import sharedStyles from '../../styles/shared.module.css';
 
 type State = 'loading' | 'success' | 'invalid' | 'taken';
 
-export default function AccountEmailChangePage() {
+function EmailChangeConfirmation() {
   const { t } = useTranslation('accountx');
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
@@ -62,5 +63,14 @@ export default function AccountEmailChangePage() {
         </a>
       </div>
     </div>
+  );
+}
+
+export default function AccountEmailChangePage() {
+  return (
+    <>
+      <NoIndex />
+      <EmailChangeConfirmation />
+    </>
   );
 }

@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-26-docs-own-titles-in-search",
+  "date": "2026-10-26",
+  "type": "fix",
+  "title": "Documentation links in search results and chat previews show the page's own title and summary"
+}

@@ -64,3 +64,35 @@ describe('isKnownAppRoute', () => {
     expect(isKnownAppRoute('/answers/fsrs-explained/')).toBe(true);
   });
 });
+
+describe('isKnownAppRoute for documentation pages', () => {
+  it.each([
+    '/documentation',
+    '/documentation/',
+    '/documentation/start-here/connect-notion',
+    '/documentation/start-here/connect-notion/',
+    '/documentation/reference/privacy/',
+  ])('serves the existing docs page %s', (path) => {
+    expect(isKnownAppRoute(path)).toBe(true);
+  });
+
+  // Legacy slugs still reach the client, which redirects them to their new
+  // home, until the server answers them itself.
+  it.each([
+    '/documentation/misc/privacy-policy',
+    '/documentation/guides/getting-started/',
+  ])('serves the legacy docs slug %s', (path) => {
+    expect(isKnownAppRoute(path)).toBe(true);
+  });
+
+  it.each([
+    '/documentation/not-a-real-page',
+    '/documentation/start-here/not-a-real-page/',
+    '/documentation/start-here',
+    '/documentation/links/anki',
+    '/documentation/de/start-here/connect-notion',
+    '/documentationx',
+  ])('rejects the unknown docs path %s', (path) => {
+    expect(isKnownAppRoute(path)).toBe(false);
+  });
+});

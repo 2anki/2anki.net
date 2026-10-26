@@ -1,3 +1,5 @@
+import documentationSlugs from './documentationSlugs.json';
+
 const STATIC_PUBLIC_ROUTES = new Set<string>([
   '/',
   '/upload',
@@ -38,7 +40,6 @@ const APP_ROUTES = new Set<string>([
   '/security',
   '/status',
   '/whats-new',
-  '/documentation',
   '/auth/magic',
   '/app',
   '/templates',
@@ -170,8 +171,18 @@ const isParamPath = (path: string): boolean =>
     (prefix) => path.startsWith(prefix) && path.length > prefix.length
   );
 
+const DOCUMENTATION_PREFIX = '/documentation/';
+
+// Legacy slugs stay served so the client can send them on to their new page.
+const DOCUMENTATION_SLUGS = new Set<string>([
+  ...documentationSlugs.slugs,
+  ...documentationSlugs.legacySlugs,
+]);
+
 const isDocumentationPath = (path: string): boolean =>
-  path === '/documentation' || path.startsWith('/documentation/');
+  path === '/documentation' ||
+  (path.startsWith(DOCUMENTATION_PREFIX) &&
+    DOCUMENTATION_SLUGS.has(path.slice(DOCUMENTATION_PREFIX.length)));
 
 export const isKnownAppRoute = (pathname: string): boolean => {
   const path = normalizePathname(pathname);

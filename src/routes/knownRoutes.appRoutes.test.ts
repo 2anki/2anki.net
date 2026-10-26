@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { isKnownAppRoute } from './knownRoutes';
+import documentationSlugs from './documentationSlugs.json';
 
 // A route that exists in the SPA but not in the server's known-route list
 // renders on client-side navigation and 404s on a direct load or refresh.
@@ -19,6 +20,11 @@ const PARAM_SAMPLES: Record<string, string> = {
 const SLUG_LISTS: Record<string, string> = {
   '/answers/:slug': 'ANSWERS_SLUGS',
   '/convert/:slug': 'CONVERT_SLUGS',
+};
+
+// The docs splat is served only for slugs that have a page, so it needs one.
+const SPLAT_SAMPLES: Record<string, string> = {
+  '/documentation/*': `/documentation/${documentationSlugs.slugs[0]}`,
 };
 
 // Dev preview routes are lazy chunks gated on import.meta.env.DEV; they are
@@ -96,6 +102,10 @@ function appRoutePaths(): string[] {
 }
 
 function concretePath(route: string): string {
+  const splatSample = SPLAT_SAMPLES[route];
+  if (splatSample != null) {
+    return splatSample;
+  }
   const listName = SLUG_LISTS[route];
   if (listName != null) {
     return route.replace(':slug', firstSlug(listName));
@@ -126,5 +136,6 @@ describe('SPA routes are known to the server', () => {
   it('still rejects a slug that is not in the server lists', () => {
     expect(isKnownAppRoute('/answers/not-a-real-slug')).toBe(false);
     expect(isKnownAppRoute('/convert/not-a-real-slug')).toBe(false);
+    expect(isKnownAppRoute('/documentation/not-a-real-slug')).toBe(false);
   });
 });

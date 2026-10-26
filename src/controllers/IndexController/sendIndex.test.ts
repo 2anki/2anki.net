@@ -55,6 +55,31 @@ describe('sendIndex', () => {
     );
   });
 
+  it('gives the homepage its canonical, which the shell no longer carries', () => {
+    mockedGet.mockReturnValue('<html><head></head></html>');
+    const res = buildResponse();
+
+    sendIndex(res, '/', 'other');
+
+    expect(res.send).toHaveBeenCalledWith(
+      '<html data-consent-region="other"><head><link rel="canonical" href="https://2anki.net/"></head></html>'
+    );
+  });
+
+  it.each(['/login', '/account', '/not-a-page'])(
+    'leaves the shell without a canonical for %s',
+    (requestPath) => {
+      mockedGet.mockReturnValue('<html><head></head></html>');
+      const res = buildResponse();
+
+      sendIndex(res, requestPath, 'other');
+
+      expect(res.send).toHaveBeenCalledWith(
+        '<html data-consent-region="other"><head></head></html>'
+      );
+    }
+  );
+
   it('stamps the consent region the caller resolved', () => {
     mockedGet.mockReturnValue('<html lang="en">ready</html>');
     const res = buildResponse();

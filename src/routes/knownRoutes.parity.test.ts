@@ -117,14 +117,15 @@ const readAppRoutePaths = (): string[] => {
   );
 };
 
-// Two prefixes are allowlisted by slug rather than by shape: the server serves
-// only the marketing slugs it knows about, so unknown ones 404 instead of
+// Three prefixes are allowlisted by slug rather than by shape: the server serves
+// only the slugs it knows about, so unknown ones 404 instead of
 // rendering an empty page for a crawler. The SPA has a catch-all under each.
 // Substituting a real slug asks the intended question of those routes, and any
 // segment for the rest.
 const REAL_SLUG_BY_PREFIX: Record<string, string> = {
   '/convert/': 'notion-to-anki',
   '/answers/': 'pdf-to-anki',
+  '/documentation/': 'start-here/connect-notion',
 };
 
 // React Router matches ':id' against any segment; the server list matches a
@@ -167,7 +168,11 @@ describe('known app routes stay in step with the SPA router', () => {
   // The allowlists above exist so an unknown marketing slug 404s rather than
   // serving an empty page to a crawler. If that ever becomes a prefix match,
   // this is the test that should fail.
-  it.each(['/convert/not-a-real-slug', '/answers/not-a-real-slug'])(
+  it.each([
+    '/convert/not-a-real-slug',
+    '/answers/not-a-real-slug',
+    '/documentation/not-a-real-slug',
+  ])(
     'still rejects %s, which is allowlisted by slug and not by prefix',
     (path) => {
       expect(isKnownAppRoute(path)).toBe(false);

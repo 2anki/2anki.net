@@ -212,7 +212,19 @@ function rewriteHtmlLang(html: string, copy: LandingCopy): string {
   );
 }
 
-function rewriteHead(html: string, copy: LandingCopy): string {
+const CANONICAL_LINK = /<link\s+rel="canonical"[^>]*>/;
+
+// The shell carries no canonical: an app route that is not prerendered must
+// not inherit the homepage's, so every prerendered page brings its own.
+function setCanonical(html: string, href: string): string {
+  const tag = `<link rel="canonical" href="${href}">`;
+  if (CANONICAL_LINK.test(html)) {
+    return html.replace(CANONICAL_LINK, tag);
+  }
+  return html.replace(/<\/head>/, `  ${tag}\n</head>`);
+}
+
+export function rewriteHead(html: string, copy: LandingCopy): string {
   const canonical = canonicalUrl(copy.canonicalPathname ?? copy.pathname);
   const pageUrl = canonicalUrl(copy.pathname);
   const titleTag = `<title>${escapeHtml(copy.title)}</title>`;
@@ -234,10 +246,7 @@ function rewriteHead(html: string, copy: LandingCopy): string {
 
   let next = html.replace(/<title>[\s\S]*?<\/title>/, titleTag);
   next = next.replace(/<meta\s+name="description"[^>]*>/, descriptionTag);
-  next = next.replace(
-    /<link\s+rel="canonical"[^>]*>/,
-    `<link rel="canonical" href="${canonical}">`
-  );
+  next = setCanonical(next, canonical);
   next = stripExistingMeta(next);
   if (copy.htmlLang != null) {
     next = next.replace(/\s*<meta\s+property="og:locale"[^>]*>/g, '');
@@ -296,10 +305,7 @@ export function emitNotionMarketplacePage(buildDir: string): string {
 
   let html = source.replace(/<title>[\s\S]*?<\/title>/, titleTag);
   html = html.replace(/<meta\s+name="description"[^>]*>/, descriptionTag);
-  html = html.replace(
-    /<link\s+rel="canonical"[^>]*>/,
-    `<link rel="canonical" href="${canonical}">`
-  );
+  html = setCanonical(html, canonical);
   html = stripExistingMeta(html);
   html = html.replace(/<\/head>/, `  ${ogTags}\n</head>`);
   html = html.replace(
@@ -447,24 +453,6 @@ const META_ONLY_PAGES: MetaOnlyPageMeta[] = [
     intro:
       'Report a conversion problem, ask a billing question, or send feedback. Messages go straight to the maintainer.',
   },
-  {
-    pathname: '/documentation/start-here/connect-notion',
-    title: 'Connect Notion in 5 minutes — 2anki docs',
-    description:
-      'From signing in to your first deck downloaded: connect your Notion account once, pick a page, and 2anki builds the Anki deck. No exports, no zip files.',
-    h1: 'Connect Notion in 5 minutes',
-    intro:
-      'The fastest way to get Notion notes into Anki: connect your Notion account once, pick a page, and 2anki builds the deck. No exports, no zip files.',
-  },
-  {
-    pathname: '/documentation/cards/notion-to-anki-japanese',
-    title: 'Notion to Anki for Japanese — 2anki docs',
-    description:
-      'Structure mined sentences and vocab in Notion, keep audio and screenshots, choose a note type, and open the deck in Anki. For sentence miners and JLPT studiers.',
-    h1: 'Notion → Anki for Japanese',
-    intro:
-      'For sentence miners, JLPT studiers, and kanji writers: structure mined sentences and vocab in Notion, keep audio and screenshots, choose a note type, and open the deck in Anki.',
-  },
 ];
 
 export function emitMetaOnlyPages(buildDir: string): string[] {
@@ -492,10 +480,7 @@ export function emitMetaOnlyPages(buildDir: string): string[] {
 
     let html = source.replace(/<title>[\s\S]*?<\/title>/, titleTag);
     html = html.replace(/<meta\s+name="description"[^>]*>/, descriptionTag);
-    html = html.replace(
-      /<link\s+rel="canonical"[^>]*>/,
-      `<link rel="canonical" href="${canonical}">`
-    );
+    html = setCanonical(html, canonical);
     html = stripExistingMeta(html);
     html = html.replace(/<\/head>/, `  ${ogTags}\n</head>`);
     html = html.replace(
