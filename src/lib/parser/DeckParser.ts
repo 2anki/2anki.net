@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import {
   mergeRescueCandidates,
+  toRescueSample,
   type RescueCandidate,
 } from '../../types/RescueCandidate';
 import type { Element } from 'domhandler';
@@ -101,6 +102,7 @@ import {
   mergeInducedRescue,
 } from './induction/candidateRules';
 import { runInduction } from './induction/rankCandidates';
+import { toSampleText } from './induction/toSampleText';
 import { clearsQualityFloorExceptCount } from './induction/qualityFloor';
 import { scoreCandidateDeck } from './scoreCandidateDeck';
 import {
@@ -1071,10 +1073,14 @@ export class DeckParser {
   }
 
   private offerOnlyCandidates(dom: cheerio.CheerioAPI): RescueCandidate[] {
-    return OFFER_ONLY_RULES.map((rule) => ({
-      rule,
-      cards: induceCardsFromDom(dom, rule).length,
-    })).filter(({ cards }) => cards >= OFFER_ONLY_MIN_CARDS);
+    return OFFER_ONLY_RULES.map((rule) => {
+      const cards = induceCardsFromDom(dom, rule);
+      return {
+        rule,
+        cards: cards.length,
+        sample: toRescueSample(cards, toSampleText),
+      };
+    }).filter(({ cards }) => cards >= OFFER_ONLY_MIN_CARDS);
   }
 
   private recordInducedRule(next: InducedRescue): void {

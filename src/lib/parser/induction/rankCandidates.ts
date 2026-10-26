@@ -4,7 +4,11 @@ import scoreCandidateDeck, {
 } from '../scoreCandidateDeck';
 import { candidateOrderIndex, InducedRule } from './candidateRules';
 import { clearsQualityFloor } from './qualityFloor';
-import type { RescueCandidate } from '../../../types/RescueCandidate';
+import {
+  toRescueSample,
+  type RescueCandidate,
+} from '../../../types/RescueCandidate';
+import { toSampleText } from './toSampleText';
 
 export interface Candidate<T extends ScorableCard> {
   rule: InducedRule;
@@ -67,6 +71,7 @@ export function rankCandidates<T extends ScorableCard>(
     .map((candidate) => ({
       rule: candidate.rule,
       cards: candidate.cards.length,
+      sample: toRescueSample(candidate.cards, toSampleText),
     }));
 
   return { winner, best, candidates: offered };

@@ -2637,17 +2637,36 @@ function UploadForm({
       <div className={formStyles.rescueActions}>
         <p className={formStyles.rescueLead}>{t('upload.form.rescueLead')}</p>
         {rescue.map((candidate) => (
-          <button
-            key={candidate.rule}
-            type="button"
-            className={formStyles.rescueButton}
-            onClick={() => handleRescueChoice(candidate.rule, candidate.cards)}
-          >
-            {t(`upload.form.${RESCUE_LABEL_KEYS.get(candidate.rule)}`, {
-              count: candidate.cards,
-              n: formatCount(candidate.cards),
-            })}
-          </button>
+          <div key={candidate.rule} className={formStyles.rescueOption}>
+            <button
+              type="button"
+              className={formStyles.rescueButton}
+              onClick={() =>
+                handleRescueChoice(candidate.rule, candidate.cards)
+              }
+            >
+              {t(`upload.form.${RESCUE_LABEL_KEYS.get(candidate.rule)}`, {
+                count: candidate.cards,
+                n: formatCount(candidate.cards),
+              })}
+            </button>
+            {candidate.sample != null && candidate.sample.length > 0 && (
+              <ul className={formStyles.rescueSample} role="list">
+                {candidate.sample.map((card, index) => (
+                  <li key={index}>
+                    <span className={formStyles.rescueSampleFront}>
+                      {card.front}
+                    </span>
+                    {card.back !== card.front && (
+                      <span className={formStyles.rescueSampleBack}>
+                        {card.back}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ))}
       </div>
     );

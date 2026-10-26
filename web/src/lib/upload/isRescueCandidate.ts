@@ -17,6 +17,19 @@ export const RESCUE_RULES = [
   'paragraphs',
 ] as const satisfies readonly RescueRule[];
 
+function isSample(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (card) =>
+        card != null &&
+        typeof card === 'object' &&
+        typeof (card as Record<string, unknown>).front === 'string' &&
+        typeof (card as Record<string, unknown>).back === 'string'
+    )
+  );
+}
+
 export function isRescueCandidate(value: unknown): value is RescueCandidate {
   if (value == null || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
@@ -25,7 +38,8 @@ export function isRescueCandidate(value: unknown): value is RescueCandidate {
     (RESCUE_RULES as readonly string[]).includes(record.rule) &&
     typeof record.cards === 'number' &&
     Number.isSafeInteger(record.cards) &&
-    record.cards > 0
+    record.cards > 0 &&
+    (record.sample === undefined || isSample(record.sample))
   );
 }
 
