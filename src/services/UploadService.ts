@@ -1523,16 +1523,43 @@ class UploadService {
     paying: boolean,
     jobType: 'claude' | 'upload' = 'claude'
   ) {
-    const files = req.files as UploadedFile[];
-    const fingerprint = UploadService.conversionFingerprint(owner, files);
-    if (this.inFlightConversions.has(fingerprint)) {
+    const started = await this.startAsyncConversion(
+      req,
+      res,
+      settings,
+      ws,
+      owner,
+      paying,
+      jobType
+    );
+    if (!started) {
       return res.status(409).json({
         code: 'conversion_in_flight',
         message:
           "We're already converting this file. It'll land in My Decks in a few minutes — no need to upload again.",
       });
     }
+    return res.status(202).json({ jobId: ws.id });
+  }
+
+  // Starts the job and returns without answering the request, so a background
+  // conversion that finds nothing can start its AI retry after the 202 went out.
+  private async startAsyncConversion(
+    req: express.Request,
+    res: express.Response,
+    settings: CardOption,
+    ws: Workspace,
+    owner: string,
+    paying: boolean,
+    jobType: 'claude' | 'upload'
+  ): Promise<boolean> {
+    const files = req.files as UploadedFile[];
+    const fingerprint = UploadService.conversionFingerprint(owner, files);
+    if (this.inFlightConversions.has(fingerprint)) {
+      return false;
+    }
     this.inFlightConversions.add(fingerprint);
+    let retriedWithAi = false;
     const title =
       files.length === 1 ? files[0].originalname : `${files.length} files`;
     try {
@@ -1631,6 +1658,30 @@ class UploadService {
               ...this.pdfPageCountProps(packages),
             },
           });
+        } else if (
+          jobType === 'upload' &&
+          this.canFallBackToClaude(req, ownerId, paying)
+        ) {
+          track('ai_fallback_triggered', {
+            userId: ownerId,
+            anonymousId: this.resolveAnonId(req),
+            props: {
+              reason: 'empty_deck',
+              source: this.resolveUploadSource(req),
+            },
+          });
+          retriedWithAi = true;
+          this.inFlightConversions.delete(fingerprint);
+          await this.jobRepository.deleteJob(ws.id, owner);
+          await this.startAsyncConversion(
+            req,
+            res,
+            this.buildClaudeFallbackSettings(req, settings),
+            new Workspace(true, 'fs'),
+            owner,
+            paying,
+            'claude'
+          );
         } else {
           logNoPackageDiagnostics(req.files as UploadedFile[]);
           await this.jobRepository.updateJobStatus(
@@ -1682,10 +1733,12 @@ class UploadService {
         );
       })
       .finally(() => {
-        this.inFlightConversions.delete(fingerprint);
+        if (!retriedWithAi) {
+          this.inFlightConversions.delete(fingerprint);
+        }
       });
 
-    return res.status(202).json({ jobId: ws.id });
+    return true;
   }
 
   private canFallBackToClaude(

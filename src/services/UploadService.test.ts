@@ -2782,6 +2782,50 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     );
   });
 
+  it('retries a background PowerPoint with AI when it makes no cards, as the normal path does', async () => {
+    zeroCardUseCase();
+    asyncSlowFlag(true);
+    let resolveFailed!: () => void;
+    const failed = new Promise<void>((r) => {
+      resolveFailed = r;
+    });
+    const jobRepository = jobRepositoryWithFailedGate(resolveFailed);
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus } = entitledResponse();
+
+    await service.handleUpload(slidesRequest(), res);
+    await failed;
+    await new Promise((r) => setImmediate(r));
+
+    expect(capturedStatus()).toBe(202);
+    expect(jobRepository.create).toHaveBeenNthCalledWith(
+      1,
+      expect.any(String),
+      '42',
+      'lecture.pptx',
+      'upload'
+    );
+    expect(jobRepository.create).toHaveBeenNthCalledWith(
+      2,
+      expect.any(String),
+      '42',
+      'lecture.pptx',
+      'claude'
+    );
+    expect(jobRepository.deleteJob).toHaveBeenCalledTimes(1);
+    expect(trackMock).toHaveBeenCalledWith(
+      'ai_fallback_triggered',
+      expect.objectContaining({
+        props: expect.objectContaining({ reason: 'empty_deck' }),
+      })
+    );
+  });
+
   it('keeps a PowerPoint on the normal path when the flag is off', async () => {
     zeroCardUseCase();
     asyncSlowFlag(false);
