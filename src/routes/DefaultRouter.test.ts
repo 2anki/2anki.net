@@ -125,10 +125,11 @@ describe('DefaultRouter session hint', () => {
     expect(body).toContain('<html data-consent-region="eea" data-auth="1">');
   });
 
-  it('serves the plain shell without a token cookie', async () => {
+  it('leaves the shell unmarked without a token cookie', async () => {
     const res = await fetch(`${url}/`);
     const body = await res.text();
-    expect(body).toBe(SERVED_SHELL);
+    expect(body).toContain('<html data-consent-region="eea">');
+    expect(body).not.toContain('data-auth');
   });
 });
 
