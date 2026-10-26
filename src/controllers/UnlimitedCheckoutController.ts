@@ -8,6 +8,8 @@ import { parseCheckoutSurface } from '../usecases/checkout/checkoutSurface';
 import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readCheckoutAttribution } from '../lib/attribution/adClick';
 import { PricingResolutionError } from '../usecases/checkout/PricingResolutionError';
+import { LapsedSubscriptionError } from '../usecases/checkout/LapsedSubscriptions';
+import { isCurrencyConflictError } from '../usecases/checkout/createCheckoutSession';
 import type { EventsSink } from '../services/events/EventsSink';
 
 const VALID_INTERVALS: ReadonlySet<string> = new Set(['month', 'year']);
@@ -53,6 +55,7 @@ class UnlimitedCheckoutController {
         gaClientId,
         gaSessionId,
         adClick,
+        replaceLapsed: req.body?.replaceLapsed === true,
         pricingV2On: this.context.pricingV2On,
         createdAt,
       });
@@ -61,6 +64,28 @@ class UnlimitedCheckoutController {
         res.status(503).json({
           message:
             'Checkout is temporarily unavailable. Try again in a moment.',
+        });
+        return;
+      }
+      if (error instanceof LapsedSubscriptionError) {
+        const { amount, currency, interval, payUrl } = error.plan;
+        res.status(409).json({
+          code: 'lapsed_subscription',
+          message: "Your current plan's last payment didn't go through.",
+          expiresAt: null,
+          lapsedPlan: { amount, currency, interval, payUrl },
+        });
+        return;
+      }
+      if (isCurrencyConflictError(error)) {
+        console.warn('unlimited.checkout.currency_conflict', {
+          user_id: userId,
+        });
+        res.status(409).json({
+          code: 'currency_conflict',
+          message:
+            'Your earlier plan is billed in another currency, so this one cannot start yet.',
+          expiresAt: null,
         });
         return;
       }

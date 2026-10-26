@@ -495,6 +495,119 @@ describe('PricingPage duplicate-purchase conflict', () => {
   });
 });
 
+describe('PricingPage with an unpaid earlier plan', () => {
+  const lapsedConflict = {
+    status: 'conflict',
+    code: 'lapsed_subscription',
+    expiresAt: null,
+    lapsedPlan: {
+      amount: 200,
+      currency: 'eur',
+      interval: 'month',
+      payUrl: 'https://invoice.stripe.com/i/test',
+    },
+  };
+
+  beforeEach(() => {
+    mockStartUnlimitedCheckout.mockReset();
+    Object.defineProperty(globalThis, 'location', {
+      writable: true,
+      value: { href: '' },
+    });
+  });
+
+  it('asks the person to pay the old plan or end it, and says what each does', async () => {
+    mockStartUnlimitedCheckout.mockResolvedValue(lapsedConflict);
+    renderAt('/pricing', { isLoggedIn: true });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+
+    expect(
+      await screen.findByRole('heading', {
+        name: "Your current plan's last payment didn't go through",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/You're on €2\.00 a month, and its latest payment/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Pay and keep my plan' })
+    ).toHaveAttribute('href', 'https://invoice.stripe.com/i/test');
+    expect(
+      screen.getByText(/You can't go back to €2\.00 a month later/)
+    ).toBeInTheDocument();
+    expect(mockStartUnlimitedCheckout).toHaveBeenCalledTimes(1);
+    expect(mockStartUnlimitedCheckout).toHaveBeenCalledWith(
+      'month',
+      'minimal',
+      'pricing_page',
+      false
+    );
+  });
+
+  it('ends the old plan only after the person picks the switch', async () => {
+    mockStartUnlimitedCheckout
+      .mockResolvedValueOnce(lapsedConflict)
+      .mockResolvedValueOnce({ url: 'https://checkout.stripe.com/switch' });
+    renderAt('/pricing', { isLoggedIn: true });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'End it and switch to Pro' })
+    );
+
+    await waitFor(() => {
+      expect(globalThis.location.href).toBe(
+        'https://checkout.stripe.com/switch'
+      );
+    });
+    expect(mockStartUnlimitedCheckout).toHaveBeenLastCalledWith(
+      'month',
+      'minimal',
+      'pricing_page',
+      true
+    );
+  });
+
+  it('points to the account page when there is no invoice to pay', async () => {
+    mockStartUnlimitedCheckout.mockResolvedValue({
+      ...lapsedConflict,
+      lapsedPlan: { ...lapsedConflict.lapsedPlan, payUrl: null },
+    });
+    renderAt('/pricing', { isLoggedIn: true });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+
+    expect(
+      await screen.findByRole('link', { name: 'Pay and keep my plan' })
+    ).toHaveAttribute('href', '/account');
+  });
+
+  it('explains a currency clash instead of a generic error', async () => {
+    mockStartUnlimitedCheckout.mockResolvedValue({
+      status: 'conflict',
+      code: 'currency_conflict',
+      expiresAt: null,
+    });
+    renderAt('/pricing', { isLoggedIn: true });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain(
+      'Your earlier plan is billed in another currency'
+    );
+  });
+});
+
 describe('PricingPage anonymous upgrade-click tracking', () => {
   beforeEach(() => {
     mockUseCardUsage.mockReturnValue(null);
@@ -740,7 +853,8 @@ describe('PricingPage Pro billing toggle', () => {
       expect(mockStartUnlimitedCheckout).toHaveBeenCalledWith(
         'month',
         'minimal',
-        'pricing_page'
+        'pricing_page',
+        false
       );
     });
   });
@@ -764,7 +878,8 @@ describe('PricingPage Pro billing toggle', () => {
       expect(mockStartUnlimitedCheckout).toHaveBeenCalledWith(
         'year',
         'minimal',
-        'pricing_page'
+        'pricing_page',
+        false
       );
     });
   });

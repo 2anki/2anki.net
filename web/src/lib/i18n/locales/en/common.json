@@ -976,7 +976,21 @@
       "already_unlimited_until": "You have unlimited access until {{date}}.",
       "billed_through_apple": "Your plan is billed through Apple. Manage it in your Apple subscriptions.",
       "pass_still_active": "Your pass is still active. Buy the next one when it runs out.",
-      "pass_still_active_until": "Your pass runs until {{date}}. Buy the next one when it runs out."
+      "pass_still_active_until": "Your pass runs until {{date}}. Buy the next one when it runs out.",
+      "lapsed_subscription": "Your current plan's last payment didn't go through. Pay it or end it on your account page, then try again.",
+      "currency_conflict": "Your earlier plan is billed in another currency, so this one can't start yet. End it on your account page, or email support@2anki.net and we'll switch you."
+    },
+    "lapsed": {
+      "title": "Your current plan's last payment didn't go through",
+      "body": "You're on {{plan}}, and its latest payment is still unpaid. Choose what happens to it:",
+      "planMonth": "{{price}} a month",
+      "planYear": "{{price}} a year",
+      "planUnknown": "an earlier plan",
+      "payButton": "Pay and keep my plan",
+      "payNote": "Opens the unpaid invoice. You stay on {{plan}}.",
+      "payNoteAccount": "Update your card on your account page. You keep your current plan.",
+      "switchButton": "End it and switch to Pro",
+      "switchNote": "We end your current plan now and cancel its unpaid payment, then you pay for Pro at checkout. You can't go back to {{plan}} later."
     }
   }
 }

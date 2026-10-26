@@ -5,6 +5,7 @@ vi.mock('../../lib/misc/hashToken', () => ({
 
 import { UnlimitedCheckoutUseCase } from './UnlimitedCheckoutUseCase';
 import { PricingResolutionError } from './PricingResolutionError';
+import { LapsedPlan, LapsedSubscriptionError } from './LapsedSubscriptions';
 
 const mockStripeCreateSession = vi.fn();
 
@@ -610,5 +611,102 @@ describe('UnlimitedCheckoutUseCase ad-click attribution', () => {
         }),
       })
     );
+  });
+});
+
+describe('UnlimitedCheckoutUseCase with a lapsed plan on the customer', () => {
+  const lapsedPlan: LapsedPlan = {
+    subscriptionId: 'sub_old',
+    amount: 200,
+    currency: 'eur',
+    interval: 'month',
+    openInvoiceId: 'in_open',
+    payUrl: 'https://invoice.stripe.com/i/test',
+  };
+
+  const makeGateway = (plans: LapsedPlan[]) => ({
+    find: vi.fn().mockResolvedValue(plans),
+    close: vi.fn().mockResolvedValue(undefined),
+  });
+
+  const makeUseCase = (gateway: ReturnType<typeof makeGateway>) =>
+    new UnlimitedCheckoutUseCase(
+      makeStripe(),
+      MONTHLY_PRICE_ID,
+      YEARLY_PRICE_ID,
+      undefined,
+      undefined,
+      gateway
+    );
+
+  it('refuses with the lapsed plan and creates no session until the person chooses', async () => {
+    const gateway = makeGateway([lapsedPlan]);
+
+    await expect(
+      makeUseCase(gateway).execute({
+        userEmail: 'user@example.com',
+        userId: 7,
+        interval: 'year',
+        stripeCustomerId: 'cus_lapsed',
+      })
+    ).rejects.toEqual(new LapsedSubscriptionError(lapsedPlan));
+
+    expect(gateway.find).toHaveBeenCalledWith('cus_lapsed');
+    expect(gateway.close).not.toHaveBeenCalled();
+    expect(mockStripeCreateSession).not.toHaveBeenCalled();
+  });
+
+  it('ends the lapsed plan before creating the session when the person chose to switch', async () => {
+    const gateway = makeGateway([lapsedPlan]);
+    const order: string[] = [];
+    gateway.close.mockImplementation(async () => {
+      order.push('close');
+    });
+    mockStripeCreateSession.mockImplementation(async () => {
+      order.push('create');
+      return { url: 'https://checkout.stripe.com/year' };
+    });
+
+    const result = await makeUseCase(gateway).execute({
+      userEmail: 'user@example.com',
+      userId: 7,
+      interval: 'year',
+      stripeCustomerId: 'cus_lapsed',
+      replaceLapsed: true,
+    });
+
+    expect(result.url).toBe('https://checkout.stripe.com/year');
+    expect(gateway.close).toHaveBeenCalledWith([lapsedPlan]);
+    expect(order).toEqual(['close', 'create']);
+  });
+
+  it('creates the session as before when the customer has no lapsed plan', async () => {
+    const gateway = makeGateway([]);
+    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
+
+    await makeUseCase(gateway).execute({
+      userEmail: 'user@example.com',
+      userId: 7,
+      interval: 'month',
+      stripeCustomerId: 'cus_clean',
+      replaceLapsed: true,
+    });
+
+    expect(gateway.close).not.toHaveBeenCalled();
+    expect(mockStripeCreateSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips the lookup for someone with no Stripe customer yet', async () => {
+    const gateway = makeGateway([lapsedPlan]);
+    mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
+
+    await makeUseCase(gateway).execute({
+      userEmail: 'new@example.com',
+      userId: 8,
+      interval: 'month',
+    });
+
+    expect(gateway.find).not.toHaveBeenCalled();
+    expect(mockStripeCreateSession).toHaveBeenCalledTimes(1);
   });
 });

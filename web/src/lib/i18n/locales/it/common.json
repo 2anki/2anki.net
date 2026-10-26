@@ -976,7 +976,21 @@
       "already_unlimited_until": "Hai accesso illimitato fino al {{date}}.",
       "billed_through_apple": "Il tuo piano è fatturato tramite Apple. Gestiscilo nei tuoi abbonamenti Apple.",
       "pass_still_active": "Il tuo pass è ancora attivo. Compra il prossimo quando scade.",
-      "pass_still_active_until": "Il tuo pass è valido fino al {{date}}. Compra il prossimo quando scade."
+      "pass_still_active_until": "Il tuo pass è valido fino al {{date}}. Compra il prossimo quando scade.",
+      "lapsed_subscription": "L'ultimo pagamento del tuo piano attuale non è andato a buon fine. Pagalo o chiudilo dalla pagina del tuo account, poi riprova.",
+      "currency_conflict": "Il tuo piano precedente è fatturato in un'altra valuta, quindi questo non può ancora partire. Chiudilo dalla pagina del tuo account, oppure scrivi a support@2anki.net e ti facciamo passare noi."
+    },
+    "lapsed": {
+      "title": "L'ultimo pagamento del tuo piano attuale non è andato a buon fine",
+      "body": "Hai {{plan}} e il suo ultimo pagamento è ancora da saldare. Scegli cosa farne:",
+      "planMonth": "{{price}} al mese",
+      "planYear": "{{price}} all'anno",
+      "planUnknown": "un piano precedente",
+      "payButton": "Paga e mantieni il piano",
+      "payNote": "Apre la fattura da pagare. Resti su {{plan}}.",
+      "payNoteAccount": "Aggiorna la carta dalla pagina del tuo account. Mantieni il piano attuale.",
+      "switchButton": "Chiudilo e passa a Pro",
+      "switchNote": "Chiudiamo subito il tuo piano attuale e annulliamo il pagamento in sospeso, poi paghi Pro al checkout. {{plan}} non sarà più disponibile."
     }
   }
 }

@@ -18,6 +18,7 @@ import { CreateCreditPackCheckoutUseCase } from '../usecases/checkout/CreateCred
 import CreditPackCheckoutController from '../controllers/CreditPackCheckoutController';
 import { ResumeAbandonedCheckoutUseCase } from '../usecases/checkout/ResumeAbandonedCheckoutUseCase';
 import { UnlimitedCheckoutUseCase } from '../usecases/checkout/UnlimitedCheckoutUseCase';
+import { StripeLapsedSubscriptions } from '../usecases/checkout/LapsedSubscriptions';
 import { getStripe } from '../lib/integrations/stripe';
 import { getDatabase } from '../data_layer';
 import AbandonedCheckoutRecoveryRepository from '../data_layer/AbandonedCheckoutRecoveryRepository';
@@ -163,7 +164,8 @@ const CheckoutRouter = () => {
         unlimitedMonthlyPriceId,
         unlimitedYearlyPriceId,
         priceResolver,
-        staleCustomerRefresher
+        staleCustomerRefresher,
+        new StripeLapsedSubscriptions(getStripe())
       );
       const controller = new UnlimitedCheckoutController(
         useCase,

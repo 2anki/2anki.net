@@ -16,6 +16,10 @@ import {
   CheckoutCustomerRefresher,
   recoverWith,
 } from './StaleCheckoutCustomerRefresher';
+import {
+  LapsedSubscriptionError,
+  LapsedSubscriptionGateway,
+} from './LapsedSubscriptions';
 
 export type UnlimitedInterval = 'month' | 'year';
 
@@ -30,8 +34,39 @@ export class UnlimitedCheckoutUseCase {
     private readonly monthlyPriceId: string,
     private readonly yearlyPriceId: string,
     private readonly priceResolver?: StripePriceResolver,
-    private readonly refresher?: CheckoutCustomerRefresher
+    private readonly refresher?: CheckoutCustomerRefresher,
+    private readonly lapsed?: LapsedSubscriptionGateway
   ) {}
+
+  // A plan whose last payment failed is still open in Stripe. Selling a new
+  // one on top would either fail (another currency) or bill twice, so the
+  // person first chooses: pay the old plan, or end it and switch. Only an
+  // explicit switch (replaceLapsed) ends it.
+  private async settleLapsedPlans(
+    customerId: string | null | undefined,
+    replaceLapsed: boolean,
+    userId: number
+  ): Promise<void> {
+    if (this.lapsed == null || customerId == null) {
+      return;
+    }
+    const plans = await this.lapsed.find(customerId);
+    if (plans.length === 0) {
+      return;
+    }
+    if (!replaceLapsed) {
+      console.info('unlimited.checkout.lapsed_plan_found', {
+        user_id: userId,
+        count: plans.length,
+      });
+      throw new LapsedSubscriptionError(plans[0]);
+    }
+    await this.lapsed.close(plans);
+    console.info('unlimited.checkout.lapsed_plan_closed', {
+      user_id: userId,
+      count: plans.length,
+    });
+  }
 
   private async resolvePriceId(
     interval: UnlimitedInterval,
@@ -81,6 +116,7 @@ export class UnlimitedCheckoutUseCase {
     gaClientId?: string;
     gaSessionId?: string;
     adClick?: AdClickAttribution;
+    replaceLapsed?: boolean;
     pricingV2On?: boolean;
     createdAt?: Date | null;
     now?: Date;
@@ -99,6 +135,11 @@ export class UnlimitedCheckoutUseCase {
     });
 
     const priceId = await this.resolvePriceId(input.interval, cohort, now);
+    await this.settleLapsedPlans(
+      input.stripeCustomerId,
+      input.replaceLapsed === true,
+      input.userId
+    );
     const appUrl = process.env.APP_URL ?? 'https://2anki.net';
 
     const sessionParams: StripeTypes.Checkout.SessionCreateParams = {

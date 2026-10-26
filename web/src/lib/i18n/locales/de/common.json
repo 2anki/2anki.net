@@ -976,7 +976,21 @@
       "already_unlimited_until": "Du hast unbegrenzten Zugang bis zum {{date}}.",
       "billed_through_apple": "Dein Plan wird über Apple abgerechnet. Verwalte ihn in deinen Apple-Abos.",
       "pass_still_active": "Dein Pass ist noch aktiv. Kaufe den nächsten, wenn er abläuft.",
-      "pass_still_active_until": "Dein Pass läuft bis zum {{date}}. Kaufe den nächsten, wenn er abläuft."
+      "pass_still_active_until": "Dein Pass läuft bis zum {{date}}. Kaufe den nächsten, wenn er abläuft.",
+      "lapsed_subscription": "Die letzte Zahlung für deinen aktuellen Plan ist fehlgeschlagen. Bezahle oder beende ihn auf deiner Kontoseite und versuche es dann erneut.",
+      "currency_conflict": "Dein bisheriger Plan wird in einer anderen Währung abgerechnet, deshalb kann dieser noch nicht starten. Beende ihn auf deiner Kontoseite oder schreib an support@2anki.net, dann stellen wir dich um."
+    },
+    "lapsed": {
+      "title": "Die letzte Zahlung für deinen aktuellen Plan ist fehlgeschlagen",
+      "body": "Du hast {{plan}}, und die letzte Zahlung dafür ist noch offen. Wähle, was damit passiert:",
+      "planMonth": "{{price}} pro Monat",
+      "planYear": "{{price}} pro Jahr",
+      "planUnknown": "einen früheren Plan",
+      "payButton": "Bezahlen und Plan behalten",
+      "payNote": "Öffnet die offene Rechnung. Du behältst {{plan}}.",
+      "payNoteAccount": "Aktualisiere deine Karte auf deiner Kontoseite. Du behältst deinen aktuellen Plan.",
+      "switchButton": "Beenden und zu Pro wechseln",
+      "switchNote": "Wir beenden deinen aktuellen Plan jetzt und stornieren die offene Zahlung, danach bezahlst du Pro an der Kasse. {{plan}} gibt es danach nicht mehr."
     }
   }
 }

@@ -8,6 +8,8 @@ describe('isPurchaseBlockCode', () => {
     expect(isPurchaseBlockCode('already_subscribed')).toBe(true);
     expect(isPurchaseBlockCode('billed_through_apple')).toBe(true);
     expect(isPurchaseBlockCode('pass_still_active')).toBe(true);
+    expect(isPurchaseBlockCode('lapsed_subscription')).toBe(true);
+    expect(isPurchaseBlockCode('currency_conflict')).toBe(true);
   });
 
   it('rejects unknown values', () => {
@@ -44,6 +46,47 @@ describe('readCheckoutConflict', () => {
     await expect(readCheckoutConflict(response)).resolves.toEqual({
       status: 'conflict',
       code: 'already_subscribed',
+      expiresAt: null,
+    });
+  });
+
+  it('carries the lapsed plan so the page can offer pay or switch', async () => {
+    const response = new Response(
+      JSON.stringify({
+        code: 'lapsed_subscription',
+        expiresAt: null,
+        lapsedPlan: {
+          amount: 200,
+          currency: 'eur',
+          interval: 'month',
+          payUrl: 'https://invoice.stripe.com/i/test',
+        },
+      }),
+      { status: 409 }
+    );
+
+    await expect(readCheckoutConflict(response)).resolves.toEqual({
+      status: 'conflict',
+      code: 'lapsed_subscription',
+      expiresAt: null,
+      lapsedPlan: {
+        amount: 200,
+        currency: 'eur',
+        interval: 'month',
+        payUrl: 'https://invoice.stripe.com/i/test',
+      },
+    });
+  });
+
+  it('drops a malformed lapsed plan but keeps the code', async () => {
+    const response = new Response(
+      JSON.stringify({ code: 'lapsed_subscription', lapsedPlan: 'nope' }),
+      { status: 409 }
+    );
+
+    await expect(readCheckoutConflict(response)).resolves.toEqual({
+      status: 'conflict',
+      code: 'lapsed_subscription',
       expiresAt: null,
     });
   });
