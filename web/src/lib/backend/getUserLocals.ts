@@ -33,6 +33,7 @@ interface GetUserLocalsResponse {
     limitWallProPrice?: boolean;
     thinDeckAiOffer?: boolean;
     anonymousAiPreview?: boolean;
+    anonymousAiChoice?: boolean;
   };
   autoSyncActive?: boolean;
   autoSyncCapReached?: boolean;
