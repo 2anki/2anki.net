@@ -233,10 +233,20 @@ describe('updateStripeSubscriptions — batch provisioning fields', () => {
     );
     setupStripeMock([buildSubscription()]);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    await updateStripeSubscriptions();
-    expect(updateUsersSpy).not.toHaveBeenCalled();
-    expect(errorSpy).not.toHaveBeenCalled();
-    errorSpy.mockRestore();
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      await updateStripeSubscriptions();
+      const lines = infoSpy.mock.calls.map((call) => call.join(' '));
+      const skipLine = lines.find((line) => line.includes('already linked'));
+      expect(updateUsersSpy).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(skipLine).toBeDefined();
+      expect(skipLine).not.toContain('cus_test456');
+      expect(skipLine).not.toContain('user@example.com');
+    } finally {
+      errorSpy.mockRestore();
+      infoSpy.mockRestore();
+    }
   });
 
   it('inserts stripe_product_id as null when product is absent from subscription', async () => {
