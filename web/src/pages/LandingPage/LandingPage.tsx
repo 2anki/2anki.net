@@ -6,6 +6,7 @@ import UploadForm from '../UploadPage/components/UploadForm/UploadForm';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { track } from '../../lib/analytics/track';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { hasSessionHint } from '../../lib/sessionHint';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
 import { landingViewProps } from '../../lib/adClick';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
@@ -64,6 +65,7 @@ interface HeroActionProps {
   showAiToggle: boolean;
   showAiChoice: boolean;
   aiOn: boolean;
+  uploadAiOn: boolean;
   onToggleAi: () => void;
   onChooseAi: (next: boolean) => void;
   t: TFunction<'landing'>;
@@ -80,6 +82,7 @@ function renderHeroAction({
   showAiToggle,
   showAiChoice,
   aiOn,
+  uploadAiOn,
   onToggleAi,
   onChooseAi,
   t,
@@ -114,7 +117,7 @@ function renderHeroAction({
         <UploadForm
           setErrorMessage={setErrorMessage}
           sample={sample}
-          aiOn={(showAiToggle || showAiChoice) && aiOn}
+          aiOn={uploadAiOn}
         />
       </div>
       <p className={styles.secondaryLink}>
@@ -141,19 +144,24 @@ function LandingPage({
 }: Readonly<LandingPageProps>) {
   const { t } = useTranslation('landing');
   const passPrices = usePassPrices();
-  const { data: userLocals } = useUserLocals();
+  const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
   const isSignedIn = userLocals?.user?.id != null;
   // Only the AI landing page offers the preview toggle: that is where a visitor
   // arrives wanting AI cards, and where the free-text/PDF upload the preview can
   // read is the point. Other landing pages keep their structure-first flow.
   const previewOn =
     !isSignedIn && userLocals?.features?.anonymousAiPreview === true;
-  const showAiChoice =
-    previewOn && userLocals?.features?.anonymousAiChoice === true;
+  // Shown before locals load for a visitor with no session, so the choice is
+  // in place on first paint instead of pushing the drop zone down on arrival.
+  const showAiChoice = userLocalsLoading
+    ? !hasSessionHint()
+    : previewOn && userLocals?.features?.anonymousAiChoice === true;
   const showAiToggle = previewOn && copy.pathname === '/ai-flashcard-generator';
   const [aiOn, setAiOn] = useState(
     () => globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true'
   );
+  const uploadAiOn =
+    !userLocalsLoading && (showAiToggle || showAiChoice) && aiOn;
   const chooseAi = (next: boolean) => {
     if (next === aiOn) return;
     saveValueInLocalStorage('claude-ai-flashcards', String(next), null);
@@ -241,6 +249,7 @@ function LandingPage({
             showAiToggle,
             showAiChoice,
             aiOn,
+            uploadAiOn,
             onToggleAi: toggleAi,
             onChooseAi: chooseAi,
             t,

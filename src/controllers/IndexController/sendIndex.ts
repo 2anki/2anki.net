@@ -27,10 +27,26 @@ export function withConsentRegion(html: string, region: ConsentRegion): string {
   });
 }
 
+/**
+ * The client learns who is signed in from an API call that lands after first
+ * paint. Marking the shell when a session cookie exists lets it lay out the
+ * signed-in page from the start instead of shifting once that call returns.
+ * A hint for layout only: it says a cookie exists, not that it is valid.
+ */
+export function withSessionHint(html: string, hasSession: boolean): string {
+  if (!hasSession) {
+    return html;
+  }
+  return html.replace(HTML_OPEN_TAG, (_match, attrs: string | undefined) => {
+    return `<html${attrs ?? ''} data-auth="1">`;
+  });
+}
+
 export const sendIndex = (
   response: express.Response,
   requestPath = '',
-  consentRegion: ConsentRegion = 'eea'
+  consentRegion: ConsentRegion = 'eea',
+  hasSession = false
 ) => {
   response.set('Cache-Control', INDEX_HTML_CACHE_CONTROL);
   const html = getPrerenderedPage(requestPath) ?? getIndexFileContents();
@@ -40,6 +56,9 @@ export const sendIndex = (
   }
   const page =
     requestPath === HOME_PATH ? setCanonicalLink(html, HOME_CANONICAL) : html;
-  const shell = withConsentRegion(page, consentRegion);
+  const shell = withSessionHint(
+    withConsentRegion(page, consentRegion),
+    hasSession
+  );
   return response.send(legalPrerenderFor(requestPath, shell) ?? shell);
 };

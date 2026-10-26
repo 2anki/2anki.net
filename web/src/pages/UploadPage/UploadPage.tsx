@@ -17,6 +17,7 @@ import { storePassToken } from '../../lib/anonymousPass';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
 import useQuery from '../../lib/hooks/useQuery';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { hasSessionHint } from '../../lib/sessionHint';
 import {
   useAiCredits,
   AI_CREDITS_QUERY_KEY,
@@ -49,6 +50,12 @@ function deriveAiBadgeState(
   if (!isPaying) return 'free';
   if (isAiOn) return 'on';
   return 'off';
+}
+
+// Before user locals load, lay the badge out for the page the visitor is about
+// to see, so it does not change height and push the drop zone down on arrival.
+function pendingAiBadgeState(sessionHint: boolean): AiBadgeState {
+  return sessionHint ? 'free' : 'anonPreview';
 }
 
 function isFreshSignup(
@@ -91,18 +98,19 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
 
   const previewEnabled = userLocals?.features?.anonymousAiPreview === true;
   const isAiOn = isSignedIn ? isPaying && aiFlag : previewEnabled && aiFlag;
-  const aiBadgeState = deriveAiBadgeState(
-    isSignedIn,
-    isPaying,
-    isAiOn,
-    previewEnabled
-  );
+  const sessionHint = hasSessionHint();
+  const aiBadgeState = userLocalsLoading
+    ? pendingAiBadgeState(sessionHint)
+    : deriveAiBadgeState(isSignedIn, isPaying, isAiOn, previewEnabled);
   const aiCredits = useAiCredits(aiBadgeState === 'on');
+  const holdSignedInBadge = userLocalsLoading && sessionHint;
 
-  const showAiChoice =
-    !isSignedIn &&
-    previewEnabled &&
-    userLocals?.features?.anonymousAiChoice === true;
+  const showAiChoice = userLocalsLoading
+    ? !sessionHint
+    : !isSignedIn &&
+      previewEnabled &&
+      userLocals?.features?.anonymousAiChoice === true;
+  const aiChoiceOn = userLocalsLoading ? aiFlag : isAiOn;
 
   const setAi = (next: boolean) => {
     saveValueInLocalStorage(AI_FLAG_KEY, String(next), null);
@@ -254,7 +262,15 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           <span>{passConfirmation}</span>
         </div>
       )}
-      <div className={styles.aiOffBadge} role="status">
+      <div
+        className={
+          holdSignedInBadge
+            ? `${styles.aiOffBadge} ${pageStyles.heldBadge}`
+            : styles.aiOffBadge
+        }
+        role="status"
+        aria-hidden={holdSignedInBadge ? true : undefined}
+      >
         {aiBadgeState === 'on' && (
           <>
             <button
@@ -345,7 +361,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           </span>
         )}
         {aiBadgeState === 'anonPreview' && showAiChoice && (
-          <AiChoice aiOn={isAiOn} onChange={setAi} />
+          <AiChoice aiOn={aiChoiceOn} onChange={setAi} />
         )}
         {aiBadgeState === 'anonPreview' && !showAiChoice && (
           <>

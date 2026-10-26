@@ -19,7 +19,9 @@
   line-height: 1.1;
   color: var(--color-text-primary);
   margin: 0 0 1rem;
-  max-width: 16ch;
+  /* 16ch of Fraunces. In ch the measure follows whichever font is showing,
+     so it narrowed under the fallback and the title gained a line. */
+  max-width: 10.79em;
 }
 
 .heroSubhead {
@@ -271,7 +273,7 @@ details[open] > .faqSummary::before {
   }
 
   .heroTitle {
-    max-width: 14ch;
+    max-width: 9.44em;
   }
 
   .heroSubhead {

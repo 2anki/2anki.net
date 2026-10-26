@@ -164,3 +164,7 @@
     transition: none !important;
   }
 }
+
+.heldBadge {
+  visibility: hidden;
+}

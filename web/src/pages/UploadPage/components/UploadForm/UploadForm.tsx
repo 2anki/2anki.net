@@ -63,6 +63,7 @@ import { getStaleSourceState } from './helpers/getStaleSourceState';
 import { FeedbackWidget } from '../../../../components/FeedbackWidget/FeedbackWidget';
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
+import { hasSessionHint } from '../../../../lib/sessionHint';
 import {
   useCardUsage,
   CARD_USAGE_QUERY_KEY,
@@ -637,6 +638,10 @@ function UploadForm({
   };
   const [dayPassError, setDayPassError] = useState<string | null>(null);
   const showSignInPrompt = userLocals != null && !isAuthenticated;
+  // Held in the drop zone from first paint for a visitor with no session, so
+  // the zone does not grow when locals arrive.
+  const showAnonCapHint =
+    showSignInPrompt || (userLocalsLoading && !hasSessionHint());
   const cardUsage = useCardUsage(isAuthenticated);
   const isUploadLocked =
     isAuthenticated &&
@@ -3072,7 +3077,7 @@ function UploadForm({
           <span className={formStyles.shapeHint}>
             {t('upload.dropzone.folderHint')}
           </span>
-          {showSignInPrompt && (
+          {showAnonCapHint && (
             <span className={formStyles.shapeHint}>
               {t('upload.dropzone.anonCapHint', {
                 cap: ANONYMOUS_CARD_CAP,
