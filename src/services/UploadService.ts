@@ -97,6 +97,10 @@ import {
 import { ANONYMOUS_CARD_CAP, MONTHLY_CARD_LIMIT } from '../lib/limits';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import {
+  asyncSlowUploadsEnabled,
+  isSlowUpload,
+} from '../lib/upload/asyncSlowUploads';
+import {
   isAnonymousPartialDeliveryEligible,
   isPartialDeliveryEligible,
 } from '../usecases/uploads/isPartialDeliveryEligible';
@@ -1286,6 +1290,23 @@ class UploadService {
         );
       }
 
+      if (
+        owner != null &&
+        paying &&
+        isSlowUpload(files, settings.pdfFallback) &&
+        (await asyncSlowUploadsEnabled())
+      ) {
+        return await this.handleAsyncUpload(
+          req,
+          res,
+          settings,
+          ws,
+          String(owner),
+          paying,
+          'upload'
+        );
+      }
+
       // A request that carries a pass token meant to use a pass; when that
       // token no longer validates (expired, refused) it must not fall into
       // the free preview instead.
@@ -1499,7 +1520,8 @@ class UploadService {
     settings: CardOption,
     ws: Workspace,
     owner: string,
-    paying: boolean
+    paying: boolean,
+    jobType: 'claude' | 'upload' = 'claude'
   ) {
     const files = req.files as UploadedFile[];
     const fingerprint = UploadService.conversionFingerprint(owner, files);
@@ -1514,7 +1536,7 @@ class UploadService {
     const title =
       files.length === 1 ? files[0].originalname : `${files.length} files`;
     try {
-      await this.jobRepository.create(ws.id, owner, title, 'claude');
+      await this.jobRepository.create(ws.id, owner, title, jobType);
     } catch (err) {
       this.inFlightConversions.delete(fingerprint);
       throw err;

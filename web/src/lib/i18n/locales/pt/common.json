@@ -628,6 +628,7 @@
     "title": "Meus baralhos",
     "subtitle": "Baralhos limpos — cloze correto, cartões atômicos, sem versos vazios. Baixe direto no Anki.",
     "emailVerified": "E-mail verificado. Tudo certo.",
+    "building": "Estamos criando seu baralho. Você pode sair desta página, ele aparecerá em Meus baralhos quando terminar.",
     "makeAnotherDeck": "Criar outro baralho",
     "noMatch": "Nenhum baralho corresponde a este filtro.",
     "updatedRelative": "Atualizado {{time}}",

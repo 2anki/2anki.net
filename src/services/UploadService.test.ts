@@ -2733,6 +2733,100 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     );
   });
 
+  function slidesRequest(): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'lecture.pptx',
+          mimetype:
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          size: 4096,
+          path: '/tmp/lecture.pptx',
+        } as unknown as Express.Multer.File,
+      ],
+    });
+  }
+
+  function asyncSlowFlag(on: boolean) {
+    mockGetFeatureFlag.mockImplementation(async (key: string) =>
+      key === 'async_slow_uploads' ? on : false
+    );
+  }
+
+  it('converts a PowerPoint from a paying signed-in user in the background when the flag is on', async () => {
+    zeroCardUseCase();
+    asyncSlowFlag(true);
+    let resolveFailed!: () => void;
+    const failed = new Promise<void>((r) => {
+      resolveFailed = r;
+    });
+    const jobRepository = jobRepositoryWithFailedGate(resolveFailed);
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus, capturedJson } = entitledResponse();
+
+    await service.handleUpload(slidesRequest(), res);
+    await failed;
+
+    expect(capturedStatus()).toBe(202);
+    expect(capturedJson()).toEqual({ jobId: 'fallback-ws-id' });
+    expect(jobRepository.create).toHaveBeenCalledWith(
+      'fallback-ws-id',
+      '42',
+      'lecture.pptx',
+      'upload'
+    );
+  });
+
+  it('keeps a PowerPoint on the normal path when the flag is off', async () => {
+    zeroCardUseCase();
+    asyncSlowFlag(false);
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res } = entitledResponse();
+
+    await service.handleUpload(slidesRequest(), res);
+
+    expect(jobRepository.create).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      'upload'
+    );
+  });
+
+  it('keeps a PowerPoint on the normal path for an account that is not paying', async () => {
+    zeroCardUseCase();
+    asyncSlowFlag(true);
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const built = buildResponse();
+    (built.res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(slidesRequest(), built.res);
+
+    expect(jobRepository.create).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      'upload'
+    );
+  });
+
   it('does not recurse: a fallback job that itself yields zero cards is marked failed once, never re-dispatched', async () => {
     zeroCardUseCase();
     let failedCount = 0;

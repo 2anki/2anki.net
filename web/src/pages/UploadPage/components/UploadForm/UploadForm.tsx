@@ -1143,7 +1143,7 @@ function UploadForm({
       return;
     }
     if (request.status === 202) {
-      leaveTo('/downloads');
+      leaveTo('/downloads?started=1');
       return;
     }
     if (request.status !== 200) {
@@ -1632,7 +1632,7 @@ function UploadForm({
         return handleUploadRedirect(request, uploadedFiles);
       }
       if (request.status === 202) {
-        leaveTo('/downloads');
+        leaveTo('/downloads?started=1');
         return true;
       }
       if (request.status !== 200) {

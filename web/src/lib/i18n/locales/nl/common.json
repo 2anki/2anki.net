@@ -628,6 +628,7 @@
     "title": "Mijn decks",
     "subtitle": "Nette decks — nette cloze, atomische kaarten, geen lege achterkanten. Download rechtstreeks in Anki.",
     "emailVerified": "E-mail geverifieerd. Je bent helemaal klaar.",
+    "building": "Je deck wordt gemaakt. Je kunt deze pagina verlaten, het staat in Mijn decks zodra het klaar is.",
     "makeAnotherDeck": "Nog een deck maken",
     "noMatch": "Geen decks komen overeen met dit filter.",
     "updatedRelative": "Bijgewerkt {{time}}",

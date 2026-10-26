@@ -628,6 +628,7 @@
     "title": "My decks",
     "subtitle": "Clean decks — proper cloze, atomic cards, no empty backs. Download straight into Anki.",
     "emailVerified": "Email verified. You're all set.",
+    "building": "Building your deck. You can leave this page, it will be in My decks when it is done.",
     "makeAnotherDeck": "Make another deck",
     "noMatch": "No decks match this filter.",
     "updatedRelative": "Updated {{time}}",

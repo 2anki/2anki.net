@@ -628,6 +628,7 @@
     "title": "Meine Stapel",
     "subtitle": "Saubere Stapel — sauberes Cloze, atomare Karten, keine leeren Rückseiten. Lade sie direkt in Anki.",
     "emailVerified": "E-Mail bestätigt. Alles bereit.",
+    "building": "Dein Deck wird erstellt. Du kannst diese Seite verlassen, es erscheint unter Meine Stapel, sobald es fertig ist.",
     "makeAnotherDeck": "Noch einen Stapel erstellen",
     "noMatch": "Kein Stapel passt zu diesem Filter.",
     "updatedRelative": "Aktualisiert {{time}}",

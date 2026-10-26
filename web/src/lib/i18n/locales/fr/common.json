@@ -628,6 +628,7 @@
     "title": "Mes paquets",
     "subtitle": "Des paquets propres — cloze propre, cartes atomiques, pas de verso vide. Télécharge-les directement dans Anki.",
     "emailVerified": "E-mail vérifié. Tout est prêt.",
+    "building": "Ton paquet est en cours de création. Tu peux quitter cette page, il apparaîtra dans Mes paquets une fois terminé.",
     "makeAnotherDeck": "Créer un autre paquet",
     "noMatch": "Aucun paquet ne correspond à ce filtre.",
     "updatedRelative": "Mis à jour {{time}}",

@@ -903,7 +903,7 @@ describe('UploadForm analytics events', () => {
     const { locationStub, cancelCount } =
       await submitAndGetHarness(asyncJobAccepted);
 
-    expect(locationStub.href).toBe('/downloads');
+    expect(locationStub.href).toBe('/downloads?started=1');
 
     await act(async () => {
       globalThis.dispatchEvent(new Event('pagehide'));
