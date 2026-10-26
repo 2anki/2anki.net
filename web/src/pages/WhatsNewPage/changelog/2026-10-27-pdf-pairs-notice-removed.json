@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-27-pdf-pairs-notice-removed",
+  "date": "2026-10-27",
+  "type": "fix",
+  "title": "Uploading a PDF no longer tells you every two pages become one card when that is not what will happen"
+}

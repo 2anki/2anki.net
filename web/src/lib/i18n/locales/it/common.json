@@ -414,11 +414,6 @@
         "body": "Un singolo file HTML non contiene immagini. Se viene da Notion, trascina l'intera cartella di esportazione o lo zip su questa pagina e 2anki include le immagini.",
         "continue": "Continua senza immagini"
       },
-      "pdfPairs": {
-        "title": "Ogni coppia di pagine diventa una carta",
-        "body": "Le pagine impari sono i fronti, le pari i retri. Funziona bene con slide di lezione in cui ogni argomento occupa 2 pagine. Puoi cambiarlo nelle Opzioni carte.",
-        "continue": "Crea carte da questo PDF"
-      },
       "readingFormat": {
         "title": "Formati di lettura supportati",
         "body": "Sono supportate le evidenziazioni Kindle da My Clippings.txt e gli EPUB senza DRM. Per esportare le evidenziazioni Kindle, collega il Kindle via USB e copia il file My Clippings.txt dalla cartella documents del dispositivo.",

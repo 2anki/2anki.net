@@ -422,11 +422,7 @@ function UploadForm({
   const [lastSubmitUsedAi, setLastSubmitUsedAi] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [sampleRun, setSampleRun] = useState(false);
-  const {
-    validation,
-    validate,
-    reset: resetValidation,
-  } = useFileValidation(aiOn, t);
+  const { validation, validate, reset: resetValidation } = useFileValidation(t);
 
   const {
     zoneState,
