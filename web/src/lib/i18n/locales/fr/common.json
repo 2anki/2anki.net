@@ -687,6 +687,7 @@
       "deleteNamed": "Supprimer {{name}}",
       "cancel": "Annuler",
       "cancelNamed": "Annuler {{name}}",
+      "cannotStop": "Impossible à arrêter une fois lancée. Généralement terminée en quelques minutes.",
       "remove": "Retirer",
       "removeNamed": "Retirer {{name}}",
       "restart": "Redémarrer",

@@ -135,6 +135,13 @@
   }
 }
 
+.stopNote {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  max-width: 14rem;
+  text-align: right;
+}
+
 .iconButton {
   display: inline-flex;
   align-items: center;

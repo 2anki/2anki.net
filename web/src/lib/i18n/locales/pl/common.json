@@ -739,6 +739,7 @@
       "deleteNamed": "Usuń {{name}}",
       "cancel": "Anuluj",
       "cancelNamed": "Anuluj {{name}}",
+      "cannotStop": "Nie można zatrzymać po uruchomieniu. Zwykle kończy się w ciągu kilku minut.",
       "remove": "Usuń",
       "removeNamed": "Usuń {{name}}",
       "restart": "Uruchom ponownie",

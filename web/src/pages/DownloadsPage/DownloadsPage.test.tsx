@@ -900,11 +900,27 @@ describe('DownloadsPage cancel_during_generating telemetry', () => {
     delete (globalThis as AnalyticsGlobals).gtag;
   });
 
-  it('fires cancel_during_generating when cancel is clicked on a step2_creating_flashcards job', () => {
+  it('offers no cancel on a job the server will not stop and says why', () => {
+    mockJobs = [
+      buildJob({
+        id: 44 as JobsId,
+        status: 'step2_creating_flashcards',
+        title: 'PDF notes',
+      }),
+    ];
+    renderAt('/downloads');
+
+    expect(
+      screen.queryByRole('button', { name: /Cancel PDF notes/i })
+    ).toBeNull();
+    expect(screen.getByText(/Can't be stopped once started/i)).toBeDefined();
+  });
+
+  it('fires cancel_during_generating when cancel is clicked on a claude chunk job', () => {
     mockJobs = [
       buildJob({
         id: 42 as JobsId,
-        status: 'step2_creating_flashcards',
+        status: 'claude:chunk:1:3',
         title: 'PDF notes',
       }),
     ];

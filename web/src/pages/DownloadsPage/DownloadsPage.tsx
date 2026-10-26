@@ -117,6 +117,10 @@ function isGeneratingStatus(status: string): boolean {
   );
 }
 
+function isStoppableStatus(status: string): boolean {
+  return status !== 'started' && !status.startsWith('step');
+}
+
 function feedbackContextForRow(row: DeckRow): DeckFeedbackContext {
   if (row.kind === 'job') {
     return { jobId: row.job.id, inputFormat: row.source };
@@ -817,35 +821,42 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                             ↺
                                           </button>
                                         )}
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleDeleteJob(row.job.id)
-                                        }
-                                        className={`${styles.iconButton} ${styles.iconButtonDanger}`}
-                                        aria-label={
-                                          isFailed || isDoneJob(row.job.status)
-                                            ? t(
-                                                'downloads.actions.deleteNamed',
-                                                {
-                                                  name: row.job.title,
-                                                }
-                                              )
-                                            : t(
-                                                'downloads.actions.cancelNamed',
-                                                {
-                                                  name: row.job.title,
-                                                }
-                                              )
-                                        }
-                                        title={
-                                          isFailed
-                                            ? t('downloads.actions.delete')
-                                            : t('downloads.actions.cancel')
-                                        }
-                                      >
-                                        <TrashIcon width={16} height={16} />
-                                      </button>
+                                      {isStoppableStatus(row.job.status) ? (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleDeleteJob(row.job.id)
+                                          }
+                                          className={`${styles.iconButton} ${styles.iconButtonDanger}`}
+                                          aria-label={
+                                            isFailed ||
+                                            isDoneJob(row.job.status)
+                                              ? t(
+                                                  'downloads.actions.deleteNamed',
+                                                  {
+                                                    name: row.job.title,
+                                                  }
+                                                )
+                                              : t(
+                                                  'downloads.actions.cancelNamed',
+                                                  {
+                                                    name: row.job.title,
+                                                  }
+                                                )
+                                          }
+                                          title={
+                                            isFailed
+                                              ? t('downloads.actions.delete')
+                                              : t('downloads.actions.cancel')
+                                          }
+                                        >
+                                          <TrashIcon width={16} height={16} />
+                                        </button>
+                                      ) : (
+                                        <span className={styles.stopNote}>
+                                          {t('downloads.actions.cannotStop')}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </td>

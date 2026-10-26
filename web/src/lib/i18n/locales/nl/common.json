@@ -687,6 +687,7 @@
       "deleteNamed": "{{name}} verwijderen",
       "cancel": "Annuleren",
       "cancelNamed": "{{name}} annuleren",
+      "cannotStop": "Kan niet worden gestopt na de start. Meestal binnen een paar minuten klaar.",
       "remove": "Verwijderen",
       "removeNamed": "{{name}} verwijderen",
       "restart": "Opnieuw starten",

@@ -687,6 +687,7 @@
       "deleteNamed": "Excluir {{name}}",
       "cancel": "Cancelar",
       "cancelNamed": "Cancelar {{name}}",
+      "cannotStop": "Não pode ser interrompida depois de iniciada. Normalmente termina em poucos minutos.",
       "remove": "Remover",
       "removeNamed": "Remover {{name}}",
       "restart": "Reiniciar",
