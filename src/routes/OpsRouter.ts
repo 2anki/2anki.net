@@ -27,6 +27,14 @@ import UsersRepository from '../data_layer/UsersRepository';
 import { UserPreferencesRepository } from '../data_layer/UserPreferencesRepository';
 import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUseCase';
 import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
+import { DeleteAccountByEmailUseCase } from '../usecases/ops/DeleteAccountByEmailUseCase';
+import OpsDeleteAccountController from '../controllers/OpsDeleteAccountController';
+import { AccountDeletionPreviewRepository } from '../data_layer/AccountDeletionPreviewRepository';
+import OauthIdentitiesRepository from '../data_layer/OauthIdentitiesRepository';
+import type { UsersId } from '../data_layer/public/Users';
+import TokenRepository from '../data_layer/TokenRepository';
+import AuthenticationService from '../services/AuthenticationService';
+import { SubscriptionService } from '../services/SubscriptionService';
 import { UserDeletionService } from '../services/UserDeletionService';
 import { SubscriptionsSourceRepository } from '../data_layer/SubscriptionsSourceRepository';
 import SuppressionEventsRepository from '../data_layer/SuppressionEventsRepository';
@@ -564,6 +572,98 @@ const OpsRouter = () => {
    */
   router.post('/api/ops/change-user-email', RequireOpsAccess, (req, res) =>
     controller.changeUserEmail(req, res)
+  );
+
+  const opsAuthService = new AuthenticationService(
+    new TokenRepository(database),
+    new UsersRepository(database)
+  );
+  const deleteAccountController = new OpsDeleteAccountController(
+    new DeleteAccountByEmailUseCase({
+      accounts: new AccountDeletionPreviewRepository(database),
+      entitlements: {
+        hasActiveSubscription: async (email) =>
+          (await opsAuthService.getIsSubscriber(database, email)) ||
+          (await SubscriptionService.findActiveStripeSubscriptions(email))
+            .length > 0,
+        findActivePass: (userId, now) =>
+          new UserPassRepository(database).findActive(userId, now),
+      },
+      billing: {
+        cancelAllSubscriptions: async (email) => {
+          await SubscriptionService.cancelUserSubscriptions(
+            email,
+            'immediate',
+            true
+          );
+        },
+      },
+      appleTokens: {
+        revokeForUser: async (userId) => {
+          try {
+            const refreshToken = await new OauthIdentitiesRepository(
+              database
+            ).findRefreshTokenByUserAndProvider(userId as UsersId, 'apple');
+            if (refreshToken != null) {
+              await opsAuthService.revokeAppleToken(refreshToken);
+            }
+          } catch (error) {
+            console.error(
+              '[ops] delete-user Apple token revocation failed',
+              error
+            );
+          }
+        },
+      },
+      deleter: new UserDeletionService(
+        new UsersRepository(database),
+        new StorageHandler()
+      ),
+    })
+  );
+
+  /**
+   * @swagger
+   * /api/ops/delete-user:
+   *   post:
+   *     summary: Delete one account by email, with a dry-run preview first
+   *     description: |
+   *       Support's path for "please delete my account" when the person can't
+   *       use /delete-account themselves. Runs the same steps as self-serve
+   *       deletion: cancels every Stripe subscription (a failed cancel aborts),
+   *       revokes the Apple token, then deletes through UserDeletionService.
+   *       dryRun defaults to true and returns a summary. A real delete needs
+   *       dryRun false and confirmEmail matching email; an account with an
+   *       active subscription or pass also needs force true. The ops owner's own
+   *       account is refused. Internal endpoint locked to the ops owner,
+   *       returns 404 for everyone else.
+   *     tags: [Ops]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [email]
+   *             properties:
+   *               email: { type: string }
+   *               confirmEmail: { type: string }
+   *               dryRun: { type: boolean, default: true }
+   *               force: { type: boolean, default: false }
+   *     responses:
+   *       200:
+   *         description: Preview summary (dryRun) or the deleted userId
+   *       400:
+   *         description: Missing email, or confirmEmail does not match
+   *       404:
+   *         description: Not the ops owner, or no account for that email
+   *       409:
+   *         description: Paid account without force, or the operator's own account
+   *       502:
+   *         description: Stripe cancel failed, nothing was deleted
+   */
+  router.post('/api/ops/delete-user', RequireOpsAccess, (req, res) =>
+    deleteAccountController.deleteAccount(req, res)
   );
 
   /**
