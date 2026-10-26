@@ -49,9 +49,9 @@ async function mockBackend(page: Page): Promise<void> {
 }
 
 const FILES = [
-  { name: 'notes.txt', mimeType: 'text/plain', guardrail: false },
-  { name: 'notes.pdf', mimeType: 'application/pdf', guardrail: true },
-  { name: 'export.zip', mimeType: 'application/zip', guardrail: false },
+  { name: 'notes.txt', mimeType: 'text/plain' },
+  { name: 'notes.pdf', mimeType: 'application/pdf' },
+  { name: 'export.zip', mimeType: 'application/zip' },
 ];
 
 for (const f of FILES) {
@@ -77,16 +77,6 @@ for (const f of FILES) {
       mimeType: f.mimeType,
       buffer: Buffer.from('some content for ' + f.name),
     });
-
-    if (f.guardrail) {
-      const cont = page.getByRole('button', {
-        name: 'Make cards from this PDF',
-        exact: true,
-      });
-      await expect(cont).toBeVisible();
-      await noOverflow(page, 'guardrail');
-      await cont.click();
-    }
 
     await expect(page.getByText('12 cards')).toBeVisible({ timeout: 10_000 });
     await noOverflow(page, 'success');
@@ -117,13 +107,6 @@ test('a thin PDF deck shows the few-cards notice at 375px', async ({
     mimeType: 'application/pdf',
     buffer: Buffer.from('thin pdf'),
   });
-
-  const cont = page.getByRole('button', {
-    name: 'Make cards from this PDF',
-    exact: true,
-  });
-  await expect(cont).toBeVisible();
-  await cont.click();
 
   await expect(
     page.getByText(

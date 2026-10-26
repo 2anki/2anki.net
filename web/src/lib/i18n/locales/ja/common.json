@@ -391,11 +391,6 @@
         "body": "HTMLファイル1つだけでは画像が含まれません。Notionからのファイルなら、エクスポートしたフォルダごと、またはzipをこのページにドロップすると、2ankiが画像を含めます。",
         "continue": "画像なしで続ける"
       },
-      "pdfPairs": {
-        "title": "2 ページごとに 1 枚のカードになります",
-        "body": "奇数ページが表、偶数ページが裏になります。各トピックが 2 ページにまたがる講義スライドに向いています。カードオプションで変更できます。",
-        "continue": "この PDF からカードを作る"
-      },
       "readingFormat": {
         "title": "読書フォーマットに対応",
         "body": "My Clippings.txt の Kindle ハイライトと DRM なしの EPUB に対応しています。Kindle のハイライトを書き出すには、Kindle を USB で接続し、端末の documents フォルダから My Clippings.txt をコピーしてください。",

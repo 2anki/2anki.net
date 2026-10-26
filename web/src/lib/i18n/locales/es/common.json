@@ -414,11 +414,6 @@
         "body": "Un archivo HTML suelto no lleva imágenes. Si viene de Notion, arrastra la carpeta de exportación completa o el zip a esta página y 2anki incluye las imágenes.",
         "continue": "Continuar sin imágenes"
       },
-      "pdfPairs": {
-        "title": "Cada par de páginas se convierte en una tarjeta",
-        "body": "Las páginas impares son el frente y las pares el dorso. Funciona bien con diapositivas donde cada tema ocupa 2 páginas. Cámbialo en Opciones de tarjeta.",
-        "continue": "Crear tarjetas desde este PDF"
-      },
       "readingFormat": {
         "title": "Compatibilidad con formatos de lectura",
         "body": "Se admiten los subrayados de Kindle desde My Clippings.txt y los EPUB sin DRM. Para exportar tus subrayados de Kindle, conecta el Kindle por USB y copia el archivo My Clippings.txt de la carpeta documents del dispositivo.",

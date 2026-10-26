@@ -56,10 +56,6 @@ test('a PDF with no text asks what to make, then makes it at 375px', async ({
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.4 fake'),
   });
-  await page
-    .getByRole('button', { name: 'Make cards from this PDF', exact: true })
-    .click();
-
   await expect(page.getByText('Two pages per card')).toBeVisible();
   await expect(
     page.getByText('One card per page', { exact: true })

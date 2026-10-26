@@ -80,7 +80,6 @@ function wrongFileResult(
 
 export function detectUploadIssues(
   files: FileList | File[],
-  aiOn = false,
   t?: ValidationTranslator
 ): FileValidationResult | null {
   const fileArray = Array.from(files);
@@ -111,15 +110,7 @@ export function detectUploadIssues(
   }
 
   const allPdf = fileArray.every((f) => f.name.toLowerCase().endsWith('.pdf'));
-  if (allPdf) {
-    if (aiOn) return null;
-    return {
-      status: 'info',
-      title: translate(t, 'upload.validation.pdfPairs.title'),
-      body: translate(t, 'upload.validation.pdfPairs.body'),
-      continueLabel: translate(t, 'upload.validation.pdfPairs.continue'),
-    };
-  }
+  if (allPdf) return null;
 
   if (fileArray.length === 1 && htmlFiles.length === 1) {
     return {
@@ -217,7 +208,7 @@ export function trackValidationShown(result: FileValidationResult): void {
   }
 }
 
-export function useFileValidation(aiOn = false, t?: ValidationTranslator) {
+export function useFileValidation(t?: ValidationTranslator) {
   const [validation, setValidation] = useState<FileValidationResult | null>(
     null
   );
@@ -226,7 +217,7 @@ export function useFileValidation(aiOn = false, t?: ValidationTranslator) {
   const validate = useCallback(
     async (files: FileList): Promise<boolean> => {
       const result =
-        detectUploadIssues(files, aiOn, t) ??
+        detectUploadIssues(files, t) ??
         (await detectMarkdownZipIssue(files, t));
       if (result) {
         setValidation(result);
@@ -237,7 +228,7 @@ export function useFileValidation(aiOn = false, t?: ValidationTranslator) {
       setPendingFiles(null);
       return true;
     },
-    [aiOn, t]
+    [t]
   );
 
   const reset = useCallback(() => {

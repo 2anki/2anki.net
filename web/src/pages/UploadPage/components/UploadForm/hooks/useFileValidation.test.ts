@@ -67,7 +67,6 @@ describe('detectUploadIssues', () => {
   it('resolves markdown copy through the translator when given one', () => {
     const result = detectUploadIssues(
       [fakeFile('notes.md')],
-      false,
       (key) => `translated:${key}`
     );
     expect(result!.title).toBe('translated:upload.validation.markdown.title');
@@ -78,7 +77,6 @@ describe('detectUploadIssues', () => {
   it('returns the single-html warning resolved through the translator', () => {
     const result = detectUploadIssues(
       [fakeFile('page.html')],
-      false,
       (key) => `translated:${key}`
     );
     expect(result).toEqual({
@@ -93,7 +91,6 @@ describe('detectUploadIssues', () => {
   it('returns the unpacked-export warning for multiple html files', () => {
     const result = detectUploadIssues(
       [fakeFile('page1.html'), fakeFile('page2.html')],
-      false,
       (key) => `translated:${key}`
     );
     expect(result).toEqual({
@@ -109,26 +106,12 @@ describe('detectUploadIssues', () => {
     expect(detectUploadIssues([fakeFile('data.csv')])).toBeNull();
   });
 
-  it('returns info for a single pdf file', () => {
-    const result = detectUploadIssues([fakeFile('slides.pdf')]);
-    expect(result).not.toBeNull();
-    expect(result!.status).toBe('info');
-    expect(result!.title).toBe('upload.validation.pdfPairs.title');
-  });
-
-  it('returns info for multiple pdf files', () => {
-    const result = detectUploadIssues([
-      fakeFile('chapter1.pdf'),
-      fakeFile('chapter2.pdf'),
-    ]);
-    expect(result).not.toBeNull();
-    expect(result!.status).toBe('info');
-  });
-
-  it('is case-insensitive for pdf detection', () => {
-    const result = detectUploadIssues([fakeFile('NOTES.PDF')]);
-    expect(result).not.toBeNull();
-    expect(result!.status).toBe('info');
+  it.each([
+    [['slides.pdf']],
+    [['chapter1.pdf', 'chapter2.pdf']],
+    [['NOTES.PDF']],
+  ])('returns null for pdf files %j', (names) => {
+    expect(detectUploadIssues(names.map(fakeFile))).toBeNull();
   });
 
   it('returns null for xlsx files', () => {
@@ -144,9 +127,6 @@ describe('detectUploadIssues', () => {
   it('provides a continue label for each state', () => {
     const md = detectUploadIssues([fakeFile('n.md')]);
     expect(md!.continueLabel.length).toBeGreaterThan(0);
-
-    const pdf = detectUploadIssues([fakeFile('n.pdf')]);
-    expect(pdf!.continueLabel.length).toBeGreaterThan(0);
 
     const html = detectUploadIssues([fakeFile('n.html')]);
     expect(html!.continueLabel.length).toBeGreaterThan(0);
@@ -222,7 +202,7 @@ describe('detectUploadIssues — files that are not the study material', () => {
 
   it('lets a shortcut through when it comes with a real file', () => {
     expect(
-      detectUploadIssues([fakeFile('Notes.lnk'), fakeFile('Notes.pdf')], true)
+      detectUploadIssues([fakeFile('Notes.lnk'), fakeFile('Notes.pdf')])
     ).toBeNull();
   });
 });

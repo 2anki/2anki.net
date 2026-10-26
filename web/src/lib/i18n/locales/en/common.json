@@ -414,11 +414,6 @@
         "body": "A single HTML file carries no images. If it came from Notion, drop the whole export folder or the zip onto this page and 2anki includes the images.",
         "continue": "Continue without images"
       },
-      "pdfPairs": {
-        "title": "Each pair of pages becomes one card",
-        "body": "Odd pages are card fronts, even pages are backs. Works well for lecture slides where each topic spans 2 pages. Change this in Card Options.",
-        "continue": "Make cards from this PDF"
-      },
       "readingFormat": {
         "title": "Reading-format support",
         "body": "Kindle highlights from My Clippings.txt and DRM-free EPUBs are supported. To export your Kindle highlights, connect your Kindle by USB and copy the My Clippings.txt file from the device’s documents folder.",
