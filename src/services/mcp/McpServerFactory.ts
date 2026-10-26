@@ -17,6 +17,10 @@ import type {
   PhotoMode,
 } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
+import {
+  deckViewerToolMeta,
+  registerDeckViewerResource,
+} from './deckViewer/deckViewerApp';
 
 export const MCP_SERVER_NAME = '2anki';
 export const MCP_SERVER_VERSION = '1.0.0';
@@ -59,6 +63,7 @@ interface ToolConfig {
     destructiveHint: boolean;
     openWorldHint: boolean;
   };
+  _meta?: Record<string, unknown>;
 }
 
 type ErasedRegisterTool = (
@@ -166,6 +171,14 @@ function deckResultMarkdown(
   });
 }
 
+// Optional fields the deck viewer app reads. Additive: the text content and
+// the existing structured fields stay as they were.
+const DECK_VIEWER_SHAPE = {
+  noteCount: z.number().optional(),
+  noteTypes: z.array(z.string()).optional(),
+  tts: z.boolean().optional(),
+};
+
 const DECK_RESULT_SHAPE = {
   kind: z.string().optional(),
   jobId: z.string().optional(),
@@ -179,6 +192,7 @@ const DECK_RESULT_SHAPE = {
   ignored: z.array(z.record(z.string(), z.unknown())).optional(),
   summary: z.string().optional(),
   message: z.string().optional(),
+  ...DECK_VIEWER_SHAPE,
 };
 
 function errorResult(
@@ -244,6 +258,8 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     { instructions: MCP_SERVER_INSTRUCTIONS }
   );
 
+  registerDeckViewerResource(server);
+
   registerTool<{ limit?: number }>(
     server,
     'list_my_decks',
@@ -298,7 +314,11 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
         decks: z.array(z.record(z.string(), z.unknown())).optional(),
         sampleCards: z.array(z.record(z.string(), z.unknown())).optional(),
         note: z.string().optional(),
+        title: z.string().optional(),
+        downloadUrl: z.string().optional(),
+        ...DECK_VIEWER_SHAPE,
       },
+      _meta: deckViewerToolMeta(),
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -429,6 +449,7 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     {
       title: 'Make Anki flashcards from notes, a file, or a link',
       outputSchema: DECK_RESULT_SHAPE,
+      _meta: deckViewerToolMeta(),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
@@ -507,6 +528,7 @@ export function buildMcpServer(context: McpRequestContext): McpServer {
     {
       title: 'Create an Anki deck from cards',
       outputSchema: DECK_RESULT_SHAPE,
+      _meta: deckViewerToolMeta(),
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
