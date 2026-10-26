@@ -11,6 +11,7 @@ const KNOWN_APP_PREFIXES = [
   '/app',
   '/pricing',
   '/debug',
+  '/delete-account',
   '/api',
   '/upload',
   '/login',
