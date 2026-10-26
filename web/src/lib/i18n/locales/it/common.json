@@ -794,7 +794,7 @@
     "general": "Generale",
     "prereq": {
       "cloze": "Attiva prima le carte con cancellazione cloze.",
-      "cherry": "Attiva prima la selezione mirata."
+      "cherry": "Richiede la selezione mirata, che salta ogni toggle senza 🍒. Attivala prima."
     },
     "saveBar": {
       "saveError": "Non siamo riusciti a salvare i tuoi valori predefiniti. Riprova.",

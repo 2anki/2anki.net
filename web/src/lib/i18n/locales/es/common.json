@@ -794,7 +794,7 @@
     "general": "General",
     "prereq": {
       "cloze": "Activa primero las tarjetas de borrado por oclusión (Cloze).",
-      "cherry": "Activa primero la selección manual."
+      "cherry": "Necesita la selección manual, que omite toda alternancia sin 🍒. Actívala primero."
     },
     "saveBar": {
       "saveError": "No se pudieron guardar tus valores predeterminados. Inténtalo de nuevo.",

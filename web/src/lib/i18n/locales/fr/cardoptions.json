@@ -19,7 +19,7 @@
     },
     "cherry": {
       "label": "Cherry-pick avec l'emoji 🍒",
-      "description": "Ne crée des cartes qu'à partir des bascules qui contiennent 🍒 dans l'en-tête ou le corps. À utiliser pour publier quelques cartes d'une longue page."
+      "description": "Ne crée des cartes qu'à partir des bascules qui contiennent 🍒 dans l'en-tête ou le corps. Toutes les autres bascules sont ignorées, pour tous tes imports et pages Notion qui utilisent ces réglages. À utiliser pour publier quelques cartes d'une longue page."
     },
     "avocado": {
       "label": "Ignorer les bascules avec l'emoji 🥑",

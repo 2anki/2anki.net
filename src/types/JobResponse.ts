@@ -12,4 +12,5 @@ export default interface JobResponse extends Omit<Jobs, 'conversion_report'> {
   download_key: string | null;
   upload_id: number | null;
   empty_back_count: number;
+  cherry_skipped_count?: number;
 }

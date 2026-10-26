@@ -108,6 +108,11 @@
     "uploadMultiDeck_one": "I colori del testo su {{count}} pagina dei tuoi PDF non sono nei tuoi mazzi — il testo c'è tutto, ma nel colore predefinito.",
     "uploadMultiDeck_other": "I colori del testo su {{count}} pagine dei tuoi PDF non sono nei tuoi mazzi — il testo c'è tutto, ma nel colore predefinito."
   },
+  "cherrySkipped": {
+    "count_one": "La selezione mirata è attiva, quindi {{count}} toggle senza 🍒 è stato escluso da questo mazzo.",
+    "count_other": "La selezione mirata è attiva, quindi {{count}} toggle senza 🍒 sono stati esclusi da questo mazzo.",
+    "link": "Cambia la selezione mirata nelle opzioni delle carte"
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} carta non aveva una risposta ed è stata saltata, quindi non è in questo mazzo. Aggiungi un retro nel tuo file e converti di nuovo.",
     "uploadSingleDeck_other": "{{count}} carte non avevano una risposta e sono state saltate, quindi non sono in questo mazzo. Aggiungi un retro a ciascuna nel tuo file e converti di nuovo.",

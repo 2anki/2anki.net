@@ -68,6 +68,9 @@ function entryCopy(t: TFunction, entry: ConversionReportEntry): string {
   if (code === 'empty_back') {
     return t('report.reasonEmptyBack', { count: entry.count });
   }
+  if (code === 'cherry_skipped') {
+    return t('cherrySkipped.count', { count: entry.count });
+  }
   if (code === 'duplicate_guid') {
     return t('report.reasonDuplicateGuid', { count: entry.count });
   }

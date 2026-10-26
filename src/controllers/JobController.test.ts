@@ -51,6 +51,7 @@ describe('JobController', () => {
         download_key: null,
         restartable: true,
         empty_back_count: 0,
+        cherry_skipped_count: 0,
       },
       {
         id: 2,
@@ -58,6 +59,7 @@ describe('JobController', () => {
         download_key: null,
         restartable: true,
         empty_back_count: 0,
+        cherry_skipped_count: 0,
       },
     ]);
   });

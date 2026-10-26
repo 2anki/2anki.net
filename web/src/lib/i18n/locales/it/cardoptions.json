@@ -19,7 +19,7 @@
     },
     "cherry": {
       "label": "Selezione mirata con l'emoji 🍒",
-      "description": "Crea carte solo dai toggle che contengono 🍒 nell'intestazione o nel corpo. Usalo per pubblicare poche carte da una pagina lunga."
+      "description": "Crea carte solo dai toggle che contengono 🍒 nell'intestazione o nel corpo. Tutti gli altri toggle vengono saltati, su tutti i tuoi upload e le pagine Notion che usano queste impostazioni. Usalo per pubblicare poche carte da una pagina lunga."
     },
     "avocado": {
       "label": "Salta i toggle con l'emoji 🥑",

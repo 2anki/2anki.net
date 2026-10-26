@@ -19,7 +19,7 @@
     },
     "cherry": {
       "label": "Seleção manual com o emoji 🍒",
-      "description": "Cria cartões só dos toggles que contêm 🍒 no cabeçalho ou no corpo. Use para publicar poucos cartões de uma página longa."
+      "description": "Cria cartões só dos toggles que contêm 🍒 no cabeçalho ou no corpo. Todos os outros toggles são ignorados, em todos os seus envios e páginas do Notion que usam estas configurações. Use para publicar poucos cartões de uma página longa."
     },
     "avocado": {
       "label": "Ignorar toggles com o emoji 🥑",

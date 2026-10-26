@@ -108,6 +108,11 @@
     "uploadMultiDeck_one": "Textfarben auf {{count}} Seite deiner PDFs sind nicht in deinen Stapeln — der Text ist vollständig vorhanden, aber in der Standardfarbe.",
     "uploadMultiDeck_other": "Textfarben auf {{count}} Seiten deiner PDFs sind nicht in deinen Stapeln — der Text ist vollständig vorhanden, aber in der Standardfarbe."
   },
+  "cherrySkipped": {
+    "count_one": "Cherry-Pick ist an, deshalb wurde {{count}} Toggle ohne 🍒 nicht in dieses Deck übernommen.",
+    "count_other": "Cherry-Pick ist an, deshalb wurden {{count}} Toggles ohne 🍒 nicht in dieses Deck übernommen.",
+    "link": "Cherry-Pick in den Karteneinstellungen ändern"
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} Karte hatte keine Antwort und wurde übersprungen, sie ist also nicht in diesem Stapel. Füge in deiner Datei eine Rückseite hinzu und konvertiere erneut.",
     "uploadSingleDeck_other": "{{count}} Karten hatten keine Antwort und wurden übersprungen, sie sind also nicht in diesem Stapel. Füge in deiner Datei jeweils eine Rückseite hinzu und konvertiere erneut.",

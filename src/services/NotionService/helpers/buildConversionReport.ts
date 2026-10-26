@@ -31,6 +31,7 @@ export interface ConversionReportInput {
   blocksSeen: number;
   cardsCreated: number;
   emptyBackCount: number;
+  cherrySkippedCount?: number;
   droppedImageAssetCount?: number;
   droppedAudioAssetCount?: number;
   droppedFileAssetCount?: number;
@@ -79,6 +80,13 @@ export function buildConversionReport(
     reason_code: 'empty_back',
     human_reason: 'Cards whose back came out empty',
     count: input.emptyBackCount,
+  });
+  push({
+    stage: 'card',
+    reason_code: 'cherry_skipped',
+    human_reason:
+      'Toggles left out because Cherry-pick is on and they are not marked with a cherry',
+    count: input.cherrySkippedCount ?? 0,
   });
   push({
     stage: 'media',

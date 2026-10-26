@@ -794,7 +794,7 @@
     "general": "Allgemein",
     "prereq": {
       "cloze": "Aktiviere zuerst Cloze-Lückenkarten.",
-      "cherry": "Aktiviere zuerst Cherry-Pick."
+      "cherry": "Braucht Cherry-Pick, das jeden Toggle ohne 🍒 überspringt. Aktiviere es zuerst."
     },
     "saveBar": {
       "saveError": "Deine Voreinstellungen konnten nicht gespeichert werden. Versuch es erneut.",

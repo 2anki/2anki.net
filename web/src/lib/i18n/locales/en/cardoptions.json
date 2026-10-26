@@ -19,7 +19,7 @@
     },
     "cherry": {
       "label": "Cherry-pick using 🍒 emoji",
-      "description": "Only build cards from toggles that contain 🍒 in the header or body. Use this to publish a few cards from a long page."
+      "description": "Only build cards from toggles that contain 🍒 in the header or body. Every other toggle is skipped, on every upload and Notion page that uses these settings. Use this to publish a few cards from a long page."
     },
     "avocado": {
       "label": "Skip toggles with the 🥑 emoji",

@@ -19,7 +19,7 @@
     },
     "cherry": {
       "label": "Selección manual con el emoji 🍒",
-      "description": "Solo crea tarjetas a partir de las alternancias que contengan 🍒 en el encabezado o en el cuerpo. Úsalo para publicar unas pocas tarjetas de una página larga."
+      "description": "Solo crea tarjetas a partir de las alternancias que contengan 🍒 en el encabezado o en el cuerpo. Las demás alternancias se omiten, en todas tus subidas y páginas de Notion que usen estos ajustes. Úsalo para publicar unas pocas tarjetas de una página larga."
     },
     "avocado": {
       "label": "Omitir alternancias con el emoji 🥑",

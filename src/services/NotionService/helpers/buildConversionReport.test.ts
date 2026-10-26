@@ -230,4 +230,27 @@ describe('buildConversionReport', () => {
     expect(report.omitted_entry_count).toBe(20);
     expect(report.summary.blocks_skipped).toBe((MAX_REPORT_ENTRIES + 10) * 2);
   });
+
+  it('counts the toggles Cherry-pick left out', () => {
+    const report = buildConversionReport({
+      ...baseInput,
+      cherrySkippedCount: 7,
+    });
+
+    expect(report.entries).toEqual([
+      expect.objectContaining({
+        stage: 'card',
+        reason_code: 'cherry_skipped',
+        count: 7,
+      }),
+    ]);
+  });
+
+  it('adds no cherry entry when nothing was left out', () => {
+    const report = buildConversionReport({ ...baseInput });
+
+    expect(report.entries.some((e) => e.reason_code === 'cherry_skipped')).toBe(
+      false
+    );
+  });
 });

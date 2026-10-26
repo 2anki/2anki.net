@@ -794,7 +794,7 @@
     "general": "Geral",
     "prereq": {
       "cloze": "Ative primeiro os cartões de omissão cloze.",
-      "cherry": "Ative primeiro a seleção manual."
+      "cherry": "Precisa da seleção manual, que ignora todo toggle sem 🍒. Ative primeiro."
     },
     "saveBar": {
       "saveError": "Não foi possível salvar seus padrões. Tente de novo.",

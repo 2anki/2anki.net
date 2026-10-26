@@ -108,6 +108,11 @@
     "uploadMultiDeck_one": "Les couleurs du texte sur {{count}} page de vos PDF ne sont pas dans vos paquets — le texte est bien présent, mais dans la couleur par défaut.",
     "uploadMultiDeck_other": "Les couleurs du texte sur {{count}} pages de vos PDF ne sont pas dans vos paquets — le texte est bien présent, mais dans la couleur par défaut."
   },
+  "cherrySkipped": {
+    "count_one": "Cherry-pick est activé, donc {{count}} bascule sans 🍒 a été laissée de côté dans ce paquet.",
+    "count_other": "Cherry-pick est activé, donc {{count}} bascules sans 🍒 ont été laissées de côté dans ce paquet.",
+    "link": "Modifier Cherry-pick dans les options des cartes"
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} carte n'avait pas de réponse et a été ignorée, elle n'est donc pas dans ce paquet. Ajoutez un verso dans votre fichier, puis convertissez à nouveau.",
     "uploadSingleDeck_other": "{{count}} cartes n'avaient pas de réponse et ont été ignorées, elles ne sont donc pas dans ce paquet. Ajoutez un verso à chacune dans votre fichier, puis convertissez à nouveau.",

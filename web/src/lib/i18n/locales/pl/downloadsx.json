@@ -138,6 +138,13 @@
     "uploadMultiDeck_many": "Kolory tekstu na {{count}} stronach Twoich plików PDF nie znalazły się w Twoich taliach — cały tekst jest, ale w domyślnym kolorze.",
     "uploadMultiDeck_other": "Kolory tekstu na {{count}} strony Twoich plików PDF nie znalazły się w Twoich taliach — cały tekst jest, ale w domyślnym kolorze."
   },
+  "cherrySkipped": {
+    "count_one": "Cherry-pick jest włączony, więc {{count}} lista rozwijana bez 🍒 nie trafiła do tej talii.",
+    "count_few": "Cherry-pick jest włączony, więc {{count}} listy rozwijane bez 🍒 nie trafiły do tej talii.",
+    "count_many": "Cherry-pick jest włączony, więc {{count}} list rozwijanych bez 🍒 nie trafiło do tej talii.",
+    "count_other": "Cherry-pick jest włączony, więc {{count}} list rozwijanych bez 🍒 nie trafiło do tej talii.",
+    "link": "Zmień Cherry-pick w opcjach kart"
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} karta bez odpowiedzi została pominięta, więc nie ma jej w tej talii. Dodaj tył w pliku i przekonwertuj ponownie.",
     "uploadSingleDeck_few": "{{count}} karty bez odpowiedzi zostały pominięte, więc nie ma ich w tej talii. Dodaj tył do każdej w pliku i przekonwertuj ponownie.",
