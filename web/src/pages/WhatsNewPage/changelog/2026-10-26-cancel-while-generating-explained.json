@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-26-cancel-while-generating-explained",
+  "date": "2026-10-26",
+  "type": "fix",
+  "title": "A conversion that is already running no longer shows a Cancel button that does nothing. Downloads now says it can't be stopped once started and usually finishes within a couple of minutes."
+}

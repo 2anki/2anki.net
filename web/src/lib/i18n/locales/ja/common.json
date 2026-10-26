@@ -661,6 +661,7 @@
       "deleteNamed": "{{name}} を削除",
       "cancel": "キャンセル",
       "cancelNamed": "{{name}} をキャンセル",
+      "cannotStop": "開始後は停止できません。通常は数分で完了します。",
       "remove": "取り除く",
       "removeNamed": "{{name}} を取り除く",
       "restart": "再開",

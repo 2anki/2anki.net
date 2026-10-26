@@ -687,6 +687,7 @@
       "deleteNamed": "Elimina {{name}}",
       "cancel": "Annulla",
       "cancelNamed": "Annulla {{name}}",
+      "cannotStop": "Non si può fermare dopo l'avvio. Di solito finisce in un paio di minuti.",
       "remove": "Rimuovi",
       "removeNamed": "Rimuovi {{name}}",
       "restart": "Riavvia",
