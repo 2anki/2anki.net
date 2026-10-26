@@ -199,6 +199,18 @@ describe('reconcileDeveloperSubscriptions', () => {
     expect(await activeFlag('sub_dev_1')).toBe(false);
   });
 
+  it('flips an active row inactive when a renewal has failed (past_due)', async () => {
+    await insertRow('sub_dev_due', true);
+    const stripe = buildStripeMock(async () => ({
+      id: 'sub_dev_due',
+      status: 'past_due',
+    }));
+
+    await reconcileDeveloperSubscriptions(db, stripe);
+
+    expect(await activeFlag('sub_dev_due')).toBe(false);
+  });
+
   it('flips an active row inactive when Stripe returns 404 for the sub', async () => {
     await insertRow('sub_dev_missing', true);
     const stripe = {

@@ -100,6 +100,7 @@ import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/Co
 import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
 import { AiPreviewGate } from '../../../../components/AiPreviewGate/AiPreviewGate';
 import { MonthlyLimitPartialOffer } from '../../../../components/MonthlyLimitPartialOffer/MonthlyLimitPartialOffer';
+import { PastDueNotice } from '../../../../components/PastDueNotice/PastDueNotice';
 import {
   ANONYMOUS_CARD_CAP,
   FREE_MONTHLY_CARDS,
@@ -3311,6 +3312,7 @@ function UploadForm({
     ).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
     return (
       <div className={formStyles.limitContent}>
+        <PastDueNotice surface="upload_limit_wall" />
         <span className={formStyles.lockedIcon} aria-hidden="true">
           <svg
             viewBox="0 0 24 24"

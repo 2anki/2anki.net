@@ -13,8 +13,6 @@ interface ActiveSubscriptionRow {
 // Stripe has stopped granting access and the local row must follow.
 const ACCESS_GRANTING_STATUSES = new Set<StripeTypes.Subscription['status']>([
   'active',
-  'past_due',
-  'unpaid',
 ]);
 
 function parseSubscriptionId(payload: unknown): string | null {

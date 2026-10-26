@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-26-failed-payment-notice",
+  "date": "2026-10-26",
+  "type": "fix",
+  "title": "When a Pro renewal payment fails, the limit page says so and links straight to updating your card"
+}

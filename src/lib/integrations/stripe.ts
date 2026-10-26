@@ -130,10 +130,14 @@ export const isDeveloperTierProduct = async (
   return row != null;
 };
 
+// Only a paid-up subscription grants access. A failed renewal (past_due or
+// unpaid) ends access at once; if a Stripe retry or the person's own payment
+// succeeds, the subscription returns to active and access comes back with the
+// next webhook. Decided 2026-10-26, reversing the dunning grace window from
+// #3596: without it, access ended whenever the sync next ran, anywhere from
+// hours to two weeks after the failure.
 const ACCESS_GRANTING_STATUSES = new Set<StripeTypes.Subscription['status']>([
   'active',
-  'past_due',
-  'unpaid',
 ]);
 
 export const updateStoreSubscription = async (

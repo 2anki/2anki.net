@@ -35,6 +35,7 @@
     "pastDueTitle": "Twoja płatność nie powiodła się",
     "pastDueBody": "Nie udało nam się obciążyć Twojej karty za {{plan}}. Spróbujemy ponownie w ciągu najbliższych dni. Zaktualizuj dane płatności, aby zachować subskrypcję.",
     "pastDueBodyNoPlan": "Nie udało nam się obciążyć Twojej karty. Spróbujemy ponownie w ciągu najbliższych dni. Zaktualizuj dane płatności, aby zachować subskrypcję.",
+    "pastDueAccessPaused": "Pro jest wstrzymany, dopóki ta płatność nie przejdzie. Wróci sam, gdy tylko się to stanie.",
     "endedPaymentFailed": "Twoja subskrypcja zakończyła się, ponieważ płatność nie powiodła się.",
     "statusLoadFailed": "Nie udało nam się teraz wczytać Twojej subskrypcji. Odśwież stronę, aby spróbować ponownie.",
     "linkedEmailHeading": "Powiązany e-mail 2anki.net",

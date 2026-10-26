@@ -128,7 +128,7 @@ describe('updateStoreSubscription', () => {
     expect(Boolean(row.active)).toBe(false);
   });
 
-  test('keeps active=true during dunning when status is past_due', async () => {
+  test('marks active=false as soon as a renewal fails (past_due)', async () => {
     await db('users').insert({ email: 'user@example.com' });
 
     await updateStoreSubscription(
@@ -140,10 +140,10 @@ describe('updateStoreSubscription', () => {
     const row = await db('subscriptions')
       .where({ email: 'user@example.com' })
       .first();
-    expect(Boolean(row.active)).toBe(true);
+    expect(Boolean(row.active)).toBe(false);
   });
 
-  test('keeps active=true during dunning when status is unpaid', async () => {
+  test('marks active=false as soon as a renewal fails (unpaid)', async () => {
     await db('users').insert({ email: 'user@example.com' });
 
     await updateStoreSubscription(
@@ -155,7 +155,26 @@ describe('updateStoreSubscription', () => {
     const row = await db('subscriptions')
       .where({ email: 'user@example.com' })
       .first();
-    expect(Boolean(row.active)).toBe(true);
+    expect(Boolean(row.active)).toBe(false);
+  });
+
+  test('gives access back when a failed renewal is paid and the subscription returns to active', async () => {
+    await db('users').insert({ email: 'user@example.com' });
+
+    await updateStoreSubscription(
+      db,
+      makeCustomer('user@example.com'),
+      makeSubscription('past_due', 'prod_auto_sync')
+    );
+    await updateStoreSubscription(
+      db,
+      makeCustomer('user@example.com'),
+      makeSubscription('active', 'prod_auto_sync')
+    );
+
+    const rows = await db('subscriptions').where({ email: 'user@example.com' });
+    expect(rows).toHaveLength(1);
+    expect(Boolean(rows[0].active)).toBe(true);
   });
 
   test('marks active=false when a past_due subscription is also paused', async () => {

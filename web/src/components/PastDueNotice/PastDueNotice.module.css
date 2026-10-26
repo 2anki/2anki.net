@@ -1,0 +1,26 @@
+.notice {
+  max-width: 36rem;
+  margin: 0 auto var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-danger-light);
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+.title {
+  margin: 0 0 var(--space-1);
+  font-weight: var(--font-semibold);
+}
+
+.body {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.help {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+}

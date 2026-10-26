@@ -113,4 +113,25 @@ describe('LimitWall', () => {
     renderWall('passes-first');
     expect(screen.queryByText(/per month, billed monthly/)).toBeNull();
   });
+
+  it('puts a notice above every offer when one is given', () => {
+    render(
+      <HelmetProvider>
+        <MemoryRouter>
+          <LimitWall
+            order="unlimited-first"
+            pendingPass={null}
+            onPass={vi.fn()}
+            passError={null}
+            unlimitedHref="/pricing?source=limit-wall"
+            onUnlimitedClick={vi.fn()}
+            notice={<p>Your payment didn't go through</p>}
+          />
+        </MemoryRouter>
+      </HelmetProvider>
+    );
+    const notice = screen.getByText("Your payment didn't go through");
+    const firstOffer = screen.getByText('Skip the monthly card cap');
+    expect(appearsBefore(notice, firstOffer)).toBe(true);
+  });
 });
