@@ -4,6 +4,13 @@
   "afterPay": "Après le paiement, dépose à nouveau le fichier pour obtenir toutes les cartes.",
   "afterPayTotal": "Après le paiement, dépose à nouveau le fichier pour obtenir les {{total}} cartes.",
   "cta": "Prendre un Day Pass à {{price}}",
+  "cardTitle": "Day Pass",
+  "cardLine": "Toutes tes cartes tout de suite, sans compte.",
+  "cardPrice": "{{price}} pour 24 heures.",
+  "reason": "Ce paquet a {{total}} cartes. Un compte gratuit couvre {{monthly}} par mois. Un Day Pass te les donne toutes tout de suite, sans compte.",
+  "cardCtaTotal": "Obtenir les {{total}} cartes maintenant",
+  "cardCtaEvery": "Obtenir toutes les cartes maintenant",
+  "passActive": "Une fois le paiement validé, dépose à nouveau ton fichier pour démarrer ton Day Pass et obtenir toutes les cartes.",
   "checkoutError": "Impossible de lancer le paiement. Réessaie ou écris à support@2anki.net.",
   "starting": "Ouverture du paiement"
 }

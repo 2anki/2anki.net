@@ -54,6 +54,7 @@ import { handleUploadLimitError } from '../controllers/Upload/helpers/handleUplo
 import { getUploadValidationError } from '../lib/upload/getUploadValidationError';
 import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
 import { mergeStoredCardOptions } from '../lib/upload/mergeStoredCardOptions';
+import { withDeckStyle } from '../lib/parser/buildDeckStyle';
 import { decodeUploadImage } from '../lib/upload/decodeUploadImage';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import {
@@ -84,7 +85,7 @@ import {
   PDF_UNREADABLE_REASON,
 } from '../usecases/jobs/jobFailureReason';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
-import { getOwner } from '../lib/User/getOwner';
+import { getAnonymousPassId, getOwner } from '../lib/User/getOwner';
 import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import { censusUploadedFile } from '../infrastracture/adapters/fileConversion/documentStructureCensus';
 import { formatDeckName } from '../lib/formatDeckName';
@@ -108,6 +109,7 @@ import {
   resolveAnonymousPartialArm,
   type PartialDeliveryArm,
 } from '../lib/upload/anonymousPartialDelivery';
+import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
 import {
   anonRecoveryKey,
   readRecoveryToken,
@@ -136,6 +138,7 @@ import {
   isPdfPasswordSentinel,
   parsePdfPasswordSentinel,
 } from '../lib/pdf/pdfPasswordSentinel';
+import { parsePdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
 import { isPdfPageRangeError } from '../lib/pdf/pdfPageRange';
 import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
@@ -156,6 +159,16 @@ import {
   ipRateLimitBucket,
   resolveClientIp,
 } from '../lib/rateLimit/ipHelpers';
+import { generateAiPreview, type AiPreviewCard } from '../lib/claude/aiPreview';
+import { extractPreviewText } from '../lib/upload/extractPreviewText';
+import {
+  anonymousAiPreviewEnabled,
+  isPreviewHoldKey,
+  previewHoldKey,
+} from '../lib/upload/anonymousAiPreview';
+import { AiPreviewRateLimiter } from '../lib/upload/aiPreviewRateLimiter';
+import { generateAnonymousAiPreview } from '../usecases/uploads/GenerateAnonymousAiPreviewUseCase';
+import type { AiPreviewConversion } from '../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -216,6 +229,13 @@ export interface HeldUploadResponse {
   cardCount: number;
   cardsHeldBack: number;
   totalCards: number;
+  dayPassCard?: boolean;
+}
+
+export interface AiPreviewUploadResponse {
+  kind: 'ai_preview';
+  cardCount: number;
+  cards: AiPreviewCard[];
 }
 
 const HELD_DECK_TTL_MS = 24 * 60 * 60 * 1000;
@@ -554,7 +574,7 @@ async function runClaudeRestartFiles(
           settings?.cardSize,
           settings?.fieldMapping,
           options
-        )
+        ).then((decks) => withDeckStyle(decks, settings ?? new CardOption({})))
       );
     } catch (error) {
       if (error instanceof AiCreditsExhaustedError) {
@@ -658,6 +678,7 @@ function logNoPackageDiagnostics(uploadedFiles: UploadedFile[]) {
 class UploadService {
   private readonly inFlightConversions = new Set<string>();
   private readonly holdRateLimiter: InMemoryRateLimiter;
+  private readonly aiPreviewRateLimiter: AiPreviewRateLimiter;
 
   getUploadsByOwner(owner: number) {
     return this.uploadRepository.getUploadsByOwner(owner);
@@ -685,6 +706,7 @@ class UploadService {
         perKeyMax: HELD_DECK_PER_IP_MAX,
         globalMax: HELD_DECK_GLOBAL_MAX,
       });
+    this.aiPreviewRateLimiter = new AiPreviewRateLimiter();
   }
 
   private async resolveSyncCreditsUsed(
@@ -1257,11 +1279,27 @@ class UploadService {
         return await this.handleAsyncUpload(
           req,
           res,
-          settings,
+          UploadService.withoutPdfQuestion(req, settings),
           ws,
           String(owner),
           paying
         );
+      }
+
+      // A request that carries a pass token meant to use a pass; when that
+      // token no longer validates (expired, refused) it must not fall into
+      // the free preview instead.
+      const presentedPassToken = req.headers?.['x-pass-token'] != null;
+      if (
+        owner == null &&
+        !paying &&
+        !presentedPassToken &&
+        settings.claudeAIFlashcards
+      ) {
+        const preview = await this.runAnonymousAiPreview(req, res, files);
+        if (preview != null) {
+          return res.status(200).json(preview);
+        }
       }
 
       return await this.handleSyncUpload(req, res, settings, ws, paying);
@@ -1307,7 +1345,15 @@ class UploadService {
           anonymousId,
           props: { source, kind: 'anonymous' },
         });
-        return res.redirect('/limit?kind=anonymous');
+        const dayPassCard = await getFeatureFlag(
+          ANONYMOUS_DAY_PASS_CARD_FLAG,
+          false
+        );
+        return res.redirect(
+          dayPassCard
+            ? `/limit?kind=anonymous&cards=${err.cardsFound}`
+            : '/limit?kind=anonymous'
+        );
       } else if (isLimitError(err as Error)) {
         handleUploadLimitError(req, res);
       } else if (err instanceof EmptyDeckError) {
@@ -1383,6 +1429,16 @@ class UploadService {
         return res.status(400).json({
           code: 'pdf_page_range',
           message: err.message,
+        });
+      } else if (
+        err instanceof Error &&
+        parsePdfFallbackChoiceSentinel(err.message) != null
+      ) {
+        const choice = parsePdfFallbackChoiceSentinel(err.message);
+        return res.status(409).json({
+          code: 'choose_pdf_mode',
+          reason: choice?.reason,
+          page_count: choice?.pageCount,
         });
       } else if (err instanceof Error && isPdfPasswordSentinel(err.message)) {
         const filename = parsePdfPasswordSentinel(err.message) ?? 'your file';
@@ -1499,6 +1555,7 @@ class UploadService {
           uploadIdentity,
           existingCardFingerprints,
           requestId: res.locals.requestId,
+          anonymousPassId: getAnonymousPassId(res),
         }
       )
       .then(async ({ packages, warnings, cardFingerprints }) => {
@@ -1648,6 +1705,23 @@ class UploadService {
     return mergeStoredCardOptions(stored, requestOptions);
   }
 
+  // A background job has nobody to answer "what should the PDF become", so it
+  // keeps the page pairs it always made.
+  private static withoutPdfQuestion(
+    req: express.Request,
+    settings: CardOption
+  ): CardOption {
+    if (settings.pdfFallback !== 'ask') return settings;
+    const copy = new CardOption({
+      ...((req.body ?? {}) as Record<string, string>),
+      'pdf-fallback': 'pairs',
+    });
+    copy.n2aBasic = settings.n2aBasic;
+    copy.n2aCloze = settings.n2aCloze;
+    copy.n2aInput = settings.n2aInput;
+    return copy;
+  }
+
   private buildClaudeFallbackSettings(
     req: express.Request,
     base: CardOption
@@ -1656,6 +1730,7 @@ class UploadService {
     const fallback = new CardOption({
       ...body,
       'claude-ai-flashcards': 'true',
+      'pdf-fallback': 'pairs',
     });
     fallback.n2aBasic = base.n2aBasic;
     fallback.n2aCloze = base.n2aCloze;
@@ -1735,6 +1810,7 @@ class UploadService {
         uploadIdentity,
         existingCardFingerprints,
         requestId: res.locals.requestId,
+        anonymousPassId: getAnonymousPassId(res),
         ...(cardLimit != null ? { cardLimit } : {}),
       }
     );
@@ -1926,6 +2002,10 @@ class UploadService {
         'X-MCQ-Count',
         'X-MCQ-Skipped-Count',
       ];
+      if (res.locals.aiPreviewUnavailable === true) {
+        res.set('X-AI-Preview-Unavailable', '1');
+        exposedHeaders.push('X-AI-Preview-Unavailable');
+      }
       if (totalDroppedImageCount > 0) {
         res.set('X-Dropped-Assets', totalDroppedImageCount.toString());
         exposedHeaders.push('X-Dropped-Assets');
@@ -1970,6 +2050,13 @@ class UploadService {
       if (rescuedRule != null) {
         res.set('X-Structure-Rescued', rescuedRule);
         exposedHeaders.push('X-Structure-Rescued');
+      }
+      const pdfFallbackMode = packages.find(
+        (p) => p.pdfFallbackMode != null
+      )?.pdfFallbackMode;
+      if (pdfFallbackMode != null) {
+        res.set('X-Pdf-Fallback', pdfFallbackMode);
+        exposedHeaders.push('X-Pdf-Fallback');
       }
       const warningText = resolveUploadWarning(
         syncWarnings,
@@ -2259,6 +2346,130 @@ class UploadService {
     return typeof anonId === 'string' && anonId.length > 0 ? anonId : null;
   }
 
+  // A visitor without an account who turned AI on: run the capped preview and,
+  // when it produces cards, answer with them so the client can show the sample
+  // and the Day Pass offer. Returns null to mean "nothing new" — the caller then
+  // runs today's free conversion. The feature flag is read here first so a
+  // flag-off upload never reads the file bytes for a preview it won't run.
+  private async runAnonymousAiPreview(
+    req: express.Request,
+    res: express.Response,
+    files: UploadedFile[]
+  ): Promise<AiPreviewUploadResponse | null> {
+    if (files.length !== 1 || isImageOnlyUpload(files)) {
+      return null;
+    }
+    if (!(await anonymousAiPreviewEnabled())) {
+      return null;
+    }
+    const file = files[0];
+    const bytes = await readUploadBytes(file);
+    if (bytes == null) {
+      return null;
+    }
+    const requestId = res.locals.requestId as string | undefined;
+    const outcome = await generateAnonymousAiPreview(
+      {
+        anonId: this.resolveAnonId(req),
+        ipKey: hashIp(ipRateLimitBucket(resolveClientIp(req))),
+        filename: file.originalname,
+        bytes,
+        requestId,
+      },
+      {
+        isEnabled: anonymousAiPreviewEnabled,
+        allow: (anonId, ipKey) =>
+          this.aiPreviewRateLimiter.allow(anonId, ipKey),
+        preview: async (filename, fileBytes, rid) => {
+          const text = await extractPreviewText(filename, fileBytes);
+          if (text == null) {
+            return [];
+          }
+          return generateAiPreview(text, { requestId: rid });
+        },
+        storeSource: (anonId, filename, fileBytes) =>
+          this.storeAiPreviewSource(anonId, filename, fileBytes),
+        onShown: (anonId, cardCount) => {
+          track('ai_preview_shown', {
+            anonymousId: anonId,
+            props: { ...this.baseFunnelProps(req), card_count: cardCount },
+          });
+        },
+      }
+    );
+    if (outcome.kind === 'preview') {
+      return {
+        kind: 'ai_preview',
+        cardCount: outcome.cards.length,
+        cards: outcome.cards,
+      };
+    }
+    // AI was asked for and the file was readable, but no sample came back.
+    // Flag it so the free deck that follows tells the visitor why, rather than
+    // silently dropping them to a non-AI deck.
+    if (outcome.kind === 'unavailable') {
+      res.locals.aiPreviewUnavailable = true;
+    }
+    return null;
+  }
+
+  // Keep the uploaded source for the resume, keyed to the visitor under the
+  // preview namespace so the sign-up claim never matches it. Reuses the held
+  // deck storage and 24h TTL; a failure throws to the caller, which still shows
+  // the preview (only the later one-click resume is lost).
+  private async storeAiPreviewSource(
+    anonId: string,
+    filename: string,
+    bytes: Buffer
+  ): Promise<void> {
+    const storage = new StorageHandler();
+    const storageKey = `held/${randomUUID()}`;
+    await storage.uploadFile(storageKey, bytes);
+    await this.heldDeckRepository.insert({
+      storageKey,
+      anonId: previewHoldKey(anonId),
+      filename,
+      cardCount: 0,
+      cardsHeldBack: 0,
+      expiresAt: new Date(Date.now() + HELD_DECK_TTL_MS),
+    });
+  }
+
+  // Runs the full AI conversion of a stored preview source for an anonymous
+  // pass holder. paying is true so PrepareDeck takes the Claude branch and the
+  // no-account cap does not apply; anonymousPassId threads through so the credit
+  // guard meters the call against the pass and fails closed on an exhausted one.
+  async convertStoredFileWithAiForPass(
+    anonymousPassId: number,
+    file: UploadedFile,
+    requestId: string | undefined
+  ): Promise<AiPreviewConversion> {
+    const settings = new CardOption({ 'claude-ai-flashcards': 'true' });
+    const ws = new Workspace(true, 'fs');
+    const useCase = new GeneratePackagesUseCase();
+    const { packages } = await useCase.execute(
+      true,
+      [file],
+      settings,
+      ws,
+      undefined,
+      null,
+      { requestId, anonymousPassId }
+    );
+    const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
+    if (totalCards === 0) {
+      throw new EmptyDeckError();
+    }
+    const first = packages[0];
+    const apkg = await ws.getFirstAPKG();
+    if (!apkg) {
+      throw new Error(
+        `Could not produce APKG for ${first?.name ?? 'untitled'}`
+      );
+    }
+    return { apkg, cardCount: totalCards, deckName: toText(first.name) };
+  }
+
   private async resolveAnonymousPartialArm(
     req: express.Request,
     res: express.Response
@@ -2342,7 +2553,12 @@ class UploadService {
     const anonId = this.resolveAnonId(req);
     const file = (req.files as UploadedFile[])[0];
     const bytes = await readUploadBytes(file);
-    if (anonId == null || isPlanHoldKey(anonId) || bytes == null) {
+    if (
+      anonId == null ||
+      isPlanHoldKey(anonId) ||
+      isPreviewHoldKey(anonId) ||
+      bytes == null
+    ) {
       throw new AnonymousCardCapError(
         cardCount + cardsHeldBack,
         ANONYMOUS_CARD_CAP
@@ -2420,11 +2636,16 @@ class UploadService {
         held: true,
       },
     });
+    const totalCards = cardCount + cardsHeldBack;
+    const dayPassCard =
+      totalCards > MONTHLY_CARD_LIMIT &&
+      (await getFeatureFlag(ANONYMOUS_DAY_PASS_CARD_FLAG, false));
     const body: HeldUploadResponse = {
       kind: 'held',
       cardCount,
       cardsHeldBack,
-      totalCards: cardCount + cardsHeldBack,
+      totalCards,
+      ...(dayPassCard ? { dayPassCard: true } : {}),
     };
     return res.status(200).json(body);
   }

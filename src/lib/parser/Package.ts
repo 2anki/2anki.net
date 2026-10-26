@@ -32,6 +32,10 @@ class Package {
   // short document's yield from a long one's. Undefined for non-PDF uploads.
   pdfPageCount?: number;
 
+  // Set when a PDF with no usable text was turned into page-image cards, so
+  // the response can say which kind the person got.
+  pdfFallbackMode?: 'pairs' | 'single';
+
   coloredTextPageCount = 0;
 
   // Set by PrepareDeck, inside whichever branch produced the deck. The parent

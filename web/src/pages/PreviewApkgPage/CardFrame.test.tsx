@@ -40,14 +40,15 @@ const waitForSrcDoc = (container: HTMLElement): Promise<string> =>
     return srcDoc;
   });
 
-const getIframe = (container: HTMLElement): HTMLIFrameElement => {
-  const iframe = container.querySelector('iframe');
-  if (iframe == null) throw new Error('iframe not rendered');
-  return iframe as HTMLIFrameElement;
-};
+const findIframe = (container: HTMLElement): Promise<HTMLIFrameElement> =>
+  waitFor(() => {
+    const iframe = container.querySelector('iframe');
+    if (iframe == null) throw new Error('iframe not rendered');
+    return iframe as HTMLIFrameElement;
+  });
 
 describe('CardFrame sandbox', () => {
-  it('sets sandbox to allow-scripts only', () => {
+  it('sets sandbox to allow-scripts only', async () => {
     const { container } = render(
       <CardFrame
         card={buildCard()}
@@ -56,7 +57,46 @@ describe('CardFrame sandbox', () => {
         isEditable={false}
       />
     );
-    expect(getIframe(container).getAttribute('sandbox')).toBe('allow-scripts');
+    expect((await findIframe(container)).getAttribute('sandbox')).toBe(
+      'allow-scripts'
+    );
+  });
+});
+
+describe('CardFrame frame mounting', () => {
+  // Chrome leaves a sandboxed frame blank when its srcdoc changes a few
+  // milliseconds after it was inserted with an empty one.
+  it('never mounts the frame with an empty document', async () => {
+    const { container } = render(
+      <CardFrame
+        card={buildCard()}
+        cardIndex={0}
+        onEdit={noop}
+        isEditable={false}
+      />
+    );
+    expect(container.querySelector('iframe')).toBeNull();
+    const iframe = await findIframe(container);
+    expect(iframe.getAttribute('srcdoc')).toContain('Front content');
+  });
+
+  it('mounts a new frame holding the back when the card is flipped', async () => {
+    const { container } = render(
+      <CardFrame
+        card={buildCard()}
+        cardIndex={0}
+        onEdit={noop}
+        isEditable={false}
+      />
+    );
+    const front = await findIframe(container);
+    fireEvent.click(screen.getByRole('button', { name: /show back/i }));
+    const back = await waitFor(() => {
+      const iframe = container.querySelector('iframe');
+      if (iframe == null || iframe === front) throw new Error('not remounted');
+      return iframe;
+    });
+    expect(back.getAttribute('srcdoc')).toContain('Back content');
   });
 });
 
@@ -216,7 +256,7 @@ describe('CardFrame postMessage height update', () => {
     const { container } = render(
       <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
     );
-    const iframe = getIframe(container);
+    const iframe = await findIframe(container);
 
     Object.defineProperty(iframe, 'contentWindow', {
       value: window,
@@ -241,7 +281,7 @@ describe('CardFrame postMessage height update', () => {
     const { container } = render(
       <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
     );
-    const iframe = getIframe(container);
+    const iframe = await findIframe(container);
 
     Object.defineProperty(iframe, 'contentWindow', {
       value: window,
@@ -266,7 +306,7 @@ describe('CardFrame postMessage height update', () => {
     const { container } = render(
       <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
     );
-    const iframe = getIframe(container);
+    const iframe = await findIframe(container);
 
     Object.defineProperty(iframe, 'contentWindow', {
       value: window,
@@ -291,7 +331,7 @@ describe('CardFrame postMessage height update', () => {
     const { container } = render(
       <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
     );
-    const iframe = getIframe(container);
+    const iframe = await findIframe(container);
 
     Object.defineProperty(iframe, 'contentWindow', {
       value: window,
@@ -316,7 +356,7 @@ describe('CardFrame postMessage height update', () => {
     const { container } = render(
       <CardFrame card={card} cardIndex={0} onEdit={noop} isEditable={false} />
     );
-    const iframe = getIframe(container);
+    const iframe = await findIframe(container);
 
     Object.defineProperty(iframe, 'contentWindow', {
       value: window,

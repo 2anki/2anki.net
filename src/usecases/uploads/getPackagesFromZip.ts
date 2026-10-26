@@ -18,12 +18,17 @@ import { liftDecksToParent } from './liftDecksToParent';
 import { getMaxUploadCount } from '../../lib/misc/getMaxUploadCount';
 
 import { isZipContentFileSupported } from './isZipContentFileSupported';
-import { ANKI_PACKAGE_ZIP_MESSAGE, isAnkiPackageZip } from './isAnkiPackageZip';
+import {
+  ANKI_PACKAGE_ZIP_MESSAGE,
+  isAnkiPackageZip,
+  isZipOfAnkiDecks,
+} from './isAnkiPackageZip';
 import { convertAnkiAppDecksFromZip } from './convertAnkiAppDecksFromZip';
 import { getRelevantFiles } from './getRelevantFiles';
 import { enableMarkdownForMarkdownUploads } from './enableMarkdownForMarkdownUploads';
 import CardGenerator from '../../lib/anki/CardGenerator';
 import { resolvePerWorkerPythonCap } from '../../lib/pythonWorkerBudget';
+import { isPdfFallbackChoiceSentinel } from '../../lib/pdf/pdfFallbackChoice';
 import {
   isPdfPasswordSentinel,
   parsePdfPasswordSentinel,
@@ -93,6 +98,15 @@ interface BatchOutcome {
 // EmptyDeckError (prose text, a page with no toggles) or returned a zero-card
 // result carrying the parser's classification. Capturing both keeps the reason
 // from being flattened to unknown when the whole upload comes out empty.
+// The upload page asks what a PDF with no readable text should become; that
+// question belongs to the whole upload, so it is never recorded as one file's
+// failure.
+function rethrowPdfChoice(error: unknown): void {
+  if (error instanceof Error && isPdfFallbackChoiceSentinel(error.message)) {
+    throw error;
+  }
+}
+
 function reasonFromRejection(error: unknown): EmptyDeckReason | undefined {
   return error instanceof EmptyDeckError ? error.reason : undefined;
 }
@@ -120,6 +134,7 @@ interface BatchBuildContext {
   paying: boolean;
   workspace: Workspace;
   userId: number | null;
+  anonymousPassId?: number | null;
   knownGuids?: KnownGuids;
   uploadIdentity?: UploadIdentityContext;
 }
@@ -129,8 +144,15 @@ async function buildDeckBatch(
   zipHandler: ZipHandler,
   ctx: BatchBuildContext
 ): Promise<BatchOutcome> {
-  const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
-    ctx;
+  const {
+    settings,
+    paying,
+    workspace,
+    userId,
+    anonymousPassId,
+    knownGuids,
+    uploadIdentity,
+  } = ctx;
   const packages: Package[] = [];
   const warnings: string[] = [];
 
@@ -147,6 +169,7 @@ async function buildDeckBatch(
             noLimits: paying,
             workspace: deckSubWorkspace,
             userId,
+            anonymousPassId,
             knownGuids,
             uploadIdentity,
           },
@@ -164,6 +187,7 @@ async function buildDeckBatch(
   const preparedResults: DeckInfoOnlyResult[] = [];
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
+      rethrowPdfChoice(result.reason);
       failedFiles.push(fileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -269,8 +293,15 @@ async function buildStragglerDecks(
   zipHandler: ZipHandler,
   ctx: BatchBuildContext
 ): Promise<BatchOutcome> {
-  const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
-    ctx;
+  const {
+    settings,
+    paying,
+    workspace,
+    userId,
+    anonymousPassId,
+    knownGuids,
+    uploadIdentity,
+  } = ctx;
   const packages: Package[] = [];
   const warnings: string[] = [];
   const lockedPdfs: string[] = [];
@@ -293,11 +324,13 @@ async function buildStragglerDecks(
           noLimits: paying,
           workspace,
           userId,
+          anonymousPassId,
           knownGuids,
           uploadIdentity,
         })
       );
     } catch (error) {
+      rethrowPdfChoice(error);
       failedFiles.push(straggler.inputFileName);
       const reason = reasonFromRejection(error);
       if (reason != null) emptyReasons.push(reason);
@@ -353,6 +386,7 @@ async function buildClaudeFlashcardDeck(
   onProgress: ((step: string) => void) | undefined,
   ctx: {
     userId: number | null;
+    anonymousPassId?: number | null;
     requestId?: string;
     crossFileDedup?: CrossFileDedupState;
   }
@@ -365,6 +399,7 @@ async function buildClaudeFlashcardDeck(
     workspace,
     onProgress,
     userId: ctx.userId,
+    anonymousPassId: ctx.anonymousPassId,
     requestId: ctx.requestId,
     crossFileDedup: ctx.crossFileDedup,
   });
@@ -398,8 +433,15 @@ async function buildAllInOneSlot(
   ctx: BatchBuildContext,
   cardLimit?: number
 ): Promise<PackageResult> {
-  const { settings, paying, workspace, userId, knownGuids, uploadIdentity } =
-    ctx;
+  const {
+    settings,
+    paying,
+    workspace,
+    userId,
+    anonymousPassId,
+    knownGuids,
+    uploadIdentity,
+  } = ctx;
   // Partial delivery only has a coherent "first N cards" meaning for a zip that
   // resolves to a single deck; a per-file limit on a multi-deck zip would cap
   // every deck at N and over-deliver, so it only applies to a lone content file.
@@ -424,6 +466,7 @@ async function buildAllInOneSlot(
             noLimits: paying,
             workspace: deckWorkspace,
             userId,
+            anonymousPassId,
             knownGuids,
             uploadIdentity,
             cardLimit: perFileCardLimit,
@@ -444,6 +487,7 @@ async function buildAllInOneSlot(
   let cardsHeldBack: number | undefined;
   settled.forEach((result, index) => {
     if (result.status === 'rejected') {
+      rethrowPdfChoice(result.reason);
       failedFiles.push(supportedFileNames[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);
@@ -541,6 +585,7 @@ export interface GetPackagesFromZipOptions {
   requestId?: string;
   crossFileDedup?: CrossFileDedupState;
   cardLimit?: number;
+  anonymousPassId?: number | null;
 }
 
 export const getPackagesFromZip = async (
@@ -552,8 +597,14 @@ export const getPackagesFromZip = async (
   userId: number | null = null,
   options: GetPackagesFromZipOptions = {}
 ): Promise<PackageResult> => {
-  const { knownGuids, uploadIdentity, requestId, crossFileDedup, cardLimit } =
-    options;
+  const {
+    knownGuids,
+    uploadIdentity,
+    requestId,
+    crossFileDedup,
+    cardLimit,
+    anonymousPassId,
+  } = options;
   if (!fileContents) {
     return { packages: [] };
   }
@@ -566,7 +617,8 @@ export const getPackagesFromZip = async (
     workspace.location
   );
 
-  if (isAnkiPackageZip(zipHandler.getFileNames())) {
+  const zipFileNames = zipHandler.getFileNames();
+  if (isAnkiPackageZip(zipFileNames) || isZipOfAnkiDecks(zipFileNames)) {
     throw new Error(ANKI_PACKAGE_ZIP_MESSAGE);
   }
 
@@ -593,7 +645,7 @@ export const getPackagesFromZip = async (
       paying,
       workspace,
       onProgress,
-      { userId, requestId, crossFileDedup }
+      { userId, requestId, crossFileDedup, anonymousPassId }
     );
   }
 
@@ -604,6 +656,7 @@ export const getPackagesFromZip = async (
     paying,
     workspace,
     userId,
+    anonymousPassId,
     knownGuids,
     uploadIdentity,
   };
@@ -635,6 +688,7 @@ export const getPackagesFromZip = async (
   const rescueCandidateSets: RescueCandidate[][] = [];
   settledChunks.forEach((result, index) => {
     if (result.status === 'rejected') {
+      rethrowPdfChoice(result.reason);
       failedFiles.push(...chunks[index]);
       const reason = reasonFromRejection(result.reason);
       if (reason != null) emptyReasons.push(reason);

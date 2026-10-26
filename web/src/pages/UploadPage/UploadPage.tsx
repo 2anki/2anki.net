@@ -1,3 +1,4 @@
+import { AiChoice } from '../../components/AiChoice/AiChoice';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
@@ -28,12 +29,11 @@ import { RecentSources } from './components/RecentSources/RecentSources';
 import UploadForm from './components/UploadForm/UploadForm';
 import pageStyles from './UploadPage.module.css';
 
-const REATTACH_KEY = 'upload_pending_filename';
 const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
 const SIGNUP_RECENCY_MS = 10 * 60 * 1000;
 const AI_FLAG_KEY = 'claude-ai-flashcards';
 
-type AiBadgeState = 'anon' | 'free' | 'on' | 'off';
+type AiBadgeState = 'anon' | 'anonPreview' | 'free' | 'on' | 'off';
 
 interface Props {
   setErrorMessage: ErrorHandlerType;
@@ -42,9 +42,10 @@ interface Props {
 function deriveAiBadgeState(
   isSignedIn: boolean,
   isPaying: boolean,
-  isAiOn: boolean
+  isAiOn: boolean,
+  previewEnabled: boolean
 ): AiBadgeState {
-  if (!isSignedIn) return 'anon';
+  if (!isSignedIn) return previewEnabled ? 'anonPreview' : 'anon';
   if (!isPaying) return 'free';
   if (isAiOn) return 'on';
   return 'off';
@@ -64,6 +65,7 @@ function isFreshSignup(
 export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const { t } = useTranslation();
   const { t: tCredits, i18n } = useTranslation('aicredits');
+  const { t: tPass } = useTranslation('anonymousPass');
   const query = useQuery();
   const view = query.get('view');
   const navigate = useNavigate();
@@ -72,16 +74,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const [creditsConfirmation, setCreditsConfirmation] = useState<string | null>(
     null
   );
-  const [reattachFilename, setReattachFilename] = useState<string | null>(
-    () => {
-      const stored = globalThis.sessionStorage?.getItem(REATTACH_KEY) ?? null;
-      return stored != null && stored.length > 0 ? stored : null;
-    }
-  );
+  const [passConfirmation, setPassConfirmation] = useState<string | null>(null);
   const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
   const pageViewTracked = useRef(false);
   const signupTracked = useRef(false);
-  const reattachTracked = useRef(false);
 
   const isSignedIn = userLocals?.user?.id != null;
   const isPaying = isPayingUser(userLocals?.locals);
@@ -93,29 +89,35 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     setAiFlag(globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true');
   }, [isSignedIn]);
 
-  const isAiOn = isPaying && aiFlag;
-  const aiBadgeState = deriveAiBadgeState(isSignedIn, isPaying, isAiOn);
+  const previewEnabled = userLocals?.features?.anonymousAiPreview === true;
+  const isAiOn = isSignedIn ? isPaying && aiFlag : previewEnabled && aiFlag;
+  const aiBadgeState = deriveAiBadgeState(
+    isSignedIn,
+    isPaying,
+    isAiOn,
+    previewEnabled
+  );
   const aiCredits = useAiCredits(aiBadgeState === 'on');
 
-  const toggleAi = () => {
-    const next = !isAiOn;
+  const showAiChoice =
+    !isSignedIn &&
+    previewEnabled &&
+    userLocals?.features?.anonymousAiChoice === true;
+
+  const setAi = (next: boolean) => {
     saveValueInLocalStorage(AI_FLAG_KEY, String(next), null);
     setAiFlag(next);
-    track(next ? 'upload_ai_turned_on' : 'upload_ai_turned_off');
+    track(next ? 'upload_ai_turned_on' : 'upload_ai_turned_off', {
+      surface: 'upload',
+    });
   };
+  const toggleAi = () => setAi(!isAiOn);
 
   useEffect(() => {
     if (pageViewTracked.current) return;
     pageViewTracked.current = true;
     track('upload_page_viewed');
   }, []);
-
-  useEffect(() => {
-    if (reattachTracked.current) return;
-    if (reattachFilename == null) return;
-    reattachTracked.current = true;
-    track('upload_reattach_shown');
-  }, [reattachFilename]);
 
   useEffect(() => {
     if (signupTracked.current) return;
@@ -184,11 +186,14 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     // Owner decision: anonymous passes live in the browser (localStorage is sanctioned for this use case)
     storePassToken(passSession);
     if (userLocalsLoading) return;
+    if (userLocals?.features?.anonymousDayPassCard === true) {
+      setPassConfirmation(tPass('passActive'));
+    }
     const next = new URLSearchParams(searchParams);
     next.delete('pass_session');
     const qs = next.toString();
     navigate(qs ? `/upload?${qs}` : '/upload', { replace: true });
-  }, [searchParams, navigate, userLocalsLoading]);
+  }, [searchParams, navigate, userLocalsLoading, userLocals, tPass]);
 
   useEffect(() => {
     if (userLocalsLoading) return;
@@ -240,11 +245,13 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           <span>{creditsConfirmation}</span>
         </div>
       )}
-      {reattachFilename != null && (
-        <div className={pageStyles.reattachBanner} role="status">
-          <span>{t('upload.page.reattachPrefix')} </span>
-          <strong>{reattachFilename}</strong>
-          <span> {t('upload.page.reattachSuffix')}</span>
+      {passConfirmation != null && (
+        <div
+          className={pageStyles.reattachBanner}
+          role="status"
+          aria-live="polite"
+        >
+          <span>{passConfirmation}</span>
         </div>
       )}
       <div className={styles.aiOffBadge} role="status">
@@ -336,6 +343,20 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             </Link>
             <span>.</span>
           </span>
+        )}
+        {aiBadgeState === 'anonPreview' && showAiChoice && (
+          <AiChoice aiOn={isAiOn} onChange={setAi} />
+        )}
+        {aiBadgeState === 'anonPreview' && !showAiChoice && (
+          <>
+            <label className={pageStyles.aiPreviewToggle}>
+              <input type="checkbox" checked={isAiOn} onChange={toggleAi} />
+              <span>{t('aiPreview:toggleLabel')}</span>
+            </label>
+            <span className={styles.aiOffBadgeBody}>
+              <span> {t('aiPreview:badgeIntro')}</span>
+            </span>
+          </>
         )}
       </div>
       <UploadForm setErrorMessage={setErrorMessage} aiOn={isAiOn} />

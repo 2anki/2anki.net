@@ -171,6 +171,21 @@
     },
     "form": {
       "makingDeck": "デッキを作成しています...",
+      "pdfChoiceTitle": "このPDFには読み取れるテキストがありません",
+      "pdfChoiceBodyNoText": "スキャンしたページや、画像として保存されたスライドのようです。カードをどう作るか選んでください。",
+      "pdfChoiceBodyLocked": "このPDFは保護されているため、テキストを読み取れません。カードをどう作るか選んでください。",
+      "pdfChoiceBodyOverSplit": "テキストを読むと、非常に多くの小さなカードになってしまいます。代わりにカードをどう作るか選んでください。",
+      "pdfChoicePairs": "2ページで1枚のカード",
+      "pdfChoicePairsHint": "1ページ目が表、2ページ目が裏になります。",
+      "pdfChoiceSingle": "1ページにつき1枚のカード",
+      "pdfChoiceSingleHint": "各ページが表になります。答えはAnkiで追加してください。",
+      "pdfChoiceRemember": "この端末で選択を覚えておく",
+      "pdfFallbackPairsNote": "このPDFはページ画像から作成したため、2ページごとに1枚のカードにしました。",
+      "pdfFallbackSingleNote": "このPDFはページ画像から作成したため、1ページごとに1枚のカードにしました。",
+      "pdfFallbackAskAgain": "次回から確認する",
+      "waitingForDeck": "接続が切れましたが、デッキの作成は続いています。このタブを開いたままにすると、ここに表示されます。",
+      "waitingForDeckSignedIn": "接続が切れましたが、デッキの作成は続いています。このタブを開いたままにするか、完成後にマイデッキで探してください。",
+      "stopWaiting": "待つのをやめる",
       "fetching": "{{source}} から {{filename}} を取得しています",
       "deckReady": "デッキの準備ができました",
       "savedToDownloads": "{{deckName}} をダウンロードに保存しました",
@@ -195,6 +210,9 @@
       "seeCommonProblemsSuffix": " をご覧ください。",
       "downloadEmpty": "空のデッキをダウンロード",
       "tryDifferent": "別のファイルを試す",
+      "resumeContinueBody": "{{filename}} のアップロードが完了していません。",
+      "resumeContinue": "続ける",
+      "resumeDismiss": "閉じる",
       "imagesTitle": "「写真からデッキ」で画像をカードにできます",
       "imagesBody": "ここには読み取れるテキストがないため、変換するものがありませんでした。写真からデッキは、AI で画像を読み取り、ダウンロード前に確認できるカードの下書きを作ります。",
       "imagesUnzip": "写真からデッキは zip ではなく写真そのものを受け付けます。解凍して写真をドロップしてください。",
@@ -207,6 +225,9 @@
       "apkgRejectSecondaryPrefix": "すでにお持ちのデッキなら、Ankiで直接開くか、",
       "apkgRejectPrintLink": "PDFとして印刷",
       "apkgRejectSecondarySuffix": "できます。",
+      "apkgHandoffBody": "ファイルを選び直さずに、印刷したり、カードを表計算用にエクスポートしたりできます。",
+      "apkgHandoffPrint": "PDFで印刷",
+      "apkgHandoffCsv": "CSVでエクスポート",
       "errorTitle": "問題が発生しました",
       "tryAgain": "再試行",
       "changeSource": "← ソースを変更",
@@ -257,8 +278,8 @@
       "networkErrorSmallTitle": "ファイルをアップロードできませんでした",
       "networkErrorSmallBody": "ファイルが完了する前に接続が切れました。接続を確認して、もう一度お試しください。",
       "networkChooseDifferent": "別のファイルを選ぶ",
-      "unreadableFileTitle": "選択後にこのファイルが変更されました",
-      "unreadableFileBody": "選択したバージョンをブラウザが読み込めなくなりました。選択後に保存、移動、または削除された可能性があります。もう一度ファイルを選んで、現在のバージョンをアップロードしてください。",
+      "unreadableFileTitle": "このファイルを読み込めませんでした",
+      "unreadableFileBody": "ブラウザがファイル全体を読み込めませんでした。OneDrive、iCloud Drive、Google Drive にある場合は、一度開いて端末にダウンロードしてから、もう一度選んでください。選択後に保存や移動をした場合も、もう一度選んでください。",
       "unreadableChooseAgain": "ファイルをもう一度選ぶ",
       "emptyFileTitle": "このファイルは空です",
       "emptyFileBody": "0 バイトのため、変換できる内容がありません。OneDrive、iCloud Drive、Google Drive にあるファイルなら、一度開いてパソコンにダウンロードしてから、もう一度選んでください。",
@@ -282,6 +303,7 @@
       "rescueNumbered_other": "番号付きリストから {{n}} 枚のカードを作る",
       "rescueBullets_other": "箇条書きから {{n}} 枚のカードを作る",
       "rescueGuess_other": "質問と答えの行から {{n}} 枚のカードを作る",
+      "rescueParagraphs_other": "段落から {{n}} 枚のカードを作る",
       "readingLead": "{{parts}}を読み取りました。",
       "readingNoCards": "カードの形になっているものはありません。トグルも、質問と答えのペアもありません。",
       "readingNoText": "このファイルには読み取れるテキストがありません。ノートが入っているファイルをアップロードしてください。",
@@ -378,6 +400,18 @@
         "title": "読書フォーマットに対応",
         "body": "My Clippings.txt の Kindle ハイライトと DRM なしの EPUB に対応しています。Kindle のハイライトを書き出すには、Kindle を USB で接続し、端末の documents フォルダから My Clippings.txt をコピーしてください。",
         "continue": "これらのハイライトからカードを作る"
+      },
+      "shortcut": {
+        "title": "これはショートカットで、ファイル本体ではありません",
+        "body": "これはファイルへのショートカットで、ファイル自体ではありません。ショートカットが指しているファイルを選んでください。"
+      },
+      "internetShortcut": {
+        "title": "これはリンクで、ファイルではありません",
+        "body": "これは保存されたリンク（インターネットショートカット）です。リンクを開いてファイル（PDF、Word、HTML、Notion のエクスポート）をダウンロードし、そのファイルをアップロードしてください。Notion のページは Notion タブから直接変換できます。"
+      },
+      "goodnotes": {
+        "title": "GoodNotes のノートは直接読み込めません",
+        "body": "GoodNotes でノートを PDF として書き出し（共有、書き出し、PDF）、その PDF をアップロードしてください。2anki は PDF からカードを作ります。"
       }
     }
   },
@@ -627,6 +661,7 @@
       "deleteNamed": "{{name}} を削除",
       "cancel": "キャンセル",
       "cancelNamed": "{{name}} をキャンセル",
+      "cannotStop": "開始後は停止できません。通常は数分で完了します。",
       "remove": "取り除く",
       "removeNamed": "{{name}} を取り除く",
       "restart": "再開",

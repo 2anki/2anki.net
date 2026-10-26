@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-23-files-read-by-content",
+  "date": "2026-10-23",
+  "type": "fix",
+  "title": "Upload: a file with the wrong or missing extension, such as a renamed zip, a title with a period in it or a .text file, is now read for what it really is instead of coming back with no cards."
+}

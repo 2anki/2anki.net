@@ -1,4 +1,5 @@
 import type Users from '@server/data_layer/public/Users';
+import { getStoredPassToken } from '../anonymousPass';
 import { get } from './api';
 import { get2ankiApi } from './get2ankiApi';
 
@@ -28,6 +29,11 @@ interface GetUserLocalsResponse {
   features?: {
     kiUI: boolean;
     ops?: boolean;
+    anonymousDayPassCard?: boolean;
+    limitWallProPrice?: boolean;
+    thinDeckAiOffer?: boolean;
+    anonymousAiPreview?: boolean;
+    anonymousAiChoice?: boolean;
   };
   autoSyncActive?: boolean;
   autoSyncCapReached?: boolean;
@@ -38,5 +44,13 @@ interface GetUserLocalsResponse {
   } | null;
 }
 
-export const getUserLocals = async (): Promise<GetUserLocalsResponse> =>
-  get(`${get2ankiApi().baseURL}users/debug/locals`);
+// A pass bought before signing up moves to the account on the first signed-in
+// read. X-Pass-Claim, not X-Pass-Token: the server ignores it without an
+// account, so a page view never starts the pass clock.
+export const getUserLocals = async (): Promise<GetUserLocalsResponse> => {
+  const passToken = getStoredPassToken();
+  return get(`${get2ankiApi().baseURL}users/debug/locals`, {
+    redirect: true,
+    headers: passToken == null ? undefined : { 'X-Pass-Claim': passToken },
+  });
+};

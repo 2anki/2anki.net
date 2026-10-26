@@ -89,7 +89,8 @@
       "numbered": "den nummerierten Listen",
       "columns": "den Tabellenspalten",
       "quote": "den Zitaten",
-      "guess": "dem Frage-und-Antwort-Text"
+      "guess": "dem Frage-und-Antwort-Text",
+      "paragraphs": "den Absätzen"
     }
   },
   "columnsGuessed": {
@@ -111,7 +112,9 @@
     "uploadSingleDeck_one": "{{count}} Karte hatte keine Antwort und wurde übersprungen, sie ist also nicht in diesem Stapel. Füge in deiner Datei eine Rückseite hinzu und konvertiere erneut.",
     "uploadSingleDeck_other": "{{count}} Karten hatten keine Antwort und wurden übersprungen, sie sind also nicht in diesem Stapel. Füge in deiner Datei jeweils eine Rückseite hinzu und konvertiere erneut.",
     "uploadMultiDeck_one": "{{count}} Karte hatte keine Antwort und wurde übersprungen, sie ist also nicht in deinen Stapeln. Füge in deiner Datei eine Rückseite hinzu und konvertiere erneut.",
-    "uploadMultiDeck_other": "{{count}} Karten hatten keine Antwort und wurden übersprungen, sie sind also nicht in deinen Stapeln. Füge in deiner Datei jeweils eine Rückseite hinzu und konvertiere erneut."
+    "uploadMultiDeck_other": "{{count}} Karten hatten keine Antwort und wurden übersprungen, sie sind also nicht in deinen Stapeln. Füge in deiner Datei jeweils eine Rückseite hinzu und konvertiere erneut.",
+    "notion_one": "{{count}} Toggle hatte keine Antwort und wurde übersprungen, er ist also nicht in diesem Stapel. Füge ihm in Notion eine Antwort hinzu und konvertiere erneut.",
+    "notion_other": "{{count}} Toggles hatten keine Antwort und wurden übersprungen, sie sind also nicht in diesem Stapel. Füge jedem in Notion eine Antwort hinzu und konvertiere erneut."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} Teil dieser Seite ist nicht mit 2anki verbunden und fehlt daher in diesem Deck. Füge 2anki dieser Seite und ihren Unterseiten im Verbindungen-Menü von Notion hinzu und konvertiere dann erneut.",

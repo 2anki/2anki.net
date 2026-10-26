@@ -86,6 +86,7 @@
   },
   "photo": {
     "overLimit": "La foto supera el límite de 10 MB. Prueba con una imagen más pequeña.",
+    "handoffSkipped": "Cargamos {{loaded}} fotos de tu subida. Sin cargar: {{skipped}}. Añádelas cuando termines estas tarjetas.",
     "badFormat": "Usa un formato de foto como JPEG, PNG, WebP, GIF o HEIC.",
     "readError": "No se pudo leer la imagen",
     "notAvailable": "Foto a mazo aún no está disponible.",
@@ -467,6 +468,14 @@
     "myDeck": "Mi mazo",
     "removeConnection": "Quitar conexión",
     "addNodeHere": "Añadir nodo aquí"
+  },
+  "deckUpload": {
+    "chooseTitle": "Este zip tiene {{n}} mazos. ¿Cuál quieres?",
+    "chooseAnother": "Elegir otro archivo",
+    "printThis": "Imprimir este mazo",
+    "exportThis": "Exportar este mazo",
+    "notADeckBody": "Este zip tiene notas, no un mazo de Anki. 2anki puede crear un mazo con ellas.",
+    "notADeckAction": "Crear un mazo con él"
   },
   "apkgCsv": {
     "formAria": "Exportar .apkg a CSV",

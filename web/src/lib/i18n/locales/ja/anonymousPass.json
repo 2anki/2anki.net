@@ -4,6 +4,13 @@
   "afterPay": "支払い後にファイルをもう一度ドロップすると、すべてのカードを受け取れます。",
   "afterPayTotal": "支払い後にファイルをもう一度ドロップすると、{{total}} 枚すべてのカードを受け取れます。",
   "cta": "{{price}} の Day Pass を購入",
+  "cardTitle": "Day Pass",
+  "cardLine": "すべてのカードを今すぐ、アカウント不要。",
+  "cardPrice": "24 時間で {{price}}。",
+  "reason": "このデッキには {{total}} 枚のカードがあります。無料アカウントは月 {{monthly}} 枚までです。Day Pass なら今すぐすべて手に入ります。アカウントは不要です。",
+  "cardCtaTotal": "{{total}} 枚すべてのカードを今すぐ入手",
+  "cardCtaEvery": "すべてのカードを今すぐ入手",
+  "passActive": "お支払いが完了したら、ファイルをもう一度ドロップしてください。Day Pass が始まり、すべてのカードを入手できます。",
   "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。",
   "starting": "チェックアウトを開始しています"
 }

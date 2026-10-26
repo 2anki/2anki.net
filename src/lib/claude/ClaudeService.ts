@@ -199,17 +199,6 @@ function deterministicId(input: string): number {
   return Number.parseInt(hex, 16) % 1e13;
 }
 
-function extractStyleFromHtml(html: string): string {
-  const $ = cheerio.load(html);
-  const raw = $('style')
-    .map((_, el) => $(el).html() ?? '')
-    .get()
-    .join('\n');
-  return raw
-    .replaceAll('white-space: pre-wrap;', '')
-    .replaceAll('list-style-type: none;', '');
-}
-
 export function stripHtmlBoilerplate(html: string): string {
   const $ = cheerio.load(html);
   $('style, script, head, link[rel="stylesheet"]').remove();
@@ -1033,16 +1022,11 @@ function salvageTruncatedDecks(
   cleaned: string,
   raw: string,
   availableMediaFiles: string[],
-  pageStyle: string,
   chunkIndex: number
 ): DeckInfo[] {
   try {
     const parsed = parseDeckResponse(cleaned, raw, chunkIndex);
-    return expandCompactDeckInfo(
-      parsed,
-      availableMediaFiles,
-      pageStyle || null
-    );
+    return expandCompactDeckInfo(parsed, availableMediaFiles, null);
   } catch {
     return [];
   }
@@ -1050,7 +1034,6 @@ function salvageTruncatedDecks(
 
 async function generateDeckInfoFromChunk(
   strippedContent: string,
-  pageStyle: string,
   availableMediaFiles: string[],
   userInstructions: string | undefined,
   chunkIndex: number,
@@ -1064,6 +1047,7 @@ async function generateDeckInfoFromChunk(
 ): Promise<DeckInfo[]> {
   const tChunk0 = Date.now();
   const userId = attribution?.userId;
+  const anonymousPassId = attribution?.anonymousPassId;
   const requestId = attribution?.requestId;
   const client = getAnthropicClient();
 
@@ -1172,6 +1156,7 @@ async function generateDeckInfoFromChunk(
     model: response.model,
     usage: response.usage,
     userId,
+    anonymousPassId,
     requestId,
     durationMs: apiMs,
   });
@@ -1197,7 +1182,6 @@ async function generateDeckInfoFromChunk(
       cleaned,
       raw,
       availableMediaFiles,
-      pageStyle,
       chunkIndex
     );
     console.warn('[Claude] Response truncated at max_tokens', {
@@ -1214,11 +1198,7 @@ async function generateDeckInfoFromChunk(
   const tParse0 = Date.now();
   const parsed = parseDeckResponse(cleaned, raw, chunkIndex);
 
-  const deckInfo = expandCompactDeckInfo(
-    parsed,
-    availableMediaFiles,
-    pageStyle || null
-  );
+  const deckInfo = expandCompactDeckInfo(parsed, availableMediaFiles, null);
   const parseMs = Date.now() - tParse0;
   console.log('[Claude] chunk done', {
     requestId,
@@ -1258,6 +1238,7 @@ export interface PdfImageFallbackContext {
 export interface GenerateDeckInfoOptions {
   isPaying?: boolean;
   userId?: number | null;
+  anonymousPassId?: number | null;
   requestId?: string;
   comprehensive?: boolean;
   pdfImageFallback?: PdfImageFallbackContext;
@@ -1266,15 +1247,35 @@ export interface GenerateDeckInfoOptions {
 
 // Who to bill and which request started it: the pair every [Claude] and
 // [claude-usage] line carries so spend can be joined back to a request (#4198).
+// An anonymous pass holder bills against their pass row instead of a user id.
 export interface SpendAttribution {
   userId?: number | null;
+  anonymousPassId?: number | null;
   requestId?: string;
 }
 
 function spendAttributionOf(
   options: GenerateDeckInfoOptions | undefined
 ): SpendAttribution {
-  return { userId: options?.userId, requestId: options?.requestId };
+  return {
+    userId: options?.userId,
+    anonymousPassId: options?.anonymousPassId,
+    requestId: options?.requestId,
+  };
+}
+
+// The credit-guard subject for a conversion: a signed-in user, an anonymous
+// pass holder, or neither (truly anonymous — the guard then no-ops and the
+// upstream isPaying gate is what keeps AI off).
+function aiSubjectOf(
+  source:
+    | { userId?: number | null; anonymousPassId?: number | null }
+    | undefined
+): { userId: number | null; anonymousPassId: number | null } {
+  return {
+    userId: source?.userId ?? null,
+    anonymousPassId: source?.anonymousPassId ?? null,
+  };
 }
 
 interface ChunkUsage {
@@ -1635,11 +1636,12 @@ async function generateDeckInfoUncached(
       userInstructions,
       onProgress,
       options.userId,
-      options.requestId
+      options.requestId,
+      options.anonymousPassId
     );
   }
 
-  await assertAiBudget(options?.userId);
+  await assertAiBudget(aiSubjectOf(options));
 
   if (isImageOnlyContent(htmlContent)) {
     console.info('[Claude] Skipping conversion: image-only input', {
@@ -1649,7 +1651,6 @@ async function generateDeckInfoUncached(
   }
 
   const tStrip0 = Date.now();
-  const pageStyle = extractStyleFromHtml(htmlContent);
   const strippedContent = stripHtmlBoilerplate(htmlContent);
   console.log('[Claude] stripHtmlBoilerplate', {
     originalBytes: htmlContent.length,
@@ -1693,10 +1694,9 @@ async function generateDeckInfoUncached(
             runChunkWithTruncationRetry(
               `<h1>${chunk.anchor}</h1>\n${chunk.bodyChunk}`,
               (content) =>
-                withAiBudget(options?.userId, () =>
+                withAiBudget(aiSubjectOf(options), () =>
                   generateDeckInfoFromChunk(
                     content,
-                    pageStyle,
                     availableMediaFiles,
                     userInstructions,
                     i,
@@ -1735,7 +1735,6 @@ async function generateDeckInfoUncached(
   if (floorV1Active) {
     const result = await runFloorV1(
       chunks,
-      pageStyle,
       availableMediaFiles,
       userInstructions,
       onProgress,
@@ -1776,10 +1775,9 @@ async function generateDeckInfoUncached(
     chunks.map(
       (chunk, i) => () =>
         runChunkWithTruncationRetry(chunk, (content) =>
-          withAiBudget(options?.userId, () =>
+          withAiBudget(aiSubjectOf(options), () =>
             generateDeckInfoFromChunk(
               content,
-              pageStyle,
               availableMediaFiles,
               userInstructions,
               i,
@@ -1815,7 +1813,6 @@ interface FloorV1Result {
 
 async function runFloorV1(
   chunks: string[],
-  pageStyle: string,
   availableMediaFiles: string[],
   userInstructions: string | undefined,
   onProgress: ((step: string) => void) | undefined,
@@ -1833,10 +1830,9 @@ async function runFloorV1(
     chunks.map(
       (chunk, i) => () =>
         runChunkWithTruncationRetry(chunk, (content) =>
-          withAiBudget(attribution?.userId, () =>
+          withAiBudget(aiSubjectOf(attribution), () =>
             generateDeckInfoFromChunk(
               content,
-              pageStyle,
               availableMediaFiles,
               userInstructions,
               i,
@@ -1891,10 +1887,9 @@ async function runFloorV1(
       targetChunks.map(
         (idx) => () =>
           runChunkWithTruncationRetry(chunks[idx], (content) =>
-            withAiBudget(attribution?.userId, () =>
+            withAiBudget(aiSubjectOf(attribution), () =>
               generateDeckInfoFromChunk(
                 content,
-                pageStyle,
                 availableMediaFiles,
                 combinedInstructions,
                 idx,

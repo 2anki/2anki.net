@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 import { HelmetProvider } from 'react-helmet-async';
@@ -21,6 +21,11 @@ import { CONVERT_LANDING_PAGES } from '../ConvertLandingPage/convertLandingConfi
 
 vi.mock('../../lib/analytics/track', () => ({
   track: vi.fn(),
+}));
+
+let mockUserLocals: unknown = undefined;
+vi.mock('../../lib/hooks/useUserLocals', () => ({
+  useUserLocals: () => ({ data: mockUserLocals, isLoading: false }),
 }));
 
 function renderLandingPage(children: React.ReactElement) {
@@ -383,4 +388,108 @@ describe('LandingPage funnel instrumentation', () => {
       expect(calls).toEqual([['landing_page_viewed', { path: expectedPath }]]);
     }
   );
+});
+
+describe('LandingPage anonymous AI preview toggle', () => {
+  const TOGGLE = 'Generate flashcards with Claude AI';
+
+  afterEach(() => {
+    mockUserLocals = undefined;
+  });
+
+  it('does not show the AI toggle on the AI page when the flag is off', () => {
+    mockUserLocals = { features: { anonymousAiPreview: false } };
+    renderLandingPage(
+      <LandingPage copy={aiFlashcardGeneratorCopy} setErrorMessage={vi.fn()} />
+    );
+    expect(screen.queryByText(TOGGLE)).toBeNull();
+  });
+
+  it('shows the AI toggle on the AI page for an anonymous visitor when the flag is on', () => {
+    mockUserLocals = { features: { anonymousAiPreview: true } };
+    renderLandingPage(
+      <LandingPage copy={aiFlashcardGeneratorCopy} setErrorMessage={vi.fn()} />
+    );
+    expect(screen.getByText(TOGGLE)).toBeInTheDocument();
+  });
+
+  it('hides the AI toggle for a signed-in visitor even with the flag on', () => {
+    mockUserLocals = {
+      user: { id: 7 },
+      features: { anonymousAiPreview: true },
+    };
+    renderLandingPage(
+      <LandingPage copy={aiFlashcardGeneratorCopy} setErrorMessage={vi.fn()} />
+    );
+    expect(screen.queryByText(TOGGLE)).toBeNull();
+  });
+
+  it('does not show the AI toggle on other landing pages even with the flag on', () => {
+    mockUserLocals = { features: { anonymousAiPreview: true } };
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+    expect(screen.queryByText(TOGGLE)).toBeNull();
+  });
+});
+
+describe('LandingPage anonymous AI choice', () => {
+  const CLAUDE_OPTION = 'Claude writes the cards: free sample first';
+  const STRUCTURE_OPTION = "Cards from your file's structure: free, no AI";
+
+  afterEach(() => {
+    mockUserLocals = undefined;
+    globalThis.localStorage.clear();
+  });
+
+  it('shows the two options and the consent text on a format page when the choice flag is on', () => {
+    mockUserLocals = {
+      features: { anonymousAiPreview: true, anonymousAiChoice: true },
+    };
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+    expect(screen.getByLabelText(STRUCTURE_OPTION)).toBeChecked();
+    expect(screen.getByLabelText(CLAUDE_OPTION)).not.toBeChecked();
+    expect(
+      screen.getByText(/Text from your file is sent to Claude \(Anthropic\)/)
+    ).toBeInTheDocument();
+  });
+
+  it('shows nothing extra on a format page when the choice flag is off', () => {
+    mockUserLocals = { features: { anonymousAiPreview: true } };
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+    expect(screen.queryByLabelText(CLAUDE_OPTION)).toBeNull();
+  });
+
+  it('needs the preview flag as well as the choice flag', () => {
+    mockUserLocals = { features: { anonymousAiChoice: true } };
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+    expect(screen.queryByLabelText(CLAUDE_OPTION)).toBeNull();
+  });
+
+  it('keeps AI off until the visitor picks it, then records the page it was picked on', async () => {
+    const { track } = await import('../../lib/analytics/track');
+    mockUserLocals = {
+      features: { anonymousAiPreview: true, anonymousAiChoice: true },
+    };
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+    expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBeNull();
+
+    fireEvent.click(screen.getByLabelText(CLAUDE_OPTION));
+
+    expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
+      'true'
+    );
+    expect(trackMock).toHaveBeenCalledWith('upload_ai_turned_on', {
+      surface: pdfCopy.pathname,
+    });
+  });
+
+  it('is hidden for a signed-in visitor', () => {
+    mockUserLocals = {
+      user: { id: 7 },
+      features: { anonymousAiPreview: true, anonymousAiChoice: true },
+    };
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+    expect(screen.queryByLabelText(CLAUDE_OPTION)).toBeNull();
+  });
 });

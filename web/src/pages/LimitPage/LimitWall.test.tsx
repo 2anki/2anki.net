@@ -89,4 +89,28 @@ describe('LimitWall', () => {
       false
     );
   });
+
+  it('shows the Pro price and interval when one is given', () => {
+    render(
+      <HelmetProvider>
+        <MemoryRouter>
+          <LimitWall
+            order="passes-first"
+            pendingPass={null}
+            onPass={vi.fn()}
+            passError={null}
+            unlimitedHref="/pricing?source=limit-wall"
+            unlimitedPrice="$4.50"
+            onUnlimitedClick={vi.fn()}
+          />
+        </MemoryRouter>
+      </HelmetProvider>
+    );
+    expect(screen.getByText('$4.50 per month, billed monthly')).toBeTruthy();
+  });
+
+  it('shows no price line for Pro without one', () => {
+    renderWall('passes-first');
+    expect(screen.queryByText(/per month, billed monthly/)).toBeNull();
+  });
 });

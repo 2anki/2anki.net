@@ -109,6 +109,29 @@ describe('RegisterForm', () => {
 
       await waitFor(() => expect(hrefValue).toBe('/pricing'));
     });
+
+    it('returns a new signup to the connector authorize URL, query intact', async () => {
+      registerMock.mockResolvedValue({ status: 200 });
+      const authorizeUrl =
+        '/mcp/authorize?client_id=c1&redirect_uri=https%3A%2F%2Fchatgpt.com%2Fcb&state=s1';
+
+      renderForm(authorizeUrl);
+      fillAndSubmit();
+
+      await waitFor(() => expect(hrefValue).toBe(authorizeUrl));
+    });
+
+    it.each(['//evil.com', '/\\evil.com', 'https://evil.com'])(
+      'ignores the unsafe redirect %s and lands on the upload page',
+      async (unsafe) => {
+        registerMock.mockResolvedValue({ status: 200 });
+
+        renderForm(unsafe);
+        fillAndSubmit();
+
+        await waitFor(() => expect(hrefValue).toBe('/upload'));
+      }
+    );
   });
 
   it('fires signup_started once with method email on mount', () => {

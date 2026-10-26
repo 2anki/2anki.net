@@ -34,7 +34,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
-      redirectHost: 'claude.ai',
+      redirectUri: 'https://claude.ai/api/mcp/auth_callback',
       scopes: ['mcp'],
       csrf: 'csrf-token-123',
       fields: {
@@ -57,7 +57,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: '<script>alert(1)</script>',
-      redirectHost: 'claude.ai',
+      redirectUri: 'https://claude.ai/api/mcp/auth_callback',
       scopes: [],
       csrf: 'x',
       fields: {},
@@ -70,7 +70,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
-      redirectHost: 'claude.ai',
+      redirectUri: 'https://claude.ai/api/mcp/auth_callback',
       scopes: ['mcp'],
       csrf: 'x',
       fields: {},
@@ -87,7 +87,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
-      redirectHost: 'claude.ai',
+      redirectUri: 'https://claude.ai/api/mcp/auth_callback',
       scopes: ['unknown-scope'],
       csrf: 'x',
       fields: {},
@@ -99,7 +99,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
-      redirectHost: 'claude.ai',
+      redirectUri: 'https://claude.ai/api/mcp/auth_callback',
       scopes: ['mcp'],
       csrf: 'x',
       fields: {},
@@ -112,7 +112,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
-      redirectHost: 'claude.ai',
+      redirectUri: 'https://claude.ai/api/mcp/auth_callback',
       scopes: ['mcp'],
       csrf: 'x',
       fields: {},
@@ -123,17 +123,86 @@ describe('renderConsentPage', () => {
     expect(html).toContain('>Cancel</button>');
   });
 
+  describe('redirect host', () => {
+    const render = (clientName: string, redirectUri: string) =>
+      renderConsentPage({
+        actionPath: '/authorize',
+        clientName,
+        redirectUri,
+        scopes: ['mcp'],
+        csrf: 'x',
+        fields: {},
+      });
+
+    it('shows the redirect host and no warning for a known host', () => {
+      const html = render('Claude', 'https://claude.ai/api/mcp/auth_callback');
+      expect(html).toContain('<strong>claude.ai</strong>');
+      expect(html).not.toContain("hasn't verified this app");
+      expect(html).toContain('Connect Claude to 2anki');
+    });
+
+    it('treats a loopback client as known, including a brand name', () => {
+      const html = render('Claude Code', 'http://localhost:54321/callback');
+      expect(html).toContain('<strong>localhost</strong>');
+      expect(html).not.toContain("hasn't verified this app");
+      expect(html).toContain('Connect Claude Code to 2anki');
+    });
+
+    it('warns about an unknown host and keeps a neutral client name', () => {
+      const html = render('Notes Helper', 'https://app.example.org/cb');
+      expect(html).toContain('<strong>app.example.org</strong>');
+      expect(html).toContain("hasn't verified this app");
+      expect(html).toContain('Connect Notes Helper to 2anki');
+    });
+
+    it('shows the host instead of a brand name the host does not own', () => {
+      const html = render('ChatGPT', 'https://evil.example.com/cb');
+      expect(html).toContain('Connect evil.example.com to 2anki');
+      expect(html).not.toContain('Connect ChatGPT to 2anki');
+      expect(html).toContain("hasn't verified this app");
+    });
+
+    it('does not accept a lookalike host that only contains a known one', () => {
+      const html = render('Claude', 'https://claude.ai.evil.example/cb');
+      expect(html).toContain('Connect claude.ai.evil.example to 2anki');
+      expect(html).toContain("hasn't verified this app");
+    });
+
+    it.each([
+      'https://claude.ai@evil.example/cb',
+      'http://claude.ai/cb',
+      'not a url',
+    ])('does not verify %s', (uri) => {
+      expect(render('Claude', uri)).toContain("hasn't verified this app");
+    });
+
+    it.each(['http://127.0.0.1:8080/cb', 'http://[::1]:8080/cb'])(
+      'verifies loopback %s',
+      (uri) => {
+        expect(render('Claude Code', uri)).not.toContain(
+          "hasn't verified this app"
+        );
+      }
+    );
+
+    it('treats a client named 2anki on another host as a brand spoof', () => {
+      expect(render('2anki', 'https://evil.example/cb')).toContain(
+        'Connect evil.example to 2anki'
+      );
+    });
+  });
+
   it('shows the redirect host and, for metadata-document clients, the client host', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
-      redirectHost: 'localhost:5000',
+      redirectUri: 'http://localhost:5000/callback',
       clientHost: '<b>claude.ai</b>',
       scopes: ['mcp'],
       csrf: 'x',
       fields: {},
     });
-    expect(html).toContain('you return to <strong>localhost:5000</strong>');
+    expect(html).toContain('<strong>localhost</strong>');
     expect(html).toContain(
       'Claude is identified by <strong>&lt;b&gt;claude.ai&lt;/b&gt;</strong>'
     );
@@ -143,7 +212,7 @@ describe('renderConsentPage', () => {
     const html = renderConsentPage({
       actionPath: '/authorize',
       clientName: 'Claude',
-      redirectHost: 'claude.ai',
+      redirectUri: 'https://claude.ai/api/mcp/auth_callback',
       scopes: ['mcp'],
       csrf: 'x',
       fields: {},

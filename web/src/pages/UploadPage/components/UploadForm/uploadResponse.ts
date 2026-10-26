@@ -1,9 +1,14 @@
+import {
+  parsePdfFallbackHeader,
+  type PdfFallbackMode,
+} from '../../../../lib/upload/pdfFallback';
 import getHeadersFilename from '../../helpers/getHeadersFilename';
 import {
   STRUCTURE_RESCUE_RULES,
   type StructureRescueRule,
 } from '../../../DownloadsPage/helpers/parseStructureRescuedPayload';
 import type {
+  AiPreviewCard,
   BatchResult,
   HeldDeckState,
   ZoneState,
@@ -57,8 +62,11 @@ export interface ConversionSuccessHandlers {
   setProgressWidth: (value: number) => void;
   setBatchResult: (value: BatchResult) => void;
   setHeldDeck: (value: HeldDeckState | null) => void;
+  setAiPreviewCards: (value: AiPreviewCard[] | null) => void;
+  setAiPreviewUnavailable: (value: boolean) => void;
   setZoneState: (value: ZoneState) => void;
   setStructureRescuedRule: (value: StructureRescueRule | null) => void;
+  setPdfFallbackMode: (value: PdfFallbackMode | null) => void;
   /**
    * The body read failed but the server kept a copy: point the download at
    * it and let the form record what happened.
@@ -103,6 +111,30 @@ function isHeldResult(value: unknown): value is HeldResult {
   );
 }
 
+interface AiPreviewResult {
+  kind: 'ai_preview';
+  cards: AiPreviewCard[];
+}
+
+function isAiPreviewCard(value: unknown): value is AiPreviewCard {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { front?: unknown }).front === 'string' &&
+    typeof (value as { back?: unknown }).back === 'string'
+  );
+}
+
+function isAiPreviewResult(value: unknown): value is AiPreviewResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { kind?: unknown }).kind === 'ai_preview' &&
+    Array.isArray((value as { cards?: unknown }).cards) &&
+    (value as { cards: unknown[] }).cards.every(isAiPreviewCard)
+  );
+}
+
 export async function applyConversionSuccess(
   response: Response,
   handlers: ConversionSuccessHandlers
@@ -129,9 +161,16 @@ export async function applyConversionSuccess(
         cardCount: body.cardCount,
         cardsHeldBack: body.cardsHeldBack,
         totalCards: body.totalCards,
+        dayPassCard: body.dayPassCard === true,
       });
       handlers.setProgressWidth(100);
       handlers.setZoneState('heldForSignup');
+      return;
+    }
+    if (isAiPreviewResult(body)) {
+      handlers.setAiPreviewCards(body.cards);
+      handlers.setProgressWidth(100);
+      handlers.setZoneState('aiPreviewGate');
       return;
     }
   }
@@ -164,12 +203,18 @@ export async function applyConversionSuccess(
     parseNonNegativeIntHeader(response.headers, 'X-Cards-Held-Back')
   );
   handlers.setHeldForPlan(response.headers.get('X-Held-For-Plan') === '1');
+  handlers.setAiPreviewUnavailable(
+    response.headers.get('X-AI-Preview-Unavailable') === '1'
+  );
   handlers.setOverSplit(response.headers.get('X-Over-Split') === '1');
   handlers.setCreditsUsed(
     parseNonNegativeIntHeader(response.headers, 'X-Credits-Used')
   );
   handlers.setStructureRescuedRule(
     parseStructureRescuedValue(response.headers.get('X-Structure-Rescued'))
+  );
+  handlers.setPdfFallbackMode(
+    parsePdfFallbackHeader(response.headers.get('X-Pdf-Fallback'))
   );
   // Read before the body: once blob() throws the headers are all we have.
   const downloadKey = response.headers.get('X-Download-Key');

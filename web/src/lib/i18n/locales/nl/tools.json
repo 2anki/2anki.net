@@ -86,6 +86,7 @@
   },
   "photo": {
     "overLimit": "Foto is groter dan de 10 MB-limiet. Probeer een kleinere afbeelding.",
+    "handoffSkipped": "{{loaded}} foto's uit je upload zijn geladen. Niet geladen: {{skipped}}. Voeg ze toe als deze kaarten klaar zijn.",
     "badFormat": "Gebruik een fotoformaat zoals JPEG, PNG, WebP, GIF of HEIC.",
     "readError": "Kon de afbeelding niet lezen",
     "notAvailable": "Foto naar deck is nog niet beschikbaar.",
@@ -467,6 +468,14 @@
     "myDeck": "Mijn deck",
     "removeConnection": "Verbinding verwijderen",
     "addNodeHere": "Node hier toevoegen"
+  },
+  "deckUpload": {
+    "chooseTitle": "Deze zip bevat {{n}} decks. Welke wil je?",
+    "chooseAnother": "Ander bestand kiezen",
+    "printThis": "Dit deck printen",
+    "exportThis": "Dit deck exporteren",
+    "notADeckBody": "Deze zip bevat aantekeningen, geen Anki-deck. 2anki kan er een deck van maken.",
+    "notADeckAction": "Er een deck van maken"
   },
   "apkgCsv": {
     "formAria": ".apkg naar CSV exporteren",

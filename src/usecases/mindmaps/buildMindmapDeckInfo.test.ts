@@ -1,3 +1,5 @@
+import { buildDeckStyle } from '../../lib/parser/buildDeckStyle';
+import CardOption from '../../lib/parser/Settings/CardOption';
 import Note from '../../lib/parser/Note';
 import { buildMindmapDeckInfo } from './buildMindmapDeckInfo';
 
@@ -7,7 +9,7 @@ describe('buildMindmapDeckInfo', () => {
     expect(deckInfo).toHaveLength(1);
     expect(deckInfo[0].name).toBe('My deck');
     expect(deckInfo[0].image).toBe('');
-    expect(deckInfo[0].style).toBeNull();
+    expect(deckInfo[0].style).toBe(buildDeckStyle(new CardOption({})));
     expect(deckInfo[0].settings).toEqual({
       template: 'specialstyle',
       clozeModelName: 'n2a-cloze',

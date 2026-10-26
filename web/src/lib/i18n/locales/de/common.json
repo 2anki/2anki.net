@@ -172,6 +172,21 @@
     },
     "form": {
       "makingDeck": "Dein Stapel wird erstellt",
+      "pdfChoiceTitle": "In diesem PDF steckt kein lesbarer Text",
+      "pdfChoiceBodyNoText": "Es sind wohl gescannte Seiten oder Folien, die als Bilder gespeichert sind. Wähle, was aus den Karten werden soll.",
+      "pdfChoiceBodyLocked": "Dieses PDF ist geschützt, deshalb können wir den Text nicht lesen. Wähle, was aus den Karten werden soll.",
+      "pdfChoiceBodyOverSplit": "Aus dem Text würden sehr viele winzige Karten entstehen. Wähle stattdessen, was aus den Karten werden soll.",
+      "pdfChoicePairs": "Zwei Seiten pro Karte",
+      "pdfChoicePairsHint": "Seite 1 ist die Vorderseite, Seite 2 die Rückseite.",
+      "pdfChoiceSingle": "Eine Karte pro Seite",
+      "pdfChoiceSingleHint": "Jede Seite ist eine Vorderseite. Die Antworten ergänzt du in Anki.",
+      "pdfChoiceRemember": "Meine Wahl auf diesem Gerät merken",
+      "pdfFallbackPairsNote": "Dieses PDF wurde aus Seitenbildern erstellt, deshalb wurden je zwei Seiten zu einer Karte.",
+      "pdfFallbackSingleNote": "Dieses PDF wurde aus Seitenbildern erstellt, deshalb wurde jede Seite zu einer Karte.",
+      "pdfFallbackAskAgain": "Nächstes Mal fragen",
+      "waitingForDeck": "Deine Verbindung ist abgebrochen, aber wir erstellen deinen Stapel weiter. Lass diesen Tab offen, dann erscheint er hier.",
+      "waitingForDeckSignedIn": "Deine Verbindung ist abgebrochen, aber wir erstellen deinen Stapel weiter. Lass diesen Tab offen oder such ihn später unter Meine Stapel.",
+      "stopWaiting": "Nicht mehr warten",
       "fetching": "{{filename}} wird von {{source}} geladen",
       "deckReady": "Dein Stapel ist fertig",
       "savedToDownloads": "{{deckName}} wurde in deinen Downloads gespeichert",
@@ -198,6 +213,9 @@
       "seeCommonProblemsSuffix": " für die Formate, die funktionieren.",
       "downloadEmpty": "Leeren Stapel herunterladen",
       "tryDifferent": "Eine andere Datei versuchen",
+      "resumeContinueBody": "{{filename}} wurde nicht fertig hochgeladen.",
+      "resumeContinue": "Fortsetzen",
+      "resumeDismiss": "Schließen",
       "imagesTitle": "Foto zu Stapel macht aus Bildern Karten",
       "imagesBody": "Hier gibt es keinen Text zum Lesen, also gab es nichts zu konvertieren. Foto zu Stapel liest dein Bild mit KI und entwirft Karten, die du vor dem Download prüfst.",
       "imagesUnzip": "Foto zu Stapel nimmt die Fotos selbst, nicht die Zip-Datei. Entpacke sie und zieh die Fotos hinein.",
@@ -210,6 +228,9 @@
       "apkgRejectSecondaryPrefix": "Schon deiner? Öffne ihn direkt in Anki, oder ",
       "apkgRejectPrintLink": "drucke ihn als PDF",
       "apkgRejectSecondarySuffix": ".",
+      "apkgHandoffBody": "Du kannst ihn drucken oder seine Karten als Tabelle exportieren, ohne die Datei erneut auszuwählen.",
+      "apkgHandoffPrint": "Als PDF drucken",
+      "apkgHandoffCsv": "Als CSV exportieren",
       "errorTitle": "Etwas ist schiefgelaufen",
       "tryAgain": "Erneut versuchen",
       "changeSource": "← Quelle ändern",
@@ -262,8 +283,8 @@
       "networkErrorSmallTitle": "Deine Datei konnte nicht hochgeladen werden",
       "networkErrorSmallBody": "Die Verbindung wurde unterbrochen, bevor die Datei fertig war. Überprüfe deine Verbindung und versuche es erneut.",
       "networkChooseDifferent": "Andere Datei wählen",
-      "unreadableFileTitle": "Diese Datei hat sich geändert, seit du sie ausgewählt hast",
-      "unreadableFileBody": "Der Browser kann die gewählte Version nicht mehr lesen – sie wurde nach der Auswahl gespeichert, verschoben oder gelöscht. Wähle die Datei erneut, um die aktuelle Version hochzuladen.",
+      "unreadableFileTitle": "Wir konnten diese Datei nicht lesen",
+      "unreadableFileBody": "Dein Browser konnte die Datei nicht vollständig lesen. Liegt sie in OneDrive, iCloud Drive oder Google Drive, öffne sie einmal, damit sie auf dein Gerät geladen wird, und wähle sie dann erneut. Hast du sie nach der Auswahl gespeichert oder verschoben, wähle sie ebenfalls erneut.",
       "unreadableChooseAgain": "Datei erneut wählen",
       "emptyFileTitle": "Diese Datei ist leer",
       "emptyFileBody": "Sie hat 0 Bytes, also gibt es nichts umzuwandeln. Liegt sie in OneDrive, iCloud Drive oder Google Drive, öffne sie einmal, damit sie auf deinen Computer geladen wird, und wähle sie dann erneut.",
@@ -295,6 +316,8 @@
       "rescueBullets_other": "{{n}} Karten aus den Aufzählungspunkten erstellen",
       "rescueGuess_one": "{{n}} Karte aus den Frage- und Antwortzeilen erstellen",
       "rescueGuess_other": "{{n}} Karten aus den Frage- und Antwortzeilen erstellen",
+      "rescueParagraphs_one": "{{n}} Karte aus den Absätzen erstellen",
+      "rescueParagraphs_other": "{{n}} Karten aus den Absätzen erstellen",
       "readingLead": "Wir haben {{parts}} gelesen.",
       "readingNoCards": "Nichts davon hat die Form einer Karte: keine Toggles und keine Frage-Antwort-Paare.",
       "readingNoText": "Diese Datei enthält keinen Text, den wir lesen können. Lade die Datei hoch, in der deine Notizen stehen.",
@@ -400,6 +423,18 @@
         "title": "Unterstützung für Leseformate",
         "body": "Kindle-Markierungen aus My Clippings.txt und DRM-freie EPUBs werden unterstützt. Um deine Kindle-Markierungen zu exportieren, schließ den Kindle per USB an und kopiere die Datei My Clippings.txt aus dem Ordner „documents“ des Geräts.",
         "continue": "Karten aus diesen Markierungen erstellen"
+      },
+      "shortcut": {
+        "title": "Das ist eine Verknüpfung, nicht die Datei",
+        "body": "Das ist eine Verknüpfung zu deiner Datei, nicht die Datei selbst. Wähle die Datei, auf die sie zeigt."
+      },
+      "internetShortcut": {
+        "title": "Das ist ein Link, keine Datei",
+        "body": "Das ist eine Internetverknüpfung, ein gespeicherter Link. Öffne den Link, lade die Datei herunter (PDF, Word, HTML oder einen Notion-Export) und lade diese hoch. Eine Notion-Seite konvertierst du direkt über den Notion-Tab."
+      },
+      "goodnotes": {
+        "title": "GoodNotes-Notizbücher können nicht direkt gelesen werden",
+        "body": "Exportiere das Notizbuch in GoodNotes als PDF (Teilen, Exportieren, PDF) und lade stattdessen dieses PDF hoch. 2anki macht aus PDFs Karten."
       }
     }
   },
@@ -652,6 +687,7 @@
       "deleteNamed": "{{name}} löschen",
       "cancel": "Abbrechen",
       "cancelNamed": "{{name}} abbrechen",
+      "cannotStop": "Lässt sich nach dem Start nicht stoppen. Meist in ein paar Minuten fertig.",
       "remove": "Entfernen",
       "removeNamed": "{{name}} entfernen",
       "restart": "Neu starten",

@@ -65,9 +65,8 @@ The following templates contain an upgrade or upsell pitch — each is subject t
 2. `inactivity-warning.html` — uses `{{unsubscribeUrl}}`; send path: `SendInactivityWarningsUseCase`
 3. `trial-ended.html` — uses `{{unsubscribeUrl}}`; send path: `SendTrialEndedEmailsUseCase`
 4. `abandoned-checkout-recovery.html` — uses `{{unsubscribeUrl}}`; send path: `SendAbandonedCheckoutRecoveryOnExpiryUseCase` (triggered by the `checkout.session.expired` webhook)
-5. `pass-winback.html` — uses `{{unsubscribeUrl}}`; send path: `SendPassWinbackUseCase` (manual ops command)
-6. `pass-ending.html` — uses `{{unsubscribeUrl}}`; send path: `SendPassEndingEmailsUseCase` via `schedulePassEndingEmails` (every 6 h, Week/Semester passes ending within 24 h). Not gated by `outbound_campaign_emails`: the audience paid within the last 120 days, so the bounce risk that flag guards against does not apply; it still excludes `marketing_opt_out` and hard-suppressed addresses.
-7. `price-lock-in.html` — uses `{{unsubscribeUrl}}`; send path: removed (the one-time ops send command was retired after the 21 Jun 2026 lock-in window closed). Template retained for reference; no active sender. If revived, the send path must exclude `marketing_opt_out` and suppressed recipients.
+5. `pass-ending.html` — uses `{{unsubscribeUrl}}`; send path: `SendPassEndingEmailsUseCase` via `schedulePassEndingEmails` (every 6 h, Week/Semester passes ending within 24 h). Not gated by `outbound_campaign_emails`: the audience paid within the last 120 days, so the bounce risk that flag guards against does not apply; it still excludes `marketing_opt_out` and hard-suppressed addresses.
+6. `price-lock-in.html` — uses `{{unsubscribeUrl}}`; send path: removed (the one-time ops send command was retired after the 21 Jun 2026 lock-in window closed). Template retained for reference; no active sender. If revived, the send path must exclude `marketing_opt_out` and suppressed recipients.
 
 The transactional templates (magic-link, reset, convert, convert-link, subscription-cancelled, subscription-scheduled-cancellation) are not marketing emails and do not need the unsubscribe footer.
 

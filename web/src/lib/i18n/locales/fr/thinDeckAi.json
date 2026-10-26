@@ -1,0 +1,16 @@
+{
+  "ariaLabel": "Aperçu de ce que Claude écrirait à partir de ce fichier",
+  "lead": "Claude peut lire ce fichier et en tirer plus de cartes.",
+  "cta": "Aperçu des cartes que Claude écrirait",
+  "consent": "Le texte de ton fichier est envoyé à Claude (Anthropic) pour écrire l'échantillon. Rien d'autre n'est partagé et rien n'est conservé.",
+  "loading": "Lecture de ton fichier",
+  "heading": "Un échantillon que Claude a rédigé à partir du début de ton fichier",
+  "front": "Recto",
+  "back": "Verso",
+  "unlockPaying": "Créer le paquet IA complet",
+  "unlockPayingNote": "Utilise tes crédits IA.",
+  "unlockFree": "Obtiens toutes les cartes : Day Pass {{price}}",
+  "unlockFreeNote": "Dure 24 heures, sans abonnement. Le paquet que tu as déjà reste gratuit à télécharger.",
+  "unavailable": "Impossible de créer un aperçu de ce fichier pour le moment. Le paquet que tu as déjà est toujours prêt à télécharger.",
+  "checkoutError": "Impossible de démarrer le paiement. Réessaie ou écris à support@2anki.net."
+}

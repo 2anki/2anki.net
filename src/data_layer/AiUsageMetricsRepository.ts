@@ -32,6 +32,15 @@ export interface IAiSpendReader {
   eventCountSince(name: string, userId: number, since: Date): Promise<number>;
 }
 
+export interface IAnonymousPassSpendReader {
+  anonymousPassCostSince(anonymousPassId: number, since: Date): Promise<number>;
+  anonymousPassEventCountSince(
+    name: string,
+    anonymousPassId: number,
+    since: Date
+  ): Promise<number>;
+}
+
 export interface IAiRequestCostReader {
   costByRequestId(
     userId: number,
@@ -63,7 +72,11 @@ export function mapAiUsageGroupRows(rows: AiUsageGroupRow[]): AiUsageGroup[] {
 const TOP_USER_ROWS = 20;
 
 export class AiUsageMetricsRepository
-  implements IAiUsageMetricsRepository, IAiSpendReader, IAiRequestCostReader
+  implements
+    IAiUsageMetricsRepository,
+    IAiSpendReader,
+    IAnonymousPassSpendReader,
+    IAiRequestCostReader
 {
   constructor(private readonly database: Knex) {}
 
@@ -123,14 +136,53 @@ export class AiUsageMetricsRepository
       .limit(TOP_USER_ROWS);
   }
 
-  buildUserCostQuery(userId: number, since: Date): Knex.QueryBuilder {
+  // Spend made on a pass before its buyer had an account is recorded against
+  // the pass id. Once the account claims that pass, the spend is the
+  // account's too, or claiming a pass would hand its allowance back. The
+  // claimed ids are read first so both halves of the OR stay index scans.
+  buildUserCostQuery(
+    userId: number,
+    since: Date,
+    claimedPassIds: number[] = []
+  ): Knex.QueryBuilder {
+    const scoped =
+      claimedPassIds.length === 0
+        ? this.baseQuery(since).where('user_id', userId)
+        : this.baseQuery(since).where((scope) =>
+            scope
+              .where('user_id', userId)
+              .orWhereIn('anonymous_pass_id', claimedPassIds)
+          );
+    return scoped.select(
+      this.database.raw(
+        "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
+      )
+    );
+  }
+
+  buildAnonymousPassCostQuery(
+    anonymousPassId: number,
+    since: Date
+  ): Knex.QueryBuilder {
     return this.baseQuery(since)
-      .where('user_id', userId)
+      .where('anonymous_pass_id', anonymousPassId)
       .select(
         this.database.raw(
           "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
         )
       );
+  }
+
+  buildAnonymousPassEventCountQuery(
+    name: string,
+    anonymousPassId: number,
+    since: Date
+  ): Knex.QueryBuilder {
+    return this.database('events')
+      .where('name', name)
+      .where('anonymous_pass_id', anonymousPassId)
+      .where('created_at', '>=', since)
+      .count('* as count');
   }
 
   buildCostByRequestQuery(
@@ -195,10 +247,40 @@ export class AiUsageMetricsRepository
   }
 
   async userCostSince(userId: number, since: Date): Promise<number> {
-    const row = (await this.buildUserCostQuery(userId, since).first()) as
-      | { cost_usd: number | string }
-      | undefined;
+    const claimed = (await this.database('anonymous_passes')
+      .select('id')
+      .where('claimed_by_user_id', userId)) as { id: number | string }[];
+    const claimedPassIds = claimed.map((row) => Number(row.id));
+    const row = (await this.buildUserCostQuery(
+      userId,
+      since,
+      claimedPassIds
+    ).first()) as { cost_usd: number | string } | undefined;
     return Number(row?.cost_usd ?? 0);
+  }
+
+  async anonymousPassCostSince(
+    anonymousPassId: number,
+    since: Date
+  ): Promise<number> {
+    const row = (await this.buildAnonymousPassCostQuery(
+      anonymousPassId,
+      since
+    ).first()) as { cost_usd: number | string } | undefined;
+    return Number(row?.cost_usd ?? 0);
+  }
+
+  async anonymousPassEventCountSince(
+    name: string,
+    anonymousPassId: number,
+    since: Date
+  ): Promise<number> {
+    const row = (await this.buildAnonymousPassEventCountQuery(
+      name,
+      anonymousPassId,
+      since
+    ).first()) as { count: number | string } | undefined;
+    return Number(row?.count ?? 0);
   }
 
   async costByRequestId(

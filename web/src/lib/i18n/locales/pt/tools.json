@@ -86,6 +86,7 @@
   },
   "photo": {
     "overLimit": "A foto passa do limite de 10 MB. Tente uma imagem menor.",
+    "handoffSkipped": "Carregamos {{loaded}} fotos do seu envio. Não carregadas: {{skipped}}. Adicione-as depois de fazer estes cartões.",
     "badFormat": "Use um formato de foto como JPEG, PNG, WebP, GIF ou HEIC.",
     "readError": "Não foi possível ler a imagem",
     "notAvailable": "O foto para baralho ainda não está disponível.",
@@ -467,6 +468,14 @@
     "myDeck": "Meu baralho",
     "removeConnection": "Remover conexão",
     "addNodeHere": "Adicionar nó aqui"
+  },
+  "deckUpload": {
+    "chooseTitle": "Este zip tem {{n}} baralhos. Qual você quer?",
+    "chooseAnother": "Escolher outro arquivo",
+    "printThis": "Imprimir este baralho",
+    "exportThis": "Exportar este baralho",
+    "notADeckBody": "Este zip tem anotações, não um baralho do Anki. O 2anki pode criar um baralho com elas.",
+    "notADeckAction": "Criar um baralho com ele"
   },
   "apkgCsv": {
     "formAria": "Exportar .apkg para CSV",

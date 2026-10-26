@@ -9,6 +9,8 @@ import { syncLogStatus } from '../../lib/ankify/syncLogStatus';
 import { INotionRepository } from '../../data_layer/NotionRespository';
 import { track } from '../../services/events/track';
 
+import { NOTION_RECONNECT_NEEDED } from '../../lib/ankify/notionReconnectNeeded';
+
 export type OnTokenInvalidFn = (owner: number) => Promise<void>;
 import {
   AnkifyClient,
@@ -301,6 +303,9 @@ export class SyncNotionPageToRacUseCase {
           await this.notionRepo.markTokenInvalid(input.owner);
         }
         await this.subscriptions.setEnabled(subscription.id, false);
+        await this.subscriptions.recordPoll(subscription.id, {
+          error: NOTION_RECONNECT_NEEDED,
+        });
       }
       throw error;
     } finally {

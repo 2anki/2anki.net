@@ -47,7 +47,7 @@ const AnkifyWebhookRouter = () => {
         notionRepo,
         usersRepo,
         getDefaultEmailService()
-      ).execute(owner),
+      ).execute(owner, 'ankify'),
     makeAnkifyTemplateOverridesProvider(new SettingsRepository(db)),
     undefined,
     new UnsupportedNotionBlockRepository(db)

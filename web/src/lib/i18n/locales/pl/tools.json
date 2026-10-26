@@ -88,6 +88,7 @@
   },
   "photo": {
     "overLimit": "Zdjęcie przekracza limit 10 MB. Spróbuj z mniejszym obrazem.",
+    "handoffSkipped": "Wczytane zdjęcia: {{loaded}}. Niewczytane: {{skipped}}. Dodaj je, gdy zrobisz te fiszki.",
     "badFormat": "Użyj formatu zdjęcia takiego jak JPEG, PNG, WebP, GIF lub HEIC.",
     "readError": "Nie udało się odczytać obrazu",
     "notAvailable": "Zdjęcie na talię nie jest jeszcze dostępne.",
@@ -501,6 +502,14 @@
     "myDeck": "Moja talia",
     "removeConnection": "Usuń połączenie",
     "addNodeHere": "Dodaj węzeł tutaj"
+  },
+  "deckUpload": {
+    "chooseTitle": "Ten plik zip zawiera {{n}} talie. Którą wybierasz?",
+    "chooseAnother": "Wybierz inny plik",
+    "printThis": "Drukuj tę talię",
+    "exportThis": "Eksportuj tę talię",
+    "notADeckBody": "Ten plik zip zawiera notatki, a nie talię Anki. 2anki może zrobić z nich talię.",
+    "notADeckAction": "Zrób z niego talię"
   },
   "apkgCsv": {
     "formAria": "Eksportuj .apkg do CSV",

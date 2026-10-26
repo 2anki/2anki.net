@@ -1,3 +1,4 @@
+import { AI_FILE_CONCURRENCY } from '../../lib/claude/aiFileConcurrency';
 import { vi, type MockInstance } from 'vitest';
 import fs from 'fs';
 import * as trackModule from '../../services/events/track';
@@ -681,24 +682,21 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
   });
 
   function makeMultiFileTask(): UploadGenerationTask {
+    return makeAiTask(['chapter.html', 'transcript.html']);
+  }
+
+  function makeAiTask(names: string[]): UploadGenerationTask {
     return {
       paying: true,
-      files: [
+      files: names.map((name) =>
         makeFile({
-          originalname: 'chapter.html',
-          filename: 'chapter.html',
-          key: 'chapter.html',
+          originalname: name,
+          filename: name,
+          key: name,
           path: '',
-          buffer: Buffer.from('<p>chapter</p>'),
-        }),
-        makeFile({
-          originalname: 'transcript.html',
-          filename: 'transcript.html',
-          key: 'transcript.html',
-          path: '',
-          buffer: Buffer.from('<p>transcript</p>'),
-        }),
-      ],
+          buffer: Buffer.from(`<p>${name}</p>`),
+        })
+      ),
       settings: makeClaudeSettings(),
       workspace: {} as Workspace,
       enqueuedAt: Date.now(),
@@ -706,13 +704,43 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
     };
   }
 
-  it('stops at the first failing file so later AI files spend nothing', async () => {
+  it('stops queued AI files from starting after a file fails', async () => {
     mockPrepareDeck.mockRejectedValueOnce(new Error('chapter broke'));
+    const names = ['a.html', 'b.html', 'c.html', 'd.html', 'e.html'];
 
-    const result = await runUploadGenerationInWorker(makeMultiFileTask());
+    const result = await runUploadGenerationInWorker(makeAiTask(names));
 
     expect(result.ok).toBe(false);
-    expect(mockPrepareDeck).toHaveBeenCalledTimes(1);
+    expect(mockPrepareDeck).toHaveBeenCalledTimes(AI_FILE_CONCURRENCY);
+  });
+
+  it('converts AI files side by side on one shared dedup state', async () => {
+    let releaseFirst: () => void = () => {};
+    const started: string[] = [];
+    const states: unknown[] = [];
+    mockPrepareDeck.mockImplementation(async (input) => {
+      started.push(input.name);
+      states.push(input.crossFileDedup);
+      if (input.name === 'a.html') {
+        await new Promise<void>((resolve) => {
+          releaseFirst = resolve;
+        });
+      }
+      return { name: input.name, deck: [], cardCount: 1 } as never;
+    });
+
+    const run = runUploadGenerationInWorker(
+      makeAiTask(['a.html', 'b.html', 'c.html'])
+    );
+    await vi.waitFor(() =>
+      expect(started).toEqual(['a.html', 'b.html', 'c.html'])
+    );
+    releaseFirst();
+    const result = await run;
+
+    expect(result.ok).toBe(true);
+    expect(states[0]).toBeDefined();
+    expect(new Set(states).size).toBe(1);
   });
 
   it('threads one dedup state across loose files and emits the suppressed count', async () => {

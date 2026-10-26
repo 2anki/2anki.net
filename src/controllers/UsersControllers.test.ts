@@ -63,6 +63,10 @@ vi.mock('../lib/misc/hashToken', () => ({
 
 vi.mock('../services/events/track', () => ({ track: vi.fn() }));
 
+vi.mock('../lib/featureFlags/getFeatureFlag', () => ({
+  getFeatureFlag: vi.fn().mockResolvedValue(false),
+}));
+
 const mockGetById = vi.fn().mockResolvedValue({ patreon: false });
 
 vi.mock('../data_layer/UsersRepository', () => {
@@ -109,6 +113,7 @@ import OauthIdentitiesRepository from '../data_layer/OauthIdentitiesRepository';
 import NotionRepository from '../data_layer/NotionRespository';
 import { SESSION_MAX_AGE_MS } from '../shared/session';
 import { track } from '../services/events/track';
+import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 
 const trackMock = track as Mock;
 
@@ -2723,6 +2728,121 @@ describe('UsersController cookie options — 30-day persistent session', () => {
 });
 
 describe('UsersController.getLocals', () => {
+  it('surfaces the anonymous Day Pass card flag to anonymous callers', async () => {
+    vi.mocked(getFeatureFlag).mockResolvedValueOnce(true);
+    const userService = {
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UsersService;
+    const authService = {
+      getUserFrom: vi.fn().mockResolvedValue(null),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const req = { cookies: {} } as unknown as express.Request;
+    const res = {
+      locals: {},
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
+
+    await controller.getLocals(req, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.features.anonymousDayPassCard).toBe(true);
+    expect(getFeatureFlag).toHaveBeenCalledWith(
+      'anonymous_day_pass_card',
+      false
+    );
+  });
+
+  it('reads the limit wall Pro price flag, off by default', async () => {
+    vi.mocked(getFeatureFlag).mockImplementation(async (key: string) =>
+      key === 'limit_wall_pro_price' ? true : false
+    );
+    const userService = {
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UsersService;
+    const authService = {
+      getUserFrom: vi.fn().mockResolvedValue(null),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const req = { cookies: {} } as unknown as express.Request;
+    const res = {
+      locals: {},
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
+
+    await controller.getLocals(req, res);
+
+    const { features } = res.json.mock.calls[0][0];
+    expect(features.limitWallProPrice).toBe(true);
+    expect(features.thinDeckAiOffer).toBe(false);
+    expect(features.anonymousDayPassCard).toBe(false);
+    expect(getFeatureFlag).toHaveBeenCalledWith('limit_wall_pro_price', false);
+    vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
+  });
+
+  it('reads the anonymous AI choice flag, off by default', async () => {
+    vi.mocked(getFeatureFlag).mockImplementation(async (key: string) =>
+      key === 'anonymous_ai_choice' ? true : false
+    );
+    const userService = {
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UsersService;
+    const authService = {
+      getUserFrom: vi.fn().mockResolvedValue(null),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const req = { cookies: {} } as unknown as express.Request;
+    const res = {
+      locals: {},
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
+
+    await controller.getLocals(req, res);
+
+    const { features } = res.json.mock.calls[0][0];
+    expect(features.anonymousAiChoice).toBe(true);
+    expect(features.anonymousAiPreview).toBe(false);
+    expect(getFeatureFlag).toHaveBeenCalledWith('anonymous_ai_choice', false);
+    vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
+  });
+
+  it('answers with the Day Pass card off when the flag read fails', async () => {
+    vi.mocked(getFeatureFlag).mockRejectedValueOnce(new Error('db down'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const userService = {
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UsersService;
+    const authService = {
+      getUserFrom: vi.fn().mockResolvedValue(null),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const req = { cookies: {} } as unknown as express.Request;
+    const res = {
+      locals: {},
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
+
+    await controller.getLocals(req, res);
+
+    expect(res.json.mock.calls[0][0].features.anonymousDayPassCard).toBe(false);
+  });
+
   it('includes email_verified in the user object', async () => {
     const mockUser = {
       id: 1,
@@ -3535,5 +3655,278 @@ describe('UsersController.register ad-click attribution', () => {
         attribution: { gclid: 'Cj0abc', utm_source: 'google' },
       })
     );
+  });
+});
+
+describe('UsersController — sign-in returns a connector to the authorize screen', () => {
+  const AUTHORIZE_URL =
+    '/mcp/authorize?response_type=code&client_id=c1&redirect_uri=https%3A%2F%2Fchatgpt.com%2Fcb&state=s1&code_challenge=abc&code_challenge_method=S256';
+  const RETURN_COOKIE = 'mcp_login_return';
+
+  const MockedNotionRepo = NotionRepository as MockedClass<
+    typeof NotionRepository
+  >;
+  const MockedOauthIdentitiesRepo = OauthIdentitiesRepository as MockedClass<
+    typeof OauthIdentitiesRepository
+  >;
+
+  beforeEach(() => {
+    MockedNotionRepo.prototype.getNotionData = vi
+      .fn()
+      .mockResolvedValue({ token: 'stored-tok', owner: 5 });
+    MockedNotionRepo.prototype.saveNotionToken = vi
+      .fn()
+      .mockResolvedValue(undefined);
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
+      .fn()
+      .mockResolvedValue(null);
+    MockedOauthIdentitiesRepo.prototype.link = vi
+      .fn()
+      .mockResolvedValue(undefined);
+    MockedOauthIdentitiesRepo.prototype.updateRefreshToken = vi
+      .fn()
+      .mockResolvedValue(undefined);
+  });
+
+  const existingUser = { id: 5, email: 'u@example.com' };
+
+  const buildSigninController = () => {
+    const userService = {
+      getUserFrom: vi.fn().mockResolvedValue(existingUser),
+      getUserById: vi.fn().mockResolvedValue(existingUser),
+      verifyMagicToken: vi
+        .fn()
+        .mockResolvedValue({ userId: 5, purpose: 'login' }),
+      markEmailVerified: vi.fn().mockResolvedValue(1),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+    } as unknown as UsersService;
+    const authService = {
+      isValidLogin: vi.fn().mockReturnValue(true),
+      comparePassword: vi.fn().mockReturnValue(true),
+      newJWTToken: vi.fn().mockResolvedValue('session-jwt'),
+      persistToken: vi.fn().mockResolvedValue(undefined),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
+      loginWithGoogle: vi
+        .fn()
+        .mockResolvedValue({ ok: true, email: 'u@example.com', name: 'U' }),
+      loginWithApple: vi.fn().mockResolvedValue({
+        ok: true,
+        subject: 'apple-sub-001',
+        email: 'u@example.com',
+        emailVerified: true,
+      }),
+      loginWithNotion: vi.fn().mockResolvedValue({
+        email: 'u@example.com',
+        name: 'U',
+        accessData: {},
+      }),
+    } as unknown as AuthenticationService;
+    return new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+  };
+
+  const buildSigninRes = () => {
+    const json = vi.fn();
+    const res = {
+      json,
+      cookie: vi.fn(),
+      clearCookie: vi.fn(),
+      redirect: vi.fn(),
+    } as unknown as express.Response & {
+      json: Mock;
+      cookie: Mock;
+      clearCookie: Mock;
+      redirect: Mock;
+      status: Mock;
+    };
+    res.status = vi.fn().mockReturnValue(res);
+    return res;
+  };
+
+  const passwordLogin = async (req: Partial<express.Request>) => {
+    const res = buildSigninRes();
+    await buildSigninController().login(
+      {
+        body: { email: 'u@example.com', password: SAMPLE_PW },
+        query: {},
+        cookies: {},
+        ...req,
+      } as unknown as express.Request,
+      res,
+      vi.fn()
+    );
+    return res;
+  };
+
+  it('password login returns the full authorize URL named by ?redirect=', async () => {
+    const res = await passwordLogin({ query: { redirect: AUTHORIZE_URL } });
+
+    expect(res.json).toHaveBeenCalledWith({
+      token: 'session-jwt',
+      redirect: AUTHORIZE_URL,
+    });
+  });
+
+  it('password login falls back to the return cookie and clears it', async () => {
+    const res = await passwordLogin({
+      cookies: { [RETURN_COOKIE]: AUTHORIZE_URL },
+    });
+
+    expect(res.json).toHaveBeenCalledWith({
+      token: 'session-jwt',
+      redirect: AUTHORIZE_URL,
+    });
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      RETURN_COOKIE,
+      expect.objectContaining({ path: '/' })
+    );
+  });
+
+  it('an explicit ?redirect= wins over the return cookie, which is still cleared', async () => {
+    const res = await passwordLogin({
+      query: { redirect: '/downloads' },
+      cookies: { [RETURN_COOKIE]: AUTHORIZE_URL },
+    });
+
+    expect(res.json).toHaveBeenCalledWith({
+      token: 'session-jwt',
+      redirect: '/downloads',
+    });
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      RETURN_COOKIE,
+      expect.anything()
+    );
+  });
+
+  it('ignores a tampered return cookie and lands as usual', async () => {
+    const res = await passwordLogin({
+      cookies: { [RETURN_COOKIE]: '//evil.com/mcp/authorize' },
+    });
+
+    expect(res.json).toHaveBeenCalledWith({
+      token: 'session-jwt',
+      redirect: '/notion',
+    });
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      RETURN_COOKIE,
+      expect.anything()
+    );
+  });
+
+  it('Google sign-in returns to the authorize URL from the return cookie', async () => {
+    const res = buildSigninRes();
+
+    await buildSigninController().loginWithGoogle(
+      {
+        query: { code: 'gauth-code' },
+        cookies: { [RETURN_COOKIE]: AUTHORIZE_URL },
+        headers: {},
+      } as unknown as express.Request,
+      res
+    );
+
+    expect(res.redirect).toHaveBeenCalledWith(AUTHORIZE_URL);
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      RETURN_COOKIE,
+      expect.anything()
+    );
+  });
+
+  it('Apple sign-in (cross-site form POST) returns to the authorize URL from the return cookie', async () => {
+    const res = buildSigninRes();
+
+    await buildSigninController().loginWithApple(
+      {
+        body: { state: 'apple-state', code: 'apple-code' },
+        cookies: {
+          apple_login_state: 'apple-state',
+          [RETURN_COOKIE]: AUTHORIZE_URL,
+        },
+        headers: {},
+        query: {},
+      } as unknown as express.Request,
+      res
+    );
+
+    expect(res.redirect).toHaveBeenCalledWith(AUTHORIZE_URL);
+  });
+
+  it('Notion sign-in returns to the authorize URL instead of /notion', async () => {
+    const res = buildSigninRes();
+
+    await buildSigninController().loginWithNotion(
+      {
+        query: { code: 'notion-code' },
+        cookies: { [RETURN_COOKIE]: AUTHORIZE_URL },
+        headers: {},
+      } as unknown as express.Request,
+      res
+    );
+
+    expect(res.redirect).toHaveBeenCalledWith(AUTHORIZE_URL);
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      RETURN_COOKIE,
+      expect.anything()
+    );
+  });
+
+  it('Notion sign-in still lands on /notion without a return cookie', async () => {
+    const res = buildSigninRes();
+
+    await buildSigninController().loginWithNotion(
+      {
+        query: { code: 'notion-code' },
+        cookies: {},
+        headers: {},
+      } as unknown as express.Request,
+      res
+    );
+
+    expect(res.redirect).toHaveBeenCalledWith('/notion');
+    expect(res.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it('a magic link login returns the authorize URL from the return cookie', async () => {
+    const res = buildSigninRes();
+
+    await buildSigninController().verifyMagicLink(
+      {
+        params: { token: 'valid-tok' },
+        query: {},
+        cookies: { [RETURN_COOKIE]: AUTHORIZE_URL },
+      } as unknown as express.Request,
+      res,
+      vi.fn()
+    );
+
+    expect(res.json).toHaveBeenCalledWith({
+      token: 'session-jwt',
+      redirect: AUTHORIZE_URL,
+    });
+  });
+
+  it('GET /login for a signed-in user sends a connector straight back to authorize', async () => {
+    const controller = new UsersController(
+      {} as UsersService,
+      {
+        getUserFrom: vi.fn().mockResolvedValue(existingUser),
+      } as unknown as AuthenticationService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const res = buildSigninRes();
+
+    await controller.checkUser(
+      {
+        query: { redirect: AUTHORIZE_URL },
+        body: {},
+        cookies: { token: 'session-jwt' },
+      } as unknown as express.Request,
+      res
+    );
+
+    expect(res.redirect).toHaveBeenCalledWith(AUTHORIZE_URL);
   });
 });

@@ -128,6 +128,18 @@ describe('withRetry', () => {
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
+  it.each([520, 522, 524])(
+    'retries a Cloudflare %i in front of Notion',
+    async (status) => {
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(makeUnknownHttpError(status))
+        .mockResolvedValueOnce('ok');
+      await withRetry(fn, { maxAttempts: 3, baseDelayMs: 1 });
+      expect(fn).toHaveBeenCalledTimes(2);
+    }
+  );
+
   it('does NOT retry a 4xx UnknownHTTPResponseError', async () => {
     const err = makeUnknownHttpError(400);
     const fn = vi.fn().mockRejectedValue(err);

@@ -29,6 +29,12 @@
     "signUpFree": "зарегистрируйся бесплатно",
     "getDayPass": "купи Day Pass за {{price}}"
   },
+  "passPrices": {
+    "heading": "Нужно больше, чем бесплатный лимит?",
+    "dayPass": "Day Pass за {{dayPrice}} снимает лимит карточек на 24 часа, без аккаунта.",
+    "semesterPass": "Semester Pass за {{semesterPrice}} покрывает около 4 месяцев.",
+    "footnote": "Разовый платёж, без подписки."
+  },
   "footer": {
     "readyPrefix": "Готов попробовать? ",
     "dropLink": "Загрузи файл в начале этой страницы."

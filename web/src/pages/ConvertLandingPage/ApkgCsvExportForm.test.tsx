@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MemoryRouter } from 'react-router-dom';
 import ApkgCsvExportForm from './ApkgCsvExportForm';
 
 const mockTrack = vi.fn();
@@ -27,7 +28,11 @@ describe('ApkgCsvExportForm', () => {
   });
 
   it('disables submit until the user picks a file', () => {
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     const button = screen.getByRole('button', { name: /Export to CSV/i });
     expect(button).toBeDisabled();
   });
@@ -36,11 +41,15 @@ describe('ApkgCsvExportForm', () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(null, { status: 200 }));
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     const input = screen.getByLabelText(
       /Choose \.apkg file/i
     ) as HTMLInputElement;
-    const file = new File(['x'], 'notes.zip', { type: 'application/zip' });
+    const file = new File(['x'], 'notes.pdf', { type: 'application/pdf' });
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.submit(input.closest('form')!);
     await waitFor(() => {
@@ -61,7 +70,11 @@ describe('ApkgCsvExportForm', () => {
         },
       })
     );
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     const input = screen.getByLabelText(
       /Choose \.apkg file/i
     ) as HTMLInputElement;
@@ -86,7 +99,11 @@ describe('ApkgCsvExportForm', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(null, { status: 401 })
     );
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     const input = screen.getByLabelText(
       /Choose \.apkg file/i
     ) as HTMLInputElement;
@@ -108,7 +125,11 @@ describe('ApkgCsvExportForm', () => {
         { status: 402, headers: { 'Content-Type': 'application/json' } }
       )
     );
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     const input = screen.getByLabelText(
       /Choose \.apkg file/i
     ) as HTMLInputElement;
@@ -137,7 +158,11 @@ describe('ApkgCsvExportForm', () => {
         { status: 402, headers: { 'Content-Type': 'application/json' } }
       )
     );
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     const input = screen.getByLabelText(
       /Choose \.apkg file/i
     ) as HTMLInputElement;
@@ -165,7 +190,11 @@ describe('ApkgCsvExportForm', () => {
         { status: 402, headers: { 'Content-Type': 'application/json' } }
       )
     );
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     const input = screen.getByLabelText(
       /Choose \.apkg file/i
     ) as HTMLInputElement;
@@ -181,7 +210,60 @@ describe('ApkgCsvExportForm', () => {
   });
 
   it('tells anonymous visitors what they can export before they pick a file', () => {
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     expect(screen.getByText(/Export up to 21 notes now/i)).toBeTruthy();
+  });
+});
+
+describe('ApkgCsvExportForm with a zip of several decks', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('asks which deck to export and sends the one picked', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: 'choose_deck',
+            decks: ['One.apkg', 'Two.apkg'],
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response('Model,Front,Back,Tags\r\n', {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'X-Card-Count': '1',
+          },
+        })
+      );
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:csv');
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
+    const input = screen.getByLabelText(
+      /Choose \.apkg file/i
+    ) as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(['z'], 'decks.zip')] },
+    });
+    fireEvent.submit(input.closest('form')!);
+
+    fireEvent.click(await screen.findByLabelText('Two'));
+    fireEvent.click(screen.getByRole('button', { name: 'Export this deck' }));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+    const body = fetchSpy.mock.calls[1][1]?.body as FormData;
+    expect(body.get('deck_entry')).toBe('Two.apkg');
   });
 });

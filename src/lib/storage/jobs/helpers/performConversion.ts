@@ -471,7 +471,7 @@ export default async function performConversion(
             notionRepo,
             new UsersRepository(database),
             getDefaultEmailService()
-          ).execute(ownerNum);
+          ).execute(ownerNum, 'conversion');
         } catch (markError) {
           console.error(`${logPrefix} failed to mark notion token invalid`, {
             error: markError,

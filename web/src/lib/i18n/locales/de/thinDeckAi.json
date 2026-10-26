@@ -1,0 +1,16 @@
+{
+  "ariaLabel": "Vorschau, was Claude aus dieser Datei schreiben würde",
+  "lead": "Claude kann diese Datei lesen und mehr Karten daraus schreiben.",
+  "cta": "Vorschau der Karten, die Claude schreiben würde",
+  "consent": "Der Text deiner Datei wird an Claude (Anthropic) gesendet, um die Probe zu schreiben. Sonst wird nichts geteilt und nichts gespeichert.",
+  "loading": "Deine Datei wird gelesen",
+  "heading": "Eine Probe, die Claude aus dem Anfang deiner Datei geschrieben hat",
+  "front": "Vorderseite",
+  "back": "Rückseite",
+  "unlockPaying": "Den vollständigen KI-Stapel erstellen",
+  "unlockPayingNote": "Verbraucht deine KI-Guthaben.",
+  "unlockFree": "Alle Karten holen: Day Pass {{price}}",
+  "unlockFreeNote": "Gilt 24 Stunden, kein Abo. Den Stapel, den du schon hast, kannst du weiter kostenlos herunterladen.",
+  "unavailable": "Aus dieser Datei konnte gerade keine Vorschau erstellt werden. Der Stapel, den du schon hast, steht weiter zum Download bereit.",
+  "checkoutError": "Bezahlung konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net."
+}

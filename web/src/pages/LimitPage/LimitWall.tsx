@@ -17,6 +17,7 @@ interface LimitWallProps {
   onPass: (kind: PassKind) => void;
   passError: string | null;
   unlimitedHref: string;
+  unlimitedPrice?: string;
   onUnlimitedClick: (event: MouseEvent<HTMLAnchorElement>) => void;
 }
 
@@ -26,6 +27,7 @@ export function LimitWall({
   onPass,
   passError,
   unlimitedHref,
+  unlimitedPrice,
   onUnlimitedClick,
 }: Readonly<LimitWallProps>) {
   const { t } = useTranslation('accountx');
@@ -63,6 +65,11 @@ export function LimitWall({
       <div className={styles.singlePlan}>
         <div className={styles.planCard}>
           <p className={styles.planTitle}>{t('limit.unlimited')}</p>
+          {unlimitedPrice != null && (
+            <p className={styles.planPrice}>
+              {t('limit.unlimitedPriceLine', { price: unlimitedPrice })}
+            </p>
+          )}
           <ul className={styles.planBenefits}>
             {[
               t('limit.benefitUnlimited'),

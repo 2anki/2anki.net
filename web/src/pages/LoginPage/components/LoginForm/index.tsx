@@ -18,6 +18,17 @@ import loginStyles from './LoginForm.module.css';
 
 type LoginStep = 'email' | 'password' | 'check-email';
 
+function buildRegisterHref(searchParams: URLSearchParams): string {
+  if (searchParams.get('error') === 'upload_limit_exceeded') {
+    return '/register?redirect=/pricing';
+  }
+  const redirect = sanitizeRelativeRedirect(searchParams.get('redirect'));
+  if (redirect == null) {
+    return '/register';
+  }
+  return `/register?redirect=${encodeURIComponent(redirect)}`;
+}
+
 function LoginForm() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -27,10 +38,7 @@ function LoginForm() {
   const { email, password, loading, onSubmit, setEmail, setPassword } =
     useHandleLoginSubmit((e) => setError((e as Error).message));
 
-  const registerHref =
-    searchParams.get('error') === 'upload_limit_exceeded'
-      ? '/register?redirect=/pricing'
-      : '/register';
+  const registerHref = buildRegisterHref(searchParams);
 
   const handleSendMagicLink = async () => {
     setMagicLinkLoading(true);

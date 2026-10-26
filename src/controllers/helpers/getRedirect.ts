@@ -1,5 +1,6 @@
 import { Request } from 'express';
 import { ALLOWED_ORIGINS } from '../../lib/constants';
+import { asMcpAuthorizeReturn } from '../../lib/mcp/loginReturn';
 
 const DEFAULT_REDIRECT = '/upload';
 
@@ -69,7 +70,11 @@ export const getRedirect = (req: Request): string => {
     return DEFAULT_REDIRECT;
   }
 
+  // A connector authorize request needs its whole query (client_id,
+  // redirect_uri, state, code_challenge) to resume, so it keeps the full
+  // value instead of collapsing to an allowlisted section root.
   return (
+    asMcpAuthorizeReturn(redirectParam) ??
     resolveInternalPath(redirectParam) ??
     resolveAllowedOrigin(redirectParam) ??
     DEFAULT_REDIRECT

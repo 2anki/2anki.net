@@ -24,9 +24,27 @@ interface EmojiFeedbackEntry {
   inputFormat?: string | null;
 }
 
+export interface EmojiFeedbackFollowUp {
+  comment: string | null;
+  email: string | null;
+}
+
+export interface EmojiFeedbackFollowUpTarget {
+  rating: number;
+  page: string;
+  owner: number | null;
+}
+
 export interface IEmojiFeedbackRepository {
-  insert(entry: EmojiFeedbackEntry): Promise<void>;
-  countByRating(since: Date): Promise<EmojiFeedbackRatingCount[]>;
+  insert(entry: EmojiFeedbackEntry): Promise<number | null>;
+  attachFollowUp(
+    id: number,
+    followUp: EmojiFeedbackFollowUp
+  ): Promise<EmojiFeedbackFollowUpTarget | null>;
+  countByRating(
+    since: Date,
+    page?: string
+  ): Promise<EmojiFeedbackRatingCount[]>;
   recentComments(limit: number): Promise<EmojiFeedbackCommentEntry[]>;
   countLowRatingsFromEmailOnDay(email: string, day: Date): Promise<number>;
 }
@@ -64,17 +82,43 @@ export class EmojiFeedbackRepository implements IEmojiFeedbackRepository {
     });
   }
 
-  async insert(entry: EmojiFeedbackEntry): Promise<void> {
-    await this.buildInsertQuery(entry);
+  async insert(entry: EmojiFeedbackEntry): Promise<number | null> {
+    const rows = await this.buildInsertQuery(entry).returning('id');
+    const first = rows?.[0] as { id?: number } | number | undefined;
+    const id = typeof first === 'object' ? first?.id : first;
+    return typeof id === 'number' ? id : null;
   }
 
-  async countByRating(since: Date): Promise<EmojiFeedbackRatingCount[]> {
+  // A rating row takes its comment and email once; a second call finds the row
+  // already filled and changes nothing.
+  async attachFollowUp(
+    id: number,
+    followUp: EmojiFeedbackFollowUp
+  ): Promise<EmojiFeedbackFollowUpTarget | null> {
     const rows = await this.database(this.table)
+      .where('id', id)
+      .whereNull('comment')
+      .whereNull('email')
+      .update({ comment: followUp.comment, email: followUp.email })
+      .returning(['rating', 'page', 'owner']);
+    const row = rows?.[0] as
+      | { rating: number; page: string; owner: number | null }
+      | undefined;
+    return row == null
+      ? null
+      : { rating: row.rating, page: row.page, owner: row.owner };
+  }
+
+  async countByRating(
+    since: Date,
+    page?: string
+  ): Promise<EmojiFeedbackRatingCount[]> {
+    const query = this.database(this.table)
       .select('rating')
       .count<RatingRow[]>('* as count')
-      .where('created_at', '>=', since)
-      .groupBy('rating')
-      .orderBy('rating', 'asc');
+      .where('created_at', '>=', since);
+    if (page != null) query.andWhere('page', page);
+    const rows = await query.groupBy('rating').orderBy('rating', 'asc');
     return rows.map((row) => ({
       rating: row.rating,
       count: Number(row.count),
@@ -127,14 +171,29 @@ interface InMemoryEmojiFeedbackRow extends EmojiFeedbackEntry {
 export class InMemoryEmojiFeedbackRepository implements IEmojiFeedbackRepository {
   private readonly rows: InMemoryEmojiFeedbackRow[] = [];
 
-  async insert(entry: EmojiFeedbackEntry): Promise<void> {
+  async insert(entry: EmojiFeedbackEntry): Promise<number | null> {
     this.rows.push({ ...entry, created_at: new Date() });
+    return this.rows.length;
   }
 
-  async countByRating(since: Date): Promise<EmojiFeedbackRatingCount[]> {
+  async attachFollowUp(
+    id: number,
+    followUp: EmojiFeedbackFollowUp
+  ): Promise<EmojiFeedbackFollowUpTarget | null> {
+    const row = this.rows[id - 1];
+    if (row == null || row.comment != null || row.email != null) return null;
+    row.comment = followUp.comment;
+    row.email = followUp.email;
+    return { rating: row.rating, page: row.page, owner: row.owner ?? null };
+  }
+
+  async countByRating(
+    since: Date,
+    page?: string
+  ): Promise<EmojiFeedbackRatingCount[]> {
     const counts = new Map<number, number>();
     for (const row of this.rows) {
-      if (row.created_at >= since) {
+      if (row.created_at >= since && (page == null || row.page === page)) {
         counts.set(row.rating, (counts.get(row.rating) ?? 0) + 1);
       }
     }

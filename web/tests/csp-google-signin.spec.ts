@@ -6,12 +6,17 @@ const REQUIRED_SCRIPT_SRC_ORIGINS = [
 ];
 
 test.describe('CSP smoke: Google origins stay allowlisted', () => {
-  test('script-src in index.html allows both accounts.google.com and apis.google.com', async ({ page }) => {
+  test('script-src in index.html allows both accounts.google.com and apis.google.com', async ({
+    page,
+  }) => {
     const cspViolations: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() !== 'error') return;
       const text = msg.text();
-      if (text.includes('Content Security Policy') || text.includes('Refused to load')) {
+      if (
+        text.includes('Content Security Policy') ||
+        text.includes('Refused to load')
+      ) {
         cspViolations.push(text);
       }
     });
@@ -48,8 +53,13 @@ test.describe('CSP smoke: Google origins stay allowlisted', () => {
     }
 
     const offending = cspViolations.filter((text) =>
-      REQUIRED_SCRIPT_SRC_ORIGINS.some((origin) => text.includes(origin.replace('https://', '')))
+      REQUIRED_SCRIPT_SRC_ORIGINS.some((origin) =>
+        text.includes(origin.replace('https://', ''))
+      )
     );
-    expect(offending, `Unexpected CSP violations for Google origins:\n${offending.join('\n')}`).toEqual([]);
+    expect(
+      offending,
+      `Unexpected CSP violations for Google origins:\n${offending.join('\n')}`
+    ).toEqual([]);
   });
 });

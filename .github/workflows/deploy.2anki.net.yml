@@ -39,6 +39,10 @@ jobs:
 
             SERVER_DIR=~/src/github.com/2anki/2anki.net
 
+            git -C ${SERVER_DIR} fetch origin main
+            git -C ${SERVER_DIR} reset --hard origin/main
+            git -C ${SERVER_DIR} clean -fd
+
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             nvm install $(cat ${SERVER_DIR}/.nvmrc)
@@ -47,10 +51,6 @@ jobs:
             node --version
             npm install -g pnpm@10.18.2 --force
             pnpm --version
-
-            git -C ${SERVER_DIR} fetch origin main
-            git -C ${SERVER_DIR} reset --hard origin/main
-            git -C ${SERVER_DIR} clean -fd
 
             # TrunkVer for this artifact: when (UTC build time) . what (deployed
             # short sha) . where (this Actions run, the build log). Exported as

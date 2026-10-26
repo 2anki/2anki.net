@@ -1,5 +1,6 @@
 import express from 'express';
 import { getIndexFileContents } from './getIndexFileContents';
+import { getPrerenderedPage } from './getPrerenderedPage';
 import { INDEX_HTML_CACHE_CONTROL } from '../../lib/mountWebBuild';
 import { legalPrerenderFor } from '../../lib/legalPrerender';
 import type { ConsentRegion } from '../../lib/http/consentRegion';
@@ -26,7 +27,7 @@ export const sendIndex = (
   consentRegion: ConsentRegion = 'eea'
 ) => {
   response.set('Cache-Control', INDEX_HTML_CACHE_CONTROL);
-  const html = getIndexFileContents();
+  const html = getPrerenderedPage(requestPath) ?? getIndexFileContents();
   if (html == null) {
     response.set('Retry-After', '5');
     return response.status(503).send(BUILD_PENDING_BODY);

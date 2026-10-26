@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-26-empty-toggle-notice-notion",
+  "date": "2026-10-26",
+  "type": "feature",
+  "title": "When a Notion toggle has no answer inside, Downloads now tells you it was skipped and what to do, even when the rest of the deck is fine."
+}

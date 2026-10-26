@@ -172,6 +172,21 @@
     },
     "form": {
       "makingDeck": "Making your deck...",
+      "pdfChoiceTitle": "This PDF has no text we can read",
+      "pdfChoiceBodyNoText": "It looks like scanned pages or slides saved as pictures. Choose what the cards should be.",
+      "pdfChoiceBodyLocked": "This PDF is protected, so we can't read its text. Choose what the cards should be.",
+      "pdfChoiceBodyOverSplit": "Reading the text would make a very large number of tiny cards. Choose what the cards should be instead.",
+      "pdfChoicePairs": "Two pages per card",
+      "pdfChoicePairsHint": "Page 1 is the front, page 2 is the back.",
+      "pdfChoiceSingle": "One card per page",
+      "pdfChoiceSingleHint": "Each page is a front. You add the answers in Anki.",
+      "pdfChoiceRemember": "Remember my choice on this device",
+      "pdfFallbackPairsNote": "This PDF was made from page images, so every two pages became one card.",
+      "pdfFallbackSingleNote": "This PDF was made from page images, so every page became one card.",
+      "pdfFallbackAskAgain": "Ask me next time",
+      "waitingForDeck": "Your connection dropped, but we're still building your deck. Keep this tab open and it will appear here.",
+      "waitingForDeckSignedIn": "Your connection dropped, but we're still building your deck. Keep this tab open, or find it in My Decks when it's done.",
+      "stopWaiting": "Stop waiting",
       "fetching": "Fetching {{filename}} from {{source}}",
       "deckReady": "Your deck is ready",
       "savedToDownloads": "{{deckName}} was saved to your downloads",
@@ -198,6 +213,9 @@
       "seeCommonProblemsSuffix": " for the formats that work.",
       "downloadEmpty": "Download empty deck",
       "tryDifferent": "Try a different file",
+      "resumeContinueBody": "{{filename}} didn't finish uploading.",
+      "resumeContinue": "Continue",
+      "resumeDismiss": "Dismiss",
       "imagesTitle": "Photo to Deck turns images into cards",
       "imagesBody": "There's no text to read here, so there's nothing to convert. Photo to Deck reads your image with AI and drafts cards you check before you download.",
       "imagesUnzip": "Photo to Deck takes the photos themselves, not the zip. Unzip it and drop the photos in.",
@@ -210,6 +228,9 @@
       "apkgRejectSecondaryPrefix": "Already yours? Open it directly in Anki, or ",
       "apkgRejectPrintLink": "print it as a PDF",
       "apkgRejectSecondarySuffix": ".",
+      "apkgHandoffBody": "You can print it or export its cards to a spreadsheet, without choosing the file again.",
+      "apkgHandoffPrint": "Print it as a PDF",
+      "apkgHandoffCsv": "Export it to CSV",
       "errorTitle": "Something went wrong",
       "tryAgain": "Try again",
       "changeSource": "← Change source",
@@ -262,8 +283,8 @@
       "networkErrorSmallTitle": "Couldn't upload your file",
       "networkErrorSmallBody": "The connection dropped before the file finished. Check your connection and try again.",
       "networkChooseDifferent": "Choose a different file",
-      "unreadableFileTitle": "This file changed since you picked it",
-      "unreadableFileBody": "The browser can't read the version you chose any more — it was saved, moved or deleted after you picked it. Choose the file again to upload the current version.",
+      "unreadableFileTitle": "We couldn't read this file",
+      "unreadableFileBody": "Your browser couldn't read the whole file. If it's in OneDrive, iCloud Drive or Google Drive, open it once so it downloads to your device, then choose it again. If you saved or moved it after picking it, choose it again too.",
       "unreadableChooseAgain": "Choose the file again",
       "emptyFileTitle": "This file is empty",
       "emptyFileBody": "It's 0 bytes, so there's nothing to convert. If it lives in OneDrive, iCloud Drive, or Google Drive, open it once so it downloads to your computer, then choose it again.",
@@ -295,6 +316,8 @@
       "rescueBullets_other": "Make {{n}} cards from the bullet points",
       "rescueGuess_one": "Make {{n}} card from the question-and-answer lines",
       "rescueGuess_other": "Make {{n}} cards from the question-and-answer lines",
+      "rescueParagraphs_one": "Make {{n}} card from the paragraphs",
+      "rescueParagraphs_other": "Make {{n}} cards from the paragraphs",
       "readingLead": "We read {{parts}}.",
       "readingNoCards": "Nothing in it is shaped like a card: no toggles and no question-and-answer pairs.",
       "readingNoText": "This file has no text we can read. Upload the file that holds your notes.",
@@ -400,6 +423,18 @@
         "title": "Reading-format support",
         "body": "Kindle highlights from My Clippings.txt and DRM-free EPUBs are supported. To export your Kindle highlights, connect your Kindle by USB and copy the My Clippings.txt file from the device’s documents folder.",
         "continue": "Make cards from these highlights"
+      },
+      "shortcut": {
+        "title": "That is a shortcut, not the file",
+        "body": "This is a shortcut to your file, not the file itself. Choose the file it points to."
+      },
+      "internetShortcut": {
+        "title": "That is a link, not a file",
+        "body": "This is an internet shortcut, a saved link. Open the link, download the file (PDF, Word, HTML or a Notion export) and upload that. For a Notion page, use the Notion tab to convert it directly."
+      },
+      "goodnotes": {
+        "title": "GoodNotes notebooks cannot be read directly",
+        "body": "Export the notebook from GoodNotes as a PDF (Share, Export, PDF) and upload that PDF instead. 2anki turns PDFs into cards."
       }
     }
   },
@@ -652,6 +687,7 @@
       "deleteNamed": "Delete {{name}}",
       "cancel": "Cancel",
       "cancelNamed": "Cancel {{name}}",
+      "cannotStop": "Can't be stopped once started. Usually done within a couple of minutes.",
       "remove": "Remove",
       "removeNamed": "Remove {{name}}",
       "restart": "Restart",

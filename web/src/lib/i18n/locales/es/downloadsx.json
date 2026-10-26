@@ -89,7 +89,8 @@
       "numbered": "las listas numeradas",
       "columns": "las columnas de la tabla",
       "quote": "las citas",
-      "guess": "las preguntas y respuestas"
+      "guess": "las preguntas y respuestas",
+      "paragraphs": "los párrafos"
     }
   },
   "columnsGuessed": {
@@ -111,7 +112,9 @@
     "uploadSingleDeck_one": "{{count}} tarjeta no tenía respuesta y se omitió, así que no está en este mazo. Añade un reverso en tu archivo y vuelve a convertir.",
     "uploadSingleDeck_other": "{{count}} tarjetas no tenían respuesta y se omitieron, así que no están en este mazo. Añade un reverso a cada una en tu archivo y vuelve a convertir.",
     "uploadMultiDeck_one": "{{count}} tarjeta no tenía respuesta y se omitió, así que no está en tus mazos. Añade un reverso en tu archivo y vuelve a convertir.",
-    "uploadMultiDeck_other": "{{count}} tarjetas no tenían respuesta y se omitieron, así que no están en tus mazos. Añade un reverso a cada una en tu archivo y vuelve a convertir."
+    "uploadMultiDeck_other": "{{count}} tarjetas no tenían respuesta y se omitieron, así que no están en tus mazos. Añade un reverso a cada una en tu archivo y vuelve a convertir.",
+    "notion_one": "{{count}} toggle no tenía respuesta y se omitió, así que no está en este mazo. Añádele una respuesta en Notion y vuelve a convertir.",
+    "notion_other": "{{count}} toggles no tenían respuesta y se omitieron, así que no están en este mazo. Añade una respuesta a cada uno en Notion y vuelve a convertir."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} parte de esta página no está conectada a 2anki, así que no está en este mazo. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir.",

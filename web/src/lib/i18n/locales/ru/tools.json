@@ -88,6 +88,7 @@
   },
   "photo": {
     "overLimit": "Фото превышает лимит в 10 MB. Попробуй изображение поменьше.",
+    "handoffSkipped": "Загружено фото: {{loaded}}. Не загружено: {{skipped}}. Добавь их, когда сделаешь эти карточки.",
     "badFormat": "Используй формат фото вроде JPEG, PNG, WebP, GIF или HEIC.",
     "readError": "Не удалось прочитать изображение",
     "notAvailable": "«Фото в колоду» пока недоступно.",
@@ -501,6 +502,14 @@
     "myDeck": "Моя колода",
     "removeConnection": "Убрать соединение",
     "addNodeHere": "Добавить узел здесь"
+  },
+  "deckUpload": {
+    "chooseTitle": "В этом zip {{n}} колоды. Какую выбрать?",
+    "chooseAnother": "Выбрать другой файл",
+    "printThis": "Распечатать эту колоду",
+    "exportThis": "Экспортировать эту колоду",
+    "notADeckBody": "В этом zip заметки, а не колода Anki. 2anki может сделать из них колоду.",
+    "notADeckAction": "Сделать колоду"
   },
   "apkgCsv": {
     "formAria": "Экспорт .apkg в CSV",

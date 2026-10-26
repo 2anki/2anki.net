@@ -4,6 +4,13 @@
   "afterPay": "After paying, drop the file again to get every card.",
   "afterPayTotal": "After paying, drop the file again to get all {{total}} cards.",
   "cta": "Get a Day Pass for {{price}}",
+  "cardTitle": "Day Pass",
+  "cardLine": "All your cards now, no account.",
+  "cardPrice": "{{price}} for 24 hours.",
+  "reason": "This deck has {{total}} cards. A free account covers {{monthly}} a month. A Day Pass gives you all of them now, no account.",
+  "cardCtaTotal": "Get all {{total}} cards now",
+  "cardCtaEvery": "Get every card now",
+  "passActive": "Once the payment goes through, drop your file again to start your Day Pass and get every card.",
   "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
   "starting": "Starting checkout"
 }

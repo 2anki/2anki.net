@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import {
   mergeRescueCandidates,
+  toRescueSample,
   type RescueCandidate,
 } from '../../types/RescueCandidate';
 import type { Element } from 'domhandler';
@@ -55,6 +56,7 @@ import { isValidAudioFile } from '../anki/format';
 import FallbackParser from './experimental/FallbackParser';
 import { embedFile } from './exporters/embedFile';
 import { extractDataUriImages } from './extractDataUriImages';
+import { SPLIT_HTML_ABOVE_BYTES, splitLargeHtml } from './splitLargeHtml';
 import {
   resolveNotionS3ImageFromZip,
   isNotionSignedFileUrl,
@@ -72,6 +74,7 @@ import {
   isPlainText,
 } from '../storage/checks';
 import { getFileContents } from './getFileContents';
+import { fillCalloutIcons } from './fillCalloutIcons';
 import { normalizeNotionEquations } from './normalizeNotionEquations';
 import { unwrapNotionDefaultHighlights } from './unwrapNotionDefaultHighlights';
 import { handleNestedBulletPointsInMarkdown } from './handleNestedBulletPointsInMarkdown';
@@ -80,11 +83,7 @@ import {
   MarkdownHeuristicResult,
 } from './guessMarkdownCards';
 import { getTitleFromMarkdown } from './getTitleFromMarkdown';
-import { extractStyles } from './extractStyles';
-import { withFontSize } from './withFontSize';
-import { withTextColor } from './withTextColor';
-import { withTextAlign } from './withTextAlign';
-import { NOTION_STYLE, getCodeThemeCss } from '../../templates/helper';
+import { buildDeckStyle } from './buildDeckStyle';
 import { highlightCode } from '../notion-render/highlightCode';
 import { transformDetailsTagToNotionToggleList } from './transformDetailsTagToNotionToggleList';
 import { findNotionToggleLists, isMCQ } from './findNotionToggleLists';
@@ -103,23 +102,18 @@ import {
   mergeInducedRescue,
 } from './induction/candidateRules';
 import { runInduction } from './induction/rankCandidates';
+import { toSampleText } from './induction/toSampleText';
 import { clearsQualityFloorExceptCount } from './induction/qualityFloor';
 import { scoreCandidateDeck } from './scoreCandidateDeck';
 import {
   domPlainTextLength,
   hasDominantTable,
   induceCardsFromDom,
+  OFFER_ONLY_RULES,
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
 
 const MARKDOWN_SOURCE_RATIO_THRESHOLD = 0.8;
-
-// Notion code blocks export as <pre class="code code-wrap"> and rely on
-// .code-wrap { white-space: pre-wrap } to wrap long lines. extractStyles
-// strips every white-space: pre-wrap rule (it harms body/toggle text), which
-// left code blocks running off the edge of narrow cards. Re-apply wrapping to
-// code blocks only, appended last so it wins the cascade over the stripped rule.
-const CODE_WRAP_STYLE = '.code-wrap, pre { white-space: pre-wrap; }';
 
 function isMarkdownSourcedFiles(files: File[]): boolean {
   const contentFiles = files.filter(
@@ -139,6 +133,7 @@ export interface DeckParserInput {
   onProgress?: (step: string) => void;
   pdfCredential?: string;
   userId?: number | null;
+  anonymousPassId?: number | null;
   requestId?: string;
   knownGuids?: KnownGuids;
   uploadIdentity?: UploadIdentityContext;
@@ -196,6 +191,14 @@ function bulletOwnText(li: cheerio.Cheerio<Element>): string {
   clone.find('ul, ol, details').remove();
   return collapseContextWhitespace(clone.text());
 }
+
+const MEDIA_IN_BODY = /<(img|audio|video|figure|embed)\b/i;
+
+function bodyHasContent(body: string): boolean {
+  return MEDIA_IN_BODY.test(body) || body.replace(/<[^>]*>/g, '').trim() !== '';
+}
+
+const OFFER_ONLY_MIN_CARDS = 3;
 
 export class DeckParser {
   firstDeckName: string;
@@ -261,6 +264,10 @@ export class DeckParser {
   private sawUnclassifiedParse: boolean;
 
   private readonly cardLimit?: number;
+
+  private parsingInParts = false;
+
+  private readonly classifiedCardCounts = new WeakMap<Deck, number>();
 
   cardsHeldBack = 0;
 
@@ -336,12 +343,7 @@ export class DeckParser {
     } else if (isHTMLFile(name)) {
       const contents = getFileContents(firstFile, true);
       this.payload = contents
-        ? this.handleHTML(
-            name,
-            contents.toString(),
-            this.settings.deckName || '',
-            []
-          )
+        ? this.handleHTMLInParts(name, contents.toString())
         : [];
     } else {
       // A plain-text file carries real content even when the fallback parser
@@ -552,7 +554,7 @@ export class DeckParser {
         this.applyDeckNameNumbering(getTitleFromMarkdown(contentsStr) ?? name),
       heuristic.notes,
       '',
-      '',
+      buildDeckStyle(this.settings),
       get16DigitRandomId(),
       this.settings
     );
@@ -668,6 +670,89 @@ export class DeckParser {
       : name;
   }
 
+  // Whole-page decisions (the zero-card fallbacks, the degenerate-yield
+  // rescue) must not run per slice: a prose-only slice would invent cards the
+  // whole page never would. A slice with no classified card of its own has
+  // only fallback cards, so those are kept only when no slice found any.
+  private handleHTMLInParts(fileName: string, contents: string): Deck[] {
+    const deckName = this.settings.deckName || '';
+    const parts = splitLargeHtml(contents);
+    if (parts == null) {
+      if (contents.length > SPLIT_HTML_ABOVE_BYTES) {
+        console.info('[DeckParser] large page could not be split', {
+          bytes: contents.length,
+        });
+      }
+      return this.handleHTML(fileName, contents, deckName, []);
+    }
+    console.info('[DeckParser] parsing a large page in parts', {
+      bytes: contents.length,
+      parts: parts.length,
+    });
+    this.parsingInParts = true;
+    try {
+      return this.mergeParts(fileName, parts, deckName);
+    } finally {
+      this.parsingInParts = false;
+    }
+  }
+
+  private mergeParts(
+    fileName: string,
+    parts: string[],
+    deckName: string
+  ): Deck[] {
+    const decks = this.handleHTML(fileName, parts[0], deckName, []);
+    const [pageDeck] = decks;
+    if (pageDeck == null) {
+      return decks;
+    }
+    const slices = [
+      {
+        deck: pageDeck,
+        classified: this.classifiedCardCounts.get(pageDeck) ?? 0,
+      },
+    ];
+    for (const part of parts.slice(1)) {
+      const [partDeck, ...partSubDecks] = this.handleHTML(
+        fileName,
+        part,
+        deckName,
+        [],
+        pageDeck.globalTags
+      );
+      decks.push(...partSubDecks);
+      if (partDeck != null) {
+        slices.push({
+          deck: partDeck,
+          classified: this.classifiedCardCounts.get(partDeck) ?? 0,
+        });
+      }
+    }
+    const anyClassified = slices.some((slice) => slice.classified > 0);
+    const seen = new Set<string>();
+    const cards: Note[] = [];
+    for (const { deck, classified } of slices) {
+      pageDeck.mcqCount += deck === pageDeck ? 0 : deck.mcqCount;
+      pageDeck.mcqSkippedCount += deck === pageDeck ? 0 : deck.mcqSkippedCount;
+      pageDeck.globalTags = [
+        ...new Set([...pageDeck.globalTags, ...deck.globalTags]),
+      ];
+      if (anyClassified && classified === 0) {
+        continue;
+      }
+      for (const card of deck.cards) {
+        const key = `${card.name}\u0000${card.back}`;
+        if (anyClassified || !seen.has(key)) {
+          seen.add(key);
+          cards.push(card);
+        }
+      }
+    }
+    pageDeck.cards = cards;
+    return decks;
+  }
+
   handleHTML(
     fileName: string,
     contents: string,
@@ -679,22 +764,7 @@ export class DeckParser {
       this.unpackDataUriImages(contents)
     );
 
-    const extractedStyle = extractStyles(dom);
-    const codeThemeStyle = getCodeThemeCss(this.settings.codeTheme);
-    const themedNotionStyle = `${NOTION_STYLE}\n${codeThemeStyle}`;
-    const baseStyle = extractedStyle
-      ? `${themedNotionStyle}\n${extractedStyle}`
-      : themedNotionStyle;
-    const style = withTextAlign(
-      withTextColor(
-        withFontSize(
-          `${baseStyle}\n${CODE_WRAP_STYLE}`,
-          this.settings.fontSize
-        ),
-        this.settings.textColor
-      ),
-      this.settings.textAlign
-    );
+    const style = buildDeckStyle(this.settings);
     let image: string | undefined = this.extractCoverImage(dom);
 
     const name = extractName({
@@ -716,6 +786,7 @@ export class DeckParser {
     const toggleList = this.extractToggleLists(dom);
     const paragraphs = this.extractCardsFromParagraph(dom);
     const extractResult = this.extractCards(dom, toggleList, isNewFormat);
+    const classifiedCount = extractResult.cards.length;
     let cards: Note[] = extractResult.cards;
 
     const disableIndentedBullets = this.settings.disableIndentedBulletPoints;
@@ -773,7 +844,7 @@ export class DeckParser {
       if (rescued != null) {
         cards = rescued;
       }
-    } else if (this.isDegenerateYield(cards, dom)) {
+    } else if (!this.parsingInParts && this.isDegenerateYield(cards, dom)) {
       const richer = this.induceRicherDeck(cards, dom);
       if (richer != null) {
         cards = richer;
@@ -789,6 +860,7 @@ export class DeckParser {
       this.settings
     );
     deck.globalTags = fileGlobalTags;
+    this.classifiedCardCounts.set(deck, classifiedCount);
     deck.mcqCount = extractResult.mcqCount;
     deck.mcqSkippedCount = extractResult.mcqSkippedCount;
     decks.push(deck);
@@ -973,7 +1045,8 @@ export class DeckParser {
       domPlainTextLength(dom)
     );
     if (winner == null) {
-      const chosen = this.induceChosenRule(dom, rules);
+      const offered = [...rules, ...OFFER_ONLY_RULES];
+      const chosen = this.induceChosenRule(dom, offered);
       if (chosen != null) {
         return chosen;
       }
@@ -987,6 +1060,7 @@ export class DeckParser {
       this.rescueCandidates = mergeRescueCandidates([
         this.rescueCandidates,
         candidates,
+        this.offerOnlyCandidates(dom),
       ]);
       return null;
     }
@@ -996,6 +1070,17 @@ export class DeckParser {
       score: winner.score,
     });
     return winner.cards;
+  }
+
+  private offerOnlyCandidates(dom: cheerio.CheerioAPI): RescueCandidate[] {
+    return OFFER_ONLY_RULES.map((rule) => {
+      const cards = induceCardsFromDom(dom, rule);
+      return {
+        rule,
+        cards: cards.length,
+        sample: toRescueSample(cards, toSampleText),
+      };
+    }).filter(({ cards }) => cards >= OFFER_ONLY_MIN_CARDS);
   }
 
   private recordInducedRule(next: InducedRescue): void {
@@ -2014,6 +2099,7 @@ export class DeckParser {
   } {
     const dom = this.loadDOM(contents);
     normalizeNotionEquations(dom);
+    fillCalloutIcons(dom);
     unwrapNotionDefaultHighlights(dom);
     this.reshapeBareToggleDetails(dom);
     const isNewFormat = this.hasNotionNewExportFormat(dom);
@@ -2346,12 +2432,21 @@ export class DeckParser {
             ? `<div class='${parentClass}'>${validSummary}</div>`
             : validSummary;
           if (toggle || this.settings.maxOne) {
-            const promoted = this.promoteNestedClozeToggles(
+            const nestedToggleCards = this.promoteNestedToggles(
               toggle,
               dom,
               parentClass,
               isNewFormat
             );
+            const promoted = [
+              ...nestedToggleCards,
+              ...this.promoteNestedClozeToggles(
+                toggle,
+                dom,
+                parentClass,
+                isNewFormat
+              ),
+            ];
             promotedCount += promoted.length;
             const toggleHTML = toggle.html();
             if (toggleHTML) {
@@ -2418,9 +2513,12 @@ export class DeckParser {
       }
     });
     if (promotedCount > 0) {
-      console.info('[nested-cloze] promoted nested toggles to cloze cards', {
-        count: promotedCount,
-      });
+      console.info(
+        '[nested-toggles] promoted nested toggles to their own cards',
+        {
+          count: promotedCount,
+        }
+      );
     }
     return { cards, mcqCount, mcqSkippedCount };
   }
@@ -2444,6 +2542,54 @@ export class DeckParser {
       back = replaceAll(back, '\n', '<br />');
     }
     return back;
+  }
+
+  // Opt-in (promote-nested-toggles): every toggle nested inside this one with
+  // something inside it becomes its own card, title as the question. Under
+  // cherry-pick every toggle is already a candidate on its own, so it is a
+  // no-op there rather than a source of duplicate cards. The
+  // parent keeps its own card. A nested toggle that the cloze option promotes
+  // is left to it, and is skipped here so it never becomes two cards.
+  private promoteNestedToggles(
+    toggle: cheerio.Cheerio<Element>,
+    dom: cheerio.CheerioAPI,
+    parentClass: string,
+    isNewFormat: boolean
+  ): Note[] {
+    if (!this.settings.promoteNestedToggles || this.settings.isCherry) {
+      return [];
+    }
+    const clozePromotes =
+      this.settings.isCloze && this.settings.promoteNestedCloze;
+    const captured = toggle
+      .find('details')
+      .toArray()
+      .map((el) => {
+        const $details = dom(el);
+        const $summary = $details.children('summary').first();
+        const body = ($details.html() ?? '').replace($summary.toString(), '');
+        return {
+          $details,
+          summaryHTML: $summary.html() ?? '',
+          summaryText: $summary.text().trim(),
+          body,
+        };
+      })
+      .filter(
+        ({ summaryText, summaryHTML, body }) =>
+          summaryText.length > 0 &&
+          bodyHasContent(body) &&
+          !(clozePromotes && hasInlineClozeCode(summaryHTML))
+      );
+    return captured.map(({ $details, summaryHTML, body }) => {
+      const front = preserveNewlinesIfApplicable(summaryHTML, this.settings);
+      const note = new Note(
+        parentClass ? `<div class='${parentClass}'>${front}</div>` : front,
+        this.buildToggleBackSide(body, isNewFormat)
+      );
+      note.notionId = this.resolveNestedToggleBlockId($details);
+      return note;
+    });
   }
 
   // A nested toggle whose title carries the inline-code cloze marker is a

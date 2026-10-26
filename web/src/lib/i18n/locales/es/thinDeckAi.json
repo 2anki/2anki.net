@@ -1,0 +1,16 @@
+{
+  "ariaLabel": "Vista previa de lo que Claude escribiría con este archivo",
+  "lead": "Claude puede leer este archivo y escribir más tarjetas a partir de él.",
+  "cta": "Previsualiza las tarjetas que Claude escribiría",
+  "consent": "El texto de tu archivo se envía a Claude (Anthropic) para escribir la muestra. No se comparte nada más y no se guarda nada.",
+  "loading": "Leyendo tu archivo",
+  "heading": "Una muestra que Claude escribió a partir del principio de tu archivo",
+  "front": "Anverso",
+  "back": "Reverso",
+  "unlockPaying": "Crear el mazo completo con IA",
+  "unlockPayingNote": "Usa tus créditos de IA.",
+  "unlockFree": "Consigue todas las tarjetas: Day Pass {{price}}",
+  "unlockFreeNote": "Dura 24 horas, sin suscripción. El mazo que ya tienes sigue siendo gratis de descargar.",
+  "unavailable": "Ahora mismo no se pudo hacer una vista previa de este archivo. El mazo que ya tienes sigue listo para descargar.",
+  "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net."
+}

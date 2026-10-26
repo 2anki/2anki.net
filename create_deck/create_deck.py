@@ -84,11 +84,13 @@ def _content_guid(deck_name, guid_value, card_type, back, seen):
 def _media_field_value(media):
     """
     The comma-joined filenames for the note's MyMedia field. An entry is either
-    a plain filename (parser path) or a {"path", "name"} mapping (AI path); the
-    field shows the bundled name in both cases.
+    a plain path (parser path) or a {"path", "name"} mapping (AI path); the
+    field shows the name the file is bundled under in both cases, never a
+    server path.
     """
     return ",".join(
-        entry["name"] if isinstance(entry, dict) else entry for entry in media
+        os.path.basename(entry["name"] if isinstance(entry, dict) else entry)
+        for entry in media
     )
 
 

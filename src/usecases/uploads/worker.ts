@@ -12,6 +12,8 @@ import { processUploadedPdf } from './processUploadedPdf';
 import Package from '../../lib/parser/Package';
 import fs from 'fs';
 import pLimit from 'p-limit';
+import { asReadableUpload } from '../../lib/rtf/readableUpload';
+import { hasUnknownExtension } from '../../lib/storage/sniffUpload';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
@@ -30,6 +32,7 @@ import {
 import { getPackagesFromZip } from './getPackagesFromZip';
 import { liftDecksToParent } from './liftDecksToParent';
 import { resolvePerWorkerPythonCap } from '../../lib/pythonWorkerBudget';
+import { AI_FILE_CONCURRENCY } from '../../lib/claude/aiFileConcurrency';
 import { isWorkerTerminationError } from '../../lib/workerTermination';
 import Workspace from '../../lib/parser/WorkSpace';
 import { detectOverSplit } from '../../lib/parser/detectOverSplit';
@@ -147,7 +150,9 @@ export function reachesClaudeContentPath(
     paying && settings.imageQuizHtmlToAnki && isImageFile(name);
   const isSingleContent =
     isZipContentFileSupported(name) || isPPTFile(name) || isImageQuiz;
-  return Boolean(isSingleContent || isCompressedFile(name));
+  return Boolean(
+    isSingleContent || isCompressedFile(name) || hasUnknownExtension(name)
+  );
 }
 
 export function countAiContentFiles(
@@ -203,7 +208,8 @@ async function processFile(
   requestId?: string,
   uploadIdentity?: UploadIdentityContext,
   cardLimit?: number,
-  singleFileUpload: boolean = false
+  singleFileUpload: boolean = false,
+  anonymousPassId?: number | null
 ): Promise<FileResult> {
   const packages: Package[] = [];
   const warnings: string[] = [];
@@ -295,6 +301,7 @@ async function processFile(
       workspace,
       onProgress,
       userId,
+      anonymousPassId,
       requestId,
       knownGuids,
       uploadIdentity,
@@ -330,6 +337,7 @@ async function processFile(
       singleFilePackage.plainTextFallbackImageCount =
         d.plainTextFallbackImageCount ?? 0;
       singleFilePackage.pdfPageCount = d.pdfPageCount;
+      singleFilePackage.pdfFallbackMode = d.pdfFallbackMode;
       singleFilePackage.coloredTextPageCount = d.coloredTextPageCount ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
@@ -344,7 +352,14 @@ async function processFile(
       workspace,
       onProgress,
       userId,
-      { knownGuids, uploadIdentity, requestId, crossFileDedup, cardLimit }
+      {
+        knownGuids,
+        uploadIdentity,
+        requestId,
+        crossFileDedup,
+        cardLimit,
+        anonymousPassId,
+      }
     );
     packages.push(...result.packages);
     if (result.warnings) warnings.push(...result.warnings);
@@ -357,20 +372,19 @@ async function processFile(
 }
 
 // Files in one upload are independent conversions, so they can run side by
-// side. Two cases stay sequential: the AI cross-file dedup state depends on
-// file order, and each zip already converts its own decks in parallel under
-// the per-worker Python cap and sizes its in-memory extraction for one archive
-// at a time, so two zips at once would exceed both budgets.
-function canConvertInParallel(
-  files: UploadedFile[],
-  crossFileDedup: CrossFileDedupState | undefined
-): boolean {
+// side. An upload that includes a zip stays sequential: each zip already
+// converts its own decks in parallel under the per-worker Python cap and sizes
+// its in-memory extraction for one archive at a time, so two zips at once would
+// exceed both budgets. AI uploads share one dedup state across the concurrent
+// files, which absorb their cards synchronously as each file lands.
+function canConvertInParallel(files: UploadedFile[]): boolean {
   return (
     files.length > 1 &&
-    crossFileDedup == null &&
     !files.some(
       (file) =>
-        isCompressedFile(file.originalname) || isCompressedFile(file.key)
+        isCompressedFile(file.originalname) ||
+        isCompressedFile(file.key) ||
+        hasUnknownExtension(file.originalname)
     )
   );
 }
@@ -395,9 +409,10 @@ async function convertInSequence(
 async function convertInParallel(
   files: UploadedFile[],
   workspace: Workspace,
-  convert: (file: UploadedFile, ws: Workspace) => Promise<FileResult>
+  convert: (file: UploadedFile, ws: Workspace) => Promise<FileResult>,
+  concurrency: number
 ): Promise<FileResult[]> {
-  const limit = pLimit(resolvePerWorkerPythonCap());
+  const limit = pLimit(concurrency);
   const fileWorkspaces = files.map(() => Workspace.subdir(workspace.location));
   const failures = new Map<number, unknown>();
   const results = await Promise.all(
@@ -443,6 +458,7 @@ async function doGenerationWork(
     workspace,
     enqueuedAt,
     userId,
+    anonymousPassId,
     knownGuids,
     uploadIdentity,
     existingCardFingerprints,
@@ -466,10 +482,14 @@ async function doGenerationWork(
       ? createCrossFileDedupState(existingCardFingerprints ?? [])
       : undefined;
 
-  const convert = (file: UploadedFile, fileWorkspace: Workspace) =>
-    processFile(
+  const convert = (upload: UploadedFile, fileWorkspace: Workspace) => {
+    const { file, contents } = asReadableUpload(
+      upload,
+      getFileContents(upload, enqueuedAt)
+    );
+    return processFile(
       file,
-      getFileContents(file, enqueuedAt),
+      contents,
       paying,
       settings,
       fileWorkspace,
@@ -480,10 +500,14 @@ async function doGenerationWork(
       requestId,
       uploadIdentity,
       cardLimit,
-      files.length === 1
+      files.length === 1,
+      anonymousPassId
     );
-  const results = canConvertInParallel(files, crossFileDedup)
-    ? await convertInParallel(files, workspace, convert)
+  };
+  const concurrency =
+    crossFileDedup == null ? resolvePerWorkerPythonCap() : AI_FILE_CONCURRENCY;
+  const results = canConvertInParallel(files)
+    ? await convertInParallel(files, workspace, convert, concurrency)
     : await convertInSequence(files, workspace, convert);
 
   for (const result of results) {

@@ -1,5 +1,6 @@
 import { isExpectedClientFault } from './isExpectedClientFault';
 import { HttpCodedError } from '../errors/HttpCodedError';
+import { NotionNotConnectedError } from '../notion/NotionNotConnectedError';
 
 describe('isExpectedClientFault', () => {
   it('returns false for undefined', () => {
@@ -21,6 +22,10 @@ describe('isExpectedClientFault', () => {
         err.name = 'AnkiAppExportError';
         return err;
       },
+    ],
+    [
+      'a Notion connection that no longer works',
+      () => new NotionNotConnectedError(),
     ],
     ['a multer client-abort error', () => new Error('Request aborted')],
     [

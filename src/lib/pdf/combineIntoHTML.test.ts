@@ -58,4 +58,25 @@ describe('combineIntoHTML', () => {
 
     expect(imgSrcs(html)).toEqual(['doc.pdf-page1-1.png']);
   });
+
+  it('makes one card per page when asked, the back naming the page', () => {
+    const html = combineIntoHTML(
+      ['/ws/doc.pdf-page1-1.png', '/ws/doc.pdf-page2-2.png'],
+      'doc.pdf',
+      '/ws',
+      'single'
+    );
+
+    expect(imgSrcs(html)).toEqual([
+      'doc.pdf-page1-1.png',
+      'doc.pdf-page2-2.png',
+    ]);
+    expect(toggleCount(html)).toBe(2);
+    const $ = cheerio.load(html);
+    expect(
+      $('details p')
+        .map((_, el) => $(el).text())
+        .get()
+    ).toEqual(['Page 1 of 2', 'Page 2 of 2']);
+  });
 });

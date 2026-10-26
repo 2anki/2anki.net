@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-24-notion-callouts-keep-icons-and-spacing",
+  "date": "2026-10-24",
+  "type": "fix",
+  "title": "Notion decks: nested bullets are spaced like in Notion, and a callout whose icon is an image keeps it. Import the deck again to get the new card style."
+}

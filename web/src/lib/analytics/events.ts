@@ -1,5 +1,6 @@
 export const KNOWN_EVENTS = new Set([
   'happy_score_ask_shown',
+  'deck_feedback_tapped',
   'upload_started',
   'sample_conversion_started',
   'sample_deck_downloaded',
@@ -17,6 +18,9 @@ export const KNOWN_EVENTS = new Set([
   'upload_rescue_chosen',
   'upload_ai_rescue_shown',
   'upload_ai_rescue_clicked',
+  'pdf_fallback_choice_shown',
+  'pdf_fallback_chosen',
+  'pdf_fallback_forgotten',
   'upload_empty_deck_chat_engaged',
   'chat_all_conversations_deleted',
   'chat_message_sent',
@@ -55,6 +59,9 @@ export const KNOWN_EVENTS = new Set([
   'upload_guardrail_overridden',
   'upload_cancelled',
   'upload_reattach_shown',
+  'upload_resume_shown',
+  'upload_resume_clicked',
+  'upload_resume_succeeded',
   'cancel_during_generating',
   'signup_completed',
   'landing_page_viewed',
@@ -94,6 +101,7 @@ export const KNOWN_EVENTS = new Set([
   'image_only_photo_deck_clicked',
   'apkg_reject_shown',
   'apkg_print_cta_clicked',
+  'apkg_upload_handoff_clicked',
   'print_preview_shown',
   'columns_guessed_notice_shown',
   'structure_rescued_notice_shown',
@@ -128,6 +136,11 @@ export const KNOWN_EVENTS = new Set([
   'upgrade_clicked',
   'anonymous_partial_gate_shown',
   'monthly_partial_offer_shown',
+  'ai_preview_shown',
+  'ai_preview_pass_clicked',
+  'thin_deck_ai_offer_shown',
+  'thin_deck_ai_optin_clicked',
+  'thin_deck_ai_unlock_clicked',
 ] as const);
 
 export type KnownEvent = typeof KNOWN_EVENTS extends Set<infer T> ? T : never;

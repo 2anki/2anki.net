@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { track } from '../../../lib/analytics/track';
+import type { EmojiFeedbackReceipt } from '../../../lib/backend/Backend';
 import { get2ankiApi } from '../../../lib/backend/get2ankiApi';
 import { useUserLocals } from '../../../lib/hooks/useUserLocals';
 import styles from './DeckFeedbackPrompt.module.css';
@@ -80,10 +81,16 @@ export function DeckFeedbackPrompt({
   const [email, setEmail] = useState('');
   const [reason, setReason] = useState<ReasonTag | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const tapSave = useRef<Promise<EmojiFeedbackReceipt | null> | null>(null);
 
+  const askedJobId = context?.jobId ?? null;
+  const askedUploadId = context?.uploadId ?? null;
   useEffect(() => {
-    track(HAPPY_SCORE_ASK_EVENT);
-  }, []);
+    track(HAPPY_SCORE_ASK_EVENT, {
+      job_id: askedJobId,
+      upload_id: askedUploadId,
+    });
+  }, [askedJobId, askedUploadId]);
 
   useEffect(() => {
     if (userEmail) {
@@ -101,15 +108,28 @@ export function DeckFeedbackPrompt({
   const sendRating = async (rating: number, withComment?: string) => {
     const trimmedEmail = email.trim();
     const replyEmail = trimmedEmail.length > 0 ? trimmedEmail : null;
+    const commentText =
+      withComment != null && withComment.length > 0 ? withComment : undefined;
     setStage({ kind: 'sending' });
     try {
-      await get2ankiApi().submitEmojiFeedback(
-        rating,
-        FEEDBACK_PAGE,
-        withComment != null && withComment.length > 0 ? withComment : undefined,
-        replyEmail ?? undefined,
-        context
-      );
+      const receipt = await tapSave.current;
+      if (receipt != null) {
+        if (commentText != null || replyEmail != null) {
+          await get2ankiApi().followUpEmojiFeedback(
+            receipt,
+            commentText,
+            replyEmail ?? undefined
+          );
+        }
+      } else {
+        await get2ankiApi().submitEmojiFeedback(
+          rating,
+          FEEDBACK_PAGE,
+          commentText,
+          replyEmail ?? undefined,
+          context
+        );
+      }
       suppressFor(ANSWERED_SUPPRESSION_MS);
       setStage({ kind: 'sent', rating, email: replyEmail });
     } catch {
@@ -120,11 +140,25 @@ export function DeckFeedbackPrompt({
     }
   };
 
+  const saveTap = (rating: number) => {
+    if (tapSave.current != null) return;
+    track('deck_feedback_tapped', { rating });
+    tapSave.current = get2ankiApi()
+      .submitEmojiFeedback(rating, FEEDBACK_PAGE, undefined, undefined, context)
+      .then((receipt) => {
+        suppressFor(ANSWERED_SUPPRESSION_MS);
+        return receipt;
+      })
+      .catch(() => null);
+  };
+
   const handlePositive = () => {
+    saveTap(POSITIVE_RATING);
     setStage({ kind: 'follow-up', rating: POSITIVE_RATING });
   };
 
   const handleNegative = () => {
+    saveTap(NEGATIVE_RATING);
     setStage({ kind: 'follow-up', rating: NEGATIVE_RATING });
   };
 

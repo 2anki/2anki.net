@@ -6,6 +6,7 @@ import {
 } from '@notionhq/client';
 import {
   AudioBlockObjectResponse,
+  VideoBlockObjectResponse,
   BlockObjectResponse,
   FileBlockObjectResponse,
   GetBlockResponse,
@@ -32,15 +33,12 @@ import ParserRules from '../../../lib/parser/ParserRules';
 import CardOption from '../../../lib/parser/Settings';
 import TagRegistry from '../../../lib/parser/TagRegistry';
 import CustomExporter from '../../../lib/parser/exporters/CustomExporter';
-import { withFontSize } from '../../../lib/parser/withFontSize';
-import { withTextColor } from '../../../lib/parser/withTextColor';
-import { withTextAlign } from '../../../lib/parser/withTextAlign';
+import { buildDeckStyle } from '../../../lib/parser/buildDeckStyle';
 import {
   wrapBlockWithColorClass,
   wrapWithColorClass,
 } from '../../../lib/notion-render/richText';
 import get16DigitRandomId from '../../../shared/helpers/get16DigitRandomId';
-import { NOTION_STYLE, getCodeThemeCss } from '../../../templates/helper';
 import NotionAPIWrapper from '../NotionAPIWrapper';
 import type { IBlockRenderer } from './types';
 import BlockColumn from '../blocks/lists/BlockColumn';
@@ -77,6 +75,7 @@ import {
 import { downloadWithFreshUrlRetry } from '../helpers/downloadWithFreshUrlRetry';
 import { expandSyncedBlocks } from '../helpers/expandSyncedBlocks';
 import { getAudioSourceType, getAudioUrl } from '../helpers/getAudioUrl';
+import { getVideoUrl } from '../blocks/media/helpers/getVideoUrl';
 import getClozeDeletionCard from '../helpers/getClozeDeletionCard';
 import handleClozeDeletions from '../../../lib/parser/helpers/handleClozeDeletions';
 import hasInlineClozeCode from '../../../lib/parser/helpers/hasInlineClozeCode';
@@ -177,6 +176,22 @@ const TOGGLE_CONTAINER_TYPES = new Set([
 // stops expanding and leaves the rest of the wrappers as-is.
 const NESTED_TOGGLE_MAX_DEPTH = 2;
 const MAX_NESTED_TOGGLE_WRAPPER_FETCHES = 40;
+
+// Opt-in `promote-nested-toggles` reads each card's children once more (the
+// back-side render does not hand them back) and renders every nested toggle's
+// own back. That is bounded the same way: toggles nest at most this deep and
+// one conversion scans at most this many parents before leaving the rest as
+// part of their parent card.
+const PROMOTE_NESTED_TOGGLE_MAX_DEPTH = 3;
+const MAX_PROMOTE_NESTED_TOGGLE_SCANS = 150;
+
+interface PromotedToggleCard {
+  block: BlockObjectResponse;
+  name: string;
+  back: string;
+  tags: string[];
+  media: string[];
+}
 
 function activeNonPageDeckTypes(rules: ParserRules): Set<string> {
   return new Set(
@@ -290,6 +305,10 @@ function applyHierarchyFields(
   ankiNote.h3 = context?.h3 ?? '';
 }
 
+// Held in memory while it is downloaded, so an oversized video is counted as
+// a dropped asset instead of risking the conversion process.
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
+
 class BlockHandler implements IBlockRenderer {
   api: NotionAPIWrapper;
 
@@ -351,6 +370,10 @@ class BlockHandler implements IBlockRenderer {
 
   private nestedToggleBudgetLogged = false;
 
+  private promoteNestedToggleScans = 0;
+
+  private promoteNestedToggleBudgetLogged = false;
+
   unsupportedBlockTypeCounts: Map<string, number> = new Map();
 
   get unsupportedBlockTypes(): string[] {
@@ -385,19 +408,6 @@ class BlockHandler implements IBlockRenderer {
     this.settingsRepository = settingsRepository;
     this.owner = owner;
     this.tagRegistry = new TagRegistry();
-  }
-
-  private buildDeckStyle(): string {
-    const themed = `${NOTION_STYLE}\n${getCodeThemeCss(this.settings.codeTheme)}`;
-    return (
-      withTextAlign(
-        withTextColor(
-          withFontSize(themed, this.settings.fontSize),
-          this.settings.textColor
-        ),
-        this.settings.textAlign
-      ) ?? themed
-    );
   }
 
   private applyDeckNameNumbering(name: string): string {
@@ -478,6 +488,32 @@ class BlockHandler implements IBlockRenderer {
     return `[sound:${newName}]`;
   }
 
+  // A video uploaded to Notion is a signed link that dies after an hour, so
+  // the file is bundled and played from the deck instead of embedded by link.
+  async embedVideoFile(c: VideoBlockObjectResponse): Promise<string> {
+    const url = getVideoUrl(c);
+    if (this.settings.isTextOnlyBack || isTesting() || !url) {
+      return '';
+    }
+    const suffix = SuffixFrom(S3FileName(url));
+    const newName = getUniqueFileName(url) + (suffix ?? '.mp4');
+    const contents = await downloadWithFreshUrlRetry({
+      api: this.api,
+      blockId: c.id,
+      url,
+      sourceType: 'file',
+      extractFreshUrl: (fresh) =>
+        getVideoUrl(fresh as VideoBlockObjectResponse),
+      maxBytes: MAX_VIDEO_BYTES,
+    });
+    if (contents == null) {
+      this.droppedFileAssetCount += 1;
+      return '';
+    }
+    this.exporter.addMedia(newName, contents);
+    return `<video controls src="${newName}"></video>`;
+  }
+
   async embedFile(
     block: FileBlockObjectResponse | PdfBlockObjectResponse
   ): Promise<string> {
@@ -538,6 +574,68 @@ class BlockHandler implements IBlockRenderer {
       this.useAll
     );
     return { requestChildren, response };
+  }
+
+  // Every toggle nested inside this one with something inside it, as its own
+  // card (title as the front, its body as the back). The parent keeps its card
+  // with the nested toggles in its back, so this only adds cards. A toggle
+  // with an empty body is skipped so no blank-back card is added (#4932).
+  private async promotedNestedToggleCards(
+    parent: BlockObjectResponse,
+    depth = 1
+  ): Promise<PromotedToggleCard[]> {
+    if (depth > PROMOTE_NESTED_TOGGLE_MAX_DEPTH) {
+      return [];
+    }
+    if (this.promoteNestedToggleScans >= MAX_PROMOTE_NESTED_TOGGLE_SCANS) {
+      if (!this.promoteNestedToggleBudgetLogged) {
+        this.promoteNestedToggleBudgetLogged = true;
+        console.warn(
+          `[promote-nested-toggles] scan budget of ${MAX_PROMOTE_NESTED_TOGGLE_SCANS} reached, leaving remaining nested toggles in their parent card`
+        );
+      }
+      return [];
+    }
+    this.promoteNestedToggleScans += 1;
+    let children: Awaited<ReturnType<typeof this.fetchBackSideChildren>>;
+    try {
+      children = await this.fetchBackSideChildren(parent);
+    } catch {
+      return [];
+    }
+    const promoted: PromotedToggleCard[] = [];
+    for (const child of children.requestChildren) {
+      if (!isFullBlock(child) || !child.has_children) {
+        continue;
+      }
+      const summary = getToggleSummaryRichText(child);
+      if (!summary) {
+        continue;
+      }
+      const name = renderTextChildren(
+        summary,
+        this.settings,
+        this.tagRegistry
+      ).replaceAll('\n', '<br />');
+      const tags = [...this.tagRegistry.strikethroughs];
+      this.tagRegistry.clear();
+      const back = await this.getBackSide(child);
+      const media = this.exporter.media;
+      this.exporter.media = [];
+      if (name && back?.trim()) {
+        promoted.push({
+          block: child,
+          name: wrapWithColorClass(getToggleColor(child), name),
+          back: wrapBlockWithColorClass(getToggleColor(child), back),
+          tags,
+          media,
+        });
+      }
+      promoted.push(
+        ...(await this.promotedNestedToggleCards(child, depth + 1))
+      );
+    }
+    return promoted;
   }
 
   /**
@@ -806,6 +904,48 @@ class BlockHandler implements IBlockRenderer {
         ankiNote.stripRefreshIcon();
       }
       tr.clear();
+
+      if (
+        this.settings.promoteNestedToggles &&
+        !this.settings.isCherry &&
+        fullBlock &&
+        toggleSummary
+      ) {
+        for (const nested of await this.promotedNestedToggleCards(fullBlock)) {
+          const nestedNote = new Note(nested.name, nested.back);
+          nestedNote.media = nested.media;
+          nestedNote.notionLink = this.__notionLink(
+            nested.block.id,
+            notionBaseLink
+          );
+          nestedNote.notionId = nested.block.id;
+          if (this.settings.addNotionLink) {
+            nestedNote.back += RenderNotionLink(nestedNote.notionLink!, this);
+          }
+          nestedNote.name = perserveNewlinesIfApplicable(
+            nestedNote.name,
+            this.settings
+          );
+          nestedNote.back = perserveNewlinesIfApplicable(
+            nestedNote.back,
+            this.settings
+          );
+          nestedNote.tags =
+            rules.TAGS === 'heading'
+              ? headingTagsFor(nested.block.id, headingTagMap)
+              : nested.tags;
+          nestedNote.number = counter++;
+          cards.push(nestedNote);
+          if (this.settings.basicReversed) {
+            cards.push(nestedNote.reversed(nestedNote));
+          }
+          if (this.settings.reversed) {
+            const swapped = nestedNote.back;
+            nestedNote.back = nestedNote.name;
+            nestedNote.name = swapped;
+          }
+        }
+      }
     }
 
     const beforeUserFilter = cards.length;
@@ -982,7 +1122,7 @@ class BlockHandler implements IBlockRenderer {
       dbName,
       Deck.CleanCards(notes),
       undefined,
-      this.buildDeckStyle(),
+      buildDeckStyle(this.settings),
       get16DigitRandomId(),
       this.settings
     );
@@ -1583,7 +1723,7 @@ class BlockHandler implements IBlockRenderer {
         currentDeckName,
         Deck.CleanCards(cards),
         undefined,
-        this.buildDeckStyle(),
+        buildDeckStyle(this.settings),
         get16DigitRandomId(),
         this.settings
       );
@@ -1896,7 +2036,7 @@ class BlockHandler implements IBlockRenderer {
       ),
       cards,
       undefined,
-      this.buildDeckStyle(),
+      buildDeckStyle(this.settings),
       get16DigitRandomId(),
       this.settings
     );

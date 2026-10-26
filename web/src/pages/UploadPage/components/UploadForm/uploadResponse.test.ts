@@ -30,8 +30,11 @@ function buildHandlers(): ConversionSuccessHandlers {
     setProgressWidth: vi.fn(),
     setBatchResult: vi.fn(),
     setHeldDeck: vi.fn(),
+    setAiPreviewCards: vi.fn(),
+    setAiPreviewUnavailable: vi.fn(),
     setZoneState: vi.fn(),
     setStructureRescuedRule: vi.fn(),
+    setPdfFallbackMode: vi.fn(),
     recoverDownload: vi.fn(),
   };
 }
@@ -102,10 +105,61 @@ describe('applyConversionSuccess', () => {
       cardCount: 21,
       cardsHeldBack: 13,
       totalCards: 34,
+      dayPassCard: false,
     });
     expect(handlers.setZoneState).toHaveBeenCalledWith('heldForSignup');
     expect(handlers.setDownloadLink).not.toHaveBeenCalled();
     expect(handlers.setZoneState).not.toHaveBeenCalledWith('success');
+  });
+
+  it('routes an ai_preview response to the aiPreviewGate zone with the cards', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          kind: 'ai_preview',
+          cardCount: 2,
+          cards: [
+            { front: 'q1', back: 'a1' },
+            { front: 'q2', back: 'a2' },
+          ],
+        }),
+    } as unknown as Response;
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.setAiPreviewCards).toHaveBeenCalledWith([
+      { front: 'q1', back: 'a1' },
+      { front: 'q2', back: 'a2' },
+    ]);
+    expect(handlers.setZoneState).toHaveBeenCalledWith('aiPreviewGate');
+    expect(handlers.setDownloadLink).not.toHaveBeenCalled();
+    expect(handlers.setZoneState).not.toHaveBeenCalledWith('success');
+  });
+
+  it('carries the dayPassCard flag from an over-a-month held response', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          kind: 'held',
+          cardCount: 21,
+          cardsHeldBack: 100,
+          totalCards: 121,
+          dayPassCard: true,
+        }),
+    } as unknown as Response;
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.setHeldDeck).toHaveBeenCalledWith({
+      cardCount: 21,
+      cardsHeldBack: 100,
+      totalCards: 121,
+      dayPassCard: true,
+    });
   });
 
   it('does not fire conversion_success on the single-deck success path', async () => {
@@ -311,6 +365,26 @@ describe('applyConversionSuccess', () => {
     expect(handlers.setEmptyBackCount).toHaveBeenCalledWith(5);
   });
 
+  it('flags an unavailable AI preview from the X-AI-Preview-Unavailable header', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-AI-Preview-Unavailable': '1' }),
+      handlers
+    );
+
+    expect(handlers.setAiPreviewUnavailable).toHaveBeenCalledWith(true);
+    expect(handlers.setZoneState).toHaveBeenCalledWith('success');
+  });
+
+  it('reports the AI preview available when the header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setAiPreviewUnavailable).toHaveBeenCalledWith(false);
+  });
+
   it('flags over-split output from the X-Over-Split header', async () => {
     const handlers = buildHandlers();
 
@@ -328,6 +402,32 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(singleDeckResponse(), handlers);
 
     expect(handlers.setOverSplit).toHaveBeenCalledWith(false);
+  });
+
+  it.each([
+    ['pairs', 'pairs'],
+    ['single', 'single'],
+    ['weird', null],
+  ])(
+    'reads the PDF fallback mode %s from the X-Pdf-Fallback header',
+    async (header, expected) => {
+      const handlers = buildHandlers();
+
+      await applyConversionSuccess(
+        singleDeckResponse({ 'X-Pdf-Fallback': header }),
+        handlers
+      );
+
+      expect(handlers.setPdfFallbackMode).toHaveBeenCalledWith(expected);
+    }
+  );
+
+  it('reports no PDF fallback mode when the header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setPdfFallbackMode).toHaveBeenCalledWith(null);
   });
 
   it('reads the rescue rule from the X-Structure-Rescued header on a single deck', async () => {

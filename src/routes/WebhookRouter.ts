@@ -3,6 +3,10 @@ import {
   adClickEventProps,
   pickAdClickMetadata,
 } from '../lib/attribution/adClick';
+import {
+  ORDER_SOURCE_PROP,
+  ORDER_SOURCE_STRIPE_WEBHOOK,
+} from '../lib/events/serverEventProps';
 import type StripeTypes from 'stripe';
 
 import {
@@ -379,6 +383,24 @@ const WebhooksRouter = () => {
           const attribution = adClickEventProps(
             pickAdClickMetadata(sessionMeta)
           );
+          // The Google Ads offline-conversion CSV reads these back off the
+          // stored checkout_completed event, so an ad-attributed paid purchase
+          // reaches Google server-side even when the browser tag was blocked.
+          // order_source marks the row as webhook-written; the feed counts only
+          // marked rows, and a client cannot set this key via /api/events/track.
+          const purchaseProps =
+            session.payment_status === 'paid'
+              ? {
+                  [ORDER_SOURCE_PROP]: ORDER_SOURCE_STRIPE_WEBHOOK,
+                  order_id: session.id,
+                  ...(session.amount_total != null
+                    ? { value_cents: session.amount_total }
+                    : {}),
+                  ...(session.currency != null && session.currency !== ''
+                    ? { currency: session.currency }
+                    : {}),
+                }
+              : {};
           const userIdMeta = Number.parseInt(sessionMeta.user_id ?? '', 10);
           track('checkout_completed', {
             userId: Number.isNaN(userIdMeta) ? null : userIdMeta,
@@ -399,6 +421,7 @@ const WebhooksRouter = () => {
                 ? { recovered: true }
                 : {}),
               ...attribution,
+              ...purchaseProps,
             },
           });
 

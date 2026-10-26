@@ -172,6 +172,21 @@
     },
     "form": {
       "makingDeck": "Creando tu mazo...",
+      "pdfChoiceTitle": "Este PDF no tiene texto que podamos leer",
+      "pdfChoiceBodyNoText": "Parecen páginas escaneadas o diapositivas guardadas como imágenes. Elige cómo quieres las tarjetas.",
+      "pdfChoiceBodyLocked": "Este PDF está protegido, así que no podemos leer su texto. Elige cómo quieres las tarjetas.",
+      "pdfChoiceBodyOverSplit": "Leer el texto crearía una cantidad enorme de tarjetas diminutas. Elige mejor cómo quieres las tarjetas.",
+      "pdfChoicePairs": "Dos páginas por tarjeta",
+      "pdfChoicePairsHint": "La página 1 es el anverso y la página 2 el reverso.",
+      "pdfChoiceSingle": "Una tarjeta por página",
+      "pdfChoiceSingleHint": "Cada página es un anverso. Añades las respuestas en Anki.",
+      "pdfChoiceRemember": "Recordar mi elección en este dispositivo",
+      "pdfFallbackPairsNote": "Este PDF se hizo a partir de imágenes de las páginas, así que cada dos páginas son una tarjeta.",
+      "pdfFallbackSingleNote": "Este PDF se hizo a partir de imágenes de las páginas, así que cada página es una tarjeta.",
+      "pdfFallbackAskAgain": "Preguntarme la próxima vez",
+      "waitingForDeck": "Se cortó tu conexión, pero seguimos creando tu mazo. Deja esta pestaña abierta y aparecerá aquí.",
+      "waitingForDeckSignedIn": "Se cortó tu conexión, pero seguimos creando tu mazo. Deja esta pestaña abierta o búscalo en Mis mazos cuando termine.",
+      "stopWaiting": "Dejar de esperar",
       "fetching": "Obteniendo {{filename}} de {{source}}",
       "deckReady": "Tu mazo está listo",
       "savedToDownloads": "{{deckName}} se guardó en tus descargas",
@@ -198,6 +213,9 @@
       "seeCommonProblemsSuffix": " para ver los formatos que funcionan.",
       "downloadEmpty": "Descargar mazo vacío",
       "tryDifferent": "Prueba con otro archivo",
+      "resumeContinueBody": "{{filename}} no terminó de subirse.",
+      "resumeContinue": "Continuar",
+      "resumeDismiss": "Descartar",
       "imagesTitle": "Foto a mazo convierte imágenes en tarjetas",
       "imagesBody": "Aquí no hay texto que leer, así que no había nada que convertir. Foto a mazo lee tu imagen con IA y redacta tarjetas que revisas antes de descargar.",
       "imagesUnzip": "Foto a mazo acepta las fotos en sí, no el zip. Descomprímelo y arrastra las fotos.",
@@ -210,6 +228,9 @@
       "apkgRejectSecondaryPrefix": "¿Ya es tuyo? Ábrelo directamente en Anki, o ",
       "apkgRejectPrintLink": "imprímelo como PDF",
       "apkgRejectSecondarySuffix": ".",
+      "apkgHandoffBody": "Puedes imprimirlo o exportar sus tarjetas a una hoja de cálculo sin volver a elegir el archivo.",
+      "apkgHandoffPrint": "Imprimirlo como PDF",
+      "apkgHandoffCsv": "Exportarlo a CSV",
       "errorTitle": "Algo salió mal",
       "tryAgain": "Inténtalo de nuevo",
       "changeSource": "← Cambiar origen",
@@ -262,8 +283,8 @@
       "networkErrorSmallTitle": "No se pudo subir tu archivo",
       "networkErrorSmallBody": "La conexión se cortó antes de que el archivo terminara. Revisa tu conexión y vuelve a intentarlo.",
       "networkChooseDifferent": "Elegir otro archivo",
-      "unreadableFileTitle": "Este archivo cambió desde que lo elegiste",
-      "unreadableFileBody": "El navegador ya no puede leer la versión que elegiste: se guardó, movió o eliminó después de seleccionarla. Elígelo de nuevo para subir la versión actual.",
+      "unreadableFileTitle": "No pudimos leer este archivo",
+      "unreadableFileBody": "Tu navegador no pudo leer el archivo completo. Si está en OneDrive, iCloud Drive o Google Drive, ábrelo una vez para que se descargue en tu dispositivo y vuelve a elegirlo. Si lo guardaste o moviste después de elegirlo, vuelve a elegirlo también.",
       "unreadableChooseAgain": "Elegir el archivo de nuevo",
       "emptyFileTitle": "Este archivo está vacío",
       "emptyFileBody": "Tiene 0 bytes, así que no hay nada que convertir. Si está en OneDrive, iCloud Drive o Google Drive, ábrelo una vez para que se descargue a tu equipo y vuelve a elegirlo.",
@@ -295,6 +316,8 @@
       "rescueBullets_other": "Hacer {{n}} tarjetas con las viñetas",
       "rescueGuess_one": "Hacer {{n}} tarjeta con las líneas de pregunta y respuesta",
       "rescueGuess_other": "Hacer {{n}} tarjetas con las líneas de pregunta y respuesta",
+      "rescueParagraphs_one": "Crear {{n}} tarjeta a partir de los párrafos",
+      "rescueParagraphs_other": "Crear {{n}} tarjetas a partir de los párrafos",
       "readingLead": "Leímos {{parts}}.",
       "readingNoCards": "Nada tiene forma de tarjeta: no hay toggles ni pares de pregunta y respuesta.",
       "readingNoText": "Este archivo no tiene texto que podamos leer. Sube el archivo que contiene tus apuntes.",
@@ -400,6 +423,18 @@
         "title": "Compatibilidad con formatos de lectura",
         "body": "Se admiten los subrayados de Kindle desde My Clippings.txt y los EPUB sin DRM. Para exportar tus subrayados de Kindle, conecta el Kindle por USB y copia el archivo My Clippings.txt de la carpeta documents del dispositivo.",
         "continue": "Crear tarjetas desde estos subrayados"
+      },
+      "shortcut": {
+        "title": "Eso es un acceso directo, no el archivo",
+        "body": "Es un acceso directo a tu archivo, no el archivo en sí. Elige el archivo al que apunta."
+      },
+      "internetShortcut": {
+        "title": "Eso es un enlace, no un archivo",
+        "body": "Es un acceso directo de internet, un enlace guardado. Abre el enlace, descarga el archivo (PDF, Word, HTML o una exportación de Notion) y sube ese. Para una página de Notion, usa la pestaña de Notion para convertirla directamente."
+      },
+      "goodnotes": {
+        "title": "Los cuadernos de GoodNotes no se pueden leer directamente",
+        "body": "Exporta el cuaderno desde GoodNotes como PDF (Compartir, Exportar, PDF) y sube ese PDF. 2anki convierte los PDF en tarjetas."
       }
     }
   },
@@ -652,6 +687,7 @@
       "deleteNamed": "Eliminar {{name}}",
       "cancel": "Cancelar",
       "cancelNamed": "Cancelar {{name}}",
+      "cannotStop": "No se puede detener una vez iniciada. Suele terminar en un par de minutos.",
       "remove": "Quitar",
       "removeNamed": "Quitar {{name}}",
       "restart": "Reiniciar",

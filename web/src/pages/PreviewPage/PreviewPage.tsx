@@ -44,9 +44,14 @@ export default function PreviewPage({ setError }: Readonly<PreviewPageProps>) {
     refetch,
   } = usePreviewStream(id);
 
+  // A deliberate answer (Notion disconnected) with nothing loaded is already
+  // shown on the page; everything else still goes to the banner and the
+  // error report.
   useEffect(() => {
-    if (error) setError(error);
-  }, [error, setError]);
+    if (error == null) return;
+    if (data == null && error instanceof UserNotice) return;
+    setError(error);
+  }, [error, data, setError]);
 
   useEffect(() => {
     if (!sentinelRef.current) return;

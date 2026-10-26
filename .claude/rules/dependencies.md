@@ -1,6 +1,6 @@
 # Dependency rules
 
-`pnpm` workspace (`pnpm-workspace.yaml`), Node engines pin `>=22.20.0`, matching `.nvmrc` and both CI workflows — bump all three together. The web app is a sibling workspace under `web/`.
+`pnpm` workspace (`pnpm-workspace.yaml`), Node engines pin `>=22.23.4`, matching `.nvmrc` and the CI setup action (`.github/actions/setup/action.yml`) — bump all three together. The web app is a sibling workspace under `web/`.
 
 | Requirement | Do instead | CWE |
 | --- | --- | --- |

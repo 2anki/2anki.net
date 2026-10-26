@@ -115,7 +115,8 @@
       "numbered": "list numerowanych",
       "columns": "kolumn tabeli",
       "quote": "cytatów",
-      "guess": "tekstu pytań i odpowiedzi"
+      "guess": "tekstu pytań i odpowiedzi",
+      "paragraphs": "akapitów"
     }
   },
   "columnsGuessed": {
@@ -145,7 +146,11 @@
     "uploadMultiDeck_one": "{{count}} karta bez odpowiedzi została pominięta, więc nie ma jej w Twoich taliach. Dodaj tył w pliku i przekonwertuj ponownie.",
     "uploadMultiDeck_few": "{{count}} karty bez odpowiedzi zostały pominięte, więc nie ma ich w Twoich taliach. Dodaj tył do każdej w pliku i przekonwertuj ponownie.",
     "uploadMultiDeck_many": "{{count}} kart bez odpowiedzi zostało pominiętych, więc nie ma ich w Twoich taliach. Dodaj tył do każdej w pliku i przekonwertuj ponownie.",
-    "uploadMultiDeck_other": "{{count}} kart bez odpowiedzi zostało pominiętych, więc nie ma ich w Twoich taliach. Dodaj tył do każdej w pliku i przekonwertuj ponownie."
+    "uploadMultiDeck_other": "{{count}} kart bez odpowiedzi zostało pominiętych, więc nie ma ich w Twoich taliach. Dodaj tył do każdej w pliku i przekonwertuj ponownie.",
+    "notion_one": "{{count}} przełącznik bez odpowiedzi został pominięty, więc nie ma go w tej talii. Dodaj odpowiedź w Notion i przekonwertuj ponownie.",
+    "notion_few": "{{count}} przełączniki bez odpowiedzi zostały pominięte, więc nie ma ich w tej talii. Dodaj odpowiedź do każdego w Notion i przekonwertuj ponownie.",
+    "notion_many": "{{count}} przełączników bez odpowiedzi zostało pominiętych, więc nie ma ich w tej talii. Dodaj odpowiedź do każdego w Notion i przekonwertuj ponownie.",
+    "notion_other": "{{count}} przełączników bez odpowiedzi zostało pominiętych, więc nie ma ich w tej talii. Dodaj odpowiedź do każdego w Notion i przekonwertuj ponownie."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} część tej strony nie jest połączona z 2anki, więc nie ma jej w tej talii. Dodaj 2anki do tej strony i jej podstron w menu Połączenia w Notion, a następnie przekonwertuj ponownie.",

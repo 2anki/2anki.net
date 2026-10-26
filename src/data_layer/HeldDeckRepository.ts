@@ -25,6 +25,14 @@ export interface IHeldDeckRepository {
   markClaimed(id: number, claimedBy: number, claimedAt: Date): Promise<boolean>;
   /** Clears a claim, but only the claimant's own. */
   releaseClaim(id: number, claimedBy: number): Promise<void>;
+  /**
+   * Atomically claims an unclaimed, user-less hold (a preview source) for
+   * conversion. Returns false if another request already claimed it, so two
+   * concurrent resumes never both convert and bill the pass twice.
+   */
+  claimForConversion(id: number, now: Date): Promise<boolean>;
+  /** Releases a conversion claim so a failed resume can be retried. */
+  releaseConversionClaim(id: number): Promise<void>;
   findExpired(now: Date, claimedBefore: Date): Promise<ExpiredHeldDeck[]>;
   deleteByIds(ids: number[]): Promise<void>;
   /** Deletes only still-unclaimed rows among the ids; returns the ids removed. */
@@ -135,6 +143,29 @@ export class HeldDeckRepository implements IHeldDeckRepository {
 
   async releaseClaim(id: number, claimedBy: number): Promise<void> {
     await this.buildReleaseClaimQuery(id, claimedBy);
+  }
+
+  buildClaimForConversionQuery(id: number, now: Date): Knex.QueryBuilder {
+    return this.database(this.table)
+      .where('id', id)
+      .whereNull('claimed_at')
+      .whereNull('claimed_by')
+      .update({ claimed_at: now });
+  }
+
+  async claimForConversion(id: number, now: Date): Promise<boolean> {
+    const updated = (await this.buildClaimForConversionQuery(
+      id,
+      now
+    )) as number;
+    return updated > 0;
+  }
+
+  async releaseConversionClaim(id: number): Promise<void> {
+    await this.database(this.table)
+      .where('id', id)
+      .whereNull('claimed_by')
+      .update({ claimed_at: null });
   }
 
   buildFindExpiredQuery(now: Date, claimedBefore: Date): Knex.QueryBuilder {
@@ -255,6 +286,22 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
     if (row?.claimed_by === claimedBy) {
       row.claimed_at = null;
       row.claimed_by = null;
+    }
+  }
+
+  async claimForConversion(id: number, now: Date): Promise<boolean> {
+    const row = this.rows.find((r) => r.id === (id as HeldDecks['id']));
+    if (row == null || row.claimed_at != null || row.claimed_by != null) {
+      return false;
+    }
+    row.claimed_at = now;
+    return true;
+  }
+
+  async releaseConversionClaim(id: number): Promise<void> {
+    const row = this.rows.find((r) => r.id === (id as HeldDecks['id']));
+    if (row != null && row.claimed_by == null) {
+      row.claimed_at = null;
     }
   }
 

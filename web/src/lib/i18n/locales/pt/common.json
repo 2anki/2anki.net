@@ -172,6 +172,21 @@
     },
     "form": {
       "makingDeck": "Criando seu baralho...",
+      "pdfChoiceTitle": "Este PDF não tem texto que possamos ler",
+      "pdfChoiceBodyNoText": "Parecem páginas digitalizadas ou slides salvos como imagens. Escolha como as cartas devem ser.",
+      "pdfChoiceBodyLocked": "Este PDF é protegido, então não conseguimos ler o texto. Escolha como as cartas devem ser.",
+      "pdfChoiceBodyOverSplit": "Ler o texto geraria uma quantidade enorme de cartas minúsculas. Escolha, em vez disso, como as cartas devem ser.",
+      "pdfChoicePairs": "Duas páginas por carta",
+      "pdfChoicePairsHint": "A página 1 é a frente e a página 2 é o verso.",
+      "pdfChoiceSingle": "Uma carta por página",
+      "pdfChoiceSingleHint": "Cada página é uma frente. Você adiciona as respostas no Anki.",
+      "pdfChoiceRemember": "Lembrar minha escolha neste dispositivo",
+      "pdfFallbackPairsNote": "Este PDF foi feito a partir de imagens das páginas, então cada duas páginas viraram uma carta.",
+      "pdfFallbackSingleNote": "Este PDF foi feito a partir de imagens das páginas, então cada página virou uma carta.",
+      "pdfFallbackAskAgain": "Perguntar na próxima vez",
+      "waitingForDeck": "Sua conexão caiu, mas ainda estamos criando seu baralho. Deixe esta aba aberta e ele aparecerá aqui.",
+      "waitingForDeckSignedIn": "Sua conexão caiu, mas ainda estamos criando seu baralho. Deixe esta aba aberta ou procure em Meus baralhos quando ficar pronto.",
+      "stopWaiting": "Parar de esperar",
       "fetching": "Buscando {{filename}} em {{source}}",
       "deckReady": "Seu baralho está pronto",
       "savedToDownloads": "{{deckName}} foi salvo nos seus downloads",
@@ -198,6 +213,9 @@
       "seeCommonProblemsSuffix": " para os formatos que funcionam.",
       "downloadEmpty": "Baixar baralho vazio",
       "tryDifferent": "Tentar outro arquivo",
+      "resumeContinueBody": "{{filename}} não terminou de ser enviado.",
+      "resumeContinue": "Continuar",
+      "resumeDismiss": "Dispensar",
       "imagesTitle": "O Foto para baralho transforma imagens em cartões",
       "imagesBody": "Não há texto para ler aqui, então não havia nada para converter. O Foto para baralho lê sua imagem com IA e rascunha cartões que você revisa antes de baixar.",
       "imagesUnzip": "O Foto para baralho aceita as fotos em si, não o zip. Descompacte o arquivo e solte as fotos.",
@@ -210,6 +228,9 @@
       "apkgRejectSecondaryPrefix": "Já é seu? Abra direto no Anki, ou ",
       "apkgRejectPrintLink": "imprima como PDF",
       "apkgRejectSecondarySuffix": ".",
+      "apkgHandoffBody": "Você pode imprimi-lo ou exportar os cartões para uma planilha, sem escolher o arquivo de novo.",
+      "apkgHandoffPrint": "Imprimir como PDF",
+      "apkgHandoffCsv": "Exportar para CSV",
       "errorTitle": "Algo deu errado",
       "tryAgain": "Tentar de novo",
       "changeSource": "← Trocar fonte",
@@ -262,8 +283,8 @@
       "networkErrorSmallTitle": "Não foi possível enviar seu arquivo",
       "networkErrorSmallBody": "A conexão caiu antes de o arquivo terminar. Verifique sua conexão e tente novamente.",
       "networkChooseDifferent": "Escolher outro arquivo",
-      "unreadableFileTitle": "Este arquivo mudou desde que você o escolheu",
-      "unreadableFileBody": "O navegador não consegue mais ler a versão escolhida: ela foi salva, movida ou excluída depois da seleção. Escolha o arquivo de novo para enviar a versão atual.",
+      "unreadableFileTitle": "Não conseguimos ler este arquivo",
+      "unreadableFileBody": "Seu navegador não conseguiu ler o arquivo inteiro. Se ele estiver no OneDrive, iCloud Drive ou Google Drive, abra-o uma vez para que seja baixado no seu dispositivo e escolha-o de novo. Se você o salvou ou moveu depois de escolher, escolha-o de novo também.",
       "unreadableChooseAgain": "Escolher o arquivo de novo",
       "emptyFileTitle": "Este arquivo está vazio",
       "emptyFileBody": "Ele tem 0 bytes, então não há nada para converter. Se ele está no OneDrive, iCloud Drive ou Google Drive, abra-o uma vez para baixá-lo no seu computador e depois escolha-o de novo.",
@@ -295,6 +316,8 @@
       "rescueBullets_other": "Criar {{n}} cartões com os marcadores",
       "rescueGuess_one": "Criar {{n}} cartão com as linhas de pergunta e resposta",
       "rescueGuess_other": "Criar {{n}} cartões com as linhas de pergunta e resposta",
+      "rescueParagraphs_one": "Criar {{n}} cartão a partir dos parágrafos",
+      "rescueParagraphs_other": "Criar {{n}} cartões a partir dos parágrafos",
       "readingLead": "Lemos {{parts}}.",
       "readingNoCards": "Nada tem a forma de um cartão: nenhum toggle e nenhum par de pergunta e resposta.",
       "readingNoText": "Este arquivo não tem texto que possamos ler. Envie o arquivo que contém suas anotações.",
@@ -400,6 +423,18 @@
         "title": "Suporte a formatos de leitura",
         "body": "Destaques do Kindle em My Clippings.txt e EPUBs sem DRM são aceitos. Para exportar seus destaques do Kindle, conecte o Kindle por USB e copie o arquivo My Clippings.txt da pasta documents do aparelho.",
         "continue": "Criar cartões destes destaques"
+      },
+      "shortcut": {
+        "title": "Isso é um atalho, não o arquivo",
+        "body": "Este é um atalho para o seu arquivo, não o arquivo em si. Escolha o arquivo para o qual ele aponta."
+      },
+      "internetShortcut": {
+        "title": "Isso é um link, não um arquivo",
+        "body": "Este é um atalho de internet, um link salvo. Abra o link, baixe o arquivo (PDF, Word, HTML ou uma exportação do Notion) e envie esse. Para uma página do Notion, use a aba Notion para converter diretamente."
+      },
+      "goodnotes": {
+        "title": "Cadernos do GoodNotes não podem ser lidos diretamente",
+        "body": "Exporte o caderno do GoodNotes como PDF (Compartilhar, Exportar, PDF) e envie esse PDF. O 2anki transforma PDFs em cartões."
       }
     }
   },
@@ -652,6 +687,7 @@
       "deleteNamed": "Excluir {{name}}",
       "cancel": "Cancelar",
       "cancelNamed": "Cancelar {{name}}",
+      "cannotStop": "Não pode ser interrompida depois de iniciada. Normalmente termina em poucos minutos.",
       "remove": "Remover",
       "removeNamed": "Remover {{name}}",
       "restart": "Reiniciar",

@@ -77,6 +77,10 @@
       "label": "Maksymalnie jedna lista rozwijana na kartę",
       "description": "Każda lista rozwijana na najwyższym poziomie staje się jedną kartą. Lista rozwijana zagnieżdżona w innej pozostaje na tyle karty nadrzędnej i nie staje się osobną kartą. Aby uzyskać kartę na każdą listę rozwijaną, zostaw je na najwyższym poziomie, zamiast je zagnieżdżać."
     },
+    "promote-nested-toggles": {
+      "label": "Zagnieżdżone przełączniki stają się osobnymi kartami",
+      "description": "Zamienia każdy przełącznik zagnieżdżony w innym przełączniku w osobną kartę, z tytułem przełącznika jako pytaniem. Puste przełączniki są pomijane."
+    },
     "remove-mp3-links": {
       "label": "Usuń linki MP3 z plików audio",
       "description": "Ukryj surowe adresy URL MP3 na kartach, zachowując możliwość odtwarzania dźwięku."

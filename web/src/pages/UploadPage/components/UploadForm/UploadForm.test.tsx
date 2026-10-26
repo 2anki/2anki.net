@@ -7,9 +7,18 @@ import {
   within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  test,
+  vi,
+  type Mock,
+} from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import UploadForm from './UploadForm';
 
@@ -50,17 +59,36 @@ vi.mock('../../../../lib/hooks/usePassPrices', () => ({
   usePassPrices: () => ({ '24h': '$6', '7d': '$12', '120d': '$29' }),
 }));
 
+vi.mock('./dropWaitPlan', () => ({
+  dropWaitDelays: vi.fn(() => []),
+}));
+
+import { dropWaitDelays } from './dropWaitPlan';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
+import {
+  THIN_DECK_RESUME_WAIT_MS,
+  clearThinDeckResume,
+  markThinDeckResume,
+  thinDeckResumeMarked,
+} from '../ThinDeckAiOffer/thinDeckResume';
 import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { track } from '../../../../lib/analytics/track';
 import { reportClientError } from '../../../../lib/reportClientError';
 import { UserNotice } from '../../../../lib/errors/UserNotice';
+import {
+  getPendingUploadStore,
+  resetPendingUploadStoreForTests,
+} from '../../../../lib/upload/pendingUpload';
 
 const mockReportClientError = vi.mocked(reportClientError);
 const mockUseUserLocals = vi.mocked(useUserLocals);
 const mockUseCardUsage = vi.mocked(useCardUsage);
 const mockGet2ankiApi = vi.mocked(get2ankiApi);
+
+beforeEach(() => {
+  resetPendingUploadStoreForTests();
+});
 
 type AnalyticsGlobals = {
   hj?: ReturnType<typeof vi.fn>;
@@ -78,12 +106,307 @@ function renderUploadForm(ui: React.ReactElement) {
   );
 }
 
+function stubPassReturn(passSession: string): void {
+  vi.stubGlobal('location', {
+    search: `?pass_session=${passSession}`,
+    href: `http://localhost/upload?pass_session=${passSession}`,
+    origin: 'http://localhost',
+  });
+  globalThis.URL.createObjectURL = vi.fn(() => 'blob:deck');
+}
+
+function apkgResumeResponse(): Response {
+  return {
+    status: 200,
+    redirected: false,
+    headers: new Headers({
+      'Content-Type': 'application/octet-stream',
+      'X-Card-Count': '58',
+      'File-Name': 'notes.apkg',
+    }),
+    blob: () => Promise.resolve(new Blob(['APKG'])),
+  } as unknown as Response;
+}
+
+function okApkgFetch(): Mock {
+  return vi.fn().mockResolvedValue({
+    redirected: false,
+    status: 200,
+    headers: new Headers({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': 'attachment; filename="deck.apkg"',
+      'X-Card-Count': '5',
+    }),
+    blob: () => Promise.resolve(new Blob(['fake'])),
+  });
+}
+
+function aiFlagFromFetch(fetchMock: Mock, url: string): string | null {
+  const call = fetchMock.mock.calls.find((c) => c[0] === url);
+  const body = call?.[1]?.body as FormData | undefined;
+  return body ? (body.get('claude-ai-flashcards') as string | null) : null;
+}
+
+function installResumeApi(resumeAiPreview: Mock): () => void {
+  const previousImpl = mockGet2ankiApi.getMockImplementation();
+  mockGet2ankiApi.mockReturnValue({
+    startPassCheckout: vi.fn(),
+    getUploads: vi.fn().mockResolvedValue([]),
+    getHeldDeck: vi.fn().mockResolvedValue(null),
+    resumeAiPreview,
+  } as unknown as ReturnType<typeof get2ankiApi>);
+  return () => {
+    mockGet2ankiApi.mockReset();
+    if (previousImpl) mockGet2ankiApi.mockImplementation(previousImpl);
+  };
+}
+
 describe('UploadForm', () => {
+  afterEach(() => {
+    globalThis.localStorage.removeItem('2anki_pass_token');
+    vi.unstubAllGlobals();
+  });
+
   test('no null classes', () => {
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />
     );
     expect(container.querySelector('.null')).toBeNull();
+  });
+
+  test('resumes the AI preview on return from checkout, using the fresh pass token', async () => {
+    // A stale token from a previous visit must not win over this return's.
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_stale');
+    stubPassReturn('cs_fresh');
+    const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await waitFor(() =>
+        expect(resumeAiPreview).toHaveBeenCalledWith('cs_fresh')
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  test('resumes for a first-time buyer with no stored token, using the return token', async () => {
+    // No token in localStorage: the only source is this return's URL param.
+    const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+    stubPassReturn('cs_firsttime');
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await waitFor(() =>
+        expect(resumeAiPreview).toHaveBeenCalledWith('cs_firsttime')
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  test('shows the drop-again notice when the resume finds no preview', async () => {
+    stubPassReturn('cs_gone');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 404,
+      redirected: false,
+      headers: new Headers(),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          /Your Day Pass is active\. Drop your file again to get every card\./
+        )
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('shows the out-of-credits notice when the resume is refused for credits', async () => {
+    stubPassReturn('cs_nocredits');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 402,
+      redirected: false,
+      headers: new Headers(),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(/no AI credits left right now/)
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('a signed-out upload with a hidden toggle sends AI off, ignoring a leftover localStorage key', async () => {
+    // Simulates a landing page other than the AI page: the toggle is hidden
+    // (no aiOn prop) but an old session left claude-ai-flashcards=true.
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="deck.apkg"',
+        'X-Card-Count': '5',
+      }),
+      blob: () => Promise.resolve(new Blob(['fake'])),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+
+      const call = fetchMock.mock.calls.find(
+        (c) => c[0] === '/api/upload/file'
+      );
+      expect(call).toBeDefined();
+      const body = call![1].body as FormData;
+      expect(body.get('claude-ai-flashcards')).toBe('false');
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+    }
+  });
+
+  test('a signed-out upload with the toggle on sends AI on', async () => {
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+    expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true');
+  });
+
+  test('a signed-out pass holder keeps their stored AI setting even with the flag off', async () => {
+    // A pass holder is treated as paying; flag-off must not strip their AI.
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_pass');
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+      expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true');
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
+  test('a signed-in upload keeps the localStorage AI setting', async () => {
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 1 },
+        locals: { patreon: true, subscriber: false },
+        features: {},
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+      expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true');
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+      // Restore a clean signed-out default so later tests don't inherit a
+      // signed-in user (mockReset would leave an undefined return).
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+    }
+  });
+
+  test('a signed-out Dropbox upload sends AI off despite a leftover key', async () => {
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
+    process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
+    (window as unknown as { Dropbox?: unknown }).Dropbox = {
+      choose: ({ success }: { success: (files: unknown[]) => void }) => {
+        success([
+          {
+            id: 'id:2',
+            name: 'notes.pdf',
+            bytes: 100,
+            icon: 'page',
+            isDir: false,
+            link: 'https://dl.dropboxusercontent.com/x/notes.pdf',
+            linkType: 'direct',
+          },
+        ]);
+      },
+    };
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const button = container.querySelector(
+        'button[aria-label="Choose from Dropbox"]'
+      ) as HTMLButtonElement;
+      await act(async () => {
+        button.click();
+      });
+      await waitFor(() =>
+        expect(aiFlagFromFetch(fetchMock, '/api/upload/dropbox')).toBe('false')
+      );
+    } finally {
+      delete (window as unknown as { Dropbox?: unknown }).Dropbox;
+      process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+    }
   });
 
   test('opts the drop zone out of browser translation', () => {
@@ -336,6 +659,34 @@ describe('UploadForm Google Drive picker interaction', () => {
     const body = driveCall[1].body as FormData;
     expect(body.get('pdf-page-range')).toBe('2-4');
     expect(globalThis.localStorage.getItem('pdf-page-range')).toBeNull();
+  });
+
+  it('sends AI off on a signed-out Drive upload despite a leftover localStorage key', async () => {
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      fireEvent.click(
+        within(container).getByRole('button', { name: 'Google Drive' })
+      );
+      const driveButton = await screen.findByRole('button', {
+        name: 'Choose from Google Drive',
+      });
+      fireEvent.click(driveButton);
+      await waitFor(() =>
+        expect(aiFlagFromFetch(fetchMock, '/api/upload/google_drive')).toBe(
+          'false'
+        )
+      );
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+    }
   });
 });
 
@@ -1314,7 +1665,7 @@ describe('UploadForm analytics events', () => {
     });
   });
 
-  it('leads an apkg-reject error with pick-a-different-file, and keeps /print as a quiet secondary link', async () => {
+  it('hands a finished deck to Print and CSV, and keeps choosing another file as a quiet option', async () => {
     const jsonBody = {
       code: 'unsupported_format',
       message: 'This file is already an Anki deck.',
@@ -1346,18 +1697,114 @@ describe('UploadForm analytics events', () => {
       );
     });
 
-    expect(container.textContent).toMatch(
-      /it cannot convert a deck that is already built/
-    );
-
-    const primary = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === 'Choose a different file'
-    );
-    expect(primary).toBeDefined();
-
-    const print = container.querySelector('a[href="/print"]');
+    expect(
+      screen.getByRole('button', { name: 'Print it as a PDF' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Export it to CSV' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Choose a different file' })
+    ).toBeInTheDocument();
     expect(container.querySelector('a[href="/transform"]')).toBeNull();
-    expect(print?.textContent).toMatch(/print it as a PDF/);
+  });
+
+  it('takes the same deck file to Print without choosing it again', async () => {
+    const jsonBody = {
+      code: 'unsupported_format',
+      message: 'This file is already an Anki deck.',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        clone: () => ({ json: () => Promise.resolve(jsonBody) }),
+        text: () => Promise.resolve(JSON.stringify(jsonBody)),
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+      })
+    );
+    let handedOff: unknown = null;
+    function PrintProbe() {
+      handedOff = (useLocation().state as { handoffFile?: File } | null)
+        ?.handoffFile;
+      return <p>print page</p>;
+    }
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const { container } = render(
+      <MemoryRouter initialEntries={['/upload']}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route
+              path="/upload"
+              element={<UploadForm setErrorMessage={vi.fn()} />}
+            />
+            <Route path="/print" element={<PrintProbe />} />
+          </Routes>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+    const deck = new File(['zip'], 'Biology.zip', { type: 'application/zip' });
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [deck],
+      configurable: true,
+    });
+    input.removeAttribute('required');
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Print it as a PDF' })
+    );
+
+    expect(await screen.findByText('print page')).toBeInTheDocument();
+    expect(handedOff).toBe(deck);
+    expect(track).toHaveBeenCalledWith('apkg_upload_handoff_clicked', {
+      to: 'print',
+    });
+  });
+
+  it('converts notes handed over from a deck tool straight away', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => new Promise(() => {}));
+    vi.stubGlobal('fetch', fetchMock);
+    const notes = new File(['# notes'], 'notes.zip', {
+      type: 'application/zip',
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: '/upload', state: { handoffFile: notes } },
+        ]}
+      >
+        <QueryClientProvider client={queryClient}>
+          <UploadForm setErrorMessage={vi.fn()} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/upload/file',
+        expect.objectContaining({ method: 'post' })
+      )
+    );
+    const body = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/upload/file'
+    )?.[1].body as FormData;
+    expect((body.get('pakker') as File).name).toBe('notes.zip');
   });
 
   it('clicking the apkg-reject primary action resets the form and opens the file picker', async () => {
@@ -1592,7 +2039,11 @@ describe('UploadForm analytics events', () => {
       docsLink: '/documentation/help/common-problems',
       empty_reason: 'no_toggles',
       rescue: [
-        { rule: 'heading', cards: 14 },
+        {
+          rule: 'heading',
+          cards: 14,
+          sample: [{ front: 'Krebs cycle', back: 'Makes ATP in the matrix.' }],
+        },
         { rule: 'bullets', cards: 40 },
       ],
     };
@@ -1636,6 +2087,9 @@ describe('UploadForm analytics events', () => {
     expect(
       container.querySelector('[class*="emptyBody"]')?.textContent
     ).not.toContain('Put each question');
+    const samples = container.querySelectorAll('[class*="rescueSample"] li');
+    expect(samples).toHaveLength(1);
+    expect(samples[0].textContent).toBe('Krebs cycleMakes ATP in the matrix.');
 
     await act(async () => {
       buttons[1].click();
@@ -2140,8 +2594,9 @@ describe('UploadForm analytics events', () => {
 
     await submitImageOnly();
 
-    const cta = await screen.findByRole('link', { name: 'Open Photo to Deck' });
-    expect(cta).toHaveAttribute('href', '/photo-to-deck');
+    expect(
+      await screen.findByRole('button', { name: 'Open Photo to Deck' })
+    ).toBeInTheDocument();
     expect(screen.queryByText('Create a free account')).toBeNull();
     expect(
       screen.queryByText('5 photos a month are free with an account.')
@@ -2190,12 +2645,115 @@ describe('UploadForm analytics events', () => {
 
     await submitImageOnly();
 
-    const cta = await screen.findByRole('link', { name: 'Open Photo to Deck' });
+    const cta = await screen.findByRole('button', {
+      name: 'Open Photo to Deck',
+    });
     fireEvent.click(cta);
 
-    expect(trackMock).toHaveBeenCalledWith('image_only_photo_deck_clicked', {
-      context: 'signed_in',
+    await waitFor(() =>
+      expect(trackMock).toHaveBeenCalledWith('image_only_photo_deck_clicked', {
+        context: 'signed_in',
+        photos: 0,
+      })
+    );
+  });
+
+  it('hands the photos inside an uploaded zip to Photo to Deck', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: { user: { id: 42 }, locals: { owner: 42 } },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    stubImageOnlyFetch();
+    const { zipSync } = await import('fflate');
+    const zip = new File(
+      [
+        zipSync({
+          'slides/02.png': new TextEncoder().encode('two'),
+          'slides/01.png': new TextEncoder().encode('one'),
+        }),
+      ],
+      'slides.zip',
+      { type: 'application/zip' }
+    );
+    function PhotoProbe() {
+      const location = useLocation();
+      const photos = (location.state as { handoffPhotos?: File[] } | null)
+        ?.handoffPhotos;
+      return <p>handed: {(photos ?? []).map((p) => p.name).join(',')}</p>;
+    }
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
     });
+    const { container } = render(
+      <MemoryRouter initialEntries={['/upload']}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route
+              path="/upload"
+              element={<UploadForm setErrorMessage={vi.fn()} />}
+            />
+            <Route path="/photo-to-deck" element={<PhotoProbe />} />
+          </Routes>
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [zip], configurable: true });
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open Photo to Deck' })
+    );
+
+    expect(
+      await screen.findByText('handed: 01.png,02.png')
+    ).toBeInTheDocument();
+  });
+
+  it('shows the Photo to Deck state for an iPhone HEIC photo without uploading it', async () => {
+    const requests: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        requests.push(url);
+        return Promise.resolve(new Response('{}'));
+      })
+    );
+    sessionStorage.setItem('upload_pending_filename', 'older.pdf');
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [new File(['h'], 'IMG_0001.HEIC', { type: 'image/heic' })],
+      configurable: true,
+    });
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+
+    expect(
+      await screen.findByText('Photo to Deck turns images into cards')
+    ).toBeInTheDocument();
+    expect(requests).not.toContain('/api/upload/file');
+    expect(sessionStorage.getItem('upload_pending_filename')).toBeNull();
   });
 
   it('tracks upload_failed with reason=network when fetch throws a TypeError', async () => {
@@ -2286,6 +2844,38 @@ describe('UploadForm analytics events', () => {
       expect(reports).toEqual([]);
     });
 
+    it('asks for a fresh pick when the first byte reads but the rest of the file does not, without uploading', async () => {
+      const { track } = await import('../../../../lib/analytics/track');
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const requests: string[] = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string) => {
+          requests.push(url);
+          return Promise.resolve(new Response(null));
+        })
+      );
+      const file = new File(['xyz'], 'cloud.pdf');
+      Object.defineProperty(file, 'arrayBuffer', {
+        value: () =>
+          Promise.reject(new DOMException('partial', 'NotReadableError')),
+      });
+
+      await submitUpload(file);
+
+      await waitFor(() =>
+        expect(
+          screen.getByText("We couldn't read this file")
+        ).toBeInTheDocument()
+      );
+      expect(requests).not.toContain('/api/upload/file');
+      expect(trackMock).toHaveBeenCalledWith(
+        'upload_file_unreadable',
+        expect.objectContaining({ reason: 'partial', fileExt: '.pdf' })
+      );
+    });
+
     it('asks for a fresh pick when the browser can no longer read the file, without uploading', async () => {
       const { track } = await import('../../../../lib/analytics/track');
       const trackMock = vi.mocked(track);
@@ -2310,7 +2900,7 @@ describe('UploadForm analytics events', () => {
 
       await waitFor(() =>
         expect(
-          screen.getByText('This file changed since you picked it')
+          screen.getByText("We couldn't read this file")
         ).toBeInTheDocument()
       );
       expect(
@@ -3541,6 +4131,47 @@ describe('UploadForm network-failure retry', () => {
     expect(retryBody.get('pdf-page-range')).toBe('2-4');
   });
 
+  it('keeps AI off on Try again for a signed-out visitor with a leftover key', async () => {
+    globalThis.localStorage.removeItem('2anki_pass_token');
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValue(successResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      selectFile(container, 'notes.pdf', SMALL);
+      await submitForm(container);
+
+      const retry = await screen.findByRole('button', { name: 'Try again' });
+      fireEvent.click(retry);
+
+      await waitFor(() => {
+        const uploadCalls = fetchMock.mock.calls.filter(
+          ([url]) => url === '/api/upload/file'
+        );
+        expect(uploadCalls).toHaveLength(2);
+      });
+      const retryBody = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/upload/file'
+      )[1][1].body as FormData;
+      expect(retryBody.get('claude-ai-flashcards')).toBe('false');
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+    }
+  });
+
   it('shows big-file copy when the failed upload is 10 MB or larger', async () => {
     vi.stubGlobal(
       'fetch',
@@ -3762,6 +4393,267 @@ describe('UploadForm reattach recovery', () => {
       'biochem.pdf'
     );
   });
+
+  it('keeps the sent file on this device while the request is pending', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const pending = await getPendingUploadStore().load();
+    expect(pending).toMatchObject({ filename: 'biochem.pdf', ownerId: null });
+    expect(pending?.files.map((file) => file.name)).toEqual(['biochem.pdf']);
+  });
+
+  it('forgets the sent file once the server responds', async () => {
+    vi.stubGlobal('fetch', okApkgFetch());
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:deck');
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+  });
+
+  it('forgets the sent file when the server rejects it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 400,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        json: () => Promise.resolve({ message: 'Bad file' }),
+        text: () => Promise.resolve('{"message":"Bad file"}'),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+  });
+
+  it('keeps the sent file after a dropped connection, since the deck may still arrive', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(await getPendingUploadStore().load()).toMatchObject({
+      filename: 'biochem.pdf',
+    });
+  });
+
+  it('offers nothing and keeps the file when the account lookup failed', async () => {
+    await savePending('biochem.pdf');
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('down'),
+      isError: true,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await act(async () => {});
+
+    expect(
+      screen.queryByRole('button', { name: 'Continue' })
+    ).not.toBeInTheDocument();
+    expect(await getPendingUploadStore().load()).toMatchObject({
+      filename: 'biochem.pdf',
+    });
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  });
+
+  it('warns before the page unloads while the upload is in flight', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const idleUnload = new Event('beforeunload', { cancelable: true });
+    globalThis.dispatchEvent(idleUnload);
+    expect(idleUnload.defaultPrevented).toBe(false);
+
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const busyUnload = new Event('beforeunload', { cancelable: true });
+    globalThis.dispatchEvent(busyUnload);
+    expect(busyUnload.defaultPrevented).toBe(true);
+  });
+
+  async function savePending(name: string, ownerId: number | null = null) {
+    await getPendingUploadStore().save({
+      files: [new File(['x'], name, { type: 'application/pdf' })],
+      filename: name,
+      sizeBytes: 1,
+      submittedAt: Date.now(),
+      recoveryToken: ownerId == null ? 'token-1' : null,
+      ownerId,
+      pdfPageRange: '2-4',
+      aiFlag: null,
+    });
+  }
+
+  it('never offers a file an account left behind to the next signed-out visitor', async () => {
+    await savePending('private-notes.pdf', 42);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+    expect(screen.queryByText(/private-notes\.pdf/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Continue' })
+    ).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('offers to continue a file that did not finish uploading before the reload', async () => {
+    await savePending('biochem.pdf');
+    const fetchMock = vi.fn().mockImplementation(() => new Promise(() => {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText("biochem.pdf didn't finish uploading.")
+    ).toBeInTheDocument();
+    expect(track).toHaveBeenCalledWith('upload_resume_shown', {
+      state: 'continue',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/upload/file',
+        expect.objectContaining({ method: 'post' })
+      )
+    );
+    const body = fetchMock.mock.calls[0][1].body as FormData;
+    expect((body.get('pakker') as File).name).toBe('biochem.pdf');
+    expect(body.get('pdf-page-range')).toBe('2-4');
+    expect(track).toHaveBeenCalledWith('upload_resume_clicked');
+  });
+
+  it('sends nothing when the pending file was cleared in another tab', async () => {
+    await savePending('biochem.pdf');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    const continueButton = await screen.findByRole('button', {
+      name: 'Continue',
+    });
+    await getPendingUploadStore().clear();
+    fireEvent.click(continueButton);
+
+    await act(async () => {});
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/upload/file',
+      expect.anything()
+    );
+  });
+
+  it('forgets the file when the user dismisses the offer', async () => {
+    await savePending('biochem.pdf');
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss' }));
+
+    expect(
+      screen.queryByText("biochem.pdf didn't finish uploading.")
+    ).not.toBeInTheDocument();
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+  });
+
+  it('hands back the deck the server already made instead of converting again', async () => {
+    await savePending('biochem.pdf');
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:recovered');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getAnonymousRecoveredDeck: vi.fn().mockResolvedValue(new Blob(['APKG'])),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', 'blob:recovered');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(track).toHaveBeenCalledWith('upload_resume_shown', {
+      state: 'ready',
+    });
+    expect(await getPendingUploadStore().load()).toBeNull();
+  });
+
+  it('asks to re-attach the file when only its name survived the reload', async () => {
+    globalThis.sessionStorage.setItem('upload_pending_filename', 'big.zip');
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    const banner = (await screen.findByText(/Re-attach/)).closest(
+      '[role="status"]'
+    ) as HTMLElement;
+    expect(banner.textContent).toContain('big.zip');
+    expect(banner.textContent).toContain('to convert');
+    expect(track).toHaveBeenCalledWith('upload_reattach_shown');
+  });
+
+  it('shows no offer when nothing was pending', async () => {
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await act(async () => {});
+    expect(screen.queryByText(/Re-attach/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Continue' })
+    ).not.toBeInTheDocument();
+    expect(track).not.toHaveBeenCalledWith(
+      'upload_resume_shown',
+      expect.anything()
+    );
+  });
 });
 
 describe('UploadForm signed-in deck recovery', () => {
@@ -3832,6 +4724,38 @@ describe('UploadForm signed-in deck recovery', () => {
     };
   }
 
+  it('finds the deck in My Decks after a reload instead of offering to send it again', async () => {
+    await getPendingUploadStore().save({
+      files: [new File(['x'], 'biochem.pdf', { type: 'application/pdf' })],
+      filename: 'biochem.pdf',
+      sizeBytes: 1,
+      submittedAt: Date.now() - 5_000,
+      recoveryToken: null,
+      ownerId: 1,
+      pdfPageRange: null,
+      aiFlag: null,
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getUploads: vi.fn().mockResolvedValue([makeUpload()]),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', '/api/download/u/recovered-key');
+    expect(
+      screen.queryByRole('button', { name: 'Continue' })
+    ).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/upload/file',
+      expect.anything()
+    );
+  });
+
   it('recovers a signed-in deck from My Decks when the response is lost', async () => {
     vi.stubGlobal(
       'fetch',
@@ -3857,6 +4781,34 @@ describe('UploadForm signed-in deck recovery', () => {
     expect(
       globalThis.sessionStorage.getItem('upload_pending_filename')
     ).toBeNull();
+  });
+
+  it('keeps checking My Decks while the deck is built, and says it will be there', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    vi.mocked(dropWaitDelays).mockReturnValueOnce([0, 0]);
+    const getUploads = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([makeUpload()]);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getUploads,
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', '/api/download/u/recovered-key');
+    expect(getUploads).toHaveBeenCalledTimes(3);
   });
 
   it('falls back to the retry state when My Decks has no matching deck', async () => {
@@ -3984,6 +4936,94 @@ describe('UploadForm anonymous deck recovery', () => {
     expect(
       screen.queryByRole('button', { name: 'Try again' })
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps looking while the server finishes the deck, then shows it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    vi.mocked(dropWaitDelays).mockReturnValueOnce([0, 0, 0]);
+    const getAnonymousRecoveredDeck = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(new Blob(['apkg']));
+    stubApi(getAnonymousRecoveredDeck);
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', 'blob:recovered');
+    expect(getAnonymousRecoveredDeck).toHaveBeenCalledTimes(3);
+    expect(
+      screen.queryByRole('button', { name: 'Try again' })
+    ).not.toBeInTheDocument();
+    expect(trackMock).toHaveBeenCalledWith(
+      'upload_failed',
+      expect.objectContaining({
+        reason: 'network',
+        recovered: true,
+        trigger: 'wait',
+      })
+    );
+  });
+
+  it('tells the visitor the deck is still being built and lets them stop waiting', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    vi.mocked(dropWaitDelays).mockReturnValueOnce([60_000]);
+    stubApi(vi.fn().mockResolvedValue(null));
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    expect(
+      await screen.findByText(
+        "Your connection dropped, but we're still building your deck. Keep this tab open and it will appear here."
+      )
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Stop waiting' }));
+
+    await screen.findByRole('button', { name: 'Try again' });
+    expect(screen.queryByRole('button', { name: 'Stop waiting' })).toBeNull();
+  });
+
+  it('records no upload failure when the page is closed while waiting', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    vi.mocked(dropWaitDelays).mockReturnValueOnce([60_000]);
+    stubApi(vi.fn().mockResolvedValue(null));
+    const trackMock = vi.mocked(track);
+
+    const { container, unmount } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+    await screen.findByRole('button', { name: 'Stop waiting' });
+    trackMock.mockClear();
+
+    unmount();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'upload_failed',
+      expect.anything()
+    );
   });
 
   it('falls back to the retry state when no deck was stored', async () => {
@@ -4740,5 +5780,385 @@ describe('claiming a held deck after sign-in', () => {
       expect(getHeldDeck).toHaveBeenCalledTimes(1);
       expect(claimHeldDeck).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('UploadForm PDF with no readable text', () => {
+  beforeEach(() => {
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    globalThis.localStorage.clear();
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  });
+
+  afterEach(() => {
+    delete (globalThis as AnalyticsGlobals).gtag;
+    delete (globalThis as AnalyticsGlobals).hj;
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    globalThis.localStorage.clear();
+  });
+
+  function selectFile(container: HTMLElement, name: string) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['x'], name, { type: 'application/pdf' });
+    Object.defineProperty(fileInput, 'files', {
+      value: [file],
+      configurable: true,
+    });
+    fileInput.removeAttribute('required');
+  }
+
+  async function submitForm(container: HTMLElement) {
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  function sentFallback(fetchMock: ReturnType<typeof vi.fn>, call = 0) {
+    const calls = fetchMock.mock.calls.filter(
+      ([url]) => url === '/api/upload/file'
+    );
+    const body = calls[call]?.[1]?.body as FormData | undefined;
+    return body?.get('pdf-fallback') ?? null;
+  }
+
+  const choiceResponse = () => ({
+    redirected: false,
+    status: 409,
+    clone: () => ({
+      json: () =>
+        Promise.resolve({
+          code: 'choose_pdf_mode',
+          reason: 'no_text',
+          page_count: 14,
+        }),
+    }),
+    text: () => Promise.resolve(JSON.stringify({ code: 'choose_pdf_mode' })),
+    headers: new Headers({ 'Content-Type': 'application/json' }),
+  });
+
+  const deckResponse = (headers: Record<string, string> = {}) => ({
+    redirected: false,
+    status: 200,
+    headers: new Headers({
+      'Content-Type': 'application/octet-stream',
+      'File-Name': encodeURIComponent('scan.apkg'),
+      'X-Card-Count': '7',
+      ...headers,
+    }),
+    blob: () => Promise.resolve(new Blob(['apkg'])),
+  });
+
+  it('tells the server to ask for a PDF, but not for other files', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(choiceResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+
+    expect(sentFallback(fetchMock)).toBe('ask');
+  });
+
+  it('does not ask about files that cannot be a scanned PDF', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(deckResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'notes.md');
+    await submitForm(container);
+
+    expect(sentFallback(fetchMock)).toBeNull();
+  });
+
+  it('offers the choices, and resends the same file with the one picked', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(choiceResponse())
+      .mockResolvedValueOnce(deckResponse({ 'X-Pdf-Fallback': 'single' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+
+    expect(
+      (await screen.findAllByText('This PDF has no text we can read')).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('button', { name: 'Two pages per card' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Make cards with AI' })
+    ).toBeNull();
+    expect(trackMock).toHaveBeenCalledWith('pdf_fallback_choice_shown', {
+      reason: 'no_text',
+      pageBucket: '11-50',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'One card per page' }));
+
+    expect(
+      await screen.findByText(
+        'This PDF was made from page images, so every page became one card.'
+      )
+    ).toBeInTheDocument();
+    expect(sentFallback(fetchMock, 1)).toBe('single');
+    const second = fetchMock.mock.calls[1][1].body as FormData;
+    expect((second.get('pakker') as File).name).toBe('scan.pdf');
+    expect(globalThis.localStorage.getItem('pdf-fallback')).toBeNull();
+  });
+
+  it('remembers the choice when asked, and uses it without asking again', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(choiceResponse())
+      .mockResolvedValueOnce(deckResponse({ 'X-Pdf-Fallback': 'pairs' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+    await screen.findAllByText('This PDF has no text we can read');
+
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'Remember my choice on this device',
+      })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Two pages per card' }));
+
+    await screen.findByText(
+      'This PDF was made from page images, so every two pages became one card.'
+    );
+    expect(globalThis.localStorage.getItem('pdf-fallback')).toBe('pairs');
+    expect(
+      screen.getByRole('button', { name: 'Ask me next time' })
+    ).toBeInTheDocument();
+  });
+
+  it('sends a remembered choice instead of asking', async () => {
+    globalThis.localStorage.setItem('pdf-fallback', 'single');
+    const fetchMock = vi.fn().mockResolvedValue(deckResponse());
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+
+    expect(sentFallback(fetchMock)).toBe('single');
+  });
+
+  it('lets the person take a remembered choice back', async () => {
+    globalThis.localStorage.setItem('pdf-fallback', 'single');
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(deckResponse({ 'X-Pdf-Fallback': 'single' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'scan.pdf');
+    await submitForm(container);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Ask me next time' })
+    );
+
+    expect(globalThis.localStorage.getItem('pdf-fallback')).toBeNull();
+    expect(trackMock).toHaveBeenCalledWith('pdf_fallback_forgotten');
+    expect(
+      screen.queryByRole('button', { name: 'Ask me next time' })
+    ).toBeNull();
+  });
+});
+
+describe('UploadForm thin deck resume after the Day Pass checkout', () => {
+  beforeEach(() => {
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  });
+
+  afterEach(() => {
+    clearThinDeckResume();
+    globalThis.localStorage.removeItem('2anki_pass_token');
+    vi.unstubAllGlobals();
+  });
+
+  async function saveWithAi(ownerId: number | null) {
+    await getPendingUploadStore().save({
+      files: [new File(['x'], 'lecture.pdf', { type: 'application/pdf' })],
+      filename: 'lecture.pdf',
+      sizeBytes: 1,
+      submittedAt: Date.now(),
+      recoveryToken: null,
+      ownerId,
+      pdfPageRange: null,
+      aiFlag: 'true',
+    });
+  }
+
+  function stubSignedInReturn(): void {
+    vi.stubGlobal('location', {
+      search: '?from=pass&session_id=cs_thin',
+      href: 'http://localhost/upload?from=pass&session_id=cs_thin',
+      origin: 'http://localhost',
+    });
+  }
+
+  function signedIn(paying: boolean) {
+    return {
+      data: {
+        user: { id: 7 },
+        locals: { patreon: false, subscriber: paying },
+        features: {},
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>;
+  }
+
+  test('sends the saved file again with AI on for a visitor back from checkout', async () => {
+    stubPassReturn('cs_thin');
+    markThinDeckResume();
+    await saveWithAi(null);
+    const resumeAiPreview = vi.fn();
+    const restore = installResumeApi(resumeAiPreview);
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+      await waitFor(() =>
+        expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true')
+      );
+      const body = fetchMock.mock.calls[0][1].body as FormData;
+      expect((body.get('pakker') as File).name).toBe('lecture.pdf');
+      expect(resumeAiPreview).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+
+  test('sends nothing for a signed in buyer until the account shows as paying', async () => {
+    stubSignedInReturn();
+    markThinDeckResume();
+    await saveWithAi(7);
+    mockUseUserLocals.mockReturnValue(signedIn(false));
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { rerender } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    mockUseUserLocals.mockReturnValue(signedIn(true));
+    rerender(
+      <MemoryRouter>
+        <QueryClientProvider client={new QueryClient()}>
+          <UploadForm setErrorMessage={vi.fn()} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true')
+    );
+  });
+
+  test('does not send a file saved by another account', async () => {
+    stubSignedInReturn();
+    markThinDeckResume();
+    await saveWithAi(99);
+    mockUseUserLocals.mockReturnValue(signedIn(true));
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test('does not resume a return from checkout that did not start from the offer', async () => {
+    stubSignedInReturn();
+    await saveWithAi(7);
+    mockUseUserLocals.mockReturnValue(signedIn(true));
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test('keeps asking until the account pays, then gives up after the wait and clears the marker', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      stubSignedInReturn();
+      markThinDeckResume();
+      await saveWithAi(7);
+      const refetch = vi.fn();
+      mockUseUserLocals.mockReturnValue({
+        ...signedIn(false),
+        refetch,
+      } as unknown as ReturnType<typeof useUserLocals>);
+      const fetchMock = okApkgFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      for (let i = 0; i < 20; i++) {
+        await vi.advanceTimersByTimeAsync(2000);
+      }
+
+      expect(refetch.mock.calls.length).toBeGreaterThan(5);
+      expect(thinDeckResumeMarked()).toBe(false);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(THIN_DECK_RESUME_WAIT_MS).toBeLessThanOrEqual(40_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('drops a marker left behind when the page is not a return from checkout', async () => {
+    markThinDeckResume();
+    await saveWithAi(null);
+    vi.stubGlobal('fetch', okApkgFetch());
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    await waitFor(() => expect(thinDeckResumeMarked()).toBe(false));
   });
 });

@@ -497,6 +497,28 @@ describe('DownloadsPage deck feedback prompt', () => {
     ).toBeInTheDocument();
   });
 
+  it('does not ask about a deck that was cut at the card limit', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Pharmacology Ch. 4',
+        download_key: 'deck-abc123.apkg',
+        job_reason_failure: JSON.stringify({
+          code: 'monthly_limit_partial',
+          cards_delivered: 100,
+          cards_held_back: 40,
+          limit: 100,
+        }),
+      }),
+    ];
+    renderAt('/downloads');
+    fireEvent.click(screen.getByLabelText('Download Pharmacology Ch. 4'));
+    expect(
+      screen.queryByText('Did this deck come out right?')
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps the feedback prompt hidden after download when suppressed', () => {
     localStorage.setItem(
       '2anki_deck_feedback_suppressed_until',
@@ -878,11 +900,27 @@ describe('DownloadsPage cancel_during_generating telemetry', () => {
     delete (globalThis as AnalyticsGlobals).gtag;
   });
 
-  it('fires cancel_during_generating when cancel is clicked on a step2_creating_flashcards job', () => {
+  it('offers no cancel on a job the server will not stop and says why', () => {
+    mockJobs = [
+      buildJob({
+        id: 44 as JobsId,
+        status: 'step2_creating_flashcards',
+        title: 'PDF notes',
+      }),
+    ];
+    renderAt('/downloads');
+
+    expect(
+      screen.queryByRole('button', { name: /Cancel PDF notes/i })
+    ).toBeNull();
+    expect(screen.getByText(/Can't be stopped once started/i)).toBeDefined();
+  });
+
+  it('fires cancel_during_generating when cancel is clicked on a claude chunk job', () => {
     mockJobs = [
       buildJob({
         id: 42 as JobsId,
-        status: 'step2_creating_flashcards',
+        status: 'claude:chunk:1:3',
         title: 'PDF notes',
       }),
     ];
@@ -1225,7 +1263,7 @@ describe('DownloadsPage truncation notice', () => {
     ).toBeInTheDocument();
   });
 
-  it('stays quiet about a few empty toggles on a healthy deck', () => {
+  it('tells the person about a few empty toggles on a healthy deck without the thin-deck banner', () => {
     mockJobs = [
       buildJob({
         status: 'done',
@@ -1237,10 +1275,45 @@ describe('DownloadsPage truncation notice', () => {
       }),
     ];
     renderAt('/downloads');
-    expect(screen.queryByText(/toggles had no answer inside/)).toBeNull();
+    expect(
+      screen.getByText(
+        "2 toggles had no answer inside and were skipped, so they aren't in this deck. Add an answer to each in Notion, then convert again."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Only 34 cards came from this page/)).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'See full report' })
     ).toBeNull();
+  });
+
+  it('says nothing about empty toggles when none were skipped', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Clean Page',
+        download_key: 'deck-clean.apkg',
+        card_count: 12,
+        empty_back_count: 0,
+      }),
+    ];
+    renderAt('/downloads');
+    expect(screen.queryByText(/had no answer inside/)).toBeNull();
+  });
+
+  it('shows one empty-toggle message, not two, when the thin-deck banner is up', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Thin Page',
+        download_key: 'deck-thin2.apkg',
+        card_count: 3,
+        empty_back_count: 5,
+      }),
+    ];
+    renderAt('/downloads');
+    expect(screen.getAllByText(/had no answer inside/)).toHaveLength(1);
   });
 
   it('shows the same candidate-skip count on the pill and the thin-deck notice', () => {

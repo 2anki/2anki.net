@@ -1,3 +1,4 @@
+import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 import { vi, type Mock, type MockInstance } from 'vitest';
 import fsModule from 'node:fs';
 import {
@@ -8,7 +9,10 @@ import {
   assembleParserFiles,
 } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
-import { AiCreditsExhaustedError } from '../../../lib/claude/aiSpendGuard';
+import {
+  AiCreditsExhaustedError,
+  getAiBudgetStatus as getAiBudgetStatusImport,
+} from '../../../lib/claude/aiSpendGuard';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import { generateDeckInfo as generateDeckInfoImport } from '../../../lib/claude/ClaudeService';
 import CustomExporterDefault from '../../../lib/parser/exporters/CustomExporter';
@@ -23,6 +27,7 @@ import {
 import { combineIntoHTML } from '../../../lib/pdf/combineIntoHTML';
 import { convertDocxToHTML as convertDocxToHTMLImport } from './convertDocxToHTML';
 import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
+import { parsePdfFallbackChoiceSentinel } from '../../../lib/pdf/pdfFallbackChoice';
 import { downloadMediaOrSkip as downloadMediaOrSkipImport } from '../../../services/NotionService/helpers/downloadMediaOrSkip';
 import * as trackModule from '../../../services/events/track';
 
@@ -31,6 +36,18 @@ vi.mock('../../../lib/claude/ClaudeService', async () => {
     typeof import('../../../lib/claude/ClaudeService')
   >('../../../lib/claude/ClaudeService');
   return { ...actual, generateDeckInfo: vi.fn() };
+});
+
+vi.mock('../../../lib/claude/aiSpendGuard', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../lib/claude/aiSpendGuard')
+  >('../../../lib/claude/aiSpendGuard');
+  return {
+    ...actual,
+    getAiBudgetStatus: vi
+      .fn()
+      .mockResolvedValue({ exhausted: false, balance: null }),
+  };
 });
 
 vi.mock('../../../lib/parser/exporters/CustomExporter', () => {
@@ -120,6 +137,7 @@ vi.mock('../../../services/events/track', () => ({
 
 const downloadMediaOrSkip = downloadMediaOrSkipImport as unknown as Mock;
 const generateDeckInfo = generateDeckInfoImport as unknown as Mock;
+const getAiBudgetStatus = getAiBudgetStatusImport as unknown as Mock;
 const CustomExporterMock = CustomExporterDefault as unknown as Mock;
 
 function makeSettings(overrides: Record<string, string> = {}): CardOption {
@@ -172,6 +190,27 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     expect(result?.name).toContain('My Deck');
     expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
+  });
+
+  it('falls back to the standard parser for an anonymous pass holder past their allowance', async () => {
+    getAiBudgetStatus.mockResolvedValueOnce({ exhausted: true, balance: null });
+
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    const result = await PrepareDeck({
+      name: 'test.html',
+      files: [{ name: 'test.html', contents: '<p>Front</p>' }],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+      anonymousPassId: 7,
+    });
+
+    expect(getAiBudgetStatus).toHaveBeenCalledWith({
+      userId: null,
+      anonymousPassId: 7,
+    });
+    expect(generateDeckInfo).not.toHaveBeenCalled();
+    expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
   });
 
   it('never fails when the credit guard trips mid-run; ships the produced cards with the warning', async () => {
@@ -303,8 +342,9 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     ];
   }
 
-  it('converts multiple files sequentially and threads earlier fronts into later prompts', async () => {
-    const files = Array.from({ length: 3 }, (_, i) => ({
+  it('converts files side by side and threads finished fronts into later prompts', async () => {
+    const fileCount = AI_FILE_CONCURRENCY + 2;
+    const files = Array.from({ length: fileCount }, (_, i) => ({
       name: `page-${i}.html`,
       contents: `<p>page ${i}</p>`,
     }));
@@ -334,21 +374,21 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
       workspace: makeWorkspace(),
     });
 
-    expect(generateDeckInfo).toHaveBeenCalledTimes(3);
-    expect(maxInFlight).toBe(1);
+    expect(generateDeckInfo).toHaveBeenCalledTimes(fileCount);
+    expect(maxInFlight).toBe(AI_FILE_CONCURRENCY);
 
     const instructionsFor = (call: number) =>
       generateDeckInfo.mock.calls[call][2] as string;
 
     expect(instructionsFor(0)).toBe('Focus on definitions');
-    expect(instructionsFor(0)).not.toContain('Do NOT repeat');
+    expect(instructionsFor(AI_FILE_CONCURRENCY - 1)).not.toContain(
+      'Do NOT repeat'
+    );
 
-    expect(instructionsFor(1)).toContain('Focus on definitions');
-    expect(instructionsFor(1)).toContain('Do NOT repeat any of these fronts');
-    expect(instructionsFor(1)).toContain('Fact from file 0');
-
-    expect(instructionsFor(2)).toContain('Fact from file 0');
-    expect(instructionsFor(2)).toContain('Fact from file 1');
+    const lastCall = instructionsFor(fileCount - 1);
+    expect(lastCall).toContain('Focus on definitions');
+    expect(lastCall).toContain('Do NOT repeat any of these fronts');
+    expect(lastCall).toContain('Fact from file 0');
   });
 
   it('suppresses a later file card duplicating an earlier file, keeping sub-deck names', async () => {
@@ -547,6 +587,99 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     expect(result).toBeUndefined();
     expect(CustomExporterMock).not.toHaveBeenCalled();
     expect(crossFileDedup.suppressed).toBe(1);
+  });
+
+  it("does not treat a sibling file's suppression as its own when it made no cards", async () => {
+    const { createCrossFileDedupState, cardFingerprint } =
+      await vi.importActual<typeof import('../../../lib/claude/ClaudeService')>(
+        '../../../lib/claude/ClaudeService'
+      );
+    const crossFileDedup = createCrossFileDedupState();
+    crossFileDedup.seenKeys.add(
+      cardFingerprint({ name: 'Known fact', back: 'Known answer' })
+    );
+
+    let releaseEmpty: () => void = () => {};
+    const emptyMayFinish = new Promise<void>((resolve) => {
+      releaseEmpty = resolve;
+    });
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('empty page')) {
+        await emptyMayFinish;
+        return [];
+      }
+      releaseEmpty();
+      return deckWithCards('Sibling', [
+        { name: 'Known fact', back: 'Known answer' },
+      ]);
+    });
+
+    const settings = makeSettings({ 'claude-ai-flashcards': 'true' });
+    const [empty] = await Promise.all([
+      PrepareDeck({
+        name: 'empty.html',
+        files: [{ name: 'empty.html', contents: '<p>empty page</p>' }],
+        settings,
+        noLimits: true,
+        workspace: makeWorkspace(),
+        crossFileDedup,
+      }),
+      PrepareDeck({
+        name: 'sibling.html',
+        files: [{ name: 'sibling.html', contents: '<p>sibling page</p>' }],
+        settings,
+        noLimits: true,
+        workspace: makeWorkspace(),
+        crossFileDedup,
+      }),
+    ]);
+
+    expect(crossFileDedup.suppressed).toBe(1);
+    expect(empty?.engine).toBe('parser');
+  });
+
+  it('drops the duplicate whichever file finishes first', async () => {
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('page 0')) {
+        await new Promise((r) => setTimeout(r, 15));
+      }
+      return deckWithCards('Shared', [{ name: 'Same fact', back: 'Same' }]);
+    });
+
+    await PrepareDeck({
+      name: 'export.zip',
+      files: [
+        { name: 'a.html', contents: '<p>page 0</p>' },
+        { name: 'b.html', contents: '<p>page 1</p>' },
+      ],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    const configuredDecks = CustomExporterMock.mock.results[0].value.configure
+      .mock.calls[0][0] as Array<{ cards: Array<{ name: string }> }>;
+    expect(configuredDecks.flatMap((d) => d.cards)).toHaveLength(1);
+  });
+
+  it('does not start queued files after one file fails', async () => {
+    const files = Array.from({ length: AI_FILE_CONCURRENCY + 2 }, (_, i) => ({
+      name: `page-${i}.html`,
+      contents: `<p>page ${i}</p>`,
+    }));
+    generateDeckInfo.mockRejectedValue(new Error('Claude is down'));
+
+    await expect(
+      PrepareDeck({
+        name: 'export.zip',
+        files,
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      })
+    ).rejects.toThrow();
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(AI_FILE_CONCURRENCY);
   });
 
   it('falls back to the standard parser when a single upload gets no AI cards and nothing was suppressed', async () => {
@@ -1366,6 +1499,124 @@ describe('PrepareDeck — AI media matching (#3946)', () => {
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     const mediaArg = generateDeckInfo.mock.calls[0][1] as string[];
     expect(mediaArg.some((m: string) => m.endsWith('.png'))).toBe(true);
+  });
+});
+
+describe('PrepareDeck — a PDF with no usable text', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const noText = {
+    html: '',
+    cardCount: 0,
+    isDrmLocked: false,
+    needsCredential: false,
+    isTextShaped: false,
+    pageCount: 12,
+  };
+
+  function runPdf(settings: CardOption) {
+    return PrepareDeck({
+      name: 'scan.pdf',
+      files: [{ name: 'scan.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings,
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+  }
+
+  it('stops and asks which cards to make when the upload page asks', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+
+    const error = await runPdf(makeSettings({ 'pdf-fallback': 'ask' })).catch(
+      (e: unknown) => e
+    );
+
+    expect(parsePdfFallbackChoiceSentinel((error as Error).message)).toEqual({
+      reason: 'no_text',
+      pageCount: 12,
+    });
+    expect(convertPDFToImages).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['locked', { isDrmLocked: true }],
+    ['over_split', { isTextShaped: true, cardCount: 40, overSplit: true }],
+  ])('says why it is asking: %s', async (reason, extra) => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce({ ...noText, ...extra });
+
+    const error = await runPdf(makeSettings({ 'pdf-fallback': 'ask' })).catch(
+      (e: unknown) => e
+    );
+
+    expect(
+      parsePdfFallbackChoiceSentinel((error as Error).message)?.reason
+    ).toBe(reason);
+  });
+
+  it('pairs pages and names that in the result when nothing is said', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+
+    const result = await runPdf(makeSettings()).catch(() => undefined);
+
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ pageMode: 'pairs' })
+    );
+    expect(result?.pdfFallbackMode).toBe('pairs');
+  });
+
+  it('makes one card per page when that is the choice, and names it', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+
+    const result = await runPdf(
+      makeSettings({ 'pdf-fallback': 'single' })
+    ).catch(() => undefined);
+
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ pageMode: 'single' })
+    );
+    expect(result?.pdfFallbackMode).toBe('single');
+  });
+
+  it('never asks about a PDF that has text', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce({
+      html: '<p>auto text card</p>',
+      cardCount: 5,
+      isDrmLocked: false,
+      needsCredential: false,
+      isTextShaped: true,
+    });
+
+    const result = await runPdf(makeSettings({ 'pdf-fallback': 'ask' })).catch(
+      () => undefined
+    );
+
+    expect(convertPDFToImages).not.toHaveBeenCalled();
+    expect(result?.pdfFallbackMode).toBeUndefined();
+  });
+});
+
+describe('PrepareDeck — Word variants', () => {
+  const convertDocxToHTML = convertDocxToHTMLImport as unknown as Mock;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    convertDocxToHTML.mockResolvedValue('<ul><li>Term: definition</li></ul>');
+  });
+
+  it('reads a Word template (.dotx) with the .docx reader', async () => {
+    const contents = Buffer.from('PK-dotx');
+
+    await PrepareDeck({
+      name: 'template.dotx',
+      files: [{ name: 'template.dotx', contents }],
+      settings: makeSettings({}),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch(() => {});
+
+    expect(convertDocxToHTML.mock.calls[0][0]).toEqual(contents);
   });
 });
 

@@ -30,10 +30,26 @@ describe('rankCandidates', () => {
       candidate('bullets', wellFormed(2)),
       candidate('heading', wellFormed(1)),
     ]);
-    expect(result.candidates).toEqual([
+    expect(
+      result.candidates.map(({ rule, cards }) => ({ rule, cards }))
+    ).toEqual([
       { rule: 'heading', cards: 1 },
       { rule: 'bullets', cards: 2 },
     ]);
+  });
+
+  it('samples the first three cards of each candidate as plain text', () => {
+    const result = rankCandidates([
+      candidate('bullets', [
+        { name: '<b>Alpha</b> &amp; omega', back: '<p>One</p>' },
+        ...wellFormed(4),
+      ]),
+    ]);
+    expect(result.candidates[0].sample).toHaveLength(3);
+    expect(result.candidates[0].sample?.[0]).toEqual({
+      front: 'Alpha & omega',
+      back: 'One',
+    });
   });
 
   it('ships the best-scoring candidate that clears the floor', () => {

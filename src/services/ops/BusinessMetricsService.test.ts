@@ -159,12 +159,22 @@ describe('BusinessMetricsService', () => {
   it('computes happy score for 7, 30 and 90 day windows with asks from the events repo', async () => {
     const emoji = new InMemoryEmojiFeedbackRepository();
     for (let i = 0; i < 12; i += 1) {
-      await emoji.insert({ rating: 5, comment: null, page: 'p', email: null });
+      await emoji.insert({
+        rating: 5,
+        comment: null,
+        page: 'downloads/deck_done',
+        email: null,
+      });
     }
     for (let i = 0; i < 3; i += 1) {
-      await emoji.insert({ rating: 1, comment: null, page: 'p', email: null });
+      await emoji.insert({
+        rating: 1,
+        comment: null,
+        page: 'downloads/deck_done',
+        email: null,
+      });
     }
-    const countByName = vi.fn(async (name: string, since: Date) => {
+    const countDistinctAsks = vi.fn(async (name: string, since: Date) => {
       expect(name).toBe('happy_score_ask_shown');
       const days = Math.round((NOW_MS - since.getTime()) / 86_400_000);
       return days * 10;
@@ -173,7 +183,10 @@ describe('BusinessMetricsService', () => {
       {},
       {
         emojiFeedbackRepository: emoji,
-        happyScoreAskRepository: { countByName },
+        happyScoreAskRepository: {
+          countDistinctAsks,
+          firstEventAt: async () => null,
+        },
       }
     );
 
@@ -192,6 +205,60 @@ describe('BusinessMetricsService', () => {
       expect.objectContaining({ window: '30d', asks: 300, score_pct: 80 }),
       expect.objectContaining({ window: '90d', asks: 900, score_pct: 80 }),
     ]);
+  });
+
+  it('leaves upload-widget ratings out of the happy score', async () => {
+    const emoji = new InMemoryEmojiFeedbackRepository();
+    for (let i = 0; i < 10; i += 1) {
+      await emoji.insert({
+        rating: 5,
+        comment: null,
+        page: 'downloads/deck_done',
+        email: null,
+      });
+    }
+    for (let i = 0; i < 5; i += 1) {
+      await emoji.insert({
+        rating: 1,
+        comment: null,
+        page: '/upload',
+        email: null,
+      });
+    }
+    const { service } = buildService({}, { emojiFeedbackRepository: emoji });
+
+    const response = await service.getMetrics();
+
+    expect(response.happy_score?.[0]).toEqual(
+      expect.objectContaining({ love: 10, low: 0, score_pct: 100 })
+    );
+  });
+
+  it('starts every window at the first recorded ask', async () => {
+    const firstAsk = new Date(NOW_MS - 3 * 86_400_000);
+    const countDistinctAsks = vi.fn(async () => 4);
+    const countByRating = vi.fn(async () => []);
+    const { service } = buildService(
+      {},
+      {
+        emojiFeedbackRepository: {
+          ...new InMemoryEmojiFeedbackRepository(),
+          countByRating,
+        } as never,
+        happyScoreAskRepository: {
+          countDistinctAsks,
+          firstEventAt: async () => firstAsk,
+        },
+      }
+    );
+
+    await service.getMetrics();
+
+    expect(countByRating).toHaveBeenCalledWith(firstAsk, 'downloads/deck_done');
+    expect(countDistinctAsks).toHaveBeenCalledWith(
+      'happy_score_ask_shown',
+      firstAsk
+    );
   });
 
   it('reports happy score windows with unknown asks when no events repo is injected', async () => {

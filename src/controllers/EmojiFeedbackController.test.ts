@@ -9,9 +9,16 @@ import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import { NotifyLowRatingUseCase } from '../usecases/feedback/NotifyLowRatingUseCase';
 import type { IRatedConversionResolver } from '../usecases/feedback/ResolveRatedConversionUseCase';
 
+process.env.THE_HASHING_SECRET = 'test-secret-for-feedback';
+
 function buildMocks() {
   const repo: Mocked<IEmojiFeedbackRepository> = {
-    insert: vi.fn().mockResolvedValue(undefined),
+    insert: vi.fn().mockResolvedValue(7),
+    attachFollowUp: vi.fn().mockResolvedValue({
+      rating: 1,
+      page: 'downloads/deck_done',
+      owner: null,
+    }),
     countByRating: vi.fn().mockResolvedValue([]),
     recentComments: vi.fn().mockResolvedValue([]),
     countLowRatingsFromEmailOnDay: vi.fn().mockResolvedValue(1),
@@ -58,6 +65,72 @@ function buildMocks() {
     res,
   };
 }
+
+describe('EmojiFeedbackController follow-up', () => {
+  const tokenFor = async () => {
+    const { controller, req, res } = buildMocks();
+    req.body = { rating: 1, page: 'downloads/deck_done' };
+    await controller.submit(req, res);
+    return (res.json as ReturnType<typeof vi.fn>).mock.calls[0][0] as {
+      id: number;
+      token: string;
+    };
+  };
+
+  it('returns the saved row id and a follow-up token on the first tap', async () => {
+    const body = await tokenFor();
+    expect(body.id).toBe(7);
+    expect(body.token).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('attaches the comment and email when the token matches', async () => {
+    const { id, token } = await tokenFor();
+    const { controller, req, res, repo } = buildMocks();
+    req.params = { id: String(id) };
+    req.body = { token, comment: ' images vanished ', email: 'a@b.co' };
+    await controller.followUp(req, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(repo.attachFollowUp).toHaveBeenCalledWith(7, {
+      comment: 'images vanished',
+      email: 'a@b.co',
+    });
+  });
+
+  it('still saves the rating when the follow-up token cannot be made', async () => {
+    const saved = process.env.THE_HASHING_SECRET;
+    delete process.env.THE_HASHING_SECRET;
+    try {
+      const { controller, req, res } = buildMocks();
+      req.body = { rating: 5, page: 'downloads/deck_done' };
+      await controller.submit(req, res);
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 7, token: null })
+      );
+    } finally {
+      process.env.THE_HASHING_SECRET = saved;
+    }
+  });
+
+  it('refuses a token that belongs to another row', async () => {
+    const { token } = await tokenFor();
+    const { controller, req, res, repo } = buildMocks();
+    req.params = { id: '8' };
+    req.body = { token, comment: 'hi' };
+    await controller.followUp(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(repo.attachFollowUp).not.toHaveBeenCalled();
+  });
+
+  it('emails support when a low rating gets a reply address', async () => {
+    const { id, token } = await tokenFor();
+    const { controller, req, res, sendLowRatingFeedbackEmail } = buildMocks();
+    req.params = { id: String(id) };
+    req.body = { token, comment: 'x', email: 'a@b.co' };
+    await controller.followUp(req, res);
+    expect(sendLowRatingFeedbackEmail).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('EmojiFeedbackController', () => {
   it('returns 400 when rating is missing', async () => {

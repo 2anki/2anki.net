@@ -172,6 +172,21 @@
     },
     "form": {
       "makingDeck": "Sto creando il tuo mazzo...",
+      "pdfChoiceTitle": "Questo PDF non ha testo che possiamo leggere",
+      "pdfChoiceBodyNoText": "Sembrano pagine scansionate o diapositive salvate come immagini. Scegli come vuoi le schede.",
+      "pdfChoiceBodyLocked": "Questo PDF è protetto, quindi non possiamo leggerne il testo. Scegli come vuoi le schede.",
+      "pdfChoiceBodyOverSplit": "Leggere il testo produrrebbe un numero enorme di schede minuscole. Scegli invece come vuoi le schede.",
+      "pdfChoicePairs": "Due pagine per scheda",
+      "pdfChoicePairsHint": "La pagina 1 è il fronte, la pagina 2 il retro.",
+      "pdfChoiceSingle": "Una scheda per pagina",
+      "pdfChoiceSingleHint": "Ogni pagina è un fronte. Aggiungi le risposte in Anki.",
+      "pdfChoiceRemember": "Ricorda la mia scelta su questo dispositivo",
+      "pdfFallbackPairsNote": "Questo PDF è stato creato dalle immagini delle pagine, quindi ogni due pagine sono diventate una scheda.",
+      "pdfFallbackSingleNote": "Questo PDF è stato creato dalle immagini delle pagine, quindi ogni pagina è diventata una scheda.",
+      "pdfFallbackAskAgain": "Chiedimelo la prossima volta",
+      "waitingForDeck": "La connessione si è interrotta, ma stiamo ancora creando il tuo mazzo. Lascia aperta questa scheda e comparirà qui.",
+      "waitingForDeckSignedIn": "La connessione si è interrotta, ma stiamo ancora creando il tuo mazzo. Lascia aperta questa scheda, oppure trovalo in I miei mazzi quando è pronto.",
+      "stopWaiting": "Smetti di aspettare",
       "fetching": "Sto recuperando {{filename}} da {{source}}",
       "deckReady": "Il tuo mazzo è pronto",
       "savedToDownloads": "{{deckName}} è stato salvato nei tuoi download",
@@ -198,6 +213,9 @@
       "seeCommonProblemsSuffix": " per i formati che funzionano.",
       "downloadEmpty": "Scarica il mazzo vuoto",
       "tryDifferent": "Prova un altro file",
+      "resumeContinueBody": "Il caricamento di {{filename}} non è stato completato.",
+      "resumeContinue": "Continua",
+      "resumeDismiss": "Ignora",
       "imagesTitle": "Da foto a mazzo trasforma le immagini in carte",
       "imagesBody": "Qui non c'è testo da leggere, quindi non c'era niente da convertire. Da foto a mazzo legge la tua immagine con l'IA e prepara carte che controlli prima di scaricare.",
       "imagesUnzip": "Da foto a mazzo accetta le foto in sé, non lo zip. Decomprimilo e trascina le foto.",
@@ -210,6 +228,9 @@
       "apkgRejectSecondaryPrefix": "È già tuo? Aprilo direttamente in Anki, oppure ",
       "apkgRejectPrintLink": "stampalo in PDF",
       "apkgRejectSecondarySuffix": ".",
+      "apkgHandoffBody": "Puoi stamparlo o esportarne le carte in un foglio di calcolo, senza scegliere di nuovo il file.",
+      "apkgHandoffPrint": "Stampalo in PDF",
+      "apkgHandoffCsv": "Esportalo in CSV",
       "errorTitle": "Qualcosa è andato storto",
       "tryAgain": "Riprova",
       "changeSource": "← Cambia sorgente",
@@ -262,8 +283,8 @@
       "networkErrorSmallTitle": "Impossibile caricare il tuo file",
       "networkErrorSmallBody": "La connessione è caduta prima che il file fosse completato. Controlla la connessione e riprova.",
       "networkChooseDifferent": "Scegli un altro file",
-      "unreadableFileTitle": "Questo file è cambiato da quando l'hai scelto",
-      "unreadableFileBody": "Il browser non riesce più a leggere la versione scelta: è stata salvata, spostata o eliminata dopo la selezione. Scegli di nuovo il file per caricare la versione attuale.",
+      "unreadableFileTitle": "Non siamo riusciti a leggere questo file",
+      "unreadableFileBody": "Il browser non è riuscito a leggere tutto il file. Se è su OneDrive, iCloud Drive o Google Drive, aprilo una volta così viene scaricato sul dispositivo, poi sceglilo di nuovo. Se l'hai salvato o spostato dopo averlo scelto, sceglilo di nuovo anche in quel caso.",
       "unreadableChooseAgain": "Scegli di nuovo il file",
       "emptyFileTitle": "Questo file è vuoto",
       "emptyFileBody": "Ha 0 byte, quindi non c'è nulla da convertire. Se si trova in OneDrive, iCloud Drive o Google Drive, aprilo una volta perché venga scaricato sul tuo computer, poi scegli di nuovo il file.",
@@ -295,6 +316,8 @@
       "rescueBullets_other": "Crea {{n}} carte dagli elenchi puntati",
       "rescueGuess_one": "Crea {{n}} carta dalle righe di domanda e risposta",
       "rescueGuess_other": "Crea {{n}} carte dalle righe di domanda e risposta",
+      "rescueParagraphs_one": "Crea {{n}} carta dai paragrafi",
+      "rescueParagraphs_other": "Crea {{n}} carte dai paragrafi",
       "readingLead": "Abbiamo letto {{parts}}.",
       "readingNoCards": "Niente ha la forma di una carta: nessun toggle e nessuna coppia di domanda e risposta.",
       "readingNoText": "Questo file non contiene testo che possiamo leggere. Carica il file che contiene i tuoi appunti.",
@@ -400,6 +423,18 @@
         "title": "Formati di lettura supportati",
         "body": "Sono supportate le evidenziazioni Kindle da My Clippings.txt e gli EPUB senza DRM. Per esportare le evidenziazioni Kindle, collega il Kindle via USB e copia il file My Clippings.txt dalla cartella documents del dispositivo.",
         "continue": "Crea carte da queste evidenziazioni"
+      },
+      "shortcut": {
+        "title": "Questo è un collegamento, non il file",
+        "body": "È un collegamento al tuo file, non il file stesso. Scegli il file a cui punta."
+      },
+      "internetShortcut": {
+        "title": "Questo è un link, non un file",
+        "body": "È un collegamento internet, un link salvato. Apri il link, scarica il file (PDF, Word, HTML o un’esportazione di Notion) e carica quello. Per una pagina Notion, usa la scheda Notion per convertirla direttamente."
+      },
+      "goodnotes": {
+        "title": "I quaderni GoodNotes non si possono leggere direttamente",
+        "body": "Esporta il quaderno da GoodNotes come PDF (Condividi, Esporta, PDF) e carica quel PDF. 2anki trasforma i PDF in carte."
       }
     }
   },
@@ -652,6 +687,7 @@
       "deleteNamed": "Elimina {{name}}",
       "cancel": "Annulla",
       "cancelNamed": "Annulla {{name}}",
+      "cannotStop": "Non si può fermare dopo l'avvio. Di solito finisce in un paio di minuti.",
       "remove": "Rimuovi",
       "removeNamed": "Rimuovi {{name}}",
       "restart": "Riavvia",

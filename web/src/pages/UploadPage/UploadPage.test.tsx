@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -34,6 +34,13 @@ type FakeUser = {
 
 let fakeUser: FakeUser = null;
 let fakeLocals: { patreon?: boolean; subscriber?: boolean } | undefined;
+let fakeFeatures:
+  | {
+      anonymousDayPassCard?: boolean;
+      anonymousAiPreview?: boolean;
+      anonymousAiChoice?: boolean;
+    }
+  | undefined;
 let fakeLocalsLoading = false;
 const reportPurchaseConversion = vi.fn();
 const replayPendingPurchaseConversions = vi.fn();
@@ -49,7 +56,14 @@ vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
 }));
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: () => ({
-    data: fakeUser == null ? undefined : { user: fakeUser, locals: fakeLocals },
+    data:
+      fakeUser == null && fakeFeatures == null
+        ? undefined
+        : {
+            user: fakeUser ?? undefined,
+            locals: fakeLocals,
+            features: fakeFeatures,
+          },
     isLoading: fakeLocalsLoading,
     error: null,
     isError: false,
@@ -124,46 +138,6 @@ describe('UploadPage header', () => {
   });
 });
 
-describe('UploadPage reattach banner', () => {
-  beforeEach(() => {
-    globalThis.sessionStorage.clear();
-  });
-
-  it('shows the reattach banner when upload_pending_filename is set in sessionStorage', async () => {
-    renderPageWithSession('upload_pending_filename', 'biochemistry.zip');
-    const reattachText = await screen.findByText(/Re-attach/);
-    const banner = reattachText.closest('[role="status"]') as HTMLElement;
-    expect(banner).toBeInTheDocument();
-    expect(banner.textContent).toContain('biochemistry.zip');
-    expect(banner.textContent).toContain('to convert');
-    globalThis.sessionStorage.removeItem('upload_pending_filename');
-  });
-
-  it('does not show the reattach banner when upload_pending_filename is absent', async () => {
-    renderPageWithSession('upload_pending_filename', null);
-    await waitFor(() => {
-      expect(screen.queryByText(/Re-attach/)).not.toBeInTheDocument();
-    });
-  });
-
-  it('fires upload_reattach_shown when the banner is displayed', async () => {
-    trackMock.mockClear();
-    renderPageWithSession('upload_pending_filename', 'biochemistry.zip');
-    await screen.findByText(/Re-attach/);
-    expect(trackMock).toHaveBeenCalledWith('upload_reattach_shown');
-    globalThis.sessionStorage.removeItem('upload_pending_filename');
-  });
-
-  it('does not fire upload_reattach_shown when no pending filename is set', async () => {
-    trackMock.mockClear();
-    renderPageWithSession('upload_pending_filename', null);
-    await waitFor(() => {
-      expect(screen.queryByText(/Re-attach/)).not.toBeInTheDocument();
-    });
-    expect(trackMock).not.toHaveBeenCalledWith('upload_reattach_shown');
-  });
-});
-
 describe('UploadPage explore card', () => {
   beforeEach(() => {
     globalThis.sessionStorage.clear();
@@ -228,6 +202,7 @@ describe('UploadPage AI toggle', () => {
     scheduleSyncMock.mockClear();
     fakeUser = null;
     fakeLocals = undefined;
+    fakeFeatures = undefined;
     globalThis.localStorage.clear();
     globalThis.sessionStorage.clear();
   });
@@ -235,7 +210,57 @@ describe('UploadPage AI toggle', () => {
   afterEach(() => {
     fakeUser = null;
     fakeLocals = undefined;
+    fakeFeatures = undefined;
     globalThis.localStorage.clear();
+  });
+
+  it('shows the anonymous AI preview toggle with the agreed Claude AI label', () => {
+    fakeUser = null;
+    fakeFeatures = { anonymousAiPreview: true };
+    renderPage();
+    expect(
+      screen.getByText('Generate flashcards with Claude AI')
+    ).toBeInTheDocument();
+  });
+
+  it('shows the two-option AI choice with consent text instead of the checkbox when the choice flag is on', () => {
+    fakeUser = null;
+    fakeFeatures = { anonymousAiPreview: true, anonymousAiChoice: true };
+    renderPage();
+    expect(
+      screen.getByLabelText('Claude writes the cards: free sample first')
+    ).not.toBeChecked();
+    expect(
+      screen.getByLabelText("Cards from your file's structure: free, no AI")
+    ).toBeChecked();
+    expect(
+      screen.getByText(/Text from your file is sent to Claude \(Anthropic\)/)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Generate flashcards with Claude AI')
+    ).not.toBeInTheDocument();
+  });
+
+  it('records the upload page as the surface when the visitor picks Claude', () => {
+    fakeUser = null;
+    fakeFeatures = { anonymousAiPreview: true, anonymousAiChoice: true };
+    trackMock.mockClear();
+    renderPage();
+    fireEvent.click(
+      screen.getByLabelText('Claude writes the cards: free sample first')
+    );
+    expect(trackMock).toHaveBeenCalledWith('upload_ai_turned_on', {
+      surface: 'upload',
+    });
+  });
+
+  it('hides the anonymous AI preview toggle when the flag is off', () => {
+    fakeUser = null;
+    fakeFeatures = { anonymousAiPreview: false };
+    renderPage();
+    expect(
+      screen.queryByText('Generate flashcards with Claude AI')
+    ).not.toBeInTheDocument();
   });
 
   it('syncs the AI preference to the server so it follows the user across devices', async () => {
@@ -583,6 +608,7 @@ describe('UploadPage checkout return', () => {
     fakeLocalsLoading = false;
     fakeUser = null;
     fakeLocals = undefined;
+    fakeFeatures = undefined;
   });
 
   it('replays any purchase held across a reload once locals resolve', () => {
@@ -608,6 +634,7 @@ describe('UploadPage checkout return', () => {
   afterEach(() => {
     fakeLocalsLoading = false;
     fakeUser = null;
+    fakeFeatures = undefined;
   });
 
   it('keeps the checkout params in the URL and reports nothing while user locals load', () => {
@@ -649,6 +676,34 @@ describe('UploadPage checkout return', () => {
       )
     );
     expect(storePassToken).toHaveBeenCalledWith('cs_test_anon456');
+  });
+
+  it('confirms the active Day Pass and the next step when the flag is on', async () => {
+    fakeFeatures = { anonymousDayPassCard: true };
+
+    renderPage('/upload?pass_session=cs_test_flag_on');
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          'Once the payment goes through, drop your file again to start your Day Pass and get every card.'
+        )
+      ).toBeInTheDocument()
+    );
+    expect(storePassToken).toHaveBeenCalledWith('cs_test_flag_on');
+  });
+
+  it('shows no Day Pass confirmation when the flag is off', async () => {
+    renderPage('/upload?pass_session=cs_test_flag_off');
+
+    await waitFor(() =>
+      expect(storePassToken).toHaveBeenCalledWith('cs_test_flag_off')
+    );
+    expect(
+      screen.queryByText(
+        'Once the payment goes through, drop your file again to start your Day Pass and get every card.'
+      )
+    ).toBeNull();
   });
 
   it('stores an anonymous pass before user locals resolve, and strips it after', async () => {

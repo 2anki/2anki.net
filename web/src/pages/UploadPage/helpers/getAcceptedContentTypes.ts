@@ -16,6 +16,8 @@ const PICKER_ONLY_EXTENSIONS = [
   '.htm',
   '.tsv',
   '.doc',
+  '.dotx',
+  '.rtf',
   '.ppt',
   '.xml',
   '.brainstorms.json',

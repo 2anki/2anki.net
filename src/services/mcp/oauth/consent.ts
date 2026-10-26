@@ -37,11 +37,47 @@ function escapeHtml(value: string): string {
 export interface ConsentPageInput {
   actionPath: string;
   clientName: string;
-  redirectHost: string;
+  redirectUri: string;
   clientHost?: string;
   scopes: string[];
   csrf: string;
   fields: Record<string, string | undefined>;
+}
+
+const KNOWN_WEB_HOSTS = new Set([
+  'claude.ai',
+  'chatgpt.com',
+  'chat.openai.com',
+]);
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+const BRAND_NAME_PATTERN = /claude|chatgpt|openai|anthropic|2anki/i;
+
+export interface ClientIdentity {
+  label: string;
+  host: string;
+  verified: boolean;
+}
+
+export function describeClient(
+  clientName: string,
+  redirectUri: string
+): ClientIdentity {
+  let host = '';
+  let protocol = '';
+  try {
+    const parsed = new URL(redirectUri);
+    host = parsed.hostname.toLowerCase();
+    protocol = parsed.protocol;
+  } catch {
+    host = '';
+  }
+  const verified =
+    LOOPBACK_HOSTS.has(host) ||
+    (protocol === 'https:' && KNOWN_WEB_HOSTS.has(host));
+  const claimsBrand = BRAND_NAME_PATTERN.test(clientName);
+  const label = claimsBrand && !verified && host !== '' ? host : clientName;
+  return { label, host, verified };
 }
 
 const SCOPE_LINES: Record<string, string[]> = {
@@ -157,6 +193,22 @@ const CONSENT_STYLES = `
       outline: 2px solid #3b82f6;
       outline-offset: 2px;
     }
+    .consent-redirect {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: #6b7280;
+      overflow-wrap: anywhere;
+    }
+    .consent-warning {
+      margin: 0 0 16px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #92400e;
+      background-color: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+    }
     .consent-reassure {
       margin: 20px 0 0;
       font-size: 13px;
@@ -176,7 +228,8 @@ const CONSENT_STYLES = `
       .consent-title, .consent-ask, .consent-scopes li { color: #e5e7eb; }
       .consent-check { color: #60a5fa; }
       .consent-btn-secondary { color: #e5e7eb; border-color: #374151; }
-      .consent-reassure, .consent-footer { color: #9ca3af; }
+      .consent-reassure, .consent-footer, .consent-redirect { color: #9ca3af; }
+      .consent-warning { color: #fde68a; background-color: #422006; border-color: #92400e; }
     }`;
 
 export function renderConsentPage(input: ConsentPageInput): string {
@@ -192,12 +245,20 @@ export function renderConsentPage(input: ConsentPageInput): string {
         )}</span></li>`
     )
     .join('\n        ');
-  const clientName = escapeHtml(input.clientName);
-  const redirectHost = escapeHtml(input.redirectHost);
+  const identity = describeClient(input.clientName, input.redirectUri);
+  const clientName = escapeHtml(identity.label);
+  const redirectHost = escapeHtml(identity.host);
+  const redirectLine =
+    redirectHost === ''
+      ? ''
+      : `<p class="consent-redirect">After you approve, you'll go back to <strong>${redirectHost}</strong>.</p>`;
+  const unverifiedNotice = identity.verified
+    ? ''
+    : `<p class="consent-warning" role="note">2anki hasn't verified this app. Only approve if you started this connection yourself.</p>`;
   const clientIdentity =
     input.clientHost == null
       ? ''
-      : `\n      <p class="consent-reassure">${clientName} is identified by <strong>${escapeHtml(
+      : `<p class="consent-reassure">${clientName} is identified by <strong>${escapeHtml(
           input.clientHost
         )}</strong>.</p>`;
   return `<!doctype html>
@@ -214,11 +275,13 @@ export function renderConsentPage(input: ConsentPageInput): string {
     <main class="consent-card">
       <img class="consent-logo" src="https://2anki.net/mascot/navbar-logo.png" alt="2anki" width="96" />
       <h1 class="consent-title">Connect ${clientName} to 2anki</h1>
+      ${redirectLine}
+      ${unverifiedNotice}
       <p class="consent-ask">${clientName} wants access to your 2anki account. It will be able to:</p>
       <ul class="consent-scopes">
         ${scopeList}
       </ul>
-      <p class="consent-reassure">After you allow access, you return to <strong>${redirectHost}</strong>.</p>${clientIdentity}
+      ${clientIdentity}
       <p class="consent-reassure">New decks count toward your monthly card limit, the same as on the web.</p>
       <form method="post" action="${escapeHtml(input.actionPath)}">
         ${hidden}

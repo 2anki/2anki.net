@@ -131,3 +131,19 @@ describe('CardOption groupClozePerToggle', () => {
     );
   });
 });
+
+describe('CardOption pdfFallback', () => {
+  it.each([
+    [undefined, 'pairs'],
+    ['', 'pairs'],
+    ['ask', 'ask'],
+    ['single', 'single'],
+    ['pairs', 'pairs'],
+    ['toString', 'pairs'],
+    ['SINGLE', 'pairs'],
+  ])('reads %s as %s', (raw, expected) => {
+    const input: Record<string, string> =
+      raw === undefined ? {} : { 'pdf-fallback': raw };
+    expect(new CardOption(input).pdfFallback).toBe(expected);
+  });
+});

@@ -1,15 +1,19 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import UploadForm from '../UploadPage/components/UploadForm/UploadForm';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { track } from '../../lib/analytics/track';
+import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
 import { landingViewProps } from '../../lib/adClick';
 import { persistSignupOrigin } from '../../lib/signupOrigin';
 import { canonicalUrl } from '../../lib/seo/canonicalUrl';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { TrustNote } from '../../components/TrustNote/TrustNote';
+import { LandingPassPrices } from '../../components/LandingPassPrices/LandingPassPrices';
+import { AiChoice } from '../../components/AiChoice/AiChoice';
 import styles from './LandingPage.module.css';
 import sharedStyles from '../../styles/shared.module.css';
 import type { LandingCopy } from './types';
@@ -57,6 +61,11 @@ interface HeroActionProps {
   registerHref: string;
   dayPassPrice: string;
   sample: boolean;
+  showAiToggle: boolean;
+  showAiChoice: boolean;
+  aiOn: boolean;
+  onToggleAi: () => void;
+  onChooseAi: (next: boolean) => void;
   t: TFunction<'landing'>;
 }
 
@@ -68,6 +77,11 @@ function renderHeroAction({
   registerHref,
   dayPassPrice,
   sample,
+  showAiToggle,
+  showAiChoice,
+  aiOn,
+  onToggleAi,
+  onChooseAi,
   t,
 }: Readonly<HeroActionProps>) {
   if (heroSlot != null) {
@@ -89,8 +103,19 @@ function renderHeroAction({
   }
   return (
     <>
+      {showAiChoice && <AiChoice aiOn={aiOn} onChange={onChooseAi} />}
+      {showAiToggle && !showAiChoice && (
+        <label className={styles.aiToggle}>
+          <input type="checkbox" checked={aiOn} onChange={onToggleAi} />
+          <span>{t('aiPreview:toggleLabel')}</span>
+        </label>
+      )}
       <div className={styles.uploadWrapper}>
-        <UploadForm setErrorMessage={setErrorMessage} sample={sample} />
+        <UploadForm
+          setErrorMessage={setErrorMessage}
+          sample={sample}
+          aiOn={(showAiToggle || showAiChoice) && aiOn}
+        />
       </div>
       <p className={styles.secondaryLink}>
         {t('hero.orPrefix', { defaultValue: 'or ' })}
@@ -116,6 +141,28 @@ function LandingPage({
 }: Readonly<LandingPageProps>) {
   const { t } = useTranslation('landing');
   const passPrices = usePassPrices();
+  const { data: userLocals } = useUserLocals();
+  const isSignedIn = userLocals?.user?.id != null;
+  // Only the AI landing page offers the preview toggle: that is where a visitor
+  // arrives wanting AI cards, and where the free-text/PDF upload the preview can
+  // read is the point. Other landing pages keep their structure-first flow.
+  const previewOn =
+    !isSignedIn && userLocals?.features?.anonymousAiPreview === true;
+  const showAiChoice =
+    previewOn && userLocals?.features?.anonymousAiChoice === true;
+  const showAiToggle = previewOn && copy.pathname === '/ai-flashcard-generator';
+  const [aiOn, setAiOn] = useState(
+    () => globalThis.localStorage?.getItem('claude-ai-flashcards') === 'true'
+  );
+  const chooseAi = (next: boolean) => {
+    if (next === aiOn) return;
+    saveValueInLocalStorage('claude-ai-flashcards', String(next), null);
+    setAiOn(next);
+    track(next ? 'upload_ai_turned_on' : 'upload_ai_turned_off', {
+      surface: copy.pathname,
+    });
+  };
+  const toggleAi = () => chooseAi(!aiOn);
   const landingViewedRef = useRef(false);
   useEffect(() => {
     persistSignupOrigin(copy.pathname, globalThis.sessionStorage ?? null);
@@ -191,9 +238,15 @@ function LandingPage({
             registerHref,
             dayPassPrice: passPrices['24h'],
             sample: copy.homeHero === true,
+            showAiToggle,
+            showAiChoice,
+            aiOn,
+            onToggleAi: toggleAi,
+            onChooseAi: chooseAi,
             t,
           })}
           {copy.homeHero === true && <TrustNote />}
+          <LandingPassPrices centered={copy.homeHero === true} />
         </div>
       </section>
 

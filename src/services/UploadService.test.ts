@@ -20,6 +20,14 @@ vi.mock('../lib/claude/ClaudeService', async () => ({
   generateDeckInfo: (...args: unknown[]) => mockGenerateDeckInfo(...args),
 }));
 
+const mockGenerateAiPreview = vi.fn();
+vi.mock('../lib/claude/aiPreview', async () => ({
+  ...(await vi.importActual<typeof import('../lib/claude/aiPreview')>(
+    '../lib/claude/aiPreview'
+  )),
+  generateAiPreview: (...args: unknown[]) => mockGenerateAiPreview(...args),
+}));
+
 vi.mock('../lib/integrations/stripe', () => ({
   getStripe: vi.fn().mockReturnValue({
     customers: { retrieve: vi.fn() },
@@ -90,6 +98,7 @@ import { writePdfImageFallbackMarker } from '../infrastracture/adapters/fileConv
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
+import { buildPdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
 import {
   createWorkerTerminationError,
   WORKER_INTERRUPTED_REASON,
@@ -250,6 +259,105 @@ describe('UploadService.handleUpload — error paths', () => {
   beforeEach(() => {
     MockGeneratePackagesUseCase.mockClear();
     trackMock.mockClear();
+    mockGenerateAiPreview.mockReset();
+    mockGetFeatureFlag.mockResolvedValue(false);
+  });
+
+  function anonAiMarkdownRequest(anonId: string): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'notes.md',
+          mimetype: 'text/markdown',
+          size: 20,
+          buffer: Buffer.from('# Heading\n\nSome notes to study'),
+        },
+      ],
+      body: { 'claude-ai-flashcards': 'true' },
+      cookies: { anon_id: anonId },
+    } as unknown as Partial<express.Request>);
+  }
+
+  it('does not run the AI preview for an anonymous AI upload when the flag is off', async () => {
+    const executeMock = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute: executeMock } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    mockGetFeatureFlag.mockResolvedValue(false);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(anonAiMarkdownRequest('visitor-off'), res);
+
+    // Today's behaviour: the standard sync path runs, no AI preview is made.
+    expect(executeMock).toHaveBeenCalledTimes(1);
+    expect(mockGenerateAiPreview).not.toHaveBeenCalled();
+    expect(capturedJson()).not.toMatchObject({ kind: 'ai_preview' });
+  });
+
+  it('returns an AI preview for an anonymous AI upload when the flag is on', async () => {
+    const executeMock = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute: executeMock } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGenerateAiPreview.mockResolvedValue([{ front: 'q', back: 'a' }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(anonAiMarkdownRequest('visitor-on'), res);
+
+    expect(mockGenerateAiPreview).toHaveBeenCalledTimes(1);
+    expect(capturedJson()).toMatchObject({
+      kind: 'ai_preview',
+      cards: [{ front: 'q', back: 'a' }],
+    });
+    // The preview short-circuits the sync/parser path.
+    expect(executeMock).not.toHaveBeenCalled();
+  });
+
+  it('does not run the AI preview when the request carries a pass token that did not validate', async () => {
+    const executeMock = vi.fn().mockResolvedValue({ packages: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute: executeMock } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGenerateAiPreview.mockResolvedValue([{ front: 'q', back: 'a' }]);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = anonAiMarkdownRequest('visitor-stale-pass');
+    (req as unknown as { headers: Record<string, string> }).headers = {
+      'x-pass-token': 'cs_expired',
+    };
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(mockGenerateAiPreview).not.toHaveBeenCalled();
+    expect(capturedJson()).not.toMatchObject({ kind: 'ai_preview' });
+    expect(executeMock).toHaveBeenCalledTimes(1);
   });
 
   it('emits upload_started and conversion_failed sharing the anonymous_id from the cookie', async () => {
@@ -1044,6 +1152,44 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(body.message).toMatch(/could not read this PDF/);
     // A damaged file is a user-input state, like a pdfinfo failure: it is not
     // a conversion failure for the funnel or a red tile for ops (#4496).
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.anything()
+    );
+  });
+
+  it('answers 409 choose_pdf_mode, without a failure event, when a PDF needs the person to choose', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(
+          new Error(
+            buildPdfFallbackChoiceSentinel({
+              reason: 'no_text',
+              pageCount: 31,
+            })
+          )
+        ),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({ aborted: false } as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+    trackMock.mockClear();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(409);
+    expect(capturedJson()).toEqual({
+      code: 'choose_pdf_mode',
+      reason: 'no_text',
+      page_count: 31,
+    });
     expect(trackMock).not.toHaveBeenCalledWith(
       'conversion_failed',
       expect.anything()
@@ -5649,6 +5795,66 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('marks an over-a-month held deck for the Day Pass card when the flag is on', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 120);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toEqual({
+      kind: 'held',
+      cardCount: 21,
+      cardsHeldBack: 120,
+      totalCards: 141,
+      dayPassCard: true,
+    });
+  });
+
+  it('leaves an over-a-month held deck unmarked when only partial delivery is on', async () => {
+    mockGetFeatureFlag.mockImplementation((key: unknown) =>
+      Promise.resolve(key === 'anonymous_partial_delivery')
+    );
+    mockPartial([{ name: 'deck', cardCount: 21 }], 120);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toEqual({
+      kind: 'held',
+      cardCount: 21,
+      cardsHeldBack: 120,
+      totalCards: 141,
+    });
+    expect(mockGetFeatureFlag).toHaveBeenCalledWith(
+      'anonymous_day_pass_card',
+      false
+    );
+  });
+
+  it('does not append the card count to the wall when only partial delivery is on', async () => {
+    mockGetFeatureFlag.mockImplementation((key: unknown) =>
+      Promise.resolve(key === 'anonymous_partial_delivery')
+    );
+    mockPartial([{ name: 'deck', cardCount: 130 }]);
+    const req = buildEligibleRequest();
+    const { res, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(mockGetFeatureFlag).toHaveBeenCalledWith(
+      'anonymous_day_pass_card',
+      false
+    );
+  });
+
   it('holds a single zip upload for the treatment arm', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
@@ -5779,7 +5985,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     const second = responseWithRedirect();
     await service.handleUpload(buildEligibleRequest(TREATMENT_ID), second.res);
-    expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(second.redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(heldDeck.rows).toHaveLength(1);
     expect(conversionFailedProps()).toMatchObject({
       reason: 'anonymous_cap',
@@ -5821,7 +6027,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       requestFromIp('2001:db8:1:2:aaaa::9'),
       second.res
     );
-    expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(second.redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(heldDeck.rows).toHaveLength(1);
   });
 
@@ -5851,7 +6057,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       const second = responseWithRedirect();
       await service.handleUpload(requestFromIp('198.51.100.2'), second.res);
 
-      expect(second.redirectedTo()).toBe('/limit?kind=anonymous');
+      expect(second.redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
       const messages = infoSpy.mock.calls.map(([message]) => message);
       expect(messages).toContain(
         '[UploadService] held deck throttled by global daily budget'
@@ -5903,7 +6109,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     await service.handleUpload(buildEligibleRequest(TREATMENT_ID), res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(heldDeck.rows).toHaveLength(0);
   });
 
@@ -5972,7 +6178,21 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     await serviceUnderTest(heldDeck).handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
+    expect(capturedSend()).toBeNull();
+    expect(heldDeck.rows).toHaveLength(0);
+  });
+
+  it('never writes a signup hold under an anon_id forged as a preview key', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest('preview:victim');
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(capturedSend()).toBeNull();
     expect(heldDeck.rows).toHaveLength(0);
   });
@@ -5987,7 +6207,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     await serviceUnderTest(heldDeck).handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
     expect(capturedSend()).toBeNull();
     expect(heldDeck.rows).toHaveLength(0);
     expect(conversionFailedProps()).toMatchObject({
@@ -6096,7 +6316,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     await serviceUnderTest().handleUpload(req, res);
 
     expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=30');
     expect(capturedSend()).toBeNull();
     const props = conversionFailedProps();
     expect(props.reason).toBe('anonymous_cap');
@@ -6113,7 +6333,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     await serviceUnderTest().handleUpload(req, res);
 
     expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=30');
     const props = conversionFailedProps();
     expect(props.reason).toBe('anonymous_cap');
     expect(props.arm).toBe('control');
@@ -6143,7 +6363,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     await serviceUnderTest().handleUpload(req, res);
 
     expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=30');
     expect(capturedSend()).toBeNull();
     const props = conversionFailedProps();
     expect(props.reason).toBe('anonymous_cap');
@@ -6172,7 +6392,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(execute.mock.calls[0][6]).toMatchObject({
       cardLimit: ANONYMOUS_CARD_CAP,
     });
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=30');
     expect(capturedSend()).toBeNull();
     const props = conversionFailedProps();
     expect(props.reason).toBe('anonymous_cap');

@@ -36,6 +36,7 @@ export const CARD_OPTION_KEYS = [
   'cloze',
   'cloze-from-toggle-content',
   'promote-nested-cloze',
+  'promote-nested-toggles',
   'parent-context',
   'group-cloze-per-toggle',
   'remove-deck-name-numbering',

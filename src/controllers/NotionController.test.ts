@@ -1,6 +1,10 @@
 import { vi, type Mock } from 'vitest';
 import express from 'express';
-import { APIErrorCode, APIResponseError } from '@notionhq/client';
+import {
+  APIErrorCode,
+  APIResponseError,
+  UnknownHTTPResponseError,
+} from '@notionhq/client';
 import NotionController from './NotionController';
 import NotionService from '../services/NotionService';
 import {
@@ -72,7 +76,6 @@ function buildEmailService(): IEmailService {
     sendReEngagementEmail: vi.fn(),
     sendInactivityWarningEmail: vi.fn(),
     sendAbandonedCheckoutRecoveryEmail: vi.fn(),
-    sendPassWinbackEmail: vi.fn(),
     sendPassEndingEmail: vi.fn(),
     sendParserCanaryAlert: vi.fn(),
     sendAiSpendAlertEmail: vi.fn(),
@@ -205,6 +208,146 @@ describe('NotionController', () => {
     });
     expect(res.status).not.toHaveBeenCalledWith(400);
     expect(res.status).not.toHaveBeenCalledWith(500);
+  });
+
+  it('flags the connection and answers reconnect when Notion rejects the token on preview', async () => {
+    const unauthorized = new APIResponseError({
+      code: APIErrorCode.Unauthorized,
+      message: 'API token is invalid.',
+      status: 401,
+      rawBodyText: '',
+      headers: {},
+    } as any);
+    (service.getNotionAPI as Mock).mockResolvedValue(
+      buildApi({ listBlocksPage: vi.fn().mockRejectedValue(unauthorized) })
+    );
+    const notionRepo = buildNotionRepo();
+    controller = new NotionController(
+      service,
+      notionRepo,
+      buildUsersRepo(),
+      buildEmailService()
+    );
+    res = { ...res, locals: { owner: 42 } } as any;
+
+    await controller.previewPage(
+      req as express.Request,
+      res as express.Response
+    );
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'notion_unauthorized' })
+    );
+    await vi.waitFor(() =>
+      expect(notionRepo.markTokenInvalid).toHaveBeenCalledWith(42)
+    );
+    expect(track).toHaveBeenCalledWith('notion_token_invalidated', {
+      userId: 42,
+      props: { source: 'preview' },
+    });
+  });
+
+  it('flags the connection when Notion rejects the token on a database query', async () => {
+    const unauthorized = new APIResponseError({
+      code: APIErrorCode.Unauthorized,
+      message: 'API token is invalid.',
+      status: 401,
+      rawBodyText: '',
+      headers: {},
+    } as any);
+    (service.getNotionAPI as Mock).mockResolvedValue(
+      buildApi({ queryDatabase: vi.fn().mockRejectedValue(unauthorized) })
+    );
+    const notionRepo = buildNotionRepo();
+    controller = new NotionController(
+      service,
+      notionRepo,
+      buildUsersRepo(),
+      buildEmailService()
+    );
+    res = { ...res, locals: { owner: 42 } } as any;
+
+    await controller.queryDatabase(
+      req as express.Request,
+      res as express.Response
+    );
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    await vi.waitFor(() =>
+      expect(notionRepo.markTokenInvalid).toHaveBeenCalledWith(42)
+    );
+  });
+
+  it('still answers when flagging the dead token fails', async () => {
+    const unauthorized = new APIResponseError({
+      code: APIErrorCode.Unauthorized,
+      message: 'API token is invalid.',
+      status: 401,
+      rawBodyText: '',
+      headers: {},
+    } as any);
+    (service.getNotionAPI as Mock).mockResolvedValue(
+      buildApi({ listBlocksPage: vi.fn().mockRejectedValue(unauthorized) })
+    );
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const notionRepo = buildNotionRepo({
+      markTokenInvalid: vi.fn().mockRejectedValue(new Error('db down')),
+    });
+    controller = new NotionController(
+      service,
+      notionRepo,
+      buildUsersRepo(),
+      buildEmailService()
+    );
+
+    await controller.previewPage(
+      req as express.Request,
+      res as express.Response
+    );
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    await vi.waitFor(() =>
+      expect(logged).toHaveBeenCalledWith(
+        '[notion] could not flag the dead token',
+        expect.any(Error)
+      )
+    );
+    logged.mockRestore();
+  });
+
+  it('answers a Notion outage on preview without flagging the connection', async () => {
+    const outage = Object.assign(
+      Object.create(UnknownHTTPResponseError.prototype),
+      {
+        name: 'UnknownHTTPResponseError',
+        message: '<html>522</html>',
+        code: 'notionhq_client_response_error',
+        status: 522,
+        headers: {},
+      }
+    );
+    (service.getNotionAPI as Mock).mockResolvedValue(
+      buildApi({ listBlocksPage: vi.fn().mockRejectedValue(outage) })
+    );
+    const notionRepo = buildNotionRepo();
+    controller = new NotionController(
+      service,
+      notionRepo,
+      buildUsersRepo(),
+      buildEmailService()
+    );
+
+    await controller.previewPage(
+      req as express.Request,
+      res as express.Response
+    );
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'notion_unavailable' })
+    );
+    expect(notionRepo.markTokenInvalid).not.toHaveBeenCalled();
   });
 
   it('skips getPage entirely when parent=block is passed', async () => {

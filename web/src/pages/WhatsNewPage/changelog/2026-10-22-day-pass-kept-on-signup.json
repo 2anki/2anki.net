@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-22-day-pass-kept-on-signup",
+  "date": "2026-10-22",
+  "type": "fix",
+  "title": "Passes: a pass you bought before creating an account now carries over when you sign up in the same browser"
+}

@@ -10,6 +10,7 @@ export interface EventRow {
   name: string;
   user_id?: number | null;
   anonymous_id?: string | null;
+  anonymous_pass_id?: number | null;
   props: Record<string, unknown>;
   created_at?: Date;
 }
@@ -55,6 +56,23 @@ const UPLOAD_FUNNEL_STAGES = [
   'account_created',
   'checkout_completed',
 ];
+
+// One row per deck when the event carries a job or upload id, otherwise one
+// per person, so revisits and remounts do not count as new asks.
+export function buildDistinctAsksQuery(
+  db: Knex,
+  name: string,
+  since: Date
+): Knex.QueryBuilder {
+  return db('events')
+    .where('name', name)
+    .where('created_at', '>=', since)
+    .countDistinct({
+      count: db.raw(
+        "coalesce('j' || (props->>'job_id'), 'u' || (props->>'upload_id'), 'p' || user_id::text, 'a' || anonymous_id, 'e' || id::text)"
+      ),
+    });
+}
 
 export interface IEventsRepository {
   insertEvents(rows: EventRow[]): Promise<void>;
@@ -113,6 +131,23 @@ export class EventsRepository implements IEventsRepository {
       .where('created_at', '>=', since)
       .count('id as count')
       .first();
+    return Number(result?.count ?? 0);
+  }
+
+  async firstEventAt(name: string): Promise<Date | null> {
+    const row = (await this.database(this.table)
+      .where('name', name)
+      .min('created_at as first_at')
+      .first()) as { first_at: Date | string | null } | undefined;
+    return row?.first_at == null ? null : new Date(row.first_at);
+  }
+
+  async countDistinctAsks(name: string, since: Date): Promise<number> {
+    const result = await buildDistinctAsksQuery(
+      this.database,
+      name,
+      since
+    ).first();
     return Number(result?.count ?? 0);
   }
 

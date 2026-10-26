@@ -1,5 +1,6 @@
 import { getNotionObjectTitle } from 'get-notion-object-title';
 import Cookies from 'universal-cookie';
+import { forgetPendingUpload } from '../upload/pendingUpload';
 import { NotionResource } from '../interfaces/NotionResource';
 import type JobResponse from '@server/types/JobResponse';
 import type { JobsId } from '@server/data_layer/public/Jobs';
@@ -28,6 +29,7 @@ import {
 import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
+import { getStoredPassToken } from '../anonymousPass';
 import { CONFLICT, NOT_FOUND, OK, UNAUTHORIZED } from './http';
 import { landingCampaignParams } from '../adClick';
 import {
@@ -35,6 +37,11 @@ import {
   readCheckoutConflict,
 } from '../checkout/checkoutConflict';
 import type { ConversionReport } from '../interfaces/ConversionReport';
+
+export interface EmojiFeedbackReceipt {
+  id: number;
+  token: string;
+}
 
 export class TrackerSchemaError extends Error {
   readonly missing: string[];
@@ -119,6 +126,10 @@ export interface CheckoutPrices {
   lockInDeadline: string | null;
 }
 
+export type ThinDeckPreviewResult =
+  | { kind: 'preview'; cards: Array<{ front: string; back: string }> }
+  | { kind: 'unavailable' };
+
 export class Backend {
   public baseURL = '/api/';
 
@@ -127,6 +138,7 @@ export class Backend {
     cancelPendingSync();
     localStorage.clear();
     sessionStorage.clear();
+    await forgetPendingUpload();
     if (!isOffline) {
       const endpoint = `${this.baseURL}users/logout`;
       await post(endpoint, {});
@@ -141,6 +153,7 @@ export class Backend {
     await post(`${this.baseURL}users/logout-everywhere`, {});
     localStorage.clear();
     sessionStorage.clear();
+    await forgetPendingUpload();
     const cookies = new Cookies();
     cookies.remove('token');
     globalThis.location.href = '/login';
@@ -250,7 +263,10 @@ export class Backend {
     });
     const data = await response.json();
     if ('message' in data) {
-      if (isIntentionalBackendNotice(data.message)) {
+      if (
+        data.code === 'notion_unauthorized' ||
+        isIntentionalBackendNotice(data.message)
+      ) {
         throw new UserNotice(data.message, data.code);
       }
       throw new Error(data.message);
@@ -290,7 +306,10 @@ export class Backend {
       typeof data.message === 'string'
         ? data.message
         : `Search failed (${status})`;
-    if (isIntentionalBackendNotice(message)) {
+    if (
+      data.code === 'notion_unauthorized' ||
+      isIntentionalBackendNotice(message)
+    ) {
       return new UserNotice(
         message,
         typeof data.code === 'string' ? data.code : undefined
@@ -344,7 +363,10 @@ export class Backend {
     }
 
     if ('message' in data) {
-      if (isIntentionalBackendNotice(data.message)) {
+      if (
+        data.code === 'notion_unauthorized' ||
+        isIntentionalBackendNotice(data.message)
+      ) {
         throw new UserNotice(data.message, data.code);
       }
       throw new Error(data.message);
@@ -440,6 +462,17 @@ export class Backend {
     }
     const deck = await response.blob();
     return deck.size > 0 ? deck : null;
+  }
+
+  async resumeAiPreview(passToken?: string): Promise<Response> {
+    const token = passToken ?? getStoredPassToken();
+    const headers: Record<string, string> =
+      token == null ? {} : { 'X-Pass-Token': token };
+    return fetch(`${this.baseURL}upload/ai-preview/resume`, {
+      method: 'post',
+      credentials: 'include',
+      headers,
+    });
   }
 
   async claimHeldDeck(): Promise<ClaimHeldDeckResult> {
@@ -892,6 +925,40 @@ export class Backend {
       return { status: 'error' };
     } catch {
       return { status: 'error' };
+    }
+  }
+
+  // Samples the cards Claude would write from a file. Only called from the
+  // preview button: the consent field is the server's proof of the tap.
+  async previewThinDeckAi(file: File): Promise<ThinDeckPreviewResult> {
+    const form = new FormData();
+    form.append('consent', 'claude');
+    form.append('file', file, file.name);
+    try {
+      const response = await fetch(`${this.baseURL}upload/thin-deck-preview`, {
+        method: 'POST',
+        credentials: 'include',
+        body: form,
+      });
+      if (!response.ok) {
+        return { kind: 'unavailable' };
+      }
+      const body = (await response.json().catch(() => null)) as {
+        kind?: string;
+        cards?: Array<{ front?: unknown; back?: unknown }>;
+      } | null;
+      if (body?.kind === 'preview' && Array.isArray(body.cards)) {
+        const cards = body.cards.filter(
+          (card): card is { front: string; back: string } =>
+            typeof card.front === 'string' && typeof card.back === 'string'
+        );
+        return cards.length > 0
+          ? { kind: 'preview', cards }
+          : { kind: 'unavailable' };
+      }
+      return { kind: 'unavailable' };
+    } catch {
+      return { kind: 'unavailable' };
     }
   }
 
@@ -1517,7 +1584,7 @@ export class Backend {
       uploadId?: number | null;
       inputFormat?: string | null;
     }
-  ): Promise<void> {
+  ): Promise<EmojiFeedbackReceipt | null> {
     const response = await post(`${this.baseURL}emoji-feedback`, {
       rating,
       page,
@@ -1529,6 +1596,28 @@ export class Backend {
     });
     if (!response.ok) {
       throw new Error('Failed to submit feedback');
+    }
+    try {
+      const body = (await response.json()) as Partial<EmojiFeedbackReceipt>;
+      return typeof body.id === 'number' && typeof body.token === 'string'
+        ? { id: body.id, token: body.token }
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async followUpEmojiFeedback(
+    receipt: EmojiFeedbackReceipt,
+    comment?: string,
+    email?: string
+  ): Promise<void> {
+    const response = await patch(
+      `${this.baseURL}emoji-feedback/${receipt.id}`,
+      { token: receipt.token, comment: comment ?? null, email: email ?? null }
+    );
+    if (!response.ok) {
+      throw new Error('Failed to submit feedback follow-up');
     }
   }
 

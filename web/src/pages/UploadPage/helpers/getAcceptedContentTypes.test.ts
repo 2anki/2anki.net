@@ -28,6 +28,8 @@ describe('accepted formats single source of truth', () => {
       ...ACCEPTED_FORMATS,
       '.htm',
       '.tsv',
+      '.rtf',
+      '.dotx',
       '.doc',
       '.ppt',
       '.xml',

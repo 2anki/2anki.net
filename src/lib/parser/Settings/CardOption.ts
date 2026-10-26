@@ -43,6 +43,8 @@ class CardOption {
 
   readonly promoteNestedCloze: boolean;
 
+  readonly promoteNestedToggles: boolean;
+
   readonly parentContext: boolean;
 
   readonly removeDeckNameNumbering: boolean;
@@ -104,6 +106,8 @@ class CardOption {
   readonly pdfExtractText: boolean;
 
   readonly pdfPagePairs: boolean;
+
+  readonly pdfFallback: PdfFallback;
 
   readonly pdfPageRange: string;
 
@@ -168,6 +172,7 @@ class CardOption {
     this.clozeFromToggleContent = input['cloze-from-toggle-content'] === 'true';
     this.groupClozePerToggle = input['group-cloze-per-toggle'] === 'true';
     this.promoteNestedCloze = input['promote-nested-cloze'] === 'true';
+    this.promoteNestedToggles = input['promote-nested-toggles'] === 'true';
     this.parentContext = input['parent-context'] === 'true';
     this.removeDeckNameNumbering =
       input['remove-deck-name-numbering'] === 'true';
@@ -197,6 +202,7 @@ class CardOption {
     this.processPDFs = input['process-pdfs'] !== 'false';
     this.pdfExtractText = input['pdf-extract-text'] === 'true';
     this.pdfPagePairs = input['pdf-page-pairs'] === 'true';
+    this.pdfFallback = validatePdfFallback(input['pdf-fallback']);
     this.pdfPageRange =
       typeof input['pdf-page-range'] === 'string'
         ? input['pdf-page-range']
@@ -269,6 +275,14 @@ function parseGlobalTags(raw: string | undefined): string[] {
 }
 
 const CODE_THEME_VALUES = ['github', 'one-dark', 'solarized', 'dracula'];
+
+export type PdfFallback = 'ask' | 'pairs' | 'single';
+
+// What to do with a PDF that has no usable text. Only the upload page asks
+// ('ask'); every other caller keeps the page pairs it always made.
+function validatePdfFallback(raw: string | undefined): PdfFallback {
+  return raw === 'ask' || raw === 'single' ? raw : 'pairs';
+}
 
 function validateCodeTheme(raw: string | undefined): string {
   return raw && CODE_THEME_VALUES.includes(raw) ? raw : 'github';

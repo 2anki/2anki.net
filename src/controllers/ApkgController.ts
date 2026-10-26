@@ -45,6 +45,79 @@ import { buildContentDisposition } from '../lib/buildContentDisposition';
 import { getSafeFilename, toDownloadBasename } from '../lib/getSafeFilename';
 import { track } from '../services/events/track';
 import type { ServerErrorRecorder } from '../routes/middleware/ErrorCaptureMiddleware';
+import {
+  DeckUploadError,
+  resolveDeckUpload,
+} from '../lib/anki/resolveDeckUpload';
+
+type DeckTool = 'print' | 'print_preview' | 'csv';
+
+// Reads the uploaded file and turns it into the deck to open. When it is not
+// one deck, it answers with the next step instead (pick a deck, or make a
+// deck from the notes) and returns null. Those answers are not 200, so the
+// print quota is never spent on them.
+async function readDeckUpload(
+  req: Request,
+  res: Response,
+  tool: DeckTool
+): Promise<{ deck: Buffer; deckName: string } | null> {
+  const file = req.file;
+  if (file == null) {
+    res.status(400).json({ message: 'No file uploaded.' });
+    return null;
+  }
+  const fs = await import('node:fs/promises');
+  let upload: Buffer;
+  try {
+    upload = await fs.readFile(file.path);
+  } catch {
+    res.status(400).json({ message: "Couldn't read the uploaded file." });
+    return null;
+  } finally {
+    await tryUnlink(file.path);
+  }
+  const body = req.body as Record<string, unknown> | undefined;
+  const chosen = typeof body?.deck_entry === 'string' ? body.deck_entry : null;
+  const userId = typeof res.locals.owner === 'number' ? res.locals.owner : null;
+  try {
+    const resolved = await resolveDeckUpload(upload, file.originalname, chosen);
+    if (resolved.kind === 'choose') {
+      track('deck_upload_resolved', {
+        userId,
+        props: { shape: 'zip_many_decks', tool },
+      });
+      res.status(409).json({
+        code: 'choose_deck',
+        message: 'This zip has more than one deck. Choose the one you want.',
+        decks: resolved.decks,
+      });
+      return null;
+    }
+    if (resolved.kind === 'not_a_deck') {
+      track('deck_upload_resolved', {
+        userId,
+        props: { shape: 'not_a_deck', tool },
+      });
+      res.status(422).json({
+        code: 'not_a_deck',
+        message:
+          'This file has notes, not an Anki deck. Make a deck from it on the Upload page.',
+      });
+      return null;
+    }
+    track('deck_upload_resolved', {
+      userId,
+      props: { shape: resolved.shape, tool },
+    });
+    return { deck: resolved.deck, deckName: resolved.deckName };
+  } catch (error) {
+    if (error instanceof DeckUploadError) {
+      res.status(400).json({ message: error.message });
+      return null;
+    }
+    throw error;
+  }
+}
 
 async function tryUnlink(filePath: string): Promise<void> {
   const fs = await import('node:fs/promises');
@@ -255,13 +328,9 @@ class ApkgController {
         res.status(400).json({ message: 'No file uploaded.' });
         return;
       }
-      if (!isApkg(file.originalname)) {
-        trackPdfExportFailed(res, 'not_apkg');
-        res.status(400).json({ message: 'File must be an .apkg file.' });
-        return;
-      }
       const pdfOptions = parsePdfOptions(req.body as Record<string, unknown>);
       if (pdfOptions == null) {
+        await tryUnlink(file.path);
         trackPdfExportFailed(res, 'invalid_options');
         res.status(400).json({
           message:
@@ -282,25 +351,23 @@ class ApkgController {
           margins: pdfOptions.margins !== DEFAULT_PDF_OPTIONS.margins,
         },
       });
-      const fs = await import('node:fs/promises');
-      let fileBuffer: Buffer;
-      try {
-        fileBuffer = await fs.readFile(file.path);
-      } finally {
-        await fs.unlink(file.path).catch(() => {});
+      const upload = await readDeckUpload(req, res, 'print');
+      if (upload == null) {
+        // A deck choice (409) is a question, not a failure.
+        if (res.statusCode === 422) trackPdfExportFailed(res, 'not_apkg');
+        if (res.statusCode === 400) trackPdfExportFailed(res, 'invalid_apkg');
+        return;
       }
       const useCase = new ExportApkgToPdfUseCase(
         this.previewService,
         this.pdfRenderService
       );
       const result = await useCase.execute(
-        fileBuffer,
+        upload.deck,
         isPaying(res.locals),
         pdfOptions
       );
-      const safeName = toDownloadBasename(
-        file.originalname.replace(/\.apkg$/i, '')
-      );
+      const safeName = toDownloadBasename(upload.deckName);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader(
         'Content-Disposition',
@@ -319,11 +386,6 @@ class ApkgController {
         res.status(400).json({ message: 'No file uploaded.' });
         return;
       }
-      if (!isApkg(file.originalname)) {
-        await tryUnlink(file.path);
-        res.status(400).json({ message: 'File must be an .apkg file.' });
-        return;
-      }
       const pdfOptions = parsePdfOptions(req.body as Record<string, unknown>);
       if (pdfOptions == null) {
         await tryUnlink(file.path);
@@ -333,13 +395,9 @@ class ApkgController {
         });
         return;
       }
-      const fs = await import('node:fs/promises');
-      let fileBuffer: Buffer;
-      try {
-        fileBuffer = await fs.readFile(file.path);
-      } finally {
-        await tryUnlink(file.path);
-      }
+      const upload = await readDeckUpload(req, res, 'print_preview');
+      if (upload == null) return;
+      const fileBuffer = upload.deck;
       const useCase = new ExportApkgToPdfUseCase(
         this.previewService,
         this.pdfRenderService
@@ -374,31 +432,18 @@ class ApkgController {
   }
 
   async exportCsv(req: Request, res: Response) {
-    const file = req.file;
-    if (file == null) {
-      res.status(400).json({ message: 'No file uploaded.' });
-      return;
-    }
-    if (!isApkg(file.originalname)) {
-      await tryUnlink(file.path);
-      res.status(400).json({ message: 'File must be an .apkg file.' });
-      return;
-    }
-    const fs = await import('node:fs/promises');
-    let fileBuffer: Buffer;
+    // readDeckUpload must not reject: express does not await this handler, and
+    // the unhandled-rejection guard in server.ts would exit the process on one
+    // anonymous request hitting a reaped temp file.
+    let upload: { deck: Buffer; deckName: string } | null;
     try {
-      fileBuffer = await fs.readFile(file.path);
+      upload = await readDeckUpload(req, res, 'csv');
     } catch {
-      // Without this the rejection escapes the handler entirely — express does
-      // not await it — and the unhandled-rejection guard in server.ts exits the
-      // process. One anonymous request hitting a reaped temp file would take
-      // the whole site down.
-      await tryUnlink(file.path);
       res.status(400).json({ message: "Couldn't read the uploaded file." });
       return;
-    } finally {
-      await tryUnlink(file.path);
     }
+    if (upload == null) return;
+    const fileBuffer = upload.deck;
     const owner = res.locals.owner;
     const noteLimit = csvNoteLimitFor(owner, isPaying(res.locals));
     try {
@@ -413,7 +458,7 @@ class ApkgController {
           props: { note_count: result.noteCount },
         });
       }
-      sendCsvDownload(res, result.csv, file.originalname, result.noteCount);
+      sendCsvDownload(res, result.csv, upload.deckName, result.noteCount);
     } catch (error) {
       sendCsvExportError(res, error, noteLimit);
     }

@@ -11,6 +11,7 @@ interface FreshUrlRetryParams {
   url: string;
   sourceType: MediaSourceType;
   extractFreshUrl: (block: GetBlockResponse) => string | null;
+  maxBytes?: number;
 }
 
 async function resolveFreshUrl(
@@ -40,8 +41,9 @@ export async function downloadWithFreshUrlRetry({
   url,
   sourceType,
   extractFreshUrl,
+  maxBytes,
 }: FreshUrlRetryParams): Promise<Buffer | null> {
-  const contents = await downloadMediaOrSkip(url);
+  const contents = await downloadMediaOrSkip(url, maxBytes);
   if (contents != null) {
     return contents;
   }
@@ -57,7 +59,7 @@ export async function downloadWithFreshUrlRetry({
     return null;
   }
 
-  const refreshed = await downloadMediaOrSkip(freshUrl);
+  const refreshed = await downloadMediaOrSkip(freshUrl, maxBytes);
   if (refreshed == null) {
     warnSkipped(blockId, 'signed URL expired and could not be refreshed');
     return null;

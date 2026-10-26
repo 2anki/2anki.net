@@ -16,6 +16,8 @@ const KNOWN_INPUT_FORMATS = new Set([
   'xls',
   'pdf',
   'docx',
+  'dotx',
+  'rtf',
   'doc',
   'pptx',
   'ppt',

@@ -3,9 +3,11 @@ import { Response } from 'express';
 import { APIErrorCode, APIResponseError } from '@notionhq/client';
 
 import { toNotionUploadError } from './notion/toNotionUploadError';
+import { NotionNotConnectedError } from './notion/NotionNotConnectedError';
 import type { UploadErrorBody } from '../types/UploadErrorBody';
 
 function isExpectedUserError(error: unknown): boolean {
+  if (error instanceof NotionNotConnectedError) return true;
   if (!(error instanceof APIResponseError)) return false;
   // Notion returning Unauthorized means the user revoked access or
   // the stored token expired — it's an expected outcome that triggers

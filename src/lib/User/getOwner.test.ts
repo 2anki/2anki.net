@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { getOwner, getOwnerId } from './getOwner';
+import { getAnonymousPassId, getOwner, getOwnerId } from './getOwner';
 
 import { Response } from 'express';
 
@@ -16,6 +16,11 @@ const mockResponse = (owner: unknown): Response<any, Record<string, any>> => {
   res.locals = { owner };
   return res as Response<any, Record<string, any>>;
 };
+
+const mockResponseWithLocals = (
+  locals: Record<string, unknown>
+): Response<any, Record<string, any>> =>
+  ({ locals }) as Response<any, Record<string, any>>;
 
 describe('getOwner', () => {
   test('returns the owner from the response', () => {
@@ -52,5 +57,33 @@ describe('getOwnerId', () => {
 
   test('returns null for an empty-string owner instead of a synthetic 0', () => {
     expect(getOwnerId(mockResponse(''))).toBeNull();
+  });
+});
+
+describe('getAnonymousPassId', () => {
+  test('returns the anonymous pass id from res.locals', () => {
+    expect(
+      getAnonymousPassId(mockResponseWithLocals({ anonymousPassId: 7 }))
+    ).toBe(7);
+  });
+
+  test('parses a stringified pass id', () => {
+    expect(
+      getAnonymousPassId(mockResponseWithLocals({ anonymousPassId: '7' }))
+    ).toBe(7);
+  });
+
+  test('returns null when no pass id is present', () => {
+    expect(getAnonymousPassId()).toBeNull();
+    expect(getAnonymousPassId(mockResponseWithLocals({}))).toBeNull();
+  });
+
+  test('returns null for a non-positive or non-numeric pass id', () => {
+    expect(
+      getAnonymousPassId(mockResponseWithLocals({ anonymousPassId: 0 }))
+    ).toBeNull();
+    expect(
+      getAnonymousPassId(mockResponseWithLocals({ anonymousPassId: 'nope' }))
+    ).toBeNull();
   });
 });

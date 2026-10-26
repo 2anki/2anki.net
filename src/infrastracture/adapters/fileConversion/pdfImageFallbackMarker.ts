@@ -71,3 +71,16 @@ export function matchesPdfImageFallback(
   }
   return false;
 }
+
+export function mergePdfImageFallbackMarker(
+  fromDir: string,
+  toDir: string
+): void {
+  const names = loadPdfImageFallbackNames(fromDir);
+  if (names.size === 0) {
+    return;
+  }
+  writePdfImageFallbackMarker(toDir, [
+    ...new Set([...loadPdfImageFallbackNames(toDir), ...names]),
+  ]);
+}

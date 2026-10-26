@@ -41,12 +41,8 @@ import { getDatabase } from '../data_layer';
 import RequireOpsAccess from './middleware/RequireOpsAccess';
 import InactivityEmailRepository from '../data_layer/InactivityEmailRepository';
 import { SendInactivityWarningsUseCase } from '../usecases/ops/SendInactivityWarningsUseCase';
-import { SendPassWinbackUseCase } from '../usecases/ops/SendPassWinbackUseCase';
-import PassWinbackRepository from '../data_layer/PassWinbackRepository';
-import { emailHash } from '../lib/emailHash';
 import { getEventsSink } from '../services/events/eventsSinkInstance';
 import { DeleteInactiveUsersUseCase } from '../usecases/ops/DeleteInactiveUsersUseCase';
-import { SetChatAttachmentsLifecycleUseCase } from '../usecases/ops/SetChatAttachmentsLifecycleUseCase';
 import { GrantUnclaimedPassUseCase } from '../usecases/passes/GrantUnclaimedPassUseCase';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { UserVisibleErrorsRepository } from '../data_layer/UserVisibleErrorsRepository';
@@ -227,15 +223,6 @@ const OpsRouter = () => {
       })
     ),
     new GetPassUnlockMonitorUseCase(passUnlockMonitorService),
-    new SendPassWinbackUseCase(
-      new PassWinbackRepository(database),
-      emailService,
-      (email) =>
-        new SuppressionEventsRepository(database).isSuppressed(
-          emailHash(email)
-        ),
-      getEventsSink()
-    ),
     new GetCancelFunnelUseCase(
       new CancelFunnelService({ eventsRepo: new EventsRepository(database) })
     ),
@@ -245,7 +232,6 @@ const OpsRouter = () => {
         repo: new AiUsageMetricsRepository(database),
       })
     ),
-    new SetChatAttachmentsLifecycleUseCase(new StorageHandler()),
     new GrantUnclaimedPassUseCase(
       new AnonymousPassRepository(database),
       new UserPassRepository(database),
@@ -407,44 +393,6 @@ const OpsRouter = () => {
 
   /**
    * @swagger
-   * /api/ops/send-pass-winback:
-   *   post:
-   *     summary: Send a win-back email to lapsed one-time pass buyers
-   *     description: |
-   *       Finds users whose paid Day/Week pass has expired with no active pass or
-   *       subscription, and sends a seasonal win-back nudge. Excludes marketing_opt_out
-   *       and hard-suppressed addresses, and dedupes per user per campaign.
-   *       Pass ?campaign=<id> (required, e.g. winback-2026-fall) to scope the send and dedupe window.
-   *       Pass ?dryRun=false to send real emails; omit or pass ?dryRun=true to count candidates only.
-   *       Run manually — enabling an automatic seasonal send is the maintainer's call.
-   *     tags: [Ops]
-   *     parameters:
-   *       - in: query
-   *         name: campaign
-   *         required: true
-   *         schema:
-   *           type: string
-   *         description: Campaign identifier — scopes the send and the per-user dedupe.
-   *       - in: query
-   *         name: dryRun
-   *         schema:
-   *           type: string
-   *           enum: ['true', 'false']
-   *         description: Defaults to true. Pass false to actually send emails.
-   *     responses:
-   *       200:
-   *         description: Result with campaign, count, and dryRun flag
-   *       400:
-   *         description: campaign missing
-   *       404:
-   *         description: Not the ops owner
-   */
-  router.post('/api/ops/send-pass-winback', RequireOpsAccess, (req, res) =>
-    controller.sendPassWinback(req, res)
-  );
-
-  /**
-   * @swagger
    * /api/ops/delete-inactive-users:
    *   post:
    *     summary: Delete free accounts that ignored the inactivity warning
@@ -506,29 +454,6 @@ const OpsRouter = () => {
    */
   router.post('/api/ops/prune-dead-uploads', RequireOpsAccess, (req, res) =>
     controller.pruneDeadUploads(req, res)
-  );
-
-  /**
-   * @swagger
-   * /api/ops/chat-attachments-lifecycle:
-   *   post:
-   *     summary: Apply the 90-day expiry rule for chat attachments to the storage bucket
-   *     description: |
-   *       Idempotent. Reads the bucket's lifecycle configuration, replaces only the
-   *       chat-attachments rule by its ID, keeps every other rule, writes the merged
-   *       set back, and verifies the rule is present afterwards. Internal endpoint
-   *       locked to the ops owner.
-   *     tags: [Ops]
-   *     responses:
-   *       200:
-   *         description: Rule applied — returns the rule id and total rule count
-   *       404:
-   *         description: Not the ops owner
-   */
-  router.post(
-    '/api/ops/chat-attachments-lifecycle',
-    RequireOpsAccess,
-    (req, res) => controller.setChatAttachmentsLifecycle(req, res)
   );
 
   /**

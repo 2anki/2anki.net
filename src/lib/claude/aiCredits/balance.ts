@@ -24,7 +24,7 @@ export interface AiCreditBalanceReaders {
   userCostSince(userId: number, since: Date): Promise<number>;
 }
 
-function buildBalance(
+export function buildBalance(
   allowanceCredits: number,
   grantCredits: number,
   spendUsd: number,

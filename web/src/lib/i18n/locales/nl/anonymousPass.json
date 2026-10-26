@@ -4,6 +4,13 @@
   "afterPay": "Zet het bestand na het betalen opnieuw neer om alle kaarten te krijgen.",
   "afterPayTotal": "Zet het bestand na het betalen opnieuw neer om alle {{total}} kaarten te krijgen.",
   "cta": "Koop een Day Pass voor {{price}}",
+  "cardTitle": "Day Pass",
+  "cardLine": "Al je kaarten nu, zonder account.",
+  "cardPrice": "{{price}} voor 24 uur.",
+  "reason": "Dit deck heeft {{total}} kaarten. Een gratis account dekt {{monthly}} per maand. Een Day Pass geeft je ze allemaal nu, zonder account.",
+  "cardCtaTotal": "Haal nu alle {{total}} kaarten",
+  "cardCtaEvery": "Haal nu elke kaart",
+  "passActive": "Zodra de betaling rond is, zet je je bestand opnieuw neer om je Day Pass te starten en alle kaarten te krijgen.",
   "checkoutError": "Afrekenen kon niet starten. Probeer het opnieuw of mail support@2anki.net.",
   "starting": "Afrekenen starten"
 }

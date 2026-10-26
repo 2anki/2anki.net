@@ -45,11 +45,15 @@ import { getDatabase } from '../data_layer';
 import { getNotionId } from '../services/NotionService/getNotionId';
 import { getOwner } from '../lib/User/getOwner';
 import sendErrorResponse from '../lib/sendErrorResponse';
+import { toNotionUploadError } from '../lib/notion/toNotionUploadError';
 import { isPaying } from '../lib/isPaying';
 import { MONTHLY_CARD_LIMIT } from '../lib/limits';
 import ParserRules from '../lib/parser/ParserRules';
 import { GetDatabasePreviewUseCase } from '../usecases/notion/GetDatabasePreviewUseCase';
-import { MarkNotionTokenInvalidUseCase } from '../usecases/notion/MarkNotionTokenInvalidUseCase';
+import {
+  MarkNotionTokenInvalidUseCase,
+  type NotionTokenInvalidSource,
+} from '../usecases/notion/MarkNotionTokenInvalidUseCase';
 import { INotionRepository } from '../data_layer/NotionRespository';
 import { IEmailService } from '../services/EmailService/EmailService';
 import UsersRepository from '../data_layer/UsersRepository';
@@ -111,7 +115,10 @@ class NotionController {
     private readonly emailService?: IEmailService
   ) {}
 
-  private markTokenInvalid(owner: number): void {
+  private markTokenInvalid(
+    owner: number,
+    source: NotionTokenInvalidSource
+  ): void {
     if (
       this.notionRepo != null &&
       this.usersRepo != null &&
@@ -121,10 +128,35 @@ class NotionController {
         this.notionRepo,
         this.usersRepo,
         this.emailService
-      ).execute(owner);
+      )
+        .execute(owner, source)
+        .catch((error) =>
+          console.error('[notion] could not flag the dead token', error)
+        );
     } else {
-      void this.service.markTokenInvalid(owner);
+      void this.service
+        .markTokenInvalid(owner)
+        .catch((error) =>
+          console.error('[notion] could not flag the dead token', error)
+        );
     }
+  }
+
+  // Notion said the token is dead: flag it so the site shows Connect Notion
+  // instead of failing the same way on every page, then answer the
+  // reconnect error.
+  private sendNotionError(
+    error: unknown,
+    res: Response,
+    source: NotionTokenInvalidSource
+  ) {
+    if (
+      error instanceof APIResponseError &&
+      error.code === APIErrorCode.Unauthorized
+    ) {
+      this.markTokenInvalid(res.locals.owner, source);
+    }
+    return sendErrorResponse(error, res);
   }
 
   async connect(req: Request, res: Response) {
@@ -207,7 +239,7 @@ class NotionController {
         err instanceof APIResponseError &&
         err.code === APIErrorCode.Unauthorized
       ) {
-        this.markTokenInvalid(res.locals.owner);
+        this.markTokenInvalid(res.locals.owner, 'search');
         return res.status(401).json({
           code: 'notion_unauthorized',
           message: 'API token is invalid.',
@@ -238,7 +270,7 @@ class NotionController {
         err instanceof APIResponseError &&
         err.code === APIErrorCode.Unauthorized
       ) {
-        this.markTokenInvalid(res.locals.owner);
+        this.markTokenInvalid(res.locals.owner, 'search');
         return res.status(401).json({
           code: 'notion_unauthorized',
           message: 'API token is invalid.',
@@ -572,6 +604,9 @@ class NotionController {
       return res.json(database);
     } catch (error) {
       console.info('Get database failed');
+      if (toNotionUploadError(error) != null) {
+        return this.sendNotionError(error, res, 'database');
+      }
       console.error(error);
       res.status(500).json({
         message:
@@ -591,8 +626,7 @@ class NotionController {
       res.json(results);
     } catch (error) {
       console.info('Query database failed');
-      console.error(error);
-      sendErrorResponse(error, res);
+      this.sendNotionError(error, res, 'database');
     }
   }
 
@@ -619,7 +653,7 @@ class NotionController {
         });
       }
       console.info('Preview database failed');
-      return sendErrorResponse(error, res);
+      return this.sendNotionError(error, res, 'database');
     }
   }
 
@@ -672,8 +706,7 @@ class NotionController {
         });
       }
       console.info('Preview page failed');
-      console.error(error);
-      sendErrorResponse(error, res);
+      this.sendNotionError(error, res, 'preview');
     }
   }
 

@@ -34,4 +34,26 @@ describe('RetryPdfWithCredentialUseCase', () => {
       name: 'lecture.apkg',
     });
   });
+
+  it('meters an anonymous pass holder by threading the pass id into PrepareDeck', async () => {
+    mockPrepareDeck.mockResolvedValueOnce({
+      apkg: Buffer.from('apkg'),
+      cardCount: 1,
+      name: 'lecture.apkg',
+    } as Awaited<ReturnType<typeof PrepareDeck>>);
+
+    await new RetryPdfWithCredentialUseCase().execute(
+      Buffer.from('%PDF-1.4'),
+      'lecture.pdf',
+      'secret',
+      true,
+      new CardOption({}),
+      { location: '/tmp/retry-test' } as Workspace,
+      null,
+      7
+    );
+
+    expect(mockPrepareDeck.mock.calls[0][0].userId).toBeNull();
+    expect(mockPrepareDeck.mock.calls[0][0].anonymousPassId).toBe(7);
+  });
 });

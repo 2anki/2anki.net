@@ -1,0 +1,16 @@
+{
+  "ariaLabel": "Anteprima di ciò che Claude scriverebbe da questo file",
+  "lead": "Claude può leggere questo file e scrivere altre carte a partire da esso.",
+  "cta": "Anteprima delle carte che Claude scriverebbe",
+  "consent": "Il testo del tuo file viene inviato a Claude (Anthropic) per scrivere il campione. Non viene condiviso altro e non viene salvato nulla.",
+  "loading": "Lettura del tuo file",
+  "heading": "Un campione che Claude ha scritto dall'inizio del tuo file",
+  "front": "Fronte",
+  "back": "Retro",
+  "unlockPaying": "Crea il mazzo IA completo",
+  "unlockPayingNote": "Usa i tuoi crediti IA.",
+  "unlockFree": "Ottieni tutte le carte: Day Pass {{price}}",
+  "unlockFreeNote": "Dura 24 ore, senza abbonamento. Il mazzo che hai già resta gratuito da scaricare.",
+  "unavailable": "In questo momento non è stato possibile creare un'anteprima da questo file. Il mazzo che hai già è ancora pronto da scaricare.",
+  "checkoutError": "Impossibile avviare il pagamento. Riprova o scrivi a support@2anki.net."
+}

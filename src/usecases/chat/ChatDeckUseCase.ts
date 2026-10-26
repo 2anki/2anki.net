@@ -6,6 +6,8 @@ import CustomExporter from '../../lib/parser/exporters/CustomExporter';
 import UsersRepository from '../../data_layer/UsersRepository';
 import { CheckMonthlyCardLimitUseCase } from '../users/CheckMonthlyCardLimitUseCase';
 import { templateForbidsCloze } from './chatTemplates';
+import { buildDeckStyle } from '../../lib/parser/buildDeckStyle';
+import CardOption from '../../lib/parser/Settings/CardOption';
 
 export interface ChatDeckCard {
   front: string;
@@ -120,7 +122,7 @@ export class ChatDeckUseCase {
         {
           name: deckName,
           image: '',
-          style: null,
+          style: buildDeckStyle(new CardOption({})),
           id: randomDeckId(),
           settings: {
             template: 'specialstyle',

@@ -2,7 +2,11 @@ import express from 'express';
 import fs from 'node:fs';
 import multer from 'multer';
 
-import { getOwner, getOwnerId } from '../../lib/User/getOwner';
+import {
+  getAnonymousPassId,
+  getOwner,
+  getOwnerId,
+} from '../../lib/User/getOwner';
 import {
   InMemoryRateLimiter,
   RateLimiter,
@@ -319,7 +323,12 @@ class UploadController {
 
     const filename = uploadedFile.originalname;
     const paying = isPaying(res.locals);
-    const settings = new CardOption((req.body as Record<string, string>) || {});
+    // Nobody can answer a question here, so a PDF without text keeps the page
+    // pairs it always made.
+    const settings = new CardOption({
+      ...((req.body as Record<string, string>) || {}),
+      'pdf-fallback': 'pairs',
+    });
     const workspace = new Workspace(true, 'fs');
 
     const useCase = new RetryPdfWithCredentialUseCase();
@@ -330,7 +339,8 @@ class UploadController {
       paying,
       settings,
       workspace,
-      getOwnerId(res)
+      getOwnerId(res),
+      getAnonymousPassId(res)
     );
 
     if ('needsCredential' in outcome) {

@@ -47,6 +47,18 @@ describe('getUploadValidationError', () => {
     expect(error!.message).toContain('already an Anki deck');
   });
 
+  test.each([
+    'Profile.colpkg',
+    'collection.anki2',
+    'collection.anki21',
+    'collection.anki21b',
+  ])('names %s as an Anki deck', (originalname) => {
+    const error = getUploadValidationError([
+      makeFile({ originalname, size: 51200 }),
+    ]);
+    expect(error!.message).toContain('already an Anki deck');
+  });
+
   test('returns error when an uppercase .APKG file is uploaded', () => {
     const error = getUploadValidationError([
       makeFile({ originalname: 'Deck.UPPER.APKG', size: 82138 }),

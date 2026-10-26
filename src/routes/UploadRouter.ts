@@ -42,6 +42,12 @@ import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUse
 import { RecentSourcesController } from '../controllers/Upload/RecentSourcesController';
 import { ClaimHeldDeckController } from '../controllers/Upload/ClaimHeldDeckController';
 import { ClaimHeldDeckUseCase } from '../usecases/uploads/ClaimHeldDeckUseCase';
+import { AiPreviewResumeController } from '../controllers/Upload/AiPreviewResumeController';
+import { ResumeAnonymousAiPreviewUseCase } from '../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
+import { AnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
+import { getCheckoutSessionBinding } from '../usecases/checkout/getCheckoutSessionBinding';
+import { getStripe } from '../lib/integrations/stripe';
+import { ThinDeckAiPreviewController } from '../controllers/Upload/ThinDeckAiPreviewController';
 import { SampleUploadController } from '../controllers/Upload/SampleUploadController';
 import { ConvertSampleDeckUseCase } from '../usecases/uploads/ConvertSampleDeckUseCase';
 
@@ -73,7 +79,8 @@ const UploadRouter = () => {
   const recentSourcesController = new RecentSourcesController(
     new GetRecentSourcesUseCase(
       new NotionTopLevelPagesRepository(database),
-      new UploadRepository(database)
+      new UploadRepository(database),
+      new NotionRepository(database)
     )
   );
   const saveNativeDeckController = new SaveNativeDeckController(
@@ -87,6 +94,20 @@ const UploadRouter = () => {
       new HeldDeckRepository(database),
       new StorageHandler(),
       uploadService
+    )
+  );
+  const thinDeckAiPreviewController = new ThinDeckAiPreviewController();
+  const aiPreviewResumeController = new AiPreviewResumeController(
+    new ResumeAnonymousAiPreviewUseCase(
+      new HeldDeckRepository(database),
+      new StorageHandler(),
+      uploadService,
+      new AnonymousPassRepository(database),
+      (sessionId) => {
+        const key = process.env.STRIPE_KEY;
+        const stripe = key == null || key === '' ? undefined : getStripe();
+        return getCheckoutSessionBinding(stripe, sessionId);
+      }
     )
   );
   const sampleUploadController = new SampleUploadController(
@@ -216,6 +237,29 @@ const UploadRouter = () => {
 
   /**
    * @swagger
+   * /api/upload/ai-preview/resume:
+   *   post:
+   *     summary: Resume an AI preview with a Day Pass
+   *     description: Runs the full AI conversion of the source file a visitor uploaded before buying, using the anonymous Day Pass sent as X-Pass-Token. Requires a valid active pass; returns the apkg on success.
+   *     tags: [Upload]
+   *     responses:
+   *       200:
+   *         description: Full AI deck built from the stored source
+   *       403:
+   *         description: No valid pass on the request
+   *       404:
+   *         description: No AI preview is waiting for this visitor
+   *       410:
+   *         description: The held source file is no longer available
+   */
+  router.post(
+    '/api/upload/ai-preview/resume',
+    RequireAllowedOrigin,
+    (req, res) => aiPreviewResumeController.resume(req, res)
+  );
+
+  /**
+   * @swagger
    * /api/upload/save:
    *   post:
    *     summary: Save a built deck to the user's library
@@ -278,6 +322,36 @@ const UploadRouter = () => {
     }).single('file'),
     normalizeUploadFilenames,
     (req, res) => saveNativeDeckController.save(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/upload/thin-deck-preview:
+   *   post:
+   *     summary: Sample the cards Claude would write from a file
+   *     description: Sends the text of the first pages to Claude and returns at most five sample cards. Runs only when the form field consent is claude, which the page sets when the person taps the preview button. Nothing is stored.
+   *     tags: [Upload]
+   *     responses:
+   *       200:
+   *         description: Sample cards, or kind unavailable or unsupported
+   *       400:
+   *         description: Consent or file missing
+   *       403:
+   *         description: Origin not allowed
+   *       404:
+   *         description: Not available
+   */
+  router.post(
+    '/api/upload/thin-deck-preview',
+    RequireAllowedOrigin,
+    thinDeckAiPreviewController.guard,
+    multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 50 * 1024 * 1024, files: 1 },
+    }).single('file'),
+    normalizeUploadFilenames,
+    thinDeckAiPreviewController.bodyReceived,
+    (req, res) => thinDeckAiPreviewController.preview(req, res)
   );
 
   router.post(

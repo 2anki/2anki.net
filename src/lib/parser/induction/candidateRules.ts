@@ -18,6 +18,7 @@ export const CANDIDATE_ORDER: readonly InducedRule[] = [
   'numbered',
   'bullets',
   'guess',
+  'paragraphs',
 ];
 
 export function candidateOrderIndex(rule: InducedRule): number {

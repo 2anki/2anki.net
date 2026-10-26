@@ -41,6 +41,12 @@ import {
 } from '../../../lib/claude/aiSpendGuard';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import { buildPdfPasswordSentinel } from '../../../lib/pdf/pdfPasswordSentinel';
+import {
+  buildPdfFallbackChoiceSentinel,
+  type PdfFallbackChoice,
+  type PdfFallbackReason,
+} from '../../../lib/pdf/pdfFallbackChoice';
+import type { PageImageCardMode } from '../../../lib/pdf/combineIntoHTML';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
 import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
@@ -74,8 +80,10 @@ import { writePdfImageFallbackMarker } from './pdfImageFallbackMarker';
 import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
 import { isResourceForkEntry } from './documentStructureCensus';
 import { track } from '../../../services/events/track';
+import { withDeckStyle } from '../../../lib/parser/buildDeckStyle';
+import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 
-const HTML_GENERATION_CONCURRENCY = 3;
+const HTML_GENERATION_CONCURRENCY = AI_FILE_CONCURRENCY;
 
 // Bound how many files convert at once. An unbounded Promise.all over a
 // large image/PDF deck holds every converter's working memory (base64 copies,
@@ -177,8 +185,19 @@ interface PrepareDeckResult {
   guidEntries?: IssuedCardGuid[];
   uploadIdentityStats?: UploadIdentityStats;
   pdfPageCount?: number;
+  pdfFallbackMode?: 'pairs' | 'single';
   emptyReason?: EmptyDeckReason;
   rescueCandidates?: RescueCandidate[];
+}
+
+function pdfFallbackModeOf(
+  convertedFiles: ConvertedFile[]
+): 'pairs' | 'single' | undefined {
+  const modes = convertedFiles.flatMap((f) =>
+    f.pdfFallbackMode == null ? [] : [f.pdfFallbackMode]
+  );
+  if (modes.length === 0) return undefined;
+  return modes.includes('single') ? 'single' : 'pairs';
 }
 
 function sumPdfPageCount(convertedFiles: ConvertedFile[]): number | undefined {
@@ -321,7 +340,8 @@ async function convertFile(
         contents: await convertImageToHTML(
           (file.contents as Buffer).toString('base64'),
           input.userId ?? null,
-          input.requestId
+          input.requestId,
+          input.anonymousPassId ?? null
         ),
       };
       console.log('[PrepareDeck] convertFile image', {
@@ -470,6 +490,7 @@ interface ConvertedFile {
   coloredTextPageCount?: number;
   extraFiles?: PdfHtmlImage[];
   pdfPageCount?: number;
+  pdfFallbackMode?: 'pairs' | 'single';
 }
 
 function sumColoredTextPages(convertedFiles: ConvertedFile[]): number {
@@ -492,7 +513,8 @@ function pdfImageLoader(
 
 async function convertPdfPagesToImagesFile(
   file: DeckParserInput['files'][number],
-  input: DeckParserInput
+  input: DeckParserInput,
+  pageMode: PageImageCardMode = 'pairs'
 ): Promise<ConvertedFile> {
   const html = await convertPDFToImages({
     name: file.name,
@@ -500,6 +522,7 @@ async function convertPdfPagesToImagesFile(
     noLimits: input.noLimits,
     contents: file.contents as Buffer,
     settings: input.settings,
+    pageMode,
   });
   return {
     name: `${file.name}.html`,
@@ -509,6 +532,29 @@ async function convertPdfPagesToImagesFile(
       ? 0
       : (html.match(/<img /g) ?? []).length,
   };
+}
+
+// A PDF with no usable text becomes page images. The upload page asks which
+// kind of cards the person wants ('ask'); everything else keeps page pairs.
+async function convertPdfFallbackToImages(
+  file: DeckParserInput['files'][number],
+  input: DeckParserInput,
+  choice: PdfFallbackChoice
+): Promise<ConvertedFile> {
+  const mode = input.settings.pdfFallback;
+  if (mode === 'ask') {
+    throw new Error(buildPdfFallbackChoiceSentinel(choice));
+  }
+  const imagesFile = await convertPdfPagesToImagesFile(file, input, mode);
+  return { ...imagesFile, pdfFallbackMode: mode };
+}
+
+function fallbackReason(result: {
+  isDrmLocked: boolean;
+  overSplit: boolean;
+}): PdfFallbackReason {
+  if (result.isDrmLocked) return 'locked';
+  return result.overSplit ? 'over_split' : 'no_text';
 }
 
 async function convertPdfByPagePairs(
@@ -565,7 +611,10 @@ async function convertPdfByManualTextFlag(
     cardCount: textResult.cardCount,
     durationMs: Date.now() - t0,
   });
-  return convertPdfPagesToImagesFile(file, input);
+  return convertPdfFallbackToImages(file, input, {
+    reason: fallbackReason(textResult),
+    pageCount: 0,
+  });
 }
 
 async function convertPdfByAutoDetection(
@@ -621,7 +670,10 @@ async function convertPdfByAutoDetection(
     cardsPerPage,
     durationMs: Date.now() - t0,
   });
-  const imagesFile = await convertPdfPagesToImagesFile(file, input);
+  const imagesFile = await convertPdfFallbackToImages(file, input, {
+    reason: fallbackReason(autoResult),
+    pageCount: autoResult.pageCount,
+  });
   return { ...imagesFile, pdfPageCount: autoResult.pageCount };
 }
 
@@ -662,6 +714,10 @@ interface ClaudeConversionResult {
   deckInfoArrays: DeckInfo[][];
   crossFileDedup: CrossFileDedupState | undefined;
   ownsDedup: boolean;
+  // Cards this call's own files lost to the dedup backstop. Concurrent files
+  // share one state, so a delta on `state.suppressed` would also count a
+  // sibling's drops.
+  ownSuppressed: number;
   // The credit guard tripped mid-run; the caller ships the cards produced so
   // far and attaches the credits warning.
   tripped: boolean;
@@ -678,6 +734,10 @@ function salvagedDecksOf(error: AiCreditsExhaustedError): DeckInfo[] {
     : [];
 }
 
+// Files convert at AI_FILE_CONCURRENCY at a time. A file that starts after
+// others finished still gets their fronts in its prompt; the exact-match
+// backstop in absorbFileIntoCrossFileDedup runs as each file lands, so no
+// duplicate survives whichever order the files finish in.
 async function runCrossFileDedupConversion(
   htmlFiles: DeckParserInput['files'],
   generateForFile: (
@@ -687,31 +747,43 @@ async function runCrossFileDedupConversion(
   userInstructions: string | undefined,
   cardSize: string | undefined,
   crossFileDedup: CrossFileDedupState
-): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
-  const deckInfoArrays: DeckInfo[][] = [];
+): Promise<{
+  deckInfoArrays: DeckInfo[][];
+  tripped: boolean;
+  ownSuppressed: number;
+}> {
   let tripped = false;
-  for (const file of htmlFiles) {
-    if (tripped) break;
-    const instructions = composeCrossFileInstructions(
-      crossFileDedup.fronts,
-      userInstructions,
-      cardSize
-    );
-    try {
-      const decks = await generateForFile(file, instructions);
-      deckInfoArrays.push(absorbFileIntoCrossFileDedup(crossFileDedup, decks));
-    } catch (error) {
-      if (error instanceof AiCreditsExhaustedError) {
-        deckInfoArrays.push(
-          absorbFileIntoCrossFileDedup(crossFileDedup, salvagedDecksOf(error))
-        );
-        tripped = true;
-        break;
+  let failed = false;
+  let ownSuppressed = 0;
+  const absorb = (decks: DeckInfo[]): DeckInfo[] => {
+    const before = crossFileDedup.suppressed;
+    const kept = absorbFileIntoCrossFileDedup(crossFileDedup, decks);
+    ownSuppressed += crossFileDedup.suppressed - before;
+    return kept;
+  };
+  const deckInfoArrays = await mapWithConcurrency(
+    htmlFiles,
+    AI_FILE_CONCURRENCY,
+    async (file) => {
+      if (tripped || failed) return [] as DeckInfo[];
+      const instructions = composeCrossFileInstructions(
+        crossFileDedup.fronts,
+        userInstructions,
+        cardSize
+      );
+      try {
+        return absorb(await generateForFile(file, instructions));
+      } catch (error) {
+        if (error instanceof AiCreditsExhaustedError) {
+          tripped = true;
+          return absorb(salvagedDecksOf(error));
+        }
+        failed = true;
+        throw error;
       }
-      throw error;
     }
-  }
-  return { deckInfoArrays, tripped };
+  );
+  return { deckInfoArrays, tripped, ownSuppressed };
 }
 
 async function runConcurrentClaudeConversion(
@@ -758,7 +830,7 @@ async function runClaudeConversion(
   const crossFileDedup =
     threadedDedup ?? (ownsDedup ? createCrossFileDedupState() : undefined);
 
-  const { deckInfoArrays, tripped } = crossFileDedup
+  const { deckInfoArrays, tripped, ownSuppressed } = crossFileDedup
     ? await runCrossFileDedupConversion(
         htmlFiles,
         generateForFile,
@@ -766,13 +838,16 @@ async function runClaudeConversion(
         cardSize,
         crossFileDedup
       )
-    : await runConcurrentClaudeConversion(
-        htmlFiles,
-        generateForFile,
-        userInstructions
-      );
+    : {
+        ...(await runConcurrentClaudeConversion(
+          htmlFiles,
+          generateForFile,
+          userInstructions
+        )),
+        ownSuppressed: 0,
+      };
 
-  return { deckInfoArrays, crossFileDedup, ownsDedup, tripped };
+  return { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped };
 }
 
 function emitCrossFileConversionEvent(
@@ -840,6 +915,7 @@ async function buildParserResult(
         uploadIdentityStats: uploadIdentityStatsFor(input, parser),
         cardsHeldBack: parser.cardsHeldBack,
         pdfPageCount: sumPdfPageCount(convertedFiles),
+        pdfFallbackMode: pdfFallbackModeOf(convertedFiles),
       };
     }
   }
@@ -878,6 +954,7 @@ async function buildParserResult(
     uploadIdentityStats: uploadIdentityStatsFor(input, parser),
     cardsHeldBack: parser.cardsHeldBack,
     pdfPageCount: sumPdfPageCount(convertedFiles),
+    pdfFallbackMode: pdfFallbackModeOf(convertedFiles),
     emptyReason:
       parser.totalCardCount() === 0 ? parser.emptyDeckReason() : undefined,
     rescueCandidates:
@@ -952,10 +1029,10 @@ async function buildClaudeDeck(
     hasFieldMapping: fieldMapping != null,
   });
   const tClaude = Date.now();
-  const suppressedBefore = input.crossFileDedup?.suppressed ?? 0;
   const baseGenerateDeckInfoOptions = {
     isPaying: input.noLimits,
     userId: input.userId ?? null,
+    anonymousPassId: input.anonymousPassId ?? null,
     requestId: input.requestId,
     comprehensive: input.settings.aiComprehensive,
     conversionResultCache: getConversionResultCache(),
@@ -990,9 +1067,9 @@ async function buildClaudeDeck(
       input.settings.cardSize,
       fieldMapping,
       optionsForFile(f)
-    );
+    ).then((decks) => withDeckStyle(decks, input.settings));
 
-  const { deckInfoArrays, crossFileDedup, ownsDedup, tripped } =
+  const { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped } =
     await runClaudeConversion(
       htmlFiles,
       generateForFile,
@@ -1055,11 +1132,7 @@ async function buildClaudeDeck(
     // In a multi-file upload a later file whose cards were all covered by
     // earlier files has nothing of its own to export; drop it and let the
     // earlier files carry the upload.
-    if (
-      crossFileDedup &&
-      crossFileDedup.suppressed > suppressedBefore &&
-      !tripped
-    ) {
+    if (crossFileDedup && ownSuppressed > 0 && !tripped) {
       console.info(
         '[PrepareDeck] Claude branch: file fully covered by earlier files',
         {
@@ -1119,6 +1192,7 @@ async function buildClaudeDeck(
     plainTextFallbackImageCount: 0,
     emptyBackCount: 0,
     pdfPageCount: sumPdfPageCount(convertedFiles),
+    pdfFallbackMode: pdfFallbackModeOf(convertedFiles),
   };
 }
 
@@ -1188,7 +1262,10 @@ async function resolveAiConversionGate(
   const willInvokeAi =
     input.noLimits && conversionInvokesAi(input.settings, files);
   if (willInvokeAi) {
-    const status = await getAiBudgetStatus(input.userId ?? null);
+    const status = await getAiBudgetStatus({
+      userId: input.userId ?? null,
+      anonymousPassId: input.anonymousPassId ?? null,
+    });
     if (status.exhausted) {
       return { exhausted: true, warning: AI_CREDITS_EXHAUSTED_WARNING_CODE };
     }

@@ -2,6 +2,7 @@ import type { IHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import type { UploadedFile } from '../../lib/storage/types';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
+import { isPreviewHoldKey } from '../../lib/upload/anonymousAiPreview';
 
 export class NoHeldDeckError extends Error {
   constructor() {
@@ -76,7 +77,11 @@ function holdKeys(
   paying: boolean
 ) {
   const keys: { key: string; kind: HoldKind }[] = [];
-  if (anonId != null && !isPlanHoldKey(anonId)) {
+  // A client-set anon_id cookie must never be treated as a sign-up hold key
+  // when it carries a reserved namespace prefix: `plan:` is a signed-in plan
+  // hold, and `preview:` is an anonymous AI-preview source. Either would let a
+  // crafted cookie claim or peek a hold that belongs to another flow or user.
+  if (anonId != null && !isPlanHoldKey(anonId) && !isPreviewHoldKey(anonId)) {
     keys.push({ key: anonId, kind: 'signup' });
   }
   if (paying && owner != null) {

@@ -172,6 +172,21 @@
     },
     "form": {
       "makingDeck": "Je deck wordt gemaakt...",
+      "pdfChoiceTitle": "Deze pdf bevat geen tekst die we kunnen lezen",
+      "pdfChoiceBodyNoText": "Het lijken gescande pagina's of dia's die als afbeelding zijn opgeslagen. Kies wat de kaarten moeten worden.",
+      "pdfChoiceBodyLocked": "Deze pdf is beveiligd, dus we kunnen de tekst niet lezen. Kies wat de kaarten moeten worden.",
+      "pdfChoiceBodyOverSplit": "Van de tekst zouden heel veel piepkleine kaarten komen. Kies liever wat de kaarten moeten worden.",
+      "pdfChoicePairs": "Twee pagina's per kaart",
+      "pdfChoicePairsHint": "Pagina 1 is de voorkant, pagina 2 de achterkant.",
+      "pdfChoiceSingle": "Eén kaart per pagina",
+      "pdfChoiceSingleHint": "Elke pagina is een voorkant. De antwoorden voeg je toe in Anki.",
+      "pdfChoiceRemember": "Mijn keuze op dit apparaat onthouden",
+      "pdfFallbackPairsNote": "Deze pdf is gemaakt van paginabeelden, dus elke twee pagina's zijn één kaart geworden.",
+      "pdfFallbackSingleNote": "Deze pdf is gemaakt van paginabeelden, dus elke pagina is één kaart geworden.",
+      "pdfFallbackAskAgain": "Vraag het me de volgende keer",
+      "waitingForDeck": "Je verbinding viel weg, maar we maken je deck nog steeds. Laat dit tabblad open staan, dan verschijnt het hier.",
+      "waitingForDeckSignedIn": "Je verbinding viel weg, maar we maken je deck nog steeds. Laat dit tabblad open staan, of vind het in Mijn decks als het klaar is.",
+      "stopWaiting": "Stop met wachten",
       "fetching": "{{filename}} ophalen van {{source}}",
       "deckReady": "Je deck is klaar",
       "savedToDownloads": "{{deckName}} is opgeslagen in je downloads",
@@ -198,6 +213,9 @@
       "seeCommonProblemsSuffix": " voor de formaten die werken.",
       "downloadEmpty": "Leeg deck downloaden",
       "tryDifferent": "Probeer een ander bestand",
+      "resumeContinueBody": "{{filename}} is niet helemaal geüpload.",
+      "resumeContinue": "Doorgaan",
+      "resumeDismiss": "Sluiten",
       "imagesTitle": "Foto naar deck maakt kaarten van afbeeldingen",
       "imagesBody": "Er is hier geen tekst om te lezen, dus er was niets om te converteren. Foto naar deck leest je afbeelding met AI en maakt kaartconcepten die je controleert vóór de download.",
       "imagesUnzip": "Foto naar deck neemt de foto's zelf, niet de zip. Pak hem uit en sleep de foto's erin.",
@@ -210,6 +228,9 @@
       "apkgRejectSecondaryPrefix": "Al van jou? Open het direct in Anki, of ",
       "apkgRejectPrintLink": "druk het af als PDF",
       "apkgRejectSecondarySuffix": ".",
+      "apkgHandoffBody": "Je kunt het printen of de kaarten naar een spreadsheet exporteren, zonder het bestand opnieuw te kiezen.",
+      "apkgHandoffPrint": "Als pdf printen",
+      "apkgHandoffCsv": "Naar CSV exporteren",
       "errorTitle": "Er is iets misgegaan",
       "tryAgain": "Opnieuw proberen",
       "changeSource": "← Bron wijzigen",
@@ -262,8 +283,8 @@
       "networkErrorSmallTitle": "Je bestand kon niet worden geüpload",
       "networkErrorSmallBody": "De verbinding werd verbroken voordat het bestand klaar was. Controleer je verbinding en probeer het opnieuw.",
       "networkChooseDifferent": "Kies een ander bestand",
-      "unreadableFileTitle": "Dit bestand is veranderd sinds je het koos",
-      "unreadableFileBody": "De browser kan de gekozen versie niet meer lezen: het is na het kiezen opgeslagen, verplaatst of verwijderd. Kies het opnieuw om de huidige versie te uploaden.",
+      "unreadableFileTitle": "We konden dit bestand niet lezen",
+      "unreadableFileBody": "Je browser kon het hele bestand niet lezen. Staat het in OneDrive, iCloud Drive of Google Drive, open het dan één keer zodat het naar je apparaat wordt gedownload, en kies het opnieuw. Heb je het na het kiezen opgeslagen of verplaatst, kies het dan ook opnieuw.",
       "unreadableChooseAgain": "Kies het bestand opnieuw",
       "emptyFileTitle": "Dit bestand is leeg",
       "emptyFileBody": "Het is 0 bytes, dus er valt niets om te zetten. Staat het in OneDrive, iCloud Drive of Google Drive? Open het dan één keer zodat het naar je computer wordt gedownload en kies het daarna opnieuw.",
@@ -295,6 +316,8 @@
       "rescueBullets_other": "Maak {{n}} kaarten van de opsommingen",
       "rescueGuess_one": "Maak {{n}} kaart van de vraag- en antwoordregels",
       "rescueGuess_other": "Maak {{n}} kaarten van de vraag- en antwoordregels",
+      "rescueParagraphs_one": "{{n}} kaart maken van de alinea's",
+      "rescueParagraphs_other": "{{n}} kaarten maken van de alinea's",
       "readingLead": "We hebben {{parts}} gelezen.",
       "readingNoCards": "Niets heeft de vorm van een kaart: geen toggles en geen vraag-antwoordparen.",
       "readingNoText": "Dit bestand bevat geen tekst die we kunnen lezen. Upload het bestand waarin je aantekeningen staan.",
@@ -400,6 +423,18 @@
         "title": "Ondersteuning voor leesformaten",
         "body": "Kindle-markeringen uit My Clippings.txt en DRM-vrije EPUB's worden ondersteund. Om je Kindle-markeringen te exporteren, sluit je de Kindle aan via USB en kopieer je het bestand My Clippings.txt uit de map documents op het apparaat.",
         "continue": "Kaarten maken van deze markeringen"
+      },
+      "shortcut": {
+        "title": "Dit is een snelkoppeling, niet het bestand",
+        "body": "Dit is een snelkoppeling naar je bestand, niet het bestand zelf. Kies het bestand waar de snelkoppeling naar verwijst."
+      },
+      "internetShortcut": {
+        "title": "Dit is een link, geen bestand",
+        "body": "Dit is een internetsnelkoppeling, een opgeslagen link. Open de link, download het bestand (PDF, Word, HTML of een Notion-export) en upload dat. Een Notion-pagina zet je direct om via het Notion-tabblad."
+      },
+      "goodnotes": {
+        "title": "GoodNotes-notitieboeken kunnen niet direct worden gelezen",
+        "body": "Exporteer het notitieboek vanuit GoodNotes als PDF (Delen, Exporteren, PDF) en upload die PDF. 2anki maakt kaarten van PDF’s."
       }
     }
   },
@@ -652,6 +687,7 @@
       "deleteNamed": "{{name}} verwijderen",
       "cancel": "Annuleren",
       "cancelNamed": "{{name}} annuleren",
+      "cannotStop": "Kan niet worden gestopt na de start. Meestal binnen een paar minuten klaar.",
       "remove": "Verwijderen",
       "removeNamed": "{{name}} verwijderen",
       "restart": "Opnieuw starten",

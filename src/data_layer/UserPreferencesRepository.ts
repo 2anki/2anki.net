@@ -35,6 +35,7 @@ export type CardOptions = Partial<{
   cloze: string;
   'cloze-from-toggle-content': string;
   'promote-nested-cloze': string;
+  'promote-nested-toggles': string;
   'parent-context': string;
   'group-cloze-per-toggle': string;
   'enable-input': string;
@@ -119,6 +120,7 @@ export const ALLOWED_CARD_OPTION_KEYS = new Set([
   'cloze',
   'cloze-from-toggle-content',
   'promote-nested-cloze',
+  'promote-nested-toggles',
   'parent-context',
   'group-cloze-per-toggle',
   'enable-input',

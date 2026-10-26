@@ -46,6 +46,10 @@
     margin-right: auto;
     margin-bottom: 2.5rem;
   }
+
+  .freeFirstDesktop {
+    order: -1;
+  }
 }
 
 .sectionLabel {
@@ -105,6 +109,12 @@
   margin: 0 0 0.75rem;
 }
 
+.planSubtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 1rem;
+}
+
 .planPrice {
   font-size: 2rem;
   font-weight: var(--font-bold);
@@ -156,6 +166,13 @@
   color: var(--color-text-secondary);
   text-align: center;
   margin: 0.75rem 0 0;
+}
+
+.planPrice {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: -0.25rem 0 0.75rem;
 }
 
 .planCtaPrimary {
@@ -210,6 +227,25 @@
 .planCtaSecondary:hover {
   border-color: var(--color-text-primary);
   background: var(--color-bg-secondary);
+}
+
+.signInLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.signInLink:hover {
+  color: var(--color-text-primary);
+  text-decoration: underline;
 }
 
 .planError {

@@ -43,9 +43,25 @@ const renderChildrenAsHtmlWithoutMedia = async (
     },
     embedImage: { value: dropMedia, enumerable: true },
     embedAudioFile: { value: dropMedia, enumerable: true },
+    embedVideoFile: { value: dropMedia, enumerable: true },
     embedFile: { value: dropMedia, enumerable: true },
   }) as IBlockRenderer;
   return (await plainTextHandler.getBackSide(block, true)) ?? '';
+};
+
+const renderCalloutIcon = (
+  icon: CalloutBlockObjectResponse['callout']['icon']
+) => {
+  if (icon?.type === 'emoji') {
+    return <span className="icon">{icon.emoji}</span>;
+  }
+  if (icon?.type === 'custom_emoji') {
+    return <img className="icon" src={icon.custom_emoji.url} alt="" />;
+  }
+  if (icon?.type === 'external') {
+    return <img className="icon" src={icon.external.url} alt="" />;
+  }
+  return null;
 };
 
 export const BlockCallout = async (
@@ -71,11 +87,7 @@ export const BlockCallout = async (
       className={`callout${styleWithColors(callout.color)}`}
       style={{ whiteSpace: 'pre-wrap', display: 'flex' }}
     >
-      <div>
-        {icon && icon.type === 'emoji' && (
-          <span className="icon">{icon.emoji}</span>
-        )}
-      </div>
+      <div>{renderCalloutIcon(icon)}</div>
       <div style={{ width: '100%' }}>
         {richText.map((t: RichTextItemResponse) => {
           const { annotations } = t;

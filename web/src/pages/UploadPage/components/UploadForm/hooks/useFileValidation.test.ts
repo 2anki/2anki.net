@@ -209,3 +209,20 @@ describe('detectMarkdownZipIssue', () => {
     );
   });
 });
+
+describe('detectUploadIssues — files that are not the study material', () => {
+  it.each([
+    ['Notes.lnk', 'shortcut'],
+    ['Page.url', 'internet_shortcut'],
+    ['Notebook.goodnotes', 'goodnotes'],
+  ])('stops %s with a next step and no convert-anyway button', (name, code) => {
+    const result = detectUploadIssues([fakeFile(name)]);
+    expect(result).toMatchObject({ status: 'error', code, blocking: true });
+  });
+
+  it('lets a shortcut through when it comes with a real file', () => {
+    expect(
+      detectUploadIssues([fakeFile('Notes.lnk'), fakeFile('Notes.pdf')], true)
+    ).toBeNull();
+  });
+});

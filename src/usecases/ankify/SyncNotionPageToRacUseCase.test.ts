@@ -2443,6 +2443,9 @@ describe('SyncNotionPageToRacUseCase', () => {
 
     expect(repos.notionRepo.markTokenInvalid).toHaveBeenCalledWith(42);
     expect(repos.subscriptions.setEnabled).toHaveBeenCalledWith(1, false);
+    expect(repos.subscriptions.recordPoll).toHaveBeenLastCalledWith(1, {
+      error: 'notion_reconnect_needed',
+    });
   });
 
   describe('default media fetcher routes through the SSRF guard', () => {

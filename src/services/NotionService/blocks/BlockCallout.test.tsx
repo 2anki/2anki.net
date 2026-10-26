@@ -238,6 +238,7 @@ describe('BlockCallout plain-text back', () => {
     const settings = handler.settings;
     const embedImage = handler.embedImage;
     const embedAudioFile = handler.embedAudioFile;
+    const embedVideoFile = handler.embedVideoFile;
     const embedFile = handler.embedFile;
 
     await BlockCallout(callout, handler);
@@ -246,6 +247,7 @@ describe('BlockCallout plain-text back', () => {
     expect(handler.settings.isTextOnlyBack).toBe(true);
     expect(handler.embedImage).toBe(embedImage);
     expect(handler.embedAudioFile).toBe(embedAudioFile);
+    expect(handler.embedVideoFile).toBe(embedVideoFile);
     expect(handler.embedFile).toBe(embedFile);
   });
 
@@ -294,5 +296,29 @@ describe('BlockCallout plain-text back', () => {
     expect(back.slice(figureClose + '</figure>'.length)).not.toContain(
       'Key fact'
     );
+  });
+});
+
+describe('BlockCallout icon', () => {
+  it.each([
+    [{ type: 'emoji', emoji: '💡' }, '<span class="icon">💡</span>'],
+    [
+      {
+        type: 'custom_emoji',
+        custom_emoji: { id: '1', name: 'x', url: 'https://example.com/e.png' },
+      },
+      '<img class="icon" src="https://example.com/e.png" alt=""/>',
+    ],
+    [
+      { type: 'external', external: { url: 'https://example.com/i.png' } },
+      '<img class="icon" src="https://example.com/i.png" alt=""/>',
+    ],
+  ])('draws the %j icon', async (icon, markup) => {
+    const handler = makeHandler({});
+    const callout = makeCallout('callout-1', 'Remember', false);
+    (callout.callout as { icon: unknown }).icon = icon;
+    stubChildren(handler, {});
+
+    expect(await BlockCallout(callout, handler)).toContain(markup);
   });
 });

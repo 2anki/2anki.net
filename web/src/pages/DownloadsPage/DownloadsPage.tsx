@@ -28,6 +28,7 @@ import { StatusTag, JobStatus } from './components/ListJobs/StatusTag';
 import { StepIndicator } from '../../components/StepIndicator/StepIndicator';
 import { jobStepFromStatus } from '../../components/StepIndicator/jobStepFromStatus';
 import SendToAnkifyButton from './components/SendToAnkifyButton';
+import { parseMonthlyLimitPartialPayload } from './helpers/parseMonthlyLimitPartialPayload';
 import {
   DeckFeedbackPrompt,
   isDeckFeedbackSuppressed,
@@ -42,6 +43,7 @@ import {
   ThinDeckNotice,
   shouldShowThinDeckNotice,
 } from './components/ThinDeckNotice';
+import { EmptyBackNotice } from './components/EmptyBackNotice';
 import { ImageDropNotice } from './components/ImageDropNotice';
 import { PartialDeckNotice } from './components/PartialDeckNotice';
 import { parseDroppedAssetsPayload } from './helpers/parseDroppedAssetsPayload';
@@ -114,6 +116,10 @@ function isGeneratingStatus(status: string): boolean {
     status === 'step2_creating_flashcards' ||
     /^claude:chunk:\d+:\d+$/.test(status)
   );
+}
+
+function isStoppableStatus(status: string): boolean {
+  return status !== 'started' && !status.startsWith('step');
 }
 
 function feedbackContextForRow(row: DeckRow): DeckFeedbackContext {
@@ -383,6 +389,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
     null
   );
   const [hasDownloaded, setHasDownloaded] = useState(false);
+  const [downloadedCutDeck, setDownloadedCutDeck] = useState(false);
   const [ratedContext, setRatedContext] = useState<
     DeckFeedbackContext | undefined
   >(undefined);
@@ -482,10 +489,14 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   );
 
   const activeJobs = jobs.filter((j) => isActiveJob(j.status));
-  const showDeckFeedback = hasDownloaded && !isDeckFeedbackSuppressed();
+  const showDeckFeedback =
+    hasDownloaded && !downloadedCutDeck && !isDeckFeedbackSuppressed();
 
   const markDownloaded = (row: DeckRow) => {
     setHasDownloaded(true);
+    setDownloadedCutDeck(
+      row.kind === 'job' && parseMonthlyLimitPartialPayload(row.job) != null
+    );
     setRatedContext(feedbackContextForRow(row));
   };
 
@@ -811,35 +822,42 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                             ↺
                                           </button>
                                         )}
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleDeleteJob(row.job.id)
-                                        }
-                                        className={`${styles.iconButton} ${styles.iconButtonDanger}`}
-                                        aria-label={
-                                          isFailed || isDoneJob(row.job.status)
-                                            ? t(
-                                                'downloads.actions.deleteNamed',
-                                                {
-                                                  name: row.job.title,
-                                                }
-                                              )
-                                            : t(
-                                                'downloads.actions.cancelNamed',
-                                                {
-                                                  name: row.job.title,
-                                                }
-                                              )
-                                        }
-                                        title={
-                                          isFailed
-                                            ? t('downloads.actions.delete')
-                                            : t('downloads.actions.cancel')
-                                        }
-                                      >
-                                        <TrashIcon width={16} height={16} />
-                                      </button>
+                                      {isStoppableStatus(row.job.status) ? (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleDeleteJob(row.job.id)
+                                          }
+                                          className={`${styles.iconButton} ${styles.iconButtonDanger}`}
+                                          aria-label={
+                                            isFailed ||
+                                            isDoneJob(row.job.status)
+                                              ? t(
+                                                  'downloads.actions.deleteNamed',
+                                                  {
+                                                    name: row.job.title,
+                                                  }
+                                                )
+                                              : t(
+                                                  'downloads.actions.cancelNamed',
+                                                  {
+                                                    name: row.job.title,
+                                                  }
+                                                )
+                                          }
+                                          title={
+                                            isFailed
+                                              ? t('downloads.actions.delete')
+                                              : t('downloads.actions.cancel')
+                                          }
+                                        >
+                                          <TrashIcon width={16} height={16} />
+                                        </button>
+                                      ) : (
+                                        <span className={styles.stopNote}>
+                                          {t('downloads.actions.cannotStop')}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </td>
@@ -861,6 +879,24 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                         onSeeReport={() =>
                                           setReportModalJob(row.job)
                                         }
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
+                              {isNotionDoneRow &&
+                                (row.job.empty_back_count ?? 0) >= 1 &&
+                                !shouldShowThinDeckNotice(
+                                  candidateSkips,
+                                  row.job.card_count ?? 0
+                                ) && (
+                                  <tr key={`job-${row.job.id}-empty-back`}>
+                                    <td
+                                      colSpan={4}
+                                      className={styles.emptyTogglePanel}
+                                    >
+                                      <EmptyBackNotice
+                                        count={row.job.empty_back_count ?? 0}
+                                        source="notion"
                                       />
                                     </td>
                                   </tr>

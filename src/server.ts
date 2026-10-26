@@ -26,6 +26,7 @@ import { getRelease } from './lib/release';
 import settingsRouter from './routes/SettingsRouter';
 import checksRouter from './routes/ChecksRouter';
 import versionRouter from './routes/VersionRouter';
+import landingConfigRouter from './routes/LandingConfigRouter';
 import appStoreLinksRouter from './routes/AppStoreLinksRouter';
 import uploadRouter from './routes/UploadRouter';
 import usersRouter from './routes/UserRouter';
@@ -53,6 +54,7 @@ import sendgridWebhookRouter from './routes/SendgridWebhookRouter';
 import swaggerRouter from './routes/SwaggerRouter';
 import opsRouter from './routes/OpsRouter';
 import opsErrorsRouter from './routes/OpsErrorsRouter';
+import googleAdsConversionsRouter from './routes/GoogleAdsConversionsRouter';
 import contactMessagesRouter from './routes/ContactMessagesRouter';
 import showcaseRouter from './routes/ShowcaseRouter';
 import emojiFeedbackRouter from './routes/EmojiFeedbackRouter';
@@ -202,6 +204,7 @@ const serve = async () => {
 
   app.use(checksRouter());
   app.use(versionRouter());
+  app.use(landingConfigRouter());
   app.use(appStoreLinksRouter());
   app.use(uploadRouter());
   app.use(usersRouter());
@@ -216,6 +219,7 @@ const serve = async () => {
   app.use(showcaseRouter());
   app.use(opsRouter());
   app.use(opsErrorsRouter());
+  app.use(googleAdsConversionsRouter());
   app.use(contactMessagesRouter());
   app.use(emojiFeedbackRouter());
   app.use(featureInterestRouter());

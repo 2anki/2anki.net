@@ -74,7 +74,7 @@ function httpMeta(error: unknown): { status?: number; url?: string } {
   return {};
 }
 
-function isNotionUnauthorized(error: unknown): boolean {
+export function isNotionUnauthorized(error: unknown): boolean {
   if (error != null && typeof error === 'object' && 'code' in error) {
     return (error as { code: unknown }).code === 'notion_unauthorized';
   }
@@ -269,6 +269,10 @@ const UPLOAD_CODE_DEFAULTS: Partial<
   notion_rate_limit: {
     title: 'Notion is rate-limiting us right now.',
     detail: 'Wait a minute and convert again.',
+  },
+  notion_unavailable: {
+    title: 'Notion is having trouble right now.',
+    detail: 'Try again in a minute.',
   },
   notion_object_not_found: {
     title: "We couldn't open that Notion page.",

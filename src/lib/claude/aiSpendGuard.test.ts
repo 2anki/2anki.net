@@ -12,6 +12,7 @@ import { AiCreditBalance } from './aiCredits/balance';
 import {
   RESERVED_CREDITS_PER_INFLIGHT_CALL,
   reservedCreditsFor,
+  reservedCreditsForPass,
   resetInflightReservations,
 } from './aiCredits/inflightReservations';
 import { track } from '../../services/events/track';
@@ -409,5 +410,184 @@ describe('getAiBudgetStatus', () => {
     await getAiBudgetStatus(42, makeDeps({ balance: balanceWith(0) }));
     await flushAsync();
     expect(trackMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+function passBalanceWith(rawCredits: number): AiCreditBalance {
+  return {
+    rawCredits,
+    credits: Math.max(0, Math.round(rawCredits)),
+    spent: Math.max(0, Math.round(500 - rawCredits)),
+    allowance: 500,
+    windowStart: new Date('2026-09-01T00:00:00.000Z'),
+    windowEnd: new Date('2026-09-08T00:00:00.000Z'),
+    resets: 'pass',
+  };
+}
+
+function makePassDeps(overrides: {
+  balance?: AiCreditBalance | null;
+  passEventCount?: number;
+}): AiBudgetDeps & {
+  computeAnonymousPassBalance: Mock;
+  sendAlert: Mock;
+  passReader: { anonymousPassEventCountSince: Mock };
+} {
+  return {
+    computeBalance: vi.fn().mockResolvedValue(null),
+    computeAnonymousPassBalance: vi
+      .fn()
+      .mockResolvedValue(overrides.balance ?? null),
+    reader: {
+      userCostSince: vi.fn().mockResolvedValue(0),
+      eventCountSince: vi.fn().mockResolvedValue(0),
+    },
+    passReader: {
+      anonymousPassCostSince: vi.fn().mockResolvedValue(0),
+      anonymousPassEventCountSince: vi
+        .fn()
+        .mockResolvedValue(overrides.passEventCount ?? 0),
+    },
+    sendAlert: vi.fn().mockResolvedValue(undefined),
+    now: () => NOW,
+  };
+}
+
+describe('anonymous pass metering', () => {
+  beforeEach(() => {
+    trackMock.mockReset();
+    resetExhaustedWindowClaims();
+    resetInflightReservations();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('meters an anonymous pass holder against the pass balance, not the user path', async () => {
+    const deps = makePassDeps({ balance: passBalanceWith(400) });
+    await assertAiBudget({ anonymousPassId: 7 }, deps);
+    expect(deps.computeAnonymousPassBalance).toHaveBeenCalledWith(7, NOW);
+    expect(deps.computeBalance).not.toHaveBeenCalled();
+  });
+
+  it('runs the call for a pass holder with credits remaining and releases the reservation', async () => {
+    const deps = makePassDeps({ balance: passBalanceWith(400) });
+    const result = await withAiBudget(
+      { anonymousPassId: 7 },
+      async () => 'ok',
+      deps
+    );
+    expect(result).toBe('ok');
+    expect(reservedCreditsForPass(7)).toBe(0);
+  });
+
+  it('throws and fires the exhausted event for a pass holder past their allowance', async () => {
+    const deps = makePassDeps({ balance: passBalanceWith(0) });
+    await expect(
+      assertAiBudget({ anonymousPassId: 7 }, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    await flushAsync();
+    expect(trackMock).toHaveBeenCalledWith('ai_credits_exhausted', {
+      anonymousPassId: 7,
+      props: {},
+    });
+  });
+
+  it('refuses the call without running it when the pass balance is spent', async () => {
+    const deps = makePassDeps({ balance: passBalanceWith(0) });
+    const run = vi.fn().mockResolvedValue('ok');
+    await expect(
+      withAiBudget({ anonymousPassId: 7 }, run, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it('does not re-fire the exhausted event inside the same window for a pass', async () => {
+    const deps = makePassDeps({
+      balance: passBalanceWith(0),
+      passEventCount: 1,
+    });
+    await expect(
+      assertAiBudget({ anonymousPassId: 7 }, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    await flushAsync();
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+
+  it('never sends the per-user watch alert for an anonymous pass', async () => {
+    const deps = makePassDeps({ balance: passBalanceWith(400) });
+    await assertAiBudget({ anonymousPassId: 7 }, deps);
+    await flushAsync();
+    expect(deps.sendAlert).not.toHaveBeenCalled();
+    expect(deps.reader.userCostSince).not.toHaveBeenCalled();
+  });
+
+  it('skips a caller with neither a user id nor a pass id', async () => {
+    const deps = makePassDeps({ balance: passBalanceWith(0) });
+    const status = await getAiBudgetStatus(undefined, deps);
+    expect(status).toEqual({ exhausted: false, balance: null });
+    expect(deps.computeAnonymousPassBalance).not.toHaveBeenCalled();
+    expect(deps.computeBalance).not.toHaveBeenCalled();
+  });
+
+  it('fails CLOSED for a pass with no resolvable balance (unknown/expired/non-metered)', async () => {
+    const deps = makePassDeps({ balance: null });
+    await expect(
+      assertAiBudget({ anonymousPassId: 7 }, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+  });
+
+  it('reports a pass with no resolvable balance as exhausted', async () => {
+    const status = await getAiBudgetStatus(
+      { anonymousPassId: 7 },
+      makePassDeps({ balance: null })
+    );
+    expect(status).toEqual({ exhausted: true, balance: null });
+  });
+
+  it('fails CLOSED for a pass when the balance read throws', async () => {
+    const deps = makePassDeps({ balance: passBalanceWith(400) });
+    (deps.computeAnonymousPassBalance as Mock).mockRejectedValue(
+      new Error('db down')
+    );
+    await expect(
+      assertAiBudget({ anonymousPassId: 7 }, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+  });
+
+  it('refuses a pass call while the pass balance is fully reserved (matches the signed-in guard)', async () => {
+    const deps = makePassDeps({
+      balance: passBalanceWith(RESERVED_CREDITS_PER_INFLIGHT_CALL),
+    });
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const first = withAiBudget(
+      { anonymousPassId: 7 },
+      async () => {
+        await gate;
+        return 'first';
+      },
+      deps
+    );
+    await flushAsync();
+    expect(reservedCreditsForPass(7)).toBe(RESERVED_CREDITS_PER_INFLIGHT_CALL);
+
+    const second = vi.fn().mockResolvedValue('second');
+    await expect(
+      withAiBudget({ anonymousPassId: 7 }, second, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    expect(second).not.toHaveBeenCalled();
+
+    release();
+    await expect(first).resolves.toBe('first');
+    expect(reservedCreditsForPass(7)).toBe(0);
+  });
+
+  it('keeps the signed-in path failing OPEN on a null balance', async () => {
+    const deps = makePassDeps({ balance: null });
+    const status = await getAiBudgetStatus(42, deps);
+    expect(status).toEqual({ exhausted: false, balance: null });
   });
 });

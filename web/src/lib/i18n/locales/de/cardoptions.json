@@ -77,6 +77,10 @@
       "label": "Maximal ein Toggle pro Karte",
       "description": "Jeder Toggle auf oberster Ebene wird zu einer Karte. Ein Toggle, der in einem anderen verschachtelt ist, bleibt auf der Rückseite der übergeordneten Karte und wird keine eigene Karte. Damit jeder Toggle eine eigene Karte wird, lass sie auf oberster Ebene, statt sie zu verschachteln."
     },
+    "promote-nested-toggles": {
+      "label": "Verschachtelte Toggles werden eigene Karten",
+      "description": "Macht jedes Toggle, das in einem anderen Toggle steckt, zu einer eigenen Karte, mit dem Titel des Toggles als Frage. Toggles ohne Inhalt werden übersprungen."
+    },
     "remove-mp3-links": {
       "label": "MP3-Links aus Audiodateien entfernen",
       "description": "Blende rohe MP3-URLs auf Karten aus, das Audio bleibt abspielbar."

@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import type { UploadErrorBody } from '../../../../../types/UploadErrorBody';
+import type {
+  PdfChoicePrompt,
+  PdfFallbackMode,
+} from '../../../../../lib/upload/pdfFallback';
 import type { StructureRescueRule } from '../../../../DownloadsPage/helpers/parseStructureRescuedPayload';
 import type { UploadSource } from '../UploadSourceChips';
 
@@ -17,12 +21,20 @@ export type ZoneState =
   | 'heldForSignup'
   | 'claimingHeld'
   | 'heldReady'
-  | 'heldExpired';
+  | 'heldExpired'
+  | 'aiPreviewGate'
+  | 'choosePdfMode';
 
 export interface HeldDeckState {
   cardCount: number;
   cardsHeldBack: number;
   totalCards: number;
+  dayPassCard?: boolean;
+}
+
+export interface AiPreviewCard {
+  front: string;
+  back: string;
 }
 
 export interface BatchDeck {
@@ -75,10 +87,17 @@ export function useUploadFormState(onReset: () => void) {
   const [cardsHeldBack, setCardsHeldBack] = useState<number>(0);
   const [heldForPlan, setHeldForPlan] = useState(false);
   const [heldDeck, setHeldDeck] = useState<HeldDeckState | null>(null);
+  const [aiPreviewCards, setAiPreviewCards] = useState<AiPreviewCard[] | null>(
+    null
+  );
+  const [aiPreviewUnavailable, setAiPreviewUnavailable] = useState(false);
   const [overSplit, setOverSplit] = useState(false);
   const [creditsUsed, setCreditsUsed] = useState<number>(0);
   const [structureRescuedRule, setStructureRescuedRule] =
     useState<StructureRescueRule | null>(null);
+  const [pdfChoice, setPdfChoice] = useState<PdfChoicePrompt | null>(null);
+  const [pdfFallbackMode, setPdfFallbackMode] =
+    useState<PdfFallbackMode | null>(null);
   const [mcqDrawerOpen, setMcqDrawerOpen] = useState(false);
   const [mcqShowAnswer, setMcqShowAnswer] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
@@ -126,9 +145,13 @@ export function useUploadFormState(onReset: () => void) {
     setCardsHeldBack(0);
     setHeldForPlan(false);
     setHeldDeck(null);
+    setAiPreviewCards(null);
+    setAiPreviewUnavailable(false);
     setOverSplit(false);
     setCreditsUsed(0);
     setStructureRescuedRule(null);
+    setPdfChoice(null);
+    setPdfFallbackMode(null);
     setMcqDrawerOpen(false);
     setMcqShowAnswer(false);
     setWarningMessage(null);
@@ -188,12 +211,20 @@ export function useUploadFormState(onReset: () => void) {
     setHeldForPlan,
     heldDeck,
     setHeldDeck,
+    aiPreviewCards,
+    setAiPreviewCards,
+    aiPreviewUnavailable,
+    setAiPreviewUnavailable,
     overSplit,
     setOverSplit,
     creditsUsed,
     setCreditsUsed,
     structureRescuedRule,
     setStructureRescuedRule,
+    pdfChoice,
+    setPdfChoice,
+    pdfFallbackMode,
+    setPdfFallbackMode,
     mcqDrawerOpen,
     setMcqDrawerOpen,
     mcqShowAnswer,

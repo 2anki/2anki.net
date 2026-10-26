@@ -52,7 +52,7 @@ exports[`produces a stable deck for Markdown upload 1`] = `
     ],
     "globalTags": [],
     "name": "Simple Deck",
-    "styleBytes": 0,
+    "styleBytes": 29965,
   },
 ]
 `;
@@ -156,7 +156,7 @@ exports[`produces a stable deck for Notion cloze export 1`] = `
     ],
     "globalTags": [],
     "name": "Grouped Cloze Deletions",
-    "styleBytes": 27554,
+    "styleBytes": 29965,
   },
 ]
 `;
@@ -229,7 +229,7 @@ exports[`produces a stable deck for Notion nested toggles 1`] = `
     ],
     "globalTags": [],
     "name": "🗺️ Capitals in Europe",
-    "styleBytes": 27554,
+    "styleBytes": 29965,
   },
 ]
 `;
@@ -252,7 +252,7 @@ exports[`produces a stable deck for Notion page with a remote image 1`] = `
     ],
     "globalTags": [],
     "name": "Remote image deck",
-    "styleBytes": 15012,
+    "styleBytes": 29965,
   },
 ]
 `;
@@ -288,7 +288,7 @@ exports[`produces a stable deck for Notion page with an image 1`] = `
     ],
     "globalTags": [],
     "name": "HTML test",
-    "styleBytes": 26220,
+    "styleBytes": 29965,
   },
 ]
 `;

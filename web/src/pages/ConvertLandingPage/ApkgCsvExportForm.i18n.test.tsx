@@ -3,6 +3,7 @@ import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import i18n from '../../lib/i18n';
+import { MemoryRouter } from 'react-router-dom';
 import ApkgCsvExportForm from './ApkgCsvExportForm';
 
 vi.mock('../../lib/analytics/track', () => ({
@@ -19,7 +20,11 @@ describe('ApkgCsvExportForm in German', () => {
   });
 
   it('translates the file label and submit button', () => {
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     expect(screen.getByText('.apkg-Datei auswählen')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Als CSV exportieren' })
@@ -28,7 +33,11 @@ describe('ApkgCsvExportForm in German', () => {
   });
 
   it('translates the free-quota helper text', () => {
-    render(<ApkgCsvExportForm />);
+    render(
+      <MemoryRouter>
+        <ApkgCsvExportForm />
+      </MemoryRouter>
+    );
     expect(
       screen.getByText(/Exportiere jetzt bis zu 21 Notizen/i)
     ).toBeInTheDocument();
