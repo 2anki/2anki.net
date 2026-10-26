@@ -57,6 +57,15 @@ export default function PricingPage({
   const { t, i18n } = useTranslation();
   const isUS = signupCountry === 'US';
   const [conflict, setConflict] = useState<CheckoutConflict | null>(null);
+  const conflictRef = useRef<HTMLDivElement>(null);
+
+  // The conflict renders above the cards, out of view of the button that
+  // raised it.
+  useEffect(() => {
+    if (conflict != null) {
+      conflictRef.current?.scrollIntoView?.({ block: 'center' });
+    }
+  }, [conflict]);
   const [dayPassState, setDayPassState] = useState<PassState>('idle');
   const [weekPassState, setWeekPassState] = useState<PassState>('idle');
   const [semesterPassState, setSemesterPassState] = useState<PassState>('idle');
@@ -424,23 +433,27 @@ export default function PricingPage({
 
       <OwnedPlanNotice entitlement={entitlement} />
 
-      {conflict?.lapsedPlan == null ? (
-        conflict && (
-          <div className={styles.contextBanner} role="alert">
-            {purchaseConflictMessage(t, conflict, i18n.language)}
-          </div>
-        )
-      ) : (
-        <LapsedPlanChoice
-          plan={conflict.lapsedPlan}
-          pending={unlimitedPending}
-          onPay={() => track('checkout_lapsed_plan_choice', { choice: 'pay' })}
-          onSwitch={() => {
-            track('checkout_lapsed_plan_choice', { choice: 'switch' });
-            void handleUnlimitedUpgrade(true);
-          }}
-        />
-      )}
+      <div ref={conflictRef}>
+        {conflict?.lapsedPlan == null ? (
+          conflict && (
+            <div className={styles.contextBanner} role="alert">
+              {purchaseConflictMessage(t, conflict, i18n.language)}
+            </div>
+          )
+        ) : (
+          <LapsedPlanChoice
+            plan={conflict.lapsedPlan}
+            pending={unlimitedPending}
+            onPay={() =>
+              track('checkout_lapsed_plan_choice', { choice: 'pay' })
+            }
+            onSwitch={() => {
+              track('checkout_lapsed_plan_choice', { choice: 'switch' });
+              void handleUnlimitedUpgrade(true);
+            }}
+          />
+        )}
+      </div>
 
       {ownsOngoingAccess(entitlement) ? null : unlimitedFirst ? (
         <>

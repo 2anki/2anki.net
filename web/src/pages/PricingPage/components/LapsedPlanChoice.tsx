@@ -1,5 +1,4 @@
 import type { TFunction } from 'i18next';
-import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LapsedPlan } from '../../../lib/checkout/checkoutConflict';
 import sharedStyles from '../../../styles/shared.module.css';
@@ -41,17 +40,9 @@ export function LapsedPlanChoice({
 }>) {
   const { t, i18n } = useTranslation();
   const planLabel = describeLapsedPlan(t, plan, i18n.language);
-  const sectionRef = useRef<HTMLElement>(null);
-
-  // The choice renders above the cards, out of view of the button that
-  // raised it.
-  useEffect(() => {
-    sectionRef.current?.scrollIntoView?.({ block: 'center' });
-  }, []);
 
   return (
     <section
-      ref={sectionRef}
       className={styles.lapsedChoice}
       role="alert"
       aria-labelledby="lapsed-plan-title"
