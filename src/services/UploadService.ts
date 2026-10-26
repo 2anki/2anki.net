@@ -1670,18 +1670,23 @@ class UploadService {
               source: this.resolveUploadSource(req),
             },
           });
-          retriedWithAi = true;
           await this.jobRepository.deleteJob(ws.id, owner);
           this.inFlightConversions.delete(fingerprint);
-          await this.startAsyncConversion(
-            req,
-            res,
-            this.buildClaudeFallbackSettings(req, settings),
-            new Workspace(true, 'fs'),
-            owner,
-            paying,
-            'claude'
-          );
+          retriedWithAi = true;
+          try {
+            await this.startAsyncConversion(
+              req,
+              res,
+              this.buildClaudeFallbackSettings(req, settings),
+              new Workspace(true, 'fs'),
+              owner,
+              paying,
+              'claude'
+            );
+          } catch (retryError) {
+            this.inFlightConversions.delete(fingerprint);
+            throw retryError;
+          }
         } else {
           logNoPackageDiagnostics(req.files as UploadedFile[]);
           await this.jobRepository.updateJobStatus(
