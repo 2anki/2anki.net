@@ -2651,15 +2651,17 @@ function UploadForm({
               })}
             </button>
             {candidate.sample != null && candidate.sample.length > 0 && (
-              <ul className={formStyles.rescueSample}>
-                {candidate.sample.map((card) => (
-                  <li key={`${card.front}|${card.back}`}>
+              <ul className={formStyles.rescueSample} role="list">
+                {candidate.sample.map((card, index) => (
+                  <li key={index}>
                     <span className={formStyles.rescueSampleFront}>
                       {card.front}
                     </span>
-                    <span className={formStyles.rescueSampleBack}>
-                      {card.back}
-                    </span>
+                    {card.back !== card.front && (
+                      <span className={formStyles.rescueSampleBack}>
+                        {card.back}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

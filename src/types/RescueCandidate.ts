@@ -45,6 +45,19 @@ export function toRescueSample(
   }));
 }
 
+function isRescueSample(value: unknown): value is RescueSampleCard[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (card) =>
+        card != null &&
+        typeof card === 'object' &&
+        typeof (card as RescueSampleCard).front === 'string' &&
+        typeof (card as RescueSampleCard).back === 'string'
+    )
+  );
+}
+
 export function isRescueRule(value: unknown): value is RescueRule {
   return (
     typeof value === 'string' &&
@@ -59,7 +72,8 @@ export function isRescueCandidate(value: unknown): value is RescueCandidate {
     isRescueRule(record.rule) &&
     typeof record.cards === 'number' &&
     Number.isInteger(record.cards) &&
-    record.cards > 0
+    record.cards > 0 &&
+    (record.sample === undefined || isRescueSample(record.sample))
   );
 }
 

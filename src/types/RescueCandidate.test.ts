@@ -61,4 +61,17 @@ describe('rescue samples', () => {
       { rule: 'bullets', cards: 4, sample: [one, one, one] },
     ]);
   });
+
+  it('rejects a candidate whose sample is not a list of text cards', () => {
+    expect(
+      isRescueCandidate({ rule: 'bullets', cards: 2, sample: [{ front: 1 }] })
+    ).toBe(false);
+    expect(
+      isRescueCandidate({
+        rule: 'bullets',
+        cards: 2,
+        sample: [{ front: 'a', back: 'b' }],
+      })
+    ).toBe(true);
+  });
 });
