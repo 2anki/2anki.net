@@ -84,16 +84,39 @@ function resolveTts(tts: McpConvertOptions['tts']): AppliedTts {
   return result;
 }
 
+// CSV and TSV rows build through the plain-text fallback, which honours
+// basic-reversed but never makes cloze, input or multiple-choice notes.
+const TABULAR_NOTE_TYPE_REASONS: Partial<Record<McpNoteType, string>> = {
+  cloze:
+    'CSV and TSV rows build only basic or basic-reversed cards, so cloze had no effect. To make cloze cards from these rows, pass them to create_deck with noteType cloze.',
+  input:
+    'CSV and TSV rows build only basic or basic-reversed cards, so input had no effect. To make type-the-answer cards from these rows, pass them to create_deck with noteType input.',
+  mcq: 'CSV and TSV rows build only basic or basic-reversed cards, so mcq had no effect. Multiple-choice cards come only from Notion toggle-list exports.',
+};
+
 export function buildAppliedOptions(
   options: McpConvertOptions | undefined,
   clozeMarkupPresent: boolean,
-  inputAnswerTypable: boolean = true
+  inputAnswerTypable: boolean = true,
+  tabularSource: boolean = false
 ): AppliedOptionsResult {
   const ignored: IgnoredOption[] = [];
 
   let noteType: McpNoteType = 'basic';
   if (options?.noteType != null && NOTE_TYPES.includes(options.noteType)) {
     noteType = options.noteType;
+  }
+
+  const tabularReason = tabularSource
+    ? TABULAR_NOTE_TYPE_REASONS[noteType]
+    : undefined;
+  if (tabularReason != null) {
+    ignored.push({
+      option: 'noteType',
+      requested: noteType,
+      reason: tabularReason,
+    });
+    noteType = 'basic';
   }
 
   if (noteType === 'cloze' && !clozeMarkupPresent) {

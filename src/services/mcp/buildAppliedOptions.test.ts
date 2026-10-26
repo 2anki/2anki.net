@@ -121,6 +121,39 @@ describe('buildAppliedOptions', () => {
     expect(applied.deckName).toBeUndefined();
     expect(applied.styleTemplate).toBeUndefined();
   });
+
+  it.each([['basic'], ['basic-reversed']] as const)(
+    'keeps %s for a CSV or TSV source with no ignored entry',
+    (noteType) => {
+      const { applied, ignored } = buildAppliedOptions(
+        { noteType },
+        false,
+        true,
+        true
+      );
+      expect(applied.noteType).toBe(noteType);
+      expect(ignored).toBeUndefined();
+    }
+  );
+
+  it.each([['cloze'], ['input'], ['mcq']] as const)(
+    'reports %s as ignored and applied as basic for a CSV or TSV source',
+    (noteType) => {
+      const { applied, ignored } = buildAppliedOptions(
+        { noteType },
+        true,
+        true,
+        true
+      );
+      expect(applied.noteType).toBe('basic');
+      expect(ignored).toHaveLength(1);
+      expect(ignored?.[0]).toMatchObject({
+        option: 'noteType',
+        requested: noteType,
+      });
+      expect(ignored?.[0].reason).toContain('CSV and TSV rows');
+    }
+  );
 });
 
 describe('hasClozeMarkup', () => {

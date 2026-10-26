@@ -764,6 +764,56 @@ describe('McpToolsService.convertToDeck', () => {
     expect((result as { ignored?: unknown }).ignored).toBeUndefined();
   });
 
+  it('keeps basic-reversed in applied for a CSV file, with nothing ignored', async () => {
+    const uploadEntry: UploadEntrypoint = (_req, res) => {
+      res.set('X-Card-Count', '4');
+      res.set('File-Name', 'reversed-test.apkg');
+      res.status(200).send(Buffer.from('APKG-BYTES'));
+    };
+    const { service } = makeService({ uploadEntry });
+    const result = await service.convertToDeck(
+      {
+        text: 'front,back\n会う,あう\n青い,あおい\n',
+        filename: 'reversed-test.csv',
+        options: { noteType: 'basic-reversed' },
+      },
+      'owner-9',
+      {}
+    );
+    expect(result).toMatchObject({
+      kind: 'deck',
+      cardCount: 4,
+      applied: { noteType: 'basic-reversed' },
+    });
+    expect((result as { ignored?: unknown }).ignored).toBeUndefined();
+  });
+
+  it.each([
+    ['input', 'cards.csv', 'front,back\n会う,あう\n'],
+    ['cloze', 'cards.tsv', 'front\tback\nThe {{c1::sun}}\tastronomy\n'],
+    ['mcq', 'cards.csv', 'front,back\n会う,あう\n'],
+  ] as const)(
+    'reports %s as ignored for a CSV or TSV file instead of claiming it applied',
+    async (noteType, filename, text) => {
+      const uploadEntry: UploadEntrypoint = (_req, res) => {
+        res.set('X-Card-Count', '1');
+        res.set('File-Name', 'cards.apkg');
+        res.status(200).send(Buffer.from('APKG-BYTES'));
+      };
+      const { service } = makeService({ uploadEntry });
+      const result = await service.convertToDeck(
+        { text, filename, options: { noteType } },
+        'owner-9',
+        {}
+      );
+      expect(result).toMatchObject({
+        kind: 'deck',
+        applied: { noteType: 'basic' },
+        ignored: [{ option: 'noteType', requested: noteType }],
+      });
+    }
+  );
+
   it('labels reversible sample cards with a forward/reverse direction', async () => {
     const uploadEntry: UploadEntrypoint = (_req, res) => {
       res.set('X-Card-Count', '2');

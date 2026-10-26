@@ -39,6 +39,7 @@ import type { ParsedApkg } from '../ApkgPreviewService/ApkgPreviewService';
 import type { RenderedCard } from '../ApkgPreviewService/types';
 import { cardTags, deckFacts } from './deckViewerFields';
 import { detectFileMime } from '../../lib/detectFileMime';
+import { isCSVFile } from '../../lib/storage/checks';
 import { mcpBaseUrl } from './mcpBaseUrl';
 import { isPaying } from '../../lib/isPaying';
 import type { VisionMediaType } from '../../lib/claude/countVisionTokens';
@@ -573,7 +574,9 @@ export class McpToolsService {
         : false;
     const { applied, ignored } = buildAppliedOptions(
       input.options,
-      clozePresent
+      clozePresent,
+      true,
+      Boolean(isCSVFile(file.originalname))
     );
     return { ...result, applied, ...(ignored ? { ignored } : {}) };
   }

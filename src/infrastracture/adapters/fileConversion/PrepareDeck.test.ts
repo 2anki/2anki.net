@@ -9,6 +9,7 @@ import {
   assembleParserFiles,
 } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
+import { mcpOptionsToCardSettings } from '../../../services/mcp/mcpOptionsToCardSettings';
 import {
   AiCreditsExhaustedError,
   getAiBudgetStatus as getAiBudgetStatusImport,
@@ -1937,5 +1938,57 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
 
     expect(extractPptxSourceUnits).not.toHaveBeenCalled();
     expect(convertPDFToImages).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('PrepareDeck — two-way cards from convert_to_deck options', () => {
+  const twoWay = () =>
+    makeSettings(mcpOptionsToCardSettings({ noteType: 'basic-reversed' }));
+
+  it('builds a mirrored card for every CSV row', async () => {
+    const result = await PrepareDeck({
+      name: 'reversed-test.csv',
+      files: [
+        {
+          name: 'reversed-test.csv',
+          contents: Buffer.from(
+            'front,back\n会う,あう — to meet (verb)\n青い,あおい — blue (adjective)\n'
+          ),
+        },
+      ],
+      settings: twoWay(),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(4);
+    const cards = result?.deck.flatMap((deck) => deck.cards) ?? [];
+    expect(cards.map((card) => [card.name, card.back])).toEqual([
+      ['会う', 'あう — to meet (verb)'],
+      ['青い', 'あおい — blue (adjective)'],
+      ['あう — to meet (verb)', '会う'],
+      ['あおい — blue (adjective)', '青い'],
+    ]);
+  });
+
+  it('builds a mirrored card for every Markdown bullet pair', async () => {
+    const result = await PrepareDeck({
+      name: 'reversed-test.md',
+      files: [
+        {
+          name: 'reversed-test.md',
+          contents: '- 会う\n  - あう — to meet\n- 青い\n  - あおい — blue\n',
+        },
+      ],
+      settings: twoWay(),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(4);
+    const cards = result?.deck.flatMap((deck) => deck.cards) ?? [];
+    const fronts = cards.map((card) => card.name);
+    expect(fronts.filter((front) => front.includes('会う'))).toHaveLength(1);
+    expect(cards.filter((card) => card.back.includes('会う'))).toHaveLength(1);
   });
 });
