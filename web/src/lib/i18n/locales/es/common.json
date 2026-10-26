@@ -628,6 +628,7 @@
     "title": "Mis mazos",
     "subtitle": "Mazos limpios — cloze bien hechos, tarjetas atómicas, sin reversos vacíos. Descárgalos directamente en Anki.",
     "emailVerified": "Correo verificado. Todo listo.",
+    "building": "Estamos creando tu mazo. Puedes salir de esta página, aparecerá en Mis mazos cuando termine.",
     "makeAnotherDeck": "Crear otro mazo",
     "noMatch": "Ningún mazo coincide con este filtro.",
     "updatedRelative": "Actualizado {{time}}",

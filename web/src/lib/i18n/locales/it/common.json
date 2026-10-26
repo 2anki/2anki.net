@@ -628,6 +628,7 @@
     "title": "I miei mazzi",
     "subtitle": "Mazzi puliti — cloze fatte bene, carte atomiche, nessun retro vuoto. Scarica direttamente in Anki.",
     "emailVerified": "Email verificata. È tutto a posto.",
+    "building": "Stiamo creando il tuo mazzo. Puoi lasciare questa pagina, comparirà in I miei mazzi quando sarà pronto.",
     "makeAnotherDeck": "Crea un altro mazzo",
     "noMatch": "Nessun mazzo corrisponde a questo filtro.",
     "updatedRelative": "Aggiornato {{time}}",

@@ -379,6 +379,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   const [showVerifiedBanner, setShowVerifiedBanner] = useState(
     searchParams.get('verified') === '1'
   );
+  const [showBuildingBanner] = useState(searchParams.get('started') === '1');
   const [expandedFailureJobId, setExpandedFailureJobId] = useState<
     number | string | null
   >(null);
@@ -418,6 +419,13 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   const activeFilter: FilterValue = VALID_FILTERS.has(rawFilter as FilterValue)
     ? (rawFilter as FilterValue)
     : 'all';
+
+  useEffect(() => {
+    if (searchParams.get('started') !== '1') return;
+    const params = new URLSearchParams(searchParams);
+    params.delete('started');
+    setSearchParams(params, { replace: true });
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('verified') !== '1') return;
@@ -541,6 +549,15 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
           aria-live="polite"
         >
           {t('downloads.emailVerified')}
+        </div>
+      )}
+      {showBuildingBanner && hasActiveJobs && (
+        <div
+          className={sharedStyles.alertSuccess}
+          role="status"
+          aria-live="polite"
+        >
+          {t('downloads.building')}
         </div>
       )}
       <div className={sharedStyles.pageHeader}>

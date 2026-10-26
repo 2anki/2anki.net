@@ -97,6 +97,10 @@ import {
 import { ANONYMOUS_CARD_CAP, MONTHLY_CARD_LIMIT } from '../lib/limits';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import {
+  asyncSlowUploadsEnabled,
+  isSlowUpload,
+} from '../lib/upload/asyncSlowUploads';
+import {
   isAnonymousPartialDeliveryEligible,
   isPartialDeliveryEligible,
 } from '../usecases/uploads/isPartialDeliveryEligible';
@@ -1286,6 +1290,23 @@ class UploadService {
         );
       }
 
+      if (
+        owner != null &&
+        paying &&
+        isSlowUpload(files, settings.pdfFallback) &&
+        (await asyncSlowUploadsEnabled())
+      ) {
+        return await this.handleAsyncUpload(
+          req,
+          res,
+          settings,
+          ws,
+          String(owner),
+          paying,
+          'upload'
+        );
+      }
+
       // A request that carries a pass token meant to use a pass; when that
       // token no longer validates (expired, refused) it must not fall into
       // the free preview instead.
@@ -1499,22 +1520,50 @@ class UploadService {
     settings: CardOption,
     ws: Workspace,
     owner: string,
-    paying: boolean
+    paying: boolean,
+    jobType: 'claude' | 'upload' = 'claude'
   ) {
-    const files = req.files as UploadedFile[];
-    const fingerprint = UploadService.conversionFingerprint(owner, files);
-    if (this.inFlightConversions.has(fingerprint)) {
+    const started = await this.startAsyncConversion(
+      req,
+      res,
+      settings,
+      ws,
+      owner,
+      paying,
+      jobType
+    );
+    if (!started) {
       return res.status(409).json({
         code: 'conversion_in_flight',
         message:
           "We're already converting this file. It'll land in My Decks in a few minutes — no need to upload again.",
       });
     }
+    return res.status(202).json({ jobId: ws.id });
+  }
+
+  // Starts the job and returns without answering the request, so a background
+  // conversion that finds nothing can start its AI retry after the 202 went out.
+  private async startAsyncConversion(
+    req: express.Request,
+    res: express.Response,
+    settings: CardOption,
+    ws: Workspace,
+    owner: string,
+    paying: boolean,
+    jobType: 'claude' | 'upload'
+  ): Promise<boolean> {
+    const files = req.files as UploadedFile[];
+    const fingerprint = UploadService.conversionFingerprint(owner, files);
+    if (this.inFlightConversions.has(fingerprint)) {
+      return false;
+    }
     this.inFlightConversions.add(fingerprint);
+    let retriedWithAi = false;
     const title =
       files.length === 1 ? files[0].originalname : `${files.length} files`;
     try {
-      await this.jobRepository.create(ws.id, owner, title, 'claude');
+      await this.jobRepository.create(ws.id, owner, title, jobType);
     } catch (err) {
       this.inFlightConversions.delete(fingerprint);
       throw err;
@@ -1609,6 +1658,35 @@ class UploadService {
               ...this.pdfPageCountProps(packages),
             },
           });
+        } else if (
+          jobType === 'upload' &&
+          this.canFallBackToClaude(req, ownerId, paying)
+        ) {
+          track('ai_fallback_triggered', {
+            userId: ownerId,
+            anonymousId: this.resolveAnonId(req),
+            props: {
+              reason: 'empty_deck',
+              source: this.resolveUploadSource(req),
+            },
+          });
+          await this.jobRepository.deleteJob(ws.id, owner);
+          this.inFlightConversions.delete(fingerprint);
+          retriedWithAi = true;
+          try {
+            await this.startAsyncConversion(
+              req,
+              res,
+              this.buildClaudeFallbackSettings(req, settings),
+              new Workspace(true, 'fs'),
+              owner,
+              paying,
+              'claude'
+            );
+          } catch (retryError) {
+            this.inFlightConversions.delete(fingerprint);
+            throw retryError;
+          }
         } else {
           logNoPackageDiagnostics(req.files as UploadedFile[]);
           await this.jobRepository.updateJobStatus(
@@ -1660,10 +1738,12 @@ class UploadService {
         );
       })
       .finally(() => {
-        this.inFlightConversions.delete(fingerprint);
+        if (!retriedWithAi) {
+          this.inFlightConversions.delete(fingerprint);
+        }
       });
 
-    return res.status(202).json({ jobId: ws.id });
+    return true;
   }
 
   private canFallBackToClaude(

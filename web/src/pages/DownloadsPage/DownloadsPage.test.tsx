@@ -964,6 +964,44 @@ describe('DownloadsPage cancel_during_generating telemetry', () => {
   });
 });
 
+describe('DownloadsPage background conversion banner', () => {
+  beforeEach(() => {
+    mockUploads = [];
+    mockDropboxUploads = [];
+    mockGoogleDriveUploads = [];
+  });
+
+  it('tells a person who just started a background conversion that they can leave', () => {
+    mockJobs = [
+      buildJob({
+        status: 'started',
+        type: 'upload',
+        title: 'Lecture slides',
+      }),
+    ];
+    renderAt('/downloads?started=1');
+    expect(
+      screen.getByText(
+        'Building your deck. You can leave this page, it will be in My decks when it is done.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('shows no banner when the page was opened normally', () => {
+    mockJobs = [
+      buildJob({ status: 'started', type: 'upload', title: 'Lecture slides' }),
+    ];
+    renderAt('/downloads');
+    expect(screen.queryByText(/Building your deck/)).toBeNull();
+  });
+
+  it('drops the banner once nothing is running', () => {
+    mockJobs = [];
+    renderAt('/downloads?started=1');
+    expect(screen.queryByText(/Building your deck/)).toBeNull();
+  });
+});
+
 describe('DownloadsPage make another deck CTA', () => {
   let fetchCalls: { url: string; body: Record<string, unknown> }[] = [];
 

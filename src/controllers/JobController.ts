@@ -24,7 +24,7 @@ function toJobResponse(job: JobWithDownloadKey): JobResponse {
     card_count: job.card_count,
     download_key: job.download_key,
     upload_id: job.upload_id,
-    restartable: true,
+    restartable: job.type !== 'upload',
     empty_back_count: getEmptyBackCount(job.conversion_report),
     cherry_skipped_count: getCherrySkippedCount(job.conversion_report),
   };

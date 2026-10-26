@@ -131,7 +131,7 @@ class JobRepository {
   markInterruptedClaudeJobs() {
     return this.database(this.tableName)
       .whereNotIn('status', ['done', 'failed', 'cancelled', 'interrupted'])
-      .where({ type: 'claude' })
+      .whereIn('type', ['claude', 'upload'])
       .update({ status: 'interrupted', last_edited_time: new Date() });
   }
 
@@ -153,7 +153,13 @@ class JobRepository {
       .where((qb) =>
         qb
           .whereNull('type')
-          .orWhereNotIn('type', ['claude', 'page', 'database', 'conversion'])
+          .orWhereNotIn('type', [
+            'claude',
+            'upload',
+            'page',
+            'database',
+            'conversion',
+          ])
       )
       .update({ status: 'failed' });
   }
