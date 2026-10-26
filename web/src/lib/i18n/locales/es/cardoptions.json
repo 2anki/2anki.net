@@ -79,7 +79,7 @@
     },
     "promote-nested-toggles": {
       "label": "Los toggles anidados se convierten en tarjetas propias",
-      "description": "Convierte cada toggle anidado dentro de otro toggle en una tarjeta propia, con el título del toggle como pregunta. Los toggles vacíos se omiten. Solo para exportaciones HTML de Notion y archivos subidos."
+      "description": "Convierte cada toggle anidado dentro de otro toggle en una tarjeta propia, con el título del toggle como pregunta. Los toggles vacíos se omiten."
     },
     "remove-mp3-links": {
       "label": "Quitar los enlaces MP3 de los archivos de audio",

@@ -79,7 +79,7 @@
     },
     "promote-nested-toggles": {
       "label": "Les toggles imbriqués deviennent des cartes à part",
-      "description": "Transforme chaque toggle imbriqué dans un autre toggle en carte à part, avec le titre du toggle comme question. Les toggles vides sont ignorés. Uniquement pour les exports HTML de Notion et les fichiers importés."
+      "description": "Transforme chaque toggle imbriqué dans un autre toggle en carte à part, avec le titre du toggle comme question. Les toggles vides sont ignorés."
     },
     "remove-mp3-links": {
       "label": "Retirer les liens MP3 des fichiers audio",

@@ -79,7 +79,7 @@
     },
     "promote-nested-toggles": {
       "label": "Verschachtelte Toggles werden eigene Karten",
-      "description": "Macht jedes Toggle, das in einem anderen Toggle steckt, zu einer eigenen Karte, mit dem Titel des Toggles als Frage. Toggles ohne Inhalt werden übersprungen. Nur für Notion-HTML-Exporte und hochgeladene Dateien."
+      "description": "Macht jedes Toggle, das in einem anderen Toggle steckt, zu einer eigenen Karte, mit dem Titel des Toggles als Frage. Toggles ohne Inhalt werden übersprungen."
     },
     "remove-mp3-links": {
       "label": "MP3-Links aus Audiodateien entfernen",
