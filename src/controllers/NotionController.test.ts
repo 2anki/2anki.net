@@ -76,7 +76,6 @@ function buildEmailService(): IEmailService {
     sendReEngagementEmail: vi.fn(),
     sendInactivityWarningEmail: vi.fn(),
     sendAbandonedCheckoutRecoveryEmail: vi.fn(),
-    sendPassWinbackEmail: vi.fn(),
     sendPassEndingEmail: vi.fn(),
     sendParserCanaryAlert: vi.fn(),
     sendAiSpendAlertEmail: vi.fn(),
