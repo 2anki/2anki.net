@@ -13,10 +13,27 @@ function mockReqRes(path: string, originalUrl?: string) {
 
 describe('redirectConvertDuplicates', () => {
   it.each([
-    ['/convert/notion-to-anki', '/notion-to-anki'],
-    ['/convert/pdf-to-anki', '/pdf-to-anki'],
-    ['/convert/markdown-to-anki', '/markdown-to-anki'],
+    ['/convert/notion-to-anki', '/notion-to-anki/'],
+    ['/convert/notion-to-anki/', '/notion-to-anki/'],
+    ['/convert/pdf-to-anki', '/pdf-to-anki/'],
+    ['/convert/pdf-to-anki/', '/pdf-to-anki/'],
+    ['/convert/markdown-to-anki', '/markdown-to-anki/'],
+    ['/convert/markdown-to-anki/', '/markdown-to-anki/'],
   ])('301s %s to its bare twin %s', (from, to) => {
+    const { req, res, next } = mockReqRes(from);
+    redirectConvertDuplicates(req, res, next);
+
+    expect(res.redirect).toHaveBeenCalledWith(301, to);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['/transform', '/upload/'],
+    ['/transform/', '/upload/'],
+    ['/convert/enrich-anki-deck', '/convert/'],
+    ['/convert/enrich-anki-deck/', '/convert/'],
+    ['/:splat', '/'],
+  ])('301s the removed page %s to %s', (from, to) => {
     const { req, res, next } = mockReqRes(from);
     redirectConvertDuplicates(req, res, next);
 
@@ -31,7 +48,7 @@ describe('redirectConvertDuplicates', () => {
     );
     redirectConvertDuplicates(req, res, next);
 
-    expect(res.redirect).toHaveBeenCalledWith(301, '/pdf-to-anki');
+    expect(res.redirect).toHaveBeenCalledWith(301, '/pdf-to-anki/');
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -52,7 +69,10 @@ describe('redirectConvertDuplicates', () => {
     '/notion-to-anki',
     '/pdf-to-anki',
     '/markdown-to-anki',
+    '/notion-to-anki/',
     '/upload',
+    '/upload/',
+    '/convert/',
     '/pricing',
     '/assets/app.js',
   ])('passes through the canonical or unrelated path %s', (path) => {

@@ -71,6 +71,14 @@ describe('DefaultRouter catch-all status', () => {
     }
   );
 
+  it('301s the old API docs path to the MCP connector page', async () => {
+    const res = await fetch(`${url}/documentation/api/docs`, {
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(301);
+    expect(res.headers.get('location')).toBe('/documentation/reference/mcp/');
+  });
+
   it.each(['/pricing', '/pricing/', '/convert/csv-to-anki', '/account', '/'])(
     'returns 200 for known route %s',
     async (knownPath) => {

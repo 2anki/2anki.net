@@ -72,7 +72,7 @@ const DefaultRouter = () => {
   });
 
   router.get('/documentation/api/docs', (_req, res) => {
-    res.redirect(301, '/documentation/reference/api');
+    res.redirect(301, '/documentation/reference/mcp/');
   });
 
   /**
