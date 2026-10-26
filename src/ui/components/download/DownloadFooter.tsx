@@ -14,7 +14,7 @@ export const DownloadFooter: React.FC = () => {
       </a>
       {' · '}
       <a
-        href="https://docs.2anki.net"
+        href="https://2anki.net/documentation/"
         style={styles.footerLink}
         target="_blank"
         rel="noopener noreferrer"

@@ -48,6 +48,7 @@ import { securityHeaders } from './routes/middleware/securityHeaders';
 import { noindexNonCanonicalHosts } from './routes/middleware/noindexNonCanonicalHosts';
 import { redirectNonCanonicalHosts } from './routes/middleware/redirectNonCanonicalHosts';
 import { redirectConvertDuplicates } from './routes/middleware/redirectConvertDuplicates';
+import { redirectLegacyDocs } from './routes/middleware/redirectLegacyDocs';
 import webhookRouter from './routes/WebhookRouter';
 import ankifyWebhookRouter from './routes/AnkifyWebhookRouter';
 import sendgridWebhookRouter from './routes/SendgridWebhookRouter';
@@ -188,6 +189,7 @@ const serve = async () => {
   app.use(anonIdMiddleware);
   app.use(noindexNonCanonicalHosts);
   app.use(redirectConvertDuplicates);
+  app.use(redirectLegacyDocs);
 
   app.use(rejectScannerProbes);
   app.use(morgan('combined') as RequestHandler);

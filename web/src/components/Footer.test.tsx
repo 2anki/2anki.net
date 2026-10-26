@@ -39,11 +39,11 @@ describe('Footer', () => {
     ).toHaveAttribute('href', '/app/');
     expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute(
       'href',
-      '/documentation/misc/terms-of-service'
+      '/documentation/reference/terms/'
     );
     expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute(
       'href',
-      '/documentation/misc/privacy-policy'
+      '/documentation/reference/privacy/'
     );
   });
 

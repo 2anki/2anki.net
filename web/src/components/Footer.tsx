@@ -23,10 +23,8 @@ function Footer() {
         </div>
         <div className={styles.group}>
           <span className={styles.groupTitle}>{t('footer.legal')}</span>
-          <a href="/documentation/misc/terms-of-service">
-            {t('common:nav.terms')}
-          </a>
-          <a href="/documentation/misc/privacy-policy">
+          <a href="/documentation/reference/terms/">{t('common:nav.terms')}</a>
+          <a href="/documentation/reference/privacy/">
             {t('common:nav.privacy')}
           </a>
           <a href="/security/">{t('footer.security')}</a>

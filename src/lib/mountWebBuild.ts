@@ -5,6 +5,11 @@ export const INDEX_HTML_CACHE_CONTROL = 'no-cache, must-revalidate';
 
 const SHELL_PATHS = new Set(['/', '/index.html']);
 
+// web/public/_redirects is Netlify's config for deploy previews. It is copied
+// into the build like any public file, but on 2anki.net it is not a page: its
+// `:splat` placeholder gets crawled as a link.
+const UNSERVED_PATHS = new Set(['/_redirects']);
+
 /**
  * Serves the built web assets. The shell itself (`/` and `/index.html`) is
  * deliberately NOT served from disk here: DefaultRouter sends it through
@@ -23,7 +28,7 @@ export const mountWebBuild = (app: express.Express, buildDir: string) => {
   );
   const files = express.static(buildDir, { index: false });
   app.use((req, res, next) => {
-    if (SHELL_PATHS.has(req.path)) {
+    if (SHELL_PATHS.has(req.path) || UNSERVED_PATHS.has(req.path)) {
       next();
       return;
     }

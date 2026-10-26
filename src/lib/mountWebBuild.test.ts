@@ -61,6 +61,16 @@ describe('mountWebBuild', () => {
     await expect(response.text()).resolves.toBe('User-agent: *');
   });
 
+  it('does not serve the Netlify preview _redirects file', async () => {
+    fs.writeFileSync(
+      path.join(buildDir, '_redirects'),
+      '/api/*  https://2anki.net/api/:splat  200'
+    );
+    const response = await fetch(`${baseUrl}/_redirects`);
+
+    expect(response.status).toBe(404);
+  });
+
   it('keeps hashed assets immutable for a year', async () => {
     const response = await fetch(`${baseUrl}/assets/app-abc123.css`);
 

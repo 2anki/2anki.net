@@ -352,8 +352,8 @@ describe('AccountMenu links', () => {
       ["What's new", '/whats-new'],
       ['Contact', '/contact'],
       ['About', '/about'],
-      ['Terms', '/documentation/misc/terms-of-service'],
-      ['Privacy', '/documentation/misc/privacy-policy'],
+      ['Terms', '/documentation/reference/terms'],
+      ['Privacy', '/documentation/reference/privacy'],
     ];
     for (const [name, href] of expected) {
       expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
