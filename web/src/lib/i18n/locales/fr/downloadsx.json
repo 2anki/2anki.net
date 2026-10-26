@@ -112,7 +112,9 @@
     "uploadSingleDeck_one": "{{count}} carte n'avait pas de réponse et a été ignorée, elle n'est donc pas dans ce paquet. Ajoutez un verso dans votre fichier, puis convertissez à nouveau.",
     "uploadSingleDeck_other": "{{count}} cartes n'avaient pas de réponse et ont été ignorées, elles ne sont donc pas dans ce paquet. Ajoutez un verso à chacune dans votre fichier, puis convertissez à nouveau.",
     "uploadMultiDeck_one": "{{count}} carte n'avait pas de réponse et a été ignorée, elle n'est donc pas dans vos paquets. Ajoutez un verso dans votre fichier, puis convertissez à nouveau.",
-    "uploadMultiDeck_other": "{{count}} cartes n'avaient pas de réponse et ont été ignorées, elles ne sont donc pas dans vos paquets. Ajoutez un verso à chacune dans votre fichier, puis convertissez à nouveau."
+    "uploadMultiDeck_other": "{{count}} cartes n'avaient pas de réponse et ont été ignorées, elles ne sont donc pas dans vos paquets. Ajoutez un verso à chacune dans votre fichier, puis convertissez à nouveau.",
+    "notion_one": "{{count}} toggle n'avait pas de réponse et a été ignoré, il n'est donc pas dans ce paquet. Ajoutez-lui une réponse dans Notion, puis convertissez à nouveau.",
+    "notion_other": "{{count}} toggles n'avaient pas de réponse et ont été ignorés, ils ne sont donc pas dans ce paquet. Ajoutez une réponse à chacun dans Notion, puis convertissez à nouveau."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} partie de cette page n'est pas connectée à 2anki, elle n'est donc pas dans ce paquet. Ajoute 2anki à cette page et à ses sous-pages dans le menu Connexions de Notion, puis relance la conversion.",

@@ -112,7 +112,9 @@
     "uploadSingleDeck_one": "{{count}} kaart had geen antwoord en is overgeslagen, dus zit niet in dit pakket. Voeg een achterkant toe in je bestand en converteer opnieuw.",
     "uploadSingleDeck_other": "{{count}} kaarten hadden geen antwoord en zijn overgeslagen, dus zitten niet in dit pakket. Voeg aan elke kaart een achterkant toe in je bestand en converteer opnieuw.",
     "uploadMultiDeck_one": "{{count}} kaart had geen antwoord en is overgeslagen, dus zit niet in je pakketten. Voeg een achterkant toe in je bestand en converteer opnieuw.",
-    "uploadMultiDeck_other": "{{count}} kaarten hadden geen antwoord en zijn overgeslagen, dus zitten niet in je pakketten. Voeg aan elke kaart een achterkant toe in je bestand en converteer opnieuw."
+    "uploadMultiDeck_other": "{{count}} kaarten hadden geen antwoord en zijn overgeslagen, dus zitten niet in je pakketten. Voeg aan elke kaart een achterkant toe in je bestand en converteer opnieuw.",
+    "notion_one": "{{count}} toggle had geen antwoord en is overgeslagen, dus zit niet in dit pakket. Voeg in Notion een antwoord toe en converteer opnieuw.",
+    "notion_other": "{{count}} toggles hadden geen antwoord en zijn overgeslagen, dus zitten niet in dit pakket. Voeg in Notion aan elke een antwoord toe en converteer opnieuw."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} deel van deze pagina is niet met 2anki verbonden, dus het staat niet in dit deck. Voeg 2anki toe aan deze pagina en de subpagina's via het menu Verbindingen in Notion en converteer opnieuw.",
