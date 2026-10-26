@@ -7,6 +7,7 @@ import { JobWithDownloadKey } from '../data_layer/JobRepository';
 import { getOwner } from '../lib/User/getOwner';
 import DeleteJobUseCase from '../usecases/jobs/DeleteJobUseCase';
 import { getEmptyBackCount } from '../services/NotionService/helpers/getEmptyBackCount';
+import { getCherrySkippedCount } from '../services/NotionService/helpers/getCherrySkippedCount';
 import JobResponse from '../types/JobResponse';
 
 function toJobResponse(job: JobWithDownloadKey): JobResponse {
@@ -25,6 +26,7 @@ function toJobResponse(job: JobWithDownloadKey): JobResponse {
     upload_id: job.upload_id,
     restartable: true,
     empty_back_count: getEmptyBackCount(job.conversion_report),
+    cherry_skipped_count: getCherrySkippedCount(job.conversion_report),
   };
 }
 

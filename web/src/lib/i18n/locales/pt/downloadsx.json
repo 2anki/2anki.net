@@ -108,6 +108,11 @@
     "uploadMultiDeck_one": "As cores do texto em {{count}} página dos seus PDFs não estão nos seus baralhos — o texto está todo presente, mas na cor padrão.",
     "uploadMultiDeck_other": "As cores do texto em {{count}} páginas dos seus PDFs não estão nos seus baralhos — o texto está todo presente, mas na cor padrão."
   },
+  "cherrySkipped": {
+    "count_one": "A seleção manual está ativa, então {{count}} toggle sem 🍒 ficou de fora deste baralho.",
+    "count_other": "A seleção manual está ativa, então {{count}} toggles sem 🍒 ficaram de fora deste baralho.",
+    "link": "Alterar a seleção manual nas opções de cartões"
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} cartão não tinha resposta e foi ignorado, então não está neste baralho. Adicione um verso no seu arquivo e converta novamente.",
     "uploadSingleDeck_other": "{{count}} cartões não tinham resposta e foram ignorados, então não estão neste baralho. Adicione um verso a cada um no seu arquivo e converta novamente.",

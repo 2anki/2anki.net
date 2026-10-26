@@ -794,7 +794,7 @@
     "general": "Général",
     "prereq": {
       "cloze": "Active d'abord les cartes Cloze.",
-      "cherry": "Active d'abord Cherry-pick."
+      "cherry": "Nécessite Cherry-pick, qui ignore chaque bascule sans 🍒. Active-le d'abord."
     },
     "saveBar": {
       "saveError": "Impossible d'enregistrer tes valeurs par défaut. Réessaie.",

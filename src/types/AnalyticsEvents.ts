@@ -165,6 +165,7 @@ export const KNOWN_EVENTS = new Set([
   'print_preview_shown',
   'ankify_decklist_sorted',
   'empty_back_notice_shown',
+  'cherry_skipped_notice_shown',
   'color_flatten_notice_shown',
   'thin_deck_notice_shown',
   'mindmap_created',

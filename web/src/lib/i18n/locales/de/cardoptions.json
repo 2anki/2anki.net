@@ -19,7 +19,7 @@
     },
     "cherry": {
       "label": "Cherry-Pick mit 🍒-Emoji",
-      "description": "Erstelle Karten nur aus Toggles, die 🍒 im Titel oder Inhalt enthalten. Nutze das, um ein paar Karten aus einer langen Seite zu veröffentlichen."
+      "description": "Erstelle Karten nur aus Toggles, die 🍒 im Titel oder Inhalt enthalten. Alle anderen Toggles werden übersprungen, bei allen Uploads und Notion-Seiten mit diesen Einstellungen. Nutze das, um ein paar Karten aus einer langen Seite zu veröffentlichen."
     },
     "avocado": {
       "label": "Toggles mit dem 🥑-Emoji überspringen",

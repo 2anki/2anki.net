@@ -550,7 +550,11 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
       name: 'Tag a whole section',
     });
     expect(toggle).toBeDisabled();
-    expect(screen.getByText('Turn on Cherry-pick first.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Needs Cherry-pick, which skips every toggle without a 🍒. Turn it on first.'
+      )
+    ).toBeInTheDocument();
   });
 
   it('enables the section-tags toggle once cherry-pick is turned on', async () => {
@@ -565,7 +569,11 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
         screen.getByRole('switch', { name: 'Tag a whole section' })
       ).toBeEnabled();
     });
-    expect(screen.queryByText('Turn on Cherry-pick first.')).toBeNull();
+    expect(
+      screen.queryByText(
+        'Needs Cherry-pick, which skips every toggle without a 🍒. Turn it on first.'
+      )
+    ).toBeNull();
   });
 
   it('round-trips the section-tags value to localStorage when cherry is on', async () => {

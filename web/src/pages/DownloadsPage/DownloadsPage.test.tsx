@@ -1316,6 +1316,43 @@ describe('DownloadsPage truncation notice', () => {
     expect(screen.getAllByText(/had no answer inside/)).toHaveLength(1);
   });
 
+  it('says Cherry-pick left toggles out of a Notion deck and links to the card options', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Cherry Page',
+        download_key: 'deck-cherry.apkg',
+        card_count: 3,
+        cherry_skipped_count: 12,
+      }),
+    ];
+    renderAt('/downloads');
+    expect(
+      screen.getByText(
+        'Cherry-pick is on, so 12 toggles without a 🍒 were left out of this deck.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Change Cherry-pick in card options' })
+    ).toHaveAttribute('href', '/card-options?returnTo=/downloads');
+  });
+
+  it('says nothing about Cherry-pick when it left nothing out', () => {
+    mockJobs = [
+      buildJob({
+        status: 'done',
+        type: 'page',
+        title: 'Plain Page',
+        download_key: 'deck-plain.apkg',
+        card_count: 8,
+        cherry_skipped_count: 0,
+      }),
+    ];
+    renderAt('/downloads');
+    expect(screen.queryByText(/Cherry-pick is on/)).toBeNull();
+  });
+
   it('shows the same candidate-skip count on the pill and the thin-deck notice', () => {
     mockJobs = [
       buildJob({

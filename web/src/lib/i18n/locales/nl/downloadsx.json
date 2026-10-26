@@ -108,6 +108,11 @@
     "uploadMultiDeck_one": "Tekstkleuren op {{count}} pagina van je PDF's zitten niet in je pakketten — de tekst staat er volledig in, maar in de standaardkleur.",
     "uploadMultiDeck_other": "Tekstkleuren op {{count}} pagina's van je PDF's zitten niet in je pakketten — de tekst staat er volledig in, maar in de standaardkleur."
   },
+  "cherrySkipped": {
+    "count_one": "Cherry-pick staat aan, dus {{count}} toggle zonder 🍒 is niet in dit pakket opgenomen.",
+    "count_other": "Cherry-pick staat aan, dus {{count}} toggles zonder 🍒 zijn niet in dit pakket opgenomen.",
+    "link": "Cherry-pick wijzigen in de kaartopties"
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} kaart had geen antwoord en is overgeslagen, dus zit niet in dit pakket. Voeg een achterkant toe in je bestand en converteer opnieuw.",
     "uploadSingleDeck_other": "{{count}} kaarten hadden geen antwoord en zijn overgeslagen, dus zitten niet in dit pakket. Voeg aan elke kaart een achterkant toe in je bestand en converteer opnieuw.",

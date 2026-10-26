@@ -33,7 +33,7 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'cherry',
       'Cherry-pick using 🍒 emoji',
-      'Only build cards from toggles that contain 🍒 in the header or body. Use this to publish a few cards from a long page.',
+      'Only build cards from toggles that contain 🍒 in the header or body. Every other toggle is skipped, on every upload and Notion page that uses these settings. Use this to publish a few cards from a long page.',
       defaultFor('cherry')
     ),
     new CardOptionDetail(

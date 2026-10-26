@@ -364,6 +364,8 @@ class BlockHandler implements IBlockRenderer {
 
   cardsRemovedByUserFilter = 0;
 
+  cherrySkippedCount = 0;
+
   blocksSeen = 0;
 
   private nestedToggleWrapperFetches = 0;
@@ -951,6 +953,7 @@ class BlockHandler implements IBlockRenderer {
     const beforeUserFilter = cards.length;
     if (this.settings.isCherry) {
       cards = cards.filter((c) => c.hasCherry());
+      this.cherrySkippedCount += beforeUserFilter - cards.length;
     }
     if (this.settings.isAvocado) {
       cards = cards.filter((c) => !c.hasAvocado());

@@ -108,6 +108,11 @@
     "uploadMultiDeck_one": "Los colores del texto en {{count}} página de tus PDF no están en tus mazos — el texto está completo, pero en el color predeterminado.",
     "uploadMultiDeck_other": "Los colores del texto en {{count}} páginas de tus PDF no están en tus mazos — el texto está completo, pero en el color predeterminado."
   },
+  "cherrySkipped": {
+    "count_one": "La selección manual está activada, así que {{count}} alternancia sin 🍒 se dejó fuera de este mazo.",
+    "count_other": "La selección manual está activada, así que {{count}} alternancias sin 🍒 se dejaron fuera de este mazo.",
+    "link": "Cambiar la selección manual en los ajustes de tarjetas"
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} tarjeta no tenía respuesta y se omitió, así que no está en este mazo. Añade un reverso en tu archivo y vuelve a convertir.",
     "uploadSingleDeck_other": "{{count}} tarjetas no tenían respuesta y se omitieron, así que no están en este mazo. Añade un reverso a cada una en tu archivo y vuelve a convertir.",

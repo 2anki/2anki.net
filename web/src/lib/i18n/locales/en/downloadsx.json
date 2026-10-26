@@ -108,6 +108,11 @@
     "uploadMultiDeck_one": "Text colors on {{count}} page of your PDFs aren't in your decks — the text is all there, shown in the default color.",
     "uploadMultiDeck_other": "Text colors on {{count}} pages of your PDFs aren't in your decks — the text is all there, shown in the default color."
   },
+  "cherrySkipped": {
+    "count_one": "Cherry-pick is on, so {{count}} toggle without a 🍒 was left out of this deck.",
+    "count_other": "Cherry-pick is on, so {{count}} toggles without a 🍒 were left out of this deck.",
+    "link": "Change Cherry-pick in card options"
+  },
   "emptyBack": {
     "uploadSingleDeck_one": "{{count}} card had no answer and was skipped, so it isn't in this deck. Add a back to it in your file, then convert again.",
     "uploadSingleDeck_other": "{{count}} cards had no answer and were skipped, so they aren't in this deck. Add a back to each in your file, then convert again.",

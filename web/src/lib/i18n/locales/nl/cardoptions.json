@@ -19,7 +19,7 @@
     },
     "cherry": {
       "label": "Cherry-pick met de emoji 🍒",
-      "description": "Maak alleen kaarten van toggles met 🍒 in de titel of inhoud. Gebruik dit om een paar kaarten uit een lange pagina te publiceren."
+      "description": "Maak alleen kaarten van toggles met 🍒 in de titel of inhoud. Alle andere toggles worden overgeslagen, bij al je uploads en Notion-pagina's die deze instellingen gebruiken. Gebruik dit om een paar kaarten uit een lange pagina te publiceren."
     },
     "avocado": {
       "label": "Toggles met de emoji 🥑 overslaan",

@@ -794,7 +794,7 @@
     "general": "General",
     "prereq": {
       "cloze": "Turn on Cloze deletion cards first.",
-      "cherry": "Turn on Cherry-pick first."
+      "cherry": "Needs Cherry-pick, which skips every toggle without a 🍒. Turn it on first."
     },
     "saveBar": {
       "saveError": "Couldn't save your defaults. Try again.",

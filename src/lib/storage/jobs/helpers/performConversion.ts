@@ -403,6 +403,7 @@ export default async function performConversion(
         blocksSeen: bl.blocksSeen,
         cardsCreated: deliveredCardCount,
         emptyBackCount: bl.emptyBackCount,
+        cherrySkippedCount: bl.cherrySkippedCount,
         droppedImageAssetCount: bl.droppedImageAssetCount,
         droppedAudioAssetCount: bl.droppedAudioAssetCount,
         droppedFileAssetCount: bl.droppedFileAssetCount,

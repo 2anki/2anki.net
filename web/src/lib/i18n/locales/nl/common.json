@@ -794,7 +794,7 @@
     "general": "Algemeen",
     "prereq": {
       "cloze": "Zet eerst Cloze-verwijderingskaarten aan.",
-      "cherry": "Zet eerst Cherry-pick aan."
+      "cherry": "Heeft Cherry-pick nodig, dat elke toggle zonder 🍒 overslaat. Zet het eerst aan."
     },
     "saveBar": {
       "saveError": "Kon je standaardwaarden niet opslaan. Probeer het opnieuw.",

@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-26-cherry-pick-explained",
+  "date": "2026-10-26",
+  "type": "fix",
+  "title": "Cherry-pick now explains itself: Downloads says how many toggles it left out of a Notion deck, and the card options say up front that every toggle without a cherry is skipped."
+}

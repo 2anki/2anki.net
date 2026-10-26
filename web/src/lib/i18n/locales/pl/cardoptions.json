@@ -19,7 +19,7 @@
     },
     "cherry": {
       "label": "Wybór selektywny przez emoji 🍒",
-      "description": "Twórz karty tylko z list rozwijanych zawierających 🍒 w nagłówku lub treści. Użyj, aby opublikować kilka kart z długiej strony."
+      "description": "Twórz karty tylko z list rozwijanych zawierających 🍒 w nagłówku lub treści. Wszystkie pozostałe listy rozwijane są pomijane, we wszystkich Twoich przesłanych plikach i stronach Notion używających tych ustawień. Użyj, aby opublikować kilka kart z długiej strony."
     },
     "avocado": {
       "label": "Pomiń listy rozwijane z emoji 🥑",

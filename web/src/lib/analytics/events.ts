@@ -92,6 +92,7 @@ export const KNOWN_EVENTS = new Set([
   'ankify_plan_required_viewed',
   'image_drop_notice_shown',
   'empty_back_notice_shown',
+  'cherry_skipped_notice_shown',
   'color_flatten_notice_shown',
   'thin_deck_notice_shown',
   'partial_deck_notice_shown',

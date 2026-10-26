@@ -848,7 +848,7 @@
     "general": "Ogólne",
     "prereq": {
       "cloze": "Najpierw włącz karty z lukami (cloze).",
-      "cherry": "Najpierw włącz Cherry-pick."
+      "cherry": "Wymaga Cherry-pick, który pomija każdą listę rozwijaną bez 🍒. Najpierw go włącz."
     },
     "saveBar": {
       "saveError": "Nie udało się zapisać Twoich domyślnych ustawień. Spróbuj ponownie.",
