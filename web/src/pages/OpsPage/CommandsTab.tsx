@@ -6,6 +6,7 @@ import { syncStripeSubscriptions } from './syncStripeSubscriptions';
 import { grantUnclaimedPass } from './grantUnclaimedPass';
 import { setBlockIdIdentity } from './setBlockIdIdentity';
 import { changeUserEmail } from './changeUserEmail';
+import DeleteAccountCommand from './DeleteAccountCommand';
 import { pruneDeadUploads } from './pruneDeadUploads';
 import {
   deleteInactiveUsers,
@@ -435,6 +436,8 @@ export default function CommandsTab() {
           {emailChangeMessage}
         </div>
       )}
+
+      <DeleteAccountCommand />
 
       <div className={styles.commandGroupHeading}>
         <h2 className={styles.commandGroupTitle}>Run a job</h2>
