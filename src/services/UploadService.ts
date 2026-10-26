@@ -1671,8 +1671,8 @@ class UploadService {
             },
           });
           retriedWithAi = true;
-          this.inFlightConversions.delete(fingerprint);
           await this.jobRepository.deleteJob(ws.id, owner);
+          this.inFlightConversions.delete(fingerprint);
           await this.startAsyncConversion(
             req,
             res,

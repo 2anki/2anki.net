@@ -2817,6 +2817,7 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
       'lecture.pptx',
       'claude'
     );
+    expect(jobRepository.create).toHaveBeenCalledTimes(2);
     expect(jobRepository.deleteJob).toHaveBeenCalledTimes(1);
     expect(trackMock).toHaveBeenCalledWith(
       'ai_fallback_triggered',
