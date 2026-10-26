@@ -344,14 +344,14 @@ export function AccountMenu({
               {t('nav.about')}
             </Link>
             <Link
-              to="/documentation/misc/terms-of-service"
+              to="/documentation/reference/terms"
               onClick={close}
               className={styles.accountRow}
             >
               {t('nav.terms')}
             </Link>
             <Link
-              to="/documentation/misc/privacy-policy"
+              to="/documentation/reference/privacy"
               onClick={close}
               className={styles.accountRow}
             >
