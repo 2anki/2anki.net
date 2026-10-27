@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 import importlib.util
+import io
+import json
 import os
+import time
 import unittest
+from unittest import mock
 
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location(
@@ -126,7 +130,16 @@ class IsUserVisiblePrTest(unittest.TestCase):
         self.assertTrue(check_merge_status.is_user_visible_pr(pr))
 
     def test_other_prefixes_do_not_count(self):
-        for title in ("chore: x", "refactor: x", "test: x", "build(deps): x", "docs: fix typo", ""):
+        for title in (
+            "chore: x",
+            "refactor: x",
+            "test: x",
+            "build(deps): x",
+            "docs: fix typo",
+            "revert: fix: x",
+            'Revert "fix: x (#1)"',
+            "",
+        ):
             pr = {"title": title, "commits": commits(title)}
             self.assertFalse(check_merge_status.is_user_visible_pr(pr), title)
 
@@ -154,6 +167,11 @@ class IsReachSourceTest(unittest.TestCase):
             "src/test/fixtures/page.html",
             "src/test/test-utils.ts",
             "web/src/test/fixtures/deck.json",
+            "src/lib/parser/__fixtures__/page.html",
+            "src/lib/fixtures/page.html",
+            "src/services/NotionService/_mock/page.json",
+            "src/infrastracture/adapters/fileConversion/___mock/a.pdf",
+            "web/src/setupTests.ts",
             "web/src/pages/WhatsNewPage/changelog/2026-10-27-x.json",
             "src/lib/parser/FEATURE.md",
             "src/controllers/CLAUDE.md",
@@ -184,6 +202,21 @@ class ReachSectionTextTest(unittest.TestCase):
 class HasReachSectionTest(unittest.TestCase):
     def test_table_section_passes(self):
         self.assertTrue(check_merge_status.has_reach_section(REACH_TABLE))
+
+    def test_windows_line_endings_are_read(self):
+        self.assertTrue(check_merge_status.has_reach_section(REACH_TABLE.replace("\n", "\r\n")))
+
+    def test_unclosed_comment_openers_stay_fast_and_fail(self):
+        body = "## Who else this reaches\n" + "<!--" * 16000
+        started = time.monotonic()
+        self.assertFalse(check_merge_status.has_reach_section(body))
+        self.assertLess(time.monotonic() - started, 0.5)
+
+    def test_the_engineer_template_pasted_unchanged_fails(self):
+        with open(os.path.join(HOOKS_DIR, "..", "agents", "engineer.md"), encoding="utf-8") as handle:
+            template = handle.read().split("## PR description template", 1)[1]
+        self.assertIsNotNone(check_merge_status.reach_section_text(template))
+        self.assertFalse(check_merge_status.has_reach_section(template))
 
     def test_empty_or_placeholder_sections_fail(self):
         for body in (
@@ -231,6 +264,56 @@ class ReachViolationTest(unittest.TestCase):
     def test_fix_touching_only_the_harness_is_unaffected(self):
         pr = user_visible_pr("", ".claude/hooks/check-merge-status.py", "CLAUDE.md")
         self.assertIsNone(check_merge_status.reach_violation(pr))
+
+    def test_revert_of_a_fix_is_unaffected(self):
+        pr = user_visible_pr("", "src/usecases/x.ts", title="revert: fix: keep the notice")
+        self.assertIsNone(check_merge_status.reach_violation(pr))
+
+
+class MainWiringTest(unittest.TestCase):
+    def run_main(self, pr_data):
+        captured = {}
+
+        def fake_run_gh(args, label):
+            captured["args"] = args
+            return json.dumps(pr_data)
+
+        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
+        stdout = io.StringIO()
+        with mock.patch.object(check_merge_status, "run_gh", fake_run_gh), \
+                mock.patch.dict(os.environ, {}, clear=False), \
+                mock.patch("sys.stdin", stdin), \
+                mock.patch("sys.stdout", stdout):
+            os.environ.pop("CLAUDE_SKIP_SAFETY", None)
+            with self.assertRaises(SystemExit):
+                check_merge_status.main()
+        return captured["args"], json.loads(stdout.getvalue())
+
+    def pr(self, body):
+        sha = "a" * 40
+        return {
+            **user_visible_pr(body, "src/usecases/x.ts"),
+            "headRefOid": sha,
+            "headRefName": "fix/x",
+            "author": {"login": "alemayhu"},
+            "statusCheckRollup": [],
+            "reviews": [],
+            "comments": [{"body": f"<!-- ship-review: pass sha={sha} -->"}],
+        }
+
+    def test_requests_the_title_from_gh(self):
+        args, _ = self.run_main(self.pr(REACH_TABLE))
+        self.assertIn("title", args[args.index("--json") + 1].split(","))
+
+    def test_denies_a_fix_merge_without_the_section(self):
+        _, output = self.run_main(self.pr("## What\nx"))
+        decision = output["hookSpecificOutput"]
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertIn("Who else this reaches", decision["permissionDecisionReason"])
+
+    def test_allows_a_fix_merge_with_the_section(self):
+        _, output = self.run_main(self.pr(REACH_TABLE))
+        self.assertEqual(output, {"continue": True})
 
 
 if __name__ == "__main__":

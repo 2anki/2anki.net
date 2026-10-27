@@ -26,9 +26,10 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
      but the body has no non-empty `## Who else this reaches` section. Reach
      source is any file under `src/` or `web/src/` except tests (`.test.`,
      `.spec.`, `__tests__/`, `__snapshots__/`, `src/test/`, `web/src/test/`,
-     `fixtures/`), changelog JSON and Markdown docs. Empty means nothing but
-     whitespace, HTML comments, bullet marks, a table header with no rows, or
-     a TBD/TODO/N/A placeholder.
+     `fixtures/`, `__fixtures__/`, `_mock/`, `setupTests.`), changelog JSON
+     and Markdown docs. Empty means nothing but whitespace, HTML comments,
+     bullet marks, a table header with no rows, or a TBD/TODO/N/A/-/...
+     placeholder. Reverts (`revert:`, GitHub's `Revert "…"`) are exempt.
      #4589 claimed its control arm was "byte-for-byte unchanged" and silently
      dropped the held-back-cards notice for signed-in free users for 19 days
      (#4789); #4730 broke prerendered landing pages (#4901). Both reviews read
@@ -90,12 +91,20 @@ DEVIATIONS_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Deviations from spec\b", re.I
 USER_VISIBLE_PREFIX = re.compile(r"^(feat|fix)(\([^)]*\))?!?:", re.IGNORECASE)
 REACH_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Who else this reaches\b.*$", re.IGNORECASE | re.MULTILINE)
 ANY_HEADING = re.compile(r"^\s{0,3}#{1,6}\s", re.MULTILINE)
-HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 REACH_PLACEHOLDER = re.compile(r"^(tbd|todo|n/?a|-|\.\.\.)?$", re.IGNORECASE)
 TABLE_SEPARATOR = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$")
-REACH_SOURCE_ROOTS =("src/", "web/src/")
+REACH_SOURCE_ROOTS = ("src/", "web/src/")
 REACH_EXCLUDED_ROOTS = ("src/test/", "web/src/test/", "web/src/pages/WhatsNewPage/changelog/")
-REACH_EXCLUDED_PARTS = (".test.", ".spec.", "/__tests__/", "/__snapshots__/", "/fixtures/")
+REACH_EXCLUDED_PARTS = (
+    ".test.",
+    ".spec.",
+    "/__tests__/",
+    "/__snapshots__/",
+    "/fixtures/",
+    "/__fixtures__/",
+    "_mock/",
+    "/setupTests.",
+)
 # `gh pr view --json author` reports the bot as `app/dependabot`; the GitHub UI
 # and the REST API spell it `dependabot[bot]`. Accept both so the review-marker
 # exemption actually fires (#4555).
@@ -284,8 +293,23 @@ def is_table_separator(line):
     return bool(TABLE_SEPARATOR.match(line))
 
 
+def strip_html_comments(text):
+    kept = []
+    position = 0
+    while True:
+        opener = text.find("<!--", position)
+        if opener == -1:
+            kept.append(text[position:])
+            return "".join(kept)
+        kept.append(text[position:opener])
+        closer = text.find("-->", opener + 4)
+        if closer == -1:
+            return "".join(kept)
+        position = closer + 3
+
+
 def reach_content_lines(section):
-    lines = [line.strip() for line in HTML_COMMENT.sub("", section).splitlines()]
+    lines = [line.strip() for line in strip_html_comments(section).splitlines()]
     kept = []
     for index, line in enumerate(lines):
         if is_table_separator(line):
@@ -308,16 +332,20 @@ def reach_violation(pr_data):
     if not is_user_visible_pr(pr_data):
         return None
     paths = [f.get("path") or "" for f in pr_data.get("files") or []]
-    if not any(is_reach_source(p) for p in paths):
+    source_paths = [p for p in paths if is_reach_source(p)]
+    if not source_paths:
         return None
     if has_reach_section(pr_data.get("body")):
         return None
+    first_source = source_paths[0]
     return (
-        "feat:/fix: PR changes src/ or web/src/ but the body has no non-empty "
-        "`## Who else this reaches` section — list every population the changed "
-        "code is reachable from (signed-out, free, over the limit, paying, pass, "
-        "Auto Sync, flag arms, Notion vs upload, web/MCP/iOS) with the test that "
-        "covers it or why it is unreachable; see the engineer PR template"
+        "the title or a commit headline is feat:/fix: and the PR changes source "
+        f"({first_source}), but the `## Who else this reaches` section is missing "
+        "or empty (TBD/TODO/N/A and comments do not count). Add one row per "
+        "population the changed code is reachable from (signed-out, free, free "
+        "over the limit, paying, pass holder, Auto Sync, each flag arm, Notion vs "
+        "upload, web/MCP/iOS): a reachable row names the test that exercises it, "
+        "an unreachable row says why. Template: .claude/agents/engineer.md step 10"
     )
 
 
