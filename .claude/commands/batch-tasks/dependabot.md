@@ -10,7 +10,7 @@ The dispatcher passes:
 
 - A single Dependabot PR number — call it `<n>`.
 - A worktree path — your isolated checkout of `origin/main`. All your shell work happens here.
-- Whether the dispatcher marked the PR `hard-blocked`. Step 2a re-checks the paths either way.
+- Whether the dispatcher marked the PR `hard-blocked`. Step 2a runs `/security-review` when the flag is set or a path matches.
 
 ## Step 1 — read the PR
 
@@ -41,7 +41,7 @@ Re-check the file list against the hard-block set from `.claude/commands/batch.m
 - `src/lib/Token.ts`
 - any path matching `auth` or `payments`
 
-If any file matches, run `/security-review` on the diff and the full server suite, and put both results in the `/ship` review brief so its fresh reviewers check them. Clean → `/ship <n>`. A finding in the bumped package → comment it and return `needs-review`: the fix lives upstream, so this is the "value only Alexander holds" carve-out (whether to take the bump at all). A finding clearly in our own code → carry the bump plus the fix on a branch of ours off `main`, `/ship` that, and comment the link on the bot PR; Dependabot closes its own PR once the bump is on `main` (the bot owns its branch, nobody pushes to it and nobody closes it by hand); the bot PR returns status `needs-review` until then. When it is not clear which, treat it as the package's.
+If the dispatcher's flag is set or any file matches, run `/security-review` on the diff and the full server suite, and put both results in the `/ship` review brief so its fresh reviewers check them. Clean → `/ship <n>`. A finding in the bumped package → comment it and return `needs-review`: the fix lives upstream, so this is the "value only Alexander holds" carve-out (whether to take the bump at all). A finding clearly in our own code → carry the bump plus the fix on a branch of ours off `main`, `/ship` that, and comment the link on the bot PR; Dependabot closes its own PR once the bump is on `main` (the bot owns its branch, nobody pushes to it and nobody closes it by hand); the bot PR returns status `needs-review` until then. When it is not clear which, treat it as the package's.
 
 ### 2b — dependency-rules hold/route/wait checks (`.claude/rules/dependencies.md`)
 
