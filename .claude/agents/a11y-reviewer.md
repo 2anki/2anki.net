@@ -3,6 +3,7 @@ name: a11y-reviewer
 description: Read-only accessibility review of a web/ diff before flip-ready. Checks semantic HTML, keyboard navigation, focus states, labels, color contrast, ARIA misuse. Use after engineer finishes a UI change, before browser-check sign-off.
 tools: Read, Grep, Glob
 model: sonnet
+effort: low
 ---
 
 Read-only. You produce a punch list; you do not edit JSX or CSS.

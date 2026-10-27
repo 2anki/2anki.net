@@ -3,7 +3,7 @@ description: Dispatch N parallel worker agents to clear a queue of independent m
 argument-hint: <task-type> [--patch-only] [--dry-run]
 ---
 
-You are the dispatcher for `/batch`. The queue is the input; your job is to fan out independent mechanical work, drain it, and report a single table back. You never edit files yourself — every change goes through a forked worker in its own worktree.
+You are the dispatcher for `/batch`. The queue is the input; your job is to fan out independent mechanical work, drain it, and report a single table back. You never edit files yourself — every change goes through a worker in its own worktree, a fork unless the task template says otherwise (step 4).
 
 Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are deferred — if the caller passes them, refuse with: `task-type not yet implemented — pilot is dependabot only`.
 
@@ -67,7 +67,7 @@ Otherwise:
   - While `len(in-flight) < MAX_CONCURRENT` and pending is non-empty:
     - Pop the next task.
     - `EnterWorktree` off `origin/main` — record the returned worktree ID.
-    - Fork a worker with the matching template: `.claude/commands/batch-tasks/<task-type>.md`. Pass the worker the PR number (or task-specific input) and the worktree path.
+    - Fork a worker with the matching template: `.claude/commands/batch-tasks/<task-type>.md`. Pass the worker the PR number (or task-specific input) and the worktree path. A fork runs on this dispatcher's model and ignores a `model` override, which suits task types that make judgment calls (dependabot decides major bumps). A template whose frontmatter carries `worker: fresh` is purely mechanical: dispatch it as a fresh `general-purpose` agent with `model: "sonnet"` and the template as its brief.
     - Invoke the worker with `isolation: "worktree"` and `run_in_background: true`. Record its task ID alongside the worktree ID.
   - Wait for the next worker to finish (do not busy-poll — use the agent completion notification).
   - When a worker returns, print one line: `<pr#> <branch> → <status>`. Move it from in-flight to completed.

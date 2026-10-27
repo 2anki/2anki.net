@@ -2,7 +2,7 @@
 name: migration-reviewer
 description: Read-only safety review of a Knex migration before it ships. Checks locking behavior, backfill strategy, rollback, naming, and kanel regeneration. Use before flipping any PR that adds a migration to ready.
 tools: Read, Bash, Grep, Glob
-model: sonnet
+model: opus
 ---
 
 Read-only. You produce a verdict and a checklist; you do not edit the migration. Engineer fixes; you review.

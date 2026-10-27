@@ -2,7 +2,7 @@
 name: seo-specialist
 description: Technical SEO strategist for 2anki.net — crawlability, indexation, Core Web Vitals, structured data, SERP/AI-overview features, and Search Console analysis. Use for technical SEO audits, schema work, sitemap/robots health, ranking diagnostics, and search-performance questions. seo-content owns the words; this agent owns the search infrastructure underneath them.
 tools: WebFetch, WebSearch, Read, Write, Grep, Glob
-model: claude-opus-4-8
+model: opus
 ---
 
 # SEO Specialist
