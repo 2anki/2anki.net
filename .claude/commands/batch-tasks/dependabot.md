@@ -10,7 +10,7 @@ The dispatcher passes:
 
 - A single Dependabot PR number — call it `<n>`.
 - A worktree path — your isolated checkout of `origin/main`. All your shell work happens here.
-- Whether the dispatcher marked the PR `hard-blocked`. Step 2a runs `/security-review` when the flag is set or a path matches.
+- Whether the dispatcher marked the PR `hard-blocked`. The step 4 security review runs when the flag is set or a step 2a path matches.
 
 ## Step 1 — read the PR
 
@@ -41,7 +41,7 @@ Re-check the file list against the hard-block set from `.claude/commands/batch.m
 - `src/lib/Token.ts`
 - any path matching `auth` or `payments`
 
-If the dispatcher's flag is set or any file matches, check out the PR first (`gh pr checkout <n>`, the step 3 command) so the review and the suite see the bump, not plain `origin/main`. Then run `/security-review` on the diff and the full server suite, and put both results in the `/ship` review brief so its fresh reviewers check them. Clean → `/ship <n>`. A finding in the bumped package → comment it and return `needs-review`: the fix lives upstream, so this is the "value only Alexander holds" carve-out (whether to take the bump at all). A finding clearly in our own code → carry the bump plus the fix on a branch of ours off `main`, `/ship` that, and comment the link on the bot PR; Dependabot closes its own PR once the bump is on `main` (the bot owns its branch, nobody pushes to it and nobody closes it by hand); the bot PR returns status `needs-review` until then. When it is not clear which, treat it as the package's.
+If the dispatcher's flag is set or any file matches, the PR needs a security review. Note it and continue to 2b; the review runs in step 4 against the checked-out head, after the 2b holds and alongside `/check`.
 
 ### 2b — dependency-rules hold/route/wait checks (`.claude/rules/dependencies.md`)
 
@@ -64,12 +64,16 @@ The changelog URL is usually in the PR body under "Release notes" or "Commits" �
 ## Step 3 — check out the PR in your worktree
 
 ```
-gh pr checkout <n>
+gh pr checkout <n> --force
 ```
+
+`--force` resets this worktree's copy to the PR's current head, so a checkout after a 2b `@dependabot rebase` tests what the bot pushed, not the old head.
 
 ## Step 4 — run /check AND the server suite
 
 Invoke the `/check` skill — the existing parallel server tsc + `arch` + web typecheck + web vitest + web lint pipeline. Then run the full server vitest suite: `pnpm test`. A dependency bump is the second case, after the shared parser or exporter list, where both full suites run locally (`.claude/rules/dependencies.md`). **`/check` does not run the server suite**, and tsc cannot see a runtime API removal inside an untyped JS dependency — the 2026-08-06 markdown-it 15 outage passed typecheck and died at module load, which `pnpm test` catches instantly (any suite importing the broken module fails at import). Capture overall pass/fail across both; the documented environmental failures (`getPageCount` pdfinfo, `PythonExitError` in venv-less worktrees) don't count as red. If anything else failed, mark the run as failed and record the first failing summary line for the comment.
+
+If step 2a said the PR needs a security review, run `/security-review` on the checked-out diff now, and put its result and the suite results in the `/ship` review brief so its fresh reviewers check them. Clean → step 5. A finding in the bumped package → comment it and return `needs-review`: the fix lives upstream, so this is the "value only Alexander holds" carve-out (whether to take the bump at all). A finding clearly in our own code → carry the bump plus the fix on a branch of ours off `main`, `/ship` that, and comment the link on the bot PR; Dependabot closes its own PR once the bump is on `main` (the bot owns its branch, nobody pushes to it and nobody closes it by hand); the bot PR returns status `needs-review` until then. When it is not clear which, treat it as the package's.
 
 ## Step 5 — decide
 
