@@ -82,7 +82,7 @@ The merge queue on `main` was switched off on 2026-10-15 (ruleset `main merge qu
 gh pr merge <n> --repo 2anki/server --squash
 ```
 
-The `check-merge-status.py`, `check-browser-attestation.py`, and `check-changelog-on-merge.py` hooks re-verify everything before the merge. A deny prints the reason — act on it, never bypass.
+The `check-merge-status.py`, `check-browser-attestation.py`, `check-changelog-on-merge.py`, and `check-removed-for-users.py` hooks re-verify everything before the merge. A deny prints the reason — act on it, never bypass.
 
 Then read the merge SHA:
 
