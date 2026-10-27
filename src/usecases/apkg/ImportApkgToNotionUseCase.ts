@@ -64,7 +64,8 @@ const NOTION_ERROR_MESSAGES: Partial<Record<APIErrorCode, string>> = {
 function resolveNotionFailureMessage(error: APIResponseError): string | null {
   if (
     error.code === APIErrorCode.ValidationError &&
-    error.message.includes('archived ancestor')
+    (error.message.includes('archived ancestor') ||
+      error.message.includes('block that is archived'))
   ) {
     return 'The Notion page you picked is in the trash. Restore it in Notion or pick a different destination page.';
   }

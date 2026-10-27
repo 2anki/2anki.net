@@ -433,6 +433,38 @@ describe('ImportApkgToNotionUseCase', () => {
     );
   });
 
+  it('surfaces the trashed-page message when Notion refuses to edit an archived block', async () => {
+    previewService.parse.mockResolvedValue(makeParsed(1));
+    notionApi.createPage.mockRejectedValue(
+      new APIResponseError({
+        code: APIErrorCode.ValidationError,
+        message:
+          "Can't edit block that is archived. You must unarchive the block before editing.",
+        status: 400,
+        headers: {},
+        rawBodyText: '',
+        additional_data: undefined,
+        request_id: undefined,
+      })
+    );
+
+    await useCase.execute(
+      Buffer.from('fake'),
+      'parent-page',
+      'user-1',
+      notionApi,
+      'job-1',
+      { maxNotes: 10000 }
+    );
+
+    const failCall = jobRepository.updateJobStatus.mock.calls.find(
+      (c) => c[2] === 'failed'
+    );
+    expect(failCall![3]).toBe(
+      'The Notion page you picked is in the trash. Restore it in Notion or pick a different destination page.'
+    );
+  });
+
   it('keeps the generic message for other Notion 400 validation errors', async () => {
     previewService.parse.mockResolvedValue(makeParsed(1));
     notionApi.createPage.mockRejectedValue(
