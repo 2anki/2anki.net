@@ -67,13 +67,13 @@ The changelog URL is usually in the PR body under "Release notes" or "Commits" �
 gh pr checkout <n> --force
 ```
 
-`--force` resets this worktree's copy to the PR's current head, so a checkout after a 2b `@dependabot rebase` tests what the bot pushed, not the old head.
+`--force` resets this worktree's copy to the PR's current head, so re-running this step after a `@dependabot rebase` tests what the bot pushed, not the old head.
 
 ## Step 4 — run /check AND the server suite
 
 Invoke the `/check` skill — the existing parallel server tsc + `arch` + web typecheck + web vitest + web lint pipeline. Then run the full server vitest suite: `pnpm test`. A dependency bump is the second case, after the shared parser or exporter list, where both full suites run locally (`.claude/rules/dependencies.md`). **`/check` does not run the server suite**, and tsc cannot see a runtime API removal inside an untyped JS dependency — the 2026-08-06 markdown-it 15 outage passed typecheck and died at module load, which `pnpm test` catches instantly (any suite importing the broken module fails at import). Capture overall pass/fail across both; the documented environmental failures (`getPageCount` pdfinfo, `PythonExitError` in venv-less worktrees) don't count as red. If anything else failed, mark the run as failed and record the first failing summary line for the comment.
 
-If step 2a said the PR needs a security review, run `/security-review` on the checked-out diff now, and put its result and the suite results in the `/ship` review brief so its fresh reviewers check them. Clean → step 5. A finding in the bumped package → comment it and return `needs-review`: the fix lives upstream, so this is the "value only Alexander holds" carve-out (whether to take the bump at all). A finding clearly in our own code → carry the bump plus the fix on a branch of ours off `main`, `/ship` that, and comment the link on the bot PR; Dependabot closes its own PR once the bump is on `main` (the bot owns its branch, nobody pushes to it and nobody closes it by hand); the bot PR returns status `needs-review` until then. When it is not clear which, treat it as the package's.
+If step 2a said the PR needs a security review, run `/security-review` on the checked-out diff now, and put its result and the suite results in the `/ship` review brief so its fresh reviewers check them. Record the head SHA you reviewed; if it changes before the merge (a `@dependabot rebase` here or inside `/ship`), re-run steps 3 and 4 on the new head first. Clean → step 5. A finding in the bumped package → comment it and return `needs-review`: the fix lives upstream, so this is the "value only Alexander holds" carve-out (whether to take the bump at all). A finding clearly in our own code → carry the bump plus the fix on a branch of ours off `main`, `/ship` that, and comment the link on the bot PR; Dependabot closes its own PR once the bump is on `main` (the bot owns its branch, nobody pushes to it and nobody closes it by hand); the bot PR returns status `needs-review` until then. When it is not clear which, treat it as the package's.
 
 ## Step 5 — decide
 
@@ -135,7 +135,7 @@ Include the PR number and the head branch name in your return payload so the dis
 - **Never** bypass the queue with `gh pr merge --admin`. The `check-merge-status.py` hook is the gate.
 - **Never** rebase or push to the Dependabot branch yourself — comment `@dependabot rebase` if needed; the bot owns the branch.
 - **Never** close a held PR without merging. The Dependabot workflow expects merge or label, not close (`.claude/rules/dependencies.md`).
-- **Do not** read or edit `pnpm-lock.yaml` directly. If a major needs lockfile attention, comment `@dependabot rebase` (the bot owns the branch), wait on a `ScheduleWakeup` of 1200s, and continue; never edit the lockfile by hand.
+- **Do not** read or edit `pnpm-lock.yaml` directly. If a major needs lockfile attention, comment `@dependabot rebase` (the bot owns the branch), wait on a `ScheduleWakeup` of 1200s, then re-run steps 3 and 4 on the new head; never edit the lockfile by hand.
 
 ## When held majors pile up
 
