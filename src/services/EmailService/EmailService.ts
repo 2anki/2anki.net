@@ -51,6 +51,8 @@ export interface LowRatingFeedbackEmailParams {
   userId: string | null;
   latestJobId: number | null;
   latestJobStatus: string | null;
+  latestUploadId: number | null;
+  latestUploadAt: Date | null;
   plan: string | null;
 }
 
@@ -1096,12 +1098,17 @@ export class EmailService implements IEmailService {
       params.latestJobId == null
         ? '(none)'
         : `${params.latestJobId} (${params.latestJobStatus ?? 'unknown'})`;
+    const latestDeck =
+      params.latestUploadId == null
+        ? '(none stored)'
+        : `${params.latestUploadId}, built ${params.latestUploadAt?.toISOString() ?? 'at an unknown time'}`;
 
     const accountTextLines = params.emailVerified
       ? [
           `Plan: ${params.plan ?? 'free'}`,
           `User ID: ${params.userId ?? '(unknown)'}`,
           `Latest job: ${latestJob}`,
+          `Latest deck (My Decks): ${latestDeck}`,
           `Address (verified account): ${params.replyTo}`,
         ]
       : [
@@ -1113,6 +1120,7 @@ export class EmailService implements IEmailService {
           `<li>Plan: ${escapeHtml(params.plan ?? 'free')}</li>`,
           `<li>User ID: ${escapeHtml(params.userId ?? '(unknown)')}</li>`,
           `<li>Latest job: ${escapeHtml(latestJob)}</li>`,
+          `<li>Latest deck (My Decks): ${escapeHtml(latestDeck)}</li>`,
           `<li>Address (verified account): ${escapeHtml(params.replyTo)}</li>`,
         ]
       : [

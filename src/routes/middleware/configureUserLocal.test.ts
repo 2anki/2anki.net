@@ -222,6 +222,28 @@ describe('configureUserLocal — planSource', () => {
     expect(res.locals.subscriber).toBe(true);
     expect(res.locals.planSource).toBeNull();
   });
+
+  it('sets planSource null for a signed-in free user with no sub, no pass and no patreon', async () => {
+    const anonRepo = new InMemoryAnonymousPassRepository();
+    const userPassRepo = new InMemoryUserPassRepository();
+
+    const req = makeReq({}, { token: 't' });
+    const res = makeRes();
+
+    await configureUserLocal(
+      req,
+      res,
+      makeAuthService({ patreon: false, isSubscriber: false }),
+      noDatabase,
+      anonRepo,
+      now,
+      undefined,
+      userPassRepo
+    );
+
+    expect(res.locals.subscriber).toBe(false);
+    expect(res.locals.planSource).toBeNull();
+  });
 });
 
 describe('configureUserLocal — pass bought before signing up', () => {

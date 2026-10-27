@@ -130,6 +130,54 @@ describe('EmojiFeedbackController follow-up', () => {
     await controller.followUp(req, res);
     expect(sendLowRatingFeedbackEmail).toHaveBeenCalledTimes(1);
   });
+
+  it('names the pass of the rating owner when a Downloads rating gets their address', async () => {
+    const { id, token } = await tokenFor();
+    const {
+      controller,
+      repo,
+      contextRepo,
+      req,
+      res,
+      sendLowRatingFeedbackEmail,
+    } = buildMocks();
+    repo.attachFollowUp.mockResolvedValue({
+      rating: 1,
+      page: 'downloads/deck_done',
+      owner: 4242,
+    });
+    contextRepo.getByOwner.mockResolvedValue({
+      email: 'a@b.co',
+      userId: '4242',
+      isLifetime: false,
+      hasActiveSubscription: false,
+      activePass: {
+        id: 41,
+        user_id: 4242,
+        kind: '120d',
+        expires_at: new Date('2027-03-01T12:00:00.000Z'),
+        stripe_payment_intent_id: 'pi_fixture',
+      },
+      latestJobId: null,
+      latestJobStatus: null,
+      latestUploadId: 912,
+      latestUploadAt: new Date('2026-11-02T09:30:00.000Z'),
+    });
+    req.params = { id: String(id) };
+    req.body = { token, comment: 'x', email: 'a@b.co' };
+
+    await controller.followUp(req, res);
+
+    expect(contextRepo.getByOwner).toHaveBeenCalledWith(4242, expect.any(Date));
+    expect(sendLowRatingFeedbackEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        emailVerified: true,
+        userId: '4242',
+        plan: 'Semester Pass (120d), active until 2027-03-01 12:00 UTC',
+        latestUploadId: 912,
+      })
+    );
+  });
 });
 
 describe('EmojiFeedbackController', () => {

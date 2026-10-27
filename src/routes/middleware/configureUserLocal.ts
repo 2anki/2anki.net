@@ -13,6 +13,7 @@ import {
 } from '../../data_layer/AnonymousPassRepository';
 import { ValidateAnonymousPassUseCase } from '../../usecases/checkout/ValidateAnonymousPassUseCase';
 import { ClaimPassFromTokenUseCase } from '../../usecases/passes/ClaimPassFromTokenUseCase';
+import { isAppleSubscriptionPass } from '../../usecases/passes/isAppleSubscriptionPass';
 import { getStripe } from '../../lib/integrations/stripe';
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
 
@@ -26,10 +27,7 @@ function resolvePlanSource(
   if (isSubscriber) {
     return 'stripe';
   }
-  if (
-    activePass?.kind === 'unlimited' &&
-    activePass.stripe_payment_intent_id.startsWith('apple:')
-  ) {
+  if (activePass != null && isAppleSubscriptionPass(activePass)) {
     return 'apple';
   }
   if (patreon === true) {

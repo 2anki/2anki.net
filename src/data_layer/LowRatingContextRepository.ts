@@ -1,17 +1,21 @@
 import type { Knex } from 'knex';
 
-export type FeedbackPlan = 'lifetime' | 'subscriber' | 'free';
+import UserPassRepository, { UserPass } from './UserPassRepository';
 
 export interface LowRatingAccountContext {
   email: string;
   userId: string;
+  isLifetime: boolean;
+  hasActiveSubscription: boolean;
+  activePass: UserPass | null;
   latestJobId: number | null;
   latestJobStatus: string | null;
-  plan: FeedbackPlan;
+  latestUploadId: number | null;
+  latestUploadAt: Date | null;
 }
 
 export interface ILowRatingContextRepository {
-  getByOwner(owner: number): Promise<LowRatingAccountContext | null>;
+  getByOwner(owner: number, now: Date): Promise<LowRatingAccountContext | null>;
 }
 
 export class LowRatingContextRepository implements ILowRatingContextRepository {
@@ -43,7 +47,18 @@ export class LowRatingContextRepository implements ILowRatingContextRepository {
       .first();
   }
 
-  async getByOwner(owner: number): Promise<LowRatingAccountContext | null> {
+  buildLatestUploadQuery(owner: number): Knex.QueryBuilder {
+    return this.database('uploads')
+      .where({ owner })
+      .orderBy('id', 'desc')
+      .select('id', 'created_at')
+      .first();
+  }
+
+  async getByOwner(
+    owner: number,
+    now: Date
+  ): Promise<LowRatingAccountContext | null> {
     const user = await this.buildUserQuery(owner);
     if (user == null) {
       return null;
@@ -52,23 +67,26 @@ export class LowRatingContextRepository implements ILowRatingContextRepository {
     const activeSubscription = await this.buildActiveSubscriptionQuery(
       user.email
     );
+    const activePass = await new UserPassRepository(this.database).findActive(
+      owner,
+      now
+    );
     const latestJob = await this.buildLatestJobQuery(String(user.id));
+    const latestUpload = await this.buildLatestUploadQuery(owner);
 
     return {
       email: user.email,
       userId: String(user.id),
+      isLifetime: user.patreon === true,
+      hasActiveSubscription: activeSubscription != null,
+      activePass,
       latestJobId: latestJob == null ? null : Number(latestJob.id),
       latestJobStatus: latestJob?.status ?? null,
-      plan: resolvePlan(user.patreon === true, activeSubscription != null),
+      latestUploadId: latestUpload == null ? null : Number(latestUpload.id),
+      latestUploadAt:
+        latestUpload?.created_at == null
+          ? null
+          : new Date(latestUpload.created_at),
     };
   }
 }
-
-const resolvePlan = (
-  isLifetime: boolean,
-  hasActiveSubscription: boolean
-): FeedbackPlan => {
-  if (isLifetime) return 'lifetime';
-  if (hasActiveSubscription) return 'subscriber';
-  return 'free';
-};

@@ -1,5 +1,8 @@
 import type { IEmojiFeedbackRepository } from '../../data_layer/EmojiFeedbackRepository';
-import type { ILowRatingContextRepository } from '../../data_layer/LowRatingContextRepository';
+import type {
+  ILowRatingContextRepository,
+  LowRatingAccountContext,
+} from '../../data_layer/LowRatingContextRepository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
 import type { RateLimiter } from '../../lib/rateLimit/InMemoryRateLimiter';
 import { ipRateLimitBucket } from '../../lib/rateLimit/ipHelpers';
@@ -8,6 +11,21 @@ import {
   isSafeReplyTo,
   resolveFeedbackLink,
 } from '../../lib/feedback/lowRating';
+import { isAppleSubscriptionPass } from '../passes/isAppleSubscriptionPass';
+import { passKindLabel } from '../passes/passKindLabel';
+
+const describePlan = (account: LowRatingAccountContext): string => {
+  if (account.isLifetime) return 'lifetime';
+  if (account.hasActiveSubscription) return 'Stripe subscriber';
+  const pass = account.activePass;
+  if (pass == null) return 'free';
+  if (isAppleSubscriptionPass(pass)) return 'Pro (Apple)';
+  const boughtIn = pass.stripe_payment_intent_id.startsWith('apple:')
+    ? ', Apple'
+    : '';
+  const activeUntil = `${pass.expires_at.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+  return `${passKindLabel(pass.kind)} (${pass.kind}${boughtIn}), active until ${activeUntil}`;
+};
 
 export interface LowRatingNotificationInput {
   rating: number;
@@ -58,7 +76,7 @@ export class NotifyLowRatingUseCase implements ILowRatingNotifier {
       const account =
         input.owner == null
           ? null
-          : await this.contextRepository.getByOwner(input.owner);
+          : await this.contextRepository.getByOwner(input.owner, input.now);
       const matched =
         account != null &&
         account.email.trim().toLowerCase() === email.trim().toLowerCase()
@@ -74,7 +92,9 @@ export class NotifyLowRatingUseCase implements ILowRatingNotifier {
         userId: matched?.userId ?? null,
         latestJobId: matched?.latestJobId ?? null,
         latestJobStatus: matched?.latestJobStatus ?? null,
-        plan: matched?.plan ?? null,
+        latestUploadId: matched?.latestUploadId ?? null,
+        latestUploadAt: matched?.latestUploadAt ?? null,
+        plan: matched == null ? null : describePlan(matched),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

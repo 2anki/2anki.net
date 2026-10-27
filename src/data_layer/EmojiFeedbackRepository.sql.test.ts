@@ -94,4 +94,11 @@ describe('LowRatingContextRepository generated SQL', () => {
         'order by "id" desc limit 1'
     );
   });
+
+  it('reads the newest upload for an owner by id and never its filename', () => {
+    expect(repo.buildLatestUploadQuery(4242).toString()).toBe(
+      'select "id", "created_at" from "uploads" where "owner" = 4242 ' +
+        'order by "id" desc limit 1'
+    );
+  });
 });
