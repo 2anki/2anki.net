@@ -1942,6 +1942,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         role: 'title',
         title: 'Mitosis',
         paragraphs: ['Cell division'],
+        chromeParagraphs: [],
         hasPicture: false,
       },
       {
@@ -1951,6 +1952,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         role: 'title',
         title: 'Meiosis',
         paragraphs: ['Gametes'],
+        chromeParagraphs: [],
         hasPicture: false,
       },
     ]);
@@ -1976,6 +1978,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         role: 'image',
         title: '',
         paragraphs: [],
+        chromeParagraphs: [],
         hasPicture: true,
       },
     ]);
@@ -1984,6 +1987,36 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
 
     expect(convertPDFToImages).toHaveBeenCalledTimes(1);
     expect(renderPdfPageImages).not.toHaveBeenCalled();
+  });
+
+  it('keeps one card per slide when the only slide text is the slide number and footer', async () => {
+    extractPptxSourceUnits.mockReturnValueOnce([
+      {
+        id: 'slide-1',
+        visibleText: '',
+        speakerNotes: '',
+        role: 'image',
+        title: '',
+        paragraphs: [],
+        chromeParagraphs: ['Cell Biology', '1'],
+        hasPicture: true,
+      },
+      {
+        id: 'slide-2',
+        visibleText: '',
+        speakerNotes: '',
+        role: 'image',
+        title: '',
+        paragraphs: [],
+        chromeParagraphs: ['Cell Biology', '2'],
+        hasPicture: true,
+      },
+    ]);
+
+    await runDeck('diagrams.pptx');
+
+    expect(renderPdfPageImages).toHaveBeenCalledTimes(1);
+    expect(convertPDFToImages).not.toHaveBeenCalled();
   });
 
   it('falls back to the page-image path when the slide XML cannot be read', async () => {

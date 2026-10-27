@@ -418,6 +418,7 @@ function hasSlideText(slide: SlideUnit): boolean {
   return (
     slide.title !== '' ||
     slide.paragraphs.length > 0 ||
+    slide.chromeParagraphs.length > 0 ||
     slide.speakerNotes !== ''
   );
 }

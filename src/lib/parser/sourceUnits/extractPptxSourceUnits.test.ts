@@ -409,7 +409,7 @@ describe('extractPptxSourceUnits — slide chrome', () => {
     ['dt', '10/6/2026'],
     ['ftr', 'Cell Biology, Lecture 3'],
     ['hdr', 'Draft for review'],
-  ])('leaves the %s placeholder off the slide text', (type, text) => {
+  ])('keeps the %s placeholder apart from the slide text', (type, text) => {
     const xml = slideOfShapesXml([
       shapeXml('<p:ph type="title"/>', ['Mitosis']),
       shapeXml('<p:ph idx="1"/>', ['Cell division']),
@@ -421,9 +421,10 @@ describe('extractPptxSourceUnits — slide chrome', () => {
     expect(unit.title).toBe('Mitosis');
     expect(unit.paragraphs).toEqual(['Cell division']);
     expect(unit.visibleText).toBe('Mitosis\nCell division');
+    expect(unit.chromeParagraphs).toEqual([text]);
   });
 
-  it('drops a slide number drawn ahead of the text on a slide with no title', () => {
+  it('keeps a slide number drawn ahead of the text out of the paragraphs of an untitled slide', () => {
     const xml = slideOfShapesXml([
       slideNumberShapeXml('<p:ph idx="12" type="sldNum"/>', '19'),
       shapeXml('', ['Exocytosis', 'Ca2+ influx triggers fusion']),
@@ -436,9 +437,10 @@ describe('extractPptxSourceUnits — slide chrome', () => {
       'Exocytosis',
       'Ca2+ influx triggers fusion',
     ]);
+    expect(unit.chromeParagraphs).toEqual(['19']);
   });
 
-  it('reads a picture slide whose only text is chrome as a slide with no text', () => {
+  it('keeps the chrome of a picture slide apart when it is the only text on the slide', () => {
     const xml = slideOfShapesXml([
       '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>',
       shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', ['Cell Biology']),
@@ -450,6 +452,7 @@ describe('extractPptxSourceUnits — slide chrome', () => {
     expect(unit).toMatchObject({
       title: '',
       paragraphs: [],
+      chromeParagraphs: ['Cell Biology', '7'],
       visibleText: '',
       role: 'image',
       hasPicture: true,

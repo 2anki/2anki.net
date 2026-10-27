@@ -2,5 +2,5 @@
   "id": "2026-10-27-pptx-slide-number-fronts",
   "date": "2026-10-27",
   "type": "fix",
-  "title": "PowerPoint cards leave out slide numbers, dates and footers, and an untitled slide's front is its first line with words"
+  "title": "PowerPoint cards ask about a slide's title or first line with words, never its slide number, date or footer"
 }

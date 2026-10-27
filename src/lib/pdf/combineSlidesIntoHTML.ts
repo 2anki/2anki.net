@@ -65,9 +65,10 @@ function slideCard(slide: SlideUnit, image: string): string | null {
     return null;
   }
 
-  const back = `${bulletList(remaining)}${imageOnBack}${speakerNotesBlock(
+  const answer = `${bulletList(remaining)}${imageOnBack}${speakerNotesBlock(
     slide.speakerNotes
   )}`;
+  const back = answer === '' ? bulletList(slide.chromeParagraphs) : answer;
 
   return `<ul class="toggle">
     <li>

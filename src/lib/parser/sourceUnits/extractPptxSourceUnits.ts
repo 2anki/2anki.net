@@ -24,6 +24,7 @@ export class PptxTooLargeError extends Error {
 export interface SlideUnit extends SourceUnit {
   title: string;
   paragraphs: string[];
+  chromeParagraphs: string[];
   hasPicture: boolean;
 }
 
@@ -184,22 +185,25 @@ function inferRole(slideXml: string, visibleText: string): SourceUnitRole {
 function splitSlideText(slideXml: string): {
   title: string;
   paragraphs: string[];
+  chromeParagraphs: string[];
 } {
   let title = '';
   const paragraphs: string[] = [];
+  const chromeParagraphs: string[] = [];
 
   for (const shape of tagBlocks(slideXml, 'p:sp')) {
-    if (isSlideChrome(shape)) continue;
     const shapeParagraphs = extractParagraphs(shape);
     if (shapeParagraphs.length === 0) continue;
-    if (title === '' && isTitleShape(shape)) {
+    if (isSlideChrome(shape)) {
+      chromeParagraphs.push(...shapeParagraphs);
+    } else if (title === '' && isTitleShape(shape)) {
       title = shapeParagraphs.join(' ');
     } else {
       paragraphs.push(...shapeParagraphs);
     }
   }
 
-  return { title, paragraphs };
+  return { title, paragraphs, chromeParagraphs };
 }
 
 function extractNotesText(notesXml: string): string {
@@ -279,9 +283,9 @@ export function extractPptxSourceUnits(pptxBuffer: Buffer): SlideUnit[] {
     if (isHidden(slideXml)) return [];
 
     const notesXml = notesEntries.get(num) ?? '';
-    const { title, paragraphs } = hasTextShapes(slideXml)
+    const { title, paragraphs, chromeParagraphs } = hasTextShapes(slideXml)
       ? splitSlideText(slideXml)
-      : { title: '', paragraphs: [] };
+      : { title: '', paragraphs: [], chromeParagraphs: [] };
     const visibleText = [title, ...paragraphs]
       .filter((text) => text !== '')
       .join('\n');
@@ -296,6 +300,7 @@ export function extractPptxSourceUnits(pptxBuffer: Buffer): SlideUnit[] {
         role,
         title,
         paragraphs,
+        chromeParagraphs,
         hasPicture: hasPicture(slideXml),
       },
     ];

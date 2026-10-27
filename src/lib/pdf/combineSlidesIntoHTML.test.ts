@@ -10,6 +10,7 @@ function slide(overrides: Partial<SlideUnit> = {}): SlideUnit {
     role: 'body',
     title: '',
     paragraphs: [],
+    chromeParagraphs: [],
     hasPicture: false,
     ...overrides,
   };
@@ -170,6 +171,99 @@ describe('combineSlidesIntoHTML', () => {
     expect(card.front).toBe('<img src="pdf-x/slide-1.png" />');
     expect(card.back).not.toContain('<img');
     expect(card.back).toContain('<p>A diagram</p>');
+  });
+
+  it('answers a picture slide whose only text is its slide number and footer with that text', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          role: 'image',
+          hasPicture: true,
+          chromeParagraphs: ['Cell Biology', '2'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('<img src="pdf-x/slide-1.png" />');
+    expect(card.back).toBe('<ul><li>Cell Biology</li><li>2</li></ul>');
+  });
+
+  it('answers a picture slide with its speaker notes, not its slide number, when it has notes', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          role: 'image',
+          hasPicture: true,
+          speakerNotes: 'Label the four phases',
+          chromeParagraphs: ['3'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('<img src="pdf-x/slide-1.png" />');
+    expect(card.back).toBe('<hr /><p>Label the four phases</p>');
+  });
+
+  it('leaves the slide number and footer off a card that already has an answer', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          title: 'Mitosis',
+          paragraphs: ['Prophase'],
+          chromeParagraphs: ['Cell Biology', '1'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('Mitosis');
+    expect(card.back).toBe(
+      '<ul><li>Prophase</li></ul><img src="pdf-x/slide-1.png" />'
+    );
+  });
+
+  it('answers a title-only slide with its footer when there is no slide image', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'Part 2', chromeParagraphs: ['Cell Biology', '5'] })],
+      [],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('Part 2');
+    expect(card.back).toBe('<ul><li>Cell Biology</li><li>5</li></ul>');
+  });
+
+  it('never fronts a card with a slide number: a slide with only chrome and no slide image is skipped', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const html = combineSlidesIntoHTML(
+        [slide({ id: 'slide-4', chromeParagraphs: ['Cell Biology', '4'] })],
+        [],
+        'lecture.pdf',
+        WORKSPACE
+      );
+
+      expect(cards(html)).toHaveLength(0);
+      expect(warn).toHaveBeenCalledWith(
+        '[combineSlidesIntoHTML] slide has nothing to show',
+        { slide: 'slide-4' }
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('never pairs one slide with the next: two slides give two cards', () => {
