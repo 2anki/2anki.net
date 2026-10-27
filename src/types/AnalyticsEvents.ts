@@ -175,6 +175,8 @@ export const KNOWN_EVENTS = new Set([
   'ai_spend_alert_sent',
   'conversion_stall_alert_sent',
   'stripe_access_alert_sent',
+  'metric_tripwire_checked',
+  'metric_tripwire_alert_sent',
   'ai_credits_exhausted',
   'pass_claim_email_sent',
   'anonymous_pass_claimed',
