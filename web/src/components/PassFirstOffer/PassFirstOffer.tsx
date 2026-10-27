@@ -56,6 +56,7 @@ export function PassFirstOffer({
         surface
       );
       if ('url' in result) {
+        // Leaving for Stripe: keep the buttons disabled until the page goes.
         globalThis.location.href = result.url;
         return;
       }
@@ -66,9 +67,8 @@ export function PassFirstOffer({
       );
     } catch {
       setError(t('checkoutError'));
-    } finally {
-      setPending(null);
     }
+    setPending(null);
   };
 
   return (

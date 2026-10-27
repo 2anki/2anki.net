@@ -1365,9 +1365,12 @@ class UploadService {
           props: { source, kind: 'anonymous' },
         });
         // Both the Day Pass card and the pass-first wall state the deck size.
+        // A failed flag read drops the count, never the redirect.
+        const flagOn = (key: string) =>
+          getFeatureFlag(key, false).catch(() => false);
         const showsCardCount =
-          (await getFeatureFlag(ANONYMOUS_DAY_PASS_CARD_FLAG, false)) ||
-          (await getFeatureFlag(LIMIT_WALL_PASS_FIRST_FLAG, false));
+          (await flagOn(ANONYMOUS_DAY_PASS_CARD_FLAG)) ||
+          (await flagOn(LIMIT_WALL_PASS_FIRST_FLAG));
         return res.redirect(
           showsCardCount
             ? `/limit?kind=anonymous&cards=${err.cardsFound}`
@@ -2792,7 +2795,7 @@ class UploadService {
     paying: boolean,
     source: UploadSource | null,
     requestId: string | undefined,
-    options?: { previewCap: number }
+    options?: { previewCap: number; heldCards: number }
   ): Promise<{
     downloadKey: string;
     cardCount: number;
@@ -2824,6 +2827,16 @@ class UploadService {
       if (remaining > 0) {
         cardLimit =
           options == null ? remaining : Math.min(remaining, options.previewCap);
+      } else if (options != null) {
+        // No free cards left: the claim is refused at the monthly limit below,
+        // so save the deck for a pass first instead of losing it.
+        await this.holdFileForPlan(
+          file,
+          owner,
+          0,
+          options.heldCards,
+          requestId
+        );
       }
     }
 

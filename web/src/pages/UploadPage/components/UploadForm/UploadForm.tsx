@@ -724,12 +724,14 @@ function UploadForm({
         if (cancelled) return;
         if (result.status === 200 && result.downloadKey != null) {
           setPlanClaim(result.kind === 'plan');
-          if (result.cardsHeldBack != null && result.cardsHeldBack > 0) {
-            setClaimPreview({
-              heldBack: result.cardsHeldBack,
-              saved: result.heldForPlan === true,
-            });
-          }
+          setClaimPreview(
+            result.cardsHeldBack != null && result.cardsHeldBack > 0
+              ? {
+                  heldBack: result.cardsHeldBack,
+                  saved: result.heldForPlan === true,
+                }
+              : null
+          );
           setDownloadLink(recoveryDownloadUrl(result.downloadKey));
           if (result.deckName) setDeckName(result.deckName);
           setCardCount(result.cardCount);
@@ -2861,7 +2863,16 @@ function UploadForm({
                 >
                   {t('passFirst:freeSignup')}
                 </Link>
-                <Link to="/login?redirect=/upload">
+                <Link
+                  to="/login?redirect=/upload"
+                  onClick={() => {
+                    saveFilenameForReattach(limitInfo?.filename ?? null);
+                    track('paywall_upgrade_clicked', {
+                      surface: 'upload-limit-wall',
+                      plan: 'sign_in',
+                    });
+                  }}
+                >
                   {t('passFirst:signIn')}
                 </Link>
               </>

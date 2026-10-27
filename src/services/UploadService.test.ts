@@ -130,6 +130,7 @@ import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import {
   ANONYMOUS_CARD_CAP,
   MONTHLY_CARD_LIMIT,
+  MonthlyLimitError,
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 
 const MockGeneratePackagesUseCase = GeneratePackagesUseCase as MockedClass<
@@ -6427,7 +6428,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       false,
       null,
       'req-1',
-      { previewCap: 21 }
+      { previewCap: 21, heldCards: 184 }
     );
 
     expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 21 });
@@ -6444,6 +6445,93 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       cards_held_back: 163,
     });
     expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(4242, 21);
+  });
+
+  it('cuts a preview-capped claim to what is left of the month when under 21', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 10 }], 174);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardUsage: vi
+          .fn()
+          .mockResolvedValue({ cards_used: 90, month_started_at: new Date() }),
+      }),
+      ...fakeUploadServiceDeps({ heldDeck })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      false,
+      null,
+      'req-1',
+      { previewCap: 21, heldCards: 184 }
+    );
+
+    expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 10 });
+    expect(result).toMatchObject({ cardCount: 10, heldForPlan: true });
+    expect(heldDeck.rows[0]).toMatchObject({ cards_held_back: 174 });
+  });
+
+  it('saves the deck for a pass before refusing a preview claim with no free cards left', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 184 }]);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardUsage: vi
+          .fn()
+          .mockResolvedValue({ cards_used: 100, month_started_at: new Date() }),
+      }),
+      ...fakeUploadServiceDeps({ heldDeck })
+    );
+
+    await expect(
+      service.convertHeldFileForOwner(
+        '4242',
+        heldSourceFile(),
+        false,
+        null,
+        'req-1',
+        { previewCap: 21, heldCards: 184 }
+      )
+    ).rejects.toBeInstanceOf(MonthlyLimitError);
+
+    expect(heldDeck.rows).toHaveLength(1);
+    expect(heldDeck.rows[0]).toMatchObject({
+      anon_id: planHoldKey('4242'),
+      card_count: 0,
+      cards_held_back: 184,
+    });
+  });
+
+  it('reports the preview as not saved when the plan hold cannot be stored', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 163);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    vi.spyOn(heldDeck, 'insert').mockRejectedValueOnce(new Error('db down'));
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      false,
+      null,
+      'req-1',
+      { previewCap: 21, heldCards: 184 }
+    );
+
+    expect(result).toMatchObject({ cardCount: 21, heldForPlan: false });
   });
 
   it('keeps the monthly allowance and saves no plan hold without a preview cap', async () => {

@@ -37,6 +37,9 @@ export interface HeldDeckConversionOptions {
   // Cut the deck to this many cards and save the source as a plan hold, so a
   // pass bought afterwards releases the rest without a re-upload.
   previewCap: number;
+  // The held deck's full size, for the plan hold of an account with no free
+  // cards left this month.
+  heldCards: number;
 }
 
 export interface HeldDeckConverter {
@@ -189,7 +192,10 @@ export class ClaimHeldDeckUseCase {
             paying,
             null,
             requestId,
-            { previewCap: ANONYMOUS_CARD_CAP }
+            {
+              previewCap: ANONYMOUS_CARD_CAP,
+              heldCards: hold.card_count + hold.cards_held_back,
+            }
           )
         : await this.converter.convertHeldFileForOwner(
             owner,

@@ -3530,6 +3530,39 @@ describe('held-deck gate screen-reader announcement', () => {
       );
     });
   });
+
+  it('shows the pass-first gate and announces the preview, not the free month, when the flag is on', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        ...anonymousLocals,
+        features: { kiUI: false, limitWallPassFirst: true },
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    const container = await submitHeld({
+      cardCount: 21,
+      cardsHeldBack: 163,
+      totalCards: 184,
+    });
+    await waitFor(() => {
+      const live = container.querySelector('output[aria-live="polite"]');
+      expect(live?.textContent).toBe(
+        '184 cards ready. Get a pass, then drop the file again for all of them. A free account gets the first 21.'
+      );
+    });
+    expect(
+      screen.getByRole('button', { name: /Semester Pass/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: 'Create a free account for the first 21 cards',
+      })
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/first 100 cards/)).not.toBeInTheDocument();
+  });
 });
 
 describe('limit state', () => {
@@ -3566,7 +3599,9 @@ describe('limit state', () => {
     linked_email: '',
   } as unknown as ReturnType<typeof useUserLocals>['data'];
 
-  function stubLimitFetch(kind: 'file_size' | 'card_count' = 'file_size') {
+  // The kind is the redirect's query after `kind=`, so a test can append
+  // `&cards=N` the way the server does.
+  function stubLimitFetch(kind: string = 'file_size') {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -3897,7 +3932,7 @@ describe('limit state', () => {
     } as ReturnType<typeof useUserLocals>['data']);
     const locationStub = { href: '', origin: 'http://localhost' } as Location;
     vi.stubGlobal('location', locationStub);
-    stubLimitFetch('anonymous&cards=184' as 'file_size');
+    stubLimitFetch('anonymous&cards=184');
 
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />

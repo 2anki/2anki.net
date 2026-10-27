@@ -147,7 +147,12 @@ describe('AnonymousPartialGate', () => {
 
 describe('AnonymousPartialGate — pass-first', () => {
   function renderPassFirst(
-    held = { cardCount: 21, cardsHeldBack: 163, totalCards: 184 }
+    held: {
+      cardCount: number;
+      cardsHeldBack: number;
+      totalCards: number;
+      dayPassCard?: boolean;
+    } = { cardCount: 21, cardsHeldBack: 163, totalCards: 184 }
   ) {
     return render(
       <QueryClientProvider client={new QueryClient()}>
@@ -158,12 +163,25 @@ describe('AnonymousPartialGate — pass-first', () => {
     );
   }
 
+  it('takes precedence over the Day Pass card arm', () => {
+    renderPassFirst({
+      cardCount: 21,
+      cardsHeldBack: 163,
+      totalCards: 184,
+      dayPassCard: true,
+    });
+    expect(screen.getByText('184 cards ready')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Your deck is ready — 184 cards')
+    ).not.toBeInTheDocument();
+  });
+
   it('states the real count and what a free account gets', () => {
     renderPassFirst();
     expect(screen.getByText('184 cards ready')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'A pass gets you all of them now. A free account gets the first 21.'
+        'Get a pass, then drop the file again for all of them. A free account gets the first 21.'
       )
     ).toBeInTheDocument();
     expect(screen.queryByText(/first 100 cards/)).not.toBeInTheDocument();

@@ -543,6 +543,7 @@ describe('ClaimHeldDeckUseCase', () => {
 
       expect(convertHeldFileForOwner.mock.calls[0][5]).toEqual({
         previewCap: 21,
+        heldCards: 34,
       });
       expect(result).toEqual({
         downloadKey: 'owner-key.apkg',

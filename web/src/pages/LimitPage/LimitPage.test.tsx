@@ -556,6 +556,41 @@ describe('LimitPage — pass-first wall', () => {
     expect(screen.queryByText('This file makes 184 cards')).toBeNull();
   });
 
+  it('still shows the Pro price when both the pass-first and Pro price flags are on', async () => {
+    mockedUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 1, email: 'test@example.com' },
+        features: { limitWallPassFirst: true, limitWallProPrice: true },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    mockGetCheckoutPrices.mockResolvedValue({
+      monthly: { cents: 799 },
+      annual: { cents: 6400 },
+      legacy: false,
+      lockInDeadline: null,
+    });
+    renderPage();
+    expect(
+      await screen.findByText('$7.99 per month, billed monthly')
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get Semester Pass' })
+    ).toBeTruthy();
+  });
+
+  it('leads with the passes over the Day Pass card when both anonymous flags are on', () => {
+    mockedUseUserLocals.mockReturnValue({
+      data: {
+        features: { limitWallPassFirst: true, anonymousDayPassCard: true },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    renderPage(['/limit?kind=anonymous&cards=184']);
+    expect(screen.getByRole('button', { name: /Semester Pass/ })).toBeTruthy();
+    expect(screen.queryByText('Free account')).toBeNull();
+  });
+
   it('puts the passes before Pro and features the Semester Pass for a signed-in account', () => {
     asLoggedInPassFirst();
     renderPage();

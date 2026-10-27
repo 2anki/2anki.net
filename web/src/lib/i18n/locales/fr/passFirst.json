@@ -4,7 +4,7 @@
   "readyShown": "{{total}} cartes prêtes, {{shown}} affichées",
   "fileTotal": "Ce fichier donne {{total}} cartes",
   "everyCard": "Obtiens toutes les cartes maintenant",
-  "gateBody": "Avec un pass, tu les as toutes maintenant. Un compte gratuit obtient les {{cap}} premières.",
+  "gateBody": "Prends un pass, puis dépose à nouveau le fichier pour les avoir toutes. Un compte gratuit obtient les {{cap}} premières.",
   "anonBody": "Sans compte, tu obtiens {{cap}} cartes. Un pass lève la limite, sans compte.",
   "previewSaved": "Un compte gratuit obtient les {{shown}} premières. Le reste est gardé 7 jours : prends un pass et les {{total}} arrivent dans Téléchargements, sans nouvel envoi.",
   "previewNotSaved": "Un compte gratuit obtient les {{shown}} premières. Prends un pass, puis dépose à nouveau le fichier pour les {{total}}.",

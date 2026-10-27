@@ -60,7 +60,6 @@ function PassFirstGate({ held }: Props) {
         surface={SURFACE}
         headline={t('readyTotal', { total: held.totalCards })}
         body={t('gateBody', { cap: ANONYMOUS_CARD_CAP })}
-        note={t('afterPayRedropTotal', { total: held.totalCards })}
       >
         <Link
           to="/register?redirect=/upload"
