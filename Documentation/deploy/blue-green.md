@@ -194,14 +194,24 @@ loopback):
 node_modules/.bin/tsx scripts/prod-smoke.ts http://127.0.0.1:3001
 ```
 
-Each probe prints `[smoke] ok <label>` or `[smoke] FAIL <reason>`, then one
-`[smoke] passed|FAILED against <url>` summary line; the summary is what to read
-in the deploy run log.
+A hand run against a color that is already serving gets the sample deck that
+process cached on its first conversion, so it does not re-exercise the parser or
+`create_deck`; the deploy run does, because the new color is fresh.
+
+Each probe prints `[smoke] ok <label>` or `[smoke] FAIL <reason>` to stdout,
+then one `[smoke] passed|FAILED against <url>` summary line; read it in the
+deploy run log (`gh run view <id> --log | grep '\[smoke\]'`), not pm2. A run
+with no summary line (a crash or a usage error prints `[smoke] FAILED: …`)
+failed. A failed sample conversion quotes the first 200 bytes of the response;
+the failed color's own log is `~/.pm2/logs/server-<color>-error.log` (the
+workflow's `pm2 logs` dump shows the live color). The bundle probe depends on
+the asset CDN, so a Spaces outage fails deploys too — users would get a blank
+page from that build anyway.
 
 ## Dry-run
 
 `DRY_RUN=1` prints every privileged or destructive action instead of running it,
-and skips the health-check waits. Safe to run anywhere:
+and skips the health-check waits and the smoke check. Safe to run anywhere:
 
 ```bash
 DRY_RUN=1 GIT_SHA=test scripts/deploy-blue-green.sh

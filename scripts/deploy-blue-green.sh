@@ -4,9 +4,8 @@
 # in-flight requests. See Documentation/deploy/blue-green.md for the rollout
 # plan, the manual Apache setup this pairs with, and the first-run bootstrap.
 #
-# This script is NOT wired into the automated deploy yet. Run it manually for
-# the dry-run and staged prod validation described in the doc. It assumes the
-# repo is already built (`pnpm build`) and GIT_SHA is exported.
+# .github/workflows/deploy.2anki.net.yml runs this on every deploy. It assumes
+# the repo is already built (`pnpm build`) and GIT_SHA is exported.
 #
 # Set DRY_RUN=1 to print every privileged/destructive action instead of running
 # it (used for the local docker / staging dry-run).

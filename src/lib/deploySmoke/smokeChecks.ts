@@ -25,6 +25,7 @@ const LINK_TAG = /<link\b[^>]*>/gi;
 const MODULE_SCRIPT = /<script\b[^>]*\btype="module"[^>]*>/i;
 const APP_ROOT = '<div id="root"';
 const ZIP_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+const ERROR_EXCERPT_BYTES = 200;
 
 function attribute(tag: string, name: string): string | null {
   const match = new RegExp(`\\b${name}="([^"]*)"`, 'i').exec(tag);
@@ -87,15 +88,26 @@ export function checkSampleDeck(
   expectedCards: number
 ): string[] {
   if (response.status !== 200) {
-    return [`sample conversion: HTTP ${response.status}, expected 200`];
+    const excerpt = response.body
+      .subarray(0, ERROR_EXCERPT_BYTES)
+      .toString('utf8')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return [
+      `sample conversion: HTTP ${response.status}, expected 200 (body: ${excerpt})`,
+    ];
   }
   const failures: string[] = [];
   if (!response.body.subarray(0, ZIP_MAGIC.length).equals(ZIP_MAGIC)) {
     failures.push('sample conversion: response is not an .apkg (zip) file');
   }
-  if (response.cardCount !== String(expectedCards)) {
+  if (response.cardCount == null) {
     failures.push(
-      `sample conversion: ${response.cardCount ?? 'no'} cards, expected ${expectedCards}`
+      `sample conversion: no X-Card-Count header, expected ${expectedCards}`
+    );
+  } else if (response.cardCount !== String(expectedCards)) {
+    failures.push(
+      `sample conversion: ${response.cardCount} cards, expected ${expectedCards}`
     );
   }
   return failures;

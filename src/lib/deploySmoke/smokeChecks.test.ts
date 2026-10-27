@@ -158,12 +158,35 @@ describe('checkSampleDeck', () => {
     ).toEqual(['sample conversion: response is not an .apkg (zip) file']);
   });
 
-  it('fails a non-200 conversion', () => {
+  it('fails a non-200 conversion and quotes the start of the body', () => {
     expect(
       checkSampleDeck(
-        { status: 500, cardCount: null, body: Buffer.from('{}') },
+        {
+          status: 500,
+          cardCount: null,
+          body: Buffer.from('{"message":\n  "Python exited"}'),
+        },
         8
       )
-    ).toEqual(['sample conversion: HTTP 500, expected 200']);
+    ).toEqual([
+      'sample conversion: HTTP 500, expected 200 (body: {"message": "Python exited"})',
+    ]);
+  });
+
+  it('caps the quoted body at 200 bytes', () => {
+    const [failure] = checkSampleDeck(
+      { status: 502, cardCount: null, body: Buffer.from('x'.repeat(5000)) },
+      8
+    );
+
+    expect(failure).toBe(
+      `sample conversion: HTTP 502, expected 200 (body: ${'x'.repeat(200)})`
+    );
+  });
+
+  it('names a missing card-count header rather than reporting zero cards', () => {
+    expect(
+      checkSampleDeck({ status: 200, cardCount: null, body: zip }, 8)
+    ).toEqual(['sample conversion: no X-Card-Count header, expected 8']);
   });
 });

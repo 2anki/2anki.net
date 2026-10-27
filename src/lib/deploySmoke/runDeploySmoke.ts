@@ -73,8 +73,7 @@ export async function runDeploySmoke(
     }
   };
 
-  let homeHtml: string | null = null;
-  let homeTitle: string | null = null;
+  const home: { html: string | null } = { html: null };
   for (const expected of DEPLOY_SMOKE_PAGES) {
     await probe(expected.path, async () => {
       const response = await fetchImpl(`${baseUrl}${expected.path}`, {
@@ -84,14 +83,14 @@ export async function runDeploySmoke(
       });
       const body = await response.text();
       if (expected.path === '/') {
-        homeHtml = body;
-        homeTitle = readHead(body).title;
+        home.html = body;
       }
+      const homeTitle = home.html == null ? null : readHead(home.html).title;
       return checkPage(expected, { status: response.status, body }, homeTitle);
     });
   }
 
-  const bundleSrc = homeHtml == null ? null : findAppBundleSrc(homeHtml);
+  const bundleSrc = home.html == null ? null : findAppBundleSrc(home.html);
   if (bundleSrc != null) {
     const bundleUrl = new URL(bundleSrc, baseUrl).toString();
     await probe('app bundle', async () => {

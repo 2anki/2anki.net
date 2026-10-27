@@ -1,4 +1,4 @@
-import express from 'express';
+import type express from 'express';
 
 export const DEPLOY_SMOKE_HEADER = 'x-2anki-deploy-smoke';
 
