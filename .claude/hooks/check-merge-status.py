@@ -89,10 +89,9 @@ SPEC_BRANCH = re.compile(r"^[a-z]+/spec-", re.IGNORECASE)
 SPEC_COMMIT = re.compile(r"add spec for|remove implemented spec", re.IGNORECASE)
 DEVIATIONS_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Deviations from spec\b", re.IGNORECASE | re.MULTILINE)
 USER_VISIBLE_PREFIX = re.compile(r"^(feat|fix)(\([^)]*\))?!?:", re.IGNORECASE)
-REACH_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Who else this reaches\b.*$", re.IGNORECASE | re.MULTILINE)
-ANY_HEADING = re.compile(r"^\s{0,3}#{1,6}\s", re.MULTILINE)
+REACH_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+Who else this reaches\b.*$", re.IGNORECASE | re.MULTILINE)
 REACH_PLACEHOLDER = re.compile(r"^(tbd|todo|n/?a|-|\.\.\.)?$", re.IGNORECASE)
-TABLE_SEPARATOR = re.compile(r"^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$")
+TABLE_SEPARATOR = re.compile(r"^(?=.*\|)\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$")
 REACH_SOURCE_ROOTS = ("src/", "web/src/")
 REACH_EXCLUDED_ROOTS = ("src/test/", "web/src/test/", "web/src/pages/WhatsNewPage/changelog/")
 REACH_EXCLUDED_PARTS = (
@@ -265,10 +264,17 @@ def deviations_violation(pr_data):
     )
 
 
-def is_user_visible_pr(pr_data):
+def user_visible_headline(pr_data):
     headlines = [pr_data.get("title") or ""]
     headlines += [c.get("messageHeadline") or "" for c in pr_data.get("commits") or []]
-    return any(USER_VISIBLE_PREFIX.match(h.strip()) for h in headlines)
+    for headline in headlines:
+        if USER_VISIBLE_PREFIX.match(headline.strip()):
+            return headline.strip()
+    return None
+
+
+def is_user_visible_pr(pr_data):
+    return user_visible_headline(pr_data) is not None
 
 
 def is_reach_source(path):
@@ -284,7 +290,8 @@ def reach_section_text(body):
     if heading is None:
         return None
     rest = body[heading.end():]
-    next_heading = ANY_HEADING.search(rest)
+    level = len(heading.group(1))
+    next_heading = re.search(rf"^ {{0,3}}#{{1,{level}}}[ \t]", rest, re.MULTILINE)
     section = rest[: next_heading.start()] if next_heading else rest
     return section.strip()
 
@@ -329,7 +336,8 @@ def has_reach_section(body):
 
 
 def reach_violation(pr_data):
-    if not is_user_visible_pr(pr_data):
+    trigger = user_visible_headline(pr_data)
+    if trigger is None:
         return None
     paths = [f.get("path") or "" for f in pr_data.get("files") or []]
     source_paths = [p for p in paths if is_reach_source(p)]
@@ -339,13 +347,15 @@ def reach_violation(pr_data):
         return None
     first_source = source_paths[0]
     return (
-        "the title or a commit headline is feat:/fix: and the PR changes source "
+        f"`{trigger}` is feat:/fix: and the PR changes source "
         f"({first_source}), but the `## Who else this reaches` section is missing "
         "or empty (TBD/TODO/N/A and comments do not count). Add one row per "
         "population the changed code is reachable from (signed-out, free, free "
         "over the limit, paying, pass holder, Auto Sync, each flag arm, Notion vs "
         "upload, web/MCP/iOS): a reachable row names the test that exercises it, "
-        "an unreachable row says why. Template: .claude/agents/engineer.md step 10"
+        "an unreachable row says why. Rule: .claude/agents/engineer.md step 10; "
+        "rows: the section in its PR description template. Add it with "
+        "`gh pr edit <n> --body-file`, then rerun the /ship step 2 reach reviewer"
     )
 
 

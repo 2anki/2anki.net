@@ -137,6 +137,9 @@ class IsUserVisiblePrTest(unittest.TestCase):
             "build(deps): x",
             "docs: fix typo",
             "revert: fix: x",
+            "perf: x",
+            "style: x",
+            "ci: x",
             'Revert "fix: x (#1)"',
             "",
         ):
@@ -217,6 +220,19 @@ class HasReachSectionTest(unittest.TestCase):
             template = handle.read().split("## PR description template", 1)[1]
         self.assertIsNotNone(check_merge_status.reach_section_text(template))
         self.assertFalse(check_merge_status.has_reach_section(template))
+
+    def test_sub_headings_stay_inside_the_section(self):
+        body = "## Who else this reaches\n### Web\n- free: a.test.ts\n## Risks\nnone"
+        self.assertTrue(check_merge_status.has_reach_section(body))
+
+    def test_a_line_above_a_bare_rule_still_counts(self):
+        self.assertTrue(check_merge_status.has_reach_section("## Who else this reaches\nfree: a.test.ts\n---\n"))
+
+    def test_a_heading_split_across_lines_is_not_the_heading(self):
+        self.assertIsNone(check_merge_status.reach_section_text("#\nWho else this reaches\nfoo"))
+
+    def test_the_next_section_does_not_fill_an_empty_one(self):
+        self.assertFalse(check_merge_status.has_reach_section("## Who else this reaches\n\n## Risks\nnone"))
 
     def test_empty_or_placeholder_sections_fail(self):
         for body in (
@@ -314,6 +330,40 @@ class MainWiringTest(unittest.TestCase):
     def test_allows_a_fix_merge_with_the_section(self):
         _, output = self.run_main(self.pr(REACH_TABLE))
         self.assertEqual(output, {"continue": True})
+
+    def test_still_denies_a_failed_check(self):
+        pr = {**self.pr(REACH_TABLE), "statusCheckRollup": [{"name": "test", "status": "COMPLETED", "conclusion": "FAILURE"}]}
+        _, output = self.run_main(pr)
+        self.assertIn("test: FAILURE", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_still_denies_a_dependency_change_without_a_test_run(self):
+        pr = {**self.pr(REACH_TABLE), "files": [{"path": "pnpm-lock.yaml"}]}
+        _, output = self.run_main(pr)
+        self.assertIn("pnpm-lock.yaml", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_still_denies_a_missing_review_marker(self):
+        pr = {**self.pr(REACH_TABLE), "comments": []}
+        _, output = self.run_main(pr)
+        self.assertIn("review-agent pass marker", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_still_exempts_dependabot_from_the_marker(self):
+        pr = {**self.pr(""), "title": "build(deps): bump x", "commits": commits("build(deps): bump x"),
+              "files": [{"path": "package.json"}], "author": {"login": "app/dependabot"}, "comments": [],
+              "statusCheckRollup": [{"name": "test", "status": "COMPLETED", "conclusion": "SUCCESS"}]}
+        _, output = self.run_main(pr)
+        self.assertEqual(output, {"continue": True})
+
+    def test_a_chore_touching_source_without_the_section_is_allowed(self):
+        pr = {**self.pr(""), "title": "chore: rename", "commits": commits("chore: rename")}
+        _, output = self.run_main(pr)
+        self.assertEqual(output, {"continue": True})
+
+    def test_the_deny_names_the_trigger_and_where_to_look(self):
+        _, output = self.run_main(self.pr(""))
+        reason = output["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("fix: keep the held-back notice", reason)
+        self.assertIn("src/usecases/x.ts", reason)
+        self.assertIn("PR description template", reason)
 
 
 if __name__ == "__main__":
