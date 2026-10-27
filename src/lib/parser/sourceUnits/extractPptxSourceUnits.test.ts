@@ -1,4 +1,5 @@
 import { strToU8, unzipSync, zipSync } from 'fflate';
+import { combineSlidesIntoHTML } from '../../pdf/combineSlidesIntoHTML';
 import {
   extractPptxSourceUnits,
   MAX_PPTX_PART_BYTES,
@@ -464,5 +465,25 @@ describe('extractPptxSourceUnits — slide chrome', () => {
     const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
 
     expect(unit.paragraphs).toEqual(['03', 'Endocytosis']);
+  });
+
+  it('turns a numbered slide with no title into a card fronted by its heading', () => {
+    const xml = slideOfShapesXml([
+      slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', '19'),
+      shapeXml('', ['03']),
+      shapeXml('', ['Exocytosis']),
+      shapeXml('', ['Ca2+ influx triggers fusion']),
+      shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', ['Cell Biology']),
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(buildPptx([{ xml }])),
+      [],
+      'lecture.pdf'
+    );
+
+    expect(html).toContain(
+      '<summary>Exocytosis</summary><ul><li>03</li><li>Ca2+ influx triggers fusion</li></ul></details>'
+    );
   });
 });
