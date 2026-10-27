@@ -16,10 +16,11 @@ section in the PR body:
     other nine locales are not read). Strings are matched by key path, built
     from the object openers inside each diff hunk; when an opener sits outside
     the hunk the path is a suffix of the real one. Not counted: a key added in
-    the same file at the same indentation whose path equals the removed one or
-    ends with it (a copy edit, or a move within its parent); or the same value
-    added in any en file (a rename or a move between namespaces). Lines over
-    4000 characters are skipped.
+    the same file at the same indentation whose path equals the removed one,
+    or where one path ends with the other (a copy edit, or a move within its
+    parent); or the same value added in any en file (a rename or a move
+    between namespaces). Lines over 4000 characters are skipped; key paths
+    keep 8 levels of 80 characters each, with dots inside a key read as `_`.
   - A deleted `web/src/**/*.tsx` component (tests and stories excluded) whose
     name contains Notice, Warning, Banner, Alert, Callout or Toast, singular or
     plural, as a PascalCase word (`FooNotice/index.tsx` counts by its folder
@@ -29,13 +30,13 @@ section in the PR body:
     or NOTICE(S) word (`AI_CREDITS_EXHAUSTED_WARNING_CODE`): the codes and
     texts the server sends with a conversion. Tests, `.d.ts`,
     `src/data_layer/public/`, `src/test/` and fixtures are excluded. Not
-    counted: the same name declared on an added line in another checked server
-    source.
+    counted: the same name declared on an added line in any checked server
+    source, the same file included (a value change).
 Rule 2, snapshot changes. A modified, deleted or renamed file under a `golden/`
 directory that is not a .ts/.tsx/.js/.mjs/.cjs source (the
 `__snapshots__/*.snap` files, golden fixtures) needs a `## Snapshot changes`
-section that names each changed file by its basename. Newly added files and
-add-only edits (no deleted lines) do not count.
+section that names each changed file by its basename. Newly added files,
+add-only edits and pure renames (no deleted lines) do not count.
 
 A section is empty when it holds only whitespace, HTML comments, checkboxes or
 a bare placeholder, optionally followed by "for users": none, none removed, no,
@@ -56,7 +57,7 @@ literal with no named constant; a removed string whose value is common enough
 to be added elsewhere in en ("Cancel"); a nested string swapped for one with
 the same leaf at the same depth, when an opener on either side sits outside
 its hunk; a PR past the file list gh returns; and anything in a diff GitHub
-refuses to serve (too large), where the string and constant checks fail open
+refuses to serve or over 5 MB, where the string and constant checks fail open
 while the file-list checks still run.
 
 Mirrors check-changelog-on-merge.py: fetches the PR via gh, fails open on any
@@ -78,8 +79,10 @@ EN_LOCALE_PREFIX = "web/src/lib/i18n/locales/en/"
 REMOVED_SECTION = "Removed for users"
 SNAPSHOT_SECTION = "Snapshot changes"
 MAX_LISTED = 15
-MAX_KEY_DEPTH = 16
-MAX_KEY_LENGTH = 200
+MAX_KEY_DEPTH = 8
+MAX_KEY_LENGTH = 80
+MAX_DIFF_BYTES = 5_000_000
+MAX_ITEM_LENGTH = 200
 MAX_LISTED_KEY_LENGTH = 120
 MAX_LINE_LENGTH = 4000
 GH_TIMEOUT_SECONDS = 15
@@ -218,6 +221,10 @@ def parse_hunks(diff_text):
     return hunks
 
 
+def path_part(key):
+    return key.replace(".", "_")[:MAX_KEY_LENGTH]
+
+
 def locale_entries(lines, side_marker):
     stack = []
     entries = []
@@ -231,11 +238,11 @@ def locale_entries(lines, side_marker):
         opener = LOCALE_OPENER.match(stripped)
         if opener:
             if len(stack) < MAX_KEY_DEPTH:
-                stack.append((indent, opener.group(1)[:MAX_KEY_LENGTH]))
+                stack.append((indent, path_part(opener.group(1))))
             continue
         entry = LOCALE_ENTRY.match(stripped)
         if entry and marker == side_marker:
-            key_path = ".".join([key for _, key in stack] + [entry.group(1)[:MAX_KEY_LENGTH]])
+            key_path = ".".join([key for _, key in stack] + [path_part(entry.group(1))])
             entries.append((key_path, entry.group(2), indent))
     return entries
 
@@ -362,8 +369,13 @@ def is_filled(text):
     return letters.removesuffix("forusers") not in PLACEHOLDERS
 
 
+def printable(item):
+    cleaned = "".join(ch if ch.isprintable() else "?" for ch in item)
+    return shorten(cleaned, MAX_ITEM_LENGTH)
+
+
 def listed(items):
-    shown = [f"  {item}" for item in items[:MAX_LISTED]]
+    shown = [f"  {printable(item)}" for item in items[:MAX_LISTED]]
     if len(items) > MAX_LISTED:
         shown.append(f"  ...and {len(items) - MAX_LISTED} more")
     return "\n".join(shown)
@@ -401,6 +413,9 @@ def find_removals(files, pr_ref):
         return removals
     diff_text = fetch_diff(pr_ref)
     if diff_text is None:
+        return removals
+    if len(diff_text) > MAX_DIFF_BYTES:
+        sys.stderr.write(f"{TAG} diff over {MAX_DIFF_BYTES} bytes; skipping the string and constant checks.\n")
         return removals
     hunks = parse_hunks(diff_text)
     return removed_locale_strings(hunks) + removals + removed_server_warnings(hunks)

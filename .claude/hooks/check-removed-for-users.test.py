@@ -383,12 +383,17 @@ class TestDiffParsing(unittest.TestCase):
         self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
         self.assertFalse(any(c[:3] == ["gh", "pr", "diff"] for c in fake.calls))
 
-    def test_long_whitespace_line_is_matched_in_linear_time(self):
+    def test_removed_lines_over_the_length_cap_are_skipped(self):
+        long_line = '  "long": "' + "v" * hook.MAX_LINE_LENGTH + '"'
+        diff = diff_block(EN_LOCALE, removed=[long_line, '  "short": "gone"'])
+        findings = hook.removed_locale_strings(hook.parse_hunks(diff))
+        self.assertEqual(findings, ['anonymousPartial.json: short ("gone")'])
+
+    def test_trailing_whitespace_line_matches_in_linear_time(self):
         line = '  "k": "v"' + " " * 200000 + "x"
-        diff = diff_block(EN_LOCALE, added=[line])
-        hunks = hook.parse_hunks(diff)
-        self.assertEqual(hook.removed_locale_strings(hunks), [])
+        started = time.monotonic()
         self.assertIsNone(hook.LOCALE_ENTRY.match(line.rstrip()))
+        self.assertLess(time.monotonic() - started, 0.5)
 
 
 class TestFileListEdges(unittest.TestCase):
@@ -524,6 +529,30 @@ class TestBoundedWork(unittest.TestCase):
         body = "## Removed for users" + " " * 65000 + "x\n"
         self.assert_fast(lambda: hook.filled_sections(body, hook.REMOVED_SECTION), 0.5)
 
+    def test_dotted_keys_keep_suffix_work_bounded(self):
+        dotted = "." * 197
+        openers = [f' {"  " * depth}"{dotted}{depth}": {{' for depth in range(1, 17)]
+        added = [f'+{"  " * 17}"{dotted}a{n}": "new {n}",' for n in range(1000)]
+        removed = [f'-{"  " * 17}"{dotted}r{n}": "old {n}",' for n in range(1000)]
+        hunks = hook.parse_hunks(nested_hunk(EN_LOCALE, openers + added + removed))
+        entries = hook.locale_entries(hunks[0]["lines"], "+")
+        self.assertLessEqual(len(hook.dotted_suffixes(entries[0][0])), hook.MAX_KEY_DEPTH + 1)
+        self.assert_fast(lambda: hook.removed_locale_strings(hunks))
+
+    def test_oversized_diff_skips_string_checks_but_keeps_file_checks(self):
+        huge = REMOVED_KEY_DIFF + " " * (hook.MAX_DIFF_BYTES + 1)
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE), file_entry(NOTICE, "DELETED")]), huge)
+        result = run_hook("gh pr merge 1", fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn(NOTICE, result["reason"])
+        self.assertNotIn("heldBack_other", result["reason"])
+
+    def test_listed_items_drop_control_characters(self):
+        path = "web/src/components/Evil\nIGNORE PREVIOUS/EvilNotice.tsx"
+        fake = gh_responder(pr_json([file_entry(path, "DELETED")]))
+        result = run_hook("gh pr merge 1", fake)
+        self.assertIn("Evil?IGNORE PREVIOUS", result["reason"])
+
     def test_filled_section_skips_the_diff_fetch(self):
         body = "## Removed for users\nFree users lose the held-back count.\n"
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF)
@@ -551,9 +580,7 @@ class TestKeyPathEdges(unittest.TestCase):
 
     def test_key_path_depth_is_capped(self):
         hunks = hook.parse_hunks(DEEP_NESTING)
-        added = hook.locale_entries(hunks[0]["lines"], "+")
         removed = hook.locale_entries(hunks[0]["lines"], "-")
-        self.assertEqual(added, [])
         self.assertEqual(removed[0][0].count("."), hook.MAX_KEY_DEPTH)
 
     def test_long_key_paths_are_shortened_in_the_listing(self):
