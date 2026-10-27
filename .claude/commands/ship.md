@@ -121,14 +121,14 @@ Watch for 15 minutes after the deploy. Any regression → step 8 revert.
 
 Runs on the success path only (healthy deploy, or a merge with no deploy) — skip if you're headed to step 8 instead. "Merge" here means `state: MERGED` from step 4; the branch only exists to delete once that's confirmed.
 
-Delete the PR's local branch by name (`headRefName` from step 1), wherever the checkout is now:
+Delete the PR's local branch by name (`headRefName` from step 1, never `main`), wherever the checkout is now. Re-read `headRefOid` after the merge (`gh pr view <n> --json headRefOid`) so it is the head that merged.
 
-1. If a worktree has `<branch>` checked out (`git worktree list --porcelain`) and `git -C <path> status --porcelain` is empty, `git worktree remove <path>`. A dirty worktree stays; name it in the report.
-2. If this checkout is on `<branch>`, `git checkout main && git pull --ff-only`.
-3. If `git rev-list --count <headRefOid>..<branch>` is `0` (no commits beyond what merged), `git branch -D <branch>` (squash-merges leave the tip unreachable from main, so `-d` refuses). Otherwise keep it and name it in the report.
+1. If this checkout is on `<branch>`, `git checkout main && git pull --ff-only`. If this checkout is a linked worktree that cannot switch to `main`, leave it and its branch in place and say so in the report.
+2. `git worktree prune`, then for each *other* linked worktree on `<branch>` (`git worktree list --porcelain`, skipping the main worktree and the one you are in): if `git -C <path> status --porcelain` is empty, `git worktree unlock <path>` (agent worktrees are locked; ignore "not locked") and `git worktree remove <path>`. A dirty worktree stays; say so in the report.
+3. If `git show-ref --verify --quiet refs/heads/<branch>` finds the branch and `git rev-list --count <headRefOid>..<branch>` is `0` (no commits beyond what merged), `git branch -D <branch>` (squash-merges leave the tip unreachable from main, so `-d` refuses). A branch with extra commits, or one a kept worktree still holds, stays; say so in the report. No local branch → nothing to do.
 4. `git fetch --prune origin`.
 
-Do not skip this because the checkout already moved to another branch. Agents go back to `main` while CI runs, and a PR built in an agent worktree was never on this checkout. Under the old "only if still on the branch" rule, both cases left the branch behind: nine squash-merged branches had piled up by 2026-10-27.
+Do not skip this because the checkout already moved to another branch. Agents go back to `main` while CI runs, and a PR built in an agent worktree was never on this checkout. Skipping both cases left nine squash-merged branches behind by 2026-10-27.
 
 ## 8. Failure → revert
 
@@ -143,6 +143,6 @@ If the deploy run failed, `/api/version` does not report the merge SHA after the
 
 ## Report
 
-End with two lines: the PR URL, and the deploy verdict (`healthy <sha>` / `no deploy` / `reverted → <revert PR URL>`).
+End with two lines: the PR URL, and the deploy verdict (`healthy <sha>` / `no deploy` / `reverted → <revert PR URL>`). Add a third line, `kept: <branch or worktree path> (<reason>)`, only when step 7 left something in place.
 
 Trio calls stay in the PR body under `## Decisions`; Alexander overrides one by commenting on the merged PR or opening a follow-up. If the PR leaves a step only Alexander can do (a prod secret, a Stripe dashboard setting, confirming on a specific account), ask Alexander for it in the chat; an unattended run names it in the morning summary instead. Do not open a `Needs you` issue. Do not create a daily `Shipped <date>` digest issue: those were dropped 2026-09-08 because they duplicated the merged-PR list and added an issue a day to close.
