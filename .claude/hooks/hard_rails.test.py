@@ -30,6 +30,17 @@ class TestRailPaths(unittest.TestCase):
             "src/lib/ankify/notionWebhookSignature.ts",
             "src/usecases/users/CheckMonthlyCardLimitUseCase.ts",
             "src/usecases/passes/ClaimPassUseCase.ts",
+            "src/data_layer/RefundedPaymentIntentsRepository.ts",
+            "src/controllers/IapController.ts",
+            "src/usecases/iap/RedeemAppleTransactionUseCase.ts",
+            "src/services/AppleStoreKitService/AppleStoreKitService.ts",
+            "src/data_layer/AppleTransactionsRepository.ts",
+            "src/data_layer/TokenRepository.ts",
+            "src/data_layer/McpTokenRepository.ts",
+            "src/data_layer/MagicTokenRepository.ts",
+            "src/data_layer/PassClaimTokensRepository.ts",
+            "src/lib/User/isResetTokenLive.ts",
+            "src/data_layer/AnonymousPassRepository.ts",
         ]
         self.assertEqual(rails.rail_paths(paths), paths)
 
@@ -62,6 +73,13 @@ class TestRailPaths(unittest.TestCase):
             "src/server.ts",
             "src/lib/isPaying.ts",
             "src/lib/ankify/access.ts",
+            "src/data_layer/NotionRespository.ts",
+            "src/routes/middleware/configureUserLocal.ts",
+            "src/usecases/users/ConfirmEmailChangeUseCase.ts",
+            "src/routes/middleware/RejectDuplicatePurchase.ts",
+            "src/lib/misc/hashToken.ts",
+            "src/lib/misc/unHashToken.ts",
+            "src/lib/misc/hmacToken.ts",
         ]
         self.assertEqual(rails.rail_paths(paths), paths)
 
@@ -76,6 +94,8 @@ class TestRailPaths(unittest.TestCase):
             "src/servers.ts",
             "scripts/reap-orphans.sh",
             "src/services/EmailService/templates/welcome.html",
+            "src/lib/claude/countVisionTokens.ts",
+            "web/scripts/designTokens.ts",
         ]
         self.assertEqual(rails.rail_paths(paths), [])
 

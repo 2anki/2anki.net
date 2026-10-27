@@ -30,6 +30,23 @@ NAME_GLOBS = (
     "signup",
     "checkmonthly",
     "passes",
+    # Payment code that is not named after Stripe. Over the six months to
+    # 2026-10-27 it would have flagged two more commits, both to the ops
+    # failed-payments chart.
+    "payment",
+    # Apple in-app purchases are a second payment rail with no Stripe in the name.
+    "/iap",
+    "storekit",
+    "appletransaction",
+    # Stores of login, reset, claim and session tokens. A bare "token" glob would
+    # also catch countVisionTokens and designTokens. These three globs would have
+    # flagged no extra commits.
+    "tokenrepository",
+    "tokensrepository",
+    "resettoken",
+    # AnonymousPassRepository holds Stripe session and payment intent ids, and
+    # "passes" misses the singular.
+    "passrepository",
 )
 
 EXPLICIT_PREFIXES = (
@@ -48,6 +65,21 @@ EXPLICIT_FILES = (
     "src/server.ts",
     "src/lib/isPaying.ts",
     "src/lib/ankify/access.ts",
+    # The helpers that encrypt or key stored tokens, and the repository that
+    # decrypts stored Notion tokens. JWT signing is in AuthenticationService.ts,
+    # which the "auth" glob covers.
+    "src/data_layer/NotionRespository.ts",
+    # Where a session cookie, an email-change token and a duplicate purchase are
+    # checked. None would have flagged an extra commit in the six months to
+    # 2026-10-27; each change to them already hit another trigger. UsersRepository,
+    # UsersService and RacService also check tokens but would add 8 to 11 rail
+    # PRs each, so they stay off.
+    "src/routes/middleware/configureUserLocal.ts",
+    "src/usecases/users/ConfirmEmailChangeUseCase.ts",
+    "src/routes/middleware/RejectDuplicatePurchase.ts",
+    "src/lib/misc/hashToken.ts",
+    "src/lib/misc/unHashToken.ts",
+    "src/lib/misc/hmacToken.ts",
     # Files whose entire job is to hold a production limit, listed as well as
     # content-triggered so a rename or a refactor that drops the constant name
     # still lands on the rail.
