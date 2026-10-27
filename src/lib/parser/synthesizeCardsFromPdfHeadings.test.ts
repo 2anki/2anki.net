@@ -539,3 +539,178 @@ describe('stray glyph lines', () => {
     });
   });
 });
+
+describe('slide decks', () => {
+  const frontsAndBacks = (pages: PdfPage[]) =>
+    synthesizeCardsFromPdfHeadings(pages, 'Physiology').map(
+      ({ front, back }) => ({ front, back })
+    );
+
+  it('keeps each slide title on the front when pdf.js glues the bullet glyph to its text', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Membrane Proteins',
+          '•Integral proteins span the bilayer',
+          '•Peripheral proteins sit on one surface',
+          '•Channels, carriers and pumps move solutes',
+          '4',
+        ].join('\n'),
+      },
+      {
+        text: [
+          'Types of Transport',
+          '•Passive: no ATP, moves down the gradient',
+          '‣Active: uses ATP, moves against the gradient',
+          '▪Vesicular: endocytosis and exocytosis',
+          '5',
+        ].join('\n'),
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Membrane Proteins',
+        back: [
+          '•Integral proteins span the bilayer',
+          '•Peripheral proteins sit on one surface',
+          '•Channels, carriers and pumps move solutes',
+        ].join('\n'),
+      },
+      {
+        front: 'Types of Transport',
+        back: [
+          '•Passive: no ATP, moves down the gradient',
+          '‣Active: uses ATP, moves against the gradient',
+          '▪Vesicular: endocytosis and exocytosis',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it.each(['–', '—'])(
+    'keeps a slide title on the front and its %s sub-bullets on the back',
+    (dash) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Learning Objectives',
+            '• Describe the path of blood through the heart chambers',
+            `${dash} Explain the phases of the cardiac cycle`,
+            '• Relate the ECG waves to electrical events',
+            `${dash} Calculate cardiac output from HR and SV`,
+            '2',
+          ].join('\n'),
+        },
+        {
+          text: [
+            'Heart Sounds',
+            '• S1 lub: AV valves closing at the start of systole',
+            `${dash} Loudest at the apex`,
+            '• S2 dub: semilunar valves closing as ventricles relax',
+            '3',
+          ].join('\n'),
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: 'Learning Objectives',
+          back: [
+            '• Describe the path of blood through the heart chambers',
+            `${dash} Explain the phases of the cardiac cycle`,
+            '• Relate the ECG waves to electrical events',
+            `${dash} Calculate cardiac output from HR and SV`,
+          ].join('\n'),
+        },
+        {
+          front: 'Heart Sounds',
+          back: [
+            '• S1 lub: AV valves closing at the start of systole',
+            `${dash} Loudest at the apex`,
+            '• S2 dub: semilunar valves closing as ventricles relax',
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  it('rejoins bullet glyphs that pdf.js put on their own line with the text after them', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Learning Objectives',
+          '•',
+          'Describe the structure of the plasma membrane',
+          '•',
+          'Explain how the Na+/K+ pump sets the resting',
+          'potential',
+          '•',
+          'Relate transport defects to disease',
+          '2',
+        ].join('\n'),
+      },
+      {
+        text: [
+          'Cardiac Output',
+          '•',
+          'CO equals heart rate times stroke volume',
+          '•',
+          'Normal resting value is about 5 litres per minute',
+          '3',
+        ].join('\n'),
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Learning Objectives',
+        back: [
+          '• Describe the structure of the plasma membrane',
+          '• Explain how the Na+/K+ pump sets the resting',
+          'potential',
+          '• Relate transport defects to disease',
+        ].join('\n'),
+      },
+      {
+        front: 'Cardiac Output',
+        back: [
+          '• CO equals heart rate times stroke volume',
+          '• Normal resting value is about 5 litres per minute',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('makes no card from a page of glued bullets with no heading above them', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '•Short bullet',
+          '•A noticeably longer bullet line follows the short one',
+          '•Another bullet',
+        ].join('\n'),
+      },
+    ];
+
+    expect(synthesizeCardsFromPdfHeadings(pages, 'Notes')).toEqual([]);
+  });
+
+  it('still reads a hyphen glued to a number as part of the heading', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '-70 mV',
+          'Typical resting membrane potential of a neuron, set by K+ leak channels.',
+        ].join('\n'),
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '-70 mV',
+        back: 'Typical resting membrane potential of a neuron, set by K+ leak channels.',
+      },
+    ]);
+  });
+});
