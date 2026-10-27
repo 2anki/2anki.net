@@ -202,6 +202,34 @@ describe('ClaimHeldDeckUseCase', () => {
     expect(file.buffer).toEqual(zipBytes);
   });
 
+  it('re-converts a held PowerPoint by handing the .pptx source to the converter unchanged', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await repo.insert({
+      storageKey: 'held/slides-source.bin',
+      anonId: ANON,
+      filename: 'lecture.pptx',
+      cardCount: 21,
+      cardsHeldBack: 9,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    const slideBytes = Buffer.from('PK\x03\x04 slide deck bytes');
+    const { store } = buildStore(slideBytes);
+    const { converter, convertHeldFileForOwner } = buildConverter();
+    const useCase = new ClaimHeldDeckUseCase(repo, store, converter);
+
+    await useCase.execute({
+      anonId: ANON,
+      owner: OWNER,
+      paying: false,
+      requestId: undefined,
+    });
+
+    expect(convertHeldFileForOwner).toHaveBeenCalledTimes(1);
+    const [, file] = convertHeldFileForOwner.mock.calls[0];
+    expect(file).toMatchObject({ originalname: 'lecture.pptx' });
+    expect(file.buffer).toEqual(slideBytes);
+  });
+
   it('410s on a second claim once the hold is already claimed', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo);

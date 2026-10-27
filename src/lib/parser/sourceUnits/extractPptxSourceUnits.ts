@@ -140,16 +140,29 @@ function textRuns(paragraph: string): string[] {
 }
 
 function extractParagraphs(xml: string): string[] {
-  const texts: string[] = [];
+  return readParagraphs(xml).map((paragraph) => paragraph.text);
+}
+
+// Insert > Slide Number and Date & Time drop a field into whichever text box
+// holds the cursor, so a line can be slide chrome without a chrome placeholder.
+const CHROME_FIELD_TYPE = /\stype="(?:slidenum|datetime[^"]*)"/;
+
+function readParagraphs(xml: string): { text: string; fieldOnly: boolean }[] {
+  const paragraphs: { text: string; fieldOnly: boolean }[] = [];
 
   for (const paragraph of tagBlocks(xml, 'a:p')) {
-    const paraTexts = textRuns(paragraph);
-    if (paraTexts.length > 0) {
-      texts.push(paraTexts.join(''));
-    }
+    const runs = textRuns(paragraph);
+    if (runs.length === 0) continue;
+    const fieldRuns = tagBlocks(paragraph, 'a:fld')
+      .filter((field) => hasAttribute(field, 'a:fld', CHROME_FIELD_TYPE))
+      .flatMap((field) => textRuns(field));
+    paragraphs.push({
+      text: runs.join(''),
+      fieldOnly: fieldRuns.length === runs.length,
+    });
   }
 
-  return texts;
+  return paragraphs;
 }
 
 function hasTextShapes(slideXml: string): boolean {
@@ -192,18 +205,29 @@ function splitSlideText(slideXml: string): {
   const chromeParagraphs: string[] = [];
 
   for (const shape of tagBlocks(slideXml, 'p:sp')) {
-    const shapeParagraphs = extractParagraphs(shape);
+    const chromeShape = isSlideChrome(shape);
+    const shapeParagraphs: string[] = [];
+    for (const { text, fieldOnly } of readParagraphs(shape)) {
+      if (chromeShape || fieldOnly) {
+        chromeParagraphs.push(text);
+      } else {
+        shapeParagraphs.push(text);
+      }
+    }
     if (shapeParagraphs.length === 0) continue;
-    if (isSlideChrome(shape)) {
-      chromeParagraphs.push(...shapeParagraphs);
-    } else if (title === '' && isTitleShape(shape)) {
+    if (title === '' && isTitleShape(shape)) {
       title = shapeParagraphs.join(' ');
     } else {
       paragraphs.push(...shapeParagraphs);
     }
   }
 
-  return { title, paragraphs, chromeParagraphs };
+  // A placeholder inside mc:AlternateContent is stored once per branch.
+  return {
+    title,
+    paragraphs,
+    chromeParagraphs: [...new Set(chromeParagraphs)],
+  };
 }
 
 function extractNotesText(notesXml: string): string {

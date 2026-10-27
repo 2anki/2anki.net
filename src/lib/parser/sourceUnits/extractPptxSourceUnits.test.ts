@@ -383,13 +383,25 @@ function shapeXml(placeholder: string, paragraphs: string[]): string {
       </p:sp>`;
 }
 
-function slideNumberShapeXml(placeholder: string, slideNumber: string): string {
+function fieldParagraphXml(fieldType: string, text: string): string {
+  return `<a:p><a:fld id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}" type="${fieldType}"><a:rPr lang="en-US"/><a:t>${text}</a:t></a:fld></a:p>`;
+}
+
+function fieldShapeXml(
+  placeholder: string,
+  fieldType: string,
+  text: string
+): string {
   return `<p:sp>
         <p:nvSpPr><p:nvPr>${placeholder}</p:nvPr></p:nvSpPr>
         <p:txBody>
-          <a:p><a:fld id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}" type="slidenum"><a:rPr lang="en-US"/><a:t>${slideNumber}</a:t></a:fld></a:p>
+          ${fieldParagraphXml(fieldType, text)}
         </p:txBody>
       </p:sp>`;
+}
+
+function slideNumberShapeXml(placeholder: string, slideNumber: string): string {
+  return fieldShapeXml(placeholder, 'slidenum', slideNumber);
 }
 
 function slideOfShapesXml(shapes: string[]): string {
@@ -488,5 +500,97 @@ describe('extractPptxSourceUnits — slide chrome', () => {
     expect(html).toContain(
       '<summary>Exocytosis</summary><ul><li>03</li><li>Ca2+ influx triggers fusion</li></ul></details>'
     );
+  });
+
+  it.each([
+    ['slidenum', '7'],
+    ['datetime1', '10/6/2026'],
+    ['datetimeFigureOut', '10/6/2026'],
+  ])(
+    'keeps a %s field inserted into an ordinary text box apart from the slide text',
+    (fieldType, text) => {
+      const xml = slideOfShapesXml([
+        fieldShapeXml('', fieldType, text),
+        shapeXml('', ['Exocytosis']),
+      ]);
+
+      const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+      expect(unit.paragraphs).toEqual(['Exocytosis']);
+      expect(unit.visibleText).toBe('Exocytosis');
+      expect(unit.chromeParagraphs).toEqual([text]);
+    }
+  );
+
+  it('moves a line made only of a slide-number field out of a body placeholder', () => {
+    const xml = slideOfShapesXml([
+      shapeXml('<p:ph type="title"/>', ['Mitosis']),
+      `<p:sp>
+        <p:nvSpPr><p:nvPr><p:ph idx="1"/></p:nvPr></p:nvSpPr>
+        <p:txBody>
+          <a:p><a:r><a:t>Prophase</a:t></a:r></a:p>
+          ${fieldParagraphXml('slidenum', '4')}
+        </p:txBody>
+      </p:sp>`,
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('Mitosis');
+    expect(unit.paragraphs).toEqual(['Prophase']);
+    expect(unit.chromeParagraphs).toEqual(['4']);
+  });
+
+  it('keeps a line that mixes typed words with a slide-number field as slide text', () => {
+    const xml = slideOfShapesXml([
+      `<p:sp>
+        <p:nvSpPr><p:nvPr/></p:nvSpPr>
+        <p:txBody>
+          <a:p><a:r><a:t>Slide </a:t></a:r><a:fld id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}" type="slidenum"><a:t>4</a:t></a:fld></a:p>
+        </p:txBody>
+      </p:sp>`,
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.paragraphs).toEqual(['Slide 4']);
+    expect(unit.chromeParagraphs).toEqual([]);
+  });
+
+  it('answers a picture slide whose slide number sits in an ordinary text box with that number', () => {
+    const xml = slideOfShapesXml([
+      '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>',
+      fieldShapeXml('', 'slidenum', '7'),
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(buildPptx([{ xml }])),
+      ['/ws/pdf-x/slide-1.png'],
+      'lecture.pdf',
+      '/ws'
+    );
+
+    expect(html).toContain(
+      '<summary><img src="pdf-x/slide-1.png" /></summary><ul><li>7</li></ul></details>'
+    );
+  });
+
+  it('lists a slide number once when the placeholder is stored twice for older PowerPoint versions', () => {
+    const slideNumber = slideNumberShapeXml(
+      '<p:ph type="sldNum" sz="quarter" idx="12"/>',
+      '4'
+    );
+    const xml = slideOfShapesXml([
+      shapeXml('<p:ph type="title"/>', ['Mitosis']),
+      `<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+        <mc:Choice xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" Requires="p14">${slideNumber}</mc:Choice>
+        <mc:Fallback>${slideNumber}</mc:Fallback>
+      </mc:AlternateContent>`,
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('Mitosis');
+    expect(unit.chromeParagraphs).toEqual(['4']);
   });
 });

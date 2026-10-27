@@ -1,6 +1,7 @@
 import { AI_FILE_CONCURRENCY } from '../../lib/claude/aiFileConcurrency';
 import { vi, type MockInstance } from 'vitest';
 import fs from 'fs';
+import { strToU8, zipSync } from 'fflate';
 import * as trackModule from '../../services/events/track';
 import {
   getFileContents,
@@ -321,6 +322,27 @@ describe('runUploadGenerationInWorker', () => {
 
     expect(mockPrepareDeck).toHaveBeenCalledTimes(1);
     expect(mockPrepareDeck.mock.calls[0][0].settings.processPDFs).toBe(true);
+  });
+
+  it('converts a slide deck that arrives without an extension as a PowerPoint', async () => {
+    const slides = Buffer.from(
+      zipSync({ 'ppt/presentation.xml': strToU8('<p:presentation/>') })
+    );
+    const file = makeFile({
+      originalname: 'lecture',
+      filename: 'lecture',
+      key: 'lecture',
+      path: '',
+      buffer: slides,
+    });
+
+    await runUploadGenerationInWorker(makeTask(file));
+
+    expect(mockPrepareDeck).toHaveBeenCalledTimes(1);
+    expect(mockPrepareDeck.mock.calls[0][0]).toMatchObject({
+      name: 'lecture.pptx',
+      files: [{ name: 'lecture.pptx', contents: slides }],
+    });
   });
 
   describe('page range scope', () => {
