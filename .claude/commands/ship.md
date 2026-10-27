@@ -20,13 +20,15 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
   - otherwise → finish what keeps it draft, wait for green, `gh pr ready`, and continue.
 - Rail class? Run the classifier on the file list and diff:
   ```bash
+  gh pr view <n> --json headRefOid --jq .headRefOid > <scratchpad>/ship-sha-<n>.txt
   gh pr view <n> --json files --jq '.files[].path' > <scratchpad>/ship-paths-<n>.txt
   gh pr diff <n> > <scratchpad>/ship-diff-<n>.txt
+  [ "$(gh pr view <n> --json headRefOid --jq .headRefOid)" = "$(cat <scratchpad>/ship-sha-<n>.txt)" ] || { echo "head moved while saving: run this block again"; exit 1; }
   python3 -c "import sys; sys.path.insert(0,'.claude/hooks'); import hard_rails as r; p=open('<scratchpad>/ship-paths-<n>.txt').read().split(); print(r.rail_paths(p)); print(r.rail_content_hits(open('<scratchpad>/ship-diff-<n>.txt').read()))"
   ```
-  `<scratchpad>` is the session scratchpad's absolute path (the environment block names it); write it out in full, including inside the python string. The file names carry the PR number: two ships running at once wrote the same `ship-diff.txt` on 2026-10-15 and one overwrote the other mid-review (#4758). Regenerate the diff after every push to the branch; a reviewer reading a stale file reviews the wrong round.
+  `<scratchpad>` is the session scratchpad's absolute path (the environment block names it); write it out in full, including inside the python string. The file names carry the PR number: two ships running at once wrote the same `ship-diff.txt` on 2026-10-15 and one overwrote the other mid-review (#4758). Regenerate all three files after every push to the branch, the rebase push below included; a reviewer reading a stale file reviews the wrong round, and a stale `ship-sha-<n>.txt` blocks the step 2 marker.
   Any hit → run the matching checks in step 1b before step 2, and step 6b after the deploy. A rail PR merges on that evidence; it does not stop and wait for Alexander, unless its body records an unverified assumption (step 1).
-- Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` (only when the PR `author.login` is the authenticated `gh` user and the branch is the PR's own feature branch, never `main`) and re-read `headRefOid`. A Dependabot-authored head is the exception: never rebase or push it yourself; comment `@dependabot rebase`, wait on a `ScheduleWakeup` of 1200s, and re-read `headRefOid`; the run continues with other items meanwhile, this holds only this PR.
+- Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` (only when the PR `author.login` is the authenticated `gh` user and the branch is the PR's own feature branch, never `main`) and re-read `headRefOid`. A Dependabot-authored head is the exception: never rebase or push it yourself; comment `@dependabot rebase`, wait on a `ScheduleWakeup` of 1200s, re-read `headRefOid`, and `gh pr checkout <n> --force` so the checkout matches it; the run continues with other items while you wait, and the wait holds only this PR. Under `/batch dependabot`, a PR the worker sent through `/security-review` goes back to `batch-tasks/dependabot.md` steps 3 and 4 whenever `headRefOid` no longer matches the SHA that review covered, then resumes this ship from step 1.
 
 ## 1b. Rail verification (only when step 1 hit)
 
@@ -55,9 +57,10 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash
   HEAD=$(gh pr view <n> --json headRefOid --jq .headRefOid)
+  [ "$HEAD" = "$(cat <scratchpad>/ship-sha-<n>.txt)" ] || { echo "head moved since review"; exit 1; }
   gh pr review <n> --comment --body "$(printf '%s\n\n<!-- ship-review: pass sha=%s -->' "<one-paragraph verdict>" "$HEAD")"
   ```
-  The marker is what `check-merge-status.py` looks for. It is bound to the SHA — any later push invalidates it and you re-review.
+  The marker is what `check-merge-status.py` looks for. It is bound to the SHA — any later push invalidates it and you re-review. The check against `ship-sha-<n>.txt` (written with the diff in step 1) stops a marker for a head pushed while the reviewers were reading the old one: on a mismatch, restart from step 1, which regenerates all three files and reruns the classifier.
 
 **Browser attestation for `web/src/` diffs happens here.** If the diff touches `web/src/` (beyond changelog JSON) and the PR body carries neither the two ticked checkboxes nor the `Browser check: not applicable —` out-clause: start the dev server (`pnpm dev`, sanctioned inside `/ship` only), walk the golden path at 375px through the Playwright MCP, confirm no console errors, tick the boxes with `gh pr edit <n> --body`, then **kill the dev server** before moving on (`scripts/reap-orphans.sh --force` if a process survives). If the change has no runtime-visible effect, write the out-clause honestly instead — never claim a check you did not run.
 

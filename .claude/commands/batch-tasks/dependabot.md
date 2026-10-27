@@ -34,12 +34,7 @@ Even though the dispatcher filtered, re-check the PR against the full needs-eyes
 
 ### 2a — hard-block paths (security-review)
 
-Re-check the file list against the hard-block set from `.claude/commands/batch.md`:
-
-- `src/services/StripeService/**`
-- `src/services/AuthenticationService/**`
-- `src/lib/Token.ts`
-- any path matching `auth` or `payments`
+Re-check the file list against `HARD_BLOCK_PATHS` in `.claude/commands/batch.md`; that list is the only copy, so read it there.
 
 If the dispatcher's flag is set or any file matches, the PR needs a security review. Note it and continue to 2b; the review runs in step 4 against the checked-out head, after the 2b holds and alongside `/check`.
 
@@ -128,7 +123,7 @@ Return one of these exact status strings to the dispatcher:
 
 (`open` and `timeout` are dispatcher-side statuses; you never produce them.)
 
-Include the PR number and the head branch name in your return payload so the dispatcher can render its table.
+Include the PR number and the head branch name in your return payload so the dispatcher can render its table. For a PR that needed a security review, also return the `/security-review` verdict as `clean` or `findings: <n>`, and the head SHA it covered; the dispatcher lists both in its report.
 
 ## Rules
 
