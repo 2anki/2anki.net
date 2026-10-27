@@ -15,7 +15,7 @@ Do not read the changed files yourself — the reviewers will. Reading them now 
 
 ## Step 2 — fan out three reviewers in **one** message
 
-Call `Agent` three times in a single message with `subagent_type: "caveman:cavecrew-reviewer"` and `model: "opus"`, a fresh read-only reviewer. The plugin pins that agent to Haiku; the override matters because this review is the merge gate's only substantive review, and no human reads the diff. If the session has no caveman plugin loaded, use the fallback types in `/ship` step 2. Never fork for this: a fork inherits the caller's whole task, and inside `/ship` that includes merging (on #4679 forks briefed as read-only force-pushed and merged). Each reviewer runs in its own context and returns a focused report.
+Call `Agent` three times in a single message with `subagent_type: "caveman:cavecrew-reviewer"` and `model: "opus"`, a fresh read-only reviewer (`/ship` step 2 has why the override and the fallback when the plugin is not loaded). Never fork for this: a fork inherits the caller's whole task, and inside `/ship` that includes merging (on #4679 forks briefed as read-only force-pushed and merged). Each reviewer runs in its own context and returns a focused report.
 
 **Reviewer A — security**
 ```
