@@ -10,6 +10,7 @@ The dispatcher passes:
 
 - A single Dependabot PR number — call it `<n>`.
 - A worktree path — your isolated checkout of `origin/main`. All your shell work happens here.
+- Whether the dispatcher marked the PR `hard-blocked`. Step 2a re-checks the paths either way.
 
 ## Step 1 — read the PR
 
