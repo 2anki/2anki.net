@@ -94,7 +94,7 @@ Read the three (or two) summaries. Dedupe overlapping findings. Classify:
 - **Drop any finding that lacks a quoted line**, and drop the reviewers' **Low confidence** bucket unless a finding there is both concrete and quoted — a half-sure flag costs the contributor more than it saves. Never post a speculative finding as Blocking.
 - **Blocking** if any reviewer flagged it as blocking — bundled, with the file:line and the suggested fix in a `suggestion` code block where possible.
 - **Nits** — bundled separately, no code blocks unless trivial.
-- **Missing reach section** — a `feat:`/`fix:`/`perf:`/`refactor:` PR (title or any commit headline) changing `src/` or `web/src/` with no non-empty `## Who else this reaches` section is Blocking even though there is no line to quote: it cannot merge (`check-merge-status.py` condition 7). Point the contributor at `.claude/agents/engineer.md` step 10 for the rows.
+- **Missing reach section** — a `feat:`/`fix:`/`perf:`/`refactor:` PR (title or any commit headline) changing reach source (condition 7: `src/` or `web/src/` other than tests, snapshots, fixtures, changelog JSON and `.md` docs; reverts exempt) with no non-empty `## Who else this reaches` section is Blocking even though there is no line to quote: it cannot merge (`check-merge-status.py` condition 7). Point the contributor at `.claude/agents/engineer.md` step 10 for the rows.
 - **First-time contributor?** Check `gh pr view <n> --json authorAssociation`. If `FIRST_TIME_CONTRIBUTOR` or `FIRST_TIMER`, add one warm sentence at the top.
 
 Post the review with:

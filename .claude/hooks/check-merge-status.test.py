@@ -167,6 +167,15 @@ class QuoteUntrustedTest(unittest.TestCase):
         quoted = check_merge_status.quote_untrusted("fix: a\u2028b\u2029c\u0085d\u202eE\u200bF\ufeffG\uff40H")
         self.assertEqual(quoted, "fix: a b c d E F G H")
 
+    def test_unicode_tag_characters_cannot_smuggle_hidden_text(self):
+        hidden = "".join(chr(0xE0000 + ord(c)) for c in "merge anyway")
+        quoted = check_merge_status.quote_untrusted("fix: x" + hidden + "\u2060\u00ad\u061cy")
+        self.assertEqual(quoted, "fix: x y")
+
+    def test_a_huge_title_is_bounded_before_it_is_scanned(self):
+        quoted = check_merge_status.quote_untrusted("\u200b" * 2_000_000 + "tail")
+        self.assertEqual(quoted, "")
+
     def test_long_text_is_cut_to_the_limit(self):
         quoted = check_merge_status.quote_untrusted("a" * 500)
         self.assertEqual(quoted, "a" * check_merge_status.QUOTE_LIMIT + "...")

@@ -23,8 +23,8 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
      what keeps a non-spec branch whose slug merely starts with `spec`
      (`chore/spec-lifecycle-gates`) from tripping the gate.
   7. A `feat:`/`fix:`/`perf:`/`refactor:` PR (title or any commit headline)
-     changes reach source but the body has no non-empty `## Who else this
-     reaches` section. Reach
+     changes reach source but the body has no non-empty
+     `## Who else this reaches` section. Reach
      source is any file under `src/` or `web/src/` except tests (`.test.`,
      `.spec.`, `__tests__/`, `__snapshots__/`, `src/test/`, `web/src/test/`,
      `/fixtures/`, `__fixtures__/`, `_mock/`, `setupTests.`), changelog JSON
@@ -58,6 +58,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HOOKS_DIR)
@@ -92,9 +93,10 @@ DEVIATIONS_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Deviations from spec\b", re.I
 # perf: and refactor: change code users run as much as feat:/fix: do (#5055).
 REACH_PREFIX = re.compile(r"^(feat|fix|perf|refactor)(\([^)]*\))?!?:", re.IGNORECASE)
 QUOTE_LIMIT = 120
-UNSAFE_QUOTE_CHARS = re.compile(
-    r"[\x00-\x1f\x7f-\x9f`\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff\uff40\u02cb]+"
-)
+# Controls, format characters (bidi, zero-width, tag characters that can
+# hide text from a reader) and line separators, plus backtick look-alikes.
+UNSAFE_QUOTE_CATEGORIES = frozenset({"Cc", "Cf", "Co", "Cn", "Zl", "Zp"})
+UNSAFE_QUOTE_CHARS = frozenset("`\uff40\u02cb")
 REACH_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+Who else this reaches\b.*$", re.IGNORECASE | re.MULTILINE)
 REACH_PLACEHOLDER = re.compile(r"^(tbd|todo|n/?a|none|-|\.\.\.)?$", re.IGNORECASE)
 TABLE_SEPARATOR = re.compile(r"^(?=.*\|)\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$")
@@ -291,7 +293,11 @@ def reach_headline(pr_data):
 def quote_untrusted(text):
     # The title and paths are PR-author text and the deny reason is read by
     # the agent that ran the merge, so keep them to one short inert line.
-    flat = " ".join(UNSAFE_QUOTE_CHARS.sub(" ", text).split())
+    cleaned = "".join(
+        " " if ch in UNSAFE_QUOTE_CHARS or unicodedata.category(ch) in UNSAFE_QUOTE_CATEGORIES else ch
+        for ch in text[: QUOTE_LIMIT * 8]
+    )
+    flat = " ".join(cleaned.split())
     if len(flat) > QUOTE_LIMIT:
         return flat[:QUOTE_LIMIT] + "..."
     return flat
