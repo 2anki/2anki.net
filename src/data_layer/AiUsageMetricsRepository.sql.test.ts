@@ -102,17 +102,9 @@ describe('AiUsageMetricsRepository generated SQL', () => {
       .toSQL();
 
     expect(sql).toBe(
-      'select case when count(*) filter (where props @> ?::jsonb) > 0 ' +
-        'then count(*) filter (where props @> ?::jsonb) else count(*) end as count ' +
-        'from "events" where "name" = ? and "user_id" = ? and "created_at" >= ?'
+      `select count(*) as "count" from "events" where "name" = ? and "user_id" = ? and "created_at" >= ?`
     );
-    expect(bindings).toEqual([
-      '{"server_marker":true}',
-      '{"server_marker":true}',
-      'ai_spend_alert_sent',
-      42,
-      since,
-    ]);
+    expect(bindings).toEqual(['ai_spend_alert_sent', 42, since]);
   });
 });
 

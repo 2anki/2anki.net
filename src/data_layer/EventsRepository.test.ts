@@ -318,8 +318,11 @@ describe('EventsRepository SQL generation', () => {
 
     await repo.lastEventAt('email_batch_sent', 'inactivity');
 
-    const sql = getSql();
-    expect(sql).toContain("props->>'campaign' = 'inactivity'");
-    expect(sql).toContain('"user_id" is null and "anonymous_id" is null');
+    expect(getSql()).toBe(
+      'select coalesce(max(created_at) filter (where props @> \'{"server_marker":true}\'::jsonb), max(created_at)) as last_at ' +
+        'from "events" where "name" = \'email_batch_sent\' ' +
+        "and props->>'campaign' = 'inactivity' " +
+        'and "user_id" is null and "anonymous_id" is null limit 1'
+    );
   });
 });
