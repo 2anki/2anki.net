@@ -36,7 +36,7 @@ Run every row that matches the hit. Any failure → fix on the branch and restar
 | --- | --- |
 | `migrations/`, `src/data_layer/public/` | `migration-reviewer` agent on the diff; apply `migrate:latest` then `migrate:rollback` then `migrate:latest` against local Postgres; confirm kanel output is committed and matches |
 | Stripe, checkout, subscription, webhook, passes, pricing, payment | Add `security` focus to the review; check the touched Stripe objects and webhook events exist in live mode with the Stripe MCP (read only); test that signature verification still runs on the raw body |
-| auth, login, oauth, session, jwt, password, signup, token storage (`TokenRepository`, `hashToken`, `unHashToken`, `hmacToken`) | `/security-review` on the diff; full server suite |
+| auth, login, oauth, session, jwt, password, signup, token storage (`*TokenRepository`, `resettoken`, `NotionRespository`, `hashToken`, `unHashToken`, `hmacToken`), Apple in-app purchase (`/iap`, `storekit`, `appletransaction`) | `/security-review` on the diff; full server suite |
 | Quota constants, prod safety limits | Find the evidence that set the old value (`git log -S` plus pm2 logs, per `.claude/docs/prod-ops.md`) and state it in the PR body |
 | `.github/`, `scripts/deploy-` | Read the workflow diff for removed gates; the PR's own CI run must exercise the changed job |
 | `.claude/`, `CLAUDE.md` | Run every touched hook's `*.test.py` |
@@ -113,7 +113,8 @@ Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the o
 
 - Migration: read-only prod psql (`PGOPTIONS="-c default_transaction_read_only=on"`) confirms the `knex_migrations` row and the new schema; pm2 logs show no query errors since the deploy.
 - Stripe or webhooks: Stripe MCP shows webhook deliveries since the deploy succeeding (no new 4xx/5xx); pm2 logs show no Stripe errors; a checkout session can still be created if checkout changed.
-- Auth: pm2 logs show successful logins since the deploy and no spike in 401/500 on auth routes.
+- Auth or token storage: pm2 logs show successful logins since the deploy and no spike in 401/500 on auth routes.
+- Apple in-app purchase: pm2 logs show no new errors on the `/iap` routes since the deploy.
 
 Watch for 15 minutes after the deploy. Any regression → step 8 revert.
 

@@ -30,9 +30,18 @@ NAME_GLOBS = (
     "signup",
     "checkmonthly",
     "passes",
-    # Covers payments/ and RefundedPaymentIntents; two extra rail PRs in the
-    # six months to 2026-10-27.
+    # Payment code that is not named after Stripe. Over the six months to
+    # 2026-10-27 this added two rail PRs, both to the ops failed-payments chart.
     "payment",
+    # Apple in-app purchases are a second payment rail with no Stripe in the name.
+    "/iap",
+    "storekit",
+    "appletransaction",
+    # Stores of login, reset, claim and session tokens. A bare "token" glob would
+    # also catch countVisionTokens and designTokens; these added no rail PRs.
+    "tokenrepository",
+    "tokensrepository",
+    "resettoken",
 )
 
 EXPLICIT_PREFIXES = (
@@ -51,9 +60,10 @@ EXPLICIT_FILES = (
     "src/server.ts",
     "src/lib/isPaying.ts",
     "src/lib/ankify/access.ts",
-    # Session tokens and the secrets that encrypt or key stored tokens. JWT
-    # signing is in AuthenticationService.ts, which the "auth" glob covers.
-    "src/data_layer/TokenRepository.ts",
+    # The helpers that encrypt or key stored tokens, and the repository that
+    # decrypts stored Notion tokens. JWT signing is in AuthenticationService.ts,
+    # which the "auth" glob covers.
+    "src/data_layer/NotionRespository.ts",
     "src/lib/misc/hashToken.ts",
     "src/lib/misc/unHashToken.ts",
     "src/lib/misc/hmacToken.ts",
