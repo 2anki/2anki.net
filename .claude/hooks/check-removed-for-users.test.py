@@ -301,7 +301,7 @@ class TestFailOpen(unittest.TestCase):
 
     def test_gh_timeout_allows(self):
         self.assertEqual(
-            run_hook("gh pr merge 1", fake_run=subprocess.TimeoutExpired("gh", 15))["result"],
+            run_hook("gh pr merge 1", fake_run=subprocess.TimeoutExpired("gh", hook.GH_TIMEOUT_SECONDS))["result"],
             "allow",
         )
 
@@ -316,6 +316,122 @@ class TestPrRefPassing(unittest.TestCase):
         run_hook("gh pr merge 4589 --squash", fake)
         self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "4589"])
         self.assertEqual(fake.calls[1][:4], ["gh", "pr", "diff", "4589"])
+
+
+def nested_hunk(path, lines):
+    header = [
+        f"diff --git a/{path} b/{path}",
+        "index 1111111..2222222 100644",
+        f"--- a/{path}",
+        f"+++ b/{path}",
+        "@@ -10,8 +10,8 @@",
+    ]
+    return "\n".join(header + lines) + "\n"
+
+
+NESTED_BLOCK_SWAP = nested_hunk(EN_LOCALE, [
+    '   "intro": "Hello",',
+    '-  "notice": {',
+    '-    "title": "You have 5 cards held back"',
+    '-  },',
+    '+  "gate": {',
+    '+    "title": "Sign up"',
+    '+  },',
+    '   "outro": "Bye"',
+])
+
+NESTED_COPY_EDIT = nested_hunk(EN_LOCALE, [
+    '   "notice": {',
+    '-    "title": "You have 5 cards held back"',
+    '+    "title": "5 cards are waiting for you"',
+    '   },',
+])
+
+
+class TestNestedLocaleKeys(unittest.TestCase):
+    def test_replacing_a_nested_block_with_a_same_leaf_key_denies(self):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), NESTED_BLOCK_SWAP)
+        result = run_hook("gh pr merge 1", fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("anonymousPartial.json: notice.title", result["reason"])
+
+    def test_copy_edit_inside_a_nested_block_allows(self):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), NESTED_COPY_EDIT)
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+
+
+class TestDiffParsing(unittest.TestCase):
+    def test_deleted_en_file_denies(self):
+        diff = diff_block(EN_LOCALE, removed=['  "cta": "Create a free account"'], deleted_file=True)
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE, "DELETED")]), diff)
+        result = run_hook("gh pr merge 1", fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("anonymousPartial.json: cta", result["reason"])
+
+    def test_hunk_lines_that_look_like_headers_are_content(self):
+        diff = nested_hunk(WARNING_SRC, ["--- separator", "+++ separator", " context"])
+        hunks = hook.parse_hunks(diff)
+        self.assertEqual(
+            hunks[0]["lines"],
+            [("-", "-- separator"), ("+", "++ separator"), (" ", "context")],
+        )
+
+    def test_files_without_deletions_skip_the_diff_fetch(self):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE, "MODIFIED", 0)]))
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertFalse(any(c[:3] == ["gh", "pr", "diff"] for c in fake.calls))
+
+    def test_long_whitespace_line_is_matched_in_linear_time(self):
+        line = '  "k": "v"' + " " * 200000 + "x"
+        diff = diff_block(EN_LOCALE, added=[line])
+        hunks = hook.parse_hunks(diff)
+        self.assertEqual(hook.removed_locale_strings(hunks), [])
+        self.assertIsNone(hook.LOCALE_ENTRY.match(line.rstrip()))
+
+
+class TestFileListEdges(unittest.TestCase):
+    def test_renamed_notice_component_allows(self):
+        fake = gh_responder(pr_json([file_entry(NOTICE, "RENAMED", 0)]))
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+
+    def test_added_golden_snapshot_allows(self):
+        fake = gh_responder(pr_json([file_entry(PARSER_SNAP, "ADDED", 0)]))
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+
+    def test_null_author_still_runs_the_gate(self):
+        payload = json.dumps({"author": None, "body": "", "files": [file_entry(PARSER_SNAP)]})
+        self.assertEqual(run_hook("gh pr merge 1", gh_responder(payload))["result"], "deny")
+
+
+class TestSectionParsing(unittest.TestCase):
+    def deny_or_allow(self, body):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF)
+        return run_hook("gh pr merge 1", fake)["result"]
+
+    def test_crlf_body_with_filled_section_allows(self):
+        body = "## What\r\nx\r\n\r\n## Removed for users\r\nFree users lose the held-back count.\r\n"
+        self.assertEqual(self.deny_or_allow(body), "allow")
+
+    def test_section_at_end_without_newline_allows(self):
+        self.assertEqual(self.deny_or_allow("## Removed for users\nFree users lose the count."), "allow")
+
+    def test_subheading_stays_inside_the_section(self):
+        body = "## Removed for users\n### Upload page\nFree users lose the count.\n## Risks\nx\n"
+        self.assertEqual(self.deny_or_allow(body), "allow")
+
+    def test_heading_inside_html_comment_does_not_count(self):
+        body = "<!--\n## Removed for users\nexplain here\n-->\n## Risks\nx\n"
+        self.assertEqual(self.deny_or_allow(body), "deny")
+
+    def test_unclosed_html_comment_hides_the_rest(self):
+        body = "<!-- " * 20000 + "\n## Removed for users\nFree users lose the count.\n"
+        self.assertEqual(self.deny_or_allow(body), "deny")
+
+    def test_unedited_template_denies(self):
+        self.assertEqual(self.deny_or_allow("## Removed for users\nNone, <why>\n"), "deny")
+
+    def test_nothing_removed_denies(self):
+        self.assertEqual(self.deny_or_allow("## Removed for users\nNothing removed.\n"), "deny")
 
 
 if __name__ == "__main__":

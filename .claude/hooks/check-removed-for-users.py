@@ -9,38 +9,45 @@ were unchanged. Purchases after that notice fell from about 9% to 1.5% for 19
 days until #4789 restored it. Golden snapshots can be regenerated with `-u` and
 merged with nobody explaining the diff.
 
-Rule 1, removed for users. Any of these needs a non-empty `## Removed for users`
+Rule 1, removed for users. Any of these needs a filled `## Removed for users`
 section in the PR body:
-  - A key/value line removed from an English locale file
+  - A string removed from an English locale file
     (`web/src/lib/i18n/locales/en/*.json`; en is the source of truth, so the
-    other nine locales are not read). Not counted: the same key re-added in the
-    same file (a copy edit), or the same value added in any en file (a rename
-    or a move between namespaces).
+    other nine locales are not read). Strings are matched by key path, built
+    from the object openers inside each diff hunk. Not counted: the same key
+    path re-added in the same file (a copy edit), or the same value added in
+    any en file (a rename or a move between namespaces).
   - A deleted `web/src/**/*.tsx` component (tests and stories excluded) whose
     name contains Notice, Warning, Banner, Alert, Callout or Toast as a
     PascalCase word (`FooNotice/index.tsx` counts by its folder name). Not
-    counted: a rename, or a file with the same component name added elsewhere.
-  - A removed `const` in non-test `src/**/*.ts` whose UPPER_SNAKE name has a
-    WARNING or NOTICE word (`AI_CREDITS_EXHAUSTED_WARNING_CODE`): the codes and
-    texts the server sends with a conversion. Not counted: the same name
-    declared on an added line anywhere in the diff.
+    counted: a rename, or a file with the same component name that survives
+    anywhere in the PR.
+  - A removed `const` in `src/**/*.ts` whose UPPER_SNAKE name has a WARNING or
+    NOTICE word (`AI_CREDITS_EXHAUSTED_WARNING_CODE`): the codes and texts the
+    server sends with a conversion. Tests, `.d.ts`, `src/data_layer/public/`,
+    `src/test/` and fixtures are excluded. Not counted: the same name declared
+    on an added line anywhere in the diff.
 Rule 2, snapshot changes. A modified, deleted or renamed file under a `golden/`
 directory that is not a .ts/.tsx/.js source (the `__snapshots__/*.snap` files,
 golden fixtures) needs a `## Snapshot changes` section that names each changed
-file by its basename.
+file by its basename. Newly added files do not count.
 
-A section is empty when it holds only whitespace, HTML comments, or a bare
-placeholder ("None.", "N/A", "TBD"). "None, the strings moved to X" passes:
-that is the out for a false positive, and it puts the reason on the record.
+A section is empty when it holds only whitespace, HTML comments, the unedited
+`<why>` template, or a bare placeholder: none, no, n/a, nothing, nothing
+removed, no changes, tbd, todo. "None, the strings moved to X" passes: that is
+the out for a false positive, and it puts the reason on the record.
 
-Known false positives: a key removed and re-added with a different value in a
-different en file; a deleted component whose name merely contains Alert (an
-AlertDialog shell); a WARNING constant that never reaches a user (an email job
-interval). Known false negatives: a notice rendered inline in a component that
-survives (the JSX goes, the file stays), user-facing English literals outside
-the locale files, a server warning built from a string literal with no named
-constant, and anything in a diff GitHub refuses to serve (too large), where the
-string and constant checks fail open while the file-list checks still run.
+Known false positives: a string moved to another en file with a changed value;
+a deleted component whose name merely contains Alert (an AlertDialog shell); a
+WARNING constant that never reaches a user (an email job interval). Known false
+negatives: a notice rendered inline in a component that survives (the JSX goes,
+the file stays); a notice component renamed to a name without a notice word;
+user-facing English literals outside the locale files; a server warning built
+from a string literal with no named constant; a nested string whose parent
+opener sits outside the hunk and whose leaf key is re-added under another
+parent in the same hunk; and anything in a diff GitHub refuses to serve (too
+large), where the string and constant checks fail open while the file-list
+checks still run.
 
 Mirrors check-changelog-on-merge.py: fetches the PR via gh, fails open on any
 tooling error, exempts dependabot.
@@ -61,14 +68,20 @@ EN_LOCALE_PREFIX = "web/src/lib/i18n/locales/en/"
 REMOVED_SECTION = "Removed for users"
 SNAPSHOT_SECTION = "Snapshot changes"
 MAX_LISTED = 15
+MAX_LINE_LENGTH = 4000
+GH_TIMEOUT_SECONDS = 15
 
-LOCALE_ENTRY = re.compile(r'^\s*"((?:[^"\\]|\\.)+)"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,?\s*$')
+LOCALE_ENTRY = re.compile(r'^\s*"((?:[^"\\]|\\.)+)"\s*:\s*"((?:[^"\\]|\\.)*)",?$')
+LOCALE_OPENER = re.compile(r'^\s*"((?:[^"\\]|\\.)+)"\s*:\s*\{$')
 NOTICE_WORD = re.compile(r"(Notice|Warning|Banner|Alert|Callout|Toast)(?![a-z])")
 CONST_DECL = re.compile(r"^\s*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\b")
+DIFF_HEADER = re.compile(r"diff --git a/(.+?) b/(.+)$")
 WARNING_WORDS = {"WARNING", "WARNINGS", "NOTICE", "NOTICES"}
 SOURCE_EXTENSIONS = (".ts", ".tsx", ".js", ".mjs", ".cjs")
-PLACEHOLDERS = {"", "none", "na", "nothing", "tbd", "todo"}
-HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
+PLACEHOLDERS = {
+    "", "none", "no", "na", "nothing", "nothingremoved", "noneremoved",
+    "nochange", "nochanges", "tbd", "todo",
+}
 
 
 def allow():
@@ -89,8 +102,15 @@ def deny(reason):
 
 def run_gh(args, label):
     try:
-        result = subprocess.run(args, capture_output=True, text=True, timeout=30)
-    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        result = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=GH_TIMEOUT_SECONDS,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
         sys.stderr.write(f"{TAG} could not run gh ({exc}); skipping {label}.\n")
         return None
     if result.returncode != 0:
@@ -114,10 +134,11 @@ def fetch_pr_data(pr_ref):
     if stdout is None:
         return None
     try:
-        return json.loads(stdout)
+        parsed = json.loads(stdout)
     except json.JSONDecodeError:
         sys.stderr.write(f"{TAG} could not parse gh JSON; allowing merge.\n")
         return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def fetch_diff(pr_ref):
@@ -125,11 +146,11 @@ def fetch_diff(pr_ref):
 
 
 def is_en_locale(path):
-    return path.startswith(EN_LOCALE_PREFIX) and path.endswith(".json")
+    return path is not None and path.startswith(EN_LOCALE_PREFIX) and path.endswith(".json")
 
 
 def is_server_source(path):
-    if not (path.startswith("src/") and path.endswith(".ts")):
+    if path is None or not (path.startswith("src/") and path.endswith(".ts")):
         return False
     if path.endswith(".d.ts") or ".test." in path:
         return False
@@ -161,60 +182,80 @@ def is_golden_snapshot(path):
     return not path.endswith(SOURCE_EXTENSIONS)
 
 
-def parse_diff(diff_text):
-    removed, added = [], []
-    current_old, current_new, in_hunk = None, None, False
-    for line in diff_text.splitlines():
+def parse_hunks(diff_text):
+    hunks = []
+    old_path, new_path, current = None, None, None
+    for raw in diff_text.split("\n"):
+        line = raw.rstrip("\r")
         if line.startswith("diff --git "):
-            match = re.match(r"diff --git a/(.+?) b/(.+)$", line)
-            current_old, current_new = (match.group(1), match.group(2)) if match else (None, None)
-            in_hunk = False
+            match = DIFF_HEADER.match(line)
+            old_path, new_path = (match.group(1), match.group(2)) if match else (None, None)
+            current = None
         elif line.startswith("@@"):
-            in_hunk = True
-        elif in_hunk and line.startswith("-"):
-            removed.append((current_old, line[1:]))
-        elif in_hunk and line.startswith("+"):
-            added.append((current_new, line[1:]))
-    return removed, added
+            current = {"old": old_path, "new": new_path, "lines": []}
+            hunks.append(current)
+        elif current is not None and line[:1] in ("-", "+", " "):
+            current["lines"].append((line[0], line[1:]))
+    return hunks
 
 
-def removed_locale_strings(removed, added):
-    added_entries = [
-        (path, LOCALE_ENTRY.match(text)) for path, text in added if path and is_en_locale(path)
-    ]
-    added_keys = {(path, m.group(1)) for path, m in added_entries if m}
-    added_values = {m.group(2) for _, m in added_entries if m}
+def locale_entries(lines, side_marker):
+    stack = []
+    entries = []
+    for marker, text in lines:
+        if marker not in (" ", side_marker) or len(text) > MAX_LINE_LENGTH:
+            continue
+        stripped = text.rstrip()
+        indent = len(stripped) - len(stripped.lstrip())
+        while stack and stack[-1][0] >= indent:
+            stack.pop()
+        opener = LOCALE_OPENER.match(stripped)
+        if opener:
+            stack.append((indent, opener.group(1)))
+            continue
+        entry = LOCALE_ENTRY.match(stripped)
+        if entry and marker == side_marker:
+            key_path = ".".join([key for _, key in stack] + [entry.group(1)])
+            entries.append((key_path, entry.group(2)))
+    return entries
+
+
+def removed_locale_strings(hunks):
+    removed, added_paths, added_values = [], set(), set()
+    for hunk in hunks:
+        if is_en_locale(hunk["old"]):
+            removed.extend((hunk["old"], key, value) for key, value in locale_entries(hunk["lines"], "-"))
+        if is_en_locale(hunk["new"]):
+            for key, value in locale_entries(hunk["lines"], "+"):
+                added_paths.add((hunk["new"], key))
+                added_values.add(value)
     findings = []
-    for path, text in removed:
-        if not (path and is_en_locale(path)):
-            continue
-        match = LOCALE_ENTRY.match(text)
-        if not match:
-            continue
-        key, value = match.group(1), match.group(2)
-        if (path, key) in added_keys or value in added_values:
+    for path, key, value in removed:
+        if (path, key) in added_paths or value in added_values:
             continue
         preview = value if len(value) <= 60 else value[:57] + "..."
         findings.append(f'{os.path.basename(path)}: {key} ("{preview}")')
     return findings
 
 
-def declared_warning_constants(lines):
+def declared_warning_constants(hunks, side_marker, path_key):
     names = []
-    for path, text in lines:
-        if not (path and is_server_source(path)):
+    for hunk in hunks:
+        path = hunk[path_key]
+        if not is_server_source(path):
             continue
-        match = CONST_DECL.match(text)
-        if match and WARNING_WORDS & set(match.group(1).split("_")):
-            names.append((path, match.group(1)))
+        for marker, text in hunk["lines"]:
+            match = CONST_DECL.match(text) if marker == side_marker else None
+            if match and WARNING_WORDS & set(match.group(1).split("_")):
+                names.append((path, match.group(1)))
     return names
 
 
-def removed_server_warnings(removed, added):
-    re_declared = {name for _, name in declared_warning_constants(added)}
+def removed_server_warnings(hunks):
+    re_declared = {name for _, name in declared_warning_constants(hunks, "+", "new")}
     return [
         f"{path}: {name}"
-        for path, name in declared_warning_constants(removed)
+        for path, name in declared_warning_constants(hunks, "-", "old")
         if name not in re_declared
     ]
 
@@ -254,19 +295,35 @@ def needs_diff(files):
     return False
 
 
+def strip_html_comments(text):
+    kept = []
+    position = 0
+    while True:
+        start = text.find("<!--", position)
+        if start == -1:
+            kept.append(text[position:])
+            break
+        kept.append(text[position:start])
+        end = text.find("-->", start + 4)
+        if end == -1:
+            break
+        position = end + 3
+    return "".join(kept)
+
+
 def section_text(body, heading):
     pattern = re.compile(
-        rf"^#{{2}}\s+{re.escape(heading)}\s*$\n?(.*?)(?=^#{{1,2}}\s|\Z)",
+        rf"^#{{2}}[ \t]+{re.escape(heading)}[ \t\r]*$\n?(.*?)(?=^#{{1,2}}[ \t]|\Z)",
         re.M | re.S | re.I,
     )
-    match = pattern.search(body or "")
+    match = pattern.search(strip_html_comments(body or ""))
     if not match:
         return None
-    return HTML_COMMENT.sub("", match.group(1)).strip()
+    return match.group(1).strip()
 
 
 def is_filled(text):
-    if text is None:
+    if text is None or "<why>" in text.lower():
         return False
     return re.sub(r"[^a-z]", "", text.lower()) not in PLACEHOLDERS
 
@@ -276,6 +333,29 @@ def listed(items):
     if len(items) > MAX_LISTED:
         shown.append(f"  ...and {len(items) - MAX_LISTED} more")
     return "\n".join(shown)
+
+
+def removal_problem(removals):
+    return (
+        f"It removes things users see, and the body has no filled `## {REMOVED_SECTION}` "
+        "section:\n" + listed(removals) + "\n\n"
+        f"  Add `## {REMOVED_SECTION}` saying who loses what, on which path.\n"
+        "  If nothing is lost (a string moved with new wording, a constant users never\n"
+        "  see), write \"None, \" followed by the reason.\n\n"
+        "  Why: #4589 dropped a notice for signed-in free users while its body said the\n"
+        "  other paths were unchanged; purchases after that notice fell for 19 days."
+    )
+
+
+def snapshot_problem(snapshots):
+    return (
+        f"It changes golden snapshots the `## {SNAPSHOT_SECTION}` section does not "
+        "explain:\n" + listed(snapshots) + "\n\n"
+        f"  Add `## {SNAPSHOT_SECTION}` with one line per file, naming it by basename,\n"
+        "  saying what the output now does differently and why that is right.\n\n"
+        "  Why: a snapshot regenerated with `-u` merges whatever the code now emits;\n"
+        "  the section is the only record that someone read the new cards."
+    )
 
 
 def main():
@@ -296,40 +376,29 @@ def main():
     if pr_data is None:
         allow()
 
-    if pr_data.get("author", {}).get("login", "") == "dependabot[bot]":
+    if (pr_data.get("author") or {}).get("login", "") == "dependabot[bot]":
         allow()
 
-    files = pr_data.get("files") or []
+    files = [f for f in (pr_data.get("files") or []) if isinstance(f, dict)]
     body = pr_data.get("body") or ""
 
     removals = removed_notice_components(files)
     if needs_diff(files):
         diff_text = fetch_diff(pr_ref)
         if diff_text is not None:
-            removed, added = parse_diff(diff_text)
-            removals = removed_locale_strings(removed, added) + removals
-            removals += removed_server_warnings(removed, added)
+            hunks = parse_hunks(diff_text)
+            removals = removed_locale_strings(hunks) + removals + removed_server_warnings(hunks)
 
     problems = []
     if removals and not is_filled(section_text(body, REMOVED_SECTION)):
-        problems.append(
-            f"It removes things users see, and the body has no filled `## {REMOVED_SECTION}` "
-            "section:\n" + listed(removals) + "\n\n"
-            f"  Add `## {REMOVED_SECTION}` saying who loses what, on which path. If nothing\n"
-            "  is lost (a moved string, a renamed notice), write \"None, <why>\"."
-        )
+        problems.append(removal_problem(removals))
 
     snapshots = changed_snapshots(files)
     snapshot_text = section_text(body, SNAPSHOT_SECTION)
     if snapshots and is_filled(snapshot_text):
         snapshots = [p for p in snapshots if os.path.basename(p) not in snapshot_text]
     if snapshots:
-        problems.append(
-            f"It changes golden snapshots the `## {SNAPSHOT_SECTION}` section does not "
-            "explain:\n" + listed(snapshots) + "\n\n"
-            f"  Add `## {SNAPSHOT_SECTION}` with one line per file, naming it by basename,\n"
-            "  saying what the output now does differently and why that is right."
-        )
+        problems.append(snapshot_problem(snapshots))
 
     if not problems:
         allow()
@@ -337,9 +406,7 @@ def main():
     deny(
         "Refusing `gh pr merge` on this PR.\n\n"
         + "\n\n".join(problems)
-        + "\n\nWhy: #4589 dropped a notice for signed-in free users while its body said "
-        "nothing else changed; purchases after it fell for 19 days. "
-        "Rules and known false positives: .claude/hooks/check-removed-for-users.py."
+        + "\n\nRules and known false positives: .claude/hooks/check-removed-for-users.py."
     )
 
 
