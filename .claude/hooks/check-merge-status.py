@@ -22,6 +22,18 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
      (`add spec for …` or `remove implemented spec …`). The commit evidence is
      what keeps a non-spec branch whose slug merely starts with `spec`
      (`chore/spec-lifecycle-gates`) from tripping the gate.
+  7. A `feat:`/`fix:` PR (title or any commit headline) changes reach source
+     but the body has no non-empty `## Who else this reaches` section. Reach
+     source is any file under `src/` or `web/src/` except tests (`.test.`,
+     `.spec.`, `__tests__/`, `__snapshots__/`, `src/test/`, `web/src/test/`,
+     `/fixtures/`, `__fixtures__/`, `_mock/`, `setupTests.`), changelog JSON
+     and Markdown docs. Empty means nothing but whitespace, HTML comments,
+     bullet marks, a table header with no rows, or lines and table rows made
+     only of TBD/TODO/N/A/None/-/... placeholders or empty cells. Reverts (`revert:`, GitHub's `Revert "…"`) are exempt.
+     #4589 claimed its control arm was "byte-for-byte unchanged" and silently
+     dropped the held-back-cards notice for signed-in free users for 19 days
+     (#4789); #4730 broke prerendered landing pages (#4901). Both reviews read
+     the diff for the intended change and nobody listed who else reached it.
 
 `gh pr view` tooling errors fail open (a broken gh should not block a human).
 
@@ -76,6 +88,23 @@ REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{40})\s*-
 SPEC_BRANCH = re.compile(r"^[a-z]+/spec-", re.IGNORECASE)
 SPEC_COMMIT = re.compile(r"add spec for|remove implemented spec", re.IGNORECASE)
 DEVIATIONS_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Deviations from spec\b", re.IGNORECASE | re.MULTILINE)
+USER_VISIBLE_PREFIX = re.compile(r"^(feat|fix)(\([^)]*\))?!?:", re.IGNORECASE)
+REACH_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+Who else this reaches\b.*$", re.IGNORECASE | re.MULTILINE)
+REACH_PLACEHOLDER = re.compile(r"^(tbd|todo|n/?a|none|-|\.\.\.)?$", re.IGNORECASE)
+TABLE_SEPARATOR = re.compile(r"^(?=.*\|)\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$")
+REACH_SOURCE_ROOTS = ("src/", "web/src/")
+REACH_EXCLUDED_ROOTS = ("src/test/", "web/src/test/")
+CHANGELOG_DIR = "web/src/pages/WhatsNewPage/changelog/"
+REACH_EXCLUDED_PARTS = (
+    ".test.",
+    ".spec.",
+    "/__tests__/",
+    "/__snapshots__/",
+    "/fixtures/",
+    "/__fixtures__/",
+    "_mock/",
+    "/setupTests.",
+)
 # `gh pr view --json author` reports the bot as `app/dependabot`; the GitHub UI
 # and the REST API spell it `dependabot[bot]`. Accept both so the review-marker
 # exemption actually fires (#4555).
@@ -116,7 +145,7 @@ def pr_args(pr_ref):
 def fetch_pr_data(pr_ref):
     stdout = run_gh(
         ["gh", "pr", "view", *pr_args(pr_ref), "--json",
-         "number,headRefOid,headRefName,body,author,files,commits,statusCheckRollup,reviews,comments"],
+         "number,title,headRefOid,headRefName,body,author,files,commits,statusCheckRollup,reviews,comments"],
         "pr view",
     )
     if stdout is None:
@@ -236,6 +265,130 @@ def deviations_violation(pr_data):
     )
 
 
+def as_text(value):
+    return value if isinstance(value, str) else ""
+
+
+def entries(value):
+    return [entry for entry in value if isinstance(entry, dict)] if isinstance(value, list) else []
+
+
+def user_visible_headline(pr_data):
+    headlines = [as_text(pr_data.get("title"))]
+    headlines += [as_text(c.get("messageHeadline")) for c in entries(pr_data.get("commits"))]
+    for headline in headlines:
+        if USER_VISIBLE_PREFIX.match(headline.strip()):
+            return headline.strip()
+    return None
+
+
+def is_user_visible_pr(pr_data):
+    return user_visible_headline(pr_data) is not None
+
+
+def is_changelog_entry(path):
+    return path.startswith(CHANGELOG_DIR) and path.endswith(".json")
+
+
+def is_reach_source(path):
+    if not path.startswith(REACH_SOURCE_ROOTS):
+        return False
+    if path.startswith(REACH_EXCLUDED_ROOTS) or is_changelog_entry(path) or path.endswith(".md"):
+        return False
+    return not any(part in path for part in REACH_EXCLUDED_PARTS)
+
+
+def strip_html_comments(text):
+    kept = []
+    position = 0
+    while True:
+        opener = text.find("<!--", position)
+        if opener == -1:
+            kept.append(text[position:])
+            return "".join(kept).replace("-->", "")
+        kept.append(text[position:opener])
+        closer = text.find("-->", opener + 4)
+        if closer == -1:
+            return "".join(kept).replace("-->", "")
+        position = closer + 3
+
+
+def reach_section_text(body):
+    visible = strip_html_comments(as_text(body))
+    heading = REACH_HEADING.search(visible)
+    if heading is None:
+        return None
+    rest = visible[heading.end():]
+    level = len(heading.group(1))
+    next_heading = re.search(rf"^ {{0,3}}#{{1,{level}}}[ \t]", rest, re.MULTILINE)
+    section = rest[: next_heading.start()] if next_heading else rest
+    return section.strip()
+
+
+def is_table_separator(line):
+    return bool(TABLE_SEPARATOR.match(line))
+
+
+def reach_content_lines(section):
+    lines = [line.strip() for line in section.splitlines()]
+    kept = []
+    for index, line in enumerate(lines):
+        if is_table_separator(line):
+            continue
+        next_line = lines[index + 1] if index + 1 < len(lines) else ""
+        if is_table_separator(next_line):
+            continue
+        kept.append(line.lstrip("-*+ ").strip())
+    return kept
+
+
+def is_placeholder_cell(cell):
+    bare = cell.strip().strip("*_`").strip()
+    if bare != "...":
+        bare = bare.rstrip(".")
+    return bool(REACH_PLACEHOLDER.match(bare))
+
+
+def is_placeholder_line(line):
+    return all(is_placeholder_cell(cell) for cell in line.split("|"))
+
+
+def has_reach_section(body):
+    section = reach_section_text(body)
+    if section is None:
+        return False
+    return any(not is_placeholder_line(line) for line in reach_content_lines(section))
+
+
+def reach_violation(pr_data):
+    trigger = user_visible_headline(pr_data)
+    if trigger is None:
+        return None
+    paths = [as_text(f.get("path")) for f in entries(pr_data.get("files"))]
+    source_paths = [p for p in paths if is_reach_source(p)]
+    if not source_paths:
+        return None
+    if has_reach_section(pr_data.get("body")):
+        return None
+    number = pr_data.get("number") or "<n>"
+    return (
+        f"the title or a commit headline (`{trigger}`) is feat:/fix: and the PR "
+        f"changes source ({source_paths[0]}), but the `## Who else this reaches` "
+        "section is missing or empty (TBD/TODO/N/A/None, empty cells and comments do not count). "
+        "Add one row per population the changed code is reachable from "
+        "(signed-out, free, free over the limit, paying, pass holder, Auto Sync, "
+        "flag on/off and each experiment arm, Notion vs upload, web/MCP/iOS): a "
+        "reachable row names the test that exercises it, an unreachable row says "
+        "why. Rule: .claude/agents/engineer.md step 10; rows: uncomment the table "
+        "in the `## Who else this reaches` block of that file's PR description "
+        f"template. Save the body (`gh pr view {number} --json body --jq .body > "
+        f"<scratchpad>/ship-body-{number}.txt`), add the section, `gh pr edit "
+        f"{number} --body-file <scratchpad>/ship-body-{number}.txt`, rerun the "
+        "/ship step 2 reach reviewer on that file (fix what it blocks on), then "
+        "merge again"
+    )
+
+
 def main():
     if os.environ.get("CLAUDE_SKIP_SAFETY"):
         allow()
@@ -279,6 +432,10 @@ def main():
     if spec_violation:
         violations.append(spec_violation)
 
+    population_violation = reach_violation(pr_data)
+    if population_violation:
+        violations.append(population_violation)
+
     if violations:
         bullet_list = "\n".join(f"  - {v}" for v in violations)
         deny(
@@ -286,7 +443,8 @@ def main():
             f"{bullet_list}\n\n"
             "Every rollup entry must be COMPLETED and non-FAILURE, every test "
             "job must have actually RUN, dependency changes need a SUCCESS test run, "
-            "and the review agent must have passed the head SHA.\n"
+            "the review agent must have passed the head SHA, and a feat:/fix: PR "
+            "touching source must say who else it reaches.\n"
             "Human bypass: merge from the GitHub UI, or relaunch with CLAUDE_SKIP_SAFETY=1 set at launch."
         )
 
