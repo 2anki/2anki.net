@@ -1,5 +1,6 @@
 import knex from 'knex';
 
+import { SERVER_ONLY_EVENT_NAMES } from '../lib/events/serverEventProps';
 import {
   buildAlertExistsQuery,
   buildConversionOutcomeQuery,
@@ -77,18 +78,45 @@ describe('MetricTripwireRepository generated SQL', () => {
     ]);
   });
 
-  it('restricts the anonymous partial base to rows without a user', () => {
-    const { sql } = buildFollowThroughQuery(
+  // The ingest drops the anonymous id from a client event unless tracking is
+  // allowed (consent granted, or outside the consent region; #4730), while a
+  // server-written event keeps it from the cookie. A server base paired with a
+  // client follow-up therefore never matches an untracked visitor, so the
+  // anonymous rate follows the tracking rate instead of the behaviour.
+  it('scopes every server base paired with a client follow-up to signed-in users', () => {
+    const mixed = Object.entries(FOLLOW_THROUGH_SPECS).filter(
+      ([, spec]) =>
+        SERVER_ONLY_EVENT_NAMES.has(spec.baseEvent) &&
+        spec.followEvents.some((name) => !SERVER_ONLY_EVENT_NAMES.has(name))
+    );
+
+    expect(mixed.map(([key]) => key)).toContain('download_after_success');
+    expect(mixed.filter(([, spec]) => spec.identity !== 'signed_in')).toEqual(
+      []
+    );
+  });
+
+  it('keeps the upload follow-through open to anonymous visitors', () => {
+    const { sql, bindings } = buildFollowThroughQuery(
       pg,
-      FOLLOW_THROUGH_SPECS.partial_notice_anonymous,
+      FOLLOW_THROUGH_SPECS.upload_after_page_view,
       start,
       end
     ).toSQL();
 
-    expect(sql).toContain('and "user_id" is null)');
+    expect(sql).not.toContain('"user_id" is');
+    expect(sql).not.toContain('props @>');
+    expect(bindings).toEqual([
+      'upload_page_viewed',
+      start,
+      end,
+      'upload_started',
+      start,
+      end,
+    ]);
   });
 
-  it('leaves the identity scope open for the download follow-through', () => {
+  it('restricts the download follow-through to signed-in users', () => {
     const { sql, bindings } = buildFollowThroughQuery(
       pg,
       FOLLOW_THROUGH_SPECS.download_after_success,
@@ -96,7 +124,7 @@ describe('MetricTripwireRepository generated SQL', () => {
       end
     ).toSQL();
 
-    expect(sql).not.toContain('"user_id" is');
+    expect(sql).toContain('and "user_id" is not null)');
     expect(sql).not.toContain('props @>');
     expect(bindings).toEqual([
       'conversion_succeeded',

@@ -26,16 +26,16 @@ export const TRIPWIRE_METRICS: readonly TripwireMetric[] = [
   },
   {
     key: 'download_after_success',
-    label: 'People who downloaded a deck the day they converted',
+    label: 'Signed-in users who downloaded a deck the day they converted',
     source:
-      'events: person-days with conversion_succeeded that also have deck_downloaded on the same UTC day. One unit is one person (user id, else anonymous id) on one day.',
+      'events: signed-in person-days with conversion_succeeded that also have deck_downloaded on the same UTC day. One unit is one user on one day.',
     minRelativeDrop: 0.2,
   },
   {
     key: 'upload_after_page_view',
     label: 'Upload page visitors who started an upload',
     source:
-      'events: person-days with upload_page_viewed that also have upload_started on the same UTC day. One unit is one person on one day.',
+      "events: person-days with upload_page_viewed that also have upload_started on the same UTC day. Signed-in users and tracked visitors only: an untracked visitor's page view has no id. One unit is one person on one day.",
     minRelativeDrop: 0.25,
   },
   {
@@ -43,13 +43,6 @@ export const TRIPWIRE_METRICS: readonly TripwireMetric[] = [
     label: 'Signed-in over-limit uploads that showed a held-back offer or gate',
     source:
       'events: signed-in person-days with an upload conversion_succeeded carrying card_limit_partial that also have monthly_partial_offer_shown or anonymous_partial_gate_shown on the same UTC day. One unit is one person on one day.',
-    minRelativeDrop: 0.4,
-  },
-  {
-    key: 'partial_notice_anonymous',
-    label: 'Anonymous over-limit uploads that showed a held-back gate or offer',
-    source:
-      'events: anonymous person-days with an upload conversion_succeeded carrying card_limit_partial that also have anonymous_partial_gate_shown or monthly_partial_offer_shown on the same UTC day. One unit is one anonymous id on one day.',
     minRelativeDrop: 0.4,
   },
 ];

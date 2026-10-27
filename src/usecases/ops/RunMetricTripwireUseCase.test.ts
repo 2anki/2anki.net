@@ -27,10 +27,6 @@ function steadyCounts(scale: number): TripwireRateCounts {
       numerator: 8 * scale,
       denominator: 10 * scale,
     },
-    partial_notice_anonymous: {
-      numerator: 80 * scale,
-      denominator: 100 * scale,
-    },
   };
 }
 
