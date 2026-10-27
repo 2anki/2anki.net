@@ -146,9 +146,12 @@ describe('extractPdfText', () => {
     });
 
     expect(mockPdfParse).toHaveBeenCalledWith(
-      FIXTURE_BUFFER,
+      expect.any(Uint8Array),
       expect.objectContaining({ userPassword: 'correct-password' })
     );
+    const [data] = mockPdfParse.mock.calls[0];
+    expect(Buffer.isBuffer(data)).toBe(false);
+    expect(Buffer.from(data)).toEqual(FIXTURE_BUFFER);
     expect(result.needsCredential).toBe(false);
     expect(result.isDrmLocked).toBe(false);
     expect(result.pageCount).toBe(2);
