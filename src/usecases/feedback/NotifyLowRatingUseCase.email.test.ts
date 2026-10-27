@@ -17,7 +17,8 @@ import {
 } from '../../data_layer/LowRatingContextRepository';
 import type { PassKind, UserPass } from '../../data_layer/UserPassRepository';
 import { InMemoryRateLimiter } from '../../lib/rateLimit/InMemoryRateLimiter';
-import { getDefaultEmailService } from '../../services/EmailService/EmailService';
+import { EmailService } from '../../services/EmailService/EmailService';
+import { DEFAULT_SENDER } from '../../services/EmailService/constants';
 import { NotifyLowRatingUseCase } from './NotifyLowRatingUseCase';
 
 const NOW = new Date('2026-11-02T10:00:00.000Z');
@@ -53,7 +54,7 @@ async function renderWithContext(
   const useCase = new NotifyLowRatingUseCase(
     new InMemoryEmojiFeedbackRepository(),
     contextRepository,
-    getDefaultEmailService(),
+    new EmailService('test-key', DEFAULT_SENDER),
     new InMemoryRateLimiter({
       windowMs: 60 * 60 * 1000,
       perKeyMax: 50,
@@ -74,18 +75,14 @@ async function renderWithContext(
 }
 
 describe('NotifyLowRatingUseCase support email', () => {
-  const originalEnv = { ...process.env };
-
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
-    process.env.SENDGRID_API_KEY = 'test-key';
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    process.env = { ...originalEnv };
   });
 
   const plans: Array<[string, Partial<LowRatingAccountContext>, string]> = [
@@ -124,7 +121,7 @@ describe('NotifyLowRatingUseCase support email', () => {
     [
       'a Semester Pass holder',
       { activePass: pass('120d', 'pi_fixture', '2027-03-01T12:00:00.000Z') },
-      'Semester Pass (120d), active until 2027-03-01',
+      'Semester Pass (120d), active until 2027-03-01 12:00 UTC',
     ],
     [
       'a Semester Pass bought in the iOS app',
@@ -135,17 +132,17 @@ describe('NotifyLowRatingUseCase support email', () => {
           '2027-03-01T12:00:00.000Z'
         ),
       },
-      'Semester Pass (120d), active until 2027-03-01',
+      'Semester Pass (120d, Apple), active until 2027-03-01 12:00 UTC',
     ],
     [
       'a Week Pass holder',
       { activePass: pass('7d', 'pi_fixture', '2026-11-05T10:00:00.000Z') },
-      'Week Pass (7d), active until 2026-11-05',
+      'Week Pass (7d), active until 2026-11-05 10:00 UTC',
     ],
     [
       'a Day Pass holder',
       { activePass: pass('24h', 'pi_fixture', '2026-11-03T09:00:00.000Z') },
-      'Day Pass (24h), active until 2026-11-03',
+      'Day Pass (24h), active until 2026-11-03 09:00 UTC',
     ],
     ['a free account', {}, 'free'],
   ];
@@ -158,30 +155,48 @@ describe('NotifyLowRatingUseCase support email', () => {
 
     expect(msg.text.split('\n')).toContain(`Plan: ${plan}`);
     expect(msg.html).toContain(`<li>Plan: ${plan}</li>`);
+    expect(msg.text).not.toMatch(/pi_fixture|apple:\d/);
+    expect(msg.html).not.toMatch(/pi_fixture|apple:\d/);
   });
 
-  it('prints the newest upload beside an empty job line for an upload-only account', async () => {
+  it('prints the newest saved deck beside an empty job line', async () => {
     const msg = await renderSupportEmail(uploadOnlyAccount);
 
     expect(msg.text.split('\n')).toEqual(
       expect.arrayContaining([
         'Latest job: (none)',
-        'Latest upload: 912 (2026-11-02T09:30:00.000Z)',
+        'Latest deck (My Decks): 912, built 2026-11-02T09:30:00.000Z',
       ])
     );
     expect(msg.html).toContain(
-      '<li>Latest upload: 912 (2026-11-02T09:30:00.000Z)</li>'
+      '<li>Latest deck (My Decks): 912, built 2026-11-02T09:30:00.000Z</li>'
     );
   });
 
-  it('prints no upload for an account that has never uploaded a file', async () => {
+  it('says no deck is stored when My Decks is empty', async () => {
     const msg = await renderSupportEmail({
       ...uploadOnlyAccount,
       latestUploadId: null,
       latestUploadAt: null,
     });
 
-    expect(msg.text.split('\n')).toContain('Latest upload: (none)');
+    expect(msg.text.split('\n')).toContain(
+      'Latest deck (My Decks): (none stored)'
+    );
+    expect(msg.html).toContain(
+      '<li>Latest deck (My Decks): (none stored)</li>'
+    );
+  });
+
+  it('says the build time is unknown when the stored deck has none', async () => {
+    const msg = await renderSupportEmail({
+      ...uploadOnlyAccount,
+      latestUploadAt: null,
+    });
+
+    expect(msg.text.split('\n')).toContain(
+      'Latest deck (My Decks): 912, built at an unknown time'
+    );
   });
 
   describe('with the real context repository', () => {
@@ -229,7 +244,7 @@ describe('NotifyLowRatingUseCase support email', () => {
       await db.destroy();
     });
 
-    it('names the pass and newest upload of a pass holder who only uploads files', async () => {
+    it('names the pass and newest saved deck of a pass holder with no Notion jobs', async () => {
       await db('users').insert({
         id: 4242,
         email: 'learner@example.com',
@@ -265,9 +280,9 @@ describe('NotifyLowRatingUseCase support email', () => {
 
       expect(msg.text.split('\n')).toEqual(
         expect.arrayContaining([
-          'Plan: Semester Pass (120d), active until 2027-03-01',
+          'Plan: Semester Pass (120d), active until 2027-03-01 12:00 UTC',
           'Latest job: (none)',
-          'Latest upload: 912 (2026-11-02T09:30:00.000Z)',
+          'Latest deck (My Decks): 912, built 2026-11-02T09:30:00.000Z',
         ])
       );
       expect(msg.text).not.toContain('Lecture');

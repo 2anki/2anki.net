@@ -1,9 +1,6 @@
 import type { Knex } from 'knex';
 
-import UserPassRepository, {
-  IUserPassRepository,
-  UserPass,
-} from './UserPassRepository';
+import UserPassRepository, { UserPass } from './UserPassRepository';
 
 export interface LowRatingAccountContext {
   email: string;
@@ -22,13 +19,7 @@ export interface ILowRatingContextRepository {
 }
 
 export class LowRatingContextRepository implements ILowRatingContextRepository {
-  constructor(
-    private readonly database: Knex,
-    private readonly passes: Pick<
-      IUserPassRepository,
-      'findActive'
-    > = new UserPassRepository(database)
-  ) {}
+  constructor(private readonly database: Knex) {}
 
   buildUserQuery(owner: number): Knex.QueryBuilder {
     return this.database('users')
@@ -76,7 +67,10 @@ export class LowRatingContextRepository implements ILowRatingContextRepository {
     const activeSubscription = await this.buildActiveSubscriptionQuery(
       user.email
     );
-    const activePass = await this.passes.findActive(owner, now);
+    const activePass = await new UserPassRepository(this.database).findActive(
+      owner,
+      now
+    );
     const latestJob = await this.buildLatestJobQuery(String(user.id));
     const latestUpload = await this.buildLatestUploadQuery(owner);
 

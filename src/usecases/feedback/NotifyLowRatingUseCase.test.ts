@@ -174,7 +174,7 @@ describe('NotifyLowRatingUseCase', () => {
     });
   });
 
-  it('names the pass and newest upload of a pass holder with no Notion jobs', async () => {
+  it('names the pass and newest saved deck of a pass holder with no Notion jobs', async () => {
     const { useCase, getByOwner, sendLowRatingFeedbackEmail } = build();
     getByOwner.mockResolvedValue(semesterPassHolder);
 
@@ -196,7 +196,7 @@ describe('NotifyLowRatingUseCase', () => {
       latestJobStatus: null,
       latestUploadId: 912,
       latestUploadAt: new Date('2026-11-02T09:30:00.000Z'),
-      plan: 'Semester Pass (120d), active until 2027-03-01',
+      plan: 'Semester Pass (120d), active until 2027-03-01 12:00 UTC',
     });
   });
 

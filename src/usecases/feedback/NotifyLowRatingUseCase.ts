@@ -20,8 +20,11 @@ const describePlan = (account: LowRatingAccountContext): string => {
   const pass = account.activePass;
   if (pass == null) return 'free';
   if (isAppleSubscriptionPass(pass)) return 'Pro (Apple)';
-  const activeUntil = pass.expires_at.toISOString().slice(0, 10);
-  return `${passKindLabel(pass.kind)} (${pass.kind}), active until ${activeUntil}`;
+  const boughtIn = pass.stripe_payment_intent_id.startsWith('apple:')
+    ? ', Apple'
+    : '';
+  const activeUntil = `${pass.expires_at.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+  return `${passKindLabel(pass.kind)} (${pass.kind}${boughtIn}), active until ${activeUntil}`;
 };
 
 export interface LowRatingNotificationInput {

@@ -173,7 +173,7 @@ describe('EmojiFeedbackController follow-up', () => {
       expect.objectContaining({
         emailVerified: true,
         userId: '4242',
-        plan: 'Semester Pass (120d), active until 2027-03-01',
+        plan: 'Semester Pass (120d), active until 2027-03-01 12:00 UTC',
         latestUploadId: 912,
       })
     );
