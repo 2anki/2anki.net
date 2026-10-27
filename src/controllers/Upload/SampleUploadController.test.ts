@@ -123,6 +123,47 @@ describe('SampleUploadController', () => {
     });
   });
 
+  it('serves the deploy smoke check without recording a sample event', async () => {
+    const controller = new SampleUploadController(
+      fakeUseCase(8),
+      allowingLimiter
+    );
+    const res = fakeResponse();
+    const smokeReq = {
+      headers: { 'x-2anki-deploy-smoke': '1' },
+      socket: { remoteAddress: '127.0.0.1' },
+    } as unknown as express.Request;
+
+    await controller.sample(smokeReq, res as unknown as express.Response);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['X-Card-Count']).toBe('8');
+    expect(mockTrack).not.toHaveBeenCalled();
+  });
+
+  it('records the sample event when the smoke header arrives through the proxy', async () => {
+    const controller = new SampleUploadController(
+      fakeUseCase(8),
+      allowingLimiter
+    );
+    const res = fakeResponse();
+    const proxiedReq = {
+      headers: {
+        'x-2anki-deploy-smoke': '1',
+        'x-forwarded-for': '203.0.113.9',
+      },
+      socket: { remoteAddress: '127.0.0.1' },
+    } as unknown as express.Request;
+
+    await controller.sample(proxiedReq, res as unknown as express.Response);
+
+    expect(mockTrack).toHaveBeenCalledWith('sample_conversion_succeeded', {
+      userId: null,
+      anonymousId: null,
+      props: { source: 'sample', card_count: 8 },
+    });
+  });
+
   it('refuses with 429 when the rate limiter is exhausted and does not convert', async () => {
     const useCase = fakeUseCase(8);
     const controller = new SampleUploadController(useCase, denyingLimiter);

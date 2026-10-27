@@ -4,9 +4,8 @@
 # in-flight requests. See Documentation/deploy/blue-green.md for the rollout
 # plan, the manual Apache setup this pairs with, and the first-run bootstrap.
 #
-# This script is NOT wired into the automated deploy yet. Run it manually for
-# the dry-run and staged prod validation described in the doc. It assumes the
-# repo is already built (`pnpm build`) and GIT_SHA is exported.
+# .github/workflows/deploy.2anki.net.yml runs this on every deploy. It assumes
+# the repo is already built (`pnpm build`) and GIT_SHA is exported.
 #
 # Set DRY_RUN=1 to print every privileged/destructive action instead of running
 # it (used for the local docker / staging dry-run).
@@ -54,6 +53,20 @@ wait_for_sha() {
     sleep 2
   done
   return 1
+}
+
+# /api/version only proves the process booted. The smoke check proves the
+# build serves what users get: each prerendered landing page with its own
+# title and canonical, the app bundle, and a real deck from the sample
+# conversion. #4730 served the home shell on every landing page for six days
+# behind a green health check. See scripts/prod-smoke.ts.
+run_smoke() {
+  local base="$1"
+  if [ "$DRY_RUN" = "1" ]; then
+    log "DRY_RUN: smoke check $base"
+    return 0
+  fi
+  "$SERVER_DIR/node_modules/.bin/tsx" "$SERVER_DIR/scripts/prod-smoke.ts" "$base"
 }
 
 # Apache's global Timeout (300 s) also bounds how long mod_proxy waits for the
@@ -151,6 +164,14 @@ fi
 
 if ! wait_for_sha "http://127.0.0.1:$NEXT_PORT$HEALTH_PATH"; then
   log "server-$NEXT failed health check on :$NEXT_PORT — removing it; current color still live"
+  run pm2 delete "server-$NEXT"
+  exit 1
+fi
+
+# Smoke the new color on its own port while Apache still routes every user to
+# the current one, so a failing build is never switched to.
+if ! run_smoke "http://127.0.0.1:$NEXT_PORT"; then
+  log "server-$NEXT failed the smoke check on :$NEXT_PORT — removing it; current color still live"
   run pm2 delete "server-$NEXT"
   exit 1
 fi

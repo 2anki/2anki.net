@@ -88,7 +88,9 @@ jobs:
             export GIT_SHA
             # Zero-downtime blue-green cutover: start the idle color, health-check
             # it, atomically swap the Apache upstreams, drain the old color. The
-            # script health-checks the new color on its port and verifies the
+            # script health-checks the new color on its port, smoke-checks its
+            # pages, app bundle and a sample conversion there before any user
+            # traffic reaches it (scripts/prod-smoke.ts), and verifies the
             # public URL reports ${GIT_SHA} before retiring the old one; it exits
             # non-zero on any failure with the current color still serving.
             bash scripts/deploy-blue-green.sh || {
