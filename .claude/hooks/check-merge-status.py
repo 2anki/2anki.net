@@ -26,7 +26,7 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
      but the body has no non-empty `## Who else this reaches` section. Reach
      source is any file under `src/` or `web/src/` except tests (`.test.`,
      `.spec.`, `__tests__/`, `__snapshots__/`, `src/test/`, `web/src/test/`,
-     `fixtures/`, `__fixtures__/`, `_mock/`, `setupTests.`), changelog JSON
+     `/fixtures/`, `__fixtures__/`, `_mock/`, `setupTests.`), changelog JSON
      and Markdown docs. Empty means nothing but whitespace, HTML comments,
      bullet marks, a table header with no rows, or a TBD/TODO/N/A/-/...
      placeholder. Reverts (`revert:`, GitHub's `Revert "…"`) are exempt.
@@ -91,9 +91,10 @@ DEVIATIONS_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Deviations from spec\b", re.I
 USER_VISIBLE_PREFIX = re.compile(r"^(feat|fix)(\([^)]*\))?!?:", re.IGNORECASE)
 REACH_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+Who else this reaches\b.*$", re.IGNORECASE | re.MULTILINE)
 REACH_PLACEHOLDER = re.compile(r"^(tbd|todo|n/?a|-|\.\.\.)?$", re.IGNORECASE)
-TABLE_SEPARATOR = re.compile(r"^(?=.*\|)\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?$")
+TABLE_SEPARATOR = re.compile(r"^(?=.*\|)\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$")
 REACH_SOURCE_ROOTS = ("src/", "web/src/")
-REACH_EXCLUDED_ROOTS = ("src/test/", "web/src/test/", "web/src/pages/WhatsNewPage/changelog/")
+REACH_EXCLUDED_ROOTS = ("src/test/", "web/src/test/")
+CHANGELOG_DIR = "web/src/pages/WhatsNewPage/changelog/"
 REACH_EXCLUDED_PARTS = (
     ".test.",
     ".spec.",
@@ -264,9 +265,17 @@ def deviations_violation(pr_data):
     )
 
 
+def as_text(value):
+    return value if isinstance(value, str) else ""
+
+
+def entries(value):
+    return [entry for entry in value if isinstance(entry, dict)] if isinstance(value, list) else []
+
+
 def user_visible_headline(pr_data):
-    headlines = [pr_data.get("title") or ""]
-    headlines += [c.get("messageHeadline") or "" for c in pr_data.get("commits") or []]
+    headlines = [as_text(pr_data.get("title"))]
+    headlines += [as_text(c.get("messageHeadline")) for c in entries(pr_data.get("commits"))]
     for headline in headlines:
         if USER_VISIBLE_PREFIX.match(headline.strip()):
             return headline.strip()
@@ -277,19 +286,39 @@ def is_user_visible_pr(pr_data):
     return user_visible_headline(pr_data) is not None
 
 
+def is_changelog_entry(path):
+    return path.startswith(CHANGELOG_DIR) and path.endswith(".json")
+
+
 def is_reach_source(path):
     if not path.startswith(REACH_SOURCE_ROOTS):
         return False
-    if path.startswith(REACH_EXCLUDED_ROOTS) or path.endswith(".md"):
+    if path.startswith(REACH_EXCLUDED_ROOTS) or is_changelog_entry(path) or path.endswith(".md"):
         return False
     return not any(part in path for part in REACH_EXCLUDED_PARTS)
 
 
+def strip_html_comments(text):
+    kept = []
+    position = 0
+    while True:
+        opener = text.find("<!--", position)
+        if opener == -1:
+            kept.append(text[position:])
+            return "".join(kept).replace("-->", "")
+        kept.append(text[position:opener])
+        closer = text.find("-->", opener + 4)
+        if closer == -1:
+            return "".join(kept).replace("-->", "")
+        position = closer + 3
+
+
 def reach_section_text(body):
-    heading = REACH_HEADING.search(body or "")
+    visible = strip_html_comments(as_text(body))
+    heading = REACH_HEADING.search(visible)
     if heading is None:
         return None
-    rest = body[heading.end():]
+    rest = visible[heading.end():]
     level = len(heading.group(1))
     next_heading = re.search(rf"^ {{0,3}}#{{1,{level}}}[ \t]", rest, re.MULTILINE)
     section = rest[: next_heading.start()] if next_heading else rest
@@ -300,23 +329,8 @@ def is_table_separator(line):
     return bool(TABLE_SEPARATOR.match(line))
 
 
-def strip_html_comments(text):
-    kept = []
-    position = 0
-    while True:
-        opener = text.find("<!--", position)
-        if opener == -1:
-            kept.append(text[position:])
-            return "".join(kept)
-        kept.append(text[position:opener])
-        closer = text.find("-->", opener + 4)
-        if closer == -1:
-            return "".join(kept)
-        position = closer + 3
-
-
 def reach_content_lines(section):
-    lines = [line.strip() for line in strip_html_comments(section).splitlines()]
+    lines = [line.strip() for line in section.splitlines()]
     kept = []
     for index, line in enumerate(lines):
         if is_table_separator(line):
@@ -339,23 +353,25 @@ def reach_violation(pr_data):
     trigger = user_visible_headline(pr_data)
     if trigger is None:
         return None
-    paths = [f.get("path") or "" for f in pr_data.get("files") or []]
+    paths = [as_text(f.get("path")) for f in entries(pr_data.get("files"))]
     source_paths = [p for p in paths if is_reach_source(p)]
     if not source_paths:
         return None
     if has_reach_section(pr_data.get("body")):
         return None
-    first_source = source_paths[0]
+    number = pr_data.get("number") or "<n>"
     return (
-        f"`{trigger}` is feat:/fix: and the PR changes source "
-        f"({first_source}), but the `## Who else this reaches` section is missing "
-        "or empty (TBD/TODO/N/A and comments do not count). Add one row per "
-        "population the changed code is reachable from (signed-out, free, free "
-        "over the limit, paying, pass holder, Auto Sync, each flag arm, Notion vs "
-        "upload, web/MCP/iOS): a reachable row names the test that exercises it, "
-        "an unreachable row says why. Rule: .claude/agents/engineer.md step 10; "
-        "rows: the section in its PR description template. Add it with "
-        "`gh pr edit <n> --body-file`, then rerun the /ship step 2 reach reviewer"
+        f"the title or a commit headline (`{trigger}`) is feat:/fix: and the PR "
+        f"changes source ({source_paths[0]}), but the `## Who else this reaches` "
+        "section is missing or empty (TBD/TODO/N/A and comments do not count). "
+        "Add one row per population the changed code is reachable from "
+        "(signed-out, free, free over the limit, paying, pass holder, Auto Sync, "
+        "flag on/off and each experiment arm, Notion vs upload, web/MCP/iOS): a "
+        "reachable row names the test that exercises it, an unreachable row says "
+        "why. Rule: .claude/agents/engineer.md step 10; rows: uncomment the "
+        "section in its PR description template. Save the current body, add the "
+        f"section, `gh pr edit {number} --body-file <file>`, rerun the /ship "
+        "step 2 reach reviewer, then merge again"
     )
 
 

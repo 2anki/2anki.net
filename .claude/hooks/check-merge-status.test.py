@@ -157,6 +157,7 @@ class IsReachSourceTest(unittest.TestCase):
             "web/src/pages/UploadPage/UploadPage.tsx",
             "web/src/locales/en/upload.json",
             "web/src/styles/base.css",
+            "web/src/pages/WhatsNewPage/changelog/index.ts",
         ):
             self.assertTrue(check_merge_status.is_reach_source(path), path)
 
@@ -234,6 +235,19 @@ class HasReachSectionTest(unittest.TestCase):
     def test_the_next_section_does_not_fill_an_empty_one(self):
         self.assertFalse(check_merge_status.has_reach_section("## Who else this reaches\n\n## Risks\nnone"))
 
+    def test_a_heading_inside_a_comment_does_not_count(self):
+        for body in (
+            "<!--\n## Who else this reaches\n-->\n## Risks\nx",
+            "<!--\n## Who else this reaches\n| a | b |\n| --- | --- |\n| free | x.test.ts |\n-->",
+            "## Who else this reaches\n-->\n",
+        ):
+            self.assertFalse(check_merge_status.has_reach_section(body), repr(body))
+
+    def test_short_separators_still_mark_a_header_only_table(self):
+        for separator in ("|-|-|", "| - | - |", "|:-|-:|"):
+            body = f"## Who else this reaches\n| Population | Proof |\n{separator}\n"
+            self.assertFalse(check_merge_status.has_reach_section(body), separator)
+
     def test_empty_or_placeholder_sections_fail(self):
         for body in (
             "## Who else this reaches\n\n## Risks\nx",
@@ -286,6 +300,16 @@ class ReachViolationTest(unittest.TestCase):
         self.assertIsNone(check_merge_status.reach_violation(pr))
 
 
+class OddShapesTest(unittest.TestCase):
+    def test_null_entries_and_non_string_fields_do_not_raise(self):
+        pr = {"title": 7, "commits": [None, {"messageHeadline": None}], "files": [None, {"path": None}], "body": 3}
+        self.assertIsNone(check_merge_status.reach_violation(pr))
+
+    def test_a_null_commit_beside_a_fix_commit_still_gates(self):
+        pr = {"title": None, "commits": [None, {"messageHeadline": "fix: x"}], "files": [{"path": "src/a.ts"}], "body": None}
+        self.assertIsNotNone(check_merge_status.reach_violation(pr))
+
+
 class MainWiringTest(unittest.TestCase):
     def run_main(self, pr_data):
         captured = {}
@@ -308,6 +332,7 @@ class MainWiringTest(unittest.TestCase):
     def pr(self, body):
         sha = "a" * 40
         return {
+            "number": 1,
             **user_visible_pr(body, "src/usecases/x.ts"),
             "headRefOid": sha,
             "headRefName": "fix/x",
@@ -364,6 +389,7 @@ class MainWiringTest(unittest.TestCase):
         self.assertIn("fix: keep the held-back notice", reason)
         self.assertIn("src/usecases/x.ts", reason)
         self.assertIn("PR description template", reason)
+        self.assertIn("gh pr edit 1 ", reason)
 
 
 if __name__ == "__main__":
