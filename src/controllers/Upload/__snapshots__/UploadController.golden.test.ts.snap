@@ -5,6 +5,9 @@ exports[`what each population gets back from /api/upload/file > lifetime (patreo
   "body": {
     "apkg": "golden-apkg cards=120",
   },
+  "cardsCharged": [
+    120,
+  ],
   "contentType": "application/octet-stream",
   "headers": {
     "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
@@ -27,6 +30,9 @@ exports[`what each population gets back from /api/upload/file > paying subscribe
   "body": {
     "apkg": "golden-apkg cards=120",
   },
+  "cardsCharged": [
+    120,
+  ],
   "contentType": "application/octet-stream",
   "headers": {
     "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
@@ -49,6 +55,9 @@ exports[`what each population gets back from /api/upload/file > signed-in free u
   "body": {
     "apkg": "golden-apkg cards=5",
   },
+  "cardsCharged": [
+    5,
+  ],
   "contentType": "application/octet-stream",
   "headers": {
     "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
@@ -71,6 +80,9 @@ exports[`what each population gets back from /api/upload/file > signed-in free w
   "body": {
     "apkg": "golden-apkg cards=100",
   },
+  "cardsCharged": [
+    100,
+  ],
   "contentType": "application/octet-stream",
   "headers": {
     "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Cards-Held-Back, X-Held-For-Plan, X-Download-Key",
@@ -96,6 +108,9 @@ exports[`what each population gets back from /api/upload/file > signed-in free w
   "body": {
     "apkg": "golden-apkg cards=10",
   },
+  "cardsCharged": [
+    10,
+  ],
   "contentType": "application/octet-stream",
   "headers": {
     "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Cards-Held-Back, X-Held-For-Plan, X-Download-Key",
@@ -121,6 +136,7 @@ exports[`what each population gets back from /api/upload/file > signed-in free w
   "body": {
     "text": "Found. Redirecting to /limit?kind=card_count",
   },
+  "cardsCharged": [],
   "contentType": "text/plain",
   "headers": {
     "location": "/limit?kind=card_count",
@@ -135,6 +151,9 @@ exports[`what each population gets back from /api/upload/file > signed-in pass h
   "body": {
     "apkg": "golden-apkg cards=120",
   },
+  "cardsCharged": [
+    120,
+  ],
   "contentType": "application/octet-stream",
   "headers": {
     "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
@@ -157,6 +176,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
   "body": {
     "text": "Found. Redirecting to /limit?kind=anonymous",
   },
+  "cardsCharged": [],
   "contentType": "text/plain",
   "headers": {
     "location": "/limit?kind=anonymous",
@@ -171,6 +191,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
   "body": {
     "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
   },
+  "cardsCharged": [],
   "contentType": "text/plain",
   "headers": {
     "location": "/limit?kind=anonymous&cards=120",
@@ -188,6 +209,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
     "kind": "held",
     "totalCards": 120,
   },
+  "cardsCharged": [],
   "contentType": "application/json",
   "headers": {},
   "status": 200,
@@ -206,6 +228,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
     "kind": "held",
     "totalCards": 120,
   },
+  "cardsCharged": [],
   "contentType": "application/json",
   "headers": {},
   "status": 200,
@@ -220,6 +243,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
   "body": {
     "text": "Found. Redirecting to /limit?kind=anonymous",
   },
+  "cardsCharged": [],
   "contentType": "text/plain",
   "headers": {
     "location": "/limit?kind=anonymous",
@@ -234,6 +258,7 @@ exports[`what each population gets back from /api/upload/file > signed-out pass 
   "body": {
     "apkg": "golden-apkg cards=120",
   },
+  "cardsCharged": [],
   "contentType": "application/octet-stream",
   "headers": {
     "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
@@ -253,6 +278,7 @@ exports[`what each population gets back from /api/upload/file > signed-out under
   "body": {
     "apkg": "golden-apkg cards=5",
   },
+  "cardsCharged": [],
   "contentType": "application/octet-stream",
   "headers": {
     "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
@@ -272,6 +298,7 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
   "body": {
     "text": "Found. Redirecting to /limit?kind=card_count",
   },
+  "cardsCharged": [],
   "contentType": "text/plain",
   "headers": {
     "location": "/limit?kind=card_count",

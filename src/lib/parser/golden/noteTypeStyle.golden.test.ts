@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 
-const generateDeckInfoMock = vi.hoisted(() => vi.fn());
+const generateDeckInfoMock = vi.hoisted(() =>
+  vi.fn<typeof import('../../claude/ClaudeService').generateDeckInfo>()
+);
 
 vi.mock('../../claude/ClaudeService', async (importActual) => {
   const actual =
@@ -224,6 +226,7 @@ const settingsPaths: [
         workspace,
         userId: null,
       });
+      expect(generateDeckInfoMock).toHaveBeenCalledTimes(1);
       return readDeckInfo(workspace);
     },
   ],

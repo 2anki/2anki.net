@@ -238,6 +238,8 @@ function inMemoryFlags(
   };
 }
 
+const cardUsageCharges: number[] = [];
+
 function inMemoryUsers(initialCardsUsed: number): UsersRepository {
   let cardsUsed = initialCardsUsed;
   return {
@@ -248,6 +250,7 @@ function inMemoryUsers(initialCardsUsed: number): UsersRepository {
       }),
     incrementCardUsage: (_owner: number, count: number) => {
       cardsUsed += count;
+      cardUsageCharges.push(count);
       return Promise.resolve(1);
     },
     getCardOptions: () => Promise.resolve(null),
@@ -375,6 +378,7 @@ afterAll(async () => {
 afterEach(() => {
   __resetFeatureFlagModuleForTests();
   s3Puts.length = 0;
+  cardUsageCharges.length = 0;
 });
 
 async function upload(file: keyof typeof UPLOADS, who: Population) {
@@ -401,6 +405,7 @@ async function upload(file: keyof typeof UPLOADS, who: Population) {
     headers: clientHeaders(response),
     body: await clientBody(response),
     storedObjects: s3Puts.map(storedObjectKind),
+    cardsCharged: [...cardUsageCharges],
   };
 }
 
