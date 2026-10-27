@@ -31,6 +31,8 @@ BLOCKED_TITLES = [
 
 CODE_WORK_PREFIX = re.compile(r"^\s*(feat|fix|docs|refactor|perf|test|ci|build|revert)(\([^)]*\))?!?\s*:", re.IGNORECASE)
 
+FIELD_FLAG = r"(?:-[fF]|--field|--raw-field)(?:=|\s+)"
+
 QUOTED = r"(['\"])(.*?)\1"
 
 
@@ -39,13 +41,13 @@ def title_from(command):
         match = re.search(r"(?:--title|-t)(?:=|\s+)" + QUOTED, command, re.DOTALL)
         return match.group(2) if match else None
     if re.search(r"\bgh\s+api\b.*\brepos/[^/\s]+/[^/\s]+/issues(?:\s|$|['\"])", command):
-        quoted_value = re.search(r"-[fF]\s+title=" + QUOTED, command, re.DOTALL)
+        quoted_value = re.search(FIELD_FLAG + r"title=" + QUOTED, command, re.DOTALL)
         if quoted_value:
             return quoted_value.group(2)
-        quoted_field = re.search(r"-[fF]\s+(['\"])title=(.*?)\1", command, re.DOTALL)
+        quoted_field = re.search(FIELD_FLAG + r"(['\"])title=(.*?)\1", command, re.DOTALL)
         if quoted_field:
             return quoted_field.group(2)
-        bare = re.search(r"-[fF]\s+title=(\S+)", command)
+        bare = re.search(FIELD_FLAG + r"title=(\S+)", command)
         return bare.group(1) if bare else None
     return None
 
@@ -64,7 +66,10 @@ def main():
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
         sys.exit(0)
-    command = (payload.get("tool_input") or {}).get("command") or ""
+    tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
+    command = tool_input.get("command") if isinstance(tool_input, dict) else None
+    if not isinstance(command, str):
+        sys.exit(0)
     title = title_from(command)
     if title is None:
         sys.exit(0)
@@ -80,7 +85,7 @@ def main():
         "(https://github.com/orgs/Laer-Smart/projects/4) with Status, Area, "
         "Owner and, when dated, Due. Recipe: .claude/docs/follow-ups-project.md.\n\n"
         "If this really is code work (a bug, a feature, a change a read decided "
-        "on), retitle it as the work, e.g. `fix: ...` or `Remove <surface>`.",
+        "on), retitle it as the work with a code-work prefix, e.g. `fix: ...` or `feat: ...` (`chore:` does not pass).",
         file=sys.stderr,
     )
     sys.exit(2)

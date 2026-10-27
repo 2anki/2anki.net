@@ -61,6 +61,14 @@ class TestTitleExtraction(unittest.TestCase):
             "Needs you: x",
         )
 
+    def test_reads_gh_api_long_field_flags(self):
+        for command in [
+            "gh api repos/2anki/server/issues --field title='Needs you: x'",
+            "gh api repos/2anki/server/issues --raw-field 'title=Needs you: x'",
+        ]:
+            with self.subTest(command=command):
+                self.assertEqual(follow_up.title_from(command), "Needs you: x")
+
     def test_other_commands_have_no_title(self):
         for command in [
             'gh pr create --title "Adoption review: x"',
