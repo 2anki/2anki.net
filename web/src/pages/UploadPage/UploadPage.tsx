@@ -102,7 +102,9 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const aiBadgeState = userLocalsLoading
     ? pendingAiBadgeState(sessionHint)
     : deriveAiBadgeState(isSignedIn, isPaying, isAiOn, previewEnabled);
-  const aiCredits = useAiCredits(aiBadgeState === 'on');
+  const aiCredits = useAiCredits(
+    aiBadgeState === 'on' || aiBadgeState === 'off'
+  );
   const holdSignedInBadge = userLocalsLoading && sessionHint;
 
   const showAiChoice = userLocalsLoading
@@ -312,6 +314,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             </button>
             <span className={styles.aiOffBadgeBody}>
               <span> {t('upload.page.aiOffBody')} </span>
+              <span>{t('upload.page.aiOffIncluded')} </span>
               <button
                 type="button"
                 className={styles.aiInlineLink}
@@ -325,6 +328,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </Link>
               <span>.</span>
             </span>
+            <AiCreditsReadout credits={aiCredits} />
           </>
         )}
         {aiBadgeState === 'free' && (

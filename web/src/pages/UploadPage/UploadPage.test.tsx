@@ -33,7 +33,14 @@ type FakeUser = {
 } | null;
 
 let fakeUser: FakeUser = null;
-let fakeLocals: { patreon?: boolean; subscriber?: boolean } | undefined;
+let fakeLocals:
+  | {
+      patreon?: boolean;
+      subscriber?: boolean;
+      passKind?: string | null;
+      planSource?: string | null;
+    }
+  | undefined;
 let fakeFeatures:
   | {
       anonymousDayPassCard?: boolean;
@@ -461,6 +468,131 @@ describe('UploadPage AI badge settings link', () => {
       screen.queryByRole('link', { name: /manage in settings/i })
     ).not.toBeInTheDocument();
   });
+});
+
+describe('UploadPage AI off badge for a paying account', () => {
+  const creditsRequests = (fetchMock: ReturnType<typeof vi.fn>) =>
+    fetchMock.mock.calls.filter(([url]) => url === '/api/ai/credits');
+
+  function stubCredits(credits: number): ReturnType<typeof vi.fn> {
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        url === '/api/ai/credits'
+          ? new Response(
+              JSON.stringify({
+                credits,
+                used: 1500 - credits,
+                allowance: 1500,
+                usable: true,
+                windowEnd: null,
+                resets: 'pass',
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            )
+          : new Response(null, { status: 204 })
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  beforeEach(() => {
+    fakeUser = { id: 42 };
+    fakeLocals = undefined;
+    fakeFeatures = undefined;
+    globalThis.localStorage.clear();
+    globalThis.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    fakeUser = null;
+    fakeLocals = undefined;
+    globalThis.localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ['a Stripe subscriber', { subscriber: true, planSource: 'stripe' }],
+    [
+      'a 120-day pass holder',
+      { subscriber: true, passKind: '120d', planSource: null },
+    ],
+    ['a lifetime account', { patreon: true, subscriber: false }],
+    [
+      'an Apple Pro account',
+      { subscriber: true, passKind: 'unlimited', planSource: 'apple' },
+    ],
+  ])(
+    'tells %s that Claude cards are included and shows the credits left',
+    async (_population, locals) => {
+      fakeLocals = locals;
+      globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+      stubCredits(1347);
+      renderPage();
+
+      expect(
+        screen.getByText('Claude cards are included in your plan.')
+      ).toBeInTheDocument();
+      expect(
+        await screen.findByText('1347 AI credits left.')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Turn on Claude cards' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Manage in Settings' })
+      ).toHaveAttribute('href', '/card-options?returnTo=/upload');
+    }
+  );
+
+  it('keeps the plan line and explains the fallback when the credits are spent', async () => {
+    fakeLocals = { subscriber: true };
+    stubCredits(0);
+    renderPage();
+
+    expect(
+      screen.getByText('Claude cards are included in your plan.')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        '0 AI credits left. Your next deck builds without AI until your credits reset.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('reads the credits once for the paying off state', async () => {
+    fakeLocals = { subscriber: true };
+    const fetchMock = stubCredits(1347);
+    renderPage();
+
+    await screen.findByText('1347 AI credits left.');
+    expect(creditsRequests(fetchMock)).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      'a signed-in free account',
+      { id: 42 },
+      { patreon: false, subscriber: false },
+      /upgrade to write cards with claude/i,
+    ],
+    ['a signed-out visitor', null, undefined, /sign in to turn on AI/i],
+  ])(
+    'does not claim a plan or read credits for %s',
+    async (_population, user, locals, badgeLink) => {
+      fakeUser = user;
+      fakeLocals = locals;
+      const fetchMock = stubCredits(1347);
+      renderPage();
+
+      expect(screen.getByRole('link', { name: badgeLink })).toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(
+        screen.queryByText('Claude cards are included in your plan.')
+      ).toBeNull();
+      expect(creditsRequests(fetchMock)).toHaveLength(0);
+    }
+  );
 });
 
 const SIGNUP_FLAG_KEY = 'signup_completed_tracked';

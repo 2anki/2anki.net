@@ -68,7 +68,10 @@ import {
   useCardUsage,
   CARD_USAGE_QUERY_KEY,
 } from '../../../../lib/hooks/useCardUsage';
-import { AI_CREDITS_QUERY_KEY } from '../../../../lib/hooks/useAiCredits';
+import {
+  AI_CREDITS_QUERY_KEY,
+  useAiCredits,
+} from '../../../../lib/hooks/useAiCredits';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -346,6 +349,15 @@ function isThinPdfOrTxtDeck(
     return false;
   }
   return /\.(pdf|txt)$/i.test(filename);
+}
+
+type AiRebuildFormat = 'pdf' | 'ppt' | 'pptx';
+
+function aiRebuildFormatOf(filename: string): AiRebuildFormat | null {
+  if (/\.pdf$/i.test(filename)) return 'pdf';
+  if (/\.pptx$/i.test(filename)) return 'pptx';
+  if (/\.ppt$/i.test(filename)) return 'ppt';
+  return null;
 }
 
 function UploadCloudIcon({ className }: Readonly<{ className?: string }>) {
@@ -1135,6 +1147,58 @@ function UploadForm({
     setShowFallback(false);
     void runFileUpload(formData, files, false);
   };
+
+  const thinDeckAiOffer =
+    !aiOn &&
+    !lastSubmitUsedAi &&
+    !sampleRun &&
+    cardsHeldBack === 0 &&
+    thinDeckOfferFile != null &&
+    isThinDeck(cardCount, thinDeckOfferFile.name, thinDeckOfferFile.size)
+      ? { file: thinDeckOfferFile, cardCount }
+      : null;
+
+  // Offered only where the click brings Claude cards back: credits spent on
+  // the deck mean Claude already wrote it, whatever this browser sent; two
+  // pages make one card keeps a PDF away from Claude; and a PDF with no
+  // readable text would stop at the page-image question again.
+  const aiRebuildFormat =
+    rescueFiles.length === 1 ? aiRebuildFormatOf(rescueFiles[0].name) : null;
+  const aiRebuildEligible =
+    zoneState === 'success' &&
+    isAuthenticated &&
+    isPaying &&
+    !aiOn &&
+    !lastSubmitUsedAi &&
+    !sampleRun &&
+    cardsHeldBack === 0 &&
+    creditsUsed === 0 &&
+    pdfFallbackMode == null &&
+    thinDeckAiOffer == null &&
+    aiRebuildFormat != null &&
+    !(
+      aiRebuildFormat === 'pdf' &&
+      globalThis.localStorage?.getItem('pdf-page-pairs') === 'true'
+    );
+  const aiRebuildCredits = useAiCredits(aiRebuildEligible);
+  const aiRebuildOffer =
+    aiRebuildEligible &&
+    aiRebuildCredits != null &&
+    aiRebuildCredits.credits > 0
+      ? aiRebuildFormat
+      : null;
+  useEffect(() => {
+    if (aiRebuildOffer != null) {
+      track('upload_ai_rebuild_shown', { format: aiRebuildOffer });
+    }
+  }, [aiRebuildOffer]);
+
+  const handleAiRebuild = () => {
+    if (aiRebuildOffer == null) return;
+    track('upload_ai_rebuild_clicked', { format: aiRebuildOffer });
+    rerunWithAi(rescueFiles);
+  };
+
   useEffect(() => {
     if (offeredRescue != null && offeredRescue.length > 0) {
       track('upload_rescue_offered', {
@@ -2420,24 +2484,15 @@ function UploadForm({
           )}
         </div>
       )}
-      {!aiOn &&
-        !lastSubmitUsedAi &&
-        !sampleRun &&
-        cardsHeldBack === 0 &&
-        thinDeckOfferFile != null &&
-        isThinDeck(
-          cardCount,
-          thinDeckOfferFile.name,
-          thinDeckOfferFile.size
-        ) && (
-          <ThinDeckAiOffer
-            file={thinDeckOfferFile}
-            cardCount={cardCount}
-            isPaying={isPaying}
-            onMakeFullDeck={() => rerunWithAi(rescueFiles)}
-            onBeforeCheckout={saveThinDeckForCheckout}
-          />
-        )}
+      {thinDeckAiOffer != null && (
+        <ThinDeckAiOffer
+          file={thinDeckAiOffer.file}
+          cardCount={thinDeckAiOffer.cardCount}
+          isPaying={isPaying}
+          onMakeFullDeck={() => rerunWithAi(rescueFiles)}
+          onBeforeCheckout={saveThinDeckForCheckout}
+        />
+      )}
       {!aiOn &&
         cardsHeldBack === 0 &&
         (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
@@ -2451,6 +2506,20 @@ function UploadForm({
             />
           </div>
         )}
+      {aiRebuildOffer != null && (
+        <div className={formStyles.aiRescueActions}>
+          <p className={formStyles.rescueLead}>
+            {t('upload.form.aiRebuildLead')}
+          </p>
+          <button
+            type="button"
+            className={formStyles.aiRescueButton}
+            onClick={handleAiRebuild}
+          >
+            {t('upload.form.aiRebuildButton')}
+          </button>
+        </div>
+      )}
       {showFallback && (
         <button
           type="button"

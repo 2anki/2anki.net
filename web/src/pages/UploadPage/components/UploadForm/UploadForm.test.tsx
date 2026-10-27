@@ -770,6 +770,115 @@ describe('UploadForm Google Drive picker interaction', () => {
       screen.queryByRole('button', { name: 'Two pages per card' })
     ).toBeNull();
   });
+
+  it('offers no Claude rebuild for a Drive PDF picked after a local upload', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 7 },
+        locals: { patreon: false, subscriber: true },
+        features: {},
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const fetchMock = vi.fn((url: string) =>
+      Promise.resolve(
+        url === '/api/ai/credits'
+          ? new Response(
+              JSON.stringify({
+                credits: 1347,
+                used: 153,
+                allowance: 1500,
+                usable: true,
+                windowEnd: null,
+                resets: 'pass',
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            )
+          : {
+              redirected: false,
+              status: 200,
+              headers: new Headers({
+                'Content-Type': 'application/octet-stream',
+                'X-Card-Count': '64',
+              }),
+              blob: () => Promise.resolve(new Blob(['apkg'])),
+            }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      const fileInput = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      Object.defineProperty(fileInput, 'files', {
+        value: [new File(['x'], 'lecture.pdf')],
+        configurable: true,
+      });
+      await act(async () => {
+        container
+          .querySelector('form')!
+          .dispatchEvent(
+            new Event('submit', { bubbles: true, cancelable: true })
+          );
+      });
+      expect(
+        await screen.findByRole('button', { name: 'Rebuild with Claude' })
+      ).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Make another deck' })
+      );
+
+      fireEvent.click(
+        within(container).getByRole('button', { name: 'Google Drive' })
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Choose from Google Drive' })
+      );
+
+      await waitFor(() =>
+        expect(
+          fetchMock.mock.calls.filter(
+            ([url]) => url === '/api/upload/google_drive'
+          )
+        ).toHaveLength(1)
+      );
+      await screen.findByRole('button', { name: 'Make another deck' });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      });
+      expect(
+        screen.queryByRole('button', { name: 'Rebuild with Claude' })
+      ).toBeNull();
+    } finally {
+      globalThis.localStorage.removeItem('claude-ai-flashcards');
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+      mockGet2ankiApi.mockReturnValue({
+        startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+        getUploads: vi.fn().mockResolvedValue([]),
+      } as unknown as ReturnType<typeof get2ankiApi>);
+    }
+  });
 });
 
 describe('UploadForm analytics events', () => {
@@ -5565,6 +5674,434 @@ describe('UploadForm thin-deck notice', () => {
 
     await screen.findByRole('button', { name: 'Make another deck' });
     expect(screen.queryByText(/came from this file/)).toBeNull();
+  });
+});
+
+describe('UploadForm Claude rebuild offer for a paying account with AI off', () => {
+  const OFFER =
+    "These cards came from the file's layout. Claude cards are included in your plan.";
+
+  const passHolder = {
+    user: { id: 7, email: 'learner@example.com' },
+    locals: {
+      owner: 7,
+      patreon: false,
+      subscriber: true,
+      passKind: '120d',
+      planSource: null,
+    },
+    features: {},
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  const freeSignedIn = {
+    user: { id: 8, email: 'free@example.com' },
+    locals: { owner: 8, patreon: false, subscriber: false },
+    features: {},
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  const signedOut = {
+    user: null,
+    locals: { owner: 0, patreon: false, subscriber: false },
+    features: {},
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  const trackMock = vi.mocked(track);
+
+  function setUserLocals(data: ReturnType<typeof useUserLocals>['data']) {
+    mockUseUserLocals.mockReturnValue({
+      data,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  }
+
+  function deckResponse(cards: number, headers: Record<string, string> = {}) {
+    return {
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'File-Name': encodeURIComponent('lecture.apkg'),
+        'X-Card-Count': String(cards),
+        ...headers,
+      }),
+      blob: () => Promise.resolve(new Blob(['apkg'])),
+    };
+  }
+
+  function creditsResponse(credits: number): Response {
+    return new Response(
+      JSON.stringify({
+        credits,
+        used: 1500 - credits,
+        allowance: 1500,
+        usable: true,
+        windowEnd: null,
+        resets: 'pass',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  function stubServer(
+    decks: ReturnType<typeof deckResponse>[],
+    credits = 1347
+  ): Mock {
+    const pending = [...decks];
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/ai/credits') {
+        return Promise.resolve(creditsResponse(credits));
+      }
+      if (url === '/api/upload/file' || url === '/api/upload/dropbox') {
+        return Promise.resolve(
+          pending.length > 1 ? pending.shift() : pending[0]
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  const callsTo = (fetchMock: Mock, url: string) =>
+    fetchMock.mock.calls.filter(([calledUrl]) => calledUrl === url);
+
+  const shownEvents = () =>
+    trackMock.mock.calls.filter(([name]) => name === 'upload_ai_rebuild_shown');
+
+  async function submitFiles(container: HTMLElement, names: string[]) {
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: names.map((name) => new File(['x'], name)),
+      configurable: true,
+    });
+    input.removeAttribute('required');
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  async function settle() {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+  }
+
+  beforeEach(() => {
+    trackMock.mockClear();
+    mockUseCardUsage.mockReturnValue(null);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      previewThinDeckAi: vi.fn(),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    globalThis.localStorage.clear();
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:deck');
+    setUserLocals(passHolder);
+  });
+
+  afterEach(() => {
+    setUserLocals(undefined);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    globalThis.localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it('offers a pass holder a Claude rebuild of a 64-card PDF deck and sends the file again with AI on', async () => {
+    const fetchMock = stubServer([
+      deckResponse(64),
+      deckResponse(71, { 'X-Credits-Used': '38' }),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+
+    expect(await screen.findByText(OFFER)).toBeInTheDocument();
+    expect(shownEvents()).toEqual([
+      ['upload_ai_rebuild_shown', { format: 'pdf' }],
+    ]);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Rebuild with Claude' })
+    );
+
+    expect(trackMock).toHaveBeenCalledWith('upload_ai_rebuild_clicked', {
+      format: 'pdf',
+    });
+    await waitFor(() =>
+      expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(2)
+    );
+    const resent = callsTo(fetchMock, '/api/upload/file')[1][1]
+      .body as FormData;
+    expect(resent.getAll('claude-ai-flashcards')).toEqual(['true']);
+    expect((resent.get('pakker') as File).name).toBe('lecture.pdf');
+    expect(
+      await screen.findByText('This deck used 38 AI credits.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(OFFER)).toBeNull();
+  });
+
+  it.each([
+    [
+      'a Stripe subscriber',
+      { owner: 7, patreon: false, subscriber: true, planSource: 'stripe' },
+    ],
+    [
+      'a lifetime account',
+      { owner: 7, patreon: true, subscriber: false, planSource: 'lifetime' },
+    ],
+    [
+      'an Apple Pro account',
+      {
+        owner: 7,
+        patreon: false,
+        subscriber: true,
+        passKind: 'unlimited',
+        planSource: 'apple',
+      },
+    ],
+  ])('offers the rebuild to %s', async (_population, locals) => {
+    setUserLocals({
+      user: { id: 7, email: 'learner@example.com' },
+      locals,
+      features: {},
+    } as unknown as ReturnType<typeof useUserLocals>['data']);
+    stubServer([deckResponse(64)]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+
+    expect(await screen.findByText(OFFER)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Rebuild with Claude' })
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['slides.pptx', 'pptx'],
+    ['slides.ppt', 'ppt'],
+    ['LECTURE.PDF', 'pdf'],
+  ])(
+    'offers the rebuild for %s and records the %s format',
+    async (filename, format) => {
+      stubServer([deckResponse(64)]);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitFiles(container, [filename]);
+
+      expect(await screen.findByText(OFFER)).toBeInTheDocument();
+      expect(shownEvents()).toEqual([['upload_ai_rebuild_shown', { format }]]);
+    }
+  );
+
+  it.each([
+    {
+      reason: 'a signed-in free account',
+      user: freeSignedIn,
+      aiOn: false,
+      files: ['lecture.pdf'],
+    },
+    {
+      reason: 'a signed-out visitor',
+      user: signedOut,
+      aiOn: false,
+      files: ['lecture.pdf'],
+    },
+    {
+      reason: 'AI already on',
+      user: passHolder,
+      aiOn: true,
+      files: ['lecture.pdf'],
+    },
+    {
+      reason: 'two files in one upload',
+      user: passHolder,
+      aiOn: false,
+      files: ['part-1.pdf', 'part-2.pdf'],
+    },
+    {
+      reason: 'a .csv file',
+      user: passHolder,
+      aiOn: false,
+      files: ['cards.csv'],
+    },
+  ])('offers no rebuild for $reason', async ({ user, aiOn, files }) => {
+    setUserLocals(user);
+    if (aiOn) globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    stubServer([deckResponse(64)]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={aiOn} />
+    );
+    await submitFiles(container, files);
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    await settle();
+    expect(screen.queryByText(OFFER)).toBeNull();
+    expect(shownEvents()).toEqual([]);
+  });
+
+  it('offers no rebuild to a free account whose deck stopped at the monthly limit', async () => {
+    setUserLocals(freeSignedIn);
+    stubServer([
+      deckResponse(42, { 'X-Cards-Held-Back': '300', 'X-Held-For-Plan': '1' }),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+
+    expect(
+      await screen.findByText('This deck has 42 of 342 cards')
+    ).toBeInTheDocument();
+    await settle();
+    expect(screen.queryByText(OFFER)).toBeNull();
+    expect(shownEvents()).toEqual([]);
+  });
+
+  it('offers no rebuild once the plan has no AI credits left', async () => {
+    const fetchMock = stubServer([deckResponse(64)], 0);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    await waitFor(() =>
+      expect(callsTo(fetchMock, '/api/ai/credits').length).toBeGreaterThan(0)
+    );
+    await settle();
+    expect(screen.queryByText(OFFER)).toBeNull();
+    expect(shownEvents()).toEqual([]);
+  });
+
+  it('offers no rebuild when the server already spent credits on the deck', async () => {
+    stubServer([deckResponse(64, { 'X-Credits-Used': '12' })]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+
+    expect(
+      await screen.findByText('This deck used 12 AI credits.')
+    ).toBeInTheDocument();
+    await settle();
+    expect(screen.queryByText(OFFER)).toBeNull();
+  });
+
+  it('offers no rebuild of a PDF while two pages make one card, which skips Claude for PDFs', async () => {
+    globalThis.localStorage.setItem('pdf-page-pairs', 'true');
+    stubServer([deckResponse(16)]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    await settle();
+    expect(screen.queryByText(OFFER)).toBeNull();
+  });
+
+  it('offers no rebuild of a PDF without readable text that became page images', async () => {
+    stubServer([deckResponse(14, { 'X-Pdf-Fallback': 'pairs' })]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['scan.pdf']);
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    await settle();
+    expect(screen.queryByText(OFFER)).toBeNull();
+  });
+
+  it.each([
+    ['a pass holder', passHolder],
+    ['a signed-in free account', freeSignedIn],
+    ['a signed-out visitor', signedOut],
+  ])(
+    'leaves a thin PDF deck to its own Claude preview offer for %s',
+    async (_population, data) => {
+      setUserLocals({
+        ...data,
+        features: { thinDeckAiOffer: true },
+      } as unknown as ReturnType<typeof useUserLocals>['data']);
+      stubServer([deckResponse(2)]);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitFiles(container, ['notes.pdf']);
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Preview cards Claude would write',
+        })
+      ).toBeInTheDocument();
+      await settle();
+      expect(screen.queryByText(OFFER)).toBeNull();
+      expect(shownEvents()).toEqual([]);
+    }
+  );
+
+  it('offers no rebuild for a Dropbox file picked after a local upload', async () => {
+    const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
+    process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
+    (window as unknown as { Dropbox?: unknown }).Dropbox = {
+      choose: ({ success }: { success: (files: unknown[]) => void }) => {
+        success([
+          {
+            id: 'id:9',
+            name: 'lecture.pdf',
+            bytes: 100,
+            icon: 'page',
+            isDir: false,
+            link: 'https://dl.dropboxusercontent.com/x/lecture.pdf',
+            linkType: 'direct',
+          },
+        ]);
+      },
+    };
+    try {
+      const fetchMock = stubServer([deckResponse(64)]);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitFiles(container, ['lecture.pdf']);
+      expect(await screen.findByText(OFFER)).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Make another deck' })
+      );
+
+      const button = container.querySelector(
+        'button[aria-label="Choose from Dropbox"]'
+      ) as HTMLButtonElement;
+      await act(async () => {
+        button.click();
+      });
+
+      await waitFor(() =>
+        expect(callsTo(fetchMock, '/api/upload/dropbox')).toHaveLength(1)
+      );
+      await screen.findByRole('button', { name: 'Make another deck' });
+      await settle();
+      expect(screen.queryByText(OFFER)).toBeNull();
+    } finally {
+      delete (window as unknown as { Dropbox?: unknown }).Dropbox;
+      process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
+    }
   });
 });
 

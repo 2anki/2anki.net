@@ -66,6 +66,8 @@ export const KNOWN_EVENTS = new Set([
   'upload_ai_on_badge_clicked',
   'upload_ai_anon_badge_viewed',
   'upload_ai_anon_badge_clicked',
+  'upload_ai_rebuild_shown',
+  'upload_ai_rebuild_clicked',
   'home_ai_anon_badge_viewed',
   'home_ai_anon_badge_clicked',
   'home_card_options_link_clicked',
