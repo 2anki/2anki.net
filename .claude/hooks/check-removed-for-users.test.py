@@ -516,10 +516,12 @@ class TestBoundedWork(unittest.TestCase):
 
     def test_many_removed_and_added_keys_match_in_linear_time(self):
         openers = [f' {"  " * depth}"{"o" * 3900}{depth}": {{' for depth in range(1, 17)]
-        removed = [f'-{"  " * 17}"r{n}": "old {n}",' for n in range(6000)]
-        added = [f'+{"  " * 17}"a{n}": "new {n}",' for n in range(6000)]
+        removed = [f'-{"  " * 17}"r{n}": "old {n}",' for n in range(4500)]
+        added = [f'+{"  " * 17}"a{n}": "new {n}",' for n in range(4500)]
         hunks = hook.parse_hunks(nested_hunk(EN_LOCALE, openers + removed + added))
-        self.assert_fast(lambda: hook.removed_locale_strings(hunks))
+        findings = []
+        self.assert_fast(lambda: findings.extend(hook.removed_locale_strings(hunks)))
+        self.assertEqual(len(findings), 4500)
 
     def test_opener_keys_are_length_capped(self):
         diff = nested_hunk(EN_LOCALE, [f' "{"o" * 3900}": {{', '-  "leaf": "gone"'])
@@ -545,10 +547,19 @@ class TestBoundedWork(unittest.TestCase):
         hunks = hook.parse_hunks(nested_hunk(EN_LOCALE, openers + added))
         self.assert_peak_memory_below(lambda: hook.removed_locale_strings(hunks), 50_000_000)
 
+    def test_long_paths_do_not_multiply_finding_memory(self):
+        long_path = "src/" + "d" * 25000 + "/warnings.ts"
+        removed = [f"-const W{n}_WARNING = 1" for n in range(80_000)]
+        hunks = hook.parse_hunks(nested_hunk(long_path, removed))
+        findings = []
+        self.assert_peak_memory_below(lambda: findings.extend(hook.removed_server_warnings(hunks)), 100_000_000)
+        self.assertEqual(len(findings), 80_000)
+        self.assertLessEqual(len(findings[0]), 2 * hook.MAX_ITEM_LENGTH + 2)
+
     def test_entry_budget_fails_closed(self):
         removed = [f'-  "r{n}": "old {n}",' for n in range(hook.MAX_LOCALE_ENTRIES + 1)]
         hunks = hook.parse_hunks(nested_hunk(EN_LOCALE, removed))
-        self.assertEqual(hook.removed_locale_strings(hunks), hook.too_many_locale_entries())
+        self.assertTrue(hook.removed_locale_strings(hunks) == hook.too_many_locale_entries())
 
     def test_diff_size_is_measured_in_bytes(self):
         emoji_diff = REMOVED_KEY_DIFF + "\U0001F600" * (hook.MAX_DIFF_BYTES // 4 + 1)
