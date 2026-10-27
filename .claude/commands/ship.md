@@ -21,11 +21,12 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
 - Rail class? Run the classifier on the file list and diff:
   ```bash
   gh pr view <n> --json files --jq '.files[].path' > <scratchpad>/ship-paths-<n>.txt
-  gh pr diff <n> > <scratchpad>/ship-diff-<n>.txt
   gh pr view <n> --json headRefOid --jq .headRefOid > <scratchpad>/ship-sha-<n>.txt
+  gh pr diff <n> > <scratchpad>/ship-diff-<n>.txt
+  [ "$(gh pr view <n> --json headRefOid --jq .headRefOid)" = "$(cat <scratchpad>/ship-sha-<n>.txt)" ] || echo "head moved while saving the diff: save all three files again"
   python3 -c "import sys; sys.path.insert(0,'.claude/hooks'); import hard_rails as r; p=open('<scratchpad>/ship-paths-<n>.txt').read().split(); print(r.rail_paths(p)); print(r.rail_content_hits(open('<scratchpad>/ship-diff-<n>.txt').read()))"
   ```
-  `<scratchpad>` is the session scratchpad's absolute path (the environment block names it); write it out in full, including inside the python string. The file names carry the PR number: two ships running at once wrote the same `ship-diff.txt` on 2026-10-15 and one overwrote the other mid-review (#4758). Regenerate the diff after every push to the branch; a reviewer reading a stale file reviews the wrong round.
+  `<scratchpad>` is the session scratchpad's absolute path (the environment block names it); write it out in full, including inside the python string. The file names carry the PR number: two ships running at once wrote the same `ship-diff.txt` on 2026-10-15 and one overwrote the other mid-review (#4758). Regenerate all three files after every push to the branch, the rebase push below included; a reviewer reading a stale file reviews the wrong round, and a stale `ship-sha-<n>.txt` blocks the step 2 marker.
   Any hit → run the matching checks in step 1b before step 2, and step 6b after the deploy. A rail PR merges on that evidence; it does not stop and wait for Alexander, unless its body records an unverified assumption (step 1).
 - Bring the branch up to date: `gh pr checkout <n>`, `git fetch origin main`, `git rebase origin/main`. If the rebase moved HEAD, `git push --force-with-lease origin <branch>` (only when the PR `author.login` is the authenticated `gh` user and the branch is the PR's own feature branch, never `main`) and re-read `headRefOid`. A Dependabot-authored head is the exception: never rebase or push it yourself; comment `@dependabot rebase`, wait on a `ScheduleWakeup` of 1200s, and re-read `headRefOid`; the run continues with other items while you wait, and the wait holds only this PR. Under `/batch dependabot`, a PR the worker sent through `/security-review` goes back to `batch-tasks/dependabot.md` steps 3 and 4 whenever `headRefOid` no longer matches the SHA that review covered, then resumes this ship from step 1.
 
