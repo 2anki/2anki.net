@@ -3,7 +3,7 @@
 Two kinds of follow-up are **draft items in the private Lær Smart Follow-ups project** (https://github.com/orgs/Laer-Smart/projects/4), never issues in `2anki/server`:
 
 - **Reads**: adoption reviews, T+30 keep-or-remove reads, "Read (by <date>)" metric checks, Search Console reads, the day-1 and day-2 spend reads after a model swap (`.claude/docs/prod-ops.md`), and any other dated look-it-up check.
-- **Owner steps**: anything only Alexander can do (a prod secret, a Stripe, Google or App Store dashboard setting, a directory submission, a decision). These used to be `Needs you` issues. Still ask him in the chat as `/ship` says; the item is what keeps the step from being lost once the chat ends.
+- **Owner steps**: anything only Alexander can do (a prod secret, a Stripe, Google or App Store dashboard setting, a directory submission, a decision). Name a secret by its variable, never paste its value. These used to be `Needs you` issues. Still ask him in the chat as `/ship` says; the item is what keeps the step from being lost once the chat ends.
 
 Why: the repo is public. Reads carry business numbers, baselines, funnel rates and keep/kill reasoning, and "Memory & sensitive data" in `CLAUDE.md` keeps those out of the repo. Both kinds also crowded the issue list: on 2026-10-27, 18 of 33 open issues were reads or owner steps, not work, and all were moved to the project.
 
