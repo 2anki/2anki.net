@@ -14,9 +14,31 @@ const HOUR = 60 * 60 * 1000;
 const account: LowRatingAccountContext = {
   email: 'owner@example.com',
   userId: '21770',
+  isLifetime: false,
+  hasActiveSubscription: true,
+  activePass: null,
   latestJobId: 918,
   latestJobStatus: 'failed',
-  plan: 'subscriber',
+  latestUploadId: 4410,
+  latestUploadAt: new Date('2026-10-19T11:58:00.000Z'),
+};
+
+const semesterPassHolder: LowRatingAccountContext = {
+  email: 'pass-holder@example.com',
+  userId: '27940',
+  isLifetime: false,
+  hasActiveSubscription: false,
+  activePass: {
+    id: 41,
+    user_id: 27940,
+    kind: '120d',
+    expires_at: new Date('2027-02-03T20:27:40.000Z'),
+    stripe_payment_intent_id: 'pi_fixture_semester',
+  },
+  latestJobId: null,
+  latestJobStatus: null,
+  latestUploadId: 912,
+  latestUploadAt: new Date('2026-10-26T22:04:11.000Z'),
 };
 
 function build(
@@ -123,17 +145,20 @@ describe('NotifyLowRatingUseCase', () => {
       userId: null,
       latestJobId: null,
       latestJobStatus: null,
+      latestUploadId: null,
+      latestUploadAt: null,
       plan: null,
     });
   });
 
   it('enriches when the signed-in user types their own email', async () => {
-    const { useCase, sendLowRatingFeedbackEmail } = build();
+    const { useCase, getByOwner, sendLowRatingFeedbackEmail } = build();
     await useCase.notifyIfLowRating({
       ...base,
       owner: 21770,
       email: 'OWNER@example.com',
     });
+    expect(getByOwner).toHaveBeenCalledWith(21770, base.now);
     expect(sendLowRatingFeedbackEmail).toHaveBeenCalledWith({
       rating: 1,
       comment: 'cards are wrong',
@@ -143,7 +168,35 @@ describe('NotifyLowRatingUseCase', () => {
       userId: '21770',
       latestJobId: 918,
       latestJobStatus: 'failed',
-      plan: 'subscriber',
+      latestUploadId: 4410,
+      latestUploadAt: new Date('2026-10-19T11:58:00.000Z'),
+      plan: 'Stripe subscriber',
+    });
+  });
+
+  it('names the pass and newest upload of a pass holder with no Notion jobs', async () => {
+    const { useCase, getByOwner, sendLowRatingFeedbackEmail } = build();
+    getByOwner.mockResolvedValue(semesterPassHolder);
+
+    await useCase.notifyIfLowRating({
+      ...base,
+      owner: 27940,
+      email: 'pass-holder@example.com',
+    });
+
+    expect(getByOwner).toHaveBeenCalledWith(27940, base.now);
+    expect(sendLowRatingFeedbackEmail).toHaveBeenCalledWith({
+      rating: 1,
+      comment: 'cards are wrong',
+      page: '/upload',
+      replyTo: 'pass-holder@example.com',
+      emailVerified: true,
+      userId: '27940',
+      latestJobId: null,
+      latestJobStatus: null,
+      latestUploadId: 912,
+      latestUploadAt: new Date('2026-10-26T22:04:11.000Z'),
+      plan: 'Semester Pass (120d), active until 2027-02-03',
     });
   });
 
@@ -159,6 +212,8 @@ describe('NotifyLowRatingUseCase', () => {
         replyTo: 'someone-else@example.com',
         emailVerified: false,
         userId: null,
+        latestUploadId: null,
+        latestUploadAt: null,
         plan: null,
       })
     );
