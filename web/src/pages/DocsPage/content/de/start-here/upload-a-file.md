@@ -59,7 +59,7 @@ Die vollständige Tabelle der Formate und Grenzen findest du unter [Dateiformate
 - **HTML** — eine einzelne `.html`-Datei oder ein Ordner davon.
 - **Markdown** — `.md`, einschließlich Obsidian-Vaults.
 - **CSV / XLSX** — eine Zeile pro Karte.
-- **PDF** — Vorder-/Rückseite pro Seitenpaar, oder KI-generierte Fragen im kostenpflichtigen Plan.
+- **PDF** — eine Karte pro Überschrift, wenn das PDF vor allem aus Text besteht. Ohne lesbaren Text fragt die Upload-Seite: **Zwei Seiten pro Karte**, **Eine Karte pro Seite** oder, im kostenpflichtigen Plan, **Karten mit KI erstellen**.
 - **PPT / PPTX** — eine Karte pro Folie: Der Folientitel ist die Vorderseite; Stichpunkte, Folienbild und Notizen die Rückseite. Eine Präsentation ganz ohne Text behält das Seitenpaar-Layout.
 
 Wirf das falsche Format hinein, und 2anki sagt es dir. Die Fehlermeldung nennt die unterstützten Typen, damit du nicht raten musst.

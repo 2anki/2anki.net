@@ -8,6 +8,15 @@ import { vi } from 'vitest';
 import ConvertLandingPage from './ConvertLandingPage';
 import { CONVERT_LANDING_PAGES } from './convertLandingConfig';
 import { ankiFidelityProof } from '../LandingPage/copy/ankiFidelityProof';
+import enCommon from '../../lib/i18n/locales/en/common.json';
+
+function pdfFaqAnswer(question: string): string {
+  const faq = CONVERT_LANDING_PAGES.get('pdf-to-anki')?.faqs.find(
+    (item) => item.q === question
+  );
+  expect(faq).toBeDefined();
+  return faq?.a ?? '';
+}
 
 function renderAtSlug(slug: string) {
   const queryClient = new QueryClient({
@@ -72,6 +81,19 @@ describe('ConvertLandingPage', () => {
       label: 'AI flashcard generator',
       href: '/ai-flashcard-generator',
     });
+  });
+
+  it('tells pdf-to-anki readers a text PDF becomes one card per heading', () => {
+    expect(pdfFaqAnswer('How do text PDFs become cards?')).toContain(
+      'one card per heading'
+    );
+  });
+
+  it('names the choices the upload page offers for a PDF without text', () => {
+    const answer = pdfFaqAnswer('What about scanned PDFs and slide decks?');
+    expect(answer).toContain(enCommon.upload.form.pdfChoicePairs);
+    expect(answer).toContain(enCommon.upload.form.pdfChoiceSingle);
+    expect(answer).toContain(enCommon.upload.form.aiRescueMake);
   });
 
   it('renders NotFoundPage for an unknown slug', () => {

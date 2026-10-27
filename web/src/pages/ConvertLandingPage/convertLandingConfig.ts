@@ -67,11 +67,11 @@ const pdfToAnki: LandingCopy = {
   faqs: [
     {
       q: 'How do text PDFs become cards?',
-      a: 'When a PDF carries a text layer, 2anki reads it and pairs the pages into cards — the text on one page becomes the front, the next page becomes the back. You get editable text cards you can fix in Anki in seconds, not flattened images.',
+      a: 'When a PDF is mostly text, 2anki reads it and makes one card per heading — the heading becomes the front, the text under it becomes the back. You get editable text cards you can fix in Anki in seconds, not flattened images.',
     },
     {
       q: 'What about scanned PDFs and slide decks?',
-      a: "A photo scan with no text layer can't be read as text. When there's no usable text, 2anki falls back to image cards: each page is paired with the next as a front-and-back image, so you still get a reviewable deck. For a true photo scan, add a text layer with OCR in macOS Preview or Adobe Acrobat first, then upload for text cards.",
+      a: 'A photo scan with no text layer gives 2anki nothing to read, so the upload page asks what the cards should be: "Two pages per card" (page 1 is the front, page 2 the back), "One card per page", or, on a paid plan, "Make cards with AI". Slides that are mostly pictures get the same question; turn on "Extract text from PDFs" in the card options to make text cards from their text instead. For text cards from a photo scan, add a text layer with OCR in macOS Preview or Adobe Acrobat first.',
     },
     {
       q: 'Is there an AI mode for dense chapters?',
