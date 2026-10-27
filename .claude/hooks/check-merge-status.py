@@ -382,8 +382,9 @@ def reach_violation(pr_data):
         "why. Rule: .claude/agents/engineer.md step 10; rows: uncomment the table "
         "in the `## Who else this reaches` block of that file's PR description "
         f"template. Save the body (`gh pr view {number} --json body --jq .body > "
-        f"<file>`), add the section, `gh pr edit {number} --body-file <file>`, "
-        "rerun the /ship step 2 reach reviewer (fix what it blocks on), then "
+        f"<scratchpad>/ship-body-{number}.txt`), add the section, `gh pr edit "
+        f"{number} --body-file <scratchpad>/ship-body-{number}.txt`, rerun the "
+        "/ship step 2 reach reviewer on that file (fix what it blocks on), then "
         "merge again"
     )
 

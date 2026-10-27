@@ -348,15 +348,17 @@ class MainWiringTest(unittest.TestCase):
         }
 
     def test_a_gh_failure_still_fails_open(self):
+        calls = []
         stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
         stdout = io.StringIO()
-        with mock.patch.object(check_merge_status, "run_gh", lambda args, label: None), \
+        with mock.patch.object(check_merge_status, "run_gh", lambda args, label: calls.append(args)), \
                 mock.patch.dict(os.environ, {}, clear=False), \
                 mock.patch("sys.stdin", stdin), \
                 mock.patch("sys.stdout", stdout):
             os.environ.pop("CLAUDE_SKIP_SAFETY", None)
             with self.assertRaises(SystemExit):
                 check_merge_status.main()
+        self.assertEqual(len(calls), 1)
         self.assertEqual(json.loads(stdout.getvalue()), {"continue": True})
 
     def test_the_launch_time_bypass_skips_the_reach_check(self):
@@ -418,6 +420,7 @@ class MainWiringTest(unittest.TestCase):
         self.assertIn("src/usecases/x.ts", reason)
         self.assertIn("PR description template", reason)
         self.assertIn("gh pr edit 1 ", reason)
+        self.assertIn("ship-body-1.txt", reason)
 
 
 if __name__ == "__main__":
