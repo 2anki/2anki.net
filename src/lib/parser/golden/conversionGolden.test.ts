@@ -71,20 +71,30 @@ function snapshotShape(payload: Deck[]) {
   }));
 }
 
-async function convert(file: string, opts = new CardOption({})) {
-  const workspace = new Workspace(true, 'fs');
-  const contents = fs
+function readFixture(file: string): string {
+  return fs
     .readFileSync(path.join(__dirname, '../../../test/fixtures', file))
     .toString();
+}
+
+async function convertExport(
+  files: { name: string; contents: string }[],
+  opts: CardOption
+) {
+  const workspace = new Workspace(true, 'fs');
   const parser = new DeckParser({
-    name: file,
+    name: files[0].name,
     settings: opts,
-    files: [{ name: file, contents }],
+    files,
     noLimits: true,
     workspace,
   });
   await parser.build(workspace);
   return snapshotShape(parser.payload);
+}
+
+function convert(file: string, opts = new CardOption({})) {
+  return convertExport([{ name: file, contents: readFixture(file) }], opts);
 }
 
 const cases: [string, string, CardOption][] = [
@@ -105,9 +115,148 @@ const cases: [string, string, CardOption][] = [
     'simple-deck.md',
     new CardOption({ 'markdown-nested-bullet-points': 'true' }),
   ],
+  [
+    'Notion page with coloured text',
+    'Colours 0519bf7e86d84ee4ba710c1b7ff7438e.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion page with default settings',
+    'Default 8e8a3abeb8d14f6a9fc3cb0d6c086ecb.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion page with global tags',
+    'Global Tag Support.html',
+    new CardOption({ tags: 'true', cherry: 'false' }),
+  ],
+  [
+    'Notion page with file-level tags',
+    'multi-file-tags-a.html',
+    new CardOption({ tags: 'true', cherry: 'false' }),
+  ],
+  ['Notion nested toggle', 'nested-toggle-test.html', new CardOption({})],
+  ['Notion page without images', 'no-images.html', new CardOption({})],
+  [
+    'Notion page with grandchildren',
+    'Notion Page grandchildren 2ce7ab29a11e809998e3d22ed65fc5f2.html',
+    new CardOption({}),
+  ],
+  ['Notion figure image', 'notion-figure-image.html', new CardOption({})],
+  [
+    'Notion fragmented numbered list',
+    'notion-fragmented-numbered-list.html',
+    new CardOption({}),
+  ],
+  ['Notion mixed lines', 'notion-mixed-lines.html', new CardOption({})],
+  [
+    'Notion multi-paragraph toggle',
+    'notion-multi-paragraph.html',
+    new CardOption({}),
+  ],
+  [
+    'Markdown nested bullets',
+    'notion-nested-bullets.md',
+    new CardOption({ 'markdown-nested-bullet-points': 'true' }),
+  ],
+  [
+    'Notion new export with bullets in a toggle',
+    'notion-new-export-bullets-in-toggle.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion new export, nested',
+    'notion-new-export-nested.html',
+    new CardOption({}),
+  ],
+  ['Notion poem lines', 'notion-poem-lines.html', new CardOption({})],
+  ['Notion prose lines', 'notion-prose-lines.html', new CardOption({})],
+  [
+    'Notion real numbered list',
+    'notion-real-numbered-list.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion single-paragraph toggle',
+    'notion-single-paragraph.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion page with parent context on',
+    'parent-context.html',
+    new CardOption({ 'parent-context': 'true' }),
+  ],
+  [
+    'Notion toggle with a struck-through basic marker',
+    'partial-basic-toggle.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion toggle with an emoji',
+    'refresh-emoji-toggle.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion page with section tags in cherry mode',
+    'section-tags.html',
+    new CardOption({ cherry: 'true', 'section-tags': 'true' }),
+  ],
+  [
+    'Notion page with some cloze deletions',
+    'Some Cloze Deletions 1a118169ada841a99a9aaccc7eaa6775.html',
+    new CardOption({}),
+  ],
+  ['Notion toggle headings', 'Toggle Hea 0e02b 2.html', new CardOption({})],
+  [
+    'Notion toggle heading with toggles',
+    'toggle-heading-with-toggles-synthetic.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion toggle with bullets and a nested toggle',
+    'toggle-with-bullets-and-nested-toggle.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion toggle with bullets',
+    'toggle-with-bullets.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion toggle with spacing',
+    'toggle-with-spacing.html',
+    new CardOption({}),
+  ],
+  [
+    'Notion toggles test page',
+    'Toggles test 2cd7ab29a11e80bea100ed002a880884.html',
+    new CardOption({}),
+  ],
+  [
+    'Markdown upload with images',
+    'with-images.md',
+    new CardOption({ 'markdown-nested-bullet-points': 'true' }),
+  ],
 ];
 
 it.each(cases)('produces a stable deck for %s', async (_label, file, opts) => {
   const shape = await convert(file, opts);
+  expect(shape).toMatchSnapshot();
+});
+
+it('produces a stable deck for a Notion parent page that links a subpage', async () => {
+  const shape = await convertExport(
+    [
+      {
+        name: 'Solar System 3727ab29a11e805099c5efe852c0ce3c.html',
+        contents: readFixture('notion-real-parent-with-link.html'),
+      },
+      {
+        name: 'Solar System/Planets 3727ab29a11e807bbf51f5be7dc2959a.html',
+        contents: readFixture('notion-real-numbered-list.html'),
+      },
+    ],
+    new CardOption({})
+  );
   expect(shape).toMatchSnapshot();
 });

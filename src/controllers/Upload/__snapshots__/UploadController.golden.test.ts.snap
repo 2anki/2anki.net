@@ -1,0 +1,282 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`what each population gets back from /api/upload/file > lifetime (patreon) user 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=120",
+  },
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
+    "content-disposition": "attachment; filename="Golden Large.apkg"",
+    "file-name": "Golden%20Large.apkg",
+    "x-card-count": "120",
+    "x-download-key": "<download-key>",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > paying subscriber 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=120",
+  },
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
+    "content-disposition": "attachment; filename="Golden Large.apkg"",
+    "file-name": "Golden%20Large.apkg",
+    "x-card-count": "120",
+    "x-download-key": "<download-key>",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-in free under the monthly limit 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=5",
+  },
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
+    "content-disposition": "attachment; filename="Golden Small.apkg"",
+    "file-name": "Golden%20Small.apkg",
+    "x-card-count": "5",
+    "x-download-key": "<download-key>",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-in free whose upload exceeds the monthly limit 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=100",
+  },
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Cards-Held-Back, X-Held-For-Plan, X-Download-Key",
+    "content-disposition": "attachment; filename="Golden Large.apkg"",
+    "file-name": "Golden%20Large.apkg",
+    "x-card-count": "100",
+    "x-cards-held-back": "20",
+    "x-download-key": "<download-key>",
+    "x-held-for-plan": "1",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [
+    "deck",
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-in free with 10 cards left this month 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=10",
+  },
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Cards-Held-Back, X-Held-For-Plan, X-Download-Key",
+    "content-disposition": "attachment; filename="Golden Large.apkg"",
+    "file-name": "Golden%20Large.apkg",
+    "x-card-count": "10",
+    "x-cards-held-back": "110",
+    "x-download-key": "<download-key>",
+    "x-held-for-plan": "1",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [
+    "deck",
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-in free with the monthly limit used up 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=card_count",
+  },
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=card_count",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-in pass holder 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=120",
+  },
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
+    "content-disposition": "attachment; filename="Golden Large.apkg"",
+    "file-name": "Golden%20Large.apkg",
+    "x-card-count": "120",
+    "x-download-key": "<download-key>",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery off 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous",
+  },
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=anonymous",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery off, day pass card on 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
+  },
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=anonymous&cards=120",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery on (treatment) 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery on, day pass card on 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "dayPassCard": true,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery on, no anon id (control) 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous",
+  },
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=anonymous",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out pass holder 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=120",
+  },
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Large.apkg"",
+    "file-name": "Golden%20Large.apkg",
+    "x-card-count": "120",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out under the anonymous cap 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=5",
+  },
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Small.apkg"",
+    "file-name": "Golden%20Small.apkg",
+    "x-card-count": "5",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=card_count",
+  },
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=card_count",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;

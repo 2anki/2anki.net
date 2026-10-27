@@ -1,0 +1,9 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`one note-type style for every deck-building path > pins the default note-type CSS to the shipped NOTETYPE_MOD 1`] = `
+{
+  "cssBytes": 29965,
+  "cssSha256": "f88e9668845816054990831b4b50ea7d5d5c0eaf3d761b690ea00b1975bb71ce",
+  "notetypeMod": "1792838415",
+}
+`;

@@ -1,5 +1,46 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`produces a stable deck for Markdown nested bullets 1`] = `
+[
+  {
+    "cardCount": 2,
+    "cards": [
+      {
+        "back": "<ul>
+<li>Oslo is the capital and most populous city</li>
+<li>It sits at the head of the Oslofjord</li>
+</ul>
+",
+        "front": "<ul>
+<li>What is the capital city of Norway?</li>
+</ul>
+",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<ul>
+<li>Norwegian Bokmål</li>
+<li>Norwegian Nynorsk</li>
+</ul>
+",
+        "front": "<ul>
+<li>What are the official languages of Norway?</li>
+</ul>
+",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Norway",
+    "styleBytes": 29965,
+  },
+]
+`;
+
 exports[`produces a stable deck for Markdown upload 1`] = `
 [
   {
@@ -52,6 +93,55 @@ exports[`produces a stable deck for Markdown upload 1`] = `
     ],
     "globalTags": [],
     "name": "Simple Deck",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Markdown upload with images 1`] = `
+[
+  {
+    "cardCount": 3,
+    "cards": [
+      {
+        "back": "<html><head></head><body><p>Nairobi<br>
+<img src="Untitled.png" alt="Notion%20Questions/Untitled.png"></p>
+</body></html>",
+        "front": "<ul>
+<li>What is the capital of Kenya?</li>
+</ul>
+",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<html><head></head><body><p>Oslo<br>
+<img src="Untitled 1.png" alt="Notion%20Questions/Untitled%201.png"></p>
+</body></html>",
+        "front": "<ul>
+<li>What is the capital of Norway</li>
+</ul>
+",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<html><head></head><body><p>Stockholm<br>
+<img src="Untitled 2.png" alt="Notion%20Questions/Untitled%202.png"></p>
+</body></html>",
+        "front": "<ul>
+<li>What is the capital of Sweden</li>
+</ul>
+",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Notion Questions",
     "styleBytes": 29965,
   },
 ]
@@ -161,6 +251,157 @@ exports[`produces a stable deck for Notion cloze export 1`] = `
 ]
 `;
 
+exports[`produces a stable deck for Notion figure image 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<html><head></head><body><figure id="ab12cd34-ef56-7890-ab12-cd34ef567890" class="image"><img style="width:434.96875px" src="screenshot.png"></figure>
+              
+            </body></html>",
+        "front": "<div class='toggle'>What does this image show?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Test Deck",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion fragmented numbered list 1`] = `
+[
+  {
+    "cardCount": 5,
+    "cards": [
+      {
+        "back": "",
+        "front": "Mercury",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Venus",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Earth",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Mars",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Jupiter",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Planets",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion mixed lines 1`] = `
+[
+  {
+    "cardCount": 3,
+    "cards": [
+      {
+        "back": "",
+        "front": "Over the hills we go",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Under a wide blue sky",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Past the river slow",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Mixed Page",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion multi-paragraph toggle 1`] = `
+[
+  {
+    "cardCount": 2,
+    "cards": [
+      {
+        "back": "",
+        "front": "Mercury is the closest planet, and Venus is the hottest.",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Earth supports life, while Mars is cold and dry.",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Study Notes",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion nested toggle 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<p id="3077ab29-a11e-80de-ae12-c5cee44892a3" class="">XD: answer</p><ul id="3077ab29-a11e-80a6-ab18-edc1cc3a87cb" class="toggle"><li><details class="toggle"><summary class="toggle">XD: 2</summary><p id="3077ab29-a11e-808a-bea2-ef083b04a8a0" class="">XD: answer</p></details></li></ul>",
+        "front": "<div class='toggle'>XD: 1</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Nested Toggle Test",
+    "styleBytes": 29965,
+  },
+]
+`;
+
 exports[`produces a stable deck for Notion nested toggles 1`] = `
 [
   {
@@ -234,6 +475,46 @@ exports[`produces a stable deck for Notion nested toggles 1`] = `
 ]
 `;
 
+exports[`produces a stable deck for Notion new export with bullets in a toggle 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<ul class="bulleted-list"><li style="list-style-type:disc">Fever</li></ul><ul class="bulleted-list"><li style="list-style-type:disc">Cough</li></ul><ul class="bulleted-list"><li style="list-style-type:disc">Fatigue</li></ul><p id="p-new-1" class="">Additional notes about recovery.</p>",
+        "front": "<div class='toggle'>What are the symptoms?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Bullets In Toggle",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion new export, nested 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<ul id="2cd7ab29-a11e-8013-9c2a-fdfd24bde713" class="toggle"><li><details class="toggle"><summary class="toggle">Child</summary></details></li></ul>",
+        "front": "<div class='toggle'>Parent</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Notion New Export Nested",
+    "styleBytes": 29965,
+  },
+]
+`;
+
 exports[`produces a stable deck for Notion page with a remote image 1`] = `
 [
   {
@@ -288,6 +569,767 @@ exports[`produces a stable deck for Notion page with an image 1`] = `
     ],
     "globalTags": [],
     "name": "HTML test",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion page with coloured text 1`] = `
+[
+  {
+    "cardCount": 2,
+    "cards": [
+      {
+        "back": "<div class='block-color-red_background toggle'><p id="50098be3-9ba2-4ad2-8fa1-53f97361119a" class="">This basic card should be red?</p></div>",
+        "front": "<div class='block-color-red_background toggle'>A red toggle list</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<p id="d47f934e-bc9d-49a0-9fae-c696c046fa99" class="block-color-purple_background">This sh</p>",
+        "front": "<div class='toggle'>B no colour but nested colour</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Colours",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion page with default settings 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "",
+        "front": "Amina says: Good {{c1::food}} good {{c2::mood}}",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Default",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion page with file-level tags 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "
+
+<p>Answer A</p>
+",
+        "front": "<div class='toggle'>Question A</div>",
+        "media": [],
+        "tags": [
+          "alpha-tag",
+        ],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [
+      "alpha-tag",
+    ],
+    "name": "File A",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion page with global tags 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "
+                        
+                        <p id="167ddff6-b017-4010-8f06-c56b4c0cda1e" class="">back</p>
+                    ",
+        "front": "<div class='toggle'>a card: front</div>",
+        "media": [],
+        "tags": [
+          "tag",
+          "global",
+        ],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [
+      "tag",
+      "global",
+    ],
+    "name": "Global Tag Support",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion page with grandchildren 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<ul id="2ce7ab29-a11e-8081-bc3f-c322409fa37b" class="toggle"><li><details class="toggle"><summary class="toggle">Child</summary><ul id="2ce7ab29-a11e-80df-a718-e96f4660892e" class="toggle"><li><details class="toggle"><summary class="toggle">Grand child</summary><p id="2ce7ab29-a11e-8062-96ba-e9cb1840ac85" class=""><strong>text</strong></p></details></li></ul></details></li></ul>",
+        "front": "<div class='toggle'>Parent</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Notion Page grandchildren",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion page with parent context on 1`] = `
+[
+  {
+    "cardCount": 2,
+    "cards": [
+      {
+        "back": "<p>Reduced blood flow to the heart</p>",
+        "front": "<div class="parent-context" style="font-size:0.8em;opacity:0.6;margin-bottom:0.35em">Acute coronary syndrome</div><div class='bulleted-list'>ACS</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<p>Chronically elevated blood pressure</p>",
+        "front": "<div class='toggle'>Hypertension</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Cardiology",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion page with section tags in cherry mode 1`] = `
+[
+  {
+    "cardCount": 6,
+    "cards": [
+      {
+        "back": "
+                        
+                        
+                        <ul id="c1-w1" class="toggle">
+                            <li>
+                                <details class="toggle">
+                                    <summary class="toggle">apple 🍒</summary>
+                                    <p id="c1-w1-b" class="">a fruit</p>
+                                </details>
+                            </li>
+                        </ul>
+                        <ul id="c1-section-a" class="toggle">
+                            <li>
+                                <details class="toggle">
+                                    <summary class="toggle">Section A</summary>
+                                    
+                                    <ul id="c1-sa-w1" class="toggle">
+                                        <li>
+                                            <details class="toggle">
+                                                <summary class="toggle">banana 🍒</summary>
+                                                <p id="c1-sa-w1-b" class="">also a fruit</p>
+                                            </details>
+                                        </li>
+                                    </ul>
+                                </details>
+                            </li>
+                        </ul>
+                    ",
+        "front": "<div class='toggle'>Chapter 1</div>",
+        "media": [],
+        "tags": [
+          "global-tag",
+        ],
+        "type": "cloze",
+      },
+      {
+        "back": "
+                                    
+                                    <p id="c1-w1-b" class="">a fruit</p>
+                                ",
+        "front": "<div class='toggle'>apple 🍒</div>",
+        "media": [],
+        "tags": [
+          "chapter-1",
+          "global-tag",
+        ],
+        "type": "cloze",
+      },
+      {
+        "back": "
+                                    
+                                    
+                                    <ul id="c1-sa-w1" class="toggle">
+                                        <li>
+                                            <details class="toggle">
+                                                <summary class="toggle">banana 🍒</summary>
+                                                <p id="c1-sa-w1-b" class="">also a fruit</p>
+                                            </details>
+                                        </li>
+                                    </ul>
+                                ",
+        "front": "<div class='toggle'>Section A</div>",
+        "media": [],
+        "tags": [
+          "chapter-1",
+          "global-tag",
+        ],
+        "type": "cloze",
+      },
+      {
+        "back": "
+                                                
+                                                <p id="c1-sa-w1-b" class="">also a fruit</p>
+                                            ",
+        "front": "<div class='toggle'>banana 🍒</div>",
+        "media": [],
+        "tags": [
+          "section-A",
+          "chapter-1",
+          "global-tag",
+        ],
+        "type": "cloze",
+      },
+      {
+        "back": "
+                        
+                        
+                        <ul id="c2-w1" class="toggle">
+                            <li>
+                                <details class="toggle">
+                                    <summary class="toggle">car 🍒</summary>
+                                    <p id="c2-w1-b" class="">a vehicle</p>
+                                </details>
+                            </li>
+                        </ul>
+                    ",
+        "front": "<div class='toggle'>Chapter 2</div>",
+        "media": [],
+        "tags": [
+          "global-tag",
+        ],
+        "type": "cloze",
+      },
+      {
+        "back": "
+                                    
+                                    <p id="c2-w1-b" class="">a vehicle</p>
+                                ",
+        "front": "<div class='toggle'>car 🍒</div>",
+        "media": [],
+        "tags": [
+          "chapter-2",
+          "global-tag",
+        ],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [
+      "global-tag",
+    ],
+    "name": "Section Tags",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion page with some cloze deletions 1`] = `
+[
+  {
+    "cardCount": 4,
+    "cards": [
+      {
+        "back": "",
+        "front": "<div class='toggle'>{{c2::Canberra}} was founded in {{c1::1913}}.</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "<div class='toggle'>{{c1::Canberra::city}} was founded in {{c2::1913::year}}</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "<div class='toggle'>{{c1::Canberra::city}} was founded in {{c2::1913}}</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "<div class='toggle'>{{c1::This}} is a {{c2::cloze deletion}}</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Some Cloze Deletions",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion page without images 1`] = `
+[
+  {
+    "cardCount": 2,
+    "cards": [
+      {
+        "back": "<p id="2429bda0-3b9f-47af-b7d0-c9f2edfab3f3" class=""><strong>This is the back. In bold font.</strong></p>",
+        "front": "<div class='toggle'>Front</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<p id="410dc1a5-1b5d-487b-ae39-ef9f5deea236" class=""></p>",
+        "front": "<div class='toggle'><em>Back</em></div>",
+        "media": [],
+        "tags": [
+          "Colored",
+        ],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "HTML test",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion poem lines 1`] = `
+[
+  {
+    "cardCount": 7,
+    "cards": [
+      {
+        "back": "",
+        "front": "Over the hills we go",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Under a wide blue sky",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Past the river slow",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Where the swallows fly",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Sing for the morning light",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "(Come along now!)",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Sing for the falling night",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "A Little Song",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion prose lines 1`] = `
+[
+  {
+    "cardCount": 2,
+    "cards": [
+      {
+        "back": "",
+        "front": "The river rose overnight. By morning the lower meadow was a shallow lake.",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "We moved the equipment uphill. Nobody wanted a repeat of last spring.",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Field Notes",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion real numbered list 1`] = `
+[
+  {
+    "cardCount": 5,
+    "cards": [
+      {
+        "back": "",
+        "front": "Mercury",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Venus",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Earth",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Mars",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Jupiter",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Planets",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion single-paragraph toggle 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "",
+        "front": "You should not bother others, you should be kind and helpful, and otherwise you may do as you like.",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "House Rules",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion toggle heading with toggles 1`] = `
+[
+  {
+    "cardCount": 3,
+    "cards": [
+      {
+        "back": "<p class="">It pumps oxygenated blood into the aorta.</p>",
+        "front": "<div class='toggle'>What does the left ventricle do?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<p class="">To the right atrium.</p>",
+        "front": "<div class='toggle'>Where does the vena cava return blood?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<p class="">The mitral valve.</p>",
+        "front": "<div class='toggle'>Which valve sits between the left atrium and ventricle?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Toggle Heading Sections",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion toggle headings 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<div class="indented"><h1 id="804cde2a-ba9a-4dc2-bc95-f8a46fe88298" class="">Back with heading 1</h1></div>",
+        "front": "<div class='toggle'>Front with heading 1</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Toggle Headings",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion toggle with a struck-through basic marker 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<p id="39c99ed4-9c63-4400-a6a2-a1924843b282" class="">Tirana!</p><p id="b45884ba-e24c-4c4d-a8b7-a7d5dc8a97a7" class=""></p>",
+        "front": "<div class='toggle'>What is the capital in Albania?</div>",
+        "media": [],
+        "tags": [
+          "basic",
+        ],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "partial-basic-toggle.html",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion toggle with an emoji 1`] = `
+[
+  {
+    "cardCount": 3,
+    "cards": [
+      {
+        "back": "<p>Paris</p>",
+        "front": "<div class='toggle'> What is the capital of France?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<p>Berlin</p>",
+        "front": "<div class='toggle'>What is the capital of Germany?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<div class='toggle'> What is the capital of France?</div>",
+        "front": "<p>Paris</p>",
+        "media": [],
+        "tags": [],
+        "type": "basic",
+      },
+    ],
+    "globalTags": [],
+    "name": "Refresh Emoji Test",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion toggle with bullets 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<ul class="bulleted-list"><li style="list-style-type:disc">Fever</li></ul><ul class="bulleted-list"><li style="list-style-type:disc">Cough</li></ul><ul class="bulleted-list"><li style="list-style-type:disc">Fatigue</li></ul><p id="p1" class="">Additional notes about recovery.</p>",
+        "front": "<div class='toggle'>What are the symptoms?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Toggle With Bullets",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion toggle with bullets and a nested toggle 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<ul class="bulleted-list"><li style="list-style-type:disc">Study of the heart</li></ul><ul class="bulleted-list"><li style="list-style-type:disc">Includes diagnosis and treatment</li></ul><ul id="nested-toggle-1" class="toggle"><li><details class="toggle"><summary class="toggle">Sub-specialties</summary><p>Interventional, Electrophysiology</p></details></li></ul><p id="p-mixed" class="">Important for board exams.</p>",
+        "front": "<div class='toggle'>What is Cardiology?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Toggle Mixed",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion toggle with spacing 1`] = `
+[
+  {
+    "cardCount": 1,
+    "cards": [
+      {
+        "back": "<p id="p1" class="">Sustained elevation of blood pressure above 140/90 mmHg.</p><p id="p2" class=""></p><p id="p3" class="">Can lead to end-organ damage over time.</p>",
+        "front": "<div class='toggle'>Define hypertension</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Toggle Spacing",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion toggles test page 1`] = `
+[
+  {
+    "cardCount": 2,
+    "cards": [
+      {
+        "back": "<p id="2cd7ab29-a11e-804f-b724-dd9f325d60f4" class="">Tirana!</p>",
+        "front": "<div class='toggle'>What is the capital of Albania?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<ul id="2cd7ab29-a11e-80d5-8f0d-ecb29e460e7c" class="toggle"><li><details class="toggle"><summary class="toggle"><strong>おはようございます</strong></summary><p id="2cd7ab29-a11e-803e-9f53-def8b273737c" class=""><strong>(</strong><em><strong>Ohayō gozaimasu</strong></em><strong>):</strong> Good morning.</p></details></li></ul><ul id="2cd7ab29-a11e-803c-b2e2-eaff8fa26f5a" class="toggle"><li><details class="toggle"><summary class="toggle"><strong>こんにちは (</strong><em><strong>Konnichiwa</strong></em><strong>)</strong></summary><p id="2cd7ab29-a11e-8082-9955-f4a949f43428" class="">Hello / Good afternoon.</p></details></li></ul><ul id="2cd7ab29-a11e-80cd-8603-e0f7eb3239ca" class="toggle"><li><details class="toggle"><summary class="toggle"><strong>こんばんは (</strong><em><strong>Konbanwa</strong></em><strong>)</strong></summary><p id="2cd7ab29-a11e-8024-8f53-d946f5d4da8a" class="">Good evening.</p></details></li></ul>",
+        "front": "<div class='toggle'>What are the most common greetings in Japan?</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Toggles test",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for a Notion parent page that links a subpage 1`] = `
+[
+  {
+    "cardCount": 0,
+    "cards": [],
+    "globalTags": [],
+    "name": "Solar System",
+    "styleBytes": 29965,
+  },
+  {
+    "cardCount": 5,
+    "cards": [
+      {
+        "back": "",
+        "front": "Mercury",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Venus",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Earth",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Mars",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "",
+        "front": "Jupiter",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Solar System::Planets",
     "styleBytes": 29965,
   },
 ]
