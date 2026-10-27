@@ -74,7 +74,7 @@ test('a slide-like PDF asks what to make, then makes it at 375px', async ({
 
   await expect(page.getByText('14 cards')).toBeVisible({ timeout: 10_000 });
   await expect(
-    page.getByText('every page became one card.', { exact: false })
+    page.getByText('Each page became 1 card, as a picture of the page.')
   ).toBeVisible();
   expect(sentFallbacks).toEqual(['ask', 'single']);
   expect(

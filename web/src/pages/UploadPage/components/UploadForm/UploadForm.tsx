@@ -87,6 +87,7 @@ import {
   readRememberedPdfFallback,
   rememberPdfFallback,
   type PdfFallbackMode,
+  type PdfFallbackReason,
 } from '../../../../lib/upload/pdfFallback';
 import {
   HANDOFF_PHOTOS_STATE_KEY,
@@ -258,6 +259,24 @@ function toPageBucket(pageCount: number): string {
   if (pageCount <= 50) return '11-50';
   return '51+';
 }
+
+const PDF_CHOICE_COPY: Record<
+  PdfFallbackReason,
+  { title: string; body: string }
+> = {
+  locked: {
+    title: 'upload.form.pdfChoiceTitleLocked',
+    body: 'upload.form.pdfChoiceBodyLocked',
+  },
+  no_text: {
+    title: 'upload.form.pdfChoiceTitleNoText',
+    body: 'upload.form.pdfChoiceBodyNoText',
+  },
+  over_split: {
+    title: 'upload.form.pdfChoiceTitleOverSplit',
+    body: 'upload.form.pdfChoiceBodyOverSplit',
+  },
+};
 
 function zoneStateForUploadError(
   message: UploadErrorBody
@@ -3492,26 +3511,14 @@ function UploadForm({
 
   const [rememberPdfChoice, setRememberPdfChoice] = useState(false);
 
+  const pdfChoiceCopy = PDF_CHOICE_COPY[pdfChoice?.reason ?? 'no_text'];
+
   const renderPdfChoiceState = () => {
-    const copy = {
-      locked: {
-        title: 'upload.form.pdfChoiceTitleLocked',
-        body: 'upload.form.pdfChoiceBodyLocked',
-      },
-      no_text: {
-        title: 'upload.form.pdfChoiceTitleNoText',
-        body: 'upload.form.pdfChoiceBodyNoText',
-      },
-      over_split: {
-        title: 'upload.form.pdfChoiceTitleOverSplit',
-        body: 'upload.form.pdfChoiceBodyOverSplit',
-      },
-    }[pdfChoice?.reason ?? 'no_text'];
     return (
       <div className={formStyles.stateContent}>
         <WarningIcon className={formStyles.iconWarning} />
-        <p className={formStyles.emptyTitle}>{t(copy.title)}</p>
-        <p className={formStyles.emptyBody}>{t(copy.body)}</p>
+        <p className={formStyles.emptyTitle}>{t(pdfChoiceCopy.title)}</p>
+        <p className={formStyles.emptyBody}>{t(pdfChoiceCopy.body)}</p>
         <div className={formStyles.emptyActions}>
           <button
             type="button"
@@ -3677,7 +3684,7 @@ function UploadForm({
     converting: 'upload.form.liveConverting',
     emptyDeck: 'upload.form.liveEmptyDeck',
     imageOnly: 'upload.form.liveImageOnly',
-    choosePdfMode: 'upload.form.pdfChoiceTitle',
+    choosePdfMode: pdfChoiceCopy.title,
     error: 'upload.form.liveError',
     limitReached: 'upload.form.liveLimitReached',
     lockedPdf: 'upload.form.liveLockedPdf',

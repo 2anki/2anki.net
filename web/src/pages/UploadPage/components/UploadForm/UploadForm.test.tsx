@@ -6180,23 +6180,28 @@ describe('UploadForm PDF with no readable text', () => {
     expect(sentFallback(fetchMock)).toBeNull();
   });
 
-  const slideDeckTitle = "We can't tell questions from answers in this PDF";
-  const slideDeckBody =
-    'It has text, but it reads like slides or pictures with a few lines on each page. Choose what the cards should be.';
+  const noTextTitle = "We can't tell questions from answers in this PDF";
+  const noTextBody =
+    "It has text, but 2anki couldn't find questions and answers in it. Slides and scanned pages often look like this. Choose what the cards should be.";
+  const singlePageNote = 'Each page became 1 card, as a picture of the page.';
+  const pagePairsNote =
+    'Every 2 pages became 1 card, as pictures of the pages.';
 
-  it.each([
+  const reasonCopy = [
     {
       reason: 'locked',
       title: 'This PDF has no text we can read',
       body: "Its pages are likely scans or pictures, or the PDF is protected so its text can't be copied. Choose what the cards should be.",
     },
-    { reason: 'no_text', title: slideDeckTitle, body: slideDeckBody },
+    { reason: 'no_text', title: noTextTitle, body: noTextBody },
     {
       reason: 'over_split',
       title: 'This PDF would make too many tiny cards',
       body: 'Its text breaks into lots of short lines. Choose what the cards should be instead.',
     },
-  ])(
+  ];
+
+  it.each(reasonCopy)(
     'says why a $reason PDF needs the question',
     async ({ reason, title, body }) => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(choiceResponse(reason)));
@@ -6211,6 +6216,24 @@ describe('UploadForm PDF with no readable text', () => {
       expect(screen.getByText(body)).toBeInTheDocument();
     }
   );
+
+  it('gives a zip that holds a PDF the same reason', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(choiceResponse('over_split'));
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'lectures.zip');
+    await submitForm(container);
+    await screen.findByRole('button', { name: 'Two pages per card' });
+
+    expect(sentFallback(fetchMock)).toBe('ask');
+    expect(
+      screen.getByText('This PDF would make too many tiny cards', {
+        selector: 'p',
+      })
+    ).toBeInTheDocument();
+  });
 
   it.each([
     { who: 'a free account', locals: { subscriber: false }, aiButton: false },
@@ -6243,31 +6266,29 @@ describe('UploadForm PDF with no readable text', () => {
       await screen.findByRole('button', { name: 'Two pages per card' });
 
       expect(
-        screen.getByText(slideDeckTitle, { selector: 'p' })
+        screen.getByText(noTextTitle, { selector: 'p' })
       ).toBeInTheDocument();
-      expect(screen.getByText(slideDeckBody)).toBeInTheDocument();
+      expect(screen.getByText(noTextBody)).toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: 'Make cards with AI' }) != null
       ).toBe(aiButton);
     }
   );
 
-  it('announces the question to screen readers without naming a reason', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(choiceResponse('over_split'))
-    );
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    selectFile(container, 'lecture.pdf');
-    await submitForm(container);
-    await screen.findByRole('button', { name: 'Two pages per card' });
+  it.each(reasonCopy)(
+    'announces why a $reason PDF needs the question to screen readers',
+    async ({ reason, title }) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(choiceResponse(reason)));
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      selectFile(container, 'lecture.pdf');
+      await submitForm(container);
+      await screen.findByRole('button', { name: 'Two pages per card' });
 
-    expect(container.querySelector('output')?.textContent).toBe(
-      'Choose how to make cards from this PDF'
-    );
-  });
+      expect(container.querySelector('output')?.textContent).toBe(title);
+    }
+  );
 
   it('offers the choices, and resends the same file with the one picked', async () => {
     const fetchMock = vi
@@ -6284,7 +6305,7 @@ describe('UploadForm PDF with no readable text', () => {
     await submitForm(container);
 
     expect(
-      await screen.findByText(slideDeckTitle, { selector: 'p' })
+      await screen.findByText(noTextTitle, { selector: 'p' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Two pages per card' })
@@ -6299,11 +6320,7 @@ describe('UploadForm PDF with no readable text', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'One card per page' }));
 
-    expect(
-      await screen.findByText(
-        'This PDF was made from page images, so every page became one card.'
-      )
-    ).toBeInTheDocument();
+    expect(await screen.findByText(singlePageNote)).toBeInTheDocument();
     expect(sentFallback(fetchMock, 1)).toBe('single');
     const second = fetchMock.mock.calls[1][1].body as FormData;
     expect((second.get('pakker') as File).name).toBe('scan.pdf');
@@ -6321,7 +6338,7 @@ describe('UploadForm PDF with no readable text', () => {
     );
     selectFile(container, 'scan.pdf');
     await submitForm(container);
-    await screen.findByText(slideDeckTitle, { selector: 'p' });
+    await screen.findByText(noTextTitle, { selector: 'p' });
 
     fireEvent.click(
       screen.getByRole('checkbox', {
@@ -6330,9 +6347,7 @@ describe('UploadForm PDF with no readable text', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Two pages per card' }));
 
-    await screen.findByText(
-      'This PDF was made from page images, so every two pages became one card.'
-    );
+    await screen.findByText(pagePairsNote);
     expect(globalThis.localStorage.getItem('pdf-fallback')).toBe('pairs');
     expect(
       screen.getByRole('button', { name: 'Ask me next time' })
@@ -6350,6 +6365,24 @@ describe('UploadForm PDF with no readable text', () => {
     await submitForm(container);
 
     expect(sentFallback(fetchMock)).toBe('single');
+  });
+
+  it('says what a remembered choice made, without asking first', async () => {
+    globalThis.localStorage.setItem('pdf-fallback', 'pairs');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(deckResponse({ 'X-Pdf-Fallback': 'pairs' }))
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'slides.pdf');
+    await submitForm(container);
+
+    expect(await screen.findByText(pagePairsNote)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Two pages per card' })
+    ).toBeNull();
   });
 
   it('lets the person take a remembered choice back', async () => {
