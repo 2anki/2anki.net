@@ -6899,6 +6899,53 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
     expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
   });
 
+  it('truncates a single zip export the same way as a single file', async () => {
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    const execute = mockPartial([{ name: 'deck', cardCount: 10 }], 5);
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'export.zip',
+          mimetype: 'application/zip',
+          size: 1024,
+          path: '/tmp/export.zip',
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo).handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 10 });
+    expect(capturedStatus()).toBe(200);
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBe('5');
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
+  });
+
+  it('still refuses a zip whose cards were not cut to the allowance', async () => {
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    mockPartial([{ name: 'deck', cardCount: 30 }], 0);
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'export.zip',
+          mimetype: 'application/zip',
+          size: 1024,
+          path: '/tmp/export.zip',
+        },
+      ],
+    } as unknown as Partial<express.Request>);
+    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo).handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=card_count');
+    expect(capturedSend()).toBeNull();
+    expect(usersRepo.incrementCardUsage).not.toHaveBeenCalled();
+  });
+
   it('hard-refuses when the user has zero remaining allowance', async () => {
     const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT);
     const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
@@ -6921,17 +6968,6 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
   });
 
   it.each([
-    [
-      'a zip upload',
-      [
-        {
-          originalname: 'export.zip',
-          mimetype: 'application/zip',
-          size: 1024,
-          path: '/tmp/export.zip',
-        },
-      ],
-    ],
     [
       'a multi-file upload',
       [

@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-27-zip-over-limit-gets-partial-deck",
+  "date": "2026-10-27",
+  "type": "fix",
+  "title": "A zip export that is bigger than what is left of your free monthly cards now gives you the cards that fit, instead of refusing the whole upload. The rest is held for 7 days."
+}

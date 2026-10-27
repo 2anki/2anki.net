@@ -1,7 +1,4 @@
-import {
-  isAnonymousPartialDeliveryEligible,
-  isPartialDeliveryEligible,
-} from './isPartialDeliveryEligible';
+import { isPartialDeliveryEligible } from './isPartialDeliveryEligible';
 
 const file = (originalname: string) => ({ originalname });
 
@@ -16,11 +13,13 @@ describe('isPartialDeliveryEligible', () => {
     'notes.xlsx',
     'slides.pptx',
     'slides.ppt',
+    'export.zip',
+    'export.z',
   ])('accepts a single %s upload', (name) => {
     expect(isPartialDeliveryEligible([file(name)])).toBe(true);
   });
 
-  it.each(['notes.zip', 'notes.xml', 'notes.epub', 'notes.opml', 'deck.apkg'])(
+  it.each(['notes.xml', 'notes.epub', 'notes.opml', 'deck.apkg'])(
     'rejects a single %s upload',
     (name) => {
       expect(isPartialDeliveryEligible([file(name)])).toBe(false);
@@ -36,40 +35,5 @@ describe('isPartialDeliveryEligible', () => {
   it('rejects an upload with no files', () => {
     expect(isPartialDeliveryEligible([])).toBe(false);
     expect(isPartialDeliveryEligible(undefined)).toBe(false);
-  });
-});
-
-describe('isAnonymousPartialDeliveryEligible', () => {
-  it.each(['notes.html', 'notes.md', 'notes.pdf', 'notes.docx', 'slides.pptx'])(
-    'accepts a single content %s upload',
-    (name) => {
-      expect(isAnonymousPartialDeliveryEligible([file(name)])).toBe(true);
-    }
-  );
-
-  it.each(['export.zip', 'export.z'])(
-    'accepts a single compressed %s upload the base predicate rejects',
-    (name) => {
-      expect(isPartialDeliveryEligible([file(name)])).toBe(false);
-      expect(isAnonymousPartialDeliveryEligible([file(name)])).toBe(true);
-    }
-  );
-
-  it.each(['notes.xml', 'notes.epub', 'notes.opml', 'deck.apkg'])(
-    'still rejects a single %s upload',
-    (name) => {
-      expect(isAnonymousPartialDeliveryEligible([file(name)])).toBe(false);
-    }
-  );
-
-  it('rejects a multi-file upload even when one is a zip', () => {
-    expect(
-      isAnonymousPartialDeliveryEligible([file('one.zip'), file('two.html')])
-    ).toBe(false);
-  });
-
-  it('rejects an upload with no files', () => {
-    expect(isAnonymousPartialDeliveryEligible([])).toBe(false);
-    expect(isAnonymousPartialDeliveryEligible(undefined)).toBe(false);
   });
 });

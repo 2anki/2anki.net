@@ -100,10 +100,7 @@ import {
   asyncSlowUploadsEnabled,
   isSlowUpload,
 } from '../lib/upload/asyncSlowUploads';
-import {
-  isAnonymousPartialDeliveryEligible,
-  isPartialDeliveryEligible,
-} from '../usecases/uploads/isPartialDeliveryEligible';
+import { isPartialDeliveryEligible } from '../usecases/uploads/isPartialDeliveryEligible';
 import {
   isPlanHoldKey,
   planHoldKey,
@@ -1976,7 +1973,7 @@ class UploadService {
     );
     logEmptyBackAttribution(packages, this.resolveUploadSource(req));
 
-    if (owner != null && !signedInMonthlyPartial) {
+    if (owner != null) {
       await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
         userId: owner,
         candidateCardCount: totalCards,
@@ -2557,11 +2554,7 @@ class UploadService {
     if (getOwner(res) != null || hasSessionToken(req) || isPaying(res.locals)) {
       return 'off';
     }
-    if (
-      !isAnonymousPartialDeliveryEligible(
-        req.files as UploadedFile[] | undefined
-      )
-    ) {
+    if (!isPartialDeliveryEligible(req.files as UploadedFile[] | undefined)) {
       return 'off';
     }
     const flagEnabled = await getFeatureFlag(
@@ -2801,13 +2794,11 @@ class UploadService {
     );
 
     let cardLimit: number | undefined;
-    let signedInMonthlyPartial = false;
     if (!paying) {
       const { cards_used } = await this.usersRepository.getCardUsage(owner);
       const remaining = Math.max(0, MONTHLY_CARD_LIMIT - cards_used);
       if (remaining > 0) {
         cardLimit = remaining;
-        signedInMonthlyPartial = true;
       }
     }
 
@@ -2829,13 +2820,11 @@ class UploadService {
       throw new EmptyDeckError(undefined, emptyReason ?? 'unknown');
     }
 
-    if (!signedInMonthlyPartial) {
-      await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
-        userId: owner,
-        candidateCardCount: totalCards,
-        isPaying: paying,
-      });
-    }
+    await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
+      userId: owner,
+      candidateCardCount: totalCards,
+      isPaying: paying,
+    });
 
     const first = packages[0];
     const apkg = await ws.getFirstAPKG();
