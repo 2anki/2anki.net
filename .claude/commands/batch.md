@@ -13,10 +13,9 @@ Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are defe
 - `MAX_CONCURRENT = 4`
 - `TIMEOUT_PER_TASK = 10 min`
 - `HARD_BLOCK_PATHS` — a flag, not a block: entries touching these paths still dispatch, with `/security-review` before `/ship`. Any change touching:
-  - `src/services/StripeService/**`
-  - `src/services/AuthenticationService/**`
-  - `src/lib/Token.ts`
-  - anything matching `auth` or `payments` in the diff path
+  - `src/services/AuthenticationService.ts` (JWT signing)
+  - `src/data_layer/TokenRepository.ts` and `src/lib/misc/{hashToken,unHashToken,hmacToken}.ts` (token storage)
+  - anything matching `auth`, `stripe` or `payment` in the diff path
   Dispatch them too: the worker runs `/security-review` on the diff, and `/ship` adds its own fresh read-only reviewers before the marker.
 
 ## Step 1 — pre-check
@@ -105,7 +104,7 @@ Below the table, one summary line:
 N merged · N needs-review · N failed-checks · N timeout · N hard-blocked (security-reviewed before /ship)
 ```
 
-If `hard-blocked` is non-empty, list those PR numbers with the `/security-review` verdict each one shipped on.
+If `hard-blocked` is non-empty, list those PR numbers with the `/security-review` verdict and reviewed head SHA each worker returned. A hard-blocked worker that returned no verdict is listed as `verdict missing`, so a merge without a recorded review stands out.
 
 ## Step 7 — exit
 
