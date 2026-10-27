@@ -109,7 +109,7 @@ Brief technical approach. Anything non-obvious.
 Every place the code departs from the spec, with the reason — one bullet each (e.g. "legacy plan detected via `unit_amount <= 200` because the spec assumed a single price"). "None — matches the spec" is a valid answer. Required on any PR whose branch came from a spec PR (`<type>/spec-<slug>`); `check-merge-status.py` blocks the merge if the heading is absent. This was the most useful part of the credits PR body, and it was written unprompted — now it is a heading.
 
 ## Who else this reaches
-<!-- Required on feat:/fix: PRs that change src/ or web/src/ (workflow step 10). A table stays outside the body word cap. Uncomment the table and replace the example rows; the merge hook ignores comments, so an unfilled paste is denied.
+<!-- Required on every feat:/fix: PR (workflow step 10); the merge hook enforces it when src/ or web/src/ changes. A table stays outside the body word cap. Uncomment the table and replace the example rows; the merge hook ignores comments, so an unfilled paste is denied.
 | Population | Reaches the changed code? | Proof: test name, or why unreachable |
 | --- | --- | --- |
 | signed-in free | yes | <test file> > "<test name>" |

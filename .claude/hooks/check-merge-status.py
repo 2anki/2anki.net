@@ -28,8 +28,8 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
      `.spec.`, `__tests__/`, `__snapshots__/`, `src/test/`, `web/src/test/`,
      `/fixtures/`, `__fixtures__/`, `_mock/`, `setupTests.`), changelog JSON
      and Markdown docs. Empty means nothing but whitespace, HTML comments,
-     bullet marks, a table header with no rows, or a TBD/TODO/N/A/-/...
-     placeholder. Reverts (`revert:`, GitHub's `Revert "…"`) are exempt.
+     bullet marks, a table header with no rows, or lines and table rows made
+     only of TBD/TODO/N/A/None/-/... placeholders or empty cells. Reverts (`revert:`, GitHub's `Revert "…"`) are exempt.
      #4589 claimed its control arm was "byte-for-byte unchanged" and silently
      dropped the held-back-cards notice for signed-in free users for 19 days
      (#4789); #4730 broke prerendered landing pages (#4901). Both reviews read
@@ -90,7 +90,7 @@ SPEC_COMMIT = re.compile(r"add spec for|remove implemented spec", re.IGNORECASE)
 DEVIATIONS_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Deviations from spec\b", re.IGNORECASE | re.MULTILINE)
 USER_VISIBLE_PREFIX = re.compile(r"^(feat|fix)(\([^)]*\))?!?:", re.IGNORECASE)
 REACH_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+Who else this reaches\b.*$", re.IGNORECASE | re.MULTILINE)
-REACH_PLACEHOLDER = re.compile(r"^(tbd|todo|n/?a|-|\.\.\.)?$", re.IGNORECASE)
+REACH_PLACEHOLDER = re.compile(r"^(tbd|todo|n/?a|none|-|\.\.\.)?$", re.IGNORECASE)
 TABLE_SEPARATOR = re.compile(r"^(?=.*\|)\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$")
 REACH_SOURCE_ROOTS = ("src/", "web/src/")
 REACH_EXCLUDED_ROOTS = ("src/test/", "web/src/test/")
@@ -342,11 +342,22 @@ def reach_content_lines(section):
     return kept
 
 
+def is_placeholder_cell(cell):
+    bare = cell.strip().strip("*_`").strip()
+    if bare != "...":
+        bare = bare.rstrip(".")
+    return bool(REACH_PLACEHOLDER.match(bare))
+
+
+def is_placeholder_line(line):
+    return all(is_placeholder_cell(cell) for cell in line.split("|"))
+
+
 def has_reach_section(body):
     section = reach_section_text(body)
     if section is None:
         return False
-    return any(not REACH_PLACEHOLDER.match(line) for line in reach_content_lines(section))
+    return any(not is_placeholder_line(line) for line in reach_content_lines(section))
 
 
 def reach_violation(pr_data):
@@ -363,15 +374,17 @@ def reach_violation(pr_data):
     return (
         f"the title or a commit headline (`{trigger}`) is feat:/fix: and the PR "
         f"changes source ({source_paths[0]}), but the `## Who else this reaches` "
-        "section is missing or empty (TBD/TODO/N/A and comments do not count). "
+        "section is missing or empty (TBD/TODO/N/A/None, empty cells and comments do not count). "
         "Add one row per population the changed code is reachable from "
         "(signed-out, free, free over the limit, paying, pass holder, Auto Sync, "
         "flag on/off and each experiment arm, Notion vs upload, web/MCP/iOS): a "
         "reachable row names the test that exercises it, an unreachable row says "
-        "why. Rule: .claude/agents/engineer.md step 10; rows: uncomment the "
-        "section in its PR description template. Save the current body, add the "
-        f"section, `gh pr edit {number} --body-file <file>`, rerun the /ship "
-        "step 2 reach reviewer, then merge again"
+        "why. Rule: .claude/agents/engineer.md step 10; rows: uncomment the table "
+        "in the `## Who else this reaches` block of that file's PR description "
+        f"template. Save the body (`gh pr view {number} --json body --jq .body > "
+        f"<file>`), add the section, `gh pr edit {number} --body-file <file>`, "
+        "rerun the /ship step 2 reach reviewer (fix what it blocks on), then "
+        "merge again"
     )
 
 

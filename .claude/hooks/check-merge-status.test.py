@@ -255,6 +255,11 @@ class HasReachSectionTest(unittest.TestCase):
             "## Who else this reaches\nTBD",
             "## Who else this reaches\n- N/A",
             "## Who else this reaches\n- TODO\n",
+            "## Who else this reaches\nTBD.",
+            "## Who else this reaches\n**TBD**",
+            "## Who else this reaches\nNone",
+            "## Who else this reaches\n| a | b |\n| --- | --- |\n| | |",
+            "## Who else this reaches\n| a | b |\n| --- | --- |\n| N/A | TBD |",
             "## Who else this reaches",
             "## Who else this reaches\n| Population | Proof |\n| --- | --- |\n## Risks",
             "## How\nno section",
@@ -341,6 +346,29 @@ class MainWiringTest(unittest.TestCase):
             "reviews": [],
             "comments": [{"body": f"<!-- ship-review: pass sha={sha} -->"}],
         }
+
+    def test_a_gh_failure_still_fails_open(self):
+        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
+        stdout = io.StringIO()
+        with mock.patch.object(check_merge_status, "run_gh", lambda args, label: None), \
+                mock.patch.dict(os.environ, {}, clear=False), \
+                mock.patch("sys.stdin", stdin), \
+                mock.patch("sys.stdout", stdout):
+            os.environ.pop("CLAUDE_SKIP_SAFETY", None)
+            with self.assertRaises(SystemExit):
+                check_merge_status.main()
+        self.assertEqual(json.loads(stdout.getvalue()), {"continue": True})
+
+    def test_the_launch_time_bypass_skips_the_reach_check(self):
+        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
+        stdout = io.StringIO()
+        with mock.patch.object(check_merge_status, "run_gh", lambda args, label: json.dumps(self.pr(""))), \
+                mock.patch.dict(os.environ, {"CLAUDE_SKIP_SAFETY": "1"}, clear=False), \
+                mock.patch("sys.stdin", stdin), \
+                mock.patch("sys.stdout", stdout):
+            with self.assertRaises(SystemExit):
+                check_merge_status.main()
+        self.assertEqual(json.loads(stdout.getvalue()), {"continue": True})
 
     def test_requests_the_title_from_gh(self):
         args, _ = self.run_main(self.pr(REACH_TABLE))
