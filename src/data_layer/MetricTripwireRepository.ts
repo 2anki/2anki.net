@@ -11,8 +11,7 @@ export interface RateCountsRow {
 export type FollowThroughMetricKey =
   | 'download_after_success'
   | 'upload_after_page_view'
-  | 'partial_notice_signed_in'
-  | 'partial_notice_anonymous';
+  | 'partial_notice_signed_in';
 
 export type TripwireMetricKey =
   | 'conversion_success'
@@ -24,7 +23,7 @@ export type TripwireRateCounts = Record<TripwireMetricKey, RateCountsRow>;
 export interface FollowThroughSpec {
   baseEvent: KnownEvent;
   baseProps: Record<string, string | boolean> | null;
-  identity: 'any' | 'signed_in' | 'anonymous';
+  identity: 'any' | 'signed_in';
   followEvents: KnownEvent[];
 }
 
@@ -41,7 +40,7 @@ export const FOLLOW_THROUGH_SPECS: Record<
   download_after_success: {
     baseEvent: 'conversion_succeeded',
     baseProps: null,
-    identity: 'any',
+    identity: 'signed_in',
     followEvents: ['deck_downloaded'],
   },
   upload_after_page_view: {
@@ -54,12 +53,6 @@ export const FOLLOW_THROUGH_SPECS: Record<
     baseEvent: 'conversion_succeeded',
     baseProps: PARTIAL_UPLOAD_PROPS,
     identity: 'signed_in',
-    followEvents: PARTIAL_NOTICE_EVENTS,
-  },
-  partial_notice_anonymous: {
-    baseEvent: 'conversion_succeeded',
-    baseProps: PARTIAL_UPLOAD_PROPS,
-    identity: 'anonymous',
     followEvents: PARTIAL_NOTICE_EVENTS,
   },
 };
@@ -129,8 +122,6 @@ export function buildFollowThroughQuery(
   }
   if (spec.identity === 'signed_in') {
     base.whereNotNull('user_id');
-  } else if (spec.identity === 'anonymous') {
-    base.whereNull('user_id');
   }
   const follow = identityDaysQuery(db, spec.followEvents, start, end);
 

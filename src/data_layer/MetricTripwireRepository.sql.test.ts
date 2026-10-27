@@ -9,6 +9,7 @@ import {
   buildRecordCheckQuery,
   FOLLOW_THROUGH_SPECS,
 } from './MetricTripwireRepository';
+import { SERVER_ONLY_EVENT_NAMES } from '../lib/events/serverEventProps';
 
 describe('MetricTripwireRepository generated SQL', () => {
   const pg = knex({ client: 'pg' });
@@ -77,18 +78,25 @@ describe('MetricTripwireRepository generated SQL', () => {
     ]);
   });
 
-  it('restricts the anonymous partial base to rows without a user', () => {
-    const { sql } = buildFollowThroughQuery(
-      pg,
-      FOLLOW_THROUGH_SPECS.partial_notice_anonymous,
-      start,
-      end
-    ).toSQL();
+  // The ingest drops the anonymous id from a client event unless the visitor
+  // allows tracking (#4730), while a server-written event keeps it from the
+  // cookie. A server base paired with a client follow-up therefore never
+  // matches a visitor who has not granted consent, so the rate tracks the
+  // consent rate instead of the behaviour.
+  it('scopes every server base paired with a client follow-up to signed-in users', () => {
+    const mixed = Object.entries(FOLLOW_THROUGH_SPECS).filter(
+      ([, spec]) =>
+        SERVER_ONLY_EVENT_NAMES.has(spec.baseEvent) &&
+        spec.followEvents.some((name) => !SERVER_ONLY_EVENT_NAMES.has(name))
+    );
 
-    expect(sql).toContain('and "user_id" is null)');
+    expect(mixed.map(([key]) => key)).toContain('download_after_success');
+    expect(mixed.filter(([, spec]) => spec.identity !== 'signed_in')).toEqual(
+      []
+    );
   });
 
-  it('leaves the identity scope open for the download follow-through', () => {
+  it('restricts the download follow-through to signed-in users', () => {
     const { sql, bindings } = buildFollowThroughQuery(
       pg,
       FOLLOW_THROUGH_SPECS.download_after_success,
@@ -96,7 +104,7 @@ describe('MetricTripwireRepository generated SQL', () => {
       end
     ).toSQL();
 
-    expect(sql).not.toContain('"user_id" is');
+    expect(sql).toContain('and "user_id" is not null)');
     expect(sql).not.toContain('props @>');
     expect(bindings).toEqual([
       'conversion_succeeded',
