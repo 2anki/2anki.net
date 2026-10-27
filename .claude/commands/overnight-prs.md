@@ -153,7 +153,8 @@ assumption you could not verify (Tier 3 above). Three constraints remain:
 - A change that needs a value only Alexander holds (a new secret on prod other than an auth, JWT,
   webhook or signing secret, which fails closed at boot and stays draft; a new third-party account
   on a free tier) ships behind a safe default and goes in the morning summary as a question
-  for Alexander, one line per step; any paid plan or service is spend, stays draft, and is named in the summary
+  for Alexander, one line per step, and as an Owner `Alexander` item in the private Follow-ups
+  project (`.claude/docs/follow-ups-project.md`); any paid plan or service is spend, stays draft, and is named in the summary
   (price, payment and Stripe values: see Tier 3 above).
 - Keep working until it is safe (reversible split, safe default). Draft only when the missing piece is a value only Alexander holds, the change is a rail-path change resting on an unverified assumption, or a run failure the branch cannot fix (draft + wakeup), with the blocker stated.
 
