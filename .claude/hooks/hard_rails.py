@@ -30,6 +30,9 @@ NAME_GLOBS = (
     "signup",
     "checkmonthly",
     "passes",
+    # Covers payments/ and RefundedPaymentIntents; two extra rail PRs in the
+    # six months to 2026-10-27.
+    "payment",
 )
 
 EXPLICIT_PREFIXES = (
@@ -48,6 +51,12 @@ EXPLICIT_FILES = (
     "src/server.ts",
     "src/lib/isPaying.ts",
     "src/lib/ankify/access.ts",
+    # Session tokens and the secrets that encrypt or key stored tokens. JWT
+    # signing is in AuthenticationService.ts, which the "auth" glob covers.
+    "src/data_layer/TokenRepository.ts",
+    "src/lib/misc/hashToken.ts",
+    "src/lib/misc/unHashToken.ts",
+    "src/lib/misc/hmacToken.ts",
     # Files whose entire job is to hold a production limit, listed as well as
     # content-triggered so a rename or a refactor that drops the constant name
     # still lands on the rail.

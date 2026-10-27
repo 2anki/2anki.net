@@ -30,6 +30,8 @@ class TestRailPaths(unittest.TestCase):
             "src/lib/ankify/notionWebhookSignature.ts",
             "src/usecases/users/CheckMonthlyCardLimitUseCase.ts",
             "src/usecases/passes/ClaimPassUseCase.ts",
+            "src/data_layer/RefundedPaymentIntentsRepository.ts",
+            "web/src/pages/AccountPage/helpers/getPaymentPortalLink.ts",
         ]
         self.assertEqual(rails.rail_paths(paths), paths)
 
@@ -62,6 +64,10 @@ class TestRailPaths(unittest.TestCase):
             "src/server.ts",
             "src/lib/isPaying.ts",
             "src/lib/ankify/access.ts",
+            "src/data_layer/TokenRepository.ts",
+            "src/lib/misc/hashToken.ts",
+            "src/lib/misc/unHashToken.ts",
+            "src/lib/misc/hmacToken.ts",
         ]
         self.assertEqual(rails.rail_paths(paths), paths)
 
@@ -76,6 +82,8 @@ class TestRailPaths(unittest.TestCase):
             "src/servers.ts",
             "scripts/reap-orphans.sh",
             "src/services/EmailService/templates/welcome.html",
+            "src/lib/claude/countVisionTokens.ts",
+            "web/scripts/designTokens.ts",
         ]
         self.assertEqual(rails.rail_paths(paths), [])
 
