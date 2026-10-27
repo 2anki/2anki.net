@@ -22,7 +22,8 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
      (`add spec for …` or `remove implemented spec …`). The commit evidence is
      what keeps a non-spec branch whose slug merely starts with `spec`
      (`chore/spec-lifecycle-gates`) from tripping the gate.
-  7. A `feat:`/`fix:` PR (title or any commit headline) changes reach source
+  7. A `feat:`/`fix:`/`perf:`/`refactor:` PR (title or any commit headline)
+     changes reach source
      but the body has no non-empty `## Who else this reaches` section. Reach
      source is any file under `src/` or `web/src/` except tests (`.test.`,
      `.spec.`, `__tests__/`, `__snapshots__/`, `src/test/`, `web/src/test/`,
@@ -88,7 +89,10 @@ REVIEW_MARKER = re.compile(r"<!--\s*ship-review:\s*pass\s+sha=([0-9a-f]{40})\s*-
 SPEC_BRANCH = re.compile(r"^[a-z]+/spec-", re.IGNORECASE)
 SPEC_COMMIT = re.compile(r"add spec for|remove implemented spec", re.IGNORECASE)
 DEVIATIONS_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Deviations from spec\b", re.IGNORECASE | re.MULTILINE)
-USER_VISIBLE_PREFIX = re.compile(r"^(feat|fix)(\([^)]*\))?!?:", re.IGNORECASE)
+# perf: and refactor: change code users run as much as feat:/fix: do (#5055).
+REACH_PREFIX = re.compile(r"^(feat|fix|perf|refactor)(\([^)]*\))?!?:", re.IGNORECASE)
+QUOTE_LIMIT = 120
+UNSAFE_QUOTE_CHARS = re.compile(r"[\x00-\x1f\x7f`]+")
 REACH_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+Who else this reaches\b.*$", re.IGNORECASE | re.MULTILINE)
 REACH_PLACEHOLDER = re.compile(r"^(tbd|todo|n/?a|none|-|\.\.\.)?$", re.IGNORECASE)
 TABLE_SEPARATOR = re.compile(r"^(?=.*\|)\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$")
@@ -273,17 +277,22 @@ def entries(value):
     return [entry for entry in value if isinstance(entry, dict)] if isinstance(value, list) else []
 
 
-def user_visible_headline(pr_data):
+def reach_headline(pr_data):
     headlines = [as_text(pr_data.get("title"))]
     headlines += [as_text(c.get("messageHeadline")) for c in entries(pr_data.get("commits"))]
     for headline in headlines:
-        if USER_VISIBLE_PREFIX.match(headline.strip()):
+        if REACH_PREFIX.match(headline.strip()):
             return headline.strip()
     return None
 
 
-def is_user_visible_pr(pr_data):
-    return user_visible_headline(pr_data) is not None
+def quote_untrusted(text):
+    # The title and paths are PR-author text and the deny reason is read by
+    # the agent that ran the merge, so keep them to one short inert line.
+    flat = " ".join(UNSAFE_QUOTE_CHARS.sub(" ", text).split())
+    if len(flat) > QUOTE_LIMIT:
+        return flat[:QUOTE_LIMIT] + "..."
+    return flat
 
 
 def is_changelog_entry(path):
@@ -361,7 +370,7 @@ def has_reach_section(body):
 
 
 def reach_violation(pr_data):
-    trigger = user_visible_headline(pr_data)
+    trigger = reach_headline(pr_data)
     if trigger is None:
         return None
     paths = [as_text(f.get("path")) for f in entries(pr_data.get("files"))]
@@ -372,8 +381,9 @@ def reach_violation(pr_data):
         return None
     number = pr_data.get("number") or "<n>"
     return (
-        f"the title or a commit headline (`{trigger}`) is feat:/fix: and the PR "
-        f"changes source ({source_paths[0]}), but the `## Who else this reaches` "
+        f"the title or a commit headline (`{quote_untrusted(trigger)}`) is "
+        "feat:/fix:/perf:/refactor: and the PR changes source "
+        f"(`{quote_untrusted(source_paths[0])}`), but the `## Who else this reaches` "
         "section is missing or empty (TBD/TODO/N/A/None, empty cells and comments do not count). "
         "Add one row per population the changed code is reachable from "
         "(signed-out, free, free over the limit, paying, pass holder, Auto Sync, "
