@@ -12,7 +12,7 @@ Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are defe
 - `MAX_TASKS = 20`
 - `MAX_CONCURRENT = 4`
 - `TIMEOUT_PER_TASK = 10 min`
-- `HARD_BLOCK_PATHS` — a flag, not a block: entries touching these paths still dispatch, with `/security-review` first. Any change touching:
+- `HARD_BLOCK_PATHS` — a flag, not a block: entries touching these paths still dispatch, with `/security-review` before `/ship`. Any change touching:
   - `src/services/StripeService/**`
   - `src/services/AuthenticationService/**`
   - `src/lib/Token.ts`
@@ -51,13 +51,13 @@ For each PR:
 
 1. Read the title. Dependabot encodes the bump level there — extract `patch | minor | major` from the conventional `bump <pkg> from X to Y` shape plus the semver delta. If you cannot determine the bump level, mark it `unknown` and treat as non-patch.
 2. If `--patch-only` is set, drop entries whose bump level is not `patch`.
-3. Pull the file list (`files[].path`). If any path matches `HARD_BLOCK_PATHS`, keep the entry in the dispatch list, mark it `hard-blocked` so the worker runs `/security-review` on the diff first, and list it separately in the final report.
+3. Pull the file list (`files[].path`). If any path matches `HARD_BLOCK_PATHS`, keep the entry in the dispatch list, mark it `hard-blocked` so the worker runs `/security-review` on the diff before `/ship`, and list it separately in the final report.
 
 Cap the result at `MAX_TASKS`. Alexander typing `/batch` himself is the approval for up to `MAX_TASKS` agent runs; an agent never invokes `/batch` to create that approval. If the raw queue had more than `MAX_TASKS` viable entries, print `Queue has <N> tasks; cap is 20. Dispatching the first 20; the remaining <N-20> stay in the queue for the next /batch.` and continue; nothing is dropped, the leftovers are still open on GitHub.
 
 ## Step 4 — dispatch loop
 
-If `--dry-run`, print the table from step 6 with status `would-dispatch` for every viable task and `would-dispatch (hard-blocked: security-review first)` for marked entries, then exit.
+If `--dry-run`, print the table from step 6 with status `would-dispatch` for every viable task and `would-dispatch (hard-blocked: security-review before /ship)` for marked entries, then exit.
 
 Otherwise:
 
@@ -67,7 +67,7 @@ Otherwise:
   - While `len(in-flight) < MAX_CONCURRENT` and pending is non-empty:
     - Pop the next task.
     - `EnterWorktree` off `origin/main` — record the returned worktree ID.
-    - Fork a worker with the matching template: `.claude/commands/batch-tasks/<task-type>.md`. Pass the worker the PR number (or task-specific input) and the worktree path. A fork runs on this dispatcher's model and ignores a `model` override, which suits task types that make judgment calls (dependabot decides major bumps). A template whose frontmatter carries `worker: fresh` is purely mechanical: dispatch it as a fresh `general-purpose` agent with `model: "sonnet"` and the template as its brief.
+    - Fork a worker with the matching template: `.claude/commands/batch-tasks/<task-type>.md`. Pass the worker the PR number (or task-specific input), the worktree path, and whether step 3 marked the task `hard-blocked`. A fork runs on this dispatcher's model and ignores a `model` override, which suits task types that make judgment calls (dependabot decides major bumps). A template whose frontmatter carries `worker: fresh` is purely mechanical: dispatch it as a fresh `general-purpose` agent with `model: "sonnet"` and the template as its brief. A `hard-blocked` task always forks, whatever its template says, so its security review runs on this dispatcher's model, never the Sonnet worker tier.
     - Invoke the worker with `isolation: "worktree"` and `run_in_background: true`. Record its task ID alongside the worktree ID.
   - Wait for the next worker to finish (do not busy-poll — use the agent completion notification).
   - When a worker returns, print one line: `<pr#> <branch> → <status>`. Move it from in-flight to completed.
