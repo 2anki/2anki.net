@@ -6097,6 +6097,7 @@ describe('UploadForm PDF with no readable text', () => {
     delete (globalThis as AnalyticsGlobals).hj;
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     globalThis.localStorage.clear();
   });
 
@@ -6380,6 +6381,46 @@ describe('UploadForm PDF with no readable text', () => {
     await submitForm(container);
 
     expect(await screen.findByText(pagePairsNote)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Two pages per card' })
+    ).toBeNull();
+  });
+
+  it('says what a Dropbox PDF made, without asking first', async () => {
+    vi.stubEnv('REACT_APP_DROPBOX_APP_KEY', 'test-key');
+    vi.stubGlobal('Dropbox', {
+      choose: ({ success }: { success: (files: unknown[]) => void }) => {
+        success([
+          {
+            id: 'id:1',
+            name: 'slides.pdf',
+            bytes: 200,
+            icon: 'page_white_acrobat',
+            isDir: false,
+            link: 'https://dl.dropboxusercontent.com/x/slides.pdf',
+            linkType: 'direct',
+          },
+        ]);
+      },
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(deckResponse({ 'X-Pdf-Fallback': 'pairs' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const chooser = container.querySelector(
+      'button[aria-label="Choose from Dropbox"]'
+    ) as HTMLButtonElement;
+    await act(async () => {
+      chooser.click();
+    });
+
+    expect(await screen.findByText(pagePairsNote)).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([url]) => url === '/api/upload/dropbox')
+    ).toBe(true);
     expect(
       screen.queryByRole('button', { name: 'Two pages per card' })
     ).toBeNull();
