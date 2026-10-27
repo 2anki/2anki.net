@@ -14,12 +14,15 @@ section in the PR body:
   - A string removed from an English locale file
     (`web/src/lib/i18n/locales/en/*.json`; en is the source of truth, so the
     other nine locales are not read). Strings are matched by key path, built
-    from the object openers inside each diff hunk. Not counted: the same key
-    path re-added in the same file (a copy edit), or the same value added in
-    any en file (a rename or a move between namespaces).
+    from the object openers inside each diff hunk; when an opener sits outside
+    the hunk the path is a suffix of the real one. Not counted: a key path
+    re-added in the same file where one path ends with the other (a copy edit,
+    or a move within the file), or the same value added in any en file (a
+    rename or a move between namespaces).
   - A deleted `web/src/**/*.tsx` component (tests and stories excluded) whose
-    name contains Notice, Warning, Banner, Alert, Callout or Toast as a
-    PascalCase word (`FooNotice/index.tsx` counts by its folder name). Not
+    name contains Notice, Warning, Banner, Alert, Callout or Toast (or the
+    plural) as a PascalCase word (`FooNotice/index.tsx` counts by its folder
+    name). Not
     counted: a rename, or a file with the same component name that survives
     anywhere in the PR.
   - A removed `const` in `src/**/*.ts` whose UPPER_SNAKE name has a WARNING or
@@ -32,10 +35,12 @@ directory that is not a .ts/.tsx/.js source (the `__snapshots__/*.snap` files,
 golden fixtures) needs a `## Snapshot changes` section that names each changed
 file by its basename. Newly added files do not count.
 
-A section is empty when it holds only whitespace, HTML comments, the unedited
-`<why>` template, or a bare placeholder: none, no, n/a, nothing, nothing
-removed, no changes, tbd, todo. "None, the strings moved to X" passes: that is
-the out for a false positive, and it puts the reason on the record.
+A section is empty when it holds only whitespace, HTML comments, checkboxes,
+a literal `<why>`, or a bare placeholder: none, none removed, no, n/a, not
+applicable, nothing, nothing removed, no change(s), no user-facing (or
+user-visible) change(s), tbd, todo. "None, the strings moved to X" passes: that
+is the out for a false positive, and it puts the reason on the record. Any one
+filled copy of the heading counts; a trailing colon on the heading is fine.
 
 Known false positives: a string moved to another en file with a changed value;
 a deleted component whose name merely contains Alert (an AlertDialog shell); a
@@ -43,11 +48,12 @@ WARNING constant that never reaches a user (an email job interval). Known false
 negatives: a notice rendered inline in a component that survives (the JSX goes,
 the file stays); a notice component renamed to a name without a notice word;
 user-facing English literals outside the locale files; a server warning built
-from a string literal with no named constant; a nested string whose parent
-opener sits outside the hunk and whose leaf key is re-added under another
-parent in the same hunk; and anything in a diff GitHub refuses to serve (too
-large), where the string and constant checks fail open while the file-list
-checks still run.
+from a string literal with no named constant; a removed string whose value is
+common enough to be added elsewhere in en ("Cancel"); a nested string whose
+parent opener sits outside the hunk, when the same file gains a key with the
+same leaf under another parent; a PR past the file list gh returns; and
+anything in a diff GitHub refuses to serve (too large), where the string and
+constant checks fail open while the file-list checks still run.
 
 Mirrors check-changelog-on-merge.py: fetches the PR via gh, fails open on any
 tooling error, exempts dependabot.
@@ -68,20 +74,26 @@ EN_LOCALE_PREFIX = "web/src/lib/i18n/locales/en/"
 REMOVED_SECTION = "Removed for users"
 SNAPSHOT_SECTION = "Snapshot changes"
 MAX_LISTED = 15
+MAX_KEY_DEPTH = 16
+MAX_LISTED_KEY_LENGTH = 120
 MAX_LINE_LENGTH = 4000
 GH_TIMEOUT_SECONDS = 15
 
 LOCALE_ENTRY = re.compile(r'^\s*"((?:[^"\\]|\\.)+)"\s*:\s*"((?:[^"\\]|\\.)*)",?$')
 LOCALE_OPENER = re.compile(r'^\s*"((?:[^"\\]|\\.)+)"\s*:\s*\{$')
-NOTICE_WORD = re.compile(r"(Notice|Warning|Banner|Alert|Callout|Toast)(?![a-z])")
+NOTICE_WORD = re.compile(r"(Notice|Warning|Banner|Alert|Callout|Toast)s?(?![a-z])")
 CONST_DECL = re.compile(r"^\s*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\b")
 DIFF_HEADER = re.compile(r"diff --git a/(.+?) b/(.+)$")
 WARNING_WORDS = {"WARNING", "WARNINGS", "NOTICE", "NOTICES"}
 SOURCE_EXTENSIONS = (".ts", ".tsx", ".js", ".mjs", ".cjs")
 PLACEHOLDERS = {
-    "", "none", "no", "na", "nothing", "nothingremoved", "noneremoved",
-    "nochange", "nochanges", "tbd", "todo",
+    "", "none", "no", "na", "notapplicable", "nothing", "nothingremoved",
+    "noneremoved", "nochange", "nochanges", "nouserfacingchange",
+    "nouserfacingchanges", "nouservisiblechange", "nouservisiblechanges",
+    "tbd", "todo",
 }
+CHECKBOX = re.compile(r"\[[ xX]\]")
+DEPENDABOT_LOGINS = {"dependabot[bot]", "app/dependabot"}
 
 
 def allow():
@@ -146,11 +158,11 @@ def fetch_diff(pr_ref):
 
 
 def is_en_locale(path):
-    return path is not None and path.startswith(EN_LOCALE_PREFIX) and path.endswith(".json")
+    return isinstance(path, str) and path.startswith(EN_LOCALE_PREFIX) and path.endswith(".json")
 
 
 def is_server_source(path):
-    if path is None or not (path.startswith("src/") and path.endswith(".ts")):
+    if not isinstance(path, str) or not (path.startswith("src/") and path.endswith(".ts")):
         return False
     if path.endswith(".d.ts") or ".test." in path:
         return False
@@ -162,7 +174,7 @@ def is_server_source(path):
 
 
 def is_web_component(path):
-    if not (path.startswith("web/src/") and path.endswith(".tsx")):
+    if not isinstance(path, str) or not (path.startswith("web/src/") and path.endswith(".tsx")):
         return False
     return ".test." not in path and ".stories." not in path
 
@@ -176,6 +188,8 @@ def component_name(path):
 
 
 def is_golden_snapshot(path):
+    if not isinstance(path, str):
+        return False
     segments = path.split("/")
     if "golden" not in segments[:-1]:
         return False
@@ -211,7 +225,8 @@ def locale_entries(lines, side_marker):
             stack.pop()
         opener = LOCALE_OPENER.match(stripped)
         if opener:
-            stack.append((indent, opener.group(1)))
+            if len(stack) < MAX_KEY_DEPTH:
+                stack.append((indent, opener.group(1)))
             continue
         entry = LOCALE_ENTRY.match(stripped)
         if entry and marker == side_marker:
@@ -231,11 +246,22 @@ def removed_locale_strings(hunks):
                 added_values.add(value)
     findings = []
     for path, key, value in removed:
-        if (path, key) in added_paths or value in added_values:
+        if value in added_values or re_added_in_file(path, key, added_paths):
             continue
-        preview = value if len(value) <= 60 else value[:57] + "..."
-        findings.append(f'{os.path.basename(path)}: {key} ("{preview}")')
+        findings.append(f'{os.path.basename(path)}: {shorten(key, MAX_LISTED_KEY_LENGTH)} ("{shorten(value, 60)}")')
     return findings
+
+
+def same_key_path(left, right):
+    return left == right or left.endswith("." + right) or right.endswith("." + left)
+
+
+def re_added_in_file(path, key, added_paths):
+    return any(added_path == path and same_key_path(key, added_key) for added_path, added_key in added_paths)
+
+
+def shorten(text, limit):
+    return text if len(text) <= limit else text[: limit - 3] + "..."
 
 
 def declared_warning_constants(hunks, side_marker, path_key):
@@ -311,21 +337,23 @@ def strip_html_comments(text):
     return "".join(kept)
 
 
-def section_text(body, heading):
+def filled_section(body, heading):
     pattern = re.compile(
-        rf"^#{{2}}[ \t]+{re.escape(heading)}[ \t\r]*$\n?(.*?)(?=^#{{1,2}}[ \t]|\Z)",
+        rf"^#{{2}}[ \t]+{re.escape(heading)}[ \t]*:?[ \t\r]*$\n?(.*?)(?=^#{{1,2}}[ \t]|\Z)",
         re.M | re.S | re.I,
     )
-    match = pattern.search(strip_html_comments(body or ""))
-    if not match:
-        return None
-    return match.group(1).strip()
+    for match in pattern.finditer(strip_html_comments(body)):
+        text = match.group(1).strip()
+        if is_filled(text):
+            return text
+    return None
 
 
 def is_filled(text):
-    if text is None or "<why>" in text.lower():
+    lowered = text.lower()
+    if "<why>" in lowered:
         return False
-    return re.sub(r"[^a-z]", "", text.lower()) not in PLACEHOLDERS
+    return re.sub(r"[^a-z]", "", CHECKBOX.sub("", lowered)) not in PLACEHOLDERS
 
 
 def listed(items):
@@ -376,11 +404,14 @@ def main():
     if pr_data is None:
         allow()
 
-    if (pr_data.get("author") or {}).get("login", "") == "dependabot[bot]":
+    author = pr_data.get("author")
+    if isinstance(author, dict) and author.get("login") in DEPENDABOT_LOGINS:
         allow()
 
-    files = [f for f in (pr_data.get("files") or []) if isinstance(f, dict)]
-    body = pr_data.get("body") or ""
+    raw_files = pr_data.get("files")
+    files = [f for f in raw_files if isinstance(f, dict)] if isinstance(raw_files, list) else []
+    raw_body = pr_data.get("body")
+    body = raw_body if isinstance(raw_body, str) else ""
 
     removals = removed_notice_components(files)
     if needs_diff(files):
@@ -390,13 +421,12 @@ def main():
             removals = removed_locale_strings(hunks) + removals + removed_server_warnings(hunks)
 
     problems = []
-    if removals and not is_filled(section_text(body, REMOVED_SECTION)):
+    if removals and filled_section(body, REMOVED_SECTION) is None:
         problems.append(removal_problem(removals))
 
     snapshots = changed_snapshots(files)
-    snapshot_text = section_text(body, SNAPSHOT_SECTION)
-    if snapshots and is_filled(snapshot_text):
-        snapshots = [p for p in snapshots if os.path.basename(p) not in snapshot_text]
+    snapshot_text = filled_section(body, SNAPSHOT_SECTION) or ""
+    snapshots = [p for p in snapshots if os.path.basename(p) not in snapshot_text]
     if snapshots:
         problems.append(snapshot_problem(snapshots))
 

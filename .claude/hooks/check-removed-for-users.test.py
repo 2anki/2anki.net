@@ -133,9 +133,10 @@ class TestPassthrough(unittest.TestCase):
         self.assertEqual(run_hook("gh pr merge 12 --squash", fake)["result"], "allow")
         self.assertFalse(any(c[:3] == ["gh", "pr", "diff"] for c in fake.calls))
 
-    def test_dependabot_is_exempt(self):
-        fake = gh_responder(pr_json([file_entry(PARSER_SNAP)], author="dependabot[bot]"))
-        self.assertEqual(run_hook("gh pr merge 12", fake)["result"], "allow")
+    def test_dependabot_is_exempt_under_both_login_spellings(self):
+        for login in ("app/dependabot", "dependabot[bot]"):
+            fake = gh_responder(pr_json([file_entry(PARSER_SNAP)], author=login))
+            self.assertEqual(run_hook("gh pr merge 12", fake)["result"], "allow", login)
 
 
 class TestRemovedTranslatedStrings(unittest.TestCase):
@@ -432,6 +433,97 @@ class TestSectionParsing(unittest.TestCase):
 
     def test_nothing_removed_denies(self):
         self.assertEqual(self.deny_or_allow("## Removed for users\nNothing removed.\n"), "deny")
+
+    def test_no_user_facing_changes_denies(self):
+        self.assertEqual(self.deny_or_allow("## Removed for users\nNo user-facing changes.\n"), "deny")
+
+    def test_ticked_checkbox_none_denies(self):
+        self.assertEqual(self.deny_or_allow("## Removed for users\n- [x] None\n"), "deny")
+
+    def test_heading_with_trailing_colon_allows(self):
+        self.assertEqual(self.deny_or_allow("## Removed for users:\nFree users lose the count.\n"), "allow")
+
+    def test_any_filled_copy_of_the_heading_counts(self):
+        body = "## Removed for users\n\n## Risks\nx\n## Removed for users\nFree users lose the count.\n"
+        self.assertEqual(self.deny_or_allow(body), "allow")
+
+
+MOVE_AND_REWORD = nested_hunk(EN_LOCALE, [
+    '   "nav": {',
+    '+    "favorites": "Saved decks",',
+    '     "home": "Home",',
+]) + "\n".join([
+    "@@ -40,4 +41,3 @@",
+    '     "search": "Search",',
+    '-    "favorites": "Favorites",',
+    '     "help": "Help"',
+]) + "\n"
+
+DEEP_NESTING = nested_hunk(EN_LOCALE, [
+    *[f' {"  " * depth}"k{depth}": {{' for depth in range(1, 40)],
+    f'-{"  " * 40}"leaf": "gone"',
+])
+
+
+class TestKeyPathEdges(unittest.TestCase):
+    def test_move_within_file_with_new_wording_allows(self):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), MOVE_AND_REWORD)
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+
+    def test_key_path_depth_is_capped(self):
+        hunks = hook.parse_hunks(DEEP_NESTING)
+        added = hook.locale_entries(hunks[0]["lines"], "+")
+        removed = hook.locale_entries(hunks[0]["lines"], "-")
+        self.assertEqual(added, [])
+        self.assertEqual(removed[0][0].count("."), hook.MAX_KEY_DEPTH)
+
+    def test_long_key_paths_are_shortened_in_the_listing(self):
+        key = "k" * 500
+        diff = diff_block(EN_LOCALE, removed=[f'  "{key}": "gone"'])
+        findings = hook.removed_locale_strings(hook.parse_hunks(diff))
+        self.assertLess(len(findings[0]), hook.MAX_LISTED_KEY_LENGTH + 100)
+
+    def test_listing_is_cut_off_after_max_listed(self):
+        removed = [f'  "key{n}": "value {n}",' for n in range(hook.MAX_LISTED + 5)]
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), diff_block(EN_LOCALE, removed=removed))
+        result = run_hook("gh pr merge 1", fake)
+        self.assertIn("...and 5 more", result["reason"])
+
+
+class TestComponentNames(unittest.TestCase):
+    def test_plural_notice_word_denies(self):
+        path = "web/src/components/UploadWarnings/UploadWarnings.tsx"
+        fake = gh_responder(pr_json([file_entry(path, "DELETED")]))
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "deny")
+
+    def test_index_file_counts_by_folder_name(self):
+        path = "web/src/components/PastDueNotice/index.tsx"
+        fake = gh_responder(pr_json([file_entry(path, "DELETED")]))
+        result = run_hook("gh pr merge 1", fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn(path, result["reason"])
+
+
+class TestMalformedGhOutput(unittest.TestCase):
+    def test_odd_field_types_do_not_crash(self):
+        payloads = [
+            {"author": "someone", "body": "", "files": [file_entry(PARSER_SNAP)]},
+            {"author": None, "body": ["x"], "files": [file_entry(PARSER_SNAP)]},
+            {"author": None, "body": "", "files": [{"path": None, "changeType": "DELETED"}, file_entry(PARSER_SNAP)]},
+            {"author": None, "body": "", "files": 7},
+            [],
+        ]
+        expected = ["deny", "deny", "deny", "allow", "allow"]
+        for payload, want in zip(payloads, expected):
+            result = run_hook("gh pr merge 1", gh_responder(json.dumps(payload)))
+            self.assertEqual(result.get("result"), want, payload)
+
+
+class TestExclusions(unittest.TestCase):
+    def test_generated_and_declaration_files_are_not_server_source(self):
+        self.assertFalse(hook.is_server_source("src/data_layer/public/Users.ts"))
+        self.assertFalse(hook.is_server_source("src/types/global.d.ts"))
+        self.assertTrue(hook.is_server_source("src/lib/upload/apkgOversizeWarning.ts"))
 
 
 if __name__ == "__main__":
