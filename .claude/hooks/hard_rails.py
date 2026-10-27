@@ -39,7 +39,7 @@ NAME_GLOBS = (
     "storekit",
     "appletransaction",
     # Stores of login, reset, claim and session tokens. A bare "token" glob would
-    # also catch countVisionTokens and designTokens. The globs below would have
+    # also catch countVisionTokens and designTokens. These three globs would have
     # flagged no extra commits.
     "tokenrepository",
     "tokensrepository",
@@ -70,7 +70,8 @@ EXPLICIT_FILES = (
     # which the "auth" glob covers.
     "src/data_layer/NotionRespository.ts",
     # Where a session cookie, an email-change token and a duplicate purchase are
-    # checked. None changed in the six months to 2026-10-27. UsersRepository,
+    # checked. None would have flagged an extra commit in the six months to
+    # 2026-10-27; each change to them already hit another trigger. UsersRepository,
     # UsersService and RacService also check tokens but would add 8 to 11 rail
     # PRs each, so they stay off.
     "src/routes/middleware/configureUserLocal.ts",
