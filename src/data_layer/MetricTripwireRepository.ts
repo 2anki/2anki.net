@@ -188,22 +188,26 @@ export function buildLastCheckedQuery(db: Knex): Knex.QueryBuilder {
 export function buildRecordAlertQuery(
   db: Knex,
   metric: TripwireMetricKey,
-  day: string
+  day: string,
+  at: Date
 ): Knex.QueryBuilder {
   return db('events').insert({
     name: ALERT_EVENT,
     props: JSON.stringify(serverProps({ metric, day })),
+    created_at: at,
   });
 }
 
 export function buildRecordCheckQuery(
   db: Knex,
   day: string,
-  tripped: number
+  tripped: number,
+  at: Date
 ): Knex.QueryBuilder {
   return db('events').insert({
     name: CHECK_EVENT,
     props: JSON.stringify(serverProps({ day, tripped })),
+    created_at: at,
   });
 }
 
@@ -276,10 +280,10 @@ export class MetricTripwireRepository implements IMetricTripwireRepository {
   }
 
   async recordAlert(metric: TripwireMetricKey, day: string): Promise<void> {
-    await buildRecordAlertQuery(this.database, metric, day);
+    await buildRecordAlertQuery(this.database, metric, day, new Date());
   }
 
   async recordCheck(day: string, tripped: number): Promise<void> {
-    await buildRecordCheckQuery(this.database, day, tripped);
+    await buildRecordCheckQuery(this.database, day, tripped, new Date());
   }
 }

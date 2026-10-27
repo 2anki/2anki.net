@@ -14,10 +14,14 @@ export const SERVER_ONLY_EVENT_PROP_KEYS: ReadonlySet<string> = new Set([
   SERVER_MARKER_PROP,
 ]);
 
-// Event names only the server writes. The ingest drops them outright: a
-// forged metric tripwire check or alert row would skip a run or silence an
-// alert.
+// Event names only the server writes; no web or native client emits them.
+// The ingest drops them outright: a forged tripwire check or alert row would
+// skip a run or silence an alert, and forged conversion outcomes or upload
+// starts would skew the rates the tripwire and the ops funnel read.
 export const SERVER_ONLY_EVENT_NAMES: ReadonlySet<string> = new Set([
   'metric_tripwire_checked',
   'metric_tripwire_alert_sent',
+  'conversion_succeeded',
+  'conversion_failed',
+  'upload_started',
 ]);

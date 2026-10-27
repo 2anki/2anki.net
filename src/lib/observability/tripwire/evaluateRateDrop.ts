@@ -3,8 +3,9 @@ export interface RateCounts {
   denominator: number;
 }
 
-// Below five rows a day cannot show even a total collapse at the tail
-// probability below unless the baseline rate is above 75%: 0.25^5 < 0.001.
+// Five rows let a total collapse from a 75% baseline reach the tail
+// probability below (0.25^5 < 0.001); with fewer rows only a collapse from an
+// ever higher baseline could, so smaller days are not read at all.
 export const TRIPWIRE_MIN_DAY_DENOMINATOR = 5;
 
 // Thirty rows keep the baseline rate's own standard error at or under nine

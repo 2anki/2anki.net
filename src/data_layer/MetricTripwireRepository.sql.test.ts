@@ -145,11 +145,16 @@ describe('MetricTripwireRepository generated SQL', () => {
     ]);
   });
 
-  it('writes the marker every bookkeeping read requires', () => {
-    const alert = buildRecordAlertQuery(pg, 'deck_has_cards', '2026-10-26');
-    const check = buildRecordCheckQuery(pg, '2026-10-26', 2);
+  it('writes the marker and the app-clock time every bookkeeping read requires', () => {
+    const at = new Date('2026-10-27T00:00:01.000Z');
+    const alert = buildRecordAlertQuery(pg, 'deck_has_cards', '2026-10-26', at);
+    const check = buildRecordCheckQuery(pg, '2026-10-26', 2, at);
 
+    expect(alert.toSQL().sql).toBe(
+      'insert into "events" ("created_at", "name", "props") values (?, ?, ?)'
+    );
     expect(alert.toSQL().bindings).toEqual([
+      at,
       'metric_tripwire_alert_sent',
       JSON.stringify({
         metric: 'deck_has_cards',
@@ -158,6 +163,7 @@ describe('MetricTripwireRepository generated SQL', () => {
       }),
     ]);
     expect(check.toSQL().bindings).toEqual([
+      at,
       'metric_tripwire_checked',
       JSON.stringify({ day: '2026-10-26', tripped: 2, server_marker: true }),
     ]);

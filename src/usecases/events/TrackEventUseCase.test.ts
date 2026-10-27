@@ -56,7 +56,7 @@ describe('TrackEventUseCase', () => {
     const sink = new EventsSink(repo, { flushThreshold: 1 });
     const useCase = new TrackEventUseCase(sink);
     useCase.execute({
-      name: 'conversion_succeeded',
+      name: 'deck_downloaded',
       unknown: false,
       userId: null,
       anonymousId: null,
@@ -113,8 +113,14 @@ describe('TrackEventUseCase', () => {
     expect(call[0][0].props).not.toHaveProperty('order_source');
   });
 
-  it.each(['metric_tripwire_checked', 'metric_tripwire_alert_sent'])(
-    'drops a client-submitted %s so it cannot suppress the tripwire',
+  it.each([
+    'metric_tripwire_checked',
+    'metric_tripwire_alert_sent',
+    'conversion_succeeded',
+    'conversion_failed',
+    'upload_started',
+  ])(
+    'drops a client-submitted %s so it cannot suppress or skew the tripwire',
     async (name) => {
       const { repo, inserted } = makeFakeRepository();
       const sink = new EventsSink(repo, { flushThreshold: 1 });
@@ -156,7 +162,7 @@ describe('TrackEventUseCase', () => {
     const useCase = new TrackEventUseCase(sink);
     expect(() =>
       useCase.execute({
-        name: 'conversion_succeeded',
+        name: 'deck_downloaded',
         unknown: false,
         userId: null,
         anonymousId: null,
