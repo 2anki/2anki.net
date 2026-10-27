@@ -7,7 +7,7 @@ Two kinds of follow-up are **draft items in the private Lær Smart Follow-ups pr
 
 Why: the repo is public. Reads carry business numbers, baselines, funnel rates and keep/kill reasoning, and "Memory & sensitive data" in `CLAUDE.md` keeps those out of the repo. Both kinds also crowded the issue list: on 2026-10-27, 18 of 33 open issues were reads or owner steps, not work, and all were moved to the project.
 
-Real work (a bug, a feature, a code change a read decided on) still gets a GitHub issue. A read that ends in "remove" or "fix" files a GitHub issue for that work, without the private numbers.
+Real work (a bug, a feature, a code change a read decided on) still gets a GitHub issue. A read whose verdict needs a code change (a removal, a revert, a fix) files a GitHub issue for that work, without the private numbers.
 
 `.claude/rules/support-confidentiality.md` still applies inside the project: numeric user IDs only, no reporter names, emails, filenames or deck titles. A private project can be shared or made public later.
 
@@ -19,7 +19,7 @@ Every item sets Status, Area, Owner and, when there is a date, Due:
 | --- | --- |
 | Status | `Todo`; `Done` once the read is taken and its verdict acted on, or the owner step is done |
 | Area | the surface it is about: `2anki web`, `2anki app`, `Google Ads`, `Distribution`, `Other apps`, `TubeHabit`, `Company` |
-| Owner | `Claude` for a read an agent can run, `Alexander` for an owner step |
+| Owner | `Claude` for a read an agent can run; `Alexander` for an owner step or a read only he can open (a Google Ads or Search Console dashboard); `Other agent` for work handed to an agent in another repo or session |
 | Due | the read date or the external deadline |
 
 Put the read date in the title too (`Adoption review (by 2026-11-24): <surface>, keep or remove`) so the board sorts at a glance. An adoption review's body states the three things the `CLAUDE.md` "Surface lifecycle" section requires: the reachable population and its query, a power check on any support or email condition, and whether the usage event can see passive use. Reference PRs and issues with full URLs; a bare `#NNNN` does not link from an org project.
