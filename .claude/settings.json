@@ -92,6 +92,10 @@
           },
           {
             "type": "command",
+            "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/check-removed-for-users.py"
+          },
+          {
+            "type": "command",
             "command": "python3 $CLAUDE_PROJECT_DIR/.claude/hooks/check-duplicate-commit-message.py"
           },
           {
