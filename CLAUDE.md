@@ -81,6 +81,7 @@ Load on demand — read these when the task touches the named surface (kept out 
 - `.claude/docs/i18n.md` — read before adding or changing any user-facing string, adding a language, or fanning out translation work. The web app ships in 10 locales via a glob namespace loader; a string added in one locale but not the other 9 renders stale/wrong.
 - `.claude/docs/prod-ops.md` — read before changing a prod safety limit (heap, timeout, retry cap, pool size), swapping a model on a paid inference path, or diagnosing a failed deploy.
 - `.claude/docs/spec-lifecycle.md` — read before `/spec-draft-pr` or `/implement`.
+- `.claude/docs/follow-ups-project.md` — read before recording an adoption review, a T+30 read, any dated metric check or a step only Alexander can do.
 
 ## Git
 
@@ -100,7 +101,8 @@ Load on demand — read these when the task touches the named surface (kept out 
 - Touching auth, payments, or external-API integration? Run `/security-review` before merge.
 - After merge, clean up local: `git checkout main && git pull --ff-only`, confirm the PR is `MERGED` via `gh pr view <branch> --json state`, then `git branch -D <branch>` (squash-merges leave the tip unreachable from main, so `-d` refuses). `git fetch --prune origin` drops stale remote-tracking refs; `git worktree list` then `git worktree remove <path>` (or `git worktree prune` if the dir is already gone) clears unused worktrees.
 - **When Alexander asks to check out a PR, just do it.** Run `gh pr checkout <n>` yourself. If `gh` complains the branch is `already used by worktree at .claude/worktrees/agent-*`, that's an agent worktree from a previous run — the PR is already on the remote, the agent's local copy is redundant. Unlock + remove it (`git worktree unlock <path> && git worktree remove <path>`), then re-run `gh pr checkout <n>`. Do not return a menu of options for Alexander to copy-paste — pick the right answer and execute it.
-- GitHub issues for follow-ups that need cross-cutting visibility, labels, or contributor pickup. Commit bodies for inline scope notes that travel with the change.
+- GitHub issues for work follow-ups that need cross-cutting visibility, labels, or contributor pickup. Commit bodies for inline scope notes that travel with the change.
+- **Except: adoption reviews, metric reads, other dated look-it-up checks and owner-only steps are never GitHub issues** (no `Needs you` issues either). The repo is public and they carry business numbers; they go in the private Follow-ups project as draft items with Status, Area, Owner and (when dated) Due set. Recipe: `.claude/docs/follow-ups-project.md`.
 
 ## Working speed
 
@@ -184,9 +186,9 @@ Specs live in `Documentation/specs/` only while a feature is in flight: `/spec-d
 
 ## Surface lifecycle
 
-A new `feat:` surface (a distinct user-facing capability — chat, mindmaps, photo-to-deck, transform, print, quizlet import, image occlusion, ankify) ships with two things in the same PR: a usage analytics event that fires when the surface is used, and a T+30d adoption-review GitHub issue created at merge with the review date in the title. At that review the verdict is binary — **keep or remove**. Silence is removal, not maintenance; an unused surface is a maintenance tax with no offsetting users. History: 8+ surfaces shipped in May 2026 with usage evidence for only 2-3, and one (quizlet import) went silent within days and nobody noticed.
+A new `feat:` surface (a distinct user-facing capability — chat, mindmaps, photo-to-deck, transform, print, quizlet import, image occlusion, ankify) ships with two things in the same PR: a usage analytics event that fires when the surface is used, and a T+30d adoption-review draft item in the private Follow-ups project, created at merge with the review date in the title, never a public issue (`.claude/docs/follow-ups-project.md`). At that review the verdict is binary — **keep or remove**. Silence is removal, not maintenance; an unused surface is a maintenance tax with no offsetting users. History: 8+ surfaces shipped in May 2026 with usage evidence for only 2-3, and one (quizlet import) went silent within days and nobody noticed.
 
-**A T+30 threshold is only as good as its denominator, and a wrong one does not fail loudly.** Before a keep/kill rule is written down, the review issue must state:
+**A T+30 threshold is only as good as its denominator, and a wrong one does not fail loudly.** Before a keep/kill rule is written down, the review item must state:
 
 - **The reachable population** — who could physically have used this surface, and the query that counts them. Not "conversions" unless the surface exists on every conversion. The 2026-09-29 conversion-report review was written against every conversion on the site for a surface that only exists on the Notion path: 93% of that denominator could never have opened it, and the rule as written read 1.7% and said remove, where the reachable denominator read 28.1% and said keep.
 - **A power check on any support- or email-volume condition.** A theme running below roughly 20 threads per window cannot show a 30% move; such a condition can be neither satisfied nor falsified and does not belong in the rule.
