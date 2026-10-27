@@ -13,9 +13,9 @@ Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are defe
 - `MAX_CONCURRENT = 4`
 - `TIMEOUT_PER_TASK = 10 min`
 - `HARD_BLOCK_PATHS` — a flag, not a block: entries touching these paths still dispatch, with `/security-review` before `/ship`. Any change touching:
-  - `src/services/AuthenticationService.ts` (JWT signing)
-  - `src/data_layer/TokenRepository.ts` and `src/lib/misc/{hashToken,unHashToken,hmacToken}.ts` (token storage)
-  - anything matching `auth`, `stripe` or `payment` in the diff path
+  - anything matching `auth`, `stripe`, `payment`, `/iap`, `storekit`, `appletransaction`, `tokenrepository`, `tokensrepository`, `resettoken` or `passrepository` in the diff path, case-insensitive (`src/services/AuthenticationService.ts` signs JWTs)
+  - `src/lib/misc/{hashToken,unHashToken,hmacToken}.ts`, `src/data_layer/NotionRespository.ts`, `src/routes/middleware/configureUserLocal.ts`, `src/usecases/users/ConfirmEmailChangeUseCase.ts`, `src/routes/middleware/RejectDuplicatePurchase.ts`
+  - These are the payment, auth and token triggers in `.claude/hooks/hard_rails.py`; change both together.
   Dispatch them too: the worker runs `/security-review` on the diff, and `/ship` adds its own fresh read-only reviewers before the marker.
 
 ## Step 1 — pre-check
