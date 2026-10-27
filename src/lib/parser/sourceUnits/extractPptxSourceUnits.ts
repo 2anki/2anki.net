@@ -25,6 +25,7 @@ export interface SlideUnit extends SourceUnit {
   title: string;
   paragraphs: string[];
   chromeParagraphs: string[];
+  textWithChrome: string[];
   hasPicture: boolean;
 }
 
@@ -230,6 +231,26 @@ function splitSlideText(slideXml: string): {
   };
 }
 
+// The slide read the way it was before chrome was set apart, kept for a deck
+// that would otherwise make no cards: the title first, then every other line
+// in XML order, chrome and duplicates included.
+function readTextWithChrome(slideXml: string): string[] {
+  let title = '';
+  const paragraphs: string[] = [];
+
+  for (const shape of tagBlocks(slideXml, 'p:sp')) {
+    const shapeParagraphs = extractParagraphs(shape);
+    if (shapeParagraphs.length === 0) continue;
+    if (title === '' && isTitleShape(shape)) {
+      title = shapeParagraphs.join(' ');
+    } else {
+      paragraphs.push(...shapeParagraphs);
+    }
+  }
+
+  return title === '' ? paragraphs : [title, ...paragraphs];
+}
+
 function extractNotesText(notesXml: string): string {
   for (const shape of tagBlocks(notesXml, 'p:sp')) {
     if (!hasAttribute(shape, 'p:ph', /\sidx="1"/)) continue;
@@ -307,7 +328,8 @@ export function extractPptxSourceUnits(pptxBuffer: Buffer): SlideUnit[] {
     if (isHidden(slideXml)) return [];
 
     const notesXml = notesEntries.get(num) ?? '';
-    const { title, paragraphs, chromeParagraphs } = hasTextShapes(slideXml)
+    const textShapes = hasTextShapes(slideXml);
+    const { title, paragraphs, chromeParagraphs } = textShapes
       ? splitSlideText(slideXml)
       : { title: '', paragraphs: [], chromeParagraphs: [] };
     const visibleText = [title, ...paragraphs]
@@ -325,6 +347,7 @@ export function extractPptxSourceUnits(pptxBuffer: Buffer): SlideUnit[] {
         title,
         paragraphs,
         chromeParagraphs,
+        textWithChrome: textShapes ? readTextWithChrome(slideXml) : [],
         hasPicture: hasPicture(slideXml),
       },
     ];

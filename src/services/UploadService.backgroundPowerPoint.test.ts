@@ -4,7 +4,7 @@ import path from 'node:path';
 import type express from 'express';
 import { strToU8, zipSync } from 'fflate';
 
-const builtCards = vi.hoisted(() => [] as { name: string }[]);
+const builtCards = vi.hoisted(() => [] as { name: string; back: string }[]);
 const storedKeys = vi.hoisted(() => [] as string[]);
 const SLIDE_PNG = vi.hoisted(() =>
   Buffer.from(
@@ -74,7 +74,7 @@ vi.mock('../lib/anki/CardGenerator', () => ({
           path.join(this.currentDirectory, 'deck_info.json'),
           'utf8'
         )
-      ) as { cards: { name: string }[] }[];
+      ) as { cards: { name: string; back: string }[] }[];
       builtCards.push(...deckInfo.flatMap((deck) => deck.cards));
       const apkgPath = path.join(this.currentDirectory, 'lecture.apkg');
       fs.writeFileSync(apkgPath, 'apkg');
@@ -339,18 +339,36 @@ describe('a paying account with AI off uploads a PowerPoint while background con
     );
   }, 20_000);
 
-  it('fails the background job instead of storing slide-number cards when a deck whose only text is chrome has slide images off', async () => {
-    const { status, jobId, settled, jobs } = await uploadInBackground(
-      chromeOnlyDiagrams,
-      { 'claude-ai-flashcards': 'false', 'process-pdfs': 'false' }
-    );
-    jobWorkspace = path.join(process.env.WORKSPACE_BASE!, jobId);
-    const outcome = await settled;
+  it.each<{ ai: string; body: Record<string, string> }>([
+    {
+      ai: 'AI off',
+      body: { 'claude-ai-flashcards': 'false', 'process-pdfs': 'false' },
+    },
+    { ai: 'AI never set', body: { 'process-pdfs': 'false' } },
+  ])(
+    'stores the cards it stored before chrome detection when a deck whose only text is chrome has slide images off ($ai)',
+    async ({ body }) => {
+      const { status, jobId, settled, jobs } = await uploadInBackground(
+        chromeOnlyDiagrams,
+        body
+      );
+      jobWorkspace = path.join(process.env.WORKSPACE_BASE!, jobId);
+      const outcome = await settled;
 
-    expect(status).toBe(202);
-    expect(outcome).toMatch(/^failed: No cards in this deck yet\. /);
-    expect(jobs.create).toHaveBeenCalledTimes(1);
-    expect(builtCards).toEqual([]);
-    expect(storedKeys).toEqual([]);
-  }, 20_000);
+      expect(status).toBe(202);
+      expect(outcome).toBe('stored in My Decks');
+      expect(jobs.create).toHaveBeenCalledTimes(1);
+      expect(
+        builtCards.map((card) => ({
+          front: visibleText(card.name),
+          back: visibleText(card.back),
+        }))
+      ).toEqual([
+        { front: 'Cell Biology', back: '1' },
+        { front: 'Cell Biology', back: '2' },
+      ]);
+      expect(storedKeys).toHaveLength(1);
+    },
+    20_000
+  );
 });

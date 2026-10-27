@@ -11,6 +11,7 @@ function slide(overrides: Partial<SlideUnit> = {}): SlideUnit {
     title: '',
     paragraphs: [],
     chromeParagraphs: [],
+    textWithChrome: [],
     hasPicture: false,
     ...overrides,
   };
@@ -246,17 +247,32 @@ describe('combineSlidesIntoHTML', () => {
     expect(card.back).toBe('<ul><li>Cell Biology</li><li>5</li></ul>');
   });
 
-  it('never fronts a card with a slide number: a slide with only chrome and no slide image is skipped', () => {
+  it('never fronts a card with a slide number: with no slide image, a slide with only chrome is skipped when another slide makes a card', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const html = combineSlidesIntoHTML(
-        [slide({ id: 'slide-4', chromeParagraphs: ['Cell Biology', '4'] })],
+        [
+          slide({
+            id: 'slide-3',
+            title: 'Mitosis',
+            paragraphs: ['Prophase'],
+            chromeParagraphs: ['Cell Biology', '3'],
+            textWithChrome: ['Mitosis', 'Prophase', 'Cell Biology', '3'],
+          }),
+          slide({
+            id: 'slide-4',
+            chromeParagraphs: ['Cell Biology', '4'],
+            textWithChrome: ['Cell Biology', '4'],
+          }),
+        ],
         [],
         'lecture.pdf',
         WORKSPACE
       );
 
-      expect(cards(html)).toHaveLength(0);
+      expect(cards(html)).toEqual([
+        { front: 'Mitosis', back: '<ul><li>Prophase</li></ul>' },
+      ]);
       expect(warn).toHaveBeenCalledWith(
         '[combineSlidesIntoHTML] slide has nothing to show',
         { slide: 'slide-4' }
@@ -324,23 +340,62 @@ describe('combineSlidesIntoHTML', () => {
     }
   });
 
-  it('returns an empty string when no slide makes a card, so there is nothing to convert', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      const html = combineSlidesIntoHTML(
-        [
-          slide({ id: 'slide-1', chromeParagraphs: ['Cell Biology', '1'] }),
-          slide({ id: 'slide-2', role: 'image', hasPicture: true }),
-        ],
-        [],
-        'lecture.pdf',
-        WORKSPACE
-      );
+  describe('when no slide makes a card and there is no slide image', () => {
+    const chromeOnlyDeck = [
+      slide({
+        id: 'slide-1',
+        chromeParagraphs: ['10/27/2026', 'Cell Biology', '1'],
+        textWithChrome: ['10/27/2026', 'Cell Biology', '1'],
+      }),
+      slide({
+        id: 'slide-2',
+        speakerNotes: 'Label the four phases',
+        chromeParagraphs: ['Cell Biology', '2'],
+        textWithChrome: ['Cell Biology', '2', '2'],
+      }),
+      slide({ id: 'slide-3', role: 'image', hasPicture: true }),
+    ];
 
-      expect(html).toBe('');
-    } finally {
-      warn.mockRestore();
-    }
+    it('reads chrome as ordinary text, as before chrome detection: first line on the front, the rest and the notes on the back', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        const html = combineSlidesIntoHTML(
+          chromeOnlyDeck,
+          [],
+          'lecture.pdf',
+          WORKSPACE
+        );
+
+        expect(cards(html)).toEqual([
+          {
+            front: '10/27/2026',
+            back: '<ul><li>Cell Biology</li><li>1</li></ul>',
+          },
+          {
+            front: 'Cell Biology',
+            back: '<ul><li>2</li><li>2</li></ul><hr /><p>Label the four phases</p>',
+          },
+        ]);
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it('warns only about the slide that still has nothing to show', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        combineSlidesIntoHTML(chromeOnlyDeck, [], 'lecture.pdf', WORKSPACE);
+
+        expect(warn.mock.calls).toEqual([
+          [
+            '[combineSlidesIntoHTML] slide has nothing to show',
+            { slide: 'slide-3' },
+          ],
+        ]);
+      } finally {
+        warn.mockRestore();
+      }
+    });
   });
 
   it('escapes the document title so a filename cannot break out of the head', () => {

@@ -35,7 +35,6 @@ import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../..
 import { parsePdfFallbackChoiceSentinel } from '../../../lib/pdf/pdfFallbackChoice';
 import { downloadMediaOrSkip as downloadMediaOrSkipImport } from '../../../services/NotionService/helpers/downloadMediaOrSkip';
 import * as trackModule from '../../../services/events/track';
-import { EmptyDeckError } from '../../../usecases/jobs/EmptyDeckError';
 
 vi.mock('../../../lib/claude/ClaudeService', async () => {
   const actual = await vi.importActual<
@@ -1945,6 +1944,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         title: 'Mitosis',
         paragraphs: ['Cell division'],
         chromeParagraphs: [],
+        textWithChrome: ['Mitosis', 'Cell division'],
         hasPicture: false,
       },
       {
@@ -1955,6 +1955,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         title: 'Meiosis',
         paragraphs: ['Gametes'],
         chromeParagraphs: [],
+        textWithChrome: ['Meiosis', 'Gametes'],
         hasPicture: false,
       },
     ]);
@@ -1981,6 +1982,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         title: '',
         paragraphs: [],
         chromeParagraphs: [],
+        textWithChrome: [],
         hasPicture: true,
       },
     ]);
@@ -2001,6 +2003,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         title: '',
         paragraphs: [],
         chromeParagraphs: ['Cell Biology', '1'],
+        textWithChrome: ['Cell Biology', '1'],
         hasPicture: true,
       },
       {
@@ -2011,6 +2014,7 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         title: '',
         paragraphs: [],
         chromeParagraphs: ['Cell Biology', '2'],
+        textWithChrome: ['Cell Biology', '2'],
         hasPicture: true,
       },
     ]);
@@ -2044,6 +2048,25 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
     expect(convertPDFToImages).toHaveBeenCalledTimes(1);
   });
 });
+
+const CHROME_ONLY_DIAGRAMS_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>diagrams.pptx</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>1</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul></details>
+    </li>
+    </ul>
+</body>
+</html>`;
 
 describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
   const NAMESPACES =
@@ -2179,50 +2202,68 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
     expect(fronts).toEqual(['Exocytosis']);
   });
 
-  it('makes no cards from a deck whose only text is the slide number and footer when slide images are off', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    let outcome: unknown;
+  it('makes the cards it made before chrome detection from a deck whose only text is the slide number and footer when slide images are off', async () => {
+    const result = await PrepareDeck({
+      name: 'diagrams.pptx',
+      files: [{ name: 'diagrams.pptx', contents: chromeOnlyDiagrams }],
+      settings: makeSettings({ 'process-pdfs': 'false' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
 
-    try {
-      outcome = await PrepareDeck({
-        name: 'diagrams.pptx',
-        files: [{ name: 'diagrams.pptx', contents: chromeOnlyDiagrams }],
-        settings: makeSettings({ 'process-pdfs': 'false' }),
-        noLimits: true,
-        workspace: makeWorkspace(),
-      }).catch((error: unknown) => error);
-    } finally {
-      warn.mockRestore();
-    }
-
-    expect(outcome).toBeInstanceOf(EmptyDeckError);
-    expect(outcome).toMatchObject({ reason: 'no_content' });
+    const cards = result?.deck.flatMap((deck) =>
+      deck.cards.map((card) => ({
+        front: card.name.replaceAll(/<[^>]+>/g, '').trim(),
+        back: card.back.replaceAll(/<[^>]+>/g, '').trim(),
+      }))
+    );
+    expect(cards).toEqual([
+      { front: 'Cell Biology', back: '1' },
+      { front: 'Cell Biology', back: '2' },
+    ]);
     expect(renderPdfPageImages).not.toHaveBeenCalled();
     expect(convertPDFToImages).not.toHaveBeenCalled();
   });
 
-  it('never asks Claude about a deck whose only text is the slide number and footer when slide images are off', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    let outcome: unknown;
+  it('hands Claude the document it got before chrome detection for a deck whose only text is the slide number and footer when slide images are off', async () => {
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Cell Biology',
+        image: '',
+        style: null,
+        id: 111222333444555,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Cell Biology',
+            back: '1',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
 
-    try {
-      outcome = await PrepareDeck({
-        name: 'diagrams.pptx',
-        files: [{ name: 'diagrams.pptx', contents: chromeOnlyDiagrams }],
-        settings: makeSettings({
-          'claude-ai-flashcards': 'true',
-          'process-pdfs': 'false',
-        }),
-        noLimits: true,
-        workspace: makeWorkspace(),
-      }).catch((error: unknown) => error);
-    } finally {
-      warn.mockRestore();
-    }
+    const result = await PrepareDeck({
+      name: 'diagrams.pptx',
+      files: [{ name: 'diagrams.pptx', contents: chromeOnlyDiagrams }],
+      settings: makeSettings({
+        'claude-ai-flashcards': 'true',
+        'process-pdfs': 'false',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
 
-    expect(generateDeckInfo).not.toHaveBeenCalled();
-    expect(outcome).toBeInstanceOf(EmptyDeckError);
-    expect(outcome).toMatchObject({ reason: 'no_content' });
+    expect(result?.engine).toBe('claude');
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(generateDeckInfo.mock.calls[0][0]).toBe(
+      CHROME_ONLY_DIAGRAMS_BEFORE_CHROME_DETECTION
+    );
   });
 });
 

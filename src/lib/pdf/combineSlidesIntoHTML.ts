@@ -44,6 +44,15 @@ function frontParagraphIndex(paragraphs: string[]): number {
   return firstWithLetter === -1 ? 0 : firstWithLetter;
 }
 
+function toggleCard(front: string, back: string): string {
+  return `<ul class="toggle">
+    <li>
+      <details>
+        <summary>${front}</summary>${back}</details>
+    </li>
+    </ul>`;
+}
+
 function slideCard(slide: SlideUnit, image: string): string | null {
   let front = slide.title;
   let remaining = slide.paragraphs;
@@ -58,24 +67,26 @@ function slideCard(slide: SlideUnit, image: string): string | null {
     front = image;
     imageOnBack = '';
   }
-  if (front === '') {
-    console.warn('[combineSlidesIntoHTML] slide has nothing to show', {
-      slide: slide.id,
-    });
-    return null;
-  }
+  if (front === '') return null;
 
   const answer = `${bulletList(remaining)}${imageOnBack}${speakerNotesBlock(
     slide.speakerNotes
   )}`;
   const back = answer === '' ? bulletList(slide.chromeParagraphs) : answer;
 
-  return `<ul class="toggle">
-    <li>
-      <details>
-        <summary>${front}</summary>${back}</details>
-    </li>
-    </ul>`;
+  return toggleCard(front, back);
+}
+
+// The card the slide made before chrome was set apart. Only used when no
+// slide made a card, which means no slide has a rendered image either.
+function slideCardWithChrome(slide: SlideUnit): string | null {
+  const [front, ...remaining] = slide.textWithChrome;
+  if (front == null) return null;
+
+  return toggleCard(
+    front,
+    `${bulletList(remaining)}${speakerNotesBlock(slide.speakerNotes)}`
+  );
 }
 
 // One card per slide, in display order, with the rendered slide image on the
@@ -88,21 +99,28 @@ export function combineSlidesIntoHTML(
   title: string,
   workspaceLocation?: string
 ): string {
-  const cards = slides
-    .map((slide, i) => {
-      const imagePath = imagePaths[i];
-      const image =
-        imagePath == null
-          ? ''
-          : `<img src="${toSrc(imagePath, workspaceLocation)}" />`;
-      return slideCard(slide, image);
-    })
-    .filter((card): card is string => card !== null);
-
-  // No slide made a card. '' (what convertPDFToImages returns with Process PDF
-  // files off) tells the caller there is nothing to convert; an empty document
-  // would still be sent to Claude as a paid call.
-  if (cards.length === 0) return '';
+  const slideCards = slides.map((slide, i) => {
+    const imagePath = imagePaths[i];
+    const image =
+      imagePath == null
+        ? ''
+        : `<img src="${toSrc(imagePath, workspaceLocation)}" />`;
+    return slideCard(slide, image);
+  });
+  // No slide made a card, so there are no slide images and every slide's text
+  // is chrome or speaker notes. Such a deck converts exactly as it did before
+  // chrome was set apart, rather than failing where it used to convert.
+  const deckCards = slideCards.some((card) => card !== null)
+    ? slideCards
+    : slides.map((slide) => slideCardWithChrome(slide));
+  slides.forEach((slide, i) => {
+    if (deckCards[i] === null) {
+      console.warn('[combineSlidesIntoHTML] slide has nothing to show', {
+        slide: slide.id,
+      });
+    }
+  });
+  const cards = deckCards.filter((card): card is string => card !== null);
 
   return `<!DOCTYPE html>
 <html>

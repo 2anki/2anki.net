@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { strToU8, unzipSync, zipSync } from 'fflate';
 import { combineSlidesIntoHTML } from '../../pdf/combineSlidesIntoHTML';
 import {
@@ -592,5 +593,120 @@ describe('extractPptxSourceUnits — slide chrome', () => {
 
     expect(unit.title).toBe('Mitosis');
     expect(unit.chromeParagraphs).toEqual(['4']);
+  });
+});
+
+const CHROME_ONLY_LECTURE_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pptx</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>10/27/2026</summary><ul><li>Cell Biology</li><li>1</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li><li>2</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>3</summary><ul><li>Cell Biology</li></ul><hr /><p>Label the four phases</p></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>4</summary><ul><li>Cell Biology</li></ul></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+describe('extractPptxSourceUnits — a deck with no slide images that makes no cards once chrome is set apart', () => {
+  const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
+    'Cell Biology',
+  ]);
+  const slideNumber = (n: string) =>
+    slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', n);
+
+  const chromeOnlyLecture = buildPptx([
+    {
+      xml: slideOfShapesXml([
+        fieldShapeXml(
+          '<p:ph type="dt" sz="half" idx="10"/>',
+          'datetime1',
+          '10/27/2026'
+        ),
+        footer,
+        slideNumber('1'),
+      ]),
+    },
+    {
+      xml: slideOfShapesXml([
+        footer,
+        `<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+        <mc:Choice xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" Requires="p14">${slideNumber('2')}</mc:Choice>
+        <mc:Fallback>${slideNumber('2')}</mc:Fallback>
+      </mc:AlternateContent>`,
+      ]),
+    },
+    {
+      xml: slideOfShapesXml([fieldShapeXml('', 'slidenum', '3'), footer]),
+      notesXml: notesXml('Label the four phases'),
+    },
+    {
+      xml: slideOfShapesXml([
+        footer,
+        fieldShapeXml('<p:ph type="title"/>', 'slidenum', '4'),
+      ]),
+    },
+  ]);
+
+  it('reads every line with chrome as ordinary text: title first, then the order the slide stores them, duplicates kept', () => {
+    const units = extractPptxSourceUnits(chromeOnlyLecture);
+
+    expect(units.map((unit) => unit.textWithChrome)).toEqual([
+      ['10/27/2026', 'Cell Biology', '1'],
+      ['Cell Biology', '2', '2'],
+      ['3', 'Cell Biology'],
+      ['4', 'Cell Biology'],
+    ]);
+  });
+
+  it('builds the HTML it built before chrome detection when the only slide text is chrome', () => {
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(chromeOnlyLecture),
+      [],
+      'lecture.pptx'
+    );
+
+    expect(html).toBe(CHROME_ONLY_LECTURE_BEFORE_CHROME_DETECTION);
+  });
+
+  it('builds the HTML it built before chrome detection when the only slide text is speaker notes', () => {
+    const notesOnlyLecture = buildPptx([
+      { xml: imageSlidXml(), notesXml: notesXml('Label the four phases') },
+      { xml: imageSlidXml(), notesXml: notesXml('Name the organelle') },
+    ]);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      const html = combineSlidesIntoHTML(
+        extractPptxSourceUnits(notesOnlyLecture),
+        [],
+        'lecture.pptx'
+      );
+
+      expect(html).toBe(
+        '<!DOCTYPE html>\n<html>\n<head><title>lecture.pptx</title></head>\n<body>\n  \n</body>\n</html>'
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 });
