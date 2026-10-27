@@ -31,7 +31,6 @@ class TestRailPaths(unittest.TestCase):
             "src/usecases/users/CheckMonthlyCardLimitUseCase.ts",
             "src/usecases/passes/ClaimPassUseCase.ts",
             "src/data_layer/RefundedPaymentIntentsRepository.ts",
-            "web/src/pages/PricingPage/payment.links.ts",
             "src/controllers/IapController.ts",
             "src/usecases/iap/RedeemAppleTransactionUseCase.ts",
             "src/services/AppleStoreKitService/AppleStoreKitService.ts",
@@ -41,6 +40,7 @@ class TestRailPaths(unittest.TestCase):
             "src/data_layer/MagicTokenRepository.ts",
             "src/data_layer/PassClaimTokensRepository.ts",
             "src/lib/User/isResetTokenLive.ts",
+            "src/data_layer/AnonymousPassRepository.ts",
         ]
         self.assertEqual(rails.rail_paths(paths), paths)
 
@@ -74,6 +74,9 @@ class TestRailPaths(unittest.TestCase):
             "src/lib/isPaying.ts",
             "src/lib/ankify/access.ts",
             "src/data_layer/NotionRespository.ts",
+            "src/routes/middleware/configureUserLocal.ts",
+            "src/usecases/users/ConfirmEmailChangeUseCase.ts",
+            "src/routes/middleware/RejectDuplicatePurchase.ts",
             "src/lib/misc/hashToken.ts",
             "src/lib/misc/unHashToken.ts",
             "src/lib/misc/hmacToken.ts",
