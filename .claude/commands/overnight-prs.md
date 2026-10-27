@@ -188,6 +188,8 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
     an otherwise-clean new branch).
 11. Open the PR: `gh pr create` — READY for Tier 1 and Tier 2, `--draft` for Tier 3 (state why at
     the top of the body). Tier 2/3 bodies MUST carry the `## Decisions made overnight` section.
+    Every `feat:`/`fix:`/`perf:`/`refactor:` body carries `## Who else this reaches` per
+    `.claude/agents/engineer.md` step 10 (the merge hook denies a `src/` or `web/src/` diff without it).
     If the diff touches `web/src/`, add the `## Browser check` attestation per
     `.claude/docs/browser-attestation.md` (out-clause when there's no runtime-visible effect —
     don't claim a check you didn't run). Link the issue.
