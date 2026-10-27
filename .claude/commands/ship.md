@@ -112,7 +112,7 @@ curl -fsS https://2anki.net/api/version | jq -r .sha
 
 Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s, reporting the evidence each round; the loop ends only at healthy or broken, never report healthy while watching; the run continues with other items meanwhile, this holds only this PR's deploy verdict. A failed deploy run is "watching" only once its log confirms the last-good restore ran; otherwise it is "broken" (the 2026-08-06 shape: live process up, poisoned disk). Verdict "broken" → step 8.
 
-The pre-cutover smoke check (`scripts/prod-smoke.ts`) prints to the deploy run log, not pm2 (`gh run view <id> --log | grep '\[smoke\]'`): `[smoke] passed against` is part of "healthy"; `[smoke] FAILED` or no summary line means traffic never switched, the `[smoke] FAIL` lines name what broke, and it is "broken" → step 8 even though the last-good restore ran.
+The pre-cutover smoke check (`scripts/prod-smoke.ts`) prints to the deploy run log, not pm2 (`gh run view <id> --log | grep '\[smoke\]'`): `[smoke] passed against` is part of "healthy"; `[smoke] FAILED`, or `[smoke]` lines with no summary line, means traffic never switched, the `[smoke] FAIL` lines name what broke, and it is "broken" → step 8 even though the last-good restore ran. A run with no `[smoke]` lines failed before the smoke step and follows the rule above.
 
 ## 6b. Rail verification after deploy (only when step 1 hit)
 
