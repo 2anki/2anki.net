@@ -2,8 +2,8 @@ import knex, { Knex } from 'knex';
 
 import { LowRatingContextRepository } from './LowRatingContextRepository';
 
-const NOW = new Date('2026-10-26T22:09:34.000Z');
-const OWNER = 27940;
+const NOW = new Date('2026-11-02T10:00:00.000Z');
+const OWNER = 4242;
 
 async function createSchema(db: Knex): Promise<void> {
   await db.schema.createTable('users', (t) => {
@@ -63,7 +63,7 @@ describe('LowRatingContextRepository.getByOwner', () => {
     await db('user_passes').insert({
       user_id: OWNER,
       kind: '120d',
-      expires_at: new Date('2027-02-03T20:27:40.000Z'),
+      expires_at: new Date('2027-03-01T12:00:00.000Z'),
       stripe_payment_intent_id: 'pi_fixture_semester',
     });
     await db('uploads').insert([
@@ -72,21 +72,21 @@ describe('LowRatingContextRepository.getByOwner', () => {
         owner: OWNER,
         key: 'fixture-older.apkg',
         filename: 'fixture-older.apkg',
-        created_at: new Date('2026-10-26T21:40:00.000Z'),
+        created_at: new Date('2026-11-02T09:00:00.000Z'),
       },
       {
         id: 912,
         owner: OWNER,
         key: 'fixture-newest.apkg',
         filename: 'fixture-newest.apkg',
-        created_at: new Date('2026-10-26T22:04:11.000Z'),
+        created_at: new Date('2026-11-02T09:30:00.000Z'),
       },
       {
         id: 913,
         owner: 31000,
         key: 'fixture-someone-else.apkg',
         filename: 'fixture-someone-else.apkg',
-        created_at: new Date('2026-10-26T22:08:00.000Z'),
+        created_at: new Date('2026-11-02T09:45:00.000Z'),
       },
     ]);
 
@@ -97,20 +97,20 @@ describe('LowRatingContextRepository.getByOwner', () => {
 
     expect(context).toEqual({
       email: 'pass-holder@example.com',
-      userId: '27940',
+      userId: '4242',
       isLifetime: false,
       hasActiveSubscription: false,
       activePass: {
         id: 1,
         user_id: OWNER,
         kind: '120d',
-        expires_at: new Date('2027-02-03T20:27:40.000Z'),
+        expires_at: new Date('2027-03-01T12:00:00.000Z'),
         stripe_payment_intent_id: 'pi_fixture_semester',
       },
       latestJobId: null,
       latestJobStatus: null,
       latestUploadId: 912,
-      latestUploadAt: new Date('2026-10-26T22:04:11.000Z'),
+      latestUploadAt: new Date('2026-11-02T09:30:00.000Z'),
     });
   });
 

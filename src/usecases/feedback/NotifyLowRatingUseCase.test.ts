@@ -25,20 +25,20 @@ const account: LowRatingAccountContext = {
 
 const semesterPassHolder: LowRatingAccountContext = {
   email: 'pass-holder@example.com',
-  userId: '27940',
+  userId: '4242',
   isLifetime: false,
   hasActiveSubscription: false,
   activePass: {
     id: 41,
-    user_id: 27940,
+    user_id: 4242,
     kind: '120d',
-    expires_at: new Date('2027-02-03T20:27:40.000Z'),
+    expires_at: new Date('2027-03-01T12:00:00.000Z'),
     stripe_payment_intent_id: 'pi_fixture_semester',
   },
   latestJobId: null,
   latestJobStatus: null,
   latestUploadId: 912,
-  latestUploadAt: new Date('2026-10-26T22:04:11.000Z'),
+  latestUploadAt: new Date('2026-11-02T09:30:00.000Z'),
 };
 
 function build(
@@ -180,23 +180,23 @@ describe('NotifyLowRatingUseCase', () => {
 
     await useCase.notifyIfLowRating({
       ...base,
-      owner: 27940,
+      owner: 4242,
       email: 'pass-holder@example.com',
     });
 
-    expect(getByOwner).toHaveBeenCalledWith(27940, base.now);
+    expect(getByOwner).toHaveBeenCalledWith(4242, base.now);
     expect(sendLowRatingFeedbackEmail).toHaveBeenCalledWith({
       rating: 1,
       comment: 'cards are wrong',
       page: '/upload',
       replyTo: 'pass-holder@example.com',
       emailVerified: true,
-      userId: '27940',
+      userId: '4242',
       latestJobId: null,
       latestJobStatus: null,
       latestUploadId: 912,
-      latestUploadAt: new Date('2026-10-26T22:04:11.000Z'),
-      plan: 'Semester Pass (120d), active until 2027-02-03',
+      latestUploadAt: new Date('2026-11-02T09:30:00.000Z'),
+      plan: 'Semester Pass (120d), active until 2027-03-01',
     });
   });
 
