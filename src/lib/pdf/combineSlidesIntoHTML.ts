@@ -99,6 +99,11 @@ export function combineSlidesIntoHTML(
     })
     .filter((card): card is string => card !== null);
 
+  // No slide made a card. '' (what convertPDFToImages returns with Process PDF
+  // files off) tells the caller there is nothing to convert; an empty document
+  // would still be sent to Claude as a paid call.
+  if (cards.length === 0) return '';
+
   return `<!DOCTYPE html>
 <html>
 <head><title>${escapeHtml(title)}</title></head>

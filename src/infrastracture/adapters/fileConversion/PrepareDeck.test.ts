@@ -35,6 +35,7 @@ import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../..
 import { parsePdfFallbackChoiceSentinel } from '../../../lib/pdf/pdfFallbackChoice';
 import { downloadMediaOrSkip as downloadMediaOrSkipImport } from '../../../services/NotionService/helpers/downloadMediaOrSkip';
 import * as trackModule from '../../../services/events/track';
+import { EmptyDeckError } from '../../../usecases/jobs/EmptyDeckError';
 
 vi.mock('../../../lib/claude/ClaudeService', async () => {
   const actual = await vi.importActual<
@@ -2180,24 +2181,48 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
 
   it('makes no cards from a deck whose only text is the slide number and footer when slide images are off', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    let result: Awaited<ReturnType<typeof PrepareDeck>>;
+    let outcome: unknown;
 
     try {
-      result = await PrepareDeck({
+      outcome = await PrepareDeck({
         name: 'diagrams.pptx',
         files: [{ name: 'diagrams.pptx', contents: chromeOnlyDiagrams }],
         settings: makeSettings({ 'process-pdfs': 'false' }),
         noLimits: true,
         workspace: makeWorkspace(),
-      });
+      }).catch((error: unknown) => error);
     } finally {
       warn.mockRestore();
     }
 
-    expect(result?.cardCount).toBe(0);
-    expect(result?.emptyReason).toBe('no_content');
+    expect(outcome).toBeInstanceOf(EmptyDeckError);
+    expect(outcome).toMatchObject({ reason: 'no_content' });
     expect(renderPdfPageImages).not.toHaveBeenCalled();
     expect(convertPDFToImages).not.toHaveBeenCalled();
+  });
+
+  it('never asks Claude about a deck whose only text is the slide number and footer when slide images are off', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let outcome: unknown;
+
+    try {
+      outcome = await PrepareDeck({
+        name: 'diagrams.pptx',
+        files: [{ name: 'diagrams.pptx', contents: chromeOnlyDiagrams }],
+        settings: makeSettings({
+          'claude-ai-flashcards': 'true',
+          'process-pdfs': 'false',
+        }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      }).catch((error: unknown) => error);
+    } finally {
+      warn.mockRestore();
+    }
+
+    expect(generateDeckInfo).not.toHaveBeenCalled();
+    expect(outcome).toBeInstanceOf(EmptyDeckError);
+    expect(outcome).toMatchObject({ reason: 'no_content' });
   });
 });
 

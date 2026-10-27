@@ -477,7 +477,10 @@ async function convertSlidesToTextCards(
   });
   return {
     name: `${file.name}.html`,
-    contents: Buffer.from(html),
+    // '' and not an empty Buffer, which is truthy: the Claude branch keeps
+    // only files with contents, so a deck where no slide made a card ends in
+    // the parser's empty-deck error instead of a paid call.
+    contents: html === '' ? '' : Buffer.from(html),
     extraFiles: slideImages.length > 0 ? slideImages : undefined,
   };
 }

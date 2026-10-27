@@ -102,8 +102,6 @@ import {
   __setFeatureFlagDependencies,
 } from '../lib/featureFlags/getFeatureFlag';
 import { ASYNC_SLOW_UPLOADS_FLAG } from '../lib/upload/asyncSlowUploads';
-import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
-import { jobFailureReasonFromError } from '../usecases/jobs/jobFailureReason';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 
 const NAMESPACES =
@@ -350,9 +348,7 @@ describe('a paying account with AI off uploads a PowerPoint while background con
     const outcome = await settled;
 
     expect(status).toBe(202);
-    expect(outcome).toBe(
-      `failed: ${jobFailureReasonFromError(new EmptyDeckError(), jobId)}`
-    );
+    expect(outcome).toMatch(/^failed: No cards in this deck yet\. /);
     expect(jobs.create).toHaveBeenCalledTimes(1);
     expect(builtCards).toEqual([]);
     expect(storedKeys).toEqual([]);

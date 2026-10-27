@@ -29,13 +29,9 @@ const pickedSlides = {
 };
 
 describe('handleDropbox', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    savedRows.length = 0;
-  });
+  const slideBytes = Buffer.from('PK\x03\x04 lecture slides');
 
-  it('hands a PowerPoint picked in Dropbox to the upload path with its name and bytes', async () => {
-    const slideBytes = Buffer.from('PK\x03\x04 lecture slides');
+  async function pickSlides() {
     mockedAxios.get.mockResolvedValue({ data: slideBytes } as never);
     const req = {
       body: { files: JSON.stringify([pickedSlides]) },
@@ -46,6 +42,16 @@ describe('handleDropbox', () => {
     const handleUpload = vi.fn();
 
     await handleDropbox(req, res, handleUpload);
+    return { req, res, handleUpload };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    savedRows.length = 0;
+  });
+
+  it('hands a PowerPoint picked in Dropbox to the upload path with its name and bytes', async () => {
+    const { req, res, handleUpload } = await pickSlides();
 
     expect(mockedAxios.get).toHaveBeenCalledWith('dropbox', pickedSlides.link, {
       responseType: 'arraybuffer',
@@ -53,6 +59,17 @@ describe('handleDropbox', () => {
     expect(handleUpload).toHaveBeenCalledWith(req, res);
     expect((req as unknown as { files: unknown[] }).files).toEqual([
       { originalname: 'lecture.pptx', size: 4096, buffer: slideBytes },
+    ]);
+  });
+
+  it('records the picked PowerPoint for its owner by name and link', async () => {
+    await pickSlides();
+
+    expect(savedRows).toMatchObject([
+      {
+        table: 'dropbox_uploads',
+        rows: [{ owner: 42, name: 'lecture.pptx', link: pickedSlides.link }],
+      },
     ]);
   });
 });

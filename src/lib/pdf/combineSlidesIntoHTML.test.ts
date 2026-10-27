@@ -324,6 +324,25 @@ describe('combineSlidesIntoHTML', () => {
     }
   });
 
+  it('returns an empty string when no slide makes a card, so there is nothing to convert', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const html = combineSlidesIntoHTML(
+        [
+          slide({ id: 'slide-1', chromeParagraphs: ['Cell Biology', '1'] }),
+          slide({ id: 'slide-2', role: 'image', hasPicture: true }),
+        ],
+        [],
+        'lecture.pdf',
+        WORKSPACE
+      );
+
+      expect(html).toBe('');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('escapes the document title so a filename cannot break out of the head', () => {
     const html = combineSlidesIntoHTML(
       [slide({ title: 'One' })],
