@@ -112,7 +112,7 @@ describe('RunMetricTripwireUseCase', () => {
       '[2anki] Metric tripwire: 1 rate dropped on 2026-03-10'
     );
     expect(body).toContain(
-      'Signed-in over-limit uploads that showed the held-back notice'
+      'Signed-in over-limit uploads that showed a held-back offer or gate (partial_notice_signed_in)'
     );
     expect(body).toContain('0/10 (0.0%)');
     expect(body).toContain('baseline 80.0% (56/70)');

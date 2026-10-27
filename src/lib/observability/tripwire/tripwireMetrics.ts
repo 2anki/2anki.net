@@ -26,7 +26,7 @@ export const TRIPWIRE_METRICS: readonly TripwireMetric[] = [
   },
   {
     key: 'download_after_success',
-    label: 'People who downloaded the deck they converted',
+    label: 'People who downloaded a deck the day they converted',
     source:
       'events: person-days with conversion_succeeded that also have deck_downloaded on the same UTC day. One unit is one person (user id, else anonymous id) on one day.',
     minRelativeDrop: 0.2,
@@ -40,14 +40,14 @@ export const TRIPWIRE_METRICS: readonly TripwireMetric[] = [
   },
   {
     key: 'partial_notice_signed_in',
-    label: 'Signed-in over-limit uploads that showed the held-back notice',
+    label: 'Signed-in over-limit uploads that showed a held-back offer or gate',
     source:
       'events: signed-in person-days with an upload conversion_succeeded carrying card_limit_partial that also have monthly_partial_offer_shown or anonymous_partial_gate_shown on the same UTC day. One unit is one person on one day.',
     minRelativeDrop: 0.4,
   },
   {
     key: 'partial_notice_anonymous',
-    label: 'Anonymous over-limit uploads that showed the sign-up gate',
+    label: 'Anonymous over-limit uploads that showed a held-back gate or offer',
     source:
       'events: anonymous person-days with an upload conversion_succeeded carrying card_limit_partial that also have anonymous_partial_gate_shown or monthly_partial_offer_shown on the same UTC day. One unit is one anonymous id on one day.',
     minRelativeDrop: 0.4,

@@ -27,7 +27,10 @@ export type RateDropVerdict =
     };
 
 function logSumExp(values: number[]): number {
-  const max = Math.max(...values);
+  let max = -Infinity;
+  for (const value of values) {
+    if (value > max) max = value;
+  }
   if (max === -Infinity) return -Infinity;
   let sum = 0;
   for (const value of values) {

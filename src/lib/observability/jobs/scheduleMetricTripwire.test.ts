@@ -87,9 +87,10 @@ describe('scheduleMetricTripwire', () => {
     ]);
 
     expect(execute).toHaveBeenCalledTimes(1);
-    expect(lock.keys.every((key) => key === JOB_LOCK_KEYS.metricTripwire)).toBe(
-      true
-    );
+    expect(lock.keys).toEqual([
+      JOB_LOCK_KEYS.metricTripwire,
+      JOB_LOCK_KEYS.metricTripwire,
+    ]);
     clearInterval(blue);
     clearInterval(green);
   });

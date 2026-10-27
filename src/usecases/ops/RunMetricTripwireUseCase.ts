@@ -41,16 +41,16 @@ function describeRate(counts: RateCountsRow): string {
 function formatAlertBody(day: string, dropped: DroppedMetric[]): string {
   const sections = dropped.map(
     (entry) =>
-      `${entry.metric.label}\n` +
+      `${entry.metric.label} (${entry.metric.key})\n` +
       `  ${day}: ${entry.day.numerator}/${entry.day.denominator} (${percent(entry.day.numerator / entry.day.denominator)}), ` +
       `baseline ${describeRate(entry.baseline)} over the ${BASELINE_DAYS} days before, ` +
-      `down ${percent(entry.relativeDrop)}\n` +
+      `a ${percent(entry.relativeDrop)} relative drop\n` +
       `  Source: ${entry.metric.source}`
   );
   return (
     `These rates fell on ${day} (UTC) by more than their threshold, and by more than chance explains at that volume.\n\n` +
     `${sections.join('\n\n')}\n\n` +
-    `Look at what deployed in the day before. Each metric alerts at most once per day; ` +
+    `Check what deployed on ${day} and the day before. Each metric alerts at most once per day; ` +
     `a regression that persists will stop alerting once it is part of the ${BASELINE_DAYS}-day baseline.`
   );
 }
@@ -127,7 +127,7 @@ export class RunMetricTripwireUseCase {
         formatAlertBody(day, fresh)
       );
     } catch (error) {
-      this.log(`[metric-tripwire] alert email failed: ${String(error)}`);
+      console.error('[metric-tripwire] alert email failed:', error);
       return;
     }
     for (const entry of fresh) {
