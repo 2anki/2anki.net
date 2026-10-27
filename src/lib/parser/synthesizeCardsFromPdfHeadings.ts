@@ -13,14 +13,23 @@ export interface PdfCard {
 
 const HEADING_MAX_CHARS = 60;
 const SENTENCE_TAIL = /[.,;]$/;
-// Geometric shapes (■ ▶ ◦ …) and arrows (→ ↓ …) are bullet glyphs in exported
-// study notes and slides; a bare marker with nothing after it is an empty list
-// item the author forgot to delete, which pdf.js emits on its own line. pdf.js
-// glues a glyph drawn as its own text run to the text after it with no space,
-// so a glyph needs none; dashes, `*` and numbers still do, or `-70 mV` and
-// `2)Coordination costs` would read as bullets.
-const LIST_MARKER = /^(?:[•‣·☐☑☒✓✔■-◿←-⇿]|(?:[-*–—]|\d{1,3}[.)])(?:\s|$))/;
-const LONE_BULLET_GLYPH = /^[•‣·☐☑☒✓✔■-◿←-⇿]$/;
+// Geometric shapes (■ ▶ ◦ …), arrows (→ ↓ …), dingbats (➢ ❖ ♦) and the
+// private-use code points that Symbol and Wingdings bullets from PowerPoint and
+// Word exports extract as (U+F0B7 …) are bullet glyphs in notes and slides.
+// The page render in extractPdfText joins text runs that share a baseline with
+// no space, so a bullet drawn as a run of its own arrives glued to its text
+// (`•Describe`) and a glyph needs no space after it; dashes, `*` and numbers
+// still do, or `-70 mV` and `2)Coordination costs` would read as bullets.
+const LIST_MARKER =
+  /^(?:[•‣·☐☑☒✓✔■-◿←-⇿➢➤❖♦\uF0B7\uF0A7\uF0D8\uF0FC\uF076]|(?:[-*–—]|\d{1,3}[.)])(?:\s|$))/;
+const LONE_BULLET_GLYPH =
+  /^[•‣·☐☑☒✓✔■-◿←-⇿➢➤❖♦\uF0B7\uF0A7\uF0D8\uF0FC\uF076]$/;
+const LONE_DASH = /^[–—]$/;
+// On slides that draw every marker apart from its text, 42-46% of a page's
+// lines measured as markers (a one-line title over two one-line bullets is
+// 40%). Two stray glyphs are 7% of a 30-line notes page and 25% of an 8-line
+// last page.
+const DETACHED_MARKER_MIN_SHARE = 0.3;
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 const TERMINAL_PUNCTUATION = /[.!?:;]$/;
 const BARE_PAGE_NUMBER = /^[-–—]?\s*\d{1,3}\s*[-–—]?$/;
@@ -72,21 +81,35 @@ function isListSibling(
   );
 }
 
-function isLoneBulletGlyph(line: string | undefined): boolean {
-  return line != null && LONE_BULLET_GLYPH.test(line);
+function isLoneBulletGlyph(line: string): boolean {
+  return LONE_BULLET_GLYPH.test(line);
 }
 
-// One lone glyph on a page is a stray (an empty bullet, or a ↓ meaning "leads
-// to") and stays where it is. Two or more mean the slide draws each bullet a
-// little apart from its text, which pdf.js then emits on a line of its own.
-function attachLoneBulletGlyphs(lines: string[]): string[] {
-  if (lines.filter(isLoneBulletGlyph).length < 2) {
+function isLoneMarker(line: string | undefined): boolean {
+  return line != null && (LONE_BULLET_GLYPH.test(line) || LONE_DASH.test(line));
+}
+
+// extractPdfText starts a new line whenever the baseline changes, so a slide
+// that draws each marker a little above or below its text puts every marker on
+// a line of its own. A stray glyph on a notes page (an empty bullet, a ↓
+// meaning "leads to") must stay put, or the heading after it turns into a list
+// item; strays are a small share of a page, detached markers a large one. A
+// lone dash is as often a divider as a sub-bullet, so dashes add to the share
+// but cannot stand in for the two bullet glyphs.
+function drawsMarkersApart(lines: string[]): boolean {
+  const glyphs = lines.filter(isLoneBulletGlyph).length;
+  const markers = lines.filter(isLoneMarker).length;
+  return glyphs >= 2 && markers / lines.length >= DETACHED_MARKER_MIN_SHARE;
+}
+
+function attachLoneMarkers(lines: string[]): string[] {
+  if (!drawsMarkersApart(lines)) {
     return lines;
   }
   const attached: string[] = [];
   lines.forEach((line, index) => {
     const previous = lines[index - 1];
-    if (isLoneBulletGlyph(previous) && !isLoneBulletGlyph(line)) {
+    if (isLoneMarker(previous) && !isLoneMarker(line)) {
       attached[attached.length - 1] = `${previous} ${line}`;
     } else {
       attached.push(line);
@@ -120,7 +143,7 @@ export function synthesizeCardsFromPdfHeadings(
 ): PdfCard[] {
   const tag = deckName.replace(/\s+/g, '_');
   const lines = pages.flatMap((page, pageIndex) =>
-    attachLoneBulletGlyphs(
+    attachLoneMarkers(
       page.text
         .split('\n')
         .map((text) => text.trim())

@@ -538,6 +538,115 @@ describe('stray glyph lines', () => {
       back: 'Splits glucose into two pyruvate molecules in the cytoplasm.',
     });
   });
+
+  const fullNotesPage = [
+    'Osmosis',
+    'Osmosis is the net movement of water across a selectively permeable',
+    'membrane from a region of lower solute concentration to a region of',
+    'higher solute concentration, driven by the difference in water potential',
+    'between the two sides and continuing until the potentials are equal or',
+    'the pressure on the concentrated side stops any further net flow of water',
+    'into the cell.',
+    '•',
+    'Diffusion',
+    'Diffusion is the net movement of particles from a region of higher',
+    'concentration to a region of lower concentration, down the gradient, as',
+    'a result of their random motion; it needs no energy from the cell and',
+    'its rate rises with temperature, with surface area and with how steep',
+    'the gradient across the membrane is at that moment in the cell cycle and',
+    'in the tissue.',
+    '↓',
+    'Active transport',
+    'Active transport moves ions or molecules against their concentration',
+    'gradient using energy released by ATP hydrolysis, through carrier proteins',
+    'in the membrane that change shape as they bind and release their cargo on',
+    'either side; the sodium potassium pump is the textbook example of this,',
+    'moving three sodium ions out for every two potassium ions it brings back',
+    'in.',
+    'Endocytosis',
+    'Endocytosis brings large particles into the cell by folding the membrane',
+    'around them into a vesicle, as in phagocytosis by white blood cells and',
+    'pinocytosis of fluid droplets, and it needs energy from ATP to bend the',
+    'membrane, pinch the vesicle off and move it inwards along the filaments',
+    'of the cytoskeleton towards the lysosomes that will digest what it holds',
+    'inside.',
+  ];
+  const shortLastPage = [
+    'Osmosis',
+    'Movement of water across a semipermeable membrane down a gradient.',
+    '•',
+    'Diffusion',
+    'Movement of particles from high to low concentration in a solution.',
+    '↓',
+    'Active transport',
+    'Movement against the gradient using ATP from cellular respiration.',
+  ];
+
+  it.each([
+    [
+      'a full notes page',
+      fullNotesPage,
+      ['Osmosis', 'Diffusion', 'Active transport', 'Endocytosis'],
+    ],
+    [
+      'a short last page',
+      shortLastPage,
+      ['Osmosis', 'Diffusion', 'Active transport'],
+    ],
+  ])(
+    'still opens a new card at each heading after a stray glyph on %s with two strays',
+    (_shape, lines, fronts) => {
+      const cards = synthesizeCardsFromPdfHeadings(
+        [{ text: lines.join('\n') }],
+        'Bio'
+      );
+
+      expect(cards.map((card) => card.front)).toEqual(fronts);
+      expect(
+        cards
+          .flatMap((card) => card.back.split('\n'))
+          .filter((line) => line.startsWith('•') || line.startsWith('↓'))
+      ).toEqual(['•', '↓']);
+    }
+  );
+
+  it.each(['–', '—'])(
+    'keeps lone %s dividers apart from the headings after them on a page with no lone bullet glyph',
+    (dash) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Osmosis',
+            'Movement of water across a semipermeable membrane down a gradient.',
+            dash,
+            'Diffusion',
+            'Movement of particles from high to low concentration in a solution.',
+            dash,
+          ].join('\n'),
+        },
+        {
+          text: [
+            'Active transport',
+            'Movement against the gradient using ATP from cellular respiration.',
+          ].join('\n'),
+        },
+      ];
+
+      const cards = synthesizeCardsFromPdfHeadings(pages, 'Bio');
+
+      expect(cards.map((card) => card.front)).toEqual([
+        'Osmosis',
+        'Diffusion',
+        'Active transport',
+      ]);
+      expect(cards[1].back).toBe(
+        [
+          'Movement of particles from high to low concentration in a solution.',
+          dash,
+        ].join('\n')
+      );
+    }
+  );
 });
 
 describe('slide decks', () => {
@@ -546,7 +655,7 @@ describe('slide decks', () => {
       ({ front, back }) => ({ front, back })
     );
 
-  it('keeps each slide title on the front when pdf.js glues the bullet glyph to its text', () => {
+  it('keeps the slide titles on the front when each bullet glyph is glued to its text', () => {
     const pages: PdfPage[] = [
       {
         text: [
@@ -635,7 +744,7 @@ describe('slide decks', () => {
     }
   );
 
-  it('rejoins bullet glyphs that pdf.js put on their own line with the text after them', () => {
+  it('rejoins bullet glyphs that sit on a line of their own with the text after them', () => {
     const pages: PdfPage[] = [
       {
         text: [
@@ -681,6 +790,126 @@ describe('slide decks', () => {
       },
     ]);
   });
+
+  it.each(['–', '—'])(
+    'rejoins %s sub-bullets that sit on a line of their own on a slide whose bullets do too',
+    (dash) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Learning Objectives',
+            '•',
+            'Describe the path of blood through the heart chambers',
+            dash,
+            'Explain the phases of the cardiac cycle',
+            '•',
+            'Relate the ECG waves to electrical events',
+            dash,
+            'Calculate cardiac output from HR and SV',
+            '2',
+          ].join('\n'),
+        },
+        {
+          text: [
+            'Heart Sounds',
+            '•',
+            'S1 lub: AV valves closing at the start of systole',
+            dash,
+            'Loudest at the apex',
+            '•',
+            'S2 dub: semilunar valves closing as ventricles relax',
+            '3',
+          ].join('\n'),
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: 'Learning Objectives',
+          back: [
+            '• Describe the path of blood through the heart chambers',
+            `${dash} Explain the phases of the cardiac cycle`,
+            '• Relate the ECG waves to electrical events',
+            `${dash} Calculate cardiac output from HR and SV`,
+          ].join('\n'),
+        },
+        {
+          front: 'Heart Sounds',
+          back: [
+            '• S1 lub: AV valves closing at the start of systole',
+            `${dash} Loudest at the apex`,
+            '• S2 dub: semilunar valves closing as ventricles relax',
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  const symbolFontBullets = [
+    ['U+F0B7 (Symbol bullet)', '\uF0B7'],
+    ['U+F0A7 (Wingdings square)', '\uF0A7'],
+    ['U+F0D8 (Wingdings arrowhead)', '\uF0D8'],
+    ['U+F0FC (Wingdings check mark)', '\uF0FC'],
+    ['U+F076 (Wingdings diamond)', '\uF076'],
+    ['➢', '➢'],
+    ['➤', '➤'],
+    ['❖', '❖'],
+    ['♦', '♦'],
+  ];
+
+  it.each(symbolFontBullets)(
+    'keeps the slide title on the front when a %s bullet is glued to its text',
+    (_name, glyph) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Membrane Proteins',
+            `${glyph}Integral proteins span the bilayer`,
+            `${glyph}Peripheral proteins sit on one surface`,
+            `${glyph}Channels, carriers and pumps move solutes`,
+          ].join('\n'),
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: 'Membrane Proteins',
+          back: [
+            `${glyph}Integral proteins span the bilayer`,
+            `${glyph}Peripheral proteins sit on one surface`,
+            `${glyph}Channels, carriers and pumps move solutes`,
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  it.each(symbolFontBullets)(
+    'rejoins a %s bullet that sits on a line of its own with the text after it',
+    (_name, glyph) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Cardiac Output',
+            glyph,
+            'CO equals heart rate times stroke volume',
+            glyph,
+            'Normal resting value is about 5 litres per minute',
+          ].join('\n'),
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: 'Cardiac Output',
+          back: [
+            `${glyph} CO equals heart rate times stroke volume`,
+            `${glyph} Normal resting value is about 5 litres per minute`,
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
 
   it('makes no card from a page of glued bullets with no heading above them', () => {
     const pages: PdfPage[] = [
