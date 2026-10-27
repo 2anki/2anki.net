@@ -52,6 +52,10 @@ class FakeTripwireRepository implements IMetricTripwireRepository {
     return start.toISOString() === DAY_START ? this.day : this.baseline;
   }
 
+  async lastCheckedAt(): Promise<Date | null> {
+    return null;
+  }
+
   async hasAlerted(metric: TripwireMetricKey, day: string): Promise<boolean> {
     return this.alerts.some((a) => a.metric === metric && a.day === day);
   }

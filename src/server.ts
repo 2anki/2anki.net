@@ -446,13 +446,14 @@ const serve = async () => {
     })
   );
 
+  const metricTripwireRepo = new MetricTripwireRepository(database);
   const runMetricTripwireUseCase = new RunMetricTripwireUseCase(
-    new MetricTripwireRepository(database),
+    metricTripwireRepo,
     (subject, body) =>
       emailService.sendAiSpendAlertEmail(SUPPORT_CC_ADDRESS, subject, body)
   );
   scheduleMetricTripwire(runMetricTripwireUseCase, {
-    lastRunAt: () => eventsRepo.lastEventAt('metric_tripwire_checked'),
+    lastRunAt: () => metricTripwireRepo.lastCheckedAt(),
     lock: jobLock,
   })
     .then(registerSchedulerTimer)

@@ -4,6 +4,9 @@ import {
   buildAlertExistsQuery,
   buildConversionOutcomeQuery,
   buildFollowThroughQuery,
+  buildLastCheckedQuery,
+  buildRecordAlertQuery,
+  buildRecordCheckQuery,
   FOLLOW_THROUGH_SPECS,
 } from './MetricTripwireRepository';
 
@@ -105,7 +108,7 @@ describe('MetricTripwireRepository generated SQL', () => {
     ]);
   });
 
-  it('looks up a prior alert by metric and day', () => {
+  it('looks up a prior alert only among rows the server wrote', () => {
     const { sql, bindings } = buildAlertExistsQuery(
       pg,
       'conversion_success',
@@ -113,12 +116,48 @@ describe('MetricTripwireRepository generated SQL', () => {
     ).toSQL();
 
     expect(sql).toBe(
-      'select "id" from "events" where "name" = ? and props @> ?::jsonb limit ?'
+      'select "id" from "events" where "name" = ? and "user_id" is null ' +
+        'and "anonymous_id" is null and props @> ?::jsonb limit ?'
     );
     expect(bindings).toEqual([
       'metric_tripwire_alert_sent',
-      JSON.stringify({ metric: 'conversion_success', day: '2026-10-26' }),
+      JSON.stringify({
+        metric: 'conversion_success',
+        day: '2026-10-26',
+        server_marker: true,
+      }),
       1,
+    ]);
+  });
+
+  it('reads the last check only from rows the server wrote', () => {
+    const { sql, bindings } = buildLastCheckedQuery(pg).toSQL();
+
+    expect(sql).toBe(
+      'select max("created_at") as "last_at" from "events" where "name" = ? ' +
+        'and "user_id" is null and "anonymous_id" is null and props @> ?::jsonb'
+    );
+    expect(bindings).toEqual([
+      'metric_tripwire_checked',
+      JSON.stringify({ server_marker: true }),
+    ]);
+  });
+
+  it('writes the marker every bookkeeping read requires', () => {
+    const alert = buildRecordAlertQuery(pg, 'deck_has_cards', '2026-10-26');
+    const check = buildRecordCheckQuery(pg, '2026-10-26', 2);
+
+    expect(alert.toSQL().bindings).toEqual([
+      'metric_tripwire_alert_sent',
+      JSON.stringify({
+        metric: 'deck_has_cards',
+        day: '2026-10-26',
+        server_marker: true,
+      }),
+    ]);
+    expect(check.toSQL().bindings).toEqual([
+      'metric_tripwire_checked',
+      JSON.stringify({ day: '2026-10-26', tripped: 2, server_marker: true }),
     ]);
   });
 });

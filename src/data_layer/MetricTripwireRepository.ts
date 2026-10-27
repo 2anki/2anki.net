@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 
+import { SERVER_MARKER_PROP } from '../lib/events/serverEventProps';
 import type { KnownEvent } from '../types/AnalyticsEvents';
 
 export interface RateCountsRow {
@@ -149,20 +150,63 @@ export function buildFollowThroughQuery(
     });
 }
 
+function serverProps(
+  props: Record<string, string | number>
+): Record<string, string | number | boolean> {
+  return { ...props, [SERVER_MARKER_PROP]: true };
+}
+
+function serverRowsQuery(
+  db: Knex,
+  name: KnownEvent,
+  props: Record<string, string | number>
+): Knex.QueryBuilder {
+  return db('events')
+    .where('name', name)
+    .whereNull('user_id')
+    .whereNull('anonymous_id')
+    .whereRaw('props @> ?::jsonb', [JSON.stringify(serverProps(props))]);
+}
+
 export function buildAlertExistsQuery(
   db: Knex,
   metric: TripwireMetricKey,
   day: string
 ): Knex.QueryBuilder {
-  return db('events')
+  return serverRowsQuery(db, ALERT_EVENT, { metric, day })
     .select('id')
-    .where('name', ALERT_EVENT)
-    .whereRaw('props @> ?::jsonb', [JSON.stringify({ metric, day })])
     .limit(1);
+}
+
+export function buildLastCheckedQuery(db: Knex): Knex.QueryBuilder {
+  return serverRowsQuery(db, CHECK_EVENT, {}).max('created_at as last_at');
+}
+
+export function buildRecordAlertQuery(
+  db: Knex,
+  metric: TripwireMetricKey,
+  day: string
+): Knex.QueryBuilder {
+  return db('events').insert({
+    name: ALERT_EVENT,
+    props: JSON.stringify(serverProps({ metric, day })),
+  });
+}
+
+export function buildRecordCheckQuery(
+  db: Knex,
+  day: string,
+  tripped: number
+): Knex.QueryBuilder {
+  return db('events').insert({
+    name: CHECK_EVENT,
+    props: JSON.stringify(serverProps({ day, tripped })),
+  });
 }
 
 export interface IMetricTripwireRepository {
   countRates(start: Date, end: Date): Promise<TripwireRateCounts>;
+  lastCheckedAt(): Promise<Date | null>;
   hasAlerted(metric: TripwireMetricKey, day: string): Promise<boolean>;
   recordAlert(metric: TripwireMetricKey, day: string): Promise<void>;
   recordCheck(day: string, tripped: number): Promise<void>;
@@ -216,22 +260,23 @@ export class MetricTripwireRepository implements IMetricTripwireRepository {
     };
   }
 
+  async lastCheckedAt(): Promise<Date | null> {
+    const row = (await buildLastCheckedQuery(this.database).first()) as
+      | { last_at: Date | string | null }
+      | undefined;
+    return row?.last_at == null ? null : new Date(row.last_at);
+  }
+
   async hasAlerted(metric: TripwireMetricKey, day: string): Promise<boolean> {
     const row = await buildAlertExistsQuery(this.database, metric, day).first();
     return row != null;
   }
 
   async recordAlert(metric: TripwireMetricKey, day: string): Promise<void> {
-    await this.database('events').insert({
-      name: ALERT_EVENT,
-      props: { metric, day },
-    });
+    await buildRecordAlertQuery(this.database, metric, day);
   }
 
   async recordCheck(day: string, tripped: number): Promise<void> {
-    await this.database('events').insert({
-      name: CHECK_EVENT,
-      props: { day, tripped },
-    });
+    await buildRecordCheckQuery(this.database, day, tripped);
   }
 }
