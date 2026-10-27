@@ -512,4 +512,124 @@ describe('ClaimHeldDeckUseCase', () => {
       ).toBeNull();
     });
   });
+
+  describe('pass-first limit wall', () => {
+    const passFirstOn = async () => true;
+    const passFirstOff = async () => false;
+
+    it('caps a free sign-up claim at the 21-card preview when the flag is on', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo);
+      const { converter, convertHeldFileForOwner } = buildConverter({
+        downloadKey: 'owner-key.apkg',
+        cardCount: 21,
+        cardsHeldBack: 163,
+        deckName: 'study-notes',
+        heldForPlan: true,
+      });
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter,
+        passFirstOn
+      );
+
+      const result = await useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: false,
+        requestId: undefined,
+      });
+
+      expect(convertHeldFileForOwner.mock.calls[0][5]).toEqual({
+        previewCap: 21,
+      });
+      expect(result).toEqual({
+        downloadKey: 'owner-key.apkg',
+        cardCount: 21,
+        deckName: 'study-notes',
+        kind: 'signup',
+        cardsHeldBack: 163,
+        heldForPlan: true,
+      });
+    });
+
+    it('builds the full deck for a plan claim when the flag is on', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo, { anonId: planHoldKey(OWNER) });
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter,
+        passFirstOn
+      );
+
+      const result = await useCase.execute({
+        anonId: null,
+        owner: OWNER,
+        paying: true,
+        requestId: undefined,
+      });
+
+      expect(result.kind).toBe('plan');
+      const call = convertHeldFileForOwner.mock.calls[0];
+      expect(call[2]).toBe(true);
+      expect(call[5]).toBeUndefined();
+    });
+
+    it('builds the full deck when a paying account claims a sign-up hold', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo);
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter,
+        passFirstOn
+      );
+
+      await useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: true,
+        requestId: undefined,
+      });
+
+      expect(convertHeldFileForOwner.mock.calls[0][5]).toBeUndefined();
+    });
+
+    it.each([
+      ['the flag is off', passFirstOff],
+      ['the flag read fails', () => Promise.reject(new Error('db down'))],
+    ])(
+      'keeps the up-to-100-card sign-up claim when %s',
+      async (_label, passFirst) => {
+        const repo = new InMemoryHeldDeckRepository();
+        await seedHold(repo);
+        const { converter, convertHeldFileForOwner } = buildConverter();
+        const useCase = new ClaimHeldDeckUseCase(
+          repo,
+          buildStore().store,
+          converter,
+          passFirst
+        );
+
+        const result = await useCase.execute({
+          anonId: ANON,
+          owner: OWNER,
+          paying: false,
+          requestId: undefined,
+        });
+
+        expect(convertHeldFileForOwner.mock.calls[0]).toHaveLength(5);
+        expect(result).toEqual({
+          downloadKey: 'owner-key.apkg',
+          cardCount: 34,
+          deckName: 'study-notes',
+          kind: 'signup',
+        });
+      }
+    );
+  });
 });

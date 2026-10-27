@@ -105,6 +105,9 @@ export interface ClaimHeldDeckResult {
   deckName: string | null;
   kind: 'signup' | 'plan' | null;
   error: UploadErrorBody | null;
+  // Present only when a free sign-up claim was cut to the preview.
+  cardsHeldBack?: number;
+  heldForPlan?: boolean;
 }
 
 function toClaimError(body: unknown): UploadErrorBody | null {
@@ -483,6 +486,8 @@ export class Backend {
         cardCount?: number | null;
         deckName?: string | null;
         kind?: unknown;
+        cardsHeldBack?: unknown;
+        heldForPlan?: unknown;
       };
       return {
         status: OK,
@@ -491,6 +496,12 @@ export class Backend {
         deckName: body.deckName ?? null,
         kind: body.kind === 'plan' || body.kind === 'signup' ? body.kind : null,
         error: null,
+        ...(typeof body.cardsHeldBack === 'number'
+          ? {
+              cardsHeldBack: body.cardsHeldBack,
+              heldForPlan: body.heldForPlan === true,
+            }
+          : {}),
       };
     }
     const failure: unknown = await response.json().catch(() => null);

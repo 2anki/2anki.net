@@ -66,8 +66,9 @@ const GENERIC_CONVERT_ERROR = 'Could not convert this input.';
 const MONTHLY_LIMIT_CODE = 'monthly_limit';
 const CARD_LIMIT_REDIRECT_PREFIX = '/limit?kind=card_count';
 // Directory review rules allow a link to an informational plans page, never a
-// page that starts a checkout, so limit messages point at the limits docs.
-const PLANS_URL = 'https://2anki.net/documentation/help/limits';
+// page that starts a checkout. /pricing lists the plans and starts nothing on
+// its own; the ref tags arrivals from a connector.
+const PLANS_URL = 'https://2anki.net/pricing/?ref=mcp';
 
 // The free card counter resets on the first day of each calendar month (UTC).
 function nextMonthlyReset(now: Date = new Date()): string {

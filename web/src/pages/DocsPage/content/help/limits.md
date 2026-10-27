@@ -15,7 +15,7 @@ description: What's allowed on each plan, and how long your decks stick around.
 
 The free monthly limit counts cards across **every** conversion path — file uploads, `.zip`, Notion, all of them — not just Notion. The counter resets at the start of each calendar month.
 
-Without an account, each conversion is capped at 21 cards. When a single file makes more, we keep it for 24 hours: create a free account to download the deck, up to 100 cards per month.
+Without an account, each conversion is capped at 21 cards. When a single file makes more, we keep it for 24 hours: a free account downloads the first 21 cards of it, and the rest stays saved for 7 days so a Day Pass or Semester Pass bought on that account releases the full deck without a re-upload. A free account still gets 100 cards per month for new uploads.
 
 ## File size
 
@@ -76,7 +76,7 @@ What "storage" means depends on which path you used.
 
 ### File upload (no Claude AI)
 
-Your file lives on disk only long enough to build the deck. The `.apkg` is sent straight back as the response — we don't keep a copy. The temporary working files are wiped after **two hours**. One exception: when an upload without an account goes over the 21-card cap, we keep the file for **24 hours** so the deck can be built after you sign up. The nightly cleanup deletes it within a day after that.
+Your file lives on disk only long enough to build the deck. The `.apkg` is sent straight back as the response — we don't keep a copy. The temporary working files are wiped after **two hours**. One exception: when an upload without an account goes over the 21-card cap, we keep the file for **24 hours** so the deck can be built after you sign up, and for **7 days** after that so a pass can release the full deck. The nightly cleanup deletes it within a day after that.
 
 **Plan:** any (anonymous, Free account, Subscription, Lifetime — same window for all).
 

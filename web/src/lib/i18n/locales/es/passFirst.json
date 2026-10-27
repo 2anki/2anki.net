@@ -1,0 +1,22 @@
+{
+  "aria": "Obtén todas las tarjetas",
+  "readyTotal": "{{total}} tarjetas listas",
+  "readyShown": "{{total}} tarjetas listas, {{shown}} visibles",
+  "fileTotal": "Este archivo genera {{total}} tarjetas",
+  "everyCard": "Obtén todas las tarjetas ahora",
+  "gateBody": "Con un pase las tienes todas ahora. Una cuenta gratis obtiene las primeras {{cap}}.",
+  "anonBody": "Sin cuenta obtienes {{cap}} tarjetas. Un pase quita el límite, sin necesidad de cuenta.",
+  "previewSaved": "Una cuenta gratis obtiene las primeras {{shown}}. El resto se guarda 7 días: consigue un pase y las {{total}} llegan a Descargas, sin volver a subir el archivo.",
+  "previewNotSaved": "Una cuenta gratis obtiene las primeras {{shown}}. Consigue un pase y vuelve a subir el archivo para obtener las {{total}}.",
+  "semester": "Semester Pass · {{price}}",
+  "semesterHint": "120 días, sin límite de tarjetas",
+  "day": "Day Pass · {{price}}",
+  "dayHint": "24 horas, sin límite de tarjetas",
+  "afterPayRedrop": "Después de pagar, vuelve a subir el archivo para obtener todas las tarjetas.",
+  "afterPayRedropTotal": "Después de pagar, vuelve a subir el archivo para obtener las {{total}} tarjetas.",
+  "freeSignup": "Crear una cuenta gratis",
+  "freeSignupCap": "Crea una cuenta gratis para las primeras {{cap}} tarjetas",
+  "signIn": "Iniciar sesión",
+  "starting": "Abriendo el pago",
+  "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net."
+}

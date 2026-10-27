@@ -3630,6 +3630,32 @@ describe('limit state', () => {
     expect(screen.queryByText('Choose files')).not.toBeInTheDocument();
   });
 
+  it('leads the locked wall with the Semester Pass when the pass-first flag is on', () => {
+    setUserLocals({
+      ...loggedInData,
+      features: { kiUI: false, limitWallPassFirst: true },
+    } as ReturnType<typeof useUserLocals>['data']);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    const semester = screen.getByRole('button', { name: /Semester Pass/ });
+    const day = screen.getByRole('button', { name: /Day Pass/ });
+    const plans = screen.getByRole('link', { name: 'See plans' });
+    expect(
+      semester.compareDocumentPosition(day) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      day.compareDocumentPosition(plans) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: /Get Day Pass/ })
+    ).not.toBeInTheDocument();
+  });
+
   it('does not lock the form when the free user is under the limit', () => {
     setUserLocals(loggedInData);
     mockUseCardUsage.mockReturnValue({
@@ -3803,6 +3829,45 @@ describe('limit state', () => {
     );
   });
 
+  it('leads the over-the-limit wall with the Semester Pass when the pass-first flag is on', async () => {
+    setUserLocals({
+      ...loggedInData,
+      features: { kiUI: false, limitWallPassFirst: true },
+    } as ReturnType<typeof useUserLocals>['data']);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 0,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+    stubLimitFetch('card_count');
+    await submitAndReachLimit();
+    const semester = screen.getByRole('button', { name: /Semester Pass/ });
+    const day = screen.getByRole('button', { name: /Day Pass/ });
+    expect(
+      semester.compareDocumentPosition(day) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'See plans' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Get Day Pass/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the file-size wall unchanged when the pass-first flag is on', async () => {
+    setUserLocals({
+      ...anonymousData,
+      features: { kiUI: false, limitWallPassFirst: true },
+    } as ReturnType<typeof useUserLocals>['data']);
+    stubLimitFetch('file_size');
+    const container = await submitAndReachLimit();
+    expect(
+      container.querySelector('a[href*="register"]')?.textContent
+    ).toContain('Create a free account');
+    expect(
+      screen.queryByRole('button', { name: /Semester Pass/ })
+    ).not.toBeInTheDocument();
+  });
+
   it('navigates to /limit?kind=anonymous on an anonymous limit redirect', async () => {
     setUserLocals(anonymousData);
     const locationStub = { href: '', origin: 'http://localhost' } as Location;
@@ -3823,6 +3888,30 @@ describe('limit state', () => {
       expect(locationStub.href).toBe('/limit?kind=anonymous');
     });
     expect(container.querySelector('[class*="limitContent"]')).toBeNull();
+  });
+
+  it('keeps the card count on the anonymous limit redirect when the pass-first flag is on', async () => {
+    setUserLocals({
+      ...anonymousData,
+      features: { kiUI: false, limitWallPassFirst: true },
+    } as ReturnType<typeof useUserLocals>['data']);
+    const locationStub = { href: '', origin: 'http://localhost' } as Location;
+    vi.stubGlobal('location', locationStub);
+    stubLimitFetch('anonymous&cards=184' as 'file_size');
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    await waitFor(() => {
+      expect(locationStub.href).toBe('/limit?kind=anonymous&cards=184');
+    });
   });
 
   it('decodes a URL-encoded filename for display', async () => {
@@ -5705,6 +5794,65 @@ describe('claiming a held deck after sign-in', () => {
     ).toBeInTheDocument();
     expect(setErrorMessage).not.toHaveBeenCalled();
     expect(mockReportClientError).not.toHaveBeenCalled();
+  });
+
+  it('offers the passes for the rest of a sign-up claim cut to the preview', async () => {
+    signIn();
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi
+        .fn()
+        .mockResolvedValue({ cardCount: 21, cardsHeldBack: 163 }),
+      claimHeldDeck: vi.fn().mockResolvedValue({
+        status: 200,
+        downloadKey: 'owner-key.apkg',
+        cardCount: 21,
+        deckName: 'notes',
+        kind: 'signup',
+        error: null,
+        cardsHeldBack: 163,
+        heldForPlan: true,
+      }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText('184 cards ready, 21 shown')
+    ).toBeInTheDocument();
+    expect(screen.getByText(/saved for 7 days/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Semester Pass/ })
+    ).toBeInTheDocument();
+  });
+
+  it('shows no pass offer after a full sign-up claim', async () => {
+    signIn();
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi
+        .fn()
+        .mockResolvedValue({ cardCount: 21, cardsHeldBack: 13 }),
+      claimHeldDeck: vi.fn().mockResolvedValue({
+        status: 200,
+        downloadKey: 'owner-key.apkg',
+        cardCount: 34,
+        deckName: 'notes',
+        kind: 'signup',
+        error: null,
+      }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText("You're signed in. Download your deck below.")
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Semester Pass/ })
+    ).not.toBeInTheDocument();
   });
 
   it('reports a failed claim with its status and keeps the generic message', async () => {

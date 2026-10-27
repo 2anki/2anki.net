@@ -101,6 +101,7 @@ import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/Co
 import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
 import { AiPreviewGate } from '../../../../components/AiPreviewGate/AiPreviewGate';
 import { MonthlyLimitPartialOffer } from '../../../../components/MonthlyLimitPartialOffer/MonthlyLimitPartialOffer';
+import { PassFirstOffer } from '../../../../components/PassFirstOffer/PassFirstOffer';
 import { PastDueNotice } from '../../../../components/PastDueNotice/PastDueNotice';
 import {
   ANONYMOUS_CARD_CAP,
@@ -166,6 +167,16 @@ function isLimitRedirect(url: URL): boolean {
 
 function isAnonymousLimit(url: URL): boolean {
   return url.searchParams.get('kind') === 'anonymous';
+}
+
+// The pass-first wall states the deck's real size, so it keeps the card count
+// the server put on the redirect.
+function anonymousLimitPath(url: URL, passFirst: boolean): string {
+  const cards = url.searchParams.get('cards');
+  if (!passFirst || cards == null || !/^\d+$/.test(cards)) {
+    return '/limit?kind=anonymous';
+  }
+  return `/limit?kind=anonymous&cards=${cards}`;
 }
 
 function getLimitKind(url: URL): 'file_size' | 'card_count' {
@@ -604,6 +615,7 @@ function UploadForm({
   const isAuthenticated = userLocals?.user?.id != null;
   const currentOwnerId = userLocals?.user?.id ?? null;
   const isPaying = isPayingUser(userLocals?.locals);
+  const passFirst = userLocals?.features?.limitWallPassFirst === true;
   const thinDeckOfferFile =
     userLocals?.features?.thinDeckAiOffer === true && rescueFiles.length === 1
       ? rescueFiles[0]
@@ -653,6 +665,12 @@ function UploadForm({
   const driveButtonRef = useRef<HTMLButtonElement>(null);
   const claimAttemptedRef = useRef(false);
   const [planClaim, setPlanClaim] = useState(false);
+  // A free sign-up claim cut to the preview: what is still held back, and
+  // whether the source is saved so a pass releases it without a re-upload.
+  const [claimPreview, setClaimPreview] = useState<{
+    heldBack: number;
+    saved: boolean;
+  } | null>(null);
   const [returnedFromCheckout] = useState(() => {
     const params = new URLSearchParams(globalThis.location?.search ?? '');
     return (
@@ -706,6 +724,12 @@ function UploadForm({
         if (cancelled) return;
         if (result.status === 200 && result.downloadKey != null) {
           setPlanClaim(result.kind === 'plan');
+          if (result.cardsHeldBack != null && result.cardsHeldBack > 0) {
+            setClaimPreview({
+              heldBack: result.cardsHeldBack,
+              saved: result.heldForPlan === true,
+            });
+          }
           setDownloadLink(recoveryDownloadUrl(result.downloadKey));
           if (result.deckName) setDeckName(result.deckName);
           setCardCount(result.cardCount);
@@ -1128,7 +1152,7 @@ function UploadForm({
       const redirectUrl = new URL(request.url, globalThis.location.origin);
       if (isLimitRedirect(redirectUrl)) {
         if (isAnonymousLimit(redirectUrl)) {
-          leaveTo('/limit?kind=anonymous');
+          leaveTo(anonymousLimitPath(redirectUrl, passFirst));
           return;
         }
         const kind = getLimitKind(redirectUrl);
@@ -1300,7 +1324,7 @@ function UploadForm({
     uploadedFiles: File[]
   ): boolean => {
     if (isAnonymousLimit(redirectUrl)) {
-      leaveTo('/limit?kind=anonymous');
+      leaveTo(anonymousLimitPath(redirectUrl, passFirst));
       return true;
     }
     const firstFile = uploadedFiles[0];
@@ -2818,47 +2842,81 @@ function UploadForm({
             {dayPassError}
           </p>
         )}
-        <div className={formStyles.limitActions}>
-          {showSignInPrompt ? (
-            <Link
-              to="/register?redirect=/upload"
-              className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
-              onClick={() =>
-                saveFilenameForReattach(limitInfo?.filename ?? null)
-              }
-            >
-              {t('accountx:limit.signUpFree')}
-            </Link>
-          ) : (
-            <>
-              <button
-                type="button"
-                className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
-                onClick={handleDayPass}
-                disabled={dayPassPending}
-              >
-                {dayPassPending
-                  ? t('upload.limit.startingCheckout')
-                  : t('upload.limit.getDayPass', {
-                      price: passPrices['24h'],
-                    })}
-              </button>
-              <Link
-                to="/limit?ref=upload-limit-wall"
-                className={`${sharedStyles.btnSecondary} ${sharedStyles.btnInline}`}
-              >
+        {passFirst && !isFileSize ? (
+          <PassFirstOffer
+            surface="upload-limit-wall"
+            note={t('passFirst:afterPayRedrop')}
+          >
+            {showSignInPrompt ? (
+              <>
+                <Link
+                  to="/register?redirect=/upload"
+                  onClick={() => {
+                    saveFilenameForReattach(limitInfo?.filename ?? null);
+                    track('paywall_upgrade_clicked', {
+                      surface: 'upload-limit-wall',
+                      plan: 'free_signup',
+                    });
+                  }}
+                >
+                  {t('passFirst:freeSignup')}
+                </Link>
+                <Link to="/login?redirect=/upload">
+                  {t('passFirst:signIn')}
+                </Link>
+              </>
+            ) : (
+              <Link to="/limit?ref=upload-limit-wall">
                 {t('upload.limit.seePlans')}
               </Link>
-            </>
-          )}
-          <button
-            type="button"
-            className={formStyles.resetLink}
-            onClick={startOver}
-          >
-            {t('upload.form.tryDifferent')}
-          </button>
-        </div>
+            )}
+            <button type="button" onClick={startOver}>
+              {t('upload.form.tryDifferent')}
+            </button>
+          </PassFirstOffer>
+        ) : (
+          <div className={formStyles.limitActions}>
+            {showSignInPrompt ? (
+              <Link
+                to="/register?redirect=/upload"
+                className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+                onClick={() =>
+                  saveFilenameForReattach(limitInfo?.filename ?? null)
+                }
+              >
+                {t('accountx:limit.signUpFree')}
+              </Link>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+                  onClick={handleDayPass}
+                  disabled={dayPassPending}
+                >
+                  {dayPassPending
+                    ? t('upload.limit.startingCheckout')
+                    : t('upload.limit.getDayPass', {
+                        price: passPrices['24h'],
+                      })}
+                </button>
+                <Link
+                  to="/limit?ref=upload-limit-wall"
+                  className={`${sharedStyles.btnSecondary} ${sharedStyles.btnInline}`}
+                >
+                  {t('upload.limit.seePlans')}
+                </Link>
+              </>
+            )}
+            <button
+              type="button"
+              className={formStyles.resetLink}
+              onClick={startOver}
+            >
+              {t('upload.form.tryDifferent')}
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -3216,7 +3274,7 @@ function UploadForm({
   const renderHeldForSignupState = () =>
     heldDeck == null ? null : (
       <div className={formStyles.stateContent}>
-        <AnonymousPartialGate held={heldDeck} />
+        <AnonymousPartialGate held={heldDeck} passFirst={passFirst} />
       </div>
     );
 
@@ -3265,6 +3323,26 @@ function UploadForm({
         >
           {t('upload.form.downloadDeck')}
         </a>
+      )}
+      {claimPreview != null && cardCount != null && (
+        <PassFirstOffer
+          surface="held-preview"
+          headline={t('passFirst:readyShown', {
+            total: cardCount + claimPreview.heldBack,
+            shown: cardCount,
+          })}
+          body={
+            claimPreview.saved
+              ? t('passFirst:previewSaved', {
+                  shown: cardCount,
+                  total: cardCount + claimPreview.heldBack,
+                })
+              : t('passFirst:previewNotSaved', {
+                  shown: cardCount,
+                  total: cardCount + claimPreview.heldBack,
+                })
+          }
+        />
       )}
     </div>
   );
@@ -3342,24 +3420,32 @@ function UploadForm({
             {dayPassError}
           </p>
         )}
-        <div className={formStyles.limitActions}>
-          <button
-            type="button"
-            className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
-            onClick={handleDayPass}
-            disabled={dayPassPending}
-          >
-            {dayPassPending
-              ? t('upload.limit.startingCheckout')
-              : t('upload.limit.getDayPass', { price: passPrices['24h'] })}
-          </button>
-          <Link
-            to="/limit?ref=upload-limit-wall"
-            className={`${sharedStyles.btnSecondary} ${sharedStyles.btnInline}`}
-          >
-            {t('upload.limit.seePlans')}
-          </Link>
-        </div>
+        {passFirst ? (
+          <PassFirstOffer surface="upload-limit-wall">
+            <Link to="/limit?ref=upload-limit-wall">
+              {t('upload.limit.seePlans')}
+            </Link>
+          </PassFirstOffer>
+        ) : (
+          <div className={formStyles.limitActions}>
+            <button
+              type="button"
+              className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+              onClick={handleDayPass}
+              disabled={dayPassPending}
+            >
+              {dayPassPending
+                ? t('upload.limit.startingCheckout')
+                : t('upload.limit.getDayPass', { price: passPrices['24h'] })}
+            </button>
+            <Link
+              to="/limit?ref=upload-limit-wall"
+              className={`${sharedStyles.btnSecondary} ${sharedStyles.btnInline}`}
+            >
+              {t('upload.limit.seePlans')}
+            </Link>
+          </div>
+        )}
       </div>
     );
   };
@@ -3597,6 +3683,12 @@ function UploadForm({
       return t('upload.form.decksReady', {
         count: batchResult?.deckCount ?? 0,
       });
+    }
+    if (zoneState === 'heldForSignup' && heldDeck != null && passFirst) {
+      return `${t('passFirst:readyTotal', { total: heldDeck.totalCards })}. ${t(
+        'passFirst:gateBody',
+        { cap: ANONYMOUS_CARD_CAP }
+      )}`;
     }
     if (zoneState === 'heldForSignup' && heldDeck != null) {
       return heldDeck.totalCards <= FREE_MONTHLY_CARDS

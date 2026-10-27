@@ -42,6 +42,8 @@ import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUse
 import { RecentSourcesController } from '../controllers/Upload/RecentSourcesController';
 import { ClaimHeldDeckController } from '../controllers/Upload/ClaimHeldDeckController';
 import { ClaimHeldDeckUseCase } from '../usecases/uploads/ClaimHeldDeckUseCase';
+import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import { AiPreviewResumeController } from '../controllers/Upload/AiPreviewResumeController';
 import { ResumeAnonymousAiPreviewUseCase } from '../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
 import { AnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
@@ -93,7 +95,8 @@ const UploadRouter = () => {
     new ClaimHeldDeckUseCase(
       new HeldDeckRepository(database),
       new StorageHandler(),
-      uploadService
+      uploadService,
+      () => getFeatureFlag(LIMIT_WALL_PASS_FIRST_FLAG, false)
     )
   );
   const thinDeckAiPreviewController = new ThinDeckAiPreviewController();

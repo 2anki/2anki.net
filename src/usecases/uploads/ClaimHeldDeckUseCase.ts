@@ -1,7 +1,10 @@
 import type { IHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import type { UploadedFile } from '../../lib/storage/types';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
-import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
+import {
+  ANONYMOUS_CARD_CAP,
+  MonthlyLimitError,
+} from '../users/CheckMonthlyCardLimitUseCase';
 import { isPreviewHoldKey } from '../../lib/upload/anonymousAiPreview';
 
 export class NoHeldDeckError extends Error {
@@ -27,6 +30,13 @@ export interface HeldDeckConversion {
   cardCount: number;
   cardsHeldBack: number;
   deckName: string;
+  heldForPlan?: boolean;
+}
+
+export interface HeldDeckConversionOptions {
+  // Cut the deck to this many cards and save the source as a plan hold, so a
+  // pass bought afterwards releases the rest without a re-upload.
+  previewCap: number;
 }
 
 export interface HeldDeckConverter {
@@ -35,7 +45,8 @@ export interface HeldDeckConverter {
     file: UploadedFile,
     paying: boolean,
     source: null,
-    requestId: string | undefined
+    requestId: string | undefined,
+    options?: HeldDeckConversionOptions
   ): Promise<HeldDeckConversion>;
 }
 
@@ -46,6 +57,9 @@ export interface ClaimResult {
   cardCount: number;
   deckName: string;
   kind: HoldKind;
+  // Set only when a sign-up claim was cut to the preview.
+  cardsHeldBack?: number;
+  heldForPlan?: boolean;
 }
 
 export interface ClaimParams {
@@ -107,8 +121,27 @@ export class ClaimHeldDeckUseCase {
   constructor(
     private readonly repository: IHeldDeckRepository,
     private readonly store: HeldFileStore,
-    private readonly converter: HeldDeckConverter
+    private readonly converter: HeldDeckConverter,
+    private readonly passFirst: () => Promise<boolean> = async () => false
   ) {}
+
+  // With the pass-first wall on, a free sign-up releases the same 21-card
+  // preview an anonymous visitor gets; the full deck takes a plan claim (a
+  // pass or Pro). A failed flag read keeps the old up-to-100-card claim.
+  private async capsSignupToPreview(
+    kind: HoldKind,
+    paying: boolean
+  ): Promise<boolean> {
+    if (kind !== 'signup' || paying) {
+      return false;
+    }
+    try {
+      return await this.passFirst();
+    } catch (error) {
+      console.error('[ClaimHeldDeck] pass-first flag read failed', error);
+      return false;
+    }
+  }
 
   // A plan hold is only visible once the owner pays: before that there is
   // nothing to claim, and the full deck would be refused at the limit again.
@@ -138,6 +171,7 @@ export class ClaimHeldDeckUseCase {
       throw new NoHeldDeckError();
     }
     const { hold, kind } = found;
+    const capToPreview = await this.capsSignupToPreview(kind, paying);
     const claimed = await this.repository.markClaimed(
       hold.id,
       Number(owner),
@@ -148,18 +182,33 @@ export class ClaimHeldDeckUseCase {
     }
     try {
       const file = await this.readHeldFile(hold.storage_key, hold.filename);
-      const conversion = await this.converter.convertHeldFileForOwner(
-        owner,
-        file,
-        paying,
-        null,
-        requestId
-      );
+      const conversion = capToPreview
+        ? await this.converter.convertHeldFileForOwner(
+            owner,
+            file,
+            paying,
+            null,
+            requestId,
+            { previewCap: ANONYMOUS_CARD_CAP }
+          )
+        : await this.converter.convertHeldFileForOwner(
+            owner,
+            file,
+            paying,
+            null,
+            requestId
+          );
       return {
         downloadKey: conversion.downloadKey,
         cardCount: conversion.cardCount,
         deckName: conversion.deckName,
         kind,
+        ...(capToPreview
+          ? {
+              cardsHeldBack: conversion.cardsHeldBack,
+              heldForPlan: conversion.heldForPlan === true,
+            }
+          : {}),
       };
     } catch (error) {
       // Deterministic refusals consume the hold: a monthly-limit refusal, a

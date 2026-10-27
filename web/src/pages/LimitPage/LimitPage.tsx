@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState, type MouseEvent, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -9,6 +9,7 @@ import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { PastDueNotice } from '../../components/PastDueNotice/PastDueNotice';
 import { AnonymousDayPassOffer } from '../../components/AnonymousDayPassOffer/AnonymousDayPassOffer';
+import { PassFirstOffer } from '../../components/PassFirstOffer/PassFirstOffer';
 import { deckCardsBucket } from './deckCardsBucket';
 import {
   ANONYMOUS_CARD_CAP,
@@ -140,14 +141,65 @@ function AnonymousLimitCards({ totalCards }: { totalCards: number | null }) {
   );
 }
 
+// Pass-first: both passes lead, free sign-up and sign-in are text links.
+function AnonymousPassFirst({ totalCards }: { totalCards: number | null }) {
+  const { t } = useTranslation('passFirst');
+  const { t: tAccount } = useTranslation('accountx');
+  return (
+    <div className={styles.passFirst}>
+      <PassFirstOffer
+        surface="anonymous-limit-wall"
+        headline={
+          totalCards == null
+            ? t('everyCard')
+            : t('fileTotal', { total: totalCards })
+        }
+        body={t('anonBody', { cap: ANONYMOUS_CARD_CAP })}
+        note={
+          totalCards == null
+            ? t('afterPayRedrop')
+            : t('afterPayRedropTotal', { total: totalCards })
+        }
+      >
+        <Link
+          to="/register?redirect=/upload"
+          onClick={() =>
+            track('paywall_upgrade_clicked', {
+              surface: REF,
+              plan: 'free_signup',
+            })
+          }
+        >
+          {t('freeSignup')}
+        </Link>
+        <Link
+          to="/login?redirect=/upload"
+          onClick={() =>
+            track('paywall_upgrade_clicked', {
+              surface: REF,
+              plan: 'sign_in',
+            })
+          }
+        >
+          {t('signIn')}
+        </Link>
+      </PassFirstOffer>
+      <p className={styles.planNote}>{tAccount('limit.browserNote')}</p>
+    </div>
+  );
+}
+
 function AnonymousLimit({
   dayPassCardEnabled,
+  passFirst,
 }: {
   dayPassCardEnabled: boolean;
+  passFirst: boolean;
 }) {
   const { t } = useTranslation('accountx');
   const [searchParams] = useSearchParams();
-  const totalCards = dayPassCardEnabled
+  const readsCardCount = dayPassCardEnabled || passFirst;
+  const totalCards = readsCardCount
     ? parseTotalCards(searchParams.get('cards'))
     : null;
 
@@ -155,11 +207,18 @@ function AnonymousLimit({
     track('paywall_shown', {
       surface: REF,
       variant: 'anonymous',
-      ...(dayPassCardEnabled && totalCards != null
+      ...(readsCardCount && totalCards != null
         ? { deck_cards: deckCardsBucket(totalCards) }
         : {}),
     });
-  }, [dayPassCardEnabled, totalCards]);
+  }, [readsCardCount, totalCards]);
+
+  let plans: ReactElement | null = null;
+  if (passFirst) {
+    plans = <AnonymousPassFirst totalCards={totalCards} />;
+  } else if (dayPassCardEnabled) {
+    plans = <AnonymousLimitCards totalCards={totalCards} />;
+  }
 
   return (
     <div className={styles.page}>
@@ -180,9 +239,7 @@ function AnonymousLimit({
         </p>
       </header>
 
-      {dayPassCardEnabled ? (
-        <AnonymousLimitCards totalCards={totalCards} />
-      ) : (
+      {plans ?? (
         <div className={styles.singlePlan}>
           <div className={`${styles.planCard} ${styles.planCardFeatured}`}>
             <p className={styles.planTitle}>{t('limit.freeAccount')}</p>
@@ -240,6 +297,7 @@ export function LimitPage() {
   const [passError, setPassError] = useState<string | null>(null);
 
   const showAnonymous = !isLoggedIn;
+  const passFirst = userLocals?.features?.limitWallPassFirst === true;
   const unlimitedPrice = useUnlimitedMonthlyPrice(
     isLoggedIn && userLocals?.features?.limitWallProPrice === true
   );
@@ -257,6 +315,7 @@ export function LimitPage() {
     return (
       <AnonymousLimit
         dayPassCardEnabled={userLocals?.features?.anonymousDayPassCard === true}
+        passFirst={passFirst}
       />
     );
   }
@@ -311,7 +370,8 @@ export function LimitPage() {
 
   return (
     <LimitWall
-      order={WALL_ORDER}
+      order={passFirst ? 'passes-first' : WALL_ORDER}
+      featureSemester={passFirst}
       pendingPass={pendingPass}
       onPass={handlePassCheckout}
       passError={passError}

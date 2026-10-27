@@ -20,6 +20,7 @@ interface LimitWallProps {
   unlimitedPrice?: string;
   onUnlimitedClick: (event: MouseEvent<HTMLAnchorElement>) => void;
   notice?: ReactNode;
+  featureSemester?: boolean;
 }
 
 export function LimitWall({
@@ -31,6 +32,7 @@ export function LimitWall({
   unlimitedPrice,
   onUnlimitedClick,
   notice,
+  featureSemester = false,
 }: Readonly<LimitWallProps>) {
   const { t } = useTranslation('accountx');
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -56,7 +58,8 @@ export function LimitWall({
         dayPassPending={pendingPass === '24h'}
         weekPassPending={pendingPass === '7d'}
         semesterPassPending={pendingPass === '120d'}
-        featureDayPass
+        featureDayPass={!featureSemester}
+        featureSemester={featureSemester}
       />
     </>
   );

@@ -63,6 +63,12 @@ export class ClaimHeldDeckController {
         cardCount: result.cardCount,
         deckName: result.deckName,
         kind: result.kind,
+        ...(result.cardsHeldBack != null
+          ? {
+              cardsHeldBack: result.cardsHeldBack,
+              heldForPlan: result.heldForPlan === true,
+            }
+          : {}),
       });
     } catch (err) {
       if (err instanceof NoHeldDeckError) {

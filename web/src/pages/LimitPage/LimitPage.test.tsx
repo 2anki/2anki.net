@@ -457,6 +457,116 @@ describe('LimitPage — anonymous Day Pass card variant', () => {
   });
 });
 
+function asAnonymousPassFirst() {
+  mockedUseUserLocals.mockReturnValue({
+    data: { features: { limitWallPassFirst: true } },
+    isLoading: false,
+  } as ReturnType<typeof useUserLocals>);
+}
+
+function asLoggedInPassFirst() {
+  mockedUseUserLocals.mockReturnValue({
+    data: {
+      user: { id: 1, email: 'test@example.com' },
+      features: { limitWallPassFirst: true },
+    },
+    isLoading: false,
+  } as ReturnType<typeof useUserLocals>);
+}
+
+function follows(first: Element, second: Element): boolean {
+  return Boolean(
+    first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING
+  );
+}
+
+describe('LimitPage — pass-first wall', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    asAnonymousPassFirst();
+  });
+
+  it('leads with the Semester Pass, puts the Day Pass beside it and free sign-up after both', () => {
+    renderPage(['/limit?kind=anonymous&cards=184']);
+    const semester = screen.getByRole('button', { name: /Semester Pass/ });
+    const day = screen.getByRole('button', { name: /Day Pass/ });
+    const signUp = screen.getByRole('link', { name: 'Create a free account' });
+    const signIn = screen.getByRole('link', { name: 'Sign in' });
+
+    expect(semester.className).toContain('primary');
+    expect(day.className).toContain('secondary');
+    expect(follows(semester, day)).toBe(true);
+    expect(follows(day, signUp)).toBe(true);
+    expect(follows(signUp, signIn)).toBe(true);
+    expect(signUp.className).not.toContain('planCta');
+    expect(signUp.getAttribute('href')).toBe('/register?redirect=/upload');
+  });
+
+  it('states the real card count from the redirect', () => {
+    renderPage(['/limit?kind=anonymous&cards=184']);
+    expect(screen.getByText('This file makes 184 cards')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'After paying, drop the file again to get all 184 cards.'
+      )
+    ).toBeTruthy();
+  });
+
+  it('starts a Semester Pass checkout tagged to the anonymous wall', async () => {
+    mockStartPassCheckout.mockResolvedValue({
+      url: 'https://checkout.stripe.com/semester',
+    });
+    Object.defineProperty(globalThis, 'location', {
+      writable: true,
+      value: { href: '' },
+    });
+    renderPage(['/limit?kind=anonymous']);
+    fireEvent.click(screen.getByRole('button', { name: /Semester Pass/ }));
+    expect(mockTrack).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: 'anonymous-limit-wall',
+      plan: 'semester_pass',
+    });
+    await vi.waitFor(() => {
+      expect(mockStartPassCheckout).toHaveBeenCalledWith(
+        '120d',
+        undefined,
+        'anonymous-limit-wall'
+      );
+    });
+  });
+
+  it('still tracks the free sign-up link as free_signup', () => {
+    renderPage(['/limit?kind=anonymous']);
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Create a free account' })
+    );
+    expect(mockTrack).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: 'limit-wall',
+      plan: 'free_signup',
+    });
+  });
+
+  it('keeps free sign-up as the primary button when the flag is off', () => {
+    asAnonymous();
+    renderPage(['/limit?kind=anonymous&cards=184']);
+    expect(
+      screen.getByRole('link', { name: 'Create a free account' }).className
+    ).toContain('planCtaPrimary');
+    expect(screen.queryByRole('button', { name: /Semester Pass/ })).toBeNull();
+    expect(screen.queryByText('This file makes 184 cards')).toBeNull();
+  });
+
+  it('puts the passes before Pro and features the Semester Pass for a signed-in account', () => {
+    asLoggedInPassFirst();
+    renderPage();
+    const passesLabel = screen.getByText('Pay once — no subscription');
+    const unlimitedLabel = screen.getByText('Skip the monthly card cap');
+    expect(follows(passesLabel, unlimitedLabel)).toBe(true);
+    expect(screen.getByText('Most popular')).toBeTruthy();
+    expect(screen.queryByText('Best value')).toBeNull();
+  });
+});
+
 describe('LimitPage — loading state', () => {
   beforeEach(() => {
     vi.clearAllMocks();

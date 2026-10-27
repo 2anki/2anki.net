@@ -125,6 +125,7 @@ import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 import { InMemoryHeldDeckRepository } from '../data_layer/HeldDeckRepository';
+import { planHoldKey } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
 import {
   ANONYMOUS_CARD_CAP,
@@ -5994,6 +5995,19 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('appends the card count to the wall when the pass-first flag is on', async () => {
+    mockGetFeatureFlag.mockImplementation((key: unknown) =>
+      Promise.resolve(key === 'limit_wall_pass_first')
+    );
+    mockPartial([{ name: 'deck', cardCount: 130 }]);
+    const req = buildEligibleRequest();
+    const { res, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=130');
+  });
+
   it('holds a single zip upload for the treatment arm', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
@@ -6381,6 +6395,79 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     ).rejects.toThrow('Could not persist the claimed deck');
 
     expect(usersRepo.incrementCardUsage).not.toHaveBeenCalled();
+  });
+
+  function heldSourceFile() {
+    return {
+      fieldname: 'file',
+      originalname: 'notes.html',
+      encoding: '7bit',
+      mimetype: 'application/octet-stream',
+      size: 13,
+      buffer: Buffer.from('<html></html>'),
+      key: 'held/abc',
+    } as unknown as Parameters<UploadService['convertHeldFileForOwner']>[1];
+  }
+
+  it('cuts a preview-capped claim to 21 cards and saves the rest for a plan', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 163);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const usersRepo = buildUsersRepo();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      usersRepo,
+      ...fakeUploadServiceDeps({ heldDeck })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      false,
+      null,
+      'req-1',
+      { previewCap: 21 }
+    );
+
+    expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 21 });
+    expect(result).toMatchObject({
+      cardCount: 21,
+      cardsHeldBack: 163,
+      heldForPlan: true,
+    });
+    expect(heldDeck.rows).toHaveLength(1);
+    expect(heldDeck.rows[0]).toMatchObject({
+      anon_id: planHoldKey('4242'),
+      filename: 'notes.html',
+      card_count: 21,
+      cards_held_back: 163,
+    });
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(4242, 21);
+  });
+
+  it('keeps the monthly allowance and saves no plan hold without a preview cap', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 100 }], 84);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      false,
+      null,
+      'req-1'
+    );
+
+    expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 100 });
+    expect(result).not.toHaveProperty('heldForPlan');
+    expect(heldDeck.rows).toHaveLength(0);
   });
 
   it('leaves a treatment upload at or under 21 cards untouched', async () => {
