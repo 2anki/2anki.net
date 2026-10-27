@@ -661,6 +661,48 @@ describe('UploadForm Google Drive picker interaction', () => {
     expect(globalThis.localStorage.getItem('pdf-page-range')).toBeNull();
   });
 
+  it('keeps the card count when a signed-out Drive import hits the anonymous limit with pass-first on', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: null,
+        locals: {},
+        features: { kiUI: false, limitWallPassFirst: true },
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const locationStub = { href: '', origin: 'http://localhost' } as Location;
+    vi.stubGlobal('location', locationStub);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: true,
+        url: 'http://localhost/limit?kind=anonymous&cards=184',
+        status: 200,
+        headers: new Headers({}),
+        blob: () => Promise.resolve(new Blob([])),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    fireEvent.click(
+      within(container).getByRole('button', { name: 'Google Drive' })
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Choose from Google Drive' })
+    );
+
+    await waitFor(() => {
+      expect(locationStub.href).toBe('/limit?kind=anonymous&cards=184');
+    });
+  });
+
   it('sends AI off on a signed-out Drive upload despite a leftover localStorage key', async () => {
     globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
     stubGoogleDrivePicked();
@@ -5860,6 +5902,36 @@ describe('claiming a held deck after sign-in', () => {
     expect(
       screen.getByRole('button', { name: /Semester Pass/ })
     ).toBeInTheDocument();
+  });
+
+  it('tells the account to re-upload when the rest of a preview could not be saved', async () => {
+    signIn();
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi
+        .fn()
+        .mockResolvedValue({ cardCount: 21, cardsHeldBack: 163 }),
+      claimHeldDeck: vi.fn().mockResolvedValue({
+        status: 200,
+        downloadKey: 'owner-key.apkg',
+        cardCount: 21,
+        deckName: 'notes',
+        kind: 'signup',
+        error: null,
+        cardsHeldBack: 163,
+        heldForPlan: false,
+      }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText(
+        'A free account gets the first 21. Get a pass, then drop the file again for all 184.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/saved for 7 days/)).not.toBeInTheDocument();
   });
 
   it('shows no pass offer after a full sign-up claim', async () => {

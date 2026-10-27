@@ -4,7 +4,7 @@
   "readyShown": "{{total}} kaarten klaar, {{shown}} getoond",
   "fileTotal": "Dit bestand maakt {{total}} kaarten",
   "everyCard": "Krijg nu alle kaarten",
-  "gateBody": "Neem een pass en upload het bestand daarna opnieuw voor allemaal. Een gratis account krijgt de eerste {{cap}}.",
+  "gateBody": "Neem een pass en zet het bestand daarna opnieuw neer voor allemaal. Een gratis account krijgt de eerste {{cap}}.",
   "anonBody": "Zonder account krijg je {{cap}} kaarten. Een pass haalt de limiet weg, zonder account.",
   "previewSaved": "Een gratis account krijgt de eerste {{shown}}. De rest blijft 7 dagen bewaard: neem een pass en alle {{total}} komen in Downloads, zonder opnieuw te uploaden.",
   "previewNotSaved": "Een gratis account krijgt de eerste {{shown}}. Neem een pass en zet het bestand daarna opnieuw neer voor alle {{total}}.",

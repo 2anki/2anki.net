@@ -2828,8 +2828,8 @@ class UploadService {
         cardLimit =
           options == null ? remaining : Math.min(remaining, options.previewCap);
       } else if (options != null) {
-        // No free cards left: the claim is refused at the monthly limit below,
-        // so save the deck for a pass first instead of losing it.
+        // No free cards left: save the deck for a pass, then refuse at the
+        // monthly limit before building a deck that would be thrown away.
         await this.holdFileForPlan(
           file,
           owner,
@@ -2837,6 +2837,11 @@ class UploadService {
           options.heldCards,
           requestId
         );
+        await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
+          userId: owner,
+          candidateCardCount: options.heldCards,
+          isPaying: false,
+        });
       }
     }
 

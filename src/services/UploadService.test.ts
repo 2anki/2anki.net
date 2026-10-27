@@ -5996,6 +5996,21 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('still redirects to the wall when the card-count flag reads fail', async () => {
+    mockGetFeatureFlag.mockImplementation((key: unknown) =>
+      key === 'limit_wall_pass_first' || key === 'anonymous_day_pass_card'
+        ? Promise.reject(new Error('db down'))
+        : Promise.resolve(false)
+    );
+    mockPartial([{ name: 'deck', cardCount: 130 }]);
+    const req = buildEligibleRequest();
+    const { res, redirectedTo } = responseWithRedirect();
+
+    await serviceUnderTest().handleUpload(req, res);
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
+  });
+
   it('appends the card count to the wall when the pass-first flag is on', async () => {
     mockGetFeatureFlag.mockImplementation((key: unknown) =>
       Promise.resolve(key === 'limit_wall_pass_first')
@@ -6478,7 +6493,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
   it('saves the deck for a pass before refusing a preview claim with no free cards left', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
-    mockPartial([{ name: 'deck', cardCount: 184 }]);
+    const execute = mockPartial([{ name: 'deck', cardCount: 184 }]);
     const heldDeck = new InMemoryHeldDeckRepository();
     const service = new UploadService(
       buildRepository(),
@@ -6502,6 +6517,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       )
     ).rejects.toBeInstanceOf(MonthlyLimitError);
 
+    expect(execute).not.toHaveBeenCalled();
     expect(heldDeck.rows).toHaveLength(1);
     expect(heldDeck.rows[0]).toMatchObject({
       anon_id: planHoldKey('4242'),
