@@ -121,7 +121,14 @@ Watch for 15 minutes after the deploy. Any regression → step 8 revert.
 
 Runs on the success path only (healthy deploy, or a merge with no deploy) — skip if you're headed to step 8 instead. "Merge" here means `state: MERGED` from step 4; the branch only exists to delete once that's confirmed.
 
-If this checkout is still on the just-merged branch: `git checkout main && git pull --ff-only`, then `git branch -D <branch>` (squash-merges leave the tip unreachable from main, so `-d` refuses), `git fetch --prune origin`, and `git worktree remove <path>` if a dedicated worktree carried this PR. Skip silently if the checkout is already on a different branch — nothing to clean up here.
+Delete the PR's local branch by name (`headRefName` from step 1), wherever the checkout is now:
+
+1. If a worktree has `<branch>` checked out (`git worktree list --porcelain`) and `git -C <path> status --porcelain` is empty, `git worktree remove <path>`. A dirty worktree stays; name it in the report.
+2. If this checkout is on `<branch>`, `git checkout main && git pull --ff-only`.
+3. If `git rev-list --count <headRefOid>..<branch>` is `0` (no commits beyond what merged), `git branch -D <branch>` (squash-merges leave the tip unreachable from main, so `-d` refuses). Otherwise keep it and name it in the report.
+4. `git fetch --prune origin`.
+
+Do not skip this because the checkout already moved to another branch. Agents go back to `main` while CI runs, and a PR built in an agent worktree was never on this checkout. Under the old "only if still on the branch" rule, both cases left the branch behind: nine squash-merged branches had piled up by 2026-10-27.
 
 ## 8. Failure → revert
 
