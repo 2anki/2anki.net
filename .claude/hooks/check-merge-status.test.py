@@ -95,5 +95,143 @@ class DeviationsViolationTest(unittest.TestCase):
         self.assertIn("Deviations from spec", violation)
 
 
+REACH_TABLE = (
+    "## Who else this reaches\n"
+    "| Population | Proof |\n"
+    "| --- | --- |\n"
+    "| signed-in free | `UploadPage.test.tsx` > keeps the held-back notice |\n"
+)
+
+
+def files(*paths):
+    return [{"path": p} for p in paths]
+
+
+def user_visible_pr(body, *paths, title="fix: keep the held-back notice"):
+    return {
+        "title": title,
+        "commits": commits(title),
+        "files": files(*paths),
+        "body": body,
+    }
+
+
+class IsUserVisiblePrTest(unittest.TestCase):
+    def test_feat_and_fix_titles_count(self):
+        for title in ("feat: x", "fix: x", "fix(web): x", "feat!: x", "FIX: x"):
+            self.assertTrue(check_merge_status.is_user_visible_pr({"title": title, "commits": []}), title)
+
+    def test_a_feat_commit_under_a_chore_title_counts(self):
+        pr = {"title": "chore: tidy", "commits": commits("chore: tidy", "feat: new gate")}
+        self.assertTrue(check_merge_status.is_user_visible_pr(pr))
+
+    def test_other_prefixes_do_not_count(self):
+        for title in ("chore: x", "refactor: x", "test: x", "build(deps): x", "docs: fix typo", ""):
+            pr = {"title": title, "commits": commits(title)}
+            self.assertFalse(check_merge_status.is_user_visible_pr(pr), title)
+
+    def test_missing_title_and_commits_do_not_count(self):
+        self.assertFalse(check_merge_status.is_user_visible_pr({}))
+
+
+class IsReachSourceTest(unittest.TestCase):
+    def test_server_and_web_source_count(self):
+        for path in (
+            "src/controllers/UploadController.ts",
+            "web/src/pages/UploadPage/UploadPage.tsx",
+            "web/src/locales/en/upload.json",
+            "web/src/styles/base.css",
+        ):
+            self.assertTrue(check_merge_status.is_reach_source(path), path)
+
+    def test_tests_fixtures_snapshots_changelog_and_docs_do_not(self):
+        for path in (
+            "src/lib/parser/DeckParser.test.ts",
+            "web/src/pages/UploadPage/UploadPage.test.tsx",
+            "src/lib/x.spec.ts",
+            "src/services/NotionService/BlockHandler/__tests__/helpers.ts",
+            "src/lib/parser/golden/__snapshots__/a.snap",
+            "src/test/fixtures/page.html",
+            "src/test/test-utils.ts",
+            "web/src/test/fixtures/deck.json",
+            "web/src/pages/WhatsNewPage/changelog/2026-10-27-x.json",
+            "src/lib/parser/FEATURE.md",
+            "src/controllers/CLAUDE.md",
+        ):
+            self.assertFalse(check_merge_status.is_reach_source(path), path)
+
+    def test_paths_outside_src_do_not(self):
+        for path in (".claude/hooks/x.py", "CLAUDE.md", "migrations/1_x.js", "package.json", "srcs/x.ts"):
+            self.assertFalse(check_merge_status.is_reach_source(path), path)
+
+
+class ReachSectionTextTest(unittest.TestCase):
+    def test_reads_text_up_to_the_next_heading(self):
+        body = "## What\nx\n## Who else this reaches\n- free: test A\n## Risks\nnone"
+        self.assertEqual(check_merge_status.reach_section_text(body), "- free: test A")
+
+    def test_absent_heading_is_none(self):
+        self.assertIsNone(check_merge_status.reach_section_text("## What\nx"))
+        self.assertIsNone(check_merge_status.reach_section_text(None))
+
+    def test_heading_level_and_case_are_flexible(self):
+        self.assertEqual(
+            check_merge_status.reach_section_text("### who else this reaches\nfree: test"),
+            "free: test",
+        )
+
+
+class HasReachSectionTest(unittest.TestCase):
+    def test_table_section_passes(self):
+        self.assertTrue(check_merge_status.has_reach_section(REACH_TABLE))
+
+    def test_empty_or_placeholder_sections_fail(self):
+        for body in (
+            "## Who else this reaches\n\n## Risks\nx",
+            "## Who else this reaches\n<!-- list populations -->\n## Risks",
+            "## Who else this reaches\nTBD",
+            "## Who else this reaches\n- N/A",
+            "## Who else this reaches\n- TODO\n",
+            "## Who else this reaches",
+            "## Who else this reaches\n| Population | Proof |\n| --- | --- |\n## Risks",
+            "## How\nno section",
+            "",
+            None,
+        ):
+            self.assertFalse(check_merge_status.has_reach_section(body), repr(body))
+
+
+class ReachViolationTest(unittest.TestCase):
+    def test_fix_touching_web_src_without_section_violates(self):
+        pr = user_visible_pr("## What\nx", "web/src/pages/UploadPage/UploadPage.tsx")
+        violation = check_merge_status.reach_violation(pr)
+        self.assertIsNotNone(violation)
+        self.assertIn("Who else this reaches", violation)
+
+    def test_feat_touching_src_without_section_violates(self):
+        pr = user_visible_pr("", "src/usecases/x.ts", title="feat: new gate")
+        self.assertIsNotNone(check_merge_status.reach_violation(pr))
+
+    def test_fix_with_section_passes(self):
+        pr = user_visible_pr(REACH_TABLE, "src/usecases/x.ts")
+        self.assertIsNone(check_merge_status.reach_violation(pr))
+
+    def test_chore_touching_src_is_unaffected(self):
+        pr = user_visible_pr("", "src/usecases/x.ts", title="chore: rename")
+        self.assertIsNone(check_merge_status.reach_violation(pr))
+
+    def test_fix_touching_only_tests_and_changelog_is_unaffected(self):
+        pr = user_visible_pr(
+            "",
+            "src/usecases/x.test.ts",
+            "web/src/pages/WhatsNewPage/changelog/2026-10-27-x.json",
+        )
+        self.assertIsNone(check_merge_status.reach_violation(pr))
+
+    def test_fix_touching_only_the_harness_is_unaffected(self):
+        pr = user_visible_pr("", ".claude/hooks/check-merge-status.py", "CLAUDE.md")
+        self.assertIsNone(check_merge_status.reach_violation(pr))
+
+
 if __name__ == "__main__":
     unittest.main()
