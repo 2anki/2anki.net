@@ -456,7 +456,9 @@ function UploadForm({
   const downloadRef = useRef<HTMLAnchorElement>(null);
   // The files behind the last local submit, kept so a rescue button can send
   // them back with the chosen rule. Remote (Dropbox, Drive) submits clear it:
-  // those bytes never reach the browser, so no button is offered for them.
+  // those bytes never reach the browser, so no button is offered for them. A
+  // PDF unlocked with its password clears it too: sent back without the
+  // password, it fails.
   const [rescueFiles, setRescueFiles] = useState<File[]>([]);
   const lastFormDataRef = useRef<FormData | null>(null);
   const [waitingForDeck, setWaitingForDeck] = useState(false);
@@ -1159,9 +1161,8 @@ function UploadForm({
       : null;
 
   // Offered only where the click brings Claude cards back: credits spent on
-  // the deck mean Claude already wrote it, whatever this browser sent; two
-  // pages make one card keeps a PDF away from Claude; and a PDF with no
-  // readable text would stop at the page-image question again.
+  // the deck mean Claude already wrote it, whatever this browser sent; and two
+  // pages make one card keeps a PDF away from Claude.
   const aiRebuildFormat =
     rescueFiles.length === 1 ? aiRebuildFormatOf(rescueFiles[0].name) : null;
   const aiRebuildEligible =
@@ -1173,7 +1174,6 @@ function UploadForm({
     !sampleRun &&
     cardsHeldBack === 0 &&
     creditsUsed === 0 &&
-    pdfFallbackMode == null &&
     thinDeckAiOffer == null &&
     aiRebuildFormat != null &&
     !(
@@ -2496,6 +2496,7 @@ function UploadForm({
       {!aiOn &&
         cardsHeldBack === 0 &&
         (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
+        aiRebuildOffer == null &&
         isThinPdfOrTxtDeck(cardCount, currentFilename()) && (
           <div className={formStyles.warningInline}>
             <ThinDeckNotice
@@ -3300,6 +3301,7 @@ function UploadForm({
 
       if (request.status === 200) {
         setLockedPdfInfo(null);
+        setRescueFiles([]);
         await applyConversionSuccess(request, conversionSuccessHandlers);
         return;
       }
