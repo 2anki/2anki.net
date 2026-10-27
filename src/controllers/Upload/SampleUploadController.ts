@@ -5,6 +5,7 @@ import {
   RateLimiter,
 } from '../../lib/rateLimit/InMemoryRateLimiter';
 import { hashIp, resolveClientIp } from '../../lib/rateLimit/ipHelpers';
+import { isDeploySmokeRequest } from '../../lib/http/isDeploySmokeRequest';
 import { ConvertSampleDeckUseCase } from '../../usecases/uploads/ConvertSampleDeckUseCase';
 import { getOwnerId } from '../../lib/User/getOwner';
 import { track } from '../../services/events/track';
@@ -57,11 +58,17 @@ export class SampleUploadController {
     }
     res.attachment(`/${deckName}`);
 
-    track('sample_conversion_succeeded', {
-      userId: getOwnerId(res),
-      anonymousId: resolveAnonId(req),
-      props: { source: 'sample', card_count: cardCount },
-    });
+    if (isDeploySmokeRequest(req)) {
+      console.info(
+        `[deploy-smoke] sample conversion served ${cardCount} cards; analytics event skipped`
+      );
+    } else {
+      track('sample_conversion_succeeded', {
+        userId: getOwnerId(res),
+        anonymousId: resolveAnonId(req),
+        props: { source: 'sample', card_count: cardCount },
+      });
+    }
 
     return res.status(200).send(apkg);
   }

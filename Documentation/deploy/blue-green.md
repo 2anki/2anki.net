@@ -18,7 +18,8 @@ incident.
 | Piece | Where | Owner |
 |---|---|---|
 | `ecosystem.blue-green.config.js` | repo | two apps: `server-blue` (`PORT=3000`), `server-green` (`PORT=3001`) |
-| `scripts/deploy-blue-green.sh` | repo | the cutover: start next color → health-check → swap Apache → drain old color |
+| `scripts/deploy-blue-green.sh` | repo | the cutover: start next color → health-check → smoke-check → swap Apache → drain old color |
+| `scripts/prod-smoke.ts` | repo | the smoke check: pages, app bundle and a real sample conversion against one base URL (logic in `src/lib/deploySmoke/`) |
 | `/etc/apache2/conf-2anki-upstream.conf` | prod, generated | HTTP `ProxyPass`/`ProxyPassReverse`, plus `timeout=900` `ProxyPass` lines for `/api/upload` and `/api/apkg`; rewritten by the script each deploy |
 | `/etc/apache2/conf-2anki-ws-upstream.conf` | prod, generated | the Ankify WebSocket `RewriteRule` (`/v/*`); rewritten by the script each deploy |
 | four Apache vhosts (`000-2anki*`, `000-beta*`) | prod, manual one-time edit | each `Include`s the upstream file(s) instead of static directives — see [One-time Apache setup](#one-time-apache-setup) |
@@ -133,7 +134,8 @@ scripts/deploy-blue-green.sh
 ```
 
 What it does: reads `~/.deploy_color`, starts the other color, waits up to 30s
-for its `/api/version` to report `GIT_SHA`, rewrites both Apache includes (HTTP
+for its `/api/version` to report `GIT_SHA`, runs the [smoke check](#smoke-check)
+against the new color's own port, rewrites both Apache includes (HTTP
 and WebSocket) to the new port, `apachectl graceful` once, verifies
 `https://2anki.net/api/version` reports the new sha, waits
 `OLD_COLOR_DRAIN_SECONDS` (default 15) for Apache's pre-reload worker children to
@@ -149,9 +151,52 @@ health check passes left those children pointed at a dead port, so they returned
 503 with `(111)Connection refused: AH00957` in the Apache error log. Pausing
 before the kill lets them retire against a still-live backend.
 
-If the new color fails its health check, the script deletes it and exits non-zero
-— the current color never stopped serving. If the post-swap public check fails,
-it rewrites both includes back to the old color's port, reloads, and exits.
+If the new color fails its health check or its smoke check, the script deletes
+it and exits non-zero — the current color never stopped serving, and the
+workflow restores the last-good build on disk (`scripts/deploy-restore-last-good.sh`).
+If the post-swap public check fails, it rewrites both includes back to the old
+color's port, reloads, and exits.
+
+## Smoke check
+
+`/api/version` reporting the right sha proves the process booted, not that it
+serves what users get. #4730 (2026-10-15) served the home shell, with the home
+`<title>` and canonical, on every prerendered landing page for six days behind
+a green health check, until #4901 fixed it. The smoke check runs before the
+swap, against `http://127.0.0.1:<next port>`, so a failing build is never
+switched to. It checks:
+
+- `/`, `/upload/`, `/pricing/` and a handful of prerendered landing pages
+  (`/pdf-to-anki/`, `/notion-to-anki/`, `/convert/`, two `/convert/*`, one
+  `/answers/*`) return 200, the app shell (`<div id="root">` + module script)
+  and their own canonical; every page but `/` must have a title different from
+  the home page's. The list is `DEPLOY_SMOKE_PAGES` in
+  `src/lib/deploySmoke/runDeploySmoke.ts`.
+- The app bundle the home page loads (on the asset CDN) returns 200.
+- `POST /api/upload/sample` returns an `.apkg` with the sample deck's card
+  count — the parser and the `create_deck` Python bridge, end to end.
+
+What it writes on prod: one `request_logs` row per request (the same
+observability rows the `/api/version` health check writes). The sample
+conversion writes no upload, job or held-deck row and counts against no card
+allowance; its one analytics event, `sample_conversion_succeeded`, is skipped
+for smoke traffic. Smoke traffic is a request carrying `x-2anki-deploy-smoke: 1`
+on a direct loopback connection with no `X-Forwarded-For` — Apache adds that
+header to everything it proxies, so outside traffic cannot match. It skips the
+event only; every limit still applies. The app log line
+`[deploy-smoke] sample conversion served N cards` marks each skipped event.
+
+Run it by hand against any base URL (read-only except the sample conversion,
+which records a normal `sample_conversion_succeeded` event when it is not on
+loopback):
+
+```bash
+node_modules/.bin/tsx scripts/prod-smoke.ts http://127.0.0.1:3001
+```
+
+Each probe prints `[smoke] ok <label>` or `[smoke] FAIL <reason>`, then one
+`[smoke] passed|FAILED against <url>` summary line; the summary is what to read
+in the deploy run log.
 
 ## Dry-run
 

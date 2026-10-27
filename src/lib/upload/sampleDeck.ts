@@ -19,6 +19,8 @@ const CARDS: ReadonlyArray<readonly [string, string]> = [
   ['What gas do plants take in during photosynthesis?', 'Carbon dioxide.'],
 ];
 
+export const SAMPLE_DECK_CARD_COUNT = CARDS.length;
+
 function toggle([question, answer]: readonly [string, string]): string {
   return `<details class="toggle" open=""><summary>${question}</summary><div class="indented"><p>${answer}</p></div></details>`;
 }

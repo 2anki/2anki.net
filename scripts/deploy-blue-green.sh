@@ -56,6 +56,20 @@ wait_for_sha() {
   return 1
 }
 
+# /api/version only proves the process booted. The smoke check proves the
+# build serves what users get: each prerendered landing page with its own
+# title and canonical, the app bundle, and a real deck from the sample
+# conversion. #4730 served the home shell on every landing page for six days
+# behind a green health check. See scripts/prod-smoke.ts.
+run_smoke() {
+  local base="$1"
+  if [ "$DRY_RUN" = "1" ]; then
+    log "DRY_RUN: smoke check $base"
+    return 0
+  fi
+  "$SERVER_DIR/node_modules/.bin/tsx" "$SERVER_DIR/scripts/prod-smoke.ts" "$base"
+}
+
 # Apache's global Timeout (300 s) also bounds how long mod_proxy waits for the
 # backend. A synchronous upload whose transfer plus conversion runs past it gets
 # a 502 from Apache while Node keeps working (issue #4562: 2 to 15 a day). The
@@ -151,6 +165,14 @@ fi
 
 if ! wait_for_sha "http://127.0.0.1:$NEXT_PORT$HEALTH_PATH"; then
   log "server-$NEXT failed health check on :$NEXT_PORT — removing it; current color still live"
+  run pm2 delete "server-$NEXT"
+  exit 1
+fi
+
+# Smoke the new color on its own port while Apache still routes every user to
+# the current one, so a failing build is never switched to.
+if ! run_smoke "http://127.0.0.1:$NEXT_PORT"; then
+  log "server-$NEXT failed the smoke check on :$NEXT_PORT — removing it; current color still live"
   run pm2 delete "server-$NEXT"
   exit 1
 fi
