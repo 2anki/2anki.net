@@ -1,7 +1,10 @@
 import { EventsSink } from '../../services/events/EventsSink';
 import { KnownEvent } from '../../types/AnalyticsEvents';
 import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
-import { SERVER_ONLY_EVENT_PROP_KEYS } from '../../lib/events/serverEventProps';
+import {
+  SERVER_ONLY_EVENT_NAMES,
+  SERVER_ONLY_EVENT_PROP_KEYS,
+} from '../../lib/events/serverEventProps';
 
 const PII_KEY_PATTERN = /email|token|password|filename|content|title/i;
 const PROPS_MAX_BYTES = 1024;
@@ -19,6 +22,12 @@ export class TrackEventUseCase {
 
   execute(input: TrackEventInput): void {
     const { name, unknown, userId, anonymousId, props } = input;
+    if (SERVER_ONLY_EVENT_NAMES.has(name)) {
+      console.warn(
+        `[events] dropped client-submitted server-only event: ${sanitizeForLog(name)}`
+      );
+      return;
+    }
     if (unknown) {
       console.warn(`[events] unknown event received: ${sanitizeForLog(name)}`);
     }

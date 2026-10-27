@@ -106,6 +106,9 @@ import { scheduleExportDriftCanary } from './lib/parser/canary/scheduleExportDri
 import { scheduleObservabilityCleanup } from './lib/observability/jobs/scheduleObservabilityCleanup';
 import { scheduleMemoryUsageLog } from './lib/observability/jobs/scheduleMemoryUsageLog';
 import { scheduleConversionStallWatch } from './lib/observability/jobs/conversionStallWatch';
+import { scheduleMetricTripwire } from './lib/observability/jobs/scheduleMetricTripwire';
+import { MetricTripwireRepository } from './data_layer/MetricTripwireRepository';
+import { RunMetricTripwireUseCase } from './usecases/ops/RunMetricTripwireUseCase';
 import { scheduleMcpOAuthReaper } from './lib/mcp/jobs/scheduleMcpOAuthReaper';
 import { McpAuthorizationCodeRepository } from './data_layer/McpAuthorizationCodeRepository';
 import { McpTokenRepository } from './data_layer/McpTokenRepository';
@@ -442,6 +445,21 @@ const serve = async () => {
       setIntervalFn: setInterval,
     })
   );
+
+  const metricTripwireRepo = new MetricTripwireRepository(database);
+  const runMetricTripwireUseCase = new RunMetricTripwireUseCase(
+    metricTripwireRepo,
+    (subject, body) =>
+      emailService.sendAiSpendAlertEmail(SUPPORT_CC_ADDRESS, subject, body)
+  );
+  scheduleMetricTripwire(runMetricTripwireUseCase, {
+    lastRunAt: () => metricTripwireRepo.lastCheckedAt(),
+    lock: jobLock,
+  })
+    .then(registerSchedulerTimer)
+    .catch((error) => {
+      console.error('[metric-tripwire] failed to schedule:', error);
+    });
 
   registerSchedulerTimer(
     scheduleMcpOAuthReaper({

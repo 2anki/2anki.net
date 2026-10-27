@@ -10,6 +10,7 @@ export const JOB_LOCK_KEYS = {
   pauseResumeWarnings: 21003,
   inactiveUserDeletions: 21004,
   passEndingEmails: 21005,
+  metricTripwire: 21006,
 } as const;
 
 export interface IJobLockRepository {
