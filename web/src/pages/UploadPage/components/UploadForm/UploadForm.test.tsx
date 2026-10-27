@@ -5634,6 +5634,7 @@ describe('UploadForm monthly-limit partial offer', () => {
       cards_held_back: 300,
       saved: true,
     });
+    expect(screen.queryByText('How was your experience?')).toBeNull();
   });
 
   it('shows no offer when nothing was held back', async () => {
@@ -5645,6 +5646,7 @@ describe('UploadForm monthly-limit partial offer', () => {
     await uploadWithHeaders({ 'X-Card-Count': '42' });
 
     expect(screen.queryByText(/This deck has 42 of/)).toBeNull();
+    expect(screen.getByText('How was your experience?')).toBeInTheDocument();
     expect(track).not.toHaveBeenCalledWith(
       'monthly_partial_offer_shown',
       expect.anything()
