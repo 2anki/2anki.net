@@ -31,14 +31,16 @@ NAME_GLOBS = (
     "checkmonthly",
     "passes",
     # Payment code that is not named after Stripe. Over the six months to
-    # 2026-10-27 this added two rail PRs, both to the ops failed-payments chart.
+    # 2026-10-27 it would have flagged two more commits, both to the ops
+    # failed-payments chart.
     "payment",
     # Apple in-app purchases are a second payment rail with no Stripe in the name.
     "/iap",
     "storekit",
     "appletransaction",
     # Stores of login, reset, claim and session tokens. A bare "token" glob would
-    # also catch countVisionTokens and designTokens; these added no rail PRs.
+    # also catch countVisionTokens and designTokens. The globs below would have
+    # flagged no extra commits.
     "tokenrepository",
     "tokensrepository",
     "resettoken",
