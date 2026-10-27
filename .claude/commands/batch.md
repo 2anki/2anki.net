@@ -14,7 +14,7 @@ Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are defe
 - `TIMEOUT_PER_TASK = 10 min`
 - `HARD_BLOCK_PATHS` — a flag, not a block: entries touching these paths still dispatch, with `/security-review` before `/ship`. Any change touching:
   - any path that matches a `NAME_GLOBS` entry in `.claude/hooks/hard_rails.py` (case-insensitive, changelog entries excluded, as `is_rail_path` does). Read the tuple there; this file keeps no copy.
-  - the paid-access and token files in its `EXPLICIT_FILES`: `src/lib/isPaying.ts`, `src/lib/ankify/access.ts`, `src/data_layer/NotionRespository.ts`, `src/routes/middleware/configureUserLocal.ts`, `src/usecases/users/ConfirmEmailChangeUseCase.ts`, `src/routes/middleware/RejectDuplicatePurchase.ts` and `src/lib/misc/{hashToken,unHashToken,hmacToken}.ts`. Its other explicit files and prefixes (deploy, migrations, `.claude/`, production limits) get `/ship`'s own rail checks instead.
+  - the paid-access and token files in its `EXPLICIT_FILES`: `src/lib/isPaying.ts`, `src/lib/ankify/access.ts`, `src/data_layer/NotionRespository.ts`, `src/routes/middleware/configureUserLocal.ts`, `src/usecases/users/ConfirmEmailChangeUseCase.ts`, `src/routes/middleware/RejectDuplicatePurchase.ts` and `src/lib/misc/{hashToken,unHashToken,hmacToken}.ts`. Its other explicit files and prefixes (`.github/`, deploy scripts, migrations, `.claude/`, `CLAUDE.md`, production limits) get `/ship`'s own rail checks instead.
   Dispatch them too: the worker runs `/security-review` on the diff, and `/ship` adds its own fresh read-only reviewers before the marker.
 
 ## Step 1 — pre-check
@@ -113,5 +113,5 @@ Exit 0 if every dispatched task ended in `merged` or `needs-review`. Exit 1 if a
 
 - The dispatcher does not read or edit code in the repo. It reads `gh pr` metadata, dispatches workers, and prints a table. If you find yourself running `gh pr diff` or reading source files, stop — that is the worker's job.
 - The dispatcher does not call `gh pr merge`. Only the worker merges, and only under the worker's own rules.
-- Never widen `HARD_BLOCK_PATHS` silently. Adding a path is a separate PR to this file.
+- Never widen `HARD_BLOCK_PATHS` silently. A new glob is a separate PR to `NAME_GLOBS` in `.claude/hooks/hard_rails.py`; a new explicit file is a separate PR to both that file's `EXPLICIT_FILES` and the list above.
 - The worker template is the contract — if you change inputs or outputs here, update `.claude/commands/batch-tasks/dependabot.md` in the same PR.
