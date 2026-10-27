@@ -401,9 +401,24 @@ export async function extractPdfText(
     ...maxOption,
   } as Parameters<typeof pdfParse>[1];
 
+  // pdf.js 1.10 reads a PDF's objects from the start of the ArrayBuffer behind
+  // its input, and clones a Buffer with `new Buffer(value)`, which puts a PDF
+  // under 4 KB into Node's shared pool: a small upload could be parsed from an
+  // earlier upload's bytes. Hand it bytes that fill their own ArrayBuffer: any
+  // view into a larger ArrayBuffer is copied, whatever its size or offset (a
+  // check on size or offset alone reopens the leak). If pdf-parse moves to a
+  // pdf.js that transfers its input, the no-copy branch would empty the
+  // caller's Buffer, which the page-image fallback reads again.
+  const ownsItsMemory =
+    buffer.byteOffset === 0 && buffer.byteLength === buffer.buffer.byteLength;
+  const pdfBytes = ownsItsMemory
+    ? new Uint8Array(buffer.buffer)
+    : new Uint8Array(buffer);
+
   let result;
   try {
-    result = await pdfParse(buffer, options);
+    // pdf-parse's types say Buffer, but it only forwards the bytes to pdf.js.
+    result = await pdfParse(pdfBytes as Buffer, options);
   } catch (error) {
     if (isPasswordException(error)) {
       console.info('[extractPdfText] password-protected PDF detected', {
