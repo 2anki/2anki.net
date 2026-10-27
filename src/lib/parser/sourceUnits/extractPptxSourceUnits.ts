@@ -167,6 +167,10 @@ function isTitleShape(shapeXml: string): boolean {
   return hasAttribute(shapeXml, 'p:ph', /\stype="(?:title|ctrTitle)"/);
 }
 
+function isSlideChrome(shapeXml: string): boolean {
+  return hasAttribute(shapeXml, 'p:ph', /\stype="(?:sldNum|dt|ftr|hdr)"/);
+}
+
 function inferRole(slideXml: string, visibleText: string): SourceUnitRole {
   if (visibleText.trim() === '') {
     return hasPicture(slideXml) ? 'image' : 'body';
@@ -185,6 +189,7 @@ function splitSlideText(slideXml: string): {
   const paragraphs: string[] = [];
 
   for (const shape of tagBlocks(slideXml, 'p:sp')) {
+    if (isSlideChrome(shape)) continue;
     const shapeParagraphs = extractParagraphs(shape);
     if (shapeParagraphs.length === 0) continue;
     if (title === '' && isTitleShape(shape)) {

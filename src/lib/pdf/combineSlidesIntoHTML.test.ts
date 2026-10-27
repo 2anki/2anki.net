@@ -82,6 +82,82 @@ describe('combineSlidesIntoHTML', () => {
     expect(card.back).toContain('<ul><li>Energy currency</li></ul>');
   });
 
+  it('skips a numbered text box and fronts the first line with words when a slide has no title', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          paragraphs: ['03', 'Endocytosis', 'Phagocytosis: cell eating'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('Endocytosis');
+    expect(card.back).toBe(
+      '<ul><li>03</li><li>Phagocytosis: cell eating</li></ul><img src="pdf-x/slide-1.png" />'
+    );
+  });
+
+  it('keeps the first paragraph as the front when no line on an untitled slide has a letter', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ paragraphs: ['2024', '1.5'] })],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('2024');
+    expect(card.back).toBe(
+      '<ul><li>1.5</li></ul><img src="pdf-x/slide-1.png" />'
+    );
+  });
+
+  it('keeps the title on the front of a titled slide whose first paragraph is a number', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'Mitosis', paragraphs: ['03', 'Prophase'] })],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('Mitosis');
+    expect(card.back).toBe(
+      '<ul><li>03</li><li>Prophase</li></ul><img src="pdf-x/slide-1.png" />'
+    );
+  });
+
+  it.each(['細胞分裂', 'Митоз', 'Μίτωση', 'الانقسام'])(
+    'counts %s as a line with words',
+    (heading) => {
+      const html = combineSlidesIntoHTML(
+        [slide({ paragraphs: ['12', heading] })],
+        [],
+        'lecture.pdf',
+        WORKSPACE
+      );
+
+      expect(cards(html)[0].front).toBe(heading);
+    }
+  );
+
+  it('does not read the name of an escaped symbol as words', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ paragraphs: ['&lt; 0.05', 'Significant result'] })],
+      [],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('Significant result');
+    expect(card.back).toBe('<ul><li>&lt; 0.05</li></ul>');
+  });
+
   it('puts the slide image on the front of an image-only slide and never repeats it on the back', () => {
     const html = combineSlidesIntoHTML(
       [slide({ role: 'image', hasPicture: true, speakerNotes: 'A diagram' })],

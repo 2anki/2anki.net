@@ -30,14 +30,29 @@ function speakerNotesBlock(notes: string): string {
   return `<hr />${body}`;
 }
 
+const LETTER = /\p{L}/u;
+const XML_ENTITY_REFERENCE = /&(?:[a-z]+|#\d+|#x[\da-f]+);/gi;
+
+function hasLetter(paragraph: string): boolean {
+  return LETTER.test(paragraph.replaceAll(XML_ENTITY_REFERENCE, ' '));
+}
+
+function frontParagraphIndex(paragraphs: string[]): number {
+  const firstWithLetter = paragraphs.findIndex((paragraph) =>
+    hasLetter(paragraph)
+  );
+  return firstWithLetter === -1 ? 0 : firstWithLetter;
+}
+
 function slideCard(slide: SlideUnit, image: string): string | null {
   let front = slide.title;
   let remaining = slide.paragraphs;
   let imageOnBack = image;
 
   if (front === '' && remaining.length > 0) {
-    front = remaining[0];
-    remaining = remaining.slice(1);
+    const frontIndex = frontParagraphIndex(remaining);
+    front = remaining[frontIndex];
+    remaining = remaining.filter((_, i) => i !== frontIndex);
   }
   if (front === '' && image !== '') {
     front = image;

@@ -372,3 +372,97 @@ describe('extractPptxSourceUnits — slide structure for text-first cards', () =
     expect(units.map((u) => u.title)).toEqual(['Real']);
   });
 });
+
+function shapeXml(placeholder: string, paragraphs: string[]): string {
+  return `<p:sp>
+        <p:nvSpPr><p:nvPr>${placeholder}</p:nvPr></p:nvSpPr>
+        <p:txBody>
+          ${paragraphs.map((p) => `<a:p><a:r><a:t>${p}</a:t></a:r></a:p>`).join('')}
+        </p:txBody>
+      </p:sp>`;
+}
+
+function slideNumberShapeXml(placeholder: string, slideNumber: string): string {
+  return `<p:sp>
+        <p:nvSpPr><p:nvPr>${placeholder}</p:nvPr></p:nvSpPr>
+        <p:txBody>
+          <a:p><a:fld id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}" type="slidenum"><a:rPr lang="en-US"/><a:t>${slideNumber}</a:t></a:fld></a:p>
+        </p:txBody>
+      </p:sp>`;
+}
+
+function slideOfShapesXml(shapes: string[]): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="${NS_A}" xmlns:p="${NS_P}">
+  <p:cSld>
+    <p:spTree>
+      ${shapes.join('')}
+    </p:spTree>
+  </p:cSld>
+</p:sld>`;
+}
+
+describe('extractPptxSourceUnits — slide chrome', () => {
+  it.each([
+    ['sldNum', '16'],
+    ['dt', '10/6/2026'],
+    ['ftr', 'Cell Biology, Lecture 3'],
+    ['hdr', 'Draft for review'],
+  ])('leaves the %s placeholder off the slide text', (type, text) => {
+    const xml = slideOfShapesXml([
+      shapeXml('<p:ph type="title"/>', ['Mitosis']),
+      shapeXml('<p:ph idx="1"/>', ['Cell division']),
+      shapeXml(`<p:ph type="${type}" sz="quarter" idx="12"/>`, [text]),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('Mitosis');
+    expect(unit.paragraphs).toEqual(['Cell division']);
+    expect(unit.visibleText).toBe('Mitosis\nCell division');
+  });
+
+  it('drops a slide number drawn ahead of the text on a slide with no title', () => {
+    const xml = slideOfShapesXml([
+      slideNumberShapeXml('<p:ph idx="12" type="sldNum"/>', '19'),
+      shapeXml('', ['Exocytosis', 'Ca2+ influx triggers fusion']),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('');
+    expect(unit.paragraphs).toEqual([
+      'Exocytosis',
+      'Ca2+ influx triggers fusion',
+    ]);
+  });
+
+  it('reads a picture slide whose only text is chrome as a slide with no text', () => {
+    const xml = slideOfShapesXml([
+      '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>',
+      shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', ['Cell Biology']),
+      slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', '7'),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit).toMatchObject({
+      title: '',
+      paragraphs: [],
+      visibleText: '',
+      role: 'image',
+      hasPicture: true,
+    });
+  });
+
+  it('keeps a number typed into an ordinary text box', () => {
+    const xml = slideOfShapesXml([
+      shapeXml('', ['03']),
+      shapeXml('', ['Endocytosis']),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.paragraphs).toEqual(['03', 'Endocytosis']);
+  });
+});
