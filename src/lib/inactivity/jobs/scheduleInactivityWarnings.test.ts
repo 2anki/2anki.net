@@ -5,6 +5,7 @@ import {
   INACTIVITY_WARNING_INTERVAL_MS,
 } from './scheduleInactivityWarnings';
 import type { SendInactivityWarningsUseCase } from '../../../usecases/ops/SendInactivityWarningsUseCase';
+import type { EventsSink } from '../../../services/events/EventsSink';
 import {
   __resetFeatureFlagModuleForTests,
   __setFeatureFlagDependencies,
@@ -77,6 +78,26 @@ describe('scheduleInactivityWarnings', () => {
       false,
       INACTIVITY_WARNING_DAILY_LIMIT
     );
+    clearInterval(handle);
+  });
+
+  it('marks its batch record as server-written so a client copy cannot stand in for it', async () => {
+    const useCase = makeUseCase();
+    const eventsSink = { record: vi.fn(), flush: vi.fn() };
+
+    const handle = await scheduleInactivityWarnings(
+      useCase as unknown as SendInactivityWarningsUseCase,
+      {
+        intervalMs: 1000,
+        lastRunAt: vi.fn().mockResolvedValue(null),
+        eventsSink: eventsSink as unknown as EventsSink,
+      }
+    );
+
+    expect(eventsSink.record).toHaveBeenCalledWith({
+      name: 'email_batch_sent',
+      props: { campaign: 'inactivity', count: 3, server_marker: true },
+    });
     clearInterval(handle);
   });
 

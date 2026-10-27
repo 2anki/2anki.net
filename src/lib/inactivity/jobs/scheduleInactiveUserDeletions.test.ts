@@ -5,6 +5,7 @@ import {
   INACTIVE_USER_DELETION_INTERVAL_MS,
 } from './scheduleInactiveUserDeletions';
 import type { DeleteInactiveUsersUseCase } from '../../../usecases/ops/DeleteInactiveUsersUseCase';
+import type { EventsSink } from '../../../services/events/EventsSink';
 
 function makeUseCase(
   result = { count: 3, dryRun: false }
@@ -33,6 +34,26 @@ describe('scheduleInactiveUserDeletions', () => {
       false,
       INACTIVE_USER_DELETION_DAILY_LIMIT
     );
+    clearInterval(handle);
+  });
+
+  it('marks its run record as server-written so a client copy cannot stand in for it', async () => {
+    const useCase = makeUseCase();
+    const eventsSink = { record: vi.fn(), flush: vi.fn() };
+
+    const handle = await scheduleInactiveUserDeletions(
+      useCase as unknown as DeleteInactiveUsersUseCase,
+      {
+        intervalMs: 1000,
+        lastRunAt: vi.fn().mockResolvedValue(null),
+        eventsSink: eventsSink as unknown as EventsSink,
+      }
+    );
+
+    expect(eventsSink.record).toHaveBeenCalledWith({
+      name: 'inactive_users_deleted',
+      props: { count: 3, server_marker: true },
+    });
     clearInterval(handle);
   });
 

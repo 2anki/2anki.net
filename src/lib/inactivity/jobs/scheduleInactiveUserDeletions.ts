@@ -2,6 +2,7 @@ import type { DeleteInactiveUsersUseCase } from '../../../usecases/ops/DeleteIna
 import type { IJobLockRepository } from '../../../data_layer/JobLockRepository';
 import { JOB_LOCK_KEYS } from '../../../data_layer/JobLockRepository';
 import type { EventsSink } from '../../../services/events/EventsSink';
+import { withServerMarker } from '../../events/serverEventProps';
 import { makeExclusiveBatchRunner } from '../../scheduling/exclusiveBatch';
 import { isOverdue, type LastRunAt } from './lastRunAt';
 
@@ -30,7 +31,7 @@ export const scheduleInactiveUserDeletions = async (
       if (options.eventsSink != null) {
         options.eventsSink.record({
           name: 'inactive_users_deleted',
-          props: { count: result.count },
+          props: withServerMarker({ count: result.count }),
         });
       }
     } catch (error) {

@@ -5,6 +5,13 @@ import {
   PAYWALL_REASON_PATTERNS,
   REASON_PROP_EXPRESSION,
 } from './classifyFailureReason';
+import { withServerMarker } from '../lib/events/serverEventProps';
+
+// Job run records trust rows carrying the server marker once any exist. Until
+// a job writes its first marked row, its unmarked server-shaped rows from
+// before the marker shipped still count, so a deploy never makes a job
+// overdue (an early re-run of a mail batch or of inactive-account deletion).
+const SERVER_MARKER_JSON = JSON.stringify(withServerMarker({}));
 
 export interface EventRow {
   name: string;
@@ -111,13 +118,22 @@ export class EventsRepository implements IEventsRepository {
   }
 
   async lastEventAt(name: string, campaign?: string): Promise<Date | null> {
-    const query = this.database(this.table).where('name', name);
+    const query = this.database(this.table)
+      .select(
+        this.database.raw(
+          'coalesce(max(created_at) filter (where props @> ?::jsonb), max(created_at)) as last_at',
+          [SERVER_MARKER_JSON]
+        )
+      )
+      .where('name', name);
 
     if (campaign != null) {
       query.whereRaw("props->>'campaign' = ?", [campaign]);
     }
 
-    const row = (await query.max('created_at as last_at').first()) as
+    query.whereNull('user_id').whereNull('anonymous_id');
+
+    const row = (await query.first()) as
       | { last_at: Date | string | null }
       | undefined;
 

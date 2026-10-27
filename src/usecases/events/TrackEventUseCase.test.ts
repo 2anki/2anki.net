@@ -119,8 +119,12 @@ describe('TrackEventUseCase', () => {
     'conversion_succeeded',
     'conversion_failed',
     'upload_started',
+    'email_batch_sent',
+    'inactive_users_deleted',
+    'ai_spend_alert_sent',
+    'ai_credits_exhausted',
   ])(
-    'drops a client-submitted %s so it cannot suppress or skew the tripwire',
+    'drops a client-submitted %s so it cannot stand in for a server record',
     async (name) => {
       const { repo, inserted } = makeFakeRepository();
       const sink = new EventsSink(repo, { flushThreshold: 1 });

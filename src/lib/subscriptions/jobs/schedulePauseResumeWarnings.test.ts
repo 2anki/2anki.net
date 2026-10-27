@@ -58,7 +58,7 @@ describe('schedulePauseResumeWarnings', () => {
 
     expect(record).toHaveBeenCalledWith({
       name: 'email_batch_sent',
-      props: { campaign: 'pause_resume', count: 5 },
+      props: { campaign: 'pause_resume', count: 5, server_marker: true },
     });
     clearInterval(handle);
   });

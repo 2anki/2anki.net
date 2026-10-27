@@ -85,7 +85,7 @@ describe('schedulePassEndingEmails', () => {
 
     expect(eventsSink.record).toHaveBeenCalledWith({
       name: 'email_batch_sent',
-      props: { campaign: 'pass_ending', count: 3 },
+      props: { campaign: 'pass_ending', count: 3, server_marker: true },
     });
     clearInterval(handle);
   });

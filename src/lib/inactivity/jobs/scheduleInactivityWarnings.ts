@@ -3,6 +3,7 @@ import type { IJobLockRepository } from '../../../data_layer/JobLockRepository';
 import { JOB_LOCK_KEYS } from '../../../data_layer/JobLockRepository';
 import type { EventsSink } from '../../../services/events/EventsSink';
 import { outboundCampaignEmailsEnabled } from '../../featureFlags/outboundCampaignEmails';
+import { withServerMarker } from '../../events/serverEventProps';
 import { makeExclusiveBatchRunner } from '../../scheduling/exclusiveBatch';
 import { isOverdue, type LastRunAt } from './lastRunAt';
 
@@ -38,7 +39,10 @@ export const scheduleInactivityWarnings = async (
       if (options.eventsSink != null) {
         options.eventsSink.record({
           name: 'email_batch_sent',
-          props: { campaign: 'inactivity', count: result.count },
+          props: withServerMarker({
+            campaign: 'inactivity',
+            count: result.count,
+          }),
         });
       }
     } catch (error) {

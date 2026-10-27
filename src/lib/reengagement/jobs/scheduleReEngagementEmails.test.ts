@@ -104,7 +104,7 @@ describe('scheduleReEngagementEmails', () => {
 
     expect(sink.record).toHaveBeenCalledWith({
       name: 'email_batch_sent',
-      props: { campaign: 'reengagement', count: 7 },
+      props: { campaign: 'reengagement', count: 7, server_marker: true },
     });
     clearInterval(handle);
   });
