@@ -5,9 +5,9 @@ or changes a golden snapshot, without the PR body saying so.
 
 Why: #4589 removed the held-back-cards notice for signed-in free users as a
 side effect of an anonymous-visitor feature, and its body said the other paths
-were unchanged. Purchases after that notice fell from about 9% to 1.5% for 19
-days until #4789 restored it. Golden snapshots can be regenerated with `-u` and
-merged with nobody explaining the diff.
+were unchanged. Purchases after that notice dropped sharply for 19 days until
+#4789 restored it. Golden snapshots can be regenerated with `-u` and merged
+with nobody explaining the diff.
 
 Rule 1, removed for users. Any of these needs a filled `## Removed for users`
 section in the PR body:
@@ -15,45 +15,49 @@ section in the PR body:
     (`web/src/lib/i18n/locales/en/*.json`; en is the source of truth, so the
     other nine locales are not read). Strings are matched by key path, built
     from the object openers inside each diff hunk; when an opener sits outside
-    the hunk the path is a suffix of the real one. Not counted: a key path
-    re-added in the same file where one path ends with the other (a copy edit,
-    or a move within the file), or the same value added in any en file (a
-    rename or a move between namespaces).
+    the hunk the path is a suffix of the real one. Not counted: a key added in
+    the same file at the same indentation whose path equals the removed one or
+    ends with it (a copy edit, or a move within its parent); or the same value
+    added in any en file (a rename or a move between namespaces). Lines over
+    4000 characters are skipped.
   - A deleted `web/src/**/*.tsx` component (tests and stories excluded) whose
-    name contains Notice, Warning, Banner, Alert, Callout or Toast (or the
-    plural) as a PascalCase word (`FooNotice/index.tsx` counts by its folder
-    name). Not
-    counted: a rename, or a file with the same component name that survives
-    anywhere in the PR.
-  - A removed `const` in `src/**/*.ts` whose UPPER_SNAKE name has a WARNING or
-    NOTICE word (`AI_CREDITS_EXHAUSTED_WARNING_CODE`): the codes and texts the
-    server sends with a conversion. Tests, `.d.ts`, `src/data_layer/public/`,
-    `src/test/` and fixtures are excluded. Not counted: the same name declared
-    on an added line anywhere in the diff.
+    name contains Notice, Warning, Banner, Alert, Callout or Toast, singular or
+    plural, as a PascalCase word (`FooNotice/index.tsx` counts by its folder
+    name). Not counted: a rename, or a file with the same component name that
+    survives anywhere in the PR.
+  - A removed `const` in `src/**/*.ts` whose UPPER_SNAKE name has a WARNING(S)
+    or NOTICE(S) word (`AI_CREDITS_EXHAUSTED_WARNING_CODE`): the codes and
+    texts the server sends with a conversion. Tests, `.d.ts`,
+    `src/data_layer/public/`, `src/test/` and fixtures are excluded. Not
+    counted: the same name declared on an added line in another checked server
+    source.
 Rule 2, snapshot changes. A modified, deleted or renamed file under a `golden/`
-directory that is not a .ts/.tsx/.js source (the `__snapshots__/*.snap` files,
-golden fixtures) needs a `## Snapshot changes` section that names each changed
-file by its basename. Newly added files do not count.
+directory that is not a .ts/.tsx/.js/.mjs/.cjs source (the
+`__snapshots__/*.snap` files, golden fixtures) needs a `## Snapshot changes`
+section that names each changed file by its basename. Newly added files and
+add-only edits (no deleted lines) do not count.
 
-A section is empty when it holds only whitespace, HTML comments, checkboxes,
-a literal `<why>`, or a bare placeholder: none, none removed, no, n/a, not
-applicable, nothing, nothing removed, no change(s), no user-facing (or
-user-visible) change(s), tbd, todo. "None, the strings moved to X" passes: that
-is the out for a false positive, and it puts the reason on the record. Any one
-filled copy of the heading counts; a trailing colon on the heading is fine.
+A section is empty when it holds only whitespace, HTML comments, checkboxes or
+a bare placeholder, optionally followed by "for users": none, none removed, no,
+n/a, not applicable, nothing, nothing removed, no change(s), no user-facing (or
+user-visible) change(s), tbd, todo. A section containing `<why>` anywhere is
+also empty. "None, the strings moved to X" passes: that is the out for a false
+positive, and it puts the reason on the record. Every filled copy of the
+heading counts, and a trailing colon on the heading is fine.
 
-Known false positives: a string moved to another en file with a changed value;
-a deleted component whose name merely contains Alert (an AlertDialog shell); a
-WARNING constant that never reaches a user (an email job interval). Known false
-negatives: a notice rendered inline in a component that survives (the JSX goes,
-the file stays); a notice component renamed to a name without a notice word;
-user-facing English literals outside the locale files; a server warning built
-from a string literal with no named constant; a removed string whose value is
-common enough to be added elsewhere in en ("Cancel"); a nested string whose
-parent opener sits outside the hunk, when the same file gains a key with the
-same leaf under another parent; a PR past the file list gh returns; and
-anything in a diff GitHub refuses to serve (too large), where the string and
-constant checks fail open while the file-list checks still run.
+Known false positives: a string moved to another en file with a changed value,
+or moved to a different nesting depth; a deleted component whose name merely
+contains Alert (an AlertDialog shell); a WARNING constant that never reaches a
+user (an email job interval). Known false negatives: a notice rendered inline
+in a component that survives (the JSX goes, the file stays); a notice
+component renamed to a name without a notice word; user-facing English
+literals outside the locale files; a server warning built from a string
+literal with no named constant; a removed string whose value is common enough
+to be added elsewhere in en ("Cancel"); a nested string swapped for one with
+the same leaf at the same depth, when an opener on either side sits outside
+its hunk; a PR past the file list gh returns; and anything in a diff GitHub
+refuses to serve (too large), where the string and constant checks fail open
+while the file-list checks still run.
 
 Mirrors check-changelog-on-merge.py: fetches the PR via gh, fails open on any
 tooling error, exempts dependabot.
@@ -75,6 +79,7 @@ REMOVED_SECTION = "Removed for users"
 SNAPSHOT_SECTION = "Snapshot changes"
 MAX_LISTED = 15
 MAX_KEY_DEPTH = 16
+MAX_KEY_LENGTH = 200
 MAX_LISTED_KEY_LENGTH = 120
 MAX_LINE_LENGTH = 4000
 GH_TIMEOUT_SECONDS = 15
@@ -226,38 +231,39 @@ def locale_entries(lines, side_marker):
         opener = LOCALE_OPENER.match(stripped)
         if opener:
             if len(stack) < MAX_KEY_DEPTH:
-                stack.append((indent, opener.group(1)))
+                stack.append((indent, opener.group(1)[:MAX_KEY_LENGTH]))
             continue
         entry = LOCALE_ENTRY.match(stripped)
         if entry and marker == side_marker:
-            key_path = ".".join([key for _, key in stack] + [entry.group(1)])
-            entries.append((key_path, entry.group(2)))
+            key_path = ".".join([key for _, key in stack] + [entry.group(1)[:MAX_KEY_LENGTH]])
+            entries.append((key_path, entry.group(2), indent))
     return entries
 
 
+def dotted_suffixes(key_path):
+    parts = key_path.split(".")
+    return [".".join(parts[start:]) for start in range(len(parts))]
+
+
 def removed_locale_strings(hunks):
-    removed, added_paths, added_values = [], set(), set()
+    removed, added_values = [], set()
+    added_full, added_suffixes = set(), set()
     for hunk in hunks:
         if is_en_locale(hunk["old"]):
-            removed.extend((hunk["old"], key, value) for key, value in locale_entries(hunk["lines"], "-"))
+            removed.extend((hunk["old"], *entry) for entry in locale_entries(hunk["lines"], "-"))
         if is_en_locale(hunk["new"]):
-            for key, value in locale_entries(hunk["lines"], "+"):
-                added_paths.add((hunk["new"], key))
+            for key, value, indent in locale_entries(hunk["lines"], "+"):
+                added_full.add((hunk["new"], indent, key))
+                added_suffixes.update((hunk["new"], indent, suffix) for suffix in dotted_suffixes(key))
                 added_values.add(value)
     findings = []
-    for path, key, value in removed:
-        if value in added_values or re_added_in_file(path, key, added_paths):
+    for path, key, value, indent in removed:
+        if value in added_values or (path, indent, key) in added_suffixes:
+            continue
+        if any((path, indent, suffix) in added_full for suffix in dotted_suffixes(key)):
             continue
         findings.append(f'{os.path.basename(path)}: {shorten(key, MAX_LISTED_KEY_LENGTH)} ("{shorten(value, 60)}")')
     return findings
-
-
-def same_key_path(left, right):
-    return left == right or left.endswith("." + right) or right.endswith("." + left)
-
-
-def re_added_in_file(path, key, added_paths):
-    return any(added_path == path and same_key_path(key, added_key) for added_path, added_key in added_paths)
 
 
 def shorten(text, limit):
@@ -307,7 +313,9 @@ def changed_snapshots(files):
     return [
         f.get("path", "")
         for f in files
-        if f.get("changeType") != "ADDED" and is_golden_snapshot(f.get("path", ""))
+        if f.get("changeType") != "ADDED"
+        and f.get("deletions") != 0
+        and is_golden_snapshot(f.get("path", ""))
     ]
 
 
@@ -337,23 +345,21 @@ def strip_html_comments(text):
     return "".join(kept)
 
 
-def filled_section(body, heading):
+def filled_sections(body, heading):
     pattern = re.compile(
-        rf"^#{{2}}[ \t]+{re.escape(heading)}[ \t]*:?[ \t\r]*$\n?(.*?)(?=^#{{1,2}}[ \t]|\Z)",
+        rf"^#{{2}}[ \t]+{re.escape(heading)}[ \t]*(?::[ \t]*)?\r?$\n?(.*?)(?=^#{{1,2}}[ \t]|\Z)",
         re.M | re.S | re.I,
     )
-    for match in pattern.finditer(strip_html_comments(body)):
-        text = match.group(1).strip()
-        if is_filled(text):
-            return text
-    return None
+    texts = (match.group(1).strip() for match in pattern.finditer(strip_html_comments(body)))
+    return [text for text in texts if is_filled(text)]
 
 
 def is_filled(text):
     lowered = text.lower()
     if "<why>" in lowered:
         return False
-    return re.sub(r"[^a-z]", "", CHECKBOX.sub("", lowered)) not in PLACEHOLDERS
+    letters = re.sub(r"[^a-z]", "", CHECKBOX.sub("", lowered))
+    return letters.removesuffix("forusers") not in PLACEHOLDERS
 
 
 def listed(items):
@@ -367,7 +373,9 @@ def removal_problem(removals):
     return (
         f"It removes things users see, and the body has no filled `## {REMOVED_SECTION}` "
         "section:\n" + listed(removals) + "\n\n"
-        f"  Add `## {REMOVED_SECTION}` saying who loses what, on which path.\n"
+        f"  Add `## {REMOVED_SECTION}` to the PR body (`gh pr edit <n> --body-file ...`)\n"
+        "  saying who loses what, and in which flow (\"signed-in free users no longer\n"
+        "  see how many cards were held back on /upload\").\n"
         "  If nothing is lost (a string moved with new wording, a constant users never\n"
         "  see), write \"None, \" followed by the reason.\n\n"
         "  Why: #4589 dropped a notice for signed-in free users while its body said the\n"
@@ -379,11 +387,23 @@ def snapshot_problem(snapshots):
     return (
         f"It changes golden snapshots the `## {SNAPSHOT_SECTION}` section does not "
         "explain:\n" + listed(snapshots) + "\n\n"
-        f"  Add `## {SNAPSHOT_SECTION}` with one line per file, naming it by basename,\n"
-        "  saying what the output now does differently and why that is right.\n\n"
+        f"  Add or extend `## {SNAPSHOT_SECTION}` in the PR body with one line per file,\n"
+        "  naming it by basename and saying what the output now does differently and\n"
+        "  why that is right.\n\n"
         "  Why: a snapshot regenerated with `-u` merges whatever the code now emits;\n"
         "  the section is the only record that someone read the new cards."
     )
+
+
+def find_removals(files, pr_ref):
+    removals = removed_notice_components(files)
+    if not needs_diff(files):
+        return removals
+    diff_text = fetch_diff(pr_ref)
+    if diff_text is None:
+        return removals
+    hunks = parse_hunks(diff_text)
+    return removed_locale_strings(hunks) + removals + removed_server_warnings(hunks)
 
 
 def main():
@@ -413,20 +433,16 @@ def main():
     raw_body = pr_data.get("body")
     body = raw_body if isinstance(raw_body, str) else ""
 
-    removals = removed_notice_components(files)
-    if needs_diff(files):
-        diff_text = fetch_diff(pr_ref)
-        if diff_text is not None:
-            hunks = parse_hunks(diff_text)
-            removals = removed_locale_strings(hunks) + removals + removed_server_warnings(hunks)
-
     problems = []
-    if removals and filled_section(body, REMOVED_SECTION) is None:
-        problems.append(removal_problem(removals))
+    if not filled_sections(body, REMOVED_SECTION):
+        removals = find_removals(files, pr_ref)
+        if removals:
+            problems.append(removal_problem(removals))
 
     snapshots = changed_snapshots(files)
-    snapshot_text = filled_section(body, SNAPSHOT_SECTION) or ""
-    snapshots = [p for p in snapshots if os.path.basename(p) not in snapshot_text]
+    if snapshots:
+        snapshot_text = "\n".join(filled_sections(body, SNAPSHOT_SECTION))
+        snapshots = [p for p in snapshots if os.path.basename(p) not in snapshot_text]
     if snapshots:
         problems.append(snapshot_problem(snapshots))
 

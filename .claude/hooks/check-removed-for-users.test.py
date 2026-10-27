@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -399,6 +400,18 @@ class TestFileListEdges(unittest.TestCase):
         fake = gh_responder(pr_json([file_entry(PARSER_SNAP, "ADDED", 0)]))
         self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
 
+    def test_add_only_edit_to_existing_snapshot_allows(self):
+        fake = gh_responder(pr_json([file_entry(PARSER_SNAP, "MODIFIED", 0)]))
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+
+    def test_snapshot_names_split_across_two_sections_allow(self):
+        body = (
+            "## Snapshot changes\n- conversionGolden.test.ts.snap: image kept.\n\n## Risks\nx\n"
+            "## Snapshot changes\n- renderBlocksGolden.test.ts.snap: icon span added.\n"
+        )
+        fake = gh_responder(pr_json([file_entry(PARSER_SNAP), file_entry(RENDER_SNAP)], body))
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+
     def test_null_author_still_runs_the_gate(self):
         payload = json.dumps({"author": None, "body": "", "files": [file_entry(PARSER_SNAP)]})
         self.assertEqual(run_hook("gh pr merge 1", gh_responder(payload))["result"], "deny")
@@ -443,6 +456,9 @@ class TestSectionParsing(unittest.TestCase):
     def test_heading_with_trailing_colon_allows(self):
         self.assertEqual(self.deny_or_allow("## Removed for users:\nFree users lose the count.\n"), "allow")
 
+    def test_placeholder_followed_by_for_users_denies(self):
+        self.assertEqual(self.deny_or_allow("## Removed for users\nNone removed for users.\n"), "deny")
+
     def test_any_filled_copy_of_the_heading_counts(self):
         body = "## Removed for users\n\n## Risks\nx\n## Removed for users\nFree users lose the count.\n"
         self.assertEqual(self.deny_or_allow(body), "allow")
@@ -465,7 +481,70 @@ DEEP_NESTING = nested_hunk(EN_LOCALE, [
 ])
 
 
+NESTED_TO_FLAT = nested_hunk(EN_LOCALE, [
+    '   "intro": "Hello",',
+    '-  "notice": {',
+    '-    "title": "You have 5 cards held back",',
+    '-    "body": "Upgrade to get them"',
+    '-  },',
+    '+  "title": "Sign up",',
+    '+  "body": "Create a free account",',
+    '   "outro": "Bye"',
+])
+
+FLAT_TO_NESTED = nested_hunk(EN_LOCALE, [
+    '   "intro": "Hello",',
+    '-  "title": "You have 5 cards held back",',
+    '+  "gate": {',
+    '+    "title": "Sign up"',
+    '+  },',
+    '   "outro": "Bye"',
+])
+
+
+class TestBoundedWork(unittest.TestCase):
+    def assert_fast(self, func, limit_seconds=2.0):
+        started = time.monotonic()
+        func()
+        self.assertLess(time.monotonic() - started, limit_seconds)
+
+    def test_many_removed_and_added_keys_match_in_linear_time(self):
+        openers = [f' {"  " * depth}"{"o" * 3900}{depth}": {{' for depth in range(1, 17)]
+        removed = [f'-{"  " * 17}"r{n}": "old {n}",' for n in range(6000)]
+        added = [f'+{"  " * 17}"a{n}": "new {n}",' for n in range(6000)]
+        hunks = hook.parse_hunks(nested_hunk(EN_LOCALE, openers + removed + added))
+        self.assert_fast(lambda: hook.removed_locale_strings(hunks))
+
+    def test_opener_keys_are_length_capped(self):
+        diff = nested_hunk(EN_LOCALE, [f' "{"o" * 3900}": {{', '-  "leaf": "gone"'])
+        removed = hook.locale_entries(hook.parse_hunks(diff)[0]["lines"], "-")
+        self.assertEqual(len(removed[0][0]), hook.MAX_KEY_LENGTH + len(".leaf"))
+
+    def test_heading_with_long_trailing_whitespace_parses_in_linear_time(self):
+        body = "## Removed for users" + " " * 65000 + "x\n"
+        self.assert_fast(lambda: hook.filled_sections(body, hook.REMOVED_SECTION), 0.5)
+
+    def test_filled_section_skips_the_diff_fetch(self):
+        body = "## Removed for users\nFree users lose the held-back count.\n"
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF)
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertFalse(any(c[:3] == ["gh", "pr", "diff"] for c in fake.calls))
+
+
 class TestKeyPathEdges(unittest.TestCase):
+    def test_nested_block_replaced_by_flat_keys_denies(self):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), NESTED_TO_FLAT)
+        result = run_hook("gh pr merge 1", fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("notice.title", result["reason"])
+        self.assertIn("notice.body", result["reason"])
+
+    def test_flat_key_replaced_by_nested_block_denies(self):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), FLAT_TO_NESTED)
+        result = run_hook("gh pr merge 1", fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("anonymousPartial.json: title", result["reason"])
+
     def test_move_within_file_with_new_wording_allows(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), MOVE_AND_REWORD)
         self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
