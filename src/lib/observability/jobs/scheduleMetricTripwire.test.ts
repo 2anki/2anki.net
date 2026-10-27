@@ -95,6 +95,21 @@ describe('scheduleMetricTripwire', () => {
     clearInterval(green);
   });
 
+  it('still schedules the interval when the boot read fails', async () => {
+    const { useCase, execute } = makeUseCase();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const handle = await scheduleMetricTripwire(useCase, {
+      lastRunAt: vi.fn().mockRejectedValue(new Error('db not ready')),
+      log: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(METRIC_TRIPWIRE_INTERVAL_MS);
+
+    expect(execute).toHaveBeenCalledTimes(1);
+    clearInterval(handle);
+    errorSpy.mockRestore();
+  });
+
   it('checks again on the interval', async () => {
     const { useCase, execute } = makeUseCase();
 

@@ -68,6 +68,7 @@ const IDENTITY_SQL = 'coalesce(user_id::text, anonymous_id)';
 const UTC_DAY_SQL = "date_trunc('day', created_at at time zone 'UTC')";
 const ALERT_EVENT: KnownEvent = 'metric_tripwire_alert_sent';
 const CHECK_EVENT: KnownEvent = 'metric_tripwire_checked';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function buildConversionOutcomeQuery(
   db: Knex,
@@ -173,7 +174,9 @@ export function buildAlertExistsQuery(
   metric: TripwireMetricKey,
   day: string
 ): Knex.QueryBuilder {
+  const dayEnd = new Date(Date.parse(`${day}T00:00:00.000Z`) + DAY_MS);
   return serverRowsQuery(db, ALERT_EVENT, { metric, day })
+    .where('created_at', '>=', dayEnd)
     .select('id')
     .limit(1);
 }

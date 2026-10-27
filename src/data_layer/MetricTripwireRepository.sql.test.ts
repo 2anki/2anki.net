@@ -117,7 +117,8 @@ describe('MetricTripwireRepository generated SQL', () => {
 
     expect(sql).toBe(
       'select "id" from "events" where "name" = ? and "user_id" is null ' +
-        'and "anonymous_id" is null and props @> ?::jsonb limit ?'
+        'and "anonymous_id" is null and props @> ?::jsonb ' +
+        'and "created_at" >= ? limit ?'
     );
     expect(bindings).toEqual([
       'metric_tripwire_alert_sent',
@@ -126,6 +127,7 @@ describe('MetricTripwireRepository generated SQL', () => {
         day: '2026-10-26',
         server_marker: true,
       }),
+      new Date('2026-10-27T00:00:00.000Z'),
       1,
     ]);
   });

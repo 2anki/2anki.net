@@ -39,9 +39,13 @@ export const scheduleMetricTripwire = async (
   });
 
   if (options.lastRunAt != null) {
-    const lastRun = await options.lastRunAt();
-    if (isOverdue(lastRun, METRIC_TRIPWIRE_INTERVAL_MS, Date.now())) {
-      await runBatch();
+    try {
+      const lastRun = await options.lastRunAt();
+      if (isOverdue(lastRun, METRIC_TRIPWIRE_INTERVAL_MS, Date.now())) {
+        await runBatch();
+      }
+    } catch (error) {
+      console.error('[metric-tripwire] boot check skipped:', error);
     }
   }
 
