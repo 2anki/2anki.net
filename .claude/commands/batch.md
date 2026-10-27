@@ -13,9 +13,8 @@ Pilot scope is the `dependabot` task type. `dead-code` and `copy-sweep` are defe
 - `MAX_CONCURRENT = 4`
 - `TIMEOUT_PER_TASK = 10 min`
 - `HARD_BLOCK_PATHS` — a flag, not a block: entries touching these paths still dispatch, with `/security-review` before `/ship`. Any change touching:
-  - anything matching `auth`, `stripe`, `payment`, `/iap`, `storekit`, `appletransaction`, `tokenrepository`, `tokensrepository`, `resettoken` or `passrepository` in the diff path, case-insensitive (`src/services/AuthenticationService.ts` signs JWTs)
-  - `src/lib/misc/{hashToken,unHashToken,hmacToken}.ts`, `src/data_layer/NotionRespository.ts`, `src/routes/middleware/configureUserLocal.ts`, `src/usecases/users/ConfirmEmailChangeUseCase.ts`, `src/routes/middleware/RejectDuplicatePurchase.ts`
-  - These are the payment, auth and token triggers in `.claude/hooks/hard_rails.py`; change both together.
+  - any path that matches a `NAME_GLOBS` entry in `.claude/hooks/hard_rails.py` (case-insensitive, changelog entries excluded, as `is_rail_path` does). Read the tuple there; this file keeps no copy.
+  - the paid-access and token files in its `EXPLICIT_FILES`: `src/lib/isPaying.ts`, `src/lib/ankify/access.ts`, `src/data_layer/NotionRespository.ts`, `src/routes/middleware/configureUserLocal.ts`, `src/usecases/users/ConfirmEmailChangeUseCase.ts`, `src/routes/middleware/RejectDuplicatePurchase.ts` and `src/lib/misc/{hashToken,unHashToken,hmacToken}.ts`. Its other explicit files and prefixes (deploy, migrations, `.claude/`, production limits) get `/ship`'s own rail checks instead.
   Dispatch them too: the worker runs `/security-review` on the diff, and `/ship` adds its own fresh read-only reviewers before the marker.
 
 ## Step 1 — pre-check

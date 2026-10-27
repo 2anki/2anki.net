@@ -123,7 +123,7 @@ Return one of these exact status strings to the dispatcher:
 
 (`open` and `timeout` are dispatcher-side statuses; you never produce them.)
 
-Include the PR number and the head branch name in your return payload so the dispatcher can render its table. For a PR that needed a security review, also return the `/security-review` verdict and the head SHA it covered; the dispatcher lists both in its report.
+Include the PR number and the head branch name in your return payload so the dispatcher can render its table. For a PR that needed a security review, also return the `/security-review` verdict as `clean` or `findings: <n>`, and the head SHA it covered; the dispatcher lists both in its report.
 
 ## Rules
 
