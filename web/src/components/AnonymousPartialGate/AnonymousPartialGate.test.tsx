@@ -144,3 +144,69 @@ describe('AnonymousPartialGate', () => {
     });
   });
 });
+
+describe('AnonymousPartialGate — pass-first', () => {
+  function renderPassFirst(
+    held: {
+      cardCount: number;
+      cardsHeldBack: number;
+      totalCards: number;
+      dayPassCard?: boolean;
+    } = { cardCount: 21, cardsHeldBack: 163, totalCards: 184 }
+  ) {
+    return render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AnonymousPartialGate held={held} passFirst />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+
+  it('takes precedence over the Day Pass card arm', () => {
+    renderPassFirst({
+      cardCount: 21,
+      cardsHeldBack: 163,
+      totalCards: 184,
+      dayPassCard: true,
+    });
+    expect(screen.getByText('184 cards ready')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Your deck is ready — 184 cards')
+    ).not.toBeInTheDocument();
+  });
+
+  it('states the real count and what a free account gets', () => {
+    renderPassFirst();
+    expect(screen.getByText('184 cards ready')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Get a pass, then drop the file again for all of them. A free account gets the first 21.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/first 100 cards/)).not.toBeInTheDocument();
+  });
+
+  it('leads with the Semester Pass and drops sign-up to a text link after the passes', () => {
+    renderPassFirst();
+    const semester = screen.getByRole('button', {
+      name: /Semester Pass · \$29/,
+    });
+    const day = screen.getByRole('button', { name: /Day Pass · \$6/ });
+    const signUp = screen.getByRole('link', {
+      name: 'Create a free account for the first 21 cards',
+    });
+    expect(
+      semester.compareDocumentPosition(day) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      day.compareDocumentPosition(signUp) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(signUp).toHaveAttribute('href', '/register?redirect=/upload');
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/login?redirect=/upload'
+    );
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+  });
+});

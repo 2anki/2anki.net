@@ -1,0 +1,22 @@
+{
+  "aria": "Receba todos os cartões",
+  "readyTotal": "{{total}} cartões prontos",
+  "readyShown": "{{total}} cartões prontos, {{shown}} exibidos",
+  "fileTotal": "Este arquivo gera {{total}} cartões",
+  "everyCard": "Receba todos os cartões agora",
+  "gateBody": "Compre um passe e envie o arquivo de novo para receber todos. Uma conta grátis recebe os primeiros {{cap}}.",
+  "anonBody": "Sem conta você recebe {{cap}} cartões. Um passe tira o limite, sem precisar de conta.",
+  "previewSaved": "Uma conta grátis recebe os primeiros {{shown}}. O resto fica salvo por 7 dias: compre um passe e os {{total}} chegam em Downloads, sem enviar de novo.",
+  "previewNotSaved": "Uma conta grátis recebe os primeiros {{shown}}. Compre um passe e envie o arquivo de novo para receber os {{total}}.",
+  "semester": "Semester Pass · {{price}}",
+  "semesterHint": "120 dias, sem limite de cartões",
+  "day": "Day Pass · {{price}}",
+  "dayHint": "24 horas, sem limite de cartões",
+  "afterPayRedrop": "Depois de pagar, envie o arquivo de novo para receber todos os cartões.",
+  "afterPayRedropTotal": "Depois de pagar, envie o arquivo de novo para receber os {{total}} cartões.",
+  "freeSignup": "Criar uma conta grátis",
+  "freeSignupCap": "Crie uma conta grátis para os primeiros {{cap}} cartões",
+  "signIn": "Entrar",
+  "starting": "Iniciando o checkout",
+  "checkoutError": "Não foi possível iniciar o pagamento. Tente de novo ou escreva para support@2anki.net."
+}

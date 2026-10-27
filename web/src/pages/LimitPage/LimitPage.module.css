@@ -69,6 +69,13 @@
   margin-bottom: 2.5rem;
 }
 
+.passFirst {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2.5rem;
+}
+
 .singlePlan .planCard {
   width: 100%;
   max-width: 420px;

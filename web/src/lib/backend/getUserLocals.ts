@@ -31,6 +31,7 @@ interface GetUserLocalsResponse {
     ops?: boolean;
     anonymousDayPassCard?: boolean;
     limitWallProPrice?: boolean;
+    limitWallPassFirst?: boolean;
     thinDeckAiOffer?: boolean;
     anonymousAiPreview?: boolean;
     anonymousAiChoice?: boolean;

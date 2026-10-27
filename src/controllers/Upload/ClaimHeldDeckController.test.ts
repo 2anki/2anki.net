@@ -129,6 +129,41 @@ describe('ClaimHeldDeckController', () => {
     expect(capturedStatus()).toBe(410);
   });
 
+  it('POST returns the held-back count when a sign-up claim is cut to the preview', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const converter: HeldDeckConverter = {
+      convertHeldFileForOwner: vi.fn().mockResolvedValue({
+        downloadKey: 'owner-key.apkg',
+        cardCount: 21,
+        cardsHeldBack: 13,
+        deckName: 'notes',
+        heldForPlan: true,
+      }),
+    };
+    const store: HeldFileStore = {
+      getFileContents: vi
+        .fn()
+        .mockResolvedValue({ Body: Buffer.from('<html></html>') }),
+    };
+    const controller = new ClaimHeldDeckController(
+      new ClaimHeldDeckUseCase(repo, store, converter, async () => true)
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse(7);
+
+    await controller.claim(buildRequest(ANON), res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toEqual({
+      downloadKey: 'owner-key.apkg',
+      cardCount: 21,
+      deckName: 'notes',
+      kind: 'signup',
+      cardsHeldBack: 13,
+      heldForPlan: true,
+    });
+  });
+
   it('POST 200s with the download key and fires anonymous_partial_claimed', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo);

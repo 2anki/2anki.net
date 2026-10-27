@@ -111,6 +111,7 @@ import {
   type PartialDeliveryArm,
 } from '../lib/upload/anonymousPartialDelivery';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import {
   anonRecoveryKey,
   readRecoveryToken,
@@ -1363,12 +1364,15 @@ class UploadService {
           anonymousId,
           props: { source, kind: 'anonymous' },
         });
-        const dayPassCard = await getFeatureFlag(
-          ANONYMOUS_DAY_PASS_CARD_FLAG,
-          false
-        );
+        // Both the Day Pass card and the pass-first wall state the deck size.
+        // A failed flag read drops the count, never the redirect.
+        const flagOn = (key: string) =>
+          getFeatureFlag(key, false).catch(() => false);
+        const showsCardCount =
+          (await flagOn(ANONYMOUS_DAY_PASS_CARD_FLAG)) ||
+          (await flagOn(LIMIT_WALL_PASS_FIRST_FLAG));
         return res.redirect(
-          dayPassCard
+          showsCardCount
             ? `/limit?kind=anonymous&cards=${err.cardsFound}`
             : '/limit?kind=anonymous'
         );
@@ -2734,8 +2738,27 @@ class UploadService {
     cardCount: number,
     cardsHeldBack: number
   ): Promise<boolean> {
+    const file = (req.files as UploadedFile[] | undefined)?.[0];
+    if (file == null) {
+      return false;
+    }
+    return this.holdFileForPlan(
+      file,
+      owner,
+      cardCount,
+      cardsHeldBack,
+      res.locals.requestId
+    );
+  }
+
+  private async holdFileForPlan(
+    file: UploadedFile,
+    owner: string,
+    cardCount: number,
+    cardsHeldBack: number,
+    requestId: string | undefined
+  ): Promise<boolean> {
     try {
-      const file = (req.files as UploadedFile[])[0];
       const bytes = await readUploadBytes(file);
       if (bytes == null) {
         return false;
@@ -2753,7 +2776,7 @@ class UploadService {
       return true;
     } catch (error) {
       console.error('[UploadService] could not hold the deck for a plan', {
-        requestId: res.locals.requestId,
+        requestId,
         error: error instanceof Error ? error.message : String(error),
       });
       return false;
@@ -2764,17 +2787,21 @@ class UploadService {
   // runs: the free monthly limit (and its partial truncation), the uploads
   // row, and incrementCardUsage all happen the normal way, so the claimed
   // deck lands in Downloads and counts against the new account's allowance.
+  // A previewCap (the pass-first sign-up claim) cuts the deck further and
+  // saves the source as a plan hold, so a pass releases the rest later.
   async convertHeldFileForOwner(
     owner: string,
     file: UploadedFile,
     paying: boolean,
     source: UploadSource | null,
-    requestId: string | undefined
+    requestId: string | undefined,
+    options?: { previewCap: number; heldCards: number }
   ): Promise<{
     downloadKey: string;
     cardCount: number;
     cardsHeldBack: number;
     deckName: string;
+    heldForPlan?: boolean;
   }> {
     const body = await this.resolveCardOptionInput(owner, {});
     const settings = new CardOption(body as { [key: string]: string });
@@ -2798,7 +2825,23 @@ class UploadService {
       const { cards_used } = await this.usersRepository.getCardUsage(owner);
       const remaining = Math.max(0, MONTHLY_CARD_LIMIT - cards_used);
       if (remaining > 0) {
-        cardLimit = remaining;
+        cardLimit =
+          options == null ? remaining : Math.min(remaining, options.previewCap);
+      } else if (options != null) {
+        // No free cards left: save the deck for a pass, then refuse at the
+        // monthly limit before building a deck that would be thrown away.
+        await this.holdFileForPlan(
+          file,
+          owner,
+          0,
+          options.heldCards,
+          requestId
+        );
+        await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
+          userId: owner,
+          candidateCardCount: options.heldCards,
+          isPaying: false,
+        });
       }
     }
 
@@ -2845,11 +2888,30 @@ class UploadService {
       throw new Error('Could not persist the claimed deck');
     }
     await this.usersRepository.incrementCardUsage(Number(owner), totalCards);
+    const heldBack = cardsHeldBack ?? 0;
+    if (options == null || paying) {
+      return {
+        downloadKey,
+        cardCount: totalCards,
+        cardsHeldBack: heldBack,
+        deckName,
+      };
+    }
+    const heldForPlan =
+      heldBack > 0 &&
+      (await this.holdFileForPlan(
+        file,
+        owner,
+        totalCards,
+        heldBack,
+        requestId
+      ));
     return {
       downloadKey,
       cardCount: totalCards,
-      cardsHeldBack: cardsHeldBack ?? 0,
+      cardsHeldBack: heldBack,
       deckName,
+      heldForPlan,
     };
   }
 

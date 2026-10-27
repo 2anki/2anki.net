@@ -1,0 +1,22 @@
+{
+  "aria": "Zdobądź wszystkie fiszki",
+  "readyTotal": "Gotowe fiszki: {{total}}",
+  "readyShown": "Gotowe fiszki: {{total}}, widoczne: {{shown}}",
+  "fileTotal": "Fiszki z tego pliku: {{total}}",
+  "everyCard": "Zdobądź teraz wszystkie fiszki",
+  "gateBody": "Kup karnet, a potem wrzuć plik jeszcze raz, aby dostać wszystkie. Darmowe konto dostaje pierwsze fiszki (do {{cap}}).",
+  "anonBody": "Bez konta dostajesz do {{cap}} fiszek. Karnet znosi limit, bez zakładania konta.",
+  "previewSaved": "Darmowe konto dostaje pierwsze fiszki (do {{shown}}). Reszta czeka 7 dni: kup karnet, a wszystkie ({{total}}) trafią do Pobranych, bez ponownego wgrywania.",
+  "previewNotSaved": "Darmowe konto dostaje pierwsze fiszki (do {{shown}}). Kup karnet, a potem wrzuć plik jeszcze raz, aby dostać wszystkie ({{total}}).",
+  "semester": "Semester Pass · {{price}}",
+  "semesterHint": "120 dni, bez limitu fiszek",
+  "day": "Day Pass · {{price}}",
+  "dayHint": "24 godziny, bez limitu fiszek",
+  "afterPayRedrop": "Po zapłacie wrzuć plik jeszcze raz, aby dostać wszystkie fiszki.",
+  "afterPayRedropTotal": "Po zapłacie wrzuć plik jeszcze raz, aby dostać wszystkie fiszki ({{total}}).",
+  "freeSignup": "Załóż darmowe konto",
+  "freeSignupCap": "Załóż darmowe konto na pierwsze fiszki (do {{cap}})",
+  "signIn": "Zaloguj się",
+  "starting": "Rozpoczynanie płatności",
+  "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie lub napisz na support@2anki.net."
+}

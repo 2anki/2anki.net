@@ -41,6 +41,7 @@ import { MONTHLY_CARD_LIMIT } from '../lib/limits';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { THIN_DECK_AI_OFFER_FLAG } from '../lib/featureFlags/thinDeckAiOffer';
 import { LIMIT_WALL_PRO_PRICE_FLAG } from '../lib/featureFlags/limitWallProPrice';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
 import {
   ANONYMOUS_AI_CHOICE_FLAG,
@@ -381,6 +382,13 @@ class UsersController {
       }),
       limitWallProPrice: await getFeatureFlag(
         LIMIT_WALL_PRO_PRICE_FLAG,
+        false
+      ).catch((error: unknown) => {
+        console.error('[locals] feature flag read failed', error);
+        return false;
+      }),
+      limitWallPassFirst: await getFeatureFlag(
+        LIMIT_WALL_PASS_FIRST_FLAG,
         false
       ).catch((error: unknown) => {
         console.error('[locals] feature flag read failed', error);

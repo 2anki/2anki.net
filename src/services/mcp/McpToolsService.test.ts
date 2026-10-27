@@ -584,10 +584,10 @@ describe('McpToolsService.convertToDeck', () => {
       kind: 'error',
       code: 'monthly_limit',
       message:
-        "This deck would go over the free plan's 100 cards for this month, so it wasn't created. The count resets on November 1. Plan details: https://2anki.net/documentation/help/limits",
+        "This deck would go over the free plan's 100 cards for this month, so it wasn't created. The count resets on November 1. Plan details: https://2anki.net/pricing/?ref=mcp",
       next_step: {
-        plans_url: 'https://2anki.net/documentation/help/limits',
-        upgrade_url: 'https://2anki.net/documentation/help/limits',
+        plans_url: 'https://2anki.net/pricing/?ref=mcp',
+        upgrade_url: 'https://2anki.net/pricing/?ref=mcp',
       },
     });
     expect(trackMock).toHaveBeenCalledTimes(1);
@@ -597,9 +597,12 @@ describe('McpToolsService.convertToDeck', () => {
         props: { source: 'mcp', surface: 'mcp', kind: 'card_count' },
       })
     );
-    expect((result as { message: string }).message).not.toMatch(
-      /upgrade|pricing|checkout/i
+    // The wording stays neutral; only the plans link itself names /pricing.
+    const prose = (result as { message: string }).message.replace(
+      'https://2anki.net/pricing/?ref=mcp',
+      ''
     );
+    expect(prose).not.toMatch(/upgrade|pricing|checkout/i);
     expect(persist).not.toHaveBeenCalled();
   });
 
@@ -623,7 +626,7 @@ describe('McpToolsService.convertToDeck', () => {
       kind: 'error',
       code: 'monthly_limit',
       next_step: {
-        plans_url: 'https://2anki.net/documentation/help/limits',
+        plans_url: 'https://2anki.net/pricing/?ref=mcp',
         cards_held_back: 2,
       },
     });
@@ -1330,7 +1333,7 @@ describe('McpToolsService.photoToDeck', () => {
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe(
-      "You've used all 5 free photos for this month. The count resets on January 1. Plan details: https://2anki.net/documentation/help/limits"
+      "You've used all 5 free photos for this month. The count resets on January 1. Plan details: https://2anki.net/pricing/?ref=mcp"
     );
     expect(error).toMatchObject({ status: 429, used: 5, limit: 5 });
   });
@@ -1493,12 +1496,12 @@ describe('McpToolsService.createDeck with subdecks', () => {
       kind: 'error',
       code: 'monthly_limit',
       next_step: {
-        plans_url: 'https://2anki.net/documentation/help/limits',
+        plans_url: 'https://2anki.net/pricing/?ref=mcp',
         cards_held_back: expect.any(Number),
       },
     });
     const message = (result as { message: string }).message;
-    expect(message).toContain('https://2anki.net/documentation/help/limits');
+    expect(message).toContain('https://2anki.net/pricing/?ref=mcp');
     expect(message).toMatch(/\d+ cards were held back\. The count resets on /);
     expect(trackMock).toHaveBeenCalledWith(
       'paywall_shown',

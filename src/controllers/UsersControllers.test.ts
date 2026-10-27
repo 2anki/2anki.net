@@ -2788,6 +2788,36 @@ describe('UsersController.getLocals', () => {
     vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
   });
 
+  it('reads the pass-first limit wall flag, off when unread', async () => {
+    vi.mocked(getFeatureFlag).mockImplementation(async (key: string) =>
+      key === 'limit_wall_pass_first' ? true : false
+    );
+    const userService = {
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UsersService;
+    const authService = {
+      getUserFrom: vi.fn().mockResolvedValue(null),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const req = { cookies: {} } as unknown as express.Request;
+    const res = {
+      locals: {},
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
+
+    await controller.getLocals(req, res);
+
+    const { features } = res.json.mock.calls[0][0];
+    expect(features.limitWallPassFirst).toBe(true);
+    expect(features.limitWallProPrice).toBe(false);
+    expect(getFeatureFlag).toHaveBeenCalledWith('limit_wall_pass_first', false);
+    vi.mocked(getFeatureFlag).mockReset().mockResolvedValue(false);
+  });
+
   it('reads the anonymous AI choice flag, off by default', async () => {
     vi.mocked(getFeatureFlag).mockImplementation(async (key: string) =>
       key === 'anonymous_ai_choice' ? true : false

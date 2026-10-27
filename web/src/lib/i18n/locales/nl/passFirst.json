@@ -1,0 +1,22 @@
+{
+  "aria": "Alle kaarten krijgen",
+  "readyTotal": "{{total}} kaarten klaar",
+  "readyShown": "{{total}} kaarten klaar, {{shown}} getoond",
+  "fileTotal": "Dit bestand maakt {{total}} kaarten",
+  "everyCard": "Krijg nu alle kaarten",
+  "gateBody": "Neem een pass en zet het bestand daarna opnieuw neer voor allemaal. Een gratis account krijgt de eerste {{cap}}.",
+  "anonBody": "Zonder account krijg je {{cap}} kaarten. Een pass haalt de limiet weg, zonder account.",
+  "previewSaved": "Een gratis account krijgt de eerste {{shown}}. De rest blijft 7 dagen bewaard: neem een pass en alle {{total}} komen in Downloads, zonder opnieuw te uploaden.",
+  "previewNotSaved": "Een gratis account krijgt de eerste {{shown}}. Neem een pass en zet het bestand daarna opnieuw neer voor alle {{total}}.",
+  "semester": "Semester Pass · {{price}}",
+  "semesterHint": "120 dagen, geen kaartlimiet",
+  "day": "Day Pass · {{price}}",
+  "dayHint": "24 uur, geen kaartlimiet",
+  "afterPayRedrop": "Zet het bestand na het betalen opnieuw neer om alle kaarten te krijgen.",
+  "afterPayRedropTotal": "Zet het bestand na het betalen opnieuw neer om alle {{total}} kaarten te krijgen.",
+  "freeSignup": "Gratis account maken",
+  "freeSignupCap": "Maak een gratis account voor de eerste {{cap}} kaarten",
+  "signIn": "Inloggen",
+  "starting": "Afrekenen starten",
+  "checkoutError": "Afrekenen kon niet starten. Probeer het opnieuw of mail support@2anki.net."
+}

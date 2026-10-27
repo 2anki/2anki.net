@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 import RegisterForm from '../forms/RegisterForm';
 import { AnonymousDayPassOffer } from '../AnonymousDayPassOffer/AnonymousDayPassOffer';
-import { FREE_MONTHLY_CARDS } from '../../pages/LimitPage/LimitWall';
+import { PassFirstOffer } from '../PassFirstOffer/PassFirstOffer';
+import {
+  ANONYMOUS_CARD_CAP,
+  FREE_MONTHLY_CARDS,
+} from '../../pages/LimitPage/LimitWall';
 import { track } from '../../lib/analytics/track';
 import type { HeldDeckState } from '../../pages/UploadPage/components/UploadForm/hooks/useUploadFormState';
 import styles from './AnonymousPartialGate.module.css';
 
+const SURFACE = 'anonymous-gate';
+
 interface Props {
   readonly held: HeldDeckState;
+  readonly passFirst?: boolean;
 }
 
 function errorText(error: unknown): string {
@@ -41,7 +49,46 @@ function LockIcon() {
   );
 }
 
-export function AnonymousPartialGate({ held }: Props) {
+// Pass-first: the passes lead and a free account (the 21-card preview) is a
+// text link. The held deck stays saved, so signing up still claims it.
+function PassFirstGate({ held }: Props) {
+  const { t } = useTranslation('passFirst');
+  return (
+    <div className={styles.gate}>
+      <LockIcon />
+      <PassFirstOffer
+        surface={SURFACE}
+        headline={t('readyTotal', { total: held.totalCards })}
+        body={t('gateBody', { cap: ANONYMOUS_CARD_CAP })}
+      >
+        <Link
+          to="/register?redirect=/upload"
+          onClick={() =>
+            track('paywall_upgrade_clicked', {
+              surface: SURFACE,
+              plan: 'free_signup',
+            })
+          }
+        >
+          {t('freeSignupCap', { cap: ANONYMOUS_CARD_CAP })}
+        </Link>
+        <Link
+          to="/login?redirect=/upload"
+          onClick={() =>
+            track('paywall_upgrade_clicked', {
+              surface: SURFACE,
+              plan: 'sign_in',
+            })
+          }
+        >
+          {t('signIn')}
+        </Link>
+      </PassFirstOffer>
+    </div>
+  );
+}
+
+export function AnonymousPartialGate({ held, passFirst = false }: Props) {
   const { t } = useTranslation('anonymousPartial');
   const shownRef = useRef(false);
   const [error, setError] = useState('');
@@ -55,6 +102,10 @@ export function AnonymousPartialGate({ held }: Props) {
       cards_held_back: held.cardsHeldBack,
     });
   }, [held.cardsHeldBack]);
+
+  if (passFirst) {
+    return <PassFirstGate held={held} />;
+  }
 
   const registerForm = (
     <div className={styles.form}>

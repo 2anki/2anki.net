@@ -1,0 +1,22 @@
+{
+  "aria": "Alle Karten bekommen",
+  "readyTotal": "{{total}} Karten sind fertig",
+  "readyShown": "{{total}} Karten fertig, {{shown}} angezeigt",
+  "fileTotal": "Diese Datei ergibt {{total}} Karten",
+  "everyCard": "Jetzt alle Karten bekommen",
+  "gateBody": "Hol dir einen Pass und lade die Datei dann noch einmal hoch, um alle zu bekommen. Ein kostenloses Konto bekommt die ersten {{cap}}.",
+  "anonBody": "Ohne Konto bekommst du {{cap}} Karten. Ein Pass hebt das Limit auf, ganz ohne Konto.",
+  "previewSaved": "Ein kostenloses Konto bekommt die ersten {{shown}}. Der Rest bleibt 7 Tage gespeichert: Hol dir einen Pass, dann landen alle {{total}} in Downloads, ohne neuen Upload.",
+  "previewNotSaved": "Ein kostenloses Konto bekommt die ersten {{shown}}. Hol dir einen Pass und lade die Datei dann noch einmal hoch, um alle {{total}} zu bekommen.",
+  "semester": "Semester Pass · {{price}}",
+  "semesterHint": "120 Tage, kein Kartenlimit",
+  "day": "Day Pass · {{price}}",
+  "dayHint": "24 Stunden, kein Kartenlimit",
+  "afterPayRedrop": "Lade die Datei nach dem Bezahlen noch einmal hoch, dann bekommst du alle Karten.",
+  "afterPayRedropTotal": "Lade die Datei nach dem Bezahlen noch einmal hoch, dann bekommst du alle {{total}} Karten.",
+  "freeSignup": "Kostenloses Konto erstellen",
+  "freeSignupCap": "Kostenloses Konto für die ersten {{cap}} Karten erstellen",
+  "signIn": "Anmelden",
+  "starting": "Checkout wird gestartet",
+  "checkoutError": "Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net."
+}
