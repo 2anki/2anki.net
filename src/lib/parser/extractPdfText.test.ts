@@ -189,5 +189,37 @@ describe('extractPdfText', () => {
       expect(Buffer.isBuffer(data)).toBe(false);
       expect(data.buffer).toBe(large.buffer);
     });
+
+    it.each([
+      ['at the start of', 0],
+      ['inside', 100],
+    ])(
+      'copies a slice %s a larger ArrayBuffer, whatever its size',
+      async (_where, start) => {
+        mockPdfParse.mockResolvedValueOnce(parsed);
+        const shared = Buffer.alloc(8192, 7);
+        const slice = shared.subarray(start, start + 100);
+
+        await extractPdfText(slice);
+
+        const [data] = mockPdfParse.mock.calls[0];
+        expect(data.buffer).not.toBe(shared.buffer);
+        expect(data.byteOffset).toBe(0);
+        expect(data.buffer.byteLength).toBe(100);
+        expect(Buffer.from(data)).toEqual(slice);
+      }
+    );
+
+    it('copies a plain Uint8Array view, as a zip entry arrives', async () => {
+      mockPdfParse.mockResolvedValueOnce(parsed);
+      const archive = new Uint8Array(4096).fill(3);
+      const entry = archive.subarray(512, 1024);
+
+      await extractPdfText(entry as Buffer);
+
+      const [data] = mockPdfParse.mock.calls[0];
+      expect(data.buffer).not.toBe(archive.buffer);
+      expect(data.buffer.byteLength).toBe(512);
+    });
   });
 });

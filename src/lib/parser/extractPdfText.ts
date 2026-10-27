@@ -404,8 +404,11 @@ export async function extractPdfText(
   // pdf.js 1.10 reads a PDF's objects from the start of the ArrayBuffer behind
   // its input, and clones a Buffer with `new Buffer(value)`, which puts a PDF
   // under 4 KB into Node's shared pool: a small upload could be parsed from an
-  // earlier upload's bytes. Hand it bytes that fill their own ArrayBuffer; only
-  // a pooled (small) Buffer needs the copy.
+  // earlier upload's bytes. Hand it bytes that fill their own ArrayBuffer: any
+  // view into a larger ArrayBuffer is copied, whatever its size or offset (a
+  // check on size or offset alone reopens the leak). If pdf-parse moves to a
+  // pdf.js that transfers its input, the no-copy branch would empty the
+  // caller's Buffer, which the page-image fallback reads again.
   const ownsItsMemory =
     buffer.byteOffset === 0 && buffer.byteLength === buffer.buffer.byteLength;
   const pdfBytes = ownsItsMemory
