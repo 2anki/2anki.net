@@ -35,7 +35,7 @@ export const TRIPWIRE_METRICS: readonly TripwireMetric[] = [
     key: 'upload_after_page_view',
     label: 'Upload page visitors who started an upload',
     source:
-      'events: person-days with upload_page_viewed that also have upload_started on the same UTC day. One unit is one person on one day.',
+      "events: person-days with upload_page_viewed that also have upload_started on the same UTC day. Signed-in users and tracked visitors only: an untracked visitor's page view has no id. One unit is one person on one day.",
     minRelativeDrop: 0.25,
   },
   {

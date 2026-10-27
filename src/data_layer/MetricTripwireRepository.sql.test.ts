@@ -1,5 +1,6 @@
 import knex from 'knex';
 
+import { SERVER_ONLY_EVENT_NAMES } from '../lib/events/serverEventProps';
 import {
   buildAlertExistsQuery,
   buildConversionOutcomeQuery,
@@ -9,7 +10,6 @@ import {
   buildRecordCheckQuery,
   FOLLOW_THROUGH_SPECS,
 } from './MetricTripwireRepository';
-import { SERVER_ONLY_EVENT_NAMES } from '../lib/events/serverEventProps';
 
 describe('MetricTripwireRepository generated SQL', () => {
   const pg = knex({ client: 'pg' });
@@ -78,11 +78,11 @@ describe('MetricTripwireRepository generated SQL', () => {
     ]);
   });
 
-  // The ingest drops the anonymous id from a client event unless the visitor
-  // allows tracking (#4730), while a server-written event keeps it from the
-  // cookie. A server base paired with a client follow-up therefore never
-  // matches a visitor who has not granted consent, so the rate tracks the
-  // consent rate instead of the behaviour.
+  // The ingest drops the anonymous id from a client event unless tracking is
+  // allowed (consent granted, or outside the consent region; #4730), while a
+  // server-written event keeps it from the cookie. A server base paired with a
+  // client follow-up therefore never matches an untracked visitor, so the
+  // anonymous rate follows the tracking rate instead of the behaviour.
   it('scopes every server base paired with a client follow-up to signed-in users', () => {
     const mixed = Object.entries(FOLLOW_THROUGH_SPECS).filter(
       ([, spec]) =>
@@ -94,6 +94,26 @@ describe('MetricTripwireRepository generated SQL', () => {
     expect(mixed.filter(([, spec]) => spec.identity !== 'signed_in')).toEqual(
       []
     );
+  });
+
+  it('keeps the upload follow-through open to anonymous visitors', () => {
+    const { sql, bindings } = buildFollowThroughQuery(
+      pg,
+      FOLLOW_THROUGH_SPECS.upload_after_page_view,
+      start,
+      end
+    ).toSQL();
+
+    expect(sql).not.toContain('"user_id" is');
+    expect(sql).not.toContain('props @>');
+    expect(bindings).toEqual([
+      'upload_page_viewed',
+      start,
+      end,
+      'upload_started',
+      start,
+      end,
+    ]);
   });
 
   it('restricts the download follow-through to signed-in users', () => {
