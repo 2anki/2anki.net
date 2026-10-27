@@ -67,7 +67,7 @@ Otherwise:
   - While `len(in-flight) < MAX_CONCURRENT` and pending is non-empty:
     - Pop the next task.
     - `EnterWorktree` off `origin/main` — record the returned worktree ID.
-    - Fork a worker with the matching template: `.claude/commands/batch-tasks/<task-type>.md`. Pass the worker the PR number (or task-specific input) and the worktree path.
+    - Fork a worker with the matching template: `.claude/commands/batch-tasks/<task-type>.md`. Pass the worker the PR number (or task-specific input) and the worktree path. A fork runs on this dispatcher's model and ignores a `model` override, which suits task types that make judgment calls (dependabot decides major bumps). A new task type that is purely mechanical says so in its template and is dispatched as a fresh `general-purpose` agent with `model: "sonnet"` and the template as its brief.
     - Invoke the worker with `isolation: "worktree"` and `run_in_background: true`. Record its task ID alongside the worktree ID.
   - Wait for the next worker to finish (do not busy-poll — use the agent completion notification).
   - When a worker returns, print one line: `<pr#> <branch> → <status>`. Move it from in-flight to completed.

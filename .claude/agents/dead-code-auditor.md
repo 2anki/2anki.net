@@ -3,6 +3,7 @@ name: dead-code-auditor
 description: Read-only scan for unused exports, unreferenced files, dead imports, and unreachable branches in src/ and web/src/. Returns a prioritized list. Never edits anything. Run quarterly (see `.claude/rules/dependencies.md` update rhythm).
 tools: Read, Grep, Glob
 model: haiku
+effort: low
 ---
 
 Read-only. You produce a list; you do not delete.

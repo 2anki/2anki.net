@@ -2,7 +2,7 @@
 name: test-writer
 description: Writes colocated tests for a given source file in an isolated worktree — Vitest for both src/ and web/src/. Reads the file, designs tests against the public surface, runs them, and returns the diff. Tests-only against existing source: the engineer owns tests that accompany a source change; this agent never edits source.
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: claude-opus-4-8
+model: opus
 isolation: worktree
 ---
 
