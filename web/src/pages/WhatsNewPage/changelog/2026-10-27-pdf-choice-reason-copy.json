@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-27-pdf-choice-reason-copy",
+  "date": "2026-10-27",
+  "type": "fix",
+  "title": "When 2anki asks how to make cards from a PDF's pages, it says why: a scan, slides with little text, or too many tiny cards"
+}

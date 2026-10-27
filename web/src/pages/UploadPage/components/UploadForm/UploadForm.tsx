@@ -3493,19 +3493,25 @@ function UploadForm({
   const [rememberPdfChoice, setRememberPdfChoice] = useState(false);
 
   const renderPdfChoiceState = () => {
-    const bodyKey =
-      pdfChoice?.reason === 'locked'
-        ? 'upload.form.pdfChoiceBodyLocked'
-        : pdfChoice?.reason === 'over_split'
-          ? 'upload.form.pdfChoiceBodyOverSplit'
-          : 'upload.form.pdfChoiceBodyNoText';
+    const copy = {
+      locked: {
+        title: 'upload.form.pdfChoiceTitleLocked',
+        body: 'upload.form.pdfChoiceBodyLocked',
+      },
+      no_text: {
+        title: 'upload.form.pdfChoiceTitleNoText',
+        body: 'upload.form.pdfChoiceBodyNoText',
+      },
+      over_split: {
+        title: 'upload.form.pdfChoiceTitleOverSplit',
+        body: 'upload.form.pdfChoiceBodyOverSplit',
+      },
+    }[pdfChoice?.reason ?? 'no_text'];
     return (
       <div className={formStyles.stateContent}>
         <WarningIcon className={formStyles.iconWarning} />
-        <p className={formStyles.emptyTitle}>
-          {t('upload.form.pdfChoiceTitle')}
-        </p>
-        <p className={formStyles.emptyBody}>{t(bodyKey)}</p>
+        <p className={formStyles.emptyTitle}>{t(copy.title)}</p>
+        <p className={formStyles.emptyBody}>{t(copy.body)}</p>
         <div className={formStyles.emptyActions}>
           <button
             type="button"
