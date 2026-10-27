@@ -23,8 +23,8 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
      what keeps a non-spec branch whose slug merely starts with `spec`
      (`chore/spec-lifecycle-gates`) from tripping the gate.
   7. A `feat:`/`fix:`/`perf:`/`refactor:` PR (title or any commit headline)
-     changes reach source
-     but the body has no non-empty `## Who else this reaches` section. Reach
+     changes reach source but the body has no non-empty `## Who else this
+     reaches` section. Reach
      source is any file under `src/` or `web/src/` except tests (`.test.`,
      `.spec.`, `__tests__/`, `__snapshots__/`, `src/test/`, `web/src/test/`,
      `/fixtures/`, `__fixtures__/`, `_mock/`, `setupTests.`), changelog JSON
@@ -92,7 +92,9 @@ DEVIATIONS_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+Deviations from spec\b", re.I
 # perf: and refactor: change code users run as much as feat:/fix: do (#5055).
 REACH_PREFIX = re.compile(r"^(feat|fix|perf|refactor)(\([^)]*\))?!?:", re.IGNORECASE)
 QUOTE_LIMIT = 120
-UNSAFE_QUOTE_CHARS = re.compile(r"[\x00-\x1f\x7f`]+")
+UNSAFE_QUOTE_CHARS = re.compile(
+    r"[\x00-\x1f\x7f-\x9f`\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff\uff40\u02cb]+"
+)
 REACH_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+Who else this reaches\b.*$", re.IGNORECASE | re.MULTILINE)
 REACH_PLACEHOLDER = re.compile(r"^(tbd|todo|n/?a|none|-|\.\.\.)?$", re.IGNORECASE)
 TABLE_SEPARATOR = re.compile(r"^(?=.*\|)\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$")
@@ -453,8 +455,8 @@ def main():
             f"{bullet_list}\n\n"
             "Every rollup entry must be COMPLETED and non-FAILURE, every test "
             "job must have actually RUN, dependency changes need a SUCCESS test run, "
-            "the review agent must have passed the head SHA, and a feat:/fix: PR "
-            "touching source must say who else it reaches.\n"
+            "the review agent must have passed the head SHA, and a "
+            "feat:/fix:/perf:/refactor: PR touching source must say who else it reaches.\n"
             "Human bypass: merge from the GitHub UI, or relaunch with CLAUDE_SKIP_SAFETY=1 set at launch."
         )
 

@@ -48,11 +48,12 @@ PER-ISSUE WORKFLOW (each agent):
      WhatsNewPage/changelog/), per the rules; otherwise state "no entry" in the PR.
   4. Run the local check set in `.claude/agents/engineer.md` step 9 (`/check` and the full server suite only for the shared parser or exporter list in `.claude/rules/testing.md`). Say in
      the PR body.
-  5. If the diff touches web/src/, add the ## Browser check attestation. Add the
-     ## Who else this reaches section per .claude/agents/engineer.md step 10 (the
-     merge hook denies a feat:/fix:/perf:/refactor: src/ or web/src/ diff without it).
-  6. Conventional commit, subject ≤72 chars, "Fixes #<n>", Co-Authored-By line.
-  7. git push -u origin <branch>; open the PR READY (not draft); then run /ship <n>.
+  5. If the diff touches web/src/, add the ## Browser check attestation.
+  6. Always add the ## Who else this reaches section per .claude/agents/engineer.md
+     step 10 (the merge hook denies a feat:/fix:/perf:/refactor: src/ or web/src/ diff
+     without it).
+  7. Conventional commit, subject ≤72 chars, "Fixes #<n>", Co-Authored-By line.
+  8. git push -u origin <branch>; open the PR READY (not draft); then run /ship <n>.
 
 ABSOLUTE SAFETY RULES (non-negotiable):
   - Merge ONLY through /ship. NEVER run `gh pr merge` by hand, NEVER set

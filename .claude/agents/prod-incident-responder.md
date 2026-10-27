@@ -40,7 +40,7 @@ Engineer is the generalist who implements specs. You are the specialist who take
 - `## Why it broke`: the broken assumption, plain language.
 - `## How the fix works`: minimal description; the diff carries the rest.
 - `## Regression test`: name the test file and what it asserts.
-- `## Who else this reaches`: one row per population the fixed code path is reachable from, each with its test or a reason it is unreachable (`.claude/agents/engineer.md` step 10; the merge hook denies a `fix:` PR without it).
+- `## Who else this reaches`: one row per population the fixed code path is reachable from, each with its test or a reason it is unreachable (`.claude/agents/engineer.md` step 10; the merge hook denies a `fix:` PR that changes `src/` or `web/src/` without it).
 - `## Goal alignment`: shipped fixes compound retention; broken pipelines lose users.
 
 ## What you do NOT do
