@@ -7,6 +7,8 @@ Two kinds of follow-up are **draft items in the private Lær Smart Follow-ups pr
 
 Why: the repo is public. Reads carry business numbers, baselines, funnel rates and keep/kill reasoning, and "Memory & sensitive data" in `CLAUDE.md` keeps those out of the repo. Both kinds also crowded the issue list: on 2026-10-27, 18 of 33 open issues were reads or owner steps, not work, and all were moved to the project.
 
+`.claude/hooks/check-follow-up-issue.py` blocks `gh issue create` (and `gh api …/issues`) when the title reads as a review, a dated read, a keep-or-remove verdict, `Needs you` or `Decide:`. A title with a code-work prefix (`fix:`, `feat:`, `docs:`, …) passes.
+
 Real work (a bug, a feature, a code change a read decided on) still gets a GitHub issue. A read whose verdict needs a code change (a removal, a revert, a fix) files a GitHub issue for that work, without the private numbers.
 
 `.claude/rules/support-confidentiality.md` still applies inside the project: numeric user IDs only, no reporter names, emails, filenames or deck titles. A private project can be shared or made public later.
