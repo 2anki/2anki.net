@@ -57,7 +57,9 @@ test('a slide-like PDF asks what to make, then makes it at 375px', async ({
     buffer: Buffer.from('%PDF-1.4 fake'),
   });
   await expect(
-    page.getByText("We can't tell questions from answers in this PDF")
+    page
+      .locator('#upload-panel-local')
+      .getByText("We can't tell questions from answers in this PDF")
   ).toBeVisible();
   await expect(page.getByText('Two pages per card')).toBeVisible();
   await expect(
