@@ -2438,12 +2438,14 @@ function UploadForm({
           ? t('upload.form.convertYourOwn')
           : t('upload.form.makeAnother')}
       </button>
-      <div className={formStyles.feedbackPrompt}>
-        <p className={formStyles.feedbackLabel}>
-          {t('upload.form.feedbackLabel')}
-        </p>
-        <FeedbackWidget page="/upload" compact />
-      </div>
+      {cardsHeldBack === 0 && (
+        <div className={formStyles.feedbackPrompt}>
+          <p className={formStyles.feedbackLabel}>
+            {t('upload.form.feedbackLabel')}
+          </p>
+          <FeedbackWidget page="/upload" compact />
+        </div>
+      )}
     </div>
   );
 
