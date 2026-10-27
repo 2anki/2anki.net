@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import time
+import tracemalloc
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -529,6 +530,31 @@ class TestBoundedWork(unittest.TestCase):
         body = "## Removed for users" + " " * 65000 + "x\n"
         self.assert_fast(lambda: hook.filled_sections(body, hook.REMOVED_SECTION), 0.5)
 
+    def assert_peak_memory_below(self, func, limit_bytes):
+        tracemalloc.start()
+        try:
+            func()
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        self.assertLess(peak, limit_bytes)
+
+    def test_many_distinct_keys_under_long_openers_stay_within_memory(self):
+        openers = [f' {" " * depth}"{"o" * 80}": {{' for depth in range(8)]
+        added = [f'+{" " * 8}"k{n}":""' for n in range(110_000)]
+        hunks = hook.parse_hunks(nested_hunk(EN_LOCALE, openers + added))
+        self.assert_peak_memory_below(lambda: hook.removed_locale_strings(hunks), 50_000_000)
+
+    def test_entry_budget_fails_closed(self):
+        removed = [f'-  "r{n}": "old {n}",' for n in range(hook.MAX_LOCALE_ENTRIES + 1)]
+        hunks = hook.parse_hunks(nested_hunk(EN_LOCALE, removed))
+        self.assertEqual(hook.removed_locale_strings(hunks), hook.too_many_locale_entries())
+
+    def test_diff_size_is_measured_in_bytes(self):
+        emoji_diff = REMOVED_KEY_DIFF + "\U0001F600" * (hook.MAX_DIFF_BYTES // 4 + 1)
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), emoji_diff)
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+
     def test_dotted_keys_keep_suffix_work_bounded(self):
         dotted = "." * 197
         openers = [f' {"  " * depth}"{dotted}{depth}": {{' for depth in range(1, 17)]
@@ -584,10 +610,11 @@ class TestKeyPathEdges(unittest.TestCase):
         self.assertEqual(removed[0][0].count("."), hook.MAX_KEY_DEPTH)
 
     def test_long_key_paths_are_shortened_in_the_listing(self):
-        key = "k" * 500
-        diff = diff_block(EN_LOCALE, removed=[f'  "{key}": "gone"'])
+        openers = [f' {"  " * depth}"{"o" * 80}": {{' for depth in range(8)]
+        diff = nested_hunk(EN_LOCALE, openers + [f'-{"  " * 8}"leaf": "gone"'])
         findings = hook.removed_locale_strings(hook.parse_hunks(diff))
-        self.assertLess(len(findings[0]), hook.MAX_LISTED_KEY_LENGTH + 100)
+        listed_key = findings[0].split(": ", 1)[1].split(' ("', 1)[0]
+        self.assertEqual(len(listed_key), hook.MAX_LISTED_KEY_LENGTH)
 
     def test_listing_is_cut_off_after_max_listed(self):
         removed = [f'  "key{n}": "value {n}",' for n in range(hook.MAX_LISTED + 5)]
