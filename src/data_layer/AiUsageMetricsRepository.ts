@@ -1,10 +1,16 @@
 import type { Knex } from 'knex';
 
+import { withServerMarker } from '../lib/events/serverEventProps';
 import type { AiUsageGroup, AiUsageTotals } from '../types/ops/AiUsage';
 
 export type { AiUsageGroup, AiUsageTotals };
 
 const AI_USAGE_EVENT = 'ai_usage_recorded';
+
+// Per-user dedup counts trust marked rows once any fall inside the window.
+// Until then, rows written before the marker shipped still count, so a deploy
+// does not re-send every recent spend alert.
+const SERVER_MARKER_JSON = JSON.stringify(withServerMarker({}));
 
 export interface AiUsageTotalsRow {
   calls: number | string;
@@ -206,10 +212,16 @@ export class AiUsageMetricsRepository
     since: Date
   ): Knex.QueryBuilder {
     return this.database('events')
+      .select(
+        this.database.raw(
+          'case when count(*) filter (where props @> ?::jsonb) > 0 ' +
+            'then count(*) filter (where props @> ?::jsonb) else count(*) end as count',
+          [SERVER_MARKER_JSON, SERVER_MARKER_JSON]
+        )
+      )
       .where('name', name)
       .where('user_id', userId)
-      .where('created_at', '>=', since)
-      .count('* as count');
+      .where('created_at', '>=', since);
   }
 
   buildByDayQuery(since: Date): Knex.QueryBuilder {

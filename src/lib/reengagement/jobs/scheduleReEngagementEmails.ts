@@ -5,6 +5,7 @@ import type { IEmailService } from '../../../services/EmailService/EmailService'
 import type { EventsSink } from '../../../services/events/EventsSink';
 import { outboundCampaignEmailsEnabled } from '../../featureFlags/outboundCampaignEmails';
 import { sendReEngagementEmails } from '../../storage/jobs/helpers/sendReEngagementEmails';
+import { withServerMarker } from '../../events/serverEventProps';
 import { makeExclusiveBatchRunner } from '../../scheduling/exclusiveBatch';
 import { isOverdue, type LastRunAt } from '../../inactivity/jobs/lastRunAt';
 
@@ -37,7 +38,7 @@ export const scheduleReEngagementEmails = async (
       console.info(`[re-engagement] sent ${count} email(s)`);
       eventsSink.record({
         name: 'email_batch_sent',
-        props: { campaign: 'reengagement', count },
+        props: withServerMarker({ campaign: 'reengagement', count }),
       });
     } catch (error) {
       console.error('[re-engagement] daily job failed:', error);

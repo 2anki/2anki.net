@@ -2,6 +2,7 @@ import type { SendPauseResumeWarningsUseCase } from '../../../usecases/ops/SendP
 import type { IJobLockRepository } from '../../../data_layer/JobLockRepository';
 import { JOB_LOCK_KEYS } from '../../../data_layer/JobLockRepository';
 import type { EventsSink } from '../../../services/events/EventsSink';
+import { withServerMarker } from '../../events/serverEventProps';
 import { makeExclusiveBatchRunner } from '../../scheduling/exclusiveBatch';
 import { isOverdue, type LastRunAt } from '../../inactivity/jobs/lastRunAt';
 
@@ -25,7 +26,10 @@ export const schedulePauseResumeWarnings = async (
       if (options.eventsSink != null) {
         options.eventsSink.record({
           name: 'email_batch_sent',
-          props: { campaign: 'pause_resume', count: result.count },
+          props: withServerMarker({
+            campaign: 'pause_resume',
+            count: result.count,
+          }),
         });
       }
     } catch (error) {

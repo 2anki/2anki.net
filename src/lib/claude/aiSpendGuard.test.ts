@@ -89,7 +89,7 @@ describe('assertAiBudget', () => {
     await flushAsync();
     expect(trackMock).toHaveBeenCalledWith('ai_credits_exhausted', {
       userId: 42,
-      props: {},
+      props: { server_marker: true },
     });
   });
 
@@ -111,7 +111,7 @@ describe('assertAiBudget', () => {
     await flushAsync();
     expect(trackMock).toHaveBeenCalledWith('ai_spend_alert_sent', {
       userId: 42,
-      props: {},
+      props: { server_marker: true },
     });
     expect(deps.sendAlert).toHaveBeenCalledWith(
       expect.stringContaining('crossed $25 in 30 days'),
@@ -130,7 +130,7 @@ describe('assertAiBudget', () => {
     expect(deps.sendAlert).not.toHaveBeenCalled();
     expect(trackMock).not.toHaveBeenCalledWith('ai_spend_alert_sent', {
       userId: 42,
-      props: {},
+      props: { server_marker: true },
     });
   });
 
@@ -254,7 +254,7 @@ describe('withAiBudget', () => {
     await flush();
     expect(trackMock).toHaveBeenCalledWith('ai_spend_alert_sent', {
       userId: 42,
-      props: {},
+      props: { server_marker: true },
     });
     expect(deps.sendAlert).toHaveBeenCalledWith(
       expect.stringContaining('crossed $25 in 30 days'),
@@ -288,7 +288,7 @@ describe('withAiBudget', () => {
     await flush();
     expect(trackMock).toHaveBeenCalledWith('ai_credits_exhausted', {
       userId: 42,
-      props: {},
+      props: { server_marker: true },
     });
 
     release();
@@ -332,7 +332,7 @@ describe('getAiBudgetStatus', () => {
     await flushAsync();
     expect(trackMock).toHaveBeenCalledWith('ai_credits_exhausted', {
       userId: 42,
-      props: {},
+      props: { server_marker: true },
     });
   });
 
@@ -488,7 +488,7 @@ describe('anonymous pass metering', () => {
     await flushAsync();
     expect(trackMock).toHaveBeenCalledWith('ai_credits_exhausted', {
       anonymousPassId: 7,
-      props: {},
+      props: { server_marker: true },
     });
   });
 

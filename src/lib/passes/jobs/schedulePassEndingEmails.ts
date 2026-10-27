@@ -3,6 +3,7 @@ import { JOB_LOCK_KEYS } from '../../../data_layer/JobLockRepository';
 import type { EventsSink } from '../../../services/events/EventsSink';
 import type { SendPassEndingEmailsUseCase } from '../../../usecases/ops/SendPassEndingEmailsUseCase';
 import { isOverdue, type LastRunAt } from '../../inactivity/jobs/lastRunAt';
+import { withServerMarker } from '../../events/serverEventProps';
 import { makeExclusiveBatchRunner } from '../../scheduling/exclusiveBatch';
 
 export const PASS_ENDING_EMAIL_LIMIT = 200;
@@ -30,7 +31,10 @@ export const schedulePassEndingEmails = async (
       if (options.eventsSink != null) {
         options.eventsSink.record({
           name: 'email_batch_sent',
-          props: { campaign: 'pass_ending', count: result.count },
+          props: withServerMarker({
+            campaign: 'pass_ending',
+            count: result.count,
+          }),
         });
       }
     } catch (error) {

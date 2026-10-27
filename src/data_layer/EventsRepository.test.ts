@@ -299,16 +299,17 @@ describe('EventsRepository SQL generation', () => {
     expect(result).toEqual({ paywall: 25, empty: 12, technical: 5 });
   });
 
-  it('lastEventAt selects the max created_at filtered by name', async () => {
+  it('lastEventAt reads only server-written rows of the named event', async () => {
     const { db, getSql } = captureGeneratedSql();
     const repo = new EventsRepository(db);
 
     await repo.lastEventAt('inactive_users_deleted');
 
-    const sql = getSql();
-    expect(sql).toContain('max("created_at") as "last_at"');
-    expect(sql).toContain('"name" = \'inactive_users_deleted\'');
-    expect(sql).not.toContain('campaign');
+    expect(getSql()).toBe(
+      'select coalesce(max(created_at) filter (where props @> \'{"server_marker":true}\'::jsonb), max(created_at)) as last_at ' +
+        'from "events" where "name" = \'inactive_users_deleted\' ' +
+        'and "user_id" is null and "anonymous_id" is null limit 1'
+    );
   });
 
   it('lastEventAt filters on the campaign jsonb prop when given', async () => {
@@ -318,7 +319,7 @@ describe('EventsRepository SQL generation', () => {
     await repo.lastEventAt('email_batch_sent', 'inactivity');
 
     const sql = getSql();
-    expect(sql).toContain('max("created_at") as "last_at"');
     expect(sql).toContain("props->>'campaign' = 'inactivity'");
+    expect(sql).toContain('"user_id" is null and "anonymous_id" is null');
   });
 });

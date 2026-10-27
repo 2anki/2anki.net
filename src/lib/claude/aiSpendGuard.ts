@@ -1,4 +1,5 @@
 import { track } from '../../services/events/track';
+import { withServerMarker } from '../events/serverEventProps';
 import { HttpCodedError } from '../errors/HttpCodedError';
 import {
   AiUsageMetricsRepository,
@@ -184,7 +185,7 @@ function fireExhaustedOnce(
       userId,
       windowStart,
       (ws) => deps.reader.eventCountSince(EXHAUSTED_EVENT, userId, ws),
-      () => track(EXHAUSTED_EVENT, { userId, props: {} })
+      () => track(EXHAUSTED_EVENT, { userId, props: withServerMarker({}) })
     );
     return;
   }
@@ -204,7 +205,8 @@ function fireExhaustedOnce(
           anonymousPassId,
           ws
         ),
-      () => track(EXHAUSTED_EVENT, { anonymousPassId, props: {} })
+      () =>
+        track(EXHAUSTED_EVENT, { anonymousPassId, props: withServerMarker({}) })
     );
   }
 }
@@ -307,7 +309,7 @@ async function maybeNotifyAlert(
   if (alreadySent > 0) {
     return;
   }
-  track(ALERT_EVENT, { userId, props: {} });
+  track(ALERT_EVENT, { userId, props: withServerMarker({}) });
   await deps.sendAlert(
     `[2anki] AI spend alert — user ${userId} crossed $${AI_SPEND_ALERT_THRESHOLD_USD} in 30 days`,
     `User ${userId} is at $${cost30d.toFixed(2)} of AI spend over the ` +
