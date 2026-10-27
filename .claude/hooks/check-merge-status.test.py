@@ -391,6 +391,21 @@ class MainWiringTest(unittest.TestCase):
         _, output = self.run_main(pr)
         self.assertIn("test: FAILURE", output["hookSpecificOutput"]["permissionDecisionReason"])
 
+    def test_still_denies_a_running_or_skipped_test_check(self):
+        for entry, expected in (
+            ({"name": "test", "status": "IN_PROGRESS", "conclusion": ""}, "still IN_PROGRESS"),
+            ({"name": "test", "status": "COMPLETED", "conclusion": "SKIPPED"}, "test: SKIPPED"),
+        ):
+            pr = {**self.pr(REACH_TABLE), "statusCheckRollup": [entry]}
+            _, output = self.run_main(pr)
+            self.assertIn(expected, output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_gates_a_dependabot_pr_carrying_a_fix_to_source(self):
+        pr = {**self.pr(""), "title": "build(deps): bump x", "author": {"login": "app/dependabot"},
+              "commits": commits("build(deps): bump x", "fix: adapt to the new api")}
+        _, output = self.run_main(pr)
+        self.assertIn("Who else this reaches", output["hookSpecificOutput"]["permissionDecisionReason"])
+
     def test_still_denies_a_dependency_change_without_a_test_run(self):
         pr = {**self.pr(REACH_TABLE), "files": [{"path": "pnpm-lock.yaml"}]}
         _, output = self.run_main(pr)

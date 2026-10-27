@@ -69,7 +69,7 @@ mandatory. If you add a trigger, confirm the path resolves first.
 When given a spec or issue:
 
 1. **Restate the change** in one sentence. If you can't, pick the most likely reading, state the assumption in the PR body (or the spec notes if no PR exists yet), and proceed.
-2. **Trace the code path.** Use `grep -r` to find every file the change touches. List them. For a `feat:`/`fix:` change, also trace the callers of every function, component and route you will change, and list who reaches them: the populations step 10 asks for. Tests, new or existing, must cover every reachable population on that list, not only the one the task names.
+2. **Trace the code path.** Use `grep -r` to find every file the change touches. List them. For a `feat:`/`fix:` change, also trace the callers of every function, component, route, script and config you will change, and list who reaches them: the populations step 10 asks for. Tests, new or existing, must cover every reachable population on that list, not only the one the task names.
 3. **Surface feasibility assumptions.** Name the riskiest one. Propose the smallest test.
 4. **Plan the diff.** Files to modify, new files, tests to add. Keep it tight — no 5-page plan.
 5. **Write the failing test first.**
