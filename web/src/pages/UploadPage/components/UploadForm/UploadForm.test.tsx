@@ -3930,6 +3930,29 @@ describe('limit state', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('leads a signed-out card limit wall (stale session) with the passes and keeps sign-up as text links', async () => {
+    setUserLocals({
+      ...anonymousData,
+      features: { kiUI: false, limitWallPassFirst: true },
+    } as ReturnType<typeof useUserLocals>['data']);
+    stubLimitFetch('card_count');
+    await submitAndReachLimit();
+    const semester = screen.getByRole('button', { name: /Semester Pass/ });
+    const signUp = screen.getByRole('link', { name: 'Create a free account' });
+    const signIn = screen.getByRole('link', { name: 'Sign in' });
+    expect(
+      semester.compareDocumentPosition(signUp) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(signUp).toHaveAttribute('href', '/register?redirect=/upload');
+    expect(signIn).toHaveAttribute('href', '/login?redirect=/upload');
+    fireEvent.click(signIn);
+    expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: 'upload-limit-wall',
+      plan: 'sign_in',
+    });
+  });
+
   it('keeps the file-size wall unchanged when the pass-first flag is on', async () => {
     setUserLocals({
       ...anonymousData,
