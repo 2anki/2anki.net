@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 import { extractPdfText } from './extractPdfText';
 
 function pdfString(text: string): string {
@@ -38,24 +41,53 @@ function smallTextPdf(lines: string[]): Buffer {
 }
 
 describe('extractPdfText on PDFs under 4 KB', () => {
-  it('reads each small upload from its own bytes, never from an earlier one', async () => {
-    const uploads = [0, 1, 2, 3].map((n) => ({
-      heading: `Owner ${n} private heading`,
-      pdf: smallTextPdf([
-        `Owner ${n} private heading`,
-        `Owner ${n} wrote this confidential sentence number ${n} here.`,
-      ]),
-    }));
-    expect(uploads.every(({ pdf }) => pdf.length < 4096)).toBe(true);
+  it.each([
+    ['a conversion', {}],
+    ['an AI preview (first 5 pages)', { maxPages: 5 }],
+  ])(
+    'reads each small upload from its own bytes in %s, never from an earlier one',
+    async (_path, options) => {
+      const uploads = [0, 1, 2, 3].map((n) => ({
+        heading: `Owner ${n} private heading`,
+        pdf: smallTextPdf([
+          `Owner ${n} private heading`,
+          `Owner ${n} wrote this confidential sentence number ${n} here.`,
+        ]),
+      }));
+      expect(uploads.every(({ pdf }) => pdf.length < 4096)).toBe(true);
 
-    const texts: string[] = [];
-    for (const { pdf } of uploads) {
-      const result = await extractPdfText(pdf);
-      texts.push(result.pages.map((page) => page.text).join('\n'));
+      const texts: string[] = [];
+      for (const { pdf } of uploads) {
+        const result = await extractPdfText(pdf, options);
+        texts.push(result.pages.map((page) => page.text).join('\n'));
+      }
+
+      expect(texts.map((text) => text.split('\n')[0])).toEqual(
+        uploads.map(({ heading }) => heading)
+      );
     }
+  );
 
-    expect(texts.map((text) => text.split('\n')[0])).toEqual(
-      uploads.map(({ heading }) => heading)
+  it('reads a PDF of 4 KB or more with the same pages as before', async () => {
+    const pdf = fs.readFileSync(
+      path.join(__dirname, '../../test/fixtures/pdf-plain-text.pdf')
     );
+    expect(pdf.length).toBeGreaterThanOrEqual(4096);
+
+    const result = await extractPdfText(pdf);
+
+    expect(result.pageCount).toBe(2);
+    expect(
+      result.pages.map((page) => page.text.split('\n').slice(0, 2))
+    ).toEqual([
+      [
+        'Mitochondria',
+        'The organelle that produces most of a cell energy supply.',
+      ],
+      [
+        'Ribosomes',
+        'The cell machinery that assembles proteins from amino acids.',
+      ],
+    ]);
   });
 });

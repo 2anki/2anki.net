@@ -149,11 +149,45 @@ describe('extractPdfText', () => {
       expect.any(Uint8Array),
       expect.objectContaining({ userPassword: 'correct-password' })
     );
-    const [data] = mockPdfParse.mock.calls[0];
-    expect(Buffer.isBuffer(data)).toBe(false);
-    expect(Buffer.from(data)).toEqual(FIXTURE_BUFFER);
     expect(result.needsCredential).toBe(false);
     expect(result.isDrmLocked).toBe(false);
     expect(result.pageCount).toBe(2);
+  });
+
+  describe('bytes handed to pdf-parse', () => {
+    const parsed = {
+      numpages: 1,
+      text: 'Heading\nBody line on the page.',
+      info: {},
+      metadata: null,
+      version: 'v1.10.100' as const,
+      numrender: 1,
+    };
+
+    it('copies a small pooled Buffer into memory of its own', async () => {
+      mockPdfParse.mockResolvedValueOnce(parsed);
+      const pooled = Buffer.from('small pdf bytes');
+      expect(pooled.byteLength).toBeLessThan(pooled.buffer.byteLength);
+
+      await extractPdfText(pooled);
+
+      const [data] = mockPdfParse.mock.calls[0];
+      expect(Buffer.isBuffer(data)).toBe(false);
+      expect(data.byteOffset).toBe(0);
+      expect(data.byteLength).toBe(data.buffer.byteLength);
+      expect(Buffer.from(data)).toEqual(pooled);
+    });
+
+    it('passes a Buffer that owns its memory without copying it', async () => {
+      mockPdfParse.mockResolvedValueOnce(parsed);
+      const large = Buffer.alloc(8192, 1);
+      expect(large.byteLength).toBe(large.buffer.byteLength);
+
+      await extractPdfText(large);
+
+      const [data] = mockPdfParse.mock.calls[0];
+      expect(Buffer.isBuffer(data)).toBe(false);
+      expect(data.buffer).toBe(large.buffer);
+    });
   });
 });
