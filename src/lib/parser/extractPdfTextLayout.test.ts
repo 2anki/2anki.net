@@ -21,6 +21,13 @@ function asLandscape(pdf: Buffer): Buffer {
   );
 }
 
+function withFirstPageLandscape(pdf: Buffer): Buffer {
+  return Buffer.from(
+    pdf.toString('latin1').replace('[0 0 612 792]', '[0 0 792 612]'),
+    'latin1'
+  );
+}
+
 function loggedResult(spy: ReturnType<typeof vi.spyOn>) {
   const call = spy.mock.calls.find(
     (args: unknown[]) => args[0] === '[extractPdfText] result'
@@ -90,6 +97,28 @@ describe('extractPdfText layout logging', () => {
     );
     expect(result.pageCount).toBe(2);
     expect(loggedResult(spy)).toMatchObject({ landscapePageCount: 2 });
+    spy.mockRestore();
+  });
+});
+
+describe('extractPdfText page orientation', () => {
+  it('flags each page landscape or portrait from its own page box and leaves the rest of the page as it was', async () => {
+    const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const portrait = await extractPdfText(loadFixture('pdf-plain-text.pdf'));
+    spy.mockClear();
+    const mixed = await extractPdfText(
+      withFirstPageLandscape(loadFixture('pdf-plain-text.pdf'))
+    );
+
+    expect(portrait.pages.map((page) => page.landscape)).toEqual([
+      false,
+      false,
+    ]);
+    expect(mixed.pages).toEqual([
+      { ...portrait.pages[0], landscape: true },
+      { ...portrait.pages[1], landscape: false },
+    ]);
+    expect(loggedResult(spy)).toMatchObject({ landscapePageCount: 1 });
     spy.mockRestore();
   });
 });
