@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "Traiter les fichiers PDF",
-      "description": "Convertit en cartes les PDF trouvés dans les ZIP téléversés. Désactive-le pour les ignorer et terminer plus vite les téléversements de ZIP."
+      "description": "Convertit en cartes les PDF trouvés dans les ZIP téléversés et place l'image de chaque diapositive PowerPoint au verso de sa carte. Désactivé, les téléversements de ZIP finissent plus vite, mais les cartes PowerPoint n'ont plus d'images de diapositives."
     },
     "pdf-extract-text": {
       "label": "Extraire le texte des PDF",

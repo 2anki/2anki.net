@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "Process PDF files",
-      "description": "Convert PDFs found inside ZIP uploads into cards. Turn off to skip them and finish ZIP uploads faster."
+      "description": "Convert PDFs found inside ZIP uploads into cards, and put each PowerPoint slide's image on the back of its card. Turning it off finishes ZIP uploads faster, but PowerPoint cards then have no slide images."
     },
     "pdf-extract-text": {
       "label": "Extract text from PDFs",

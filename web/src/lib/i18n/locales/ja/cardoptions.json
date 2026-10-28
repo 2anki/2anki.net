@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "PDF ファイルを処理",
-      "description": "ZIP アップロード内の PDF をカードに変換します。オフにするとスキップされ、ZIP のアップロードが早く終わります。"
+      "description": "ZIP アップロード内の PDF をカードに変換し、PowerPoint の各スライドの画像をそのカードの裏面に入れます。オフにすると ZIP のアップロードは早く終わりますが、PowerPoint のカードにスライド画像が入らなくなります。"
     },
     "pdf-extract-text": {
       "label": "PDF からテキストを抽出",

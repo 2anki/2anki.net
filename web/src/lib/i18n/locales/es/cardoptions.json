@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "Procesar archivos PDF",
-      "description": "Convierte en tarjetas los PDF que hay dentro de las subidas de ZIP. Desactívalo para omitirlos y terminar antes las subidas de ZIP."
+      "description": "Convierte en tarjetas los PDF que hay dentro de las subidas de ZIP y pone la imagen de cada diapositiva de PowerPoint en el reverso de su tarjeta. Si lo desactivas, las subidas de ZIP terminan antes, pero las tarjetas de PowerPoint quedan sin imágenes de diapositivas."
     },
     "pdf-extract-text": {
       "label": "Extraer texto de los PDF",

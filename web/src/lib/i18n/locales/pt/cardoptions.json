@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "Processar arquivos PDF",
-      "description": "Converte em cartões os PDFs encontrados em envios ZIP. Desligue para pulá-los e concluir os envios ZIP mais rápido."
+      "description": "Converte em cartões os PDFs encontrados em envios ZIP e coloca a imagem de cada slide do PowerPoint no verso do seu cartão. Desligado, os envios ZIP terminam mais rápido, mas os cartões do PowerPoint ficam sem imagens dos slides."
     },
     "pdf-extract-text": {
       "label": "Extrair texto de PDFs",

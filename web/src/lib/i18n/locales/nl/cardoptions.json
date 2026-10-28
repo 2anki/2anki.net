@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "PDF-bestanden verwerken",
-      "description": "Zet PDF's uit ZIP-uploads om in kaarten. Zet uit om ze over te slaan en ZIP-uploads sneller af te ronden."
+      "description": "Zet PDF's uit ZIP-uploads om in kaarten en zet de afbeelding van elke PowerPoint-dia op de achterkant van de kaart. Uitgezet zijn ZIP-uploads sneller klaar, maar PowerPoint-kaarten hebben dan geen dia-afbeeldingen."
     },
     "pdf-extract-text": {
       "label": "Tekst uit PDF's halen",
