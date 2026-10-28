@@ -6,6 +6,11 @@ export const INACTIVITY_WINDOW = '6 months';
 
 const RECENT_ACTIVITY_CUTOFF = `now() - interval '${INACTIVITY_WINDOW}'`;
 
+// A warning sent before MCP use counted as activity, or one left in the
+// backlog the daily deletion cap builds up, may predate activity in the
+// window, so deletion spares activity since whichever came first.
+const ACTIVITY_SINCE_WARNING = `LEAST(ie.sent_at, ${RECENT_ACTIVITY_CUTOFF})`;
+
 export interface IInactivityEmailRepository {
   getUsersToNotify(
     limit?: number
@@ -125,7 +130,7 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
         )
       )
       .modify<UserRow, UserRow[]>(
-        this.excludeActivitySince('u.id', 'ie.sent_at')
+        this.excludeActivitySince('u.id', ACTIVITY_SINCE_WARNING)
       )
       .orderBy('ie.sent_at', 'asc')
       .limit(limit);

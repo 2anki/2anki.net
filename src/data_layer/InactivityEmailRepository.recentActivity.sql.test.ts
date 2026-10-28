@@ -22,7 +22,7 @@ describe('InactivityEmailRepository recent activity SQL', () => {
       'deletion after a warning',
       () => repository.buildUsersToDeleteQuery(100).toString(),
       'u.id',
-      'ie.sent_at',
+      `LEAST(ie.sent_at, ${sixMonthsAgo})`,
     ],
     [
       'dead-address deletion',
