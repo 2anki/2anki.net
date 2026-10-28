@@ -135,7 +135,7 @@
     },
     "anki-from-medical-lecture-slides": {
       "h1": "Trasforma le slide delle lezioni in carte Anki",
-      "subhead": "Carica un PDF delle tue slide — i titoli diventano nomi dei mazzi, i punti elenco diventano carte."
+      "subhead": "Carica un PDF delle tue slide — ogni slide con testo diventa una carta, con il titolo sul fronte e i punti elenco sul retro."
     },
     "nclex-anki": {
       "h1": "Trasforma i tuoi appunti di ripasso NCLEX in carte Anki che controlli tu",

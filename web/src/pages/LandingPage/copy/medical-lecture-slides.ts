@@ -14,10 +14,10 @@ const medicalLectureSlidesCopy: LandingCopy = {
   pathname: '/anki-from-medical-lecture-slides',
   title: 'Turn medical lecture slides into Anki cards — 2anki',
   description:
-    'Upload a PDF of your slides — headings become deck names, bullets become cards. Spaced repetition-ready Anki decks from any medical lecture. | 2anki',
+    'Upload a PDF of your medical lecture slides. Each text slide becomes an Anki card, with the title on the front and its bullets on the back. | 2anki',
   h1: 'Turn lecture slides into Anki cards',
   subhead:
-    'Upload a PDF of your slides — headings become deck names, bullets become cards.',
+    'Upload a PDF of your slides — each text slide becomes a card, with the slide title on the front and its bullets on the back.',
   whatComesAcross: [
     {
       title: 'Diagrams',
@@ -28,12 +28,12 @@ const medicalLectureSlidesCopy: LandingCopy = {
       body: 'Image occlusion is a native Anki feature — after import, use the Anki image occlusion editor to mask labels on any diagram that came across.',
     },
     {
-      title: 'Bold and italic text',
-      body: "Bolded terms and italicised definitions carry through to the card so your lecturer's emphasis guides your review.",
+      title: 'Slide numbers',
+      body: 'Bare slide numbers like "12" or "3 of 40" are left off your cards, so the back holds only what the slide teaches.',
     },
     {
       title: 'Nested lists',
-      body: 'Nested bullet hierarchies become nested cards, preserving the structure of multi-step clinical processes and classification systems.',
+      body: "Nested bullets stay on the back of their slide's card, in the order you wrote them, so a multi-step clinical process or a classification system reads as one answer.",
     },
   ],
   faqs: [

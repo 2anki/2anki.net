@@ -111,7 +111,7 @@ const pdfToAnki: AnswerConfig = {
   slug: 'pdf-to-anki',
   title: 'How to convert a PDF to Anki flashcards | 2anki',
   description:
-    'Upload a PDF and get an Anki deck. Headings name the deck and subdecks, bullets become card fronts, and the next line becomes the answer.',
+    'Upload a PDF and get an Anki deck. Each heading becomes a card front and the text under it the answer. In a text slide PDF, each slide becomes one card.',
   h1: 'How to convert a PDF to Anki flashcards',
   intro:
     'Upload a PDF to 2anki and download a .apkg deck. Works with lecture slides, textbook chapters, and any PDF with a text layer.',
@@ -122,7 +122,7 @@ const pdfToAnki: AnswerConfig = {
     },
     {
       heading: 'How cards are built',
-      body: 'Headings in the PDF name the deck and subdecks. Top-level bullets become card fronts; the next indent level or line becomes the back. Diagrams come across as embedded images. Equations stored as images appear as images; LaTeX equations render if MathJax is enabled in your Anki card template.',
+      body: 'Each heading becomes a card front, and the text under it, up to the next heading, becomes the back. A bullet with a space after its marker stays on the back; in a PDF exported from a Word outline, each top-level bullet fronts its own card. In a text slide PDF, where every page is landscape, each slide becomes one card, with the slide title on the front and its bullets on the back. The whole PDF becomes one deck named after the file. Diagrams come across as embedded images. Equations stored as images appear as images; LaTeX equations render if MathJax is enabled in your Anki card template.',
     },
     {
       heading: 'Convert a PDF',
@@ -244,12 +244,12 @@ const lectureNotesToAnki: AnswerConfig = {
   sections: [
     {
       heading: 'Start from lecture slides (PDF or PowerPoint)',
-      body: 'Most lecture handouts are PDF or PowerPoint exports. Upload the file and 2anki reads its text into question-and-answer cards, with headings naming the deck and subdecks. Slides that are mostly images fall back to image cards so you still get a reviewable deck.',
+      body: 'Most lecture handouts are PDF or PowerPoint exports. Upload the file and 2anki makes one card per slide, with the slide title on the front and its bullets on the back. Slides that are mostly images fall back to image cards so you still get a reviewable deck.',
     },
     {
       heading:
         'Start from typed notes (Word, Google Docs, Notion, or Markdown)',
-      body: 'If you type your notes, 2anki reads the structure directly. Word (.docx) and Google Docs exports keep headings, images, and formatting. Notion toggles become cards — heading on the front, body on the back. Markdown from Obsidian or a plain editor works the same way. Strikethrough text anywhere becomes a tag on every card in that deck.',
+      body: 'If you type your notes, 2anki reads the structure directly. Word (.docx) and Google Docs exports keep headings, images, and formatting. Notion toggles become cards — heading on the front, body on the back. Markdown from Obsidian or a plain editor works the same way. Strikethrough text on a card becomes a tag on that card.',
     },
     {
       heading: 'Start from a photo of handwritten notes',
@@ -257,7 +257,7 @@ const lectureNotesToAnki: AnswerConfig = {
     },
     {
       heading: 'Format your notes so they make good cards',
-      body: 'One idea per card beats a wall of text. Use headings to name decks, keep questions short, and let 2anki pair each prompt with its answer. You can edit every card in Anki afterward — nothing is locked down.',
+      body: 'One idea per card beats a wall of text. Keep questions short, put each one in a heading or a slide title, and let 2anki pair it with the text underneath. You can edit every card in Anki afterward — nothing is locked down.',
     },
     {
       heading: 'Free for your first 100 cards a month',
@@ -271,7 +271,7 @@ const lectureNotesToAnki: AnswerConfig = {
     },
     {
       q: 'My notes are in several formats. Do I need separate decks?',
-      a: 'No. Convert each source and Anki merges them, or point each conversion at the same deck name. Headings inside each file become subdecks so one course stays organized.',
+      a: 'No. Convert each source and Anki merges them, or point each conversion at the same deck name. Each PDF or Word file becomes one deck, so one file per lecture keeps a course organized.',
     },
     {
       q: 'Will my diagrams and images come across?',
@@ -304,18 +304,18 @@ const wordToAnki: AnswerConfig = {
   slug: 'word-to-anki',
   title: 'How to convert a Word document to Anki | 2anki',
   description:
-    'Upload a Word (.docx) file and get an Anki deck. Headings name the deck, images embed, strikethrough becomes tags. No retyping, no add-on — download a .apkg.',
+    'Upload a Word (.docx) file and get an Anki deck. Headings become card fronts, images embed, strikethrough becomes tags. No retyping, no add-on — download a .apkg.',
   h1: 'How to convert a Word document to Anki',
   intro:
     "If your notes live in a Word document, you don't need to rebuild them as cards by hand. Upload the .docx file to 2anki and download a .apkg deck that opens in Anki. Headings, images, and formatting come across.",
   sections: [
     {
       heading: 'What carries over from a .docx file',
-      body: "2anki reads the document's structure. Headings name the deck and subdecks. Images embed directly in the cards. Bold, italics, and lists keep their formatting. Strikethrough text becomes a tag applied to every card in that deck — a quick way to label a chapter or topic.",
+      body: "2anki reads the document's structure. Each heading becomes a card front, and the text under it becomes the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead, with the heading on each front and the item and its nested bullets on the back. The whole document becomes one deck. Images embed directly in the cards. Bold, italics, and lists keep their formatting. Strikethrough text on a card becomes a tag on that card.",
     },
     {
       heading: 'Format your document for clean cards',
-      body: 'Use headings for deck and section names. Put one question or term per line with its answer on the next. Short prompts make better cards than paragraphs. You can edit every card in Anki after import, so a rough first pass is fine.',
+      body: 'Put each question or term in a heading and its answer under it. Use a bulleted list under a heading when each point should be its own card. Short prompts make better cards than paragraphs. You can edit every card in Anki after import, so a rough first pass is fine.',
     },
     {
       heading: 'Convert your document',
@@ -327,7 +327,7 @@ const wordToAnki: AnswerConfig = {
     },
     {
       heading: 'Tables and two-column notes',
-      body: 'A two-column table — term on the left, definition on the right — converts cleanly, with each row becoming a card. Keep your term-and-definition notes in a table and the whole document turns into a deck in one pass.',
+      body: 'In a document with no headings, a two-column table — term on the left, definition on the right — converts cleanly, with each row becoming a card, so the whole document turns into a deck in one pass. A table under a heading goes on the back of that heading card instead.',
     },
   ],
   faqs: [
@@ -337,7 +337,7 @@ const wordToAnki: AnswerConfig = {
     },
     {
       q: 'How does 2anki decide what becomes a card?',
-      a: 'Headings name the deck and subdecks. Term-and-answer lines and two-column tables become card fronts and backs. Strikethrough text becomes a tag.',
+      a: 'Each heading becomes a card front with the text under it on the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead. In a document with no headings, a two-column table becomes one card per row. Strikethrough text becomes a tag.',
     },
     {
       q: 'Can I convert a Google Doc?',
@@ -420,7 +420,7 @@ const googleDocsToAnki: AnswerConfig = {
   slug: 'google-docs-to-anki',
   title: 'How to convert Google Docs to Anki flashcards | 2anki',
   description:
-    'Turn Google Docs notes into an Anki deck. Download your doc as Word (.docx) or Markdown, upload it to 2anki, and get a .apkg deck. Headings name decks, images embed.',
+    'Turn Google Docs notes into an Anki deck. Download your doc as Word (.docx) or Markdown, upload it to 2anki, and get a .apkg deck. Headings become card fronts, images embed.',
   h1: 'How to convert Google Docs to Anki flashcards',
   intro:
     "Google Docs doesn't connect to 2anki directly, but you don't have to retype anything. Download your doc as Word (.docx) or Markdown, upload the file, and download a .apkg deck that opens in Anki. Headings, images, and formatting come across.",
@@ -431,11 +431,11 @@ const googleDocsToAnki: AnswerConfig = {
     },
     {
       heading: 'What carries over',
-      body: '2anki reads the document structure. Headings name the deck and subdecks. Images in a .docx file embed directly in the cards. Bold, italics, and lists keep their formatting. Strikethrough text becomes a tag applied to every card in that deck — a quick way to label a chapter or topic.',
+      body: '2anki reads the structure of a .docx export. Each heading becomes a card front, and the text under it becomes the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead, with the heading on each front and the item and its nested bullets on the back. The whole doc becomes one deck. Images in a .docx file embed directly in the cards. Bold, italics, and lists keep their formatting. Strikethrough text on a card becomes a tag on that card.',
     },
     {
       heading: 'Format your doc for clean cards',
-      body: 'Use headings for deck and section names. Put one question or term per line with its answer on the next. A two-column table — term on the left, definition on the right — converts cleanly, one card per row. Short prompts make better cards than paragraphs, and you can edit every card in Anki afterward.',
+      body: 'Put each question or term in a heading and its answer under it. Use a bulleted list under a heading when each point should be its own card. A two-column table — term on the left, definition on the right — converts cleanly, one card per row, in a document with no headings. Short prompts make better cards than paragraphs, and you can edit every card in Anki afterward.',
     },
     {
       heading: 'Convert your file',
@@ -457,7 +457,7 @@ const googleDocsToAnki: AnswerConfig = {
     },
     {
       q: 'Will a two-column table become cards?',
-      a: 'Yes. A term-and-definition table converts one card per row. Export as Word to keep the table structure intact.',
+      a: 'Yes, in a document with no headings. A term-and-definition table converts one card per row. Export as Word to keep the table structure intact.',
     },
     {
       q: 'Do I need to install anything in Anki?',
@@ -558,7 +558,7 @@ const textbookToAnki: AnswerConfig = {
     },
     {
       heading: 'How cards are built',
-      body: 'Headings in the chapter name the deck and subdecks. Top-level bullets and term-and-answer lines become card fronts, with the next line or indent level as the back. Figures and diagrams come across as embedded images so a labeled plate still reads on the card.',
+      body: 'Each heading in the chapter becomes a card front, and the text under it, up to the next heading, becomes the back. A bullet with a space after its marker stays on the back; in a PDF exported from a Word outline, each top-level bullet fronts its own card. The chapter becomes one deck named after the file. Figures and diagrams come across as embedded images so a labeled plate still reads on the card.',
     },
     {
       heading: 'Include the page image',

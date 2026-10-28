@@ -135,7 +135,7 @@
     },
     "anki-from-medical-lecture-slides": {
       "h1": "Zet collegeslides om in Anki-kaarten",
-      "subhead": "Upload een PDF van je slides — koppen worden decknamen, bullets worden kaarten."
+      "subhead": "Upload een PDF van je slides — elke tekstslide wordt een kaart, met de titel van de slide op de voorkant en de bullets op de achterkant."
     },
     "nclex-anki": {
       "h1": "Zet je NCLEX-notities om in Anki-kaarten die je zelf beheert",

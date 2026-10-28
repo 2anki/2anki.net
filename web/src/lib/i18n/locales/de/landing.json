@@ -135,7 +135,7 @@
     },
     "anki-from-medical-lecture-slides": {
       "h1": "Verwandle Vorlesungsfolien in Anki-Karten",
-      "subhead": "Lade ein PDF deiner Folien hoch — Überschriften werden zu Stapelnamen, Aufzählungen zu Karten."
+      "subhead": "Lade ein PDF deiner Folien hoch — jede Textfolie wird zu einer Karte, mit dem Folientitel auf der Vorderseite und den Aufzählungspunkten auf der Rückseite."
     },
     "nclex-anki": {
       "h1": "Verwandle deine NCLEX-Wiederholungsnotizen in Anki-Karten, die du steuerst",
