@@ -18,6 +18,7 @@ import {
 import { hashIp, resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import { mcpFirstTouchMiddleware } from './mcpFirstTouch';
 import { authorizationResponseIssuer } from './authorizationResponseIssuer';
+import { makeDropUnsupportedProtocolVersion } from './dropUnsupportedProtocolVersion';
 import { logMcpClientErrors } from './logMcpClientErrors';
 import { MCP_AUTHORIZE_PATH } from '../../lib/mcp/loginReturn';
 
@@ -181,6 +182,7 @@ export function createMcpRouter(deps: McpRouterDeps): express.Router {
     '/mcp',
     logMcpClientErrors(deps.logClientError),
     bearer,
+    makeDropUnsupportedProtocolVersion(deps.logClientError),
     deps.onAuthenticatedPost
   );
   router.get('/mcp', bearer, (_req, res) => {

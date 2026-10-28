@@ -180,6 +180,29 @@ describe('McpRouter bearer enforcement', () => {
     expect(lines).toEqual([]);
   });
 
+  it('hands a call with an unlisted protocol version to the handler without that header', async () => {
+    let seenVersion: unknown = 'not reached';
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/mcp`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer good',
+            'mcp-protocol-version': '2099-01-01',
+          },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(200);
+      },
+      (req, res) => {
+        seenVersion = req.headers['mcp-protocol-version'];
+        res.json({ ok: true });
+      }
+    );
+    expect(seenVersion).toBeUndefined();
+  });
+
   it('reaches the authenticated handler with a valid bearer token', async () => {
     let reachedOwner: unknown = null;
     await withServer(
