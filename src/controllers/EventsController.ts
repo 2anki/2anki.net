@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { classifyDevice } from '../lib/analytics/classifyDevice';
 import { trackingAllowedFor } from '../lib/http/consentRegion';
 import { KNOWN_EVENTS } from '../types/AnalyticsEvents';
 import { TrackEventUseCase } from '../usecases/events/TrackEventUseCase';
@@ -49,10 +50,23 @@ export class EventsController {
       ),
       userId,
       anonymousId,
-      props: this.withSignupOrigin(safeProps, req),
+      props: this.withDevice(name, this.withSignupOrigin(safeProps, req), req),
     });
 
     res.status(202).end();
+  }
+
+  // upload_submitted is compared against the server's upload_started, which
+  // records the device from the user agent, so it takes the device the same way.
+  private withDevice(
+    name: string,
+    props: Record<string, unknown>,
+    req: Request
+  ): Record<string, unknown> {
+    if (name !== 'upload_submitted') {
+      return props;
+    }
+    return { ...props, device: classifyDevice(req.headers?.['user-agent']) };
   }
 
   private withSignupOrigin(

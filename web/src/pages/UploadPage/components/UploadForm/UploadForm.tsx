@@ -79,6 +79,7 @@ import { LOW_CREDITS_THRESHOLD } from '../AiCreditsReadout';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
+import { uploadSubmittedProps } from '../../../../lib/analytics/uploadSubmitted';
 import {
   isLargeUpload,
   reportClientError,
@@ -2050,6 +2051,7 @@ function UploadForm({
     setNetworkRetryFiles(null);
     setUnreadableFile(null);
     fireAnalyticsEvent('upload_started');
+    track('upload_submitted', uploadSubmittedProps(uploadedFiles, isRetry));
     setProgressWidth(10);
     setProgressSlow(false);
     setShowFallback(false);

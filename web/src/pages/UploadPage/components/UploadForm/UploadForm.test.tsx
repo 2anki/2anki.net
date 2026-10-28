@@ -933,6 +933,46 @@ describe('UploadForm analytics events', () => {
     expect(gtag).toHaveBeenCalledWith('event', 'upload_started');
   });
 
+  it('records upload_submitted with the file type and size bucket, never the name', async () => {
+    const { track } = await import('../../../../lib/analytics/track');
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const notes = new File(['# notes'], 'Private Lecture Notes.md');
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [notes],
+      configurable: true,
+    });
+    input.removeAttribute('required');
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+
+    expect(trackMock).toHaveBeenCalledWith('upload_submitted', {
+      fileExt: 'md',
+      sizeBucket: '<1MB',
+      fileCount: 1,
+      retry: false,
+    });
+    expect(JSON.stringify(trackMock.mock.calls)).not.toContain(
+      'Private Lecture Notes'
+    );
+  });
+
   it('does not fire the DB-backed upload_started track on file submit (server owns it)', async () => {
     const { track } = await import('../../../../lib/analytics/track');
     const trackMock = vi.mocked(track);
