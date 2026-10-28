@@ -34,6 +34,7 @@ import { SUPPORT_CC_ADDRESS, SUPPORT_EMAIL_ADDRESS } from '../../lib/constants';
 import { emailHash } from '../../lib/emailHash';
 import { getDatabase } from '../../data_layer';
 import { sendWithRetry } from './sendWithRetry';
+import { sendMail } from './sendMail';
 import SuppressionEventsRepository from '../../data_layer/SuppressionEventsRepository';
 import UsersRepository from '../../data_layer/UsersRepository';
 import { DeckReadyStrings, getEmailStrings } from './i18n';
@@ -266,7 +267,7 @@ export class EmailService implements IEmailService {
       }
     }
     msg.categories = [category];
-    return sgMail.send(msg);
+    return sendMail(msg);
   }
 
   async sendResetEmail(email: string, token: string): Promise<void> {
@@ -390,7 +391,7 @@ export class EmailService implements IEmailService {
       })),
     };
     try {
-      await sendWithRetry(() => sgMail.send(msg));
+      await sendWithRetry(() => sendMail(msg));
       return { didSend: true };
     } catch (e) {
       console.error('Error sending email', e);
@@ -412,7 +413,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.autoSyncAccessRequest],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
       return { didSend: true };
     } catch (e) {
       console.error('Error sending Auto Sync access request email', e);
@@ -502,7 +503,7 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error('Failed to send re-engagement email:', error);
       throw error;
@@ -553,7 +554,7 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error(`Failed to send inactivity warning to ${to}:`, error);
       throw error;
@@ -592,7 +593,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.abandonedCheckoutRecovery],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error(
         `Failed to send abandoned-checkout recovery to ${to}:`,
@@ -643,7 +644,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.passEnding],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error(`Failed to send pass ending email to ${to}:`, error);
       throw error;
@@ -965,7 +966,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.parserCanary],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error('[parser-canary] failed to send alert email:', error);
       throw error;
@@ -986,7 +987,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.aiSpendAlert],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error('[ai-spend-guard] failed to send alert email:', error);
       throw error;
@@ -1162,7 +1163,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.lowRatingFeedback],
     };
 
-    await sendWithRetry(() => sgMail.send(msg));
+    await sendWithRetry(() => sendMail(msg));
   }
 }
 

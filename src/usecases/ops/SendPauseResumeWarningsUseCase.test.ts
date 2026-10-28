@@ -187,6 +187,48 @@ describe('SendPauseResumeWarningsUseCase', () => {
     ).toHaveBeenLastCalledWith('first@example.com', expect.any(Date), '$7.99');
   });
 
+  it('logs the send failure, not the address, when releasing the claim also fails', async () => {
+    const repo = new FakeRepository();
+    repo.rows = [
+      {
+        email: 'first@example.com',
+        linked_email: null,
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+      {
+        email: 'second@example.com',
+        linked_email: null,
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+    ];
+    repo.releaseNotice = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          "delete from pause_resume_warnings where subscription_email = 'first@example.com'"
+        )
+      );
+    const emailService = {
+      sendSubscriptionResumingSoonEmail: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('smtp down'))
+        .mockResolvedValue(undefined),
+    } as unknown as IEmailService;
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
+
+    const result = await useCase.execute(NOW);
+
+    expect(result.count).toBe(1);
+    expect(errorLog).toHaveBeenCalledWith(
+      '[pause-resume-warnings] failed to send a warning:',
+      'smtp down'
+    );
+    expect(JSON.stringify(errorLog.mock.calls)).not.toContain(
+      'first@example.com'
+    );
+  });
+
   it('skips rows whose payload has no pause_collection', async () => {
     const repo = new FakeRepository();
     repo.rows = [
