@@ -859,6 +859,16 @@ function capitalsDeck(back: string, typedAnswers = 'true') {
   };
 }
 
+test('a Notion toggle whose back is two lines split by a line break stays a basic card with typed answers on', async () => {
+  const { parser, workspace } = capitalsDeck('<p>Lyon<br>Nice</p>');
+  await parser.build(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.enableInput).toBe(false);
+  expect(card.answer).toBe('');
+  expect(card.name).not.toContain('{{type:Input}}');
+});
+
 test('a hand-written toggle whose back is only the slide-source marker stays a basic card with typed answers on', async () => {
   const { parser, workspace } = capitalsDeck(
     '<p data-2anki-slide-source>Paris</p>'
