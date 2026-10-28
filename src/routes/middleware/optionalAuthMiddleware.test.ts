@@ -6,9 +6,12 @@ import AuthenticationService from '../../services/AuthenticationService';
 
 function run(token: string | undefined) {
   const authService = {
-    getUserFrom: vi.fn(async (value: string) =>
-      value === 'valid-session' ? { owner: 42 } : null
-    ),
+    getUserFrom: vi.fn(async (value: string) => {
+      if (value === 'database-down') {
+        throw new TypeError('connection lost');
+      }
+      return value === 'valid-session' ? { owner: 42 } : null;
+    }),
   } as unknown as AuthenticationService;
   const req = { cookies: token == null ? {} : { token } } as Request;
   const res = { locals: {} } as Response;
@@ -36,4 +39,18 @@ describe('makeOptionalAuthMiddleware', () => {
       expect(next).toHaveBeenCalledTimes(1);
     }
   );
+
+  it('carries on signed out when the session lookup fails, logging only the error class', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { res, next } = await run('database-down');
+
+    expect(res.locals.owner).toBeUndefined();
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith('[optional-auth] session lookup failed', {
+      errorClass: 'TypeError',
+    });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('database-down');
+    warn.mockRestore();
+  });
 });

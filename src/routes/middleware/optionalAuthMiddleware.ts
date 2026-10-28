@@ -14,9 +14,18 @@ export const makeOptionalAuthMiddleware = (
   ): Promise<void> => {
     const token = req.cookies?.token;
     if (token) {
-      const user = await authService.getUserFrom(token);
-      if (user) {
-        res.locals.owner = user.owner;
+      // The session is optional here, so a failed lookup serves the request
+      // signed out instead of failing a download or an event write.
+      try {
+        const user = await authService.getUserFrom(token);
+        if (user) {
+          res.locals.owner = user.owner;
+        }
+      } catch (error) {
+        console.warn('[optional-auth] session lookup failed', {
+          errorClass:
+            error instanceof Error ? error.constructor.name : typeof error,
+        });
       }
     }
     next();
