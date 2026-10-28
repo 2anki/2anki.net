@@ -27,6 +27,7 @@ import settingsRouter from './routes/SettingsRouter';
 import checksRouter from './routes/ChecksRouter';
 import versionRouter from './routes/VersionRouter';
 import landingConfigRouter from './routes/LandingConfigRouter';
+import nativeConfigRouter from './routes/NativeConfigRouter';
 import appStoreLinksRouter from './routes/AppStoreLinksRouter';
 import uploadRouter from './routes/UploadRouter';
 import usersRouter from './routes/UserRouter';
@@ -209,6 +210,7 @@ const serve = async () => {
   app.use(checksRouter());
   app.use(versionRouter());
   app.use(landingConfigRouter());
+  app.use(nativeConfigRouter());
   app.use(appStoreLinksRouter());
   app.use(uploadRouter());
   app.use(usersRouter());
