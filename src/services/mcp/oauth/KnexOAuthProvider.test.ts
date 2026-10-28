@@ -1318,3 +1318,366 @@ describe('Client ID Metadata Document clients', () => {
     ).resolves.toMatchObject({ token_type: 'bearer' });
   });
 });
+
+describe('resource indicators through the SDK handlers', () => {
+  const VERIFIER = 'resource-test-verifier-0123456789abcdefghijklmnopqrstuv';
+  const CHALLENGE = crypto
+    .createHash('sha256')
+    .update(VERIFIER)
+    .digest('base64url');
+
+  async function withServer(
+    run: (
+      base: string,
+      codeRepo: FakeCodeRepo,
+      tokenRepo: FakeTokenRepo
+    ) => Promise<void>
+  ) {
+    const { provider, clientRepo, codeRepo, tokenRepo } = makeProvider();
+    await clientRepo.create({
+      client_id: 'client-1',
+      client_name: 'Claude',
+      redirect_uris: ['https://claude.ai/callback'],
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      scope: 'mcp',
+      token_endpoint_auth_method: 'none',
+      metadata: {},
+      client_id_issued_at: 1,
+    });
+    const app = express();
+    app.use(cookieParser());
+    app.use('/authorize', authorizationHandler({ provider, rateLimit: false }));
+    app.use('/token', tokenHandler({ provider, rateLimit: false }));
+    const server = http.createServer(app);
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const { port } = server.address() as AddressInfo;
+    try {
+      await run(`http://127.0.0.1:${port}`, codeRepo, tokenRepo);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }
+
+  function tokenRequest(base: string, params: Record<string, string>) {
+    return fetch(`${base}/token`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: 'client-1',
+        ...params,
+      }).toString(),
+    });
+  }
+
+  function seedRefreshToken(
+    tokenRepo: FakeTokenRepo,
+    token: string,
+    resource: string
+  ) {
+    return tokenRepo.createRefreshToken({
+      token_hash: hashSecret(token),
+      client_id: 'client-1',
+      user_id: 42,
+      scopes: ['mcp'],
+      resource,
+      expires_at: new Date('2026-08-18T00:00:00.000Z'),
+    });
+  }
+
+  function authorizeQuery(resource: string): URLSearchParams {
+    return new URLSearchParams({
+      client_id: 'client-1',
+      redirect_uri: 'https://claude.ai/callback',
+      response_type: 'code',
+      code_challenge: CHALLENGE,
+      code_challenge_method: 'S256',
+      state: 'xyz',
+      resource,
+    });
+  }
+
+  it('sends a foreign resource back to the client as invalid_target before consent', async () => {
+    await withServer(async (base, codeRepo) => {
+      const res = await fetch(
+        `${base}/authorize?${authorizeQuery('https://evil.example/mcp').toString()}`,
+        { headers: { cookie: 'token=valid-session' }, redirect: 'manual' }
+      );
+      expect(res.status).toBe(302);
+      const location = new URL(res.headers.get('location') ?? '');
+      expect(location.origin + location.pathname).toBe(
+        'https://claude.ai/callback'
+      );
+      expect(location.searchParams.get('error')).toBe('invalid_target');
+      expect(location.searchParams.get('state')).toBe('xyz');
+      expect(codeRepo.rows).toHaveLength(0);
+    });
+  });
+
+  it('issues no code for a foreign resource even on an approved POST', async () => {
+    await withServer(async (base, codeRepo) => {
+      const csrf = computeConsentToken('valid-session', TEST_CONSENT_SECRET);
+      const body = authorizeQuery('https://evil.example/mcp');
+      body.set('consent', 'approve');
+      body.set('csrf', csrf);
+      const res = await fetch(`${base}/authorize`, {
+        method: 'POST',
+        headers: {
+          cookie: 'token=valid-session',
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+        redirect: 'manual',
+      });
+      expect(res.status).toBe(302);
+      expect(
+        new URL(res.headers.get('location') ?? '').searchParams.get('error')
+      ).toBe('invalid_target');
+      expect(codeRepo.rows).toHaveLength(0);
+    });
+  });
+
+  it('sends a signed-out user with a foreign resource back to the client, not to sign in', async () => {
+    await withServer(async (base, codeRepo) => {
+      const res = await fetch(
+        `${base}/authorize?${authorizeQuery('https://evil.example/mcp').toString()}`,
+        { redirect: 'manual' }
+      );
+      expect(res.status).toBe(302);
+      const location = new URL(res.headers.get('location') ?? '');
+      expect(location.origin + location.pathname).toBe(
+        'https://claude.ai/callback'
+      );
+      expect(location.searchParams.get('error')).toBe('invalid_target');
+      expect(res.headers.get('set-cookie') ?? '').not.toContain('mcp_');
+      expect(codeRepo.rows).toHaveLength(0);
+    });
+  });
+
+  it('still sends a signed-out user naming this server to sign in', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(
+        `${base}/authorize?${authorizeQuery(RESOURCE).toString()}`,
+        { redirect: 'manual' }
+      );
+      expect(res.status).toBe(302);
+      expect(new URL(res.headers.get('location') ?? '', base).pathname).toBe(
+        '/login'
+      );
+    });
+  });
+
+  it.each([
+    RESOURCE,
+    `${RESOURCE}/`,
+    'HTTPS://2ANKI.NET/mcp',
+    `${RESOURCE}#fragment`,
+  ])(
+    'still shows consent for this server as the resource (%s)',
+    async (resource) => {
+      await withServer(async (base) => {
+        const res = await fetch(
+          `${base}/authorize?${authorizeQuery(resource).toString()}`,
+          { headers: { cookie: 'token=valid-session' }, redirect: 'manual' }
+        );
+        expect(res.status).toBe(200);
+        expect(await res.text()).toContain('name="consent"');
+      });
+    }
+  );
+
+  it('answers a stored foreign resource at the token step with 400 invalid_target', async () => {
+    await withServer(async (base, codeRepo) => {
+      codeRepo.seed(hashSecret('foreign-code'), {
+        client_id: 'client-1',
+        user_id: 42,
+        redirect_uri: 'https://claude.ai/callback',
+        code_challenge: CHALLENGE,
+        scopes: ['mcp'],
+        resource: 'https://evil.example/mcp',
+        expires_at: new Date('2026-07-18T00:10:00.000Z'),
+        consumed_at: null,
+      });
+      const res = await fetch(`${base}/token`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: 'client-1',
+          grant_type: 'authorization_code',
+          code: 'foreign-code',
+          code_verifier: VERIFIER,
+          redirect_uri: 'https://claude.ai/callback',
+        }).toString(),
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: 'invalid_target' });
+    });
+  });
+
+  it('answers a foreign resource on the token request with 400 invalid_target', async () => {
+    await withServer(async (base, codeRepo) => {
+      codeRepo.seed(hashSecret('own-code'), {
+        client_id: 'client-1',
+        user_id: 42,
+        redirect_uri: 'https://claude.ai/callback',
+        code_challenge: CHALLENGE,
+        scopes: ['mcp'],
+        resource: RESOURCE,
+        expires_at: new Date('2026-07-18T00:10:00.000Z'),
+        consumed_at: null,
+      });
+      const res = await fetch(`${base}/token`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: 'client-1',
+          grant_type: 'authorization_code',
+          code: 'own-code',
+          code_verifier: VERIFIER,
+          redirect_uri: 'https://claude.ai/callback',
+          resource: 'https://evil.example/mcp',
+        }).toString(),
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: 'invalid_target' });
+    });
+  });
+
+  it('answers a refresh naming a foreign resource with 400 invalid_target', async () => {
+    await withServer(async (base, _codeRepo, tokenRepo) => {
+      await seedRefreshToken(tokenRepo, 'own-refresh', RESOURCE);
+      const res = await tokenRequest(base, {
+        grant_type: 'refresh_token',
+        refresh_token: 'own-refresh',
+        resource: 'https://evil.example/mcp',
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: 'invalid_target' });
+    });
+  });
+
+  it('answers a refresh token stored for a foreign resource with 400 invalid_target', async () => {
+    await withServer(async (base, _codeRepo, tokenRepo) => {
+      await seedRefreshToken(
+        tokenRepo,
+        'foreign-refresh',
+        'https://evil.example/mcp'
+      );
+      const res = await tokenRequest(base, {
+        grant_type: 'refresh_token',
+        refresh_token: 'foreign-refresh',
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: 'invalid_target' });
+    });
+  });
+
+  it('still refreshes a token for this server', async () => {
+    await withServer(async (base, _codeRepo, tokenRepo) => {
+      await seedRefreshToken(tokenRepo, 'own-refresh', RESOURCE);
+      const res = await tokenRequest(base, {
+        grant_type: 'refresh_token',
+        refresh_token: 'own-refresh',
+        resource: RESOURCE,
+      });
+      expect(res.status).toBe(200);
+    });
+  });
+});
+
+describe('token exchange failure logging', () => {
+  const SEED = {
+    client_id: 'client-1',
+    user_id: 42,
+    redirect_uri: 'https://claude.ai/callback',
+    code_challenge: 'chal',
+    scopes: ['mcp'],
+    resource: RESOURCE,
+    expires_at: new Date('2026-07-18T00:10:00.000Z'),
+    consumed_at: null,
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('logs the error class, never the code, when an exchange fails unexpectedly', async () => {
+    const { provider, codeRepo } = makeProvider();
+    codeRepo.seed(hashSecret('secret-code'), SEED);
+    vi.spyOn(codeRepo, 'consume').mockRejectedValue(
+      new TypeError('connection lost')
+    );
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(
+      provider.exchangeAuthorizationCode(
+        CLIENT,
+        'secret-code',
+        undefined,
+        'https://claude.ai/callback'
+      )
+    ).rejects.toThrow(TypeError);
+    expect(log).toHaveBeenCalledWith('[mcp-oauth] token exchange failed', {
+      grantType: 'authorization_code',
+      errorClass: 'TypeError',
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain('secret-code');
+  });
+
+  it('logs an unexpected failure on the refresh grant', async () => {
+    const { provider, tokenRepo } = makeProvider();
+    vi.spyOn(tokenRepo, 'findRefreshTokenByHash').mockRejectedValue(
+      new TypeError('connection lost')
+    );
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(
+      provider.exchangeRefreshToken(CLIENT, 'secret-refresh')
+    ).rejects.toThrow(TypeError);
+    expect(log).toHaveBeenCalledWith('[mcp-oauth] token exchange failed', {
+      grantType: 'refresh_token',
+      errorClass: 'TypeError',
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain('secret-refresh');
+  });
+
+  it('logs an unexpected failure while reading the code challenge', async () => {
+    const { provider, codeRepo } = makeProvider();
+    vi.spyOn(codeRepo, 'findByHash').mockRejectedValue(
+      new TypeError('connection lost')
+    );
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(
+      provider.challengeForAuthorizationCode(CLIENT, 'secret-code')
+    ).rejects.toThrow(TypeError);
+    expect(log).toHaveBeenCalledWith('[mcp-oauth] token exchange failed', {
+      grantType: 'authorization_code',
+      errorClass: 'TypeError',
+    });
+  });
+
+  it('does not log an expected rejection of a used code', async () => {
+    const { provider, codeRepo } = makeProvider();
+    codeRepo.seed(hashSecret('used-code'), {
+      ...SEED,
+      consumed_at: new Date('2026-07-17T00:00:00.000Z'),
+    });
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(
+      provider.exchangeAuthorizationCode(
+        CLIENT,
+        'used-code',
+        undefined,
+        'https://claude.ai/callback'
+      )
+    ).rejects.toThrow(InvalidGrantError);
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it('does not log an expected OAuth rejection', async () => {
+    const { provider } = makeProvider();
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(
+      provider.exchangeRefreshToken(CLIENT, 'unknown-refresh-token')
+    ).rejects.toThrow(InvalidGrantError);
+    expect(log).not.toHaveBeenCalled();
+  });
+});

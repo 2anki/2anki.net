@@ -12,8 +12,9 @@ import type {
 } from '@modelcontextprotocol/sdk/shared/auth.js';
 import {
   InvalidGrantError,
-  InvalidRequestError,
+  InvalidTargetError,
   InvalidTokenError,
+  OAuthError,
   ServerError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
@@ -70,6 +71,26 @@ export interface McpOAuthDeps {
   config: McpOAuthConfig;
   now?: () => Date;
   clientMetadataResolver?: ClientMetadataDocumentResolver;
+}
+
+// The SDK's token handler answers a non-OAuth error or a ServerError with a
+// bare 500 and logs nothing, so this is the only record of one.
+async function logUnexpectedTokenFailure<T>(
+  grantType: string,
+  run: () => Promise<T>
+): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (!(error instanceof OAuthError) || error instanceof ServerError) {
+      console.error('[mcp-oauth] token exchange failed', {
+        grantType,
+        errorClass:
+          error instanceof Error ? error.constructor.name : typeof error,
+      });
+    }
+    throw error;
+  }
 }
 
 function canonicalResource(value: URL): string {
@@ -253,6 +274,9 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     params: AuthorizationParams,
     res: Response
   ): Promise<void> {
+    if (params.resource != null && !this.isOwnResource(params.resource)) {
+      throw new InvalidTargetError('resource does not match this server');
+    }
     const user = await this.resolveLoggedInUser(res);
     if (user == null) {
       this.redirectToLogin(res);
@@ -354,6 +378,15 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     client: OAuthClientInformationFull,
     authorizationCode: string
   ): Promise<string> {
+    return logUnexpectedTokenFailure('authorization_code', () =>
+      this.storedCodeChallenge(client, authorizationCode)
+    );
+  }
+
+  private async storedCodeChallenge(
+    client: OAuthClientInformationFull,
+    authorizationCode: string
+  ): Promise<string> {
     const stored = await this.deps.codeRepo.findByHash(
       hashSecret(authorizationCode)
     );
@@ -370,6 +403,22 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     client: OAuthClientInformationFull,
     authorizationCode: string,
     _codeVerifier?: string,
+    redirectUri?: string,
+    resource?: URL
+  ): Promise<OAuthTokens> {
+    return logUnexpectedTokenFailure('authorization_code', () =>
+      this.redeemAuthorizationCode(
+        client,
+        authorizationCode,
+        redirectUri,
+        resource
+      )
+    );
+  }
+
+  private async redeemAuthorizationCode(
+    client: OAuthClientInformationFull,
+    authorizationCode: string,
     redirectUri?: string,
     resource?: URL
   ): Promise<OAuthTokens> {
@@ -402,6 +451,17 @@ export class KnexOAuthProvider implements OAuthServerProvider {
   }
 
   async exchangeRefreshToken(
+    client: OAuthClientInformationFull,
+    refreshToken: string,
+    scopes?: string[],
+    resource?: URL
+  ): Promise<OAuthTokens> {
+    return logUnexpectedTokenFailure('refresh_token', () =>
+      this.redeemRefreshToken(client, refreshToken, scopes, resource)
+    );
+  }
+
+  private async redeemRefreshToken(
     client: OAuthClientInformationFull,
     refreshToken: string,
     scopes?: string[],
@@ -507,16 +567,23 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     return clientId;
   }
 
+  private isOwnResource(resource: URL): boolean {
+    return (
+      canonicalResource(resource) ===
+      canonicalResource(this.deps.config.resourceUrl)
+    );
+  }
+
   private assertResourceMatches(
     storedResource: string | null,
     requested?: URL
   ): void {
     const expected = canonicalResource(this.deps.config.resourceUrl);
     if (storedResource != null && storedResource !== expected) {
-      throw new ServerError('Token resource does not match this server');
+      throw new InvalidTargetError('resource does not match this server');
     }
-    if (requested != null && canonicalResource(requested) !== expected) {
-      throw new InvalidRequestError('resource does not match this server');
+    if (requested != null && !this.isOwnResource(requested)) {
+      throw new InvalidTargetError('resource does not match this server');
     }
   }
 
