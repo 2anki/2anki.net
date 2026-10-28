@@ -61,6 +61,11 @@ describe('EmailService send failures', () => {
         ),
     ],
     [
+      'AI spend alert',
+      () => service.sendAiSpendAlertEmail(RECIPIENT, 'Spend alert', 'body'),
+    ],
+    ['Notion reconnect', () => service.sendNotionReconnectEmail(RECIPIENT)],
+    [
       'deck ready',
       () => service.sendConversionEmail(RECIPIENT, 'deck', Buffer.from('apkg')),
     ],
