@@ -340,21 +340,47 @@ describe('makeErrorCaptureMiddleware', () => {
     expect(next).toHaveBeenCalledWith(rangeError);
   });
 
-  it('records an email send that failed with a connection reset, which is our fault', async () => {
+  it.each([
+    ['ECONNRESET', 'read ECONNRESET'],
+    ['ECONNABORTED', 'aborted'],
+    [403, 'Forbidden'],
+  ])(
+    'records an email send that failed with %s, which is our fault',
+    async (code, message) => {
+      const repo = makeRepository();
+      const middleware = makeErrorCaptureMiddleware(repo);
+      const next = makeNext();
+      const emailError = new EmailSendError(message, code);
+
+      await middleware(
+        emailError,
+        makeReq('/api/users/magic-link'),
+        makeRes(),
+        next
+      );
+
+      expect(repo.inserts).toHaveLength(1);
+      expect(repo.inserts[0]).toMatchObject({
+        source: 'server',
+        message,
+        url: '/api/users/magic-link',
+      });
+      expect(next).toHaveBeenCalledWith(emailError);
+    }
+  );
+
+  it('still skips a client that dropped the connection (a plain ECONNRESET)', async () => {
     const repo = makeRepository();
     const middleware = makeErrorCaptureMiddleware(repo);
     const next = makeNext();
-    const emailError = new EmailSendError('read ECONNRESET', 'ECONNRESET');
+    const abortError = Object.assign(new Error('aborted'), {
+      code: 'ECONNRESET',
+    });
 
-    await middleware(
-      emailError,
-      makeReq('/api/users/magic-link'),
-      makeRes(),
-      next
-    );
+    await middleware(abortError, makeReq('/api/upload'), makeRes(), next);
 
-    expect(repo.inserts).toHaveLength(1);
-    expect(next).toHaveBeenCalledWith(emailError);
+    expect(repo.inserts).toHaveLength(0);
+    expect(next).toHaveBeenCalledWith(abortError);
   });
 
   it('records a 5xx HttpCodedError', async () => {

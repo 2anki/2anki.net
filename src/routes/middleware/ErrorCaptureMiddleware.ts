@@ -111,10 +111,11 @@ export const makeErrorCaptureMiddleware = (
     next: NextFunction
   ): Promise<void> => {
     // A failed email send is ours even when its code (ECONNRESET) reads as a
-    // client abort, matching ErrorHandler.
-    const clientFault =
-      !(err instanceof EmailSendError) && isExpectedClientFault(err);
-    if (isMalformedRequestBody(err) || isLimitError(err) || clientFault) {
+    // client abort or its message as a limit, matching ErrorHandler.
+    const skipped =
+      !(err instanceof EmailSendError) &&
+      (isLimitError(err) || isExpectedClientFault(err));
+    if (isMalformedRequestBody(err) || skipped) {
       next(err);
       return;
     }
