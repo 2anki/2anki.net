@@ -35,7 +35,7 @@ export const DownloadExpiredPage = (): string =>
               Convert a file
             </a>
             <a href="/downloads" style={styles.footerLink}>
-              Your recent downloads
+              My decks
             </a>
           </div>
           <DownloadFooter />

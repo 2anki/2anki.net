@@ -22,9 +22,9 @@ Die Allzweckoption. Schickt deinen Inhalt an Anthropics Claude und nutzt die Ant
 1. Öffne im Upload-Bildschirm das Einstellungspanel.
 2. Schalte **Generate Flashcards with Claude AI** ein.
 3. (Optional) Öffne **User instructions** und schreib ein oder zwei Sätze über die Art von Karten, die du willst.
-4. Lade deine Datei hoch. Der Job läuft im Hintergrund — du kannst die Seite verlassen und zu **My Decks** zum Herunterladen zurückkommen.
+4. Lade deine Datei hoch. Der Job läuft im Hintergrund — du kannst die Seite verlassen und zu **Meine Stapel** zum Herunterladen zurückkommen.
 
-Das Ergebnis ist eine normale `.apkg`. Karten kommen mit 1–3 Themen-Tags aus dem Inhalt vorgetaggt an — du kannst in Ankis Tag-Browser nach Tag filtern oder stöbern, sobald das Deck sich öffnet. Du kannst das Deck aus **My Decks** erneut herunterladen, solange dein Plan es behält (siehe [Grenzen und Kontingente](/documentation/help/limits) für Speicherfenster).
+Das Ergebnis ist eine normale `.apkg`. Karten kommen mit 1–3 Themen-Tags aus dem Inhalt vorgetaggt an — du kannst in Ankis Tag-Browser nach Tag filtern oder stöbern, sobald das Deck sich öffnet. Du kannst das Deck aus **Meine Stapel** erneut herunterladen, solange dein Plan es behält (siehe [Grenzen und Kontingente](/documentation/help/limits) für Speicherfenster).
 
 **Kartenmenge — Comprehensive AI mode.** Subscription- und Lifetime-Pläne bekommen einen **Comprehensive AI mode**-Schalter auf der Kartenoptionen-Seite unter **PDF & AI**. Schalte ihn ein, um 200–500 Karten pro Upload für kapitelgroßes Material anzuzielen: Der Konverter teilt lange Uploads in Chunks, lässt sie parallel laufen und geht die dünnsten Chunks mit einem Nachschub-Durchlauf an, sodass ein 50-seitiges Kapitel als ein volles Deck statt einer spärlichen Auswahl landet. Die Gesamtsumme ist bei 500 gedeckelt, um das Deck lernbar zu halten. Konvertierungen dauern länger als im Standardmodus. Lass den Schalter aus, wenn du die schnellere Standardmenge willst. Kostenlose Konten sehen den Schalter nicht — die standardmäßige KI-Konvertierung läuft mit der Standardmenge.
 

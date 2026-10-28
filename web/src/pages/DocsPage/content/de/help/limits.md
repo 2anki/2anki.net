@@ -62,7 +62,7 @@ Deine Datei liegt nur so lange auf der Festplatte, wie es dauert, das Deck zu ba
 
 ### Notion-Konvertierung und Claude-KI-Uploads
 
-Diese Wege bauen dein Deck im Hintergrund und speichern die `.apkg` in unserem Bucket, damit du es unter **My Decks** erneut herunterladen kannst und damit [Sync](/documentation/sync/how-it-works) etwas zum Aktualisieren hat.
+Diese Wege bauen dein Deck im Hintergrund und speichern die `.apkg` in unserem Bucket, damit du es unter **Meine Stapel** erneut herunterladen kannst und damit [Sync](/documentation/sync/how-it-works) etwas zum Aktualisieren hat.
 
 | Plan               | Wie lange deine Decks im Bucket bleiben                             |
 | ------------------ | ------------------------------------------------------------------- |
@@ -70,7 +70,7 @@ Diese Wege bauen dein Deck im Hintergrund und speichern die `.apkg` in unserem B
 | Subscription       | Behalten, solange dein Abo aktiv ist.                               |
 | Lifetime (Patreon) | Unbegrenzt behalten.                                                |
 
-Wenn dein Abo ausläuft, werden deine gespeicherten Decks in der nächsten täglichen Bereinigung entfernt — konvertiere erneut, und sie kommen zurück. Du kannst ein Deck auch jederzeit selbst unter **My Decks** löschen.
+Wenn dein Abo ausläuft, werden deine gespeicherten Decks in der nächsten täglichen Bereinigung entfernt — konvertiere erneut, und sie kommen zurück. Du kannst ein Deck auch jederzeit selbst unter **Meine Stapel** löschen.
 
 ## Free vs. kostenpflichtig
 
