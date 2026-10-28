@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-page-image-file-names",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "PowerPoint and image-only PDF files with a % or quotes in the name convert with every page"
+}
