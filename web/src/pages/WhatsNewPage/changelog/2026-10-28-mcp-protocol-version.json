@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-mcp-protocol-version",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "Claude no longer gets an occasional error when it makes flashcards through the 2anki connector"
+}

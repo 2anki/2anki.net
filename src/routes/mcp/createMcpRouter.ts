@@ -18,6 +18,8 @@ import {
 import { hashIp, resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import { mcpFirstTouchMiddleware } from './mcpFirstTouch';
 import { authorizationResponseIssuer } from './authorizationResponseIssuer';
+import { makeDropUnsupportedProtocolVersion } from './dropUnsupportedProtocolVersion';
+import { logMcpClientErrors } from './logMcpClientErrors';
 import { MCP_AUTHORIZE_PATH } from '../../lib/mcp/loginReturn';
 
 export { MCP_AUTHORIZE_PATH };
@@ -47,6 +49,7 @@ export interface McpRouterDeps {
   resourceUrl: URL;
   onAuthenticatedPost: RequestHandler;
   consentSecret: string;
+  logClientError?: (line: string) => void;
   rateLimiters?: Partial<McpRateLimiters>;
 }
 
@@ -175,7 +178,13 @@ export function createMcpRouter(deps: McpRouterDeps): express.Router {
     res.redirect(308, `/mcp${search}`);
   });
 
-  router.post('/mcp', bearer, deps.onAuthenticatedPost);
+  router.post(
+    '/mcp',
+    logMcpClientErrors(deps.logClientError),
+    bearer,
+    makeDropUnsupportedProtocolVersion(deps.logClientError),
+    deps.onAuthenticatedPost
+  );
   router.get('/mcp', bearer, (_req, res) => {
     res.set('Allow', 'POST');
     res.status(405).json({ error: 'method_not_allowed' });

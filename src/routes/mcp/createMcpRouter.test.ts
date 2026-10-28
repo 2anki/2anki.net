@@ -63,6 +63,7 @@ async function withServer(
       resourceUrl: new URL(RESOURCE),
       onAuthenticatedPost: onPost,
       consentSecret: 'test-secret',
+      logClientError: () => {},
       ...depsOverride,
     })
   );
@@ -135,6 +136,118 @@ describe('McpRouter bearer enforcement', () => {
       expect(res.status).toBe(401);
       expect(res.headers.get('www-authenticate')).toContain('Bearer');
     });
+  });
+
+  it('logs why it refused a POST /mcp, which the SDK does not', async () => {
+    const lines: string[] = [];
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/mcp`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer good',
+          },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(401);
+        await res.text();
+      },
+      (_req, res) => {
+        res.status(401).json({ error: 'invalid_token' });
+      },
+      undefined,
+      { logClientError: (line) => lines.push(line) }
+    );
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('[mcp] POST /mcp 401 code=invalid_token');
+    expect(lines[0]).toContain('method=ping');
+  });
+
+  it('does not log the OAuth challenge to a POST /mcp with no Authorization header', async () => {
+    const lines: string[] = [];
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/mcp`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(401);
+        await res.text();
+      },
+      undefined,
+      undefined,
+      { logClientError: (line) => lines.push(line) }
+    );
+    expect(lines).toEqual([]);
+  });
+
+  it('logs nothing for GET or DELETE /mcp, which answer 405 or 401 by design', async () => {
+    const lines: string[] = [];
+    await withServer(
+      async (base) => {
+        for (const method of ['GET', 'DELETE']) {
+          const withToken = await fetch(`${base}/mcp`, {
+            method,
+            headers: { authorization: 'Bearer good' },
+          });
+          expect(withToken.status).toBe(405);
+          const withoutToken = await fetch(`${base}/mcp`, { method });
+          expect(withoutToken.status).toBe(401);
+        }
+      },
+      undefined,
+      undefined,
+      { logClientError: (line) => lines.push(line) }
+    );
+    expect(lines).toEqual([]);
+  });
+
+  it('hands a call with an unlisted protocol version to the handler without that header', async () => {
+    let seenVersion: unknown = 'not reached';
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/mcp`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer good',
+            'mcp-protocol-version': '2099-01-01',
+          },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(200);
+      },
+      (req, res) => {
+        seenVersion = req.headers['mcp-protocol-version'];
+        res.json({ ok: true });
+      }
+    );
+    expect(seenVersion).toBeUndefined();
+  });
+
+  it('hands a supported protocol version to the handler as the client sent it', async () => {
+    let seenVersion: unknown = 'not reached';
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/mcp`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer good',
+            'mcp-protocol-version': '2025-06-18',
+          },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(200);
+      },
+      (req, res) => {
+        seenVersion = req.headers['mcp-protocol-version'];
+        res.json({ ok: true });
+      }
+    );
+    expect(seenVersion).toBe('2025-06-18');
   });
 
   it('reaches the authenticated handler with a valid bearer token', async () => {
