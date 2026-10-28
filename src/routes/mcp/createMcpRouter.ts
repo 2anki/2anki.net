@@ -177,8 +177,12 @@ export function createMcpRouter(deps: McpRouterDeps): express.Router {
     res.redirect(308, `/mcp${search}`);
   });
 
-  router.all('/mcp', logMcpClientErrors(deps.logClientError));
-  router.post('/mcp', bearer, deps.onAuthenticatedPost);
+  router.post(
+    '/mcp',
+    logMcpClientErrors(deps.logClientError),
+    bearer,
+    deps.onAuthenticatedPost
+  );
   router.get('/mcp', bearer, (_req, res) => {
     res.set('Allow', 'POST');
     res.status(405).json({ error: 'method_not_allowed' });

@@ -3,6 +3,7 @@ import type { RequestHandler } from 'express';
 import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
 
 const MAX_CAPTURED_BYTES = 4096;
+const MAX_LOGGED_METHODS = 10;
 const PLAIN_METHOD_NAME = /^[a-z][a-z0-9_/.-]{0,63}$/i;
 
 interface ErrorReason {
@@ -32,13 +33,14 @@ function readErrorReason(body: string): ErrorReason {
 
 function requestMethods(body: unknown): string {
   const messages = Array.isArray(body) ? body : [body];
-  const methods = messages.map((message) => {
+  const methods = messages.slice(0, MAX_LOGGED_METHODS).map((message) => {
     const method = (message as { method?: unknown } | null)?.method;
     return typeof method === 'string' && PLAIN_METHOD_NAME.test(method)
       ? method
       : '?';
   });
-  return methods.join(',');
+  const unlisted = messages.length - methods.length;
+  return unlisted > 0 ? `${methods.join(',')},+${unlisted}` : methods.join(',');
 }
 
 function headerValue(value: string | string[] | undefined): string {
@@ -48,19 +50,23 @@ function headerValue(value: string | string[] | undefined): string {
   return sanitizeForLog(Array.isArray(value) ? value.join(', ') : value);
 }
 
-function toBuffer(chunk: unknown): Buffer | null {
+function quoted(value: string): string {
+  return JSON.stringify(value);
+}
+
+function leadingBytes(chunk: unknown, limit: number): Buffer | null {
   if (typeof chunk === 'string') {
-    return Buffer.from(chunk);
+    return Buffer.from(chunk.slice(0, limit)).subarray(0, limit);
   }
   if (chunk instanceof Uint8Array) {
-    return Buffer.from(chunk);
+    return Buffer.from(chunk.subarray(0, limit));
   }
   return null;
 }
 
-// /mcp answers some requests 4xx (a bad Accept header, an unsupported protocol
-// version, a malformed batch) from inside the MCP SDK, which logs nothing. One
-// line per refusal says why. It never carries request arguments, the error
+// POST /mcp answers some requests 4xx (a bad Accept header, an unsupported
+// protocol version, a malformed batch) from inside the MCP SDK, which logs
+// nothing. One line per refusal says why. It never carries request arguments, the error
 // data the SDK attaches, or anything tied to the user: only the error code and
 // message, the JSON-RPC method names and the negotiation headers.
 export function logMcpClientErrors(
@@ -73,11 +79,10 @@ export function logMcpClientErrors(
       if (res.statusCode < 400 || capturedBytes >= MAX_CAPTURED_BYTES) {
         return;
       }
-      const buffer = toBuffer(chunk);
-      if (buffer == null) {
+      const slice = leadingBytes(chunk, MAX_CAPTURED_BYTES - capturedBytes);
+      if (slice == null) {
         return;
       }
-      const slice = buffer.subarray(0, MAX_CAPTURED_BYTES - capturedBytes);
       captured.push(slice);
       capturedBytes += slice.length;
     };
@@ -102,13 +107,13 @@ export function logMcpClientErrors(
       const reason = readErrorReason(Buffer.concat(captured).toString('utf8'));
       log(
         [
-          `[mcp] ${req.method} /mcp ${res.statusCode}`,
+          `[mcp] POST /mcp ${res.statusCode}`,
           `code=${sanitizeForLog(reason.code)}`,
-          `message="${sanitizeForLog(reason.message)}"`,
+          `message=${quoted(sanitizeForLog(reason.message))}`,
           `method=${requestMethods(req.body)}`,
           `protocol=${headerValue(req.headers['mcp-protocol-version'])}`,
-          `accept="${headerValue(req.headers.accept)}"`,
-          `content_type="${headerValue(req.headers['content-type'])}"`,
+          `accept=${quoted(headerValue(req.headers.accept))}`,
+          `content_type=${quoted(headerValue(req.headers['content-type']))}`,
         ].join(' ')
       );
     });

@@ -159,6 +159,27 @@ describe('McpRouter bearer enforcement', () => {
     expect(lines[0]).toContain('method=ping');
   });
 
+  it('logs nothing for GET or DELETE /mcp, which answer 405 or 401 by design', async () => {
+    const lines: string[] = [];
+    await withServer(
+      async (base) => {
+        for (const method of ['GET', 'DELETE']) {
+          const withToken = await fetch(`${base}/mcp`, {
+            method,
+            headers: { authorization: 'Bearer good' },
+          });
+          expect(withToken.status).toBe(405);
+          const withoutToken = await fetch(`${base}/mcp`, { method });
+          expect(withoutToken.status).toBe(401);
+        }
+      },
+      undefined,
+      undefined,
+      { logClientError: (line) => lines.push(line) }
+    );
+    expect(lines).toEqual([]);
+  });
+
   it('reaches the authenticated handler with a valid bearer token', async () => {
     let reachedOwner: unknown = null;
     await withServer(
