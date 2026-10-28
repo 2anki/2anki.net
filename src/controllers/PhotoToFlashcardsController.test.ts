@@ -324,9 +324,28 @@ describe('PhotoToFlashcardsController client attribution', () => {
     );
   });
 
-  // A client that sends nothing is the native app today. Labelling it
-  // 'unattributed' rather than guessing 'native' keeps the number honest and
-  // makes the bucket shrink as clients are taught to declare themselves.
+  // The native app declares its platform since Laer-Smart/2anki.app#84, so
+  // iOS and macOS photo-to-deck use leaves the unattributed bucket (#5093).
+  it.each([
+    ['ios', 'photo_to_deck_ios'],
+    ['macos', 'photo_to_deck_macos'],
+  ])(
+    'names the native app when it declares source=%s',
+    async (source, surface) => {
+      const useCase = makeUseCase();
+      const controller = new PhotoToFlashcardsController(useCase);
+
+      await controller.create(makeReq({ ...baseBody, source }), makeRes());
+
+      expect(useCase.execute).toHaveBeenCalledWith(
+        expect.objectContaining({ usageSurface: surface })
+      );
+    }
+  );
+
+  // A client that sends nothing is an older native build or an unknown
+  // caller. Labelling it 'unattributed' rather than guessing keeps the number
+  // honest and makes the bucket shrink as clients declare themselves.
   it('marks a client that declares nothing as unattributed', async () => {
     const useCase = makeUseCase();
     const controller = new PhotoToFlashcardsController(useCase);
@@ -343,6 +362,7 @@ describe('PhotoToFlashcardsController client attribution', () => {
   // analytics event. These four names are the reason the allowlist is a Map.
   it.each([
     ['an unknown name', 'desktop'],
+    ['a differently cased platform', 'iOS'],
     ['a number', 42],
     ['an object', { web: true }],
     ['an empty string', ''],

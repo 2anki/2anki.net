@@ -36,6 +36,9 @@ const ALLOWED_CARD_STYLES: PhotoCardStyle[] = ['generative', 'heading-driven'];
 // code exists to make trustworthy. A Map only ever sees its own keys.
 const PHOTO_CLIENT_SURFACE = new Map<string, string>([
   ['web', 'photo_to_deck_web'],
+  // The native app sends its platform (Laer-Smart/2anki.app#84).
+  ['ios', 'photo_to_deck_ios'],
+  ['macos', 'photo_to_deck_macos'],
 ]);
 
 // Until #4603 this route passed no surface at all, so every call through it
