@@ -2049,25 +2049,6 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
   });
 });
 
-const CHROME_ONLY_DIAGRAMS_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
-<html>
-<head><title>diagrams.pptx</title></head>
-<body>
-  <ul class="toggle">
-    <li>
-      <details>
-        <summary>Cell Biology</summary><ul><li>1</li></ul></details>
-    </li>
-    </ul>
-<ul class="toggle">
-    <li>
-      <details>
-        <summary>Cell Biology</summary><ul><li>2</li></ul></details>
-    </li>
-    </ul>
-</body>
-</html>`;
-
 describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
   const NAMESPACES =
     'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
@@ -2118,9 +2099,10 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
     ],
   ]);
 
-  const chromeOnlyDiagrams = pptx([
-    [picture, footer, slideNumber('1')],
+  const titleSlideAndFigures = pptx([
+    [textShape('<p:ph type="ctrTitle"/>', 'Mitosis')],
     [picture, footer, slideNumber('2')],
+    [picture, footer, slideNumber('3')],
   ]);
 
   function cardFronts(html: string): string[] {
@@ -2202,69 +2184,44 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
     expect(fronts).toEqual(['Exocytosis']);
   });
 
-  it('makes the cards it made before chrome detection from a deck whose only text is the slide number and footer when slide images are off', async () => {
-    const result = await PrepareDeck({
-      name: 'diagrams.pptx',
-      files: [{ name: 'diagrams.pptx', contents: chromeOnlyDiagrams }],
-      settings: makeSettings({ 'process-pdfs': 'false' }),
-      noLimits: true,
-      workspace: makeWorkspace(),
-    });
+  it.each([
+    {
+      cloze: 'true',
+      expected: [
+        { front: 'Mitosis', back: '' },
+        { front: 'Cell Biology', back: '2' },
+        { front: 'Cell Biology', back: '3' },
+      ],
+    },
+    {
+      cloze: 'false',
+      expected: [
+        { front: 'Cell Biology', back: '2' },
+        { front: 'Cell Biology', back: '3' },
+      ],
+    },
+  ])(
+    'makes the cards it made before chrome detection from a title slide and figure slides whose only text is the footer and slide number when slide images are off (cloze $cloze)',
+    async ({ cloze, expected }) => {
+      const result = await PrepareDeck({
+        name: 'lecture.pptx',
+        files: [{ name: 'lecture.pptx', contents: titleSlideAndFigures }],
+        settings: makeSettings({ 'process-pdfs': 'false', cloze }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      });
 
-    const cards = result?.deck.flatMap((deck) =>
-      deck.cards.map((card) => ({
-        front: card.name.replaceAll(/<[^>]+>/g, '').trim(),
-        back: card.back.replaceAll(/<[^>]+>/g, '').trim(),
-      }))
-    );
-    expect(cards).toEqual([
-      { front: 'Cell Biology', back: '1' },
-      { front: 'Cell Biology', back: '2' },
-    ]);
-    expect(renderPdfPageImages).not.toHaveBeenCalled();
-    expect(convertPDFToImages).not.toHaveBeenCalled();
-  });
-
-  it('hands Claude the document it got before chrome detection for a deck whose only text is the slide number and footer when slide images are off', async () => {
-    generateDeckInfo.mockResolvedValueOnce([
-      {
-        name: 'Cell Biology',
-        image: '',
-        style: null,
-        id: 111222333444555,
-        settings: { template: 'specialstyle' },
-        cards: [
-          {
-            name: 'Cell Biology',
-            back: '1',
-            tags: [],
-            cloze: false,
-            number: 0,
-            enableInput: false,
-            answer: '',
-            media: [],
-          },
-        ],
-      },
-    ]);
-
-    const result = await PrepareDeck({
-      name: 'diagrams.pptx',
-      files: [{ name: 'diagrams.pptx', contents: chromeOnlyDiagrams }],
-      settings: makeSettings({
-        'claude-ai-flashcards': 'true',
-        'process-pdfs': 'false',
-      }),
-      noLimits: true,
-      workspace: makeWorkspace(),
-    });
-
-    expect(result?.engine).toBe('claude');
-    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
-    expect(generateDeckInfo.mock.calls[0][0]).toBe(
-      CHROME_ONLY_DIAGRAMS_BEFORE_CHROME_DETECTION
-    );
-  });
+      const cards = result?.deck.flatMap((deck) =>
+        deck.cards.map((card) => ({
+          front: card.name.replaceAll(/<[^>]+>/g, '').trim(),
+          back: card.back.replaceAll(/<[^>]+>/g, '').trim(),
+        }))
+      );
+      expect(cards).toEqual(expected);
+      expect(renderPdfPageImages).not.toHaveBeenCalled();
+      expect(convertPDFToImages).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe('PrepareDeck — two-way cards from convert_to_deck options', () => {

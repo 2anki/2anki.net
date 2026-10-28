@@ -494,12 +494,13 @@ describe('extractPptxSourceUnits — slide chrome', () => {
 
     const html = combineSlidesIntoHTML(
       extractPptxSourceUnits(buildPptx([{ xml }])),
-      [],
-      'lecture.pdf'
+      ['/ws/pdf-x/slide-1.png'],
+      'lecture.pdf',
+      '/ws'
     );
 
     expect(html).toContain(
-      '<summary>Exocytosis</summary><ul><li>03</li><li>Ca2+ influx triggers fusion</li></ul></details>'
+      '<summary>Exocytosis</summary><ul><li>03</li><li>Ca2+ influx triggers fusion</li></ul><img src="pdf-x/slide-1.png" /></details>'
     );
   });
 
@@ -614,38 +615,7 @@ describe('extractPptxSourceUnits — slide chrome', () => {
   });
 });
 
-const CHROME_ONLY_LECTURE_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
-<html>
-<head><title>lecture.pptx</title></head>
-<body>
-  <ul class="toggle">
-    <li>
-      <details>
-        <summary>10/27/2026</summary><ul><li>Cell Biology</li><li>1</li></ul></details>
-    </li>
-    </ul>
-<ul class="toggle">
-    <li>
-      <details>
-        <summary>Cell Biology</summary><ul><li>2</li><li>2</li></ul></details>
-    </li>
-    </ul>
-<ul class="toggle">
-    <li>
-      <details>
-        <summary>3</summary><ul><li>Cell Biology</li></ul><hr /><p>Label the four phases</p></details>
-    </li>
-    </ul>
-<ul class="toggle">
-    <li>
-      <details>
-        <summary>4</summary><ul><li>Cell Biology</li></ul></details>
-    </li>
-    </ul>
-</body>
-</html>`;
-
-describe('extractPptxSourceUnits — a deck with no slide images that makes no cards once chrome is set apart', () => {
+describe('extractPptxSourceUnits — the slide read as it was before chrome detection', () => {
   const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
     'Cell Biology',
   ]);
@@ -695,48 +665,60 @@ describe('extractPptxSourceUnits — a deck with no slide images that makes no c
       ['4', 'Cell Biology'],
     ]);
   });
-
-  it('builds the HTML it built before chrome detection when the only slide text is chrome', () => {
-    const html = combineSlidesIntoHTML(
-      extractPptxSourceUnits(chromeOnlyLecture),
-      [],
-      'lecture.pptx'
-    );
-
-    expect(html).toBe(CHROME_ONLY_LECTURE_BEFORE_CHROME_DETECTION);
-  });
-
-  it('builds the HTML it built before chrome detection when the only slide text is speaker notes', () => {
-    const notesOnlyLecture = buildPptx([
-      { xml: imageSlidXml(), notesXml: notesXml('Label the four phases') },
-      { xml: imageSlidXml(), notesXml: notesXml('Name the organelle') },
-    ]);
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    try {
-      const html = combineSlidesIntoHTML(
-        extractPptxSourceUnits(notesOnlyLecture),
-        [],
-        'lecture.pptx'
-      );
-
-      expect(html).toBe(
-        '<!DOCTYPE html>\n<html>\n<head><title>lecture.pptx</title></head>\n<body>\n  \n</body>\n</html>'
-      );
-    } finally {
-      warn.mockRestore();
-    }
-  });
 });
 
-const LECTURE_WITH_A_NOTES_SLIDE = `<!DOCTYPE html>
+const TITLE_SLIDE_AND_FIGURES_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
 <html>
 <head><title>lecture.pptx</title></head>
 <body>
   <ul class="toggle">
     <li>
       <details>
-        <summary>Mitosis</summary><ul><li>Prophase</li></ul></details>
+        <summary>Mitosis</summary></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>3</li></ul></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+const TITLED_SLIDES_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pptx</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li><li>Cell Biology</li><li>1</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Meiosis 2</summary><ul><li>Gametes</li><li>10/27/2026</li></ul></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+const NOTES_SLIDE_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pptx</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li><li>Cell Biology</li><li>1</li></ul></details>
     </li>
     </ul>
 <ul class="toggle">
@@ -748,22 +730,100 @@ const LECTURE_WITH_A_NOTES_SLIDE = `<!DOCTYPE html>
 </body>
 </html>`;
 
-describe('extractPptxSourceUnits — a deck with no slide images where another slide makes a card', () => {
-  it('keeps the speaker notes of a slide whose only text is chrome, on the card that slide made before chrome detection', () => {
-    const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
-      'Cell Biology',
-    ]);
-    const slideNumber = (n: string) =>
-      slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', n);
+const PARTLY_RENDERED_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pdf</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>19</summary><ul><li>03</li><li>Exocytosis</li><li>Cell Biology</li></ul><img src="pdf-x/slide-1.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary><img src="pdf-x/slide-2.png" /></summary></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>21</li></ul></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+describe('extractPptxSourceUnits — a .pptx without a rendered image for every slide converts exactly as before chrome detection', () => {
+  const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
+    'Cell Biology',
+  ]);
+  const slideNumber = (n: string) =>
+    slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', n);
+  const picture =
+    '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>';
+  const titledSlide = slideOfShapesXml([
+    shapeXml('<p:ph type="title"/>', ['Mitosis']),
+    shapeXml('<p:ph idx="1"/>', ['Prophase']),
+    footer,
+    slideNumber('1'),
+  ]);
+
+  it('makes the cards it made before from a title slide and figure slides whose only text is the footer and slide number, with slide images off', () => {
     const lecture = buildPptx([
       {
         xml: slideOfShapesXml([
-          shapeXml('<p:ph type="title"/>', ['Mitosis']),
-          shapeXml('<p:ph idx="1"/>', ['Prophase']),
-          footer,
-          slideNumber('1'),
+          shapeXml('<p:ph type="ctrTitle"/>', ['Mitosis']),
         ]),
       },
+      { xml: slideOfShapesXml([picture, footer, slideNumber('2')]) },
+      { xml: slideOfShapesXml([picture, footer, slideNumber('3')]) },
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(lecture),
+      [],
+      'lecture.pptx'
+    );
+
+    expect(html).toBe(TITLE_SLIDE_AND_FIGURES_BEFORE_CHROME_DETECTION);
+  });
+
+  it('keeps the slide number, date and footer of titled slides as slide text, with slide images off', () => {
+    const lecture = buildPptx([
+      { xml: titledSlide },
+      {
+        xml: slideOfShapesXml([
+          `<p:sp>
+        <p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:txBody>
+          <a:p><a:r><a:t>Meiosis</a:t></a:r></a:p>
+          ${fieldParagraphXml('slidenum', '2')}
+        </p:txBody>
+      </p:sp>`,
+          shapeXml('<p:ph idx="1"/>', ['Gametes']),
+          fieldShapeXml(
+            '<p:ph type="dt" sz="half" idx="10"/>',
+            'datetime1',
+            '10/27/2026'
+          ),
+        ]),
+      },
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(lecture),
+      [],
+      'lecture.pptx'
+    );
+
+    expect(html).toBe(TITLED_SLIDES_BEFORE_CHROME_DETECTION);
+  });
+
+  it('keeps the card a slide whose only text is chrome made with its speaker notes, with slide images off', () => {
+    const lecture = buildPptx([
+      { xml: titledSlide },
       {
         xml: slideOfShapesXml([footer, slideNumber('2')]),
         notesXml: notesXml('Label the four phases'),
@@ -776,6 +836,59 @@ describe('extractPptxSourceUnits — a deck with no slide images where another s
       'lecture.pptx'
     );
 
-    expect(html).toBe(LECTURE_WITH_A_NOTES_SLIDE);
+    expect(html).toBe(NOTES_SLIDE_BEFORE_CHROME_DETECTION);
+  });
+
+  describe('when fewer pages rendered than slides', () => {
+    const partlyRendered = buildPptx([
+      {
+        xml: slideOfShapesXml([
+          slideNumber('19'),
+          shapeXml('', ['03']),
+          shapeXml('', ['Exocytosis']),
+          footer,
+        ]),
+      },
+      { xml: slideOfShapesXml([picture]) },
+      { xml: slideOfShapesXml([picture, footer, slideNumber('21')]) },
+      { xml: slideOfShapesXml([picture]) },
+    ]);
+    const renderedPages = ['/ws/pdf-x/slide-1.png', '/ws/pdf-x/slide-2.png'];
+
+    function convert(): string {
+      return combineSlidesIntoHTML(
+        extractPptxSourceUnits(partlyRendered),
+        renderedPages,
+        'lecture.pdf',
+        '/ws'
+      );
+    }
+
+    it('puts each rendered page where it went before chrome detection', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        expect(convert()).toBe(PARTLY_RENDERED_BEFORE_CHROME_DETECTION);
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it('warns only about the slide with no text and no rendered page', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        convert();
+
+        expect(warn.mock.calls).toEqual([
+          [
+            '[combineSlidesIntoHTML] slide has nothing to show',
+            { slide: 'slide-4' },
+          ],
+        ]);
+      } finally {
+        warn.mockRestore();
+      }
+    });
   });
 });

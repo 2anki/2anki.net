@@ -4,7 +4,7 @@ import path from 'node:path';
 import type express from 'express';
 import { strToU8, zipSync } from 'fflate';
 
-const builtCards = vi.hoisted(() => [] as { name: string; back: string }[]);
+const builtCards = vi.hoisted(() => [] as { name: string }[]);
 const storedKeys = vi.hoisted(() => [] as string[]);
 const SLIDE_PNG = vi.hoisted(() =>
   Buffer.from(
@@ -74,7 +74,7 @@ vi.mock('../lib/anki/CardGenerator', () => ({
           path.join(this.currentDirectory, 'deck_info.json'),
           'utf8'
         )
-      ) as { cards: { name: string; back: string }[] }[];
+      ) as { cards: { name: string }[] }[];
       builtCards.push(...deckInfo.flatMap((deck) => deck.cards));
       const apkgPath = path.join(this.currentDirectory, 'lecture.apkg');
       fs.writeFileSync(apkgPath, 'apkg');
@@ -141,16 +141,6 @@ const numberedLecture = Buffer.from(
       footer,
       slideNumber('20'),
     ]),
-  })
-);
-
-const picture =
-  '<p:pic><p:nvPicPr><p:cNvPr id="5" name="Diagram"/></p:nvPicPr></p:pic>';
-
-const chromeOnlyDiagrams = Buffer.from(
-  zipSync({
-    'ppt/slides/slide1.xml': slide([picture, footer, slideNumber('1')]),
-    'ppt/slides/slide2.xml': slide([picture, footer, slideNumber('2')]),
   })
 );
 
@@ -251,7 +241,7 @@ function visibleText(html: string): string {
   return html.replaceAll(/<[^>]+>/g, '').trim();
 }
 
-async function uploadInBackground(deck: Buffer, body: Record<string, string>) {
+async function uploadInBackground(deck: Buffer) {
   __setFeatureFlagDependencies({
     repository: inMemoryFlags({ [ASYNC_SLOW_UPLOADS_FLAG]: true }),
   });
@@ -280,7 +270,7 @@ async function uploadInBackground(deck: Buffer, body: Record<string, string>) {
         buffer: deck,
       },
     ],
-    body,
+    body: {},
     headers: {},
     cookies: {},
     path: '/api/upload/file',
@@ -310,10 +300,8 @@ describe('a paying account with AI off uploads a PowerPoint while background con
   });
 
   it('builds the deck in the background job with slide headings as fronts, not slide numbers', async () => {
-    const { status, jobId, settled, jobs, uploads } = await uploadInBackground(
-      numberedLecture,
-      {}
-    );
+    const { status, jobId, settled, jobs, uploads } =
+      await uploadInBackground(numberedLecture);
     jobWorkspace = path.join(process.env.WORKSPACE_BASE!, jobId);
     const outcome = await settled;
 
@@ -338,37 +326,4 @@ describe('a paying account with AI off uploads a PowerPoint while background con
       null
     );
   }, 20_000);
-
-  it.each<{ ai: string; body: Record<string, string> }>([
-    {
-      ai: 'AI off',
-      body: { 'claude-ai-flashcards': 'false', 'process-pdfs': 'false' },
-    },
-    { ai: 'AI never set', body: { 'process-pdfs': 'false' } },
-  ])(
-    'stores the cards it stored before chrome detection when a deck whose only text is chrome has slide images off ($ai)',
-    async ({ body }) => {
-      const { status, jobId, settled, jobs } = await uploadInBackground(
-        chromeOnlyDiagrams,
-        body
-      );
-      jobWorkspace = path.join(process.env.WORKSPACE_BASE!, jobId);
-      const outcome = await settled;
-
-      expect(status).toBe(202);
-      expect(outcome).toBe('stored in My Decks');
-      expect(jobs.create).toHaveBeenCalledTimes(1);
-      expect(
-        builtCards.map((card) => ({
-          front: visibleText(card.name),
-          back: visibleText(card.back),
-        }))
-      ).toEqual([
-        { front: 'Cell Biology', back: '1' },
-        { front: 'Cell Biology', back: '2' },
-      ]);
-      expect(storedKeys).toHaveLength(1);
-    },
-    20_000
-  );
 });

@@ -2,16 +2,23 @@ import { vi } from 'vitest';
 import { combineSlidesIntoHTML } from './combineSlidesIntoHTML';
 import type { SlideUnit } from '../parser/sourceUnits/extractPptxSourceUnits';
 
+// textWithChrome follows from the other fields the way the extractor reads a
+// slide that stores its chrome last.
 function slide(overrides: Partial<SlideUnit> = {}): SlideUnit {
+  const title = overrides.title ?? '';
+  const lines = [
+    ...(overrides.paragraphs ?? []),
+    ...(overrides.chromeParagraphs ?? []),
+  ];
   return {
     id: 'slide-1',
     visibleText: '',
     speakerNotes: '',
     role: 'body',
-    title: '',
+    title,
     paragraphs: [],
     chromeParagraphs: [],
-    textWithChrome: [],
+    textWithChrome: title === '' ? lines : [title, ...lines],
     hasPicture: false,
     ...overrides,
   };
@@ -32,25 +39,6 @@ function cards(html: string): { front: string; back: string }[] {
   }
   return found;
 }
-
-const LECTURE_WITH_A_NOTES_SLIDE = `<!DOCTYPE html>
-<html>
-<head><title>lecture.pdf</title></head>
-<body>
-  <ul class="toggle">
-    <li>
-      <details>
-        <summary>Mitosis</summary><ul><li>Prophase</li></ul></details>
-    </li>
-    </ul>
-<ul class="toggle">
-    <li>
-      <details>
-        <summary>Cell Biology</summary><ul><li>2</li></ul><hr /><p>Label the four phases</p></details>
-    </li>
-    </ul>
-</body>
-</html>`;
 
 describe('combineSlidesIntoHTML', () => {
   it('makes one card per slide: title on the front, bullets, image and notes on the back', () => {
@@ -157,7 +145,7 @@ describe('combineSlidesIntoHTML', () => {
     (heading) => {
       const html = combineSlidesIntoHTML(
         [slide({ paragraphs: ['12', heading] })],
-        [],
+        [IMAGES[0]],
         'lecture.pdf',
         WORKSPACE
       );
@@ -169,14 +157,16 @@ describe('combineSlidesIntoHTML', () => {
   it('does not read the name of an escaped symbol as words', () => {
     const html = combineSlidesIntoHTML(
       [slide({ paragraphs: ['&lt; 0.05', 'Significant result'] })],
-      [],
+      [IMAGES[0]],
       'lecture.pdf',
       WORKSPACE
     );
 
     const [card] = cards(html);
     expect(card.front).toBe('Significant result');
-    expect(card.back).toBe('<ul><li>&lt; 0.05</li></ul>');
+    expect(card.back).toBe(
+      '<ul><li>&lt; 0.05</li></ul><img src="pdf-x/slide-1.png" />'
+    );
   });
 
   it('puts the slide image on the front of an image-only slide and never repeats it on the back', () => {
@@ -253,54 +243,6 @@ describe('combineSlidesIntoHTML', () => {
     );
   });
 
-  it('answers a title-only slide with its footer when there is no slide image', () => {
-    const html = combineSlidesIntoHTML(
-      [slide({ title: 'Part 2', chromeParagraphs: ['Cell Biology', '5'] })],
-      [],
-      'lecture.pdf',
-      WORKSPACE
-    );
-
-    const [card] = cards(html);
-    expect(card.front).toBe('Part 2');
-    expect(card.back).toBe('<ul><li>Cell Biology</li><li>5</li></ul>');
-  });
-
-  it('skips a slide with only chrome and no speaker notes when there is no slide image and another slide makes a card', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    try {
-      const html = combineSlidesIntoHTML(
-        [
-          slide({
-            id: 'slide-3',
-            title: 'Mitosis',
-            paragraphs: ['Prophase'],
-            chromeParagraphs: ['Cell Biology', '3'],
-            textWithChrome: ['Mitosis', 'Prophase', 'Cell Biology', '3'],
-          }),
-          slide({
-            id: 'slide-4',
-            chromeParagraphs: ['Cell Biology', '4'],
-            textWithChrome: ['Cell Biology', '4'],
-          }),
-        ],
-        [],
-        'lecture.pdf',
-        WORKSPACE
-      );
-
-      expect(cards(html)).toEqual([
-        { front: 'Mitosis', back: '<ul><li>Prophase</li></ul>' },
-      ]);
-      expect(warn).toHaveBeenCalledWith(
-        '[combineSlidesIntoHTML] slide has nothing to show',
-        { slide: 'slide-4' }
-      );
-    } finally {
-      warn.mockRestore();
-    }
-  });
-
   it('never pairs one slide with the next: two slides give two cards', () => {
     const html = combineSlidesIntoHTML(
       [
@@ -357,110 +299,6 @@ describe('combineSlidesIntoHTML', () => {
     } finally {
       warn.mockRestore();
     }
-  });
-
-  describe('when there is no slide image and another slide makes a card', () => {
-    const lectureWithANotesSlide = [
-      slide({
-        id: 'slide-1',
-        role: 'title',
-        title: 'Mitosis',
-        paragraphs: ['Prophase'],
-        chromeParagraphs: ['Cell Biology', '1'],
-        textWithChrome: ['Mitosis', 'Prophase', 'Cell Biology', '1'],
-      }),
-      slide({
-        id: 'slide-2',
-        speakerNotes: 'Label the four phases',
-        chromeParagraphs: ['Cell Biology', '2'],
-        textWithChrome: ['Cell Biology', '2'],
-      }),
-    ];
-
-    it('keeps a slide with only chrome and speaker notes as the card it made before chrome detection, beside the titled slide card without chrome', () => {
-      const html = combineSlidesIntoHTML(
-        lectureWithANotesSlide,
-        [],
-        'lecture.pdf',
-        WORKSPACE
-      );
-
-      expect(html).toBe(LECTURE_WITH_A_NOTES_SLIDE);
-    });
-
-    it('does not warn about a slide whose speaker notes make its card', () => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      try {
-        combineSlidesIntoHTML(
-          lectureWithANotesSlide,
-          [],
-          'lecture.pdf',
-          WORKSPACE
-        );
-
-        expect(warn).not.toHaveBeenCalled();
-      } finally {
-        warn.mockRestore();
-      }
-    });
-  });
-
-  describe('when no slide makes a card and there is no slide image', () => {
-    const chromeOnlyDeck = [
-      slide({
-        id: 'slide-1',
-        chromeParagraphs: ['10/27/2026', 'Cell Biology', '1'],
-        textWithChrome: ['10/27/2026', 'Cell Biology', '1'],
-      }),
-      slide({
-        id: 'slide-2',
-        speakerNotes: 'Label the four phases',
-        chromeParagraphs: ['Cell Biology', '2'],
-        textWithChrome: ['Cell Biology', '2', '2'],
-      }),
-      slide({ id: 'slide-3', role: 'image', hasPicture: true }),
-    ];
-
-    it('reads chrome as ordinary text, as before chrome detection: first line on the front, the rest and the notes on the back', () => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      try {
-        const html = combineSlidesIntoHTML(
-          chromeOnlyDeck,
-          [],
-          'lecture.pdf',
-          WORKSPACE
-        );
-
-        expect(cards(html)).toEqual([
-          {
-            front: '10/27/2026',
-            back: '<ul><li>Cell Biology</li><li>1</li></ul>',
-          },
-          {
-            front: 'Cell Biology',
-            back: '<ul><li>2</li><li>2</li></ul><hr /><p>Label the four phases</p>',
-          },
-        ]);
-      } finally {
-        warn.mockRestore();
-      }
-    });
-
-    it('warns only about the slide that still has nothing to show', () => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      try {
-        combineSlidesIntoHTML(chromeOnlyDeck, [], 'lecture.pdf', WORKSPACE);
-
-        expect(warn.mock.calls).toEqual([
-          [
-            '[combineSlidesIntoHTML] slide has nothing to show',
-            { slide: 'slide-3' },
-          ],
-        ]);
-      } finally {
-        warn.mockRestore();
-      }
-    });
   });
 
   it('escapes the document title so a filename cannot break out of the head', () => {

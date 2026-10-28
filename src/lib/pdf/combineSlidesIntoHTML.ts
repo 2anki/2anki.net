@@ -53,7 +53,9 @@ function toggleCard(front: string, back: string): string {
     </ul>`;
 }
 
-function slideCard(slide: SlideUnit, image: string): string | null {
+// Called only when every slide has its rendered image, so every slide gets a
+// front.
+function slideCard(slide: SlideUnit, image: string): string {
   let front = slide.title;
   let remaining = slide.paragraphs;
   let imageOnBack = image;
@@ -63,11 +65,10 @@ function slideCard(slide: SlideUnit, image: string): string | null {
     front = remaining[frontIndex];
     remaining = remaining.filter((_, i) => i !== frontIndex);
   }
-  if (front === '' && image !== '') {
+  if (front === '') {
     front = image;
     imageOnBack = '';
   }
-  if (front === '') return null;
 
   const answer = `${bulletList(remaining)}${imageOnBack}${speakerNotesBlock(
     slide.speakerNotes
@@ -77,24 +78,25 @@ function slideCard(slide: SlideUnit, image: string): string | null {
   return toggleCard(front, back);
 }
 
-// The card the slide made before chrome was set apart. Only used for a slide
-// that made no card, which means it has no rendered image either.
-function slideCardWithChrome(slide: SlideUnit): string | null {
-  const [front, ...remaining] = slide.textWithChrome;
-  if (front == null) return null;
+// The card the slide made before chrome was set apart: its first line, chrome
+// included, on the front, or its image when it has no text.
+function slideCardWithChrome(slide: SlideUnit, image: string): string | null {
+  const [firstLine = '', ...remaining] = slide.textWithChrome;
+  const front = firstLine === '' ? image : firstLine;
+  if (front === '') {
+    console.warn('[combineSlidesIntoHTML] slide has nothing to show', {
+      slide: slide.id,
+    });
+    return null;
+  }
+  const imageOnBack = firstLine === '' ? '' : image;
 
   return toggleCard(
     front,
-    `${bulletList(remaining)}${speakerNotesBlock(slide.speakerNotes)}`
+    `${bulletList(remaining)}${imageOnBack}${speakerNotesBlock(
+      slide.speakerNotes
+    )}`
   );
-}
-
-// Skipping a slide whose only text is chrome would also drop its speaker
-// notes, so a slide with notes keeps the card it made before chrome was set
-// apart. Without notes it is skipped.
-function notesSlideCardWithChrome(slide: SlideUnit): string | null {
-  if (speakerNotesBlock(slide.speakerNotes) === '') return null;
-  return slideCardWithChrome(slide);
 }
 
 // One card per slide, in display order, with the rendered slide image on the
@@ -107,28 +109,23 @@ export function combineSlidesIntoHTML(
   title: string,
   workspaceLocation?: string
 ): string {
-  const slideCards = slides.map((slide, i) => {
-    const imagePath = imagePaths[i];
-    const image =
-      imagePath == null
-        ? ''
-        : `<img src="${toSrc(imagePath, workspaceLocation)}" />`;
-    return slideCard(slide, image);
-  });
-  // When no slide made a card, there are no slide images and every slide's
-  // text is chrome or speaker notes. Such a deck converts exactly as it did
-  // before chrome was set apart, rather than failing where it used to convert.
-  const deckCards = slideCards.some((card) => card !== null)
-    ? slideCards.map((card, i) => card ?? notesSlideCardWithChrome(slides[i]))
-    : slides.map((slide) => slideCardWithChrome(slide));
-  slides.forEach((slide, i) => {
-    if (deckCards[i] === null) {
-      console.warn('[combineSlidesIntoHTML] slide has nothing to show', {
-        slide: slide.id,
-      });
-    }
-  });
-  const cards = deckCards.filter((card): card is string => card !== null);
+  // Chrome is set apart only when every slide has its rendered image, which
+  // fronts a slide that has nothing else to front it. Without slide images
+  // (Process PDF files off), or with fewer pages than slides, the deck
+  // converts exactly as it did before chrome detection.
+  const everySlideHasAnImage = imagePaths.length >= slides.length;
+  const cards = slides
+    .map((slide, i) => {
+      const imagePath = imagePaths[i];
+      const image =
+        imagePath == null
+          ? ''
+          : `<img src="${toSrc(imagePath, workspaceLocation)}" />`;
+      return everySlideHasAnImage
+        ? slideCard(slide, image)
+        : slideCardWithChrome(slide, image);
+    })
+    .filter((card): card is string => card !== null);
 
   return `<!DOCTYPE html>
 <html>
