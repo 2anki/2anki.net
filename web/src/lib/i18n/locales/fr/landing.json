@@ -135,7 +135,7 @@
     },
     "anki-from-medical-lecture-slides": {
       "h1": "Transforme des diapos de cours en cartes Anki",
-      "subhead": "Téléverse un PDF de tes diapos — les titres deviennent des noms de paquets, les puces deviennent des cartes."
+      "subhead": "Téléverse un PDF de tes diapos — chaque diapo devient une carte, avec son titre au recto et ses puces au verso."
     },
     "nclex-anki": {
       "h1": "Transforme tes notes de révision NCLEX en cartes Anki que tu contrôles",

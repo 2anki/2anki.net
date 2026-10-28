@@ -36,7 +36,7 @@ const nursingCopy: LandingCopy = {
     },
     {
       title: 'Nested lists',
-      body: 'Nested bullet hierarchies become nested cards, preserving the structure of nursing procedures and care plan steps.',
+      body: 'Nested bullets stay on the back of the card above them, in the order you wrote them, so the steps of a nursing procedure or care plan read as one answer.',
     },
   ],
   faqs: [

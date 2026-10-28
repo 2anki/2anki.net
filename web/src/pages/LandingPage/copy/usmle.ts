@@ -34,12 +34,12 @@ const usmleCopy: LandingCopy = {
       body: 'Image occlusion is a native Anki feature — after import, use the Anki image occlusion editor to mask labels directly on your diagrams.',
     },
     {
-      title: 'Bold and italic text',
-      body: 'Bolded drug names, italicised organisms, and other emphasis carry through to the card so the formatting you made guides your review.',
+      title: 'Slide titles',
+      body: 'In a slide PDF, each slide becomes a card, with the slide title on the front and its bullets on the back.',
     },
     {
       title: 'Nested lists',
-      body: 'Nested bullet hierarchies become nested cards, preserving the structure of pathophysiology steps and differential diagnosis lists.',
+      body: 'Nested bullets stay on the back of the card above them, in the order you wrote them, so pathophysiology steps and differential diagnosis lists read as one answer.',
     },
   ],
   faqs: [
