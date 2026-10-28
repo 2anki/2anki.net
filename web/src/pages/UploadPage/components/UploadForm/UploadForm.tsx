@@ -152,6 +152,10 @@ const NETWORK_FALLBACK =
   "Couldn't upload your file. Check your connection and try again.";
 const REATTACH_FILENAME_KEY = 'upload_pending_filename';
 const RETRY_KEEPS_AI_CHOICE = ['claude-ai-flashcards', 'pdf-page-pairs'];
+// React Query holds a read while the browser says it is offline and pauses
+// a failed read's retries in a hidden tab, so a resend never waits on the
+// account read longer than this.
+const ACCOUNT_READ_CAP_MS = 2000;
 
 function clearPendingUpload(): void {
   globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
@@ -1140,19 +1144,33 @@ function UploadForm({
   // Every resend of the kept files goes through here and reads the account
   // again first, since a window that never lost focus still shows the old
   // one. Under any account other than the one that sent the files, nothing
-  // goes out. A read that brings nothing back leaves the account the page
-  // shows.
+  // goes out. A read that brings nothing back in time leaves the account the
+  // page shows, and files sent before the page read the account belong to
+  // the one this read finds.
   const resendPendingRef = useRef(false);
+  const readAccountAgain = async (): Promise<number | null> => {
+    let stopCap = () => {};
+    const capped = new Promise<undefined>((resolve) => {
+      const timer = globalThis.setTimeout(resolve, ACCOUNT_READ_CAP_MS);
+      stopCap = () => globalThis.clearTimeout(timer);
+    });
+    try {
+      const reread = await Promise.race([refetchUserLocals(), capped]);
+      return reread?.data === undefined
+        ? currentOwnerId
+        : (reread.data.user?.id ?? null);
+    } finally {
+      stopCap();
+    }
+  };
   const resendKeptFiles = async (send: () => void | Promise<void>) => {
     if (resendPendingRef.current) return;
     resendPendingRef.current = true;
     try {
-      const reread = await refetchUserLocals();
-      const accountNow =
-        reread?.data === undefined
-          ? currentOwnerId
-          : (reread.data.user?.id ?? null);
-      if (accountNow !== rescueFilesOwner) return;
+      const accountNow = await readAccountAgain();
+      if (rescueFilesOwner !== undefined && accountNow !== rescueFilesOwner) {
+        return;
+      }
       await send();
     } finally {
       resendPendingRef.current = false;

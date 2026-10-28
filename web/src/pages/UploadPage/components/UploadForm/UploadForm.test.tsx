@@ -6608,6 +6608,48 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     ).toBeNull();
   });
 
+  it('sends a PDF answer given before the page has read the account', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+      isError: false,
+      refetch: vi.fn().mockResolvedValue({ data: undefined }),
+    });
+    const fetchMock = stubServer([
+      pdfQuestion,
+      deckResponse(14, { 'X-Pdf-Fallback': 'single' }),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['scan.pdf']);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'One card per page' })
+    );
+
+    await waitFor(() =>
+      expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(2)
+    );
+  });
+
+  it('sends Try again under the account the page shows when reading it again hangs', async () => {
+    const fetchMock = stubServer([networkDrop, deckResponse(7)]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+
+    readLocalsAgain.mockReturnValue(new Promise(() => {}));
+    fireEvent.click(retry);
+
+    await waitFor(
+      () => expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(2),
+      { timeout: 4000 }
+    );
+  });
+
   it('sends one rebuild for a double click while the account is read again', async () => {
     stubLeavingPage();
     const fetchMock = stubServer([deckResponse(64), asyncJobAccepted]);
