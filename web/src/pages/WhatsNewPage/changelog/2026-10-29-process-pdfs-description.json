@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-29-process-pdfs-description",
+  "date": "2026-10-29",
+  "type": "fix",
+  "title": "The Process PDF files option now says that turning it off also removes PowerPoint slide images, and that older .ppt files then make no cards"
+}

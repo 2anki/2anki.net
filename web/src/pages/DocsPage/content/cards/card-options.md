@@ -72,12 +72,12 @@ A toggle nested inside another is answer text for its parent, so it stays on the
 
 ## PDF and AI
 
-| Option                                | Default | What it does                                                                                                                                      |
-| ------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Process PDF Files                     | On      | Converts PDFs found in ZIP uploads. Turn off to skip PDFs and speed up large archives.                                                            |
-| Generate Flashcards with Claude AI    | Off     | Sends content to Anthropic Claude and uses its output as the deck. Paid.                                                                          |
-| User instructions                     | —       | Free-form prompt sent to Claude when **Generate Flashcards with Claude AI** is on. Example: _"Focus on USMLE high-yield. Skip the introduction."_ |
-| Convert Image Quiz HTML to Anki Cards | Off     | Uses OCR to pull image-and-answer pairs from HTML quizzes. Premium experimental.                                                                  |
+| Option                                | Default | What it does                                                                                                                                                                                                                     |
+| ------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Process PDF Files                     | On      | Converts PDFs found in ZIP uploads and adds each PowerPoint slide's image to its card. Off: ZIP uploads finish faster, but PowerPoint cards lose their slide images, and older .ppt files and slides with no text make no cards. |
+| Generate Flashcards with Claude AI    | Off     | Sends content to Anthropic Claude and uses its output as the deck. Paid.                                                                                                                                                         |
+| User instructions                     | —       | Free-form prompt sent to Claude when **Generate Flashcards with Claude AI** is on. Example: _"Focus on USMLE high-yield. Skip the introduction."_                                                                                |
+| Convert Image Quiz HTML to Anki Cards | Off     | Uses OCR to pull image-and-answer pairs from HTML quizzes. Premium experimental.                                                                                                                                                 |
 
 ## Media
 

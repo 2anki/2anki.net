@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "Elabora i file PDF",
-      "description": "Converte in carte i PDF trovati dentro i caricamenti ZIP. Disattivalo per saltarli e completare più in fretta i caricamenti ZIP."
+      "description": "Converte in carte i PDF trovati dentro i caricamenti ZIP e aggiunge a ogni carta di PowerPoint l'immagine della sua diapositiva. Se lo disattivi, i caricamenti ZIP finiscono prima, ma le carte di PowerPoint perdono le immagini delle diapositive, e i vecchi file .ppt e le diapositive senza testo non producono carte."
     },
     "pdf-extract-text": {
       "label": "Estrai il testo dai PDF",
