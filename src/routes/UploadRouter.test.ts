@@ -115,10 +115,26 @@ vi.mock('../usecases/uploads/ConvertSampleDeckUseCase', () => ({
 }));
 
 import UploadRouter from './UploadRouter';
+import ErrorHandler from './middleware/ErrorHandler';
 
 const startServer = async () => {
   const app = express();
   app.use(UploadRouter());
+  // The error middleware server.ts mounts after every router.
+  app.use(
+    (
+      err: Error,
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction
+    ) => {
+      if (err) {
+        void ErrorHandler(res, req, err);
+        return;
+      }
+      next();
+    }
+  );
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const { port } = server.address() as AddressInfo;
@@ -285,15 +301,21 @@ describe('UploadRouter tells the page whose session ran an upload', () => {
     }
   });
 
-  it('even when /api/upload/retry-with-credential refuses the body before the controller', async () => {
+  it('even when /api/upload/retry-with-credential refuses the body before the controller, through the error handler', async () => {
     const { url, close } = await startServer();
     try {
+      const form = new FormData();
+      form.append(
+        'not-the-file-field',
+        new Blob(['%PDF-1.4'], { type: 'application/pdf' }),
+        'a.pdf'
+      );
       const res = await fetch(`${url}/api/upload/retry-with-credential`, {
         method: 'POST',
-        headers: { 'Content-Type': 'multipart/form-data; boundary=cut' },
-        body: '--cut\r\nContent-Disposition: form-data; name="file"; filename="a.pdf"\r\n\r\nbroken',
+        body: form,
       });
-      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBe(415);
+      expect(await res.json()).toMatchObject({ code: 'unsupported_format' });
       expect(res.headers.get('X-Upload-Owner')).toBe('42');
       expect(mockRetryPdf).not.toHaveBeenCalled();
     } finally {

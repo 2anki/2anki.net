@@ -387,6 +387,12 @@ describe('a resend of kept files on /api/upload/file', () => {
   it.each([
     ['another account', signedIn, String(OTHER_OWNER), true],
     ['an account that has since signed out', signedOut, String(OWNER), false],
+    [
+      'an account, to a session holding an empty owner',
+      { ...signedOut, locals: { owner: '' } },
+      String(OWNER),
+      false,
+    ],
   ])(
     'says whether the session is signed in when it refuses a file sent by %s',
     async (_label, who, keptOwner, signedInNow) => {

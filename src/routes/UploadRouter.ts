@@ -165,7 +165,7 @@ const UploadRouter = () => {
    *         description: File uploaded successfully
    *         headers:
    *           X-Upload-Owner:
-   *             description: The session the upload ran under, an account id or "none". Every response from this endpoint carries it.
+   *             description: The session the upload ran under, an account id or "none". Every response that passes the origin check carries it; a browser following the redirect to /limit does not see it.
    *             schema:
    *               type: string
    *         content:

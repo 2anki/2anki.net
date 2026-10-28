@@ -3,14 +3,15 @@
 // Older pages send nothing, and their uploads are taken as before.
 export const KEPT_OWNER_FIELD = 'kept-owner';
 
-// Every answer to an upload names the session it ran under, so the page knows
-// whose files it is keeping without reading the account again later.
+// Every answer to an upload that passes the origin check names the session it
+// ran under, so the page knows whose files it is keeping without reading the
+// account again later.
 export const UPLOAD_OWNER_HEADER = 'X-Upload-Owner';
 
-const SIGNED_OUT = 'none';
+export const SIGNED_OUT_SESSION = 'none';
 
 export function sessionOwnerOf(owner: unknown): string {
-  return owner == null || owner === '' ? SIGNED_OUT : String(owner);
+  return owner == null || owner === '' ? SIGNED_OUT_SESSION : String(owner);
 }
 
 // The field only checks the request; taken off here, it never reaches the

@@ -36,6 +36,8 @@ import { toText } from '../../services/NotionService/BlockHandler/helpers/deckNa
 import { toUploadResponse } from '../../types/UploadResponse';
 import {
   keptFilesChangedOwner,
+  sessionOwnerOf,
+  SIGNED_OUT_SESSION,
   takeKeptOwner,
 } from '../../lib/upload/keptFilesOwner';
 import type { UploadErrorBody } from '../../types/UploadErrorBody';
@@ -200,7 +202,7 @@ class UploadController {
       code: 'owner_changed',
       message:
         'You switched accounts since this file was sent, so nothing was converted. Choose the file again.',
-      signed_in: owner != null,
+      signed_in: sessionOwnerOf(owner) !== SIGNED_OUT_SESSION,
     };
     res.status(409).json(body);
     return true;
