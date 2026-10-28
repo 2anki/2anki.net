@@ -450,7 +450,12 @@ describe('page attribution', () => {
   });
 });
 
-describe('stray glyph lines', () => {
+const ORIENTATIONS: Array<[string, boolean]> = [
+  ['portrait', false],
+  ['landscape', true],
+];
+
+describe.each(ORIENTATIONS)('stray glyph lines (%s page)', (_o, landscape) => {
   it.each(['•', '↓', '■', '→'])(
     'keeps a glyph-only line on the back instead of making it a card front: %s',
     (glyph) => {
@@ -462,6 +467,7 @@ describe('stray glyph lines', () => {
             glyph,
             'Why? Because a board that never delegates spends its time on details, not strategy.',
           ].join('\n'),
+          landscape,
         },
       ];
 
@@ -489,6 +495,7 @@ describe('stray glyph lines', () => {
           'Diffusion',
           'Movement of particles from high to low concentration in a solution.',
         ].join('\n'),
+        landscape,
       },
     ];
 
@@ -512,6 +519,7 @@ describe('stray glyph lines', () => {
             line,
             'Formation requires offer and acceptance plus consideration between parties.',
           ].join('\n'),
+          landscape,
         },
       ];
 
@@ -527,6 +535,7 @@ describe('stray glyph lines', () => {
           'Glycolysis',
           'Splits glucose into two pyruvate molecules in the cytoplasm.',
         ].join('\n'),
+        landscape,
       },
     ];
 
@@ -537,5 +546,986 @@ describe('stray glyph lines', () => {
       front: 'Glycolysis',
       back: 'Splits glucose into two pyruvate molecules in the cytoplasm.',
     });
+  });
+
+  const fullNotesPage = [
+    'Osmosis',
+    'Osmosis is the net movement of water across a selectively permeable',
+    'membrane from a region of lower solute concentration to a region of',
+    'higher solute concentration, driven by the difference in water potential',
+    'between the two sides and continuing until the potentials are equal or',
+    'the pressure on the concentrated side stops any further net flow of water',
+    'into the cell.',
+    '•',
+    'Diffusion',
+    'Diffusion is the net movement of particles from a region of higher',
+    'concentration to a region of lower concentration, down the gradient, as',
+    'a result of their random motion; it needs no energy from the cell and',
+    'its rate rises with temperature, with surface area and with how steep',
+    'the gradient across the membrane is at that moment in the cell cycle and',
+    'in the tissue.',
+    '↓',
+    'Active transport',
+    'Active transport moves ions or molecules against their concentration',
+    'gradient using energy released by ATP hydrolysis, through carrier proteins',
+    'in the membrane that change shape as they bind and release their cargo on',
+    'either side; the sodium potassium pump is the textbook example of this,',
+    'moving three sodium ions out for every two potassium ions it brings back',
+    'in.',
+    'Endocytosis',
+    'Endocytosis brings large particles into the cell by folding the membrane',
+    'around them into a vesicle, as in phagocytosis by white blood cells and',
+    'pinocytosis of fluid droplets, and it needs energy from ATP to bend the',
+    'membrane, pinch the vesicle off and move it inwards along the filaments',
+    'of the cytoskeleton towards the lysosomes that will digest what it holds',
+    'inside.',
+  ];
+  const shortLastPage = [
+    'Osmosis',
+    'Movement of water across a semipermeable membrane down a gradient.',
+    '•',
+    'Diffusion',
+    'Movement of particles from high to low concentration in a solution.',
+    '↓',
+    'Active transport',
+    'Movement against the gradient using ATP from cellular respiration.',
+  ];
+
+  it.each([
+    [
+      'a full notes page with two strays',
+      fullNotesPage,
+      ['Osmosis', 'Diffusion', 'Active transport', 'Endocytosis'],
+      ['•', '↓'],
+    ],
+    [
+      'a short last page with two strays',
+      shortLastPage,
+      ['Osmosis', 'Diffusion', 'Active transport'],
+      ['•', '↓'],
+    ],
+    [
+      'a short last page with two strays that ends in an empty bullet',
+      [...shortLastPage, '•'],
+      ['Osmosis', 'Diffusion', 'Active transport'],
+      ['•', '↓', '•'],
+    ],
+    [
+      'a short last page with two empty bullets in a row before a heading',
+      [
+        'Osmosis',
+        'Movement of water across a semipermeable membrane down a gradient.',
+        '•',
+        '•',
+        'Diffusion',
+        'Movement of particles from high to low concentration in a solution.',
+        '↓',
+        'Active transport',
+        'Movement against the gradient using ATP from cellular respiration.',
+      ],
+      ['Osmosis', 'Diffusion', 'Active transport'],
+      ['•', '•', '↓'],
+    ],
+  ])(
+    'still opens a new card at each heading after a stray glyph on %s',
+    (_shape, lines, fronts, strays) => {
+      const cards = synthesizeCardsFromPdfHeadings(
+        [{ text: lines.join('\n'), landscape }],
+        'Bio'
+      );
+
+      expect(cards.map((card) => card.front)).toEqual(fronts);
+      expect(
+        cards
+          .flatMap((card) => card.back.split('\n'))
+          .filter((line) => line.startsWith('•') || line.startsWith('↓'))
+      ).toEqual(strays);
+    }
+  );
+
+  it.each(['–', '—'])(
+    'keeps a lone %s divider before each heading apart from it on a page with no lone bullet glyph',
+    (dash) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            dash,
+            'Osmosis',
+            'Movement of water across a semipermeable membrane down a gradient.',
+            dash,
+            'Diffusion',
+            'Movement of particles from high to low concentration in a solution.',
+            dash,
+            'Active transport',
+            'Movement against the gradient using ATP from cellular respiration.',
+          ].join('\n'),
+          landscape,
+        },
+      ];
+
+      const cards = synthesizeCardsFromPdfHeadings(pages, 'Bio');
+
+      expect(cards.map(({ front, back }) => ({ front, back }))).toEqual([
+        {
+          front: 'Osmosis',
+          back: [
+            'Movement of water across a semipermeable membrane down a gradient.',
+            dash,
+          ].join('\n'),
+        },
+        {
+          front: 'Diffusion',
+          back: [
+            'Movement of particles from high to low concentration in a solution.',
+            dash,
+          ].join('\n'),
+        },
+        {
+          front: 'Active transport',
+          back: 'Movement against the gradient using ATP from cellular respiration.',
+        },
+      ]);
+    }
+  );
+});
+
+describe('slide decks', () => {
+  const frontsAndBacks = (pages: PdfPage[]) =>
+    synthesizeCardsFromPdfHeadings(pages, 'Physiology').map(
+      ({ front, back }) => ({ front, back })
+    );
+
+  it('keeps the slide titles on the front when each bullet glyph is glued to its text', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Membrane Proteins',
+          '•Integral proteins span the bilayer',
+          '•Peripheral proteins sit on one surface',
+          '•Channels, carriers and pumps move solutes',
+          '4',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          'Types of Transport',
+          '•Passive: no ATP, moves down the gradient',
+          '‣Active: uses ATP, moves against the gradient',
+          '▪Vesicular: endocytosis and exocytosis',
+          '5',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Membrane Proteins',
+        back: [
+          '•Integral proteins span the bilayer',
+          '•Peripheral proteins sit on one surface',
+          '•Channels, carriers and pumps move solutes',
+        ].join('\n'),
+      },
+      {
+        front: 'Types of Transport',
+        back: [
+          '•Passive: no ATP, moves down the gradient',
+          '‣Active: uses ATP, moves against the gradient',
+          '▪Vesicular: endocytosis and exocytosis',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it.each([
+    ['–', 'a space after each marker', ' '],
+    ['—', 'a space after each marker', ' '],
+    ['–', 'each marker glued to its text', ''],
+    ['—', 'each marker glued to its text', ''],
+  ])(
+    'keeps a slide title on the front and its %s sub-bullets on the back, with %s',
+    (dash, _gapName, gap) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Learning Objectives',
+            `•${gap}Describe the path of blood through the heart chambers`,
+            `${dash}${gap}Explain the phases of the cardiac cycle`,
+            `•${gap}Relate the ECG waves to electrical events`,
+            `${dash}${gap}Calculate cardiac output from HR and SV`,
+            '2',
+          ].join('\n'),
+          landscape: true,
+        },
+        {
+          text: [
+            'Heart Sounds',
+            `•${gap}S1 lub: AV valves closing at the start of systole`,
+            `${dash}${gap}Loudest at the apex`,
+            `•${gap}S2 dub: semilunar valves closing as ventricles relax`,
+            '3',
+          ].join('\n'),
+          landscape: true,
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: 'Learning Objectives',
+          back: [
+            `•${gap}Describe the path of blood through the heart chambers`,
+            `${dash}${gap}Explain the phases of the cardiac cycle`,
+            `•${gap}Relate the ECG waves to electrical events`,
+            `${dash}${gap}Calculate cardiac output from HR and SV`,
+          ].join('\n'),
+        },
+        {
+          front: 'Heart Sounds',
+          back: [
+            `•${gap}S1 lub: AV valves closing at the start of systole`,
+            `${dash}${gap}Loudest at the apex`,
+            `•${gap}S2 dub: semilunar valves closing as ventricles relax`,
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  it('rejoins bullet glyphs that sit on a line of their own with the text after them', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Learning Objectives',
+          '•',
+          'Describe the structure of the plasma membrane',
+          '•',
+          'Explain how the Na+/K+ pump sets the resting',
+          'potential',
+          '•',
+          'Relate transport defects to disease',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          'Cardiac Output',
+          '•',
+          'CO equals heart rate times stroke volume',
+          '•',
+          'Normal resting value is about 5 litres per minute',
+          '3',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Learning Objectives',
+        back: [
+          '• Describe the structure of the plasma membrane',
+          '• Explain how the Na+/K+ pump sets the resting',
+          'potential',
+          '• Relate transport defects to disease',
+        ].join('\n'),
+      },
+      {
+        front: 'Cardiac Output',
+        back: [
+          '• CO equals heart rate times stroke volume',
+          '• Normal resting value is about 5 litres per minute',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('leaves a lone bullet with no text after it on its own line when the slide rejoins the rest', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Learning Objectives',
+          '•',
+          'Describe the structure of the plasma membrane',
+          '•',
+          '•',
+          'Explain how the Na+/K+ pump sets the resting potential',
+          '•',
+          'Relate transport defects to disease',
+          '•',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Learning Objectives',
+        back: [
+          '• Describe the structure of the plasma membrane',
+          '•',
+          '• Explain how the Na+/K+ pump sets the resting potential',
+          '• Relate transport defects to disease',
+          '•',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('rejoins detached bullets that make up exactly 30% of a page', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Learning Objectives',
+          '•',
+          'Describe the structure of the plasma membrane',
+          '•',
+          'Explain how the Na+/K+ pump sets the resting',
+          'potential of every cell in the body at rest',
+          '•',
+          'Relate transport defects to disease and to',
+          'the drugs that target them in the clinic',
+          'today',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Learning Objectives',
+        back: [
+          '• Describe the structure of the plasma membrane',
+          '• Explain how the Na+/K+ pump sets the resting',
+          'potential of every cell in the body at rest',
+          '• Relate transport defects to disease and to',
+          'the drugs that target them in the clinic',
+          'today',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('fronts the subheading when a slide puts one under its title', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Cardiac Output',
+          'Determinants and normal values',
+          '•CO equals heart rate times stroke volume',
+          '•Normal resting value is about 5 litres per minute',
+          '3',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Determinants and normal values',
+        back: [
+          '•CO equals heart rate times stroke volume',
+          '•Normal resting value is about 5 litres per minute',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('keeps a slide whose title is longer than its first bullet on the card above, with no bullet on the front', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Cell Biology',
+          'Introductory notes on the parts of the cell and what each one does.',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          'Membrane Transport Mechanisms',
+          '•Diffusion',
+          '•Osmosis across the membrane',
+          '•Active transport with ATP',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Cell Biology',
+        back: [
+          'Introductory notes on the parts of the cell and what each one does.',
+          'Membrane Transport Mechanisms',
+          '•Diffusion',
+          '•Osmosis across the membrane',
+          '•Active transport with ATP',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it.each(['–', '—'])(
+    'rejoins %s sub-bullets that sit on a line of their own on a slide whose bullets do too',
+    (dash) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Learning Objectives',
+            '•',
+            'Describe the path of blood through the heart chambers',
+            dash,
+            'Explain the phases of the cardiac cycle',
+            '•',
+            'Relate the ECG waves to electrical events',
+            dash,
+            'Calculate cardiac output from HR and SV',
+            '2',
+          ].join('\n'),
+          landscape: true,
+        },
+        {
+          text: [
+            'Heart Sounds',
+            '•',
+            'S1 lub: AV valves closing at the start of systole',
+            dash,
+            'Loudest at the apex',
+            '•',
+            'S2 dub: semilunar valves closing as ventricles relax',
+            '3',
+          ].join('\n'),
+          landscape: true,
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: 'Learning Objectives',
+          back: [
+            '• Describe the path of blood through the heart chambers',
+            `${dash} Explain the phases of the cardiac cycle`,
+            '• Relate the ECG waves to electrical events',
+            `${dash} Calculate cardiac output from HR and SV`,
+          ].join('\n'),
+        },
+        {
+          front: 'Heart Sounds',
+          back: [
+            '• S1 lub: AV valves closing at the start of systole',
+            `${dash} Loudest at the apex`,
+            '• S2 dub: semilunar valves closing as ventricles relax',
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  it('fronts the bullets of a slide that draws them as shapes, since no glyph reaches the text', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Membrane Proteins',
+          'Integral proteins span the bilayer',
+          'Peripheral proteins sit on one surface',
+          'Channels, carriers and pumps move solutes',
+          '4',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          'Types of Transport',
+          'Passive: no ATP, moves down the gradient',
+          'Active: uses ATP, moves against the gradient',
+          'Vesicular: endocytosis and exocytosis',
+          '5',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Peripheral proteins sit on one surface',
+        back: 'Channels, carriers and pumps move solutes',
+      },
+      {
+        front: 'Passive: no ATP, moves down the gradient',
+        back: [
+          'Active: uses ATP, moves against the gradient',
+          'Vesicular: endocytosis and exocytosis',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  const symbolFontBullets = [
+    ['U+F0B7 (Symbol bullet)', '\uF0B7'],
+    ['U+F0A7 (Wingdings square)', '\uF0A7'],
+    ['U+F0D8 (Wingdings arrowhead)', '\uF0D8'],
+    ['U+F0FC (Wingdings check mark)', '\uF0FC'],
+    ['U+F076 (Wingdings diamond)', '\uF076'],
+    ['➢', '➢'],
+    ['➤', '➤'],
+    ['❖', '❖'],
+    ['♦', '♦'],
+  ];
+
+  it.each(symbolFontBullets)(
+    'keeps the slide title on the front when a %s bullet is glued to its text',
+    (_name, glyph) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Membrane Proteins',
+            `${glyph}Integral proteins span the bilayer`,
+            `${glyph}Peripheral proteins sit on one surface`,
+            `${glyph}Channels, carriers and pumps move solutes`,
+          ].join('\n'),
+          landscape: true,
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: 'Membrane Proteins',
+          back: [
+            `${glyph}Integral proteins span the bilayer`,
+            `${glyph}Peripheral proteins sit on one surface`,
+            `${glyph}Channels, carriers and pumps move solutes`,
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  it.each(symbolFontBullets)(
+    'rejoins a %s bullet that sits on a line of its own with the text after it',
+    (_name, glyph) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Cardiac Output',
+            glyph,
+            'CO equals heart rate times stroke volume',
+            glyph,
+            'Normal resting value is about 5 litres per minute',
+          ].join('\n'),
+          landscape: true,
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: 'Cardiac Output',
+          back: [
+            `${glyph} CO equals heart rate times stroke volume`,
+            `${glyph} Normal resting value is about 5 litres per minute`,
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  it('makes no card from a page of glued bullets with no heading above them', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '•Short bullet',
+          '•A noticeably longer bullet line follows the short one',
+          '•Another bullet',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(synthesizeCardsFromPdfHeadings(pages, 'Notes')).toEqual([]);
+  });
+
+  it.each([
+    [
+      '-70 mV',
+      'Typical resting membrane potential of a neuron, set by K+ leak channels.',
+    ],
+    [
+      '–70 mV',
+      'Typical resting membrane potential of a neuron, set by K+ leak channels.',
+    ],
+    [
+      '-itis',
+      'Suffix for inflammation of an organ, as in appendicitis or otitis.',
+    ],
+  ])(
+    'still reads %s as a heading: a dash before a digit, or a hyphen, opens a list item only with a space after it',
+    (heading, body) => {
+      const pages: PdfPage[] = [
+        { text: `${heading}\n${body}`, landscape: true },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([{ front: heading, back: body }]);
+    }
+  );
+
+  it.each([
+    '■細胞の構造',
+    '■タンパク質の合成',
+    '■ふりかえり',
+    '■세포의 구조',
+    '■DNAの構造',
+    '■iPS細胞',
+    '■ATP合成酵素',
+    '■2型糖尿病',
+    '■ＤＮＡの複製',
+    '■（1）細胞周期',
+    '■「恒常性」とは',
+    '●T細胞の働き',
+    '■【まとめ】',
+    '◆【第1回】細胞生物学',
+    '■＜到達目標＞',
+    '■DNA 복제',
+    '■DNA的结构',
+  ])('keeps a CJK slide title glued to its glyph on the front: %s', (title) => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          title,
+          '• 細胞膜はリン脂質の二重層でできている',
+          '• 核は遺伝情報を保持している',
+          '4',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: title,
+        back: [
+          '• 細胞膜はリン脂質の二重層でできている',
+          '• 核は遺伝情報を保持している',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('leaves a lone bullet that ends a slide on that slide, apart from the next slide title', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Learning Objectives',
+          '•',
+          'Describe the structure of the plasma membrane',
+          '•',
+          'Explain how the Na+/K+ pump sets the resting potential',
+          '•',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          'Cardiac Output',
+          '•',
+          'CO equals heart rate times stroke volume',
+          '•',
+          'Normal resting value is about 5 litres per minute',
+          '3',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Learning Objectives',
+        back: [
+          '• Describe the structure of the plasma membrane',
+          '• Explain how the Na+/K+ pump sets the resting potential',
+          '•',
+        ].join('\n'),
+      },
+      {
+        front: 'Cardiac Output',
+        back: [
+          '• CO equals heart rate times stroke volume',
+          '• Normal resting value is about 5 litres per minute',
+        ].join('\n'),
+      },
+    ]);
+  });
+});
+
+describe('PDFs with a page that is not landscape', () => {
+  const portraitPage = (lines: string[]): PdfPage => ({
+    text: lines.join('\n'),
+    landscape: false,
+  });
+  const wordOutline = [
+    '\uF0B7Cell structure',
+    'oThe plasma membrane is a phospholipid bilayer with proteins',
+    'oThe nucleus holds the genome inside a double membrane',
+    '\uF0B7Membrane transport',
+    'oDiffusion moves particles down a concentration gradient',
+    'oActive transport uses ATP to move ions against it',
+    '\uF0B7Cell division',
+    'oMitosis makes two identical daughter cells for growth',
+    'oMeiosis makes four gametes with half the chromosomes',
+    '1',
+  ];
+  const loneBulletBeforeEachHeading = [
+    '•',
+    'Osmosis',
+    'Movement of water across a semipermeable membrane down a gradient.',
+    '•',
+    'Diffusion',
+    'Movement of particles from high to low concentration in a solution.',
+    '•',
+    'Active transport',
+    'Movement against the gradient using ATP from cellular respiration.',
+  ];
+  const cardsUnderLoneBullets = [
+    {
+      front: 'Osmosis',
+      back: 'Movement of water across a semipermeable membrane down a gradient.\n•',
+      tags: ['Bio'],
+      pageIndex: 0,
+    },
+    {
+      front: 'Diffusion',
+      back: 'Movement of particles from high to low concentration in a solution.\n•',
+      tags: ['Bio'],
+      pageIndex: 0,
+    },
+    {
+      front: 'Active transport',
+      back: 'Movement against the gradient using ATP from cellular respiration.',
+      tags: ['Bio'],
+      pageIndex: 0,
+    },
+  ];
+
+  it('keeps each topic of a Word outline on the front when its Symbol bullet is glued to it', () => {
+    expect(
+      synthesizeCardsFromPdfHeadings([portraitPage(wordOutline)], 'Biology')
+    ).toEqual([
+      {
+        front: '\uF0B7Cell structure',
+        back: 'oThe plasma membrane is a phospholipid bilayer with proteins\noThe nucleus holds the genome inside a double membrane',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+      {
+        front: '\uF0B7Membrane transport',
+        back: 'oDiffusion moves particles down a concentration gradient\noActive transport uses ATP to move ions against it',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+      {
+        front: '\uF0B7Cell division',
+        back: 'oMitosis makes two identical daughter cells for growth\noMeiosis makes four gametes with half the chromosomes',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+    ]);
+  });
+
+  it('reads a bullet glued to its text as an ordinary line, so a short one over a longer one fronts a card', () => {
+    const notes = [
+      'Osmosis',
+      '•Passive',
+      '•Water crosses a semipermeable membrane toward the side with more solute',
+      '•Stops when the water potentials on both sides are equal',
+      'Diffusion',
+      '•Particles spread from high to low concentration',
+      '•Needs no energy from the cell',
+    ];
+
+    expect(
+      synthesizeCardsFromPdfHeadings([portraitPage(notes)], 'Biology')
+    ).toEqual([
+      {
+        front: '•Passive',
+        back: '•Water crosses a semipermeable membrane toward the side with more solute\n•Stops when the water potentials on both sides are equal',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+      {
+        front: 'Diffusion',
+        back: '•Particles spread from high to low concentration\n•Needs no energy from the cell',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+    ]);
+  });
+
+  it('keeps each CJK heading glued to its ■ on the front', () => {
+    const notes = [
+      '■細胞の構造',
+      '細胞膜はリン脂質の二重層で、膜タンパク質が物質の出入りを調節する。',
+      '核は遺伝情報を保持し、二重の核膜で囲まれている。',
+      '■物質の輸送',
+      '拡散は濃度の高い方から低い方へ、エネルギーを使わずに物質が移動する現象である。',
+      '能動輸送はATPのエネルギーを使い、濃度勾配に逆らって物質を運ぶ。',
+      '■細胞分裂',
+      '体細胞分裂では、遺伝的に同一の二つの娘細胞ができる。',
+    ];
+
+    expect(
+      synthesizeCardsFromPdfHeadings([portraitPage(notes)], 'Biology')
+    ).toEqual([
+      {
+        front: '■細胞の構造',
+        back: '細胞膜はリン脂質の二重層で、膜タンパク質が物質の出入りを調節する。\n核は遺伝情報を保持し、二重の核膜で囲まれている。',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+      {
+        front: '■物質の輸送',
+        back: '拡散は濃度の高い方から低い方へ、エネルギーを使わずに物質が移動する現象である。\n能動輸送はATPのエネルギーを使い、濃度勾配に逆らって物質を運ぶ。',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+      {
+        front: '■細胞分裂',
+        back: '体細胞分裂では、遺伝的に同一の二つの娘細胞ができる。',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+    ]);
+  });
+
+  it('keeps a lone bullet before each heading on the card above, and each heading on the front', () => {
+    expect(
+      synthesizeCardsFromPdfHeadings(
+        [portraitPage(loneBulletBeforeEachHeading)],
+        'Bio'
+      )
+    ).toEqual(cardsUnderLoneBullets);
+  });
+
+  it('fronts the first of a page of glued bullets with no heading above them', () => {
+    const bullets = [
+      '•Short bullet',
+      '•A noticeably longer bullet line follows the short one',
+      '•Another bullet',
+    ];
+
+    expect(
+      synthesizeCardsFromPdfHeadings([portraitPage(bullets)], 'Notes')
+    ).toEqual([
+      {
+        front: '•Short bullet',
+        back: '•A noticeably longer bullet line follows the short one\n•Another bullet',
+        tags: ['Notes'],
+        pageIndex: 0,
+      },
+    ]);
+  });
+
+  it('reads a page with no orientation flag as a portrait page', () => {
+    expect(
+      synthesizeCardsFromPdfHeadings(
+        [{ text: loneBulletBeforeEachHeading.join('\n') }],
+        'Bio'
+      )
+    ).toEqual(cardsUnderLoneBullets);
+  });
+
+  it.each([
+    ['flagged portrait', false],
+    ['with no flag', undefined],
+  ])(
+    'keeps a slide between two pages %s from changing the cards around it',
+    (_flag, otherPages) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Course overview',
+            'This course covers the human body from the cell up to whole organ systems.',
+          ].join('\n'),
+          landscape: otherPages,
+        },
+        {
+          text: [
+            'Course schedule',
+            '•',
+            'Week 1 introduction to cells',
+            '•',
+            'Week 2 tissue types',
+          ].join('\n'),
+          landscape: true,
+        },
+        {
+          text: [
+            'Week 3 organs',
+            'Week 4 organ systems',
+            'Week 5 homeostasis loops',
+            'Reading list for the whole term is posted on the course page.',
+          ].join('\n'),
+          landscape: otherPages,
+        },
+      ];
+
+      expect(synthesizeCardsFromPdfHeadings(pages, 'Course')).toEqual([
+        {
+          front: 'Course overview',
+          back: [
+            'This course covers the human body from the cell up to whole organ systems.',
+            'Course schedule',
+            '•',
+            'Week 1 introduction to cells',
+            '•',
+            'Week 2 tissue types',
+            'Week 3 organs',
+            'Week 4 organ systems',
+          ].join('\n'),
+          tags: ['Course'],
+          pageIndex: 0,
+        },
+        {
+          front: 'Week 5 homeostasis loops',
+          back: 'Reading list for the whole term is posted on the course page.',
+          tags: ['Course'],
+          pageIndex: 2,
+        },
+      ]);
+    }
+  );
+
+  it('keeps a slide before a portrait page from changing the cards after it', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Overview',
+          '•',
+          'First point about the topic',
+          '•',
+          'Second point covers how these parts connect to one another',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          'Step one',
+          'Step two of the process',
+          'Mix the dry ingredients in a large bowl',
+          'Stir well',
+        ].join('\n'),
+        landscape: false,
+      },
+    ];
+
+    expect(synthesizeCardsFromPdfHeadings(pages, 'Notes')).toEqual([
+      {
+        front: 'Step two of the process',
+        back: 'Mix the dry ingredients in a large bowl\nStir well',
+        tags: ['Notes'],
+        pageIndex: 1,
+      },
+    ]);
   });
 });

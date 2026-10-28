@@ -3,6 +3,9 @@ import pdfParse from 'pdf-parse';
 export interface PdfPage {
   text: string;
   imagePaintCount: number;
+  // Read from the page box and rotation (isLandscapePage). The heading
+  // synthesizer applies its slide bullet rules only on landscape pages.
+  landscape?: boolean;
 }
 
 export interface PdfExtractionResult {
@@ -175,7 +178,8 @@ interface PdfJsPageProxy {
 // Layout signals logged with every extraction so a later change can tell
 // lecture slides (landscape pages, no front/back rhythm) from PDFs of
 // pre-made cards (page 1 a short question, page 2 a longer answer) before
-// the image fallback stops pairing pages for everyone.
+// the image fallback stops pairing pages for everyone. Each page also carries
+// its own landscape flag, which the heading synthesizer reads.
 export function isLandscapePage(
   view: number[] | undefined,
   rotate: number | undefined
@@ -320,17 +324,17 @@ function pageHasColoredText(operatorList: PdfOperatorList | null): boolean {
   return false;
 }
 
+type PageLayout = Omit<PdfPage, 'text'>;
+
 function splitIntoPages(
   fullText: string,
   pageCount: number,
-  imageCounts: number[]
+  layoutAt: (index: number) => PageLayout
 ): PdfPage[] {
-  const imageAt = (index: number) => imageCounts[index] ?? 0;
-
   if (!fullText.trim()) {
     return Array.from({ length: pageCount }, (_, i) => ({
       text: '',
-      imagePaintCount: imageAt(i),
+      ...layoutAt(i),
     }));
   }
 
@@ -339,7 +343,7 @@ function splitIntoPages(
   if (chunks.length >= pageCount) {
     return chunks
       .slice(0, pageCount)
-      .map((text, i) => ({ text, imagePaintCount: imageAt(i) }));
+      .map((text, i) => ({ text, ...layoutAt(i) }));
   }
 
   const lines = fullText.split(/\n/);
@@ -349,7 +353,7 @@ function splitIntoPages(
       .slice(i * linesPerPage, (i + 1) * linesPerPage)
       .join('\n')
       .trim(),
-    imagePaintCount: imageAt(i),
+    ...layoutAt(i),
   }));
 }
 
@@ -374,7 +378,7 @@ export async function extractPdfText(
 
   const imageCounts: number[] = [];
   const coloredTextFlags: boolean[] = [];
-  let landscapePageCount = 0;
+  const landscapeFlags: boolean[] = [];
 
   const pagerender = async (pageData: PdfJsPageProxy): Promise<string> => {
     const textContent = await pageData.getTextContent({
@@ -384,12 +388,14 @@ export async function extractPdfText(
     const operatorList = await getOperatorListSafe(pageData);
     imageCounts.push(countImagePaintOps(operatorList));
     coloredTextFlags.push(pageHasColoredText(operatorList));
-    if (isLandscapePage(pageData.view, pageData.rotate)) {
-      landscapePageCount += 1;
-    }
+    landscapeFlags.push(isLandscapePage(pageData.view, pageData.rotate));
     pageData.cleanup();
     return extractPageText(textContent) + '\f';
   };
+  const layoutAt = (index: number): PageLayout => ({
+    imagePaintCount: imageCounts[index] ?? 0,
+    landscape: landscapeFlags[index] ?? false,
+  });
 
   const credentialOption =
     credential == null ? {} : { userPassword: credential };
@@ -453,12 +459,13 @@ export async function extractPdfText(
   const pages = isDrmLocked
     ? Array.from({ length: parsedPageCount }, (_, i) => ({
         text: '',
-        imagePaintCount: imageCounts[i] ?? 0,
+        ...layoutAt(i),
       }))
-    : splitIntoPages(result.text, parsedPageCount, imageCounts);
+    : splitIntoPages(result.text, parsedPageCount, layoutAt);
 
   const pagesWithImage = pages.filter((p) => p.imagePaintCount > 0).length;
   const coloredTextPageCount = coloredTextFlags.filter(Boolean).length;
+  const landscapePageCount = landscapeFlags.filter(Boolean).length;
   const pairShare = frontShorterPairShare(pages);
 
   console.info('[extractPdfText] result', {

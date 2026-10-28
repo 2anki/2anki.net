@@ -646,3 +646,51 @@ describe('embedded image injection', () => {
     expect(result.droppedImageCount).toBe(0);
   });
 });
+
+describe('slide PDFs reaching the heading synthesizer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const landscapeSlide = (title: string, bullets: string[]) => ({
+    text: [title, ...bullets.map((bullet) => `•${bullet}`)].join('\n'),
+    imagePaintCount: 0,
+    landscape: true,
+  });
+
+  it.each([
+    ['convertPdfTextToHtml', convertPdfTextToHtml],
+    ['convertPdfTextToHtmlAuto', convertPdfTextToHtmlAuto],
+  ])(
+    '%s fronts each slide title when every page is landscape',
+    async (_name, convert) => {
+      mockExtract.mockResolvedValue({
+        pages: [
+          landscapeSlide('Membrane Proteins', [
+            'Integral proteins span the bilayer',
+            'Peripheral proteins sit on one surface',
+            'Channels, carriers and pumps move solutes',
+          ]),
+          landscapeSlide('Types of Transport', [
+            'Passive: no ATP, moves down the gradient',
+            'Active: uses ATP, moves against the gradient',
+            'Vesicular: endocytosis and exocytosis',
+          ]),
+        ],
+        pageCount: 2,
+        avgCharsPerPage: 250,
+        isDrmLocked: false,
+        needsCredential: false,
+        coloredTextPageCount: 0,
+      });
+
+      const result = await convert(Buffer.from('x'), 'cardio.pdf');
+
+      expect(result.cardCount).toBe(2);
+      expect(result.html.match(/<summary>[^<]*<\/summary>/g)).toEqual([
+        '<summary>Membrane Proteins</summary>',
+        '<summary>Types of Transport</summary>',
+      ]);
+    }
+  );
+});
