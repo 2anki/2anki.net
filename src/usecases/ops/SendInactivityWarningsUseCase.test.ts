@@ -260,6 +260,32 @@ describe('SendInactivityWarningsUseCase', () => {
       );
     });
 
+    it('does not stop the run for addresses SendGrid refuses, which say nothing about SendGrid itself', async () => {
+      repo.seedUsers(
+        [1, 2, 3, 4].map((id) => ({
+          id,
+          name: `User ${id}`,
+          email: `user${id}@example.com`,
+        }))
+      );
+      const refused = Object.assign(new Error('Bad Request'), { code: 400 });
+      const sendInactivityWarningEmail = vi
+        .fn()
+        .mockRejectedValueOnce(refused)
+        .mockRejectedValueOnce(refused)
+        .mockRejectedValueOnce(refused)
+        .mockResolvedValueOnce(undefined);
+      const emailService = makeEmailService({ sendInactivityWarningEmail });
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const useCase = new SendInactivityWarningsUseCase(repo, emailService);
+
+      const result = await useCase.execute(false);
+
+      expect(result.count).toBe(1);
+      expect(sendInactivityWarningEmail).toHaveBeenCalledTimes(4);
+      expect([...repo.getSentUserIds()]).toEqual([4]);
+    });
+
     it('keeps going when the failures are not in a row', async () => {
       repo.seedUsers(
         [1, 2, 3, 4].map((id) => ({

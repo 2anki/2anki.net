@@ -5,6 +5,15 @@ import path from 'node:path';
 
 const MAX_FAILURES_IN_A_ROW = 3;
 
+type SendOutcome = 'sent' | 'address_refused' | 'failed';
+
+// SendGrid answers 400 for a recipient it will not take: that is about one
+// address, so it must not count toward stopping the run. A revoked key (401),
+// an unverified sender (403), a rate limit or an outage is about SendGrid.
+function isAddressRefusal(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === 400;
+}
+
 export interface SendInactivityWarningsResult {
   count: number;
   dryRun: boolean;
@@ -79,9 +88,13 @@ export class SendInactivityWarningsUseCase {
     for (const user of users) {
       const token = crypto.randomUUID();
       await this.repo.recordSend(user.id, token);
-      if (await this.sendWarning(user, token)) {
+      const outcome = await this.sendWarning(user, token);
+      if (outcome === 'sent') {
         sent++;
         failuresInARow = 0;
+        continue;
+      }
+      if (outcome === 'address_refused') {
         continue;
       }
       failuresInARow++;
@@ -101,7 +114,7 @@ export class SendInactivityWarningsUseCase {
   private async sendWarning(
     user: { id: number; email: string },
     token: string
-  ): Promise<boolean> {
+  ): Promise<SendOutcome> {
     let lastConversion: { deckName: string } | null;
     try {
       lastConversion = await this.lastConversionFor(user.id);
@@ -111,7 +124,7 @@ export class SendInactivityWarningsUseCase {
         error instanceof Error ? error.message : 'unknown error'
       );
       await this.releaseWarning(user.id, token);
-      return false;
+      return 'failed';
     }
 
     try {
@@ -120,11 +133,11 @@ export class SendInactivityWarningsUseCase {
         token,
         lastConversion
       );
-      return true;
+      return 'sent';
     } catch (error) {
       console.error(`[inactivity] failed to email user ${user.id}:`, error);
       await this.releaseWarning(user.id, token);
-      return false;
+      return isAddressRefusal(error) ? 'address_refused' : 'failed';
     }
   }
 
