@@ -25,6 +25,7 @@ export interface UploadGenerationTask {
 export interface UploadGenerationFailure {
   message?: string;
   name?: string;
+  stack?: string;
   sourceFormat?: 'markdown';
   reason?: EmptyDeckReason;
   rescueCandidates?: RescueCandidate[];

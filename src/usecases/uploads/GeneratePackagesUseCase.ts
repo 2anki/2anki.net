@@ -49,6 +49,11 @@ function buildWorkerError(failure: UploadGenerationFailure): Error {
     if (failure.name != null) {
       e.name = failure.name;
     }
+    // The frame that threw lives in the worker; without its stack every
+    // crash log points here instead (#5137).
+    if (failure.stack != null) {
+      e.stack = failure.stack;
+    }
     return e;
   }
   const fallback = new Error(

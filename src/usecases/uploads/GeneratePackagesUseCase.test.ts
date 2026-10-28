@@ -388,4 +388,25 @@ describe('GeneratePackagesUseCase', () => {
     expect(err).toBeInstanceOf(Error);
     expect((err as Error).name).toBe('CustomError');
   });
+
+  it('keeps the stack the worker threw from, so a crash log names the failing frame', async () => {
+    const workerStack =
+      "TypeError: Cannot read properties of undefined (reading '0')\n" +
+      '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+    mockRunUploadGeneration.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        message: "Cannot read properties of undefined (reading '0')",
+        name: 'TypeError',
+        stack: workerStack,
+      },
+    });
+    const useCase = new GeneratePackagesUseCase();
+
+    const err = await useCase
+      .execute(false, [makeFile('bad.html')], makeSettings(), makeWorkspace())
+      .catch((e: unknown) => e);
+
+    expect((err as Error).stack).toBe(workerStack);
+  });
 });
