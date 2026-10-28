@@ -4,6 +4,7 @@ import http from 'node:http';
 import { AddressInfo } from 'node:net';
 
 let mockAuthOwner: number | null = 42;
+let mockOriginOwner: number | undefined;
 
 vi.mock('./middleware/RequireAuthentication', () => {
   const middleware = (
@@ -29,9 +30,12 @@ vi.mock('./middleware/RequireAllowedOrigin', () => ({
   __esModule: true,
   default: (
     _req: express.Request,
-    _res: express.Response,
+    res: express.Response,
     next: express.NextFunction
-  ) => next(),
+  ) => {
+    if (mockOriginOwner != null) res.locals.owner = mockOriginOwner;
+    next();
+  },
 }));
 
 vi.mock('../data_layer', () => ({
@@ -48,12 +52,16 @@ vi.mock('../lib/storage/StorageHandler', () => ({
 
 const mockDropbox = vi.fn();
 const mockSample = vi.fn();
+const mockFile = vi.fn();
+const mockRetryPdf = vi.fn();
 
 vi.mock('../controllers/Upload/UploadController', () => ({
   __esModule: true,
   default: vi.fn().mockImplementation(function () {
     return {
       dropbox: mockDropbox,
+      file: mockFile,
+      retryPdfWithCredential: mockRetryPdf,
       googleDrive: vi.fn(),
       getDropboxUploads: vi.fn(),
       deleteDropboxUpload: vi.fn(),
@@ -227,6 +235,67 @@ describe('UploadRouter GET /api/upload/jobs/:jobId/report', () => {
       const res = await fetch(`${url}/api/upload/jobs/job-1/report`);
       expect(res.status).toBe(200);
       expect(mockGetJobReport).toHaveBeenCalledTimes(1);
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('UploadRouter tells the page whose session ran an upload', () => {
+  const answerWith =
+    (status: number, body: unknown) =>
+    (_req: express.Request, res: express.Response) => {
+      res.status(status).json(body);
+    };
+
+  beforeEach(() => {
+    mockOriginOwner = 42;
+    mockFile.mockReset();
+    mockRetryPdf.mockReset();
+  });
+
+  afterEach(() => {
+    mockOriginOwner = undefined;
+  });
+
+  it.each([
+    ['a background job', 202, { jobId: 'job-1' }],
+    ['the PDF question', 409, { code: 'choose_pdf_mode', reason: 'no_text' }],
+  ])('before /api/upload/file answers with %s', async (_kind, status, body) => {
+    mockFile.mockImplementation(answerWith(status, body));
+    const { url, close } = await startServer();
+    try {
+      const res = await fetch(`${url}/api/upload/file`, { method: 'POST' });
+      expect(res.status).toBe(status);
+      expect(res.headers.get('X-Upload-Owner')).toBe('42');
+    } finally {
+      await close();
+    }
+  });
+
+  it('for a signed-out visitor on /api/upload/file', async () => {
+    mockOriginOwner = undefined;
+    mockFile.mockImplementation(answerWith(200, {}));
+    const { url, close } = await startServer();
+    try {
+      const res = await fetch(`${url}/api/upload/file`, { method: 'POST' });
+      expect(res.headers.get('X-Upload-Owner')).toBe('none');
+    } finally {
+      await close();
+    }
+  });
+
+  it('even when /api/upload/retry-with-credential refuses the body before the controller', async () => {
+    const { url, close } = await startServer();
+    try {
+      const res = await fetch(`${url}/api/upload/retry-with-credential`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'multipart/form-data; boundary=cut' },
+        body: '--cut\r\nContent-Disposition: form-data; name="file"; filename="a.pdf"\r\n\r\nbroken',
+      });
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.headers.get('X-Upload-Owner')).toBe('42');
+      expect(mockRetryPdf).not.toHaveBeenCalled();
     } finally {
       await close();
     }

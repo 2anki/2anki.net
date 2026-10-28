@@ -4,6 +4,7 @@ import path from 'path';
 
 import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import RequireAuthentication from './middleware/RequireAuthentication';
+import { tellUploadOwner } from './middleware/tellUploadOwner';
 import RequirePayingJson from './middleware/RequirePayingJson';
 import { normalizeUploadFilenames } from './middleware/normalizeUploadFilenames';
 import UploadController from '../controllers/Upload/UploadController';
@@ -156,9 +157,17 @@ const UploadRouter = () => {
    *               options:
    *                 type: string
    *                 description: JSON string with conversion options
+   *               kept-owner:
+   *                 type: string
+   *                 description: Sent by the web page when it sends back files it kept from an earlier upload. The account id that first sent them, or "none" for a signed-out visitor. Omitted on a new upload.
    *     responses:
    *       200:
    *         description: File uploaded successfully
+   *         headers:
+   *           X-Upload-Owner:
+   *             description: The session the upload ran under, an account id or "none". Every response from this endpoint carries it.
+   *             schema:
+   *               type: string
    *         content:
    *           application/json:
    *             schema:
@@ -175,9 +184,18 @@ const UploadRouter = () => {
    *           application/json:
    *             schema:
    *               $ref: '#/components/schemas/Error'
+   *       409:
+   *         description: The kept-owner field names a different session than the one sending the request (code "owner_changed", with signed_in for the current session), so nothing was converted; or a PDF needs the person to choose what to make (code "choose_pdf_mode")
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
-  router.post('/api/upload/file', RequireAllowedOrigin, (req, res) =>
-    uploadController.file(req, res)
+  router.post(
+    '/api/upload/file',
+    RequireAllowedOrigin,
+    tellUploadOwner,
+    (req, res) => uploadController.file(req, res)
   );
 
   /**
@@ -360,6 +378,7 @@ const UploadRouter = () => {
   router.post(
     '/api/upload/retry-with-credential',
     RequireAllowedOrigin,
+    tellUploadOwner,
     multer({
       dest: '/tmp',
       limits: { fileSize: 50 * 1024 * 1024 },

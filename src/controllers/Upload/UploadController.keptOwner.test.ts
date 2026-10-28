@@ -8,6 +8,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 
 const s3Puts = vi.hoisted(() => [] as string[]);
+const workerPool = vi.hoisted(() => ({ down: false }));
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
   const actual = await importActual<typeof import('@aws-sdk/client-s3')>();
@@ -40,7 +41,12 @@ vi.mock('../../lib/conversionPool', async (importActual) => {
   const worker = await import('../../usecases/uploads/worker');
   return {
     ...actual,
-    runUploadGeneration: worker.runUploadGenerationInWorker,
+    runUploadGeneration: (
+      ...args: Parameters<typeof worker.runUploadGenerationInWorker>
+    ) =>
+      workerPool.down
+        ? Promise.reject(new Error('the worker pool is down in this test'))
+        : worker.runUploadGenerationInWorker(...args),
   };
 });
 
@@ -64,6 +70,7 @@ import {
   __setFeatureFlagDependencies,
 } from '../../lib/featureFlags/getFeatureFlag';
 import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
+import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 
 const OWNER = 4242;
 const OTHER_OWNER = 9999;
@@ -81,6 +88,7 @@ interface Session {
   locals: Record<string, unknown>;
   cookies: Record<string, string>;
   headers: Record<string, string>;
+  cardsUsed?: number;
 }
 
 const signedIn: Session = {
@@ -106,10 +114,13 @@ const signedOutPassHolder: Session = {
   headers: { 'x-pass-token': 'kept-pass-token' },
 };
 
+const signedInAtMonthlyLimit: Session = { ...signedIn, cardsUsed: 100 };
+
 let session: Session = signedOut;
 let server: http.Server;
 let baseUrl: string;
 let uploadBase: string;
+let workspaceBase: string;
 const jobsCreated: string[] = [];
 const cardsCharged: number[] = [];
 const originalEnv = {
@@ -117,6 +128,7 @@ const originalEnv = {
   SPACES_ENDPOINT: process.env.SPACES_ENDPOINT,
   SPACES_DEFAULT_BUCKET_NAME: process.env.SPACES_DEFAULT_BUCKET_NAME,
   SKIP_CREATE_DECK: process.env.SKIP_CREATE_DECK,
+  WORKSPACE_BASE: process.env.WORKSPACE_BASE,
 };
 
 function restoreEnv() {
@@ -129,11 +141,11 @@ function restoreEnv() {
   }
 }
 
-function inMemoryUsers(): UsersRepository {
+function inMemoryUsers(cardsUsed: number): UsersRepository {
   return {
     getCardUsage: () =>
       Promise.resolve({
-        cards_used: 0,
+        cards_used: cardsUsed,
         month_started_at: new Date('2026-10-01T00:00:00Z'),
       }),
     incrementCardUsage: (_owner: number, count: number) => {
@@ -162,20 +174,22 @@ function inMemoryUploads(): IUploadRepository {
   };
 }
 
-// Records the job a paying Claude upload asks for, then stops there: the test
-// only needs to know whether the request got that far.
 function recordingJobs(): JobRepository {
   return {
     create: (id: string) => {
       jobsCreated.push(id);
-      return Promise.reject(new Error('job store is not part of this test'));
+      return Promise.resolve();
     },
+    updateJobStatus: () => Promise.resolve(),
+    deleteJob: () => Promise.resolve(),
   } as unknown as JobRepository;
 }
 
 beforeAll(async () => {
   uploadBase = fs.mkdtempSync(path.join(os.tmpdir(), 'upload-kept-owner-'));
+  workspaceBase = fs.mkdtempSync(path.join(os.tmpdir(), 'workspace-kept-'));
   process.env.UPLOAD_BASE = uploadBase;
+  process.env.WORKSPACE_BASE = workspaceBase;
   process.env.SPACES_ENDPOINT = 'https://kept-owner-storage.invalid';
   process.env.SPACES_DEFAULT_BUCKET_NAME = 'kept-owner-bucket';
   // CI skips the Python deck writer, which the fake above stands in for.
@@ -189,11 +203,12 @@ beforeAll(async () => {
       Object.assign(res.locals, session.locals);
       next();
     },
+    tellUploadOwner,
     (req, res) => {
       const service = new UploadService(
         inMemoryUploads(),
         recordingJobs(),
-        inMemoryUsers(),
+        inMemoryUsers(session.cardsUsed ?? 0),
         ...fakeUploadServiceDeps()
       );
       new UploadController(service, {} as unknown as NotionService).file(
@@ -210,6 +225,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
   fs.rmSync(uploadBase, { recursive: true, force: true });
+  fs.rmSync(workspaceBase, { recursive: true, force: true });
   restoreEnv();
 });
 
@@ -225,6 +241,7 @@ beforeEach(() => {
 
 afterEach(() => {
   __resetFeatureFlagModuleForTests();
+  workerPool.down = false;
   s3Puts.length = 0;
   jobsCreated.length = 0;
   cardsCharged.length = 0;
@@ -233,20 +250,35 @@ afterEach(() => {
   }
 });
 
-async function resend(
+interface Upload {
+  name: string;
+  type: string;
+  contents: string | Uint8Array<ArrayBuffer>;
+}
+
+const keptNotes: Upload = {
+  name: 'Kept notes.html',
+  type: 'text/html',
+  contents: NOTES,
+};
+
+async function post(
   who: Session,
-  fields: Record<string, string> = {}
-): Promise<{ status: number; body: unknown }> {
+  fields: Record<string, string>,
+  uploads: Upload[]
+): Promise<{ status: number; owner: string | null; body: unknown }> {
   session = who;
   const form = new FormData();
   for (const [name, value] of Object.entries(fields)) {
     form.append(name, value);
   }
-  form.append(
-    'pakker',
-    new Blob([NOTES], { type: 'text/html' }),
-    'Kept notes.html'
-  );
+  for (const upload of uploads) {
+    form.append(
+      'pakker',
+      new Blob([upload.contents], { type: upload.type }),
+      upload.name
+    );
+  }
   const cookie = Object.entries(who.cookies)
     .map(([name, value]) => `${name}=${value}`)
     .join('; ');
@@ -260,7 +292,19 @@ async function resend(
   const body = contentType.includes('application/json')
     ? await response.json()
     : await response.text();
-  return { status: response.status, body };
+  return {
+    status: response.status,
+    owner: response.headers.get('x-upload-owner'),
+    body,
+  };
+}
+
+async function resend(
+  who: Session,
+  fields: Record<string, string> = {}
+): Promise<{ status: number; body: unknown }> {
+  const { status, body } = await post(who, fields, [keptNotes]);
+  return { status, body };
 }
 
 const tempFilesLeft = () => fs.readdirSync(uploadBase);
@@ -313,13 +357,47 @@ describe('a resend of kept files on /api/upload/file', () => {
   );
 
   it('makes the background Claude job for the paying account that sent the file', async () => {
+    workerPool.down = true;
+    const result = await resend(payingSignedIn, {
+      'kept-owner': String(OWNER),
+      'claude-ai-flashcards': 'true',
+    });
+
+    expect(result.status).toBe(202);
+    expect(jobsCreated).toHaveLength(1);
+  });
+
+  it('keeps the kept owner out of the settings a background job saves', async () => {
+    workerPool.down = true;
     await resend(payingSignedIn, {
       'kept-owner': String(OWNER),
       'claude-ai-flashcards': 'true',
     });
 
-    expect(jobsCreated).toHaveLength(1);
+    const saved = JSON.parse(
+      fs.readFileSync(
+        path.join(workspaceBase, jobsCreated[0], 'conversion-settings.json'),
+        'utf8'
+      )
+    );
+    expect(saved).toMatchObject({ 'claude-ai-flashcards': 'true' });
+    expect(saved).not.toHaveProperty('kept-owner');
   });
+
+  it.each([
+    ['another account', signedIn, String(OTHER_OWNER), true],
+    ['an account that has since signed out', signedOut, String(OWNER), false],
+  ])(
+    'says whether the session is signed in when it refuses a file sent by %s',
+    async (_label, who, keptOwner, signedInNow) => {
+      const result = await resend(who, { 'kept-owner': keptOwner });
+
+      expect(result.body).toMatchObject({
+        code: 'owner_changed',
+        signed_in: signedInNow,
+      });
+    }
+  );
 
   it('makes no Claude job, so spends no credits, for a file another account sent', async () => {
     const result = await resend(payingSignedIn, {
@@ -329,5 +407,81 @@ describe('a resend of kept files on /api/upload/file', () => {
 
     expect(result.status).toBe(409);
     expect(jobsCreated).toEqual([]);
+  });
+});
+
+const imageOnlyPdf: Upload = {
+  name: 'Scanned notes.pdf',
+  type: 'application/pdf',
+  contents: new Uint8Array(
+    fs.readFileSync(
+      path.join(__dirname, '../../test/fixtures/pdf-landscape-image.pdf')
+    )
+  ),
+};
+
+const noToggles: Upload = {
+  name: 'Plain notes.html',
+  type: 'text/html',
+  contents: '<html><body></body></html>',
+};
+
+describe('the session an upload ran under, on every answer from /api/upload/file', () => {
+  it.each([
+    ['a converted deck', signedIn, {}, [keptNotes], 200, String(OWNER)],
+    ["a signed-out visitor's deck", signedOut, {}, [keptNotes], 200, 'none'],
+    [
+      'a background job',
+      payingSignedIn,
+      { 'claude-ai-flashcards': 'true' },
+      [keptNotes],
+      202,
+      String(OWNER),
+    ],
+    [
+      'the PDF question',
+      signedIn,
+      { 'pdf-fallback': 'ask' },
+      [imageOnlyPdf],
+      409,
+      String(OWNER),
+    ],
+    [
+      'a refused resend',
+      signedIn,
+      { 'kept-owner': String(OTHER_OWNER) },
+      [keptNotes],
+      409,
+      String(OWNER),
+    ],
+    ['an empty deck', signedIn, {}, [noToggles], 400, String(OWNER)],
+    ['a request with no file', signedIn, {}, [], 400, String(OWNER)],
+    [
+      'too many files at once',
+      signedOut,
+      {},
+      Array.from({ length: 22 }, () => keptNotes),
+      400,
+      'none',
+    ],
+    [
+      'the monthly limit',
+      signedInAtMonthlyLimit,
+      {},
+      [keptNotes],
+      302,
+      String(OWNER),
+    ],
+  ] as Array<
+    [string, Session, Record<string, string>, Upload[], number, string]
+  >)('names it on %s', async (_kind, who, fields, uploads, status, owner) => {
+    workerPool.down = status === 202;
+
+    const result = await post(who, fields, uploads);
+
+    expect({ status: result.status, owner: result.owner }).toEqual({
+      status,
+      owner,
+    });
   });
 });

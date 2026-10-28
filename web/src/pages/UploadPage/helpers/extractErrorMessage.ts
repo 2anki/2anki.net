@@ -32,6 +32,9 @@ export async function extractErrorMessage(
       if (rescue.length > 0) {
         result.rescue = rescue;
       }
+      if (typeof body.signed_in === 'boolean') {
+        result.signed_in = body.signed_in;
+      }
       return result;
     }
   } catch {

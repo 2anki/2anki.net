@@ -18,6 +18,8 @@ import type UploadService from '../../services/UploadService';
 import type NotionService from '../../services/NotionService';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { normalizeUploadFilenames } from '../../routes/middleware/normalizeUploadFilenames';
+import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
+import { buildPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
 
 const OWNER = 4242;
 const OTHER_OWNER = 9999;
@@ -58,6 +60,7 @@ beforeAll(async () => {
       Object.assign(res.locals, session.locals);
       next();
     },
+    tellUploadOwner,
     multer({ dest: tempDir }).single('file'),
     normalizeUploadFilenames,
     (req, res) => controller.retryPdfWithCredential(req, res)
@@ -87,21 +90,24 @@ afterEach(() => {
   }
 });
 
-async function unlock(
+async function send(
   who: Session,
-  fields: Record<string, string> = {}
-): Promise<{ status: number; body: unknown }> {
+  fields: Record<string, string>,
+  withFile: boolean
+): Promise<{ status: number; owner: string | null; body: unknown }> {
   session = who;
   const form = new FormData();
   form.append('credential', 'secret');
   for (const [name, value] of Object.entries(fields)) {
     form.append(name, value);
   }
-  form.append(
-    'file',
-    new Blob(['%PDF-1.4 locked'], { type: 'application/pdf' }),
-    'Locked notes.pdf'
-  );
+  if (withFile) {
+    form.append(
+      'file',
+      new Blob(['%PDF-1.4 locked'], { type: 'application/pdf' }),
+      'Locked notes.pdf'
+    );
+  }
   const response = await fetch(`${baseUrl}/api/upload/retry-with-credential`, {
     method: 'POST',
     body: form,
@@ -110,7 +116,19 @@ async function unlock(
   const body = contentType.includes('application/json')
     ? await response.json()
     : await response.text();
-  return { status: response.status, body };
+  return {
+    status: response.status,
+    owner: response.headers.get('x-upload-owner'),
+    body,
+  };
+}
+
+async function unlock(
+  who: Session,
+  fields: Record<string, string> = {}
+): Promise<{ status: number; body: unknown }> {
+  const { status, body } = await send(who, fields, true);
+  return { status, body };
 }
 
 describe('a password unlock of a kept file on /api/upload/retry-with-credential', () => {
@@ -167,4 +185,44 @@ describe('a password unlock of a kept file on /api/upload/retry-with-credential'
       expect(fs.readdirSync(tempDir)).toEqual([]);
     }
   );
+});
+
+describe('the session a password unlock ran under, on every answer', () => {
+  it('names it on an unlocked deck', async () => {
+    expect(await send(signedIn, {}, true)).toMatchObject({
+      status: 200,
+      owner: String(OWNER),
+    });
+  });
+
+  it('names it on a wrong password', async () => {
+    prepareDeck.mockRejectedValue(
+      new Error(buildPdfPasswordSentinel('Locked notes.pdf'))
+    );
+
+    expect(await send(signedIn, {}, true)).toMatchObject({
+      status: 400,
+      owner: String(OWNER),
+    });
+  });
+
+  it('names it on a refused unlock, and says whether the session is signed in', async () => {
+    expect(
+      await send(signedOut, { 'kept-owner': String(OWNER) }, true)
+    ).toEqual({
+      status: 409,
+      owner: 'none',
+      body: expect.objectContaining({
+        code: 'owner_changed',
+        signed_in: false,
+      }),
+    });
+  });
+
+  it('names it on a request with no file', async () => {
+    expect(await send(signedOutPassHolder, {}, false)).toMatchObject({
+      status: 400,
+      owner: 'none',
+    });
+  });
 });
