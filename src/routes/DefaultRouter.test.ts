@@ -81,6 +81,14 @@ describe('DefaultRouter catch-all status', () => {
     }
   );
 
+  it('answers the removed Google Ads conversion feed with a 404 and no data', async () => {
+    const res = await fetch(`${url}/api/google-ads/offline-conversions.csv`);
+    const body = await res.text();
+    expect(res.status).toBe(404);
+    expect(res.headers.get('content-type') ?? '').not.toContain('text/csv');
+    expect(body).not.toContain('Google Click ID');
+  });
+
   it('301s the old API docs path to the MCP connector page', async () => {
     const res = await fetch(`${url}/documentation/api/docs`, {
       redirect: 'manual',
