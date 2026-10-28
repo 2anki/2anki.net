@@ -116,6 +116,7 @@ const originalEnv = {
   UPLOAD_BASE: process.env.UPLOAD_BASE,
   SPACES_ENDPOINT: process.env.SPACES_ENDPOINT,
   SPACES_DEFAULT_BUCKET_NAME: process.env.SPACES_DEFAULT_BUCKET_NAME,
+  SKIP_CREATE_DECK: process.env.SKIP_CREATE_DECK,
 };
 
 function restoreEnv() {
@@ -177,6 +178,8 @@ beforeAll(async () => {
   process.env.UPLOAD_BASE = uploadBase;
   process.env.SPACES_ENDPOINT = 'https://kept-owner-storage.invalid';
   process.env.SPACES_DEFAULT_BUCKET_NAME = 'kept-owner-bucket';
+  // CI skips the Python deck writer, which the fake above stands in for.
+  delete process.env.SKIP_CREATE_DECK;
   const app = express();
   app.use(cookieParser());
   app.post(
