@@ -6793,6 +6793,32 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
   });
 
+  it("sends a visitor's file again without AI from the preview's Continue without AI", async () => {
+    setUserLocals(signedOutWithAiPreview);
+    const fetchMock = stubServer([
+      jsonAnswer(200, {
+        kind: 'ai_preview',
+        cards: [{ front: 'What does the Krebs cycle make?', back: 'ATP' }],
+      }),
+      deckResponse(12),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Continue without AI' })
+    );
+
+    await waitFor(() =>
+      expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(2)
+    );
+    const resent = callsTo(fetchMock, '/api/upload/file')[1][1]
+      .body as FormData;
+    expect(resent.getAll('claude-ai-flashcards')).toEqual(['false']);
+    expect((resent.get('pakker') as File).name).toBe('lecture.pdf');
+  });
+
   it("sends nothing when another account continues without AI from a visitor's preview", async () => {
     setUserLocals(signedOutWithAiPreview);
     const fetchMock = stubServer([
