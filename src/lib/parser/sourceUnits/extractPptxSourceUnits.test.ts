@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { strToU8, unzipSync, zipSync } from 'fflate';
+import * as cheerio from 'cheerio';
 import {
   combineSlidesIntoHTML,
   combineSlidesWithChromeIntoHTML,
@@ -594,7 +595,7 @@ describe('extractPptxSourceUnits — slide chrome', () => {
     );
 
     expect(html).toContain(
-      '<summary><img src="pdf-x/slide-1.png" /></summary><p>7</p></details>'
+      '<summary><img src="pdf-x/slide-1.png" /></summary><p class="slide-source">7</p></details>'
     );
   });
 
@@ -1005,4 +1006,65 @@ describe('extractPptxSourceUnits — a .pptx without exactly one embedded image 
       expect(html).toBe(EVERY_SLIDE_RENDERED_BEFORE_CHROME_DETECTION);
     });
   });
+});
+
+describe('extractPptxSourceUnits — markup typed on a slide stays text in the card HTML', () => {
+  const escapedTag = '&lt;img src=x onerror=alert(1)&gt;';
+  const picture =
+    '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>';
+  const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
+    escapedTag,
+  ]);
+  const slideNumber = slideNumberShapeXml(
+    '<p:ph type="sldNum" sz="quarter" idx="12"/>',
+    escapedTag
+  );
+  const lecture = buildPptx([
+    {
+      xml: slideOfShapesXml([
+        shapeXml('<p:ph type="title"/>', ['Mitosis']),
+        shapeXml('<p:ph idx="1"/>', [escapedTag]),
+        footer,
+        slideNumber,
+      ]),
+    },
+    { xml: slideOfShapesXml([picture, footer, slideNumber]) },
+  ]);
+  const renderedPages = ['/ws/pdf-x/slide-1.png', '/ws/pdf-x/slide-2.png'];
+
+  function markupIn(html: string) {
+    const $ = cheerio.load(html);
+    return {
+      handlers: $('*')
+        .toArray()
+        .flatMap((element) => Object.keys($(element).attr() ?? {}))
+        .filter((attribute) => attribute.startsWith('on')),
+      images: $('img')
+        .toArray()
+        .map((image) => $(image).attr('src')),
+    };
+  }
+
+  it.each([
+    { builder: 'combineSlidesIntoHTML', combine: combineSlidesIntoHTML },
+    {
+      builder: 'combineSlidesWithChromeIntoHTML',
+      combine: combineSlidesWithChromeIntoHTML,
+    },
+  ])(
+    'adds no element or attribute from slide text, footer or slide number with $builder',
+    ({ combine }) => {
+      const html = combine(
+        extractPptxSourceUnits(lecture),
+        renderedPages,
+        'lecture.pdf',
+        '/ws'
+      );
+
+      expect(markupIn(html)).toEqual({
+        handlers: [],
+        images: ['pdf-x/slide-1.png', 'pdf-x/slide-2.png'],
+      });
+    }
+  );
 });

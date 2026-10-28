@@ -469,11 +469,13 @@ async function convertSlidesToTextCards(
     input.workspace.location
   );
   // The AI branch only sees media it is handed as extraFiles (the DOCX path
-  // learned this in #3946), so the rendered slides travel with the HTML.
+  // learned this in #3946), so the rendered slides travel with the HTML. Each
+  // is named the way its src decodes, through UTF-8 as Node writes the file,
+  // so a lone surrogate in the upload's name reads as U+FFFD on both sides.
   const slideImages: PdfHtmlImage[] = await Promise.all(
     rendered.imagePaths.map(async (imagePath) => ({
-      name: path
-        .relative(input.workspace.location, imagePath)
+      name: Buffer.from(path.relative(input.workspace.location, imagePath))
+        .toString('utf8')
         .replaceAll('\\', '/'),
       contents: await fs.promises.readFile(imagePath),
     }))

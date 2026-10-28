@@ -202,7 +202,7 @@ describe('combineSlidesIntoHTML', () => {
 
     const [card] = cards(html);
     expect(card.front).toBe('<img src="pdf-x/slide-1.png" />');
-    expect(card.back).toBe('<p>Cell Biology · 2</p>');
+    expect(card.back).toBe('<p class="slide-source">Cell Biology · 2</p>');
   });
 
   it('adds the slide number and footer as a source line under the image of a slide with no text of its own on the back', () => {
@@ -214,7 +214,7 @@ describe('combineSlidesIntoHTML', () => {
     );
 
     expect(cards(html)[0].back).toBe(
-      '<img src="pdf-x/slide-1.png" /><p>Cell Biology · 5</p>'
+      '<img src="pdf-x/slide-1.png" /><p class="slide-source">Cell Biology · 5</p>'
     );
   });
 

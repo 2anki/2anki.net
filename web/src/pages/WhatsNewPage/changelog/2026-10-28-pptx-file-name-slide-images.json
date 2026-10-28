@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-pptx-file-name-slide-images",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "PowerPoint files with a % or a quote in their name keep their slide images, and a name like 50% done.pptx converts"
+}

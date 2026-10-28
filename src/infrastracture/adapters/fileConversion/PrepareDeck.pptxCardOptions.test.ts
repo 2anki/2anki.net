@@ -41,6 +41,7 @@ import CardOption from '../../../lib/parser/Settings/CardOption';
 import Workspace from '../../../lib/parser/WorkSpace';
 import getUniqueFileName from '../../../lib/misc/getUniqueFileName';
 import { mcpOptionsToCardSettings } from '../../../services/mcp/mcpOptionsToCardSettings';
+import { getPageCount } from '../../../lib/pdf/getPageCount';
 
 const NAMESPACES =
   'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
@@ -74,6 +75,51 @@ const figureLecture = Buffer.from(
       slideNumber('1'),
     ]),
     'ppt/slides/slide2.xml': slide([picture, footer, slideNumber('2')]),
+  })
+);
+
+function notes(text: string): Uint8Array {
+  return strToU8(
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:notes ${NAMESPACES}><p:cSld><p:spTree><p:sp><p:nvSpPr><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:r><a:t>${text}</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:notes>`
+  );
+}
+
+const typingLecture = Buffer.from(
+  zipSync({
+    'ppt/slides/slide1.xml': slide([
+      textShape('<p:ph type="title"/>', 'Mitosis'),
+      textShape('<p:ph idx="1"/>', 'Prophase'),
+      footer,
+      slideNumber('1'),
+    ]),
+    'ppt/slides/slide2.xml': slide([picture, footer, slideNumber('2')]),
+    'ppt/slides/slide3.xml': slide([picture, footer, slideNumber('3')]),
+    'ppt/notesSlides/notesSlide3.xml': notes('Label the phases'),
+    'ppt/slides/slide4.xml': slide([picture, slideNumber('4')]),
+  })
+);
+
+const listLecture = Buffer.from(
+  zipSync({
+    'ppt/slides/slide1.xml': slide([
+      textShape('<p:ph type="title"/>', 'Mitosis'),
+      `<p:sp><p:nvSpPr><p:nvPr><p:ph idx="1"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:r><a:t>Prophase</a:t></a:r></a:p><a:p><a:r><a:t>Metaphase</a:t></a:r></a:p></p:txBody></p:sp>`,
+      footer,
+      slideNumber('1'),
+    ]),
+    'ppt/slides/slide2.xml': slide([
+      textShape('<p:ph type="title"/>', 'Meiosis'),
+      textShape('<p:ph idx="1"/>', 'Gametes'),
+      footer,
+      slideNumber('2'),
+    ]),
+    'ppt/slides/slide3.xml': slide([
+      slideNumber('19'),
+      textShape('', '03'),
+      textShape('', 'Exocytosis'),
+      textShape('', 'Ca2+ influx triggers fusion'),
+      footer,
+    ]),
   })
 );
 
@@ -112,14 +158,17 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
     }
   });
 
-  async function convert(options: Record<string, string>) {
+  async function convert(
+    options: Record<string, string>,
+    deck: Buffer = figureLecture
+  ) {
     workspace = new Workspace(true, 'fs');
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
     try {
       const result = await PrepareDeck({
         name: 'lecture.pptx',
-        files: [{ name: 'lecture.pptx', contents: figureLecture }],
+        files: [{ name: 'lecture.pptx', contents: deck }],
         settings: new CardOption({
           ...CardOption.LoadDefaultOptions(),
           ...options,
@@ -198,5 +247,122 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
       { front: '[slide image] Cell Biology · 1', back: 'Mitosis' },
       { front: 'Cell Biology · 2', back: '[slide image]' },
     ]);
+  });
+
+  it('makes the same cards with MCP noteType mcq as with cloze off, since the slides hold no answer list', async () => {
+    const mcq = await convert(mcpOptionsToCardSettings({ noteType: 'mcq' }));
+    const clozeOff = await convert({ cloze: 'false' });
+
+    expect(mcq).toEqual(clozeOff);
+  });
+
+  describe('when the answer is typed (MCP noteType input)', () => {
+    beforeEach(() => {
+      vi.mocked(getPageCount).mockResolvedValue(4);
+    });
+
+    afterEach(() => {
+      vi.mocked(getPageCount).mockResolvedValue(2);
+    });
+
+    function typing(cards: Awaited<ReturnType<typeof convert>>) {
+      return cards.map((card) => ({
+        typed: card.enableInput,
+        answer: card.answer,
+      }));
+    }
+
+    it('types the speaker note of a picture slide, never a slide number or footer', async () => {
+      const cards = await convert(
+        mcpOptionsToCardSettings({ noteType: 'input' }),
+        typingLecture
+      );
+
+      expect(typing(cards)).toEqual([
+        { typed: false, answer: '' },
+        { typed: false, answer: '' },
+        { typed: true, answer: 'Label the phases' },
+        { typed: false, answer: '' },
+      ]);
+    });
+
+    it('types a one-line body or speaker note, never a slide number or footer, when backs are plain text', async () => {
+      const cards = await convert(
+        {
+          ...mcpOptionsToCardSettings({ noteType: 'input' }),
+          paragraph: 'true',
+        },
+        typingLecture
+      );
+
+      expect(typing(cards)).toEqual([
+        { typed: true, answer: 'Prophase' },
+        { typed: false, answer: '' },
+        { typed: true, answer: 'Label the phases' },
+        { typed: false, answer: '' },
+      ]);
+    });
+  });
+
+  it('keeps both directions of the figure slide with typed answers and Basic and reversed on', async () => {
+    vi.mocked(getPageCount).mockResolvedValue(2);
+    const cards = await convert({
+      ...mcpOptionsToCardSettings({ noteType: 'input' }),
+      'basic-reversed': 'true',
+    });
+
+    expect(
+      cards.map((card) => ({
+        front: visibleText(card.name),
+        back: visibleText(card.back),
+        typed: card.enableInput,
+      }))
+    ).toEqual([
+      {
+        front: 'Mitosis',
+        back: '[slide image] Cell Biology · 1',
+        typed: false,
+      },
+      { front: '[slide image]', back: 'Cell Biology · 2', typed: false },
+      {
+        front: '[slide image] Cell Biology · 1',
+        back: 'Mitosis',
+        typed: false,
+      },
+      { front: 'Cell Biology · 2', back: '[slide image]', typed: false },
+    ]);
+  });
+
+  describe('when a slide has a body list and chrome', () => {
+    beforeEach(() => {
+      vi.mocked(getPageCount).mockResolvedValue(3);
+    });
+
+    afterEach(() => {
+      vi.mocked(getPageCount).mockResolvedValue(2);
+    });
+
+    it.each(['show-all', 'windowed'])(
+      'turns only the body lines into overlapping cloze notes, never the slide number or footer (%s)',
+      async (style) => {
+        const cards = await convert(
+          { cloze: 'true', 'overlapping-cloze': style },
+          listLecture
+        );
+
+        expect(
+          cards.map((card) => ({
+            front: visibleText(card.name),
+            media: card.media.length,
+          }))
+        ).toEqual([
+          { front: 'Meiosis', media: 1 },
+          { front: '{{c1::Prophase}} Metaphase', media: 0 },
+          { front: 'Prophase {{c1::Metaphase}}', media: 0 },
+          { front: '{{c1::03}} Ca2+ influx triggers fusion', media: 0 },
+          { front: '03 {{c1::Ca2+ influx triggers fusion}}', media: 0 },
+        ]);
+      }
+    );
   });
 });

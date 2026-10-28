@@ -84,6 +84,9 @@ const ESCAPED_NAMES = [
   { label: "a web upload's %22", name: 'Lecture %22final%22.pptx' },
   { label: 'a bare percent sign', name: '50% done.pptx' },
   { label: 'a lone surrogate', name: 'Lecture \uD800.pptx' },
+  { label: 'a backslash', name: 'Cell\\Biology.pptx' },
+  { label: 'two dots before a backslash', name: 'Week 4..\\Cells.pptx' },
+  { label: 'an entity-like name', name: 'Cells &amp; Tissues.pptx' },
 ];
 
 function pageMedia(page: number): string {

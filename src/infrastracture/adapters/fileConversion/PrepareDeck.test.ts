@@ -18,6 +18,8 @@ import {
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import {
   AiCreditsTrippedWithSalvage,
+  bundledMediaName,
+  expandCompactDeckInfo,
   generateDeckInfo as generateDeckInfoImport,
 } from '../../../lib/claude/ClaudeService';
 import CustomExporterDefault from '../../../lib/parser/exporters/CustomExporter';
@@ -2216,6 +2218,51 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
     ]);
     expect(offered).toEqual(expect.arrayContaining(srcs));
   });
+
+  it.each([
+    { label: 'a lone high surrogate', name: 'a\uD800.pptx' },
+    { label: 'a lone low surrogate', name: '\uDC00.pptx' },
+  ])(
+    'keeps the slide image on the card Claude writes for a deck named with $label',
+    async ({ name }) => {
+      const pdfName = name.replace(/\.pptx$/, '.pdf');
+      renderPdfPageImages.mockResolvedValueOnce({
+        imagePaths: [1, 2].map(
+          (n) => `/tmp/test-workspace/pdf-1/${pdfName}-page${n}-${n}.png`
+        ),
+        title: pdfName,
+      });
+      generateDeckInfo.mockResolvedValueOnce([]);
+
+      await PrepareDeck({
+        name,
+        files: [{ name, contents: numberedLecture }],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      }).catch(() => undefined);
+
+      const [html, offered] = generateDeckInfo.mock.calls[0] as [
+        string,
+        string[],
+      ];
+      const src = /<img src="([^"]+)"/.exec(html)?.[1];
+      const [deck] = expandCompactDeckInfo(
+        [
+          {
+            deck: 'Lecture',
+            cards: [{ q: 'Exocytosis', a: `<img src="${src}">` }],
+          },
+        ],
+        offered,
+        null
+      );
+      const page = `pdf-1/${Buffer.from(pdfName).toString()}-page1-1.png`;
+      expect(deck.cards[0].media).toEqual([
+        { path: page, name: bundledMediaName(page) },
+      ]);
+    }
+  );
 
   it('delivers the slides that fit a card limit, fronted by a line with words, and holds back the rest', async () => {
     CustomExporterMock.mockImplementationOnce(function () {

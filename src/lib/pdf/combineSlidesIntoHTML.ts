@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { SlideUnit } from '../parser/sourceUnits/extractPptxSourceUnits';
+import { SLIDE_SOURCE_CLASS } from '../parser/slideSource';
 
 // Node writes a path to disk as UTF-8, which turns a lone surrogate (from a
 // multipart filename*, a Dropbox or Drive name, an MCP filename) into U+FFFD.
@@ -73,7 +74,7 @@ function toggleCard(front: string, back: string): string {
 function chromeSourceLine(chromeParagraphs: string[]): string {
   return chromeParagraphs.length === 0
     ? ''
-    : `<p>${chromeParagraphs.join(' · ')}</p>`;
+    : `<p class="${SLIDE_SOURCE_CLASS}">${chromeParagraphs.join(' · ')}</p>`;
 }
 
 // Called only when every slide has its rendered image, so every slide gets a
@@ -93,17 +94,14 @@ function slideCard(slide: SlideUnit, image: string): string {
     imageOnBack = '';
   }
 
-  const ownText = `${bulletList(remaining)}${speakerNotesBlock(
-    slide.speakerNotes
-  )}`;
-  const source = ownText === '' ? chromeSourceLine(slide.chromeParagraphs) : '';
+  const bullets = bulletList(remaining);
+  const notes = speakerNotesBlock(slide.speakerNotes);
+  const source =
+    bullets === '' && notes === ''
+      ? chromeSourceLine(slide.chromeParagraphs)
+      : '';
 
-  return toggleCard(
-    front,
-    `${bulletList(remaining)}${imageOnBack}${speakerNotesBlock(
-      slide.speakerNotes
-    )}${source}`
-  );
+  return toggleCard(front, `${bullets}${imageOnBack}${notes}${source}`);
 }
 
 // The card the slide made before chrome was set apart: its first line, chrome

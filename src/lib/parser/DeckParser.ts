@@ -26,6 +26,7 @@ import type { CrossFileDedupState } from '../claude/ClaudeService';
 import { File } from '../zip/zip';
 import Deck from './Deck';
 import { toPlainTextBack } from './toPlainTextBack';
+import { hasOnlySlideSource } from './slideSource';
 import { runSequentially } from './runSequentially';
 import Note from './Note';
 import { countEmptyBacks } from './countEmptyBacks';
@@ -1489,7 +1490,11 @@ export class DeckParser {
       card.enableInput = true;
       return;
     }
-    if (!card.cloze && isTypableAnswer(card.back)) {
+    if (
+      !card.cloze &&
+      !card.answerIsSlideSource &&
+      isTypableAnswer(card.back)
+    ) {
       card.answer = typableAnswerText(card.back);
       card.name = `${card.name}{{type:Input}}`;
       card.enableInput = true;
@@ -2519,6 +2524,9 @@ export class DeckParser {
                 ? `<div class='${parentClass}'>${plainOrRichBack}</div>`
                 : plainOrRichBack;
               const note = new Note(front || '', backSide);
+              if (hasOnlySlideSource(builtBack)) {
+                note.answerIsSlideSource = true;
+              }
               note.notionId = this.resolveToggleBlockId(parentUL);
               note.sourcePageId = pageId;
               note.sectionTags = sectionTags;
