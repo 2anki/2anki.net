@@ -288,7 +288,7 @@ describe('SendInactivityWarningsUseCase', () => {
 
     it('keeps going when the failures are not in a row', async () => {
       repo.seedUsers(
-        [1, 2, 3, 4].map((id) => ({
+        [1, 2, 3, 4, 5].map((id) => ({
           id,
           name: `User ${id}`,
           email: `user${id}@example.com`,
@@ -300,16 +300,20 @@ describe('SendInactivityWarningsUseCase', () => {
         .mockRejectedValueOnce(failure)
         .mockRejectedValueOnce(failure)
         .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(failure)
         .mockRejectedValueOnce(failure);
       const emailService = makeEmailService({ sendInactivityWarningEmail });
-      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
       const useCase = new SendInactivityWarningsUseCase(repo, emailService);
 
       const result = await useCase.execute(false);
 
       expect(result.count).toBe(1);
-      expect(sendInactivityWarningEmail).toHaveBeenCalledTimes(4);
+      expect(sendInactivityWarningEmail).toHaveBeenCalledTimes(5);
       expect([...repo.getSentUserIds()]).toEqual([3]);
+      expect(errorLog).not.toHaveBeenCalledWith(
+        '[inactivity] stopping the run after 3 failed sends in a row'
+      );
     });
 
     it('gives the warning back without sending when the last upload cannot be read', async () => {
