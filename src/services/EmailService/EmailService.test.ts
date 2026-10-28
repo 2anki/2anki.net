@@ -606,6 +606,33 @@ describe('EmailService tags every outgoing send with a template category', () =>
     }
   );
 
+  it('sends an ops alert with the same fields the AI spend alert used', async () => {
+    const service = getDefaultEmailService();
+    const lastMessage = () => {
+      const { categories: _categories, ...fields } = send.mock.calls.at(
+        -1
+      )?.[0] as Record<string, unknown>;
+      return fields;
+    };
+
+    await service.sendAiSpendAlertEmail('ops@example.com', 'Alert', 'body');
+    const aiSpend = lastMessage();
+    await service.sendOpsAlertEmail(
+      'stripe-access',
+      'ops@example.com',
+      'Alert',
+      'body'
+    );
+
+    expect(lastMessage()).toEqual(aiSpend);
+    expect(aiSpend).toMatchObject({
+      to: 'ops@example.com',
+      subject: 'Alert',
+      text: 'body',
+      replyTo: 'support@2anki.net',
+    });
+  });
+
   it('returns undefined categories when no email was sent', () => {
     expect(lastCategories()).toBeUndefined();
   });
