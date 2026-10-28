@@ -121,6 +121,17 @@ installNodeImageGlobalShim();
 
 const JPEG_DISPLAY_WRAPPED = Symbol('jpegDisplayDecoding');
 
+// pdf-parse calls getDocument with the bytes alone and drops any password
+// option, so a password rides on the bytes themselves and the wrapper hands
+// it to pdf.js, which reads it from the document params.
+const PDF_PASSWORD = Symbol('pdfPassword');
+
+function passwordOf(src: unknown): string | undefined {
+  if (src == null || typeof src !== 'object') return undefined;
+  const password = (src as { [PDF_PASSWORD]?: unknown })[PDF_PASSWORD];
+  return typeof password === 'string' ? password : undefined;
+}
+
 function toDocumentParams(src: unknown): Record<string, unknown> {
   if (typeof src === 'string') return { url: src };
   if (src instanceof Uint8Array || src instanceof ArrayBuffer) {
@@ -135,7 +146,12 @@ export function withJpegDisplayDecoding(
   if (JPEG_DISPLAY_WRAPPED in getDocument) return getDocument;
   const wrapped = (src: unknown) => {
     const params = toDocumentParams(src);
-    return getDocument({ ...params, nativeImageDecoderSupport: 'display' });
+    const password = passwordOf(src);
+    return getDocument({
+      ...params,
+      ...(password == null ? {} : { password }),
+      nativeImageDecoderSupport: 'display',
+    });
   };
   return Object.assign(wrapped, { [JPEG_DISPLAY_WRAPPED]: true });
 }
@@ -398,13 +414,10 @@ export async function extractPdfText(
     landscape: landscapeFlags[index] ?? false,
   });
 
-  const credentialOption =
-    credential == null ? {} : { userPassword: credential };
   const maxOption = maxPages != null && maxPages > 0 ? { max: maxPages } : {};
   const options = {
     pagerender,
     version: PDFJS_BUILD,
-    ...credentialOption,
     ...maxOption,
   } as Parameters<typeof pdfParse>[1];
 
@@ -421,6 +434,9 @@ export async function extractPdfText(
   const pdfBytes = ownsItsMemory
     ? new Uint8Array(buffer.buffer)
     : new Uint8Array(buffer);
+  if (credential != null) {
+    Object.defineProperty(pdfBytes, PDF_PASSWORD, { value: credential });
+  }
 
   let result;
   try {

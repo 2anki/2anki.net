@@ -131,29 +131,6 @@ describe('extractPdfText', () => {
     await expect(resolved).resolves.toBeUndefined();
   });
 
-  it('passes credential to pdfParse as userPassword option', async () => {
-    mockPdfParse.mockResolvedValueOnce({
-      numpages: 2,
-      text: 'Secure content on page one.\n\nMore secure content on page two.',
-      info: {},
-      metadata: null,
-      version: 'v1.10.100' as const,
-      numrender: 2,
-    });
-
-    const result = await extractPdfText(FIXTURE_BUFFER, {
-      credential: 'correct-password',
-    });
-
-    expect(mockPdfParse).toHaveBeenCalledWith(
-      expect.any(Uint8Array),
-      expect.objectContaining({ userPassword: 'correct-password' })
-    );
-    expect(result.needsCredential).toBe(false);
-    expect(result.isDrmLocked).toBe(false);
-    expect(result.pageCount).toBe(2);
-  });
-
   describe('bytes handed to pdf-parse', () => {
     const parsed = {
       numpages: 1,
