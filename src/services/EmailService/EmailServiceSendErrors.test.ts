@@ -101,4 +101,19 @@ describe('EmailService send failures', () => {
     expect(rendered(result)).not.toContain(API_KEY);
     expect(rendered(errorLog.mock.calls)).not.toContain(API_KEY);
   });
+
+  it('still retries a transient failure, since the code survives', async () => {
+    vi.useFakeTimers();
+    send.mockReset();
+    send
+      .mockRejectedValueOnce(transportError())
+      .mockResolvedValue([{ statusCode: 202 }, {}]);
+
+    const pending = service.sendContactEmail('Reader', RECIPIENT, 'hi', []);
+    await vi.runAllTimersAsync();
+
+    expect(await pending).toEqual({ didSend: true });
+    expect(send).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
 });
