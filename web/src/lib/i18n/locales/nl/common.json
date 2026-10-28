@@ -175,7 +175,7 @@
       "pdfChoiceTitleLocked": "Deze pdf bevat geen tekst die we kunnen lezen",
       "pdfChoiceTitleNoText": "We kunnen in deze pdf vragen en antwoorden niet uit elkaar houden",
       "pdfChoiceTitleOverSplit": "Deze pdf zou te veel piepkleine kaarten opleveren",
-      "pdfChoiceBodyNoText": "Er staat tekst in, maar 2anki vond er geen vragen en antwoorden in. Dia's en gescande pagina's zien er vaak zo uit. Kies wat de kaarten moeten worden.",
+      "pdfChoiceBodyNoText": "Er staat tekst in, maar zonder duidelijke splitsing in vragen en antwoorden. Dia's en gescande pagina's zien er vaak zo uit. Kies wat de kaarten moeten worden.",
       "pdfChoiceBodyLocked": "De pagina's zijn waarschijnlijk scans of afbeeldingen, of de pdf is beveiligd zodat de tekst niet te kopiëren is. Kies wat de kaarten moeten worden.",
       "pdfChoiceBodyOverSplit": "De tekst valt uiteen in heel veel korte regels. Kies liever wat de kaarten moeten worden.",
       "pdfChoicePairs": "Twee pagina's per kaart",

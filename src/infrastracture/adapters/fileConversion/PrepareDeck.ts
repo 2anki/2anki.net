@@ -1192,7 +1192,6 @@ async function buildClaudeDeck(
     plainTextFallbackImageCount: 0,
     emptyBackCount: 0,
     pdfPageCount: sumPdfPageCount(convertedFiles),
-    pdfFallbackMode: pdfFallbackModeOf(convertedFiles),
   };
 }
 

@@ -175,7 +175,7 @@
       "pdfChoiceTitleLocked": "Questo PDF non ha testo che possiamo leggere",
       "pdfChoiceTitleNoText": "Non riusciamo a distinguere le domande dalle risposte in questo PDF",
       "pdfChoiceTitleOverSplit": "Questo PDF creerebbe troppe schede minuscole",
-      "pdfChoiceBodyNoText": "Contiene testo, ma 2anki non ci ha trovato domande e risposte. Diapositive e pagine scansionate sono spesso così. Scegli come vuoi le schede.",
+      "pdfChoiceBodyNoText": "Contiene testo, ma senza una divisione chiara tra domande e risposte. Diapositive e pagine scansionate sono spesso così. Scegli come vuoi le schede.",
       "pdfChoiceBodyLocked": "Probabilmente le pagine sono scansioni o immagini, oppure il PDF è protetto e il testo non si può copiare. Scegli come vuoi le schede.",
       "pdfChoiceBodyOverSplit": "Il testo si spezza in moltissime righe brevi. Scegli invece come vuoi le schede.",
       "pdfChoicePairs": "Due pagine per scheda",

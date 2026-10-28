@@ -260,23 +260,33 @@ function toPageBucket(pageCount: number): string {
   return '51+';
 }
 
-const PDF_CHOICE_COPY: Record<
+const NO_TEXT_PDF_CHOICE_COPY = {
+  title: 'upload.form.pdfChoiceTitleNoText',
+  body: 'upload.form.pdfChoiceBodyNoText',
+};
+
+// A Map for the same reason as RESCUE_LABEL_KEYS: the reason comes off the
+// network.
+const PDF_CHOICE_COPY = new Map<
   PdfFallbackReason,
   { title: string; body: string }
-> = {
-  locked: {
-    title: 'upload.form.pdfChoiceTitleLocked',
-    body: 'upload.form.pdfChoiceBodyLocked',
-  },
-  no_text: {
-    title: 'upload.form.pdfChoiceTitleNoText',
-    body: 'upload.form.pdfChoiceBodyNoText',
-  },
-  over_split: {
-    title: 'upload.form.pdfChoiceTitleOverSplit',
-    body: 'upload.form.pdfChoiceBodyOverSplit',
-  },
-};
+>([
+  [
+    'locked',
+    {
+      title: 'upload.form.pdfChoiceTitleLocked',
+      body: 'upload.form.pdfChoiceBodyLocked',
+    },
+  ],
+  ['no_text', NO_TEXT_PDF_CHOICE_COPY],
+  [
+    'over_split',
+    {
+      title: 'upload.form.pdfChoiceTitleOverSplit',
+      body: 'upload.form.pdfChoiceBodyOverSplit',
+    },
+  ],
+]);
 
 function zoneStateForUploadError(
   message: UploadErrorBody
@@ -3511,7 +3521,9 @@ function UploadForm({
 
   const [rememberPdfChoice, setRememberPdfChoice] = useState(false);
 
-  const pdfChoiceCopy = PDF_CHOICE_COPY[pdfChoice?.reason ?? 'no_text'];
+  const pdfChoiceCopy =
+    PDF_CHOICE_COPY.get(pdfChoice?.reason ?? 'no_text') ??
+    NO_TEXT_PDF_CHOICE_COPY;
 
   const renderPdfChoiceState = () => {
     return (

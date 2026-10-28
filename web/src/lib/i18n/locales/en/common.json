@@ -175,7 +175,7 @@
       "pdfChoiceTitleLocked": "This PDF has no text we can read",
       "pdfChoiceTitleNoText": "We can't tell questions from answers in this PDF",
       "pdfChoiceTitleOverSplit": "This PDF would make too many tiny cards",
-      "pdfChoiceBodyNoText": "It has text, but 2anki couldn't find questions and answers in it. Slides and scanned pages often look like this. Choose what the cards should be.",
+      "pdfChoiceBodyNoText": "It has text, but no clear question-and-answer split. Slides and scanned pages often look like this. Choose what the cards should be.",
       "pdfChoiceBodyLocked": "Its pages are likely scans or pictures, or the PDF is protected so its text can't be copied. Choose what the cards should be.",
       "pdfChoiceBodyOverSplit": "Its text breaks into lots of short lines. Choose what the cards should be instead.",
       "pdfChoicePairs": "Two pages per card",

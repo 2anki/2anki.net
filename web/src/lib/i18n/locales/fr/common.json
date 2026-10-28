@@ -175,7 +175,7 @@
       "pdfChoiceTitleLocked": "Ce PDF n'a pas de texte que nous puissions lire",
       "pdfChoiceTitleNoText": "Nous ne pouvons pas distinguer les questions des réponses dans ce PDF",
       "pdfChoiceTitleOverSplit": "Ce PDF donnerait trop de cartes minuscules",
-      "pdfChoiceBodyNoText": "Il contient du texte, mais 2anki n'y a pas trouvé de questions et de réponses. Les diapositives et les pages numérisées ressemblent souvent à ça. Choisis ce que seront les cartes.",
+      "pdfChoiceBodyNoText": "Il contient du texte, mais pas de séparation claire entre questions et réponses. Les diapositives et les pages numérisées ressemblent souvent à ça. Choisis ce que seront les cartes.",
       "pdfChoiceBodyLocked": "Ce sont sans doute des pages numérisées ou des images, ou le PDF est protégé et son texte ne peut pas être copié. Choisis ce que seront les cartes.",
       "pdfChoiceBodyOverSplit": "Son texte se découpe en une multitude de lignes courtes. Choisis plutôt ce que seront les cartes.",
       "pdfChoicePairs": "Deux pages par carte",
