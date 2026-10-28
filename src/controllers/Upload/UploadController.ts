@@ -28,7 +28,14 @@ import { DeleteDropboxUploadUseCase } from '../../usecases/uploads/DeleteDropbox
 import { GetGoogleDriveUploadsUseCase } from '../../usecases/uploads/GetGoogleDriveUploadsUseCase';
 import { DeleteGoogleDriveUploadUseCase } from '../../usecases/uploads/DeleteGoogleDriveUploadUseCase';
 import { validatePdfCredential } from '../../lib/pdf/validatePdfCredential';
-import { RetryPdfWithCredentialUseCase } from '../../usecases/uploads/RetryPdfWithCredentialUseCase';
+import {
+  RetryPdfWithCredentialUseCase,
+  type CardUsage,
+  type RetryPdfLimitReached,
+} from '../../usecases/uploads/RetryPdfWithCredentialUseCase';
+import { getFeatureFlag } from '../../lib/featureFlags/getFeatureFlag';
+import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../../lib/upload/anonymousDayPassCard';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 import { isPaying } from '../../lib/isPaying';
 import CardOption from '../../lib/parser/Settings';
 import Workspace from '../../lib/parser/WorkSpace';
@@ -69,6 +76,22 @@ const RETRY_PDF_WINDOW_MS = 60_000;
 const RETRY_PDF_PER_IP_MAX = 10;
 const RETRY_PDF_GLOBAL_MAX = 500;
 
+// The same wall an ordinary upload sends a visitor to: the Day Pass card and
+// the pass-first wall state the deck size, so they get the card count. A
+// failed flag read drops the count, never the redirect.
+async function limitWallUrl(outcome: RetryPdfLimitReached): Promise<string> {
+  if (outcome.limitReached === 'card_count') {
+    return '/limit?kind=card_count';
+  }
+  const flagOn = (key: string) => getFeatureFlag(key, false).catch(() => false);
+  const showsCardCount =
+    (await flagOn(ANONYMOUS_DAY_PASS_CARD_FLAG)) ||
+    (await flagOn(LIMIT_WALL_PASS_FIRST_FLAG));
+  return showsCardCount
+    ? `/limit?kind=anonymous&cards=${outcome.cardCount}`
+    : '/limit?kind=anonymous';
+}
+
 class UploadController {
   private readonly retryPdfRateLimiter: RateLimiter;
 
@@ -79,7 +102,8 @@ class UploadController {
     private readonly deleteDropboxUploadUseCase?: DeleteDropboxUploadUseCase,
     private readonly getGoogleDriveUploadsUseCase?: GetGoogleDriveUploadsUseCase,
     private readonly deleteGoogleDriveUploadUseCase?: DeleteGoogleDriveUploadUseCase,
-    retryPdfRateLimiter?: RateLimiter
+    retryPdfRateLimiter?: RateLimiter,
+    private readonly cardUsage?: CardUsage
   ) {
     this.retryPdfRateLimiter =
       retryPdfRateLimiter ??
@@ -370,7 +394,7 @@ class UploadController {
     });
     const workspace = new Workspace(true, 'fs');
 
-    const useCase = new RetryPdfWithCredentialUseCase();
+    const useCase = new RetryPdfWithCredentialUseCase(this.cardUsage);
     const outcome = await useCase.execute(
       fileBuffer,
       filename,
@@ -387,6 +411,9 @@ class UploadController {
         error: 'needs_password',
         reason: outcome.reason,
       });
+    }
+    if ('limitReached' in outcome) {
+      return res.redirect(await limitWallUrl(outcome));
     }
 
     const { apkg, cardCount, name } = outcome;

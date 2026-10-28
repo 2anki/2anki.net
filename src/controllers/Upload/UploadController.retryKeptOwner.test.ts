@@ -16,12 +16,28 @@ vi.mock('../../infrastracture/adapters/fileConversion/PrepareDeck', () => ({
 import UploadController from './UploadController';
 import type UploadService from '../../services/UploadService';
 import type NotionService from '../../services/NotionService';
+import type { CardUsage } from '../../usecases/uploads/RetryPdfWithCredentialUseCase';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { normalizeUploadFilenames } from '../../routes/middleware/normalizeUploadFilenames';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 import { buildPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
+import {
+  __resetFeatureFlagModuleForTests,
+  __setFeatureFlagDependencies,
+} from '../../lib/featureFlags/getFeatureFlag';
+import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../../lib/upload/anonymousDayPassCard';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 
 const OWNER = 4242;
+
+const cardUsage = {
+  cardsUsed: 0,
+  getCardUsage: vi.fn(async () => ({
+    cards_used: cardUsage.cardsUsed,
+    month_started_at: new Date('2026-10-01T00:00:00Z'),
+  })),
+  incrementCardUsage: vi.fn(async () => 1),
+};
 const OTHER_OWNER = 9999;
 const prepareDeck = vi.mocked(PrepareDeck);
 
@@ -51,7 +67,8 @@ beforeAll(async () => {
     undefined,
     undefined,
     undefined,
-    { check: () => true }
+    { check: () => true },
+    cardUsage as unknown as CardUsage
   );
   const app = express();
   app.post(
@@ -76,6 +93,9 @@ afterAll(async () => {
 });
 
 beforeEach(() => {
+  cardUsage.cardsUsed = 0;
+  cardUsage.getCardUsage.mockClear();
+  cardUsage.incrementCardUsage.mockClear();
   prepareDeck.mockReset();
   prepareDeck.mockResolvedValue({
     apkg: Buffer.from('unlocked-apkg'),
@@ -224,5 +244,122 @@ describe('the session a password unlock ran under, on every answer', () => {
       status: 400,
       owner: 'none',
     });
+  });
+});
+
+describe('the card limits on a password unlock', () => {
+  async function unlockWithoutFollowing(who: Session) {
+    session = who;
+    const form = new FormData();
+    form.append('credential', 'secret');
+    form.append(
+      'file',
+      new Blob(['%PDF-1.4 locked'], { type: 'application/pdf' }),
+      'Locked notes.pdf'
+    );
+    const response = await fetch(
+      `${baseUrl}/api/upload/retry-with-credential`,
+      { method: 'POST', body: form, redirect: 'manual' }
+    );
+    return {
+      status: response.status,
+      location: response.headers.get('location'),
+    };
+  }
+
+  function deckOf(cardCount: number) {
+    prepareDeck.mockResolvedValue({
+      apkg: Buffer.from('unlocked-apkg'),
+      cardCount,
+      name: 'Locked notes.apkg',
+    } as Awaited<ReturnType<typeof PrepareDeck>>);
+  }
+
+  it('sends a free account over its monthly allowance to the limit page and counts nothing', async () => {
+    cardUsage.cardsUsed = 95;
+    deckOf(10);
+
+    const response = await unlockWithoutFollowing(signedIn);
+
+    expect(response).toEqual({
+      status: 302,
+      location: '/limit?kind=card_count',
+    });
+    expect(cardUsage.incrementCardUsage).not.toHaveBeenCalled();
+  });
+
+  it("counts an unlocked deck against a free account's monthly allowance", async () => {
+    cardUsage.cardsUsed = 10;
+    deckOf(12);
+
+    const response = await unlockWithoutFollowing(signedIn);
+
+    expect(response.status).toBe(200);
+    expect(cardUsage.incrementCardUsage).toHaveBeenCalledWith(OWNER, 12);
+  });
+
+  it.each([ANONYMOUS_DAY_PASS_CARD_FLAG, LIMIT_WALL_PASS_FIRST_FLAG])(
+    'states the deck size on the anonymous wall when %s is on, as an upload does',
+    async (flag) => {
+      __setFeatureFlagDependencies({
+        repository: {
+          getAll: () => Promise.resolve([]),
+          get: (key: string) => Promise.resolve(key === flag ? true : null),
+          set: () => Promise.resolve(null),
+        },
+      });
+      deckOf(30);
+      try {
+        const response = await unlockWithoutFollowing(signedOut);
+
+        expect(response).toEqual({
+          status: 302,
+          location: '/limit?kind=anonymous&cards=30',
+        });
+      } finally {
+        __resetFeatureFlagModuleForTests();
+      }
+    }
+  );
+
+  it('sends a signed-out visitor past the anonymous cap to the limit page', async () => {
+    deckOf(30);
+
+    const response = await unlockWithoutFollowing(signedOut);
+
+    expect(response).toEqual({
+      status: 302,
+      location: '/limit?kind=anonymous',
+    });
+  });
+
+  it.each([
+    ['a subscriber', { owner: OWNER, patreon: false, subscriber: true }],
+    ['a lifetime account', { owner: OWNER, patreon: true, subscriber: false }],
+    [
+      'a signed-in pass holder',
+      { owner: OWNER, patreon: false, subscriber: true, passKind: '7d' },
+    ],
+  ])(
+    'lets %s unlock a deck of any size without counting it',
+    async (_who, locals) => {
+      cardUsage.cardsUsed = 99;
+      deckOf(300);
+
+      const response = await unlockWithoutFollowing({ locals });
+
+      expect(response.status).toBe(200);
+      expect(cardUsage.getCardUsage).not.toHaveBeenCalled();
+      expect(cardUsage.incrementCardUsage).not.toHaveBeenCalled();
+    }
+  );
+
+  it('lets a pass holder unlock a deck of any size without counting it', async () => {
+    deckOf(300);
+
+    const response = await unlockWithoutFollowing(signedOutPassHolder);
+
+    expect(response.status).toBe(200);
+    expect(cardUsage.getCardUsage).not.toHaveBeenCalled();
   });
 });

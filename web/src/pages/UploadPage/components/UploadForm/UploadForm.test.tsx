@@ -6643,6 +6643,82 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(shownEvents()).toEqual([]);
   });
 
+  it('sends the Day Pass token with a password unlock, as the upload does', async () => {
+    storePassToken('cs_unlock_pass');
+    const fetchMock = stubLockedPdfServer(40);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    const [, init] = callsTo(fetchMock, '/api/upload/retry-with-credential')[0];
+    expect((init as RequestInit).headers).toEqual({
+      'X-Pass-Token': 'cs_unlock_pass',
+    });
+  });
+
+  it('asks for the password again when the unlock fails on the server', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/ai/credits') {
+        return Promise.resolve(creditsResponse(1347));
+      }
+      if (url === '/api/upload/file') {
+        return Promise.resolve(needsPassword);
+      }
+      if (url === '/api/upload/retry-with-credential') {
+        return Promise.resolve(new Response(null, { status: 500 }));
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText(
+        "That didn't open the file. Check for typos and try again."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('PDF password')).toBeInTheDocument();
+  });
+
+  it('follows the server to the limit page when an unlocked PDF is over the card limit', async () => {
+    const locationStub = { href: '', origin: 'http://localhost' } as Location;
+    vi.stubGlobal('location', locationStub);
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/ai/credits') {
+        return Promise.resolve(creditsResponse(1347));
+      }
+      if (url === '/api/upload/file') {
+        return Promise.resolve(needsPassword);
+      }
+      if (url === '/api/upload/retry-with-credential') {
+        return Promise.resolve({
+          redirected: true,
+          url: 'http://localhost/limit?kind=card_count',
+          status: 200,
+          headers: new Headers({}),
+        });
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    await waitFor(() => {
+      expect(locationStub.href).toBe('http://localhost/limit?kind=card_count');
+    });
+  });
+
   it('offers no rebuild of a PDF unlocked with its password, which a resend would not carry', async () => {
     const fetchMock = stubLockedPdfServer(40);
     const { container } = renderUploadForm(

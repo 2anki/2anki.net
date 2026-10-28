@@ -127,7 +127,9 @@ const UploadRouter = () => {
     new GetDropboxUploadsUseCase(dropboxRepository),
     new DeleteDropboxUploadUseCase(dropboxRepository),
     new GetGoogleDriveUploadsUseCase(googleDriveRepository),
-    new DeleteGoogleDriveUploadUseCase(googleDriveRepository)
+    new DeleteGoogleDriveUploadUseCase(googleDriveRepository),
+    undefined,
+    new UsersRepository(database)
   );
 
   /**
