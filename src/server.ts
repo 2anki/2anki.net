@@ -55,7 +55,6 @@ import sendgridWebhookRouter from './routes/SendgridWebhookRouter';
 import swaggerRouter from './routes/SwaggerRouter';
 import opsRouter from './routes/OpsRouter';
 import opsErrorsRouter from './routes/OpsErrorsRouter';
-import googleAdsConversionsRouter from './routes/GoogleAdsConversionsRouter';
 import contactMessagesRouter from './routes/ContactMessagesRouter';
 import showcaseRouter from './routes/ShowcaseRouter';
 import emojiFeedbackRouter from './routes/EmojiFeedbackRouter';
@@ -224,7 +223,6 @@ const serve = async () => {
   app.use(showcaseRouter());
   app.use(opsRouter());
   app.use(opsErrorsRouter());
-  app.use(googleAdsConversionsRouter());
   app.use(contactMessagesRouter());
   app.use(emojiFeedbackRouter());
   app.use(featureInterestRouter());
