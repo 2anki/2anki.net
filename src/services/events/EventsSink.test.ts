@@ -41,6 +41,19 @@ describe('EventsSink', () => {
     vi.useRealTimers();
   });
 
+  it.each(['mcp_tool_called', 'mcp_tool_result'])(
+    'stores the server-recorded %s, which only the client ingest drops',
+    async (name) => {
+      const { repo, inserted } = makeFakeRepository();
+      const sink = new EventsSink(repo, { flushThreshold: 1 });
+      sink.record({ ...baseRow, name, props: { tool: 'create_deck' } });
+      await sink.waitForPendingFlush();
+      expect(inserted).toEqual([
+        [{ ...baseRow, name, props: { tool: 'create_deck' } }],
+      ]);
+    }
+  );
+
   it('does not flush when buffer is below threshold', async () => {
     const { repo, inserted } = makeFakeRepository();
     const sink = new EventsSink(repo, { flushThreshold: 3 });

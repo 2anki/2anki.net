@@ -21,8 +21,8 @@ export const SERVER_ONLY_EVENT_PROP_KEYS: ReadonlySet<string> = new Set([
   SERVER_MARKER_PROP,
 ]);
 
-// Event names only the server writes; no web or native client emits them.
-// The ingest drops them outright. A forged job record (email_batch_sent,
+// Event names only the server writes, straight to the events sink; no web or
+// native client emits them, and the /api/events/track ingest drops them. A forged job record (email_batch_sent,
 // inactive_users_deleted, the tripwire check) would skip a scheduled run, a
 // forged dedup record (ai_spend_alert_sent, ai_credits_exhausted, the tripwire
 // alert) would silence an alert, forged conversion outcomes or upload starts
