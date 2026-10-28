@@ -1,4 +1,4 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 
 import { CLEANUP_AGE_SECONDS } from '../../../constants';
 import StorageHandler from '../../StorageHandler';

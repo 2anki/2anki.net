@@ -1,7 +1,7 @@
 import path from 'path';
 import os from 'os';
 
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 
 import deleteOldFiles from './deleteOldFiles';
 import { getDatabase } from '../../../../data_layer';

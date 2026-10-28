@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs';
 import TokenRepository from '../data_layer/TokenRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import Users from '../data_layer/public/Users';
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import instrumentedAxios from './observability/instrumentedAxios';
 import { SESSION_JWT_EXPIRY } from '../shared/session';
 import { withRetry, WithRetryOptions } from './NotionService/helpers/withRetry';

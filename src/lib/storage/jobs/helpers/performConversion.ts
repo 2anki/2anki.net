@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import StorageHandler from '../../StorageHandler';
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import NotionAPIWrapper from '../../../../services/NotionService/NotionAPIWrapper';
 import JobRepository from '../../../../data_layer/JobRepository';
 import UsersRepository from '../../../../data_layer/UsersRepository';

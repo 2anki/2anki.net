@@ -11,11 +11,11 @@
  *                silently, but does not block until it is paid down. dependency-cruiser
  *                exits non-zero only on `error`, so warns report without breaking CI.
  *
- * Measured on 2026-06-18 (branch chore/harness-engineering-controls):
- *   knex value-import outside data_layer: 0 (conversionPool — allowlisted infra)
- *   circular dependencies:                27 (mostly hubbed on data_layer/index.ts)
- *   data_layer importing upward:          2  (data_layer/index.ts wiring barrel)
- *   routes/controllers -> data_layer:     329 import edges (warn — debt frozen,
+ * Measured on 2026-10-28 (#5048, the first run that could see knex.js):
+ *   knex value-import outside data_layer: 0 (16 type-only imports fixed)
+ *   circular dependencies:                10
+ *   data_layer importing upward:          1  (ShowcaseRepository)
+ *   routes/controllers -> data_layer:     288 import edges (warn — debt frozen,
  *     not blocked; new code should go through a use case or service).
  */
 module.exports = {
@@ -49,7 +49,7 @@ module.exports = {
     {
       name: 'data-layer-is-leaf',
       comment:
-        'The data layer is a leaf: it must not import routes, controllers, or use cases. The data_layer/index.ts wiring barrel is the source of most of the circular dependencies above. New repositories must not add to it.',
+        'The data layer is a leaf: it must not import routes, controllers, or use cases. New repositories must not add to it.',
       severity: 'warn',
       from: { path: '^src/data_layer' },
       to: { path: '^src/(routes|controllers|usecases)' },
@@ -57,7 +57,7 @@ module.exports = {
     {
       name: 'no-layer-skip-to-data-layer',
       comment:
-        'Route -> controller -> use case -> service -> data layer. Routes and controllers should not reach into data_layer directly. Baseline 2026-08-17: 329 skip edges (warn — debt frozen; new code goes through a use case or service instead of growing it). The count is only honest when no stale compiled .js sits in src/ — the arch script purges them first; a run reporting ~36 means the purge was skipped and the cruiser resolved .js siblings instead of the .ts sources.',
+        'Route -> controller -> use case -> service -> data layer. Routes and controllers should not reach into data_layer directly. Baseline 2026-10-28: 288 skip edges (warn — debt frozen; new code goes through a use case or service instead of growing it). The count is only honest when no stale compiled .js sits in src/ — the arch script purges them first; a run reporting ~36 means the purge was skipped and the cruiser resolved .js siblings instead of the .ts sources.',
       severity: 'warn',
       from: { path: '^src/(routes|controllers)' },
       to: { path: '^src/data_layer' },
@@ -78,13 +78,15 @@ module.exports = {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
     doNotFollow: { path: 'node_modules' },
-    // `\\.js$` keeps the cruise on TypeScript only. In-place `pnpm build`
+    // `^src/.*\\.js$` keeps the cruise on TypeScript only. In-place `pnpm build`
     // output (there is no outDir; prod runs src/server.js) leaves compiled .js
     // beside every .ts locally, and TS module resolution then prefers the
     // stale .js sibling — silently dropping ~90% of edges and blinding every
     // rule (the 2026-08-17 audit saw 36 reported vs 329 real skip edges). The
     // `arch` script runs `git clean -fX src` first so local cruises match CI,
-    // which never emits .js (typecheck is --noEmit).
-    exclude: { path: '\\.test\\.ts$|\\.js$|/test/|/__mocks__/|/migrations/' },
+    // which never emits .js (typecheck is --noEmit). It is scoped to src/
+    // because an unscoped `\\.js$` also dropped the edge to
+    // node_modules/knex/knex.js, so no-knex-value-outside-datalayer never fired.
+    exclude: { path: '\\.test\\.ts$|^src/.*\\.js$|/test/|/__mocks__/|/migrations/' },
   },
 };

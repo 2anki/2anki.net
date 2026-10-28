@@ -28,9 +28,11 @@
 - Major bumps need the major-bump checks before `/ship` — read the changelog for removed APIs, run the full server suite (`pnpm test`, not just `/check`), sanity-test the conversion path, and attach the suite output to the `/ship` review brief.
 - Drop unused deps quarterly with `/dead-code-auditor` (sub-agent) or `pnpm dlx depcheck`.
 
-## Patched dependencies
+## Patched and extended dependencies
 
 - **@testing-library/jest-dom** is patched (`pnpm.patchedDependencies`, `patches/@testing-library__jest-dom.patch`) with upstream testing-library/jest-dom#742 so its `types/vitest.d.ts` augments Vitest 5's `Assertion<R, T>` interface; without it the web `typecheck` fails with ~1800 `Property 'toBeInTheDocument' does not exist` errors. The augmentation only loads because `web/src/setupTests.ts` imports `@testing-library/jest-dom/vitest` (Vitest 5 dropped the `jest.Matchers` linkage the plain import relied on under Vitest 4). Drop the patch when a jest-dom release includes #742.
+
+- **dependency-cruiser** gets its own TypeScript 6 through `pnpm.packageExtensions` in `package.json`. dependency-cruiser 18 supports `typescript >=2.0.0 <7.0.0`, and the repo runs TypeScript 7, so without the extension it prints `missing-tsc-transpiler`, cruises 0 modules and exits 0 (#5048). `scripts/arch.sh` fails that run. Drop the extension when a dependency-cruiser release supports TypeScript 7.
 
 ## Held bumps — do not retry without clearing the blocker
 

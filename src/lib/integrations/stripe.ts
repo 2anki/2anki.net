@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import type StripeTypes from 'stripe';
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import { DeveloperSubscriptionsRepository } from '../../data_layer/DeveloperSubscriptionsRepository';
 import { isPaused } from '../subscriptions/isPaused';
 
