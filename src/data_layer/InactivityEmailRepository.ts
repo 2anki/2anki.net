@@ -4,6 +4,8 @@ export const INACTIVITY_DELETION_GRACE_DAYS = 14;
 
 export const INACTIVITY_WINDOW = '6 months';
 
+const RECENT_ACTIVITY_CUTOFF = `now() - interval '${INACTIVITY_WINDOW}'`;
+
 export interface IInactivityEmailRepository {
   getUsersToNotify(
     limit?: number
@@ -63,6 +65,9 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
           '(subscriptions_developer.user_id = users.id OR subscriptions_developer.email = users.email)'
         )
       )
+      .modify<UserRow, UserRow[]>(
+        this.excludeActivitySince('users.id', RECENT_ACTIVITY_CUTOFF)
+      )
       .whereNotExists(
         this.database(this.table)
           .whereRaw('inactivity_emails.user_id = users.id')
@@ -119,6 +124,9 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
           '(subscriptions_developer.user_id = u.id OR subscriptions_developer.email = u.email)'
         )
       )
+      .modify<UserRow, UserRow[]>(
+        this.excludeActivitySince('u.id', 'ie.sent_at')
+      )
       .orderBy('ie.sent_at', 'asc')
       .limit(limit);
   }
@@ -159,8 +167,42 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
           '(subscriptions_developer.user_id = u.id OR subscriptions_developer.email = u.email)'
         )
       )
+      .modify<UserRow, UserRow[]>(
+        this.excludeActivitySince('u.id', RECENT_ACTIVITY_CUTOFF)
+      )
       .orderBy('u.id', 'asc')
       .limit(limit);
+  }
+
+  // last_login_at only moves on a web sign-in, so someone who only uses 2anki
+  // through the MCP connector looks inactive by it. A saved deck, a connector
+  // authorization or a tool call counts too. Free uploads are swept daily and
+  // refresh tokens are reaped 30 days after they expire, so the
+  // mcp_tool_called event is the record that lasts the whole window.
+  private excludeActivitySince(userId: string, since: string) {
+    const database = this.database;
+    return (query: Knex.QueryBuilder) => {
+      query
+        .whereNotExists(
+          database('uploads')
+            .whereRaw(`uploads.owner = ${userId}`)
+            .whereRaw(`uploads.created_at > ${since}`)
+            .limit(1)
+        )
+        .whereNotExists(
+          database('mcp_refresh_tokens')
+            .whereRaw(`mcp_refresh_tokens.user_id = ${userId}`)
+            .whereRaw(`mcp_refresh_tokens.created_at > ${since}`)
+            .limit(1)
+        )
+        .whereNotExists(
+          database('events')
+            .where('events.name', 'mcp_tool_called')
+            .whereRaw(`events.user_id = ${userId}`)
+            .whereRaw(`events.created_at > ${since}`)
+            .limit(1)
+        );
+    };
   }
 
   // Developer tiers live in subscriptions_developer (#3902), not subscriptions,
