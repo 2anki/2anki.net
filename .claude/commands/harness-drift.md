@@ -13,7 +13,7 @@ It does not fix anything. It produces a short report of what is decaying and han
    ```bash
    pnpm arch 2>&1 | grep -oE '^ *warn [a-z-]+|arch: FAILED.*|[0-9]+ modules' | sort | uniq -c
    ```
-   Compare each rule's count against the baseline recorded in `.dependency-cruiser.cjs` (measured 2026-10-28: 10 cycles, 1 data-layer-leaf, 288 layer skips). Report any increase — a rising count means new code is adding to the debt the warns were meant to freeze. No `modules` line, or an `arch: FAILED` line, means the sensor did not run: make that the headline, never "no drift".
+   Compare each rule's count against the baseline recorded in `.dependency-cruiser.cjs` (measured 2026-10-28: 10 cycles, 1 data-layer-leaf, 288 layer skips). Report any increase — a rising count means new code is adding to the debt the warns were meant to freeze. No `modules` line, or an `arch: FAILED` line, means the sensor did not run: make that the headline, never "no drift". The grep shows only warns; an `error` rule fails CI on its own.
 
 2. **Dead code.** Spawn the `dead-code-auditor` agent (read-only) over `src/` and `web/src/`. Report its top unreferenced exports / unreachable branches.
 

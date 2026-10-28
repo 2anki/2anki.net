@@ -39,7 +39,7 @@ read:
 # biome) is opt-in via `/run pnpm --filter ... ...` — running it on every edit
 # is too slow for the conversion path.
 lint-cmd:
-  - "typescript: pnpm exec tsc -p tsconfig.json --noEmit"
+  - "typescript: bash -c 'pnpm exec tsc -p tsconfig.json --noEmit'"
 auto-lint: true
 auto-test: false
 
