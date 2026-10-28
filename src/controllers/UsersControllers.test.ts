@@ -3283,10 +3283,14 @@ describe('UsersController.loginWithAppleNative', () => {
     };
   };
 
-  const buildReq = (body: Record<string, unknown> = {}) =>
+  const buildReq = (
+    body: Record<string, unknown> = {},
+    cookies: Record<string, string> = {}
+  ) =>
     ({
       body: { identityToken: 'apple-id-token', ...body },
       headers: {},
+      cookies,
     }) as unknown as express.Request;
 
   it('returns 400 when identityToken is missing from the request body', async () => {
@@ -3356,6 +3360,53 @@ describe('UsersController.loginWithAppleNative', () => {
       'native-sub-001',
       30,
       undefined
+    );
+  });
+
+  // The native app sends its anon_id cookie on this request (#5094), so the
+  // account_created row for a new account carries the device's anonymous id
+  // and its earlier anonymous events join to the account, the same way the
+  // web sign-up paths do.
+  it('forwards the anon_id cookie to account creation for a new account', async () => {
+    const register = vi.fn().mockResolvedValue([{ id: 30 }]);
+    const { controller } = buildNativeController({
+      registerVerifiedIdentity: register,
+    });
+    const res = buildNativeRes();
+
+    await controller.loginWithAppleNative(
+      buildReq({}, { anon_id: 'native-anon-1' }),
+      res
+    );
+
+    expect(register).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      'native-apple@example.com',
+      'apple',
+      expect.objectContaining({
+        method: 'apple',
+        anonymousId: 'native-anon-1',
+      })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('creates the account with a null anonymous id when no anon_id cookie is sent', async () => {
+    const register = vi.fn().mockResolvedValue([{ id: 30 }]);
+    const { controller } = buildNativeController({
+      registerVerifiedIdentity: register,
+    });
+    const res = buildNativeRes();
+
+    await controller.loginWithAppleNative(buildReq(), res);
+
+    expect(register).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      'native-apple@example.com',
+      'apple',
+      expect.objectContaining({ method: 'apple', anonymousId: null })
     );
   });
 

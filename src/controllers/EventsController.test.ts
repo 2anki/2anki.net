@@ -334,6 +334,45 @@ describe('EventsController', () => {
     );
   });
 
+  // Native app funnel (#5094): open, sign-in, purchase outcome, and the
+  // on-device card limit (Laer-Smart/2anki.app#95).
+  it.each([
+    'native_app_opened',
+    'native_signin_completed',
+    'native_purchase_result',
+    'native_limit_hit',
+  ])('accepts native funnel event %s as known, not unknown', (eventName) => {
+    const { controller, req, res, executeSpy } = buildMocks({ userId: 1 });
+    req.body = { name: eventName };
+    controller.track(req, res);
+    expect(res.status).toHaveBeenCalledWith(202);
+    expect(executeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ name: eventName, unknown: false })
+    );
+  });
+
+  // The app sends native_signin_completed right after sign-in with its session
+  // cookie and its anon_id cookie, so the row carries both ids and ties the
+  // device's earlier anonymous events to the account, for an existing account
+  // as well as a new one.
+  it('records native_signin_completed with both the account and the anonymous id', () => {
+    const { controller, req, res, executeSpy } = buildMocks({
+      userId: 42,
+      anonId: 'native-anon-1',
+      consent: 'granted',
+    });
+    req.body = { name: 'native_signin_completed', props: { method: 'apple' } };
+    controller.track(req, res);
+    expect(executeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'native_signin_completed',
+        userId: 42,
+        anonymousId: 'native-anon-1',
+        unknown: false,
+      })
+    );
+  });
+
   it.each([
     'image_only_photo_deck_shown',
     'image_only_photo_deck_clicked',
