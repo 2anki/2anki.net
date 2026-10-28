@@ -71,7 +71,7 @@ const pdfToAnki: LandingCopy = {
     },
     {
       q: 'What about scanned PDFs and slide decks?',
-      a: 'A photo scan with no text layer gives 2anki nothing to read, so the upload page asks what the cards should be: "Two pages per card" (page 1 is the front, page 2 the back), "One card per page" (you add the answers in Anki), or, for one file on a paid plan, "Make cards with AI". Slides that are mostly pictures get the same question; turn on "Extract text from PDFs" in the card options to make text cards from their text instead. For text cards from a photo scan, add a text layer with OCR in macOS Preview or Adobe Acrobat first.',
+      a: 'A photo scan with no text layer gives 2anki nothing to read, so 2anki asks what the cards should be: "Two pages per card" (page 1 is the front, page 2 the back), "One card per page" (you add the answers in Anki), or, for one file on a paid plan, "Make cards with AI". Slides with little text or a picture on every page get the same question; turn on "Extract text from PDFs" in the card options to make text cards from their text instead. For text cards from a photo scan, add a text layer with OCR in macOS Preview or Adobe Acrobat, then turn on "Extract text from PDFs".',
     },
     {
       q: 'Is there an AI mode for dense chapters?',
@@ -836,7 +836,7 @@ const wordToAnki: LandingCopy = {
     },
     {
       q: 'What in my document becomes the front of the card?',
-      a: 'Headings. Each heading (H1 through H6) starts a new card and becomes its front; the paragraphs and images beneath it — up to the next heading — become the back. A list under a heading, or four or more short paragraphs, becomes one card per item instead, with the heading on each front. If your notes have no headings, add them where each card should begin.',
+      a: 'Headings. Each heading (H1 through H6) starts a new card and becomes its front; the paragraphs and images beneath it — up to the next heading — become the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead, with the heading on each front. If your notes have no headings, add them where each card should begin.',
     },
     {
       q: 'Can I convert a Google Doc to Anki this way?',

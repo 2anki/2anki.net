@@ -61,7 +61,7 @@ The same goes for a song or poem whose lines sit in separate blocks — each lin
 
 ## What fires it
 
-Overlapping cloze fires when a card's answer is a list of 2 or more items, or when a page is a single paragraph that splits into 2 or more sentences or clauses. A single item or clause becomes one normal cloze card. Other cards are untouched.
+Overlapping cloze fires when a card's answer is a list of 2 or more items, or when a page is a single paragraph that splits into 2 or more sentences or clauses. A single item or clause stays a normal card. Other cards are untouched.
 
 This includes Word documents. A .docx section — a heading followed by a bullet list — normally converts to one card per bullet, with the heading on each front. With overlapping cloze on, that list becomes one cloze card per bullet instead, each hiding its own bullet.
 

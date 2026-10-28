@@ -175,7 +175,7 @@
     },
     "convert-pdf-to-anki": {
       "h1": "Convierte PDF a Anki — tarjetas de diapositivas de clase y capítulos de libros",
-      "subhead": "Suelta un PDF de clase, una exportación de diapositivas o el capítulo de un libro y descarga un mazo .apkg. 2anki lee el texto convirtiéndolo en tarjetas de pregunta y respuesta, recurre a tarjetas de imagen cuando una página no tiene texto, y puede redactar tarjetas con IA cuando el PDF es denso."
+      "subhead": "Suelta un PDF de clase, una exportación de diapositivas o el capítulo de un libro y descarga un mazo .apkg. 2anki lee el texto convirtiéndolo en tarjetas de pregunta y respuesta, pregunta qué hacer cuando un PDF no tiene texto aprovechable, y puede redactar tarjetas con IA cuando el PDF es denso."
     },
     "convert-markdown-to-anki": {
       "h1": "Markdown a Anki — convierte archivos .md y notas de Obsidian",

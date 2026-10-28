@@ -62,11 +62,11 @@ const pdfZuAnkiCopy: LandingCopy = {
   faqs: [
     {
       q: 'Funktioniert das mit gescannten PDFs?',
-      a: 'Nur wenn der Scan eine Textebene hat (OCR). Die meisten aktuellen Lehrbücher und Folien-Exporte haben das. Ein Foto einer Seite ohne Textebene kann trotzdem zu Bildkarten werden: Die Upload-Seite fragt, ob zwei Seiten eine Karte ergeben oder jede Seite eine eigene. Für Textkarten schick es vorher durch ein OCR-Tool — die macOS-Vorschau und Adobe Acrobat können das beide.',
+      a: 'Nur wenn der Scan eine Textebene hat (OCR). Die meisten aktuellen Lehrbücher und Folien-Exporte haben das. Ein Foto einer Seite ohne Textebene kann trotzdem zu Bildkarten werden: 2anki fragt, ob zwei Seiten eine Karte ergeben oder jede Seite eine eigene. Für Textkarten schick es vorher durch ein OCR-Tool — die macOS-Vorschau und Adobe Acrobat können das beide — und schalte dann in den Kartenoptionen „Text aus PDFs extrahieren“ ein.',
     },
     {
       q: 'Wie entscheidet 2anki, was zur Karte wird?',
-      a: 'Eine kurze Zeile, auf die längerer Text folgt, gilt als Überschrift. Sie wird zur Kartenvorderseite, der Text darunter zur Rückseite. Ein PDF mit wenig Text, wie viele Folien-Exporte, löst stattdessen die Frage nach Bildkarten aus; schalte in den Kartenoptionen „Text aus PDFs extrahieren“ ein, um daraus Textkarten zu machen. Du kannst die Karten danach in Anki frei bearbeiten.',
+      a: 'Eine kurze Zeile, auf die längerer Text folgt, gilt als Überschrift. Sie wird zur Kartenvorderseite, der Text darunter zur Rückseite. Hat ein PDF wenig Text pro Seite, wie viele Folien-Exporte, fragt 2anki stattdessen, ob Bildkarten entstehen sollen; schalte in den Kartenoptionen „Text aus PDFs extrahieren“ ein, um daraus Textkarten zu machen. Du kannst die Karten danach in Anki frei bearbeiten.',
     },
     {
       q: 'Kann ich ein ganzes Lehrbuch hochladen?',

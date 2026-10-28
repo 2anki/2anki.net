@@ -9,6 +9,7 @@ import ConvertLandingPage from './ConvertLandingPage';
 import { CONVERT_LANDING_PAGES } from './convertLandingConfig';
 import { ankiFidelityProof } from '../LandingPage/copy/ankiFidelityProof';
 import enCommon from '../../lib/i18n/locales/en/common.json';
+import enLanding from '../../lib/i18n/locales/en/landing.json';
 
 function pdfFaqAnswer(question: string): string {
   const faq = CONVERT_LANDING_PAGES.get('pdf-to-anki')?.faqs.find(
@@ -101,8 +102,15 @@ describe('ConvertLandingPage', () => {
       (item) => item.q === 'What in my document becomes the front of the card?'
     );
 
+    expect(faq).toBeDefined();
     expect(faq?.a).toContain(
-      'A list under a heading, or four or more short paragraphs, becomes one card per item instead'
+      'A list under a heading, or 4 or more short paragraphs, becomes one card per item instead'
+    );
+  });
+
+  it('shows pdf-to-anki readers the same subhead the prerendered page carries', () => {
+    expect(enLanding.pages['convert-pdf-to-anki'].subhead).toBe(
+      CONVERT_LANDING_PAGES.get('pdf-to-anki')?.subhead
     );
   });
 

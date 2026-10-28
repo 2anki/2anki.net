@@ -175,7 +175,7 @@
     },
     "convert-pdf-to-anki": {
       "h1": "Konwertuj PDF na Anki — fiszki ze slajdów z wykładów i rozdziałów podręczników",
-      "subhead": "Upuść PDF z wykładu, eksport slajdów lub rozdział podręcznika i pobierz talię .apkg. 2anki odczytuje tekst w karty pytanie-odpowiedź, przełącza się na karty obrazkowe, gdy strona nie ma tekstu, i potrafi napisać karty z pomocą AI, gdy PDF jest gęsty."
+      "subhead": "Upuść PDF z wykładu, eksport slajdów lub rozdział podręcznika i pobierz talię .apkg. 2anki odczytuje tekst w karty pytanie-odpowiedź, pyta, co zrobić, gdy PDF nie ma użytecznego tekstu, i potrafi napisać karty z pomocą AI, gdy PDF jest gęsty."
     },
     "convert-markdown-to-anki": {
       "h1": "Markdown do Anki — konwertuj pliki .md i notatki Obsidian",

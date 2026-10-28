@@ -21,12 +21,14 @@ const LOCALES = [
     root: './content/',
     options: enCardOptions.options,
     choices: enCommon.upload.form,
+    overlappingCloze: enCommon.cardOptions.overlappingCloze.heading,
   },
   {
     language: 'de',
     root: './content/de/',
     options: deCardOptions.options,
     choices: deCommon.upload.form,
+    overlappingCloze: deCommon.cardOptions.overlappingCloze.heading,
   },
 ];
 
@@ -73,6 +75,17 @@ describe('PDF help copy uses the labels the upload page shows', () => {
       expect(bullet).toContain(`**${choices.pdfChoicePairs}**`);
       expect(bullet).toContain(`**${choices.pdfChoiceSingle}**`);
       expect(bullet).toContain(`**${choices.aiRescueMake}**`);
+    }
+  );
+
+  it.each(LOCALES)(
+    '$language file formats page names the overlapping cloze option in the Word row',
+    ({ root, overlappingCloze }) => {
+      const row = lineStartingWith(
+        pages[`${root}reference/file-formats.md`],
+        '| **Word**'
+      );
+      expect(row).toContain(`**${overlappingCloze}**`);
     }
   );
 });

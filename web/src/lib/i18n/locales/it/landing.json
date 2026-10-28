@@ -175,7 +175,7 @@
     },
     "convert-pdf-to-anki": {
       "h1": "Converti PDF in Anki — flashcard da slide di lezioni e capitoli di libri di testo",
-      "subhead": "Trascina un PDF di una lezione, un export di slide o il capitolo di un libro di testo e scarica un mazzo .apkg. 2anki legge il testo in carte domanda-risposta, ripiega su carte-immagine quando una pagina non ha testo e può scrivere carte con l'IA quando il PDF è denso."
+      "subhead": "Trascina un PDF di una lezione, un export di slide o il capitolo di un libro di testo e scarica un mazzo .apkg. 2anki legge il testo in carte domanda-risposta, ti chiede cosa fare quando un PDF non ha testo utilizzabile e può scrivere carte con l'IA quando il PDF è denso."
     },
     "convert-markdown-to-anki": {
       "h1": "Da Markdown ad Anki — converti file .md e appunti Obsidian",

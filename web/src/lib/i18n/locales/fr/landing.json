@@ -175,7 +175,7 @@
     },
     "convert-pdf-to-anki": {
       "h1": "Convertir un PDF en Anki — cartes à partir de diapos de cours et chapitres de manuels",
-      "subhead": "Dépose un PDF de cours, un export de diapos ou un chapitre de manuel et télécharge un paquet .apkg. 2anki lit le texte pour en faire des cartes question-réponse, se rabat sur des cartes-images quand une page n'a pas de texte, et peut rédiger des cartes avec l'IA quand le PDF est dense."
+      "subhead": "Dépose un PDF de cours, un export de diapos ou un chapitre de manuel et télécharge un paquet .apkg. 2anki lit le texte pour en faire des cartes question-réponse, te demande quoi faire quand un PDF n'a pas de texte exploitable, et peut rédiger des cartes avec l'IA quand le PDF est dense."
     },
     "convert-markdown-to-anki": {
       "h1": "Markdown vers Anki — convertis des fichiers .md et des notes Obsidian",

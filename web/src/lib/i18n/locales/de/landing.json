@@ -175,7 +175,7 @@
     },
     "convert-pdf-to-anki": {
       "h1": "PDF zu Anki — Karteikarten aus Vorlesungsfolien und Lehrbuchkapiteln",
-      "subhead": "Leg ein Vorlesungs-PDF, einen Folienexport oder ein Lehrbuchkapitel ab und lade einen .apkg-Stapel herunter. 2anki liest den Text in Frage-Antwort-Karten, weicht auf Bildkarten aus, wenn eine Seite keinen Text hat, und kann Karten mit KI schreiben, wenn das PDF dicht ist."
+      "subhead": "Leg ein Vorlesungs-PDF, einen Folienexport oder ein Lehrbuchkapitel ab und lade einen .apkg-Stapel herunter. 2anki liest den Text in Frage-Antwort-Karten, fragt nach, was daraus werden soll, wenn ein PDF keinen brauchbaren Text hat, und kann Karten mit KI schreiben, wenn das PDF dicht ist."
     },
     "convert-markdown-to-anki": {
       "h1": "Markdown zu Anki — .md-Dateien und Obsidian-Notizen umwandeln",
