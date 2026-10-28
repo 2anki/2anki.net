@@ -177,7 +177,7 @@
       "pdfChoiceTitleOverSplit": "Este PDF daría demasiadas tarjetas diminutas",
       "pdfChoiceBodyNoText": "Tiene texto, pero no una separación clara entre preguntas y respuestas. Las diapositivas y las páginas escaneadas suelen verse así. Elige cómo quieres las tarjetas.",
       "pdfChoiceBodyLocked": "Seguramente sus páginas son escaneos o imágenes, o el PDF está protegido y su texto no se puede copiar. Elige cómo quieres las tarjetas.",
-      "pdfChoiceBodyOverSplit": "Su texto se divide en muchísimas líneas cortas. Elige cómo quieres las tarjetas.",
+      "pdfChoiceBodyOverSplit": "Su texto se divide en muchísimas líneas cortas. En su lugar, elige cómo quieres las tarjetas.",
       "pdfChoicePairs": "Dos páginas por tarjeta",
       "pdfChoicePairsHint": "La página 1 es el anverso y la página 2 el reverso.",
       "pdfChoiceSingle": "Una tarjeta por página",
