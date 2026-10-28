@@ -104,7 +104,7 @@ describe('a PowerPoint lecture with slide numbers and a footer on every slide', 
         }))
       ).toEqual([
         { front: 'Mitosis', back: 'Prophase [slide image]' },
-        { front: '[slide image]', back: 'Cell Biology 2' },
+        { front: '[slide image]', back: 'Cell Biology · 2' },
       ]);
     }
   );

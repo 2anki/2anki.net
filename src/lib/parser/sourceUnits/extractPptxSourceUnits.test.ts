@@ -594,7 +594,7 @@ describe('extractPptxSourceUnits — slide chrome', () => {
     );
 
     expect(html).toContain(
-      '<summary><img src="pdf-x/slide-1.png" /></summary><ul><li>7</li></ul></details>'
+      '<summary><img src="pdf-x/slide-1.png" /></summary><p>7</p></details>'
     );
   });
 

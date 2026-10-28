@@ -186,7 +186,7 @@ describe('combineSlidesIntoHTML', () => {
     expect(card.back).toContain('<p>A diagram</p>');
   });
 
-  it('answers a picture slide whose only text is its slide number and footer with that text', () => {
+  it('answers a picture slide whose only text is its slide number and footer with that text, as one source line', () => {
     const html = combineSlidesIntoHTML(
       [
         slide({
@@ -202,7 +202,20 @@ describe('combineSlidesIntoHTML', () => {
 
     const [card] = cards(html);
     expect(card.front).toBe('<img src="pdf-x/slide-1.png" />');
-    expect(card.back).toBe('<ul><li>Cell Biology</li><li>2</li></ul>');
+    expect(card.back).toBe('<p>Cell Biology · 2</p>');
+  });
+
+  it('adds the slide number and footer as a source line under the image of a slide with no text of its own on the back', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'Part 2', chromeParagraphs: ['Cell Biology', '5'] })],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)[0].back).toBe(
+      '<img src="pdf-x/slide-1.png" /><p>Cell Biology · 5</p>'
+    );
   });
 
   it('answers a picture slide with its speaker notes, not its slide number, when it has notes', () => {
@@ -278,6 +291,32 @@ describe('combineSlidesIntoHTML', () => {
 
     expect(cards(html)[0].back).toBe(
       '<img src="pdf-x/Lecture%25203%20%22a%22%20%231%3F.pdf-page1-1.png" />'
+    );
+  });
+
+  it('encodes a file name holding a lone surrogate the way Node writes it to disk, instead of throwing', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'One' })],
+      [`${WORKSPACE}/pdf-x/Lecture \uD800.pdf-page1-1.png`],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)[0].back).toBe(
+      '<img src="pdf-x/Lecture%20%EF%BF%BD.pdf-page1-1.png" />'
+    );
+  });
+
+  it('keeps a backslash in a file name inside its own path segment', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'One' })],
+      [`${WORKSPACE}/pdf-x/Cell\\Biology.pdf-page1-1.png`],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)[0].back).toBe(
+      '<img src="pdf-x/Cell%5CBiology.pdf-page1-1.png" />'
     );
   });
 

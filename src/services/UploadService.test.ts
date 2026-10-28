@@ -125,6 +125,8 @@ import UsersRepository from '../data_layer/UsersRepository';
 import { ISettingsRepository } from '../data_layer/SettingsRepository';
 import Uploads from '../data_layer/public/Uploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
+import { combineSlidesIntoHTML } from '../lib/pdf/combineSlidesIntoHTML';
+import type { SlideUnit } from '../lib/parser/sourceUnits/extractPptxSourceUnits';
 import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 import { InMemoryHeldDeckRepository } from '../data_layer/HeldDeckRepository';
 import { planHoldKey } from '../usecases/uploads/ClaimHeldDeckUseCase';
@@ -3996,6 +3998,130 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
 
     expect(args[0]).toBe('<html><body>Q/A</body></html>');
     expect(args[2]).toBeUndefined();
+  });
+});
+
+describe('UploadService.restartClaudeJob — a saved PowerPoint conversion', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  const jobId = 'job-obj-pptx';
+  let db: Knex;
+  let workspaceBase: string;
+
+  function slideUnit(overrides: Partial<SlideUnit>): SlideUnit {
+    return {
+      id: 'slide-1',
+      visibleText: '',
+      speakerNotes: '',
+      role: 'body',
+      title: '',
+      paragraphs: [],
+      chromeParagraphs: [],
+      textWithChrome: [],
+      hasPicture: false,
+      ...overrides,
+    };
+  }
+
+  beforeAll(() => {
+    workspaceBase = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'restart-pptx-base-')
+    );
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  beforeEach(async () => {
+    mockGenerateDeckInfo.mockReset();
+    db = knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('jobs', (t) => {
+      t.increments('id');
+      t.string('owner').notNullable();
+      t.string('object_id').notNullable();
+      t.string('title');
+      t.string('type');
+      t.string('status');
+      t.timestamp('created_at').defaultTo(db.fn.now());
+      t.timestamp('last_edited_time');
+      t.string('job_reason_failure');
+      t.integer('card_count');
+    });
+    const workspaceDir = path.join(workspaceBase, jobId);
+    fs.rmSync(workspaceDir, { recursive: true, force: true });
+    fs.mkdirSync(path.join(workspaceDir, 'pdf-1'), { recursive: true });
+    const pages = [1, 2].map((n) =>
+      path.join(workspaceDir, 'pdf-1', `Lecture%203.pdf-page${n}-${n}.png`)
+    );
+    for (const page of pages) fs.writeFileSync(page, 'png');
+    fs.writeFileSync(
+      path.join(workspaceDir, 'Lecture%203.pptx.html'),
+      combineSlidesIntoHTML(
+        [
+          slideUnit({ title: 'Mitosis', paragraphs: ['Prophase'] }),
+          slideUnit({
+            id: 'slide-2',
+            role: 'image',
+            hasPicture: true,
+            chromeParagraphs: ['Cell Biology', '2'],
+          }),
+        ],
+        pages,
+        'Lecture%203.pdf',
+        workspaceDir
+      )
+    );
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  it('hands Claude saved slide image srcs that decode to the media files it offers', async () => {
+    await db('jobs').insert({
+      owner: '42',
+      object_id: jobId,
+      title: 'Deck',
+      type: 'claude',
+      status: 'done',
+      last_edited_time: new Date(),
+    });
+    const service = new UploadService(
+      buildRepository(),
+      new JobRepository(db),
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const generateCalled = new Promise<unknown[]>((resolve) => {
+      mockGenerateDeckInfo.mockImplementation((...args: unknown[]) => {
+        resolve(args);
+        return new Promise(() => {});
+      });
+    });
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+
+    await service.restartClaudeJob(
+      { params: { jobId }, body: {} } as unknown as express.Request,
+      res
+    );
+    const [html, mediaFiles] = (await generateCalled) as [string, string[]];
+
+    const srcs = [...html.matchAll(/<img src="([^"]+)"/g)].map((match) =>
+      decodeURIComponent(match[1])
+    );
+    expect(srcs).toEqual([
+      'pdf-1/Lecture%203.pdf-page1-1.png',
+      'pdf-1/Lecture%203.pdf-page2-2.png',
+    ]);
+    expect(mediaFiles).toEqual(expect.arrayContaining(srcs));
   });
 });
 

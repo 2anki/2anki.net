@@ -8,6 +8,10 @@ const SLIDE_PNG = vi.hoisted(() =>
     'base64'
   )
 );
+const pageImage = vi.hoisted(
+  () => (page: number) =>
+    Buffer.concat([SLIDE_PNG, Buffer.from(`page ${page}`)])
+);
 
 vi.mock('./ConvertPPTToPDF', () => ({
   convertPPTToPDF: vi.fn().mockResolvedValue(Buffer.from('%PDF-1.4 slides')),
@@ -23,7 +27,7 @@ vi.mock('../../../lib/pdf/convertPage', () => ({
   convertPage: vi.fn(async (pdfPath: string, pageNumber: number) => {
     const { writeFileSync } = await import('node:fs');
     const imagePath = `${pdfPath}-page${pageNumber}-${pageNumber}.png`;
-    writeFileSync(imagePath, SLIDE_PNG);
+    writeFileSync(imagePath, pageImage(pageNumber));
     return imagePath;
   }),
 }));
@@ -35,6 +39,8 @@ vi.mock('../../../services/events/track', () => ({
 import { PrepareDeck } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import Workspace from '../../../lib/parser/WorkSpace';
+import getUniqueFileName from '../../../lib/misc/getUniqueFileName';
+import { getPageCount } from '../../../lib/pdf/getPageCount';
 
 const NAMESPACES =
   'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
@@ -72,8 +78,28 @@ const lecture = Buffer.from(
   })
 );
 
+const ESCAPED_NAMES = [
+  { label: 'an MCP URL escape', name: 'Lecture%203.pptx' },
+  { label: 'a double quote', name: 'Cell "Biology".pptx' },
+  { label: "a web upload's %22", name: 'Lecture %22final%22.pptx' },
+  { label: 'a bare percent sign', name: '50% done.pptx' },
+  { label: 'a lone surrogate', name: 'Lecture \uD800.pptx' },
+];
+
+function pageMedia(page: number): string {
+  return `${getUniqueFileName(pageImage(page))}.png`;
+}
+
+function visibleText(html: string): string {
+  return html
+    .replaceAll(/<img[^>]*>/g, ' [slide image] ')
+    .replaceAll(/<[^>]+>/g, ' ')
+    .replaceAll(/\s+/g, ' ')
+    .trim();
+}
+
 describe('PrepareDeck — a .pptx whose file name a URL would escape', () => {
-  let workspace: Workspace | null = null;
+  const workspaces: Workspace[] = [];
   const skipCreateDeck = process.env.SKIP_CREATE_DECK;
 
   beforeAll(() => {
@@ -89,41 +115,77 @@ describe('PrepareDeck — a .pptx whose file name a URL would escape', () => {
   });
 
   afterEach(() => {
-    if (workspace != null) {
+    for (const workspace of workspaces.splice(0)) {
       fs.rmSync(workspace.location, { recursive: true, force: true });
-      workspace = null;
     }
   });
 
+  async function convert(name: string) {
+    const workspace = new Workspace(true, 'fs');
+    workspaces.push(workspace);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    try {
+      const result = await PrepareDeck({
+        name,
+        files: [{ name, contents: lecture }],
+        settings: new CardOption(CardOption.LoadDefaultOptions()),
+        noLimits: true,
+        workspace,
+      });
+      return (result?.deck ?? []).flatMap((deck) =>
+        deck.cards.map((card) => ({
+          name: card.name,
+          back: card.back,
+          media: card.media,
+        }))
+      );
+    } finally {
+      log.mockRestore();
+      debug.mockRestore();
+    }
+  }
+
   it.each([
-    'lecture.pptx',
-    'Lecture%203.pptx',
-    'Cell "Biology".pptx',
-    'Lecture %22final%22.pptx',
-    '50% done.pptx',
+    { label: 'no character a URL escapes', name: 'lecture.pptx' },
+    ...ESCAPED_NAMES,
   ])(
-    'embeds the slide image that fronts the picture slide of a deck named %s',
-    async (name) => {
-      workspace = new Workspace(true, 'fs');
-      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    'embeds each rendered page on its own slide card, the picture slide fronted by its page, for a name with $label',
+    async ({ name }) => {
+      const cards = await convert(name);
 
-      try {
-        const result = await PrepareDeck({
-          name,
-          files: [{ name, contents: lecture }],
-          settings: new CardOption(CardOption.LoadDefaultOptions()),
-          noLimits: true,
-          workspace,
-        });
+      expect(cards.map((card) => card.media)).toEqual([
+        [pageMedia(1)],
+        [pageMedia(2)],
+      ]);
+      expect(cards[1].name).toContain(`<img src="${pageMedia(2)}"`);
+    }
+  );
 
-        const diagram = result?.deck[0].cards[1];
-        expect(diagram?.media).toHaveLength(1);
-        expect(diagram?.name).toContain(`<img src="${diagram?.media[0]}"`);
-      } finally {
-        log.mockRestore();
-        debug.mockRestore();
-      }
+  describe.each([1, 3])(
+    'with %i rendered pages for the two slides',
+    (pageCount) => {
+      beforeEach(() => {
+        vi.mocked(getPageCount).mockResolvedValue(pageCount);
+      });
+
+      afterEach(() => {
+        vi.mocked(getPageCount).mockResolvedValue(2);
+      });
+
+      it.each(ESCAPED_NAMES)(
+        'builds the deck a plain name gets from the builder before chrome detection, every page included, for a name with $label',
+        async ({ name }) => {
+          const plain = await convert('lecture.pptx');
+          const escaped = await convert(name);
+
+          expect(escaped.map((card) => visibleText(card.name))).toEqual([
+            'Mitosis',
+            'Cell Biology',
+          ]);
+          expect(escaped).toEqual(plain);
+        }
+      );
     }
   );
 });

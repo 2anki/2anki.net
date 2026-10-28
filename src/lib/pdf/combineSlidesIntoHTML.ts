@@ -1,16 +1,23 @@
 import path from 'node:path';
 import type { SlideUnit } from '../parser/sourceUnits/extractPptxSourceUnits';
 
+// Node writes a path to disk as UTF-8, which turns a lone surrogate (from a
+// multipart filename*, a Dropbox or Drive name, an MCP filename) into U+FFFD.
+// Encoding that same text keeps encodeURIComponent from throwing.
+function asWrittenToDisk(segment: string): string {
+  return Buffer.from(segment, 'utf8').toString('utf8');
+}
+
 // Page images are named after the upload, and the parser looks an image up
 // by decodeURIComponent(src), so each path segment is encoded: the decode
-// gives back the name on disk, and a `"` cannot end the attribute early.
+// gives back the page's path as Node wrote it, and a `"` cannot end the
+// attribute early.
 function toSrc(imagePath: string, workspaceLocation?: string): string {
-  const relativePath = workspaceLocation
-    ? path.relative(workspaceLocation, imagePath).replaceAll('\\', '/')
-    : path.basename(imagePath);
-  return relativePath
-    .split('/')
-    .map((segment) => encodeURIComponent(segment))
+  const segments = workspaceLocation
+    ? path.relative(workspaceLocation, imagePath).split(path.sep)
+    : [path.basename(imagePath)];
+  return segments
+    .map((segment) => encodeURIComponent(asWrittenToDisk(segment)))
     .join('/');
 }
 
@@ -60,6 +67,15 @@ function toggleCard(front: string, back: string): string {
     </ul>`;
 }
 
+// A back with no text of its own (only the slide image, or nothing) gets the
+// slide's chrome as one quiet source line: a list would read like an answer,
+// and overlapping cloze would turn each line into a note of its own.
+function chromeSourceLine(chromeParagraphs: string[]): string {
+  return chromeParagraphs.length === 0
+    ? ''
+    : `<p>${chromeParagraphs.join(' · ')}</p>`;
+}
+
 // Called only when every slide has its rendered image, so every slide gets a
 // front.
 function slideCard(slide: SlideUnit, image: string): string {
@@ -77,12 +93,17 @@ function slideCard(slide: SlideUnit, image: string): string {
     imageOnBack = '';
   }
 
-  const answer = `${bulletList(remaining)}${imageOnBack}${speakerNotesBlock(
+  const ownText = `${bulletList(remaining)}${speakerNotesBlock(
     slide.speakerNotes
   )}`;
-  const back = answer === '' ? bulletList(slide.chromeParagraphs) : answer;
+  const source = ownText === '' ? chromeSourceLine(slide.chromeParagraphs) : '';
 
-  return toggleCard(front, back);
+  return toggleCard(
+    front,
+    `${bulletList(remaining)}${imageOnBack}${speakerNotesBlock(
+      slide.speakerNotes
+    )}${source}`
+  );
 }
 
 // The card the slide made before chrome was set apart: its first line, chrome
