@@ -22,12 +22,13 @@ describe('isTypableAnswer', () => {
     expect(isTypableAnswer('line one\nline two')).toBe(false);
   });
 
-  it.each(['Prophase<br>Metaphase<br>Anaphase', '<p>Lyon<br/>Nice</p>'])(
-    'rejects a back whose lines are split by <br> (%s)',
-    (back) => {
-      expect(isTypableAnswer(back)).toBe(false);
-    }
-  );
+  it.each([
+    'Prophase<br>Metaphase<br>Anaphase',
+    '<p>Lyon<br/>Nice</p>',
+    'Lyon<br />Nice',
+  ])('rejects a back whose lines are split by <br> (%s)', (back) => {
+    expect(isTypableAnswer(back)).toBe(false);
+  });
 
   it('accepts a one-line answer with a trailing <br>', () => {
     expect(isTypableAnswer('Lyon<br>')).toBe(true);
