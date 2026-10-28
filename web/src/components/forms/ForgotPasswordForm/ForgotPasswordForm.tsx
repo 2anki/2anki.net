@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ErrorHandlerType } from '../../errors/helpers/getErrorMessage';
 import CheckYourEmail from '../../CheckYourEmail/CheckYourEmail';
 import { get2ankiApi } from '../../../lib/backend/get2ankiApi';
+import { UserNotice } from '../../../lib/errors/UserNotice';
 import styles from '../../../styles/auth.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
 
@@ -22,7 +23,14 @@ function ForgotPasswordForm({ setError }: Readonly<ForgotPasswordProps>) {
     setLoading(true);
 
     try {
-      await get2ankiApi().requestMagicLink(email, 'password_reset');
+      const response = await get2ankiApi().requestMagicLink(
+        email,
+        'password_reset'
+      );
+      if (!response.ok) {
+        setError(new UserNotice(t('account:confirmEmail.error')));
+        return;
+      }
       setSubmitted(true);
     } catch (error) {
       setError(error);

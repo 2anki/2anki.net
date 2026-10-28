@@ -91,7 +91,14 @@ function MagicLinkVerification() {
     setRetrySending(true);
     setRetryDone(false);
     try {
-      await get2ankiApi().requestMagicLink(retryEmail, 'login', redirect);
+      const response = await get2ankiApi().requestMagicLink(
+        retryEmail,
+        'login',
+        redirect
+      );
+      if (!response.ok) {
+        throw new Error('magic link not sent');
+      }
       setRetryDone(true);
     } catch {
       setState({

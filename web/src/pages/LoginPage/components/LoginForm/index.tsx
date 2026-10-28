@@ -40,16 +40,22 @@ function LoginForm() {
 
   const registerHref = buildRegisterHref(searchParams);
 
+  const requestLoginLink = () =>
+    get2ankiApi().requestMagicLink(
+      email,
+      'login',
+      sanitizeRelativeRedirect(searchParams.get('redirect'))
+    );
+
   const handleSendMagicLink = async () => {
     setMagicLinkLoading(true);
     setError(null);
     try {
-      const redirect = sanitizeRelativeRedirect(searchParams.get('redirect'));
-      const response = await get2ankiApi().requestMagicLink(
-        email,
-        'login',
-        redirect
-      );
+      const response = await requestLoginLink();
+      if (!response.ok) {
+        setError(t('auth.login.magicLinkError'));
+        return;
+      }
       const body = await response.json().catch(() => ({}));
       if (body?.suppressed) {
         setError(t('auth.login.magicLinkSuppressed'));
@@ -63,6 +69,15 @@ function LoginForm() {
     }
   };
 
+  // The check-email screen shows its own resend error only when the resend
+  // rejects, so a link the server could not send has to throw here.
+  const handleResendMagicLink = async () => {
+    const response = await requestLoginLink();
+    if (!response.ok) {
+      throw new Error('magic link not sent');
+    }
+  };
+
   const handleRetryMagicLink = () => {
     setStep('email');
   };
@@ -73,7 +88,7 @@ function LoginForm() {
         email={email}
         onRetry={handleRetryMagicLink}
         purpose="login"
-        onResend={handleSendMagicLink}
+        onResend={handleResendMagicLink}
       />
     );
   }

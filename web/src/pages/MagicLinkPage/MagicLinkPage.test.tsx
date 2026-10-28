@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -102,6 +102,50 @@ describe('MagicLinkPage', () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByPlaceholderText('Email address')).toBeInTheDocument();
+  });
+
+  it('confirms a new link was sent when the resend succeeds, keeping an MCP connector redirect', async () => {
+    mockValidateMagicToken.mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ message: 'Expired' }),
+    });
+    mockRequestMagicLink.mockResolvedValue({ ok: true, status: 200 });
+    renderMagicLinkPage(
+      '?token=bad&redirect=%2Fmcp%2Fauthorize%3Fclient_id%3Dabc'
+    );
+
+    fireEvent.change(await screen.findByPlaceholderText('Email address'), {
+      target: { value: 'reader@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new link' }));
+
+    expect(
+      await screen.findByText('A new link has been sent to reader@example.com.')
+    ).toBeInTheDocument();
+    expect(mockRequestMagicLink).toHaveBeenCalledWith(
+      'reader@example.com',
+      'login',
+      '/mcp/authorize?client_id=abc'
+    );
+  });
+
+  it('says a new link could not be sent when the resend fails', async () => {
+    mockValidateMagicToken.mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ message: 'Expired' }),
+    });
+    mockRequestMagicLink.mockResolvedValue({ ok: false, status: 500 });
+    renderMagicLinkPage('?token=bad');
+
+    fireEvent.change(await screen.findByPlaceholderText('Email address'), {
+      target: { value: 'reader@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new link' }));
+
+    expect(
+      await screen.findByText('Could not send a new link. Try again.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/New link sent/)).not.toBeInTheDocument();
   });
 
   it('shows back to login link on error', async () => {
