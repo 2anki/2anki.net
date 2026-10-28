@@ -45,6 +45,30 @@ import getUniqueFileName from '../../../lib/misc/getUniqueFileName';
 // back must not depend on characters a URL would escape in that name.
 const SLIDES = Buffer.from('binary ppt stands in; LibreOffice is mocked');
 
+// A two-page PDF with no text on either page, like a scanned handout: the
+// text reader finds nothing, so the person's PDF answer decides the images.
+function blankPdf(): Buffer {
+  const objects = [
+    '<</Type/Catalog/Pages 2 0 R>>',
+    '<</Type/Pages/Kids[3 0 R 4 0 R]/Count 2>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>',
+  ];
+  let body = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  objects.forEach((object, i) => {
+    offsets.push(body.length);
+    body += `${i + 1} 0 obj${object}endobj\n`;
+  });
+  const xref = body.length;
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) {
+    body += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  }
+  body += `trailer<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(body, 'latin1');
+}
+
 const ESCAPED_NAMES = [
   { label: 'an MCP URL escape', name: 'Lecture%203.ppt' },
   { label: 'a double quote', name: 'Cell "Biology".ppt' },
@@ -85,7 +109,11 @@ describe('PrepareDeck — a page-image deck whose file name a URL would escape',
     }
   });
 
-  async function convert(name: string, options: Record<string, string> = {}) {
+  async function prepare(
+    name: string,
+    options: Record<string, string> = {},
+    contents: Buffer = SLIDES
+  ) {
     const workspace = new Workspace(true, 'fs');
     workspaces.push(workspace);
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -93,7 +121,7 @@ describe('PrepareDeck — a page-image deck whose file name a URL would escape',
     try {
       const result = await PrepareDeck({
         name,
-        files: [{ name, contents: SLIDES }],
+        files: [{ name, contents }],
         settings: new CardOption({
           ...CardOption.LoadDefaultOptions(),
           ...options,
@@ -101,17 +129,25 @@ describe('PrepareDeck — a page-image deck whose file name a URL would escape',
         noLimits: true,
         workspace,
       });
-      return (result?.deck ?? []).flatMap((deck) =>
-        deck.cards.map((card) => ({
-          name: card.name,
-          back: card.back,
-          media: card.media,
-        }))
-      );
+      return result?.deck ?? [];
     } finally {
       log.mockRestore();
       debug.mockRestore();
     }
+  }
+
+  async function convert(
+    name: string,
+    options: Record<string, string> = {},
+    contents: Buffer = SLIDES
+  ) {
+    return (await prepare(name, options, contents)).flatMap((deck) =>
+      deck.cards.map((card) => ({
+        name: card.name,
+        back: card.back,
+        media: card.media,
+      }))
+    );
   }
 
   it.each([
@@ -148,6 +184,41 @@ describe('PrepareDeck — a page-image deck whose file name a URL would escape',
         pageMedia(2),
       ]);
       expect(escaped).toEqual(plain);
+    }
+  );
+  it.each([
+    ['answered "one card per page"', { 'pdf-fallback': 'single' }],
+    ['answered "two pages per card"', { 'pdf-fallback': 'pairs' }],
+  ])(
+    'builds the same page-image deck from a PDF with no readable text when the person %s, for every escaped name',
+    async (_label, options) => {
+      const plain = await convert('lecture.pdf', options, blankPdf());
+      expect(plain.flatMap((card) => card.media)).toEqual([
+        pageMedia(1),
+        pageMedia(2),
+      ]);
+
+      for (const { name } of ESCAPED_NAMES) {
+        const escaped = await convert(
+          name.replace(/\.ppt$/, '.pdf'),
+          options,
+          blankPdf()
+        );
+        expect(escaped).toEqual(plain);
+      }
+    }
+  );
+
+  it.each([
+    { name: 'Cells &amp; Tissues.ppt', deckName: 'Cells &amp; Tissues.pdf' },
+    { name: 'Week <3> & 4.ppt', deckName: 'Week <3> & 4.pdf' },
+    { name: '50% done.ppt', deckName: '50% done.pdf' },
+  ])(
+    'names the deck $deckName, as the file is named',
+    async ({ name, deckName }) => {
+      const decks = await prepare(name);
+
+      expect(decks.map((deck) => deck.name)).toEqual([deckName]);
     }
   );
 });
