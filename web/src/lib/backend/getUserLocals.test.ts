@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearPassToken, storePassToken } from '../anonymousPass';
 import { getUserLocals } from './getUserLocals';
+import {
+  getLastDeckStore,
+  resetLastDeckStoreForTests,
+} from '../upload/lastDeck';
 
 describe('getUserLocals', () => {
   const fetchSpy = vi.fn();
@@ -13,6 +17,8 @@ describe('getUserLocals', () => {
       removeItem: (key: string) => store.delete(key),
     });
     vi.stubGlobal('fetch', fetchSpy);
+    vi.stubGlobal('indexedDB', undefined);
+    resetLastDeckStoreForTests();
     fetchSpy.mockResolvedValue(
       new Response(JSON.stringify({ locals: {} }), { status: 200 })
     );
@@ -22,6 +28,7 @@ describe('getUserLocals', () => {
     clearPassToken();
     fetchSpy.mockReset();
     vi.unstubAllGlobals();
+    resetLastDeckStoreForTests();
   });
 
   it('sends the stored pass token so a pass bought before signing up moves to the account', async () => {
@@ -46,4 +53,35 @@ describe('getUserLocals', () => {
       expect.objectContaining({ credentials: 'include', headers: undefined })
     );
   });
+
+  it('forgets a signed-out deck once the visitor is signed in', async () => {
+    await getLastDeckStore().save(keptDeck());
+    fetchSpy.mockResolvedValue(
+      new Response(JSON.stringify({ locals: {}, user: { id: 9 } }), {
+        status: 200,
+      })
+    );
+
+    await getUserLocals();
+
+    expect(await getLastDeckStore().load()).toBeNull();
+  });
+
+  it('keeps the deck while the visitor is signed out', async () => {
+    await getLastDeckStore().save(keptDeck());
+
+    await getUserLocals();
+
+    expect(await getLastDeckStore().load()).toEqual(keptDeck());
+  });
 });
+
+const KEPT_AT = Date.now();
+
+function keptDeck() {
+  return {
+    recoveryToken: '0b6f2c1e-3a4d-4e5f-8a9b-1c2d3e4f5a6b',
+    deckName: 'Biology.apkg',
+    savedAt: KEPT_AT,
+  };
+}

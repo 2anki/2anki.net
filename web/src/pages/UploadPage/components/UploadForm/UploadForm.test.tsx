@@ -82,6 +82,11 @@ import {
   type PendingUpload,
 } from '../../../../lib/upload/pendingUpload';
 import { storePassToken } from '../../../../lib/anonymousPass';
+import {
+  getLastDeckStore,
+  resetLastDeckStoreForTests,
+} from '../../../../lib/upload/lastDeck';
+import { RecoveryStorageBusyError } from '../../../../lib/backend/Backend';
 
 const mockReportClientError = vi.mocked(reportClientError);
 const mockUseUserLocals = vi.mocked(useUserLocals);
@@ -90,6 +95,7 @@ const mockGet2ankiApi = vi.mocked(get2ankiApi);
 
 beforeEach(() => {
   resetPendingUploadStoreForTests();
+  resetLastDeckStoreForTests();
 });
 
 type AnalyticsGlobals = {
@@ -10889,5 +10895,227 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
     renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
 
     await waitFor(() => expect(thinDeckResumeMarked()).toBe(false));
+  });
+});
+
+describe('UploadForm last deck for a signed-out pass holder', () => {
+  const TOKEN = '0b6f2c1e-3a4d-4e5f-8a9b-1c2d3e4f5a6b';
+  const signedOutVisitor = {
+    user: null,
+    locals: { owner: 0, patreon: false, subscriber: false },
+    features: {},
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+  const signedInVisitor = {
+    user: { id: 8, email: 'free@example.com' },
+    locals: { owner: 8, patreon: false, subscriber: false },
+    features: {},
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+  const trackMock = vi.mocked(track);
+
+  function showVisitor(data: ReturnType<typeof useUserLocals>['data']) {
+    mockUseUserLocals.mockReturnValue({
+      data,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi
+        .fn()
+        .mockResolvedValue({ data, status: 'success', isError: false }),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  }
+
+  function stubRecovery(getAnonymousRecoveredDeck: Mock) {
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getAnonymousRecoveredDeck,
+    } as unknown as ReturnType<typeof get2ankiApi>);
+  }
+
+  async function keepDeck() {
+    await getLastDeckStore().save({
+      recoveryToken: TOKEN,
+      deckName: 'Biology.apkg',
+      savedAt: Date.now(),
+    });
+  }
+
+  function deckResponse(): Mock {
+    return vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'File-Name': 'Biology.apkg',
+        'X-Card-Count': '120',
+      }),
+      blob: () => Promise.resolve(new Blob(['apkg'])),
+    });
+  }
+
+  async function uploadFile(container: HTMLElement) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['x'], 'biology.html', { type: 'text/html' })],
+      configurable: true,
+    });
+    fileInput.removeAttribute('required');
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+  }
+
+  function sentRecoveryToken(fetchMock: Mock): string | undefined {
+    const call = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/upload/file'
+    );
+    const headers = call?.[1]?.headers as Record<string, string> | undefined;
+    return headers?.['X-Recovery-Token'];
+  }
+
+  beforeEach(() => {
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:last-deck');
+    globalThis.URL.revokeObjectURL = vi.fn();
+    trackMock.mockClear();
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.removeItem('2anki_pass_token');
+    mockUseUserLocals.mockReset();
+    mockGet2ankiApi.mockReset();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    resetLastDeckStoreForTests();
+  });
+
+  it('keeps the deck of a signed-out upload that used a pass', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_pass');
+    const fetchMock = deckResponse();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container);
+
+    await waitFor(async () =>
+      expect(await getLastDeckStore().load()).toMatchObject({
+        recoveryToken: sentRecoveryToken(fetchMock),
+        deckName: 'Biology.apkg',
+      })
+    );
+  });
+
+  it('keeps nothing for a signed-out upload without a pass', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    vi.stubGlobal('fetch', deckResponse());
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container);
+
+    expect(
+      (await screen.findAllByText(/Your deck is ready/)).length
+    ).toBeGreaterThan(0);
+    expect(await getLastDeckStore().load()).toBeNull();
+  });
+
+  it('offers the last deck on the idle drop zone while signed out', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/can be downloaded again until/)
+    ).toHaveTextContent(/^Your last deck, Biology, can be downloaded again/);
+    expect(
+      screen.getByRole('button', { name: 'Download' })
+    ).toBeInTheDocument();
+  });
+
+  it('offers nothing once the visitor is signed in', async () => {
+    showVisitor(signedInVisitor);
+    stubRecovery(vi.fn());
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(
+      screen.queryByText(/can be downloaded again until/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('fetches the stored deck and starts the download', async () => {
+    showVisitor(signedOutVisitor);
+    const getAnonymousRecoveredDeck = vi
+      .fn()
+      .mockResolvedValue(new Blob(['apkg']));
+    stubRecovery(getAnonymousRecoveredDeck);
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    expect(getAnonymousRecoveredDeck).toHaveBeenCalledWith(TOKEN);
+    expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
+      outcome: 'downloaded',
+    });
+  });
+
+  it('removes the line and the record when the deck is gone', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn().mockResolvedValue(null));
+    const setErrorMessage = vi.fn();
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={setErrorMessage} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/can be downloaded again until/)
+      ).not.toBeInTheDocument()
+    );
+    expect(await getLastDeckStore().load()).toBeNull();
+    expect(setErrorMessage).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('says storage is busy when the server answers 503', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn().mockRejectedValue(new RecoveryStorageBusyError()));
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+
+    expect(
+      await screen.findByText(
+        'Storage is busy right now. Try the download again in a moment.'
+      )
+    ).toBeInTheDocument();
+    expect(await getLastDeckStore().load()).toMatchObject({
+      recoveryToken: TOKEN,
+    });
   });
 });

@@ -1,0 +1,6 @@
+{
+  "line": "Ton dernier paquet, <name>{{name}}</name>, peut être retéléchargé jusqu'à {{time}}.",
+  "download": "Télécharger",
+  "downloading": "Téléchargement",
+  "storageBusy": "Le stockage est occupé pour le moment. Réessaie le téléchargement dans un instant."
+}

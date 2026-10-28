@@ -23,8 +23,11 @@ import {
   applyConversionSuccess,
   AI_CREDITS_WARNING_CODE,
   recoveryDownloadUrl,
+  singleDeckName,
   type ConversionSuccessHandlers,
 } from './uploadResponse';
+import { LastDeckOffer } from './LastDeckOffer';
+import { keepLastDeck } from '../../../../lib/upload/lastDeck';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
@@ -2090,6 +2093,14 @@ function UploadForm({
         return await handleUploadFailureResponse(request, uploadedFiles);
       }
       await applyConversionSuccess(request, conversionSuccessHandlers);
+      const deliveredDeckName = singleDeckName(request.headers);
+      if (deliveredDeckName != null) {
+        void keepLastDeck({
+          passToken,
+          recoveryToken,
+          deckName: deliveredDeckName,
+        });
+      }
     } catch (error) {
       if (
         await waitForDroppedDeck(
@@ -4409,6 +4420,9 @@ function UploadForm({
           {passResumeNotice}
         </p>
       )}
+      <LastDeckOffer
+        visible={showSignInPrompt && zoneState === 'idle' && !sample}
+      />
       {resumeOffer?.kind === 'continue' &&
         zoneState === 'idle' &&
         !isUploadLocked && (

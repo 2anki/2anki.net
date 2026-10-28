@@ -1,0 +1,6 @@
+{
+  "line": "Your last deck, <name>{{name}}</name>, can be downloaded again until {{time}}.",
+  "download": "Download",
+  "downloading": "Downloading",
+  "storageBusy": "Storage is busy right now. Try the download again in a moment."
+}

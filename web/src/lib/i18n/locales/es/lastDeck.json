@@ -1,0 +1,6 @@
+{
+  "line": "Tu último mazo, <name>{{name}}</name>, se puede volver a descargar hasta {{time}}.",
+  "download": "Descargar",
+  "downloading": "Descargando",
+  "storageBusy": "El almacenamiento está ocupado ahora mismo. Vuelve a intentar la descarga en un momento."
+}

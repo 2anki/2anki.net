@@ -1,0 +1,6 @@
+{
+  "line": "Dein letztes Deck, <name>{{name}}</name>, kannst du bis {{time}} erneut herunterladen.",
+  "download": "Herunterladen",
+  "downloading": "Wird heruntergeladen",
+  "storageBusy": "Der Speicher ist gerade ausgelastet. Versuch den Download gleich noch einmal."
+}

@@ -1,0 +1,6 @@
+{
+  "line": "Seu último baralho, <name>{{name}}</name>, pode ser baixado de novo até {{time}}.",
+  "download": "Baixar",
+  "downloading": "Baixando",
+  "storageBusy": "O armazenamento está ocupado agora. Tente baixar de novo em um instante."
+}

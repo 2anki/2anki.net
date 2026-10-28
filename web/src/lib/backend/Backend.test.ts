@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobsId } from '@server/data_layer/public/Jobs';
 import * as api from './api';
-import { Backend } from './Backend';
+import { Backend, RecoveryStorageBusyError } from './Backend';
 import { UserNotice } from '../errors/UserNotice';
 import {
   getPendingUploadStore,
   resetPendingUploadStoreForTests,
 } from '../upload/pendingUpload';
+import {
+  getLastDeckStore,
+  resetLastDeckStoreForTests,
+} from '../upload/lastDeck';
 
 // Mock the api module
 vi.mock('./api', () => ({
@@ -604,6 +608,14 @@ describe('Backend', () => {
         backend.getAnonymousRecoveredDeck(token)
       ).resolves.toBeNull();
     });
+
+    it('says storage is busy on a 503, so the caller can offer a retry', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 503 }));
+
+      await expect(
+        backend.getAnonymousRecoveredDeck(token)
+      ).rejects.toBeInstanceOf(RecoveryStorageBusyError);
+    });
   });
 
   describe('getCheckoutReceipt', () => {
@@ -734,5 +746,33 @@ describe('Backend', () => {
 
       expect(await getPendingUploadStore().load()).toBeNull();
     });
+
+    it.each([
+      ['logout', () => backend.logout()],
+      ['logoutEverywhere', () => backend.logoutEverywhere()],
+    ])(
+      'forgets the deck a signed-out pass bought on this device (%s)',
+      async (_label, signOut) => {
+        resetLastDeckStoreForTests();
+        vi.stubGlobal('indexedDB', undefined);
+        vi.stubGlobal('location', { href: '' });
+        vi.stubGlobal('localStorage', {
+          clear: vi.fn(),
+          getItem: vi.fn(() => null),
+        });
+        vi.stubGlobal('sessionStorage', { clear: vi.fn() });
+        vi.mocked(api.post).mockResolvedValue(createMockResponse(200, true));
+        await getLastDeckStore().save({
+          recoveryToken: '0b6f2c1e-3a4d-4e5f-8a9b-1c2d3e4f5a6b',
+          deckName: 'Biology.apkg',
+          savedAt: Date.now(),
+        });
+
+        await signOut();
+
+        expect(await getLastDeckStore().load()).toBeNull();
+        resetLastDeckStoreForTests();
+      }
+    );
   });
 });

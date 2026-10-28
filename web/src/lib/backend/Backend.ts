@@ -1,6 +1,7 @@
 import { getNotionObjectTitle } from 'get-notion-object-title';
 import Cookies from 'universal-cookie';
 import { forgetPendingUpload } from '../upload/pendingUpload';
+import { forgetLastDeck } from '../upload/lastDeck';
 import { NotionResource } from '../interfaces/NotionResource';
 import type JobResponse from '@server/types/JobResponse';
 import type { JobsId } from '@server/data_layer/public/Jobs';
@@ -30,7 +31,13 @@ import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
 import { getStoredPassToken } from '../anonymousPass';
-import { CONFLICT, NOT_FOUND, OK, UNAUTHORIZED } from './http';
+import {
+  CONFLICT,
+  NOT_FOUND,
+  OK,
+  SERVICE_UNAVAILABLE,
+  UNAUTHORIZED,
+} from './http';
 import { landingCampaignParams } from '../adClick';
 import {
   CheckoutConflict,
@@ -41,6 +48,13 @@ import type { ConversionReport } from '../interfaces/ConversionReport';
 export interface EmojiFeedbackReceipt {
   id: number;
   token: string;
+}
+
+export class RecoveryStorageBusyError extends Error {
+  constructor() {
+    super('Recovery storage is busy');
+    this.name = 'RecoveryStorageBusyError';
+  }
 }
 
 export class TrackerSchemaError extends Error {
@@ -142,6 +156,7 @@ export class Backend {
     localStorage.clear();
     sessionStorage.clear();
     await forgetPendingUpload();
+    await forgetLastDeck();
     if (!isOffline) {
       const endpoint = `${this.baseURL}users/logout`;
       await post(endpoint, {});
@@ -157,6 +172,7 @@ export class Backend {
     localStorage.clear();
     sessionStorage.clear();
     await forgetPendingUpload();
+    await forgetLastDeck();
     const cookies = new Cookies();
     cookies.remove('token');
     globalThis.location.href = '/login';
@@ -456,6 +472,9 @@ export class Backend {
       `${this.baseURL}download/recover/${encodeURIComponent(token)}`,
       { credentials: 'include' }
     );
+    if (response.status === SERVICE_UNAVAILABLE) {
+      throw new RecoveryStorageBusyError();
+    }
     const contentType = response.headers?.get('Content-Type') ?? '';
     if (
       response.status !== OK ||

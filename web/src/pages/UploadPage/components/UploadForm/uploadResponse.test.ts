@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyConversionSuccess,
+  singleDeckName,
   type ConversionSuccessHandlers,
 } from './uploadResponse';
 
@@ -588,5 +589,30 @@ describe('applyConversionSuccess', () => {
       expect.stringMatching(/^blob:/)
     );
     expect(handlers.recoverDownload).not.toHaveBeenCalled();
+  });
+});
+
+describe('singleDeckName', () => {
+  it('names the deck a single-deck response carried', () => {
+    const headers = new Headers({
+      'Content-Type': 'application/octet-stream',
+      'File-Name': 'Biology.apkg',
+      'X-Card-Count': '12',
+    });
+    expect(singleDeckName(headers)).toBe('Biology.apkg');
+  });
+
+  it('is null for a JSON answer such as several decks or a held deck', () => {
+    const headers = new Headers({ 'Content-Type': 'application/json' });
+    expect(singleDeckName(headers)).toBeNull();
+  });
+
+  it('is null for an empty deck', () => {
+    const headers = new Headers({
+      'Content-Type': 'application/octet-stream',
+      'File-Name': 'Biology.apkg',
+      'X-Card-Count': '0',
+    });
+    expect(singleDeckName(headers)).toBeNull();
   });
 });
