@@ -63,6 +63,7 @@ async function withServer(
       resourceUrl: new URL(RESOURCE),
       onAuthenticatedPost: onPost,
       consentSecret: 'test-secret',
+      logClientError: () => {},
       ...depsOverride,
     })
   );
@@ -135,6 +136,27 @@ describe('McpRouter bearer enforcement', () => {
       expect(res.status).toBe(401);
       expect(res.headers.get('www-authenticate')).toContain('Bearer');
     });
+  });
+
+  it('logs why it refused a POST /mcp, which the SDK does not', async () => {
+    const lines: string[] = [];
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/mcp`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(401);
+        await res.text();
+      },
+      undefined,
+      undefined,
+      { logClientError: (line) => lines.push(line) }
+    );
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('[mcp] POST /mcp 401 code=invalid_token');
+    expect(lines[0]).toContain('method=ping');
   });
 
   it('reaches the authenticated handler with a valid bearer token', async () => {

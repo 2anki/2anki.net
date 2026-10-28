@@ -18,6 +18,7 @@ import {
 import { hashIp, resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import { mcpFirstTouchMiddleware } from './mcpFirstTouch';
 import { authorizationResponseIssuer } from './authorizationResponseIssuer';
+import { logMcpClientErrors } from './logMcpClientErrors';
 import { MCP_AUTHORIZE_PATH } from '../../lib/mcp/loginReturn';
 
 export { MCP_AUTHORIZE_PATH };
@@ -47,6 +48,7 @@ export interface McpRouterDeps {
   resourceUrl: URL;
   onAuthenticatedPost: RequestHandler;
   consentSecret: string;
+  logClientError?: (line: string) => void;
   rateLimiters?: Partial<McpRateLimiters>;
 }
 
@@ -175,6 +177,7 @@ export function createMcpRouter(deps: McpRouterDeps): express.Router {
     res.redirect(308, `/mcp${search}`);
   });
 
+  router.all('/mcp', logMcpClientErrors(deps.logClientError));
   router.post('/mcp', bearer, deps.onAuthenticatedPost);
   router.get('/mcp', bearer, (_req, res) => {
     res.set('Allow', 'POST');
