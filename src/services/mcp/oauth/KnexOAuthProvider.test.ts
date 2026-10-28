@@ -1327,9 +1327,13 @@ describe('resource indicators through the SDK handlers', () => {
     .digest('base64url');
 
   async function withServer(
-    run: (base: string, codeRepo: FakeCodeRepo) => Promise<void>
+    run: (
+      base: string,
+      codeRepo: FakeCodeRepo,
+      tokenRepo: FakeTokenRepo
+    ) => Promise<void>
   ) {
-    const { provider, clientRepo, codeRepo } = makeProvider();
+    const { provider, clientRepo, codeRepo, tokenRepo } = makeProvider();
     await clientRepo.create({
       client_id: 'client-1',
       client_name: 'Claude',
@@ -1349,10 +1353,36 @@ describe('resource indicators through the SDK handlers', () => {
     await new Promise<void>((resolve) => server.listen(0, resolve));
     const { port } = server.address() as AddressInfo;
     try {
-      await run(`http://127.0.0.1:${port}`, codeRepo);
+      await run(`http://127.0.0.1:${port}`, codeRepo, tokenRepo);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+  }
+
+  function tokenRequest(base: string, params: Record<string, string>) {
+    return fetch(`${base}/token`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: 'client-1',
+        ...params,
+      }).toString(),
+    });
+  }
+
+  function seedRefreshToken(
+    tokenRepo: FakeTokenRepo,
+    token: string,
+    resource: string
+  ) {
+    return tokenRepo.createRefreshToken({
+      token_hash: hashSecret(token),
+      client_id: 'client-1',
+      user_id: 42,
+      scopes: ['mcp'],
+      resource,
+      expires_at: new Date('2026-08-18T00:00:00.000Z'),
+    });
   }
 
   function authorizeQuery(resource: string): URLSearchParams {
@@ -1407,7 +1437,42 @@ describe('resource indicators through the SDK handlers', () => {
     });
   });
 
-  it.each([RESOURCE, `${RESOURCE}/`])(
+  it('sends a signed-out user with a foreign resource back to the client, not to sign in', async () => {
+    await withServer(async (base, codeRepo) => {
+      const res = await fetch(
+        `${base}/authorize?${authorizeQuery('https://evil.example/mcp').toString()}`,
+        { redirect: 'manual' }
+      );
+      expect(res.status).toBe(302);
+      const location = new URL(res.headers.get('location') ?? '');
+      expect(location.origin + location.pathname).toBe(
+        'https://claude.ai/callback'
+      );
+      expect(location.searchParams.get('error')).toBe('invalid_target');
+      expect(res.headers.get('set-cookie') ?? '').not.toContain('mcp_');
+      expect(codeRepo.rows).toHaveLength(0);
+    });
+  });
+
+  it('still sends a signed-out user naming this server to sign in', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(
+        `${base}/authorize?${authorizeQuery(RESOURCE).toString()}`,
+        { redirect: 'manual' }
+      );
+      expect(res.status).toBe(302);
+      expect(new URL(res.headers.get('location') ?? '', base).pathname).toBe(
+        '/login'
+      );
+    });
+  });
+
+  it.each([
+    RESOURCE,
+    `${RESOURCE}/`,
+    'HTTPS://2ANKI.NET/mcp',
+    `${RESOURCE}#fragment`,
+  ])(
     'still shows consent for this server as the resource (%s)',
     async (resource) => {
       await withServer(async (base) => {
@@ -1477,6 +1542,47 @@ describe('resource indicators through the SDK handlers', () => {
       expect(await res.json()).toMatchObject({ error: 'invalid_target' });
     });
   });
+
+  it('answers a refresh naming a foreign resource with 400 invalid_target', async () => {
+    await withServer(async (base, _codeRepo, tokenRepo) => {
+      await seedRefreshToken(tokenRepo, 'own-refresh', RESOURCE);
+      const res = await tokenRequest(base, {
+        grant_type: 'refresh_token',
+        refresh_token: 'own-refresh',
+        resource: 'https://evil.example/mcp',
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: 'invalid_target' });
+    });
+  });
+
+  it('answers a refresh token stored for a foreign resource with 400 invalid_target', async () => {
+    await withServer(async (base, _codeRepo, tokenRepo) => {
+      await seedRefreshToken(
+        tokenRepo,
+        'foreign-refresh',
+        'https://evil.example/mcp'
+      );
+      const res = await tokenRequest(base, {
+        grant_type: 'refresh_token',
+        refresh_token: 'foreign-refresh',
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: 'invalid_target' });
+    });
+  });
+
+  it('still refreshes a token for this server', async () => {
+    await withServer(async (base, _codeRepo, tokenRepo) => {
+      await seedRefreshToken(tokenRepo, 'own-refresh', RESOURCE);
+      const res = await tokenRequest(base, {
+        grant_type: 'refresh_token',
+        refresh_token: 'own-refresh',
+        resource: RESOURCE,
+      });
+      expect(res.status).toBe(200);
+    });
+  });
 });
 
 describe('token exchange failure logging', () => {
@@ -1515,6 +1621,55 @@ describe('token exchange failure logging', () => {
       errorClass: 'TypeError',
     });
     expect(JSON.stringify(log.mock.calls)).not.toContain('secret-code');
+  });
+
+  it('logs an unexpected failure on the refresh grant', async () => {
+    const { provider, tokenRepo } = makeProvider();
+    vi.spyOn(tokenRepo, 'findRefreshTokenByHash').mockRejectedValue(
+      new TypeError('connection lost')
+    );
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(
+      provider.exchangeRefreshToken(CLIENT, 'secret-refresh')
+    ).rejects.toThrow(TypeError);
+    expect(log).toHaveBeenCalledWith('[mcp-oauth] token exchange failed', {
+      grantType: 'refresh_token',
+      errorClass: 'TypeError',
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain('secret-refresh');
+  });
+
+  it('logs an unexpected failure while reading the code challenge', async () => {
+    const { provider, codeRepo } = makeProvider();
+    vi.spyOn(codeRepo, 'findByHash').mockRejectedValue(
+      new TypeError('connection lost')
+    );
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(
+      provider.challengeForAuthorizationCode(CLIENT, 'secret-code')
+    ).rejects.toThrow(TypeError);
+    expect(log).toHaveBeenCalledWith('[mcp-oauth] token exchange failed', {
+      grantType: 'authorization_code',
+      errorClass: 'TypeError',
+    });
+  });
+
+  it('does not log an expected rejection of a used code', async () => {
+    const { provider, codeRepo } = makeProvider();
+    codeRepo.seed(hashSecret('used-code'), {
+      ...SEED,
+      consumed_at: new Date('2026-07-17T00:00:00.000Z'),
+    });
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(
+      provider.exchangeAuthorizationCode(
+        CLIENT,
+        'used-code',
+        undefined,
+        'https://claude.ai/callback'
+      )
+    ).rejects.toThrow(InvalidGrantError);
+    expect(log).not.toHaveBeenCalled();
   });
 
   it('does not log an expected OAuth rejection', async () => {

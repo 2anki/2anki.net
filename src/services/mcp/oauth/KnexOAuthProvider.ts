@@ -378,6 +378,15 @@ export class KnexOAuthProvider implements OAuthServerProvider {
     client: OAuthClientInformationFull,
     authorizationCode: string
   ): Promise<string> {
+    return logUnexpectedTokenFailure('authorization_code', () =>
+      this.storedCodeChallenge(client, authorizationCode)
+    );
+  }
+
+  private async storedCodeChallenge(
+    client: OAuthClientInformationFull,
+    authorizationCode: string
+  ): Promise<string> {
     const stored = await this.deps.codeRepo.findByHash(
       hashSecret(authorizationCode)
     );
