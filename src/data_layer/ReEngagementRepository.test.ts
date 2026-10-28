@@ -251,7 +251,7 @@ describe('ReEngagementRepository.findByToken — abandoned checkout path', () =>
   it('resolves a pass-ending token to its userId', async () => {
     await database('pass_winback_notifications').insert({
       user_id: 61,
-      campaign: 'pass-ending-7',
+      campaign: 'pass_ending:7',
       token: 'pass-ending-tok',
     });
 

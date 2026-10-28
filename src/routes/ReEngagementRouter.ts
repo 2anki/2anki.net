@@ -3,7 +3,6 @@ import express from 'express';
 import { ReEngagementController } from '../controllers/ReEngagementController';
 import ReEngagementRepository from '../data_layer/ReEngagementRepository';
 import EmailPreferencesRepository from '../data_layer/EmailPreferencesRepository';
-import { InactivityEmailRepository } from '../data_layer/InactivityEmailRepository';
 import { getDatabase } from '../data_layer';
 
 const ReEngagementRouter = () => {
@@ -11,9 +10,7 @@ const ReEngagementRouter = () => {
   const database = getDatabase();
   const repo = new ReEngagementRepository(database);
   const prefRepo = new EmailPreferencesRepository(database);
-  const controller = new ReEngagementController(repo, prefRepo, [
-    new InactivityEmailRepository(database),
-  ]);
+  const controller = new ReEngagementController(repo, prefRepo);
 
   /**
    * @swagger
