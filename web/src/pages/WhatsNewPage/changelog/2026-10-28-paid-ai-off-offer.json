@@ -2,5 +2,5 @@
   "id": "2026-10-28-paid-ai-off-offer",
   "date": "2026-10-28",
   "type": "fix",
-  "title": "The upload page offers a Claude rebuild of PDF and PowerPoint decks made without AI, and shows AI credits with AI off"
+  "title": "On paid plans, the upload page offers a Claude rebuild of PDF and PowerPoint decks made without AI, and shows AI credits"
 }

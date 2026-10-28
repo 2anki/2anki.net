@@ -531,7 +531,10 @@ function UploadForm({
   const [keptFiles, setKeptFiles] = useState<KeptFiles>(NO_KEPT_FILES);
   const rescueFiles = keptFiles.files;
   const rescueFilesOwner = keptFiles.owner;
-  const forgetKeptFiles = () => setKeptFiles(NO_KEPT_FILES);
+  const forgetKeptFiles = () => {
+    setKeptFiles(NO_KEPT_FILES);
+    setSenderUnknown(false);
+  };
   // Moves on whenever the screen starts over, a file is dropped or a new file
   // goes out, so a resend whose account check outlives the screen it was
   // tapped on is dropped.
@@ -545,8 +548,8 @@ function UploadForm({
     setClaudeResendHeld(false);
     setSenderUnknown(false);
   };
-  // The resend button whose account check is running: it reads "Checking your
-  // account" while every resend button waits.
+  // The resend button whose account check is running: it reads "Checking
+  // who's signed in" while every resend button waits.
   const [resendTapped, setResendTapped] = useState<string | null>(null);
   const resendPending = resendTapped != null;
   const lastFormDataRef = useRef<FormData | null>(null);
@@ -1470,12 +1473,15 @@ function UploadForm({
     );
     return () => clearTimeout(timer);
   }, [waitingForCredits, downloadLink]);
-  const thinNoticeReason = thinDeckNoticeReason(isPaying, isAuthenticated, {
-    credits: creditsRead.credits,
-    settled:
-      creditsRead.settled ||
-      (downloadLink != null && creditsWaitEndedFor === downloadLink),
-  });
+  // Once the wait gave this deck the usual advice, a late answer does not
+  // rewrite the notice under the person reading it.
+  const creditsWaitEnded =
+    downloadLink != null && creditsWaitEndedFor === downloadLink;
+  const thinNoticeReason = thinDeckNoticeReason(
+    isPaying,
+    isAuthenticated,
+    creditsWaitEnded ? { credits: null, settled: true } : creditsRead
+  );
   useEffect(() => {
     if (aiRebuildOffer != null) {
       track('upload_ai_rebuild_shown', { format: aiRebuildOffer });
@@ -2180,9 +2186,14 @@ function UploadForm({
         return;
       }
       // A file left by someone else on this browser is never offered: on a
-      // shared computer it would land in the next person's account. One whose
-      // sender was never known is offered, and held when picked up.
-      if (upload.ownerUnknown !== true && upload.ownerId !== currentOwnerId) {
+      // shared computer it would land in the next person's account, and its
+      // name alone says too much. One whose sender was never known is offered
+      // only to a signed-out page, and held when picked up.
+      const leftBySomeoneElse =
+        upload.ownerUnknown === true
+          ? currentOwnerId != null
+          : upload.ownerId !== currentOwnerId;
+      if (leftBySomeoneElse) {
         clearPendingUpload();
         return;
       }
@@ -2721,8 +2732,6 @@ function UploadForm({
     );
 
   // The drop zone the picker opens from is disabled until the reset renders,
-  // and a picker opened later than the tap is blocked by the browser.
-  // The drop zone the picker opens from is disabled until the reset renders,
   // and a picker opened later than the tap is blocked by the browser. The
   // button sits inside the drop zone's label, which must not open it again.
   const chooseFileAgain = (event: SyntheticEvent) => {
@@ -2745,7 +2754,7 @@ function UploadForm({
   };
 
   const renderChooseFileAgain = (key: string, signInLink: boolean) => (
-    <div className={formStyles.aiRescueActions} role="status">
+    <div className={formStyles.aiRescueActions}>
       <p className={formStyles.rescueLead}>{t(key)}</p>
       <button
         type="button"

@@ -5706,27 +5706,98 @@ describe('UploadForm thin-deck notice', () => {
     );
   }
 
+  const TURN_ON_COPY =
+    'Only 2 cards came from this file. Turn on Claude cards above and convert again to get more.';
+
+  // Fake time moves only when a test moves it, in small steps, so a slow
+  // machine cannot run the two-second wait out early.
+  async function stepUntil(found: () => boolean) {
+    for (let step = 0; step < 300 && !found(); step += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10);
+      });
+    }
+  }
+
+  async function showThinPdfDeckUnderFakeTime() {
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container, 'notes.pdf');
+    await stepUntil(
+      () => screen.queryByRole('button', { name: 'Make another deck' }) != null
+    );
+    expect(
+      screen.getByRole('button', { name: 'Make another deck' })
+    ).toBeInTheDocument();
+  }
+
   it('shows the turn-on copy for a paying user whose credits read has not answered within two seconds', async () => {
     setUserLocals(payingData);
     stubCreditsAnswer(() => new Promise<Response>(() => {}));
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers();
     try {
-      const { container } = renderUploadForm(
-        <UploadForm setErrorMessage={vi.fn()} />
-      );
-      await uploadFile(container, 'notes.pdf');
-      await screen.findByRole('button', { name: 'Make another deck' });
+      await showThinPdfDeckUnderFakeTime();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1900);
+      });
       expect(screen.queryByText(/came from this file/)).toBeNull();
 
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(2000);
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      expect(screen.getByText(TURN_ON_COPY)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the turn-on copy, shown once, when a credits read that outlasted the wait answers with no credits left', async () => {
+    setUserLocals(payingData);
+    let answerCredits: (response: Response) => void = () => undefined;
+    stubCreditsAnswer(
+      () =>
+        new Promise<Response>((resolve) => {
+          answerCredits = resolve;
+        })
+    );
+    vi.useFakeTimers();
+    try {
+      await showThinPdfDeckUnderFakeTime();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2100);
+      });
+      expect(screen.getByText(TURN_ON_COPY)).toBeInTheDocument();
+
+      await act(async () => {
+        answerCredits(
+          new Response(
+            JSON.stringify({
+              credits: 0,
+              used: 300,
+              allowance: 300,
+              usable: true,
+              windowEnd: null,
+              resets: 'period',
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
+        await vi.advanceTimersByTimeAsync(200);
       });
 
+      expect(screen.getByText(TURN_ON_COPY)).toBeInTheDocument();
       expect(
-        await screen.findByText(
-          'Only 2 cards came from this file. Turn on Claude cards above and convert again to get more.'
-        )
-      ).toBeInTheDocument();
+        vi
+          .mocked(track)
+          .mock.calls.filter(([name]) => name === 'thin_deck_notice_shown')
+      ).toEqual([
+        [
+          'thin_deck_notice_shown',
+          { reason: 'fewCards', cards: 2, skipped: 0, surface: 'upload' },
+        ],
+      ]);
     } finally {
       vi.useRealTimers();
     }
@@ -8868,7 +8939,18 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(callsTo(fetchMock, '/api/upload/retry-with-credential')).toEqual([]);
   });
 
-  it('holds a file left mid-upload while the page had no account data, when it is picked up from the Continue banner', async () => {
+  it('clears a save whose sender was never known, with no Continue banner, for a signed-in account', async () => {
+    await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
+    stubServer([deckResponse(64)]);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} aiOn={false} />);
+
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+  });
+
+  it('holds a file left mid-upload while the page had no account data, when a signed-out page picks it up from the Continue banner', async () => {
     accountReadFailed(passHolder);
     const fetchMock = stubServer([new Promise<never>(() => {})]);
     const first = renderUploadForm(
@@ -8880,7 +8962,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     );
     first.unmount();
 
-    setUserLocals(passHolder);
+    setUserLocals(signedOut);
     renderUploadForm(<UploadForm setErrorMessage={vi.fn()} aiOn={false} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
 
