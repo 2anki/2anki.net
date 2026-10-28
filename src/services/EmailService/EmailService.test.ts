@@ -609,9 +609,8 @@ describe('EmailService tags every outgoing send with a template category', () =>
   it('sends an ops alert with the same fields the AI spend alert used', async () => {
     const service = getDefaultEmailService();
     const lastMessage = () => {
-      const { categories: _categories, ...fields } = send.mock.calls.at(
-        -1
-      )?.[0] as Record<string, unknown>;
+      const calls = send.mock.calls;
+      const { categories: _categories, ...fields } = calls[calls.length - 1][0];
       return fields;
     };
 
