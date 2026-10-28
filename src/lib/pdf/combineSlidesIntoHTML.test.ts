@@ -33,6 +33,25 @@ function cards(html: string): { front: string; back: string }[] {
   return found;
 }
 
+const LECTURE_WITH_A_NOTES_SLIDE = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pdf</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul><hr /><p>Label the four phases</p></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
 describe('combineSlidesIntoHTML', () => {
   it('makes one card per slide: title on the front, bullets, image and notes on the back', () => {
     const html = combineSlidesIntoHTML(
@@ -247,7 +266,7 @@ describe('combineSlidesIntoHTML', () => {
     expect(card.back).toBe('<ul><li>Cell Biology</li><li>5</li></ul>');
   });
 
-  it('never fronts a card with a slide number: with no slide image, a slide with only chrome is skipped when another slide makes a card', () => {
+  it('skips a slide with only chrome and no speaker notes when there is no slide image and another slide makes a card', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const html = combineSlidesIntoHTML(
@@ -338,6 +357,52 @@ describe('combineSlidesIntoHTML', () => {
     } finally {
       warn.mockRestore();
     }
+  });
+
+  describe('when there is no slide image and another slide makes a card', () => {
+    const lectureWithANotesSlide = [
+      slide({
+        id: 'slide-1',
+        role: 'title',
+        title: 'Mitosis',
+        paragraphs: ['Prophase'],
+        chromeParagraphs: ['Cell Biology', '1'],
+        textWithChrome: ['Mitosis', 'Prophase', 'Cell Biology', '1'],
+      }),
+      slide({
+        id: 'slide-2',
+        speakerNotes: 'Label the four phases',
+        chromeParagraphs: ['Cell Biology', '2'],
+        textWithChrome: ['Cell Biology', '2'],
+      }),
+    ];
+
+    it('keeps a slide with only chrome and speaker notes as the card it made before chrome detection, beside the titled slide card without chrome', () => {
+      const html = combineSlidesIntoHTML(
+        lectureWithANotesSlide,
+        [],
+        'lecture.pdf',
+        WORKSPACE
+      );
+
+      expect(html).toBe(LECTURE_WITH_A_NOTES_SLIDE);
+    });
+
+    it('does not warn about a slide whose speaker notes make its card', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        combineSlidesIntoHTML(
+          lectureWithANotesSlide,
+          [],
+          'lecture.pdf',
+          WORKSPACE
+        );
+
+        expect(warn).not.toHaveBeenCalled();
+      } finally {
+        warn.mockRestore();
+      }
+    });
   });
 
   describe('when no slide makes a card and there is no slide image', () => {

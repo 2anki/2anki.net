@@ -542,6 +542,24 @@ describe('extractPptxSourceUnits — slide chrome', () => {
     expect(unit.chromeParagraphs).toEqual(['4']);
   });
 
+  it('leaves a slide-number field line in the title placeholder out of the title', () => {
+    const xml = slideOfShapesXml([
+      `<p:sp>
+        <p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:txBody>
+          <a:p><a:r><a:t>Mitosis</a:t></a:r></a:p>
+          ${fieldParagraphXml('slidenum', '4')}
+        </p:txBody>
+      </p:sp>`,
+      shapeXml('<p:ph idx="1"/>', ['Prophase']),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('Mitosis');
+    expect(unit.chromeParagraphs).toEqual(['4']);
+  });
+
   it('keeps a line that mixes typed words with a slide-number field as slide text', () => {
     const xml = slideOfShapesXml([
       `<p:sp>
@@ -708,5 +726,56 @@ describe('extractPptxSourceUnits — a deck with no slide images that makes no c
     } finally {
       warn.mockRestore();
     }
+  });
+});
+
+const LECTURE_WITH_A_NOTES_SLIDE = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pptx</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul><hr /><p>Label the four phases</p></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+describe('extractPptxSourceUnits — a deck with no slide images where another slide makes a card', () => {
+  it('keeps the speaker notes of a slide whose only text is chrome, on the card that slide made before chrome detection', () => {
+    const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
+      'Cell Biology',
+    ]);
+    const slideNumber = (n: string) =>
+      slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', n);
+    const lecture = buildPptx([
+      {
+        xml: slideOfShapesXml([
+          shapeXml('<p:ph type="title"/>', ['Mitosis']),
+          shapeXml('<p:ph idx="1"/>', ['Prophase']),
+          footer,
+          slideNumber('1'),
+        ]),
+      },
+      {
+        xml: slideOfShapesXml([footer, slideNumber('2')]),
+        notesXml: notesXml('Label the four phases'),
+      },
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(lecture),
+      [],
+      'lecture.pptx'
+    );
+
+    expect(html).toBe(LECTURE_WITH_A_NOTES_SLIDE);
   });
 });

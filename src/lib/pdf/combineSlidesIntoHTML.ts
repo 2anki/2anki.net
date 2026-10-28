@@ -77,8 +77,8 @@ function slideCard(slide: SlideUnit, image: string): string | null {
   return toggleCard(front, back);
 }
 
-// The card the slide made before chrome was set apart. Only used when no
-// slide made a card, which means no slide has a rendered image either.
+// The card the slide made before chrome was set apart. Only used for a slide
+// that made no card, which means it has no rendered image either.
 function slideCardWithChrome(slide: SlideUnit): string | null {
   const [front, ...remaining] = slide.textWithChrome;
   if (front == null) return null;
@@ -87,6 +87,14 @@ function slideCardWithChrome(slide: SlideUnit): string | null {
     front,
     `${bulletList(remaining)}${speakerNotesBlock(slide.speakerNotes)}`
   );
+}
+
+// Skipping a slide whose only text is chrome would also drop its speaker
+// notes, so a slide with notes keeps the card it made before chrome was set
+// apart. Without notes it is skipped.
+function notesSlideCardWithChrome(slide: SlideUnit): string | null {
+  if (speakerNotesBlock(slide.speakerNotes) === '') return null;
+  return slideCardWithChrome(slide);
 }
 
 // One card per slide, in display order, with the rendered slide image on the
@@ -107,11 +115,11 @@ export function combineSlidesIntoHTML(
         : `<img src="${toSrc(imagePath, workspaceLocation)}" />`;
     return slideCard(slide, image);
   });
-  // No slide made a card, so there are no slide images and every slide's text
-  // is chrome or speaker notes. Such a deck converts exactly as it did before
-  // chrome was set apart, rather than failing where it used to convert.
+  // When no slide made a card, there are no slide images and every slide's
+  // text is chrome or speaker notes. Such a deck converts exactly as it did
+  // before chrome was set apart, rather than failing where it used to convert.
   const deckCards = slideCards.some((card) => card !== null)
-    ? slideCards
+    ? slideCards.map((card, i) => card ?? notesSlideCardWithChrome(slides[i]))
     : slides.map((slide) => slideCardWithChrome(slide));
   slides.forEach((slide, i) => {
     if (deckCards[i] === null) {
