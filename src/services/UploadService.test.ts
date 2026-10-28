@@ -114,6 +114,7 @@ import { ANONYMOUS_AI_PREVIEW_FLAG } from '../lib/upload/anonymousAiPreview';
 import {
   AiCreditsTrippedWithSalvage,
   DeckInfo,
+  EMPTY_CONTENT_UPLOAD_MESSAGE,
 } from '../lib/claude/ClaudeService';
 import { track } from './events/track';
 
@@ -4376,7 +4377,7 @@ describe('UploadService.handleUpload — a PDF from a pass holder without an acc
     mockWorkspaceId = 'test-ws-id';
   });
 
-  function passHolderPdfUpload(execute: Mock) {
+  function passHolderPdfUpload(execute: Mock, body: Record<string, string>) {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return { execute } as unknown as InstanceType<
         typeof GeneratePackagesUseCase
@@ -4399,7 +4400,7 @@ describe('UploadService.handleUpload — a PDF from a pass holder without an acc
           buffer: Buffer.from('%PDF-1.4 slides'),
         },
       ],
-      body: { 'claude-ai-flashcards': 'true', 'pdf-fallback': 'ask' },
+      body,
       headers: { 'x-pass-token': 'cs_pass' },
       cookies: { anon_id: 'visitor-with-pass' },
     } as unknown as Partial<express.Request>);
@@ -4417,7 +4418,10 @@ describe('UploadService.handleUpload — a PDF from a pass holder without an acc
         )
       );
     const { service, req, res, create, capturedStatus, capturedJson } =
-      passHolderPdfUpload(execute);
+      passHolderPdfUpload(execute, {
+        'claude-ai-flashcards': 'true',
+        'pdf-fallback': 'ask',
+      });
 
     await service.handleUpload(req, res);
 
@@ -4440,17 +4444,30 @@ describe('UploadService.handleUpload — a PDF from a pass holder without an acc
   });
 
   it.each([
-    { deck: 'a deck Claude wrote', pdfFallbackMode: undefined },
-    { deck: 'a page-image deck', pdfFallbackMode: 'pairs' },
+    {
+      deck: 'a deck Claude wrote, AI on',
+      ai: 'true',
+      pdfFallbackMode: undefined,
+    },
+    {
+      deck: 'a page-image deck, AI off',
+      ai: 'false',
+      pdfFallbackMode: 'pairs',
+    },
   ])(
     'sends X-Pdf-Fallback only with a page-image mode: $deck',
-    async ({ pdfFallbackMode }) => {
+    async ({ ai, pdfFallbackMode }) => {
       const execute = vi.fn().mockResolvedValue({
         packages: [{ name: 'slides', cardCount: 7, pdfFallbackMode }],
         warnings: [],
       });
-      const { service, req, res, create, capturedStatus } =
-        passHolderPdfUpload(execute);
+      const { service, req, res, create, capturedStatus } = passHolderPdfUpload(
+        execute,
+        {
+          'claude-ai-flashcards': ai,
+          'pdf-fallback': 'pairs',
+        }
+      );
 
       await service.handleUpload(req, res);
 
@@ -4462,6 +4479,27 @@ describe('UploadService.handleUpload — a PDF from a pass holder without an acc
       expect(sent?.[1]).toBe(pdfFallbackMode);
     }
   );
+
+  it('answers 400 empty_content when Claude makes no cards from the page images', async () => {
+    const execute = vi.fn().mockRejectedValue(
+      Object.assign(new Error(EMPTY_CONTENT_UPLOAD_MESSAGE), {
+        name: 'EmptyContentError',
+      })
+    );
+    const { service, req, res, capturedStatus, capturedJson } =
+      passHolderPdfUpload(execute, {
+        'claude-ai-flashcards': 'true',
+        'pdf-fallback': 'pairs',
+      });
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'empty_content',
+      message: EMPTY_CONTENT_UPLOAD_MESSAGE,
+    });
+  });
 });
 
 describe('UploadService.restartClaudeJob — card-limit enforcement', () => {

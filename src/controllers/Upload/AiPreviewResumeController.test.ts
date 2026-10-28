@@ -63,6 +63,7 @@ describe('AiPreviewResumeController', () => {
       apkg: Buffer.from('APKG BYTES'),
       cardCount: 58,
       deckName: 'notes',
+      pdfFallbackMode: 'pairs',
     });
     const controller = new AiPreviewResumeController(useCaseStub(execute));
     const res = mockRes(88);
