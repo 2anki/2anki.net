@@ -260,7 +260,7 @@ export function normalizeTag(raw: string): string {
 
 // A stray `%` in a filename (`100%.png`) makes decodeURIComponent throw; the
 // raw value is the right fallback for a name that was never percent-encoded.
-function safeDecodeURIComponent(value: string): string {
+export function safeDecodeURIComponent(value: string): string {
   try {
     return decodeURIComponent(value);
   } catch {

@@ -131,7 +131,13 @@ describe('generateDeckInfoFromPdfImages', () => {
     }
   );
 
-  it.each(['Lecture%203.pdf', 'Lecture %22final%22.pdf', '50% done.pdf'])(
+  it.each([
+    'Lecture%203.pdf',
+    'Lecture %22final%22.pdf',
+    '50% done.pdf',
+    'Cell\\Biology.pdf',
+    '..\\..\\escape.pdf',
+  ])(
     'puts the page image on the back of each card for an upload named %s',
     async (name) => {
       mockCreateFn.mockResolvedValue(
@@ -154,6 +160,27 @@ describe('generateDeckInfoFromPdfImages', () => {
       expect(card.back).toContain(`src="${card.media?.[0].name}"`);
     }
   );
+
+  it('reads a page whose link was written before links were encoded, as a restarted job does', async () => {
+    mockCreateFn.mockResolvedValue(
+      visionResponse(
+        JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+      )
+    );
+    fs.writeFileSync(
+      path.join(baseDir, 'pdf-abc', '50% done.pdf-page1-1.png'),
+      Buffer.from('page 1')
+    );
+    const unencoded = `<html><body><details><summary><img src="pdf-abc/50% done.pdf-page1-1.png"/></summary></details></body></html>`;
+
+    const decks = await generateDeckInfoFromPdfImages(unencoded, {
+      mediaBaseDir: baseDir,
+    });
+
+    expect(decks.flatMap((deck) => deck.cards)[0].media).toEqual([
+      expect.objectContaining({ path: 'pdf-abc/50% done.pdf-page1-1.png' }),
+    ]);
+  });
 
   it('attributes every vision usage event to the converting user', async () => {
     mockCreateFn.mockResolvedValue(

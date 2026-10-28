@@ -20,6 +20,7 @@ import {
   getAnthropicClient,
   mergeDeckInfoArrays,
   parseDeckResponse,
+  safeDecodeURIComponent,
 } from './ClaudeService';
 
 type CompactDeck = ReturnType<typeof parseDeckResponse>[number];
@@ -85,7 +86,9 @@ function resolvePageImages(
     const rawSrc = $(el).attr('src') ?? '';
     if (!rawSrc || isRemoteOrInlineSrc(rawSrc)) return;
 
-    const decoded = decodeURIComponent(rawSrc);
+    // A job restarted from HTML written before page links were encoded can
+    // hold a bare % (50% done.pdf); that link is the path as written.
+    const decoded = safeDecodeURIComponent(rawSrc);
     const resolved = path.resolve(baseDir, decoded);
     if (resolved !== baseDir && !resolved.startsWith(baseDir + path.sep)) {
       return;
@@ -102,7 +105,10 @@ function resolvePageImages(
     } catch {
       return;
     }
-    const relPath = path.relative(baseDir, resolved).replaceAll('\\', '/');
+    // Split on the platform's own separator: on Linux a backslash is part of a
+    // file name (Cell\Biology.pdf), and turning it into / would point at a
+    // folder that does not exist, or one outside the workspace.
+    const relPath = path.relative(baseDir, resolved).split(path.sep).join('/');
     images.push({ data: bytes.toString('base64'), mediaType, relPath });
   });
 
