@@ -87,6 +87,8 @@ const ESCAPED_NAMES = [
   { label: 'a backslash', name: 'Cell\\Biology.pptx' },
   { label: 'two dots before a backslash', name: 'Week 4..\\Cells.pptx' },
   { label: 'an entity-like name', name: 'Cells &amp; Tissues.pptx' },
+  { label: 'a hash and a question mark', name: 'Week #3 why?.pptx' },
+  { label: 'non-Latin letters', name: 'Übung 3 細胞.pptx' },
 ];
 
 function pageMedia(page: number): string {

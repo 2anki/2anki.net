@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import fs from 'node:fs';
+import path from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 
 const SLIDE_PNG = vi.hoisted(() =>
@@ -42,6 +43,11 @@ import Workspace from '../../../lib/parser/WorkSpace';
 import getUniqueFileName from '../../../lib/misc/getUniqueFileName';
 import { mcpOptionsToCardSettings } from '../../../services/mcp/mcpOptionsToCardSettings';
 import { getPageCount } from '../../../lib/pdf/getPageCount';
+import { detectOverSplit } from '../../../lib/parser/detectOverSplit';
+
+// CI sets SKIP_CREATE_DECK, so the Python build step only runs where its
+// venv is (the local full suite, via ANKI_PYTHON).
+const BUILDS_WITH_PYTHON = process.env.SKIP_CREATE_DECK == null;
 
 const NAMESPACES =
   'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
@@ -142,6 +148,50 @@ const runOnLecture = Buffer.from(
   })
 );
 
+const japaneseLecture = Buffer.from(
+  zipSync({
+    'ppt/slides/slide1.xml': slide([
+      textShape('<p:ph type="title"/>', '細胞の構造'),
+      footer,
+      slideNumber('1'),
+    ]),
+    'ppt/slides/slide2.xml': slide([
+      textShape('<p:ph type="title"/>', 'ミトコンドリアの役割'),
+      footer,
+      slideNumber('2'),
+    ]),
+    'ppt/slides/slide3.xml': slide([picture, footer, slideNumber('3')]),
+    'ppt/slides/slide4.xml': slide([picture, footer, slideNumber('4')]),
+    'ppt/slides/slide5.xml': slide([picture, footer, slideNumber('5')]),
+  })
+);
+
+function lectureWithFooter(footerText: string): Buffer {
+  const footerShape = textShape(
+    '<p:ph type="ftr" sz="quarter" idx="11"/>',
+    footerText
+  );
+  return Buffer.from(
+    zipSync({
+      'ppt/slides/slide1.xml': slide([
+        textShape('<p:ph type="title"/>', 'Mitosis'),
+        textShape('<p:ph idx="1"/>', 'Prophase'),
+        footerShape,
+        slideNumber('1'),
+      ]),
+      'ppt/slides/slide2.xml': slide([picture, footerShape, slideNumber('2')]),
+    })
+  );
+}
+
+function lectureOf(count: number, shapes: (n: number) => string[]): Buffer {
+  const files: Record<string, Uint8Array> = {};
+  for (let n = 1; n <= count; n += 1) {
+    files[`ppt/slides/slide${n}.xml`] = slide(shapes(n));
+  }
+  return Buffer.from(zipSync(files));
+}
+
 function pageMedia(page: number): string {
   return `${getUniqueFileName(pageImage(page))}.png`;
 }
@@ -175,35 +225,41 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
       fs.rmSync(workspace.location, { recursive: true, force: true });
       workspace = null;
     }
+    vi.mocked(getPageCount).mockResolvedValue(2);
   });
 
-  async function convertWith(settings: CardOption, deck: Buffer) {
+  async function prepareWith(settings: CardOption, deck: Buffer) {
     workspace = new Workspace(true, 'fs');
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
     try {
-      const result = await PrepareDeck({
+      return await PrepareDeck({
         name: 'lecture.pptx',
         files: [{ name: 'lecture.pptx', contents: deck }],
         settings,
         noLimits: true,
         workspace,
       });
-      return result?.deck.flatMap((deck) => deck.cards) ?? [];
     } finally {
       log.mockRestore();
       debug.mockRestore();
     }
   }
 
+  async function convertWith(settings: CardOption, deck: Buffer) {
+    const result = await prepareWith(settings, deck);
+    return result?.deck.flatMap((deck) => deck.cards) ?? [];
+  }
+
+  function withDefaults(options: Record<string, string>): CardOption {
+    return new CardOption({ ...CardOption.LoadDefaultOptions(), ...options });
+  }
+
   function convert(
     options: Record<string, string>,
     deck: Buffer = figureLecture
   ) {
-    return convertWith(
-      new CardOption({ ...CardOption.LoadDefaultOptions(), ...options }),
-      deck
-    );
+    return convertWith(withDefaults(options), deck);
   }
 
   it.each(['show-all', 'windowed'])(
@@ -323,6 +379,24 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
       ]);
     });
 
+    it('types the speaker note of a picture slide, never a slide number or footer, with "Preserve newlines" on', async () => {
+      const cards = await convert(
+        {
+          ...mcpOptionsToCardSettings({ noteType: 'input' }),
+          'perserve-newlines': 'true',
+        },
+        typingLecture
+      );
+
+      expect(cards[1].back.startsWith('<br />')).toBe(true);
+      expect(typing(cards)).toEqual([
+        { typed: false, answer: '' },
+        { typed: false, answer: '' },
+        { typed: true, answer: 'Label the phases' },
+        { typed: false, answer: '' },
+      ]);
+    });
+
     it('types a short body or speaker note, never a slide number or footer, when backs are plain text', async () => {
       const cards = await convert(
         {
@@ -401,6 +475,98 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
     ]);
   });
 
+  it.each([
+    { option: 'cherry', emoji: '🍒', kept: ['[slide image]'] },
+    { option: 'avocado', emoji: '🥑', kept: ['Mitosis'] },
+  ])(
+    'keeps a footer $emoji only on the slide whose back is its source line ($option)',
+    async ({ option, emoji, kept }) => {
+      vi.mocked(getPageCount).mockResolvedValue(2);
+      const cards = await convert(
+        { [option]: 'true' },
+        lectureWithFooter(`${emoji} Cell Biology`)
+      );
+
+      expect(cards.map((card) => visibleText(card.name))).toEqual(kept);
+    }
+  );
+
+  it('detects Japanese from the slide titles when more figure slides carry a Latin footer (tts-auto-detect)', async () => {
+    vi.mocked(getPageCount).mockResolvedValue(5);
+    const result = await prepareWith(
+      withDefaults({ 'tts-auto-detect': 'true' }),
+      japaneseLecture
+    );
+
+    expect(result?.deck[0].settings?.frontLang).toBe('ja');
+  });
+
+  it('reads what the back holds under back-side text-to-speech: the body of a titled slide, the source line of a picture slide (MCP tts side back)', async () => {
+    vi.mocked(getPageCount).mockResolvedValue(4);
+    const result = await prepareWith(
+      withDefaults(
+        mcpOptionsToCardSettings({
+          tts: { enabled: true, language: 'en_US', side: 'back' },
+        })
+      ),
+      typingLecture
+    );
+
+    expect(result?.deck[0].settings).toMatchObject({
+      ttsManualLang: 'en_US',
+      ttsManualSide: 'back',
+    });
+    expect(
+      result?.deck
+        .flatMap((deck) => deck.cards)
+        .map((card) => visibleText(card.back))
+    ).toEqual([
+      'Prophase [slide image]',
+      'Cell Biology · 2',
+      'Label the phases',
+      '4',
+    ]);
+  });
+
+  describe('on a 200-slide deck', () => {
+    beforeEach(() => {
+      vi.mocked(getPageCount).mockResolvedValue(200);
+    });
+
+    afterEach(() => {
+      vi.mocked(getPageCount).mockResolvedValue(2);
+    });
+
+    it('leaves the over-split notice off when untitled slides front their heading, not their slide number', async () => {
+      const cards = await convert(
+        {},
+        lectureOf(200, (n) => [
+          slideNumber(String(n)),
+          textShape('', '03'),
+          textShape('', 'Exocytosis releases vesicle cargo'),
+          footer,
+        ])
+      );
+
+      expect(cards).toHaveLength(200);
+      expect(detectOverSplit(cards.map((card) => card.name))).toBe(false);
+    });
+
+    it('turns the over-split notice on when figure slides front their image, not a long footer', async () => {
+      const longFooter = textShape(
+        '<p:ph type="ftr" sz="quarter" idx="11"/>',
+        'Introduction to Cell Biology, Fall 2026'
+      );
+      const cards = await convert(
+        {},
+        lectureOf(200, (n) => [picture, longFooter, slideNumber(String(n))])
+      );
+
+      expect(cards).toHaveLength(200);
+      expect(detectOverSplit(cards.map((card) => card.name))).toBe(true);
+    });
+  });
+
   describe('when a slide has a body list and chrome', () => {
     beforeEach(() => {
       vi.mocked(getPageCount).mockResolvedValue(3);
@@ -434,3 +600,89 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
     );
   });
 });
+
+(BUILDS_WITH_PYTHON ? describe : describe.skip)(
+  'PrepareDeck — note IDs the Python build gives .pptx cards',
+  () => {
+    const workspaces: Workspace[] = [];
+
+    beforeEach(() => {
+      vi.mocked(getPageCount).mockResolvedValue(2);
+    });
+
+    afterEach(() => {
+      for (const used of workspaces.splice(0)) {
+        fs.rmSync(used.location, { recursive: true, force: true });
+      }
+    });
+
+    async function noteIds(options: Record<string, string>, deck: Buffer) {
+      const workspace = new Workspace(true, 'fs');
+      workspaces.push(workspace);
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      try {
+        const result = await PrepareDeck({
+          name: 'lecture.pptx',
+          files: [{ name: 'lecture.pptx', contents: deck }],
+          settings: new CardOption({
+            ...CardOption.LoadDefaultOptions(),
+            ...options,
+          }),
+          noLimits: true,
+          workspace,
+        });
+        const guids: { guid: string }[] = JSON.parse(
+          fs.readFileSync(path.join(workspace.location, 'guids.json'), 'utf8')
+        );
+        return (result?.deck.flatMap((deck) => deck.cards) ?? []).map(
+          (card, index) => ({
+            front: visibleText(card.name),
+            guid: guids[index].guid,
+          })
+        );
+      } finally {
+        log.mockRestore();
+        debug.mockRestore();
+      }
+    }
+
+    it("gives the chrome-only picture slide a new note ID and keeps the titled slide's", async () => {
+      const now = await noteIds({}, figureLecture);
+      const beforeChromeDetection = await noteIds(
+        { 'embed-images': 'false' },
+        figureLecture
+      );
+
+      expect(now.map((note) => note.front)).toEqual([
+        'Mitosis',
+        '[slide image]',
+      ]);
+      expect(beforeChromeDetection.map((note) => note.front)).toEqual([
+        'Mitosis',
+        'Cell Biology',
+      ]);
+      expect(now[0].guid).toBe(beforeChromeDetection[0].guid);
+      expect(now[1].guid).not.toBe(beforeChromeDetection[1].guid);
+    });
+
+    it('gives a note a new ID when it flips from basic to typed, its front unchanged', async () => {
+      const basic = await noteIds(
+        { cloze: 'false', paragraph: 'true', 'basic-reversed': 'true' },
+        runOnLecture
+      );
+      const typed = await noteIds(
+        {
+          ...mcpOptionsToCardSettings({ noteType: 'input' }),
+          paragraph: 'true',
+          'basic-reversed': 'true',
+        },
+        runOnLecture
+      );
+
+      expect(basic[0].front).toBe('Mitosis');
+      expect(typed[0].front).toBe('Mitosis {{type:Input}}');
+      expect(typed[0].guid).not.toBe(basic[0].guid);
+    });
+  }
+);

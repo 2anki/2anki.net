@@ -828,7 +828,7 @@ test('a toggle card with a long or multi-line answer stays a plain input-disable
   expect(card.name).not.toContain('{{type:Input}}');
 });
 
-function capitalsDeck(back: string) {
+function capitalsDeck(back: string, typedAnswers = 'true') {
   const html = `<html><head><title>Capitals</title></head><body><article class="page sans"><header><h1 class="page-title">Capitals</h1></header><div class="page-body">
 <ul class="toggle"><li><details open=""><summary>Capital of France</summary>${back}</details></li></ul>
 </div></article></body></html>`;
@@ -841,7 +841,7 @@ function capitalsDeck(back: string) {
       settings: new CardOption({
         cherry: 'false',
         cloze: 'false',
-        'enable-input': 'true',
+        'enable-input': typedAnswers,
       }),
       files: [{ name: 'capitals.html', contents: html }],
       noLimits: true,
@@ -860,6 +860,18 @@ test('a hand-written toggle whose back is only the slide-source marker stays a b
   expect(card.enableInput).toBe(false);
   expect(card.answer).toBe('');
   expect(card.name).not.toContain('{{type:Input}}');
+  expect(card.back).toContain('Paris');
+});
+
+test('a back is not checked for the slide-source marker when typed answers are off', async () => {
+  const { parser, workspace } = capitalsDeck(
+    '<p data-2anki-slide-source>Paris</p>',
+    'false'
+  );
+  await parser.build(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.answerIsSlideSource).toBeUndefined();
   expect(card.back).toContain('Paris');
 });
 

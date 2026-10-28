@@ -2,5 +2,5 @@
   "id": "2026-10-28-pptx-file-name-slide-images",
   "date": "2026-10-28",
   "type": "fix",
-  "title": "PowerPoint .pptx decks with slide text now convert with their slide images when the file name has a % or a quote"
+  "title": "PowerPoint .pptx decks with slide text now convert with their slide images when the file name has a % or a double quote"
 }

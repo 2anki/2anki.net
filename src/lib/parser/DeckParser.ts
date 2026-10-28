@@ -2524,7 +2524,7 @@ export class DeckParser {
                 ? `<div class='${parentClass}'>${plainOrRichBack}</div>`
                 : plainOrRichBack;
               const note = new Note(front || '', backSide);
-              if (hasOnlySlideSource(builtBack)) {
+              if (this.settings.useInput && hasOnlySlideSource(builtBack)) {
                 note.answerIsSlideSource = true;
               }
               note.notionId = this.resolveToggleBlockId(parentUL);
