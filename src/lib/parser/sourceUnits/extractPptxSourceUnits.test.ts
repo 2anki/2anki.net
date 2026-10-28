@@ -1,6 +1,9 @@
 import { vi } from 'vitest';
 import { strToU8, unzipSync, zipSync } from 'fflate';
-import { combineSlidesIntoHTML } from '../../pdf/combineSlidesIntoHTML';
+import {
+  combineSlidesIntoHTML,
+  combineSlidesWithChromeIntoHTML,
+} from '../../pdf/combineSlidesIntoHTML';
 import {
   extractPptxSourceUnits,
   MAX_PPTX_PART_BYTES,
@@ -755,7 +758,44 @@ const PARTLY_RENDERED_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
 </body>
 </html>`;
 
-describe('extractPptxSourceUnits — a .pptx without a rendered image for every slide converts exactly as before chrome detection', () => {
+const EVERY_SLIDE_RENDERED_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pdf</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li><li>Cell Biology</li><li>1</li></ul><img src="pdf-x/slide-1.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul><img src="pdf-x/slide-2.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>3</summary><img src="pdf-x/slide-3.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>19</summary><ul><li>03</li><li>Exocytosis</li><li>Cell Biology</li></ul><img src="pdf-x/slide-4.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary><img src="pdf-x/slide-5.png" /></summary></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+describe('extractPptxSourceUnits — a .pptx whose slide images do not all reach its cards converts exactly as before chrome detection', () => {
   const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
     'Cell Biology',
   ]);
@@ -889,6 +929,42 @@ describe('extractPptxSourceUnits — a .pptx without a rendered image for every 
       } finally {
         warn.mockRestore();
       }
+    });
+  });
+
+  describe('when embedded images are off', () => {
+    it('builds every card as it did then, each rendered page where it went then', () => {
+      const lecture = buildPptx([
+        { xml: titledSlide },
+        { xml: slideOfShapesXml([picture, footer, slideNumber('2')]) },
+        {
+          xml: slideOfShapesXml([
+            fieldShapeXml('<p:ph type="title"/>', 'slidenum', '3'),
+            picture,
+          ]),
+        },
+        {
+          xml: slideOfShapesXml([
+            slideNumber('19'),
+            shapeXml('', ['03']),
+            shapeXml('', ['Exocytosis']),
+            footer,
+          ]),
+        },
+        { xml: slideOfShapesXml([picture]) },
+      ]);
+      const renderedPages = [1, 2, 3, 4, 5].map(
+        (n) => `/ws/pdf-x/slide-${n}.png`
+      );
+
+      const html = combineSlidesWithChromeIntoHTML(
+        extractPptxSourceUnits(lecture),
+        renderedPages,
+        'lecture.pdf',
+        '/ws'
+      );
+
+      expect(html).toBe(EVERY_SLIDE_RENDERED_BEFORE_CHROME_DETECTION);
     });
   });
 });

@@ -1,5 +1,8 @@
 import { vi } from 'vitest';
-import { combineSlidesIntoHTML } from './combineSlidesIntoHTML';
+import {
+  combineSlidesIntoHTML,
+  combineSlidesWithChromeIntoHTML,
+} from './combineSlidesIntoHTML';
 import type { SlideUnit } from '../parser/sourceUnits/extractPptxSourceUnits';
 
 // textWithChrome follows from the other fields the way the extractor reads a
@@ -243,6 +246,28 @@ describe('combineSlidesIntoHTML', () => {
     );
   });
 
+  it('sets chrome apart when more pages rendered than slides, as when every slide has its page', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          role: 'image',
+          hasPicture: true,
+          chromeParagraphs: ['Cell Biology', '2'],
+        }),
+      ],
+      IMAGES,
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)).toEqual([
+      {
+        front: '<img src="pdf-x/slide-1.png" />',
+        back: '<ul><li>Cell Biology</li><li>2</li></ul>',
+      },
+    ]);
+  });
+
   it('never pairs one slide with the next: two slides give two cards', () => {
     const html = combineSlidesIntoHTML(
       [
@@ -313,5 +338,29 @@ describe('combineSlidesIntoHTML', () => {
       '<title>&lt;/title&gt;&lt;script&gt;x&lt;/script&gt;.pdf</title>'
     );
     expect(html).not.toContain('<script>');
+  });
+});
+
+describe('combineSlidesWithChromeIntoHTML', () => {
+  it('keeps chrome as slide text and the slide image on the back, though every slide has its page', () => {
+    const html = combineSlidesWithChromeIntoHTML(
+      [
+        slide({
+          role: 'image',
+          hasPicture: true,
+          chromeParagraphs: ['Cell Biology', '2'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)).toEqual([
+      {
+        front: 'Cell Biology',
+        back: '<ul><li>2</li></ul><img src="pdf-x/slide-1.png" />',
+      },
+    ]);
   });
 });

@@ -231,9 +231,9 @@ function splitSlideText(slideXml: string): {
   };
 }
 
-// The slide read the way it was before chrome was set apart, kept for a deck
-// that would otherwise make no cards: the title first, then every other line
-// in XML order, chrome and duplicates included.
+// The slide read the way it was before chrome was set apart: the title first,
+// then every other line in XML order, chrome and duplicates included. A deck
+// whose slide images do not all reach its cards is built from it.
 function readTextWithChrome(slideXml: string): string[] {
   let title = '';
   const paragraphs: string[] = [];

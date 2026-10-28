@@ -99,6 +99,43 @@ function slideCardWithChrome(slide: SlideUnit, image: string): string | null {
   );
 }
 
+function slideImage(
+  imagePaths: string[],
+  index: number,
+  workspaceLocation?: string
+): string {
+  const imagePath = imagePaths[index];
+  return imagePath == null
+    ? ''
+    : `<img src="${toSrc(imagePath, workspaceLocation)}" />`;
+}
+
+function slidesDocument(title: string, cards: string[]): string {
+  return `<!DOCTYPE html>
+<html>
+<head><title>${escapeHtml(title)}</title></head>
+<body>
+  ${cards.join('\n')}
+</body>
+</html>`;
+}
+
+// The deck byte for byte as it converted before chrome detection: chrome read
+// as slide text, each rendered image where it went then.
+export function combineSlidesWithChromeIntoHTML(
+  slides: SlideUnit[],
+  imagePaths: string[],
+  title: string,
+  workspaceLocation?: string
+): string {
+  const cards = slides
+    .map((slide, i) =>
+      slideCardWithChrome(slide, slideImage(imagePaths, i, workspaceLocation))
+    )
+    .filter((card): card is string => card !== null);
+  return slidesDocument(title, cards);
+}
+
 // One card per slide, in display order, with the rendered slide image on the
 // back so diagrams survive. The i-th image is the i-th visible slide: hidden
 // slides are already dropped by the extractor because LibreOffice leaves them
@@ -113,25 +150,16 @@ export function combineSlidesIntoHTML(
   // fronts a slide that has nothing else to front it. Without slide images
   // (Process PDF files off), or with fewer pages than slides, the deck
   // converts exactly as it did before chrome detection.
-  const everySlideHasAnImage = imagePaths.length >= slides.length;
-  const cards = slides
-    .map((slide, i) => {
-      const imagePath = imagePaths[i];
-      const image =
-        imagePath == null
-          ? ''
-          : `<img src="${toSrc(imagePath, workspaceLocation)}" />`;
-      return everySlideHasAnImage
-        ? slideCard(slide, image)
-        : slideCardWithChrome(slide, image);
-    })
-    .filter((card): card is string => card !== null);
-
-  return `<!DOCTYPE html>
-<html>
-<head><title>${escapeHtml(title)}</title></head>
-<body>
-  ${cards.join('\n')}
-</body>
-</html>`;
+  if (imagePaths.length < slides.length) {
+    return combineSlidesWithChromeIntoHTML(
+      slides,
+      imagePaths,
+      title,
+      workspaceLocation
+    );
+  }
+  const cards = slides.map((slide, i) =>
+    slideCard(slide, slideImage(imagePaths, i, workspaceLocation))
+  );
+  return slidesDocument(title, cards);
 }

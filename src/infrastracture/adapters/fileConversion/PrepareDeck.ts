@@ -27,7 +27,10 @@ import { convertImageToHTML } from './convertImageToHTML';
 import { convertPDFToImages, renderPdfPageImages } from './convertPDFToImages';
 import { extractPptxSourceUnits } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
 import type { SlideUnit } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
-import { combineSlidesIntoHTML } from '../../../lib/pdf/combineSlidesIntoHTML';
+import {
+  combineSlidesIntoHTML,
+  combineSlidesWithChromeIntoHTML,
+} from '../../../lib/pdf/combineSlidesIntoHTML';
 import {
   convertPdfTextToHtml,
   convertPdfTextToHtmlAuto,
@@ -453,7 +456,14 @@ async function convertSlidesToTextCards(
       pages: rendered.imagePaths.length,
     });
   }
-  const html = combineSlidesIntoHTML(
+  // A slide image can stand in for chrome on a card's front only if it reaches
+  // the card. With embedded images off the deck never ships it, so the deck
+  // converts as it did before chrome detection.
+  const combineSlides =
+    input.settings.embedImages === false
+      ? combineSlidesWithChromeIntoHTML
+      : combineSlidesIntoHTML;
+  const html = combineSlides(
     slides,
     rendered.imagePaths,
     rendered.title,

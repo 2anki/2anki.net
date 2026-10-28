@@ -2105,6 +2105,13 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
     [picture, footer, slideNumber('3')],
   ]);
 
+  const titleHoldingOnlyASlideNumber = `<p:sp><p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:fld id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}" type="slidenum"><a:t>2</a:t></a:fld></a:p></p:txBody></p:sp>`;
+
+  const figureSlides = pptx([
+    [picture, footer, slideNumber('1')],
+    [titleHoldingOnlyASlideNumber, picture],
+  ]);
+
   function cardFronts(html: string): string[] {
     return [...html.matchAll(/<summary>(.*?)<\/summary>/gs)].map(
       (match) => match[1]
@@ -2222,6 +2229,31 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
       expect(convertPDFToImages).not.toHaveBeenCalled();
     }
   );
+
+  it('makes the cards it made before chrome detection when embedded images are off, so no question is a slide image the deck never ships', async () => {
+    const result = await PrepareDeck({
+      name: 'figures.pptx',
+      files: [{ name: 'figures.pptx', contents: figureSlides }],
+      settings: makeSettings({ 'embed-images': 'false' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    const cards = result?.deck.flatMap((deck) =>
+      deck.cards.map((card) => ({ front: card.name, back: card.back.trim() }))
+    );
+    expect(renderPdfPageImages).toHaveBeenCalledTimes(1);
+    expect(cards).toEqual([
+      {
+        front: "<div class='toggle'>Cell Biology</div>",
+        back: '<ul><li>1</li></ul><img src="pdf-1/page-1.png">',
+      },
+      {
+        front: "<div class='toggle'>2</div>",
+        back: '<img src="pdf-1/page-2.png">',
+      },
+    ]);
+  });
 });
 
 describe('PrepareDeck — two-way cards from convert_to_deck options', () => {
