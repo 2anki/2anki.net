@@ -11,8 +11,7 @@ export interface IPauseResumeWarningRepository {
     fromEpochSeconds: number,
     toEpochSeconds: number
   ): Promise<PausedSubscriptionRow[]>;
-  wasSent(subscriptionEmail: string, resumesAt: Date): Promise<boolean>;
-  markSent(subscriptionEmail: string, resumesAt: Date): Promise<void>;
+  claimNotice(subscriptionEmail: string, resumesAt: Date): Promise<boolean>;
 }
 
 export class PauseResumeWarningRepository implements IPauseResumeWarningRepository {
@@ -40,22 +39,26 @@ export class PauseResumeWarningRepository implements IPauseResumeWarningReposito
     )) as PausedSubscriptionRow[];
   }
 
-  async wasSent(subscriptionEmail: string, resumesAt: Date): Promise<boolean> {
-    const row = await this.database('pause_resume_warning_notices')
-      .where({ subscription_email: subscriptionEmail })
-      .where({ resumes_at: resumesAt })
-      .first();
-    return row != null;
-  }
-
-  async markSent(subscriptionEmail: string, resumesAt: Date): Promise<void> {
-    await this.database('pause_resume_warning_notices')
+  buildClaimNoticeQuery(
+    subscriptionEmail: string,
+    resumesAt: Date
+  ): Knex.QueryBuilder {
+    return this.database('pause_resume_warning_notices')
       .insert({
         subscription_email: subscriptionEmail,
         resumes_at: resumesAt,
       })
       .onConflict(['subscription_email', 'resumes_at'])
-      .ignore();
+      .ignore()
+      .returning('id');
+  }
+
+  async claimNotice(
+    subscriptionEmail: string,
+    resumesAt: Date
+  ): Promise<boolean> {
+    const rows = await this.buildClaimNoticeQuery(subscriptionEmail, resumesAt);
+    return rows.length > 0;
   }
 }
 
