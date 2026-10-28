@@ -8,6 +8,7 @@ import {
 import { FallbackErrorPayload } from '../../lib/errorFallback';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
+import { EmailSendError } from '../../services/EmailService/sendMail';
 
 function makeRepository(
   existsResult = false
@@ -337,6 +338,23 @@ describe('makeErrorCaptureMiddleware', () => {
 
     expect(repo.inserts).toHaveLength(0);
     expect(next).toHaveBeenCalledWith(rangeError);
+  });
+
+  it('records an email send that failed with a connection reset, which is our fault', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const emailError = new EmailSendError('read ECONNRESET', 'ECONNRESET');
+
+    await middleware(
+      emailError,
+      makeReq('/api/users/magic-link'),
+      makeRes(),
+      next
+    );
+
+    expect(repo.inserts).toHaveLength(1);
+    expect(next).toHaveBeenCalledWith(emailError);
   });
 
   it('records a 5xx HttpCodedError', async () => {
