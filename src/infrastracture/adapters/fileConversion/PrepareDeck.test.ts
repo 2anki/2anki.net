@@ -1,6 +1,9 @@
 import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 import { vi, type Mock, type MockInstance } from 'vitest';
 import fsModule from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { strToU8, zipSync } from 'fflate';
 import {
   PrepareDeck,
   parserWarning,
@@ -9,6 +12,7 @@ import {
   assembleParserFiles,
 } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
+import type Workspace from '../../../lib/parser/WorkSpace';
 import { mcpOptionsToCardSettings } from '../../../services/mcp/mcpOptionsToCardSettings';
 import {
   AiCreditsExhaustedError,
@@ -17,6 +21,8 @@ import {
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import {
   AiCreditsTrippedWithSalvage,
+  bundledMediaName,
+  expandCompactDeckInfo,
   generateDeckInfo as generateDeckInfoImport,
 } from '../../../lib/claude/ClaudeService';
 import CustomExporterDefault from '../../../lib/parser/exporters/CustomExporter';
@@ -1942,6 +1948,8 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         role: 'title',
         title: 'Mitosis',
         paragraphs: ['Cell division'],
+        chromeParagraphs: [],
+        textWithChrome: ['Mitosis', 'Cell division'],
         hasPicture: false,
       },
       {
@@ -1951,6 +1959,8 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         role: 'title',
         title: 'Meiosis',
         paragraphs: ['Gametes'],
+        chromeParagraphs: [],
+        textWithChrome: ['Meiosis', 'Gametes'],
         hasPicture: false,
       },
     ]);
@@ -1976,6 +1986,8 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
         role: 'image',
         title: '',
         paragraphs: [],
+        chromeParagraphs: [],
+        textWithChrome: [],
         hasPicture: true,
       },
     ]);
@@ -1984,6 +1996,38 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
 
     expect(convertPDFToImages).toHaveBeenCalledTimes(1);
     expect(renderPdfPageImages).not.toHaveBeenCalled();
+  });
+
+  it('keeps one card per slide when the only slide text is the slide number and footer', async () => {
+    extractPptxSourceUnits.mockReturnValueOnce([
+      {
+        id: 'slide-1',
+        visibleText: '',
+        speakerNotes: '',
+        role: 'image',
+        title: '',
+        paragraphs: [],
+        chromeParagraphs: ['Cell Biology', '1'],
+        textWithChrome: ['Cell Biology', '1'],
+        hasPicture: true,
+      },
+      {
+        id: 'slide-2',
+        visibleText: '',
+        speakerNotes: '',
+        role: 'image',
+        title: '',
+        paragraphs: [],
+        chromeParagraphs: ['Cell Biology', '2'],
+        textWithChrome: ['Cell Biology', '2'],
+        hasPicture: true,
+      },
+    ]);
+
+    await runDeck('diagrams.pptx');
+
+    expect(renderPdfPageImages).toHaveBeenCalledTimes(1);
+    expect(convertPDFToImages).not.toHaveBeenCalled();
   });
 
   it('falls back to the page-image path when the slide XML cannot be read', async () => {
@@ -2008,6 +2052,384 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
     expect(extractPptxSourceUnits).not.toHaveBeenCalled();
     expect(convertPDFToImages).toHaveBeenCalledTimes(1);
   });
+});
+
+describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
+  const NAMESPACES =
+    'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+  const picture =
+    '<p:pic><p:nvPicPr><p:cNvPr id="5" name="Diagram"/></p:nvPicPr></p:pic>';
+
+  function textShape(placeholder: string, text: string): string {
+    return `<p:sp><p:nvSpPr><p:nvPr>${placeholder}</p:nvPr></p:nvSpPr><p:txBody><a:p><a:r><a:t>${text}</a:t></a:r></a:p></p:txBody></p:sp>`;
+  }
+
+  function slideNumber(n: string): string {
+    return `<p:sp><p:nvSpPr><p:nvPr><p:ph type="sldNum" sz="quarter" idx="12"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:fld id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}" type="slidenum"><a:t>${n}</a:t></a:fld></a:p></p:txBody></p:sp>`;
+  }
+
+  const footer = textShape(
+    '<p:ph type="ftr" sz="quarter" idx="11"/>',
+    'Cell Biology'
+  );
+
+  function pptx(slides: string[][]): Buffer {
+    return Buffer.from(
+      zipSync(
+        Object.fromEntries(
+          slides.map((shapes, i) => [
+            `ppt/slides/slide${i + 1}.xml`,
+            strToU8(
+              `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld ${NAMESPACES}><p:cSld><p:spTree>${shapes.join('')}</p:spTree></p:cSld></p:sld>`
+            ),
+          ])
+        )
+      )
+    );
+  }
+
+  const numberedLecture = pptx([
+    [
+      slideNumber('19'),
+      textShape('', '03'),
+      textShape('', 'Exocytosis'),
+      textShape('', 'Ca2+ influx triggers fusion'),
+      footer,
+    ],
+    [
+      textShape('<p:ph type="title"/>', 'Mitosis'),
+      textShape('<p:ph idx="1"/>', 'Prophase'),
+      footer,
+      slideNumber('20'),
+    ],
+  ]);
+
+  const titleSlideAndFigures = pptx([
+    [textShape('<p:ph type="ctrTitle"/>', 'Mitosis')],
+    [picture, footer, slideNumber('2')],
+    [picture, footer, slideNumber('3')],
+  ]);
+
+  const titleHoldingOnlyASlideNumber = `<p:sp><p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:fld id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}" type="slidenum"><a:t>2</a:t></a:fld></a:p></p:txBody></p:sp>`;
+
+  const figureSlides = pptx([
+    [picture, footer, slideNumber('1')],
+    [titleHoldingOnlyASlideNumber, picture],
+  ]);
+
+  function cardFronts(html: string): string[] {
+    return [...html.matchAll(/<summary>(.*?)<\/summary>/gs)].map(
+      (match) => match[1]
+    );
+  }
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const actual = await vi.importActual<
+      typeof import('../../../lib/parser/sourceUnits/extractPptxSourceUnits')
+    >('../../../lib/parser/sourceUnits/extractPptxSourceUnits');
+    extractPptxSourceUnits.mockImplementationOnce(
+      actual.extractPptxSourceUnits
+    );
+  });
+
+  // The Claude branch writes each source file into the workspace for a later
+  // restart, so these tests get a folder of their own instead of the shared
+  // /tmp/test-workspace.
+  const claudeWorkspaces: string[] = [];
+
+  afterEach(() => {
+    for (const location of claudeWorkspaces.splice(0)) {
+      fsModule.rmSync(location, { recursive: true, force: true });
+    }
+  });
+
+  function claudeWorkspace(pageNames: string[]) {
+    const location = fsModule.mkdtempSync(
+      path.join(os.tmpdir(), 'prepare-deck-claude-')
+    );
+    claudeWorkspaces.push(location);
+    renderPdfPageImages.mockResolvedValueOnce({
+      imagePaths: pageNames.map((name) => path.join(location, 'pdf-1', name)),
+      title: 'deck.pdf',
+    });
+    return { location } as Workspace;
+  }
+
+  it('hands Claude slide titles and first lines with words as card fronts, never a slide number', async () => {
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Cell Biology',
+        image: '',
+        style: null,
+        id: 111222333444555,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Exocytosis',
+            back: 'Ca2+ influx triggers fusion',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    const result = await PrepareDeck({
+      name: 'lecture.pptx',
+      files: [{ name: 'lecture.pptx', contents: numberedLecture }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: claudeWorkspace(['page-1.png', 'page-2.png']),
+    });
+
+    expect(result?.engine).toBe('claude');
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    const html = generateDeckInfo.mock.calls[0][0] as string;
+    expect(cardFronts(html)).toEqual(['Exocytosis', 'Mitosis']);
+  });
+
+  it('hands Claude slide image srcs that decode to the names of the pages it offers, whatever the upload is called', async () => {
+    const workspace = claudeWorkspace([
+      'Lecture%203.pdf-page1-1.png',
+      'Lecture%203.pdf-page2-2.png',
+    ]);
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Cell Biology',
+        image: '',
+        style: null,
+        id: 111222333444555,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Exocytosis',
+            back: 'Ca2+ influx triggers fusion',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    await PrepareDeck({
+      name: 'Lecture%203.pptx',
+      files: [{ name: 'Lecture%203.pptx', contents: numberedLecture }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace,
+    });
+
+    const [html, offered] = generateDeckInfo.mock.calls[0] as [
+      string,
+      string[],
+    ];
+    const srcs = [...html.matchAll(/<img src="([^"]+)"/g)].map((match) =>
+      decodeURIComponent(match[1])
+    );
+    expect(srcs).toEqual([
+      'pdf-1/Lecture%203.pdf-page1-1.png',
+      'pdf-1/Lecture%203.pdf-page2-2.png',
+    ]);
+    expect(offered).toEqual(expect.arrayContaining(srcs));
+  });
+
+  it.each([
+    { label: 'a lone high surrogate', name: 'a\uD800.pptx' },
+    { label: 'a lone low surrogate', name: '\uDC00.pptx' },
+  ])(
+    'keeps the slide image on the card Claude writes for a deck named with $label',
+    async ({ name }) => {
+      const pdfName = name.replace(/\.pptx$/, '.pdf');
+      const workspace = claudeWorkspace(
+        [1, 2].map((n) => `${pdfName}-page${n}-${n}.png`)
+      );
+      generateDeckInfo.mockResolvedValueOnce([]);
+
+      await PrepareDeck({
+        name,
+        files: [{ name, contents: numberedLecture }],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace,
+      }).catch(() => undefined);
+
+      const [html, offered] = generateDeckInfo.mock.calls[0] as [
+        string,
+        string[],
+      ];
+      const src = /<img src="([^"]+)"/.exec(html)?.[1];
+      const [deck] = expandCompactDeckInfo(
+        [
+          {
+            deck: 'Lecture',
+            cards: [{ q: 'Exocytosis', a: `<img src="${src}">` }],
+          },
+        ],
+        offered,
+        null
+      );
+      const page = `pdf-1/${Buffer.from(pdfName).toString()}-page1-1.png`;
+      expect(deck.cards[0].media).toEqual([
+        { path: page, name: bundledMediaName(page) },
+      ]);
+    }
+  );
+
+  it.each([
+    {
+      cause: 'credits gone at the pre-check',
+      arrange: () =>
+        getAiBudgetStatus.mockResolvedValueOnce({
+          exhausted: true,
+          balance: 0,
+        }),
+    },
+    {
+      cause: 'Claude returns no cards',
+      arrange: () => generateDeckInfo.mockResolvedValueOnce([]),
+    },
+  ])(
+    'builds the parser deck from slide headings, not slide numbers, when AI is on but makes no cards ($cause)',
+    async ({ arrange }) => {
+      arrange();
+      CustomExporterMock.mockImplementationOnce(function () {
+        return {
+          configure: vi.fn(),
+          addMedia: vi.fn(),
+          save: vi.fn().mockResolvedValue(Buffer.from('fake-apkg')),
+        };
+      });
+
+      const result = await PrepareDeck({
+        name: 'lecture.pptx',
+        files: [{ name: 'lecture.pptx', contents: numberedLecture }],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: claudeWorkspace(['page-1.png', 'page-2.png']),
+      });
+
+      expect(result?.engine).toBe('parser');
+      expect(
+        result?.deck.flatMap((deck) =>
+          deck.cards.map((card) => card.name.replaceAll(/<[^>]+>/g, ''))
+        )
+      ).toEqual(['Exocytosis', 'Mitosis']);
+    }
+  );
+
+  it('delivers the slides that fit a card limit, fronted by a line with words, and holds back the rest', async () => {
+    CustomExporterMock.mockImplementationOnce(function () {
+      return {
+        configure: vi.fn(),
+        addMedia: vi.fn(),
+        save: vi.fn().mockResolvedValue(Buffer.from('fake-apkg')),
+      };
+    });
+
+    const result = await PrepareDeck({
+      name: 'lecture.pptx',
+      files: [{ name: 'lecture.pptx', contents: numberedLecture }],
+      settings: makeSettings(),
+      noLimits: false,
+      workspace: makeWorkspace(),
+      cardLimit: 1,
+    });
+
+    const fronts = result?.deck.flatMap((deck) =>
+      deck.cards.map((card) => card.name.replaceAll(/<[^>]+>/g, ''))
+    );
+    expect(result?.cardCount).toBe(1);
+    expect(result?.cardsHeldBack).toBe(1);
+    expect(fronts).toEqual(['Exocytosis']);
+  });
+
+  it.each([
+    {
+      cloze: 'true',
+      expected: [
+        { front: 'Mitosis', back: '' },
+        { front: 'Cell Biology', back: '2' },
+        { front: 'Cell Biology', back: '3' },
+      ],
+    },
+    {
+      cloze: 'false',
+      expected: [
+        { front: 'Cell Biology', back: '2' },
+        { front: 'Cell Biology', back: '3' },
+      ],
+    },
+  ])(
+    'makes the cards it made before chrome detection from a title slide and figure slides whose only text is the footer and slide number when slide images are off (cloze $cloze)',
+    async ({ cloze, expected }) => {
+      const result = await PrepareDeck({
+        name: 'lecture.pptx',
+        files: [{ name: 'lecture.pptx', contents: titleSlideAndFigures }],
+        settings: makeSettings({ 'process-pdfs': 'false', cloze }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      });
+
+      const cards = result?.deck.flatMap((deck) =>
+        deck.cards.map((card) => ({
+          front: card.name.replaceAll(/<[^>]+>/g, '').trim(),
+          back: card.back.replaceAll(/<[^>]+>/g, '').trim(),
+        }))
+      );
+      expect(cards).toEqual(expected);
+      expect(renderPdfPageImages).not.toHaveBeenCalled();
+      expect(convertPDFToImages).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    {
+      embedding: 'embedded images are off',
+      settings: () => makeSettings({ 'embed-images': 'false' }),
+    },
+    {
+      embedding: 'the settings hold no embedImages value',
+      settings: () => Object.assign(makeSettings(), { embedImages: undefined }),
+    },
+  ])(
+    'makes the cards it made before chrome detection when $embedding, so no question is a slide image the deck never ships',
+    async ({ settings }) => {
+      const result = await PrepareDeck({
+        name: 'figures.pptx',
+        files: [{ name: 'figures.pptx', contents: figureSlides }],
+        settings: settings(),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      });
+
+      const cards = result?.deck.flatMap((deck) =>
+        deck.cards.map((card) => ({
+          front: card.name,
+          back: card.back.trim(),
+        }))
+      );
+      expect(renderPdfPageImages).toHaveBeenCalledTimes(1);
+      expect(cards).toEqual([
+        {
+          front: "<div class='toggle'>Cell Biology</div>",
+          back: '<ul><li>1</li></ul><img src="pdf-1/page-1.png">',
+        },
+        {
+          front: "<div class='toggle'>2</div>",
+          back: '<img src="pdf-1/page-2.png">',
+        },
+      ]);
+    }
+  );
 });
 
 describe('PrepareDeck — two-way cards from convert_to_deck options', () => {

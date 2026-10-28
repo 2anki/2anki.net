@@ -1,4 +1,10 @@
+import { vi } from 'vitest';
 import { strToU8, unzipSync, zipSync } from 'fflate';
+import * as cheerio from 'cheerio';
+import {
+  combineSlidesIntoHTML,
+  combineSlidesWithChromeIntoHTML,
+} from '../../pdf/combineSlidesIntoHTML';
 import {
   extractPptxSourceUnits,
   MAX_PPTX_PART_BYTES,
@@ -371,4 +377,704 @@ describe('extractPptxSourceUnits — slide structure for text-first cards', () =
 
     expect(units.map((u) => u.title)).toEqual(['Real']);
   });
+});
+
+function shapeXml(placeholder: string, paragraphs: string[]): string {
+  return `<p:sp>
+        <p:nvSpPr><p:nvPr>${placeholder}</p:nvPr></p:nvSpPr>
+        <p:txBody>
+          ${paragraphs.map((p) => `<a:p><a:r><a:t>${p}</a:t></a:r></a:p>`).join('')}
+        </p:txBody>
+      </p:sp>`;
+}
+
+function fieldParagraphXml(fieldType: string, text: string): string {
+  return `<a:p><a:fld id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}" type="${fieldType}"><a:rPr lang="en-US"/><a:t>${text}</a:t></a:fld></a:p>`;
+}
+
+function fieldShapeXml(
+  placeholder: string,
+  fieldType: string,
+  text: string
+): string {
+  return `<p:sp>
+        <p:nvSpPr><p:nvPr>${placeholder}</p:nvPr></p:nvSpPr>
+        <p:txBody>
+          ${fieldParagraphXml(fieldType, text)}
+        </p:txBody>
+      </p:sp>`;
+}
+
+function slideNumberShapeXml(placeholder: string, slideNumber: string): string {
+  return fieldShapeXml(placeholder, 'slidenum', slideNumber);
+}
+
+function slideOfShapesXml(shapes: string[]): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="${NS_A}" xmlns:p="${NS_P}">
+  <p:cSld>
+    <p:spTree>
+      ${shapes.join('')}
+    </p:spTree>
+  </p:cSld>
+</p:sld>`;
+}
+
+describe('extractPptxSourceUnits — slide chrome', () => {
+  it.each([
+    ['sldNum', '16'],
+    ['dt', '10/6/2026'],
+    ['ftr', 'Cell Biology, Lecture 3'],
+    ['hdr', 'Draft for review'],
+  ])('keeps the %s placeholder apart from the slide text', (type, text) => {
+    const xml = slideOfShapesXml([
+      shapeXml('<p:ph type="title"/>', ['Mitosis']),
+      shapeXml('<p:ph idx="1"/>', ['Cell division']),
+      shapeXml(`<p:ph type="${type}" sz="quarter" idx="12"/>`, [text]),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('Mitosis');
+    expect(unit.paragraphs).toEqual(['Cell division']);
+    expect(unit.visibleText).toBe('Mitosis\nCell division');
+    expect(unit.chromeParagraphs).toEqual([text]);
+  });
+
+  it('keeps a slide number drawn ahead of the text out of the paragraphs of an untitled slide', () => {
+    const xml = slideOfShapesXml([
+      slideNumberShapeXml('<p:ph idx="12" type="sldNum"/>', '19'),
+      shapeXml('', ['Exocytosis', 'Ca2+ influx triggers fusion']),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('');
+    expect(unit.paragraphs).toEqual([
+      'Exocytosis',
+      'Ca2+ influx triggers fusion',
+    ]);
+    expect(unit.chromeParagraphs).toEqual(['19']);
+  });
+
+  it('keeps the chrome of a picture slide apart when it is the only text on the slide', () => {
+    const xml = slideOfShapesXml([
+      '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>',
+      shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', ['Cell Biology']),
+      slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', '7'),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit).toMatchObject({
+      title: '',
+      paragraphs: [],
+      chromeParagraphs: ['Cell Biology', '7'],
+      visibleText: '',
+      role: 'image',
+      hasPicture: true,
+    });
+  });
+
+  it('keeps a number typed into an ordinary text box', () => {
+    const xml = slideOfShapesXml([
+      shapeXml('', ['03']),
+      shapeXml('', ['Endocytosis']),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.paragraphs).toEqual(['03', 'Endocytosis']);
+  });
+
+  it('turns a numbered slide with no title into a card fronted by its heading', () => {
+    const xml = slideOfShapesXml([
+      slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', '19'),
+      shapeXml('', ['03']),
+      shapeXml('', ['Exocytosis']),
+      shapeXml('', ['Ca2+ influx triggers fusion']),
+      shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', ['Cell Biology']),
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(buildPptx([{ xml }])),
+      ['/ws/pdf-x/slide-1.png'],
+      'lecture.pdf',
+      '/ws'
+    );
+
+    expect(html).toContain(
+      '<summary>Exocytosis</summary><ul><li>03</li><li>Ca2+ influx triggers fusion</li></ul><img src="pdf-x/slide-1.png" /></details>'
+    );
+  });
+
+  it.each([
+    ['slidenum', '7'],
+    ['datetime1', '10/6/2026'],
+    ['datetimeFigureOut', '10/6/2026'],
+  ])(
+    'keeps a %s field inserted into an ordinary text box apart from the slide text',
+    (fieldType, text) => {
+      const xml = slideOfShapesXml([
+        fieldShapeXml('', fieldType, text),
+        shapeXml('', ['Exocytosis']),
+      ]);
+
+      const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+      expect(unit.paragraphs).toEqual(['Exocytosis']);
+      expect(unit.visibleText).toBe('Exocytosis');
+      expect(unit.chromeParagraphs).toEqual([text]);
+    }
+  );
+
+  it('moves a line made only of a slide-number field out of a body placeholder', () => {
+    const xml = slideOfShapesXml([
+      shapeXml('<p:ph type="title"/>', ['Mitosis']),
+      `<p:sp>
+        <p:nvSpPr><p:nvPr><p:ph idx="1"/></p:nvPr></p:nvSpPr>
+        <p:txBody>
+          <a:p><a:r><a:t>Prophase</a:t></a:r></a:p>
+          ${fieldParagraphXml('slidenum', '4')}
+        </p:txBody>
+      </p:sp>`,
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('Mitosis');
+    expect(unit.paragraphs).toEqual(['Prophase']);
+    expect(unit.chromeParagraphs).toEqual(['4']);
+  });
+
+  it('leaves a slide-number field line in the title placeholder out of the title', () => {
+    const xml = slideOfShapesXml([
+      `<p:sp>
+        <p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:txBody>
+          <a:p><a:r><a:t>Mitosis</a:t></a:r></a:p>
+          ${fieldParagraphXml('slidenum', '4')}
+        </p:txBody>
+      </p:sp>`,
+      shapeXml('<p:ph idx="1"/>', ['Prophase']),
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('Mitosis');
+    expect(unit.chromeParagraphs).toEqual(['4']);
+  });
+
+  it('keeps a line that mixes typed words with a slide-number field as slide text', () => {
+    const xml = slideOfShapesXml([
+      `<p:sp>
+        <p:nvSpPr><p:nvPr/></p:nvSpPr>
+        <p:txBody>
+          <a:p><a:r><a:t>Slide </a:t></a:r><a:fld id="{B6F15528-21DE-4FAA-801E-634DDDAF4B2B}" type="slidenum"><a:t>4</a:t></a:fld></a:p>
+        </p:txBody>
+      </p:sp>`,
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.paragraphs).toEqual(['Slide 4']);
+    expect(unit.chromeParagraphs).toEqual([]);
+  });
+
+  it('answers a picture slide whose slide number sits in an ordinary text box with that number', () => {
+    const xml = slideOfShapesXml([
+      '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>',
+      fieldShapeXml('', 'slidenum', '7'),
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(buildPptx([{ xml }])),
+      ['/ws/pdf-x/slide-1.png'],
+      'lecture.pdf',
+      '/ws'
+    );
+
+    expect(html).toContain(
+      '<summary><img src="pdf-x/slide-1.png" /></summary><p data-2anki-slide-source>7</p></details>'
+    );
+  });
+
+  it('lists a slide number once when the placeholder is stored twice for older PowerPoint versions', () => {
+    const slideNumber = slideNumberShapeXml(
+      '<p:ph type="sldNum" sz="quarter" idx="12"/>',
+      '4'
+    );
+    const xml = slideOfShapesXml([
+      shapeXml('<p:ph type="title"/>', ['Mitosis']),
+      `<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+        <mc:Choice xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" Requires="p14">${slideNumber}</mc:Choice>
+        <mc:Fallback>${slideNumber}</mc:Fallback>
+      </mc:AlternateContent>`,
+    ]);
+
+    const [unit] = extractPptxSourceUnits(buildPptx([{ xml }]));
+
+    expect(unit.title).toBe('Mitosis');
+    expect(unit.chromeParagraphs).toEqual(['4']);
+  });
+});
+
+describe('extractPptxSourceUnits — the slide read as it was before chrome detection', () => {
+  const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
+    'Cell Biology',
+  ]);
+  const slideNumber = (n: string) =>
+    slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', n);
+
+  const chromeOnlyLecture = buildPptx([
+    {
+      xml: slideOfShapesXml([
+        fieldShapeXml(
+          '<p:ph type="dt" sz="half" idx="10"/>',
+          'datetime1',
+          '10/27/2026'
+        ),
+        footer,
+        slideNumber('1'),
+      ]),
+    },
+    {
+      xml: slideOfShapesXml([
+        footer,
+        `<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+        <mc:Choice xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" Requires="p14">${slideNumber('2')}</mc:Choice>
+        <mc:Fallback>${slideNumber('2')}</mc:Fallback>
+      </mc:AlternateContent>`,
+      ]),
+    },
+    {
+      xml: slideOfShapesXml([fieldShapeXml('', 'slidenum', '3'), footer]),
+      notesXml: notesXml('Label the four phases'),
+    },
+    {
+      xml: slideOfShapesXml([
+        footer,
+        fieldShapeXml('<p:ph type="title"/>', 'slidenum', '4'),
+      ]),
+    },
+  ]);
+
+  it('reads every line with chrome as ordinary text: title first, then the order the slide stores them, duplicates kept', () => {
+    const units = extractPptxSourceUnits(chromeOnlyLecture);
+
+    expect(units.map((unit) => unit.textWithChrome)).toEqual([
+      ['10/27/2026', 'Cell Biology', '1'],
+      ['Cell Biology', '2', '2'],
+      ['3', 'Cell Biology'],
+      ['4', 'Cell Biology'],
+    ]);
+  });
+});
+
+const TITLE_SLIDE_AND_FIGURES_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pptx</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>3</li></ul></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+const TITLED_SLIDES_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pptx</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li><li>Cell Biology</li><li>1</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Meiosis 2</summary><ul><li>Gametes</li><li>10/27/2026</li></ul></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+const NOTES_SLIDE_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pptx</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li><li>Cell Biology</li><li>1</li></ul></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul><hr /><p>Label the four phases</p></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+const PARTLY_RENDERED_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pdf</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>19</summary><ul><li>03</li><li>Exocytosis</li><li>Cell Biology</li></ul><img src="pdf-x/slide-1.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary><img src="pdf-x/slide-2.png" /></summary></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>21</li></ul></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+const EVERY_SLIDE_RENDERED_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pdf</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li><li>Cell Biology</li><li>1</li></ul><img src="pdf-x/slide-1.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul><img src="pdf-x/slide-2.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>3</summary><img src="pdf-x/slide-3.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>19</summary><ul><li>03</li><li>Exocytosis</li><li>Cell Biology</li></ul><img src="pdf-x/slide-4.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary><img src="pdf-x/slide-5.png" /></summary></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+const MORE_PAGES_THAN_SLIDES_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pdf</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li><li>Cell Biology</li><li>1</li></ul><img src="pdf-x/slide-1.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul><img src="pdf-x/slide-2.png" /></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+describe('extractPptxSourceUnits — a .pptx without exactly one embedded image per slide converts as before chrome detection', () => {
+  const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
+    'Cell Biology',
+  ]);
+  const slideNumber = (n: string) =>
+    slideNumberShapeXml('<p:ph type="sldNum" sz="quarter" idx="12"/>', n);
+  const picture =
+    '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>';
+  const titledSlide = slideOfShapesXml([
+    shapeXml('<p:ph type="title"/>', ['Mitosis']),
+    shapeXml('<p:ph idx="1"/>', ['Prophase']),
+    footer,
+    slideNumber('1'),
+  ]);
+
+  it('makes the cards it made before from a title slide and figure slides whose only text is the footer and slide number, with slide images off', () => {
+    const lecture = buildPptx([
+      {
+        xml: slideOfShapesXml([
+          shapeXml('<p:ph type="ctrTitle"/>', ['Mitosis']),
+        ]),
+      },
+      { xml: slideOfShapesXml([picture, footer, slideNumber('2')]) },
+      { xml: slideOfShapesXml([picture, footer, slideNumber('3')]) },
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(lecture),
+      [],
+      'lecture.pptx'
+    );
+
+    expect(html).toBe(TITLE_SLIDE_AND_FIGURES_BEFORE_CHROME_DETECTION);
+  });
+
+  it('keeps the slide number, date and footer of titled slides as slide text, with slide images off', () => {
+    const lecture = buildPptx([
+      { xml: titledSlide },
+      {
+        xml: slideOfShapesXml([
+          `<p:sp>
+        <p:nvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:txBody>
+          <a:p><a:r><a:t>Meiosis</a:t></a:r></a:p>
+          ${fieldParagraphXml('slidenum', '2')}
+        </p:txBody>
+      </p:sp>`,
+          shapeXml('<p:ph idx="1"/>', ['Gametes']),
+          fieldShapeXml(
+            '<p:ph type="dt" sz="half" idx="10"/>',
+            'datetime1',
+            '10/27/2026'
+          ),
+        ]),
+      },
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(lecture),
+      [],
+      'lecture.pptx'
+    );
+
+    expect(html).toBe(TITLED_SLIDES_BEFORE_CHROME_DETECTION);
+  });
+
+  it('keeps the card a slide whose only text is chrome made with its speaker notes, with slide images off', () => {
+    const lecture = buildPptx([
+      { xml: titledSlide },
+      {
+        xml: slideOfShapesXml([footer, slideNumber('2')]),
+        notesXml: notesXml('Label the four phases'),
+      },
+    ]);
+
+    const html = combineSlidesIntoHTML(
+      extractPptxSourceUnits(lecture),
+      [],
+      'lecture.pptx'
+    );
+
+    expect(html).toBe(NOTES_SLIDE_BEFORE_CHROME_DETECTION);
+  });
+
+  describe('when fewer pages rendered than slides', () => {
+    const partlyRendered = buildPptx([
+      {
+        xml: slideOfShapesXml([
+          slideNumber('19'),
+          shapeXml('', ['03']),
+          shapeXml('', ['Exocytosis']),
+          footer,
+        ]),
+      },
+      { xml: slideOfShapesXml([picture]) },
+      { xml: slideOfShapesXml([picture, footer, slideNumber('21')]) },
+      { xml: slideOfShapesXml([picture]) },
+    ]);
+    const renderedPages = ['/ws/pdf-x/slide-1.png', '/ws/pdf-x/slide-2.png'];
+
+    function convert(): string {
+      return combineSlidesIntoHTML(
+        extractPptxSourceUnits(partlyRendered),
+        renderedPages,
+        'lecture.pdf',
+        '/ws'
+      );
+    }
+
+    it('puts each rendered page where it went before chrome detection', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        expect(convert()).toBe(PARTLY_RENDERED_BEFORE_CHROME_DETECTION);
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it('warns only about the slide with no text and no rendered page', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      try {
+        convert();
+
+        expect(warn.mock.calls).toEqual([
+          [
+            '[combineSlidesIntoHTML] slide has nothing to show',
+            { slide: 'slide-4' },
+          ],
+        ]);
+      } finally {
+        warn.mockRestore();
+      }
+    });
+  });
+
+  describe('when more pages rendered than slides', () => {
+    it('keeps chrome as slide text, since page i may not be slide i', () => {
+      const lecture = buildPptx([
+        { xml: titledSlide },
+        { xml: slideOfShapesXml([picture, footer, slideNumber('2')]) },
+      ]);
+      const renderedPages = [1, 2, 3].map((n) => `/ws/pdf-x/slide-${n}.png`);
+
+      const html = combineSlidesIntoHTML(
+        extractPptxSourceUnits(lecture),
+        renderedPages,
+        'lecture.pdf',
+        '/ws'
+      );
+
+      expect(html).toBe(MORE_PAGES_THAN_SLIDES_BEFORE_CHROME_DETECTION);
+    });
+  });
+
+  describe('when embedded images are off', () => {
+    it('builds every card as it did then, each rendered page where it went then', () => {
+      const lecture = buildPptx([
+        { xml: titledSlide },
+        { xml: slideOfShapesXml([picture, footer, slideNumber('2')]) },
+        {
+          xml: slideOfShapesXml([
+            fieldShapeXml('<p:ph type="title"/>', 'slidenum', '3'),
+            picture,
+          ]),
+        },
+        {
+          xml: slideOfShapesXml([
+            slideNumber('19'),
+            shapeXml('', ['03']),
+            shapeXml('', ['Exocytosis']),
+            footer,
+          ]),
+        },
+        { xml: slideOfShapesXml([picture]) },
+      ]);
+      const renderedPages = [1, 2, 3, 4, 5].map(
+        (n) => `/ws/pdf-x/slide-${n}.png`
+      );
+
+      const html = combineSlidesWithChromeIntoHTML(
+        extractPptxSourceUnits(lecture),
+        renderedPages,
+        'lecture.pdf',
+        '/ws'
+      );
+
+      expect(html).toBe(EVERY_SLIDE_RENDERED_BEFORE_CHROME_DETECTION);
+    });
+  });
+});
+
+describe('extractPptxSourceUnits — markup typed on a slide stays text in the card HTML', () => {
+  const picture =
+    '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>';
+  const renderedPages = ['/ws/pdf-x/slide-1.png', '/ws/pdf-x/slide-2.png'];
+
+  function lectureTyping(text: string): Buffer {
+    const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [text]);
+    const slideNumber = slideNumberShapeXml(
+      '<p:ph type="sldNum" sz="quarter" idx="12"/>',
+      text
+    );
+    return buildPptx([
+      {
+        xml: slideOfShapesXml([
+          shapeXml('<p:ph type="title"/>', ['Mitosis']),
+          shapeXml('<p:ph idx="1"/>', [text]),
+          footer,
+          slideNumber,
+        ]),
+      },
+      { xml: slideOfShapesXml([picture, footer, slideNumber]) },
+    ]);
+  }
+
+  function markupIn(html: string) {
+    const $ = cheerio.load(html);
+    return {
+      handlers: $('*')
+        .toArray()
+        .flatMap((element) => Object.keys($(element).attr() ?? {}))
+        .filter((attribute) => attribute.startsWith('on')),
+      images: $('img')
+        .toArray()
+        .map((image) => $(image).attr('src')),
+    };
+  }
+
+  const typedMarkup = [
+    { form: 'an escaped tag', text: '&lt;img src=x onerror=alert(1)&gt;' },
+    { form: 'a raw tag', text: '<img src=x onerror=alert(1)>' },
+  ];
+  const builders = [
+    { builder: 'combineSlidesIntoHTML', combine: combineSlidesIntoHTML },
+    {
+      builder: 'combineSlidesWithChromeIntoHTML',
+      combine: combineSlidesWithChromeIntoHTML,
+    },
+  ];
+
+  it.each(
+    typedMarkup.flatMap((typed) =>
+      builders.map((builder) => ({ ...typed, ...builder }))
+    )
+  )(
+    'adds no element or attribute from $form in slide text, footer or slide number with $builder',
+    ({ text, combine }) => {
+      const html = combine(
+        extractPptxSourceUnits(lectureTyping(text)),
+        renderedPages,
+        'lecture.pdf',
+        '/ws'
+      );
+
+      expect(markupIn(html)).toEqual({
+        handlers: [],
+        images: ['pdf-x/slide-1.png', 'pdf-x/slide-2.png'],
+      });
+    }
+  );
 });

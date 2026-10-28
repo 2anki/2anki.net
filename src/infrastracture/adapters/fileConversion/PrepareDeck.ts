@@ -27,7 +27,10 @@ import { convertImageToHTML } from './convertImageToHTML';
 import { convertPDFToImages, renderPdfPageImages } from './convertPDFToImages';
 import { extractPptxSourceUnits } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
 import type { SlideUnit } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
-import { combineSlidesIntoHTML } from '../../../lib/pdf/combineSlidesIntoHTML';
+import {
+  combineSlidesIntoHTML,
+  combineSlidesWithChromeIntoHTML,
+} from '../../../lib/pdf/combineSlidesIntoHTML';
 import {
   convertPdfTextToHtml,
   convertPdfTextToHtmlAuto,
@@ -418,6 +421,7 @@ function hasSlideText(slide: SlideUnit): boolean {
   return (
     slide.title !== '' ||
     slide.paragraphs.length > 0 ||
+    slide.chromeParagraphs.length > 0 ||
     slide.speakerNotes !== ''
   );
 }
@@ -452,18 +456,26 @@ async function convertSlidesToTextCards(
       pages: rendered.imagePaths.length,
     });
   }
-  const html = combineSlidesIntoHTML(
+  // A slide image can stand in for chrome on a card's front only if it reaches
+  // the card. The parser embeds images only when embedImages is set, so
+  // without it the deck converts as it did before chrome detection.
+  const combineSlides = input.settings.embedImages
+    ? combineSlidesIntoHTML
+    : combineSlidesWithChromeIntoHTML;
+  const html = combineSlides(
     slides,
     rendered.imagePaths,
     rendered.title,
     input.workspace.location
   );
   // The AI branch only sees media it is handed as extraFiles (the DOCX path
-  // learned this in #3946), so the rendered slides travel with the HTML.
+  // learned this in #3946), so the rendered slides travel with the HTML. Each
+  // is named the way its src decodes, through UTF-8 as Node writes the file,
+  // so a lone surrogate in the upload's name reads as U+FFFD on both sides.
   const slideImages: PdfHtmlImage[] = await Promise.all(
     rendered.imagePaths.map(async (imagePath) => ({
-      name: path
-        .relative(input.workspace.location, imagePath)
+      name: Buffer.from(path.relative(input.workspace.location, imagePath))
+        .toString('utf8')
         .replaceAll('\\', '/'),
       contents: await fs.promises.readFile(imagePath),
     }))

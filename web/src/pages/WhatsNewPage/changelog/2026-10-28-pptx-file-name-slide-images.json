@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-pptx-file-name-slide-images",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "PowerPoint .pptx files with slide text convert with slide images when the file name has a percent sign or a double quote"
+}

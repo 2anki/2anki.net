@@ -24,6 +24,8 @@ export class PptxTooLargeError extends Error {
 export interface SlideUnit extends SourceUnit {
   title: string;
   paragraphs: string[];
+  chromeParagraphs: string[];
+  textWithChrome: string[];
   hasPicture: boolean;
 }
 
@@ -139,16 +141,29 @@ function textRuns(paragraph: string): string[] {
 }
 
 function extractParagraphs(xml: string): string[] {
-  const texts: string[] = [];
+  return readParagraphs(xml).map((paragraph) => paragraph.text);
+}
+
+// Insert > Slide Number and Date & Time drop a field into whichever text box
+// holds the cursor, so a line can be slide chrome without a chrome placeholder.
+const CHROME_FIELD_TYPE = /\stype="(?:slidenum|datetime[^"]*)"/;
+
+function readParagraphs(xml: string): { text: string; fieldOnly: boolean }[] {
+  const paragraphs: { text: string; fieldOnly: boolean }[] = [];
 
   for (const paragraph of tagBlocks(xml, 'a:p')) {
-    const paraTexts = textRuns(paragraph);
-    if (paraTexts.length > 0) {
-      texts.push(paraTexts.join(''));
-    }
+    const runs = textRuns(paragraph);
+    if (runs.length === 0) continue;
+    const fieldRuns = tagBlocks(paragraph, 'a:fld')
+      .filter((field) => hasAttribute(field, 'a:fld', CHROME_FIELD_TYPE))
+      .flatMap((field) => textRuns(field));
+    paragraphs.push({
+      text: runs.join(''),
+      fieldOnly: fieldRuns.length === runs.length,
+    });
   }
 
-  return texts;
+  return paragraphs;
 }
 
 function hasTextShapes(slideXml: string): boolean {
@@ -167,6 +182,10 @@ function isTitleShape(shapeXml: string): boolean {
   return hasAttribute(shapeXml, 'p:ph', /\stype="(?:title|ctrTitle)"/);
 }
 
+function isSlideChrome(shapeXml: string): boolean {
+  return hasAttribute(shapeXml, 'p:ph', /\stype="(?:sldNum|dt|ftr|hdr)"/);
+}
+
 function inferRole(slideXml: string, visibleText: string): SourceUnitRole {
   if (visibleText.trim() === '') {
     return hasPicture(slideXml) ? 'image' : 'body';
@@ -180,7 +199,42 @@ function inferRole(slideXml: string, visibleText: string): SourceUnitRole {
 function splitSlideText(slideXml: string): {
   title: string;
   paragraphs: string[];
+  chromeParagraphs: string[];
 } {
+  let title = '';
+  const paragraphs: string[] = [];
+  const chromeParagraphs: string[] = [];
+
+  for (const shape of tagBlocks(slideXml, 'p:sp')) {
+    const chromeShape = isSlideChrome(shape);
+    const shapeParagraphs: string[] = [];
+    for (const { text, fieldOnly } of readParagraphs(shape)) {
+      if (chromeShape || fieldOnly) {
+        chromeParagraphs.push(text);
+      } else {
+        shapeParagraphs.push(text);
+      }
+    }
+    if (shapeParagraphs.length === 0) continue;
+    if (title === '' && isTitleShape(shape)) {
+      title = shapeParagraphs.join(' ');
+    } else {
+      paragraphs.push(...shapeParagraphs);
+    }
+  }
+
+  // A placeholder inside mc:AlternateContent is stored once per branch.
+  return {
+    title,
+    paragraphs,
+    chromeParagraphs: [...new Set(chromeParagraphs)],
+  };
+}
+
+// The slide read the way it was before chrome was set apart: the title first,
+// then every other line in XML order, chrome and duplicates included. A deck
+// whose slide images do not all reach its cards is built from it.
+function readTextWithChrome(slideXml: string): string[] {
   let title = '';
   const paragraphs: string[] = [];
 
@@ -194,7 +248,7 @@ function splitSlideText(slideXml: string): {
     }
   }
 
-  return { title, paragraphs };
+  return title === '' ? paragraphs : [title, ...paragraphs];
 }
 
 function extractNotesText(notesXml: string): string {
@@ -274,9 +328,10 @@ export function extractPptxSourceUnits(pptxBuffer: Buffer): SlideUnit[] {
     if (isHidden(slideXml)) return [];
 
     const notesXml = notesEntries.get(num) ?? '';
-    const { title, paragraphs } = hasTextShapes(slideXml)
+    const textShapes = hasTextShapes(slideXml);
+    const { title, paragraphs, chromeParagraphs } = textShapes
       ? splitSlideText(slideXml)
-      : { title: '', paragraphs: [] };
+      : { title: '', paragraphs: [], chromeParagraphs: [] };
     const visibleText = [title, ...paragraphs]
       .filter((text) => text !== '')
       .join('\n');
@@ -291,6 +346,8 @@ export function extractPptxSourceUnits(pptxBuffer: Buffer): SlideUnit[] {
         role,
         title,
         paragraphs,
+        chromeParagraphs,
+        textWithChrome: textShapes ? readTextWithChrome(slideXml) : [],
         hasPicture: hasPicture(slideXml),
       },
     ];

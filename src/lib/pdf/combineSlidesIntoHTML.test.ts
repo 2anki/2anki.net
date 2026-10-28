@@ -1,15 +1,27 @@
 import { vi } from 'vitest';
-import { combineSlidesIntoHTML } from './combineSlidesIntoHTML';
+import {
+  combineSlidesIntoHTML,
+  combineSlidesWithChromeIntoHTML,
+} from './combineSlidesIntoHTML';
 import type { SlideUnit } from '../parser/sourceUnits/extractPptxSourceUnits';
 
+// textWithChrome follows from the other fields the way the extractor reads a
+// slide that stores its chrome last.
 function slide(overrides: Partial<SlideUnit> = {}): SlideUnit {
+  const title = overrides.title ?? '';
+  const lines = [
+    ...(overrides.paragraphs ?? []),
+    ...(overrides.chromeParagraphs ?? []),
+  ];
   return {
     id: 'slide-1',
     visibleText: '',
     speakerNotes: '',
     role: 'body',
-    title: '',
+    title,
     paragraphs: [],
+    chromeParagraphs: [],
+    textWithChrome: title === '' ? lines : [title, ...lines],
     hasPicture: false,
     ...overrides,
   };
@@ -82,6 +94,84 @@ describe('combineSlidesIntoHTML', () => {
     expect(card.back).toContain('<ul><li>Energy currency</li></ul>');
   });
 
+  it('skips a numbered text box and fronts the first line with words when a slide has no title', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          paragraphs: ['03', 'Endocytosis', 'Phagocytosis: cell eating'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('Endocytosis');
+    expect(card.back).toBe(
+      '<ul><li>03</li><li>Phagocytosis: cell eating</li></ul><img src="pdf-x/slide-1.png" />'
+    );
+  });
+
+  it('keeps the first paragraph as the front when no line on an untitled slide has a letter', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ paragraphs: ['2024', '1.5'] })],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('2024');
+    expect(card.back).toBe(
+      '<ul><li>1.5</li></ul><img src="pdf-x/slide-1.png" />'
+    );
+  });
+
+  it('keeps the title on the front of a titled slide whose first paragraph is a number', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'Mitosis', paragraphs: ['03', 'Prophase'] })],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('Mitosis');
+    expect(card.back).toBe(
+      '<ul><li>03</li><li>Prophase</li></ul><img src="pdf-x/slide-1.png" />'
+    );
+  });
+
+  it.each(['細胞分裂', 'Митоз', 'Μίτωση', 'الانقسام'])(
+    'counts %s as a line with words',
+    (heading) => {
+      const html = combineSlidesIntoHTML(
+        [slide({ paragraphs: ['12', heading] })],
+        [IMAGES[0]],
+        'lecture.pdf',
+        WORKSPACE
+      );
+
+      expect(cards(html)[0].front).toBe(heading);
+    }
+  );
+
+  it('does not read the name of an escaped symbol as words', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ paragraphs: ['&lt; 0.05', 'Significant result'] })],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('Significant result');
+    expect(card.back).toBe(
+      '<ul><li>&lt; 0.05</li></ul><img src="pdf-x/slide-1.png" />'
+    );
+  });
+
   it('puts the slide image on the front of an image-only slide and never repeats it on the back', () => {
     const html = combineSlidesIntoHTML(
       [slide({ role: 'image', hasPicture: true, speakerNotes: 'A diagram' })],
@@ -94,6 +184,140 @@ describe('combineSlidesIntoHTML', () => {
     expect(card.front).toBe('<img src="pdf-x/slide-1.png" />');
     expect(card.back).not.toContain('<img');
     expect(card.back).toContain('<p>A diagram</p>');
+  });
+
+  it('answers a picture slide whose only text is its slide number and footer with that text, as one source line', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          role: 'image',
+          hasPicture: true,
+          chromeParagraphs: ['Cell Biology', '2'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('<img src="pdf-x/slide-1.png" />');
+    expect(card.back).toBe('<p data-2anki-slide-source>Cell Biology · 2</p>');
+  });
+
+  it('adds the slide number and footer as a source line under the image of a slide with no text of its own on the back', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'Part 2', chromeParagraphs: ['Cell Biology', '5'] })],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)[0].back).toBe(
+      '<img src="pdf-x/slide-1.png" /><p data-2anki-slide-source>Cell Biology · 5</p>'
+    );
+  });
+
+  it('answers a picture slide with its speaker notes, not its slide number, when it has notes', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          role: 'image',
+          hasPicture: true,
+          speakerNotes: 'Label the four phases',
+          chromeParagraphs: ['3'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('<img src="pdf-x/slide-1.png" />');
+    expect(card.back).toBe('<hr /><p>Label the four phases</p>');
+  });
+
+  it('leaves the slide number and footer off a card that already has an answer', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          title: 'Mitosis',
+          paragraphs: ['Prophase'],
+          chromeParagraphs: ['Cell Biology', '1'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    const [card] = cards(html);
+    expect(card.front).toBe('Mitosis');
+    expect(card.back).toBe(
+      '<ul><li>Prophase</li></ul><img src="pdf-x/slide-1.png" />'
+    );
+  });
+
+  it('keeps chrome as slide text when more pages rendered than slides, since page i may not be slide i', () => {
+    const html = combineSlidesIntoHTML(
+      [
+        slide({
+          role: 'image',
+          hasPicture: true,
+          chromeParagraphs: ['Cell Biology', '2'],
+        }),
+      ],
+      IMAGES,
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)).toEqual([
+      {
+        front: 'Cell Biology',
+        back: '<ul><li>2</li></ul><img src="pdf-x/slide-1.png" />',
+      },
+    ]);
+  });
+
+  it('percent-encodes each folder and file name in a slide image src, so the parser finds the page whatever the upload is called', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'One' })],
+      [`${WORKSPACE}/pdf-x/Lecture%203 "a" #1?.pdf-page1-1.png`],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)[0].back).toBe(
+      '<img src="pdf-x/Lecture%25203%20%22a%22%20%231%3F.pdf-page1-1.png" />'
+    );
+  });
+
+  it('encodes a file name holding a lone surrogate the way Node writes it to disk, instead of throwing', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'One' })],
+      [`${WORKSPACE}/pdf-x/Lecture \uD800.pdf-page1-1.png`],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)[0].back).toBe(
+      '<img src="pdf-x/Lecture%20%EF%BF%BD.pdf-page1-1.png" />'
+    );
+  });
+
+  it('keeps a backslash in a file name inside its own path segment', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'One' })],
+      [`${WORKSPACE}/pdf-x/Cell\\Biology.pdf-page1-1.png`],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)[0].back).toBe(
+      '<img src="pdf-x/Cell%5CBiology.pdf-page1-1.png" />'
+    );
   });
 
   it('never pairs one slide with the next: two slides give two cards', () => {
@@ -166,5 +390,29 @@ describe('combineSlidesIntoHTML', () => {
       '<title>&lt;/title&gt;&lt;script&gt;x&lt;/script&gt;.pdf</title>'
     );
     expect(html).not.toContain('<script>');
+  });
+});
+
+describe('combineSlidesWithChromeIntoHTML', () => {
+  it('keeps chrome as slide text and the slide image on the back, though every slide has its page', () => {
+    const html = combineSlidesWithChromeIntoHTML(
+      [
+        slide({
+          role: 'image',
+          hasPicture: true,
+          chromeParagraphs: ['Cell Biology', '2'],
+        }),
+      ],
+      [IMAGES[0]],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)).toEqual([
+      {
+        front: 'Cell Biology',
+        back: '<ul><li>2</li></ul><img src="pdf-x/slide-1.png" />',
+      },
+    ]);
   });
 });
