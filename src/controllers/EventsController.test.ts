@@ -351,6 +351,29 @@ describe('EventsController', () => {
     );
   });
 
+  // native_app_opened fires at launch and native_limit_hit can fire with no
+  // account, so a signed-out device's events must land under its anon id.
+  it.each(['native_app_opened', 'native_limit_hit'])(
+    'records signed-out native event %s under the anonymous id',
+    (eventName) => {
+      const { controller, req, res, executeSpy } = buildMocks({
+        anonId: 'native-anon-2',
+        consent: 'granted',
+      });
+      req.body = { name: eventName, props: { os: 'ios' } };
+      controller.track(req, res);
+      expect(res.status).toHaveBeenCalledWith(202);
+      expect(executeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: eventName,
+          userId: null,
+          anonymousId: 'native-anon-2',
+          unknown: false,
+        })
+      );
+    }
+  );
+
   // The app sends native_signin_completed right after sign-in with its session
   // cookie and its anon_id cookie, so the row carries both ids and ties the
   // device's earlier anonymous events to the account, for an existing account
