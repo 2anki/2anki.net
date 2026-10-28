@@ -3410,6 +3410,35 @@ describe('UsersController.loginWithAppleNative', () => {
     );
   });
 
+  // A web account's first Apple sign-in from the app links by email. No
+  // account is created, so no account_created row carries anon_id; the app's
+  // native_signin_completed event is what links that device.
+  it('links an existing account by email without creating one, even with an anon_id cookie', async () => {
+    const register = vi.fn();
+    const existing = { id: 41, email: 'native-apple@example.com' };
+    const getUserFrom = vi.fn().mockResolvedValue(existing);
+    const { controller } = buildNativeController({
+      registerVerifiedIdentity: register,
+      getUserFrom,
+    });
+    const res = buildNativeRes();
+
+    await controller.loginWithAppleNative(
+      buildReq({}, { anon_id: 'native-anon-1' }),
+      res
+    );
+
+    expect(register).not.toHaveBeenCalled();
+    expect(MockedOauthIdentitiesRepo.prototype.link).toHaveBeenCalledWith(
+      'apple',
+      'native-sub-001',
+      41,
+      undefined
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ ok: true });
+  });
+
   it('signs in via subject lookup without re-registering when the identity already exists', async () => {
     const register = vi.fn();
     MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
