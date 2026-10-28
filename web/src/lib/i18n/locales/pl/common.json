@@ -859,7 +859,7 @@
     "general": "Ogólne",
     "prereq": {
       "cloze": "Najpierw włącz karty z lukami (cloze).",
-      "cherry": "Wymaga Cherry-pick, który pomija każdą listę rozwijaną bez 🍒. Najpierw go włącz."
+      "cherry": "Działa tylko z trybem „Wybór selektywny”, który tworzy karty wyłącznie z list rozwijanych oznaczonych 🍒. Wszystkie pozostałe nie trafią do talii."
     },
     "saveBar": {
       "saveError": "Nie udało się zapisać Twoich domyślnych ustawień. Spróbuj ponownie.",
@@ -936,6 +936,7 @@
     "comprehensiveHint": "Przy długim dokumencie może powstać bardzo duża talia. Aby mieć mniej, ale pełniejszych kart, ustaw rozmiar karty na Szczegółowy.",
     "comprehensiveHintLink": "Przejdź do rozmiaru karty",
     "pagePairsAiNote": "Dwie strony tworzą jedną kartę jest włączone, więc przesłanie zawierające tylko pliki PDF pomija konwersję AI. Co dwie strony tworzą jedną kartę z obrazem.",
+    "cherryDefaultsWarning": "Tryb „Wybór selektywny” jest włączony dla każdego przesłanego pliku i każdej strony Notion, które korzystają z tych ustawień domyślnych. Kartami stają się tylko listy rozwijane oznaczone 🍒, więc strona bez 🍒 nie da żadnych kart. Oznacz potrzebne listy albo wyłącz ten tryb.",
     "pdfPageRange": {
       "label": "Strony",
       "placeholder": "np. 12-30, 45",

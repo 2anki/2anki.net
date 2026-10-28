@@ -803,7 +803,7 @@
     "general": "Generale",
     "prereq": {
       "cloze": "Attiva prima le carte con cancellazione cloze.",
-      "cherry": "Richiede la selezione mirata, che salta ogni toggle senza 🍒. Attivala prima."
+      "cherry": "Funziona solo con la selezione mirata, che crea carte solo dai toggle contrassegnati con 🍒. Tutti gli altri toggle restano fuori dal tuo mazzo."
     },
     "saveBar": {
       "saveError": "Non siamo riusciti a salvare i tuoi valori predefiniti. Riprova.",
@@ -880,6 +880,7 @@
     "comprehensiveHint": "Con un documento lungo può nascere un mazzo enorme. Per carte meno numerose e più complete, imposta la dimensione della carta su Dettagliata.",
     "comprehensiveHintLink": "Vai a Dimensione della carta",
     "pagePairsAiNote": "Due pagine fanno una carta è attivo, quindi un caricamento di soli PDF salta la conversione con IA. Ogni due pagine diventano una carta immagine.",
+    "cherryDefaultsWarning": "La selezione mirata è attiva per ogni caricamento e ogni pagina Notion che usa queste impostazioni predefinite. Solo i toggle con 🍒 diventano carte, quindi una pagina senza 🍒 non produce carte. Contrassegna i toggle che vuoi o disattiva la selezione mirata.",
     "pdfPageRange": {
       "label": "Pagine",
       "placeholder": "es. 12-30, 45",

@@ -522,6 +522,11 @@ describe('CardOptionsForm inline-code-toggles-become-cloze sub-option', () => {
   });
 });
 
+const PREREQ_CHERRY =
+  'Works only with Cherry-pick, which makes cards only from toggles marked 🍒. Every other toggle is left out of your deck.';
+const CHERRY_DEFAULTS_WARNING =
+  'Cherry-pick is on for every upload and Notion page that uses these defaults. Only toggles marked 🍒 become cards, so a page without any 🍒 gives no cards. Mark the toggles you want, or turn Cherry-pick off.';
+
 describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -538,7 +543,7 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
       new CardOptionModel(
         'section-tags',
         'Tag a whole section',
-        'Strike through a line under a parent toggle to tag every card nested beneath it — tag a whole section at once. Requires Cherry-pick mode.',
+        'Strike through a line under a parent toggle to tag every card nested beneath it. Works only with Cherry-pick on, and then only toggles marked 🍒 become cards.',
         false
       ),
     ]);
@@ -550,11 +555,7 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
       name: 'Tag a whole section',
     });
     expect(toggle).toBeDisabled();
-    expect(
-      screen.getByText(
-        'Needs Cherry-pick, which skips every toggle without a 🍒. Turn it on first.'
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText(PREREQ_CHERRY)).toBeInTheDocument();
   });
 
   it('enables the section-tags toggle once cherry-pick is turned on', async () => {
@@ -569,11 +570,7 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
         screen.getByRole('switch', { name: 'Tag a whole section' })
       ).toBeEnabled();
     });
-    expect(
-      screen.queryByText(
-        'Needs Cherry-pick, which skips every toggle without a 🍒. Turn it on first.'
-      )
-    ).toBeNull();
+    expect(screen.queryByText(PREREQ_CHERRY)).toBeNull();
   });
 
   it('round-trips the section-tags value to localStorage when cherry is on', async () => {
@@ -1304,5 +1301,68 @@ describe('CardOptionsForm AI instruction presets on a page-scoped view', () => {
       action: 'added',
       scope: 'page',
     });
+  });
+});
+
+describe('CardOptionsForm cherry-pick warning on account defaults', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResetUserCardOptions.mockResolvedValue(undefined);
+    setUserLocalsPaying(false);
+    localStorage.clear();
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'cherry',
+        'Cherry-pick using 🍒 emoji',
+        'Cherry-pick which toggles become cards.',
+        false
+      ),
+    ]);
+  });
+
+  it('warns under the switch once cherry-pick is on in account defaults', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const cherry = await screen.findByRole('checkbox', {
+      name: 'Cherry-pick using 🍒 emoji',
+    });
+    expect(screen.queryByText(CHERRY_DEFAULTS_WARNING)).toBeNull();
+
+    fireEvent.click(cherry);
+
+    expect(
+      await screen.findByText(CHERRY_DEFAULTS_WARNING)
+    ).toBeInTheDocument();
+  });
+
+  it('warns on first render for someone who saved cherry-pick on earlier', async () => {
+    localStorage.setItem('cherry', 'true');
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'cherry',
+        'Cherry-pick using 🍒 emoji',
+        'Cherry-pick which toggles become cards.',
+        true
+      ),
+    ]);
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    expect(
+      await screen.findByText(CHERRY_DEFAULTS_WARNING)
+    ).toBeInTheDocument();
+  });
+
+  it('does not warn in one page settings, which apply to that page only', async () => {
+    mockGetSettings.mockResolvedValue({});
+    renderPageForm({ setError: vi.fn() });
+    const cherry = await screen.findByRole('checkbox', {
+      name: 'Cherry-pick using 🍒 emoji',
+    });
+
+    fireEvent.click(cherry);
+
+    await waitFor(() => {
+      expect(cherry).toBeChecked();
+    });
+    expect(screen.queryByText(CHERRY_DEFAULTS_WARNING)).toBeNull();
   });
 });

@@ -803,7 +803,7 @@
     "general": "Algemeen",
     "prereq": {
       "cloze": "Zet eerst Cloze-verwijderingskaarten aan.",
-      "cherry": "Heeft Cherry-pick nodig, dat elke toggle zonder 🍒 overslaat. Zet het eerst aan."
+      "cherry": "Werkt alleen met Cherry-pick, dat alleen kaarten maakt van toggles met 🍒. Alle andere toggles komen niet in je deck."
     },
     "saveBar": {
       "saveError": "Kon je standaardwaarden niet opslaan. Probeer het opnieuw.",
@@ -880,6 +880,7 @@
     "comprehensiveHint": "Bij een lang document kan dit een grote stapel opleveren. Voor minder, vollere kaarten zet je de kaartgrootte op Uitgebreid.",
     "comprehensiveHintLink": "Naar Kaartgrootte",
     "pagePairsAiNote": "Twee pagina's maken één kaart staat aan, dus een upload met alleen PDF's slaat AI-conversie over. Elke twee pagina's worden één afbeeldingskaart.",
+    "cherryDefaultsWarning": "Cherry-pick staat aan voor elke upload en elke Notion-pagina die deze standaardinstellingen gebruikt. Alleen toggles met 🍒 worden kaarten, dus een pagina zonder 🍒 geeft geen kaarten. Markeer de gewenste toggles of zet Cherry-pick uit.",
     "pdfPageRange": {
       "label": "Pagina's",
       "placeholder": "bijv. 12-30, 45",

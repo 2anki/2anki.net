@@ -803,7 +803,7 @@
     "general": "Allgemein",
     "prereq": {
       "cloze": "Aktiviere zuerst Cloze-Lückenkarten.",
-      "cherry": "Braucht Cherry-Pick, das jeden Toggle ohne 🍒 überspringt. Aktiviere es zuerst."
+      "cherry": "Funktioniert nur mit Cherry-Pick, das nur aus Toggles mit 🍒 Karten macht. Alle anderen Toggles fehlen dann in deinem Stapel."
     },
     "saveBar": {
       "saveError": "Deine Voreinstellungen konnten nicht gespeichert werden. Versuch es erneut.",
@@ -880,6 +880,7 @@
     "comprehensiveHint": "Bei langen Dokumenten kann so ein großer Stapel entstehen. Für weniger, vollere Karten stelle die Kartengröße auf Ausführlich.",
     "comprehensiveHintLink": "Zur Kartengröße",
     "pagePairsAiNote": "Zwei Seiten ergeben eine Karte ist aktiv, daher überspringt ein Upload aus reinen PDFs die KI-Umwandlung. Je zwei Seiten werden zu einer Bildkarte.",
+    "cherryDefaultsWarning": "Cherry-Pick ist für jeden Upload und jede Notion-Seite aktiv, die diese Standards nutzt. Nur Toggles mit 🍒 werden zu Karten, eine Seite ohne 🍒 ergibt also keine Karten. Markiere die gewünschten Toggles oder schalte Cherry-Pick aus.",
     "pdfPageRange": {
       "label": "Seiten",
       "placeholder": "z. B. 12-30, 45",
