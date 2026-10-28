@@ -155,6 +155,35 @@ describe('PhotoToFlashcardsUseCase', () => {
       expect(mockMessageCreate).not.toHaveBeenCalled();
     });
 
+    // The surface is an analytics label only: a native free user meets the
+    // same monthly photo quota as a web one, and a native paying user skips it.
+    it.each(['photo_to_deck_ios', 'photo_to_deck_macos'])(
+      'applies the same free quota to the %s surface',
+      async (usageSurface) => {
+        const events = makeEventsStub(FREE_PHOTO_QUOTA_PER_MONTH);
+        const useCase = new PhotoToFlashcardsUseCase(events);
+        await expect(
+          useCase.execute({ ...BASE_INPUT, isPaying: false, usageSurface })
+        ).rejects.toMatchObject({ status: 429 });
+        expect(mockMessageCreate).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(['photo_to_deck_ios', 'photo_to_deck_macos'])(
+      'skips the quota for a paying user on the %s surface',
+      async (usageSurface) => {
+        const events = makeEventsStub(FREE_PHOTO_QUOTA_PER_MONTH * 10);
+        const useCase = new PhotoToFlashcardsUseCase(events);
+        const result = await useCase.execute({
+          ...BASE_INPUT,
+          isPaying: true,
+          usageSurface,
+        });
+        expect(result.cardCount).toBe(2);
+        expect(events.countByNameForUser).not.toHaveBeenCalled();
+      }
+    );
+
     it('names the AI-credit path in the quota message, never "unlimited"', async () => {
       const events = makeEventsStub(FREE_PHOTO_QUOTA_PER_MONTH);
       const useCase = new PhotoToFlashcardsUseCase(events);
