@@ -113,7 +113,7 @@ export function AiPreviewGate({
         aria-busy={busy}
         onClick={onContinueWithoutAi}
       >
-        {busy ? t('common:upload.form.checkingAccount') : t('secondaryCta')}
+        {busy ? t('common:upload.form.checkingSignIn') : t('secondaryCta')}
       </button>
       <p className={styles.secondaryNote}>
         {t('secondaryNote', { cap: ANONYMOUS_CARD_CAP })}

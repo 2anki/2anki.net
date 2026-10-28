@@ -104,12 +104,12 @@ describe('AiPreviewGate', () => {
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
-  it('says it is checking the account on continue-without-AI while busy, and holds it', () => {
+  it('says it is checking who is signed in on continue-without-AI while busy, and holds it', () => {
     const onContinue = vi.fn();
     renderGate(CARDS, onContinue, true);
 
     const checking = screen.getByRole('button', {
-      name: 'Checking your account',
+      name: "Checking who's signed in",
     });
     fireEvent.click(checking);
 

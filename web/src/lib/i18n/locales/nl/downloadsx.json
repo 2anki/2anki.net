@@ -164,8 +164,8 @@
     "generic_other": "Er kwamen maar {{count}} kaarten uit deze pagina en {{skipped}} delen zijn overgeslagen. Open het rapport om te zien waarom.",
     "fewCards_one": "Er kwam maar {{count}} kaart uit dit bestand. Schakel Claude-kaarten hierboven in en converteer opnieuw om er meer te krijgen.",
     "fewCards_other": "Er kwamen maar {{count}} kaarten uit dit bestand. Schakel Claude-kaarten hierboven in en converteer opnieuw om er meer te krijgen.",
-    "fewCardsNoCredits_one": "Er kwam maar {{count}} kaart uit dit bestand.",
-    "fewCardsNoCredits_other": "Er kwamen maar {{count}} kaarten uit dit bestand.",
+    "fewCardsNoCredits_one": "Er kwam maar {{count}} kaart uit dit bestand. Met AI-credits kan Claude er meer schrijven.",
+    "fewCardsNoCredits_other": "Er kwamen maar {{count}} kaarten uit dit bestand. Met AI-credits kan Claude er meer schrijven.",
     "fewCardsPaidAi_one": "Er kwam maar {{count}} kaart uit dit bestand. Met een betaald abonnement kan Claude er meer kaarten uit halen.",
     "fewCardsPaidAi_other": "Er kwamen maar {{count}} kaarten uit dit bestand. Met een betaald abonnement kan Claude er meer kaarten uit halen.",
     "seeReport": "Volledig rapport bekijken"

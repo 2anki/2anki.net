@@ -362,7 +362,9 @@ function isThinPdfOrTxtDeck(
 
 // A paying account's thin-deck notice waits for its credits: with none left,
 // telling it to turn on Claude cards points at a deck that still builds
-// without AI. A read that finished without a balance keeps the usual advice.
+// without AI. A read that finished, or waited too long, without a balance
+// keeps the usual advice, and so does a plan with no AI allowance, which the
+// badge leaves out too.
 function thinDeckNoticeReason(
   isPaying: boolean,
   isAuthenticated: boolean,
@@ -371,6 +373,7 @@ function thinDeckNoticeReason(
   if (!isPaying) return 'fewCardsPaidAi';
   if (!isAuthenticated) return 'fewCards';
   if (credits == null) return settled ? 'fewCards' : null;
+  if (credits.allowance === 0) return 'fewCards';
   return credits.credits <= 0 ? 'fewCardsNoCredits' : 'fewCards';
 }
 
@@ -381,13 +384,27 @@ const CLAUDE_RESENDS = new WeakSet<FormData>();
 
 // A resend names the account that first sent the kept files, so the server
 // refuses it under any other session: 'none' for a visitor who was signed
-// out, and no field at all when the page never had account data.
+// out. Files whose sender is unknown are never sent back.
 const KEPT_OWNER_FIELD = 'kept-owner';
 
-function keptOwnerField(owner: number | null | undefined): string | null {
-  if (owner === undefined) return null;
+function senderField(owner: number | null): string {
   return owner === null ? 'none' : String(owner);
 }
+
+// The server names the session every upload ran under, which settles whose
+// files these are better than any account read the page makes afterwards.
+const UPLOAD_OWNER_HEADER = 'X-Upload-Owner';
+
+function sessionNamed(value: string | null): number | null | undefined {
+  if (value == null) return undefined;
+  if (value === 'none') return null;
+  const owner = Number(value);
+  return Number.isInteger(owner) ? owner : undefined;
+}
+
+// How long a paying account's thin-deck notice waits for its credits before
+// giving the usual advice, as the page did before it read them.
+const CREDITS_WAIT_MS = 2000;
 
 interface KeptFiles {
   files: File[];
@@ -520,9 +537,13 @@ function UploadForm({
   // tapped on is dropped.
   const screenEpochRef = useRef(0);
   const [claudeResendHeld, setClaudeResendHeld] = useState(false);
+  // Files whose sender the page never learned are not sent back; the screen
+  // says why and offers to choose the file again.
+  const [senderUnknown, setSenderUnknown] = useState(false);
   const moveScreenOn = () => {
     screenEpochRef.current += 1;
     setClaudeResendHeld(false);
+    setSenderUnknown(false);
   };
   // The resend button whose account check is running: it reads "Checking your
   // account" while every resend button waits.
@@ -1147,7 +1168,8 @@ function UploadForm({
     zoneState === 'error' &&
     networkRetryFiles == null &&
     unreadableFile == null &&
-    !ownerChanged;
+    !ownerChanged &&
+    !senderUnknown;
   useEffect(() => {
     if (errorChatOffered) {
       track('upload_error_chat_shown');
@@ -1187,35 +1209,46 @@ function UploadForm({
       ? localError?.rescue
       : null;
 
-  // A file sent before the page had account data (still loading, or a first
-  // read that failed or paused) belongs to the account the page then shows:
-  // the session the server put the upload under.
-  useEffect(() => {
-    if (userLocals == null) return;
-    setKeptFiles((kept) =>
-      kept.owner === undefined ? { ...kept, owner: currentOwnerId } : kept
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocals]);
-
   // Kept files go back only under the account that sent them: on a shared
   // computer another account can sign in from another tab while a result is
   // still on screen, and must not receive that file or pay for it. With no
-  // kept files there is nothing to send back, whatever the account.
+  // kept files there is nothing to send back, and a page with no account
+  // data cannot tell that the account changed.
   const keptFilesBelongElsewhere =
     rescueFiles.length > 0 &&
     rescueFilesOwner !== undefined &&
+    userLocals != null &&
     rescueFilesOwner !== currentOwnerId;
+
+  // The sender a new upload goes out as: the account the page shows, or
+  // unknown when the page has no account data. The server's answer settles
+  // it; a later account read never does.
+  const pageSender = (): number | null | undefined =>
+    userLocals == null ? undefined : currentOwnerId;
 
   // Only a fresh submit (the file input, a dropped folder, a handed-over file,
   // a saved upload resumed under its own account) sets the kept files and
   // their account. A resend keeps both as they were.
-  const keepSubmittedFiles = (files: File[]) => {
+  const keepSubmittedFiles = (
+    files: File[],
+    sender: number | null | undefined = pageSender()
+  ) => {
     moveScreenOn();
-    setKeptFiles({
-      files,
-      owner: userLocals == null ? undefined : currentOwnerId,
-    });
+    setKeptFiles({ files, owner: sender });
+  };
+
+  const recordSender = (files: File[], response: Response) => {
+    const sender = sessionNamed(response.headers?.get(UPLOAD_OWNER_HEADER));
+    if (sender === undefined) return;
+    setKeptFiles((kept) =>
+      kept.files === files ? { ...kept, owner: sender } : kept
+    );
+    if (sender !== currentOwnerId) void refetchUserLocals();
+  };
+
+  const holdForUnknownSender = () => {
+    setSenderUnknown(true);
+    setZoneState('error');
   };
 
   // The account as the server sees it now, or the account the page shows when
@@ -1240,15 +1273,15 @@ function UploadForm({
     }
   };
 
-  // The buttons that convert the kept files again go through here. It reads
-  // the account again first, since a window that never lost focus still shows
-  // the old one, and sends nothing under any account other than the one that
-  // sent the files (files sent before the page had account data belong to the
-  // one the read finds). Without a confirmed account, a Claude resend, which
-  // spends credits, holds and says so; any other resend goes out under the
-  // browser's session. Each names the account that sent the files, and the
-  // server refuses it under any other session. A resend whose screen moved on
-  // during the read is dropped.
+  // The buttons that convert the kept files again go through here. Files whose
+  // sender is unknown are never sent back. Otherwise it reads the account
+  // again first, since a window that never lost focus still shows the old
+  // one, and sends nothing under any account other than the one that sent
+  // the files. Without a confirmed account, a Claude resend, which spends
+  // credits, holds and says so; any other resend goes out under the browser's
+  // session. Each names the account that sent the files, and the server
+  // refuses it under any other session. A resend whose screen moved on during
+  // the read is dropped.
   const resendPendingRef = useRef(false);
   const resendKeptFiles = async (
     tapped: string,
@@ -1256,6 +1289,10 @@ function UploadForm({
     whenUnconfirmed: 'hold' | 'send'
   ) => {
     if (resendPendingRef.current) return;
+    if (rescueFilesOwner === undefined) {
+      holdForUnknownSender();
+      return;
+    }
     resendPendingRef.current = true;
     const tappedOn = screenEpochRef.current;
     setResendTapped(tapped);
@@ -1263,20 +1300,17 @@ function UploadForm({
     try {
       const account = await readAccountAgain();
       if (unmountedRef.current || tappedOn !== screenEpochRef.current) return;
-      if (
-        rescueFilesOwner !== undefined &&
-        account.accountId !== rescueFilesOwner
-      ) {
-        return;
-      }
+      // A page with no account data has nothing to compare an unconfirmed
+      // read with; the server still refuses the resend under another session.
+      const comparable = account.confirmed || userLocals != null;
+      if (comparable && account.accountId !== rescueFilesOwner) return;
       if (!account.confirmed && whenUnconfirmed === 'hold') {
         setClaudeResendHeld(true);
         return;
       }
       const resend = await prepare();
       if (resend == null) return;
-      const sentBy = keptOwnerField(rescueFilesOwner);
-      if (sentBy != null) resend.formData.set(KEPT_OWNER_FIELD, sentBy);
+      resend.formData.set(KEPT_OWNER_FIELD, senderField(rescueFilesOwner));
       void runFileUpload(resend.formData, resend.files, resend.isRetry);
     } finally {
       resendPendingRef.current = false;
@@ -1285,7 +1319,7 @@ function UploadForm({
   };
 
   const resendLabel = (tapped: string, label: string): string =>
-    resendTapped === tapped ? t('upload.form.checkingAccount') : label;
+    resendTapped === tapped ? t('upload.form.checkingSignIn') : label;
 
   // Anonymous and free accounts are sent to the paid plan rather than to a
   // free AI run; a paying account with AI off spends its own credits on a
@@ -1296,8 +1330,26 @@ function UploadForm({
     isPaying &&
     !(aiOn || lastSubmitUsedAi) &&
     rescueFiles.length === 1;
+  // On the empty screen the line saying the session changed takes the place
+  // of the offers that send the kept file again: ones the screen showed
+  // before the change, or ones the session now on the page would get.
+  const emptyResendSlot =
+    (offeredRescue?.length ?? 0) > 0 || aiRescuePayingSlot;
+  const emptyOfferOnScreen = emptyResendSlot && !keptFilesBelongElsewhere;
+  const [emptyOfferShown, setEmptyOfferShown] = useState(false);
+  useEffect(() => {
+    if (zoneState !== 'emptyDeck') {
+      setEmptyOfferShown(false);
+    } else if (emptyOfferOnScreen) {
+      setEmptyOfferShown(true);
+    }
+  }, [zoneState, emptyOfferOnScreen]);
+  const emptySignInChanged =
+    keptFilesBelongElsewhere &&
+    emptyStateUsesDefaultBody &&
+    (emptyOfferShown || emptyResendSlot);
   const aiRescueState = (() => {
-    if (!emptyStateUsesDefaultBody) {
+    if (!emptyStateUsesDefaultBody || emptySignInChanged) {
       return null;
     }
     if (!isAuthenticated) return 'anon';
@@ -1403,11 +1455,27 @@ function UploadForm({
     aiRebuildEligible && aiRebuildCreditsLeft > LOW_CREDITS_THRESHOLD;
   const aiRebuildOffer =
     rebuildSlot && !keptFilesBelongElsewhere ? aiRebuildFormat : null;
-  const thinNoticeReason = thinDeckNoticeReason(
-    isPaying,
-    isAuthenticated,
-    creditsRead
+  // A credits read that hangs must not hide the notice for good.
+  const waitingForCredits =
+    thinNoticeDeck && isAuthenticated && isPaying && !creditsRead.settled;
+  const [creditsWaitEndedFor, setCreditsWaitEndedFor] = useState<string | null>(
+    null
   );
+  useEffect(() => {
+    if (!waitingForCredits || downloadLink == null) return;
+    const deck = downloadLink;
+    const timer = setTimeout(
+      () => setCreditsWaitEndedFor(deck),
+      CREDITS_WAIT_MS
+    );
+    return () => clearTimeout(timer);
+  }, [waitingForCredits, downloadLink]);
+  const thinNoticeReason = thinDeckNoticeReason(isPaying, isAuthenticated, {
+    credits: creditsRead.credits,
+    settled:
+      creditsRead.settled ||
+      (downloadLink != null && creditsWaitEndedFor === downloadLink),
+  });
   useEffect(() => {
     if (aiRebuildOffer != null) {
       track('upload_ai_rebuild_shown', { format: aiRebuildOffer });
@@ -1964,12 +2032,15 @@ function UploadForm({
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
     const aiFlagSent = formData.get('claude-ai-flashcards');
+    const namedSender = formData.get(KEPT_OWNER_FIELD);
+    const isResend = typeof namedSender === 'string';
     savePendingUpload(
       uploadedFiles,
       submittedAt,
       recoveryToken,
       typeof aiFlagSent === 'string' ? aiFlagSent : null,
-      CLAUDE_RESENDS.has(formData)
+      CLAUDE_RESENDS.has(formData),
+      isResend ? sessionNamed(namedSender) : pageSender()
     );
     setNetworkRetryFiles(null);
     setUnreadableFile(null);
@@ -1991,6 +2062,7 @@ function UploadForm({
         body,
       });
       clearPendingUpload();
+      if (!isResend) recordSender(uploadedFiles, request);
       if (request.redirected) {
         return handleUploadRedirect(request, uploadedFiles);
       }
@@ -2024,7 +2096,8 @@ function UploadForm({
     submittedAt: number,
     recoveryToken: string | null,
     aiFlagSent: string | null,
-    claudeResend: boolean
+    claudeResend: boolean,
+    sender: number | null | undefined
   ) => {
     const first = files[0];
     if (first == null) return;
@@ -2034,7 +2107,8 @@ function UploadForm({
       sizeBytes: files.reduce((sum, file) => sum + file.size, 0),
       submittedAt,
       recoveryToken,
-      ownerId: currentOwnerId,
+      ownerId: sender ?? null,
+      ownerUnknown: sender === undefined,
       pdfPageRange: pdfPageRangeRef.current,
       aiFlag: aiFlagSent,
       claudeResend,
@@ -2106,8 +2180,9 @@ function UploadForm({
         return;
       }
       // A file left by someone else on this browser is never offered: on a
-      // shared computer it would land in the next person's account.
-      if (upload.ownerId !== currentOwnerId) {
+      // shared computer it would land in the next person's account. One whose
+      // sender was never known is offered, and held when picked up.
+      if (upload.ownerUnknown !== true && upload.ownerId !== currentOwnerId) {
         clearPendingUpload();
         return;
       }
@@ -2152,11 +2227,16 @@ function UploadForm({
     // replace it, and the files must never go out under an account that did
     // not send them.
     const upload = await getPendingUploadStore().load();
-    if (
-      upload == null ||
-      upload.ownerId !== currentOwnerId ||
-      upload.submittedAt !== offered.submittedAt
-    ) {
+    if (upload == null || upload.submittedAt !== offered.submittedAt) {
+      setZoneState('idle');
+      return;
+    }
+    if (upload.ownerUnknown === true) {
+      clearPendingUpload();
+      holdForUnknownSender();
+      return;
+    }
+    if (upload.ownerId !== currentOwnerId) {
       setZoneState('idle');
       return;
     }
@@ -2189,10 +2269,9 @@ function UploadForm({
     }
     // The saved files go back under the account that saved them, even when
     // another tab signed in since this page last read the account.
-    const sentBy = keptOwnerField(upload.ownerId);
-    if (sentBy != null) formData.set(KEPT_OWNER_FIELD, sentBy);
+    formData.set(KEPT_OWNER_FIELD, senderField(upload.ownerId));
     resumedUploadRef.current = true;
-    keepSubmittedFiles(upload.files);
+    keepSubmittedFiles(upload.files, upload.ownerId);
     void runFileUpload(formData, upload.files, false);
   };
 
@@ -2207,7 +2286,8 @@ function UploadForm({
       sizeBytes: file.size,
       submittedAt: Date.now(),
       recoveryToken: null,
-      ownerId: currentOwnerId,
+      ownerId: rescueFilesOwner ?? null,
+      ownerUnknown: rescueFilesOwner === undefined,
       pdfPageRange: pdfPageRangeRef.current,
       aiFlag: 'true',
       claudeResend: true,
@@ -2263,7 +2343,7 @@ function UploadForm({
         upload == null ||
         upload.aiFlag !== 'true' ||
         upload.files.length === 0 ||
-        upload.ownerId !== currentOwnerId ||
+        (upload.ownerUnknown !== true && upload.ownerId !== currentOwnerId) ||
         zoneStateRef.current !== 'idle'
       ) {
         return;
@@ -2300,8 +2380,9 @@ function UploadForm({
     }
     attachPdfPageRange(formData);
     applyAnonymousAiFlag(formData, aiOn);
-    keepSubmittedFiles([handedOff]);
-    void runFileUpload(formData, [handedOff], false);
+    const handedOffFiles = [handedOff];
+    keepSubmittedFiles(handedOffFiles);
+    void runFileUpload(formData, handedOffFiles, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, userLocalsLoading]);
 
@@ -2641,20 +2722,31 @@ function UploadForm({
 
   // The drop zone the picker opens from is disabled until the reset renders,
   // and a picker opened later than the tap is blocked by the browser.
-  const chooseFileAgain = () => {
+  // The drop zone the picker opens from is disabled until the reset renders,
+  // and a picker opened later than the tap is blocked by the browser. The
+  // button sits inside the drop zone's label, which must not open it again.
+  const chooseFileAgain = (event: SyntheticEvent) => {
+    event.preventDefault();
     flushSync(startOver);
     fileInputRef.current?.click();
   };
 
+  // After a refusal the server's word on the session counts, before the page
+  // has read the account again.
+  const sessionSignedIn =
+    ownerChanged && typeof localError?.signed_in === 'boolean'
+      ? localError.signed_in
+      : currentOwnerId != null;
+
   const signInChangedKey = (): string => {
-    if (currentOwnerId == null) return 'upload.form.signedOutSinceUpload';
+    if (!sessionSignedIn) return 'upload.form.signedOutSinceUpload';
     if (rescueFilesOwner === null) return 'upload.form.signedInSinceUpload';
     return 'upload.form.otherAccountSinceUpload';
   };
 
-  const renderSignInChanged = () => (
+  const renderChooseFileAgain = (key: string, signInLink: boolean) => (
     <div className={formStyles.aiRescueActions} role="status">
-      <p className={formStyles.rescueLead}>{t(signInChangedKey())}</p>
+      <p className={formStyles.rescueLead}>{t(key)}</p>
       <button
         type="button"
         className={formStyles.aiRescueButton}
@@ -2662,13 +2754,16 @@ function UploadForm({
       >
         {t('upload.form.chooseFileAgain')}
       </button>
-      {currentOwnerId == null && (
+      {signInLink && (
         <Link to="/login?redirect=/upload" className={formStyles.resetLink}>
           {t('passFirst:signIn')}
         </Link>
       )}
     </div>
   );
+
+  const renderSignInChanged = () =>
+    renderChooseFileAgain(signInChangedKey(), !sessionSignedIn);
 
   const renderSuccessState = () => (
     <div className={formStyles.stateContent}>
@@ -3105,10 +3200,7 @@ function UploadForm({
     );
     const rescueSlot =
       rescueFiles.length === 1 ? (localError?.rescue ?? []) : [];
-    const signInChanged =
-      keptFilesBelongElsewhere && (rescueSlot.length > 0 || aiRescuePayingSlot)
-        ? renderSignInChanged()
-        : null;
+    const signInChanged = emptySignInChanged ? renderSignInChanged() : null;
     const rescue = keptFilesBelongElsewhere ? [] : rescueSlot;
     const rescueActions = rescue.length > 0 && (
       <div className={formStyles.rescueActions}>
@@ -3505,6 +3597,13 @@ function UploadForm({
     );
   };
 
+  const renderSenderUnknownState = () => (
+    <div className={formStyles.stateContent}>
+      <WarningIcon className={formStyles.iconWarning} />
+      {renderChooseFileAgain('upload.form.senderUnknown', false)}
+    </div>
+  );
+
   const renderErrorState = () => {
     if (ownerChanged) {
       return (
@@ -3545,7 +3644,8 @@ function UploadForm({
             <button
               type="button"
               className={formStyles.apkgRedirectFootnoteLink}
-              onClick={() => {
+              onClick={(event) => {
+                event.preventDefault();
                 resetForm();
                 fileInputRef.current?.click();
               }}
@@ -3648,6 +3748,10 @@ function UploadForm({
 
     const credential = pdfCredential.trim();
     if (!credential) return;
+    if (rescueFilesOwner === undefined) {
+      holdForUnknownSender();
+      return;
+    }
 
     setZoneState('converting');
     setPdfUnlockError(null);
@@ -3659,8 +3763,7 @@ function UploadForm({
       for (const [key, value] of Object.entries(globalThis.localStorage)) {
         formData.append(key, value);
       }
-      const sentBy = keptOwnerField(rescueFilesOwner);
-      if (sentBy != null) formData.set(KEPT_OWNER_FIELD, sentBy);
+      formData.set(KEPT_OWNER_FIELD, senderField(rescueFilesOwner));
 
       const request = await globalThis.fetch(
         '/api/upload/retry-with-credential',
@@ -4147,6 +4250,9 @@ function UploadForm({
     if (zoneState === 'heldReady') return renderHeldReadyState();
     if (zoneState === 'heldExpired') return renderHeldExpiredState();
     if (zoneState === 'packaging') return renderPackagingState();
+    if (zoneState === 'error' && senderUnknown) {
+      return renderSenderUnknownState();
+    }
     if (zoneState === 'error' && folderError != null) {
       return renderFolderErrorState(folderError);
     }
@@ -4188,6 +4294,10 @@ function UploadForm({
 
   const renderLiveStatus = (): string => {
     if (guardrailVisible && validation) return validation.title;
+    if (zoneState === 'error' && senderUnknown) {
+      return t('upload.form.senderUnknown');
+    }
+    if (ownerChanged) return t(signInChangedKey());
     const staticKey = staticLiveStatusKeys[zoneState];
     if (staticKey != null) return t(staticKey);
     if (zoneState === 'success' || zoneState === 'heldReady') {

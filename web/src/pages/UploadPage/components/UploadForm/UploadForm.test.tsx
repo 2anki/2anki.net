@@ -2039,11 +2039,13 @@ describe('UploadForm analytics events', () => {
     const primary = Array.from(container.querySelectorAll('button')).find(
       (button) => button.textContent === 'Choose a different file'
     )!;
+    let labelLeftAlone = true;
     await act(async () => {
-      primary.click();
+      labelLeftAlone = fireEvent.click(primary);
     });
 
     expect(clickSpy).toHaveBeenCalled();
+    expect(labelLeftAlone).toBe(false);
     await waitFor(() => {
       expect(
         container.textContent?.includes('This is already a finished Anki deck')
@@ -2244,7 +2246,10 @@ describe('UploadForm analytics events', () => {
       status: 400,
       clone: () => ({ json: () => Promise.resolve(jsonBody) }),
       text: () => Promise.resolve(JSON.stringify(jsonBody)),
-      headers: new Headers({ 'Content-Type': 'application/json' }),
+      headers: new Headers({
+        'Content-Type': 'application/json',
+        'X-Upload-Owner': 'none',
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -4370,6 +4375,7 @@ describe('UploadForm network-failure retry', () => {
   beforeEach(() => {
     (globalThis as AnalyticsGlobals).gtag = vi.fn();
     (globalThis as AnalyticsGlobals).hj = vi.fn();
+    showSignedOutVisitor();
   });
 
   afterEach(() => {
@@ -4377,7 +4383,31 @@ describe('UploadForm network-failure retry', () => {
     delete (globalThis as AnalyticsGlobals).hj;
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
   });
+
+  // The account read answered for a signed-out visitor, so a dropped upload
+  // still has a known sender to try again as.
+  function showSignedOutVisitor() {
+    const signedOutVisitor = { user: null, locals: {} };
+    mockUseUserLocals.mockReturnValue({
+      data: signedOutVisitor,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn().mockResolvedValue({
+        data: signedOutVisitor,
+        status: 'success',
+        isError: false,
+      }),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  }
 
   function successResponse() {
     return {
@@ -4497,13 +4527,6 @@ describe('UploadForm network-failure retry', () => {
 
   it('keeps AI off on Try again for a signed-out visitor with a leftover key', async () => {
     globalThis.localStorage.removeItem('2anki_pass_token');
-    mockUseUserLocals.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: null,
-      isError: false,
-      refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useUserLocals>);
     globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
     const fetchMock = vi
       .fn()
@@ -5672,6 +5695,76 @@ describe('UploadForm thin-deck notice', () => {
     ).toBeGreaterThan(0);
   });
 
+  function stubCreditsAnswer(answer: () => Promise<Response>) {
+    stubSuccess({ 'X-Card-Count': '2' });
+    const deckFetch = globalThis.fetch;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) =>
+        url === '/api/ai/credits' ? answer() : deckFetch(url, init)
+      )
+    );
+  }
+
+  it('shows the turn-on copy for a paying user whose credits read has not answered within two seconds', async () => {
+    setUserLocals(payingData);
+    stubCreditsAnswer(() => new Promise<Response>(() => {}));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      await uploadFile(container, 'notes.pdf');
+      await screen.findByRole('button', { name: 'Make another deck' });
+      expect(screen.queryByText(/came from this file/)).toBeNull();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000);
+      });
+
+      expect(
+        await screen.findByText(
+          'Only 2 cards came from this file. Turn on Claude cards above and convert again to get more.'
+        )
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives a paying user whose plan has no AI allowance the turn-on copy, with no zero line or buy button', async () => {
+    setUserLocals(payingData);
+    stubCreditsAnswer(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            credits: 0,
+            used: 0,
+            allowance: 0,
+            usable: false,
+            windowEnd: null,
+            resets: 'month',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container, 'notes.pdf');
+
+    expect(
+      await screen.findByText(
+        'Only 2 cards came from this file. Turn on Claude cards above and convert again to get more.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Buy 250 credits/ })
+    ).toBeNull();
+  });
+
   it('hides the notice when Claude cards are already on', async () => {
     setUserLocals(payingData);
     stubSuccess({ 'X-Card-Count': '2' });
@@ -5869,15 +5962,38 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     return () => release();
   }
 
-  function jsonAnswer(status: number, body: unknown) {
+  function jsonAnswer(
+    status: number,
+    body: unknown,
+    headers: Record<string, string> = {}
+  ) {
     return {
       redirected: false,
       status,
       clone: () => ({ json: () => Promise.resolve(body) }),
       json: () => Promise.resolve(body),
       text: () => Promise.resolve(JSON.stringify(body)),
-      headers: new Headers({ 'Content-Type': 'application/json' }),
+      headers: new Headers({ 'Content-Type': 'application/json', ...headers }),
     };
+  }
+
+  // The session the server says an upload ran under.
+  const sentBy = (owner: string) => ({ 'X-Upload-Owner': owner });
+
+  // The page's first account read failed for good, so it has no account
+  // data; the next read answers with `next`.
+  function accountReadFailed(next: ReturnType<typeof useUserLocals>['data']) {
+    readLocalsAgain = vi.fn(async () => {
+      setUserLocals(next);
+      return answered(next);
+    });
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('locals'),
+      isError: true,
+      refetch: readLocalsAgain,
+    } as unknown as ReturnType<typeof useUserLocals>);
   }
 
   const emptyExport = {
@@ -6027,7 +6143,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     "You're signed out now. Choose the file again to convert it here.";
   const SIGNED_IN_LINE =
     "You're signed in now. Choose the file again to save it to your account.";
-  const CHECKING = 'Checking your account';
+  const CHECKING = "Checking who's signed in";
+  const SENDER_UNKNOWN =
+    "Couldn't tell which account sent this file, so nothing was sent. Choose the file again.";
   const UNCONFIRMED =
     "Couldn't confirm which account you're signed in to, so nothing was sent. Check your connection and try again.";
 
@@ -6364,7 +6482,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       expect(callsTo(fetchMock, '/api/ai/credits').length).toBeGreaterThan(0)
     );
     expect(
-      await screen.findByText('Only 2 cards came from this file.')
+      await screen.findByText(
+        'Only 2 cards came from this file. Claude can write more with AI credits.'
+      )
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Buy 250 credits for $5' })
@@ -6683,25 +6803,6 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     ).toBeInTheDocument();
   });
 
-  it('offers the rebuild of a file sent before the page read the account, once the account shows', async () => {
-    mockUseUserLocals.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      error: null,
-      isError: false,
-      refetch: vi.fn(),
-    });
-    stubServer([deckResponse(64)]);
-    const { container, rerenderWithAi } = renderRebuildForm(false);
-    await submitFiles(container, ['lecture.pdf']);
-    await screen.findByRole('button', { name: 'Make another deck' });
-
-    setUserLocals(passHolder);
-    rerenderWithAi(false);
-
-    expect(await screen.findByText(OFFER)).toBeInTheDocument();
-  });
-
   it('offers no rebuild after another account answers the PDF question on this page', async () => {
     const fetchMock = stubServer([
       pdfQuestion,
@@ -6723,31 +6824,6 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       screen.queryByRole('button', { name: 'Rebuild with Claude' })
     ).toBeNull();
     expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
-  });
-
-  it('sends a PDF answer given before the page has read the account', async () => {
-    mockUseUserLocals.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      error: null,
-      isError: false,
-      refetch: vi.fn().mockResolvedValue({ data: undefined }),
-    });
-    const fetchMock = stubServer([
-      pdfQuestion,
-      deckResponse(14, { 'X-Pdf-Fallback': 'single' }),
-    ]);
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
-    );
-    await submitFiles(container, ['scan.pdf']);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'One card per page' })
-    );
-
-    await waitFor(() =>
-      expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(2)
-    );
   });
 
   it('sends Try again under the account the page shows when reading it again hangs', async () => {
@@ -7431,7 +7507,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     );
   });
 
-  it('says it is checking the account on the rebuild as soon as it is tapped, and disables it until the read answers', async () => {
+  it('says it is checking who is signed in on the rebuild as soon as it is tapped, and disables it until the read answers', async () => {
     stubLeavingPage();
     const fetchMock = stubServer([deckResponse(64), asyncJobAccepted]);
     const { container } = renderUploadForm(
@@ -7561,41 +7637,248 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     const pickerOpened = vi.fn();
     input.addEventListener('click', pickerOpened);
 
-    fireEvent.click(
+    const labelLeftAlone = fireEvent.click(
       screen.getByRole('button', { name: 'Choose the file again' })
     );
 
     expect(pickerOpened).toHaveBeenCalledTimes(1);
+    expect(labelLeftAlone).toBe(false);
     expect(screen.queryByText(OTHER_ACCOUNT_LINE)).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'Make another deck' })
     ).toBeNull();
   });
 
-  it('gives a file sent while the first account read failed to the account that then arrives', async () => {
-    mockUseUserLocals.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: new Error('locals'),
-      isError: true,
-      refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useUserLocals>);
-    stubServer([deckResponse(64)]);
+  it('never gives a file the server converted for one account to the account that signs in next, after the first account read failed', async () => {
+    accountReadFailed(otherPassHolder);
+    const fetchMock = stubServer([
+      jsonAnswer(
+        400,
+        { ...emptyExport, rescue: [{ rule: 'heading', cards: 2 }] },
+        sentBy('7')
+      ),
+    ]);
     const { container, rerenderWithAi } = renderRebuildForm(false);
-    await submitFiles(container, ['lecture.pdf']);
-    await screen.findByRole('button', { name: 'Make another deck' });
-
-    setUserLocals(passHolder);
+    await submitFiles(container, ['notes.html']);
+    await settle();
     rerenderWithAi(false);
 
-    expect(await screen.findByText(OFFER)).toBeInTheDocument();
+    expect(await screen.findByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Make 2 cards from the headings' })
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Make cards with AI' })
+    ).toBeNull();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
   });
 
-  const ownerChanged = jsonAnswer(409, {
-    code: 'owner_changed',
-    message:
-      'You switched accounts since this file was sent, so nothing was converted. Choose the file again.',
+  it('holds Try again for a file whose upload got no answer while the page had no account data, and says why', async () => {
+    accountReadFailed(passHolder);
+    const fetchMock = stubServer([networkDrop, deckResponse(64)]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Choose the file again' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
   });
+
+  it('keeps the saved sender of the file resumed after the Day Pass, when the next account read finds another account', async () => {
+    vi.stubGlobal('location', {
+      search: '?from=pass&session_id=cs_thin',
+      href: 'http://localhost/upload?from=pass&session_id=cs_thin',
+      origin: 'http://localhost',
+    });
+    markThinDeckResume();
+    await saveInterruptedUpload({
+      ownerId: null,
+      aiFlag: 'true',
+      claudeResend: true,
+    });
+    accountReadFailed(otherPassHolder);
+    const fetchMock = stubServer([
+      jsonAnswer(
+        409,
+        { code: 'choose_pdf_mode', reason: 'no_text', page_count: 14 },
+        sentBy('none')
+      ),
+    ]);
+    const { rerenderWithAi } = renderRebuildForm(false);
+
+    expect((await nthUpload(fetchMock, 1)).getAll('kept-owner')).toEqual([
+      'none',
+    ]);
+    await screen.findByRole('button', { name: 'One card per page' });
+    setUserLocals(otherPassHolder);
+    rerenderWithAi(false);
+
+    expect(await screen.findByText(SIGNED_IN_LINE)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'One card per page' })
+    ).toBeNull();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      'an empty deck',
+      '7',
+      async () => {
+        accountReadFailed(passHolder);
+        const fetchMock = stubServer([
+          jsonAnswer(
+            400,
+            { ...emptyExport, rescue: [{ rule: 'heading', cards: 2 }] },
+            sentBy('7')
+          ),
+          deckResponse(2),
+        ]);
+        const { container } = renderUploadForm(
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+        );
+        await submitFiles(container, ['notes.html']);
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: 'Make 2 cards from the headings',
+          })
+        );
+        return nthUpload(fetchMock, 2);
+      },
+    ],
+    [
+      'the PDF question',
+      '7',
+      async () => {
+        accountReadFailed(passHolder);
+        const fetchMock = stubServer([
+          jsonAnswer(
+            409,
+            { code: 'choose_pdf_mode', reason: 'no_text', page_count: 14 },
+            sentBy('7')
+          ),
+          deckResponse(14),
+        ]);
+        const { container } = renderUploadForm(
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+        );
+        await submitFiles(container, ['scan.pdf']);
+        fireEvent.click(
+          await screen.findByRole('button', { name: 'One card per page' })
+        );
+        return nthUpload(fetchMock, 2);
+      },
+    ],
+    [
+      'a deck',
+      '7',
+      async () => {
+        accountReadFailed(passHolder);
+        stubLeavingPage();
+        const fetchMock = stubServer([
+          deckResponse(64, sentBy('7')),
+          asyncJobAccepted,
+        ]);
+        const { container, rerenderWithAi } = renderRebuildForm(false);
+        await submitFiles(container, ['lecture.pdf']);
+        await screen.findByRole('button', { name: 'Make another deck' });
+        await settle();
+        rerenderWithAi(false);
+        fireEvent.click(
+          await screen.findByRole('button', { name: 'Rebuild with Claude' })
+        );
+        return nthUpload(fetchMock, 2);
+      },
+    ],
+    [
+      "a visitor's AI preview",
+      'none',
+      async () => {
+        accountReadFailed(signedOutWithAiPreview);
+        const fetchMock = stubServer([
+          jsonAnswer(
+            200,
+            {
+              kind: 'ai_preview',
+              cards: [
+                { front: 'What does the Krebs cycle make?', back: 'ATP' },
+              ],
+            },
+            sentBy('none')
+          ),
+          deckResponse(3),
+        ]);
+        const { container } = renderUploadForm(
+          <UploadForm setErrorMessage={vi.fn()} aiOn />
+        );
+        await submitFiles(container, ['lecture.pdf']);
+        fireEvent.click(
+          await screen.findByRole('button', { name: 'Continue without AI' })
+        );
+        return nthUpload(fetchMock, 2);
+      },
+    ],
+    [
+      'a locked PDF',
+      '7',
+      async () => {
+        accountReadFailed(passHolder);
+        const fetchMock = vi.fn((url: string) => {
+          if (url === '/api/ai/credits') {
+            return Promise.resolve(creditsResponse(1347));
+          }
+          if (url === '/api/upload/file') {
+            return Promise.resolve({
+              ...needsPassword,
+              headers: new Headers({
+                'Content-Type': 'application/json',
+                ...sentBy('7'),
+              }),
+            });
+          }
+          if (url === '/api/upload/retry-with-credential') {
+            return Promise.resolve(deckResponse(5));
+          }
+          return Promise.resolve(new Response(null, { status: 204 }));
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        const { container } = renderUploadForm(
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+        );
+        await submitFiles(container, ['locked.pdf']);
+        await unlockWithPassword();
+        return nthUpload(fetchMock, 1, '/api/upload/retry-with-credential');
+      },
+    ],
+  ] as Array<[string, string, () => Promise<FormData>]>)(
+    'takes the sender from the server on %s, and sends the kept file back as it',
+    async (_kind, owner, resend) => {
+      expect((await resend()).getAll('kept-owner')).toEqual([owner]);
+    }
+  );
+
+  const refusedFor = (signedIn: boolean) =>
+    jsonAnswer(409, {
+      code: 'owner_changed',
+      message:
+        'You switched accounts since this file was sent, so nothing was converted. Choose the file again.',
+      signed_in: signedIn,
+    });
+  const ownerChanged = refusedFor(true);
+
+  // The account read after a refusal still answers with the account the page
+  // already shows, so only the server's answer can say what changed.
+  function readStillShowsTheOldAccount() {
+    readLocalsAgain.mockResolvedValue(answered(passHolder));
+  }
 
   const otherFreeSignedIn = {
     user: { id: 11, email: 'other-free@example.com' },
@@ -7855,7 +8138,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     const resent = await nthUpload(fetchMock, 2);
     expect(resent.getAll('claude-ai-flashcards')).toEqual(['true']);
     expect(resent.getAll('kept-owner')).toEqual(['7']);
-    expect(await screen.findByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(screen.queryByText('Something went wrong')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
     expect(screen.queryByText('Talk it through instead')).toBeNull();
@@ -7887,18 +8172,20 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect((await nthUpload(fetchMock, 2)).getAll('kept-owner')).toEqual([
       'none',
     ]);
-    expect(await screen.findByText(SIGNED_IN_LINE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(SIGNED_IN_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(screen.queryByText('Something went wrong')).toBeNull();
   });
 
-  it('says the session changed when the server refuses a password unlock for another account', async () => {
+  it('says the session signed out, from the server answer alone, when it refuses a password unlock', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === '/api/ai/credits') {
         return Promise.resolve(creditsResponse(1347));
       }
       if (url === '/api/upload/file') return Promise.resolve(needsPassword);
       if (url === '/api/upload/retry-with-credential') {
-        return Promise.resolve(ownerChanged);
+        return Promise.resolve(refusedFor(false));
       }
       return Promise.resolve(new Response(null, { status: 204 }));
     });
@@ -7908,16 +8195,57 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     );
     await submitFiles(container, ['locked.pdf']);
 
-    signInElsewhere();
+    readStillShowsTheOldAccount();
     await unlockWithPassword();
 
-    expect(await screen.findByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(SIGNED_OUT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/login?redirect=/upload'
+    );
     expect(
       screen.queryByText(
         "That didn't open the file. Check for typos and try again."
       )
     ).toBeNull();
   });
+
+  it.each([
+    [true, OTHER_ACCOUNT_LINE],
+    [false, SIGNED_OUT_LINE],
+  ])(
+    'says what changed at once, from the server, when it refuses a resend (signed in: %s), and announces it',
+    async (signedIn, line) => {
+      const fetchMock = stubServer([
+        jsonAnswer(400, {
+          ...emptyExport,
+          rescue: [{ rule: 'heading', cards: 2 }],
+        }),
+        refusedFor(signedIn),
+      ]);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitFiles(container, ['notes.html']);
+      const pick = await screen.findByRole('button', {
+        name: 'Make 2 cards from the headings',
+      });
+
+      readStillShowsTheOldAccount();
+      fireEvent.click(pick);
+
+      await waitFor(() =>
+        expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(2)
+      );
+      expect(
+        await screen.findByText(line, { selector: 'p' })
+      ).toBeInTheDocument();
+      expect(container.querySelector('output')?.textContent).toBe(line);
+      expect(screen.queryByText('Something went wrong')).toBeNull();
+    }
+  );
 
   it("holds the empty state's Make cards with AI and says why when the account cannot be read", async () => {
     const fetchMock = stubServer([jsonAnswer(400, emptyExport)]);
@@ -8031,7 +8359,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       ['One card per page', 'Two pages per card'],
     ],
   ] as Array<[string, string, UploadAnswer, string, string[]]>)(
-    'says it is checking the account on %s and holds every resend button until the read answers',
+    'says it is checking who is signed in on %s and holds every resend button until the read answers',
     async (_path, file, answer, tapped, others) => {
       stubServer([answer]);
       const { container } = renderUploadForm(
@@ -8238,11 +8566,12 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     const pickerOpened = vi.fn();
     input.addEventListener('click', pickerOpened);
 
-    fireEvent.click(
+    const labelLeftAlone = fireEvent.click(
       screen.getByRole('button', { name: 'Choose the file again' })
     );
 
     expect(pickerOpened).toHaveBeenCalledTimes(1);
+    expect(labelLeftAlone).toBe(false);
   });
 
   it('shows no line under a deck that never had an offer once another account signs in', async () => {
@@ -8336,6 +8665,264 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(resumed.getAll('claude-ai-flashcards')).toEqual(['true']);
     expect(resumed.getAll('pdf-page-pairs')).toEqual(['false']);
     expect(resumed.getAll('kept-owner')).toEqual(['8']);
+  });
+
+  const passHolderWithoutAccount = {
+    user: null,
+    locals: { owner: 0, patreon: false, subscriber: true, passKind: '24h' },
+    features: { thinDeckAiOffer: true },
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  const visitorWithThinDeckOffer = {
+    user: null,
+    locals: { owner: 0, patreon: false, subscriber: false },
+    features: { thinDeckAiOffer: true },
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  async function openFullAiDeck(container: HTMLElement) {
+    await submitFiles(container, ['notes.pdf']);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Preview cards Claude would write',
+      })
+    );
+    return screen.findByRole('button', { name: 'Make the full AI deck' });
+  }
+
+  it("puts a line in place of the empty state's Make cards with AI once a free account signs in on this page", async () => {
+    stubServer([jsonAnswer(400, emptyExport)]);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
+    await submitFiles(container, ['notes.html']);
+    await screen.findByRole('button', { name: 'Make cards with AI' });
+
+    setUserLocals(otherFreeSignedIn);
+    rerenderWithAi(false);
+
+    expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(screen.queryByText('Get AI cards with a paid plan')).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Make cards with AI' })
+    ).toBeNull();
+  });
+
+  it("says it is checking who is signed in on the preview's Continue without AI, and holds it until the read answers", async () => {
+    setUserLocals(signedOutWithAiPreview);
+    stubServer([visitorPreview]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+    const button = await screen.findByRole('button', {
+      name: 'Continue without AI',
+    });
+
+    holdAccountRead();
+    fireEvent.click(button);
+
+    const checking = await screen.findByRole('button', { name: CHECKING });
+    expect(checking).toBeDisabled();
+    expect(checking).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('says it is checking who is signed in on Make the full AI deck, and holds it until the read answers', async () => {
+    setUserLocals(passHolderWithThinDeckOffer);
+    withThinDeckPreview();
+    stubServer([deckResponse(2)]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    const fullDeck = await openFullAiDeck(container);
+
+    holdAccountRead();
+    fireEvent.click(fullDeck);
+
+    const checking = await screen.findByRole('button', { name: CHECKING });
+    expect(checking).toBeDisabled();
+    expect(checking).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it("holds a signed-out Day Pass holder's answer to the PDF question Make the full AI deck raised, and says why, when the account cannot be read", async () => {
+    setUserLocals(passHolderWithoutAccount);
+    withThinDeckPreview();
+    const fetchMock = stubServer([deckResponse(2), pdfQuestion]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    fireEvent.click(await openFullAiDeck(container));
+    const answer = await screen.findByRole('button', {
+      name: 'One card per page',
+    });
+
+    failAccountRead();
+    fireEvent.click(answer);
+
+    expect(await screen.findByText(UNCONFIRMED)).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(2);
+  });
+
+  it('holds Try again of a resumed Claude resend, and says why, when the account cannot be read', async () => {
+    await saveInterruptedUpload({ aiFlag: 'true', claudeResend: true });
+    const fetchMock = stubServer([networkDrop, asyncJobAccepted]);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} aiOn={false} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+
+    failAccountRead();
+    fireEvent.click(retry);
+
+    expect(await screen.findByText(UNCONFIRMED)).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it('keeps Claude on when the account that sent it taps Try again after a resumed Claude resend', async () => {
+    stubLeavingPage();
+    await saveInterruptedUpload({ aiFlag: 'true', claudeResend: true });
+    const fetchMock = stubServer([networkDrop, asyncJobAccepted]);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} aiOn={false} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    const retried = await nthUpload(fetchMock, 2);
+    expect(retried.getAll('claude-ai-flashcards')).toEqual(['true']);
+    expect(retried.getAll('pdf-page-pairs')).toEqual(['false']);
+  });
+
+  it('makes the full AI deck with Claude and page pairs off for a signed-out Day Pass holder', async () => {
+    globalThis.localStorage.setItem('pdf-page-pairs', 'true');
+    setUserLocals(passHolderWithoutAccount);
+    withThinDeckPreview();
+    const fetchMock = stubServer([deckResponse(2), deckResponse(9)]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    fireEvent.click(await openFullAiDeck(container));
+
+    const resent = await nthUpload(fetchMock, 2);
+    expect(resent.getAll('claude-ai-flashcards')).toEqual(['true']);
+    expect(resent.getAll('pdf-page-pairs')).toEqual(['false']);
+    expect(resent.getAll('kept-owner')).toEqual(['none']);
+  });
+
+  it('resumes the file a signed-out visitor left for the Day Pass with Claude on, two pages make one card off and no account, through the save made before checkout', async () => {
+    globalThis.localStorage.setItem('pdf-page-pairs', 'true');
+    setUserLocals(visitorWithThinDeckOffer);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi
+        .fn()
+        .mockResolvedValue({ url: 'https://checkout.example/pass' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      previewThinDeckAi: vi.fn().mockResolvedValue({
+        kind: 'preview',
+        cards: [{ front: 'What does the Krebs cycle make?', back: 'ATP' }],
+      }),
+      resumeAiPreview: vi.fn(),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    const leaving = stubLeavingPage();
+    const fetchMock = stubServer([deckResponse(2), deckResponse(9)]);
+    const first = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(first.container, ['notes.pdf']);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Preview cards Claude would write',
+      })
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Get every card: Day Pass/ })
+    );
+    await waitFor(() =>
+      expect(leaving.href).toBe('https://checkout.example/pass')
+    );
+    first.unmount();
+
+    vi.stubGlobal('location', {
+      search: '?pass_session=cs_thin',
+      href: 'http://localhost/upload?pass_session=cs_thin',
+      origin: 'http://localhost',
+    });
+    setUserLocals(passHolderWithoutAccount);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} aiOn={false} />);
+
+    const resumed = await nthUpload(fetchMock, 2);
+    expect(resumed.getAll('claude-ai-flashcards')).toEqual(['true']);
+    expect(resumed.getAll('pdf-page-pairs')).toEqual(['false']);
+    expect(resumed.getAll('kept-owner')).toEqual(['none']);
+  });
+
+  it('holds a password unlock for a file whose sender the page never learned, and says why', async () => {
+    accountReadFailed(passHolder);
+    const fetchMock = stubLockedPdfServer(5);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/retry-with-credential')).toEqual([]);
+  });
+
+  it('holds a file left mid-upload while the page had no account data, when it is picked up from the Continue banner', async () => {
+    accountReadFailed(passHolder);
+    const fetchMock = stubServer([new Promise<never>(() => {})]);
+    const first = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(first.container, ['lecture.pdf']);
+    await waitFor(() =>
+      expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1)
+    );
+    first.unmount();
+
+    setUserLocals(passHolder);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} aiOn={false} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it('claims no change of session while the page has no account data, and still sends the kept file as the sender the server named', async () => {
+    readLocalsAgain = vi.fn().mockResolvedValue({
+      data: undefined,
+      status: 'error',
+      isError: true,
+    });
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error('locals'),
+      isError: true,
+      refetch: readLocalsAgain,
+    } as unknown as ReturnType<typeof useUserLocals>);
+    const fetchMock = stubServer([
+      jsonAnswer(
+        400,
+        { ...emptyExport, rescue: [{ rule: 'heading', cards: 2 }] },
+        sentBy('7')
+      ),
+      deckResponse(2),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['notes.html']);
+    const pick = await screen.findByRole('button', {
+      name: 'Make 2 cards from the headings',
+    });
+    expect(screen.queryByText(SIGNED_OUT_LINE)).toBeNull();
+
+    fireEvent.click(pick);
+
+    expect((await nthUpload(fetchMock, 2)).getAll('kept-owner')).toEqual(['7']);
   });
 });
 
@@ -8947,7 +9534,9 @@ describe('UploadForm PDF with no readable text', () => {
     return body?.get('pdf-fallback') ?? null;
   }
 
-  const choiceResponse = (reason = 'no_text') => ({
+  // The server names the session each upload ran under: a signed-out
+  // visitor unless a test signs someone in.
+  const choiceResponse = (reason = 'no_text', session = 'none') => ({
     redirected: false,
     status: 409,
     clone: () => ({
@@ -8959,7 +9548,10 @@ describe('UploadForm PDF with no readable text', () => {
         }),
     }),
     text: () => Promise.resolve(JSON.stringify({ code: 'choose_pdf_mode' })),
-    headers: new Headers({ 'Content-Type': 'application/json' }),
+    headers: new Headers({
+      'Content-Type': 'application/json',
+      'X-Upload-Owner': session,
+    }),
   });
 
   const deckResponse = (headers: Record<string, string> = {}) => ({
@@ -9142,7 +9734,10 @@ describe('UploadForm PDF with no readable text', () => {
       .mockResolvedValueOnce({
         redirected: false,
         status: 200,
-        headers: new Headers({ 'Content-Type': 'application/json' }),
+        headers: new Headers({
+          'Content-Type': 'application/json',
+          'X-Upload-Owner': 'none',
+        }),
         json: () =>
           Promise.resolve({
             kind: 'ai_preview',
@@ -9203,7 +9798,10 @@ describe('UploadForm PDF with no readable text', () => {
         getUploads: vi.fn().mockResolvedValue([]),
         getHeldDeck: vi.fn().mockResolvedValue(null),
       } as unknown as ReturnType<typeof get2ankiApi>);
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(choiceResponse()));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(choiceResponse('no_text', '7'))
+      );
       const { container } = renderUploadForm(
         <UploadForm setErrorMessage={vi.fn()} />
       );
@@ -9306,7 +9904,10 @@ describe('UploadForm PDF with no readable text', () => {
         getHeldDeck: vi.fn().mockResolvedValue(null),
       } as unknown as ReturnType<typeof get2ankiApi>);
       mockUseCardUsage.mockReturnValue(cardUsage);
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(choiceResponse()));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(choiceResponse('no_text', '7'))
+      );
       const { container } = renderUploadForm(
         <UploadForm setErrorMessage={vi.fn()} />
       );

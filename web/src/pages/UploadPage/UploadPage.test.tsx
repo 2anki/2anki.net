@@ -662,6 +662,21 @@ describe('UploadPage AI off badge for a paying account', () => {
     }
   );
 
+  it('keeps the on badge copy, with the credits left, for a paying account with AI on', async () => {
+    fakeLocals = { subscriber: true };
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    stubCredits(1347);
+    renderPage();
+
+    await screen.findByText('1347 AI credits left.');
+    const badge = screen
+      .getByText('AI is on')
+      .closest('[role="status"]') as HTMLElement;
+    expect(badge.textContent).toBe(
+      'AI is on Claude writes your cards — tell it what to focus on: high-yield topics, more multiple choice, one cloze per list. Manage in Settings.1347 AI credits left.'
+    );
+  });
+
   it('reads the credits once for the paying off state', async () => {
     fakeLocals = { subscriber: true };
     const fetchMock = stubCredits(1347);

@@ -171,7 +171,7 @@ describe('ThinDeckAiOffer', () => {
     );
   });
 
-  it('says it is checking the account on the full AI deck while busy, and holds it', async () => {
+  it('says it is checking who is signed in on the full AI deck while busy, and holds it', async () => {
     const { onMakeFullDeck } = renderOffer(
       true,
       vi.fn(),
@@ -183,7 +183,7 @@ describe('ThinDeckAiOffer', () => {
     );
 
     const checking = await screen.findByRole('button', {
-      name: 'Checking your account',
+      name: "Checking who's signed in",
     });
     fireEvent.click(checking);
 

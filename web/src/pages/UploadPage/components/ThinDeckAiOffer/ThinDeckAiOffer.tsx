@@ -88,7 +88,7 @@ export function ThinDeckAiOffer({
   };
 
   const unlockLabel = (): string => {
-    if (busy) return t('common:upload.form.checkingAccount');
+    if (busy) return t('common:upload.form.checkingSignIn');
     return isPaying
       ? t('unlockPaying')
       : t('unlockFree', { price: prices['24h'] });
