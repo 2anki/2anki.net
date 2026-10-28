@@ -109,16 +109,24 @@ function resolvePageImages(
   return images;
 }
 
+// The media matcher decodes every reference once (it expects an <img src>),
+// so the page's path goes in encoded: a page named after an upload such as
+// "Lecture%203.pdf" would otherwise decode to a file that does not exist.
+function asMediaReference(relPath: string): string {
+  return relPath.split('/').map(encodeURIComponent).join('/');
+}
+
 export function attachPageImageToCompactDecks(
   decks: CompactDeck[],
   relPath: string
 ): CompactDeck[] {
-  const imageTag = `<br><img src="${escapeAttribute(relPath)}" style="max-width:100%;max-height:320px;height:auto;">`;
+  const reference = asMediaReference(relPath);
+  const imageTag = `<br><img src="${escapeAttribute(reference)}" style="max-width:100%;max-height:320px;height:auto;">`;
   return decks.map((deck) => ({
     ...deck,
     cards: deck.cards.map((card) => ({
       ...card,
-      media: [relPath],
+      media: [reference],
       a: `${card.a ?? ''}${imageTag}`,
     })),
   }));

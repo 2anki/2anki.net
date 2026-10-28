@@ -35,7 +35,7 @@ vi.mock('../../../services/events/track', () => ({
   track: vi.fn(),
 }));
 
-import { PrepareDeck } from './PrepareDeck';
+import { PrepareDeck, prepareDeckInfoOnly } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
 import Workspace from '../../../lib/parser/WorkSpace';
 import getUniqueFileName from '../../../lib/misc/getUniqueFileName';
@@ -189,6 +189,10 @@ describe('PrepareDeck — a page-image deck whose file name a URL would escape',
   it.each([
     ['answered "one card per page"', { 'pdf-fallback': 'single' }],
     ['answered "two pages per card"', { 'pdf-fallback': 'pairs' }],
+    [
+      'asked for text cards, which the PDF cannot give',
+      { 'pdf-extract-text': 'true', 'pdf-fallback': 'single' },
+    ],
   ])(
     'builds the same page-image deck from a PDF with no readable text when the person %s, for every escaped name',
     async (_label, options) => {
@@ -219,6 +223,43 @@ describe('PrepareDeck — a page-image deck whose file name a URL would escape',
       const decks = await prepare(name);
 
       expect(decks.map((deck) => deck.name)).toEqual([deckName]);
+    }
+  );
+  it.each(ESCAPED_NAMES)(
+    'builds the same deck inside a multi-file zip as a plain name gets, for a name with $label',
+    async ({ name }) => {
+      const inZip = async (fileName: string) => {
+        const workspace = new Workspace(true, 'fs');
+        workspaces.push(workspace);
+        const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+        try {
+          const result = await prepareDeckInfoOnly(
+            {
+              name: fileName,
+              files: [{ name: fileName, contents: SLIDES }],
+              settings: new CardOption(CardOption.LoadDefaultOptions()),
+              noLimits: true,
+              workspace,
+            },
+            Workspace.subdir(workspace.location),
+            workspace
+          );
+          return result.deck.flatMap((deck) =>
+            deck.cards.map((card) => ({ name: card.name, media: card.media }))
+          );
+        } finally {
+          log.mockRestore();
+          debug.mockRestore();
+        }
+      };
+
+      const plain = await inZip('lecture.ppt');
+      expect(plain.flatMap((card) => card.media)).toEqual([
+        pageMedia(1),
+        pageMedia(2),
+      ]);
+      expect(await inZip(name)).toEqual(plain);
     }
   );
 });

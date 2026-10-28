@@ -131,6 +131,30 @@ describe('generateDeckInfoFromPdfImages', () => {
     }
   );
 
+  it.each(['Lecture%203.pdf', 'Lecture %22final%22.pdf', '50% done.pdf'])(
+    'puts the page image on the back of each card for an upload named %s',
+    async (name) => {
+      mockCreateFn.mockResolvedValue(
+        visionResponse(
+          JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+        )
+      );
+      const pagePath = path.join(baseDir, 'pdf-abc', `${name}-page1-1.png`);
+      fs.writeFileSync(pagePath, Buffer.from('page 1'));
+
+      const decks = await generateDeckInfoFromPdfImages(
+        combineIntoHTML([pagePath], name, baseDir),
+        { mediaBaseDir: baseDir }
+      );
+
+      const [card] = decks.flatMap((deck) => deck.cards);
+      expect(card.media).toEqual([
+        expect.objectContaining({ path: `pdf-abc/${name}-page1-1.png` }),
+      ]);
+      expect(card.back).toContain(`src="${card.media?.[0].name}"`);
+    }
+  );
+
   it('attributes every vision usage event to the converting user', async () => {
     mockCreateFn.mockResolvedValue(
       visionResponse(
@@ -409,8 +433,9 @@ describe('attachPageImageToCompactDecks', () => {
       'pdf-abc/a"b.png'
     );
 
-    expect(result[0].cards[0].a).toContain('src="pdf-abc/a&quot;b.png"');
-    expect(result[0].cards[0].media).toEqual(['pdf-abc/a"b.png']);
+    expect(result[0].cards[0].a).toContain('src="pdf-abc/a%22b.png"');
+    expect(result[0].cards[0].media).toEqual(['pdf-abc/a%22b.png']);
+    expect(decodeURIComponent('pdf-abc/a%22b.png')).toBe('pdf-abc/a"b.png');
   });
 
   it('a crafted filename cannot inject a live attribute into the rendered card back', () => {
