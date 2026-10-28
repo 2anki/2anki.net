@@ -121,6 +121,14 @@ export const KNOWN_EVENTS = new Set([
   'native_app_activated',
   'native_deck_converted',
   'native_deck_exported',
+  // Native app funnel (#5094). Props are bounded labels and counts only:
+  // native_app_opened { os, app_version }, native_signin_completed { method },
+  // native_purchase_result { surface, product, result }, and native_limit_hit
+  // { card_count } as a toCardCountBucket bucket (Laer-Smart/2anki.app#95).
+  'native_app_opened',
+  'native_signin_completed',
+  'native_purchase_result',
+  'native_limit_hit',
   'checkout_started',
   'plan_interval_selected',
   'ankify_stats_viewed',

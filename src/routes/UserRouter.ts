@@ -955,8 +955,14 @@ const UserRouter = () => {
    * /auth/apple/native:
    *   post:
    *     summary: Apple Sign In from native iOS/macOS clients
-   *     description: Accepts an Apple identity token from a native ASAuthorizationController flow, verifies it against Apple's JWKS using the App ID audience (APPLE_NATIVE_CLIENT_ID), and issues a session cookie. Does not use the web OAuth code flow.
+   *     description: Accepts an Apple identity token from a native ASAuthorizationController flow, verifies it against Apple's JWKS using the App ID audience (APPLE_NATIVE_CLIENT_ID), and issues a session cookie. Does not use the web OAuth code flow. An optional anon_id cookie (the device's anonymous id) is recorded on account_created when this request creates the account, so the device's earlier anonymous events join to it.
    *     tags: [Authentication]
+   *     parameters:
+   *       - in: cookie
+   *         name: anon_id
+   *         required: false
+   *         schema:
+   *           type: string
    *     requestBody:
    *       required: true
    *       content:
