@@ -263,6 +263,56 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     }
   );
 
+  it("gives cards salvaged after the credits run out the user's template and note types", async () => {
+    generateDeckInfo.mockRejectedValueOnce(
+      new AiCreditsTrippedWithSalvage([
+        {
+          name: 'My Deck',
+          image: '',
+          style: null,
+          id: 111222333444555,
+          settings: {
+            template: 'specialstyle',
+            basicModelName: 'n2a-basic',
+            useNotionId: true,
+          },
+          cards: [
+            {
+              name: 'Front',
+              back: 'Back',
+              tags: [],
+              cloze: false,
+              number: 0,
+              enableInput: false,
+              answer: '',
+              media: [],
+            },
+          ],
+        },
+      ] as never)
+    );
+
+    await PrepareDeck({
+      name: 'test.html',
+      files: [{ name: 'test.html', contents: '<p>Front</p>' }],
+      settings: makeSettings({
+        'claude-ai-flashcards': 'true',
+        template: 'notionstyle',
+        basic_model_name: 'My Basic',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    const configuredDecks = CustomExporterMock.mock.results[0].value.configure
+      .mock.calls[0][0] as Array<{ settings: Record<string, unknown> }>;
+    expect(configuredDecks[0].settings).toMatchObject({
+      template: 'notionstyle',
+      basicModelName: 'My Basic',
+      useNotionId: true,
+    });
+  });
+
   it('keeps the stock note types on an AI deck when the user chose none', async () => {
     generateDeckInfo.mockResolvedValueOnce([
       {
