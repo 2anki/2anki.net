@@ -933,6 +933,47 @@ describe('UploadForm analytics events', () => {
     expect(gtag).toHaveBeenCalledWith('event', 'upload_started');
   });
 
+  it('records upload_submitted with the file type and size bucket, never the name', async () => {
+    const { track } = await import('../../../../lib/analytics/track');
+    const trackMock = vi.mocked(track);
+    trackMock.mockClear();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => new Promise(() => {}))
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const notes = new File(['# notes'], 'Private Lecture Notes.md');
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [notes],
+      configurable: true,
+    });
+    input.removeAttribute('required');
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+
+    expect(trackMock).toHaveBeenCalledWith('upload_submitted', {
+      input_format: 'md',
+      size_bucket: '<1MB',
+      file_count: 1,
+      trigger: 'submit',
+      retry: false,
+    });
+    expect(JSON.stringify(trackMock.mock.calls)).not.toContain(
+      'Private Lecture Notes'
+    );
+  });
+
   it('does not fire the DB-backed upload_started track on file submit (server owns it)', async () => {
     const { track } = await import('../../../../lib/analytics/track');
     const trackMock = vi.mocked(track);
@@ -1997,6 +2038,14 @@ describe('UploadForm analytics events', () => {
       ([url]) => url === '/api/upload/file'
     )?.[1].body as FormData;
     expect((body.get('pakker') as File).name).toBe('notes.zip');
+    expect(track).toHaveBeenCalledWith(
+      'upload_submitted',
+      expect.objectContaining({
+        input_format: 'zip',
+        trigger: 'handoff',
+        retry: false,
+      })
+    );
   });
 
   it('clicking the apkg-reject primary action resets the form and opens the file picker', async () => {
@@ -2299,6 +2348,10 @@ describe('UploadForm analytics events', () => {
     const sent = retry.body as FormData;
     expect(sent.get('rescue-rule')).toBe('bullets');
     expect((sent.get('pakker') as File).name).toBe('notes.html');
+    expect(track).toHaveBeenCalledWith(
+      'upload_submitted',
+      expect.objectContaining({ trigger: 'resend', retry: true })
+    );
   });
 
   it('offers no rescue buttons for a multi-file submit', async () => {
@@ -4482,6 +4535,14 @@ describe('UploadForm network-failure retry', () => {
     )[1];
     const body = retryCall[1].body as FormData;
     expect((body.get('pakker') as File).name).toBe('big.pdf');
+    expect(track).toHaveBeenCalledWith(
+      'upload_submitted',
+      expect.objectContaining({
+        input_format: 'pdf',
+        trigger: 'retry',
+        retry: true,
+      })
+    );
 
     expect(
       await screen.findByText(
@@ -8767,6 +8828,14 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(eventsNamed('thin_deck_ai_unlock_clicked')).toContainEqual([
       'thin_deck_ai_unlock_clicked',
       { plan: 'resumed' },
+    ]);
+    expect(eventsNamed('upload_submitted')).toContainEqual([
+      'upload_submitted',
+      expect.objectContaining({
+        input_format: 'pdf',
+        trigger: 'resume',
+        retry: true,
+      }),
     ]);
   });
 

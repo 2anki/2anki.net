@@ -1,5 +1,6 @@
 export const KNOWN_EVENTS = new Set([
   'upload_started',
+  'upload_submitted',
   'conversion_started',
   'conversion_succeeded',
   'sample_conversion_started',

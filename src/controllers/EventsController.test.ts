@@ -135,6 +135,39 @@ describe('EventsController', () => {
     expect(res.status).toHaveBeenCalledWith(202);
   });
 
+  it.each([
+    [
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Mobile/15E148',
+      'mobile',
+    ],
+    [
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
+      'desktop',
+    ],
+  ])(
+    'adds the device to upload_submitted so it lines up with the server upload_started (%s)',
+    (userAgent, device) => {
+      const { controller, req, res, executeSpy } = buildMocks({ userId: 1 });
+      req.headers = { 'user-agent': userAgent };
+      req.body = { name: 'upload_submitted', props: { input_format: 'pdf' } };
+      controller.track(req, res);
+      expect(executeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          props: expect.objectContaining({ input_format: 'pdf', device }),
+        })
+      );
+    }
+  );
+
+  it('leaves other events without a device', () => {
+    const { controller, req, res, executeSpy } = buildMocks({ userId: 1 });
+    req.headers = { 'user-agent': 'Mozilla/5.0 (iPhone) Mobile' };
+    req.body = { name: 'deck_downloaded', props: {} };
+    controller.track(req, res);
+    const props = executeSpy.mock.calls[0][0].props;
+    expect(props).not.toHaveProperty('device');
+  });
+
   it('records unknown event name tagged with unknown:true and does not 400 (AC #4)', () => {
     const { controller, req, res, executeSpy } = buildMocks({ userId: 1 });
     req.body = { name: 'not_a_real_event_xyzzy' };

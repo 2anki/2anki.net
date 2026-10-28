@@ -80,6 +80,10 @@ import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
 import {
+  uploadSubmittedProps,
+  type UploadTrigger,
+} from '../../../../lib/analytics/uploadSubmitted';
+import {
   isLargeUpload,
   reportClientError,
 } from '../../../../lib/reportClientError';
@@ -1313,7 +1317,12 @@ function UploadForm({
       const resend = await prepare();
       if (resend == null) return;
       resend.formData.set(KEPT_OWNER_FIELD, senderField(rescueFilesOwner));
-      void runFileUpload(resend.formData, resend.files, resend.isRetry);
+      void runFileUpload(
+        resend.formData,
+        resend.files,
+        resend.isRetry,
+        resend.isRetry ? 'retry' : 'resend'
+      );
     } finally {
       resendPendingRef.current = false;
       if (!unmountedRef.current) setResendTapped(null);
@@ -2011,7 +2020,8 @@ function UploadForm({
   const runFileUpload = async (
     formData: FormData,
     uploadedFiles: File[],
-    isRetry: boolean
+    isRetry: boolean,
+    trigger: UploadTrigger
   ): Promise<boolean> => {
     // A PDF with no readable text is the one thing the server will not guess
     // about: it asks which cards to make, unless this device already said.
@@ -2050,6 +2060,7 @@ function UploadForm({
     setNetworkRetryFiles(null);
     setUnreadableFile(null);
     fireAnalyticsEvent('upload_started');
+    track('upload_submitted', uploadSubmittedProps(uploadedFiles, trigger));
     setProgressWidth(10);
     setProgressSlow(false);
     setShowFallback(false);
@@ -2288,7 +2299,7 @@ function UploadForm({
     recordSend?.();
     resumedUploadRef.current = true;
     keepSubmittedFiles(upload.files, upload.ownerId);
-    void runFileUpload(formData, upload.files, false);
+    void runFileUpload(formData, upload.files, false, 'resume');
   };
 
   // The file a free person left behind to buy a Day Pass from the thin deck
@@ -2410,7 +2421,7 @@ function UploadForm({
     applyAnonymousAiFlag(formData, aiOn);
     const handedOffFiles = [handedOff];
     keepSubmittedFiles(handedOffFiles);
-    void runFileUpload(formData, handedOffFiles, false);
+    void runFileUpload(formData, handedOffFiles, false, 'handoff');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, userLocalsLoading]);
 
@@ -2428,7 +2439,7 @@ function UploadForm({
     attachPdfPageRange(formData);
     const uploadedFiles = Array.from(fileInputRef.current?.files ?? []);
     keepSubmittedFiles(uploadedFiles);
-    return runFileUpload(formData, uploadedFiles, false);
+    return runFileUpload(formData, uploadedFiles, false, 'submit');
   };
 
   const handleTrySample = async () => {
