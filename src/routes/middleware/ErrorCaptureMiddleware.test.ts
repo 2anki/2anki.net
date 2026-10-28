@@ -369,6 +369,38 @@ describe('makeErrorCaptureMiddleware', () => {
     }
   );
 
+  it('still skips a limit error', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const limitError = new Error('You can only add 100 cards');
+
+    await middleware(limitError, makeReq('/api/upload'), makeRes(), next);
+
+    expect(repo.inserts).toHaveLength(0);
+    expect(next).toHaveBeenCalledWith(limitError);
+  });
+
+  it('records an email send whose SendGrid reason reads like a limit', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const emailError = new EmailSendError(
+      'Too Many Requests: Your request has hit the limit',
+      429
+    );
+
+    await middleware(
+      emailError,
+      makeReq('/api/users/magic-link'),
+      makeRes(),
+      next
+    );
+
+    expect(repo.inserts).toHaveLength(1);
+    expect(next).toHaveBeenCalledWith(emailError);
+  });
+
   it('still skips a client that dropped the connection (a plain ECONNRESET)', async () => {
     const repo = makeRepository();
     const middleware = makeErrorCaptureMiddleware(repo);
