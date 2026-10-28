@@ -1,13 +1,13 @@
 {
   "aria": "Cards held back by the monthly limit",
   "headline": "This deck has {{delivered}} of {{total}} cards",
-  "bodySaved_one": "You've used this month's {{monthly}} free cards. {{count}} more card is saved for 7 days: get a pass and the full deck lands in Downloads, no re-upload.",
-  "bodySaved_other": "You've used this month's {{monthly}} free cards. The other {{count}} are saved for 7 days: get a pass and the full deck lands in Downloads, no re-upload.",
+  "bodySaved_one": "You've used this month's {{monthly}} free cards. {{count}} more card is saved for 7 days: get a pass and the full deck lands in My decks, no re-upload.",
+  "bodySaved_other": "You've used this month's {{monthly}} free cards. The other {{count}} are saved for 7 days: get a pass and the full deck lands in My decks, no re-upload.",
   "bodyNotSaved": "You've used this month's {{monthly}} free cards. Get a pass, then drop the file again for all {{total}} cards.",
   "dayPass": "Day Pass · {{price}}",
   "semesterPass": "Semester Pass · {{price}}",
   "pro": "Go Pro",
   "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
-  "readyBody": "Your full deck is ready. It's in Downloads too.",
+  "readyBody": "Your full deck is ready. It's in My decks too.",
   "expiredBody": "Held decks are kept for 7 days. Drop the file again to make the full deck."
 }

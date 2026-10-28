@@ -14,7 +14,7 @@
     "converting": "Conversion…",
     "convertToAnki": "Convertir en Anki",
     "openInNotion": "Ouvrir dans Notion",
-    "alreadyConverting": "Cette page est déjà en cours de conversion — consultez les Téléchargements dans un instant.",
+    "alreadyConverting": "Cette page est déjà en cours de conversion — regarde dans Mes paquets dans un instant.",
     "convertFailed": "Impossible de démarrer la conversion. Réessayez dans un instant.",
     "cards_one": "{{count}} carte",
     "cards_other": "{{count}} cartes",
@@ -69,7 +69,7 @@
   },
   "apkg": {
     "missingId": "Identifiant d'import manquant.",
-    "backToDownloads": "← Retour aux téléchargements",
+    "backToDownloads": "← Retour à Mes paquets",
     "previewTitle": "Aperçu",
     "deckPreview": "Aperçu du paquet",
     "cardsLoaded": "{{loaded}} sur {{total}} cartes chargées",

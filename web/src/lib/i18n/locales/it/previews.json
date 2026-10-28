@@ -14,7 +14,7 @@
     "converting": "Conversione in corso…",
     "convertToAnki": "Converti in Anki",
     "openInNotion": "Apri in Notion",
-    "alreadyConverting": "Questa pagina è già in conversione: controlla i Download tra poco.",
+    "alreadyConverting": "Questa pagina è già in conversione: controlla I miei mazzi tra poco.",
     "convertFailed": "Impossibile avviare la conversione. Riprova tra poco.",
     "cards_one": "{{count}} scheda",
     "cards_other": "{{count}} schede",
@@ -69,7 +69,7 @@
   },
   "apkg": {
     "missingId": "ID caricamento mancante.",
-    "backToDownloads": "← Torna ai download",
+    "backToDownloads": "← Torna a I miei mazzi",
     "previewTitle": "Anteprima",
     "deckPreview": "Anteprima del mazzo",
     "cardsLoaded": "{{loaded}} di {{total}} schede caricate",

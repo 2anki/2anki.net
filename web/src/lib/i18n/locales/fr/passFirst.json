@@ -6,7 +6,7 @@
   "everyCard": "Obtiens toutes les cartes maintenant",
   "gateBody": "Prends un pass, puis dépose à nouveau le fichier pour les avoir toutes. Un compte gratuit obtient les {{cap}} premières.",
   "anonBody": "Sans compte, tu obtiens {{cap}} cartes. Un pass lève la limite, sans compte.",
-  "previewSaved": "Un compte gratuit obtient les {{shown}} premières. Le reste est gardé 7 jours : prends un pass et les {{total}} arrivent dans Téléchargements, sans nouvel envoi.",
+  "previewSaved": "Un compte gratuit obtient les {{shown}} premières. Le reste est gardé 7 jours : prends un pass et les {{total}} arrivent dans Mes paquets, sans nouvel envoi.",
   "previewNotSaved": "Un compte gratuit obtient les {{shown}} premières. Prends un pass, puis dépose à nouveau le fichier pour les {{total}}.",
   "semester": "Semester Pass · {{price}}",
   "semesterHint": "120 jours, sans limite de cartes",

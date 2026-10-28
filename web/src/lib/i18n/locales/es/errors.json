@@ -25,7 +25,7 @@
     "apkgGone": {
       "title": "Este mazo ya no está disponible.",
       "detail": "Los mazos subidos se eliminan al cabo de un tiempo. Conviértelo o súbelo de nuevo para previsualizarlo.",
-      "action": "Volver a las descargas"
+      "action": "Volver a Mis mazos"
     },
     "notionPageNotFound": {
       "title": "No pudimos abrir esa página de Notion.",

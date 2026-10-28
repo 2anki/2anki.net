@@ -158,8 +158,8 @@
   "createAccount": {
     "aria": "Crée un compte gratuit pour garder tes paquets",
     "headline": "Ce paquet n'existe que sur cet appareil",
-    "body": "Tu as créé {{deckName}} en tant qu'invité : il n'existe aucune copie en ligne à retrouver. Avec un compte gratuit, chaque paquet que tu convertis est enregistré dans tes téléchargements — re-télécharge-le quand tu veux, depuis n'importe quel appareil.",
-    "bodyNoName": "Tu as créé ce paquet en tant qu'invité : il n'existe aucune copie en ligne à retrouver. Avec un compte gratuit, chaque paquet que tu convertis est enregistré dans tes téléchargements — re-télécharge-le quand tu veux, depuis n'importe quel appareil.",
+    "body": "Tu as créé {{deckName}} en tant qu'invité : il n'existe aucune copie en ligne à retrouver. Avec un compte gratuit, chaque paquet que tu convertis est enregistré dans Mes paquets — re-télécharge-le quand tu veux, depuis n'importe quel appareil.",
+    "bodyNoName": "Tu as créé ce paquet en tant qu'invité : il n'existe aucune copie en ligne à retrouver. Avec un compte gratuit, chaque paquet que tu convertis est enregistré dans Mes paquets — re-télécharge-le quand tu veux, depuis n'importe quel appareil.",
     "cta": "Garde tes paquets — gratuit"
   },
   "accessBanner": {

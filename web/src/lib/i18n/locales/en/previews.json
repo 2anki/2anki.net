@@ -14,7 +14,7 @@
     "converting": "Converting…",
     "convertToAnki": "Convert to Anki",
     "openInNotion": "Open in Notion",
-    "alreadyConverting": "This page is already converting — check Downloads in a moment.",
+    "alreadyConverting": "This page is already converting — check My decks in a moment.",
     "convertFailed": "Could not start the conversion. Try again in a moment.",
     "cards_one": "{{count}} card",
     "cards_other": "{{count}} cards",
@@ -69,7 +69,7 @@
   },
   "apkg": {
     "missingId": "Missing upload id.",
-    "backToDownloads": "← Back to downloads",
+    "backToDownloads": "← Back to My decks",
     "previewTitle": "Preview",
     "deckPreview": "Deck preview",
     "cardsLoaded": "{{loaded}} of {{total}} cards loaded",

@@ -3428,7 +3428,7 @@ describe('UploadForm analytics events', () => {
 
     expect(
       await screen.findByText(
-        "Your download didn't finish — the deck is saved to your downloads."
+        "Your download didn't finish — the deck is saved to My decks."
       )
     ).toBeInTheDocument();
     const download = screen.getByRole('link', { name: 'Download deck' });
@@ -9861,7 +9861,7 @@ describe('claiming a held deck after sign-in', () => {
       await waitFor(() => expect(claimHeldDeck).toHaveBeenCalledTimes(1));
       expect(
         await screen.findByText(
-          "Your full deck is ready. It's in Downloads too."
+          "Your full deck is ready. It's in My decks too."
         )
       ).toBeInTheDocument();
     });

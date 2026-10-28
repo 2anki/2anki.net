@@ -194,7 +194,7 @@
       "fetching": "Pobieranie {{filename}} z {{source}}",
       "deckReady": "Twoja talia jest gotowa",
       "savedToDownloads": "{{deckName}} zapisano w pobranych",
-      "downloadRecoveredNote": "Pobieranie nie zostało ukończone — talia jest zapisana w Twoich pobranych plikach.",
+      "downloadRecoveredNote": "Pobieranie nie zostało ukończone — talia jest zapisana w sekcji Moje talie.",
       "downloadRecoveredNoteAnon": "Pobieranie nie zostało ukończone — Twoja talia jest gotowa. Pobierz ją teraz; przechowujemy ją tylko przez jeden dzień.",
       "creditsUsed_one": "Ta talia zużyła {{count}} kredyt AI.",
       "creditsUsed_few": "Ta talia zużyła {{count}} kredyty AI.",

@@ -14,7 +14,7 @@
     "converting": "Converteren…",
     "convertToAnki": "Converteren naar Anki",
     "openInNotion": "Openen in Notion",
-    "alreadyConverting": "Deze pagina wordt al geconverteerd — bekijk zo je Downloads.",
+    "alreadyConverting": "Deze pagina wordt al geconverteerd — bekijk zo Mijn decks.",
     "convertFailed": "Kan de conversie niet starten. Probeer het zo opnieuw.",
     "cards_one": "{{count}} kaart",
     "cards_other": "{{count}} kaarten",
@@ -69,7 +69,7 @@
   },
   "apkg": {
     "missingId": "Upload-id ontbreekt.",
-    "backToDownloads": "← Terug naar downloads",
+    "backToDownloads": "← Terug naar Mijn decks",
     "previewTitle": "Voorbeeld",
     "deckPreview": "Deckvoorbeeld",
     "cardsLoaded": "{{loaded}} van {{total}} kaarten geladen",

@@ -14,7 +14,7 @@
     "converting": "A converter…",
     "convertToAnki": "Converter para Anki",
     "openInNotion": "Abrir no Notion",
-    "alreadyConverting": "Esta página já está a ser convertida — verifique as Transferências daqui a pouco.",
+    "alreadyConverting": "Esta página já está sendo convertida — confira Meus baralhos daqui a pouco.",
     "convertFailed": "Não foi possível iniciar a conversão. Tente novamente daqui a pouco.",
     "cards_one": "{{count}} cartão",
     "cards_other": "{{count}} cartões",
@@ -69,7 +69,7 @@
   },
   "apkg": {
     "missingId": "Falta o id do carregamento.",
-    "backToDownloads": "← Voltar às transferências",
+    "backToDownloads": "← Voltar para Meus baralhos",
     "previewTitle": "Pré-visualização",
     "deckPreview": "Pré-visualização do baralho",
     "cardsLoaded": "{{loaded}} de {{total}} cartões carregados",

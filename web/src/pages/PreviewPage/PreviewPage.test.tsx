@@ -340,7 +340,7 @@ describe('PreviewPage Convert to Anki CTA', () => {
 
     const passedError = setError.mock.calls[0][0] as Error;
     expect(passedError.message).toBe(
-      'This page is already converting — check Downloads in a moment.'
+      'This page is already converting — check My decks in a moment.'
     );
     expect(passedError.message).not.toContain('already_in_progress');
     expect(passedError.message).not.toContain('{');
