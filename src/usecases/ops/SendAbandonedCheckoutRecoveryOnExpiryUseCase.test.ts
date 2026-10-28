@@ -347,7 +347,7 @@ describe('SendAbandonedCheckoutRecoveryOnExpiryUseCase', () => {
 
     expect(eventsSink.record).toHaveBeenCalledWith({
       name: 'email_batch_sent',
-      props: { campaign: 'abandoned_checkout', count: 1 },
+      props: { campaign: 'abandoned_checkout', count: 1, server_marker: true },
     });
   });
 
