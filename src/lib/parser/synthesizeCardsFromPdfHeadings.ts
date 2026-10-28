@@ -21,7 +21,9 @@ const SENTENCE_TAIL = /[.,;]$/;
 // Geometric shapes (■ ▶ ◦ …) and arrows (→ ↓ …) are bullet glyphs in exported
 // study notes; a bare marker with nothing after it is an empty list item the
 // author forgot to delete, which arrives on a line of its own.
-// Regex class fragment: BMP only, ranges intended, no glyph after a trailing -
+// Both glyph strings are spliced into regex character classes, so they hold
+// BMP glyphs only (LIST_MARKER has no u flag), and their only "-" are the
+// ranges ■-◿ and ←-⇿; another "-", "]" or literal backslash changes the match.
 const NOTE_BULLET_GLYPHS = '•‣·☐☑☒✓✔■-◿←-⇿';
 const LIST_MARKER = new RegExp(
   `^(?:[-*${NOTE_BULLET_GLYPHS}]|\\d{1,3}[.)])(?:\\s|$)`
@@ -40,12 +42,14 @@ const SLIDE_LIST_MARKER = new RegExp(
   `^(?:[${SLIDE_BULLET_GLYPHS}]|[–—]\\p{L}|(?:[-*–—]|\\d{1,3}[.)])(?:\\s|$))`,
   'u'
 );
-// CJK headings carry a glyph glued to them (`■細胞の構造`, `■DNAの構造`,
-// `◆【第1回】…`, `■ＤＮＡ`, `■【Point】`), so a slide line with any Han, kana,
-// Hangul, CJK punctuation (U+3000-U+303F) or full-width form (U+FF00-U+FFEF)
-// in it keeps the notes rule. Plain ASCII (`■ATP`) stays a slide bullet.
+// Japanese, Chinese and Korean slides glue a glyph to every title, kana or
+// kanji in it or not (`■細胞の構造`, `■ＤＮＡ`, `■ATP`), and a marker drawn
+// apart from a title would join it and read as a bullet (`■ 細胞の構造`). So a
+// page with any Han, kana or Hangul gets neither slide rule. Half-width and
+// full-width forms (U+FF00-U+FFEF) and CJK punctuation (U+3000-U+303F) do
+// not count: Latin slides carry them too (`：`, `￥`, an ideographic space).
 const CJK_CHARACTER =
-  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303F\uFF00-\uFFEF]/u;
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const LONE_BULLET_GLYPH = new RegExp(`^[${SLIDE_BULLET_GLYPHS}]$`, 'u');
 const LONE_DASH = /^[–—]$/;
 // On slides that draw every marker apart from its text, 42-46% of a page's
@@ -150,11 +154,9 @@ function attachLoneMarkers(lines: string[]): string[] {
   return attached;
 }
 
-// The marker is picked only once the line is short enough to be a heading, so
-// the CJK scan never walks a long line.
 function isHeadingLine(
   line: string,
-  listMarker: (line: string) => RegExp,
+  listMarker: RegExp,
   nextLine: string | undefined,
   previousLine: string | undefined,
   previousBodyLine: string | undefined
@@ -165,7 +167,7 @@ function isHeadingLine(
     nextLine.length > line.length &&
     WORD_CHARACTER.test(line) &&
     !SENTENCE_TAIL.test(line) &&
-    !listMarker(line).test(line) &&
+    !listMarker.test(line) &&
     !startsLowercase(line) &&
     !isWrappedContinuation(previousLine) &&
     !isListSibling(line, nextLine, previousBodyLine)
@@ -179,16 +181,12 @@ function pageLines(page: PdfPage): string[] {
     .filter((text) => text.length > 0 && !isPageFooter(text));
 }
 
-function notesListMarker(): RegExp {
-  return LIST_MARKER;
-}
-
-function slideListMarker(line: string): RegExp {
-  return CJK_CHARACTER.test(line) ? LIST_MARKER : SLIDE_LIST_MARKER;
-}
-
 function isSlideDeck(pages: PdfPage[]): boolean {
   return pages.length > 0 && pages.every((page) => page.landscape === true);
+}
+
+function hasCjkText(page: PdfPage): boolean {
+  return CJK_CHARACTER.test(page.text);
 }
 
 export function synthesizeCardsFromPdfHeadings(
@@ -197,11 +195,12 @@ export function synthesizeCardsFromPdfHeadings(
 ): PdfCard[] {
   const tag = deckName.replace(/\s+/g, '_');
   const slideDeck = isSlideDeck(pages);
-  const listMarker = slideDeck ? slideListMarker : notesListMarker;
   const lines = pages.flatMap((page, pageIndex) => {
     const textLines = pageLines(page);
-    return (slideDeck ? attachLoneMarkers(textLines) : textLines).map(
-      (text) => ({ text, pageIndex })
+    const slidePage = slideDeck && !hasCjkText(page);
+    const listMarker = slidePage ? SLIDE_LIST_MARKER : LIST_MARKER;
+    return (slidePage ? attachLoneMarkers(textLines) : textLines).map(
+      (text) => ({ text, pageIndex, listMarker })
     );
   });
 
@@ -222,7 +221,7 @@ export function synthesizeCardsFromPdfHeadings(
     }
   };
 
-  lines.forEach(({ text, pageIndex }, index) => {
+  lines.forEach(({ text, pageIndex, listMarker }, index) => {
     if (
       isHeadingLine(
         text,

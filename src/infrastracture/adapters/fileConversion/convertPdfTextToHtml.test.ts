@@ -693,4 +693,42 @@ describe('slide PDFs reaching the heading synthesizer', () => {
       ]);
     }
   );
+
+  it('puts the figure of a Japanese slide titled ■ATP on the card of that slide', async () => {
+    mockExtract.mockResolvedValue({
+      pages: [
+        {
+          text: '■細胞のエネルギー\n• ミトコンドリアが細胞のエネルギーの大部分を作る',
+          imagePaintCount: 0,
+          landscape: true,
+        },
+        {
+          text: '■ATP\n• ATP合成酵素が内膜でATPを作る',
+          imagePaintCount: 1,
+          landscape: true,
+        },
+      ],
+      pageCount: 2,
+      avgCharsPerPage: 30,
+      isDrmLocked: false,
+      needsCredential: false,
+      coloredTextPageCount: 0,
+    });
+    const loadImages = vi
+      .fn()
+      .mockResolvedValue([
+        { pageIndex: 1, name: 'img-002-000.png', contents: Buffer.from('b') },
+      ]);
+
+    const result = await convertPdfTextToHtml(
+      Buffer.from('x'),
+      'biology.pdf',
+      undefined,
+      loadImages
+    );
+
+    expect(result.html).toMatch(
+      /<summary>■ATP<\/summary>\s*<p>• ATP合成酵素が内膜でATPを作る<img src="biology\.pdf-images\/img-002-000\.png"><\/p>/
+    );
+  });
 });

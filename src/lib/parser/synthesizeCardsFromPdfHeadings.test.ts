@@ -1258,6 +1258,295 @@ describe('slide decks', () => {
     }
   );
 
+  it.each(['■ATP', '■Q&A', '■Summary', '■DNA・RNA', '■①ATP'])(
+    'keeps a title with no kana or kanji in it on the front of a Japanese slide: %s',
+    (title) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            title,
+            '• 細胞膜はリン脂質の二重層でできている',
+            '• 核は遺伝情報を保持している',
+            '4',
+          ].join('\n'),
+          landscape: true,
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: title,
+          back: [
+            '• 細胞膜はリン脂質の二重層でできている',
+            '• 核は遺伝情報を保持している',
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  it('gives a Japanese slide titled ■ATP its own card instead of the back of the slide before it', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '■細胞のエネルギー',
+          '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+          '4',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: ['■ATP', '• ATP合成酵素が内膜でATPを作る', '5'].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(synthesizeCardsFromPdfHeadings(pages, 'Biology')).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+      {
+        front: '■ATP',
+        back: '• ATP合成酵素が内膜でATPを作る',
+        tags: ['Biology'],
+        pageIndex: 1,
+      },
+    ]);
+  });
+
+  it('keeps each title on the front of a Japanese slide that draws its ■ on a line of its own, as before the slide rules', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '■',
+          '細胞の構造',
+          '• 細胞膜はリン脂質の二重層でできている',
+          '■',
+          '物質の輸送',
+          '• 拡散は濃度の高い方から低い方へ物質が移動する',
+          '3',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '細胞の構造',
+        back: '• 細胞膜はリン脂質の二重層でできている\n■',
+      },
+      {
+        front: '物質の輸送',
+        back: '• 拡散は濃度の高い方から低い方へ物質が移動する',
+      },
+    ]);
+  });
+
+  it('leaves a Japanese slide whose bullets sit on lines of their own on the card above, as before the slide rules', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '■細胞の構造',
+          '• 細胞膜はリン脂質の二重層でできている',
+          '3',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          '物質の輸送',
+          '•',
+          '拡散は濃度の高い方から低い方へ物質が移動する',
+          '•',
+          '能動輸送はATPを使って濃度勾配に逆らう',
+          '4',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞の構造',
+        back: [
+          '• 細胞膜はリン脂質の二重層でできている',
+          '物質の輸送',
+          '•',
+          '拡散は濃度の高い方から低い方へ物質が移動する',
+          '•',
+          '能動輸送はATPを使って濃度勾配に逆らう',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('fronts a glued bullet over a longer one on a Japanese slide, as before the slide rules: ●ＡＴＰ', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '■エネルギー代謝',
+          '●細胞はグルコースを分解してエネルギーを得る',
+          '●ＡＴＰ',
+          '●ミトコンドリアの内膜でＡＴＰ合成酵素がＡＴＰを作る',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■エネルギー代謝',
+        back: '●細胞はグルコースを分解してエネルギーを得る',
+      },
+      {
+        front: '●ＡＴＰ',
+        back: '●ミトコンドリアの内膜でＡＴＰ合成酵素がＡＴＰを作る',
+      },
+    ]);
+  });
+
+  it('converts a Latin slide with a CJK term on it as before the slide rules, so its glued bullets front the cards', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Herbal Remedies',
+          '•Ginseng',
+          '•Root tea taken to boost energy; called 人参 in Chinese',
+          '•Ginkgo',
+          '•Leaf extract said to improve blood flow to the brain',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '•Ginseng',
+        back: '•Root tea taken to boost energy; called 人参 in Chinese',
+      },
+      {
+        front: '•Ginkgo',
+        back: '•Leaf extract said to improve blood flow to the brain',
+      },
+    ]);
+  });
+
+  it('reads each page of a deck that mixes a Latin slide and a Japanese slide by its own rule', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Membrane Proteins',
+          '•Integral proteins span the bilayer',
+          '•Peripheral proteins sit on one surface',
+          '4',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          '■ATP',
+          '• ATP合成酵素が内膜でATPを作る',
+          '• 細胞のエネルギー通貨として使われる',
+          '5',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(synthesizeCardsFromPdfHeadings(pages, 'Biology')).toEqual([
+      {
+        front: 'Membrane Proteins',
+        back: '•Integral proteins span the bilayer\n•Peripheral proteins sit on one surface',
+        tags: ['Biology'],
+        pageIndex: 0,
+      },
+      {
+        front: '■ATP',
+        back: '• ATP合成酵素が内膜でATPを作る\n• 細胞のエネルギー通貨として使われる',
+        tags: ['Biology'],
+        pageIndex: 1,
+      },
+    ]);
+  });
+
+  const ideographicSpace = '\u3000';
+  const latinSlidesWithCjkPunctuation: Array<[string, string[]]> = [
+    [
+      'full-width ： and ￥',
+      [
+        'Energy Metabolism',
+        '•Cost：￥500 per dose',
+        '•Each dose lasts about four hours in adults',
+      ],
+    ],
+    [
+      'an ideographic space after an en dash',
+      [
+        'Learning Objectives',
+        `–${ideographicSpace}Explain the phases`,
+        `–${ideographicSpace}Relate the ECG waves to electrical events`,
+      ],
+    ],
+    [
+      'an ideographic space inside a bullet',
+      [
+        'Heart Sounds',
+        `•S1${ideographicSpace}lub: AV valves closing`,
+        `•S2${ideographicSpace}dub: semilunar valves closing as the ventricles relax`,
+      ],
+    ],
+  ];
+
+  it.each(latinSlidesWithCjkPunctuation)(
+    'keeps the title on the front of a Latin slide whose bullets carry %s',
+    (_name, [title, ...bullets]) => {
+      const pages: PdfPage[] = [
+        { text: [title, ...bullets].join('\n'), landscape: true },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        { front: title, back: bullets.join('\n') },
+      ]);
+    }
+  );
+
+  it('keeps the slide rules on a page whose only CJK text is full-width, so a glued ■ＤＮＡ there stays on the card above', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Molecular Biology',
+          '•The study of DNA, RNA and proteins in the cell',
+          '3',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          '■ＤＮＡ',
+          '•Double helix of two antiparallel strands',
+          '•Bases pair A with T and G with C',
+          '4',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Molecular Biology',
+        back: [
+          '•The study of DNA, RNA and proteins in the cell',
+          '■ＤＮＡ',
+          '•Double helix of two antiparallel strands',
+          '•Bases pair A with T and G with C',
+        ].join('\n'),
+      },
+    ]);
+  });
+
   it('leaves a lone bullet that ends a slide on that slide, apart from the next slide title', () => {
     const pages: PdfPage[] = [
       {
