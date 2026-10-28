@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-typed-answer-multiline",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "With typed answers on, a back of several lines stays a normal card instead of asking you to type all the lines as one word"
+}

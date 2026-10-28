@@ -1184,6 +1184,25 @@ describe('McpToolsService.createDeck', () => {
     });
   });
 
+  it('reports noteType input ignored when a back is lines split by <br>', async () => {
+    const { entry } = captureUpload();
+    const { service } = makeService({ uploadEntry: entry });
+    const result = await service.createDeck(
+      [
+        { front: 'schedule', back: '予定' },
+        { front: 'Cities on the Rhône', back: 'Lyon<br>Avignon' },
+      ],
+      'Geography',
+      { noteType: 'input' },
+      'owner-9',
+      {}
+    );
+    expect(result).toMatchObject({
+      kind: 'deck',
+      ignored: [{ option: 'noteType', requested: 'input' }],
+    });
+  });
+
   it('downgrades cloze to basic and reports it in ignored when no card has {{c1::}} markup', async () => {
     const { entry } = captureUpload();
     const { service } = makeService({ uploadEntry: entry });

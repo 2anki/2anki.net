@@ -444,7 +444,7 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
     ]);
   });
 
-  it('runs a plain-text back of several lines into one typed answer and makes no reversed card for it (Basic and reversed)', async () => {
+  it('keeps a plain-text back of several lines as a basic card with its reversed card when typed answers are on (Basic and reversed)', async () => {
     vi.mocked(getPageCount).mockResolvedValue(2);
     const cards = await convert(
       {
@@ -462,16 +462,10 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
         answer: card.answer,
       }))
     ).toEqual([
-      {
-        front: 'Mitosis {{type:Input}}',
-        typed: true,
-        answer: 'ProphaseMetaphaseAnaphase',
-      },
-      {
-        front: 'Exocytosis {{type:Input}}',
-        typed: true,
-        answer: '03Ca2+ influx triggers fusion',
-      },
+      { front: 'Mitosis', typed: false, answer: '' },
+      { front: 'Exocytosis', typed: false, answer: '' },
+      { front: 'Prophase Metaphase Anaphase', typed: false, answer: '' },
+      { front: '03 Ca2+ influx triggers fusion', typed: false, answer: '' },
     ]);
   });
 
@@ -534,7 +528,7 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
     );
   });
 
-  it('still types a title-only slide titled "y" with its source line, since the title also occurs in the summary tag (pre-existing, pinned)', async () => {
+  it('does not type a title-only slide whose back is its title and source line on two lines', async () => {
     vi.mocked(getPageCount).mockResolvedValue(1);
     const cards = await convert(
       {
@@ -554,7 +548,7 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
 
     expect(
       cards.map((card) => ({ typed: card.enableInput, answer: card.answer }))
-    ).toEqual([{ typed: true, answer: 'yCell Biology · 6' }]);
+    ).toEqual([{ typed: false, answer: '' }]);
   });
 
   it('detects Japanese from the slide titles when more figure slides carry a Latin footer (tts-auto-detect)', async () => {
@@ -733,9 +727,10 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
     });
 
     it('gives a note a new ID when it flips from basic to typed, its front unchanged', async () => {
+      const oneLineBacks = lectureWithFooter('Cell Biology');
       const basic = await noteIds(
         { cloze: 'false', paragraph: 'true', 'basic-reversed': 'true' },
-        runOnLecture
+        oneLineBacks
       );
       const typed = await noteIds(
         {
@@ -743,7 +738,7 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
           paragraph: 'true',
           'basic-reversed': 'true',
         },
-        runOnLecture
+        oneLineBacks
       );
 
       expect(basic[0].front).toBe('Mitosis');
