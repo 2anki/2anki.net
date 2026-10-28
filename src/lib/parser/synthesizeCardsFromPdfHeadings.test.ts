@@ -1188,6 +1188,13 @@ describe('slide decks', () => {
     '■＜到達目標＞',
     '■DNA 복제',
     '■DNA的结构',
+    '■ＤＮＡ',
+    '■ＡＴＰ',
+    '■（１）',
+    '■【Point】',
+    '■【Check】',
+    '■Ｑ＆Ａ',
+    '◆ＰＣＲ',
   ])('keeps a CJK slide title glued to its glyph on the front: %s', (title) => {
     const pages: PdfPage[] = [
       {
@@ -1211,6 +1218,45 @@ describe('slide decks', () => {
       },
     ]);
   });
+
+  it.each(['■ATP', '■Q&A'])(
+    'reads a plain-ASCII %s on a Latin slide as a glued bullet, so it stays on the card above',
+    (title) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Energy Metabolism',
+            '•Cells turn glucose into usable energy',
+            '•Most of it is made in the mitochondria',
+            '4',
+          ].join('\n'),
+          landscape: true,
+        },
+        {
+          text: [
+            title,
+            '•Made by ATP synthase in the inner membrane',
+            '•Powers pumps, motors and biosynthesis',
+            '5',
+          ].join('\n'),
+          landscape: true,
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: 'Energy Metabolism',
+          back: [
+            '•Cells turn glucose into usable energy',
+            '•Most of it is made in the mitochondria',
+            title,
+            '•Made by ATP synthase in the inner membrane',
+            '•Powers pumps, motors and biosynthesis',
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
 
   it('leaves a lone bullet that ends a slide on that slide, apart from the next slide title', () => {
     const pages: PdfPage[] = [

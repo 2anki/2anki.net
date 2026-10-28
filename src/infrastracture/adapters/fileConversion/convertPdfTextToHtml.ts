@@ -40,8 +40,9 @@ interface PlacedPdfImage {
 
 // Each page's figures ride the first card synthesized from that page, so
 // image and text stay adjacent for both the AI prompt and the plain parser.
-// Figures from pages that produced no card are appended after the toggles —
-// still in the document, never silently dropped.
+// Figures from pages that produced no card are appended after the toggles,
+// where the AI prompt still sees them; the plain parser reads only the
+// <details> cards, so with AI off they reach no card.
 function buildImagePlacement(images: PlacedPdfImage[]) {
   const byPage = new Map<number, string[]>();
   for (const image of images) {

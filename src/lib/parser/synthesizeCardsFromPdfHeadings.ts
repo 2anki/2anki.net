@@ -21,6 +21,7 @@ const SENTENCE_TAIL = /[.,;]$/;
 // Geometric shapes (■ ▶ ◦ …) and arrows (→ ↓ …) are bullet glyphs in exported
 // study notes; a bare marker with nothing after it is an empty list item the
 // author forgot to delete, which arrives on a line of its own.
+// Regex class fragment: BMP only, ranges intended, no glyph after a trailing -
 const NOTE_BULLET_GLYPHS = '•‣·☐☑☒✓✔■-◿←-⇿';
 const LIST_MARKER = new RegExp(
   `^(?:[-*${NOTE_BULLET_GLYPHS}]|\\d{1,3}[.)])(?:\\s|$)`
@@ -40,10 +41,11 @@ const SLIDE_LIST_MARKER = new RegExp(
   'u'
 );
 // CJK headings carry a glyph glued to them (`■細胞の構造`, `■DNAの構造`,
-// `◆【第1回】…`), so a slide line with any Han, kana or Hangul in it keeps the
-// notes rule.
+// `◆【第1回】…`, `■ＤＮＡ`, `■【Point】`), so a slide line with any Han, kana,
+// Hangul, CJK punctuation (U+3000-U+303F) or full-width form (U+FF00-U+FFEF)
+// in it keeps the notes rule. Plain ASCII (`■ATP`) stays a slide bullet.
 const CJK_CHARACTER =
-  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303F\uFF00-\uFFEF]/u;
 const LONE_BULLET_GLYPH = new RegExp(`^[${SLIDE_BULLET_GLYPHS}]$`, 'u');
 const LONE_DASH = /^[–—]$/;
 // On slides that draw every marker apart from its text, 42-46% of a page's
@@ -148,9 +150,11 @@ function attachLoneMarkers(lines: string[]): string[] {
   return attached;
 }
 
+// The marker is picked only once the line is short enough to be a heading, so
+// the CJK scan never walks a long line.
 function isHeadingLine(
   line: string,
-  listMarker: RegExp,
+  listMarker: (line: string) => RegExp,
   nextLine: string | undefined,
   previousLine: string | undefined,
   previousBodyLine: string | undefined
@@ -161,7 +165,7 @@ function isHeadingLine(
     nextLine.length > line.length &&
     WORD_CHARACTER.test(line) &&
     !SENTENCE_TAIL.test(line) &&
-    !listMarker.test(line) &&
+    !listMarker(line).test(line) &&
     !startsLowercase(line) &&
     !isWrappedContinuation(previousLine) &&
     !isListSibling(line, nextLine, previousBodyLine)
@@ -222,7 +226,7 @@ export function synthesizeCardsFromPdfHeadings(
     if (
       isHeadingLine(
         text,
-        listMarker(text),
+        listMarker,
         lines[index + 1]?.text,
         lines[index - 1]?.text,
         previousBodyLine
