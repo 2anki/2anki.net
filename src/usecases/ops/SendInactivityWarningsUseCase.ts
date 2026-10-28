@@ -1,8 +1,9 @@
 import type { IInactivityEmailRepository } from '../../data_layer/InactivityEmailRepository';
 import type { IUploadRepository } from '../../data_layer/UploadRespository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
-import { isTransientSendError } from '../../services/EmailService/sendWithRetry';
 import path from 'node:path';
+
+const MAX_FAILURES_IN_A_ROW = 3;
 
 export interface SendInactivityWarningsResult {
   count: number;
@@ -74,11 +75,23 @@ export class SendInactivityWarningsUseCase {
     }
 
     let sent = 0;
+    let failuresInARow = 0;
     for (const user of users) {
       const token = crypto.randomUUID();
       await this.repo.recordSend(user.id, token);
       if (await this.sendWarning(user, token)) {
         sent++;
+        failuresInARow = 0;
+        continue;
+      }
+      failuresInARow++;
+      // Several failures in a row point at SendGrid or the key, not at one
+      // address: stop rather than churn through the rest of the batch.
+      if (failuresInARow >= MAX_FAILURES_IN_A_ROW) {
+        console.error(
+          `[inactivity] stopping the run after ${MAX_FAILURES_IN_A_ROW} failed sends in a row`
+        );
+        break;
       }
     }
 
@@ -110,11 +123,7 @@ export class SendInactivityWarningsUseCase {
       return true;
     } catch (error) {
       console.error(`[inactivity] failed to email user ${user.id}:`, error);
-      // A rejection SendGrid will repeat (an address it refuses) keeps the
-      // row: retrying it every run would crowd out people who can be warned.
-      if (isTransientSendError(error)) {
-        await this.releaseWarning(user.id, token);
-      }
+      await this.releaseWarning(user.id, token);
       return false;
     }
   }
