@@ -16,6 +16,7 @@ import { preserveFilesForDebugging } from '../../lib/debug/preserveFilesForDebug
 import { shouldShareFilesForDebugging } from './shouldShareFilesForDebugging';
 import * as cheerio from 'cheerio';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
+import { EmailSendError } from '../../services/EmailService/sendMail';
 import {
   PythonExitError,
   toUploadErrorCode,
@@ -95,7 +96,10 @@ export default async function ErrorHandler(
 ) {
   const uploadedFiles = req.files as UploadedFile[];
   const isLimit = isLimitError(err);
-  const quietError = isLimit || isExpectedClientFault(err);
+  // A failed email send is always ours, even when its code (ECONNRESET) looks
+  // like a client abort, and its message names the provider's account state.
+  const quietError =
+    !(err instanceof EmailSendError) && (isLimit || isExpectedClientFault(err));
 
   if (!quietError) {
     console.info('Send error');
@@ -169,10 +173,13 @@ const SQLSTATE_RE = /^[0-9A-Z]{5}$/;
  * (CWE-209) and mislabels a server bug as a client fault. Deliberate throws
  * (limit errors, upload-shape errors) are plain Error and keep the 400 path.
  * A rejected Stripe key (isStripeAccessError) is our configuration fault too;
- * its message names the key prefix and the missing permission.
+ * its message names the key prefix and the missing permission. A failed email
+ * send (EmailSendError) is ours as well, and its message carries SendGrid's
+ * reason ("from address does not match a verified Sender Identity").
  */
 function isInternalFault(err: Error): boolean {
   if (
+    err instanceof EmailSendError ||
     err instanceof TypeError ||
     err instanceof RangeError ||
     err instanceof ReferenceError

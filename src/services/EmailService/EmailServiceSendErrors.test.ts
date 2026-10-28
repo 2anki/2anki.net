@@ -47,6 +47,7 @@ describe('EmailService send failures', () => {
 
   it.each([
     ['password reset', () => service.sendResetEmail(RECIPIENT, 'tok')],
+    ['magic link', () => service.sendMagicLinkEmail(RECIPIENT, 'tok', 'login')],
     [
       'inactivity warning',
       () => service.sendInactivityWarningEmail(RECIPIENT, 'tok'),

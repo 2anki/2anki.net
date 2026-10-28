@@ -33,7 +33,8 @@ function sendGridReasons(error: SendGridFailure): string[] {
 
 export function toEmailSendError(error: unknown): EmailSendError {
   const failure = (error ?? {}) as SendGridFailure;
-  const base = error instanceof Error ? error.message : 'email send failed';
+  const message = error instanceof Error ? error.message : '';
+  const base = message === '' ? 'email send failed' : message;
   const reasons = sendGridReasons(failure);
   const code = failure.code;
   return new EmailSendError(

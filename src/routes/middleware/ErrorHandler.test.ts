@@ -6,6 +6,7 @@ import multer from 'multer';
 import ErrorHandler from './ErrorHandler';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
+import { EmailSendError } from '../../services/EmailService/sendMail';
 
 const makeAPIResponseError = (
   code: string,
@@ -383,6 +384,36 @@ describe('ErrorHandler', () => {
     expect(body.message).toContain('support@2anki.net');
     errorSpy.mockRestore();
   });
+
+  test.each([
+    [
+      'a SendGrid rejection',
+      new EmailSendError(
+        'Forbidden: The from address does not match a verified Sender Identity.',
+        403
+      ),
+    ],
+    [
+      'a SendGrid connection reset',
+      new EmailSendError('socket hang up', 'ECONNRESET'),
+    ],
+  ])(
+    '%s responds 500 with a generic body, not the provider reason',
+    async (_label, error) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const res = makeResponse(false);
+      const req = makeRequest();
+
+      await ErrorHandler(res as unknown as express.Response, req, error);
+
+      expect(res.statusCode).toBe(500);
+      const body = res.body as { code: string; message: string };
+      expect(body.message).not.toContain(error.message);
+      expect(body.message).toContain('support@2anki.net');
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    }
+  );
 
   test('a Knex pool error responds 500 with a generic body', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
