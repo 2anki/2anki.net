@@ -31,7 +31,7 @@
     },
     "section-tags": {
       "label": "Etiquetar una sección entera",
-      "description": "Tacha una línea bajo una alternancia principal para etiquetar todas las tarjetas anidadas debajo — etiqueta una sección entera de una vez. Requiere el modo de selección manual."
+      "description": "Tacha una línea bajo una alternancia principal para etiquetar todas las tarjetas anidadas debajo. Solo funciona con la selección manual activada, así que solo las alternancias marcadas con 🍒 se convierten en tarjetas."
     },
     "cloze": {
       "label": "Borrado por oclusión (Cloze)",

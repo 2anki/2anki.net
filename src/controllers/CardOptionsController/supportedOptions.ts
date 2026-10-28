@@ -51,7 +51,7 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'section-tags',
       'Tag a whole section',
-      'Strike through a line under a parent toggle to tag every card nested beneath it — tag a whole section at once. Requires Cherry-pick mode.',
+      'Strike through a line under a parent toggle to tag every card nested beneath it. Works only with Cherry-pick on, so only toggles marked 🍒 become cards.',
       defaultFor('section-tags')
     ),
     new CardOptionDetail(

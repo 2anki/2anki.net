@@ -1225,14 +1225,24 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                 </h3>
                 <div className={fieldStyles.groupOptions}>
                   {inlineOptions.map((o: CardOption) => (
-                    <LocalCheckbox
-                      key={o.key}
-                      defaultValue={checkboxValues[o.key] ?? false}
-                      label={optionLabel(o)}
-                      description={optionDescription(o)}
-                      onChecked={(checked) => toggleCheckbox(o.key, checked)}
-                      badge={PREMIUM_KEYS.has(o.key) ? premiumBadge : undefined}
-                    />
+                    <React.Fragment key={o.key}>
+                      <LocalCheckbox
+                        defaultValue={checkboxValues[o.key] ?? false}
+                        label={optionLabel(o)}
+                        description={optionDescription(o)}
+                        onChecked={(checked) => toggleCheckbox(o.key, checked)}
+                        badge={
+                          PREMIUM_KEYS.has(o.key) ? premiumBadge : undefined
+                        }
+                      />
+                      {o.key === 'cherry' &&
+                        pageId == null &&
+                        (checkboxValues['cherry'] ?? false) && (
+                          <p className={fieldStyles.sectionHint}>
+                            {t('cardOptions.cherryDefaultsWarning')}
+                          </p>
+                        )}
+                    </React.Fragment>
                   ))}
                   {isPdfAiGroup && pageId == null && pdfPageRangeField}
                   {isPdfAiGroup &&

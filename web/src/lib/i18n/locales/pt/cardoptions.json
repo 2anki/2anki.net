@@ -31,7 +31,7 @@
     },
     "section-tags": {
       "label": "Aplicar tag a uma seção inteira",
-      "description": "Risque uma linha sob um toggle pai para aplicar tag a todos os cartões aninhados abaixo dele — uma seção inteira de uma vez. Requer o modo Seleção manual."
+      "description": "Risque uma linha sob um toggle pai para aplicar tag a todos os cartões aninhados abaixo dele. Só funciona com a seleção manual ativada, então apenas os toggles marcados com 🍒 viram cartões."
     },
     "cloze": {
       "label": "Omissão cloze",

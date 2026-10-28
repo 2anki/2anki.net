@@ -31,7 +31,7 @@
     },
     "section-tags": {
       "label": "Otaguj całą sekcję",
-      "description": "Przekreśl wiersz pod nadrzędną listą rozwijaną, aby otagować każdą kartę zagnieżdżoną pod nią — całą sekcję naraz. Wymaga trybu „Wybór selektywny”."
+      "description": "Przekreśl wiersz pod nadrzędną listą rozwijaną, aby otagować każdą kartę zagnieżdżoną pod nią. Działa tylko z włączonym trybem „Wybór selektywny”, więc kartami stają się tylko listy oznaczone 🍒."
     },
     "cloze": {
       "label": "Luki cloze",

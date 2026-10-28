@@ -31,7 +31,7 @@
     },
     "section-tags": {
       "label": "Tagga un'intera sezione",
-      "description": "Barra una riga sotto un toggle genitore per taggare ogni carta annidata al suo interno — tagga un'intera sezione in una volta. Richiede la modalità Selezione mirata."
+      "description": "Barra una riga sotto un toggle genitore per taggare ogni carta annidata al suo interno. Funziona solo con la selezione mirata attiva, quindi solo i toggle con 🍒 diventano carte."
     },
     "cloze": {
       "label": "Cancellazione cloze",
