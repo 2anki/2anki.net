@@ -584,18 +584,42 @@ describe('stray glyph lines', () => {
 
   it.each([
     [
-      'a full notes page',
+      'a full notes page with two strays',
       fullNotesPage,
       ['Osmosis', 'Diffusion', 'Active transport', 'Endocytosis'],
+      ['•', '↓'],
     ],
     [
-      'a short last page',
+      'a short last page with two strays',
       shortLastPage,
       ['Osmosis', 'Diffusion', 'Active transport'],
+      ['•', '↓'],
+    ],
+    [
+      'a short last page with two strays that ends in an empty bullet',
+      [...shortLastPage, '•'],
+      ['Osmosis', 'Diffusion', 'Active transport'],
+      ['•', '↓', '•'],
+    ],
+    [
+      'a short last page with two empty bullets in a row before a heading',
+      [
+        'Osmosis',
+        'Movement of water across a semipermeable membrane down a gradient.',
+        '•',
+        '•',
+        'Diffusion',
+        'Movement of particles from high to low concentration in a solution.',
+        '↓',
+        'Active transport',
+        'Movement against the gradient using ATP from cellular respiration.',
+      ],
+      ['Osmosis', 'Diffusion', 'Active transport'],
+      ['•', '•', '↓'],
     ],
   ])(
-    'still opens a new card at each heading after a stray glyph on %s with two strays',
-    (_shape, lines, fronts) => {
+    'still opens a new card at each heading after a stray glyph on %s',
+    (_shape, lines, fronts, strays) => {
       const cards = synthesizeCardsFromPdfHeadings(
         [{ text: lines.join('\n') }],
         'Bio'
@@ -606,7 +630,7 @@ describe('stray glyph lines', () => {
         cards
           .flatMap((card) => card.back.split('\n'))
           .filter((line) => line.startsWith('•') || line.startsWith('↓'))
-      ).toEqual(['•', '↓']);
+      ).toEqual(strays);
     }
   );
 
@@ -786,6 +810,127 @@ describe('slide decks', () => {
         back: [
           '• CO equals heart rate times stroke volume',
           '• Normal resting value is about 5 litres per minute',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('leaves a lone bullet with no text after it on its own line when the slide rejoins the rest', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Learning Objectives',
+          '•',
+          'Describe the structure of the plasma membrane',
+          '•',
+          '•',
+          'Explain how the Na+/K+ pump sets the resting potential',
+          '•',
+          'Relate transport defects to disease',
+          '•',
+          '2',
+        ].join('\n'),
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Learning Objectives',
+        back: [
+          '• Describe the structure of the plasma membrane',
+          '•',
+          '• Explain how the Na+/K+ pump sets the resting potential',
+          '• Relate transport defects to disease',
+          '•',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('rejoins detached bullets that make up exactly 30% of a page', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Learning Objectives',
+          '•',
+          'Describe the structure of the plasma membrane',
+          '•',
+          'Explain how the Na+/K+ pump sets the resting',
+          'potential of every cell in the body at rest',
+          '•',
+          'Relate transport defects to disease and to',
+          'the drugs that target them in the clinic',
+          'today',
+        ].join('\n'),
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Learning Objectives',
+        back: [
+          '• Describe the structure of the plasma membrane',
+          '• Explain how the Na+/K+ pump sets the resting',
+          'potential of every cell in the body at rest',
+          '• Relate transport defects to disease and to',
+          'the drugs that target them in the clinic',
+          'today',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('fronts the subheading when a slide puts one under its title', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Cardiac Output',
+          'Determinants and normal values',
+          '•CO equals heart rate times stroke volume',
+          '•Normal resting value is about 5 litres per minute',
+          '3',
+        ].join('\n'),
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Determinants and normal values',
+        back: [
+          '•CO equals heart rate times stroke volume',
+          '•Normal resting value is about 5 litres per minute',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('keeps a slide whose title is longer than its first bullet on the card above, with no bullet on the front', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Cell Biology',
+          'Introductory notes on the parts of the cell and what each one does.',
+        ].join('\n'),
+      },
+      {
+        text: [
+          'Membrane Transport Mechanisms',
+          '•Diffusion',
+          '•Osmosis across the membrane',
+          '•Active transport with ATP',
+        ].join('\n'),
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Cell Biology',
+        back: [
+          'Introductory notes on the parts of the cell and what each one does.',
+          'Membrane Transport Mechanisms',
+          '•Diffusion',
+          '•Osmosis across the membrane',
+          '•Active transport with ATP',
         ].join('\n'),
       },
     ]);

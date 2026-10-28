@@ -95,11 +95,21 @@ function isLoneMarker(line: string | undefined): boolean {
 // meaning "leads to") must stay put, or the heading after it turns into a list
 // item; strays are a small share of a page, detached markers a large one. A
 // lone dash is as often a divider as a sub-bullet, so dashes add to the share
-// but cannot stand in for the two bullet glyphs.
+// but cannot stand in for the two bullet glyphs. Only a marker with text after
+// it on the page counts: one that ends the page or sits before another marker
+// has nothing to belong to, so a forgotten empty bullet there cannot tip a
+// notes page over the share.
+function canAttach(lines: string[], index: number): boolean {
+  const next = lines[index + 1];
+  return isLoneMarker(lines[index]) && next != null && !isLoneMarker(next);
+}
+
 function drawsMarkersApart(lines: string[]): boolean {
-  const glyphs = lines.filter(isLoneBulletGlyph).length;
-  const markers = lines.filter(isLoneMarker).length;
-  return glyphs >= 2 && markers / lines.length >= DETACHED_MARKER_MIN_SHARE;
+  const attachable = lines.filter((_, index) => canAttach(lines, index));
+  const glyphs = attachable.filter(isLoneBulletGlyph).length;
+  return (
+    glyphs >= 2 && attachable.length / lines.length >= DETACHED_MARKER_MIN_SHARE
+  );
 }
 
 function attachLoneMarkers(lines: string[]): string[] {
@@ -108,9 +118,8 @@ function attachLoneMarkers(lines: string[]): string[] {
   }
   const attached: string[] = [];
   lines.forEach((line, index) => {
-    const previous = lines[index - 1];
-    if (isLoneMarker(previous) && !isLoneMarker(line)) {
-      attached[attached.length - 1] = `${previous} ${line}`;
+    if (index > 0 && canAttach(lines, index - 1)) {
+      attached[attached.length - 1] = `${lines[index - 1]} ${line}`;
     } else {
       attached.push(line);
     }
