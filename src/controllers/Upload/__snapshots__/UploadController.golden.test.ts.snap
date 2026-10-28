@@ -394,3 +394,23 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
   "storedObjects": [],
 }
 `;
+
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, under the cap, partial delivery on 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=5",
+  },
+  "cardsCharged": [],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Small.apkg"",
+    "file-name": "Golden%20Small.apkg",
+    "x-card-count": "5",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;

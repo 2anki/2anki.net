@@ -1746,6 +1746,13 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
 
     expect(redirectedTo()).toBe('/limit?kind=anonymous');
     expect(capturedSend()).toBeNull();
+    expect(trackMock).toHaveBeenCalledWith(
+      'paywall_shown',
+      expect.objectContaining({
+        userId: null,
+        props: expect.objectContaining({ kind: 'anonymous', source: 'upload' }),
+      })
+    );
   });
 
   it('sets X-Dropped-Assets to the summed dropped-image count across packages on a single-deck sync upload', async () => {

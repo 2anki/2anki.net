@@ -162,6 +162,15 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     },
   ],
   [
+    'signed-out with an expired session cookie, under the cap, partial delivery on',
+    'small',
+    {
+      ...signedOut,
+      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
+      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
+    },
+  ],
+  [
     'signed-out with an expired session cookie, over the cap',
     'large',
     {
