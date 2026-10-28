@@ -55,6 +55,7 @@ import { getUploadValidationError } from '../lib/upload/getUploadValidationError
 import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
 import { mergeStoredCardOptions } from '../lib/upload/mergeStoredCardOptions';
 import { withDeckStyle } from '../lib/parser/buildDeckStyle';
+import { withUserNoteTypes } from '../lib/claude/withUserNoteTypes';
 import { decodeUploadImage } from '../lib/upload/decodeUploadImage';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import {
@@ -571,7 +572,13 @@ async function runClaudeRestartFiles(
           settings?.cardSize,
           settings?.fieldMapping,
           options
-        ).then((decks) => withDeckStyle(decks, settings ?? new CardOption({})))
+        ).then((decks) => {
+          const userSettings = settings ?? new CardOption({});
+          return withUserNoteTypes(
+            withDeckStyle(decks, userSettings),
+            userSettings
+          );
+        })
       );
     } catch (error) {
       if (error instanceof AiCreditsExhaustedError) {

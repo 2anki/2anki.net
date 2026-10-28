@@ -105,6 +105,7 @@ import {
 } from '../lib/workerTermination';
 import { AiCreditsExhaustedError } from '../lib/claude/aiSpendGuard';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
+import CustomExporter from '../lib/parser/exporters/CustomExporter';
 import UploadService, {
   resolveUploadWarning,
   walkMediaFiles,
@@ -3969,6 +3970,67 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
       isPaying: true,
       userId: 42,
       comprehensive: true,
+    });
+  });
+
+  it("rebuilds the restarted AI deck with the user's template and note types", async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-settings', 'conversion-settings.json'),
+      JSON.stringify({
+        template: 'notion',
+        basic_model_name: 'My Basic',
+        cloze_model_name: 'My Cloze',
+      })
+    );
+    mockGenerateDeckInfo.mockResolvedValue([
+      {
+        name: 'Deck',
+        image: '',
+        style: null,
+        id: 1,
+        settings: {
+          template: 'specialstyle',
+          basicModelName: 'n2a-basic',
+          clozeModelName: 'n2a-cloze',
+          inputModelName: 'n2a-input',
+          useNotionId: true,
+        },
+        cards: [{ name: 'q', back: 'a', tags: [], cloze: false, media: [] }],
+      },
+    ]);
+    const exporterMock = vi.mocked(CustomExporter);
+    exporterMock.mockClear();
+
+    const service = new UploadService(
+      buildRepository(),
+      new JobRepository(db),
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+    await service.restartClaudeJob(buildRestartRequest(), res);
+    for (let i = 0; i < 200 && exporterMock.mock.results.length === 0; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    const configure = (
+      exporterMock.mock.results[0].value as { configure: Mock }
+    ).configure;
+    for (let i = 0; i < 200 && configure.mock.calls.length === 0; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+
+    const [decks] = configure.mock.calls[0] as [
+      Array<{ settings: Record<string, unknown> }>,
+    ];
+    expect(decks[0].settings).toMatchObject({
+      template: 'notion',
+      basicModelName: 'My Basic',
+      clozeModelName: 'My Cloze',
+      inputModelName: 'n2a-input',
+      useNotionId: true,
     });
   });
 

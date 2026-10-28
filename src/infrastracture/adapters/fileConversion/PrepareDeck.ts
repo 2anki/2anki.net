@@ -84,6 +84,7 @@ import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
 import { isResourceForkEntry } from './documentStructureCensus';
 import { track } from '../../../services/events/track';
 import { withDeckStyle } from '../../../lib/parser/buildDeckStyle';
+import { withUserNoteTypes } from '../../../lib/claude/withUserNoteTypes';
 import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 
 const HTML_GENERATION_CONCURRENCY = AI_FILE_CONCURRENCY;
@@ -1079,7 +1080,9 @@ async function buildClaudeDeck(
       input.settings.cardSize,
       fieldMapping,
       optionsForFile(f)
-    ).then((decks) => withDeckStyle(decks, input.settings));
+    ).then((decks) =>
+      withUserNoteTypes(withDeckStyle(decks, input.settings), input.settings)
+    );
 
   const { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped } =
     await runClaudeConversion(

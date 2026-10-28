@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-ai-decks-user-note-types",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "Decks made with Claude now use the card template and note types you chose in card options"
+}
