@@ -507,6 +507,7 @@ describe('UploadPage AI off badge for a paying account', () => {
   afterEach(() => {
     fakeUser = null;
     fakeLocals = undefined;
+    fakeFeatures = undefined;
     globalThis.localStorage.clear();
     vi.unstubAllGlobals();
   });
@@ -570,22 +571,51 @@ describe('UploadPage AI off badge for a paying account', () => {
   });
 
   it.each([
-    [
-      'a signed-in free account',
-      { id: 42 },
-      { patreon: false, subscriber: false },
-      /upgrade to write cards with claude/i,
-    ],
-    ['a signed-out visitor', null, undefined, /sign in to turn on AI/i],
+    {
+      population: 'a signed-in free account',
+      user: { id: 42 },
+      locals: { patreon: false, subscriber: false },
+      features: undefined,
+      badge: () =>
+        screen.getByRole('link', {
+          name: /upgrade to write cards with claude/i,
+        }),
+    },
+    {
+      population: 'a signed-out visitor',
+      user: null,
+      locals: undefined,
+      features: undefined,
+      badge: () => screen.getByRole('link', { name: /sign in to turn on AI/i }),
+    },
+    {
+      population: 'a signed-out visitor with the AI preview toggle',
+      user: null,
+      locals: undefined,
+      features: { anonymousAiPreview: true },
+      badge: () =>
+        screen.getByRole('checkbox', {
+          name: 'Generate flashcards with Claude AI',
+        }),
+    },
+    {
+      population: 'a signed-out visitor with the AI choice',
+      user: null,
+      locals: undefined,
+      features: { anonymousAiPreview: true, anonymousAiChoice: true },
+      badge: () =>
+        screen.getByLabelText('Claude writes the cards: free sample first'),
+    },
   ])(
-    'does not claim a plan or read credits for %s',
-    async (_population, user, locals, badgeLink) => {
+    'does not claim a plan or read credits for $population',
+    async ({ user, locals, features, badge }) => {
       fakeUser = user;
       fakeLocals = locals;
+      fakeFeatures = features;
       const fetchMock = stubCredits(1347);
       renderPage();
 
-      expect(screen.getByRole('link', { name: badgeLink })).toBeInTheDocument();
+      expect(badge()).toBeInTheDocument();
       await new Promise((resolve) => setTimeout(resolve, 20));
       expect(
         screen.queryByText('Claude cards are included in your plan.')

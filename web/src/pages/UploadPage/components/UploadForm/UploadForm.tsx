@@ -72,6 +72,7 @@ import {
   AI_CREDITS_QUERY_KEY,
   useAiCredits,
 } from '../../../../lib/hooks/useAiCredits';
+import { LOW_CREDITS_THRESHOLD } from '../AiCreditsReadout';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -150,6 +151,7 @@ const REJECTED_FALLBACK =
 const NETWORK_FALLBACK =
   "Couldn't upload your file. Check your connection and try again.";
 const REATTACH_FILENAME_KEY = 'upload_pending_filename';
+const RETRY_KEEPS_AI_CHOICE = ['claude-ai-flashcards', 'pdf-page-pairs'];
 
 function clearPendingUpload(): void {
   globalThis.sessionStorage?.removeItem(REATTACH_FILENAME_KEY);
@@ -1112,30 +1114,6 @@ function UploadForm({
       ? localError?.rescue
       : null;
 
-  // Anonymous and free accounts are sent to the paid plan rather than to a
-  // free AI run; a paying account with AI off spends its own credits on a
-  // click; one with AI on already had Claude try, so nothing is offered.
-  const aiRescueState = (() => {
-    if (!emptyStateUsesDefaultBody) {
-      return null;
-    }
-    if (!isAuthenticated) return 'anon';
-    if (!isPaying) return 'free';
-    if (aiOn || lastSubmitUsedAi) return null;
-    return rescueFiles.length === 1 ? 'paying' : null;
-  })();
-  useEffect(() => {
-    if (aiRescueState != null) {
-      track('upload_ai_rescue_shown', { state: aiRescueState });
-    }
-  }, [aiRescueState]);
-
-  const handleAiRescue = () => {
-    if (rescueFiles.length !== 1) return;
-    track('upload_ai_rescue_clicked', { state: 'paying' });
-    rerunWithAi(rescueFiles);
-  };
-
   // A file sent before the page read the account belongs to the account the
   // page then shows: the session the server put the upload under.
   useEffect(() => {
@@ -1151,23 +1129,83 @@ function UploadForm({
   // still on screen, and must not receive that file or pay for it.
   const rescueFilesAreThisAccounts = rescueFilesOwner === currentOwnerId;
 
+  // Only a fresh submit (the file input, a dropped folder, a handed-over file,
+  // a saved upload resumed under its own account) sets the kept files and
+  // their account. A resend keeps both as they were.
+  const keepSubmittedFiles = (files: File[]) => {
+    setRescueFiles(files);
+    setRescueFilesOwner(userLocalsLoading ? undefined : currentOwnerId);
+  };
+
+  // Every resend of the kept files goes through here and reads the account
+  // again first, since a window that never lost focus still shows the old
+  // one. Under any account other than the one that sent the files, nothing
+  // goes out. A read that brings nothing back leaves the account the page
+  // shows.
+  const resendPendingRef = useRef(false);
+  const resendKeptFiles = async (send: () => void | Promise<void>) => {
+    if (resendPendingRef.current) return;
+    resendPendingRef.current = true;
+    try {
+      const reread = await refetchUserLocals();
+      const accountNow =
+        reread?.data === undefined
+          ? currentOwnerId
+          : (reread.data.user?.id ?? null);
+      if (accountNow !== rescueFilesOwner) return;
+      await send();
+    } finally {
+      resendPendingRef.current = false;
+    }
+  };
+
+  // Anonymous and free accounts are sent to the paid plan rather than to a
+  // free AI run; a paying account with AI off spends its own credits on a
+  // click; one with AI on already had Claude try, so nothing is offered.
+  const aiRescueState = (() => {
+    if (!emptyStateUsesDefaultBody) {
+      return null;
+    }
+    if (!isAuthenticated) return 'anon';
+    if (!isPaying) return 'free';
+    if (aiOn || lastSubmitUsedAi) return null;
+    return rescueFiles.length === 1 && rescueFilesAreThisAccounts
+      ? 'paying'
+      : null;
+  })();
+  useEffect(() => {
+    if (aiRescueState != null) {
+      track('upload_ai_rescue_shown', { state: aiRescueState });
+    }
+  }, [aiRescueState]);
+
+  const handleAiRescue = () => {
+    if (rescueFiles.length !== 1) return;
+    track('upload_ai_rescue_clicked', { state: 'paying' });
+    rerunWithAi(rescueFiles);
+  };
+
   const rerunWithAi = (files: File[]) => {
-    if (!rescueFilesAreThisAccounts) return;
-    const formData = new FormData();
-    for (const file of files) {
-      formData.append('pakker', file, file.name);
-    }
-    for (const [key, value] of Object.entries(globalThis.localStorage)) {
-      formData.append(key, value);
-    }
-    attachPdfPageRange(formData);
-    formData.set('claude-ai-flashcards', 'true');
-    setLocalError(null);
-    setZoneState('converting');
-    setProgressWidth(10);
-    setProgressSlow(false);
-    setShowFallback(false);
-    void runFileUpload(formData, files, false);
+    void resendKeptFiles(() => {
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append('pakker', file, file.name);
+      }
+      for (const [key, value] of Object.entries(globalThis.localStorage)) {
+        formData.append(key, value);
+      }
+      attachPdfPageRange(formData);
+      formData.set('claude-ai-flashcards', 'true');
+      // The click asks for Claude: two pages make one card, saved on the
+      // account but not in this browser, would otherwise skip it for a PDF.
+      formData.set('pdf-page-pairs', 'false');
+      setLocalError(null);
+      setZoneState('converting');
+      setProgressWidth(10);
+      setProgressSlow(false);
+      setShowFallback(false);
+      void runFileUpload(formData, files, false);
+    });
   };
 
   const thinDeckAiOffer =
@@ -1175,6 +1213,7 @@ function UploadForm({
     !lastSubmitUsedAi &&
     !sampleRun &&
     cardsHeldBack === 0 &&
+    rescueFilesAreThisAccounts &&
     thinDeckOfferFile != null &&
     isThinDeck(cardCount, thinDeckOfferFile.name, thinDeckOfferFile.size)
       ? { file: thinDeckOfferFile, cardCount }
@@ -1184,8 +1223,11 @@ function UploadForm({
   // last submit sent, not the toggle now, so turning Claude on after the deck
   // keeps it. A signed-in paying account's AI upload always becomes a
   // background job, so a deck shown here never ran Claude: the credits-used
-  // check only hides the offer should one ever arrive. Two pages make one
-  // card keeps a PDF away from Claude.
+  // check only hides the offer should one ever arrive. A copy recovered from
+  // My decks after a dropped connection gets no offer, and neither does a PDF
+  // while this browser makes two pages one card: that person chose page
+  // images. At or below the badge's low-credit mark the background job can
+  // run out of credits partway through the deck.
   const aiRebuildFormat =
     rescueFiles.length === 1 ? aiRebuildFormatOf(rescueFiles[0].name) : null;
   const aiRebuildEligible =
@@ -1193,6 +1235,7 @@ function UploadForm({
     isAuthenticated &&
     isPaying &&
     rescueFilesAreThisAccounts &&
+    !downloadRecovered &&
     !lastSubmitUsedAi &&
     !sampleRun &&
     cardsHeldBack === 0 &&
@@ -1205,7 +1248,9 @@ function UploadForm({
     );
   const aiRebuildCreditsLeft = useAiCredits(aiRebuildEligible)?.credits ?? 0;
   const aiRebuildOffer =
-    aiRebuildEligible && aiRebuildCreditsLeft > 0 ? aiRebuildFormat : null;
+    aiRebuildEligible && aiRebuildCreditsLeft > LOW_CREDITS_THRESHOLD
+      ? aiRebuildFormat
+      : null;
   useEffect(() => {
     if (aiRebuildOffer != null) {
       track('upload_ai_rebuild_shown', { format: aiRebuildOffer });
@@ -1716,8 +1761,6 @@ function UploadForm({
     uploadedFiles: File[],
     isRetry: boolean
   ): Promise<boolean> => {
-    setRescueFiles(uploadedFiles);
-    setRescueFilesOwner(userLocalsLoading ? undefined : currentOwnerId);
     // A PDF with no readable text is the one thing the server will not guess
     // about: it asks which cards to make, unless this device already said.
     if (
@@ -1958,6 +2001,7 @@ function UploadForm({
       formData.set('claude-ai-flashcards', upload.aiFlag);
     }
     resumedUploadRef.current = true;
+    keepSubmittedFiles(upload.files);
     void runFileUpload(formData, upload.files, false);
   };
 
@@ -2064,6 +2108,7 @@ function UploadForm({
     }
     attachPdfPageRange(formData);
     applyAnonymousAiFlag(formData, aiOn);
+    keepSubmittedFiles([handedOff]);
     void runFileUpload(formData, [handedOff], false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, userLocalsLoading]);
@@ -2081,6 +2126,7 @@ function UploadForm({
     applyAnonymousAiFlag(formData, aiOn);
     attachPdfPageRange(formData);
     const uploadedFiles = Array.from(fileInputRef.current?.files ?? []);
+    keepSubmittedFiles(uploadedFiles);
     return runFileUpload(formData, uploadedFiles, false);
   };
 
@@ -2116,23 +2162,25 @@ function UploadForm({
     const files = rescueFiles;
     if (files.length !== 1) return;
     track('upload_rescue_chosen', { rule, cards });
-    const formData = new FormData();
-    for (const file of files) {
-      formData.append('pakker', file, file.name);
-    }
-    for (const [key, value] of Object.entries(globalThis.localStorage)) {
-      formData.append(key, value);
-    }
-    attachPdfPageRange(formData);
-    formData.set('rescue-rule', rule);
-    // Rescue builds the chosen structure, never AI.
-    applyAnonymousAiFlag(formData, false);
-    setLocalError(null);
-    setZoneState('converting');
-    setProgressWidth(10);
-    setProgressSlow(false);
-    setShowFallback(false);
-    void runFileUpload(formData, files, false);
+    void resendKeptFiles(() => {
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append('pakker', file, file.name);
+      }
+      for (const [key, value] of Object.entries(globalThis.localStorage)) {
+        formData.append(key, value);
+      }
+      attachPdfPageRange(formData);
+      formData.set('rescue-rule', rule);
+      // Rescue builds the chosen structure, never AI.
+      applyAnonymousAiFlag(formData, false);
+      setLocalError(null);
+      setZoneState('converting');
+      setProgressWidth(10);
+      setProgressSlow(false);
+      setShowFallback(false);
+      void runFileUpload(formData, files, false);
+    });
   };
 
   // From the AI preview gate: build the deck from the same file without AI, the
@@ -2141,46 +2189,56 @@ function UploadForm({
   const handleContinueWithoutAi = () => {
     const files = rescueFiles;
     if (files.length === 0) return;
-    const formData = new FormData();
-    for (const file of files) {
-      formData.append('pakker', file, file.name);
-    }
-    for (const [key, value] of Object.entries(globalThis.localStorage)) {
-      formData.append(key, value);
-    }
-    attachPdfPageRange(formData);
-    // The gate's explicit "continue without AI" choice.
-    applyAnonymousAiFlag(formData, false);
-    setAiPreviewCards(null);
-    setLocalError(null);
-    setZoneState('converting');
-    setProgressWidth(10);
-    setProgressSlow(false);
-    setShowFallback(false);
-    void runFileUpload(formData, files, false);
+    void resendKeptFiles(() => {
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append('pakker', file, file.name);
+      }
+      for (const [key, value] of Object.entries(globalThis.localStorage)) {
+        formData.append(key, value);
+      }
+      attachPdfPageRange(formData);
+      // The gate's explicit "continue without AI" choice.
+      applyAnonymousAiFlag(formData, false);
+      setAiPreviewCards(null);
+      setLocalError(null);
+      setZoneState('converting');
+      setProgressWidth(10);
+      setProgressSlow(false);
+      setShowFallback(false);
+      void runFileUpload(formData, files, false);
+    });
   };
 
-  const handleNetworkRetry = async () => {
-    if (networkRetryFiles == null || networkRetryFiles.length === 0) return;
-    const recoveryToken = recoveryTokenRef.current;
-    if (!isAuthenticated && recoveryToken != null) {
-      setZoneState('converting');
-      if (
-        await fetchAnonymousCopy(networkRetryFiles[0], recoveryToken, 'retry')
-      ) {
-        return;
+  const handleNetworkRetry = () => {
+    const files = networkRetryFiles;
+    if (files == null || files.length === 0) return;
+    const failedAttempt = lastFormDataRef.current;
+    void resendKeptFiles(async () => {
+      const recoveryToken = recoveryTokenRef.current;
+      if (!isAuthenticated && recoveryToken != null) {
+        setZoneState('converting');
+        if (await fetchAnonymousCopy(files[0], recoveryToken, 'retry')) {
+          return;
+        }
       }
-    }
-    const formData = new FormData();
-    for (const file of networkRetryFiles) {
-      formData.append('pakker', file, file.name);
-    }
-    for (const [key, value] of Object.entries(globalThis.localStorage)) {
-      formData.append(key, value);
-    }
-    applyAnonymousAiFlag(formData, aiOn);
-    attachPdfPageRange(formData);
-    void runFileUpload(formData, networkRetryFiles, true);
+      const formData = new FormData();
+      for (const file of files) {
+        formData.append('pakker', file, file.name);
+      }
+      for (const [key, value] of Object.entries(globalThis.localStorage)) {
+        formData.append(key, value);
+      }
+      applyAnonymousAiFlag(formData, aiOn);
+      attachPdfPageRange(formData);
+      // The retry asks for what the failed attempt asked for: a Claude resend
+      // whose request never arrived stays a Claude resend.
+      for (const key of RETRY_KEEPS_AI_CHOICE) {
+        const sent = failedAttempt?.get(key);
+        if (typeof sent === 'string') formData.set(key, sent);
+      }
+      void runFileUpload(formData, files, true);
+    });
   };
 
   const isExistingApkgReject =
@@ -3600,8 +3658,11 @@ function UploadForm({
       reason: pdfChoice?.reason ?? 'no_text',
       remembered: remember,
     });
-    setPdfChoice(null);
-    void runFileUpload(next, rescueFiles, false);
+    const files = rescueFiles;
+    void resendKeptFiles(() => {
+      setPdfChoice(null);
+      void runFileUpload(next, files, false);
+    });
   };
 
   const handleForgetPdfFallback = () => {
@@ -3643,15 +3704,18 @@ function UploadForm({
           <p className={formStyles.emptyBody}>
             {t('upload.form.pdfChoiceSingleHint')}
           </p>
-          {isAuthenticated && isPaying && rescueFiles.length === 1 && (
-            <button
-              type="button"
-              className={formStyles.actionButton}
-              onClick={handleAiRescue}
-            >
-              {t('upload.form.aiRescueMake')}
-            </button>
-          )}
+          {isAuthenticated &&
+            isPaying &&
+            rescueFiles.length === 1 &&
+            rescueFilesAreThisAccounts && (
+              <button
+                type="button"
+                className={formStyles.actionButton}
+                onClick={handleAiRescue}
+              >
+                {t('upload.form.aiRescueMake')}
+              </button>
+            )}
           <label className={formStyles.emptyBody}>
             <input
               type="checkbox"

@@ -3,7 +3,7 @@ import { AiCreditsState } from '../../../lib/hooks/useAiCredits';
 import { BuyCreditsButton } from '../../../components/BuyCreditsButton/BuyCreditsButton';
 import pageStyles from '../UploadPage.module.css';
 
-const LOW_CREDITS_THRESHOLD = 25;
+export const LOW_CREDITS_THRESHOLD = 25;
 
 interface Props {
   readonly credits: AiCreditsState | null;

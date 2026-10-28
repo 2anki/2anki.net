@@ -979,19 +979,27 @@ describe('CardOptionsForm AI checkbox analytics', () => {
       name: /Generate flashcards with Claude AI/,
     });
 
-  it('records turning Claude cards on and off from the account defaults', async () => {
-    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
-    const checkbox = await aiCheckbox();
+  it.each([
+    { who: 'a paying account', paying: true, isLoggedIn: true },
+    { who: 'a signed-in free account', paying: false, isLoggedIn: true },
+    { who: 'a signed-out visitor', paying: false, isLoggedIn: false },
+  ])(
+    'records turning Claude cards on and off from the account defaults for $who',
+    async ({ paying, isLoggedIn }) => {
+      setUserLocalsPaying(paying);
+      renderForm(isLoggedIn, { onReset: vi.fn(), setError: vi.fn() });
+      const checkbox = await aiCheckbox();
 
-    fireEvent.click(checkbox);
-    fireEvent.click(checkbox);
+      fireEvent.click(checkbox);
+      fireEvent.click(checkbox);
 
-    expect(aiSwitchEvents()).toEqual([
-      ['upload_ai_turned_on', { surface: 'card_options' }],
-      ['upload_ai_turned_off', { surface: 'card_options' }],
-    ]);
-    expect(localStorage.getItem('claude-ai-flashcards')).toBe('false');
-  });
+      expect(aiSwitchEvents()).toEqual([
+        ['upload_ai_turned_on', { surface: 'card_options' }],
+        ['upload_ai_turned_off', { surface: 'card_options' }],
+      ]);
+      expect(localStorage.getItem('claude-ai-flashcards')).toBe('false');
+    }
+  );
 
   it('records nothing for other checkboxes', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
