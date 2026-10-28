@@ -11,9 +11,9 @@ It does not fix anything. It produces a short report of what is decaying and han
 
 1. **Architecture drift.** Run the dependency-cruiser sensor and capture the warning counts (these are non-blocking in CI, so they grow unnoticed):
    ```bash
-   pnpm --filter notion2anki-server arch 2>&1 | grep -oE '^ *warn [a-z-]+' | sort | uniq -c
+   pnpm arch 2>&1 | grep -oE '^ *warn [a-z-]+|arch: FAILED.*|[0-9]+ modules' | sort | uniq -c
    ```
-   Compare each rule's count against the baseline recorded in `.dependency-cruiser.cjs` (measured 2026-10-28: 10 cycles, 1 data-layer-leaf, 288 layer skips). Report any increase — a rising count means new code is adding to the debt the warns were meant to freeze.
+   Compare each rule's count against the baseline recorded in `.dependency-cruiser.cjs` (measured 2026-10-28: 10 cycles, 1 data-layer-leaf, 288 layer skips). Report any increase — a rising count means new code is adding to the debt the warns were meant to freeze. No `modules` line, or an `arch: FAILED` line, means the sensor did not run: make that the headline, never "no drift".
 
 2. **Dead code.** Spawn the `dead-code-auditor` agent (read-only) over `src/` and `web/src/`. Report its top unreferenced exports / unreachable branches.
 

@@ -64,7 +64,7 @@ describe('scripts/arch.sh', () => {
   ])('passes a run that cruised modules: %s', (output) => {
     const run = runArch(output);
 
-    expect(run).toMatchObject({ status: 0, stderr: '' });
+    expect(run).toEqual({ status: 0, stdout: `${output}\n`, stderr: '' });
   });
 
   it('keeps the dependency-cruiser exit code when a rule errors', () => {

@@ -64,7 +64,7 @@ doesn't. Compensate manually:
 
 | Claude Code feature | Aider equivalent |
 | --- | --- |
-| `/check` | `/run pnpm --filter notion2anki-server build & pnpm --filter 2anki-web typecheck & pnpm --filter 2anki-web test:run & pnpm --filter 2anki-web lint & wait` |
+| `/check` | `/run pnpm typecheck & pnpm --filter 2anki-web typecheck & pnpm --filter 2anki-web test:run & pnpm --filter 2anki-web lint & wait` |
 | `pre-bash-curl-pipe.py` hook | Never pipe `curl ... \| sh` from a script. |
 | `safety.py` push-target hook | Never `git push` to `main`; always `-u origin <branch>`. |
 | `pre-write-secret-scan.py` hook | Re-read added blocks for tokens / keys / API secrets before /commit. |
