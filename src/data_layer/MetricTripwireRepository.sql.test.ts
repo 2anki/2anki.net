@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import knex from 'knex';
 
 import { SERVER_ONLY_EVENT_NAMES } from '../lib/events/serverEventProps';
@@ -10,6 +12,31 @@ import {
   buildRecordCheckQuery,
   FOLLOW_THROUGH_SPECS,
 } from './MetricTripwireRepository';
+
+const SRC = path.resolve(__dirname, '..');
+
+function sourceFiles(dir: string): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return sourceFiles(full);
+    }
+    return entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')
+      ? [full]
+      : [];
+  });
+}
+
+const serverSources = sourceFiles(SRC).map((file) =>
+  fs.readFileSync(file, 'utf8')
+);
+
+function serverWrites(name: string): boolean {
+  return serverSources.some(
+    (source) =>
+      source.includes(`track('${name}'`) || source.includes(`name: '${name}'`)
+  );
+}
 
 describe('MetricTripwireRepository generated SQL', () => {
   const pg = knex({ client: 'pg' });
@@ -86,7 +113,7 @@ describe('MetricTripwireRepository generated SQL', () => {
   it('scopes every server base paired with a client follow-up to signed-in users', () => {
     const mixed = Object.entries(FOLLOW_THROUGH_SPECS).filter(
       ([, spec]) =>
-        SERVER_ONLY_EVENT_NAMES.has(spec.baseEvent) &&
+        serverWrites(spec.baseEvent) &&
         spec.followEvents.some((name) => !SERVER_ONLY_EVENT_NAMES.has(name))
     );
 
@@ -116,7 +143,12 @@ describe('MetricTripwireRepository generated SQL', () => {
     ]);
   });
 
-  it('restricts the download follow-through to signed-in users', () => {
+  it('finds the server writers of the download follow-through events', () => {
+    expect(serverWrites('conversion_succeeded')).toBe(true);
+    expect(serverWrites('deck_downloaded')).toBe(true);
+  });
+
+  it('restricts the download follow-through to signed-in web conversions', () => {
     const { sql, bindings } = buildFollowThroughQuery(
       pg,
       FOLLOW_THROUGH_SPECS.download_after_success,
@@ -124,12 +156,16 @@ describe('MetricTripwireRepository generated SQL', () => {
       end
     ).toSQL();
 
-    expect(sql).toContain('and "user_id" is not null)');
-    expect(sql).not.toContain('props @>');
+    expect(sql).toContain(
+      'and not (props @> ?::jsonb) and not (props @> ?::jsonb) ' +
+        'and "user_id" is not null)'
+    );
     expect(bindings).toEqual([
       'conversion_succeeded',
       start,
       end,
+      JSON.stringify({ source: 'app' }),
+      JSON.stringify({ entry: 'mcp' }),
       'deck_downloaded',
       start,
       end,

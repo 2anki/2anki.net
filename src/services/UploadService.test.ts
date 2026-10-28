@@ -1459,6 +1459,47 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(successCall?.[1].props).not.toHaveProperty('page_count_bucket');
   });
 
+  it('marks an MCP conversion as entry mcp so web-only rates can leave it out', async () => {
+    mockPackages([{ name: 'deck', cardCount: 10 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).mcp_auth = true;
+
+    await service.handleUpload(req, res);
+
+    const successCall = trackMock.mock.calls.find(
+      (call) => call[0] === 'conversion_succeeded'
+    );
+    expect(successCall?.[1].props).toMatchObject({ entry: 'mcp' });
+  });
+
+  it('leaves the entry off a browser upload', async () => {
+    mockPackages([{ name: 'deck', cardCount: 10 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    const successCall = trackMock.mock.calls.find(
+      (call) => call[0] === 'conversion_succeeded'
+    );
+    expect(successCall?.[1].props).not.toHaveProperty('entry');
+  });
+
   it('redirects a logged-in free user over the monthly limit to /limit?kind=card_count and does not send the deck', async () => {
     mockPackages([{ name: 'deck', cardCount: 30 }]);
     const usersRepo = buildUsersRepo({
