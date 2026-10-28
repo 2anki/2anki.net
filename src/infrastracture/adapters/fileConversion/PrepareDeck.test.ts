@@ -202,59 +202,66 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     expect(result?.apkg).toEqual(Buffer.from('fake-apkg'));
   });
 
-  it("builds an AI deck with the user's template and note types, not the stock ones", async () => {
-    generateDeckInfo.mockResolvedValueOnce([
-      {
-        name: 'My Deck',
-        image: '',
-        style: null,
-        id: 111222333444555,
-        settings: {
-          template: 'specialstyle',
-          clozeModelName: 'n2a-cloze',
-          basicModelName: 'n2a-basic',
-          inputModelName: 'n2a-input',
-          useNotionId: true,
-        },
-        cards: [
-          {
-            name: 'Front',
-            back: 'Back',
-            tags: [],
-            cloze: false,
-            number: 0,
-            enableInput: false,
-            answer: '',
-            media: [],
+  it.each([
+    ['a signed-in subscriber', undefined],
+    ['a pass holder without an account', 7],
+  ])(
+    "builds an AI deck with the user's template and note types, not the stock ones, for %s",
+    async (_who, anonymousPassId) => {
+      generateDeckInfo.mockResolvedValueOnce([
+        {
+          name: 'My Deck',
+          image: '',
+          style: null,
+          id: 111222333444555,
+          settings: {
+            template: 'specialstyle',
+            clozeModelName: 'n2a-cloze',
+            basicModelName: 'n2a-basic',
+            inputModelName: 'n2a-input',
+            useNotionId: true,
           },
-        ],
-      },
-    ]);
+          cards: [
+            {
+              name: 'Front',
+              back: 'Back',
+              tags: [],
+              cloze: false,
+              number: 0,
+              enableInput: false,
+              answer: '',
+              media: [],
+            },
+          ],
+        },
+      ]);
 
-    await PrepareDeck({
-      name: 'test.html',
-      files: [{ name: 'test.html', contents: '<p>Front</p>' }],
-      settings: makeSettings({
-        'claude-ai-flashcards': 'true',
+      await PrepareDeck({
+        name: 'test.html',
+        files: [{ name: 'test.html', contents: '<p>Front</p>' }],
+        settings: makeSettings({
+          'claude-ai-flashcards': 'true',
+          template: 'notionstyle',
+          basic_model_name: 'My Basic',
+          cloze_model_name: 'My Cloze',
+          input_model_name: 'My Input',
+        }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+        anonymousPassId,
+      });
+
+      const configuredDecks = CustomExporterMock.mock.results[0].value.configure
+        .mock.calls[0][0] as Array<{ settings: Record<string, unknown> }>;
+      expect(configuredDecks[0].settings).toMatchObject({
         template: 'notionstyle',
-        basic_model_name: 'My Basic',
-        cloze_model_name: 'My Cloze',
-        input_model_name: 'My Input',
-      }),
-      noLimits: true,
-      workspace: makeWorkspace(),
-    });
-
-    const configuredDecks = CustomExporterMock.mock.results[0].value.configure
-      .mock.calls[0][0] as Array<{ settings: Record<string, unknown> }>;
-    expect(configuredDecks[0].settings).toMatchObject({
-      template: 'notionstyle',
-      basicModelName: 'My Basic',
-      clozeModelName: 'My Cloze',
-      inputModelName: 'My Input',
-      useNotionId: true,
-    });
-  });
+        basicModelName: 'My Basic',
+        clozeModelName: 'My Cloze',
+        inputModelName: 'My Input',
+        useNotionId: true,
+      });
+    }
+  );
 
   it('keeps the stock note types on an AI deck when the user chose none', async () => {
     generateDeckInfo.mockResolvedValueOnce([

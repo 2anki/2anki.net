@@ -6,6 +6,7 @@ import type express from 'express';
 import { strToU8, zipSync } from 'fflate';
 
 const builtCards = vi.hoisted(() => [] as { name: string }[]);
+const builtSettings = vi.hoisted(() => [] as Record<string, unknown>[]);
 const storedKeys = vi.hoisted(() => [] as string[]);
 const claudeInputs = vi.hoisted(() => [] as string[]);
 const SLIDE_PNG = vi.hoisted(() =>
@@ -76,8 +77,9 @@ vi.mock('../lib/anki/CardGenerator', () => ({
           path.join(this.currentDirectory, 'deck_info.json'),
           'utf8'
         )
-      ) as { cards: { name: string }[] }[];
+      ) as { cards: { name: string }[]; settings?: Record<string, unknown> }[];
       builtCards.push(...deckInfo.flatMap((deck) => deck.cards));
+      builtSettings.push(...deckInfo.map((deck) => deck.settings ?? {}));
       const apkgPath = path.join(this.currentDirectory, 'lecture.apkg');
       fs.writeFileSync(apkgPath, 'apkg');
       return apkgPath;
@@ -298,7 +300,8 @@ async function uploadInBackground(deck: Buffer) {
 
 async function upload(
   file: { originalname: string; mimetype: string; buffer: Buffer },
-  flags: Record<string, boolean>
+  flags: Record<string, boolean>,
+  body: Record<string, string> = {}
 ) {
   __setFeatureFlagDependencies({
     repository: inMemoryFlags(flags),
@@ -320,7 +323,7 @@ async function upload(
   );
   const req = {
     files: [{ ...file, size: file.buffer.length }],
-    body: {},
+    body,
     headers: {},
     cookies: {},
     path: '/api/upload/file',
@@ -405,6 +408,25 @@ describe('a paying account with AI never set uploads a zip holding only a PowerP
       (match) => match[1]
     );
   }
+
+  it("builds the Claude fallback deck with the user's template and note types", async () => {
+    builtSettings.length = 0;
+    const { settled } = await upload(
+      {
+        originalname: 'slides.zip',
+        mimetype: 'application/zip',
+        buffer: Buffer.from(zipSync({ 'lecture.pptx': numberedLecture })),
+      },
+      {},
+      { template: 'notionstyle', basic_model_name: 'My Basic' }
+    );
+    await settled;
+
+    expect(builtSettings[0]).toMatchObject({
+      template: 'notionstyle',
+      basicModelName: 'My Basic',
+    });
+  }, 20_000);
 
   it('falls back to Claude after the parser finds no cards and hands it slide headings as fronts, not slide numbers', async () => {
     const { status, jobId, settled, jobs } = await upload(
