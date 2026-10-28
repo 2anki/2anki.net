@@ -1,4 +1,5 @@
-import path from 'path';
+import { escapeHtml } from '../notion-render/escape';
+import { toSrc } from './pageImageSrc';
 
 export type PageImageCardMode = 'pairs' | 'single';
 
@@ -8,24 +9,22 @@ export function combineIntoHTML(
   workspaceLocation?: string,
   mode: PageImageCardMode = 'pairs'
 ): string {
-  const toSrc = (imagePath: string) =>
-    workspaceLocation
-      ? path.relative(workspaceLocation, imagePath).replaceAll('\\', '/')
-      : path.basename(imagePath);
+  const src = (imagePath: string) => toSrc(imagePath, workspaceLocation);
+  const safeTitle = escapeHtml(title);
 
   if (mode === 'single') {
-    return singlePageHTML(imagePaths.map(toSrc), title);
+    return singlePageHTML(imagePaths.map(src), safeTitle);
   }
 
   const html = `<!DOCTYPE html>
 <html>
-<head><title>${title}</title></head>
+<head><title>${safeTitle}</title></head>
 <body>
   ${Array.from({ length: Math.ceil(imagePaths.length / 2) }, (_, i) => {
-    const front = toSrc(imagePaths[i * 2]);
+    const front = src(imagePaths[i * 2]);
     const backPath = imagePaths[i * 2 + 1];
     const back =
-      backPath == null ? '' : `\n        <img src="${toSrc(backPath)}" />`;
+      backPath == null ? '' : `\n        <img src="${src(backPath)}" />`;
     return `<ul class="toggle">
     <li>
       <details>

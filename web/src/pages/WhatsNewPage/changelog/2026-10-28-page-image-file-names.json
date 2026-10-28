@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-page-image-file-names",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "Page-image decks from .ppt and PDF files keep every page when the file name has a percent sign or a double quote"
+}

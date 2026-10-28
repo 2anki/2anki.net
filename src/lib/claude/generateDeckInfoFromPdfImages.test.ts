@@ -14,6 +14,7 @@ import {
   expandCompactDeckInfo,
 } from './ClaudeService';
 import { AiCreditsExhaustedError } from './aiSpendGuard';
+import { combineIntoHTML } from '../pdf/combineIntoHTML';
 
 const mockCreateFn = vi.hoisted(() => vi.fn());
 
@@ -87,6 +88,72 @@ describe('generateDeckInfoFromPdfImages', () => {
     const totalCards = decks.reduce((sum, d) => sum + d.cards.length, 0);
     expect(totalCards).toBeGreaterThan(0);
   });
+
+  it.each([
+    '50% done.pdf',
+    'Lecture%203.pdf',
+    'Cell "Biology".pdf',
+    'Cell\\Biology.pdf',
+    'Übung 3 細胞.pdf',
+  ])(
+    'reads every page image the builder links for an upload named %s',
+    async (name) => {
+      mockCreateFn.mockResolvedValue(
+        visionResponse(
+          JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+        )
+      );
+      const pages = [1, 2].map((page) => {
+        const pagePath = path.join(
+          baseDir,
+          'pdf-abc',
+          `${name}-page${page}-${page}.png`
+        );
+        fs.writeFileSync(pagePath, Buffer.from(`page ${page}`));
+        return pagePath;
+      });
+
+      await generateDeckInfoFromPdfImages(
+        combineIntoHTML(pages, name, baseDir),
+        { mediaBaseDir: baseDir }
+      );
+
+      const sent = mockCreateFn.mock.calls.map(
+        ([request]) =>
+          request.messages[0].content.find(
+            (block: { type: string }) => block.type === 'image'
+          ).source.data
+      );
+      expect(sent).toEqual([
+        Buffer.from('page 1').toString('base64'),
+        Buffer.from('page 2').toString('base64'),
+      ]);
+    }
+  );
+
+  it.each(['Lecture%203.pdf', 'Lecture %22final%22.pdf', '50% done.pdf'])(
+    'puts the page image on the back of each card for an upload named %s',
+    async (name) => {
+      mockCreateFn.mockResolvedValue(
+        visionResponse(
+          JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+        )
+      );
+      const pagePath = path.join(baseDir, 'pdf-abc', `${name}-page1-1.png`);
+      fs.writeFileSync(pagePath, Buffer.from('page 1'));
+
+      const decks = await generateDeckInfoFromPdfImages(
+        combineIntoHTML([pagePath], name, baseDir),
+        { mediaBaseDir: baseDir }
+      );
+
+      const [card] = decks.flatMap((deck) => deck.cards);
+      expect(card.media).toEqual([
+        expect.objectContaining({ path: `pdf-abc/${name}-page1-1.png` }),
+      ]);
+      expect(card.back).toContain(`src="${card.media?.[0].name}"`);
+    }
+  );
 
   it('attributes every vision usage event to the converting user', async () => {
     mockCreateFn.mockResolvedValue(
@@ -366,8 +433,9 @@ describe('attachPageImageToCompactDecks', () => {
       'pdf-abc/a"b.png'
     );
 
-    expect(result[0].cards[0].a).toContain('src="pdf-abc/a&quot;b.png"');
-    expect(result[0].cards[0].media).toEqual(['pdf-abc/a"b.png']);
+    expect(result[0].cards[0].a).toContain('src="pdf-abc/a%22b.png"');
+    expect(result[0].cards[0].media).toEqual(['pdf-abc/a%22b.png']);
+    expect(decodeURIComponent('pdf-abc/a%22b.png')).toBe('pdf-abc/a"b.png');
   });
 
   it('a crafted filename cannot inject a live attribute into the rendered card back', () => {
