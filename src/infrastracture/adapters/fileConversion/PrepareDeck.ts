@@ -84,6 +84,7 @@ import { mediaFilesForHtmlFile } from './mediaFilesForHtmlFile';
 import { isResourceForkEntry } from './documentStructureCensus';
 import { track } from '../../../services/events/track';
 import { withDeckStyle } from '../../../lib/parser/buildDeckStyle';
+import { withUserNoteTypes } from '../../../lib/claude/withUserNoteTypes';
 import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 
 const HTML_GENERATION_CONCURRENCY = AI_FILE_CONCURRENCY;
@@ -1116,7 +1117,12 @@ async function buildClaudeDeck(
     );
   }
 
-  const deckInfo = aiDecks as unknown as Deck[];
+  // Applied to the merged decks, so cards salvaged after a credit trip get the
+  // user's note types too.
+  const deckInfo = withUserNoteTypes(
+    aiDecks,
+    input.settings
+  ) as unknown as Deck[];
   // Counted per file against the media that file was actually offered, so an
   // image handed to one file but skipped there is not masked by another file
   // using a different image.

@@ -55,6 +55,7 @@ import { getUploadValidationError } from '../lib/upload/getUploadValidationError
 import { isImageOnlyUpload } from '../lib/upload/isImageOnlyUpload';
 import { mergeStoredCardOptions } from '../lib/upload/mergeStoredCardOptions';
 import { withDeckStyle } from '../lib/parser/buildDeckStyle';
+import { withUserNoteTypes } from '../lib/claude/withUserNoteTypes';
 import { decodeUploadImage } from '../lib/upload/decodeUploadImage';
 import { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import {
@@ -1096,6 +1097,9 @@ class UploadService {
     }
 
     const settings = loadPersistedConversionSettings(workspaceDir);
+    if (settings != null && settings.n2aBasic == null) {
+      await this.settingsRepository.attachCustomTemplates(owner, settings);
+    }
     const fallbackNames = loadPdfImageFallbackNames(workspaceDir);
     const ownerNumeric = Number(owner);
     const userId =
@@ -1128,7 +1132,10 @@ class UploadService {
       onProgress
     );
 
-    const deckInfo = deckInfoArrays.flat().filter((d) => d.cards.length > 0);
+    const deckInfo = withUserNoteTypes(
+      deckInfoArrays.flat().filter((d) => d.cards.length > 0),
+      settings ?? new CardOption({})
+    );
     if (deckInfo.length === 0) {
       throw tripped
         ? new AiCreditsExhaustedError()
