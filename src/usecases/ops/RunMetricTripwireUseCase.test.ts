@@ -56,8 +56,13 @@ class FakeTripwireRepository implements IMetricTripwireRepository {
     return this.alerts.some((a) => a.metric === metric && a.day === day);
   }
 
-  async recordAlert(metric: TripwireMetricKey, day: string): Promise<void> {
+  async recordAlert(metric: TripwireMetricKey, day: string): Promise<number> {
     this.alerts.push({ metric, day });
+    return this.alerts.length;
+  }
+
+  async releaseAlert(id: number): Promise<void> {
+    this.alerts.splice(id - 1, 1);
   }
 
   async recordCheck(day: string, tripped: number): Promise<void> {
@@ -174,6 +179,22 @@ describe('RunMetricTripwireUseCase', () => {
     expect(sendAlert).toHaveBeenCalledTimes(2);
     expect(repository.alerts).toEqual([
       { metric: 'conversion_success', day: '2026-03-10' },
+    ]);
+  });
+
+  it('claims the alert before sending, so a failure after the send cannot send it again', async () => {
+    const day = steadyCounts(5);
+    day.conversion_success = { numerator: 300, denominator: 500 };
+    const { repository, sendAlert, useCase } = build(day);
+    const claimedWhenSent: unknown[] = [];
+    sendAlert.mockImplementation(async () => {
+      claimedWhenSent.push([...repository.alerts]);
+    });
+
+    await useCase.execute(NOW);
+
+    expect(claimedWhenSent).toEqual([
+      [{ metric: 'conversion_success', day: '2026-03-10' }],
     ]);
   });
 });
