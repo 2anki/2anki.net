@@ -34,7 +34,7 @@ const LOCALES = [
       'ohne Stichpunkte und Notizen kommen Foliennummer, Datum und Fußzeile dazu',
     where: 'in den Kartenoptionen',
     imageLost: 'fehlt den Karten das Folienbild',
-    question: 'ihre Foliennummer, Datum oder Fußzeile als Frage',
+    question: 'kann Foliennummer, Datum oder Fußzeile als Frage',
   },
 ];
 

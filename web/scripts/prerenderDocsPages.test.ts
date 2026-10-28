@@ -83,6 +83,12 @@ describe('emitDocsPages', () => {
     );
   });
 
+  it('renders the PowerPoint row of the file formats table for crawlers', () => {
+    const html = page('reference/file-formats');
+    expect(html).toContain('not the slide number, date, footer, or header');
+    expect(html).toContain('<strong>Embed images in cards</strong>');
+  });
+
   it('drops callout fences instead of printing them as text', () => {
     const html = page('start-here/upload-a-file');
     expect(html).not.toContain(':::');
