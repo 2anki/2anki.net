@@ -76,6 +76,10 @@ describe('AiPreviewResumeController', () => {
     });
     expect((res as unknown as { statusCode: number }).statusCode).toBe(200);
     expect(res.set).toHaveBeenCalledWith('X-Card-Count', '58');
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Pdf-Fallback',
+      expect.anything()
+    );
     expect((res as unknown as { body: Buffer }).body).toEqual(
       Buffer.from('APKG BYTES')
     );

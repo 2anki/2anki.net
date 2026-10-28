@@ -6279,6 +6279,69 @@ describe('UploadForm PDF with no readable text', () => {
     ).toBeInTheDocument();
   });
 
+  it('asks once for a pick of several files, and resends every file with the choice', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(choiceResponse('over_split'))
+      .mockResolvedValueOnce({
+        redirected: false,
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        json: () =>
+          Promise.resolve({
+            kind: 'batch',
+            workspaceId: 'ws-1',
+            deckCount: 2,
+            decks: [
+              {
+                name: 'slides',
+                filename: 'slides.apkg',
+                downloadUrl: '/download/ws-1/slides.apkg',
+              },
+              {
+                name: 'notes',
+                filename: 'notes.apkg',
+                downloadUrl: '/download/ws-1/notes.apkg',
+              },
+            ],
+            bulkUrl: '/download/ws-1/bulk',
+          }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [
+        new File(['%PDF'], 'slides.pdf', { type: 'application/pdf' }),
+        new File(['# Notes'], 'notes.md', { type: 'text/markdown' }),
+      ],
+      configurable: true,
+    });
+    fileInput.removeAttribute('required');
+    await submitForm(container);
+
+    expect(sentFallback(fetchMock)).toBe('ask');
+    expect(
+      await screen.findByText('This PDF would make too many tiny cards', {
+        selector: 'p',
+      })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'One card per page' }));
+    await screen.findAllByText('2 decks ready');
+
+    const resend = fetchMock.mock.calls[1][1].body as FormData;
+    expect(
+      resend.getAll('pakker').map((entry) => (entry as File).name)
+    ).toEqual(['slides.pdf', 'notes.md']);
+    expect(sentFallback(fetchMock, 1)).toBe('single');
+    expect(screen.queryByText(singlePageNote)).toBeNull();
+  });
+
   it.each([
     { who: 'a free account', locals: { subscriber: false }, aiButton: false },
     {

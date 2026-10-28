@@ -15,7 +15,10 @@ import {
   getAiBudgetStatus as getAiBudgetStatusImport,
 } from '../../../lib/claude/aiSpendGuard';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
-import { generateDeckInfo as generateDeckInfoImport } from '../../../lib/claude/ClaudeService';
+import {
+  AiCreditsTrippedWithSalvage,
+  generateDeckInfo as generateDeckInfoImport,
+} from '../../../lib/claude/ClaudeService';
 import CustomExporterDefault from '../../../lib/parser/exporters/CustomExporter';
 import {
   convertPdfTextToHtml as convertPdfTextToHtmlImport,
@@ -1651,15 +1654,16 @@ describe('PrepareDeck — a PDF with no usable text', () => {
     expect(result?.pdfFallbackMode).toBeUndefined();
   });
 
-  it('still names the page images when Claude makes nothing and they ship instead', async () => {
+  it('names the page images that ship when the AI credits run out before Claude writes a card', async () => {
     convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
-    generateDeckInfo.mockResolvedValueOnce([]);
+    generateDeckInfo.mockRejectedValueOnce(new AiCreditsTrippedWithSalvage([]));
 
     const result = await runPassHolderPdf('true');
 
     expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     expect(result?.engine).toBe('parser');
     expect(result?.pdfFallbackMode).toBe('pairs');
+    expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
   });
 });
 

@@ -110,6 +110,7 @@ import UploadService, {
   walkMediaFiles,
 } from './UploadService';
 import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
+import { ANONYMOUS_AI_PREVIEW_FLAG } from '../lib/upload/anonymousAiPreview';
 import {
   AiCreditsTrippedWithSalvage,
   DeckInfo,
@@ -4352,6 +4353,115 @@ describe('UploadService.handleUpload — claude flag does not bypass the card li
       mockWorkspaceLocation = previousLocation;
     }
   });
+});
+
+describe('UploadService.handleUpload — a PDF from a pass holder without an account', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE = path.join(os.tmpdir(), 'upload-service-test');
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+  });
+
+  beforeEach(() => {
+    MockGeneratePackagesUseCase.mockClear();
+    trackMock.mockClear();
+    mockGenerateAiPreview.mockReset();
+    // Every flag on, the AI preview included: only the pass keeps it away.
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockFirstApkg = Buffer.from('fake-apkg');
+    mockWorkspaceId = 'test-ws-id';
+  });
+
+  function passHolderPdfUpload(execute: Mock) {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    const create = vi.fn().mockResolvedValue(undefined);
+    const service = new UploadService(
+      buildRepository(),
+      { create } as unknown as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'slides.pdf',
+          mimetype: 'application/pdf',
+          size: 2048,
+          path: '/tmp/slides.pdf',
+          buffer: Buffer.from('%PDF-1.4 slides'),
+        },
+      ],
+      body: { 'claude-ai-flashcards': 'true', 'pdf-fallback': 'ask' },
+      headers: { 'x-pass-token': 'cs_pass' },
+      cookies: { anon_id: 'visitor-with-pass' },
+    } as unknown as Partial<express.Request>);
+    const built = buildResponse();
+    Object.assign(built.res.locals, { subscriber: true, anonymousPassId: 31 });
+    return { service, req, create, ...built };
+  }
+
+  it('asks about the PDF on the sync path, with no job and no AI preview', async () => {
+    const execute = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          buildPdfFallbackChoiceSentinel({ reason: 'no_text', pageCount: 12 })
+        )
+      );
+    const { service, req, res, create, capturedStatus, capturedJson } =
+      passHolderPdfUpload(execute);
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(409);
+    expect(capturedJson()).toEqual({
+      code: 'choose_pdf_mode',
+      reason: 'no_text',
+      page_count: 12,
+    });
+    const [paying, , settings] = execute.mock.calls[0];
+    expect(paying).toBe(true);
+    expect(settings.claudeAIFlashcards).toBe(true);
+    expect(settings.pdfFallback).toBe('ask');
+    expect(create).not.toHaveBeenCalled();
+    expect(mockGetFeatureFlag).not.toHaveBeenCalledWith(
+      ANONYMOUS_AI_PREVIEW_FLAG,
+      expect.anything()
+    );
+    expect(mockGenerateAiPreview).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { deck: 'a deck Claude wrote', pdfFallbackMode: undefined },
+    { deck: 'a page-image deck', pdfFallbackMode: 'pairs' },
+  ])(
+    'sends X-Pdf-Fallback only with a page-image mode: $deck',
+    async ({ pdfFallbackMode }) => {
+      const execute = vi.fn().mockResolvedValue({
+        packages: [{ name: 'slides', cardCount: 7, pdfFallbackMode }],
+        warnings: [],
+      });
+      const { service, req, res, create, capturedStatus } =
+        passHolderPdfUpload(execute);
+
+      await service.handleUpload(req, res);
+
+      expect(capturedStatus()).toBe(200);
+      expect(create).not.toHaveBeenCalled();
+      const sent = (res.set as Mock).mock.calls.find(
+        ([name]) => name === 'X-Pdf-Fallback'
+      );
+      expect(sent?.[1]).toBe(pdfFallbackMode);
+    }
+  );
 });
 
 describe('UploadService.restartClaudeJob — card-limit enforcement', () => {
