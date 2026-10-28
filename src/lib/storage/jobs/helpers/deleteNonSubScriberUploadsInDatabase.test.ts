@@ -160,6 +160,7 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
       t.integer('id').primary();
       t.text('email').notNullable().unique();
       t.boolean('patreon').notNullable().defaultTo(false);
+      t.boolean('ankify_access').notNullable().defaultTo(false);
     });
     await db.schema.createTable('uploads', (t) => {
       t.text('key').primary();
@@ -439,6 +440,22 @@ describe('deleteNonSubScriberUploadsInDatabase — cleanup-vs-subscriber e2e', (
 
     expect(storage.delete).not.toHaveBeenCalled();
     expect(await remainingUploadKeys()).toEqual(['dual.apkg']);
+  });
+
+  it('spares a user with an Auto Sync comp grant and no subscription', async () => {
+    await seedUserWithUpload(1, 'comped@example.com', false, 'comped.apkg');
+    await db('users').where('id', 1).update({ ankify_access: true });
+    await seedUserWithUpload(2, 'free@example.com', false, 'free.apkg');
+
+    const storage = { delete: vi.fn() };
+
+    await deleteNonSubScriberUploadsInDatabase(
+      withPgRawShape(db),
+      storage as never
+    );
+
+    expect(storage.delete.mock.calls).toEqual([['free.apkg']]);
+    expect(await remainingUploadKeys()).toEqual(['comped.apkg']);
   });
 
   it('spares an active subscriber whose account email differs in case', async () => {
