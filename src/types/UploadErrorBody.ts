@@ -22,6 +22,7 @@ export type UploadErrorCode =
   | 'apkg_too_large_for_anki'
   | 'zip_invalid'
   | 'ai_credits_exhausted'
+  | 'owner_changed'
   | 'unknown';
 
 import type { EmptyDeckReason } from '../usecases/jobs/EmptyDeckError';

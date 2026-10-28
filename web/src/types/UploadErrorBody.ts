@@ -29,6 +29,7 @@ export const UPLOAD_ERROR_CODES = [
   'apkg_too_large_for_anki',
   'zip_invalid',
   'ai_credits_exhausted',
+  'owner_changed',
   'unknown',
 ] as const satisfies readonly UploadErrorCode[];
 

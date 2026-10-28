@@ -34,6 +34,8 @@ import CardOption from '../../lib/parser/Settings';
 import Workspace from '../../lib/parser/WorkSpace';
 import { toText } from '../../services/NotionService/BlockHandler/helpers/deckNameToText';
 import { toUploadResponse } from '../../types/UploadResponse';
+import { keptFilesChangedOwner } from '../../lib/upload/keptFilesOwner';
+import type { UploadErrorBody } from '../../types/UploadErrorBody';
 
 const DROPBOX_PAGE_SIZE = 10;
 const GOOGLE_DRIVE_PAGE_SIZE = 10;
@@ -147,6 +149,10 @@ class UploadController {
         if (error != null) {
           return this.service.respondToBrokenUpload(req, res, error);
         }
+        const uploaded = (req.files as Express.Multer.File[] | undefined) ?? [];
+        if (await this.refusedForChangedOwner(req, res, uploaded)) {
+          return;
+        }
         await this.service.handleUpload(req, res);
       });
     } catch (error) {
@@ -157,6 +163,40 @@ class UploadController {
           'Failed to process the upload. Please try a different file or contact support.',
       });
     }
+  }
+
+  // Files a page kept from an earlier submit go back only under the session
+  // that sent them: an account that signed in since, on a shared computer or
+  // in another tab, must not receive that file or pay for its conversion.
+  private async refusedForChangedOwner(
+    req: express.Request,
+    res: express.Response,
+    uploaded: Pick<Express.Multer.File, 'path'>[]
+  ): Promise<boolean> {
+    if (!keptFilesChangedOwner(req.body, getOwner(res))) {
+      return false;
+    }
+    await Promise.all(
+      uploaded
+        .filter((file) => file.path != null)
+        .map((file) =>
+          fs.promises.unlink(file.path).catch((e) => {
+            console.error('[upload] temp file cleanup failed', {
+              error: e instanceof Error ? e.message : String(e),
+            });
+          })
+        )
+    );
+    console.info('[upload] refused a resend sent under another session', {
+      requestId: res.locals.requestId,
+    });
+    const body: UploadErrorBody = {
+      code: 'owner_changed',
+      message:
+        'You switched accounts since this file was sent, so nothing was converted. Choose the file again.',
+    };
+    res.status(409).json(body);
+    return true;
   }
 
   async restartJob(req: express.Request, res: express.Response) {
@@ -280,6 +320,9 @@ class UploadController {
     const uploadedFile = req.file;
     if (!uploadedFile) {
       return res.status(400).json({ message: 'No file provided.' });
+    }
+    if (await this.refusedForChangedOwner(req, res, [uploadedFile])) {
+      return;
     }
 
     const ipKey = hashIp(resolveClientIp(req));
