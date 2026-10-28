@@ -69,7 +69,7 @@ Wirf das falsche Format hinein, und 2anki sagt es dir. Die Fehlermeldung nennt d
 Wir brauchen die Datei nur so lange, um sie zu konvertieren. Danach:
 
 - **Anonyme und kostenlose Konto-Uploads** — die temporären Arbeitsdateien werden innerhalb von zwei Stunden gelöscht. Die `.apkg` wird direkt als Antwort zurückgeschickt, wir behalten also keine Kopie.
-- **Claude-KI-Uploads und Notion-Konvertierungen** werden in deinem Konto gespeichert, damit du sie unter **My Decks** erneut herunterladen kannst. Kostenlose Konten: innerhalb von 24 Stunden entfernt. Abo: behalten, solange dein Abo aktiv ist. Lifetime: unbegrenzt behalten.
+- **Claude-KI-Uploads und Notion-Konvertierungen** werden in deinem Konto gespeichert, damit du sie unter **Meine Stapel** erneut herunterladen kannst. Kostenlose Konten: innerhalb von 24 Stunden entfernt. Abo: behalten, solange dein Abo aktiv ist. Lifetime: unbegrenzt behalten.
 - Wir lesen deine Inhalte aus keinem anderen Grund als dem Bau deines Decks. Wir trainieren keine Modelle damit.
 
 Die ganze Geschichte findest du in der [Datenschutzerklärung](/documentation/reference/privacy). Die harten Zahlen stehen unter [Grenzen und Kontingente](/documentation/help/limits).

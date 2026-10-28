@@ -22,9 +22,9 @@ The general-purpose option. Sends your content to Anthropic's Claude and uses th
 1. On the upload screen, open the settings panel.
 2. Switch **Generate Flashcards with Claude AI** on.
 3. (Optional) Open **User instructions** and write a sentence or two about the kind of cards you want.
-4. Upload your file. The job runs in the background — you can leave the page and come back to **My Decks** to download.
+4. Upload your file. The job runs in the background — you can leave the page and come back to **My decks** to download.
 
-The result is a normal `.apkg`. Cards arrive pre-tagged with 1–3 topic tags drawn from the content — you can filter or browse by tag in Anki's tag browser the moment the deck opens. You can re-download the deck from **My Decks** for as long as your plan keeps it (see [Limits and quotas](/documentation/help/limits) for storage windows).
+The result is a normal `.apkg`. Cards arrive pre-tagged with 1–3 topic tags drawn from the content — you can filter or browse by tag in Anki's tag browser the moment the deck opens. You can re-download the deck from **My decks** for as long as your plan keeps it (see [Limits and quotas](/documentation/help/limits) for storage windows).
 
 **Card volume — Comprehensive AI mode.** Subscription and Lifetime plans get a **Comprehensive AI mode** toggle on the Card options page under **PDF & AI**. Turn it on to target 200–500 cards per upload for chapter-scale material: the converter splits long uploads into chunks, runs them in parallel, and follows up on the thinnest chunks with a top-up pass so a 50-page chapter lands as one full deck instead of a sparse sample. The total is capped at 500 to keep the deck reviewable. Conversions take longer than the default mode. Leave the toggle off if you want the faster default volume. Free accounts don't see the toggle — the standard AI conversion runs at the default volume.
 

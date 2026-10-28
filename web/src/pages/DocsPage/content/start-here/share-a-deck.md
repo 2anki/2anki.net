@@ -22,6 +22,6 @@ The share link is not indexed by search engines and does not appear on 2anki.net
 
 Be careful with decks that contain personal notes — anyone with the link can read the cards.
 
-## Downloads page
+## My decks
 
-Decks with an active link show a **Shared** badge on your downloads list.
+Decks with an active link show a **Shared** badge on My decks.

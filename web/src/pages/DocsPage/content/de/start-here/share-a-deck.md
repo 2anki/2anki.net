@@ -22,6 +22,6 @@ Der Teilen-Link wird nicht von Suchmaschinen indexiert und erscheint nicht auf 2
 
 Sei vorsichtig bei Decks mit persönlichen Notizen — jeder mit dem Link kann die Karten lesen.
 
-## Downloads-Seite
+## Meine Stapel
 
-Decks mit einem aktiven Link zeigen ein **Shared**-Abzeichen in deiner Downloads-Liste.
+Decks mit einem aktiven Link zeigen ein **Shared**-Abzeichen unter Meine Stapel.

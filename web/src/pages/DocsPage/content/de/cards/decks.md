@@ -16,7 +16,7 @@ Standardmäßig erzeugen zwei Notion-Blocktypen eine Deck-Grenze:
 
 Wenn du 2anki also auf eine Seite namens _Pharmacology_ zeigst, die eine Unterseite _Antibiotics_ enthält, bekommst du ein Deck namens _Pharmacology_ und ein Unterdeck namens _Antibiotics_. Karten unter jeder Überschrift oder jedem Toggle landen im passenden Deck.
 
-Im kostenlosen Plan liest 2anki die ersten 100 Blöcke einer Seite. Längere Seiten werden teilweise konvertiert, und die Zeile des Decks auf Downloads zeigt, wie viele Blöcke konvertiert wurden. Kostenpflichtige Pläne konvertieren die ganze Seite.
+Im kostenlosen Plan liest 2anki die ersten 100 Blöcke einer Seite. Längere Seiten werden teilweise konvertiert, und die Zeile des Decks unter Meine Stapel zeigt, wie viele Blöcke konvertiert wurden. Kostenpflichtige Pläne konvertieren die ganze Seite.
 
 ## Ändern, welche Blöcke ein Deck erzeugen
 

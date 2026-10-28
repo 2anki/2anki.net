@@ -78,7 +78,7 @@ describe('Sidebar convert group', () => {
     expect(
       screen.getByRole('link', { name: 'Make flashcards' })
     ).toHaveAttribute('href', '/upload');
-    expect(screen.getByRole('link', { name: 'My Decks' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'My decks' })).toHaveAttribute(
       'href',
       '/downloads'
     );
@@ -308,7 +308,7 @@ describe('Sidebar Ops folder', () => {
 describe('Sidebar active state', () => {
   it('marks the My Decks row active on /downloads', () => {
     renderSidebar({ pathname: '/downloads' });
-    expect(screen.getByRole('link', { name: 'My Decks' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'My decks' })).toHaveAttribute(
       'aria-current',
       'page'
     );
@@ -319,7 +319,7 @@ describe('Sidebar active state', () => {
 
   it('marks the My Decks row active on a /downloads sub-route', () => {
     renderSidebar({ pathname: '/downloads/123' });
-    expect(screen.getByRole('link', { name: 'My Decks' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'My decks' })).toHaveAttribute(
       'aria-current',
       'page'
     );

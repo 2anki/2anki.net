@@ -127,7 +127,7 @@ describe('PreviewPage deleted-page handling', () => {
     const notionLink = screen.getByRole('link', { name: 'Notion search' });
     expect(notionLink).toHaveAttribute('href', '/notion');
 
-    const decksLink = screen.getByRole('link', { name: 'My Decks' });
+    const decksLink = screen.getByRole('link', { name: 'My decks' });
     expect(decksLink).toHaveAttribute('href', '/downloads');
   });
 

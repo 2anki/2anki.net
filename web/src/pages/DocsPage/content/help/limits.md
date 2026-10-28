@@ -84,7 +84,7 @@ Your file lives on disk only long enough to build the deck. The `.apkg` is sent 
 
 ### Notion convert and Claude AI uploads
 
-These paths build your deck in the background and store the `.apkg` in our bucket so you can re-download it from **My Decks** and so [sync](/documentation/sync/how-it-works) has something to update.
+These paths build your deck in the background and store the `.apkg` in our bucket so you can re-download it from **My decks** and so [sync](/documentation/sync/how-it-works) has something to update.
 
 | Plan               | How long your decks stay in the bucket               |
 | ------------------ | ---------------------------------------------------- |
@@ -92,7 +92,7 @@ These paths build your deck in the background and store the `.apkg` in our bucke
 | Subscription       | Kept for as long as your subscription is active.     |
 | Lifetime (Patreon) | Kept indefinitely.                                   |
 
-If your subscription lapses, your stored decks are removed in the next daily cleanup — re-convert and they come back. You can also delete a deck yourself from **My Decks** at any time.
+If your subscription lapses, your stored decks are removed in the next daily cleanup — re-convert and they come back. You can also delete a deck yourself from **My decks** at any time.
 
 ## Free vs paid
 

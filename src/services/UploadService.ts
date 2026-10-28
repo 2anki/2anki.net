@@ -1616,7 +1616,7 @@ class UploadService {
         this.recordCardFingerprints(ownerId, cardFingerprints);
         // The async upload becomes an `uploads` row (the job is deleted on
         // promotion), and `uploads` has no per-upload notice column, so a
-        // fallback warning cannot reach the Downloads page without a new column
+        // fallback warning cannot reach My decks without a new column
         // — deferred rather than adding a second migration to this PR. Surface
         // it in the logs so a credits-driven fallback is not silent.
         if (includesAiCreditsWarning(warnings)) {
@@ -2779,7 +2779,7 @@ class UploadService {
   // The claim runs the same single-file conversion a signed-in sync upload
   // runs: the free monthly limit (and its partial truncation), the uploads
   // row, and incrementCardUsage all happen the normal way, so the claimed
-  // deck lands in Downloads and counts against the new account's allowance.
+  // deck lands in My decks and counts against the new account's allowance.
   // A previewCap (the pass-first sign-up claim) cuts the deck further and
   // saves the source as a plan hold, so a pass releases the rest later.
   async convertHeldFileForOwner(
