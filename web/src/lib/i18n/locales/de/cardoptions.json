@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "PDF-Dateien verarbeiten",
-      "description": "Wandle PDFs aus ZIP-Uploads in Karten um und lege das Bild jeder PowerPoint-Folie auf die Rückseite ihrer Karte. Ausgeschaltet sind ZIP-Uploads schneller fertig, aber PowerPoint-Karten haben dann keine Folienbilder."
+      "description": "Wandle PDFs aus ZIP-Uploads in Karten um und füge jeder PowerPoint-Karte das Bild ihrer Folie hinzu. Wenn du die Option ausschaltest, sind ZIP-Uploads schneller fertig, aber PowerPoint-Karten verlieren ihre Folienbilder, und ältere .ppt-Dateien und Folien ohne Text ergeben keine Karten."
     },
     "pdf-extract-text": {
       "label": "Text aus PDFs extrahieren",

@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "Przetwarzaj pliki PDF",
-      "description": "Zamieniaj pliki PDF znalezione w przesłanych plikach ZIP na karty i umieszczaj obraz każdego slajdu PowerPoint na odwrocie jego karty. Po wyłączeniu przesyłanie plików ZIP kończy się szybciej, ale karty z PowerPoint nie mają obrazów slajdów."
+      "description": "Zamieniaj pliki PDF znalezione w przesłanych plikach ZIP na karty i dodawaj do każdej karty z PowerPoint obraz jej slajdu. Po wyłączeniu przesyłanie plików ZIP kończy się szybciej, ale karty z PowerPoint tracą obrazy slajdów, a starsze pliki .ppt i slajdy bez tekstu nie dają żadnych kart."
     },
     "pdf-extract-text": {
       "label": "Wyodrębnij tekst z plików PDF",

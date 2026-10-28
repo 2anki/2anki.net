@@ -72,12 +72,12 @@ Ein Toggle, der in einem anderen verschachtelt ist, zählt als Antworttext der �
 
 ## PDF und KI
 
-| Option                                | Standard | Was sie macht                                                                                                                                                       |
-| ------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Process PDF Files                     | On       | Konvertiert PDFs, die in ZIP-Uploads gefunden werden. Ausschalten, um PDFs zu überspringen und große Archive zu beschleunigen.                                      |
-| Generate Flashcards with Claude AI    | Off      | Schickt Inhalt an Anthropic Claude und nutzt dessen Ausgabe als Deck. Kostenpflichtig.                                                                              |
-| User instructions                     | —        | Freiform-Prompt, der an Claude geschickt wird, wenn **Generate Flashcards with Claude AI** ein ist. Beispiel: _"Focus on USMLE high-yield. Skip the introduction."_ |
-| Convert Image Quiz HTML to Anki Cards | Off      | Nutzt OCR, um Bild-und-Antwort-Paare aus HTML-Quizzen zu ziehen. Premium, experimentell.                                                                            |
+| Option                                | Standard | Was sie macht                                                                                                                                                                                                                                               |
+| ------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Process PDF Files                     | On       | Konvertiert PDFs aus ZIP-Uploads und fügt jeder PowerPoint-Karte das Bild ihrer Folie hinzu. Aus: ZIP-Uploads sind schneller fertig, aber PowerPoint-Karten verlieren ihre Folienbilder, und ältere .ppt-Dateien und Folien ohne Text ergeben keine Karten. |
+| Generate Flashcards with Claude AI    | Off      | Schickt Inhalt an Anthropic Claude und nutzt dessen Ausgabe als Deck. Kostenpflichtig.                                                                                                                                                                      |
+| User instructions                     | —        | Freiform-Prompt, der an Claude geschickt wird, wenn **Generate Flashcards with Claude AI** ein ist. Beispiel: _"Focus on USMLE high-yield. Skip the introduction."_                                                                                         |
+| Convert Image Quiz HTML to Anki Cards | Off      | Nutzt OCR, um Bild-und-Antwort-Paare aus HTML-Quizzen zu ziehen. Premium, experimentell.                                                                                                                                                                    |
 
 ## Medien
 

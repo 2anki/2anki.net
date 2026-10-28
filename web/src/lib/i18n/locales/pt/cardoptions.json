@@ -91,7 +91,7 @@
     },
     "process-pdfs": {
       "label": "Processar arquivos PDF",
-      "description": "Converte em cartões os PDFs encontrados em envios ZIP e coloca a imagem de cada slide do PowerPoint no verso do seu cartão. Desligado, os envios ZIP terminam mais rápido, mas os cartões do PowerPoint ficam sem imagens dos slides."
+      "description": "Converte em cartões os PDFs encontrados em envios ZIP e adiciona a cada cartão do PowerPoint a imagem do seu slide. Se desligar, os envios ZIP terminam mais rápido, mas os cartões do PowerPoint perdem as imagens dos slides, e arquivos .ppt antigos e slides sem texto não geram cartões."
     },
     "pdf-extract-text": {
       "label": "Extrair texto de PDFs",

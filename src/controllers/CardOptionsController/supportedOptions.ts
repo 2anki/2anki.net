@@ -141,7 +141,7 @@ const supportedOptions = (): CardOptionDetail[] => {
     new CardOptionDetail(
       'process-pdfs',
       'Process PDF files',
-      "Convert PDFs found inside ZIP uploads into cards, and put each PowerPoint slide's image on the back of its card. Turning it off finishes ZIP uploads faster, but PowerPoint cards then have no slide images.",
+      "Convert PDFs found inside ZIP uploads into cards, and add each PowerPoint slide's image to its card. Turning it off finishes ZIP uploads faster, but PowerPoint cards lose their slide images, and older .ppt files and slides with no text make no cards.",
       defaultFor('process-pdfs')
     ),
     new CardOptionDetail(
