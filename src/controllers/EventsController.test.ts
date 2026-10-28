@@ -149,11 +149,11 @@ describe('EventsController', () => {
     (userAgent, device) => {
       const { controller, req, res, executeSpy } = buildMocks({ userId: 1 });
       req.headers = { 'user-agent': userAgent };
-      req.body = { name: 'upload_submitted', props: { fileExt: 'pdf' } };
+      req.body = { name: 'upload_submitted', props: { input_format: 'pdf' } };
       controller.track(req, res);
       expect(executeSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          props: expect.objectContaining({ fileExt: 'pdf', device }),
+          props: expect.objectContaining({ input_format: 'pdf', device }),
         })
       );
     }

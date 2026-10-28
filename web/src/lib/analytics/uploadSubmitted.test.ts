@@ -14,10 +14,13 @@ describe('uploadSubmittedProps', () => {
     ['export.zip', 'zip'],
     ['slides.pptx', 'pptx'],
     ['my secret thesis.weird', 'other'],
+    ['__proto__.constructor', 'other'],
     ['no-extension', 'unknown'],
     ['trailing-dot.', 'unknown'],
-  ])('maps %s to the file type %s, never the name', (name, fileExt) => {
-    expect(uploadSubmittedProps([file(name, 10)], false).fileExt).toBe(fileExt);
+  ])('maps %s to the input format %s, never the name', (name, format) => {
+    expect(uploadSubmittedProps([file(name, 10)], 'submit').input_format).toBe(
+      format
+    );
   });
 
   it.each([
@@ -27,28 +30,36 @@ describe('uploadSubmittedProps', () => {
     [5 * MB, '5-25MB'],
     [25 * MB, '25-100MB'],
     [100 * MB, '>=100MB'],
-  ])('buckets %i bytes as %s', (bytes, sizeBucket) => {
-    expect(uploadSubmittedProps([file('a.pdf', bytes)], false).sizeBucket).toBe(
-      sizeBucket
-    );
+  ])('buckets %i bytes as %s', (bytes, bucket) => {
+    expect(
+      uploadSubmittedProps([file('a.pdf', bytes)], 'submit').size_bucket
+    ).toBe(bucket);
+  });
+
+  it.each([
+    ['submit', false],
+    ['handoff', false],
+    ['resume', true],
+    ['retry', true],
+    ['resend', true],
+  ] as const)('marks a %s send retry: %s', (trigger, retry) => {
+    expect(uploadSubmittedProps([file('a.md', 1)], trigger)).toMatchObject({
+      trigger,
+      retry,
+    });
   });
 
   it('sums the size of every file and counts them', () => {
     expect(
-      uploadSubmittedProps([file('a.md', 3 * MB), file('b.md', 3 * MB)], true)
+      uploadSubmittedProps(
+        [file('a.md', 3 * MB), file('b.md', 3 * MB)],
+        'submit'
+      )
     ).toEqual({
-      fileExt: 'md',
-      sizeBucket: '5-25MB',
-      fileCount: 2,
-      retry: true,
-    });
-  });
-
-  it('reports no file type for an empty selection', () => {
-    expect(uploadSubmittedProps([], false)).toEqual({
-      fileExt: 'unknown',
-      sizeBucket: '<1MB',
-      fileCount: 0,
+      input_format: 'md',
+      size_bucket: '5-25MB',
+      file_count: 2,
+      trigger: 'submit',
       retry: false,
     });
   });

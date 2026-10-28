@@ -1,10 +1,12 @@
-// The server's upload_started only fires once the whole file has arrived, so a
-// transfer that dies on the way never counts. This client-side event fires
-// when the person sends the file; the gap between the two is the failed
-// transfers. Shape only, never the filename: the type is allowlisted (the same
-// set as the server's uploadInputFormat) and the size is bucketed, so neither
-// can identify an upload.
-const KNOWN_FILE_TYPES = new Set([
+// The server's upload_started fires only once the whole file has arrived, so a
+// transfer that dies on the way never counts there. This client-side event
+// fires each time the upload form sends a file, so the gap between the two
+// (server side filtered to web uploads) is mostly transfers that never
+// arrived; it also holds the few sends the browser could not read and the
+// requests the server refused before upload_started. Shape only, never the
+// filename: the type is allowlisted (the same set as the server's
+// uploadInputFormat, and the same prop name) and the size is bucketed.
+const KNOWN_INPUT_FORMATS = new Set([
   'zip',
   'html',
   'htm',
@@ -36,20 +38,37 @@ const KNOWN_FILE_TYPES = new Set([
 
 const MB = 1024 * 1024;
 
+// Why the form sent the file: a first submit or a file handed over from
+// another page is new; a resume after reload, Try again and a resend with a
+// changed choice send a file that went out before.
+export type UploadTrigger =
+  | 'submit'
+  | 'handoff'
+  | 'resume'
+  | 'retry'
+  | 'resend';
+
+const SENT_BEFORE: ReadonlySet<UploadTrigger> = new Set([
+  'resume',
+  'retry',
+  'resend',
+]);
+
 export type UploadSubmittedProps = {
-  fileExt: string;
-  sizeBucket: string;
-  fileCount: number;
+  input_format: string;
+  size_bucket: string;
+  file_count: number;
+  trigger: UploadTrigger;
   retry: boolean;
 };
 
-function fileType(files: readonly File[]): string {
+function inputFormat(files: readonly File[]): string {
   const name = files[0]?.name;
   if (name == null) return 'unknown';
   const dot = name.lastIndexOf('.');
   if (dot < 0 || dot === name.length - 1) return 'unknown';
   const ext = name.slice(dot + 1).toLowerCase();
-  return KNOWN_FILE_TYPES.has(ext) ? ext : 'other';
+  return KNOWN_INPUT_FORMATS.has(ext) ? ext : 'other';
 }
 
 function sizeBucket(bytes: number): string {
@@ -62,13 +81,14 @@ function sizeBucket(bytes: number): string {
 
 export function uploadSubmittedProps(
   files: readonly File[],
-  retry: boolean
+  trigger: UploadTrigger
 ): UploadSubmittedProps {
   const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
   return {
-    fileExt: fileType(files),
-    sizeBucket: sizeBucket(totalBytes),
-    fileCount: files.length,
-    retry,
+    input_format: inputFormat(files),
+    size_bucket: sizeBucket(totalBytes),
+    file_count: files.length,
+    trigger,
+    retry: SENT_BEFORE.has(trigger),
   };
 }
