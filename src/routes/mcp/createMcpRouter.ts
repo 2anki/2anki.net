@@ -165,6 +165,17 @@ export function createMcpRouter(deps: McpRouterDeps): express.Router {
     resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(resourceUrl),
   });
 
+  // Connector URLs pasted cut off (/mc) or with a sentence's full stop (/mcp.)
+  // 404'd hundreds of times a night. A 308 keeps the method and body, so a
+  // client that follows redirects reaches the real endpoint.
+  router.all(['/mc', '/mcp.'], (req, res) => {
+    const query = req.originalUrl.indexOf('?');
+    res.redirect(
+      308,
+      `/mcp${query === -1 ? '' : req.originalUrl.slice(query)}`
+    );
+  });
+
   router.post('/mcp', bearer, deps.onAuthenticatedPost);
   router.get('/mcp', bearer, (_req, res) => {
     res.set('Allow', 'POST');
