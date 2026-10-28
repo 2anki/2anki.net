@@ -396,7 +396,7 @@ function senderField(owner: number | null): string {
 const UPLOAD_OWNER_HEADER = 'X-Upload-Owner';
 
 function sessionNamed(value: string | null): number | null | undefined {
-  if (value == null) return undefined;
+  if (value == null || value.trim() === '') return undefined;
   if (value === 'none') return null;
   const owner = Number(value);
   return Number.isInteger(owner) ? owner : undefined;
@@ -2159,6 +2159,15 @@ function UploadForm({
     return false;
   };
 
+  // A file left by someone else on this browser is never offered: on a shared
+  // computer it would land in the next person's account, and its name alone
+  // says too much. One whose sender was never known goes only to a signed-out
+  // page, and is held when picked up.
+  const savedBySomeoneElse = (upload: PendingUpload): boolean =>
+    upload.ownerUnknown === true
+      ? currentOwnerId != null
+      : upload.ownerId !== currentOwnerId;
+
   const [resumeOffer, setResumeOffer] = useState<ResumeOffer | null>(null);
   const resumeCheckedRef = useRef(false);
   const resumedUploadRef = useRef(false);
@@ -2185,15 +2194,7 @@ function UploadForm({
         if (filename.length > 0) offerReattach(filename);
         return;
       }
-      // A file left by someone else on this browser is never offered: on a
-      // shared computer it would land in the next person's account, and its
-      // name alone says too much. One whose sender was never known is offered
-      // only to a signed-out page, and held when picked up.
-      const leftBySomeoneElse =
-        upload.ownerUnknown === true
-          ? currentOwnerId != null
-          : upload.ownerId !== currentOwnerId;
-      if (leftBySomeoneElse) {
+      if (savedBySomeoneElse(upload)) {
         clearPendingUpload();
         return;
       }
@@ -2231,7 +2232,10 @@ function UploadForm({
     await resumePendingUpload(offered);
   };
 
-  const resumePendingUpload = async (offered: PendingUpload) => {
+  const resumePendingUpload = async (
+    offered: PendingUpload,
+    recordSend?: () => void
+  ) => {
     setZoneState('converting');
     setProgressWidth(10);
     // Re-read the store: a logout in another tab empties it, another tab can
@@ -2242,13 +2246,14 @@ function UploadForm({
       setZoneState('idle');
       return;
     }
+    if (savedBySomeoneElse(upload)) {
+      if (upload.ownerUnknown === true) clearPendingUpload();
+      setZoneState('idle');
+      return;
+    }
     if (upload.ownerUnknown === true) {
       clearPendingUpload();
       holdForUnknownSender();
-      return;
-    }
-    if (upload.ownerId !== currentOwnerId) {
-      setZoneState('idle');
       return;
     }
     if (await restoreFinishedDeck(upload, 'converting')) return;
@@ -2281,6 +2286,7 @@ function UploadForm({
     // The saved files go back under the account that saved them, even when
     // another tab signed in since this page last read the account.
     formData.set(KEPT_OWNER_FIELD, senderField(upload.ownerId));
+    recordSend?.();
     resumedUploadRef.current = true;
     keepSubmittedFiles(upload.files, upload.ownerId);
     void runFileUpload(formData, upload.files, false);
@@ -2354,13 +2360,17 @@ function UploadForm({
         upload == null ||
         upload.aiFlag !== 'true' ||
         upload.files.length === 0 ||
-        (upload.ownerUnknown !== true && upload.ownerId !== currentOwnerId) ||
         zoneStateRef.current !== 'idle'
       ) {
         return;
       }
-      track('thin_deck_ai_unlock_clicked', { plan: 'resumed' });
-      await resumePendingUpload(upload);
+      if (savedBySomeoneElse(upload)) {
+        clearPendingUpload();
+        return;
+      }
+      await resumePendingUpload(upload, () =>
+        track('thin_deck_ai_unlock_clicked', { plan: 'resumed' })
+      );
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -4301,12 +4311,27 @@ function UploadForm({
       ? t('upload.form.liveDeckReady')
       : t('upload.form.liveDeckReadyCount', { count: cardCount });
 
+  // The line saying the session changed is announced wherever it shows: the
+  // container carries no live role, so the page's one live region says it.
+  const switchLineShown =
+    ownerChanged ||
+    (zoneState === 'success' && successSignInChanged) ||
+    emptySignInChanged ||
+    (keptFilesBelongElsewhere &&
+      (zoneState === 'choosePdfMode' ||
+        (zoneState === 'aiPreviewGate' && aiPreviewCards != null) ||
+        (zoneState === 'error' &&
+          !senderUnknown &&
+          folderError == null &&
+          unreadableFile == null &&
+          networkRetryFiles != null)));
+
   const renderLiveStatus = (): string => {
     if (guardrailVisible && validation) return validation.title;
     if (zoneState === 'error' && senderUnknown) {
       return t('upload.form.senderUnknown');
     }
-    if (ownerChanged) return t(signInChangedKey());
+    if (switchLineShown) return t(signInChangedKey());
     const staticKey = staticLiveStatusKeys[zoneState];
     if (staticKey != null) return t(staticKey);
     if (zoneState === 'success' || zoneState === 'heldReady') {

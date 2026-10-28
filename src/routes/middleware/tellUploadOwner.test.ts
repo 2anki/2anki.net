@@ -28,7 +28,7 @@ describe('tellUploadOwner', () => {
     expect(headers.get('X-Upload-Owner')).toBe(named);
   });
 
-  it('names a non-integer owner as the session holds it, which the page never takes as a sender', () => {
+  it('names a non-integer owner as the session holds it', () => {
     const { res, headers } = responseFor(42.5);
 
     tellUploadOwner({} as express.Request, res, () => undefined);

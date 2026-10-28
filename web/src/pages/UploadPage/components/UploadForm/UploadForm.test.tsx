@@ -6868,7 +6868,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(
       screen.queryByRole('button', { name: 'Rebuild with Claude' })
     ).toBeNull();
-    expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Choose the file again' })
     ).toBeInTheDocument();
@@ -6894,7 +6896,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(
       screen.queryByRole('button', { name: 'Rebuild with Claude' })
     ).toBeNull();
-    expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
   });
 
   it('sends Try again under the account the page shows when reading it again hangs', async () => {
@@ -6978,7 +6982,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(
       screen.queryByRole('button', { name: 'Make cards with AI' })
     ).toBeNull();
-    expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
   });
 
   it("sends the PDF back with Claude on from the PDF question's Make cards with AI", async () => {
@@ -7021,7 +7027,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(
       screen.queryByRole('button', { name: 'One card per page' })
     ).toBeNull();
-    expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
   });
 
   it('sends the thin PDF back with Claude on from Make the full AI deck, and records the tap once it goes out', async () => {
@@ -7079,7 +7087,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(
       screen.queryByRole('button', { name: 'Make the full AI deck' })
     ).toBeNull();
-    expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
   });
 
   it('makes the full AI deck with Claude even while this browser makes two pages one card', async () => {
@@ -7636,7 +7646,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     setUserLocals(otherPassHolder);
     rerenderWithAi(false);
 
-    expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Make 2 cards from the headings' })
     ).toBeNull();
@@ -7651,7 +7663,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     setUserLocals(otherPassHolder);
     rerenderWithAi(false);
 
-    expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
   });
 
@@ -7670,7 +7684,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     setUserLocals(otherPassHolder);
     rerenderWithAi(true);
 
-    expect(screen.getByText(SIGNED_IN_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(SIGNED_IN_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Continue without AI' })
     ).toBeNull();
@@ -7688,7 +7704,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     setUserLocals(signedOut);
     rerenderWithAi(false);
 
-    expect(screen.getByText(SIGNED_OUT_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(SIGNED_OUT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
       'href',
       '/login?redirect=/upload'
@@ -7714,7 +7732,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
 
     expect(pickerOpened).toHaveBeenCalledTimes(1);
     expect(labelLeftAlone).toBe(false);
-    expect(screen.queryByText(OTHER_ACCOUNT_LINE)).toBeNull();
+    expect(
+      screen.queryByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'Make another deck' })
     ).toBeNull();
@@ -7734,7 +7754,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     await settle();
     rerenderWithAi(false);
 
-    expect(await screen.findByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Make 2 cards from the headings' })
     ).toBeNull();
@@ -7792,7 +7814,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     setUserLocals(otherPassHolder);
     rerenderWithAi(false);
 
-    expect(await screen.findByText(SIGNED_IN_LINE)).toBeInTheDocument();
+    expect(
+      await screen.findByText(SIGNED_IN_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'One card per page' })
     ).toBeNull();
@@ -8592,7 +8616,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       expect(
         await screen.findByRole('button', { name: 'Continue without AI' })
       ).toBeInTheDocument();
-      expect(screen.queryByText(SIGNED_OUT_LINE)).toBeNull();
+      expect(screen.queryByText(SIGNED_OUT_LINE, { selector: 'p' })).toBeNull();
     } finally {
       delete (window as unknown as { Dropbox?: unknown }).Dropbox;
       process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
@@ -8654,7 +8678,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     setUserLocals(otherPassHolder);
     rerenderWithAi(false);
 
-    expect(screen.queryByText(OTHER_ACCOUNT_LINE)).toBeNull();
+    expect(
+      screen.queryByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'Choose the file again' })
     ).toBeNull();
@@ -8670,7 +8696,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     setUserLocals(otherFreeSignedIn);
     rerenderWithAi(false);
 
-    expect(screen.queryByText(OTHER_ACCOUNT_LINE)).toBeNull();
+    expect(
+      screen.queryByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'Choose the file again' })
     ).toBeNull();
@@ -8769,7 +8797,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     setUserLocals(otherFreeSignedIn);
     rerenderWithAi(false);
 
-    expect(screen.getByText(OTHER_ACCOUNT_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
     expect(screen.queryByText('Get AI cards with a paid plan')).toBeNull();
     expect(
       screen.queryByRole('button', { name: 'Make cards with AI' })
@@ -9000,11 +9030,199 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     const pick = await screen.findByRole('button', {
       name: 'Make 2 cards from the headings',
     });
-    expect(screen.queryByText(SIGNED_OUT_LINE)).toBeNull();
+    expect(screen.queryByText(SIGNED_OUT_LINE, { selector: 'p' })).toBeNull();
 
     fireEvent.click(pick);
 
     expect((await nthUpload(fetchMock, 2)).getAll('kept-owner')).toEqual(['7']);
+  });
+
+  const liveRegion = (container: HTMLElement) =>
+    container.querySelector('output')?.textContent;
+
+  it.each([
+    [
+      'the deck-ready screen, in place of Rebuild with Claude',
+      OTHER_ACCOUNT_LINE,
+      async () => {
+        stubServer([deckResponse(64)]);
+        const view = renderRebuildForm(false);
+        await submitFiles(view.container, ['lecture.pdf']);
+        await screen.findByText(OFFER);
+        setUserLocals(otherPassHolder);
+        view.rerenderWithAi(false);
+        return view.container;
+      },
+    ],
+    [
+      'the deck-ready screen, in place of the thin-deck offer',
+      OTHER_ACCOUNT_LINE,
+      async () => {
+        setUserLocals(passHolderWithThinDeckOffer);
+        withThinDeckPreview();
+        stubServer([deckResponse(2)]);
+        const view = renderRebuildForm(false);
+        await submitFiles(view.container, ['notes.pdf']);
+        await screen.findByRole('button', {
+          name: 'Preview cards Claude would write',
+        });
+        setUserLocals(otherPassHolderWithThinDeckOffer);
+        view.rerenderWithAi(false);
+        return view.container;
+      },
+    ],
+    [
+      'the empty-deck screen',
+      OTHER_ACCOUNT_LINE,
+      async () => {
+        stubServer([
+          jsonAnswer(400, {
+            ...emptyExport,
+            rescue: [{ rule: 'heading', cards: 2 }],
+          }),
+        ]);
+        const view = renderRebuildForm(false);
+        await submitFiles(view.container, ['notes.html']);
+        await screen.findByRole('button', {
+          name: 'Make 2 cards from the headings',
+        });
+        setUserLocals(otherPassHolder);
+        view.rerenderWithAi(false);
+        return view.container;
+      },
+    ],
+    [
+      'the network-error screen',
+      OTHER_ACCOUNT_LINE,
+      async () => {
+        stubServer([networkDrop]);
+        const view = renderRebuildForm(false);
+        await submitFiles(view.container, ['lecture.pdf']);
+        await screen.findByRole('button', { name: 'Try again' });
+        setUserLocals(otherPassHolder);
+        view.rerenderWithAi(false);
+        return view.container;
+      },
+    ],
+    [
+      'the AI preview',
+      SIGNED_IN_LINE,
+      async () => {
+        setUserLocals(signedOutWithAiPreview);
+        stubServer([visitorPreview]);
+        const view = renderRebuildForm(true);
+        await submitFiles(view.container, ['lecture.pdf']);
+        await screen.findByRole('button', { name: 'Continue without AI' });
+        setUserLocals(otherPassHolder);
+        view.rerenderWithAi(true);
+        return view.container;
+      },
+    ],
+    [
+      'the PDF question',
+      OTHER_ACCOUNT_LINE,
+      async () => {
+        stubServer([pdfQuestion]);
+        const view = renderRebuildForm(false);
+        await submitFiles(view.container, ['scan.pdf']);
+        await screen.findByRole('button', { name: 'One card per page' });
+        setUserLocals(otherPassHolder);
+        view.rerenderWithAi(false);
+        return view.container;
+      },
+    ],
+  ] as Array<[string, string, () => Promise<HTMLElement>]>)(
+    'announces the line on %s once the page shows another session',
+    async (_screen, line, showSwitch) => {
+      const container = await showSwitch();
+
+      expect(screen.getByText(line, { selector: 'p' })).toBeInTheDocument();
+      expect(liveRegion(container)).toBe(line);
+    }
+  );
+
+  it("clears an unknown sender's save left for the Day Pass on a signed-in page, without holding or resuming it", async () => {
+    vi.stubGlobal('location', {
+      search: '?from=pass&session_id=cs_thin',
+      href: 'http://localhost/upload?from=pass&session_id=cs_thin',
+      origin: 'http://localhost',
+    });
+    markThinDeckResume();
+    setUserLocals(freeSignedIn);
+    const fetchMock = stubServer([deckResponse(9)]);
+    const { rerenderWithAi } = renderRebuildForm(false);
+    await settle();
+    await saveInterruptedUpload({
+      ownerId: null,
+      ownerUnknown: true,
+      aiFlag: 'true',
+      claudeResend: true,
+    });
+
+    setUserLocals({
+      ...freeSignedIn,
+      locals: { owner: 8, patreon: false, subscriber: true, passKind: '24h' },
+    } as unknown as ReturnType<typeof useUserLocals>['data']);
+    rerenderWithAi(false);
+
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toBeNull()
+    );
+    await settle();
+    expect(eventsNamed('thin_deck_ai_unlock_clicked')).toEqual([]);
+    expect(screen.queryByText(SENDER_UNKNOWN, { selector: 'p' })).toBeNull();
+    expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
+  });
+
+  it("holds an unknown sender's save left for the Day Pass on a signed-out page, and records no resumed send", async () => {
+    vi.stubGlobal('location', {
+      search: '?from=pass&session_id=cs_thin',
+      href: 'http://localhost/upload?from=pass&session_id=cs_thin',
+      origin: 'http://localhost',
+    });
+    markThinDeckResume();
+    await saveInterruptedUpload({
+      ownerId: null,
+      ownerUnknown: true,
+      aiFlag: 'true',
+      claudeResend: true,
+    });
+    setUserLocals(signedOut);
+    const fetchMock = stubServer([deckResponse(9)]);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} aiOn={false} />);
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(eventsNamed('thin_deck_ai_unlock_clicked')).toEqual([]);
+    expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
+  });
+
+  it('holds a resend when the server names the session with an empty value, as for no answer at all', async () => {
+    accountReadFailed(passHolder);
+    const fetchMock = stubServer([
+      jsonAnswer(
+        400,
+        { ...emptyExport, rescue: [{ rule: 'heading', cards: 2 }] },
+        sentBy('')
+      ),
+      deckResponse(2),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['notes.html']);
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Make 2 cards from the headings',
+      })
+    );
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
   });
 });
 
