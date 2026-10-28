@@ -135,7 +135,7 @@
     },
     "anki-from-medical-lecture-slides": {
       "h1": "Convierte las diapositivas de clase en tarjetas de Anki",
-      "subhead": "Sube un PDF de tus diapositivas — cada diapositiva se convierte en una tarjeta, con su título en el anverso y sus viñetas en el reverso."
+      "subhead": "Sube un PDF de tus diapositivas — cada diapositiva con texto se convierte en una tarjeta, con su título en el anverso y sus viñetas en el reverso."
     },
     "nclex-anki": {
       "h1": "Convierte tus apuntes de repaso del NCLEX en tarjetas de Anki que tú controlas",

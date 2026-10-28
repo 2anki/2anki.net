@@ -135,7 +135,7 @@
     },
     "anki-from-medical-lecture-slides": {
       "h1": "Turn lecture slides into Anki cards",
-      "subhead": "Upload a PDF of your slides — each slide becomes a card, with the slide title on the front and its bullets on the back."
+      "subhead": "Upload a PDF of your slides — each text slide becomes a card, with the slide title on the front and its bullets on the back."
     },
     "nclex-anki": {
       "h1": "Turn your NCLEX review notes into Anki cards you control",

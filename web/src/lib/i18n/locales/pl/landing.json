@@ -135,7 +135,7 @@
     },
     "anki-from-medical-lecture-slides": {
       "h1": "Zamień slajdy z wykładów w karty Anki",
-      "subhead": "Prześlij PDF ze slajdami — każdy slajd staje się kartą, z tytułem slajdu na przodzie i punktami na tyle."
+      "subhead": "Prześlij PDF ze slajdami — każdy slajd z tekstem staje się kartą, z tytułem slajdu na przodzie i punktami na tyle."
     },
     "nclex-anki": {
       "h1": "Zamień notatki powtórkowe do NCLEX w karty Anki, które kontrolujesz",

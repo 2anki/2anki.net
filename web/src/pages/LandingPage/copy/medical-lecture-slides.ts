@@ -14,10 +14,10 @@ const medicalLectureSlidesCopy: LandingCopy = {
   pathname: '/anki-from-medical-lecture-slides',
   title: 'Turn medical lecture slides into Anki cards — 2anki',
   description:
-    'Upload a PDF of your slides — each slide becomes a card, with the slide title on the front and its bullets on the back. Spaced repetition-ready Anki decks from any medical lecture. | 2anki',
+    'Upload a PDF of your medical lecture slides. Each text slide becomes an Anki card, with the title on the front and its bullets on the back. | 2anki',
   h1: 'Turn lecture slides into Anki cards',
   subhead:
-    'Upload a PDF of your slides — each slide becomes a card, with the slide title on the front and its bullets on the back.',
+    'Upload a PDF of your slides — each text slide becomes a card, with the slide title on the front and its bullets on the back.',
   whatComesAcross: [
     {
       title: 'Diagrams',

@@ -62,32 +62,39 @@ describe('answers guides describe the cards a PDF or Word upload makes', () => {
     }
   );
 
-  it('pdf-to-anki says a heading fronts its card and a slide title fronts its slide', () => {
-    const body = sectionBody(page('pdf-to-anki'), 'How cards are built');
+  it('pdf-to-anki says a heading fronts its card and a text slide title fronts its slide', () => {
+    const config = page('pdf-to-anki');
+    const body = sectionBody(config, 'How cards are built');
     expect(body).toContain(
       'Each heading becomes a card front, and the text under it, up to the next heading, becomes the back.'
     );
     expect(body).toContain(
-      'the slide title on the front and its bullets on the back'
+      'In a text slide PDF, where every page is landscape, each slide becomes one card, with the slide title on the front and its bullets on the back.'
+    );
+    expect(config.description).toContain(
+      'In a text slide PDF, each slide becomes one card.'
     );
   });
 
-  it('pdf-to-anki no longer says bullets become card fronts', () => {
-    expect(
-      everyClaim(page('pdf-to-anki')).filter((text) =>
-        /bullets become card fronts/i.test(text)
-      )
-    ).toEqual([]);
-  });
+  it.each(['pdf-to-anki', 'textbook-to-anki'])(
+    '%s says a Word-outline PDF fronts each top-level bullet instead of keeping every bullet on the back',
+    (slug) => {
+      const body = sectionBody(page(slug), 'How cards are built');
+      expect(body).toContain(
+        'A bullet with a space after its marker stays on the back; in a PDF exported from a Word outline, each top-level bullet fronts its own card.'
+      );
+      expect(body).not.toMatch(/Bullets stay on the back of the heading/i);
+    }
+  );
 
   it.each(['word-to-anki', 'google-docs-to-anki'])(
-    '%s says a heading fronts its card and each bullet under it becomes its own card',
+    '%s says a list or 4 or more short paragraphs under a heading become one card per item',
     (slug) => {
       const claims = everyClaim(page(slug)).join('\n');
       expect(claims).toContain(
-        'Each heading becomes a card front, and the text under it becomes the back.'
+        'Each heading becomes a card front, and the text under it becomes the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead'
       );
-      expect(claims).toContain(
+      expect(claims).not.toContain(
         'Each bullet under a heading becomes its own card'
       );
     }
@@ -99,6 +106,27 @@ describe('answers guides describe the cards a PDF or Word upload makes', () => {
         page('word-to-anki'),
         'How does 2anki decide what becomes a card?'
       )
-    ).toContain('Each heading becomes a card front');
+    ).toContain(
+      'A list under a heading, or 4 or more short paragraphs, becomes one card per item instead.'
+    );
   });
+
+  it.each(['word-to-anki', 'google-docs-to-anki'])(
+    '%s limits one card per table row to a document with no headings',
+    (slug) => {
+      const claims = everyClaim(page(slug));
+      const tableClaims = claims.filter((text) =>
+        /one card per row|each row becoming a card/i.test(text)
+      );
+      expect(tableClaims).toHaveLength(2);
+      for (const text of tableClaims) {
+        expect(text).toMatch(/in a document with no headings/i);
+      }
+      expect(
+        claims.filter((text) =>
+          /no heading sits above|no headings above it/i.test(text)
+        )
+      ).toEqual([]);
+    }
+  );
 });

@@ -33,7 +33,13 @@ function whatComesAcross(copy: LandingCopy, title: string): string {
 describe('slide PDF landing copy describes the cards a slide PDF makes', () => {
   it('says each slide title fronts a card with its bullets on the back', () => {
     expect(medicalLectureSlidesCopy.subhead).toBe(
-      'Upload a PDF of your slides — each slide becomes a card, with the slide title on the front and its bullets on the back.'
+      'Upload a PDF of your slides — each text slide becomes a card, with the slide title on the front and its bullets on the back.'
+    );
+  });
+
+  it('keeps the meta description near the 155-character search snippet', () => {
+    expect(medicalLectureSlidesCopy.description.length).toBeLessThanOrEqual(
+      160
     );
   });
 

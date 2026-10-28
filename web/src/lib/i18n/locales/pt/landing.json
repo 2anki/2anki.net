@@ -135,7 +135,7 @@
     },
     "anki-from-medical-lecture-slides": {
       "h1": "Transforme slides de aula em cartões do Anki",
-      "subhead": "Envie um PDF dos seus slides — cada slide vira um cartão, com o título do slide na frente e os marcadores no verso."
+      "subhead": "Envie um PDF dos seus slides — cada slide com texto vira um cartão, com o título do slide na frente e os marcadores no verso."
     },
     "nclex-anki": {
       "h1": "Transforme suas anotações de revisão do NCLEX em cartões do Anki que você controla",
