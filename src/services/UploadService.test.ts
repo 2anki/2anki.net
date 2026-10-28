@@ -5341,6 +5341,26 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
     );
   });
 
+  it('names the deck as an attachment, which sets the streamed type, and sets no type of its own', async () => {
+    const apkgPath = path.join(os.tmpdir(), `vision-type-${Date.now()}.apkg`);
+    fs.writeFileSync(apkgPath, Buffer.from('fake-apkg-bytes'));
+    const execute = vi.fn().mockResolvedValue({
+      apkgPath,
+      cardCount: 7,
+      estimatedCostUsd: 0.01,
+      tileCount: 1,
+      mcqCount: 0,
+      mcqSkippedCount: 0,
+    });
+    const service = buildServiceWithVision(buildVisionUseCase(execute));
+    const { res } = signedInResponse();
+
+    await service.handleUpload(buildImageRequest(), res);
+
+    expect(res.attachment).toHaveBeenCalledWith('/lecture-slide');
+    expect(res.set).not.toHaveBeenCalledWith('Content-Type', expect.anything());
+  });
+
   it('surfaces the vision quota error with its status instead of a silent failure', async () => {
     const quotaError = Object.assign(
       new Error(
