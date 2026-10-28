@@ -582,6 +582,30 @@ describe('EmailService tags every outgoing send with a template category', () =>
     },
   ];
 
+  it('tags an AI spend alert with its own category', async () => {
+    await getDefaultEmailService().sendAiSpendAlertEmail(
+      'ops@example.com',
+      'Spend alert',
+      'body'
+    );
+
+    expect(lastCategories()).toEqual([EMAIL_CATEGORIES.aiSpendAlert]);
+  });
+
+  it.each(['metric-tripwire', 'conversion-stall', 'stripe-access'] as const)(
+    'tags a %s alert as an ops alert of that kind',
+    async (kind) => {
+      await getDefaultEmailService().sendOpsAlertEmail(
+        kind,
+        'ops@example.com',
+        'Alert',
+        'body'
+      );
+
+      expect(lastCategories()).toEqual([EMAIL_CATEGORIES.opsAlert, kind]);
+    }
+  );
+
   it('returns undefined categories when no email was sent', () => {
     expect(lastCategories()).toBeUndefined();
   });

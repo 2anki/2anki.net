@@ -65,6 +65,16 @@ describe('EmailService send failures', () => {
       'AI spend alert',
       () => service.sendAiSpendAlertEmail(RECIPIENT, 'Spend alert', 'body'),
     ],
+    [
+      'ops alert',
+      () =>
+        service.sendOpsAlertEmail(
+          'metric-tripwire',
+          RECIPIENT,
+          'Tripwire alert',
+          'body'
+        ),
+    ],
     ['Notion reconnect', () => service.sendNotionReconnectEmail(RECIPIENT)],
     [
       'deck ready',

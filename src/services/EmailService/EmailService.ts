@@ -43,6 +43,11 @@ type EmailResponse = { didSend: boolean; error?: Error };
 
 export type MagicLinkSendResult = { suppressed: boolean };
 
+export type OpsAlertKind =
+  | 'metric-tripwire'
+  | 'conversion-stall'
+  | 'stripe-access';
+
 export interface LowRatingFeedbackEmailParams {
   rating: number;
   comment: string | null;
@@ -116,6 +121,12 @@ export interface IEmailService {
   ): Promise<void>;
   sendParserCanaryAlert(to: string, summary: string): Promise<void>;
   sendAiSpendAlertEmail(
+    to: string,
+    subject: string,
+    body: string
+  ): Promise<void>;
+  sendOpsAlertEmail(
+    kind: OpsAlertKind,
     to: string,
     subject: string,
     body: string
@@ -1002,6 +1013,28 @@ export class EmailService implements IEmailService {
     }
   }
 
+  async sendOpsAlertEmail(
+    kind: OpsAlertKind,
+    to: string,
+    subject: string,
+    body: string
+  ): Promise<void> {
+    const msg = {
+      to,
+      from: this.defaultSender,
+      subject,
+      text: body,
+      replyTo: 'support@2anki.net',
+      categories: [EMAIL_CATEGORIES.opsAlert, kind],
+    };
+    try {
+      await sendMail(msg);
+    } catch (error) {
+      console.error(`[ops-alert] failed to send ${kind} alert email:`, error);
+      throw error;
+    }
+  }
+
   async sendNotionReconnectEmail(email: string): Promise<void> {
     const ctaUrl = `${process.env.DOMAIN ?? 'https://2anki.net'}/notion`;
     const markup = NOTION_RECONNECT_TEMPLATE.replace('{{ctaUrl}}', ctaUrl);
@@ -1340,6 +1373,15 @@ export class UnimplementedEmailService implements IEmailService {
     _body: string
   ): Promise<void> {
     console.info('sendAiSpendAlertEmail not handled', to, subject);
+  }
+
+  async sendOpsAlertEmail(
+    kind: OpsAlertKind,
+    to: string,
+    subject: string,
+    _body: string
+  ): Promise<void> {
+    console.info('sendOpsAlertEmail not handled', kind, to, subject);
   }
 
   async sendSubscriptionClaimConfirmation(
