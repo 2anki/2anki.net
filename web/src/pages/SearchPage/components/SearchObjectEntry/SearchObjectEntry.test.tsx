@@ -125,7 +125,7 @@ describe('SearchObjectEntry convert button', () => {
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Added to your downloads/)).toBeInTheDocument();
+    expect(screen.getByText(/Added to My decks/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'view' })).toHaveAttribute(
       'href',
       '/downloads'
@@ -146,7 +146,7 @@ describe('SearchObjectEntry convert button', () => {
     });
 
     expect(
-      screen.queryByText(/Added to your downloads/)
+      screen.queryByText(/Added to My decks/)
     ).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'view' })).toHaveAttribute(
       'href',

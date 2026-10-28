@@ -14,7 +14,7 @@
     "converting": "Conversion…",
     "convertToAnki": "Convertir en Anki",
     "openInNotion": "Ouvrir dans Notion",
-    "alreadyConverting": "Cette page est déjà en cours de conversion — regarde dans Mes paquets dans un instant.",
+    "alreadyConverting": "Cette page est déjà en cours de conversion — regarde Mes paquets dans un instant.",
     "convertFailed": "Impossible de démarrer la conversion. Réessayez dans un instant.",
     "cards_one": "{{count}} carte",
     "cards_other": "{{count}} cartes",
