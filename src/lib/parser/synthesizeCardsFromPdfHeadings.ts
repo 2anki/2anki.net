@@ -42,12 +42,11 @@ const SLIDE_LIST_MARKER = new RegExp(
   `^(?:[${SLIDE_BULLET_GLYPHS}]|[–—]\\p{L}|(?:[-*–—]|\\d{1,3}[.)])(?:\\s|$))`,
   'u'
 );
-// Japanese, Chinese and Korean slides glue a glyph to every title, kana or
-// kanji in it or not (`■細胞の構造`, `■ＤＮＡ`, `■ATP`), and a marker drawn
-// apart from a title would join it and read as a bullet (`■ 細胞の構造`). So a
-// page with any Han, kana or Hangul gets neither slide rule. Half-width and
-// full-width forms (U+FF00-U+FFEF) and CJK punctuation (U+3000-U+303F) do
-// not count: Latin slides carry them too (`：`, `￥`, an ideographic space).
+// CJK headings carry a glyph glued to them (`■細胞の構造`, `◆【第1回】…`), so
+// on a slide a line with any Han, kana or Hangul keeps the notes rule. Unicode
+// scripts decide: full-width forms and CJK punctuation count only where their
+// script is Han, Katakana or Hangul (half-width katakana and Hangul, 々, 〇),
+// so a Latin slide's `：`, `￥` or ideographic space does not.
 const CJK_CHARACTER =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const LONE_BULLET_GLYPH = new RegExp(`^[${SLIDE_BULLET_GLYPHS}]$`, 'u');
@@ -154,9 +153,11 @@ function attachLoneMarkers(lines: string[]): string[] {
   return attached;
 }
 
+// The list marker is picked last, only for a line that could be a heading,
+// because picking it can mean reading the whole page for CJK text.
 function isHeadingLine(
   line: string,
-  listMarker: RegExp,
+  listMarker: () => RegExp,
   nextLine: string | undefined,
   previousLine: string | undefined,
   previousBodyLine: string | undefined
@@ -167,7 +168,7 @@ function isHeadingLine(
     nextLine.length > line.length &&
     WORD_CHARACTER.test(line) &&
     !SENTENCE_TAIL.test(line) &&
-    !listMarker.test(line) &&
+    !listMarker().test(line) &&
     !startsLowercase(line) &&
     !isWrappedContinuation(previousLine) &&
     !isListSibling(line, nextLine, previousBodyLine)
@@ -189,20 +190,41 @@ function hasCjkText(page: PdfPage): boolean {
   return CJK_CHARACTER.test(page.text);
 }
 
+interface PdfLine {
+  text: string;
+  pageIndex: number;
+}
+
+// A page's first line, once footers drop and detached markers join, is its
+// title. On a page with CJK text it keeps the notes rule too, since the title
+// is glued to its glyph whether or not it holds kana or kanji (`■ATP`,
+// `■ＤＮＡ`).
+function slideListMarker(
+  pages: PdfPage[],
+  lines: PdfLine[],
+  index: number
+): RegExp {
+  const { text, pageIndex } = lines[index];
+  const opensPage = lines[index - 1]?.pageIndex !== pageIndex;
+  return CJK_CHARACTER.test(text) || (opensPage && hasCjkText(pages[pageIndex]))
+    ? LIST_MARKER
+    : SLIDE_LIST_MARKER;
+}
+
 export function synthesizeCardsFromPdfHeadings(
   pages: PdfPage[],
   deckName: string
 ): PdfCard[] {
   const tag = deckName.replace(/\s+/g, '_');
   const slideDeck = isSlideDeck(pages);
-  const lines = pages.flatMap((page, pageIndex) => {
+  const lines: PdfLine[] = pages.flatMap((page, pageIndex) => {
     const textLines = pageLines(page);
-    const slidePage = slideDeck && !hasCjkText(page);
-    const listMarker = slidePage ? SLIDE_LIST_MARKER : LIST_MARKER;
-    return (slidePage ? attachLoneMarkers(textLines) : textLines).map(
-      (text) => ({ text, pageIndex, listMarker })
+    return (slideDeck ? attachLoneMarkers(textLines) : textLines).map(
+      (text) => ({ text, pageIndex })
     );
   });
+  const listMarker = (index: number): RegExp =>
+    slideDeck ? slideListMarker(pages, lines, index) : LIST_MARKER;
 
   const cards: PdfCard[] = [];
   let front: string | null = null;
@@ -221,11 +243,11 @@ export function synthesizeCardsFromPdfHeadings(
     }
   };
 
-  lines.forEach(({ text, pageIndex, listMarker }, index) => {
+  lines.forEach(({ text, pageIndex }, index) => {
     if (
       isHeadingLine(
         text,
-        listMarker,
+        () => listMarker(index),
         lines[index + 1]?.text,
         lines[index - 1]?.text,
         previousBodyLine
