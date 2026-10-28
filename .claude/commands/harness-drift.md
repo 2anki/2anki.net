@@ -11,9 +11,9 @@ It does not fix anything. It produces a short report of what is decaying and han
 
 1. **Architecture drift.** Run the dependency-cruiser sensor and capture the warning counts (these are non-blocking in CI, so they grow unnoticed):
    ```bash
-   pnpm --filter notion2anki-server arch 2>&1 | tail -3
+   pnpm --filter notion2anki-server arch 2>&1 | grep -oE '^ *warn [a-z-]+' | sort | uniq -c
    ```
-   Compare the circular-dependency and data-layer-leaf counts against the baseline recorded in `.dependency-cruiser.cjs` (measured 2026-10-28: 10 cycles, 1 data-layer-leaf, 288 layer skips). Report any increase — a rising count means new code is adding to the debt the warns were meant to freeze.
+   Compare each rule's count against the baseline recorded in `.dependency-cruiser.cjs` (measured 2026-10-28: 10 cycles, 1 data-layer-leaf, 288 layer skips). Report any increase — a rising count means new code is adding to the debt the warns were meant to freeze.
 
 2. **Dead code.** Spawn the `dead-code-auditor` agent (read-only) over `src/` and `web/src/`. Report its top unreferenced exports / unreachable branches.
 

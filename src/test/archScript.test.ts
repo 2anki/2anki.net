@@ -11,11 +11,13 @@ const MISSING_TSC = `✔ no dependency violations found (0 modules, 0 dependenci
 ‼ missing-tsc-transpiler: dependency-cruiser detected a TypeScript environment,
     but not a compatible TypeScript compiler (typescript: >=2.0.0 <7.0.0).`;
 
-function runArch(depcruiseOutput: string, depcruiseStatus = 0) {
+function runArch(depcruiseOutput: string, depcruiseStatus = 0, gitRepo = true) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arch-script-'));
   try {
     fs.mkdirSync(path.join(dir, 'src'));
-    spawnSync('git', ['init', '-q'], { cwd: dir });
+    if (gitRepo) {
+      spawnSync('git', ['init', '-q'], { cwd: dir });
+    }
     const outputFile = path.join(dir, 'depcruise-output.txt');
     fs.writeFileSync(outputFile, depcruiseOutput);
     const fakeDepcruise = path.join(dir, 'fake-depcruise');
@@ -29,7 +31,7 @@ function runArch(depcruiseOutput: string, depcruiseStatus = 0) {
       encoding: 'utf8',
       env: { PATH: process.env.PATH, DEPCRUISE: fakeDepcruise },
     });
-    return { status: run.status, stderr: run.stderr };
+    return { status: run.status, stdout: run.stdout, stderr: run.stderr };
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -62,15 +64,26 @@ describe('scripts/arch.sh', () => {
   ])('passes a run that cruised modules: %s', (output) => {
     const run = runArch(output);
 
-    expect(run).toEqual({ status: 0, stderr: '' });
+    expect(run).toMatchObject({ status: 0, stderr: '' });
   });
 
   it('keeps the dependency-cruiser exit code when a rule errors', () => {
     const run = runArch(
       'x 1 dependency violations (1 errors, 0 warnings). 1215 modules, 3723 dependencies cruised.',
-      1
+      3
+    );
+
+    expect(run.status).toBe(3);
+  });
+
+  it('stops before the cruise when git clean fails', () => {
+    const run = runArch(
+      '✔ no dependency violations found (1282 modules, 4319 dependencies cruised)',
+      0,
+      false
     );
 
     expect(run.status).toBe(1);
+    expect(run.stdout).toBe('');
   });
 });

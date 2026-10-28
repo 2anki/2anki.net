@@ -49,7 +49,7 @@ module.exports = {
     {
       name: 'data-layer-is-leaf',
       comment:
-        'The data layer is a leaf: it must not import routes, controllers, or use cases. The data_layer/index.ts wiring barrel is the source of most of the circular dependencies above. New repositories must not add to it.',
+        'The data layer is a leaf: it must not import routes, controllers, or use cases. New repositories must not add to it.',
       severity: 'warn',
       from: { path: '^src/data_layer' },
       to: { path: '^src/(routes|controllers|usecases)' },
