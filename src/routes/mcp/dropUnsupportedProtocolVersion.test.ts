@@ -63,7 +63,7 @@ describe('dropUnsupportedProtocolVersion', () => {
     expect(response.body).toContain('ping_tool');
   });
 
-  it('names an unsupported version once per process, not once per call', async () => {
+  it('names each unsupported dated version once per process, not once per call', async () => {
     const lines: string[] = [];
     const log = (line: string) => lines.push(line);
     const drop = makeDropUnsupportedProtocolVersion(log);
@@ -73,7 +73,12 @@ describe('dropUnsupportedProtocolVersion', () => {
         rawHeaders: ['MCP-Protocol-Version', version],
       }) as unknown as express.Request;
 
-    for (const version of ['2099-01-01', '2099-01-01', '2099-02-02']) {
+    for (const version of [
+      '2099-01-01',
+      '2099-01-01',
+      'not-a-date',
+      '2099-02-02',
+    ]) {
       const req = request(version);
       drop(req, {} as express.Response, () => {});
       expect(req.headers['mcp-protocol-version']).toBeUndefined();

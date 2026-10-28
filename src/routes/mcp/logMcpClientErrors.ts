@@ -68,7 +68,8 @@ function leadingBytes(chunk: unknown, limit: number): Buffer | null {
 // protocol version, a malformed batch) from inside the MCP SDK, which logs
 // nothing. One line per refusal says why. It never carries request arguments, the error
 // data the SDK attaches, or anything tied to the user: only the error code and
-// message, the JSON-RPC method names and the negotiation headers.
+// message, the JSON-RPC method names and the negotiation headers. A 401 to a
+// call with no Authorization header is the normal OAuth challenge, not logged.
 export function logMcpClientErrors(
   log: (line: string) => void = console.warn
 ): RequestHandler {
@@ -104,6 +105,9 @@ export function logMcpClientErrors(
       if (res.statusCode < 400 || res.statusCode >= 500) {
         return;
       }
+      if (res.statusCode === 401 && req.headers.authorization == null) {
+        return;
+      }
       const reason = readErrorReason(Buffer.concat(captured).toString('utf8'));
       log(
         [
@@ -111,7 +115,7 @@ export function logMcpClientErrors(
           `code=${sanitizeForLog(reason.code)}`,
           `message=${quoted(sanitizeForLog(reason.message))}`,
           `method=${requestMethods(req.body)}`,
-          `protocol=${headerValue(req.headers['mcp-protocol-version'])}`,
+          `protocol=${quoted(headerValue(req.headers['mcp-protocol-version']))}`,
           `accept=${quoted(headerValue(req.headers.accept))}`,
           `content_type=${quoted(headerValue(req.headers['content-type']))}`,
         ].join(' ')

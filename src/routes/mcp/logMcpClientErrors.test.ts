@@ -69,7 +69,7 @@ describe('logMcpClientErrors', () => {
       expect(line).toContain('[mcp] POST /mcp 400');
       expect(line).toContain('code=-32000');
       expect(line).toContain('method=tools/list');
-      expect(line).toContain('protocol=1999-01-01');
+      expect(line).toContain('protocol="1999-01-01"');
       expect(line).toContain('accept="application/json, text/event-stream"');
       expect(line).toContain('content_type="application/json"');
     });
@@ -90,7 +90,7 @@ describe('logMcpClientErrors', () => {
       const line = await waitForLine(lines);
       expect(line).toContain('[mcp] POST /mcp 406');
       expect(line).toContain('code=-32000');
-      expect(line).toContain('protocol=-');
+      expect(line).toContain('protocol="-"');
       expect(line).toContain('accept="application/json"');
     });
   });
@@ -106,7 +106,10 @@ describe('logMcpClientErrors', () => {
       async (baseUrl, lines) => {
         await fetch(`${baseUrl}/mcp`, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer expired',
+          },
           body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call' }),
         });
 
@@ -229,7 +232,7 @@ describe('logMcpClientErrors', () => {
   it('names at most ten methods of an oversized batch', async () => {
     await withApp(
       (_req, res) => {
-        res.status(401).json({ error: 'invalid_token' });
+        res.status(400).json({ error: 'invalid_request' });
       },
       async (baseUrl, lines) => {
         await fetch(`${baseUrl}/mcp`, {
