@@ -22,7 +22,8 @@ const file = new File(['text'], 'lecture.pdf', { type: 'application/pdf' });
 function renderOffer(
   isPaying = false,
   onMakeFullDeck = vi.fn(),
-  onBeforeCheckout = vi.fn().mockResolvedValue(undefined)
+  onBeforeCheckout = vi.fn().mockResolvedValue(undefined),
+  busy = false
 ) {
   const client = new QueryClient();
   render(
@@ -31,6 +32,7 @@ function renderOffer(
         file={file}
         cardCount={2}
         isPaying={isPaying}
+        busy={busy}
         onMakeFullDeck={onMakeFullDeck}
         onBeforeCheckout={onBeforeCheckout}
       />
@@ -151,5 +153,42 @@ describe('ThinDeckAiOffer', () => {
     expect(onMakeFullDeck).toHaveBeenCalledTimes(1);
     expect(startPassCheckout).not.toHaveBeenCalled();
     expect(onBeforeCheckout).not.toHaveBeenCalled();
+  });
+
+  it("leaves a paying person's tap for the page to record once the file goes out", async () => {
+    renderOffer(true);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Preview cards Claude would write' })
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Make the full AI deck' })
+    );
+
+    expect(track).not.toHaveBeenCalledWith(
+      'thin_deck_ai_unlock_clicked',
+      expect.anything()
+    );
+  });
+
+  it('says it is checking who is signed in on the full AI deck while busy, and holds it', async () => {
+    const { onMakeFullDeck } = renderOffer(
+      true,
+      vi.fn(),
+      vi.fn().mockResolvedValue(undefined),
+      true
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Preview cards Claude would write' })
+    );
+
+    const checking = await screen.findByRole('button', {
+      name: "Checking who's signed in",
+    });
+    fireEvent.click(checking);
+
+    expect(checking).toBeDisabled();
+    expect(checking).toHaveAttribute('aria-busy', 'true');
+    expect(onMakeFullDeck).not.toHaveBeenCalled();
   });
 });

@@ -122,6 +122,15 @@ test('backgrounding then a dropped connection surfaces a retry at 375px', async 
 }) => {
   const errors = collectConsoleErrors(page);
   await mockBackend(page);
+  // A signed-out visitor's locals: a dropped upload gets no answer naming its
+  // session, so Try again goes out as the visitor the page knows.
+  await page.route('**/api/users/debug/locals**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ locals: {}, linked_email: '' }),
+    })
+  );
   let firstAttempt = true;
   await page.route('**/api/upload/file', async (route) => {
     if (firstAttempt) {

@@ -34,6 +34,13 @@ import CardOption from '../../lib/parser/Settings';
 import Workspace from '../../lib/parser/WorkSpace';
 import { toText } from '../../services/NotionService/BlockHandler/helpers/deckNameToText';
 import { toUploadResponse } from '../../types/UploadResponse';
+import {
+  keptFilesChangedOwner,
+  sessionOwnerOf,
+  SIGNED_OUT_SESSION,
+  takeKeptOwner,
+} from '../../lib/upload/keptFilesOwner';
+import type { UploadErrorBody } from '../../types/UploadErrorBody';
 
 const DROPBOX_PAGE_SIZE = 10;
 const GOOGLE_DRIVE_PAGE_SIZE = 10;
@@ -48,6 +55,14 @@ function isFileCountError(error: unknown): boolean {
     error.code === 'LIMIT_FILE_COUNT' ||
     (error.code === 'LIMIT_UNEXPECTED_FILE' && error.field === UPLOAD_FIELD)
   );
+}
+
+function removeTempUpload(tempPath: string): Promise<void> {
+  return fs.promises.unlink(tempPath).catch((e) => {
+    console.error('[upload] temp file cleanup failed', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+  });
 }
 
 const RETRY_PDF_WINDOW_MS = 60_000;
@@ -147,6 +162,10 @@ class UploadController {
         if (error != null) {
           return this.service.respondToBrokenUpload(req, res, error);
         }
+        const uploaded = (req.files as Express.Multer.File[] | undefined) ?? [];
+        if (await this.refusedForChangedOwner(req, res, uploaded)) {
+          return;
+        }
         await this.service.handleUpload(req, res);
       });
     } catch (error) {
@@ -157,6 +176,36 @@ class UploadController {
           'Failed to process the upload. Please try a different file or contact support.',
       });
     }
+  }
+
+  // Files a page kept from an earlier submit go back only under the session
+  // that sent them: an account that signed in since, on a shared computer or
+  // in another tab, must not receive that file or pay for its conversion.
+  private async refusedForChangedOwner(
+    req: express.Request,
+    res: express.Response,
+    uploaded: Pick<Express.Multer.File, 'path'>[]
+  ): Promise<boolean> {
+    const owner = getOwner(res);
+    if (!keptFilesChangedOwner(takeKeptOwner(req.body), owner)) {
+      return false;
+    }
+    await Promise.all(
+      uploaded
+        .filter((file) => file.path != null)
+        .map((file) => removeTempUpload(file.path))
+    );
+    console.info('[upload] refused a resend sent under another session', {
+      requestId: res.locals.requestId,
+    });
+    const body: UploadErrorBody = {
+      code: 'owner_changed',
+      message:
+        'You switched accounts since this file was sent, so nothing was converted. Choose the file again.',
+      signed_in: sessionOwnerOf(owner) !== SIGNED_OUT_SESSION,
+    };
+    res.status(409).json(body);
+    return true;
   }
 
   async restartJob(req: express.Request, res: express.Response) {
@@ -281,15 +330,13 @@ class UploadController {
     if (!uploadedFile) {
       return res.status(400).json({ message: 'No file provided.' });
     }
+    if (await this.refusedForChangedOwner(req, res, [uploadedFile])) {
+      return;
+    }
 
     const ipKey = hashIp(resolveClientIp(req));
     if (!this.retryPdfRateLimiter.check(ipKey)) {
-      const unlinkPath = uploadedFile.path;
-      fs.promises.unlink(unlinkPath).catch((e) => {
-        console.error('[retryPdfWithCredential] temp file cleanup failed', {
-          error: e instanceof Error ? e.message : String(e),
-        });
-      });
+      void removeTempUpload(uploadedFile.path);
       res.set('Retry-After', '60');
       return res.status(429).json({
         message:
@@ -304,20 +351,12 @@ class UploadController {
       return res.status(400).json({ message: 'Invalid credential.' });
     }
 
-    const unlinkTempFile = () => {
-      fs.promises.unlink(uploadedFile.path).catch((e) => {
-        console.error('[retryPdfWithCredential] temp file cleanup failed', {
-          error: e instanceof Error ? e.message : String(e),
-        });
-      });
-    };
-
     let fileBuffer: Buffer;
     try {
       fileBuffer = fs.readFileSync(uploadedFile.path);
-      unlinkTempFile();
+      void removeTempUpload(uploadedFile.path);
     } catch {
-      unlinkTempFile();
+      void removeTempUpload(uploadedFile.path);
       return res.status(400).json({ message: 'Could not read uploaded file.' });
     }
 

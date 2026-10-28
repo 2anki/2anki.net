@@ -3,7 +3,7 @@ import { AiCreditsState } from '../../../lib/hooks/useAiCredits';
 import { BuyCreditsButton } from '../../../components/BuyCreditsButton/BuyCreditsButton';
 import pageStyles from '../UploadPage.module.css';
 
-const LOW_CREDITS_THRESHOLD = 25;
+export const LOW_CREDITS_THRESHOLD = 25;
 
 interface Props {
   readonly credits: AiCreditsState | null;
@@ -19,7 +19,9 @@ export function AiCreditsReadout({ credits }: Props) {
   if (credits.credits <= 0) {
     return (
       <span className={pageStyles.aiCreditsLine} data-testid="ai-credits">
-        <span className={pageStyles.aiCreditsWarning}>{t('zero')}</span>
+        <span className={pageStyles.aiCreditsWarning}>
+          {t(credits.resets === 'pass' ? 'zeroPass' : 'zero')}
+        </span>
         <BuyCreditsButton source="credits_badge" variant="link" compact />
       </span>
     );

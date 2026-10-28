@@ -22,6 +22,7 @@ export type UploadErrorCode =
   | 'apkg_too_large_for_anki'
   | 'zip_invalid'
   | 'ai_credits_exhausted'
+  | 'owner_changed'
   | 'unknown';
 
 import type { EmptyDeckReason } from '../usecases/jobs/EmptyDeckError';
@@ -34,4 +35,7 @@ export interface UploadErrorBody {
   empty_reason?: EmptyDeckReason;
   reading?: EmptyUploadReading | null;
   rescue?: RescueCandidate[];
+  // On owner_changed: whether the session that sent the refused request is
+  // signed in, so the page can say what changed before it reads the account.
+  signed_in?: boolean;
 }

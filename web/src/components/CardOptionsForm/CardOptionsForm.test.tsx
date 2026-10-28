@@ -945,6 +945,107 @@ describe('CardOptionsForm card style picker', () => {
   });
 });
 
+describe('CardOptionsForm AI checkbox analytics', () => {
+  const aiSwitchEvents = () =>
+    mockTrack.mock.calls.filter(
+      ([name]) =>
+        name === 'upload_ai_turned_on' || name === 'upload_ai_turned_off'
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResetUserCardOptions.mockResolvedValue(undefined);
+    mockGetSettings.mockResolvedValue({});
+    setUserLocalsPaying(true);
+    globalThis.localStorage.clear();
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'claude-ai-flashcards',
+        'AI flashcards',
+        'Write the cards with Claude.',
+        false
+      ),
+      new CardOptionModel(
+        'embed-images',
+        'Embed images in cards',
+        'Pack image bytes into the deck so cards render offline.',
+        true
+      ),
+    ]);
+  });
+
+  const aiCheckbox = () =>
+    screen.findByRole('checkbox', {
+      name: /Generate flashcards with Claude AI/,
+    });
+
+  it.each([
+    { who: 'a paying account', paying: true, isLoggedIn: true },
+    { who: 'a signed-in free account', paying: false, isLoggedIn: true },
+    { who: 'a signed-out visitor', paying: false, isLoggedIn: false },
+  ])(
+    'records turning Claude cards on and off from the account defaults for $who',
+    async ({ paying, isLoggedIn }) => {
+      setUserLocalsPaying(paying);
+      renderForm(isLoggedIn, { onReset: vi.fn(), setError: vi.fn() });
+      const checkbox = await aiCheckbox();
+
+      fireEvent.click(checkbox);
+      fireEvent.click(checkbox);
+
+      expect(aiSwitchEvents()).toEqual([
+        ['upload_ai_turned_on', { surface: 'card_options' }],
+        ['upload_ai_turned_off', { surface: 'card_options' }],
+      ]);
+      expect(localStorage.getItem('claude-ai-flashcards')).toBe('false');
+    }
+  );
+
+  it('records nothing for other checkboxes', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Embed images in cards' })
+    );
+
+    expect(aiSwitchEvents()).toEqual([]);
+  });
+
+  it('records nothing on a single page, which leaves the upload setting alone', async () => {
+    renderPageForm({ setError: vi.fn() });
+
+    fireEvent.click(await aiCheckbox());
+
+    expect(aiSwitchEvents()).toEqual([]);
+    expect(localStorage.getItem('claude-ai-flashcards')).toBeNull();
+  });
+
+  it('records the switch for an empty page id, which saves to the account defaults', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <CardOptionsForm
+            pageId=""
+            isLoggedIn
+            onReset={vi.fn()}
+            setError={vi.fn()}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await aiCheckbox());
+
+    expect(aiSwitchEvents()).toEqual([
+      ['upload_ai_turned_on', { surface: 'card_options' }],
+    ]);
+    expect(localStorage.getItem('claude-ai-flashcards')).toBe('true');
+  });
+});
+
 describe('CardOptionsForm AI instruction presets', () => {
   const MCQ_SENTENCE =
     "Write multiple-choice questions. Put the question and all answer options (A, B, C, D) on the front of the card; put only the correct option's letter on the back.";

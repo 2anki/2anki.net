@@ -33,6 +33,7 @@ test('a slide-like PDF asks what to make, then makes it at 375px', async ({
       await route.fulfill({
         status: 409,
         contentType: 'application/json',
+        headers: { 'X-Upload-Owner': 'none' },
         body: JSON.stringify({
           code: 'choose_pdf_mode',
           reason: 'no_text',

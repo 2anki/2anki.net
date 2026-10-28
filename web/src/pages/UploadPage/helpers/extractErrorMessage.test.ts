@@ -28,6 +28,31 @@ describe('extractErrorMessage', () => {
     expect(result.message).toBe('File too big.');
   });
 
+  test.each([true, false])(
+    'carries whether the session is signed in (%s) on a refused resend, and drops a malformed value',
+    async (signedIn) => {
+      const carried = await extractErrorMessage(
+        jsonResponse(
+          { code: 'owner_changed', message: 'Refused.', signed_in: signedIn },
+          409
+        )
+      );
+      expect(carried).toEqual({
+        code: 'owner_changed',
+        message: 'Refused.',
+        signed_in: signedIn,
+      });
+
+      const dropped = await extractErrorMessage(
+        jsonResponse(
+          { code: 'owner_changed', message: 'Refused.', signed_in: 'yes' },
+          409
+        )
+      );
+      expect(dropped).not.toHaveProperty('signed_in');
+    }
+  );
+
   test('carries a well-formed reading and drops a malformed one', async () => {
     const reading = {
       kind: 'document',

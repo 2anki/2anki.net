@@ -25,13 +25,18 @@ const CARDS = [
   { front: 'What is a cloze?', back: 'A fill-in-the-blank card' },
 ];
 
-function renderGate(cards = CARDS, onContinueWithoutAi = vi.fn()) {
+function renderGate(
+  cards = CARDS,
+  onContinueWithoutAi = vi.fn(),
+  busy = false
+) {
   return render(
     <QueryClientProvider client={new QueryClient()}>
       <MemoryRouter>
         <AiPreviewGate
           cards={cards}
           onContinueWithoutAi={onContinueWithoutAi}
+          busy={busy}
         />
       </MemoryRouter>
     </QueryClientProvider>
@@ -97,6 +102,23 @@ describe('AiPreviewGate', () => {
     );
 
     expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it('says it is checking who is signed in on continue-without-AI while busy, and holds it', () => {
+    const onContinue = vi.fn();
+    renderGate(CARDS, onContinue, true);
+
+    const checking = screen.getByRole('button', {
+      name: "Checking who's signed in",
+    });
+    fireEvent.click(checking);
+
+    expect(checking).toBeDisabled();
+    expect(checking).toHaveAttribute('aria-busy', 'true');
+    expect(onContinue).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole('button', { name: 'Continue without AI' })
+    ).toBeNull();
   });
 
   it('shows the error state and no Day Pass button when the preview is empty', () => {

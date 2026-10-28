@@ -164,6 +164,8 @@
     "generic_other": "Solo {{count}} carte sono nate da questa pagina e {{skipped}} parti sono state saltate. Apri il rapporto per vedere perché.",
     "fewCards_one": "Solo {{count}} carta è nata da questo file. Attiva le carte di Claude qui sopra e converti di nuovo per ottenerne di più.",
     "fewCards_other": "Solo {{count}} carte sono nate da questo file. Attiva le carte di Claude qui sopra e converti di nuovo per ottenerne di più.",
+    "fewCardsNoCredits_one": "Solo {{count}} carta è nata da questo file. Claude può scriverne di più con i crediti IA.",
+    "fewCardsNoCredits_other": "Solo {{count}} carte sono nate da questo file. Claude può scriverne di più con i crediti IA.",
     "fewCardsPaidAi_one": "Solo {{count}} carta è nata da questo file. Con un piano a pagamento, Claude può ricavarne più carte.",
     "fewCardsPaidAi_other": "Solo {{count}} carte sono nate da questo file. Con un piano a pagamento, Claude può ricavarne più carte.",
     "seeReport": "Vedi il rapporto completo"

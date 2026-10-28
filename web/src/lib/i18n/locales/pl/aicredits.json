@@ -4,6 +4,7 @@
   "left_many": "Pozostało {{count}} kredytów AI.",
   "left_other": "Pozostało {{count}} kredytów AI.",
   "zero": "0 kredytów AI. Następne talie powstają bez AI, dopóki Twoje kredyty się nie odnowią.",
+  "zeroPass": "0 kredytów AI. Następne talie powstają bez AI.",
   "plan_one": "{{count}} kredyt AI.",
   "plan_few": "{{count}} kredyty AI.",
   "plan_many": "{{count}} kredytów AI.",

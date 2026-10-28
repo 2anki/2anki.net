@@ -46,6 +46,15 @@ describe('AiCreditsReadout', () => {
     ).toBeInTheDocument();
   });
 
+  it('names no reset for a pass with no credits left, which does not refill', () => {
+    render(
+      <AiCreditsReadout credits={state({ credits: 0, resets: 'pass' })} />
+    );
+    expect(
+      screen.getByText('0 AI credits left. Your next deck builds without AI.')
+    ).toBeInTheDocument();
+  });
+
   it('offers a compact buy action at zero and explains the fallback', () => {
     render(<AiCreditsReadout credits={state({ credits: 0 })} />);
     expect(

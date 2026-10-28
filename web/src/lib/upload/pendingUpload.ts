@@ -12,8 +12,15 @@ export interface PendingUpload {
   submittedAt: number;
   recoveryToken: string | null;
   ownerId: number | null;
+  // The page had no account data when the files went out, so ownerId means
+  // nothing and the files are never sent back. Saves made before this field
+  // existed read as known, as they always did.
+  ownerUnknown?: boolean;
   pdfPageRange: string | null;
   aiFlag: string | null;
+  // Sent by a Claude button, so a resume asks for Claude again with two pages
+  // make one card off. Saves from before this field read as not one.
+  claudeResend?: boolean;
 }
 
 export interface PendingUploadStore {
