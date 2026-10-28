@@ -34,6 +34,7 @@ import { SUPPORT_CC_ADDRESS, SUPPORT_EMAIL_ADDRESS } from '../../lib/constants';
 import { emailHash } from '../../lib/emailHash';
 import { getDatabase } from '../../data_layer';
 import { sendWithRetry } from './sendWithRetry';
+import { sendMail } from './sendMail';
 import SuppressionEventsRepository from '../../data_layer/SuppressionEventsRepository';
 import UsersRepository from '../../data_layer/UsersRepository';
 import { DeckReadyStrings, getEmailStrings } from './i18n';
@@ -266,7 +267,7 @@ export class EmailService implements IEmailService {
       }
     }
     msg.categories = [category];
-    return sgMail.send(msg);
+    return sendMail(msg);
   }
 
   async sendResetEmail(email: string, token: string): Promise<void> {
@@ -390,7 +391,7 @@ export class EmailService implements IEmailService {
       })),
     };
     try {
-      await sendWithRetry(() => sgMail.send(msg));
+      await sendWithRetry(() => sendMail(msg));
       return { didSend: true };
     } catch (e) {
       console.error('Error sending email', e);
@@ -412,7 +413,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.autoSyncAccessRequest],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
       return { didSend: true };
     } catch (e) {
       console.error('Error sending Auto Sync access request email', e);
@@ -502,7 +503,7 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error('Failed to send re-engagement email:', error);
       throw error;
@@ -553,9 +554,12 @@ export class EmailService implements IEmailService {
     };
 
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
-      console.error(`Failed to send inactivity warning to ${to}:`, error);
+      console.error(
+        `Failed to send inactivity warning to ${emailHash(to)}:`,
+        error
+      );
       throw error;
     }
   }
@@ -592,10 +596,10 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.abandonedCheckoutRecovery],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error(
-        `Failed to send abandoned-checkout recovery to ${to}:`,
+        `Failed to send abandoned-checkout recovery to ${emailHash(to)}:`,
         error
       );
       throw error;
@@ -643,9 +647,12 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.passEnding],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
-      console.error(`Failed to send pass ending email to ${to}:`, error);
+      console.error(
+        `Failed to send pass ending email to ${emailHash(to)}:`,
+        error
+      );
       throw error;
     }
   }
@@ -834,7 +841,7 @@ export class EmailService implements IEmailService {
     const cancellationsSent = this.loadCancellationsSent();
     if (cancellationsSent.has(subscriptionId)) {
       console.log(
-        `Skipping ${email} - Cancellation notification already sent for subscription ${subscriptionId}`
+        `Skipping ${emailHash(email)} - Cancellation notification already sent for subscription ${subscriptionId}`
       );
       return;
     }
@@ -859,10 +866,12 @@ export class EmailService implements IEmailService {
     try {
       await this.deliver(msg, EMAIL_CATEGORIES.subscriptionCancelled);
       this.saveCancellationSent(subscriptionId);
-      console.log(`Successfully sent cancellation confirmation to ${email}`);
+      console.log(
+        `Successfully sent cancellation confirmation to ${emailHash(email)}`
+      );
     } catch (error) {
       console.error(
-        `Failed to send cancellation confirmation to ${email}:`,
+        `Failed to send cancellation confirmation to ${emailHash(email)}:`,
         error
       );
       throw error;
@@ -903,11 +912,11 @@ export class EmailService implements IEmailService {
         EMAIL_CATEGORIES.subscriptionScheduledCancellation
       );
       console.log(
-        `Successfully sent scheduled cancellation notification to ${email}`
+        `Successfully sent scheduled cancellation notification to ${emailHash(email)}`
       );
     } catch (error) {
       console.error(
-        `Failed to send scheduled cancellation notification to ${email}:`,
+        `Failed to send scheduled cancellation notification to ${emailHash(email)}:`,
         error
       );
       throw error;
@@ -965,7 +974,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.parserCanary],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error('[parser-canary] failed to send alert email:', error);
       throw error;
@@ -986,7 +995,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.aiSpendAlert],
     };
     try {
-      await sgMail.send(msg);
+      await sendMail(msg);
     } catch (error) {
       console.error('[ai-spend-guard] failed to send alert email:', error);
       throw error;
@@ -1044,7 +1053,10 @@ export class EmailService implements IEmailService {
     try {
       await this.deliver(msg, EMAIL_CATEGORIES.priceLockIn);
     } catch (error) {
-      console.error(`Failed to send price lock-in email to ${to}:`, error);
+      console.error(
+        `Failed to send price lock-in email to ${emailHash(to)}:`,
+        error
+      );
       throw error;
     }
   }
@@ -1162,7 +1174,7 @@ export class EmailService implements IEmailService {
       categories: [EMAIL_CATEGORIES.lowRatingFeedback],
     };
 
-    await sendWithRetry(() => sgMail.send(msg));
+    await sendWithRetry(() => sendMail(msg));
   }
 }
 

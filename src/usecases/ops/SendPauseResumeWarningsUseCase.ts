@@ -90,12 +90,24 @@ export class SendPauseResumeWarningsUseCase {
       );
       return true;
     } catch (error) {
-      await this.repository.releaseNotice(row.email, resumesAt);
       console.error(
         '[pause-resume-warnings] failed to send a warning:',
         error instanceof Error ? error.message : 'unknown error'
       );
+      await this.releaseClaim(row.email, resumesAt);
       return false;
+    }
+  }
+
+  // A knex error inlines its bindings into the message, so it would put the
+  // subscription email in the log. Only a fixed string goes out.
+  private async releaseClaim(email: string, resumesAt: Date): Promise<void> {
+    try {
+      await this.repository.releaseNotice(email, resumesAt);
+    } catch {
+      console.error(
+        '[pause-resume-warnings] failed to release a claim; that warning will not be retried'
+      );
     }
   }
 }
