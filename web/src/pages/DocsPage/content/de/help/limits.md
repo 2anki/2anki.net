@@ -33,6 +33,8 @@ Free umfasst anonyme und angemeldete Nutzer ohne kostenpflichtigen Plan.
 | Free                    | 100                 |
 | Subscription / Lifetime | Keine feste Grenze  |
 
+Die Grenze zählt Seiten, die zu Bildkarten werden (Seitenpaare, eine Karte pro Seite), und PowerPoint-Folien, die als Bilder gerendert werden; ein PDF, das eine Karte pro Überschrift ergibt, hat keine Seitengrenze.
+
 PDFs über dem kostenlosen Limit geben zurück: _PDF exceeds maximum page limit of 100 for free and anonymous users._
 
 ## KI-generierte Karteikarten

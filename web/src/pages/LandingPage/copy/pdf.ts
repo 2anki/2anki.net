@@ -30,11 +30,11 @@ const pdfCopy: LandingCopy = {
   faqs: [
     {
       q: 'Will it read scanned PDFs?',
-      a: 'Only if the scan has a text layer (OCR). Most modern textbooks and slide exports do. A photo of a page with no text layer can still become picture cards: the upload page asks whether two pages make one card or each page makes its own. For text cards, run it through an OCR tool first — macOS Preview and Adobe Acrobat both do this.',
+      a: 'Only if the scan has a text layer (OCR). Most modern textbooks and slide exports do. A photo of a page with no text layer can still become image cards: the upload page asks whether two pages make one card or each page makes its own. For text cards, run it through an OCR tool first — macOS Preview and Adobe Acrobat both do this.',
     },
     {
       q: 'How does it pick what becomes a card?',
-      a: "A short line followed by longer text counts as a heading. Each heading becomes a card front and the text under it becomes the back, so a slide's title fronts its bullet points. You can edit the cards in Anki after — we don't lock anything down.",
+      a: 'A short line followed by longer text counts as a heading. Each heading becomes a card front and the text under it becomes the back. A PDF with little text, like many slide exports, gets the image-card question instead; turn on "Extract text from PDFs" in the card options to make text cards from it. You can edit the cards in Anki after — we don\'t lock anything down.',
     },
     {
       q: 'Can I upload a whole textbook?',

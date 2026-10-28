@@ -48,7 +48,7 @@ const pdfZuAnkiCopy: LandingCopy = {
     },
     {
       title: 'Eine Karte pro Überschrift',
-      body: 'Jede Überschrift im PDF wird zur Vorderseite einer Karte, der Text darunter zur Rückseite.',
+      body: 'Jede Überschrift in einem textreichen PDF wird zur Vorderseite einer Karte, der Text darunter zur Rückseite.',
     },
     {
       title: 'Richtige Notiztypen',
@@ -66,7 +66,7 @@ const pdfZuAnkiCopy: LandingCopy = {
     },
     {
       q: 'Wie entscheidet 2anki, was zur Karte wird?',
-      a: 'Eine kurze Zeile, auf die längerer Text folgt, gilt als Überschrift. Sie wird zur Kartenvorderseite, der Text darunter zur Rückseite — bei Folien steht so der Titel vorn und die Stichpunkte hinten. Du kannst die Karten danach in Anki frei bearbeiten.',
+      a: 'Eine kurze Zeile, auf die längerer Text folgt, gilt als Überschrift. Sie wird zur Kartenvorderseite, der Text darunter zur Rückseite. Ein PDF mit wenig Text, wie viele Folien-Exporte, löst stattdessen die Frage nach Bildkarten aus; schalte in den Kartenoptionen „Text aus PDFs extrahieren“ ein, um daraus Textkarten zu machen. Du kannst die Karten danach in Anki frei bearbeiten.',
     },
     {
       q: 'Kann ich ein ganzes Lehrbuch hochladen?',

@@ -63,6 +63,6 @@ The same goes for a song or poem whose lines sit in separate blocks — each lin
 
 Overlapping cloze fires when a card's answer is a list of 2 or more items, or when a page is a single paragraph that splits into 2 or more sentences or clauses. A single item or clause becomes one normal cloze card. Other cards are untouched.
 
-This includes Word documents. A .docx section — a heading followed by a bullet list — normally converts to one card with the whole list on the back. With overlapping cloze on, that list fans out into one card per bullet instead.
+This includes Word documents. A .docx section — a heading followed by a bullet list — normally converts to one card per bullet, with the heading on each front. With overlapping cloze on, that list becomes one cloze card per bullet instead, each hiding its own bullet.
 
 The result is a standard Cloze deck — it downloads, syncs, and studies like any other.

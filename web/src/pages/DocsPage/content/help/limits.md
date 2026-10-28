@@ -33,6 +33,8 @@ Free covers anonymous and signed-in users without a paid plan.
 | Free                    | 100               |
 | Subscription / Lifetime | No fixed cap      |
 
+The cap counts pages that become image cards (page pairs, one card per page) and PowerPoint slides rendered as images; a PDF that becomes one card per heading has no page cap.
+
 PDFs over the free limit return: _PDF exceeds maximum page limit of 100 for free and anonymous users._
 
 ## AI-generated flashcards

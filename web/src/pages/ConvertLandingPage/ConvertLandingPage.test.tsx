@@ -96,6 +96,16 @@ describe('ConvertLandingPage', () => {
     expect(answer).toContain(enCommon.upload.form.aiRescueMake);
   });
 
+  it('tells word-to-anki readers a list under a heading becomes one card per item', () => {
+    const faq = CONVERT_LANDING_PAGES.get('word-to-anki')?.faqs.find(
+      (item) => item.q === 'What in my document becomes the front of the card?'
+    );
+
+    expect(faq?.a).toContain(
+      'A list under a heading, or four or more short paragraphs, becomes one card per item instead'
+    );
+  });
+
   it('renders NotFoundPage for an unknown slug', () => {
     renderAtSlug('unknown-format');
     expect(

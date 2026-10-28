@@ -63,6 +63,6 @@ Dasselbe gilt für ein Lied oder Gedicht, dessen Zeilen in getrennten Blöcken s
 
 Überlappende Cloze wird ausgelöst, wenn die Antwort einer Karte eine Liste aus 2 oder mehr Elementen ist, oder wenn eine Seite ein einzelner Absatz ist, der sich in 2 oder mehr Sätze oder Teilsätze aufteilt. Ein einzelnes Element oder ein einzelner Teilsatz wird zu einer normalen Cloze-Karte. Andere Karten bleiben unberührt.
 
-Das schließt Word-Dokumente ein. Ein .docx-Abschnitt — eine Überschrift gefolgt von einer Aufzählungsliste — wird normalerweise zu einer Karte mit der ganzen Liste auf der Rückseite. Mit eingeschalteter überlappender Cloze fächert sich diese Liste stattdessen in eine Karte pro Aufzählungspunkt auf.
+Das schließt Word-Dokumente ein. Ein .docx-Abschnitt — eine Überschrift gefolgt von einer Aufzählungsliste — wird normalerweise zu einer Karte pro Aufzählungspunkt, mit der Überschrift auf jeder Vorderseite. Mit eingeschalteter überlappender Cloze wird diese Liste stattdessen zu einer Cloze-Karte pro Aufzählungspunkt, die jeweils ihren eigenen Punkt verdeckt.
 
 Das Ergebnis ist ein standardmäßiges Cloze-Deck — es lädt herunter, synchronisiert und lernt sich wie jedes andere.

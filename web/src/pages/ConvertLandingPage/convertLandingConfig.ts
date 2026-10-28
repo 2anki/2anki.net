@@ -62,7 +62,7 @@ const pdfToAnki: LandingCopy = {
     'Convert a lecture PDF, slide export, or textbook chapter into a .apkg deck. Text becomes question-and-answer cards, scanned pages become image cards, and AI mode handles dense chapters.',
   h1: 'Convert PDF to Anki — flashcards from lecture slides and textbook chapters',
   subhead:
-    'Drop a lecture PDF, slide export, or textbook chapter and download a .apkg deck. 2anki reads the text into question-and-answer cards, falls back to image cards when a page has no text, and can write cards with AI when the PDF is dense.',
+    'Drop a lecture PDF, slide export, or textbook chapter and download a .apkg deck. 2anki reads the text into question-and-answer cards, asks what to make when a PDF has no text it can use, and can write cards with AI when the PDF is dense.',
   whatComesAcross: ankiFidelityProof,
   faqs: [
     {
@@ -71,7 +71,7 @@ const pdfToAnki: LandingCopy = {
     },
     {
       q: 'What about scanned PDFs and slide decks?',
-      a: 'A photo scan with no text layer gives 2anki nothing to read, so the upload page asks what the cards should be: "Two pages per card" (page 1 is the front, page 2 the back), "One card per page", or, for one file on a paid plan, "Make cards with AI". Slides that are mostly pictures get the same question; turn on "Extract text from PDFs" in the card options to make text cards from their text instead. For text cards from a photo scan, add a text layer with OCR in macOS Preview or Adobe Acrobat first.',
+      a: 'A photo scan with no text layer gives 2anki nothing to read, so the upload page asks what the cards should be: "Two pages per card" (page 1 is the front, page 2 the back), "One card per page" (you add the answers in Anki), or, for one file on a paid plan, "Make cards with AI". Slides that are mostly pictures get the same question; turn on "Extract text from PDFs" in the card options to make text cards from their text instead. For text cards from a photo scan, add a text layer with OCR in macOS Preview or Adobe Acrobat first.',
     },
     {
       q: 'Is there an AI mode for dense chapters?',
@@ -824,7 +824,7 @@ const wordToAnki: LandingCopy = {
   pathname: '/convert/word-to-anki',
   title: 'Word to Anki — convert a .docx to flashcards | 2anki',
   description:
-    'Upload a Word .docx and download an Anki deck. Headings and bold text become card fronts, the body becomes the back. No add-on required.',
+    'Upload a Word .docx and download an Anki deck. Headings become card fronts, the text under them becomes the back. No add-on required.',
   h1: 'Word to Anki — convert a Word document into flashcards',
   subhead:
     'Upload a .docx and download a .apkg deck. Headings become card fronts, the text beneath becomes the back. No add-on.',
@@ -836,7 +836,7 @@ const wordToAnki: LandingCopy = {
     },
     {
       q: 'What in my document becomes the front of the card?',
-      a: "Headings. Each heading (H1 through H6) starts a new card and becomes its front; the paragraphs, lists, and images beneath it — up to the next heading — become the back. If your notes have no headings, add them where each card should begin, or you'll get one large card instead of many.",
+      a: 'Headings. Each heading (H1 through H6) starts a new card and becomes its front; the paragraphs and images beneath it — up to the next heading — become the back. A list under a heading, or four or more short paragraphs, becomes one card per item instead, with the heading on each front. If your notes have no headings, add them where each card should begin.',
     },
     {
       q: 'Can I convert a Google Doc to Anki this way?',
