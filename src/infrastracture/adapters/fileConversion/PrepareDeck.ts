@@ -1080,9 +1080,7 @@ async function buildClaudeDeck(
       input.settings.cardSize,
       fieldMapping,
       optionsForFile(f)
-    ).then((decks) =>
-      withUserNoteTypes(withDeckStyle(decks, input.settings), input.settings)
-    );
+    ).then((decks) => withDeckStyle(decks, input.settings));
 
   const { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped } =
     await runClaudeConversion(
@@ -1119,7 +1117,12 @@ async function buildClaudeDeck(
     );
   }
 
-  const deckInfo = aiDecks as unknown as Deck[];
+  // Applied to the merged decks, so cards salvaged after a credit trip get the
+  // user's note types too.
+  const deckInfo = withUserNoteTypes(
+    aiDecks,
+    input.settings
+  ) as unknown as Deck[];
   // Counted per file against the media that file was actually offered, so an
   // image handed to one file but skipped there is not masked by another file
   // using a different image.

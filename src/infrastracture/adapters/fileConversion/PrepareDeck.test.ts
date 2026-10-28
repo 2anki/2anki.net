@@ -236,7 +236,7 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
       files: [{ name: 'test.html', contents: '<p>Front</p>' }],
       settings: makeSettings({
         'claude-ai-flashcards': 'true',
-        template: 'notion',
+        template: 'notionstyle',
         basic_model_name: 'My Basic',
         cloze_model_name: 'My Cloze',
         input_model_name: 'My Input',
@@ -248,7 +248,7 @@ describe('PrepareDeck — Claude AI flashcards branch', () => {
     const configuredDecks = CustomExporterMock.mock.results[0].value.configure
       .mock.calls[0][0] as Array<{ settings: Record<string, unknown> }>;
     expect(configuredDecks[0].settings).toMatchObject({
-      template: 'notion',
+      template: 'notionstyle',
       basicModelName: 'My Basic',
       clozeModelName: 'My Cloze',
       inputModelName: 'My Input',

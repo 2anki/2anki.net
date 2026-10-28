@@ -3978,7 +3978,7 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
     fs.writeFileSync(
       path.join(workspaceBase, 'job-obj-settings', 'conversion-settings.json'),
       JSON.stringify({
-        template: 'notion',
+        template: 'notionstyle',
         basic_model_name: 'My Basic',
         cloze_model_name: 'My Cloze',
       })
@@ -4026,11 +4026,81 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
       Array<{ settings: Record<string, unknown> }>,
     ];
     expect(decks[0].settings).toMatchObject({
-      template: 'notion',
+      template: 'notionstyle',
       basicModelName: 'My Basic',
       clozeModelName: 'My Cloze',
       inputModelName: 'n2a-input',
       useNotionId: true,
+    });
+  });
+
+  it("attaches the user's saved custom templates to a restarted AI deck", async () => {
+    await insertDoneJob();
+    fs.writeFileSync(
+      path.join(workspaceBase, 'job-obj-settings', 'conversion-settings.json'),
+      JSON.stringify({ template: 'custom', basic_model_name: 'My Basic' })
+    );
+    mockGenerateDeckInfo.mockResolvedValue([
+      {
+        name: 'Deck',
+        image: '',
+        style: null,
+        id: 1,
+        settings: { template: 'specialstyle', basicModelName: 'n2a-basic' },
+        cards: [{ name: 'q', back: 'a', tags: [], cloze: false, media: [] }],
+      },
+    ]);
+    const customBasic = {
+      parent: 'n2a-basic',
+      name: 'My Basic',
+      front: '<b>{{Front}}</b>',
+      back: '{{Back}}',
+      styling: '.card { color: teal; }',
+      storageKey: 'n2a-basic',
+    };
+    const attachCustomTemplates = vi.fn(
+      async (_owner: string, settings: { n2aBasic?: unknown }) => {
+        settings.n2aBasic = customBasic;
+      }
+    );
+    const exporterMock = vi.mocked(CustomExporter);
+    exporterMock.mockClear();
+
+    const service = new UploadService(
+      buildRepository(),
+      new JobRepository(db),
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({
+        settings: {
+          attachCustomTemplates,
+        } as unknown as ISettingsRepository,
+      })
+    );
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+    await service.restartClaudeJob(buildRestartRequest(), res);
+    for (let i = 0; i < 200 && exporterMock.mock.results.length === 0; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    const configure = (
+      exporterMock.mock.results[0].value as { configure: Mock }
+    ).configure;
+    for (let i = 0; i < 200 && configure.mock.calls.length === 0; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+
+    expect(attachCustomTemplates).toHaveBeenCalledWith(
+      '42',
+      expect.objectContaining({ template: 'custom' })
+    );
+    const [decks] = configure.mock.calls[0] as [
+      Array<{ settings: Record<string, unknown> }>,
+    ];
+    expect(decks[0].settings).toMatchObject({
+      template: 'custom',
+      basicModelName: 'My Basic',
+      n2aBasic: customBasic,
     });
   });
 

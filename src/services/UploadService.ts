@@ -572,13 +572,7 @@ async function runClaudeRestartFiles(
           settings?.cardSize,
           settings?.fieldMapping,
           options
-        ).then((decks) => {
-          const userSettings = settings ?? new CardOption({});
-          return withUserNoteTypes(
-            withDeckStyle(decks, userSettings),
-            userSettings
-          );
-        })
+        ).then((decks) => withDeckStyle(decks, settings ?? new CardOption({})))
       );
     } catch (error) {
       if (error instanceof AiCreditsExhaustedError) {
@@ -1103,6 +1097,9 @@ class UploadService {
     }
 
     const settings = loadPersistedConversionSettings(workspaceDir);
+    if (settings != null && settings.n2aBasic == null) {
+      await this.settingsRepository.attachCustomTemplates(owner, settings);
+    }
     const fallbackNames = loadPdfImageFallbackNames(workspaceDir);
     const ownerNumeric = Number(owner);
     const userId =
@@ -1135,7 +1132,10 @@ class UploadService {
       onProgress
     );
 
-    const deckInfo = deckInfoArrays.flat().filter((d) => d.cards.length > 0);
+    const deckInfo = withUserNoteTypes(
+      deckInfoArrays.flat().filter((d) => d.cards.length > 0),
+      settings ?? new CardOption({})
+    );
     if (deckInfo.length === 0) {
       throw tripped
         ? new AiCreditsExhaustedError()
