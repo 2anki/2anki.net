@@ -311,7 +311,7 @@ const wordToAnki: AnswerConfig = {
   sections: [
     {
       heading: 'What carries over from a .docx file',
-      body: "2anki reads the document's structure. Each heading becomes a card front, and the text under it becomes the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead, with the heading on each front and any nested bullets on the back. The whole document becomes one deck. Images embed directly in the cards. Bold, italics, and lists keep their formatting. Strikethrough text on a card becomes a tag on that card.",
+      body: "2anki reads the document's structure. Each heading becomes a card front, and the text under it becomes the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead, with the heading on each front and the item and its nested bullets on the back. The whole document becomes one deck. Images embed directly in the cards. Bold, italics, and lists keep their formatting. Strikethrough text on a card becomes a tag on that card.",
     },
     {
       heading: 'Format your document for clean cards',
@@ -327,7 +327,7 @@ const wordToAnki: AnswerConfig = {
     },
     {
       heading: 'Tables and two-column notes',
-      body: 'A two-column table — term on the left, definition on the right — converts cleanly, with each row becoming a card. In a document with no headings, keep your term-and-definition notes in a table and the whole document turns into a deck in one pass. Once the document has a heading, a table lands on the back of a heading card instead.',
+      body: 'In a document with no headings, a two-column table — term on the left, definition on the right — converts cleanly, with each row becoming a card, so the whole document turns into a deck in one pass. A table under a heading goes on the back of that heading card instead.',
     },
   ],
   faqs: [
@@ -431,7 +431,7 @@ const googleDocsToAnki: AnswerConfig = {
     },
     {
       heading: 'What carries over',
-      body: '2anki reads the structure of a .docx export. Each heading becomes a card front, and the text under it becomes the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead, with the heading on each front and any nested bullets on the back. The whole doc becomes one deck. Images in a .docx file embed directly in the cards. Bold, italics, and lists keep their formatting. Strikethrough text on a card becomes a tag on that card.',
+      body: '2anki reads the structure of a .docx export. Each heading becomes a card front, and the text under it becomes the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead, with the heading on each front and the item and its nested bullets on the back. The whole doc becomes one deck. Images in a .docx file embed directly in the cards. Bold, italics, and lists keep their formatting. Strikethrough text on a card becomes a tag on that card.',
     },
     {
       heading: 'Format your doc for clean cards',

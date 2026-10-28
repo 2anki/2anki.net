@@ -54,14 +54,26 @@ describe('slide PDF landing copy describes the cards a slide PDF makes', () => {
     }
   );
 
-  it.each([medicalLectureSlidesCopy, usmleCopy, nursingCopy])(
-    '$pathname says nested bullets stay on the back of their card',
+  it('says nested bullets stay on the back of their slide card', () => {
+    expect(whatComesAcross(medicalLectureSlidesCopy, 'Nested lists')).toContain(
+      "Nested bullets stay on the back of their slide's card"
+    );
+  });
+
+  it.each([usmleCopy, nursingCopy])(
+    '$pathname scopes nested bullets on the back to a text slide PDF, since any PDF is accepted',
     (copy) => {
       expect(whatComesAcross(copy, 'Nested lists')).toContain(
-        'stay on the back of'
+        "In a text slide PDF, nested bullets stay on the back of their slide's card"
       );
     }
   );
+
+  it('scopes the USMLE slide titles claim to a text slide PDF', () => {
+    expect(whatComesAcross(usmleCopy, 'Slide titles')).toContain(
+      'In a text slide PDF, each slide becomes a card'
+    );
+  });
 
   it.each([medicalLectureSlidesCopy, usmleCopy])(
     '$pathname does not promise PDF bold and italic carry through',

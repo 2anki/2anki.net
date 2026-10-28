@@ -35,11 +35,11 @@ const usmleCopy: LandingCopy = {
     },
     {
       title: 'Slide titles',
-      body: 'In a slide PDF, each slide becomes a card, with the slide title on the front and its bullets on the back.',
+      body: 'In a text slide PDF, each slide becomes a card, with the slide title on the front and its bullets on the back.',
     },
     {
       title: 'Nested lists',
-      body: 'Nested bullets stay on the back of the card above them, in the order you wrote them, so pathophysiology steps and differential diagnosis lists read as one answer.',
+      body: "In a text slide PDF, nested bullets stay on the back of their slide's card, in the order you wrote them, so pathophysiology steps and differential diagnosis lists read as one answer.",
     },
   ],
   faqs: [

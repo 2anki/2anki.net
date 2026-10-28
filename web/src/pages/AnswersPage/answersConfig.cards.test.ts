@@ -92,7 +92,7 @@ describe('answers guides describe the cards a PDF or Word upload makes', () => {
     (slug) => {
       const claims = everyClaim(page(slug)).join('\n');
       expect(claims).toContain(
-        'Each heading becomes a card front, and the text under it becomes the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead'
+        'Each heading becomes a card front, and the text under it becomes the back. A list under a heading, or 4 or more short paragraphs, becomes one card per item instead, with the heading on each front and the item and its nested bullets on the back.'
       );
       expect(claims).not.toContain(
         'Each bullet under a heading becomes its own card'
@@ -124,7 +124,9 @@ describe('answers guides describe the cards a PDF or Word upload makes', () => {
       }
       expect(
         claims.filter((text) =>
-          /no heading sits above|no headings above it/i.test(text)
+          /no heading sits above|no headings above it|once the document has a heading/i.test(
+            text
+          )
         )
       ).toEqual([]);
     }
