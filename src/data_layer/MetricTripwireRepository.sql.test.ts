@@ -179,7 +179,7 @@ describe('MetricTripwireRepository generated SQL', () => {
     const check = buildRecordCheckQuery(pg, '2026-10-26', 2, at);
 
     expect(alert.toSQL().sql).toBe(
-      'insert into "events" ("created_at", "name", "props") values (?, ?, ?)'
+      'insert into "events" ("created_at", "name", "props") values (?, ?, ?) returning "id"'
     );
     expect(alert.toSQL().bindings).toEqual([
       at,

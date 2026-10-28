@@ -182,11 +182,13 @@ export function buildRecordAlertQuery(
   day: string,
   at: Date
 ): Knex.QueryBuilder {
-  return db('events').insert({
-    name: ALERT_EVENT,
-    props: JSON.stringify(serverProps({ metric, day })),
-    created_at: at,
-  });
+  return db('events')
+    .insert({
+      name: ALERT_EVENT,
+      props: JSON.stringify(serverProps({ metric, day })),
+      created_at: at,
+    })
+    .returning('id');
 }
 
 export function buildRecordCheckQuery(
@@ -206,7 +208,8 @@ export interface IMetricTripwireRepository {
   countRates(start: Date, end: Date): Promise<TripwireRateCounts>;
   lastCheckedAt(): Promise<Date | null>;
   hasAlerted(metric: TripwireMetricKey, day: string): Promise<boolean>;
-  recordAlert(metric: TripwireMetricKey, day: string): Promise<void>;
+  recordAlert(metric: TripwireMetricKey, day: string): Promise<number>;
+  releaseAlert(id: number): Promise<void>;
   recordCheck(day: string, tripped: number): Promise<void>;
 }
 
@@ -270,8 +273,18 @@ export class MetricTripwireRepository implements IMetricTripwireRepository {
     return row != null;
   }
 
-  async recordAlert(metric: TripwireMetricKey, day: string): Promise<void> {
-    await buildRecordAlertQuery(this.database, metric, day, new Date());
+  async recordAlert(metric: TripwireMetricKey, day: string): Promise<number> {
+    const [row] = await buildRecordAlertQuery(
+      this.database,
+      metric,
+      day,
+      new Date()
+    );
+    return typeof row === 'object' ? row.id : row;
+  }
+
+  async releaseAlert(id: number): Promise<void> {
+    await this.database('events').where({ id, name: ALERT_EVENT }).delete();
   }
 
   async recordCheck(day: string, tripped: number): Promise<void> {

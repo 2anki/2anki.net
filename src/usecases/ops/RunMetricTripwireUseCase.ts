@@ -119,8 +119,15 @@ export class RunMetricTripwireUseCase {
     };
   }
 
+  // Claims each alert before sending and gives the claims back if the send
+  // fails, so a crash or a failed write after the email cannot send the same
+  // alert again on the next tick.
   private async alert(day: string, fresh: DroppedMetric[]): Promise<void> {
     const noun = fresh.length === 1 ? 'rate' : 'rates';
+    const claims: number[] = [];
+    for (const entry of fresh) {
+      claims.push(await this.repository.recordAlert(entry.metric.key, day));
+    }
     try {
       await this.sendAlert(
         `[2anki] Metric tripwire: ${fresh.length} ${noun} dropped on ${day}`,
@@ -128,10 +135,9 @@ export class RunMetricTripwireUseCase {
       );
     } catch (error) {
       console.error('[metric-tripwire] alert email failed:', error);
-      return;
-    }
-    for (const entry of fresh) {
-      await this.repository.recordAlert(entry.metric.key, day);
+      for (const claim of claims.reverse()) {
+        await this.repository.releaseAlert(claim);
+      }
     }
   }
 }

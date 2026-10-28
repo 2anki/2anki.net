@@ -36,7 +36,7 @@ read:
   - .claude/docs/parallel-pr-coordination.md
 
 # After every edit, do the cheap check. Full /check (web typecheck + vitest +
-# biome) is opt-in via `/run pnpm --filter ... ...` — running it on every edit
+# oxlint) is opt-in via `/run bash scripts/check.sh` — running it on every edit
 # is too slow for the conversion path.
 lint-cmd:
   - "typescript: bash -c 'pnpm exec tsc -p tsconfig.json --noEmit'"
