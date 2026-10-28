@@ -221,6 +221,33 @@ describe('LoginForm', () => {
     expect(screen.queryByText('Sent!')).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['sent', { message: 'ok' }],
+    ['rate limited', { message: 'ok' }],
+    ['suppressed', { message: 'suppressed', suppressed: true }],
+  ])(
+    'shows "Sent!" when a resend from the check-email screen answers 200 (%s)',
+    async (_label, body) => {
+      renderLoginForm();
+      fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+        target: { value: 'test@example.com' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Email me a sign-in link' })
+      );
+      await screen.findByText('Check your email');
+
+      mockRequestMagicLink.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(body),
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Resend link' }));
+
+      expect(await screen.findByText('Sent!')).toBeInTheDocument();
+    }
+  );
+
   it('keeps an MCP connector sign-in redirect and says the link could not be sent', async () => {
     mockRequestMagicLink.mockResolvedValue({ ok: false, status: 500 });
     renderLoginForm('/login?redirect=%2Fmcp%2Fauthorize%3Fclient_id%3Dabc');

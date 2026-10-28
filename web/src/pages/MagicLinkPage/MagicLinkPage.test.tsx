@@ -104,13 +104,15 @@ describe('MagicLinkPage', () => {
     expect(screen.getByPlaceholderText('Email address')).toBeInTheDocument();
   });
 
-  it('confirms a new link was sent when the resend succeeds', async () => {
+  it('confirms a new link was sent when the resend succeeds, keeping an MCP connector redirect', async () => {
     mockValidateMagicToken.mockResolvedValue({
       ok: false,
       json: () => Promise.resolve({ message: 'Expired' }),
     });
     mockRequestMagicLink.mockResolvedValue({ ok: true, status: 200 });
-    renderMagicLinkPage('?token=bad');
+    renderMagicLinkPage(
+      '?token=bad&redirect=%2Fmcp%2Fauthorize%3Fclient_id%3Dabc'
+    );
 
     fireEvent.change(await screen.findByPlaceholderText('Email address'), {
       target: { value: 'reader@example.com' },
@@ -120,6 +122,11 @@ describe('MagicLinkPage', () => {
     expect(
       await screen.findByText('A new link has been sent to reader@example.com.')
     ).toBeInTheDocument();
+    expect(mockRequestMagicLink).toHaveBeenCalledWith(
+      'reader@example.com',
+      'login',
+      '/mcp/authorize?client_id=abc'
+    );
   });
 
   it('says a new link could not be sent when the resend fails', async () => {
