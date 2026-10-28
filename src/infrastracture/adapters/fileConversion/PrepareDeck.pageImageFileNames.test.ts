@@ -85,7 +85,7 @@ describe('PrepareDeck — a page-image deck whose file name a URL would escape',
     }
   });
 
-  async function convert(name: string) {
+  async function convert(name: string, options: Record<string, string> = {}) {
     const workspace = new Workspace(true, 'fs');
     workspaces.push(workspace);
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -94,7 +94,10 @@ describe('PrepareDeck — a page-image deck whose file name a URL would escape',
       const result = await PrepareDeck({
         name,
         files: [{ name, contents: SLIDES }],
-        settings: new CardOption(CardOption.LoadDefaultOptions()),
+        settings: new CardOption({
+          ...CardOption.LoadDefaultOptions(),
+          ...options,
+        }),
         noLimits: true,
         workspace,
       });
@@ -129,6 +132,21 @@ describe('PrepareDeck — a page-image deck whose file name a URL would escape',
       const plain = await convert('lecture.ppt');
       const escaped = await convert(name);
 
+      expect(escaped).toEqual(plain);
+    }
+  );
+  it.each(ESCAPED_NAMES)(
+    'builds the same page-pair deck from a PDF a plain name gets, for a name with $label',
+    async ({ name }) => {
+      const pdfName = name.replace(/\.ppt$/, '.pdf');
+      const pagePairs = { 'pdf-page-pairs': 'true' };
+      const plain = await convert('lecture.pdf', pagePairs);
+      const escaped = await convert(pdfName, pagePairs);
+
+      expect(plain.flatMap((card) => card.media)).toEqual([
+        pageMedia(1),
+        pageMedia(2),
+      ]);
       expect(escaped).toEqual(plain);
     }
   );
