@@ -104,6 +104,24 @@ describe('MagicLinkPage', () => {
     expect(screen.getByPlaceholderText('Email address')).toBeInTheDocument();
   });
 
+  it('confirms a new link was sent when the resend succeeds', async () => {
+    mockValidateMagicToken.mockResolvedValue({
+      ok: false,
+      json: () => Promise.resolve({ message: 'Expired' }),
+    });
+    mockRequestMagicLink.mockResolvedValue({ ok: true, status: 200 });
+    renderMagicLinkPage('?token=bad');
+
+    fireEvent.change(await screen.findByPlaceholderText('Email address'), {
+      target: { value: 'reader@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new link' }));
+
+    expect(
+      await screen.findByText('A new link has been sent to reader@example.com.')
+    ).toBeInTheDocument();
+  });
+
   it('says a new link could not be sent when the resend fails', async () => {
     mockValidateMagicToken.mockResolvedValue({
       ok: false,

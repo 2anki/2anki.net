@@ -183,6 +183,66 @@ describe('LoginForm', () => {
     expect(screen.queryByText('Check your email')).not.toBeInTheDocument();
   });
 
+  it('says the link could not be sent from the password step too', async () => {
+    mockRequestMagicLink.mockResolvedValue({ ok: false, status: 500 });
+    renderLoginForm();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.click(screen.getByText('Use password instead'));
+    fireEvent.click(screen.getByText('Send a login link instead'));
+
+    expect(
+      await screen.findByText(
+        "We couldn't send your sign-in link right now. Try again in a minute, or use your password below."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Check your email')).not.toBeInTheDocument();
+  });
+
+  it('shows the resend error, not "Sent!", when resending from the check-email screen fails', async () => {
+    renderLoginForm();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' })
+    );
+    await screen.findByText('Check your email');
+
+    mockRequestMagicLink.mockResolvedValue({ ok: false, status: 500 });
+    fireEvent.click(screen.getByRole('button', { name: 'Resend link' }));
+
+    expect(
+      await screen.findByText(
+        "Couldn't send another link right now. Check your inbox and spam, or email support@2anki.net."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Sent!')).not.toBeInTheDocument();
+  });
+
+  it('keeps an MCP connector sign-in redirect and says the link could not be sent', async () => {
+    mockRequestMagicLink.mockResolvedValue({ ok: false, status: 500 });
+    renderLoginForm('/login?redirect=%2Fmcp%2Fauthorize%3Fclient_id%3Dabc');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' })
+    );
+
+    expect(
+      await screen.findByText(
+        "We couldn't send your sign-in link right now. Try again in a minute, or use your password below."
+      )
+    ).toBeInTheDocument();
+    expect(mockRequestMagicLink).toHaveBeenCalledWith(
+      'test@example.com',
+      'login',
+      '/mcp/authorize?client_id=abc'
+    );
+  });
+
   it('forwards a safe redirect from the URL to the magic-link request', async () => {
     renderLoginForm('/login?redirect=/upload');
     fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {

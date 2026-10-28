@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ForgotPasswordForm from './ForgotPasswordForm';
+import { UserNotice } from '../../../lib/errors/UserNotice';
 
 const mockRequestMagicLink = vi.fn();
 
@@ -38,10 +39,11 @@ describe('ForgotPasswordForm', () => {
 
     submit('reader@example.com');
 
-    await waitFor(() =>
-      expect(setError).toHaveBeenCalledWith(
-        new Error("Couldn't send the link just now. Try again in a moment.")
-      )
+    await waitFor(() => expect(setError).toHaveBeenCalledTimes(1));
+    const [notice] = setError.mock.calls[0];
+    expect(notice).toBeInstanceOf(UserNotice);
+    expect(notice.message).toBe(
+      "Couldn't send the link just now. Try again in a moment."
     );
     expect(screen.queryByText('Check your email')).not.toBeInTheDocument();
   });
