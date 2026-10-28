@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { SlideUnit } from '../parser/sourceUnits/extractPptxSourceUnits';
-import { SLIDE_SOURCE_CLASS } from '../parser/slideSource';
+import { SLIDE_SOURCE_ATTRIBUTE } from '../parser/slideSource';
 
 // Node writes a path to disk as UTF-8, which turns a lone surrogate (from a
 // multipart filename*, a Dropbox or Drive name, an MCP filename) into U+FFFD.
@@ -69,12 +69,12 @@ function toggleCard(front: string, back: string): string {
 }
 
 // A back with no text of its own (only the slide image, or nothing) gets the
-// slide's chrome as one quiet source line: a list would read like an answer,
+// slide's chrome as one source line: a list would read like an answer,
 // and overlapping cloze would turn each line into a note of its own.
 function chromeSourceLine(chromeParagraphs: string[]): string {
   return chromeParagraphs.length === 0
     ? ''
-    : `<p class="${SLIDE_SOURCE_CLASS}">${chromeParagraphs.join(' · ')}</p>`;
+    : `<p ${SLIDE_SOURCE_ATTRIBUTE}>${chromeParagraphs.join(' · ')}</p>`;
 }
 
 // Called only when every slide has its rendered image, so every slide gets a

@@ -123,6 +123,25 @@ const listLecture = Buffer.from(
   })
 );
 
+const runOnLecture = Buffer.from(
+  zipSync({
+    'ppt/slides/slide1.xml': slide([
+      textShape('<p:ph type="title"/>', 'Mitosis'),
+      `<p:sp><p:nvSpPr><p:nvPr><p:ph idx="1"/></p:nvPr></p:nvSpPr><p:txBody><a:p><a:r><a:t>Prophase</a:t></a:r></a:p><a:p><a:r><a:t>Metaphase</a:t></a:r></a:p><a:p><a:r><a:t>Anaphase</a:t></a:r></a:p></p:txBody></p:sp>`,
+      footer,
+      textShape('<p:ph type="dt" sz="half" idx="10"/>', '10/6/2026'),
+      slideNumber('1'),
+    ]),
+    'ppt/slides/slide2.xml': slide([
+      slideNumber('19'),
+      textShape('', '03'),
+      textShape('', 'Exocytosis'),
+      textShape('', 'Ca2+ influx triggers fusion'),
+      footer,
+    ]),
+  })
+);
+
 function pageMedia(page: number): string {
   return `${getUniqueFileName(pageImage(page))}.png`;
 }
@@ -158,10 +177,7 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
     }
   });
 
-  async function convert(
-    options: Record<string, string>,
-    deck: Buffer = figureLecture
-  ) {
+  async function convertWith(settings: CardOption, deck: Buffer) {
     workspace = new Workspace(true, 'fs');
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
@@ -169,10 +185,7 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
       const result = await PrepareDeck({
         name: 'lecture.pptx',
         files: [{ name: 'lecture.pptx', contents: deck }],
-        settings: new CardOption({
-          ...CardOption.LoadDefaultOptions(),
-          ...options,
-        }),
+        settings,
         noLimits: true,
         workspace,
       });
@@ -181,6 +194,16 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
       log.mockRestore();
       debug.mockRestore();
     }
+  }
+
+  function convert(
+    options: Record<string, string>,
+    deck: Buffer = figureLecture
+  ) {
+    return convertWith(
+      new CardOption({ ...CardOption.LoadDefaultOptions(), ...options }),
+      deck
+    );
   }
 
   it.each(['show-all', 'windowed'])(
@@ -286,7 +309,21 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
       ]);
     });
 
-    it('types a one-line body or speaker note, never a slide number or footer, when backs are plain text', async () => {
+    it('types the speaker note of a picture slide, never a slide number or footer, with no saved options merged', async () => {
+      const cards = await convertWith(
+        new CardOption(mcpOptionsToCardSettings({ noteType: 'input' })),
+        typingLecture
+      );
+
+      expect(typing(cards)).toEqual([
+        { typed: false, answer: '' },
+        { typed: false, answer: '' },
+        { typed: true, answer: 'Label the phases' },
+        { typed: false, answer: '' },
+      ]);
+    });
+
+    it('types a short body or speaker note, never a slide number or footer, when backs are plain text', async () => {
       const cards = await convert(
         {
           ...mcpOptionsToCardSettings({ noteType: 'input' }),
@@ -330,6 +367,37 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
         typed: false,
       },
       { front: 'Cell Biology · 2', back: '[slide image]', typed: false },
+    ]);
+  });
+
+  it('runs a plain-text back of several lines into one typed answer and makes no reversed card for it (Basic and reversed)', async () => {
+    vi.mocked(getPageCount).mockResolvedValue(2);
+    const cards = await convert(
+      {
+        ...mcpOptionsToCardSettings({ noteType: 'input' }),
+        paragraph: 'true',
+        'basic-reversed': 'true',
+      },
+      runOnLecture
+    );
+
+    expect(
+      cards.map((card) => ({
+        front: visibleText(card.name),
+        typed: card.enableInput,
+        answer: card.answer,
+      }))
+    ).toEqual([
+      {
+        front: 'Mitosis {{type:Input}}',
+        typed: true,
+        answer: 'ProphaseMetaphaseAnaphase',
+      },
+      {
+        front: 'Exocytosis {{type:Input}}',
+        typed: true,
+        answer: '03Ca2+ influx triggers fusion',
+      },
     ]);
   });
 

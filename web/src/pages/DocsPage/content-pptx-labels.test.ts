@@ -18,6 +18,10 @@ const LOCALES = [
     options: enCardOptions.options,
     promise: 'never the slide number',
     slideImage: 'shows the slide image as the question',
+    sourceLine:
+      'plus the slide number and footer on a slide with no bullet points or notes',
+    where: 'in the card options',
+    imageLost: 'the cards lose the slide image',
   },
   {
     language: 'de',
@@ -25,6 +29,10 @@ const LOCALES = [
     options: deCardOptions.options,
     promise: 'nie die Foliennummer',
     slideImage: 'zeigt das Folienbild als Frage',
+    sourceLine:
+      'hat eine Folie weder Stichpunkte noch Notizen, kommen Foliennummer und Fußzeile dazu',
+    where: 'in den Kartenoptionen',
+    imageLost: 'fehlt den Karten das Folienbild',
   },
 ];
 
@@ -58,6 +66,27 @@ describe('PowerPoint help copy keeps slide numbers off the front only on the def
     '$language file formats page says a picture slide with no other text shows the slide image',
     ({ root, slideImage }) => {
       expect(powerPointRow(root)).toContain(slideImage);
+    }
+  );
+
+  it.each(LOCALES)(
+    '$language file formats page says a slide with no bullet points or notes gets its slide number and footer on the back',
+    ({ root, sourceLine }) => {
+      expect(powerPointRow(root)).toContain(sourceLine);
+    }
+  );
+
+  it.each(LOCALES)(
+    '$language file formats page says the two options are in the card options',
+    ({ root, where }) => {
+      expect(powerPointRow(root)).toContain(where);
+    }
+  );
+
+  it.each(LOCALES)(
+    '$language file formats page says the cards lose the slide image with either option off',
+    ({ root, imageLost }) => {
+      expect(powerPointRow(root)).toContain(imageLost);
     }
   );
 });

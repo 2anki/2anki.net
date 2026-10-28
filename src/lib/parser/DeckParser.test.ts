@@ -828,6 +828,53 @@ test('a toggle card with a long or multi-line answer stays a plain input-disable
   expect(card.name).not.toContain('{{type:Input}}');
 });
 
+function capitalsDeck(back: string) {
+  const html = `<html><head><title>Capitals</title></head><body><article class="page sans"><header><h1 class="page-title">Capitals</h1></header><div class="page-body">
+<ul class="toggle"><li><details open=""><summary>Capital of France</summary>${back}</details></li></ul>
+</div></article></body></html>`;
+
+  const workspace = new Workspace(true, 'fs');
+  return {
+    workspace,
+    parser: new DeckParser({
+      name: 'capitals.html',
+      settings: new CardOption({
+        cherry: 'false',
+        cloze: 'false',
+        'enable-input': 'true',
+      }),
+      files: [{ name: 'capitals.html', contents: html }],
+      noLimits: true,
+      workspace,
+    }),
+  };
+}
+
+test('a hand-written toggle whose back is only the slide-source marker stays a basic card with typed answers on', async () => {
+  const { parser, workspace } = capitalsDeck(
+    '<p data-2anki-slide-source>Paris</p>'
+  );
+  await parser.build(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.enableInput).toBe(false);
+  expect(card.answer).toBe('');
+  expect(card.name).not.toContain('{{type:Input}}');
+  expect(card.back).toContain('Paris');
+});
+
+test('a hand-written toggle whose back has a class named slide-source still becomes a real input card', async () => {
+  const { parser, workspace } = capitalsDeck(
+    '<p class="slide-source">Paris</p>'
+  );
+  await parser.build(workspace);
+
+  const card = parser.payload[0].cards[0];
+  expect(card.enableInput).toBe(true);
+  expect(card.answer).toBe('Paris');
+  expect(card.name).toContain('{{type:Input}}');
+});
+
 test('a bold-marked answer still takes priority over the plain-back fallback', async () => {
   const html = `<html><head><title>Cells</title></head><body><article class="page sans"><header><h1 class="page-title">Cells</h1></header><div class="page-body">
 <ul class="toggle"><li><details open=""><summary>The powerhouse of the cell is the <strong>mitochondrion</strong></summary><p>Found in eukaryotic cells</p></details></li></ul>

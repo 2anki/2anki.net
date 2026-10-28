@@ -595,7 +595,7 @@ describe('extractPptxSourceUnits — slide chrome', () => {
     );
 
     expect(html).toContain(
-      '<summary><img src="pdf-x/slide-1.png" /></summary><p class="slide-source">7</p></details>'
+      '<summary><img src="pdf-x/slide-1.png" /></summary><p data-2anki-slide-source>7</p></details>'
     );
   });
 
@@ -1009,28 +1009,28 @@ describe('extractPptxSourceUnits — a .pptx without exactly one embedded image 
 });
 
 describe('extractPptxSourceUnits — markup typed on a slide stays text in the card HTML', () => {
-  const escapedTag = '&lt;img src=x onerror=alert(1)&gt;';
   const picture =
     '<p:pic><p:nvPicPr><p:cNvPr name="image"/></p:nvPicPr></p:pic>';
-  const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
-    escapedTag,
-  ]);
-  const slideNumber = slideNumberShapeXml(
-    '<p:ph type="sldNum" sz="quarter" idx="12"/>',
-    escapedTag
-  );
-  const lecture = buildPptx([
-    {
-      xml: slideOfShapesXml([
-        shapeXml('<p:ph type="title"/>', ['Mitosis']),
-        shapeXml('<p:ph idx="1"/>', [escapedTag]),
-        footer,
-        slideNumber,
-      ]),
-    },
-    { xml: slideOfShapesXml([picture, footer, slideNumber]) },
-  ]);
   const renderedPages = ['/ws/pdf-x/slide-1.png', '/ws/pdf-x/slide-2.png'];
+
+  function lectureTyping(text: string): Buffer {
+    const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [text]);
+    const slideNumber = slideNumberShapeXml(
+      '<p:ph type="sldNum" sz="quarter" idx="12"/>',
+      text
+    );
+    return buildPptx([
+      {
+        xml: slideOfShapesXml([
+          shapeXml('<p:ph type="title"/>', ['Mitosis']),
+          shapeXml('<p:ph idx="1"/>', [text]),
+          footer,
+          slideNumber,
+        ]),
+      },
+      { xml: slideOfShapesXml([picture, footer, slideNumber]) },
+    ]);
+  }
 
   function markupIn(html: string) {
     const $ = cheerio.load(html);
@@ -1045,17 +1045,27 @@ describe('extractPptxSourceUnits — markup typed on a slide stays text in the c
     };
   }
 
-  it.each([
+  const typedMarkup = [
+    { form: 'an escaped tag', text: '&lt;img src=x onerror=alert(1)&gt;' },
+    { form: 'a raw tag', text: '<img src=x onerror=alert(1)>' },
+  ];
+  const builders = [
     { builder: 'combineSlidesIntoHTML', combine: combineSlidesIntoHTML },
     {
       builder: 'combineSlidesWithChromeIntoHTML',
       combine: combineSlidesWithChromeIntoHTML,
     },
-  ])(
-    'adds no element or attribute from slide text, footer or slide number with $builder',
-    ({ combine }) => {
+  ];
+
+  it.each(
+    typedMarkup.flatMap((typed) =>
+      builders.map((builder) => ({ ...typed, ...builder }))
+    )
+  )(
+    'adds no element or attribute from $form in slide text, footer or slide number with $builder',
+    ({ text, combine }) => {
       const html = combine(
-        extractPptxSourceUnits(lecture),
+        extractPptxSourceUnits(lectureTyping(text)),
         renderedPages,
         'lecture.pdf',
         '/ws'
