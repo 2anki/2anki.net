@@ -6,7 +6,7 @@
   "everyCard": "Get every card now",
   "gateBody": "Get a pass, then drop the file again for all of them. A free account gets the first {{cap}}.",
   "anonBody": "Without an account you get {{cap}} cards. A pass lifts the limit, no account needed.",
-  "previewSaved": "A free account gets the first {{shown}}. The rest are saved for 7 days: get a pass and all {{total}} land in Downloads, no re-upload.",
+  "previewSaved": "A free account gets the first {{shown}}. The rest are saved for 7 days: get a pass and all {{total}} land in My decks, no re-upload.",
   "previewNotSaved": "A free account gets the first {{shown}}. Get a pass, then drop the file again for all {{total}}.",
   "semester": "Semester Pass · {{price}}",
   "semesterHint": "120 days, no card limit",

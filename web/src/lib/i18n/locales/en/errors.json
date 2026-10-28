@@ -25,7 +25,7 @@
     "apkgGone": {
       "title": "This deck is no longer available.",
       "detail": "Uploaded decks are removed after a while. Convert or upload it again to preview it.",
-      "action": "Back to downloads"
+      "action": "Back to My decks"
     },
     "notionPageNotFound": {
       "title": "We couldn't open that Notion page.",

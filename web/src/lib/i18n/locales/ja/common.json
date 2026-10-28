@@ -191,7 +191,7 @@
       "fetching": "{{source}} から {{filename}} を取得しています",
       "deckReady": "デッキの準備ができました",
       "savedToDownloads": "{{deckName}} をダウンロードに保存しました",
-      "downloadRecoveredNote": "ダウンロードが完了しませんでしたが、デッキはダウンロード一覧に保存されています。",
+      "downloadRecoveredNote": "ダウンロードが完了しませんでしたが、デッキはマイデッキに保存されています。",
       "downloadRecoveredNoteAnon": "ダウンロードが完了しませんでしたが、デッキは準備できています。今すぐダウンロードしてください。保存期間は1日だけです。",
       "creditsUsed_other": "このデッキはAIクレジットを{{count}}使用しました。",
       "downloadDeck": "デッキをダウンロード",

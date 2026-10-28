@@ -158,8 +158,8 @@
   "createAccount": {
     "aria": "Utwórz darmowe konto, aby zapisać swoje talie",
     "headline": "Ta talia istnieje tylko na tym urządzeniu",
-    "body": "Talia {{deckName}} powstała w trybie gościa, więc nie ma kopii online, do której można wrócić. Z darmowym kontem każda przekonwertowana talia trafia do twoich pobrań — pobierzesz ją ponownie kiedy chcesz, z dowolnego urządzenia.",
-    "bodyNoName": "Ta talia powstała w trybie gościa, więc nie ma kopii online, do której można wrócić. Z darmowym kontem każda przekonwertowana talia trafia do twoich pobrań — pobierzesz ją ponownie kiedy chcesz, z dowolnego urządzenia.",
+    "body": "Talia {{deckName}} powstała w trybie gościa, więc nie ma kopii online, do której można wrócić. Z darmowym kontem każda przekonwertowana talia trafia do sekcji Moje talie — pobierzesz ją ponownie kiedy chcesz, z dowolnego urządzenia.",
+    "bodyNoName": "Ta talia powstała w trybie gościa, więc nie ma kopii online, do której można wrócić. Z darmowym kontem każda przekonwertowana talia trafia do sekcji Moje talie — pobierzesz ją ponownie kiedy chcesz, z dowolnego urządzenia.",
     "cta": "Zapisz swoje talie — za darmo"
   },
   "accessBanner": {

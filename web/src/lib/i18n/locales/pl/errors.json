@@ -25,7 +25,7 @@
     "apkgGone": {
       "title": "Ta talia nie jest już dostępna.",
       "detail": "Przesłane talie są usuwane po pewnym czasie. Przekonwertuj ją lub prześlij ponownie, aby zobaczyć podgląd.",
-      "action": "Wróć do pobranych"
+      "action": "Wróć do sekcji Moje talie"
     },
     "notionPageNotFound": {
       "title": "Nie udało się otworzyć tej strony Notion.",

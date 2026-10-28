@@ -14,7 +14,7 @@
     "converting": "Convirtiendo…",
     "convertToAnki": "Convertir a Anki",
     "openInNotion": "Abrir en Notion",
-    "alreadyConverting": "Esta página ya se está convirtiendo: revisa Descargas en un momento.",
+    "alreadyConverting": "Esta página ya se está convirtiendo: revisa Mis mazos en un momento.",
     "convertFailed": "No se pudo iniciar la conversión. Inténtalo de nuevo en un momento.",
     "cards_one": "{{count}} tarjeta",
     "cards_other": "{{count}} tarjetas",
@@ -69,7 +69,7 @@
   },
   "apkg": {
     "missingId": "Falta el id de la subida.",
-    "backToDownloads": "← Volver a Descargas",
+    "backToDownloads": "← Volver a Mis mazos",
     "previewTitle": "Vista previa",
     "deckPreview": "Vista previa del mazo",
     "cardsLoaded": "{{loaded}} de {{total}} tarjetas cargadas",

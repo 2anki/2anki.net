@@ -163,7 +163,7 @@ export function classifyError(error: unknown): FriendlyError {
         'Uploaded decks are removed after a while. Convert or upload it again to preview it.'
       ),
       actionLink: {
-        text: tr('messages.apkgGone.action', 'Back to downloads'),
+        text: tr('messages.apkgGone.action', 'Back to My decks'),
         to: '/downloads',
       },
     };

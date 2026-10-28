@@ -14,7 +14,7 @@
     "converting": "変換中…",
     "convertToAnki": "Ankiに変換",
     "openInNotion": "Notionで開く",
-    "alreadyConverting": "このページはすでに変換中です。まもなくダウンロードを確認してください。",
+    "alreadyConverting": "このページはすでに変換中です。まもなくマイデッキを確認してください。",
     "convertFailed": "変換を開始できませんでした。まもなくもう一度お試しください。",
     "cards_other": "{{count}}枚のカード",
     "skipped": "{{value}}件スキップ",
@@ -63,7 +63,7 @@
   },
   "apkg": {
     "missingId": "アップロードIDがありません。",
-    "backToDownloads": "← ダウンロードに戻る",
+    "backToDownloads": "← マイデッキに戻る",
     "previewTitle": "プレビュー",
     "deckPreview": "デッキのプレビュー",
     "cardsLoaded": "{{total}}枚中{{loaded}}枚のカードを読み込み済み",

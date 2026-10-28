@@ -192,7 +192,7 @@
       "fetching": "Récupération de {{filename}} depuis {{source}}",
       "deckReady": "Ton paquet est prêt",
       "savedToDownloads": "{{deckName}} a été enregistré dans tes téléchargements",
-      "downloadRecoveredNote": "Ton téléchargement ne s'est pas terminé — le paquet est enregistré dans tes téléchargements.",
+      "downloadRecoveredNote": "Ton téléchargement ne s'est pas terminé — le paquet est enregistré dans Mes paquets.",
       "downloadRecoveredNoteAnon": "Ton téléchargement ne s'est pas terminé — ton paquet est prêt. Télécharge-le maintenant ; nous ne le gardons qu'une journée.",
       "creditsUsed_one": "Ce paquet a utilisé {{count}} crédit IA.",
       "creditsUsed_other": "Ce paquet a utilisé {{count}} crédits IA.",

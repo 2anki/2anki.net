@@ -14,7 +14,7 @@
     "converting": "Wird konvertiert…",
     "convertToAnki": "In Anki konvertieren",
     "openInNotion": "In Notion öffnen",
-    "alreadyConverting": "Diese Seite wird bereits konvertiert — sieh gleich in den Downloads nach.",
+    "alreadyConverting": "Diese Seite wird bereits konvertiert — sieh gleich in Meine Stapel nach.",
     "convertFailed": "Konvertierung konnte nicht gestartet werden. Versuche es gleich noch einmal.",
     "cards_one": "{{count}} Karte",
     "cards_other": "{{count}} Karten",
@@ -69,7 +69,7 @@
   },
   "apkg": {
     "missingId": "Upload-ID fehlt.",
-    "backToDownloads": "← Zurück zu den Downloads",
+    "backToDownloads": "← Zurück zu Meine Stapel",
     "previewTitle": "Vorschau",
     "deckPreview": "Stapel-Vorschau",
     "cardsLoaded": "{{loaded}} von {{total}} Karten geladen",

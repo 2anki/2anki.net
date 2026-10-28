@@ -14,7 +14,7 @@
     "converting": "Konwertowanie…",
     "convertToAnki": "Konwertuj do Anki",
     "openInNotion": "Otwórz w Notion",
-    "alreadyConverting": "Ta strona jest już konwertowana — za chwilę sprawdź Pobrane.",
+    "alreadyConverting": "Ta strona jest już konwertowana — za chwilę sprawdź sekcję Moje talie.",
     "convertFailed": "Nie udało się rozpocząć konwersji. Spróbuj ponownie za chwilę.",
     "cards_one": "{{count}} karta",
     "cards_few": "{{count}} karty",
@@ -81,7 +81,7 @@
   },
   "apkg": {
     "missingId": "Brak identyfikatora przesłania.",
-    "backToDownloads": "← Wróć do pobranych",
+    "backToDownloads": "← Wróć do sekcji Moje talie",
     "previewTitle": "Podgląd",
     "deckPreview": "Podgląd talii",
     "cardsLoaded": "Załadowano {{loaded}} z {{total}} kart",

@@ -59,7 +59,7 @@ describe('classifyError', () => {
     expect(result.title).not.toMatch(/Notion/i);
     expect(result.detail).not.toMatch(/Notion/i);
     expect(result.actionLink).toEqual({
-      text: 'Back to downloads',
+      text: 'Back to My decks',
       to: '/downloads',
     });
   });

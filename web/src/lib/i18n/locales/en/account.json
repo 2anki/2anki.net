@@ -158,8 +158,8 @@
   "createAccount": {
     "aria": "Create a free account to save your decks",
     "headline": "This deck lives only on this device",
-    "body": "You made {{deckName}} as a guest, so there's no online copy to come back to. With a free account, every deck you convert is saved to your downloads — re-download any of them, from any device.",
-    "bodyNoName": "You made this deck as a guest, so there's no online copy to come back to. With a free account, every deck you convert is saved to your downloads — re-download any of them, from any device.",
+    "body": "You made {{deckName}} as a guest, so there's no online copy to come back to. With a free account, every deck you convert is saved to My decks — re-download any of them, from any device.",
+    "bodyNoName": "You made this deck as a guest, so there's no online copy to come back to. With a free account, every deck you convert is saved to My decks — re-download any of them, from any device.",
     "cta": "Save your decks — free"
   },
   "accessBanner": {

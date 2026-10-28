@@ -158,8 +158,8 @@
   "createAccount": {
     "aria": "Kostenloses Konto erstellen, um deine Stapel zu sichern",
     "headline": "Dieser Stapel existiert nur auf diesem Gerät",
-    "body": "Du hast {{deckName}} als Gast erstellt — es gibt keine Online-Kopie, zu der du zurückkehren kannst. Mit einem kostenlosen Konto wird jeder Stapel, den du konvertierst, in deinen Downloads gespeichert — lade ihn jederzeit erneut herunter, von jedem Gerät.",
-    "bodyNoName": "Du hast diesen Stapel als Gast erstellt — es gibt keine Online-Kopie, zu der du zurückkehren kannst. Mit einem kostenlosen Konto wird jeder Stapel, den du konvertierst, in deinen Downloads gespeichert — lade ihn jederzeit erneut herunter, von jedem Gerät.",
+    "body": "Du hast {{deckName}} als Gast erstellt — es gibt keine Online-Kopie, zu der du zurückkehren kannst. Mit einem kostenlosen Konto wird jeder Stapel, den du konvertierst, in Meine Stapel gespeichert — lade ihn jederzeit erneut herunter, von jedem Gerät.",
+    "bodyNoName": "Du hast diesen Stapel als Gast erstellt — es gibt keine Online-Kopie, zu der du zurückkehren kannst. Mit einem kostenlosen Konto wird jeder Stapel, den du konvertierst, in Meine Stapel gespeichert — lade ihn jederzeit erneut herunter, von jedem Gerät.",
     "cta": "Stapel sichern — kostenlos"
   },
   "accessBanner": {

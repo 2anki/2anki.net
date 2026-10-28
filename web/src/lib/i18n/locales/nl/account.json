@@ -158,8 +158,8 @@
   "createAccount": {
     "aria": "Maak een gratis account om je decks te bewaren",
     "headline": "Dit deck bestaat alleen op dit apparaat",
-    "body": "Je hebt {{deckName}} als gast gemaakt, dus er is geen online kopie om naar terug te keren. Met een gratis account wordt elk deck dat je omzet opgeslagen in je downloads — download ze later opnieuw, vanaf elk apparaat.",
-    "bodyNoName": "Je hebt dit deck als gast gemaakt, dus er is geen online kopie om naar terug te keren. Met een gratis account wordt elk deck dat je omzet opgeslagen in je downloads — download ze later opnieuw, vanaf elk apparaat.",
+    "body": "Je hebt {{deckName}} als gast gemaakt, dus er is geen online kopie om naar terug te keren. Met een gratis account wordt elk deck dat je omzet opgeslagen in Mijn decks — download ze later opnieuw, vanaf elk apparaat.",
+    "bodyNoName": "Je hebt dit deck als gast gemaakt, dus er is geen online kopie om naar terug te keren. Met een gratis account wordt elk deck dat je omzet opgeslagen in Mijn decks — download ze later opnieuw, vanaf elk apparaat.",
     "cta": "Bewaar je decks — gratis"
   },
   "accessBanner": {

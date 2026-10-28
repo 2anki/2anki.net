@@ -25,7 +25,7 @@
     "apkgGone": {
       "title": "Dieser Stapel ist nicht mehr verfügbar.",
       "detail": "Hochgeladene Stapel werden nach einer Weile entfernt. Konvertiere oder lade ihn erneut hoch, um eine Vorschau zu sehen.",
-      "action": "Zurück zu den Stapeln"
+      "action": "Zurück zu Meine Stapel"
     },
     "notionPageNotFound": {
       "title": "Wir konnten diese Notion-Seite nicht öffnen.",

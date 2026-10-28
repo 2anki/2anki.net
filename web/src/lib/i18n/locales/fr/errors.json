@@ -25,7 +25,7 @@
     "apkgGone": {
       "title": "Ce paquet n'est plus disponible.",
       "detail": "Les paquets téléversés sont supprimés au bout d'un moment. Convertis-le ou téléverse-le à nouveau pour l'afficher.",
-      "action": "Retour aux téléchargements"
+      "action": "Retour à Mes paquets"
     },
     "notionPageNotFound": {
       "title": "Nous n'avons pas pu ouvrir cette page Notion.",
