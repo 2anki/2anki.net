@@ -37,6 +37,17 @@ run() {
     "$@"
   fi
 }
+# Writes stdin to a root-owned file. A dry run drains stdin first: run would
+# return without reading it, and the writer could then die of SIGPIPE, which
+# pipefail turns into a failed deploy (exit 141).
+write_root_file() {
+  if [ "$DRY_RUN" = "1" ]; then
+    cat >/dev/null
+    log "DRY_RUN: sudo tee $1"
+  else
+    sudo tee "$1" >/dev/null
+  fi
+}
 
 wait_for_sha() {
   local url="$1" actual
@@ -87,10 +98,10 @@ swap_upstreams() {
   local port="$1"
   printf 'ProxyPass /api/upload http://127.0.0.1:%s/api/upload timeout=%s\nProxyPass /api/apkg http://127.0.0.1:%s/api/apkg timeout=%s\nProxyPass / http://127.0.0.1:%s/\nProxyPassReverse / http://127.0.0.1:%s/\n' \
     "$port" "$UPLOAD_PROXY_TIMEOUT_SECONDS" "$port" "$UPLOAD_PROXY_TIMEOUT_SECONDS" "$port" "$port" \
-    | run sudo tee "${UPSTREAM_CONF}.new" >/dev/null
+    | write_root_file "${UPSTREAM_CONF}.new"
   run sudo mv "${UPSTREAM_CONF}.new" "$UPSTREAM_CONF"
   printf 'RewriteEngine on\nRewriteCond %%{HTTP:Upgrade} =websocket [NC]\nRewriteRule ^/v/(.*)$ ws://127.0.0.1:%s/v/$1 [P,L]\n' \
-    "$port" | run sudo tee "${WS_UPSTREAM_CONF}.new" >/dev/null
+    "$port" | write_root_file "${WS_UPSTREAM_CONF}.new"
   run sudo mv "${WS_UPSTREAM_CONF}.new" "$WS_UPSTREAM_CONF"
 }
 
