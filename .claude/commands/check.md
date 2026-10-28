@@ -6,13 +6,10 @@ allowed-tools: Bash
 Run all checks in parallel via a single Bash call:
 
 ```bash
-pnpm typecheck & \
-pnpm arch & \
-pnpm --filter 2anki-web typecheck & \
-pnpm --filter 2anki-web test:run & \
-pnpm --filter 2anki-web lint & \
-wait
+bash scripts/check.sh
 ```
+
+It runs `pnpm typecheck`, `pnpm arch`, and the web `typecheck`, `test:run` and `lint` in parallel, waits on each, prints `check: FAILED, pnpm <leg>` for every leg that fails, and exits non-zero if any did. Trust the exit code: a bare `wait` used to return 0 whatever the legs did (#5070).
 
 The server leg is `typecheck` (`tsc -p . --noEmit`), never `build`. `build` is `tsc -p .` with no `outDir`, so it emits `.js` beside every `.ts`; TS module resolution then prefers the stale sibling and the cruise loses about 90% of its edges. `arch` runs `git clean -fX src` first to protect against that, but a `build` running *concurrently* re-emits during the cruise and blinds the `error`-severity rules this command exists to enforce. Same program, same errors, no emit.
 
