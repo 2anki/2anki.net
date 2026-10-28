@@ -237,6 +237,29 @@ describe('ReEngagementRepository.findByToken — abandoned checkout path', () =>
     expect(result).toBeNull();
   });
 
+  it('resolves an inactivity warning token to its userId', async () => {
+    await database('inactivity_emails').insert({
+      user_id: 42,
+      token: 'inactivity-tok',
+    });
+
+    const result = await repo.findByToken('inactivity-tok');
+
+    expect(result).toEqual({ id: expect.any(Number), userId: 42 });
+  });
+
+  it('resolves a pass-ending token to its userId', async () => {
+    await database('pass_winback_notifications').insert({
+      user_id: 61,
+      campaign: 'pass_ending:7',
+      token: 'pass-ending-tok',
+    });
+
+    const result = await repo.findByToken('pass-ending-tok');
+
+    expect(result).toEqual({ id: expect.any(Number), userId: 61 });
+  });
+
   it('resolves a price lock-in token to its userId', async () => {
     await database('price_lock_in_emails').insert({
       user_id: 99,
