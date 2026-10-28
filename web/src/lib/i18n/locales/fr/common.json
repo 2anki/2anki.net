@@ -880,7 +880,7 @@
     "comprehensiveHint": "Sur un long document, cela peut produire un très grand paquet. Pour des cartes moins nombreuses mais plus complètes, règle la taille de la carte sur Détaillé.",
     "comprehensiveHintLink": "Aller à Taille de la carte",
     "pagePairsAiNote": "L'option Deux pages font une carte est activée, donc un envoi composé uniquement de PDF ignore la conversion par IA. Toutes les deux pages forment une carte image.",
-    "cherryDefaultsWarning": "Cherry-pick est activé pour tous tes imports et toutes tes pages Notion. Seules les bascules marquées 🍒 deviennent des cartes, donc une page sans 🍒 donne un paquet vide.",
+    "cherryDefaultsWarning": "Cherry-pick est activé pour tous les imports et toutes les pages Notion qui utilisent ces réglages par défaut. Seules les bascules marquées 🍒 deviennent des cartes, donc une page sans 🍒 ne donne aucune carte. Marque les bascules voulues ou désactive Cherry-pick.",
     "pdfPageRange": {
       "label": "Pages",
       "placeholder": "ex. 12-30, 45",

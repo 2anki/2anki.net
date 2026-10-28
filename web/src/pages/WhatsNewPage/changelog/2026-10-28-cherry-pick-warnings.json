@@ -2,5 +2,5 @@
   "id": "2026-10-28-cherry-pick-warnings",
   "date": "2026-10-28",
   "type": "fix",
-  "title": "Card options now say up front that Cherry-pick leaves out every toggle without a 🍒, and warn when it is on for all your uploads"
+  "title": "Card options now say up front that Cherry-pick leaves out every toggle without a 🍒, and warn when it is on in your defaults"
 }

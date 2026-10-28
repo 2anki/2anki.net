@@ -525,7 +525,7 @@ describe('CardOptionsForm inline-code-toggles-become-cloze sub-option', () => {
 const PREREQ_CHERRY =
   'Works only with Cherry-pick, which makes cards only from toggles marked 🍒. Every other toggle is left out of your deck.';
 const CHERRY_DEFAULTS_WARNING =
-  'Cherry-pick is on for every upload and Notion page. Only toggles marked 🍒 become cards, so a page without any 🍒 makes an empty deck.';
+  'Cherry-pick is on for every upload and Notion page that uses these defaults. Only toggles marked 🍒 become cards, so a page without any 🍒 gives no cards. Mark the toggles you want, or turn Cherry-pick off.';
 
 describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
   beforeEach(() => {
@@ -543,7 +543,7 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
       new CardOptionModel(
         'section-tags',
         'Tag a whole section',
-        'Strike through a line under a parent toggle to tag every card nested beneath it — tag a whole section at once. Requires Cherry-pick mode.',
+        'Strike through a line under a parent toggle to tag every card nested beneath it. Works only with Cherry-pick on, and then only toggles marked 🍒 become cards.',
         false
       ),
     ]);
@@ -1328,6 +1328,23 @@ describe('CardOptionsForm cherry-pick warning on account defaults', () => {
     expect(screen.queryByText(CHERRY_DEFAULTS_WARNING)).toBeNull();
 
     fireEvent.click(cherry);
+
+    expect(
+      await screen.findByText(CHERRY_DEFAULTS_WARNING)
+    ).toBeInTheDocument();
+  });
+
+  it('warns on first render for someone who saved cherry-pick on earlier', async () => {
+    localStorage.setItem('cherry', 'true');
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'cherry',
+        'Cherry-pick using 🍒 emoji',
+        'Cherry-pick which toggles become cards.',
+        true
+      ),
+    ]);
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
 
     expect(
       await screen.findByText(CHERRY_DEFAULTS_WARNING)

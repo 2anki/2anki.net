@@ -880,7 +880,7 @@
     "comprehensiveHint": "Con un documento largo esto puede crear un mazo enorme. Para menos tarjetas y más completas, pon el tamaño de la tarjeta en Detallado.",
     "comprehensiveHintLink": "Ir a Tamaño de la tarjeta",
     "pagePairsAiNote": "Dos páginas forman una tarjeta está activado, así que una subida de solo PDF omite la conversión con IA. Cada dos páginas forman una tarjeta de imagen.",
-    "cherryDefaultsWarning": "La selección manual está activada para todas tus subidas y páginas de Notion. Solo las alternancias marcadas con 🍒 se convierten en tarjetas, así que una página sin 🍒 da un mazo vacío.",
+    "cherryDefaultsWarning": "La selección manual está activada para todas las subidas y páginas de Notion que usan estos ajustes predeterminados. Solo las alternancias marcadas con 🍒 se convierten en tarjetas, así que una página sin 🍒 no da ninguna tarjeta. Marca las alternancias que quieras o desactiva la selección manual.",
     "pdfPageRange": {
       "label": "Páginas",
       "placeholder": "p. ej. 12-30, 45",
