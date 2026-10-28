@@ -77,17 +77,25 @@ export class SendPauseResumeWarningsUseCase {
       return false;
     }
     const resumesAt = new Date(pause.resumesAtSeconds * 1000);
-    if (await this.repository.wasSent(row.email, resumesAt)) {
+    if (!(await this.repository.claimNotice(row.email, resumesAt))) {
       return false;
     }
 
     const recipient = row.linked_email ?? row.email;
-    await this.emailService.sendSubscriptionResumingSoonEmail(
-      recipient,
-      resumesAt,
-      formatAmount(pause.amountCents, pause.currency)
-    );
-    await this.repository.markSent(row.email, resumesAt);
-    return true;
+    try {
+      await this.emailService.sendSubscriptionResumingSoonEmail(
+        recipient,
+        resumesAt,
+        formatAmount(pause.amountCents, pause.currency)
+      );
+      return true;
+    } catch (error) {
+      await this.repository.releaseNotice(row.email, resumesAt);
+      console.error(
+        '[pause-resume-warnings] failed to send a warning:',
+        error instanceof Error ? error.message : 'unknown error'
+      );
+      return false;
+    }
   }
 }

@@ -136,6 +136,33 @@ describe('SendInactivityWarningsUseCase', () => {
       expect(repo.getSentUserIds()).toEqual(new Set([1, 2]));
     });
 
+    it('records the send before the email goes out', async () => {
+      repo.seedUsers([{ id: 1, name: 'Alice', email: 'alice@example.com' }]);
+      const recordedAtSend: boolean[] = [];
+      const emailService = makeEmailService({
+        sendInactivityWarningEmail: vi.fn(async () => {
+          recordedAtSend.push(repo.getSentUserIds().has(1));
+        }),
+      });
+      const useCase = new SendInactivityWarningsUseCase(repo, emailService);
+
+      await useCase.execute(false);
+
+      expect(recordedAtSend).toEqual([true]);
+    });
+
+    it('does not warn the same user again when the batch reruns', async () => {
+      repo.seedUsers([{ id: 1, name: 'Alice', email: 'alice@example.com' }]);
+      const emailService = makeEmailService();
+      const useCase = new SendInactivityWarningsUseCase(repo, emailService);
+
+      await useCase.execute(false);
+      const rerun = await useCase.execute(false);
+
+      expect(rerun).toEqual({ count: 0, dryRun: false });
+      expect(emailService.sendInactivityWarningEmail).toHaveBeenCalledTimes(1);
+    });
+
     it('continues sending to remaining users when one email fails', async () => {
       repo.seedUsers([
         { id: 1, name: 'Alice', email: 'alice@example.com' },

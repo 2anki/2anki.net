@@ -27,7 +27,7 @@ function makePayload(
 
 class FakeRepository implements IPauseResumeWarningRepository {
   rows: PausedSubscriptionRow[] = [];
-  sent = new Set<string>();
+  claimed = new Set<string>();
   lastWindow: [number, number] | null = null;
 
   async findPausedResumingBetween(from: number, to: number) {
@@ -35,12 +35,17 @@ class FakeRepository implements IPauseResumeWarningRepository {
     return this.rows;
   }
 
-  async wasSent(email: string, resumesAt: Date) {
-    return this.sent.has(`${email}|${resumesAt.toISOString()}`);
+  async claimNotice(email: string, resumesAt: Date) {
+    const key = `${email}|${resumesAt.toISOString()}`;
+    if (this.claimed.has(key)) {
+      return false;
+    }
+    this.claimed.add(key);
+    return true;
   }
 
-  async markSent(email: string, resumesAt: Date) {
-    this.sent.add(`${email}|${resumesAt.toISOString()}`);
+  async releaseNotice(email: string, resumesAt: Date) {
+    this.claimed.delete(`${email}|${resumesAt.toISOString()}`);
   }
 }
 
@@ -51,6 +56,10 @@ function makeEmailService() {
 }
 
 describe('SendPauseResumeWarningsUseCase', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('sends one warning per paused subscription inside the 3-day window', async () => {
     const repo = new FakeRepository();
     repo.rows = [
@@ -118,6 +127,64 @@ describe('SendPauseResumeWarningsUseCase', () => {
     expect(
       emailService.sendSubscriptionResumingSoonEmail
     ).toHaveBeenCalledTimes(1);
+  });
+
+  it('claims the notice before the email goes out, so a run cut short after the send never repeats it', async () => {
+    const repo = new FakeRepository();
+    repo.rows = [
+      {
+        email: 'stripe@example.com',
+        linked_email: null,
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+    ];
+    const claimedAtSend: boolean[] = [];
+    const emailService = {
+      sendSubscriptionResumingSoonEmail: vi.fn(async () => {
+        claimedAtSend.push(repo.claimed.size === 1);
+      }),
+    } as unknown as IEmailService;
+    const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
+
+    await useCase.execute(NOW);
+
+    expect(claimedAtSend).toEqual([true]);
+  });
+
+  it('releases the claim when a send fails, so the next run retries it', async () => {
+    const repo = new FakeRepository();
+    repo.rows = [
+      {
+        email: 'first@example.com',
+        linked_email: null,
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+      {
+        email: 'second@example.com',
+        linked_email: null,
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+    ];
+    const emailService = {
+      sendSubscriptionResumingSoonEmail: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('smtp down'))
+        .mockResolvedValue(undefined),
+    } as unknown as IEmailService;
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
+
+    const first = await useCase.execute(NOW);
+    const second = await useCase.execute(NOW);
+
+    expect(first.count).toBe(1);
+    expect(second.count).toBe(1);
+    expect(
+      emailService.sendSubscriptionResumingSoonEmail
+    ).toHaveBeenCalledTimes(3);
+    expect(
+      emailService.sendSubscriptionResumingSoonEmail
+    ).toHaveBeenLastCalledWith('first@example.com', expect.any(Date), '$7.99');
   });
 
   it('skips rows whose payload has no pause_collection', async () => {
