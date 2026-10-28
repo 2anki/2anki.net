@@ -123,6 +123,8 @@ describe('TrackEventUseCase', () => {
     'inactive_users_deleted',
     'ai_spend_alert_sent',
     'ai_credits_exhausted',
+    'mcp_tool_called',
+    'mcp_tool_result',
   ])(
     'drops a client-submitted %s so it cannot stand in for a server record',
     async (name) => {
