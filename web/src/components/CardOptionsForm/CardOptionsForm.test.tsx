@@ -1011,6 +1011,31 @@ describe('CardOptionsForm AI checkbox analytics', () => {
     expect(aiSwitchEvents()).toEqual([]);
     expect(localStorage.getItem('claude-ai-flashcards')).toBeNull();
   });
+
+  it('records the switch for an empty page id, which saves to the account defaults', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <CardOptionsForm
+            pageId=""
+            isLoggedIn
+            onReset={vi.fn()}
+            setError={vi.fn()}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.click(await aiCheckbox());
+
+    expect(aiSwitchEvents()).toEqual([
+      ['upload_ai_turned_on', { surface: 'card_options' }],
+    ]);
+    expect(localStorage.getItem('claude-ai-flashcards')).toBe('true');
+  });
 });
 
 describe('CardOptionsForm AI instruction presets', () => {

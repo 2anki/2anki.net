@@ -744,7 +744,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     const toggleCheckbox = (key: string, checked: boolean) => {
       setCheckboxValues((prev) => ({ ...prev, [key]: checked }));
       saveValueInLocalStorage(key, checked.toString(), pageId);
-      if (key === 'claude-ai-flashcards' && pageId == null) {
+      if (key === 'claude-ai-flashcards' && !pageId) {
         track(checked ? 'upload_ai_turned_on' : 'upload_ai_turned_off', {
           surface: 'card_options',
         });

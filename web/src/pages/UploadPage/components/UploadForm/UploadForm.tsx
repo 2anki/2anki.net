@@ -455,11 +455,15 @@ function UploadForm({
   const convertRef = useRef<HTMLButtonElement>(null);
   const downloadRef = useRef<HTMLAnchorElement>(null);
   // The files behind the last local submit, kept so a rescue button can send
-  // them back with the chosen rule. Remote (Dropbox, Drive) submits clear it:
-  // those bytes never reach the browser, so no button is offered for them. A
-  // PDF unlocked with its password clears it too: sent back without the
-  // password, it fails.
+  // them back with the chosen rule, and the account that sent them (undefined
+  // until the page has read the account). Remote (Dropbox, Drive) submits
+  // clear it: those bytes never reach the browser, so no button is offered
+  // for them. A PDF unlocked with its password clears it too: sent back
+  // without the password, it fails.
   const [rescueFiles, setRescueFiles] = useState<File[]>([]);
+  const [rescueFilesOwner, setRescueFilesOwner] = useState<
+    number | null | undefined
+  >(null);
   const lastFormDataRef = useRef<FormData | null>(null);
   const [waitingForDeck, setWaitingForDeck] = useState(false);
   const stopWaitingRef = useRef<(() => void) | null>(null);
@@ -1132,7 +1136,23 @@ function UploadForm({
     rerunWithAi(rescueFiles);
   };
 
+  // A file sent before the page read the account belongs to the account the
+  // page then shows: the session the server put the upload under.
+  useEffect(() => {
+    if (userLocalsLoading) return;
+    setRescueFilesOwner((owner) =>
+      owner === undefined ? currentOwnerId : owner
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocalsLoading]);
+
+  // Kept files go back only under the account that sent them: on a shared
+  // computer another account can sign in from another tab while a result is
+  // still on screen, and must not receive that file or pay for it.
+  const rescueFilesAreThisAccounts = rescueFilesOwner === currentOwnerId;
+
   const rerunWithAi = (files: File[]) => {
+    if (!rescueFilesAreThisAccounts) return;
     const formData = new FormData();
     for (const file of files) {
       formData.append('pakker', file, file.name);
@@ -1160,16 +1180,19 @@ function UploadForm({
       ? { file: thinDeckOfferFile, cardCount }
       : null;
 
-  // Offered only where the click brings Claude cards back: credits spent on
-  // the deck mean Claude already wrote it, whatever this browser sent; and two
-  // pages make one card keeps a PDF away from Claude.
+  // Offered only where the click brings Claude cards back. It follows what the
+  // last submit sent, not the toggle now, so turning Claude on after the deck
+  // keeps it. A signed-in paying account's AI upload always becomes a
+  // background job, so a deck shown here never ran Claude: the credits-used
+  // check only hides the offer should one ever arrive. Two pages make one
+  // card keeps a PDF away from Claude.
   const aiRebuildFormat =
     rescueFiles.length === 1 ? aiRebuildFormatOf(rescueFiles[0].name) : null;
   const aiRebuildEligible =
     zoneState === 'success' &&
     isAuthenticated &&
     isPaying &&
-    !aiOn &&
+    rescueFilesAreThisAccounts &&
     !lastSubmitUsedAi &&
     !sampleRun &&
     cardsHeldBack === 0 &&
@@ -1180,13 +1203,9 @@ function UploadForm({
       aiRebuildFormat === 'pdf' &&
       globalThis.localStorage?.getItem('pdf-page-pairs') === 'true'
     );
-  const aiRebuildCredits = useAiCredits(aiRebuildEligible);
+  const aiRebuildCreditsLeft = useAiCredits(aiRebuildEligible)?.credits ?? 0;
   const aiRebuildOffer =
-    aiRebuildEligible &&
-    aiRebuildCredits != null &&
-    aiRebuildCredits.credits > 0
-      ? aiRebuildFormat
-      : null;
+    aiRebuildEligible && aiRebuildCreditsLeft > 0 ? aiRebuildFormat : null;
   useEffect(() => {
     if (aiRebuildOffer != null) {
       track('upload_ai_rebuild_shown', { format: aiRebuildOffer });
@@ -1698,6 +1717,7 @@ function UploadForm({
     isRetry: boolean
   ): Promise<boolean> => {
     setRescueFiles(uploadedFiles);
+    setRescueFilesOwner(userLocalsLoading ? undefined : currentOwnerId);
     // A PDF with no readable text is the one thing the server will not guess
     // about: it asks which cards to make, unless this device already said.
     if (
@@ -2510,7 +2530,7 @@ function UploadForm({
       {aiRebuildOffer != null && (
         <div className={formStyles.aiRescueActions}>
           <p className={formStyles.rescueLead}>
-            {t('upload.form.aiRebuildLead')}
+            {t('upload.form.aiRebuildLead', { count: aiRebuildCreditsLeft })}
           </p>
           <button
             type="button"

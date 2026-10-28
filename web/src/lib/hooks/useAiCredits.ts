@@ -1,13 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 import { getAiCredits, AiCreditsResponse } from '../backend/getAiCredits';
+import { useUserLocals } from './useUserLocals';
 
 export const AI_CREDITS_QUERY_KEY = ['aiCredits'] as const;
 
 export type AiCreditsState = AiCreditsResponse;
 
 export const useAiCredits = (enabled: boolean): AiCreditsState | null => {
+  // The balance belongs to the signed-in account, so it is cached per
+  // account: a page whose session changes account never shows the last
+  // account's credits. Spend sites invalidate AI_CREDITS_QUERY_KEY, which
+  // still matches every account's entry.
+  const { data: userLocals } = useUserLocals();
   const { data } = useQuery({
-    queryKey: AI_CREDITS_QUERY_KEY,
+    queryKey: [...AI_CREDITS_QUERY_KEY, userLocals?.user?.id ?? null],
     queryFn: getAiCredits,
     enabled,
     // The sidebar keeps this query mounted on every logged-in page, so a

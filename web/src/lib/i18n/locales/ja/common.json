@@ -298,7 +298,7 @@
       "aiRescueLead": "Claude がこのファイルからカードを書くこともできます。",
       "aiRescueUpgrade": "有料プランなら AI でカードを作れます",
       "aiRescueMake": "AI でカードを作る",
-      "aiRebuildLead": "これらのカードはファイルのレイアウトから作成されました。Claude カードはご利用のプランに含まれています。",
+      "aiRebuildLead_other": "このデッキはAIを使わずに作成されました。作り直すとAIクレジットを使います（残り{{count}}）。新しいデッキはマイデッキに表示されます。",
       "aiRebuildButton": "Claude で作り直す",
       "rescueLead": "このファイルの内容からでもカードを作れます。",
       "rescueColumns_other": "表の列から {{n}} 枚のカードを作る",
