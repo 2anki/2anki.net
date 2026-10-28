@@ -398,6 +398,27 @@ describe('EmailService.sendConversionLinkEmail delivery contract', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it('logs an ops alert without a SendGrid key instead of sending it, leaving the body out', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await new UnimplementedEmailService().sendOpsAlertEmail(
+      'stripe-access',
+      'ops@example.com',
+      'Stripe access denied',
+      'secret-free body text'
+    );
+
+    expect(send).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledWith(
+      'sendOpsAlertEmail not handled',
+      'stripe-access',
+      'ops@example.com',
+      'Stripe access denied'
+    );
+    expect(JSON.stringify(info.mock.calls)).not.toContain('secret-free body');
+    info.mockRestore();
+  });
+
   it('lets the unimplemented service be awaited without delivering', async () => {
     const service = new UnimplementedEmailService();
 
