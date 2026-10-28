@@ -3802,10 +3802,12 @@ function UploadForm({
       }
       formData.set(KEPT_OWNER_FIELD, senderField(rescueFilesOwner));
 
+      const passToken = getStoredPassToken();
       const request = await globalThis.fetch(
         '/api/upload/retry-with-credential',
         {
           method: 'post',
+          headers: passToken == null ? {} : { 'X-Pass-Token': passToken },
           body: formData,
         }
       );

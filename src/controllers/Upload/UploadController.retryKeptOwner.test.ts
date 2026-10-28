@@ -303,6 +303,27 @@ describe('the card limits on a password unlock', () => {
     });
   });
 
+  it.each([
+    ['a subscriber', { owner: OWNER, patreon: false, subscriber: true }],
+    ['a lifetime account', { owner: OWNER, patreon: true, subscriber: false }],
+    [
+      'a signed-in pass holder',
+      { owner: OWNER, patreon: false, subscriber: true, passKind: '7d' },
+    ],
+  ])(
+    'lets %s unlock a deck of any size without counting it',
+    async (_who, locals) => {
+      cardUsage.cardsUsed = 99;
+      deckOf(300);
+
+      const response = await unlockWithoutFollowing({ locals });
+
+      expect(response.status).toBe(200);
+      expect(cardUsage.getCardUsage).not.toHaveBeenCalled();
+      expect(cardUsage.incrementCardUsage).not.toHaveBeenCalled();
+    }
+  );
+
   it('lets a pass holder unlock a deck of any size without counting it', async () => {
     deckOf(300);
 
