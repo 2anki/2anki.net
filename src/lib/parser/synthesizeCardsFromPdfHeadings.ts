@@ -26,7 +26,7 @@ const SENTENCE_TAIL = /[.,;]$/;
 // ranges ■-◿ and ←-⇿; another "-", "]" or literal backslash changes the match.
 const NOTE_BULLET_GLYPHS = '•‣·☐☑☒✓✔■-◿←-⇿';
 const LIST_MARKER = new RegExp(
-  `^(?:[-*${NOTE_BULLET_GLYPHS}]|\\d{1,3}[.)])(?:\\s|$)`
+  `^(?:[\\-*${NOTE_BULLET_GLYPHS}]|\\d{1,3}[.)])(?:\\s|$)`
 );
 // On slides, dingbats (➢ ❖ ♦) and the private-use code points that Symbol and
 // Wingdings bullets from PowerPoint exports extract as (U+F0B7 …) are bullets
@@ -39,13 +39,14 @@ const SLIDE_BULLET_GLYPHS = `${NOTE_BULLET_GLYPHS}➢➤❖♦\uF0B7\uF0A7\uF0D8
 // heading. A hyphen, `*` and numbers still need the space, or `-70 mV`,
 // `-itis` and `2)Coordination costs` would read as bullets.
 const SLIDE_LIST_MARKER = new RegExp(
-  `^(?:[${SLIDE_BULLET_GLYPHS}]|[–—]\\p{L}|(?:[-*–—]|\\d{1,3}[.)])(?:\\s|$))`,
+  `^(?:[${SLIDE_BULLET_GLYPHS}]|[–—]\\p{L}|(?:[\\-*–—]|\\d{1,3}[.)])(?:\\s|$))`,
   'u'
 );
-// On the first line of a page with CJK text only spaced markers count: a
-// glyph or dash glued to that line's text is taken as its title's.
+// The first line of a page with CJK text, when it has no Han, kana or Hangul
+// of its own, counts only spaced markers: a glyph or dash glued to its text
+// is taken as its title's.
 const SPACED_SLIDE_LIST_MARKER = new RegExp(
-  `^(?:[-*–—${SLIDE_BULLET_GLYPHS}]|\\d{1,3}[.)])(?:\\s|$)`,
+  `^(?:[\\-*–—${SLIDE_BULLET_GLYPHS}]|\\d{1,3}[.)])(?:\\s|$)`,
   'u'
 );
 // CJK headings carry a glyph glued to them (`■細胞の構造`, `◆【第1回】…`), so
@@ -207,10 +208,11 @@ function pageHasCjk(lines: PdfLine[], firstIndex: number): boolean {
   return false;
 }
 
-// A page's first line, once footers drop and detached markers join, is taken
-// as its title. On a page with Han, kana or Hangul, a glyph glued to it is
-// not a bullet, since such titles carry one whether or not they hold Han,
-// kana or Hangul themselves (`■ATP`, `■ＤＮＡ`); a spaced marker still is.
+// A line with Han, kana or Hangul reads with LIST_MARKER, first line or not,
+// so `– 細胞の構造` fronts a card. A page's first line, once footers drop and
+// detached markers join, is taken as its title: on a page with Han, kana or
+// Hangul, a glyph glued to it is not a bullet even when the line holds none
+// (`■ATP`, `■ＤＮＡ`), while a spaced marker still is.
 function slideListMarker(lines: PdfLine[], index: number): RegExp {
   const { text, pageIndex } = lines[index];
   if (CJK_CHARACTER.test(text)) {

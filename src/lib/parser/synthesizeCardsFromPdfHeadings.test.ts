@@ -2048,6 +2048,212 @@ describe('slide decks', () => {
     ]);
   });
 
+  const joinedAtpBullets = [
+    '•',
+    'ATP合成酵素が内膜でATPを作る',
+    '•',
+    '細胞のエネルギー通貨として使われる',
+    '2',
+  ];
+
+  it.each([
+    ['a part divider', '第2部', '■ATP'],
+    ['a title-only slide', '■ミトコンドリア', '■ATP synthase'],
+  ])(
+    'drops %s above a glued title whose bullets the join attaches, where main and the earlier rule both kept it',
+    (_name, onlyLine, title) => {
+      const pages: PdfPage[] = [
+        { text: [onlyLine, '1'].join('\n'), landscape: true },
+        { text: [title, ...joinedAtpBullets].join('\n'), landscape: true },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: title,
+          back: '• ATP合成酵素が内膜でATPを作る\n• 細胞のエネルギー通貨として使われる',
+        },
+      ]);
+    }
+  );
+
+  it.each([
+    ['en dash', '–', '•'],
+    ['➢', '➢', '➢'],
+  ])(
+    'drops a glued ■ATP whose detached %s sub-bullet the join turns into a heading, where main and the earlier rule kept it as a bullet',
+    (_name, subMarker, bulletMarker) => {
+      const pages: PdfPage[] = [
+        energySlide,
+        {
+          text: [
+            '■ATP',
+            subMarker,
+            '合成酵素は内膜にある',
+            bulletMarker,
+            'ミトコンドリアの内膜でATP合成酵素がATPを作る',
+            bulletMarker,
+            '細胞のエネルギー通貨として使われる',
+            '2',
+          ].join('\n'),
+          landscape: true,
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: '■細胞のエネルギー',
+          back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+        },
+        {
+          front: `${subMarker} 合成酵素は内膜にある`,
+          back: [
+            `${bulletMarker} ミトコンドリアの内膜でATP合成酵素がATPを作る`,
+            `${bulletMarker} 細胞のエネルギー通貨として使われる`,
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  it('drops a glued ■ATP over a subtitle whose bullets the join attaches, where the earlier rule gave ■ATP a card and main kept it as a bullet', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      {
+        text: ['■ATP', 'アデノシン三リン酸', ...joinedAtpBullets].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+      },
+      {
+        front: 'アデノシン三リン酸',
+        back: '• ATP合成酵素が内膜でATPを作る\n• 細胞のエネルギー通貨として使われる',
+      },
+    ]);
+  });
+
+  it.each(['– 細胞の構造', '➢ 細胞の構造'])(
+    'fronts a spaced marker over Han, kana or Hangul on the first line of a Japanese slide, as on main: %s',
+    (firstLine) => {
+      const pages: PdfPage[] = [
+        {
+          text: [firstLine, ...japaneseBullets].join('\n'),
+          landscape: true,
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        { front: firstLine, back: japaneseBullets.join('\n') },
+      ]);
+    }
+  );
+
+  it('keeps the glued Latin bullets under a restored ■ATP on its back, where the earlier rule fronted the first one', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      {
+        text: [
+          '■ATP',
+          '•ATP synthase',
+          '•Powers pumps, motors and biosynthesis',
+          '• 細胞のエネルギー通貨として使われる',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+      },
+      {
+        front: '■ATP',
+        back: [
+          '•ATP synthase',
+          '•Powers pumps, motors and biosynthesis',
+          '• 細胞のエネルギー通貨として使われる',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('fronts a glued ■Membranes on a Latin slide with a Japanese footer, its glued bullets on the back', () => {
+    const pages: PdfPage[] = [
+      latinSlideWithJapaneseFooter,
+      {
+        text: [
+          '■Membranes',
+          '•Cell membrane',
+          '•Phospholipid bilayer with embedded proteins',
+          '山田研究室',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Membrane Proteins',
+        back: '•Integral proteins span the bilayer\n•Peripheral proteins sit on one surface',
+      },
+      {
+        front: '■Membranes',
+        back: [
+          '•Cell membrane',
+          '•Phospholipid bilayer with embedded proteins',
+          '山田研究室',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('fronts only the restored title on slide 3 of 4, leaving the two slides before it out of the deck', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [...japaneseBullets, '1'].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          '• 拡散は濃度の高い方から低い方へ物質が移動する',
+          '• 能動輸送はATPを使って濃度勾配に逆らう',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: ['■ATP', ...atpBullets, '3'].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          '• 解糖系は細胞質で起こる',
+          '• クエン酸回路はミトコンドリアで起こる',
+          '4',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■ATP',
+        back: [
+          ...atpBullets,
+          '• 解糖系は細胞質で起こる',
+          '• クエン酸回路はミトコンドリアで起こる',
+        ].join('\n'),
+      },
+    ]);
+  });
+
   const ideographicSpace = '\u3000';
   const latinSlidesWithCjkPunctuation: Array<[string, string[]]> = [
     [
