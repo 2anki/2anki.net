@@ -4,5 +4,6 @@
   "downloading": "Download in corso",
   "storageBusy": "L'archivio è occupato in questo momento. Riprova il download tra poco.",
   "gone": "Quel mazzo non è più salvato. Carica di nuovo il file.",
-  "failed": "Il download non è partito. Controlla la connessione e riprova."
+  "failed": "Il download non è partito. Controlla la connessione e riprova.",
+  "unavailable": "Non è stato possibile scaricare il mazzo ora. Riprova più tardi."
 }

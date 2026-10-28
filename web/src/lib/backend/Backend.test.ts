@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JobsId } from '@server/data_layer/public/Jobs';
 import * as api from './api';
-import { Backend, RecoveryStorageBusyError } from './Backend';
+import {
+  Backend,
+  RecoveryStorageBusyError,
+  RecoveryUnavailableError,
+} from './Backend';
 import { UserNotice } from '../errors/UserNotice';
 import {
   getPendingUploadStore,
@@ -609,7 +613,7 @@ describe('Backend', () => {
       ).resolves.toBeNull();
     });
 
-    it.each([502, 503, 504])(
+    it.each([429, 502, 503, 504])(
       'says storage is busy on a %i, so the caller keeps the deck and offers a retry',
       async (status) => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status }));
@@ -628,16 +632,16 @@ describe('Backend', () => {
       ).resolves.toBeNull();
     });
 
-    it('rejects on an unexpected server error rather than reading it as gone', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 500 }));
+    it.each([401, 403, 500])(
+      'says the deck is unavailable on a %i rather than reading it as gone',
+      async (status) => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status }));
 
-      await expect(
-        backend.getAnonymousRecoveredDeck(token)
-      ).rejects.toBeInstanceOf(Error);
-      await expect(
-        backend.getAnonymousRecoveredDeck(token)
-      ).rejects.not.toBeInstanceOf(RecoveryStorageBusyError);
-    });
+        await expect(
+          backend.getAnonymousRecoveredDeck(token)
+        ).rejects.toBeInstanceOf(RecoveryUnavailableError);
+      }
+    );
   });
 
   describe('getCheckoutReceipt', () => {

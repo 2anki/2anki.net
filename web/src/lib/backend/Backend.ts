@@ -39,6 +39,7 @@ import {
   NOT_FOUND,
   OK,
   SERVICE_UNAVAILABLE,
+  TOO_MANY_REQUESTS,
   UNAUTHORIZED,
 } from './http';
 import { landingCampaignParams } from '../adClick';
@@ -54,6 +55,7 @@ export interface EmojiFeedbackReceipt {
 }
 
 const RECOVERY_BUSY_STATUSES = new Set([
+  TOO_MANY_REQUESTS,
   BAD_GATEWAY,
   SERVICE_UNAVAILABLE,
   GATEWAY_TIMEOUT,
@@ -63,6 +65,16 @@ export class RecoveryStorageBusyError extends Error {
   constructor() {
     super('Recovery storage is busy');
     this.name = 'RecoveryStorageBusyError';
+  }
+}
+
+export class RecoveryUnavailableError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`Recovery download failed: ${status}`);
+    this.name = 'RecoveryUnavailableError';
+    this.status = status;
   }
 }
 
@@ -488,7 +500,7 @@ export class Backend {
       return null;
     }
     if (response.status !== OK) {
-      throw new Error(`Recovery download failed: ${response.status}`);
+      throw new RecoveryUnavailableError(response.status);
     }
     const contentType = response.headers?.get('Content-Type') ?? '';
     if (!contentType.includes('application/octet-stream')) {

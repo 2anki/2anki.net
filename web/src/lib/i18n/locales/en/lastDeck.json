@@ -4,5 +4,6 @@
   "downloading": "Downloading",
   "storageBusy": "Storage is busy right now. Try the download again in a moment.",
   "gone": "That deck is no longer stored. Upload the file again.",
-  "failed": "The download didn't start. Check your connection and try again."
+  "failed": "The download didn't start. Check your connection and try again.",
+  "unavailable": "Couldn't download the deck right now. Try again later."
 }

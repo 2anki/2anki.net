@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { track } from '../../../../lib/analytics/track';
-import { RecoveryStorageBusyError } from '../../../../lib/backend/Backend';
+import {
+  RecoveryStorageBusyError,
+  RecoveryUnavailableError,
+} from '../../../../lib/backend/Backend';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import {
   getLastDeckStore,
@@ -11,11 +14,12 @@ import {
 import sharedStyles from '../../../../styles/shared.module.css';
 import formStyles from './UploadForm.module.css';
 
-type DownloadNotice = 'gone' | 'busy' | 'failed';
+type DownloadNotice = 'gone' | 'busy' | 'unavailable' | 'failed';
 
 const NOTICE_KEYS: Record<DownloadNotice, string> = {
   gone: 'gone',
   busy: 'storageBusy',
+  unavailable: 'unavailable',
   failed: 'failed',
 };
 
@@ -34,12 +38,20 @@ function saveDeck(deck: Blob, filename: string): void {
   globalThis.URL.revokeObjectURL(url);
 }
 
+function noticeFor(error: unknown): DownloadNotice {
+  if (error instanceof RecoveryStorageBusyError) return 'busy';
+  if (error instanceof RecoveryUnavailableError) return 'unavailable';
+  return 'failed';
+}
+
 export function LastDeckOffer() {
   const { t, i18n } = useTranslation('lastDeck');
+  const lineId = useId();
   const [lastDeck, setLastDeck] = useState<LastDeck | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [notice, setNotice] = useState<DownloadNotice | null>(null);
   const noticeRef = useRef<HTMLParagraphElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,8 +66,12 @@ export function LastDeckOffer() {
   }, []);
 
   useEffect(() => {
-    if (notice === 'gone') noticeRef.current?.focus();
-  }, [notice]);
+    if (notice === 'gone') {
+      noticeRef.current?.focus();
+    } else if (notice != null && !downloading) {
+      buttonRef.current?.focus();
+    }
+  }, [notice, downloading]);
 
   if (lastDeck == null && notice == null) return null;
 
@@ -76,9 +92,9 @@ export function LastDeckOffer() {
       saveDeck(blob, deck.deckName);
       track('anon_deck_refetched', { outcome: 'downloaded' });
     } catch (error) {
-      const busy = error instanceof RecoveryStorageBusyError;
-      setNotice(busy ? 'busy' : 'failed');
-      track('anon_deck_refetched', { outcome: busy ? 'busy' : 'failed' });
+      const failure = noticeFor(error);
+      setNotice(failure);
+      track('anon_deck_refetched', { outcome: failure });
     } finally {
       setDownloading(false);
     }
@@ -88,7 +104,7 @@ export function LastDeckOffer() {
     <div className={formStyles.lastDeck}>
       {lastDeck != null && (
         <>
-          <p className={formStyles.resumeText}>
+          <p id={lineId} className={formStyles.resumeText}>
             <Trans
               t={t}
               i18nKey="line"
@@ -107,10 +123,12 @@ export function LastDeckOffer() {
             />
           </p>
           <button
+            ref={buttonRef}
             type="button"
             className={`${sharedStyles.btnSecondary} ${sharedStyles.btnInline}`}
             disabled={downloading}
             aria-busy={downloading}
+            aria-describedby={lineId}
             onClick={() => void handleDownload(lastDeck)}
           >
             {downloading ? t('downloading') : t('download')}

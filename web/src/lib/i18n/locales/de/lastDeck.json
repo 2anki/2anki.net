@@ -4,5 +4,6 @@
   "downloading": "Wird heruntergeladen",
   "storageBusy": "Der Speicher ist gerade ausgelastet. Versuch den Download gleich noch einmal.",
   "gone": "Dieses Deck ist nicht mehr gespeichert. Lade die Datei noch einmal hoch.",
-  "failed": "Der Download hat nicht begonnen. Prüf deine Verbindung und versuch es noch einmal."
+  "failed": "Der Download hat nicht begonnen. Prüf deine Verbindung und versuch es noch einmal.",
+  "unavailable": "Das Deck lässt sich gerade nicht herunterladen. Versuch es später noch einmal."
 }
