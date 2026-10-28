@@ -592,6 +592,76 @@ describe('UploadPage AI off badge for a paying account', () => {
     }
   });
 
+  it('leaves out Turn on Claude cards once the plan has no AI credits left', async () => {
+    fakeLocals = { subscriber: true };
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+    stubCredits(0);
+    renderPage();
+
+    expect(
+      await screen.findByText(
+        '0 AI credits left. Your next deck builds without AI.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Turn on Claude cards' })
+    ).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Manage in Settings' })
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      state: 'on',
+      label: 'AI はオン',
+      user: { id: 42 },
+      locals: { subscriber: true },
+      ai: 'true',
+    },
+    {
+      state: 'off',
+      label: 'AI はオフ',
+      user: { id: 42 },
+      locals: { subscriber: true },
+      ai: 'false',
+    },
+    {
+      state: 'free',
+      label: 'AI はオフ',
+      user: { id: 42 },
+      locals: { patreon: false, subscriber: false },
+      ai: 'false',
+    },
+    {
+      state: 'signed-out',
+      label: 'Claude がカードを作成できます —',
+      user: null,
+      locals: undefined,
+      ai: 'false',
+    },
+  ])(
+    'ends each Japanese sentence in the $state badge with 。 and no space after it',
+    async ({ label, user, locals, ai }) => {
+      await i18n.changeLanguage('ja');
+      try {
+        fakeUser = user;
+        fakeLocals = locals;
+        globalThis.localStorage.setItem('claude-ai-flashcards', ai);
+        stubCredits(1347);
+        renderPage();
+
+        const badge = screen
+          .getByText(label)
+          .closest('[role="status"]') as HTMLElement;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(badge.textContent).not.toMatch(/\.|。 /);
+      } finally {
+        await i18n.changeLanguage('en');
+      }
+    }
+  );
+
   it('reads the credits once for the paying off state', async () => {
     fakeLocals = { subscriber: true };
     const fetchMock = stubCredits(1347);

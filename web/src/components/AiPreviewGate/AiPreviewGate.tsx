@@ -12,7 +12,6 @@ import styles from './AiPreviewGate.module.css';
 interface Props {
   readonly cards: AiPreviewCard[];
   readonly onContinueWithoutAi: () => void;
-  // True while the page checks the account before sending the file again.
   readonly busy?: boolean;
 }
 
@@ -114,7 +113,7 @@ export function AiPreviewGate({
         aria-busy={busy}
         onClick={onContinueWithoutAi}
       >
-        {t('secondaryCta')}
+        {busy ? t('common:upload.form.checkingAccount') : t('secondaryCta')}
       </button>
       <p className={styles.secondaryNote}>
         {t('secondaryNote', { cap: ANONYMOUS_CARD_CAP })}

@@ -8,7 +8,11 @@ vi.mock('./useUserLocals', () => ({ useUserLocals: vi.fn() }));
 
 import { AiCreditsResponse, getAiCredits } from '../backend/getAiCredits';
 import { useUserLocals } from './useUserLocals';
-import { AI_CREDITS_QUERY_KEY, useAiCredits } from './useAiCredits';
+import {
+  AI_CREDITS_QUERY_KEY,
+  useAiCredits,
+  useAiCreditsRead,
+} from './useAiCredits';
 
 function newQueryClient() {
   return new QueryClient({
@@ -131,5 +135,55 @@ describe('useAiCredits', () => {
     );
 
     await waitFor(() => expect(result.current).toEqual(balance(1335)));
+  });
+});
+
+describe('useAiCreditsRead', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    signedInAs(7);
+  });
+
+  it('is not settled while the balance is still loading', () => {
+    vi.mocked(getAiCredits).mockReturnValue(new Promise(() => {}));
+
+    const { result } = renderHook(() => useAiCreditsRead(true), {
+      wrapper: buildWrapper(),
+    });
+
+    expect(result.current).toEqual({ credits: null, settled: false });
+  });
+
+  it('is settled with no balance once a failed read has finished', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue(null);
+
+    const { result } = renderHook(() => useAiCreditsRead(true), {
+      wrapper: buildWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current).toEqual({ credits: null, settled: true })
+    );
+  });
+
+  it('is settled with the balance once the read answers', async () => {
+    vi.mocked(getAiCredits).mockResolvedValue(balance(42));
+
+    const { result } = renderHook(() => useAiCreditsRead(true), {
+      wrapper: buildWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(result.current).toEqual({ credits: balance(42), settled: true })
+    );
+  });
+
+  it('reads nothing and is not settled while disabled', () => {
+    const { result } = renderHook(() => useAiCreditsRead(false), {
+      wrapper: buildWrapper(),
+    });
+
+    expect(result.current).toEqual({ credits: null, settled: false });
+    expect(getAiCredits).not.toHaveBeenCalled();
   });
 });

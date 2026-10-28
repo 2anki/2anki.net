@@ -17,7 +17,6 @@ interface ThinDeckAiOfferProps {
   file: File;
   cardCount: number;
   isPaying: boolean;
-  // True while the page checks the account before sending the file again.
   busy?: boolean;
   onMakeFullDeck: () => void;
   onBeforeCheckout: () => Promise<void>;
@@ -61,14 +60,13 @@ export function ThinDeckAiOffer({
     );
   };
 
+  // A paying person's tap is recorded by the page once the file goes out.
   const unlock = async () => {
-    track('thin_deck_ai_unlock_clicked', {
-      plan: isPaying ? 'paying' : 'day_pass',
-    });
     if (isPaying) {
       onMakeFullDeck();
       return;
     }
+    track('thin_deck_ai_unlock_clicked', { plan: 'day_pass' });
     setCheckoutError(false);
     setCheckoutPending(true);
     try {
@@ -87,6 +85,13 @@ export function ThinDeckAiOffer({
     } finally {
       setCheckoutPending(false);
     }
+  };
+
+  const unlockLabel = (): string => {
+    if (busy) return t('common:upload.form.checkingAccount');
+    return isPaying
+      ? t('unlockPaying')
+      : t('unlockFree', { price: prices['24h'] });
   };
 
   return (
@@ -145,9 +150,7 @@ export function ThinDeckAiOffer({
             aria-busy={busy}
             onClick={() => void unlock()}
           >
-            {isPaying
-              ? t('unlockPaying')
-              : t('unlockFree', { price: prices['24h'] })}
+            {unlockLabel()}
           </button>
           <p className={styles.note}>
             {isPaying ? t('unlockPayingNote') : t('unlockFreeNote')}

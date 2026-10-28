@@ -6,13 +6,20 @@ export const AI_CREDITS_QUERY_KEY = ['aiCredits'] as const;
 
 export type AiCreditsState = AiCreditsResponse;
 
-export const useAiCredits = (enabled: boolean): AiCreditsState | null => {
+// The balance, and whether the read has finished: a finished read with no
+// balance (a failed fetch, or no plan) is not the same as one still loading.
+export interface AiCreditsRead {
+  credits: AiCreditsState | null;
+  settled: boolean;
+}
+
+const useAiCreditsQuery = (enabled: boolean) => {
   // The balance belongs to the signed-in account, so it is cached per
   // account: a page whose session changes account never shows the last
   // account's credits. Spend sites invalidate AI_CREDITS_QUERY_KEY, which
   // still matches every account's entry.
   const { data: userLocals } = useUserLocals();
-  const { data } = useQuery({
+  return useQuery({
     queryKey: [...AI_CREDITS_QUERY_KEY, userLocals?.user?.id ?? null],
     queryFn: getAiCredits,
     enabled,
@@ -22,6 +29,10 @@ export const useAiCredits = (enabled: boolean): AiCreditsState | null => {
     // staleness here doesn't delay a post-spend update.
     staleTime: 30_000,
   });
+};
+
+export const useAiCredits = (enabled: boolean): AiCreditsState | null => {
+  const { data } = useAiCreditsQuery(enabled);
 
   // No synthesized zero balance: while fetching, on a failed fetch, or for a
   // user with no plan, getAiCredits resolves null and the readout renders
@@ -31,4 +42,12 @@ export const useAiCredits = (enabled: boolean): AiCreditsState | null => {
   }
 
   return data;
+};
+
+export const useAiCreditsRead = (enabled: boolean): AiCreditsRead => {
+  const { data, status } = useAiCreditsQuery(enabled);
+  if (!enabled) {
+    return { credits: null, settled: false };
+  }
+  return { credits: data ?? null, settled: status !== 'pending' };
 };

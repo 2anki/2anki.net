@@ -1,4 +1,5 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -71,8 +72,8 @@ import {
 } from '../../../../lib/hooks/useCardUsage';
 import {
   AI_CREDITS_QUERY_KEY,
-  type AiCreditsState,
-  useAiCredits,
+  type AiCreditsRead,
+  useAiCreditsRead,
 } from '../../../../lib/hooks/useAiCredits';
 import { LOW_CREDITS_THRESHOLD } from '../AiCreditsReadout';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
@@ -361,15 +362,15 @@ function isThinPdfOrTxtDeck(
 
 // A paying account's thin-deck notice waits for its credits: with none left,
 // telling it to turn on Claude cards points at a deck that still builds
-// without AI.
+// without AI. A read that finished without a balance keeps the usual advice.
 function thinDeckNoticeReason(
   isPaying: boolean,
   isAuthenticated: boolean,
-  credits: AiCreditsState | null
+  { credits, settled }: AiCreditsRead
 ): ThinDeckReason | null {
   if (!isPaying) return 'fewCardsPaidAi';
   if (!isAuthenticated) return 'fewCards';
-  if (credits == null) return null;
+  if (credits == null) return settled ? 'fewCards' : null;
   return credits.credits <= 0 ? 'fewCardsNoCredits' : 'fewCards';
 }
 
@@ -377,6 +378,29 @@ function thinDeckNoticeReason(
 // question's "Make cards with AI", the thin-deck full deck), so Try again and
 // a resumed upload can tell them from an upload that followed the settings.
 const CLAUDE_RESENDS = new WeakSet<FormData>();
+
+// A resend names the account that first sent the kept files, so the server
+// refuses it under any other session: 'none' for a visitor who was signed
+// out, and no field at all when the page never had account data.
+const KEPT_OWNER_FIELD = 'kept-owner';
+
+function keptOwnerField(owner: number | null | undefined): string | null {
+  if (owner === undefined) return null;
+  return owner === null ? 'none' : String(owner);
+}
+
+interface KeptFiles {
+  files: File[];
+  owner: number | null | undefined;
+}
+
+const NO_KEPT_FILES: KeptFiles = { files: [], owner: null };
+
+interface KeptResend {
+  formData: FormData;
+  files: File[];
+  isRetry: boolean;
+}
 
 type AiRebuildFormat = 'pdf' | 'ppt' | 'pptx';
 
@@ -483,19 +507,27 @@ function UploadForm({
   const downloadRef = useRef<HTMLAnchorElement>(null);
   // The files behind the last local submit, kept so a rescue button can send
   // them back with the chosen rule, and the account that sent them (undefined
-  // until the page has account data). Remote (Dropbox, Drive) submits clear
-  // it: those bytes never reach the browser, so no button is offered for
-  // them. A PDF unlocked with its password clears it too: sent back without
-  // the password, it fails.
-  const [rescueFiles, setRescueFiles] = useState<File[]>([]);
-  const [rescueFilesOwner, setRescueFilesOwner] = useState<
-    number | null | undefined
-  >(null);
-  // Moves on whenever the screen starts over or a new file goes out, so a
-  // resend whose account check outlives the screen it was tapped on is dropped.
+  // until the page has account data). The two change together. Remote
+  // (Dropbox, Drive) submits clear them: those bytes never reach the browser,
+  // so no button is offered for them. A PDF unlocked with its password clears
+  // them too: sent back without the password, it fails.
+  const [keptFiles, setKeptFiles] = useState<KeptFiles>(NO_KEPT_FILES);
+  const rescueFiles = keptFiles.files;
+  const rescueFilesOwner = keptFiles.owner;
+  const forgetKeptFiles = () => setKeptFiles(NO_KEPT_FILES);
+  // Moves on whenever the screen starts over, a file is dropped or a new file
+  // goes out, so a resend whose account check outlives the screen it was
+  // tapped on is dropped.
   const screenEpochRef = useRef(0);
-  const [resendPending, setResendPending] = useState(false);
   const [claudeResendHeld, setClaudeResendHeld] = useState(false);
+  const moveScreenOn = () => {
+    screenEpochRef.current += 1;
+    setClaudeResendHeld(false);
+  };
+  // The resend button whose account check is running: it reads "Checking your
+  // account" while every resend button waits.
+  const [resendTapped, setResendTapped] = useState<string | null>(null);
+  const resendPending = resendTapped != null;
   const lastFormDataRef = useRef<FormData | null>(null);
   const [waitingForDeck, setWaitingForDeck] = useState(false);
   const stopWaitingRef = useRef<(() => void) | null>(null);
@@ -621,8 +653,7 @@ function UploadForm({
       clearTimeout(fallbackTimerRef.current);
     }
     setSampleRun(false);
-    screenEpochRef.current += 1;
-    setClaudeResendHeld(false);
+    moveScreenOn();
   });
 
   const currentFilename = (): string =>
@@ -995,6 +1026,7 @@ function UploadForm({
     entries: Array<FileSystemEntry | null>,
     droppedFolderName: string
   ) => {
+    moveScreenOn();
     setFolderError(null);
     setFolderName(droppedFolderName);
     setSampleRun(false);
@@ -1051,6 +1083,7 @@ function UploadForm({
       }
       if (dataTransfer && dataTransfer.files.length > 0) {
         const { files } = dataTransfer;
+        moveScreenOn();
         fileInputRef.current!.files = files;
         void validate(files).then((clean) => {
           if (clean) submitFiles();
@@ -1106,15 +1139,20 @@ function UploadForm({
     return () => clearTimeout(timer);
   }, [zoneState]);
 
+  // A resend refused for a changed account has nothing to talk through: the
+  // way on is choosing the file again.
+  const ownerChanged =
+    zoneState === 'error' && localError?.code === 'owner_changed';
+  const errorChatOffered =
+    zoneState === 'error' &&
+    networkRetryFiles == null &&
+    unreadableFile == null &&
+    !ownerChanged;
   useEffect(() => {
-    if (
-      zoneState === 'error' &&
-      networkRetryFiles == null &&
-      unreadableFile == null
-    ) {
+    if (errorChatOffered) {
       track('upload_error_chat_shown');
     }
-  }, [zoneState, networkRetryFiles, unreadableFile]);
+  }, [errorChatOffered]);
 
   useEffect(() => {
     if (zoneState === 'success' && showErrorInlineChat) {
@@ -1154,26 +1192,30 @@ function UploadForm({
   // the session the server put the upload under.
   useEffect(() => {
     if (userLocals == null) return;
-    setRescueFilesOwner((owner) =>
-      owner === undefined ? currentOwnerId : owner
+    setKeptFiles((kept) =>
+      kept.owner === undefined ? { ...kept, owner: currentOwnerId } : kept
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLocals]);
 
   // Kept files go back only under the account that sent them: on a shared
   // computer another account can sign in from another tab while a result is
-  // still on screen, and must not receive that file or pay for it.
+  // still on screen, and must not receive that file or pay for it. With no
+  // kept files there is nothing to send back, whatever the account.
   const keptFilesBelongElsewhere =
-    rescueFilesOwner !== undefined && rescueFilesOwner !== currentOwnerId;
+    rescueFiles.length > 0 &&
+    rescueFilesOwner !== undefined &&
+    rescueFilesOwner !== currentOwnerId;
 
   // Only a fresh submit (the file input, a dropped folder, a handed-over file,
   // a saved upload resumed under its own account) sets the kept files and
   // their account. A resend keeps both as they were.
   const keepSubmittedFiles = (files: File[]) => {
-    screenEpochRef.current += 1;
-    setClaudeResendHeld(false);
-    setRescueFiles(files);
-    setRescueFilesOwner(userLocals == null ? undefined : currentOwnerId);
+    moveScreenOn();
+    setKeptFiles({
+      files,
+      owner: userLocals == null ? undefined : currentOwnerId,
+    });
   };
 
   // The account as the server sees it now, or the account the page shows when
@@ -1198,22 +1240,25 @@ function UploadForm({
     }
   };
 
-  // Every resend of the kept files goes through here. It reads the account
-  // again first, since a window that never lost focus still shows the old one,
-  // and sends nothing under any account other than the one that sent the files
-  // (files sent before the page had account data belong to the one the read
-  // finds). Without a confirmed account, a Claude resend, which spends
-  // credits, holds and says so; any other resend goes out under the account
-  // the page shows. A resend whose screen moved on during the read is dropped.
+  // The buttons that convert the kept files again go through here. It reads
+  // the account again first, since a window that never lost focus still shows
+  // the old one, and sends nothing under any account other than the one that
+  // sent the files (files sent before the page had account data belong to the
+  // one the read finds). Without a confirmed account, a Claude resend, which
+  // spends credits, holds and says so; any other resend goes out under the
+  // browser's session. Each names the account that sent the files, and the
+  // server refuses it under any other session. A resend whose screen moved on
+  // during the read is dropped.
   const resendPendingRef = useRef(false);
   const resendKeptFiles = async (
-    send: () => void | Promise<void>,
+    tapped: string,
+    prepare: () => KeptResend | null | Promise<KeptResend | null>,
     whenUnconfirmed: 'hold' | 'send'
   ) => {
     if (resendPendingRef.current) return;
     resendPendingRef.current = true;
     const tappedOn = screenEpochRef.current;
-    setResendPending(true);
+    setResendTapped(tapped);
     setClaudeResendHeld(false);
     try {
       const account = await readAccountAgain();
@@ -1228,26 +1273,36 @@ function UploadForm({
         setClaudeResendHeld(true);
         return;
       }
-      await send();
+      const resend = await prepare();
+      if (resend == null) return;
+      const sentBy = keptOwnerField(rescueFilesOwner);
+      if (sentBy != null) resend.formData.set(KEPT_OWNER_FIELD, sentBy);
+      void runFileUpload(resend.formData, resend.files, resend.isRetry);
     } finally {
       resendPendingRef.current = false;
-      if (!unmountedRef.current) setResendPending(false);
+      if (!unmountedRef.current) setResendTapped(null);
     }
   };
+
+  const resendLabel = (tapped: string, label: string): string =>
+    resendTapped === tapped ? t('upload.form.checkingAccount') : label;
 
   // Anonymous and free accounts are sent to the paid plan rather than to a
   // free AI run; a paying account with AI off spends its own credits on a
   // click; one with AI on already had Claude try, so nothing is offered.
+  const aiRescuePayingSlot =
+    emptyStateUsesDefaultBody &&
+    isAuthenticated &&
+    isPaying &&
+    !(aiOn || lastSubmitUsedAi) &&
+    rescueFiles.length === 1;
   const aiRescueState = (() => {
     if (!emptyStateUsesDefaultBody) {
       return null;
     }
     if (!isAuthenticated) return 'anon';
     if (!isPaying) return 'free';
-    if (aiOn || lastSubmitUsedAi) return null;
-    return rescueFiles.length === 1 && !keptFilesBelongElsewhere
-      ? 'paying'
-      : null;
+    return aiRescuePayingSlot && !keptFilesBelongElsewhere ? 'paying' : null;
   })();
   useEffect(() => {
     if (aiRescueState != null) {
@@ -1255,48 +1310,56 @@ function UploadForm({
     }
   }, [aiRescueState]);
 
-  const handleAiRescue = () => {
+  const handleAiRescue = (tapped: 'aiRescue' | 'pdfAi') => {
     if (rescueFiles.length !== 1) return;
-    rerunWithAi(rescueFiles, () =>
+    rerunWithAi(rescueFiles, tapped, () =>
       track('upload_ai_rescue_clicked', { state: 'paying' })
     );
   };
 
-  const rerunWithAi = (files: File[], recordSend?: () => void) => {
-    void resendKeptFiles(() => {
-      recordSend?.();
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append('pakker', file, file.name);
-      }
-      for (const [key, value] of Object.entries(globalThis.localStorage)) {
-        formData.append(key, value);
-      }
-      attachPdfPageRange(formData);
-      formData.set('claude-ai-flashcards', 'true');
-      // The click asks for Claude: two pages make one card, saved on the
-      // account or in this browser, would otherwise skip it for a PDF.
-      formData.set('pdf-page-pairs', 'false');
-      CLAUDE_RESENDS.add(formData);
-      setLocalError(null);
-      setZoneState('converting');
-      setProgressWidth(10);
-      setProgressSlow(false);
-      setShowFallback(false);
-      void runFileUpload(formData, files, false);
-    }, 'hold');
+  const rerunWithAi = (
+    files: File[],
+    tapped: string,
+    recordSend?: () => void
+  ) => {
+    void resendKeptFiles(
+      tapped,
+      () => {
+        recordSend?.();
+        const formData = new FormData();
+        for (const file of files) {
+          formData.append('pakker', file, file.name);
+        }
+        for (const [key, value] of Object.entries(globalThis.localStorage)) {
+          formData.append(key, value);
+        }
+        attachPdfPageRange(formData);
+        formData.set('claude-ai-flashcards', 'true');
+        // The click asks for Claude: two pages make one card, saved on the
+        // account or in this browser, would otherwise skip it for a PDF.
+        formData.set('pdf-page-pairs', 'false');
+        CLAUDE_RESENDS.add(formData);
+        setLocalError(null);
+        setZoneState('converting');
+        setProgressWidth(10);
+        setProgressSlow(false);
+        setShowFallback(false);
+        return { formData, files, isRetry: false };
+      },
+      'hold'
+    );
   };
 
-  const thinDeckAiOffer =
+  const thinDeckSlot =
     !aiOn &&
     !lastSubmitUsedAi &&
     !sampleRun &&
     cardsHeldBack === 0 &&
-    !keptFilesBelongElsewhere &&
     thinDeckOfferFile != null &&
     isThinDeck(cardCount, thinDeckOfferFile.name, thinDeckOfferFile.size)
       ? { file: thinDeckOfferFile, cardCount }
       : null;
+  const thinDeckAiOffer = keptFilesBelongElsewhere ? null : thinDeckSlot;
 
   // Offered only where the click brings Claude cards back. It follows what the
   // last submit sent, not the toggle now, so turning Claude on after the deck
@@ -1313,13 +1376,12 @@ function UploadForm({
     zoneState === 'success' &&
     isAuthenticated &&
     isPaying &&
-    !keptFilesBelongElsewhere &&
     !downloadRecovered &&
     !lastSubmitUsedAi &&
     !sampleRun &&
     cardsHeldBack === 0 &&
     creditsUsed === 0 &&
-    thinDeckAiOffer == null &&
+    thinDeckSlot == null &&
     aiRebuildFormat != null &&
     !(
       aiRebuildFormat === 'pdf' &&
@@ -1331,20 +1393,20 @@ function UploadForm({
     cardsHeldBack === 0 &&
     (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
     isThinPdfOrTxtDeck(cardCount, currentFilename());
-  const aiCredits = useAiCredits(
+  const creditsRead = useAiCreditsRead(
     aiRebuildEligible || (thinNoticeDeck && isAuthenticated && isPaying)
   );
   const aiRebuildCreditsLeft = aiRebuildEligible
-    ? (aiCredits?.credits ?? 0)
+    ? (creditsRead.credits?.credits ?? 0)
     : 0;
+  const rebuildSlot =
+    aiRebuildEligible && aiRebuildCreditsLeft > LOW_CREDITS_THRESHOLD;
   const aiRebuildOffer =
-    aiRebuildEligible && aiRebuildCreditsLeft > LOW_CREDITS_THRESHOLD
-      ? aiRebuildFormat
-      : null;
+    rebuildSlot && !keptFilesBelongElsewhere ? aiRebuildFormat : null;
   const thinNoticeReason = thinDeckNoticeReason(
     isPaying,
     isAuthenticated,
-    aiCredits
+    creditsRead
   );
   useEffect(() => {
     if (aiRebuildOffer != null) {
@@ -1352,10 +1414,27 @@ function UploadForm({
     }
   }, [aiRebuildOffer]);
 
+  // The line saying the session changed takes the place of an offer: one this
+  // deck showed before the change, or one the session now on the page would
+  // get. A deck that never had an offer gets no line.
+  const successOfferOnScreen =
+    aiRebuildOffer != null || thinDeckAiOffer != null;
+  const [successOfferShown, setSuccessOfferShown] = useState(false);
+  useEffect(() => {
+    if (zoneState !== 'success') {
+      setSuccessOfferShown(false);
+    } else if (successOfferOnScreen) {
+      setSuccessOfferShown(true);
+    }
+  }, [zoneState, successOfferOnScreen]);
+  const successSignInChanged =
+    keptFilesBelongElsewhere &&
+    (successOfferShown || rebuildSlot || thinDeckSlot != null);
+
   const handleAiRebuild = () => {
     if (aiRebuildOffer == null) return;
     const format = aiRebuildOffer;
-    rerunWithAi(rescueFiles, () =>
+    rerunWithAi(rescueFiles, 'rebuild', () =>
       track('upload_ai_rebuild_clicked', { format })
     );
   };
@@ -1438,7 +1517,7 @@ function UploadForm({
 
   const handleDropboxFiles = async (files: DropboxFile[]) => {
     const first = files[0];
-    setRescueFiles([]);
+    forgetKeptFiles();
     setNetworkRetryFiles(null);
     setLockedPdfInfo(null);
     capturePdfPageRange();
@@ -1499,7 +1578,7 @@ function UploadForm({
     accessToken: string
   ) => {
     const first = files[0];
-    setRescueFiles([]);
+    forgetKeptFiles();
     setNetworkRetryFiles(null);
     setLockedPdfInfo(null);
     capturePdfPageRange();
@@ -1641,6 +1720,9 @@ function UploadForm({
     const message = await extractErrorMessage(request);
     setLocalError(message);
     setZoneState(zoneStateForUploadError(message));
+    // The server refused a resend under a session other than the one that
+    // sent the files, which this page has not seen yet.
+    if (message.code === 'owner_changed') void refetchUserLocals();
     return false;
   };
 
@@ -2105,6 +2187,10 @@ function UploadForm({
       formData.set('pdf-page-pairs', 'false');
       CLAUDE_RESENDS.add(formData);
     }
+    // The saved files go back under the account that saved them, even when
+    // another tab signed in since this page last read the account.
+    const sentBy = keptOwnerField(upload.ownerId);
+    if (sentBy != null) formData.set(KEPT_OWNER_FIELD, sentBy);
     resumedUploadRef.current = true;
     keepSubmittedFiles(upload.files);
     void runFileUpload(formData, upload.files, false);
@@ -2267,26 +2353,30 @@ function UploadForm({
   const handleRescueChoice = (rule: RescueRule, cards: number) => {
     const files = rescueFiles;
     if (files.length !== 1) return;
-    void resendKeptFiles(() => {
-      track('upload_rescue_chosen', { rule, cards });
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append('pakker', file, file.name);
-      }
-      for (const [key, value] of Object.entries(globalThis.localStorage)) {
-        formData.append(key, value);
-      }
-      attachPdfPageRange(formData);
-      formData.set('rescue-rule', rule);
-      // Rescue builds the chosen structure, never AI.
-      applyAnonymousAiFlag(formData, false);
-      setLocalError(null);
-      setZoneState('converting');
-      setProgressWidth(10);
-      setProgressSlow(false);
-      setShowFallback(false);
-      void runFileUpload(formData, files, false);
-    }, 'send');
+    void resendKeptFiles(
+      `rescue:${rule}`,
+      () => {
+        track('upload_rescue_chosen', { rule, cards });
+        const formData = new FormData();
+        for (const file of files) {
+          formData.append('pakker', file, file.name);
+        }
+        for (const [key, value] of Object.entries(globalThis.localStorage)) {
+          formData.append(key, value);
+        }
+        attachPdfPageRange(formData);
+        formData.set('rescue-rule', rule);
+        // Rescue builds the chosen structure, never AI.
+        applyAnonymousAiFlag(formData, false);
+        setLocalError(null);
+        setZoneState('converting');
+        setProgressWidth(10);
+        setProgressSlow(false);
+        setShowFallback(false);
+        return { formData, files, isRetry: false };
+      },
+      'send'
+    );
   };
 
   // From the AI preview gate: build the deck from the same file without AI, the
@@ -2295,25 +2385,29 @@ function UploadForm({
   const handleContinueWithoutAi = () => {
     const files = rescueFiles;
     if (files.length === 0) return;
-    void resendKeptFiles(() => {
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append('pakker', file, file.name);
-      }
-      for (const [key, value] of Object.entries(globalThis.localStorage)) {
-        formData.append(key, value);
-      }
-      attachPdfPageRange(formData);
-      // The gate's explicit "continue without AI" choice.
-      applyAnonymousAiFlag(formData, false);
-      setAiPreviewCards(null);
-      setLocalError(null);
-      setZoneState('converting');
-      setProgressWidth(10);
-      setProgressSlow(false);
-      setShowFallback(false);
-      void runFileUpload(formData, files, false);
-    }, 'send');
+    void resendKeptFiles(
+      'continueWithoutAi',
+      () => {
+        const formData = new FormData();
+        for (const file of files) {
+          formData.append('pakker', file, file.name);
+        }
+        for (const [key, value] of Object.entries(globalThis.localStorage)) {
+          formData.append(key, value);
+        }
+        attachPdfPageRange(formData);
+        // The gate's explicit "continue without AI" choice.
+        applyAnonymousAiFlag(formData, false);
+        setAiPreviewCards(null);
+        setLocalError(null);
+        setZoneState('converting');
+        setProgressWidth(10);
+        setProgressSlow(false);
+        setShowFallback(false);
+        return { formData, files, isRetry: false };
+      },
+      'send'
+    );
   };
 
   const handleNetworkRetry = () => {
@@ -2323,12 +2417,13 @@ function UploadForm({
     const retriesClaudeResend =
       failedAttempt != null && CLAUDE_RESENDS.has(failedAttempt);
     void resendKeptFiles(
+      'tryAgain',
       async () => {
         const recoveryToken = recoveryTokenRef.current;
         if (!isAuthenticated && recoveryToken != null) {
           setZoneState('converting');
           if (await fetchAnonymousCopy(files[0], recoveryToken, 'retry')) {
-            return;
+            return null;
           }
         }
         const formData = new FormData();
@@ -2349,7 +2444,7 @@ function UploadForm({
           }
           CLAUDE_RESENDS.add(formData);
         }
-        void runFileUpload(formData, files, true);
+        return { formData, files, isRetry: true };
       },
       retriesClaudeResend ? 'hold' : 'send'
     );
@@ -2537,7 +2632,6 @@ function UploadForm({
     emailVerified: userLocals?.user?.email_verified,
   });
 
-  // A Claude resend that held because the account could not be confirmed.
   const renderClaudeResendHeld = () =>
     claudeResendHeld && (
       <p className={formStyles.warningInline} role="alert">
@@ -2545,20 +2639,22 @@ function UploadForm({
       </p>
     );
 
+  // The drop zone the picker opens from is disabled until the reset renders,
+  // and a picker opened later than the tap is blocked by the browser.
   const chooseFileAgain = () => {
-    startOver();
+    flushSync(startOver);
     fileInputRef.current?.click();
   };
 
-  // In place of the buttons that would send the kept file again, once the page
-  // shows a different session from the one that sent it.
+  const signInChangedKey = (): string => {
+    if (currentOwnerId == null) return 'upload.form.signedOutSinceUpload';
+    if (rescueFilesOwner === null) return 'upload.form.signedInSinceUpload';
+    return 'upload.form.otherAccountSinceUpload';
+  };
+
   const renderSignInChanged = () => (
     <div className={formStyles.aiRescueActions} role="status">
-      <p className={formStyles.rescueLead}>
-        {currentOwnerId == null
-          ? t('upload.form.signedOutSinceUpload')
-          : t('upload.form.otherAccountSinceUpload')}
-      </p>
+      <p className={formStyles.rescueLead}>{t(signInChangedKey())}</p>
       <button
         type="button"
         className={formStyles.aiRescueButton}
@@ -2566,6 +2662,11 @@ function UploadForm({
       >
         {t('upload.form.chooseFileAgain')}
       </button>
+      {currentOwnerId == null && (
+        <Link to="/login?redirect=/upload" className={formStyles.resetLink}>
+          {t('passFirst:signIn')}
+        </Link>
+      )}
     </div>
   );
 
@@ -2714,20 +2815,33 @@ function UploadForm({
           cardCount={thinDeckAiOffer.cardCount}
           isPaying={isPaying}
           busy={resendPending}
-          onMakeFullDeck={() => rerunWithAi(rescueFiles)}
+          onMakeFullDeck={() =>
+            rerunWithAi(rescueFiles, 'thinDeckFull', () =>
+              track('thin_deck_ai_unlock_clicked', { plan: 'paying' })
+            )
+          }
           onBeforeCheckout={saveThinDeckForCheckout}
         />
       )}
-      {thinNoticeDeck && aiRebuildOffer == null && thinNoticeReason != null && (
-        <div className={formStyles.warningInline}>
-          <ThinDeckNotice
-            reason={thinNoticeReason}
-            cards={cardCount}
-            skipped={0}
-            surface="upload"
-          />
-        </div>
-      )}
+      {thinNoticeDeck &&
+        !rebuildSlot &&
+        !successSignInChanged &&
+        thinNoticeReason != null && (
+          <div className={formStyles.warningInline}>
+            <ThinDeckNotice
+              reason={thinNoticeReason}
+              cards={cardCount}
+              skipped={0}
+              surface="upload"
+            />
+            {thinNoticeReason === 'fewCardsNoCredits' && (
+              <BuyCreditsButton
+                source="credits_conversion"
+                variant="secondary"
+              />
+            )}
+          </div>
+        )}
       {aiRebuildOffer != null && (
         <div className={formStyles.aiRescueActions}>
           <p className={formStyles.rescueLead}>
@@ -2737,18 +2851,15 @@ function UploadForm({
             type="button"
             className={formStyles.aiRescueButton}
             disabled={resendPending}
-            aria-busy={resendPending}
+            aria-busy={resendTapped === 'rebuild'}
             onClick={handleAiRebuild}
           >
-            {t('upload.form.aiRebuildButton')}
+            {resendLabel('rebuild', t('upload.form.aiRebuildButton'))}
           </button>
         </div>
       )}
       {renderClaudeResendHeld()}
-      {keptFilesBelongElsewhere &&
-        rescueFiles.length > 0 &&
-        !sampleRun &&
-        renderSignInChanged()}
+      {successSignInChanged && renderSignInChanged()}
       {showFallback && (
         <button
           type="button"
@@ -2983,23 +3094,22 @@ function UploadForm({
             type="button"
             className={formStyles.aiRescueButton}
             disabled={resendPending}
-            aria-busy={resendPending}
-            onClick={handleAiRescue}
+            aria-busy={resendTapped === 'aiRescue'}
+            onClick={() => handleAiRescue('aiRescue')}
           >
-            {t('upload.form.aiRescueMake')}
+            {resendLabel('aiRescue', t('upload.form.aiRescueMake'))}
           </button>
         )}
         {renderClaudeResendHeld()}
       </div>
     );
+    const rescueSlot =
+      rescueFiles.length === 1 ? (localError?.rescue ?? []) : [];
     const signInChanged =
-      keptFilesBelongElsewhere && rescueFiles.length === 1
+      keptFilesBelongElsewhere && (rescueSlot.length > 0 || aiRescuePayingSlot)
         ? renderSignInChanged()
         : null;
-    const rescue =
-      rescueFiles.length === 1 && !keptFilesBelongElsewhere
-        ? (localError?.rescue ?? [])
-        : [];
+    const rescue = keptFilesBelongElsewhere ? [] : rescueSlot;
     const rescueActions = rescue.length > 0 && (
       <div className={formStyles.rescueActions}>
         <p className={formStyles.rescueLead}>{t('upload.form.rescueLead')}</p>
@@ -3009,15 +3119,18 @@ function UploadForm({
               type="button"
               className={formStyles.rescueButton}
               disabled={resendPending}
-              aria-busy={resendPending}
+              aria-busy={resendTapped === `rescue:${candidate.rule}`}
               onClick={() =>
                 handleRescueChoice(candidate.rule, candidate.cards)
               }
             >
-              {t(`upload.form.${RESCUE_LABEL_KEYS.get(candidate.rule)}`, {
-                count: candidate.cards,
-                n: formatCount(candidate.cards),
-              })}
+              {resendLabel(
+                `rescue:${candidate.rule}`,
+                t(`upload.form.${RESCUE_LABEL_KEYS.get(candidate.rule)}`, {
+                  count: candidate.cards,
+                  n: formatCount(candidate.cards),
+                })
+              )}
             </button>
             {candidate.sample != null && candidate.sample.length > 0 && (
               <ul className={formStyles.rescueSample} role="list">
@@ -3361,10 +3474,10 @@ function UploadForm({
               type="button"
               className={formStyles.actionButton}
               disabled={resendPending}
-              aria-busy={resendPending}
+              aria-busy={resendTapped === 'tryAgain'}
               onClick={handleNetworkRetry}
             >
-              {t('upload.form.tryAgain')}
+              {resendLabel('tryAgain', t('upload.form.tryAgain'))}
             </button>
             {renderClaudeResendHeld()}
             <button
@@ -3393,6 +3506,14 @@ function UploadForm({
   };
 
   const renderErrorState = () => {
+    if (ownerChanged) {
+      return (
+        <div className={formStyles.stateContent}>
+          <WarningIcon className={formStyles.iconWarning} />
+          {renderSignInChanged()}
+        </div>
+      );
+    }
     const isExistingApkg =
       localError != null && /already an Anki deck/i.test(localError.message);
     if (isExistingApkg) {
@@ -3538,6 +3659,8 @@ function UploadForm({
       for (const [key, value] of Object.entries(globalThis.localStorage)) {
         formData.append(key, value);
       }
+      const sentBy = keptOwnerField(rescueFilesOwner);
+      if (sentBy != null) formData.set(KEPT_OWNER_FIELD, sentBy);
 
       const request = await globalThis.fetch(
         '/api/upload/retry-with-credential',
@@ -3549,9 +3672,19 @@ function UploadForm({
 
       if (request.status === 200) {
         setLockedPdfInfo(null);
-        setRescueFiles([]);
+        forgetKeptFiles();
         await applyConversionSuccess(request, conversionSuccessHandlers);
         return;
+      }
+      if (request.status === 409) {
+        const refusal = await extractErrorMessage(request);
+        if (refusal.code === 'owner_changed') {
+          setLockedPdfInfo(null);
+          setLocalError(refusal);
+          setZoneState('error');
+          void refetchUserLocals();
+          return;
+        }
       }
 
       const newAttemptCount = pdfAttemptCount + 1;
@@ -3830,14 +3963,21 @@ function UploadForm({
       for (const file of rescueFiles) next.append('pakker', file, file.name);
     }
     next.set(PDF_FALLBACK_OPTION, mode);
+    // An answer to the question a Claude resend raised is still that resend.
+    const answersClaudeResend = CLAUDE_RESENDS.has(source);
+    if (answersClaudeResend) CLAUDE_RESENDS.add(next);
     const files = rescueFiles;
     const reason = pdfChoice?.reason ?? 'no_text';
-    void resendKeptFiles(() => {
-      if (remember) rememberPdfFallback(mode);
-      track('pdf_fallback_chosen', { mode, reason, remembered: remember });
-      setPdfChoice(null);
-      void runFileUpload(next, files, false);
-    }, 'send');
+    void resendKeptFiles(
+      `pdf:${mode}`,
+      () => {
+        if (remember) rememberPdfFallback(mode);
+        track('pdf_fallback_chosen', { mode, reason, remembered: remember });
+        setPdfChoice(null);
+        return { formData: next, files, isRetry: false };
+      },
+      answersClaudeResend ? 'hold' : 'send'
+    );
   };
 
   const handleForgetPdfFallback = () => {
@@ -3866,10 +4006,10 @@ function UploadForm({
               type="button"
               className={formStyles.actionButton}
               disabled={resendPending}
-              aria-busy={resendPending}
+              aria-busy={resendTapped === 'pdf:pairs'}
               onClick={() => handlePdfChoice('pairs', rememberPdfChoice)}
             >
-              {t('upload.form.pdfChoicePairs')}
+              {resendLabel('pdf:pairs', t('upload.form.pdfChoicePairs'))}
             </button>
             <p className={formStyles.emptyBody}>
               {t('upload.form.pdfChoicePairsHint')}
@@ -3878,10 +4018,10 @@ function UploadForm({
               type="button"
               className={formStyles.actionButton}
               disabled={resendPending}
-              aria-busy={resendPending}
+              aria-busy={resendTapped === 'pdf:single'}
               onClick={() => handlePdfChoice('single', rememberPdfChoice)}
             >
-              {t('upload.form.pdfChoiceSingle')}
+              {resendLabel('pdf:single', t('upload.form.pdfChoiceSingle'))}
             </button>
             <p className={formStyles.emptyBody}>
               {t('upload.form.pdfChoiceSingleHint')}
@@ -3891,10 +4031,10 @@ function UploadForm({
                 type="button"
                 className={formStyles.actionButton}
                 disabled={resendPending}
-                aria-busy={resendPending}
-                onClick={handleAiRescue}
+                aria-busy={resendTapped === 'pdfAi'}
+                onClick={() => handleAiRescue('pdfAi')}
               >
-                {t('upload.form.aiRescueMake')}
+                {resendLabel('pdfAi', t('upload.form.aiRescueMake'))}
               </button>
             )}
             {renderClaudeResendHeld()}
@@ -4212,54 +4352,52 @@ function UploadForm({
             )}
           </div>
         )}
-        {zoneState === 'error' &&
-          networkRetryFiles == null &&
-          unreadableFile == null && (
-            <div className={formStyles.inlineChatWrapper}>
-              <button
-                type="button"
-                className={formStyles.inlineChatToggle}
-                onClick={() => {
-                  setShowErrorInlineChat((prev) => {
-                    if (!prev) track('upload_error_chat_engaged');
-                    return !prev;
-                  });
-                }}
-                aria-expanded={showErrorInlineChat}
-                aria-controls="error-state-chat-panel"
+        {errorChatOffered && (
+          <div className={formStyles.inlineChatWrapper}>
+            <button
+              type="button"
+              className={formStyles.inlineChatToggle}
+              onClick={() => {
+                setShowErrorInlineChat((prev) => {
+                  if (!prev) track('upload_error_chat_engaged');
+                  return !prev;
+                });
+              }}
+              aria-expanded={showErrorInlineChat}
+              aria-controls="error-state-chat-panel"
+            >
+              <i
+                className={`${formStyles.inlineChatToggleChevron} ${showErrorInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
+                aria-hidden="true"
               >
-                <i
-                  className={`${formStyles.inlineChatToggleChevron} ${showErrorInlineChat ? formStyles.inlineChatToggleChevronOpen : ''}`}
-                  aria-hidden="true"
-                >
-                  ›
-                </i>
-                {showErrorInlineChat ? 'Hide chat' : 'Talk it through instead'}
-              </button>
-              {showErrorInlineChat && (
-                <section
-                  id="error-state-chat-panel"
-                  className={formStyles.inlineChatBody}
-                  aria-label={`Talk to Claude about ${currentFilename() || 'this file'}`}
-                >
-                  <p className={formStyles.inlineChatContext}>
-                    About{' '}
-                    <span
-                      className={formStyles.inlineChatFilename}
-                      title={currentFilename() || 'your file'}
-                    >
-                      {currentFilename() || 'your file'}
-                    </span>
-                  </p>
-                  <ChatPanel
-                    key={`error-${currentFilename()}`}
-                    initialPrompt={`I tried to convert ${currentFilename() || 'a file'} and got stuck. What can I do?`}
-                    cameFromUpload
-                  />
-                </section>
-              )}
-            </div>
-          )}
+                ›
+              </i>
+              {showErrorInlineChat ? 'Hide chat' : 'Talk it through instead'}
+            </button>
+            {showErrorInlineChat && (
+              <section
+                id="error-state-chat-panel"
+                className={formStyles.inlineChatBody}
+                aria-label={`Talk to Claude about ${currentFilename() || 'this file'}`}
+              >
+                <p className={formStyles.inlineChatContext}>
+                  About{' '}
+                  <span
+                    className={formStyles.inlineChatFilename}
+                    title={currentFilename() || 'your file'}
+                  >
+                    {currentFilename() || 'your file'}
+                  </span>
+                </p>
+                <ChatPanel
+                  key={`error-${currentFilename()}`}
+                  initialPrompt={`I tried to convert ${currentFilename() || 'a file'} and got stuck. What can I do?`}
+                  cameFromUpload
+                />
+              </section>
+            )}
+          </div>
+        )}
         {showChips && (
           <div
             id="upload-panel-dropbox"

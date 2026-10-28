@@ -95,7 +95,9 @@ function AiCreditsLine({
           : `${styles.identityUsage} ${styles.identityAiCredits}`
       }
     >
-      {credits.credits <= 0 ? t('zero') : t('left', { count: credits.credits })}
+      {credits.credits <= 0
+        ? t(credits.resets === 'pass' ? 'zeroPass' : 'zero')
+        : t('left', { count: credits.credits })}
       {low && (
         <Link
           to="/account"

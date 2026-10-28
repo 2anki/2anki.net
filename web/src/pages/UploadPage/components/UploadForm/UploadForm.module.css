@@ -324,9 +324,14 @@
   margin-top: 0.25rem;
 }
 
-.actionButton:hover {
+.actionButton:hover:not(:disabled) {
   background: var(--color-primary-hover);
   box-shadow: var(--shadow-sm);
+}
+
+.actionButton:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* ── Multi-deck batch result ── */
@@ -482,8 +487,13 @@
   transition: background var(--transition-fast);
 }
 
-.rescueButton:hover {
+.rescueButton:hover:not(:disabled) {
   background: var(--color-primary-hover);
+}
+
+.rescueButton:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .aiRescueActions {
@@ -508,8 +518,13 @@
   transition: background var(--transition-fast);
 }
 
-.aiRescueButton:hover {
+.aiRescueButton:hover:not(:disabled) {
   background: var(--color-primary-light);
+}
+
+.aiRescueButton:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .emptyActions {

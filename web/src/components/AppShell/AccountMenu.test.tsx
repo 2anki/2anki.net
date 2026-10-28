@@ -315,6 +315,32 @@ describe('AccountMenu AI credits line', () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    {
+      resets: 'period' as const,
+      line: '0 AI credits left. Your next deck builds without AI until your credits reset.',
+    },
+    {
+      resets: 'pass' as const,
+      line: '0 AI credits left. Your next deck builds without AI.',
+    },
+  ])(
+    'names a reset only for credits that reset by $resets',
+    async ({ resets, line }) => {
+      vi.mocked(getAiCredits).mockResolvedValue({
+        credits: 0,
+        used: 500,
+        allowance: 500,
+        usable: true,
+        windowEnd: null,
+        resets,
+      });
+      renderMenu({ locals: { subscriber: true } });
+      openMenu();
+      await waitFor(() => expect(screen.getByText(line)).toBeInTheDocument());
+    }
+  );
+
   it('shows a paused balance for a lapsed plan with an unexpired pack, no buy link', async () => {
     vi.mocked(getAiCredits).mockResolvedValue({
       credits: 120,

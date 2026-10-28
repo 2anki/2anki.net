@@ -106,9 +106,15 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     aiBadgeState === 'on' || aiBadgeState === 'off'
   );
   const holdSignedInBadge = userLocalsLoading && sessionHint;
-  // Japanese runs one sentence into the next after 。; the other locales put
-  // a space between them.
-  const sentenceGap = i18n.resolvedLanguage === 'ja' ? '' : ' ';
+  // Japanese ends a sentence with 。 and runs straight into the next; the
+  // other locales end it with a period and put a space between them.
+  const japanese = i18n.resolvedLanguage === 'ja';
+  const sentenceGap = japanese ? '' : ' ';
+  const sentenceEnd = japanese ? '。' : '.';
+  // With no credits left, turning Claude on still builds the next deck
+  // without AI, which the credits line under the badge already says.
+  const outOfCredits =
+    aiCredits != null && aiCredits.allowance !== 0 && aiCredits.credits <= 0;
 
   const showAiChoice = userLocalsLoading
     ? !sessionHint
@@ -290,14 +296,18 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </span>
             </button>
             <span className={styles.aiOffBadgeBody}>
-              <span> {t('upload.page.aiOnBody')} </span>
+              <span>
+                {' '}
+                {t('upload.page.aiOnBody')}
+                {sentenceGap}
+              </span>
               <Link
                 to="/card-options?returnTo=/upload#pdf-ai"
                 onClick={() => track('upload_ai_settings_link_clicked')}
               >
                 {t('upload.page.manageInSettings')}
               </Link>
-              <span>.</span>
+              <span>{sentenceEnd}</span>
             </span>
             <AiCreditsReadout credits={aiCredits} />
           </>
@@ -316,23 +326,34 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               </span>
             </button>
             <span className={styles.aiOffBadgeBody}>
-              <span> {t('upload.page.aiOffBody')} </span>
+              <span>
+                {' '}
+                {t('upload.page.aiOffBody')}
+                {sentenceGap}
+              </span>
               <span>
                 {t('upload.page.aiOffIncluded')}
                 {sentenceGap}
               </span>
-              <button
-                type="button"
-                className={styles.aiInlineLink}
-                onClick={toggleAi}
-              >
-                {t('upload.page.turnOnClaudeCards')}
-              </button>
-              <span>. </span>
+              {!outOfCredits && (
+                <>
+                  <button
+                    type="button"
+                    className={styles.aiInlineLink}
+                    onClick={toggleAi}
+                  >
+                    {t('upload.page.turnOnClaudeCards')}
+                  </button>
+                  <span>
+                    {sentenceEnd}
+                    {sentenceGap}
+                  </span>
+                </>
+              )}
               <Link to="/card-options?returnTo=/upload">
                 {t('upload.page.manageInSettings')}
               </Link>
-              <span>.</span>
+              <span>{sentenceEnd}</span>
             </span>
             <AiCreditsReadout credits={aiCredits} />
           </>
@@ -343,18 +364,25 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
               {t('upload.page.aiOff')}
             </span>
             <span className={styles.aiOffBadgeBody}>
-              <span> {t('upload.page.aiOffBody')} </span>
+              <span>
+                {' '}
+                {t('upload.page.aiOffBody')}
+                {sentenceGap}
+              </span>
               <Link
                 to="/pricing"
                 onClick={() => track('upload_ai_free_badge_clicked')}
               >
                 {t('upload.page.upgradeClaude')}
               </Link>
-              <span>. </span>
+              <span>
+                {sentenceEnd}
+                {sentenceGap}
+              </span>
               <Link to="/card-options?returnTo=/upload">
                 {t('upload.page.manageInSettings')}
               </Link>
-              <span>.</span>
+              <span>{sentenceEnd}</span>
             </span>
           </>
         )}
@@ -367,7 +395,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             >
               {t('upload.page.signInToTurnOn')}
             </Link>
-            <span>.</span>
+            <span>{sentenceEnd}</span>
           </span>
         )}
         {aiBadgeState === 'anonPreview' && showAiChoice && (
