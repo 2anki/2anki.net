@@ -437,7 +437,12 @@ const serve = async () => {
     scheduleConversionStallWatch({
       samplePool: describeConversionPool,
       sendAlert: (subject, body) =>
-        emailService.sendAiSpendAlertEmail(SUPPORT_CC_ADDRESS, subject, body),
+        emailService.sendOpsAlertEmail(
+          'conversion-stall',
+          SUPPORT_CC_ADDRESS,
+          subject,
+          body
+        ),
       recordAlert: (waitSeconds) =>
         track('conversion_stall_alert_sent', {
           props: { wait_seconds: waitSeconds },
@@ -450,7 +455,12 @@ const serve = async () => {
   const runMetricTripwireUseCase = new RunMetricTripwireUseCase(
     metricTripwireRepo,
     (subject, body) =>
-      emailService.sendAiSpendAlertEmail(SUPPORT_CC_ADDRESS, subject, body)
+      emailService.sendOpsAlertEmail(
+        'metric-tripwire',
+        SUPPORT_CC_ADDRESS,
+        subject,
+        body
+      )
   );
   scheduleMetricTripwire(runMetricTripwireUseCase, {
     lastRunAt: () => metricTripwireRepo.lastCheckedAt(),

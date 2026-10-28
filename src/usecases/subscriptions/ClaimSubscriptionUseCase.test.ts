@@ -62,6 +62,7 @@ const makeEmailService = (
   sendPassEndingEmail: vi.fn(),
   sendParserCanaryAlert: vi.fn(),
   sendAiSpendAlertEmail: vi.fn(),
+  sendOpsAlertEmail: vi.fn(),
   sendNotionReconnectEmail: vi.fn().mockResolvedValue(undefined),
   sendSubscriptionClaimConfirmation: vi.fn().mockResolvedValue(undefined),
   sendPassClaimConfirmation: vi.fn().mockResolvedValue(undefined),

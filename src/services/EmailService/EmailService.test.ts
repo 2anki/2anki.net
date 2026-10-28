@@ -398,6 +398,27 @@ describe('EmailService.sendConversionLinkEmail delivery contract', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it('logs an ops alert without a SendGrid key instead of sending it, leaving the body out', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    await new UnimplementedEmailService().sendOpsAlertEmail(
+      'stripe-access',
+      'ops@example.com',
+      'Stripe access denied',
+      'secret-free body text'
+    );
+
+    expect(send).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledWith(
+      'sendOpsAlertEmail not handled',
+      'stripe-access',
+      'ops@example.com',
+      'Stripe access denied'
+    );
+    expect(JSON.stringify(info.mock.calls)).not.toContain('secret-free body');
+    info.mockRestore();
+  });
+
   it('lets the unimplemented service be awaited without delivering', async () => {
     const service = new UnimplementedEmailService();
 
@@ -581,6 +602,56 @@ describe('EmailService tags every outgoing send with a template category', () =>
         s.sendSubscriptionRecoveryEmail('user@example.com', 'paid@example.com'),
     },
   ];
+
+  it('tags an AI spend alert with its own category', async () => {
+    await getDefaultEmailService().sendAiSpendAlertEmail(
+      'ops@example.com',
+      'Spend alert',
+      'body'
+    );
+
+    expect(lastCategories()).toEqual([EMAIL_CATEGORIES.aiSpendAlert]);
+  });
+
+  it.each(['metric-tripwire', 'conversion-stall', 'stripe-access'] as const)(
+    'tags a %s alert as an ops alert of that kind',
+    async (kind) => {
+      await getDefaultEmailService().sendOpsAlertEmail(
+        kind,
+        'ops@example.com',
+        'Alert',
+        'body'
+      );
+
+      expect(lastCategories()).toEqual([EMAIL_CATEGORIES.opsAlert, kind]);
+    }
+  );
+
+  it('sends an ops alert with the same fields the AI spend alert used', async () => {
+    const service = getDefaultEmailService();
+    const lastMessage = () => {
+      const calls = send.mock.calls;
+      const { categories: _categories, ...fields } = calls[calls.length - 1][0];
+      return fields;
+    };
+
+    await service.sendAiSpendAlertEmail('ops@example.com', 'Alert', 'body');
+    const aiSpend = lastMessage();
+    await service.sendOpsAlertEmail(
+      'stripe-access',
+      'ops@example.com',
+      'Alert',
+      'body'
+    );
+
+    expect(lastMessage()).toEqual(aiSpend);
+    expect(aiSpend).toMatchObject({
+      to: 'ops@example.com',
+      subject: 'Alert',
+      text: 'body',
+      replyTo: 'support@2anki.net',
+    });
+  });
 
   it('returns undefined categories when no email was sent', () => {
     expect(lastCategories()).toBeUndefined();

@@ -40,7 +40,8 @@ export interface StripeAccessErrorReporterDeps {
 }
 
 function defaultSendAlert(subject: string, body: string): Promise<void> {
-  return getDefaultEmailService().sendAiSpendAlertEmail(
+  return getDefaultEmailService().sendOpsAlertEmail(
+    'stripe-access',
     SUPPORT_CC_ADDRESS,
     subject,
     body
