@@ -45,6 +45,7 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
         );
       })
       .whereRaw('users.patreon IS NOT TRUE')
+      .whereRaw('users.ankify_access IS NOT TRUE')
       .whereNotExists(
         this.database('subscriptions')
           .where('subscriptions.active', true)
@@ -100,6 +101,7 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
         );
       })
       .whereRaw('u.patreon IS NOT TRUE')
+      .whereRaw('u.ankify_access IS NOT TRUE')
       .whereNotExists(
         this.database('subscriptions')
           .where('subscriptions.active', true)
@@ -139,6 +141,7 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
         );
       })
       .whereRaw('u.patreon IS NOT TRUE')
+      .whereRaw('u.ankify_access IS NOT TRUE')
       .whereNotExists(
         this.database('subscriptions')
           .where('subscriptions.active', true)
