@@ -90,7 +90,11 @@ export class SendPauseResumeWarningsUseCase {
       );
       return true;
     } catch (error) {
-      console.error('[pause-resume-warnings] failed to send a warning:', error);
+      await this.repository.releaseNotice(row.email, resumesAt);
+      console.error(
+        '[pause-resume-warnings] failed to send a warning:',
+        error instanceof Error ? error.message : 'unknown error'
+      );
       return false;
     }
   }

@@ -37,4 +37,21 @@ describe('PauseResumeWarningRepository generated SQL', () => {
       'stripe@example.com',
     ]);
   });
+
+  it('releases a notice by its subscription email and resume date', () => {
+    const { sql, bindings } = repository
+      .buildReleaseNoticeQuery(
+        'stripe@example.com',
+        new Date('2026-08-07T12:00:00Z')
+      )
+      .toSQL();
+
+    expect(sql).toBe(
+      'delete from "pause_resume_warning_notices" where "subscription_email" = ? and "resumes_at" = ?'
+    );
+    expect(bindings).toEqual([
+      'stripe@example.com',
+      new Date('2026-08-07T12:00:00Z'),
+    ]);
+  });
 });
