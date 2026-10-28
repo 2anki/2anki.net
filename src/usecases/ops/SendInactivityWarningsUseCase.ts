@@ -1,6 +1,7 @@
 import type { IInactivityEmailRepository } from '../../data_layer/InactivityEmailRepository';
 import type { IUploadRepository } from '../../data_layer/UploadRespository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
+import { isTransientSendError } from '../../services/EmailService/sendWithRetry';
 import path from 'node:path';
 
 export interface SendInactivityWarningsResult {
@@ -76,30 +77,61 @@ export class SendInactivityWarningsUseCase {
     for (const user of users) {
       const token = crypto.randomUUID();
       await this.repo.recordSend(user.id, token);
-      try {
-        const lastUpload = await this.uploadsRepo.getLastUploadForUser(user.id);
-        const lastConversion =
-          lastUpload != null
-            ? {
-                deckName: path.basename(
-                  lastUpload.filename,
-                  path.extname(lastUpload.filename)
-                ),
-              }
-            : null;
-        await this.emailService.sendInactivityWarningEmail(
-          user.email,
-          token,
-          lastConversion
-        );
+      if (await this.sendWarning(user, token)) {
         sent++;
-      } catch (error) {
-        console.error(`[inactivity] failed to email user ${user.id}:`, error);
-        await this.releaseWarning(user.id, token);
       }
     }
 
     return { count: sent, dryRun: false };
+  }
+
+  private async sendWarning(
+    user: { id: number; email: string },
+    token: string
+  ): Promise<boolean> {
+    let lastConversion: { deckName: string } | null;
+    try {
+      lastConversion = await this.lastConversionFor(user.id);
+    } catch (error) {
+      console.error(
+        `[inactivity] failed to read the last upload for user ${user.id}:`,
+        error instanceof Error ? error.message : 'unknown error'
+      );
+      await this.releaseWarning(user.id, token);
+      return false;
+    }
+
+    try {
+      await this.emailService.sendInactivityWarningEmail(
+        user.email,
+        token,
+        lastConversion
+      );
+      return true;
+    } catch (error) {
+      console.error(`[inactivity] failed to email user ${user.id}:`, error);
+      // A rejection SendGrid will repeat (an address it refuses) keeps the
+      // row: retrying it every run would crowd out people who can be warned.
+      if (isTransientSendError(error)) {
+        await this.releaseWarning(user.id, token);
+      }
+      return false;
+    }
+  }
+
+  private async lastConversionFor(
+    userId: number
+  ): Promise<{ deckName: string } | null> {
+    const lastUpload = await this.uploadsRepo.getLastUploadForUser(userId);
+    if (lastUpload == null) {
+      return null;
+    }
+    return {
+      deckName: path.basename(
+        lastUpload.filename,
+        path.extname(lastUpload.filename)
+      ),
+    };
   }
 
   // The warning row is what starts the deletion clock, so a warning that never

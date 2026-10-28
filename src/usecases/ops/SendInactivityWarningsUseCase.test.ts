@@ -186,24 +186,73 @@ describe('SendInactivityWarningsUseCase', () => {
       expect(emailService.sendInactivityWarningEmail).toHaveBeenCalledTimes(2);
     });
 
-    it('gives the warning back when it fails to send, so the next run warns again and no deletion clock starts', async () => {
-      repo.seedUsers([{ id: 1, name: 'Alice', email: 'alice@example.com' }]);
-      const emailService = makeEmailService({
-        sendInactivityWarningEmail: vi
-          .fn()
-          .mockRejectedValueOnce(new Error('SendGrid error'))
-          .mockResolvedValueOnce(undefined),
-      });
+    it.each([
+      ['a network error', 'ETIMEDOUT'],
+      ['a rate limit', 429],
+      ['a SendGrid outage', 503],
+    ])(
+      'gives the warning back after %s, so the next run warns again and no deletion clock starts',
+      async (_label, code) => {
+        repo.seedUsers([{ id: 1, name: 'Alice', email: 'alice@example.com' }]);
+        const emailService = makeEmailService({
+          sendInactivityWarningEmail: vi
+            .fn()
+            .mockRejectedValueOnce(
+              Object.assign(new Error('send failed'), { code })
+            )
+            .mockResolvedValueOnce(undefined),
+        });
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const useCase = new SendInactivityWarningsUseCase(repo, emailService);
+
+        const first = await useCase.execute(false);
+        expect(first.count).toBe(0);
+        expect(repo.getSentUserIds().has(1)).toBe(false);
+
+        const second = await useCase.execute(false);
+        expect(second.count).toBe(1);
+        expect(repo.getSentUserIds().has(1)).toBe(true);
+      }
+    );
+
+    it('keeps the warning when SendGrid refuses the address, so the user is not retried every run', async () => {
+      repo.seedUsers([{ id: 1, name: 'Alice', email: 'not-an-address' }]);
+      const sendInactivityWarningEmail = vi
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('Bad Request'), { code: 400 })
+        );
+      const emailService = makeEmailService({ sendInactivityWarningEmail });
       vi.spyOn(console, 'error').mockImplementation(() => {});
       const useCase = new SendInactivityWarningsUseCase(repo, emailService);
 
-      const first = await useCase.execute(false);
-      expect(first.count).toBe(0);
-      expect(repo.getSentUserIds().has(1)).toBe(false);
+      await useCase.execute(false);
+      const rerun = await useCase.execute(false);
 
-      const second = await useCase.execute(false);
-      expect(second.count).toBe(1);
+      expect(rerun.count).toBe(0);
       expect(repo.getSentUserIds().has(1)).toBe(true);
+      expect(sendInactivityWarningEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it('gives the warning back without sending when the last upload cannot be read', async () => {
+      repo.seedUsers([{ id: 1, name: 'Alice', email: 'alice@example.com' }]);
+      const uploads = makeUploadRepo();
+      uploads.getLastUploadForUser.mockRejectedValueOnce(
+        new Error('connection lost')
+      );
+      const emailService = makeEmailService();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const useCase = new SendInactivityWarningsUseCase(
+        repo,
+        emailService,
+        uploads
+      );
+
+      const first = await useCase.execute(false);
+
+      expect(first.count).toBe(0);
+      expect(emailService.sendInactivityWarningEmail).not.toHaveBeenCalled();
+      expect(repo.getSentUserIds().has(1)).toBe(false);
     });
 
     it('keeps the run going and logs no address when giving the warning back also fails', async () => {
@@ -221,7 +270,9 @@ describe('SendInactivityWarningsUseCase', () => {
       const emailService = makeEmailService({
         sendInactivityWarningEmail: vi
           .fn()
-          .mockRejectedValueOnce(new Error('SendGrid error'))
+          .mockRejectedValueOnce(
+            Object.assign(new Error('send failed'), { code: 'ECONNRESET' })
+          )
           .mockResolvedValueOnce(undefined),
       });
       const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -230,6 +281,10 @@ describe('SendInactivityWarningsUseCase', () => {
       const result = await useCase.execute(false);
 
       expect(result.count).toBe(1);
+      expect(repo.releaseSend).toHaveBeenCalledTimes(1);
+      expect(errorLog).toHaveBeenCalledWith(
+        '[inactivity] failed to release the warning for user 1; it still counts toward deletion'
+      );
       expect(JSON.stringify(errorLog.mock.calls)).not.toContain(
         'alice@example.com'
       );
