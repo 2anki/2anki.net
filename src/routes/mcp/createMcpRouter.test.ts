@@ -171,8 +171,8 @@ describe('McpRouter bearer enforcement', () => {
 });
 
 describe('McpRouter mistyped connector URLs', () => {
-  it.each(['/mc', '/mcp.'])(
-    'redirects %s to /mcp keeping the method and query',
+  it.each(['/mc', '/mcp.', '/MC', '/mc/', '/mcp./'])(
+    'redirects a POST to %s to /mcp keeping the query',
     async (path) => {
       await withServer(async (base) => {
         const res = await fetch(`${base}${path}?x=1`, {
@@ -186,6 +186,46 @@ describe('McpRouter mistyped connector URLs', () => {
       });
     }
   );
+
+  it('redirects a GET, such as a browser visit, to /mcp', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/mc`, { redirect: 'manual' });
+      expect(res.status).toBe(308);
+      expect(res.headers.get('location')).toBe('/mcp');
+    });
+  });
+
+  it('keeps an off-site-looking query on /mcp', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/mc?//evil.example`, {
+        redirect: 'manual',
+      });
+      expect(res.headers.get('location')).toBe('/mcp?//evil.example');
+    });
+  });
+
+  it('lands an unauthenticated client on the bearer challenge after the redirect', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/mcp.`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+      });
+      expect(res.status).toBe(401);
+      expect(res.headers.get('www-authenticate')).toContain(
+        'resource_metadata'
+      );
+    });
+  });
+
+  it('answers a GET with a token 405 after the redirect, as /mcp does', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/mc`, {
+        headers: { authorization: 'Bearer good' },
+      });
+      expect(res.status).toBe(405);
+    });
+  });
 
   it('reaches the authenticated handler when a client follows the redirect', async () => {
     let reached = false;
@@ -209,12 +249,15 @@ describe('McpRouter mistyped connector URLs', () => {
     expect(reached).toBe(true);
   });
 
-  it('does not redirect a longer path such as /mcp.json', async () => {
-    await withServer(async (base) => {
-      const res = await fetch(`${base}/mcp.json`, { redirect: 'manual' });
-      expect(res.status).toBe(404);
-    });
-  });
+  it.each(['/mcp.json', '/mcp/sse', '/mc.', '/mcpx'])(
+    'does not redirect %s',
+    async (path) => {
+      await withServer(async (base) => {
+        const res = await fetch(`${base}${path}`, { redirect: 'manual' });
+        expect(res.status).toBe(404);
+      });
+    }
+  );
 });
 
 describe('McpRouter endpoint namespacing (no /register collision)', () => {
