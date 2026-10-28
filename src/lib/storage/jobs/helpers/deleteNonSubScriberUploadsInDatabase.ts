@@ -27,6 +27,8 @@ export const deleteNonSubScriberUploadsInDatabase = async (
   // developer tier reads as a free user here and has their uploads deleted from
   // the bucket irreversibly. Matching on email as well as user_id only ever
   // spares a row, so a loose match is the safe direction.
+  // users.ankify_access is the per-user Auto Sync comp, paid access with no
+  // subscription row (hasAnkifyAccess), so it spares uploads like patreon does.
   // A share only pins its upload while it has been viewed (or created, if
   // never viewed) within the TTL. Without the recency bound any free user
   // could pin storage forever by creating a share and never revoking it
@@ -43,6 +45,7 @@ export const deleteNonSubScriberUploadsInDatabase = async (
     FROM users u
     JOIN uploads up ON u.id = up.owner
     WHERE u.patreon = false
+      AND u.ankify_access = false
       AND NOT EXISTS (
         SELECT 1 FROM subscriptions s
         WHERE s.active = true
