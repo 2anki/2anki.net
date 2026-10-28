@@ -164,6 +164,8 @@
     "generic_other": "Só saíram {{count}} cartões desta página, e {{skipped}} partes foram ignoradas. Abra o relatório para ver o motivo.",
     "fewCards_one": "Só saiu {{count}} cartão deste arquivo. Ative os cartões do Claude acima e converta de novo para obter mais.",
     "fewCards_other": "Só saíram {{count}} cartões deste arquivo. Ative os cartões do Claude acima e converta de novo para obter mais.",
+    "fewCardsNoCredits_one": "Só saiu {{count}} cartão deste arquivo.",
+    "fewCardsNoCredits_other": "Só saíram {{count}} cartões deste arquivo.",
     "fewCardsPaidAi_one": "Só saiu {{count}} cartão deste arquivo. Com um plano pago, o Claude pode criar mais cartões a partir dele.",
     "fewCardsPaidAi_other": "Só saíram {{count}} cartões deste arquivo. Com um plano pago, o Claude pode criar mais cartões a partir dele.",
     "seeReport": "Ver o relatório completo"

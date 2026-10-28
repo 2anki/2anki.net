@@ -19,7 +19,9 @@ export function AiCreditsReadout({ credits }: Props) {
   if (credits.credits <= 0) {
     return (
       <span className={pageStyles.aiCreditsLine} data-testid="ai-credits">
-        <span className={pageStyles.aiCreditsWarning}>{t('zero')}</span>
+        <span className={pageStyles.aiCreditsWarning}>
+          {t(credits.resets === 'pass' ? 'zeroPass' : 'zero')}
+        </span>
         <BuyCreditsButton source="credits_badge" variant="link" compact />
       </span>
     );

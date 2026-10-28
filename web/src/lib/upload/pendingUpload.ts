@@ -14,6 +14,9 @@ export interface PendingUpload {
   ownerId: number | null;
   pdfPageRange: string | null;
   aiFlag: string | null;
+  // Sent by a Claude button, so a resume asks for Claude again with two pages
+  // make one card off. Saves from before this field read as not one.
+  claudeResend?: boolean;
 }
 
 export interface PendingUploadStore {

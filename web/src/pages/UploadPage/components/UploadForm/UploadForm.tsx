@@ -31,6 +31,7 @@ import { EmptyBackNotice } from '../../../DownloadsPage/components/EmptyBackNoti
 import { ColorFlattenedNotice } from '../../../DownloadsPage/components/ColorFlattenedNotice';
 import { StructureRescuedNotice } from '../../../DownloadsPage/components/StructureRescuedNotice';
 import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice';
+import type { ThinDeckReason } from '../../../DownloadsPage/helpers/getThinDeckSignal';
 import { ThinDeckAiOffer } from '../ThinDeckAiOffer/ThinDeckAiOffer';
 import { isThinDeck } from '../ThinDeckAiOffer/isThinDeck';
 import {
@@ -70,6 +71,7 @@ import {
 } from '../../../../lib/hooks/useCardUsage';
 import {
   AI_CREDITS_QUERY_KEY,
+  type AiCreditsState,
   useAiCredits,
 } from '../../../../lib/hooks/useAiCredits';
 import { LOW_CREDITS_THRESHOLD } from '../AiCreditsReadout';
@@ -357,6 +359,25 @@ function isThinPdfOrTxtDeck(
   return /\.(pdf|txt)$/i.test(filename);
 }
 
+// A paying account's thin-deck notice waits for its credits: with none left,
+// telling it to turn on Claude cards points at a deck that still builds
+// without AI.
+function thinDeckNoticeReason(
+  isPaying: boolean,
+  isAuthenticated: boolean,
+  credits: AiCreditsState | null
+): ThinDeckReason | null {
+  if (!isPaying) return 'fewCardsPaidAi';
+  if (!isAuthenticated) return 'fewCards';
+  if (credits == null) return null;
+  return credits.credits <= 0 ? 'fewCardsNoCredits' : 'fewCards';
+}
+
+// Requests a Claude button sent (rebuild, the empty state's and the PDF
+// question's "Make cards with AI", the thin-deck full deck), so Try again and
+// a resumed upload can tell them from an upload that followed the settings.
+const CLAUDE_RESENDS = new WeakSet<FormData>();
+
 type AiRebuildFormat = 'pdf' | 'ppt' | 'pptx';
 
 function aiRebuildFormatOf(filename: string): AiRebuildFormat | null {
@@ -462,14 +483,19 @@ function UploadForm({
   const downloadRef = useRef<HTMLAnchorElement>(null);
   // The files behind the last local submit, kept so a rescue button can send
   // them back with the chosen rule, and the account that sent them (undefined
-  // until the page has read the account). Remote (Dropbox, Drive) submits
-  // clear it: those bytes never reach the browser, so no button is offered
-  // for them. A PDF unlocked with its password clears it too: sent back
-  // without the password, it fails.
+  // until the page has account data). Remote (Dropbox, Drive) submits clear
+  // it: those bytes never reach the browser, so no button is offered for
+  // them. A PDF unlocked with its password clears it too: sent back without
+  // the password, it fails.
   const [rescueFiles, setRescueFiles] = useState<File[]>([]);
   const [rescueFilesOwner, setRescueFilesOwner] = useState<
     number | null | undefined
   >(null);
+  // Moves on whenever the screen starts over or a new file goes out, so a
+  // resend whose account check outlives the screen it was tapped on is dropped.
+  const screenEpochRef = useRef(0);
+  const [resendPending, setResendPending] = useState(false);
+  const [claudeResendHeld, setClaudeResendHeld] = useState(false);
   const lastFormDataRef = useRef<FormData | null>(null);
   const [waitingForDeck, setWaitingForDeck] = useState(false);
   const stopWaitingRef = useRef<(() => void) | null>(null);
@@ -595,7 +621,12 @@ function UploadForm({
       clearTimeout(fallbackTimerRef.current);
     }
     setSampleRun(false);
+    screenEpochRef.current += 1;
+    setClaudeResendHeld(false);
   });
+
+  const currentFilename = (): string =>
+    driveFilename ?? dropboxFilename ?? displayFilename(fileInputRef.current);
 
   // Choosing to start over gives up on the pending file too, so the next
   // visit does not offer it again.
@@ -1118,37 +1149,39 @@ function UploadForm({
       ? localError?.rescue
       : null;
 
-  // A file sent before the page read the account belongs to the account the
-  // page then shows: the session the server put the upload under.
+  // A file sent before the page had account data (still loading, or a first
+  // read that failed or paused) belongs to the account the page then shows:
+  // the session the server put the upload under.
   useEffect(() => {
-    if (userLocalsLoading) return;
+    if (userLocals == null) return;
     setRescueFilesOwner((owner) =>
       owner === undefined ? currentOwnerId : owner
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocalsLoading]);
+  }, [userLocals]);
 
   // Kept files go back only under the account that sent them: on a shared
   // computer another account can sign in from another tab while a result is
   // still on screen, and must not receive that file or pay for it.
-  const rescueFilesAreThisAccounts = rescueFilesOwner === currentOwnerId;
+  const keptFilesBelongElsewhere =
+    rescueFilesOwner !== undefined && rescueFilesOwner !== currentOwnerId;
 
   // Only a fresh submit (the file input, a dropped folder, a handed-over file,
   // a saved upload resumed under its own account) sets the kept files and
   // their account. A resend keeps both as they were.
   const keepSubmittedFiles = (files: File[]) => {
+    screenEpochRef.current += 1;
+    setClaudeResendHeld(false);
     setRescueFiles(files);
-    setRescueFilesOwner(userLocalsLoading ? undefined : currentOwnerId);
+    setRescueFilesOwner(userLocals == null ? undefined : currentOwnerId);
   };
 
-  // Every resend of the kept files goes through here and reads the account
-  // again first, since a window that never lost focus still shows the old
-  // one. Under any account other than the one that sent the files, nothing
-  // goes out. A read that brings nothing back in time leaves the account the
-  // page shows, and files sent before the page read the account belong to
-  // the one this read finds.
-  const resendPendingRef = useRef(false);
-  const readAccountAgain = async (): Promise<number | null> => {
+  // The account as the server sees it now, or the account the page shows when
+  // the read fails or does not answer in time (then it is not confirmed).
+  const readAccountAgain = async (): Promise<{
+    confirmed: boolean;
+    accountId: number | null;
+  }> => {
     let stopCap = () => {};
     const capped = new Promise<undefined>((resolve) => {
       const timer = globalThis.setTimeout(resolve, ACCOUNT_READ_CAP_MS);
@@ -1156,24 +1189,49 @@ function UploadForm({
     });
     try {
       const reread = await Promise.race([refetchUserLocals(), capped]);
-      return reread?.data === undefined
-        ? currentOwnerId
-        : (reread.data.user?.id ?? null);
+      if (reread?.status !== 'success') {
+        return { confirmed: false, accountId: currentOwnerId };
+      }
+      return { confirmed: true, accountId: reread.data?.user?.id ?? null };
     } finally {
       stopCap();
     }
   };
-  const resendKeptFiles = async (send: () => void | Promise<void>) => {
+
+  // Every resend of the kept files goes through here. It reads the account
+  // again first, since a window that never lost focus still shows the old one,
+  // and sends nothing under any account other than the one that sent the files
+  // (files sent before the page had account data belong to the one the read
+  // finds). Without a confirmed account, a Claude resend, which spends
+  // credits, holds and says so; any other resend goes out under the account
+  // the page shows. A resend whose screen moved on during the read is dropped.
+  const resendPendingRef = useRef(false);
+  const resendKeptFiles = async (
+    send: () => void | Promise<void>,
+    whenUnconfirmed: 'hold' | 'send'
+  ) => {
     if (resendPendingRef.current) return;
     resendPendingRef.current = true;
+    const tappedOn = screenEpochRef.current;
+    setResendPending(true);
+    setClaudeResendHeld(false);
     try {
-      const accountNow = await readAccountAgain();
-      if (rescueFilesOwner !== undefined && accountNow !== rescueFilesOwner) {
+      const account = await readAccountAgain();
+      if (unmountedRef.current || tappedOn !== screenEpochRef.current) return;
+      if (
+        rescueFilesOwner !== undefined &&
+        account.accountId !== rescueFilesOwner
+      ) {
+        return;
+      }
+      if (!account.confirmed && whenUnconfirmed === 'hold') {
+        setClaudeResendHeld(true);
         return;
       }
       await send();
     } finally {
       resendPendingRef.current = false;
+      if (!unmountedRef.current) setResendPending(false);
     }
   };
 
@@ -1187,7 +1245,7 @@ function UploadForm({
     if (!isAuthenticated) return 'anon';
     if (!isPaying) return 'free';
     if (aiOn || lastSubmitUsedAi) return null;
-    return rescueFiles.length === 1 && rescueFilesAreThisAccounts
+    return rescueFiles.length === 1 && !keptFilesBelongElsewhere
       ? 'paying'
       : null;
   })();
@@ -1199,12 +1257,14 @@ function UploadForm({
 
   const handleAiRescue = () => {
     if (rescueFiles.length !== 1) return;
-    track('upload_ai_rescue_clicked', { state: 'paying' });
-    rerunWithAi(rescueFiles);
+    rerunWithAi(rescueFiles, () =>
+      track('upload_ai_rescue_clicked', { state: 'paying' })
+    );
   };
 
-  const rerunWithAi = (files: File[]) => {
+  const rerunWithAi = (files: File[], recordSend?: () => void) => {
     void resendKeptFiles(() => {
+      recordSend?.();
       const formData = new FormData();
       for (const file of files) {
         formData.append('pakker', file, file.name);
@@ -1215,15 +1275,16 @@ function UploadForm({
       attachPdfPageRange(formData);
       formData.set('claude-ai-flashcards', 'true');
       // The click asks for Claude: two pages make one card, saved on the
-      // account but not in this browser, would otherwise skip it for a PDF.
+      // account or in this browser, would otherwise skip it for a PDF.
       formData.set('pdf-page-pairs', 'false');
+      CLAUDE_RESENDS.add(formData);
       setLocalError(null);
       setZoneState('converting');
       setProgressWidth(10);
       setProgressSlow(false);
       setShowFallback(false);
       void runFileUpload(formData, files, false);
-    });
+    }, 'hold');
   };
 
   const thinDeckAiOffer =
@@ -1231,7 +1292,7 @@ function UploadForm({
     !lastSubmitUsedAi &&
     !sampleRun &&
     cardsHeldBack === 0 &&
-    rescueFilesAreThisAccounts &&
+    !keptFilesBelongElsewhere &&
     thinDeckOfferFile != null &&
     isThinDeck(cardCount, thinDeckOfferFile.name, thinDeckOfferFile.size)
       ? { file: thinDeckOfferFile, cardCount }
@@ -1252,7 +1313,7 @@ function UploadForm({
     zoneState === 'success' &&
     isAuthenticated &&
     isPaying &&
-    rescueFilesAreThisAccounts &&
+    !keptFilesBelongElsewhere &&
     !downloadRecovered &&
     !lastSubmitUsedAi &&
     !sampleRun &&
@@ -1264,11 +1325,27 @@ function UploadForm({
       aiRebuildFormat === 'pdf' &&
       globalThis.localStorage?.getItem('pdf-page-pairs') === 'true'
     );
-  const aiRebuildCreditsLeft = useAiCredits(aiRebuildEligible)?.credits ?? 0;
+  const thinNoticeDeck =
+    zoneState === 'success' &&
+    !aiOn &&
+    cardsHeldBack === 0 &&
+    (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
+    isThinPdfOrTxtDeck(cardCount, currentFilename());
+  const aiCredits = useAiCredits(
+    aiRebuildEligible || (thinNoticeDeck && isAuthenticated && isPaying)
+  );
+  const aiRebuildCreditsLeft = aiRebuildEligible
+    ? (aiCredits?.credits ?? 0)
+    : 0;
   const aiRebuildOffer =
     aiRebuildEligible && aiRebuildCreditsLeft > LOW_CREDITS_THRESHOLD
       ? aiRebuildFormat
       : null;
+  const thinNoticeReason = thinDeckNoticeReason(
+    isPaying,
+    isAuthenticated,
+    aiCredits
+  );
   useEffect(() => {
     if (aiRebuildOffer != null) {
       track('upload_ai_rebuild_shown', { format: aiRebuildOffer });
@@ -1277,8 +1354,10 @@ function UploadForm({
 
   const handleAiRebuild = () => {
     if (aiRebuildOffer == null) return;
-    track('upload_ai_rebuild_clicked', { format: aiRebuildOffer });
-    rerunWithAi(rescueFiles);
+    const format = aiRebuildOffer;
+    rerunWithAi(rescueFiles, () =>
+      track('upload_ai_rebuild_clicked', { format })
+    );
   };
 
   useEffect(() => {
@@ -1807,7 +1886,8 @@ function UploadForm({
       uploadedFiles,
       submittedAt,
       recoveryToken,
-      typeof aiFlagSent === 'string' ? aiFlagSent : null
+      typeof aiFlagSent === 'string' ? aiFlagSent : null,
+      CLAUDE_RESENDS.has(formData)
     );
     setNetworkRetryFiles(null);
     setUnreadableFile(null);
@@ -1861,7 +1941,8 @@ function UploadForm({
     files: File[],
     submittedAt: number,
     recoveryToken: string | null,
-    aiFlagSent: string | null
+    aiFlagSent: string | null,
+    claudeResend: boolean
   ) => {
     const first = files[0];
     if (first == null) return;
@@ -1874,6 +1955,7 @@ function UploadForm({
       ownerId: currentOwnerId,
       pdfPageRange: pdfPageRangeRef.current,
       aiFlag: aiFlagSent,
+      claudeResend,
     });
   };
 
@@ -2018,6 +2100,11 @@ function UploadForm({
     if (upload.aiFlag != null) {
       formData.set('claude-ai-flashcards', upload.aiFlag);
     }
+    // A Claude resend cut off by a reload or a lost tab goes back as one.
+    if (upload.claudeResend === true) {
+      formData.set('pdf-page-pairs', 'false');
+      CLAUDE_RESENDS.add(formData);
+    }
     resumedUploadRef.current = true;
     keepSubmittedFiles(upload.files);
     void runFileUpload(formData, upload.files, false);
@@ -2037,6 +2124,7 @@ function UploadForm({
       ownerId: currentOwnerId,
       pdfPageRange: pdfPageRangeRef.current,
       aiFlag: 'true',
+      claudeResend: true,
     });
     // The store swallows write errors, so mark only a file that is really there.
     const saved = await getPendingUploadStore().load();
@@ -2179,8 +2267,8 @@ function UploadForm({
   const handleRescueChoice = (rule: RescueRule, cards: number) => {
     const files = rescueFiles;
     if (files.length !== 1) return;
-    track('upload_rescue_chosen', { rule, cards });
     void resendKeptFiles(() => {
+      track('upload_rescue_chosen', { rule, cards });
       const formData = new FormData();
       for (const file of files) {
         formData.append('pakker', file, file.name);
@@ -2198,7 +2286,7 @@ function UploadForm({
       setProgressSlow(false);
       setShowFallback(false);
       void runFileUpload(formData, files, false);
-    });
+    }, 'send');
   };
 
   // From the AI preview gate: build the deck from the same file without AI, the
@@ -2225,38 +2313,46 @@ function UploadForm({
       setProgressSlow(false);
       setShowFallback(false);
       void runFileUpload(formData, files, false);
-    });
+    }, 'send');
   };
 
   const handleNetworkRetry = () => {
     const files = networkRetryFiles;
     if (files == null || files.length === 0) return;
     const failedAttempt = lastFormDataRef.current;
-    void resendKeptFiles(async () => {
-      const recoveryToken = recoveryTokenRef.current;
-      if (!isAuthenticated && recoveryToken != null) {
-        setZoneState('converting');
-        if (await fetchAnonymousCopy(files[0], recoveryToken, 'retry')) {
-          return;
+    const retriesClaudeResend =
+      failedAttempt != null && CLAUDE_RESENDS.has(failedAttempt);
+    void resendKeptFiles(
+      async () => {
+        const recoveryToken = recoveryTokenRef.current;
+        if (!isAuthenticated && recoveryToken != null) {
+          setZoneState('converting');
+          if (await fetchAnonymousCopy(files[0], recoveryToken, 'retry')) {
+            return;
+          }
         }
-      }
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append('pakker', file, file.name);
-      }
-      for (const [key, value] of Object.entries(globalThis.localStorage)) {
-        formData.append(key, value);
-      }
-      applyAnonymousAiFlag(formData, aiOn);
-      attachPdfPageRange(formData);
-      // The retry asks for what the failed attempt asked for: a Claude resend
-      // whose request never arrived stays a Claude resend.
-      for (const key of RETRY_KEEPS_AI_CHOICE) {
-        const sent = failedAttempt?.get(key);
-        if (typeof sent === 'string') formData.set(key, sent);
-      }
-      void runFileUpload(formData, files, true);
-    });
+        const formData = new FormData();
+        for (const file of files) {
+          formData.append('pakker', file, file.name);
+        }
+        for (const [key, value] of Object.entries(globalThis.localStorage)) {
+          formData.append(key, value);
+        }
+        applyAnonymousAiFlag(formData, aiOn);
+        attachPdfPageRange(formData);
+        // A Claude resend whose request never arrived goes again as one; any
+        // other retry takes the settings on screen now.
+        if (retriesClaudeResend) {
+          for (const key of RETRY_KEEPS_AI_CHOICE) {
+            const sent = failedAttempt.get(key);
+            if (typeof sent === 'string') formData.set(key, sent);
+          }
+          CLAUDE_RESENDS.add(formData);
+        }
+        void runFileUpload(formData, files, true);
+      },
+      retriesClaudeResend ? 'hold' : 'send'
+    );
   };
 
   const isExistingApkgReject =
@@ -2441,6 +2537,38 @@ function UploadForm({
     emailVerified: userLocals?.user?.email_verified,
   });
 
+  // A Claude resend that held because the account could not be confirmed.
+  const renderClaudeResendHeld = () =>
+    claudeResendHeld && (
+      <p className={formStyles.warningInline} role="alert">
+        {t('upload.form.claudeResendUnconfirmed')}
+      </p>
+    );
+
+  const chooseFileAgain = () => {
+    startOver();
+    fileInputRef.current?.click();
+  };
+
+  // In place of the buttons that would send the kept file again, once the page
+  // shows a different session from the one that sent it.
+  const renderSignInChanged = () => (
+    <div className={formStyles.aiRescueActions} role="status">
+      <p className={formStyles.rescueLead}>
+        {currentOwnerId == null
+          ? t('upload.form.signedOutSinceUpload')
+          : t('upload.form.otherAccountSinceUpload')}
+      </p>
+      <button
+        type="button"
+        className={formStyles.aiRescueButton}
+        onClick={chooseFileAgain}
+      >
+        {t('upload.form.chooseFileAgain')}
+      </button>
+    </div>
+  );
+
   const renderSuccessState = () => (
     <div className={formStyles.stateContent}>
       <CheckCircleIcon className={formStyles.iconSuccess} />
@@ -2585,24 +2713,21 @@ function UploadForm({
           file={thinDeckAiOffer.file}
           cardCount={thinDeckAiOffer.cardCount}
           isPaying={isPaying}
+          busy={resendPending}
           onMakeFullDeck={() => rerunWithAi(rescueFiles)}
           onBeforeCheckout={saveThinDeckForCheckout}
         />
       )}
-      {!aiOn &&
-        cardsHeldBack === 0 &&
-        (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
-        aiRebuildOffer == null &&
-        isThinPdfOrTxtDeck(cardCount, currentFilename()) && (
-          <div className={formStyles.warningInline}>
-            <ThinDeckNotice
-              reason={isPaying ? 'fewCards' : 'fewCardsPaidAi'}
-              cards={cardCount}
-              skipped={0}
-              surface="upload"
-            />
-          </div>
-        )}
+      {thinNoticeDeck && aiRebuildOffer == null && thinNoticeReason != null && (
+        <div className={formStyles.warningInline}>
+          <ThinDeckNotice
+            reason={thinNoticeReason}
+            cards={cardCount}
+            skipped={0}
+            surface="upload"
+          />
+        </div>
+      )}
       {aiRebuildOffer != null && (
         <div className={formStyles.aiRescueActions}>
           <p className={formStyles.rescueLead}>
@@ -2611,12 +2736,19 @@ function UploadForm({
           <button
             type="button"
             className={formStyles.aiRescueButton}
+            disabled={resendPending}
+            aria-busy={resendPending}
             onClick={handleAiRebuild}
           >
             {t('upload.form.aiRebuildButton')}
           </button>
         </div>
       )}
+      {renderClaudeResendHeld()}
+      {keptFilesBelongElsewhere &&
+        rescueFiles.length > 0 &&
+        !sampleRun &&
+        renderSignInChanged()}
       {showFallback && (
         <button
           type="button"
@@ -2850,14 +2982,24 @@ function UploadForm({
           <button
             type="button"
             className={formStyles.aiRescueButton}
+            disabled={resendPending}
+            aria-busy={resendPending}
             onClick={handleAiRescue}
           >
             {t('upload.form.aiRescueMake')}
           </button>
         )}
+        {renderClaudeResendHeld()}
       </div>
     );
-    const rescue = rescueFiles.length === 1 ? (localError?.rescue ?? []) : [];
+    const signInChanged =
+      keptFilesBelongElsewhere && rescueFiles.length === 1
+        ? renderSignInChanged()
+        : null;
+    const rescue =
+      rescueFiles.length === 1 && !keptFilesBelongElsewhere
+        ? (localError?.rescue ?? [])
+        : [];
     const rescueActions = rescue.length > 0 && (
       <div className={formStyles.rescueActions}>
         <p className={formStyles.rescueLead}>{t('upload.form.rescueLead')}</p>
@@ -2866,6 +3008,8 @@ function UploadForm({
             <button
               type="button"
               className={formStyles.rescueButton}
+              disabled={resendPending}
+              aria-busy={resendPending}
               onClick={() =>
                 handleRescueChoice(candidate.rule, candidate.cards)
               }
@@ -2907,6 +3051,7 @@ function UploadForm({
       return (
         <>
           <p className={formStyles.emptyReading}>{copy.text}</p>
+          {signInChanged}
           {rescueActions}
           {aiActions}
           <p className={formStyles.emptyBody}>
@@ -2930,13 +3075,11 @@ function UploadForm({
         <p className={formStyles.emptyBody}>
           {t('upload.form.noCardsBody')} {commonProblems}
         </p>
+        {signInChanged}
         {aiActions}
       </>
     );
   };
-
-  const currentFilename = (): string =>
-    driveFilename ?? dropboxFilename ?? displayFilename(fileInputRef.current);
 
   const imageDropSource = (): 'pdf' | 'upload' | 'notionHtml' | 'plainText' => {
     if (imageDropReason === 'notion_html_no_folder') {
@@ -3210,20 +3353,29 @@ function UploadForm({
             ? t('upload.form.networkErrorLargeBody')
             : t('upload.form.networkErrorSmallBody')}
         </p>
-        <button
-          type="button"
-          className={formStyles.actionButton}
-          onClick={handleNetworkRetry}
-        >
-          {t('upload.form.tryAgain')}
-        </button>
-        <button
-          type="button"
-          className={formStyles.resetLink}
-          onClick={startOver}
-        >
-          {t('upload.form.networkChooseDifferent')}
-        </button>
+        {keptFilesBelongElsewhere ? (
+          renderSignInChanged()
+        ) : (
+          <>
+            <button
+              type="button"
+              className={formStyles.actionButton}
+              disabled={resendPending}
+              aria-busy={resendPending}
+              onClick={handleNetworkRetry}
+            >
+              {t('upload.form.tryAgain')}
+            </button>
+            {renderClaudeResendHeld()}
+            <button
+              type="button"
+              className={formStyles.resetLink}
+              onClick={startOver}
+            >
+              {t('upload.form.networkChooseDifferent')}
+            </button>
+          </>
+        )}
       </div>
     );
   };
@@ -3485,15 +3637,23 @@ function UploadForm({
       </div>
     );
 
-  const renderAiPreviewGateState = () =>
-    aiPreviewCards == null ? null : (
+  const renderAiPreviewGateState = () => {
+    if (aiPreviewCards == null) return null;
+    if (keptFilesBelongElsewhere) {
+      return (
+        <div className={formStyles.stateContent}>{renderSignInChanged()}</div>
+      );
+    }
+    return (
       <div className={formStyles.stateContent}>
         <AiPreviewGate
           cards={aiPreviewCards}
+          busy={resendPending}
           onContinueWithoutAi={handleContinueWithoutAi}
         />
       </div>
     );
+  };
 
   const renderClaimingHeldState = () => (
     <div className={formStyles.stateContent}>
@@ -3670,17 +3830,14 @@ function UploadForm({
       for (const file of rescueFiles) next.append('pakker', file, file.name);
     }
     next.set(PDF_FALLBACK_OPTION, mode);
-    if (remember) rememberPdfFallback(mode);
-    track('pdf_fallback_chosen', {
-      mode,
-      reason: pdfChoice?.reason ?? 'no_text',
-      remembered: remember,
-    });
     const files = rescueFiles;
+    const reason = pdfChoice?.reason ?? 'no_text';
     void resendKeptFiles(() => {
+      if (remember) rememberPdfFallback(mode);
+      track('pdf_fallback_chosen', { mode, reason, remembered: remember });
       setPdfChoice(null);
       void runFileUpload(next, files, false);
-    });
+    }, 'send');
   };
 
   const handleForgetPdfFallback = () => {
@@ -3701,55 +3858,63 @@ function UploadForm({
         <WarningIcon className={formStyles.iconWarning} />
         <p className={formStyles.emptyTitle}>{t(pdfChoiceCopy.title)}</p>
         <p className={formStyles.emptyBody}>{t(pdfChoiceCopy.body)}</p>
-        <div className={formStyles.emptyActions}>
-          <button
-            type="button"
-            className={formStyles.actionButton}
-            onClick={() => handlePdfChoice('pairs', rememberPdfChoice)}
-          >
-            {t('upload.form.pdfChoicePairs')}
-          </button>
-          <p className={formStyles.emptyBody}>
-            {t('upload.form.pdfChoicePairsHint')}
-          </p>
-          <button
-            type="button"
-            className={formStyles.actionButton}
-            onClick={() => handlePdfChoice('single', rememberPdfChoice)}
-          >
-            {t('upload.form.pdfChoiceSingle')}
-          </button>
-          <p className={formStyles.emptyBody}>
-            {t('upload.form.pdfChoiceSingleHint')}
-          </p>
-          {isAuthenticated &&
-            isPaying &&
-            rescueFiles.length === 1 &&
-            rescueFilesAreThisAccounts && (
+        {keptFilesBelongElsewhere ? (
+          renderSignInChanged()
+        ) : (
+          <div className={formStyles.emptyActions}>
+            <button
+              type="button"
+              className={formStyles.actionButton}
+              disabled={resendPending}
+              aria-busy={resendPending}
+              onClick={() => handlePdfChoice('pairs', rememberPdfChoice)}
+            >
+              {t('upload.form.pdfChoicePairs')}
+            </button>
+            <p className={formStyles.emptyBody}>
+              {t('upload.form.pdfChoicePairsHint')}
+            </p>
+            <button
+              type="button"
+              className={formStyles.actionButton}
+              disabled={resendPending}
+              aria-busy={resendPending}
+              onClick={() => handlePdfChoice('single', rememberPdfChoice)}
+            >
+              {t('upload.form.pdfChoiceSingle')}
+            </button>
+            <p className={formStyles.emptyBody}>
+              {t('upload.form.pdfChoiceSingleHint')}
+            </p>
+            {isAuthenticated && isPaying && rescueFiles.length === 1 && (
               <button
                 type="button"
                 className={formStyles.actionButton}
+                disabled={resendPending}
+                aria-busy={resendPending}
                 onClick={handleAiRescue}
               >
                 {t('upload.form.aiRescueMake')}
               </button>
             )}
-          <label className={formStyles.emptyBody}>
-            <input
-              type="checkbox"
-              checked={rememberPdfChoice}
-              onChange={(event) => setRememberPdfChoice(event.target.checked)}
-            />{' '}
-            {t('upload.form.pdfChoiceRemember')}
-          </label>
-          <button
-            type="button"
-            className={formStyles.resetLink}
-            onClick={startOver}
-          >
-            {t('upload.form.tryDifferent')}
-          </button>
-        </div>
+            {renderClaudeResendHeld()}
+            <label className={formStyles.emptyBody}>
+              <input
+                type="checkbox"
+                checked={rememberPdfChoice}
+                onChange={(event) => setRememberPdfChoice(event.target.checked)}
+              />{' '}
+              {t('upload.form.pdfChoiceRemember')}
+            </label>
+            <button
+              type="button"
+              className={formStyles.resetLink}
+              onClick={startOver}
+            >
+              {t('upload.form.tryDifferent')}
+            </button>
+          </div>
+        )}
       </div>
     );
   };

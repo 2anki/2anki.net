@@ -164,6 +164,8 @@
     "generic_other": "Nur {{count}} Karten sind aus dieser Seite entstanden, und {{skipped}} Teile wurden übersprungen. Öffne den Bericht, um zu sehen, warum.",
     "fewCards_one": "Nur {{count}} Karte ist aus dieser Datei entstanden. Aktiviere oben Claude-Karten und konvertiere erneut, um mehr zu erhalten.",
     "fewCards_other": "Nur {{count}} Karten sind aus dieser Datei entstanden. Aktiviere oben Claude-Karten und konvertiere erneut, um mehr zu erhalten.",
+    "fewCardsNoCredits_one": "Nur {{count}} Karte ist aus dieser Datei entstanden.",
+    "fewCardsNoCredits_other": "Nur {{count}} Karten sind aus dieser Datei entstanden.",
     "fewCardsPaidAi_one": "Nur {{count}} Karte ist aus dieser Datei entstanden. Mit einem bezahlten Plan kann Claude mehr Karten daraus schreiben.",
     "fewCardsPaidAi_other": "Nur {{count}} Karten sind aus dieser Datei entstanden. Mit einem bezahlten Plan kann Claude mehr Karten daraus schreiben.",
     "seeReport": "Vollständigen Bericht ansehen"

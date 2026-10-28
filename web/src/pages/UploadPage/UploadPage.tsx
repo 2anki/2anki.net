@@ -106,6 +106,9 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     aiBadgeState === 'on' || aiBadgeState === 'off'
   );
   const holdSignedInBadge = userLocalsLoading && sessionHint;
+  // Japanese runs one sentence into the next after 。; the other locales put
+  // a space between them.
+  const sentenceGap = i18n.resolvedLanguage === 'ja' ? '' : ' ';
 
   const showAiChoice = userLocalsLoading
     ? !sessionHint
@@ -314,7 +317,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
             </button>
             <span className={styles.aiOffBadgeBody}>
               <span> {t('upload.page.aiOffBody')} </span>
-              <span>{t('upload.page.aiOffIncluded')} </span>
+              <span>
+                {t('upload.page.aiOffIncluded')}
+                {sentenceGap}
+              </span>
               <button
                 type="button"
                 className={styles.aiInlineLink}

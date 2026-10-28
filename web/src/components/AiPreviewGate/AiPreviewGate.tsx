@@ -12,6 +12,8 @@ import styles from './AiPreviewGate.module.css';
 interface Props {
   readonly cards: AiPreviewCard[];
   readonly onContinueWithoutAi: () => void;
+  // True while the page checks the account before sending the file again.
+  readonly busy?: boolean;
 }
 
 function errorText(error: unknown): string {
@@ -23,7 +25,11 @@ function errorText(error: unknown): string {
   return '';
 }
 
-export function AiPreviewGate({ cards, onContinueWithoutAi }: Props) {
+export function AiPreviewGate({
+  cards,
+  onContinueWithoutAi,
+  busy = false,
+}: Props) {
   const { t } = useTranslation('aiPreview');
   const prices = usePassPrices();
   const [pending, setPending] = useState(false);
@@ -104,6 +110,8 @@ export function AiPreviewGate({ cards, onContinueWithoutAi }: Props) {
       <button
         type="button"
         className={styles.buttonSecondary}
+        disabled={busy}
+        aria-busy={busy}
         onClick={onContinueWithoutAi}
       >
         {t('secondaryCta')}

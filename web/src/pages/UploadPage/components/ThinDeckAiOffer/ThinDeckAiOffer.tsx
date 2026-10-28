@@ -17,6 +17,8 @@ interface ThinDeckAiOfferProps {
   file: File;
   cardCount: number;
   isPaying: boolean;
+  // True while the page checks the account before sending the file again.
+  busy?: boolean;
   onMakeFullDeck: () => void;
   onBeforeCheckout: () => Promise<void>;
 }
@@ -27,6 +29,7 @@ export function ThinDeckAiOffer({
   file,
   cardCount,
   isPaying,
+  busy = false,
   onMakeFullDeck,
   onBeforeCheckout,
 }: Readonly<ThinDeckAiOfferProps>) {
@@ -138,7 +141,8 @@ export function ThinDeckAiOffer({
           <button
             type="button"
             className={styles.primary}
-            disabled={checkoutPending}
+            disabled={checkoutPending || busy}
+            aria-busy={busy}
             onClick={() => void unlock()}
           >
             {isPaying

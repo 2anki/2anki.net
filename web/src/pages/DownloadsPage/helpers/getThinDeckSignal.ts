@@ -8,6 +8,7 @@ export type ThinDeckReason =
   | 'notConnected'
   | 'generic'
   | 'fewCards'
+  | 'fewCardsNoCredits'
   | 'fewCardsPaidAi';
 
 export interface ThinDeckSignal {

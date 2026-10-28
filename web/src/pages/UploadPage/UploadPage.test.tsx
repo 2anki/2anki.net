@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
+import i18n from '../../lib/i18n';
 import { UploadPage } from './UploadPage';
 
 vi.mock('./components/UploadForm/UploadForm', () => ({
@@ -474,7 +475,10 @@ describe('UploadPage AI off badge for a paying account', () => {
   const creditsRequests = (fetchMock: ReturnType<typeof vi.fn>) =>
     fetchMock.mock.calls.filter(([url]) => url === '/api/ai/credits');
 
-  function stubCredits(credits: number): ReturnType<typeof vi.fn> {
+  function stubCredits(
+    credits: number,
+    resets: 'pass' | 'period' = 'pass'
+  ): ReturnType<typeof vi.fn> {
     const fetchMock = vi.fn((url: string) =>
       Promise.resolve(
         url === '/api/ai/credits'
@@ -485,7 +489,7 @@ describe('UploadPage AI off badge for a paying account', () => {
                 allowance: 1500,
                 usable: true,
                 windowEnd: null,
-                resets: 'pass',
+                resets,
               }),
               { status: 200, headers: { 'Content-Type': 'application/json' } }
             )
@@ -546,19 +550,46 @@ describe('UploadPage AI off badge for a paying account', () => {
     }
   );
 
-  it('keeps the plan line and explains the fallback when the credits are spent', async () => {
-    fakeLocals = { subscriber: true };
-    stubCredits(0);
-    renderPage();
+  it.each([
+    {
+      resets: 'pass' as const,
+      line: '0 AI credits left. Your next deck builds without AI.',
+    },
+    {
+      resets: 'period' as const,
+      line: '0 AI credits left. Your next deck builds without AI until your credits reset.',
+    },
+  ])(
+    'keeps the plan line and says what the next deck does with no credits left that reset by $resets',
+    async ({ resets, line }) => {
+      fakeLocals = { subscriber: true };
+      stubCredits(0, resets);
+      renderPage();
 
-    expect(
-      screen.getByText('Claude cards are included in your plan.')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        '0 AI credits left. Your next deck builds without AI until your credits reset.'
-      )
-    ).toBeInTheDocument();
+      expect(
+        screen.getByText('Claude cards are included in your plan.')
+      ).toBeInTheDocument();
+      expect(await screen.findByText(line)).toBeInTheDocument();
+    }
+  );
+
+  it('runs the plan line into the next words in Japanese, with no space after 。', async () => {
+    await i18n.changeLanguage('ja');
+    try {
+      fakeLocals = { subscriber: true };
+      globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+      stubCredits(1347);
+      renderPage();
+
+      const sentence = screen.getByText(
+        'Claude カードはご利用のプランに含まれています。'
+      );
+      expect(sentence.textContent).toBe(
+        'Claude カードはご利用のプランに含まれています。'
+      );
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   it('reads the credits once for the paying off state', async () => {
