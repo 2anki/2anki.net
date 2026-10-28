@@ -693,4 +693,115 @@ describe('slide PDFs reaching the heading synthesizer', () => {
       ]);
     }
   );
+
+  it('puts the figure of a Japanese slide titled ■ATP on the card of that slide', async () => {
+    mockExtract.mockResolvedValue({
+      pages: [
+        {
+          text: '■細胞のエネルギー\n• ミトコンドリアが細胞のエネルギーの大部分を作る',
+          imagePaintCount: 0,
+          landscape: true,
+        },
+        {
+          text: '■ATP\n• ATP合成酵素が内膜でATPを作る',
+          imagePaintCount: 1,
+          landscape: true,
+        },
+      ],
+      pageCount: 2,
+      avgCharsPerPage: 30,
+      isDrmLocked: false,
+      needsCredential: false,
+      coloredTextPageCount: 0,
+    });
+    const loadImages = vi
+      .fn()
+      .mockResolvedValue([
+        { pageIndex: 1, name: 'img-002-000.png', contents: Buffer.from('b') },
+      ]);
+
+    const result = await convertPdfTextToHtml(
+      Buffer.from('x'),
+      'biology.pdf',
+      undefined,
+      loadImages
+    );
+
+    expect(result.html).toMatch(
+      /<summary>■ATP<\/summary>\s*<p>• ATP合成酵素が内膜でATPを作る<img src="biology\.pdf-images\/img-002-000\.png"><\/p>/
+    );
+  });
+
+  it.each([
+    ['convertPdfTextToHtml', convertPdfTextToHtml],
+    ['convertPdfTextToHtmlAuto', convertPdfTextToHtmlAuto],
+  ])(
+    '%s fronts each glued title of a Japanese slide deck',
+    async (_name, convert) => {
+      mockExtract.mockResolvedValue({
+        pages: [
+          {
+            text: '■ATP\n• ATP合成酵素が内膜でATPを作る\n• 細胞のエネルギー通貨として使われる',
+            imagePaintCount: 0,
+            landscape: true,
+          },
+          {
+            text: '■DNA\n• 二重らせん構造をもつ\n• 塩基はAとT、GとCで対をつくる',
+            imagePaintCount: 0,
+            landscape: true,
+          },
+        ],
+        pageCount: 2,
+        avgCharsPerPage: 250,
+        isDrmLocked: false,
+        needsCredential: false,
+        coloredTextPageCount: 0,
+      });
+
+      const result = await convert(Buffer.from('x'), 'biology.pdf');
+
+      expect(result.cardCount).toBe(2);
+      expect(result.html.match(/<summary>[^<]*<\/summary>/g)).toEqual([
+        '<summary>■ATP</summary>',
+        '<summary>■DNA</summary>',
+      ]);
+    }
+  );
+
+  it.each([
+    ['convertPdfTextToHtml', convertPdfTextToHtml],
+    ['convertPdfTextToHtmlAuto', convertPdfTextToHtmlAuto],
+  ])(
+    '%s sends a page past the over-split gate once its glued ■ATP fronts a card',
+    async (_name, convert) => {
+      const terms = Array.from({ length: 15 }, (_, index) => [
+        `用語${index + 1}`,
+        `用語${index + 1}の定義はこの行に書かれていてかなり長い説明になる`,
+      ]).flat();
+      mockExtract.mockResolvedValue({
+        pages: [
+          {
+            text: ['■ATP', '• ATP合成酵素が内膜でATPを作る', ...terms].join(
+              '\n'
+            ),
+            imagePaintCount: 0,
+            landscape: true,
+          },
+        ],
+        pageCount: 1,
+        avgCharsPerPage: 500,
+        isDrmLocked: false,
+        needsCredential: false,
+        coloredTextPageCount: 0,
+      });
+
+      const result = await convert(Buffer.from('x'), 'terms.pdf');
+
+      expect(result).toMatchObject({
+        cardCount: 16,
+        overSplit: true,
+        html: '',
+      });
+    }
+  );
 });

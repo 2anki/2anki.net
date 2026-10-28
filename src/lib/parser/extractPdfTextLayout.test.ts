@@ -142,6 +142,31 @@ describe('extractPdfText page orientation', () => {
   });
 });
 
+describe('extractPdfText line order', () => {
+  it('reports lines in the order the page draws them, so footer chrome drawn before the title comes first', async () => {
+    const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const result = await extractPdfText(
+      loadFixture('pdf-landscape-chrome-order.pdf')
+    );
+
+    expect(result.pages.map((page) => page.text.split('\n'))).toEqual([
+      [
+        'Dept. of Physiology2026/10/284',
+        'Membrane Proteins',
+        '•Integral proteins span the bilayer',
+        '•Peripheral proteins sit on one surface',
+      ],
+      [
+        'Membrane Proteins',
+        '•Integral proteins span the bilayer',
+        '•Peripheral proteins sit on one surface',
+        'Dept. of Physiology2026/10/284',
+      ],
+    ]);
+    spy.mockRestore();
+  });
+});
+
 describe('extractPdfText maxPages cap', () => {
   it('parses only the first page when capped, splitting over the parsed page', async () => {
     const full = await extractPdfText(loadFixture('pdf-plain-text.pdf'));

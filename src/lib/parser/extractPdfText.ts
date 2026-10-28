@@ -4,7 +4,8 @@ export interface PdfPage {
   text: string;
   imagePaintCount: number;
   // Read from the page box and rotation (isLandscapePage). The heading
-  // synthesizer applies its slide bullet rules only on landscape pages.
+  // synthesizer applies its slide bullet rules only when every page is
+  // landscape.
   landscape?: boolean;
 }
 
