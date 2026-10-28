@@ -26,7 +26,7 @@
     "start": "pnpm run dev",
     "build": "tsc -p .",
     "typecheck": "tsc -p . --noEmit",
-    "arch": "git clean -fX -q src && depcruise src --config .dependency-cruiser.cjs",
+    "arch": "bash scripts/arch.sh",
     "dev": "concurrently --names server,web --prefix-colors magenta,cyan \"pnpm:dev:server\" \"pnpm:dev:web\"",
     "dev:server": "cross-env LOCAL_DEV=true tsx watch --env-file=.env src/server.ts",
     "dev:web": "pnpm --filter 2anki-web dev",
@@ -160,6 +160,13 @@
       "protobufjs@7": "^7.6.5",
       "qs@6": "^6.15.2",
       "@xmldom/xmldom": ">=0.8.13 <0.9.0"
+    },
+    "packageExtensions": {
+      "dependency-cruiser@18": {
+        "dependencies": {
+          "typescript": "6.0.3"
+        }
+      }
     },
     "onlyBuiltDependencies": [
       "better-sqlite3"

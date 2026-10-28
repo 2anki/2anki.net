@@ -5,7 +5,7 @@ import {
 } from '../../../integrations/stripe';
 import { DeveloperSubscriptionsRepository } from '../../../../data_layer/DeveloperSubscriptionsRepository';
 import { getDatabase } from '../../../../data_layer';
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import type StripeTypes from 'stripe';
 import { reconcileActiveSubscriptions } from './reconcileActiveSubscriptions';
 import { withStripeRetry } from './withStripeRetry';

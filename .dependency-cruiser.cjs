@@ -78,13 +78,15 @@ module.exports = {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
     doNotFollow: { path: 'node_modules' },
-    // `\\.js$` keeps the cruise on TypeScript only. In-place `pnpm build`
+    // `^src/.*\\.js$` keeps the cruise on TypeScript only. In-place `pnpm build`
     // output (there is no outDir; prod runs src/server.js) leaves compiled .js
     // beside every .ts locally, and TS module resolution then prefers the
     // stale .js sibling — silently dropping ~90% of edges and blinding every
     // rule (the 2026-08-17 audit saw 36 reported vs 329 real skip edges). The
     // `arch` script runs `git clean -fX src` first so local cruises match CI,
-    // which never emits .js (typecheck is --noEmit).
-    exclude: { path: '\\.test\\.ts$|\\.js$|/test/|/__mocks__/|/migrations/' },
+    // which never emits .js (typecheck is --noEmit). It is scoped to src/
+    // because an unscoped `\\.js$` also dropped the edge to
+    // node_modules/knex/knex.js, so no-knex-value-outside-datalayer never fired.
+    exclude: { path: '\\.test\\.ts$|^src/.*\\.js$|/test/|/__mocks__/|/migrations/' },
   },
 };

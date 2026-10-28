@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import AuthenticationService, {
   UserWithOwner,
 } from '../../services/AuthenticationService';
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import UserPassRepository, {
   IUserPassRepository,
   UserPass,

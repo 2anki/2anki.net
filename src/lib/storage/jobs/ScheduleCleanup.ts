@@ -1,4 +1,4 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 
 import deleteOldUploads, { MS_21 } from './helpers/deleteOldUploads';
 import { runFileSystemCleanup } from './helpers/runFileSystemCleanup';

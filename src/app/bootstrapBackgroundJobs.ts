@@ -1,4 +1,4 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import { Client as NotionClient } from '@notionhq/client';
 import Docker from 'dockerode';
 

@@ -1,4 +1,4 @@
-import { Knex } from 'knex';
+import type { Knex } from 'knex';
 import StorageHandler from '../../StorageHandler';
 import Uploads from '../../../../data_layer/public/Uploads';
 import { SHARE_INACTIVITY_TTL_DAYS } from '../../../constants';

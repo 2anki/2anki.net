@@ -32,6 +32,8 @@
 
 - **@testing-library/jest-dom** is patched (`pnpm.patchedDependencies`, `patches/@testing-library__jest-dom.patch`) with upstream testing-library/jest-dom#742 so its `types/vitest.d.ts` augments Vitest 5's `Assertion<R, T>` interface; without it the web `typecheck` fails with ~1800 `Property 'toBeInTheDocument' does not exist` errors. The augmentation only loads because `web/src/setupTests.ts` imports `@testing-library/jest-dom/vitest` (Vitest 5 dropped the `jest.Matchers` linkage the plain import relied on under Vitest 4). Drop the patch when a jest-dom release includes #742.
 
+- **dependency-cruiser** gets its own TypeScript 6 through `pnpm.packageExtensions` in `package.json`. dependency-cruiser 18 supports `typescript >=2.0.0 <7.0.0`, and the repo runs TypeScript 7, so without the extension it prints `missing-tsc-transpiler`, cruises 0 modules and exits 0 (#5048). `scripts/arch.sh` now fails that run. Drop the extension when a dependency-cruiser release supports TypeScript 7.
+
 ## Held bumps — do not retry without clearing the blocker
 
 None at the moment. The sanitize-html hold (ESM-only `htmlparser2@12`, #4002/#4025) cleared once the server suite moved to Vitest (#4695).
