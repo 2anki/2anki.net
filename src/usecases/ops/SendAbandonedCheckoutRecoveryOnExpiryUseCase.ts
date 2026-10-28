@@ -1,4 +1,5 @@
 import hashToken from '../../lib/misc/hashToken';
+import { withServerMarker } from '../../lib/events/serverEventProps';
 import type {
   CheckoutRecoveryDetails,
   IAbandonedCheckoutRecoveryRepository,
@@ -72,7 +73,7 @@ export class SendAbandonedCheckoutRecoveryOnExpiryUseCase {
       });
       this.eventsSink?.record({
         name: 'email_batch_sent',
-        props: { campaign: 'abandoned_checkout', count: 1 },
+        props: withServerMarker({ campaign: 'abandoned_checkout', count: 1 }),
       });
     }
   }
