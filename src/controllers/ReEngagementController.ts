@@ -5,13 +5,20 @@ import type { IEmailPreferencesRepository } from '../data_layer/EmailPreferences
 import { SubmitReEngagementFeedbackUseCase } from '../usecases/SubmitReEngagementFeedbackUseCase';
 import { UpdateEmailPreferencesUseCase } from '../usecases/UpdateEmailPreferencesUseCase';
 
+// Every marketing email links to /unsubscribe?uid=<its own send token>, and
+// each campaign keeps its tokens in its own table.
+interface UnsubscribeTokens {
+  findByToken(token: string): Promise<{ userId: number } | null>;
+}
+
 export class ReEngagementController {
   private readonly submitUseCase: SubmitReEngagementFeedbackUseCase;
   private readonly updatePrefsUseCase: UpdateEmailPreferencesUseCase;
 
   constructor(
     private readonly repo: IReEngagementRepository,
-    private readonly prefRepo: IEmailPreferencesRepository
+    private readonly prefRepo: IEmailPreferencesRepository,
+    private readonly otherUnsubscribeTokens: UnsubscribeTokens[] = []
   ) {
     this.submitUseCase = new SubmitReEngagementFeedbackUseCase(repo);
     this.updatePrefsUseCase = new UpdateEmailPreferencesUseCase(prefRepo);
@@ -77,7 +84,7 @@ export class ReEngagementController {
       return;
     }
 
-    const record = await this.repo.findByToken(uid.trim());
+    const record = await this.findUnsubscribeToken(uid.trim());
     if (record == null) {
       res.status(404).json({ message: 'Unsubscribe link not found.' });
       return;
@@ -89,5 +96,17 @@ export class ReEngagementController {
     });
 
     res.status(200).json({ message: 'You have been unsubscribed.' });
+  }
+
+  private async findUnsubscribeToken(
+    token: string
+  ): Promise<{ userId: number } | null> {
+    for (const tokens of [this.repo, ...this.otherUnsubscribeTokens]) {
+      const record = await tokens.findByToken(token);
+      if (record != null) {
+        return record;
+      }
+    }
+    return null;
   }
 }

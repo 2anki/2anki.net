@@ -20,7 +20,14 @@ const mockPrefRepo: Mocked<IEmailPreferencesRepository> = {
   optIn: vi.fn().mockResolvedValue(undefined),
 };
 
+const mockInactivityFindByToken = vi.fn().mockResolvedValue(null);
+
 vi.mock('../data_layer', () => ({ getDatabase: vi.fn() }));
+vi.mock('../data_layer/InactivityEmailRepository', () => ({
+  InactivityEmailRepository: vi.fn().mockImplementation(function () {
+    return { findByToken: mockInactivityFindByToken };
+  }),
+}));
 vi.mock('../data_layer/ReEngagementRepository', () => ({
   __esModule: true,
   default: vi.fn().mockImplementation(function () {
@@ -124,6 +131,16 @@ describe('ReEngagementRouter', () => {
     it('returns 404 when token is unknown', async () => {
       const res = await fetch(`${url}/unsubscribe?uid=ghost`);
       expect(res.status).toBe(404);
+    });
+
+    it('unsubscribes the user an inactivity warning was sent to', async () => {
+      mockInactivityFindByToken.mockResolvedValueOnce({ id: 7, userId: 9 });
+      const res = await fetch(`${url}/unsubscribe?uid=inactivity-token`);
+      expect(res.status).toBe(200);
+      expect(mockInactivityFindByToken).toHaveBeenCalledWith(
+        'inactivity-token'
+      );
+      expect(mockPrefRepo.optOut).toHaveBeenCalledWith(9);
     });
 
     it('returns 200 when token is valid and calls optOut', async () => {
