@@ -15,7 +15,7 @@ async function mockBackend(page: Page) {
   );
 }
 
-test('a PDF with no text asks what to make, then makes it at 375px', async ({
+test('a slide-like PDF asks what to make, then makes it at 375px', async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -52,10 +52,15 @@ test('a PDF with no text asks what to make, then makes it at 375px', async ({
   await page.goto('/upload');
   await expect(page.locator('#upload-panel-local')).toBeVisible();
   await page.locator('#pakker').setInputFiles({
-    name: 'scan.pdf',
+    name: 'slides.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from('%PDF-1.4 fake'),
   });
+  await expect(
+    page
+      .locator('#upload-panel-local')
+      .getByText("We can't tell questions from answers in this PDF")
+  ).toBeVisible();
   await expect(page.getByText('Two pages per card')).toBeVisible();
   await expect(
     page.getByText('One card per page', { exact: true })
@@ -71,7 +76,7 @@ test('a PDF with no text asks what to make, then makes it at 375px', async ({
 
   await expect(page.getByText('14 cards')).toBeVisible({ timeout: 10_000 });
   await expect(
-    page.getByText('every page became one card.', { exact: false })
+    page.getByText('Each page became 1 card, as a picture of the page.')
   ).toBeVisible();
   expect(sentFallbacks).toEqual(['ask', 'single']);
   expect(

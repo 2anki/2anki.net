@@ -63,6 +63,7 @@ describe('AiPreviewResumeController', () => {
       apkg: Buffer.from('APKG BYTES'),
       cardCount: 58,
       deckName: 'notes',
+      pdfFallbackMode: 'pairs',
     });
     const controller = new AiPreviewResumeController(useCaseStub(execute));
     const res = mockRes(88);
@@ -76,6 +77,10 @@ describe('AiPreviewResumeController', () => {
     });
     expect((res as unknown as { statusCode: number }).statusCode).toBe(200);
     expect(res.set).toHaveBeenCalledWith('X-Card-Count', '58');
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Pdf-Fallback',
+      expect.anything()
+    );
     expect((res as unknown as { body: Buffer }).body).toEqual(
       Buffer.from('APKG BYTES')
     );

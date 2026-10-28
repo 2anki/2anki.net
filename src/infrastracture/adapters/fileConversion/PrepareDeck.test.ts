@@ -15,7 +15,10 @@ import {
   getAiBudgetStatus as getAiBudgetStatusImport,
 } from '../../../lib/claude/aiSpendGuard';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
-import { generateDeckInfo as generateDeckInfoImport } from '../../../lib/claude/ClaudeService';
+import {
+  AiCreditsTrippedWithSalvage,
+  generateDeckInfo as generateDeckInfoImport,
+} from '../../../lib/claude/ClaudeService';
 import CustomExporterDefault from '../../../lib/parser/exporters/CustomExporter';
 import {
   convertPdfTextToHtml as convertPdfTextToHtmlImport,
@@ -1595,6 +1598,72 @@ describe('PrepareDeck — a PDF with no usable text', () => {
 
     expect(convertPDFToImages).not.toHaveBeenCalled();
     expect(result?.pdfFallbackMode).toBeUndefined();
+  });
+
+  function runPassHolderPdf(claudeAIFlashcards: 'true' | 'false') {
+    return PrepareDeck({
+      name: 'slides.pdf',
+      files: [{ name: 'slides.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({
+        'pdf-fallback': 'pairs',
+        'claude-ai-flashcards': claudeAIFlashcards,
+      }),
+      noLimits: true,
+      anonymousPassId: 7,
+      workspace: makeWorkspace(),
+    });
+  }
+
+  it('names the page images for a pass holder with AI off', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+
+    const result = await runPassHolderPdf('false');
+
+    expect(generateDeckInfo).not.toHaveBeenCalled();
+    expect(result?.engine).toBe('parser');
+    expect(result?.pdfFallbackMode).toBe('pairs');
+  });
+
+  it('names no page images on a deck Claude wrote for a pass holder with AI on', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Slides',
+        image: '',
+        style: null,
+        id: 100000000000001,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'What does the first slide define?',
+            back: 'Osmosis',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    const result = await runPassHolderPdf('true');
+
+    expect(result?.engine).toBe('claude');
+    expect(result?.pdfFallbackMode).toBeUndefined();
+  });
+
+  it('names the page images that ship when the AI credits run out before Claude writes a card', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+    generateDeckInfo.mockRejectedValueOnce(new AiCreditsTrippedWithSalvage([]));
+
+    const result = await runPassHolderPdf('true');
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(result?.engine).toBe('parser');
+    expect(result?.pdfFallbackMode).toBe('pairs');
+    expect(result?.warning).toBe(AI_CREDITS_EXHAUSTED_WARNING_CODE);
   });
 });
 
