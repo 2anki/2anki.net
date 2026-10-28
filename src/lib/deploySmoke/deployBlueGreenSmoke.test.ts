@@ -48,3 +48,17 @@ describe('deploy-blue-green.sh smoke step', () => {
     }
   );
 });
+
+describe('deploy-blue-green.sh dry run', () => {
+  it('pipes nothing into run, which drops its input in a dry run and lets printf die of SIGPIPE', () => {
+    const script = fs.readFileSync(DEPLOY_SCRIPT, 'utf8');
+
+    expect(script.match(/\|\s*run\b/g) ?? []).toEqual([]);
+  });
+
+  it('logs both upstream files it would write', () => {
+    const log = dryRun('blue');
+
+    expect(log.match(/DRY_RUN: sudo tee \S+\.new/g)).toHaveLength(2);
+  });
+});
