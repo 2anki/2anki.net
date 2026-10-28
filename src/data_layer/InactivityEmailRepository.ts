@@ -15,6 +15,7 @@ export interface IInactivityEmailRepository {
     limit?: number
   ): Promise<Array<{ id: number; email: string }>>;
   recordSend(userId: number, token: string): Promise<void>;
+  releaseSend(token: string): Promise<void>;
   findByToken(token: string): Promise<{ id: number; userId: number } | null>;
 }
 
@@ -191,6 +192,14 @@ export class InactivityEmailRepository implements IInactivityEmailRepository {
     await this.database(this.table).insert({ user_id: userId, token });
   }
 
+  buildReleaseSendQuery(token: string) {
+    return this.database(this.table).where('token', token).delete();
+  }
+
+  async releaseSend(token: string): Promise<void> {
+    await this.buildReleaseSendQuery(token);
+  }
+
   async findByToken(
     token: string
   ): Promise<{ id: number; userId: number } | null> {
@@ -250,6 +259,14 @@ export class InMemoryInactivityEmailRepository implements IInactivityEmailReposi
     const id = this.nextId++;
     this.emails.push({ id, userId, token });
     this.sentUserIds.add(userId);
+  }
+
+  async releaseSend(token: string): Promise<void> {
+    const released = this.emails.find((e) => e.token === token);
+    this.emails = this.emails.filter((e) => e.token !== token);
+    if (released != null) {
+      this.sentUserIds.delete(released.userId);
+    }
   }
 
   async findByToken(

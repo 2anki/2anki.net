@@ -18,6 +18,14 @@ describe('InactivityEmailRepository rerun safety SQL', () => {
     );
   });
 
+  it('gives back a warning row by its token', () => {
+    const sql = repository.buildReleaseSendQuery('tok-1').toString();
+
+    expect(sql).toBe(
+      'delete from "inactivity_emails" where "token" = \'tok-1\''
+    );
+  });
+
   it('only selects deletion candidates whose users row still exists', () => {
     const sql = repository.buildUsersToDeleteQuery(100).toString();
 

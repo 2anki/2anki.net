@@ -66,6 +66,10 @@ describe('SendInactivityWarningsUseCase', () => {
     repo = new InMemoryInactivityEmailRepository();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('dry run', () => {
     it('returns candidate count without sending emails', async () => {
       repo.seedUsers([
@@ -180,6 +184,55 @@ describe('SendInactivityWarningsUseCase', () => {
 
       expect(result.count).toBe(1);
       expect(emailService.sendInactivityWarningEmail).toHaveBeenCalledTimes(2);
+    });
+
+    it('gives the warning back when it fails to send, so the next run warns again and no deletion clock starts', async () => {
+      repo.seedUsers([{ id: 1, name: 'Alice', email: 'alice@example.com' }]);
+      const emailService = makeEmailService({
+        sendInactivityWarningEmail: vi
+          .fn()
+          .mockRejectedValueOnce(new Error('SendGrid error'))
+          .mockResolvedValueOnce(undefined),
+      });
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const useCase = new SendInactivityWarningsUseCase(repo, emailService);
+
+      const first = await useCase.execute(false);
+      expect(first.count).toBe(0);
+      expect(repo.getSentUserIds().has(1)).toBe(false);
+
+      const second = await useCase.execute(false);
+      expect(second.count).toBe(1);
+      expect(repo.getSentUserIds().has(1)).toBe(true);
+    });
+
+    it('keeps the run going and logs no address when giving the warning back also fails', async () => {
+      repo.seedUsers([
+        { id: 1, name: 'Alice', email: 'alice@example.com' },
+        { id: 2, name: 'Bob', email: 'bob@example.com' },
+      ]);
+      repo.releaseSend = vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            "delete from inactivity_emails where token = 'alice@example.com'"
+          )
+        );
+      const emailService = makeEmailService({
+        sendInactivityWarningEmail: vi
+          .fn()
+          .mockRejectedValueOnce(new Error('SendGrid error'))
+          .mockResolvedValueOnce(undefined),
+      });
+      const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const useCase = new SendInactivityWarningsUseCase(repo, emailService);
+
+      const result = await useCase.execute(false);
+
+      expect(result.count).toBe(1);
+      expect(JSON.stringify(errorLog.mock.calls)).not.toContain(
+        'alice@example.com'
+      );
     });
 
     it('returns zero when no candidates exist', async () => {

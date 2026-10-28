@@ -95,9 +95,23 @@ export class SendInactivityWarningsUseCase {
         sent++;
       } catch (error) {
         console.error(`[inactivity] failed to email user ${user.id}:`, error);
+        await this.releaseWarning(user.id, token);
       }
     }
 
     return { count: sent, dryRun: false };
+  }
+
+  // The warning row is what starts the deletion clock, so a warning that never
+  // went out must not keep it: the user is picked up again on the next run. A
+  // knex error inlines its bindings, so only a fixed string is logged.
+  private async releaseWarning(userId: number, token: string): Promise<void> {
+    try {
+      await this.repo.releaseSend(token);
+    } catch {
+      console.error(
+        `[inactivity] failed to release the warning for user ${userId}; it still counts toward deletion`
+      );
+    }
   }
 }
