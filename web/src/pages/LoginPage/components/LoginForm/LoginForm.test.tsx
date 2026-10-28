@@ -35,6 +35,7 @@ describe('LoginForm', () => {
     });
     mockRequestMagicLink.mockReset();
     mockRequestMagicLink.mockResolvedValue({
+      ok: true,
       status: 200,
       json: () => Promise.resolve({ message: 'ok' }),
     });
@@ -160,6 +161,28 @@ describe('LoginForm', () => {
     });
   });
 
+  it('says the link could not be sent, not "check your email", when the send fails', async () => {
+    mockRequestMagicLink.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ code: 'unknown' }),
+    });
+    renderLoginForm();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
+      target: { value: 'test@example.com' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' })
+    );
+
+    expect(
+      await screen.findByText(
+        "We couldn't send your sign-in link right now. Try again in a minute, or use your password below."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Check your email')).not.toBeInTheDocument();
+  });
+
   it('forwards a safe redirect from the URL to the magic-link request', async () => {
     renderLoginForm('/login?redirect=/upload');
     fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
@@ -211,6 +234,7 @@ describe('LoginForm', () => {
 
   it('shows a recovery message instead of check-email when the address is suppressed', async () => {
     mockRequestMagicLink.mockResolvedValue({
+      ok: true,
       status: 200,
       json: () => Promise.resolve({ message: 'suppressed', suppressed: true }),
     });

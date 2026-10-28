@@ -50,6 +50,10 @@ function LoginForm() {
         'login',
         redirect
       );
+      if (!response.ok) {
+        setError(t('auth.login.magicLinkError'));
+        return;
+      }
       const body = await response.json().catch(() => ({}));
       if (body?.suppressed) {
         setError(t('auth.login.magicLinkSuppressed'));

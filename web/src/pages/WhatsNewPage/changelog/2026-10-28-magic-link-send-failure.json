@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-magic-link-send-failure",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "Sign-in and password reset links say when the email could not be sent, instead of asking you to check your inbox"
+}

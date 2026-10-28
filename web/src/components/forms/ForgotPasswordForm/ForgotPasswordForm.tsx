@@ -22,7 +22,14 @@ function ForgotPasswordForm({ setError }: Readonly<ForgotPasswordProps>) {
     setLoading(true);
 
     try {
-      await get2ankiApi().requestMagicLink(email, 'password_reset');
+      const response = await get2ankiApi().requestMagicLink(
+        email,
+        'password_reset'
+      );
+      if (!response.ok) {
+        setError(new Error(t('account:confirmEmail.error')));
+        return;
+      }
       setSubmitted(true);
     } catch (error) {
       setError(error);
