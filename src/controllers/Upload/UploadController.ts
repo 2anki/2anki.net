@@ -28,7 +28,10 @@ import { DeleteDropboxUploadUseCase } from '../../usecases/uploads/DeleteDropbox
 import { GetGoogleDriveUploadsUseCase } from '../../usecases/uploads/GetGoogleDriveUploadsUseCase';
 import { DeleteGoogleDriveUploadUseCase } from '../../usecases/uploads/DeleteGoogleDriveUploadUseCase';
 import { validatePdfCredential } from '../../lib/pdf/validatePdfCredential';
-import { RetryPdfWithCredentialUseCase } from '../../usecases/uploads/RetryPdfWithCredentialUseCase';
+import {
+  RetryPdfWithCredentialUseCase,
+  type CardUsage,
+} from '../../usecases/uploads/RetryPdfWithCredentialUseCase';
 import { isPaying } from '../../lib/isPaying';
 import CardOption from '../../lib/parser/Settings';
 import Workspace from '../../lib/parser/WorkSpace';
@@ -79,7 +82,8 @@ class UploadController {
     private readonly deleteDropboxUploadUseCase?: DeleteDropboxUploadUseCase,
     private readonly getGoogleDriveUploadsUseCase?: GetGoogleDriveUploadsUseCase,
     private readonly deleteGoogleDriveUploadUseCase?: DeleteGoogleDriveUploadUseCase,
-    retryPdfRateLimiter?: RateLimiter
+    retryPdfRateLimiter?: RateLimiter,
+    private readonly cardUsage?: CardUsage
   ) {
     this.retryPdfRateLimiter =
       retryPdfRateLimiter ??
@@ -370,7 +374,7 @@ class UploadController {
     });
     const workspace = new Workspace(true, 'fs');
 
-    const useCase = new RetryPdfWithCredentialUseCase();
+    const useCase = new RetryPdfWithCredentialUseCase(this.cardUsage);
     const outcome = await useCase.execute(
       fileBuffer,
       filename,
@@ -387,6 +391,9 @@ class UploadController {
         error: 'needs_password',
         reason: outcome.reason,
       });
+    }
+    if ('limitReached' in outcome) {
+      return res.redirect(`/limit?kind=${outcome.limitReached}`);
     }
 
     const { apkg, cardCount, name } = outcome;

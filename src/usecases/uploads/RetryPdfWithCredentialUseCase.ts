@@ -3,6 +3,11 @@ import Workspace from '../../lib/parser/WorkSpace';
 import CardOption from '../../lib/parser/Settings';
 import { isPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
 import { processUploadedPdf } from './processUploadedPdf';
+import type UsersRepository from '../../data_layer/UsersRepository';
+import {
+  ANONYMOUS_CARD_CAP,
+  MONTHLY_CARD_LIMIT,
+} from '../users/CheckMonthlyCardLimitUseCase';
 
 export interface RetryPdfResult {
   apkg: Buffer;
@@ -15,9 +20,23 @@ export interface RetryPdfNeedsCredential {
   reason: 'wrong_password';
 }
 
-export type RetryPdfOutcome = RetryPdfResult | RetryPdfNeedsCredential;
+export interface RetryPdfLimitReached {
+  limitReached: 'card_count' | 'anonymous';
+}
+
+export type RetryPdfOutcome =
+  | RetryPdfResult
+  | RetryPdfNeedsCredential
+  | RetryPdfLimitReached;
+
+export type CardUsage = Pick<
+  UsersRepository,
+  'getCardUsage' | 'incrementCardUsage'
+>;
 
 export class RetryPdfWithCredentialUseCase {
+  constructor(private readonly cardUsage?: CardUsage) {}
+
   async execute(
     fileBuffer: Buffer,
     filename: string,
@@ -44,6 +63,18 @@ export class RetryPdfWithCredentialUseCase {
         throw new Error('PDF conversion produced no cards');
       }
 
+      // The same limits an ordinary upload checks after converting: once the
+      // password opens the PDF, the retry must not be a way around them.
+      if (!paying) {
+        const limitReached = await this.checkFreeLimits(
+          userId,
+          result.cardCount
+        );
+        if (limitReached != null) {
+          return { limitReached };
+        }
+      }
+
       return {
         apkg: result.apkg,
         cardCount: result.cardCount,
@@ -55,5 +86,23 @@ export class RetryPdfWithCredentialUseCase {
       }
       throw error;
     }
+  }
+
+  private async checkFreeLimits(
+    userId: number | null,
+    cardCount: number
+  ): Promise<RetryPdfLimitReached['limitReached'] | null> {
+    if (userId == null) {
+      return cardCount > ANONYMOUS_CARD_CAP ? 'anonymous' : null;
+    }
+    if (this.cardUsage == null) {
+      return 'card_count';
+    }
+    const { cards_used } = await this.cardUsage.getCardUsage(userId);
+    if (cards_used + cardCount > MONTHLY_CARD_LIMIT) {
+      return 'card_count';
+    }
+    await this.cardUsage.incrementCardUsage(userId, cardCount);
+    return null;
   }
 }

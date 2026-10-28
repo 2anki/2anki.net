@@ -3810,6 +3810,9 @@ function UploadForm({
         }
       );
 
+      if (leaveViaRedirect(request)) {
+        return;
+      }
       if (request.status === 200) {
         setLockedPdfInfo(null);
         forgetKeptFiles();
