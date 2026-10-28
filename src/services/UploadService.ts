@@ -2065,7 +2065,6 @@ class UploadService {
         (sum, p) => sum + (p.mcqSkippedCount ?? 0),
         0
       );
-      res.set('Content-Type', 'application/apkg');
       res.set('Content-Length', plen.toString());
       res.set('X-Card-Count', totalCards.toString());
       res.set('X-MCQ-Count', totalMcqCount.toString());
@@ -2286,7 +2285,6 @@ class UploadService {
     const apkg = await fs.promises.readFile(result.apkgPath);
     fs.promises.unlink(result.apkgPath).catch(() => undefined);
 
-    res.set('Content-Type', 'application/apkg');
     res.set('Content-Length', Buffer.byteLength(apkg).toString());
     res.set('X-Card-Count', result.cardCount.toString());
     res.set('X-MCQ-Count', result.mcqCount.toString());

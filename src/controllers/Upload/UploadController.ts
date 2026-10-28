@@ -418,7 +418,6 @@ class UploadController {
 
     const { apkg, cardCount, name } = outcome;
     const deckName = toText(name);
-    res.set('Content-Type', 'application/apkg');
     res.set('Content-Length', Buffer.byteLength(apkg).toString());
     res.set('X-Card-Count', cardCount.toString());
     res.set('Access-Control-Expose-Headers', 'File-Name, X-Card-Count');
