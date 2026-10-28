@@ -1,7 +1,12 @@
-import { AnchorHTMLAttributes, useEffect, useMemo } from 'react';
+import {
+  AnchorHTMLAttributes,
+  ComponentProps,
+  useEffect,
+  useMemo,
+} from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
-import ReactMarkdown, { Components } from 'react-markdown';
+import ReactMarkdown, { Components, ExtraProps } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
@@ -120,8 +125,23 @@ function OverlappingClozeDemo(props: Record<string, unknown>) {
   return <OverlappingClozePreview style={style} />;
 }
 
+// A table wider than a phone screen scrolls inside its own box, so the page
+// shell's hidden overflow cannot cut off its last column. Focusable so a
+// keyboard can scroll it too.
+function ScrollableTable({
+  node: _node,
+  ...props
+}: ComponentProps<'table'> & ExtraProps) {
+  return (
+    <div className={styles.tableScroll} tabIndex={0}>
+      <table {...props} />
+    </div>
+  );
+}
+
 const markdownComponents = {
   a: DocsAnchor,
+  table: ScrollableTable,
   pre: CodeBlock as Components['pre'],
   'overlapping-cloze-demo': OverlappingClozeDemo,
 } as unknown as Components;

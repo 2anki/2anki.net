@@ -99,3 +99,16 @@ describe('DocContent custom element embedding', () => {
     expect(previews).toHaveLength(2);
   });
 });
+
+describe('DocContent tables', () => {
+  it('puts every table in a container that scrolls sideways at phone width', () => {
+    const { container } = renderAt('reference/self-hosting');
+
+    const tables = container.querySelectorAll('table');
+    expect(tables.length).toBeGreaterThan(0);
+    for (const table of tables) {
+      expect(table.parentElement?.className).toContain('tableScroll');
+      expect(table.parentElement?.getAttribute('tabindex')).toBe('0');
+    }
+  });
+});
