@@ -167,6 +167,27 @@ describe('a password unlock of a kept file on /api/upload/retry-with-credential'
     expect(prepareDeck).toHaveBeenCalledTimes(1);
   });
 
+  it('streams the unlocked deck as application/octet-stream', async () => {
+    session = signedIn;
+    const form = new FormData();
+    form.append('credential', 'secret');
+    form.append(
+      'file',
+      new Blob(['%PDF-1.4 locked'], { type: 'application/pdf' }),
+      'Locked notes.pdf'
+    );
+
+    const response = await fetch(
+      `${baseUrl}/api/upload/retry-with-credential`,
+      { method: 'POST', body: form }
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe(
+      'application/octet-stream'
+    );
+  });
+
   it('converts an unlock with no kept owner, as older pages send', async () => {
     const result = await unlock(signedIn);
 
