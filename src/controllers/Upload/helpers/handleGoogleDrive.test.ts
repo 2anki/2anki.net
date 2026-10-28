@@ -249,6 +249,23 @@ describe('handleGoogleDrive — native Google Apps mime types', () => {
     );
   });
 
+  it('hands a signed-out import with an expired cookie to the same upload path as a file', async () => {
+    const req = makeReq([basePdfFile]);
+    (req as unknown as { cookies: Record<string, string> }).cookies = {
+      token: 'expired-session',
+      anon_id: 'drive-anon',
+    };
+    const res = makeRes();
+    const handleUpload = vi.fn();
+    await handleGoogleDrive(
+      req,
+      res as unknown as express.Response,
+      handleUpload
+    );
+    expect(handleUpload).toHaveBeenCalledWith(req, res);
+    expect(res.locals).toEqual({});
+  });
+
   it('returns 400 and does not call handleUpload when googleDriveAuth is missing', async () => {
     const req = makeReq([basePdfFile], undefined);
     (req.body as Record<string, unknown>).googleDriveAuth = undefined;

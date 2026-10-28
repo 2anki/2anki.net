@@ -279,6 +279,14 @@ describe('LimitPage — anonymous variant', () => {
     ).toBeTruthy();
   });
 
+  it('shows the no-account heading even when the URL says kind=card_count', () => {
+    renderPage(['/limit?kind=card_count']);
+    expect(
+      screen.getByText('You hit the limit for converting without an account')
+    ).toBeTruthy();
+    expect(screen.queryByText('You reached 100 cards this month')).toBeNull();
+  });
+
   it('shows the no-account heading', () => {
     renderPage();
     expect(

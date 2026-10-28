@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-expired-sign-in-held-deck",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "Large uploads are kept for a day when your sign-in has expired, so you can sign back in and download the deck"
+}

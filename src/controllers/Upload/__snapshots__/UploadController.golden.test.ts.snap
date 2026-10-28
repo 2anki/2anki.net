@@ -273,6 +273,26 @@ exports[`what each population gets back from /api/upload/file > signed-out pass 
 }
 `;
 
+exports[`what each population gets back from /api/upload/file > signed-out pass holder with an expired session cookie 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=120",
+  },
+  "cardsCharged": [],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Large.apkg"",
+    "file-name": "Golden%20Large.apkg",
+    "x-card-count": "120",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;
+
 exports[`what each population gets back from /api/upload/file > signed-out under the anonymous cap 1`] = `
 {
   "body": {
@@ -296,14 +316,101 @@ exports[`what each population gets back from /api/upload/file > signed-out under
 exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap 1`] = `
 {
   "body": {
-    "text": "Found. Redirecting to /limit?kind=card_count",
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, day pass card on 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
   },
   "cardsCharged": [],
   "contentType": "text/plain",
   "headers": {
-    "location": "/limit?kind=card_count",
+    "location": "/limit?kind=anonymous&cards=120",
   },
   "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, no anon id (control) 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous",
+  },
+  "cardsCharged": [],
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=anonymous",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, partial delivery on, day pass card on 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "dayPassCard": true,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, pass-first wall on 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
+  },
+  "cardsCharged": [],
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=anonymous&cards=120",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, under the cap, partial delivery on 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=5",
+  },
+  "cardsCharged": [],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Small.apkg"",
+    "file-name": "Golden%20Small.apkg",
+    "x-card-count": "5",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
   "storedObjects": [],
 }
 `;
