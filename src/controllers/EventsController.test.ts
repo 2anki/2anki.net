@@ -55,7 +55,7 @@ function buildMocks(opts: {
     end: vi.fn().mockReturnThis(),
   } as unknown as Response;
 
-  return { controller, req, res, executeSpy };
+  return { controller, req, res, executeSpy, sink, repo };
 }
 
 describe('EventsController', () => {
@@ -192,7 +192,7 @@ describe('EventsController', () => {
       anonId: 'anon-x',
       firstTouch: JSON.stringify({ landingPath: '/nclex' }),
     });
-    req.body = { name: 'upload_started' };
+    req.body = { name: 'upload_page_viewed' };
     controller.track(req, res);
     expect(executeSpy).toHaveBeenCalledWith(
       expect.objectContaining({ props: { signup_origin: '/nclex' } })
@@ -203,7 +203,10 @@ describe('EventsController', () => {
     const { controller, req, res, executeSpy } = buildMocks({
       firstTouch: JSON.stringify({ landingPath: '/nclex' }),
     });
-    req.body = { name: 'upload_started', props: { signup_origin: '/mcat' } };
+    req.body = {
+      name: 'upload_page_viewed',
+      props: { signup_origin: '/mcat' },
+    };
     controller.track(req, res);
     expect(executeSpy).toHaveBeenCalledWith(
       expect.objectContaining({ props: { signup_origin: '/mcat' } })
@@ -212,7 +215,7 @@ describe('EventsController', () => {
 
   it('leaves props untouched when there is no first_touch cookie', () => {
     const { controller, req, res, executeSpy } = buildMocks({ anonId: 'a' });
-    req.body = { name: 'upload_started' };
+    req.body = { name: 'upload_page_viewed' };
     controller.track(req, res);
     expect(executeSpy).toHaveBeenCalledWith(
       expect.objectContaining({ props: {} })
@@ -224,12 +227,25 @@ describe('EventsController', () => {
       userId: 99,
       anonId: 'anon-y',
     });
-    req.body = { name: 'conversion_succeeded', props: { user_id: 1 } };
+    req.body = { name: 'deck_downloaded', props: { user_id: 1 } };
     controller.track(req, res);
     expect(executeSpy).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 99 })
     );
   });
+
+  it.each(['upload_started', 'conversion_succeeded'])(
+    'answers 202 to a client-posted %s but stores nothing, since only the server writes it',
+    async (name) => {
+      const { controller, req, res, sink, repo } = buildMocks({ userId: 1 });
+      req.body = { name };
+      controller.track(req, res);
+      await sink.flush();
+
+      expect(res.status).toHaveBeenCalledWith(202);
+      expect(repo.insertEvents).not.toHaveBeenCalled();
+    }
+  );
 
   it('reads anonymousId from cookie when tracking is allowed', () => {
     const { controller, req, res, executeSpy } = buildMocks({
