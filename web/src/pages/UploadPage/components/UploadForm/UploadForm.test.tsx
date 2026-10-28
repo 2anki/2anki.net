@@ -7797,7 +7797,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       aiFlag: 'true',
       claudeResend: true,
     });
-    accountReadFailed(otherPassHolder);
+    setUserLocals(passHolderWithoutAccount);
     const fetchMock = stubServer([
       jsonAnswer(
         409,
@@ -8764,6 +8764,10 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(resumed.getAll('claude-ai-flashcards')).toEqual(['true']);
     expect(resumed.getAll('pdf-page-pairs')).toEqual(['false']);
     expect(resumed.getAll('kept-owner')).toEqual(['8']);
+    expect(eventsNamed('thin_deck_ai_unlock_clicked')).toContainEqual([
+      'thin_deck_ai_unlock_clicked',
+      { plan: 'resumed' },
+    ]);
   });
 
   const passHolderWithoutAccount = {
@@ -9044,6 +9048,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     [
       'the deck-ready screen, in place of Rebuild with Claude',
       OTHER_ACCOUNT_LINE,
+      'Your deck is ready — 64 cards.',
       async () => {
         stubServer([deckResponse(64)]);
         const view = renderRebuildForm(false);
@@ -9057,6 +9062,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     [
       'the deck-ready screen, in place of the thin-deck offer',
       OTHER_ACCOUNT_LINE,
+      'Your deck is ready — 2 cards.',
       async () => {
         setUserLocals(passHolderWithThinDeckOffer);
         withThinDeckPreview();
@@ -9074,6 +9080,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     [
       'the empty-deck screen',
       OTHER_ACCOUNT_LINE,
+      'Conversion finished, but no cards were found.',
       async () => {
         stubServer([
           jsonAnswer(400, {
@@ -9094,6 +9101,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     [
       'the network-error screen',
       OTHER_ACCOUNT_LINE,
+      'Conversion failed.',
       async () => {
         stubServer([networkDrop]);
         const view = renderRebuildForm(false);
@@ -9107,6 +9115,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     [
       'the AI preview',
       SIGNED_IN_LINE,
+      '',
       async () => {
         setUserLocals(signedOutWithAiPreview);
         stubServer([visitorPreview]);
@@ -9121,6 +9130,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     [
       'the PDF question',
       OTHER_ACCOUNT_LINE,
+      "We can't tell questions from answers in this PDF.",
       async () => {
         stubServer([pdfQuestion]);
         const view = renderRebuildForm(false);
@@ -9131,13 +9141,59 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
         return view.container;
       },
     ],
-  ] as Array<[string, string, () => Promise<HTMLElement>]>)(
-    'announces the line on %s once the page shows another session',
-    async (_screen, line, showSwitch) => {
+  ] as Array<[string, string, string, () => Promise<HTMLElement>]>)(
+    'announces the line on %s once the page shows another session, after what the screen says',
+    async (_screen, line, status, showSwitch) => {
       const container = await showSwitch();
 
-      expect(screen.getByText(line, { selector: 'p' })).toBeInTheDocument();
-      expect(liveRegion(container)).toBe(line);
+      expect(liveRegion(container)).toBe(
+        status === '' ? line : `${status} ${line}`
+      );
+    }
+  );
+
+  it('keeps the shown switch line out of any live region but the page one', async () => {
+    stubServer([deckResponse(64)]);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
+    await submitFiles(container, ['lecture.pdf']);
+    await screen.findByText(OFFER);
+    setUserLocals(otherPassHolder);
+    rerenderWithAi(false);
+
+    const shown = screen.getByText(OTHER_ACCOUNT_LINE, { selector: 'p' });
+    expect(shown).not.toHaveAttribute('role');
+    expect(shown).not.toHaveAttribute('aria-live');
+    expect(
+      shown.closest('[role="status"], [role="alert"], [aria-live]')
+    ).toBeNull();
+  });
+
+  it.each([
+    [
+      'a deck',
+      deckResponse(64, sentBy('9')),
+      ['lecture.pdf'],
+      'Your deck is ready — 64 cards.',
+    ],
+    [
+      'no cards',
+      jsonAnswer(
+        400,
+        { ...emptyExport, rescue: [{ rule: 'heading', cards: 2 }] },
+        sentBy('9')
+      ),
+      ['notes.html'],
+      'Conversion finished, but no cards were found.',
+    ],
+  ] as Array<[string, UploadAnswer, string[], string]>)(
+    'announces %s that arrives under another session, then the line once',
+    async (_what, answer, files, status) => {
+      stubServer([answer]);
+      const { container } = renderRebuildForm(false);
+      await submitFiles(container, files);
+
+      await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' });
+      expect(liveRegion(container)).toBe(`${status} ${OTHER_ACCOUNT_LINE}`);
     }
   );
 
@@ -9198,32 +9254,82 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
   });
 
-  it('holds a resend when the server names the session with an empty value, as for no answer at all', async () => {
+  it("keeps the Day Pass buyer's own save when the account read failed on the way back", async () => {
+    vi.stubGlobal('location', {
+      search: '?from=pass&session_id=cs_thin',
+      href: 'http://localhost/upload?from=pass&session_id=cs_thin',
+      origin: 'http://localhost',
+    });
+    markThinDeckResume();
+    await saveInterruptedUpload({ aiFlag: 'true', claudeResend: true });
     accountReadFailed(passHolder);
-    const fetchMock = stubServer([
-      jsonAnswer(
-        400,
-        { ...emptyExport, rescue: [{ rule: 'heading', cards: 2 }] },
-        sentBy('')
-      ),
-      deckResponse(2),
-    ]);
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
-    );
-    await submitFiles(container, ['notes.html']);
+    const fetchMock = stubServer([deckResponse(9)]);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} aiOn={false} />);
+    await settle();
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Make 2 cards from the headings',
-      })
-    );
-
-    expect(
-      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
-    ).toBeInTheDocument();
-    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+    expect(await getPendingUploadStore().load()).toMatchObject({
+      ownerId: 7,
+      aiFlag: 'true',
+    });
+    expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
   });
+
+  it("clears an unknown sender's save, sending nothing and saying nothing, when Continue is clicked after a sign-in", async () => {
+    await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
+    setUserLocals(signedOut);
+    const fetchMock = stubServer([deckResponse(9)]);
+    const { rerenderWithAi } = renderRebuildForm(false);
+    const resume = await screen.findByRole('button', { name: 'Continue' });
+
+    setUserLocals(freeSignedIn);
+    rerenderWithAi(false);
+    fireEvent.click(resume);
+    await settle();
+
+    expect(await getPendingUploadStore().load()).toBeNull();
+    expect(screen.queryByText(SENDER_UNKNOWN, { selector: 'p' })).toBeNull();
+    expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
+  });
+
+  // Headers trims what it is given, so the value goes out as written.
+  function namedAsWritten(answer: ReturnType<typeof jsonAnswer>, raw: string) {
+    const read = answer.headers.get.bind(answer.headers);
+    answer.headers.get = (name: string) =>
+      name.toLowerCase() === 'x-upload-owner' ? raw : read(name);
+    return answer;
+  }
+
+  it.each(['', ' 42 ', '0x2A', '1e3', '-7', '7.0'])(
+    'holds a resend when the server names the session as "%s", as for no answer at all',
+    async (raw) => {
+      accountReadFailed(passHolder);
+      const fetchMock = stubServer([
+        namedAsWritten(
+          jsonAnswer(400, {
+            ...emptyExport,
+            rescue: [{ rule: 'heading', cards: 2 }],
+          }),
+          raw
+        ),
+        deckResponse(2),
+      ]);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitFiles(container, ['notes.html']);
+
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Make 2 cards from the headings',
+        })
+      );
+
+      expect(
+        await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+      ).toBeInTheDocument();
+      expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+    }
+  );
 });
 
 describe('UploadForm try-a-sample', () => {

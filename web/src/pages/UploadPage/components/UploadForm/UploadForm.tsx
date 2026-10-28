@@ -396,10 +396,9 @@ function senderField(owner: number | null): string {
 const UPLOAD_OWNER_HEADER = 'X-Upload-Owner';
 
 function sessionNamed(value: string | null): number | null | undefined {
-  if (value == null || value.trim() === '') return undefined;
   if (value === 'none') return null;
-  const owner = Number(value);
-  return Number.isInteger(owner) ? owner : undefined;
+  if (value == null || !/^\d+$/.test(value)) return undefined;
+  return Number(value);
 }
 
 // How long a paying account's thin-deck notice waits for its credits before
@@ -2333,7 +2332,14 @@ function UploadForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if (thinDeckResumeRef.current || userLocalsLoading || sample) return;
+    if (
+      thinDeckResumeRef.current ||
+      userLocalsLoading ||
+      userLocalsFailed ||
+      sample
+    ) {
+      return;
+    }
     if (!(returnedFromCheckout || passSessionToken != null)) return;
     if (!thinDeckResumeMarked()) return;
     const waitingForPass = isAuthenticated && !isPaying;
@@ -2375,6 +2381,7 @@ function UploadForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     userLocalsLoading,
+    userLocalsFailed,
     isAuthenticated,
     isPaying,
     userLocals,
@@ -4252,6 +4259,8 @@ function UploadForm({
     </div>
   );
 
+  // A screen that swaps its offer for the sign-in-changed line must also be
+  // named in switchLineShown below, or the line shows but is never announced.
   const renderZoneContent = () => {
     if (isUploadLocked && zoneState === 'idle') return renderLockedState();
     if (validation && zoneState === 'idle') return renderValidationState();
@@ -4326,12 +4335,7 @@ function UploadForm({
           unreadableFile == null &&
           networkRetryFiles != null)));
 
-  const renderLiveStatus = (): string => {
-    if (guardrailVisible && validation) return validation.title;
-    if (zoneState === 'error' && senderUnknown) {
-      return t('upload.form.senderUnknown');
-    }
-    if (switchLineShown) return t(signInChangedKey());
+  const screenLiveStatus = (): string => {
     const staticKey = staticLiveStatusKeys[zoneState];
     if (staticKey != null) return t(staticKey);
     if (zoneState === 'success' || zoneState === 'heldReady') {
@@ -4360,6 +4364,21 @@ function UploadForm({
       return `${t('anonymousPartial:expiredHeadline')}. ${expiredBody}`;
     }
     return '';
+  };
+
+  const renderLiveStatus = (): string => {
+    if (guardrailVisible && validation) return validation.title;
+    if (zoneState === 'error' && senderUnknown) {
+      return t('upload.form.senderUnknown');
+    }
+    if (ownerChanged) return t(signInChangedKey());
+    const status = screenLiveStatus();
+    if (!switchLineShown) return status;
+    const line = t(signInChangedKey());
+    if (status === '') return line;
+    return /[.!?。！？]$/.test(status)
+      ? `${status} ${line}`
+      : `${status}. ${line}`;
   };
 
   return (
