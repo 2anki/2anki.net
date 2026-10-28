@@ -21,6 +21,12 @@ import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/Prepar
 import { normalizeUploadFilenames } from '../../routes/middleware/normalizeUploadFilenames';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 import { buildPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
+import {
+  __resetFeatureFlagModuleForTests,
+  __setFeatureFlagDependencies,
+} from '../../lib/featureFlags/getFeatureFlag';
+import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../../lib/upload/anonymousDayPassCard';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 
 const OWNER = 4242;
 
@@ -291,6 +297,30 @@ describe('the card limits on a password unlock', () => {
     expect(response.status).toBe(200);
     expect(cardUsage.incrementCardUsage).toHaveBeenCalledWith(OWNER, 12);
   });
+
+  it.each([ANONYMOUS_DAY_PASS_CARD_FLAG, LIMIT_WALL_PASS_FIRST_FLAG])(
+    'states the deck size on the anonymous wall when %s is on, as an upload does',
+    async (flag) => {
+      __setFeatureFlagDependencies({
+        repository: {
+          getAll: () => Promise.resolve([]),
+          get: (key: string) => Promise.resolve(key === flag ? true : null),
+          set: () => Promise.resolve(null),
+        },
+      });
+      deckOf(30);
+      try {
+        const response = await unlockWithoutFollowing(signedOut);
+
+        expect(response).toEqual({
+          status: 302,
+          location: '/limit?kind=anonymous&cards=30',
+        });
+      } finally {
+        __resetFeatureFlagModuleForTests();
+      }
+    }
+  );
 
   it('sends a signed-out visitor past the anonymous cap to the limit page', async () => {
     deckOf(30);

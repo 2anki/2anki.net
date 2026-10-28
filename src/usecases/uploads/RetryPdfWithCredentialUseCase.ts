@@ -22,6 +22,7 @@ export interface RetryPdfNeedsCredential {
 
 export interface RetryPdfLimitReached {
   limitReached: 'card_count' | 'anonymous';
+  cardCount: number;
 }
 
 export type RetryPdfOutcome =
@@ -71,7 +72,7 @@ export class RetryPdfWithCredentialUseCase {
           result.cardCount
         );
         if (limitReached != null) {
-          return { limitReached };
+          return { limitReached, cardCount: result.cardCount };
         }
       }
 
