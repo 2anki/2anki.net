@@ -8,6 +8,7 @@ import {
 import { FallbackErrorPayload } from '../../lib/errorFallback';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
+import { EmailSendError } from '../../services/EmailService/sendMail';
 
 function makeRepository(
   existsResult = false
@@ -337,6 +338,81 @@ describe('makeErrorCaptureMiddleware', () => {
 
     expect(repo.inserts).toHaveLength(0);
     expect(next).toHaveBeenCalledWith(rangeError);
+  });
+
+  it.each([
+    ['ECONNRESET', 'read ECONNRESET'],
+    ['ECONNABORTED', 'aborted'],
+    [403, 'Forbidden'],
+  ])(
+    'records an email send that failed with %s, which is our fault',
+    async (code, message) => {
+      const repo = makeRepository();
+      const middleware = makeErrorCaptureMiddleware(repo);
+      const next = makeNext();
+      const emailError = new EmailSendError(message, code);
+
+      await middleware(
+        emailError,
+        makeReq('/api/users/magic-link'),
+        makeRes(),
+        next
+      );
+
+      expect(repo.inserts).toHaveLength(1);
+      expect(repo.inserts[0]).toMatchObject({
+        source: 'server',
+        message,
+        url: '/api/users/magic-link',
+      });
+      expect(next).toHaveBeenCalledWith(emailError);
+    }
+  );
+
+  it('still skips a limit error', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const limitError = new Error('You can only add 100 cards');
+
+    await middleware(limitError, makeReq('/api/upload'), makeRes(), next);
+
+    expect(repo.inserts).toHaveLength(0);
+    expect(next).toHaveBeenCalledWith(limitError);
+  });
+
+  it('records an email send whose SendGrid reason reads like a limit', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const emailError = new EmailSendError(
+      'Too Many Requests: Your request has hit the limit',
+      429
+    );
+
+    await middleware(
+      emailError,
+      makeReq('/api/users/magic-link'),
+      makeRes(),
+      next
+    );
+
+    expect(repo.inserts).toHaveLength(1);
+    expect(next).toHaveBeenCalledWith(emailError);
+  });
+
+  it('still skips a client that dropped the connection (a plain ECONNRESET)', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const next = makeNext();
+    const abortError = Object.assign(new Error('aborted'), {
+      code: 'ECONNRESET',
+    });
+
+    await middleware(abortError, makeReq('/api/upload'), makeRes(), next);
+
+    expect(repo.inserts).toHaveLength(0);
+    expect(next).toHaveBeenCalledWith(abortError);
   });
 
   it('records a 5xx HttpCodedError', async () => {

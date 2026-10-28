@@ -9,6 +9,7 @@ import { resolveClientIp } from '../../lib/rateLimit/ipHelpers';
 import { buildUnknownPythonErrorContext } from '../../lib/anki/scrubPythonRawOutput';
 import { isLimitError } from '../../lib/misc/isLimitError';
 import { isExpectedClientFault } from '../../lib/misc/isExpectedClientFault';
+import { EmailSendError } from '../../services/EmailService/sendMail';
 import { isStripeAccessError } from '../../lib/misc/isStripeAccessError';
 import { redactStripeIds } from '../../lib/log/redactStripeIds';
 import {
@@ -109,11 +110,12 @@ export const makeErrorCaptureMiddleware = (
     res: Response,
     next: NextFunction
   ): Promise<void> => {
-    if (
-      isMalformedRequestBody(err) ||
-      isLimitError(err) ||
-      isExpectedClientFault(err)
-    ) {
+    // A failed email send is ours even when its code (ECONNRESET) reads as a
+    // client abort or its message as a limit, matching ErrorHandler.
+    const skipped =
+      !(err instanceof EmailSendError) &&
+      (isLimitError(err) || isExpectedClientFault(err));
+    if (isMalformedRequestBody(err) || skipped) {
       next(err);
       return;
     }
