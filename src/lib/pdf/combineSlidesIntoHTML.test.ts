@@ -246,7 +246,7 @@ describe('combineSlidesIntoHTML', () => {
     );
   });
 
-  it('sets chrome apart when more pages rendered than slides, as when every slide has its page', () => {
+  it('keeps chrome as slide text when more pages rendered than slides, since page i may not be slide i', () => {
     const html = combineSlidesIntoHTML(
       [
         slide({
@@ -262,10 +262,23 @@ describe('combineSlidesIntoHTML', () => {
 
     expect(cards(html)).toEqual([
       {
-        front: '<img src="pdf-x/slide-1.png" />',
-        back: '<ul><li>Cell Biology</li><li>2</li></ul>',
+        front: 'Cell Biology',
+        back: '<ul><li>2</li></ul><img src="pdf-x/slide-1.png" />',
       },
     ]);
+  });
+
+  it('percent-encodes each folder and file name in a slide image src, so the parser finds the page whatever the upload is called', () => {
+    const html = combineSlidesIntoHTML(
+      [slide({ title: 'One' })],
+      [`${WORKSPACE}/pdf-x/Lecture%203 "a" #1?.pdf-page1-1.png`],
+      'lecture.pdf',
+      WORKSPACE
+    );
+
+    expect(cards(html)[0].back).toBe(
+      '<img src="pdf-x/Lecture%25203%20%22a%22%20%231%3F.pdf-page1-1.png" />'
+    );
   });
 
   it('never pairs one slide with the next: two slides give two cards', () => {

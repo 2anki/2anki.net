@@ -2165,6 +2165,58 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
     expect(cardFronts(html)).toEqual(['Exocytosis', 'Mitosis']);
   });
 
+  it('hands Claude slide image srcs that decode to the names of the pages it offers, whatever the upload is called', async () => {
+    renderPdfPageImages.mockResolvedValueOnce({
+      imagePaths: [
+        '/tmp/test-workspace/pdf-1/Lecture%203.pdf-page1-1.png',
+        '/tmp/test-workspace/pdf-1/Lecture%203.pdf-page2-2.png',
+      ],
+      title: 'Lecture%203.pdf',
+    });
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Cell Biology',
+        image: '',
+        style: null,
+        id: 111222333444555,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Exocytosis',
+            back: 'Ca2+ influx triggers fusion',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    await PrepareDeck({
+      name: 'Lecture%203.pptx',
+      files: [{ name: 'Lecture%203.pptx', contents: numberedLecture }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    const [html, offered] = generateDeckInfo.mock.calls[0] as [
+      string,
+      string[],
+    ];
+    const srcs = [...html.matchAll(/<img src="([^"]+)"/g)].map((match) =>
+      decodeURIComponent(match[1])
+    );
+    expect(srcs).toEqual([
+      'pdf-1/Lecture%203.pdf-page1-1.png',
+      'pdf-1/Lecture%203.pdf-page2-2.png',
+    ]);
+    expect(offered).toEqual(expect.arrayContaining(srcs));
+  });
+
   it('delivers the slides that fit a card limit, fronted by a line with words, and holds back the rest', async () => {
     CustomExporterMock.mockImplementationOnce(function () {
       return {
@@ -2230,30 +2282,45 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
     }
   );
 
-  it('makes the cards it made before chrome detection when embedded images are off, so no question is a slide image the deck never ships', async () => {
-    const result = await PrepareDeck({
-      name: 'figures.pptx',
-      files: [{ name: 'figures.pptx', contents: figureSlides }],
-      settings: makeSettings({ 'embed-images': 'false' }),
-      noLimits: true,
-      workspace: makeWorkspace(),
-    });
+  it.each([
+    {
+      embedding: 'embedded images are off',
+      settings: () => makeSettings({ 'embed-images': 'false' }),
+    },
+    {
+      embedding: 'the settings hold no embedImages value',
+      settings: () => Object.assign(makeSettings(), { embedImages: undefined }),
+    },
+  ])(
+    'makes the cards it made before chrome detection when $embedding, so no question is a slide image the deck never ships',
+    async ({ settings }) => {
+      const result = await PrepareDeck({
+        name: 'figures.pptx',
+        files: [{ name: 'figures.pptx', contents: figureSlides }],
+        settings: settings(),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      });
 
-    const cards = result?.deck.flatMap((deck) =>
-      deck.cards.map((card) => ({ front: card.name, back: card.back.trim() }))
-    );
-    expect(renderPdfPageImages).toHaveBeenCalledTimes(1);
-    expect(cards).toEqual([
-      {
-        front: "<div class='toggle'>Cell Biology</div>",
-        back: '<ul><li>1</li></ul><img src="pdf-1/page-1.png">',
-      },
-      {
-        front: "<div class='toggle'>2</div>",
-        back: '<img src="pdf-1/page-2.png">',
-      },
-    ]);
-  });
+      const cards = result?.deck.flatMap((deck) =>
+        deck.cards.map((card) => ({
+          front: card.name,
+          back: card.back.trim(),
+        }))
+      );
+      expect(renderPdfPageImages).toHaveBeenCalledTimes(1);
+      expect(cards).toEqual([
+        {
+          front: "<div class='toggle'>Cell Biology</div>",
+          back: '<ul><li>1</li></ul><img src="pdf-1/page-1.png">',
+        },
+        {
+          front: "<div class='toggle'>2</div>",
+          back: '<img src="pdf-1/page-2.png">',
+        },
+      ]);
+    }
+  );
 });
 
 describe('PrepareDeck — two-way cards from convert_to_deck options', () => {

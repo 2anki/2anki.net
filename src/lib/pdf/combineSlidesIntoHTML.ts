@@ -1,10 +1,17 @@
 import path from 'node:path';
 import type { SlideUnit } from '../parser/sourceUnits/extractPptxSourceUnits';
 
+// Page images are named after the upload, and the parser looks an image up
+// by decodeURIComponent(src), so each path segment is encoded: the decode
+// gives back the name on disk, and a `"` cannot end the attribute early.
 function toSrc(imagePath: string, workspaceLocation?: string): string {
-  return workspaceLocation
+  const relativePath = workspaceLocation
     ? path.relative(workspaceLocation, imagePath).replaceAll('\\', '/')
     : path.basename(imagePath);
+  return relativePath
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
 }
 
 function escapeHtml(text: string): string {
@@ -120,8 +127,8 @@ function slidesDocument(title: string, cards: string[]): string {
 </html>`;
 }
 
-// The deck byte for byte as it converted before chrome detection: chrome read
-// as slide text, each rendered image where it went then.
+// The deck as it converted before chrome detection: chrome read as slide
+// text, each rendered image where it went then.
 export function combineSlidesWithChromeIntoHTML(
   slides: SlideUnit[],
   imagePaths: string[],
@@ -146,11 +153,12 @@ export function combineSlidesIntoHTML(
   title: string,
   workspaceLocation?: string
 ): string {
-  // Chrome is set apart only when every slide has its rendered image, which
-  // fronts a slide that has nothing else to front it. Without slide images
-  // (Process PDF files off), or with fewer pages than slides, the deck
-  // converts exactly as it did before chrome detection.
-  if (imagePaths.length < slides.length) {
+  // Chrome is set apart only when each slide has exactly its own rendered
+  // image, which fronts a slide that has nothing else to front it. Without
+  // slide images (Process PDF files off), with fewer pages than slides, or
+  // with more (the extractor skipped a slide the PDF kept, so page i may not
+  // be slide i), the deck converts as it did before chrome detection.
+  if (imagePaths.length !== slides.length) {
     return combineSlidesWithChromeIntoHTML(
       slides,
       imagePaths,

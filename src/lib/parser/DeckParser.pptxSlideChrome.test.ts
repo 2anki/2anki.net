@@ -108,4 +108,15 @@ describe('a PowerPoint lecture with slide numbers and a footer on every slide', 
       ]);
     }
   );
+
+  it.each(['true', 'false'])(
+    'embeds the slide image that fronts the diagram card (cloze %s)',
+    async (cloze) => {
+      const parser = await convertLecture(cloze as 'true' | 'false');
+
+      const diagram = parser.payload[0].cards[1];
+      expect(diagram.media).toHaveLength(1);
+      expect(diagram.name).toContain(`<img src="${diagram.media[0]}"`);
+    }
+  );
 });

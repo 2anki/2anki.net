@@ -457,12 +457,11 @@ async function convertSlidesToTextCards(
     });
   }
   // A slide image can stand in for chrome on a card's front only if it reaches
-  // the card. With embedded images off the deck never ships it, so the deck
-  // converts as it did before chrome detection.
-  const combineSlides =
-    input.settings.embedImages === false
-      ? combineSlidesWithChromeIntoHTML
-      : combineSlidesIntoHTML;
+  // the card. The parser embeds images only when embedImages is set, so
+  // without it the deck converts as it did before chrome detection.
+  const combineSlides = input.settings.embedImages
+    ? combineSlidesIntoHTML
+    : combineSlidesWithChromeIntoHTML;
   const html = combineSlides(
     slides,
     rendered.imagePaths,

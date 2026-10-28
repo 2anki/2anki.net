@@ -795,7 +795,26 @@ const EVERY_SLIDE_RENDERED_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
 </body>
 </html>`;
 
-describe('extractPptxSourceUnits — a .pptx whose slide images do not all reach its cards converts exactly as before chrome detection', () => {
+const MORE_PAGES_THAN_SLIDES_BEFORE_CHROME_DETECTION = `<!DOCTYPE html>
+<html>
+<head><title>lecture.pdf</title></head>
+<body>
+  <ul class="toggle">
+    <li>
+      <details>
+        <summary>Mitosis</summary><ul><li>Prophase</li><li>Cell Biology</li><li>1</li></ul><img src="pdf-x/slide-1.png" /></details>
+    </li>
+    </ul>
+<ul class="toggle">
+    <li>
+      <details>
+        <summary>Cell Biology</summary><ul><li>2</li></ul><img src="pdf-x/slide-2.png" /></details>
+    </li>
+    </ul>
+</body>
+</html>`;
+
+describe('extractPptxSourceUnits — a .pptx without exactly one embedded image per slide converts as before chrome detection', () => {
   const footer = shapeXml('<p:ph type="ftr" sz="quarter" idx="11"/>', [
     'Cell Biology',
   ]);
@@ -929,6 +948,25 @@ describe('extractPptxSourceUnits — a .pptx whose slide images do not all reach
       } finally {
         warn.mockRestore();
       }
+    });
+  });
+
+  describe('when more pages rendered than slides', () => {
+    it('keeps chrome as slide text, since page i may not be slide i', () => {
+      const lecture = buildPptx([
+        { xml: titledSlide },
+        { xml: slideOfShapesXml([picture, footer, slideNumber('2')]) },
+      ]);
+      const renderedPages = [1, 2, 3].map((n) => `/ws/pdf-x/slide-${n}.png`);
+
+      const html = combineSlidesIntoHTML(
+        extractPptxSourceUnits(lecture),
+        renderedPages,
+        'lecture.pdf',
+        '/ws'
+      );
+
+      expect(html).toBe(MORE_PAGES_THAN_SLIDES_BEFORE_CHROME_DETECTION);
     });
   });
 
