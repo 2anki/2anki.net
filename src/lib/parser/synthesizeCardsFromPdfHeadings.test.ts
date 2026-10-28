@@ -1170,32 +1170,47 @@ describe('slide decks', () => {
     }
   );
 
-  it.each(['■細胞の構造', '■タンパク質の合成', '■ふりかえり', '■세포의 구조'])(
-    'keeps a CJK slide title glued to its ■ on the front: %s',
-    (title) => {
-      const pages: PdfPage[] = [
-        {
-          text: [
-            title,
-            '• 細胞膜はリン脂質の二重層でできている',
-            '• 核は遺伝情報を保持している',
-            '4',
-          ].join('\n'),
-          landscape: true,
-        },
-      ];
+  it.each([
+    '■細胞の構造',
+    '■タンパク質の合成',
+    '■ふりかえり',
+    '■세포의 구조',
+    '■DNAの構造',
+    '■iPS細胞',
+    '■ATP合成酵素',
+    '■2型糖尿病',
+    '■ＤＮＡの複製',
+    '■（1）細胞周期',
+    '■「恒常性」とは',
+    '●T細胞の働き',
+    '■【まとめ】',
+    '◆【第1回】細胞生物学',
+    '■＜到達目標＞',
+    '■DNA 복제',
+    '■DNA的结构',
+  ])('keeps a CJK slide title glued to its glyph on the front: %s', (title) => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          title,
+          '• 細胞膜はリン脂質の二重層でできている',
+          '• 核は遺伝情報を保持している',
+          '4',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
 
-      expect(frontsAndBacks(pages)).toEqual([
-        {
-          front: title,
-          back: [
-            '• 細胞膜はリン脂質の二重層でできている',
-            '• 核は遺伝情報を保持している',
-          ].join('\n'),
-        },
-      ]);
-    }
-  );
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: title,
+        back: [
+          '• 細胞膜はリン脂質の二重層でできている',
+          '• 核は遺伝情報を保持している',
+        ].join('\n'),
+      },
+    ]);
+  });
 
   it('leaves a lone bullet that ends a slide on that slide, apart from the next slide title', () => {
     const pages: PdfPage[] = [
@@ -1244,7 +1259,7 @@ describe('slide decks', () => {
   });
 });
 
-describe('portrait pages', () => {
+describe('PDFs with a page that is not landscape', () => {
   const portraitPage = (lines: string[]): PdfPage => ({
     text: lines.join('\n'),
     landscape: false,
@@ -1411,12 +1426,106 @@ describe('portrait pages', () => {
     ]);
   });
 
-  it('reads a page with no orientation as a portrait page', () => {
+  it('reads a page with no orientation flag as a portrait page', () => {
     expect(
       synthesizeCardsFromPdfHeadings(
         [{ text: loneBulletBeforeEachHeading.join('\n') }],
         'Bio'
       )
     ).toEqual(cardsUnderLoneBullets);
+  });
+
+  it.each([
+    ['flagged portrait', false],
+    ['with no flag', undefined],
+  ])(
+    'keeps a slide between two pages %s from changing the cards around it',
+    (_flag, otherPages) => {
+      const pages: PdfPage[] = [
+        {
+          text: [
+            'Course overview',
+            'This course covers the human body from the cell up to whole organ systems.',
+          ].join('\n'),
+          landscape: otherPages,
+        },
+        {
+          text: [
+            'Course schedule',
+            '•',
+            'Week 1 introduction to cells',
+            '•',
+            'Week 2 tissue types',
+          ].join('\n'),
+          landscape: true,
+        },
+        {
+          text: [
+            'Week 3 organs',
+            'Week 4 organ systems',
+            'Week 5 homeostasis loops',
+            'Reading list for the whole term is posted on the course page.',
+          ].join('\n'),
+          landscape: otherPages,
+        },
+      ];
+
+      expect(synthesizeCardsFromPdfHeadings(pages, 'Course')).toEqual([
+        {
+          front: 'Course overview',
+          back: [
+            'This course covers the human body from the cell up to whole organ systems.',
+            'Course schedule',
+            '•',
+            'Week 1 introduction to cells',
+            '•',
+            'Week 2 tissue types',
+            'Week 3 organs',
+            'Week 4 organ systems',
+          ].join('\n'),
+          tags: ['Course'],
+          pageIndex: 0,
+        },
+        {
+          front: 'Week 5 homeostasis loops',
+          back: 'Reading list for the whole term is posted on the course page.',
+          tags: ['Course'],
+          pageIndex: 2,
+        },
+      ]);
+    }
+  );
+
+  it('keeps a slide before a portrait page from changing the cards after it', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          'Overview',
+          '•',
+          'First point about the topic',
+          '•',
+          'Second point covers how these parts connect to one another',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          'Step one',
+          'Step two of the process',
+          'Mix the dry ingredients in a large bowl',
+          'Stir well',
+        ].join('\n'),
+        landscape: false,
+      },
+    ];
+
+    expect(synthesizeCardsFromPdfHeadings(pages, 'Notes')).toEqual([
+      {
+        front: 'Step two of the process',
+        back: 'Mix the dry ingredients in a large bowl\nStir well',
+        tags: ['Notes'],
+        pageIndex: 1,
+      },
+    ]);
   });
 });

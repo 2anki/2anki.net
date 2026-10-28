@@ -121,6 +121,25 @@ describe('extractPdfText page orientation', () => {
     expect(loggedResult(spy)).toMatchObject({ landscapePageCount: 1 });
     spy.mockRestore();
   });
+
+  it('keeps the raster image count on the landscape page that paints it', async () => {
+    const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const result = await extractPdfText(loadFixture('pdf-landscape-image.pdf'));
+
+    expect(result.pages).toEqual([
+      {
+        text: 'Cell membrane structure and function',
+        imagePaintCount: 1,
+        landscape: true,
+      },
+      {
+        text: 'Transport across the membrane needs energy',
+        imagePaintCount: 0,
+        landscape: false,
+      },
+    ]);
+    spy.mockRestore();
+  });
 });
 
 describe('extractPdfText maxPages cap', () => {

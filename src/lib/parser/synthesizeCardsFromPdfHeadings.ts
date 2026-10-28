@@ -1,8 +1,9 @@
 export interface PdfPage {
   text: string;
-  // Slide exports are landscape. The slide bullet rules below cannot tell a
-  // slide from a page of notes by its glyphs, so they apply only when this is
-  // true; any other page converts as it did before them.
+  // Slide exports are landscape on every page. The slide rules below cannot
+  // tell a slide from a page of notes by its glyphs, so they apply only when
+  // every page is landscape: a PDF with any other page converts as it did
+  // before them, and no page break can carry them onto a page of notes.
   landscape?: boolean;
 }
 
@@ -20,20 +21,30 @@ const SENTENCE_TAIL = /[.,;]$/;
 // Geometric shapes (■ ▶ ◦ …) and arrows (→ ↓ …) are bullet glyphs in exported
 // study notes; a bare marker with nothing after it is an empty list item the
 // author forgot to delete, which arrives on a line of its own.
-const LIST_MARKER = /^(?:[-*•‣·☐☑☒✓✔■-◿←-⇿]|\d{1,3}[.)])(?:\s|$)/;
-// On a slide, dingbats (➢ ❖ ♦) and the private-use code points that Symbol and
+const NOTE_BULLET_GLYPHS = '•‣·☐☑☒✓✔■-◿←-⇿';
+const LIST_MARKER = new RegExp(
+  `^(?:[-*${NOTE_BULLET_GLYPHS}]|\\d{1,3}[.)])(?:\\s|$)`
+);
+// On slides, dingbats (➢ ❖ ♦) and the private-use code points that Symbol and
 // Wingdings bullets from PowerPoint exports extract as (U+F0B7 …) are bullets
-// too. The page render in extractPdfText joins text runs that share a baseline
-// with no space, so a bullet or a level-2 dash drawn as a run of its own
-// arrives glued to its text (`•Describe`, `–Explain`): a glyph needs no space
-// after it, except before CJK text, where `■細胞の構造` is a heading, and a
-// dash needs a letter or a space, so `–70 mV` stays a heading. A hyphen, `*`
-// and numbers still need the space, or `-70 mV`, `-itis` and
-// `2)Coordination costs` would read as bullets.
-const SLIDE_LIST_MARKER =
-  /^(?:[•‣·☐☑☒✓✔■-◿←-⇿➢➤❖♦\uF0B7\uF0A7\uF0D8\uF0FC\uF076](?![\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}])|[–—]\p{L}|(?:[-*–—]|\d{1,3}[.)])(?:\s|$))/u;
-const LONE_BULLET_GLYPH =
-  /^[•‣·☐☑☒✓✔■-◿←-⇿➢➤❖♦\uF0B7\uF0A7\uF0D8\uF0FC\uF076]$/;
+// too.
+const SLIDE_BULLET_GLYPHS = `${NOTE_BULLET_GLYPHS}➢➤❖♦\uF0B7\uF0A7\uF0D8\uF0FC\uF076`;
+// The page render in extractPdfText joins text runs that share a baseline with
+// no space, so a bullet or a level-2 dash drawn as a run of its own arrives
+// glued to its text (`•Describe`, `–Explain`): on a slide a glyph needs no
+// space after it, and a dash needs a letter or a space, so `–70 mV` stays a
+// heading. A hyphen, `*` and numbers still need the space, or `-70 mV`,
+// `-itis` and `2)Coordination costs` would read as bullets.
+const SLIDE_LIST_MARKER = new RegExp(
+  `^(?:[${SLIDE_BULLET_GLYPHS}]|[–—]\\p{L}|(?:[-*–—]|\\d{1,3}[.)])(?:\\s|$))`,
+  'u'
+);
+// CJK headings carry a glyph glued to them (`■細胞の構造`, `■DNAの構造`,
+// `◆【第1回】…`), so a slide line with any Han, kana or Hangul in it keeps the
+// notes rule.
+const CJK_CHARACTER =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+const LONE_BULLET_GLYPH = new RegExp(`^[${SLIDE_BULLET_GLYPHS}]$`, 'u');
 const LONE_DASH = /^[–—]$/;
 // On slides that draw every marker apart from its text, 42-46% of a page's
 // lines measured as markers (a one-line title over two one-line bullets is
@@ -96,7 +107,7 @@ function isLoneBulletGlyph(line: string): boolean {
 }
 
 function isLoneMarker(line: string | undefined): boolean {
-  return line != null && (LONE_BULLET_GLYPH.test(line) || LONE_DASH.test(line));
+  return line != null && (isLoneBulletGlyph(line) || LONE_DASH.test(line));
 }
 
 // extractPdfText starts a new line whenever the baseline changes, so a slide
@@ -158,11 +169,22 @@ function isHeadingLine(
 }
 
 function pageLines(page: PdfPage): string[] {
-  const lines = page.text
+  return page.text
     .split('\n')
     .map((text) => text.trim())
     .filter((text) => text.length > 0 && !isPageFooter(text));
-  return page.landscape === true ? attachLoneMarkers(lines) : lines;
+}
+
+function notesListMarker(): RegExp {
+  return LIST_MARKER;
+}
+
+function slideListMarker(line: string): RegExp {
+  return CJK_CHARACTER.test(line) ? LIST_MARKER : SLIDE_LIST_MARKER;
+}
+
+function isSlideDeck(pages: PdfPage[]): boolean {
+  return pages.length > 0 && pages.every((page) => page.landscape === true);
 }
 
 export function synthesizeCardsFromPdfHeadings(
@@ -170,13 +192,14 @@ export function synthesizeCardsFromPdfHeadings(
   deckName: string
 ): PdfCard[] {
   const tag = deckName.replace(/\s+/g, '_');
-  const lines = pages.flatMap((page, pageIndex) =>
-    pageLines(page).map((text) => ({
-      text,
-      pageIndex,
-      landscape: page.landscape === true,
-    }))
-  );
+  const slideDeck = isSlideDeck(pages);
+  const listMarker = slideDeck ? slideListMarker : notesListMarker;
+  const lines = pages.flatMap((page, pageIndex) => {
+    const textLines = pageLines(page);
+    return (slideDeck ? attachLoneMarkers(textLines) : textLines).map(
+      (text) => ({ text, pageIndex })
+    );
+  });
 
   const cards: PdfCard[] = [];
   let front: string | null = null;
@@ -195,11 +218,11 @@ export function synthesizeCardsFromPdfHeadings(
     }
   };
 
-  lines.forEach(({ text, pageIndex, landscape }, index) => {
+  lines.forEach(({ text, pageIndex }, index) => {
     if (
       isHeadingLine(
         text,
-        landscape ? SLIDE_LIST_MARKER : LIST_MARKER,
+        listMarker(text),
         lines[index + 1]?.text,
         lines[index - 1]?.text,
         previousBodyLine
