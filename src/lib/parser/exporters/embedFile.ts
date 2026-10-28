@@ -12,7 +12,8 @@ const readFromWorkspaceLocation = (
   filePath: string
 ): File | undefined => {
   const fullPath = path.resolve(location, filePath);
-  if (fullPath.startsWith(location) && existsSync(fullPath)) {
+  const root = path.resolve(location) + path.sep;
+  if (fullPath.startsWith(root) && existsSync(fullPath)) {
     const buffer = fs.readFileSync(fullPath);
     return {
       name: fullPath,

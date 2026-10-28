@@ -166,3 +166,49 @@ describe('embedFile — disk-backed (spilled) zip entries', () => {
     expect(captured[0]).toEqual(imageBytes);
   });
 });
+
+describe('embedFile — workspace containment', () => {
+  it('does not read a file from a sibling directory that shares the workspace prefix', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'embed-containment-'));
+    const workspaceDir = path.join(root, 'ws');
+    const siblingDir = path.join(root, 'ws-other');
+    fs.mkdirSync(workspaceDir);
+    fs.mkdirSync(siblingDir);
+    fs.writeFileSync(path.join(siblingDir, 'secret.png'), 'sibling-bytes');
+    const exporter = makeExporter();
+    try {
+      const result = embedFile({
+        exporter,
+        files: [],
+        filePath: '../ws-other/secret.png',
+        workspace: { location: workspaceDir } as unknown as Workspace,
+      });
+
+      expect(result).toBeNull();
+      expect(exporter.addMedia).not.toHaveBeenCalled();
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('still reads a file inside the workspace', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'embed-containment-'));
+    fs.writeFileSync(path.join(root, 'figure.png'), 'inside-bytes');
+    const exporter = makeExporter();
+    try {
+      embedFile({
+        exporter,
+        files: [],
+        filePath: 'figure.png',
+        workspace: { location: root } as unknown as Workspace,
+      });
+
+      expect(exporter.addMedia).toHaveBeenCalledWith(
+        expect.any(String),
+        Buffer.from('inside-bytes')
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
