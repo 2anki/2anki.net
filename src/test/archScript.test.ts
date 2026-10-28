@@ -36,33 +36,31 @@ function runArch(depcruiseOutput: string, depcruiseStatus = 0) {
 }
 
 describe('scripts/arch.sh', () => {
-  it('fails when dependency-cruiser has no TypeScript compiler it supports', () => {
-    const run = runArch(MISSING_TSC);
+  it.each([
+    [
+      'has no TypeScript compiler it supports',
+      MISSING_TSC,
+      'found no TypeScript compiler it supports',
+    ],
+    [
+      'cruised 0 modules',
+      '✔ no dependency violations found (0 modules, 0 dependencies cruised)',
+      'cruised 0 modules',
+    ],
+    ['printed no module count', '', 'printed no module count'],
+  ])('fails when dependency-cruiser %s', (_case, output, message) => {
+    const run = runArch(output);
 
     expect(run.status).toBe(1);
-    expect(run.stderr).toContain('found no TypeScript compiler it supports');
+    expect(run.stderr).toContain(message);
   });
 
-  it('fails when dependency-cruiser cruised 0 modules', () => {
-    const run = runArch(
-      '✔ no dependency violations found (0 modules, 0 dependencies cruised)'
-    );
-
-    expect(run.status).toBe(1);
-    expect(run.stderr).toContain('cruised 0 modules');
-  });
-
-  it('fails when dependency-cruiser printed no module count', () => {
-    const run = runArch('');
-
-    expect(run.status).toBe(1);
-    expect(run.stderr).toContain('printed no module count');
-  });
-
-  it('passes a run that cruised modules and found only warnings', () => {
-    const run = runArch(
-      'x 299 dependency violations (0 errors, 299 warnings). 1210 modules, 3723 dependencies cruised.'
-    );
+  it.each([
+    'x 299 dependency violations (0 errors, 299 warnings). 1210 modules, 3723 dependencies cruised.',
+    '✔ no dependency violations found (1282 modules, 4319 dependencies cruised)',
+    '✔ no dependency violations found (10 modules, 12 dependencies cruised)',
+  ])('passes a run that cruised modules: %s', (output) => {
+    const run = runArch(output);
 
     expect(run).toEqual({ status: 0, stderr: '' });
   });

@@ -11,11 +11,11 @@
  *                silently, but does not block until it is paid down. dependency-cruiser
  *                exits non-zero only on `error`, so warns report without breaking CI.
  *
- * Measured on 2026-06-18 (branch chore/harness-engineering-controls):
- *   knex value-import outside data_layer: 0 (conversionPool — allowlisted infra)
- *   circular dependencies:                27 (mostly hubbed on data_layer/index.ts)
- *   data_layer importing upward:          2  (data_layer/index.ts wiring barrel)
- *   routes/controllers -> data_layer:     329 import edges (warn — debt frozen,
+ * Measured on 2026-10-28 (#5048, the first run that could see knex.js):
+ *   knex value-import outside data_layer: 0 (16 type-only imports fixed)
+ *   circular dependencies:                10
+ *   data_layer importing upward:          1  (ShowcaseRepository)
+ *   routes/controllers -> data_layer:     288 import edges (warn — debt frozen,
  *     not blocked; new code should go through a use case or service).
  */
 module.exports = {
@@ -57,7 +57,7 @@ module.exports = {
     {
       name: 'no-layer-skip-to-data-layer',
       comment:
-        'Route -> controller -> use case -> service -> data layer. Routes and controllers should not reach into data_layer directly. Baseline 2026-08-17: 329 skip edges (warn — debt frozen; new code goes through a use case or service instead of growing it). The count is only honest when no stale compiled .js sits in src/ — the arch script purges them first; a run reporting ~36 means the purge was skipped and the cruiser resolved .js siblings instead of the .ts sources.',
+        'Route -> controller -> use case -> service -> data layer. Routes and controllers should not reach into data_layer directly. Baseline 2026-10-28: 288 skip edges (warn — debt frozen; new code goes through a use case or service instead of growing it). The count is only honest when no stale compiled .js sits in src/ — the arch script purges them first; a run reporting ~36 means the purge was skipped and the cruiser resolved .js siblings instead of the .ts sources.',
       severity: 'warn',
       from: { path: '^src/(routes|controllers)' },
       to: { path: '^src/data_layer' },
