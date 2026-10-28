@@ -23,18 +23,18 @@ const pdfCopy: LandingCopy = {
   pathname: '/pdf-to-anki',
   title: 'PDF to Anki — flashcards that work in Anki | 2anki',
   description:
-    'Turn a PDF into an Anki deck that imports clean — correct note types, images embedded, headings as decks. Drop a file, get a .apkg.',
+    'Turn a PDF into an Anki deck that imports clean — one card per heading, images embedded, correct note types. Drop a file, get a .apkg.',
   h1: 'Make Anki flashcards from a PDF',
   subhead: "Drop a PDF and we'll pull out the text you can turn into cards.",
   whatComesAcross: ankiFidelityProof,
   faqs: [
     {
       q: 'Will it read scanned PDFs?',
-      a: 'Only if the scan has a text layer (OCR). Most modern textbooks and slide exports do. If yours is a photo of a page with no text layer, run it through an OCR tool first — macOS Preview and Adobe Acrobat both do this.',
+      a: 'Only if the scan has a text layer (OCR). Most modern textbooks and slide exports do. A photo of a page with no text layer can still become picture cards: the upload page asks whether two pages make one card or each page makes its own. For text cards, run it through an OCR tool first — macOS Preview and Adobe Acrobat both do this.',
     },
     {
       q: 'How does it pick what becomes a card?',
-      a: "Headings become deck and tag names. Bullet points and short paragraphs become card fronts; the next line or indent becomes the back. You can edit the cards in Anki after — we don't lock anything down.",
+      a: "A short line followed by longer text counts as a heading. Each heading becomes a card front and the text under it becomes the back, so a slide's title fronts its bullet points. You can edit the cards in Anki after — we don't lock anything down.",
     },
     {
       q: 'Can I upload a whole textbook?',

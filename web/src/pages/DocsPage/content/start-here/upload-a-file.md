@@ -59,8 +59,8 @@ The full table of formats and limits is on [File formats](/documentation/referen
 - **HTML** — a single `.html` file or a folder of them.
 - **Markdown** — `.md`, including Obsidian vaults.
 - **CSV / XLSX** — one row per card.
-- **PDF** — one card per heading when the PDF is mostly text. Without readable text, the upload page asks: **Two pages per card**, **One card per page**, or, on a paid plan, **Make cards with AI**.
-- **PPT / PPTX** — one card per slide: the slide title is the front; the bullets, slide image, and speaker notes are the back. A deck with no slide text at all keeps the page-pair layout.
+- **PDF** — one card per heading when the PDF is mostly text. When 2anki can't make heading cards (a scan, picture slides, a protected PDF, or text that splits into lots of tiny cards), the upload page asks: **Two pages per card**, **One card per page**, or, for one file on a paid plan, **Make cards with AI**.
+- **PPT / PPTX** — one card per slide: the slide title is the front; the bullets, slide image, and speaker notes are the back. A deck with no slide text at all becomes image cards: slide 1 is the front, slide 2 the back, and so on.
 
 Drop the wrong format and 2anki tells you. The error message names the supported types so you don't have to guess.
 

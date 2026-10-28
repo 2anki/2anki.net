@@ -71,7 +71,7 @@ const pdfToAnki: LandingCopy = {
     },
     {
       q: 'What about scanned PDFs and slide decks?',
-      a: 'A photo scan with no text layer gives 2anki nothing to read, so the upload page asks what the cards should be: "Two pages per card" (page 1 is the front, page 2 the back), "One card per page", or, on a paid plan, "Make cards with AI". Slides that are mostly pictures get the same question; turn on "Extract text from PDFs" in the card options to make text cards from their text instead. For text cards from a photo scan, add a text layer with OCR in macOS Preview or Adobe Acrobat first.',
+      a: 'A photo scan with no text layer gives 2anki nothing to read, so the upload page asks what the cards should be: "Two pages per card" (page 1 is the front, page 2 the back), "One card per page", or, for one file on a paid plan, "Make cards with AI". Slides that are mostly pictures get the same question; turn on "Extract text from PDFs" in the card options to make text cards from their text instead. For text cards from a photo scan, add a text layer with OCR in macOS Preview or Adobe Acrobat first.',
     },
     {
       q: 'Is there an AI mode for dense chapters?',
