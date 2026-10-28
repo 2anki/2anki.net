@@ -2,5 +2,7 @@
   "line": "Dein letztes Deck, <name>{{name}}</name>, kannst du bis {{time}} erneut herunterladen.",
   "download": "Herunterladen",
   "downloading": "Wird heruntergeladen",
-  "storageBusy": "Der Speicher ist gerade ausgelastet. Versuch den Download gleich noch einmal."
+  "storageBusy": "Der Speicher ist gerade ausgelastet. Versuch den Download gleich noch einmal.",
+  "gone": "Dieses Deck ist nicht mehr gespeichert. Lade die Datei noch einmal hoch.",
+  "failed": "Der Download hat nicht begonnen. Prüf deine Verbindung und versuch es noch einmal."
 }

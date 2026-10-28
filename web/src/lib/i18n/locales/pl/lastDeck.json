@@ -2,5 +2,7 @@
   "line": "Twoją ostatnią talię, <name>{{name}}</name>, możesz pobrać ponownie do {{time}}.",
   "download": "Pobierz",
   "downloading": "Pobieranie",
-  "storageBusy": "Magazyn jest teraz zajęty. Spróbuj pobrać ponownie za chwilę."
+  "storageBusy": "Magazyn jest teraz zajęty. Spróbuj pobrać ponownie za chwilę.",
+  "gone": "Ta talia nie jest już przechowywana. Prześlij plik ponownie.",
+  "failed": "Pobieranie się nie rozpoczęło. Sprawdź połączenie i spróbuj ponownie."
 }

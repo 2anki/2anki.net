@@ -2092,7 +2092,6 @@ function UploadForm({
       if (request.status !== 200) {
         return await handleUploadFailureResponse(request, uploadedFiles);
       }
-      await applyConversionSuccess(request, conversionSuccessHandlers);
       const deliveredDeckName = singleDeckName(request.headers);
       if (deliveredDeckName != null) {
         void keepLastDeck({
@@ -2101,6 +2100,7 @@ function UploadForm({
           deckName: deliveredDeckName,
         });
       }
+      await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {
       if (
         await waitForDroppedDeck(
@@ -4420,9 +4420,7 @@ function UploadForm({
           {passResumeNotice}
         </p>
       )}
-      <LastDeckOffer
-        visible={showSignInPrompt && zoneState === 'idle' && !sample}
-      />
+      {showSignInPrompt && zoneState === 'idle' && !sample && <LastDeckOffer />}
       {resumeOffer?.kind === 'continue' &&
         zoneState === 'idle' &&
         !isUploadLocked && (

@@ -32,7 +32,10 @@ import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
 import { getStoredPassToken } from '../anonymousPass';
 import {
+  BAD_GATEWAY,
+  BAD_REQUEST,
   CONFLICT,
+  GATEWAY_TIMEOUT,
   NOT_FOUND,
   OK,
   SERVICE_UNAVAILABLE,
@@ -49,6 +52,12 @@ export interface EmojiFeedbackReceipt {
   id: number;
   token: string;
 }
+
+const RECOVERY_BUSY_STATUSES = new Set([
+  BAD_GATEWAY,
+  SERVICE_UNAVAILABLE,
+  GATEWAY_TIMEOUT,
+]);
 
 export class RecoveryStorageBusyError extends Error {
   constructor() {
@@ -472,14 +481,17 @@ export class Backend {
       `${this.baseURL}download/recover/${encodeURIComponent(token)}`,
       { credentials: 'include' }
     );
-    if (response.status === SERVICE_UNAVAILABLE) {
+    if (RECOVERY_BUSY_STATUSES.has(response.status)) {
       throw new RecoveryStorageBusyError();
     }
+    if (response.status === NOT_FOUND || response.status === BAD_REQUEST) {
+      return null;
+    }
+    if (response.status !== OK) {
+      throw new Error(`Recovery download failed: ${response.status}`);
+    }
     const contentType = response.headers?.get('Content-Type') ?? '';
-    if (
-      response.status !== OK ||
-      !contentType.includes('application/octet-stream')
-    ) {
+    if (!contentType.includes('application/octet-stream')) {
       return null;
     }
     const deck = await response.blob();

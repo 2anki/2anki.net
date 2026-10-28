@@ -609,12 +609,34 @@ describe('Backend', () => {
       ).resolves.toBeNull();
     });
 
-    it('says storage is busy on a 503, so the caller can offer a retry', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 503 }));
+    it.each([502, 503, 504])(
+      'says storage is busy on a %i, so the caller keeps the deck and offers a retry',
+      async (status) => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status }));
+
+        await expect(
+          backend.getAnonymousRecoveredDeck(token)
+        ).rejects.toBeInstanceOf(RecoveryStorageBusyError);
+      }
+    );
+
+    it('returns null for a token the server refuses as malformed', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 400 }));
 
       await expect(
         backend.getAnonymousRecoveredDeck(token)
-      ).rejects.toBeInstanceOf(RecoveryStorageBusyError);
+      ).resolves.toBeNull();
+    });
+
+    it('rejects on an unexpected server error rather than reading it as gone', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 500 }));
+
+      await expect(
+        backend.getAnonymousRecoveredDeck(token)
+      ).rejects.toBeInstanceOf(Error);
+      await expect(
+        backend.getAnonymousRecoveredDeck(token)
+      ).rejects.not.toBeInstanceOf(RecoveryStorageBusyError);
     });
   });
 

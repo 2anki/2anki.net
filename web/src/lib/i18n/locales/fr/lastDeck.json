@@ -2,5 +2,7 @@
   "line": "Ton dernier paquet, <name>{{name}}</name>, peut être retéléchargé jusqu'à {{time}}.",
   "download": "Télécharger",
   "downloading": "Téléchargement",
-  "storageBusy": "Le stockage est occupé pour le moment. Réessaie le téléchargement dans un instant."
+  "storageBusy": "Le stockage est occupé pour le moment. Réessaie le téléchargement dans un instant.",
+  "gone": "Ce paquet n'est plus conservé. Envoie le fichier à nouveau.",
+  "failed": "Le téléchargement n'a pas démarré. Vérifie ta connexion et réessaie."
 }
