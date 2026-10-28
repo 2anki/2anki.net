@@ -1687,6 +1687,367 @@ describe('slide decks', () => {
     ]);
   });
 
+  const japaneseBullets = [
+    '• 細胞膜はリン脂質の二重層でできている',
+    '• 核は遺伝情報を保持している',
+  ];
+  const atpBullets = [
+    '• ATP合成酵素が内膜でATPを作る',
+    '• 細胞のエネルギー通貨として使われる',
+  ];
+
+  it.each([
+    ['en dash', '– Summary'],
+    ['➢', '➢ Summary'],
+    ['U+F0B7 (Symbol bullet)', '\uF0B7 More phrases'],
+    ['•', '• Summary'],
+  ])(
+    'keeps a spaced %s on the first line of a Japanese slide a list item',
+    (_name, firstLine) => {
+      const pages: PdfPage[] = [
+        energySlide,
+        {
+          text: [firstLine, ...japaneseBullets, '2'].join('\n'),
+          landscape: true,
+        },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        {
+          front: '■細胞のエネルギー',
+          back: [
+            '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+            firstLine,
+            ...japaneseBullets,
+          ].join('\n'),
+        },
+      ]);
+    }
+  );
+
+  it('fronts a dash glued to a word on the first line of a Japanese slide, as before the slide rules: –Explain', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      {
+        text: [
+          '–Explain',
+          '• 心周期の各相の流れを説明できる',
+          '• 心電図の波形と電気現象を対応づける',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+      },
+      {
+        front: '–Explain',
+        back: '• 心周期の各相の流れを説明できる\n• 心電図の波形と電気現象を対応づける',
+      },
+    ]);
+  });
+
+  it.each([
+    ['a title-only slide', '■ミトコンドリア', '■ATP synthase'],
+    ['a part divider', '第2部', '■ATP'],
+  ])(
+    'drops %s whose only back was the next slide once that slide fronts its glued title, as before the slide rules',
+    (_name, onlyLine, title) => {
+      const pages: PdfPage[] = [
+        { text: [onlyLine, '1'].join('\n'), landscape: true },
+        { text: [title, ...atpBullets, '2'].join('\n'), landscape: true },
+      ];
+
+      expect(frontsAndBacks(pages)).toEqual([
+        { front: title, back: atpBullets.join('\n') },
+      ]);
+    }
+  );
+
+  it('drops a glued ■ATP when the subtitle under it fronts the card, as before the slide rules', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      {
+        text: [
+          '■ATP',
+          'アデノシン三リン酸の構造と働き',
+          '• リボース、アデニン、三つのリン酸からなる',
+          '• 高エネルギーリン酸結合をもつ',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+      },
+      {
+        front: 'アデノシン三リン酸の構造と働き',
+        back: '• リボース、アデニン、三つのリン酸からなる\n• 高エネルギーリン酸結合をもつ',
+      },
+    ]);
+  });
+
+  it('drops a glued ■DNA when the Korean line after it shares its leading word, as before the slide rules', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      {
+        text: ['■DNA', '■DNA 복제', '• 반보존적 복제가 일어난다', '2'].join(
+          '\n'
+        ),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+      },
+      { front: '■DNA 복제', back: '• 반보존적 복제가 일어난다' },
+    ]);
+  });
+
+  it('drops each line of a ■Q&A run that leads into a longer one after a glued title, as before the slide rules', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      {
+        text: [
+          '■Q&A',
+          '■Q&A 1：細胞膜とは',
+          '■Q&A 2：能動輸送とは',
+          '■Q&A 3：拡散と浸透の違いは',
+          '• 拡散は濃度の高い方から低い方へ物質が移動する現象である',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+      },
+      {
+        front: '■Q&A 3：拡散と浸透の違いは',
+        back: '• 拡散は濃度の高い方から低い方へ物質が移動する現象である',
+      },
+    ]);
+  });
+
+  it('carries such a run across a page break, as before the slide rules', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      { text: ['■ATP', '■ATP 合成', '2'].join('\n'), landscape: true },
+      {
+        text: ['■ATP 合成酵素', '• ミトコンドリアの内膜にある', '3'].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+      },
+      { front: '■ATP 合成酵素', back: '• ミトコンドリアの内膜にある' },
+    ]);
+  });
+
+  it('keeps CJK titles on the front below chrome drawn first, the second title on the same slide too', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      {
+        text: [
+          'Dept. of Physiology2026/10/284',
+          '■細胞の構造',
+          ...japaneseBullets,
+          '■物質の輸送',
+          '• 拡散は濃度の高い方から低い方へ物質が移動する',
+          '• 能動輸送はATPを使って濃度勾配に逆らう',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る\nDept. of Physiology2026/10/284',
+      },
+      { front: '■細胞の構造', back: japaneseBullets.join('\n') },
+      {
+        front: '■物質の輸送',
+        back: '• 拡散は濃度の高い方から低い方へ物質が移動する\n• 能動輸送はATPを使って濃度勾配に逆らう',
+      },
+    ]);
+  });
+
+  it('drops a bare slide number drawn first as a footer, so the glued ■ATP after it fronts its card', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      { text: ['2', '■ATP', ...atpBullets].join('\n'), landscape: true },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+      },
+      { front: '■ATP', back: atpBullets.join('\n') },
+    ]);
+  });
+
+  it('reads a glued ■ATP as a bullet when a Slide 2 drawn first takes the first line', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      { text: ['Slide 2', '■ATP', ...atpBullets].join('\n'), landscape: true },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: [
+          '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+          'Slide 2',
+          '■ATP',
+          ...atpBullets,
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('fronts a full-width slide number drawn first, with the glued ■ATP on its back', () => {
+    const pages: PdfPage[] = [
+      energySlide,
+      { text: ['２', '■ATP', ...atpBullets].join('\n'), landscape: true },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '■細胞のエネルギー',
+        back: '• ミトコンドリアが細胞のエネルギーの大部分を作る',
+      },
+      { front: '２', back: ['■ATP', ...atpBullets].join('\n') },
+    ]);
+  });
+
+  it('fronts glued ▶Lec 5 chrome drawn first on every slide with the title on the back, dropping a last line that fronted the next slide', () => {
+    const pages: PdfPage[] = [
+      {
+        text: [
+          '▶Lec 5',
+          '■細胞膜の構造と物質輸送のしくみ',
+          '• 二重層',
+          '• 膜タンパク質が物質を運ぶ',
+          'まとめ',
+        ].join('\n'),
+        landscape: true,
+      },
+      {
+        text: [
+          '▶Lec 5',
+          '■細胞分裂の種類とそれぞれの特徴',
+          '• 体細胞分裂',
+          '• 減数分裂では染色体の数が半分になる',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: '▶Lec 5',
+        back: '■細胞膜の構造と物質輸送のしくみ\n• 二重層\n• 膜タンパク質が物質を運ぶ',
+      },
+      {
+        front: '▶Lec 5',
+        back: '■細胞分裂の種類とそれぞれの特徴\n• 体細胞分裂\n• 減数分裂では染色体の数が半分になる',
+      },
+    ]);
+  });
+
+  const latinSlideWithJapaneseFooter: PdfPage = {
+    text: [
+      'Membrane Proteins',
+      '•Integral proteins span the bilayer',
+      '•Peripheral proteins sit on one surface',
+      '山田研究室',
+      '1',
+    ].join('\n'),
+    landscape: true,
+  };
+
+  it('fronts a glued ■Summary on a Latin slide whose footer has a Japanese name', () => {
+    const pages: PdfPage[] = [
+      latinSlideWithJapaneseFooter,
+      {
+        text: [
+          '■Summary',
+          '•Cells turn glucose into usable energy',
+          '•Mitochondria make most of the ATP',
+          '山田研究室',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Membrane Proteins',
+        back: '•Integral proteins span the bilayer\n•Peripheral proteins sit on one surface',
+      },
+      {
+        front: '■Summary',
+        back: [
+          '•Cells turn glucose into usable energy',
+          '•Mitochondria make most of the ATP',
+          '山田研究室',
+        ].join('\n'),
+      },
+    ]);
+  });
+
+  it('fronts the glued first bullet of an untitled Latin slide whose footer has a Japanese name, as before the slide rules', () => {
+    const pages: PdfPage[] = [
+      latinSlideWithJapaneseFooter,
+      {
+        text: [
+          '•Channels',
+          '•Carriers move one solute at a time across the membrane',
+          '•Pumps use ATP to move ions against the gradient',
+          '山田研究室',
+          '2',
+        ].join('\n'),
+        landscape: true,
+      },
+    ];
+
+    expect(frontsAndBacks(pages)).toEqual([
+      {
+        front: 'Membrane Proteins',
+        back: '•Integral proteins span the bilayer\n•Peripheral proteins sit on one surface',
+      },
+      {
+        front: '•Channels',
+        back: [
+          '•Carriers move one solute at a time across the membrane',
+          '•Pumps use ATP to move ions against the gradient',
+          '山田研究室',
+        ].join('\n'),
+      },
+    ]);
+  });
+
   const ideographicSpace = '\u3000';
   const latinSlidesWithCjkPunctuation: Array<[string, string[]]> = [
     [
