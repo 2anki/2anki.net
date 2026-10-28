@@ -25,6 +25,14 @@ beforeEach(() => {
   downloadMediaOrSkipMock.mockResolvedValue(Buffer.from('fake-remote-bytes'));
 });
 
+const capitalsWorkspaces: Workspace[] = [];
+
+afterEach(() => {
+  for (const used of capitalsWorkspaces.splice(0)) {
+    fs.rmSync(used.location, { recursive: true, force: true });
+  }
+});
+
 test('YouTube embeds are responsive so they fit narrow screens', async () => {
   const html = `<html><head><title>Video</title></head>
 <body><article class="page sans"><header><h1 class="page-title">Video</h1></header><div class="page-body">
@@ -834,6 +842,7 @@ function capitalsDeck(back: string, typedAnswers = 'true') {
 </div></article></body></html>`;
 
   const workspace = new Workspace(true, 'fs');
+  capitalsWorkspaces.push(workspace);
   return {
     workspace,
     parser: new DeckParser({

@@ -19,10 +19,10 @@ const LOCALES = [
     promise: 'never the slide number',
     slideImage: 'shows the slide image as the question',
     sourceLine:
-      'plus the slide number, date, and footer on slides with no bullets or notes',
+      'plus the slide number, date, and footer on slides with no bullet points or notes',
     where: 'in the card options',
     imageLost: 'the cards lose the slide image',
-    question: 'its slide number or footer as the question',
+    question: 'its slide number, date, or footer as the question',
   },
   {
     language: 'de',
@@ -34,7 +34,7 @@ const LOCALES = [
       'ohne Stichpunkte und Notizen kommen Foliennummer, Datum und Fußzeile dazu',
     where: 'in den Kartenoptionen',
     imageLost: 'fehlt den Karten das Folienbild',
-    question: 'Foliennummer oder Fußzeile als Frage',
+    question: 'ihre Foliennummer, Datum oder Fußzeile als Frage',
   },
 ];
 
@@ -93,7 +93,7 @@ describe('PowerPoint help copy keeps slide numbers off the front only on the def
   );
 
   it.each(LOCALES)(
-    '$language file formats page says the question can then be the slide number or the footer',
+    '$language file formats page says the question can then be the slide number, date or footer',
     ({ root, question }) => {
       expect(powerPointRow(root)).toContain(question);
     }

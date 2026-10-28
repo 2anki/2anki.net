@@ -50,8 +50,11 @@ const lecture = Buffer.from(
   })
 );
 
+const workspaces: Workspace[] = [];
+
 async function convertLecture(cloze: 'true' | 'false') {
   const workspace = new Workspace(true, 'fs');
+  workspaces.push(workspace);
   const slides = extractPptxSourceUnits(lecture);
   const imageNames = slides.map((_, i) => `pdf-lecture/slide-${i + 1}.png`);
   fs.mkdirSync(path.join(workspace.location, 'pdf-lecture'), {
@@ -91,6 +94,12 @@ function visibleText(html: string): string {
 }
 
 describe('a PowerPoint lecture with slide numbers and a footer on every slide', () => {
+  afterEach(() => {
+    for (const used of workspaces.splice(0)) {
+      fs.rmSync(used.location, { recursive: true, force: true });
+    }
+  });
+
   it.each(['true', 'false'])(
     'keeps the diagram slide as a card with an answer (cloze %s)',
     async (cloze) => {

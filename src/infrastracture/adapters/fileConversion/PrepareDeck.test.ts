@@ -1,6 +1,8 @@
 import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 import { vi, type Mock, type MockInstance } from 'vitest';
 import fsModule from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import {
   PrepareDeck,
@@ -10,6 +12,7 @@ import {
   assembleParserFiles,
 } from './PrepareDeck';
 import CardOption from '../../../lib/parser/Settings/CardOption';
+import type Workspace from '../../../lib/parser/WorkSpace';
 import { mcpOptionsToCardSettings } from '../../../services/mcp/mcpOptionsToCardSettings';
 import {
   AiCreditsExhaustedError,
@@ -2130,6 +2133,29 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
     );
   });
 
+  // The Claude branch writes each source file into the workspace for a later
+  // restart, so these tests get a folder of their own instead of the shared
+  // /tmp/test-workspace.
+  const claudeWorkspaces: string[] = [];
+
+  afterEach(() => {
+    for (const location of claudeWorkspaces.splice(0)) {
+      fsModule.rmSync(location, { recursive: true, force: true });
+    }
+  });
+
+  function claudeWorkspace(pageNames: string[]) {
+    const location = fsModule.mkdtempSync(
+      path.join(os.tmpdir(), 'prepare-deck-claude-')
+    );
+    claudeWorkspaces.push(location);
+    renderPdfPageImages.mockResolvedValueOnce({
+      imagePaths: pageNames.map((name) => path.join(location, 'pdf-1', name)),
+      title: 'deck.pdf',
+    });
+    return { location } as Workspace;
+  }
+
   it('hands Claude slide titles and first lines with words as card fronts, never a slide number', async () => {
     generateDeckInfo.mockResolvedValueOnce([
       {
@@ -2158,7 +2184,7 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
       files: [{ name: 'lecture.pptx', contents: numberedLecture }],
       settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
       noLimits: true,
-      workspace: makeWorkspace(),
+      workspace: claudeWorkspace(['page-1.png', 'page-2.png']),
     });
 
     expect(result?.engine).toBe('claude');
@@ -2168,13 +2194,10 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
   });
 
   it('hands Claude slide image srcs that decode to the names of the pages it offers, whatever the upload is called', async () => {
-    renderPdfPageImages.mockResolvedValueOnce({
-      imagePaths: [
-        '/tmp/test-workspace/pdf-1/Lecture%203.pdf-page1-1.png',
-        '/tmp/test-workspace/pdf-1/Lecture%203.pdf-page2-2.png',
-      ],
-      title: 'Lecture%203.pdf',
-    });
+    const workspace = claudeWorkspace([
+      'Lecture%203.pdf-page1-1.png',
+      'Lecture%203.pdf-page2-2.png',
+    ]);
     generateDeckInfo.mockResolvedValueOnce([
       {
         name: 'Cell Biology',
@@ -2202,7 +2225,7 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
       files: [{ name: 'Lecture%203.pptx', contents: numberedLecture }],
       settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
       noLimits: true,
-      workspace: makeWorkspace(),
+      workspace,
     });
 
     const [html, offered] = generateDeckInfo.mock.calls[0] as [
@@ -2226,12 +2249,9 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
     'keeps the slide image on the card Claude writes for a deck named with $label',
     async ({ name }) => {
       const pdfName = name.replace(/\.pptx$/, '.pdf');
-      renderPdfPageImages.mockResolvedValueOnce({
-        imagePaths: [1, 2].map(
-          (n) => `/tmp/test-workspace/pdf-1/${pdfName}-page${n}-${n}.png`
-        ),
-        title: pdfName,
-      });
+      const workspace = claudeWorkspace(
+        [1, 2].map((n) => `${pdfName}-page${n}-${n}.png`)
+      );
       generateDeckInfo.mockResolvedValueOnce([]);
 
       await PrepareDeck({
@@ -2239,7 +2259,7 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
         files: [{ name, contents: numberedLecture }],
         settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
         noLimits: true,
-        workspace: makeWorkspace(),
+        workspace,
       }).catch(() => undefined);
 
       const [html, offered] = generateDeckInfo.mock.calls[0] as [
@@ -2261,6 +2281,48 @@ describe('PrepareDeck — a .pptx read by the real slide extractor', () => {
       expect(deck.cards[0].media).toEqual([
         { path: page, name: bundledMediaName(page) },
       ]);
+    }
+  );
+
+  it.each([
+    {
+      cause: 'credits gone at the pre-check',
+      arrange: () =>
+        getAiBudgetStatus.mockResolvedValueOnce({
+          exhausted: true,
+          balance: 0,
+        }),
+    },
+    {
+      cause: 'Claude returns no cards',
+      arrange: () => generateDeckInfo.mockResolvedValueOnce([]),
+    },
+  ])(
+    'builds the parser deck from slide headings, not slide numbers, when AI is on but makes no cards ($cause)',
+    async ({ arrange }) => {
+      arrange();
+      CustomExporterMock.mockImplementationOnce(function () {
+        return {
+          configure: vi.fn(),
+          addMedia: vi.fn(),
+          save: vi.fn().mockResolvedValue(Buffer.from('fake-apkg')),
+        };
+      });
+
+      const result = await PrepareDeck({
+        name: 'lecture.pptx',
+        files: [{ name: 'lecture.pptx', contents: numberedLecture }],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: claudeWorkspace(['page-1.png', 'page-2.png']),
+      });
+
+      expect(result?.engine).toBe('parser');
+      expect(
+        result?.deck.flatMap((deck) =>
+          deck.cards.map((card) => card.name.replaceAll(/<[^>]+>/g, ''))
+        )
+      ).toEqual(['Exocytosis', 'Mitosis']);
     }
   );
 

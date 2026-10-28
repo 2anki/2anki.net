@@ -2,5 +2,5 @@
   "id": "2026-10-28-pptx-slide-number-fronts",
   "date": "2026-10-28",
   "type": "fix",
-  "title": "PowerPoint slides without a title use their first line with words as the front, not the slide number, date, or footer"
+  "title": "By default, untitled PowerPoint slides use their first line with words as the front, not the slide number or footer"
 }

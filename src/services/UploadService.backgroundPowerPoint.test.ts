@@ -1,11 +1,13 @@
 import { vi } from 'vitest';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import type express from 'express';
 import { strToU8, zipSync } from 'fflate';
 
 const builtCards = vi.hoisted(() => [] as { name: string }[]);
 const storedKeys = vi.hoisted(() => [] as string[]);
+const claudeInputs = vi.hoisted(() => [] as string[]);
 const SLIDE_PNG = vi.hoisted(() =>
   Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -82,6 +84,49 @@ vi.mock('../lib/anki/CardGenerator', () => ({
     }
   },
 }));
+
+vi.mock('../lib/claude/ClaudeService', async (importActual) => {
+  const actual =
+    await importActual<typeof import('../lib/claude/ClaudeService')>();
+  return {
+    ...actual,
+    generateDeckInfo: vi.fn(async (html: string) => {
+      claudeInputs.push(html);
+      return [
+        {
+          name: 'Cell Biology',
+          image: '',
+          style: null,
+          id: 111222333444555,
+          settings: { template: 'specialstyle' },
+          cards: [
+            {
+              name: 'Exocytosis',
+              back: 'Ca2+ influx triggers fusion',
+              tags: [],
+              cloze: false,
+              number: 0,
+              enableInput: false,
+              answer: '',
+              media: [],
+            },
+          ],
+        },
+      ];
+    }),
+  };
+});
+
+vi.mock('../lib/claude/aiSpendGuard', async (importActual) => {
+  const actual =
+    await importActual<typeof import('../lib/claude/aiSpendGuard')>();
+  return {
+    ...actual,
+    getAiBudgetStatus: vi
+      .fn()
+      .mockResolvedValue({ exhausted: false, balance: null }),
+  };
+});
 
 vi.mock('./events/eventsSinkInstance', () => ({
   getEventsSink: () => ({
@@ -241,9 +286,22 @@ function visibleText(html: string): string {
   return html.replaceAll(/<[^>]+>/g, '').trim();
 }
 
+const PPTX_MIMETYPE =
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
 async function uploadInBackground(deck: Buffer) {
+  return upload(
+    { originalname: 'lecture.pptx', mimetype: PPTX_MIMETYPE, buffer: deck },
+    { [ASYNC_SLOW_UPLOADS_FLAG]: true }
+  );
+}
+
+async function upload(
+  file: { originalname: string; mimetype: string; buffer: Buffer },
+  flags: Record<string, boolean>
+) {
   __setFeatureFlagDependencies({
-    repository: inMemoryFlags({ [ASYNC_SLOW_UPLOADS_FLAG]: true }),
+    repository: inMemoryFlags(flags),
   });
   const uploads = recordingUploads();
   const { jobs, settled } = backgroundJobs();
@@ -261,15 +319,7 @@ async function uploadInBackground(deck: Buffer) {
     ...fakeUploadServiceDeps()
   );
   const req = {
-    files: [
-      {
-        originalname: 'lecture.pptx',
-        mimetype:
-          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        size: deck.length,
-        buffer: deck,
-      },
-    ],
+    files: [{ ...file, size: file.buffer.length }],
     body: {},
     headers: {},
     cookies: {},
@@ -325,5 +375,57 @@ describe('a paying account with AI off uploads a PowerPoint while background con
       expect.any(Number),
       null
     );
+  }, 20_000);
+});
+
+describe('a paying account with AI never set uploads a zip holding only a PowerPoint', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let workspaceBase: string;
+
+  beforeAll(() => applyEnv(ENV));
+
+  afterAll(() => applyEnv(originalEnv));
+
+  beforeEach(() => {
+    workspaceBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zip-pptx-'));
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterEach(() => {
+    __resetFeatureFlagModuleForTests();
+    builtCards.length = 0;
+    storedKeys.length = 0;
+    claudeInputs.length = 0;
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  function cardFronts(html: string): string[] {
+    return [...html.matchAll(/<summary>(.*?)<\/summary>/gs)].map(
+      (match) => match[1]
+    );
+  }
+
+  it('falls back to Claude after the parser finds no cards and hands it slide headings as fronts, not slide numbers', async () => {
+    const { status, jobId, settled, jobs } = await upload(
+      {
+        originalname: 'slides.zip',
+        mimetype: 'application/zip',
+        buffer: Buffer.from(zipSync({ 'lecture.pptx': numberedLecture })),
+      },
+      {}
+    );
+    const outcome = await settled;
+
+    expect(status).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      jobId,
+      String(OWNER),
+      expect.any(String),
+      'claude'
+    );
+    expect(outcome).toBe('stored in My Decks');
+    expect(claudeInputs).toHaveLength(1);
+    expect(cardFronts(claudeInputs[0])).toEqual(['Exocytosis', 'Mitosis']);
   }, 20_000);
 });

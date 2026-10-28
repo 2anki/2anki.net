@@ -21,8 +21,9 @@ export default class Note {
 
   answer = '';
 
-  // Set when the back holds only a PowerPoint slide's source line (footer and
-  // slide number) and maybe the slide image: there is no answer to type.
+  // Set, with typed answers on, when the back holds only a PowerPoint slide's
+  // source line (footer and slide number) and maybe the slide image: there is
+  // no answer to type.
   answerIsSlideSource?: boolean;
 
   media: string[] = [];

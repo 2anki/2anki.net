@@ -45,8 +45,8 @@ import { mcpOptionsToCardSettings } from '../../../services/mcp/mcpOptionsToCard
 import { getPageCount } from '../../../lib/pdf/getPageCount';
 import { detectOverSplit } from '../../../lib/parser/detectOverSplit';
 
-// CI sets SKIP_CREATE_DECK, so the Python build step only runs where its
-// venv is (the local full suite, via ANKI_PYTHON).
+// The note-ID tests need the Python build step, which runs only when
+// SKIP_CREATE_DECK is unset. CI sets it, so they run in the local full suite.
 const BUILDS_WITH_PYTHON = process.env.SKIP_CREATE_DECK == null;
 
 const NAMESPACES =
@@ -205,7 +205,7 @@ function visibleText(html: string): string {
 }
 
 describe('PrepareDeck — card options on a .pptx whose figure slide has only chrome', () => {
-  let workspace: Workspace | null = null;
+  const workspaces: Workspace[] = [];
   const skipCreateDeck = process.env.SKIP_CREATE_DECK;
 
   beforeAll(() => {
@@ -221,15 +221,15 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
   });
 
   afterEach(() => {
-    if (workspace != null) {
-      fs.rmSync(workspace.location, { recursive: true, force: true });
-      workspace = null;
+    for (const used of workspaces.splice(0)) {
+      fs.rmSync(used.location, { recursive: true, force: true });
     }
     vi.mocked(getPageCount).mockResolvedValue(2);
   });
 
   async function prepareWith(settings: CardOption, deck: Buffer) {
-    workspace = new Workspace(true, 'fs');
+    const workspace = new Workspace(true, 'fs');
+    workspaces.push(workspace);
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
     try {
@@ -490,6 +490,72 @@ describe('PrepareDeck — card options on a .pptx whose figure slide has only ch
       expect(cards.map((card) => visibleText(card.name))).toEqual(kept);
     }
   );
+
+  it('falls back to cards made from slide lines when cherry-pick drops every slide whose 🍒 is only in its footer (pinned)', async () => {
+    const cherryFooter = textShape(
+      '<p:ph type="ftr" sz="quarter" idx="11"/>',
+      '🍒 Cell Biology'
+    );
+    const cards = await convert(
+      { cherry: 'true' },
+      Buffer.from(
+        zipSync({
+          'ppt/slides/slide1.xml': slide([
+            textShape('<p:ph type="title"/>', 'Mitosis'),
+            textShape('<p:ph idx="1"/>', 'Prophase'),
+            cherryFooter,
+            slideNumber('1'),
+          ]),
+          'ppt/slides/slide2.xml': slide([
+            textShape('<p:ph type="title"/>', 'Meiosis'),
+            textShape('<p:ph idx="1"/>', 'Gametes'),
+            cherryFooter,
+            slideNumber('2'),
+          ]),
+        })
+      )
+    );
+
+    expect(cards.map((card) => visibleText(card.name))).toEqual([
+      'Mitosis Prophase [slide image]',
+      'Prophase',
+      'Prophase',
+      'Meiosis Gametes [slide image]',
+      'Gametes',
+      'Gametes',
+    ]);
+  });
+
+  it('ships the source line in the back with its data-2anki-slide-source marker', async () => {
+    const cards = await convert({});
+
+    expect(cards[1].back).toContain(
+      '<p data-2anki-slide-source="">Cell Biology · 2</p>'
+    );
+  });
+
+  it('still types a title-only slide titled "y" with its source line, since the title also occurs in the summary tag (pre-existing, pinned)', async () => {
+    vi.mocked(getPageCount).mockResolvedValue(1);
+    const cards = await convert(
+      {
+        ...mcpOptionsToCardSettings({ noteType: 'input' }),
+        paragraph: 'true',
+      },
+      Buffer.from(
+        zipSync({
+          'ppt/slides/slide1.xml': slide([
+            textShape('<p:ph type="title"/>', 'y'),
+            footer,
+            slideNumber('6'),
+          ]),
+        })
+      )
+    );
+
+    expect(
+      cards.map((card) => ({ typed: card.enableInput, answer: card.answer }))
+    ).toEqual([{ typed: true, answer: 'yCell Biology · 6' }]);
+  });
 
   it('detects Japanese from the slide titles when more figure slides carry a Latin footer (tts-auto-detect)', async () => {
     vi.mocked(getPageCount).mockResolvedValue(5);
