@@ -60,11 +60,26 @@ describe('scripts/arch.sh', () => {
   it.each([
     'x 299 dependency violations (0 errors, 299 warnings). 1210 modules, 3723 dependencies cruised.',
     '✔ no dependency violations found (1282 modules, 4319 dependencies cruised)',
-    '✔ no dependency violations found (10 modules, 12 dependencies cruised)',
   ])('passes a run that cruised modules: %s', (output) => {
     const run = runArch(output);
 
     expect(run).toEqual({ status: 0, stdout: `${output}\n`, stderr: '' });
+  });
+
+  it.each([
+    [
+      'too few modules',
+      '✔ no dependency violations found (10 modules, 12 dependencies cruised)',
+    ],
+    [
+      'too few dependencies, as when stale .js siblings blind the cruise',
+      'x 36 dependency violations (0 errors, 36 warnings). 1282 modules, 412 dependencies cruised.',
+    ],
+  ])('fails a partly blind cruise with %s', (_case, output) => {
+    const run = runArch(output);
+
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain('below the floor');
   });
 
   it('keeps the dependency-cruiser exit code when a rule errors', () => {

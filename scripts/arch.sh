@@ -5,6 +5,12 @@
 set -uo pipefail
 
 DEPCRUISE="${DEPCRUISE:-depcruise}"
+# A partly blind cruise (stale .js beside the .ts sources) keeps a module
+# count but loses most of its edges, and every error rule passes (#5071).
+# Measured 1282 modules and 4319 dependencies on 2026-10-28: lower these
+# floors when src/ shrinks a lot.
+MIN_MODULES=1000
+MIN_DEPENDENCIES=3000
 
 # Paths are relative to the working directory, which pnpm sets to the repo root.
 git clean -fX -q src || exit 1
@@ -23,6 +29,13 @@ if grep -qE '(^|[^0-9])0 modules' <<<"$output"; then
 fi
 if ! grep -qE '[0-9]+ modules' <<<"$output"; then
   echo "arch: FAILED, dependency-cruiser printed no module count. Its output above shows why it stopped" >&2
+  exit 1
+fi
+counts=$(grep -oE '[0-9]+ modules, [0-9]+ dependencies' <<<"$output" | tail -n 1)
+modules=$(awk '{print $1}' <<<"$counts")
+dependencies=$(awk '{print $3}' <<<"$counts")
+if [ -z "$modules" ] || [ "$modules" -lt "$MIN_MODULES" ] || [ "${dependencies:-0}" -lt "$MIN_DEPENDENCIES" ]; then
+  echo "arch: FAILED, dependency-cruiser cruised ${modules:-?} modules and ${dependencies:-?} dependencies, below the floor of $MIN_MODULES and $MIN_DEPENDENCIES. Stale .js beside the .ts sources blinds the cruise; check for a concurrent build" >&2
   exit 1
 fi
 exit "$status"
