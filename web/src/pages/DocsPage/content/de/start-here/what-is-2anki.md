@@ -38,6 +38,6 @@ Im Deck:
 
 ## Kostenlos und kostenpflichtig
 
-**Kostenlos:** 100 Karten pro Monat über alle Konvertierungswege hinweg, Datei-Uploads bis 100 MB und PDFs bis 100 Seiten. Der Notion-verbinden-Weg funktioniert auch kostenlos mit einem 2anki-Konto. Ohne Konto ist jede Konvertierung auf 21 Karten begrenzt.
+**Kostenlos:** 100 Karten pro Monat über alle Konvertierungswege hinweg, Datei-Uploads bis 100 MB und PDFs bis 100 Seiten, wenn die Seiten zu Bildkarten werden. Der Notion-verbinden-Weg funktioniert auch kostenlos mit einem 2anki-Konto. Ohne Konto ist jede Konvertierung auf 21 Karten begrenzt.
 
 **Kostenpflichtig:** größere Uploads, mehr PDF-Seiten, KI-Kartengenerierung und beidseitigen Notion-Sync auf Anfrage. Siehe die [Preisseite](/pricing) und [Grenzen und Kontingente](/documentation/help/limits) für die Zahlen.

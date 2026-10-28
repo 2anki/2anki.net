@@ -33,11 +33,13 @@ Free covers anonymous and signed-in users without a paid plan.
 | Free                    | 100               |
 | Subscription / Lifetime | No fixed cap      |
 
+The cap counts pages that become image cards (**Two pages per card**, **One card per page**) and the slides of a PowerPoint file, which are rendered as images; a PDF that becomes one card per heading has no page cap.
+
 PDFs over the free limit return: _PDF exceeds maximum page limit of 100 for free and anonymous users._
 
 ## AI-generated flashcards
 
-The **Use Claude AI** card option is a Subscription / Lifetime feature. Free accounts see the toggle but the conversion falls back to the standard parser.
+The **Generate flashcards with Claude AI** card option is a Subscription / Lifetime feature. Free accounts see the toggle but the conversion falls back to the standard parser.
 
 ## Chat
 

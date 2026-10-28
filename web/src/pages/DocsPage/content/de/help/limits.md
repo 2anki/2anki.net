@@ -33,11 +33,13 @@ Free umfasst anonyme und angemeldete Nutzer ohne kostenpflichtigen Plan.
 | Free                    | 100                 |
 | Subscription / Lifetime | Keine feste Grenze  |
 
+Die Grenze zählt Seiten, die zu Bildkarten werden (**Zwei Seiten pro Karte**, **Eine Karte pro Seite**), und die Folien einer PowerPoint-Datei, die als Bilder gerendert werden; ein PDF, das eine Karte pro Überschrift ergibt, hat keine Seitengrenze.
+
 PDFs über dem kostenlosen Limit geben zurück: _PDF exceeds maximum page limit of 100 for free and anonymous users._
 
 ## KI-generierte Karteikarten
 
-Die Kartenoption **Use Claude AI** ist eine Subscription-/Lifetime-Funktion. Kostenlose Konten sehen den Schalter, aber die Konvertierung fällt auf den Standard-Parser zurück.
+Die Kartenoption **Karteikarten mit Claude AI erstellen** ist eine Subscription-/Lifetime-Funktion. Kostenlose Konten sehen den Schalter, aber die Konvertierung fällt auf den Standard-Parser zurück.
 
 ## Chat
 

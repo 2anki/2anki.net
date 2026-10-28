@@ -175,7 +175,7 @@
     },
     "convert-pdf-to-anki": {
       "h1": "Convert PDF to Anki — flashcards from lecture slides and textbook chapters",
-      "subhead": "Drop a lecture PDF, slide export, or textbook chapter and download a .apkg deck. 2anki reads the text into question-and-answer cards, falls back to image cards when a page has no text, and can write cards with AI when the PDF is dense."
+      "subhead": "Drop a lecture PDF, slide export, or textbook chapter and download a .apkg deck. 2anki reads the text into question-and-answer cards, asks what to make when a PDF has no text it can use, and can write cards with AI when the PDF is dense."
     },
     "convert-markdown-to-anki": {
       "h1": "Markdown to Anki — convert .md files and Obsidian notes",

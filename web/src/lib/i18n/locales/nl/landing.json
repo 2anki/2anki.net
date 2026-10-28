@@ -175,7 +175,7 @@
     },
     "convert-pdf-to-anki": {
       "h1": "PDF naar Anki — flashcards van collegeslides en hoofdstukken uit studieboeken",
-      "subhead": "Sleep een college-PDF, slide-export of hoofdstuk uit een studieboek hierheen en download een .apkg-deck. 2anki leest de tekst in vraag-antwoordkaarten, valt terug op afbeeldingskaarten wanneer een pagina geen tekst heeft en kan met AI kaarten schrijven wanneer de PDF dicht is."
+      "subhead": "Sleep een college-PDF, slide-export of hoofdstuk uit een studieboek hierheen en download een .apkg-deck. 2anki leest de tekst in vraag-antwoordkaarten, vraagt wat je wilt maken wanneer een PDF geen bruikbare tekst heeft en kan met AI kaarten schrijven wanneer de PDF dicht is."
     },
     "convert-markdown-to-anki": {
       "h1": "Markdown naar Anki — converteer .md-bestanden en Obsidian-notities",

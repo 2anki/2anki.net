@@ -175,7 +175,7 @@
     },
     "convert-pdf-to-anki": {
       "h1": "Converter PDF para Anki — flashcards de slides de aula e capítulos de livros",
-      "subhead": "Solte um PDF de aula, exportação de slides ou capítulo de livro e baixe um baralho .apkg. O 2anki lê o texto em cartões de pergunta e resposta, recorre a cartões de imagem quando uma página não tem texto, e pode escrever cartões com IA quando o PDF é denso."
+      "subhead": "Solte um PDF de aula, exportação de slides ou capítulo de livro e baixe um baralho .apkg. O 2anki lê o texto em cartões de pergunta e resposta, pergunta o que fazer quando um PDF não tem texto aproveitável, e pode escrever cartões com IA quando o PDF é denso."
     },
     "convert-markdown-to-anki": {
       "h1": "Markdown para Anki — converta arquivos .md e anotações do Obsidian",

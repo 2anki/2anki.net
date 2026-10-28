@@ -10,7 +10,7 @@ const pdfZuAnkiCopy: LandingCopy = {
   ],
   title: 'PDF zu Anki — Karteikarten aus jedem PDF | 2anki',
   description:
-    'Lade ein PDF hoch und mach daraus einen Anki-Stapel: Überschriften werden zu Decks, Bilder eingebettet, sauberer Import. Datei rein, .apkg raus.',
+    'Lade ein PDF hoch und mach daraus einen Anki-Stapel: eine Karte pro Überschrift, Bilder eingebettet, sauberer Import. Datei rein, .apkg raus.',
   h1: 'Aus einem PDF Anki-Karteikarten machen',
   subhead:
     'Lade ein PDF hoch — Vorlesungsskript, Lehrbuchkapitel oder Zusammenfassung — und 2anki holt den Text heraus, aus dem du Karten baust.',
@@ -47,8 +47,8 @@ const pdfZuAnkiCopy: LandingCopy = {
       body: 'Eingebettete Abbildungen und Diagramme werden übernommen und auf Vorder- oder Rückseite angezeigt.',
     },
     {
-      title: 'Überschriften werden zu Decks',
-      body: 'Kapitelüberschriften aus dem PDF werden zu Deck- und Tag-Namen, damit dein Stapel geordnet bleibt.',
+      title: 'Eine Karte pro Überschrift',
+      body: 'Jede Überschrift in einem textreichen PDF wird zur Vorderseite einer Karte, der Text darunter zur Rückseite.',
     },
     {
       title: 'Richtige Notiztypen',
@@ -62,11 +62,11 @@ const pdfZuAnkiCopy: LandingCopy = {
   faqs: [
     {
       q: 'Funktioniert das mit gescannten PDFs?',
-      a: 'Nur wenn der Scan eine Textebene hat (OCR). Die meisten aktuellen Lehrbücher und Folien-Exporte haben das. Ist deins ein Foto einer Seite ohne Textebene, schick es vorher durch ein OCR-Tool — die macOS-Vorschau und Adobe Acrobat können das beide.',
+      a: 'Nur wenn der Scan eine Textebene hat (OCR). Die meisten aktuellen Lehrbücher und Folien-Exporte haben das. Ein Foto einer Seite ohne Textebene kann trotzdem zu Bildkarten werden: 2anki fragt, ob zwei Seiten eine Karte ergeben oder jede Seite eine eigene. Für Textkarten schick es vorher durch ein OCR-Tool — die macOS-Vorschau und Adobe Acrobat können das beide — und schalte dann in den Kartenoptionen „Text aus PDFs extrahieren“ ein.',
     },
     {
       q: 'Wie entscheidet 2anki, was zur Karte wird?',
-      a: 'Überschriften werden zu Deck- und Tag-Namen. Aufzählungspunkte und kurze Absätze werden zur Kartenvorderseite; die nächste Zeile oder Einrückung zur Rückseite. Du kannst die Karten danach in Anki frei bearbeiten.',
+      a: 'Eine kurze Zeile, auf die längerer Text folgt, gilt als Überschrift. Sie wird zur Kartenvorderseite, der Text darunter zur Rückseite. Hat ein PDF wenig Text pro Seite, wie viele Folien-Exporte, fragt 2anki stattdessen, ob Bildkarten entstehen sollen; schalte in den Kartenoptionen „Text aus PDFs extrahieren“ ein, um daraus Textkarten zu machen. Du kannst die Karten danach in Anki frei bearbeiten.',
     },
     {
       q: 'Kann ich ein ganzes Lehrbuch hochladen?',

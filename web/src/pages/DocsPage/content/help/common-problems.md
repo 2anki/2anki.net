@@ -45,7 +45,7 @@ Check the [status page](/status) — it shows whether the API, database, and Not
 
 **What you saw.** A PDF upload fails right after you submit it.
 
-**Why it happened.** Free accounts cap PDFs at 100 pages so the conversion stays fast and free.
+**Why it happened.** Free accounts cap PDFs at 100 pages when the pages become image cards, so the conversion stays fast and free.
 
 **How to fix it.** Split the PDF into smaller files (every PDF reader has a "split" option), or [subscribe](/pricing) to remove the cap. See [Limits and quotas](/documentation/help/limits) for the full list.
 

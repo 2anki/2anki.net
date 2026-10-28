@@ -47,7 +47,7 @@ Prüfe die [Statusseite](/status) — sie zeigt, ob API, Datenbank und Notion-Ve
 
 **Was du gesehen hast.** Ein PDF-Upload schlägt direkt nach dem Absenden fehl.
 
-**Warum es passiert ist.** Kostenlose Konten begrenzen PDFs auf 100 Seiten, damit die Konvertierung schnell und kostenlos bleibt.
+**Warum es passiert ist.** Kostenlose Konten begrenzen PDFs auf 100 Seiten, wenn die Seiten zu Bildkarten werden, damit die Konvertierung schnell und kostenlos bleibt.
 
 **Wie du es behebst.** Teile das PDF in kleinere Dateien (jeder PDF-Reader hat eine „Teilen“-Option), oder [abonniere](/pricing), um die Grenze zu entfernen. Siehe [Grenzen und Kontingente](/documentation/help/limits) für die vollständige Liste.
 
