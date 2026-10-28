@@ -403,11 +403,6 @@ function resolveImageDropReason(
   return null;
 }
 
-function hasSessionToken(req: express.Request): boolean {
-  const token = (req.cookies as Record<string, unknown> | undefined)?.token;
-  return typeof token === 'string' && token.length > 0;
-}
-
 function isImageOnlyZip(reading: EmptyUploadReading | null): boolean {
   return (
     reading != null &&
@@ -1900,7 +1895,6 @@ class UploadService {
     this.recordCardFingerprints(syncOwnerId, cardFingerprints);
 
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
-    const authenticated = hasSessionToken(req);
     const syncOwnerIdOrNull = owner != null ? Number(owner) : null;
 
     // The exhausted event fires once per window from the balance reader
@@ -1984,14 +1978,6 @@ class UploadService {
         isPaying: paying,
       });
     } else if (owner == null && !paying && totalCards > ANONYMOUS_CARD_CAP) {
-      if (authenticated) {
-        throw new MonthlyLimitError(
-          MONTHLY_CARD_LIMIT,
-          MONTHLY_CARD_LIMIT,
-          totalCards,
-          new Date().toISOString()
-        );
-      }
       throw new AnonymousCardCapError(totalCards, ANONYMOUS_CARD_CAP);
     }
 
@@ -2555,7 +2541,7 @@ class UploadService {
     req: express.Request,
     res: express.Response
   ): Promise<PartialDeliveryArm> {
-    if (getOwner(res) != null || hasSessionToken(req) || isPaying(res.locals)) {
+    if (getOwner(res) != null || isPaying(res.locals)) {
       return 'off';
     }
     if (!isPartialDeliveryEligible(req.files as UploadedFile[] | undefined)) {

@@ -296,14 +296,17 @@ exports[`what each population gets back from /api/upload/file > signed-out under
 exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap 1`] = `
 {
   "body": {
-    "text": "Found. Redirecting to /limit?kind=card_count",
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
   },
   "cardsCharged": [],
-  "contentType": "text/plain",
-  "headers": {
-    "location": "/limit?kind=card_count",
-  },
-  "status": 302,
-  "storedObjects": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
 }
 `;

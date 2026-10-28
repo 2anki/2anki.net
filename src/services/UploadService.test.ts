@@ -1727,7 +1727,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
-  it('treats an authenticated request whose owner is unresolved as a logged-in limit, not anonymous', async () => {
+  it('treats a session cookie that resolves to no user as signed out', async () => {
     mockPackages([{ name: 'deck', cardCount: 22 }]);
     const usersRepo = buildUsersRepo();
 
@@ -1738,13 +1738,13 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
-      cookies: { token: 'a-valid-session-token' },
+      cookies: { token: 'an-expired-session-token' },
     } as Partial<express.Request>);
     const { res, capturedSend, redirectedTo } = responseWithRedirect();
 
     await service.handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=card_count');
+    expect(redirectedTo()).toBe('/limit?kind=anonymous');
     expect(capturedSend()).toBeNull();
   });
 

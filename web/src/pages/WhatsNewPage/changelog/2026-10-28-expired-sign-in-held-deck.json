@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-28-expired-sign-in-held-deck",
+  "date": "2026-10-28",
+  "type": "fix",
+  "title": "Large uploads give the first 21 cards and save the rest, even after your sign-in expires"
+}
