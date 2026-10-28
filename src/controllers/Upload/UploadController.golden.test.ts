@@ -73,6 +73,7 @@ import {
 } from '../../lib/featureFlags/getFeatureFlag';
 import { ANONYMOUS_PARTIAL_DELIVERY_FLAG } from '../../lib/upload/anonymousPartialDelivery';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../../lib/upload/anonymousDayPassCard';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
 
 const SMALL_DECK_CARDS = 5;
@@ -167,6 +168,43 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
       ...signedOut,
       cookies: { token: 'expired-session', anon_id: 'golden-anon' },
       flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
+    },
+  ],
+  [
+    'signed-out with an expired session cookie, over the cap, no anon id (control)',
+    'large',
+    {
+      ...signedOut,
+      cookies: { token: 'expired-session' },
+      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
+    },
+  ],
+  [
+    'signed-out with an expired session cookie, over the cap, day pass card on',
+    'large',
+    {
+      ...signedOut,
+      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
+      flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true },
+    },
+  ],
+  [
+    'signed-out with an expired session cookie, over the cap, pass-first wall on',
+    'large',
+    {
+      ...signedOut,
+      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
+      flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true },
+    },
+  ],
+  [
+    'signed-out pass holder with an expired session cookie',
+    'large',
+    {
+      ...signedOut,
+      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
+      locals: { subscriber: true, passKind: '24h', anonymousPassId: 7 },
+      headers: { 'x-pass-token': 'golden-pass-token' },
     },
   ],
   ['signed-in free under the monthly limit', 'small', signedInFree],
