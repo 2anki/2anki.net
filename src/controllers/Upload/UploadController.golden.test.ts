@@ -189,6 +189,18 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     },
   ],
   [
+    'signed-out with an expired session cookie, over the cap, partial delivery on, day pass card on',
+    'large',
+    {
+      ...signedOut,
+      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
+      flags: {
+        [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true,
+        [ANONYMOUS_DAY_PASS_CARD_FLAG]: true,
+      },
+    },
+  ],
+  [
     'signed-out with an expired session cookie, over the cap, pass-first wall on',
     'large',
     {

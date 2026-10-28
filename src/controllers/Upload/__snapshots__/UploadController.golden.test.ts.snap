@@ -361,6 +361,25 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
 }
 `;
 
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, partial delivery on, day pass card on 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "dayPassCard": true,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
 exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, pass-first wall on 1`] = `
 {
   "body": {
