@@ -1,6 +1,7 @@
 import sgMail from '@sendgrid/mail';
 import { getDatabase } from '../../../../data_layer';
 import { DEFAULT_SENDER } from '../../../../services/EmailService/constants';
+import { sendMail } from '../../../../services/EmailService/sendMail';
 import SubscriptionService from '../../../../services/SubscriptionService';
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
@@ -59,7 +60,7 @@ async function cancelAndNotify(email: string): Promise<void> {
     return;
   }
 
-  await sgMail.send({
+  await sendMail({
     to: email,
     from: DEFAULT_SENDER,
     replyTo: 'support@2anki.net',

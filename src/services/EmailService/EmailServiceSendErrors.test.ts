@@ -41,6 +41,7 @@ describe('EmailService send failures', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -77,17 +78,21 @@ describe('EmailService send failures', () => {
     }
   );
 
-  it('never logs the API key or the request body', async () => {
+  it('never logs the API key, the request body or the recipient', async () => {
     await service.sendResetEmail(RECIPIENT, 'tok').catch(() => undefined);
     await service
       .sendInactivityWarningEmail(RECIPIENT, 'tok')
       .catch(() => undefined);
+    await service
+      .sendPassEndingEmail(RECIPIENT, 'tok', 'Week Pass')
+      .catch(() => undefined);
 
-    expect(errorLog).toHaveBeenCalledTimes(2);
+    expect(errorLog).toHaveBeenCalledTimes(3);
     const logged = rendered(errorLog.mock.calls);
     expect(logged).toContain('ETIMEDOUT');
     expect(logged).not.toContain(API_KEY);
     expect(logged).not.toContain('personalizations');
+    expect(logged).not.toContain(RECIPIENT);
   });
 
   it('returns an Auto Sync access request failure without the API key', async () => {
@@ -114,6 +119,5 @@ describe('EmailService send failures', () => {
 
     expect(await pending).toEqual({ didSend: true });
     expect(send).toHaveBeenCalledTimes(2);
-    vi.useRealTimers();
   });
 });

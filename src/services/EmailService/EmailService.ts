@@ -556,7 +556,10 @@ export class EmailService implements IEmailService {
     try {
       await sendMail(msg);
     } catch (error) {
-      console.error(`Failed to send inactivity warning to ${to}:`, error);
+      console.error(
+        `Failed to send inactivity warning to ${emailHash(to)}:`,
+        error
+      );
       throw error;
     }
   }
@@ -596,7 +599,7 @@ export class EmailService implements IEmailService {
       await sendMail(msg);
     } catch (error) {
       console.error(
-        `Failed to send abandoned-checkout recovery to ${to}:`,
+        `Failed to send abandoned-checkout recovery to ${emailHash(to)}:`,
         error
       );
       throw error;
@@ -646,7 +649,10 @@ export class EmailService implements IEmailService {
     try {
       await sendMail(msg);
     } catch (error) {
-      console.error(`Failed to send pass ending email to ${to}:`, error);
+      console.error(
+        `Failed to send pass ending email to ${emailHash(to)}:`,
+        error
+      );
       throw error;
     }
   }
@@ -835,7 +841,7 @@ export class EmailService implements IEmailService {
     const cancellationsSent = this.loadCancellationsSent();
     if (cancellationsSent.has(subscriptionId)) {
       console.log(
-        `Skipping ${email} - Cancellation notification already sent for subscription ${subscriptionId}`
+        `Skipping ${emailHash(email)} - Cancellation notification already sent for subscription ${subscriptionId}`
       );
       return;
     }
@@ -860,10 +866,12 @@ export class EmailService implements IEmailService {
     try {
       await this.deliver(msg, EMAIL_CATEGORIES.subscriptionCancelled);
       this.saveCancellationSent(subscriptionId);
-      console.log(`Successfully sent cancellation confirmation to ${email}`);
+      console.log(
+        `Successfully sent cancellation confirmation to ${emailHash(email)}`
+      );
     } catch (error) {
       console.error(
-        `Failed to send cancellation confirmation to ${email}:`,
+        `Failed to send cancellation confirmation to ${emailHash(email)}:`,
         error
       );
       throw error;
@@ -904,11 +912,11 @@ export class EmailService implements IEmailService {
         EMAIL_CATEGORIES.subscriptionScheduledCancellation
       );
       console.log(
-        `Successfully sent scheduled cancellation notification to ${email}`
+        `Successfully sent scheduled cancellation notification to ${emailHash(email)}`
       );
     } catch (error) {
       console.error(
-        `Failed to send scheduled cancellation notification to ${email}:`,
+        `Failed to send scheduled cancellation notification to ${emailHash(email)}:`,
         error
       );
       throw error;
@@ -1045,7 +1053,10 @@ export class EmailService implements IEmailService {
     try {
       await this.deliver(msg, EMAIL_CATEGORIES.priceLockIn);
     } catch (error) {
-      console.error(`Failed to send price lock-in email to ${to}:`, error);
+      console.error(
+        `Failed to send price lock-in email to ${emailHash(to)}:`,
+        error
+      );
       throw error;
     }
   }

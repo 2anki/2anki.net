@@ -13,10 +13,31 @@ export class EmailSendError extends Error {
   }
 }
 
+interface SendGridFailure {
+  code?: unknown;
+  response?: { body?: { errors?: { message?: unknown }[] } };
+}
+
+// A 4xx carries SendGrid's own reason ("from address does not match a
+// verified Sender Identity") in the response body. It holds neither the key
+// nor the request, and without it a rejection logs only "Forbidden".
+function sendGridReasons(error: SendGridFailure): string[] {
+  const errors = error.response?.body?.errors;
+  if (!Array.isArray(errors)) {
+    return [];
+  }
+  return errors
+    .map((entry) => entry?.message)
+    .filter((message): message is string => typeof message === 'string');
+}
+
 export function toEmailSendError(error: unknown): EmailSendError {
-  const code = (error as { code?: unknown } | null | undefined)?.code;
+  const failure = (error ?? {}) as SendGridFailure;
+  const base = error instanceof Error ? error.message : 'email send failed';
+  const reasons = sendGridReasons(failure);
+  const code = failure.code;
   return new EmailSendError(
-    error instanceof Error ? error.message : 'email send failed',
+    reasons.length > 0 ? `${base}: ${reasons.join('; ')}` : base,
     typeof code === 'string' || typeof code === 'number' ? code : undefined
   );
 }
