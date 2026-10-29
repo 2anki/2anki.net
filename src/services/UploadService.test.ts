@@ -6714,6 +6714,27 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(Math.round(savedForMs / (60 * 60 * 1000))).toBe(24);
   });
 
+  it('names a held upload that made several decks after the uploaded file, not its first deck', async () => {
+    mockGetFeatureFlag.mockResolvedValue(false);
+    mockPartial(
+      [
+        { name: 'Week 1.apkg', cardCount: 11 },
+        { name: 'Week 2.apkg', cardCount: 10 },
+      ],
+      13
+    );
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedJson()).toMatchObject({
+      kind: 'held',
+      deckName: 'study-notes',
+    });
+  });
+
   it('marks an over-a-month held deck for the Day Pass card when the flag is on', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 120);

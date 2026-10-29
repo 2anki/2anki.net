@@ -38,6 +38,14 @@ describe('MonthlyLimitPartialNotice', () => {
     expect(link).toHaveAttribute('href', '/pricing?source=card-limit-partial');
   });
 
+  it('names passes and Pro in the link, not an upgrade for unlimited cards', () => {
+    renderNotice({ cardsDelivered: 100, cardsHeldBack: 25, limit: 100 });
+    expect(
+      screen.getByRole('link', { name: 'see passes and Pro' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/upgrade for unlimited/i)).toBeNull();
+  });
+
   it('fires the paywall usage event on mount', () => {
     renderNotice({ cardsDelivered: 100, cardsHeldBack: 25, limit: 100 });
     expect(track).toHaveBeenCalledWith('paywall_shown', {

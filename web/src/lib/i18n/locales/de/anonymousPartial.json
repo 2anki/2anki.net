@@ -1,6 +1,6 @@
 {
-  "gateAria": "Erstelle ein kostenloses Konto, um deinen Stapel herunterzuladen",
-  "untitledDeck": "Unbenanntes Deck",
+  "gateAria": "Dein Stapel ist fertig",
+  "untitledDeck": "Unbenannter Stapel",
   "gateHeadlineAll": "Alle {{total}} Karten sind fertig",
   "gateHeadlineCappedTotal": "Dein Stapel ist fertig — {{total}} Karten",
   "gateSaved_one": "Für {{count}} Stunde gespeichert.",

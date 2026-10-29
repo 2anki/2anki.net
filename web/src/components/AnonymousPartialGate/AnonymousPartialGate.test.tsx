@@ -154,7 +154,7 @@ describe('AnonymousPartialGate', () => {
     renderGate();
     expect(
       screen.getByRole('region', {
-        name: 'Create a free account to download your deck',
+        name: 'Your deck is ready',
       })
     ).toBeInTheDocument();
   });

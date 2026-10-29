@@ -2001,7 +2001,7 @@ class UploadService {
         holdAnonId,
         totalCards,
         cardsHeldBack ?? 0,
-        first?.name ?? ''
+        packages.length === 1 ? first.name : ''
       );
     }
     if (packages.length === 1) {
@@ -2657,7 +2657,7 @@ class UploadService {
     anonId: string,
     cardCount: number,
     cardsHeldBack: number,
-    packageName: string
+    singleDeckPackageName: string
   ): Promise<express.Response> {
     const file = (req.files as UploadedFile[])[0];
     const bytes = await readUploadBytes(file);
@@ -2747,7 +2747,10 @@ class UploadService {
       cardCount,
       cardsHeldBack,
       totalCards,
-      deckName: toText(packageName).replace(/\.apkg$/i, ''),
+      deckName:
+        singleDeckPackageName.length > 0
+          ? toText(singleDeckPackageName).replace(/\.apkg$/i, '')
+          : toText(path.parse(file.originalname).name),
       savedForHours: HELD_DECK_TTL_MS / HOUR_MS,
       ...(dayPassCard ? { dayPassCard: true } : {}),
     };

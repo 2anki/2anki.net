@@ -523,7 +523,7 @@
       "openYahoo": "Apri Yahoo Mail",
       "didntGetIt": "Non l'hai ricevuto? Controlla la cartella spam, oppure ",
       "tryAgain": "riprova",
-      "sent": "Inviato!",
+      "sent": "Inviato",
       "sending": "Invio di un nuovo link",
       "resend": "Invia di nuovo il link",
       "resendError": "Non siamo riusciti a inviare un altro link ora. Controlla la posta in arrivo e lo spam, oppure scrivi a support@2anki.net.",
