@@ -205,6 +205,23 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
     });
   });
 
+  it('links a subscription paid with another email to the account that holds its customer id', async () => {
+    await db('users').insert({
+      email: 'owner@example.com',
+      stripe_customer_id: 'cus_test456',
+    });
+    await db('subscriptions').insert({
+      email: 'user@example.com',
+      active: true,
+      payload: '{}',
+    });
+    setupStripeMock([buildSubscription()]);
+
+    await updateStripeSubscriptions(db);
+
+    expect(await row()).toMatchObject({ linked_email: 'owner@example.com' });
+  });
+
   it('keeps the linked account on a subscription paid with another email', async () => {
     await db('users').insert({
       email: 'owner@example.com',

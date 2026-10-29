@@ -603,29 +603,32 @@ describe('updateStoreSubscription when a unique link is already taken', () => {
     ).toEqual([{ email: 'holder@example.com' }]);
   });
 
-  test('leaves an active row its link and fails loudly, as before', async () => {
-    await db('users').insert({
-      email: 'owner@example.com',
-      stripe_customer_id: 'cus_test123',
-    });
-    await db('subscriptions').insert({
-      email: 'old-billing@example.com',
-      active: true,
-      payload: '{}',
-      linked_email: 'owner@example.com',
-    });
+  test.each([true, false])(
+    'leaves a row its link and fails loudly, as before (old row active=%s)',
+    async (oldActive) => {
+      await db('users').insert({
+        email: 'owner@example.com',
+        stripe_customer_id: 'cus_test123',
+      });
+      await db('subscriptions').insert({
+        email: 'old-billing@example.com',
+        active: oldActive,
+        payload: '{}',
+        linked_email: 'owner@example.com',
+      });
 
-    await expect(
-      updateStoreSubscription(
-        db,
-        makeCustomer('new-billing@example.com'),
-        makeSubscription('active', 'prod_auto_sync')
-      )
-    ).rejects.toThrow();
-    expect(
-      await db('subscriptions')
-        .where({ email: 'old-billing@example.com' })
-        .first()
-    ).toMatchObject({ linked_email: 'owner@example.com' });
-  });
+      await expect(
+        updateStoreSubscription(
+          db,
+          makeCustomer('new-billing@example.com'),
+          makeSubscription('active', 'prod_auto_sync')
+        )
+      ).rejects.toThrow();
+      expect(
+        await db('subscriptions')
+          .where({ email: 'old-billing@example.com' })
+          .first()
+      ).toMatchObject({ linked_email: 'owner@example.com' });
+    }
+  );
 });
