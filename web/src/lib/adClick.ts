@@ -238,7 +238,15 @@ export function forgetLandingCampaign(): void {
   landingCampaign = undefined;
 }
 
+// `ref` tags our own links into a landing page (the connectors' plans link
+// is /pricing/?ref=mcp), so a visit through one can be counted. It stays on
+// the landing event only, not in the remembered checkout attribution.
+function readRef(search: string): { ref?: string } {
+  const ref = new URLSearchParams(search).get('ref');
+  return ref != null && UTM_PATTERN.test(ref) ? { ref: ref.toLowerCase() } : {};
+}
+
 export function landingViewProps(path: string): Record<string, string> {
   const search = typeof location === 'undefined' ? '' : location.search;
-  return { path, ...readCampaignParams(search) };
+  return { path, ...readCampaignParams(search), ...readRef(search) };
 }

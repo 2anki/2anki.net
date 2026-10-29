@@ -233,4 +233,17 @@ describe('landingViewProps', () => {
       utm_campaign: 'pdf',
     });
   });
+
+  it('records which of our links brought the visit, as the connectors plans link does', () => {
+    vi.stubGlobal('location', { search: '?ref=MCP' });
+    expect(landingViewProps('/pricing')).toEqual({
+      path: '/pricing',
+      ref: 'mcp',
+    });
+  });
+
+  it('leaves out a ref that is not a plain tag', () => {
+    vi.stubGlobal('location', { search: '?ref=%3Cscript%3E' });
+    expect(landingViewProps('/pricing')).toEqual({ path: '/pricing' });
+  });
 });
