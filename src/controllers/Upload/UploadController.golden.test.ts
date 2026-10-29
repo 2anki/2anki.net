@@ -855,9 +855,8 @@ beforeAll(async () => {
   );
   app.post(
     '/api/upload/google_drive',
-    (req, res, next) => {
+    (_req, res, next) => {
       res.locals.requestId = 'golden-request';
-      Object.assign(res.locals, population.locals);
       next();
     },
     multer().none(),
