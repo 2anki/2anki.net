@@ -2,5 +2,5 @@
   "id": "2026-10-29-style-changes-reach-anki",
   "date": "2026-10-29",
   "type": "fix",
-  "title": "Changing font size, text color, alignment or code theme now updates the cards already in Anki on your next import"
+  "title": "Changing font size, text color, alignment or code theme now updates the cards already in Anki on your next import (pick a style you set before today again; multiple-choice cards and the Raw Note, Abhiyan, Alexander Deluxe and My note types templates keep their own style)"
 }

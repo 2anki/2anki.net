@@ -483,3 +483,23 @@ def test_a_local_edit_made_after_a_style_change_survives_a_reupload(tmp_path):
     _import_and_close(collection_path, _style_apkg(tmp_path, "third", restyled, changed_at))
 
     assert _n2a_basic_css(collection_path) == "/* user's own edit */"
+
+
+def test_a_shared_deck_with_a_newer_style_time_replaces_the_importers_edit(tmp_path):
+    """
+    The #5043 trade-off: every 2anki note type id is global, so a deck someone
+    else built after changing their style carries their newer mod, and Anki's
+    default "If newer" replaces the importer's own CSS and local edits. The
+    pinned mod alone (#4447) never allowed this.
+    """
+    collection_path = str(tmp_path / "collection.anki2")
+    _import_and_close(collection_path, _style_apkg(tmp_path, "own", ".card { font-size: 20px; }"))
+    _edit_n2a_basic_css(collection_path, "/* importer's own edit */")
+
+    sharers_change = int(time.time()) + 60
+    shared = _style_apkg(tmp_path, "shared", ".card { font-size: 40px; }", sharers_change)
+    _import_and_close(collection_path, shared)
+
+    css = _n2a_basic_css(collection_path)
+    assert "importer's own edit" not in css
+    assert "40px" in css

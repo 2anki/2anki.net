@@ -195,6 +195,14 @@ describe('a password unlock of a kept file on /api/upload/retry-with-credential'
     expect(prepareDeck).toHaveBeenCalledTimes(1);
   });
 
+  it('carries the style change time the page sent into the unlocked deck', async () => {
+    await unlock(signedIn, { 'style-changed-at': '1793000000' });
+
+    expect(prepareDeck.mock.calls[0][0].settings.styleChangedAt).toBe(
+      1793000000
+    );
+  });
+
   it('meters the anonymous Day Pass that sent the file', async () => {
     await unlock(signedOutPassHolder, { 'kept-owner': 'none' });
 

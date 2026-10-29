@@ -47,6 +47,16 @@ describe('ConvertSampleDeckUseCase', () => {
     expect(paying).toBe(false);
   });
 
+  it('builds the sample with no style change time, so its note types keep the pinned mod', async () => {
+    const generate = fakeGenerate(8);
+    const useCase = new ConvertSampleDeckUseCase(generate);
+
+    await useCase.execute();
+
+    const [, , settings] = (generate.execute as Mock).mock.calls[0];
+    expect(settings).toMatchObject({ styleChangedAt: 0 });
+  });
+
   it('memoizes the conversion so repeat calls run the parser once', async () => {
     const generate = fakeGenerate(8);
     const useCase = new ConvertSampleDeckUseCase(generate);

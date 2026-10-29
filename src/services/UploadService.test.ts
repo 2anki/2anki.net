@@ -4211,6 +4211,7 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
         template: 'notionstyle',
         basic_model_name: 'My Basic',
         cloze_model_name: 'My Cloze',
+        'style-changed-at': '1793000000',
       })
     );
     mockGenerateDeckInfo.mockResolvedValue([
@@ -4261,6 +4262,7 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
       clozeModelName: 'My Cloze',
       inputModelName: 'n2a-input',
       useNotionId: true,
+      styleChangedAt: 1793000000,
     });
   });
 
