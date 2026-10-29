@@ -96,9 +96,18 @@ describe('CardOption styleChangedAt', () => {
     expect(option.styleChangedAt).toBe(1793000000);
   });
 
-  it('caps a change time from the future at the server time', () => {
-    const option = new CardOption({ 'style-changed-at': '1999999999' });
-    expect(option.styleChangedAt).toBe(NOW_SECONDS);
+  it('keeps a change time from a device clock up to a day ahead', () => {
+    const option = new CardOption({
+      'style-changed-at': String(NOW_SECONDS + 86400),
+    });
+    expect(option.styleChangedAt).toBe(NOW_SECONDS + 86400);
+  });
+
+  it('ignores a change time more than a day ahead of the server', () => {
+    const option = new CardOption({
+      'style-changed-at': String(NOW_SECONDS + 86401),
+    });
+    expect(option.styleChangedAt).toBe(0);
   });
 
   it.each(['', '-5', '1.5', 'soon', '1793000000abc', '1e9', ' 1793000000'])(

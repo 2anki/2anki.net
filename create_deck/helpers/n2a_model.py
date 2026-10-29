@@ -29,8 +29,10 @@ collection, and Anki then overwrites any CSS or template edit the user made
 there. `mod` is pinned to a constant instead, bumped only when a shipped
 template or CSS actually changes, so an unrelated re-export carries the *same*
 mod and leaves local edits alone. The constant must stay >= every mod value
-already sitting in a returning user's collection (all of them are past export
-timestamps, so any timestamp at or after this line was written satisfies that).
+already sitting in a returning user's collection. Since #5043 that includes
+style change times, which the server accepts up to a day ahead of its clock, so
+a bump must be at or after the newest style time ever issued: use the current
+unix time plus a day, never an older value.
 
 Style changes (#5043): font size, text colour, alignment and code theme only
 change the CSS, so a note type whose CSS carries them takes

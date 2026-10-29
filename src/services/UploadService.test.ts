@@ -5821,6 +5821,37 @@ describe('UploadService.handleUpload — stored card options', () => {
     }
   });
 
+  it('gives a signed-out pass holder resuming an AI preview no style change time', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      packages: [{ name: 'deck', cardCount: 1, guidEntries }],
+    });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({})
+    );
+    const file = {
+      originalname: 'notes.html',
+      size: 13,
+      buffer: Buffer.from('<html></html>'),
+    } as unknown as Parameters<
+      UploadService['convertStoredFileWithAiForPass']
+    >[1];
+
+    await service.convertStoredFileWithAiForPass(7, file, 'req-1');
+
+    expect(execute.mock.calls[0][2]).toMatchObject({
+      claudeAIFlashcards: true,
+      styleChangedAt: 0,
+    });
+  });
+
   it('never reads stored options for an anonymous upload', async () => {
     mockOneDeck();
     const getCardOptions = vi

@@ -292,10 +292,13 @@ function validateCodeTheme(raw: string | undefined): string {
 }
 
 const WHOLE_SECONDS = /^\d{1,12}$/;
+const MAX_CLOCK_LEAD_SECONDS = 24 * 60 * 60;
 
 function parseStyleChangedAt(raw: unknown): number {
   if (typeof raw !== 'string' || !WHOLE_SECONDS.test(raw)) return 0;
-  return Math.min(Number(raw), Math.floor(Date.now() / 1000));
+  const changedAt = Number(raw);
+  const latestAccepted = Math.floor(Date.now() / 1000) + MAX_CLOCK_LEAD_SECONDS;
+  return changedAt > latestAccepted ? 0 : changedAt;
 }
 
 function parseFieldMapping(raw: string | undefined): FieldMapping | undefined {

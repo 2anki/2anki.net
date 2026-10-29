@@ -348,6 +348,7 @@ describe('one note-type style for every deck-building path', () => {
       const decks = await build();
       for (const deck of decks) {
         expect(deck.style).toBe(buildDeckStyle(new CardOption({})));
+        expect(deck.settings?.styleChangedAt ?? 0).toBe(0);
       }
       expect(noteTypeShape(decks[0])).toEqual(noteTypeShape({ settings: {} }));
     }
