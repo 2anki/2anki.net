@@ -650,6 +650,32 @@ describe('McpToolsService.convertToDeck', () => {
     expect(persist).not.toHaveBeenCalled();
   });
 
+  it.each(['convert_to_deck', 'create_deck'] as const)(
+    'passes the generic support line, not a JavaScript message, when %s hits a crash on our side',
+    async (tool) => {
+      const generic =
+        'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.';
+      const uploadEntry: UploadEntrypoint = (_req, res) => {
+        res.status(500).json({ code: 'unknown', message: generic });
+      };
+      const { service, persist } = makeService({ uploadEntry });
+
+      const result =
+        tool === 'convert_to_deck'
+          ? await service.convertToDeck({ text: 'x' }, 'owner', {})
+          : await service.createDeck(
+              [{ front: 'What is ATP?', back: 'Energy currency.' }],
+              'Biochemistry',
+              undefined,
+              'owner-9',
+              {}
+            );
+
+      expect(result).toMatchObject({ kind: 'error', message: generic });
+      expect(persist).not.toHaveBeenCalled();
+    }
+  );
+
   it('remaps markdown_likely_lossy to the context-neutral no-cards guidance', async () => {
     const uploadEntry: UploadEntrypoint = (_req, res) => {
       res.status(400).json({

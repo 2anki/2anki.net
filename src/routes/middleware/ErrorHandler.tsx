@@ -183,6 +183,7 @@ const NATIVE_FAULT_NAMES = new Set([
   'TypeError',
   'RangeError',
   'ReferenceError',
+  'SyntaxError',
 ]);
 
 function isInternalFault(err: Error): boolean {
