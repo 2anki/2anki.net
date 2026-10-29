@@ -16,7 +16,7 @@
   "checkoutError": "Afrekenen kon niet starten. Probeer het opnieuw of mail support@2anki.net.",
   "starting": "Afrekenen starten",
   "claimError": "We konden je volledige deck niet maken. Zet het bestand opnieuw neer of mail support@2anki.net.",
-  "building": "We maken alle kaarten uit je bestand.",
+  "checking": "We controleren je pass.",
   "activeDropAgain": "Je pass is actief. Zet je bestand opnieuw neer om alle kaarten te krijgen.",
   "confirming": "We bevestigen je betaling.",
   "paymentConfirming": "Je betaling wordt nog bevestigd. Wacht een minuut en zet je bestand dan opnieuw neer."

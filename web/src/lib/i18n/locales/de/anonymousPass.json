@@ -16,7 +16,7 @@
   "checkoutError": "Der Checkout ließ sich nicht starten. Versuch es noch einmal oder schreib an support@2anki.net.",
   "starting": "Checkout wird gestartet",
   "claimError": "Wir konnten deinen ganzen Stapel nicht erstellen. Lade die Datei noch einmal hoch oder schreib an support@2anki.net.",
-  "building": "Alle Karten aus deiner Datei werden erstellt.",
+  "checking": "Dein Pass wird geprüft.",
   "activeDropAgain": "Dein Pass ist aktiv. Lade deine Datei noch einmal hoch, um alle Karten zu bekommen.",
   "confirming": "Deine Zahlung wird bestätigt.",
   "paymentConfirming": "Deine Zahlung wird noch bestätigt. Warte eine Minute und lade deine Datei dann noch einmal hoch."

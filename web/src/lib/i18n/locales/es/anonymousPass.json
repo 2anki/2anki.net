@@ -16,7 +16,7 @@
   "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net.",
   "starting": "Abriendo el pago",
   "claimError": "No pudimos crear tu mazo completo. Vuelve a subir el archivo o escribe a support@2anki.net.",
-  "building": "Estamos creando todas las tarjetas de tu archivo.",
+  "checking": "Comprobando tu pase.",
   "activeDropAgain": "Tu pase está activo. Vuelve a subir tu archivo para obtener todas las tarjetas.",
   "confirming": "Confirmando tu pago.",
   "paymentConfirming": "Tu pago aún se está confirmando. Espera un minuto y vuelve a subir tu archivo."

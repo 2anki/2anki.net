@@ -16,8 +16,8 @@
   "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
   "starting": "Starting checkout",
   "claimError": "We couldn't build your full deck. Drop the file again, or email support@2anki.net.",
-  "building": "Building every card from your file.",
+  "checking": "Checking your pass.",
   "activeDropAgain": "Your pass is active. Drop your file again to get every card.",
   "confirming": "Confirming your payment.",
-  "paymentConfirming": "Your payment is still confirming. Wait a minute, then drop your file again."
+  "paymentConfirming": "Your payment is still being confirmed. Wait a minute, then drop your file again."
 }

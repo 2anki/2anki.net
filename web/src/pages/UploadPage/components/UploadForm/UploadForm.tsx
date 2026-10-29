@@ -354,7 +354,7 @@ function resumeStatusLine(
 ): string {
   if (phase === 'confirming') return t('anonymousPass:confirming');
   if (phase === 'ai') return t('aiPreview:resuming');
-  return t('anonymousPass:building');
+  return t('anonymousPass:checking');
 }
 
 function heldClaimNoticeFor(
@@ -376,20 +376,25 @@ function heldClaimNoticeFor(
 type PassDeckPhase = 'held' | 'confirming' | 'ai';
 
 interface PassDeckResult {
-  response: Response;
+  response: Response | null;
   phase: 'held' | 'ai';
   status: number;
 }
 
 const HELD_REQUEST_FAILED = 0;
 
+function heldRequestFailed(heldStatus: number): boolean {
+  return heldStatus === HELD_REQUEST_FAILED || heldStatus >= 500;
+}
+
 function triesPreviewAfter(heldStatus: number): boolean {
   return (
-    heldStatus === 404 ||
-    heldStatus === 410 ||
-    heldStatus === HELD_REQUEST_FAILED ||
-    heldStatus >= 500
+    heldStatus === 404 || heldStatus === 410 || heldRequestFailed(heldStatus)
   );
+}
+
+function previewAnswered(status: number): boolean {
+  return status === 200 || status === 400 || status === 402;
 }
 
 async function requestHeldDeck(passToken: string): Promise<Response | null> {
@@ -405,10 +410,11 @@ async function requestHeldDeck(passToken: string): Promise<Response | null> {
 
 // The held claim goes first because it answers fast when there is no hold,
 // while the AI resume is the slow conversion itself; a held claim that fails
-// still lets an AI preview buyer resume. Stripe can confirm the payment a few
-// seconds after the buyer is back, so a refused pass is retried. Each request
-// waits a tick and checks for cancellation first, so a StrictMode remount
-// never sends a claim whose result nobody reads.
+// still lets an AI preview buyer resume, and when both fail the visitor hears
+// about the held deck, the one the gate promised. Stripe can confirm the
+// payment a few seconds after the buyer is back, so a refused pass is retried.
+// Each request waits a tick and checks for cancellation first, so a StrictMode
+// remount never sends a claim whose result nobody reads.
 async function deliverPassDeck(
   passToken: string,
   isCancelled: () => boolean,
@@ -418,7 +424,6 @@ async function deliverPassDeck(
   while (true) {
     await Promise.resolve();
     if (isCancelled()) return null;
-    onPhase('held');
     const held = await requestHeldDeck(passToken);
     const heldStatus = held?.status ?? HELD_REQUEST_FAILED;
     if (heldStatus === 403 && attempt < CHECKOUT_CLAIM_RETRIES) {
@@ -434,8 +439,19 @@ async function deliverPassDeck(
     }
     if (isCancelled()) return null;
     onPhase('ai');
-    const preview = await get2ankiApi().resumeAiPreview(passToken);
-    if (preview.status === 404) {
+    let preview: Response;
+    try {
+      preview = await get2ankiApi().resumeAiPreview(passToken);
+    } catch (error) {
+      if (heldRequestFailed(heldStatus)) {
+        return { response: null, phase: 'held', status: heldStatus };
+      }
+      throw error;
+    }
+    const heldOwnsTheOutcome =
+      preview.status === 404 ||
+      (heldRequestFailed(heldStatus) && !previewAnswered(preview.status));
+    if (heldOwnsTheOutcome) {
       return { response: preview, phase: 'held', status: heldStatus };
     }
     return { response: preview, phase: 'ai', status: preview.status };
@@ -1057,7 +1073,7 @@ function UploadForm({
           }
         );
         if (cancelled || result == null) return;
-        if (result.response.status === 200) {
+        if (result.response?.status === 200) {
           await applyConversionSuccess(
             result.response,
             conversionSuccessHandlers

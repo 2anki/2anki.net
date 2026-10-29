@@ -10,10 +10,12 @@ import {
   readHeldFile,
   type HeldFileStore,
 } from './ClaimHeldDeckUseCase';
-import {
-  AI_PREVIEW_CHECKOUT_SURFACE,
-  type CheckoutBindingReader,
-} from './ResumeAnonymousAiPreviewUseCase';
+import type { CheckoutBindingReader } from './ResumeAnonymousAiPreviewUseCase';
+
+// The held-deck gate checks out under this surface (web AnonymousPartialGate).
+// A pass bought anywhere else was bought for another file, so it never
+// releases a deck this visitor left held earlier.
+export const HELD_DECK_CHECKOUT_SURFACE = 'anonymous-gate';
 
 export interface PassHeldDeckConversion {
   apkg: Buffer;
@@ -43,8 +45,7 @@ export interface ClaimHeldDeckWithPassParams {
 // anonymousPassId). The release is bound to that pass's OWN checkout session
 // metadata, read from Stripe: the anon id stamped at purchase must equal the
 // presenting anon_id cookie, so a pass only ever releases the hold of the
-// visitor who bought it. A pass bought from the AI preview belongs to the AI
-// resume and is left to it. The hold is claimed atomically before conversion,
+// visitor who bought it, and only a pass bought from the held-deck gate. The hold is claimed atomically before conversion,
 // so a reused or concurrent request gets nothing, and released on a transient
 // failure so the visitor can retry.
 export class ClaimHeldDeckWithPassUseCase {
@@ -79,7 +80,7 @@ export class ClaimHeldDeckWithPassUseCase {
     if (
       binding.anonId == null ||
       binding.anonId !== anonId ||
-      binding.surface === AI_PREVIEW_CHECKOUT_SURFACE
+      binding.surface !== HELD_DECK_CHECKOUT_SURFACE
     ) {
       throw new NoHeldDeckError();
     }

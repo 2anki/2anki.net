@@ -16,7 +16,7 @@
   "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net.",
   "starting": "Rozpoczynanie płatności",
   "claimError": "Nie udało się utworzyć pełnej talii. Wrzuć plik jeszcze raz albo napisz na support@2anki.net.",
-  "building": "Tworzymy wszystkie fiszki z Twojego pliku.",
+  "checking": "Sprawdzamy Twój karnet.",
   "activeDropAgain": "Twój karnet jest aktywny. Wrzuć plik jeszcze raz, aby dostać wszystkie fiszki.",
   "confirming": "Potwierdzamy Twoją płatność.",
   "paymentConfirming": "Twoja płatność jest jeszcze potwierdzana. Odczekaj minutę, a potem wrzuć plik jeszcze raz."

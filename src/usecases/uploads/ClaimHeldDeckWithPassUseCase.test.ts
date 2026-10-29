@@ -138,7 +138,7 @@ describe('ClaimHeldDeckWithPassUseCase', () => {
         fakeStore().store,
         converter,
         passes,
-        bindingReader({ [sessionId]: { anonId: BUYER, surface: null } })
+        bindingReader({ [sessionId]: boughtFromGate(BUYER) })
       );
 
       await useCase.execute({
@@ -231,6 +231,41 @@ describe('ClaimHeldDeckWithPassUseCase', () => {
     ).rejects.toBeInstanceOf(NoHeldDeckError);
     expect(convertHeldFileForPass).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['the /limit page', 'anonymous-limit-wall'],
+    ['the pricing page', 'pricing'],
+    ['an unknown surface', null],
+  ])(
+    'leaves the held deck alone for a pass bought on %s',
+    async (_label, surface) => {
+      const repo = new InMemoryHeldDeckRepository();
+      const hold = await seedHold(repo, BUYER);
+      const passes = new InMemoryAnonymousPassRepository();
+      const passId = await seedPass(passes, 'cs_elsewhere');
+      const { converter, convertHeldFileForPass } = fakeConverter();
+      const useCase = new ClaimHeldDeckWithPassUseCase(
+        repo,
+        fakeStore().store,
+        converter,
+        passes,
+        bindingReader({ cs_elsewhere: { anonId: BUYER, surface } })
+      );
+
+      await expect(
+        useCase.execute({
+          anonymousPassId: passId,
+          anonId: BUYER,
+          cardOptions: {},
+          requestId: undefined,
+        })
+      ).rejects.toBeInstanceOf(NoHeldDeckError);
+      expect(convertHeldFileForPass).not.toHaveBeenCalled();
+      expect(
+        repo.rows.find((row) => row.id === hold.id)?.claimed_at
+      ).toBeNull();
+    }
+  );
 
   it('refuses a pass id with no pass row', async () => {
     const repo = new InMemoryHeldDeckRepository();

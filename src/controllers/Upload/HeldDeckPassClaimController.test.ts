@@ -272,7 +272,9 @@ describe('HeldDeckPassClaimController through the pass middleware', () => {
 
   it("does not release another visitor's deck to a pass bought under a different anon id", async () => {
     const { passes, holds, hold, convertHeldFileForPass, request } =
-      await setup({ binding: { anonId: 'anon-attacker', surface: null } });
+      await setup({
+        binding: { anonId: 'anon-attacker', surface: 'anonymous-gate' },
+      });
     await passes.insert({
       stripeSessionId: 'cs_attacker',
       kind: '24h',

@@ -16,7 +16,7 @@
   "checkoutError": "Impossible de lancer le paiement. Réessaie ou écris à support@2anki.net.",
   "starting": "Ouverture du paiement",
   "claimError": "Nous n'avons pas pu créer ton paquet complet. Dépose à nouveau le fichier ou écris à support@2anki.net.",
-  "building": "Nous créons toutes les cartes de ton fichier.",
+  "checking": "Vérification de ton pass.",
   "activeDropAgain": "Ton pass est actif. Dépose à nouveau ton fichier pour obtenir toutes les cartes.",
   "confirming": "Confirmation de ton paiement.",
   "paymentConfirming": "Ton paiement est encore en cours de confirmation. Attends une minute, puis dépose à nouveau ton fichier."

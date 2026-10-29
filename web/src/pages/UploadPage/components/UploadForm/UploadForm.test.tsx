@@ -335,7 +335,7 @@ describe('UploadForm', () => {
     }
   });
 
-  test('says it is building every card, not an AI deck, while the held claim runs', async () => {
+  test('says it is checking the pass, not building an AI deck, while the held claim runs', async () => {
     stubPassReturn('cs_building');
     let finish: (response: Response) => void = () => {};
     const claimHeldDeckWithPass = vi.fn().mockReturnValue(
@@ -348,7 +348,7 @@ describe('UploadForm', () => {
     try {
       renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
       expect(
-        await screen.findByText('Building every card from your file.')
+        await screen.findByText('Checking your pass.')
       ).toBeInTheDocument();
       expect(screen.queryByText(/AI deck/)).not.toBeInTheDocument();
       await act(async () => {
@@ -431,13 +431,17 @@ describe('UploadForm', () => {
       expect(
         await screen.findByText('Confirming your payment.')
       ).toBeInTheDocument();
-      expect(screen.queryByText(/Pass active/)).not.toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3_500);
+      });
+      expect(screen.getByText('Confirming your payment.')).toBeInTheDocument();
+      expect(screen.queryByText('Checking your pass.')).not.toBeInTheDocument();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(20_000);
       });
       expect(
         await screen.findByText(
-          'Your payment is still confirming. Wait a minute, then drop your file again.'
+          'Your payment is still being confirmed. Wait a minute, then drop your file again.'
         )
       ).toBeInTheDocument();
       expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(6);
@@ -487,6 +491,40 @@ describe('UploadForm', () => {
       restore();
     }
   });
+
+  test.each([
+    [
+      'both error',
+      () => Promise.resolve(statusResponse(500)),
+      () => Promise.resolve(statusResponse(503)),
+    ],
+    [
+      'both throw',
+      () => Promise.reject(new TypeError('Failed to fetch')),
+      () => Promise.reject(new TypeError('Failed to fetch')),
+    ],
+  ])(
+    'tells a held-deck buyer about the full deck, not an AI deck, when %s',
+    async (_label, heldOutcome, previewOutcome) => {
+      stubPassReturn('cs_all_down');
+      const restore = installResumeApi(
+        vi.fn().mockImplementation(previewOutcome),
+        vi.fn().mockImplementation(heldOutcome)
+      );
+
+      try {
+        renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+        expect(
+          await screen.findByText(
+            "We couldn't build your full deck. Drop the file again, or email support@2anki.net."
+          )
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/AI deck/)).not.toBeInTheDocument();
+      } finally {
+        restore();
+      }
+    }
+  );
 
   test('names the pass, not the Day Pass, when the held deck is gone and no preview waits', async () => {
     stubPassReturn('cs_expired_hold');
