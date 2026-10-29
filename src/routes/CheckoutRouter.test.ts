@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
+import { clearResolvedPriceIdCache } from '../services/StripePriceResolver';
 
 const mockStripeCreate = vi.fn();
 const mockStripeRetrieve = vi.fn();
@@ -552,7 +553,37 @@ describe('CheckoutRouter — Pro prices with no pricing flag row', () => {
     mockHeldPatreon = false;
     mockHeldSubscriber = false;
     mockHeldPass = null;
+    clearResolvedPriceIdCache();
   });
+
+  it.each(['24h', '7d', '120d'])(
+    'sells a %s pass holder moving to Pro the v2 price',
+    async (kind) => {
+      mockHeldPass = {
+        kind,
+        expires_at: new Date('2026-11-08T00:00:00.000Z'),
+        stripe_payment_intent_id: 'pi_stripe',
+      };
+      mockPriceList.mockResolvedValue({ data: [{ id: 'price_v2_monthly' }] });
+      mockStripeCreate.mockResolvedValue({
+        id: 'cs_v2',
+        url: 'https://checkout.stripe.com/v2',
+      });
+
+      const res = await fetch(`${url}/api/checkout/unlimited`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ interval: 'month' }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockStripeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          line_items: [{ price: 'price_v2_monthly', quantity: 1 }],
+        })
+      );
+    }
+  );
 
   it.each([
     ['month', 'v2_monthly', 'price_v2_monthly'],
@@ -591,8 +622,6 @@ describe('CheckoutRouter — Pro prices with no pricing flag row', () => {
   );
 
   it('quotes v2 prices on GET /api/checkout/prices', async () => {
-    mockOptionalOwner = 42;
-
     const res = await fetch(`${url}/api/checkout/prices`);
 
     expect(res.status).toBe(200);
