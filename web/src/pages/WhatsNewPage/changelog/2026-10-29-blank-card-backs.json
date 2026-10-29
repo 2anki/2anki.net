@@ -2,5 +2,5 @@
   "id": "2026-10-29-blank-card-backs",
   "date": "2026-10-29",
   "type": "fix",
-  "title": "Converting a Notion page skips toggles with only an empty line inside instead of making blank cards, and tells you"
+  "title": "Converting a page from your Notion connection skips toggles with only an empty line inside, and tells you"
 }

@@ -428,8 +428,6 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     expect(bl.emptyBackCount).toBe(1);
   });
 
-  // A Name-only database fails with the column error instead; a second,
-  // non-text column takes it to the empty-deck reason.
   it('says the answers are missing when every row-page toggle is blank', async () => {
     const api = makeRowPageApi({
       dbName: 'Lectures',
@@ -442,6 +440,30 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
           },
         },
       ],
+      titlesByPage: { 'row-1': 'Lecture 1' },
+      blocksByPage: {
+        'row-1': [toggleBlock('t-1', 'Left blank')],
+        't-1': [paragraphBlock('p-1', '')],
+      },
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.flatMap((d) => d.cards)).toEqual([]);
+    expect(bl.emptyDeckReason()).toBe('empty_answers');
+  });
+
+  it('ends a Name-only database whose row-page toggles are all blank with the empty-answers reason, not the column error', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [{ id: 'row-1', properties: { Name: titleProp('Lecture 1') } }],
       titlesByPage: { 'row-1': 'Lecture 1' },
       blocksByPage: {
         'row-1': [toggleBlock('t-1', 'Left blank')],

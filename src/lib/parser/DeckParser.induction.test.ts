@@ -62,7 +62,7 @@ describe('DeckParser upload rescue gating', () => {
   it('rescues a cloze-on page whose toggle holds only an empty line', () => {
     const parser = parse(
       page(`${BLANK_LINE_TOGGLE(1)}${HEADING_SECTIONS}`),
-      new CardOption({ cherry: 'false' })
+      new CardOption({ cherry: 'false', cloze: 'true' })
     );
 
     expect(
@@ -268,6 +268,8 @@ describe('DeckParser degenerate-yield rescue', () => {
       new CardOption({ cherry: 'false' })
     );
 
+    const fronts = parser.payload[0].cards.map((card) => card.name).join(' ');
+    expect(fronts).toContain('Section question 1?');
     expect(parser.inducedRule).toMatchObject({
       rule: 'heading',
       outcome: 'rescue_shipped',

@@ -154,3 +154,49 @@ describe('a Notion page where every toggle answer is empty', () => {
     expect(handler.emptyDeckReason()).toBe('empty_answers');
   });
 });
+
+describe('blank toggle answers with the Notion reversal options', () => {
+  it('drops and counts them when the deck is reversed', async () => {
+    const handler = makeHandler(
+      makeApi(page),
+      new CardOption({ reversed: 'true' })
+    );
+
+    const decks = await handler.findFlashcards(locator());
+
+    expect(decks[0].cards.map((card) => stripTags(card.name))).toEqual([
+      'Answer one',
+    ]);
+    expect(handler.emptyBackCount).toBe(2);
+  });
+
+  it('says the answers are missing on a reversed page where every answer is blank', async () => {
+    const handler = makeHandler(
+      makeApi({
+        'page-1': [
+          textBlock('t-1', 'toggle', 'Only an empty line inside', true),
+        ],
+        't-1': [emptyParagraph('p-1')],
+      }),
+      new CardOption({ reversed: 'true' })
+    );
+
+    await handler.findFlashcards(locator());
+
+    expect(handler.emptyDeckReason()).toBe('empty_answers');
+  });
+
+  it('keeps neither the card nor its mirror with basic and reversed on', async () => {
+    const handler = makeHandler(
+      makeApi(page),
+      new CardOption({ 'basic-reversed': 'true' })
+    );
+
+    const decks = await handler.findFlashcards(locator());
+
+    expect(decks[0].cards.map((card) => stripTags(card.name))).toEqual([
+      'Has an answer',
+      'Answer one',
+    ]);
+  });
+});

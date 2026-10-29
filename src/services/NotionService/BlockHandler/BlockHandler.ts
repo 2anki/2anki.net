@@ -1025,10 +1025,12 @@ class BlockHandler implements IBlockRenderer {
     }
 
     this.cardCount += cards.length;
+    // Reversed swapped every basic card, so its answer now sits on the front.
+    const reversed = this.settings.reversed;
     this.emptyBackCount += countEmptyBacks(
       cards,
-      (c) => c.back,
-      (c) => c.name,
+      (c) => (reversed ? c.name : c.back),
+      (c) => (reversed ? c.back : c.name),
       (c) =>
         !c.isValidMCQNote() && !c.isValidClozeNote() && !c.isValidInputNote()
     );
@@ -1162,6 +1164,7 @@ class BlockHandler implements IBlockRenderer {
       !columnNames.includes(backField)
     ) {
       if (!explicitFields) {
+        const emptyBacksBeforeWalk = this.emptyBackCount;
         const walked = await this.tryRowPageWalk(
           dbResult.results,
           dbName,
@@ -1171,6 +1174,21 @@ class BlockHandler implements IBlockRenderer {
         );
         if (walked != null) {
           return walked;
+        }
+        // The row pages hold toggles, all with empty answers: the columns are
+        // not the problem, so end empty and let empty_answers say so.
+        if (this.emptyBackCount > emptyBacksBeforeWalk) {
+          decks.push(
+            new Deck(
+              dbName,
+              [],
+              undefined,
+              buildDeckStyle(this.settings),
+              get16DigitRandomId(),
+              this.settings
+            )
+          );
+          return decks;
         }
       }
       throw new NotionDatabaseColumnsError(columnNames, {
@@ -1243,7 +1261,9 @@ class BlockHandler implements IBlockRenderer {
   // appended. Returns null when the row pages held no cards, so the caller falls
   // back to its column-error or empty-deck behaviour; before returning null it
   // resets the side effects the walk may have leaked into the handler so the
-  // caller's own conversion is accounted cleanly.
+  // caller's own conversion is accounted cleanly. blocksSeen and emptyBackCount
+  // are left as the walk set them on purpose: they are what lets an all-blank
+  // walk fail with the empty_answers reason.
   private async tryRowPageWalk(
     rows: unknown[],
     databaseName: string,
