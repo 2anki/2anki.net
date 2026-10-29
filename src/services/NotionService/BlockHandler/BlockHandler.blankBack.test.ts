@@ -6,6 +6,7 @@ import ParserRules from '../../../lib/parser/ParserRules';
 import Workspace from '../../../lib/parser/WorkSpace';
 import NotionAPIWrapper from '../NotionAPIWrapper';
 import { setupTests } from '../../../test/configure-jest';
+import { truncateDecksToCardLimit } from '../../../lib/parser/truncateDecksToCardLimit';
 
 beforeEach(() => setupTests());
 
@@ -240,5 +241,30 @@ describe('blank toggle answers with the Notion reversal options', () => {
 
     expect(handler.emptyBackCount).toBe(0);
     expect(handler.emptyDeckReason()).toBe('unknown');
+  });
+});
+
+describe('a free Notion conversion cut to the monthly limit', () => {
+  it('spends no slot on a blank toggle and does not hold it back', async () => {
+    const handler = makeHandler(
+      makeApi({
+        'page-1': [
+          textBlock('t-1', 'toggle', 'Only an empty line inside', true),
+          textBlock('t-2', 'toggle', 'First real question', true),
+          textBlock('t-3', 'toggle', 'Second real question', true),
+        ],
+        't-1': [emptyParagraph('p-1')],
+        't-2': [textBlock('p-2', 'paragraph', 'Answer two')],
+        't-3': [textBlock('p-3', 'paragraph', 'Answer three')],
+      })
+    );
+    const decks = await handler.findFlashcards(locator());
+
+    const { delivered, heldBack } = truncateDecksToCardLimit(decks, 1);
+
+    expect(decks[0].cards.map((card) => stripTags(card.name))).toEqual([
+      'First real question',
+    ]);
+    expect({ delivered, heldBack }).toEqual({ delivered: 1, heldBack: 1 });
   });
 });

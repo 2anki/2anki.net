@@ -636,7 +636,7 @@ export class McpToolsService {
     });
     const result = await this.mapUploadResult(res, owner, title, cards.length);
     if (result.kind === 'error') {
-      return this.everyBackEmpty(cards)
+      return this.isNoCardError(result) && this.everyBackEmpty(cards)
         ? { ...result, message: EMPTY_BACK_MESSAGE }
         : result;
     }
@@ -750,6 +750,16 @@ export class McpToolsService {
       });
     }
     return ignored.length > 0 ? ignored : undefined;
+  }
+
+  // Only a no-cards failure is about the backs; a card-limit or server error
+  // keeps its own message even when every back happens to be blank.
+  private isNoCardError(result: ConvertResult): boolean {
+    return (
+      result.kind === 'error' &&
+      result.code != null &&
+      NO_CARD_CODES.has(result.code)
+    );
   }
 
   private everyBackEmpty(cards: McpCard[]): boolean {
