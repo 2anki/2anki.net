@@ -70,6 +70,18 @@ describe('conversion process crash', () => {
 });
 
 describe('jobFailureReasonFromError', () => {
+  it('never puts the stack of an error rebuilt from the upload worker in the reason', () => {
+    const rebuilt = Object.assign(
+      new Error("Cannot read properties of undefined (reading '0')"),
+      { name: 'TypeError' }
+    );
+    rebuilt.stack =
+      "TypeError: Cannot read properties of undefined (reading '0')\n" +
+      '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+
+    expect(jobFailureReasonFromError(rebuilt)).not.toContain('tables.ts');
+  });
+
   it('returns the EmptyDeckError reason unchanged', () => {
     const reason = jobFailureReasonFromError(new EmptyDeckError(), 'job-1');
     expect(reason).toBe(EMPTY_DECK_FAILURE_REASON);
