@@ -762,7 +762,7 @@
     "emptyDeckAllFiltered": "Un filtre de cartes a supprimé toutes les cartes. Cherry pick ne garde que les toggles marqués 🍒 et skip retire ceux marqués 🥑. Désactive le filtre dans les réglages de carte ou marque les toggles voulus, puis reconvertis.",
     "emptyDeckNoContent": "Cette page ne contenait aucun texte lisible. Vérifie que tu l'as exportée avec son contenu, puis reconvertis.",
     "emptyDeckNotionEmptyPage": "Cette page Notion semble vide, ou 2anki ne peut pas voir son contenu. Ajoute 2anki à cette page et à ses sous-pages dans le menu Connexions de Notion, puis relance la conversion.",
-    "emptyDeckEmptyAnswers": "Tes bascules n'ont aucune réponse à l'intérieur. Ajoute une réponse dans chaque bascule dans Notion, puis relance la conversion.",
+    "emptyDeckEmptyAnswers": "Tes bascules n'ont aucune réponse à l'intérieur. Ajoute une réponse à l'intérieur de chaque bascule dans Notion, puis relance la conversion.",
     "connectNotionDocs": "Comment partager une page avec 2anki",
     "rescueLeadNotion": "Tu peux quand même faire des cartes avec cette page :",
     "rescueBuilding": "Création de ton paquet.",

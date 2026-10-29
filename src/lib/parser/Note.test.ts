@@ -1,4 +1,5 @@
 import Note from './Note';
+import Deck from './Deck';
 
 describe('Note', () => {
   test('refresh emoji', () => {
@@ -79,5 +80,21 @@ describe('Note.isValidBasicNote', () => {
     expect(new Note('<img src="a.png">', 'Answer').isValidBasicNote()).toBe(
       true
     );
+  });
+});
+
+describe('Deck.CleanCards keeps notes whose answer lives off the back', () => {
+  it('keeps a cloze, a multiple-choice and a typed-answer note with no back', () => {
+    const cloze = new Note('The {{c1::cell}} is the unit of life', '');
+    cloze.cloze = true;
+    const mcq = new Note('Which organelle makes ATP?', '');
+    mcq.mcq = true;
+    mcq.options = ['Mitochondrion', 'Ribosome'];
+    mcq.correctIndices = [0];
+    const typed = new Note('Capital of France{{type:Input}}', '');
+    typed.enableInput = true;
+    typed.answer = 'Paris';
+
+    expect(Deck.CleanCards([cloze, mcq, typed])).toEqual([cloze, mcq, typed]);
   });
 });

@@ -118,6 +118,51 @@ describe('empty-deck rescue on the page branch', () => {
     });
   });
 
+  it('rescues a page whose only toggle holds just an empty line', async () => {
+    const blankLineToggle = block(
+      'toggle',
+      'A toggle with an empty line',
+      true
+    );
+    const emptyLine = {
+      ...block('paragraph', ''),
+      id: 'empty-line',
+      paragraph: { rich_text: [], color: 'default' },
+    };
+    const api = makeApi({
+      'page-1': [
+        blankLineToggle,
+        block('heading_2', 'What is spaced repetition?'),
+        block('paragraph', 'A method that spaces reviews over time.'),
+        block('heading_2', 'What is a flashcard?'),
+        block('paragraph', 'A prompt paired with an answer to recall.'),
+        block('heading_2', 'What is active recall?'),
+        block(
+          'paragraph',
+          'Retrieving a fact from memory instead of rereading.'
+        ),
+      ],
+      [blankLineToggle.id]: [emptyLine],
+    });
+    const handler = makeHandler(api);
+
+    const decks = await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks[0].cards.map((card) => card.name).join(' ')).toContain(
+      'spaced repetition'
+    );
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+  });
+
   it('counts the rescued cards rather than the discarded empty toggles', async () => {
     const api = makeApi({
       'page-1': [
