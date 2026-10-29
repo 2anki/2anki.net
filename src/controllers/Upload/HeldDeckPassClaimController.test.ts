@@ -288,6 +288,28 @@ describe('HeldDeckPassClaimController through the pass middleware', () => {
     expect(holds.rows.find((row) => row.id === hold.id)?.claimed_at).toBeNull();
   });
 
+  it.each([
+    ['an array', ['basic-reversed']],
+    ['a string', 'basic-reversed=true'],
+    ['null', null],
+  ])(
+    'builds with default card options when the body is %s',
+    async (_label, body) => {
+      const { passes, convertHeldFileForPass, request } = await setup();
+      await passes.insert({
+        stripeSessionId: 'cs_oddbody',
+        kind: '24h',
+        expiresAt: new Date(Date.now() + 60_000),
+        paymentIntentId: 'pi_oddbody',
+      });
+
+      const res = await request(mockReq(BUYER, 'cs_oddbody', body));
+
+      expect(res.statusCode).toBe(200);
+      expect(convertHeldFileForPass.mock.calls[0][2]).toEqual({});
+    }
+  );
+
   it('answers 404 for a pass holder with no anon id cookie', async () => {
     const { passes, convertHeldFileForPass, request } = await setup();
     await passes.insert({

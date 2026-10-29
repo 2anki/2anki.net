@@ -348,10 +348,22 @@ function resumeNoticeFor(status: number, t: (key: string) => string): string {
   return t('aiPreview:resumeError');
 }
 
+function resumeStatusLine(
+  phase: PassDeckPhase,
+  t: (key: string) => string
+): string {
+  if (phase === 'confirming') return t('anonymousPass:confirming');
+  if (phase === 'ai') return t('aiPreview:resuming');
+  return t('anonymousPass:building');
+}
+
 function heldClaimNoticeFor(
   status: number,
   t: (key: string) => string
 ): string {
+  if (status === 403) {
+    return t('anonymousPass:paymentConfirming');
+  }
   if (status === 404 || status === 410) {
     return t('anonymousPass:activeDropAgain');
   }
@@ -361,54 +373,72 @@ function heldClaimNoticeFor(
   return t('anonymousPass:claimError');
 }
 
-type PassDeckPhase = 'held' | 'ai';
+type PassDeckPhase = 'held' | 'confirming' | 'ai';
 
 interface PassDeckResult {
   response: Response;
-  phase: PassDeckPhase;
+  phase: 'held' | 'ai';
+  status: number;
 }
 
-function isNoHeldDeck(status: number): boolean {
-  return status === 404 || status === 410;
+const HELD_REQUEST_FAILED = 0;
+
+function triesPreviewAfter(heldStatus: number): boolean {
+  return (
+    heldStatus === 404 ||
+    heldStatus === 410 ||
+    heldStatus === HELD_REQUEST_FAILED ||
+    heldStatus >= 500
+  );
+}
+
+async function requestHeldDeck(passToken: string): Promise<Response | null> {
+  try {
+    return await get2ankiApi().claimHeldDeckWithPass(
+      passToken,
+      storedCardOptions()
+    );
+  } catch {
+    return null;
+  }
 }
 
 // The held claim goes first because it answers fast when there is no hold,
-// while the AI resume is the slow conversion itself. Stripe can confirm the
-// payment a few seconds after the buyer is back, so a refused pass is retried.
-// Each request waits a tick and checks for cancellation first, so a StrictMode
-// remount never sends a claim whose result nobody reads.
+// while the AI resume is the slow conversion itself; a held claim that fails
+// still lets an AI preview buyer resume. Stripe can confirm the payment a few
+// seconds after the buyer is back, so a refused pass is retried. Each request
+// waits a tick and checks for cancellation first, so a StrictMode remount
+// never sends a claim whose result nobody reads.
 async function deliverPassDeck(
   passToken: string,
   isCancelled: () => boolean,
   onPhase: (phase: PassDeckPhase) => void
 ): Promise<PassDeckResult | null> {
-  const api = get2ankiApi();
   let attempt = 0;
   while (true) {
     await Promise.resolve();
     if (isCancelled()) return null;
     onPhase('held');
-    const held = await api.claimHeldDeckWithPass(
-      passToken,
-      storedCardOptions()
-    );
-    if (held.status === 403 && attempt < CHECKOUT_CLAIM_RETRIES) {
+    const held = await requestHeldDeck(passToken);
+    const heldStatus = held?.status ?? HELD_REQUEST_FAILED;
+    if (heldStatus === 403 && attempt < CHECKOUT_CLAIM_RETRIES) {
       attempt += 1;
+      onPhase('confirming');
       await new Promise((resolve) =>
         setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
       );
       continue;
     }
-    if (!isNoHeldDeck(held.status)) {
-      return { response: held, phase: 'held' };
+    if (held != null && !triesPreviewAfter(heldStatus)) {
+      return { response: held, phase: 'held', status: heldStatus };
     }
     if (isCancelled()) return null;
     onPhase('ai');
-    const preview = await api.resumeAiPreview(passToken);
-    if (preview.status === 404 && held.status === 410) {
-      return { response: held, phase: 'held' };
+    const preview = await get2ankiApi().resumeAiPreview(passToken);
+    if (preview.status === 404) {
+      return { response: preview, phase: 'held', status: heldStatus };
     }
-    return { response: preview, phase: 'ai' };
+    return { response: preview, phase: 'ai', status: preview.status };
   }
 }
 
@@ -1010,7 +1040,7 @@ function UploadForm({
     // Persist the fresh token so a follow-up upload also carries the pass.
     storePassToken(passSessionToken);
     let cancelled = false;
-    let phase: PassDeckPhase = 'held';
+    const progress: { phase: PassDeckPhase } = { phase: 'held' };
     onPassDeckStarted?.();
     (async () => {
       setResumingPreview(true);
@@ -1022,29 +1052,31 @@ function UploadForm({
           passSessionToken,
           () => cancelled,
           (next) => {
-            phase = next;
+            progress.phase = next;
             setResumePhase(next);
           }
         );
         if (cancelled || result == null) return;
-        const { response } = result;
-        if (response.status === 200) {
-          await applyConversionSuccess(response, conversionSuccessHandlers);
+        if (result.response.status === 200) {
+          await applyConversionSuccess(
+            result.response,
+            conversionSuccessHandlers
+          );
           return;
         }
         setPassResumeNotice(
           result.phase === 'held'
-            ? heldClaimNoticeFor(response.status, t)
-            : resumeNoticeFor(response.status, t)
+            ? heldClaimNoticeFor(result.status, t)
+            : resumeNoticeFor(result.status, t)
         );
         setZoneState('idle');
         setProgressWidth(10);
       } catch {
         if (cancelled) return;
         setPassResumeNotice(
-          phase === 'held'
-            ? t('anonymousPass:claimError')
-            : t('aiPreview:resumeError')
+          progress.phase === 'ai'
+            ? t('aiPreview:resumeError')
+            : t('anonymousPass:claimError')
         );
         setZoneState('idle');
         setProgressWidth(10);
@@ -4521,9 +4553,7 @@ function UploadForm({
     <>
       {resumingPreview && (
         <p className={formStyles.stateContent} role="status" aria-live="polite">
-          {resumePhase === 'held'
-            ? t('anonymousPass:building')
-            : t('aiPreview:resuming')}
+          {resumeStatusLine(resumePhase, t)}
         </p>
       )}
       {passResumeNotice != null && !resumingPreview && (

@@ -248,7 +248,7 @@ describe('UploadForm', () => {
       renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
       expect(
         await screen.findByText(
-          /Your Day Pass is active\. Drop your file again to get every card\./
+          'Your pass is active. Drop your file again to get every card.'
         )
       ).toBeInTheDocument();
       expect(claimHeldDeckWithPass).toHaveBeenCalledWith(
@@ -348,9 +348,7 @@ describe('UploadForm', () => {
     try {
       renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
       expect(
-        await screen.findByText(
-          'Pass active. Building every card from your file.'
-        )
+        await screen.findByText('Building every card from your file.')
       ).toBeInTheDocument();
       expect(screen.queryByText(/AI deck/)).not.toBeInTheDocument();
       await act(async () => {
@@ -419,6 +417,77 @@ describe('UploadForm', () => {
     }
   });
 
+  test('says the payment is still confirming when the pass never clears', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    stubPassReturn('cs_unconfirmed');
+    const resumeAiPreview = vi.fn();
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(403));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Confirming your payment.')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Pass active/)).not.toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20_000);
+      });
+      expect(
+        await screen.findByText(
+          'Your payment is still confirming. Wait a minute, then drop your file again.'
+        )
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(6);
+      expect(resumeAiPreview).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      restore();
+    }
+  });
+
+  test.each([
+    ['errors', () => Promise.resolve(statusResponse(500))],
+    ['throws', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ])(
+    'still resumes the AI preview when the held claim %s',
+    async (_label, heldOutcome) => {
+      stubPassReturn('cs_preview_held_down');
+      const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+      const claimHeldDeckWithPass = vi.fn().mockImplementation(heldOutcome);
+      const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+      try {
+        renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+        expect(
+          await screen.findByText('Your deck is ready — 58 cards.')
+        ).toBeInTheDocument();
+        expect(resumeAiPreview).toHaveBeenCalledWith('cs_preview_held_down');
+      } finally {
+        restore();
+      }
+    }
+  );
+
+  test('keeps the AI error when the AI resume itself throws', async () => {
+    stubPassReturn('cs_ai_down');
+    const resumeAiPreview = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(/Something went wrong finishing your AI deck/)
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
   test('names the pass, not the Day Pass, when the held deck is gone and no preview waits', async () => {
     stubPassReturn('cs_expired_hold');
     const resumeAiPreview = vi.fn().mockResolvedValue(statusResponse(404));
@@ -458,7 +527,7 @@ describe('UploadForm', () => {
 
   test('says the full deck failed when the held claim errors', async () => {
     stubPassReturn('cs_broken');
-    const resumeAiPreview = vi.fn();
+    const resumeAiPreview = vi.fn().mockResolvedValue(statusResponse(404));
     const claimHeldDeckWithPass = vi
       .fn()
       .mockResolvedValue(statusResponse(500));
@@ -471,7 +540,7 @@ describe('UploadForm', () => {
           "We couldn't build your full deck. Drop the file again, or email support@2anki.net."
         )
       ).toBeInTheDocument();
-      expect(resumeAiPreview).not.toHaveBeenCalled();
+      expect(resumeAiPreview).toHaveBeenCalledTimes(1);
     } finally {
       restore();
     }
@@ -482,7 +551,10 @@ describe('UploadForm', () => {
     const claimHeldDeckWithPass = vi
       .fn()
       .mockRejectedValue(new TypeError('Failed to fetch'));
-    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+    const restore = installResumeApi(
+      vi.fn().mockResolvedValue(statusResponse(404)),
+      claimHeldDeckWithPass
+    );
 
     try {
       renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);

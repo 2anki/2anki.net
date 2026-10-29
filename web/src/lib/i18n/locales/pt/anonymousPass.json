@@ -16,6 +16,8 @@
   "checkoutError": "Não foi possível iniciar o pagamento. Tente de novo ou escreva para support@2anki.net.",
   "starting": "Iniciando o checkout",
   "claimError": "Não conseguimos montar seu baralho completo. Envie o arquivo de novo ou escreva para support@2anki.net.",
-  "building": "Passe ativo. Estamos criando todos os cartões do seu arquivo.",
-  "activeDropAgain": "Seu passe está ativo. Envie o arquivo de novo para receber todos os cartões."
+  "building": "Estamos criando todos os cartões do seu arquivo.",
+  "activeDropAgain": "Seu passe está ativo. Envie o arquivo de novo para receber todos os cartões.",
+  "confirming": "Confirmando seu pagamento.",
+  "paymentConfirming": "Seu pagamento ainda está sendo confirmado. Espere um minuto e envie o arquivo de novo."
 }

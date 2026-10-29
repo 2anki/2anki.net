@@ -8,12 +8,7 @@ import { ClaimHeldDeckWithPassUseCase } from '../../usecases/uploads/ClaimHeldDe
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { getAnonymousPassId } from '../../lib/User/getOwner';
 import { track } from '../../services/events/track';
-
-function anonId(req: Request): string | null {
-  const cookies = req.cookies as Record<string, unknown> | undefined;
-  const value = cookies?.anon_id;
-  return typeof value === 'string' && value.length > 0 ? value : null;
-}
+import { anonIdCookie } from './anonIdCookie';
 
 function cardOptionsFrom(body: unknown): Record<string, string> {
   if (body == null || typeof body !== 'object' || Array.isArray(body)) {
@@ -34,7 +29,7 @@ export class HeldDeckPassClaimController {
     if (anonymousPassId == null) {
       return res.status(403).json({ code: 'pass_required' });
     }
-    const visitor = anonId(req);
+    const visitor = anonIdCookie(req);
     if (visitor == null) {
       return res.status(404).json({ code: 'no_held_deck' });
     }

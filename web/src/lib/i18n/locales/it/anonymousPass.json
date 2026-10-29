@@ -16,6 +16,8 @@
   "checkoutError": "Impossibile avviare il pagamento. Riprova o scrivi a support@2anki.net.",
   "starting": "Avvio del pagamento",
   "claimError": "Non siamo riusciti a creare il tuo mazzo completo. Carica di nuovo il file o scrivi a support@2anki.net.",
-  "building": "Pass attivo. Stiamo creando tutte le carte dal tuo file.",
-  "activeDropAgain": "Il tuo pass è attivo. Carica di nuovo il file per avere tutte le carte."
+  "building": "Stiamo creando tutte le carte dal tuo file.",
+  "activeDropAgain": "Il tuo pass è attivo. Carica di nuovo il file per avere tutte le carte.",
+  "confirming": "Stiamo confermando il pagamento.",
+  "paymentConfirming": "Il pagamento è ancora in fase di conferma. Aspetta un minuto, poi carica di nuovo il file."
 }
