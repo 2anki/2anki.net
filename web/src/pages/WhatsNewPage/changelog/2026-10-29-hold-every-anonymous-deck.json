@@ -2,5 +2,5 @@
   "id": "2026-10-29-hold-every-anonymous-deck",
   "date": "2026-10-29",
   "type": "fix",
-  "title": "A deck over 21 cards made without an account waits for you to sign up, even on your first visit"
+  "title": "The no-account limit page says your upload made more than 21 cards and that the file wasn't kept"
 }

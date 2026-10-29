@@ -7482,6 +7482,52 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     }
   );
 
+  it('holds a first-visit AI upload over the cap, since the preview needs a cookie id', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGenerateAiPreview.mockReset();
+    mockPartial([{ name: 'deck', cardCount: 21 }], 9);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildRequest({
+      files: [
+        {
+          originalname: 'notes.md',
+          mimetype: 'text/markdown',
+          size: 20,
+          buffer: Buffer.from('# Heading\n\nSome notes to study'),
+        },
+      ],
+      body: { 'claude-ai-flashcards': 'true' },
+    } as unknown as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+    setMintedAnonId(res, 'anon-minted-now');
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(mockGenerateAiPreview).not.toHaveBeenCalled();
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toMatchObject({ kind: 'held', totalCards: 30 });
+    expect(heldDeck.rows[0]).toMatchObject({ anon_id: 'anon-minted-now' });
+  });
+
+  it('delivers a first-visit upload at the cap whole, with no hold', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 0);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest();
+    const { res, capturedStatus, capturedSend } = buildResponse();
+    setMintedAnonId(res, 'anon-minted-now');
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).toMatchObject({
+      cardLimit: ANONYMOUS_CARD_CAP,
+    });
+    expect(capturedStatus()).toBe(200);
+    expect(capturedSend()).toEqual(Buffer.from('fake-apkg'));
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBeUndefined();
+    expect(heldDeck.rows).toHaveLength(0);
+  });
+
   it('records a walled upload under the id minted on this request', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 13);

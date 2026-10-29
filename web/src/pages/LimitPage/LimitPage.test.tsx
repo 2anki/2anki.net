@@ -423,6 +423,20 @@ describe('LimitPage — anonymous Day Pass card variant', () => {
     ).toBeInTheDocument();
   });
 
+  it.each([['/limit?cards=40'], ['/limit?ref=upload-limit-wall']])(
+    'claims no converted upload on the Day Pass card wall from %s',
+    (entry) => {
+      renderPage([entry]);
+      expect(
+        screen.queryByText('Your upload made more than 21 cards')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/We didn't keep your file/)
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('Day Pass')).toBeInTheDocument();
+    }
+  );
+
   it('shows the Day Pass as its own card next to the free account', () => {
     renderPage(['/limit?cards=40']);
     expect(screen.getByText('Day Pass')).toBeTruthy();
