@@ -91,6 +91,22 @@ describe('TrackEventUseCase', () => {
     });
   });
 
+  it('keeps the ref tag on a landing_page_viewed event', async () => {
+    const { repo } = makeFakeRepository();
+    const sink = new EventsSink(repo, { flushThreshold: 1 });
+    const useCase = new TrackEventUseCase(sink);
+    useCase.execute({
+      name: 'landing_page_viewed',
+      unknown: false,
+      userId: null,
+      anonymousId: null,
+      props: { path: '/pricing/', ref: 'mcp' },
+    });
+    await sink.flush();
+    const [call] = (repo.insertEvents as Mock).mock.calls;
+    expect(call[0][0].props).toEqual({ path: '/pricing/', ref: 'mcp' });
+  });
+
   it('strips the server-only order_source marker a client tries to forge', async () => {
     const { repo } = makeFakeRepository();
     const sink = new EventsSink(repo, { flushThreshold: 1 });

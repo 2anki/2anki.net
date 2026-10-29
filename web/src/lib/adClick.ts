@@ -238,7 +238,19 @@ export function forgetLandingCampaign(): void {
   landingCampaign = undefined;
 }
 
+// `ref` tags a link into a landing page (ours, like the connectors' plans
+// link /pricing/?ref=mcp, or another site's), so a visit through one can be
+// counted. Only a short slug of letters, digits and hyphens is kept, which
+// drops spaces, dots and symbols. It stays on the landing event, not in
+// checkout attribution.
+const REF_PATTERN = /^[a-z0-9-]{1,40}$/i;
+
+function readRef(search: string): { ref?: string } {
+  const ref = new URLSearchParams(search).get('ref');
+  return ref != null && REF_PATTERN.test(ref) ? { ref: ref.toLowerCase() } : {};
+}
+
 export function landingViewProps(path: string): Record<string, string> {
   const search = typeof location === 'undefined' ? '' : location.search;
-  return { path, ...readCampaignParams(search) };
+  return { path, ...readCampaignParams(search), ...readRef(search) };
 }
