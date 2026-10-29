@@ -74,6 +74,29 @@ describe('DeckParser card limit truncation', () => {
     expect(parser.cardsHeldBack).toBe(1);
   });
 
+  it('gives no slot under the limit to an answerless Notion toggle with cloze on', async () => {
+    const blank =
+      '<ul id="4c0e2c3a-0000-4000-8000-000000000001" class="toggle"><li><details open=""><summary>Blank question</summary></details></li></ul>';
+    const html = toggleHtml(3).replace(
+      '<div class="page-body">',
+      `<div class="page-body">${blank}`
+    );
+    const parser = new DeckParser({
+      name: 'big-deck.html',
+      settings: new CardOption({ cherry: 'false', cloze: 'true' }),
+      files: [{ name: 'big-deck.html', contents: html }],
+      noLimits: false,
+      workspace: new Workspace(true, 'fs'),
+      cardLimit: 2,
+    });
+    const workspace = new Workspace(true, 'fs');
+
+    await parser.build(workspace);
+
+    expect(parser.totalCardCount()).toBe(2);
+    expect(parser.cardsHeldBack).toBe(1);
+  });
+
   it('leaves the deck untouched when no limit is set', async () => {
     const parser = newParser(25);
     const workspace = new Workspace(true, 'fs');

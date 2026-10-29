@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-29-upload-blank-toggles",
+  "date": "2026-10-29",
+  "type": "fix",
+  "title": "Uploaded Notion exports skip toggles with no answer inside instead of making blank cards"
+}

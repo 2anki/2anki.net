@@ -114,6 +114,7 @@ import {
   OFFER_ONLY_RULES,
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
+import { hasVisibleContent } from './hasVisibleContent';
 
 const MARKDOWN_SOURCE_RATIO_THRESHOLD = 0.8;
 
@@ -1489,10 +1490,12 @@ export class DeckParser {
       card.enableInput = true;
       return;
     }
+    // A back holding only our "Open in Notion" link has no answer to type.
     if (
       !card.cloze &&
       !card.answerIsSlideSource &&
-      isTypableAnswer(card.back)
+      isTypableAnswer(card.back) &&
+      hasVisibleContent(this.backWithoutNotionLink(card))
     ) {
       card.answer = typableAnswerText(card.back);
       card.name = `${card.name}{{type:Input}}`;
@@ -1551,9 +1554,46 @@ export class DeckParser {
       card.back = inputInfo.mangle;
     }
 
+    this.clearAnswerlessToggle(card);
+
     if (!card.tags) {
       card.tags = [];
     }
+  }
+
+  // Cloze mode marks every card cloze, and a cloze card needs no back, so a
+  // Notion-export toggle with no answer used to ship front-only (and, with
+  // Add Notion link on, with only that link on the back, cloze or not). With
+  // no deletion and no answer it is cleared to an empty basic card, so
+  // CleanCards drops it and it is counted the way it is on the Notion
+  // connection. Only an exported toggle carries a Notion block id; the toggles
+  // our own converters build for spreadsheets, slides, PDFs and Markdown carry
+  // none and keep their front-only cards. A typed-answer card is kept anyway,
+  // and is left alone so its content guid does not change.
+  private clearAnswerlessToggle(card: Note): void {
+    if (
+      card.notionId == null ||
+      !DeckParser.NOTION_BLOCK_ID_PATTERN.test(card.notionId) ||
+      card.hasClozeDeletion() ||
+      card.isValidInputNote()
+    ) {
+      return;
+    }
+    const answer = this.backWithoutNotionLink(card);
+    if (hasVisibleContent(answer)) {
+      return;
+    }
+    card.cloze = false;
+    card.back = answer;
+  }
+
+  // The "Open in Notion" link is ours, not the learner's answer.
+  private backWithoutNotionLink(card: Note): string {
+    if (!this.settings.addNotionLink || card.sourcePageId == null) {
+      return card.back;
+    }
+    const link = this.getLink(card.sourcePageId, card);
+    return link == null ? card.back : card.back.replace(link, '');
   }
 
   private overlappingClozeEnabled(): boolean {
