@@ -1122,6 +1122,37 @@ describe('UploadService.handleUpload — error paths', () => {
     errorSpy.mockRestore();
   });
 
+  it('answers a sync upload whose worker hit a filesystem error with the generic 500, not its path', async () => {
+    const crash = Object.assign(
+      new Error("ENOENT: no such file or directory, open '/srv/ws/x.html'"),
+      { code: 'ENOENT', errno: -2 }
+    );
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(crash),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(buildRequest(), res);
+
+    expect(capturedStatus()).toBe(500);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message:
+        'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.',
+    });
+    errorSpy.mockRestore();
+  });
+
   it('answers 503 with the retry copy when the pool drain interrupts a sync upload', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {
@@ -3229,6 +3260,66 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     );
     expect(reason).not.toMatch(/\n\s+at /);
     expect(reason).not.toContain('tables.ts');
+    errorSpy.mockRestore();
+  });
+
+  it('fails an async job on a worker filesystem error with the generic reason, not its path', async () => {
+    const crash = Object.assign(
+      new Error("ENOENT: no such file or directory, open '/srv/ws/x.html'"),
+      { code: 'ENOENT', errno: -2 }
+    );
+    let resolveFailed!: () => void;
+    const failed = new Promise<void>((r) => {
+      resolveFailed = r;
+    });
+    const updateJobStatus = vi.fn(
+      async (
+        _id: string,
+        _owner: unknown,
+        status: string,
+        _reason?: string
+      ) => {
+        if (status === 'failed') {
+          resolveFailed();
+        }
+      }
+    );
+    const jobRepository = {
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus,
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
+    } as unknown as JobRepository;
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(crash),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      { ...buildRepository(), update: vi.fn().mockResolvedValue([]) },
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+
+    await service.handleUpload(req, res);
+    await failed;
+
+    const failedCall = updateJobStatus.mock.calls.find(
+      (call) => call[2] === 'failed'
+    );
+    const reason = String(failedCall?.[3]);
+    expect(reason).toMatch(
+      /^Something went wrong on our end converting this file\. Job ID /
+    );
+    expect(reason).not.toMatch(/\n\s+at /);
+    expect(reason).not.toContain('/srv/ws');
     errorSpy.mockRestore();
   });
 
