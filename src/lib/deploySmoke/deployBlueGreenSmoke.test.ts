@@ -77,6 +77,9 @@ function envCheck(check: string, environ: string): boolean {
   return run.status === 0;
 }
 
+const EARLY_EXIT_READERS =
+  /\|\s*(grep\b[^\n|]*\s(-[A-Za-z]*q[A-Za-z]*|--quiet|--silent|-m\s*\d+|--max-count)|head\b)/g;
+
 describe('deploy-blue-green.sh environment checks', () => {
   it.each([
     "tr '\\0' '\\n' < env | grep -q -- 'x'",
@@ -85,19 +88,7 @@ describe('deploy-blue-green.sh environment checks', () => {
     'cat env | grep -m 1 x',
     'cat env | head -1',
   ])('the early-exit guard catches %s', (line) => {
-    const earlyExitReaders =
-      /\|\s*(grep\b[^\n|]*\s(-[A-Za-z]*q[A-Za-z]*|--quiet|--silent|-m\s*\d+|--max-count)|head\b)/g;
-
-    expect(line.match(earlyExitReaders)).not.toBeNull();
-  });
-
-  it('removes the new color when its environment cannot be read', () => {
-    const script = fs.readFileSync(DEPLOY_SCRIPT, 'utf8');
-
-    expect(script).toMatch(
-      /NEXT_ENV="\$\(environ_lines "\$NEXT_PID"\)" \|\| NEXT_ENV=''/
-    );
-    expect(envCheck('has_heap_ceiling', '')).toBe(false);
+    expect(line.match(EARLY_EXIT_READERS)).not.toBeNull();
   });
 
   // A large environment, so a match at either end is exercised.
@@ -109,10 +100,7 @@ describe('deploy-blue-green.sh environment checks', () => {
   it('pipes the process environment into no early-exiting reader', () => {
     const script = fs.readFileSync(DEPLOY_SCRIPT, 'utf8');
 
-    const earlyExitReaders =
-      /\|\s*(grep\b[^\n|]*\s(-[A-Za-z]*q[A-Za-z]*|--quiet|--silent|-m\s*\d+|--max-count)|head\b)/g;
-
-    expect(script.match(earlyExitReaders) ?? []).toEqual([]);
+    expect(script.match(EARLY_EXIT_READERS) ?? []).toEqual([]);
   });
 
   it.each([
@@ -142,4 +130,99 @@ describe('deploy-blue-green.sh environment checks', () => {
       );
     }
   );
+});
+
+function scriptFunction(script: string, name: string): string {
+  const oneLine = new RegExp(`^${name}\\(\\) \\{.*\\}$`, 'm').exec(script);
+  if (oneLine) return oneLine[0];
+  const block = new RegExp(`^${name}\\(\\) \\{\\n[\\s\\S]*?\\n\\}$`, 'm').exec(
+    script
+  );
+  if (!block) throw new Error(`no ${name} in the deploy script`);
+  return block[0];
+}
+
+function verifyNextEnv(environ: string | 'unreadable' | 'missing') {
+  const procDir = fs.mkdtempSync(path.join(os.tmpdir(), 'proc-'));
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bin-'));
+  const pm2Calls = path.join(binDir, 'pm2-calls');
+  fs.writeFileSync(
+    path.join(binDir, 'pm2'),
+    `#!/usr/bin/env bash\necho "$*" >> "${pm2Calls}"\n`,
+    { mode: 0o755 }
+  );
+  if (environ === 'unreadable') {
+    // Readable as a path but fails to read, as when the process exits.
+    fs.mkdirSync(path.join(procDir, '42', 'environ'), { recursive: true });
+  } else if (environ !== 'missing') {
+    fs.mkdirSync(path.join(procDir, '42'));
+    fs.writeFileSync(path.join(procDir, '42', 'environ'), environ);
+  }
+  const script = fs.readFileSync(DEPLOY_SCRIPT, 'utf8');
+  const helpers = [
+    'log',
+    'run',
+    'environ_lines',
+    'has_heap_ceiling',
+    'has_arena_cap',
+    'verify_next_env',
+  ]
+    .map((name) => scriptFunction(script, name))
+    .join('\n');
+  try {
+    const run = spawnSync(
+      'bash',
+      [
+        '-c',
+        `set -euo pipefail\nDRY_RUN=0\nNEXT=green\nPROC_DIR="${procDir}"\n${helpers}\nverify_next_env 42`,
+      ],
+      {
+        encoding: 'utf8',
+        env: { PATH: `${binDir}:${process.env.PATH}` },
+      }
+    );
+    const calls = fs.existsSync(pm2Calls)
+      ? fs.readFileSync(pm2Calls, 'utf8').trim()
+      : '';
+    return { status: run.status, log: run.stderr, pm2: calls };
+  } finally {
+    fs.rmSync(procDir, { recursive: true, force: true });
+    fs.rmSync(binDir, { recursive: true, force: true });
+  }
+}
+
+// Exit 1 here is what sends the deploy workflow to deploy-restore-last-good.sh.
+describe('deploy-blue-green.sh verify_next_env', () => {
+  const nul = (lines: string[]) => lines.join('\0') + '\0';
+
+  it('passes and removes nothing when both settings are present', () => {
+    const result = verifyNextEnv(
+      nul(['NODE_OPTIONS=--max-old-space-size=6144', 'MALLOC_ARENA_MAX=2'])
+    );
+
+    expect(result).toMatchObject({ status: 0, pm2: '' });
+  });
+
+  it.each([
+    ['the heap ceiling', nul(['MALLOC_ARENA_MAX=2'])],
+    ['the arena cap', nul(['NODE_OPTIONS=--max-old-space-size=6144'])],
+  ])('removes the new color and fails without %s', (_what, environ) => {
+    const result = verifyNextEnv(environ);
+
+    expect(result).toMatchObject({ status: 1, pm2: 'delete server-green' });
+  });
+
+  it('removes the new color and fails when its environment cannot be read', () => {
+    const result = verifyNextEnv('unreadable');
+
+    expect(result).toMatchObject({ status: 1, pm2: 'delete server-green' });
+  });
+
+  it('warns and goes on when the process has no readable environment file', () => {
+    const result = verifyNextEnv('missing');
+
+    expect(result.status).toBe(0);
+    expect(result.pm2).toBe('');
+    expect(result.log).toContain('heap ceiling unverified');
+  });
 });
