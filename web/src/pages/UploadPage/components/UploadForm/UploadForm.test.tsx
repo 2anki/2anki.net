@@ -9868,6 +9868,141 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     }
   );
 
+  function renderHandoff() {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    return render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/upload',
+            state: {
+              handoffFile: new File(['# notes'], 'notes.zip', {
+                type: 'application/zip',
+              }),
+            },
+          },
+        ]}
+      >
+        <QueryClientProvider client={queryClient}>
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it.each([
+    ['confirms account 8', freeSignedIn, { ownerId: 8, ownerUnknown: false }],
+    ['fails', 'fails', { ownerId: null, ownerUnknown: true }],
+    ['never answers', 'never', { ownerId: null, ownerUnknown: true }],
+  ] as Array<
+    [string, ShownLocals | 'fails' | 'never', Partial<PendingUpload>]
+  >)(
+    'saves a file handed over from Print or CSV, after a failed account read, as the fresh read decides: %s',
+    async (_read, session, saved) => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        lastReadFailed(freeSignedIn, session);
+        const fetchMock = stubServer([new Promise<never>(() => {})]);
+        renderHandoff();
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(2100);
+        });
+
+        expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+        expect(mockReadUserLocalsOnce).toHaveBeenCalledTimes(1);
+        expect(await getPendingUploadStore().load()).toMatchObject({
+          filename: 'notes.zip',
+          ...saved,
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
+
+  it('resends a handed-over file on Try again once the fresh read confirmed the account, after a failed account read', async () => {
+    lastReadFailed(freeSignedIn, freeSignedIn);
+    const fetchMock = stubServer([networkDrop, deckResponse(40)]);
+    renderHandoff();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    expect((await nthUpload(fetchMock, 2)).getAll('kept-owner')).toEqual(['8']);
+  });
+
+  it('holds Try again for a handed-over file when the fresh account read fails too', async () => {
+    lastReadFailed(freeSignedIn, 'fails');
+    const fetchMock = stubServer([networkDrop, deckResponse(40)]);
+    renderHandoff();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it('saves a dropped folder, after a failed account read, for the account the fresh read confirmed', async () => {
+    class FakeDataTransfer {
+      files: File[] = [];
+      items = { add: (file: File) => this.files.push(file) };
+    }
+    vi.stubGlobal('DataTransfer', FakeDataTransfer);
+    lastReadFailed(freeSignedIn, otherPassHolder);
+    const fetchMock = stubServer([new Promise<never>(() => {})]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [],
+      writable: true,
+      configurable: true,
+    });
+    input.removeAttribute('required');
+    const notes = {
+      isFile: true,
+      isDirectory: false,
+      name: 'notes.html',
+      fullPath: '/notes/notes.html',
+      file: (resolve: (file: File) => void) =>
+        resolve(new File(['<html><body>Krebs</body></html>'], 'notes.html')),
+    };
+    const folder = {
+      isFile: false,
+      isDirectory: true,
+      name: 'notes',
+      fullPath: '/notes',
+      createReader: () => {
+        const batches: unknown[][] = [[notes], []];
+        return {
+          readEntries: (resolve: (batch: unknown[]) => void) => {
+            resolve(batches.shift() ?? []);
+          },
+        };
+      },
+    };
+
+    dropOnPage({ items: [{ webkitGetAsEntry: () => folder }], files: [] });
+
+    await waitFor(() =>
+      expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1)
+    );
+    await settle();
+    expect(mockReadUserLocalsOnce).toHaveBeenCalledTimes(1);
+    expect(await getPendingUploadStore().load()).toMatchObject({
+      filename: 'notes.zip',
+      ownerId: 9,
+      ownerUnknown: false,
+    });
+  });
+
   it('never shows the closing line on a sample page, which offers no Continue', async () => {
     await saveInterruptedUpload({ ownerId: 7 });
     stubServer([deckResponse(9)]);
