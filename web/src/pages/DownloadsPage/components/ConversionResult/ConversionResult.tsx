@@ -218,10 +218,7 @@ function RescueStatusLine({
   if (status.kind === 'limit') {
     return (
       <>
-        {t('conversionResult.paywall.headlineReached', {
-          limit: status.limit,
-        })}
-        .{' '}
+        {t('conversionResult.rescueLimitReached', { limit: status.limit })}{' '}
         <Link to={UNLIMITED_PRICING_HREF}>
           {t('conversionResult.paywall.upgradeUnlimited')}
         </Link>

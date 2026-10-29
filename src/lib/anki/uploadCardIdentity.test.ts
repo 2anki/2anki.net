@@ -8,6 +8,7 @@ import {
   resolveUploadIdentityGroup,
   unpackIdentitySource,
   uploadCardType,
+  uploadIdentityFingerprint,
   uploadIdentityKey,
 } from './uploadCardIdentity';
 
@@ -65,6 +66,23 @@ describe('uploadIdentityKey', () => {
   it('leaves entities alone on a front that was not escaped', () => {
     const plain = uploadIdentityKey({ name: 'Salt &amp; water' });
     expect(plain).not.toBe(uploadIdentityKey({ name: 'Salt & water' }));
+  });
+});
+
+describe('uploadIdentityFingerprint', () => {
+  it('is the plain card fingerprint for a front that was not escaped', () => {
+    const card = { name: 'Salt &amp; water', back: 'Brine' };
+    expect(uploadIdentityFingerprint(card)).toBe(cardFingerprint(card));
+  });
+
+  it('fingerprints an escaped front as the unescaped text it showed before', () => {
+    expect(
+      uploadIdentityFingerprint({
+        name: 'It&#39;s salt &amp; water',
+        back: 'Brine',
+        frontEscaped: true,
+      })
+    ).toBe(cardFingerprint({ name: "It's salt & water", back: 'Brine' }));
   });
 });
 

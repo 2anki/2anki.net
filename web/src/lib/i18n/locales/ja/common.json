@@ -739,7 +739,8 @@
     "rescueBuilding": "デッキを作成しています…",
     "rescueOneAtATime": "無料プランでは一度に 1 ページずつ変換します。現在の変換が終わってから、もう一度お試しください。",
     "rescueAlreadyRunning": "このページはすでに変換中です。完了するとここにデッキが表示されます。",
-    "rescueFailed": "このデッキを開始できませんでした。もう一度お試しください。"
+    "rescueFailed": "このデッキを開始できませんでした。もう一度お試しください。",
+    "rescueLimitReached": "今月の無料カード {{limit}} 枚に達しました。"
   },
   "modals": {
     "consent": {

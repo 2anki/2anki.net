@@ -767,7 +767,8 @@
     "rescueBuilding": "Criando seu baralho…",
     "rescueOneAtATime": "O plano gratuito converte uma página por vez. Aguarde a atual terminar e tente de novo.",
     "rescueAlreadyRunning": "Esta página já está sendo convertida. O baralho aparece aqui quando estiver pronto.",
-    "rescueFailed": "Não foi possível iniciar este baralho. Tente de novo."
+    "rescueFailed": "Não foi possível iniciar este baralho. Tente de novo.",
+    "rescueLimitReached": "Você atingiu seus {{limit}} cartões grátis deste mês."
   },
   "modals": {
     "consent": {

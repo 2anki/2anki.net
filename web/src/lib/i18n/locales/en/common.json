@@ -767,7 +767,8 @@
     "rescueBuilding": "Building your deck…",
     "rescueOneAtATime": "Free plan converts one page at a time. Wait for the current one to finish, then try again.",
     "rescueAlreadyRunning": "This page is already converting. Its deck shows up here when it's ready.",
-    "rescueFailed": "Couldn't start this deck. Try again."
+    "rescueFailed": "Couldn't start this deck. Try again.",
+    "rescueLimitReached": "You've reached your {{limit}} free cards this month."
   },
   "modals": {
     "consent": {

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { normalizeCardText } from '../claude/ClaudeService';
+import { cardFingerprint, normalizeCardText } from '../claude/ClaudeService';
 import { guidFor } from './guid';
 
 // Upload-deck card identity. A signed-in re-upload of an edited markdown, HTML,
@@ -68,12 +68,26 @@ export function uploadCardType(card: CardTypeFlags): UploadCardType {
 // The back and the deck/file name are deliberately absent so an answer edit, a
 // rename, or a reorder all resolve to the same key. Identical fronts inside one
 // upload get an ordinal suffix so they never collapse onto one guid.
+function identityFront(card: UploadIdentityCard): string {
+  return card.frontEscaped ? unescapeText(card.name) : card.name;
+}
+
+// The content fingerprint the ledger compares to tell an edit from a replay.
+// It reads the front the same way the key does, so an escaped front matches
+// the row its unescaped text wrote and neither bumps the note mod nor trips
+// the guard.
+export function uploadIdentityFingerprint(card: UploadIdentityCard): string {
+  return cardFingerprint({ name: identityFront(card), back: card.back ?? '' });
+}
+
 export function uploadIdentityKey(
   card: UploadIdentityCard,
   ordinal = 1
 ): string {
-  const front = card.frontEscaped ? unescapeText(card.name) : card.name;
-  const base = guidFor(normalizeCardText(front), uploadCardType(card));
+  const base = guidFor(
+    normalizeCardText(identityFront(card)),
+    uploadCardType(card)
+  );
   const suffixed = ordinal > 1 ? `${base}#${ordinal}` : base;
   return `${UPLOAD_IDENTITY_PREFIX}${suffixed}`;
 }

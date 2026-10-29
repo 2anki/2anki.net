@@ -767,7 +767,8 @@
     "rescueBuilding": "Je deck wordt gemaakt…",
     "rescueOneAtATime": "Het gratis abonnement zet één pagina tegelijk om. Wacht tot de huidige klaar is en probeer het dan opnieuw.",
     "rescueAlreadyRunning": "Deze pagina wordt al omgezet. Het deck verschijnt hier zodra het klaar is.",
-    "rescueFailed": "Dit deck kon niet worden gestart. Probeer het opnieuw."
+    "rescueFailed": "Dit deck kon niet worden gestart. Probeer het opnieuw.",
+    "rescueLimitReached": "Je hebt je {{limit}} gratis kaarten deze maand bereikt."
   },
   "modals": {
     "consent": {

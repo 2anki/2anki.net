@@ -269,6 +269,28 @@ describe('Notion picked rescue rule across nested pages and sub-decks', () => {
     expect(handler.cardCount).toBe(1);
   });
 
+  it('still records the rejected structure when a picked rule is held back', async () => {
+    const toggle = block('toggle', [richText('What is osmosis?')], true);
+    const api = makeApi({
+      'page-1': [toggle, childPage('child-1')],
+      [toggle.id]: [
+        block('paragraph', [richText('Water crossing a membrane.')]),
+      ],
+      'child-1': [
+        block('heading_2', [richText('Only one heading here')]),
+        ...proseParagraphs(),
+      ],
+    });
+    const handler = makeHandler(api);
+
+    await convertPage(handler, 'paragraphs');
+
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_rejected',
+    });
+  });
+
   it('builds the picked rule on every empty page when nothing else made cards', async () => {
     const api = makeApi({
       'page-1': [...proseParagraphs(), childPage('child-1')],

@@ -767,7 +767,8 @@
     "rescueBuilding": "Creazione del mazzo in corso…",
     "rescueOneAtATime": "Il piano gratuito converte una pagina alla volta. Aspetta che finisca quella in corso, poi riprova.",
     "rescueAlreadyRunning": "Questa pagina è già in conversione. Il mazzo comparirà qui quando sarà pronto.",
-    "rescueFailed": "Impossibile avviare questo mazzo. Riprova."
+    "rescueFailed": "Impossibile avviare questo mazzo. Riprova.",
+    "rescueLimitReached": "Hai raggiunto le tue {{limit}} carte gratuite di questo mese."
   },
   "modals": {
     "consent": {

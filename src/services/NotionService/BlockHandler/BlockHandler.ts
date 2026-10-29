@@ -1965,16 +1965,16 @@ class BlockHandler implements IBlockRenderer {
       blocksPlainTextLength(blocks)
     );
     if (winner == null) {
-      const chosen = this.induceChosenRule(blocks, rules);
-      if (chosen != null) {
-        return chosen;
-      }
       if (best != null) {
         this.recordInducedRule({
           rule: best.rule,
           outcome: 'rescue_rejected',
           score: best.score,
         });
+      }
+      const chosen = this.induceChosenRule(blocks, rules);
+      if (chosen != null) {
+        return chosen;
       }
       this.offerRescue(blocks, candidates);
       return null;
@@ -2004,12 +2004,7 @@ class BlockHandler implements IBlockRenderer {
     ) {
       return null;
     }
-    const cards = induceNotesFromBlocks(
-      blocks,
-      rule,
-      this.settings,
-      new TagRegistry()
-    );
+    const cards = this.offerableCards(blocks, rule);
     if (cards.length === 0) {
       return null;
     }
@@ -2027,24 +2022,33 @@ class BlockHandler implements IBlockRenderer {
     if (this.resolvedDatabasePath != null) {
       return;
     }
-    const offerOnly = OFFER_ONLY_RULES.map((rule) => {
-      const cards = induceNotesFromBlocks(
-        blocks,
-        rule,
-        this.settings,
-        new TagRegistry()
-      );
+    const offerFor = (rule: InducedRule): RescueCandidate => {
+      const cards = this.offerableCards(blocks, rule);
       return {
         rule,
         cards: cards.length,
         sample: toRescueSample(cards, toSampleText),
       };
-    });
+    };
     this.offeredStructures = mergeRescueCandidates([
       this.offeredStructures,
-      candidates,
+      candidates.map(({ rule }) => offerFor(rule)),
     ]);
-    this.offeredOnly = mergeRescueCandidates([this.offeredOnly, offerOnly]);
+    this.offeredOnly = mergeRescueCandidates([
+      this.offeredOnly,
+      OFFER_ONLY_RULES.map(offerFor),
+    ]);
+  }
+
+  // The cards a picked rule would build, cleaned the way the deck is, so the
+  // count on the offer is the count the pick delivers.
+  private offerableCards(
+    blocks: GetBlockResponse[],
+    rule: InducedRule
+  ): Note[] {
+    return Deck.CleanCards(
+      induceNotesFromBlocks(blocks, rule, this.settings, new TagRegistry())
+    );
   }
 
   private recordInducedRule(next: InducedRescue): void {

@@ -767,7 +767,8 @@
     "rescueBuilding": "Dein Deck wird erstellt…",
     "rescueOneAtATime": "Im kostenlosen Plan wird immer nur eine Seite gleichzeitig konvertiert. Warte, bis die aktuelle fertig ist, und versuche es dann erneut.",
     "rescueAlreadyRunning": "Diese Seite wird bereits konvertiert. Das Deck erscheint hier, sobald es fertig ist.",
-    "rescueFailed": "Dieses Deck konnte nicht gestartet werden. Versuche es erneut."
+    "rescueFailed": "Dieses Deck konnte nicht gestartet werden. Versuche es erneut.",
+    "rescueLimitReached": "Du hast deine {{limit}} kostenlosen Karten diesen Monat erreicht."
   },
   "modals": {
     "consent": {

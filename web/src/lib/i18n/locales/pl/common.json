@@ -823,7 +823,8 @@
     "rescueBuilding": "Tworzenie talii…",
     "rescueOneAtATime": "Plan darmowy konwertuje jedną stronę naraz. Poczekaj, aż bieżąca się skończy, i spróbuj ponownie.",
     "rescueAlreadyRunning": "Ta strona jest już konwertowana. Talia pojawi się tutaj, gdy będzie gotowa.",
-    "rescueFailed": "Nie udało się rozpocząć tej talii. Spróbuj ponownie."
+    "rescueFailed": "Nie udało się rozpocząć tej talii. Spróbuj ponownie.",
+    "rescueLimitReached": "Osiągnąłeś swoje {{limit}} darmowe karty w tym miesiącu."
   },
   "modals": {
     "consent": {

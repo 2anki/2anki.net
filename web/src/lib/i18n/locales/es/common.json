@@ -767,7 +767,8 @@
     "rescueBuilding": "Creando tu mazo…",
     "rescueOneAtATime": "El plan gratuito convierte una página a la vez. Espera a que termine la actual y vuelve a intentarlo.",
     "rescueAlreadyRunning": "Esta página ya se está convirtiendo. Su mazo aparecerá aquí cuando esté listo.",
-    "rescueFailed": "No se pudo iniciar este mazo. Inténtalo de nuevo."
+    "rescueFailed": "No se pudo iniciar este mazo. Inténtalo de nuevo.",
+    "rescueLimitReached": "Has alcanzado tus {{limit}} tarjetas gratis de este mes."
   },
   "modals": {
     "consent": {

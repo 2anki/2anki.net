@@ -17,11 +17,11 @@ import {
   hashSourceKey,
   packIdentitySource,
   resolveUploadIdentityGroup,
+  uploadIdentityFingerprint,
   uploadIdentityKey,
   type UploadIdentityLedger,
 } from '../anki/uploadCardIdentity';
 import sanitizeTags from '../anki/sanitizeTags';
-import { cardFingerprint } from '../claude/ClaudeService';
 import type { CrossFileDedupState } from '../claude/ClaudeService';
 import { File } from '../zip/zip';
 import Deck from './Deck';
@@ -1947,7 +1947,7 @@ export class DeckParser {
         }
         const baseKey = uploadIdentityKey(card);
         const members = groups.get(baseKey) ?? [];
-        members.push({ card, fingerprint: cardFingerprint(card) });
+        members.push({ card, fingerprint: uploadIdentityFingerprint(card) });
         groups.set(baseKey, members);
       }
     }
