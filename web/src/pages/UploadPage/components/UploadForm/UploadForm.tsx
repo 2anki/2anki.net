@@ -68,7 +68,6 @@ import { getStaleSourceState } from './helpers/getStaleSourceState';
 import { FeedbackWidget } from '../../../../components/FeedbackWidget/FeedbackWidget';
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
-import { readUserLocalsOnce } from '../../../../lib/hooks/readUserLocalsOnce';
 import { hasSessionHint } from '../../../../lib/sessionHint';
 import {
   useCardUsage,
@@ -404,11 +403,6 @@ function senderField(owner: number | null): string {
 // files these are better than any account read the page makes afterwards.
 const UPLOAD_OWNER_HEADER = 'X-Upload-Owner';
 
-interface AccountRead {
-  confirmed: boolean;
-  accountId: number | null;
-}
-
 function sessionChangedKey(
   sender: number | null | undefined,
   signedInNow: boolean
@@ -566,11 +560,6 @@ function UploadForm({
   // Files whose sender the page never learned are not sent back; the screen
   // says why and offers to choose the file again.
   const [senderUnknown, setSenderUnknown] = useState(false);
-  // Whether the session an upload sent on to the limit page ran under is
-  // signed in, from one account read; null until that read confirms it.
-  const [limitSessionSignedIn, setLimitSessionSignedIn] = useState<
-    boolean | null
-  >(null);
   const moveScreenOn = () => {
     screenEpochRef.current += 1;
     setClaudeResendHeld(false);
@@ -1183,7 +1172,6 @@ function UploadForm({
 
   useEffect(() => {
     if (zoneState !== 'converting') return;
-    setLimitSessionSignedIn(null);
     setProgressWidth(70);
     const timer = setTimeout(() => {
       setProgressSlow(true);
@@ -1270,18 +1258,6 @@ function UploadForm({
   };
 
   const recordSender = (files: File[], response: Response) => {
-    // A redirect hides the header, so the page cannot tell which session the
-    // server saw, and the limit screen it may show depends on that session.
-    // The answer only picks that screen's actions: the page's account data is
-    // left alone, so a page that redirects on sign-in stays put.
-    if (response.redirected) {
-      void readAccountOnce().then((account) => {
-        if (account.confirmed && !unmountedRef.current) {
-          setLimitSessionSignedIn(account.accountId != null);
-        }
-      });
-      return;
-    }
     const sender = sessionNamed(response.headers?.get(UPLOAD_OWNER_HEADER));
     if (sender === undefined) return;
     setKeptFiles((kept) =>
@@ -1297,43 +1273,25 @@ function UploadForm({
 
   // The account as the server sees it now, or the account the page shows when
   // the read fails or does not answer in time (then it is not confirmed).
-  const withinAccountReadCap = async (
-    read: () => Promise<AccountRead>
-  ): Promise<AccountRead> => {
-    const unconfirmed: AccountRead = {
-      confirmed: false,
-      accountId: currentOwnerId,
-    };
+  const readAccountAgain = async (): Promise<{
+    confirmed: boolean;
+    accountId: number | null;
+  }> => {
     let stopCap = () => {};
-    const capped = new Promise<AccountRead>((resolve) => {
-      const timer = globalThis.setTimeout(
-        () => resolve(unconfirmed),
-        ACCOUNT_READ_CAP_MS
-      );
+    const capped = new Promise<undefined>((resolve) => {
+      const timer = globalThis.setTimeout(resolve, ACCOUNT_READ_CAP_MS);
       stopCap = () => globalThis.clearTimeout(timer);
     });
     try {
-      return await Promise.race([read().catch(() => unconfirmed), capped]);
+      const reread = await Promise.race([refetchUserLocals(), capped]);
+      if (reread?.status !== 'success') {
+        return { confirmed: false, accountId: currentOwnerId };
+      }
+      return { confirmed: true, accountId: reread.data?.user?.id ?? null };
     } finally {
       stopCap();
     }
   };
-
-  const readAccountAgain = () =>
-    withinAccountReadCap(async () => {
-      const reread = await refetchUserLocals();
-      return reread?.status === 'success'
-        ? { confirmed: true, accountId: reread.data?.user?.id ?? null }
-        : { confirmed: false, accountId: currentOwnerId };
-    });
-
-  // Without the retries the page's own reads make, so a failure answers inside
-  // the cap, and without touching the page's account data.
-  const readAccountOnce = () =>
-    withinAccountReadCap(async () => {
-      const locals = await readUserLocalsOnce();
-      return { confirmed: true, accountId: locals.user?.id ?? null };
-    });
 
   // The buttons that convert the kept files again go through here. Files whose
   // sender is unknown are never sent back. Otherwise it reads the account
@@ -3487,9 +3445,7 @@ function UploadForm({
     } else {
       title = t('upload.limit.overFreeLimit', { limit: 100 });
     }
-    const limitSignedOut =
-      limitSessionSignedIn == null ? showSignInPrompt : !limitSessionSignedIn;
-    const limitContext = limitSignedOut ? 'anonymous' : 'logged_in';
+    const limitContext = showSignInPrompt ? 'anonymous' : 'logged_in';
     const description = t(
       getLimitDescriptionKey(
         isFileSize ? 'file_size' : 'card_count',
@@ -3524,7 +3480,7 @@ function UploadForm({
             surface="upload-limit-wall"
             note={t('passFirst:afterPayRedrop')}
           >
-            {limitSignedOut ? (
+            {showSignInPrompt ? (
               <>
                 <Link
                   to="/register?redirect=/upload"
@@ -3562,7 +3518,7 @@ function UploadForm({
           </PassFirstOffer>
         ) : (
           <div className={formStyles.limitActions}>
-            {limitSignedOut ? (
+            {showSignInPrompt ? (
               <Link
                 to="/register?redirect=/upload"
                 className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
