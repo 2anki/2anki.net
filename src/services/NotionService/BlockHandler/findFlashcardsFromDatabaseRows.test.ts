@@ -398,6 +398,92 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     });
   });
 
+  it('leaves out a row-page toggle whose answer is only an empty line', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [{ id: 'row-1', properties: { Name: titleProp('Lecture 1') } }],
+      titlesByPage: { 'row-1': 'Lecture 1' },
+      blocksByPage: {
+        'row-1': [
+          toggleBlock('t-1', 'What is a neuron?'),
+          toggleBlock('t-2', 'Left blank'),
+        ],
+        't-1': [paragraphBlock('p-1', 'A nerve cell.')],
+        't-2': [paragraphBlock('p-2', '')],
+      },
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.flatMap((d) => d.cards.map((c) => c.name))).toEqual([
+      'What is a neuron?',
+    ]);
+    expect(bl.emptyBackCount).toBe(1);
+  });
+
+  it('says the answers are missing when every row-page toggle is blank', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [
+        {
+          id: 'row-1',
+          properties: {
+            Name: titleProp('Lecture 1'),
+            Tags: multiSelectProp('biology'),
+          },
+        },
+      ],
+      titlesByPage: { 'row-1': 'Lecture 1' },
+      blocksByPage: {
+        'row-1': [toggleBlock('t-1', 'Left blank')],
+        't-1': [paragraphBlock('p-1', '')],
+      },
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.flatMap((d) => d.cards)).toEqual([]);
+    expect(bl.emptyDeckReason()).toBe('empty_answers');
+  });
+
+  it('ends a Name-only database whose row-page toggles are all blank with the empty-answers reason, not the column error', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [{ id: 'row-1', properties: { Name: titleProp('Lecture 1') } }],
+      titlesByPage: { 'row-1': 'Lecture 1' },
+      blocksByPage: {
+        'row-1': [toggleBlock('t-1', 'Left blank')],
+        't-1': [paragraphBlock('p-1', '')],
+      },
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.flatMap((d) => d.cards)).toEqual([]);
+    expect(bl.emptyDeckReason()).toBe('empty_answers');
+  });
+
   it('never reads a database whose row pages are empty as an empty page', async () => {
     const api = makeRowPageApi({
       rows: [{ id: 'row-1', properties: { Notes: titleProp('x') } }],
@@ -527,6 +613,34 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
       rowPagesSkipped: 0,
       rowPagesErrored: 0,
     });
+  });
+
+  it('gives the empty-answers reason when every row inside the free cap is blank, without naming the rows past it', async () => {
+    const rows = Array.from({ length: 30 }, (_, i) => ({
+      id: `row-${i}`,
+      properties: { Name: titleProp(`Lecture ${i}`) },
+    }));
+    const blocksByPage: Record<string, unknown[]> = {};
+    for (let i = 0; i < 30; i += 1) {
+      blocksByPage[`row-${i}`] = [toggleBlock(`t-${i}`, `Q${i}?`)];
+      blocksByPage[`t-${i}`] = [
+        paragraphBlock(`a-${i}`, i < 25 ? '' : `A${i}.`),
+      ];
+    }
+    const bl = makeHandler(makeRowPageApi({ rows, blocksByPage }));
+    bl.useAll = false;
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.flatMap((d) => d.cards)).toEqual([]);
+    expect(bl.emptyDeckReason()).toBe('empty_answers');
+    expect(bl.resolvedDatabasePath).toEqual({ viaPageLinkSelfHeal: false });
   });
 
   it('caps the free-plan walk at 25 row pages and records the rest as skipped', async () => {

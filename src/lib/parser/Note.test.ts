@@ -1,4 +1,5 @@
 import Note from './Note';
+import Deck from './Deck';
 
 describe('Note', () => {
   test('refresh emoji', () => {
@@ -64,5 +65,36 @@ describe('Note', () => {
     expect(reversed.back).toBe('the front');
     expect(note.name).not.toContain('&#x1F504');
     expect(reversed.back).not.toContain('&#x1F504');
+  });
+});
+
+describe('Note.isValidBasicNote', () => {
+  it.each([
+    ['a blank-markup back', 'Question', '<p class="" id="p-1"></p>'],
+    ['a blank-markup front', '<p class="" id="p-1"></p>', 'Answer'],
+  ])('rejects a card with %s', (_what, front, back) => {
+    expect(new Note(front, back).isValidBasicNote()).toBe(false);
+  });
+
+  it('accepts an image-only front with a text back', () => {
+    expect(new Note('<img src="a.png">', 'Answer').isValidBasicNote()).toBe(
+      true
+    );
+  });
+});
+
+describe('Deck.CleanCards keeps notes whose answer lives off the back', () => {
+  it('keeps a cloze, a multiple-choice and a typed-answer note with no back', () => {
+    const cloze = new Note('The {{c1::cell}} is the unit of life', '');
+    cloze.cloze = true;
+    const mcq = new Note('Which organelle makes ATP?', '');
+    mcq.mcq = true;
+    mcq.options = ['Mitochondrion', 'Ribosome'];
+    mcq.correctIndices = [0];
+    const typed = new Note('Capital of France{{type:Input}}', '');
+    typed.enableInput = true;
+    typed.answer = 'Paris';
+
+    expect(Deck.CleanCards([cloze, mcq, typed])).toEqual([cloze, mcq, typed]);
   });
 });

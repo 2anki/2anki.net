@@ -42,6 +42,16 @@ describe('countEmptyBacks', () => {
     expect(countEmptyBacks(cards, getBack, getFront)).toBe(2);
   });
 
+  it('counts a back that is only empty markup', () => {
+    const cards: Card[] = [{ front: 'Question', back: '<p class=""></p>' }];
+    expect(countEmptyBacks(cards, getBack, getFront)).toBe(1);
+  });
+
+  it('excludes a card whose front is only empty markup', () => {
+    const cards: Card[] = [{ front: '<p></p>', back: '<p></p>' }];
+    expect(countEmptyBacks(cards, getBack, getFront)).toBe(0);
+  });
+
   it('returns 0 for an empty list', () => {
     expect(countEmptyBacks([], getBack, getFront)).toBe(0);
   });

@@ -1,3 +1,5 @@
+import { hasVisibleContent } from './hasVisibleContent';
+
 const REFRESH_ICON_PATTERN = /(?:&#x1F504;?|🔄)/g;
 
 export function removeRefreshIcon(value: string): string {
@@ -149,7 +151,7 @@ export default class Note {
     if (!this.name || !this.back) {
       return false;
     }
-    return this.name.trim().length > 0 && this.back.trim().length > 0;
+    return hasVisibleContent(this.name) && hasVisibleContent(this.back);
   }
 
   isValidClozeNote() {

@@ -426,6 +426,28 @@ describe('ConversionResult — failed variant', () => {
     expect(screen.queryByRole('button', { name: /paragraphs/ })).toBeNull();
   });
 
+  const EMPTY_ANSWERS_REASON =
+    'No cards in this deck yet. Your toggles have no answer inside them. Add an answer inside each toggle in Notion, then convert again.';
+
+  it('tells a Notion page whose toggles are all empty to fill them in, not to add toggles', () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Study notes"
+          failureReason={EMPTY_ANSWERS_REASON}
+          source="notion"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText(/Your toggles have no answer inside them/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Wrap your key terms in toggles/)).toBeNull();
+  });
+
   const paragraphsOffer = {
     rule: 'paragraphs' as const,
     cards: 4,

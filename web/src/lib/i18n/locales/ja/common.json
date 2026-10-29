@@ -734,6 +734,7 @@
     "emptyDeckAllFiltered": "カードフィルターがすべてのカードを除外しました。cherry pick は 🍒 の付いたトグルだけを残し、skip は 🥑 の付いたトグルを除外します。カード設定でフィルターをオフにするか、必要なトグルに印を付けてから、もう一度変換してください。",
     "emptyDeckNoContent": "このページには読み取れるテキストがありませんでした。内容を含めてエクスポートしたか確認してから、もう一度変換してください。",
     "emptyDeckNotionEmptyPage": "この Notion ページは空のようです。または 2anki がページの内容を読めません。Notion のコネクトメニューでこのページとサブページに 2anki を追加してから、もう一度変換してください。",
+    "emptyDeckEmptyAnswers": "トグルの中に答えがありません。Notion で各トグルの中に答えを書いてから、もう一度変換してください。",
     "connectNotionDocs": "ページを 2anki と共有する方法",
     "rescueLeadNotion": "このページの内容からでもカードを作れます。",
     "rescueBuilding": "デッキを作成しています。",

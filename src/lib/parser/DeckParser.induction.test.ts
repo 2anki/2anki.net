@@ -24,6 +24,10 @@ const HEADING_SECTIONS = `
 const EMPTY_TOGGLE =
   '<ul class="toggle"><li><details open=""><summary>An empty toggle</summary></details></li></ul>';
 
+// A toggle whose only child is an empty line: present markup, nothing to read.
+const BLANK_LINE_TOGGLE = (n: number) =>
+  `<ul class="toggle"><li><details open=""><summary>Blank toggle ${n}</summary><p class=""></p></details></li></ul>`;
+
 function page(inner: string): string {
   return `<html><head><title>Notes</title></head><body><article class="page sans"><header><h1 class="page-title">Notes</h1></header><div class="page-body">${inner}</div></article></body></html>`;
 }
@@ -49,6 +53,21 @@ describe('DeckParser upload rescue gating', () => {
     expect(Deck.CleanCards(cards).length).toBeGreaterThanOrEqual(3);
     const fronts = cards.map((card) => card.name).join(' ');
     expect(fronts).toContain('osmosis');
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+  });
+
+  it('rescues a cloze-on page whose toggle holds only an empty line', () => {
+    const parser = parse(
+      page(`${BLANK_LINE_TOGGLE(1)}${HEADING_SECTIONS}`),
+      new CardOption({ cherry: 'false', cloze: 'true' })
+    );
+
+    expect(
+      parser.payload[0].cards.map((card) => card.name).join(' ')
+    ).toContain('osmosis');
     expect(parser.inducedRule).toMatchObject({
       rule: 'heading',
       outcome: 'rescue_shipped',
@@ -235,6 +254,21 @@ describe('DeckParser degenerate-yield rescue', () => {
     const cards = parser.payload[0].cards;
     expect(cards.length).toBeGreaterThan(2);
     const fronts = cards.map((card) => card.name).join(' ');
+    expect(fronts).toContain('Section question 1?');
+    expect(parser.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_shipped',
+    });
+  });
+
+  it('re-derives a large document whose extra toggles hold only empty lines', () => {
+    const blankToggles = [1, 2, 3, 4, 5].map(BLANK_LINE_TOGGLE).join('');
+    const parser = parse(
+      page(`${USABLE_TOGGLE(1)}${blankToggles}${bigHeadingSections(40)}`),
+      new CardOption({ cherry: 'false' })
+    );
+
+    const fronts = parser.payload[0].cards.map((card) => card.name).join(' ');
     expect(fronts).toContain('Section question 1?');
     expect(parser.inducedRule).toMatchObject({
       rule: 'heading',

@@ -1039,14 +1039,19 @@ class BlockHandler implements IBlockRenderer {
   // Why a Notion conversion produced no cards, from counters the page walk
   // already kept. A cherry-pick or skip filter that emptied the deck wins
   // first; otherwise a page that surfaced no flashcard-shaped block reads as
-  // no_toggles (the toggle teaching is the right Notion advice). Blocks seen
-  // but no cards kept, with no filter, stays honest as unknown.
+  // no_toggles (the toggle teaching is the right Notion advice). Toggles whose
+  // answers were all empty read as empty_answers, since telling someone who
+  // has toggles to make toggles is wrong. Blocks seen but no cards kept, with
+  // no filter, stays honest as unknown.
   emptyDeckReason(): EmptyDeckReason {
     if (this.cardsRemovedByUserFilter > 0) {
       return 'all_filtered';
     }
     if (this.blocksSeen === 0) {
       return this.walkedAnEmptyPage() ? 'no_content' : 'no_toggles';
+    }
+    if (this.emptyBackCount > 0) {
+      return 'empty_answers';
     }
     return 'unknown';
   }
@@ -1157,6 +1162,7 @@ class BlockHandler implements IBlockRenderer {
       !columnNames.includes(backField)
     ) {
       if (!explicitFields) {
+        const emptyBacksBeforeWalk = this.emptyBackCount;
         const walked = await this.tryRowPageWalk(
           dbResult.results,
           dbName,
@@ -1166,6 +1172,21 @@ class BlockHandler implements IBlockRenderer {
         );
         if (walked != null) {
           return walked;
+        }
+        // The row pages hold toggles, all with empty answers: the columns are
+        // not the problem, so end empty and let empty_answers say so.
+        if (this.emptyBackCount > emptyBacksBeforeWalk) {
+          decks.push(
+            new Deck(
+              dbName,
+              [],
+              undefined,
+              buildDeckStyle(this.settings),
+              get16DigitRandomId(),
+              this.settings
+            )
+          );
+          return decks;
         }
       }
       throw new NotionDatabaseColumnsError(columnNames, {
@@ -1238,7 +1259,9 @@ class BlockHandler implements IBlockRenderer {
   // appended. Returns null when the row pages held no cards, so the caller falls
   // back to its column-error or empty-deck behaviour; before returning null it
   // resets the side effects the walk may have leaked into the handler so the
-  // caller's own conversion is accounted cleanly.
+  // caller's own conversion is accounted cleanly. blocksSeen and emptyBackCount
+  // are left as the walk set them on purpose: they are what lets an all-blank
+  // walk fail with the empty_answers reason.
   private async tryRowPageWalk(
     rows: unknown[],
     databaseName: string,

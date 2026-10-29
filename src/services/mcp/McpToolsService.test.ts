@@ -1134,6 +1134,50 @@ describe('McpToolsService.createDeck', () => {
     });
   });
 
+  it.each(['empty_export', 'markdown_likely_lossy'])(
+    'returns the empty-back guidance for a %s error when every back is only markup with nothing to read',
+    async (code) => {
+      const uploadEntry: UploadEntrypoint = (_req, res) => {
+        res.status(400).json({ code, message: 'No cards.' });
+      };
+      const { service } = makeService({ uploadEntry });
+      const result = await service.createDeck(
+        [
+          { front: 'Front only', back: '&nbsp;' },
+          { front: 'Another', back: '<br>' },
+        ],
+        'Deck',
+        undefined,
+        'owner-9',
+        {}
+      );
+      expect(result).toMatchObject({
+        kind: 'error',
+        message:
+          'Some cards have an empty back. Every card needs both a front and a back.',
+      });
+    }
+  );
+
+  it('keeps the paywall message when a deck of blank backs hits the card limit', async () => {
+    const uploadEntry: UploadEntrypoint = (_req, res) => {
+      res.redirect('/limit?kind=card_count');
+    };
+    const { service } = makeService({ uploadEntry });
+    const result = await service.createDeck(
+      [
+        { front: 'Front only', back: '&nbsp;' },
+        { front: 'Another', back: '' },
+      ],
+      'Deck',
+      undefined,
+      'owner-9',
+      {}
+    );
+    expect(result).toMatchObject({ kind: 'error', code: 'monthly_limit' });
+    expect((result as { message: string }).message).toContain('free plan');
+  });
+
   it('threads options.noteType through to the pipeline settings and echoes it in applied', async () => {
     let capturedBody: Record<string, unknown> | undefined;
     const entry: UploadEntrypoint = (req, res) => {

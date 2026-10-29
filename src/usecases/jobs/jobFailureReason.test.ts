@@ -24,6 +24,7 @@ import {
   EMPTY_DECK_ALL_FILTERED_REASON,
   EMPTY_DECK_NO_CONTENT_REASON,
   EMPTY_DECK_NOTION_EMPTY_PAGE_REASON,
+  EMPTY_DECK_EMPTY_ANSWERS_REASON,
   MARKDOWN_LIKELY_LOSSY_REASON,
   NOTION_TOKEN_EXPIRED_REASON,
   NOTION_DATABASE_NOT_PAGE_REASON,
@@ -713,6 +714,15 @@ describe('notionEmptyDeckReasonMessage', () => {
     ['all_filtered', EMPTY_DECK_ALL_FILTERED_REASON],
   ] as const)('keeps the existing %s message', (reason, message) => {
     expect(notionEmptyDeckReasonMessage(reason)).toBe(message);
+  });
+
+  it('tells a page whose toggles hold no answers to fill them in', () => {
+    expect(notionEmptyDeckReasonMessage('empty_answers')).toBe(
+      EMPTY_DECK_EMPTY_ANSWERS_REASON
+    );
+    expect(EMPTY_DECK_EMPTY_ANSWERS_REASON).toMatch(
+      /^No cards in this deck yet\. Your toggles have no answer inside them/
+    );
   });
 
   it('leaves the upload no_content message about the exported file', () => {
