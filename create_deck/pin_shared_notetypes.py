@@ -33,7 +33,10 @@ REFUSED = 4
 MAX_TOTAL_BYTES = 1024 * 1024 * 1024
 MAX_COLLECTION_BYTES = 512 * 1024 * 1024
 MAX_ENTRIES = 65536
-MAX_MODELS_BYTES = 16 * 1024 * 1024
+MAX_MODELS_BYTES = 8 * 1024 * 1024
+# trusted_schema (3.31) and the schema-load name check (3.33) are what make an
+# uploaded schema safe to open; an older SQLite refuses rather than drop them.
+MIN_SQLITE = (3, 33, 0)
 COPY_CHUNK_BYTES = 1024 * 1024
 
 
@@ -42,6 +45,8 @@ class RefusedArchive(Exception):
 
 
 def _check_limits(entries):
+    if sqlite3.sqlite_version_info < MIN_SQLITE:
+        raise RefusedArchive("sqlite too old to open an uploaded collection")
     if len(entries) > MAX_ENTRIES:
         raise RefusedArchive("too many entries")
     if sum(entry.file_size for entry in entries) > MAX_TOTAL_BYTES:
@@ -49,6 +54,9 @@ def _check_limits(entries):
     for entry in entries:
         if entry.filename in COLLECTION_FILES and entry.file_size > MAX_COLLECTION_BYTES:
             raise RefusedArchive("collection too large")
+    names = [entry.filename for entry in entries if entry.filename in COLLECTION_FILES]
+    if len(names) != len(set(names)):
+        raise RefusedArchive("repeated collection entry")
 
 
 def _is_2anki_notetype(notetype):
@@ -77,8 +85,10 @@ def _check_schema(connection):
         raise RefusedArchive("generated column on col")
     if connection.execute("PRAGMA index_list(col)").fetchall():
         raise RefusedArchive("index on col")
+    # Anki's schema never says TRIGGER, so the word anywhere refuses: no
+    # comment or quoting trick in the statement text can hide one.
     for (sql,) in connection.execute("SELECT sql FROM sqlite_master"):
-        if sql and re.match(r"\s*CREATE\s+(TEMP\s+|TEMPORARY\s+)?TRIGGER\b", sql, re.I):
+        if sql and re.search(r"TRIGGER", sql, re.I):
             raise RefusedArchive("collection has triggers")
     if connection.execute("SELECT 1 FROM sqlite_master WHERE lower(type) = 'trigger'").fetchone():
         raise RefusedArchive("collection has triggers")

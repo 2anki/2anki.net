@@ -100,6 +100,24 @@ def test_a_newer_format_package_is_sent_as_stored(tmp_path):
     assert pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg")) is False
 
 
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "CREATE TRIGGER grow AFTER UPDATE ON col BEGIN INSERT INTO pad VALUES (1); END",
+        "CREATE /* hidden */ TRIGGER grow AFTER UPDATE ON col BEGIN INSERT INTO pad VALUES (1); END",
+    ],
+)
+def test_a_trigger_written_any_way_is_refused(tmp_path, statement):
+    shared = _apkg(
+        tmp_path,
+        NOTETYPE_MOD + 600,
+        schema_sql=["CREATE TABLE pad (x BLOB)", statement],
+    )
+
+    with pytest.raises(pin.RefusedArchive):
+        pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg"))
+
+
 def test_a_collection_with_a_trigger_is_refused(tmp_path):
     shared = _apkg(tmp_path, NOTETYPE_MOD + 600, trigger=True)
 
@@ -153,6 +171,23 @@ def test_another_publishers_note_type_keeps_its_mod(tmp_path):
 def test_a_collection_with_extra_schema_on_col_is_refused(tmp_path, what, statements):
     del what
     shared = _apkg(tmp_path, NOTETYPE_MOD + 600, schema_sql=statements)
+
+    with pytest.raises(pin.RefusedArchive):
+        pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg"))
+
+
+def test_a_repeated_collection_entry_is_refused(tmp_path):
+    shared = _apkg(tmp_path, NOTETYPE_MOD + 600)
+    with zipfile.ZipFile(shared, "a") as archive, pytest.warns(UserWarning):
+        archive.writestr("collection.anki2", b"second copy")
+
+    with pytest.raises(pin.RefusedArchive):
+        pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg"))
+
+
+def test_an_old_sqlite_refuses_rather_than_open_an_upload(tmp_path, monkeypatch):
+    shared = _apkg(tmp_path, NOTETYPE_MOD + 600)
+    monkeypatch.setattr(pin.sqlite3, "sqlite_version_info", (3, 30, 0))
 
     with pytest.raises(pin.RefusedArchive):
         pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg"))
