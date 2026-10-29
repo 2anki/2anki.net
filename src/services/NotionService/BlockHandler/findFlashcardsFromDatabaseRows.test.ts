@@ -615,6 +615,34 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     });
   });
 
+  it('gives the empty-answers reason when every row inside the free cap is blank, without naming the rows past it', async () => {
+    const rows = Array.from({ length: 30 }, (_, i) => ({
+      id: `row-${i}`,
+      properties: { Name: titleProp(`Lecture ${i}`) },
+    }));
+    const blocksByPage: Record<string, unknown[]> = {};
+    for (let i = 0; i < 30; i += 1) {
+      blocksByPage[`row-${i}`] = [toggleBlock(`t-${i}`, `Q${i}?`)];
+      blocksByPage[`t-${i}`] = [
+        paragraphBlock(`a-${i}`, i < 25 ? '' : `A${i}.`),
+      ];
+    }
+    const bl = makeHandler(makeRowPageApi({ rows, blocksByPage }));
+    bl.useAll = false;
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.flatMap((d) => d.cards)).toEqual([]);
+    expect(bl.emptyDeckReason()).toBe('empty_answers');
+    expect(bl.resolvedDatabasePath).toEqual({ viaPageLinkSelfHeal: false });
+  });
+
   it('caps the free-plan walk at 25 row pages and records the rest as skipped', async () => {
     const rows = Array.from({ length: 30 }, (_, i) => ({
       id: `row-${i}`,

@@ -49,6 +49,7 @@ import {
   type PhotoDensity,
   type PhotoMode,
 } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
+import { hasVisibleContent } from '../../lib/parser/hasVisibleContent';
 
 const APKG_KEY_PATTERN = /\.apkg$/i;
 const MAX_TEXT_BYTES = 5 * 1024 * 1024;
@@ -752,7 +753,7 @@ export class McpToolsService {
   }
 
   private everyBackEmpty(cards: McpCard[]): boolean {
-    return cards.every((card) => card.back == null || card.back.trim() === '');
+    return cards.every((card) => !hasVisibleContent(card.back));
   }
 
   private async runUpload(

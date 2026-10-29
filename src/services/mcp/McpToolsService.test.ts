@@ -1134,6 +1134,28 @@ describe('McpToolsService.createDeck', () => {
     });
   });
 
+  it('returns the empty-back guidance when every back is only markup with nothing to read', async () => {
+    const uploadEntry: UploadEntrypoint = (_req, res) => {
+      res.status(400).json({ code: 'empty_export', message: 'No cards.' });
+    };
+    const { service } = makeService({ uploadEntry });
+    const result = await service.createDeck(
+      [
+        { front: 'Front only', back: '&nbsp;' },
+        { front: 'Another', back: '<br>' },
+      ],
+      'Deck',
+      undefined,
+      'owner-9',
+      {}
+    );
+    expect(result).toMatchObject({
+      kind: 'error',
+      message:
+        'Some cards have an empty back. Every card needs both a front and a back.',
+    });
+  });
+
   it('threads options.noteType through to the pipeline settings and echoes it in applied', async () => {
     let capturedBody: Record<string, unknown> | undefined;
     const entry: UploadEntrypoint = (req, res) => {
