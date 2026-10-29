@@ -387,6 +387,49 @@ describe('ErrorHandler', () => {
     expect(res.json).not.toHaveBeenCalled();
   });
 
+  test.each(['TypeError', 'RangeError', 'ReferenceError'])(
+    'a %s rebuilt from the upload worker responds 500 with a generic body',
+    async (name) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const res = makeResponse(false);
+      const rebuilt = Object.assign(
+        new Error("Cannot read properties of undefined (reading '0')"),
+        { name }
+      );
+
+      await ErrorHandler(
+        res as unknown as express.Response,
+        makeRequest(),
+        rebuilt
+      );
+
+      expect(res.statusCode).toBe(500);
+      const body = res.body as { code: string; message: string };
+      expect(body.message).not.toContain('reading');
+      expect(body.message).toContain('support@2anki.net');
+      errorSpy.mockRestore();
+    }
+  );
+
+  test('a rebuilt SyntaxError keeps its 400 and message', async () => {
+    const res = makeResponse(false);
+    const rebuilt = Object.assign(new Error('Unexpected token < in JSON'), {
+      name: 'SyntaxError',
+    });
+
+    await ErrorHandler(
+      res as unknown as express.Response,
+      makeRequest(),
+      rebuilt
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      code: 'unknown',
+      message: 'Unexpected token < in JSON',
+    });
+  });
+
   test('a TypeError responds 500 with a generic body, not the internal message', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
