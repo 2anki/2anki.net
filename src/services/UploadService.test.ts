@@ -3127,6 +3127,69 @@ describe('UploadService.promoteClaudeJobToUpload — async fs reads', () => {
     expect(Buffer.compare(uploadedBuffer, apkgContents)).toBe(0);
   });
 
+  it('fails an async job on a worker crash with the generic reason, never the worker stack', async () => {
+    const crash = Object.assign(
+      new Error("Cannot read properties of undefined (reading '0')"),
+      { name: 'TypeError' }
+    );
+    crash.stack =
+      "TypeError: Cannot read properties of undefined (reading '0')\n" +
+      '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+    let resolveFailed!: () => void;
+    const failed = new Promise<void>((r) => {
+      resolveFailed = r;
+    });
+    const updateJobStatus = vi.fn(
+      async (
+        _id: string,
+        _owner: unknown,
+        status: string,
+        _reason?: string
+      ) => {
+        if (status === 'failed') {
+          resolveFailed();
+        }
+      }
+    );
+    const jobRepository = {
+      create: vi.fn().mockResolvedValue(undefined),
+      updateJobStatus,
+      findJobById: vi.fn().mockResolvedValue(null),
+      deleteJob: vi.fn().mockResolvedValue(undefined),
+    } as unknown as JobRepository;
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(crash),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      { ...buildRepository(), update: vi.fn().mockResolvedValue([]) },
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({ body: { 'claude-ai-flashcards': 'true' } });
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+
+    await service.handleUpload(req, res);
+    await failed;
+
+    const failedCall = updateJobStatus.mock.calls.find(
+      (call) => call[2] === 'failed'
+    );
+    const reason = String(failedCall?.[3]);
+    expect(reason).toMatch(
+      /^Something went wrong on our end converting this file\. Job ID /
+    );
+    expect(reason).not.toMatch(/\n\s+at /);
+    expect(reason).not.toContain('tables.ts');
+    errorSpy.mockRestore();
+  });
+
   it('emits conversion_succeeded so the async Claude path matches the sync funnel', async () => {
     fs.writeFileSync(path.join(tmpDir, 'my-deck.apkg'), Buffer.from('apkg'));
 
