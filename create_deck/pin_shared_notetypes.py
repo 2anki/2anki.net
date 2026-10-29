@@ -25,12 +25,39 @@ from helpers.n2a_model import NOTETYPE_MOD
 
 COLLECTION_FILES = ("collection.anki21", "collection.anki2")
 NOTHING_TO_PIN = 3
+REFUSED = 4
+
+# A shared deck can be one a user uploaded as-is, so the archive is untrusted.
+# The same caps the deck preview applies (extractApkg.ts).
+MAX_TOTAL_BYTES = 1024 * 1024 * 1024
+MAX_COLLECTION_BYTES = 512 * 1024 * 1024
+MAX_ENTRIES = 65536
+COPY_CHUNK_BYTES = 1024 * 1024
+
+
+class RefusedArchive(Exception):
+    """The archive is over the size or entry caps."""
+
+
+def _check_limits(entries):
+    if len(entries) > MAX_ENTRIES:
+        raise RefusedArchive("too many entries")
+    if sum(entry.file_size for entry in entries) > MAX_TOTAL_BYTES:
+        raise RefusedArchive("too large")
+    for entry in entries:
+        if entry.filename in COLLECTION_FILES and entry.file_size > MAX_COLLECTION_BYTES:
+            raise RefusedArchive("collection too large")
 
 
 def _pin_collection(path):
     """Returns whether any note type's mod had to come down."""
     connection = sqlite3.connect(path)
     try:
+        kind = connection.execute(
+            "SELECT type FROM sqlite_master WHERE name = 'col'"
+        ).fetchone()
+        if kind is None or kind[0] != "table":
+            return False
         row = connection.execute("SELECT models FROM col").fetchone()
         if row is None or not row[0]:
             return False
@@ -52,6 +79,11 @@ def pin_shared_notetypes(source, destination):
     try:
         with zipfile.ZipFile(source) as archive:
             entries = archive.infolist()
+            _check_limits(entries)
+            if any(entry.filename == "collection.anki21b" for entry in entries):
+                # The real collection is compressed and the anki2 beside it is a
+                # placeholder; pinning that would change nothing that matters.
+                return False
             collections = [e for e in entries if e.filename in COLLECTION_FILES]
             pinned = False
             for entry in collections:
@@ -64,7 +96,8 @@ def pin_shared_notetypes(source, destination):
                     if entry.filename in COLLECTION_FILES:
                         out.write(os.path.join(work_dir, entry.filename), entry.filename)
                     else:
-                        out.writestr(entry, archive.read(entry))
+                        with archive.open(entry) as source_file, out.open(entry, "w") as target:
+                            shutil.copyfileobj(source_file, target, COPY_CHUNK_BYTES)
         return True
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
@@ -73,5 +106,8 @@ def pin_shared_notetypes(source, destination):
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         sys.exit("usage: pin_shared_notetypes.py <source.apkg> <destination.apkg>")
-    if not pin_shared_notetypes(sys.argv[1], sys.argv[2]):
-        sys.exit(NOTHING_TO_PIN)
+    try:
+        if not pin_shared_notetypes(sys.argv[1], sys.argv[2]):
+            sys.exit(NOTHING_TO_PIN)
+    except RefusedArchive:
+        sys.exit(REFUSED)

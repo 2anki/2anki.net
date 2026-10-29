@@ -6,8 +6,14 @@ import { unzipSync, zipSync } from 'fflate';
 
 import { pinSharedNoteTypes } from './pinSharedNoteTypes';
 
-// NOTETYPE_MOD in create_deck/helpers/n2a_model.py.
-const NOTETYPE_MOD = 1792838415;
+const NOTETYPE_MOD = Number(
+  /^NOTETYPE_MOD = (\d+)$/m.exec(
+    fs.readFileSync(
+      path.join(__dirname, '../../../create_deck/helpers/n2a_model.py'),
+      'utf8'
+    )
+  )?.[1]
+);
 
 function apkgWithNoteTypeMod(mod: number): Buffer {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pin-test-'));

@@ -516,7 +516,7 @@ pin_shared_notetypes = _pin_mod.pin_shared_notetypes
 
 def test_a_shared_copy_leaves_the_importers_edit_alone(tmp_path):
     """
-    #5043 option (b): share links and no-login links serve a copy pinned to
+    #5043 option (b): share links serve a copy pinned to
     NOTETYPE_MOD, so a sharer's newer style time cannot replace the importer's
     note type the way the unpinned deck above does.
     """

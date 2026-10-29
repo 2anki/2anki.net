@@ -85,7 +85,7 @@ class ShareController {
     } catch (error) {
       console.warn(
         '[ShareController.download] serving the deck unpinned',
-        error instanceof Error ? error.name : 'unknown'
+        error instanceof Error ? error.message : 'unknown'
       );
       return apkg;
     }
