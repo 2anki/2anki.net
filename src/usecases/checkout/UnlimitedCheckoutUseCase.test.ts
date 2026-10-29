@@ -12,24 +12,26 @@ const mockStripeCreateSession = vi.fn();
 const makeStripe = () =>
   ({ checkout: { sessions: { create: mockStripeCreateSession } } }) as never;
 
-const MONTHLY_PRICE_ID = 'price_unlimited_monthly';
-const YEARLY_PRICE_ID = 'price_unlimited_yearly';
+const V2_PRICE_IDS: ReadonlyMap<string, string> = new Map([
+  ['v2_monthly', 'price_v2_monthly'],
+  ['v2_annual', 'price_v2_annual'],
+]);
+
+const makeResolver = (prices: ReadonlyMap<string, string> = V2_PRICE_IDS) => ({
+  resolveByLookupKey: vi.fn(async (key: string) => prices.get(key) ?? null),
+});
 
 beforeEach(() => {
   vi.resetAllMocks();
 });
 
 describe('UnlimitedCheckoutUseCase', () => {
-  it('creates a Checkout session with the monthly price ID when interval is month', async () => {
+  it('creates a Checkout session at the v2 monthly price when interval is month', async () => {
     mockStripeCreateSession.mockResolvedValue({
       url: 'https://checkout.stripe.com/month',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     const result = await uc.execute({
       userEmail: 'user@example.com',
       userId: 1,
@@ -38,28 +40,24 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(result).toEqual({
       url: 'https://checkout.stripe.com/month',
-      cohort: 'legacy',
+      cohort: 'v2',
     });
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'subscription',
-        line_items: [{ price: MONTHLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '1', cohort: 'legacy', interval: 'month' },
+        line_items: [{ price: 'price_v2_monthly', quantity: 1 }],
+        metadata: { user_id: '1', cohort: 'v2', interval: 'month' },
         subscription_data: { metadata: { user_id: '1' } },
       })
     );
   });
 
-  it('creates a Checkout session with the yearly price ID when interval is year', async () => {
+  it('creates a Checkout session at the v2 annual price when interval is year', async () => {
     mockStripeCreateSession.mockResolvedValue({
       url: 'https://checkout.stripe.com/year',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     const result = await uc.execute({
       userEmail: 'user@example.com',
       userId: 2,
@@ -68,13 +66,13 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(result).toEqual({
       url: 'https://checkout.stripe.com/year',
-      cohort: 'legacy',
+      cohort: 'v2',
     });
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'subscription',
-        line_items: [{ price: YEARLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '2', cohort: 'legacy', interval: 'year' },
+        line_items: [{ price: 'price_v2_annual', quantity: 1 }],
+        metadata: { user_id: '2', cohort: 'v2', interval: 'year' },
       })
     );
   });
@@ -84,11 +82,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 3,
@@ -110,11 +104,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 4,
@@ -138,11 +128,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'new@example.com',
       userId: 5,
@@ -163,11 +149,7 @@ describe('UnlimitedCheckoutUseCase', () => {
     });
     const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 6,
@@ -186,11 +168,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 8,
@@ -202,7 +180,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       expect.objectContaining({
         metadata: {
           user_id: '8',
-          cohort: 'legacy',
+          cohort: 'v2',
           interval: 'month',
           anon_id: 'anon-uuid-123',
         },
@@ -215,11 +193,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 9,
@@ -228,7 +202,7 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { user_id: '9', cohort: 'legacy', interval: 'month' },
+        metadata: { user_id: '9', cohort: 'v2', interval: 'month' },
       })
     );
   });
@@ -238,11 +212,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 10,
@@ -254,7 +224,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       expect.objectContaining({
         metadata: {
           user_id: '10',
-          cohort: 'legacy',
+          cohort: 'v2',
           interval: 'month',
           surface: 'pricing_page',
         },
@@ -267,11 +237,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 11,
@@ -280,7 +246,7 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { user_id: '11', cohort: 'legacy', interval: 'month' },
+        metadata: { user_id: '11', cohort: 'v2', interval: 'month' },
       })
     );
   });
@@ -290,11 +256,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 12,
@@ -306,7 +268,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       expect.objectContaining({
         metadata: {
           user_id: '12',
-          cohort: 'legacy',
+          cohort: 'v2',
           interval: 'month',
           ga_client_id: '1234567890.987654321',
         },
@@ -319,11 +281,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 12,
@@ -343,11 +301,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 13,
@@ -356,7 +310,7 @@ describe('UnlimitedCheckoutUseCase', () => {
 
     expect(mockStripeCreateSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { user_id: '13', cohort: 'legacy', interval: 'month' },
+        metadata: { user_id: '13', cohort: 'v2', interval: 'month' },
       })
     );
   });
@@ -366,11 +320,7 @@ describe('UnlimitedCheckoutUseCase', () => {
       url: 'https://checkout.stripe.com/test',
     });
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 14,
@@ -390,11 +340,7 @@ describe('UnlimitedCheckoutUseCase', () => {
     });
     const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 7,
@@ -409,186 +355,28 @@ describe('UnlimitedCheckoutUseCase', () => {
     consoleSpy.mockRestore();
   });
 
-  const beforeCutover = new Date('2026-06-09T00:00:00Z');
-  const afterCutover = new Date('2026-06-16T00:00:00Z');
-  const insideWindow = new Date('2026-06-18T00:00:00Z');
-  const afterWindow = new Date('2026-06-22T00:00:00Z');
-
-  const makeResolver = (id: string | null) => ({
-    resolveByLookupKey: vi.fn().mockResolvedValue(id),
-  });
-
-  it('uses the legacy env price for a pre-cutover user inside the lock-in window when flag on', async () => {
-    mockStripeCreateSession.mockResolvedValue({ url: 'https://x' });
-    const resolver = makeResolver('price_v2_monthly');
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID,
-      resolver as never
-    );
-
-    await uc.execute({
-      userEmail: 'user@example.com',
-      userId: 20,
-      interval: 'month',
-      pricingV2On: true,
-      createdAt: beforeCutover,
-      now: insideWindow,
-    });
-
-    expect(resolver.resolveByLookupKey).not.toHaveBeenCalled();
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        line_items: [{ price: MONTHLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '20', cohort: 'legacy', interval: 'month' },
-      })
-    );
-  });
-
-  it('resolves the v2 price for a pre-cutover user after the window when flag on', async () => {
-    mockStripeCreateSession.mockResolvedValue({ url: 'https://x' });
-    const resolver = makeResolver('price_v2_annual');
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID,
-      resolver as never
-    );
-
-    await uc.execute({
-      userEmail: 'user@example.com',
-      userId: 21,
-      interval: 'year',
-      pricingV2On: true,
-      createdAt: beforeCutover,
-      now: afterWindow,
-    });
-
-    expect(resolver.resolveByLookupKey).toHaveBeenCalledWith('v2_annual');
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        line_items: [{ price: 'price_v2_annual', quantity: 1 }],
-        metadata: { user_id: '21', cohort: 'v2', interval: 'year' },
-      })
-    );
-  });
-
-  it('resolves the v2 price for a post-cutover user when flag on', async () => {
-    mockStripeCreateSession.mockResolvedValue({ url: 'https://x' });
-    const resolver = makeResolver('price_v2_monthly');
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID,
-      resolver as never
-    );
-
-    await uc.execute({
-      userEmail: 'user@example.com',
-      userId: 22,
-      interval: 'month',
-      pricingV2On: true,
-      createdAt: afterCutover,
-      now: insideWindow,
-    });
-
-    expect(resolver.resolveByLookupKey).toHaveBeenCalledWith('v2_monthly');
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        line_items: [{ price: 'price_v2_monthly', quantity: 1 }],
-        metadata: { user_id: '22', cohort: 'v2', interval: 'month' },
-      })
-    );
-  });
-
-  it('falls back to the legacy env price when v2 resolution fails', async () => {
-    mockStripeCreateSession.mockResolvedValue({ url: 'https://x' });
-    const resolver = makeResolver(null);
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID,
-      resolver as never
-    );
-
-    await uc.execute({
-      userEmail: 'user@example.com',
-      userId: 23,
-      interval: 'month',
-      pricingV2On: true,
-      createdAt: afterCutover,
-      now: insideWindow,
-    });
-
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        line_items: [{ price: MONTHLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '23', cohort: 'v2', interval: 'month' },
-      })
-    );
-  });
-
-  it('throws and creates no session when v2 resolution fails after the window', async () => {
-    const resolver = makeResolver(null);
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID,
-      resolver as never
-    );
+  it('throws and creates no session when the v2 price cannot be resolved', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const resolver = makeResolver(new Map());
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), resolver);
 
     await expect(
       uc.execute({
         userEmail: 'user@example.com',
         userId: 25,
         interval: 'month',
-        pricingV2On: true,
-        createdAt: afterCutover,
-        now: afterWindow,
       })
     ).rejects.toBeInstanceOf(PricingResolutionError);
 
+    expect(resolver.resolveByLookupKey).toHaveBeenCalledWith('v2_monthly');
     expect(mockStripeCreateSession).not.toHaveBeenCalled();
-  });
-
-  it('uses legacy env prices for everyone when the flag is off', async () => {
-    mockStripeCreateSession.mockResolvedValue({ url: 'https://x' });
-    const resolver = makeResolver('price_v2_monthly');
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID,
-      resolver as never
-    );
-
-    await uc.execute({
-      userEmail: 'user@example.com',
-      userId: 24,
-      interval: 'month',
-      pricingV2On: false,
-      createdAt: afterCutover,
-      now: insideWindow,
-    });
-
-    expect(resolver.resolveByLookupKey).not.toHaveBeenCalled();
-    expect(mockStripeCreateSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        line_items: [{ price: MONTHLY_PRICE_ID, quantity: 1 }],
-        metadata: { user_id: '24', cohort: 'legacy', interval: 'month' },
-      })
-    );
   });
 });
 
 describe('UnlimitedCheckoutUseCase ad-click attribution', () => {
   it('stamps the ad click fields into session metadata', async () => {
     mockStripeCreateSession.mockResolvedValue({ url: 'https://s' });
-    const uc = new UnlimitedCheckoutUseCase(
-      makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID
-    );
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
     await uc.execute({
       userEmail: 'user@example.com',
       userId: 12,
@@ -632,9 +420,7 @@ describe('UnlimitedCheckoutUseCase with a lapsed plan on the customer', () => {
   const makeUseCase = (gateway: ReturnType<typeof makeGateway>) =>
     new UnlimitedCheckoutUseCase(
       makeStripe(),
-      MONTHLY_PRICE_ID,
-      YEARLY_PRICE_ID,
-      undefined,
+      makeResolver(),
       undefined,
       gateway
     );

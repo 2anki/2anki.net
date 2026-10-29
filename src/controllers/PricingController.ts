@@ -1,31 +1,14 @@
 import { Request, Response } from 'express';
-import { resolvePricingForUser } from '../usecases/checkout/ResolvePricingForUserUseCase';
-
-export interface PricingControllerContext {
-  pricingV2On: boolean;
-  getUserCreatedAt: (userId: number) => Promise<Date | null>;
-}
+import { PRICING_COHORT, V2_PRICE_CENTS } from '../usecases/checkout/pricingV2';
 
 class PricingController {
-  constructor(private readonly context: PricingControllerContext) {}
-
-  async getPrices(_req: Request, res: Response): Promise<void> {
-    const userId = res.locals.owner as number | undefined;
-    const createdAt =
-      userId == null ? null : await this.context.getUserCreatedAt(userId);
-
-    const pricing = resolvePricingForUser({
-      flagOn: this.context.pricingV2On,
-      createdAt,
-      now: new Date(),
-    });
-
+  getPrices(_req: Request, res: Response): void {
     res.json({
-      cohort: pricing.cohort,
-      legacy: pricing.cohort === 'legacy',
-      monthly: { cents: pricing.monthlyCents },
-      annual: { cents: pricing.annualCents },
-      lockInDeadline: pricing.lockInDeadline,
+      cohort: PRICING_COHORT,
+      legacy: false,
+      monthly: { cents: V2_PRICE_CENTS.monthly },
+      annual: { cents: V2_PRICE_CENTS.annual },
+      lockInDeadline: null,
     });
   }
 }

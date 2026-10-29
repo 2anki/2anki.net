@@ -32,8 +32,6 @@ const WARN_VARS: ReadonlyArray<[string, string]> = [
     'PASS_120D_PRICE_ID',
     'semester-pass price fallback (runtime resolves from Stripe)',
   ],
-  ['UNLIMITED_MONTHLY_PRICE_ID', 'legacy monthly price and v2 fallback'],
-  ['UNLIMITED_YEARLY_PRICE_ID', 'legacy annual price and v2 fallback'],
   ['ANTHROPIC_API_KEY', 'AI card generation, chat assistant, file conversion'],
   ['SENDGRID_API_KEY', 'transactional and batch email'],
   ['DOMAIN', 'absolute links in emails and OAuth redirects'],
