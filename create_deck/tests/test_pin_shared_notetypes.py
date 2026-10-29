@@ -16,7 +16,16 @@ pin = _ilu.module_from_spec(_spec)
 _spec.loader.exec_module(pin)
 
 
-def _apkg(tmp_path, mod, *, col_as_view=False, extra=None, trigger=False, name="2anki Basic"):
+def _apkg(
+    tmp_path,
+    mod,
+    *,
+    col_as_view=False,
+    extra=None,
+    trigger=False,
+    name="2anki Basic",
+    schema_sql=(),
+):
     db_path = tmp_path / "collection.anki2"
     connection = sqlite3.connect(db_path)
     models = json.dumps({"1": {"id": 1, "name": name, "mod": mod}})
@@ -25,6 +34,8 @@ def _apkg(tmp_path, mod, *, col_as_view=False, extra=None, trigger=False, name="
     else:
         connection.execute("CREATE TABLE col (models TEXT)")
         connection.execute("INSERT INTO col (models) VALUES (?)", (models,))
+    for statement in schema_sql:
+        connection.execute(statement)
     if trigger:
         connection.execute("CREATE TABLE pad (x BLOB)")
         connection.execute(
@@ -64,10 +75,11 @@ def test_an_ios_built_note_type_stamped_with_its_build_time_is_pinned(tmp_path):
         assert archive.read("0") == b"image-bytes"
 
 
-def test_a_col_that_is_not_a_table_is_left_alone(tmp_path):
+def test_a_col_that_is_not_a_table_is_refused(tmp_path):
     shared = _apkg(tmp_path, NOTETYPE_MOD + 600, col_as_view=True)
 
-    assert pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg")) is False
+    with pytest.raises(pin.RefusedArchive):
+        pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg"))
 
 
 @pytest.mark.parametrize(
@@ -124,4 +136,23 @@ def test_another_publishers_note_type_keeps_its_mod(tmp_path):
     shared = _apkg(tmp_path, NOTETYPE_MOD + 600, name="AnKingOverhaul")
 
     assert pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg")) is False
+
+
+@pytest.mark.parametrize(
+    "what, statements",
+    [
+        ("a second row", ["INSERT INTO col (models) VALUES (NULL)"]),
+        ("an index", ["CREATE INDEX li ON col (length(models))"]),
+        (
+            "a generated column",
+            ["ALTER TABLE col ADD COLUMN pad BLOB GENERATED ALWAYS AS (zeroblob(10)) VIRTUAL"],
+        ),
+    ],
+)
+def test_a_collection_with_extra_schema_on_col_is_refused(tmp_path, what, statements):
+    del what
+    shared = _apkg(tmp_path, NOTETYPE_MOD + 600, schema_sql=statements)
+
+    with pytest.raises(pin.RefusedArchive):
+        pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg"))
 

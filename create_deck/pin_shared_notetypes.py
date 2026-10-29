@@ -56,27 +56,46 @@ def _is_2anki_notetype(notetype):
     return name.startswith("n2a") or name.startswith("2anki ")
 
 
+def _check_schema(connection):
+    """
+    The collection may come from a user's own upload, so only Anki's shape is
+    accepted: col is a plain table with one row and nothing attached to it
+    (no index, trigger, generated column or check), and no trigger anywhere.
+    Anything else could run work during the update.
+    """
+    rows = connection.execute(
+        "SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'col'"
+    ).fetchall()
+    if [(kind, name) for kind, name, _ in rows] != [("table", "col")]:
+        raise RefusedArchive("unexpected schema on col")
+    table_sql = (rows[0][2] or "").upper()
+    if "VIRTUAL" in table_sql or "CHECK" in table_sql or "GENERATED" in table_sql:
+        raise RefusedArchive("unexpected col table")
+    if any(column[6] != 0 for column in connection.execute("PRAGMA table_xinfo(col)")):
+        raise RefusedArchive("generated column on col")
+    if connection.execute("SELECT 1 FROM sqlite_master WHERE type = 'trigger'").fetchone():
+        raise RefusedArchive("collection has triggers")
+    if connection.execute("SELECT count(*) FROM col").fetchone()[0] != 1:
+        raise RefusedArchive("col must hold one row")
+
+
 def _pin_collection(path):
     """Returns whether any note type's mod had to come down."""
     connection = sqlite3.connect(path)
     try:
+        connection.execute("PRAGMA trusted_schema = OFF")
         kind = connection.execute(
             "SELECT type FROM sqlite_master WHERE name = 'col'"
         ).fetchone()
-        if kind is None or kind[0] != "table":
+        if kind is None:
             return False
-        # Anki collections carry no triggers; one here would run on the update.
-        if connection.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'trigger'"
-        ).fetchone():
-            raise RefusedArchive("collection has triggers")
-        size = connection.execute("SELECT length(models) FROM col").fetchone()
-        if size is not None and (size[0] or 0) > MAX_MODELS_BYTES:
+        _check_schema(connection)
+        rowid, raw = connection.execute("SELECT rowid, models FROM col").fetchone()
+        if not raw:
+            return False
+        if len(raw) > MAX_MODELS_BYTES:
             raise RefusedArchive("note types too large")
-        row = connection.execute("SELECT models FROM col").fetchone()
-        if row is None or not row[0]:
-            return False
-        models = json.loads(row[0])
+        models = json.loads(raw)
         newer = [
             nt
             for nt in models.values()
@@ -85,7 +104,9 @@ def _pin_collection(path):
         for notetype in newer:
             notetype["mod"] = NOTETYPE_MOD
         if newer:
-            connection.execute("UPDATE col SET models = ?", (json.dumps(models),))
+            connection.execute(
+                "UPDATE col SET models = ? WHERE rowid = ?", (json.dumps(models), rowid)
+            )
             connection.commit()
         return bool(newer)
     finally:

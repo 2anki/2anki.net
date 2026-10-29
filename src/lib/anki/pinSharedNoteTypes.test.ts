@@ -6,6 +6,7 @@ import { unzipSync, zipSync } from 'fflate';
 
 import { MAX_WAITING_PINS, pinSharedNoteTypes } from './pinSharedNoteTypes';
 
+// Read from create_deck/helpers/n2a_model.py; NaN would fail every assertion.
 const NOTETYPE_MOD = Number(
   /^NOTETYPE_MOD = (\d+)$/m.exec(
     fs.readFileSync(
@@ -88,10 +89,8 @@ describe('pinSharedNoteTypes', () => {
     const results = await Promise.all(decks.map(pinSharedNoteTypes));
 
     expect(results[results.length - 1]).toBe(decks[decks.length - 1]);
-    expect(noteTypeMods(results[0])).toEqual([NOTETYPE_MOD]);
-  });
-
-  it('reads the shared mod from the Python constant', () => {
-    expect(Number.isInteger(NOTETYPE_MOD)).toBe(true);
+    for (const pinned of results.slice(0, MAX_WAITING_PINS)) {
+      expect(noteTypeMods(pinned)).toEqual([NOTETYPE_MOD]);
+    }
   });
 });

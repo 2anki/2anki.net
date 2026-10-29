@@ -31,8 +31,8 @@ function runPin(source: string, destination: string): Promise<boolean> {
 }
 
 // One at a time: share links are public, so a burst of downloads must not
-// start a Python process each. Past a short line, a download skips the pin
-// and gets the deck as stored rather than wait behind a slow one.
+// start a Python process each. With one pin running and one queued, a
+// download skips the pin and gets the deck as stored rather than wait.
 export const MAX_WAITING_PINS = 2;
 let queue: Promise<unknown> = Promise.resolve();
 let waiting = 0;
