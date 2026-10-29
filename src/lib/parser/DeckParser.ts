@@ -2059,12 +2059,14 @@ export class DeckParser {
   // holds — no second pass. A user filter that emptied the deck wins first
   // (cherry-pick keeps only 🍒 toggles, 🥑 skips), then a page with no readable
   // text, then text that held no structure the parser recognises; anything else
-  // stays honest as unknown.
+  // stays honest as unknown. Page text is measured only when extraction found
+  // no card, so a page whose toggles all came out blank never set it: recognised
+  // structure means there was text to read.
   emptyDeckReason(): EmptyDeckReason {
     if (this.cardsRemovedByUserFilter > 0) {
       return 'all_filtered';
     }
-    if (!this.meaningfulTextSeen) {
+    if (!this.meaningfulTextSeen && this.recognizedCardStructureCount === 0) {
       return 'no_content';
     }
     if (this.recognizedCardStructureCount === 0) {

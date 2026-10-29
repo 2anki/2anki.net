@@ -79,6 +79,7 @@ describe('a page where every toggle answer is empty markup', () => {
     const parser = await parse(allBlank);
 
     expect(parser.totalCardCount()).toBe(0);
+    expect(parser.emptyDeckReason()).toBe('unknown');
   });
 
   it('ships the same front-only cards as before with cloze on, once the rescue finds nothing better', async () => {
