@@ -11042,6 +11042,29 @@ describe('UploadForm last deck for a signed-out pass holder', () => {
     );
   });
 
+  it('keeps the deck of a pass upload made on a sample form, without offering it there', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_pass');
+    const fetchMock = deckResponse();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} sample />
+    );
+    await uploadFile(container);
+
+    await waitFor(async () =>
+      expect(await getLastDeckStore().load()).toMatchObject({
+        recoveryToken: sentRecoveryToken(fetchMock),
+        deckName: 'Biology.apkg',
+      })
+    );
+    expect(
+      screen.queryByText(/can be downloaded again until/)
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps nothing for a signed-out upload without a pass', async () => {
     showVisitor(signedOutVisitor);
     stubRecovery(vi.fn());
@@ -11170,6 +11193,9 @@ describe('UploadForm last deck for a signed-out pass holder', () => {
     ).not.toBeInTheDocument();
     expect(gone).toHaveFocus();
     expect(await getLastDeckStore().load()).toBeNull();
+    expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
+      outcome: 'expired',
+    });
     expect(setErrorMessage).not.toHaveBeenCalled();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -11190,6 +11216,9 @@ describe('UploadForm last deck for a signed-out pass holder', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Download' })).toHaveFocus()
     );
+    expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
+      outcome: 'failed',
+    });
     expect(await getLastDeckStore().load()).toMatchObject({
       recoveryToken: TOKEN,
     });
@@ -11262,6 +11291,9 @@ describe('UploadForm last deck for a signed-out pass holder', () => {
       )
     );
     await waitFor(() => expect(download).toHaveFocus());
+    expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
+      outcome: 'busy',
+    });
     expect(await getLastDeckStore().load()).toMatchObject({
       recoveryToken: TOKEN,
     });
