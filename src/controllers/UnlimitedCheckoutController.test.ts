@@ -1,8 +1,6 @@
 import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
-import UnlimitedCheckoutController, {
-  UnlimitedCheckoutContext,
-} from './UnlimitedCheckoutController';
+import UnlimitedCheckoutController from './UnlimitedCheckoutController';
 import { UnlimitedCheckoutUseCase } from '../usecases/checkout/UnlimitedCheckoutUseCase';
 import { PricingResolutionError } from '../usecases/checkout/PricingResolutionError';
 import { LapsedSubscriptionError } from '../usecases/checkout/LapsedSubscriptions';
@@ -26,20 +24,13 @@ const makeResponse = (locals: Record<string, unknown> = {}) => {
   return res;
 };
 
-const makeUseCase = (cohort: 'legacy' | 'v2' = 'legacy') =>
+const makeUseCase = () =>
   ({
-    execute: vi
-      .fn()
-      .mockResolvedValue({ url: 'https://checkout.stripe.com/test', cohort }),
+    execute: vi.fn().mockResolvedValue({
+      url: 'https://checkout.stripe.com/test',
+      cohort: 'v2',
+    }),
   }) as unknown as UnlimitedCheckoutUseCase;
-
-const makeContext = (
-  overrides: Partial<UnlimitedCheckoutContext> = {}
-): UnlimitedCheckoutContext => ({
-  pricingV2On: false,
-  getUserCreatedAt: vi.fn().mockResolvedValue(null),
-  ...overrides,
-});
 
 const makeSink = () => ({ record: vi.fn() });
 
@@ -49,7 +40,6 @@ describe('UnlimitedCheckoutController', () => {
     const res = makeResponse();
     const controller = new UnlimitedCheckoutController(
       makeUseCase(),
-      makeContext(),
       makeSink()
     );
 
@@ -64,7 +54,6 @@ describe('UnlimitedCheckoutController', () => {
     const res = makeResponse();
     const controller = new UnlimitedCheckoutController(
       makeUseCase(),
-      makeContext(),
       makeSink()
     );
 
@@ -74,16 +63,11 @@ describe('UnlimitedCheckoutController', () => {
     expect(res.body).toMatchObject({ message: expect.any(String) });
   });
 
-  it('returns 200 with url and passes the flag and createdAt to the use case', async () => {
+  it('returns 200 with url and passes the caller to the use case', async () => {
     const req = { body: { interval: 'month' } } as Request;
     const res = makeResponse();
     const uc = makeUseCase();
-    const createdAt = new Date('2026-06-10T00:00:00Z');
-    const context = makeContext({
-      pricingV2On: true,
-      getUserCreatedAt: vi.fn().mockResolvedValue(createdAt),
-    });
-    const controller = new UnlimitedCheckoutController(uc, context, makeSink());
+    const controller = new UnlimitedCheckoutController(uc, makeSink());
 
     await controller.createSession(req, res as unknown as Response);
 
@@ -94,8 +78,6 @@ describe('UnlimitedCheckoutController', () => {
         interval: 'month',
         userId: 42,
         userEmail: 'user@example.com',
-        pricingV2On: true,
-        createdAt,
       })
     );
   });
@@ -104,11 +86,7 @@ describe('UnlimitedCheckoutController', () => {
     const req = { body: { interval: 'year' } } as Request;
     const res = makeResponse();
     const sink = makeSink();
-    const controller = new UnlimitedCheckoutController(
-      makeUseCase('v2'),
-      makeContext({ pricingV2On: true }),
-      sink
-    );
+    const controller = new UnlimitedCheckoutController(makeUseCase(), sink);
 
     await controller.createSession(req, res as unknown as Response);
 
@@ -125,11 +103,7 @@ describe('UnlimitedCheckoutController', () => {
     } as Request;
     const res = makeResponse();
     const sink = makeSink();
-    const controller = new UnlimitedCheckoutController(
-      makeUseCase('v2'),
-      makeContext({ pricingV2On: true }),
-      sink
-    );
+    const controller = new UnlimitedCheckoutController(makeUseCase(), sink);
 
     await controller.createSession(req, res as unknown as Response);
 
@@ -149,11 +123,7 @@ describe('UnlimitedCheckoutController', () => {
     const req = { body: { interval: 'month' } } as Request;
     const res = makeResponse();
     const sink = makeSink();
-    const controller = new UnlimitedCheckoutController(
-      makeUseCase('v2'),
-      makeContext({ pricingV2On: true }),
-      sink
-    );
+    const controller = new UnlimitedCheckoutController(makeUseCase(), sink);
 
     await controller.createSession(req, res as unknown as Response);
 
@@ -168,11 +138,7 @@ describe('UnlimitedCheckoutController', () => {
     } as unknown as Request;
     const res = makeResponse();
     const uc = makeUseCase();
-    const controller = new UnlimitedCheckoutController(
-      uc,
-      makeContext(),
-      makeSink()
-    );
+    const controller = new UnlimitedCheckoutController(uc, makeSink());
 
     await controller.createSession(req, res as unknown as Response);
 
@@ -189,11 +155,7 @@ describe('UnlimitedCheckoutController', () => {
     const req = { body: { interval: 'month' } } as Request;
     const res = makeResponse();
     const sink = makeSink();
-    const controller = new UnlimitedCheckoutController(
-      uc,
-      makeContext({ pricingV2On: true }),
-      sink
-    );
+    const controller = new UnlimitedCheckoutController(uc, sink);
 
     await controller.createSession(req, res as unknown as Response);
 
@@ -207,11 +169,7 @@ describe('UnlimitedCheckoutController', () => {
     const uc = { execute } as unknown as UnlimitedCheckoutUseCase;
     const req = { body: { interval: 'month' } } as Request;
     const res = makeResponse();
-    const controller = new UnlimitedCheckoutController(
-      uc,
-      makeContext(),
-      makeSink()
-    );
+    const controller = new UnlimitedCheckoutController(uc, makeSink());
 
     await expect(
       controller.createSession(req, res as unknown as Response)
@@ -222,11 +180,7 @@ describe('UnlimitedCheckoutController', () => {
     const req = { body: { interval: 'month' } } as Request;
     const res = makeResponse({ stripeCustomerId: 'cus_abc' });
     const uc = makeUseCase();
-    const controller = new UnlimitedCheckoutController(
-      uc,
-      makeContext(),
-      makeSink()
-    );
+    const controller = new UnlimitedCheckoutController(uc, makeSink());
 
     await controller.createSession(req, res as unknown as Response);
 
@@ -249,11 +203,7 @@ describe('UnlimitedCheckoutController ad-click attribution', () => {
     } as unknown as Request;
     const res = makeResponse();
     const uc = makeUseCase();
-    const controller = new UnlimitedCheckoutController(
-      uc,
-      makeContext(),
-      makeSink()
-    );
+    const controller = new UnlimitedCheckoutController(uc, makeSink());
     await controller.createSession(req, res as unknown as Response);
     expect(uc.execute as Mock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -275,11 +225,7 @@ describe('UnlimitedCheckoutController GA measurement', () => {
     } as unknown as Request;
     const res = makeResponse();
     const uc = makeUseCase();
-    const controller = new UnlimitedCheckoutController(
-      uc,
-      makeContext(),
-      makeSink()
-    );
+    const controller = new UnlimitedCheckoutController(uc, makeSink());
     await controller.createSession(req, res as unknown as Response);
     expect(uc.execute as Mock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -306,7 +252,7 @@ describe('UnlimitedCheckoutController with a lapsed or foreign-currency plan', (
     const req = { body: { interval: 'year' } } as Request;
     const res = makeResponse();
     const sink = makeSink();
-    const controller = new UnlimitedCheckoutController(uc, makeContext(), sink);
+    const controller = new UnlimitedCheckoutController(uc, sink);
 
     await controller.createSession(req, res as unknown as Response);
 
@@ -327,11 +273,7 @@ describe('UnlimitedCheckoutController with a lapsed or foreign-currency plan', (
 
   it('forwards replaceLapsed only when the body sets it to true', async () => {
     const uc = makeUseCase();
-    const controller = new UnlimitedCheckoutController(
-      uc,
-      makeContext(),
-      makeSink()
-    );
+    const controller = new UnlimitedCheckoutController(uc, makeSink());
 
     await controller.createSession(
       { body: { interval: 'year', replaceLapsed: true } } as Request,
@@ -356,11 +298,7 @@ describe('UnlimitedCheckoutController with a lapsed or foreign-currency plan', (
     const uc = { execute } as unknown as UnlimitedCheckoutUseCase;
     const res = makeResponse();
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const controller = new UnlimitedCheckoutController(
-      uc,
-      makeContext(),
-      makeSink()
-    );
+    const controller = new UnlimitedCheckoutController(uc, makeSink());
 
     await controller.createSession(
       { body: { interval: 'year' } } as Request,

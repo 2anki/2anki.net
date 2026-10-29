@@ -14,15 +14,9 @@ import type { EventsSink } from '../services/events/EventsSink';
 
 const VALID_INTERVALS: ReadonlySet<string> = new Set(['month', 'year']);
 
-export interface UnlimitedCheckoutContext {
-  pricingV2On: boolean;
-  getUserCreatedAt: (userId: number) => Promise<Date | null>;
-}
-
 class UnlimitedCheckoutController {
   constructor(
     private readonly useCase: UnlimitedCheckoutUseCase,
-    private readonly context: UnlimitedCheckoutContext,
     private readonly eventsSink: Pick<EventsSink, 'record'>
   ) {}
 
@@ -39,7 +33,6 @@ class UnlimitedCheckoutController {
     const anonId = (req.cookies?.anon_id as string | undefined) ?? undefined;
     const { gaClientId, gaSessionId } = readGaMeasurement(req);
     const adClick = readCheckoutAttribution(req);
-    const createdAt = await this.context.getUserCreatedAt(userId);
     const surface = parseCheckoutSurface(req.body?.surface);
 
     let result;
@@ -56,8 +49,6 @@ class UnlimitedCheckoutController {
         gaSessionId,
         adClick,
         replaceLapsed: req.body?.replaceLapsed === true,
-        pricingV2On: this.context.pricingV2On,
-        createdAt,
       });
     } catch (error) {
       if (error instanceof PricingResolutionError) {

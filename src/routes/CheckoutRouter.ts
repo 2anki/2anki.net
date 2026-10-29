@@ -23,7 +23,6 @@ import { getStripe } from '../lib/integrations/stripe';
 import { getDatabase } from '../data_layer';
 import AbandonedCheckoutRecoveryRepository from '../data_layer/AbandonedCheckoutRecoveryRepository';
 import { getEventsSink } from '../services/events/eventsSinkInstance';
-import { FeatureFlagsRepository } from '../data_layer/FeatureFlagsRepository';
 import UsersRepository from '../data_layer/UsersRepository';
 import { StripePriceResolver } from '../services/StripePriceResolver';
 import { StripeCustomerResolver } from '../services/StripeCustomerResolver';
@@ -31,33 +30,9 @@ import { StaleCheckoutCustomerRefresher } from '../usecases/checkout/StaleChecko
 import { getPricingService } from '../services/pricingServiceInstance';
 import { GetPassPricingUseCase } from '../usecases/checkout/GetPassPricingUseCase';
 import PassPricingController from '../controllers/PassPricingController';
-import { PRICING_V2_FLAG } from '../usecases/checkout/pricingV2';
 import PricingController from '../controllers/PricingController';
 
 const DEFAULT_MAX_SUBSCRIBERS = 50;
-
-const toCreatedAt = (value: unknown): Date | null => {
-  if (value == null) return null;
-  if (value instanceof Date) return value;
-  if (typeof value === 'string' || typeof value === 'number') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  return null;
-};
-
-const resolvePricingV2Flag = async (): Promise<boolean> => {
-  const repo = new FeatureFlagsRepository(getDatabase());
-  return (await repo.get(PRICING_V2_FLAG)) === true;
-};
-
-const getUserCreatedAt = async (userId: number): Promise<Date | null> => {
-  const repo = new UsersRepository(getDatabase());
-  const user = await repo.getById(String(userId));
-  return toCreatedAt(
-    (user as { created_at?: unknown } | undefined)?.created_at
-  );
-};
 
 const CheckoutRouter = () => {
   const router = express.Router();
@@ -142,8 +117,6 @@ const CheckoutRouter = () => {
     }
   );
 
-  const unlimitedMonthlyPriceId = process.env.UNLIMITED_MONTHLY_PRICE_ID ?? '';
-  const unlimitedYearlyPriceId = process.env.UNLIMITED_YEARLY_PRICE_ID ?? '';
   const priceResolver = new StripePriceResolver(getStripe());
   const pricingService = getPricingService();
 
@@ -153,23 +126,15 @@ const CheckoutRouter = () => {
     express.json(),
     RejectDuplicatePurchase('subscription'),
     async (req, res) => {
-      if (unlimitedMonthlyPriceId === '') {
-        return res
-          .status(503)
-          .json({ message: 'Pro checkout is not available' });
-      }
       await resolveStripeCustomer(res);
       const useCase = new UnlimitedCheckoutUseCase(
         getStripe(),
-        unlimitedMonthlyPriceId,
-        unlimitedYearlyPriceId,
         priceResolver,
         staleCustomerRefresher,
         new StripeLapsedSubscriptions(getStripe())
       );
       const controller = new UnlimitedCheckoutController(
         useCase,
-        { pricingV2On: await resolvePricingV2Flag(), getUserCreatedAt },
         getEventsSink()
       );
       return controller.createSession(req, res);
@@ -180,28 +145,19 @@ const CheckoutRouter = () => {
    * @swagger
    * /api/checkout/prices:
    *   get:
-   *     summary: Get the Pro plan prices for the current visitor
+   *     summary: Get the Pro plan prices
    *     description: |
-   *       Returns the monthly and annual Pro prices the visitor would
-   *       pay at checkout. Accounts created before the pricing-v2 cutover see
-   *       legacy prices until the lock-in window closes; everyone else sees
-   *       v2 prices once the pricing_v2 flag is on. Anonymous visitors are
-   *       always quoted the new-member prices.
+   *       Returns the monthly and annual Pro prices for every new checkout.
+   *       They are the same for every visitor, signed in or not. `legacy` is
+   *       always false and `lockInDeadline` always null; both stay for older
+   *       web builds.
    *     tags: [Payments]
    *     responses:
    *       200:
-   *         description: Effective prices and lock-in window for the visitor
+   *         description: The v2 monthly and annual prices
    */
-  router.get(
-    '/api/checkout/prices',
-    optionalAuthMiddleware,
-    async (_req, res) => {
-      const controller = new PricingController({
-        pricingV2On: await resolvePricingV2Flag(),
-        getUserCreatedAt,
-      });
-      return controller.getPrices(_req, res);
-    }
+  router.get('/api/checkout/prices', (req, res) =>
+    new PricingController().getPrices(req, res)
   );
 
   /**

@@ -4,9 +4,8 @@ import { optionalMetadata } from './checkoutMetadata';
 import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { StripePriceResolver } from '../../services/StripePriceResolver';
 import {
-  LEGACY_LOCK_IN_WINDOW_END,
+  PRICING_COHORT,
   PricingCohort,
-  resolveCohort,
   V2_ANNUAL_LOOKUP_KEY,
   V2_MONTHLY_LOOKUP_KEY,
 } from './pricingV2';
@@ -31,9 +30,10 @@ export interface UnlimitedCheckoutResult {
 export class UnlimitedCheckoutUseCase {
   constructor(
     private readonly stripe: Pick<StripeTypes, 'checkout'>,
-    private readonly monthlyPriceId: string,
-    private readonly yearlyPriceId: string,
-    private readonly priceResolver?: StripePriceResolver,
+    private readonly priceResolver: Pick<
+      StripePriceResolver,
+      'resolveByLookupKey'
+    >,
     private readonly refresher?: CheckoutCustomerRefresher,
     private readonly lapsed?: LapsedSubscriptionGateway
   ) {}
@@ -68,39 +68,19 @@ export class UnlimitedCheckoutUseCase {
     });
   }
 
-  private async resolvePriceId(
-    interval: UnlimitedInterval,
-    cohort: PricingCohort,
-    now: Date
-  ): Promise<string> {
-    const legacyId =
-      interval === 'year' ? this.yearlyPriceId : this.monthlyPriceId;
-    if (cohort === 'legacy' || this.priceResolver == null) {
-      return legacyId;
-    }
+  private async resolvePriceId(interval: UnlimitedInterval): Promise<string> {
     const lookupKey =
       interval === 'year' ? V2_ANNUAL_LOOKUP_KEY : V2_MONTHLY_LOOKUP_KEY;
     const resolved = await this.priceResolver.resolveByLookupKey(lookupKey);
     if (resolved != null) {
       return resolved;
     }
-    const legacyStillActive =
-      now.getTime() < LEGACY_LOCK_IN_WINDOW_END.getTime();
-    if (legacyStillActive) {
-      console.error('unlimited.checkout.v2_resolve_fallback', {
-        cohort,
-        interval,
-        lookup_key: lookupKey,
-        reason: 'lookup_key resolution returned null, serving legacy price id',
-      });
-      return legacyId;
-    }
     console.error('unlimited.checkout.v2_resolve_failed', {
-      cohort,
+      cohort: PRICING_COHORT,
       interval,
       lookup_key: lookupKey,
       reason:
-        'lookup_key resolution returned null after the lock-in window; legacy price is archived, refusing to serve it',
+        'lookup_key resolution returned null; refusing to create a session without a v2 price',
     });
     throw new PricingResolutionError(lookupKey);
   }
@@ -117,16 +97,8 @@ export class UnlimitedCheckoutUseCase {
     gaSessionId?: string;
     adClick?: AdClickAttribution;
     replaceLapsed?: boolean;
-    pricingV2On?: boolean;
-    createdAt?: Date | null;
-    now?: Date;
   }): Promise<UnlimitedCheckoutResult> {
-    const now = input.now ?? new Date();
-    const cohort = resolveCohort({
-      flagOn: input.pricingV2On === true,
-      createdAt: input.createdAt ?? null,
-      now,
-    });
+    const cohort = PRICING_COHORT;
 
     console.info('unlimited.checkout.started', {
       user_id: input.userId,
@@ -134,7 +106,7 @@ export class UnlimitedCheckoutUseCase {
       cohort,
     });
 
-    const priceId = await this.resolvePriceId(input.interval, cohort, now);
+    const priceId = await this.resolvePriceId(input.interval);
     await this.settleLapsedPlans(
       input.stripeCustomerId,
       input.replaceLapsed === true,

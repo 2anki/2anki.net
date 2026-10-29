@@ -2,17 +2,20 @@ import { vi } from 'vitest';
 import express from 'express';
 import http from 'node:http';
 import { AddressInfo } from 'node:net';
+import { clearResolvedPriceIdCache } from '../services/StripePriceResolver';
 
 const mockStripeCreate = vi.fn();
 const mockStripeRetrieve = vi.fn();
 const mockPriceRetrieve = vi.fn();
+const mockPriceList = vi.fn();
 
 vi.mock('../lib/integrations/stripe', () => ({
   getStripe: vi.fn().mockReturnValue({
     checkout: {
       sessions: { create: mockStripeCreate, retrieve: mockStripeRetrieve },
     },
-    prices: { retrieve: mockPriceRetrieve },
+    prices: { retrieve: mockPriceRetrieve, list: mockPriceList },
+    subscriptions: { list: vi.fn().mockResolvedValue({ data: [] }) },
     customers: {
       list: vi.fn().mockResolvedValue({ data: [] }),
       search: vi.fn().mockResolvedValue({ data: [] }),
@@ -49,6 +52,10 @@ let mockHeldPass: {
 } | null = null;
 
 vi.mock('../data_layer', () => ({ getDatabase: () => ({}) }));
+
+vi.mock('../lib/misc/hashToken', () => ({
+  default: (value: string) => `hashed:${value}`,
+}));
 
 vi.mock('../data_layer/UsersRepository', () => ({
   __esModule: true,
@@ -113,9 +120,6 @@ describe('CheckoutRouter — pass routes', () => {
   beforeAll(async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    // The router captures this at construction, unlike the pass price ids,
-    // which resolve per request.
-    process.env.UNLIMITED_MONTHLY_PRICE_ID = 'price_unlimited_test';
     process.env.AUTO_SYNC_PRICE_ID = 'price_auto_sync_test';
     ({ server, url } = await buildServer());
   });
@@ -469,7 +473,6 @@ describe('CheckoutRouter — GET /api/checkout/receipt', () => {
   let url: string;
 
   beforeAll(async () => {
-    process.env.UNLIMITED_MONTHLY_PRICE_ID = 'price_unlimited_test';
     process.env.AUTO_SYNC_PRICE_ID = 'price_auto_sync_test';
     ({ server, url } = await buildServer());
   });
@@ -529,5 +532,105 @@ describe('CheckoutRouter — GET /api/checkout/receipt', () => {
 
     expect(res.status).toBe(400);
     expect(mockStripeRetrieve).not.toHaveBeenCalled();
+  });
+});
+
+describe('CheckoutRouter — Pro prices with no pricing flag row', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    ({ server, url } = await buildServer());
+  });
+
+  afterAll(() => server.close());
+
+  beforeEach(() => {
+    mockStripeCreate.mockReset();
+    mockPriceList.mockReset();
+    mockOptionalOwner = undefined;
+    mockHeldPatreon = false;
+    mockHeldSubscriber = false;
+    mockHeldPass = null;
+    clearResolvedPriceIdCache();
+  });
+
+  it.each(['24h', '7d', '120d'])(
+    'sells a %s pass holder moving to Pro the v2 price',
+    async (kind) => {
+      mockHeldPass = {
+        kind,
+        expires_at: new Date('2026-11-08T00:00:00.000Z'),
+        stripe_payment_intent_id: 'pi_stripe',
+      };
+      mockPriceList.mockResolvedValue({ data: [{ id: 'price_v2_monthly' }] });
+      mockStripeCreate.mockResolvedValue({
+        id: 'cs_v2',
+        url: 'https://checkout.stripe.com/v2',
+      });
+
+      const res = await fetch(`${url}/api/checkout/unlimited`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ interval: 'month' }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockStripeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          line_items: [{ price: 'price_v2_monthly', quantity: 1 }],
+        })
+      );
+    }
+  );
+
+  it.each([
+    ['month', 'v2_monthly', 'price_v2_monthly'],
+    ['year', 'v2_annual', 'price_v2_annual'],
+  ])(
+    'sells a new %s checkout at the v2 price',
+    async (interval, lookupKey, priceId) => {
+      mockPriceList.mockResolvedValue({ data: [{ id: priceId }] });
+      mockStripeCreate.mockResolvedValue({
+        id: 'cs_v2',
+        url: 'https://checkout.stripe.com/v2',
+      });
+
+      const res = await fetch(`${url}/api/checkout/unlimited`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ interval }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        url: 'https://checkout.stripe.com/v2',
+      });
+      expect(mockPriceList).toHaveBeenCalledWith({
+        lookup_keys: [lookupKey],
+        active: true,
+        limit: 1,
+      });
+      expect(mockStripeCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          line_items: [{ price: priceId, quantity: 1 }],
+          metadata: expect.objectContaining({ cohort: 'v2', interval }),
+        })
+      );
+    }
+  );
+
+  it('quotes v2 prices on GET /api/checkout/prices', async () => {
+    const res = await fetch(`${url}/api/checkout/prices`);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      cohort: 'v2',
+      legacy: false,
+      monthly: { cents: 799 },
+      annual: { cents: 6400 },
+      lockInDeadline: null,
+    });
   });
 });
