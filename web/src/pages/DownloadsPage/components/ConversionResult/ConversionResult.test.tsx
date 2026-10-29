@@ -496,7 +496,7 @@ describe('ConversionResult — failed variant', () => {
     expect(button).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(button);
     expect(onRescue).not.toHaveBeenCalled();
-    expect(screen.getByRole('status')).toHaveTextContent('Building your deck…');
+    expect(screen.getByRole('status')).toHaveTextContent('Building your deck.');
   });
 
   it('points a free user over the monthly limit at the upgrade', () => {

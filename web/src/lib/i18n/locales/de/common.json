@@ -764,7 +764,7 @@
     "emptyDeckNotionEmptyPage": "Diese Notion-Seite sieht leer aus, oder 2anki kann ihren Inhalt nicht sehen. Füge 2anki dieser Seite und ihren Unterseiten im Verbindungen-Menü von Notion hinzu und konvertiere dann erneut.",
     "connectNotionDocs": "So teilst du eine Seite mit 2anki",
     "rescueLeadNotion": "Aus dieser Seite kannst du trotzdem Karten erstellen:",
-    "rescueBuilding": "Dein Deck wird erstellt…",
+    "rescueBuilding": "Dein Deck wird erstellt.",
     "rescueOneAtATime": "Im kostenlosen Plan wird immer nur eine Seite gleichzeitig konvertiert. Warte, bis die aktuelle fertig ist, und versuche es dann erneut.",
     "rescueAlreadyRunning": "Diese Seite wird bereits konvertiert. Das Deck erscheint hier, sobald es fertig ist.",
     "rescueFailed": "Dieses Deck konnte nicht gestartet werden. Versuche es erneut.",

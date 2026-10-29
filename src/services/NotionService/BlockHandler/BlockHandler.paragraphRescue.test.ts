@@ -247,6 +247,34 @@ describe('Notion empty-deck paragraphs offer', () => {
   });
 });
 
+describe('Notion picked cards and the reversing card options', () => {
+  it.each([
+    ['reversed', { reversed: 'true' }],
+    ['basic-reversed', { 'basic-reversed': 'true' }],
+    ['enable-input', { 'enable-input': 'true' }],
+  ])(
+    'ships picked paragraphs as plain front and back with %s on',
+    async (_label, options) => {
+      const handler = makeHandler(
+        makeApi({ 'page-1': proseParagraphs() }),
+        new CardOption(options)
+      );
+
+      const decks = await convertPage(handler, 'paragraphs');
+
+      const cards = decks.flatMap((deck) => deck.cards);
+      expect(cards.map((card) => card.name)).toEqual([
+        '<strong>Osmosis</strong>',
+        '<strong>Diffusion</strong>',
+        '<strong>Active transport</strong>',
+      ]);
+      expect(cards[0].back).toContain('semi-permeable membrane');
+      expect(cards.some((card) => card.name.includes('{{type'))).toBe(false);
+      expect(cards.some((card) => card.enableInput)).toBe(false);
+    }
+  );
+});
+
 describe('Notion structural offer below the quality floor', () => {
   function twoHeadingPage() {
     return makeApi({

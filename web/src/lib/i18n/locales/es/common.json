@@ -764,7 +764,7 @@
     "emptyDeckNotionEmptyPage": "Esta página de Notion parece vacía, o 2anki no puede ver su contenido. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir.",
     "connectNotionDocs": "Cómo compartir una página con 2anki",
     "rescueLeadNotion": "Aun así puedes hacer tarjetas con esta página:",
-    "rescueBuilding": "Creando tu mazo…",
+    "rescueBuilding": "Creando tu mazo.",
     "rescueOneAtATime": "El plan gratuito convierte una página a la vez. Espera a que termine la actual y vuelve a intentarlo.",
     "rescueAlreadyRunning": "Esta página ya se está convirtiendo. Su mazo aparecerá aquí cuando esté listo.",
     "rescueFailed": "No se pudo iniciar este mazo. Inténtalo de nuevo.",
