@@ -275,6 +275,88 @@ describe('Notion picked cards and the reversing card options', () => {
   );
 });
 
+describe('Notion offer and pick under settings that limit the rescue', () => {
+  it('neither offers nor builds a pick with cloze from toggle content on', async () => {
+    const settings = new CardOption({ 'cloze-from-toggle-content': 'true' });
+    const offered = makeHandler(
+      makeApi({ 'page-1': proseParagraphs() }),
+      settings
+    );
+    const picked = makeHandler(
+      makeApi({ 'page-1': proseParagraphs() }),
+      settings
+    );
+
+    await convertPage(offered);
+    const decks = await convertPage(picked, 'paragraphs');
+
+    expect(offered.rescueCandidates).toEqual([]);
+    expect(decks.flatMap((deck) => deck.cards)).toHaveLength(0);
+    expect(picked.inducedRule).toBeUndefined();
+  });
+
+  function headingsAndProse() {
+    return makeApi({
+      'page-1': [
+        block('heading_2', [richText('Transport')]),
+        ...proseParagraphs(),
+        block('heading_2', [richText('Summary')]),
+        block('paragraph', [richText('Short closing line.')]),
+      ],
+    });
+  }
+
+  it('never offers headings under the hierarchy template but still offers paragraphs', async () => {
+    const handler = makeHandler(
+      headingsAndProse(),
+      new CardOption({ template: 'hierarchy' })
+    );
+
+    await convertPage(handler);
+
+    expect(handler.rescueCandidates.map(({ rule }) => rule)).toEqual([
+      'paragraphs',
+    ]);
+  });
+
+  it('ignores a heading pick under the hierarchy template', async () => {
+    const handler = makeHandler(
+      headingsAndProse(),
+      new CardOption({ template: 'hierarchy' })
+    );
+
+    const decks = await convertPage(handler, 'heading');
+
+    expect(decks.flatMap((deck) => deck.cards)).toHaveLength(0);
+    expect(handler.inducedRule?.outcome).not.toBe('rescue_chosen');
+  });
+
+  it('builds a paragraphs pick under the hierarchy template', async () => {
+    const handler = makeHandler(
+      headingsAndProse(),
+      new CardOption({ template: 'hierarchy' })
+    );
+
+    const decks = await convertPage(handler, 'paragraphs');
+
+    expect(decks.flatMap((deck) => deck.cards)).toHaveLength(3);
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'paragraphs',
+      outcome: 'rescue_chosen',
+    });
+  });
+
+  it('offers headings on the same page without the hierarchy template', async () => {
+    const handler = makeHandler(headingsAndProse());
+
+    await convertPage(handler);
+
+    expect(handler.rescueCandidates.map(({ rule }) => rule)).toContain(
+      'heading'
+    );
+  });
+});
+
 describe('Notion structural offer below the quality floor', () => {
   function twoHeadingPage() {
     return makeApi({
