@@ -21,6 +21,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import UploadForm from './UploadForm';
+import i18n from '../../../../lib/i18n';
 
 vi.mock('../../../../lib/analytics/track', () => ({
   track: vi.fn(),
@@ -8934,10 +8935,11 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(resumed.getAll('claude-ai-flashcards')).toEqual(['true']);
     expect(resumed.getAll('pdf-page-pairs')).toEqual(['false']);
     expect(resumed.getAll('kept-owner')).toEqual(['8']);
-    expect(eventsNamed('thin_deck_ai_unlock_clicked')).toContainEqual([
-      'thin_deck_ai_unlock_clicked',
-      { plan: 'resumed' },
-    ]);
+    expect(
+      eventsNamed('thin_deck_ai_unlock_clicked').filter(
+        ([, props]) => props?.plan === 'resumed'
+      )
+    ).toEqual([['thin_deck_ai_unlock_clicked', { plan: 'resumed' }]]);
     expect(eventsNamed('upload_submitted')).toContainEqual([
       'upload_submitted',
       expect.objectContaining({
@@ -9324,11 +9326,35 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     async (_screen, line, status, showSwitch) => {
       const container = await showSwitch();
 
+      expect(screen.getByText(line, { selector: 'p' })).toBeVisible();
       expect(liveRegion(container)).toBe(
         status === '' ? line : `${status} ${line}`
       );
     }
   );
+
+  it('joins the status and the line with a Japanese full stop and no space in Japanese', async () => {
+    stubServer([networkDrop]);
+    const view = renderRebuildForm(false);
+    await submitFiles(view.container, ['lecture.pdf']);
+    await screen.findByRole('button', { name: 'Try again' });
+    setUserLocals(otherPassHolder);
+    view.rerenderWithAi(false);
+
+    try {
+      await act(async () => {
+        await i18n.changeLanguage('ja');
+      });
+
+      expect(liveRegion(view.container)).toBe(
+        '変換に失敗しました。今は別のアカウントでログインしています。そのアカウントで変換するには、ファイルをもう一度選んでください。'
+      );
+    } finally {
+      await act(async () => {
+        await i18n.changeLanguage('en');
+      });
+    }
+  });
 
   it('keeps the shown switch line out of any live region but the page one', async () => {
     stubServer([deckResponse(64)]);
@@ -9452,20 +9478,114 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
   });
 
-  it("clears an unknown sender's save, sending nothing and saying nothing, when Continue is clicked after a sign-in", async () => {
+  it("clears an unknown sender's save, sends nothing, and says the page is signed in now when Continue is clicked after a sign-in", async () => {
     await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
     setUserLocals(signedOut);
     const fetchMock = stubServer([deckResponse(9)]);
-    const { rerenderWithAi } = renderRebuildForm(false);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
     const resume = await screen.findByRole('button', { name: 'Continue' });
 
     setUserLocals(freeSignedIn);
     rerenderWithAi(false);
     fireEvent.click(resume);
-    await settle();
 
+    expect(
+      await screen.findByText(SIGNED_IN_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(liveRegion(container)).toBe(SIGNED_IN_LINE);
     expect(await getPendingUploadStore().load()).toBeNull();
     expect(screen.queryByText(SENDER_UNKNOWN, { selector: 'p' })).toBeNull();
+    expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
+  });
+
+  it('drops the closing line once a new file goes out', async () => {
+    await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
+    setUserLocals(signedOut);
+    stubServer([new Promise<never>(() => {})]);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
+    const resume = await screen.findByRole('button', { name: 'Continue' });
+    setUserLocals(freeSignedIn);
+    rerenderWithAi(false);
+    fireEvent.click(resume);
+    await screen.findByText(SIGNED_IN_LINE, { selector: 'p' });
+
+    await submitFiles(container, ['lecture.pdf']);
+
+    expect(screen.queryByText(SIGNED_IN_LINE, { selector: 'p' })).toBeNull();
+  });
+
+  it('says the page is signed out now when Continue is clicked after the session ended, beside the last deck still on offer', async () => {
+    await saveInterruptedUpload({ ownerId: 7 });
+    await getLastDeckStore().save({
+      recoveryToken: '0b6f2c1e-3a4d-4e5f-8a9b-1c2d3e4f5a6b',
+      deckName: 'Biology.apkg',
+      savedAt: Date.now(),
+    });
+    const fetchMock = stubServer([deckResponse(9)]);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
+    const resume = await screen.findByRole('button', { name: 'Continue' });
+
+    setUserLocals(signedOut);
+    rerenderWithAi(false);
+    fireEvent.click(resume);
+
+    const closing = await screen.findByText(SIGNED_OUT_LINE, { selector: 'p' });
+    const lastDeck = await screen.findByText(/Your last deck,/);
+    expect(liveRegion(container)).toBe(SIGNED_OUT_LINE);
+    expect(
+      lastDeck.compareDocumentPosition(closing) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      screen.getAllByText(SIGNED_OUT_LINE, { selector: 'p' })
+    ).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/login?redirect=/upload'
+    );
+    expect(await getPendingUploadStore().load()).toMatchObject({ ownerId: 7 });
+    expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
+  });
+
+  it('hides the closing line while the upload lock shows', async () => {
+    await saveInterruptedUpload({ ownerId: 7 });
+    stubServer([deckResponse(9)]);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
+    const resume = await screen.findByRole('button', { name: 'Continue' });
+    setUserLocals(otherPassHolder);
+    rerenderWithAi(false);
+    fireEvent.click(resume);
+    await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' });
+
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    } as unknown as ReturnType<typeof useCardUsage>);
+    setUserLocals(freeSignedIn);
+    rerenderWithAi(false);
+
+    expect(
+      screen.queryByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeNull();
+    expect(liveRegion(container)).toBe('');
+  });
+
+  it("says another account is signed in now when Continue is clicked on a save another account's page left", async () => {
+    await saveInterruptedUpload({ ownerId: 7 });
+    const fetchMock = stubServer([deckResponse(9)]);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
+    const resume = await screen.findByRole('button', { name: 'Continue' });
+
+    setUserLocals(otherPassHolder);
+    rerenderWithAi(false);
+    fireEvent.click(resume);
+
+    expect(
+      await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(liveRegion(container)).toBe(OTHER_ACCOUNT_LINE);
     expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
   });
 
@@ -9477,7 +9597,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     return answer;
   }
 
-  it.each(['', ' 42 ', '0x2A', '1e3', '-7', '7.0'])(
+  it.each(['', ' 42 ', '0x2A', '1e3', '-7', '7.0', '9007199254740993'])(
     'holds a resend when the server names the session as "%s", as for no answer at all',
     async (raw) => {
       accountReadFailed(passHolder);
@@ -9508,6 +9628,245 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
     }
   );
+
+  it('never shows the closing line on a sample page, which offers no Continue', async () => {
+    await saveInterruptedUpload({ ownerId: 7 });
+    stubServer([deckResponse(9)]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = () => (
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} sample />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+    const view = render(tree());
+    await settle();
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+
+    for (const next of [otherPassHolder, signedOut, freeSignedIn]) {
+      setUserLocals(next);
+      view.rerender(tree());
+      await settle();
+      for (const line of [
+        OTHER_ACCOUNT_LINE,
+        SIGNED_OUT_LINE,
+        SIGNED_IN_LINE,
+      ]) {
+        expect(screen.queryByText(line, { selector: 'p' })).toBeNull();
+      }
+    }
+  });
+
+  it.each([
+    ['the upload page', false],
+    ['a sample page', true],
+  ])(
+    'sends a password unlock once when Enter and a click land together on %s',
+    async (_page, sample) => {
+      const fetchMock = stubLockedPdfServer(5);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} sample={sample} />
+      );
+      await submitFiles(container, ['locked.pdf']);
+      const password = await screen.findByLabelText('PDF password');
+      fireEvent.change(password, { target: { value: 'open-sesame' } });
+
+      await act(async () => {
+        fireEvent.keyDown(password, { key: 'Enter' });
+        fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
+      });
+
+      await settle();
+      expect(
+        callsTo(fetchMock, '/api/upload/retry-with-credential')
+      ).toHaveLength(1);
+    }
+  );
+
+  it.each([
+    ['/upload', { aiOn: false }],
+    ['a sample page (/, /ai-flashcard-generator)', { sample: true }],
+    ['the answers page (no aiOn)', {}],
+  ] as Array<[string, { aiOn?: boolean; sample?: boolean }]>)(
+    'shows and announces the switch line on %s when a deck arrives under another session',
+    async (_page, props) => {
+      stubServer([deckResponse(64, sentBy('9'))]);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} {...props} />
+      );
+      await submitFiles(container, ['lecture.pdf']);
+
+      expect(
+        await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+      ).toBeVisible();
+      expect(liveRegion(container)).toBe(
+        `Your deck is ready — 64 cards. ${OTHER_ACCOUNT_LINE}`
+      );
+    }
+  );
+
+  const emptyWithRescue = (owner: string) =>
+    jsonAnswer(
+      400,
+      { ...emptyExport, rescue: [{ rule: 'heading', cards: 2 }] },
+      sentBy(owner)
+    );
+
+  function renderHandoff() {
+    return render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/upload',
+            state: {
+              handoffFile: new File(['# notes'], 'notes.zip', {
+                type: 'application/zip',
+              }),
+            },
+          },
+        ]}
+      >
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+  }
+
+  function dropNotesFolder(container: HTMLElement) {
+    class FakeDataTransfer {
+      files: File[] = [];
+      items = { add: (file: File) => this.files.push(file) };
+    }
+    vi.stubGlobal('DataTransfer', FakeDataTransfer);
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [],
+      writable: true,
+      configurable: true,
+    });
+    input.removeAttribute('required');
+    const page = {
+      isFile: true,
+      isDirectory: false,
+      name: 'notes.html',
+      fullPath: '/notes/notes.html',
+      file: (resolve: (file: File) => void) =>
+        resolve(new File(['<html><body>Krebs</body></html>'], 'notes.html')),
+    };
+    const folder = {
+      isFile: false,
+      isDirectory: true,
+      name: 'notes',
+      fullPath: '/notes',
+      createReader: () => {
+        const batches: unknown[][] = [[page], []];
+        return {
+          readEntries: (resolve: (batch: unknown[]) => void) => {
+            resolve(batches.shift() ?? []);
+          },
+        };
+      },
+    };
+    dropOnPage({ items: [{ webkitGetAsEntry: () => folder }], files: [] });
+  }
+
+  const EMPTY_STATUS = 'Conversion finished, but no cards were found.';
+  const JA_EMPTY_STATUS =
+    '変換は完了しましたが、カードは見つかりませんでした。';
+  const JA_OTHER_ACCOUNT_LINE =
+    '今は別のアカウントでログインしています。そのアカウントで変換するには、ファイルをもう一度選んでください。';
+
+  async function expectSwitchLineInEnglishThenJapanese(container: HTMLElement) {
+    expect(
+      await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeVisible();
+    expect(liveRegion(container)).toBe(`${EMPTY_STATUS} ${OTHER_ACCOUNT_LINE}`);
+    try {
+      await act(async () => {
+        await i18n.changeLanguage('ja');
+      });
+      expect(
+        screen.getByText(JA_OTHER_ACCOUNT_LINE, { selector: 'p' })
+      ).toBeVisible();
+      expect(liveRegion(container)).toBe(
+        `${JA_EMPTY_STATUS}${JA_OTHER_ACCOUNT_LINE}`
+      );
+    } finally {
+      await act(async () => {
+        await i18n.changeLanguage('en');
+      });
+    }
+  }
+
+  it('shows and announces the switch line, in English and Japanese, when a file handed over from Print or CSV comes back under another session', async () => {
+    stubServer([emptyWithRescue('9')]);
+    const { container } = renderHandoff();
+
+    await expectSwitchLineInEnglishThenJapanese(container);
+  });
+
+  it('shows and announces the switch line, in English and Japanese, when a dropped folder comes back under another session', async () => {
+    stubServer([emptyWithRescue('9')]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    dropNotesFolder(container);
+
+    await expectSwitchLineInEnglishThenJapanese(container);
+  });
+
+  it('reads an out-of-range session as unknown for a file handed over from Print or CSV, and holds its resend', async () => {
+    accountReadFailed(passHolder);
+    const fetchMock = stubServer([
+      emptyWithRescue('9007199254740993'),
+      deckResponse(2),
+    ]);
+    renderHandoff();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Make 2 cards from the headings',
+      })
+    );
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it('reads an out-of-range session as unknown for a dropped folder, and holds its resend', async () => {
+    accountReadFailed(passHolder);
+    const fetchMock = stubServer([
+      emptyWithRescue('9007199254740993'),
+      deckResponse(2),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    dropNotesFolder(container);
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Make 2 cards from the headings',
+      })
+    );
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
 });
 
 describe('UploadForm try-a-sample', () => {
@@ -10909,6 +11268,84 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
       expect(thinDeckResumeMarked()).toBe(false);
       expect(fetchMock).not.toHaveBeenCalled();
       expect(THIN_DECK_RESUME_WAIT_MS).toBeLessThanOrEqual(40_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('keeps asking while the account reads fail, then sends the saved file once when the pass shows', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      stubSignedInReturn();
+      markThinDeckResume();
+      await saveWithAi(7);
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const answers = [
+        { ...signedIn(false), error: new Error('locals'), isError: true },
+        { ...signedIn(false), error: new Error('locals'), isError: true },
+        signedIn(true),
+      ];
+      let current: ReturnType<typeof useUserLocals> = signedIn(false);
+      const refetch = vi.fn(async () => {
+        current = (answers.shift() ?? current) as unknown as ReturnType<
+          typeof useUserLocals
+        >;
+      });
+      mockUseUserLocals.mockImplementation(
+        () =>
+          ({ ...current, refetch }) as unknown as ReturnType<
+            typeof useUserLocals
+          >
+      );
+      const fetchMock = okApkgFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      for (let i = 0; i < 6; i++) {
+        await vi.advanceTimersByTimeAsync(2000);
+      }
+
+      expect(refetch).toHaveBeenCalledTimes(3);
+      expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true');
+      expect(
+        trackMock.mock.calls.filter(
+          ([name]) => name === 'thin_deck_ai_unlock_clicked'
+        )
+      ).toEqual([['thin_deck_ai_unlock_clicked', { plan: 'resumed' }]]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('sends nothing and asks nothing again when the first account read fails on the way back', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      stubSignedInReturn();
+      markThinDeckResume();
+      await saveWithAi(7);
+      const refetch = vi.fn();
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: new Error('locals'),
+        isError: true,
+        refetch,
+      } as unknown as ReturnType<typeof useUserLocals>);
+      const fetchMock = okApkgFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      for (let i = 0; i < 20; i++) {
+        await vi.advanceTimersByTimeAsync(2000);
+      }
+
+      expect(refetch).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(await getPendingUploadStore().load()).toMatchObject({
+        ownerId: 7,
+        aiFlag: 'true',
+      });
     } finally {
       vi.useRealTimers();
     }

@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-29-upload-continue-signed-in-line",
+  "date": "2026-10-29",
+  "type": "fix",
+  "title": "Continuing a saved upload after signing in, signing out or switching accounts says why it stopped and to choose the file again"
+}
