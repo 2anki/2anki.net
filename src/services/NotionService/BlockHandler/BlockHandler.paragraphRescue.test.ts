@@ -247,6 +247,55 @@ describe('Notion empty-deck paragraphs offer', () => {
   });
 });
 
+describe('Notion structural offer below the quality floor', () => {
+  function twoHeadingPage() {
+    return makeApi({
+      'page-1': [
+        block('heading_2', [richText('What is osmosis?')]),
+        block('paragraph', [richText('Water crossing a membrane.')]),
+        block('heading_2', [richText('What is diffusion?')]),
+        block('paragraph', [richText('Particles spreading out.')]),
+      ],
+    });
+  }
+
+  it('offers the headings with their cleaned count and sample cards', async () => {
+    const handler = makeHandler(twoHeadingPage());
+
+    const decks = await convertPage(handler);
+
+    expect(decks.flatMap((deck) => deck.cards)).toHaveLength(0);
+    expect(handler.rescueCandidates).toEqual([
+      {
+        rule: 'heading',
+        cards: 2,
+        sample: [
+          { front: 'What is osmosis?', back: 'Water crossing a membrane.' },
+          { front: 'What is diffusion?', back: 'Particles spreading out.' },
+        ],
+      },
+    ]);
+  });
+
+  it('builds the headings deck when the person picks that rule', async () => {
+    const handler = makeHandler(twoHeadingPage());
+
+    const decks = await convertPage(handler, 'heading');
+
+    const cards = decks.flatMap((deck) => deck.cards);
+    expect(cards.map((card) => card.name)).toEqual([
+      'What is osmosis?',
+      'What is diffusion?',
+    ]);
+    expect(cards[0].back).toContain('Water crossing a membrane.');
+    expect(handler.cardCount).toBe(2);
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'heading',
+      outcome: 'rescue_chosen',
+    });
+  });
+});
+
 describe('Notion picked rescue rule across nested pages and sub-decks', () => {
   it('leaves a prose child page alone when the parent page makes toggle cards', async () => {
     const toggle = block('toggle', [richText('What is osmosis?')], true);

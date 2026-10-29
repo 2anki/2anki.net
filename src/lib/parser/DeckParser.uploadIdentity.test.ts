@@ -582,6 +582,7 @@ describe('paragraphs decks made before the first-sentence front was escaped', ()
 
   it.each([
     ['cloze off', { cloze: 'false' }, 1],
+    ['typed answers on', { cloze: 'false', 'enable-input': 'true' }, 1],
     ['reversed', { reversed: 'true' }, 1],
     ['basic-reversed', { 'basic-reversed': 'true' }, 2],
   ])(
