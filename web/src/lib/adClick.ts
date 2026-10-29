@@ -240,8 +240,9 @@ export function forgetLandingCampaign(): void {
 
 // `ref` tags a link into a landing page (ours, like the connectors' plans
 // link /pricing/?ref=mcp, or another site's), so a visit through one can be
-// counted. Only a short slug is kept, so a name or number pasted into it is
-// dropped. It stays on the landing event, not in checkout attribution.
+// counted. Only a short slug of letters, digits and hyphens is kept, which
+// drops spaces, dots and symbols. It stays on the landing event, not in
+// checkout attribution.
 const REF_PATTERN = /^[a-z0-9-]{1,40}$/i;
 
 function readRef(search: string): { ref?: string } {
