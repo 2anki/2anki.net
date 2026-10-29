@@ -3,6 +3,7 @@ import type StripeTypes from 'stripe';
 import type { Knex } from 'knex';
 import { DeveloperSubscriptionsRepository } from '../../data_layer/DeveloperSubscriptionsRepository';
 import { isPaused } from '../subscriptions/isPaused';
+import { emailHash } from '../emailHash';
 
 let stripeInstance: InstanceType<typeof Stripe> | null = null;
 
@@ -140,6 +141,34 @@ const ACCESS_GRANTING_STATUSES = new Set<StripeTypes.Subscription['status']>([
   'active',
 ]);
 
+// Records the Stripe customer id on the resolved account, unless another
+// account already holds it: someone paid for a subscription linked to a
+// different account, and users.stripe_customer_id is unique, so the write
+// would fail the whole provisioning. The holder keeps it (#5025).
+const stampCustomerId = async (
+  db: Knex,
+  account: ResolvedAccount | null,
+  customerId: string | null
+): Promise<void> => {
+  if (account == null || customerId == null) {
+    return;
+  }
+  const holder = await db('users')
+    .where({ stripe_customer_id: customerId })
+    .whereNot({ id: account.id })
+    .select('id')
+    .first();
+  if (holder != null) {
+    console.info(
+      `[stripe] customer id already linked to another account customer=${emailHash(customerId).slice(-8)}`
+    );
+    return;
+  }
+  await db('users')
+    .where({ id: account.id })
+    .update({ stripe_customer_id: customerId });
+};
+
 export const updateStoreSubscription = async (
   db: Knex,
   customer: StripeTypes.Customer,
@@ -195,11 +224,7 @@ export const updateStoreSubscription = async (
       active: shouldRemainActive,
       payload: subscription,
     });
-    if (account != null && customerId != null) {
-      await db('users')
-        .where({ id: account.id })
-        .update({ stripe_customer_id: customerId });
-    }
+    await stampCustomerId(db, account, customerId);
     return account != null
       ? { status: 'linked', resolvedUserId: account.id }
       : { status: 'unlinked', resolvedUserId: null };
@@ -230,11 +255,7 @@ export const updateStoreSubscription = async (
     .onConflict('email')
     .merge(mergeColumns);
 
-  if (account != null && customerId != null) {
-    await db('users')
-      .where({ id: account.id })
-      .update({ stripe_customer_id: customerId });
-  }
+  await stampCustomerId(db, account, customerId);
 
   if (account != null) {
     return { status: 'linked', resolvedUserId: account.id };

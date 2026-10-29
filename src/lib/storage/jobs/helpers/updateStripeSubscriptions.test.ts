@@ -1,4 +1,5 @@
-import { vi, type Mock, type MockInstance } from 'vitest';
+import { vi, type MockInstance } from 'vitest';
+import knexLib, { type Knex } from 'knex';
 import type StripeTypes from 'stripe';
 
 const mockStripeInstance = vi.hoisted(() => ({
@@ -10,38 +11,16 @@ const mockStripeInstance = vi.hoisted(() => ({
   },
 }));
 
-const mockDbInstance = vi.hoisted(() => ({
-  table: vi.fn(),
-}));
-
-const mockIsDeveloperTierProduct = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(false)
-);
+// The real shared writer runs; only the Stripe client is faked.
 vi.mock('../../../integrations/stripe', async () => {
   const actual = await vi.importActual<
     typeof import('../../../integrations/stripe')
   >('../../../integrations/stripe');
-  return {
-    getStripe: () => mockStripeInstance,
-    extractProductId: actual.extractProductId,
-    isDeveloperTierProduct: (...args: unknown[]) =>
-      mockIsDeveloperTierProduct(...args),
-  };
+  return { ...actual, getStripe: () => mockStripeInstance };
 });
 
-const mockUpsertDeveloperSubscription = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(undefined)
-);
-vi.mock('../../../../data_layer/DeveloperSubscriptionsRepository', () => ({
-  DeveloperSubscriptionsRepository: vi.fn().mockImplementation(function () {
-    return {
-      upsert: mockUpsertDeveloperSubscription,
-    };
-  }),
-}));
-
 vi.mock('../../../../data_layer', () => ({
-  getDatabase: () => mockDbInstance,
+  getDatabase: () => ({}),
 }));
 
 vi.mock('./reconcileActiveSubscriptions', () => ({
@@ -63,6 +42,8 @@ function buildSubscription(
     cancel_at_period_end: false,
     cancel_at: null,
     customer: 'cus_test456',
+    metadata: {},
+    pause_collection: null,
     items: {
       data: [
         {
@@ -77,195 +58,269 @@ function buildSubscription(
   } as unknown as StripeTypes.Subscription;
 }
 
-type Spies = {
-  insertSpy: Mock;
-  updateSubscriptionSpy: Mock;
-  updateUsersSpy: Mock;
-};
-
-function setupDbMock(
-  existingRow: Record<string, unknown> | null,
-  customerIdHolder: Record<string, unknown> | null = null
-): Spies {
-  const insertSpy = vi.fn().mockResolvedValue([1]);
-  const updateSubscriptionSpy = vi.fn().mockResolvedValue(1);
-  const updateUsersSpy = vi.fn().mockResolvedValue(1);
-
-  mockDbInstance.table.mockImplementation(function (tableName: string) {
-    if (tableName === 'subscriptions') {
-      return {
-        where: vi.fn().mockReturnValue({
-          first: vi.fn().mockResolvedValue(existingRow),
-          update: updateSubscriptionSpy,
-        }),
-        insert: insertSpy,
-      };
-    }
-    if (tableName === 'users') {
-      return {
-        where: vi.fn().mockReturnValue({
-          update: updateUsersSpy,
-          whereNot: vi.fn().mockReturnValue({
-            first: vi.fn().mockResolvedValue(customerIdHolder),
-          }),
-        }),
-      };
-    }
-    return {
-      where: vi.fn().mockReturnThis(),
-      update: vi.fn(),
-      insert: vi.fn(),
-    };
-  });
-
-  return { insertSpy, updateSubscriptionSpy, updateUsersSpy };
-}
-
-function setupStripeMock(subscriptions: StripeTypes.Subscription[]) {
+function setupStripeMock(
+  subscriptions: StripeTypes.Subscription[],
+  email: string | null = 'user@example.com'
+) {
   mockStripeInstance.subscriptions.list.mockResolvedValue({
     data: subscriptions,
     has_more: false,
   });
   mockStripeInstance.customers.retrieve.mockResolvedValue({
     id: 'cus_test456',
-    email: 'user@example.com',
+    email,
     object: 'customer',
   });
 }
 
-describe('updateStripeSubscriptions — batch provisioning fields', () => {
-  beforeEach(() => {
+async function buildDatabase(): Promise<Knex> {
+  const db = knexLib({
+    client: 'better-sqlite3',
+    connection: { filename: ':memory:' },
+    useNullAsDefault: true,
+  });
+  await db.schema.createTable('users', (t) => {
+    t.increments('id');
+    t.string('email');
+    t.string('stripe_customer_id').unique();
+  });
+  await db.schema.createTable('subscriptions', (t) => {
+    t.increments('id');
+    t.string('email').unique();
+    t.boolean('active');
+    t.json('payload');
+    t.string('stripe_product_id');
+    t.string('linked_email').unique();
+    t.timestamp('created_at');
+    t.timestamp('updated_at');
+  });
+  await db.schema.createTable('developer_tiers', (t) => {
+    t.increments('id');
+    t.string('tier_key');
+    t.string('stripe_product_id');
+  });
+  await db.schema.createTable('subscriptions_developer', (t) => {
+    t.increments('id');
+    t.string('stripe_subscription_id').unique();
+    t.integer('user_id');
+    t.string('email');
+    t.string('stripe_product_id');
+    t.boolean('active');
+    t.json('payload');
+    t.timestamp('updated_at');
+  });
+  return db;
+}
+
+describe('updateStripeSubscriptions writes through the webhook path', () => {
+  let db: Knex;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
-    mockIsDeveloperTierProduct.mockResolvedValue(false);
+    db = await buildDatabase();
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  const row = (email = 'user@example.com') =>
+    db('subscriptions').where({ email }).first();
+
+  it('marks a paused subscription inactive, as the webhook does', async () => {
+    await db('subscriptions').insert({
+      email: 'user@example.com',
+      active: true,
+      payload: '{}',
+    });
+    setupStripeMock([
+      buildSubscription(undefined, {
+        pause_collection: {
+          behavior: 'void',
+          resumes_at: null,
+        } as unknown as StripeTypes.Subscription.PauseCollection,
+      }),
+    ]);
+
+    await updateStripeSubscriptions(db);
+
+    expect(Boolean((await row()).active)).toBe(false);
+  });
+
+  it('keeps an active subscription active and records its product id', async () => {
+    setupStripeMock([buildSubscription()]);
+
+    await updateStripeSubscriptions(db);
+
+    expect(await row()).toMatchObject({
+      stripe_product_id: 'prod_autoSync789',
+    });
+    expect(Boolean((await row()).active)).toBe(true);
+  });
+
+  it.each([
+    ['still inside the paid period', 30, true],
+    ['past the end of the paid period', -1, false],
+  ])(
+    'treats a subscription set to cancel at period end and %s as active=%s',
+    async (_when, days, expected) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-29T12:00:00Z'));
+      const cancelAt =
+        Math.floor(new Date('2026-10-29T12:00:00Z').getTime() / 1000) +
+        days * 24 * 60 * 60;
+      setupStripeMock([
+        buildSubscription(undefined, {
+          cancel_at_period_end: true,
+          cancel_at: cancelAt,
+        }),
+      ]);
+
+      await updateStripeSubscriptions(db).finally(() => vi.useRealTimers());
+
+      expect(Boolean((await row()).active)).toBe(expected);
+    }
+  );
+
+  // The sync used to write such a row unlinked, which cancelUnlinkedSubscriptions
+  // would then cancel; it now fails the row the way the webhook always has.
+  it('leaves a row alone, like the webhook, when another row already links the account', async () => {
+    await db('users').insert({
+      email: 'owner@example.com',
+      stripe_customer_id: 'cus_test456',
+    });
+    await db('subscriptions').insert({
+      email: 'old-billing@example.com',
+      active: true,
+      payload: '{}',
+      linked_email: 'owner@example.com',
+    });
+    setupStripeMock([buildSubscription()], 'new-billing@example.com');
+
+    await updateStripeSubscriptions(db);
+
+    expect(await row('new-billing@example.com')).toBeUndefined();
+    expect(await row('old-billing@example.com')).toMatchObject({
+      linked_email: 'owner@example.com',
+    });
+  });
+
+  it('links a subscription paid with another email to the account that holds its customer id', async () => {
+    await db('users').insert({
+      email: 'owner@example.com',
+      stripe_customer_id: 'cus_test456',
+    });
+    await db('subscriptions').insert({
+      email: 'user@example.com',
+      active: true,
+      payload: '{}',
+    });
+    setupStripeMock([buildSubscription()]);
+
+    await updateStripeSubscriptions(db);
+
+    expect(await row()).toMatchObject({ linked_email: 'owner@example.com' });
+  });
+
+  it('keeps the linked account on a subscription paid with another email', async () => {
+    await db('users').insert({
+      email: 'owner@example.com',
+      stripe_customer_id: 'cus_test456',
+    });
+    await db('subscriptions').insert({
+      email: 'user@example.com',
+      active: true,
+      payload: '{}',
+      linked_email: 'owner@example.com',
+    });
+    setupStripeMock([buildSubscription()]);
+
+    await updateStripeSubscriptions(db);
+
+    expect(await row()).toMatchObject({ linked_email: 'owner@example.com' });
+  });
+
+  it('stamps the customer id on the paying account when nobody holds it', async () => {
+    await db('users').insert({ email: 'user@example.com' });
+    setupStripeMock([buildSubscription()]);
+
+    await updateStripeSubscriptions(db);
+
+    expect(
+      await db('users').where({ email: 'user@example.com' }).first()
+    ).toMatchObject({ stripe_customer_id: 'cus_test456' });
+  });
+
+  it('leaves the customer id with the account that already holds it', async () => {
+    await db('users').insert([
+      { email: 'holder@example.com', stripe_customer_id: 'cus_test456' },
+      { email: 'user@example.com', stripe_customer_id: null },
+    ]);
+    const payer = await db('users')
+      .where({ email: 'user@example.com' })
+      .first();
+    setupStripeMock([
+      buildSubscription(undefined, {
+        metadata: { user_id: String(payer.id) },
+      }),
+    ]);
+
+    await updateStripeSubscriptions(db);
+
+    expect(
+      await db('users')
+        .where({ stripe_customer_id: 'cus_test456' })
+        .select('email')
+    ).toEqual([{ email: 'holder@example.com' }]);
+    expect(Boolean((await row()).active)).toBe(true);
+  });
+
+  it('records the account on a developer tier instead of clearing it', async () => {
+    await db('developer_tiers').insert({
+      tier_key: 'starter',
+      stripe_product_id: 'prod_dev_starter',
+    });
+    await db('users').insert({
+      email: 'owner@example.com',
+      stripe_customer_id: 'cus_test456',
+    });
+    const owner = await db('users')
+      .where({ email: 'owner@example.com' })
+      .first();
+    setupStripeMock([buildSubscription('prod_dev_starter')]);
+
+    await updateStripeSubscriptions(db);
+
+    expect(
+      await db('subscriptions_developer').select('user_id', 'email')
+    ).toEqual([{ user_id: owner.id, email: 'owner@example.com' }]);
   });
 
   it('keeps a developer tier out of the email-keyed subscriptions table', async () => {
-    // The ops Sync button reaches this path directly. Without the check, one
-    // press writes every developer tier back into subscriptions and re-creates
-    // the collapse the separate table exists to prevent.
-    mockIsDeveloperTierProduct.mockResolvedValue(true);
-    const { insertSpy, updateSubscriptionSpy } = setupDbMock(null);
-    setupStripeMock([buildSubscription('prod_starter')]);
-
-    await updateStripeSubscriptions();
-
-    expect(mockUpsertDeveloperSubscription).toHaveBeenCalledWith(
-      expect.objectContaining({ stripeProductId: 'prod_starter' })
-    );
-    expect(insertSpy).not.toHaveBeenCalled();
-    expect(updateSubscriptionSpy).not.toHaveBeenCalled();
-  });
-
-  it('inserts stripe_product_id when creating a new subscription row', async () => {
-    const { insertSpy } = setupDbMock(null);
-    setupStripeMock([buildSubscription('prod_autoSync789')]);
-    await updateStripeSubscriptions();
-    expect(insertSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ stripe_product_id: 'prod_autoSync789' })
-    );
-  });
-
-  it('updates stripe_product_id when updating an existing subscription row', async () => {
-    const { updateSubscriptionSpy } = setupDbMock({
-      email: 'user@example.com',
-      active: true,
-      payload: '{}',
+    await db('developer_tiers').insert({
+      tier_key: 'starter',
+      stripe_product_id: 'prod_dev_starter',
     });
-    setupStripeMock([buildSubscription('prod_autoSync789')]);
-    await updateStripeSubscriptions();
-    expect(updateSubscriptionSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ stripe_product_id: 'prod_autoSync789' })
-    );
-  });
+    setupStripeMock([buildSubscription('prod_dev_starter')]);
 
-  it('stamps updated_at when a subscription changes active status', async () => {
-    const { updateSubscriptionSpy } = setupDbMock({
-      email: 'user@example.com',
-      active: false,
-      payload: '{}',
-    });
-    setupStripeMock([buildSubscription('prod_autoSync789')]);
-    await updateStripeSubscriptions();
-    expect(updateSubscriptionSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ active: true, updated_at: expect.any(Date) })
-    );
-  });
+    await updateStripeSubscriptions(db);
 
-  it('stamps updated_at when a subscription is refreshed without a status change', async () => {
-    const { updateSubscriptionSpy } = setupDbMock({
-      email: 'user@example.com',
-      active: true,
-      payload: '{}',
-    });
-    setupStripeMock([buildSubscription('prod_autoSync789')]);
-    await updateStripeSubscriptions();
-    expect(updateSubscriptionSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ updated_at: expect.any(Date) })
-    );
-  });
-
-  it('backfills users.stripe_customer_id for a new subscription', async () => {
-    const { updateUsersSpy } = setupDbMock(null);
-    setupStripeMock([buildSubscription()]);
-    await updateStripeSubscriptions();
-    expect(updateUsersSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ stripe_customer_id: 'cus_test456' })
-    );
-  });
-
-  it('backfills users.stripe_customer_id when updating an existing subscription', async () => {
-    const { updateUsersSpy } = setupDbMock({
-      email: 'user@example.com',
-      active: true,
-      payload: '{}',
-    });
-    setupStripeMock([buildSubscription()]);
-    await updateStripeSubscriptions();
-    expect(updateUsersSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ stripe_customer_id: 'cus_test456' })
-    );
-  });
-
-  it('leaves users.stripe_customer_id alone when another account already holds it', async () => {
-    const { updateUsersSpy } = setupDbMock(
-      { email: 'user@example.com', active: true, payload: '{}' },
-      { id: 99 }
-    );
-    setupStripeMock([buildSubscription()]);
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-    try {
-      await updateStripeSubscriptions();
-      const lines = infoSpy.mock.calls.map((call) => call.join(' '));
-      const skipLine = lines.find((line) => line.includes('already linked'));
-      expect(updateUsersSpy).not.toHaveBeenCalled();
-      expect(errorSpy).not.toHaveBeenCalled();
-      expect(skipLine).toBeDefined();
-      expect(skipLine).not.toContain('cus_test456');
-      expect(skipLine).not.toContain('user@example.com');
-    } finally {
-      errorSpy.mockRestore();
-      infoSpy.mockRestore();
-    }
-  });
-
-  it('inserts stripe_product_id as null when product is absent from subscription', async () => {
-    const { insertSpy } = setupDbMock(null);
-    setupStripeMock([buildSubscription(null)]);
-    await updateStripeSubscriptions();
-    expect(insertSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ stripe_product_id: null })
-    );
+    expect(await row()).toBeUndefined();
+    expect(
+      await db('subscriptions_developer').select('stripe_product_id')
+    ).toEqual([{ stripe_product_id: 'prod_dev_starter' }]);
   });
 });
 
 describe('updateStripeSubscriptions — does not log raw email or customer id', () => {
+  let db: Knex;
   let infoSpy: MockInstance;
   let warnSpy: MockInstance;
   let errorSpy: MockInstance;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    db = await buildDatabase();
     infoSpy = vi.spyOn(console, 'info').mockImplementation(function () {
       return undefined;
     });
@@ -277,10 +332,11 @@ describe('updateStripeSubscriptions — does not log raw email or customer id', 
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     infoSpy.mockRestore();
     warnSpy.mockRestore();
     errorSpy.mockRestore();
+    await db.destroy();
   });
 
   function flatArgs(spy: MockInstance): string {
@@ -290,80 +346,59 @@ describe('updateStripeSubscriptions — does not log raw email or customer id', 
       .join(' | ');
   }
 
-  it('does not interpolate the raw email when creating a new subscription', async () => {
-    setupDbMock(null);
-    setupStripeMock([buildSubscription()]);
-    await updateStripeSubscriptions();
+  it('does not log the raw email or customer id when the customer id is held elsewhere', async () => {
+    await db('users').insert([
+      { email: 'holder@example.com', stripe_customer_id: 'cus_test456' },
+      { email: 'user@example.com', stripe_customer_id: null },
+    ]);
+    const payer = await db('users')
+      .where({ email: 'user@example.com' })
+      .first();
+    setupStripeMock([
+      buildSubscription(undefined, {
+        metadata: { user_id: String(payer.id) },
+      }),
+    ]);
+
+    await updateStripeSubscriptions(db);
+
     expect(flatArgs(infoSpy)).not.toContain('@');
     expect(flatArgs(infoSpy)).not.toContain('cus_test456');
   });
 
-  it('does not interpolate the raw email when updating an existing subscription (status unchanged)', async () => {
-    setupDbMock({ email: 'user@example.com', active: true, payload: '{}' });
-    setupStripeMock([buildSubscription()]);
-    await updateStripeSubscriptions();
-    expect(flatArgs(infoSpy)).not.toContain('@');
-  });
+  it('does not log the raw email or customer id when a customer has no email', async () => {
+    setupStripeMock([buildSubscription()], null);
 
-  it('does not interpolate the raw email when updating an existing subscription (status changed)', async () => {
-    setupDbMock({ email: 'user@example.com', active: false, payload: '{}' });
-    setupStripeMock([buildSubscription()]);
-    await updateStripeSubscriptions();
-    expect(flatArgs(infoSpy)).not.toContain('@');
-  });
+    await updateStripeSubscriptions(db);
 
-  it('does not interpolate the raw email for a scheduled-cancellation subscription still inside the paid window', async () => {
-    setupDbMock({ email: 'user@example.com', active: true, payload: '{}' });
-    const futureUnix = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
-    setupStripeMock([
-      buildSubscription(undefined, {
-        cancel_at_period_end: true,
-        cancel_at: futureUnix,
-      }),
-    ]);
-    await updateStripeSubscriptions();
-    expect(flatArgs(infoSpy)).not.toContain('@');
-  });
-
-  it('does not interpolate the raw email or customer id when a customer has no email', async () => {
-    setupDbMock(null);
-    mockStripeInstance.subscriptions.list.mockResolvedValue({
-      data: [buildSubscription()],
-      has_more: false,
-    });
-    mockStripeInstance.customers.retrieve.mockResolvedValue({
-      id: 'cus_test456',
-      email: null,
-      object: 'customer',
-    });
-    await updateStripeSubscriptions();
     expect(flatArgs(warnSpy)).not.toContain('cus_test456');
   });
 
-  it('does not interpolate the raw email or customer id when the per-subscription update path errors', async () => {
-    const failingDb = {
-      table: vi.fn().mockImplementation(function (tableName: string) {
-        if (tableName === 'subscriptions') {
-          return {
-            where: vi.fn().mockReturnValue({
-              first: vi.fn().mockRejectedValue(new Error('db boom')),
-              update: vi.fn(),
-            }),
-            insert: vi.fn(),
-          };
-        }
-        return {
-          where: vi.fn().mockReturnThis(),
-          update: vi.fn(),
-          insert: vi.fn(),
-        };
-      }),
-    };
-    mockDbInstance.table.mockImplementation(failingDb.table);
+  it('logs only the error class and code when Stripe cannot return the customer', async () => {
     setupStripeMock([buildSubscription()]);
-    await updateStripeSubscriptions();
-    expect(flatArgs(errorSpy)).not.toContain('@');
-    expect(flatArgs(errorSpy)).not.toContain('cus_test456');
+    mockStripeInstance.customers.retrieve.mockRejectedValue(
+      Object.assign(new Error("No such customer: 'cus_test456'"), {
+        code: 'resource_missing',
+      })
+    );
+
+    await updateStripeSubscriptions(db);
+
+    const logged = errorSpy.mock.calls.flat();
+    expect(logged.every((arg) => typeof arg === 'string')).toBe(true);
+    expect(logged.join(' ')).not.toContain('cus_test456');
+  });
+
+  it('logs only the error class and code when the write fails', async () => {
+    await db.schema.dropTable('subscriptions');
+    setupStripeMock([buildSubscription()]);
+
+    await updateStripeSubscriptions(db);
+
+    const logged = errorSpy.mock.calls.flat();
+    expect(logged.every((arg) => typeof arg === 'string')).toBe(true);
+    expect(logged.join(' ')).not.toContain('@');
+    expect(logged.join(' ')).not.toContain('cus_test456');
   });
 });
 

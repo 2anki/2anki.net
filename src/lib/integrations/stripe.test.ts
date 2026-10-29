@@ -539,3 +539,96 @@ describe('updateStoreSubscription developer tiers', () => {
     expect(await isDeveloperTierProduct(db, 'prod_base')).toBe(false);
   });
 });
+
+describe('updateStoreSubscription when a unique link is already taken', () => {
+  let db: Knex;
+
+  beforeEach(async () => {
+    db = knexLib({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('users', (t) => {
+      t.increments('id');
+      t.string('email');
+      t.string('stripe_customer_id').unique();
+    });
+    await db.schema.createTable('subscriptions', (t) => {
+      t.increments('id');
+      t.string('email').unique();
+      t.boolean('active');
+      t.json('payload');
+      t.string('stripe_product_id');
+      t.string('linked_email').unique();
+      t.timestamp('created_at');
+      t.timestamp('updated_at');
+    });
+    await db.schema.createTable('developer_tiers', (t) => {
+      t.increments('id');
+      t.string('tier_key');
+      t.string('stripe_product_id');
+    });
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  test('records a deleted subscription as inactive when another account holds its customer id', async () => {
+    await db('users').insert([
+      { email: 'holder@example.com', stripe_customer_id: 'cus_test123' },
+      { email: 'payer@example.com', stripe_customer_id: null },
+    ]);
+    const payer = await db('users')
+      .where({ email: 'payer@example.com' })
+      .first();
+
+    await updateStoreSubscription(
+      db,
+      makeCustomer('payer@example.com'),
+      makeSubscription('canceled', 'prod_auto_sync', {
+        userId: String(payer.id),
+      })
+    );
+
+    const row = await db('subscriptions')
+      .where({ email: 'payer@example.com' })
+      .first();
+    expect(Boolean(row.active)).toBe(false);
+    expect(
+      await db('users')
+        .where({ stripe_customer_id: 'cus_test123' })
+        .select('email')
+    ).toEqual([{ email: 'holder@example.com' }]);
+  });
+
+  test.each([true, false])(
+    'leaves a row its link and fails loudly, as before (old row active=%s)',
+    async (oldActive) => {
+      await db('users').insert({
+        email: 'owner@example.com',
+        stripe_customer_id: 'cus_test123',
+      });
+      await db('subscriptions').insert({
+        email: 'old-billing@example.com',
+        active: oldActive,
+        payload: '{}',
+        linked_email: 'owner@example.com',
+      });
+
+      await expect(
+        updateStoreSubscription(
+          db,
+          makeCustomer('new-billing@example.com'),
+          makeSubscription('active', 'prod_auto_sync')
+        )
+      ).rejects.toThrow();
+      expect(
+        await db('subscriptions')
+          .where({ email: 'old-billing@example.com' })
+          .first()
+      ).toMatchObject({ linked_email: 'owner@example.com' });
+    }
+  );
+});
