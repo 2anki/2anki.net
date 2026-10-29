@@ -48,6 +48,42 @@ write_root_file() {
     sudo tee "$1" >/dev/null
   fi
 }
+# The spawned process's environment, one variable per line, read whole into a
+# variable. Piping it into `grep -q` let grep exit on its first match while tr
+# was still writing; tr then died of SIGPIPE and pipefail turned a present heap
+# ceiling into a failed deploy (#5120).
+DEPLOY_PROC_DIR="${DEPLOY_PROC_DIR:-/proc}"
+environ_lines() { tr '\0' '\n' < "$DEPLOY_PROC_DIR/$1/environ"; }
+has_heap_ceiling() { [[ "$1" == *"--max-old-space-size="* ]]; }
+has_arena_cap() { [[ $'\n'"$1"$'\n' == *$'\nMALLOC_ARENA_MAX=2\n'* ]]; }
+# Removes the next color and fails when its process lacks the heap ceiling or
+# the arena cap. A read that fails after the readability check (the process
+# exited) counts as missing, so the color is still removed.
+verify_next_env() {
+  local pid="$1" env
+  if [ -z "$pid" ] || [ ! -r "$DEPLOY_PROC_DIR/$pid/environ" ]; then
+    log "WARNING: could not read the environment of server-$NEXT — heap ceiling unverified"
+    return 0
+  fi
+  env="$(environ_lines "$pid")" || env=''
+  if has_heap_ceiling "$env"; then
+    log "heap ceiling verified on server-$NEXT (pid $pid)"
+  else
+    log "server-$NEXT (pid $pid) started WITHOUT a heap ceiling — removing it; current color still live"
+    run pm2 delete "server-$NEXT"
+    return 1
+  fi
+  # Same check for the glibc arena cap from the ecosystem env: if pm2 drops
+  # it, worker-thread recycles strand malloc arenas again and the process
+  # climbs to the 12G restart (five times between 2026-08 and 2026-10).
+  if has_arena_cap "$env"; then
+    log "malloc arena cap verified on server-$NEXT (pid $pid)"
+  else
+    log "server-$NEXT (pid $pid) started WITHOUT MALLOC_ARENA_MAX=2 — removing it; current color still live"
+    run pm2 delete "server-$NEXT"
+    return 1
+  fi
+}
 
 wait_for_sha() {
   local url="$1" actual
@@ -148,29 +184,7 @@ run pm2 start "$ECOSYSTEM" --only "server-$NEXT" --update-env
 # fails the deploy rather than waiting for the next out-of-memory crash.
 if [ "$DRY_RUN" != "1" ]; then
   NEXT_PID="$(pm2 pid "server-$NEXT" 2>/dev/null | tr -d '[:space:]')"
-  if [ -n "$NEXT_PID" ] && [ -r "/proc/$NEXT_PID/environ" ]; then
-    if tr '\0' '\n' < "/proc/$NEXT_PID/environ" \
-      | grep -q -- '--max-old-space-size='; then
-      log "heap ceiling verified on server-$NEXT (pid $NEXT_PID)"
-    else
-      log "server-$NEXT (pid $NEXT_PID) started WITHOUT a heap ceiling — removing it; current color still live"
-      run pm2 delete "server-$NEXT"
-      exit 1
-    fi
-    # Same check for the glibc arena cap from the ecosystem env: if pm2 drops
-    # it, worker-thread recycles strand malloc arenas again and the process
-    # climbs to the 12G restart (five times between 2026-08 and 2026-10).
-    if tr '\0' '\n' < "/proc/$NEXT_PID/environ" \
-      | grep -qx 'MALLOC_ARENA_MAX=2'; then
-      log "malloc arena cap verified on server-$NEXT (pid $NEXT_PID)"
-    else
-      log "server-$NEXT (pid $NEXT_PID) started WITHOUT MALLOC_ARENA_MAX=2 — removing it; current color still live"
-      run pm2 delete "server-$NEXT"
-      exit 1
-    fi
-  else
-    log "WARNING: could not read the environment of server-$NEXT — heap ceiling unverified"
-  fi
+  verify_next_env "$NEXT_PID" || exit 1
 fi
 
 if ! wait_for_sha "http://127.0.0.1:$NEXT_PORT$HEALTH_PATH"; then
