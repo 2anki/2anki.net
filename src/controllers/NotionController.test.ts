@@ -523,6 +523,16 @@ describe('NotionController', () => {
       );
     });
 
+    it('sends no rescue rule when the request carries none, as iOS and search do', async () => {
+      setupConvertMocks();
+
+      await controller.convert(req as express.Request, res as express.Response);
+
+      expect(runConversion).toHaveBeenCalledWith(
+        expect.objectContaining({ rescueRule: undefined })
+      );
+    });
+
     it.each([['toString'], ['ai'], [42]])(
       'drops a rescue rule outside the vocabulary (%s)',
       async (rescueRule) => {

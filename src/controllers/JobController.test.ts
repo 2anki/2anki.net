@@ -4,6 +4,10 @@ import JobController from './JobController';
 import JobService from '../services/JobService';
 import DeleteJobUseCase from '../usecases/jobs/DeleteJobUseCase';
 import * as getOwnerModule from '../lib/User/getOwner';
+import {
+  CONVERSION_PROCESS_CRASHED_REASON,
+  EMPTY_DECK_FAILURE_REASON,
+} from '../usecases/jobs/jobFailureReason';
 
 describe('JobController', () => {
   let jobService: JobService;
@@ -110,6 +114,7 @@ describe('JobController', () => {
         object_id: 'notion-page-uuid',
         status: 'failed',
         type: 'page',
+        job_reason_failure: EMPTY_DECK_FAILURE_REASON,
         conversion_report: { rescue_candidates: [offer] },
       },
     ]);
@@ -120,6 +125,27 @@ describe('JobController', () => {
     const [sent] = (res.send as Mock).mock.calls[0][0];
     expect(sent.rescue_candidates).toEqual([offer]);
     expect(sent).not.toHaveProperty('conversion_report');
+  });
+
+  it('serves no stale offer when a re-run failed for another reason', async () => {
+    (jobService.getJobsByOwner as Mock).mockResolvedValue([
+      {
+        id: 10,
+        object_id: 'notion-page-uuid',
+        status: 'failed',
+        type: 'page',
+        job_reason_failure: CONVERSION_PROCESS_CRASHED_REASON,
+        conversion_report: {
+          rescue_candidates: [{ rule: 'paragraphs', cards: 4 }],
+        },
+      },
+    ]);
+    await jobController.getJobsByOwner(
+      req as express.Request,
+      res as express.Response
+    );
+    const [sent] = (res.send as Mock).mock.calls[0][0];
+    expect(sent).not.toHaveProperty('rescue_candidates');
   });
 
   it('serves no rescue offer once the job is no longer failed', async () => {

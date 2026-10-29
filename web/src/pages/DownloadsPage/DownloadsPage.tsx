@@ -41,6 +41,10 @@ import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import type JobResponse from '@server/types/JobResponse';
 import type { RescueCandidate } from '../../lib/upload/isRescueCandidate';
 import {
+  rescueStatusFromResponse,
+  type RescueStatus,
+} from './helpers/rescueStatus';
+import {
   ThinDeckNotice,
   shouldShowThinDeckNotice,
 } from './components/ThinDeckNotice';
@@ -302,7 +306,7 @@ function isNotionTokenExpired(
 interface FailurePanelRescue {
   candidates: RescueCandidate[] | undefined;
   onRescue: (candidate: RescueCandidate) => void;
-  pending: boolean;
+  status: RescueStatus | null;
 }
 
 function renderFailurePanelContent(
@@ -332,7 +336,7 @@ function renderFailurePanelContent(
       onMapColumns={onMapColumns}
       rescue={rescue.candidates}
       onRescue={rescue.onRescue}
-      rescuePending={rescue.pending}
+      rescueStatus={rescue.status}
     />
   );
 }
@@ -401,9 +405,10 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   const [reportModalJob, setReportModalJob] = useState<JobResponse | null>(
     null
   );
-  const [rescuePendingJobId, setRescuePendingJobId] = useState<
-    JobResponse['id'] | null
-  >(null);
+  const [rescueState, setRescueState] = useState<{
+    jobId: JobResponse['id'];
+    status: RescueStatus;
+  } | null>(null);
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [downloadedCutDeck, setDownloadedCutDeck] = useState(false);
   const [ratedContext, setRatedContext] = useState<
@@ -515,24 +520,31 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
     job: JobResponse,
     candidate: RescueCandidate
   ) => {
-    if (rescuePendingJobId != null) return;
-    setRescuePendingJobId(job.id);
+    if (rescueState?.status.kind === 'building') return;
+    setRescueState({ jobId: job.id, status: { kind: 'building' } });
     track('notion_rescue_chosen', {
       rule: candidate.rule,
       cards: candidate.cards,
     });
+    let next: RescueStatus | null;
     try {
-      await backend.convert(
+      const response = await backend.convert(
         job.object_id,
         job.type,
         job.title,
         undefined,
         candidate.rule
       );
-      await refreshJobs();
-    } finally {
-      setRescuePendingJobId(null);
+      next = await rescueStatusFromResponse(response);
+    } catch {
+      next = { kind: 'failed' };
     }
+    if (next == null) {
+      await refreshJobs();
+      setRescueState(null);
+      return;
+    }
+    setRescueState({ jobId: job.id, status: next });
   };
 
   const activeJobs = jobs.filter((j) => isActiveJob(j.status));
@@ -1066,8 +1078,10 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                               row.job,
                                               candidate
                                             ),
-                                          pending:
-                                            rescuePendingJobId === row.job.id,
+                                          status:
+                                            rescueState?.jobId === row.job.id
+                                              ? rescueState.status
+                                              : null,
                                         }
                                       )}
                                     </td>

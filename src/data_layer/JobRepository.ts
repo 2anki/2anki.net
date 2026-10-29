@@ -245,8 +245,9 @@ class JobRepository {
     if (cardCount != null && cardCount >= 0) {
       update.card_count = cardCount;
     }
-    // Written only when the caller has one (the done write); a racing failed
-    // write never carries the key, so it can never null out a stored report.
+    // Written only when the caller has one: the done write, or an empty Notion
+    // deck's failed write carrying its rescue offer. Every other failed write
+    // leaves the key out, so it never nulls out a stored report.
     if (conversionReport != null) {
       update.conversion_report = JSON.stringify(conversionReport);
     }

@@ -50,6 +50,22 @@ describe('uploadIdentityKey', () => {
     expect(third).toBe(`${first}#3`);
     expect(new Set([first, second, third]).size).toBe(3);
   });
+
+  it('keys an escaped front the way the unescaped front was keyed', () => {
+    const before = uploadIdentityKey({
+      name: 'A & B < C "quoted" it\'s &amp; {{type:Input}}',
+    });
+    const after = uploadIdentityKey({
+      name: 'A &amp; B &lt; C &quot;quoted&quot; it&#39;s &amp;amp; {{type:Input}}',
+      frontEscaped: true,
+    });
+    expect(after).toBe(before);
+  });
+
+  it('leaves entities alone on a front that was not escaped', () => {
+    const plain = uploadIdentityKey({ name: 'Salt &amp; water' });
+    expect(plain).not.toBe(uploadIdentityKey({ name: 'Salt & water' }));
+  });
 });
 
 describe('hashSourceKey', () => {

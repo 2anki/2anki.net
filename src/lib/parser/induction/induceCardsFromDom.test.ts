@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { uploadIdentityKey } from '../../anki/uploadCardIdentity';
 import {
   induceCardsFromDom,
   domPlainTextLength,
@@ -255,6 +256,18 @@ describe('induceCardsFromDom', () => {
     expect(notes[0].name).toBe(
       'Typed &lt;img src=x onerror=alert(1)&gt; stays text here.'
     );
+  });
+
+  it('keeps the upload identity a paragraphs card had before its front was escaped', () => {
+    const sentence = 'Salt & water < sugar & "syrup" in it\'s cell here.';
+    const dom = load(
+      `<p>Salt &amp; water &lt; sugar &amp; "syrup" in it's cell here. The rest explains it.</p>`
+    );
+
+    const [note] = induceCardsFromDom(dom, 'paragraphs');
+
+    expect(note.name).not.toBe(sentence);
+    expect(uploadIdentityKey(note)).toBe(uploadIdentityKey({ name: sentence }));
   });
 
   it('measures the plain-text length of the page body', () => {

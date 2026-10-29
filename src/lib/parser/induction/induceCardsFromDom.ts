@@ -394,14 +394,20 @@ export function paragraphFirstSentenceSpan(text: string): FirstSentenceSpan {
   };
 }
 
-function paragraphFront(dom: CheerioAPI, paragraph: Element): string {
+interface ParagraphFront {
+  html: string;
+  escaped: boolean;
+}
+
+function paragraphFront(dom: CheerioAPI, paragraph: Element): ParagraphFront {
   const text = textOf(dom, paragraph);
   const emphasis = dom(paragraph).find(EMPHASIS_SELECTOR).first();
   if (isParagraphEmphasisFront(emphasis.text().trim(), text)) {
-    return (emphasis.html() ?? '').trim();
+    return { html: (emphasis.html() ?? '').trim(), escaped: false };
   }
   const { end, truncated } = paragraphFirstSentenceSpan(text);
-  return `${escapeHtml(text.slice(0, end))}${truncated ? '…' : ''}`;
+  const sentence = `${text.slice(0, end)}${truncated ? '…' : ''}`;
+  return { html: escapeHtml(sentence), escaped: true };
 }
 
 // One card per prose paragraph: the bold or highlighted term (or the first
@@ -411,7 +417,12 @@ function induceParagraphCards(dom: CheerioAPI): Note[] {
   for (const block of topLevelBlocks(dom)) {
     if (tagName(block) !== 'p') continue;
     if (textOf(dom, block).length < PARAGRAPH_MIN_CHARS) continue;
-    pushCard(notes, paragraphFront(dom, block), innerHtml(dom, block));
+    const front = paragraphFront(dom, block);
+    const before = notes.length;
+    pushCard(notes, front.html, innerHtml(dom, block));
+    if (front.escaped && notes.length > before) {
+      notes[before].frontEscaped = true;
+    }
   }
   return notes;
 }

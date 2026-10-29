@@ -7,6 +7,7 @@ Batch mode:                 python create_deck.py --batch <manifest.json>
 Manifest shape: [{"input": "/abs/path/deck_info.json", "output": "/abs/path/out.apkg"}, ...]
 """
 
+import html
 import traceback
 import json
 import sys
@@ -282,6 +283,8 @@ def build_one_deck(data_file, template_dir):
             else:
                 card_type = "cloze" if card.get("cloze") else ("mcq" if card.get("mcq") else ("input" if card.get("enableInput") else "basic"))
                 guid_value = front if card.get('hierarchy', False) else fields[0]
+                if card.get("frontEscaped", False):
+                    guid_value = html.unescape(guid_value)
                 guid = _content_guid(deck["name"], guid_value, card_type, back, content_guid_seen)
             my_note = N2ANote(model, fields=fields, tags=tags,
                               guid=guid, mod=card.get("mod"))

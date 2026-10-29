@@ -14,6 +14,7 @@ import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { startUnlimitedUpgrade } from '../../../../lib/backend/startUnlimitedUpgrade';
 import { track } from '../../../../lib/analytics/track';
 import { formatResetDate } from './formatResetDate';
+import type { RescueStatus } from '../../helpers/rescueStatus';
 import { formatCount } from '../../../UploadPage/helpers/describeEmptyReading';
 import type {
   RescueCandidate,
@@ -85,7 +86,7 @@ interface FailedProps {
   onMapColumns: () => void;
   rescue?: RescueCandidate[];
   onRescue?: (candidate: RescueCandidate) => void;
-  rescuePending?: boolean;
+  rescueStatus?: RescueStatus | null;
 }
 
 interface SuccessProps {
@@ -197,16 +198,50 @@ function PaywalledVariant({
   );
 }
 
+const RESCUE_STATUS_KEYS: Record<
+  Exclude<RescueStatus['kind'], 'limit'>,
+  string
+> = {
+  building: 'conversionResult.rescueBuilding',
+  oneAtATime: 'conversionResult.rescueOneAtATime',
+  alreadyRunning: 'conversionResult.rescueAlreadyRunning',
+  failed: 'conversionResult.rescueFailed',
+};
+
+function RescueStatusLine({
+  status,
+}: Readonly<{ status: RescueStatus | null }>) {
+  const { t } = useTranslation();
+  if (status == null) {
+    return null;
+  }
+  if (status.kind === 'limit') {
+    return (
+      <>
+        {t('conversionResult.paywall.headlineReached', {
+          limit: status.limit,
+        })}
+        .{' '}
+        <Link to={UNLIMITED_PRICING_HREF}>
+          {t('conversionResult.paywall.upgradeUnlimited')}
+        </Link>
+      </>
+    );
+  }
+  return <>{t(RESCUE_STATUS_KEYS[status.kind])}</>;
+}
+
 function RescueOffer({
   rescue,
   onRescue,
-  pending,
+  status,
 }: Readonly<{
   rescue: RescueCandidate[];
   onRescue: (candidate: RescueCandidate) => void;
-  pending: boolean;
+  status: RescueStatus | null;
 }>) {
   const { t } = useTranslation();
+  const building = status?.kind === 'building';
   return (
     <div className={styles.rescueActions}>
       <p className={styles.rescueLead}>
@@ -217,9 +252,11 @@ function RescueOffer({
           <button
             type="button"
             className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
-            disabled={pending}
-            aria-busy={pending}
-            onClick={() => onRescue(candidate)}
+            aria-disabled={building}
+            aria-busy={building}
+            onClick={() => {
+              if (!building) onRescue(candidate);
+            }}
           >
             {t(`upload.form.${RESCUE_LABEL_KEYS.get(candidate.rule)}`, {
               count: candidate.cards,
@@ -240,6 +277,9 @@ function RescueOffer({
           )}
         </div>
       ))}
+      <p className={styles.rescueStatus} role="status">
+        <RescueStatusLine status={status} />
+      </p>
     </div>
   );
 }
@@ -250,7 +290,7 @@ function FailedVariant({
   onMapColumns,
   rescue = [],
   onRescue,
-  rescuePending = false,
+  rescueStatus = null,
 }: Omit<FailedProps, 'variant' | 'title'>) {
   const { t } = useTranslation();
   if (source === 'notion' && failureReason === NOTION_TOKEN_EXPIRED_REASON) {
@@ -318,7 +358,7 @@ function FailedVariant({
         <RescueOffer
           rescue={rescue}
           onRescue={onRescue}
-          pending={rescuePending}
+          status={rescueStatus}
         />
       ) : null;
     return emptyDeckPanel(
@@ -418,7 +458,7 @@ export function ConversionResult(props: Readonly<ConversionResultProps>) {
       onMapColumns={props.onMapColumns}
       rescue={props.rescue}
       onRescue={props.onRescue}
-      rescuePending={props.rescuePending}
+      rescueStatus={props.rescueStatus}
     />
   );
 }

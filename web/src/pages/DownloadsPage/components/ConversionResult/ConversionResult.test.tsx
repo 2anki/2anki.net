@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConversionResult } from './ConversionResult';
 import { parseMonthlyLimitPayload } from './parseMonthlyLimitPayload';
+import type { RescueStatus } from '../../helpers/rescueStatus';
 
 const mockTrack = vi.fn();
 vi.mock('../../../../lib/analytics/track', () => ({
@@ -468,7 +469,7 @@ describe('ConversionResult — failed variant', () => {
     ).toBeInTheDocument();
   });
 
-  it('disables the offer while the picked deck is being built', () => {
+  function renderOffer(rescueStatus: RescueStatus | null, onRescue = vi.fn()) {
     render(
       <MemoryRouter>
         <ConversionResult
@@ -478,15 +479,48 @@ describe('ConversionResult — failed variant', () => {
           source="notion"
           onMapColumns={vi.fn()}
           rescue={[paragraphsOffer]}
-          onRescue={vi.fn()}
-          rescuePending
+          onRescue={onRescue}
+          rescueStatus={rescueStatus}
         />
       </MemoryRouter>
     );
+    return onRescue;
+  }
 
+  it('says the deck is building and ignores a second tap while it runs', () => {
+    const onRescue = renderOffer({ kind: 'building' });
+
+    const button = screen.getByRole('button', {
+      name: 'Make 4 cards from the paragraphs',
+    });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(button);
+    expect(onRescue).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent('Building your deck…');
+  });
+
+  it('points a free user over the monthly limit at the upgrade', () => {
+    renderOffer({ kind: 'limit', limit: 100 });
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "You've reached your 100 free cards this month."
+    );
+    expect(
+      screen.getByRole('link', { name: 'Upgrade to Pro' })
+    ).toHaveAttribute('href', '/pricing?source=downloads-limit');
+  });
+
+  it.each([
+    [{ kind: 'oneAtATime' } as const, 'Free plan converts one page at a time.'],
+    [{ kind: 'alreadyRunning' } as const, 'This page is already converting.'],
+    [{ kind: 'failed' } as const, "Couldn't start this deck. Try again."],
+  ])('explains a re-run that did not start (%o)', (status, text) => {
+    renderOffer(status);
+
+    expect(screen.getByRole('status')).toHaveTextContent(text);
     expect(
       screen.getByRole('button', { name: 'Make 4 cards from the paragraphs' })
-    ).toBeDisabled();
+    ).not.toHaveAttribute('aria-disabled', 'true');
   });
 
   it('does not offer a rescue when a card filter emptied the deck', () => {

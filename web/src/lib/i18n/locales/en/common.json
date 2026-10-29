@@ -763,7 +763,11 @@
     "emptyDeckNoContent": "This page had no text we could read. Check that you exported it with its content, then convert again.",
     "emptyDeckNotionEmptyPage": "This Notion page looks empty, or 2anki can't see what's on it. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again.",
     "connectNotionDocs": "How to share a page with 2anki",
-    "rescueLeadNotion": "You can still make cards from this page:"
+    "rescueLeadNotion": "You can still make cards from this page:",
+    "rescueBuilding": "Building your deck…",
+    "rescueOneAtATime": "Free plan converts one page at a time. Wait for the current one to finish, then try again.",
+    "rescueAlreadyRunning": "This page is already converting. Its deck shows up here when it's ready.",
+    "rescueFailed": "Couldn't start this deck. Try again."
   },
   "modals": {
     "consent": {

@@ -85,12 +85,14 @@ function blockList(results: unknown[]) {
 
 function makeApi(childrenById: Record<string, unknown[]>): NotionAPIWrapper {
   return {
-    getPage: vi.fn().mockResolvedValue({
-      id: 'page-1',
-      object: 'page',
-      created_time: '',
-      last_edited_time: '',
-    }),
+    getPage: vi.fn().mockImplementation((id: string) =>
+      Promise.resolve({
+        id,
+        object: 'page',
+        created_time: '',
+        last_edited_time: '',
+      })
+    ),
     getPageTitle: vi.fn().mockResolvedValue('Study Notes'),
     getTopLevelTags: vi.fn().mockResolvedValue([]),
     getBlocks: vi
@@ -99,6 +101,23 @@ function makeApi(childrenById: Record<string, unknown[]>): NotionAPIWrapper {
         Promise.resolve(blockList(childrenById[id] ?? []))
       ),
   } as unknown as NotionAPIWrapper;
+}
+
+function childPage(id: string) {
+  return {
+    object: 'block',
+    id,
+    parent: { type: 'page_id', page_id: 'page-1' },
+    created_time: '',
+    last_edited_time: '',
+    created_by: { object: 'user', id: 'u' },
+    last_edited_by: { object: 'user', id: 'u' },
+    has_children: true,
+    archived: false,
+    in_trash: false,
+    type: 'child_page',
+    child_page: { title: id },
+  };
 }
 
 function makeHandler(api: NotionAPIWrapper, settings = new CardOption({})) {
@@ -225,5 +244,93 @@ describe('Notion empty-deck paragraphs offer', () => {
 
     expect(handler.emptyDeckReason()).toBe('no_content');
     expect(handler.rescueCandidates).toEqual([]);
+  });
+});
+
+describe('Notion picked rescue rule across nested pages and sub-decks', () => {
+  it('leaves a prose child page alone when the parent page makes toggle cards', async () => {
+    const toggle = block('toggle', [richText('What is osmosis?')], true);
+    const api = makeApi({
+      'page-1': [toggle, childPage('child-1')],
+      [toggle.id]: [
+        block('paragraph', [richText('Water crossing a membrane.')]),
+      ],
+      'child-1': proseParagraphs(),
+    });
+    const handler = makeHandler(api);
+
+    const decks = await convertPage(handler, 'paragraphs');
+
+    const cards = decks.flatMap((deck) => deck.cards);
+    expect(cards.map((card) => card.name)).toEqual([
+      expect.stringContaining('What is osmosis?'),
+    ]);
+    expect(handler.inducedRule).toBeUndefined();
+    expect(handler.cardCount).toBe(1);
+  });
+
+  it('builds the picked rule on every empty page when nothing else made cards', async () => {
+    const api = makeApi({
+      'page-1': [...proseParagraphs(), childPage('child-1')],
+      'child-1': proseParagraphs(),
+    });
+    const handler = makeHandler(api);
+
+    const decks = await convertPage(handler, 'paragraphs');
+
+    expect(decks.map((deck) => deck.cards.length)).toEqual([3, 3]);
+    expect(handler.cardCount).toBe(6);
+    expect(handler.inducedRule).toMatchObject({
+      rule: 'paragraphs',
+      outcome: 'rescue_chosen',
+    });
+  });
+
+  function chapterRules() {
+    const rules = new ParserRules();
+    rules.setDeckTypes(['page', 'heading_1']);
+    return rules;
+  }
+
+  function chaptersApi() {
+    const chapterA = block('heading_1', [richText('Chapter A')], true);
+    const chapterB = block('heading_1', [richText('Chapter B')], true);
+    return makeApi({
+      'page-1': [chapterA, chapterB],
+      [chapterA.id]: proseParagraphs().slice(0, 2),
+      [chapterB.id]: proseParagraphs().slice(1, 3),
+    });
+  }
+
+  function convertChapters(handler: BlockHandler, rescueRule?: RescueRule) {
+    return handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: chapterRules(),
+      decks: [],
+      parentName: '',
+      rescueRule,
+    });
+  }
+
+  it('counts paragraphs across sub-decks on a paid walk so the offer matches the deck', async () => {
+    const handler = makeHandler(chaptersApi());
+    handler.useAll = true;
+
+    await convertChapters(handler);
+
+    expect(handler.rescueCandidates).toMatchObject([
+      { rule: 'paragraphs', cards: 4 },
+    ]);
+  });
+
+  it('builds as many cards as the paid-walk offer counted', async () => {
+    const handler = makeHandler(chaptersApi());
+    handler.useAll = true;
+
+    const decks = await convertChapters(handler, 'paragraphs');
+
+    expect(decks.flatMap((deck) => deck.cards)).toHaveLength(4);
+    expect(handler.cardCount).toBe(4);
   });
 });

@@ -685,6 +685,64 @@ describe('DownloadsPage failure reason panel', () => {
     );
   });
 
+  it('tells a free user over the limit why the picked deck did not start', async () => {
+    mockConvert.mockClear();
+    mockConvert.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          reason: 'monthly_limit',
+          cards_used: 100,
+          limit: 100,
+        }),
+        { status: 402 }
+      )
+    );
+    mockJobs = [
+      buildJob({
+        status: 'failed',
+        job_reason_failure:
+          "No cards in this deck yet. 2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.",
+        rescue_candidates: [{ rule: 'paragraphs', cards: 5 }],
+      }),
+    ];
+    renderAt('/downloads');
+    vi.useRealTimers();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Make 5 cards from the paragraphs' })
+    );
+
+    expect(
+      await screen.findByText(/You've reached your 100 free cards this month/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Upgrade to Pro' })
+    ).toHaveAttribute('href', '/pricing?source=downloads-limit');
+  });
+
+  it('asks to try again when the picked deck could not be reached', async () => {
+    mockConvert.mockClear();
+    mockConvert.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    mockJobs = [
+      buildJob({
+        status: 'failed',
+        job_reason_failure:
+          "No cards in this deck yet. 2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.",
+        rescue_candidates: [{ rule: 'paragraphs', cards: 5 }],
+      }),
+    ];
+    renderAt('/downloads');
+    vi.useRealTimers();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Make 5 cards from the paragraphs' })
+    );
+
+    expect(
+      await screen.findByText("Couldn't start this deck. Try again.")
+    ).toBeInTheDocument();
+  });
+
   it('does not render a show/collapse toggle for empty deck errors', () => {
     mockJobs = [
       buildJob({

@@ -76,7 +76,10 @@ import {
   type RescueCandidate,
   type RescueRule,
 } from '../../../types/RescueCandidate';
-import { scoreCandidateDeck } from '../../../lib/parser/scoreCandidateDeck';
+import {
+  scoreCandidateDeck,
+  type DeckScore,
+} from '../../../lib/parser/scoreCandidateDeck';
 import {
   ConversionTruncation,
   hasRuleBasedSubDecks,
@@ -105,6 +108,22 @@ import getSubDeckName from './helpers/getSubDeckName';
 import mergeChildPageSettings from './helpers/mergeChildPageSettings';
 import RenderNotionLink from './RenderNotionLink';
 import { ISettingsRepository } from '../../../data_layer/SettingsRepository';
+
+interface ChosenRescue {
+  rule: RescueRule;
+  original: Note[];
+  cards: Note[];
+  score: DeckScore;
+}
+
+interface DeferredChosenRescue extends ChosenRescue {
+  deck: Deck;
+}
+
+interface EmptyCardsRescue {
+  cards: Note[];
+  chosen: ChosenRescue | null;
+}
 
 interface Finder {
   parentType: string;
@@ -339,12 +358,26 @@ class BlockHandler implements IBlockRenderer {
   inducedRule?: InducedRescue;
 
   // Structures an empty page could still be cut into, offered back on the
-  // failed job so the person can pick one after seeing sample cards.
-  rescueCandidates: RescueCandidate[] = [];
+  // failed job so the person can pick one after seeing sample cards. Offer-only
+  // rules are summed across every deck before the minimum applies, so the
+  // count on the button is what picking it builds.
+  get rescueCandidates(): RescueCandidate[] {
+    return mergeRescueCandidates([
+      this.offeredStructures,
+      this.offeredOnly.filter(({ cards }) => cards >= OFFER_ONLY_MIN_CARDS),
+    ]);
+  }
 
-  // A structure the person picked from that offer; consulted only when the
-  // page makes no cards on its own.
+  private offeredStructures: RescueCandidate[] = [];
+
+  private offeredOnly: RescueCandidate[] = [];
+
+  // A structure the person picked from that offer. Each empty deck builds it
+  // aside, and the cards land only if the whole conversion made none on its
+  // own, so a pick can never change a page next to one that has toggles.
   private chosenRescueRule?: RescueRule;
+
+  private deferredChosen: DeferredChosenRescue[] = [];
 
   // Blocks the top-level page walk fetched. Undefined until a page is walked,
   // so a database job never reads as an empty page.
@@ -1026,8 +1059,41 @@ class BlockHandler implements IBlockRenderer {
   }
 
   async findFlashcards(locator: Finder): Promise<Deck[]> {
-    const { parentType, topLevelId, rules, decks } = locator;
     this.chosenRescueRule = locator.rescueRule;
+    this.deferredChosen = [];
+    const decks = await this.findDecks(locator);
+    this.applyChosenRescue(decks);
+    return decks;
+  }
+
+  // The picked rule replaces the empty decks only when no deck in the whole
+  // conversion has a usable card; otherwise the page already makes a deck and
+  // the pick is ignored.
+  private applyChosenRescue(decks: Deck[]): void {
+    const deferred = this.deferredChosen;
+    this.deferredChosen = [];
+    if (
+      deferred.length === 0 ||
+      decks.some((deck) => Deck.hasUsableCards(deck.cards))
+    ) {
+      return;
+    }
+    for (const { deck, rule, original, cards, score } of deferred) {
+      this.discountCards(original);
+      this.accountForRescuedCards(cards);
+      deck.cards = cards;
+      this.recordInducedRule({ rule, outcome: 'rescue_chosen', score });
+    }
+  }
+
+  private deferChosenRescue(deck: Deck, chosen: ChosenRescue | null): void {
+    if (chosen != null) {
+      this.deferredChosen.push({ ...chosen, deck });
+    }
+  }
+
+  private async findDecks(locator: Finder): Promise<Deck[]> {
+    const { parentType, topLevelId, rules, decks } = locator;
     if (parentType === 'page') {
       try {
         return await this.findFlashcardsFromPage(locator);
@@ -1741,7 +1807,8 @@ class BlockHandler implements IBlockRenderer {
           headingContextMap
         )
       );
-      cards = this.rescueEmptyCards(cards, blocks);
+      const rescue = this.rescueEmptyCards(cards, blocks);
+      cards = rescue.cards;
       if (columnCardBlocks.length > 0) {
         const columnCards = dropAlreadySeen(
           await this.getFlashcards(
@@ -1764,6 +1831,7 @@ class BlockHandler implements IBlockRenderer {
         this.settings
       );
       decks.push(deck);
+      this.deferChosenRescue(deck, rescue.chosen);
     }
 
     // Traverse child_page blocks in strict order
@@ -1883,7 +1951,9 @@ class BlockHandler implements IBlockRenderer {
   // blocks already in memory — zero extra Notion requests. Each candidate is
   // scored; the best that clears the quality floor ships, ties broken most
   // conservative first. Nothing above the floor means we fail honest.
-  private induceRescueDeck(blocks: GetBlockResponse[]): Note[] | null {
+  private induceRescueDeck(
+    blocks: GetBlockResponse[]
+  ): Note[] | Omit<ChosenRescue, 'original'> | null {
     const rules = this.rescueCandidateRules();
     if (rules.length === 0) {
       return null;
@@ -1919,12 +1989,13 @@ class BlockHandler implements IBlockRenderer {
 
   // The person picked a structure on the failed job after seeing its sample,
   // so the quality floor steps aside, as it does for uploads. Only reached
-  // once no candidate cleared the floor, so a forged rule can never replace a
-  // deck the page makes on its own. Database row walks never offer one.
+  // once no candidate cleared the floor, and held back until the whole
+  // conversion turns out empty, so a forged rule can never replace a deck the
+  // page makes on its own. Database row walks never offer one.
   private induceChosenRule(
     blocks: GetBlockResponse[],
     rules: InducedRule[]
-  ): Note[] | null {
+  ): Omit<ChosenRescue, 'original'> | null {
     const rule = this.chosenRescueRule;
     if (
       rule == null ||
@@ -1942,12 +2013,11 @@ class BlockHandler implements IBlockRenderer {
     if (cards.length === 0) {
       return null;
     }
-    this.recordInducedRule({
+    return {
       rule,
-      outcome: 'rescue_chosen',
+      cards,
       score: scoreCandidateDeck(cards, blocksPlainTextLength(blocks)),
-    });
-    return cards;
+    };
   }
 
   private offerRescue(
@@ -1969,12 +2039,12 @@ class BlockHandler implements IBlockRenderer {
         cards: cards.length,
         sample: toRescueSample(cards, toSampleText),
       };
-    }).filter(({ cards }) => cards >= OFFER_ONLY_MIN_CARDS);
-    this.rescueCandidates = mergeRescueCandidates([
-      this.rescueCandidates,
+    });
+    this.offeredStructures = mergeRescueCandidates([
+      this.offeredStructures,
       candidates,
-      offerOnly,
     ]);
+    this.offeredOnly = mergeRescueCandidates([this.offeredOnly, offerOnly]);
   }
 
   private recordInducedRule(next: InducedRescue): void {
@@ -1997,17 +2067,23 @@ class BlockHandler implements IBlockRenderer {
   // rescue never attempted. Measure what survives cleaning instead, and induce
   // candidate decks over the blocks already in memory so no Notion request is
   // added.
-  private rescueEmptyCards(cards: Note[], blocks: GetBlockResponse[]): Note[] {
+  private rescueEmptyCards(
+    cards: Note[],
+    blocks: GetBlockResponse[]
+  ): EmptyCardsRescue {
     if (Deck.hasUsableCards(cards)) {
-      return this.rescueDegenerateYield(cards, blocks);
+      return { cards: this.rescueDegenerateYield(cards, blocks), chosen: null };
     }
     const rescued = this.induceRescueDeck(blocks);
     if (rescued == null) {
-      return cards;
+      return { cards, chosen: null };
     }
-    this.discountCards(cards);
-    this.accountForRescuedCards(rescued);
-    return rescued;
+    if (Array.isArray(rescued)) {
+      this.discountCards(cards);
+      this.accountForRescuedCards(rescued);
+      return { cards: rescued, chosen: null };
+    }
+    return { cards, chosen: { ...rescued, original: cards } };
   }
 
   // The silent twin of the empty deck: a walk that produces one or two cards
@@ -2128,19 +2204,21 @@ class BlockHandler implements IBlockRenderer {
       if (typeof card.notionId === 'string') globalSeenIds.add(card.notionId);
       return true;
     });
-    cards = this.rescueEmptyCards(cards, childBlocks);
+    const rescue = this.rescueEmptyCards(cards, childBlocks);
 
-    return new Deck(
+    const deck = new Deck(
       getDeckName(
         this.settings.deckName || this.firstPageTitle || '',
         this.applyDeckNameNumbering(getSubDeckName(block))
       ),
-      cards,
+      rescue.cards,
       undefined,
       buildDeckStyle(this.settings),
       get16DigitRandomId(),
       this.settings
     );
+    this.deferChosenRescue(deck, rescue.chosen);
+    return deck;
   }
 
   private recordTruncation(

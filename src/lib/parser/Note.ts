@@ -36,6 +36,11 @@ export default class Note {
 
   sourcePageId?: string;
 
+  // See UploadIdentityCard.frontEscaped: set only where the shown front is
+  // escaped plain text that earlier decks keyed unescaped. create_deck.py
+  // reads it for the content-formula guid too.
+  frontEscaped?: boolean;
+
   // Epoch seconds to pin as this note's Anki mod (see uploadCardIdentity.ts,
   // #4445). Only set on the signed-in upload-identity path; every other card
   // exports with the mod Anki stamps at build time.

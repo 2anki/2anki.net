@@ -196,6 +196,22 @@ class TestStableGuids:
             guids_b = _build_and_get_guids(deck_info_b, tmpdir, "b")
         assert guids_a != guids_b
 
+    def test_escaped_front_keeps_the_guid_of_its_unescaped_text(self):
+        raw = "Salt & water < sugar \"syrup\" it's &amp; here."
+        escaped = "Salt &amp; water &lt; sugar &quot;syrup&quot; it&#39;s &amp;amp; here."
+        with tempfile.TemporaryDirectory() as tmpdir:
+            before = _build_and_get_guids(
+                _deck_info_basic("Biology", raw, "back"), tmpdir, "before"
+            )
+            after_info = _deck_info_basic("Biology", escaped, "back")
+            after_info[0]["cards"][0]["frontEscaped"] = True
+            after = _build_and_get_guids(after_info, tmpdir, "after")
+            unflagged = _build_and_get_guids(
+                _deck_info_basic("Biology", escaped, "back"), tmpdir, "unflagged"
+            )
+        assert after == before
+        assert unflagged != before
+
 
 class TestUseContentGuidMarker:
     def test_marker_forces_content_formula_over_notion_id(self):

@@ -12,12 +12,33 @@ import { guidFor } from './guid';
 // silently.
 export const UPLOAD_IDENTITY_PREFIX = 'u:';
 
+const ESCAPED_TEXT = new Map([
+  ['&amp;', '&'],
+  ['&lt;', '<'],
+  ['&gt;', '>'],
+  ['&quot;', '"'],
+  ['&#39;', "'"],
+]);
+
+// The exact inverse of lib/notion-render/escape's escapeHtml, in one pass so
+// text that held a literal "&amp;" comes back as typed.
+function unescapeText(html: string): string {
+  return html.replace(
+    /&(?:amp|lt|gt|quot|#39);/g,
+    (entity) => ESCAPED_TEXT.get(entity) ?? entity
+  );
+}
+
 // A colon can never appear in the two hex halves it joins, and unlike a NUL
 // byte it is safe to store in a Postgres text column.
 const SOURCE_PACK_SEPARATOR = ':';
 
 export interface UploadIdentityCard {
   name: string;
+  // The front is plain text escaped for display. Earlier decks keyed the same
+  // text unescaped, so the key undoes the escape and a re-upload replays its
+  // guids instead of duplicating.
+  frontEscaped?: boolean;
   back?: string;
   cloze?: boolean;
   mcq?: boolean;
@@ -51,7 +72,8 @@ export function uploadIdentityKey(
   card: UploadIdentityCard,
   ordinal = 1
 ): string {
-  const base = guidFor(normalizeCardText(card.name), uploadCardType(card));
+  const front = card.frontEscaped ? unescapeText(card.name) : card.name;
+  const base = guidFor(normalizeCardText(front), uploadCardType(card));
   const suffixed = ordinal > 1 ? `${base}#${ordinal}` : base;
   return `${UPLOAD_IDENTITY_PREFIX}${suffixed}`;
 }

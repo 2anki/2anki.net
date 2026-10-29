@@ -398,6 +398,25 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     });
   });
 
+  it('never reads a database whose row pages are empty as an empty page', async () => {
+    const api = makeRowPageApi({
+      rows: [{ id: 'row-1', properties: { Notes: titleProp('x') } }],
+      blocksByPage: { 'row-1': [] },
+    });
+    const bl = makeHandler(api);
+
+    await expect(
+      bl.findFlashcards({
+        parentType: 'notion-database',
+        topLevelId: 'db-1',
+        rules: new ParserRules(),
+        decks: [],
+        parentName: '',
+      })
+    ).rejects.toBeInstanceOf(NotionDatabaseColumnsError);
+    expect(bl.emptyDeckReason()).toBe('no_toggles');
+  });
+
   it('neither offers nor builds the paragraphs rule on a row page of prose', async () => {
     const api = makeRowPageApi({
       dbName: 'Lectures',
