@@ -7,6 +7,8 @@ from pathlib import Path
 
 import importlib.util as _ilu
 
+import pytest
+
 _spec = _ilu.spec_from_file_location(
     "create_deck_script",
     Path(__file__).parents[1] / "create_deck.py",
@@ -60,6 +62,12 @@ def _deck_info_cards(deck_name: str, cards: list) -> list:
             "settings": {},
         }
     ]
+
+
+def _with_cloze(deck_info: list, cloze: bool) -> list:
+    for card in deck_info[0]["cards"]:
+        card["cloze"] = cloze
+    return deck_info
 
 
 def _deck_info_with_notion_id(deck_name: str, front: str, back: str, notion_id: str) -> list:
@@ -196,21 +204,39 @@ class TestStableGuids:
             guids_b = _build_and_get_guids(deck_info_b, tmpdir, "b")
         assert guids_a != guids_b
 
-    def test_escaped_front_keeps_the_guid_of_its_unescaped_text(self):
+    @pytest.mark.parametrize("cloze", [False, True])
+    def test_escaped_front_keeps_the_guid_of_its_unescaped_text(self, cloze):
         raw = "Salt & water < sugar \"syrup\" it's &amp; here."
         escaped = "Salt &amp; water &lt; sugar &quot;syrup&quot; it&#39;s &amp;amp; here."
         with tempfile.TemporaryDirectory() as tmpdir:
             before = _build_and_get_guids(
-                _deck_info_basic("Biology", raw, "back"), tmpdir, "before"
+                _with_cloze(_deck_info_basic("Biology", raw, "back"), cloze),
+                tmpdir,
+                "before",
             )
-            after_info = _deck_info_basic("Biology", escaped, "back")
+            after_info = _with_cloze(
+                _deck_info_basic("Biology", escaped, "back"), cloze
+            )
             after_info[0]["cards"][0]["frontEscaped"] = True
             after = _build_and_get_guids(after_info, tmpdir, "after")
-            unflagged = _build_and_get_guids(
-                _deck_info_basic("Biology", escaped, "back"), tmpdir, "unflagged"
-            )
         assert after == before
-        assert unflagged != before
+
+    @pytest.mark.parametrize("cloze", [False, True])
+    def test_unflagged_front_is_keyed_as_written(self, cloze):
+        escaped = "Salt &amp; water &lt; sugar &quot;syrup&quot; it&#39;s &amp;amp; here."
+        unescaped = "Salt & water < sugar \"syrup\" it's &amp; here."
+        with tempfile.TemporaryDirectory() as tmpdir:
+            as_written = _build_and_get_guids(
+                _with_cloze(_deck_info_basic("Biology", escaped, "back"), cloze),
+                tmpdir,
+                "written",
+            )
+            unescaped_guids = _build_and_get_guids(
+                _with_cloze(_deck_info_basic("Biology", unescaped, "back"), cloze),
+                tmpdir,
+                "unescaped",
+            )
+        assert as_written != unescaped_guids
 
     def test_escaped_fronts_sharing_a_sentence_keep_their_numbering(self):
         raw = "It's salt & water < sugar here."
@@ -249,24 +275,36 @@ class TestStableGuids:
             after = _build_and_get_guids(infos[1], tmpdir, "after")
         assert after == before
 
-    def test_reversed_and_mirrored_escaped_sentences_keep_their_guids(self):
+    @pytest.mark.parametrize("cloze", [False, True])
+    def test_reversed_and_mirrored_escaped_sentences_keep_their_guids(self, cloze):
         raw = "It's salt & water < sugar here."
         escaped = "It&#39;s salt &amp; water &lt; sugar here."
         paragraph = "<strong>It&#39;s</strong> salt &amp; water &lt; sugar here. More."
         with tempfile.TemporaryDirectory() as tmpdir:
             before = _build_and_get_guids_in_order(
-                _deck_info_cards("Biology", [(raw, paragraph), (paragraph, raw)]),
+                _with_cloze(
+                    _deck_info_cards(
+                        "Biology", [(raw, paragraph), (paragraph, raw)]
+                    ),
+                    cloze,
+                ),
                 tmpdir,
                 "before",
             )
-            after_info = _deck_info_cards(
-                "Biology", [(escaped, paragraph), (paragraph, escaped)]
+            after_info = _with_cloze(
+                _deck_info_cards(
+                    "Biology", [(escaped, paragraph), (paragraph, escaped)]
+                ),
+                cloze,
             )
             after_info[0]["cards"][0]["frontEscaped"] = True
             after_info[0]["cards"][1]["backEscaped"] = True
             after = _build_and_get_guids_in_order(after_info, tmpdir, "after")
-            stale_flag_info = _deck_info_cards(
-                "Biology", [(escaped, paragraph), (paragraph, escaped)]
+            stale_flag_info = _with_cloze(
+                _deck_info_cards(
+                    "Biology", [(escaped, paragraph), (paragraph, escaped)]
+                ),
+                cloze,
             )
             stale_flag_info[0]["cards"][0]["frontEscaped"] = True
             stale_flag_info[0]["cards"][1]["frontEscaped"] = True
