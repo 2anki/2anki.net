@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import i18n, { SUPPORTED_LANGUAGES } from '../../../lib/i18n';
 import { PassCards } from './PassCards';
 
 type Overrides = Partial<Parameters<typeof PassCards>[0]>;
@@ -85,13 +86,15 @@ describe('PassCards', () => {
   it('disables the Day Pass button when dayPassPending', () => {
     renderPassCards({ dayPassPending: true });
     expect(
-      screen.getAllByRole('button', { name: 'Redirecting…' })[0]
+      screen.getAllByRole('button', { name: 'Starting checkout' })[0]
     ).toBeDisabled();
   });
 
   it('disables the Semester Pass button when semesterPassPending', () => {
     renderPassCards({ semesterPassPending: true });
-    expect(screen.getByRole('button', { name: 'Redirecting…' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Starting checkout' })
+    ).toBeDisabled();
   });
 
   it('renders correct pricing for each pass', () => {
@@ -161,7 +164,7 @@ describe('PassCards', () => {
     expect(screen.getByText('One study day')).toBeInTheDocument();
     expect(
       within(cardByTitle('Semester Pass')).getByText(
-        '≈$2/week — 85% less than the Week Pass'
+        '85% less per week than the Week Pass'
       )
     ).toBeInTheDocument();
   });
@@ -170,8 +173,34 @@ describe('PassCards', () => {
     renderPassCards({ featureDayPass: false });
     expect(
       within(cardByTitle('Semester Pass')).getByText(
-        '≈$2/week — 85% less than the Week Pass'
+        '85% less per week than the Week Pass'
       )
     ).toBeInTheDocument();
+  });
+});
+
+describe.each(SUPPORTED_LANGUAGES)('PassCards in %s', (language) => {
+  beforeEach(async () => {
+    await i18n.changeLanguage(language);
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  it('labels a pending pass with a sentence, not a loading ellipsis', () => {
+    renderPassCards({ semesterPassPending: true });
+    const pending = screen
+      .getAllByRole('button')
+      .find((button) => button.hasAttribute('disabled'));
+    expect(pending?.textContent).toBe(
+      i18n.t('pricing.unlimited.startingCheckout')
+    );
+  });
+
+  it('keeps a hardcoded currency out of the Semester Pass value line', () => {
+    renderPassCards({ featureDayPass: false });
+    const caption = within(cardByTitle('Semester Pass')).getByText(/85/);
+    expect(caption.textContent).not.toMatch(/[$€£]/);
   });
 });

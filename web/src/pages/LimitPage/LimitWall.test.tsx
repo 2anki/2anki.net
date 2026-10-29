@@ -80,10 +80,9 @@ describe('LimitWall', () => {
         </MemoryRouter>
       </HelmetProvider>
     );
-    expect(screen.getByRole('button', { name: 'Redirecting…' })).toHaveProperty(
-      'disabled',
-      true
-    );
+    expect(
+      screen.getByRole('button', { name: 'Starting checkout' })
+    ).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Get Day Pass' })).toHaveProperty(
       'disabled',
       false
