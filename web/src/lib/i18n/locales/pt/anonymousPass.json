@@ -3,6 +3,8 @@
   "body": "Um Day Pass por {{price}} tira o limite de cartões por 24 horas, sem conta.",
   "afterPay": "Depois de pagar, envie o arquivo de novo para receber todos os cartões.",
   "afterPayTotal": "Depois de pagar, envie o arquivo de novo para receber os {{total}} cartões.",
+  "afterPayHeld": "Depois de pagar, todos os cartões ficam prontos para baixar, sem reenviar o arquivo.",
+  "afterPayHeldTotal": "Depois de pagar, os {{total}} cartões ficam prontos para baixar, sem reenviar o arquivo.",
   "cta": "Obter um Day Pass por {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "Todos os seus cartões agora, sem conta.",
@@ -12,5 +14,6 @@
   "cardCtaEvery": "Obter todos os cartões agora",
   "passActive": "Assim que o pagamento for concluído, solte o arquivo de novo para começar seu Day Pass e receber todos os cartões.",
   "checkoutError": "Não foi possível iniciar o pagamento. Tente de novo ou escreva para support@2anki.net.",
-  "starting": "Iniciando o checkout"
+  "starting": "Iniciando o checkout",
+  "claimError": "Seu passe está ativo, mas não conseguimos montar o baralho completo. Envie o arquivo de novo ou escreva para support@2anki.net."
 }

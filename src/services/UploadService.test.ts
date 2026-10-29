@@ -8126,6 +8126,82 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
   });
 });
 
+describe('UploadService.convertHeldFileForPass', () => {
+  afterEach(() => {
+    mockFirstApkg = null;
+  });
+
+  function heldFile() {
+    return {
+      fieldname: 'file',
+      originalname: 'notes.html',
+      encoding: '7bit',
+      mimetype: 'application/octet-stream',
+      size: 13,
+      buffer: Buffer.from('<html></html>'),
+      key: 'held/abc',
+    } as unknown as Parameters<UploadService['convertHeldFileForPass']>[1];
+  }
+
+  function mockPackages(packages: Array<{ name: string; cardCount: number }>) {
+    const execute = vi.fn().mockResolvedValue({ packages, warnings: [] });
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    return execute;
+  }
+
+  it('builds every card as a paying pass holder, metered against the pass, with AI off', async () => {
+    const execute = mockPackages([{ name: 'notes', cardCount: 150 }]);
+    mockFirstApkg = Buffer.from('APKG');
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({})
+    );
+
+    const result = await service.convertHeldFileForPass(
+      7,
+      heldFile(),
+      { 'basic-reversed': 'true', 'claude-ai-flashcards': 'true' },
+      'req-1'
+    );
+
+    expect(result).toEqual({
+      apkg: Buffer.from('APKG'),
+      cardCount: 150,
+      deckName: 'notes',
+    });
+    const [paying, files, settings, , , ownerId, options] =
+      execute.mock.calls[0];
+    expect(paying).toBe(true);
+    expect(files[0].originalname).toBe('notes.html');
+    expect(settings).toMatchObject({
+      basicReversed: true,
+      claudeAIFlashcards: false,
+    });
+    expect(ownerId).toBeNull();
+    expect(options).toEqual({ requestId: 'req-1', anonymousPassId: 7 });
+  });
+
+  it('throws EmptyDeckError when the rebuilt deck has no cards', async () => {
+    mockPackages([{ name: 'notes', cardCount: 0 }]);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({})
+    );
+
+    await expect(
+      service.convertHeldFileForPass(7, heldFile(), {}, 'req-1')
+    ).rejects.toBeInstanceOf(EmptyDeckError);
+  });
+});
+
 describe('walkMediaFiles', () => {
   it('returns workspace-relative paths so nested media keep their folder', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'walk-media-'));

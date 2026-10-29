@@ -159,13 +159,25 @@ function aiFlagFromFetch(fetchMock: Mock, url: string): string | null {
   return body ? (body.get('claude-ai-flashcards') as string | null) : null;
 }
 
-function installResumeApi(resumeAiPreview: Mock): () => void {
+function statusResponse(status: number): Response {
+  return {
+    status,
+    redirected: false,
+    headers: new Headers(),
+  } as unknown as Response;
+}
+
+function installResumeApi(
+  resumeAiPreview: Mock,
+  claimHeldDeckWithPass: Mock = vi.fn().mockResolvedValue(statusResponse(404))
+): () => void {
   const previousImpl = mockGet2ankiApi.getMockImplementation();
   mockGet2ankiApi.mockReturnValue({
     startPassCheckout: vi.fn(),
     getUploads: vi.fn().mockResolvedValue([]),
     getHeldDeck: vi.fn().mockResolvedValue(null),
     resumeAiPreview,
+    claimHeldDeckWithPass,
   } as unknown as ReturnType<typeof get2ankiApi>);
   return () => {
     mockGet2ankiApi.mockReset();
@@ -219,20 +231,127 @@ describe('UploadForm', () => {
     }
   });
 
-  test('shows the drop-again notice when the resume finds no preview', async () => {
+  test('shows the drop-again notice when the buyer has neither a preview nor a held deck', async () => {
     stubPassReturn('cs_gone');
     const resumeAiPreview = vi.fn().mockResolvedValue({
       status: 404,
       redirected: false,
       headers: new Headers(),
     } as unknown as Response);
-    const restore = installResumeApi(resumeAiPreview);
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(404));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
 
     try {
       renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
       expect(
         await screen.findByText(
           /Your Day Pass is active\. Drop your file again to get every card\./
+        )
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledWith(
+        'cs_gone',
+        expect.any(Object)
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  test('the AI preview resume does not touch the held deck claim', async () => {
+    stubPassReturn('cs_preview');
+    const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+    const claimHeldDeckWithPass = vi.fn();
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+
+  test('downloads the held deck with the pass when no AI preview is waiting', async () => {
+    globalThis.localStorage.setItem('basic-reversed', 'true');
+    stubPassReturn('cs_held');
+    const resumeAiPreview = vi.fn().mockResolvedValue(statusResponse(404));
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(apkgResumeResponse());
+    const onPassDeckDelivered = vi.fn();
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(
+        <UploadForm
+          setErrorMessage={vi.fn()}
+          onPassDeckDelivered={onPassDeckDelivered}
+        />
+      );
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(1);
+      const [token, cardOptions] = claimHeldDeckWithPass.mock.calls[0];
+      expect(token).toBe('cs_held');
+      expect(cardOptions).toMatchObject({ 'basic-reversed': 'true' });
+      expect(cardOptions).not.toHaveProperty('2anki_pass_token');
+      expect(onPassDeckDelivered).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByText(/Drop your file again/)
+      ).not.toBeInTheDocument();
+    } finally {
+      globalThis.localStorage.removeItem('basic-reversed');
+      restore();
+    }
+  });
+
+  test('waits for a pass the checkout has not confirmed yet, then claims the held deck', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    stubPassReturn('cs_late');
+    const resumeAiPreview = vi
+      .fn()
+      .mockResolvedValueOnce(statusResponse(403))
+      .mockResolvedValue(statusResponse(404));
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(apkgResumeResponse());
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4000);
+      });
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(resumeAiPreview).toHaveBeenCalledTimes(2);
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+      restore();
+    }
+  });
+
+  test('says the pass is active but the deck failed when the held claim errors', async () => {
+    stubPassReturn('cs_broken');
+    const resumeAiPreview = vi.fn().mockResolvedValue(statusResponse(404));
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(500));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          "Your pass is active, but we couldn't build your full deck. Drop the file again, or email support@2anki.net."
         )
       ).toBeInTheDocument();
     } finally {
@@ -3820,7 +3939,7 @@ describe('held-deck gate screen-reader announcement', () => {
     await waitFor(() => {
       const live = container.querySelector('output[aria-live="polite"]');
       expect(live?.textContent).toBe(
-        '184 cards ready. Get a pass, then drop the file again for all of them. A free account gets the first 21.'
+        '184 cards ready. Get a pass and all of them are ready to download, no re-upload. A free account gets the first 21.'
       );
     });
     expect(

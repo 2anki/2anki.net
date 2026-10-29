@@ -12,6 +12,7 @@ interface Props {
   readonly totalCards?: number;
   readonly dayPassCard?: boolean;
   readonly emphasis?: 'primary' | 'secondary';
+  readonly held?: boolean;
 }
 
 export function AnonymousDayPassOffer({
@@ -19,8 +20,19 @@ export function AnonymousDayPassOffer({
   totalCards,
   dayPassCard = false,
   emphasis = 'secondary',
+  held = false,
 }: Props) {
   const { t } = useTranslation('anonymousPass');
+  const afterPayNote = () => {
+    if (held) {
+      return totalCards == null
+        ? t('afterPayHeld')
+        : t('afterPayHeldTotal', { total: totalCards });
+    }
+    return totalCards == null
+      ? t('afterPay')
+      : t('afterPayTotal', { total: totalCards });
+  };
   const prices = usePassPrices();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,11 +98,7 @@ export function AnonymousDayPassOffer({
           >
             {pending ? t('starting') : idleLabel}
           </button>
-          <p className={styles.cardNote}>
-            {totalCards == null
-              ? t('afterPay')
-              : t('afterPayTotal', { total: totalCards })}
-          </p>
+          <p className={styles.cardNote}>{afterPayNote()}</p>
         </div>
       </div>
     );
@@ -100,10 +108,7 @@ export function AnonymousDayPassOffer({
     <div className={styles.offer}>
       <p className={styles.headline}>{t('headline')}</p>
       <p className={styles.body}>
-        {t('body', { price: prices['24h'] })}{' '}
-        {totalCards == null
-          ? t('afterPay')
-          : t('afterPayTotal', { total: totalCards })}
+        {t('body', { price: prices['24h'] })} {afterPayNote()}
       </p>
       {error && (
         <p className={styles.error} role="alert">

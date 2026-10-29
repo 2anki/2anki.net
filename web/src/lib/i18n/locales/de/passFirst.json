@@ -4,7 +4,7 @@
   "readyShown": "{{total}} Karten fertig, {{shown}} angezeigt",
   "fileTotal": "Diese Datei ergibt {{total}} Karten",
   "everyCard": "Jetzt alle Karten bekommen",
-  "gateBody": "Hol dir einen Pass und lade die Datei dann noch einmal hoch, um alle zu bekommen. Ein kostenloses Konto bekommt die ersten {{cap}}.",
+  "gateBody": "Hol dir einen Pass, dann sind alle sofort zum Download bereit, ohne erneuten Upload. Ein kostenloses Konto bekommt die ersten {{cap}}.",
   "anonBody": "Ohne Konto bekommst du {{cap}} Karten. Ein Pass hebt das Limit auf, ganz ohne Konto.",
   "previewSaved": "Ein kostenloses Konto bekommt die ersten {{shown}}. Der Rest bleibt 7 Tage gespeichert: Hol dir einen Pass, dann landen alle {{total}} in Meine Stapel, ohne neuen Upload.",
   "previewNotSaved": "Ein kostenloses Konto bekommt die ersten {{shown}}. Hol dir einen Pass und lade die Datei dann noch einmal hoch, um alle {{total}} zu bekommen.",

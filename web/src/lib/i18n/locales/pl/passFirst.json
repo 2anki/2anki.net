@@ -4,7 +4,7 @@
   "readyShown": "Gotowe fiszki: {{total}}, widoczne: {{shown}}",
   "fileTotal": "Fiszki z tego pliku: {{total}}",
   "everyCard": "Zdobądź teraz wszystkie fiszki",
-  "gateBody": "Kup karnet, a potem wrzuć plik jeszcze raz, aby dostać wszystkie. Darmowe konto dostaje pierwsze fiszki (do {{cap}}).",
+  "gateBody": "Kup karnet, a wszystkie będą od razu gotowe do pobrania, bez ponownego przesyłania. Darmowe konto dostaje pierwsze fiszki (do {{cap}}).",
   "anonBody": "Bez konta dostajesz do {{cap}} fiszek. Karnet znosi limit, bez zakładania konta.",
   "previewSaved": "Darmowe konto dostaje pierwsze fiszki (do {{shown}}). Reszta czeka 7 dni: kup karnet, a wszystkie ({{total}}) trafią do sekcji Moje talie, bez ponownego wgrywania.",
   "previewNotSaved": "Darmowe konto dostaje pierwsze fiszki (do {{shown}}). Kup karnet, a potem wrzuć plik jeszcze raz, aby dostać wszystkie ({{total}}).",

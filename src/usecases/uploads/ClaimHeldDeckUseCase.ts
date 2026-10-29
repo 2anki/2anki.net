@@ -112,7 +112,35 @@ function isMissingObjectError(error: unknown): boolean {
   return typeof name === 'string' && name.includes('NoSuchKey');
 }
 
-function isDeterministicRefusal(error: unknown): boolean {
+export async function readHeldFile(
+  store: HeldFileStore,
+  storageKey: string,
+  filename: string
+): Promise<UploadedFile> {
+  let body: Buffer | undefined;
+  try {
+    body = (await store.getFileContents(storageKey)).Body;
+  } catch (error) {
+    if (isMissingObjectError(error)) {
+      throw new HeldDeckExpiredError();
+    }
+    throw error;
+  }
+  if (body == null) {
+    throw new HeldDeckExpiredError();
+  }
+  return {
+    fieldname: 'file',
+    originalname: filename,
+    encoding: '7bit',
+    mimetype: 'application/octet-stream',
+    size: body.byteLength,
+    buffer: body,
+    key: storageKey,
+  } as unknown as UploadedFile;
+}
+
+export function isDeterministicRefusal(error: unknown): boolean {
   return (
     error instanceof MonthlyLimitError ||
     error instanceof HeldDeckExpiredError ||
@@ -184,7 +212,11 @@ export class ClaimHeldDeckUseCase {
       throw new HeldDeckExpiredError();
     }
     try {
-      const file = await this.readHeldFile(hold.storage_key, hold.filename);
+      const file = await readHeldFile(
+        this.store,
+        hold.storage_key,
+        hold.filename
+      );
       const conversion = capToPreview
         ? await this.converter.convertHeldFileForOwner(
             owner,
@@ -237,33 +269,6 @@ export class ClaimHeldDeckUseCase {
       }
     }
     return null;
-  }
-
-  private async readHeldFile(
-    storageKey: string,
-    filename: string
-  ): Promise<UploadedFile> {
-    let body: Buffer | undefined;
-    try {
-      body = (await this.store.getFileContents(storageKey)).Body;
-    } catch (error) {
-      if (isMissingObjectError(error)) {
-        throw new HeldDeckExpiredError();
-      }
-      throw error;
-    }
-    if (body == null) {
-      throw new HeldDeckExpiredError();
-    }
-    return {
-      fieldname: 'file',
-      originalname: filename,
-      encoding: '7bit',
-      mimetype: 'application/octet-stream',
-      size: body.byteLength,
-      buffer: body,
-      key: storageKey,
-    } as unknown as UploadedFile;
   }
 }
 

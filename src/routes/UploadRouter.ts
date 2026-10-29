@@ -46,6 +46,8 @@ import { ClaimHeldDeckUseCase } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import { AiPreviewResumeController } from '../controllers/Upload/AiPreviewResumeController';
+import { HeldDeckPassClaimController } from '../controllers/Upload/HeldDeckPassClaimController';
+import { ClaimHeldDeckWithPassUseCase } from '../usecases/uploads/ClaimHeldDeckWithPassUseCase';
 import { ResumeAnonymousAiPreviewUseCase } from '../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
 import { AnonymousPassRepository } from '../data_layer/AnonymousPassRepository';
 import { getCheckoutSessionBinding } from '../usecases/checkout/getCheckoutSessionBinding';
@@ -101,17 +103,27 @@ const UploadRouter = () => {
     )
   );
   const thinDeckAiPreviewController = new ThinDeckAiPreviewController();
+  const readCheckoutBinding = (sessionId: string) => {
+    const key = process.env.STRIPE_KEY;
+    const stripe = key == null || key === '' ? undefined : getStripe();
+    return getCheckoutSessionBinding(stripe, sessionId);
+  };
   const aiPreviewResumeController = new AiPreviewResumeController(
     new ResumeAnonymousAiPreviewUseCase(
       new HeldDeckRepository(database),
       new StorageHandler(),
       uploadService,
       new AnonymousPassRepository(database),
-      (sessionId) => {
-        const key = process.env.STRIPE_KEY;
-        const stripe = key == null || key === '' ? undefined : getStripe();
-        return getCheckoutSessionBinding(stripe, sessionId);
-      }
+      readCheckoutBinding
+    )
+  );
+  const heldDeckPassClaimController = new HeldDeckPassClaimController(
+    new ClaimHeldDeckWithPassUseCase(
+      new HeldDeckRepository(database),
+      new StorageHandler(),
+      uploadService,
+      new AnonymousPassRepository(database),
+      readCheckoutBinding
     )
   );
   const sampleUploadController = new SampleUploadController(
@@ -256,6 +268,29 @@ const UploadRouter = () => {
   );
   router.post('/api/upload/claim', RequireAuthentication, (req, res) =>
     claimHeldDeckController.claim(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/upload/claim/pass:
+   *   post:
+   *     summary: Claim a held deck with an anonymous pass
+   *     description: Builds the full deck a signed-out visitor's upload was held for, using the pass sent as X-Pass-Token. The pass must be paid and active, and its checkout session must have been bought under the same anon_id cookie that holds the deck. The body may carry the visitor's card options as string values. Returns the apkg on success; the hold is released once.
+   *     tags: [Upload]
+   *     responses:
+   *       200:
+   *         description: Full held deck built for the pass holder
+   *       400:
+   *         description: The held file produced no cards
+   *       403:
+   *         description: No valid pass on the request
+   *       404:
+   *         description: No held deck for this visitor and pass
+   *       410:
+   *         description: Held deck expired or already claimed
+   */
+  router.post('/api/upload/claim/pass', RequireAllowedOrigin, (req, res) =>
+    heldDeckPassClaimController.claim(req, res)
   );
 
   /**

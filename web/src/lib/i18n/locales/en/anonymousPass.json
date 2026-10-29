@@ -3,6 +3,8 @@
   "body": "A Day Pass for {{price}} lifts the card limit for 24 hours, no account needed.",
   "afterPay": "After paying, drop the file again to get every card.",
   "afterPayTotal": "After paying, drop the file again to get all {{total}} cards.",
+  "afterPayHeld": "After paying, every card is ready to download, no re-upload.",
+  "afterPayHeldTotal": "After paying, all {{total}} cards are ready to download, no re-upload.",
   "cta": "Get a Day Pass for {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "All your cards now, no account.",
@@ -12,5 +14,6 @@
   "cardCtaEvery": "Get every card now",
   "passActive": "Once the payment goes through, drop your file again to start your Day Pass and get every card.",
   "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
-  "starting": "Starting checkout"
+  "starting": "Starting checkout",
+  "claimError": "Your pass is active, but we couldn't build your full deck. Drop the file again, or email support@2anki.net."
 }

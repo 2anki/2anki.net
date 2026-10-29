@@ -3,6 +3,8 @@
   "body": "Day Pass za {{price}} znosi limit fiszek na 24 godziny, bez konta.",
   "afterPay": "Po zapłacie wrzuć plik jeszcze raz, aby dostać wszystkie fiszki.",
   "afterPayTotal": "Po zapłacie wrzuć plik jeszcze raz, aby dostać wszystkie fiszki ({{total}}).",
+  "afterPayHeld": "Po zapłacie wszystkie fiszki są od razu gotowe do pobrania, bez ponownego przesyłania.",
+  "afterPayHeldTotal": "Po zapłacie wszystkie fiszki ({{total}}) są od razu gotowe do pobrania, bez ponownego przesyłania.",
   "cta": "Kup Day Pass za {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "Wszystkie fiszki od razu, bez konta.",
@@ -12,5 +14,6 @@
   "cardCtaEvery": "Weź wszystkie fiszki teraz",
   "passActive": "Gdy płatność przejdzie, wrzuć plik jeszcze raz, aby uruchomić Day Pass i dostać wszystkie fiszki.",
   "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net.",
-  "starting": "Rozpoczynanie płatności"
+  "starting": "Rozpoczynanie płatności",
+  "claimError": "Twój karnet jest aktywny, ale nie udało się zbudować pełnej talii. Wrzuć plik jeszcze raz albo napisz na support@2anki.net."
 }

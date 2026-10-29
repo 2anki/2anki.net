@@ -49,11 +49,14 @@ describe('AnonymousPartialGate', () => {
     expect(screen.getByText('This file made 121 cards.')).toBeInTheDocument();
   });
 
-  it('offers a Day Pass below the sign-up form for the whole file', () => {
+  it('offers a Day Pass below the sign-up form for the whole file, with no re-upload', () => {
     renderGate();
     expect(
-      screen.getByText(/drop the file again to get all 34 cards/)
+      screen.getByText(
+        /After paying, all 34 cards are ready to download, no re-upload\./
+      )
     ).toBeInTheDocument();
+    expect(screen.queryByText(/drop the file again/)).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Get a Day Pass for $6' })
     ).toBeInTheDocument();
@@ -130,6 +133,16 @@ describe('AnonymousPartialGate', () => {
       ).toContain('buttonPrimary');
     });
 
+    it('promises the held deck right after paying, with no re-upload', () => {
+      renderGate(overMonthHeld);
+      expect(
+        screen.getByText(
+          'After paying, all 121 cards are ready to download, no re-upload.'
+        )
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/drop the file again/)).not.toBeInTheDocument();
+    });
+
     it('keeps the free sign-up as a full option below the Day Pass', () => {
       renderGate(overMonthHeld);
       expect(
@@ -181,7 +194,7 @@ describe('AnonymousPartialGate — pass-first', () => {
     expect(screen.getByText('184 cards ready')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Get a pass, then drop the file again for all of them. A free account gets the first 21.'
+        'Get a pass and all of them are ready to download, no re-upload. A free account gets the first 21.'
       )
     ).toBeInTheDocument();
     expect(screen.queryByText(/first 100 cards/)).not.toBeInTheDocument();

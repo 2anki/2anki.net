@@ -136,6 +136,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
             surface="anonymous-gate"
             totalCards={held.totalCards}
             dayPassCard
+            held
             emphasis="primary"
           />
         </div>
@@ -168,6 +169,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
       <AnonymousDayPassOffer
         surface="anonymous-gate"
         totalCards={held.totalCards}
+        held
       />
     </section>
   );

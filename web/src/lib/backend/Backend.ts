@@ -522,6 +522,21 @@ export class Backend {
     });
   }
 
+  async claimHeldDeckWithPass(
+    passToken: string,
+    cardOptions: Record<string, string>
+  ): Promise<Response> {
+    return fetch(`${this.baseURL}upload/claim/pass`, {
+      method: 'post',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Pass-Token': passToken,
+      },
+      body: JSON.stringify(cardOptions),
+    });
+  }
+
   async claimHeldDeck(): Promise<ClaimHeldDeckResult> {
     const response = await post(`${this.baseURL}upload/claim`, {});
     if (response.status === OK) {

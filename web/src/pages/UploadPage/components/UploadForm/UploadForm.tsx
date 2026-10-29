@@ -11,6 +11,7 @@ import handleRedirect from '../../../../lib/handleRedirect';
 import {
   getStoredPassToken,
   storePassToken,
+  storedCardOptions,
 } from '../../../../lib/anonymousPass';
 import type { UploadErrorBody } from '../../../../types/UploadErrorBody';
 import type UserUpload from '../../../../lib/interfaces/UserUpload';
@@ -155,6 +156,7 @@ interface UploadFormProps {
   setErrorMessage: ErrorHandlerType;
   aiOn?: boolean;
   sample?: boolean;
+  onPassDeckDelivered?: () => void;
 }
 
 const REJECTED_FALLBACK =
@@ -346,6 +348,55 @@ function resumeNoticeFor(status: number, t: (key: string) => string): string {
   return t('aiPreview:resumeError');
 }
 
+function heldClaimNoticeFor(
+  status: number,
+  t: (key: string) => string
+): string {
+  if (status === 404 || status === 410) {
+    return t('aiPreview:resumeActiveDropAgain');
+  }
+  if (status === 400) {
+    return t('aiPreview:resumeEmpty');
+  }
+  return t('anonymousPass:claimError');
+}
+
+interface PassDeckResult {
+  response: Response;
+  held: boolean;
+}
+
+// A pass bought from the AI preview resumes that preview; any other pass
+// releases the deck held for this visitor at the no-account cap. Stripe can
+// confirm the payment a few seconds after the buyer is back, so a refused pass
+// is retried before the visitor sees a notice.
+async function deliverPassDeck(
+  passToken: string,
+  isCancelled: () => boolean
+): Promise<PassDeckResult | null> {
+  const api = get2ankiApi();
+  let attempt = 0;
+  while (true) {
+    let response = await api.resumeAiPreview(passToken);
+    let held = false;
+    if (response.status === 404) {
+      response = await api.claimHeldDeckWithPass(
+        passToken,
+        storedCardOptions()
+      );
+      held = true;
+    }
+    if (response.status !== 403 || attempt >= CHECKOUT_CLAIM_RETRIES) {
+      return { response, held };
+    }
+    attempt += 1;
+    await new Promise((resolve) =>
+      setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
+    );
+    if (isCancelled()) return null;
+  }
+}
+
 function displayFilename(fileInput: HTMLInputElement | null): string {
   const files = fileInput?.files;
   if (!files || files.length === 0) return '';
@@ -532,6 +583,7 @@ function UploadForm({
   setErrorMessage,
   aiOn = false,
   sample = false,
+  onPassDeckDelivered,
 }: Readonly<UploadFormProps>) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -947,13 +999,19 @@ function UploadForm({
       setZoneState('converting');
       setProgressWidth(10);
       try {
-        const response = await get2ankiApi().resumeAiPreview(passSessionToken);
-        if (cancelled) return;
+        const result = await deliverPassDeck(passSessionToken, () => cancelled);
+        if (cancelled || result == null) return;
+        const { response, held } = result;
         if (response.status === 200) {
           await applyConversionSuccess(response, conversionSuccessHandlers);
+          if (held) onPassDeckDelivered?.();
           return;
         }
-        setPassResumeNotice(resumeNoticeFor(response.status, t));
+        setPassResumeNotice(
+          held
+            ? heldClaimNoticeFor(response.status, t)
+            : resumeNoticeFor(response.status, t)
+        );
         setZoneState('idle');
         setProgressWidth(10);
       } catch {

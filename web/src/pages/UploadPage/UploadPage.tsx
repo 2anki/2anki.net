@@ -413,7 +413,11 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           </>
         )}
       </div>
-      <UploadForm setErrorMessage={setErrorMessage} aiOn={isAiOn} />
+      <UploadForm
+        setErrorMessage={setErrorMessage}
+        aiOn={isAiOn}
+        onPassDeckDelivered={() => setPassConfirmation(null)}
+      />
       {isSignedIn && <RecentSources />}
       <ExploreCard />
       <section className={pageStyles.howItWorks}>
