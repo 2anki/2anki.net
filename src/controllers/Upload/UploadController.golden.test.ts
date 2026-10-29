@@ -6,6 +6,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import multer from 'multer';
 import jwt from 'jsonwebtoken';
 
 const s3Puts = vi.hoisted(() => [] as string[]);
@@ -140,6 +141,32 @@ vi.mock('../../data_layer', async (importActual) => {
   return { ...actual, getDatabase: () => database };
 });
 
+const driveDownload = vi.hoisted(() => ({ body: '' }));
+
+vi.mock(
+  '../../services/observability/instrumentedAxios',
+  async (importActual) => {
+    const actual =
+      await importActual<
+        typeof import('../../services/observability/instrumentedAxios')
+      >();
+    return {
+      ...actual,
+      default: {
+        ...actual.default,
+        get: (
+          ...args: Parameters<typeof actual.default.get>
+        ): ReturnType<typeof actual.default.get> =>
+          args[0] === 'google_drive'
+            ? (Promise.resolve({
+                data: Buffer.from(driveDownload.body),
+              }) as ReturnType<typeof actual.default.get>)
+            : actual.default.get(...args),
+      },
+    };
+  }
+);
+
 vi.mock('../../services/events/eventsSinkInstance', () => ({
   getEventsSink: () => ({
     record: () => undefined,
@@ -160,7 +187,6 @@ import {
   __resetFeatureFlagModuleForTests,
   __setFeatureFlagDependencies,
 } from '../../lib/featureFlags/getFeatureFlag';
-import { ANONYMOUS_PARTIAL_DELIVERY_FLAG } from '../../lib/upload/anonymousPartialDelivery';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../../lib/upload/anonymousDayPassCard';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
@@ -258,48 +284,37 @@ const signedOutPassHolderWithRecoveryToken: Population = {
 
 const cases: [string, keyof typeof UPLOADS, Population][] = [
   ['signed-out under the anonymous cap', 'small', signedOut],
+  ['signed-out over the cap', 'large', signedOut],
   [
-    'signed-out over the cap, partial delivery off',
-    'large',
-    { ...signedOut, flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: false } },
-  ],
-  [
-    'signed-out over the cap, partial delivery off, day pass card on',
+    'signed-out over the cap, day pass card on',
     'large',
     { ...signedOut, flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true } },
   ],
   [
-    'signed-out over the cap, partial delivery on (treatment)',
+    'signed-out over the cap, pass-first wall on',
     'large',
-    { ...signedOut, flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true } },
+    { ...signedOut, flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true } },
   ],
   [
-    'signed-out over the cap, partial delivery on, day pass card on',
+    'signed-out over the cap, no anon id',
     'large',
-    {
-      ...signedOut,
-      flags: {
-        [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true,
-        [ANONYMOUS_DAY_PASS_CARD_FLAG]: true,
-      },
-    },
+    { ...signedOut, cookies: {} },
   ],
   [
-    'signed-out over the cap, partial delivery on, no anon id (control)',
+    'signed-out over the cap, no anon id, day pass card on',
     'large',
     {
       ...signedOut,
       cookies: {},
-      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
+      flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true },
     },
   ],
   [
-    'signed-out with an expired session cookie, under the cap, partial delivery on',
+    'signed-out with an expired session cookie, under the cap',
     'small',
     {
       ...signedOut,
       cookies: { token: 'expired-session', anon_id: 'golden-anon' },
-      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
     },
   ],
   [
@@ -308,16 +323,14 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     {
       ...signedOut,
       cookies: { token: 'expired-session', anon_id: 'golden-anon' },
-      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
     },
   ],
   [
-    'signed-out with an expired session cookie, over the cap, no anon id (control)',
+    'signed-out with an expired session cookie, over the cap, no anon id',
     'large',
     {
       ...signedOut,
       cookies: { token: 'expired-session' },
-      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
     },
   ],
   [
@@ -330,23 +343,11 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     },
   ],
   [
-    'signed-out with an expired session cookie, over the cap, partial delivery on, day pass card on',
+    'signed-out with an expired session cookie, over the cap, no anon id, pass-first wall on',
     'large',
     {
       ...signedOut,
-      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
-      flags: {
-        [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true,
-        [ANONYMOUS_DAY_PASS_CARD_FLAG]: true,
-      },
-    },
-  ],
-  [
-    'signed-out with an expired session cookie, over the cap, pass-first wall on',
-    'large',
-    {
-      ...signedOut,
-      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
+      cookies: { token: 'expired-session' },
       flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true },
     },
   ],
@@ -493,6 +494,21 @@ const aiCases: [string, keyof typeof UPLOADS, Population][] = [
     },
   ],
   [
+    'signed-out with AI on, AI preview off, over the cap',
+    'large',
+    { ...signedOut, fields: AI_ON },
+  ],
+  [
+    'signed-out with AI on, AI preview on, no sample came back, over the cap',
+    'large',
+    {
+      ...signedOut,
+      fields: AI_ON,
+      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
+      previewReply: '[]',
+    },
+  ],
+  [
     'signed-out with AI on, AI preview on, no anon id',
     'small',
     {
@@ -550,6 +566,25 @@ const realAuthCases: [string, keyof typeof UPLOADS, Population][] = [
       ...signedOut,
       realAuth: true,
       cookies: { token: SIGNED_OUT_SESSION, anon_id: 'golden-anon' },
+    },
+  ],
+  [
+    'real pass token: lapsed, signed-out over the cap',
+    'large',
+    {
+      ...signedOut,
+      realAuth: true,
+      headers: { 'x-pass-token': 'cs_golden_lapsed' },
+    },
+  ],
+  [
+    'real pass token: lapsed, signed-out over the cap with AI on',
+    'large',
+    {
+      ...signedOut,
+      realAuth: true,
+      headers: { 'x-pass-token': 'cs_golden_lapsed' },
+      fields: AI_ON,
     },
   ],
   [
@@ -801,6 +836,20 @@ function storedObjectKind(key: string): string {
   return key.startsWith('recover/') ? 'recovery copy' : 'deck';
 }
 
+function goldenController(): UploadController {
+  const service = new UploadService(
+    inMemoryUploads(),
+    inMemoryJobs(),
+    inMemoryUsers(population.cardsUsed),
+    ...fakeUploadServiceDeps({
+      photoToFlashcards: new PhotoToFlashcardsUseCase(
+        inMemoryPhotoEvents(population.photosUsedThisMonth ?? 0)
+      ),
+    })
+  );
+  return new UploadController(service, {} as unknown as NotionService);
+}
+
 beforeAll(async () => {
   await seedAuthDatabase();
   uploadBase = fs.mkdtempSync(path.join(os.tmpdir(), 'upload-golden-'));
@@ -820,22 +869,17 @@ beforeAll(async () => {
       next();
     },
     (req, res) => {
-      const service = new UploadService(
-        inMemoryUploads(),
-        inMemoryJobs(),
-        inMemoryUsers(population.cardsUsed),
-        ...fakeUploadServiceDeps({
-          photoToFlashcards: new PhotoToFlashcardsUseCase(
-            inMemoryPhotoEvents(population.photosUsedThisMonth ?? 0)
-          ),
-        })
-      );
-      const controller = new UploadController(
-        service,
-        {} as unknown as NotionService
-      );
-      controller.file(req, res);
+      goldenController().file(req, res);
     }
+  );
+  app.post(
+    '/api/upload/google_drive',
+    (_req, res, next) => {
+      res.locals.requestId = 'golden-request';
+      next();
+    },
+    multer().none(),
+    (req, res) => goldenController().googleDrive(req, res)
   );
   server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
@@ -886,6 +930,10 @@ async function upload(file: keyof typeof UPLOADS, who: Population) {
       ...(cookie === '' ? {} : { cookie }),
     },
   });
+  return goldenResult(response, jobSettled);
+}
+
+async function goldenResult(response: Response, jobSettled: Promise<void>) {
   const status = response.status;
   const contentType = (response.headers.get('content-type') ?? '').split(
     ';'
@@ -905,6 +953,57 @@ async function upload(file: keyof typeof UPLOADS, who: Population) {
     cardsCharged: [...cardUsageCharges],
   };
 }
+
+async function driveImport(file: keyof typeof UPLOADS, who: Population) {
+  population = who;
+  __setFeatureFlagDependencies({ repository: inMemoryFlags(who.flags) });
+  driveDownload.body = String(UPLOADS[file].body);
+  const form = new FormData();
+  form.append(
+    'files',
+    JSON.stringify([
+      {
+        id: 'golden-drive-file',
+        name: UPLOADS[file].filename,
+        mimeType: UPLOADS[file].type,
+        sizeBytes: Buffer.byteLength(String(UPLOADS[file].body)),
+      },
+    ])
+  );
+  form.append('googleDriveAuth', 'golden-drive-token');
+  const cookie = Object.entries(who.cookies)
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ');
+  const jobSettled = new Promise<void>((resolve) => {
+    settleJob = resolve;
+  });
+  const response = await fetch(`${baseUrl}/api/upload/google_drive`, {
+    method: 'POST',
+    body: form,
+    redirect: 'manual',
+    headers: cookie === '' ? {} : { cookie },
+  });
+  return goldenResult(response, jobSettled);
+}
+
+const driveCases: [string, keyof typeof UPLOADS, Population][] = [
+  ['signed-out Google Drive import over the cap', 'large', signedOut],
+  [
+    'signed-out Google Drive import over the cap, no anon id',
+    'large',
+    { ...signedOut, cookies: {} },
+  ],
+];
+
+describe('what each population gets back from a Google Drive import', () => {
+  it.each(driveCases)(
+    '%s',
+    async (_label, file, who) => {
+      expect(await driveImport(file, who)).toMatchSnapshot();
+    },
+    20_000
+  );
+});
 
 describe('what each population gets back from /api/upload/file', () => {
   it.each(cases)(

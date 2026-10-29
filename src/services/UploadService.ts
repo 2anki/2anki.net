@@ -107,7 +107,6 @@ import {
   planHoldKey,
 } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import {
-  ANONYMOUS_PARTIAL_DELIVERY_FLAG,
   resolveAnonymousPartialArm,
   type PartialDeliveryArm,
 } from '../lib/upload/anonymousPartialDelivery';
@@ -1349,14 +1348,14 @@ class UploadService {
         const userId = owner != null ? Number(owner) : null;
         const source = this.resolveUploadSource(req);
         const anonymousId = this.resolveAnonId(req);
-        const arm = await this.resolveAnonymousPartialArm(req, res);
+        const arm = this.resolveAnonymousPartialArm(req, res);
         track('conversion_failed', {
           userId,
           anonymousId,
           props: {
             ...this.baseFunnelProps(req, res),
             reason: 'anonymous_cap',
-            ...(arm !== 'off'
+            ...(arm != null
               ? { arm, card_count_bucket: toCardCountBucket(err.cardsFound) }
               : {}),
           },
@@ -1849,7 +1848,7 @@ class UploadService {
       settings,
       paying
     );
-    const partialArm = await this.resolveAnonymousPartialArm(req, res);
+    const partialArm = this.resolveAnonymousPartialArm(req, res);
     let cardLimit = partialArm === 'treatment' ? ANONYMOUS_CARD_CAP : undefined;
 
     // Parity with the job-queue path (performConversion): a signed-in free user
@@ -2179,7 +2178,7 @@ class UploadService {
             ? {
                 card_limit_partial: true,
                 cards_held_back: heldBack,
-                ...(partialArm !== 'off' ? { arm: partialArm } : {}),
+                ...(partialArm != null ? { arm: partialArm } : {}),
                 ...(heldForPlan ? { held_for_plan: true } : {}),
               }
             : {}),
@@ -2542,21 +2541,17 @@ class UploadService {
     return { apkg, cardCount: totalCards, deckName: toText(first.name) };
   }
 
-  private async resolveAnonymousPartialArm(
+  private resolveAnonymousPartialArm(
     req: express.Request,
     res: express.Response
-  ): Promise<PartialDeliveryArm> {
+  ): PartialDeliveryArm | null {
     if (getOwner(res) != null || isPaying(res.locals)) {
-      return 'off';
+      return null;
     }
     if (!isPartialDeliveryEligible(req.files as UploadedFile[] | undefined)) {
-      return 'off';
+      return null;
     }
-    const flagEnabled = await getFeatureFlag(
-      ANONYMOUS_PARTIAL_DELIVERY_FLAG,
-      false
-    );
-    return resolveAnonymousPartialArm(this.resolveAnonId(req), flagEnabled);
+    return resolveAnonymousPartialArm(this.resolveAnonId(req));
   }
 
   // One visitor only ever needs their latest unclaimed hold; the earlier ones
