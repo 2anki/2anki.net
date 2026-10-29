@@ -9743,6 +9743,116 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     }
   );
 
+  // A signed-out page whose session signed in elsewhere; the server sends
+  // the upload on to the limit page.
+  function limitRedirectForSessionSignedInElsewhere() {
+    setUserLocals(signedOut);
+    const readAgain = readLocalsAgain;
+    mockReadUserLocalsOnce.mockResolvedValue(
+      freeSignedIn as Awaited<ReturnType<typeof readUserLocalsOnce>>
+    );
+    const fetchMock = stubServer([
+      {
+        redirected: true,
+        url: 'http://localhost/limit?kind=card_count',
+        status: 200,
+        headers: new Headers({}),
+      } as unknown as UploadAnswer,
+    ]);
+    return { readAgain, fetchMock };
+  }
+
+  async function expectSignedInLimitActions(readAgain: Mock) {
+    expect(
+      await screen.findByRole('link', { name: 'See plans' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Get Day Pass/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Create a free account' })
+    ).toBeNull();
+    expect(mockReadUserLocalsOnce).toHaveBeenCalledTimes(1);
+    expect(readAgain).not.toHaveBeenCalled();
+  }
+
+  it('reads the account once and shows the limit for the session the server saw when a file handed over from Print or CSV is sent on to the limit page', async () => {
+    const { readAgain, fetchMock } = limitRedirectForSessionSignedInElsewhere();
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/upload',
+            state: {
+              handoffFile: new File(['# notes'], 'notes.zip', {
+                type: 'application/zip',
+              }),
+            },
+          },
+        ]}
+      >
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+
+    await expectSignedInLimitActions(readAgain);
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it('reads the account once and shows the limit for the session the server saw when a dropped folder is sent on to the limit page', async () => {
+    class FakeDataTransfer {
+      files: File[] = [];
+      items = { add: (file: File) => this.files.push(file) };
+    }
+    vi.stubGlobal('DataTransfer', FakeDataTransfer);
+    const { readAgain, fetchMock } = limitRedirectForSessionSignedInElsewhere();
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [],
+      writable: true,
+      configurable: true,
+    });
+    input.removeAttribute('required');
+    const page = {
+      isFile: true,
+      isDirectory: false,
+      name: 'notes.html',
+      fullPath: '/notes/notes.html',
+      file: (resolve: (file: File) => void) =>
+        resolve(new File(['<html><body>Krebs</body></html>'], 'notes.html')),
+    };
+    const folder = {
+      isFile: false,
+      isDirectory: true,
+      name: 'notes',
+      fullPath: '/notes',
+      createReader: () => {
+        const batches: unknown[][] = [[page], []];
+        return {
+          readEntries: (resolve: (batch: unknown[]) => void) => {
+            resolve(batches.shift() ?? []);
+          },
+        };
+      },
+    };
+
+    dropOnPage({ items: [{ webkitGetAsEntry: () => folder }], files: [] });
+
+    await expectSignedInLimitActions(readAgain);
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
   it('sends a password unlock once when Enter and a click land together', async () => {
     const fetchMock = stubLockedPdfServer(5);
     const { container } = renderUploadForm(
