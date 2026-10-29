@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import Cookies from 'universal-cookie';
 import { forgetPendingUpload } from '../../lib/upload/pendingUpload';
+import { forgetLastDeck } from '../../lib/upload/lastDeck';
 import { redirectToFrontPage } from '../../lib/redirects';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
@@ -32,6 +33,7 @@ export function DeleteAccountPage({ setError }: Readonly<Prop>) {
       localStorage.clear();
       sessionStorage.clear();
       await forgetPendingUpload();
+      await forgetLastDeck();
       new Cookies().remove('token');
       redirectToFrontPage();
     } catch (error) {

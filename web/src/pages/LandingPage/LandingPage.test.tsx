@@ -18,6 +18,10 @@ import powerpointCopy from './copy/powerpoint';
 import goodnotesCopy from './copy/goodnotes';
 import aiFlashcardGeneratorCopy from './copy/ai-flashcard-generator';
 import { CONVERT_LANDING_PAGES } from '../ConvertLandingPage/convertLandingConfig';
+import {
+  getLastDeckStore,
+  resetLastDeckStoreForTests,
+} from '../../lib/upload/lastDeck';
 
 vi.mock('../../lib/analytics/track', () => ({
   track: vi.fn(),
@@ -521,5 +525,31 @@ describe('LandingPage AI choice while user locals load', () => {
     document.documentElement.dataset.auth = '1';
     renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
     expect(screen.queryByLabelText(CLAUDE_OPTION)).toBeNull();
+  });
+});
+
+describe('LandingPage last deck for a signed-out pass holder', () => {
+  afterEach(() => {
+    mockUserLocals = undefined;
+    vi.unstubAllGlobals();
+    resetLastDeckStoreForTests();
+  });
+
+  it('offers the last deck on the landing page drop zone', async () => {
+    vi.stubGlobal('indexedDB', undefined);
+    resetLastDeckStoreForTests();
+    await getLastDeckStore().save({
+      recoveryToken: '0b6f2c1e-3a4d-4e5f-8a9b-1c2d3e4f5a6b',
+      deckName: 'Biology.apkg',
+      savedAt: Date.now(),
+    });
+    mockUserLocals = { user: null, locals: {}, features: {} };
+
+    renderLandingPage(<LandingPage copy={pdfCopy} setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/can be downloaded again until/)
+    ).toHaveTextContent(/^Your last deck, Biology,/);
+    expect(screen.getByRole('button', { name: 'Download' })).toBeVisible();
   });
 });

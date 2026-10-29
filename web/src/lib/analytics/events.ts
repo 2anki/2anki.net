@@ -65,6 +65,7 @@ export const KNOWN_EVENTS = new Set([
   'upload_resume_shown',
   'upload_resume_clicked',
   'upload_resume_succeeded',
+  'anon_deck_refetched',
   'cancel_during_generating',
   'signup_completed',
   'landing_page_viewed',

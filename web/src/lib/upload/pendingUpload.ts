@@ -103,7 +103,7 @@ function openDatabase(
   });
 }
 
-function runRequest<T>(
+export function runRequest<T>(
   factory: IDBFactory,
   mode: IDBTransactionMode,
   operate: (store: IDBObjectStore) => IDBRequest<T>

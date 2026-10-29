@@ -124,6 +124,15 @@ const signedInFree: Population = {
   flags: {},
 };
 
+const signedOutPassHolderWithRecoveryToken: Population = {
+  ...signedOut,
+  locals: { subscriber: true, passKind: '24h', anonymousPassId: 7 },
+  headers: {
+    'x-pass-token': 'golden-pass-token',
+    'x-recovery-token': '0b6f2c1e-3a4d-4e5f-8a9b-1c2d3e4f5a6b',
+  },
+};
+
 const cases: [string, keyof typeof UPLOADS, Population][] = [
   ['signed-out under the anonymous cap', 'small', signedOut],
   [
@@ -285,6 +294,11 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
       headers: { 'x-pass-token': 'golden-pass-token' },
     },
   ],
+  [
+    'signed-out pass holder with a recovery token',
+    'large',
+    signedOutPassHolderWithRecoveryToken,
+  ],
 ];
 
 function inMemoryFlags(
@@ -394,7 +408,10 @@ function applyEnv(values: Record<string, string | undefined>) {
 }
 
 function storedObjectKind(key: string): string {
-  return key.startsWith('held/') ? 'held source file' : 'deck';
+  if (key.startsWith('held/')) {
+    return 'held source file';
+  }
+  return key.startsWith('recover/') ? 'recovery copy' : 'deck';
 }
 
 beforeAll(async () => {
@@ -476,4 +493,18 @@ describe('what each population gets back from /api/upload/file', () => {
     },
     20_000
   );
+});
+
+describe('a signed-out pass holder can fetch the paid deck again', () => {
+  it('stores a recovery copy of the full deck under recover/', async () => {
+    const result = await upload('large', signedOutPassHolderWithRecoveryToken);
+
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({
+      apkg: `golden-apkg cards=${LARGE_DECK_CARDS}`,
+    });
+    expect(s3Puts).toEqual([
+      expect.stringMatching(/^recover\/[0-9a-f]{64}\.apkg$/),
+    ]);
+  }, 20_000);
 });

@@ -82,6 +82,14 @@ import {
   type PendingUpload,
 } from '../../../../lib/upload/pendingUpload';
 import { storePassToken } from '../../../../lib/anonymousPass';
+import {
+  getLastDeckStore,
+  resetLastDeckStoreForTests,
+} from '../../../../lib/upload/lastDeck';
+import {
+  RecoveryStorageBusyError,
+  RecoveryUnavailableError,
+} from '../../../../lib/backend/Backend';
 
 const mockReportClientError = vi.mocked(reportClientError);
 const mockUseUserLocals = vi.mocked(useUserLocals);
@@ -90,6 +98,7 @@ const mockGet2ankiApi = vi.mocked(get2ankiApi);
 
 beforeEach(() => {
   resetPendingUploadStoreForTests();
+  resetLastDeckStoreForTests();
 });
 
 type AnalyticsGlobals = {
@@ -5384,6 +5393,30 @@ describe('UploadForm anonymous deck recovery', () => {
     expect(
       screen.queryByRole('button', { name: 'Try again' })
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps looking through a busy-storage answer, then shows the deck', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    vi.mocked(dropWaitDelays).mockReturnValueOnce([0, 0, 0]);
+    const getAnonymousRecoveredDeck = vi
+      .fn()
+      .mockRejectedValueOnce(new RecoveryStorageBusyError())
+      .mockRejectedValueOnce(new RecoveryStorageBusyError())
+      .mockResolvedValueOnce(new Blob(['apkg']));
+    stubApi(getAnonymousRecoveredDeck);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    selectFile(container, 'biochem.pdf');
+    await submitForm(container);
+
+    const link = await screen.findByRole('link', { name: 'Download deck' });
+    expect(link).toHaveAttribute('href', 'blob:recovered');
+    expect(getAnonymousRecoveredDeck).toHaveBeenCalledTimes(3);
   });
 
   it('keeps looking while the server finishes the deck, then shows it', async () => {
@@ -10889,5 +10922,380 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
     renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
 
     await waitFor(() => expect(thinDeckResumeMarked()).toBe(false));
+  });
+});
+
+describe('UploadForm last deck for a signed-out pass holder', () => {
+  const TOKEN = '0b6f2c1e-3a4d-4e5f-8a9b-1c2d3e4f5a6b';
+  const signedOutVisitor = {
+    user: null,
+    locals: { owner: 0, patreon: false, subscriber: false },
+    features: {},
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+  const signedInVisitor = {
+    user: { id: 8, email: 'free@example.com' },
+    locals: { owner: 8, patreon: false, subscriber: false },
+    features: {},
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+  const trackMock = vi.mocked(track);
+
+  function showVisitor(data: ReturnType<typeof useUserLocals>['data']) {
+    mockUseUserLocals.mockReturnValue({
+      data,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi
+        .fn()
+        .mockResolvedValue({ data, status: 'success', isError: false }),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  }
+
+  function stubRecovery(getAnonymousRecoveredDeck: Mock) {
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getAnonymousRecoveredDeck,
+    } as unknown as ReturnType<typeof get2ankiApi>);
+  }
+
+  async function keepDeck() {
+    await getLastDeckStore().save({
+      recoveryToken: TOKEN,
+      deckName: 'Biology.apkg',
+      savedAt: Date.now(),
+    });
+  }
+
+  function deckResponse(): Mock {
+    return vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'File-Name': 'Biology.apkg',
+        'X-Card-Count': '120',
+      }),
+      blob: () => Promise.resolve(new Blob(['apkg'])),
+    });
+  }
+
+  async function uploadFile(container: HTMLElement) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['x'], 'biology.html', { type: 'text/html' })],
+      configurable: true,
+    });
+    fileInput.removeAttribute('required');
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+  }
+
+  function sentRecoveryToken(fetchMock: Mock): string | undefined {
+    const call = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/upload/file'
+    );
+    const headers = call?.[1]?.headers as Record<string, string> | undefined;
+    return headers?.['X-Recovery-Token'];
+  }
+
+  beforeEach(() => {
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:last-deck');
+    globalThis.URL.revokeObjectURL = vi.fn();
+    trackMock.mockClear();
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.removeItem('2anki_pass_token');
+    mockUseUserLocals.mockReset();
+    mockGet2ankiApi.mockReset();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    resetLastDeckStoreForTests();
+  });
+
+  it('keeps the deck of a signed-out upload that used a pass', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_pass');
+    const fetchMock = deckResponse();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container);
+
+    await waitFor(async () =>
+      expect(await getLastDeckStore().load()).toMatchObject({
+        recoveryToken: sentRecoveryToken(fetchMock),
+        deckName: 'Biology.apkg',
+      })
+    );
+  });
+
+  it('keeps the deck of a pass upload made on a sample form, without offering it there', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_pass');
+    const fetchMock = deckResponse();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} sample />
+    );
+    await uploadFile(container);
+
+    await waitFor(async () =>
+      expect(await getLastDeckStore().load()).toMatchObject({
+        recoveryToken: sentRecoveryToken(fetchMock),
+        deckName: 'Biology.apkg',
+      })
+    );
+    expect(
+      screen.queryByText(/can be downloaded again until/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps nothing for a signed-out upload without a pass', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    vi.stubGlobal('fetch', deckResponse());
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container);
+
+    expect(
+      (await screen.findAllByText(/Your deck is ready/)).length
+    ).toBeGreaterThan(0);
+    expect(await getLastDeckStore().load()).toBeNull();
+  });
+
+  it('offers the last deck on the idle drop zone while signed out', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/can be downloaded again until/)
+    ).toHaveTextContent(/^Your last deck, Biology, can be downloaded again/);
+    expect(
+      screen.getByRole('button', { name: 'Download' })
+    ).toHaveAccessibleDescription(/^Your last deck, Biology,/);
+  });
+
+  it('offers nothing on the sample form of the home page', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} sample />);
+    await act(async () => {
+      expect(await getLastDeckStore().load()).toMatchObject({
+        recoveryToken: TOKEN,
+      });
+    });
+
+    expect(
+      screen.queryByText(/can be downloaded again until/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps and offers the deck when the stored pass had already expired', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn());
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_expired');
+    const fetchMock = deckResponse();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const first = renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await uploadFile(first.container);
+    await waitFor(async () =>
+      expect(await getLastDeckStore().load()).toMatchObject({
+        recoveryToken: sentRecoveryToken(fetchMock),
+      })
+    );
+    first.unmount();
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/can be downloaded again until/)
+    ).toHaveTextContent(/^Your last deck, Biology,/);
+  });
+
+  it('offers nothing once the visitor is signed in', async () => {
+    showVisitor(signedInVisitor);
+    stubRecovery(vi.fn());
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    await act(async () => {
+      expect(await getLastDeckStore().load()).toMatchObject({
+        recoveryToken: TOKEN,
+      });
+    });
+
+    expect(
+      screen.queryByText(/can be downloaded again until/)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Download' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('fetches the stored deck and starts the download', async () => {
+    showVisitor(signedOutVisitor);
+    const getAnonymousRecoveredDeck = vi
+      .fn()
+      .mockResolvedValue(new Blob(['apkg']));
+    stubRecovery(getAnonymousRecoveredDeck);
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    expect(getAnonymousRecoveredDeck).toHaveBeenCalledWith(TOKEN);
+    expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
+      outcome: 'downloaded',
+    });
+  });
+
+  it('removes the line and the record when the deck is gone', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn().mockResolvedValue(null));
+    const setErrorMessage = vi.fn();
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={setErrorMessage} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+
+    const gone = await screen.findByText(
+      'That deck is no longer stored. Upload the file again.'
+    );
+    expect(
+      screen.queryByText(/can be downloaded again until/)
+    ).not.toBeInTheDocument();
+    expect(gone).toHaveFocus();
+    expect(await getLastDeckStore().load()).toBeNull();
+    expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
+      outcome: 'expired',
+    });
+    expect(setErrorMessage).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('keeps the deck and says the download did not start on a network error', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+
+    expect(
+      await screen.findByText(
+        "The download didn't start. Check your connection and try again."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Download' })).toHaveFocus()
+    );
+    expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
+      outcome: 'failed',
+    });
+    expect(await getLastDeckStore().load()).toMatchObject({
+      recoveryToken: TOKEN,
+    });
+  });
+
+  it('keeps the deck and says it cannot be downloaded when the server refuses', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn().mockRejectedValue(new RecoveryUnavailableError(403)));
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Download' }));
+
+    expect(
+      await screen.findByText(
+        "Couldn't download the deck right now. Try again later."
+      )
+    ).toBeInTheDocument();
+    expect(await getLastDeckStore().load()).toMatchObject({
+      recoveryToken: TOKEN,
+    });
+    expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
+      outcome: 'unavailable',
+    });
+  });
+
+  it('keeps the deck when the download breaks part-way through', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn().mockResolvedValue(null));
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_pass');
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'File-Name': 'Biology.apkg',
+        'X-Card-Count': '120',
+      }),
+      blob: () => Promise.reject(new TypeError('network error')),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadFile(container);
+
+    await waitFor(async () =>
+      expect(await getLastDeckStore().load()).toMatchObject({
+        recoveryToken: sentRecoveryToken(fetchMock),
+        deckName: 'Biology.apkg',
+      })
+    );
+  });
+
+  it('says storage is busy when the server answers 503', async () => {
+    showVisitor(signedOutVisitor);
+    stubRecovery(vi.fn().mockRejectedValue(new RecoveryStorageBusyError()));
+    await keepDeck();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    const download = await screen.findByRole('button', { name: 'Download' });
+    const status = download.parentElement!.querySelector('[role="status"]');
+    expect(status).toBeEmptyDOMElement();
+    fireEvent.click(download);
+
+    await waitFor(() =>
+      expect(status).toHaveTextContent(
+        'Storage is busy right now. Try the download again in a moment.'
+      )
+    );
+    await waitFor(() => expect(download).toHaveFocus());
+    expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
+      outcome: 'busy',
+    });
+    expect(await getLastDeckStore().load()).toMatchObject({
+      recoveryToken: TOKEN,
+    });
   });
 });

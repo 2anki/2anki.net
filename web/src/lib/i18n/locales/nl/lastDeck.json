@@ -1,0 +1,9 @@
+{
+  "line": "Je laatste deck, <name>{{name}}</name>, kun je tot {{time}} opnieuw downloaden.",
+  "download": "Downloaden",
+  "downloading": "Bezig met downloaden",
+  "storageBusy": "De opslag is nu even druk. Probeer de download zo opnieuw.",
+  "gone": "Dat deck is niet meer opgeslagen. Upload het bestand opnieuw.",
+  "failed": "De download is niet gestart. Controleer je verbinding en probeer het opnieuw.",
+  "unavailable": "Het deck kan nu niet worden gedownload. Probeer het later opnieuw."
+}

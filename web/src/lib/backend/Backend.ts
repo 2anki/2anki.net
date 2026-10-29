@@ -1,6 +1,7 @@
 import { getNotionObjectTitle } from 'get-notion-object-title';
 import Cookies from 'universal-cookie';
 import { forgetPendingUpload } from '../upload/pendingUpload';
+import { forgetLastDeck } from '../upload/lastDeck';
 import { NotionResource } from '../interfaces/NotionResource';
 import type JobResponse from '@server/types/JobResponse';
 import type { JobsId } from '@server/data_layer/public/Jobs';
@@ -30,7 +31,17 @@ import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
 import { getStoredPassToken } from '../anonymousPass';
-import { CONFLICT, NOT_FOUND, OK, UNAUTHORIZED } from './http';
+import {
+  BAD_GATEWAY,
+  BAD_REQUEST,
+  CONFLICT,
+  GATEWAY_TIMEOUT,
+  NOT_FOUND,
+  OK,
+  SERVICE_UNAVAILABLE,
+  TOO_MANY_REQUESTS,
+  UNAUTHORIZED,
+} from './http';
 import { landingCampaignParams } from '../adClick';
 import {
   CheckoutConflict,
@@ -41,6 +52,30 @@ import type { ConversionReport } from '../interfaces/ConversionReport';
 export interface EmojiFeedbackReceipt {
   id: number;
   token: string;
+}
+
+const RECOVERY_BUSY_STATUSES = new Set([
+  TOO_MANY_REQUESTS,
+  BAD_GATEWAY,
+  SERVICE_UNAVAILABLE,
+  GATEWAY_TIMEOUT,
+]);
+
+export class RecoveryStorageBusyError extends Error {
+  constructor() {
+    super('Recovery storage is busy');
+    this.name = 'RecoveryStorageBusyError';
+  }
+}
+
+export class RecoveryUnavailableError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`Recovery download failed: ${status}`);
+    this.name = 'RecoveryUnavailableError';
+    this.status = status;
+  }
 }
 
 export class TrackerSchemaError extends Error {
@@ -142,6 +177,7 @@ export class Backend {
     localStorage.clear();
     sessionStorage.clear();
     await forgetPendingUpload();
+    await forgetLastDeck();
     if (!isOffline) {
       const endpoint = `${this.baseURL}users/logout`;
       await post(endpoint, {});
@@ -157,6 +193,7 @@ export class Backend {
     localStorage.clear();
     sessionStorage.clear();
     await forgetPendingUpload();
+    await forgetLastDeck();
     const cookies = new Cookies();
     cookies.remove('token');
     globalThis.location.href = '/login';
@@ -456,11 +493,17 @@ export class Backend {
       `${this.baseURL}download/recover/${encodeURIComponent(token)}`,
       { credentials: 'include' }
     );
+    if (RECOVERY_BUSY_STATUSES.has(response.status)) {
+      throw new RecoveryStorageBusyError();
+    }
+    if (response.status === NOT_FOUND || response.status === BAD_REQUEST) {
+      return null;
+    }
+    if (response.status !== OK) {
+      throw new RecoveryUnavailableError(response.status);
+    }
     const contentType = response.headers?.get('Content-Type') ?? '';
-    if (
-      response.status !== OK ||
-      !contentType.includes('application/octet-stream')
-    ) {
+    if (!contentType.includes('application/octet-stream')) {
       return null;
     }
     const deck = await response.blob();

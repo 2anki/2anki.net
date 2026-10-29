@@ -1,5 +1,6 @@
 import type Users from '@server/data_layer/public/Users';
 import { getStoredPassToken } from '../anonymousPass';
+import { forgetLastDeck } from '../upload/lastDeck';
 import { get } from './api';
 import { get2ankiApi } from './get2ankiApi';
 
@@ -50,8 +51,15 @@ interface GetUserLocalsResponse {
 // account, so a page view never starts the pass clock.
 export const getUserLocals = async (): Promise<GetUserLocalsResponse> => {
   const passToken = getStoredPassToken();
-  return get(`${get2ankiApi().baseURL}users/debug/locals`, {
-    redirect: true,
-    headers: passToken == null ? undefined : { 'X-Pass-Claim': passToken },
-  });
+  const locals: GetUserLocalsResponse = await get(
+    `${get2ankiApi().baseURL}users/debug/locals`,
+    {
+      redirect: true,
+      headers: passToken == null ? undefined : { 'X-Pass-Claim': passToken },
+    }
+  );
+  if (locals?.user?.id != null) {
+    void forgetLastDeck();
+  }
+  return locals;
 };

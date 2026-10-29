@@ -1,0 +1,9 @@
+{
+  "line": "Tu último mazo, <name>{{name}}</name>, se puede volver a descargar hasta {{time}}.",
+  "download": "Descargar",
+  "downloading": "Descargando",
+  "storageBusy": "El almacenamiento está ocupado ahora mismo. Vuelve a intentar la descarga en un momento.",
+  "gone": "Ese mazo ya no está guardado. Vuelve a subir el archivo.",
+  "failed": "La descarga no empezó. Revisa tu conexión y vuelve a intentarlo.",
+  "unavailable": "No se pudo descargar el mazo ahora mismo. Vuelve a intentarlo más tarde."
+}

@@ -23,6 +23,13 @@ export function resolveDeckName(headers: Headers): string {
   return fileNameHeader ?? fallback;
 }
 
+export function singleDeckName(headers: Headers): string | null {
+  const contentType = headers.get('Content-Type') ?? '';
+  if (contentType.includes('application/json')) return null;
+  if (parseCardCountHeader(headers) === 0) return null;
+  return resolveDeckName(headers);
+}
+
 export function parseCardCountHeader(headers: Headers): number | null {
   const cardCountHeader = headers.get('X-Card-Count');
   if (!cardCountHeader) return null;

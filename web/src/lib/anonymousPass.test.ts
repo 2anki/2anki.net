@@ -3,6 +3,10 @@ import {
   storePassToken,
   clearPassToken,
 } from './anonymousPass';
+import {
+  getLastDeckStore,
+  resetLastDeckStoreForTests,
+} from './upload/lastDeck';
 
 describe('anonymousPass', () => {
   const mockStorage: Record<string, string> = {};
@@ -38,5 +42,23 @@ describe('anonymousPass', () => {
     storePassToken('cs_test_456');
     clearPassToken();
     expect(getStoredPassToken()).toBeNull();
+  });
+
+  it('forgets the deck the pass bought on this device', async () => {
+    resetLastDeckStoreForTests();
+    vi.stubGlobal('indexedDB', undefined);
+    await getLastDeckStore().save({
+      recoveryToken: '0b6f2c1e-3a4d-4e5f-8a9b-1c2d3e4f5a6b',
+      deckName: 'Biology.apkg',
+      savedAt: Date.now(),
+    });
+
+    clearPassToken();
+
+    await vi.waitFor(async () =>
+      expect(await getLastDeckStore().load()).toBeNull()
+    );
+    vi.unstubAllGlobals();
+    resetLastDeckStoreForTests();
   });
 });
