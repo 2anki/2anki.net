@@ -8,8 +8,10 @@ import {
   uploadIdentityKey,
   type UploadIdentityLedger,
 } from '../anki/uploadCardIdentity';
+import { cardFingerprint } from '../claude/ClaudeService';
 import CardOption from './Settings/CardOption';
 import { DeckParser } from './DeckParser';
+import type Note from './Note';
 import Workspace from './WorkSpace';
 
 beforeEach(() => setupTests());
@@ -439,4 +441,189 @@ describe('upload card identity leaves other conversions untouched', () => {
     });
     expect(parser.uploadIdentityEntries).toEqual([]);
   });
+});
+
+describe('paragraphs decks made before the first-sentence front was escaped', () => {
+  const STORED_AT = 1_600_000_000;
+  const RAW_FRONT = 'It\'s salt & water < sugar, as the "syrup" note says.';
+  const paragraph = (rest: string) =>
+    `<p>It&#39;s salt &amp; water &lt; sugar, as the "syrup" note says. ${rest}</p>`;
+
+  async function parseParagraphs(
+    body: string,
+    name: string,
+    ledger: UploadIdentityLedger,
+    options: Record<string, string> = {}
+  ) {
+    const workspace = new Workspace(true, 'fs');
+    const parser = new DeckParser({
+      name,
+      settings: new CardOption({
+        cherry: 'false',
+        'rescue-rule': 'paragraphs',
+        ...options,
+      }),
+      files: [{ name, contents: wrap(body) }],
+      noLimits: true,
+      workspace,
+      uploadIdentity: { owner: OWNER, ledger },
+    });
+    await parser.writeDeckInfo(workspace);
+    return parser;
+  }
+
+  // The rows an earlier upload wrote, when the shown front was the raw
+  // sentence: keyed and fingerprinted on that raw text, with the same back.
+  function ledgerKeyedOnRawFronts(shown: Note[]): UploadIdentityLedger {
+    const ledger: UploadIdentityLedger = {};
+    shown.forEach((card, index) => {
+      const ordinal = index + 1;
+      const earlier = {
+        name: RAW_FRONT,
+        back: card.back,
+        cloze: card.cloze,
+        mcq: card.mcq,
+        enableInput: card.enableInput,
+      };
+      ledger[uploadIdentityKey(earlier, ordinal)] = {
+        guid: `OLD-${ordinal}`,
+        sourceKeyHash: hashSourceKey('notes.html'),
+        fingerprint: cardFingerprint(earlier),
+        contentChangedAt: STORED_AT,
+      };
+    });
+    return ledger;
+  }
+
+  const ONE = paragraph('It keeps cells from swelling in the solution.');
+  const TWO = paragraph('The gradient decides which way the water moves.');
+
+  it('keeps the guid and the stored mod when the same file is uploaded again', async () => {
+    const discovery = await parseParagraphs(ONE, 'notes.html', {});
+    const [shown] = cardsOf(discovery);
+    expect(shown.name).not.toBe(RAW_FRONT);
+
+    const parser = await parseParagraphs(
+      ONE,
+      'notes.html',
+      ledgerKeyedOnRawFronts([shown])
+    );
+    const [card] = cardsOf(parser);
+    expect(card.guid).toBe('OLD-1');
+    expect(card.mod).toBe(STORED_AT);
+    expect(parser.uploadIdentityStats).toEqual({
+      issued: 0,
+      replayed: 1,
+      guarded: 0,
+    });
+  });
+
+  it('keeps the guid when the file was renamed', async () => {
+    const discovery = await parseParagraphs(ONE, 'notes.html', {});
+    const [shown] = cardsOf(discovery);
+
+    const parser = await parseParagraphs(
+      ONE,
+      'renamed-notes.html',
+      ledgerKeyedOnRawFronts([shown])
+    );
+    const [card] = cardsOf(parser);
+    expect(card.guid).toBe('OLD-1');
+    expect(card.mod).toBe(STORED_AT);
+    expect(parser.uploadIdentityStats.guarded).toBe(0);
+  });
+
+  it('keeps each guid when two paragraphs share the same first sentence', async () => {
+    const discovery = await parseParagraphs(ONE + TWO, 'notes.html', {});
+    const parser = await parseParagraphs(
+      ONE + TWO,
+      'renamed-notes.html',
+      ledgerKeyedOnRawFronts(cardsOf(discovery))
+    );
+    expect(cardsOf(parser).map((card) => card.guid)).toEqual([
+      'OLD-1',
+      'OLD-2',
+    ]);
+    expect(parser.uploadIdentityStats).toEqual({
+      issued: 0,
+      replayed: 2,
+      guarded: 0,
+    });
+  });
+
+  // Before the escape, the sentence sat raw on whichever side the options put
+  // it; every other side was the same paragraph HTML it is now.
+  function ledgerFromPreEscapeCards(shown: Note[]): UploadIdentityLedger {
+    const ledger: UploadIdentityLedger = {};
+    const ordinals = new Map<string, number>();
+    shown.forEach((card, index) => {
+      const earlier = {
+        name: card.name === ESCAPED_FRONT ? RAW_FRONT : card.name,
+        back: card.back === ESCAPED_FRONT ? RAW_FRONT : card.back,
+        cloze: card.cloze,
+        mcq: card.mcq,
+        enableInput: card.enableInput,
+      };
+      const base = uploadIdentityKey(earlier);
+      const ordinal = (ordinals.get(base) ?? 0) + 1;
+      ordinals.set(base, ordinal);
+      ledger[uploadIdentityKey(earlier, ordinal)] = {
+        guid: `OLD-${index + 1}`,
+        sourceKeyHash: hashSourceKey('notes.html'),
+        fingerprint: cardFingerprint(earlier),
+        contentChangedAt: STORED_AT,
+      };
+    });
+    return ledger;
+  }
+
+  const ESCAPED_FRONT =
+    'It&#39;s salt &amp; water &lt; sugar, as the &quot;syrup&quot; note says.';
+
+  it.each([
+    ['cloze off', { cloze: 'false' }, 1],
+    ['typed answers on', { cloze: 'false', 'enable-input': 'true' }, 1],
+    ['reversed', { reversed: 'true' }, 1],
+    ['basic-reversed', { 'basic-reversed': 'true' }, 2],
+  ])(
+    'keeps every guid and mod with the %s card option on',
+    async (_label, options, cardCount) => {
+      const discovery = await parseParagraphs(ONE, 'notes.html', {}, options);
+      const shown = cardsOf(discovery);
+      expect(shown).toHaveLength(cardCount);
+      expect(
+        shown.some(
+          (card) => card.name === ESCAPED_FRONT || card.back === ESCAPED_FRONT
+        )
+      ).toBe(true);
+      expect(
+        shown.map((card) => [
+          card.frontEscaped === true,
+          card.backEscaped === true,
+        ])
+      ).toEqual(
+        shown.map((card) => [
+          card.name === ESCAPED_FRONT,
+          card.back === ESCAPED_FRONT,
+        ])
+      );
+
+      const parser = await parseParagraphs(
+        ONE,
+        'notes.html',
+        ledgerFromPreEscapeCards(shown),
+        options
+      );
+      const cards = cardsOf(parser);
+      expect(cards.map((card) => card.guid)).toEqual(
+        shown.map((_card, index) => `OLD-${index + 1}`)
+      );
+      expect(cards.map((card) => card.mod)).toEqual(shown.map(() => STORED_AT));
+      expect(parser.uploadIdentityStats).toEqual({
+        issued: 0,
+        replayed: cardCount,
+        guarded: 0,
+      });
+    }
+  );
 });

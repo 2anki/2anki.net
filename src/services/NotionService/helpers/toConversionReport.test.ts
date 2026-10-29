@@ -49,6 +49,10 @@ describe('toConversionReport', () => {
     ['a JSON string of a non-object', '"report"'],
     ['a report missing its summary', { entries: [] }],
     [
+      'a failed empty Notion job holding only its rescue offer',
+      { rescue_candidates: [{ rule: 'paragraphs', cards: 3 }] },
+    ],
+    [
       'a summary with a non-numeric count',
       {
         summary: { ...storedReport.summary, blocks_seen: 'many' },

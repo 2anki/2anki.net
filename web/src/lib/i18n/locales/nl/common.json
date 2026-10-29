@@ -760,7 +760,15 @@
       "upgradeUnlimited": "Upgraden naar Pro"
     },
     "emptyDeckAllFiltered": "Een kaartfilter heeft alle kaarten verwijderd. Cherry pick houdt alleen toggles met 🍒 en skip verwijdert toggles met 🥑. Zet het filter uit in de kaartinstellingen of markeer de gewenste toggles, en converteer opnieuw.",
-    "emptyDeckNoContent": "Deze pagina bevatte geen leesbare tekst. Controleer of je hem met zijn inhoud hebt geëxporteerd en converteer opnieuw."
+    "emptyDeckNoContent": "Deze pagina bevatte geen leesbare tekst. Controleer of je hem met zijn inhoud hebt geëxporteerd en converteer opnieuw.",
+    "emptyDeckNotionEmptyPage": "Deze Notion-pagina lijkt leeg, of 2anki kan niet zien wat erop staat. Voeg 2anki toe aan deze pagina en de subpagina's via het menu Verbindingen in Notion en converteer opnieuw.",
+    "connectNotionDocs": "Zo deel je een pagina met 2anki",
+    "rescueLeadNotion": "Je kunt toch kaarten maken van deze pagina:",
+    "rescueBuilding": "Je deck wordt gemaakt.",
+    "rescueOneAtATime": "Het gratis abonnement zet één pagina tegelijk om. Wacht tot de huidige klaar is en probeer het dan opnieuw.",
+    "rescueAlreadyRunning": "Deze pagina wordt al omgezet. Het deck verschijnt hier zodra het klaar is.",
+    "rescueFailed": "Dit deck kon niet worden gestart. Probeer het opnieuw.",
+    "rescueLimitReached": "Je hebt je {{limit}} gratis kaarten deze maand bereikt."
   },
   "modals": {
     "consent": {

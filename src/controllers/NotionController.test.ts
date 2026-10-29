@@ -512,6 +512,44 @@ describe('NotionController', () => {
       );
     });
 
+    it('threads a picked rescue rule into the runConversion payload', async () => {
+      setupConvertMocks();
+      req.body = { ...req.body, rescueRule: 'paragraphs' };
+
+      await controller.convert(req as express.Request, res as express.Response);
+
+      expect(runConversion).toHaveBeenCalledWith(
+        expect.objectContaining({ rescueRule: 'paragraphs' })
+      );
+    });
+
+    it('sends no rescue rule when the request carries none, as iOS and search do', async () => {
+      setupConvertMocks();
+
+      await controller.convert(req as express.Request, res as express.Response);
+
+      expect(runConversion).toHaveBeenCalledWith(
+        expect.objectContaining({ rescueRule: undefined })
+      );
+    });
+
+    it.each([['toString'], ['ai'], [42]])(
+      'drops a rescue rule outside the vocabulary (%s)',
+      async (rescueRule) => {
+        setupConvertMocks();
+        req.body = { ...req.body, rescueRule };
+
+        await controller.convert(
+          req as express.Request,
+          res as express.Response
+        );
+
+        expect(runConversion).toHaveBeenCalledWith(
+          expect.objectContaining({ rescueRule: undefined })
+        );
+      }
+    );
+
     it('threads res.locals.requestId into the runConversion payload so worker logs join the request', async () => {
       setupConvertMocks();
       res.locals = { owner: 'owner1', requestId: 'req-abc-123' };

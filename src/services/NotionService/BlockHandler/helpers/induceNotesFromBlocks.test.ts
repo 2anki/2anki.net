@@ -319,3 +319,193 @@ describe('induceNotesFromBlocks', () => {
     expect(notes[0].back).toContain('speeds up a reaction');
   });
 });
+
+describe('induceNotesFromBlocks paragraphs rule', () => {
+  it('makes one card per prose paragraph with the bold term as the front', () => {
+    const blocks = [
+      block('paragraph', [
+        richText('Osmosis', { bold: true }),
+        richText(' is water moving across a semi-permeable membrane.'),
+      ]),
+      block('paragraph', [
+        richText('Diffusion', { bold: true }),
+        richText(' spreads particles from high to low concentration.'),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes).toHaveLength(2);
+    expect(notes[0].name).toBe('<strong>Osmosis</strong>');
+    expect(notes[0].back).toContain('semi-permeable membrane');
+    expect(notes[1].name).toBe('<strong>Diffusion</strong>');
+  });
+
+  it('uses a highlighted term as the front when nothing is bold', () => {
+    const blocks = [
+      block('paragraph', [
+        richText('Mitosis', { color: 'yellow_background' }),
+        richText(' divides one cell into two identical daughter cells.'),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).toContain('Mitosis');
+    expect(notes[0].name).toContain('background-color');
+    expect(notes[0].back).toContain('daughter cells');
+  });
+
+  it('falls back to the first sentence when a paragraph has no emphasis', () => {
+    const blocks = [
+      block('paragraph', [
+        richText(
+          'Photosynthesis turns light into chemical energy. It happens in the chloroplast.'
+        ),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).toBe(
+      'Photosynthesis turns light into chemical energy.'
+    );
+    expect(notes[0].back).toContain('chloroplast');
+  });
+
+  it('escapes markup typed as text in a first-sentence front', () => {
+    const blocks = [
+      block('paragraph', [
+        richText(
+          'Typed <b>tags</b> and <img src=x onerror=alert(1)> stay text. '
+        ),
+        richText('The rest of the paragraph explains it.'),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).not.toContain('<img');
+    expect(notes[0].name).not.toContain('<b>');
+    expect(notes[0].name).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(notes[0].name).toContain('&lt;b&gt;tags&lt;/b&gt;');
+    expect(notes[0].name).not.toContain('The rest');
+  });
+
+  it('keeps real annotations inside a first-sentence front', () => {
+    const blocks = [
+      block('paragraph', [
+        richText('Glycolysis splits '),
+        richText('glucose', { italic: true }),
+        richText(' into pyruvate in the cytosol. It yields two ATP.'),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes[0].name).toContain('<em>glucose</em>');
+    expect(notes[0].name).toContain('into pyruvate in the cytosol.');
+    expect(notes[0].name).not.toContain('ATP');
+  });
+
+  it('cuts a long first sentence at the front limit with an ellipsis', () => {
+    const long = `${'word '.repeat(40)}end.`;
+    const blocks = [block('paragraph', [richText(long)])];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes[0].name.endsWith('…')).toBe(true);
+    expect(notes[0].name.length).toBeLessThanOrEqual(121);
+  });
+
+  it('escapes markup typed as text in a bold front and still renders bold', () => {
+    const blocks = [
+      block('paragraph', [
+        richText('<img src=x onerror=alert(1)>', { bold: true }),
+        richText(' is what this paragraph is about, as plain text.'),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes[0].name).toBe(
+      '<strong>&lt;img src=x onerror=alert(1)&gt;</strong>'
+    );
+  });
+
+  it('skips short paragraphs and blocks that are not paragraphs', () => {
+    const blocks = [
+      block('paragraph', [richText('Too short to be a card.')]),
+      block('heading_2', [
+        richText('A heading long enough to pass the paragraph length floor'),
+      ]),
+      block('quote', [
+        richText('A quote long enough to pass the paragraph length floor too'),
+      ]),
+    ];
+
+    expect(
+      induceNotesFromBlocks(blocks, 'paragraphs', settings(), new TagRegistry())
+    ).toHaveLength(0);
+  });
+
+  it('keeps the whole emphasised run when bold spans several text items', () => {
+    const blocks = [
+      block('paragraph', [
+        richText('Active ', { bold: true }),
+        richText('recall', { bold: true, italic: true }),
+        richText(' means retrieving a fact from memory instead of rereading.'),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).toContain('Active');
+    expect(notes[0].name).toContain('recall');
+    expect(notes[0].name).not.toContain('retrieving');
+  });
+});

@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConversionResult } from './ConversionResult';
 import { parseMonthlyLimitPayload } from './parseMonthlyLimitPayload';
+import type { RescueStatus } from '../../helpers/rescueStatus';
 
 const mockTrack = vi.fn();
 vi.mock('../../../../lib/analytics/track', () => ({
@@ -394,6 +395,150 @@ describe('ConversionResult — failed variant', () => {
 
     expect(screen.getByText(/no text we could read/i)).toBeInTheDocument();
     expect(screen.queryByText(/No cards came out of this file/)).toBeNull();
+  });
+
+  const NOTION_EMPTY_PAGE_REASON =
+    "No cards in this deck yet. This Notion page looks empty, or 2anki can't see what's on it. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again.";
+
+  it('tells an empty Notion page to check it is shared, not to add toggles', () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Blank Notion page"
+          failureReason={NOTION_EMPTY_PAGE_REASON}
+          source="notion"
+          onMapColumns={vi.fn()}
+          rescue={[{ rule: 'paragraphs', cards: 3 }]}
+          onRescue={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText(/This Notion page looks empty/)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Connections menu/)).toBeInTheDocument();
+    expect(screen.queryByText(/every Notion toggle/)).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'How to share a page with 2anki' })
+    ).toHaveAttribute('href', '/documentation/start-here/connect-notion');
+    expect(screen.queryByRole('button', { name: /paragraphs/ })).toBeNull();
+  });
+
+  const paragraphsOffer = {
+    rule: 'paragraphs' as const,
+    cards: 4,
+    sample: [
+      {
+        front: 'Osmosis',
+        back: 'Osmosis is water moving across a membrane.',
+      },
+    ],
+  };
+
+  it('offers the paragraphs deck with its sample cards on an empty Notion page of prose', () => {
+    const onRescue = vi.fn();
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Study notes"
+          failureReason={EMPTY_DECK_REASON}
+          source="notion"
+          onMapColumns={vi.fn()}
+          rescue={[paragraphsOffer]}
+          onRescue={onRescue}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText('You can still make cards from this page:')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Osmosis')).toBeInTheDocument();
+    expect(
+      screen.getByText('Osmosis is water moving across a membrane.')
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Make 4 cards from the paragraphs' })
+    );
+    expect(onRescue).toHaveBeenCalledWith(paragraphsOffer);
+    expect(
+      screen.getByRole('link', { name: 'See how toggles become cards' })
+    ).toBeInTheDocument();
+  });
+
+  function renderOffer(rescueStatus: RescueStatus | null, onRescue = vi.fn()) {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Study notes"
+          failureReason={EMPTY_DECK_REASON}
+          source="notion"
+          onMapColumns={vi.fn()}
+          rescue={[paragraphsOffer]}
+          onRescue={onRescue}
+          rescueStatus={rescueStatus}
+        />
+      </MemoryRouter>
+    );
+    return onRescue;
+  }
+
+  it('says the deck is building and ignores a second tap while it runs', () => {
+    const onRescue = renderOffer({ kind: 'building' });
+
+    const button = screen.getByRole('button', {
+      name: 'Make 4 cards from the paragraphs',
+    });
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(button);
+    expect(onRescue).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent('Building your deck.');
+  });
+
+  it('points a free user over the monthly limit at the upgrade', () => {
+    renderOffer({ kind: 'limit', limit: 100 });
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "You've reached your 100 free cards this month."
+    );
+    expect(
+      screen.getByRole('link', { name: 'Upgrade to Pro' })
+    ).toHaveAttribute('href', '/pricing?source=downloads-limit');
+  });
+
+  it.each([
+    [{ kind: 'oneAtATime' } as const, 'Free plan converts one page at a time.'],
+    [{ kind: 'alreadyRunning' } as const, 'This page is already converting.'],
+    [{ kind: 'failed' } as const, "Couldn't start this deck. Try again."],
+  ])('explains a re-run that did not start (%o)', (status, text) => {
+    renderOffer(status);
+
+    expect(screen.getByRole('status')).toHaveTextContent(text);
+    expect(
+      screen.getByRole('button', { name: 'Make 4 cards from the paragraphs' })
+    ).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('does not offer a rescue when a card filter emptied the deck', () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Filtered Notion page"
+          failureReason="No cards in this deck yet. Your card filter removed every card."
+          source="notion"
+          onMapColumns={vi.fn()}
+          rescue={[paragraphsOffer]}
+          onRescue={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByRole('button', { name: /paragraphs/ })).toBeNull();
   });
 
   it('shows a subpages recovery hint when the server reports a too-large OOM failure', () => {

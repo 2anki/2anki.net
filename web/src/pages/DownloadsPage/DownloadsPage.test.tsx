@@ -33,6 +33,7 @@ vi.mock('./hooks/useUploads', () => ({
 vi.mock('../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: () => ({
     getJobReport: mockGetJobReport,
+    convert: mockConvert,
   }),
 }));
 
@@ -74,6 +75,7 @@ type AnalyticsGlobals = {
 };
 
 const mockGetJobReport = vi.fn().mockResolvedValue(null);
+const mockConvert = vi.fn().mockResolvedValue(new Response(null));
 
 let mockJobs: JobResponse[] = [];
 let mockUploads: {
@@ -647,6 +649,98 @@ describe('DownloadsPage failure reason panel', () => {
       name: 'See how toggles become cards',
     });
     expect(cta).toHaveAttribute('href', '/documentation/cards/notion-blocks');
+  });
+
+  it('builds the paragraphs deck a failed Notion page offers when the person picks it', async () => {
+    mockConvert.mockClear();
+    mockJobs = [
+      buildJob({
+        status: 'failed',
+        object_id: 'notion-page-id',
+        title: 'Cell biology',
+        job_reason_failure:
+          "No cards in this deck yet. 2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.",
+        rescue_candidates: [
+          {
+            rule: 'paragraphs',
+            cards: 5,
+            sample: [{ front: 'Osmosis', back: 'Osmosis moves water.' }],
+          },
+        ],
+      }),
+    ];
+    renderAt('/downloads');
+
+    expect(screen.getByText('Osmosis moves water.')).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Make 5 cards from the paragraphs' })
+    );
+
+    expect(mockConvert).toHaveBeenCalledWith(
+      'notion-page-id',
+      'page',
+      'Cell biology',
+      undefined,
+      'paragraphs'
+    );
+  });
+
+  it('tells a free user over the limit why the picked deck did not start', async () => {
+    mockConvert.mockClear();
+    mockConvert.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          reason: 'monthly_limit',
+          cards_used: 100,
+          limit: 100,
+        }),
+        { status: 402 }
+      )
+    );
+    mockJobs = [
+      buildJob({
+        status: 'failed',
+        job_reason_failure:
+          "No cards in this deck yet. 2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.",
+        rescue_candidates: [{ rule: 'paragraphs', cards: 5 }],
+      }),
+    ];
+    renderAt('/downloads');
+    vi.useRealTimers();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Make 5 cards from the paragraphs' })
+    );
+
+    expect(
+      await screen.findByText(/You've reached your 100 free cards this month/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Upgrade to Pro' })
+    ).toHaveAttribute('href', '/pricing?source=downloads-limit');
+  });
+
+  it('asks to try again when the picked deck could not be reached', async () => {
+    mockConvert.mockClear();
+    mockConvert.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    mockJobs = [
+      buildJob({
+        status: 'failed',
+        job_reason_failure:
+          "No cards in this deck yet. 2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.",
+        rescue_candidates: [{ rule: 'paragraphs', cards: 5 }],
+      }),
+    ];
+    renderAt('/downloads');
+    vi.useRealTimers();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Make 5 cards from the paragraphs' })
+    );
+
+    expect(
+      await screen.findByText("Couldn't start this deck. Try again.")
+    ).toBeInTheDocument();
   });
 
   it('does not render a show/collapse toggle for empty deck errors', () => {

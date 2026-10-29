@@ -17,11 +17,11 @@ import {
   hashSourceKey,
   packIdentitySource,
   resolveUploadIdentityGroup,
+  uploadIdentityFingerprint,
   uploadIdentityKey,
   type UploadIdentityLedger,
 } from '../anki/uploadCardIdentity';
 import sanitizeTags from '../anki/sanitizeTags';
-import { cardFingerprint } from '../claude/ClaudeService';
 import type { CrossFileDedupState } from '../claude/ClaudeService';
 import { File } from '../zip/zip';
 import Deck from './Deck';
@@ -110,6 +110,7 @@ import {
   domPlainTextLength,
   hasDominantTable,
   induceCardsFromDom,
+  OFFER_ONLY_MIN_CARDS,
   OFFER_ONLY_RULES,
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
@@ -198,8 +199,6 @@ const MEDIA_IN_BODY = /<(img|audio|video|figure|embed)\b/i;
 function bodyHasContent(body: string): boolean {
   return MEDIA_IN_BODY.test(body) || body.replace(/<[^>]*>/g, '').trim() !== '';
 }
-
-const OFFER_ONLY_MIN_CARDS = 3;
 
 export class DeckParser {
   firstDeckName: string;
@@ -1743,6 +1742,9 @@ export class DeckParser {
       const tmp = card.back;
       card.back = card.name;
       card.name = tmp;
+      const frontEscaped = card.frontEscaped;
+      card.frontEscaped = card.backEscaped;
+      card.backEscaped = frontEscaped;
     }
 
     if (refreshIconRequested) {
@@ -1948,7 +1950,7 @@ export class DeckParser {
         }
         const baseKey = uploadIdentityKey(card);
         const members = groups.get(baseKey) ?? [];
-        members.push({ card, fingerprint: cardFingerprint(card) });
+        members.push({ card, fingerprint: uploadIdentityFingerprint(card) });
         groups.set(baseKey, members);
       }
     }

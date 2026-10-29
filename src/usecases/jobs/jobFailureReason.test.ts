@@ -23,12 +23,14 @@ import {
   EMPTY_DECK_FAILURE_REASON,
   EMPTY_DECK_ALL_FILTERED_REASON,
   EMPTY_DECK_NO_CONTENT_REASON,
+  EMPTY_DECK_NOTION_EMPTY_PAGE_REASON,
   MARKDOWN_LIKELY_LOSSY_REASON,
   NOTION_TOKEN_EXPIRED_REASON,
   NOTION_DATABASE_NOT_PAGE_REASON,
   isNotionUnauthorizedError,
   jobFailureReasonCode,
   jobFailureReasonFromError,
+  notionEmptyDeckReasonMessage,
   PDF_UNREADABLE_REASON,
 } from './jobFailureReason';
 import { ConversionChildCrashedError } from '../../lib/workerTermination';
@@ -692,4 +694,30 @@ describe('jobFailureReason — expected upload states on the async path', () => 
       expect(jobFailureReasonCode(error)).not.toBe('unknown');
     }
   );
+});
+
+describe('notionEmptyDeckReasonMessage', () => {
+  it('tells a Notion page with no blocks to check it is shared with 2anki', () => {
+    expect(notionEmptyDeckReasonMessage('no_content')).toBe(
+      EMPTY_DECK_NOTION_EMPTY_PAGE_REASON
+    );
+    expect(EMPTY_DECK_NOTION_EMPTY_PAGE_REASON).toMatch(
+      /^No cards in this deck yet\. This Notion page looks empty/
+    );
+    expect(EMPTY_DECK_NOTION_EMPTY_PAGE_REASON).toContain('Connections');
+  });
+
+  it.each([
+    ['no_toggles', EMPTY_DECK_FAILURE_REASON],
+    ['unknown', EMPTY_DECK_FAILURE_REASON],
+    ['all_filtered', EMPTY_DECK_ALL_FILTERED_REASON],
+  ] as const)('keeps the existing %s message', (reason, message) => {
+    expect(notionEmptyDeckReasonMessage(reason)).toBe(message);
+  });
+
+  it('leaves the upload no_content message about the exported file', () => {
+    expect(
+      jobFailureReasonFromError(new EmptyDeckError(undefined, 'no_content'))
+    ).toBe(EMPTY_DECK_NO_CONTENT_REASON);
+  });
 });

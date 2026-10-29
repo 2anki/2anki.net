@@ -16,7 +16,23 @@ describe('SetJobFailedUseCase', () => {
       'job-1',
       '42',
       'failed',
-      'boom'
+      'boom',
+      undefined,
+      undefined
+    );
+  });
+
+  it('stores the conversion report the failure carries', async () => {
+    const repo = makeRepo({ status: 'started' });
+    const report = { rescue_candidates: [{ rule: 'paragraphs', cards: 3 }] };
+    await new SetJobFailedUseCase(repo).execute('job-1', '42', 'boom', report);
+    expect(repo.updateJobStatus).toHaveBeenCalledWith(
+      'job-1',
+      '42',
+      'failed',
+      'boom',
+      undefined,
+      report
     );
   });
 

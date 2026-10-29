@@ -8,6 +8,7 @@ import {
   resolveUploadIdentityGroup,
   unpackIdentitySource,
   uploadCardType,
+  uploadIdentityFingerprint,
   uploadIdentityKey,
 } from './uploadCardIdentity';
 
@@ -49,6 +50,39 @@ describe('uploadIdentityKey', () => {
     expect(second).toBe(`${first}#2`);
     expect(third).toBe(`${first}#3`);
     expect(new Set([first, second, third]).size).toBe(3);
+  });
+
+  it('keys an escaped front the way the unescaped front was keyed', () => {
+    const before = uploadIdentityKey({
+      name: 'A & B < C "quoted" it\'s &amp; {{type:Input}}',
+    });
+    const after = uploadIdentityKey({
+      name: 'A &amp; B &lt; C &quot;quoted&quot; it&#39;s &amp;amp; {{type:Input}}',
+      frontEscaped: true,
+    });
+    expect(after).toBe(before);
+  });
+
+  it('leaves entities alone on a front that was not escaped', () => {
+    const plain = uploadIdentityKey({ name: 'Salt &amp; water' });
+    expect(plain).not.toBe(uploadIdentityKey({ name: 'Salt & water' }));
+  });
+});
+
+describe('uploadIdentityFingerprint', () => {
+  it('is the plain card fingerprint for a front that was not escaped', () => {
+    const card = { name: 'Salt &amp; water', back: 'Brine' };
+    expect(uploadIdentityFingerprint(card)).toBe(cardFingerprint(card));
+  });
+
+  it('fingerprints an escaped front as the unescaped text it showed before', () => {
+    expect(
+      uploadIdentityFingerprint({
+        name: 'It&#39;s salt &amp; water',
+        back: 'Brine',
+        frontEscaped: true,
+      })
+    ).toBe(cardFingerprint({ name: "It's salt & water", back: 'Brine' }));
   });
 });
 

@@ -60,6 +60,7 @@ import UsersRepository from '../data_layer/UsersRepository';
 import { track } from '../services/events/track';
 import { parseFirstTouch } from './helpers/parseFirstTouch';
 import { classifyDevice } from '../lib/analytics/classifyDevice';
+import { isRescueRule } from '../types/RescueCandidate';
 
 const DEFAULT_PREVIEW_PAGE_SIZE = 15;
 const MAX_PREVIEW_PAGE_SIZE = 50;
@@ -310,7 +311,7 @@ class NotionController {
     // Auth check: throws when the owner has no Notion token, preserving the
     // pre-refactor 500 response shape. The worker re-fetches the token itself.
     await this.service.getNotionAPI(res.locals.owner);
-    const { id, title, type, frontField, backField } = req.body;
+    const { id, title, type, frontField, backField, rescueRule } = req.body;
 
     if (!id) {
       return res.status(400).send({ error: 'id is required' });
@@ -394,6 +395,7 @@ class NotionController {
         jobDbId: job.id,
         frontField: safeString(frontField),
         backField: safeString(backField),
+        rescueRule: isRescueRule(rescueRule) ? rescueRule : undefined,
         anonId: safeString(anonId),
         signupOrigin: parseFirstTouch(cookies?.first_touch).signupOrigin,
         requestId: safeString(res.locals.requestId),

@@ -82,6 +82,24 @@ describe('processPayload reversal guard', () => {
     ).toBe(true);
   });
 
+  test('deck-wide reversed swaps the sides of a plain note in place', async () => {
+    const settings = new CardOption({
+      cherry: 'false',
+      cloze: 'false',
+      reversed: 'true',
+    });
+    const parser = seedParser(settings, [new Note('Front side', 'Back side')]);
+
+    await parser.build(workspace);
+
+    const cards = parser.payload[0].cards;
+    expect(cards.map((card) => [card.name, card.back])).toEqual([
+      ['Back side', 'Front side'],
+    ]);
+    expect(cards[0].frontEscaped).toBeUndefined();
+    expect(cards[0].backEscaped).toBeUndefined();
+  });
+
   test('deck-wide reversed keeps an mcq note in the deck', async () => {
     const settings = new CardOption({
       cherry: 'false',

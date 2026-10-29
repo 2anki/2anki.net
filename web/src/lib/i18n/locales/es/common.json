@@ -760,7 +760,15 @@
       "upgradeUnlimited": "Mejora a Pro"
     },
     "emptyDeckAllFiltered": "Un filtro de tarjetas eliminó todas las tarjetas. Cherry pick solo conserva los toggles marcados con 🍒 y skip descarta los marcados con 🥑. Desactiva el filtro en los ajustes de tarjeta o marca los toggles que quieras, y vuelve a convertir.",
-    "emptyDeckNoContent": "Esta página no tenía texto que pudiéramos leer. Comprueba que la exportaste con su contenido y vuelve a convertir."
+    "emptyDeckNoContent": "Esta página no tenía texto que pudiéramos leer. Comprueba que la exportaste con su contenido y vuelve a convertir.",
+    "emptyDeckNotionEmptyPage": "Esta página de Notion parece vacía, o 2anki no puede ver su contenido. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir.",
+    "connectNotionDocs": "Cómo compartir una página con 2anki",
+    "rescueLeadNotion": "Aun así puedes hacer tarjetas con esta página:",
+    "rescueBuilding": "Creando tu mazo.",
+    "rescueOneAtATime": "El plan gratuito convierte una página a la vez. Espera a que termine la actual y vuelve a intentarlo.",
+    "rescueAlreadyRunning": "Esta página ya se está convirtiendo. Su mazo aparecerá aquí cuando esté listo.",
+    "rescueFailed": "No se pudo iniciar este mazo. Inténtalo de nuevo.",
+    "rescueLimitReached": "Has alcanzado tus {{limit}} tarjetas gratis de este mes."
   },
   "modals": {
     "consent": {

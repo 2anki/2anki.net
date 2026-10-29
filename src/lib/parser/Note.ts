@@ -36,6 +36,16 @@ export default class Note {
 
   sourcePageId?: string;
 
+  // See UploadIdentityCard.frontEscaped: set only where the shown front is
+  // escaped plain text that earlier decks keyed unescaped. create_deck.py
+  // reads it for the content-formula guid too.
+  frontEscaped?: boolean;
+
+  // The back's twin of frontEscaped, set when a reversed option moves the
+  // escaped text to the back. Only the upload fingerprint reads it;
+  // create_deck.py keys on the front alone.
+  backEscaped?: boolean;
+
   // Epoch seconds to pin as this note's Anki mod (see uploadCardIdentity.ts,
   // #4445). Only set on the signed-in upload-identity path; every other card
   // exports with the mod Anki stamps at build time.
@@ -116,6 +126,8 @@ export default class Note {
     );
     note.tags = input.tags;
     note.media = input.media;
+    note.frontEscaped = input.backEscaped;
+    note.backEscaped = input.frontEscaped;
     note.number = input.number + 0.5;
     note.hierarchy = input.hierarchy;
     note.h1 = input.h1;

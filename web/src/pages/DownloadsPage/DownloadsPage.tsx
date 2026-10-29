@@ -39,6 +39,11 @@ import { fireAnalyticsEvent } from '../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../lib/analytics/track';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import type JobResponse from '@server/types/JobResponse';
+import type { RescueCandidate } from '../../lib/upload/isRescueCandidate';
+import {
+  rescueStatusFromResponse,
+  type RescueStatus,
+} from './helpers/rescueStatus';
 import {
   ThinDeckNotice,
   shouldShowThinDeckNotice,
@@ -298,10 +303,17 @@ function isNotionTokenExpired(
   return source === 'notion' && reason === NOTION_TOKEN_EXPIRED_REASON;
 }
 
+interface FailurePanelRescue {
+  candidates: RescueCandidate[] | undefined;
+  onRescue: (candidate: RescueCandidate) => void;
+  status: RescueStatus | null;
+}
+
 function renderFailurePanelContent(
   source: DeckRow['source'],
   reason: string,
-  onMapColumns: () => void
+  onMapColumns: () => void,
+  rescue: FailurePanelRescue
 ): ReactNode {
   const monthlyLimit = parseMonthlyLimitPayload(reason);
   if (monthlyLimit != null) {
@@ -322,6 +334,9 @@ function renderFailurePanelContent(
       failureReason={reason}
       source={source === 'notion' ? 'notion' : 'upload'}
       onMapColumns={onMapColumns}
+      rescue={rescue.candidates}
+      onRescue={rescue.onRescue}
+      rescueStatus={rescue.status}
     />
   );
 }
@@ -390,6 +405,10 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   const [reportModalJob, setReportModalJob] = useState<JobResponse | null>(
     null
   );
+  const [rescueState, setRescueState] = useState<{
+    jobId: JobResponse['id'];
+    status: RescueStatus;
+  } | null>(null);
   const [hasDownloaded, setHasDownloaded] = useState(false);
   const [downloadedCutDeck, setDownloadedCutDeck] = useState(false);
   const [ratedContext, setRatedContext] = useState<
@@ -496,6 +515,37 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
     },
     [mappingModalJob, backend, refreshJobs]
   );
+
+  const handleRescueChoice = async (
+    job: JobResponse,
+    candidate: RescueCandidate
+  ) => {
+    if (rescueState?.status.kind === 'building') return;
+    setRescueState({ jobId: job.id, status: { kind: 'building' } });
+    track('notion_rescue_chosen', {
+      rule: candidate.rule,
+      cards: candidate.cards,
+    });
+    let next: RescueStatus | null;
+    try {
+      const response = await backend.convert(
+        job.object_id,
+        job.type,
+        job.title,
+        undefined,
+        candidate.rule
+      );
+      next = await rescueStatusFromResponse(response);
+    } catch {
+      next = { kind: 'failed' };
+    }
+    if (next == null) {
+      await refreshJobs();
+      setRescueState(null);
+      return;
+    }
+    setRescueState({ jobId: job.id, status: next });
+  };
 
   const activeJobs = jobs.filter((j) => isActiveJob(j.status));
   const showDeckFeedback =
@@ -1020,7 +1070,19 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                       {renderFailurePanelContent(
                                         row.source,
                                         row.job.job_reason_failure,
-                                        () => setMappingModalJob(row.job)
+                                        () => setMappingModalJob(row.job),
+                                        {
+                                          candidates: row.job.rescue_candidates,
+                                          onRescue: (candidate) =>
+                                            void handleRescueChoice(
+                                              row.job,
+                                              candidate
+                                            ),
+                                          status:
+                                            rescueState?.jobId === row.job.id
+                                              ? rescueState.status
+                                              : null,
+                                        }
                                       )}
                                     </td>
                                   </tr>

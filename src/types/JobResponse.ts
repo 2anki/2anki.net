@@ -1,4 +1,5 @@
 import type Jobs from '../data_layer/public/Jobs';
+import type { RescueCandidate } from './RescueCandidate';
 
 /**
  * API response shape for a job. Extends the DB row with fields computed
@@ -13,4 +14,7 @@ export default interface JobResponse extends Omit<Jobs, 'conversion_report'> {
   upload_id: number | null;
   empty_back_count: number;
   cherry_skipped_count?: number;
+  // Set only on a failed empty Notion conversion that can still be cut into
+  // cards; the Downloads row offers each with its sample.
+  rescue_candidates?: RescueCandidate[];
 }

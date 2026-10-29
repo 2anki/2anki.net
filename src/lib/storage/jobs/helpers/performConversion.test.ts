@@ -70,6 +70,7 @@ import { CreateFlashcardsForJobUseCase } from '../../../../usecases/jobs/CreateF
 import {
   NOTION_TOKEN_EXPIRED_REASON,
   EMPTY_DECK_FAILURE_REASON,
+  EMPTY_DECK_NOTION_EMPTY_PAGE_REASON,
 } from '../../../../usecases/jobs/jobFailureReason';
 import {
   CheckMonthlyCardLimitUseCase,
@@ -488,7 +489,7 @@ describe('performConversion — heavy pipeline', () => {
           ws: {},
           exporter: {},
           settings: {},
-          bl: { emptyDeckReason: () => 'no_toggles' },
+          bl: { emptyDeckReason: () => 'no_toggles', rescueCandidates: [] },
           rules: {},
         }),
       };
@@ -504,7 +505,118 @@ describe('performConversion — heavy pipeline', () => {
     expect(setJobFailedExecute).toHaveBeenCalledWith(
       baseRequest.id,
       baseRequest.owner,
-      EMPTY_DECK_FAILURE_REASON
+      EMPTY_DECK_FAILURE_REASON,
+      { rescue_candidates: [] }
+    );
+  });
+
+  it('stores the paragraphs offer on the failed job and reports it on conversion_failed', async () => {
+    const offer = [
+      {
+        rule: 'paragraphs',
+        cards: 4,
+        sample: [{ front: 'Osmosis', back: 'Osmosis moves water.' }],
+      },
+    ];
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: { emptyDeckReason: () => 'no_toggles', rescueCandidates: offer },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [] }]),
+      };
+    });
+
+    await performConversion(mockDatabase, baseRequest);
+
+    expect(setJobFailedExecute).toHaveBeenCalledWith(
+      baseRequest.id,
+      baseRequest.owner,
+      EMPTY_DECK_FAILURE_REASON,
+      { rescue_candidates: offer }
+    );
+    expect(track).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          reason: 'empty_deck',
+          empty_reason: 'no_toggles',
+          rescue_offered: ['paragraphs'],
+        }),
+      })
+    );
+  });
+
+  it('tells the person a Notion page with no blocks looks empty or unshared', async () => {
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: { emptyDeckReason: () => 'no_content', rescueCandidates: [] },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [] }]),
+      };
+    });
+
+    await performConversion(mockDatabase, baseRequest);
+
+    expect(setJobFailedExecute).toHaveBeenCalledWith(
+      baseRequest.id,
+      baseRequest.owner,
+      EMPTY_DECK_NOTION_EMPTY_PAGE_REASON,
+      { rescue_candidates: [] }
+    );
+    expect(track).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          reason: 'empty_deck',
+          empty_reason: 'no_content',
+          rescue_offered: [],
+        }),
+      })
+    );
+  });
+
+  it('hands the rescue rule the person picked to the page walk', async () => {
+    const createFlashcards = vi.fn().mockResolvedValue([{ cards: [] }]);
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: { emptyDeckReason: () => 'no_toggles', rescueCandidates: [] },
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return { execute: createFlashcards };
+    });
+
+    await performConversion(mockDatabase, {
+      ...baseRequest,
+      rescueRule: 'paragraphs',
+    });
+
+    expect(createFlashcards).toHaveBeenCalledWith(
+      expect.objectContaining({ rescueRule: 'paragraphs' })
     );
   });
 
@@ -662,7 +774,7 @@ describe('performConversion — heavy pipeline', () => {
           ws: {},
           exporter: {},
           settings: {},
-          bl: { emptyDeckReason: () => 'all_filtered' },
+          bl: { emptyDeckReason: () => 'all_filtered', rescueCandidates: [] },
           rules: {},
         }),
       };
@@ -826,7 +938,7 @@ describe('performConversion — signup_origin attribution', () => {
           ws: {},
           exporter: {},
           settings: {},
-          bl: { emptyDeckReason: () => 'no_toggles' },
+          bl: { emptyDeckReason: () => 'no_toggles', rescueCandidates: [] },
           rules: {},
         }),
       };

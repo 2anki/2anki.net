@@ -3,6 +3,7 @@ import ParserRules from '../../lib/parser/ParserRules';
 import CardOption from '../../lib/parser/Settings';
 import JobRepository from '../../data_layer/JobRepository';
 import Deck from '../../lib/parser/Deck';
+import type { RescueRule } from '../../types/RescueCandidate';
 
 interface CreateFlashcardsForJobUseCaseInput {
   bl: BlockHandler;
@@ -13,14 +14,24 @@ interface CreateFlashcardsForJobUseCaseInput {
   type?: string;
   frontField?: string;
   backField?: string;
+  rescueRule?: RescueRule;
 }
 
 export class CreateFlashcardsForJobUseCase {
   constructor(private readonly jobRepository: JobRepository) {}
 
   async execute(input: CreateFlashcardsForJobUseCaseInput): Promise<Deck[]> {
-    const { bl, id, rules, settings, owner, type, frontField, backField } =
-      input;
+    const {
+      bl,
+      id,
+      rules,
+      settings,
+      owner,
+      type,
+      frontField,
+      backField,
+      rescueRule,
+    } = input;
     const updateJobStatus = await this.jobRepository.updateJobStatus(
       id,
       owner,
@@ -54,6 +65,7 @@ export class CreateFlashcardsForJobUseCase {
       parentName: settings.deckName || '',
       frontField,
       backField,
+      rescueRule,
     });
   }
 }

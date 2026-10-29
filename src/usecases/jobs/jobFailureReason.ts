@@ -22,6 +22,12 @@ export const NOTION_TOKEN_EXPIRED_REASON = 'notion_token_expired';
 export const CONVERSION_PROCESS_CRASHED_REASON =
   'This conversion stopped unexpectedly. Convert again, and if the file is very large, split it into smaller parts first.';
 
+export const EMPTY_DECK_REASON_PREFIX = 'No cards in this deck yet.';
+
+export function isEmptyDeckFailureReason(reason: string | null): boolean {
+  return reason != null && reason.startsWith(EMPTY_DECK_REASON_PREFIX);
+}
+
 export const EMPTY_DECK_FAILURE_REASON =
   "No cards in this deck yet. 2anki makes a card from every Notion toggle — the toggle title becomes the question, what's inside becomes the answer. Wrap your key terms in toggles, then convert again.";
 
@@ -35,6 +41,9 @@ export const EMPTY_DECK_ALL_FILTERED_REASON =
 export const EMPTY_DECK_NO_CONTENT_REASON =
   'No cards in this deck yet. This file had no text we could read. Check that you exported the page with its content, then convert again.';
 
+export const EMPTY_DECK_NOTION_EMPTY_PAGE_REASON =
+  "No cards in this deck yet. This Notion page looks empty, or 2anki can't see what's on it. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again.";
+
 export function emptyDeckReasonMessage(reason: EmptyDeckReason): string {
   if (reason === 'all_filtered') {
     return EMPTY_DECK_ALL_FILTERED_REASON;
@@ -43,6 +52,15 @@ export function emptyDeckReasonMessage(reason: EmptyDeckReason): string {
     return EMPTY_DECK_NO_CONTENT_REASON;
   }
   return EMPTY_DECK_FAILURE_REASON;
+}
+
+// A Notion page that returned no blocks has nothing to export, so the upload
+// advice about the exported file does not apply; the likely fix is sharing.
+export function notionEmptyDeckReasonMessage(reason: EmptyDeckReason): string {
+  if (reason === 'no_content') {
+    return EMPTY_DECK_NOTION_EMPTY_PAGE_REASON;
+  }
+  return emptyDeckReasonMessage(reason);
 }
 
 export const MARKDOWN_LIKELY_LOSSY_REASON =

@@ -25,6 +25,7 @@ export const KNOWN_EVENTS = new Set([
   'upload_empty_deck_chat_shown',
   'upload_rescue_offered',
   'upload_rescue_chosen',
+  'notion_rescue_chosen',
   'upload_ai_rescue_shown',
   'upload_ai_rescue_clicked',
   'pdf_fallback_choice_shown',

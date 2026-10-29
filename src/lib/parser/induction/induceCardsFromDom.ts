@@ -1,6 +1,7 @@
 import type { CheerioAPI, Cheerio } from 'cheerio';
 import type { AnyNode, Element, Text } from 'domhandler';
 import Note from '../Note';
+import { escapeHtml } from '../../notion-render/escape';
 import { InducedRule } from './candidateRules';
 import {
   answerMarkerLength,
@@ -349,27 +350,64 @@ function induceTextPatternCards(dom: CheerioAPI): Note[] {
 // after seeing the count may set the quality floor aside.
 export const OFFER_ONLY_RULES: readonly InducedRule[] = ['paragraphs'];
 
-const PARAGRAPH_MIN_CHARS = 40;
+// An offer-only rule is shown only when it would make at least this many
+// cards; fewer is not worth a choice on the empty-deck screen.
+export const OFFER_ONLY_MIN_CARDS = 3;
+
+export const PARAGRAPH_MIN_CHARS = 40;
+const EMPHASIS_MIN_CHARS = 3;
 const EMPHASIS_MAX_CHARS = 120;
 const FIRST_SENTENCE_MAX_CHARS = 120;
 const EMPHASIS_SELECTOR = 'strong,b,mark';
 const SENTENCE_END = /^(.{8,}?[.!?])(\s|$)/s;
 
-function paragraphFront(dom: CheerioAPI, paragraph: Element): string {
+// The paragraphs rule's prompt is the emphasised term when one stands apart
+// from the paragraph; both conversion paths share this test so a page and an
+// upload of the same prose make the same cards.
+export function isParagraphEmphasisFront(
+  emphasised: string,
+  paragraphText: string
+): boolean {
+  return (
+    emphasised.length >= EMPHASIS_MIN_CHARS &&
+    emphasised.length <= EMPHASIS_MAX_CHARS &&
+    emphasised.length < paragraphText.length
+  );
+}
+
+export interface FirstSentenceSpan {
+  end: number;
+  truncated: boolean;
+}
+
+// Where the first-sentence prompt ends in a paragraph's plain text. Callers
+// cut their own source at this offset (rich text on the Notion path, escaped
+// text on the upload path) so text never becomes markup.
+export function paragraphFirstSentenceSpan(text: string): FirstSentenceSpan {
+  const sentence = SENTENCE_END.exec(text)?.[1] ?? text;
+  if (sentence.length <= FIRST_SENTENCE_MAX_CHARS) {
+    return { end: sentence.length, truncated: false };
+  }
+  return {
+    end: sentence.slice(0, FIRST_SENTENCE_MAX_CHARS).trimEnd().length,
+    truncated: true,
+  };
+}
+
+interface ParagraphFront {
+  html: string;
+  escaped: boolean;
+}
+
+function paragraphFront(dom: CheerioAPI, paragraph: Element): ParagraphFront {
   const text = textOf(dom, paragraph);
   const emphasis = dom(paragraph).find(EMPHASIS_SELECTOR).first();
-  const emphasised = emphasis.text().trim();
-  if (
-    emphasised.length >= 3 &&
-    emphasised.length <= EMPHASIS_MAX_CHARS &&
-    emphasised.length < text.length
-  ) {
-    return (emphasis.html() ?? '').trim();
+  if (isParagraphEmphasisFront(emphasis.text().trim(), text)) {
+    return { html: (emphasis.html() ?? '').trim(), escaped: false };
   }
-  const sentence = SENTENCE_END.exec(text)?.[1] ?? text;
-  return sentence.length > FIRST_SENTENCE_MAX_CHARS
-    ? `${sentence.slice(0, FIRST_SENTENCE_MAX_CHARS).trimEnd()}…`
-    : sentence;
+  const { end, truncated } = paragraphFirstSentenceSpan(text);
+  const sentence = `${text.slice(0, end)}${truncated ? '…' : ''}`;
+  return { html: escapeHtml(sentence), escaped: true };
 }
 
 // One card per prose paragraph: the bold or highlighted term (or the first
@@ -379,7 +417,12 @@ function induceParagraphCards(dom: CheerioAPI): Note[] {
   for (const block of topLevelBlocks(dom)) {
     if (tagName(block) !== 'p') continue;
     if (textOf(dom, block).length < PARAGRAPH_MIN_CHARS) continue;
-    pushCard(notes, paragraphFront(dom, block), innerHtml(dom, block));
+    const front = paragraphFront(dom, block);
+    const before = notes.length;
+    pushCard(notes, front.html, innerHtml(dom, block));
+    if (front.escaped && notes.length > before) {
+      notes[before].frontEscaped = true;
+    }
   }
   return notes;
 }

@@ -8,7 +8,25 @@ import { getOwner } from '../lib/User/getOwner';
 import DeleteJobUseCase from '../usecases/jobs/DeleteJobUseCase';
 import { getEmptyBackCount } from '../services/NotionService/helpers/getEmptyBackCount';
 import { getCherrySkippedCount } from '../services/NotionService/helpers/getCherrySkippedCount';
+import { getRescueCandidates } from '../services/NotionService/helpers/getRescueCandidates';
 import JobResponse from '../types/JobResponse';
+import { isEmptyDeckFailureReason } from '../usecases/jobs/jobFailureReason';
+
+// The offer belongs to the empty-deck failure that stored it. A later re-run
+// that fails for another reason leaves the old offer in the report, so it is
+// served only while the job still fails with an empty deck.
+function rescueOffer(
+  job: JobWithDownloadKey
+): Pick<JobResponse, 'rescue_candidates'> {
+  if (
+    job.status !== 'failed' ||
+    !isEmptyDeckFailureReason(job.job_reason_failure)
+  ) {
+    return {};
+  }
+  const candidates = getRescueCandidates(job.conversion_report);
+  return candidates.length > 0 ? { rescue_candidates: candidates } : {};
+}
 
 function toJobResponse(job: JobWithDownloadKey): JobResponse {
   return {
@@ -27,6 +45,7 @@ function toJobResponse(job: JobWithDownloadKey): JobResponse {
     restartable: job.type !== 'upload',
     empty_back_count: getEmptyBackCount(job.conversion_report),
     cherry_skipped_count: getCherrySkippedCount(job.conversion_report),
+    ...rescueOffer(job),
   };
 }
 

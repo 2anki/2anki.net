@@ -8,6 +8,11 @@ import CardOption from '../../../../lib/parser/Settings';
 import TagRegistry from '../../../../lib/parser/TagRegistry';
 import { InducedRule } from '../../../../lib/parser/induction/candidateRules';
 import {
+  isParagraphEmphasisFront,
+  PARAGRAPH_MIN_CHARS,
+  paragraphFirstSentenceSpan,
+} from '../../../../lib/parser/induction/induceCardsFromDom';
+import {
   answerMarkerLength,
   findTermDefinitionSeparator,
   questionMarkerLength,
@@ -313,16 +318,98 @@ function induceTextPatternNotes(
   return notes;
 }
 
+function isEmphasised(item: RichTextItemResponse): boolean {
+  return (
+    item.annotations?.bold === true ||
+    (item.annotations?.color ?? '').endsWith('_background')
+  );
+}
+
+// The first unbroken run of bold or highlighted text, so a term whose bold
+// spans an italic word still reads as one prompt.
+function firstEmphasisRun(
+  items: RichTextItemResponse[]
+): RichTextItemResponse[] {
+  const start = items.findIndex(isEmphasised);
+  if (start === -1) {
+    return [];
+  }
+  const run: RichTextItemResponse[] = [];
+  for (let i = start; i < items.length && isEmphasised(items[i]); i += 1) {
+    run.push(items[i]);
+  }
+  return run;
+}
+
+// One card per prose paragraph, matching the upload path's paragraphs rule:
+// the bold or highlighted term (or the first sentence) is the prompt and the
+// paragraph is the answer. Offered on the empty-deck screen, never shipped on
+// its own.
+function induceParagraphNotes(
+  blocks: GetBlockResponse[],
+  settings: CardOption,
+  tagRegistry: TagRegistry
+): Note[] {
+  const notes: Note[] = [];
+  for (const block of blocks) {
+    if (!isFullBlock(block) || block.type !== 'paragraph') continue;
+    const rawText = blockPlainText(block);
+    const text = rawText.trim();
+    if (text.length < PARAGRAPH_MIN_CHARS) continue;
+    const items = blockRichText(block) ?? [];
+    const run = firstEmphasisRun(items);
+    const emphasised = run
+      .map((item) => item.plain_text ?? '')
+      .join('')
+      .trim();
+    const front = isParagraphEmphasisFront(emphasised, text)
+      ? renderItems(run, settings, tagRegistry)
+      : firstSentenceFront(items, rawText, settings, tagRegistry);
+    pushIfComplete(notes, front, renderItems(items, settings, tagRegistry));
+  }
+  return notes;
+}
+
+// The first sentence is cut from the rich text and rendered like any card
+// text, so annotations survive and typed markup stays escaped text.
+function firstSentenceFront(
+  items: RichTextItemResponse[],
+  rawText: string,
+  settings: CardOption,
+  tagRegistry: TagRegistry
+): string {
+  const leading = rawText.length - rawText.trimStart().length;
+  const { end, truncated } = paragraphFirstSentenceSpan(rawText.trim());
+  const sentence = renderItems(
+    sliceRichText(items, leading, leading + end),
+    settings,
+    tagRegistry
+  );
+  return truncated ? `${sentence}…` : sentence;
+}
+
+function notesForRule(
+  blocks: GetBlockResponse[],
+  rule: InducedRule,
+  settings: CardOption,
+  tagRegistry: TagRegistry
+): Note[] {
+  if (rule === 'guess') {
+    return induceTextPatternNotes(blocks, settings, tagRegistry);
+  }
+  if (rule === 'paragraphs') {
+    return induceParagraphNotes(blocks, settings, tagRegistry);
+  }
+  return structuralNotes(blocks, rule, settings, tagRegistry);
+}
+
 export function induceNotesFromBlocks(
   blocks: GetBlockResponse[],
   rule: InducedRule,
   settings: CardOption,
   tagRegistry: TagRegistry
 ): Note[] {
-  const notes =
-    rule === 'guess'
-      ? induceTextPatternNotes(blocks, settings, tagRegistry)
-      : structuralNotes(blocks, rule, settings, tagRegistry);
+  const notes = notesForRule(blocks, rule, settings, tagRegistry);
   notes.forEach((note, order) => {
     note.number = order;
   });

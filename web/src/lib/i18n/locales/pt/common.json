@@ -760,7 +760,15 @@
       "upgradeUnlimited": "Fazer upgrade para o Pro"
     },
     "emptyDeckAllFiltered": "Um filtro de cartões removeu todos os cartões. O cherry pick mantém apenas os toggles marcados com 🍒 e o skip descarta os marcados com 🥑. Desative o filtro nas configurações de cartão ou marque os toggles que quiser e converta de novo.",
-    "emptyDeckNoContent": "Esta página não tinha texto que pudéssemos ler. Verifique se você a exportou com o conteúdo e converta de novo."
+    "emptyDeckNoContent": "Esta página não tinha texto que pudéssemos ler. Verifique se você a exportou com o conteúdo e converta de novo.",
+    "emptyDeckNotionEmptyPage": "Esta página do Notion parece vazia, ou o 2anki não consegue ver o que há nela. Adicione o 2anki a esta página e às suas subpáginas no menu Conexões do Notion e converta novamente.",
+    "connectNotionDocs": "Como compartilhar uma página com o 2anki",
+    "rescueLeadNotion": "Você ainda pode criar cartões com esta página:",
+    "rescueBuilding": "Criando seu baralho.",
+    "rescueOneAtATime": "O plano gratuito converte uma página por vez. Aguarde a atual terminar e tente de novo.",
+    "rescueAlreadyRunning": "Esta página já está sendo convertida. O baralho aparece aqui quando estiver pronto.",
+    "rescueFailed": "Não foi possível iniciar este baralho. Tente de novo.",
+    "rescueLimitReached": "Você atingiu seus {{limit}} cartões grátis deste mês."
   },
   "modals": {
     "consent": {

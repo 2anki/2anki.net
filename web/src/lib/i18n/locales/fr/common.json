@@ -760,7 +760,15 @@
       "upgradeUnlimited": "Passer à Pro"
     },
     "emptyDeckAllFiltered": "Un filtre de cartes a supprimé toutes les cartes. Cherry pick ne garde que les toggles marqués 🍒 et skip retire ceux marqués 🥑. Désactive le filtre dans les réglages de carte ou marque les toggles voulus, puis reconvertis.",
-    "emptyDeckNoContent": "Cette page ne contenait aucun texte lisible. Vérifie que tu l'as exportée avec son contenu, puis reconvertis."
+    "emptyDeckNoContent": "Cette page ne contenait aucun texte lisible. Vérifie que tu l'as exportée avec son contenu, puis reconvertis.",
+    "emptyDeckNotionEmptyPage": "Cette page Notion semble vide, ou 2anki ne peut pas voir son contenu. Ajoute 2anki à cette page et à ses sous-pages dans le menu Connexions de Notion, puis relance la conversion.",
+    "connectNotionDocs": "Comment partager une page avec 2anki",
+    "rescueLeadNotion": "Tu peux quand même faire des cartes avec cette page :",
+    "rescueBuilding": "Création de ton paquet.",
+    "rescueOneAtATime": "Le plan gratuit convertit une page à la fois. Attends que la conversion en cours se termine, puis réessaie.",
+    "rescueAlreadyRunning": "Cette page est déjà en cours de conversion. Son paquet apparaîtra ici quand il sera prêt.",
+    "rescueFailed": "Impossible de lancer ce paquet. Réessaie.",
+    "rescueLimitReached": "Tu as atteint tes {{limit}} cartes gratuites ce mois-ci."
   },
   "modals": {
     "consent": {
