@@ -4,7 +4,7 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { unzipSync, zipSync } from 'fflate';
 
-import { pinSharedNoteTypes } from './pinSharedNoteTypes';
+import { MAX_WAITING_PINS, pinSharedNoteTypes } from './pinSharedNoteTypes';
 
 const NOTETYPE_MOD = Number(
   /^NOTETYPE_MOD = (\d+)$/m.exec(
@@ -78,5 +78,20 @@ describe('pinSharedNoteTypes', () => {
     await expect(
       pinSharedNoteTypes(Buffer.from('not a zip'))
     ).rejects.toThrow();
+  });
+
+  it('sends the deck as stored once the line of waiting pins is full', async () => {
+    const decks = Array.from({ length: MAX_WAITING_PINS + 1 }, () =>
+      apkgWithNoteTypeMod(NOTETYPE_MOD + 600)
+    );
+
+    const results = await Promise.all(decks.map(pinSharedNoteTypes));
+
+    expect(results[results.length - 1]).toBe(decks[decks.length - 1]);
+    expect(noteTypeMods(results[0])).toEqual([NOTETYPE_MOD]);
+  });
+
+  it('reads the shared mod from the Python constant', () => {
+    expect(Number.isInteger(NOTETYPE_MOD)).toBe(true);
   });
 });

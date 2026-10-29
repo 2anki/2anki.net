@@ -16,15 +16,20 @@ pin = _ilu.module_from_spec(_spec)
 _spec.loader.exec_module(pin)
 
 
-def _apkg(tmp_path, mod, *, col_as_view=False, extra=None):
+def _apkg(tmp_path, mod, *, col_as_view=False, extra=None, trigger=False, name="2anki Basic"):
     db_path = tmp_path / "collection.anki2"
     connection = sqlite3.connect(db_path)
-    models = json.dumps({"1": {"id": 1, "name": "2anki Basic", "mod": mod}})
+    models = json.dumps({"1": {"id": 1, "name": name, "mod": mod}})
     if col_as_view:
         connection.execute(f"CREATE VIEW col AS SELECT '{models}' AS models")
     else:
         connection.execute("CREATE TABLE col (models TEXT)")
         connection.execute("INSERT INTO col (models) VALUES (?)", (models,))
+    if trigger:
+        connection.execute("CREATE TABLE pad (x BLOB)")
+        connection.execute(
+            "CREATE TRIGGER grow AFTER UPDATE ON col BEGIN INSERT INTO pad VALUES (1); END"
+        )
     connection.commit()
     connection.close()
     apkg = tmp_path / "deck.apkg"
@@ -79,6 +84,44 @@ def test_an_archive_over_a_cap_is_refused(tmp_path, monkeypatch, cap, value):
 
 def test_a_newer_format_package_is_sent_as_stored(tmp_path):
     shared = _apkg(tmp_path, NOTETYPE_MOD + 600, extra={"collection.anki21b": b"zstd"})
+
+    assert pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg")) is False
+
+
+def test_a_collection_with_a_trigger_is_refused(tmp_path):
+    shared = _apkg(tmp_path, NOTETYPE_MOD + 600, trigger=True)
+
+    with pytest.raises(pin.RefusedArchive):
+        pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg"))
+
+
+def test_oversized_note_types_are_refused(tmp_path, monkeypatch):
+    shared = _apkg(tmp_path, NOTETYPE_MOD + 600)
+    monkeypatch.setattr(pin, "MAX_MODELS_BYTES", 10)
+
+    with pytest.raises(pin.RefusedArchive):
+        pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg"))
+
+
+def test_its_scratch_files_live_beside_the_destination(tmp_path, monkeypatch):
+    shared = _apkg(tmp_path, NOTETYPE_MOD + 600)
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    seen = []
+    original = pin.shutil.rmtree
+
+    def record(path, *args, **kwargs):
+        seen.append(path)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(pin.shutil, "rmtree", record)
+    pin.pin_shared_notetypes(shared, str(out_dir / "out.apkg"))
+
+    assert [Path(p).parent for p in seen] == [out_dir]
+
+
+def test_another_publishers_note_type_keeps_its_mod(tmp_path):
+    shared = _apkg(tmp_path, NOTETYPE_MOD + 600, name="AnKingOverhaul")
 
     assert pin.pin_shared_notetypes(shared, str(tmp_path / "out.apkg")) is False
 

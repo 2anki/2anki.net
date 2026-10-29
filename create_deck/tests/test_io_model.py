@@ -66,4 +66,3 @@ def test_non_io_notetype_has_no_stock_kind(collection):
 
 def test_io_notetype_keeps_the_pinned_mod(collection):
     assert _io_notetype(collection)["mod"] == NOTETYPE_MOD
-

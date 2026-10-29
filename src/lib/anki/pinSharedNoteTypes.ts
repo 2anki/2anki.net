@@ -31,11 +31,17 @@ function runPin(source: string, destination: string): Promise<boolean> {
 }
 
 // One at a time: share links are public, so a burst of downloads must not
-// start a Python process each.
+// start a Python process each. Past a short line, a download skips the pin
+// and gets the deck as stored rather than wait behind a slow one.
+export const MAX_WAITING_PINS = 2;
 let queue: Promise<unknown> = Promise.resolve();
+let waiting = 0;
 
 function oneAtATime<T>(work: () => Promise<T>): Promise<T> {
-  const run = queue.then(work, work);
+  waiting += 1;
+  const run = queue.then(work, work).finally(() => {
+    waiting -= 1;
+  });
   queue = run.catch(() => undefined);
   return run;
 }
@@ -44,6 +50,9 @@ function oneAtATime<T>(work: () => Promise<T>): Promise<T> {
 // owner changed a card style would replace the style of anyone who imports it
 // (#5043). The copy other people download keeps the shared note-type mod.
 export function pinSharedNoteTypes(apkg: Buffer): Promise<Buffer> {
+  if (waiting >= MAX_WAITING_PINS) {
+    return Promise.resolve(apkg);
+  }
   return oneAtATime(async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'shared-apkg-'));
     try {

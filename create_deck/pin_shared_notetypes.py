@@ -32,6 +32,7 @@ REFUSED = 4
 MAX_TOTAL_BYTES = 1024 * 1024 * 1024
 MAX_COLLECTION_BYTES = 512 * 1024 * 1024
 MAX_ENTRIES = 65536
+MAX_MODELS_BYTES = 16 * 1024 * 1024
 COPY_CHUNK_BYTES = 1024 * 1024
 
 
@@ -49,6 +50,12 @@ def _check_limits(entries):
             raise RefusedArchive("collection too large")
 
 
+def _is_2anki_notetype(notetype):
+    """2anki's own note types (server n2a-*, iOS "2anki …"); others keep their mod."""
+    name = str(notetype.get("name", ""))
+    return name.startswith("n2a") or name.startswith("2anki ")
+
+
 def _pin_collection(path):
     """Returns whether any note type's mod had to come down."""
     connection = sqlite3.connect(path)
@@ -58,11 +65,23 @@ def _pin_collection(path):
         ).fetchone()
         if kind is None or kind[0] != "table":
             return False
+        # Anki collections carry no triggers; one here would run on the update.
+        if connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'trigger'"
+        ).fetchone():
+            raise RefusedArchive("collection has triggers")
+        size = connection.execute("SELECT length(models) FROM col").fetchone()
+        if size is not None and (size[0] or 0) > MAX_MODELS_BYTES:
+            raise RefusedArchive("note types too large")
         row = connection.execute("SELECT models FROM col").fetchone()
         if row is None or not row[0]:
             return False
         models = json.loads(row[0])
-        newer = [nt for nt in models.values() if nt.get("mod", 0) > NOTETYPE_MOD]
+        newer = [
+            nt
+            for nt in models.values()
+            if _is_2anki_notetype(nt) and nt.get("mod", 0) > NOTETYPE_MOD
+        ]
         for notetype in newer:
             notetype["mod"] = NOTETYPE_MOD
         if newer:
@@ -75,7 +94,11 @@ def _pin_collection(path):
 
 def pin_shared_notetypes(source, destination):
     """Writes the pinned copy; returns False, writing nothing, if none was needed."""
-    work_dir = tempfile.mkdtemp(prefix="pin-notetypes-")
+    # Beside the destination, so the caller's cleanup removes it even when
+    # this process is killed before its own finally runs.
+    work_dir = tempfile.mkdtemp(
+        prefix="pin-notetypes-", dir=os.path.dirname(os.path.abspath(destination))
+    )
     try:
         with zipfile.ZipFile(source) as archive:
             entries = archive.infolist()

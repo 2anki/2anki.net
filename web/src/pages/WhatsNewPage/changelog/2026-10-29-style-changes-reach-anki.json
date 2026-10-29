@@ -2,5 +2,5 @@
   "id": "2026-10-29-style-changes-reach-anki",
   "date": "2026-10-29",
   "type": "fix",
-  "title": "Style changes (font size, text color, alignment, code theme) reach cards already in Anki; for one set before Oct 29, change it and back"
+  "title": "Style changes (font size, text color, alignment, code theme) reach cards already in Anki when you import again; for one set before this update, change it and back"
 }
