@@ -9714,9 +9714,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     } as unknown as ReturnType<typeof useUserLocals>);
   }
 
-  async function sendAndLeave(fetchMock: Mock) {
+  async function sendAndLeave(fetchMock: Mock, sample = false) {
     const first = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} sample={sample} />
     );
     await submitFiles(first.container, ['lecture.pdf']);
     await waitFor(() =>
@@ -9847,6 +9847,56 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(
       await screen.findByRole('button', { name: 'Continue' })
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['a sample page (home, landing hero)', true],
+    ['the upload page', false],
+  ])(
+    'saves an own-file upload from %s whose last account read failed for the account the fresh read confirmed',
+    async (_page, sample) => {
+      lastReadFailed(freeSignedIn, otherPassHolder);
+      const fetchMock = stubServer([new Promise<never>(() => {})]);
+      const first = await sendAndLeave(fetchMock, sample);
+
+      expect(mockReadUserLocalsOnce).toHaveBeenCalledTimes(1);
+      expect(await getPendingUploadStore().load()).toMatchObject({
+        ownerId: 9,
+        ownerUnknown: false,
+      });
+      first.unmount();
+    }
+  );
+
+  it('never shows the closing line on a sample page, which offers no Continue', async () => {
+    await saveInterruptedUpload({ ownerId: 7 });
+    stubServer([deckResponse(9)]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = () => (
+      <MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} sample />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+    const view = render(tree());
+    await settle();
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+
+    for (const next of [otherPassHolder, signedOut, freeSignedIn]) {
+      setUserLocals(next);
+      view.rerender(tree());
+      await settle();
+      for (const line of [
+        OTHER_ACCOUNT_LINE,
+        SIGNED_OUT_LINE,
+        SIGNED_IN_LINE,
+      ]) {
+        expect(screen.queryByText(line, { selector: 'p' })).toBeNull();
+      }
+    }
   });
 
   it('saves the upload for the account the fresh read found, not the one the page showed, and offers no Continue to the account shown', async () => {
