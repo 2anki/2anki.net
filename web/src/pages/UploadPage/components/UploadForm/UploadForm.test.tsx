@@ -9660,24 +9660,212 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     }
   });
 
-  it('sends a password unlock once when Enter and a click land together', async () => {
-    const fetchMock = stubLockedPdfServer(5);
+  it.each([
+    ['the upload page', false],
+    ['a sample page', true],
+  ])(
+    'sends a password unlock once when Enter and a click land together on %s',
+    async (_page, sample) => {
+      const fetchMock = stubLockedPdfServer(5);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} sample={sample} />
+      );
+      await submitFiles(container, ['locked.pdf']);
+      const password = await screen.findByLabelText('PDF password');
+      fireEvent.change(password, { target: { value: 'open-sesame' } });
+
+      await act(async () => {
+        fireEvent.keyDown(password, { key: 'Enter' });
+        fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
+      });
+
+      await settle();
+      expect(
+        callsTo(fetchMock, '/api/upload/retry-with-credential')
+      ).toHaveLength(1);
+    }
+  );
+
+  it.each([
+    ['/upload', { aiOn: false }],
+    ['a sample page (/, /ai-flashcard-generator)', { sample: true }],
+    ['the answers page (no aiOn)', {}],
+  ] as Array<[string, { aiOn?: boolean; sample?: boolean }]>)(
+    'shows and announces the switch line on %s when a deck arrives under another session',
+    async (_page, props) => {
+      stubServer([deckResponse(64, sentBy('9'))]);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} {...props} />
+      );
+      await submitFiles(container, ['lecture.pdf']);
+
+      expect(
+        await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+      ).toBeVisible();
+      expect(liveRegion(container)).toBe(
+        `Your deck is ready — 64 cards. ${OTHER_ACCOUNT_LINE}`
+      );
+    }
+  );
+
+  const emptyWithRescue = (owner: string) =>
+    jsonAnswer(
+      400,
+      { ...emptyExport, rescue: [{ rule: 'heading', cards: 2 }] },
+      sentBy(owner)
+    );
+
+  function renderHandoff() {
+    return render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/upload',
+            state: {
+              handoffFile: new File(['# notes'], 'notes.zip', {
+                type: 'application/zip',
+              }),
+            },
+          },
+        ]}
+      >
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
+          <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+  }
+
+  function dropNotesFolder(container: HTMLElement) {
+    class FakeDataTransfer {
+      files: File[] = [];
+      items = { add: (file: File) => this.files.push(file) };
+    }
+    vi.stubGlobal('DataTransfer', FakeDataTransfer);
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [],
+      writable: true,
+      configurable: true,
+    });
+    input.removeAttribute('required');
+    const page = {
+      isFile: true,
+      isDirectory: false,
+      name: 'notes.html',
+      fullPath: '/notes/notes.html',
+      file: (resolve: (file: File) => void) =>
+        resolve(new File(['<html><body>Krebs</body></html>'], 'notes.html')),
+    };
+    const folder = {
+      isFile: false,
+      isDirectory: true,
+      name: 'notes',
+      fullPath: '/notes',
+      createReader: () => {
+        const batches: unknown[][] = [[page], []];
+        return {
+          readEntries: (resolve: (batch: unknown[]) => void) => {
+            resolve(batches.shift() ?? []);
+          },
+        };
+      },
+    };
+    dropOnPage({ items: [{ webkitGetAsEntry: () => folder }], files: [] });
+  }
+
+  const EMPTY_STATUS = 'Conversion finished, but no cards were found.';
+  const JA_EMPTY_STATUS =
+    '変換は完了しましたが、カードは見つかりませんでした。';
+  const JA_OTHER_ACCOUNT_LINE =
+    '今は別のアカウントでログインしています。そのアカウントで変換するには、ファイルをもう一度選んでください。';
+
+  async function expectSwitchLineInEnglishThenJapanese(container: HTMLElement) {
+    expect(
+      await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeVisible();
+    expect(liveRegion(container)).toBe(`${EMPTY_STATUS} ${OTHER_ACCOUNT_LINE}`);
+    try {
+      await act(async () => {
+        await i18n.changeLanguage('ja');
+      });
+      expect(
+        screen.getByText(JA_OTHER_ACCOUNT_LINE, { selector: 'p' })
+      ).toBeVisible();
+      expect(liveRegion(container)).toBe(
+        `${JA_EMPTY_STATUS}${JA_OTHER_ACCOUNT_LINE}`
+      );
+    } finally {
+      await act(async () => {
+        await i18n.changeLanguage('en');
+      });
+    }
+  }
+
+  it('shows and announces the switch line, in English and Japanese, when a file handed over from Print or CSV comes back under another session', async () => {
+    stubServer([emptyWithRescue('9')]);
+    const { container } = renderHandoff();
+
+    await expectSwitchLineInEnglishThenJapanese(container);
+  });
+
+  it('shows and announces the switch line, in English and Japanese, when a dropped folder comes back under another session', async () => {
+    stubServer([emptyWithRescue('9')]);
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
     );
-    await submitFiles(container, ['locked.pdf']);
-    const password = await screen.findByLabelText('PDF password');
-    fireEvent.change(password, { target: { value: 'open-sesame' } });
+    dropNotesFolder(container);
 
-    await act(async () => {
-      fireEvent.keyDown(password, { key: 'Enter' });
-      fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
-    });
+    await expectSwitchLineInEnglishThenJapanese(container);
+  });
 
-    await settle();
+  it('reads an out-of-range session as unknown for a file handed over from Print or CSV, and holds its resend', async () => {
+    accountReadFailed(passHolder);
+    const fetchMock = stubServer([
+      emptyWithRescue('9007199254740993'),
+      deckResponse(2),
+    ]);
+    renderHandoff();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Make 2 cards from the headings',
+      })
+    );
+
     expect(
-      callsTo(fetchMock, '/api/upload/retry-with-credential')
-    ).toHaveLength(1);
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it('reads an out-of-range session as unknown for a dropped folder, and holds its resend', async () => {
+    accountReadFailed(passHolder);
+    const fetchMock = stubServer([
+      emptyWithRescue('9007199254740993'),
+      deckResponse(2),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    dropNotesFolder(container);
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Make 2 cards from the headings',
+      })
+    );
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
   });
 });
 
