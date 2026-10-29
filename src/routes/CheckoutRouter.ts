@@ -147,8 +147,10 @@ const CheckoutRouter = () => {
    *   get:
    *     summary: Get the Pro plan prices
    *     description: |
-   *       Returns the monthly and annual Pro prices every new checkout
-   *       pays. The same for every visitor, signed in or not.
+   *       Returns the monthly and annual Pro prices for every new checkout.
+   *       They are the same for every visitor, signed in or not. `legacy` is
+   *       always false and `lockInDeadline` always null; both stay for older
+   *       web builds.
    *     tags: [Payments]
    *     responses:
    *       200:
