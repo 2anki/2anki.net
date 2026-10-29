@@ -15,8 +15,8 @@ const toggle = (id: string, summary: string, body: string) =>
 const exportPage = (toggles: string) =>
   `<html><head><title>Notes</title></head><body><article class="page sans"><div class="page-body">${toggles}</div></article></body></html>`;
 
-// With cloze on, the upload path keeps every toggle as a front-only card
-// whatever its back holds, so this covers the basic-card path.
+// Cloze off by default here: the basic-card path. The cloze-on cases are
+// further down.
 const parse = async (
   contents: string,
   settings = new CardOption({ cloze: 'false' })
@@ -210,6 +210,26 @@ describe('toggles with no answer in a cloze-on upload', () => {
       expect(parser.payload[0].cards[0].back).toContain('Open in Notion');
     }
   );
+
+  it('drops an answerless toggle with Add Notion link and typed answers on, instead of asking to type the link', async () => {
+    const withPageId = mixedPage.replace(
+      '<article class="page sans">',
+      '<article id="3b0e2c3a-0000-4000-8000-000000000009" class="page sans">'
+    );
+    const parser = await parse(
+      withPageId,
+      new CardOption({
+        cloze: 'false',
+        'add-notion-link': 'true',
+        'enable-input': 'true',
+      })
+    );
+
+    const fronts = parser.payload.flatMap((deck) =>
+      deck.cards.map((card) => stripTags(card.name))
+    );
+    expect(fronts).toEqual(['Has an answer']);
+  });
 
   it('keeps an MCQ toggle under cloze, which never reaches the answer check', async () => {
     const mcq = toggle(

@@ -1490,10 +1490,12 @@ export class DeckParser {
       card.enableInput = true;
       return;
     }
+    // A back holding only our "Open in Notion" link has no answer to type.
     if (
       !card.cloze &&
       !card.answerIsSlideSource &&
-      isTypableAnswer(card.back)
+      isTypableAnswer(card.back) &&
+      hasVisibleContent(this.backWithoutNotionLink(card))
     ) {
       card.answer = typableAnswerText(card.back);
       card.name = `${card.name}{{type:Input}}`;
