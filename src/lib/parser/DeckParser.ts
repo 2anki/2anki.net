@@ -114,6 +114,7 @@ import {
   OFFER_ONLY_RULES,
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
+import { hasVisibleContent } from './hasVisibleContent';
 
 const MARKDOWN_SOURCE_RATIO_THRESHOLD = 0.8;
 
@@ -1551,8 +1552,27 @@ export class DeckParser {
       card.back = inputInfo.mangle;
     }
 
+    this.unmarkAnswerlessToggle(card);
+
     if (!card.tags) {
       card.tags = [];
+    }
+  }
+
+  // Cloze mode marks every card cloze, and a cloze card needs no back, so a
+  // Notion-export toggle with no answer used to ship front-only. Without a
+  // deletion it is a basic card, so it drops and is counted the way it is on
+  // the Notion connection. Only an exported toggle carries a Notion block id;
+  // the toggles our own converters build for spreadsheets, slides, PDFs and
+  // Markdown carry none and keep their front-only cards.
+  private unmarkAnswerlessToggle(card: Note): void {
+    if (
+      card.cloze &&
+      card.notionId != null &&
+      !card.hasClozeDeletion() &&
+      !hasVisibleContent(card.back)
+    ) {
+      card.cloze = false;
     }
   }
 

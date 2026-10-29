@@ -82,14 +82,11 @@ describe('a page where every toggle answer is empty markup', () => {
     expect(parser.emptyDeckReason()).toBe('unknown');
   });
 
-  it('ships the same front-only cards as before with cloze on, once the rescue finds nothing better', async () => {
+  it('makes no cards with cloze on either, rather than front-only cards', async () => {
     const parser = await parse(allBlank, new CardOption({}));
 
-    const fronts = parser.payload.flatMap((deck) =>
-      deck.cards.map((card) => stripTags(card.name))
-    );
-    expect(fronts).toEqual(['Only an empty line inside', 'Another empty one']);
-    expect(parser.inducedRule?.outcome).not.toBe('rescue_shipped');
+    expect(parser.totalCardCount()).toBe(0);
+    expect(parser.emptyDeckReason()).toBe('unknown');
   });
 });
 
@@ -115,5 +112,55 @@ describe('cards an MCP create_deck call writes as markdown, note type basic', ()
       deck.cards.map((card) => stripTags(card.name))
     );
     expect(fronts).toEqual(['Kept question']);
+  });
+});
+
+describe('toggles with no answer in a cloze-on upload', () => {
+  const clozeToggle = (summary: string) =>
+    `<ul class="toggle"><li><details open=""><summary>${summary}</summary><p class=""></p></details></li></ul>`;
+
+  it('drops and counts a toggle with nothing inside and one with only an empty line', async () => {
+    const parser = await parse(
+      exportPage(
+        toggle('a', 'Has an answer', '<p id="p1" class="">Answer one</p>') +
+          toggle('b', 'Nothing inside', '') +
+          toggle('c', 'Only an empty line inside', '<p id="p3" class=""></p>')
+      ),
+      new CardOption({ cloze: 'true' })
+    );
+
+    const fronts = parser.payload.flatMap((deck) =>
+      deck.cards.map((card) => stripTags(card.name))
+    );
+    expect(fronts).toEqual(['Has an answer']);
+    expect(parser.emptyBackCount).toBe(2);
+  });
+
+  it.each([
+    ['a code-span deletion', 'The <code>cell</code> is the unit of life'],
+    ['a written deletion', 'The {{c1::cell}} is the unit of life'],
+  ])('keeps a cloze toggle with %s and no answer', async (_what, summary) => {
+    const parser = await parse(
+      exportPage(clozeToggle(summary)),
+      new CardOption({ cloze: 'true' })
+    );
+
+    const cards = parser.payload.flatMap((deck) => deck.cards);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].cloze).toBe(true);
+  });
+
+  it('keeps the front-only card for a toggle our own converters built, which has no Notion block id', async () => {
+    const converted =
+      '<ul class="toggle"><li><details><summary>Mitochondrion</summary><p></p></details></li></ul>';
+    const parser = await parse(
+      exportPage(converted),
+      new CardOption({ cloze: 'true' })
+    );
+
+    const fronts = parser.payload.flatMap((deck) =>
+      deck.cards.map((card) => stripTags(card.name))
+    );
+    expect(fronts).toEqual(['Mitochondrion']);
   });
 });
