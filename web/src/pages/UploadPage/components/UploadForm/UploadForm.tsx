@@ -68,6 +68,7 @@ import { getStaleSourceState } from './helpers/getStaleSourceState';
 import { FeedbackWidget } from '../../../../components/FeedbackWidget/FeedbackWidget';
 import { isPayingUser } from '../../../../components/NavigationBar/helpers/getPlanLabel';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
+import { readUserLocalsOnce } from '../../../../lib/hooks/readUserLocalsOnce';
 import { hasSessionHint } from '../../../../lib/sessionHint';
 import {
   useCardUsage,
@@ -402,6 +403,11 @@ function senderField(owner: number | null): string {
 // The server names the session every upload ran under, which settles whose
 // files these are better than any account read the page makes afterwards.
 const UPLOAD_OWNER_HEADER = 'X-Upload-Owner';
+
+interface AccountRead {
+  confirmed: boolean;
+  accountId: number | null;
+}
 
 function sessionChangedKey(
   sender: number | null | undefined,
@@ -1278,7 +1284,7 @@ function UploadForm({
   const confirmPageSender = async (
     files: File[]
   ): Promise<number | null | undefined> => {
-    const account = await readAccountAgain();
+    const account = await readAccountOnce();
     const sender = account.confirmed ? account.accountId : undefined;
     setKeptFiles((kept) =>
       kept.files === files ? { ...kept, owner: sender } : kept
@@ -1293,25 +1299,43 @@ function UploadForm({
 
   // The account as the server sees it now, or the account the page shows when
   // the read fails or does not answer in time (then it is not confirmed).
-  const readAccountAgain = async (): Promise<{
-    confirmed: boolean;
-    accountId: number | null;
-  }> => {
+  const withinAccountReadCap = async (
+    read: () => Promise<AccountRead>
+  ): Promise<AccountRead> => {
+    const unconfirmed: AccountRead = {
+      confirmed: false,
+      accountId: currentOwnerId,
+    };
     let stopCap = () => {};
-    const capped = new Promise<undefined>((resolve) => {
-      const timer = globalThis.setTimeout(resolve, ACCOUNT_READ_CAP_MS);
+    const capped = new Promise<AccountRead>((resolve) => {
+      const timer = globalThis.setTimeout(
+        () => resolve(unconfirmed),
+        ACCOUNT_READ_CAP_MS
+      );
       stopCap = () => globalThis.clearTimeout(timer);
     });
     try {
-      const reread = await Promise.race([refetchUserLocals(), capped]);
-      if (reread?.status !== 'success') {
-        return { confirmed: false, accountId: currentOwnerId };
-      }
-      return { confirmed: true, accountId: reread.data?.user?.id ?? null };
+      return await Promise.race([read().catch(() => unconfirmed), capped]);
     } finally {
       stopCap();
     }
   };
+
+  const readAccountAgain = () =>
+    withinAccountReadCap(async () => {
+      const reread = await refetchUserLocals();
+      return reread?.status === 'success'
+        ? { confirmed: true, accountId: reread.data?.user?.id ?? null }
+        : { confirmed: false, accountId: currentOwnerId };
+    });
+
+  // Without the retries the page's own reads make, so a failure answers
+  // inside the cap.
+  const readAccountOnce = () =>
+    withinAccountReadCap(async () => {
+      const locals = await readUserLocalsOnce(queryClient);
+      return { confirmed: true, accountId: locals?.user?.id ?? null };
+    });
 
   // The buttons that convert the kept files again go through here. Files whose
   // sender is unknown are never sent back. Otherwise it reads the account
@@ -2107,6 +2131,8 @@ function UploadForm({
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
     setSampleRun(false);
+    setProgressWidth(10);
+    setProgressSlow(false);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
     const aiFlagSent = formData.get('claude-ai-flashcards');
@@ -2129,8 +2155,6 @@ function UploadForm({
     setUnreadableFile(null);
     fireAnalyticsEvent('upload_started');
     track('upload_submitted', uploadSubmittedProps(uploadedFiles, trigger));
-    setProgressWidth(10);
-    setProgressSlow(false);
     setShowFallback(false);
     try {
       const body = await snapshotUploadBody(formData, uploadedFiles);
@@ -4502,6 +4526,16 @@ function UploadForm({
       {resumeClosedKey != null && zoneState === 'idle' && !isUploadLocked && (
         <div className={formStyles.resumeBanner}>
           <p className={formStyles.resumeText}>{t(resumeClosedKey)}</p>
+          {resumeClosedKey === 'upload.form.signedOutSinceUpload' && (
+            <div className={formStyles.resumeActions}>
+              <Link
+                to="/login?redirect=/upload"
+                className={formStyles.resetLink}
+              >
+                {t('passFirst:signIn')}
+              </Link>
+            </div>
+          )}
         </div>
       )}
       {resumeOffer?.kind === 'reattach' && zoneState === 'idle' && (
