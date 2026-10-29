@@ -569,6 +569,25 @@ const realAuthCases: [string, keyof typeof UPLOADS, Population][] = [
     },
   ],
   [
+    'real pass token: lapsed, signed-out over the cap',
+    'large',
+    {
+      ...signedOut,
+      realAuth: true,
+      headers: { 'x-pass-token': 'cs_golden_lapsed' },
+    },
+  ],
+  [
+    'real pass token: lapsed, signed-out over the cap with AI on',
+    'large',
+    {
+      ...signedOut,
+      realAuth: true,
+      headers: { 'x-pass-token': 'cs_golden_lapsed' },
+      fields: AI_ON,
+    },
+  ],
+  [
     'real pass token: signed-out Day Pass holder',
     'large',
     {

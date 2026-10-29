@@ -779,6 +779,46 @@ exports[`what the real auth middleware resolves before the upload > real middlew
 }
 `;
 
+exports[`what the real auth middleware resolves before the upload > real pass token: lapsed, signed-out over the cap 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {
+    "x-upload-owner": "none",
+  },
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what the real auth middleware resolves before the upload > real pass token: lapsed, signed-out over the cap with AI on 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {
+    "x-upload-owner": "none",
+  },
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
 exports[`what the real auth middleware resolves before the upload > real pass token: signed-out Day Pass holder 1`] = `
 {
   "body": {
