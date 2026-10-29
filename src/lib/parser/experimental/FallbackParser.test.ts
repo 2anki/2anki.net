@@ -64,6 +64,15 @@ describe('FallbackParser tab-separated text', () => {
     expect(decks[0].cards[1].back).toBe('4');
   });
 
+  it('drops a line whose back is only markup with nothing to read', () => {
+    const tabContent = 'Kept question\tAnswer\nBlank answer\t<p>&nbsp;</p>';
+    const parser = new FallbackParser([
+      { name: 'my_deck.txt', contents: Buffer.from(tabContent) },
+    ]);
+    const decks = parser.run(new CardOption({}));
+    expect(decks[0].cards.map((card) => card.name)).toEqual(['Kept question']);
+  });
+
   it('gives a .txt deck the same style as a Notion deck', () => {
     const settings = new CardOption({});
     const parser = new FallbackParser([
