@@ -37,6 +37,17 @@ function mockReq(anonId: string | null): Request {
   } as unknown as Request;
 }
 
+function rebuiltWorkerCrash(): Error {
+  const error = Object.assign(
+    new Error("Cannot read properties of undefined (reading '0')"),
+    { name: 'TypeError' }
+  );
+  error.stack =
+    "TypeError: Cannot read properties of undefined (reading '0')\n" +
+    '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+  return error;
+}
+
 function useCaseStub(execute: ReturnType<typeof vi.fn>) {
   return { execute } as unknown as ConstructorParameters<
     typeof AiPreviewResumeController
@@ -84,6 +95,19 @@ describe('AiPreviewResumeController', () => {
     expect((res as unknown as { body: Buffer }).body).toEqual(
       Buffer.from('APKG BYTES')
     );
+  });
+
+  it('rethrows a worker crash unchanged, so the app error handler answers it', async () => {
+    const crash = rebuiltWorkerCrash();
+    const execute = vi.fn().mockRejectedValue(crash);
+    const controller = new AiPreviewResumeController(useCaseStub(execute));
+    const res = mockRes(88);
+
+    await expect(controller.resume(mockReq('visitor-1'), res)).rejects.toBe(
+      crash
+    );
+    expect(res.json).not.toHaveBeenCalled();
+    expect(res.send).not.toHaveBeenCalled();
   });
 
   it('returns 404 when no preview hold is waiting', async () => {

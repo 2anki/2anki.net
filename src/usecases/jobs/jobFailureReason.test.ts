@@ -79,7 +79,9 @@ describe('jobFailureReasonFromError', () => {
       "TypeError: Cannot read properties of undefined (reading '0')\n" +
       '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
 
-    expect(jobFailureReasonFromError(rebuilt)).not.toContain('tables.ts');
+    expect(jobFailureReasonFromError(rebuilt, 'job-1')).toBe(
+      "Something went wrong on our end converting this file. Job ID job-1. Check status at 2anki.net/status — if everything's green, email support@2anki.net with the job ID."
+    );
   });
 
   it('returns the EmptyDeckError reason unchanged', () => {

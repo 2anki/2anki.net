@@ -115,8 +115,11 @@ describe('ErrorHandler', () => {
       rebuilt
     );
 
-    expect(res.json).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(res.body)).not.toContain('tables.ts');
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      code: 'unknown',
+      message: "Cannot read properties of undefined (reading '0')",
+    });
   });
 
   test('answers an exposed 4xx http-error with its own status', async () => {

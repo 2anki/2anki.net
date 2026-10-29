@@ -60,6 +60,17 @@ function fakeResponse(owner?: number): FakeResponse {
   return res;
 }
 
+function rebuiltWorkerCrash(): Error {
+  const error = Object.assign(
+    new Error("Cannot read properties of undefined (reading '0')"),
+    { name: 'TypeError' }
+  );
+  error.stack =
+    "TypeError: Cannot read properties of undefined (reading '0')\n" +
+    '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+  return error;
+}
+
 const allowingLimiter: RateLimiter = { check: () => true };
 const denyingLimiter: RateLimiter = { check: () => false };
 
@@ -85,6 +96,20 @@ describe('SampleUploadController', () => {
     expect(res.headers['Access-Control-Expose-Headers']).toContain(
       'X-Card-Count'
     );
+  });
+
+  it('lets a worker crash reach the app error handler unchanged', async () => {
+    const crash = rebuiltWorkerCrash();
+    const useCase = {
+      execute: vi.fn().mockRejectedValue(crash),
+    } as unknown as ConstructorParameters<typeof SampleUploadController>[0];
+    const controller = new SampleUploadController(useCase, allowingLimiter);
+    const res = fakeResponse();
+
+    await expect(
+      controller.sample(req, res as unknown as express.Response)
+    ).rejects.toBe(crash);
+    expect(res.body).toBeUndefined();
   });
 
   it('records a dedicated sample event tagged source=sample, not the real-funnel event', async () => {

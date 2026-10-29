@@ -51,6 +51,17 @@ function buildRequest(anonId: string | null): Request {
   } as unknown as Request;
 }
 
+function rebuiltWorkerCrash(): Error {
+  const error = Object.assign(
+    new Error("Cannot read properties of undefined (reading '0')"),
+    { name: 'TypeError' }
+  );
+  error.stack =
+    "TypeError: Cannot read properties of undefined (reading '0')\n" +
+    '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+  return error;
+}
+
 function buildUseCase(repo: InMemoryHeldDeckRepository) {
   const store: HeldFileStore = {
     getFileContents: vi
@@ -104,6 +115,27 @@ describe('ClaimHeldDeckController', () => {
 
     expect(capturedStatus()).toBe(200);
     expect(capturedJson()).toEqual({ cardCount: 21, cardsHeldBack: 13 });
+  });
+
+  it('POST rethrows a worker crash unchanged, so the app error handler answers it', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const crash = rebuiltWorkerCrash();
+    const store: HeldFileStore = {
+      getFileContents: vi
+        .fn()
+        .mockResolvedValue({ Body: Buffer.from('<html></html>') }),
+    };
+    const converter: HeldDeckConverter = {
+      convertHeldFileForOwner: vi.fn().mockRejectedValue(crash),
+    };
+    const controller = new ClaimHeldDeckController(
+      new ClaimHeldDeckUseCase(repo, store, converter)
+    );
+    const { res } = buildResponse(7);
+
+    await expect(controller.claim(buildRequest(ANON), res)).rejects.toBe(crash);
+    expect(res.json).not.toHaveBeenCalled();
   });
 
   it('POST 404s when there is no hold', async () => {

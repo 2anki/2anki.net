@@ -63,6 +63,9 @@ function buildWorkerError(failure: UploadGenerationFailure): Error {
   if (failure.name != null) {
     fallback.name = failure.name;
   }
+  if (failure.stack != null) {
+    fallback.stack = failure.stack;
+  }
   return fallback;
 }
 
