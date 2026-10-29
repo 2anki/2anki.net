@@ -566,7 +566,7 @@ async function doGenerationWork(
 // A filesystem or OS error (ENOENT, EACCES, ENOSPC) is told apart from a
 // deliberate coded error by its numeric errno; only those two fields cross,
 // so ErrorHandler can still answer it as our fault (#5144).
-function systemErrorOf(
+export function systemErrorOf(
   err: unknown
 ): { code: string; errno: number } | undefined {
   const { code, errno } = (err ?? {}) as { code?: unknown; errno?: unknown };
