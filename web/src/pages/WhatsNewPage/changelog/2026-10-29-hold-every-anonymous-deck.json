@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-29-hold-every-anonymous-deck",
+  "date": "2026-10-29",
+  "type": "fix",
+  "title": "A deck over 21 cards made without an account waits for you to sign up, on your first visit too, and the limit page says what happened to your file"
+}

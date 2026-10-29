@@ -272,11 +272,12 @@ describe('LimitPage — anonymous variant', () => {
     asAnonymous();
   });
 
-  it('shows the status line explaining the conversion stopped', () => {
+  it('says the upload made more cards than the no-account cap', () => {
     renderPage();
     expect(
-      screen.getByText('Conversion stopped — you reached the 21-card limit')
-    ).toBeTruthy();
+      screen.getByText('Your upload made more than 21 cards')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Conversion stopped/)).not.toBeInTheDocument();
   });
 
   it('shows the no-account heading even when the URL says kind=card_count', () => {
@@ -315,9 +316,9 @@ describe('LimitPage — anonymous variant', () => {
     renderPage();
     expect(
       screen.getByText(
-        'Without an account, conversions stop at 21 cards. A free account raises that to 100 cards a month — or sign in to the one you have.'
+        'Without an account, you can download up to 21 cards at a time. A free account raises that to 100 cards a month — or sign in to the one you have.'
       )
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   it('lists the cap-fix benefit first', () => {
@@ -346,13 +347,14 @@ describe('LimitPage — anonymous variant', () => {
     expect(screen.queryByText('Already have an account?')).toBeNull();
   });
 
-  it('says the file stays in the browser and must be dropped again', () => {
+  it('says the file was not kept and must be dropped again', () => {
     renderPage();
     expect(
       screen.getByText(
-        "Your file wasn't uploaded — drop it in again after signing in."
+        "We didn't keep your file — drop it in again after signing in."
       )
-    ).toBeTruthy();
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/wasn't uploaded/)).not.toBeInTheDocument();
   });
 
   it('offers a Day Pass with no account while sign-up stays the primary action', () => {

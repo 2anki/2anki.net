@@ -1,5 +1,10 @@
 import { vi } from 'vitest';
-import { getAnonymousPassId, getOwner, getOwnerId } from './getOwner';
+import {
+  getAnonymousPassId,
+  getMintedAnonId,
+  getOwner,
+  getOwnerId,
+} from './getOwner';
 
 import { Response } from 'express';
 
@@ -86,4 +91,19 @@ describe('getAnonymousPassId', () => {
       getAnonymousPassId(mockResponseWithLocals({ anonymousPassId: 'nope' }))
     ).toBeNull();
   });
+});
+
+describe('getMintedAnonId', () => {
+  test('returns the id the anon id middleware minted for this request', () => {
+    expect(
+      getMintedAnonId(mockResponseWithLocals({ mintedAnonId: 'anon-new' }))
+    ).toBe('anon-new');
+  });
+
+  test.each([[{}], [{ mintedAnonId: '' }], [{ mintedAnonId: 42 }]])(
+    'returns null when no usable id was minted (%o)',
+    (locals) => {
+      expect(getMintedAnonId(mockResponseWithLocals(locals))).toBeNull();
+    }
+  );
 });

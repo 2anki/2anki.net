@@ -27,5 +27,6 @@ export function anonIdMiddleware(
     sameSite: 'lax',
     httpOnly: false,
   });
+  res.locals.mintedAnonId = id;
   next();
 }
