@@ -21,6 +21,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import UploadForm from './UploadForm';
+import i18n from '../../../../lib/i18n';
 
 vi.mock('../../../../lib/analytics/track', () => ({
   track: vi.fn(),
@@ -8934,10 +8935,11 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(resumed.getAll('claude-ai-flashcards')).toEqual(['true']);
     expect(resumed.getAll('pdf-page-pairs')).toEqual(['false']);
     expect(resumed.getAll('kept-owner')).toEqual(['8']);
-    expect(eventsNamed('thin_deck_ai_unlock_clicked')).toContainEqual([
-      'thin_deck_ai_unlock_clicked',
-      { plan: 'resumed' },
-    ]);
+    expect(
+      eventsNamed('thin_deck_ai_unlock_clicked').filter(
+        ([, props]) => props?.plan === 'resumed'
+      )
+    ).toEqual([['thin_deck_ai_unlock_clicked', { plan: 'resumed' }]]);
     expect(eventsNamed('upload_submitted')).toContainEqual([
       'upload_submitted',
       expect.objectContaining({
@@ -9324,11 +9326,35 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     async (_screen, line, status, showSwitch) => {
       const container = await showSwitch();
 
+      expect(screen.getByText(line, { selector: 'p' })).toBeVisible();
       expect(liveRegion(container)).toBe(
         status === '' ? line : `${status} ${line}`
       );
     }
   );
+
+  it('joins the status and the line with a Japanese full stop and no space in Japanese', async () => {
+    stubServer([networkDrop]);
+    const view = renderRebuildForm(false);
+    await submitFiles(view.container, ['lecture.pdf']);
+    await screen.findByRole('button', { name: 'Try again' });
+    setUserLocals(otherPassHolder);
+    view.rerenderWithAi(false);
+
+    try {
+      await act(async () => {
+        await i18n.changeLanguage('ja');
+      });
+
+      expect(liveRegion(view.container)).toBe(
+        '変換に失敗しました。今は別のアカウントでログインしています。そのアカウントで変換するには、ファイルをもう一度選んでください。'
+      );
+    } finally {
+      await act(async () => {
+        await i18n.changeLanguage('en');
+      });
+    }
+  });
 
   it('keeps the shown switch line out of any live region but the page one', async () => {
     stubServer([deckResponse(64)]);
@@ -9452,20 +9478,56 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
   });
 
-  it("clears an unknown sender's save, sending nothing and saying nothing, when Continue is clicked after a sign-in", async () => {
+  it("clears an unknown sender's save, sends nothing, and says the page is signed in now when Continue is clicked after a sign-in", async () => {
     await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
     setUserLocals(signedOut);
     const fetchMock = stubServer([deckResponse(9)]);
-    const { rerenderWithAi } = renderRebuildForm(false);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
     const resume = await screen.findByRole('button', { name: 'Continue' });
 
     setUserLocals(freeSignedIn);
     rerenderWithAi(false);
     fireEvent.click(resume);
-    await settle();
 
+    expect(
+      await screen.findByText(SIGNED_IN_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(liveRegion(container)).toBe(SIGNED_IN_LINE);
     expect(await getPendingUploadStore().load()).toBeNull();
     expect(screen.queryByText(SENDER_UNKNOWN, { selector: 'p' })).toBeNull();
+    expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
+  });
+
+  it('drops the closing line once a new file goes out', async () => {
+    await saveInterruptedUpload({ ownerId: null, ownerUnknown: true });
+    setUserLocals(signedOut);
+    stubServer([new Promise<never>(() => {})]);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
+    const resume = await screen.findByRole('button', { name: 'Continue' });
+    setUserLocals(freeSignedIn);
+    rerenderWithAi(false);
+    fireEvent.click(resume);
+    await screen.findByText(SIGNED_IN_LINE, { selector: 'p' });
+
+    await submitFiles(container, ['lecture.pdf']);
+
+    expect(screen.queryByText(SIGNED_IN_LINE, { selector: 'p' })).toBeNull();
+  });
+
+  it("says another account is signed in now when Continue is clicked on a save another account's page left", async () => {
+    await saveInterruptedUpload({ ownerId: 7 });
+    const fetchMock = stubServer([deckResponse(9)]);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
+    const resume = await screen.findByRole('button', { name: 'Continue' });
+
+    setUserLocals(otherPassHolder);
+    rerenderWithAi(false);
+    fireEvent.click(resume);
+
+    expect(
+      await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(liveRegion(container)).toBe(OTHER_ACCOUNT_LINE);
     expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
   });
 
@@ -9477,7 +9539,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     return answer;
   }
 
-  it.each(['', ' 42 ', '0x2A', '1e3', '-7', '7.0'])(
+  it.each(['', ' 42 ', '0x2A', '1e3', '-7', '7.0', '9007199254740993'])(
     'holds a resend when the server names the session as "%s", as for no answer at all',
     async (raw) => {
       accountReadFailed(passHolder);
@@ -9508,6 +9570,90 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
     }
   );
+
+  it('holds a resend when the last account read failed and the server named no session, even with an earlier account still on the page', async () => {
+    readLocalsAgain = vi.fn().mockResolvedValue({
+      data: passHolder,
+      status: 'error',
+      isError: true,
+    });
+    mockUseUserLocals.mockReturnValue({
+      data: passHolder,
+      isLoading: false,
+      error: new Error('locals'),
+      isError: true,
+      refetch: readLocalsAgain,
+    } as unknown as ReturnType<typeof useUserLocals>);
+    const fetchMock = stubServer([
+      jsonAnswer(400, {
+        ...emptyExport,
+        rescue: [{ rule: 'heading', cards: 2 }],
+      }),
+      deckResponse(2),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['notes.html']);
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Make 2 cards from the headings',
+      })
+    );
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it('reads the account again when an upload is sent on to the limit page, and shows the limit for the session the server saw', async () => {
+    setUserLocals(signedOut);
+    signInElsewhere(freeSignedIn);
+    const readAgain = readLocalsAgain;
+    stubServer([
+      {
+        redirected: true,
+        url: 'http://localhost/limit?kind=card_count',
+        status: 200,
+        headers: new Headers({}),
+      } as unknown as UploadAnswer,
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+
+    await submitFiles(container, ['lecture.pdf']);
+
+    expect(
+      await screen.findByRole('button', { name: /Get Day Pass/ })
+    ).toBeInTheDocument();
+    expect(readAgain).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole('link', { name: 'Create a free account' })
+    ).toBeNull();
+  });
+
+  it('sends a password unlock once when Enter and a click land together', async () => {
+    const fetchMock = stubLockedPdfServer(5);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    const password = await screen.findByLabelText('PDF password');
+    fireEvent.change(password, { target: { value: 'open-sesame' } });
+
+    await act(async () => {
+      fireEvent.keyDown(password, { key: 'Enter' });
+      fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
+    });
+
+    await settle();
+    expect(
+      callsTo(fetchMock, '/api/upload/retry-with-credential')
+    ).toHaveLength(1);
+  });
 });
 
 describe('UploadForm try-a-sample', () => {
@@ -10909,6 +11055,51 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
       expect(thinDeckResumeMarked()).toBe(false);
       expect(fetchMock).not.toHaveBeenCalled();
       expect(THIN_DECK_RESUME_WAIT_MS).toBeLessThanOrEqual(40_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('keeps asking while the account reads fail, then sends the saved file once when the pass shows', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      stubSignedInReturn();
+      markThinDeckResume();
+      await saveWithAi(7);
+      const trackMock = vi.mocked(track);
+      trackMock.mockClear();
+      const answers = [
+        { ...signedIn(false), error: new Error('locals'), isError: true },
+        { ...signedIn(false), error: new Error('locals'), isError: true },
+        signedIn(true),
+      ];
+      let current: ReturnType<typeof useUserLocals> = signedIn(false);
+      const refetch = vi.fn(async () => {
+        current = (answers.shift() ?? current) as unknown as ReturnType<
+          typeof useUserLocals
+        >;
+      });
+      mockUseUserLocals.mockImplementation(
+        () =>
+          ({ ...current, refetch }) as unknown as ReturnType<
+            typeof useUserLocals
+          >
+      );
+      const fetchMock = okApkgFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      for (let i = 0; i < 6; i++) {
+        await vi.advanceTimersByTimeAsync(2000);
+      }
+
+      expect(refetch).toHaveBeenCalledTimes(3);
+      expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true');
+      expect(
+        trackMock.mock.calls.filter(
+          ([name]) => name === 'thin_deck_ai_unlock_clicked'
+        )
+      ).toEqual([['thin_deck_ai_unlock_clicked', { plan: 'resumed' }]]);
     } finally {
       vi.useRealTimers();
     }

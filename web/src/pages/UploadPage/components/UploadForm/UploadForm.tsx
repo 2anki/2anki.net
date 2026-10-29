@@ -134,6 +134,7 @@ import {
 } from './helpers/collectDroppedEntries';
 import { zipDroppedFiles } from './helpers/zipDroppedEntries';
 import { findRecoveredUpload } from './helpers/findRecoveredUpload';
+import { joinLiveSentences } from './helpers/joinLiveSentences';
 import {
   HANDOFF_FILE_STATE_KEY,
   readHandoffFile,
@@ -402,10 +403,20 @@ function senderField(owner: number | null): string {
 // files these are better than any account read the page makes afterwards.
 const UPLOAD_OWNER_HEADER = 'X-Upload-Owner';
 
+function sessionChangedKey(
+  sender: number | null | undefined,
+  signedInNow: boolean
+): string {
+  if (!signedInNow) return 'upload.form.signedOutSinceUpload';
+  if (sender === null) return 'upload.form.signedInSinceUpload';
+  return 'upload.form.otherAccountSinceUpload';
+}
+
 function sessionNamed(value: string | null): number | null | undefined {
   if (value === 'none') return null;
   if (value == null || !/^\d+$/.test(value)) return undefined;
-  return Number(value);
+  const id = Number(value);
+  return Number.isSafeInteger(id) ? id : undefined;
 }
 
 // How long a paying account's thin-deck notice waits for its credits before
@@ -1230,10 +1241,10 @@ function UploadForm({
     rescueFilesOwner !== currentOwnerId;
 
   // The sender a new upload goes out as: the account the page shows, or
-  // unknown when the page has no account data. The server's answer settles
-  // it; a later account read never does.
+  // unknown when the page has no account data or its last read failed. The
+  // server's answer settles it; a later account read never does.
   const pageSender = (): number | null | undefined =>
-    userLocals == null ? undefined : currentOwnerId;
+    userLocals == null || userLocalsFailed ? undefined : currentOwnerId;
 
   // Only a fresh submit (the file input, a dropped folder, a handed-over file,
   // a saved upload resumed under its own account) sets the kept files and
@@ -1247,6 +1258,12 @@ function UploadForm({
   };
 
   const recordSender = (files: File[], response: Response) => {
+    // A redirect hides the header, so the page cannot tell which session the
+    // server saw, and the limit screen it may show depends on that session.
+    if (response.redirected) {
+      void refetchUserLocals();
+      return;
+    }
     const sender = sessionNamed(response.headers?.get(UPLOAD_OWNER_HEADER));
     if (sender === undefined) return;
     setKeptFiles((kept) =>
@@ -1515,6 +1532,35 @@ function UploadForm({
   const successSignInChanged =
     keptFilesBelongElsewhere &&
     (successOfferShown || rebuildSlot || thinDeckSlot != null);
+
+  const networkErrorOnScreen =
+    zoneState === 'error' &&
+    !senderUnknown &&
+    folderError == null &&
+    unreadableFile == null &&
+    networkRetryFiles != null;
+
+  // Whether the screen on show puts the line saying the session changed in
+  // place of its offers. Each screen draws the line from this, and the page's
+  // one live region announces it from this, so the two cannot drift apart.
+  const switchLineReplacesOffers = (): boolean => {
+    if (ownerChanged) return true;
+    switch (zoneState) {
+      case 'success':
+        return successSignInChanged;
+      case 'emptyDeck':
+        return emptySignInChanged;
+      case 'choosePdfMode':
+        return keptFilesBelongElsewhere;
+      case 'aiPreviewGate':
+        return keptFilesBelongElsewhere && aiPreviewCards != null;
+      case 'error':
+        return keptFilesBelongElsewhere && networkErrorOnScreen;
+      default:
+        return false;
+    }
+  };
+  const switchLineShown = switchLineReplacesOffers();
 
   const handleAiRebuild = () => {
     if (aiRebuildOffer == null) return;
@@ -2047,6 +2093,7 @@ function UploadForm({
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
     setSampleRun(false);
+    setResumeClosedKey(null);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
     const aiFlagSent = formData.get('claude-ai-flashcards');
@@ -2190,6 +2237,7 @@ function UploadForm({
       : upload.ownerId !== currentOwnerId;
 
   const [resumeOffer, setResumeOffer] = useState<ResumeOffer | null>(null);
+  const [resumeClosedKey, setResumeClosedKey] = useState<string | null>(null);
   const resumeCheckedRef = useRef(false);
   const resumedUploadRef = useRef(false);
 
@@ -2236,6 +2284,9 @@ function UploadForm({
 
   useEffect(() => {
     if (zoneState !== 'idle') setResumeOffer(null);
+    if (zoneState !== 'idle' && zoneState !== 'converting') {
+      setResumeClosedKey(null);
+    }
   }, [zoneState]);
 
   useEffect(() => {
@@ -2269,6 +2320,9 @@ function UploadForm({
     }
     if (savedBySomeoneElse(upload)) {
       if (upload.ownerUnknown === true) clearPendingUpload();
+      setResumeClosedKey(
+        sessionChangedKey(upload.ownerId, currentOwnerId != null)
+      );
       setZoneState('idle');
       return;
     }
@@ -2354,17 +2408,13 @@ function UploadForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if (
-      thinDeckResumeRef.current ||
-      userLocalsLoading ||
-      userLocalsFailed ||
-      sample
-    ) {
-      return;
-    }
+    if (thinDeckResumeRef.current || userLocalsLoading || sample) return;
+    // A failed read before the wait began leaves no account to wait on; one
+    // during the wait is asked again, still within the wait.
+    if (userLocalsFailed && thinDeckResumeStartedAt.current == null) return;
     if (!(returnedFromCheckout || passSessionToken != null)) return;
     if (!thinDeckResumeMarked()) return;
-    const waitingForPass = isAuthenticated && !isPaying;
+    const waitingForPass = userLocalsFailed || (isAuthenticated && !isPaying);
     if (waitingForPass) {
       thinDeckResumeStartedAt.current ??= Date.now();
       if (
@@ -2786,11 +2836,8 @@ function UploadForm({
       ? localError.signed_in
       : currentOwnerId != null;
 
-  const signInChangedKey = (): string => {
-    if (!sessionSignedIn) return 'upload.form.signedOutSinceUpload';
-    if (rescueFilesOwner === null) return 'upload.form.signedInSinceUpload';
-    return 'upload.form.otherAccountSinceUpload';
-  };
+  const signInChangedKey = (): string =>
+    sessionChangedKey(rescueFilesOwner, sessionSignedIn);
 
   const renderChooseFileAgain = (key: string, signInLink: boolean) => (
     <div className={formStyles.aiRescueActions}>
@@ -2968,7 +3015,7 @@ function UploadForm({
       )}
       {thinNoticeDeck &&
         !rebuildSlot &&
-        !successSignInChanged &&
+        !switchLineShown &&
         thinNoticeReason != null && (
           <div className={formStyles.warningInline}>
             <ThinDeckNotice
@@ -3002,7 +3049,7 @@ function UploadForm({
         </div>
       )}
       {renderClaudeResendHeld()}
-      {successSignInChanged && renderSignInChanged()}
+      {switchLineShown && renderSignInChanged()}
       {showFallback && (
         <button
           type="button"
@@ -3248,7 +3295,7 @@ function UploadForm({
     );
     const rescueSlot =
       rescueFiles.length === 1 ? (localError?.rescue ?? []) : [];
-    const signInChanged = emptySignInChanged ? renderSignInChanged() : null;
+    const signInChanged = switchLineShown ? renderSignInChanged() : null;
     const rescue = keptFilesBelongElsewhere ? [] : rescueSlot;
     const rescueActions = rescue.length > 0 && (
       <div className={formStyles.rescueActions}>
@@ -3606,7 +3653,7 @@ function UploadForm({
             ? t('upload.form.networkErrorLargeBody')
             : t('upload.form.networkErrorSmallBody')}
         </p>
-        {keptFilesBelongElsewhere ? (
+        {switchLineShown ? (
           renderSignInChanged()
         ) : (
           <>
@@ -3791,8 +3838,9 @@ function UploadForm({
     </div>
   );
 
+  const unlockPendingRef = useRef(false);
   const handleUnlock = async () => {
-    if (!lockedPdfInfo) return;
+    if (!lockedPdfInfo || unlockPendingRef.current) return;
 
     const credential = pdfCredential.trim();
     if (!credential) return;
@@ -3801,6 +3849,7 @@ function UploadForm({
       return;
     }
 
+    unlockPendingRef.current = true;
     setZoneState('converting');
     setPdfUnlockError(null);
 
@@ -3850,6 +3899,8 @@ function UploadForm({
     } catch (error) {
       setPdfUnlockError(toFriendlyThrownError(error).message);
       setZoneState('lockedPdf');
+    } finally {
+      unlockPendingRef.current = false;
     }
   };
 
@@ -3928,7 +3979,7 @@ function UploadForm({
 
   const renderAiPreviewGateState = () => {
     if (aiPreviewCards == null) return null;
-    if (keptFilesBelongElsewhere) {
+    if (switchLineShown) {
       return (
         <div className={formStyles.stateContent}>{renderSignInChanged()}</div>
       );
@@ -4154,7 +4205,7 @@ function UploadForm({
         <WarningIcon className={formStyles.iconWarning} />
         <p className={formStyles.emptyTitle}>{t(pdfChoiceCopy.title)}</p>
         <p className={formStyles.emptyBody}>{t(pdfChoiceCopy.body)}</p>
-        {keptFilesBelongElsewhere ? (
+        {switchLineShown ? (
           renderSignInChanged()
         ) : (
           <div className={formStyles.emptyActions}>
@@ -4286,8 +4337,6 @@ function UploadForm({
     </div>
   );
 
-  // A screen that swaps its offer for the sign-in-changed line must also be
-  // named in switchLineShown below, or the line shows but is never announced.
   const renderZoneContent = () => {
     if (isUploadLocked && zoneState === 'idle') return renderLockedState();
     if (validation && zoneState === 'idle') return renderValidationState();
@@ -4314,7 +4363,7 @@ function UploadForm({
     if (zoneState === 'error' && unreadableFile != null) {
       return renderUnreadableFileState();
     }
-    if (zoneState === 'error' && networkRetryFiles != null) {
+    if (networkErrorOnScreen) {
       return renderNetworkErrorState();
     }
     if (zoneState === 'error') return renderErrorState();
@@ -4346,21 +4395,6 @@ function UploadForm({
     cardCount == null
       ? t('upload.form.liveDeckReady')
       : t('upload.form.liveDeckReadyCount', { count: cardCount });
-
-  // The line saying the session changed is announced wherever it shows: the
-  // container carries no live role, so the page's one live region says it.
-  const switchLineShown =
-    ownerChanged ||
-    (zoneState === 'success' && successSignInChanged) ||
-    emptySignInChanged ||
-    (keptFilesBelongElsewhere &&
-      (zoneState === 'choosePdfMode' ||
-        (zoneState === 'aiPreviewGate' && aiPreviewCards != null) ||
-        (zoneState === 'error' &&
-          !senderUnknown &&
-          folderError == null &&
-          unreadableFile == null &&
-          networkRetryFiles != null)));
 
   const screenLiveStatus = (): string => {
     const staticKey = staticLiveStatusKeys[zoneState];
@@ -4399,13 +4433,12 @@ function UploadForm({
       return t('upload.form.senderUnknown');
     }
     if (ownerChanged) return t(signInChangedKey());
+    if (zoneState === 'idle' && resumeClosedKey != null) {
+      return t(resumeClosedKey);
+    }
     const status = screenLiveStatus();
     if (!switchLineShown) return status;
-    const line = t(signInChangedKey());
-    if (status === '') return line;
-    return /[.!?。！？]$/.test(status)
-      ? `${status} ${line}`
-      : `${status}. ${line}`;
+    return joinLiveSentences(status, t(signInChangedKey()), i18n.language);
   };
 
   return (
@@ -4448,6 +4481,11 @@ function UploadForm({
             </div>
           </div>
         )}
+      {resumeClosedKey != null && zoneState === 'idle' && (
+        <div className={formStyles.resumeBanner}>
+          <p className={formStyles.resumeText}>{t(resumeClosedKey)}</p>
+        </div>
+      )}
       {resumeOffer?.kind === 'reattach' && zoneState === 'idle' && (
         <div className={formStyles.resumeBanner} role="status">
           <p className={formStyles.resumeText}>
