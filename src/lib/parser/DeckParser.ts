@@ -1742,6 +1742,9 @@ export class DeckParser {
       const tmp = card.back;
       card.back = card.name;
       card.name = tmp;
+      const frontEscaped = card.frontEscaped;
+      card.frontEscaped = card.backEscaped;
+      card.backEscaped = frontEscaped;
     }
 
     if (refreshIconRequested) {

@@ -39,6 +39,9 @@ export interface UploadIdentityCard {
   // text unescaped, so the key undoes the escape and a re-upload replays its
   // guids instead of duplicating.
   frontEscaped?: boolean;
+  // The same for the back, once a reversed card option has moved the escaped
+  // text there.
+  backEscaped?: boolean;
   back?: string;
   cloze?: boolean;
   mcq?: boolean;
@@ -72,12 +75,20 @@ function identityFront(card: UploadIdentityCard): string {
   return card.frontEscaped ? unescapeText(card.name) : card.name;
 }
 
+function identityBack(card: UploadIdentityCard): string {
+  const back = card.back ?? '';
+  return card.backEscaped ? unescapeText(back) : back;
+}
+
 // The content fingerprint the ledger compares to tell an edit from a replay.
 // It reads the front the same way the key does, so an escaped front matches
 // the row its unescaped text wrote and neither bumps the note mod nor trips
 // the guard.
 export function uploadIdentityFingerprint(card: UploadIdentityCard): string {
-  return cardFingerprint({ name: identityFront(card), back: card.back ?? '' });
+  return cardFingerprint({
+    name: identityFront(card),
+    back: identityBack(card),
+  });
 }
 
 export function uploadIdentityKey(

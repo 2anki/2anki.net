@@ -452,7 +452,8 @@ describe('paragraphs decks made before the first-sentence front was escaped', ()
   async function parseParagraphs(
     body: string,
     name: string,
-    ledger: UploadIdentityLedger
+    ledger: UploadIdentityLedger,
+    options: Record<string, string> = {}
   ) {
     const workspace = new Workspace(true, 'fs');
     const parser = new DeckParser({
@@ -460,6 +461,7 @@ describe('paragraphs decks made before the first-sentence front was escaped', ()
       settings: new CardOption({
         cherry: 'false',
         'rescue-rule': 'paragraphs',
+        ...options,
       }),
       files: [{ name, contents: wrap(body) }],
       noLimits: true,
@@ -548,4 +550,78 @@ describe('paragraphs decks made before the first-sentence front was escaped', ()
       guarded: 0,
     });
   });
+
+  // Before the escape, the sentence sat raw on whichever side the options put
+  // it; every other side was the same paragraph HTML it is now.
+  function ledgerFromPreEscapeCards(shown: Note[]): UploadIdentityLedger {
+    const ledger: UploadIdentityLedger = {};
+    const ordinals = new Map<string, number>();
+    shown.forEach((card, index) => {
+      const earlier = {
+        name: card.name === ESCAPED_FRONT ? RAW_FRONT : card.name,
+        back: card.back === ESCAPED_FRONT ? RAW_FRONT : card.back,
+        cloze: card.cloze,
+        mcq: card.mcq,
+        enableInput: card.enableInput,
+      };
+      const base = uploadIdentityKey(earlier);
+      const ordinal = (ordinals.get(base) ?? 0) + 1;
+      ordinals.set(base, ordinal);
+      ledger[uploadIdentityKey(earlier, ordinal)] = {
+        guid: `OLD-${index + 1}`,
+        sourceKeyHash: hashSourceKey('notes.html'),
+        fingerprint: cardFingerprint(earlier),
+        contentChangedAt: STORED_AT,
+      };
+    });
+    return ledger;
+  }
+
+  const ESCAPED_FRONT =
+    'It&#39;s salt &amp; water &lt; sugar, as the &quot;syrup&quot; note says.';
+
+  it.each([
+    ['reversed', { reversed: 'true' }, 1],
+    ['basic-reversed', { 'basic-reversed': 'true' }, 2],
+  ])(
+    'keeps every guid and mod with the %s card option on',
+    async (_label, options, cardCount) => {
+      const discovery = await parseParagraphs(ONE, 'notes.html', {}, options);
+      const shown = cardsOf(discovery);
+      expect(shown).toHaveLength(cardCount);
+      expect(
+        shown.some(
+          (card) => card.name === ESCAPED_FRONT || card.back === ESCAPED_FRONT
+        )
+      ).toBe(true);
+      expect(
+        shown.map((card) => [
+          card.frontEscaped === true,
+          card.backEscaped === true,
+        ])
+      ).toEqual(
+        shown.map((card) => [
+          card.name === ESCAPED_FRONT,
+          card.back === ESCAPED_FRONT,
+        ])
+      );
+
+      const parser = await parseParagraphs(
+        ONE,
+        'notes.html',
+        ledgerFromPreEscapeCards(shown),
+        options
+      );
+      const cards = cardsOf(parser);
+      expect(cards.map((card) => card.guid)).toEqual(
+        shown.map((_card, index) => `OLD-${index + 1}`)
+      );
+      expect(cards.map((card) => card.mod)).toEqual(shown.map(() => STORED_AT));
+      expect(parser.uploadIdentityStats).toEqual({
+        issued: 0,
+        replayed: cardCount,
+        guarded: 0,
+      });
+    }
+  );
 });

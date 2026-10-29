@@ -41,6 +41,8 @@ export default class Note {
   // reads it for the content-formula guid too.
   frontEscaped?: boolean;
 
+  backEscaped?: boolean;
+
   // Epoch seconds to pin as this note's Anki mod (see uploadCardIdentity.ts,
   // #4445). Only set on the signed-in upload-identity path; every other card
   // exports with the mod Anki stamps at build time.
@@ -121,6 +123,8 @@ export default class Note {
     );
     note.tags = input.tags;
     note.media = input.media;
+    note.frontEscaped = input.backEscaped;
+    note.backEscaped = input.frontEscaped;
     note.number = input.number + 0.5;
     note.hierarchy = input.hierarchy;
     note.h1 = input.h1;

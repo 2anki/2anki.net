@@ -212,6 +212,33 @@ class TestStableGuids:
         assert after == before
         assert unflagged != before
 
+    def test_reversed_and_mirrored_escaped_sentences_keep_their_guids(self):
+        raw = "It's salt & water < sugar here."
+        escaped = "It&#39;s salt &amp; water &lt; sugar here."
+        paragraph = "<strong>It&#39;s</strong> salt &amp; water &lt; sugar here. More."
+        with tempfile.TemporaryDirectory() as tmpdir:
+            before = _build_and_get_guids_in_order(
+                _deck_info_cards("Biology", [(raw, paragraph), (paragraph, raw)]),
+                tmpdir,
+                "before",
+            )
+            after_info = _deck_info_cards(
+                "Biology", [(escaped, paragraph), (paragraph, escaped)]
+            )
+            after_info[0]["cards"][0]["frontEscaped"] = True
+            after_info[0]["cards"][1]["backEscaped"] = True
+            after = _build_and_get_guids_in_order(after_info, tmpdir, "after")
+            stale_flag_info = _deck_info_cards(
+                "Biology", [(escaped, paragraph), (paragraph, escaped)]
+            )
+            stale_flag_info[0]["cards"][0]["frontEscaped"] = True
+            stale_flag_info[0]["cards"][1]["frontEscaped"] = True
+            stale_flag = _build_and_get_guids_in_order(
+                stale_flag_info, tmpdir, "stale"
+            )
+        assert after == before
+        assert stale_flag != before
+
 
 class TestUseContentGuidMarker:
     def test_marker_forces_content_formula_over_notion_id(self):
