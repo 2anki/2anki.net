@@ -238,6 +238,24 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
 }
 `;
 
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, pass-first wall on 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
 exports[`what each population gets back from /api/upload/file > signed-out pass holder 1`] = `
 {
   "body": {
@@ -403,6 +421,39 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
     "x-mcq-skipped-count": "0",
   },
   "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from a Google Drive import > signed-out Google Drive import over the cap 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from a Google Drive import > signed-out Google Drive import over the cap, no anon id 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous",
+  },
+  "cardsCharged": [],
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=anonymous",
+  },
+  "status": 302,
   "storedObjects": [],
 }
 `;
@@ -608,6 +659,24 @@ exports[`what each population gets back from an AI upload > signed-out with AI o
 }
 `;
 
+exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview off, over the cap 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
 exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on 1`] = `
 {
   "body": {
@@ -676,6 +745,24 @@ exports[`what each population gets back from an AI upload > signed-out with AI o
   },
   "status": 200,
   "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on, no sample came back, over the cap 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
 }
 `;
 

@@ -6556,7 +6556,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     });
     expect(mockGetFeatureFlag).not.toHaveBeenCalledWith(
       'anonymous_partial_delivery',
-      false
+      expect.anything()
     );
   });
 
