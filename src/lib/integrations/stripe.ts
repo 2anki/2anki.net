@@ -141,31 +141,28 @@ const ACCESS_GRANTING_STATUSES = new Set<StripeTypes.Subscription['status']>([
   'active',
 ]);
 
-// subscriptions.linked_email is unique: when another subscription row already
-// links that account (the payer changed their Stripe email, say), writing it
-// again would fail the whole provisioning. The existing link stays.
-const linkableEmail = async (
+// subscriptions.linked_email is unique. When an account resubscribes under a
+// new payer email, its old, inactive row still holds the link, and writing it
+// on the new row would fail provisioning. The inactive row gives the link up,
+// so the account gets the new subscription's access. An active holder keeps it
+// and the write fails loudly, as before: two live rows for one account need a
+// person to look.
+const releaseInactiveLink = async (
   db: Knex,
-  candidate: string | null,
+  linkedEmail: string | null,
   stripeEmail: string | null
-): Promise<string | null> => {
-  if (candidate == null) {
-    return null;
+): Promise<void> => {
+  if (linkedEmail == null) {
+    return;
   }
-  const holder = await db('subscriptions')
-    .where({ linked_email: candidate })
+  await db('subscriptions')
+    .where({ linked_email: linkedEmail, active: false })
     .modify((query) => {
       if (stripeEmail != null) {
         query.whereNot({ email: stripeEmail });
       }
     })
-    .select('id')
-    .first();
-  if (holder != null) {
-    console.info('[stripe] account already linked to another subscription row');
-    return null;
-  }
-  return candidate;
+    .update({ linked_email: null, updated_at: new Date() });
 };
 
 // Records the Stripe customer id on the resolved account, unless another
@@ -230,11 +227,8 @@ export const updateStoreSubscription = async (
   );
 
   const accountEmail = normalizeEmail(account?.email);
-  const linkedEmail = await linkableEmail(
-    db,
-    accountEmail != null && accountEmail !== stripeEmail ? accountEmail : null,
-    stripeEmail
-  );
+  const linkedEmail =
+    accountEmail != null && accountEmail !== stripeEmail ? accountEmail : null;
 
   // A developer tier is a SECOND concurrent subscription — a base-plan
   // subscriber can also hold Starter or Growth. The subscriptions table upserts
@@ -259,6 +253,8 @@ export const updateStoreSubscription = async (
       ? { status: 'linked', resolvedUserId: account.id }
       : { status: 'unlinked', resolvedUserId: null };
   }
+
+  await releaseInactiveLink(db, linkedEmail, stripeEmail);
 
   const insertRow: Record<string, unknown> = {
     email: stripeEmail,

@@ -308,4 +308,28 @@ describe('ConfirmSubscriptionClaimUseCase against a real database', () => {
         .select('linked_email')
     ).toEqual([{ linked_email: 'user@example.com' }]);
   });
+
+  it('links the claim when an old, cancelled row still links the claimant', async () => {
+    await db('users').insert({ id: 99, email: 'user@example.com' });
+    await db('subscriptions').insert({
+      email: 'old-billing@example.com',
+      active: false,
+      payload: '{}',
+      linked_email: 'user@example.com',
+    });
+
+    const result = await useCaseFor(stripeWith(activeSubscription({}))).execute(
+      99,
+      'raw-token',
+      'ip-hash',
+      'email-hash'
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(
+      await db('subscriptions')
+        .where({ linked_email: 'user@example.com' })
+        .select('email', 'active')
+    ).toEqual([{ email: 'payer@example.com', active: 1 }]);
+  });
 });

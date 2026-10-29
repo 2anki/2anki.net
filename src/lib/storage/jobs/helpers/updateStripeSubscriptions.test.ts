@@ -182,14 +182,14 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
     }
   );
 
-  it('writes the row without a link when another row already links that account', async () => {
+  it('moves the link to the new row when the account resubscribes under a new payer email', async () => {
     await db('users').insert({
       email: 'owner@example.com',
       stripe_customer_id: 'cus_test456',
     });
     await db('subscriptions').insert({
       email: 'old-billing@example.com',
-      active: true,
+      active: false,
       payload: '{}',
       linked_email: 'owner@example.com',
     });
@@ -198,7 +198,7 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
     await updateStripeSubscriptions(db);
 
     expect(await row('new-billing@example.com')).toMatchObject({
-      linked_email: null,
+      linked_email: 'owner@example.com',
     });
     expect(Boolean((await row('new-billing@example.com')).active)).toBe(true);
   });
@@ -332,6 +332,21 @@ describe('updateStripeSubscriptions — does not log raw email or customer id', 
     await updateStripeSubscriptions(db);
 
     expect(flatArgs(warnSpy)).not.toContain('cus_test456');
+  });
+
+  it('logs only the error class and code when Stripe cannot return the customer', async () => {
+    setupStripeMock([buildSubscription()]);
+    mockStripeInstance.customers.retrieve.mockRejectedValue(
+      Object.assign(new Error("No such customer: 'cus_test456'"), {
+        code: 'resource_missing',
+      })
+    );
+
+    await updateStripeSubscriptions(db);
+
+    const logged = errorSpy.mock.calls.flat();
+    expect(logged.every((arg) => typeof arg === 'string')).toBe(true);
+    expect(logged.join(' ')).not.toContain('cus_test456');
   });
 
   it('logs only the error class and code when the write fails', async () => {
