@@ -1272,6 +1272,20 @@ function UploadForm({
     if (sender !== currentOwnerId) void refetchUserLocals();
   };
 
+  // A page whose last account read failed still shows the account an earlier
+  // read found, which may not be the session any more. One fresh read before
+  // the upload goes out names the sender; without it the sender stays unknown.
+  const confirmPageSender = async (
+    files: File[]
+  ): Promise<number | null | undefined> => {
+    const account = await readAccountAgain();
+    const sender = account.confirmed ? account.accountId : undefined;
+    setKeptFiles((kept) =>
+      kept.files === files ? { ...kept, owner: sender } : kept
+    );
+    return sender;
+  };
+
   const holdForUnknownSender = () => {
     setSenderUnknown(true);
     setZoneState('error');
@@ -2093,19 +2107,23 @@ function UploadForm({
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
     setSampleRun(false);
-    setResumeClosedKey(null);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
     const aiFlagSent = formData.get('claude-ai-flashcards');
     const namedSender = formData.get(KEPT_OWNER_FIELD);
     const isResend = typeof namedSender === 'string';
+    let sender = isResend ? sessionNamed(namedSender) : pageSender();
+    if (!isResend && sender === undefined && userLocals != null) {
+      sender = await confirmPageSender(uploadedFiles);
+      if (unmountedRef.current) return false;
+    }
     savePendingUpload(
       uploadedFiles,
       submittedAt,
       recoveryToken,
       typeof aiFlagSent === 'string' ? aiFlagSent : null,
       CLAUDE_RESENDS.has(formData),
-      isResend ? sessionNamed(namedSender) : pageSender()
+      sender
     );
     setNetworkRetryFiles(null);
     setUnreadableFile(null);
@@ -2283,8 +2301,8 @@ function UploadForm({
   }, [userLocalsLoading, userLocalsFailed]);
 
   useEffect(() => {
-    if (zoneState !== 'idle') setResumeOffer(null);
-    if (zoneState !== 'idle' && zoneState !== 'converting') {
+    if (zoneState !== 'idle') {
+      setResumeOffer(null);
       setResumeClosedKey(null);
     }
   }, [zoneState]);
@@ -4433,7 +4451,7 @@ function UploadForm({
       return t('upload.form.senderUnknown');
     }
     if (ownerChanged) return t(signInChangedKey());
-    if (zoneState === 'idle' && resumeClosedKey != null) {
+    if (zoneState === 'idle' && !isUploadLocked && resumeClosedKey != null) {
       return t(resumeClosedKey);
     }
     const status = screenLiveStatus();
@@ -4481,7 +4499,7 @@ function UploadForm({
             </div>
           </div>
         )}
-      {resumeClosedKey != null && zoneState === 'idle' && (
+      {resumeClosedKey != null && zoneState === 'idle' && !isUploadLocked && (
         <div className={formStyles.resumeBanner}>
           <p className={formStyles.resumeText}>{t(resumeClosedKey)}</p>
         </div>

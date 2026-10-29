@@ -18,6 +18,12 @@ describe('joinLiveSentences', () => {
     ],
     ['de', 'Fertig!', 'Wähle erneut.', 'Fertig! Wähle erneut.'],
     ['fr', 'Prêt', 'Choisis à nouveau.', 'Prêt. Choisis à nouveau.'],
+    ['es', 'La conversión falló.', 'Elige.', 'La conversión falló. Elige.'],
+    ['it', 'Pronto', 'Scegli.', 'Pronto. Scegli.'],
+    ['nl', 'Conversie mislukt.', 'Kies.', 'Conversie mislukt. Kies.'],
+    ['pl', 'Gotowe', 'Wybierz.', 'Gotowe. Wybierz.'],
+    ['pt', 'A conversão falhou.', 'Escolha.', 'A conversão falhou. Escolha.'],
+    ['ru', 'Готово', 'Выбери.', 'Готово. Выбери.'],
     [
       'ja',
       '変換に失敗しました。',

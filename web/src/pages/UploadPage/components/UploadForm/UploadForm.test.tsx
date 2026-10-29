@@ -9514,6 +9514,59 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(screen.queryByText(SIGNED_IN_LINE, { selector: 'p' })).toBeNull();
   });
 
+  it('says the page is signed out now when Continue is clicked after the session ended, beside the last deck still on offer', async () => {
+    await saveInterruptedUpload({ ownerId: 7 });
+    await getLastDeckStore().save({
+      recoveryToken: '0b6f2c1e-3a4d-4e5f-8a9b-1c2d3e4f5a6b',
+      deckName: 'Biology.apkg',
+      savedAt: Date.now(),
+    });
+    const fetchMock = stubServer([deckResponse(9)]);
+    const { container, rerenderWithAi } = renderRebuildForm(false);
+    const resume = await screen.findByRole('button', { name: 'Continue' });
+
+    setUserLocals(signedOut);
+    rerenderWithAi(false);
+    fireEvent.click(resume);
+
+    const closing = await screen.findByText(SIGNED_OUT_LINE, { selector: 'p' });
+    const lastDeck = await screen.findByText(/Your last deck,/);
+    expect(liveRegion(container)).toBe(SIGNED_OUT_LINE);
+    expect(
+      lastDeck.compareDocumentPosition(closing) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(
+      screen.getAllByText(SIGNED_OUT_LINE, { selector: 'p' })
+    ).toHaveLength(1);
+    expect(await getPendingUploadStore().load()).toMatchObject({ ownerId: 7 });
+    expect(callsTo(fetchMock, '/api/upload/file')).toEqual([]);
+  });
+
+  it('hides the closing line while the upload lock shows', async () => {
+    await saveInterruptedUpload({ ownerId: 7 });
+    stubServer([deckResponse(9)]);
+    const { rerenderWithAi } = renderRebuildForm(false);
+    const resume = await screen.findByRole('button', { name: 'Continue' });
+    setUserLocals(otherPassHolder);
+    rerenderWithAi(false);
+    fireEvent.click(resume);
+    await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' });
+
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    } as unknown as ReturnType<typeof useCardUsage>);
+    setUserLocals(freeSignedIn);
+    rerenderWithAi(false);
+
+    expect(
+      screen.queryByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeNull();
+  });
+
   it("says another account is signed in now when Continue is clicked on a save another account's page left", async () => {
     await saveInterruptedUpload({ ownerId: 7 });
     const fetchMock = stubServer([deckResponse(9)]);
@@ -9606,6 +9659,97 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
     ).toBeInTheDocument();
     expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  // The page's last account read failed after an earlier one succeeded: React
+  // Query keeps the old data and reports the error. The next read answers as
+  // given.
+  function lastReadFailed(
+    shown: ReturnType<typeof useUserLocals>['data'],
+    nextRead: 'answers' | 'fails'
+  ) {
+    readLocalsAgain =
+      nextRead === 'answers'
+        ? vi.fn(async () => {
+            setUserLocals(shown);
+            return answered(shown);
+          })
+        : vi.fn().mockResolvedValue({
+            data: shown,
+            status: 'error',
+            isError: true,
+          });
+    mockUseUserLocals.mockReturnValue({
+      data: shown,
+      isLoading: false,
+      error: new Error('locals'),
+      isError: true,
+      refetch: readLocalsAgain,
+    } as unknown as ReturnType<typeof useUserLocals>);
+  }
+
+  it.each([
+    ['free', freeSignedIn, '8'],
+    ['paying', passHolder, '7'],
+  ] as Array<[string, ReturnType<typeof useUserLocals>['data'], string]>)(
+    'resends a dropped upload on Try again for a signed-in %s account whose last account read failed, once a fresh read confirms it',
+    async (_who, shown, owner) => {
+      lastReadFailed(shown, 'answers');
+      const fetchMock = stubServer([networkDrop, deckResponse(5)]);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitFiles(container, ['lecture.pdf']);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+      expect((await nthUpload(fetchMock, 2)).getAll('kept-owner')).toEqual([
+        owner,
+      ]);
+      expect(screen.queryByText(SENDER_UNKNOWN, { selector: 'p' })).toBeNull();
+    }
+  );
+
+  it('holds Try again after a dropped upload when the fresh account read fails too', async () => {
+    lastReadFailed(freeSignedIn, 'fails');
+    const fetchMock = stubServer([networkDrop, deckResponse(5)]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['lecture.pdf']);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    expect(
+      await screen.findByText(SENDER_UNKNOWN, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it('offers Continue after a reload for an upload sent while the last account read had failed, once a fresh read confirmed the account', async () => {
+    lastReadFailed(freeSignedIn, 'answers');
+    const fetchMock = stubServer([new Promise<never>(() => {})]);
+    const first = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(first.container, ['lecture.pdf']);
+    await waitFor(() =>
+      expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1)
+    );
+    await waitFor(async () =>
+      expect(await getPendingUploadStore().load()).toMatchObject({
+        ownerId: 8,
+        ownerUnknown: false,
+      })
+    );
+    first.unmount();
+
+    setUserLocals(freeSignedIn);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} aiOn={false} />);
+
+    expect(
+      await screen.findByRole('button', { name: 'Continue' })
+    ).toBeInTheDocument();
   });
 
   it('reads the account again when an upload is sent on to the limit page, and shows the limit for the session the server saw', async () => {
@@ -11100,6 +11244,39 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
           ([name]) => name === 'thin_deck_ai_unlock_clicked'
         )
       ).toEqual([['thin_deck_ai_unlock_clicked', { plan: 'resumed' }]]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('sends nothing and asks nothing again when the first account read fails on the way back', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      stubSignedInReturn();
+      markThinDeckResume();
+      await saveWithAi(7);
+      const refetch = vi.fn();
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: new Error('locals'),
+        isError: true,
+        refetch,
+      } as unknown as ReturnType<typeof useUserLocals>);
+      const fetchMock = okApkgFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      for (let i = 0; i < 20; i++) {
+        await vi.advanceTimersByTimeAsync(2000);
+      }
+
+      expect(refetch).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(await getPendingUploadStore().load()).toMatchObject({
+        ownerId: 7,
+        aiFlag: 'true',
+      });
     } finally {
       vi.useRealTimers();
     }
