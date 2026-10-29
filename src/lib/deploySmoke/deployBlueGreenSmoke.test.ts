@@ -62,3 +62,60 @@ describe('deploy-blue-green.sh dry run', () => {
     expect(log.match(/DRY_RUN: sudo tee \S+\.new/g)).toHaveLength(2);
   });
 });
+
+function envCheck(check: string, environ: string): boolean {
+  const script = fs.readFileSync(DEPLOY_SCRIPT, 'utf8');
+  const helpers = script
+    .split('\n')
+    .filter((line) => /^(has_heap_ceiling|has_arena_cap)\(\)/.test(line))
+    .join('\n');
+  const run = spawnSync(
+    'bash',
+    ['-c', `set -euo pipefail\n${helpers}\n${check} "$ENVIRON"`],
+    { encoding: 'utf8', env: { PATH: process.env.PATH, ENVIRON: environ } }
+  );
+  return run.status === 0;
+}
+
+describe('deploy-blue-green.sh environment checks', () => {
+  // Larger than a pipe buffer, so a piped early-exiting reader could SIGPIPE
+  // the writer before it finished (#5120).
+  const filler = Array.from(
+    { length: 4000 },
+    (_, i) => `VAR_${i}=${'x'.repeat(40)}`
+  );
+
+  it('pipes the process environment into no early-exiting reader', () => {
+    const script = fs.readFileSync(DEPLOY_SCRIPT, 'utf8');
+
+    expect(script.match(/\|\s*(grep\s+-\w*q|head)\b/g) ?? []).toEqual([]);
+  });
+
+  it.each([
+    ['first', ['NODE_OPTIONS=--max-old-space-size=6144', ...filler]],
+    ['last', [...filler, 'NODE_OPTIONS=--max-old-space-size=6144']],
+  ])(
+    'finds the heap ceiling in a large environment when it comes %s',
+    (_where, lines) => {
+      expect(envCheck('has_heap_ceiling', lines.join('\n'))).toBe(true);
+    }
+  );
+
+  it('reports a missing heap ceiling', () => {
+    expect(envCheck('has_heap_ceiling', filler.join('\n'))).toBe(false);
+  });
+
+  it.each([
+    ['first', ['MALLOC_ARENA_MAX=2', ...filler], true],
+    ['last', [...filler, 'MALLOC_ARENA_MAX=2'], true],
+    ['with a different value', [...filler, 'MALLOC_ARENA_MAX=20'], false],
+    ['missing', filler, false],
+  ])(
+    'matches the arena cap as a whole line when it is %s',
+    (_where, lines, expected) => {
+      expect(envCheck('has_arena_cap', (lines as string[]).join('\n'))).toBe(
+        expected
+      );
+    }
+  );
+});

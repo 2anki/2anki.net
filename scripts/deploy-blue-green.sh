@@ -48,6 +48,13 @@ write_root_file() {
     sudo tee "$1" >/dev/null
   fi
 }
+# The spawned process's environment, one variable per line, read whole into a
+# variable. Piping it into `grep -q` let grep exit on its first match while tr
+# was still writing; tr then died of SIGPIPE and pipefail turned a present heap
+# ceiling into a failed deploy (#5120).
+environ_lines() { tr '\0' '\n' < "/proc/$1/environ"; }
+has_heap_ceiling() { [[ "$1" == *"--max-old-space-size="* ]]; }
+has_arena_cap() { [[ $'\n'"$1"$'\n' == *$'\nMALLOC_ARENA_MAX=2\n'* ]]; }
 
 wait_for_sha() {
   local url="$1" actual
@@ -149,8 +156,8 @@ run pm2 start "$ECOSYSTEM" --only "server-$NEXT" --update-env
 if [ "$DRY_RUN" != "1" ]; then
   NEXT_PID="$(pm2 pid "server-$NEXT" 2>/dev/null | tr -d '[:space:]')"
   if [ -n "$NEXT_PID" ] && [ -r "/proc/$NEXT_PID/environ" ]; then
-    if tr '\0' '\n' < "/proc/$NEXT_PID/environ" \
-      | grep -q -- '--max-old-space-size='; then
+    NEXT_ENV="$(environ_lines "$NEXT_PID")"
+    if has_heap_ceiling "$NEXT_ENV"; then
       log "heap ceiling verified on server-$NEXT (pid $NEXT_PID)"
     else
       log "server-$NEXT (pid $NEXT_PID) started WITHOUT a heap ceiling — removing it; current color still live"
@@ -160,8 +167,7 @@ if [ "$DRY_RUN" != "1" ]; then
     # Same check for the glibc arena cap from the ecosystem env: if pm2 drops
     # it, worker-thread recycles strand malloc arenas again and the process
     # climbs to the 12G restart (five times between 2026-08 and 2026-10).
-    if tr '\0' '\n' < "/proc/$NEXT_PID/environ" \
-      | grep -qx 'MALLOC_ARENA_MAX=2'; then
+    if has_arena_cap "$NEXT_ENV"; then
       log "malloc arena cap verified on server-$NEXT (pid $NEXT_PID)"
     else
       log "server-$NEXT (pid $NEXT_PID) started WITHOUT MALLOC_ARENA_MAX=2 — removing it; current color still live"
