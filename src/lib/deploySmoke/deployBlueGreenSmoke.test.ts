@@ -69,11 +69,18 @@ function envCheck(check: string, environ: string): boolean {
     .split('\n')
     .filter((line) => /^(has_heap_ceiling|has_arena_cap)\(\)/.test(line))
     .join('\n');
+  // The environment goes in on stdin: a single variable this large passes
+  // macOS but exceeds Linux's per-string limit (MAX_ARG_STRLEN), so the
+  // spawn itself would fail there.
   const run = spawnSync(
     'bash',
-    ['-c', `set -euo pipefail\n${helpers}\n${check} "$ENVIRON"`],
-    { encoding: 'utf8', env: { PATH: process.env.PATH, ENVIRON: environ } }
+    [
+      '-c',
+      `set -euo pipefail\n${helpers}\nENVIRON="$(cat)"\n${check} "$ENVIRON"`,
+    ],
+    { encoding: 'utf8', env: { PATH: process.env.PATH }, input: environ }
   );
+  if (run.error) throw run.error;
   return run.status === 0;
 }
 
