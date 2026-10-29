@@ -2534,10 +2534,9 @@ class UploadService {
     return { apkg, cardCount: totalCards, deckName: toText(first.name) };
   }
 
-  // Rebuilds a deck held at the no-account cap for the visitor who has since
-  // bought a pass. paying is true so the cap does not apply; AI stays off so the
-  // deck is the one the visitor saw held, and anonymousPassId meters anything
-  // billable against the pass exactly as a re-dropped file would be.
+  // paying lifts the no-account cap; AI stays off so the rebuilt deck matches
+  // the one the visitor saw held, and anonymousPassId meters anything billable
+  // against the pass exactly as a re-dropped file would be.
   async convertHeldFileForPass(
     anonymousPassId: number,
     file: UploadedFile,

@@ -14,10 +14,10 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import i18n from '../../lib/i18n';
 import { UploadPage } from './UploadPage';
 
-let deliverPassDeck: (() => void) | undefined;
+let startPassDeck: (() => void) | undefined;
 vi.mock('./components/UploadForm/UploadForm', () => ({
-  default: ({ onPassDeckDelivered }: { onPassDeckDelivered?: () => void }) => {
-    deliverPassDeck = onPassDeckDelivered;
+  default: ({ onPassDeckStarted }: { onPassDeckStarted?: () => void }) => {
+    startPassDeck = onPassDeckStarted;
     return <div data-testid="upload-form-stub" />;
   },
 }));
@@ -1027,7 +1027,7 @@ describe('UploadPage checkout return', () => {
     expect(storePassToken).toHaveBeenCalledWith('cs_test_flag_on');
   });
 
-  it('drops the drop-again confirmation once the held deck arrives with the pass', async () => {
+  it('drops the drop-again confirmation once the page starts delivering the deck with the pass', async () => {
     fakeFeatures = { anonymousDayPassCard: true };
     const confirmation =
       'Once the payment goes through, drop your file again to start your Day Pass and get every card.';
@@ -1036,7 +1036,7 @@ describe('UploadPage checkout return', () => {
     await waitFor(() =>
       expect(screen.getByText(confirmation)).toBeInTheDocument()
     );
-    act(() => deliverPassDeck?.());
+    act(() => startPassDeck?.());
 
     expect(screen.queryByText(confirmation)).toBeNull();
   });

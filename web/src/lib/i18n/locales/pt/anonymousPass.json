@@ -15,5 +15,7 @@
   "passActive": "Assim que o pagamento for concluído, solte o arquivo de novo para começar seu Day Pass e receber todos os cartões.",
   "checkoutError": "Não foi possível iniciar o pagamento. Tente de novo ou escreva para support@2anki.net.",
   "starting": "Iniciando o checkout",
-  "claimError": "Seu passe está ativo, mas não conseguimos montar o baralho completo. Envie o arquivo de novo ou escreva para support@2anki.net."
+  "claimError": "Não conseguimos montar seu baralho completo. Envie o arquivo de novo ou escreva para support@2anki.net.",
+  "building": "Passe ativo. Estamos criando todos os cartões do seu arquivo.",
+  "activeDropAgain": "Seu passe está ativo. Envie o arquivo de novo para receber todos os cartões."
 }

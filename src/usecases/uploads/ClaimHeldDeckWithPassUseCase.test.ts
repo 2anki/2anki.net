@@ -309,6 +309,29 @@ describe('ClaimHeldDeckWithPassUseCase', () => {
     expect(convertHeldFileForPass).not.toHaveBeenCalled();
   });
 
+  it('answers a visitor with no hold without calling Stripe', async () => {
+    const passes = new InMemoryAnonymousPassRepository();
+    const passId = await seedPass(passes, 'cs_cheap');
+    const readBinding = vi.fn();
+    const useCase = new ClaimHeldDeckWithPassUseCase(
+      new InMemoryHeldDeckRepository(),
+      fakeStore().store,
+      fakeConverter().converter,
+      passes,
+      readBinding
+    );
+
+    await expect(
+      useCase.execute({
+        anonymousPassId: passId,
+        anonId: BUYER,
+        cardOptions: {},
+        requestId: undefined,
+      })
+    ).rejects.toBeInstanceOf(NoHeldDeckError);
+    expect(readBinding).not.toHaveBeenCalled();
+  });
+
   it('releases the deck once: a reused pass session gets nothing the second time', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo, BUYER);

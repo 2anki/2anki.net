@@ -15,5 +15,7 @@
   "passActive": "Zodra de betaling rond is, zet je je bestand opnieuw neer om je Day Pass te starten en alle kaarten te krijgen.",
   "checkoutError": "Afrekenen kon niet starten. Probeer het opnieuw of mail support@2anki.net.",
   "starting": "Afrekenen starten",
-  "claimError": "Je pass is actief, maar we konden het volledige deck niet maken. Zet het bestand opnieuw neer of mail support@2anki.net."
+  "claimError": "We konden je volledige deck niet maken. Zet het bestand opnieuw neer of mail support@2anki.net.",
+  "building": "Pass actief. We maken alle kaarten uit je bestand.",
+  "activeDropAgain": "Je pass is actief. Zet je bestand opnieuw neer om alle kaarten te krijgen."
 }

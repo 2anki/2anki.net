@@ -15,5 +15,7 @@
   "passActive": "Une fois le paiement validé, dépose à nouveau ton fichier pour démarrer ton Day Pass et obtenir toutes les cartes.",
   "checkoutError": "Impossible de lancer le paiement. Réessaie ou écris à support@2anki.net.",
   "starting": "Ouverture du paiement",
-  "claimError": "Ton pass est actif, mais nous n'avons pas pu créer le paquet complet. Dépose à nouveau le fichier ou écris à support@2anki.net."
+  "claimError": "Nous n'avons pas pu créer ton paquet complet. Dépose à nouveau le fichier ou écris à support@2anki.net.",
+  "building": "Pass actif. Nous créons toutes les cartes de ton fichier.",
+  "activeDropAgain": "Ton pass est actif. Dépose à nouveau ton fichier pour obtenir toutes les cartes."
 }

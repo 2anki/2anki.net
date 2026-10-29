@@ -15,5 +15,7 @@
   "passActive": "Once the payment goes through, drop your file again to start your Day Pass and get every card.",
   "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
   "starting": "Starting checkout",
-  "claimError": "Your pass is active, but we couldn't build your full deck. Drop the file again, or email support@2anki.net."
+  "claimError": "We couldn't build your full deck. Drop the file again, or email support@2anki.net.",
+  "building": "Pass active. Building every card from your file.",
+  "activeDropAgain": "Your pass is active. Drop your file again to get every card."
 }

@@ -156,7 +156,7 @@ interface UploadFormProps {
   setErrorMessage: ErrorHandlerType;
   aiOn?: boolean;
   sample?: boolean;
-  onPassDeckDelivered?: () => void;
+  onPassDeckStarted?: () => void;
 }
 
 const REJECTED_FALLBACK =
@@ -353,7 +353,7 @@ function heldClaimNoticeFor(
   t: (key: string) => string
 ): string {
   if (status === 404 || status === 410) {
-    return t('aiPreview:resumeActiveDropAgain');
+    return t('anonymousPass:activeDropAgain');
   }
   if (status === 400) {
     return t('aiPreview:resumeEmpty');
@@ -361,39 +361,54 @@ function heldClaimNoticeFor(
   return t('anonymousPass:claimError');
 }
 
+type PassDeckPhase = 'held' | 'ai';
+
 interface PassDeckResult {
   response: Response;
-  held: boolean;
+  phase: PassDeckPhase;
 }
 
-// A pass bought from the AI preview resumes that preview; any other pass
-// releases the deck held for this visitor at the no-account cap. Stripe can
-// confirm the payment a few seconds after the buyer is back, so a refused pass
-// is retried before the visitor sees a notice.
+function isNoHeldDeck(status: number): boolean {
+  return status === 404 || status === 410;
+}
+
+// The held claim goes first because it answers fast when there is no hold,
+// while the AI resume is the slow conversion itself. Stripe can confirm the
+// payment a few seconds after the buyer is back, so a refused pass is retried.
+// Each request waits a tick and checks for cancellation first, so a StrictMode
+// remount never sends a claim whose result nobody reads.
 async function deliverPassDeck(
   passToken: string,
-  isCancelled: () => boolean
+  isCancelled: () => boolean,
+  onPhase: (phase: PassDeckPhase) => void
 ): Promise<PassDeckResult | null> {
   const api = get2ankiApi();
   let attempt = 0;
   while (true) {
-    let response = await api.resumeAiPreview(passToken);
-    let held = false;
-    if (response.status === 404) {
-      response = await api.claimHeldDeckWithPass(
-        passToken,
-        storedCardOptions()
-      );
-      held = true;
-    }
-    if (response.status !== 403 || attempt >= CHECKOUT_CLAIM_RETRIES) {
-      return { response, held };
-    }
-    attempt += 1;
-    await new Promise((resolve) =>
-      setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
-    );
+    await Promise.resolve();
     if (isCancelled()) return null;
+    onPhase('held');
+    const held = await api.claimHeldDeckWithPass(
+      passToken,
+      storedCardOptions()
+    );
+    if (held.status === 403 && attempt < CHECKOUT_CLAIM_RETRIES) {
+      attempt += 1;
+      await new Promise((resolve) =>
+        setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
+      );
+      continue;
+    }
+    if (!isNoHeldDeck(held.status)) {
+      return { response: held, phase: 'held' };
+    }
+    if (isCancelled()) return null;
+    onPhase('ai');
+    const preview = await api.resumeAiPreview(passToken);
+    if (preview.status === 404 && held.status === 410) {
+      return { response: held, phase: 'held' };
+    }
+    return { response: preview, phase: 'ai' };
   }
 }
 
@@ -583,7 +598,7 @@ function UploadForm({
   setErrorMessage,
   aiOn = false,
   sample = false,
-  onPassDeckDelivered,
+  onPassDeckStarted,
 }: Readonly<UploadFormProps>) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -894,6 +909,7 @@ function UploadForm({
     return session != null && session.length > 0 ? session : null;
   });
   const [resumingPreview, setResumingPreview] = useState(false);
+  const [resumePhase, setResumePhase] = useState<PassDeckPhase>('held');
   const [passResumeNotice, setPassResumeNotice] = useState<string | null>(null);
   const aiPreviewResumeRef = useRef(false);
 
@@ -973,9 +989,10 @@ function UploadForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  // A visitor who bought a Day Pass from the AI preview comes back with the
-  // pass session in the URL. Resume the AI conversion of the file they already
-  // uploaded, using THIS return's token, so they never upload it again. Waits
+  // A visitor who bought a pass without an account comes back with the pass
+  // session in the URL. Release the deck held for them, or resume the AI
+  // conversion of the file they previewed, using THIS return's token, so they
+  // never upload it again. Waits
   // for user locals so a signed-in visitor (who has no anonymous pass) is not
   // sent down this path. A failed resume shows a clear next step instead of a
   // silent reset.
@@ -993,22 +1010,30 @@ function UploadForm({
     // Persist the fresh token so a follow-up upload also carries the pass.
     storePassToken(passSessionToken);
     let cancelled = false;
+    let phase: PassDeckPhase = 'held';
+    onPassDeckStarted?.();
     (async () => {
       setResumingPreview(true);
       setPassResumeNotice(null);
       setZoneState('converting');
       setProgressWidth(10);
       try {
-        const result = await deliverPassDeck(passSessionToken, () => cancelled);
+        const result = await deliverPassDeck(
+          passSessionToken,
+          () => cancelled,
+          (next) => {
+            phase = next;
+            setResumePhase(next);
+          }
+        );
         if (cancelled || result == null) return;
-        const { response, held } = result;
+        const { response } = result;
         if (response.status === 200) {
           await applyConversionSuccess(response, conversionSuccessHandlers);
-          if (held) onPassDeckDelivered?.();
           return;
         }
         setPassResumeNotice(
-          held
+          result.phase === 'held'
             ? heldClaimNoticeFor(response.status, t)
             : resumeNoticeFor(response.status, t)
         );
@@ -1016,7 +1041,11 @@ function UploadForm({
         setProgressWidth(10);
       } catch {
         if (cancelled) return;
-        setPassResumeNotice(t('aiPreview:resumeError'));
+        setPassResumeNotice(
+          phase === 'held'
+            ? t('anonymousPass:claimError')
+            : t('aiPreview:resumeError')
+        );
         setZoneState('idle');
         setProgressWidth(10);
       } finally {
@@ -4492,7 +4521,9 @@ function UploadForm({
     <>
       {resumingPreview && (
         <p className={formStyles.stateContent} role="status" aria-live="polite">
-          {t('aiPreview:resuming')}
+          {resumePhase === 'held'
+            ? t('anonymousPass:building')
+            : t('aiPreview:resuming')}
         </p>
       )}
       {passResumeNotice != null && !resumingPreview && (

@@ -20,6 +20,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
+import { StrictMode } from 'react';
 import UploadForm from './UploadForm';
 import i18n from '../../../../lib/i18n';
 
@@ -259,10 +260,12 @@ describe('UploadForm', () => {
     }
   });
 
-  test('the AI preview resume does not touch the held deck claim', async () => {
+  test('an AI preview buyer gets the AI deck once the held claim finds nothing', async () => {
     stubPassReturn('cs_preview');
     const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
-    const claimHeldDeckWithPass = vi.fn();
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(404));
     const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
 
     try {
@@ -270,27 +273,47 @@ describe('UploadForm', () => {
       expect(
         await screen.findByText('Your deck is ready — 58 cards.')
       ).toBeInTheDocument();
-      expect(claimHeldDeckWithPass).not.toHaveBeenCalled();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(1);
+      expect(resumeAiPreview).toHaveBeenCalledWith('cs_preview');
     } finally {
       restore();
     }
   });
 
-  test('downloads the held deck with the pass when no AI preview is waiting', async () => {
+  test('an AI preview buyer with an old, used held deck still gets the AI deck', async () => {
+    stubPassReturn('cs_preview_old_hold');
+    const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(410));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(resumeAiPreview).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
+    }
+  });
+
+  test('downloads the held deck with the pass and never asks the AI preview', async () => {
     globalThis.localStorage.setItem('basic-reversed', 'true');
     stubPassReturn('cs_held');
-    const resumeAiPreview = vi.fn().mockResolvedValue(statusResponse(404));
+    const resumeAiPreview = vi.fn();
     const claimHeldDeckWithPass = vi
       .fn()
       .mockResolvedValue(apkgResumeResponse());
-    const onPassDeckDelivered = vi.fn();
+    const onPassDeckStarted = vi.fn();
     const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
 
     try {
       renderUploadForm(
         <UploadForm
           setErrorMessage={vi.fn()}
-          onPassDeckDelivered={onPassDeckDelivered}
+          onPassDeckStarted={onPassDeckStarted}
         />
       );
       expect(
@@ -301,7 +324,8 @@ describe('UploadForm', () => {
       expect(token).toBe('cs_held');
       expect(cardOptions).toMatchObject({ 'basic-reversed': 'true' });
       expect(cardOptions).not.toHaveProperty('2anki_pass_token');
-      expect(onPassDeckDelivered).toHaveBeenCalledTimes(1);
+      expect(resumeAiPreview).not.toHaveBeenCalled();
+      expect(onPassDeckStarted).toHaveBeenCalled();
       expect(
         screen.queryByText(/Drop your file again/)
       ).not.toBeInTheDocument();
@@ -311,15 +335,71 @@ describe('UploadForm', () => {
     }
   });
 
+  test('says it is building every card, not an AI deck, while the held claim runs', async () => {
+    stubPassReturn('cs_building');
+    let finish: (response: Response) => void = () => {};
+    const claimHeldDeckWithPass = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      })
+    );
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          'Pass active. Building every card from your file.'
+        )
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/AI deck/)).not.toBeInTheDocument();
+      await act(async () => {
+        finish(apkgResumeResponse());
+      });
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('claims the held deck once under a StrictMode double mount', async () => {
+    stubPassReturn('cs_strict');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(apkgResumeResponse());
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    try {
+      render(
+        <StrictMode>
+          <MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+              <UploadForm setErrorMessage={vi.fn()} />
+            </QueryClientProvider>
+          </MemoryRouter>
+        </StrictMode>
+      );
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
+    }
+  });
+
   test('waits for a pass the checkout has not confirmed yet, then claims the held deck', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     stubPassReturn('cs_late');
-    const resumeAiPreview = vi
-      .fn()
-      .mockResolvedValueOnce(statusResponse(403))
-      .mockResolvedValue(statusResponse(404));
+    const resumeAiPreview = vi.fn();
     const claimHeldDeckWithPass = vi
       .fn()
+      .mockResolvedValueOnce(statusResponse(403))
       .mockResolvedValue(apkgResumeResponse());
     const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
 
@@ -331,17 +411,54 @@ describe('UploadForm', () => {
       expect(
         await screen.findByText('Your deck is ready — 58 cards.')
       ).toBeInTheDocument();
-      expect(resumeAiPreview).toHaveBeenCalledTimes(2);
-      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(1);
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(2);
+      expect(resumeAiPreview).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
       restore();
     }
   });
 
-  test('says the pass is active but the deck failed when the held claim errors', async () => {
-    stubPassReturn('cs_broken');
+  test('names the pass, not the Day Pass, when the held deck is gone and no preview waits', async () => {
+    stubPassReturn('cs_expired_hold');
     const resumeAiPreview = vi.fn().mockResolvedValue(statusResponse(404));
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(410));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          'Your pass is active. Drop your file again to get every card.'
+        )
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says no cards were found when the held deck rebuilds empty', async () => {
+    stubPassReturn('cs_empty');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(400));
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(/We couldn't find cards in that file/)
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says the full deck failed when the held claim errors', async () => {
+    stubPassReturn('cs_broken');
+    const resumeAiPreview = vi.fn();
     const claimHeldDeckWithPass = vi
       .fn()
       .mockResolvedValue(statusResponse(500));
@@ -351,7 +468,27 @@ describe('UploadForm', () => {
       renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
       expect(
         await screen.findByText(
-          "Your pass is active, but we couldn't build your full deck. Drop the file again, or email support@2anki.net."
+          "We couldn't build your full deck. Drop the file again, or email support@2anki.net."
+        )
+      ).toBeInTheDocument();
+      expect(resumeAiPreview).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says the full deck failed, not the AI deck, when the held claim throws', async () => {
+    stubPassReturn('cs_offline');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          "We couldn't build your full deck. Drop the file again, or email support@2anki.net."
         )
       ).toBeInTheDocument();
     } finally {

@@ -15,5 +15,7 @@
   "passActive": "Quando il pagamento va a buon fine, rilascia di nuovo il file per far partire il tuo Day Pass e avere tutte le carte.",
   "checkoutError": "Impossibile avviare il pagamento. Riprova o scrivi a support@2anki.net.",
   "starting": "Avvio del pagamento",
-  "claimError": "Il tuo pass è attivo, ma non siamo riusciti a creare il mazzo completo. Carica di nuovo il file o scrivi a support@2anki.net."
+  "claimError": "Non siamo riusciti a creare il tuo mazzo completo. Carica di nuovo il file o scrivi a support@2anki.net.",
+  "building": "Pass attivo. Stiamo creando tutte le carte dal tuo file.",
+  "activeDropAgain": "Il tuo pass è attivo. Carica di nuovo il file per avere tutte le carte."
 }

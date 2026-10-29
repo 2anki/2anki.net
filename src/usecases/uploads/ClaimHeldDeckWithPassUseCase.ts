@@ -63,6 +63,14 @@ export class ClaimHeldDeckWithPassUseCase {
     if (isPlanHoldKey(anonId) || isPreviewHoldKey(anonId)) {
       throw new NoHeldDeckError();
     }
+    const now = new Date();
+    const hold = await this.repository.findNewestClaimable(anonId, now);
+    if (hold == null) {
+      if ((await this.repository.findNewestByAnonId(anonId)) != null) {
+        throw new HeldDeckExpiredError();
+      }
+      throw new NoHeldDeckError();
+    }
     const pass = await this.passRepository.findById(anonymousPassId);
     if (pass == null) {
       throw new NoHeldDeckError();
@@ -73,14 +81,6 @@ export class ClaimHeldDeckWithPassUseCase {
       binding.anonId !== anonId ||
       binding.surface === AI_PREVIEW_CHECKOUT_SURFACE
     ) {
-      throw new NoHeldDeckError();
-    }
-    const now = new Date();
-    const hold = await this.repository.findNewestClaimable(anonId, now);
-    if (hold == null) {
-      if ((await this.repository.findNewestByAnonId(anonId)) != null) {
-        throw new HeldDeckExpiredError();
-      }
       throw new NoHeldDeckError();
     }
     if (!(await this.repository.claimForConversion(hold.id, now))) {

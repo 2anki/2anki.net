@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import type { Request, Response } from 'express';
 import type { Knex } from 'knex';
+import type StripeTypes from 'stripe';
 
 vi.mock('../../services/events/track', () => ({ track: vi.fn() }));
 
@@ -117,7 +118,10 @@ async function setup(
   );
   const validator = new ValidateAnonymousPassUseCase(
     passes,
-    stripeReturning(options.stripeSession ?? null) as never
+    stripeReturning(options.stripeSession ?? null) as unknown as Pick<
+      StripeTypes,
+      'checkout'
+    >
   );
   const controller = new HeldDeckPassClaimController(useCase);
   const hold = await holds.insert({

@@ -3,8 +3,8 @@
   "body": "Ein Day Pass für {{price}} hebt das Kartenlimit für 24 Stunden auf, ganz ohne Konto.",
   "afterPay": "Lade die Datei nach dem Bezahlen noch einmal hoch, dann bekommst du alle Karten.",
   "afterPayTotal": "Lade die Datei nach dem Bezahlen noch einmal hoch, dann bekommst du alle {{total}} Karten.",
-  "afterPayHeld": "Nach dem Bezahlen sind alle Karten sofort zum Download bereit, ohne erneuten Upload.",
-  "afterPayHeldTotal": "Nach dem Bezahlen sind alle {{total}} Karten sofort zum Download bereit, ohne erneuten Upload.",
+  "afterPayHeld": "Nach dem Bezahlen sind alle Karten zum Download bereit, ohne neuen Upload.",
+  "afterPayHeldTotal": "Nach dem Bezahlen sind alle {{total}} Karten zum Download bereit, ohne neuen Upload.",
   "cta": "Day Pass für {{price}} holen",
   "cardTitle": "Day Pass",
   "cardLine": "Alle deine Karten sofort, ohne Konto.",
@@ -15,5 +15,7 @@
   "passActive": "Sobald die Zahlung durch ist, lege deine Datei noch einmal ab, um deinen Day Pass zu starten und alle Karten zu bekommen.",
   "checkoutError": "Der Checkout ließ sich nicht starten. Versuch es noch einmal oder schreib an support@2anki.net.",
   "starting": "Checkout wird gestartet",
-  "claimError": "Dein Pass ist aktiv, aber wir konnten den ganzen Stapel nicht erstellen. Lade die Datei noch einmal hoch oder schreib an support@2anki.net."
+  "claimError": "Wir konnten deinen ganzen Stapel nicht erstellen. Lade die Datei noch einmal hoch oder schreib an support@2anki.net.",
+  "building": "Pass aktiv. Alle Karten aus deiner Datei werden erstellt.",
+  "activeDropAgain": "Dein Pass ist aktiv. Lade deine Datei noch einmal hoch, um alle Karten zu bekommen."
 }
