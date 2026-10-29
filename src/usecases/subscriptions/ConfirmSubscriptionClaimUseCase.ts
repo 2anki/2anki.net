@@ -19,6 +19,12 @@ export type ConfirmOutcome =
         | 'race';
     };
 
+// The subscription belongs to another account (its checkout metadata names
+// that account), so the claim must not report success: the claimant would be
+// told it worked while access stays with the other account. It rolls back and
+// reads as a race, as the unique-key clash on this path always did.
+class ClaimResolvedElsewhereError extends Error {}
+
 export class ConfirmSubscriptionClaimUseCase {
   constructor(
     private readonly db: Knex,
@@ -95,12 +101,21 @@ export class ConfirmSubscriptionClaimUseCase {
           customer.subscriptions?.data?.filter((s) => s.status === 'active') ??
           [];
         for (const sub of activeSubs) {
-          await updateStoreSubscription(trx, customer, sub);
+          const provisioned = await updateStoreSubscription(trx, customer, sub);
+          if (
+            provisioned.resolvedUserId != null &&
+            provisioned.resolvedUserId !== userId
+          ) {
+            throw new ClaimResolvedElsewhereError();
+          }
         }
       });
     } catch (err) {
       const pgErr = err as { code?: string };
-      if (pgErr.code === '23505') {
+      if (
+        err instanceof ClaimResolvedElsewhereError ||
+        pgErr.code === '23505'
+      ) {
         await this.auditRepo.insert({
           user_id: userId as UsersId,
           email_hash: emailHash,

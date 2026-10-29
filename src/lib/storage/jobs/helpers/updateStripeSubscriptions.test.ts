@@ -90,7 +90,7 @@ async function buildDatabase(): Promise<Knex> {
     t.boolean('active');
     t.json('payload');
     t.string('stripe_product_id');
-    t.string('linked_email');
+    t.string('linked_email').unique();
     t.timestamp('created_at');
     t.timestamp('updated_at');
   });
@@ -130,7 +130,7 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
   it('marks a paused subscription inactive, as the webhook does', async () => {
     await db('subscriptions').insert({
       email: 'user@example.com',
-      active: false,
+      active: true,
       payload: '{}',
     });
     setupStripeMock([
@@ -156,6 +156,51 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
       stripe_product_id: 'prod_autoSync789',
     });
     expect(Boolean((await row()).active)).toBe(true);
+  });
+
+  it.each([
+    ['still inside the paid period', 30, true],
+    ['past the end of the paid period', -1, false],
+  ])(
+    'treats a subscription set to cancel at period end and %s as active=%s',
+    async (_when, days, expected) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-29T12:00:00Z'));
+      const cancelAt =
+        Math.floor(new Date('2026-10-29T12:00:00Z').getTime() / 1000) +
+        days * 24 * 60 * 60;
+      setupStripeMock([
+        buildSubscription(undefined, {
+          cancel_at_period_end: true,
+          cancel_at: cancelAt,
+        }),
+      ]);
+
+      await updateStripeSubscriptions(db).finally(() => vi.useRealTimers());
+
+      expect(Boolean((await row()).active)).toBe(expected);
+    }
+  );
+
+  it('writes the row without a link when another row already links that account', async () => {
+    await db('users').insert({
+      email: 'owner@example.com',
+      stripe_customer_id: 'cus_test456',
+    });
+    await db('subscriptions').insert({
+      email: 'old-billing@example.com',
+      active: true,
+      payload: '{}',
+      linked_email: 'owner@example.com',
+    });
+    setupStripeMock([buildSubscription()], 'new-billing@example.com');
+
+    await updateStripeSubscriptions(db);
+
+    expect(await row('new-billing@example.com')).toMatchObject({
+      linked_email: null,
+    });
+    expect(Boolean((await row('new-billing@example.com')).active)).toBe(true);
   });
 
   it('keeps the linked account on a subscription paid with another email', async () => {
@@ -289,14 +334,16 @@ describe('updateStripeSubscriptions — does not log raw email or customer id', 
     expect(flatArgs(warnSpy)).not.toContain('cus_test456');
   });
 
-  it('does not log the raw email or customer id when the write fails', async () => {
+  it('logs only the error class and code when the write fails', async () => {
     await db.schema.dropTable('subscriptions');
     setupStripeMock([buildSubscription()]);
 
     await updateStripeSubscriptions(db);
 
-    expect(flatArgs(errorSpy)).not.toContain('@');
-    expect(flatArgs(errorSpy)).not.toContain('cus_test456');
+    const logged = errorSpy.mock.calls.flat();
+    expect(logged.every((arg) => typeof arg === 'string')).toBe(true);
+    expect(logged.join(' ')).not.toContain('@');
+    expect(logged.join(' ')).not.toContain('cus_test456');
   });
 });
 

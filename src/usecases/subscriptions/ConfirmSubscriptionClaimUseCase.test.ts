@@ -5,7 +5,7 @@ import type { ISubscriptionClaimAuditRepository } from '../../data_layer/Subscri
 import type { SubscriptionService } from '../../services/SubscriptionService';
 import type StripeTypes from 'stripe';
 import type SubscriptionClaimTokens from '../../data_layer/public/SubscriptionClaimTokens';
-import type { Knex } from 'knex';
+import knexLib, { type Knex } from 'knex';
 import type UsersRepository from '../../data_layer/UsersRepository';
 
 process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
@@ -207,5 +207,105 @@ describe('ConfirmSubscriptionClaimUseCase', () => {
     expect(auditRepo.insert).toHaveBeenCalledWith(
       expect.objectContaining({ user_id: 99 })
     );
+  });
+});
+
+describe('ConfirmSubscriptionClaimUseCase against a real database', () => {
+  let db: Knex;
+
+  beforeEach(async () => {
+    db = knexLib({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('users', (t) => {
+      t.increments('id');
+      t.string('email');
+      t.string('stripe_customer_id').unique();
+    });
+    await db.schema.createTable('subscriptions', (t) => {
+      t.increments('id');
+      t.string('email').unique();
+      t.boolean('active');
+      t.json('payload');
+      t.string('stripe_product_id');
+      t.string('linked_email').unique();
+      t.timestamp('created_at');
+      t.timestamp('updated_at');
+    });
+    await db.schema.createTable('developer_tiers', (t) => {
+      t.increments('id');
+      t.string('tier_key');
+      t.string('stripe_product_id');
+    });
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  const stripeWith = (subscription: Record<string, unknown>) =>
+    ({
+      customers: {
+        retrieve: vi.fn().mockResolvedValue({
+          id: 'cus_test',
+          email: 'payer@example.com',
+          subscriptions: { data: [subscription] },
+        }),
+      },
+    }) as unknown as Mocked<StripeTypes>;
+
+  const activeSubscription = (metadata: Record<string, string>) => ({
+    id: 'sub_claim',
+    status: 'active',
+    customer: 'cus_test',
+    cancel_at_period_end: false,
+    cancel_at: null,
+    pause_collection: null,
+    metadata,
+    items: { data: [{ price: { product: 'prod_auto_sync' } }] },
+  });
+
+  const useCaseFor = (stripe: Mocked<StripeTypes>) =>
+    new ConfirmSubscriptionClaimUseCase(
+      db,
+      makeTokensRepo(),
+      makeAuditRepo(),
+      makeUsersRepo() as unknown as UsersRepository,
+      makeSubscriptionService(),
+      stripe
+    );
+
+  it('does not report success when the subscription belongs to another account', async () => {
+    await db('users').insert([
+      { id: 5, email: 'other@example.com' },
+      { id: 99, email: 'user@example.com' },
+    ]);
+
+    const result = await useCaseFor(
+      stripeWith(activeSubscription({ user_id: '5' }))
+    ).execute(99, 'raw-token', 'ip-hash', 'email-hash');
+
+    expect(result).toEqual({ success: false, reason: 'race' });
+    expect(await db('subscriptions').select('email')).toEqual([]);
+  });
+
+  it('links an unlinked payment to the claimant', async () => {
+    await db('users').insert({ id: 99, email: 'user@example.com' });
+
+    const result = await useCaseFor(stripeWith(activeSubscription({}))).execute(
+      99,
+      'raw-token',
+      'ip-hash',
+      'email-hash'
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(
+      await db('subscriptions')
+        .where({ email: 'payer@example.com' })
+        .select('linked_email')
+    ).toEqual([{ linked_email: 'user@example.com' }]);
   });
 });

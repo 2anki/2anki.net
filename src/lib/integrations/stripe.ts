@@ -141,6 +141,33 @@ const ACCESS_GRANTING_STATUSES = new Set<StripeTypes.Subscription['status']>([
   'active',
 ]);
 
+// subscriptions.linked_email is unique: when another subscription row already
+// links that account (the payer changed their Stripe email, say), writing it
+// again would fail the whole provisioning. The existing link stays.
+const linkableEmail = async (
+  db: Knex,
+  candidate: string | null,
+  stripeEmail: string | null
+): Promise<string | null> => {
+  if (candidate == null) {
+    return null;
+  }
+  const holder = await db('subscriptions')
+    .where({ linked_email: candidate })
+    .modify((query) => {
+      if (stripeEmail != null) {
+        query.whereNot({ email: stripeEmail });
+      }
+    })
+    .select('id')
+    .first();
+  if (holder != null) {
+    console.info('[stripe] account already linked to another subscription row');
+    return null;
+  }
+  return candidate;
+};
+
 // Records the Stripe customer id on the resolved account, unless another
 // account already holds it: someone paid for a subscription linked to a
 // different account, and users.stripe_customer_id is unique, so the write
@@ -203,8 +230,11 @@ export const updateStoreSubscription = async (
   );
 
   const accountEmail = normalizeEmail(account?.email);
-  const linkedEmail =
-    accountEmail != null && accountEmail !== stripeEmail ? accountEmail : null;
+  const linkedEmail = await linkableEmail(
+    db,
+    accountEmail != null && accountEmail !== stripeEmail ? accountEmail : null,
+    stripeEmail
+  );
 
   // A developer tier is a SECOND concurrent subscription — a base-plan
   // subscriber can also hold Starter or Growth. The subscriptions table upserts

@@ -104,7 +104,15 @@ async function processSubscription(
     // and the customer id stamp all live in one place.
     await updateStoreSubscription(db, customer, subscription);
   } catch (error) {
-    console.error('Error processing subscription', subscription.id, error);
+    // A database error's detail can carry the email or customer id, so only
+    // its class and code are logged.
+    const { name, code } = error as { name?: string; code?: string };
+    console.error(
+      'Error processing subscription',
+      subscription.id,
+      `error=${name ?? 'unknown'}`,
+      `code=${code ?? 'none'}`
+    );
     // We don't rethrow here to allow processing of other subscriptions
   }
 }
