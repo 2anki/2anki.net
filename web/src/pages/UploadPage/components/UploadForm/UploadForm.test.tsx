@@ -4196,6 +4196,29 @@ describe('limit state', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([true, false])(
+    'explains an unreachable Day Pass checkout on the signed-in file-size wall (pass-first %s)',
+    async (limitWallPassFirst) => {
+      setUserLocals({
+        ...loggedInData,
+        features: { kiUI: false, limitWallPassFirst },
+      } as ReturnType<typeof useUserLocals>['data']);
+      mockGet2ankiApi.mockReturnValue({
+        startPassCheckout: vi.fn().mockRejectedValue(new TypeError('offline')),
+      } as unknown as ReturnType<typeof get2ankiApi>);
+      stubLimitFetch('file_size');
+      await submitAndReachLimit();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /Get Day Pass/ }));
+      });
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        "Couldn't start checkout. Check your connection and try again."
+      );
+    }
+  );
+
   it('navigates to /limit?kind=anonymous on an anonymous limit redirect', async () => {
     setUserLocals(anonymousData);
     const locationStub = { href: '', origin: 'http://localhost' } as Location;

@@ -190,17 +190,18 @@ describe.each(SUPPORTED_LANGUAGES)('PassCards in %s', (language) => {
 
   it('labels a pending pass with a sentence, not a loading ellipsis', () => {
     renderPassCards({ semesterPassPending: true });
-    const pending = screen
-      .getAllByRole('button')
-      .find((button) => button.hasAttribute('disabled'));
-    expect(pending?.textContent).toBe(
-      i18n.t('pricing.unlimited.startingCheckout')
-    );
+    const pending = screen.getByRole('button', {
+      name: i18n.t('pricing.pass.redirecting'),
+    });
+    expect(pending).toBeDisabled();
+    expect(pending.textContent).not.toMatch(/…|\.\.\./);
   });
 
   it('keeps a hardcoded currency out of the Semester Pass value line', () => {
     renderPassCards({ featureDayPass: false });
-    const caption = within(cardByTitle('Semester Pass')).getByText(/85/);
+    const caption = within(cardByTitle('Semester Pass')).getByText(
+      i18n.t('pricing.pass.semesterPerWeek')
+    );
     expect(caption.textContent).not.toMatch(/[$€£]/);
   });
 });
