@@ -5,7 +5,7 @@
   "afterPayTotal": "After paying, drop the file again to get all {{total}} cards.",
   "afterPayHeld": "After paying, every card is ready to download, no re-upload.",
   "afterPayHeldTotal": "After paying, all {{total}} cards are ready to download, no re-upload.",
-  "cta": "Get a Day Pass for {{price}}",
+  "cta": "Get Day Pass · {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "All your cards now, no account.",
   "cardPrice": "{{price}} for 24 hours.",

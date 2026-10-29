@@ -19,14 +19,14 @@ vi.mock('../../lib/backend/startUnlimitedUpgrade', () => ({
   startUnlimitedUpgrade: vi.fn(),
 }));
 
-function renderLimitPage() {
+function renderLimitPage(initialEntries: string[] = ['/limit']) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={initialEntries}>
           <LimitPage />
         </MemoryRouter>
       </QueryClientProvider>
@@ -47,13 +47,40 @@ describe('LimitPage in German', () => {
     await i18n.changeLanguage('en');
   });
 
-  it('shows the limit headline in German with the monthly card limit', () => {
+  it('shows the limit headline and the monthly limit line in German', () => {
     renderLimitPage();
 
-    const headline = deAccountx.limit.headline.replace('{{limit}}', '100');
-    expect(headline).not.toBe('You reached 100 cards this month');
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      headline
+    expect(deAccountx.limit.headline).not.toBe(
+      "You've reached your monthly limit"
     );
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      deAccountx.limit.headline
+    );
+    expect(
+      screen.getByText(deAccountx.limit.subheading.replace('{{limit}}', '100'))
+    ).toBeInTheDocument();
+  });
+});
+
+describe('LimitPage in Russian', () => {
+  beforeEach(async () => {
+    vi.mocked(useUserLocals).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    await i18n.changeLanguage('ru');
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  it('agrees the noun with the 21-card cap', () => {
+    renderLimitPage(['/limit?kind=anonymous']);
+
+    expect(
+      screen.getByText('Из загруженного получилось больше 21 карточки')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/21 карточек/)).not.toBeInTheDocument();
   });
 });

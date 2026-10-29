@@ -89,10 +89,10 @@
     "plainTextFallback_other": "{{count}} изображения отсутствует в этой колоде. В этом файле не было структуры карточек, поэтому мы прочитали его как обычный текст, а обычный текст не может содержать изображения. Чтобы сохранить их, помести каждый ответ под его вопрос и загрузи страницу вместе с её изображениями в одном .zip."
   },
   "cardLimitPartial": {
-    "heldBack_one": "В твоей колоде {{delivered}} из {{limit}} карточек в месяц. Готова ещё {{count}} карточка — <pricingLink>оформи безлимит на карточки</pricingLink>.",
-    "heldBack_few": "В твоей колоде {{delivered}} из {{limit}} карточек в месяц. Готовы ещё {{count}} карточки — <pricingLink>оформи безлимит на карточки</pricingLink>.",
-    "heldBack_many": "В твоей колоде {{delivered}} из {{limit}} карточек в месяц. Готово ещё {{count}} карточек — <pricingLink>оформи безлимит на карточки</pricingLink>.",
-    "heldBack_other": "В твоей колоде {{delivered}} из {{limit}} карточек в месяц. Готово ещё {{count}} карточки — <pricingLink>оформи безлимит на карточки</pricingLink>."
+    "heldBack_one": "В твоей колоде {{delivered}} из {{limit}} карточек в месяц. Готова ещё {{count}} карточка — <pricingLink>посмотреть пропуски и Pro</pricingLink>.",
+    "heldBack_few": "В твоей колоде {{delivered}} из {{limit}} карточек в месяц. Готовы ещё {{count}} карточки — <pricingLink>посмотреть пропуски и Pro</pricingLink>.",
+    "heldBack_many": "В твоей колоде {{delivered}} из {{limit}} карточек в месяц. Готово ещё {{count}} карточек — <pricingLink>посмотреть пропуски и Pro</pricingLink>.",
+    "heldBack_other": "В твоей колоде {{delivered}} из {{limit}} карточек в месяц. Готово ещё {{count}} карточки — <pricingLink>посмотреть пропуски и Pro</pricingLink>."
   },
   "truncation": {
     "converted": "Преобразованы первые {{count}} блоков. Бесплатный план на этом останавливается — <pricingLink>перейдите на платный план, чтобы преобразовать всю страницу</pricingLink>.",

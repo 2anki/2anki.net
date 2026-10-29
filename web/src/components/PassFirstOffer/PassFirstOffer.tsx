@@ -93,6 +93,9 @@ export function PassFirstOffer({
               : t('semester', { price: prices['120d'] })}
           </span>
           <span className={styles.planHint}>{t('semesterHint')}</span>
+          <span className={styles.planBadge}>
+            {t('common:pricing.pass.bestValue')}
+          </span>
         </button>
         <button
           type="button"
@@ -106,6 +109,9 @@ export function PassFirstOffer({
               : t('day', { price: prices['24h'] })}
           </span>
           <span className={styles.planHint}>{t('dayHint')}</span>
+          <span className={styles.planBadge}>
+            {t('common:pricing.pass.mostPopular')}
+          </span>
         </button>
       </div>
       {note && <p className={styles.note}>{note}</p>}

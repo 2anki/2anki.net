@@ -4,9 +4,10 @@
   "bodySaved_one": "Tu as utilisé les {{monthly}} cartes gratuites de ce mois. {{count}} carte de plus est gardée 7 jours : prends un pass et le paquet complet arrive dans Mes paquets, sans nouvel envoi.",
   "bodySaved_other": "Tu as utilisé les {{monthly}} cartes gratuites de ce mois. Les {{count}} autres sont gardées 7 jours : prends un pass et le paquet complet arrive dans Mes paquets, sans nouvel envoi.",
   "bodyNotSaved": "Tu as utilisé les {{monthly}} cartes gratuites de ce mois. Prends un pass, puis dépose à nouveau le fichier pour avoir les {{total}} cartes.",
-  "dayPass": "Day Pass · {{price}}",
-  "semesterPass": "Semester Pass · {{price}}",
+  "dayPass": "Prendre un Day Pass · {{price}}",
+  "semesterPass": "Prendre un Semester Pass · {{price}}",
   "pro": "Passer à Pro",
+  "proPrice": "Passer à Pro · {{price}}/mois",
   "checkoutError": "Impossible de lancer le paiement. Réessaie ou écris à support@2anki.net.",
   "readyBody": "Ton paquet complet est prêt. Il est aussi dans Mes paquets.",
   "expiredBody": "Les paquets retenus sont gardés 7 jours. Dépose à nouveau le fichier pour créer le paquet complet."

@@ -29,20 +29,20 @@ describe('PassCards', () => {
   it('renders Day, Week, and Semester Pass cards side by side', () => {
     renderPassCards();
     expect(
-      screen.getByRole('button', { name: 'Get Day Pass' })
+      screen.getByRole('button', { name: 'Get Day Pass · $6' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get Week Pass' })
+      screen.getByRole('button', { name: 'Get Week Pass · $12' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get Semester Pass' })
+      screen.getByRole('button', { name: 'Get Semester Pass · $29' })
     ).toBeInTheDocument();
   });
 
   it('omits the Semester Pass card when onSemesterPass is not provided', () => {
     renderPassCards({ onSemesterPass: undefined });
     expect(
-      screen.queryByRole('button', { name: 'Get Semester Pass' })
+      screen.queryByRole('button', { name: 'Get Semester Pass · $29' })
     ).not.toBeInTheDocument();
     expect(screen.getAllByText('No subscription').length).toBe(2);
   });
@@ -65,21 +65,25 @@ describe('PassCards', () => {
   it('calls onDayPass when Get Day Pass is clicked', () => {
     const onDayPass = vi.fn();
     renderPassCards({ onDayPass });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass · $6' }));
     expect(onDayPass).toHaveBeenCalledOnce();
   });
 
   it('calls onWeekPass when Get Week Pass is clicked', () => {
     const onWeekPass = vi.fn();
     renderPassCards({ onWeekPass });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Week Pass' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Week Pass · $12' })
+    );
     expect(onWeekPass).toHaveBeenCalledOnce();
   });
 
   it('calls onSemesterPass when Get Semester Pass is clicked', () => {
     const onSemesterPass = vi.fn();
     renderPassCards({ onSemesterPass });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Semester Pass' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Semester Pass · $29' })
+    );
     expect(onSemesterPass).toHaveBeenCalledOnce();
   });
 
@@ -104,35 +108,35 @@ describe('PassCards', () => {
     expect(screen.getByText('$29')).toBeInTheDocument();
   });
 
-  it('features the Day Pass as Most popular on the limit wall', () => {
-    renderPassCards({ featureDayPass: true, onSemesterPass: undefined });
-    expect(
-      within(cardByTitle('Day Pass')).getByText('Most popular')
-    ).toBeInTheDocument();
-    expect(screen.queryByText('Best value')).not.toBeInTheDocument();
-  });
+  it.each([
+    ['the limit wall', { featureDayPass: true }],
+    [
+      'the pricing page and pass-first wall',
+      { featureDayPass: false, featureSemester: true },
+    ],
+    ['no featured pass', { featureDayPass: false, featureSemester: false }],
+  ])(
+    'marks the Day Pass Most popular and the Semester Pass Best value on %s',
+    (_label, overrides) => {
+      renderPassCards(overrides);
+      expect(
+        within(cardByTitle('Day Pass')).getByText('Most popular')
+      ).toBeInTheDocument();
+      expect(
+        within(cardByTitle('Semester Pass')).getByText('Best value')
+      ).toBeInTheDocument();
+      expect(screen.getAllByText('Most popular')).toHaveLength(1);
+      expect(screen.getAllByText('Best value')).toHaveLength(1);
+      expect(
+        within(cardByTitle('Week Pass')).queryByText(/Most popular|Best value/)
+      ).toBeNull();
+    }
+  );
 
-  it('gives the Week Pass the primary treatment on the pricing page', () => {
-    renderPassCards({ featureDayPass: false });
-    expect(
-      within(cardByTitle('Week Pass')).getByText('Most popular')
-    ).toBeInTheDocument();
-    expect(
-      within(cardByTitle('Day Pass')).queryByText('Most popular')
-    ).toBeNull();
-  });
-
-  it('marks the Semester Pass as Best value and leaves the Day Pass unbadged', () => {
-    renderPassCards({ featureDayPass: false });
-    expect(
-      within(cardByTitle('Semester Pass')).getByText('Best value')
-    ).toBeInTheDocument();
-    expect(
-      within(cardByTitle('Day Pass')).queryByText('Best value')
-    ).toBeNull();
-    expect(
-      within(cardByTitle('Day Pass')).queryByText('Most popular')
-    ).toBeNull();
+  it('lists no benefits on the cards when given an empty list', () => {
+    renderPassCards({ benefits: [] });
+    expect(screen.queryByText('No subscription')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unlimited cards')).not.toBeInTheDocument();
   });
 
   it('captions each pass with its study horizon on the pricing page', () => {
@@ -142,18 +146,14 @@ describe('PassCards', () => {
     expect(screen.getByText('A full term')).toBeInTheDocument();
   });
 
-  it('leads with the Semester Pass as Most popular when featureSemester is set', () => {
+  it('leads with the Semester Pass when featureSemester is set, without moving the badges', () => {
     renderPassCards({ featureDayPass: false, featureSemester: true });
     const titles = screen
       .getAllByRole('heading', { level: 3 })
       .map((heading) => heading.textContent);
     expect(titles).toEqual(['Semester Pass', 'Week Pass', 'Day Pass']);
     expect(
-      within(cardByTitle('Semester Pass')).getByText('Most popular')
-    ).toBeInTheDocument();
-    expect(screen.queryByText('Best value')).not.toBeInTheDocument();
-    expect(
-      within(cardByTitle('Week Pass')).queryByText('Most popular')
+      within(cardByTitle('Semester Pass')).queryByText('Most popular')
     ).toBeNull();
   });
 
@@ -191,10 +191,30 @@ describe.each(SUPPORTED_LANGUAGES)('PassCards in %s', (language) => {
   it('labels a pending pass with a sentence, not a loading ellipsis', () => {
     renderPassCards({ semesterPassPending: true });
     const pending = screen.getByRole('button', {
-      name: i18n.t('pricing.pass.redirecting'),
+      name: i18n.t('pricing.pass.startingCheckout'),
     });
     expect(pending).toBeDisabled();
     expect(pending.textContent).not.toMatch(/…|\.\.\./);
+  });
+
+  it('names each pass and its live price on its button', () => {
+    renderPassCards({ prices: { '24h': '€6', '7d': '€12', '120d': '€29' } });
+    const buttons = screen
+      .getAllByRole('button')
+      .map((button) => button.textContent ?? '');
+    expect(buttons).toHaveLength(3);
+    for (const [label, price] of [
+      ['Day Pass', '€6'],
+      ['Week Pass', '€12'],
+      ['Semester Pass', '€29'],
+    ]) {
+      expect(buttons.filter((text) => text.includes(label))).toEqual([
+        expect.stringContaining(price),
+      ]);
+    }
+    if (language !== 'en') {
+      expect(buttons.some((text) => text.startsWith('Get '))).toBe(false);
+    }
   });
 
   it('keeps a hardcoded currency out of the Semester Pass value line', () => {

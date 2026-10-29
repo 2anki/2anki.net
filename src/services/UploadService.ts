@@ -232,6 +232,8 @@ export interface HeldUploadResponse {
   cardCount: number;
   cardsHeldBack: number;
   totalCards: number;
+  deckName: string;
+  savedForHours: number;
   dayPassCard?: boolean;
 }
 
@@ -241,7 +243,8 @@ export interface AiPreviewUploadResponse {
   cards: AiPreviewCard[];
 }
 
-const HELD_DECK_TTL_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const HELD_DECK_TTL_MS = 24 * HOUR_MS;
 const HELD_DECK_IP_WINDOW_MS = 24 * 60 * 60 * 1000;
 const HELD_DECK_PER_IP_MAX = 20;
 const HELD_DECK_GLOBAL_MAX = 5000;
@@ -1997,7 +2000,8 @@ class UploadService {
         res,
         holdAnonId,
         totalCards,
-        cardsHeldBack ?? 0
+        cardsHeldBack ?? 0,
+        first?.name ?? ''
       );
     }
     if (packages.length === 1) {
@@ -2652,7 +2656,8 @@ class UploadService {
     res: express.Response,
     anonId: string,
     cardCount: number,
-    cardsHeldBack: number
+    cardsHeldBack: number,
+    packageName: string
   ): Promise<express.Response> {
     const file = (req.files as UploadedFile[])[0];
     const bytes = await readUploadBytes(file);
@@ -2742,6 +2747,8 @@ class UploadService {
       cardCount,
       cardsHeldBack,
       totalCards,
+      deckName: toText(packageName).replace(/\.apkg$/i, ''),
+      savedForHours: HELD_DECK_TTL_MS / HOUR_MS,
       ...(dayPassCard ? { dayPassCard: true } : {}),
     };
     return res.status(200).json(body);

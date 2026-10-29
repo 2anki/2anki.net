@@ -4549,7 +4549,10 @@ function UploadForm({
     if (zoneState === 'heldForSignup' && heldDeck != null) {
       return heldDeck.totalCards <= FREE_MONTHLY_CARDS
         ? t('anonymousPartial:gateLiveAll', { total: heldDeck.totalCards })
-        : t('anonymousPartial:gateLiveCapped', { monthly: FREE_MONTHLY_CARDS });
+        : t('anonymousPartial:gateLiveOverMonth', {
+            total: heldDeck.totalCards,
+            monthly: FREE_MONTHLY_CARDS,
+          });
     }
     if (zoneState === 'heldExpired') {
       const expiredBody = isPaying

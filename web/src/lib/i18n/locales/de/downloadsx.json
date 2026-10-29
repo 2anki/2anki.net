@@ -67,8 +67,8 @@
     "plainTextFallback_other": "{{count}} Bilder fehlen in diesem Deck. Diese Datei hatte keine Kartenstruktur, deshalb haben wir sie als reinen Text gelesen, und reiner Text kann keine Bilder enthalten. Damit sie erhalten bleiben, setze jede Antwort unter ihre Frage und lade die Seite und ihre Bilder zusammen in einer .zip hoch."
   },
   "cardLimitPartial": {
-    "heldBack_one": "Dein Deck enthält {{delivered}} von deinen {{limit}} monatlichen Karten. Noch {{count}} Karte ist fertig — <pricingLink>für unbegrenzte Karten upgraden</pricingLink>.",
-    "heldBack_other": "Dein Deck enthält {{delivered}} von deinen {{limit}} monatlichen Karten. Noch {{count}} Karten sind fertig — <pricingLink>für unbegrenzte Karten upgraden</pricingLink>."
+    "heldBack_one": "Dein Deck enthält {{delivered}} von deinen {{limit}} monatlichen Karten. Noch {{count}} Karte ist fertig — <pricingLink>Pässe und Pro ansehen</pricingLink>.",
+    "heldBack_other": "Dein Deck enthält {{delivered}} von deinen {{limit}} monatlichen Karten. Noch {{count}} Karten sind fertig — <pricingLink>Pässe und Pro ansehen</pricingLink>."
   },
   "truncation": {
     "converted": "Die ersten {{count}} Blöcke konvertiert. Der kostenlose Tarif endet dort — <pricingLink>upgrade, um die ganze Seite zu konvertieren</pricingLink>.",

@@ -67,8 +67,8 @@
     "plainTextFallback_other": "{{count}} afbeeldingen ontbreken in dit deck. Dit bestand had geen kaartstructuur, dus hebben we het als platte tekst gelezen, en platte tekst kan geen afbeeldingen bevatten. Om ze te behouden, zet je elk antwoord onder zijn vraag en upload je de pagina en de afbeeldingen samen in één .zip."
   },
   "cardLimitPartial": {
-    "heldBack_one": "Je deck bevat {{delivered}} van je {{limit}} maandelijkse kaarten. Nog {{count}} kaart staat klaar — <pricingLink>upgrade voor onbeperkte kaarten</pricingLink>.",
-    "heldBack_other": "Je deck bevat {{delivered}} van je {{limit}} maandelijkse kaarten. Nog {{count}} kaarten staan klaar — <pricingLink>upgrade voor onbeperkte kaarten</pricingLink>."
+    "heldBack_one": "Je deck bevat {{delivered}} van je {{limit}} maandelijkse kaarten. Nog {{count}} kaart staat klaar — <pricingLink>bekijk passes en Pro</pricingLink>.",
+    "heldBack_other": "Je deck bevat {{delivered}} van je {{limit}} maandelijkse kaarten. Nog {{count}} kaarten staan klaar — <pricingLink>bekijk passes en Pro</pricingLink>."
   },
   "truncation": {
     "converted": "De eerste {{count}} blokken zijn geconverteerd. Het gratis abonnement stopt daar — <pricingLink>upgrade om de hele pagina te converteren</pricingLink>.",

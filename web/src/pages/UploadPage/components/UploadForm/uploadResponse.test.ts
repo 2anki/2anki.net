@@ -163,6 +163,33 @@ describe('applyConversionSuccess', () => {
     });
   });
 
+  it('carries the deck name and saved hours from a held response', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          kind: 'held',
+          cardCount: 21,
+          cardsHeldBack: 13,
+          totalCards: 34,
+          deckName: 'Pharmacology',
+          savedForHours: 24,
+        }),
+    } as unknown as Response;
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.setHeldDeck).toHaveBeenCalledWith({
+      cardCount: 21,
+      cardsHeldBack: 13,
+      totalCards: 34,
+      dayPassCard: false,
+      deckName: 'Pharmacology',
+      savedForHours: 24,
+    });
+  });
+
   it('does not fire conversion_success on the single-deck success path', async () => {
     const gtag = (globalThis as AnalyticsGlobals).gtag!;
     const hj = (globalThis as AnalyticsGlobals).hj!;

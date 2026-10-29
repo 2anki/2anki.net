@@ -114,14 +114,16 @@ export function PricingCard({
           <p className={styles.priceCaption}>{valueCaption}</p>
         )}
       </div>
-      <div className={styles.cardBody}>
-        {benefits.map((benefit) => (
-          <p key={benefit} className={styles.benefit}>
-            <CheckIcon />
-            <span>{benefit}</span>
-          </p>
-        ))}
-      </div>
+      {benefits.length > 0 && (
+        <div className={styles.cardBody}>
+          {benefits.map((benefit) => (
+            <p key={benefit} className={styles.benefit}>
+              <CheckIcon />
+              <span>{benefit}</span>
+            </p>
+          ))}
+        </div>
+      )}
       {(showButton || showLink || caption != null || learnMoreHref != null) && (
         <div className={styles.cardFooter}>
           {showButton && (

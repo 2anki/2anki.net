@@ -5,7 +5,7 @@
   "afterPayTotal": "Zet het bestand na het betalen opnieuw neer om alle {{total}} kaarten te krijgen.",
   "afterPayHeld": "Na het betalen staan alle kaarten klaar om te downloaden, zonder opnieuw te uploaden.",
   "afterPayHeldTotal": "Na het betalen staan alle {{total}} kaarten klaar om te downloaden, zonder opnieuw te uploaden.",
-  "cta": "Koop een Day Pass voor {{price}}",
+  "cta": "Day Pass kopen · {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "Al je kaarten nu, zonder account.",
   "cardPrice": "{{price}} voor 24 uur.",

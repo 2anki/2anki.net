@@ -1,10 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import sharedStyles from '../../styles/shared.module.css';
-import {
-  LimitWall,
-  type PassKind,
-  type WallOrder,
-} from '../LimitPage/LimitWall';
+import { LimitWall, type PassKind } from '../LimitPage/LimitWall';
 import previewStyles from './LimitPreviewPage.module.css';
 
 const noop = () => undefined;
@@ -12,51 +8,36 @@ const noop = () => undefined;
 interface Variant {
   label: string;
   note: string;
-  order: WallOrder;
+  unlimitedPrice?: string;
   pendingPass: PassKind | null;
   showError: boolean;
 }
 
 const variants: Variant[] = [
   {
-    label: 'A — passes first (previous order)',
-    note: 'Free signed-in user at the monthly cap. Day, Week and Semester lead; Pro follows.',
-    order: 'passes-first',
+    label: 'Passes first, Pro price known',
+    note: 'Free signed-in user at the monthly cap. Day, Week and Semester lead; Pro is one line with its monthly price.',
+    unlimitedPrice: '$7.99',
     pendingPass: null,
     showError: false,
   },
   {
-    label: 'B — Pro first',
-    note: 'Same user. The subscription leads; the passes follow. This is the order the limit page uses.',
-    order: 'unlimited-first',
+    label: 'Passes first, no Pro price',
+    note: 'Same user with the Pro price flag off or the price unreadable.',
     pendingPass: null,
     showError: false,
   },
   {
-    label: 'A — Semester redirecting',
+    label: 'Semester redirecting',
     note: 'Semester Pass clicked; checkout is opening. Only that card is disabled.',
-    order: 'passes-first',
+    unlimitedPrice: '$7.99',
     pendingPass: '120d',
     showError: false,
   },
   {
-    label: 'B — Semester redirecting',
-    note: 'Same state with Pro first.',
-    order: 'unlimited-first',
-    pendingPass: '120d',
-    showError: false,
-  },
-  {
-    label: 'A — checkout error',
+    label: 'Checkout error',
     note: 'Checkout could not start; the alert appears above the passes and scrolls into view.',
-    order: 'passes-first',
-    pendingPass: null,
-    showError: true,
-  },
-  {
-    label: 'B — checkout error',
-    note: 'Same error with Pro first: the alert stays above the passes, next to the buttons.',
-    order: 'unlimited-first',
+    unlimitedPrice: '$7.99',
     pendingPass: null,
     showError: true,
   },
@@ -85,11 +66,11 @@ export default function LimitPreviewPage() {
             </header>
             <div className={previewStyles.frame}>
               <LimitWall
-                order={variant.order}
                 pendingPass={variant.pendingPass}
                 onPass={noop}
                 passError={variant.showError ? t('limit.checkoutError') : null}
                 unlimitedHref="/pricing?source=limit-wall"
+                unlimitedPrice={variant.unlimitedPrice}
                 onUnlimitedClick={(event) => event.preventDefault()}
               />
             </div>

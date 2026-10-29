@@ -29,6 +29,8 @@ export interface HeldDeckState {
   cardCount: number;
   cardsHeldBack: number;
   totalCards: number;
+  deckName?: string;
+  savedForHours?: number;
   dayPassCard?: boolean;
 }
 

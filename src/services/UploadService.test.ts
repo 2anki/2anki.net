@@ -6631,6 +6631,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       cardCount: 21,
       cardsHeldBack: 9,
       totalCards: 30,
+      deckName: 'deck',
+      savedForHours: 24,
     });
     expect(conversionSucceededProps()).toMatchObject({ held: true });
     expect(conversionSucceededProps()).not.toHaveProperty('arm');
@@ -6658,6 +6660,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       cardCount: 21,
       cardsHeldBack: 13,
       totalCards: 34,
+      deckName: 'deck',
+      savedForHours: 24,
     });
     expect(capturedSend()).toBeNull();
     expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
@@ -6690,6 +6694,26 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('names the held deck without its file extension and says how many hours it stays saved', async () => {
+    mockGetFeatureFlag.mockResolvedValue(false);
+    mockPartial([{ name: 'Pharmacology Ch. 4.apkg', cardCount: 21 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedJson()).toMatchObject({
+      kind: 'held',
+      deckName: 'Pharmacology Ch. 4',
+      savedForHours: 24,
+    });
+    const row = heldDeck.rows[0];
+    const savedForMs =
+      new Date(row.expires_at).getTime() - new Date(row.created_at).getTime();
+    expect(Math.round(savedForMs / (60 * 60 * 1000))).toBe(24);
+  });
+
   it('marks an over-a-month held deck for the Day Pass card when the flag is on', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 120);
@@ -6705,6 +6729,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       cardCount: 21,
       cardsHeldBack: 120,
       totalCards: 141,
+      deckName: 'deck',
+      savedForHours: 24,
       dayPassCard: true,
     });
   });
@@ -6724,6 +6750,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       cardCount: 21,
       cardsHeldBack: 120,
       totalCards: 141,
+      deckName: 'deck',
+      savedForHours: 24,
     });
     expect(mockGetFeatureFlag).toHaveBeenCalledWith(
       'anonymous_day_pass_card',
@@ -6803,6 +6831,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       cardCount: 21,
       cardsHeldBack: 13,
       totalCards: 34,
+      deckName: 'deck',
+      savedForHours: 24,
     });
     expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
     const [, bytes] = mockStorageUploadFile.mock.calls[0];
@@ -7446,6 +7476,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       cardCount: 21,
       cardsHeldBack: 9,
       totalCards: 30,
+      deckName: 'deck',
+      savedForHours: 24,
     });
     expect(heldDeck.rows).toHaveLength(1);
     expect(heldDeck.rows[0]).toMatchObject({

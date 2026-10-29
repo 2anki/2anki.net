@@ -3,9 +3,10 @@
   "headline": "このデッキには{{total}}枚中{{delivered}}枚のカードがあります",
   "bodySaved_other": "今月の無料カード{{monthly}}枚を使い切りました。残りの{{count}}枚は7日間保存されます。パスを購入すると、再アップロードなしで完全なデッキがマイデッキに届きます。",
   "bodyNotSaved": "今月の無料カード{{monthly}}枚を使い切りました。パスを購入してからファイルをもう一度アップロードすると、{{total}}枚すべてを受け取れます。",
-  "dayPass": "Day Pass · {{price}}",
-  "semesterPass": "Semester Pass · {{price}}",
-  "pro": "Proにする",
+  "dayPass": "Day Pass を購入 · {{price}}",
+  "semesterPass": "Semester Pass を購入 · {{price}}",
+  "pro": "Pro にアップグレード",
+  "proPrice": "Pro にアップグレード · {{price}}/月",
   "checkoutError": "決済を開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。",
   "readyBody": "完全なデッキの準備ができました。マイデッキにもあります。",
   "expiredBody": "保留されたデッキは7日間保存されます。完全なデッキを作るには、ファイルをもう一度アップロードしてください。"

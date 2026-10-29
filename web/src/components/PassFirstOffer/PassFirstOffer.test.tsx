@@ -23,11 +23,20 @@ describe('PassFirstOffer', () => {
   it('puts the Semester Pass first as the primary button and the Day Pass beside it', () => {
     render(<PassFirstOffer surface="test-wall" headline="184 cards ready" />);
     const [semester, day] = screen.getAllByRole('button');
-    expect(semester).toHaveTextContent('Semester Pass · $29');
+    expect(semester).toHaveTextContent('Get Semester Pass · $29');
     expect(semester.className).toContain('primary');
-    expect(day).toHaveTextContent('Day Pass · $6');
+    expect(day).toHaveTextContent('Get Day Pass · $6');
     expect(day.className).toContain('secondary');
     expect(screen.getByText('184 cards ready')).toBeInTheDocument();
+  });
+
+  it('marks the Day Pass Most popular and the Semester Pass Best value', () => {
+    render(<PassFirstOffer surface="test-wall" />);
+    const [semester, day] = screen.getAllByRole('button');
+    expect(day).toHaveTextContent('Most popular');
+    expect(day).not.toHaveTextContent('Best value');
+    expect(semester).toHaveTextContent('Best value');
+    expect(semester).not.toHaveTextContent('Most popular');
   });
 
   it('starts a Semester Pass checkout tagged to its surface and reports the click', async () => {

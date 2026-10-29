@@ -18,12 +18,18 @@ vi.mock('../../lib/backend/get2ankiApi', () => ({
 vi.mock('../../lib/hooks/usePassPrices', () => ({
   usePassPrices: () => ({ '24h': '$6', '7d': '$12', '120d': '$29' }),
 }));
+const mockUnlimitedPrice = vi.fn<(enabled: boolean) => string | undefined>();
+vi.mock('../../pages/LimitPage/useUnlimitedMonthlyPrice', () => ({
+  useUnlimitedMonthlyPrice: (enabled: boolean) => mockUnlimitedPrice(enabled),
+}));
 
 describe('MonthlyLimitPartialOffer', () => {
   beforeEach(() => {
     vi.mocked(track).mockClear();
     vi.mocked(startUnlimitedUpgrade).mockClear();
     startPassCheckout.mockReset();
+    mockUnlimitedPrice.mockReset();
+    mockUnlimitedPrice.mockReturnValue('$7.99');
   });
 
   it('says how many cards the deck has out of the whole file', () => {
@@ -63,12 +69,24 @@ describe('MonthlyLimitPartialOffer', () => {
     render(<MonthlyLimitPartialOffer delivered={42} heldBack={300} saved />);
 
     expect(
-      screen.getByRole('button', { name: 'Day Pass · $6' })
+      screen.getByRole('button', { name: 'Get Day Pass · $6 Most popular' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Semester Pass · $29' })
+      screen.getByRole('button', { name: 'Get Semester Pass · $29 Best value' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Go Pro' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Upgrade to Pro · $7.99/month' })
+    ).toBeInTheDocument();
+    expect(mockUnlimitedPrice).toHaveBeenCalledWith(true);
+  });
+
+  it('names Pro without a price when the price cannot be read', () => {
+    mockUnlimitedPrice.mockReturnValue(undefined);
+    render(<MonthlyLimitPartialOffer delivered={42} heldBack={300} saved />);
+
+    expect(
+      screen.getByRole('button', { name: 'Upgrade to Pro' })
+    ).toBeInTheDocument();
   });
 
   it('records the offer once with the held-back count', () => {
@@ -90,7 +108,7 @@ describe('MonthlyLimitPartialOffer', () => {
     render(<MonthlyLimitPartialOffer delivered={42} heldBack={300} saved />);
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Semester Pass · $29' })
+      screen.getByRole('button', { name: /^Get Semester Pass · \$29/ })
     );
 
     await waitFor(() =>
@@ -112,7 +130,7 @@ describe('MonthlyLimitPartialOffer', () => {
   it('starts the Pro checkout from this surface', async () => {
     render(<MonthlyLimitPartialOffer delivered={42} heldBack={300} saved />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go Pro' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Upgrade to Pro/ }));
 
     await waitFor(() =>
       expect(startUnlimitedUpgrade).toHaveBeenCalledWith('upload-partial')
@@ -125,11 +143,13 @@ describe('MonthlyLimitPartialOffer', () => {
     );
     render(<MonthlyLimitPartialOffer delivered={42} heldBack={300} saved />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Go Pro' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Upgrade to Pro/ }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       "Couldn't start checkout."
     );
-    expect(screen.getByRole('button', { name: 'Go Pro' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: /^Upgrade to Pro/ })
+    ).toBeEnabled();
   });
 });

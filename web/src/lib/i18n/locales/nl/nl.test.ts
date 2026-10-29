@@ -90,8 +90,12 @@ describe('Dutch (nl) locale parity', () => {
 
   it('keeps Stripe plan nouns verbatim while translating the CTA verb', () => {
     const common = flatten(nlCommon);
-    expect(common['pricing.pass.getDayPass']).toBe('Day Pass kopen');
-    expect(common['pricing.pass.getWeekPass']).toBe('Week Pass kopen');
+    expect(common['pricing.pass.getDayPass']).toBe(
+      'Day Pass kopen · {{price}}'
+    );
+    expect(common['pricing.pass.getWeekPass']).toBe(
+      'Week Pass kopen · {{price}}'
+    );
     expect(common['pricing.unlimited.getUnlimitedYearly']).toBe(
       'Pro kopen — jaarlijkse facturering'
     );
