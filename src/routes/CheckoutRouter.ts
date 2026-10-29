@@ -149,12 +149,12 @@ const CheckoutRouter = () => {
    *     description: |
    *       Returns the monthly and annual Pro prices for every new checkout.
    *       They are the same for every visitor, signed in or not. `legacy` is
-   *       always false and `lockInDeadline` always null; both stay for older
-   *       web builds.
+   *       always false and `lockInDeadline` always null. The web client still
+   *       reads both, so keep them.
    *     tags: [Payments]
    *     responses:
    *       200:
-   *         description: The v2 monthly and annual prices
+   *         description: The current monthly and annual Pro prices
    */
   router.get('/api/checkout/prices', (req, res) =>
     new PricingController().getPrices(req, res)
