@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-29-conversion-crash-message",
+  "date": "2026-10-29",
+  "type": "fix",
+  "title": "When a conversion breaks on our side, the upload now says so and points you to support, instead of a technical error message"
+}

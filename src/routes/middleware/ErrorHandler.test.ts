@@ -99,7 +99,7 @@ describe('ErrorHandler', () => {
     );
   });
 
-  test('never sends the stack of an error rebuilt from the upload worker', async () => {
+  test('answers an error rebuilt from the upload worker with the generic 500, never its stack', async () => {
     const res = makeResponse(false);
     const rebuilt = Object.assign(
       new Error("Cannot read properties of undefined (reading '0')"),
@@ -115,10 +115,11 @@ describe('ErrorHandler', () => {
       rebuilt
     );
 
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({
       code: 'unknown',
-      message: "Cannot read properties of undefined (reading '0')",
+      message:
+        'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.',
     });
   });
 
@@ -386,6 +387,30 @@ describe('ErrorHandler', () => {
     expect(res.send).not.toHaveBeenCalled();
     expect(res.json).not.toHaveBeenCalled();
   });
+
+  test.each(['TypeError', 'RangeError', 'ReferenceError', 'SyntaxError'])(
+    'a %s rebuilt from the upload worker responds 500 with a generic body',
+    async (name) => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const res = makeResponse(false);
+      const rebuilt = Object.assign(
+        new Error("Cannot read properties of undefined (reading '0')"),
+        { name }
+      );
+
+      await ErrorHandler(
+        res as unknown as express.Response,
+        makeRequest(),
+        rebuilt
+      );
+
+      expect(res.statusCode).toBe(500);
+      const body = res.body as { code: string; message: string };
+      expect(body.message).not.toContain('reading');
+      expect(body.message).toContain('support@2anki.net');
+      errorSpy.mockRestore();
+    }
+  );
 
   test('a TypeError responds 500 with a generic body, not the internal message', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

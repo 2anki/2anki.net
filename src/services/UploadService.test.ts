@@ -1088,7 +1088,7 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(body.message).not.toMatch(/docx_parse_failed/);
   });
 
-  it('answers a sync upload whose worker crashed without sending the worker stack', async () => {
+  it('answers a sync upload whose worker crashed with the generic 500, never the worker stack', async () => {
     const crash = Object.assign(
       new Error("Cannot read properties of undefined (reading '0')"),
       { name: 'TypeError' }
@@ -1113,10 +1113,11 @@ describe('UploadService.handleUpload — error paths', () => {
 
     await service.handleUpload(buildRequest(), res);
 
-    expect(capturedStatus()).toBe(400);
+    expect(capturedStatus()).toBe(500);
     expect(capturedJson()).toEqual({
       code: 'unknown',
-      message: "Cannot read properties of undefined (reading '0')",
+      message:
+        'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.',
     });
     errorSpy.mockRestore();
   });

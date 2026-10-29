@@ -177,12 +177,22 @@ const SQLSTATE_RE = /^[0-9A-Z]{5}$/;
  * send (EmailSendError) is ours as well, and its message carries SendGrid's
  * reason ("from address does not match a verified Sender Identity").
  */
+// The upload worker sends only name and message back, so a crash there
+// arrives as a plain Error named TypeError rather than an instance (#5139).
+const NATIVE_FAULT_NAMES = new Set([
+  'TypeError',
+  'RangeError',
+  'ReferenceError',
+  'SyntaxError',
+]);
+
 function isInternalFault(err: Error): boolean {
   if (
     err instanceof EmailSendError ||
     err instanceof TypeError ||
     err instanceof RangeError ||
-    err instanceof ReferenceError
+    err instanceof ReferenceError ||
+    NATIVE_FAULT_NAMES.has(err.name)
   ) {
     return true;
   }
