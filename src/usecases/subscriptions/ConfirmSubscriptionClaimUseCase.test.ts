@@ -190,6 +190,23 @@ describe('ConfirmSubscriptionClaimUseCase', () => {
     expect(result).toEqual({ success: false, reason: 'user_has_active_sub' });
   });
 
+  // A unique-key clash in the transaction (another row already links the
+  // claimant, or another account holds the customer id) reads as a race.
+  it('returns race when the claim hits a unique key', async () => {
+    const useCase = new ConfirmSubscriptionClaimUseCase(
+      makeTransactionalDb(true),
+      makeTokensRepo(),
+      makeAuditRepo(),
+      makeUsersRepo() as unknown as UsersRepository,
+      makeSubscriptionService(),
+      makeStripe()
+    );
+
+    const result = await useCase.execute(99, 'token', 'ip-hash', 'email-hash');
+
+    expect(result).toEqual({ success: false, reason: 'race' });
+  });
+
   it('writes an audit row on every outcome', async () => {
     const auditRepo = makeAuditRepo();
     const tokensRepo = makeTokensRepo({
@@ -307,29 +324,5 @@ describe('ConfirmSubscriptionClaimUseCase against a real database', () => {
         .where({ email: 'payer@example.com' })
         .select('linked_email')
     ).toEqual([{ linked_email: 'user@example.com' }]);
-  });
-
-  it('links the claim when an old, cancelled row still links the claimant', async () => {
-    await db('users').insert({ id: 99, email: 'user@example.com' });
-    await db('subscriptions').insert({
-      email: 'old-billing@example.com',
-      active: false,
-      payload: '{}',
-      linked_email: 'user@example.com',
-    });
-
-    const result = await useCaseFor(stripeWith(activeSubscription({}))).execute(
-      99,
-      'raw-token',
-      'ip-hash',
-      'email-hash'
-    );
-
-    expect(result).toEqual({ success: true });
-    expect(
-      await db('subscriptions')
-        .where({ linked_email: 'user@example.com' })
-        .select('email', 'active')
-    ).toEqual([{ email: 'payer@example.com', active: 1 }]);
   });
 });

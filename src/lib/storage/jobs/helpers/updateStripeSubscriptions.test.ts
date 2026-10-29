@@ -182,14 +182,16 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
     }
   );
 
-  it('moves the link to the new row when the account resubscribes under a new payer email', async () => {
+  // The sync used to write such a row unlinked, which cancelUnlinkedSubscriptions
+  // would then cancel; it now fails the row the way the webhook always has.
+  it('leaves a row alone, like the webhook, when another row already links the account', async () => {
     await db('users').insert({
       email: 'owner@example.com',
       stripe_customer_id: 'cus_test456',
     });
     await db('subscriptions').insert({
       email: 'old-billing@example.com',
-      active: false,
+      active: true,
       payload: '{}',
       linked_email: 'owner@example.com',
     });
@@ -197,10 +199,10 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
 
     await updateStripeSubscriptions(db);
 
-    expect(await row('new-billing@example.com')).toMatchObject({
+    expect(await row('new-billing@example.com')).toBeUndefined();
+    expect(await row('old-billing@example.com')).toMatchObject({
       linked_email: 'owner@example.com',
     });
-    expect(Boolean((await row('new-billing@example.com')).active)).toBe(true);
   });
 
   it('keeps the linked account on a subscription paid with another email', async () => {

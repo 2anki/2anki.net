@@ -141,30 +141,6 @@ const ACCESS_GRANTING_STATUSES = new Set<StripeTypes.Subscription['status']>([
   'active',
 ]);
 
-// subscriptions.linked_email is unique. When an account resubscribes under a
-// new payer email, its old, inactive row still holds the link, and writing it
-// on the new row would fail provisioning. The inactive row gives the link up,
-// so the account gets the new subscription's access. An active holder keeps it
-// and the write fails loudly, as before: two live rows for one account need a
-// person to look.
-const releaseInactiveLink = async (
-  db: Knex,
-  linkedEmail: string | null,
-  stripeEmail: string | null
-): Promise<void> => {
-  if (linkedEmail == null) {
-    return;
-  }
-  await db('subscriptions')
-    .where({ linked_email: linkedEmail, active: false })
-    .modify((query) => {
-      if (stripeEmail != null) {
-        query.whereNot({ email: stripeEmail });
-      }
-    })
-    .update({ linked_email: null, updated_at: new Date() });
-};
-
 // Records the Stripe customer id on the resolved account, unless another
 // account already holds it: someone paid for a subscription linked to a
 // different account, and users.stripe_customer_id is unique, so the write
@@ -253,8 +229,6 @@ export const updateStoreSubscription = async (
       ? { status: 'linked', resolvedUserId: account.id }
       : { status: 'unlinked', resolvedUserId: null };
   }
-
-  await releaseInactiveLink(db, linkedEmail, stripeEmail);
 
   const insertRow: Record<string, unknown> = {
     email: stripeEmail,

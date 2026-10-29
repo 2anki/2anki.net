@@ -603,32 +603,6 @@ describe('updateStoreSubscription when a unique link is already taken', () => {
     ).toEqual([{ email: 'holder@example.com' }]);
   });
 
-  test('moves the link to the new row when the account resubscribes under a new payer email', async () => {
-    await db('users').insert({
-      email: 'owner@example.com',
-      stripe_customer_id: 'cus_test123',
-    });
-    await db('subscriptions').insert({
-      email: 'old-billing@example.com',
-      active: false,
-      payload: '{}',
-      linked_email: 'owner@example.com',
-    });
-
-    await updateStoreSubscription(
-      db,
-      makeCustomer('new-billing@example.com'),
-      makeSubscription('active', 'prod_auto_sync')
-    );
-
-    expect(
-      await db('subscriptions').orderBy('email').select('email', 'linked_email')
-    ).toEqual([
-      { email: 'new-billing@example.com', linked_email: 'owner@example.com' },
-      { email: 'old-billing@example.com', linked_email: null },
-    ]);
-  });
-
   test('leaves an active row its link and fails loudly, as before', async () => {
     await db('users').insert({
       email: 'owner@example.com',
