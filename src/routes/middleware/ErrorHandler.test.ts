@@ -99,7 +99,7 @@ describe('ErrorHandler', () => {
     );
   });
 
-  test('never sends the stack of an error rebuilt from the upload worker', async () => {
+  test('answers an error rebuilt from the upload worker with the generic 500, never its stack', async () => {
     const res = makeResponse(false);
     const rebuilt = Object.assign(
       new Error("Cannot read properties of undefined (reading '0')"),
@@ -115,10 +115,11 @@ describe('ErrorHandler', () => {
       rebuilt
     );
 
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({
       code: 'unknown',
-      message: "Cannot read properties of undefined (reading '0')",
+      message:
+        'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.',
     });
   });
 
