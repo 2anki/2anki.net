@@ -206,7 +206,7 @@ describe('readCampaignParams', () => {
   it('keeps the campaign tags and drops click ids and utm_content', () => {
     expect(
       readCampaignParams(
-        '?utm_source=Google&utm_medium=cpc&utm_campaign=ai&utm_term=anki+ai&utm_content=ad1&gclid=Cj0'
+        '?utm_source=Google&utm_medium=cpc&utm_campaign=ai&utm_term=anki+ai&utm_content=ad1&gclid=Cj0&ref=mcp'
       )
     ).toEqual({
       utm_source: 'google',
@@ -242,8 +242,11 @@ describe('landingViewProps', () => {
     });
   });
 
-  it('leaves out a ref that is not a plain tag', () => {
-    vi.stubGlobal('location', { search: '?ref=%3Cscript%3E' });
-    expect(landingViewProps('/pricing')).toEqual({ path: '/pricing' });
-  });
+  it.each(['%3Cscript%3E', 'Jane+Doe', '555.123.4567'])(
+    'leaves out a ref that is not a plain tag: %s',
+    (ref) => {
+      vi.stubGlobal('location', { search: `?ref=${ref}` });
+      expect(landingViewProps('/pricing')).toEqual({ path: '/pricing' });
+    }
+  );
 });
