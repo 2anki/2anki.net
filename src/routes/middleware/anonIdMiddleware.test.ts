@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { anonIdMiddleware } from './anonIdMiddleware';
+import { getMintedAnonId } from '../../lib/User/getOwner';
 
 function makeReqRes(opts: { existingCookie?: string; path?: string } = {}) {
   const cookies: Record<string, string> = {};
@@ -10,6 +11,7 @@ function makeReqRes(opts: { existingCookie?: string; path?: string } = {}) {
   const req = { cookies, path: opts.path ?? '/' } as unknown as Request;
   const setCookieArgs: Array<[string, string, object]> = [];
   const res = {
+    locals: {},
     cookie: vi.fn((name: string, value: string, options: object) => {
       setCookieArgs.push([name, value, options]);
     }),
@@ -39,6 +41,20 @@ describe('anonIdMiddleware', () => {
     expect(opts.sameSite).toBe('lax');
     expect(opts.maxAge).toBe(365 * 24 * 60 * 60 * 1000);
     expect(opts.httpOnly).toBe(false);
+  });
+
+  it('exposes the minted id to the rest of this request', () => {
+    const { req, res, next, setCookieArgs } = makeReqRes();
+    anonIdMiddleware(req, res, next);
+    expect(getMintedAnonId(res)).toBe(setCookieArgs[0][1]);
+  });
+
+  it('mints nothing for a request that already carries an id', () => {
+    const { req, res, next } = makeReqRes({
+      existingCookie: 'existing-anon-id',
+    });
+    anonIdMiddleware(req, res, next);
+    expect(getMintedAnonId(res)).toBeNull();
   });
 
   it('preserves existing anon_id without setting a new one', () => {

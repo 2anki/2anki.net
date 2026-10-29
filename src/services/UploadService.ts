@@ -86,7 +86,11 @@ import {
   PDF_UNREADABLE_REASON,
 } from '../usecases/jobs/jobFailureReason';
 import { DeckTooLargeError } from '../lib/parser/exporters/DeckTooLargeError';
-import { getAnonymousPassId, getOwner } from '../lib/User/getOwner';
+import {
+  getAnonymousPassId,
+  getMintedAnonId,
+  getOwner,
+} from '../lib/User/getOwner';
 import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
 import { censusUploadedFile } from '../infrastracture/adapters/fileConversion/documentStructureCensus';
 import { formatDeckName } from '../lib/formatDeckName';
@@ -106,10 +110,6 @@ import {
   isPlanHoldKey,
   planHoldKey,
 } from '../usecases/uploads/ClaimHeldDeckUseCase';
-import {
-  resolveAnonymousPartialArm,
-  type PartialDeliveryArm,
-} from '../lib/upload/anonymousPartialDelivery';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import {
@@ -1347,17 +1347,14 @@ class UploadService {
         const owner = getOwner(res);
         const userId = owner != null ? Number(owner) : null;
         const source = this.resolveUploadSource(req);
-        const anonymousId = this.resolveAnonId(req);
-        const arm = this.resolveAnonymousPartialArm(req, res);
+        const anonymousId = this.resolveSignedOutAnonId(req, res);
         track('conversion_failed', {
           userId,
           anonymousId,
           props: {
             ...this.baseFunnelProps(req, res),
             reason: 'anonymous_cap',
-            ...(arm != null
-              ? { arm, card_count_bucket: toCardCountBucket(err.cardsFound) }
-              : {}),
+            card_count_bucket: toCardCountBucket(err.cardsFound),
           },
         });
         track('paywall_shown', {
@@ -1831,7 +1828,7 @@ class UploadService {
     const conversionStart = new Date();
     track('conversion_started', {
       userId: owner != null ? Number(owner) : null,
-      anonymousId: this.resolveAnonId(req),
+      anonymousId: this.resolveSignedOutAnonId(req, res),
       props: { source: this.resolveUploadSource(req), mode: 'sync' },
     });
 
@@ -1848,8 +1845,8 @@ class UploadService {
       settings,
       paying
     );
-    const partialArm = this.resolveAnonymousPartialArm(req, res);
-    let cardLimit = partialArm === 'treatment' ? ANONYMOUS_CARD_CAP : undefined;
+    const holdAnonId = this.resolveHoldAnonId(req, res);
+    let cardLimit = holdAnonId != null ? ANONYMOUS_CARD_CAP : undefined;
 
     // Parity with the job-queue path (performConversion): a signed-in free user
     // over their remaining monthly allowance gets a deck truncated to what is
@@ -1993,17 +1990,13 @@ class UploadService {
     );
 
     const first = packages[0];
-    if (
-      partialArm === 'treatment' &&
-      owner == null &&
-      (cardsHeldBack ?? 0) > 0
-    ) {
+    if (holdAnonId != null && owner == null && (cardsHeldBack ?? 0) > 0) {
       return await this.holdDeckForSignup(
         req,
         res,
+        holdAnonId,
         totalCards,
-        cardsHeldBack ?? 0,
-        partialArm
+        cardsHeldBack ?? 0
       );
     }
     if (packages.length === 1) {
@@ -2178,7 +2171,6 @@ class UploadService {
             ? {
                 card_limit_partial: true,
                 cards_held_back: heldBack,
-                ...(partialArm != null ? { arm: partialArm } : {}),
                 ...(heldForPlan ? { held_for_plan: true } : {}),
               }
             : {}),
@@ -2541,17 +2533,27 @@ class UploadService {
     return { apkg, cardCount: totalCards, deckName: toText(first.name) };
   }
 
-  private resolveAnonymousPartialArm(
+  private resolveSignedOutAnonId(
     req: express.Request,
     res: express.Response
-  ): PartialDeliveryArm | null {
+  ): string | null {
+    if (getOwner(res) != null) {
+      return this.resolveAnonId(req);
+    }
+    return this.resolveAnonId(req) ?? getMintedAnonId(res);
+  }
+
+  private resolveHoldAnonId(
+    req: express.Request,
+    res: express.Response
+  ): string | null {
     if (getOwner(res) != null || isPaying(res.locals)) {
       return null;
     }
     if (!isPartialDeliveryEligible(req.files as UploadedFile[] | undefined)) {
       return null;
     }
-    return resolveAnonymousPartialArm(this.resolveAnonId(req));
+    return this.resolveSignedOutAnonId(req, res);
   }
 
   // One visitor only ever needs their latest unclaimed hold; the earlier ones
@@ -2609,19 +2611,13 @@ class UploadService {
   private async holdDeckForSignup(
     req: express.Request,
     res: express.Response,
+    anonId: string,
     cardCount: number,
-    cardsHeldBack: number,
-    arm: PartialDeliveryArm
+    cardsHeldBack: number
   ): Promise<express.Response> {
-    const anonId = this.resolveAnonId(req);
     const file = (req.files as UploadedFile[])[0];
     const bytes = await readUploadBytes(file);
-    if (
-      anonId == null ||
-      isPlanHoldKey(anonId) ||
-      isPreviewHoldKey(anonId) ||
-      bytes == null
-    ) {
+    if (isPlanHoldKey(anonId) || isPreviewHoldKey(anonId) || bytes == null) {
       throw new AnonymousCardCapError(
         cardCount + cardsHeldBack,
         ANONYMOUS_CARD_CAP
@@ -2695,7 +2691,6 @@ class UploadService {
         card_count_bucket: toCardCountBucket(cardCount + cardsHeldBack),
         card_limit_partial: true,
         cards_held_back: cardsHeldBack,
-        arm,
         held: true,
       },
     });

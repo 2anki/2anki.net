@@ -272,11 +272,12 @@ describe('LimitPage — anonymous variant', () => {
     asAnonymous();
   });
 
-  it('shows the status line explaining the conversion stopped', () => {
-    renderPage();
+  it('says the upload made more cards than the no-account cap', () => {
+    renderPage(['/limit?kind=anonymous']);
     expect(
-      screen.getByText('Conversion stopped — you reached the 21-card limit')
-    ).toBeTruthy();
+      screen.getByText('Your upload made more than 21 cards')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Conversion stopped/)).not.toBeInTheDocument();
   });
 
   it('shows the no-account heading even when the URL says kind=card_count', () => {
@@ -315,9 +316,9 @@ describe('LimitPage — anonymous variant', () => {
     renderPage();
     expect(
       screen.getByText(
-        'Without an account, conversions stop at 21 cards. A free account raises that to 100 cards a month — or sign in to the one you have.'
+        'Without an account, you can download up to 21 cards at a time. A free account raises that to 100 cards a month — or sign in to the one you have.'
       )
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   it('lists the cap-fix benefit first', () => {
@@ -346,14 +347,36 @@ describe('LimitPage — anonymous variant', () => {
     expect(screen.queryByText('Already have an account?')).toBeNull();
   });
 
-  it('says the file stays in the browser and must be dropped again', () => {
-    renderPage();
+  it('says the file was not kept and must be dropped again', () => {
+    renderPage(['/limit?kind=anonymous']);
     expect(
       screen.getByText(
-        "Your file wasn't uploaded — drop it in again after signing in."
+        "We didn't keep your file — drop it in again after signing in."
       )
-    ).toBeTruthy();
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/wasn't uploaded/)).not.toBeInTheDocument();
   });
+
+  it.each([
+    ['/limit'],
+    ['/limit?ref=upload-limit-wall'],
+    ['/limit?kind=file_size'],
+    ['/limit?kind=card_count'],
+  ])(
+    'claims no converted upload on %s, which no card-cap wall sent',
+    (entry) => {
+      renderPage([entry]);
+      expect(
+        screen.queryByText('Your upload made more than 21 cards')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/We didn't keep your file/)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText('You hit the limit for converting without an account')
+      ).toBeInTheDocument();
+    }
+  );
 
   it('offers a Day Pass with no account while sign-up stays the primary action', () => {
     renderPage();
@@ -387,6 +410,32 @@ describe('LimitPage — anonymous Day Pass card variant', () => {
       variant: 'anonymous',
     });
   });
+
+  it('says the file was not kept on the free account card after the card cap', () => {
+    renderPage(['/limit?kind=anonymous&cards=40']);
+    expect(
+      screen.getByText('Your upload made more than 21 cards')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We didn't keep your file — drop it in again after signing in."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it.each([['/limit?cards=40'], ['/limit?ref=upload-limit-wall']])(
+    'claims no converted upload on the Day Pass card wall from %s',
+    (entry) => {
+      renderPage([entry]);
+      expect(
+        screen.queryByText('Your upload made more than 21 cards')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/We didn't keep your file/)
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('Day Pass')).toBeInTheDocument();
+    }
+  );
 
   it('shows the Day Pass as its own card next to the free account', () => {
     renderPage(['/limit?cards=40']);
@@ -508,6 +557,22 @@ describe('LimitPage — pass-first wall', () => {
     expect(follows(signUp, signIn)).toBe(true);
     expect(signUp.className).not.toContain('planCta');
     expect(signUp.getAttribute('href')).toBe('/register?redirect=/upload');
+  });
+
+  it('says the file was not kept under the pass-first wall after the card cap', () => {
+    renderPage(['/limit?kind=anonymous&cards=184']);
+    expect(
+      screen.getByText(
+        "We didn't keep your file — drop it in again after signing in."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('claims no converted upload on the pass-first wall without a card-cap entry', () => {
+    renderPage(['/limit?ref=upload-limit-wall']);
+    expect(
+      screen.queryByText(/We didn't keep your file/)
+    ).not.toBeInTheDocument();
   });
 
   it('states the real card count from the redirect', () => {

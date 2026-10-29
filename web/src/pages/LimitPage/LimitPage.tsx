@@ -53,10 +53,12 @@ function FreeAccountCard({
   t,
   featured,
   desktopFirst,
+  afterCardCap,
 }: {
   t: Translate;
   featured: boolean;
   desktopFirst: boolean;
+  afterCardCap: boolean;
 }) {
   return (
     <div
@@ -102,7 +104,9 @@ function FreeAccountCard({
           {t('limit.signIn')}
         </Link>
       </div>
-      <p className={styles.planNote}>{t('limit.browserNote')}</p>
+      {afterCardCap && (
+        <p className={styles.planNote}>{t('limit.browserNote')}</p>
+      )}
     </div>
   );
 }
@@ -130,19 +134,36 @@ function DayPassCard({
 
 // The Day Pass card is first in the DOM so it leads on mobile in every state;
 // on desktop a free-month deck pulls the free account back to the first column.
-function AnonymousLimitCards({ totalCards }: { totalCards: number | null }) {
+function AnonymousLimitCards({
+  totalCards,
+  afterCardCap,
+}: {
+  totalCards: number | null;
+  afterCardCap: boolean;
+}) {
   const { t } = useTranslation('accountx');
   const overMonth = totalCards != null && totalCards > FREE_MONTHLY_CARDS;
   return (
     <div className={styles.plans}>
       <DayPassCard totalCards={totalCards} featured={overMonth} />
-      <FreeAccountCard t={t} featured={!overMonth} desktopFirst={!overMonth} />
+      <FreeAccountCard
+        t={t}
+        featured={!overMonth}
+        desktopFirst={!overMonth}
+        afterCardCap={afterCardCap}
+      />
     </div>
   );
 }
 
 // Pass-first: both passes lead, free sign-up and sign-in are text links.
-function AnonymousPassFirst({ totalCards }: { totalCards: number | null }) {
+function AnonymousPassFirst({
+  totalCards,
+  afterCardCap,
+}: {
+  totalCards: number | null;
+  afterCardCap: boolean;
+}) {
   const { t } = useTranslation('passFirst');
   const { t: tAccount } = useTranslation('accountx');
   return (
@@ -184,7 +205,9 @@ function AnonymousPassFirst({ totalCards }: { totalCards: number | null }) {
           {t('signIn')}
         </Link>
       </PassFirstOffer>
-      <p className={styles.planNote}>{tAccount('limit.browserNote')}</p>
+      {afterCardCap && (
+        <p className={styles.planNote}>{tAccount('limit.browserNote')}</p>
+      )}
     </div>
   );
 }
@@ -198,6 +221,7 @@ function AnonymousLimit({
 }) {
   const { t } = useTranslation('accountx');
   const [searchParams] = useSearchParams();
+  const afterCardCap = searchParams.get('kind') === 'anonymous';
   const readsCardCount = dayPassCardEnabled || passFirst;
   const totalCards = readsCardCount
     ? parseTotalCards(searchParams.get('cards'))
@@ -215,9 +239,16 @@ function AnonymousLimit({
 
   let plans: ReactElement | null = null;
   if (passFirst) {
-    plans = <AnonymousPassFirst totalCards={totalCards} />;
+    plans = (
+      <AnonymousPassFirst totalCards={totalCards} afterCardCap={afterCardCap} />
+    );
   } else if (dayPassCardEnabled) {
-    plans = <AnonymousLimitCards totalCards={totalCards} />;
+    plans = (
+      <AnonymousLimitCards
+        totalCards={totalCards}
+        afterCardCap={afterCardCap}
+      />
+    );
   }
 
   return (
@@ -227,9 +258,11 @@ function AnonymousLimit({
       </Helmet>
 
       <header className={styles.header}>
-        <p className={styles.statusLine}>
-          {t('limit.statusLine', { count: ANONYMOUS_CARD_CAP })}
-        </p>
+        {afterCardCap && (
+          <p className={styles.statusLine}>
+            {t('limit.statusLine', { count: ANONYMOUS_CARD_CAP })}
+          </p>
+        )}
         <h1 className={styles.heading}>{t('limit.anonHeading')}</h1>
         <p className={styles.subheading}>
           {t('limit.anonSubheading', {
@@ -280,7 +313,9 @@ function AnonymousLimit({
                 {t('limit.signIn')}
               </Link>
             </div>
-            <p className={styles.planNote}>{t('limit.browserNote')}</p>
+            {afterCardCap && (
+              <p className={styles.planNote}>{t('limit.browserNote')}</p>
+            )}
             <AnonymousDayPassOffer surface="anonymous-limit-wall" />
           </div>
         </div>
