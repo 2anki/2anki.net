@@ -156,7 +156,9 @@ run pm2 start "$ECOSYSTEM" --only "server-$NEXT" --update-env
 if [ "$DRY_RUN" != "1" ]; then
   NEXT_PID="$(pm2 pid "server-$NEXT" 2>/dev/null | tr -d '[:space:]')"
   if [ -n "$NEXT_PID" ] && [ -r "/proc/$NEXT_PID/environ" ]; then
-    NEXT_ENV="$(environ_lines "$NEXT_PID")"
+    # A read that fails here (the process exited) falls into the "removing it"
+    # branches below instead of ending the script under set -e.
+    NEXT_ENV="$(environ_lines "$NEXT_PID")" || NEXT_ENV=''
     if has_heap_ceiling "$NEXT_ENV"; then
       log "heap ceiling verified on server-$NEXT (pid $NEXT_PID)"
     else

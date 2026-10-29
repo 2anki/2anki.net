@@ -78,8 +78,29 @@ function envCheck(check: string, environ: string): boolean {
 }
 
 describe('deploy-blue-green.sh environment checks', () => {
-  // Larger than a pipe buffer, so a piped early-exiting reader could SIGPIPE
-  // the writer before it finished (#5120).
+  it.each([
+    "tr '\\0' '\\n' < env | grep -q -- 'x'",
+    "tr '\\0' '\\n' < env | grep -qx 'MALLOC_ARENA_MAX=2'",
+    'cat env | grep --quiet x',
+    'cat env | grep -m 1 x',
+    'cat env | head -1',
+  ])('the early-exit guard catches %s', (line) => {
+    const earlyExitReaders =
+      /\|\s*(grep\b[^\n|]*\s(-[A-Za-z]*q[A-Za-z]*|--quiet|--silent|-m\s*\d+|--max-count)|head\b)/g;
+
+    expect(line.match(earlyExitReaders)).not.toBeNull();
+  });
+
+  it('removes the new color when its environment cannot be read', () => {
+    const script = fs.readFileSync(DEPLOY_SCRIPT, 'utf8');
+
+    expect(script).toMatch(
+      /NEXT_ENV="\$\(environ_lines "\$NEXT_PID"\)" \|\| NEXT_ENV=''/
+    );
+    expect(envCheck('has_heap_ceiling', '')).toBe(false);
+  });
+
+  // A large environment, so a match at either end is exercised.
   const filler = Array.from(
     { length: 4000 },
     (_, i) => `VAR_${i}=${'x'.repeat(40)}`
@@ -88,7 +109,10 @@ describe('deploy-blue-green.sh environment checks', () => {
   it('pipes the process environment into no early-exiting reader', () => {
     const script = fs.readFileSync(DEPLOY_SCRIPT, 'utf8');
 
-    expect(script.match(/\|\s*(grep\s+-\w*q|head)\b/g) ?? []).toEqual([]);
+    const earlyExitReaders =
+      /\|\s*(grep\b[^\n|]*\s(-[A-Za-z]*q[A-Za-z]*|--quiet|--silent|-m\s*\d+|--max-count)|head\b)/g;
+
+    expect(script.match(earlyExitReaders) ?? []).toEqual([]);
   });
 
   it.each([
