@@ -563,6 +563,27 @@ async function doGenerationWork(
   };
 }
 
+// ECONNRESET and ECONNABORTED read as a client hanging up downstream, which
+// would hide a worker-side network fault from ops; they cross without fields.
+const CLIENT_ABORT_CODES = new Set(['ECONNRESET', 'ECONNABORTED']);
+
+// A filesystem or OS error (ENOENT, EACCES, ENOSPC) is told apart from a
+// deliberate coded error by its numeric errno; only those two fields cross,
+// so ErrorHandler can still answer it as our fault (#5144).
+export function systemErrorOf(
+  err: unknown
+): { code: string; errno: number } | undefined {
+  const { code, errno } = (err ?? {}) as { code?: unknown; errno?: unknown };
+  if (
+    typeof code === 'string' &&
+    typeof errno === 'number' &&
+    !CLIENT_ABORT_CODES.has(code)
+  ) {
+    return { code, errno };
+  }
+  return undefined;
+}
+
 export async function runUploadGenerationInWorker(
   task: UploadGenerationTask,
   onProgress: (step: string) => void = () => {}
@@ -592,6 +613,7 @@ export async function runUploadGenerationInWorker(
         message: err instanceof Error ? err.message : String(err),
         name: err instanceof Error ? err.name : undefined,
         stack: err instanceof Error ? err.stack : undefined,
+        systemError: systemErrorOf(err),
         sourceFormat:
           err instanceof EmptyDeckError ? err.sourceFormat : undefined,
         reason: err instanceof EmptyDeckError ? err.reason : undefined,

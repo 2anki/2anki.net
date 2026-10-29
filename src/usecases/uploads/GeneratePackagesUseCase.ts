@@ -54,6 +54,9 @@ function buildWorkerError(failure: UploadGenerationFailure): Error {
     if (failure.stack != null) {
       e.stack = failure.stack;
     }
+    if (failure.systemError != null) {
+      Object.assign(e, failure.systemError);
+    }
     return e;
   }
   const fallback = new Error(

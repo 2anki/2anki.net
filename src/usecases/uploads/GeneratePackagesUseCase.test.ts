@@ -426,4 +426,23 @@ describe('GeneratePackagesUseCase', () => {
     expect(err.code).toBe('PARSER_CRASH');
     expect(err.stack).toBe(workerStack);
   });
+
+  it('keeps a filesystem error recognisable as one after the worker boundary', async () => {
+    mockRunUploadGeneration.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        message: "ENOENT: no such file or directory, open '/srv/ws/x.html'",
+        name: 'Error',
+        systemError: { code: 'ENOENT', errno: -2 },
+      },
+    });
+    const useCase = new GeneratePackagesUseCase();
+
+    const err = (await useCase
+      .execute(false, [makeFile('x.html')], makeSettings(), makeWorkspace())
+      .catch((e: unknown) => e)) as Error & { code?: string; errno?: number };
+
+    expect(err.code).toBe('ENOENT');
+    expect(err.errno).toBe(-2);
+  });
 });

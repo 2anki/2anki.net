@@ -6,6 +6,7 @@ import * as trackModule from '../../services/events/track';
 import {
   getFileContents,
   runUploadGenerationInWorker,
+  systemErrorOf,
   countAiContentFiles,
   shouldDedupeAcrossFiles,
   shouldDedupeAcrossDecks,
@@ -269,6 +270,72 @@ describe('runUploadGenerationInWorker', () => {
       throw new Error('expected a failure result');
     }
     expect(result.error.stack).toMatch(/already an Anki deck[\s\S]*\n\s+at /);
+  });
+
+  it('keeps the code and errno of a filesystem error', () => {
+    const enoent = Object.assign(
+      new Error("ENOENT: no such file or directory, open '/srv/ws/x.html'"),
+      { code: 'ENOENT', errno: -2, syscall: 'open' }
+    );
+
+    expect(systemErrorOf(enoent)).toEqual({ code: 'ENOENT', errno: -2 });
+  });
+
+  it.each([
+    [
+      'a coded upload error',
+      Object.assign(new Error('x'), { code: 'docx_parse_failed' }),
+    ],
+    ['a plain error', new Error('x')],
+    ['a non-error value', 'boom'],
+    [
+      'a dropped connection, which would read as a client abort',
+      Object.assign(new Error('read ECONNRESET'), {
+        code: 'ECONNRESET',
+        errno: -54,
+      }),
+    ],
+  ])('leaves out system error fields for %s', (_label, value) => {
+    expect(systemErrorOf(value)).toBeUndefined();
+  });
+
+  it('sends the code and errno of a filesystem error thrown during generation', async () => {
+    const enoent = Object.assign(
+      new Error("ENOENT: no such file or directory, open '/srv/ws/x.html'"),
+      { code: 'ENOENT', errno: -2, syscall: 'open' }
+    );
+    const file = makeFile({
+      originalname: 'notes.html',
+      filename: 'notes.html',
+    });
+    Object.defineProperty(file, 'buffer', {
+      get() {
+        throw enoent;
+      },
+    });
+
+    const result = await runUploadGenerationInWorker(makeTask(file));
+
+    if (result.ok) {
+      throw new Error('expected a failure result');
+    }
+    expect(result.error.systemError).toEqual({ code: 'ENOENT', errno: -2 });
+  });
+
+  it('sends no system error fields for an ordinary thrown error', async () => {
+    const file = makeFile({
+      originalname: 'existing.apkg',
+      filename: 'existing.apkg',
+      path: '',
+      buffer: Buffer.from('not really a deck'),
+    });
+
+    const result = await runUploadGenerationInWorker(makeTask(file));
+
+    if (result.ok) {
+      throw new Error('expected a failure result');
+    }
+    expect(result.error.systemError).toBeUndefined();
   });
 
   it('drains recorded spend even when generation throws', async () => {
