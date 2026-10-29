@@ -1347,7 +1347,7 @@ class UploadService {
         const owner = getOwner(res);
         const userId = owner != null ? Number(owner) : null;
         const source = this.resolveUploadSource(req);
-        const anonymousId = this.resolveAnonId(req) ?? getMintedAnonId(res);
+        const anonymousId = this.resolveSignedOutAnonId(req, res);
         track('conversion_failed', {
           userId,
           anonymousId,
@@ -1828,7 +1828,7 @@ class UploadService {
     const conversionStart = new Date();
     track('conversion_started', {
       userId: owner != null ? Number(owner) : null,
-      anonymousId: this.resolveAnonId(req) ?? getMintedAnonId(res),
+      anonymousId: this.resolveSignedOutAnonId(req, res),
       props: { source: this.resolveUploadSource(req), mode: 'sync' },
     });
 
@@ -2533,6 +2533,16 @@ class UploadService {
     return { apkg, cardCount: totalCards, deckName: toText(first.name) };
   }
 
+  private resolveSignedOutAnonId(
+    req: express.Request,
+    res: express.Response
+  ): string | null {
+    if (getOwner(res) != null) {
+      return this.resolveAnonId(req);
+    }
+    return this.resolveAnonId(req) ?? getMintedAnonId(res);
+  }
+
   private resolveHoldAnonId(
     req: express.Request,
     res: express.Response
@@ -2543,7 +2553,7 @@ class UploadService {
     if (!isPartialDeliveryEligible(req.files as UploadedFile[] | undefined)) {
       return null;
     }
-    return this.resolveAnonId(req) ?? getMintedAnonId(res);
+    return this.resolveSignedOutAnonId(req, res);
   }
 
   // One visitor only ever needs their latest unclaimed hold; the earlier ones

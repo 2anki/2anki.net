@@ -7482,6 +7482,25 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     }
   );
 
+  it('records no minted id on a signed-in conversion, as MCP and cookieless web sessions send', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const req = buildEligibleRequest();
+    const { res } = buildResponse();
+    res.locals.owner = 42;
+    setMintedAnonId(res, 'anon-minted-now');
+
+    await serviceUnderTest(new InMemoryHeldDeckRepository()).handleUpload(
+      req,
+      res
+    );
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_started',
+      expect.objectContaining({ userId: 42, anonymousId: null })
+    );
+  });
+
   it('holds a first-visit AI upload over the cap, since the preview needs a cookie id', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockGenerateAiPreview.mockReset();
