@@ -44,6 +44,20 @@ async function fallbackCards(
 }
 
 describe('DeckParser.tryExperimental card options', () => {
+  it('leaves out the mirrored note whose front would be an empty answer', async () => {
+    const cards = await fallbackCards(
+      'blank-answer.csv',
+      'front,back\nQuestion one,Answer one\nQuestion two,<p></p>',
+      { 'basic-reversed': 'true', cloze: 'false' }
+    );
+
+    expect(cards.map((card) => card.name)).toEqual([
+      'Question one',
+      'Question two',
+      'Answer one',
+    ]);
+  });
+
   it('adds a mirrored note for every CSV row when basic-reversed is on', async () => {
     const cards = await fallbackCards('reversed-test.csv', csv, {
       'basic-reversed': 'true',

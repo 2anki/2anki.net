@@ -2,6 +2,8 @@ import { setupTests } from '../../test/configure-jest';
 import CardOption from './Settings/CardOption';
 import { DeckParser } from './DeckParser';
 import Workspace from './WorkSpace';
+import { serializeCardsToMarkdown } from '../../services/mcp/serializeCardsToMarkdown';
+import { mcpOptionsToCardSettings } from '../../services/mcp/mcpOptionsToCardSettings';
 
 beforeEach(() => setupTests());
 
@@ -64,5 +66,53 @@ describe('a toggle whose answer is only empty markup in an uploaded export, cloz
       deck.cards.map((card) => stripTags(card.back))
     );
     expect(questions).toEqual(['Has an answer', 'Only a picture inside']);
+  });
+});
+
+describe('a page where every toggle answer is empty markup', () => {
+  const allBlank = exportPage(
+    toggle('b', 'Only an empty line inside', '<p id="p2" class=""></p>') +
+      toggle('c', 'Another empty one', '<p id="p3" class=""><br/></p>')
+  );
+
+  it('makes no cards with cloze off', async () => {
+    const parser = await parse(allBlank);
+
+    expect(parser.totalCardCount()).toBe(0);
+  });
+
+  it('ships the same front-only cards as before with cloze on, once the rescue finds nothing better', async () => {
+    const parser = await parse(allBlank, new CardOption({}));
+
+    const fronts = parser.payload.flatMap((deck) =>
+      deck.cards.map((card) => stripTags(card.name))
+    );
+    expect(fronts).toEqual(['Only an empty line inside', 'Another empty one']);
+    expect(parser.inducedRule?.outcome).not.toBe('rescue_shipped');
+  });
+});
+
+// create_deck with note_type basic turns cloze off; with no note type cloze
+// stays on and these cards ship front-only as before.
+describe('cards an MCP create_deck call writes as markdown, note type basic', () => {
+  it('drops a card whose back is only a non-breaking space', async () => {
+    const workspace = new Workspace(true, 'fs');
+    const contents = serializeCardsToMarkdown([
+      { front: 'Kept question', back: 'Answer' },
+      { front: 'Blank answer', back: '&nbsp;' },
+    ]);
+    const parser = new DeckParser({
+      name: 'deck.md',
+      settings: new CardOption(mcpOptionsToCardSettings({ noteType: 'basic' })),
+      files: [{ name: 'deck.md', contents }],
+      noLimits: true,
+      workspace,
+    });
+    await parser.writeDeckInfo(workspace);
+
+    const fronts = parser.payload.flatMap((deck) =>
+      deck.cards.map((card) => stripTags(card.name))
+    );
+    expect(fronts).toEqual(['Kept question']);
   });
 });

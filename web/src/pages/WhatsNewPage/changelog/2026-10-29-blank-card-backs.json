@@ -2,5 +2,5 @@
   "id": "2026-10-29-blank-card-backs",
   "date": "2026-10-29",
   "type": "fix",
-  "title": "A Notion toggle with only an empty line inside no longer becomes a card with a blank back. It is skipped, and your deck says how many were left out"
+  "title": "Pages converted through your Notion connection skip toggles with only an empty line inside, and say how many were left out"
 }

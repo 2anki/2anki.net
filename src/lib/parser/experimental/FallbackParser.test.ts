@@ -73,6 +73,15 @@ describe('FallbackParser tab-separated text', () => {
     expect(decks[0].cards.map((card) => card.name)).toEqual(['Kept question']);
   });
 
+  it('keeps a line whose answer is an operator written with angle brackets', () => {
+    const tabContent = 'Not equal in SQL\t<>\nThree-way comparison\t<=>';
+    const parser = new FallbackParser([
+      { name: 'ops.txt', contents: Buffer.from(tabContent) },
+    ]);
+    const decks = parser.run(new CardOption({}));
+    expect(decks[0].cards.map((card) => card.back)).toEqual(['<>', '<=>']);
+  });
+
   it('gives a .txt deck the same style as a Notion deck', () => {
     const settings = new CardOption({});
     const parser = new FallbackParser([

@@ -1,8 +1,5 @@
 import { hasVisibleContent } from './hasVisibleContent';
 
-const isBlank = (value: string | null | undefined): boolean =>
-  value == null || value.trim().length === 0;
-
 export function countEmptyBacks<T>(
   cards: readonly T[],
   getBack: (card: T) => string | null | undefined,
@@ -14,7 +11,7 @@ export function countEmptyBacks<T>(
     if (
       isCountable(card) &&
       !hasVisibleContent(getBack(card)) &&
-      !isBlank(getFront(card))
+      hasVisibleContent(getFront(card))
     ) {
       count += 1;
     }

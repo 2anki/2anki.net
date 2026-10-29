@@ -1039,14 +1039,19 @@ class BlockHandler implements IBlockRenderer {
   // Why a Notion conversion produced no cards, from counters the page walk
   // already kept. A cherry-pick or skip filter that emptied the deck wins
   // first; otherwise a page that surfaced no flashcard-shaped block reads as
-  // no_toggles (the toggle teaching is the right Notion advice). Blocks seen
-  // but no cards kept, with no filter, stays honest as unknown.
+  // no_toggles (the toggle teaching is the right Notion advice). Toggles whose
+  // answers were all empty read as empty_answers, since telling someone who
+  // has toggles to make toggles is wrong. Blocks seen but no cards kept, with
+  // no filter, stays honest as unknown.
   emptyDeckReason(): EmptyDeckReason {
     if (this.cardsRemovedByUserFilter > 0) {
       return 'all_filtered';
     }
     if (this.blocksSeen === 0) {
       return this.walkedAnEmptyPage() ? 'no_content' : 'no_toggles';
+    }
+    if (this.emptyBackCount > 0) {
+      return 'empty_answers';
     }
     return 'unknown';
   }

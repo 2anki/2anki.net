@@ -66,3 +66,18 @@ describe('Note', () => {
     expect(reversed.back).not.toContain('&#x1F504');
   });
 });
+
+describe('Note.isValidBasicNote', () => {
+  it.each([
+    ['a blank-markup back', 'Question', '<p class="" id="p-1"></p>'],
+    ['a blank-markup front', '<p class="" id="p-1"></p>', 'Answer'],
+  ])('rejects a card with %s', (_what, front, back) => {
+    expect(new Note(front, back).isValidBasicNote()).toBe(false);
+  });
+
+  it('accepts an image-only front with a text back', () => {
+    expect(new Note('<img src="a.png">', 'Answer').isValidBasicNote()).toBe(
+      true
+    );
+  });
+});

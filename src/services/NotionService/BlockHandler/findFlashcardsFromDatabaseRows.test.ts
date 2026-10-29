@@ -398,6 +398,36 @@ describe('BlockHandler.findFlashcardsFromDatabaseRows', () => {
     });
   });
 
+  it('leaves out a row-page toggle whose answer is only an empty line', async () => {
+    const api = makeRowPageApi({
+      dbName: 'Lectures',
+      rows: [{ id: 'row-1', properties: { Name: titleProp('Lecture 1') } }],
+      titlesByPage: { 'row-1': 'Lecture 1' },
+      blocksByPage: {
+        'row-1': [
+          toggleBlock('t-1', 'What is a neuron?'),
+          toggleBlock('t-2', 'Left blank'),
+        ],
+        't-1': [paragraphBlock('p-1', 'A nerve cell.')],
+        't-2': [paragraphBlock('p-2', '')],
+      },
+    });
+    const bl = makeHandler(api);
+
+    const decks = await bl.findFlashcards({
+      parentType: 'notion-database',
+      topLevelId: 'db-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(decks.flatMap((d) => d.cards.map((c) => c.name))).toEqual([
+      'What is a neuron?',
+    ]);
+    expect(bl.emptyBackCount).toBe(1);
+  });
+
   it('never reads a database whose row pages are empty as an empty page', async () => {
     const api = makeRowPageApi({
       rows: [{ id: 'row-1', properties: { Notes: titleProp('x') } }],

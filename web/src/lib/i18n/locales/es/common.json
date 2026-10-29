@@ -762,6 +762,7 @@
     "emptyDeckAllFiltered": "Un filtro de tarjetas eliminó todas las tarjetas. Cherry pick solo conserva los toggles marcados con 🍒 y skip descarta los marcados con 🥑. Desactiva el filtro en los ajustes de tarjeta o marca los toggles que quieras, y vuelve a convertir.",
     "emptyDeckNoContent": "Esta página no tenía texto que pudiéramos leer. Comprueba que la exportaste con su contenido y vuelve a convertir.",
     "emptyDeckNotionEmptyPage": "Esta página de Notion parece vacía, o 2anki no puede ver su contenido. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir.",
+    "emptyDeckEmptyAnswers": "Tus alternancias no tienen ninguna respuesta dentro. Añade una respuesta dentro de cada alternancia en Notion y vuelve a convertir.",
     "connectNotionDocs": "Cómo compartir una página con 2anki",
     "rescueLeadNotion": "Aun así puedes hacer tarjetas con esta página:",
     "rescueBuilding": "Creando tu mazo.",

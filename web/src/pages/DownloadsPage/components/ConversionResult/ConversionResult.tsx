@@ -45,11 +45,12 @@ const NOTION_TOKEN_EXPIRED_REASON = 'notion_token_expired';
 const EMPTY_DECK_REASON_PREFIX = 'No cards in this deck yet.';
 // Markers the server embeds in the empty-deck message so the localized copy can
 // branch on the reason. Keep in sync with EMPTY_DECK_ALL_FILTERED_REASON /
-// EMPTY_DECK_NO_CONTENT_REASON / EMPTY_DECK_NOTION_EMPTY_PAGE_REASON in
-// src/usecases/jobs/jobFailureReason.ts.
+// EMPTY_DECK_NO_CONTENT_REASON / EMPTY_DECK_NOTION_EMPTY_PAGE_REASON /
+// EMPTY_DECK_EMPTY_ANSWERS_REASON in src/usecases/jobs/jobFailureReason.ts.
 const EMPTY_DECK_ALL_FILTERED_MARKER = 'card filter removed';
 const EMPTY_DECK_NO_CONTENT_MARKER = 'no text we could read';
 const EMPTY_DECK_NOTION_EMPTY_PAGE_MARKER = 'Notion page looks empty';
+const EMPTY_DECK_EMPTY_ANSWERS_MARKER = 'no answer inside them';
 const TOGGLES_DOCS_HREF = '/documentation/cards/notion-blocks';
 const FILE_FORMATS_DOCS_HREF = '/documentation/reference/file-formats';
 const CONNECT_NOTION_DOCS_HREF = '/documentation/start-here/connect-notion';
@@ -347,6 +348,11 @@ function FailedVariant({
     let teaching = t('conversionResult.emptyDeckTeachingUpload');
     if (failureReason.includes(EMPTY_DECK_NO_CONTENT_MARKER)) {
       teaching = t('conversionResult.emptyDeckNoContent');
+    } else if (
+      fromNotion &&
+      failureReason.includes(EMPTY_DECK_EMPTY_ANSWERS_MARKER)
+    ) {
+      teaching = t('conversionResult.emptyDeckEmptyAnswers');
     } else if (fromNotion) {
       teaching = t('conversionResult.emptyDeckTeaching');
     }

@@ -762,6 +762,7 @@
     "emptyDeckAllFiltered": "Un filtro delle carte ha rimosso tutte le carte. Cherry pick tiene solo i toggle contrassegnati con 🍒 e skip scarta quelli con 🥑. Disattiva il filtro nelle impostazioni delle carte o contrassegna i toggle che vuoi, poi converti di nuovo.",
     "emptyDeckNoContent": "Questa pagina non conteneva testo leggibile. Controlla di averla esportata con il suo contenuto, poi converti di nuovo.",
     "emptyDeckNotionEmptyPage": "Questa pagina di Notion sembra vuota, oppure 2anki non riesce a vederne il contenuto. Aggiungi 2anki a questa pagina e alle sue sottopagine nel menu Connessioni di Notion, poi converti di nuovo.",
+    "emptyDeckEmptyAnswers": "I tuoi toggle non hanno nessuna risposta all'interno. Aggiungi una risposta dentro ogni toggle in Notion, poi converti di nuovo.",
     "connectNotionDocs": "Come condividere una pagina con 2anki",
     "rescueLeadNotion": "Puoi comunque ricavare delle carte da questa pagina:",
     "rescueBuilding": "Creazione del mazzo in corso.",

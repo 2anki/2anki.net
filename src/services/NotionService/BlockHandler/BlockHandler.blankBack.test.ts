@@ -135,3 +135,22 @@ describe('a toggle whose answer is only empty blocks on the Notion API path', ()
     expect(handler.emptyBackCount).toBe(2);
   });
 });
+
+describe('a Notion page where every toggle answer is empty', () => {
+  const allBlank = {
+    'page-1': [
+      textBlock('t-1', 'toggle', 'Only an empty line inside', true),
+      textBlock('t-2', 'toggle', 'Nothing inside at all', true),
+    ],
+    't-1': [emptyParagraph('p-1')],
+  };
+
+  it('makes no cards and says the answers are missing', async () => {
+    const handler = makeHandler(makeApi(allBlank));
+
+    const decks = await handler.findFlashcards(locator());
+
+    expect(decks.flatMap((deck) => deck.cards)).toEqual([]);
+    expect(handler.emptyDeckReason()).toBe('empty_answers');
+  });
+});

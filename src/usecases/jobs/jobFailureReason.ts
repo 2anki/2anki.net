@@ -44,9 +44,15 @@ export const EMPTY_DECK_NO_CONTENT_REASON =
 export const EMPTY_DECK_NOTION_EMPTY_PAGE_REASON =
   "No cards in this deck yet. This Notion page looks empty, or 2anki can't see what's on it. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again.";
 
+export const EMPTY_DECK_EMPTY_ANSWERS_REASON =
+  'No cards in this deck yet. Your toggles have no answer inside them. Add an answer inside each toggle in Notion, then convert again.';
+
 export function emptyDeckReasonMessage(reason: EmptyDeckReason): string {
   if (reason === 'all_filtered') {
     return EMPTY_DECK_ALL_FILTERED_REASON;
+  }
+  if (reason === 'empty_answers') {
+    return EMPTY_DECK_EMPTY_ANSWERS_REASON;
   }
   if (reason === 'no_content') {
     return EMPTY_DECK_NO_CONTENT_REASON;

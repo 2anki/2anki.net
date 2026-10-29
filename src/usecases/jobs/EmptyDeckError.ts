@@ -2,12 +2,14 @@ import type { RescueCandidate } from '../../types/RescueCandidate';
 
 export type EmptyDeckReason =
   | 'no_toggles'
+  | 'empty_answers'
   | 'all_filtered'
   | 'no_content'
   | 'unknown';
 
 const EMPTY_DECK_REASON_SPECIFICITY: Record<EmptyDeckReason, number> = {
-  all_filtered: 3,
+  all_filtered: 4,
+  empty_answers: 3,
   no_toggles: 2,
   no_content: 1,
   unknown: 0,
