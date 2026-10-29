@@ -118,6 +118,7 @@ import {
   EMPTY_CONTENT_UPLOAD_MESSAGE,
 } from '../lib/claude/ClaudeService';
 import { track } from './events/track';
+import { mcpOptionsToCardSettings } from './mcp/mcpOptionsToCardSettings';
 
 const trackMock = track as Mock;
 import { IUploadRepository } from '../data_layer/UploadRespository';
@@ -5774,6 +5775,52 @@ describe('UploadService.handleUpload — stored card options', () => {
     );
   });
 
+  it('carries the stored style change time into an MCP conversion', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(1793275200 * 1000);
+    try {
+      const execute = vi.fn().mockResolvedValue({
+        packages: [{ name: 'deck', cardCount: 1, guidEntries }],
+      });
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return { execute } as unknown as InstanceType<
+          typeof GeneratePackagesUseCase
+        >;
+      });
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo({
+          getCardOptions: vi.fn().mockResolvedValue({
+            'font-size': '32',
+            'style-changed-at': '1793000000',
+          }),
+        } as unknown as Partial<UsersRepository>),
+        ...fakeUploadServiceDeps({})
+      );
+      const req = buildRequest({
+        body: {
+          deckName: 'MCP deck',
+          ...mcpOptionsToCardSettings({ noteType: 'basic' }),
+        },
+      } as Partial<express.Request>);
+      const { res } = buildResponse();
+      Object.assign(res.locals as Record<string, unknown>, {
+        owner: 42,
+        mcp_auth: true,
+      });
+
+      await service.handleUpload(req, res);
+
+      expect(execute.mock.calls[0][2]).toMatchObject({
+        fontSize: '32',
+        styleChangedAt: 1793000000,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('never reads stored options for an anonymous upload', async () => {
     mockOneDeck();
     const getCardOptions = vi
@@ -7242,6 +7289,41 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 100 });
     expect(result).not.toHaveProperty('heldForPlan');
     expect(heldDeck.rows).toHaveLength(0);
+  });
+
+  it('carries the stored style change time into a claimed held file', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(1793275200 * 1000);
+    try {
+      mockGetFeatureFlag.mockResolvedValue(true);
+      const execute = mockPartial([{ name: 'deck', cardCount: 3 }]);
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo({
+          getCardOptions: vi.fn().mockResolvedValue({
+            'font-size': '32',
+            'style-changed-at': '1793000000',
+          }),
+        } as unknown as Partial<UsersRepository>),
+        ...fakeUploadServiceDeps({})
+      );
+
+      await service.convertHeldFileForOwner(
+        '4242',
+        heldSourceFile(),
+        false,
+        null,
+        'req-1'
+      );
+
+      expect(execute.mock.calls[0][2]).toMatchObject({
+        fontSize: '32',
+        styleChangedAt: 1793000000,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('leaves a treatment upload at or under 21 cards untouched', async () => {

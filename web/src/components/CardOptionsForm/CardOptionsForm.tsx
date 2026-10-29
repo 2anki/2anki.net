@@ -72,6 +72,10 @@ const DEFAULT_CARD_STYLE = '';
 const DEFAULT_OVERLAPPING_CLOZE = 'off';
 const DEFAULT_CODE_THEME = 'github';
 const STYLE_CHANGED_AT_KEY = 'style-changed-at';
+
+function unixSecondsNow(): string {
+  return Math.floor(Date.now() / 1000).toString();
+}
 const CODE_THEME_OPTIONS = [
   { label: 'GitHub', value: 'github' },
   { label: 'One Dark', value: 'one-dark' },
@@ -758,7 +762,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     };
 
     const recordStyleChange = () => {
-      const now = Math.floor(Date.now() / 1000).toString();
+      const now = unixSecondsNow();
       setStyleChangedAt(now);
       saveValueInLocalStorage(STYLE_CHANGED_AT_KEY, now, pageId);
     };
@@ -786,7 +790,11 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         textAlign !== '' ||
         codeTheme !== DEFAULT_CODE_THEME;
       if (hadCustomStyle) {
-        recordStyleChange();
+        const now = unixSecondsNow();
+        setStyleChangedAt(now);
+        if (!pageId) {
+          localStorage.setItem(STYLE_CHANGED_AT_KEY, now);
+        }
       }
       setDeckName('');
       setFontSize('');

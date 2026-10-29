@@ -49,6 +49,13 @@ def _cards():
         _card("{{c1::Cloze}} front", cloze=True),
         _card("Typed front", enableInput=True, answer="Typed"),
         _card("MCQ front", mcq=True, options=["A", "B"], correctIndices=[0]),
+        _card("Hierarchy front", hierarchy=True, h1="Chapter"),
+        _card(
+            "Custom front",
+            customFields=["Term", "Meaning", "Note"],
+            customFieldNames=["Term", "Meaning", "Note"],
+            customModelName="Imported vocab",
+        ),
     ]
 
 
@@ -79,15 +86,21 @@ def test_styled_note_types_take_the_later_style_change_time(tmp_path):
     assert mods["n2a-basic"] == LATER
     assert mods["n2a-cloze"] == LATER
     assert mods["n2a-input"] == LATER
+    assert mods["n2a-hierarchy"] == LATER
 
 
 def test_the_mcq_note_type_keeps_the_pinned_mod(tmp_path):
     assert _mods(tmp_path, {"styleChangedAt": LATER})["n2a-mcq"] == NOTETYPE_MOD
 
 
+def test_an_apkg_input_custom_note_type_keeps_the_pinned_mod(tmp_path):
+    mods = _mods(tmp_path, {"styleChangedAt": LATER})
+    assert mods["Imported vocab"] == NOTETYPE_MOD
+
+
 @pytest.mark.parametrize(
     "style_changed_at",
-    [None, 0, NOTETYPE_MOD - 1, -5, "1999999999", 1.5e9, True, [LATER]],
+    [None, 0, NOTETYPE_MOD - 1, -5, "1999999999", 1.5e9, True, [LATER], 2**63],
 )
 def test_a_missing_older_or_malformed_change_time_keeps_the_pinned_mod(
     tmp_path, style_changed_at

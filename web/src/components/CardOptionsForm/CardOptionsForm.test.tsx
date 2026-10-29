@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { CardOptionsForm } from './CardOptionsForm';
 import CardOptionModel from '../../lib/data_layer/model/CardOption';
+import { cancelPendingSync } from '../../lib/data_layer/userPreferencesSync';
 
 const mockResetUserCardOptions = vi.fn();
 const mockGetSettingsCardOptions = vi.fn();
@@ -1470,6 +1471,43 @@ describe('CardOptionsForm records when a card style option changes', () => {
       expect(localStorage.getItem('style-changed-at')).toBe(CHANGED_AT);
     });
     expect(localStorage.getItem('font-size')).toBeNull();
+  });
+
+  it('does not re-send the cleared account options after a signed-in reset', async () => {
+    cancelPendingSync();
+    const cookie = Object.getOwnPropertyDescriptor(
+      Document.prototype,
+      'cookie'
+    );
+    Object.defineProperty(document, 'cookie', {
+      configurable: true,
+      get: () => 'token=abc',
+    });
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('{}', { status: 200 }));
+    try {
+      localStorage.setItem('font-size', '32');
+      localStorage.setItem('use-notion-id', 'true');
+      renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Reset to defaults' })
+      );
+      await waitFor(() => {
+        expect(localStorage.getItem('style-changed-at')).toBe(CHANGED_AT);
+      });
+      await new Promise((resolve) => setTimeout(resolve, 700));
+
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        '/api/users/me/preferences',
+        expect.anything()
+      );
+    } finally {
+      fetchSpy.mockRestore();
+      delete (document as { cookie?: string }).cookie;
+      if (cookie) Object.defineProperty(Document.prototype, 'cookie', cookie);
+    }
   });
 
   it('saves the time with a Notion page style change', async () => {

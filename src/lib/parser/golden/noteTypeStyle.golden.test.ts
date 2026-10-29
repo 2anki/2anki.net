@@ -309,6 +309,12 @@ afterAll(() => {
 beforeEach(() => {
   setupTests();
   generateDeckInfoMock.mockReset();
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(1793275200 * 1000);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('one note-type style for every deck-building path', () => {
@@ -330,7 +336,7 @@ describe('one note-type style for every deck-building path', () => {
           noteTypeShape({ settings: {} })
         );
         expect(decks[0].settings?.styleChangedAt).toBe(
-          new CardOption(input).styleChangedAt
+          input['style-changed-at'] == null ? 0 : 1793000000
         );
       }
     );

@@ -25,6 +25,7 @@ from helpers.write_apkg import _write_new_apkg
 from backend.utils.email_error_alert import send_error_email
 
 _MAX_BASENAME_BYTES = 200
+_MAX_MOD = 2 ** 63
 
 
 def _clamp_output_path(path: str) -> str:
@@ -104,7 +105,9 @@ def _style_changed_at(settings):
     value = settings.get("styleChangedAt")
     if isinstance(value, bool) or not isinstance(value, int):
         return 0
-    return value
+    if 0 <= value < _MAX_MOD:
+        return value
+    return 0
 
 
 def _style_changed_at_for(css, deck_style, style_changed_at):

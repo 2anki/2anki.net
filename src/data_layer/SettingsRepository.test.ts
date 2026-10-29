@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import knexLib, { Knex } from 'knex';
 import SettingsRepository from './SettingsRepository';
 import CardOption from '../lib/parser/Settings/CardOption';
@@ -497,6 +498,8 @@ describe('SettingsRepository owner scoping and payload shapes', () => {
   });
 
   test('carries a saved page style change time into the conversion settings', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(1793275200 * 1000);
     await repo.create({
       owner: '42',
       object_id: 'page-style',
@@ -505,6 +508,7 @@ describe('SettingsRepository owner scoping and payload shapes', () => {
     });
 
     const settings = await repo.loadIfExists('42', 'page-style');
+    vi.useRealTimers();
 
     expect(settings?.styleChangedAt).toBe(1793000000);
   });
