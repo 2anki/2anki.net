@@ -409,4 +409,21 @@ describe('GeneratePackagesUseCase', () => {
 
     expect((err as Error).stack).toBe(workerStack);
   });
+
+  it('keeps the worker stack on the parser-crash fallback when the message is empty', async () => {
+    const workerStack =
+      'TypeError\n    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+    mockRunUploadGeneration.mockResolvedValueOnce({
+      ok: false,
+      error: { message: '', name: 'TypeError', stack: workerStack },
+    });
+    const useCase = new GeneratePackagesUseCase();
+
+    const err = (await useCase
+      .execute(false, [makeFile('bad.html')], makeSettings(), makeWorkspace())
+      .catch((e: unknown) => e)) as Error & { code?: string };
+
+    expect(err.code).toBe('PARSER_CRASH');
+    expect(err.stack).toBe(workerStack);
+  });
 });

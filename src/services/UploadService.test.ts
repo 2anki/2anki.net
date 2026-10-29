@@ -1088,6 +1088,39 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(body.message).not.toMatch(/docx_parse_failed/);
   });
 
+  it('answers a sync upload whose worker crashed without sending the worker stack', async () => {
+    const crash = Object.assign(
+      new Error("Cannot read properties of undefined (reading '0')"),
+      { name: 'TypeError' }
+    );
+    crash.stack =
+      "TypeError: Cannot read properties of undefined (reading '0')\n" +
+      '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(crash),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(buildRequest(), res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message: "Cannot read properties of undefined (reading '0')",
+    });
+    errorSpy.mockRestore();
+  });
+
   it('answers 503 with the retry copy when the pool drain interrupts a sync upload', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {
