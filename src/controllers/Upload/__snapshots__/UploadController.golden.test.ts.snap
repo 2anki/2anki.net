@@ -171,37 +171,7 @@ exports[`what each population gets back from /api/upload/file > signed-in pass h
 }
 `;
 
-exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery off 1`] = `
-{
-  "body": {
-    "text": "Found. Redirecting to /limit?kind=anonymous",
-  },
-  "cardsCharged": [],
-  "contentType": "text/plain",
-  "headers": {
-    "location": "/limit?kind=anonymous",
-  },
-  "status": 302,
-  "storedObjects": [],
-}
-`;
-
-exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery off, day pass card on 1`] = `
-{
-  "body": {
-    "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
-  },
-  "cardsCharged": [],
-  "contentType": "text/plain",
-  "headers": {
-    "location": "/limit?kind=anonymous&cards=120",
-  },
-  "status": 302,
-  "storedObjects": [],
-}
-`;
-
-exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery on (treatment) 1`] = `
+exports[`what each population gets back from /api/upload/file > signed-out over the cap 1`] = `
 {
   "body": {
     "cardCount": 21,
@@ -219,7 +189,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
 }
 `;
 
-exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery on, day pass card on 1`] = `
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, day pass card on 1`] = `
 {
   "body": {
     "cardCount": 21,
@@ -238,7 +208,7 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
 }
 `;
 
-exports[`what each population gets back from /api/upload/file > signed-out over the cap, partial delivery on, no anon id (control) 1`] = `
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, no anon id 1`] = `
 {
   "body": {
     "text": "Found. Redirecting to /limit?kind=anonymous",
@@ -247,6 +217,21 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
   "contentType": "text/plain",
   "headers": {
     "location": "/limit?kind=anonymous",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, no anon id, day pass card on 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
+  },
+  "cardsCharged": [],
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=anonymous&cards=120",
   },
   "status": 302,
   "storedObjects": [],
@@ -356,36 +341,6 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
 exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, day pass card on 1`] = `
 {
   "body": {
-    "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
-  },
-  "cardsCharged": [],
-  "contentType": "text/plain",
-  "headers": {
-    "location": "/limit?kind=anonymous&cards=120",
-  },
-  "status": 302,
-  "storedObjects": [],
-}
-`;
-
-exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, no anon id (control) 1`] = `
-{
-  "body": {
-    "text": "Found. Redirecting to /limit?kind=anonymous",
-  },
-  "cardsCharged": [],
-  "contentType": "text/plain",
-  "headers": {
-    "location": "/limit?kind=anonymous",
-  },
-  "status": 302,
-  "storedObjects": [],
-}
-`;
-
-exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, partial delivery on, day pass card on 1`] = `
-{
-  "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
     "dayPassCard": true,
@@ -402,7 +357,22 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
 }
 `;
 
-exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, pass-first wall on 1`] = `
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, no anon id 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous",
+  },
+  "cardsCharged": [],
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=anonymous",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, over the cap, no anon id, pass-first wall on 1`] = `
 {
   "body": {
     "text": "Found. Redirecting to /limit?kind=anonymous&cards=120",
@@ -417,7 +387,7 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
 }
 `;
 
-exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, under the cap, partial delivery on 1`] = `
+exports[`what each population gets back from /api/upload/file > signed-out with an expired session cookie, under the cap 1`] = `
 {
   "body": {
     "apkg": "golden-apkg cards=5",
@@ -776,16 +746,20 @@ exports[`what the real auth middleware resolves before the upload > real session
 exports[`what the real auth middleware resolves before the upload > real session: signed out since, over the cap 1`] = `
 {
   "body": {
-    "text": "Found. Redirecting to /limit?kind=anonymous",
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "kind": "held",
+    "totalCards": 120,
   },
   "cardsCharged": [],
-  "contentType": "text/plain",
+  "contentType": "application/json",
   "headers": {
-    "location": "/limit?kind=anonymous",
     "x-upload-owner": "none",
   },
-  "status": 302,
-  "storedObjects": [],
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
 }
 `;
 

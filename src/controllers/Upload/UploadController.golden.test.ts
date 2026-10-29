@@ -160,7 +160,6 @@ import {
   __resetFeatureFlagModuleForTests,
   __setFeatureFlagDependencies,
 } from '../../lib/featureFlags/getFeatureFlag';
-import { ANONYMOUS_PARTIAL_DELIVERY_FLAG } from '../../lib/upload/anonymousPartialDelivery';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../../lib/upload/anonymousDayPassCard';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
@@ -258,48 +257,32 @@ const signedOutPassHolderWithRecoveryToken: Population = {
 
 const cases: [string, keyof typeof UPLOADS, Population][] = [
   ['signed-out under the anonymous cap', 'small', signedOut],
+  ['signed-out over the cap', 'large', signedOut],
   [
-    'signed-out over the cap, partial delivery off',
-    'large',
-    { ...signedOut, flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: false } },
-  ],
-  [
-    'signed-out over the cap, partial delivery off, day pass card on',
+    'signed-out over the cap, day pass card on',
     'large',
     { ...signedOut, flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true } },
   ],
   [
-    'signed-out over the cap, partial delivery on (treatment)',
+    'signed-out over the cap, no anon id',
     'large',
-    { ...signedOut, flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true } },
+    { ...signedOut, cookies: {} },
   ],
   [
-    'signed-out over the cap, partial delivery on, day pass card on',
-    'large',
-    {
-      ...signedOut,
-      flags: {
-        [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true,
-        [ANONYMOUS_DAY_PASS_CARD_FLAG]: true,
-      },
-    },
-  ],
-  [
-    'signed-out over the cap, partial delivery on, no anon id (control)',
+    'signed-out over the cap, no anon id, day pass card on',
     'large',
     {
       ...signedOut,
       cookies: {},
-      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
+      flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true },
     },
   ],
   [
-    'signed-out with an expired session cookie, under the cap, partial delivery on',
+    'signed-out with an expired session cookie, under the cap',
     'small',
     {
       ...signedOut,
       cookies: { token: 'expired-session', anon_id: 'golden-anon' },
-      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
     },
   ],
   [
@@ -308,16 +291,14 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     {
       ...signedOut,
       cookies: { token: 'expired-session', anon_id: 'golden-anon' },
-      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
     },
   ],
   [
-    'signed-out with an expired session cookie, over the cap, no anon id (control)',
+    'signed-out with an expired session cookie, over the cap, no anon id',
     'large',
     {
       ...signedOut,
       cookies: { token: 'expired-session' },
-      flags: { [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true },
     },
   ],
   [
@@ -330,23 +311,11 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     },
   ],
   [
-    'signed-out with an expired session cookie, over the cap, partial delivery on, day pass card on',
+    'signed-out with an expired session cookie, over the cap, no anon id, pass-first wall on',
     'large',
     {
       ...signedOut,
-      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
-      flags: {
-        [ANONYMOUS_PARTIAL_DELIVERY_FLAG]: true,
-        [ANONYMOUS_DAY_PASS_CARD_FLAG]: true,
-      },
-    },
-  ],
-  [
-    'signed-out with an expired session cookie, over the cap, pass-first wall on',
-    'large',
-    {
-      ...signedOut,
-      cookies: { token: 'expired-session', anon_id: 'golden-anon' },
+      cookies: { token: 'expired-session' },
       flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true },
     },
   ],

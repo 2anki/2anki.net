@@ -1,6 +1,4 @@
-export const ANONYMOUS_PARTIAL_DELIVERY_FLAG = 'anonymous_partial_delivery';
-
-export type PartialDeliveryArm = 'off' | 'control' | 'treatment';
+export type PartialDeliveryArm = 'control' | 'treatment';
 
 /**
  * The v2 split (#4590) ended on 2026-10-19 with treatment ahead on signup
@@ -9,12 +7,8 @@ export type PartialDeliveryArm = 'off' | 'control' | 'treatment';
  * nothing to hold the deck under, so that request keeps the limit wall.
  */
 export function resolveAnonymousPartialArm(
-  anonymousId: string | null,
-  flagEnabled: boolean
+  anonymousId: string | null
 ): PartialDeliveryArm {
-  if (!flagEnabled) {
-    return 'off';
-  }
   if (anonymousId == null || anonymousId === '') {
     return 'control';
   }

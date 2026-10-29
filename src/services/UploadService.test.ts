@@ -6531,21 +6531,33 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   }
 
-  it('refuses an over-cap anonymous upload and tags no arm when the flag is off', async () => {
+  it('holds an over-cap anonymous upload with every feature flag off', async () => {
     mockGetFeatureFlag.mockResolvedValue(false);
-    const execute = mockPartial([{ name: 'deck', cardCount: 30 }]);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 9);
+    const heldDeck = new InMemoryHeldDeckRepository();
     const req = buildEligibleRequest(TREATMENT_ID);
-    const { res, capturedSend, redirectedTo } = responseWithRedirect();
+    const { res, capturedStatus, capturedJson } = buildResponse();
 
-    await serviceUnderTest().handleUpload(req, res);
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
 
-    expect(redirectedTo()).toBe('/limit?kind=anonymous');
-    expect(capturedSend()).toBeNull();
-    expect(execute.mock.calls[0][6]).not.toHaveProperty('cardLimit');
-    const props = conversionFailedProps();
-    expect(props.reason).toBe('anonymous_cap');
-    expect(props).not.toHaveProperty('arm');
-    expect(props).not.toHaveProperty('card_count_bucket');
+    expect(execute.mock.calls[0][6]).toMatchObject({
+      cardLimit: ANONYMOUS_CARD_CAP,
+    });
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toEqual({
+      kind: 'held',
+      cardCount: 21,
+      cardsHeldBack: 9,
+      totalCards: 30,
+    });
+    expect(conversionSucceededProps()).toMatchObject({
+      arm: 'treatment',
+      held: true,
+    });
+    expect(mockGetFeatureFlag).not.toHaveBeenCalledWith(
+      'anonymous_partial_delivery',
+      false
+    );
   });
 
   it('holds the deck behind an account step for the treatment arm', async () => {
@@ -6617,10 +6629,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     });
   });
 
-  it('leaves an over-a-month held deck unmarked when only partial delivery is on', async () => {
-    mockGetFeatureFlag.mockImplementation((key: unknown) =>
-      Promise.resolve(key === 'anonymous_partial_delivery')
-    );
+  it('leaves an over-a-month held deck unmarked when the Day Pass card flag is off', async () => {
+    mockGetFeatureFlag.mockResolvedValue(false);
     mockPartial([{ name: 'deck', cardCount: 21 }], 120);
     const heldDeck = new InMemoryHeldDeckRepository();
     const req = buildEligibleRequest(TREATMENT_ID);
@@ -6641,10 +6651,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
-  it('does not append the card count to the wall when only partial delivery is on', async () => {
-    mockGetFeatureFlag.mockImplementation((key: unknown) =>
-      Promise.resolve(key === 'anonymous_partial_delivery')
-    );
+  it('does not append the card count to the wall when the card-count flags are off', async () => {
+    mockGetFeatureFlag.mockResolvedValue(false);
     mockPartial([{ name: 'deck', cardCount: 130 }]);
     const req = buildEligibleRequest();
     const { res, redirectedTo } = responseWithRedirect();
@@ -7250,19 +7258,6 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     const props = conversionSucceededProps();
     expect(props).not.toHaveProperty('card_limit_partial');
     expect(props).not.toHaveProperty('arm');
-  });
-
-  it('does not refuse an over-cap upload from an anonymous pass holder when the flag is off', async () => {
-    mockGetFeatureFlag.mockResolvedValue(false);
-    mockPartial([{ name: 'deck', cardCount: 30 }]);
-    const req = buildEligibleRequest(TREATMENT_ID);
-    const { res, capturedStatus, redirectedTo } = responseWithRedirect();
-    res.locals.subscriber = true;
-
-    await serviceUnderTest().handleUpload(req, res);
-
-    expect(redirectedTo()).toBeNull();
-    expect(capturedStatus()).toBe(200);
   });
 
   it('delivers the whole deck to an anonymous visitor with a valid pass', async () => {
