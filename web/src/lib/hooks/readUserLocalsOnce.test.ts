@@ -5,7 +5,7 @@ vi.mock('../backend/getUserLocals', () => ({
 }));
 
 import { getUserLocals } from '../backend/getUserLocals';
-import { readUserLocalsOnce } from './readUserLocalsOnce';
+import { AccountUnreadError, readUserLocalsOnce } from './readUserLocalsOnce';
 
 const mockGetUserLocals = vi.mocked(getUserLocals);
 
@@ -27,5 +27,16 @@ describe('readUserLocalsOnce', () => {
 
     await expect(readUserLocalsOnce()).resolves.toEqual(fresh);
     expect(mockGetUserLocals).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails, rather than answering signed out, when the read comes back with no account data', async () => {
+    mockGetUserLocals.mockReset();
+    mockGetUserLocals.mockResolvedValue(
+      undefined as unknown as Awaited<ReturnType<typeof getUserLocals>>
+    );
+
+    await expect(readUserLocalsOnce()).rejects.toBeInstanceOf(
+      AccountUnreadError
+    );
   });
 });

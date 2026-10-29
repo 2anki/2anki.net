@@ -566,6 +566,11 @@ function UploadForm({
   // Files whose sender the page never learned are not sent back; the screen
   // says why and offers to choose the file again.
   const [senderUnknown, setSenderUnknown] = useState(false);
+  // Whether the session an upload sent on to the limit page ran under is
+  // signed in, from one account read; null until that read confirms it.
+  const [limitSessionSignedIn, setLimitSessionSignedIn] = useState<
+    boolean | null
+  >(null);
   const moveScreenOn = () => {
     screenEpochRef.current += 1;
     setClaudeResendHeld(false);
@@ -1178,6 +1183,7 @@ function UploadForm({
 
   useEffect(() => {
     if (zoneState !== 'converting') return;
+    setLimitSessionSignedIn(null);
     setProgressWidth(70);
     const timer = setTimeout(() => {
       setProgressSlow(true);
@@ -1247,10 +1253,10 @@ function UploadForm({
     rescueFilesOwner !== currentOwnerId;
 
   // The sender a new upload goes out as: the account the page shows, or
-  // unknown when the page has no account data or its last read failed. The
-  // server's answer settles it; a later account read never does.
+  // unknown when the page has no account data. The server's answer settles
+  // it; a later account read never does.
   const pageSender = (): number | null | undefined =>
-    userLocals == null || userLocalsFailed ? undefined : currentOwnerId;
+    userLocals == null ? undefined : currentOwnerId;
 
   // Only a fresh submit (the file input, a dropped folder, a handed-over file,
   // a saved upload resumed under its own account) sets the kept files and
@@ -1266,8 +1272,14 @@ function UploadForm({
   const recordSender = (files: File[], response: Response) => {
     // A redirect hides the header, so the page cannot tell which session the
     // server saw, and the limit screen it may show depends on that session.
+    // The answer only picks that screen's actions: the page's account data is
+    // left alone, so a page that redirects on sign-in stays put.
     if (response.redirected) {
-      void refetchUserLocals();
+      void readAccountOnce().then((account) => {
+        if (account.confirmed && !unmountedRef.current) {
+          setLimitSessionSignedIn(account.accountId != null);
+        }
+      });
       return;
     }
     const sender = sessionNamed(response.headers?.get(UPLOAD_OWNER_HEADER));
@@ -1276,20 +1288,6 @@ function UploadForm({
       kept.files === files ? { ...kept, owner: sender } : kept
     );
     if (sender !== currentOwnerId) void refetchUserLocals();
-  };
-
-  // A page whose last account read failed still shows the account an earlier
-  // read found, which may not be the session any more. One fresh read before
-  // the upload goes out names the sender; without it the sender stays unknown.
-  const confirmPageSender = async (
-    files: File[]
-  ): Promise<number | null | undefined> => {
-    const account = await readAccountOnce();
-    const sender = account.confirmed ? account.accountId : undefined;
-    setKeptFiles((kept) =>
-      kept.files === files ? { ...kept, owner: sender } : kept
-    );
-    return sender;
   };
 
   const holdForUnknownSender = () => {
@@ -1330,12 +1328,11 @@ function UploadForm({
     });
 
   // Without the retries the page's own reads make, so a failure answers inside
-  // the cap, and without touching the page's account data, so only the sender
-  // decision sees it.
+  // the cap, and without touching the page's account data.
   const readAccountOnce = () =>
     withinAccountReadCap(async () => {
       const locals = await readUserLocalsOnce();
-      return { confirmed: true, accountId: locals?.user?.id ?? null };
+      return { confirmed: true, accountId: locals.user?.id ?? null };
     });
 
   // The buttons that convert the kept files again go through here. Files whose
@@ -2132,30 +2129,25 @@ function UploadForm({
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
     setSampleRun(false);
-    setProgressWidth(10);
-    setProgressSlow(false);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
     const aiFlagSent = formData.get('claude-ai-flashcards');
     const namedSender = formData.get(KEPT_OWNER_FIELD);
     const isResend = typeof namedSender === 'string';
-    let sender = isResend ? sessionNamed(namedSender) : pageSender();
-    if (!isResend && sender === undefined && userLocals != null) {
-      sender = await confirmPageSender(uploadedFiles);
-      if (unmountedRef.current) return false;
-    }
     savePendingUpload(
       uploadedFiles,
       submittedAt,
       recoveryToken,
       typeof aiFlagSent === 'string' ? aiFlagSent : null,
       CLAUDE_RESENDS.has(formData),
-      sender
+      isResend ? sessionNamed(namedSender) : pageSender()
     );
     setNetworkRetryFiles(null);
     setUnreadableFile(null);
     fireAnalyticsEvent('upload_started');
     track('upload_submitted', uploadSubmittedProps(uploadedFiles, trigger));
+    setProgressWidth(10);
+    setProgressSlow(false);
     setShowFallback(false);
     try {
       const body = await snapshotUploadBody(formData, uploadedFiles);
@@ -3495,7 +3487,9 @@ function UploadForm({
     } else {
       title = t('upload.limit.overFreeLimit', { limit: 100 });
     }
-    const limitContext = showSignInPrompt ? 'anonymous' : 'logged_in';
+    const limitSignedOut =
+      limitSessionSignedIn == null ? showSignInPrompt : !limitSessionSignedIn;
+    const limitContext = limitSignedOut ? 'anonymous' : 'logged_in';
     const description = t(
       getLimitDescriptionKey(
         isFileSize ? 'file_size' : 'card_count',
@@ -3530,7 +3524,7 @@ function UploadForm({
             surface="upload-limit-wall"
             note={t('passFirst:afterPayRedrop')}
           >
-            {showSignInPrompt ? (
+            {limitSignedOut ? (
               <>
                 <Link
                   to="/register?redirect=/upload"
@@ -3568,7 +3562,7 @@ function UploadForm({
           </PassFirstOffer>
         ) : (
           <div className={formStyles.limitActions}>
-            {showSignInPrompt ? (
+            {limitSignedOut ? (
               <Link
                 to="/register?redirect=/upload"
                 className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}

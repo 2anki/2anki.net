@@ -1,8 +1,8 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
 
@@ -12,7 +12,6 @@ vi.mock('../../lib/backend/getUserLocals', () => ({
 
 import { getUserLocals } from '../../lib/backend/getUserLocals';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
-import { getPendingUploadStore } from '../../lib/upload/pendingUpload';
 import { HomePage } from './HomePage';
 
 const mockGetUserLocals = vi.mocked(getUserLocals);
@@ -39,37 +38,32 @@ function Home() {
   );
 }
 
-describe('HomePage upload while the account read is failing', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-  });
-
+describe('HomePage upload sent on to the limit page', () => {
   afterEach(() => {
-    vi.useRealTimers();
     vi.unstubAllGlobals();
     globalThis.localStorage.clear();
   });
 
-  it('keeps the page and its upload where they are when the fresh read before sending finds an account signed in elsewhere', async () => {
-    let accountReads: 'failing' | 'signed in elsewhere' = 'failing';
-    mockGetUserLocals.mockImplementation(() =>
-      accountReads === 'failing'
-        ? Promise.reject(new Error('locals'))
-        : Promise.resolve(signedInElsewhere)
-    );
+  it('keeps the limit screen on the home page, with the actions for the session the server saw, when that session signed in elsewhere', async () => {
+    let session: Locals = signedOut;
+    mockGetUserLocals.mockImplementation(() => Promise.resolve(session));
     const uploads: string[] = [];
     vi.stubGlobal(
       'fetch',
       vi.fn((url: string) => {
         if (url === '/api/upload/file') {
           uploads.push(url);
-          return new Promise<never>(() => {});
+          return Promise.resolve({
+            redirected: true,
+            url: 'http://localhost/limit?kind=card_count',
+            status: 200,
+            headers: new Headers({}),
+          });
         }
         return Promise.resolve(new Response(null, { status: 204 }));
       })
     );
     const queryClient = new QueryClient();
-    queryClient.setQueryData(['userLocals'], signedOut);
     const { container } = render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={['/']}>
@@ -80,12 +74,11 @@ describe('HomePage upload while the account read is failing', () => {
         </MemoryRouter>
       </QueryClientProvider>
     );
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000);
-    });
-    expect(queryClient.getQueryState(['userLocals'])?.status).toBe('error');
+    await waitFor(() =>
+      expect(queryClient.getQueryState(['userLocals'])?.status).toBe('success')
+    );
 
-    accountReads = 'signed in elsewhere';
+    session = signedInElsewhere;
     const input = container.querySelector(
       'input[type="file"]'
     ) as HTMLInputElement;
@@ -101,20 +94,15 @@ describe('HomePage upload while the account read is failing', () => {
           new Event('submit', { bubbles: true, cancelable: true })
         );
     });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
 
+    expect(
+      await screen.findByRole('button', { name: /Get Day Pass/ })
+    ).toBeInTheDocument();
     expect(uploads).toHaveLength(1);
     expect(screen.queryByText('The upload page')).toBeNull();
     expect(
-      screen.getByRole('heading', { level: 1, name: /flashcards/i })
-    ).toBeInTheDocument();
+      screen.queryByRole('link', { name: 'Create a free account' })
+    ).toBeNull();
     expect(queryClient.getQueryData(['userLocals'])).toEqual(signedOut);
-    expect(await getPendingUploadStore().load()).toMatchObject({
-      filename: 'notes.html',
-      ownerId: 8,
-      ownerUnknown: false,
-    });
   });
 });
