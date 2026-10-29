@@ -9700,10 +9700,9 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
         setUserLocals(session);
         return answered(session);
       });
-      mockReadUserLocalsOnce.mockImplementation(async () => {
-        setUserLocals(session);
-        return session as Awaited<ReturnType<typeof readUserLocalsOnce>>;
-      });
+      mockReadUserLocalsOnce.mockResolvedValue(
+        session as Awaited<ReturnType<typeof readUserLocalsOnce>>
+      );
     }
     mockUseUserLocals.mockReturnValue({
       data: shown,
@@ -10052,20 +10051,30 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
   });
 
-  it('sends nothing on Try again under the account the page showed when the fresh read found another account', async () => {
+  it('offers no Try again, and sends nothing, under the account the page still shows when the fresh read found another account', async () => {
     lastReadFailed(freeSignedIn, otherPassHolder);
     const fetchMock = stubServer([networkDrop, deckResponse(5)]);
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
     );
     await submitFiles(container, ['lecture.pdf']);
-    const retry = await screen.findByRole('button', { name: 'Try again' });
 
-    signInElsewhere(freeSignedIn);
-    fireEvent.click(retry);
+    expect(
+      await screen.findByText(OTHER_ACCOUNT_LINE, { selector: 'p' })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
     await settle();
-
     expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(1);
+  });
+
+  it('starts no refresh of the page account data from the fresh read before sending', async () => {
+    lastReadFailed(freeSignedIn, otherPassHolder);
+    const readAgain = readLocalsAgain;
+    const fetchMock = stubServer([new Promise<never>(() => {})]);
+    await sendAndLeave(fetchMock);
+
+    expect(mockReadUserLocalsOnce).toHaveBeenCalledTimes(1);
+    expect(readAgain).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -10115,32 +10124,44 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
   });
 
-  it('reads the account again when an upload is sent on to the limit page, and shows the limit for the session the server saw', async () => {
-    setUserLocals(signedOut);
-    signInElsewhere(freeSignedIn);
-    const readAgain = readLocalsAgain;
-    stubServer([
-      {
-        redirected: true,
-        url: 'http://localhost/limit?kind=card_count',
-        status: 200,
-        headers: new Headers({}),
-      } as unknown as UploadAnswer,
-    ]);
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
-    );
+  it.each([
+    ['off', false],
+    ['on', true],
+  ])(
+    'reads the account again when an upload is sent on to the limit page, and shows the limit for the session the server saw (limitWallPassFirst %s)',
+    async (_arm, passFirst) => {
+      const withFlag = (locals: ShownLocals) =>
+        ({
+          ...locals,
+          features: { limitWallPassFirst: passFirst },
+        }) as ShownLocals;
+      setUserLocals(withFlag(signedOut));
+      signInElsewhere(withFlag(freeSignedIn));
+      const readAgain = readLocalsAgain;
+      stubServer([
+        {
+          redirected: true,
+          url: 'http://localhost/limit?kind=card_count',
+          status: 200,
+          headers: new Headers({}),
+        } as unknown as UploadAnswer,
+      ]);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
 
-    await submitFiles(container, ['lecture.pdf']);
+      await submitFiles(container, ['lecture.pdf']);
 
-    expect(
-      await screen.findByRole('button', { name: /Get Day Pass/ })
-    ).toBeInTheDocument();
-    expect(readAgain).toHaveBeenCalledTimes(1);
-    expect(
-      screen.queryByRole('link', { name: 'Create a free account' })
-    ).toBeNull();
-  });
+      expect(
+        await screen.findByRole('link', { name: 'See plans' })
+      ).toBeInTheDocument();
+      expect(readAgain).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByRole('link', { name: 'Create a free account' })
+      ).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull();
+    }
+  );
 
   it('sends a password unlock once when Enter and a click land together', async () => {
     const fetchMock = stubLockedPdfServer(5);

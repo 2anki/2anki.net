@@ -1329,11 +1329,12 @@ function UploadForm({
         : { confirmed: false, accountId: currentOwnerId };
     });
 
-  // Without the retries the page's own reads make, so a failure answers
-  // inside the cap.
+  // Without the retries the page's own reads make, so a failure answers inside
+  // the cap, and without touching the page's account data, so only the sender
+  // decision sees it.
   const readAccountOnce = () =>
     withinAccountReadCap(async () => {
-      const locals = await readUserLocalsOnce(queryClient);
+      const locals = await readUserLocalsOnce();
       return { confirmed: true, accountId: locals?.user?.id ?? null };
     });
 
