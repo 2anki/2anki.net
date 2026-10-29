@@ -143,6 +143,7 @@ def test_another_publishers_note_type_keeps_its_mod(tmp_path):
     [
         ("a second row", ["INSERT INTO col (models) VALUES (NULL)"]),
         ("an index", ["CREATE INDEX li ON col (length(models))"]),
+        ("an index named in upper case", ["CREATE INDEX li ON COL (length(models))"]),
         (
             "a generated column",
             ["ALTER TABLE col ADD COLUMN pad BLOB GENERATED ALWAYS AS (zeroblob(10)) VIRTUAL"],

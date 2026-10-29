@@ -15,6 +15,7 @@ the pinned mod, so the caller serves the original untouched.
 
 import json
 import os
+import re
 import shutil
 import sqlite3
 import sys
@@ -61,10 +62,11 @@ def _check_schema(connection):
     The collection may come from a user's own upload, so only Anki's shape is
     accepted: col is a plain table with one row and nothing attached to it
     (no index, trigger, generated column or check), and no trigger anywhere.
-    Anything else could run work during the update.
+    Anything else could run work during the update. The schema text is read
+    too, since the type and name columns of sqlite_master can be rewritten.
     """
     rows = connection.execute(
-        "SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'col'"
+        "SELECT type, name, sql FROM sqlite_master WHERE lower(tbl_name) = 'col'"
     ).fetchall()
     if [(kind, name) for kind, name, _ in rows] != [("table", "col")]:
         raise RefusedArchive("unexpected schema on col")
@@ -73,7 +75,12 @@ def _check_schema(connection):
         raise RefusedArchive("unexpected col table")
     if any(column[6] != 0 for column in connection.execute("PRAGMA table_xinfo(col)")):
         raise RefusedArchive("generated column on col")
-    if connection.execute("SELECT 1 FROM sqlite_master WHERE type = 'trigger'").fetchone():
+    if connection.execute("PRAGMA index_list(col)").fetchall():
+        raise RefusedArchive("index on col")
+    for (sql,) in connection.execute("SELECT sql FROM sqlite_master"):
+        if sql and re.match(r"\s*CREATE\s+(TEMP\s+|TEMPORARY\s+)?TRIGGER\b", sql, re.I):
+            raise RefusedArchive("collection has triggers")
+    if connection.execute("SELECT 1 FROM sqlite_master WHERE lower(type) = 'trigger'").fetchone():
         raise RefusedArchive("collection has triggers")
     if connection.execute("SELECT count(*) FROM col").fetchone()[0] != 1:
         raise RefusedArchive("col must hold one row")
@@ -90,11 +97,16 @@ def _pin_collection(path):
         if kind is None:
             return False
         _check_schema(connection)
-        rowid, raw = connection.execute("SELECT rowid, models FROM col").fetchone()
-        if not raw:
+        rowid, size = connection.execute(
+            "SELECT rowid, length(CAST(models AS BLOB)) FROM col"
+        ).fetchone()
+        if not size:
             return False
-        if len(raw) > MAX_MODELS_BYTES:
+        if size > MAX_MODELS_BYTES:
             raise RefusedArchive("note types too large")
+        (raw,) = connection.execute(
+            "SELECT models FROM col WHERE rowid = ?", (rowid,)
+        ).fetchone()
         models = json.loads(raw)
         newer = [
             nt
