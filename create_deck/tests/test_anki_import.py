@@ -503,3 +503,56 @@ def test_a_shared_deck_with_a_newer_style_time_replaces_the_importers_edit(tmp_p
     css = _n2a_basic_css(collection_path)
     assert "importer's own edit" not in css
     assert "40px" in css
+
+
+_pin_spec = _ilu.spec_from_file_location(
+    "create_deck_pin_shared_notetypes",
+    Path(__file__).parents[1] / "pin_shared_notetypes.py",
+)
+_pin_mod = _ilu.module_from_spec(_pin_spec)
+_pin_spec.loader.exec_module(_pin_mod)
+pin_shared_notetypes = _pin_mod.pin_shared_notetypes
+
+
+def test_a_shared_copy_leaves_the_importers_edit_alone(tmp_path):
+    """
+    #5043 option (b): share links and no-login links serve a copy pinned to
+    NOTETYPE_MOD, so a sharer's newer style time cannot replace the importer's
+    note type the way the unpinned deck above does.
+    """
+    collection_path = str(tmp_path / "collection.anki2")
+    _import_and_close(collection_path, _style_apkg(tmp_path, "own", ".card { font-size: 20px; }"))
+    _edit_n2a_basic_css(collection_path, "/* importer's own edit */")
+
+    sharers_change = int(time.time()) + 60
+    shared = _style_apkg(tmp_path, "shared", ".card { font-size: 40px; }", sharers_change)
+    pinned = str(tmp_path / "shared-pinned.apkg")
+    pin_shared_notetypes(shared, pinned)
+    _import_and_close(collection_path, pinned)
+
+    assert _n2a_basic_css(collection_path) == "/* importer's own edit */"
+
+
+def test_a_shared_copy_carries_every_note_of_the_deck(tmp_path):
+    sharers_change = int(time.time()) + 60
+    shared = _style_apkg(tmp_path, "shared", ".card { font-size: 40px; }", sharers_change)
+    pinned = str(tmp_path / "shared-pinned.apkg")
+    pin_shared_notetypes(shared, pinned)
+
+    from_original = Collection(str(tmp_path / "original.anki2"))
+    from_pinned = Collection(str(tmp_path / "pinned.anki2"))
+    try:
+        _import(from_original, shared)
+        _import(from_pinned, pinned)
+        assert from_pinned.note_count() == from_original.note_count() > 0
+    finally:
+        from_original.close()
+        from_pinned.close()
+
+
+def test_a_deck_with_no_style_change_needs_no_shared_copy(tmp_path):
+    shared = _style_apkg(tmp_path, "shared", ".card { font-size: 40px; }")
+    pinned = tmp_path / "shared-pinned.apkg"
+
+    assert pin_shared_notetypes(shared, str(pinned)) is False
+    assert not pinned.exists()

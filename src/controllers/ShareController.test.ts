@@ -89,6 +89,7 @@ function buildController(
     storage?: unknown;
     previewService?: unknown;
     downloadService?: unknown;
+    pinForSharing?: (apkg: Buffer) => Promise<Buffer>;
   } = {}
 ) {
   return new ShareController(
@@ -98,7 +99,8 @@ function buildController(
     (overrides.shareService ?? makeShareService()) as any,
     (overrides.storage ?? makeStorage()) as any,
     (overrides.previewService ?? makePreviewService()) as any,
-    (overrides.downloadService ?? makeDownloadService()) as any
+    (overrides.downloadService ?? makeDownloadService()) as any,
+    overrides.pinForSharing ?? (async (apkg: Buffer) => apkg)
   );
 }
 
@@ -212,6 +214,47 @@ describe('ShareController - GET /api/shares/:token/download', () => {
       expect.stringContaining('attachment')
     );
     expect(res.setHeader).toHaveBeenCalledWith('X-Robots-Tag', 'noindex');
+  });
+});
+
+describe('ShareController - GET /api/shares/:token/download, the copy other people get', () => {
+  const sendingResponse = () =>
+    ({
+      locals: {},
+      setHeader: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+      send: vi.fn(),
+    }) as unknown as Response;
+
+  it('sends the copy whose note types cannot replace the importer style', async () => {
+    const pinForSharing = vi.fn().mockResolvedValue(Buffer.from('pinned-apkg'));
+    const controller = buildController({ pinForSharing });
+    const res = sendingResponse();
+
+    await controller.download(
+      { params: { token: 'abc-token' } } as unknown as Request,
+      res
+    );
+
+    expect(pinForSharing).toHaveBeenCalledWith(Buffer.from('fake-apkg'));
+    expect(res.send).toHaveBeenCalledWith(Buffer.from('pinned-apkg'));
+  });
+
+  it('still sends the deck when the copy cannot be made', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const controller = buildController({
+      pinForSharing: vi.fn().mockRejectedValue(new Error('python missing')),
+    });
+    const res = sendingResponse();
+
+    await controller.download(
+      { params: { token: 'abc-token' } } as unknown as Request,
+      res
+    );
+
+    expect(res.send).toHaveBeenCalledWith(Buffer.from('fake-apkg'));
+    warn.mockRestore();
   });
 });
 

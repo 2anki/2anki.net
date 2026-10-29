@@ -9,6 +9,7 @@ import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewServic
 import DownloadService from '../services/DownloadService';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
 import { getSafeFilename } from '../lib/getSafeFilename';
+import { pinSharedNoteTypes } from '../lib/anki/pinSharedNoteTypes';
 
 const NOINDEX = 'noindex';
 
@@ -70,8 +71,25 @@ class ShareController {
     private readonly shareService: ShareService,
     private readonly storage: StorageHandler,
     private readonly previewService: ApkgPreviewService,
-    private readonly downloadService: DownloadService
+    private readonly downloadService: DownloadService,
+    private readonly pinForSharing: (
+      apkg: Buffer
+    ) => Promise<Buffer> = pinSharedNoteTypes
   ) {}
+
+  // Someone else's import must not take on the owner's newer card style
+  // (#5043). A failed pin still serves the deck: the download matters more.
+  private async sharedCopy(apkg: Buffer): Promise<Buffer> {
+    try {
+      return await this.pinForSharing(apkg);
+    } catch (error) {
+      console.warn(
+        '[ShareController.download] serving the deck unpinned',
+        error instanceof Error ? error.name : 'unknown'
+      );
+      return apkg;
+    }
+  }
 
   async createShare(req: Request, res: Response) {
     const { owner } = res.locals;
@@ -248,7 +266,7 @@ class ShareController {
 
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader('Content-Disposition', buildContentDisposition(filename));
-      res.send(fileOutput.Body);
+      res.send(await this.sharedCopy(fileOutput.Body));
     } catch (error) {
       if (this.downloadService.isMissingDownloadError(error)) {
         res.status(404).json({ message: 'This deck is no longer available.' });
