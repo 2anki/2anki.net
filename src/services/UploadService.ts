@@ -1266,7 +1266,7 @@ class UploadService {
         userId: owner != null ? Number(owner) : null,
         anonymousId: this.resolveAnonId(req),
         props: {
-          ...this.baseFunnelProps(req),
+          ...this.baseFunnelProps(req, res),
           device: classifyDevice(req.headers?.['user-agent']),
         },
       });
@@ -1334,7 +1334,7 @@ class UploadService {
           userId,
           anonymousId,
           props: {
-            ...this.baseFunnelProps(req),
+            ...this.baseFunnelProps(req, res),
             reason: 'monthly_limit',
           },
         });
@@ -1354,7 +1354,7 @@ class UploadService {
           userId,
           anonymousId,
           props: {
-            ...this.baseFunnelProps(req),
+            ...this.baseFunnelProps(req, res),
             reason: 'anonymous_cap',
             ...(arm !== 'off'
               ? { arm, card_count_bucket: toCardCountBucket(err.cardsFound) }
@@ -1656,7 +1656,7 @@ class UploadService {
             userId: Number(owner),
             anonymousId: this.resolveAnonId(req),
             props: {
-              ...this.baseFunnelProps(req),
+              ...this.baseFunnelProps(req, res),
               card_count_bucket: toCardCountBucket(totalCards),
               ...this.pdfPageCountProps(packages),
             },
@@ -1927,7 +1927,7 @@ class UploadService {
           userId: syncOwnerIdOrNull,
           anonymousId: this.resolveAnonId(req),
           props: {
-            ...this.baseFunnelProps(req),
+            ...this.baseFunnelProps(req, res),
             reason: 'ai_credits_exhausted',
           },
         });
@@ -1957,7 +1957,7 @@ class UploadService {
         userId: ownerId,
         anonymousId: this.resolveAnonId(req),
         props: {
-          ...this.baseFunnelProps(req),
+          ...this.baseFunnelProps(req, res),
           reason: 'empty_deck',
           empty_reason: resolvedEmptyReason,
           rescue_offered: (rescueCandidates ?? []).map((c) => c.rule),
@@ -2172,7 +2172,7 @@ class UploadService {
         userId: owner != null ? Number(owner) : null,
         anonymousId: this.resolveAnonId(req),
         props: {
-          ...this.baseFunnelProps(req),
+          ...this.baseFunnelProps(req, res),
           card_count_bucket: bucket,
           ...this.pdfPageCountProps(packages),
           ...(heldBack > 0
@@ -2195,7 +2195,7 @@ class UploadService {
       userId: owner != null ? Number(owner) : null,
       anonymousId: this.resolveAnonId(req),
       props: {
-        ...this.baseFunnelProps(req),
+        ...this.baseFunnelProps(req, res),
         card_count_bucket: toCardCountBucket(totalCards),
         ...(chosenRescueRule(packages) != null
           ? { rescue_chosen: chosenRescueRule(packages) }
@@ -2255,7 +2255,7 @@ class UploadService {
         userId: Number(owner),
         anonymousId: this.resolveAnonId(req),
         props: {
-          ...this.baseFunnelProps(req),
+          ...this.baseFunnelProps(req, res),
           reason: 'empty_deck',
           empty_reason: 'no_content',
         },
@@ -2304,7 +2304,7 @@ class UploadService {
       userId: Number(owner),
       anonymousId: this.resolveAnonId(req),
       props: {
-        ...this.baseFunnelProps(req),
+        ...this.baseFunnelProps(req, res),
         card_count_bucket: toCardCountBucket(result.cardCount),
       },
     });
@@ -2355,7 +2355,7 @@ class UploadService {
       userId: owner != null ? Number(owner) : null,
       anonymousId: this.resolveAnonId(req),
       props: {
-        ...this.baseFunnelProps(req),
+        ...this.baseFunnelProps(req, res),
         reason: `image_${e.code ?? status}`,
       },
     });
@@ -2464,7 +2464,7 @@ class UploadService {
         onShown: (anonId, cardCount) => {
           track('ai_preview_shown', {
             anonymousId: anonId,
-            props: { ...this.baseFunnelProps(req), card_count: cardCount },
+            props: { ...this.baseFunnelProps(req, res), card_count: cardCount },
           });
         },
       }
@@ -2696,7 +2696,7 @@ class UploadService {
       userId: null,
       anonymousId: anonId,
       props: {
-        ...this.baseFunnelProps(req),
+        ...this.baseFunnelProps(req, res),
         card_count_bucket: toCardCountBucket(cardCount + cardsHeldBack),
         card_limit_partial: true,
         cards_held_back: cardsHeldBack,
@@ -2978,15 +2978,21 @@ class UploadService {
     track('conversion_failed', {
       userId: owner != null ? Number(owner) : null,
       anonymousId: this.resolveAnonId(req),
-      props: { ...this.baseFunnelProps(req), reason, ...extraProps },
+      props: { ...this.baseFunnelProps(req, res), reason, ...extraProps },
     });
   }
 
-  private baseFunnelProps(req: express.Request): Record<string, unknown> {
+  // MCP calls arrive as a synthetic request that reads as a web upload, so
+  // only res.locals can mark them; web-only rates leave them out (#5057).
+  private baseFunnelProps(
+    req: express.Request,
+    res: express.Response
+  ): Record<string, unknown> {
     return {
       source: this.resolveUploadSource(req),
       input_format: uploadInputFormat(req.files as UploadedFile[] | undefined),
       signup_origin: this.resolveSignupOrigin(req),
+      ...(res.locals?.mcp_auth === true ? { entry: 'mcp' } : {}),
     };
   }
 

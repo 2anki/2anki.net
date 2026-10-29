@@ -28,7 +28,7 @@ export const TRIPWIRE_METRICS: readonly TripwireMetric[] = [
     key: 'download_after_success',
     label: 'Signed-in users who downloaded a deck the day they converted',
     source:
-      'events: signed-in person-days with conversion_succeeded that also have deck_downloaded on the same UTC day. One unit is one user on one day.',
+      'events: signed-in person-days with a web conversion_succeeded (not the iOS app, source app, or MCP, entry mcp) that also have deck_downloaded on the same UTC day. One unit is one user on one day.',
     minRelativeDrop: 0.2,
   },
   {

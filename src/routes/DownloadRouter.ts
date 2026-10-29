@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { RequireAuthenticationOrLogin } from './middleware/RequireAuthentication';
+import { downloadIdentityMiddleware } from './middleware/optionalAuthMiddleware';
 import DownloadController from '../controllers/DownloadController';
 import DownloadService from '../services/DownloadService';
 import DownloadRepository from '../data_layer/DownloadRepository';
@@ -161,7 +162,7 @@ const DownloadRouter = () => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get('/download/:id/bulk', (req, res) => {
+  router.get('/download/:id/bulk', downloadIdentityMiddleware, (req, res) => {
     controller.getBulkDownload(req, res);
   });
 
@@ -200,9 +201,13 @@ const DownloadRouter = () => {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get('/download/:id/:filename', (req, res) => {
-    controller.getLocalFile(req, res);
-  });
+  router.get(
+    '/download/:id/:filename',
+    downloadIdentityMiddleware,
+    (req, res) => {
+      controller.getLocalFile(req, res);
+    }
+  );
 
   return router;
 };

@@ -35,3 +35,41 @@ export const optionalAuthMiddleware = async (
   );
   return makeOptionalAuthMiddleware(authService)(req, res, next);
 };
+
+// A download only reads the session to tag deck_downloaded with the user, so
+// a failed lookup must not fail the download. Routes that gate on the owner
+// (checkout's duplicate-purchase guard) keep optionalAuthMiddleware, where a
+// failed lookup is an error rather than a signed-out request (#5057).
+export const makeDownloadIdentityMiddleware = (
+  authService: AuthenticationService
+) => {
+  const resolveOwner = makeOptionalAuthMiddleware(authService);
+  return async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await resolveOwner(req, res, () => undefined);
+    } catch (error) {
+      console.warn('[download-identity] session lookup failed', {
+        errorClass:
+          error instanceof Error ? error.constructor.name : typeof error,
+      });
+    }
+    next();
+  };
+};
+
+export const downloadIdentityMiddleware = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const database = getDatabase();
+  const authService = new AuthenticationService(
+    new TokenRepository(database),
+    new UsersRepository(database)
+  );
+  return makeDownloadIdentityMiddleware(authService)(req, res, next);
+};

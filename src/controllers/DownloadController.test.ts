@@ -476,6 +476,31 @@ describe('DownloadController.getLocalFile', () => {
     expect(res.sendFile).toHaveBeenCalled();
   });
 
+  it('records the signed-in user the route resolved on a download', () => {
+    const id = 'local-signed-in-workspace';
+    const workspace = path.join(workspaceBase, id);
+    fs.mkdirSync(workspace);
+    fs.writeFileSync(path.join(workspace, 'one.apkg'), 'a');
+
+    const controller = new DownloadController(makeService() as any);
+    const req = {
+      params: { id, filename: 'one.apkg' },
+      cookies: { anon_id: 'anon-1' },
+    } as unknown as Request;
+    const res = fileResponse();
+    (res as unknown as { locals: Record<string, unknown> }).locals = {
+      owner: 42,
+    };
+
+    controller.getLocalFile(req, res);
+
+    expect(trackMock).toHaveBeenCalledWith('deck_downloaded', {
+      userId: 42,
+      anonymousId: 'anon-1',
+      props: { workspace_id: id, bulk: false },
+    });
+  });
+
   it('does not fire deck_downloaded when the file is missing', () => {
     const id = 'local-missing-workspace';
     const workspace = path.join(workspaceBase, id);

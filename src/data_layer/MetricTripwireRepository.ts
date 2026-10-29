@@ -23,11 +23,19 @@ export type TripwireRateCounts = Record<TripwireMetricKey, RateCountsRow>;
 export interface FollowThroughSpec {
   baseEvent: KnownEvent;
   baseProps: Record<string, string | boolean> | null;
+  excludeBaseProps: Record<string, string>[];
   identity: 'any' | 'signed_in';
   followEvents: KnownEvent[];
 }
 
 const PARTIAL_UPLOAD_PROPS = { card_limit_partial: true, source: 'upload' };
+// The iOS app and MCP clients take the deck from the response and never
+// record a web deck_downloaded, so a spike from them would read as a broken
+// download path (#5057).
+const CALLERS_WITHOUT_WEB_DOWNLOAD: Record<string, string>[] = [
+  { source: 'app' },
+  { entry: 'mcp' },
+];
 const PARTIAL_NOTICE_EVENTS: KnownEvent[] = [
   'monthly_partial_offer_shown',
   'anonymous_partial_gate_shown',
@@ -40,18 +48,21 @@ export const FOLLOW_THROUGH_SPECS: Record<
   download_after_success: {
     baseEvent: 'conversion_succeeded',
     baseProps: null,
+    excludeBaseProps: CALLERS_WITHOUT_WEB_DOWNLOAD,
     identity: 'signed_in',
     followEvents: ['deck_downloaded'],
   },
   upload_after_page_view: {
     baseEvent: 'upload_page_viewed',
     baseProps: null,
+    excludeBaseProps: [],
     identity: 'any',
     followEvents: ['upload_started'],
   },
   partial_notice_signed_in: {
     baseEvent: 'conversion_succeeded',
     baseProps: PARTIAL_UPLOAD_PROPS,
+    excludeBaseProps: [],
     identity: 'signed_in',
     followEvents: PARTIAL_NOTICE_EVENTS,
   },
@@ -119,6 +130,9 @@ export function buildFollowThroughQuery(
   );
   if (spec.baseProps != null) {
     base.whereRaw('props @> ?::jsonb', [JSON.stringify(spec.baseProps)]);
+  }
+  for (const excluded of spec.excludeBaseProps) {
+    base.whereRaw('not (props @> ?::jsonb)', [JSON.stringify(excluded)]);
   }
   if (spec.identity === 'signed_in') {
     base.whereNotNull('user_id');
