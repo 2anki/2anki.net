@@ -52,8 +52,8 @@ write_root_file() {
 # variable. Piping it into `grep -q` let grep exit on its first match while tr
 # was still writing; tr then died of SIGPIPE and pipefail turned a present heap
 # ceiling into a failed deploy (#5120).
-PROC_DIR="${PROC_DIR:-/proc}"
-environ_lines() { tr '\0' '\n' < "$PROC_DIR/$1/environ"; }
+DEPLOY_PROC_DIR="${DEPLOY_PROC_DIR:-/proc}"
+environ_lines() { tr '\0' '\n' < "$DEPLOY_PROC_DIR/$1/environ"; }
 has_heap_ceiling() { [[ "$1" == *"--max-old-space-size="* ]]; }
 has_arena_cap() { [[ $'\n'"$1"$'\n' == *$'\nMALLOC_ARENA_MAX=2\n'* ]]; }
 # Removes the next color and fails when its process lacks the heap ceiling or
@@ -61,7 +61,7 @@ has_arena_cap() { [[ $'\n'"$1"$'\n' == *$'\nMALLOC_ARENA_MAX=2\n'* ]]; }
 # exited) counts as missing, so the color is still removed.
 verify_next_env() {
   local pid="$1" env
-  if [ -z "$pid" ] || [ ! -r "$PROC_DIR/$pid/environ" ]; then
+  if [ -z "$pid" ] || [ ! -r "$DEPLOY_PROC_DIR/$pid/environ" ]; then
     log "WARNING: could not read the environment of server-$NEXT — heap ceiling unverified"
     return 0
   fi

@@ -174,7 +174,7 @@ function verifyNextEnv(environ: string | 'unreadable' | 'missing') {
       'bash',
       [
         '-c',
-        `set -euo pipefail\nDRY_RUN=0\nNEXT=green\nPROC_DIR="${procDir}"\n${helpers}\nverify_next_env 42`,
+        `set -euo pipefail\nDRY_RUN=0\nNEXT=green\nDEPLOY_PROC_DIR="${procDir}"\n${helpers}\nverify_next_env 42`,
       ],
       {
         encoding: 'utf8',
@@ -224,5 +224,71 @@ describe('deploy-blue-green.sh verify_next_env', () => {
     expect(result.status).toBe(0);
     expect(result.pm2).toBe('');
     expect(result.log).toContain('heap ceiling unverified');
+  });
+});
+
+function liveDeploy(environ: string | 'unreadable') {
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'blue-green-live-'));
+  const procDir = path.join(stateDir, 'proc');
+  const binDir = path.join(stateDir, 'bin');
+  const pm2Calls = path.join(stateDir, 'pm2-calls');
+  fs.mkdirSync(binDir);
+  fs.writeFileSync(
+    path.join(binDir, 'pm2'),
+    `#!/usr/bin/env bash\necho "$*" >> "${pm2Calls}"\nif [ "$1" = pid ]; then echo 42; fi\n`,
+    { mode: 0o755 }
+  );
+  if (environ === 'unreadable') {
+    fs.mkdirSync(path.join(procDir, '42', 'environ'), { recursive: true });
+  } else {
+    fs.mkdirSync(path.join(procDir, '42'), { recursive: true });
+    fs.writeFileSync(path.join(procDir, '42', 'environ'), environ);
+  }
+  const colorFile = path.join(stateDir, 'deploy_color');
+  fs.writeFileSync(colorFile, 'blue');
+  try {
+    const run = spawnSync('bash', [DEPLOY_SCRIPT], {
+      encoding: 'utf8',
+      env: {
+        PATH: `${binDir}:${process.env.PATH}`,
+        HOME: stateDir,
+        GIT_SHA: 'test-sha',
+        SERVER_DIR: REPO_ROOT,
+        DEPLOY_COLOR_FILE: colorFile,
+        DEPLOY_LOCK_FILE: path.join(stateDir, 'deploy.lock'),
+        DEPLOY_PROC_DIR: procDir,
+      },
+    });
+    return {
+      status: run.status,
+      pm2: fs.existsSync(pm2Calls)
+        ? fs.readFileSync(pm2Calls, 'utf8').trim().split('\n')
+        : [],
+      color: fs.readFileSync(colorFile, 'utf8').trim(),
+    };
+  } finally {
+    fs.rmSync(stateDir, { recursive: true, force: true });
+  }
+}
+
+// A real (non-dry) run stops at the environment check, before any health
+// check, Apache or sudo step; its non-zero exit is what the deploy workflow
+// hands to deploy-restore-last-good.sh.
+describe('deploy-blue-green.sh live run when the new color is wrong', () => {
+  it.each([
+    ['lacks the heap ceiling', 'MALLOC_ARENA_MAX=2\0'],
+    ['has an unreadable environment', 'unreadable' as const],
+  ])('exits non-zero and removes the new color when it %s', (_why, environ) => {
+    const result = liveDeploy(environ);
+
+    expect(result.status).toBe(1);
+    expect(result.pm2).toContain('delete server-green');
+    expect(result.color).toBe('blue');
+  });
+
+  it('reads the real proc directory unless told otherwise', () => {
+    const script = fs.readFileSync(DEPLOY_SCRIPT, 'utf8');
+
+    expect(script).toContain('DEPLOY_PROC_DIR="${DEPLOY_PROC_DIR:-/proc}"');
   });
 });
