@@ -8,12 +8,7 @@ import {
 import { AiCreditsExhaustedError } from '../../lib/claude/aiSpendGuard';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { getAnonymousPassId } from '../../lib/User/getOwner';
-
-function anonId(req: Request): string | null {
-  const cookies = req.cookies as Record<string, unknown> | undefined;
-  const value = cookies?.anon_id;
-  return typeof value === 'string' && value.length > 0 ? value : null;
-}
+import { anonIdCookie } from './anonIdCookie';
 
 export class AiPreviewResumeController {
   constructor(private readonly useCase: ResumeAnonymousAiPreviewUseCase) {}
@@ -23,7 +18,7 @@ export class AiPreviewResumeController {
     if (anonymousPassId == null) {
       return res.status(403).json({ code: 'pass_required' });
     }
-    const visitor = anonId(req);
+    const visitor = anonIdCookie(req);
     if (visitor == null) {
       return res.status(404).json({ code: 'no_ai_preview' });
     }

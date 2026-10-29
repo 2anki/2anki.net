@@ -3,6 +3,8 @@
   "body": "Un Day Pass por {{price}} quita el límite de tarjetas durante 24 horas, sin cuenta.",
   "afterPay": "Después de pagar, vuelve a subir el archivo para obtener todas las tarjetas.",
   "afterPayTotal": "Después de pagar, vuelve a subir el archivo para obtener las {{total}} tarjetas.",
+  "afterPayHeld": "Después de pagar, todas las tarjetas quedan listas para descargar, sin volver a subir el archivo.",
+  "afterPayHeldTotal": "Después de pagar, las {{total}} tarjetas quedan listas para descargar, sin volver a subir el archivo.",
   "cta": "Consigue un Day Pass por {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "Todas tus tarjetas ya, sin cuenta.",
@@ -12,5 +14,10 @@
   "cardCtaEvery": "Consigue todas las tarjetas ya",
   "passActive": "Cuando se complete el pago, vuelve a soltar tu archivo para empezar tu Day Pass y obtener todas las tarjetas.",
   "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net.",
-  "starting": "Abriendo el pago"
+  "starting": "Abriendo el pago",
+  "claimError": "No pudimos crear tu mazo completo. Vuelve a subir el archivo o escribe a support@2anki.net.",
+  "checking": "Comprobando tu pase.",
+  "activeDropAgain": "Tu pase está activo. Vuelve a subir tu archivo para obtener todas las tarjetas.",
+  "confirming": "Confirmando tu pago.",
+  "paymentConfirming": "Tu pago aún se está confirmando. Espera un minuto y vuelve a subir tu archivo."
 }

@@ -11,7 +11,12 @@ import handleRedirect from '../../../../lib/handleRedirect';
 import {
   getStoredPassToken,
   storePassToken,
+  storedCardOptions,
 } from '../../../../lib/anonymousPass';
+import {
+  aiPreviewCheckoutMarked,
+  clearAiPreviewCheckout,
+} from '../../../../components/AiPreviewGate/aiPreviewCheckout';
 import type { UploadErrorBody } from '../../../../types/UploadErrorBody';
 import type UserUpload from '../../../../lib/interfaces/UserUpload';
 import getAcceptedContentTypes, {
@@ -155,6 +160,7 @@ interface UploadFormProps {
   setErrorMessage: ErrorHandlerType;
   aiOn?: boolean;
   sample?: boolean;
+  onPassDeckStarted?: () => void;
 }
 
 const REJECTED_FALLBACK =
@@ -346,6 +352,117 @@ function resumeNoticeFor(status: number, t: (key: string) => string): string {
   return t('aiPreview:resumeError');
 }
 
+function resumeStatusLine(
+  phase: PassDeckPhase,
+  aiPreviewPending: boolean,
+  t: (key: string) => string
+): string {
+  if (phase === 'confirming') return t('anonymousPass:confirming');
+  if (phase === 'ai' && aiPreviewPending) return t('aiPreview:resuming');
+  return t('anonymousPass:checking');
+}
+
+function heldClaimNoticeFor(
+  status: number,
+  t: (key: string) => string
+): string {
+  if (status === 403) {
+    return t('anonymousPass:paymentConfirming');
+  }
+  if (status === 404 || status === 410) {
+    return t('anonymousPass:activeDropAgain');
+  }
+  if (status === 400) {
+    return t('aiPreview:resumeEmpty');
+  }
+  return t('anonymousPass:claimError');
+}
+
+type PassDeckPhase = 'held' | 'confirming' | 'ai';
+
+interface PassDeckResult {
+  response: Response | null;
+  phase: 'held' | 'ai';
+  status: number;
+}
+
+const HELD_REQUEST_FAILED = 0;
+
+function heldRequestFailed(heldStatus: number): boolean {
+  return heldStatus === HELD_REQUEST_FAILED || heldStatus >= 500;
+}
+
+function triesPreviewAfter(heldStatus: number): boolean {
+  return (
+    heldStatus === 404 || heldStatus === 410 || heldRequestFailed(heldStatus)
+  );
+}
+
+function previewAnswered(status: number): boolean {
+  return status === 200 || status === 400 || status === 402;
+}
+
+async function requestHeldDeck(passToken: string): Promise<Response | null> {
+  try {
+    return await get2ankiApi().claimHeldDeckWithPass(
+      passToken,
+      storedCardOptions()
+    );
+  } catch {
+    return null;
+  }
+}
+
+// The held claim goes first because it answers fast when there is no hold,
+// while the AI resume is the slow conversion itself; a held claim that fails
+// still lets an AI preview buyer resume, and when both fail the visitor hears
+// about the held deck, the one the gate promised. Stripe can confirm the
+// payment a few seconds after the buyer is back, so a refused pass is retried.
+// Each request waits a tick and checks for cancellation first, so a StrictMode
+// remount never sends a claim whose result nobody reads.
+async function deliverPassDeck(
+  passToken: string,
+  isCancelled: () => boolean,
+  onPhase: (phase: PassDeckPhase) => void
+): Promise<PassDeckResult | null> {
+  let attempt = 0;
+  while (true) {
+    await Promise.resolve();
+    if (isCancelled()) return null;
+    const held = await requestHeldDeck(passToken);
+    const heldStatus = held?.status ?? HELD_REQUEST_FAILED;
+    if (heldStatus === 403 && attempt < CHECKOUT_CLAIM_RETRIES) {
+      attempt += 1;
+      onPhase('confirming');
+      await new Promise((resolve) =>
+        setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
+      );
+      continue;
+    }
+    if (held != null && !triesPreviewAfter(heldStatus)) {
+      return { response: held, phase: 'held', status: heldStatus };
+    }
+    if (isCancelled()) return null;
+    onPhase('ai');
+    let preview: Response;
+    try {
+      preview = await get2ankiApi().resumeAiPreview(passToken);
+    } catch (error) {
+      if (heldRequestFailed(heldStatus)) {
+        return { response: null, phase: 'held', status: heldStatus };
+      }
+      throw error;
+    }
+    const heldOwnsTheOutcome =
+      preview.status === 404 ||
+      (heldRequestFailed(heldStatus) && !previewAnswered(preview.status));
+    if (heldOwnsTheOutcome) {
+      return { response: preview, phase: 'held', status: heldStatus };
+    }
+    return { response: preview, phase: 'ai', status: preview.status };
+  }
+}
+
 function displayFilename(fileInput: HTMLInputElement | null): string {
   const files = fileInput?.files;
   if (!files || files.length === 0) return '';
@@ -532,6 +649,7 @@ function UploadForm({
   setErrorMessage,
   aiOn = false,
   sample = false,
+  onPassDeckStarted,
 }: Readonly<UploadFormProps>) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -842,6 +960,8 @@ function UploadForm({
     return session != null && session.length > 0 ? session : null;
   });
   const [resumingPreview, setResumingPreview] = useState(false);
+  const [resumePhase, setResumePhase] = useState<PassDeckPhase>('held');
+  const [aiPreviewPending] = useState(aiPreviewCheckoutMarked);
   const [passResumeNotice, setPassResumeNotice] = useState<string | null>(null);
   const aiPreviewResumeRef = useRef(false);
 
@@ -921,9 +1041,10 @@ function UploadForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  // A visitor who bought a Day Pass from the AI preview comes back with the
-  // pass session in the URL. Resume the AI conversion of the file they already
-  // uploaded, using THIS return's token, so they never upload it again. Waits
+  // A visitor who bought a pass without an account comes back with the pass
+  // session in the URL. Release the deck held for them, or resume the AI
+  // conversion of the file they previewed, using THIS return's token, so they
+  // never upload it again. Waits
   // for user locals so a signed-in visitor (who has no anonymous pass) is not
   // sent down this path. A failed resume shows a clear next step instead of a
   // silent reset.
@@ -941,28 +1062,51 @@ function UploadForm({
     // Persist the fresh token so a follow-up upload also carries the pass.
     storePassToken(passSessionToken);
     let cancelled = false;
+    const progress: { phase: PassDeckPhase } = { phase: 'held' };
+    onPassDeckStarted?.();
     (async () => {
       setResumingPreview(true);
       setPassResumeNotice(null);
       setZoneState('converting');
       setProgressWidth(10);
       try {
-        const response = await get2ankiApi().resumeAiPreview(passSessionToken);
-        if (cancelled) return;
-        if (response.status === 200) {
-          await applyConversionSuccess(response, conversionSuccessHandlers);
+        const result = await deliverPassDeck(
+          passSessionToken,
+          () => cancelled,
+          (next) => {
+            progress.phase = next;
+            setResumePhase(next);
+          }
+        );
+        if (cancelled || result == null) return;
+        if (result.response?.status === 200) {
+          await applyConversionSuccess(
+            result.response,
+            conversionSuccessHandlers
+          );
           return;
         }
-        setPassResumeNotice(resumeNoticeFor(response.status, t));
+        setPassResumeNotice(
+          result.phase === 'held'
+            ? heldClaimNoticeFor(result.status, t)
+            : resumeNoticeFor(result.status, t)
+        );
         setZoneState('idle');
         setProgressWidth(10);
       } catch {
         if (cancelled) return;
-        setPassResumeNotice(t('aiPreview:resumeError'));
+        setPassResumeNotice(
+          progress.phase === 'ai'
+            ? t('aiPreview:resumeError')
+            : t('anonymousPass:claimError')
+        );
         setZoneState('idle');
         setProgressWidth(10);
       } finally {
-        if (!cancelled) setResumingPreview(false);
+        if (!cancelled) {
+          setResumingPreview(false);
+          clearAiPreviewCheckout();
+        }
       }
     })();
     return () => {
@@ -4434,7 +4578,7 @@ function UploadForm({
     <>
       {resumingPreview && (
         <p className={formStyles.stateContent} role="status" aria-live="polite">
-          {t('aiPreview:resuming')}
+          {resumeStatusLine(resumePhase, aiPreviewPending, t)}
         </p>
       )}
       {passResumeNotice != null && !resumingPreview && (

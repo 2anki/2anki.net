@@ -47,6 +47,42 @@ describe('AnonymousDayPassOffer', () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    [340, 'After paying, all 340 cards are ready to download, no re-upload.'],
+    [undefined, 'After paying, every card is ready to download, no re-upload.'],
+  ])(
+    'promises a held deck (%s cards) with no re-upload',
+    (totalCards, note) => {
+      render(
+        <AnonymousDayPassOffer
+          surface="anonymous-gate"
+          totalCards={totalCards}
+          held
+        />
+      );
+
+      expect(screen.getByText(new RegExp(note))).toBeInTheDocument();
+      expect(screen.queryByText(/drop the file again/)).not.toBeInTheDocument();
+    }
+  );
+
+  it('promises a held deck on the Day Pass card with no re-upload', () => {
+    render(
+      <AnonymousDayPassOffer
+        surface="anonymous-gate"
+        totalCards={40}
+        dayPassCard
+        held
+      />
+    );
+
+    expect(
+      screen.getByText(
+        'After paying, all 40 cards are ready to download, no re-upload.'
+      )
+    ).toBeInTheDocument();
+  });
+
   it('starts an anonymous Day Pass checkout for its surface and redirects', async () => {
     const location = { href: '' };
     vi.stubGlobal('location', location);

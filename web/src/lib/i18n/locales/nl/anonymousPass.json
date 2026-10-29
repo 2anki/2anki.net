@@ -3,6 +3,8 @@
   "body": "Een Day Pass voor {{price}} haalt de kaartlimiet 24 uur weg, zonder account.",
   "afterPay": "Zet het bestand na het betalen opnieuw neer om alle kaarten te krijgen.",
   "afterPayTotal": "Zet het bestand na het betalen opnieuw neer om alle {{total}} kaarten te krijgen.",
+  "afterPayHeld": "Na het betalen staan alle kaarten klaar om te downloaden, zonder opnieuw te uploaden.",
+  "afterPayHeldTotal": "Na het betalen staan alle {{total}} kaarten klaar om te downloaden, zonder opnieuw te uploaden.",
   "cta": "Koop een Day Pass voor {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "Al je kaarten nu, zonder account.",
@@ -12,5 +14,10 @@
   "cardCtaEvery": "Haal nu elke kaart",
   "passActive": "Zodra de betaling rond is, zet je je bestand opnieuw neer om je Day Pass te starten en alle kaarten te krijgen.",
   "checkoutError": "Afrekenen kon niet starten. Probeer het opnieuw of mail support@2anki.net.",
-  "starting": "Afrekenen starten"
+  "starting": "Afrekenen starten",
+  "claimError": "We konden je volledige deck niet maken. Zet het bestand opnieuw neer of mail support@2anki.net.",
+  "checking": "We controleren je pass.",
+  "activeDropAgain": "Je pass is actief. Zet je bestand opnieuw neer om alle kaarten te krijgen.",
+  "confirming": "We bevestigen je betaling.",
+  "paymentConfirming": "Je betaling wordt nog bevestigd. Wacht een minuut en zet je bestand dan opnieuw neer."
 }

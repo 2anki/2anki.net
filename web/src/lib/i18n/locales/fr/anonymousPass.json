@@ -3,6 +3,8 @@
   "body": "Un Day Pass à {{price}} lève la limite de cartes pendant 24 heures, sans compte.",
   "afterPay": "Après le paiement, dépose à nouveau le fichier pour obtenir toutes les cartes.",
   "afterPayTotal": "Après le paiement, dépose à nouveau le fichier pour obtenir les {{total}} cartes.",
+  "afterPayHeld": "Après le paiement, toutes les cartes sont prêtes à télécharger, sans nouvel envoi.",
+  "afterPayHeldTotal": "Après le paiement, les {{total}} cartes sont prêtes à télécharger, sans nouvel envoi.",
   "cta": "Prendre un Day Pass à {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "Toutes tes cartes tout de suite, sans compte.",
@@ -12,5 +14,10 @@
   "cardCtaEvery": "Obtenir toutes les cartes maintenant",
   "passActive": "Une fois le paiement validé, dépose à nouveau ton fichier pour démarrer ton Day Pass et obtenir toutes les cartes.",
   "checkoutError": "Impossible de lancer le paiement. Réessaie ou écris à support@2anki.net.",
-  "starting": "Ouverture du paiement"
+  "starting": "Ouverture du paiement",
+  "claimError": "Nous n'avons pas pu créer ton paquet complet. Dépose à nouveau le fichier ou écris à support@2anki.net.",
+  "checking": "Vérification de ton pass.",
+  "activeDropAgain": "Ton pass est actif. Dépose à nouveau ton fichier pour obtenir toutes les cartes.",
+  "confirming": "Confirmation de ton paiement.",
+  "paymentConfirming": "Ton paiement est encore en cours de confirmation. Attends une minute, puis dépose à nouveau ton fichier."
 }

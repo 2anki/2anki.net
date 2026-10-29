@@ -7,6 +7,7 @@ import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { ANONYMOUS_CARD_CAP } from '../../pages/LimitPage/LimitWall';
 import type { AiPreviewCard } from '../../pages/UploadPage/components/UploadForm/hooks/useUploadFormState';
+import { markAiPreviewCheckout } from './aiPreviewCheckout';
 import styles from './AiPreviewGate.module.css';
 
 interface Props {
@@ -48,6 +49,7 @@ export function AiPreviewGate({
         'ai-preview'
       );
       if ('url' in result) {
+        markAiPreviewCheckout();
         globalThis.location.href = result.url;
         return;
       }

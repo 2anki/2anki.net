@@ -20,7 +20,13 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
+import { StrictMode } from 'react';
 import UploadForm from './UploadForm';
+import {
+  aiPreviewCheckoutMarked,
+  clearAiPreviewCheckout,
+  markAiPreviewCheckout,
+} from '../../../../components/AiPreviewGate/aiPreviewCheckout';
 import i18n from '../../../../lib/i18n';
 
 vi.mock('../../../../lib/analytics/track', () => ({
@@ -159,13 +165,25 @@ function aiFlagFromFetch(fetchMock: Mock, url: string): string | null {
   return body ? (body.get('claude-ai-flashcards') as string | null) : null;
 }
 
-function installResumeApi(resumeAiPreview: Mock): () => void {
+function statusResponse(status: number): Response {
+  return {
+    status,
+    redirected: false,
+    headers: new Headers(),
+  } as unknown as Response;
+}
+
+function installResumeApi(
+  resumeAiPreview: Mock,
+  claimHeldDeckWithPass: Mock = vi.fn().mockResolvedValue(statusResponse(404))
+): () => void {
   const previousImpl = mockGet2ankiApi.getMockImplementation();
   mockGet2ankiApi.mockReturnValue({
     startPassCheckout: vi.fn(),
     getUploads: vi.fn().mockResolvedValue([]),
     getHeldDeck: vi.fn().mockResolvedValue(null),
     resumeAiPreview,
+    claimHeldDeckWithPass,
   } as unknown as ReturnType<typeof get2ankiApi>);
   return () => {
     mockGet2ankiApi.mockReset();
@@ -219,20 +237,424 @@ describe('UploadForm', () => {
     }
   });
 
-  test('shows the drop-again notice when the resume finds no preview', async () => {
+  test('shows the drop-again notice when the buyer has neither a preview nor a held deck', async () => {
     stubPassReturn('cs_gone');
     const resumeAiPreview = vi.fn().mockResolvedValue({
       status: 404,
       redirected: false,
       headers: new Headers(),
     } as unknown as Response);
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(404));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          'Your pass is active. Drop your file again to get every card.'
+        )
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledWith(
+        'cs_gone',
+        expect.any(Object)
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  test('an AI preview buyer gets the AI deck once the held claim finds nothing', async () => {
+    stubPassReturn('cs_preview');
+    const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(404));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(1);
+      expect(resumeAiPreview).toHaveBeenCalledWith('cs_preview');
+    } finally {
+      restore();
+    }
+  });
+
+  test('an AI preview buyer with an old, used held deck still gets the AI deck', async () => {
+    stubPassReturn('cs_preview_old_hold');
+    const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(410));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(resumeAiPreview).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
+    }
+  });
+
+  test('downloads the held deck with the pass and never asks the AI preview', async () => {
+    globalThis.localStorage.setItem('basic-reversed', 'true');
+    stubPassReturn('cs_held');
+    const resumeAiPreview = vi.fn();
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(apkgResumeResponse());
+    const onPassDeckStarted = vi.fn();
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(
+        <UploadForm
+          setErrorMessage={vi.fn()}
+          onPassDeckStarted={onPassDeckStarted}
+        />
+      );
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(1);
+      const [token, cardOptions] = claimHeldDeckWithPass.mock.calls[0];
+      expect(token).toBe('cs_held');
+      expect(cardOptions).toMatchObject({ 'basic-reversed': 'true' });
+      expect(cardOptions).not.toHaveProperty('2anki_pass_token');
+      expect(resumeAiPreview).not.toHaveBeenCalled();
+      expect(onPassDeckStarted).toHaveBeenCalled();
+      expect(
+        screen.queryByText(/Drop your file again/)
+      ).not.toBeInTheDocument();
+    } finally {
+      globalThis.localStorage.removeItem('basic-reversed');
+      restore();
+    }
+  });
+
+  test('says it is checking the pass, not building an AI deck, while the held claim runs', async () => {
+    stubPassReturn('cs_building');
+    let finish: (response: Response) => void = () => {};
+    const claimHeldDeckWithPass = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      })
+    );
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Checking your pass.')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/AI deck/)).not.toBeInTheDocument();
+      await act(async () => {
+        finish(apkgResumeResponse());
+      });
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('claims the held deck once under a StrictMode double mount', async () => {
+    stubPassReturn('cs_strict');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(apkgResumeResponse());
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    try {
+      render(
+        <StrictMode>
+          <MemoryRouter>
+            <QueryClientProvider client={queryClient}>
+              <UploadForm setErrorMessage={vi.fn()} />
+            </QueryClientProvider>
+          </MemoryRouter>
+        </StrictMode>
+      );
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
+    }
+  });
+
+  test('waits for a pass the checkout has not confirmed yet, then claims the held deck', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    stubPassReturn('cs_late');
+    const resumeAiPreview = vi.fn();
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValueOnce(statusResponse(403))
+      .mockResolvedValue(apkgResumeResponse());
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4000);
+      });
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(2);
+      expect(resumeAiPreview).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      restore();
+    }
+  });
+
+  test('says the payment is still confirming when the pass never clears', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    stubPassReturn('cs_unconfirmed');
+    const resumeAiPreview = vi.fn();
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(403));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Confirming your payment.')
+      ).toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3_500);
+      });
+      expect(screen.getByText('Confirming your payment.')).toBeInTheDocument();
+      expect(screen.queryByText('Checking your pass.')).not.toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20_000);
+      });
+      expect(
+        await screen.findByText(
+          'Your payment is still being confirmed. Wait a minute, then drop your file again.'
+        )
+      ).toBeInTheDocument();
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(6);
+      expect(resumeAiPreview).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      restore();
+    }
+  });
+
+  test.each([
+    ['errors', () => Promise.resolve(statusResponse(500))],
+    ['throws', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ])(
+    'still resumes the AI preview when the held claim %s',
+    async (_label, heldOutcome) => {
+      stubPassReturn('cs_preview_held_down');
+      const resumeAiPreview = vi.fn().mockResolvedValue(apkgResumeResponse());
+      const claimHeldDeckWithPass = vi.fn().mockImplementation(heldOutcome);
+      const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+      try {
+        renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+        expect(
+          await screen.findByText('Your deck is ready — 58 cards.')
+        ).toBeInTheDocument();
+        expect(resumeAiPreview).toHaveBeenCalledWith('cs_preview_held_down');
+      } finally {
+        restore();
+      }
+    }
+  );
+
+  test('keeps the AI error when the AI resume itself throws', async () => {
+    stubPassReturn('cs_ai_down');
+    const resumeAiPreview = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(/Something went wrong finishing your AI deck/)
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test.each([
+    [
+      'both error',
+      () => Promise.resolve(statusResponse(500)),
+      () => Promise.resolve(statusResponse(503)),
+    ],
+    [
+      'both throw',
+      () => Promise.reject(new TypeError('Failed to fetch')),
+      () => Promise.reject(new TypeError('Failed to fetch')),
+    ],
+  ])(
+    'tells a held-deck buyer about the full deck, not an AI deck, when %s',
+    async (_label, heldOutcome, previewOutcome) => {
+      stubPassReturn('cs_all_down');
+      const restore = installResumeApi(
+        vi.fn().mockImplementation(previewOutcome),
+        vi.fn().mockImplementation(heldOutcome)
+      );
+
+      try {
+        renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+        expect(
+          await screen.findByText(
+            "We couldn't build your full deck. Drop the file again, or email support@2anki.net."
+          )
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/AI deck/)).not.toBeInTheDocument();
+      } finally {
+        restore();
+      }
+    }
+  );
+
+  test('never says an AI deck is building for a buyer who did not use the AI preview', async () => {
+    stubPassReturn('cs_from_limit');
+    const resumeAiPreview = vi
+      .fn()
+      .mockReturnValue(new Promise<Response>(() => {}));
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(404));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await waitFor(() => expect(resumeAiPreview).toHaveBeenCalled());
+      expect(screen.getByText('Checking your pass.')).toBeInTheDocument();
+      expect(screen.queryByText(/AI deck/)).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says the AI deck is building for a visitor back from the AI preview checkout, then forgets it', async () => {
+    markAiPreviewCheckout();
+    stubPassReturn('cs_from_preview');
+    let finish: (response: Response) => void = () => {};
+    const resumeAiPreview = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      })
+    );
     const restore = installResumeApi(resumeAiPreview);
 
     try {
       renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
       expect(
         await screen.findByText(
-          /Your Day Pass is active\. Drop your file again to get every card\./
+          'Day Pass active. Building your full AI deck now.'
+        )
+      ).toBeInTheDocument();
+      await act(async () => {
+        finish(apkgResumeResponse());
+      });
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(aiPreviewCheckoutMarked()).toBe(false);
+    } finally {
+      clearAiPreviewCheckout();
+      restore();
+    }
+  });
+
+  test('names the pass, not the Day Pass, when the held deck is gone and no preview waits', async () => {
+    stubPassReturn('cs_expired_hold');
+    const resumeAiPreview = vi.fn().mockResolvedValue(statusResponse(404));
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(410));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          'Your pass is active. Drop your file again to get every card.'
+        )
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says no cards were found when the held deck rebuilds empty', async () => {
+    stubPassReturn('cs_empty');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(400));
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(/We couldn't find cards in that file/)
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says the full deck failed when the held claim errors', async () => {
+    stubPassReturn('cs_broken');
+    const resumeAiPreview = vi.fn().mockResolvedValue(statusResponse(404));
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(500));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          "We couldn't build your full deck. Drop the file again, or email support@2anki.net."
+        )
+      ).toBeInTheDocument();
+      expect(resumeAiPreview).toHaveBeenCalledTimes(1);
+    } finally {
+      restore();
+    }
+  });
+
+  test('says the full deck failed, not the AI deck, when the held claim throws', async () => {
+    stubPassReturn('cs_offline');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    const restore = installResumeApi(
+      vi.fn().mockResolvedValue(statusResponse(404)),
+      claimHeldDeckWithPass
+    );
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          "We couldn't build your full deck. Drop the file again, or email support@2anki.net."
         )
       ).toBeInTheDocument();
     } finally {
@@ -3820,7 +4242,7 @@ describe('held-deck gate screen-reader announcement', () => {
     await waitFor(() => {
       const live = container.querySelector('output[aria-live="polite"]');
       expect(live?.textContent).toBe(
-        '184 cards ready. Get a pass, then drop the file again for all of them. A free account gets the first 21.'
+        '184 cards ready. Get a pass and all of them are ready to download, no re-upload. A free account gets the first 21.'
       );
     });
     expect(

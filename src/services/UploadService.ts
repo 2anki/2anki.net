@@ -171,6 +171,7 @@ import {
 import { AiPreviewRateLimiter } from '../lib/upload/aiPreviewRateLimiter';
 import { generateAnonymousAiPreview } from '../usecases/uploads/GenerateAnonymousAiPreviewUseCase';
 import type { AiPreviewConversion } from '../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
+import type { PassHeldDeckConversion } from '../usecases/uploads/ClaimHeldDeckWithPassUseCase';
 
 interface EmptyDeckResponse {
   code: 'empty_export';
@@ -2522,6 +2523,44 @@ class UploadService {
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     if (totalCards === 0) {
       throw new EmptyDeckError();
+    }
+    const first = packages[0];
+    const apkg = await ws.getFirstAPKG();
+    if (!apkg) {
+      throw new Error(
+        `Could not produce APKG for ${first?.name ?? 'untitled'}`
+      );
+    }
+    return { apkg, cardCount: totalCards, deckName: toText(first.name) };
+  }
+
+  // paying lifts the no-account cap; AI stays off so the rebuilt deck matches
+  // the one the visitor saw held, and anonymousPassId meters anything billable
+  // against the pass exactly as a re-dropped file would be.
+  async convertHeldFileForPass(
+    anonymousPassId: number,
+    file: UploadedFile,
+    cardOptions: Record<string, string>,
+    requestId: string | undefined
+  ): Promise<PassHeldDeckConversion> {
+    const settings = new CardOption({
+      ...cardOptions,
+      'claude-ai-flashcards': 'false',
+    });
+    const ws = new Workspace(true, 'fs');
+    const { packages, emptyReason } =
+      await new GeneratePackagesUseCase().execute(
+        true,
+        [file],
+        settings,
+        ws,
+        undefined,
+        null,
+        { requestId, anonymousPassId }
+      );
+    const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
+    if (totalCards === 0) {
+      throw new EmptyDeckError(undefined, emptyReason ?? 'unknown');
     }
     const first = packages[0];
     const apkg = await ws.getFirstAPKG();

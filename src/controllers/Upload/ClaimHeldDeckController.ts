@@ -11,19 +11,14 @@ import type { UploadErrorBody } from '../../types/UploadErrorBody';
 import { getOwner } from '../../lib/User/getOwner';
 import { isPaying } from '../../lib/isPaying';
 import { track } from '../../services/events/track';
-
-function anonId(req: Request): string | null {
-  const cookies = req.cookies as Record<string, unknown> | undefined;
-  const value = cookies?.anon_id;
-  return typeof value === 'string' && value.length > 0 ? value : null;
-}
+import { anonIdCookie } from './anonIdCookie';
 
 export class ClaimHeldDeckController {
   constructor(private readonly useCase: ClaimHeldDeckUseCase) {}
 
   async check(req: Request, res: Response): Promise<Response> {
     const hold = await this.useCase.peek(
-      anonId(req),
+      anonIdCookie(req),
       String(getOwner(res)),
       isPaying(res.locals)
     );
@@ -40,7 +35,7 @@ export class ClaimHeldDeckController {
     const owner = String(getOwner(res));
     try {
       const result = await this.useCase.execute({
-        anonId: anonId(req),
+        anonId: anonIdCookie(req),
         owner,
         paying: isPaying(res.locals),
         requestId: res.locals.requestId,
@@ -48,13 +43,13 @@ export class ClaimHeldDeckController {
       if (result.kind === 'plan') {
         track('monthly_partial_claimed', {
           userId: Number(owner),
-          anonymousId: anonId(req),
+          anonymousId: anonIdCookie(req),
           props: { card_count: result.cardCount },
         });
       } else {
         track('anonymous_partial_claimed', {
           userId: Number(owner),
-          anonymousId: anonId(req),
+          anonymousId: anonIdCookie(req),
           props: { arm: 'treatment' },
         });
       }

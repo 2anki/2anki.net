@@ -13,7 +13,10 @@ import { track } from '../../lib/analytics/track';
 import type { HeldDeckState } from '../../pages/UploadPage/components/UploadForm/hooks/useUploadFormState';
 import styles from './AnonymousPartialGate.module.css';
 
-const SURFACE = 'anonymous-gate';
+// The server releases a held deck only for a pass bought under this surface
+// (HELD_DECK_CHECKOUT_SURFACE in ClaimHeldDeckWithPassUseCase).
+export const HELD_DECK_CHECKOUT_SURFACE = 'anonymous-gate';
+const SURFACE = HELD_DECK_CHECKOUT_SURFACE;
 
 interface Props {
   readonly held: HeldDeckState;
@@ -133,9 +136,10 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
         {errorMessage}
         <div className={styles.leadCard}>
           <AnonymousDayPassOffer
-            surface="anonymous-gate"
+            surface={SURFACE}
             totalCards={held.totalCards}
             dayPassCard
+            held
             emphasis="primary"
           />
         </div>
@@ -166,8 +170,9 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
       {errorMessage}
       {registerForm}
       <AnonymousDayPassOffer
-        surface="anonymous-gate"
+        surface={SURFACE}
         totalCards={held.totalCards}
+        held
       />
     </section>
   );

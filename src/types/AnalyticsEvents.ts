@@ -206,6 +206,7 @@ export const KNOWN_EVENTS = new Set([
   'upgrade_clicked',
   'anonymous_partial_gate_shown',
   'anonymous_partial_claimed',
+  'anonymous_pass_held_claimed',
   'monthly_partial_offer_shown',
   'monthly_partial_claimed',
   'deck_distribution_intent_clicked',

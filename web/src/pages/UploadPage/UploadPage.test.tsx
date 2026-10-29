@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -8,8 +14,12 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import i18n from '../../lib/i18n';
 import { UploadPage } from './UploadPage';
 
+let startPassDeck: (() => void) | undefined;
 vi.mock('./components/UploadForm/UploadForm', () => ({
-  default: () => <div data-testid="upload-form-stub" />,
+  default: ({ onPassDeckStarted }: { onPassDeckStarted?: () => void }) => {
+    startPassDeck = onPassDeckStarted;
+    return <div data-testid="upload-form-stub" />;
+  },
 }));
 
 vi.mock('./components/ExploreCard/ExploreCard', () => ({
@@ -1015,6 +1025,20 @@ describe('UploadPage checkout return', () => {
       ).toBeInTheDocument()
     );
     expect(storePassToken).toHaveBeenCalledWith('cs_test_flag_on');
+  });
+
+  it('drops the drop-again confirmation once the page starts delivering the deck with the pass', async () => {
+    fakeFeatures = { anonymousDayPassCard: true };
+    const confirmation =
+      'Once the payment goes through, drop your file again to start your Day Pass and get every card.';
+
+    renderPage('/upload?pass_session=cs_test_held');
+    await waitFor(() =>
+      expect(screen.getByText(confirmation)).toBeInTheDocument()
+    );
+    act(() => startPassDeck?.());
+
+    expect(screen.queryByText(confirmation)).toBeNull();
   });
 
   it('shows no Day Pass confirmation when the flag is off', async () => {

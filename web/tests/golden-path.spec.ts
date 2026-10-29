@@ -264,4 +264,49 @@ test.describe('golden path @golden', () => {
     ).toBeVisible();
     expect(realErrors(errors)).toEqual([]);
   });
+
+  test('a signed-out pass return delivers the held deck without a re-upload at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    await page.route('**/api/upload/ai-preview/resume', (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'no_ai_preview' }),
+      })
+    );
+    const claimTokens: (string | undefined)[] = [];
+    await page.route('**/api/upload/claim/pass', (route) => {
+      claimTokens.push(route.request().headers()['x-pass-token']);
+      return route.fulfill({
+        status: 200,
+        headers: {
+          'Content-Type': 'application/apkg',
+          'X-Card-Count': '150',
+          'File-Name': 'notes',
+          'Access-Control-Expose-Headers': 'File-Name, X-Card-Count',
+        },
+        body: 'APKG',
+      });
+    });
+
+    await page.goto('/upload?pass_session=cs_test_held');
+
+    await expect(page.locator('output[aria-live="polite"]').first()).toHaveText(
+      'Your deck is ready — 150 cards.',
+      { timeout: 10_000 }
+    );
+    expect(claimTokens).toEqual(['cs_test_held']);
+    await expect(page.getByText(/Drop your file again/)).toHaveCount(0);
+    expect(realErrors(errors)).toEqual([]);
+  });
 });

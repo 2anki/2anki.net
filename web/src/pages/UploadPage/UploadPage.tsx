@@ -82,6 +82,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     null
   );
   const [passConfirmation, setPassConfirmation] = useState<string | null>(null);
+  const [passDeckStarted, setPassDeckStarted] = useState(false);
   const { data: userLocals, isLoading: userLocalsLoading } = useUserLocals();
   const pageViewTracked = useRef(false);
   const signupTracked = useRef(false);
@@ -264,7 +265,7 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           <span>{creditsConfirmation}</span>
         </div>
       )}
-      {passConfirmation != null && (
+      {passConfirmation != null && !passDeckStarted && (
         <div
           className={pageStyles.reattachBanner}
           role="status"
@@ -413,7 +414,11 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           </>
         )}
       </div>
-      <UploadForm setErrorMessage={setErrorMessage} aiOn={isAiOn} />
+      <UploadForm
+        setErrorMessage={setErrorMessage}
+        aiOn={isAiOn}
+        onPassDeckStarted={() => setPassDeckStarted(true)}
+      />
       {isSignedIn && <RecentSources />}
       <ExploreCard />
       <section className={pageStyles.howItWorks}>
