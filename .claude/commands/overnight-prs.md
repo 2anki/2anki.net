@@ -36,7 +36,8 @@ of the backlog under the same rules. If empty, work the whole open backlog.)
   name, OR an issue comment. Use the numeric user ID or a symptom description (see
   `.claude/rules/support-confidentiality.md`). Issue comments are public.
 - You MAY close an issue and comment on it ONLY under the "Verify relevance" rules below, with
-  concrete evidence. You may NOT relabel, reassign, or edit issue titles/bodies.
+  concrete evidence. You may NOT relabel, reassign, or edit issue titles/bodies, except adding
+  the `in-progress` label to an issue you open a PR for (`CLAUDE.md` › Git).
 - Read `CLAUDE.md` and the relevant layer/feature `CLAUDE.md` + `.claude/rules/*` before editing.
   They override your defaults.
 
@@ -187,7 +188,7 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 10. `git push -u origin <branch>` (use `--no-verify` ONLY if the pre-push hook false-positives on
     an otherwise-clean new branch).
 11. Open the PR: `gh pr create` — READY for Tier 1 and Tier 2, `--draft` for Tier 3 (state why at
-    the top of the body). Tier 2/3 bodies MUST carry the `## Decisions made overnight` section.
+    the top of the body), then add the `in-progress` label to the PR and its issue (`CLAUDE.md` › Git). Tier 2/3 bodies MUST carry the `## Decisions made overnight` section.
     Every `feat:`/`fix:`/`perf:`/`refactor:` body carries `## Who else this reaches` per
     `.claude/agents/engineer.md` step 10 (the merge hook denies a `src/` or `web/src/` diff without it).
     If the diff touches `web/src/`, add the `## Browser check` attestation per
