@@ -1,9 +1,7 @@
 import {
   getStripe,
-  extractProductId,
-  isDeveloperTierProduct,
+  updateStoreSubscription,
 } from '../../../integrations/stripe';
-import { DeveloperSubscriptionsRepository } from '../../../../data_layer/DeveloperSubscriptionsRepository';
 import { getDatabase } from '../../../../data_layer';
 import type { Knex } from 'knex';
 import type StripeTypes from 'stripe';
@@ -86,192 +84,6 @@ async function getCustomer(
 }
 
 /**
- * Records the Stripe customer id on the payer's own account, unless another
- * account already holds it. That happens when someone pays for a subscription
- * linked to a different account, and the unique constraint would reject it.
- */
-async function stampCustomerId(
-  db: Knex,
-  email: string,
-  customerId: string
-): Promise<void> {
-  const holder = await db
-    .table('users')
-    .where({ stripe_customer_id: customerId })
-    .whereNot({ email })
-    .first();
-  if (holder) {
-    console.info(
-      `[stripe-sync] customer id already linked to another account customer=${shortHash(customerId)}`
-    );
-    return;
-  }
-  await db
-    .table('users')
-    .where({ email })
-    .update({ stripe_customer_id: customerId });
-}
-
-/**
- * Updates or creates a subscription record in the database
- */
-/**
- * Determines if a subscription should be considered active based on its status and cancellation schedule
- */
-function determineSubscriptionActiveStatus(
-  subscription: StripeTypes.Subscription,
-  email: string
-): boolean {
-  const isActive = subscription.status === 'active';
-  const isCancelScheduled = subscription.cancel_at_period_end === true;
-
-  // If not active or not scheduled for cancellation, just return the active status
-  if (!isActive || !isCancelScheduled) {
-    return isActive;
-  }
-
-  // For subscriptions scheduled for cancellation, check if we're still in the paid period
-  const periodEndDate = new Date((subscription.cancel_at ?? 0) * 1000);
-  const currentDate = new Date();
-  const shouldRemainActive = currentDate < periodEndDate;
-
-  if (shouldRemainActive) {
-    console.info(
-      `Subscription for email=${shortHash(email)} is scheduled for cancellation but still active until ${periodEndDate.toISOString()}`
-    );
-  }
-
-  return shouldRemainActive;
-}
-
-/**
- * Updates an existing subscription record in the database
- */
-async function updateExistingSubscription(
-  db: Knex,
-  email: string,
-  subscription: StripeTypes.Subscription,
-  shouldRemainActive: boolean,
-  existingActive: boolean
-): Promise<void> {
-  const statusChanged = existingActive !== shouldRemainActive;
-  const payload = JSON.stringify(subscription);
-  const stripeProductId = extractProductId(subscription);
-
-  if (statusChanged) {
-    console.info(
-      `Updating subscription status for email=${shortHash(email)} to ${shouldRemainActive ? 'active' : 'inactive'}`
-    );
-    await db.table('subscriptions').where({ email }).update({
-      active: shouldRemainActive,
-      payload,
-      stripe_product_id: stripeProductId,
-      updated_at: new Date(),
-    });
-  } else {
-    console.info(
-      `Subscription status for email=${shortHash(email)} remains ${shouldRemainActive ? 'active' : 'inactive'}`
-    );
-    await db.table('subscriptions').where({ email }).update({
-      payload,
-      stripe_product_id: stripeProductId,
-      updated_at: new Date(),
-    });
-  }
-}
-
-/**
- * Creates a new subscription record in the database
- */
-async function createNewSubscription(
-  db: Knex,
-  email: string,
-  customerId: string,
-  subscription: StripeTypes.Subscription,
-  shouldRemainActive: boolean
-): Promise<void> {
-  console.info(
-    `Creating subscription for customer=${shortHash(customerId)} email=${shortHash(email)} active=${shouldRemainActive}`
-  );
-  await db.table('subscriptions').insert({
-    email,
-    active: shouldRemainActive,
-    payload: JSON.stringify(subscription),
-    stripe_product_id: extractProductId(subscription),
-  });
-}
-
-/**
- * Updates or creates a subscription record in the database
- */
-async function updateSubscriptionRecord(
-  db: Knex,
-  customer: StripeTypes.Customer,
-  subscription: StripeTypes.Subscription
-): Promise<void> {
-  const email = customer.email!.toLowerCase();
-
-  try {
-    const shouldRemainActive = determineSubscriptionActiveStatus(
-      subscription,
-      email
-    );
-
-    // The ops Sync button reaches this path directly, bypassing
-    // updateStoreSubscription. Without the same check, one press writes every
-    // developer tier back into the email-keyed subscriptions table and
-    // re-creates exactly the collapse this table exists to prevent — granting
-    // base-plan perks to a dev-tier-only buyer, and overwriting a concurrent
-    // base subscriber's active flag and product id.
-    const productId = extractProductId(subscription);
-    if (productId != null && (await isDeveloperTierProduct(db, productId))) {
-      await new DeveloperSubscriptionsRepository(db).upsert({
-        stripeSubscriptionId: subscription.id,
-        userId: null,
-        email,
-        stripeProductId: productId,
-        active: shouldRemainActive,
-        payload: subscription,
-      });
-      return;
-    }
-
-    const existingSubscription = await db
-      .table('subscriptions')
-      .where({ email })
-      .first();
-
-    if (existingSubscription) {
-      await updateExistingSubscription(
-        db,
-        email,
-        subscription,
-        shouldRemainActive,
-        existingSubscription.active
-      );
-    } else {
-      await createNewSubscription(
-        db,
-        email,
-        customer.id,
-        subscription,
-        shouldRemainActive
-      );
-    }
-
-    await stampCustomerId(db, email, customer.id);
-  } catch (error) {
-    console.error(
-      'Error updating subscription record',
-      `customer=${shortHash(customer.id)}`,
-      `email=${shortHash(email)}`,
-      error
-    );
-    throw error;
-  }
-}
-
-/**
  * Processes a single subscription
  */
 async function processSubscription(
@@ -287,7 +99,10 @@ async function processSubscription(
     const customer = await getCustomer(subscription.customer);
     if (!customer) return;
 
-    await updateSubscriptionRecord(db, customer, subscription);
+    // The same write the webhooks use, so a sync run can never disagree with
+    // them: paused and past-due handling, developer tiers, the linked account
+    // and the customer id stamp all live in one place.
+    await updateStoreSubscription(db, customer, subscription);
   } catch (error) {
     console.error('Error processing subscription', subscription.id, error);
     // We don't rethrow here to allow processing of other subscriptions
@@ -321,7 +136,7 @@ function updatePaginationParams(
 /**
  * Main function to synchronize Stripe subscriptions with the database
  */
-async function updateStripeSubscriptions(): Promise<void> {
+async function updateStripeSubscriptions(db: Knex = database): Promise<void> {
   let hasMore = true;
   let startingAfter: string | undefined = undefined;
 
@@ -347,7 +162,7 @@ async function updateStripeSubscriptions(): Promise<void> {
       await mapWithConcurrency(
         subscriptions.data,
         FORWARD_SYNC_CONCURRENCY,
-        (subscription) => processSubscription(database, subscription)
+        (subscription) => processSubscription(db, subscription)
       );
 
       // Update pagination parameters
@@ -358,7 +173,7 @@ async function updateStripeSubscriptions(): Promise<void> {
 
     console.info('Forward sync from Stripe completed successfully');
 
-    await reconcileActiveSubscriptions(database, stripe);
+    await reconcileActiveSubscriptions(db, stripe);
     console.info('Subscription sync completed successfully');
   } catch (error) {
     console.error('Error in updateStripeSubscriptions:', error);
