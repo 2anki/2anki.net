@@ -1,5 +1,5 @@
 import DownloadRouter from './DownloadRouter';
-import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
+import { downloadIdentityMiddleware } from './middleware/optionalAuthMiddleware';
 
 interface RouteLayer {
   route?: { path: string; stack: { handle: unknown }[] };
@@ -21,7 +21,7 @@ describe('DownloadRouter', () => {
       const handlers = handlersFor(routePath);
 
       expect(handlers).toHaveLength(2);
-      expect(handlers[0]).toBe(optionalAuthMiddleware);
+      expect(handlers[0]).toBe(downloadIdentityMiddleware);
     }
   );
 
