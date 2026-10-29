@@ -75,6 +75,57 @@ describe('CardOption codeTheme', () => {
   });
 });
 
+describe('CardOption styleChangedAt', () => {
+  const NOW_SECONDS = 1793275200;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW_SECONDS * 1000);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('is 0 when no style change was recorded', () => {
+    expect(new CardOption({}).styleChangedAt).toBe(0);
+  });
+
+  it('keeps a past change time in whole seconds', () => {
+    const option = new CardOption({ 'style-changed-at': '1793000000' });
+    expect(option.styleChangedAt).toBe(1793000000);
+  });
+
+  it('keeps a change time from a device clock up to a day ahead', () => {
+    const option = new CardOption({
+      'style-changed-at': String(NOW_SECONDS + 86400),
+    });
+    expect(option.styleChangedAt).toBe(NOW_SECONDS + 86400);
+  });
+
+  it('ignores a change time more than a day ahead of the server', () => {
+    const option = new CardOption({
+      'style-changed-at': String(NOW_SECONDS + 86401),
+    });
+    expect(option.styleChangedAt).toBe(0);
+  });
+
+  it.each(['', '-5', '1.5', 'soon', '1793000000abc', '1e9', ' 1793000000'])(
+    'ignores %j',
+    (raw) => {
+      const option = new CardOption({ 'style-changed-at': raw });
+      expect(option.styleChangedAt).toBe(0);
+    }
+  );
+
+  it('ignores a value that is not a string', () => {
+    const option = new CardOption({
+      'style-changed-at': 1793000000 as unknown as string,
+    });
+    expect(option.styleChangedAt).toBe(0);
+  });
+});
+
 describe('CardOption downloadPdfs', () => {
   it('defaults to false when the option is absent', () => {
     const option = new CardOption({});

@@ -14,6 +14,8 @@ import pytest
 anki = pytest.importorskip("anki")
 from anki.collection import Collection, ImportAnkiPackageRequest
 
+from helpers.n2a_model import NOTETYPE_MOD
+
 _spec = _ilu.spec_from_file_location(
     "create_deck_script_anki_import",
     Path(__file__).parents[1] / "create_deck.py",
@@ -333,10 +335,14 @@ def test_reexport_does_not_clobber_a_users_local_css_edit(tmp_path):
         collection.close()
 
 
-def _build_apkg_with_style(build_dir: Path, style: str, card_prefix: str = "") -> str:
+def _build_apkg_with_style(
+    build_dir: Path, style: str, card_prefix: str = "", style_changed_at=None
+) -> str:
     decks = json.loads(FIXTURE.read_text())
     for deck in decks:
         deck["style"] = style
+        if style_changed_at is not None:
+            deck["settings"]["styleChangedAt"] = style_changed_at
         for card in deck["cards"]:
             card["name"] = card_prefix + card["name"]
     (build_dir / "deck_info.json").write_text(json.dumps(decks))
@@ -415,3 +421,138 @@ def _import_and_close(collection_path: str, apkg_path: str):
         _import(collection, apkg_path)
     finally:
         collection.close()
+
+
+def _edit_n2a_basic_css(collection_path: str, css: str):
+    collection = Collection(collection_path)
+    try:
+        notetype = next(nt for nt in collection.models.all() if nt["name"] == "n2a-basic")
+        notetype["css"] = css
+        collection.models.update_dict(notetype)
+    finally:
+        collection.close()
+
+
+def _style_apkg(tmp_path: Path, name: str, style: str, style_changed_at=None) -> str:
+    build_dir = tmp_path / name
+    build_dir.mkdir()
+    return _build_apkg_with_style(build_dir, style, style_changed_at=style_changed_at)
+
+
+def test_a_style_change_lands_on_a_default_import(tmp_path):
+    """
+    #5043: font size, colour, alignment and code theme only change the note
+    type CSS. With the mod pinned (#4447), Anki's default "If newer" kept the
+    first import's CSS, so the note type's mod follows the time the user last
+    changed one of those options.
+    """
+    collection_path = str(tmp_path / "collection.anki2")
+    _import_and_close(collection_path, _style_apkg(tmp_path, "first", ".card { font-size: 20px; }"))
+
+    changed_at = NOTETYPE_MOD + 60
+    _import_and_close(
+        collection_path,
+        _style_apkg(tmp_path, "second", ".card { font-size: 40px; }", changed_at),
+    )
+
+    assert "40px" in _n2a_basic_css(collection_path)
+
+
+def test_the_same_style_settings_reuploaded_leave_a_local_css_edit_alone(tmp_path):
+    changed_at = NOTETYPE_MOD + 60
+    style = ".card { font-size: 40px; }"
+    collection_path = str(tmp_path / "collection.anki2")
+    _import_and_close(collection_path, _style_apkg(tmp_path, "first", style, changed_at))
+    _edit_n2a_basic_css(collection_path, "/* user's own edit */")
+
+    _import_and_close(collection_path, _style_apkg(tmp_path, "second", style, changed_at))
+
+    assert _n2a_basic_css(collection_path) == "/* user's own edit */"
+
+
+def test_a_local_edit_made_after_a_style_change_survives_a_reupload(tmp_path):
+    collection_path = str(tmp_path / "collection.anki2")
+    _import_and_close(collection_path, _style_apkg(tmp_path, "first", ".card { font-size: 20px; }"))
+
+    changed_at = NOTETYPE_MOD + 60
+    restyled = ".card { font-size: 40px; }"
+    _import_and_close(collection_path, _style_apkg(tmp_path, "second", restyled, changed_at))
+    assert "40px" in _n2a_basic_css(collection_path)
+    _edit_n2a_basic_css(collection_path, "/* user's own edit */")
+
+    _import_and_close(collection_path, _style_apkg(tmp_path, "third", restyled, changed_at))
+
+    assert _n2a_basic_css(collection_path) == "/* user's own edit */"
+
+
+def test_a_shared_deck_with_a_newer_style_time_replaces_the_importers_edit(tmp_path):
+    """
+    The #5043 trade-off: every 2anki note type id is global, so a deck someone
+    else built after changing their style carries their newer mod, and Anki's
+    default "If newer" replaces the importer's own CSS and local edits. The
+    pinned mod alone (#4447) never allowed this.
+    """
+    collection_path = str(tmp_path / "collection.anki2")
+    _import_and_close(collection_path, _style_apkg(tmp_path, "own", ".card { font-size: 20px; }"))
+    _edit_n2a_basic_css(collection_path, "/* importer's own edit */")
+
+    sharers_change = int(time.time()) + 60
+    shared = _style_apkg(tmp_path, "shared", ".card { font-size: 40px; }", sharers_change)
+    _import_and_close(collection_path, shared)
+
+    css = _n2a_basic_css(collection_path)
+    assert "importer's own edit" not in css
+    assert "40px" in css
+
+
+_pin_spec = _ilu.spec_from_file_location(
+    "create_deck_pin_shared_notetypes",
+    Path(__file__).parents[1] / "pin_shared_notetypes.py",
+)
+_pin_mod = _ilu.module_from_spec(_pin_spec)
+_pin_spec.loader.exec_module(_pin_mod)
+pin_shared_notetypes = _pin_mod.pin_shared_notetypes
+
+
+def test_a_shared_copy_leaves_the_importers_edit_alone(tmp_path):
+    """
+    #5043 option (b): share links serve a copy pinned to
+    NOTETYPE_MOD, so a sharer's newer style time cannot replace the importer's
+    note type the way the unpinned deck above does.
+    """
+    collection_path = str(tmp_path / "collection.anki2")
+    _import_and_close(collection_path, _style_apkg(tmp_path, "own", ".card { font-size: 20px; }"))
+    _edit_n2a_basic_css(collection_path, "/* importer's own edit */")
+
+    sharers_change = int(time.time()) + 60
+    shared = _style_apkg(tmp_path, "shared", ".card { font-size: 40px; }", sharers_change)
+    pinned = str(tmp_path / "shared-pinned.apkg")
+    pin_shared_notetypes(shared, pinned)
+    _import_and_close(collection_path, pinned)
+
+    assert _n2a_basic_css(collection_path) == "/* importer's own edit */"
+
+
+def test_a_shared_copy_carries_every_note_of_the_deck(tmp_path):
+    sharers_change = int(time.time()) + 60
+    shared = _style_apkg(tmp_path, "shared", ".card { font-size: 40px; }", sharers_change)
+    pinned = str(tmp_path / "shared-pinned.apkg")
+    pin_shared_notetypes(shared, pinned)
+
+    from_original = Collection(str(tmp_path / "original.anki2"))
+    from_pinned = Collection(str(tmp_path / "pinned.anki2"))
+    try:
+        _import(from_original, shared)
+        _import(from_pinned, pinned)
+        assert from_pinned.note_count() == from_original.note_count() > 0
+    finally:
+        from_original.close()
+        from_pinned.close()
+
+
+def test_a_deck_with_no_style_change_needs_no_shared_copy(tmp_path):
+    shared = _style_apkg(tmp_path, "shared", ".card { font-size: 40px; }")
+    pinned = tmp_path / "shared-pinned.apkg"
+
+    assert pin_shared_notetypes(shared, str(pinned)) is False
+    assert not pinned.exists()

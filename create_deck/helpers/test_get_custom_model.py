@@ -1,6 +1,8 @@
 """Tests for the apkg-input transform pipeline's custom-model factory."""
+from anki.collection import Collection
+
 from .get_model import get_custom_model
-from .n2a_model import N2AModel
+from .n2a_model import NOTETYPE_MOD, N2AModel
 
 
 def test_keeps_user_field_names_in_order():
@@ -64,3 +66,12 @@ def test_single_field_basic_does_not_emit_orphan_separator():
     model = get_custom_model("Solo", ["Only"], False, "")
     afmt = model.templates[0]["afmt"]
     assert afmt == '{{FrontSide}}<hr id="answer">'
+
+
+def test_custom_model_keeps_the_pinned_mod(tmp_path):
+    model = get_custom_model("Vocab", ["Word", "Definition"], False, ".card { font-size: 40px; }")
+    collection = Collection(str(tmp_path / "collection.anki2"))
+    try:
+        assert model.to_notetype_dict(collection)["mod"] == NOTETYPE_MOD
+    finally:
+        collection.close()

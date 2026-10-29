@@ -11,8 +11,9 @@ What this module pins on top of Anki's defaults, and why:
   updates in place instead of forking. Anki honours a caller-supplied id only
   through the "add or update with existing id" path, which is what
   `models.update(preserve_usn=True)` and `decks.update(preserve_usn=True)` call.
-- The notetype `mod` is the shared constant from N2AModel; `preserve_usn=True`
-  is also what keeps it instead of stamping the build time.
+- The notetype `mod` is the one N2AModel sets (the shared constant, or a later
+  style change time); `preserve_usn=True` is also what keeps it instead of
+  stamping the build time.
 - Notes are numbered from 1 in document order. Anki shows a new card's `due`
   as "New #N", and it is the only carrier of document order the user can see
   or sort by. One counter across every deck in the file, so parent -> child

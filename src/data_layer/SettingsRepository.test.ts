@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import knexLib, { Knex } from 'knex';
 import SettingsRepository from './SettingsRepository';
 import CardOption from '../lib/parser/Settings/CardOption';
@@ -494,6 +495,22 @@ describe('SettingsRepository owner scoping and payload shapes', () => {
     const settings = await repo.loadIfExists('42', 'page-b');
 
     expect(settings?.deckName).toBe('Flat Deck');
+  });
+
+  test('carries a saved page style change time into the conversion settings', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(1793275200 * 1000);
+    await repo.create({
+      owner: '42',
+      object_id: 'page-style',
+      payload: { 'font-size': '32', 'style-changed-at': '1793000000' },
+      title: 'Styled',
+    });
+
+    const settings = await repo.loadIfExists('42', 'page-style');
+    vi.useRealTimers();
+
+    expect(settings?.styleChangedAt).toBe(1793000000);
   });
 
   test('returns null when no row exists for the owner and page', async () => {

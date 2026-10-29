@@ -64,6 +64,7 @@ describe('sanitizeCardOptions card-option allowlist', () => {
     const cardOptions: CardOptions = {
       'overlapping-cloze': 'separate',
       'code-theme': 'dracula',
+      'style-changed-at': '1793275200',
       'card-size': 'large',
       'field-mapping': '{"front":"Term","back":"Definition"}',
     };
@@ -114,6 +115,7 @@ const CLIENT_CARD_OPTION_KEYS = [
   'skip-defaults',
   'overlapping-cloze',
   'code-theme',
+  'style-changed-at',
   'card-size',
   'field-mapping',
   'mcq-enabled',

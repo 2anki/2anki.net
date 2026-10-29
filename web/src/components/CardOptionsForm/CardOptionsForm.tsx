@@ -71,6 +71,11 @@ const DEFAULT_CARD_SIZE = 'medium';
 const DEFAULT_CARD_STYLE = '';
 const DEFAULT_OVERLAPPING_CLOZE = 'off';
 const DEFAULT_CODE_THEME = 'github';
+const STYLE_CHANGED_AT_KEY = 'style-changed-at';
+
+function unixSecondsNow(): string {
+  return Math.floor(Date.now() / 1000).toString();
+}
 const CODE_THEME_OPTIONS = [
   { label: 'GitHub', value: 'github' },
   { label: 'One Dark', value: 'one-dark' },
@@ -432,6 +437,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     const [codeTheme, setCodeTheme] = useState(
       getLocalStorageValue('code-theme', DEFAULT_CODE_THEME, settings)
     );
+    const [styleChangedAt, setStyleChangedAt] = useState(
+      pageId ? '' : getLocalStorageValue(STYLE_CHANGED_AT_KEY, '', settings)
+    );
     const [pageEmoji, setPageEmoji] = useState(
       getLocalStorageValue('page-emoji', DEFAULT_PAGE_EMOJI, settings)
     );
@@ -549,6 +557,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       );
       setPageEmoji(localStorage.getItem('page-emoji') ?? DEFAULT_PAGE_EMOJI);
       setCodeTheme(localStorage.getItem('code-theme') ?? DEFAULT_CODE_THEME);
+      setStyleChangedAt('');
       setBasicName(localStorage.getItem('basic_model_name') ?? '');
       setClozeName(localStorage.getItem('cloze_model_name') ?? '');
       setInputName(localStorage.getItem('input_model_name') ?? '');
@@ -593,6 +602,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           ['toggle-mode', setToggleMode],
           ['overlapping-cloze', setOverlappingCloze],
           ['code-theme', setCodeTheme],
+          [STYLE_CHANGED_AT_KEY, setStyleChangedAt],
           ['page-emoji', setPageEmoji],
           ['template', setTemplate],
           ['font-size', setFontSize],
@@ -751,6 +761,12 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       }
     };
 
+    const recordStyleChange = () => {
+      const now = unixSecondsNow();
+      setStyleChangedAt(now);
+      saveValueInLocalStorage(STYLE_CHANGED_AT_KEY, now, pageId);
+    };
+
     const resetStore = async () => {
       if (pageId) {
         await get2ankiApi().deleteSettings(pageId);
@@ -768,6 +784,18 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
         }
       }
       resetStoredCardOptions(options ?? []);
+      const hadCustomStyle =
+        fontSize !== '' ||
+        textColor !== '' ||
+        textAlign !== '' ||
+        codeTheme !== DEFAULT_CODE_THEME;
+      if (hadCustomStyle) {
+        const now = unixSecondsNow();
+        setStyleChangedAt(now);
+        if (!pageId) {
+          localStorage.setItem(STYLE_CHANGED_AT_KEY, now);
+        }
+      }
       setDeckName('');
       setFontSize('');
       setTextColor('');
@@ -833,6 +861,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       payload['tts-manual-side'] = ttsManualSide;
       payload['card-size'] = cardSize;
       payload['card-style'] = cardStyle;
+      if (styleChangedAt !== '') {
+        payload[STYLE_CHANGED_AT_KEY] = styleChangedAt;
+      }
       if (fieldMapping != null) {
         payload['field-mapping'] = JSON.stringify(fieldMapping);
       }
@@ -1343,6 +1374,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                           e.target.value,
                           pageId
                         );
+                        if (e.target.value !== codeTheme) {
+                          recordStyleChange();
+                        }
                       }}
                     >
                       {CODE_THEME_OPTIONS.map((opt) => (
@@ -1948,6 +1982,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
               pickedFontSize={(fs) => {
                 setFontSize(fs);
                 saveValueInLocalStorage('font-size', fs.toString(), pageId);
+                if (fs !== fontSize) {
+                  recordStyleChange();
+                }
               }}
             />
           </div>
@@ -1957,6 +1994,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
               pickedTextColor={(color) => {
                 setTextColor(color);
                 saveValueInLocalStorage('text-color', color, pageId);
+                if (color !== textColor) {
+                  recordStyleChange();
+                }
               }}
             />
           </div>
@@ -1966,6 +2006,9 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
               pickedTextAlign={(align) => {
                 setTextAlign(align);
                 saveValueInLocalStorage('text-align', align, pageId);
+                if (align !== textAlign) {
+                  recordStyleChange();
+                }
               }}
             />
           </div>

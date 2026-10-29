@@ -55,7 +55,7 @@ function macPython(): string | undefined {
   ]);
 }
 
-function PYTHON(): string {
+export function PYTHON(): string {
   const envOverride = process.env.PYTHON || process.env.ANKI_PYTHON;
   if (envOverride) {
     return envOverride;

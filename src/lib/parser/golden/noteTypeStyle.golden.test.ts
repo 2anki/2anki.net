@@ -289,6 +289,7 @@ const STYLED_SETTINGS: SettingsInput = {
   'text-color': '#1f2937',
   'text-align': 'center',
   'code-theme': 'dracula',
+  'style-changed-at': '1793000000',
 };
 
 const originalSkipCreateDeck = process.env.SKIP_CREATE_DECK;
@@ -308,6 +309,12 @@ afterAll(() => {
 beforeEach(() => {
   setupTests();
   generateDeckInfoMock.mockReset();
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(1793275200 * 1000);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('one note-type style for every deck-building path', () => {
@@ -328,6 +335,9 @@ describe('one note-type style for every deck-building path', () => {
         expect(noteTypeShape(decks[0])).toEqual(
           noteTypeShape({ settings: {} })
         );
+        expect(decks[0].settings?.styleChangedAt).toBe(
+          input['style-changed-at'] == null ? 0 : 1793000000
+        );
       }
     );
   });
@@ -338,6 +348,7 @@ describe('one note-type style for every deck-building path', () => {
       const decks = await build();
       for (const deck of decks) {
         expect(deck.style).toBe(buildDeckStyle(new CardOption({})));
+        expect(deck.settings?.styleChangedAt ?? 0).toBe(0);
       }
       expect(noteTypeShape(decks[0])).toEqual(noteTypeShape({ settings: {} }));
     }

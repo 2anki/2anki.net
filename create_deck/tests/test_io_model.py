@@ -4,6 +4,7 @@ from anki.collection import Collection
 import create_io_deck
 from helpers.get_model import get_model
 from helpers.get_model_id import get_model_id
+from helpers.n2a_model import NOTETYPE_MOD
 
 IMAGE_OCCLUSION_STOCK_KIND = 6
 EXPECTED_FIELD_ORDER = ["Occlusion", "Image", "Header", "Back Extra", "Comments"]
@@ -61,3 +62,7 @@ def test_non_io_notetype_has_no_stock_kind(collection):
         ("basic", get_model_id("n2a-basic"), "n2a-basic", None, None, None)
     )
     assert model.to_notetype_dict(collection).get("originalStockKind", 0) == 0
+
+
+def test_io_notetype_keeps_the_pinned_mod(collection):
+    assert _io_notetype(collection)["mod"] == NOTETYPE_MOD

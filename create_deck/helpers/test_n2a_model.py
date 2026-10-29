@@ -84,3 +84,11 @@ def test_copies_field_tag_and_prevent_deletion(collection):
 
 def test_leaves_stock_kind_unset_without_one(collection):
     assert _build(collection).get("originalStockKind", 0) == 0
+
+
+def test_mod_follows_a_style_change_after_the_pinned_constant(collection):
+    assert _build(collection, style_changed_at=NOTETYPE_MOD + 600)["mod"] == NOTETYPE_MOD + 600
+
+
+def test_mod_keeps_the_pinned_constant_for_an_older_style_change(collection):
+    assert _build(collection, style_changed_at=NOTETYPE_MOD - 600)["mod"] == NOTETYPE_MOD

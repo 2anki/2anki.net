@@ -15,6 +15,7 @@ export const CARD_OPTION_KEYS = [
   'skip-defaults',
   'overlapping-cloze',
   'code-theme',
+  'style-changed-at',
   'card-size',
   'card-style',
   'field-mapping',
