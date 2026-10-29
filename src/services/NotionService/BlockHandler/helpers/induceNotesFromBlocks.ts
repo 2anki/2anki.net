@@ -10,7 +10,7 @@ import { InducedRule } from '../../../../lib/parser/induction/candidateRules';
 import {
   isParagraphEmphasisFront,
   PARAGRAPH_MIN_CHARS,
-  paragraphFirstSentence,
+  paragraphFirstSentenceSpan,
 } from '../../../../lib/parser/induction/induceCardsFromDom';
 import {
   answerMarkerLength,
@@ -353,7 +353,8 @@ function induceParagraphNotes(
   const notes: Note[] = [];
   for (const block of blocks) {
     if (!isFullBlock(block) || block.type !== 'paragraph') continue;
-    const text = blockPlainText(block).trim();
+    const rawText = blockPlainText(block);
+    const text = rawText.trim();
     if (text.length < PARAGRAPH_MIN_CHARS) continue;
     const items = blockRichText(block) ?? [];
     const run = firstEmphasisRun(items);
@@ -363,10 +364,28 @@ function induceParagraphNotes(
       .trim();
     const front = isParagraphEmphasisFront(emphasised, text)
       ? renderItems(run, settings, tagRegistry)
-      : paragraphFirstSentence(text);
+      : firstSentenceFront(items, rawText, settings, tagRegistry);
     pushIfComplete(notes, front, renderItems(items, settings, tagRegistry));
   }
   return notes;
+}
+
+// The first sentence is cut from the rich text and rendered like any card
+// text, so annotations survive and typed markup stays escaped text.
+function firstSentenceFront(
+  items: RichTextItemResponse[],
+  rawText: string,
+  settings: CardOption,
+  tagRegistry: TagRegistry
+): string {
+  const leading = rawText.length - rawText.trimStart().length;
+  const { end, truncated } = paragraphFirstSentenceSpan(rawText.trim());
+  const sentence = renderItems(
+    sliceRichText(items, leading, leading + end),
+    settings,
+    tagRegistry
+  );
+  return truncated ? `${sentence}…` : sentence;
 }
 
 function notesForRule(

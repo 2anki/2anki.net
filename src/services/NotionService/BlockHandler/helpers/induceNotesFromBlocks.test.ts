@@ -390,6 +390,87 @@ describe('induceNotesFromBlocks paragraphs rule', () => {
     expect(notes[0].back).toContain('chloroplast');
   });
 
+  it('escapes markup typed as text in a first-sentence front', () => {
+    const blocks = [
+      block('paragraph', [
+        richText(
+          'Typed <b>tags</b> and <img src=x onerror=alert(1)> stay text. '
+        ),
+        richText('The rest of the paragraph explains it.'),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).not.toContain('<img');
+    expect(notes[0].name).not.toContain('<b>');
+    expect(notes[0].name).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(notes[0].name).toContain('&lt;b&gt;tags&lt;/b&gt;');
+    expect(notes[0].name).not.toContain('The rest');
+  });
+
+  it('keeps real annotations inside a first-sentence front', () => {
+    const blocks = [
+      block('paragraph', [
+        richText('Glycolysis splits '),
+        richText('glucose', { italic: true }),
+        richText(' into pyruvate in the cytosol. It yields two ATP.'),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes[0].name).toContain('<em>glucose</em>');
+    expect(notes[0].name).toContain('into pyruvate in the cytosol.');
+    expect(notes[0].name).not.toContain('ATP');
+  });
+
+  it('cuts a long first sentence at the front limit with an ellipsis', () => {
+    const long = `${'word '.repeat(40)}end.`;
+    const blocks = [block('paragraph', [richText(long)])];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes[0].name.endsWith('…')).toBe(true);
+    expect(notes[0].name.length).toBeLessThanOrEqual(121);
+  });
+
+  it('escapes markup typed as text in a bold front and still renders bold', () => {
+    const blocks = [
+      block('paragraph', [
+        richText('<img src=x onerror=alert(1)>', { bold: true }),
+        richText(' is what this paragraph is about, as plain text.'),
+      ]),
+    ];
+
+    const notes = induceNotesFromBlocks(
+      blocks,
+      'paragraphs',
+      settings(),
+      new TagRegistry()
+    );
+
+    expect(notes[0].name).toBe(
+      '<strong>&lt;img src=x onerror=alert(1)&gt;</strong>'
+    );
+  });
+
   it('skips short paragraphs and blocks that are not paragraphs', () => {
     const blocks = [
       block('paragraph', [richText('Too short to be a card.')]),

@@ -244,6 +244,19 @@ describe('induceCardsFromDom', () => {
     ]);
   });
 
+  it('escapes markup typed as text in a paragraphs first-sentence front', () => {
+    const dom = load(
+      `<p>Typed &lt;img src=x onerror=alert(1)&gt; stays text here. The rest explains it.</p>`
+    );
+
+    const notes = induceCardsFromDom(dom, 'paragraphs');
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).toBe(
+      'Typed &lt;img src=x onerror=alert(1)&gt; stays text here.'
+    );
+  });
+
   it('measures the plain-text length of the page body', () => {
     const dom = load(`<p>abcdef</p>`);
     expect(domPlainTextLength(dom)).toBe(6);

@@ -1,6 +1,7 @@
 import type { CheerioAPI, Cheerio } from 'cheerio';
 import type { AnyNode, Element, Text } from 'domhandler';
 import Note from '../Note';
+import { escapeHtml } from '../../notion-render/escape';
 import { InducedRule } from './candidateRules';
 import {
   answerMarkerLength,
@@ -374,11 +375,23 @@ export function isParagraphEmphasisFront(
   );
 }
 
-export function paragraphFirstSentence(text: string): string {
+export interface FirstSentenceSpan {
+  end: number;
+  truncated: boolean;
+}
+
+// Where the first-sentence prompt ends in a paragraph's plain text. Callers
+// cut their own source at this offset (rich text on the Notion path, escaped
+// text on the upload path) so text never becomes markup.
+export function paragraphFirstSentenceSpan(text: string): FirstSentenceSpan {
   const sentence = SENTENCE_END.exec(text)?.[1] ?? text;
-  return sentence.length > FIRST_SENTENCE_MAX_CHARS
-    ? `${sentence.slice(0, FIRST_SENTENCE_MAX_CHARS).trimEnd()}…`
-    : sentence;
+  if (sentence.length <= FIRST_SENTENCE_MAX_CHARS) {
+    return { end: sentence.length, truncated: false };
+  }
+  return {
+    end: sentence.slice(0, FIRST_SENTENCE_MAX_CHARS).trimEnd().length,
+    truncated: true,
+  };
 }
 
 function paragraphFront(dom: CheerioAPI, paragraph: Element): string {
@@ -387,7 +400,8 @@ function paragraphFront(dom: CheerioAPI, paragraph: Element): string {
   if (isParagraphEmphasisFront(emphasis.text().trim(), text)) {
     return (emphasis.html() ?? '').trim();
   }
-  return paragraphFirstSentence(text);
+  const { end, truncated } = paragraphFirstSentenceSpan(text);
+  return `${escapeHtml(text.slice(0, end))}${truncated ? '…' : ''}`;
 }
 
 // One card per prose paragraph: the bold or highlighted term (or the first
