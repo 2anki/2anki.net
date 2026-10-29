@@ -591,6 +591,7 @@ export async function runUploadGenerationInWorker(
       error: {
         message: err instanceof Error ? err.message : String(err),
         name: err instanceof Error ? err.name : undefined,
+        stack: err instanceof Error ? err.stack : undefined,
         sourceFormat:
           err instanceof EmptyDeckError ? err.sourceFormat : undefined,
         reason: err instanceof EmptyDeckError ? err.reason : undefined,

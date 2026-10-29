@@ -99,6 +99,29 @@ describe('ErrorHandler', () => {
     );
   });
 
+  test('never sends the stack of an error rebuilt from the upload worker', async () => {
+    const res = makeResponse(false);
+    const rebuilt = Object.assign(
+      new Error("Cannot read properties of undefined (reading '0')"),
+      { name: 'TypeError' }
+    );
+    rebuilt.stack =
+      "TypeError: Cannot read properties of undefined (reading '0')\n" +
+      '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+
+    await ErrorHandler(
+      res as unknown as express.Response,
+      makeRequest(),
+      rebuilt
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      code: 'unknown',
+      message: "Cannot read properties of undefined (reading '0')",
+    });
+  });
+
   test('answers an exposed 4xx http-error with its own status', async () => {
     const res = makeResponse(false);
     const req = makeRequest();

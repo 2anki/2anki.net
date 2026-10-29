@@ -70,6 +70,20 @@ describe('conversion process crash', () => {
 });
 
 describe('jobFailureReasonFromError', () => {
+  it('never puts the stack of an error rebuilt from the upload worker in the reason', () => {
+    const rebuilt = Object.assign(
+      new Error("Cannot read properties of undefined (reading '0')"),
+      { name: 'TypeError' }
+    );
+    rebuilt.stack =
+      "TypeError: Cannot read properties of undefined (reading '0')\n" +
+      '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+
+    expect(jobFailureReasonFromError(rebuilt, 'job-1')).toBe(
+      "Something went wrong on our end converting this file. Job ID job-1. Check status at 2anki.net/status — if everything's green, email support@2anki.net with the job ID."
+    );
+  });
+
   it('returns the EmptyDeckError reason unchanged', () => {
     const reason = jobFailureReasonFromError(new EmptyDeckError(), 'job-1');
     expect(reason).toBe(EMPTY_DECK_FAILURE_REASON);
