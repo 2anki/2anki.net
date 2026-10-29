@@ -1552,7 +1552,7 @@ export class DeckParser {
       card.back = inputInfo.mangle;
     }
 
-    this.unmarkAnswerlessToggle(card);
+    this.clearAnswerlessToggle(card);
 
     if (!card.tags) {
       card.tags = [];
@@ -1560,20 +1560,38 @@ export class DeckParser {
   }
 
   // Cloze mode marks every card cloze, and a cloze card needs no back, so a
-  // Notion-export toggle with no answer used to ship front-only. Without a
-  // deletion it is a basic card, so it drops and is counted the way it is on
-  // the Notion connection. Only an exported toggle carries a Notion block id;
-  // the toggles our own converters build for spreadsheets, slides, PDFs and
-  // Markdown carry none and keep their front-only cards.
-  private unmarkAnswerlessToggle(card: Note): void {
+  // Notion-export toggle with no answer used to ship front-only (and, with
+  // Add Notion link on, with only that link on the back, cloze or not). With
+  // no deletion and no answer it is cleared to an empty basic card, so
+  // CleanCards drops it and it is counted the way it is on the Notion
+  // connection. Only an exported toggle carries a Notion block id; the toggles
+  // our own converters build for spreadsheets, slides, PDFs and Markdown carry
+  // none and keep their front-only cards. A typed-answer card is kept anyway,
+  // and is left alone so its content guid does not change.
+  private clearAnswerlessToggle(card: Note): void {
     if (
-      card.cloze &&
-      card.notionId != null &&
-      !card.hasClozeDeletion() &&
-      !hasVisibleContent(card.back)
+      card.notionId == null ||
+      !DeckParser.NOTION_BLOCK_ID_PATTERN.test(card.notionId) ||
+      card.hasClozeDeletion() ||
+      card.isValidInputNote()
     ) {
-      card.cloze = false;
+      return;
     }
+    const answer = this.backWithoutNotionLink(card);
+    if (hasVisibleContent(answer)) {
+      return;
+    }
+    card.cloze = false;
+    card.back = answer;
+  }
+
+  // The "Open in Notion" link is ours, not the learner's answer.
+  private backWithoutNotionLink(card: Note): string {
+    if (!this.settings.addNotionLink || card.sourcePageId == null) {
+      return card.back;
+    }
+    const link = this.getLink(card.sourcePageId, card);
+    return link == null ? card.back : card.back.replace(link, '');
   }
 
   private overlappingClozeEnabled(): boolean {
