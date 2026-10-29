@@ -13,6 +13,10 @@ import {
   storePassToken,
   storedCardOptions,
 } from '../../../../lib/anonymousPass';
+import {
+  aiPreviewCheckoutMarked,
+  clearAiPreviewCheckout,
+} from '../../../../components/AiPreviewGate/aiPreviewCheckout';
 import type { UploadErrorBody } from '../../../../types/UploadErrorBody';
 import type UserUpload from '../../../../lib/interfaces/UserUpload';
 import getAcceptedContentTypes, {
@@ -350,10 +354,11 @@ function resumeNoticeFor(status: number, t: (key: string) => string): string {
 
 function resumeStatusLine(
   phase: PassDeckPhase,
+  aiPreviewPending: boolean,
   t: (key: string) => string
 ): string {
   if (phase === 'confirming') return t('anonymousPass:confirming');
-  if (phase === 'ai') return t('aiPreview:resuming');
+  if (phase === 'ai' && aiPreviewPending) return t('aiPreview:resuming');
   return t('anonymousPass:checking');
 }
 
@@ -956,6 +961,7 @@ function UploadForm({
   });
   const [resumingPreview, setResumingPreview] = useState(false);
   const [resumePhase, setResumePhase] = useState<PassDeckPhase>('held');
+  const [aiPreviewPending] = useState(aiPreviewCheckoutMarked);
   const [passResumeNotice, setPassResumeNotice] = useState<string | null>(null);
   const aiPreviewResumeRef = useRef(false);
 
@@ -1097,7 +1103,10 @@ function UploadForm({
         setZoneState('idle');
         setProgressWidth(10);
       } finally {
-        if (!cancelled) setResumingPreview(false);
+        if (!cancelled) {
+          setResumingPreview(false);
+          clearAiPreviewCheckout();
+        }
       }
     })();
     return () => {
@@ -4569,7 +4578,7 @@ function UploadForm({
     <>
       {resumingPreview && (
         <p className={formStyles.stateContent} role="status" aria-live="polite">
-          {resumeStatusLine(resumePhase, t)}
+          {resumeStatusLine(resumePhase, aiPreviewPending, t)}
         </p>
       )}
       {passResumeNotice != null && !resumingPreview && (

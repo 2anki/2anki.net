@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiPreviewGate } from './AiPreviewGate';
+import {
+  aiPreviewCheckoutMarked,
+  clearAiPreviewCheckout,
+} from './aiPreviewCheckout';
 import { track } from '../../lib/analytics/track';
 
 const startPassCheckout = vi.fn();
@@ -91,6 +95,20 @@ describe('AiPreviewGate', () => {
     expect(track).toHaveBeenCalledWith('ai_preview_pass_clicked', {
       surface: 'ai-preview',
     });
+  });
+
+  it('marks the tab so the return says an AI deck is being built', async () => {
+    clearAiPreviewCheckout();
+    const location = { href: 'http://localhost/upload' };
+    vi.stubGlobal('location', location);
+    startPassCheckout.mockResolvedValue({ url: 'https://stripe/day' });
+    renderGate();
+
+    fireEvent.click(screen.getByRole('button', { name: /Day Pass/ }));
+
+    await waitFor(() => expect(location.href).toBe('https://stripe/day'));
+    expect(aiPreviewCheckoutMarked()).toBe(true);
+    clearAiPreviewCheckout();
   });
 
   it('runs the continue-without-AI handler on the secondary button', () => {

@@ -22,6 +22,11 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { StrictMode } from 'react';
 import UploadForm from './UploadForm';
+import {
+  aiPreviewCheckoutMarked,
+  clearAiPreviewCheckout,
+  markAiPreviewCheckout,
+} from '../../../../components/AiPreviewGate/aiPreviewCheckout';
 import i18n from '../../../../lib/i18n';
 
 vi.mock('../../../../lib/analytics/track', () => ({
@@ -525,6 +530,57 @@ describe('UploadForm', () => {
       }
     }
   );
+
+  test('never says an AI deck is building for a buyer who did not use the AI preview', async () => {
+    stubPassReturn('cs_from_limit');
+    const resumeAiPreview = vi
+      .fn()
+      .mockReturnValue(new Promise<Response>(() => {}));
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValue(statusResponse(404));
+    const restore = installResumeApi(resumeAiPreview, claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      await waitFor(() => expect(resumeAiPreview).toHaveBeenCalled());
+      expect(screen.getByText('Checking your pass.')).toBeInTheDocument();
+      expect(screen.queryByText(/AI deck/)).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says the AI deck is building for a visitor back from the AI preview checkout, then forgets it', async () => {
+    markAiPreviewCheckout();
+    stubPassReturn('cs_from_preview');
+    let finish: (response: Response) => void = () => {};
+    const resumeAiPreview = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      })
+    );
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          'Day Pass active. Building your full AI deck now.'
+        )
+      ).toBeInTheDocument();
+      await act(async () => {
+        finish(apkgResumeResponse());
+      });
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+      expect(aiPreviewCheckoutMarked()).toBe(false);
+    } finally {
+      clearAiPreviewCheckout();
+      restore();
+    }
+  });
 
   test('names the pass, not the Day Pass, when the held deck is gone and no preview waits', async () => {
     stubPassReturn('cs_expired_hold');

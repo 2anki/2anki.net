@@ -1,12 +1,19 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AnonymousPartialGate } from './AnonymousPartialGate';
+import {
+  AnonymousPartialGate,
+  HELD_DECK_CHECKOUT_SURFACE,
+} from './AnonymousPartialGate';
 import { track } from '../../lib/analytics/track';
 
 vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
+const startPassCheckout = vi.fn();
+vi.mock('../../lib/backend/get2ankiApi', () => ({
+  get2ankiApi: () => ({ startPassCheckout }),
+}));
 vi.mock('../../lib/hooks/usePassPrices', () => ({
   usePassPrices: () => ({ '24h': '$6', '7d': '$12', '120d': '$29' }),
 }));
@@ -222,4 +229,61 @@ describe('AnonymousPartialGate — pass-first', () => {
     );
     expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
   });
+});
+
+describe('AnonymousPartialGate checkout surface', () => {
+  beforeEach(() => {
+    startPassCheckout.mockReset();
+    startPassCheckout.mockResolvedValue({ error: 'stay on the page' });
+  });
+
+  function renderArm(passFirst: boolean, dayPassCard: boolean) {
+    return render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AnonymousPartialGate
+            held={{
+              cardCount: 21,
+              cardsHeldBack: 163,
+              totalCards: 184,
+              dayPassCard,
+            }}
+            passFirst={passFirst}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+
+  it('is the surface the server releases held decks for', () => {
+    expect(HELD_DECK_CHECKOUT_SURFACE).toBe('anonymous-gate');
+  });
+
+  it.each([
+    ['the default gate', false, false, /Get a Day Pass for \$6/, '24h'],
+    ['the Day Pass card lead', false, true, /Get all 184 cards now/, '24h'],
+    [
+      'the pass-first Semester Pass',
+      true,
+      false,
+      /Semester Pass · \$29/,
+      '120d',
+    ],
+    ['the pass-first Day Pass', true, false, /Day Pass · \$6/, '24h'],
+  ])(
+    'checks out from %s under the held-deck surface',
+    async (_label, passFirst, dayPassCard, button, kind) => {
+      renderArm(passFirst, dayPassCard);
+
+      fireEvent.click(screen.getByRole('button', { name: button }));
+
+      await waitFor(() =>
+        expect(startPassCheckout).toHaveBeenCalledWith(
+          kind,
+          undefined,
+          HELD_DECK_CHECKOUT_SURFACE
+        )
+      );
+    }
+  );
 });
