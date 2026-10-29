@@ -110,6 +110,7 @@ import {
   domPlainTextLength,
   hasDominantTable,
   induceCardsFromDom,
+  OFFER_ONLY_MIN_CARDS,
   OFFER_ONLY_RULES,
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
@@ -198,8 +199,6 @@ const MEDIA_IN_BODY = /<(img|audio|video|figure|embed)\b/i;
 function bodyHasContent(body: string): boolean {
   return MEDIA_IN_BODY.test(body) || body.replace(/<[^>]*>/g, '').trim() !== '';
 }
-
-const OFFER_ONLY_MIN_CARDS = 3;
 
 export class DeckParser {
   firstDeckName: string;

@@ -14,6 +14,11 @@ import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { startUnlimitedUpgrade } from '../../../../lib/backend/startUnlimitedUpgrade';
 import { track } from '../../../../lib/analytics/track';
 import { formatResetDate } from './formatResetDate';
+import { formatCount } from '../../../UploadPage/helpers/describeEmptyReading';
+import type {
+  RescueCandidate,
+  RescueRule,
+} from '../../../../lib/upload/isRescueCandidate';
 import type {
   UploadErrorBody,
   UploadErrorCode,
@@ -39,11 +44,25 @@ const NOTION_TOKEN_EXPIRED_REASON = 'notion_token_expired';
 const EMPTY_DECK_REASON_PREFIX = 'No cards in this deck yet.';
 // Markers the server embeds in the empty-deck message so the localized copy can
 // branch on the reason. Keep in sync with EMPTY_DECK_ALL_FILTERED_REASON /
-// EMPTY_DECK_NO_CONTENT_REASON in src/usecases/jobs/jobFailureReason.ts.
+// EMPTY_DECK_NO_CONTENT_REASON / EMPTY_DECK_NOTION_EMPTY_PAGE_REASON in
+// src/usecases/jobs/jobFailureReason.ts.
 const EMPTY_DECK_ALL_FILTERED_MARKER = 'card filter removed';
 const EMPTY_DECK_NO_CONTENT_MARKER = 'no text we could read';
+const EMPTY_DECK_NOTION_EMPTY_PAGE_MARKER = 'Notion page looks empty';
 const TOGGLES_DOCS_HREF = '/documentation/cards/notion-blocks';
 const FILE_FORMATS_DOCS_HREF = '/documentation/reference/file-formats';
+const CONNECT_NOTION_DOCS_HREF = '/documentation/start-here/connect-notion';
+
+// A Map so a rule name off the wire can never reach an Object.prototype key.
+const RESCUE_LABEL_KEYS = new Map<RescueRule, string>([
+  ['columns', 'rescueColumns'],
+  ['heading', 'rescueHeading'],
+  ['quote', 'rescueQuote'],
+  ['numbered', 'rescueNumbered'],
+  ['bullets', 'rescueBullets'],
+  ['guess', 'rescueGuess'],
+  ['paragraphs', 'rescueParagraphs'],
+]);
 
 interface ProcessingProps {
   variant: 'processing';
@@ -64,6 +83,9 @@ interface FailedProps {
   failureReason: string;
   source: Source;
   onMapColumns: () => void;
+  rescue?: RescueCandidate[];
+  onRescue?: (candidate: RescueCandidate) => void;
+  rescuePending?: boolean;
 }
 
 interface SuccessProps {
@@ -175,10 +197,60 @@ function PaywalledVariant({
   );
 }
 
+function RescueOffer({
+  rescue,
+  onRescue,
+  pending,
+}: Readonly<{
+  rescue: RescueCandidate[];
+  onRescue: (candidate: RescueCandidate) => void;
+  pending: boolean;
+}>) {
+  const { t } = useTranslation();
+  return (
+    <div className={styles.rescueActions}>
+      <p className={styles.rescueLead}>
+        {t('conversionResult.rescueLeadNotion')}
+      </p>
+      {rescue.map((candidate) => (
+        <div key={candidate.rule} className={styles.rescueOption}>
+          <button
+            type="button"
+            className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+            disabled={pending}
+            aria-busy={pending}
+            onClick={() => onRescue(candidate)}
+          >
+            {t(`upload.form.${RESCUE_LABEL_KEYS.get(candidate.rule)}`, {
+              count: candidate.cards,
+              n: formatCount(candidate.cards),
+            })}
+          </button>
+          {candidate.sample != null && candidate.sample.length > 0 && (
+            <ul className={styles.rescueSample} role="list">
+              {candidate.sample.map((card, index) => (
+                <li key={index} data-hj-suppress>
+                  <span className={styles.rescueSampleFront}>{card.front}</span>
+                  {card.back !== card.front && (
+                    <span className={styles.rescueSampleBack}>{card.back}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function FailedVariant({
   failureReason,
   source,
   onMapColumns,
+  rescue = [],
+  onRescue,
+  rescuePending = false,
 }: Omit<FailedProps, 'variant' | 'title'>) {
   const { t } = useTranslation();
   if (source === 'notion' && failureReason === NOTION_TOKEN_EXPIRED_REASON) {
@@ -198,12 +270,18 @@ function FailedVariant({
     // Markdown file, told to go use a Notion feature they have no access to.
     // The reason markers let each empty-deck cause get copy that matches it.
     const fromNotion = source === 'notion';
-    const emptyDeckPanel = (body: string, href: string, label: string) => (
+    const emptyDeckPanel = (
+      body: string,
+      href: string,
+      label: string,
+      offer: ReactNode = null
+    ) => (
       <div>
         <p>{body}</p>
+        {offer}
         <Link
           to={href}
-          className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
+          className={`${offer == null ? sharedStyles.btnPrimary : sharedStyles.btnSecondary} ${sharedStyles.btnInline}`}
         >
           {label}
         </Link>
@@ -218,18 +296,38 @@ function FailedVariant({
       );
     }
 
+    if (
+      fromNotion &&
+      failureReason.includes(EMPTY_DECK_NOTION_EMPTY_PAGE_MARKER)
+    ) {
+      return emptyDeckPanel(
+        t('conversionResult.emptyDeckNotionEmptyPage'),
+        CONNECT_NOTION_DOCS_HREF,
+        t('conversionResult.connectNotionDocs')
+      );
+    }
+
     let teaching = t('conversionResult.emptyDeckTeachingUpload');
     if (failureReason.includes(EMPTY_DECK_NO_CONTENT_MARKER)) {
       teaching = t('conversionResult.emptyDeckNoContent');
     } else if (fromNotion) {
       teaching = t('conversionResult.emptyDeckTeaching');
     }
+    const offer =
+      fromNotion && onRescue != null && rescue.length > 0 ? (
+        <RescueOffer
+          rescue={rescue}
+          onRescue={onRescue}
+          pending={rescuePending}
+        />
+      ) : null;
     return emptyDeckPanel(
       teaching,
       fromNotion ? TOGGLES_DOCS_HREF : FILE_FORMATS_DOCS_HREF,
       fromNotion
         ? t('conversionResult.togglesDocs')
-        : t('conversionResult.uploadFormatsDocs')
+        : t('conversionResult.uploadFormatsDocs'),
+      offer
     );
   }
 
@@ -318,6 +416,9 @@ export function ConversionResult(props: Readonly<ConversionResultProps>) {
       failureReason={props.failureReason}
       source={props.source}
       onMapColumns={props.onMapColumns}
+      rescue={props.rescue}
+      onRescue={props.onRescue}
+      rescuePending={props.rescuePending}
     />
   );
 }

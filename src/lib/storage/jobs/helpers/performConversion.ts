@@ -21,7 +21,7 @@ import { buildConversionReport } from '../../../../services/NotionService/helper
 import { countDuplicateGuids } from '../../../anki/countDuplicateGuids';
 import { NotifyUserUseCase } from '../../../../usecases/jobs/NotifyUserUseCase';
 import {
-  emptyDeckReasonMessage,
+  notionEmptyDeckReasonMessage,
   isColumnsAmbiguousError,
   isNotionUnauthorizedError,
   jobFailureReasonCode,
@@ -225,6 +225,7 @@ export default async function performConversion(
     jobDbId,
     frontField,
     backField,
+    rescueRule,
     anonId,
     signupOrigin,
     requestId,
@@ -264,6 +265,7 @@ export default async function performConversion(
       type,
       frontField,
       backField,
+      rescueRule,
     });
     if (!decks || decks.length === 0) {
       const setJobFailed = new SetJobFailedUseCase(jobRepository);
@@ -297,15 +299,18 @@ export default async function performConversion(
     );
     if (cardCount === 0) {
       const emptyReason = bl.emptyDeckReason();
+      const rescueCandidates = bl.rescueCandidates;
       const setJobFailed = new SetJobFailedUseCase(jobRepository);
       await setJobFailed.execute(
         id,
         owner,
-        emptyDeckReasonMessage(emptyReason)
+        notionEmptyDeckReasonMessage(emptyReason),
+        { rescue_candidates: rescueCandidates }
       );
       trackConversionFailed(owner, anonId, type, resolvedSignupOrigin, {
         reason: 'empty_deck',
         empty_reason: emptyReason,
+        rescue_offered: rescueCandidates.map((candidate) => candidate.rule),
       });
       return;
     }

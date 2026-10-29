@@ -98,6 +98,50 @@ describe('JobController', () => {
     expect(sent).not.toHaveProperty('conversion_report');
   });
 
+  it('serves the rescue offer stored on a failed Notion job', async () => {
+    const offer = {
+      rule: 'paragraphs',
+      cards: 4,
+      sample: [{ front: 'Osmosis', back: 'Osmosis moves water.' }],
+    };
+    (jobService.getJobsByOwner as Mock).mockResolvedValue([
+      {
+        id: 8,
+        object_id: 'notion-page-uuid',
+        status: 'failed',
+        type: 'page',
+        conversion_report: { rescue_candidates: [offer] },
+      },
+    ]);
+    await jobController.getJobsByOwner(
+      req as express.Request,
+      res as express.Response
+    );
+    const [sent] = (res.send as Mock).mock.calls[0][0];
+    expect(sent.rescue_candidates).toEqual([offer]);
+    expect(sent).not.toHaveProperty('conversion_report');
+  });
+
+  it('serves no rescue offer once the job is no longer failed', async () => {
+    (jobService.getJobsByOwner as Mock).mockResolvedValue([
+      {
+        id: 9,
+        object_id: 'notion-page-uuid',
+        status: 'step2_creating_flashcards',
+        type: 'page',
+        conversion_report: {
+          rescue_candidates: [{ rule: 'paragraphs', cards: 4 }],
+        },
+      },
+    ]);
+    await jobController.getJobsByOwner(
+      req as express.Request,
+      res as express.Response
+    );
+    const [sent] = (res.send as Mock).mock.calls[0][0];
+    expect(sent).not.toHaveProperty('rescue_candidates');
+  });
+
   it('passes job_reason_failure through for a done Notion job', async () => {
     const truncationPayload = JSON.stringify({
       code: 'notion_truncated',

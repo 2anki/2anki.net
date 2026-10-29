@@ -4,6 +4,7 @@ import { forgetPendingUpload } from '../upload/pendingUpload';
 import { forgetLastDeck } from '../upload/lastDeck';
 import { NotionResource } from '../interfaces/NotionResource';
 import type JobResponse from '@server/types/JobResponse';
+import type { RescueRule } from '@server/types/RescueCandidate';
 import type { JobsId } from '@server/data_layer/public/Jobs';
 import type { AnkiWebSyncStatus } from '@server/types/ankify/AnkiWebSyncStatus';
 import type { DeckMaturityResult as DeckMaturity } from '@server/types/ankify/DeckMaturity';
@@ -649,10 +650,11 @@ export class Backend {
     id: string,
     type: string | null,
     title: string | null,
-    fieldMapping?: { frontField: string; backField: string }
+    fieldMapping?: { frontField: string; backField: string },
+    rescueRule?: RescueRule
   ): Promise<Response> {
     const link = `${this.baseURL}notion/convert`;
-    return post(link, { id, type, title, ...fieldMapping });
+    return post(link, { id, type, title, ...fieldMapping, rescueRule });
   }
 
   // A 401 here is an expired/invalid session, not a failed toggle — tag it

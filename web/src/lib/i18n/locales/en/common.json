@@ -760,7 +760,10 @@
       "upgradeUnlimited": "Upgrade to Pro"
     },
     "emptyDeckAllFiltered": "A card filter removed every card. Cherry pick keeps only toggles marked 🍒 and skip drops toggles marked 🥑. Turn the filter off in card settings, or mark the toggles you want, then convert again.",
-    "emptyDeckNoContent": "This page had no text we could read. Check that you exported it with its content, then convert again."
+    "emptyDeckNoContent": "This page had no text we could read. Check that you exported it with its content, then convert again.",
+    "emptyDeckNotionEmptyPage": "This Notion page looks empty, or 2anki can't see what's on it. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again.",
+    "connectNotionDocs": "How to share a page with 2anki",
+    "rescueLeadNotion": "You can still make cards from this page:"
   },
   "modals": {
     "consent": {

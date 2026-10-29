@@ -349,27 +349,45 @@ function induceTextPatternCards(dom: CheerioAPI): Note[] {
 // after seeing the count may set the quality floor aside.
 export const OFFER_ONLY_RULES: readonly InducedRule[] = ['paragraphs'];
 
-const PARAGRAPH_MIN_CHARS = 40;
+// An offer-only rule is shown only when it would make at least this many
+// cards; fewer is not worth a choice on the empty-deck screen.
+export const OFFER_ONLY_MIN_CARDS = 3;
+
+export const PARAGRAPH_MIN_CHARS = 40;
+const EMPHASIS_MIN_CHARS = 3;
 const EMPHASIS_MAX_CHARS = 120;
 const FIRST_SENTENCE_MAX_CHARS = 120;
 const EMPHASIS_SELECTOR = 'strong,b,mark';
 const SENTENCE_END = /^(.{8,}?[.!?])(\s|$)/s;
 
-function paragraphFront(dom: CheerioAPI, paragraph: Element): string {
-  const text = textOf(dom, paragraph);
-  const emphasis = dom(paragraph).find(EMPHASIS_SELECTOR).first();
-  const emphasised = emphasis.text().trim();
-  if (
-    emphasised.length >= 3 &&
+// The paragraphs rule's prompt is the emphasised term when one stands apart
+// from the paragraph; both conversion paths share this test so a page and an
+// upload of the same prose make the same cards.
+export function isParagraphEmphasisFront(
+  emphasised: string,
+  paragraphText: string
+): boolean {
+  return (
+    emphasised.length >= EMPHASIS_MIN_CHARS &&
     emphasised.length <= EMPHASIS_MAX_CHARS &&
-    emphasised.length < text.length
-  ) {
-    return (emphasis.html() ?? '').trim();
-  }
+    emphasised.length < paragraphText.length
+  );
+}
+
+export function paragraphFirstSentence(text: string): string {
   const sentence = SENTENCE_END.exec(text)?.[1] ?? text;
   return sentence.length > FIRST_SENTENCE_MAX_CHARS
     ? `${sentence.slice(0, FIRST_SENTENCE_MAX_CHARS).trimEnd()}…`
     : sentence;
+}
+
+function paragraphFront(dom: CheerioAPI, paragraph: Element): string {
+  const text = textOf(dom, paragraph);
+  const emphasis = dom(paragraph).find(EMPHASIS_SELECTOR).first();
+  if (isParagraphEmphasisFront(emphasis.text().trim(), text)) {
+    return (emphasis.html() ?? '').trim();
+  }
+  return paragraphFirstSentence(text);
 }
 
 // One card per prose paragraph: the bold or highlighted term (or the first

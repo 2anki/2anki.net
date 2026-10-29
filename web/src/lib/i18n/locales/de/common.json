@@ -760,7 +760,10 @@
       "upgradeUnlimited": "Auf Pro upgraden"
     },
     "emptyDeckAllFiltered": "Ein Kartenfilter hat alle Karten entfernt. Cherry Pick behält nur Toggles mit 🍒, und Skip entfernt Toggles mit 🥑. Schalte den Filter in den Karteneinstellungen aus oder markiere die gewünschten Toggles, und konvertiere dann erneut.",
-    "emptyDeckNoContent": "Diese Seite enthielt keinen lesbaren Text. Prüfe, ob du sie mit ihrem Inhalt exportiert hast, und konvertiere dann erneut."
+    "emptyDeckNoContent": "Diese Seite enthielt keinen lesbaren Text. Prüfe, ob du sie mit ihrem Inhalt exportiert hast, und konvertiere dann erneut.",
+    "emptyDeckNotionEmptyPage": "Diese Notion-Seite sieht leer aus, oder 2anki kann ihren Inhalt nicht sehen. Füge 2anki dieser Seite und ihren Unterseiten im Verbindungen-Menü von Notion hinzu und konvertiere dann erneut.",
+    "connectNotionDocs": "So teilst du eine Seite mit 2anki",
+    "rescueLeadNotion": "Aus dieser Seite kannst du trotzdem Karten erstellen:"
   },
   "modals": {
     "consent": {

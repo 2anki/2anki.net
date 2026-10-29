@@ -35,6 +35,9 @@ export const EMPTY_DECK_ALL_FILTERED_REASON =
 export const EMPTY_DECK_NO_CONTENT_REASON =
   'No cards in this deck yet. This file had no text we could read. Check that you exported the page with its content, then convert again.';
 
+export const EMPTY_DECK_NOTION_EMPTY_PAGE_REASON =
+  "No cards in this deck yet. This Notion page looks empty, or 2anki can't see what's on it. Add 2anki to this page and its sub-pages in Notion's Connections menu, then convert again.";
+
 export function emptyDeckReasonMessage(reason: EmptyDeckReason): string {
   if (reason === 'all_filtered') {
     return EMPTY_DECK_ALL_FILTERED_REASON;
@@ -43,6 +46,15 @@ export function emptyDeckReasonMessage(reason: EmptyDeckReason): string {
     return EMPTY_DECK_NO_CONTENT_REASON;
   }
   return EMPTY_DECK_FAILURE_REASON;
+}
+
+// A Notion page that returned no blocks has nothing to export, so the upload
+// advice about the exported file does not apply; the likely fix is sharing.
+export function notionEmptyDeckReasonMessage(reason: EmptyDeckReason): string {
+  if (reason === 'no_content') {
+    return EMPTY_DECK_NOTION_EMPTY_PAGE_REASON;
+  }
+  return emptyDeckReasonMessage(reason);
 }
 
 export const MARKDOWN_LIKELY_LOSSY_REASON =

@@ -816,7 +816,10 @@
       "upgradeUnlimited": "Przejdź na Pro"
     },
     "emptyDeckAllFiltered": "Filtr kart usunął wszystkie karty. Cherry pick zostawia tylko toggle oznaczone 🍒, a skip usuwa toggle oznaczone 🥑. Wyłącz filtr w ustawieniach kart albo oznacz potrzebne toggle, a potem przekonwertuj ponownie.",
-    "emptyDeckNoContent": "Ta strona nie zawierała czytelnego tekstu. Sprawdź, czy wyeksportowano ją z zawartością, a potem przekonwertuj ponownie."
+    "emptyDeckNoContent": "Ta strona nie zawierała czytelnego tekstu. Sprawdź, czy wyeksportowano ją z zawartością, a potem przekonwertuj ponownie.",
+    "emptyDeckNotionEmptyPage": "Ta strona Notion wygląda na pustą albo 2anki nie widzi jej zawartości. Dodaj 2anki do tej strony i jej podstron w menu Połączenia w Notion, a następnie przekonwertuj ponownie.",
+    "connectNotionDocs": "Jak udostępnić stronę 2anki",
+    "rescueLeadNotion": "Mimo to możesz zrobić karty z tej strony:"
   },
   "modals": {
     "consent": {

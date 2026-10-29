@@ -1,3 +1,5 @@
+import type { RescueRule } from '../types/RescueCandidate';
+
 export interface ConversionWorkerRequest {
   id: string;
   owner: string;
@@ -7,6 +9,7 @@ export interface ConversionWorkerRequest {
   jobDbId: string | number;
   frontField?: string;
   backField?: string;
+  rescueRule?: RescueRule;
   anonId?: string;
   signupOrigin?: string | null;
   requestId?: string;

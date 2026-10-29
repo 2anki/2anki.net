@@ -3,7 +3,12 @@ import JobRepository from '../../data_layer/JobRepository';
 export class SetJobFailedUseCase {
   constructor(private readonly jobRepository: JobRepository) {}
 
-  async execute(id: string, owner: string, reason: string): Promise<void> {
+  async execute(
+    id: string,
+    owner: string,
+    reason: string,
+    conversionReport?: unknown
+  ): Promise<void> {
     const job = await this.jobRepository.findJobById(id, owner);
 
     if (!job) {
@@ -15,6 +20,13 @@ export class SetJobFailedUseCase {
       return;
     }
 
-    await this.jobRepository.updateJobStatus(id, owner, 'failed', reason);
+    await this.jobRepository.updateJobStatus(
+      id,
+      owner,
+      'failed',
+      reason,
+      undefined,
+      conversionReport
+    );
   }
 }

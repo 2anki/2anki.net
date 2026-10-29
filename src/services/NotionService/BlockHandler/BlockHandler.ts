@@ -65,6 +65,17 @@ import {
   mergeInducedRescue,
 } from '../../../lib/parser/induction/candidateRules';
 import { runInduction } from '../../../lib/parser/induction/rankCandidates';
+import {
+  OFFER_ONLY_MIN_CARDS,
+  OFFER_ONLY_RULES,
+} from '../../../lib/parser/induction/induceCardsFromDom';
+import { toSampleText } from '../../../lib/parser/induction/toSampleText';
+import {
+  mergeRescueCandidates,
+  toRescueSample,
+  type RescueCandidate,
+  type RescueRule,
+} from '../../../types/RescueCandidate';
 import { scoreCandidateDeck } from '../../../lib/parser/scoreCandidateDeck';
 import {
   ConversionTruncation,
@@ -103,6 +114,7 @@ interface Finder {
   parentName: string;
   frontField?: string;
   backField?: string;
+  rescueRule?: RescueRule;
 }
 
 const PAGE_LIKE_DECK_TYPES = new Set([
@@ -325,6 +337,18 @@ class BlockHandler implements IBlockRenderer {
   guessedColumnMapping?: { frontField: string; backField: string };
 
   inducedRule?: InducedRescue;
+
+  // Structures an empty page could still be cut into, offered back on the
+  // failed job so the person can pick one after seeing sample cards.
+  rescueCandidates: RescueCandidate[] = [];
+
+  // A structure the person picked from that offer; consulted only when the
+  // page makes no cards on its own.
+  private chosenRescueRule?: RescueRule;
+
+  // Blocks the top-level page walk fetched. Undefined until a page is walked,
+  // so a database job never reads as an empty page.
+  private pageBlockCount?: number;
 
   resolvedDatabasePath?: ResolvedDatabasePath;
 
@@ -989,13 +1013,21 @@ class BlockHandler implements IBlockRenderer {
       return 'all_filtered';
     }
     if (this.blocksSeen === 0) {
-      return 'no_toggles';
+      return this.walkedAnEmptyPage() ? 'no_content' : 'no_toggles';
     }
     return 'unknown';
   }
 
+  // Notion returns no blocks both for a page with nothing on it and for one
+  // whose content the connection cannot read, so the advice differs from a
+  // page of prose that simply has no toggles.
+  private walkedAnEmptyPage(): boolean {
+    return this.resolvedDatabasePath == null && this.pageBlockCount === 0;
+  }
+
   async findFlashcards(locator: Finder): Promise<Deck[]> {
     const { parentType, topLevelId, rules, decks } = locator;
+    this.chosenRescueRule = locator.rescueRule;
     if (parentType === 'page') {
       try {
         return await this.findFlashcardsFromPage(locator);
@@ -1601,6 +1633,7 @@ class BlockHandler implements IBlockRenderer {
       this.api,
       this.useAll
     );
+    this.pageBlockCount = (this.pageBlockCount ?? 0) + topLevelBlocks.length;
     const flashCardTypes = rules.flaschardTypeNames();
     // Non-page deck types only split into their own decks when the whole page is
     // walked (`useAll`, i.e. a paid plan). On the free plan the deck-building loop
@@ -1855,13 +1888,17 @@ class BlockHandler implements IBlockRenderer {
     if (rules.length === 0) {
       return null;
     }
-    const { winner, best } = runInduction(
+    const { winner, best, candidates } = runInduction(
       rules,
       (rule) =>
         induceNotesFromBlocks(blocks, rule, this.settings, new TagRegistry()),
       blocksPlainTextLength(blocks)
     );
     if (winner == null) {
+      const chosen = this.induceChosenRule(blocks, rules);
+      if (chosen != null) {
+        return chosen;
+      }
       if (best != null) {
         this.recordInducedRule({
           rule: best.rule,
@@ -1869,6 +1906,7 @@ class BlockHandler implements IBlockRenderer {
           score: best.score,
         });
       }
+      this.offerRescue(blocks, candidates);
       return null;
     }
     this.recordInducedRule({
@@ -1877,6 +1915,66 @@ class BlockHandler implements IBlockRenderer {
       score: winner.score,
     });
     return winner.cards;
+  }
+
+  // The person picked a structure on the failed job after seeing its sample,
+  // so the quality floor steps aside, as it does for uploads. Only reached
+  // once no candidate cleared the floor, so a forged rule can never replace a
+  // deck the page makes on its own. Database row walks never offer one.
+  private induceChosenRule(
+    blocks: GetBlockResponse[],
+    rules: InducedRule[]
+  ): Note[] | null {
+    const rule = this.chosenRescueRule;
+    if (
+      rule == null ||
+      this.resolvedDatabasePath != null ||
+      ![...rules, ...OFFER_ONLY_RULES].includes(rule)
+    ) {
+      return null;
+    }
+    const cards = induceNotesFromBlocks(
+      blocks,
+      rule,
+      this.settings,
+      new TagRegistry()
+    );
+    if (cards.length === 0) {
+      return null;
+    }
+    this.recordInducedRule({
+      rule,
+      outcome: 'rescue_chosen',
+      score: scoreCandidateDeck(cards, blocksPlainTextLength(blocks)),
+    });
+    return cards;
+  }
+
+  private offerRescue(
+    blocks: GetBlockResponse[],
+    candidates: RescueCandidate[]
+  ): void {
+    if (this.resolvedDatabasePath != null) {
+      return;
+    }
+    const offerOnly = OFFER_ONLY_RULES.map((rule) => {
+      const cards = induceNotesFromBlocks(
+        blocks,
+        rule,
+        this.settings,
+        new TagRegistry()
+      );
+      return {
+        rule,
+        cards: cards.length,
+        sample: toRescueSample(cards, toSampleText),
+      };
+    }).filter(({ cards }) => cards >= OFFER_ONLY_MIN_CARDS);
+    this.rescueCandidates = mergeRescueCandidates([
+      this.rescueCandidates,
+      candidates,
+      offerOnly,
+    ]);
   }
 
   private recordInducedRule(next: InducedRescue): void {
