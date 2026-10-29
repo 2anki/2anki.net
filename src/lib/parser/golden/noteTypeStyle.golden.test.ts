@@ -289,6 +289,7 @@ const STYLED_SETTINGS: SettingsInput = {
   'text-color': '#1f2937',
   'text-align': 'center',
   'code-theme': 'dracula',
+  'style-changed-at': '1793000000',
 };
 
 const originalSkipCreateDeck = process.env.SKIP_CREATE_DECK;
@@ -327,6 +328,9 @@ describe('one note-type style for every deck-building path', () => {
         }
         expect(noteTypeShape(decks[0])).toEqual(
           noteTypeShape({ settings: {} })
+        );
+        expect(decks[0].settings?.styleChangedAt).toBe(
+          new CardOption(input).styleChangedAt
         );
       }
     );

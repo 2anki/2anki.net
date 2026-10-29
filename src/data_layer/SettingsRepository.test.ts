@@ -496,6 +496,19 @@ describe('SettingsRepository owner scoping and payload shapes', () => {
     expect(settings?.deckName).toBe('Flat Deck');
   });
 
+  test('carries a saved page style change time into the conversion settings', async () => {
+    await repo.create({
+      owner: '42',
+      object_id: 'page-style',
+      payload: { 'font-size': '32', 'style-changed-at': '1793000000' },
+      title: 'Styled',
+    });
+
+    const settings = await repo.loadIfExists('42', 'page-style');
+
+    expect(settings?.styleChangedAt).toBe(1793000000);
+  });
+
   test('returns null when no row exists for the owner and page', async () => {
     const settings = await repo.loadIfExists('42', 'missing');
     expect(settings).toBeNull();

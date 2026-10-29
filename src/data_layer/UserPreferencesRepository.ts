@@ -15,6 +15,7 @@ export type CardOptions = Partial<{
   'skip-defaults': string;
   'overlapping-cloze': string;
   'code-theme': string;
+  'style-changed-at': string;
   'card-size': string;
   'field-mapping': string;
   'mcq-enabled': string;
@@ -100,6 +101,7 @@ export const ALLOWED_CARD_OPTION_KEYS = new Set([
   'skip-defaults',
   'overlapping-cloze',
   'code-theme',
+  'style-changed-at',
   'card-size',
   'field-mapping',
   'mcq-enabled',

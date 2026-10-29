@@ -140,7 +140,7 @@ def resolve_tts_langs(settings):
     return settings.get("frontLang", "") or "", ""
 
 
-def get_model(descriptor, mcq_settings=None, front_lang="", back_lang=""):
+def get_model(descriptor, mcq_settings=None, front_lang="", back_lang="", style_changed_at=0):
     """
     load the correct model based on type
     :param descriptor:
@@ -149,6 +149,8 @@ def get_model(descriptor, mcq_settings=None, front_lang="", back_lang=""):
         on the front of non-MCQ cards. Empty string means no injection.
     :param back_lang: optional Anki TTS lang code to inject on the back of non-MCQ cards.
         Empty string means no injection. 'both' is front_lang and back_lang sharing a value.
+    :param style_changed_at: unix time the user last changed a style option; the notetype
+        mod follows it when it is newer than NOTETYPE_MOD (#5043).
     :return:
     """
     model_type, model_id, name, css, qfmt, afmt = descriptor
@@ -182,6 +184,7 @@ def get_model(descriptor, mcq_settings=None, front_lang="", back_lang=""):
         css=css,
         model_type=model_info.get("model_type"),
         original_stock_kind=template_file.get("originalStockKind"),
+        style_changed_at=style_changed_at,
     )
 
 

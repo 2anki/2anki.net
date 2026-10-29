@@ -95,6 +95,29 @@ def _media_field_value(media):
     )
 
 
+def _style_changed_at(settings):
+    """
+    The unix time the user last changed font size, text colour, alignment or
+    code theme, as the server validated it. Anything that is not a plain
+    integer counts as never changed.
+    """
+    value = settings.get("styleChangedAt")
+    if isinstance(value, bool) or not isinstance(value, int):
+        return 0
+    return value
+
+
+def _style_changed_at_for(css, deck_style, style_changed_at):
+    """
+    Only a note type whose CSS carries the deck style follows a style change;
+    the rest keep the pinned mod so the change never overwrites a local edit
+    it would not alter (#5043).
+    """
+    if deck_style and deck_style in (css or ""):
+        return style_changed_at
+    return 0
+
+
 def build_one_deck(data_file, template_dir):
     # pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements,import-outside-toplevel
     """
@@ -123,6 +146,8 @@ def build_one_deck(data_file, template_dir):
 
     mt = data[0].get("settings", {})
     STYLING = data[0].get('style', "") or ""
+    DECK_STYLE = STYLING
+    style_changed_at = _style_changed_at(mt)
 
     cloze_model_name = mt.get('clozeModelName', "n2a-cloze") or "n2a-cloze"
     basic_model_name = mt.get('basicModelName', "n2a-basic") or "n2a-basic"
@@ -203,6 +228,10 @@ def build_one_deck(data_file, template_dir):
         "mcqTtsExtra": mt.get("mcqTtsExtra", ""),
     }
     front_lang, back_lang = resolve_tts_langs(mt)
+    basic_changed_at = _style_changed_at_for(BASIC_STYLE, DECK_STYLE, style_changed_at)
+    cloze_changed_at = _style_changed_at_for(CLOZE_STYLE, DECK_STYLE, style_changed_at)
+    input_changed_at = _style_changed_at_for(INPUT_STYLE, DECK_STYLE, style_changed_at)
+    hierarchy_changed_at = _style_changed_at_for(HIERARCHY_STYLE, DECK_STYLE, style_changed_at)
 
     for deck in data:
         cards = deck.get("cards", [])
@@ -214,7 +243,8 @@ def build_one_deck(data_file, template_dir):
             fields = [front, back, _media_field_value(card["media"])]
             model = get_model(("basic", basic_model_id, basic_model_name,
                                BASIC_STYLE, BASIC_FRONT, BASIC_BACK),
-                              front_lang=front_lang, back_lang=back_lang)
+                              front_lang=front_lang, back_lang=back_lang,
+                              style_changed_at=basic_changed_at)
             custom_fields = card.get("customFields")
             custom_field_names = card.get("customFieldNames")
             custom_model_name = card.get("customModelName")
@@ -240,12 +270,14 @@ def build_one_deck(data_file, template_dir):
                 model = get_model(
                     ("cloze", cloze_model_id, cloze_model_name,
                      CLOZE_STYLE, CLOZE_FRONT, CLOZE_BACK),
-                    front_lang=front_lang, back_lang=back_lang)
+                    front_lang=front_lang, back_lang=back_lang,
+                    style_changed_at=cloze_changed_at)
             elif card.get('enableInput', False) and card.get('answer', False):
                 model = get_model(
                     ("input", input_model_id, input_model_name,
                      INPUT_STYLE, INPUT_FRONT, INPUT_BACK),
-                    front_lang=front_lang, back_lang=back_lang)
+                    front_lang=front_lang, back_lang=back_lang,
+                    style_changed_at=input_changed_at)
                 fields = [
                     front.replace("{{type:Input}}", ""),
                     back,
@@ -256,7 +288,8 @@ def build_one_deck(data_file, template_dir):
                 model = get_model(
                     ("hierarchy", hierarchy_model_id, HIERARCHY_MODEL_NAME,
                      HIERARCHY_STYLE, None, None),
-                    front_lang=front_lang, back_lang=back_lang)
+                    front_lang=front_lang, back_lang=back_lang,
+                    style_changed_at=hierarchy_changed_at)
                 fields = [
                     get_safe_value(card.get("h1", "")),
                     get_safe_value(card.get("h2", "")),

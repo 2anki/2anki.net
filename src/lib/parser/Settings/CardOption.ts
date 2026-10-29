@@ -129,6 +129,8 @@ class CardOption {
 
   readonly codeTheme: string;
 
+  readonly styleChangedAt: number;
+
   readonly mcqEnabled: boolean;
 
   readonly mcqTtsQuestion: string;
@@ -225,6 +227,7 @@ class CardOption {
     );
     this.cardStyle = validateCardStylePicker(input['card-style']);
     this.codeTheme = validateCodeTheme(input['code-theme']);
+    this.styleChangedAt = parseStyleChangedAt(input['style-changed-at']);
     this.mcqEnabled = input['mcq-enabled'] === 'true';
     this.mcqTtsQuestion = input['mcq-tts-question'] ?? '';
     this.mcqTtsCorrectAnswer = input['mcq-tts-correct-answer'] ?? '';
@@ -286,6 +289,13 @@ function validatePdfFallback(raw: string | undefined): PdfFallback {
 
 function validateCodeTheme(raw: string | undefined): string {
   return raw && CODE_THEME_VALUES.includes(raw) ? raw : 'github';
+}
+
+const WHOLE_SECONDS = /^\d{1,12}$/;
+
+function parseStyleChangedAt(raw: unknown): number {
+  if (typeof raw !== 'string' || !WHOLE_SECONDS.test(raw)) return 0;
+  return Math.min(Number(raw), Math.floor(Date.now() / 1000));
 }
 
 function parseFieldMapping(raw: string | undefined): FieldMapping | undefined {

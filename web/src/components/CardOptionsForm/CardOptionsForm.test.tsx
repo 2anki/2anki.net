@@ -6,7 +6,7 @@ import {
   within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -1364,5 +1364,165 @@ describe('CardOptionsForm cherry-pick warning on account defaults', () => {
       expect(cherry).toBeChecked();
     });
     expect(screen.queryByText(CHERRY_DEFAULTS_WARNING)).toBeNull();
+  });
+});
+
+describe('CardOptionsForm records when a card style option changes', () => {
+  const CHANGED_AT = '1793275200';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-29T12:00:00Z'));
+    setUserLocalsPaying(false);
+    localStorage.clear();
+    mockResetUserCardOptions.mockResolvedValue(undefined);
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'no-underline',
+        'Remove underlines',
+        'Strip underline formatting from card text.',
+        false
+      ),
+    ]);
+    mockGetSettings.mockResolvedValue({});
+    mockSaveSettings.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([
+    [
+      'font size',
+      async () =>
+        fireEvent.change(await screen.findByLabelText('Font size'), {
+          target: { value: '32' },
+        }),
+    ],
+    [
+      'text colour',
+      async () =>
+        fireEvent.click(
+          within(
+            await screen.findByRole('group', { name: 'Text color' })
+          ).getByRole('button', { name: 'Blue' })
+        ),
+    ],
+    [
+      'text alignment',
+      async () =>
+        fireEvent.click(
+          within(
+            await screen.findByRole('group', { name: 'Text alignment' })
+          ).getByRole('button', { name: 'Center' })
+        ),
+    ],
+    [
+      'code theme',
+      async () =>
+        fireEvent.change(await screen.findByLabelText('Code theme'), {
+          target: { value: 'dracula' },
+        }),
+    ],
+  ])('stores the time of a %s change', async (_label, change) => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+
+    await change();
+
+    expect(localStorage.getItem('style-changed-at')).toBe(CHANGED_AT);
+  });
+
+  it('leaves the time alone when the picked style is the current one', async () => {
+    localStorage.setItem('text-color', '#1f6feb');
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.click(
+      within(
+        await screen.findByRole('group', { name: 'Text color' })
+      ).getByRole('button', { name: 'Blue' })
+    );
+
+    expect(localStorage.getItem('style-changed-at')).toBeNull();
+  });
+
+  it('leaves the time alone when a non-style option changes', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.change(
+      await screen.findByPlaceholderText('Enter deck name (optional)'),
+      { target: { value: 'Pharmacology' } }
+    );
+
+    expect(localStorage.getItem('style-changed-at')).toBeNull();
+  });
+
+  it('records the time when a reset puts a custom style back to the default', async () => {
+    localStorage.setItem('font-size', '32');
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Reset to defaults' })
+    );
+
+    await waitFor(() => {
+      expect(localStorage.getItem('style-changed-at')).toBe(CHANGED_AT);
+    });
+    expect(localStorage.getItem('font-size')).toBeNull();
+  });
+
+  it('saves the time with a Notion page style change', async () => {
+    renderPageForm({ setError: vi.fn() });
+
+    fireEvent.change(await screen.findByLabelText('Code theme'), {
+      target: { value: 'dracula' },
+    });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Save defaults' })
+    );
+
+    await waitFor(() => {
+      expect(mockSaveSettings).toHaveBeenCalledTimes(1);
+    });
+    expect(mockSaveSettings.mock.calls[0][0].payload).toMatchObject({
+      'code-theme': 'dracula',
+      'style-changed-at': CHANGED_AT,
+    });
+    expect(localStorage.getItem('style-changed-at')).toBeNull();
+  });
+
+  it('keeps a Notion page time it loaded when another option is saved', async () => {
+    mockGetSettings.mockResolvedValue({
+      'font-size': '32',
+      'style-changed-at': '1793000000',
+    });
+    renderPageForm({ setError: vi.fn() });
+
+    const saveButton = await makeDirty();
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockSaveSettings).toHaveBeenCalledTimes(1);
+    });
+    expect(mockSaveSettings.mock.calls[0][0].payload).toMatchObject({
+      'font-size': '32',
+      'style-changed-at': '1793000000',
+    });
+  });
+
+  it('does not give a Notion page the account-wide time', async () => {
+    localStorage.setItem('style-changed-at', '1793000000');
+    renderPageForm({ setError: vi.fn() });
+
+    const saveButton = await makeDirty();
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mockSaveSettings).toHaveBeenCalledTimes(1);
+    });
+    expect(mockSaveSettings.mock.calls[0][0].payload).not.toHaveProperty(
+      'style-changed-at'
+    );
   });
 });

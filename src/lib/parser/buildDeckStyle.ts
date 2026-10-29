@@ -35,6 +35,10 @@ interface DeckStyleSettings {
   textAlign?: string;
 }
 
+interface StampedDeckStyleSettings extends DeckStyleSettings {
+  styleChangedAt: number;
+}
+
 // Every 2anki deck of a note type shares one note type id, and Anki keeps the
 // first CSS it sees for that id until NOTETYPE_MOD is bumped (#4447). So the
 // CSS has to come from the settings alone, never from the file being
@@ -55,10 +59,13 @@ export function buildDeckStyle(settings: DeckStyleSettings): string {
   );
 }
 
-export function withDeckStyle<T extends { style: string | null }>(
-  decks: T[],
-  settings: DeckStyleSettings
-): T[] {
+export function withDeckStyle<
+  T extends { style: string | null; settings?: Record<string, unknown> },
+>(decks: T[], settings: StampedDeckStyleSettings): T[] {
   const style = buildDeckStyle(settings);
-  return decks.map((deck) => ({ ...deck, style }));
+  return decks.map((deck) => ({
+    ...deck,
+    style,
+    settings: { ...deck.settings, styleChangedAt: settings.styleChangedAt },
+  }));
 }

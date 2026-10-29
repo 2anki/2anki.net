@@ -38,3 +38,22 @@ describe('withDeckStyle', () => {
     ]);
   });
 });
+
+describe('withDeckStyle style change time', () => {
+  it('stamps the settings style change time next to the deck settings', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(1793275200 * 1000);
+    try {
+      const decks = withDeckStyle(
+        [{ name: 'a', style: null, settings: { template: 'specialstyle' } }],
+        new CardOption({ 'style-changed-at': '1793000000' })
+      );
+      expect(decks[0].settings).toEqual({
+        template: 'specialstyle',
+        styleChangedAt: 1793000000,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

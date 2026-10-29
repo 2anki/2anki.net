@@ -120,6 +120,22 @@ describe('userPreferencesSync — authenticated user (token cookie present)', ()
     });
   });
 
+  it('scheduleSync carries the time of the last card style change', async () => {
+    localStorage.setItem('font-size', '32');
+    localStorage.setItem('style-changed-at', '1793275200');
+
+    scheduleSync();
+    await flushDebounce();
+
+    const body = JSON.parse(
+      (fetchSpy.mock.calls[0][1] as { body: string }).body
+    );
+    expect(body.cardOptions).toMatchObject({
+      'font-size': '32',
+      'style-changed-at': '1793275200',
+    });
+  });
+
   it('scheduleSync includes the stored language in the PATCH body', async () => {
     localStorage.setItem('2anki-language', 'de');
 
