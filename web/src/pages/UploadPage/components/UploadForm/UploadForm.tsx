@@ -1003,13 +1003,9 @@ function UploadForm({
         leaveTo(result.url);
         return;
       }
-      setDayPassError(
-        "Couldn't start checkout. Try again, or email support@2anki.net."
-      );
+      setDayPassError(t('upload.limit.checkoutError'));
     } catch {
-      setDayPassError(
-        "Couldn't start checkout. Check your connection and try again."
-      );
+      setDayPassError(t('upload.limit.checkoutOffline'));
     } finally {
       setDayPassPending(false);
     }

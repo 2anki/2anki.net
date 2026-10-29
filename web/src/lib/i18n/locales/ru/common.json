@@ -161,7 +161,9 @@
       "usage": "{{used}} / {{limit}} карт · сбрасывается {{resetsOn}}, когда возвращаются твои бесплатные карты",
       "startingCheckout": "Открываем оплату",
       "getDayPass": "Купить Day Pass — {{price}}",
-      "seePlans": "Посмотреть планы"
+      "seePlans": "Посмотреть планы",
+      "checkoutError": "Не удалось открыть оплату. Попробуй ещё раз или напиши на support@2anki.net.",
+      "checkoutOffline": "Не удалось открыть оплату. Проверь соединение и попробуй ещё раз."
     },
     "dropzone": {
       "dropActive": "Отпусти прямо сюда",
@@ -613,7 +615,7 @@
       "mostPopular": "Самый популярный",
       "day24": "— 24 часа",
       "week1": "— 1 неделя",
-      "redirecting": "Перенаправляем…",
+      "redirecting": "Открываем оплату",
       "getDayPass": "Купить Day Pass",
       "getWeekPass": "Купить Week Pass",
       "semester4mo": "— 4 месяца",
@@ -622,7 +624,7 @@
       "horizonDay": "Один день учёбы",
       "horizonWeek": "Одна неделя экзаменов",
       "horizonSemester": "Целый семестр",
-      "semesterPerWeek": "≈$2/неделю — на 85% дешевле Week Pass"
+      "semesterPerWeek": "На 85% дешевле Week Pass в пересчёте на неделю"
     },
     "unlimited": {
       "perMonth": "/ мес",

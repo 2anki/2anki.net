@@ -159,7 +159,9 @@
       "usage": "{{used}} / {{limit}} tarjetas · se reinicia el {{resetsOn}}, cuando vuelven tus tarjetas gratis",
       "startingCheckout": "Abriendo el pago",
       "getDayPass": "Consigue el Day Pass — {{price}}",
-      "seePlans": "Ver planes"
+      "seePlans": "Ver planes",
+      "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo, o escribe a support@2anki.net.",
+      "checkoutOffline": "No se pudo iniciar el pago. Revisa tu conexión y vuelve a intentarlo."
     },
     "dropzone": {
       "dropActive": "Suéltalo aquí mismo",
@@ -565,7 +567,7 @@
       "mostPopular": "El más popular",
       "day24": "— 24 horas",
       "week1": "— 1 semana",
-      "redirecting": "Redirigiendo…",
+      "redirecting": "Abriendo el pago",
       "getDayPass": "Consigue el Day Pass",
       "getWeekPass": "Consigue el Week Pass",
       "semester4mo": "— 4 meses",
@@ -574,7 +576,7 @@
       "horizonDay": "Un día de estudio",
       "horizonWeek": "Una semana de exámenes",
       "horizonSemester": "Un semestre completo",
-      "semesterPerWeek": "≈$2/semana — 85 % menos que el Week Pass"
+      "semesterPerWeek": "85 % menos por semana que el Week Pass"
     },
     "unlimited": {
       "perMonth": "/ mes",

@@ -159,7 +159,9 @@
       "usage": "{{used}} / {{limit}} kaarten · reset op {{resetsOn}}, wanneer je gratis kaarten terugkomen",
       "startingCheckout": "Afrekenen starten",
       "getDayPass": "Day Pass kopen — {{price}}",
-      "seePlans": "Bekijk abonnementen"
+      "seePlans": "Bekijk abonnementen",
+      "checkoutError": "Kon het afrekenen niet starten. Probeer het opnieuw, of mail support@2anki.net.",
+      "checkoutOffline": "Kon het afrekenen niet starten. Controleer je verbinding en probeer het opnieuw."
     },
     "dropzone": {
       "dropActive": "Zet het hier neer",
@@ -565,7 +567,7 @@
       "mostPopular": "Meest gekozen",
       "day24": "— 24 uur",
       "week1": "— 1 week",
-      "redirecting": "Doorsturen…",
+      "redirecting": "Afrekenen starten",
       "getDayPass": "Day Pass kopen",
       "getWeekPass": "Week Pass kopen",
       "semester4mo": "— 4 maanden",
@@ -574,7 +576,7 @@
       "horizonDay": "Eén studiedag",
       "horizonWeek": "Eén tentamenweek",
       "horizonSemester": "Een heel semester",
-      "semesterPerWeek": "≈$2/week — 85% minder dan de Week Pass"
+      "semesterPerWeek": "85% minder per week dan de Week Pass"
     },
     "unlimited": {
       "perMonth": "/ mnd",

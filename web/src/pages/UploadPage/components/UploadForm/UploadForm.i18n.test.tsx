@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 import i18n from '../../../../lib/i18n';
 import { useUserLocals } from '../../../../lib/hooks/useUserLocals';
 import { useCardUsage } from '../../../../lib/hooks/useCardUsage';
+import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import UploadForm from './UploadForm';
 
 vi.mock('../../../../lib/analytics/track', () => ({
@@ -112,6 +113,9 @@ describe('UploadForm card-limit wall in German', () => {
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useUserLocals>);
     vi.mocked(useCardUsage).mockReturnValue(null);
+    vi.mocked(get2ankiApi).mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
     await i18n.changeLanguage('en');
   });
 
@@ -134,5 +138,24 @@ describe('UploadForm card-limit wall in German', () => {
     expect(
       screen.queryByRole('link', { name: 'See plans' })
     ).not.toBeInTheDocument();
+  });
+
+  it('explains a refused Day Pass checkout in German', async () => {
+    renderUploadForm();
+    fireEvent.click(screen.getByRole('button', { name: /Day Pass holen/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.'
+    );
+  });
+
+  it('explains an unreachable Day Pass checkout in German', async () => {
+    vi.mocked(get2ankiApi).mockReturnValue({
+      startPassCheckout: vi.fn().mockRejectedValue(new TypeError('offline')),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    renderUploadForm();
+    fireEvent.click(screen.getByRole('button', { name: /Day Pass holen/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Der Checkout konnte nicht gestartet werden. Überprüfe deine Verbindung und versuch es erneut.'
+    );
   });
 });
