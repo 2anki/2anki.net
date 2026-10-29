@@ -436,3 +436,381 @@ exports[`what each population gets back from /api/upload/file > signed-out with 
   "storedObjects": [],
 }
 `;
+
+exports[`what each population gets back from a photo upload > paying subscriber photo upload past the free photo quota 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=3",
+  },
+  "cardsCharged": [],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Photo"",
+    "file-name": "Golden%20Photo",
+    "x-card-count": "3",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from a photo upload > signed-in free photo upload 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=3",
+  },
+  "cardsCharged": [],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Photo"",
+    "file-name": "Golden%20Photo",
+    "x-card-count": "3",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from a photo upload > signed-in free photo upload with the monthly photo quota used up 1`] = `
+{
+  "body": {
+    "code": "image_conversion_failed",
+    "limit": 5,
+    "message": "Free plan is 5 photos per month. You've used 5. Paid plans include AI credits for more.",
+    "used": 5,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 429,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from a photo upload > signed-out photo upload 1`] = `
+{
+  "body": {
+    "code": "image_only_no_text",
+    "filename": "Golden Photo.png",
+    "message": "These look like images with no text to read. Turn them into cards with Photo to Deck.",
+    "photoToDeckUrl": "/photo-to-deck",
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 400,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from an AI upload > lifetime (patreon) user with AI on 1`] = `
+{
+  "backgroundJobs": [
+    {
+      "outcome": "moved to My Decks",
+      "statuses": [
+        "claude:chunk:1:1",
+        "step3_building_deck",
+      ],
+      "title": "Golden Small.html",
+      "type": "claude",
+    },
+  ],
+  "body": {
+    "jobId": "<job-id>",
+  },
+  "cardsCharged": [
+    3,
+  ],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 202,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;
+
+exports[`what each population gets back from an AI upload > paying subscriber with AI on 1`] = `
+{
+  "backgroundJobs": [
+    {
+      "outcome": "moved to My Decks",
+      "statuses": [
+        "claude:chunk:1:1",
+        "step3_building_deck",
+      ],
+      "title": "Golden Small.html",
+      "type": "claude",
+    },
+  ],
+  "body": {
+    "jobId": "<job-id>",
+  },
+  "cardsCharged": [
+    3,
+  ],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 202,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-in free with AI on 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=5",
+  },
+  "cardsCharged": [
+    5,
+  ],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
+    "content-disposition": "attachment; filename="Golden Small.apkg"",
+    "file-name": "Golden%20Small.apkg",
+    "x-card-count": "5",
+    "x-download-key": "<download-key>",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-in pass holder with AI on 1`] = `
+{
+  "backgroundJobs": [
+    {
+      "outcome": "moved to My Decks",
+      "statuses": [
+        "claude:chunk:1:1",
+        "step3_building_deck",
+      ],
+      "title": "Golden Small.html",
+      "type": "claude",
+    },
+  ],
+  "body": {
+    "jobId": "<job-id>",
+  },
+  "cardsCharged": [
+    3,
+  ],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 202,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview off 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=5",
+  },
+  "cardsCharged": [],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Small.apkg"",
+    "file-name": "Golden%20Small.apkg",
+    "x-card-count": "5",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on 1`] = `
+{
+  "body": {
+    "cardCount": 3,
+    "cards": [
+      {
+        "back": "A snapshot of what users get back",
+        "front": "What is a golden test?",
+      },
+      {
+        "back": "The upload response for each population",
+        "front": "What does it guard?",
+      },
+      {
+        "back": "Every PR that touches uploads",
+        "front": "Who reads it?",
+      },
+    ],
+    "kind": "ai_preview",
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on, no anon id 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=5",
+  },
+  "cardsCharged": [],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Small.apkg"",
+    "file-name": "Golden%20Small.apkg",
+    "x-card-count": "5",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on, no sample came back 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=5",
+  },
+  "cardsCharged": [],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-AI-Preview-Unavailable",
+    "content-disposition": "attachment; filename="Golden Small.apkg"",
+    "file-name": "Golden%20Small.apkg",
+    "x-ai-preview-unavailable": "1",
+    "x-card-count": "5",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what the real auth middleware resolves before the upload > real middleware: origin not on the allowlist 1`] = `
+{
+  "body": {
+    "text": "",
+  },
+  "cardsCharged": [],
+  "contentType": "",
+  "headers": {},
+  "status": 403,
+  "storedObjects": [],
+}
+`;
+
+exports[`what the real auth middleware resolves before the upload > real pass token: signed-out Day Pass holder 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=120",
+  },
+  "cardsCharged": [],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count",
+    "content-disposition": "attachment; filename="Golden Large.apkg"",
+    "file-name": "Golden%20Large.apkg",
+    "x-card-count": "120",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+    "x-upload-owner": "none",
+  },
+  "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what the real auth middleware resolves before the upload > real session: paying subscriber with AI on 1`] = `
+{
+  "backgroundJobs": [
+    {
+      "outcome": "moved to My Decks",
+      "statuses": [
+        "claude:chunk:1:1",
+        "step3_building_deck",
+      ],
+      "title": "Golden Small.html",
+      "type": "claude",
+    },
+  ],
+  "body": {
+    "jobId": "<job-id>",
+  },
+  "cardsCharged": [
+    3,
+  ],
+  "contentType": "application/json",
+  "headers": {
+    "x-upload-owner": "4343",
+  },
+  "status": 202,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;
+
+exports[`what the real auth middleware resolves before the upload > real session: signed out since, over the cap 1`] = `
+{
+  "body": {
+    "text": "Found. Redirecting to /limit?kind=anonymous",
+  },
+  "cardsCharged": [],
+  "contentType": "text/plain",
+  "headers": {
+    "location": "/limit?kind=anonymous",
+    "x-upload-owner": "none",
+  },
+  "status": 302,
+  "storedObjects": [],
+}
+`;
+
+exports[`what the real auth middleware resolves before the upload > real session: signed-in free under the monthly limit 1`] = `
+{
+  "body": {
+    "apkg": "golden-apkg cards=5",
+  },
+  "cardsCharged": [
+    5,
+  ],
+  "contentType": "application/octet-stream",
+  "headers": {
+    "access-control-expose-headers": "File-Name, X-Card-Count, X-MCQ-Count, X-MCQ-Skipped-Count, X-Download-Key",
+    "content-disposition": "attachment; filename="Golden Small.apkg"",
+    "file-name": "Golden%20Small.apkg",
+    "x-card-count": "5",
+    "x-download-key": "<download-key>",
+    "x-mcq-count": "0",
+    "x-mcq-skipped-count": "0",
+    "x-upload-owner": "4242",
+  },
+  "status": 200,
+  "storedObjects": [
+    "deck",
+  ],
+}
+`;

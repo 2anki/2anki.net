@@ -6,6 +6,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import jwt from 'jsonwebtoken';
 
 const s3Puts = vi.hoisted(() => [] as string[]);
 
@@ -51,6 +52,94 @@ vi.mock('../../lib/conversionPool', async (importActual) => {
   };
 });
 
+const claudeReplies = vi.hoisted(() => ({
+  conversion: '',
+  preview: '',
+  vision: '',
+}));
+
+vi.mock('@anthropic-ai/sdk', async (importActual) => {
+  const actual = await importActual<typeof import('@anthropic-ai/sdk')>();
+  const reply = (text: string) => ({
+    model: 'claude-golden',
+    content: [{ type: 'text', text }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 100, output_tokens: 50 },
+  });
+  const isVisionRequest = (params: {
+    messages: { content: unknown }[];
+  }): boolean =>
+    params.messages.some(
+      (message) =>
+        Array.isArray(message.content) &&
+        message.content.some(
+          (block: { type?: string }) => block.type === 'image'
+        )
+    );
+  class StubAnthropic {
+    messages = {
+      stream: () => {
+        const stream = {
+          on: () => stream,
+          finalMessage: () => Promise.resolve(reply(claudeReplies.conversion)),
+        };
+        return stream;
+      },
+      create: (params: { messages: { content: unknown }[] }) =>
+        Promise.resolve(
+          reply(
+            isVisionRequest(params)
+              ? claudeReplies.vision
+              : claudeReplies.preview
+          )
+        ),
+    };
+  }
+  return { ...actual, default: StubAnthropic };
+});
+
+vi.mock('node:child_process', async (importActual) => {
+  const actual = await importActual<typeof import('node:child_process')>();
+  const { EventEmitter } = await import('node:events');
+  function spawnDeckBridge(deckInfoPath: string) {
+    const proc = Object.assign(new EventEmitter(), {
+      stdout: new EventEmitter(),
+      stderr: new EventEmitter(),
+    });
+    const deckInfo = JSON.parse(fs.readFileSync(deckInfoPath, 'utf8')) as {
+      cards: unknown[];
+    }[];
+    const cards = deckInfo.reduce((sum, deck) => sum + deck.cards.length, 0);
+    const apkgPath = path.join(path.dirname(deckInfoPath), 'golden.apkg');
+    fs.writeFileSync(apkgPath, `golden-apkg cards=${cards}`);
+    setImmediate(() => {
+      proc.stdout.emit('data', Buffer.from(`${apkgPath}\n`));
+      proc.emit('close', 0);
+    });
+    return proc;
+  }
+  const spawn = (
+    command: string,
+    args: readonly string[] = [],
+    options: Record<string, unknown> = {}
+  ) =>
+    args[0]?.endsWith('create_deck.py') === true
+      ? spawnDeckBridge(args[1])
+      : actual.spawn(command, args, options);
+  return { ...actual, spawn };
+});
+
+vi.mock('../../data_layer', async (importActual) => {
+  const actual = await importActual<typeof import('../../data_layer')>();
+  const { default: knex } = await import('knex');
+  const database = knex({
+    client: 'better-sqlite3',
+    connection: { filename: ':memory:' },
+    useNullAsDefault: true,
+  });
+  return { ...actual, getDatabase: () => database };
+});
+
 vi.mock('../../services/events/eventsSinkInstance', () => ({
   getEventsSink: () => ({
     record: () => undefined,
@@ -75,10 +164,33 @@ import { ANONYMOUS_PARTIAL_DELIVERY_FLAG } from '../../lib/upload/anonymousParti
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../../lib/upload/anonymousDayPassCard';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 import { fakeUploadServiceDeps } from '../../test/fakes/uploadServiceDeps';
+import { ANONYMOUS_AI_PREVIEW_FLAG } from '../../lib/upload/anonymousAiPreview';
+import { PhotoToFlashcardsUseCase } from '../../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
+import type { IEventsRepository } from '../../data_layer/EventsRepository';
+import { getDatabase } from '../../data_layer';
+import RequireAllowedOrigin from '../../routes/middleware/RequireAllowedOrigin';
+import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 
 const SMALL_DECK_CARDS = 5;
 const LARGE_DECK_CARDS = 120;
 const OWNER = 4242;
+const SESSION_SECRET = 'golden-session-secret';
+const ALLOWED_ORIGIN = 'https://2anki.net';
+const ONE_PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64'
+);
+
+const AI_CARDS = [
+  { q: 'What is a golden test?', a: 'A snapshot of what users get back' },
+  { q: 'What does it guard?', a: 'The upload response for each population' },
+  { q: 'Who reads it?', a: 'Every PR that touches uploads' },
+];
+const CLAUDE_REPLIES = {
+  conversion: JSON.stringify([{ deck: 'Golden Small', cards: AI_CARDS }]),
+  preview: JSON.stringify(AI_CARDS.map(({ q, a }) => ({ front: q, back: a }))),
+  vision: JSON.stringify([{ deck: 'Golden Photo', cards: AI_CARDS }]),
+};
 
 function notionToggleExport(title: string, cardCount: number): string {
   const toggles = Array.from(
@@ -92,11 +204,18 @@ function notionToggleExport(title: string, cardCount: number): string {
 const UPLOADS = {
   small: {
     filename: 'Golden Small.html',
-    html: notionToggleExport('Golden Small', SMALL_DECK_CARDS),
+    body: notionToggleExport('Golden Small', SMALL_DECK_CARDS),
+    type: 'text/html',
   },
   large: {
     filename: 'Golden Large.html',
-    html: notionToggleExport('Golden Large', LARGE_DECK_CARDS),
+    body: notionToggleExport('Golden Large', LARGE_DECK_CARDS),
+    type: 'text/html',
+  },
+  photo: {
+    filename: 'Golden Photo.png',
+    body: ONE_PIXEL_PNG,
+    type: 'image/png',
   },
 };
 
@@ -106,6 +225,10 @@ interface Population {
   headers: Record<string, string>;
   cardsUsed: number;
   flags: Record<string, boolean>;
+  fields?: Record<string, string>;
+  photosUsedThisMonth?: number;
+  previewReply?: string;
+  realAuth?: boolean;
 }
 
 const signedOut: Population = {
@@ -301,6 +424,154 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
   ],
 ];
 
+const AI_ON = { 'claude-ai-flashcards': 'true' };
+const PAYING_OWNER = 4343;
+const PASS_SESSION_ID = 'cs_golden_pass';
+const FREE_SESSION = jwt.sign({ userId: OWNER }, SESSION_SECRET);
+const PAYING_SESSION = jwt.sign({ userId: PAYING_OWNER }, SESSION_SECRET);
+const SIGNED_OUT_SESSION = jwt.sign(
+  { userId: OWNER, session: 'signed-out' },
+  SESSION_SECRET
+);
+
+const aiCases: [string, keyof typeof UPLOADS, Population][] = [
+  [
+    'paying subscriber with AI on',
+    'small',
+    {
+      ...signedInFree,
+      locals: { owner: OWNER, patreon: false, subscriber: true },
+      fields: AI_ON,
+    },
+  ],
+  [
+    'lifetime (patreon) user with AI on',
+    'small',
+    {
+      ...signedInFree,
+      locals: { owner: OWNER, patreon: true, subscriber: false },
+      fields: AI_ON,
+    },
+  ],
+  [
+    'signed-in pass holder with AI on',
+    'small',
+    {
+      ...signedInFree,
+      locals: {
+        owner: OWNER,
+        patreon: false,
+        subscriber: true,
+        passKind: '24h',
+      },
+      fields: AI_ON,
+    },
+  ],
+  ['signed-in free with AI on', 'small', { ...signedInFree, fields: AI_ON }],
+  [
+    'signed-out with AI on, AI preview off',
+    'small',
+    { ...signedOut, fields: AI_ON },
+  ],
+  [
+    'signed-out with AI on, AI preview on',
+    'small',
+    {
+      ...signedOut,
+      fields: AI_ON,
+      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
+    },
+  ],
+  [
+    'signed-out with AI on, AI preview on, no sample came back',
+    'small',
+    {
+      ...signedOut,
+      fields: AI_ON,
+      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
+      previewReply: '[]',
+    },
+  ],
+  [
+    'signed-out with AI on, AI preview on, no anon id',
+    'small',
+    {
+      ...signedOut,
+      cookies: {},
+      fields: AI_ON,
+      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
+    },
+  ],
+];
+
+const photoCases: [string, keyof typeof UPLOADS, Population][] = [
+  [
+    'signed-in free photo upload',
+    'photo',
+    { ...signedInFree, photosUsedThisMonth: 0 },
+  ],
+  [
+    'signed-in free photo upload with the monthly photo quota used up',
+    'photo',
+    { ...signedInFree, photosUsedThisMonth: 5 },
+  ],
+  [
+    'paying subscriber photo upload past the free photo quota',
+    'photo',
+    {
+      ...signedInFree,
+      locals: { owner: OWNER, patreon: false, subscriber: true },
+      photosUsedThisMonth: 5,
+    },
+  ],
+  ['signed-out photo upload', 'photo', signedOut],
+];
+
+const realAuthCases: [string, keyof typeof UPLOADS, Population][] = [
+  [
+    'real session: signed-in free under the monthly limit',
+    'small',
+    { ...signedOut, realAuth: true, cookies: { token: FREE_SESSION } },
+  ],
+  [
+    'real session: paying subscriber with AI on',
+    'small',
+    {
+      ...signedOut,
+      realAuth: true,
+      cookies: { token: PAYING_SESSION },
+      fields: AI_ON,
+    },
+  ],
+  [
+    'real session: signed out since, over the cap',
+    'large',
+    {
+      ...signedOut,
+      realAuth: true,
+      cookies: { token: SIGNED_OUT_SESSION, anon_id: 'golden-anon' },
+    },
+  ],
+  [
+    'real pass token: signed-out Day Pass holder',
+    'large',
+    {
+      ...signedOut,
+      realAuth: true,
+      headers: { 'x-pass-token': PASS_SESSION_ID },
+    },
+  ],
+  [
+    'real middleware: origin not on the allowlist',
+    'small',
+    {
+      ...signedOut,
+      realAuth: true,
+      headers: { origin: 'https://not-2anki.example' },
+    },
+  ],
+];
+
 function inMemoryFlags(
   values: Record<string, boolean>
 ): IFeatureFlagsRepository {
@@ -348,6 +619,116 @@ function inMemoryUploads(): IUploadRepository {
   };
 }
 
+interface JobTimeline {
+  title: string;
+  type: string;
+  statuses: string[];
+  outcome?: string;
+}
+
+const jobTimelines: JobTimeline[] = [];
+let settleJob: () => void = () => undefined;
+
+function inMemoryJobs(): JobRepository {
+  const byId = new Map<string, JobTimeline>();
+  const settle = (id: string, outcome: string) => {
+    const timeline = byId.get(id);
+    if (timeline != null) {
+      timeline.outcome = outcome.replaceAll(id, '<job-id>');
+    }
+    settleJob();
+  };
+  return {
+    create: (id: string, _owner: string, title: string, type: string) => {
+      const timeline = { title, type, statuses: [] };
+      byId.set(id, timeline);
+      jobTimelines.push(timeline);
+      return Promise.resolve();
+    },
+    updateJobStatus: (
+      id: string,
+      _owner: string,
+      status: string,
+      reason?: string
+    ) => {
+      byId.get(id)?.statuses.push(status);
+      if (status === 'failed') {
+        settle(id, `failed: ${reason ?? ''}`);
+      }
+      return Promise.resolve();
+    },
+    findJobById: (id: string) =>
+      Promise.resolve(byId.has(id) ? { id, object_id: id } : null),
+    deleteJob: (id: string) => {
+      settle(id, 'moved to My Decks');
+      return Promise.resolve();
+    },
+  } as unknown as JobRepository;
+}
+
+function inMemoryPhotoEvents(photosUsedThisMonth: number): IEventsRepository {
+  return {
+    countByNameForUser: () => Promise.resolve(photosUsedThisMonth),
+  } as unknown as IEventsRepository;
+}
+
+async function seedAuthDatabase() {
+  const database = getDatabase();
+  await database.schema.createTable('users', (t) => {
+    t.integer('id').primary();
+    t.text('email').notNullable();
+    t.boolean('patreon').defaultTo(false);
+  });
+  await database.schema.createTable('access_tokens', (t) => {
+    t.integer('owner').notNullable();
+    t.text('token').notNullable();
+    t.timestamp('created_at').defaultTo(database.fn.now());
+  });
+  await database.schema.createTable('subscriptions', (t) => {
+    t.increments('id').primary();
+    t.text('email');
+    t.text('linked_email');
+    t.boolean('active').defaultTo(false);
+  });
+  await database.schema.createTable('user_passes', (t) => {
+    t.increments('id').primary();
+    t.integer('user_id').notNullable();
+    t.text('kind').notNullable();
+    t.timestamp('expires_at').notNullable();
+    t.text('stripe_payment_intent_id');
+  });
+  await database.schema.createTable('anonymous_passes', (t) => {
+    t.increments('id').primary();
+    t.text('stripe_session_id').notNullable();
+    t.text('kind').notNullable();
+    t.timestamp('expires_at').notNullable();
+    t.text('payment_intent_id');
+    t.integer('claimed_by_user_id');
+    t.text('buyer_email_hash');
+    t.timestamp('activated_at');
+  });
+  await database('users').insert([
+    { id: OWNER, email: 'free@example.com', patreon: false },
+    { id: PAYING_OWNER, email: 'paying@example.com', patreon: false },
+  ]);
+  await database('access_tokens').insert([
+    { owner: OWNER, token: FREE_SESSION },
+    { owner: PAYING_OWNER, token: PAYING_SESSION },
+  ]);
+  await database('subscriptions').insert({
+    email: 'paying@example.com',
+    active: true,
+  });
+  const dayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await database('anonymous_passes').insert({
+    stripe_session_id: PASS_SESSION_ID,
+    kind: '24h',
+    expires_at: dayFromNow,
+    payment_intent_id: 'pi_golden',
+    activated_at: new Date(),
+  });
+}
+
 const CLIENT_HEADERS = [
   'location',
   'file-name',
@@ -373,7 +754,10 @@ function clientHeaders(response: Response): Record<string, string> {
 async function clientBody(response: Response): Promise<unknown> {
   const contentType = response.headers.get('content-type') ?? '';
   if (contentType.includes('application/json')) {
-    return response.json();
+    const body = (await response.json()) as Record<string, unknown>;
+    return typeof body.jobId === 'string'
+      ? { ...body, jobId: '<job-id>' }
+      : body;
   }
   if (response.headers.get('content-disposition')?.startsWith('attachment')) {
     return { apkg: await response.text() };
@@ -389,6 +773,9 @@ const GOLDEN_ENV: Record<string, string | undefined> = {
   SKIP_CREATE_DECK: undefined,
   SPACES_ENDPOINT: 'https://golden-storage.invalid',
   SPACES_DEFAULT_BUCKET_NAME: 'golden-bucket',
+  SECRET: SESSION_SECRET,
+  STRIPE_KEY: undefined,
+  LOCAL_DEV: undefined,
 };
 const originalEnv = Object.fromEntries(
   [...Object.keys(GOLDEN_ENV), 'UPLOAD_BASE'].map((key) => [
@@ -415,23 +802,33 @@ function storedObjectKind(key: string): string {
 }
 
 beforeAll(async () => {
+  await seedAuthDatabase();
   uploadBase = fs.mkdtempSync(path.join(os.tmpdir(), 'upload-golden-'));
   applyEnv({ ...GOLDEN_ENV, UPLOAD_BASE: uploadBase });
   const app = express();
   app.use(cookieParser());
   app.post(
     '/api/upload/file',
-    (_req, res, next) => {
+    (req, res, next) => {
       res.locals.requestId = 'golden-request';
+      if (population.realAuth === true) {
+        return RequireAllowedOrigin(req, res, () =>
+          tellUploadOwner(req, res, next)
+        );
+      }
       Object.assign(res.locals, population.locals);
       next();
     },
     (req, res) => {
       const service = new UploadService(
         inMemoryUploads(),
-        {} as unknown as JobRepository,
+        inMemoryJobs(),
         inMemoryUsers(population.cardsUsed),
-        ...fakeUploadServiceDeps()
+        ...fakeUploadServiceDeps({
+          photoToFlashcards: new PhotoToFlashcardsUseCase(
+            inMemoryPhotoEvents(population.photosUsedThisMonth ?? 0)
+          ),
+        })
       );
       const controller = new UploadController(
         service,
@@ -455,31 +852,55 @@ afterEach(() => {
   __resetFeatureFlagModuleForTests();
   s3Puts.length = 0;
   cardUsageCharges.length = 0;
+  jobTimelines.length = 0;
 });
 
 async function upload(file: keyof typeof UPLOADS, who: Population) {
   population = who;
   __setFeatureFlagDependencies({ repository: inMemoryFlags(who.flags) });
+  Object.assign(claudeReplies, CLAUDE_REPLIES, {
+    preview: who.previewReply ?? CLAUDE_REPLIES.preview,
+  });
   const form = new FormData();
+  for (const [name, value] of Object.entries(who.fields ?? {})) {
+    form.append(name, value);
+  }
   form.append(
     'pakker',
-    new Blob([UPLOADS[file].html], { type: 'text/html' }),
+    new Blob([UPLOADS[file].body], { type: UPLOADS[file].type }),
     UPLOADS[file].filename
   );
   const cookie = Object.entries(who.cookies)
     .map(([name, value]) => `${name}=${value}`)
     .join('; ');
+  const jobSettled = new Promise<void>((resolve) => {
+    settleJob = resolve;
+  });
   const response = await fetch(`${baseUrl}/api/upload/file`, {
     method: 'POST',
     body: form,
     redirect: 'manual',
-    headers: { ...who.headers, ...(cookie === '' ? {} : { cookie }) },
+    headers: {
+      ...(who.realAuth === true ? { origin: ALLOWED_ORIGIN } : {}),
+      ...who.headers,
+      ...(cookie === '' ? {} : { cookie }),
+    },
   });
+  const status = response.status;
+  const contentType = (response.headers.get('content-type') ?? '').split(
+    ';'
+  )[0];
+  const headers = clientHeaders(response);
+  const body = await clientBody(response);
+  if (status === 202) {
+    await jobSettled;
+  }
   return {
-    status: response.status,
-    contentType: (response.headers.get('content-type') ?? '').split(';')[0],
-    headers: clientHeaders(response),
-    body: await clientBody(response),
+    status,
+    contentType,
+    headers,
+    body,
+    ...(jobTimelines.length > 0 ? { backgroundJobs: [...jobTimelines] } : {}),
     storedObjects: s3Puts.map(storedObjectKind),
     cardsCharged: [...cardUsageCharges],
   };
@@ -507,4 +928,34 @@ describe('a signed-out pass holder can fetch the paid deck again', () => {
       expect.stringMatching(/^recover\/[0-9a-f]{64}\.apkg$/),
     ]);
   }, 20_000);
+});
+
+describe('what each population gets back from an AI upload', () => {
+  it.each(aiCases)(
+    '%s',
+    async (_label, file, who) => {
+      expect(await upload(file, who)).toMatchSnapshot();
+    },
+    20_000
+  );
+});
+
+describe('what each population gets back from a photo upload', () => {
+  it.each(photoCases)(
+    '%s',
+    async (_label, file, who) => {
+      expect(await upload(file, who)).toMatchSnapshot();
+    },
+    20_000
+  );
+});
+
+describe('what the real auth middleware resolves before the upload', () => {
+  it.each(realAuthCases)(
+    '%s',
+    async (_label, file, who) => {
+      expect(await upload(file, who)).toMatchSnapshot();
+    },
+    20_000
+  );
 });
