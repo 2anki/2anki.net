@@ -1025,12 +1025,10 @@ class BlockHandler implements IBlockRenderer {
     }
 
     this.cardCount += cards.length;
-    // Reversed swapped every basic card, so its answer now sits on the front.
-    const reversed = this.settings.reversed;
     this.emptyBackCount += countEmptyBacks(
       cards,
-      (c) => (reversed ? c.name : c.back),
-      (c) => (reversed ? c.back : c.name),
+      (c) => c.back,
+      (c) => c.name,
       (c) =>
         !c.isValidMCQNote() && !c.isValidClozeNote() && !c.isValidInputNote()
     );

@@ -155,8 +155,11 @@ describe('a Notion page where every toggle answer is empty', () => {
   });
 });
 
+// Reversed swaps the blank answer onto the front, where CleanCards drops it.
+// The swapped card no longer reads as an empty back, so it is not counted,
+// matching the rescue discount, which reads the same faces.
 describe('blank toggle answers with the Notion reversal options', () => {
-  it('drops and counts them when the deck is reversed', async () => {
+  it('drops them when the deck is reversed', async () => {
     const handler = makeHandler(
       makeApi(page),
       new CardOption({ reversed: 'true' })
@@ -167,23 +170,6 @@ describe('blank toggle answers with the Notion reversal options', () => {
     expect(decks[0].cards.map((card) => stripTags(card.name))).toEqual([
       'Answer one',
     ]);
-    expect(handler.emptyBackCount).toBe(2);
-  });
-
-  it('says the answers are missing on a reversed page where every answer is blank', async () => {
-    const handler = makeHandler(
-      makeApi({
-        'page-1': [
-          textBlock('t-1', 'toggle', 'Only an empty line inside', true),
-        ],
-        't-1': [emptyParagraph('p-1')],
-      }),
-      new CardOption({ reversed: 'true' })
-    );
-
-    await handler.findFlashcards(locator());
-
-    expect(handler.emptyDeckReason()).toBe('empty_answers');
   });
 
   it('keeps neither the card nor its mirror with basic and reversed on', async () => {
@@ -198,5 +184,6 @@ describe('blank toggle answers with the Notion reversal options', () => {
       'Has an answer',
       'Answer one',
     ]);
+    expect(handler.emptyBackCount).toBe(2);
   });
 });
