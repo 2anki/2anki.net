@@ -271,6 +271,22 @@ describe('runUploadGenerationInWorker', () => {
     expect(result.error.stack).toMatch(/already an Anki deck[\s\S]*\n\s+at /);
   });
 
+  it('sends no system error fields for an ordinary thrown error', async () => {
+    const file = makeFile({
+      originalname: 'existing.apkg',
+      filename: 'existing.apkg',
+      path: '',
+      buffer: Buffer.from('not really a deck'),
+    });
+
+    const result = await runUploadGenerationInWorker(makeTask(file));
+
+    if (result.ok) {
+      throw new Error('expected a failure result');
+    }
+    expect(result.error.systemError).toBeUndefined();
+  });
+
   it('drains recorded spend even when generation throws', async () => {
     const flushSpy = vi
       .spyOn(getEventsSink(), 'flushDurable')

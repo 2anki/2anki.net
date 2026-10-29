@@ -412,6 +412,25 @@ describe('ErrorHandler', () => {
     }
   );
 
+  test('a filesystem error rebuilt from the upload worker responds 500 without its path', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeResponse(false);
+    const rebuilt = Object.assign(
+      new Error("ENOENT: no such file or directory, open '/srv/ws/x.html'"),
+      { code: 'ENOENT', errno: -2 }
+    );
+
+    await ErrorHandler(
+      res as unknown as express.Response,
+      makeRequest(),
+      rebuilt
+    );
+
+    expect(res.statusCode).toBe(500);
+    expect(JSON.stringify(res.body)).not.toContain('/srv/ws');
+    errorSpy.mockRestore();
+  });
+
   test('a TypeError responds 500 with a generic body, not the internal message', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeResponse(false);
