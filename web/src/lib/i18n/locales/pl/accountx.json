@@ -88,7 +88,7 @@
   },
   "limit": {
     "helmetAnon": "Osiągnięto limit konwersji | 2anki",
-    "statusLine": "Z przesłanych plików powstało ponad {{count}} kart",
+    "statusLine": "Z przesłanych materiałów powstało ponad {{count}} kart",
     "anonHeading": "Osiągnięto limit konwersji bez konta",
     "freeAccount": "Darmowe konto",
     "freeSubtitle": "Do {{monthly}} kart miesięcznie.",
@@ -97,7 +97,7 @@
     "anonSubheading": "Bez konta możesz pobrać do {{cap}} kart naraz. Darmowe konto podnosi limit do {{monthly}} kart miesięcznie — albo zaloguj się na konto, które już masz.",
     "freeBenefitCards": "Konwertuj do {{monthly}} kart miesięcznie",
     "signUpFree": "Utwórz darmowe konto",
-    "browserNote": "Nie zachowaliśmy twojego pliku — po zalogowaniu upuść go jeszcze raz.",
+    "browserNote": "Nie zachowaliśmy Twojego pliku — po zalogowaniu upuść go jeszcze raz.",
     "signIn": "Zaloguj się",
     "upgradeSubheading": "Ulepsz plan, aby dalej konwertować — bez limitu, bez czekania.",
     "payOnce": "Zapłać raz — bez subskrypcji",

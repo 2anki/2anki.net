@@ -118,6 +118,7 @@ import {
   EMPTY_CONTENT_UPLOAD_MESSAGE,
 } from '../lib/claude/ClaudeService';
 import { track } from './events/track';
+import { setMintedAnonId } from '../lib/User/getOwner';
 import { toCardCountBucket } from '../lib/analytics/cardCountBucket';
 import { mcpOptionsToCardSettings } from './mcp/mcpOptionsToCardSettings';
 
@@ -6678,7 +6679,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       held: true,
     });
     expect(props).not.toHaveProperty('arm');
-    expect(props.card_count_bucket).toBeDefined();
+    expect(props.card_count_bucket).toBe(toCardCountBucket(34));
     expect(trackMock).not.toHaveBeenCalledWith(
       'conversion_failed',
       expect.anything()
@@ -7427,10 +7428,14 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     const req = buildEligibleRequest();
     const { res, capturedStatus, capturedJson, redirectedTo } =
       responseWithRedirect();
-    res.locals.mintedAnonId = 'anon-minted-now';
+    setMintedAnonId(res, 'anon-minted-now');
 
     await serviceUnderTest(heldDeck).handleUpload(req, res);
 
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_started',
+      expect.objectContaining({ anonymousId: 'anon-minted-now' })
+    );
     expect(execute.mock.calls[0][6]).toMatchObject({
       cardLimit: ANONYMOUS_CARD_CAP,
     });
@@ -7465,7 +7470,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       const heldDeck = new InMemoryHeldDeckRepository();
       const req = buildEligibleRequest();
       const { res, capturedStatus, capturedJson } = buildResponse();
-      Object.assign(res.locals, locals, { mintedAnonId: 'anon-minted-now' });
+      Object.assign(res.locals, locals);
+      setMintedAnonId(res, 'anon-minted-now');
 
       await serviceUnderTest(heldDeck).handleUpload(req, res);
 
@@ -7476,17 +7482,38 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     }
   );
 
+  it('records a walled upload under the id minted on this request', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 13);
+    mockStorageUploadFile.mockRejectedValueOnce(new Error('no credentials'));
+    const req = buildEligibleRequest();
+    const { res, redirectedTo } = responseWithRedirect();
+    setMintedAnonId(res, 'anon-minted-now');
+
+    await serviceUnderTest(new InMemoryHeldDeckRepository()).handleUpload(
+      req,
+      res
+    );
+
+    expect(redirectedTo()).toBe('/limit?kind=anonymous&cards=34');
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.objectContaining({ anonymousId: 'anon-minted-now' })
+    );
+  });
+
   it('holds under the cookie id when the request also minted one', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21 }], 9);
     const heldDeck = new InMemoryHeldDeckRepository();
     const req = buildEligibleRequest(TREATMENT_ID);
     const { res, capturedStatus } = buildResponse();
-    res.locals.mintedAnonId = 'anon-minted-now';
+    setMintedAnonId(res, 'anon-minted-now');
 
     await serviceUnderTest(heldDeck).handleUpload(req, res);
 
     expect(capturedStatus()).toBe(200);
+    expect(heldDeck.rows).toHaveLength(1);
     expect(heldDeck.rows[0]).toMatchObject({ anon_id: TREATMENT_ID });
   });
 

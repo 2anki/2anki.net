@@ -1347,7 +1347,7 @@ class UploadService {
         const owner = getOwner(res);
         const userId = owner != null ? Number(owner) : null;
         const source = this.resolveUploadSource(req);
-        const anonymousId = this.resolveAnonId(req);
+        const anonymousId = this.resolveAnonId(req) ?? getMintedAnonId(res);
         track('conversion_failed', {
           userId,
           anonymousId,
@@ -1828,7 +1828,7 @@ class UploadService {
     const conversionStart = new Date();
     track('conversion_started', {
       userId: owner != null ? Number(owner) : null,
-      anonymousId: this.resolveAnonId(req),
+      anonymousId: this.resolveAnonId(req) ?? getMintedAnonId(res),
       props: { source: this.resolveUploadSource(req), mode: 'sync' },
     });
 

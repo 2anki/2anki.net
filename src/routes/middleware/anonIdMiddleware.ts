@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
+import { setMintedAnonId } from '../../lib/User/getOwner';
 
 const ANON_ID_COOKIE = 'anon_id';
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
@@ -27,6 +28,6 @@ export function anonIdMiddleware(
     sameSite: 'lax',
     httpOnly: false,
   });
-  res.locals.mintedAnonId = id;
+  setMintedAnonId(res, id);
   next();
 }

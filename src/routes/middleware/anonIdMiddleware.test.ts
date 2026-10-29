@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { anonIdMiddleware } from './anonIdMiddleware';
+import { getMintedAnonId } from '../../lib/User/getOwner';
 
 function makeReqRes(opts: { existingCookie?: string; path?: string } = {}) {
   const cookies: Record<string, string> = {};
@@ -45,7 +46,7 @@ describe('anonIdMiddleware', () => {
   it('exposes the minted id to the rest of this request', () => {
     const { req, res, next, setCookieArgs } = makeReqRes();
     anonIdMiddleware(req, res, next);
-    expect(res.locals.mintedAnonId).toBe(setCookieArgs[0][1]);
+    expect(getMintedAnonId(res)).toBe(setCookieArgs[0][1]);
   });
 
   it('mints nothing for a request that already carries an id', () => {
@@ -53,7 +54,7 @@ describe('anonIdMiddleware', () => {
       existingCookie: 'existing-anon-id',
     });
     anonIdMiddleware(req, res, next);
-    expect(res.locals).not.toHaveProperty('mintedAnonId');
+    expect(getMintedAnonId(res)).toBeNull();
   });
 
   it('preserves existing anon_id without setting a new one', () => {

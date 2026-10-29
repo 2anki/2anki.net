@@ -273,7 +273,7 @@ describe('LimitPage — anonymous variant', () => {
   });
 
   it('says the upload made more cards than the no-account cap', () => {
-    renderPage();
+    renderPage(['/limit?kind=anonymous']);
     expect(
       screen.getByText('Your upload made more than 21 cards')
     ).toBeInTheDocument();
@@ -348,7 +348,7 @@ describe('LimitPage — anonymous variant', () => {
   });
 
   it('says the file was not kept and must be dropped again', () => {
-    renderPage();
+    renderPage(['/limit?kind=anonymous']);
     expect(
       screen.getByText(
         "We didn't keep your file — drop it in again after signing in."
@@ -356,6 +356,27 @@ describe('LimitPage — anonymous variant', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/wasn't uploaded/)).not.toBeInTheDocument();
   });
+
+  it.each([
+    ['/limit'],
+    ['/limit?ref=upload-limit-wall'],
+    ['/limit?kind=file_size'],
+    ['/limit?kind=card_count'],
+  ])(
+    'claims no converted upload on %s, which no card-cap wall sent',
+    (entry) => {
+      renderPage([entry]);
+      expect(
+        screen.queryByText('Your upload made more than 21 cards')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/We didn't keep your file/)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText('You hit the limit for converting without an account')
+      ).toBeInTheDocument();
+    }
+  );
 
   it('offers a Day Pass with no account while sign-up stays the primary action', () => {
     renderPage();
@@ -388,6 +409,18 @@ describe('LimitPage — anonymous Day Pass card variant', () => {
       surface: 'limit-wall',
       variant: 'anonymous',
     });
+  });
+
+  it('says the file was not kept on the free account card after the card cap', () => {
+    renderPage(['/limit?kind=anonymous&cards=40']);
+    expect(
+      screen.getByText('Your upload made more than 21 cards')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "We didn't keep your file — drop it in again after signing in."
+      )
+    ).toBeInTheDocument();
   });
 
   it('shows the Day Pass as its own card next to the free account', () => {
@@ -510,6 +543,22 @@ describe('LimitPage — pass-first wall', () => {
     expect(follows(signUp, signIn)).toBe(true);
     expect(signUp.className).not.toContain('planCta');
     expect(signUp.getAttribute('href')).toBe('/register?redirect=/upload');
+  });
+
+  it('says the file was not kept under the pass-first wall after the card cap', () => {
+    renderPage(['/limit?kind=anonymous&cards=184']);
+    expect(
+      screen.getByText(
+        "We didn't keep your file — drop it in again after signing in."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('claims no converted upload on the pass-first wall without a card-cap entry', () => {
+    renderPage(['/limit?ref=upload-limit-wall']);
+    expect(
+      screen.queryByText(/We didn't keep your file/)
+    ).not.toBeInTheDocument();
   });
 
   it('states the real card count from the redirect', () => {

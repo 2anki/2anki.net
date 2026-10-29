@@ -4,6 +4,7 @@ import {
   getMintedAnonId,
   getOwner,
   getOwnerId,
+  setMintedAnonId,
 } from './getOwner';
 
 import { Response } from 'express';
@@ -94,6 +95,12 @@ describe('getAnonymousPassId', () => {
 });
 
 describe('getMintedAnonId', () => {
+  test('reads back the id set with setMintedAnonId', () => {
+    const res = mockResponseWithLocals({});
+    setMintedAnonId(res, 'anon-set');
+    expect(getMintedAnonId(res)).toBe('anon-set');
+  });
+
   test('returns the id the anon id middleware minted for this request', () => {
     expect(
       getMintedAnonId(mockResponseWithLocals({ mintedAnonId: 'anon-new' }))
