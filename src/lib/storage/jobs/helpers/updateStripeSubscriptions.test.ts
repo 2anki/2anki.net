@@ -275,6 +275,27 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
     expect(Boolean((await row()).active)).toBe(true);
   });
 
+  it('records the account on a developer tier instead of clearing it', async () => {
+    await db('developer_tiers').insert({
+      tier_key: 'starter',
+      stripe_product_id: 'prod_dev_starter',
+    });
+    await db('users').insert({
+      email: 'owner@example.com',
+      stripe_customer_id: 'cus_test456',
+    });
+    const owner = await db('users')
+      .where({ email: 'owner@example.com' })
+      .first();
+    setupStripeMock([buildSubscription('prod_dev_starter')]);
+
+    await updateStripeSubscriptions(db);
+
+    expect(
+      await db('subscriptions_developer').select('user_id', 'email')
+    ).toEqual([{ user_id: owner.id, email: 'owner@example.com' }]);
+  });
+
   it('keeps a developer tier out of the email-keyed subscriptions table', async () => {
     await db('developer_tiers').insert({
       tier_key: 'starter',
