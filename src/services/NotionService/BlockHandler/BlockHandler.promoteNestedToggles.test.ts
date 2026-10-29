@@ -170,6 +170,27 @@ describe('promote-nested-toggles on the Notion API path', () => {
     expect(decks[0].cards).toHaveLength(1);
   });
 
+  it('skips a nested toggle whose only child is an empty line', async () => {
+    const handler = makeHandler(
+      makeApi({
+        'page-1': [textBlock('t-1', 'toggle', 'Parent', true)],
+        't-1': [
+          textBlock('p-1', 'paragraph', 'Parent answer'),
+          textBlock('t-2', 'toggle', 'Blank nested', true),
+        ],
+        't-2': [textBlock('p-2', 'paragraph', '')],
+      }),
+      new CardOption({ 'promote-nested-toggles': 'true' })
+    );
+
+    const decks = await handler.findFlashcards(locator());
+
+    expect(decks[0].cards.map((card) => stripTags(card.name))).toEqual([
+      'Parent',
+    ]);
+    expect(handler.emptyBackCount).toBe(1);
+  });
+
   it('adds nothing under cherry-pick', async () => {
     const handler = makeHandler(
       makeApi(threeLevels),

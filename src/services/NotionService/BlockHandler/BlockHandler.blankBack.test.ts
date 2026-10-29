@@ -186,4 +186,59 @@ describe('blank toggle answers with the Notion reversal options', () => {
     ]);
     expect(handler.emptyBackCount).toBe(2);
   });
+
+  it('ships no blank-faced card and counts nothing with reversed and basic-reversed on', async () => {
+    const handler = makeHandler(
+      makeApi(page),
+      new CardOption({ reversed: 'true', 'basic-reversed': 'true' })
+    );
+
+    const decks = await handler.findFlashcards(locator());
+
+    const faces = decks[0].cards.flatMap((card) => [
+      stripTags(card.name),
+      stripTags(card.back),
+    ]);
+    expect(faces).not.toContain('');
+    expect(decks[0].cards).toHaveLength(2);
+    expect(handler.emptyBackCount).toBe(0);
+  });
+
+  it('drops a blank answer marked 🔄 and its mirror, counting it once', async () => {
+    const handler = makeHandler(
+      makeApi({
+        'page-1': [
+          textBlock('t-1', 'toggle', '🔄 Has an answer', true),
+          textBlock('t-2', 'toggle', '🔄 Only an empty line inside', true),
+        ],
+        't-1': [textBlock('p-1', 'paragraph', 'Answer one')],
+        't-2': [emptyParagraph('p-2')],
+      })
+    );
+
+    const decks = await handler.findFlashcards(locator());
+
+    expect(decks[0].cards.map((card) => stripTags(card.name))).toEqual([
+      'Has an answer',
+      'Answer one',
+    ]);
+    expect(handler.emptyBackCount).toBe(1);
+  });
+
+  it('keeps the generic reason on a reversed page where every answer is blank', async () => {
+    const handler = makeHandler(
+      makeApi({
+        'page-1': [
+          textBlock('t-1', 'toggle', 'Only an empty line inside', true),
+        ],
+        't-1': [emptyParagraph('p-1')],
+      }),
+      new CardOption({ reversed: 'true' })
+    );
+
+    await handler.findFlashcards(locator());
+
+    expect(handler.emptyBackCount).toBe(0);
+    expect(handler.emptyDeckReason()).toBe('unknown');
+  });
 });

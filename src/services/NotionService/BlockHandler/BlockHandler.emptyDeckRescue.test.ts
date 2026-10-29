@@ -163,6 +163,46 @@ describe('empty-deck rescue on the page branch', () => {
     });
   });
 
+  it('leaves no blank answers counted once the rescue ships on a reversed page', async () => {
+    const blankLineToggle = block('toggle', 'A reversed empty line', true);
+    const emptyLine = {
+      ...block('paragraph', ''),
+      id: 'empty-line-reversed',
+      paragraph: { rich_text: [], color: 'default' },
+    };
+    const api = makeApi({
+      'page-1': [
+        blankLineToggle,
+        block('heading_2', 'What is spaced repetition?'),
+        block('paragraph', 'A method that spaces reviews over time.'),
+        block('heading_2', 'What is a flashcard?'),
+        block('paragraph', 'A prompt paired with an answer to recall.'),
+        block('heading_2', 'What is active recall?'),
+        block(
+          'paragraph',
+          'Retrieving a fact from memory instead of rereading.'
+        ),
+      ],
+      [blankLineToggle.id]: [emptyLine],
+    });
+    const handler = new BlockHandler(
+      new CustomExporter('', new Workspace(true, 'fs').location),
+      api,
+      new CardOption({ reversed: 'true' })
+    );
+
+    await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    expect(handler.inducedRule).toMatchObject({ outcome: 'rescue_shipped' });
+    expect(handler.emptyBackCount).toBe(0);
+  });
+
   it('counts the rescued cards rather than the discarded empty toggles', async () => {
     const api = makeApi({
       'page-1': [
