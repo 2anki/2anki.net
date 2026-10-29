@@ -581,6 +581,7 @@ describe('paragraphs decks made before the first-sentence front was escaped', ()
     'It&#39;s salt &amp; water &lt; sugar, as the &quot;syrup&quot; note says.';
 
   it.each([
+    ['cloze off', { cloze: 'false' }, 1],
     ['reversed', { reversed: 'true' }, 1],
     ['basic-reversed', { 'basic-reversed': 'true' }, 2],
   ])(

@@ -41,6 +41,9 @@ export default class Note {
   // reads it for the content-formula guid too.
   frontEscaped?: boolean;
 
+  // The back's twin of frontEscaped, set when a reversed option moves the
+  // escaped text to the back. Only the upload fingerprint reads it;
+  // create_deck.py keys on the front alone.
   backEscaped?: boolean;
 
   // Epoch seconds to pin as this note's Anki mod (see uploadCardIdentity.ts,

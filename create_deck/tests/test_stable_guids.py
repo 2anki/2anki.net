@@ -212,6 +212,43 @@ class TestStableGuids:
         assert after == before
         assert unflagged != before
 
+    def test_escaped_fronts_sharing_a_sentence_keep_their_numbering(self):
+        raw = "It's salt & water < sugar here."
+        escaped = "It&#39;s salt &amp; water &lt; sugar here."
+        backs = ["Cells swell in it.", "Cells shrink in it."]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            before = _build_and_get_guids_in_order(
+                _deck_info_cards("Biology", [(raw, back) for back in backs]),
+                tmpdir,
+                "before",
+            )
+            after_info = _deck_info_cards(
+                "Biology", [(escaped, back) for back in backs]
+            )
+            for card in after_info[0]["cards"]:
+                card["frontEscaped"] = True
+            after = _build_and_get_guids_in_order(after_info, tmpdir, "after")
+        assert len(set(before)) == 2
+        assert after == before
+
+    def test_escaped_typed_answer_front_keeps_its_guid(self):
+        raw = "It's salt & water.{{type:Input}}"
+        escaped = "It&#39;s salt &amp; water.{{type:Input}}"
+        back = "It's salt & water. Cells swell in it."
+        with tempfile.TemporaryDirectory() as tmpdir:
+            infos = []
+            for front, flagged in ((raw, False), (escaped, True)):
+                info = _deck_info_basic("Biology", front, back)
+                card = info[0]["cards"][0]
+                card["enableInput"] = True
+                card["answer"] = back
+                if flagged:
+                    card["frontEscaped"] = True
+                infos.append(info)
+            before = _build_and_get_guids(infos[0], tmpdir, "before")
+            after = _build_and_get_guids(infos[1], tmpdir, "after")
+        assert after == before
+
     def test_reversed_and_mirrored_escaped_sentences_keep_their_guids(self):
         raw = "It's salt & water < sugar here."
         escaped = "It&#39;s salt &amp; water &lt; sugar here."
