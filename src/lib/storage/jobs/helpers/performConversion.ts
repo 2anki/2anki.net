@@ -87,14 +87,30 @@ async function recordUnsupportedBlocks(
   }
 }
 
+type ConvertOutputSource =
+  | 'convert:page'
+  | 'convert:database'
+  | 'convert:conversion'
+  | 'convert:google_drive'
+  | 'convert:dropbox';
+
+function toConvertOutputSource(type?: string): ConvertOutputSource {
+  if (type === 'page') return 'convert:page';
+  if (type === 'database') return 'convert:database';
+  if (type === 'google_drive') return 'convert:google_drive';
+  if (type === 'dropbox') return 'convert:dropbox';
+  return 'convert:conversion';
+}
+
 async function recordConversionOutputStats(
   database: Knex,
+  type: string | undefined,
   delta: { decks: number; cards: number; emptyBack: number },
   logPrefix: string
 ): Promise<void> {
   try {
     await new ConversionOutputStatsRepository(database).record(
-      'convert',
+      toConvertOutputSource(type),
       delta
     );
   } catch (error) {
@@ -167,6 +183,7 @@ async function recordDeckScore(
 async function recordConversionTelemetry(
   database: Knex,
   telemetry: {
+    type: string | undefined;
     unsupportedBlockTypes: string[];
     stats: { decks: number; cards: number; emptyBack: number };
   },
@@ -177,7 +194,12 @@ async function recordConversionTelemetry(
     telemetry.unsupportedBlockTypes,
     logPrefix
   );
-  await recordConversionOutputStats(database, telemetry.stats, logPrefix);
+  await recordConversionOutputStats(
+    database,
+    telemetry.type,
+    telemetry.stats,
+    logPrefix
+  );
 }
 
 export function trackConversionFailed(
@@ -424,6 +446,7 @@ export default async function performConversion(
     void recordConversionTelemetry(
       database,
       {
+        type,
         unsupportedBlockTypes: bl.unsupportedBlockTypes,
         stats: {
           decks: decks.length,

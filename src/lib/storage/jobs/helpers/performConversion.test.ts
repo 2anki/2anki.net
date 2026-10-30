@@ -1272,7 +1272,7 @@ describe('performConversion — workspace cleanup', () => {
     await Promise.resolve();
 
     expect(mockRecordOutputStats).toHaveBeenCalledWith(
-      'convert',
+      'convert:page',
       expect.objectContaining({ cards: 3, emptyBack: 0 })
     );
   });
@@ -1325,7 +1325,7 @@ describe('performConversion — workspace cleanup', () => {
     await performConversion(mockDatabase, baseRequest);
 
     expect(mockRecordOutputStats).toHaveBeenCalledWith(
-      'convert',
+      'convert:page',
       expect.objectContaining({ cards: 3, emptyBack: 0 })
     );
     expect(track).toHaveBeenCalledWith(
@@ -1335,6 +1335,64 @@ describe('performConversion — workspace cleanup', () => {
       })
     );
   });
+
+  it.each([
+    ['page', 'convert:page'],
+    ['database', 'convert:database'],
+    ['conversion', 'convert:conversion'],
+    ['google_drive', 'convert:google_drive'],
+    ['dropbox', 'convert:dropbox'],
+    [undefined, 'convert:conversion'],
+    ['not-a-job-type', 'convert:conversion'],
+  ])(
+    'records the output stats of a %s job under %s',
+    async (type, expectedSource) => {
+      mockRecordOutputStats.mockClear();
+      (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({
+            ws: {},
+            exporter: {},
+            settings: {},
+            bl: { cardCount: 4, emptyBackCount: 1, unsupportedBlockTypes: [] },
+            rules: {},
+          }),
+        };
+      });
+      (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3, 4] }]),
+        };
+      });
+      (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+        return { execute: vi.fn().mockResolvedValue(undefined) };
+      });
+      (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+        return {
+          execute: vi
+            .fn()
+            .mockResolvedValue({ size: 1, key: 'k', apkg: Buffer.from('') }),
+        };
+      });
+      (NotifyUserUseCase as Mock).mockImplementation(function () {
+        return { execute: vi.fn().mockResolvedValue(undefined) };
+      });
+      (CompleteJobUseCase as Mock).mockImplementation(function () {
+        return { execute: vi.fn().mockResolvedValue(undefined) };
+      });
+
+      await performConversion(mockDatabase, { ...baseRequest, type });
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(mockRecordOutputStats).toHaveBeenCalledTimes(1);
+      expect(mockRecordOutputStats).toHaveBeenCalledWith(expectedSource, {
+        decks: 1,
+        cards: 4,
+        emptyBack: 1,
+      });
+    }
+  );
 });
 
 describe('performConversion — log correlation', () => {
