@@ -370,6 +370,62 @@ test.describe('golden path @golden', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
+  test('the Day Pass card lead names the held deck and its expiry at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    await page.route('**/api/upload/file', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          kind: 'held',
+          cardCount: 21,
+          cardsHeldBack: 163,
+          totalCards: 184,
+          deckName: 'Organic Chemistry Ch. 4',
+          savedForHours: 24,
+          dayPassCard: true,
+        }),
+      })
+    );
+
+    await page.goto('/upload');
+    await page.setInputFiles('#pakker', {
+      name: 'notes.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('notes'),
+    });
+
+    await expect(
+      page.getByText('Organic Chemistry Ch. 4', { exact: true })
+    ).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      page.getByText('All 184 cards are ready', { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText('Saved for 24 hours.', { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Get all 184 cards now' })
+    ).toBeVisible();
+    const scrollWidth = await page.evaluate(
+      () => document.documentElement.scrollWidth
+    );
+    expect(scrollWidth).toBeLessThanOrEqual(376);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
   test('the signed-in limit wall leads with the passes at 375px', async ({
     page,
   }) => {

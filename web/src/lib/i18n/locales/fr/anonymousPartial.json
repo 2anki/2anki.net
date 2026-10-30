@@ -2,7 +2,6 @@
   "gateAria": "Ton paquet est prêt",
   "untitledDeck": "Paquet sans titre",
   "gateHeadlineAll": "Tes {{total}} cartes sont prêtes",
-  "gateHeadlineCappedTotal": "Ton paquet est prêt — {{total}} cartes",
   "gateSaved_one": "Gardé pendant {{count}} heure.",
   "gateSaved_other": "Gardé pendant {{count}} heures.",
   "gateBody": "Crée un compte gratuit pour les télécharger. Jusqu'à {{monthly}} cartes par mois, gratuitement.",

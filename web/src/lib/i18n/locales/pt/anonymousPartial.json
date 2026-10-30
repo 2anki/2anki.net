@@ -2,7 +2,6 @@
   "gateAria": "Seu baralho está pronto",
   "untitledDeck": "Baralho sem título",
   "gateHeadlineAll": "Todos os {{total}} cartões estão prontos",
-  "gateHeadlineCappedTotal": "Seu baralho está pronto — {{total}} cartões",
   "gateSaved_one": "Salvo por {{count}} hora.",
   "gateSaved_other": "Salvo por {{count}} horas.",
   "gateBody": "Crie uma conta gratuita para baixá-los. Até {{monthly}} cartões por mês, grátis.",
