@@ -2263,6 +2263,8 @@ function UploadForm({
     setLastSubmitUsedAi(formData.get('claude-ai-flashcards') === 'true');
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
+    let keptThisRun = false;
+    keptForAccountRef.current = false;
     setAnonCopyRecovered(false);
     setDeckKeptForAccount(false);
     setSampleRun(false);
@@ -2319,11 +2321,13 @@ function UploadForm({
           deckName: deliveredDeckName,
         };
         void keepLastDeck(finished);
-        keptForAccountRef.current =
-          keepsLastDeck(finished) && hasAnonIdCookie();
+        keptThisRun = keepsLastDeck(finished) && hasAnonIdCookie();
+        keptForAccountRef.current = keptThisRun;
       }
       await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {
+      keptForAccountRef.current = false;
+      setDeckKeptForAccount(keptThisRun);
       if (
         await waitForDroppedDeck(
           error,

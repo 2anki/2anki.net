@@ -162,8 +162,8 @@
     "bodyNoName": "Je hebt dit deck als gast gemaakt, dus er is geen online kopie om naar terug te keren. Met een gratis account wordt elk deck dat je omzet opgeslagen in Mijn decks — download ze later opnieuw, vanaf elk apparaat.",
     "cta": "Bewaar je decks — gratis",
     "keptHeadline": "Meld je binnen een dag aan om je nieuwste deck aan Mijn decks toe te voegen",
-    "keptBody": "{{deckName}} wordt een dag bewaard. Maak voor die tijd gratis een account aan of log in in deze browser, en je nieuwste deck gaat naar Mijn decks. Elk deck dat je daarna omzet, wordt daar ook opgeslagen.",
-    "keptBodyNoName": "Dit deck wordt een dag bewaard. Maak voor die tijd gratis een account aan of log in in deze browser, en je nieuwste deck gaat naar Mijn decks. Elk deck dat je daarna omzet, wordt daar ook opgeslagen."
+    "keptBody": "{{deckName}} wordt een dag bewaard. Maak voor die tijd gratis een account aan of log in via deze browser, en je nieuwste deck gaat naar Mijn decks. Elk deck dat je daarna omzet, wordt daar ook opgeslagen.",
+    "keptBodyNoName": "Dit deck wordt een dag bewaard. Maak voor die tijd gratis een account aan of log in via deze browser, en je nieuwste deck gaat naar Mijn decks. Elk deck dat je daarna omzet, wordt daar ook opgeslagen."
   },
   "accessBanner": {
     "active": "{{passLabel}} actief — verloopt {{date}}. Converteer zoveel je wilt.",

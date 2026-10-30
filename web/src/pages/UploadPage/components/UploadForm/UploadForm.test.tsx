@@ -1363,6 +1363,115 @@ describe('UploadForm Google Drive picker interaction', () => {
     }
   });
 
+  it('keeps the notice true to each deck when a pass upload body read fails and a Drive deck follows', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: null,
+        locals: {},
+        features: { kiUI: false },
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    const previousImpl = mockGet2ankiApi.getMockImplementation();
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getCheckoutPrices: vi.fn().mockResolvedValue(null),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getAnonymousRecoveredDeck: vi
+        .fn()
+        .mockResolvedValue(new Blob(['recovered'])),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:recovered');
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const deckHeaders = () =>
+      new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="deck.apkg"',
+        'X-Card-Count': '3',
+      });
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => ({
+      redirected: false,
+      status: 200,
+      headers: deckHeaders(),
+      blob:
+        url === '/api/upload/file'
+          ? () => Promise.reject(new TypeError('network error'))
+          : () => Promise.resolve(new Blob(['fake'])),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_body_lost');
+    document.cookie = 'anon_id=anon-body-lost';
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const fileInput = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      Object.defineProperty(fileInput, 'files', {
+        value: [new File(['x'], 'biochem.pdf', { type: 'application/pdf' })],
+        configurable: true,
+      });
+      fileInput.removeAttribute('required');
+      await act(async () => {
+        container
+          .querySelector('form')!
+          .dispatchEvent(
+            new Event('submit', { bubbles: true, cancelable: true })
+          );
+      });
+      expect(
+        await screen.findByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Make another deck' })
+      );
+
+      fireEvent.click(
+        within(container).getByRole('button', { name: 'Google Drive' })
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Choose from Google Drive' })
+      );
+
+      await waitFor(() =>
+        expect(
+          fetchMock.mock.calls.filter(
+            ([url]) => url === '/api/upload/google_drive'
+          )
+        ).toHaveLength(1)
+      );
+      expect(
+        await screen.findByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+      mockGet2ankiApi.mockReset();
+      if (previousImpl) mockGet2ankiApi.mockImplementation(previousImpl);
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+    }
+  });
+
   it('keeps the card count when a signed-out Drive import hits the anonymous limit with pass-first on', async () => {
     mockUseUserLocals.mockReturnValue({
       data: {
