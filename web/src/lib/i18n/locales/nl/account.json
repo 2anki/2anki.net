@@ -160,7 +160,10 @@
     "headline": "Dit deck bestaat alleen op dit apparaat",
     "body": "Je hebt {{deckName}} als gast gemaakt, dus er is geen online kopie om naar terug te keren. Met een gratis account wordt elk deck dat je omzet opgeslagen in Mijn decks — download ze later opnieuw, vanaf elk apparaat.",
     "bodyNoName": "Je hebt dit deck als gast gemaakt, dus er is geen online kopie om naar terug te keren. Met een gratis account wordt elk deck dat je omzet opgeslagen in Mijn decks — download ze later opnieuw, vanaf elk apparaat.",
-    "cta": "Bewaar je decks — gratis"
+    "cta": "Bewaar je decks — gratis",
+    "keptHeadline": "Meld je binnen een dag aan om dit deck te houden",
+    "keptBody": "{{deckName}} wordt een dag bewaard. Maak voor die tijd in deze browser een gratis account aan en het gaat naar Mijn decks, samen met elk deck dat je daarna converteert.",
+    "keptBodyNoName": "Dit deck wordt een dag bewaard. Maak voor die tijd in deze browser een gratis account aan en het gaat naar Mijn decks, samen met elk deck dat je daarna converteert."
   },
   "accessBanner": {
     "active": "{{passLabel}} actief — verloopt {{date}}. Converteer zoveel je wilt.",

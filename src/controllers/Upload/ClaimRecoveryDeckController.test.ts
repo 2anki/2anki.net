@@ -139,10 +139,6 @@ describe('ClaimRecoveryDeckController', () => {
     ['a token that is not a UUID', { recoveryToken: '../x', deckName: 'a' }],
     ['no deck name', { recoveryToken: TOKEN }],
     ['an empty deck name', { recoveryToken: TOKEN, deckName: '   ' }],
-    [
-      'a deck name over 200 characters',
-      { recoveryToken: TOKEN, deckName: 'a'.repeat(201) },
-    ],
     ['no body', undefined],
   ])('answers 400 for %s', async (_label, body) => {
     const { controller, saveRecoveredDeck } = buildController(keptDeck());
@@ -152,6 +148,24 @@ describe('ClaimRecoveryDeckController', () => {
 
     expect(status()).toBe(400);
     expect(saveRecoveredDeck).not.toHaveBeenCalled();
+  });
+
+  it('shortens a deck name over 200 characters instead of refusing the deck', async () => {
+    const { controller, saveRecoveredDeck } = buildController(keptDeck());
+    const { res, status } = buildResponse();
+
+    await controller.claim(
+      buildRequest({ recoveryToken: TOKEN, deckName: 'a'.repeat(250) }),
+      res
+    );
+
+    expect(status()).toBe(200);
+    expect(saveRecoveredDeck).toHaveBeenCalledWith(
+      '7',
+      'a'.repeat(200),
+      expect.any(Buffer),
+      'req-1'
+    );
   });
 
   it('keeps path separators out of the saved deck name', async () => {

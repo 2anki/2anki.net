@@ -160,7 +160,10 @@
     "headline": "This deck lives only on this device",
     "body": "You made {{deckName}} as a guest, so there's no online copy to come back to. With a free account, every deck you convert is saved to My decks — re-download any of them, from any device.",
     "bodyNoName": "You made this deck as a guest, so there's no online copy to come back to. With a free account, every deck you convert is saved to My decks — re-download any of them, from any device.",
-    "cta": "Save your decks — free"
+    "cta": "Save your decks — free",
+    "keptHeadline": "Sign up within a day to keep this deck",
+    "keptBody": "{{deckName}} is kept for a day. Create a free account in this browser before then and it moves to My decks, along with every deck you convert after.",
+    "keptBodyNoName": "This deck is kept for a day. Create a free account in this browser before then and it moves to My decks, along with every deck you convert after."
   },
   "accessBanner": {
     "active": "{{passLabel}} active — expires {{date}}. Convert as much as you want.",

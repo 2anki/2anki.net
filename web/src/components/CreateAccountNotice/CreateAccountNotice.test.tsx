@@ -44,6 +44,33 @@ describe('CreateAccountNotice', () => {
     ).toBeInTheDocument();
   });
 
+  it('tells a pass holder the deck moves to My decks if they sign up within a day', () => {
+    render(
+      <CreateAccountNotice deckName="Pharmacology Week 3" keptForAccount />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(
+      screen.getByText('Sign up within a day to keep this deck')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Pharmacology Week 3 is kept for a day. Create a free account in this browser before then and it moves to My decks, along with every deck you convert after.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/as a guest/)).not.toBeInTheDocument();
+  });
+
+  it('tells a pass holder the same without a deck name', () => {
+    render(<CreateAccountNotice keptForAccount />, { wrapper: MemoryRouter });
+
+    expect(
+      screen.getByText(/^This deck is kept for a day\./)
+    ).toBeInTheDocument();
+  });
+
   it('links to registration and tracks the click', () => {
     render(<CreateAccountNotice />, { wrapper: MemoryRouter });
 

@@ -4705,6 +4705,45 @@ describe('limit state', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('tells a signed-out pass holder the deck moves to My decks if they sign up within a day', async () => {
+    setUserLocals(anonymousData);
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_kept');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '5',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+
+      expect(
+        await screen.findByText('Sign up within a day to keep this deck')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('This deck lives only on this device')
+      ).not.toBeInTheDocument();
+    } finally {
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
   it('shows upgrade options and a Day Pass shortcut for a logged-in over-limit user', async () => {
     setUserLocals(loggedInData);
     stubLimitFetch('card_count');

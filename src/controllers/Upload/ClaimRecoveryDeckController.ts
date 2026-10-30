@@ -16,10 +16,8 @@ const MAX_DECK_NAME_LENGTH = 200;
 function deckNameFrom(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
-  if (trimmed.length === 0 || trimmed.length > MAX_DECK_NAME_LENGTH) {
-    return null;
-  }
-  return getSafeFilename(trimmed);
+  if (trimmed.length === 0) return null;
+  return getSafeFilename(trimmed.slice(0, MAX_DECK_NAME_LENGTH));
 }
 
 export class ClaimRecoveryDeckController {

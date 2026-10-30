@@ -4,7 +4,8 @@ import { runRequest } from './pendingUpload';
 // to the upload. The server keeps a copy for a day under the upload's recovery
 // token, so this device remembers that token and the deck's name to offer the
 // deck again. It sits in the pending-upload database under its own key, holds
-// one deck at a time, and is cleared on sign-in, logout and account deletion.
+// one deck at a time, moves to the account on sign-in, and is cleared on
+// logout and account deletion.
 
 export interface LastDeck {
   recoveryToken: string;

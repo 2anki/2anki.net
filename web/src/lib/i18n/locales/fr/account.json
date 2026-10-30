@@ -160,7 +160,10 @@
     "headline": "Ce paquet n'existe que sur cet appareil",
     "body": "Tu as créé {{deckName}} en tant qu'invité : il n'existe aucune copie en ligne à retrouver. Avec un compte gratuit, chaque paquet que tu convertis est enregistré dans Mes paquets — re-télécharge-le quand tu veux, depuis n'importe quel appareil.",
     "bodyNoName": "Tu as créé ce paquet en tant qu'invité : il n'existe aucune copie en ligne à retrouver. Avec un compte gratuit, chaque paquet que tu convertis est enregistré dans Mes paquets — re-télécharge-le quand tu veux, depuis n'importe quel appareil.",
-    "cta": "Garde tes paquets — gratuit"
+    "cta": "Garde tes paquets — gratuit",
+    "keptHeadline": "Inscris-toi d'ici un jour pour garder ce paquet",
+    "keptBody": "{{deckName}} est conservé pendant un jour. Crée un compte gratuit dans ce navigateur d'ici là et il passera dans Mes paquets, avec chaque paquet que tu convertiras ensuite.",
+    "keptBodyNoName": "Ce paquet est conservé pendant un jour. Crée un compte gratuit dans ce navigateur d'ici là et il passera dans Mes paquets, avec chaque paquet que tu convertiras ensuite."
   },
   "accessBanner": {
     "active": "{{passLabel}} actif — expire le {{date}}. Convertis autant que tu veux.",

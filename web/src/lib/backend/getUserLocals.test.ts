@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearPassToken, storePassToken } from '../anonymousPass';
-import { getUserLocals } from './getUserLocals';
+import { getUserLocals, resetLastDeckMoveForTests } from './getUserLocals';
 import {
   getLastDeckStore,
   resetLastDeckStoreForTests,
@@ -19,6 +19,7 @@ describe('getUserLocals', () => {
     vi.stubGlobal('fetch', fetchSpy);
     vi.stubGlobal('indexedDB', undefined);
     resetLastDeckStoreForTests();
+    resetLastDeckMoveForTests();
     fetchSpy.mockResolvedValue(
       new Response(JSON.stringify({ locals: {} }), { status: 200 })
     );
@@ -155,6 +156,57 @@ describe('getUserLocals', () => {
     await vi.waitFor(() => expect(claimCalls()).toHaveLength(1));
     await settleClaim();
     expect(await getLastDeckStore().load()).toEqual(keptDeck());
+  });
+
+  it('tries a failed move once per page load, not on every read', async () => {
+    await getLastDeckStore().save(keptDeck());
+    fetchSpy.mockImplementation(async (url: string) =>
+      url.endsWith('upload/claim/recovery')
+        ? new Response('{}', { status: 503 })
+        : signedInLocals()
+    );
+
+    await getUserLocals();
+    await vi.waitFor(() => expect(claimCalls()).toHaveLength(1));
+    await settleClaim();
+    await getUserLocals();
+    await settleClaim();
+
+    expect(claimCalls()).toHaveLength(1);
+    expect(await getLastDeckStore().load()).toEqual(keptDeck());
+  });
+
+  it('moves the kept deck into whichever account signs in on this browser, as the pass carry-over does', async () => {
+    await getLastDeckStore().save(keptDeck());
+    fetchSpy.mockImplementation(async (url: string) =>
+      url.endsWith('upload/claim/recovery')
+        ? new Response('{}', { status: 200 })
+        : new Response(JSON.stringify({ locals: {}, user: { id: 42 } }), {
+            status: 200,
+          })
+    );
+
+    await getUserLocals();
+
+    await vi.waitFor(() => expect(claimCalls()).toHaveLength(1));
+    await vi.waitFor(async () =>
+      expect(await getLastDeckStore().load()).toBeNull()
+    );
+  });
+
+  it('forgets a deck the server refuses as malformed', async () => {
+    await getLastDeckStore().save(keptDeck());
+    fetchSpy.mockImplementation(async (url: string) =>
+      url.endsWith('upload/claim/recovery')
+        ? new Response('{}', { status: 400 })
+        : signedInLocals()
+    );
+
+    await getUserLocals();
+
+    await vi.waitFor(async () =>
+      expect(await getLastDeckStore().load()).toBeNull()
+    );
   });
 
   it('posts nothing for a signed-in visitor with no signed-out deck', async () => {

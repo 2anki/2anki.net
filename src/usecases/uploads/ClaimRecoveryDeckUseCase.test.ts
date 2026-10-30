@@ -104,6 +104,109 @@ describe('ClaimRecoveryDeckUseCase', () => {
     expect(saveRecoveredDeck).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts a deck a moment before its day runs out', async () => {
+    const objects = storedDeck(ANON_RECOVERY_RETENTION_MS - 1);
+    const { saver, saveRecoveredDeck } = buildSaver();
+    const useCase = new ClaimRecoveryDeckUseCase(
+      buildStore(objects),
+      saver,
+      () => NOW
+    );
+
+    await claim(useCase);
+
+    expect(saveRecoveredDeck).toHaveBeenCalledTimes(1);
+  });
+
+  it('saves once when two claims for the same deck overlap', async () => {
+    const objects = storedDeck(60_000);
+    let finishSave: (key: string) => void = () => {};
+    const saveRecoveredDeck = vi.fn().mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        finishSave = resolve;
+      })
+    );
+    const useCase = new ClaimRecoveryDeckUseCase(
+      buildStore(objects),
+      { saveRecoveredDeck },
+      () => NOW
+    );
+
+    const first = claim(useCase);
+    await vi.waitFor(() => expect(saveRecoveredDeck).toHaveBeenCalledTimes(1));
+    await expect(claim(useCase)).rejects.toBeInstanceOf(NoRecoveryDeckError);
+    finishSave('owner-7-deck.apkg');
+
+    await expect(first).resolves.toEqual({
+      downloadKey: 'owner-7-deck.apkg',
+      deckName: 'Biology.apkg',
+    });
+    expect(saveRecoveredDeck).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the deck be claimed again after a save that failed', async () => {
+    const objects = storedDeck(60_000);
+    const saveRecoveredDeck = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce('owner-7-deck.apkg');
+    const useCase = new ClaimRecoveryDeckUseCase(
+      buildStore(objects),
+      { saveRecoveredDeck },
+      () => NOW
+    );
+
+    await expect(claim(useCase)).rejects.toBeInstanceOf(
+      RecoveryDeckNotSavedError
+    );
+    await expect(claim(useCase)).resolves.toMatchObject({
+      downloadKey: 'owner-7-deck.apkg',
+    });
+  });
+
+  it('moves the deck into whichever account claims it from the uploading browser', async () => {
+    const { saver, saveRecoveredDeck } = buildSaver('owner-8-deck.apkg');
+    const useCase = new ClaimRecoveryDeckUseCase(
+      buildStore(storedDeck(60_000)),
+      saver,
+      () => NOW
+    );
+
+    await useCase.execute({
+      anonId: ANON,
+      recoveryToken: TOKEN,
+      deckName: 'Biology.apkg',
+      owner: '8',
+      requestId: undefined,
+    });
+
+    expect(saveRecoveredDeck).toHaveBeenCalledWith(
+      '8',
+      'Biology.apkg',
+      DECK,
+      undefined
+    );
+  });
+
+  it('still answers with the saved deck when the kept copy cannot be deleted', async () => {
+    const objects = storedDeck(60_000);
+    const store = buildStore(objects);
+    vi.mocked(store.delete).mockResolvedValueOnce(false);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const useCase = new ClaimRecoveryDeckUseCase(
+      store,
+      buildSaver().saver,
+      () => NOW
+    );
+
+    await expect(claim(useCase)).resolves.toMatchObject({
+      downloadKey: 'owner-7-deck.apkg',
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0])).not.toContain(TOKEN);
+    warn.mockRestore();
+  });
+
   it('refuses a deck kept for longer than the day it is offered', async () => {
     const objects = storedDeck(ANON_RECOVERY_RETENTION_MS + 1);
     const { saver, saveRecoveredDeck } = buildSaver();

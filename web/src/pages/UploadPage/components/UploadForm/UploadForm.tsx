@@ -925,6 +925,7 @@ function UploadForm({
       : null;
   const [dayPassPending, setDayPassPending] = useState(false);
   const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
+  const [deckKeptForAccount, setDeckKeptForAccount] = useState(false);
   const recoveryTokenRef = useRef<string | null>(null);
   const recoverySubmittedAtRef = useRef(0);
   const pdfPageRangeRef = useRef<string | null>(null);
@@ -2257,6 +2258,7 @@ function UploadForm({
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
     setAnonCopyRecovered(false);
+    setDeckKeptForAccount(false);
     setSampleRun(false);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
@@ -2310,6 +2312,7 @@ function UploadForm({
           recoveryToken,
           deckName: deliveredDeckName,
         });
+        setDeckKeptForAccount(passToken != null && recoveryToken != null);
       }
       await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {
@@ -3232,6 +3235,7 @@ function UploadForm({
         <CreateAccountNotice
           deckName={deckName}
           secondary={downloadRecovered}
+          keptForAccount={deckKeptForAccount}
         />
       )}
       {successOffer === 'confirm_email' &&

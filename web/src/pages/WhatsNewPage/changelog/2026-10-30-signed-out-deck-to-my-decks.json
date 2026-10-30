@@ -2,5 +2,5 @@
   "id": "2026-10-30-signed-out-deck-to-my-decks",
   "date": "2026-10-30",
   "type": "fix",
-  "title": "A deck built with a pass while signed out moves to My decks when you create an account within a day"
+  "title": "A deck you upload with a pass while signed out moves to My decks when you sign up or sign in in that browser within a day"
 }

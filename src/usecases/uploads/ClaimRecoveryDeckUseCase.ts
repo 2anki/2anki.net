@@ -55,8 +55,12 @@ function isMissingObjectError(error: unknown): boolean {
 // A signed-out pass holder's deck is kept for a day under a key only their
 // browser can rebuild (anon_id cookie + per-upload token). Once they have an
 // account, that copy moves into My decks and the anonymous copy is deleted, so
-// a second claim finds nothing and never adds a second row.
+// a second claim finds nothing and never adds a second row. A claim that
+// overlaps one already running for the same key is refused rather than
+// loading the deck into memory twice; production serves from one process.
 export class ClaimRecoveryDeckUseCase {
+  private readonly claimsInFlight = new Set<string>();
+
   constructor(
     private readonly store: RecoveryDeckStore,
     private readonly saver: RecoveredDeckSaver,
@@ -69,6 +73,23 @@ export class ClaimRecoveryDeckUseCase {
       throw new NoRecoveryDeckError();
     }
     const key = anonRecoveryKey(anonId, recoveryToken);
+    if (this.claimsInFlight.has(key)) {
+      throw new NoRecoveryDeckError();
+    }
+    this.claimsInFlight.add(key);
+    try {
+      return await this.moveDeck(key, deckName, owner, requestId);
+    } finally {
+      this.claimsInFlight.delete(key);
+    }
+  }
+
+  private async moveDeck(
+    key: string,
+    deckName: string,
+    owner: string,
+    requestId: string | undefined
+  ): Promise<ClaimedRecoveryDeck> {
     if (!(await this.isWithinWindow(key))) {
       throw new NoRecoveryDeckError();
     }
@@ -82,7 +103,11 @@ export class ClaimRecoveryDeckUseCase {
     if (downloadKey == null) {
       throw new RecoveryDeckNotSavedError();
     }
-    await this.store.delete(key);
+    if (!(await this.store.delete(key))) {
+      console.warn(
+        '[ClaimRecoveryDeck] moved a deck but could not delete the kept copy'
+      );
+    }
     return { downloadKey, deckName };
   }
 

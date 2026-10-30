@@ -160,7 +160,10 @@
     "headline": "Este baralho só existe neste dispositivo",
     "body": "Você criou {{deckName}} como convidado, então não há uma cópia online para voltar depois. Com uma conta grátis, cada baralho que você converte é salvo em Meus baralhos — baixe qualquer um deles de novo, de qualquer dispositivo.",
     "bodyNoName": "Você criou este baralho como convidado, então não há uma cópia online para voltar depois. Com uma conta grátis, cada baralho que você converte é salvo em Meus baralhos — baixe qualquer um deles de novo, de qualquer dispositivo.",
-    "cta": "Salve seus baralhos — grátis"
+    "cta": "Salve seus baralhos — grátis",
+    "keptHeadline": "Cadastre-se em até um dia para manter este baralho",
+    "keptBody": "{{deckName}} fica guardado por um dia. Crie uma conta gratuita neste navegador até lá e ele vai para Meus baralhos, junto com todo baralho que você converter depois.",
+    "keptBodyNoName": "Este baralho fica guardado por um dia. Crie uma conta gratuita neste navegador até lá e ele vai para Meus baralhos, junto com todo baralho que você converter depois."
   },
   "accessBanner": {
     "active": "{{passLabel}} ativo — expira {{date}}. Converta o quanto quiser.",

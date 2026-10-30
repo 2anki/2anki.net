@@ -47,6 +47,7 @@ interface GetUserLocalsResponse {
 }
 
 let lastDeckMove: Promise<void> | null = null;
+let lastDeckMoveFailed = false;
 
 function serverAnswered(status: number): boolean {
   return status > 0 && status < 500;
@@ -54,7 +55,8 @@ function serverAnswered(status: number): boolean {
 
 // A deck a pass built while signed out is kept on the server for a day. Once
 // the visitor has an account it moves into My decks; a failed move keeps the
-// record so the next signed-in read tries again within that day.
+// record so the next page load tries again within that day, without a retry
+// on every refetch of the locals.
 async function moveLastDeckToAccount(): Promise<void> {
   const deck = await getLastDeckStore().load();
   if (deck == null) return;
@@ -64,7 +66,14 @@ async function moveLastDeckToAccount(): Promise<void> {
   );
   if (serverAnswered(status)) {
     await forgetLastDeck();
+  } else {
+    lastDeckMoveFailed = true;
   }
+}
+
+export function resetLastDeckMoveForTests(): void {
+  lastDeckMove = null;
+  lastDeckMoveFailed = false;
 }
 
 // A pass bought before signing up moves to the account on the first signed-in
@@ -79,7 +88,7 @@ export const getUserLocals = async (): Promise<GetUserLocalsResponse> => {
       headers: passToken == null ? undefined : { 'X-Pass-Claim': passToken },
     }
   );
-  if (locals?.user?.id != null) {
+  if (locals?.user?.id != null && !lastDeckMoveFailed) {
     lastDeckMove ??= moveLastDeckToAccount().finally(() => {
       lastDeckMove = null;
     });

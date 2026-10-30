@@ -160,7 +160,10 @@
     "headline": "Este mazo solo existe en este dispositivo",
     "body": "Creaste {{deckName}} como invitado, así que no hay una copia en línea a la que volver. Con una cuenta gratuita, cada mazo que conviertes se guarda en Mis mazos — vuelve a descargarlo cuando quieras, desde cualquier dispositivo.",
     "bodyNoName": "Creaste este mazo como invitado, así que no hay una copia en línea a la que volver. Con una cuenta gratuita, cada mazo que conviertes se guarda en Mis mazos — vuelve a descargarlo cuando quieras, desde cualquier dispositivo.",
-    "cta": "Guarda tus mazos — gratis"
+    "cta": "Guarda tus mazos — gratis",
+    "keptHeadline": "Regístrate en un día para conservar este mazo",
+    "keptBody": "Guardamos {{deckName}} durante un día. Crea una cuenta gratuita en este navegador antes de que pase y se moverá a Mis mazos, junto con cada mazo que conviertas después.",
+    "keptBodyNoName": "Guardamos este mazo durante un día. Crea una cuenta gratuita en este navegador antes de que pase y se moverá a Mis mazos, junto con cada mazo que conviertas después."
   },
   "accessBanner": {
     "active": "{{passLabel}} activo — caduca el {{date}}. Convierte todo lo que quieras.",
