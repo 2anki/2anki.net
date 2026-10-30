@@ -2681,4 +2681,20 @@ describe('PrepareDeck — toggles Cherry-pick left out', () => {
     expect(result.cardCount).toBe(1);
     expect(result.cherrySkippedCount).toBe(2);
   });
+
+  it('counts toggles left out of a Word file converted to toggles', async () => {
+    const convertDocxToHTML = convertDocxToHTMLImport as unknown as Mock;
+    convertDocxToHTML.mockResolvedValueOnce(cherryPage);
+
+    const result = await PrepareDeck({
+      name: 'notes.docx',
+      files: [{ name: 'notes.docx', contents: Buffer.from('PK-docx') }],
+      settings: makeSettings({ cherry: 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(1);
+    expect(result?.cherrySkippedCount).toBe(2);
+  });
 });
