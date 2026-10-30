@@ -242,6 +242,14 @@ class TestGhCalls(unittest.TestCase):
         argv = self.gh_argv("gh pr merge 42", files=["src/server.ts", CHANGELOG])
         self.assertEqual(argv, [["gh", "pr", "view", "42", "--json", "author,body,files,commits"]])
 
+    def test_view_of_99_files_skips_gh_pr_diff(self):
+        files = [f"src/file{i}.ts" for i in range(98)] + [CHANGELOG]
+        self.assertEqual(len(self.gh_argv("gh pr merge 42", files=files)), 1)
+
+    def test_view_of_exactly_100_files_may_be_capped_and_calls_gh_pr_diff(self):
+        files = [f"src/file{i}.ts" for i in range(99)] + [CHANGELOG]
+        self.assertEqual(self.gh_argv("gh pr merge 42", files=files)[1], ["gh", "pr", "diff", "42", "--name-only"])
+
     def test_numbered_merge_lists_paths_with_gh_pr_diff_name_only(self):
         self.assertEqual(self.gh_argv("gh pr merge 42")[1], ["gh", "pr", "diff", "42", "--name-only"])
 
