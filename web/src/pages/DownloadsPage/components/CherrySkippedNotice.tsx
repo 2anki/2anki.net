@@ -5,7 +5,7 @@ import { track } from '../../../lib/analytics/track';
 
 interface CherrySkippedNoticeProps {
   count: number;
-  returnTo?: string;
+  returnTo?: '/downloads' | '/upload';
 }
 
 export function CherrySkippedNotice({

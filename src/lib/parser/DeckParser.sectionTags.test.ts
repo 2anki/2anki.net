@@ -211,6 +211,31 @@ describe('section-scoped tags with nested toggles and Cherry-pick off', () => {
     expect(apple?.tags).toContain('global-tag');
   });
 
+  it('tags a nested cloze card with its parent toggle marker', async () => {
+    const html = pageOf(
+      toggle(
+        'Capitals',
+        '<p><del>geography</del></p><p>European capitals.</p>' +
+          toggle(
+            'Capital of Sweden is <code>Stockholm</code>',
+            '<p>On the east coast.</p>'
+          )
+      )
+    );
+
+    const cards = await cardsFromHtml(html, {
+      ...nestedOptions,
+      cloze: 'true',
+      'promote-nested-cloze': 'true',
+      'section-tags': 'true',
+    });
+
+    const sweden = findCard(cards, 'Sweden');
+
+    expect(sweden?.name).toContain('{{c1::Stockholm}}');
+    expect(sweden?.tags).toContain('geography');
+  });
+
   it('ignores the option when nested toggles are off too', async () => {
     const on = await buildCards({ cherry: 'false', 'section-tags': 'true' });
     const off = await buildCards({ cherry: 'false', 'section-tags': 'false' });

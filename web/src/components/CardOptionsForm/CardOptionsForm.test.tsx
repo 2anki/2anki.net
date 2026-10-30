@@ -524,7 +524,7 @@ describe('CardOptionsForm inline-code-toggles-become-cloze sub-option', () => {
 });
 
 const PREREQ_SECTION_TAGS =
-  'Turn on Nested toggles become their own cards first. Cherry-pick also works, but it makes cards only from toggles marked 🍒 and leaves every other toggle out of your deck.';
+  'Turn on “Nested toggles become their own cards” first. Cherry-pick also works, but it makes cards only from toggles marked 🍒 and leaves every other toggle out of your deck.';
 const CHERRY_DEFAULTS_WARNING =
   'Cherry-pick is on for every upload and Notion page that uses these defaults. Only toggles marked 🍒 become cards, so a page without any 🍒 gives no cards. Mark the toggles you want, or turn Cherry-pick off.';
 
@@ -550,7 +550,7 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick or nested tog
       new CardOptionModel(
         'section-tags',
         'Tag a whole section',
-        'Strike through a line under a parent toggle to tag every card nested beneath it. Works with Nested toggles become their own cards or with Cherry-pick.',
+        'Strike through a line under a parent toggle to tag every card nested beneath it. Works with “Nested toggles become their own cards” or with Cherry-pick.',
         false
       ),
     ]);

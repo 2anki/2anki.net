@@ -92,3 +92,29 @@ describe(
     });
   }
 );
+
+describe('DeckParser Cherry-pick count on a page above the split size', () => {
+  const cardCount = 40;
+  const padding = Math.ceil(SPLIT_HTML_ABOVE_BYTES / (cardCount - 1) / 27) + 10;
+  const filler = `<p>${'lorem ipsum dolor sit amet '.repeat(padding)}</p>`;
+  const marked = (n: number) =>
+    `<ul class="toggle"><li><details><summary>🍒 Question ${n}</summary><p>Answer ${n}</p></details></li></ul>`;
+  const children = Array.from({ length: cardCount }, (_, i) =>
+    i % 4 === 0 ? marked(i) : toggle(i)
+  ).join(filler);
+  const html = `<!DOCTYPE html><html><head><title>Large page</title></head><body><article class="page sans"><header><h1 class="page-title">Large page</h1></header><div class="page-body">${children}</div></article></body></html>`;
+
+  it('sums the toggles Cherry-pick left out across every part', () => {
+    const parser = new DeckParser({
+      name: 'large.html',
+      settings: new CardOption({ cherry: 'true' }),
+      files: [{ name: 'large.html', contents: html }],
+      noLimits: true,
+      workspace: new Workspace(true, 'fs'),
+    });
+
+    expect(html.length).toBeGreaterThan(SPLIT_HTML_ABOVE_BYTES);
+    expect(parser.payload[0].cards).toHaveLength(10);
+    expect(parser.payload[0].cherrySkippedCount).toBe(30);
+  });
+});
