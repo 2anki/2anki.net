@@ -151,10 +151,7 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
     });
   });
 
-  it('starts a Day Pass checkout tagged with the connector variant', async () => {
-    mockStartPassCheckout.mockResolvedValue({
-      url: 'https://checkout.stripe.test/day',
-    });
+  it('tags a signed-out Day Pass click with the connector variant', () => {
     renderAt('/pricing/?ref=mcp');
 
     fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
@@ -164,14 +161,25 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
       plan: 'day_pass',
       variant: 'mcp-day-first',
     });
-    await waitFor(() =>
-      expect(mockStartPassCheckout).toHaveBeenCalledWith(
-        '24h',
-        'mcp-day-first',
-        'pricing_page'
-      )
-    );
   });
+
+  it.each([
+    ['Day Pass', /^Get Day Pass · /],
+    ['Week Pass', /^Get Week Pass · /],
+    ['Semester Pass', /^Get Semester Pass · /],
+  ])(
+    'sends a signed-out %s click to sign-in with ref=mcp so the pass lands on the connected account',
+    (_label, name) => {
+      renderAt('/pricing/?ref=mcp');
+
+      fireEvent.click(screen.getByRole('button', { name }));
+
+      expect(globalThis.location.href).toBe(
+        `/login?redirect=${encodeURIComponent('/pricing?ref=mcp')}`
+      );
+      expect(mockStartPassCheckout).not.toHaveBeenCalled();
+    }
+  );
 
   it('starts nothing until the visitor picks a plan', () => {
     renderAt('/pricing/?ref=mcp');
@@ -276,6 +284,31 @@ describe('PricingPage for a signed-in free connector visitor', () => {
       )
     );
   });
+});
+
+describe('PricingPage longer passes for a signed-in connector visitor', () => {
+  it.each([
+    ['7d', /^Get Week Pass · /],
+    ['120d', /^Get Semester Pass · /],
+  ])(
+    'starts a %s checkout tagged with the connector variant',
+    async (kind, name) => {
+      mockStartPassCheckout.mockResolvedValue({
+        url: 'https://checkout.stripe.test/pass',
+      });
+      renderAt('/pricing/?ref=mcp', true, { subscriber: false });
+
+      fireEvent.click(screen.getByRole('button', { name }));
+
+      await waitFor(() =>
+        expect(mockStartPassCheckout).toHaveBeenCalledWith(
+          kind,
+          'mcp-day-first',
+          'pricing_page'
+        )
+      );
+    }
+  );
 });
 
 describe('PricingPage for a connector visitor who already owns ongoing access', () => {

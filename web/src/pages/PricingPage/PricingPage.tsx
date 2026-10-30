@@ -240,6 +240,10 @@ export default function PricingPage({
       plan: planByKind[kind],
       variant: pricingOrder,
     });
+    if (connectorFirst && !isLoggedIn) {
+      globalThis.location.href = `/login?redirect=${encodeURIComponent(pricingPath(connectorRefParams()))}`;
+      return;
+    }
     setConflict(null);
     setPassState('pending');
     const result = await get2ankiApi().startPassCheckout(

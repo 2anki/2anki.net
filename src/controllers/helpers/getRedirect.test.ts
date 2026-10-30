@@ -207,6 +207,57 @@ describe('getRedirect security tests', () => {
     });
   });
 
+  describe('should return a pricing visitor to the plan view they left', () => {
+    const kept: [string, string][] = [
+      ['/pricing?ref=mcp', '/pricing?ref=mcp'],
+      ['/pricing/?ref=mcp', '/pricing?ref=mcp'],
+      ['/pricing?interval=year', '/pricing?interval=year'],
+      ['/pricing?ref=mcp&interval=year', '/pricing?ref=mcp&interval=year'],
+      ['/pricing?interval=year&ref=mcp', '/pricing?ref=mcp&interval=year'],
+      ['/pricing#auto-sync', '/pricing#auto-sync'],
+      ['/pricing?ref=mcp#auto-sync', '/pricing?ref=mcp#auto-sync'],
+    ];
+    kept.forEach(([input, expected]) => {
+      it(`keeps ${input} as ${expected}`, () => {
+        expect(getRedirect(createMockRequest(input))).toBe(expected);
+      });
+    });
+
+    it('reads the pricing return from the request body as well', () => {
+      const req = createMockRequest(undefined, '/pricing?ref=mcp');
+      expect(getRedirect(req)).toBe('/pricing?ref=mcp');
+    });
+
+    const stripped: [string, string][] = [
+      ['/pricing?ref=evil', '/pricing'],
+      ['/pricing?ref=MCP', '/pricing'],
+      ['/pricing?interval=month', '/pricing'],
+      ['/pricing?next=https://evil.com', '/pricing'],
+      ['/pricing?ref=mcp&next=https://evil.com', '/pricing?ref=mcp'],
+      ['/pricing?ref=mcp&ref=evil', '/pricing?ref=mcp'],
+      ['/pricing#javascript:alert(1)', '/pricing'],
+      ['/pricing?ref=mcp#other', '/pricing?ref=mcp'],
+    ];
+    stripped.forEach(([input, expected]) => {
+      it(`drops anything outside the allowlist: ${input} -> ${expected}`, () => {
+        expect(getRedirect(createMockRequest(input))).toBe(expected);
+      });
+    });
+
+    const offSite: [string, string][] = [
+      ['//evil.com/pricing?ref=mcp', '/upload'],
+      ['/\\evil.com/pricing?ref=mcp', '/upload'],
+      ['https://evil.com/pricing?ref=mcp', '/upload'],
+      ['/pricingX?ref=mcp', '/upload'],
+      ['/pricing/../admin?ref=mcp', '/pricing'],
+    ];
+    offSite.forEach(([target, expected]) => {
+      it(`does not treat a look-alike as pricing: ${JSON.stringify(target)}`, () => {
+        expect(getRedirect(createMockRequest(target))).toBe(expected);
+      });
+    });
+  });
+
   describe('should read redirect from request body as fallback', () => {
     it('returns body redirect when query param is absent', () => {
       const req = createMockRequest(undefined, '/card-options');

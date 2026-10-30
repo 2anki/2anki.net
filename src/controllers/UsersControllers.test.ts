@@ -2043,6 +2043,23 @@ describe('UsersController.login — Notion-aware redirect', () => {
     const payload = res.json.mock.calls[0][0];
     expect(payload.redirect).toBe('/downloads');
   });
+
+  it('returns a connector visitor to the pricing view they signed in from', async () => {
+    MockedNotionRepo.prototype.getNotionData = vi
+      .fn()
+      .mockResolvedValue({ token: 'stored-tok', owner: 5 });
+    const { controller } = buildLoginController();
+    const req = {
+      body: { email: 'u@example.com', credentials: 'mock' },
+      query: { redirect: '/pricing?ref=mcp&interval=year' },
+    } as unknown as express.Request;
+    const res = buildLoginRes();
+
+    await controller.login(req, res, vi.fn());
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.redirect).toBe('/pricing?ref=mcp&interval=year');
+  });
 });
 
 describe('UsersController.loginWithNotion — error recording', () => {

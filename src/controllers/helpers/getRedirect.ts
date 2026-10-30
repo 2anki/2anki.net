@@ -41,6 +41,38 @@ const resolveInternalPath = (candidate: string): string | null => {
   return match ?? null;
 };
 
+const PRICING_PATHS = new Set(['/pricing', '/pricing/']);
+const PRICING_RETURN_PARAMS = new Map([
+  ['ref', 'mcp'],
+  ['interval', 'year'],
+]);
+const PRICING_RETURN_HASHES = new Set(['#auto-sync']);
+const SAME_SITE_BASE = 'https://2anki.invalid';
+
+const resolvePricingReturn = (candidate: string): string | null => {
+  if (!candidate.startsWith('/pricing')) {
+    return null;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate, SAME_SITE_BASE);
+  } catch {
+    return null;
+  }
+  if (parsed.origin !== SAME_SITE_BASE || !PRICING_PATHS.has(parsed.pathname)) {
+    return null;
+  }
+  const kept = new URLSearchParams();
+  for (const [key, value] of PRICING_RETURN_PARAMS) {
+    if (parsed.searchParams.get(key) === value) {
+      kept.set(key, value);
+    }
+  }
+  const query = kept.toString();
+  const hash = PRICING_RETURN_HASHES.has(parsed.hash) ? parsed.hash : '';
+  return `/pricing${query === '' ? '' : `?${query}`}${hash}`;
+};
+
 const resolveAllowedOrigin = (candidate: string): string | null => {
   let parsed: URL;
   try {
@@ -75,6 +107,7 @@ export const getRedirect = (req: Request): string => {
   // value instead of collapsing to an allowlisted section root.
   return (
     asMcpAuthorizeReturn(redirectParam) ??
+    resolvePricingReturn(redirectParam) ??
     resolveInternalPath(redirectParam) ??
     resolveAllowedOrigin(redirectParam) ??
     DEFAULT_REDIRECT
