@@ -482,7 +482,7 @@ describe('UploadForm', () => {
         await screen.findByText('Confirming your payment.')
       ).toBeInTheDocument();
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(3_100);
+        await vi.advanceTimersByTimeAsync(4_500);
       });
       expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(2);
       expect(screen.getByText('Confirming your payment.')).toBeInTheDocument();

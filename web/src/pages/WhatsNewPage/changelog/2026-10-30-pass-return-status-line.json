@@ -2,5 +2,5 @@
   "id": "2026-10-30-pass-return-status-line",
   "date": "2026-10-30",
   "type": "fix",
-  "title": "The Day Pass return shows the step it is on, confirming your payment or checking your pass, and screen readers announce it"
+  "title": "Back from a pass checkout, the upload page shows the step it is on and screen readers announce each change"
 }

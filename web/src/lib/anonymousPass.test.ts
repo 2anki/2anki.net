@@ -57,6 +57,7 @@ describe('anonymousPass', () => {
       deckName: 'Biology',
       '2anki-theme': 'dark',
       ankify_anki_web_acknowledged: 'true',
+      email: 'learner@example.com',
       'pdf-fallback': 'pairs',
       'block-id-identity': 'true',
     });
