@@ -291,15 +291,23 @@ class UsersRepository {
       .del();
   }
 
-  // A warning notice is keyed on the address it went to. Once an account moves
-  // off an address no warning is claimed on it again, so the old row only
-  // dedupes nothing and would outlive a later account deletion.
+  // A warning notice is keyed on the address it went to. Once no subscription
+  // sends to an address any more, its notice dedupes nothing and would outlive
+  // a later account deletion, which only knows the new address. The ops email
+  // change relinks only payer-matched rows, so a row linked to the old address
+  // can still send there and keeps its notice.
   forgetPauseNoticesForAddressQuery(
     executor: Knex | Knex.Transaction,
     address: string
   ) {
+    const normalized = address.trim().toLowerCase();
     return executor('pause_resume_warning_notices')
-      .whereRaw('lower(subscription_email) = ?', [address.trim().toLowerCase()])
+      .whereRaw('lower(subscription_email) = ?', [normalized])
+      .whereNotExists(
+        executor('subscriptions')
+          .select(executor.raw('1'))
+          .whereRaw('lower(coalesce(linked_email, email)) = ?', [normalized])
+      )
       .del();
   }
 

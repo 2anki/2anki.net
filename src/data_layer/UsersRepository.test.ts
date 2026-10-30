@@ -258,9 +258,11 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       }),
     });
     const subsWhere = vi.fn().mockReturnValue({ update: subsUpdate });
-    const noticesWhereRaw = vi
-      .fn()
-      .mockReturnValue({ del: vi.fn().mockResolvedValue(0) });
+    const noticesWhereRaw = vi.fn().mockReturnValue({
+      whereNotExists: vi.fn().mockReturnValue({
+        del: vi.fn().mockResolvedValue(0),
+      }),
+    });
     const magicTokens = {
       whereIn: vi.fn().mockReturnValue({
         whereNull: vi.fn().mockReturnValue({
@@ -273,7 +275,10 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
         return { whereRaw: usersWhereRaw };
       }
       if (table === 'subscriptions') {
-        return { where: subsWhere };
+        return {
+          where: subsWhere,
+          select: vi.fn().mockReturnValue({ whereRaw: vi.fn() }),
+        };
       }
       if (table === 'magic_tokens' || table === 'email_change_tokens') {
         return magicTokens;
@@ -284,6 +289,7 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       return {};
     });
     trx.fn = { now: vi.fn().mockReturnValue('now()') };
+    trx.raw = vi.fn();
     const transaction = vi.fn().mockImplementation(async (cb) => cb(trx));
     const knex: any = vi.fn();
     knex.transaction = transaction;
@@ -298,8 +304,14 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
   }
 
   it('moves users.email and subscriptions.linked_email in one transaction', async () => {
-    const { knex, usersWhereRaw, usersUpdate, subsWhere, subsUpdate } =
-      buildTrxKnex();
+    const {
+      knex,
+      usersWhereRaw,
+      usersUpdate,
+      subsWhere,
+      subsUpdate,
+      noticesWhereRaw,
+    } = buildTrxKnex();
     const repo = new UsersRepository(knex as any);
 
     await repo.changeEmailAndRelinkSubscriptions(
@@ -320,6 +332,10 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
     expect(subsUpdate).toHaveBeenCalledWith({
       linked_email: 'new@example.com',
     });
+    expect(noticesWhereRaw).toHaveBeenCalledWith(
+      'lower(subscription_email) = ?',
+      ['old@example.com']
+    );
   });
 });
 

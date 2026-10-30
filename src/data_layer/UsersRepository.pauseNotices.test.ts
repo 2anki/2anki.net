@@ -203,6 +203,25 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
     expect(await remainingNoticeKeys()).toEqual([]);
   });
 
+  it('keeps the notice when an ops email change leaves a subscription still sending to the old address', async () => {
+    await seedUser('old@example.com');
+    await database('subscriptions').insert({
+      email: 'payer@example.com',
+      linked_email: 'old@example.com',
+    });
+    await database('pause_resume_warning_notices').insert({
+      subscription_email: 'old@example.com',
+      resumes_at: FUTURE,
+    });
+
+    await repo.changeEmailAndRelinkSubscriptions(
+      'old@example.com',
+      'new@example.com'
+    );
+
+    expect(await remainingNoticeKeys()).toEqual(['old@example.com']);
+  });
+
   it("leaves an unrelated account's notice alone", async () => {
     const owner = await seedUser('account@example.com');
     await database('pause_resume_warning_notices').insert({

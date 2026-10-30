@@ -224,9 +224,14 @@ describe('SendPauseResumeWarningsUseCase', () => {
         .mockResolvedValue(undefined),
     } as unknown as IEmailService;
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    const release = vi.spyOn(repo, 'releaseNotice');
     const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
 
     const first = await useCase.execute(NOW);
+    expect(release).toHaveBeenCalledWith(
+      'account@example.com',
+      new Date(RESUMES_AT_SECONDS * 1000)
+    );
     expect(repo.claimed.size).toBe(0);
     const second = await useCase.execute(NOW);
 
