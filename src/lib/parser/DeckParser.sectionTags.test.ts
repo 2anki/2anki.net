@@ -174,30 +174,36 @@ describe('section-scoped tags with nested toggles and Cherry-pick off', () => {
     expect(chapterOne?.back).not.toContain('<del>');
   });
 
-  it('keeps a nested card strikethrough tag on that card only', async () => {
-    const html = pageOf(
-      toggle(
-        'Heart',
-        '<p><del>cardiology</del></p><p>Pumps blood.</p>' +
-          toggle('Atrium', '<p><del>upper</del></p><p>Receives blood.</p>') +
-          toggle('Ventricle', '<p>Pumps blood out.</p>')
-      )
-    );
+  it.each(['true', 'false'])(
+    'keeps a nested card strikethrough tag on that card only (max-one %s)',
+    async (maxOne) => {
+      const html = pageOf(
+        toggle(
+          'Heart',
+          '<p><del>cardiology</del></p><p>Pumps blood.</p>' +
+            toggle('Atrium', '<p><del>upper</del></p><p>Receives blood.</p>') +
+            toggle('Ventricle', '<p>Pumps blood out.</p>')
+        )
+      );
 
-    const cards = await cardsFromHtml(html, {
-      ...nestedOptions,
-      'section-tags': 'true',
-    });
+      const cards = await cardsFromHtml(html, {
+        ...nestedOptions,
+        'max-one-toggle-per-card': maxOne,
+        'section-tags': 'true',
+      });
 
-    const atrium = findCard(cards, 'Atrium');
-    const ventricle = findCard(cards, 'Ventricle');
+      const heart = findCard(cards, 'Heart');
+      const atrium = findCard(cards, 'Atrium');
+      const ventricle = findCard(cards, 'Ventricle');
 
-    expect(atrium?.tags).toEqual(
-      expect.arrayContaining(['cardiology', 'upper'])
-    );
-    expect(ventricle?.tags).toContain('cardiology');
-    expect(ventricle?.tags).not.toContain('upper');
-  });
+      expect(heart?.tags).toContain('cardiology');
+      expect(atrium?.tags).toEqual(
+        expect.arrayContaining(['cardiology', 'upper'])
+      );
+      expect(ventricle?.tags).toContain('cardiology');
+      expect(ventricle?.tags).not.toContain('upper');
+    }
+  );
 
   it('leaves nested cards untagged by their parent when the option is off', async () => {
     const cards = await buildCards({
@@ -211,30 +217,34 @@ describe('section-scoped tags with nested toggles and Cherry-pick off', () => {
     expect(apple?.tags).toContain('global-tag');
   });
 
-  it('tags a nested cloze card with its parent toggle marker', async () => {
-    const html = pageOf(
-      toggle(
-        'Capitals',
-        '<p><del>geography</del></p><p>European capitals.</p>' +
-          toggle(
-            'Capital of Sweden is <code>Stockholm</code>',
-            '<p>On the east coast.</p>'
-          )
-      )
-    );
+  it.each(['true', 'false'])(
+    'tags a nested cloze card with its parent toggle marker (max-one %s)',
+    async (maxOne) => {
+      const html = pageOf(
+        toggle(
+          'Capitals',
+          '<p><del>geography</del></p><p>European capitals.</p>' +
+            toggle(
+              'Capital of Sweden is <code>Stockholm</code>',
+              '<p>On the east coast.</p>'
+            )
+        )
+      );
 
-    const cards = await cardsFromHtml(html, {
-      ...nestedOptions,
-      cloze: 'true',
-      'promote-nested-cloze': 'true',
-      'section-tags': 'true',
-    });
+      const cards = await cardsFromHtml(html, {
+        ...nestedOptions,
+        cloze: 'true',
+        'promote-nested-cloze': 'true',
+        'max-one-toggle-per-card': maxOne,
+        'section-tags': 'true',
+      });
 
-    const sweden = findCard(cards, 'Sweden');
+      const sweden = findCard(cards, 'Sweden');
 
-    expect(sweden?.name).toContain('{{c1::Stockholm}}');
-    expect(sweden?.tags).toContain('geography');
-  });
+      expect(sweden?.name).toContain('{{c1::Stockholm}}');
+      expect(sweden?.tags).toContain('geography');
+    }
+  );
 
   it('ignores the option when nested toggles are off too', async () => {
     const on = await buildCards({ cherry: 'false', 'section-tags': 'true' });

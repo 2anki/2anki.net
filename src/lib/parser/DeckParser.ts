@@ -2491,27 +2491,24 @@ export class DeckParser {
     const pageId = dom('article').attr('id');
 
     const sectionTagsOf = this.sectionTagLookup(dom);
-    const keptToggleNotes = new Map<Element, Note>();
-    const showsOnKeptAncestor = (toggle: Element, summaryHTML: string) =>
-      summaryHTML.length > 0 &&
+    // Cherry-pick lists nested toggles as candidates too. With max-one off a
+    // nested toggle also ships inside a kept ancestor's back, so it was not
+    // left out; with it on the legacy back strips it and the new-format
+    // rebuild keeps it out of the candidate list.
+    const keptToggles = new Set<Element>();
+    const shipsInKeptAncestorBack = (toggle: Element) =>
+      !this.settings.maxOne &&
       dom(toggle)
         .parents('.toggle')
         .toArray()
-        .some(
-          (ancestor) =>
-            keptToggleNotes.get(ancestor)?.back.includes(summaryHTML) === true
-        );
-    const keepToggle = (
-      note: Note,
-      toggle: Element,
-      summaryHTML: string
-    ): boolean => {
+        .some((ancestor) => keptToggles.has(ancestor));
+    const keepToggle = (note: Note, toggle: Element): boolean => {
       const outcome = this.keepOrDropCard(note, cards);
       if (outcome === 'kept') {
-        keptToggleNotes.set(toggle, note);
+        keptToggles.add(toggle);
       } else if (
         outcome === 'cherry_skipped' &&
-        !showsOnKeptAncestor(toggle, summaryHTML)
+        !shipsInKeptAncestorBack(toggle)
       ) {
         cherrySkippedCount += 1;
       }
@@ -2594,7 +2591,7 @@ export class DeckParser {
                 note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
-                if (keepToggle(note, t, summary.html() ?? '')) {
+                if (keepToggle(note, t)) {
                   this.applyParentContext(dom, summary, note);
                 }
                 return;
@@ -2625,7 +2622,7 @@ export class DeckParser {
                   note.back += link;
                 }
               }
-              if (keepToggle(note, t, summary.html() ?? '')) {
+              if (keepToggle(note, t)) {
                 this.applyParentContext(dom, summary, note);
               }
               for (const child of promoted) {

@@ -50,64 +50,67 @@ describe('cherry-skipped toggle count (upload path)', () => {
   describe('nested toggles under a kept 🍒 toggle', () => {
     const wrapped = (summary: string, body: string) =>
       `<ul class="toggle"><li><details open=""><summary>${summary}</summary>${body}</details></li></ul>`;
-    const shapes = {
-      'bare details export': pageOf(
+    const bareShape = (parentBody: string, children: string[]) =>
+      pageOf(
         toggle(
           '🍒 Heart',
-          '<p>Pumps blood.</p>' +
-            toggle('Atrium', '<p>Receives blood.</p>') +
-            toggle('Ventricle', '<p>Pumps blood out.</p>')
+          parentBody +
+            children
+              .map((title) => toggle(title, '<p>Child answer.</p>'))
+              .join('')
         )
-      ),
-      'ul.toggle export': pageOf(
+      );
+    const wrappedShape = (parentBody: string, children: string[]) =>
+      pageOf(
         wrapped(
           '🍒 Heart',
-          '<p>Pumps blood.</p>' +
-            wrapped('Atrium', '<p>Receives blood.</p>') +
-            wrapped('Ventricle', '<p>Pumps blood out.</p>')
+          parentBody +
+            children
+              .map((title) => wrapped(title, '<p>Child answer.</p>'))
+              .join('')
         )
-      ),
-    };
+      );
 
-    it.each(
-      Object.entries(shapes).flatMap(([shape, html]) =>
-        ['true', 'false'].map((maxOne) => ({ shape, html, maxOne }))
-      )
-    )(
-      'counts only the ones its card leaves out ($shape, max-one $maxOne)',
-      async ({ html, maxOne }) => {
-        const [deck] = await parse(html, {
-          cherry: 'true',
-          'max-one-toggle-per-card': maxOne,
-        });
+    it.each([
+      { shape: 'bare details', build: bareShape, maxOne: 'true', expected: 0 },
+      { shape: 'bare details', build: bareShape, maxOne: 'false', expected: 0 },
+      { shape: 'ul.toggle', build: wrappedShape, maxOne: 'true', expected: 2 },
+      { shape: 'ul.toggle', build: wrappedShape, maxOne: 'false', expected: 0 },
+    ])(
+      'counts $expected left out ($shape export, max-one $maxOne)',
+      async ({ build, maxOne, expected }) => {
+        const [deck] = await parse(
+          build('<p>Pumps blood.</p>', ['Atrium', 'Ventricle']),
+          { cherry: 'true', 'max-one-toggle-per-card': maxOne }
+        );
 
         expect(deck.cards.map((card) => card.name)).toEqual([
           expect.stringContaining('Heart'),
         ]);
-        const leftOut = ['Atrium', 'Ventricle'].filter(
-          (title) => !deck.cards[0].back.includes(title)
-        );
-        expect(deck.cherrySkippedCount).toBe(leftOut.length);
+        expect(deck.cherrySkippedCount).toBe(expected);
       }
     );
 
-    it('still counts nested toggles a one-toggle card leaves out', async () => {
-      const [deck] = await parse(shapes['ul.toggle export'], {
-        cherry: 'true',
-        'max-one-toggle-per-card': 'true',
-      });
+    it('still counts a dropped child whose title also appears in the parent text', async () => {
+      const [deck] = await parse(
+        wrappedShape('<p>Atrium contracts first.</p>', ['Atrium', 'p']),
+        { cherry: 'true', 'max-one-toggle-per-card': 'true' }
+      );
 
-      expect(deck.cards[0].back).not.toContain('Atrium');
       expect(deck.cherrySkippedCount).toBe(2);
     });
 
-    it('does not count nested toggles a kept card shows on its back', async () => {
-      const [deck] = await parse(shapes['ul.toggle export'], {
-        cherry: 'true',
-        'max-one-toggle-per-card': 'false',
-      });
+    it('does not count a child shown on the kept back even when its title is reformatted', async () => {
+      const [deck] = await parse(
+        wrappedShape('<p>Pumps blood.</p>', ['Two\nlines', 'Ventricle']),
+        {
+          cherry: 'true',
+          'max-one-toggle-per-card': 'false',
+          'perserve-newlines': 'true',
+        }
+      );
 
-      expect(deck.cards[0].back).toContain('Atrium');
+      expect(deck.cards[0].back).toContain('Ventricle');
       expect(deck.cherrySkippedCount).toBe(0);
     });
   });
