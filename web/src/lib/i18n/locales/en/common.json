@@ -565,6 +565,7 @@
     "payOnceSection": "Pay once — no subscription",
     "monthlySection": "Prefer a subscription?",
     "connectorIntro": "The deck you asked Claude or ChatGPT for went over the free plan's monthly limit, so it wasn't made. Any plan below removes the limit. Then ask for the deck again.",
+    "connectorIntroSignedOut": "The deck you asked Claude or ChatGPT for went over the free plan's monthly limit, so it wasn't made. Any plan below removes the limit. For a pass, enter your 2anki account email at checkout so it reaches the account you connected. Then ask for the deck again.",
     "morePassesSection": "Longer passes",
     "pricesNote": "Prices in USD. Your card is charged in your local currency at checkout.",
     "reassuranceCancel": "Cancel anytime — one click",

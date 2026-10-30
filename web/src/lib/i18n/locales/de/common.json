@@ -565,6 +565,7 @@
     "payOnceSection": "Einmal zahlen — kein Abo",
     "monthlySection": "Lieber ein Abo?",
     "connectorIntro": "Der Stapel, den du bei Claude oder ChatGPT angefragt hast, lag über dem Monatslimit des kostenlosen Tarifs und wurde deshalb nicht erstellt. Jeder Tarif unten hebt das Limit auf. Frag danach noch einmal nach dem Stapel.",
+    "connectorIntroSignedOut": "Der Stapel, den du bei Claude oder ChatGPT angefragt hast, lag über dem Monatslimit des kostenlosen Tarifs und wurde deshalb nicht erstellt. Jeder Tarif unten hebt das Limit auf. Gib bei einem Pass an der Kasse die E-Mail-Adresse deines 2anki-Kontos ein, damit er beim verbundenen Konto ankommt. Frag danach noch einmal nach dem Stapel.",
     "morePassesSection": "Längere Pässe",
     "pricesNote": "Preise in USD. Deine Karte wird beim Checkout in deiner lokalen Währung belastet.",
     "reassuranceCancel": "Jederzeit kündbar — ein Klick",

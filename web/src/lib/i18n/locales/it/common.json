@@ -565,6 +565,7 @@
     "payOnceSection": "Paghi una volta — niente abbonamento",
     "monthlySection": "Preferisci un abbonamento?",
     "connectorIntro": "Il mazzo che hai chiesto a Claude o ChatGPT superava il limite mensile del piano gratuito, quindi non è stato creato. Qualsiasi piano qui sotto rimuove il limite. Poi chiedi di nuovo il mazzo.",
+    "connectorIntroSignedOut": "Il mazzo che hai chiesto a Claude o ChatGPT superava il limite mensile del piano gratuito, quindi non è stato creato. Qualsiasi piano qui sotto rimuove il limite. Per un pass, inserisci l'email del tuo account 2anki al pagamento, così arriva all'account che hai collegato. Poi chiedi di nuovo il mazzo.",
     "morePassesSection": "Pass più lunghi",
     "pricesNote": "Prezzi in USD. La tua carta viene addebitata nella valuta locale al momento del pagamento.",
     "reassuranceCancel": "Disdici quando vuoi — con un clic",

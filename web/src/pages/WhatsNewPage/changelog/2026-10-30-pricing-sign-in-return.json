@@ -2,5 +2,5 @@
   "id": "2026-10-30-pricing-sign-in-return",
   "date": "2026-10-30",
   "type": "fix",
-  "title": "Signing in from Pricing brings you back to Pricing, with yearly billing or Auto Sync still in view"
+  "title": "Signing in with email from the pricing page brings you back to it, with yearly billing still selected"
 }

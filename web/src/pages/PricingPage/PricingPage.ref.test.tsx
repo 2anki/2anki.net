@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -37,6 +43,9 @@ vi.mock('../../lib/hooks/useCardUsage', () => ({
 
 const CONNECTOR_INTRO =
   "The deck you asked Claude or ChatGPT for went over the free plan's monthly limit, so it wasn't made. Any plan below removes the limit. Then ask for the deck again.";
+
+const SIGNED_OUT_CONNECTOR_INTRO =
+  "The deck you asked Claude or ChatGPT for went over the free plan's monthly limit, so it wasn't made. Any plan below removes the limit. For a pass, enter your 2anki account email at checkout so it reaches the account you connected. Then ask for the deck again.";
 
 const PLAN_TITLES = ['Day Pass', 'Pro', 'Week Pass', 'Semester Pass'];
 
@@ -133,14 +142,17 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
 
   it('keeps the Best value badge on the Semester Pass', () => {
     renderAt('/pricing/?ref=mcp');
+    const semester = cardOf('Semester Pass');
+    expect(semester).toBeInstanceOf(HTMLElement);
     expect(
-      screen.getByText('Best value').closest('div')?.textContent
-    ).toContain('Semester Pass');
+      within(semester as HTMLElement).getByText('Best value')
+    ).toBeInTheDocument();
   });
 
-  it('explains why the deck was not made', () => {
+  it('tells a signed-out visitor to enter their account email for a pass', () => {
     renderAt('/pricing/?ref=mcp');
-    expect(screen.getByText(CONNECTOR_INTRO)).toBeInTheDocument();
+    expect(screen.getByText(SIGNED_OUT_CONNECTOR_INTRO)).toBeInTheDocument();
+    expect(screen.queryByText(CONNECTOR_INTRO)).not.toBeInTheDocument();
   });
 
   it('tags paywall_shown with the connector variant', () => {
@@ -163,26 +175,28 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
     });
   });
 
-  it.each([
-    ['Day Pass', /^Get Day Pass · /],
-    ['Week Pass', /^Get Week Pass · /],
-    ['Semester Pass', /^Get Semester Pass · /],
-  ])(
-    'sends a signed-out %s click to sign-in with ref=mcp so the pass lands on the connected account',
-    (_label, name) => {
-      renderAt('/pricing/?ref=mcp');
-
-      fireEvent.click(screen.getByRole('button', { name }));
-
-      expect(globalThis.location.href).toBe(
-        `/login?redirect=${encodeURIComponent('/pricing?ref=mcp')}`
-      );
-      expect(mockStartPassCheckout).not.toHaveBeenCalled();
-    }
-  );
-
-  it('starts nothing until the visitor picks a plan', () => {
+  it('starts a signed-out Day Pass checkout tagged with the connector variant', async () => {
+    mockStartPassCheckout.mockResolvedValue({
+      url: 'https://checkout.stripe.test/day',
+    });
     renderAt('/pricing/?ref=mcp');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
+
+    await waitFor(() =>
+      expect(mockStartPassCheckout).toHaveBeenCalledWith(
+        '24h',
+        'mcp-day-first',
+        'pricing_page'
+      )
+    );
+  });
+
+  it.each([
+    ['a signed-out visitor', false],
+    ['a visitor back from sign-in', true],
+  ])('starts nothing for %s until a plan is picked', (_label, isLoggedIn) => {
+    renderAt('/pricing?ref=mcp&interval=year', isLoggedIn);
     expect(mockStartPassCheckout).not.toHaveBeenCalled();
     expect(mockStartUnlimitedCheckout).not.toHaveBeenCalled();
     expect(mockStartAutoSyncCheckout).not.toHaveBeenCalled();
@@ -348,6 +362,9 @@ describe('PricingPage without a connector ref', () => {
     (path) => {
       renderAt(path);
       expect(screen.queryByText(CONNECTOR_INTRO)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(SIGNED_OUT_CONNECTOR_INTRO)
+      ).not.toBeInTheDocument();
       expect(screen.queryByText('Longer passes')).not.toBeInTheDocument();
       expect(
         screen.getByText('Pay once — no subscription')

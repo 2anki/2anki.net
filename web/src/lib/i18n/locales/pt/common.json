@@ -565,6 +565,7 @@
     "payOnceSection": "Pague uma vez — sem assinatura",
     "monthlySection": "Prefere uma assinatura?",
     "connectorIntro": "O baralho que você pediu ao Claude ou ao ChatGPT passou do limite mensal do plano gratuito, então não foi criado. Qualquer plano abaixo remove o limite. Depois, peça o baralho de novo.",
+    "connectorIntroSignedOut": "O baralho que você pediu ao Claude ou ao ChatGPT passou do limite mensal do plano gratuito, então não foi criado. Qualquer plano abaixo remove o limite. Se escolher um passe, informe o e-mail da sua conta 2anki no pagamento para que ele chegue à conta que você conectou. Depois, peça o baralho de novo.",
     "morePassesSection": "Passes mais longos",
     "pricesNote": "Preços em USD. Seu cartão é cobrado na sua moeda local no checkout.",
     "reassuranceCancel": "Cancele quando quiser — em um clique",
