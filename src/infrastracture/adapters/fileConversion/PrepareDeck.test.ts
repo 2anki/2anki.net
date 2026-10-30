@@ -67,6 +67,7 @@ vi.mock('../../../lib/parser/exporters/CustomExporter', () => {
       return {
         configure: vi.fn(),
         save: vi.fn().mockResolvedValue(Buffer.from('fake-apkg')),
+        deckInfoPath: vi.fn().mockReturnValue('/tmp/test-workspace/deck.json'),
       };
     }),
   };
@@ -2640,5 +2641,60 @@ describe('PrepareDeck — two-way cards from convert_to_deck options', () => {
     const fronts = cards.map((card) => card.name);
     expect(fronts.filter((front) => front.includes('会う'))).toHaveLength(1);
     expect(cards.filter((card) => card.back.includes('会う'))).toHaveLength(1);
+  });
+});
+
+describe('PrepareDeck — toggles Cherry-pick left out', () => {
+  const cherryPage =
+    '<html><head><title>T</title></head><body><article class="page sans"><header><h1 class="page-title">T</h1></header><div class="page-body">' +
+    '<details open="" class="toggle"><summary>🍒 Kept</summary><div class="indented"><p>One.</p></div></details>' +
+    '<details open="" class="toggle"><summary>Left out</summary><div class="indented"><p>Two.</p></div></details>' +
+    '<details open="" class="toggle"><summary>Also left out</summary><div class="indented"><p>Three.</p></div></details>' +
+    '</div></article></body></html>';
+
+  it('reports how many toggles a single-file upload left out', async () => {
+    const result = await PrepareDeck({
+      name: 'cherry.html',
+      files: [{ name: 'cherry.html', contents: cherryPage }],
+      settings: makeSettings({ cherry: 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(1);
+    expect(result?.cherrySkippedCount).toBe(2);
+  });
+
+  it('reports the same count for a zip entry built in a batch', async () => {
+    const result = await prepareDeckInfoOnly(
+      {
+        name: 'cherry.html',
+        files: [{ name: 'cherry.html', contents: cherryPage }],
+        settings: makeSettings({ cherry: 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      },
+      makeWorkspace(),
+      makeWorkspace()
+    );
+
+    expect(result.cardCount).toBe(1);
+    expect(result.cherrySkippedCount).toBe(2);
+  });
+
+  it('counts toggles left out of a Word file converted to toggles', async () => {
+    const convertDocxToHTML = convertDocxToHTMLImport as unknown as Mock;
+    convertDocxToHTML.mockResolvedValueOnce(cherryPage);
+
+    const result = await PrepareDeck({
+      name: 'notes.docx',
+      files: [{ name: 'notes.docx', contents: Buffer.from('PK-docx') }],
+      settings: makeSettings({ cherry: 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(1);
+    expect(result?.cherrySkippedCount).toBe(2);
   });
 });

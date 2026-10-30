@@ -23,6 +23,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setExpiredNotionImageCount: vi.fn(),
     setColoredTextPageCount: vi.fn(),
     setEmptyBackCount: vi.fn(),
+    setCherrySkippedCount: vi.fn(),
     setCardsHeldBack: vi.fn(),
     setHeldForPlan: vi.fn(),
     setOverSplit: vi.fn(),
@@ -390,6 +391,25 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(singleDeckResponse(), handlers);
 
     expect(handlers.setEmptyBackCount).toHaveBeenCalledWith(0);
+  });
+
+  it('reads the Cherry-pick skipped count from the X-Cherry-Skipped-Count header', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-Cherry-Skipped-Count': '4' }),
+      handlers
+    );
+
+    expect(handlers.setCherrySkippedCount).toHaveBeenCalledWith(4);
+  });
+
+  it('sets the Cherry-pick skipped count to 0 when the header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setCherrySkippedCount).toHaveBeenCalledWith(0);
   });
 
   it('reads emptyBackCount from the batch JSON body', async () => {

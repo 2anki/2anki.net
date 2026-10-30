@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-30-cherry-skipped-uploads-section-tags",
+  "date": "2026-10-30",
+  "type": "fix",
+  "title": "Uploads say how many toggles Cherry-pick left out, and Tag a whole section works with nested toggles as their own cards"
+}

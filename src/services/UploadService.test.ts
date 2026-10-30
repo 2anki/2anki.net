@@ -2289,6 +2289,62 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('sets and exposes X-Cherry-Skipped-Count on a single-deck upload when Cherry-pick left toggles out', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 2,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              cherrySkippedCount: 9,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).toHaveBeenCalledWith('X-Cherry-Skipped-Count', '9');
+    expect(res.set).toHaveBeenCalledWith(
+      'Access-Control-Expose-Headers',
+      expect.stringContaining('X-Cherry-Skipped-Count')
+    );
+  });
+
+  it('does not set X-Cherry-Skipped-Count when Cherry-pick left nothing out', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Cherry-Skipped-Count',
+      expect.anything()
+    );
+  });
+
   it('sets X-Structure-Rescued to the shipped rescue rule on a single-deck sync upload', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {
@@ -7838,7 +7894,11 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
   }
 
   function mockPartial(
-    packages: Array<{ name: string; cardCount: number }>,
+    packages: Array<{
+      name: string;
+      cardCount: number;
+      cherrySkippedCount?: number;
+    }>,
     cardsHeldBack?: number
   ) {
     const execute = vi
@@ -8007,6 +8067,24 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
     expect(heldUploads()).toHaveLength(0);
     expect(heldDeck.rows).toHaveLength(0);
     expect(headerValue(res, 'X-Held-For-Plan')).toBeUndefined();
+  });
+
+  it('still says how many toggles Cherry-pick left out on a partial deck held for a plan', async () => {
+    mockStorageUploadFile.mockClear();
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    mockPartial([{ name: 'deck', cardCount: 10, cherrySkippedCount: 6 }], 5);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo, heldDeck).handleUpload(
+      partialRequestWithBytes(),
+      res
+    );
+
+    expect(headerValue(res, 'X-Held-For-Plan')).toBe('1');
+    expect(headerValue(res, 'X-Cherry-Skipped-Count')).toBe('6');
+    expect(exposedHeaders(res)).toContain('X-Cherry-Skipped-Count');
   });
 
   it('truncates a free user over their remaining allowance to a partial deck', async () => {

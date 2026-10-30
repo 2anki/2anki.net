@@ -2100,6 +2100,14 @@ class UploadService {
         res.set('X-Empty-Back-Count', totalEmptyBackCount.toString());
         exposedHeaders.push('X-Empty-Back-Count');
       }
+      const totalCherrySkippedCount = packages.reduce(
+        (sum, p) => sum + (p.cherrySkippedCount ?? 0),
+        0
+      );
+      if (totalCherrySkippedCount > 0) {
+        res.set('X-Cherry-Skipped-Count', totalCherrySkippedCount.toString());
+        exposedHeaders.push('X-Cherry-Skipped-Count');
+      }
       const heldBack = cardsHeldBack ?? 0;
       if (heldBack > 0) {
         res.set('X-Cards-Held-Back', heldBack.toString());

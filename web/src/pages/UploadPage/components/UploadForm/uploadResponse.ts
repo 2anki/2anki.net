@@ -61,6 +61,7 @@ export interface ConversionSuccessHandlers {
   setExpiredNotionImageCount: (value: number) => void;
   setColoredTextPageCount: (value: number) => void;
   setEmptyBackCount: (value: number) => void;
+  setCherrySkippedCount: (value: number) => void;
   setCardsHeldBack: (value: number) => void;
   setHeldForPlan: (value: boolean) => void;
   setOverSplit: (value: boolean) => void;
@@ -212,6 +213,9 @@ export async function applyConversionSuccess(
   );
   handlers.setEmptyBackCount(
     parseNonNegativeIntHeader(response.headers, 'X-Empty-Back-Count')
+  );
+  handlers.setCherrySkippedCount(
+    parseNonNegativeIntHeader(response.headers, 'X-Cherry-Skipped-Count')
   );
   handlers.setCardsHeldBack(
     parseNonNegativeIntHeader(response.headers, 'X-Cards-Held-Back')

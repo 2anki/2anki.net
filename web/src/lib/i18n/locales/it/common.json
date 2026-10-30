@@ -814,7 +814,7 @@
     "general": "Generale",
     "prereq": {
       "cloze": "Attiva prima le carte con cancellazione cloze.",
-      "cherry": "Funziona solo con la selezione mirata, che crea carte solo dai toggle contrassegnati con 🍒. Tutti gli altri toggle restano fuori dal tuo mazzo."
+      "sectionTags": "Attiva prima «I toggle annidati diventano carte a sé». Funziona anche la selezione mirata, ma crea carte solo dai toggle contrassegnati con 🍒 e lascia fuori dal tuo mazzo tutti gli altri."
     },
     "saveBar": {
       "saveError": "Non siamo riusciti a salvare i tuoi valori predefiniti. Riprova.",

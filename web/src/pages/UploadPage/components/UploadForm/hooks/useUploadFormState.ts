@@ -87,6 +87,7 @@ export function useUploadFormState(onReset: () => void) {
     useState<number>(0);
   const [coloredTextPageCount, setColoredTextPageCount] = useState<number>(0);
   const [emptyBackCount, setEmptyBackCount] = useState<number>(0);
+  const [cherrySkippedCount, setCherrySkippedCount] = useState<number>(0);
   const [cardsHeldBack, setCardsHeldBack] = useState<number>(0);
   const [heldForPlan, setHeldForPlan] = useState(false);
   const [heldDeck, setHeldDeck] = useState<HeldDeckState | null>(null);
@@ -145,6 +146,7 @@ export function useUploadFormState(onReset: () => void) {
     setExpiredNotionImageCount(0);
     setColoredTextPageCount(0);
     setEmptyBackCount(0);
+    setCherrySkippedCount(0);
     setCardsHeldBack(0);
     setHeldForPlan(false);
     setHeldDeck(null);
@@ -208,6 +210,8 @@ export function useUploadFormState(onReset: () => void) {
     setColoredTextPageCount,
     emptyBackCount,
     setEmptyBackCount,
+    cherrySkippedCount,
+    setCherrySkippedCount,
     cardsHeldBack,
     setCardsHeldBack,
     heldForPlan,

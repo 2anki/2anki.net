@@ -3,6 +3,8 @@ import * as cheerio from 'cheerio';
 import {
   ancestorSectionTags,
   collectAndStripSectionMarkers,
+  collectSectionMarkers,
+  enclosingToggleSectionTags,
 } from './collectSectionTags';
 
 const load = (body: string) =>
@@ -82,5 +84,42 @@ describe('ancestorSectionTags', () => {
     const lonely = dom('#lonely').get(0)!;
 
     expect(ancestorSectionTags(dom, lonely, owners)).toEqual([]);
+  });
+});
+
+describe('collectSectionMarkers', () => {
+  const nested = `
+    <ul class="toggle" id="heart"><li><details id="heart-d">
+      <summary>Heart</summary>
+      <p><del>cardiology</del></p>
+      <details id="atrium"><summary>Atrium</summary><p><del>upper</del></p>
+        <details id="valve"><summary>Valve</summary><p>Opens.</p></details>
+      </details>
+      <details id="ventricle"><summary>Ventricle</summary><p>Pumps.</p></details>
+    </details></li></ul>`;
+
+  it('maps each marker to its nearest toggle and leaves it in place', () => {
+    const dom = load(nested);
+
+    const owners = collectSectionMarkers(dom);
+
+    expect(owners.get(dom('#heart-d').get(0)!)).toEqual(['cardiology']);
+    expect(owners.get(dom('#atrium').get(0)!)).toEqual(['upper']);
+    expect(dom('del').length).toBe(2);
+  });
+
+  it('tags a nested toggle with every enclosing toggle marker but not its own', () => {
+    const dom = load(nested);
+    const owners = collectSectionMarkers(dom);
+
+    expect(
+      enclosingToggleSectionTags(dom, dom('#atrium').get(0)!, owners)
+    ).toEqual(['cardiology']);
+    expect(
+      enclosingToggleSectionTags(dom, dom('#valve').get(0)!, owners)
+    ).toEqual(['upper', 'cardiology']);
+    expect(
+      enclosingToggleSectionTags(dom, dom('#ventricle').get(0)!, owners)
+    ).toEqual(['cardiology']);
   });
 });

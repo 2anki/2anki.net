@@ -814,7 +814,7 @@
     "general": "General",
     "prereq": {
       "cloze": "Activa primero las tarjetas de borrado por oclusión (Cloze).",
-      "cherry": "Solo funciona con la selección manual, que crea tarjetas solo a partir de las alternancias marcadas con 🍒. Todas las demás quedan fuera de tu mazo."
+      "sectionTags": "Activa primero «Los toggles anidados se convierten en tarjetas propias». La selección manual también funciona, pero solo crea tarjetas a partir de las alternancias marcadas con 🍒 y deja todas las demás fuera de tu mazo."
     },
     "saveBar": {
       "saveError": "No se pudieron guardar tus valores predeterminados. Inténtalo de nuevo.",

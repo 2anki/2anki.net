@@ -551,6 +551,25 @@ describe('runUploadGenerationInWorker — files converted in parallel', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('carries each file count of toggles Cherry-pick left out onto its package', async () => {
+    mockPrepareDeck.mockImplementation(
+      async (input) =>
+        ({
+          ...deckFor(input.name),
+          cherrySkippedCount: input.name === 'a.html' ? 3 : 0,
+        }) as never
+    );
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    const counts = result.ok
+      ? result.packages.map((p) => p.cherrySkippedCount)
+      : [];
+    expect(counts).toEqual([3, 0]);
+  });
+
   it('keeps packages in upload order when a later file finishes first', async () => {
     mockPrepareDeck.mockImplementation(async (input) => {
       if (input.name === 'a.html') {

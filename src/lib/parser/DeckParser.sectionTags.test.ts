@@ -97,3 +97,161 @@ describe('section-scoped tags (upload path)', () => {
     expect(apple?.tags).toContain('global-tag');
   });
 });
+
+const nestedOptions = {
+  cherry: 'false',
+  'promote-nested-toggles': 'true',
+};
+
+const toggle = (summary: string, body: string) =>
+  `<details open="" class="toggle"><summary>${summary}</summary><div class="indented">${body}</div></details>`;
+
+const pageOf = (body: string) =>
+  `<html><head><title>T</title></head><body><article class="page sans"><header><h1 class="page-title">T</h1></header><div class="page-body">${body}</div></article></body></html>`;
+
+const cardsFromHtml = async (
+  html: string,
+  options: { [key: string]: string }
+) => {
+  const workspace = new Workspace(true, 'fs');
+  const parser = new DeckParser({
+    name: 'nested.html',
+    settings: new CardOption(options),
+    files: [{ name: 'nested.html', contents: html }],
+    noLimits: true,
+    workspace,
+  });
+  await parser.build(workspace);
+  return parser.payload.flatMap((deck) => deck.cards);
+};
+
+describe('section-scoped tags with nested toggles and Cherry-pick off', () => {
+  it('tags each nested card with its parent toggle marker', async () => {
+    const cards = await buildCards({
+      ...nestedOptions,
+      'section-tags': 'true',
+    });
+
+    const apple = findCard(cards, 'apple');
+    const car = findCard(cards, 'car');
+
+    expect(apple?.tags).toEqual(
+      expect.arrayContaining(['chapter-1', 'global-tag'])
+    );
+    expect(apple?.tags).not.toContain('chapter-2');
+    expect(apple?.tags).not.toContain('section-A');
+    expect(car?.tags).toEqual(
+      expect.arrayContaining(['chapter-2', 'global-tag'])
+    );
+    expect(car?.tags).not.toContain('chapter-1');
+  });
+
+  it('compounds every enclosing toggle marker onto a deeply nested card', async () => {
+    const cards = await buildCards({
+      ...nestedOptions,
+      'section-tags': 'true',
+    });
+
+    const banana = findCard(cards, 'banana');
+
+    expect(banana?.tags).toEqual(
+      expect.arrayContaining(['chapter-1', 'section-A', 'global-tag'])
+    );
+    expect(banana?.tags).not.toContain('chapter-2');
+  });
+
+  it('keeps the parent toggle card and its own strikethrough tag', async () => {
+    const cards = await buildCards({
+      ...nestedOptions,
+      'section-tags': 'true',
+    });
+
+    const chapterOne = findCard(cards, 'Chapter 1');
+
+    expect(chapterOne?.tags).toEqual(
+      expect.arrayContaining(['chapter-1', 'global-tag'])
+    );
+    expect(chapterOne?.back).not.toContain('<del>');
+  });
+
+  it.each(['true', 'false'])(
+    'keeps a nested card strikethrough tag on that card only (max-one %s)',
+    async (maxOne) => {
+      const html = pageOf(
+        toggle(
+          'Heart',
+          '<p><del>cardiology</del></p><p>Pumps blood.</p>' +
+            toggle('Atrium', '<p><del>upper</del></p><p>Receives blood.</p>') +
+            toggle('Ventricle', '<p>Pumps blood out.</p>')
+        )
+      );
+
+      const cards = await cardsFromHtml(html, {
+        ...nestedOptions,
+        'max-one-toggle-per-card': maxOne,
+        'section-tags': 'true',
+      });
+
+      const heart = findCard(cards, 'Heart');
+      const atrium = findCard(cards, 'Atrium');
+      const ventricle = findCard(cards, 'Ventricle');
+
+      expect(heart?.tags).toContain('cardiology');
+      expect(atrium?.tags).toEqual(
+        expect.arrayContaining(['cardiology', 'upper'])
+      );
+      expect(ventricle?.tags).toContain('cardiology');
+      expect(ventricle?.tags).not.toContain('upper');
+    }
+  );
+
+  it('leaves nested cards untagged by their parent when the option is off', async () => {
+    const cards = await buildCards({
+      ...nestedOptions,
+      'section-tags': 'false',
+    });
+
+    const apple = findCard(cards, 'apple');
+
+    expect(apple?.tags).not.toContain('chapter-1');
+    expect(apple?.tags).toContain('global-tag');
+  });
+
+  it.each(['true', 'false'])(
+    'tags a nested cloze card with its parent toggle marker (max-one %s)',
+    async (maxOne) => {
+      const html = pageOf(
+        toggle(
+          'Capitals',
+          '<p><del>geography</del></p><p>European capitals.</p>' +
+            toggle(
+              'Capital of Sweden is <code>Stockholm</code>',
+              '<p>On the east coast.</p>'
+            )
+        )
+      );
+
+      const cards = await cardsFromHtml(html, {
+        ...nestedOptions,
+        cloze: 'true',
+        'promote-nested-cloze': 'true',
+        'max-one-toggle-per-card': maxOne,
+        'section-tags': 'true',
+      });
+
+      const sweden = findCard(cards, 'Sweden');
+
+      expect(sweden?.name).toContain('{{c1::Stockholm}}');
+      expect(sweden?.tags).toContain('geography');
+    }
+  );
+
+  it('ignores the option when nested toggles are off too', async () => {
+    const on = await buildCards({ cherry: 'false', 'section-tags': 'true' });
+    const off = await buildCards({ cherry: 'false', 'section-tags': 'false' });
+
+    expect(
+      on.map((c) => ({ name: c.name, back: c.back, tags: c.tags }))
+    ).toEqual(off.map((c) => ({ name: c.name, back: c.back, tags: c.tags })));
+  });
+});

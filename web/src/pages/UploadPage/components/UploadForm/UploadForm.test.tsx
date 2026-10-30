@@ -876,6 +876,42 @@ describe('UploadForm', () => {
     }
   });
 
+  test('says how many toggles Cherry-pick left out and links to card options', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '2',
+          'X-Cherry-Skipped-Count': '4',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(
+      await screen.findByText(
+        /Cherry-pick is on, so 4 toggles without a 🍒 were left out/
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Change Cherry-pick in card options' })
+    ).toHaveAttribute('href', '/card-options?returnTo=/upload');
+  });
+
   test('a signed-out upload with the toggle on sends AI on', async () => {
     const fetchMock = okApkgFetch();
     vi.stubGlobal('fetch', fetchMock);

@@ -814,7 +814,7 @@
     "general": "Allgemein",
     "prereq": {
       "cloze": "Aktiviere zuerst Cloze-Lückenkarten.",
-      "cherry": "Funktioniert nur mit Cherry-Pick, das nur aus Toggles mit 🍒 Karten macht. Alle anderen Toggles fehlen dann in deinem Stapel."
+      "sectionTags": "Aktiviere zuerst „Verschachtelte Toggles werden eigene Karten“. Cherry-Pick funktioniert auch, macht aber nur aus Toggles mit 🍒 Karten und lässt alle anderen Toggles aus deinem Stapel weg."
     },
     "saveBar": {
       "saveError": "Deine Voreinstellungen konnten nicht gespeichert werden. Versuch es erneut.",

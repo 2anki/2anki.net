@@ -31,7 +31,7 @@
     },
     "section-tags": {
       "label": "Etiquetar una sección entera",
-      "description": "Tacha una línea bajo una alternancia principal para etiquetar todas las tarjetas anidadas debajo. Solo funciona con la selección manual activada, y entonces solo las alternancias marcadas con 🍒 se convierten en tarjetas."
+      "description": "Tacha una línea bajo una alternancia principal para etiquetar todas las tarjetas anidadas debajo. Funciona con «Los toggles anidados se convierten en tarjetas propias» o con la selección manual."
     },
     "cloze": {
       "label": "Borrado por oclusión (Cloze)",

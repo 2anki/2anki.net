@@ -31,7 +31,7 @@
     },
     "section-tags": {
       "label": "Étiqueter une section entière",
-      "description": "Barre une ligne sous une bascule parente pour étiqueter toutes les cartes imbriquées en dessous. Fonctionne uniquement avec Cherry-pick activé, et seules les bascules marquées 🍒 deviennent alors des cartes."
+      "description": "Barre une ligne sous une bascule parente pour étiqueter toutes les cartes imbriquées en dessous. Fonctionne avec « Les toggles imbriqués deviennent des cartes à part » ou avec Cherry-pick."
     },
     "cloze": {
       "label": "Cartes Cloze",
