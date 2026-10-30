@@ -1000,6 +1000,76 @@ describe('getPackagesFromZip — encrypted PDFs', () => {
   });
 });
 
+describe('getPackagesFromZip — toggles Cherry-pick left out', () => {
+  const zipOf = (fileNames: string[]) => {
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
+      };
+    });
+  };
+
+  const run = () =>
+    getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      new CardOption({ cherry: 'true' }),
+      { location: FAKE_WORKSPACE_LOCATION } as Workspace
+    );
+
+  it('carries the count onto the package of a single-file zip', async () => {
+    zipOf(['only.html']);
+    mockPrepareDeck.mockResolvedValue({
+      name: 'only.html',
+      apkg: Buffer.from(''),
+      deck: [],
+      cardCount: 1,
+      cherrySkippedCount: 4,
+    });
+
+    const result = await run();
+
+    expect(result.packages.map((p) => p.cherrySkippedCount)).toEqual([4]);
+  });
+
+  it('carries each file count onto its package in a batch build', async () => {
+    const fileNames = Array.from({ length: 8 }, (_, i) => `deck${i}.html`);
+    zipOf(fileNames);
+    mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        deckInfoPath: `/fake/${name}/deck_info.json`,
+        outputPath: `/fake/${name}/out.apkg`,
+        name,
+        inputFileName: name,
+        deck: [],
+        cardCount: 1,
+        cherrySkippedCount: fileNames.indexOf(name),
+        needsIndividualBuild: false,
+      })
+    );
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(entries.map((e) => e.output))
+          ),
+      };
+    });
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
+
+    const result = await run();
+
+    expect(
+      result.packages.map((p) => p.cherrySkippedCount).sort((x, y) => x - y)
+    ).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+});
+
 describe('getPackagesFromZip — empty-deck reason', () => {
   const singleFileZip = (name: string) => {
     mockZipHandlerClass.mockImplementation(function () {

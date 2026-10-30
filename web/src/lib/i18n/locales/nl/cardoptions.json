@@ -31,7 +31,7 @@
     },
     "section-tags": {
       "label": "Een hele sectie taggen",
-      "description": "Streep een regel onder een bovenliggende toggle door om elke kaart daaronder te taggen. Werkt alleen met Cherry-pick aan, en dan worden alleen toggles met 🍒 kaarten."
+      "description": "Streep een regel onder een bovenliggende toggle door om elke kaart daaronder te taggen. Werkt met ‘Geneste toggles worden eigen kaarten’ of met Cherry-pick."
     },
     "cloze": {
       "label": "Cloze-verwijdering",

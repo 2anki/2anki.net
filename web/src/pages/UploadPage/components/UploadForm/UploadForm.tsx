@@ -37,6 +37,7 @@ import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCre
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
 import { EmptyBackNotice } from '../../../DownloadsPage/components/EmptyBackNotice';
+import { CherrySkippedNotice } from '../../../DownloadsPage/components/CherrySkippedNotice';
 import { ColorFlattenedNotice } from '../../../DownloadsPage/components/ColorFlattenedNotice';
 import { StructureRescuedNotice } from '../../../DownloadsPage/components/StructureRescuedNotice';
 import { ThinDeckNotice } from '../../../DownloadsPage/components/ThinDeckNotice';
@@ -758,6 +759,8 @@ function UploadForm({
     setColoredTextPageCount,
     emptyBackCount,
     setEmptyBackCount,
+    cherrySkippedCount,
+    setCherrySkippedCount,
     cardsHeldBack,
     setCardsHeldBack,
     heldForPlan,
@@ -876,6 +879,7 @@ function UploadForm({
     setExpiredNotionImageCount,
     setColoredTextPageCount,
     setEmptyBackCount,
+    setCherrySkippedCount,
     setCardsHeldBack,
     setHeldForPlan,
     setOverSplit,
@@ -3122,6 +3126,11 @@ function UploadForm({
       {emptyBackCount > 0 && (
         <div className={formStyles.warningInline}>
           <EmptyBackNotice count={emptyBackCount} />
+        </div>
+      )}
+      {cherrySkippedCount > 0 && (
+        <div className={formStyles.warningInline}>
+          <CherrySkippedNotice count={cherrySkippedCount} returnTo="/upload" />
         </div>
       )}
       {coloredTextPageCount > 0 && (

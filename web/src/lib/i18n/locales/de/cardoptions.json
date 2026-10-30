@@ -31,7 +31,7 @@
     },
     "section-tags": {
       "label": "Einen ganzen Abschnitt mit Anki-Tag versehen",
-      "description": "Streiche eine Zeile unter einem übergeordneten Toggle durch, um jede darin verschachtelte Karte mit einem Anki-Tag zu versehen. Funktioniert nur mit aktivem Cherry-Pick, und dann werden nur Toggles mit 🍒 zu Karten."
+      "description": "Streiche eine Zeile unter einem übergeordneten Toggle durch, um jede darin verschachtelte Karte mit einem Anki-Tag zu versehen. Funktioniert mit „Verschachtelte Toggles werden eigene Karten“ oder mit Cherry-Pick."
     },
     "cloze": {
       "label": "Cloze-Löschung",

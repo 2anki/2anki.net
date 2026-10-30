@@ -814,7 +814,7 @@
     "general": "Général",
     "prereq": {
       "cloze": "Active d'abord les cartes Cloze.",
-      "cherry": "Fonctionne uniquement avec Cherry-pick, qui ne crée des cartes qu'à partir des bascules marquées 🍒. Toutes les autres bascules sont exclues de ton paquet."
+      "sectionTags": "Active d'abord « Les toggles imbriqués deviennent des cartes à part ». Cherry-pick fonctionne aussi, mais ne crée des cartes qu'à partir des bascules marquées 🍒 et exclut toutes les autres de ton paquet."
     },
     "saveBar": {
       "saveError": "Impossible d'enregistrer tes valeurs par défaut. Réessaie.",

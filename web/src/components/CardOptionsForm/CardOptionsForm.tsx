@@ -1337,9 +1337,12 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                   heading={optionLabel(sectionTagsOption)}
                   label={optionLabel(sectionTagsOption)}
                   helperText={optionDescription(sectionTagsOption)}
-                  prerequisiteHelperText={t('cardOptions.prereq.cherry')}
+                  prerequisiteHelperText={t('cardOptions.prereq.sectionTags')}
                   checked={checkboxValues['section-tags'] ?? false}
-                  enabled={checkboxValues['cherry'] ?? false}
+                  enabled={
+                    (checkboxValues['cherry'] ?? false) ||
+                    (checkboxValues['promote-nested-toggles'] ?? false)
+                  }
                   onChange={(checked) =>
                     toggleCheckbox('section-tags', checked)
                   }

@@ -814,7 +814,7 @@
     "general": "General",
     "prereq": {
       "cloze": "Turn on Cloze deletion cards first.",
-      "cherry": "Works only with Cherry-pick, which makes cards only from toggles marked 🍒. Every other toggle is left out of your deck."
+      "sectionTags": "Turn on Nested toggles become their own cards first. Cherry-pick also works, but it makes cards only from toggles marked 🍒 and leaves every other toggle out of your deck."
     },
     "saveBar": {
       "saveError": "Couldn't save your defaults. Try again.",

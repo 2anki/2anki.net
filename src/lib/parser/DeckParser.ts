@@ -91,6 +91,8 @@ import { findNotionToggleLists, isMCQ } from './findNotionToggleLists';
 import {
   ancestorSectionTags,
   collectAndStripSectionMarkers,
+  collectSectionMarkers,
+  enclosingToggleSectionTags,
 } from './collectSectionTags';
 import {
   EmptyDeckError,
@@ -115,6 +117,20 @@ import {
   UPLOAD_CANDIDATE_RULES,
 } from './induction/induceCardsFromDom';
 import { hasVisibleContent } from './hasVisibleContent';
+
+type SectionTagLookup = (element: Element) => string[];
+
+const noSectionTags: SectionTagLookup = () => [];
+
+function sectionTagsOfElement(
+  $element: cheerio.Cheerio<Element>,
+  sectionTagsOf: SectionTagLookup
+): string[] {
+  const element = $element.get(0);
+  return element ? sectionTagsOf(element) : [];
+}
+
+type CardFilterOutcome = 'kept' | 'cherry_skipped' | 'avocado_skipped';
 
 const MARKDOWN_SOURCE_RATIO_THRESHOLD = 0.8;
 
@@ -736,6 +752,8 @@ export class DeckParser {
     for (const { deck, classified } of slices) {
       pageDeck.mcqCount += deck === pageDeck ? 0 : deck.mcqCount;
       pageDeck.mcqSkippedCount += deck === pageDeck ? 0 : deck.mcqSkippedCount;
+      pageDeck.cherrySkippedCount +=
+        deck === pageDeck ? 0 : deck.cherrySkippedCount;
       pageDeck.globalTags = [
         ...new Set([...pageDeck.globalTags, ...deck.globalTags]),
       ];
@@ -864,6 +882,7 @@ export class DeckParser {
     this.classifiedCardCounts.set(deck, classifiedCount);
     deck.mcqCount = extractResult.mcqCount;
     deck.mcqSkippedCount = extractResult.mcqSkippedCount;
+    deck.cherrySkippedCount = extractResult.cherrySkippedCount;
     decks.push(deck);
 
     const subpages = dom('.link-to-page').toArray();
@@ -2115,15 +2134,16 @@ export class DeckParser {
     return 'unknown';
   }
 
-  private keepOrDropCard(note: Note, cards: Note[]): boolean {
+  private keepOrDropCard(note: Note, cards: Note[]): CardFilterOutcome {
     this.recognizedCardStructureCount += 1;
-    if (this.dropsByMatchingRules(note)) {
+    const outcome = this.userFilterOutcome(note);
+    if (outcome === 'kept') {
+      cards.push(note);
+    } else {
       this.cardsRemovedByUserFilter += 1;
       console.debug('dropping due to matching rules');
-      return false;
     }
-    cards.push(note);
-    return true;
+    return outcome;
   }
 
   // Runs on the raw string, before any DOM exists: a page whose images are
@@ -2461,26 +2481,30 @@ export class DeckParser {
     cards: Note[];
     mcqCount: number;
     mcqSkippedCount: number;
+    cherrySkippedCount: number;
   } {
     const cards: Note[] = [];
     let mcqCount = 0;
     let mcqSkippedCount = 0;
+    let cherrySkippedCount = 0;
     let promotedCount = 0;
     const pageId = dom('article').attr('id');
 
-    const sectionTagOwners =
-      this.settings.useSectionTags && this.settings.isCherry
-        ? collectAndStripSectionMarkers(dom)
-        : undefined;
+    const sectionTagsOf = this.sectionTagLookup(dom);
+    const keep = (note: Note): boolean => {
+      const outcome = this.keepOrDropCard(note, cards);
+      if (outcome === 'cherry_skipped') {
+        cherrySkippedCount += 1;
+      }
+      return outcome === 'kept';
+    };
 
     toggleList.forEach((t) => {
       // We want to perserve the parent's style, so getting the class
       const p = dom(t);
       const parentUL = p;
       const parentClass = p.attr('class') || '';
-      const sectionTags = sectionTagOwners
-        ? ancestorSectionTags(dom, t, sectionTagOwners)
-        : [];
+      const sectionTags = sectionTagsOf(t);
 
       if (this.settings.toggleMode === 'open_toggle') {
         dom('details').attr('open', '');
@@ -2514,7 +2538,8 @@ export class DeckParser {
               toggle,
               dom,
               parentClass,
-              isNewFormat
+              isNewFormat,
+              sectionTagsOf
             );
             const promoted = [
               ...nestedToggleCards,
@@ -2522,7 +2547,8 @@ export class DeckParser {
                 toggle,
                 dom,
                 parentClass,
-                isNewFormat
+                isNewFormat,
+                sectionTagsOf
               ),
             ];
             promotedCount += promoted.length;
@@ -2549,7 +2575,7 @@ export class DeckParser {
                 note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
-                if (this.keepOrDropCard(note, cards)) {
+                if (keep(note)) {
                   this.applyParentContext(dom, summary, note);
                 }
                 return;
@@ -2580,13 +2606,12 @@ export class DeckParser {
                   note.back += link;
                 }
               }
-              if (this.keepOrDropCard(note, cards)) {
+              if (keep(note)) {
                 this.applyParentContext(dom, summary, note);
               }
               for (const child of promoted) {
                 child.sourcePageId = pageId;
-                child.sectionTags = sectionTags;
-                this.keepOrDropCard(child, cards);
+                keep(child);
               }
             }
           }
@@ -2601,14 +2626,36 @@ export class DeckParser {
         }
       );
     }
-    return { cards, mcqCount, mcqSkippedCount };
+    return { cards, mcqCount, mcqSkippedCount, cherrySkippedCount };
   }
 
-  private dropsByMatchingRules(note: Note): boolean {
-    return (
-      (this.settings.isAvocado && this.noteHasAvocado(note)) ||
-      (this.settings.isCherry && !this.noteHasCherry(note))
-    );
+  private userFilterOutcome(note: Note): CardFilterOutcome {
+    if (this.settings.isAvocado && this.noteHasAvocado(note)) {
+      return 'avocado_skipped';
+    }
+    if (this.settings.isCherry && !this.noteHasCherry(note)) {
+      return 'cherry_skipped';
+    }
+    return 'kept';
+  }
+
+  // Cherry-pick makes every toggle a candidate, so its markers come out of the
+  // DOM and tag only descendants. Without it the same strikethrough is also the
+  // parent's own per-card tag, so the markers stay where locateTags reads them
+  // and only cards promoted from nested toggles take them as section tags.
+  private sectionTagLookup(dom: cheerio.CheerioAPI): SectionTagLookup {
+    if (!this.settings.useSectionTags) {
+      return noSectionTags;
+    }
+    if (this.settings.isCherry) {
+      const owners = collectAndStripSectionMarkers(dom);
+      return (element) => ancestorSectionTags(dom, element, owners);
+    }
+    if (this.settings.promoteNestedToggles) {
+      const owners = collectSectionMarkers(dom);
+      return (element) => enclosingToggleSectionTags(dom, element, owners);
+    }
+    return noSectionTags;
   }
 
   private buildToggleBackSide(body: string, isNewFormat: boolean): string {
@@ -2635,7 +2682,8 @@ export class DeckParser {
     toggle: cheerio.Cheerio<Element>,
     dom: cheerio.CheerioAPI,
     parentClass: string,
-    isNewFormat: boolean
+    isNewFormat: boolean,
+    sectionTagsOf: SectionTagLookup
   ): Note[] {
     if (!this.settings.promoteNestedToggles || this.settings.isCherry) {
       return [];
@@ -2669,6 +2717,7 @@ export class DeckParser {
         this.buildToggleBackSide(body, isNewFormat)
       );
       note.notionId = this.resolveNestedToggleBlockId($details);
+      note.sectionTags = sectionTagsOfElement($details, sectionTagsOf);
       return note;
     });
   }
@@ -2684,7 +2733,8 @@ export class DeckParser {
     toggle: cheerio.Cheerio<Element>,
     dom: cheerio.CheerioAPI,
     parentClass: string,
-    isNewFormat: boolean
+    isNewFormat: boolean,
+    sectionTagsOf: SectionTagLookup
   ): Note[] {
     if (
       !this.settings.isCloze ||
@@ -2722,6 +2772,7 @@ export class DeckParser {
         this.buildToggleBackSide(body, isNewFormat)
       );
       note.notionId = notionId;
+      note.sectionTags = sectionTagsOfElement($details, sectionTagsOf);
       return note;
     });
   }

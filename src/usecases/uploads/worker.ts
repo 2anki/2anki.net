@@ -339,6 +339,7 @@ async function processFile(
       singleFilePackage.pdfPageCount = d.pdfPageCount;
       singleFilePackage.pdfFallbackMode = d.pdfFallbackMode;
       singleFilePackage.coloredTextPageCount = d.coloredTextPageCount ?? 0;
+      singleFilePackage.cherrySkippedCount = d.cherrySkippedCount ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
       emptyReason = d.emptyReason;

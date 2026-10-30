@@ -814,7 +814,7 @@
     "general": "Geral",
     "prereq": {
       "cloze": "Ative primeiro os cartões de omissão cloze.",
-      "cherry": "Só funciona com a seleção manual, que cria cartões apenas a partir dos toggles marcados com 🍒. Todos os outros toggles ficam fora do seu baralho."
+      "sectionTags": "Ative primeiro “Toggles aninhados viram cartões próprios”. A seleção manual também funciona, mas cria cartões apenas a partir dos toggles marcados com 🍒 e deixa todos os outros fora do seu baralho."
     },
     "saveBar": {
       "saveError": "Não foi possível salvar seus padrões. Tente de novo.",

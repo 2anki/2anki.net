@@ -870,7 +870,7 @@
     "general": "Ogólne",
     "prereq": {
       "cloze": "Najpierw włącz karty z lukami (cloze).",
-      "cherry": "Działa tylko z trybem „Wybór selektywny”, który tworzy karty wyłącznie z list rozwijanych oznaczonych 🍒. Wszystkie pozostałe nie trafią do talii."
+      "sectionTags": "Najpierw włącz opcję „Zagnieżdżone przełączniki stają się osobnymi kartami”. Tryb „Wybór selektywny” też działa, ale tworzy karty wyłącznie z list rozwijanych oznaczonych 🍒, a wszystkie pozostałe nie trafią do talii."
     },
     "saveBar": {
       "saveError": "Nie udało się zapisać Twoich domyślnych ustawień. Spróbuj ponownie.",

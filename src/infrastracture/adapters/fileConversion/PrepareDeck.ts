@@ -175,6 +175,7 @@ interface PrepareDeckResult {
   cardsHeldBack?: number;
   mcqCount: number;
   mcqSkippedCount: number;
+  cherrySkippedCount?: number;
   warning?: string;
   droppedImageCount: number;
   coloredTextPageCount: number;
@@ -938,6 +939,10 @@ async function buildParserResult(
     (sum, d) => sum + d.mcqSkippedCount,
     0
   );
+  const cherrySkippedCount = parser.payload.reduce(
+    (sum, d) => sum + d.cherrySkippedCount,
+    0
+  );
   const apkg = await parser.build(input.workspace);
   return {
     name: getDeckFilename(parser.name),
@@ -946,6 +951,7 @@ async function buildParserResult(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
+    cherrySkippedCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     coloredTextPageCount,
@@ -1370,6 +1376,7 @@ export interface DeckInfoOnlyResult {
   cardCount: number;
   mcqCount: number;
   mcqSkippedCount: number;
+  cherrySkippedCount?: number;
   warning?: string;
   droppedImageCount: number;
   coloredTextPageCount: number;
@@ -1451,6 +1458,10 @@ export async function prepareDeckInfoOnly(
     (sum, d) => sum + d.mcqSkippedCount,
     0
   );
+  const cherrySkippedCount = parser.payload.reduce(
+    (sum, d) => sum + d.cherrySkippedCount,
+    0
+  );
 
   return {
     deckInfoPath,
@@ -1461,6 +1472,7 @@ export async function prepareDeckInfoOnly(
     cardCount: parser.totalCardCount(),
     mcqCount,
     mcqSkippedCount,
+    cherrySkippedCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     coloredTextPageCount,

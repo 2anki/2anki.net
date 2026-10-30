@@ -523,18 +523,24 @@ describe('CardOptionsForm inline-code-toggles-become-cloze sub-option', () => {
   });
 });
 
-const PREREQ_CHERRY =
-  'Works only with Cherry-pick, which makes cards only from toggles marked 🍒. Every other toggle is left out of your deck.';
+const PREREQ_SECTION_TAGS =
+  'Turn on Nested toggles become their own cards first. Cherry-pick also works, but it makes cards only from toggles marked 🍒 and leaves every other toggle out of your deck.';
 const CHERRY_DEFAULTS_WARNING =
   'Cherry-pick is on for every upload and Notion page that uses these defaults. Only toggles marked 🍒 become cards, so a page without any 🍒 gives no cards. Mark the toggles you want, or turn Cherry-pick off.';
 
-describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
+describe('CardOptionsForm section-tags toggle gated on cherry-pick or nested toggles', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResetUserCardOptions.mockResolvedValue(undefined);
     setUserLocalsPaying(false);
     localStorage.clear();
     mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'promote-nested-toggles',
+        'Nested toggles become their own cards',
+        'Turn every toggle nested inside another toggle into its own card.',
+        false
+      ),
       new CardOptionModel(
         'cherry',
         'Cherry-pick using 🍒 emoji',
@@ -544,19 +550,37 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
       new CardOptionModel(
         'section-tags',
         'Tag a whole section',
-        'Strike through a line under a parent toggle to tag every card nested beneath it. Works only with Cherry-pick on, and then only toggles marked 🍒 become cards.',
+        'Strike through a line under a parent toggle to tag every card nested beneath it. Works with Nested toggles become their own cards or with Cherry-pick.',
         false
       ),
     ]);
   });
 
-  it('disables the section-tags toggle and shows the prerequisite hint when cherry is off', async () => {
+  it('disables the section-tags toggle and shows the prerequisite hint when cherry and nested toggles are off', async () => {
     renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
     const toggle = await screen.findByRole('switch', {
       name: 'Tag a whole section',
     });
     expect(toggle).toBeDisabled();
-    expect(screen.getByText(PREREQ_CHERRY)).toBeInTheDocument();
+    expect(screen.getByText(PREREQ_SECTION_TAGS)).toBeInTheDocument();
+  });
+
+  it('enables the section-tags toggle once nested toggles become their own cards, with cherry-pick off', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+    const nested = await screen.findByRole('checkbox', {
+      name: 'Nested toggles become their own cards',
+    });
+    fireEvent.click(nested);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('switch', { name: 'Tag a whole section' })
+      ).toBeEnabled();
+    });
+    expect(screen.queryByText(PREREQ_SECTION_TAGS)).toBeNull();
+    expect(
+      screen.getByRole('checkbox', { name: 'Cherry-pick using 🍒 emoji' })
+    ).not.toBeChecked();
   });
 
   it('enables the section-tags toggle once cherry-pick is turned on', async () => {
@@ -571,7 +595,7 @@ describe('CardOptionsForm section-tags toggle gated on cherry-pick', () => {
         screen.getByRole('switch', { name: 'Tag a whole section' })
       ).toBeEnabled();
     });
-    expect(screen.queryByText(PREREQ_CHERRY)).toBeNull();
+    expect(screen.queryByText(PREREQ_SECTION_TAGS)).toBeNull();
   });
 
   it('round-trips the section-tags value to localStorage when cherry is on', async () => {

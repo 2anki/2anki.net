@@ -34,6 +34,35 @@ export function collectAndStripSectionMarkers(dom: CheerioAPI): SectionTagMap {
   return owners;
 }
 
+export function collectSectionMarkers(dom: CheerioAPI): SectionTagMap {
+  const owners: SectionTagMap = new Map();
+
+  dom('ul.toggle del').each((_i: number, elem: Element) => {
+    const owner = dom(elem).parents('details').first().get(0);
+    if (!owner) {
+      return;
+    }
+    const tags = sanitizeTags(dom(elem).text().split(','));
+    owners.set(owner, [...(owners.get(owner) ?? []), ...tags]);
+  });
+
+  return owners;
+}
+
+export function enclosingToggleSectionTags(
+  dom: CheerioAPI,
+  element: Element,
+  owners: SectionTagMap
+): string[] {
+  const collected: string[] = [];
+  dom(element)
+    .parents('details')
+    .each((_i: number, ancestor: Element) => {
+      collected.push(...(owners.get(ancestor) ?? []));
+    });
+  return [...new Set(collected)];
+}
+
 export function ancestorSectionTags(
   dom: CheerioAPI,
   toggle: Element,

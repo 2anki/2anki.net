@@ -814,7 +814,7 @@
     "general": "Algemeen",
     "prereq": {
       "cloze": "Zet eerst Cloze-verwijderingskaarten aan.",
-      "cherry": "Werkt alleen met Cherry-pick, dat alleen kaarten maakt van toggles met 🍒. Alle andere toggles komen niet in je deck."
+      "sectionTags": "Zet eerst ‘Geneste toggles worden eigen kaarten’ aan. Cherry-pick werkt ook, maar maakt alleen kaarten van toggles met 🍒 en laat alle andere toggles uit je deck."
     },
     "saveBar": {
       "saveError": "Kon je standaardwaarden niet opslaan. Probeer het opnieuw.",

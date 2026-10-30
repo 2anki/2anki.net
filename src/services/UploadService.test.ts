@@ -2289,6 +2289,62 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('sets and exposes X-Cherry-Skipped-Count on a single-deck upload when Cherry-pick left toggles out', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 2,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              cherrySkippedCount: 9,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).toHaveBeenCalledWith('X-Cherry-Skipped-Count', '9');
+    expect(res.set).toHaveBeenCalledWith(
+      'Access-Control-Expose-Headers',
+      expect.stringContaining('X-Cherry-Skipped-Count')
+    );
+  });
+
+  it('does not set X-Cherry-Skipped-Count when Cherry-pick left nothing out', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Cherry-Skipped-Count',
+      expect.anything()
+    );
+  });
+
   it('sets X-Structure-Rescued to the shipped rescue rule on a single-deck sync upload', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {
