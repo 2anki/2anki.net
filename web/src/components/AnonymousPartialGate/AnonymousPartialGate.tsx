@@ -72,6 +72,26 @@ function ReadyIcon() {
   );
 }
 
+function HeldDeckSummary({ held }: { readonly held: HeldDeckState }) {
+  const { t } = useTranslation('anonymousPartial');
+  return (
+    <>
+      <ReadyIcon />
+      <p className={styles.deckName} data-hj-suppress>
+        {held.deckName ?? t('untitledDeck')}
+      </p>
+      <p className={styles.headline}>
+        {t('gateHeadlineAll', { total: held.totalCards })}
+      </p>
+      {held.savedForHours != null && (
+        <p className={styles.saved}>
+          {t('gateSaved', { count: held.savedForHours })}
+        </p>
+      )}
+    </>
+  );
+}
+
 function FreeSignupLink({ monthly }: { readonly monthly: number }) {
   const { t } = useTranslation('anonymousPartial');
   return (
@@ -168,10 +188,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
   if (leadWithDayPass) {
     return (
       <section className={styles.gate} aria-label={t('gateAria')}>
-        <LockIcon />
-        <p className={styles.headline}>
-          {t('gateHeadlineCappedTotal', { total: held.totalCards })}
-        </p>
+        <HeldDeckSummary held={held} />
         {errorMessage}
         <div className={styles.leadCard}>
           <AnonymousDayPassOffer
@@ -200,18 +217,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
 
   return (
     <section className={styles.gate} aria-label={t('gateAria')}>
-      <ReadyIcon />
-      <p className={styles.deckName} data-hj-suppress>
-        {held.deckName ?? t('untitledDeck')}
-      </p>
-      <p className={styles.headline}>
-        {t('gateHeadlineAll', { total: held.totalCards })}
-      </p>
-      {held.savedForHours != null && (
-        <p className={styles.saved}>
-          {t('gateSaved', { count: held.savedForHours })}
-        </p>
-      )}
+      <HeldDeckSummary held={held} />
       {fitsFreeMonth ? (
         <>
           <p className={styles.body}>

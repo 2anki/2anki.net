@@ -2,7 +2,6 @@
   "gateAria": "Twoja talia jest gotowa",
   "untitledDeck": "Talia bez nazwy",
   "gateHeadlineAll": "Gotowe fiszki: {{total}}",
-  "gateHeadlineCappedTotal": "Talia gotowa, fiszek: {{total}}",
   "gateSaved_one": "Zapisane na {{count}} godzinę.",
   "gateSaved_few": "Zapisane na {{count}} godziny.",
   "gateSaved_many": "Zapisane na {{count}} godzin.",

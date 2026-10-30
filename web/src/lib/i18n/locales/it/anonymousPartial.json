@@ -2,7 +2,6 @@
   "gateAria": "Il tuo mazzo è pronto",
   "untitledDeck": "Mazzo senza titolo",
   "gateHeadlineAll": "Tutte le {{total}} carte sono pronte",
-  "gateHeadlineCappedTotal": "Il tuo mazzo è pronto — {{total}} carte",
   "gateSaved_one": "Salvato per {{count}} ora.",
   "gateSaved_other": "Salvato per {{count}} ore.",
   "gateBody": "Crea un account gratuito per scaricarle. Fino a {{monthly}} carte al mese, gratis.",

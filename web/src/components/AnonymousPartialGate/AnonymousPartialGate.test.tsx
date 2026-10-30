@@ -196,16 +196,11 @@ describe('AnonymousPartialGate', () => {
       dayPassCard: true,
     };
 
-    it('shows the whole-deck headline instead of the capped one', () => {
+    it('shows the whole-deck headline, not a capped count', () => {
       renderGate(overMonthHeld);
-      expect(
-        screen.getByText('Your deck is ready — 121 cards')
-      ).toBeInTheDocument();
+      expect(screen.getByText('All 121 cards are ready')).toBeInTheDocument();
       expect(
         screen.queryByText('Your first 100 cards are ready')
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText('This file made 121 cards.')
       ).not.toBeInTheDocument();
     });
 
@@ -246,6 +241,42 @@ describe('AnonymousPartialGate', () => {
   });
 });
 
+describe('AnonymousPartialGate held deck summary', () => {
+  it.each([
+    ['the default gate', undefined],
+    ['the Day Pass card lead', true],
+  ])(
+    'names the deck, says every card is ready and how long it stays saved in %s',
+    (_label, dayPassCard) => {
+      renderGate({
+        cardCount: 21,
+        cardsHeldBack: 163,
+        totalCards: 184,
+        deckName: 'Pharmacology',
+        savedForHours: 24,
+        dayPassCard,
+      });
+      expect(screen.getByText('Pharmacology')).toBeInTheDocument();
+      expect(screen.getByText('All 184 cards are ready')).toBeInTheDocument();
+      expect(screen.getByText('Saved for 24 hours.')).toBeInTheDocument();
+      const region = screen.getByRole('region');
+      expect(region.querySelector('[class*="_readyIcon_"]')).not.toBeNull();
+      expect(region.querySelector('[class*="_icon_"]')).toBeNull();
+    }
+  );
+
+  it('calls a nameless deck an untitled deck in the Day Pass card lead', () => {
+    renderGate({
+      cardCount: 21,
+      cardsHeldBack: 163,
+      totalCards: 184,
+      dayPassCard: true,
+    });
+    expect(screen.getByText('Untitled deck')).toBeInTheDocument();
+    expect(screen.queryByText(/Saved for/)).not.toBeInTheDocument();
+  });
+});
+
 describe('AnonymousPartialGate — pass-first', () => {
   function renderPassFirst(
     held: {
@@ -273,7 +304,7 @@ describe('AnonymousPartialGate — pass-first', () => {
     });
     expect(screen.getByText('184 cards ready')).toBeInTheDocument();
     expect(
-      screen.queryByText('Your deck is ready — 184 cards')
+      screen.queryByText('All 184 cards are ready')
     ).not.toBeInTheDocument();
   });
 

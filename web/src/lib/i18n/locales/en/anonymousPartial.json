@@ -2,7 +2,6 @@
   "gateAria": "Your deck is ready",
   "untitledDeck": "Untitled deck",
   "gateHeadlineAll": "All {{total}} cards are ready",
-  "gateHeadlineCappedTotal": "Your deck is ready — {{total}} cards",
   "gateSaved_one": "Saved for {{count}} hour.",
   "gateSaved_other": "Saved for {{count}} hours.",
   "gateBody": "Create a free account to download them. Up to {{monthly}} cards a month, free.",

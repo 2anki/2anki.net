@@ -2,7 +2,6 @@
   "gateAria": "Колода готова",
   "untitledDeck": "Колода без названия",
   "gateHeadlineAll": "Готовы все карточки: {{total}}",
-  "gateHeadlineCappedTotal": "Колода готова, карточек: {{total}}",
   "gateSaved_one": "Сохранено на {{count}} час.",
   "gateSaved_few": "Сохранено на {{count}} часа.",
   "gateSaved_many": "Сохранено на {{count}} часов.",

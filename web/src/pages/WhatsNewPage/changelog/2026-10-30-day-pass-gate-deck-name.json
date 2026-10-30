@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-30-day-pass-gate-deck-name",
+  "date": "2026-10-30",
+  "type": "fix",
+  "title": "The Day Pass screen for a saved deck shows its name, its card count and how long it is kept"
+}

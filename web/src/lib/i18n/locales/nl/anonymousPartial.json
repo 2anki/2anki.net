@@ -2,7 +2,6 @@
   "gateAria": "Je deck is klaar",
   "untitledDeck": "Naamloos deck",
   "gateHeadlineAll": "Alle {{total}} kaarten zijn klaar",
-  "gateHeadlineCappedTotal": "Je deck is klaar — {{total}} kaarten",
   "gateSaved_one": "{{count}} uur bewaard.",
   "gateSaved_other": "{{count}} uur bewaard.",
   "gateBody": "Maak een gratis account om ze te downloaden. Tot {{monthly}} kaarten per maand, gratis.",
