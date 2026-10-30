@@ -169,10 +169,30 @@ class TestToolingErrors(unittest.TestCase):
         result = run_hook("gh pr merge 42", subprocess_results=[view, too_large])
         self.assertEqual(result["result"], "deny")
 
-    def test_gh_pr_diff_failure_deny_says_only_the_first_100_files_were_checked(self):
-        view = {"stdout": make_pr_json("alex", "x", ["src/server.ts"], ["fix: bug"])}
+    def test_gh_pr_diff_failure_on_capped_view_says_only_the_first_100_files_were_checked(self):
+        files = ["src/server.ts"] + [f"src/file{i}.ts" for i in range(150)]
+        view = {"stdout": make_pr_json("alex", "x", files, ["fix: bug"])}
         result = run_hook("gh pr merge 42", subprocess_results=[view, {"returncode": 1, "stdout": ""}])
         self.assertIn("only the first 100 changed files were checked", result["reason"])
+
+    def test_gh_pr_diff_failure_on_complete_view_omits_the_100_files_note(self):
+        view = {"stdout": make_pr_json("alex", "x", ["src/server.ts"], ["fix: bug"])}
+        result = run_hook("gh pr merge 42", subprocess_results=[view, {"returncode": 1, "stdout": ""}])
+        self.assertNotIn("first 100", result["reason"])
+
+    def test_oversized_diff_with_changelog_past_first_100_files_still_denies_as_before(self):
+        files = [f"src/file{i}.ts" for i in range(320)] + [CHANGELOG]
+        view = {"stdout": make_pr_json("alex", "x", files, ["fix: big"])}
+        too_large = {"returncode": 1, "stdout": "", "stderr": DIFF_TOO_LARGE_STDERR}
+        result = run_hook("gh pr merge 42", subprocess_results=[view, too_large])
+        self.assertEqual(result["result"], "deny")
+
+    def test_oversized_diff_with_source_only_past_first_100_files_allows_as_before(self):
+        files = [f"docs/page{i}.md" for i in range(320)] + ["src/server.ts"]
+        view = {"stdout": make_pr_json("alex", "x", files, ["fix: big"])}
+        too_large = {"returncode": 1, "stdout": "", "stderr": DIFF_TOO_LARGE_STDERR}
+        result = run_hook("gh pr merge 42", subprocess_results=[view, too_large])
+        self.assertEqual(result["result"], "allow")
 
     def test_gh_pr_diff_empty_success_still_sees_view_source_and_denies(self):
         view = {"stdout": make_pr_json("alex", "x", ["src/server.ts"], ["fix: bug"])}
@@ -220,6 +240,13 @@ class TestGhCalls(unittest.TestCase):
 
     def test_branch_name_merge_lists_paths_for_the_current_branch(self):
         self.assertEqual(self.gh_argv("gh pr merge some-branch --squash")[1], ["gh", "pr", "diff", "--name-only"])
+
+    def test_graphql_merge_lists_paths_for_the_current_branch(self):
+        command = (
+            "gh api graphql -f query='mutation { mergePullRequest("
+            "input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
+        )
+        self.assertEqual(self.gh_argv(command)[1], ["gh", "pr", "diff", "--name-only"])
 
     def test_current_branch_merge_views_the_current_branch(self):
         self.assertEqual(
