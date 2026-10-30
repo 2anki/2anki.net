@@ -526,6 +526,23 @@ const aiCases: [string, keyof typeof UPLOADS, Population][] = [
     },
   ],
   [
+    'signed-out with AI on, AI preview off, over the cap, anon id cookie minted on the upload itself',
+    'large',
+    { ...signedOut, cookies: {}, mintsAnonId: true, fields: AI_ON },
+  ],
+  [
+    'signed-out with AI on, AI preview on, no sample came back, over the cap, anon id cookie minted on the upload itself',
+    'large',
+    {
+      ...signedOut,
+      cookies: {},
+      mintsAnonId: true,
+      fields: AI_ON,
+      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
+      previewReply: '[]',
+    },
+  ],
+  [
     'signed-out with AI on, AI preview on, no anon id',
     'small',
     {
@@ -894,8 +911,11 @@ beforeAll(async () => {
   );
   app.post(
     '/api/upload/google_drive',
-    (_req, res, next) => {
+    (req, res, next) => {
       res.locals.requestId = 'golden-request';
+      if (population.mintsAnonId === true) {
+        return anonIdMiddleware(req, res, next);
+      }
       next();
     },
     multer().none(),
@@ -1012,6 +1032,11 @@ const driveCases: [string, keyof typeof UPLOADS, Population][] = [
     'signed-out Google Drive import over the cap, no anon id',
     'large',
     { ...signedOut, cookies: {} },
+  ],
+  [
+    'signed-out Google Drive import over the cap, anon id cookie minted on the import itself',
+    'large',
+    { ...signedOut, cookies: {}, mintsAnonId: true },
   ],
 ];
 

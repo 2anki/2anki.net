@@ -304,6 +304,11 @@ describe('AnonymousPartialGate when the anon id cookie was minted on the upload'
   it.each([
     ['the default gate', { dayPassCard: undefined }, 34],
     [
+      'the default gate over a free month',
+      { dayPassCard: undefined, cardsHeldBack: 100, totalCards: 121 },
+      121,
+    ],
+    [
       'the Day Pass card lead',
       { dayPassCard: true, cardsHeldBack: 100, totalCards: 121 },
       121,
@@ -355,10 +360,9 @@ describe('AnonymousPartialGate when the anon id cookie was minted on the upload'
         </MemoryRouter>
       </QueryClientProvider>
     );
-    expect(screen.getByText(COOKIE_LOST)).toBeInTheDocument();
     expect(
       screen.getByText(
-        'After paying, drop the file again to get all 184 cards.'
+        `${COOKIE_LOST} After paying, drop the file again to get all 184 cards.`
       )
     ).toBeInTheDocument();
     expect(screen.queryByText(/no re-upload/)).not.toBeInTheDocument();

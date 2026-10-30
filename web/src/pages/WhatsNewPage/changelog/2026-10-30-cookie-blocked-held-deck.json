@@ -2,5 +2,5 @@
   "id": "2026-10-30-cookie-blocked-held-deck",
   "date": "2026-10-30",
   "type": "fix",
-  "title": "An upload from a browser that blocks cookies says to sign up first, instead of saving a deck it cannot get back"
+  "title": "An upload from a browser that blocks cookies says to sign up first and upload again"
 }

@@ -4166,6 +4166,7 @@ describe('held-deck gate screen-reader announcement', () => {
     cardCount: number;
     cardsHeldBack: number;
     totalCards: number;
+    cookieMinted?: boolean;
   }) {
     vi.stubGlobal(
       'fetch',
@@ -4182,6 +4183,7 @@ describe('held-deck gate screen-reader announcement', () => {
     cardCount: number;
     cardsHeldBack: number;
     totalCards: number;
+    cookieMinted?: boolean;
   }) {
     stubHeldFetch(held);
     const { container } = renderUploadForm(
@@ -4207,6 +4209,72 @@ describe('held-deck gate screen-reader announcement', () => {
       expect(live?.textContent).toBe(
         'All 34 cards are ready. Create a free account to download them.'
       );
+    });
+  });
+
+  describe('when the anon id cookie was minted on the upload', () => {
+    const COOKIE_LOST_LIVE =
+      "All 34 cards are ready. This browser can't keep your deck. Sign up first, then upload again. After paying, drop the file again to get all 34 cards.";
+
+    function clearAnonIdCookie() {
+      document.cookie =
+        'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    }
+
+    afterEach(clearAnonIdCookie);
+
+    it('announces that the browser cannot keep the deck when the cookie did not stick', async () => {
+      clearAnonIdCookie();
+      const container = await submitHeld({
+        cardCount: 21,
+        cardsHeldBack: 13,
+        totalCards: 34,
+        cookieMinted: true,
+      });
+      await waitFor(() => {
+        const live = container.querySelector('output[aria-live="polite"]');
+        expect(live?.textContent).toBe(COOKIE_LOST_LIVE);
+      });
+    });
+
+    it('announces the cookie loss on the pass-first gate too', async () => {
+      clearAnonIdCookie();
+      mockUseUserLocals.mockReturnValue({
+        data: {
+          ...anonymousLocals,
+          features: { kiUI: false, limitWallPassFirst: true },
+        },
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+      const container = await submitHeld({
+        cardCount: 21,
+        cardsHeldBack: 13,
+        totalCards: 34,
+        cookieMinted: true,
+      });
+      await waitFor(() => {
+        const live = container.querySelector('output[aria-live="polite"]');
+        expect(live?.textContent).toBe(COOKIE_LOST_LIVE);
+      });
+    });
+
+    it('announces the saved deck as usual when the minted cookie stuck', async () => {
+      document.cookie = 'anon_id=fresh-anon; path=/';
+      const container = await submitHeld({
+        cardCount: 21,
+        cardsHeldBack: 13,
+        totalCards: 34,
+        cookieMinted: true,
+      });
+      await waitFor(() => {
+        const live = container.querySelector('output[aria-live="polite"]');
+        expect(live?.textContent).toBe(
+          'All 34 cards are ready. Create a free account to download them.'
+        );
+      });
     });
   });
 

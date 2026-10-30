@@ -59,6 +59,10 @@ function hasAnonIdCookie(): boolean {
   });
 }
 
+export function isHeldDeckCookieLost(held: HeldDeckState): boolean {
+  return held.cookieMinted === true && !hasAnonIdCookie();
+}
+
 function ReadyIcon() {
   return (
     <span className={styles.readyIcon} aria-hidden="true">
@@ -126,7 +130,7 @@ function FreeSignupLink({ monthly }: { readonly monthly: number }) {
 }
 
 // Pass-first: the passes lead and a free account (the 21-card preview) is a
-// text link. The held deck stays saved, so signing up still claims it.
+// text link.
 function PassFirstGate({
   held,
   cookieLost,
@@ -139,15 +143,14 @@ function PassFirstGate({
   return (
     <div className={styles.gate}>
       <LockIcon />
-      {cookieLost && (
-        <p className={styles.cookieLost}>{tPartial('gateCookieLost')}</p>
-      )}
       <PassFirstOffer
         surface={SURFACE}
         headline={t('readyTotal', { total: held.totalCards })}
         body={
           cookieLost
-            ? t('afterPayRedropTotal', { total: held.totalCards })
+            ? `${tPartial('gateCookieLost')} ${t('afterPayRedropTotal', {
+                total: held.totalCards,
+              })}`
             : t('gateBody', { cap: ANONYMOUS_CARD_CAP })
         }
       >
@@ -184,9 +187,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
   const [error, setError] = useState('');
   const fitsFreeMonth = held.totalCards <= FREE_MONTHLY_CARDS;
   const leadWithDayPass = held.dayPassCard === true;
-  const [cookieLost] = useState(
-    () => held.cookieMinted === true && !hasAnonIdCookie()
-  );
+  const [cookieLost] = useState(() => isHeldDeckCookieLost(held));
 
   useEffect(() => {
     if (shownRef.current) return;
