@@ -32,6 +32,7 @@ import { AnkifyStats } from '../../pages/AnkifyPage/stats/types';
 import { del, get, getLoginURL, patch, post, redirectToLogin } from './api';
 import { getResourceUrl } from './getResourceUrl';
 import { getStoredPassToken } from '../anonymousPass';
+import { clearAiPreviewCheckout } from '../../components/AiPreviewGate/aiPreviewCheckout';
 import {
   BAD_GATEWAY,
   BAD_REQUEST,
@@ -973,6 +974,9 @@ export class Backend {
   ): Promise<
     { url: string } | { status: 'unavailable' | 'error' } | CheckoutConflict
   > {
+    if (surface !== 'ai-preview') {
+      clearAiPreviewCheckout();
+    }
     const path = `checkout/pass/${kind}`;
     try {
       const response = await post(`${this.baseURL}${path}`, {

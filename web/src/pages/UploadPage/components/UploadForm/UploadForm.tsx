@@ -440,6 +440,7 @@ async function deliverPassDeck(
       await new Promise((resolve) =>
         setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
       );
+      onPhase('held');
       continue;
     }
     if (held != null && !triesPreviewAfter(heldStatus)) {
@@ -1059,6 +1060,7 @@ function UploadForm({
     if (thinDeckResumeMarked()) {
       // The file waits on this device; the thin deck resume below sends it.
       storePassToken(passSessionToken);
+      clearAiPreviewCheckout();
       return;
     }
     aiPreviewResumeRef.current = true;
@@ -1114,6 +1116,7 @@ function UploadForm({
     })();
     return () => {
       cancelled = true;
+      clearAiPreviewCheckout();
       // Allow a remount (React StrictMode double-invoke) to run the resume
       // again rather than leaving the spinner stuck on the first, cancelled run.
       aiPreviewResumeRef.current = false;
@@ -4578,6 +4581,10 @@ function UploadForm({
     return '';
   };
 
+  const passReturnLine = resumingPreview
+    ? resumeStatusLine(resumePhase, aiPreviewPending, t)
+    : (passResumeNotice ?? '');
+
   const renderLiveStatus = (): string => {
     if (guardrailVisible && validation) return validation.title;
     if (zoneState === 'error' && senderUnknown) {
@@ -4594,16 +4601,15 @@ function UploadForm({
 
   return (
     <>
-      {resumingPreview && (
-        <p className={formStyles.stateContent} role="status" aria-live="polite">
-          {resumeStatusLine(resumePhase, aiPreviewPending, t)}
-        </p>
-      )}
-      {passResumeNotice != null && !resumingPreview && (
-        <p className={formStyles.stateContent} role="status" aria-live="polite">
-          {passResumeNotice}
-        </p>
-      )}
+      <p
+        className={
+          passReturnLine === '' ? sharedStyles.srOnly : formStyles.stateContent
+        }
+        role="status"
+        aria-live="polite"
+      >
+        {passReturnLine}
+      </p>
       {showSignInPrompt && zoneState === 'idle' && !sample && <LastDeckOffer />}
       {resumeOffer?.kind === 'continue' &&
         zoneState === 'idle' &&

@@ -1,4 +1,5 @@
 import { forgetLastDeck } from './upload/lastDeck';
+import { CARD_OPTION_KEYS } from './data_layer/userPreferencesSync';
 
 const PASS_TOKEN_KEY = '2anki_pass_token';
 
@@ -13,12 +14,12 @@ export function storePassToken(sessionId: string): void {
 export function storedCardOptions(): Record<string, string> {
   const storage = globalThis.localStorage;
   if (storage == null) return {};
-  return Object.fromEntries(
-    Object.entries(storage).filter(
-      (entry): entry is [string, string] =>
-        entry[0] !== PASS_TOKEN_KEY && typeof entry[1] === 'string'
-    )
-  );
+  const options: Record<string, string> = {};
+  for (const key of CARD_OPTION_KEYS) {
+    const value = storage.getItem(key);
+    if (value != null) options[key] = value;
+  }
+  return options;
 }
 
 export function clearPassToken(): void {

@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-30-pass-return-status-line",
+  "date": "2026-10-30",
+  "type": "fix",
+  "title": "Back from a Day Pass checkout, the status line names the current step and screen readers announce each change"
+}

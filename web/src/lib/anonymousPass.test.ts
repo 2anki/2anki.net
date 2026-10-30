@@ -2,6 +2,7 @@ import {
   getStoredPassToken,
   storePassToken,
   clearPassToken,
+  storedCardOptions,
 } from './anonymousPass';
 import {
   getLastDeckStore,
@@ -42,6 +43,31 @@ describe('anonymousPass', () => {
     storePassToken('cs_test_456');
     clearPassToken();
     expect(getStoredPassToken()).toBeNull();
+  });
+
+  it('collects only card options for the held deck claim', () => {
+    const storageMethods = {
+      getItem(this: Record<string, string>, key: string) {
+        return Object.hasOwn(this, key) ? this[key] : null;
+      },
+    };
+    const storage = Object.assign(Object.create(storageMethods), {
+      '2anki_pass_token': 'cs_test_789',
+      'basic-reversed': 'true',
+      deckName: 'Biology',
+      '2anki-theme': 'dark',
+      ankify_anki_web_acknowledged: 'true',
+    });
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: storage,
+      writable: true,
+      configurable: true,
+    });
+
+    expect(storedCardOptions()).toEqual({
+      'basic-reversed': 'true',
+      deckName: 'Biology',
+    });
   });
 
   it('forgets the deck the pass bought on this device', async () => {
