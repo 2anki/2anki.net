@@ -104,10 +104,10 @@ describe('deploy-restore-last-good.sh migration log', () => {
 
     const log = restore(lastGood);
 
-    const leftApplied = lineWith(log, 'leaving applied');
+    const leftApplied = lineWith(log, 'left applied');
     expect(leftApplied).toContain(': 20260102000000_new.js');
     expect(leftApplied).not.toContain('20260101000000_old.js');
-    expect(log.indexOf('leaving applied')).toBeLessThan(
+    expect(log.indexOf('left applied')).toBeLessThan(
       log.indexOf('disk restored to last-good')
     );
     expect(git('rev-parse', 'HEAD')).toBe(lastGood);
@@ -125,7 +125,7 @@ describe('deploy-restore-last-good.sh migration log', () => {
 
     const log = restore(lastGood);
 
-    expect(lineWith(log, 'leaving applied')).toContain(
+    expect(lineWith(log, 'left applied')).toContain(
       ': 20260103000000_renamed.js'
     );
   });
@@ -139,7 +139,7 @@ describe('deploy-restore-last-good.sh migration log', () => {
     const log = restore(lastGood);
 
     expect(log).toContain('no migrations added since last-good');
-    expect(log).not.toContain('leaving applied');
+    expect(log).not.toContain('left applied');
   });
 
   it('refuses a last-good value that is not a commit sha, without claiming no migrations were added', () => {

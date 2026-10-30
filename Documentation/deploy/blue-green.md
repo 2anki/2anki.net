@@ -158,11 +158,11 @@ The restore does not roll back migrations: its log names the migration files
 added since last-good, and boot (`setupDatabase`) runs `migrate.latest` without
 list validation, with a `[migrations]` warning naming them, when every
 migration the database records without a file sorts after the build's newest
-migration file (#5163). Any other missing file, such as a renamed applied
-migration or an empty `migrations/`, still fails the boot. The tolerance ends
-once main adds a migration that sorts after the orphan row, so if the failed
-migration is reverted rather than re-landed, delete its `knex_migrations` row by
-hand before the next deploy.
+migration file and every file in the build is already applied (#5163). Any
+other drift, such as a renamed applied migration or an empty `migrations/`,
+still fails the boot. The tolerance ends once main adds a migration, so if the
+failed migration is reverted rather than re-landed, undo its schema change (run
+its `down`) and delete its `knex_migrations` row by hand before the next deploy.
 If the post-swap public check fails, it rewrites both includes back to the old
 color's port, reloads, and exits.
 

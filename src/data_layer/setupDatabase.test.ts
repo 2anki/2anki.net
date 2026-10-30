@@ -116,6 +116,23 @@ describe('setupDatabase migration list drift', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  it('keeps strict validation and runs nothing when the newest applied migration was renamed to an earlier name', async () => {
+    await setupDatabase(database);
+    fs.renameSync(
+      path.join(migrationsDir, EXTRA_MIGRATION),
+      path.join(migrationsDir, '20260101500000_create_extra_renamed.js')
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(setupDatabase(database)).rejects.toThrow('process.exit(1)');
+
+    expect(warn).not.toHaveBeenCalled();
+    expect(await database('knex_migrations').pluck('name')).toEqual([
+      JOBS_MIGRATION,
+      EXTRA_MIGRATION,
+    ]);
+  });
+
   it('keeps strict validation when the build has no migration files at all', async () => {
     await setupDatabase(database);
     fs.rmSync(path.join(migrationsDir, JOBS_MIGRATION));

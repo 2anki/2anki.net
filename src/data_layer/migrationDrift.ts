@@ -21,13 +21,14 @@ const KNEX_DEFAULT_LOAD_EXTENSIONS = new Set([
 export type MigrationDrift = {
   aheadOfBuild: string[];
   withinBuild: string[];
+  pendingInBuild: string[];
 };
 
 export async function findMigrationDrift(
   database: Knex
 ): Promise<MigrationDrift> {
   if (!(await database.schema.hasTable(BOOT_MIGRATIONS_TABLE))) {
-    return { aheadOfBuild: [], withinBuild: [] };
+    return { aheadOfBuild: [], withinBuild: [], pendingInBuild: [] };
   }
   const applied: string[] = await database(BOOT_MIGRATIONS_TABLE)
     .orderBy('id')
@@ -37,17 +38,26 @@ export async function findMigrationDrift(
     .filter((entry) => KNEX_DEFAULT_LOAD_EXTENSIONS.has(path.extname(entry)))
     .sort();
   const files = new Set(migrationFiles);
+  const appliedNames = new Set(applied);
   const missing = applied.filter((name) => !files.has(name));
+  const pendingInBuild = migrationFiles.filter(
+    (name) => !appliedNames.has(name)
+  );
   if (migrationFiles.length === 0) {
-    return { aheadOfBuild: [], withinBuild: missing };
+    return { aheadOfBuild: [], withinBuild: missing, pendingInBuild };
   }
   const newestFile = migrationFiles[migrationFiles.length - 1];
   return {
     aheadOfBuild: missing.filter((name) => name > newestFile),
     withinBuild: missing.filter((name) => name <= newestFile),
+    pendingInBuild,
   };
 }
 
 export function toleratesDrift(drift: MigrationDrift): boolean {
-  return drift.withinBuild.length === 0 && drift.aheadOfBuild.length > 0;
+  return (
+    drift.withinBuild.length === 0 &&
+    drift.pendingInBuild.length === 0 &&
+    drift.aheadOfBuild.length > 0
+  );
 }

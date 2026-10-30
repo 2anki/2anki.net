@@ -60,7 +60,7 @@ export const setupDatabase = async (database: Knex) => {
     const tolerated = toleratesDrift(drift);
     if (tolerated) {
       console.warn(
-        `[migrations] database records migrations newer than this build, likely left by a failed deploy; running latest without list validation, repeats every boot until reconciled: ${drift.aheadOfBuild.join(', ')}`
+        `[migrations] database records migrations newer than this build, likely left by a failed deploy; running latest without list validation. Re-land these files, or undo them and delete their knex_migrations rows; a build with a new migration refuses to boot until then: ${drift.aheadOfBuild.join(', ')}`
       );
     }
     await database.migrate.latest({
