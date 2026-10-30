@@ -196,6 +196,7 @@ import type { IEventsRepository } from '../../data_layer/EventsRepository';
 import { getDatabase } from '../../data_layer';
 import RequireAllowedOrigin from '../../routes/middleware/RequireAllowedOrigin';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
+import { anonIdMiddleware } from '../../routes/middleware/anonIdMiddleware';
 
 const SMALL_DECK_CARDS = 5;
 const LARGE_DECK_CARDS = 120;
@@ -255,6 +256,7 @@ interface Population {
   photosUsedThisMonth?: number;
   previewReply?: string;
   realAuth?: boolean;
+  mintsAnonId?: boolean;
 }
 
 const signedOut: Population = {
@@ -306,6 +308,21 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     {
       ...signedOut,
       cookies: {},
+      flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true },
+    },
+  ],
+  [
+    'signed-out over the cap, anon id cookie minted on the upload itself',
+    'large',
+    { ...signedOut, cookies: {}, mintsAnonId: true },
+  ],
+  [
+    'signed-out over the cap, anon id cookie minted on the upload itself, day pass card on',
+    'large',
+    {
+      ...signedOut,
+      cookies: {},
+      mintsAnonId: true,
       flags: { [ANONYMOUS_DAY_PASS_CARD_FLAG]: true },
     },
   ],
@@ -503,6 +520,23 @@ const aiCases: [string, keyof typeof UPLOADS, Population][] = [
     'large',
     {
       ...signedOut,
+      fields: AI_ON,
+      flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
+      previewReply: '[]',
+    },
+  ],
+  [
+    'signed-out with AI on, AI preview off, over the cap, anon id cookie minted on the upload itself',
+    'large',
+    { ...signedOut, cookies: {}, mintsAnonId: true, fields: AI_ON },
+  ],
+  [
+    'signed-out with AI on, AI preview on, no sample came back, over the cap, anon id cookie minted on the upload itself',
+    'large',
+    {
+      ...signedOut,
+      cookies: {},
+      mintsAnonId: true,
       fields: AI_ON,
       flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
       previewReply: '[]',
@@ -866,6 +900,9 @@ beforeAll(async () => {
         );
       }
       Object.assign(res.locals, population.locals);
+      if (population.mintsAnonId === true) {
+        return anonIdMiddleware(req, res, next);
+      }
       next();
     },
     (req, res) => {
@@ -874,8 +911,11 @@ beforeAll(async () => {
   );
   app.post(
     '/api/upload/google_drive',
-    (_req, res, next) => {
+    (req, res, next) => {
       res.locals.requestId = 'golden-request';
+      if (population.mintsAnonId === true) {
+        return anonIdMiddleware(req, res, next);
+      }
       next();
     },
     multer().none(),
@@ -993,6 +1033,11 @@ const driveCases: [string, keyof typeof UPLOADS, Population][] = [
     'large',
     { ...signedOut, cookies: {} },
   ],
+  [
+    'signed-out Google Drive import over the cap, anon id cookie minted on the import itself',
+    'large',
+    { ...signedOut, cookies: {}, mintsAnonId: true },
+  ],
 ];
 
 describe('what each population gets back from a Google Drive import', () => {
@@ -1013,6 +1058,23 @@ describe('what each population gets back from /api/upload/file', () => {
     },
     20_000
   );
+});
+
+describe('a signed-out upload held over the cap', () => {
+  it('says the anon id cookie was minted on this request, so the browser may not keep it', async () => {
+    const result = await upload('large', {
+      ...signedOut,
+      cookies: {},
+      mintsAnonId: true,
+    });
+    expect(result.body).toMatchObject({ kind: 'held', cookieMinted: true });
+  });
+
+  it('says nothing about the cookie when the browser presented its anon id', async () => {
+    const result = await upload('large', { ...signedOut, mintsAnonId: true });
+    expect(result.body).toMatchObject({ kind: 'held' });
+    expect(result.body).not.toHaveProperty('cookieMinted');
+  });
 });
 
 describe('a signed-out pass holder can fetch the paid deck again', () => {

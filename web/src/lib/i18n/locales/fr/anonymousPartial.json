@@ -4,6 +4,7 @@
   "gateHeadlineAll": "Tes {{total}} cartes sont prêtes",
   "gateSaved_one": "Gardé pendant {{count}} heure.",
   "gateSaved_other": "Gardé pendant {{count}} heures.",
+  "gateCookieLost": "Ce navigateur ne peut pas garder ton paquet. Inscris-toi d'abord, puis téléverse à nouveau le fichier.",
   "gateBody": "Crée un compte gratuit pour les télécharger. Jusqu'à {{monthly}} cartes par mois, gratuitement.",
   "gateFreeLeadIn": "Ou crée un compte gratuit pour tes {{monthly}} premières cartes.",
   "gateFreeLink": "Ou crée un compte gratuit pour les {{monthly}} premières cartes",

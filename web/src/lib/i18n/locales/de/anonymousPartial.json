@@ -4,6 +4,7 @@
   "gateHeadlineAll": "Alle {{total}} Karten sind fertig",
   "gateSaved_one": "Für {{count}} Stunde gespeichert.",
   "gateSaved_other": "Für {{count}} Stunden gespeichert.",
+  "gateCookieLost": "Dieser Browser kann deinen Stapel nicht aufbewahren. Registriere dich zuerst und lade die Datei dann erneut hoch.",
   "gateBody": "Erstelle ein kostenloses Konto, um sie herunterzuladen. Bis zu {{monthly}} Karten pro Monat, kostenlos.",
   "gateFreeLeadIn": "Oder erstelle ein kostenloses Konto für deine ersten {{monthly}} Karten.",
   "gateFreeLink": "Oder erstelle ein kostenloses Konto für die ersten {{monthly}} Karten",

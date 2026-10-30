@@ -6,6 +6,7 @@
   "gateSaved_few": "Zapisane na {{count}} godziny.",
   "gateSaved_many": "Zapisane na {{count}} godzin.",
   "gateSaved_other": "Zapisane na {{count}} godziny.",
+  "gateCookieLost": "Ta przeglądarka nie może przechować twojej talii. Najpierw się zarejestruj, a potem prześlij plik ponownie.",
   "gateBody": "Załóż darmowe konto, aby je pobrać. Do {{monthly}} fiszek miesięcznie, za darmo.",
   "gateFreeLeadIn": "Albo załóż darmowe konto na pierwsze {{monthly}} fiszek.",
   "gateFreeLink": "Albo załóż darmowe konto na pierwsze {{monthly}} fiszek",

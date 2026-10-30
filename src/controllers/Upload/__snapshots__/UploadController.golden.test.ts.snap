@@ -191,6 +191,49 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
 }
 `;
 
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, anon id cookie minted on the upload itself 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "cookieMinted": true,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, anon id cookie minted on the upload itself, day pass card on 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "cookieMinted": true,
+    "dayPassCard": true,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
 exports[`what each population gets back from /api/upload/file > signed-out over the cap, day pass card on 1`] = `
 {
   "body": {
@@ -455,6 +498,27 @@ exports[`what each population gets back from a Google Drive import > signed-out 
 }
 `;
 
+exports[`what each population gets back from a Google Drive import > signed-out Google Drive import over the cap, anon id cookie minted on the import itself 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "cookieMinted": true,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
 exports[`what each population gets back from a Google Drive import > signed-out Google Drive import over the cap, no anon id 1`] = `
 {
   "body": {
@@ -691,6 +755,27 @@ exports[`what each population gets back from an AI upload > signed-out with AI o
 }
 `;
 
+exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview off, over the cap, anon id cookie minted on the upload itself 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "cookieMinted": true,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
 exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on 1`] = `
 {
   "body": {
@@ -767,6 +852,27 @@ exports[`what each population gets back from an AI upload > signed-out with AI o
   "body": {
     "cardCount": 21,
     "cardsHeldBack": 99,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from an AI upload > signed-out with AI on, AI preview on, no sample came back, over the cap, anon id cookie minted on the upload itself 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "cookieMinted": true,
     "deckName": "Golden Large",
     "kind": "held",
     "savedForHours": 24,

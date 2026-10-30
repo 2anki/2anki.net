@@ -4,6 +4,7 @@
   "gateHeadlineAll": "Todos os {{total}} cartões estão prontos",
   "gateSaved_one": "Salvo por {{count}} hora.",
   "gateSaved_other": "Salvo por {{count}} horas.",
+  "gateCookieLost": "Este navegador não consegue guardar seu baralho. Cadastre-se primeiro e depois envie o arquivo novamente.",
   "gateBody": "Crie uma conta gratuita para baixá-los. Até {{monthly}} cartões por mês, grátis.",
   "gateFreeLeadIn": "Ou crie uma conta gratuita para seus primeiros {{monthly}} cartões.",
   "gateFreeLink": "Ou crie uma conta gratuita para os primeiros {{monthly}} cartões",

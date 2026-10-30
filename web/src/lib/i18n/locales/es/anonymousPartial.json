@@ -4,6 +4,7 @@
   "gateHeadlineAll": "Las {{total}} tarjetas están listas",
   "gateSaved_one": "Guardado durante {{count}} hora.",
   "gateSaved_other": "Guardado durante {{count}} horas.",
+  "gateCookieLost": "Este navegador no puede guardar tu mazo. Regístrate primero y luego sube el archivo de nuevo.",
   "gateBody": "Crea una cuenta gratuita para descargarlas. Hasta {{monthly}} tarjetas al mes, gratis.",
   "gateFreeLeadIn": "O crea una cuenta gratuita para tus primeras {{monthly}} tarjetas.",
   "gateFreeLink": "O crea una cuenta gratuita para las primeras {{monthly}} tarjetas",

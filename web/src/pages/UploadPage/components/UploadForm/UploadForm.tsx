@@ -118,7 +118,10 @@ import {
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
 import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
-import { AnonymousPartialGate } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
+import {
+  AnonymousPartialGate,
+  isHeldDeckCookieLost,
+} from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
 import { AiPreviewGate } from '../../../../components/AiPreviewGate/AiPreviewGate';
 import { MonthlyLimitPartialOffer } from '../../../../components/MonthlyLimitPartialOffer/MonthlyLimitPartialOffer';
 import { PassFirstOffer } from '../../../../components/PassFirstOffer/PassFirstOffer';
@@ -4539,6 +4542,18 @@ function UploadForm({
       return t('upload.form.decksReady', {
         count: batchResult?.deckCount ?? 0,
       });
+    }
+    if (
+      zoneState === 'heldForSignup' &&
+      heldDeck != null &&
+      isHeldDeckCookieLost(heldDeck)
+    ) {
+      return `${t('anonymousPartial:gateHeadlineAll', {
+        total: heldDeck.totalCards,
+      })}. ${t('anonymousPartial:gateCookieLost')} ${t(
+        'passFirst:afterPayRedropTotal',
+        { total: heldDeck.totalCards }
+      )}`;
     }
     if (zoneState === 'heldForSignup' && heldDeck != null && passFirst) {
       return `${t('passFirst:readyTotal', { total: heldDeck.totalCards })}. ${t(

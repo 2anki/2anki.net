@@ -175,6 +175,7 @@ export async function applyConversionSuccess(
         ...(typeof body.savedForHours === 'number' && body.savedForHours > 0
           ? { savedForHours: body.savedForHours }
           : {}),
+        ...(body.cookieMinted === true ? { cookieMinted: true } : {}),
       });
       handlers.setProgressWidth(100);
       handlers.setZoneState('heldForSignup');

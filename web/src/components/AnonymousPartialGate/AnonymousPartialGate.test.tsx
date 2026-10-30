@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AnonymousPartialGate,
   HELD_DECK_CHECKOUT_SURFACE,
@@ -25,6 +25,7 @@ interface GateHeld {
   deckName?: string;
   savedForHours?: number;
   dayPassCard?: boolean;
+  cookieMinted?: boolean;
 }
 
 function renderGate(
@@ -274,6 +275,104 @@ describe('AnonymousPartialGate held deck summary', () => {
     });
     expect(screen.getByText('Untitled deck')).toBeInTheDocument();
     expect(screen.queryByText(/Saved for/)).not.toBeInTheDocument();
+  });
+});
+
+describe('AnonymousPartialGate when the anon id cookie was minted on the upload', () => {
+  const COOKIE_LOST =
+    "This browser can't keep your deck. Sign up first, then upload again.";
+
+  function clearAnonIdCookie() {
+    document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  }
+
+  afterEach(clearAnonIdCookie);
+
+  const mintedHeld = {
+    cardCount: 21,
+    cardsHeldBack: 13,
+    totalCards: 34,
+    deckName: 'Pharmacology',
+    savedForHours: 24,
+    cookieMinted: true,
+  };
+
+  beforeEach(() => {
+    vi.mocked(track).mockClear();
+  });
+
+  it.each([
+    ['the default gate', { dayPassCard: undefined }, 34],
+    [
+      'the default gate over a free month',
+      { dayPassCard: undefined, cardsHeldBack: 100, totalCards: 121 },
+      121,
+    ],
+    [
+      'the Day Pass card lead',
+      { dayPassCard: true, cardsHeldBack: 100, totalCards: 121 },
+      121,
+    ],
+  ])(
+    'says plainly the deck cannot be kept when the cookie did not stick, in %s',
+    (_label, arm, total) => {
+      clearAnonIdCookie();
+      renderGate({ ...mintedHeld, ...arm });
+      expect(screen.getByText(COOKIE_LOST)).toBeInTheDocument();
+      expect(screen.queryByText(/Saved for/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/no re-upload/)).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          new RegExp(`drop the file again to get all ${total} cards`)
+        )
+      ).toBeInTheDocument();
+    }
+  );
+
+  it('records that the cookie was lost on the gate-shown event', () => {
+    clearAnonIdCookie();
+    renderGate(mintedHeld);
+    expect(track).toHaveBeenCalledWith('anonymous_partial_gate_shown', {
+      cards_held_back: 13,
+      cookie_lost: true,
+    });
+  });
+
+  it('shows the saved deck as usual when the minted cookie stuck', () => {
+    document.cookie = 'anon_id=fresh-anon; path=/';
+    renderGate(mintedHeld);
+    expect(screen.getByText('Saved for 24 hours.')).toBeInTheDocument();
+    expect(screen.queryByText(COOKIE_LOST)).not.toBeInTheDocument();
+    expect(track).toHaveBeenCalledWith('anonymous_partial_gate_shown', {
+      cards_held_back: 13,
+    });
+  });
+
+  it('warns the pass-first arm too and drops its no-re-upload promise', () => {
+    clearAnonIdCookie();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AnonymousPartialGate
+            held={{ ...mintedHeld, cardsHeldBack: 163, totalCards: 184 }}
+            passFirst
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    expect(
+      screen.getByText(
+        `${COOKIE_LOST} After paying, drop the file again to get all 184 cards.`
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no re-upload/)).not.toBeInTheDocument();
+  });
+
+  it('ignores a missing cookie when the server did not mint one', () => {
+    clearAnonIdCookie();
+    renderGate({ ...mintedHeld, cookieMinted: undefined });
+    expect(screen.getByText('Saved for 24 hours.')).toBeInTheDocument();
+    expect(screen.queryByText(COOKIE_LOST)).not.toBeInTheDocument();
   });
 });
 
