@@ -160,7 +160,10 @@
     "headline": "Questo mazzo esiste solo su questo dispositivo",
     "body": "Hai creato {{deckName}} come ospite, quindi non c'è una copia online a cui tornare. Con un account gratuito, ogni mazzo che converti viene salvato tra I miei mazzi — riscaricalo quando vuoi, da qualsiasi dispositivo.",
     "bodyNoName": "Hai creato questo mazzo come ospite, quindi non c'è una copia online a cui tornare. Con un account gratuito, ogni mazzo che converti viene salvato tra I miei mazzi — riscaricalo quando vuoi, da qualsiasi dispositivo.",
-    "cta": "Salva i tuoi mazzi — gratis"
+    "cta": "Salva i tuoi mazzi — gratis",
+    "keptHeadline": "Registrati entro un giorno per aggiungere il tuo ultimo mazzo a I miei mazzi",
+    "keptBody": "{{deckName}} viene conservato per un giorno. Registrati gratis o accedi da questo browser prima di allora e il tuo ultimo mazzo finirà tra I miei mazzi. Anche ogni mazzo che converti dopo verrà salvato lì.",
+    "keptBodyNoName": "Questo mazzo viene conservato per un giorno. Registrati gratis o accedi da questo browser prima di allora e il tuo ultimo mazzo finirà tra I miei mazzi. Anche ogni mazzo che converti dopo verrà salvato lì."
   },
   "accessBanner": {
     "active": "{{passLabel}} attivo — scade {{date}}. Converti quanto vuoi.",

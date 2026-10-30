@@ -4,7 +4,8 @@ import { runRequest } from './pendingUpload';
 // to the upload. The server keeps a copy for a day under the upload's recovery
 // token, so this device remembers that token and the deck's name to offer the
 // deck again. It sits in the pending-upload database under its own key, holds
-// one deck at a time, and is cleared on sign-in, logout and account deletion.
+// one deck at a time, moves to the account on sign-in, and is cleared on
+// logout and account deletion.
 
 export interface LastDeck {
   recoveryToken: string;
@@ -91,11 +92,15 @@ function quietAndInOrder(store: LastDeckStore): LastDeckStore {
   };
 }
 
+export type StoreLifetime = 'lasting' | 'page';
+
 let defaultStore: LastDeckStore | null = null;
+let defaultStoreLifetime: StoreLifetime = 'page';
 
 export function getLastDeckStore(): LastDeckStore {
   if (defaultStore == null) {
     const factory = globalThis.indexedDB;
+    defaultStoreLifetime = factory == null ? 'page' : 'lasting';
     defaultStore = quietAndInOrder(
       factory == null
         ? createMemoryLastDeckStore()
@@ -111,18 +116,41 @@ interface FinishedUpload {
   deckName: string;
 }
 
-export function keepLastDeck(
-  upload: FinishedUpload,
-  now: () => number = Date.now
-): Promise<void> {
-  if (upload.passToken == null || upload.recoveryToken == null) {
-    return Promise.resolve();
-  }
-  return getLastDeckStore().save({
+function keepsLastDeck(
+  upload: FinishedUpload
+): upload is FinishedUpload & { passToken: string; recoveryToken: string } {
+  return upload.passToken != null && upload.recoveryToken != null;
+}
+
+async function saveAndConfirm(
+  upload: FinishedUpload & { passToken: string; recoveryToken: string },
+  now: () => number
+): Promise<boolean> {
+  const store = getLastDeckStore();
+  await store.save({
     recoveryToken: upload.recoveryToken,
     deckName: upload.deckName,
     savedAt: now(),
   });
+  if (defaultStoreLifetime !== 'lasting') return false;
+  const kept = await store.load();
+  return kept?.recoveryToken === upload.recoveryToken;
+}
+
+// Resolves true only when the record will still be there after the full page
+// load a sign-in causes, so the page never promises a move it cannot make. The
+// deck waits on this, so a browser store that never answers counts as not kept
+// after a short wait while the save carries on.
+export function keepLastDeck(
+  upload: FinishedUpload,
+  now: () => number = Date.now,
+  waitMs = 500
+): Promise<boolean> {
+  if (!keepsLastDeck(upload)) return Promise.resolve(false);
+  return Promise.race([
+    saveAndConfirm(upload, now),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), waitMs)),
+  ]);
 }
 
 export function forgetLastDeck(waitMs = 500): Promise<void> {
@@ -134,4 +162,13 @@ export function forgetLastDeck(waitMs = 500): Promise<void> {
 
 export function resetLastDeckStoreForTests(): void {
   defaultStore = null;
+  defaultStoreLifetime = 'page';
+}
+
+export function installLastDeckStoreForTests(
+  store: LastDeckStore,
+  lifetime: StoreLifetime
+): void {
+  defaultStore = quietAndInOrder(store);
+  defaultStoreLifetime = lifetime;
 }

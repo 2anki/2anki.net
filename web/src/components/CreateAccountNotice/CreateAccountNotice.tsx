@@ -10,11 +10,28 @@ const SURFACE = 'upload_success_signup';
 interface CreateAccountNoticeProps {
   readonly deckName?: string;
   readonly secondary?: boolean;
+  readonly keptForAccount?: boolean;
+}
+
+function noticeKeys(keptForAccount: boolean) {
+  if (keptForAccount) {
+    return {
+      headline: 'createAccount.keptHeadline',
+      body: 'createAccount.keptBody',
+      bodyNoName: 'createAccount.keptBodyNoName',
+    };
+  }
+  return {
+    headline: 'createAccount.headline',
+    body: 'createAccount.body',
+    bodyNoName: 'createAccount.bodyNoName',
+  };
 }
 
 export function CreateAccountNotice({
   deckName,
   secondary = false,
+  keptForAccount = false,
 }: CreateAccountNoticeProps) {
   const { t } = useTranslation('account');
   const shownFiredRef = useRef(false);
@@ -26,14 +43,13 @@ export function CreateAccountNotice({
   }, []);
 
   const hasDeckName = deckName != null && deckName.length > 0;
+  const keys = noticeKeys(keptForAccount);
 
   return (
     <section className={styles.card} aria-label={t('createAccount.aria')}>
-      <p className={styles.headline}>{t('createAccount.headline')}</p>
+      <p className={styles.headline}>{t(keys.headline)}</p>
       <p className={styles.body} data-hj-suppress>
-        {hasDeckName
-          ? t('createAccount.body', { deckName })
-          : t('createAccount.bodyNoName')}
+        {hasDeckName ? t(keys.body, { deckName }) : t(keys.bodyNoName)}
       </p>
       <Link
         className={

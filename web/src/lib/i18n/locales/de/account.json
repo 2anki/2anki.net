@@ -160,7 +160,10 @@
     "headline": "Dieser Stapel existiert nur auf diesem Gerät",
     "body": "Du hast {{deckName}} als Gast erstellt — es gibt keine Online-Kopie, zu der du zurückkehren kannst. Mit einem kostenlosen Konto wird jeder Stapel, den du konvertierst, in Meine Stapel gespeichert — lade ihn jederzeit erneut herunter, von jedem Gerät.",
     "bodyNoName": "Du hast diesen Stapel als Gast erstellt — es gibt keine Online-Kopie, zu der du zurückkehren kannst. Mit einem kostenlosen Konto wird jeder Stapel, den du konvertierst, in Meine Stapel gespeichert — lade ihn jederzeit erneut herunter, von jedem Gerät.",
-    "cta": "Stapel sichern — kostenlos"
+    "cta": "Stapel sichern — kostenlos",
+    "keptHeadline": "Registriere dich innerhalb eines Tages, um deinen neuesten Stapel in Meine Stapel zu übernehmen",
+    "keptBody": "{{deckName}} wird einen Tag lang aufbewahrt. Registriere dich bis dahin kostenlos oder melde dich in diesem Browser an, dann landet dein neuester Stapel in Meine Stapel. Jeder Stapel, den du danach konvertierst, wird dort ebenfalls gespeichert.",
+    "keptBodyNoName": "Dieser Stapel wird einen Tag lang aufbewahrt. Registriere dich bis dahin kostenlos oder melde dich in diesem Browser an, dann landet dein neuester Stapel in Meine Stapel. Jeder Stapel, den du danach konvertierst, wird dort ebenfalls gespeichert."
   },
   "accessBanner": {
     "active": "{{passLabel}} aktiv — läuft am {{date}} ab. Konvertiere so viel du willst.",

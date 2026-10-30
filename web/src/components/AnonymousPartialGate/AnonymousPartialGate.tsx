@@ -52,7 +52,7 @@ function LockIcon() {
   );
 }
 
-function hasAnonIdCookie(): boolean {
+export function hasAnonIdCookie(): boolean {
   return document.cookie.split(';').some((pair) => {
     const [name, value] = pair.trim().split('=');
     return name === 'anon_id' && value != null && value.length > 0;

@@ -91,8 +91,10 @@ import {
 } from '../../../../lib/upload/pendingUpload';
 import { storePassToken } from '../../../../lib/anonymousPass';
 import {
+  createMemoryLastDeckStore,
   getLastDeckStore,
   resetLastDeckStoreForTests,
+  installLastDeckStoreForTests,
 } from '../../../../lib/upload/lastDeck';
 import {
   RecoveryStorageBusyError,
@@ -1285,6 +1287,193 @@ describe('UploadForm Google Drive picker interaction', () => {
     const body = driveCall[1].body as FormData;
     expect(body.get('pdf-page-range')).toBe('2-4');
     expect(globalThis.localStorage.getItem('pdf-page-range')).toBeNull();
+  });
+
+  it('drops the kept-deck notice for a Drive deck made after a kept pass upload', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: null,
+        locals: {},
+        features: { kiUI: false },
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="deck.apkg"',
+        'X-Card-Count': '3',
+      }),
+      blob: () => Promise.resolve(new Blob(['fake'])),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_kept_then_drive');
+    document.cookie = 'anon_id=anon-kept';
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      await act(async () => {
+        container
+          .querySelector('form')!
+          .dispatchEvent(
+            new Event('submit', { bubbles: true, cancelable: true })
+          );
+      });
+      expect(
+        await screen.findByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Make another deck' })
+      );
+
+      fireEvent.click(
+        within(container).getByRole('button', { name: 'Google Drive' })
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Choose from Google Drive' })
+      );
+
+      expect(
+        await screen.findByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+    }
+  });
+
+  it('keeps the notice true to each deck when a pass upload body read fails and a Drive deck follows', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: null,
+        locals: {},
+        features: { kiUI: false },
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    const previousImpl = mockGet2ankiApi.getMockImplementation();
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getCheckoutPrices: vi.fn().mockResolvedValue(null),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+      getAnonymousRecoveredDeck: vi
+        .fn()
+        .mockResolvedValue(new Blob(['recovered'])),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:recovered');
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const deckHeaders = () =>
+      new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="deck.apkg"',
+        'X-Card-Count': '3',
+      });
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => ({
+      redirected: false,
+      status: 200,
+      headers: deckHeaders(),
+      blob:
+        url === '/api/upload/file'
+          ? () => Promise.reject(new TypeError('network error'))
+          : () => Promise.resolve(new Blob(['fake'])),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_body_lost');
+    document.cookie = 'anon_id=anon-body-lost';
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const fileInput = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      Object.defineProperty(fileInput, 'files', {
+        value: [new File(['x'], 'biochem.pdf', { type: 'application/pdf' })],
+        configurable: true,
+      });
+      fileInput.removeAttribute('required');
+      await act(async () => {
+        container
+          .querySelector('form')!
+          .dispatchEvent(
+            new Event('submit', { bubbles: true, cancelable: true })
+          );
+      });
+      expect(
+        await screen.findByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Make another deck' })
+      );
+
+      fireEvent.click(
+        within(container).getByRole('button', { name: 'Google Drive' })
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Choose from Google Drive' })
+      );
+
+      await waitFor(() =>
+        expect(
+          fetchMock.mock.calls.filter(
+            ([url]) => url === '/api/upload/google_drive'
+          )
+        ).toHaveLength(1)
+      );
+      expect(
+        await screen.findByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+      mockGet2ankiApi.mockReset();
+      if (previousImpl) mockGet2ankiApi.mockImplementation(previousImpl);
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+    }
   });
 
   it('keeps the card count when a signed-out Drive import hits the anonymous limit with pass-first on', async () => {
@@ -4705,6 +4894,120 @@ describe('limit state', () => {
     ).not.toBeInTheDocument();
   });
 
+  function stubPassUploadFetch(): void {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '5',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+  }
+
+  async function submitAsSignedOutPassHolder(): Promise<void> {
+    setUserLocals(anonymousData);
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_kept');
+    stubPassUploadFetch();
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  it('tells a signed-out pass holder the deck moves to My decks if they sign up within a day', async () => {
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
+    document.cookie = 'anon_id=anon-kept';
+    try {
+      await submitAsSignedOutPassHolder();
+
+      expect(
+        await screen.findByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('This deck lives only on this device')
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
+  it('keeps the guest notice for a pass holder whose browser cannot keep the deck past this page', async () => {
+    document.cookie = 'anon_id=anon-no-store';
+    try {
+      await submitAsSignedOutPassHolder();
+
+      expect(
+        await screen.findByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
+  it('shows the deck with the guest notice when the browser store never answers', async () => {
+    installLastDeckStoreForTests(
+      {
+        save: () => new Promise<void>(() => {}),
+        load: async () => null,
+        clear: async () => {},
+      },
+      'lasting'
+    );
+    document.cookie = 'anon_id=anon-stuck-store';
+    try {
+      await submitAsSignedOutPassHolder();
+
+      expect(
+        await screen.findByText(
+          'This deck lives only on this device',
+          {},
+          { timeout: 3000 }
+        )
+      ).toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
+  it('keeps the guest notice for a pass holder whose browser blocks the anon_id cookie', async () => {
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
+    try {
+      await submitAsSignedOutPassHolder();
+
+      expect(
+        await screen.findByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).not.toBeInTheDocument();
+    } finally {
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
   it('shows upgrade options and a Day Pass shortcut for a logged-in over-limit user', async () => {
     setUserLocals(loggedInData);
     stubLimitFetch('card_count');
@@ -6095,6 +6398,37 @@ describe('UploadForm anonymous deck recovery', () => {
     expect(
       screen.queryByRole('button', { name: 'Try again' })
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps the guest notice for a pass holder whose lost response is recovered, since no deck is kept to move', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    stubApi(vi.fn().mockResolvedValue(new Blob(['apkg'])));
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_lost_response');
+    document.cookie = 'anon_id=anon-lost';
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      selectFile(container, 'biochem.pdf');
+      await submitForm(container);
+
+      await screen.findByRole('link', { name: 'Download deck' });
+      expect(
+        screen.getByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
   });
 
   it('keeps looking through a busy-storage answer, then shows the deck', async () => {
@@ -10888,6 +11222,34 @@ describe('UploadForm monthly-limit partial offer', () => {
       expect.anything()
     );
   });
+
+  it('keeps no signed-out deck and shows no account notice for a signed-in upload, even with a stored pass', async () => {
+    setUserLocals({
+      user: { id: 2, email: 'free@example.com' },
+      locals: { owner: 2, patreon: false, subscriber: false },
+    } as unknown as ReturnType<typeof useUserLocals>['data']);
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_signed_in');
+    document.cookie = 'anon_id=anon-signed-in';
+
+    try {
+      await uploadWithHeaders({ 'X-Card-Count': '42' });
+
+      expect(screen.getByText('How was your experience?')).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).toBeNull();
+      expect(
+        screen.queryByText('This deck lives only on this device')
+      ).toBeNull();
+      expect(await getLastDeckStore().load()).toBeNull();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
 });
 
 describe('claiming a held deck after sign-in', () => {
@@ -11871,6 +12233,50 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useUserLocals>;
   }
+
+  test('keeps the resumed thin deck for the account and says so to a signed-out buyer', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: null,
+        locals: {
+          owner: 0,
+          patreon: false,
+          subscriber: false,
+          subscriptionInfo: { active: false, email: '', linked_email: '' },
+        },
+        linked_email: '',
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    stubPassReturn('cs_thin_kept');
+    markThinDeckResume();
+    await saveWithAi(null);
+    const restore = installResumeApi(vi.fn());
+    vi.stubGlobal('fetch', okApkgFetch());
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
+    document.cookie = 'anon_id=anon-thin-kept';
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+      expect(
+        await screen.findByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).toBeInTheDocument();
+      await vi.waitFor(async () =>
+        expect(await getLastDeckStore().load()).toMatchObject({
+          recoveryToken: expect.stringMatching(/^[0-9a-f-]{36}$/),
+        })
+      );
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      restore();
+    }
+  });
 
   test('sends the saved file again with AI on for a visitor back from checkout', async () => {
     stubPassReturn('cs_thin');

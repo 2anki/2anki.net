@@ -6149,6 +6149,63 @@ describe('UploadService.handleSyncUpload — anonymous recovery copy (#4651)', (
   });
 });
 
+describe('UploadService.saveRecoveredDeck — a signed-out deck moved to the account (#5042)', () => {
+  beforeEach(() => {
+    mockStorageUploadFile.mockClear();
+    mockStorageUniqify.mockClear();
+  });
+
+  function buildServiceWith(repository: IUploadRepository) {
+    return new UploadService(
+      repository,
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+  }
+
+  it('stores the deck under an owner key and adds it to My decks', async () => {
+    const repository = buildRepository();
+    const update = vi.spyOn(repository, 'update');
+    const apkg = Buffer.from('fake-apkg');
+
+    const key = await buildServiceWith(repository).saveRecoveredDeck(
+      '7',
+      'Biology.apkg',
+      apkg,
+      'req-1'
+    );
+
+    expect(key).toBe('test-key.apkg');
+    expect(mockStorageUniqify).toHaveBeenCalledWith('req-1', '7', 200, 'apkg');
+    expect(mockStorageUploadFile).toHaveBeenCalledWith('test-key.apkg', apkg);
+    expect(update).toHaveBeenCalledWith(
+      7,
+      'Biology.apkg',
+      'test-key.apkg',
+      expect.any(Number),
+      null,
+      { droppedImageCount: 0, imageDropReason: null }
+    );
+  });
+
+  it('returns no key when the deck cannot be stored', async () => {
+    mockStorageUploadFile.mockRejectedValueOnce(new Error('storage down'));
+    const repository = buildRepository();
+    const update = vi.spyOn(repository, 'update');
+
+    const key = await buildServiceWith(repository).saveRecoveredDeck(
+      '7',
+      'Biology.apkg',
+      Buffer.from('fake-apkg'),
+      undefined
+    );
+
+    expect(key).toBeNull();
+    expect(update).not.toHaveBeenCalled();
+  });
+});
+
 describe('UploadService.handleUpload — image drops without a vision path (#4400)', () => {
   const imageFile = (name: string) =>
     ({

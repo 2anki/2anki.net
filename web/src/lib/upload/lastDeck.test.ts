@@ -8,6 +8,7 @@ import {
   LAST_DECK_TTL_MS,
   lastDeckExpiresAt,
   resetLastDeckStoreForTests,
+  installLastDeckStoreForTests,
   type LastDeck,
 } from './lastDeck';
 
@@ -90,6 +91,112 @@ describe('keepLastDeck', () => {
     );
 
     expect(await getLastDeckStore().load()).toBeNull();
+  });
+
+  it('says the deck will survive sign-in when a lasting store saved it', async () => {
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
+
+    await expect(
+      keepLastDeck(
+        {
+          passToken: 'cs_pass',
+          recoveryToken: TOKEN,
+          deckName: 'Biology.apkg',
+        },
+        () => Date.now()
+      )
+    ).resolves.toBe(true);
+  });
+
+  it('says the deck will not survive sign-in when only this page holds it', async () => {
+    vi.stubGlobal('indexedDB', undefined);
+
+    await expect(
+      keepLastDeck(
+        {
+          passToken: 'cs_pass',
+          recoveryToken: TOKEN,
+          deckName: 'Biology.apkg',
+        },
+        () => Date.now()
+      )
+    ).resolves.toBe(false);
+    expect(await getLastDeckStore().load()).toMatchObject({
+      recoveryToken: TOKEN,
+    });
+  });
+
+  it('says the deck will not survive sign-in when the browser refuses the save', async () => {
+    const open = vi.fn(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+    vi.stubGlobal('indexedDB', { open } as unknown as IDBFactory);
+
+    await expect(
+      keepLastDeck(
+        {
+          passToken: 'cs_pass',
+          recoveryToken: TOKEN,
+          deckName: 'Biology.apkg',
+        },
+        () => Date.now()
+      )
+    ).resolves.toBe(false);
+  });
+
+  it('stops waiting on a store that never answers and promises nothing', async () => {
+    vi.useFakeTimers();
+    try {
+      installLastDeckStoreForTests(
+        {
+          save: () => new Promise<void>(() => {}),
+          load: async () => null,
+          clear: async () => {},
+        },
+        'lasting'
+      );
+
+      const kept = keepLastDeck({
+        passToken: 'cs_pass',
+        recoveryToken: TOKEN,
+        deckName: 'Biology.apkg',
+      });
+      await vi.advanceTimersByTimeAsync(500);
+
+      await expect(kept).resolves.toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('promises nothing when the store holds a different deck after the save', async () => {
+    installLastDeckStoreForTests(
+      {
+        save: () => Promise.reject(new Error('quota')),
+        load: async () => lastDeck({ recoveryToken: LATER_TOKEN }),
+        clear: async () => {},
+      },
+      'lasting'
+    );
+
+    await expect(
+      keepLastDeck({
+        passToken: 'cs_pass',
+        recoveryToken: TOKEN,
+        deckName: 'Biology.apkg',
+      })
+    ).resolves.toBe(false);
+  });
+
+  it('says nothing was kept for an upload without a pass', async () => {
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
+
+    await expect(
+      keepLastDeck(
+        { passToken: null, recoveryToken: TOKEN, deckName: 'Biology.apkg' },
+        () => Date.now()
+      )
+    ).resolves.toBe(false);
   });
 
   it('replaces the earlier deck with the later one', async () => {

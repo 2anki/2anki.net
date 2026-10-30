@@ -1,6 +1,6 @@
 import type Users from '@server/data_layer/public/Users';
 import { getStoredPassToken } from '../anonymousPass';
-import { forgetLastDeck } from '../upload/lastDeck';
+import { forgetLastDeck, getLastDeckStore } from '../upload/lastDeck';
 import { get } from './api';
 import { get2ankiApi } from './get2ankiApi';
 
@@ -46,6 +46,38 @@ interface GetUserLocalsResponse {
   } | null;
 }
 
+let lastDeckMove: Promise<void> | null = null;
+let lastDeckMoveFailed = false;
+
+const SETTLED_CLAIM_STATUSES = new Set([200, 400, 404]);
+
+function claimSettled(status: number): boolean {
+  return SETTLED_CLAIM_STATUSES.has(status);
+}
+
+// A deck a pass built while signed out is kept on the server for a day. Once
+// the visitor has an account it moves into My decks; a failed move keeps the
+// record so the next page load tries again within that day, without a retry
+// on every refetch of the locals.
+async function moveLastDeckToAccount(): Promise<void> {
+  const deck = await getLastDeckStore().load();
+  if (deck == null) return;
+  const status = await get2ankiApi().claimRecoveryDeck(
+    deck.recoveryToken,
+    deck.deckName
+  );
+  if (claimSettled(status)) {
+    await forgetLastDeck();
+  } else {
+    lastDeckMoveFailed = true;
+  }
+}
+
+export function resetLastDeckMoveForTests(): void {
+  lastDeckMove = null;
+  lastDeckMoveFailed = false;
+}
+
 // A pass bought before signing up moves to the account on the first signed-in
 // read. X-Pass-Claim, not X-Pass-Token: the server ignores it without an
 // account, so a page view never starts the pass clock.
@@ -58,8 +90,10 @@ export const getUserLocals = async (): Promise<GetUserLocalsResponse> => {
       headers: passToken == null ? undefined : { 'X-Pass-Claim': passToken },
     }
   );
-  if (locals?.user?.id != null) {
-    void forgetLastDeck();
+  if (locals?.user?.id != null && !lastDeckMoveFailed) {
+    lastDeckMove ??= moveLastDeckToAccount().finally(() => {
+      lastDeckMove = null;
+    });
   }
   return locals;
 };

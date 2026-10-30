@@ -121,6 +121,7 @@ import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/
 import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
 import {
   AnonymousPartialGate,
+  hasAnonIdCookie,
   isHeldDeckCookieLost,
 } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
 import { AiPreviewGate } from '../../../../components/AiPreviewGate/AiPreviewGate';
@@ -890,7 +891,11 @@ function UploadForm({
     setHeldDeck,
     setAiPreviewCards,
     setAiPreviewUnavailable,
-    setZoneState,
+    setZoneState: (state) => {
+      setDeckKeptForAccount(keptForAccountRef.current);
+      keptForAccountRef.current = false;
+      setZoneState(state);
+    },
     setStructureRescuedRule,
     setPdfFallbackMode,
     recoverDownload: (recoveryUrl, errorMessage) => {
@@ -925,6 +930,8 @@ function UploadForm({
       : null;
   const [dayPassPending, setDayPassPending] = useState(false);
   const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
+  const [deckKeptForAccount, setDeckKeptForAccount] = useState(false);
+  const keptForAccountRef = useRef(false);
   const recoveryTokenRef = useRef<string | null>(null);
   const recoverySubmittedAtRef = useRef(0);
   const pdfPageRangeRef = useRef<string | null>(null);
@@ -2256,7 +2263,10 @@ function UploadForm({
     setLastSubmitUsedAi(formData.get('claude-ai-flashcards') === 'true');
     const submittedAt = Date.now();
     const recoveryToken = resolveRecoveryToken(isRetry);
+    let keptThisRun = false;
+    keptForAccountRef.current = false;
     setAnonCopyRecovered(false);
+    setDeckKeptForAccount(false);
     setSampleRun(false);
     setZoneState('converting');
     saveFilenameForReattach(uploadedFiles[0]?.name ?? null);
@@ -2305,14 +2315,18 @@ function UploadForm({
       }
       const deliveredDeckName = singleDeckName(request.headers);
       if (deliveredDeckName != null) {
-        void keepLastDeck({
+        const finished = {
           passToken,
           recoveryToken,
           deckName: deliveredDeckName,
-        });
+        };
+        keptThisRun = (await keepLastDeck(finished)) && hasAnonIdCookie();
+        keptForAccountRef.current = keptThisRun;
       }
       await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {
+      keptForAccountRef.current = false;
+      setDeckKeptForAccount(keptThisRun);
       if (
         await waitForDroppedDeck(
           error,
@@ -3232,6 +3246,7 @@ function UploadForm({
         <CreateAccountNotice
           deckName={deckName}
           secondary={downloadRecovered}
+          keptForAccount={deckKeptForAccount}
         />
       )}
       {successOffer === 'confirm_email' &&
