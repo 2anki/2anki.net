@@ -6,9 +6,9 @@ explicit out-clause in the PR body.
 
 Mirrors check-browser-attestation.py: fetches the PR via gh, fails open when
 `gh pr view` errors, exempts dependabot. Changed paths are `gh pr view`'s
-`files` (capped at 100) plus `gh pr diff --name-only` (not capped, but GitHub
-refuses diffs over 300 files); when the diff call fails, only the view's files
-are checked. The out-clause keeps it from
+`files`; when that list hits gh's 100-file cap, `gh pr diff --name-only` (not
+capped, but GitHub refuses diffs over 300 files) adds the rest, and when that
+call fails only the first 100 files are checked. The out-clause keeps it from
 over-firing on internal feat:/fix: work that genuinely needs no entry.
 
 CLAUDE.md > Changelog is the rule this enforces.
@@ -93,24 +93,30 @@ def fetch_changed_paths(pr_ref):
         result = subprocess.run(
             args, capture_output=True, text=True, errors="replace", timeout=15
         )
-    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+    except (subprocess.TimeoutExpired, OSError) as exc:
         sys.stderr.write(
             f"[check-changelog-on-merge] could not run gh pr diff ({exc}); "
-            "checking only gh pr view's files (at most 100).\n"
+            "checking only gh pr view's first 100 files.\n"
         )
         return None
     if result.returncode != 0:
         sys.stderr.write(
             "[check-changelog-on-merge] gh pr diff failed; "
-            "checking only gh pr view's files (at most 100). "
+            "checking only gh pr view's first 100 files. "
             f"stderr: {result.stderr.strip()[:300]}\n"
         )
         return None
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
-def diff_failure_note(view_paths, diff_paths):
-    if diff_paths is None and len(view_paths) >= GH_PR_VIEW_FILES_CAP:
+def list_paths_past_view_cap(view_paths, pr_ref):
+    if len(view_paths) < GH_PR_VIEW_FILES_CAP:
+        return []
+    return fetch_changed_paths(pr_ref)
+
+
+def diff_failure_note(diff_paths):
+    if diff_paths is None:
         return (
             "\n\ngh pr diff failed, so only the first 100 changed files were checked."
         )
@@ -164,7 +170,7 @@ def main():
         allow()
 
     view_paths = [f.get("path", "") for f in (pr_data.get("files") or [])]
-    diff_paths = fetch_changed_paths(pr_ref)
+    diff_paths = list_paths_past_view_cap(view_paths, pr_ref)
     paths = view_paths + (diff_paths or [])
 
     if not any(is_non_test_source(p) for p in paths):
@@ -185,7 +191,7 @@ def main():
         "  Or, if no user would notice this change, state so in the PR body with a line\n"
         "  containing \"no changelog entry\" (e.g. \"no changelog entry — internal refactor\").\n\n"
         "Dependabot PRs are exempt automatically."
-        + diff_failure_note(view_paths, diff_paths)
+        + diff_failure_note(diff_paths)
     )
 
 

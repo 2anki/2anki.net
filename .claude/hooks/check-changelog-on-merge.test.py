@@ -85,6 +85,7 @@ def gh_responses(author_login, body, files, commit_headlines):
 
 
 CHANGELOG = "web/src/pages/WhatsNewPage/changelog/2026-06-19-x.json"
+CAPPED_SOURCE_FILES = ["src/server.ts"] + [f"src/file{i}.ts" for i in range(150)]
 DIFF_TOO_LARGE_STDERR = (
     "could not find pull request diff: HTTP 406: Sorry, the diff exceeded "
     "the maximum number of files (300)."
@@ -164,20 +165,19 @@ class TestToolingErrors(unittest.TestCase):
         self.assertEqual(result["result"], "allow")
 
     def test_gh_pr_diff_too_large_falls_back_to_view_files_and_denies(self):
-        view = {"stdout": make_pr_json("alex", "x", ["src/server.ts"], ["fix: bug"])}
+        view = {"stdout": make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"])}
         too_large = {"returncode": 1, "stdout": "", "stderr": DIFF_TOO_LARGE_STDERR}
         result = run_hook("gh pr merge 42", subprocess_results=[view, too_large])
         self.assertEqual(result["result"], "deny")
 
-    def test_gh_pr_diff_failure_on_capped_view_says_only_the_first_100_files_were_checked(self):
-        files = ["src/server.ts"] + [f"src/file{i}.ts" for i in range(150)]
-        view = {"stdout": make_pr_json("alex", "x", files, ["fix: bug"])}
+    def test_gh_pr_diff_failure_says_only_the_first_100_files_were_checked(self):
+        view = {"stdout": make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"])}
         result = run_hook("gh pr merge 42", subprocess_results=[view, {"returncode": 1, "stdout": ""}])
         self.assertIn("only the first 100 changed files were checked", result["reason"])
 
-    def test_gh_pr_diff_failure_on_complete_view_omits_the_100_files_note(self):
+    def test_complete_view_deny_omits_the_100_files_note(self):
         view = {"stdout": make_pr_json("alex", "x", ["src/server.ts"], ["fix: bug"])}
-        result = run_hook("gh pr merge 42", subprocess_results=[view, {"returncode": 1, "stdout": ""}])
+        result = run_hook("gh pr merge 42", subprocess_results=[view])
         self.assertNotIn("first 100", result["reason"])
 
     def test_oversized_diff_with_changelog_past_first_100_files_still_denies_as_before(self):
@@ -195,23 +195,29 @@ class TestToolingErrors(unittest.TestCase):
         self.assertEqual(result["result"], "allow")
 
     def test_gh_pr_diff_empty_success_still_sees_view_source_and_denies(self):
-        view = {"stdout": make_pr_json("alex", "x", ["src/server.ts"], ["fix: bug"])}
+        view = {"stdout": make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"])}
         result = run_hook("gh pr merge 42", subprocess_results=[view, {"stdout": ""}])
         self.assertEqual(result["result"], "deny")
 
     def test_gh_pr_diff_misparsed_name_still_sees_view_source_and_denies(self):
-        view = {"stdout": make_pr_json("alex", "x", ["src/a b/c.ts"], ["fix: bug"])}
+        files = ["src/a b/c.ts"] + [f"docs/page{i}.md" for i in range(150)]
+        view = {"stdout": make_pr_json("alex", "x", files, ["fix: bug"])}
         result = run_hook("gh pr merge 42", subprocess_results=[view, {"stdout": "c.ts\n"}])
         self.assertEqual(result["result"], "deny")
 
     def test_gh_missing_on_diff_call_falls_back_to_view_files_and_denies(self):
-        view = MagicMock(returncode=0, stdout=make_pr_json("alex", "x", ["src/server.ts"], ["fix: bug"]), stderr="")
+        view = MagicMock(returncode=0, stdout=make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"]), stderr="")
         result = run_hook("gh pr merge 42", subprocess_side_effect=[view, FileNotFoundError("gh")])
+        self.assertEqual(result["result"], "deny")
+
+    def test_os_error_on_diff_call_falls_back_to_view_files_and_denies(self):
+        view = MagicMock(returncode=0, stdout=make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"]), stderr="")
+        result = run_hook("gh pr merge 42", subprocess_side_effect=[view, PermissionError("gh")])
         self.assertEqual(result["result"], "deny")
 
     def test_gh_pr_diff_timeout_falls_back_to_view_files_and_denies(self):
         import subprocess
-        view = MagicMock(returncode=0, stdout=make_pr_json("alex", "x", ["src/server.ts"], ["fix: bug"]), stderr="")
+        view = MagicMock(returncode=0, stdout=make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"]), stderr="")
         result = run_hook(
             "gh pr merge 42",
             subprocess_side_effect=[view, subprocess.TimeoutExpired("gh", 15)],
@@ -225,12 +231,16 @@ class TestToolingErrors(unittest.TestCase):
 
 
 class TestGhCalls(unittest.TestCase):
-    def gh_argv(self, command):
-        responses = gh_responses("alex", "", ["src/server.ts", CHANGELOG], ["feat: thing"])
+    def gh_argv(self, command, files=CAPPED_SOURCE_FILES + [CHANGELOG]):
+        responses = gh_responses("alex", "", files, ["feat: thing"])
         mocks = [MagicMock(returncode=0, stdout=r["stdout"], stderr="") for r in responses]
         with patch("subprocess.run", side_effect=mocks) as run:
             run_hook(command)
         return [call.args[0] for call in run.call_args_list]
+
+    def test_view_under_100_files_is_complete_and_skips_gh_pr_diff(self):
+        argv = self.gh_argv("gh pr merge 42", files=["src/server.ts", CHANGELOG])
+        self.assertEqual(argv, [["gh", "pr", "view", "42", "--json", "author,body,files,commits"]])
 
     def test_numbered_merge_lists_paths_with_gh_pr_diff_name_only(self):
         self.assertEqual(self.gh_argv("gh pr merge 42")[1], ["gh", "pr", "diff", "42", "--name-only"])
