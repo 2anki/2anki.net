@@ -1249,6 +1249,7 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                   >
                                     <EmptyBackNotice
                                       count={row.emptyBackCount}
+                                      surface="downloads_row"
                                     />
                                   </td>
                                 </tr>

@@ -79,6 +79,21 @@ describe('DeckParser.emptyDeckReason', () => {
     expect(parser.emptyDeckReason()).toBe('empty_answers');
   });
 
+  it('keeps unknown for blank answers on toggles our converters built, which carry no Notion id', async () => {
+    const converted = page(
+      '<ul class="toggle"><li><details><summary>Front one</summary><p></p></details></li></ul>' +
+        '<ul class="toggle"><li><details><summary>Front two</summary><p></p></details></li></ul>'
+    );
+    const workspace = new Workspace(true, 'fs');
+    const parser = makeParser('sheet.xlsx.html', converted, { cloze: 'false' });
+
+    await parser.writeDeckInfo(workspace);
+
+    expect(parser.totalCardCount()).toBe(0);
+    expect(parser.emptyBackCount).toBe(2);
+    expect(parser.emptyDeckReason()).toBe('unknown');
+  });
+
   it('keeps all_filtered ahead of empty_answers', async () => {
     const mixed = page(
       '<ul class="toggle"><li><details><summary>🥑 Draft</summary><p>Later</p></details></li></ul>' +

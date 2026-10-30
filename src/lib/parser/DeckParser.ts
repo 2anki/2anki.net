@@ -2136,8 +2136,10 @@ export class DeckParser {
   // text, then text that held no structure the parser recognises; anything else
   // stays honest as unknown. Page text is measured only when extraction found
   // no card, so a page whose toggles all came out blank never set it: recognised
-  // structure means there was text to read. Recognised toggles whose answers
-  // were all blank read as empty_answers, as on the Notion connection.
+  // structure means there was text to read. Notion-export toggles whose answers
+  // were all blank read as empty_answers, as on the Notion connection; blank
+  // backs on toggles our own converters built stay unknown, since that copy
+  // sends people to Notion.
   emptyDeckReason(): EmptyDeckReason {
     if (this.cardsRemovedByUserFilter > 0) {
       return 'all_filtered';
@@ -2148,7 +2150,10 @@ export class DeckParser {
     if (this.recognizedCardStructureCount === 0) {
       return 'no_toggles';
     }
-    if (this.emptyBackCount > 0) {
+    if (
+      this.emptyBackCount > 0 &&
+      this.notionEmptyBackCount === this.emptyBackCount
+    ) {
       return 'empty_answers';
     }
     return 'unknown';

@@ -142,7 +142,7 @@ describe('describeEmptyReading', () => {
         'empty_answers'
       )
     ).toEqual({
-      text: 'This zip holds 3 readable files and 1 image file. Its toggles have no answer inside them.',
+      text: 'This zip holds 3 readable files and 1 image file. The toggles have no answer inside them.',
       next: 'readingNextAnswers',
     });
   });
@@ -151,7 +151,7 @@ describe('describeEmptyReading', () => {
     expect(
       describeEmptyReading(document({ words: 40 }), t, 'en', 'empty_answers')
     ).toEqual({
-      text: 'We read 40 words. Its toggles have no answer inside them.',
+      text: 'We read 40 words. The toggles have no answer inside them.',
       next: 'readingNextAnswers',
     });
   });

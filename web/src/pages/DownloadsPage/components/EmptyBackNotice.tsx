@@ -8,18 +8,23 @@ interface EmptyBackNoticeProps {
   count: number;
   multipleDecks?: boolean;
   source?: EmptyBackSource;
+  surface?: 'downloads_row';
 }
 
 export function EmptyBackNotice({
   count,
   multipleDecks = false,
   source = 'upload',
+  surface,
 }: Readonly<EmptyBackNoticeProps>) {
   const { t } = useTranslation('downloadsx');
 
   useEffect(() => {
-    track('empty_back_notice_shown', { empty_back_count: count });
-  }, [count]);
+    track('empty_back_notice_shown', {
+      empty_back_count: count,
+      ...(surface != null ? { surface } : {}),
+    });
+  }, [count, surface]);
 
   const notionKey = 'emptyBack.notion';
   const uploadKey = multipleDecks

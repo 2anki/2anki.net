@@ -2,5 +2,5 @@
   "id": "2026-10-30-upload-empty-answers",
   "date": "2026-10-30",
   "type": "fix",
-  "title": "Uploads explain toggles skipped for having no answer, on the upload page and in My decks after a reload"
+  "title": "Uploads explain cards skipped for having no answer, on the upload page and in My decks"
 }

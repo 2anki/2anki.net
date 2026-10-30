@@ -299,7 +299,7 @@
       "readingNextAnswers": "Put the question in the toggle title and the answer inside it, then convert again.",
       "readingRescueVerdict": "None of it made cards on its own.",
       "readingNoPairs": "Nothing in it paired up as a question with an answer.",
-      "readingEmptyAnswers": "Its toggles have no answer inside them.",
+      "readingEmptyAnswers": "The toggles have no answer inside them.",
       "readingTogglesNoPairs_one": "The toggle held no question with an answer inside.",
       "readingTogglesNoPairs_other": "None of the toggles held a question with an answer inside.",
       "readingToggles_one": "{{n}} toggle",

@@ -42,4 +42,12 @@ describe('EmptyBackNotice', () => {
       empty_back_count: 2,
     });
   });
+
+  it('tags the event when the notice sits on a My decks upload row', () => {
+    render(<EmptyBackNotice count={4} surface="downloads_row" />);
+    expect(track).toHaveBeenCalledWith('empty_back_notice_shown', {
+      empty_back_count: 4,
+      surface: 'downloads_row',
+    });
+  });
 });
