@@ -56,7 +56,7 @@ def fetch_pr_data(pr_ref):
     args = ["gh", "pr", "view"]
     if pr_ref is not None:
         args.append(pr_ref)
-    args.extend(["--json", "author,body,files,commits"])
+    args.extend(["--json", "author,body,commits"])
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=15)
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
@@ -77,6 +77,27 @@ def fetch_pr_data(pr_ref):
             "[check-changelog-on-merge] could not parse gh JSON; allowing merge.\n"
         )
         return None
+
+
+def fetch_changed_paths(pr_ref):
+    args = ["gh", "pr", "diff"]
+    if pr_ref is not None:
+        args.append(pr_ref)
+    args.append("--name-only")
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=15)
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        sys.stderr.write(
+            f"[check-changelog-on-merge] could not run gh ({exc}); allowing merge.\n"
+        )
+        return None
+    if result.returncode != 0:
+        sys.stderr.write(
+            "[check-changelog-on-merge] gh pr diff failed; allowing merge. "
+            f"stderr: {result.stderr.strip()[:300]}\n"
+        )
+        return None
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
 def has_user_visible_commit(commits):
@@ -114,7 +135,8 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
-    pr_data = fetch_pr_data(extract_pr_ref(cmd))
+    pr_ref = extract_pr_ref(cmd)
+    pr_data = fetch_pr_data(pr_ref)
     if pr_data is None:
         allow()
 
@@ -124,7 +146,9 @@ def main():
     if not has_user_visible_commit(pr_data.get("commits") or []):
         allow()
 
-    paths = [f.get("path", "") for f in (pr_data.get("files") or [])]
+    paths = fetch_changed_paths(pr_ref)
+    if paths is None:
+        allow()
 
     if not any(is_non_test_source(p) for p in paths):
         allow()
