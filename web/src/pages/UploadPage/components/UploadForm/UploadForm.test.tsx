@@ -91,8 +91,10 @@ import {
 } from '../../../../lib/upload/pendingUpload';
 import { storePassToken } from '../../../../lib/anonymousPass';
 import {
+  createMemoryLastDeckStore,
   getLastDeckStore,
   resetLastDeckStoreForTests,
+  installLastDeckStoreForTests,
 } from '../../../../lib/upload/lastDeck';
 import {
   RecoveryStorageBusyError,
@@ -1312,6 +1314,7 @@ describe('UploadForm Google Drive picker interaction', () => {
       blob: () => Promise.resolve(new Blob(['fake'])),
     });
     vi.stubGlobal('fetch', fetchMock);
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
     globalThis.localStorage.setItem('2anki_pass_token', 'cs_kept_then_drive');
     document.cookie = 'anon_id=anon-kept';
 
@@ -1404,6 +1407,7 @@ describe('UploadForm Google Drive picker interaction', () => {
           : () => Promise.resolve(new Blob(['fake'])),
     }));
     vi.stubGlobal('fetch', fetchMock);
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
     globalThis.localStorage.setItem('2anki_pass_token', 'cs_body_lost');
     document.cookie = 'anon_id=anon-body-lost';
 
@@ -4922,6 +4926,7 @@ describe('limit state', () => {
   }
 
   it('tells a signed-out pass holder the deck moves to My decks if they sign up within a day', async () => {
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
     document.cookie = 'anon_id=anon-kept';
     try {
       await submitAsSignedOutPassHolder();
@@ -4940,7 +4945,27 @@ describe('limit state', () => {
     }
   });
 
+  it('keeps the guest notice for a pass holder whose browser cannot keep the deck past this page', async () => {
+    document.cookie = 'anon_id=anon-no-store';
+    try {
+      await submitAsSignedOutPassHolder();
+
+      expect(
+        await screen.findByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
   it('keeps the guest notice for a pass holder whose browser blocks the anon_id cookie', async () => {
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
     try {
       await submitAsSignedOutPassHolder();
 
@@ -12177,6 +12202,7 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
     await saveWithAi(null);
     const restore = installResumeApi(vi.fn());
     vi.stubGlobal('fetch', okApkgFetch());
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
     document.cookie = 'anon_id=anon-thin-kept';
 
     try {

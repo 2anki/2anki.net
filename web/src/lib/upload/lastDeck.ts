@@ -92,11 +92,15 @@ function quietAndInOrder(store: LastDeckStore): LastDeckStore {
   };
 }
 
+type StoreLifetime = 'lasting' | 'page';
+
 let defaultStore: LastDeckStore | null = null;
+let defaultStoreLifetime: StoreLifetime = 'page';
 
 export function getLastDeckStore(): LastDeckStore {
   if (defaultStore == null) {
     const factory = globalThis.indexedDB;
+    defaultStoreLifetime = factory == null ? 'page' : 'lasting';
     defaultStore = quietAndInOrder(
       factory == null
         ? createMemoryLastDeckStore()
@@ -112,24 +116,28 @@ interface FinishedUpload {
   deckName: string;
 }
 
-export function keepsLastDeck(
+function keepsLastDeck(
   upload: FinishedUpload
 ): upload is FinishedUpload & { passToken: string; recoveryToken: string } {
   return upload.passToken != null && upload.recoveryToken != null;
 }
 
-export function keepLastDeck(
+// Resolves true only when the record will still be there after the full page
+// load a sign-in causes, so the page never promises a move it cannot make.
+export async function keepLastDeck(
   upload: FinishedUpload,
   now: () => number = Date.now
-): Promise<void> {
-  if (!keepsLastDeck(upload)) {
-    return Promise.resolve();
-  }
-  return getLastDeckStore().save({
+): Promise<boolean> {
+  if (!keepsLastDeck(upload)) return false;
+  const store = getLastDeckStore();
+  await store.save({
     recoveryToken: upload.recoveryToken,
     deckName: upload.deckName,
     savedAt: now(),
   });
+  if (defaultStoreLifetime !== 'lasting') return false;
+  const kept = await store.load();
+  return kept?.recoveryToken === upload.recoveryToken;
 }
 
 export function forgetLastDeck(waitMs = 500): Promise<void> {
@@ -141,4 +149,13 @@ export function forgetLastDeck(waitMs = 500): Promise<void> {
 
 export function resetLastDeckStoreForTests(): void {
   defaultStore = null;
+  defaultStoreLifetime = 'page';
+}
+
+export function installLastDeckStoreForTests(
+  store: LastDeckStore,
+  lifetime: StoreLifetime
+): void {
+  defaultStore = quietAndInOrder(store);
+  defaultStoreLifetime = lifetime;
 }

@@ -32,7 +32,7 @@ import {
   type ConversionSuccessHandlers,
 } from './uploadResponse';
 import { LastDeckOffer } from './LastDeckOffer';
-import { keepLastDeck, keepsLastDeck } from '../../../../lib/upload/lastDeck';
+import { keepLastDeck } from '../../../../lib/upload/lastDeck';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
@@ -2320,8 +2320,7 @@ function UploadForm({
           recoveryToken,
           deckName: deliveredDeckName,
         };
-        void keepLastDeck(finished);
-        keptThisRun = keepsLastDeck(finished) && hasAnonIdCookie();
+        keptThisRun = (await keepLastDeck(finished)) && hasAnonIdCookie();
         keptForAccountRef.current = keptThisRun;
       }
       await applyConversionSuccess(request, conversionSuccessHandlers);
