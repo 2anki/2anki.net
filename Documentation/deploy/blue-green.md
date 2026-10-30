@@ -156,8 +156,10 @@ it and exits non-zero — the current color never stopped serving, and the
 workflow restores the last-good build on disk (`scripts/deploy-restore-last-good.sh`).
 The restore does not roll back migrations: its log names the migration files
 added since last-good, and boot (`setupDatabase`) runs `migrate.latest` without
-list validation, with a `[migrations]` warning naming them, whenever the
-database records a migration the restored build has no file for (#5163).
+list validation, with a `[migrations]` warning naming them, when every
+migration the database records without a file sorts after the build's newest
+migration file (#5163). Any other missing file, such as a renamed applied
+migration, still fails the boot.
 If the post-swap public check fails, it rewrites both includes back to the old
 color's port, reloads, and exits.
 

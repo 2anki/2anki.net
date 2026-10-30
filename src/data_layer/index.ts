@@ -7,8 +7,9 @@ import JobRepository from './JobRepository';
 import {
   BOOT_MIGRATIONS_DIRECTORY,
   BOOT_MIGRATIONS_TABLE,
-  findAppliedMigrationsWithoutFile,
-} from './appliedMigrationsWithoutFile';
+  findMigrationDrift,
+  toleratesDrift,
+} from './migrationDrift';
 
 // Optional pool sizing. Unset leaves knex defaults (min 2 / max 10) for the main
 // process; the conversion child processes set DATABASE_POOL_MIN=0 / MAX=3 in
@@ -55,16 +56,17 @@ export const setupDatabase = async (database: Knex) => {
       console.info('DB is ready');
     }
 
-    const appliedWithoutFile = await findAppliedMigrationsWithoutFile(database);
-    if (appliedWithoutFile.length > 0) {
+    const drift = await findMigrationDrift(database);
+    const tolerated = toleratesDrift(drift);
+    if (tolerated) {
       console.warn(
-        `[migrations] database records migrations this build has no file for, running latest without list validation: ${appliedWithoutFile.join(', ')}`
+        `[migrations] database records migrations newer than this build, likely left by a failed deploy; running latest without list validation, repeats every boot until reconciled: ${drift.aheadOfBuild.join(', ')}`
       );
     }
     await database.migrate.latest({
       tableName: BOOT_MIGRATIONS_TABLE,
       directory: BOOT_MIGRATIONS_DIRECTORY,
-      disableMigrationsListValidation: appliedWithoutFile.length > 0,
+      disableMigrationsListValidation: tolerated,
     });
 
     // Completed jobs become uploads. Any left during startup means they failed.

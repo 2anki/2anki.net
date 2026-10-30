@@ -82,6 +82,25 @@ describe('setupDatabase migration list drift', () => {
     expect(warnings[0]).not.toContain(JOBS_MIGRATION);
   });
 
+  it('keeps strict validation and exits when a missing migration sorts before a file this build has, as a rename does', async () => {
+    await setupDatabase(database);
+    fs.rmSync(path.join(migrationsDir, JOBS_MIGRATION));
+    fs.writeFileSync(
+      path.join(migrationsDir, '20260101000001_create_jobs_renamed.js'),
+      CREATE_JOBS
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(setupDatabase(database)).rejects.toThrow('process.exit(1)');
+
+    expect(warn).not.toHaveBeenCalled();
+    expect(await database.schema.hasTable('jobs')).toBe(true);
+    expect(await database('knex_migrations').pluck('name')).toEqual([
+      JOBS_MIGRATION,
+      EXTRA_MIGRATION,
+    ]);
+  });
+
   it('keeps strict migration-list validation when every applied migration has a file', async () => {
     await setupDatabase(database);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
