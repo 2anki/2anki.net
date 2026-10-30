@@ -13,6 +13,20 @@
   display: block;
 }
 
+.readyIcon {
+  color: var(--color-success);
+  display: block;
+}
+
+.deckName {
+  margin: 0;
+  max-width: 100%;
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
 .headline {
   margin: 0;
   font-size: var(--text-lg);
@@ -27,11 +41,16 @@
   line-height: var(--leading-normal);
 }
 
-.context {
+.saved {
   margin: 0;
   font-size: var(--text-xs);
   color: var(--color-text-tertiary);
   font-variant-numeric: tabular-nums;
+}
+
+.freeLink {
+  margin: 0.5rem 0 0;
+  font-size: var(--text-sm);
 }
 
 .error {

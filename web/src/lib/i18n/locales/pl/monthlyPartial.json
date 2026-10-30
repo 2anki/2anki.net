@@ -6,9 +6,10 @@
   "bodySaved_many": "Wykorzystałeś {{monthly}} darmowych fiszek w tym miesiącu. Pozostałych {{count}} jest zapisanych przez 7 dni: kup przepustkę, a pełna talia trafi do sekcji Moje talie bez ponownego przesyłania.",
   "bodySaved_other": "Wykorzystałeś {{monthly}} darmowych fiszek w tym miesiącu. Pozostałe {{count}} są zapisane przez 7 dni: kup przepustkę, a pełna talia trafi do sekcji Moje talie bez ponownego przesyłania.",
   "bodyNotSaved": "Wykorzystałeś {{monthly}} darmowych fiszek w tym miesiącu. Kup przepustkę, a potem prześlij plik ponownie, aby dostać wszystkie fiszki (łącznie {{total}}).",
-  "dayPass": "Day Pass · {{price}}",
-  "semesterPass": "Semester Pass · {{price}}",
+  "dayPass": "Kup Day Pass · {{price}}",
+  "semesterPass": "Kup Semester Pass · {{price}}",
   "pro": "Przejdź na Pro",
+  "proPrice": "Przejdź na Pro · {{price}}/mies.",
   "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie lub napisz na support@2anki.net.",
   "readyBody": "Twoja pełna talia jest gotowa. Jest też w sekcji Moje talie.",
   "expiredBody": "Wstrzymane talie są przechowywane przez 7 dni. Prześlij plik ponownie, aby utworzyć pełną talię."

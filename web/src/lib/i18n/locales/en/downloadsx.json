@@ -67,8 +67,8 @@
     "plainTextFallback_other": "{{count}} images aren't in this deck. This file had no card structure, so we read it as plain text, and plain text can't carry images. To keep them, put each answer under its question and upload the page and its images together in one .zip."
   },
   "cardLimitPartial": {
-    "heldBack_one": "Your deck has {{delivered}} of your {{limit}} monthly cards. {{count}} more card is ready — <pricingLink>upgrade for unlimited cards</pricingLink>.",
-    "heldBack_other": "Your deck has {{delivered}} of your {{limit}} monthly cards. {{count}} more cards are ready — <pricingLink>upgrade for unlimited cards</pricingLink>."
+    "heldBack_one": "Your deck has {{delivered}} of your {{limit}} monthly cards. {{count}} more card is ready — <pricingLink>see passes and Pro</pricingLink>.",
+    "heldBack_other": "Your deck has {{delivered}} of your {{limit}} monthly cards. {{count}} more cards are ready — <pricingLink>see passes and Pro</pricingLink>."
   },
   "truncation": {
     "converted": "Converted the first {{count}} blocks. The free plan stops there — <pricingLink>upgrade to convert the whole page</pricingLink>.",

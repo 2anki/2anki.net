@@ -56,7 +56,7 @@
     "plainTextFallback_other": "{{count}} 枚の画像がこのデッキに含まれていません。このファイルにはカード構造がなかったため、プレーンテキストとして読み込みました。プレーンテキストには画像を含められません。画像を保持するには、各回答をその質問の下に置き、ページとその画像を 1 つの .zip にまとめてアップロードしてください。"
   },
   "cardLimitPartial": {
-    "heldBack_other": "デッキには月間{{limit}}枚のうち{{delivered}}枚が入っています。あと{{count}}枚が準備できています — <pricingLink>アップグレードしてカードを無制限に</pricingLink>。"
+    "heldBack_other": "デッキには月間{{limit}}枚のうち{{delivered}}枚が入っています。あと{{count}}枚が準備できています — <pricingLink>パスと Pro を見る</pricingLink>。"
   },
   "truncation": {
     "converted": "最初の {{count}} ブロックを変換しました。無料プランはここまでです — <pricingLink>アップグレードしてページ全体を変換</pricingLink>。",

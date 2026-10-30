@@ -52,6 +52,45 @@ function LockIcon() {
   );
 }
 
+function ReadyIcon() {
+  return (
+    <span className={styles.readyIcon} aria-hidden="true">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        width="36"
+        height="36"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="m8 12 3 3 5-6" />
+      </svg>
+    </span>
+  );
+}
+
+function FreeSignupLink({ monthly }: { readonly monthly: number }) {
+  const { t } = useTranslation('anonymousPartial');
+  return (
+    <p className={styles.freeLink}>
+      <Link
+        to="/register?redirect=/upload"
+        onClick={() =>
+          track('paywall_upgrade_clicked', {
+            surface: SURFACE,
+            plan: 'free_signup',
+          })
+        }
+      >
+        {t('gateFreeLink', { monthly })}
+      </Link>
+    </p>
+  );
+}
+
 // Pass-first: the passes lead and a free account (the 21-card preview) is a
 // text link. The held deck stays saved, so signing up still claims it.
 function PassFirstGate({ held }: Props) {
@@ -151,29 +190,43 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
     );
   }
 
+  const dayPassOffer = (
+    <AnonymousDayPassOffer
+      surface={SURFACE}
+      totalCards={held.totalCards}
+      held
+    />
+  );
+
   return (
     <section className={styles.gate} aria-label={t('gateAria')}>
-      <LockIcon />
+      <ReadyIcon />
+      <p className={styles.deckName} data-hj-suppress>
+        {held.deckName ?? t('untitledDeck')}
+      </p>
       <p className={styles.headline}>
-        {fitsFreeMonth
-          ? t('gateHeadlineAll', { total: held.totalCards })
-          : t('gateHeadlineCapped', { monthly: FREE_MONTHLY_CARDS })}
+        {t('gateHeadlineAll', { total: held.totalCards })}
       </p>
-      <p className={styles.body}>
-        {t('gateBody', { monthly: FREE_MONTHLY_CARDS })}
-      </p>
-      {!fitsFreeMonth && (
-        <p className={styles.context}>
-          {t('gateContext', { total: held.totalCards })}
+      {held.savedForHours != null && (
+        <p className={styles.saved}>
+          {t('gateSaved', { count: held.savedForHours })}
         </p>
       )}
-      {errorMessage}
-      {registerForm}
-      <AnonymousDayPassOffer
-        surface={SURFACE}
-        totalCards={held.totalCards}
-        held
-      />
+      {fitsFreeMonth ? (
+        <>
+          <p className={styles.body}>
+            {t('gateBody', { monthly: FREE_MONTHLY_CARDS })}
+          </p>
+          {errorMessage}
+          {registerForm}
+          {dayPassOffer}
+        </>
+      ) : (
+        <>
+          {dayPassOffer}
+          <FreeSignupLink monthly={FREE_MONTHLY_CARDS} />
+        </>
+      )}
     </section>
   );
 }

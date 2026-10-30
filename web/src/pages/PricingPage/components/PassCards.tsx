@@ -4,7 +4,7 @@ import { FALLBACK_PASS_PRICES } from '../payment.links';
 import type { PassPriceDisplay } from '../../../lib/hooks/usePassPrices';
 import styles from '../PricingPage.module.css';
 
-const PASS_BENEFIT_KEYS = [
+export const PASS_BENEFIT_KEYS = [
   'pricing.pass.noSubscription',
   'pricing.pass.unlimitedCards',
   'pricing.pass.aiPhoto',
@@ -12,8 +12,6 @@ const PASS_BENEFIT_KEYS = [
   'pricing.pass.nativeApkg',
   'pricing.pass.imageOcclusion',
 ];
-
-type Translate = ReturnType<typeof useTranslation>['t'];
 
 interface PassCardsProps {
   onDayPass: () => void;
@@ -25,13 +23,11 @@ interface PassCardsProps {
   featureDayPass?: boolean;
   featureSemester?: boolean;
   prices?: PassPriceDisplay;
+  benefits?: string[];
 }
 
-function featuredTreatment(t: Translate, featured: boolean) {
-  return {
-    badge: featured ? t('pricing.pass.mostPopular') : undefined,
-    className: featured ? styles.cardPro : undefined,
-  };
+function featuredClass(featured: boolean) {
+  return featured ? styles.cardPro : undefined;
 }
 
 export function PassCards({
@@ -44,24 +40,29 @@ export function PassCards({
   featureDayPass = true,
   featureSemester = false,
   prices = FALLBACK_PASS_PRICES,
+  benefits,
 }: Readonly<PassCardsProps>) {
   const { t } = useTranslation();
-  const benefits = PASS_BENEFIT_KEYS.map((key) => t(key));
-  const featureWeek = !featureDayPass && !featureSemester;
+  const cardBenefits = benefits ?? PASS_BENEFIT_KEYS.map((key) => t(key));
   const showHorizons = !featureDayPass;
-  const redirecting = t('pricing.pass.redirecting');
+  const startingCheckout = t('pricing.pass.startingCheckout');
 
   const dayCard = (
     <PricingCard
       key="day"
       title="Day Pass"
-      {...featuredTreatment(t, featureDayPass)}
+      badge={t('pricing.pass.mostPopular')}
+      className={featuredClass(featureDayPass)}
       horizonCaption={showHorizons ? t('pricing.pass.horizonDay') : undefined}
       price={prices['24h']}
       priceSuffix={t('pricing.pass.day24')}
-      benefits={benefits}
+      benefits={cardBenefits}
       onAction={onDayPass}
-      actionLabel={dayPassPending ? redirecting : t('pricing.pass.getDayPass')}
+      actionLabel={
+        dayPassPending
+          ? startingCheckout
+          : t('pricing.pass.getDayPass', { price: prices['24h'] })
+      }
       actionDisabled={dayPassPending}
     />
   );
@@ -70,14 +71,15 @@ export function PassCards({
     <PricingCard
       key="week"
       title="Week Pass"
-      {...featuredTreatment(t, featureWeek)}
       horizonCaption={showHorizons ? t('pricing.pass.horizonWeek') : undefined}
       price={prices['7d']}
       priceSuffix={t('pricing.pass.week1')}
-      benefits={benefits}
+      benefits={cardBenefits}
       onAction={onWeekPass}
       actionLabel={
-        weekPassPending ? redirecting : t('pricing.pass.getWeekPass')
+        weekPassPending
+          ? startingCheckout
+          : t('pricing.pass.getWeekPass', { price: prices['7d'] })
       }
       actionDisabled={weekPassPending}
     />
@@ -88,21 +90,19 @@ export function PassCards({
       <PricingCard
         key="semester"
         title="Semester Pass"
-        className={featureSemester ? styles.cardPro : undefined}
-        badge={
-          featureSemester
-            ? t('pricing.pass.mostPopular')
-            : t('pricing.pass.bestValue')
-        }
-        badgeMuted={!featureSemester}
+        className={featuredClass(featureSemester)}
+        badge={t('pricing.pass.bestValue')}
+        badgeMuted
         horizonCaption={t('pricing.pass.horizonSemester')}
         valueCaption={t('pricing.pass.semesterPerWeek')}
         price={prices['120d']}
         priceSuffix={t('pricing.pass.semester4mo')}
-        benefits={benefits}
+        benefits={cardBenefits}
         onAction={onSemesterPass}
         actionLabel={
-          semesterPassPending ? redirecting : t('pricing.pass.getSemesterPass')
+          semesterPassPending
+            ? startingCheckout
+            : t('pricing.pass.getSemesterPass', { price: prices['120d'] })
         }
         actionDisabled={semesterPassPending}
       />

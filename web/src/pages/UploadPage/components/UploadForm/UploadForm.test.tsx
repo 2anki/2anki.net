@@ -47,6 +47,7 @@ vi.mock('../../../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: vi.fn(() => ({
     startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
     getUploads: vi.fn().mockResolvedValue([]),
+    getCheckoutPrices: vi.fn().mockResolvedValue(null),
   })),
 }));
 
@@ -4209,7 +4210,7 @@ describe('held-deck gate screen-reader announcement', () => {
     });
   });
 
-  it('announces the first 100 when the file is over a free month', async () => {
+  it('announces every card and both routes when the file is over a free month', async () => {
     const container = await submitHeld({
       cardCount: 21,
       cardsHeldBack: 100,
@@ -4218,7 +4219,7 @@ describe('held-deck gate screen-reader announcement', () => {
     await waitFor(() => {
       const live = container.querySelector('output[aria-live="polite"]');
       expect(live?.textContent).toBe(
-        'Your first 100 cards are ready. Create a free account to download them.'
+        'All 121 cards are ready. A Day Pass gets all of them now, or a free account gets the first 100.'
       );
     });
   });
@@ -4378,9 +4379,7 @@ describe('limit state', () => {
     expect(
       day.compareDocumentPosition(plans) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
-    expect(
-      screen.queryByRole('button', { name: /Get Day Pass/ })
-    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Day Pass/ })).toHaveLength(1);
   });
 
   it('does not lock the form when the free user is under the limit', () => {
@@ -4575,9 +4574,7 @@ describe('limit state', () => {
       semester.compareDocumentPosition(day) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(screen.getByRole('link', { name: 'See plans' })).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /Get Day Pass/ })
-    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Day Pass/ })).toHaveLength(1);
   });
 
   it('leads a signed-out card limit wall (stale session) with the passes and keeps sign-up as text links', async () => {
@@ -6080,6 +6077,7 @@ describe('UploadForm thin-deck notice', () => {
     mockGet2ankiApi.mockReturnValue({
       startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
       getUploads: vi.fn().mockResolvedValue([]),
+      getCheckoutPrices: vi.fn().mockResolvedValue(null),
       getHeldDeck: vi.fn().mockResolvedValue(null),
     } as unknown as ReturnType<typeof get2ankiApi>);
   });
@@ -6089,6 +6087,7 @@ describe('UploadForm thin-deck notice', () => {
     mockGet2ankiApi.mockReturnValue({
       startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
       getUploads: vi.fn().mockResolvedValue([]),
+      getCheckoutPrices: vi.fn().mockResolvedValue(null),
     } as unknown as ReturnType<typeof get2ankiApi>);
     vi.unstubAllGlobals();
   });
@@ -6628,6 +6627,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
       getUploads: vi.fn().mockResolvedValue([]),
       getHeldDeck: vi.fn().mockResolvedValue(null),
+      getCheckoutPrices: vi.fn().mockResolvedValue(null),
       previewThinDeckAi: vi.fn().mockResolvedValue({
         kind: 'preview',
         cards: [{ front: 'What does the Krebs cycle make?', back: 'ATP' }],
@@ -6815,6 +6815,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
       getUploads: vi.fn().mockResolvedValue([]),
       getHeldDeck: vi.fn().mockResolvedValue(null),
+      getCheckoutPrices: vi.fn().mockResolvedValue(null),
       previewThinDeckAi: vi.fn(),
     } as unknown as ReturnType<typeof get2ankiApi>);
     globalThis.localStorage.clear();
@@ -10541,6 +10542,7 @@ describe('UploadForm monthly-limit partial offer', () => {
     mockGet2ankiApi.mockReturnValue({
       startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
       getUploads: vi.fn().mockResolvedValue([]),
+      getCheckoutPrices: vi.fn().mockResolvedValue(null),
       getHeldDeck: vi.fn().mockResolvedValue(null),
     } as unknown as ReturnType<typeof get2ankiApi>);
   });

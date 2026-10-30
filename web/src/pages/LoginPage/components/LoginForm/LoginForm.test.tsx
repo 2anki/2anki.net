@@ -200,7 +200,7 @@ describe('LoginForm', () => {
     expect(screen.queryByText('Check your email')).not.toBeInTheDocument();
   });
 
-  it('shows the resend error, not "Sent!", when resending from the check-email screen fails', async () => {
+  it('shows the resend error, not "Sent", when resending from the check-email screen fails', async () => {
     renderLoginForm();
     fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
       target: { value: 'test@example.com' },
@@ -218,7 +218,7 @@ describe('LoginForm', () => {
         "Couldn't send another link right now. Check your inbox and spam, or email support@2anki.net."
       )
     ).toBeInTheDocument();
-    expect(screen.queryByText('Sent!')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sent')).not.toBeInTheDocument();
   });
 
   it.each([
@@ -226,7 +226,7 @@ describe('LoginForm', () => {
     ['rate limited', { message: 'ok' }],
     ['suppressed', { message: 'suppressed', suppressed: true }],
   ])(
-    'shows "Sent!" when a resend from the check-email screen answers 200 (%s)',
+    'shows "Sent" when a resend from the check-email screen answers 200 (%s)',
     async (_label, body) => {
       renderLoginForm();
       fireEvent.change(screen.getByRole('textbox', { name: 'Email' }), {
@@ -244,7 +244,7 @@ describe('LoginForm', () => {
       });
       fireEvent.click(screen.getByRole('button', { name: 'Resend link' }));
 
-      expect(await screen.findByText('Sent!')).toBeInTheDocument();
+      expect(await screen.findByText('Sent')).toBeInTheDocument();
     }
   );
 

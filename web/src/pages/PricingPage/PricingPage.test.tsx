@@ -101,12 +101,16 @@ describe('PricingPage Pro benefits', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('features the Week Pass and marks the Semester Pass best value', () => {
+  it('marks the Day Pass most popular and the Semester Pass best value', () => {
     renderAt('/pricing');
-    expect(screen.getByText('Most popular')).toBeInTheDocument();
-    expect(screen.getByText('Best value')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get Week Pass' })
+      screen.getByText('Most popular').closest('div')?.textContent
+    ).toContain('Day Pass');
+    expect(
+      screen.getByText('Best value').closest('div')?.textContent
+    ).toContain('Semester Pass');
+    expect(
+      screen.getByRole('button', { name: /^Get Week Pass · / })
     ).toBeInTheDocument();
   });
 });
@@ -205,7 +209,7 @@ describe('PricingPage layout', () => {
       screen.queryByText(/no account needed to start/)
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get Day Pass' })
+      screen.getByRole('button', { name: /^Get Day Pass · / })
     ).toBeInTheDocument();
   });
 
@@ -223,8 +227,10 @@ describe('PricingPage layout', () => {
     );
     const badges = screen.getAllByText('Most popular');
     expect(badges).toHaveLength(1);
-    expect(badges[0].closest('div')?.textContent).toContain('Semester Pass');
-    expect(screen.queryByText('Best value')).not.toBeInTheDocument();
+    expect(badges[0].closest('div')?.textContent).toContain('Day Pass');
+    expect(
+      screen.getByText('Best value').closest('div')?.textContent
+    ).toContain('Semester Pass');
     expect(screen.getByTestId('unlimited-card').className).not.toContain(
       'cardPro'
     );
@@ -250,10 +256,10 @@ describe('PricingPage layout', () => {
   it('shows Day Pass and Week Pass as full cards with visible buttons', () => {
     renderAt('/pricing');
     expect(
-      screen.getByRole('button', { name: 'Get Day Pass' })
+      screen.getByRole('button', { name: /^Get Day Pass · / })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get Week Pass' })
+      screen.getByRole('button', { name: /^Get Week Pass · / })
     ).toBeInTheDocument();
   });
 
@@ -366,7 +372,7 @@ describe('PricingPage internal event tracking', () => {
     });
 
     renderAt('/pricing', { isLoggedIn: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
 
     await waitFor(() => {
       expect(trackMock).toHaveBeenCalledWith('paywall_upgrade_clicked', {
@@ -390,7 +396,7 @@ describe('PricingPage internal event tracking', () => {
     });
 
     renderAt('/pricing', { isLoggedIn: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Week Pass' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Get Week Pass · / }));
 
     await waitFor(() => {
       expect(trackMock).toHaveBeenCalledWith('paywall_upgrade_clicked', {
@@ -415,7 +421,9 @@ describe('PricingPage internal event tracking', () => {
     });
 
     renderAt('/pricing', { isLoggedIn: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Semester Pass' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Get Semester Pass · / })
+    );
 
     await waitFor(() => {
       expect(trackMock).toHaveBeenCalledWith('paywall_upgrade_clicked', {
@@ -472,7 +480,7 @@ describe('PricingPage duplicate-purchase conflict', () => {
       expiresAt: '2026-10-08T12:00:00.000Z',
     });
     renderAt('/pricing', { isLoggedIn: true });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('Your pass runs until');
     expect(alert.textContent).toContain('2026');
@@ -627,7 +635,7 @@ describe('PricingPage anonymous upgrade-click tracking', () => {
     });
 
     renderAt('/pricing', { isLoggedIn: false });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
 
     expect(trackMock).toHaveBeenCalledWith('paywall_upgrade_clicked', {
       surface: 'pricing_page',
@@ -660,7 +668,7 @@ describe('PricingPage anonymous upgrade-click tracking', () => {
     });
 
     renderAt('/pricing', { isLoggedIn: false });
-    fireEvent.click(screen.getByRole('button', { name: 'Get Week Pass' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Get Week Pass · / }));
 
     expect(trackMock).toHaveBeenCalledWith('paywall_upgrade_clicked', {
       surface: 'pricing_page',

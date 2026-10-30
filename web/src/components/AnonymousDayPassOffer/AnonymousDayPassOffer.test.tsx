@@ -35,7 +35,7 @@ describe('AnonymousDayPassOffer', () => {
       screen.getByText(/drop the file again to get all 340 cards/)
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get a Day Pass for $6' })
+      screen.getByRole('button', { name: 'Get Day Pass · $6' })
     ).toBeInTheDocument();
   });
 

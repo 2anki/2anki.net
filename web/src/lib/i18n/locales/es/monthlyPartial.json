@@ -4,9 +4,10 @@
   "bodySaved_one": "Ya usaste las {{monthly}} tarjetas gratis de este mes. {{count}} tarjeta más queda guardada 7 días: consigue un pase y el mazo completo aparecerá en Mis mazos, sin volver a subirlo.",
   "bodySaved_other": "Ya usaste las {{monthly}} tarjetas gratis de este mes. Las otras {{count}} quedan guardadas 7 días: consigue un pase y el mazo completo aparecerá en Mis mazos, sin volver a subirlo.",
   "bodyNotSaved": "Ya usaste las {{monthly}} tarjetas gratis de este mes. Consigue un pase y vuelve a subir el archivo para tener las {{total}} tarjetas.",
-  "dayPass": "Day Pass · {{price}}",
-  "semesterPass": "Semester Pass · {{price}}",
-  "pro": "Hazte Pro",
+  "dayPass": "Consigue el Day Pass · {{price}}",
+  "semesterPass": "Consigue el Semester Pass · {{price}}",
+  "pro": "Mejora a Pro",
+  "proPrice": "Mejora a Pro · {{price}}/mes",
   "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net.",
   "readyBody": "Tu mazo completo está listo. También está en Mis mazos.",
   "expiredBody": "Los mazos retenidos se guardan 7 días. Vuelve a subir el archivo para crear el mazo completo."

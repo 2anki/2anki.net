@@ -67,8 +67,8 @@
     "plainTextFallback_other": "{{count}} imágenes no están en este mazo. Este archivo no tenía estructura de tarjetas, así que lo leímos como texto plano, y el texto plano no puede llevar imágenes. Para conservarlas, pon cada respuesta debajo de su pregunta y sube la página y sus imágenes juntas en un solo .zip."
   },
   "cardLimitPartial": {
-    "heldBack_one": "Tu mazo tiene {{delivered}} de tus {{limit}} tarjetas mensuales. {{count}} tarjeta más está lista — <pricingLink>mejora para tarjetas ilimitadas</pricingLink>.",
-    "heldBack_other": "Tu mazo tiene {{delivered}} de tus {{limit}} tarjetas mensuales. {{count}} tarjetas más están listas — <pricingLink>mejora para tarjetas ilimitadas</pricingLink>."
+    "heldBack_one": "Tu mazo tiene {{delivered}} de tus {{limit}} tarjetas mensuales. {{count}} tarjeta más está lista — <pricingLink>ver pases y Pro</pricingLink>.",
+    "heldBack_other": "Tu mazo tiene {{delivered}} de tus {{limit}} tarjetas mensuales. {{count}} tarjetas más están listas — <pricingLink>ver pases y Pro</pricingLink>."
   },
   "truncation": {
     "converted": "Se convirtieron los primeros {{count}} bloques. El plan gratuito se detiene ahí — <pricingLink>mejora tu plan para convertir toda la página</pricingLink>.",

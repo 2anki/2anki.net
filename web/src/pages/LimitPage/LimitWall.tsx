@@ -2,17 +2,23 @@ import { useEffect, useRef, type MouseEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { PassCards } from '../PricingPage/components/PassCards';
+import {
+  PASS_BENEFIT_KEYS,
+  PassCards,
+} from '../PricingPage/components/PassCards';
+import type { PassPriceDisplay } from '../../lib/hooks/usePassPrices';
 import styles from './LimitPage.module.css';
 
 export const FREE_MONTHLY_CARDS = 100;
 export const ANONYMOUS_CARD_CAP = 21;
 
 export type PassKind = '24h' | '7d' | '120d';
-export type WallOrder = 'passes-first' | 'unlimited-first';
+
+const SHARED_PASS_BENEFIT_KEYS = PASS_BENEFIT_KEYS.filter(
+  (key) => key !== 'pricing.pass.noSubscription'
+);
 
 interface LimitWallProps {
-  order: WallOrder;
   pendingPass: PassKind | null;
   onPass: (kind: PassKind) => void;
   passError: string | null;
@@ -21,10 +27,10 @@ interface LimitWallProps {
   onUnlimitedClick: (event: MouseEvent<HTMLAnchorElement>) => void;
   notice?: ReactNode;
   featureSemester?: boolean;
+  passPrices?: PassPriceDisplay;
 }
 
 export function LimitWall({
-  order,
   pendingPass,
   onPass,
   passError,
@@ -33,6 +39,7 @@ export function LimitWall({
   onUnlimitedClick,
   notice,
   featureSemester = false,
+  passPrices,
 }: Readonly<LimitWallProps>) {
   const { t } = useTranslation('accountx');
   const errorRef = useRef<HTMLParagraphElement>(null);
@@ -43,9 +50,32 @@ export function LimitWall({
     }
   }, [passError]);
 
-  const passes = (
-    <>
+  return (
+    <div className={styles.page}>
+      <Helmet>
+        <title>{t('limit.pageTitle')}</title>
+      </Helmet>
+
+      <header className={styles.header}>
+        <h1 className={styles.heading}>{t('limit.headline')}</h1>
+        <p className={styles.subheading}>
+          {t('limit.subheading', { limit: FREE_MONTHLY_CARDS })}
+        </p>
+      </header>
+
+      {notice}
+
       <p className={styles.sectionLabel}>{t('limit.payOnce')}</p>
+      <ul
+        className={styles.sharedBenefits}
+        aria-label={t('limit.passIncludes')}
+      >
+        {SHARED_PASS_BENEFIT_KEYS.map((key) => (
+          <li key={key} className={styles.sharedBenefit}>
+            {t(`common:${key}`)}
+          </li>
+        ))}
+      </ul>
       {passError && (
         <p ref={errorRef} className={styles.planError} role="alert">
           {passError}
@@ -60,71 +90,20 @@ export function LimitWall({
         semesterPassPending={pendingPass === '120d'}
         featureDayPass={!featureSemester}
         featureSemester={featureSemester}
+        benefits={[]}
+        prices={passPrices}
       />
-    </>
-  );
 
-  const unlimited = (
-    <>
-      <p className={styles.sectionLabel}>{t('limit.skipCap')}</p>
-      <div className={styles.singlePlan}>
-        <div className={styles.planCard}>
-          <p className={styles.planTitle}>{t('limit.unlimited')}</p>
-          {unlimitedPrice != null && (
-            <p className={styles.planPrice}>
-              {t('limit.unlimitedPriceLine', { price: unlimitedPrice })}
-            </p>
-          )}
-          <ul className={styles.planBenefits}>
-            {[
-              t('limit.benefitUnlimited'),
-              t('limit.benefitMultiple'),
-              t('limit.benefitPdf'),
-              t('limit.benefitCancel'),
-            ].map((b) => (
-              <li key={b} className={styles.planBenefit}>
-                {b}
-              </li>
-            ))}
-          </ul>
-          <a
-            href={unlimitedHref}
-            className={styles.planCtaSecondary}
-            onClick={onUnlimitedClick}
-          >
-            {t('limit.upgradeToUnlimited')}
-          </a>
-        </div>
-      </div>
-    </>
-  );
-
-  return (
-    <div className={styles.page}>
-      <Helmet>
-        <title>{t('limit.pageTitle')}</title>
-      </Helmet>
-
-      <header className={styles.header}>
-        <h1 className={styles.heading}>
-          {t('limit.headline', { limit: FREE_MONTHLY_CARDS })}
-        </h1>
-        <p className={styles.subheading}>{t('limit.upgradeSubheading')}</p>
-      </header>
-
-      {notice}
-
-      {order === 'passes-first' ? (
-        <>
-          {passes}
-          {unlimited}
-        </>
-      ) : (
-        <>
-          {unlimited}
-          {passes}
-        </>
-      )}
+      <p className={styles.proLine}>
+        <span>
+          {unlimitedPrice == null
+            ? t('limit.proLineNoPrice')
+            : t('limit.proLine', { price: unlimitedPrice })}
+        </span>{' '}
+        <a href={unlimitedHref} onClick={onUnlimitedClick}>
+          {t('limit.upgradeToUnlimited')}
+        </a>
+      </p>
 
       <p className={styles.backLink}>
         <Link to="/upload">{t('limit.backToUpload')}</Link>

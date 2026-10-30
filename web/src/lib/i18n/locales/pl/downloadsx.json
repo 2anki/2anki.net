@@ -89,10 +89,10 @@
     "plainTextFallback_other": "{{count}} obrazu nie znajduje się w tej talii. Ten plik nie miał struktury kart, więc odczytaliśmy go jako zwykły tekst, a zwykły tekst nie może zawierać obrazów. Aby je zachować, umieść każdą odpowiedź pod jej pytaniem i prześlij stronę wraz z jej obrazami w jednym pliku .zip."
   },
   "cardLimitPartial": {
-    "heldBack_one": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowa jest jeszcze {{count}} karta — <pricingLink>przejdź na nieograniczone karty</pricingLink>.",
-    "heldBack_few": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowe są jeszcze {{count}} karty — <pricingLink>przejdź na nieograniczone karty</pricingLink>.",
-    "heldBack_many": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowych jest jeszcze {{count}} kart — <pricingLink>przejdź na nieograniczone karty</pricingLink>.",
-    "heldBack_other": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowych jest jeszcze {{count}} karty — <pricingLink>przejdź na nieograniczone karty</pricingLink>."
+    "heldBack_one": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowa jest jeszcze {{count}} karta — <pricingLink>zobacz karnety i Pro</pricingLink>.",
+    "heldBack_few": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowe są jeszcze {{count}} karty — <pricingLink>zobacz karnety i Pro</pricingLink>.",
+    "heldBack_many": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowych jest jeszcze {{count}} kart — <pricingLink>zobacz karnety i Pro</pricingLink>.",
+    "heldBack_other": "Twoja talia ma {{delivered}} z {{limit}} miesięcznych kart. Gotowych jest jeszcze {{count}} karty — <pricingLink>zobacz karnety i Pro</pricingLink>."
   },
   "truncation": {
     "converted": "Przekonwertowano pierwsze {{count}} bloków. Darmowy plan kończy się tutaj — <pricingLink>przejdź na wyższy plan, aby przekonwertować całą stronę</pricingLink>.",

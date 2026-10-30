@@ -5,7 +5,7 @@
   "afterPayTotal": "Po zapłacie wrzuć plik jeszcze raz, aby dostać wszystkie fiszki ({{total}}).",
   "afterPayHeld": "Po zapłacie wszystkie fiszki są gotowe do pobrania, bez ponownego wgrywania.",
   "afterPayHeldTotal": "Po zapłacie wszystkie fiszki ({{total}}) są gotowe do pobrania, bez ponownego wgrywania.",
-  "cta": "Kup Day Pass za {{price}}",
+  "cta": "Kup Day Pass · {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "Wszystkie fiszki od razu, bez konta.",
   "cardPrice": "{{price}} na 24 godziny.",

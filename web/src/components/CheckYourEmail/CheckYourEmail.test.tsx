@@ -121,7 +121,7 @@ describe('CheckYourEmail', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows Sent! after resend succeeds', async () => {
+  it('shows Sent after resend succeeds', async () => {
     const onResend = vi.fn().mockResolvedValue(undefined);
     render(
       <CheckYourEmail
@@ -133,7 +133,7 @@ describe('CheckYourEmail', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Resend link' }));
     await waitFor(() => {
-      expect(screen.getByText('Sent!')).toBeInTheDocument();
+      expect(screen.getByText('Sent')).toBeInTheDocument();
     });
   });
 

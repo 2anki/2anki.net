@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-30-held-deck-name-and-pass-labels",
+  "date": "2026-10-30",
+  "type": "fix",
+  "title": "A deck saved for sign-up shows its name and how long it is kept, and every pass button shows its price"
+}

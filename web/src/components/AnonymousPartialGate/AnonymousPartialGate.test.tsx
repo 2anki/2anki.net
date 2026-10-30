@@ -18,8 +18,23 @@ vi.mock('../../lib/hooks/usePassPrices', () => ({
   usePassPrices: () => ({ '24h': '$6', '7d': '$12', '120d': '$29' }),
 }));
 
+interface GateHeld {
+  cardCount: number;
+  cardsHeldBack: number;
+  totalCards: number;
+  deckName?: string;
+  savedForHours?: number;
+  dayPassCard?: boolean;
+}
+
 function renderGate(
-  held = { cardCount: 21, cardsHeldBack: 13, totalCards: 34 }
+  held: GateHeld = {
+    cardCount: 21,
+    cardsHeldBack: 13,
+    totalCards: 34,
+    deckName: 'Pharmacology',
+    savedForHours: 24,
+  }
 ) {
   return render(
     <QueryClientProvider client={new QueryClient()}>
@@ -35,25 +50,91 @@ describe('AnonymousPartialGate', () => {
     vi.mocked(track).mockClear();
   });
 
-  it('promises the whole file when it fits a free month', () => {
-    renderGate({ cardCount: 21, cardsHeldBack: 13, totalCards: 34 });
+  it('names the deck and promises the whole file when it fits a free month', () => {
+    renderGate();
+    expect(screen.getByText('Pharmacology')).toBeInTheDocument();
     expect(screen.getByText('All 34 cards are ready')).toBeInTheDocument();
     expect(screen.getByText(/100 cards a month/)).toBeInTheDocument();
-    expect(screen.queryByText(/This file made/)).not.toBeInTheDocument();
   });
 
-  it('promises the whole file at exactly the free monthly limit', () => {
-    renderGate({ cardCount: 21, cardsHeldBack: 79, totalCards: 100 });
+  it('says how long the deck stays saved, from the hold', () => {
+    renderGate({
+      cardCount: 21,
+      cardsHeldBack: 13,
+      totalCards: 34,
+      deckName: 'Pharmacology',
+      savedForHours: 24,
+    });
+    expect(screen.getByText('Saved for 24 hours.')).toBeInTheDocument();
+  });
+
+  it('says nothing about a saved window the hold did not report', () => {
+    renderGate({ cardCount: 21, cardsHeldBack: 13, totalCards: 34 });
+    expect(screen.queryByText(/Saved for/)).not.toBeInTheDocument();
+  });
+
+  it('calls a deck with no name an untitled deck', () => {
+    renderGate({ cardCount: 21, cardsHeldBack: 13, totalCards: 34 });
+    expect(screen.getByText('Untitled deck')).toBeInTheDocument();
+  });
+
+  it('leads with the sign-up form when the deck fits a free month', () => {
+    renderGate({
+      cardCount: 21,
+      cardsHeldBack: 79,
+      totalCards: 100,
+      deckName: 'Pharmacology',
+      savedForHours: 24,
+    });
     expect(screen.getByText('All 100 cards are ready')).toBeInTheDocument();
-    expect(screen.queryByText(/This file made/)).not.toBeInTheDocument();
+    const email = screen.getByLabelText(/email/i);
+    const dayPass = screen.getByRole('button', { name: 'Get Day Pass · $6' });
+    expect(
+      email.compareDocumentPosition(dayPass) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
-  it('promises the first 100 and names the total when the file is over a month', () => {
-    renderGate({ cardCount: 21, cardsHeldBack: 100, totalCards: 121 });
-    expect(
-      screen.getByText('Your first 100 cards are ready')
-    ).toBeInTheDocument();
-    expect(screen.getByText('This file made 121 cards.')).toBeInTheDocument();
+  describe('over a free month', () => {
+    const overMonth = {
+      cardCount: 21,
+      cardsHeldBack: 163,
+      totalCards: 184,
+      deckName: 'Pharmacology',
+      savedForHours: 24,
+    };
+
+    it('says every card is ready, not just the free month', () => {
+      renderGate(overMonth);
+      expect(screen.getByText('All 184 cards are ready')).toBeInTheDocument();
+      expect(screen.queryByText(/Your first 100/)).not.toBeInTheDocument();
+    });
+
+    it('leads with the Day Pass and folds the free account into one link below it', () => {
+      renderGate(overMonth);
+      const dayPass = screen.getByRole('button', { name: 'Get Day Pass · $6' });
+      const signUp = screen.getByRole('link', {
+        name: 'Or create a free account for the first 100 cards',
+      });
+      expect(
+        dayPass.compareDocumentPosition(signUp) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(signUp).toHaveAttribute('href', '/register?redirect=/upload');
+      expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+    });
+
+    it('records the free sign-up click from the folded link', () => {
+      renderGate(overMonth);
+      fireEvent.click(
+        screen.getByRole('link', {
+          name: 'Or create a free account for the first 100 cards',
+        })
+      );
+      expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+        surface: HELD_DECK_CHECKOUT_SURFACE,
+        plan: 'free_signup',
+      });
+    });
   });
 
   it('offers a Day Pass below the sign-up form for the whole file, with no re-upload', () => {
@@ -65,7 +146,7 @@ describe('AnonymousPartialGate', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/drop the file again/)).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get a Day Pass for $6' })
+      screen.getByRole('button', { name: 'Get Day Pass · $6' })
     ).toBeInTheDocument();
   });
 
@@ -73,7 +154,7 @@ describe('AnonymousPartialGate', () => {
     renderGate();
     expect(
       screen.getByRole('region', {
-        name: 'Create a free account to download your deck',
+        name: 'Your deck is ready',
       })
     ).toBeInTheDocument();
   });
@@ -260,16 +341,16 @@ describe('AnonymousPartialGate checkout surface', () => {
   });
 
   it.each([
-    ['the default gate', false, false, /Get a Day Pass for \$6/, '24h'],
+    ['the default gate', false, false, /Get Day Pass · \$6/, '24h'],
     ['the Day Pass card lead', false, true, /Get all 184 cards now/, '24h'],
     [
       'the pass-first Semester Pass',
       true,
       false,
-      /Semester Pass · \$29/,
+      /Get Semester Pass · \$29/,
       '120d',
     ],
-    ['the pass-first Day Pass', true, false, /Day Pass · \$6/, '24h'],
+    ['the pass-first Day Pass', true, false, /Get Day Pass · \$6/, '24h'],
   ])(
     'checks out from %s under the held-deck surface',
     async (_label, passFirst, dayPassCard, button, kind) => {

@@ -5,7 +5,7 @@
   "afterPayTotal": "Lade die Datei nach dem Bezahlen noch einmal hoch, dann bekommst du alle {{total}} Karten.",
   "afterPayHeld": "Nach dem Bezahlen sind alle Karten zum Download bereit, ohne neuen Upload.",
   "afterPayHeldTotal": "Nach dem Bezahlen sind alle {{total}} Karten zum Download bereit, ohne neuen Upload.",
-  "cta": "Day Pass für {{price}} holen",
+  "cta": "Day Pass holen · {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "Alle deine Karten sofort, ohne Konto.",
   "cardPrice": "{{price}} für 24 Stunden.",

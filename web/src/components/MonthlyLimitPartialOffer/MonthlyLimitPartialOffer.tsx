@@ -7,6 +7,7 @@ import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { FREE_MONTHLY_CARDS } from '../../pages/LimitPage/LimitWall';
+import { useUnlimitedMonthlyPrice } from '../../pages/LimitPage/useUnlimitedMonthlyPrice';
 import styles from './MonthlyLimitPartialOffer.module.css';
 
 const SURFACE = 'upload-partial';
@@ -31,6 +32,7 @@ export function MonthlyLimitPartialOffer({
 }: MonthlyLimitPartialOfferProps) {
   const { t, i18n } = useTranslation('monthlyPartial');
   const prices = usePassPrices();
+  const proPrice = useUnlimitedMonthlyPrice(true);
   const [pending, setPending] = useState<PassKind | 'pro' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const shownRef = useRef(false);
@@ -106,7 +108,10 @@ export function MonthlyLimitPartialOffer({
           disabled={pending != null}
           onClick={() => void buyPass('24h')}
         >
-          {t('dayPass', { price: prices['24h'] })}
+          {t('dayPass', { price: prices['24h'] })}{' '}
+          <span className={styles.badge}>
+            {t('common:pricing.pass.mostPopular')}
+          </span>
         </button>
         <button
           type="button"
@@ -114,7 +119,10 @@ export function MonthlyLimitPartialOffer({
           disabled={pending != null}
           onClick={() => void buyPass('120d')}
         >
-          {t('semesterPass', { price: prices['120d'] })}
+          {t('semesterPass', { price: prices['120d'] })}{' '}
+          <span className={styles.badge}>
+            {t('common:pricing.pass.bestValue')}
+          </span>
         </button>
         <button
           type="button"
@@ -122,7 +130,7 @@ export function MonthlyLimitPartialOffer({
           disabled={pending != null}
           onClick={() => void goPro()}
         >
-          {t('pro')}
+          {proPrice == null ? t('pro') : t('proPrice', { price: proPrice })}
         </button>
       </div>
     </section>

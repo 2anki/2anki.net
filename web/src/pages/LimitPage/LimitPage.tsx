@@ -7,6 +7,7 @@ import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
 import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { PastDueNotice } from '../../components/PastDueNotice/PastDueNotice';
 import { AnonymousDayPassOffer } from '../../components/AnonymousDayPassOffer/AnonymousDayPassOffer';
 import { PassFirstOffer } from '../../components/PassFirstOffer/PassFirstOffer';
@@ -16,7 +17,6 @@ import {
   FREE_MONTHLY_CARDS,
   LimitWall,
   type PassKind,
-  type WallOrder,
 } from './LimitWall';
 import { useUnlimitedMonthlyPrice } from './useUnlimitedMonthlyPrice';
 import styles from './LimitPage.module.css';
@@ -31,8 +31,6 @@ function parseTotalCards(raw: string | null): number | null {
 }
 
 const REF = 'limit-wall';
-
-const WALL_ORDER: WallOrder = 'unlimited-first';
 
 const PASS_PLAN: Record<PassKind, string> = {
   '24h': 'day_pass',
@@ -333,6 +331,7 @@ export function LimitPage() {
 
   const showAnonymous = !isLoggedIn;
   const passFirst = userLocals?.features?.limitWallPassFirst === true;
+  const passPrices = usePassPrices();
   const unlimitedPrice = useUnlimitedMonthlyPrice(
     isLoggedIn && userLocals?.features?.limitWallProPrice === true
   );
@@ -405,13 +404,13 @@ export function LimitPage() {
 
   return (
     <LimitWall
-      order={passFirst ? 'passes-first' : WALL_ORDER}
       featureSemester={passFirst}
       pendingPass={pendingPass}
       onPass={handlePassCheckout}
       passError={passError}
       unlimitedHref={unlimitedLink}
       unlimitedPrice={unlimitedPrice}
+      passPrices={passPrices}
       onUnlimitedClick={handleUnlimitedClick}
       notice={isLoggedIn ? <PastDueNotice surface={REF} /> : null}
     />

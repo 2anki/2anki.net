@@ -5,7 +5,7 @@
   "afterPayTotal": "支払い後にファイルをもう一度ドロップすると、{{total}} 枚すべてのカードを受け取れます。",
   "afterPayHeld": "支払い後、すべてのカードをダウンロードできます。再アップロードは不要です。",
   "afterPayHeldTotal": "支払い後、{{total}} 枚すべてのカードをダウンロードできます。再アップロードは不要です。",
-  "cta": "{{price}} の Day Pass を購入",
+  "cta": "Day Pass を購入 · {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "すべてのカードを今すぐ、アカウント不要。",
   "cardPrice": "24 時間で {{price}}。",

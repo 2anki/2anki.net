@@ -4,9 +4,10 @@
   "bodySaved_one": "Você usou os {{monthly}} cartões grátis deste mês. Mais {{count}} cartão fica salvo por 7 dias: pegue um passe e o baralho completo aparece em Meus baralhos, sem reenviar.",
   "bodySaved_other": "Você usou os {{monthly}} cartões grátis deste mês. Os outros {{count}} ficam salvos por 7 dias: pegue um passe e o baralho completo aparece em Meus baralhos, sem reenviar.",
   "bodyNotSaved": "Você usou os {{monthly}} cartões grátis deste mês. Pegue um passe e envie o arquivo de novo para ter todos os {{total}} cartões.",
-  "dayPass": "Day Pass · {{price}}",
-  "semesterPass": "Semester Pass · {{price}}",
-  "pro": "Assinar o Pro",
+  "dayPass": "Obter Day Pass · {{price}}",
+  "semesterPass": "Obter Semester Pass · {{price}}",
+  "pro": "Fazer upgrade para o Pro",
+  "proPrice": "Fazer upgrade para o Pro · {{price}}/mês",
   "checkoutError": "Não foi possível iniciar o pagamento. Tente de novo ou escreva para support@2anki.net.",
   "readyBody": "Seu baralho completo está pronto. Ele também está em Meus baralhos.",
   "expiredBody": "Baralhos retidos ficam salvos por 7 dias. Envie o arquivo de novo para criar o baralho completo."

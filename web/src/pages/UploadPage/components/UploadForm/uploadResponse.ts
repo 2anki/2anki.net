@@ -169,6 +169,12 @@ export async function applyConversionSuccess(
         cardsHeldBack: body.cardsHeldBack,
         totalCards: body.totalCards,
         dayPassCard: body.dayPassCard === true,
+        ...(typeof body.deckName === 'string' && body.deckName.length > 0
+          ? { deckName: body.deckName }
+          : {}),
+        ...(typeof body.savedForHours === 'number' && body.savedForHours > 0
+          ? { savedForHours: body.savedForHours }
+          : {}),
       });
       handlers.setProgressWidth(100);
       handlers.setZoneState('heldForSignup');

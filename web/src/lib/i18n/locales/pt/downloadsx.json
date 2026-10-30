@@ -67,8 +67,8 @@
     "plainTextFallback_other": "{{count}} imagens não estão neste baralho. Este arquivo não tinha estrutura de cartões, então o lemos como texto simples, e texto simples não pode conter imagens. Para mantê-las, coloque cada resposta sob a sua pergunta e envie a página e as imagens juntas em um único .zip."
   },
   "cardLimitPartial": {
-    "heldBack_one": "Seu baralho tem {{delivered}} das suas {{limit}} cartas mensais. Mais {{count}} carta está pronta — <pricingLink>faça upgrade para cartas ilimitadas</pricingLink>.",
-    "heldBack_other": "Seu baralho tem {{delivered}} das suas {{limit}} cartas mensais. Mais {{count}} cartas estão prontas — <pricingLink>faça upgrade para cartas ilimitadas</pricingLink>."
+    "heldBack_one": "Seu baralho tem {{delivered}} das suas {{limit}} cartas mensais. Mais {{count}} carta está pronta — <pricingLink>ver passes e Pro</pricingLink>.",
+    "heldBack_other": "Seu baralho tem {{delivered}} das suas {{limit}} cartas mensais. Mais {{count}} cartas estão prontas — <pricingLink>ver passes e Pro</pricingLink>."
   },
   "truncation": {
     "converted": "Os primeiros {{count}} blocos foram convertidos. O plano gratuito para por aí — <pricingLink>faça upgrade para converter a página inteira</pricingLink>.",

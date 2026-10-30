@@ -4,9 +4,10 @@
   "bodySaved_one": "Du hast die {{monthly}} kostenlosen Karten dieses Monats aufgebraucht. {{count}} weitere Karte bleibt 7 Tage gespeichert: Hol dir einen Pass, und der ganze Stapel landet in Meine Stapel, ohne erneuten Upload.",
   "bodySaved_other": "Du hast die {{monthly}} kostenlosen Karten dieses Monats aufgebraucht. Die übrigen {{count}} bleiben 7 Tage gespeichert: Hol dir einen Pass, und der ganze Stapel landet in Meine Stapel, ohne erneuten Upload.",
   "bodyNotSaved": "Du hast die {{monthly}} kostenlosen Karten dieses Monats aufgebraucht. Hol dir einen Pass und lade die Datei erneut hoch, um alle {{total}} Karten zu bekommen.",
-  "dayPass": "Day Pass · {{price}}",
-  "semesterPass": "Semester Pass · {{price}}",
-  "pro": "Pro holen",
+  "dayPass": "Day Pass holen · {{price}}",
+  "semesterPass": "Semester Pass holen · {{price}}",
+  "pro": "Auf Pro upgraden",
+  "proPrice": "Auf Pro upgraden · {{price}}/Monat",
   "checkoutError": "Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.",
   "readyBody": "Dein kompletter Stapel ist fertig. Er liegt auch in Meine Stapel.",
   "expiredBody": "Zurückgehaltene Stapel bleiben 7 Tage gespeichert. Lade die Datei erneut hoch, um den ganzen Stapel zu erstellen."

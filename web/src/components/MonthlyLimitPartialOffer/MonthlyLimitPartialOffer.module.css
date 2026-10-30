@@ -48,6 +48,15 @@
   transition: background var(--transition-fast);
 }
 
+.badge {
+  margin-left: 0.25rem;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
 .primary {
   color: var(--color-bg-primary);
   background: var(--color-primary);

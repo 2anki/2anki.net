@@ -69,7 +69,7 @@ describe('PricingPage in German', () => {
   it('translates the Day Pass action while keeping the plan name', () => {
     renderPricing();
     expect(
-      screen.getByRole('button', { name: 'Day Pass holen' })
+      screen.getByRole('button', { name: /^Day Pass holen · / })
     ).toBeInTheDocument();
   });
 

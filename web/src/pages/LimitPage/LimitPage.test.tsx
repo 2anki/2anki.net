@@ -23,6 +23,14 @@ vi.mock('../../lib/backend/get2ankiApi', () => ({
   })),
 }));
 
+const mockGetPassPricing = vi.fn<
+  () => Promise<{ passes: Record<string, { display: string }> }>
+>(() => Promise.resolve({ passes: {} }));
+
+vi.mock('../../lib/backend/getPassPricing', () => ({
+  getPassPricing: () => mockGetPassPricing(),
+}));
+
 vi.mock('../../lib/hooks/useUserLocals', () => ({
   useUserLocals: vi.fn(),
 }));
@@ -98,12 +106,39 @@ describe('LimitPage', () => {
 
   it('shows the monthly limit message', () => {
     renderPage();
-    expect(screen.getByText('You reached 100 cards this month')).toBeTruthy();
+    expect(screen.getByText("You've reached your monthly limit")).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Your monthly limit: 100 cards. Get a pass to keep converting now.'
+      )
+    ).toBeTruthy();
   });
 
-  it('shows the Pro plan title', () => {
+  it('sells Pro in one line', () => {
     renderPage();
-    expect(screen.getByText('Pro')).toBeTruthy();
+    expect(
+      screen.getByText('Converting every month? Pro has no card limit.')
+    ).toBeTruthy();
+  });
+
+  it('prices the pass buttons from the live pass pricing', async () => {
+    mockGetPassPricing.mockResolvedValueOnce({
+      passes: {
+        '24h': { display: '€5' },
+        '7d': { display: '€11' },
+        '120d': { display: '€27' },
+      },
+    });
+    renderPage();
+    expect(
+      await screen.findByRole('button', { name: 'Get Day Pass · €5' })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get Week Pass · €11' })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get Semester Pass · €27' })
+    ).toBeTruthy();
   });
 
   it('does not advertise the Auto Sync plan', () => {
@@ -123,14 +158,14 @@ describe('LimitPage', () => {
     });
     renderPage();
     expect(
-      await screen.findByText('$7.99 per month, billed monthly')
+      await screen.findByText('Converting every month? Pro is $7.99/month.')
     ).toBeTruthy();
   });
 
   it('never asks for the Pro price when the flag is off', () => {
     renderPage();
     expect(mockGetCheckoutPrices).not.toHaveBeenCalled();
-    expect(screen.queryByText(/per month, billed monthly/)).toBeNull();
+    expect(screen.queryByText(/Pro is .*\/month/)).toBeNull();
   });
 
   it('leaves the Pro card without a price when the price cannot be read', async () => {
@@ -138,13 +173,13 @@ describe('LimitPage', () => {
     mockGetCheckoutPrices.mockResolvedValue(null);
     renderPage();
     await screen.findByText('Upgrade to Pro');
-    expect(screen.queryByText(/per month, billed monthly/)).toBeNull();
+    expect(screen.queryByText(/Pro is .*\/month/)).toBeNull();
   });
 
   it('does not show a hardcoded Pro monthly price', () => {
     renderPage();
-    const unlimitedCard = screen.getByText('Upgrade to Pro').closest('div');
-    if (unlimitedCard == null) throw new Error('Pro card not found');
+    const unlimitedCard = screen.getByText('Upgrade to Pro').closest('p');
+    if (unlimitedCard == null) throw new Error('Pro line not found');
     expect(within(unlimitedCard).queryByText(/\$\d/)).toBeNull();
     expect(screen.getByText('Upgrade to Pro')).toBeInTheDocument();
   });
@@ -166,8 +201,12 @@ describe('LimitPage', () => {
 
   it('features the Day Pass as the primary unblock', () => {
     renderPage();
-    expect(screen.getByRole('button', { name: 'Get Day Pass' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Get Week Pass' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get Day Pass · $6' })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get Week Pass · $12' })
+    ).toBeTruthy();
     expect(screen.getByText('Most popular')).toBeTruthy();
   });
 
@@ -180,7 +219,7 @@ describe('LimitPage', () => {
       value: { href: '' },
     });
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass · $6' }));
     await vi.waitFor(() => {
       expect(mockStartPassCheckout).toHaveBeenCalledWith(
         '24h',
@@ -198,20 +237,20 @@ describe('LimitPage', () => {
       expiresAt: '2026-10-08T12:00:00.000Z',
     });
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass · $6' }));
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('Your pass runs until');
     expect(alert.textContent).toContain('2026');
     expect(alert.textContent).toContain('Buy the next one when it runs out');
   });
 
-  it('leads with the Pro plan and lists the passes after it', () => {
+  it('leads with the passes and puts Pro after them', () => {
     renderPage();
-    const unlimitedLabel = screen.getByText('Skip the monthly card cap');
     const passesLabel = screen.getByText('Pay once — no subscription');
+    const proLine = screen.getByText(/Converting every month\?/);
     expect(
       Boolean(
-        unlimitedLabel.compareDocumentPosition(passesLabel) &
+        passesLabel.compareDocumentPosition(proLine) &
         Node.DOCUMENT_POSITION_FOLLOWING
       )
     ).toBe(true);
@@ -220,7 +259,7 @@ describe('LimitPage', () => {
   it('offers the Semester Pass next to the Day and Week Pass', () => {
     renderPage();
     expect(
-      screen.getByRole('button', { name: 'Get Semester Pass' })
+      screen.getByRole('button', { name: 'Get Semester Pass · $29' })
     ).toBeTruthy();
     expect(screen.getByText('Best value')).toBeTruthy();
   });
@@ -234,7 +273,9 @@ describe('LimitPage', () => {
       value: { href: '' },
     });
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Get Semester Pass' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Semester Pass · $29' })
+    );
     expect(mockTrack).toHaveBeenCalledWith('paywall_upgrade_clicked', {
       surface: 'limit-wall',
       plan: 'semester_pass',
@@ -258,8 +299,10 @@ describe('LimitPage', () => {
   it('shows the logged-in upgrade view even when the URL says kind=anonymous', () => {
     asLoggedIn();
     renderPage(['/limit?kind=anonymous']);
-    expect(screen.getByText('You reached 100 cards this month')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Get Day Pass' })).toBeTruthy();
+    expect(screen.getByText("You've reached your monthly limit")).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Get Day Pass · $6' })
+    ).toBeTruthy();
     expect(screen.queryByText('Get Auto Sync')).toBeNull();
     expect(screen.queryByText('Sign up free')).toBeNull();
     expect(screen.queryByText('Create a free account')).toBeNull();
@@ -285,7 +328,7 @@ describe('LimitPage — anonymous variant', () => {
     expect(
       screen.getByText('You hit the limit for converting without an account')
     ).toBeTruthy();
-    expect(screen.queryByText('You reached 100 cards this month')).toBeNull();
+    expect(screen.queryByText("You've reached your monthly limit")).toBeNull();
   });
 
   it('shows the no-account heading', () => {
@@ -381,7 +424,7 @@ describe('LimitPage — anonymous variant', () => {
   it('offers a Day Pass with no account while sign-up stays the primary action', () => {
     renderPage();
     expect(
-      screen.getByRole('button', { name: /Get a Day Pass for/ })
+      screen.getByRole('button', { name: /Get Day Pass · / })
     ).toBeTruthy();
     expect(
       screen.getByRole('link', { name: 'Create a free account' }).className
@@ -390,7 +433,7 @@ describe('LimitPage — anonymous variant', () => {
 
   it('does not show the monthly-limit upgrade UI for anonymous users', () => {
     renderPage();
-    expect(screen.queryByText('You reached 100 cards this month')).toBeNull();
+    expect(screen.queryByText("You've reached your monthly limit")).toBeNull();
     expect(screen.queryByText('Get Auto Sync')).toBeNull();
   });
 });
@@ -645,10 +688,10 @@ describe('LimitPage — pass-first wall', () => {
     });
     renderPage();
     expect(
-      await screen.findByText('$7.99 per month, billed monthly')
+      await screen.findByText('Converting every month? Pro is $7.99/month.')
     ).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: 'Get Semester Pass' })
+      screen.getByRole('button', { name: 'Get Semester Pass · $29' })
     ).toBeTruthy();
   });
 
@@ -664,14 +707,14 @@ describe('LimitPage — pass-first wall', () => {
     expect(screen.queryByText('Free account')).toBeNull();
   });
 
-  it('puts the passes before Pro and features the Semester Pass for a signed-in account', () => {
+  it('puts the passes before Pro and keeps the Day Pass Most popular for a signed-in account', () => {
     asLoggedInPassFirst();
     renderPage();
     const passesLabel = screen.getByText('Pay once — no subscription');
-    const unlimitedLabel = screen.getByText('Skip the monthly card cap');
-    expect(follows(passesLabel, unlimitedLabel)).toBe(true);
-    expect(screen.getByText('Most popular')).toBeTruthy();
-    expect(screen.queryByText('Best value')).toBeNull();
+    const proLine = screen.getByText(/Converting every month\?/);
+    expect(follows(passesLabel, proLine)).toBe(true);
+    expect(screen.getAllByText('Most popular')).toHaveLength(1);
+    expect(screen.getAllByText('Best value')).toHaveLength(1);
   });
 });
 

@@ -5,7 +5,7 @@
   "afterPayTotal": "Depois de pagar, envie o arquivo de novo para receber os {{total}} cartões.",
   "afterPayHeld": "Depois de pagar, todos os cartões ficam prontos para baixar, sem reenviar o arquivo.",
   "afterPayHeldTotal": "Depois de pagar, os {{total}} cartões ficam prontos para baixar, sem reenviar o arquivo.",
-  "cta": "Obter um Day Pass por {{price}}",
+  "cta": "Obter Day Pass · {{price}}",
   "cardTitle": "Day Pass",
   "cardLine": "Todos os seus cartões agora, sem conta.",
   "cardPrice": "{{price}} por 24 horas.",

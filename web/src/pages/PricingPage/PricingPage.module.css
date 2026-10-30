@@ -321,6 +321,16 @@
   min-height: 6.5rem;
 }
 
+.passGrid > .card {
+  container-type: inline-size;
+}
+
+@container (max-width: 300px) {
+  .cardHeader {
+    padding-top: 3.5rem;
+  }
+}
+
 .cardTitle {
   font-family: var(--font-sans);
   font-size: var(--text-xs);
@@ -475,6 +485,7 @@
    FOOTER
    ===================================================================== */
 .cardFooter {
+  margin-top: auto;
   padding: 1rem 2rem 2rem;
   display: flex;
   flex-direction: column;

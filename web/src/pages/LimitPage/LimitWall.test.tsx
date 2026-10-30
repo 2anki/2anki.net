@@ -1,20 +1,30 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
-import { LimitWall, type WallOrder } from './LimitWall';
+import { LimitWall } from './LimitWall';
+import type { PassKind } from './LimitWall';
 
-function renderWall(order: WallOrder, passError: string | null = null) {
+interface WallOverrides {
+  passError?: string | null;
+  pendingPass?: PassKind | null;
+  unlimitedPrice?: string;
+  notice?: React.ReactNode;
+  onUnlimitedClick?: () => void;
+}
+
+function renderWall(overrides: WallOverrides = {}) {
   return render(
     <HelmetProvider>
       <MemoryRouter>
         <LimitWall
-          order={order}
-          pendingPass={null}
+          pendingPass={overrides.pendingPass ?? null}
           onPass={vi.fn()}
-          passError={passError}
+          passError={overrides.passError ?? null}
           unlimitedHref="/pricing?source=limit-wall"
-          onUnlimitedClick={vi.fn()}
+          unlimitedPrice={overrides.unlimitedPrice}
+          onUnlimitedClick={overrides.onUnlimitedClick ?? vi.fn()}
+          notice={overrides.notice}
         />
       </MemoryRouter>
     </HelmetProvider>
@@ -28,31 +38,84 @@ function appearsBefore(first: HTMLElement, second: HTMLElement) {
 }
 
 describe('LimitWall', () => {
-  it('shows the passes before Pro when passes lead', () => {
-    renderWall('passes-first');
-    const passesLabel = screen.getByText('Pay once — no subscription');
-    const unlimitedLabel = screen.getByText('Skip the monthly card cap');
-    expect(appearsBefore(passesLabel, unlimitedLabel)).toBe(true);
+  it('heads the wall with the monthly limit in its protected wording', () => {
+    renderWall();
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: "You've reached your monthly limit",
+      })
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Your monthly limit: 100 cards. Get a pass to keep converting now.'
+      )
+    ).toBeTruthy();
   });
 
-  it('shows Pro before the passes when Pro leads', () => {
-    renderWall('unlimited-first');
+  it('leads with the passes and puts Pro after them', () => {
+    renderWall();
     const passesLabel = screen.getByText('Pay once — no subscription');
-    const unlimitedLabel = screen.getByText('Skip the monthly card cap');
-    expect(appearsBefore(unlimitedLabel, passesLabel)).toBe(true);
+    const proLine = screen.getByText(/Converting every month\?/);
+    expect(appearsBefore(passesLabel, proLine)).toBe(true);
+    expect(
+      appearsBefore(
+        screen.getByRole('button', { name: /^Get Semester Pass/ }),
+        proLine
+      )
+    ).toBe(true);
+  });
+
+  it('lists what every pass includes once, not on each card', () => {
+    renderWall();
+    const shared = screen.getByRole('list', { name: 'Every pass includes' });
+    expect(
+      within(shared).getByText('Unlimited cards and conversions')
+    ).toBeTruthy();
+    expect(
+      within(shared).getByText('Image occlusion with up to 20 images at a time')
+    ).toBeTruthy();
+    expect(screen.getAllByText('Unlimited cards and conversions')).toHaveLength(
+      1
+    );
+    expect(screen.queryByText('No subscription')).toBeNull();
+  });
+
+  it('sells Pro in one line with its monthly price', () => {
+    renderWall({ unlimitedPrice: '$4.50' });
+    expect(
+      screen.getByText('Converting every month? Pro is $4.50/month.')
+    ).toBeTruthy();
+    const upgrade = screen.getByRole('link', { name: 'Upgrade to Pro' });
+    expect(upgrade.getAttribute('href')).toBe('/pricing?source=limit-wall');
+  });
+
+  it('sells Pro in one line without a price when none is given', () => {
+    renderWall();
+    expect(
+      screen.getByText('Converting every month? Pro has no card limit.')
+    ).toBeTruthy();
+    expect(screen.queryByText(/\/month/)).toBeNull();
+  });
+
+  it('reports the Pro click', () => {
+    const onUnlimitedClick = vi.fn();
+    renderWall({ onUnlimitedClick });
+    fireEvent.click(screen.getByRole('link', { name: 'Upgrade to Pro' }));
+    expect(onUnlimitedClick).toHaveBeenCalledOnce();
   });
 
   it('announces a checkout error to assistive tech', () => {
-    renderWall('passes-first', 'Checkout is unavailable right now');
+    renderWall({ passError: 'Checkout is unavailable right now' });
     expect(screen.getByRole('alert').textContent).toBe(
       'Checkout is unavailable right now'
     );
   });
 
   it('shows a checkout error above the passes so it stays near the buttons', () => {
-    renderWall('passes-first', 'Checkout is unavailable right now');
+    renderWall({ passError: 'Checkout is unavailable right now' });
     const alert = screen.getByRole('alert');
-    const dayPass = screen.getByRole('button', { name: 'Get Day Pass' });
+    const dayPass = screen.getByRole('button', { name: 'Get Day Pass · $6' });
     expect(appearsBefore(alert, dayPass)).toBe(true);
   });
 
@@ -60,77 +123,25 @@ describe('LimitWall', () => {
     const scrollIntoView = vi.fn();
     const original = HTMLElement.prototype.scrollIntoView;
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
-    renderWall('unlimited-first', 'Checkout is unavailable right now');
+    renderWall({ passError: 'Checkout is unavailable right now' });
     HTMLElement.prototype.scrollIntoView = original;
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
   });
 
   it('disables only the pass that is redirecting', () => {
-    render(
-      <HelmetProvider>
-        <MemoryRouter>
-          <LimitWall
-            order="passes-first"
-            pendingPass="120d"
-            onPass={vi.fn()}
-            passError={null}
-            unlimitedHref="/pricing?source=limit-wall"
-            onUnlimitedClick={vi.fn()}
-          />
-        </MemoryRouter>
-      </HelmetProvider>
-    );
+    renderWall({ pendingPass: '120d' });
     expect(
       screen.getByRole('button', { name: 'Starting checkout' })
     ).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: 'Get Day Pass' })).toHaveProperty(
-      'disabled',
-      false
-    );
-  });
-
-  it('shows the Pro price and interval when one is given', () => {
-    render(
-      <HelmetProvider>
-        <MemoryRouter>
-          <LimitWall
-            order="passes-first"
-            pendingPass={null}
-            onPass={vi.fn()}
-            passError={null}
-            unlimitedHref="/pricing?source=limit-wall"
-            unlimitedPrice="$4.50"
-            onUnlimitedClick={vi.fn()}
-          />
-        </MemoryRouter>
-      </HelmetProvider>
-    );
-    expect(screen.getByText('$4.50 per month, billed monthly')).toBeTruthy();
-  });
-
-  it('shows no price line for Pro without one', () => {
-    renderWall('passes-first');
-    expect(screen.queryByText(/per month, billed monthly/)).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Get Day Pass · $6' })
+    ).toHaveProperty('disabled', false);
   });
 
   it('puts a notice above every offer when one is given', () => {
-    render(
-      <HelmetProvider>
-        <MemoryRouter>
-          <LimitWall
-            order="unlimited-first"
-            pendingPass={null}
-            onPass={vi.fn()}
-            passError={null}
-            unlimitedHref="/pricing?source=limit-wall"
-            onUnlimitedClick={vi.fn()}
-            notice={<p>Your payment didn't go through</p>}
-          />
-        </MemoryRouter>
-      </HelmetProvider>
-    );
+    renderWall({ notice: <p>Your payment didn't go through</p> });
     const notice = screen.getByText("Your payment didn't go through");
-    const firstOffer = screen.getByText('Skip the monthly card cap');
+    const firstOffer = screen.getByText('Pay once — no subscription');
     expect(appearsBefore(notice, firstOffer)).toBe(true);
   });
 });
