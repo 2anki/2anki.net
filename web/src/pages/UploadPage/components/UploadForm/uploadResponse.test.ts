@@ -23,6 +23,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setExpiredNotionImageCount: vi.fn(),
     setColoredTextPageCount: vi.fn(),
     setEmptyBackCount: vi.fn(),
+    setEmptyBackSource: vi.fn(),
     setCherrySkippedCount: vi.fn(),
     setCardsHeldBack: vi.fn(),
     setHeldForPlan: vi.fn(),
@@ -410,6 +411,31 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(singleDeckResponse(), handlers);
 
     expect(handlers.setCherrySkippedCount).toHaveBeenCalledWith(0);
+  });
+
+  it('uses the Notion wording for empty backs the server marks as Notion toggles', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({
+        'X-Empty-Back-Count': '2',
+        'X-Empty-Back-Source': 'notion',
+      }),
+      handlers
+    );
+
+    expect(handlers.setEmptyBackSource).toHaveBeenCalledWith('notion');
+  });
+
+  it('uses the upload wording for empty backs without a Notion source', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-Empty-Back-Count': '2' }),
+      handlers
+    );
+
+    expect(handlers.setEmptyBackSource).toHaveBeenCalledWith('upload');
   });
 
   it('reads emptyBackCount from the batch JSON body', async () => {

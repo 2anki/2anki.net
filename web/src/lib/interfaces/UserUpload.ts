@@ -9,6 +9,7 @@ interface UserUpload {
   source: string | null;
   dropped_image_count: number | null;
   image_drop_reason: string | null;
+  empty_back_count: number | null;
 }
 
 export default UserUpload;

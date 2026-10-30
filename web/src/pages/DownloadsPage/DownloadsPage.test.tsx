@@ -89,6 +89,7 @@ let mockUploads: {
   source?: string | null;
   dropped_image_count?: number | null;
   image_drop_reason?: string | null;
+  empty_back_count?: number | null;
 }[] = [];
 let mockDropboxUploads: {
   id: number;
@@ -1744,6 +1745,24 @@ describe('DownloadsPage missing-images notice on upload rows', () => {
         /The file you uploaded is the HTML page from a Notion export/
       )
     ).toBeInTheDocument();
+  });
+
+  it('says how many cards an upload skipped for having no answer, after a reload', () => {
+    mockUploads = [uploadRow({ empty_back_count: 3 })];
+    renderAt('/downloads');
+
+    expect(
+      screen.getByText(
+        /3 cards had no answer and were skipped, so they aren't in this deck/
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('shows no empty-back notice for an upload that skipped nothing', () => {
+    mockUploads = [uploadRow({ empty_back_count: null })];
+    renderAt('/downloads');
+
+    expect(screen.queryByText(/had no answer and/)).not.toBeInTheDocument();
   });
 
   it('shows nothing extra for an upload with no dropped images', () => {

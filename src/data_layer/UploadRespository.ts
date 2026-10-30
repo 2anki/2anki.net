@@ -32,6 +32,7 @@ export interface ConvertedDeckInsert {
 export interface UploadConversionMeta {
   droppedImageCount?: number;
   imageDropReason?: string | null;
+  emptyBackCount?: number;
 }
 
 export interface IUploadRepository {
@@ -162,6 +163,7 @@ class UploadRepository implements IUploadRepository {
       source,
       dropped_image_count: conversionMeta?.droppedImageCount ?? null,
       image_drop_reason: conversionMeta?.imageDropReason ?? null,
+      empty_back_count: conversionMeta?.emptyBackCount ?? null,
     });
   }
 

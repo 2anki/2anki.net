@@ -299,6 +299,7 @@
       "readingNextAnswers": "Metti la domanda nel titolo del toggle e la risposta dentro, poi converti di nuovo.",
       "readingRescueVerdict": "Niente di tutto questo ha prodotto carte da solo.",
       "readingNoPairs": "Niente si è lasciato abbinare come domanda con la sua risposta.",
+      "readingEmptyAnswers": "I suoi toggle non hanno nessuna risposta dentro.",
       "readingTogglesNoPairs_one": "Il toggle non conteneva una domanda con la risposta dentro.",
       "readingTogglesNoPairs_other": "Nessun toggle conteneva una domanda con la risposta dentro.",
       "readingToggles_one": "{{n}} blocco toggle",

@@ -3,7 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { IUploadRepository } from '../data_layer/UploadRespository';
+import {
+  IUploadRepository,
+  UploadConversionMeta,
+} from '../data_layer/UploadRespository';
 import {
   ExpiredHeldDeck,
   IHeldDeckRepository,
@@ -1176,8 +1179,10 @@ class UploadService {
     apkg: Buffer,
     source: UploadSource | null,
     requestId: string | undefined,
-    droppedImageCount = 0,
-    imageDropReason: string | null = null
+    conversionMeta: UploadConversionMeta = {
+      droppedImageCount: 0,
+      imageDropReason: null,
+    }
   ): Promise<string | null> {
     try {
       const storage = new StorageHandler();
@@ -1194,7 +1199,7 @@ class UploadService {
         key,
         BytesToMegaBytes(apkg.byteLength),
         source,
-        { droppedImageCount, imageDropReason }
+        conversionMeta
       );
       return key;
     } catch (error) {
@@ -2058,8 +2063,13 @@ class UploadService {
               apkg,
               this.resolvePersistedSource(req),
               res.locals.requestId,
-              totalDroppedImageCount,
-              imageDropReason
+              {
+                droppedImageCount: totalDroppedImageCount,
+                imageDropReason,
+                ...(totalEmptyBackCount > 0
+                  ? { emptyBackCount: totalEmptyBackCount }
+                  : {}),
+              }
             );
       if (owner == null) {
         await this.storeAnonymousRecoveryCopy(req, apkg);
@@ -2108,6 +2118,17 @@ class UploadService {
       if (totalEmptyBackCount > 0) {
         res.set('X-Empty-Back-Count', totalEmptyBackCount.toString());
         exposedHeaders.push('X-Empty-Back-Count');
+      }
+      const totalNotionEmptyBackCount = packages.reduce(
+        (sum, p) => sum + (p.notionEmptyBackCount ?? 0),
+        0
+      );
+      if (
+        totalEmptyBackCount > 0 &&
+        totalNotionEmptyBackCount === totalEmptyBackCount
+      ) {
+        res.set('X-Empty-Back-Source', 'notion');
+        exposedHeaders.push('X-Empty-Back-Source');
       }
       const totalCherrySkippedCount = packages.reduce(
         (sum, p) => sum + (p.cherrySkippedCount ?? 0),

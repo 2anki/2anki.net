@@ -340,6 +340,7 @@ async function processFile(
       singleFilePackage.pdfFallbackMode = d.pdfFallbackMode;
       singleFilePackage.coloredTextPageCount = d.coloredTextPageCount ?? 0;
       singleFilePackage.cherrySkippedCount = d.cherrySkippedCount ?? 0;
+      singleFilePackage.notionEmptyBackCount = d.notionEmptyBackCount ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
       emptyReason = d.emptyReason;

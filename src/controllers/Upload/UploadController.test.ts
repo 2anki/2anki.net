@@ -602,4 +602,36 @@ describe('UploadController.getUploads', () => {
     const [payload] = jsonSpy.mock.calls[0] as [Record<string, unknown>[]];
     expect(payload[0]).not.toHaveProperty('dedupe_key');
   });
+
+  it('carries the count of cards skipped for having no answer', async () => {
+    const row = {
+      id: 8,
+      owner: 42,
+      key: 'owner-42-blank.apkg',
+      filename: 'blank.apkg',
+      object_id: null,
+      size_mb: 1,
+      created_at: new Date('2026-10-30T00:00:00Z'),
+      source: 'web',
+      dropped_image_count: null,
+      image_drop_reason: null,
+      empty_back_count: 5,
+    } as unknown as Uploads;
+    const controller = new UploadController(
+      buildService([row]),
+      {} as unknown as NotionService
+    );
+    const jsonSpy = vi.fn();
+    const res = {
+      locals: { owner: 42 },
+      json: jsonSpy,
+      status: vi.fn(),
+    } as unknown as express.Response;
+
+    await controller.getUploads({} as express.Request, res);
+
+    expect(jsonSpy).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 8, empty_back_count: 5 }),
+    ]);
+  });
 });

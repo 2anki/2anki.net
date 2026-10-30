@@ -878,6 +878,40 @@ describe('UploadForm', () => {
     }
   });
 
+  test('tells a Notion export to add answers in Notion when its toggles were skipped for having none', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '4',
+          'X-Empty-Back-Count': '2',
+          'X-Empty-Back-Source': 'notion',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(
+      await screen.findByText(
+        /2 toggles had no answer inside and were skipped.*Add an answer to each in Notion/
+      )
+    ).toBeInTheDocument();
+  });
+
   test('says how many toggles Cherry-pick left out and links to card options', async () => {
     vi.stubGlobal(
       'fetch',

@@ -13,7 +13,7 @@ describe('UploadRepository.update generated SQL', () => {
     ).toString();
 
     expect(sql).toBe(
-      'insert into "uploads" ("dropped_image_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (NULL, \'deck.apkg\', NULL, \'key/deck.apkg\', 7, 1.5, \'app\')'
+      'insert into "uploads" ("dropped_image_count", "empty_back_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (NULL, NULL, \'deck.apkg\', NULL, \'key/deck.apkg\', 7, 1.5, \'app\')'
     );
   });
 
@@ -28,7 +28,7 @@ describe('UploadRepository.update generated SQL', () => {
     ).toString();
 
     expect(sql).toBe(
-      'insert into "uploads" ("dropped_image_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (NULL, \'deck.apkg\', NULL, \'key/deck.apkg\', 7, 1.5, NULL)'
+      'insert into "uploads" ("dropped_image_count", "empty_back_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (NULL, NULL, \'deck.apkg\', NULL, \'key/deck.apkg\', 7, 1.5, NULL)'
     );
   });
 
@@ -46,7 +46,24 @@ describe('UploadRepository.update generated SQL', () => {
     ).toString();
 
     expect(sql).toBe(
-      'insert into "uploads" ("dropped_image_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (2, \'deck.apkg\', \'notion_html_no_folder\', \'key/deck.apkg\', 7, 1.5, NULL)'
+      'insert into "uploads" ("dropped_image_count", "empty_back_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (2, NULL, \'deck.apkg\', \'notion_html_no_folder\', \'key/deck.apkg\', 7, 1.5, NULL)'
+    );
+  });
+
+  it('persists the count of cards skipped for having no answer', () => {
+    const pg = knex({ client: 'pg' });
+    const repo = new UploadRepository(pg);
+
+    const sql = (
+      repo.update(7, 'deck.apkg', 'key/deck.apkg', 1.5, 'web', {
+        emptyBackCount: 4,
+      }) as unknown as {
+        toString(): string;
+      }
+    ).toString();
+
+    expect(sql).toBe(
+      'insert into "uploads" ("dropped_image_count", "empty_back_count", "filename", "image_drop_reason", "key", "owner", "size_mb", "source") values (NULL, 4, \'deck.apkg\', NULL, \'key/deck.apkg\', 7, 1.5, \'web\')'
     );
   });
 });

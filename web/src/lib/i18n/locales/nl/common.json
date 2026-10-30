@@ -299,6 +299,7 @@
       "readingNextAnswers": "Zet de vraag in de titel van de toggle en het antwoord erin, en converteer opnieuw.",
       "readingRescueVerdict": "Vanzelf kwamen er geen kaarten uit.",
       "readingNoPairs": "Niets erin liet zich koppelen tot een vraag met een antwoord.",
+      "readingEmptyAnswers": "De toggles erin bevatten geen antwoord.",
       "readingTogglesNoPairs_one": "De toggle bevatte geen vraag met een antwoord erin.",
       "readingTogglesNoPairs_other": "Geen van de toggles bevatte een vraag met een antwoord erin.",
       "readingToggles_one": "{{n}} toggle",

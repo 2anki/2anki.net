@@ -12,6 +12,7 @@ export type DeckRow =
       upload: UserUpload;
       droppedImageCount: number;
       imageDropReason: string | null;
+      emptyBackCount: number;
       sortKey: Date;
     }
   | { source: 'dropbox'; kind: 'dropbox'; upload: DropboxUpload; sortKey: Date }
@@ -86,6 +87,7 @@ export function toDeckRows(
       upload,
       droppedImageCount: upload.dropped_image_count ?? 0,
       imageDropReason: upload.image_drop_reason ?? null,
+      emptyBackCount: upload.empty_back_count ?? 0,
       sortKey: toSortKey(upload.created_at),
     });
   }

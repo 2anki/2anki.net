@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { track } from '../../../lib/analytics/track';
 
+export type EmptyBackSource = 'upload' | 'notion';
+
 interface EmptyBackNoticeProps {
   count: number;
   multipleDecks?: boolean;
-  source?: 'upload' | 'notion';
+  source?: EmptyBackSource;
 }
 
 export function EmptyBackNotice({

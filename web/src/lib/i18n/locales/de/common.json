@@ -299,6 +299,7 @@
       "readingNextAnswers": "Schreibe die Frage in den Toggle-Titel und die Antwort in den Toggle, und konvertiere dann erneut.",
       "readingRescueVerdict": "Von selbst sind daraus keine Karten entstanden.",
       "readingNoPairs": "Nichts darin ließ sich zu einer Frage mit einer Antwort zusammenfügen.",
+      "readingEmptyAnswers": "Die Toggles darin enthalten keine Antwort.",
       "readingTogglesNoPairs_one": "Der Toggle enthielt keine Frage mit einer Antwort darin.",
       "readingTogglesNoPairs_other": "Keiner der Toggles enthielt eine Frage mit einer Antwort darin.",
       "readingToggles_one": "{{n}} Toggle",

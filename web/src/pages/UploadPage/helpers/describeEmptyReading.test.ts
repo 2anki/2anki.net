@@ -133,6 +133,29 @@ describe('describeEmptyReading', () => {
     });
   });
 
+  it('says a zip whose toggles all lacked answers needs answers, not toggles', () => {
+    expect(
+      describeEmptyReading(
+        zip({ files: 4, readable: 3, imageFiles: 1 }),
+        t,
+        'en',
+        'empty_answers'
+      )
+    ).toEqual({
+      text: 'This zip holds 3 readable files and 1 image file. Its toggles have no answer inside them.',
+      next: 'readingNextAnswers',
+    });
+  });
+
+  it('says the toggles need answers when the reading counted none but the parser found answerless toggles', () => {
+    expect(
+      describeEmptyReading(document({ words: 40 }), t, 'en', 'empty_answers')
+    ).toEqual({
+      text: 'We read 40 words. Its toggles have no answer inside them.',
+      next: 'readingNextAnswers',
+    });
+  });
+
   it('treats a wrapper zip holding another zip as read, not unreadable', () => {
     expect(
       describeEmptyReading(zip({ files: 1, archives: 1 }), t, 'en')

@@ -348,10 +348,7 @@ function FailedVariant({
     let teaching = t('conversionResult.emptyDeckTeachingUpload');
     if (failureReason.includes(EMPTY_DECK_NO_CONTENT_MARKER)) {
       teaching = t('conversionResult.emptyDeckNoContent');
-    } else if (
-      fromNotion &&
-      failureReason.includes(EMPTY_DECK_EMPTY_ANSWERS_MARKER)
-    ) {
+    } else if (failureReason.includes(EMPTY_DECK_EMPTY_ANSWERS_MARKER)) {
       teaching = t('conversionResult.emptyDeckEmptyAnswers');
     } else if (fromNotion) {
       teaching = t('conversionResult.emptyDeckTeaching');

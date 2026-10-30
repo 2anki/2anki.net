@@ -3,6 +3,7 @@ import {
   type PdfFallbackMode,
 } from '../../../../lib/upload/pdfFallback';
 import getHeadersFilename from '../../helpers/getHeadersFilename';
+import type { EmptyBackSource } from '../../../DownloadsPage/components/EmptyBackNotice';
 import {
   STRUCTURE_RESCUE_RULES,
   type StructureRescueRule,
@@ -61,6 +62,7 @@ export interface ConversionSuccessHandlers {
   setExpiredNotionImageCount: (value: number) => void;
   setColoredTextPageCount: (value: number) => void;
   setEmptyBackCount: (value: number) => void;
+  setEmptyBackSource: (value: EmptyBackSource) => void;
   setCherrySkippedCount: (value: number) => void;
   setCardsHeldBack: (value: number) => void;
   setHeldForPlan: (value: boolean) => void;
@@ -213,6 +215,11 @@ export async function applyConversionSuccess(
   );
   handlers.setEmptyBackCount(
     parseNonNegativeIntHeader(response.headers, 'X-Empty-Back-Count')
+  );
+  handlers.setEmptyBackSource(
+    response.headers.get('X-Empty-Back-Source') === 'notion'
+      ? 'notion'
+      : 'upload'
   );
   handlers.setCherrySkippedCount(
     parseNonNegativeIntHeader(response.headers, 'X-Cherry-Skipped-Count')

@@ -299,6 +299,7 @@
       "readingNextAnswers": "Coloque a pergunta no título do toggle e a resposta dentro dele e converta de novo.",
       "readingRescueVerdict": "Nada disso virou cartão por conta própria.",
       "readingNoPairs": "Nada nele formou uma pergunta com a sua resposta.",
+      "readingEmptyAnswers": "Os toggles dele não têm nenhuma resposta dentro.",
       "readingTogglesNoPairs_one": "O toggle não tinha uma pergunta com a resposta dentro.",
       "readingTogglesNoPairs_other": "Nenhum toggle tinha uma pergunta com a resposta dentro.",
       "readingToggles_one": "{{n}} toggle",

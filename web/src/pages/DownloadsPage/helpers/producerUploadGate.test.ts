@@ -18,6 +18,7 @@ function makeUploads(count: number, daysAgo: number): UserUpload[] {
     source: 'upload',
     dropped_image_count: null,
     image_drop_reason: null,
+    empty_back_count: null,
   }));
 }
 

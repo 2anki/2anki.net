@@ -299,6 +299,7 @@
       "readingNextAnswers": "Mets la question dans le titre du toggle et la réponse à l'intérieur, puis relance la conversion.",
       "readingRescueVerdict": "Rien n'a donné de cartes tout seul.",
       "readingNoPairs": "Rien n'a pu être associé en une question avec sa réponse.",
+      "readingEmptyAnswers": "Ses toggles n'ont aucune réponse à l'intérieur.",
       "readingTogglesNoPairs_one": "Le toggle ne contenait pas de question avec sa réponse à l'intérieur.",
       "readingTogglesNoPairs_other": "Aucun toggle ne contenait de question avec sa réponse à l'intérieur.",
       "readingToggles_one": "{{n}} toggle",

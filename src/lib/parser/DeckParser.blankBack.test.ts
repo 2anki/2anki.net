@@ -89,14 +89,14 @@ describe('a page where every toggle answer is empty markup', () => {
     const parser = await parse(allBlank);
 
     expect(parser.totalCardCount()).toBe(0);
-    expect(parser.emptyDeckReason()).toBe('unknown');
+    expect(parser.emptyDeckReason()).toBe('empty_answers');
   });
 
   it('makes no cards with cloze on either, rather than front-only cards', async () => {
     const parser = await parse(allBlank, new CardOption({}));
 
     expect(parser.totalCardCount()).toBe(0);
-    expect(parser.emptyDeckReason()).toBe('unknown');
+    expect(parser.emptyDeckReason()).toBe('empty_answers');
   });
 });
 

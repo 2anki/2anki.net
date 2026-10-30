@@ -2698,3 +2698,41 @@ describe('PrepareDeck — toggles Cherry-pick left out', () => {
     expect(result?.cherrySkippedCount).toBe(2);
   });
 });
+
+describe('PrepareDeck — empty backs from Notion-export toggles', () => {
+  const notionPage =
+    '<html><head><title>T</title></head><body><article class="page sans"><header><h1 class="page-title">T</h1></header><div class="page-body">' +
+    '<ul id="3e432d87-07b3-8057-a7da-000000000001" class="toggle"><li><details><summary>Kept</summary><p>Answer.</p></details></li></ul>' +
+    '<ul id="3e432d87-07b3-8057-a7da-000000000002" class="toggle"><li><details><summary>Blank</summary><p></p></details></li></ul>' +
+    '</div></article></body></html>';
+
+  it('reports the Notion-export share of the skipped cards for a single file', async () => {
+    const result = await PrepareDeck({
+      name: 'page.html',
+      files: [{ name: 'page.html', contents: notionPage }],
+      settings: makeSettings({ cloze: 'false' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.emptyBackCount).toBe(1);
+    expect(result?.notionEmptyBackCount).toBe(1);
+  });
+
+  it('reports the same for a zip entry built in a batch', async () => {
+    const result = await prepareDeckInfoOnly(
+      {
+        name: 'page.html',
+        files: [{ name: 'page.html', contents: notionPage }],
+        settings: makeSettings({ cloze: 'false' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      },
+      makeWorkspace(),
+      makeWorkspace()
+    );
+
+    expect(result.emptyBackCount).toBe(1);
+    expect(result.notionEmptyBackCount).toBe(1);
+  });
+});

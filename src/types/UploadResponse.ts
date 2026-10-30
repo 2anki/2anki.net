@@ -11,6 +11,7 @@ export interface UploadResponse {
   source: string | null;
   dropped_image_count: number | null;
   image_drop_reason: string | null;
+  empty_back_count: number | null;
 }
 
 export function toUploadResponse(row: Uploads): UploadResponse {
@@ -25,5 +26,6 @@ export function toUploadResponse(row: Uploads): UploadResponse {
     source: row.source,
     dropped_image_count: row.dropped_image_count,
     image_drop_reason: row.image_drop_reason,
+    empty_back_count: row.empty_back_count,
   };
 }

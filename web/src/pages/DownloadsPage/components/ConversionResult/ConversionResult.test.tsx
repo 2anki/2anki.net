@@ -448,6 +448,25 @@ describe('ConversionResult — failed variant', () => {
     expect(screen.queryByText(/Wrap your key terms in toggles/)).toBeNull();
   });
 
+  it('tells an uploaded export whose toggles are all empty to fill them in, not to restructure the file', () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Study notes"
+          failureReason={EMPTY_ANSWERS_REASON}
+          source="upload"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText(/Your toggles have no answer inside them/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No cards came out of this file/)).toBeNull();
+  });
+
   const paragraphsOffer = {
     rule: 'paragraphs' as const,
     cards: 4,

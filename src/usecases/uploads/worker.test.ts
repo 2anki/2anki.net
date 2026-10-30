@@ -570,6 +570,26 @@ describe('runUploadGenerationInWorker — files converted in parallel', () => {
     expect(counts).toEqual([3, 0]);
   });
 
+  it('carries the Notion-export empty-back count onto each package', async () => {
+    mockPrepareDeck.mockImplementation(
+      async (input) =>
+        ({
+          ...deckFor(input.name),
+          emptyBackCount: 2,
+          notionEmptyBackCount: input.name === 'a.html' ? 2 : 0,
+        }) as never
+    );
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    const counts = result.ok
+      ? result.packages.map((p) => p.notionEmptyBackCount)
+      : [];
+    expect(counts).toEqual([2, 0]);
+  });
+
   it('keeps packages in upload order when a later file finishes first', async () => {
     mockPrepareDeck.mockImplementation(async (input) => {
       if (input.name === 'a.html') {

@@ -176,6 +176,7 @@ interface PrepareDeckResult {
   mcqCount: number;
   mcqSkippedCount: number;
   cherrySkippedCount?: number;
+  notionEmptyBackCount?: number;
   warning?: string;
   droppedImageCount: number;
   coloredTextPageCount: number;
@@ -952,6 +953,7 @@ async function buildParserResult(
     mcqCount,
     mcqSkippedCount,
     cherrySkippedCount,
+    notionEmptyBackCount: parser.notionEmptyBackCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     coloredTextPageCount,
@@ -1377,6 +1379,7 @@ export interface DeckInfoOnlyResult {
   mcqCount: number;
   mcqSkippedCount: number;
   cherrySkippedCount?: number;
+  notionEmptyBackCount?: number;
   warning?: string;
   droppedImageCount: number;
   coloredTextPageCount: number;
@@ -1473,6 +1476,7 @@ export async function prepareDeckInfoOnly(
     mcqCount,
     mcqSkippedCount,
     cherrySkippedCount,
+    notionEmptyBackCount: parser.notionEmptyBackCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     coloredTextPageCount,

@@ -28,6 +28,7 @@ function makeRow(overrides: Partial<Uploads> = {}): Uploads {
     dedupe_key: null,
     dropped_image_count: null,
     image_drop_reason: null,
+    empty_back_count: null,
     ...overrides,
   };
 }

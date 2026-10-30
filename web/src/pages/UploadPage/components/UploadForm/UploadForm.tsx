@@ -760,6 +760,8 @@ function UploadForm({
     setColoredTextPageCount,
     emptyBackCount,
     setEmptyBackCount,
+    emptyBackSource,
+    setEmptyBackSource,
     cherrySkippedCount,
     setCherrySkippedCount,
     cardsHeldBack,
@@ -880,6 +882,7 @@ function UploadForm({
     setExpiredNotionImageCount,
     setColoredTextPageCount,
     setEmptyBackCount,
+    setEmptyBackSource,
     setCherrySkippedCount,
     setCardsHeldBack,
     setHeldForPlan,
@@ -3151,7 +3154,7 @@ function UploadForm({
       )}
       {emptyBackCount > 0 && (
         <div className={formStyles.warningInline}>
-          <EmptyBackNotice count={emptyBackCount} />
+          <EmptyBackNotice count={emptyBackCount} source={emptyBackSource} />
         </div>
       )}
       {cherrySkippedCount > 0 && (
