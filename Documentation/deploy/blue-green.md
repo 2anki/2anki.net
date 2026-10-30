@@ -154,6 +154,10 @@ before the kill lets them retire against a still-live backend.
 If the new color fails its health check or its smoke check, the script deletes
 it and exits non-zero — the current color never stopped serving, and the
 workflow restores the last-good build on disk (`scripts/deploy-restore-last-good.sh`).
+The restore does not roll back migrations: its log names the migration files
+added since last-good, and boot (`setupDatabase`) runs `migrate.latest` without
+list validation, with a `[migrations]` warning naming them, whenever the
+database records a migration the restored build has no file for (#5163).
 If the post-swap public check fails, it rewrites both includes back to the old
 color's port, reloads, and exits.
 

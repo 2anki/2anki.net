@@ -32,23 +32,14 @@ async function loadConfigWith(localDev: string | undefined) {
 }
 
 describe('KnexConfig migrations validation', () => {
-  it('disables migration-list validation in local dev', async () => {
-    expect((await loadConfigWith('true')).disableMigrationsListValidation).toBe(
-      true
-    );
-  });
-
-  it('keeps strict validation when LOCAL_DEV is unset (prod/CI)', async () => {
-    expect(
-      (await loadConfigWith(undefined)).disableMigrationsListValidation
-    ).toBe(false);
-  });
-
-  it('keeps strict validation when LOCAL_DEV is not exactly "true"', async () => {
-    expect(
-      (await loadConfigWith('false')).disableMigrationsListValidation
-    ).toBe(false);
-  });
+  it.each([['true'], ['false'], [undefined]])(
+    'keeps strict validation for the knex CLI whatever LOCAL_DEV is (%s); boot decides drift tolerance in setupDatabase',
+    async (localDev) => {
+      expect(
+        (await loadConfigWith(localDev)).disableMigrationsListValidation
+      ).toBe(false);
+    }
+  );
 });
 
 describe('KnexConfig local fallback connection', () => {

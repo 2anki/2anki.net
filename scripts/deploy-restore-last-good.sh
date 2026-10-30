@@ -32,6 +32,13 @@ fi
 
 log "restoring disk from $CURRENT to last-good $LAST_GOOD"
 
+ADDED_MIGRATIONS="$(git -C "$SERVER_DIR" diff --name-only --diff-filter=A "$LAST_GOOD" HEAD -- migrations/ 2>/dev/null | tr '\n' ' ')"
+if [ -n "${ADDED_MIGRATIONS// /}" ]; then
+  log "migrations added since last-good, leaving applied if the failed build ran them (boot tolerates them with a warning): $ADDED_MIGRATIONS"
+else
+  log "no migrations added since last-good"
+fi
+
 if ! git -C "$SERVER_DIR" checkout --detach "$LAST_GOOD"; then
   log "FAILED to check out $LAST_GOOD — disk is still poisoned; do not restart the live color"
   exit 0
