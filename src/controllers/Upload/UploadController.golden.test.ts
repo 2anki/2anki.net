@@ -10,19 +10,49 @@ import multer from 'multer';
 import jwt from 'jsonwebtoken';
 
 const s3Puts = vi.hoisted(() => [] as string[]);
+const s3Objects = vi.hoisted(() => new Map<string, Buffer>());
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
   const actual = await importActual<typeof import('@aws-sdk/client-s3')>();
   class RecordingS3Client {
-    async send(command: { input?: { Key?: string } }) {
+    async send(command: { input?: { Key?: string; Body?: unknown } }) {
+      const key = command.input?.Key ?? '';
       if (command instanceof actual.PutObjectCommand) {
-        s3Puts.push(command.input?.Key ?? '');
+        s3Puts.push(key);
+        s3Objects.set(key, Buffer.from(command.input?.Body as Buffer));
+      }
+      if (command instanceof actual.GetObjectCommand && s3Objects.has(key)) {
+        const bytes = s3Objects.get(key) as Buffer;
+        return { Body: { transformToByteArray: async () => bytes } };
+      }
+      if (command instanceof actual.DeleteObjectCommand) {
+        s3Objects.delete(key);
       }
       return {};
     }
   }
   return { ...actual, S3Client: RecordingS3Client };
 });
+
+const passCredits = vi.hoisted(() => ({ spentUsd: 0 }));
+
+vi.mock(
+  '../../data_layer/createAnonymousPassCreditReaders',
+  async (importActual) => {
+    const actual =
+      await importActual<
+        typeof import('../../data_layer/createAnonymousPassCreditReaders')
+      >();
+    return {
+      createAnonymousPassCreditReaders: (
+        ...args: Parameters<typeof actual.createAnonymousPassCreditReaders>
+      ) => ({
+        ...actual.createAnonymousPassCreditReaders(...args),
+        passCostSince: () => Promise.resolve(passCredits.spentUsd),
+      }),
+    };
+  }
+);
 
 vi.mock('../../lib/anki/CardGenerator', () => ({
   __esModule: true,
@@ -197,6 +227,12 @@ import { getDatabase } from '../../data_layer';
 import RequireAllowedOrigin from '../../routes/middleware/RequireAllowedOrigin';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 import { anonIdMiddleware } from '../../routes/middleware/anonIdMiddleware';
+import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
+import { AnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
+import { AiPreviewResumeController } from './AiPreviewResumeController';
+import { ResumeAnonymousAiPreviewUseCase } from '../../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
+import { getCheckoutSessionBinding } from '../../usecases/checkout/getCheckoutSessionBinding';
+import StorageHandler from '../../lib/storage/StorageHandler';
 
 const SMALL_DECK_CARDS = 5;
 const LARGE_DECK_CARDS = 120;
@@ -257,6 +293,7 @@ interface Population {
   previewReply?: string;
   realAuth?: boolean;
   mintsAnonId?: boolean;
+  passSpentUsd?: number;
 }
 
 const signedOut: Population = {
@@ -445,6 +482,7 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
 const AI_ON = { 'claude-ai-flashcards': 'true' };
 const PAYING_OWNER = 4343;
 const PASS_SESSION_ID = 'cs_golden_pass';
+const LOCALS_PASS_ID = 7;
 const FREE_SESSION = jwt.sign({ userId: OWNER }, SESSION_SECRET);
 const PAYING_SESSION = jwt.sign({ userId: PAYING_OWNER }, SESSION_SECRET);
 const SIGNED_OUT_SESSION = jwt.sign(
@@ -552,6 +590,35 @@ const aiCases: [string, keyof typeof UPLOADS, Population][] = [
       flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
     },
   ],
+  [
+    'signed-out pass holder with AI on',
+    'small',
+    {
+      ...signedOut,
+      locals: {
+        subscriber: true,
+        passKind: '24h',
+        anonymousPassId: LOCALS_PASS_ID,
+      },
+      headers: { 'x-pass-token': 'golden-pass-token' },
+      fields: AI_ON,
+    },
+  ],
+  [
+    'signed-out pass holder with AI on, AI credits spent',
+    'small',
+    {
+      ...signedOut,
+      locals: {
+        subscriber: true,
+        passKind: '24h',
+        anonymousPassId: LOCALS_PASS_ID,
+      },
+      headers: { 'x-pass-token': 'golden-pass-token' },
+      fields: AI_ON,
+      passSpentUsd: 1000,
+    },
+  ],
 ];
 
 const photoCases: [string, keyof typeof UPLOADS, Population][] = [
@@ -628,6 +695,16 @@ const realAuthCases: [string, keyof typeof UPLOADS, Population][] = [
       ...signedOut,
       realAuth: true,
       headers: { 'x-pass-token': PASS_SESSION_ID },
+    },
+  ],
+  [
+    'real pass token: signed-out Day Pass holder with AI on',
+    'small',
+    {
+      ...signedOut,
+      realAuth: true,
+      headers: { 'x-pass-token': PASS_SESSION_ID },
+      fields: AI_ON,
     },
   ],
   [
@@ -796,6 +873,14 @@ async function seedAuthDatabase() {
     payment_intent_id: 'pi_golden',
     activated_at: new Date(),
   });
+  await database('anonymous_passes').insert({
+    id: LOCALS_PASS_ID,
+    stripe_session_id: 'cs_golden_locals_pass',
+    kind: '24h',
+    expires_at: dayFromNow,
+    payment_intent_id: 'pi_golden_locals',
+    activated_at: new Date(),
+  });
 }
 
 const CLIENT_HEADERS = [
@@ -870,8 +955,10 @@ function storedObjectKind(key: string): string {
   return key.startsWith('recover/') ? 'recovery copy' : 'deck';
 }
 
-function goldenController(): UploadController {
-  const service = new UploadService(
+let heldDecks = new InMemoryHeldDeckRepository();
+
+function goldenService(): UploadService {
+  return new UploadService(
     inMemoryUploads(),
     inMemoryJobs(),
     inMemoryUsers(population.cardsUsed),
@@ -879,9 +966,35 @@ function goldenController(): UploadController {
       photoToFlashcards: new PhotoToFlashcardsUseCase(
         inMemoryPhotoEvents(population.photosUsedThisMonth ?? 0)
       ),
+      heldDeck: heldDecks,
     })
   );
-  return new UploadController(service, {} as unknown as NotionService);
+}
+
+function goldenController(): UploadController {
+  return new UploadController(goldenService(), {} as unknown as NotionService);
+}
+
+const checkoutMetadata = new Map<string, Record<string, string>>();
+const stubStripe = {
+  checkout: {
+    sessions: {
+      retrieve: (sessionId: string) =>
+        Promise.resolve({ metadata: checkoutMetadata.get(sessionId) ?? {} }),
+    },
+  },
+} as unknown as Parameters<typeof getCheckoutSessionBinding>[0];
+
+function goldenResumeController(): AiPreviewResumeController {
+  return new AiPreviewResumeController(
+    new ResumeAnonymousAiPreviewUseCase(
+      heldDecks,
+      new StorageHandler(),
+      goldenService(),
+      new AnonymousPassRepository(getDatabase()),
+      (sessionId) => getCheckoutSessionBinding(stubStripe, sessionId)
+    )
+  );
 }
 
 beforeAll(async () => {
@@ -921,6 +1034,18 @@ beforeAll(async () => {
     multer().none(),
     (req, res) => goldenController().googleDrive(req, res)
   );
+  app.post(
+    '/api/upload/ai-preview/resume',
+    (req, res, next) => {
+      res.locals.requestId = 'golden-request';
+      if (population.realAuth === true) {
+        return RequireAllowedOrigin(req, res, next);
+      }
+      Object.assign(res.locals, population.locals);
+      next();
+    },
+    (req, res) => goldenResumeController().resume(req, res)
+  );
   server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -934,6 +1059,10 @@ afterAll(async () => {
 
 afterEach(() => {
   __resetFeatureFlagModuleForTests();
+  heldDecks = new InMemoryHeldDeckRepository();
+  checkoutMetadata.clear();
+  passCredits.spentUsd = 0;
+  s3Objects.clear();
   s3Puts.length = 0;
   cardUsageCharges.length = 0;
   jobTimelines.length = 0;
@@ -941,6 +1070,7 @@ afterEach(() => {
 
 async function upload(file: keyof typeof UPLOADS, who: Population) {
   population = who;
+  passCredits.spentUsd = who.passSpentUsd ?? 0;
   __setFeatureFlagDependencies({ repository: inMemoryFlags(who.flags) });
   Object.assign(claudeReplies, CLAUDE_REPLIES, {
     preview: who.previewReply ?? CLAUDE_REPLIES.preview,
@@ -1119,4 +1249,128 @@ describe('what the real auth middleware resolves before the upload', () => {
     },
     20_000
   );
+});
+
+const AI_PREVIEW_VISITOR: Population = {
+  ...signedOut,
+  fields: AI_ON,
+  flags: { [ANONYMOUS_AI_PREVIEW_FLAG]: true },
+};
+
+const dayPassHolderOnThisBrowser: Population = {
+  ...signedOut,
+  realAuth: true,
+  headers: { 'x-pass-token': PASS_SESSION_ID },
+};
+
+interface ResumeCase {
+  previewedFirst: boolean;
+  boughtOnAnonId: string;
+  who: Population;
+}
+
+const resumeCases: [string, ResumeCase][] = [
+  [
+    'Day Pass holder resuming the AI preview this browser started',
+    {
+      previewedFirst: true,
+      boughtOnAnonId: 'golden-anon',
+      who: dayPassHolderOnThisBrowser,
+    },
+  ],
+  [
+    'Day Pass bought from another browser',
+    {
+      previewedFirst: true,
+      boughtOnAnonId: 'another-anon',
+      who: dayPassHolderOnThisBrowser,
+    },
+  ],
+  [
+    'Day Pass holder with no AI preview waiting',
+    {
+      previewedFirst: false,
+      boughtOnAnonId: 'golden-anon',
+      who: dayPassHolderOnThisBrowser,
+    },
+  ],
+  [
+    'Day Pass holder with no anon id cookie',
+    {
+      previewedFirst: true,
+      boughtOnAnonId: 'golden-anon',
+      who: { ...dayPassHolderOnThisBrowser, cookies: {} },
+    },
+  ],
+  [
+    'signed-out visitor with no pass',
+    {
+      previewedFirst: true,
+      boughtOnAnonId: 'golden-anon',
+      who: { ...signedOut, realAuth: true },
+    },
+  ],
+];
+
+async function resumeAiPreview(who: Population) {
+  population = who;
+  passCredits.spentUsd = who.passSpentUsd ?? 0;
+  __setFeatureFlagDependencies({ repository: inMemoryFlags(who.flags) });
+  Object.assign(claudeReplies, CLAUDE_REPLIES);
+  s3Puts.length = 0;
+  const cookie = Object.entries(who.cookies)
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ');
+  const response = await fetch(`${baseUrl}/api/upload/ai-preview/resume`, {
+    method: 'POST',
+    redirect: 'manual',
+    headers: {
+      ...(who.realAuth === true ? { origin: ALLOWED_ORIGIN } : {}),
+      ...who.headers,
+      ...(cookie === '' ? {} : { cookie }),
+    },
+  });
+  const result = await goldenResult(response, Promise.resolve());
+  return {
+    ...result,
+    heldPreviewsLeft: heldDecks.rows.length,
+    heldObjectsLeft: [...s3Objects.keys()].filter((key) =>
+      key.startsWith('held/')
+    ).length,
+  };
+}
+
+async function previewThenResume({
+  previewedFirst,
+  boughtOnAnonId,
+  who,
+}: ResumeCase) {
+  checkoutMetadata.set(PASS_SESSION_ID, {
+    anon_id: boughtOnAnonId,
+    surface: 'ai-preview',
+  });
+  if (previewedFirst) {
+    const preview = await upload('small', AI_PREVIEW_VISITOR);
+    expect(preview.status).toBe(200);
+  }
+  return resumeAiPreview(who);
+}
+
+describe('what each population gets back from the Day Pass AI preview resume', () => {
+  it.each(resumeCases)(
+    '%s',
+    async (_label, resumeCase) => {
+      expect(await previewThenResume(resumeCase)).toMatchSnapshot();
+    },
+    20_000
+  );
+
+  it('bills a resumed preview once: a second resume finds nothing waiting', async () => {
+    const first = await previewThenResume(resumeCases[0][1]);
+    const second = await resumeAiPreview(dayPassHolderOnThisBrowser);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(404);
+    expect(second.body).toEqual({ code: 'no_ai_preview' });
+  }, 20_000);
 });
