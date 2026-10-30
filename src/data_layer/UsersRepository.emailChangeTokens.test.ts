@@ -33,6 +33,11 @@ describe('UsersRepository email change voids links mailed to the old address', (
       t.timestamp('expires_at').notNullable();
       t.timestamp('consumed_at').nullable();
     });
+    await database.schema.createTable('pause_resume_warning_notices', (t) => {
+      t.increments('id').primary();
+      t.text('subscription_email').notNullable();
+      t.timestamp('resumes_at').notNullable();
+    });
     await database.schema.createTable('magic_tokens', (t) => {
       t.increments('id').primary();
       t.text('token').notNullable();

@@ -258,6 +258,9 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       }),
     });
     const subsWhere = vi.fn().mockReturnValue({ update: subsUpdate });
+    const noticesWhereRaw = vi
+      .fn()
+      .mockReturnValue({ del: vi.fn().mockResolvedValue(0) });
     const magicTokens = {
       whereIn: vi.fn().mockReturnValue({
         whereNull: vi.fn().mockReturnValue({
@@ -275,13 +278,23 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       if (table === 'magic_tokens' || table === 'email_change_tokens') {
         return magicTokens;
       }
+      if (table === 'pause_resume_warning_notices') {
+        return { whereRaw: noticesWhereRaw };
+      }
       return {};
     });
     trx.fn = { now: vi.fn().mockReturnValue('now()') };
     const transaction = vi.fn().mockImplementation(async (cb) => cb(trx));
     const knex: any = vi.fn();
     knex.transaction = transaction;
-    return { knex, usersWhereRaw, usersUpdate, subsWhere, subsUpdate };
+    return {
+      knex,
+      usersWhereRaw,
+      usersUpdate,
+      subsWhere,
+      subsUpdate,
+      noticesWhereRaw,
+    };
   }
 
   it('moves users.email and subscriptions.linked_email in one transaction', async () => {

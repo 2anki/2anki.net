@@ -251,14 +251,12 @@ class UsersRepository {
           )
           .orWhereRaw('lower(linked_email) = ?', [normalized])
           .select('email');
-        await trx('pause_resume_warning_notices')
-          .whereRaw('lower(subscription_email) = ?', [normalized])
-          .orWhere((legacy) =>
-            legacy
-              .whereIn('subscription_email', ownedSubscriptionEmails)
-              .where('resumes_at', '<', new Date())
-          )
-          .del();
+        await this.deletePauseNoticesForAccountQuery(
+          trx,
+          normalized,
+          ownedSubscriptionEmails,
+          new Date()
+        );
         await trx('subscriptions')
           .where((qb) =>
             qb
@@ -275,6 +273,34 @@ class UsersRepository {
       }
       await trx(this.table).where({ id: owner }).del();
     });
+  }
+
+  deletePauseNoticesForAccountQuery(
+    executor: Knex | Knex.Transaction,
+    normalizedEmail: string,
+    ownedSubscriptionEmails: Knex.QueryBuilder,
+    now: Date
+  ) {
+    return executor('pause_resume_warning_notices')
+      .whereRaw('lower(subscription_email) = ?', [normalizedEmail])
+      .orWhere((legacy) =>
+        legacy
+          .whereIn('subscription_email', ownedSubscriptionEmails)
+          .where('resumes_at', '<', now)
+      )
+      .del();
+  }
+
+  // A warning notice is keyed on the address it went to. Once an account moves
+  // off an address no warning is claimed on it again, so the old row only
+  // dedupes nothing and would outlive a later account deletion.
+  forgetPauseNoticesForAddressQuery(
+    executor: Knex | Knex.Transaction,
+    address: string
+  ) {
+    return executor('pause_resume_warning_notices')
+      .whereRaw('lower(subscription_email) = ?', [address.trim().toLowerCase()])
+      .del();
   }
 
   private async snapshotUsageForTombstone(
@@ -325,6 +351,7 @@ class UsersRepository {
       await trx('subscriptions')
         .where({ email: current.toLowerCase() })
         .update({ linked_email: next });
+      await this.forgetPauseNoticesForAddressQuery(trx, current);
     });
   }
 
@@ -398,6 +425,7 @@ class UsersRepository {
           oldEmail,
           nextEmail
         );
+        await this.forgetPauseNoticesForAddressQuery(trx, oldEmail);
         await trx('email_change_tokens')
           .where({ user_id: params.userId })
           .whereNull('consumed_at')

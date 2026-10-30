@@ -20,7 +20,7 @@ const OWNER_TABLES = [
   'cancellation_feedback',
 ];
 
-describe('UsersRepository.deleteUser pause-resume warning notices (sqlite integration)', () => {
+describe('UsersRepository pause-resume warning notices across the account lifecycle (sqlite integration)', () => {
   let database: Knex;
   let repo: UsersRepository;
 
@@ -37,6 +37,19 @@ describe('UsersRepository.deleteUser pause-resume warning notices (sqlite integr
       t.timestamp('cards_month_started_at');
       t.integer('pdf_prints_this_month');
       t.timestamp('prints_month_started_at');
+      t.text('reset_token');
+      t.timestamp('reset_token_expires_at');
+    });
+    await database.schema.createTable('email_change_tokens', (t) => {
+      t.increments('id').primary();
+      t.integer('user_id').notNullable();
+      t.timestamp('expires_at').notNullable();
+      t.timestamp('consumed_at').nullable();
+    });
+    await database.schema.createTable('magic_tokens', (t) => {
+      t.increments('id').primary();
+      t.integer('owner').notNullable();
+      t.timestamp('used_at').nullable();
     });
     for (const table of OWNER_TABLES) {
       await database.schema.createTable(table, (t) => {
@@ -142,6 +155,52 @@ describe('UsersRepository.deleteUser pause-resume warning notices (sqlite integr
     await repo.deleteUser(owner);
 
     expect(await remainingNoticeKeys()).toEqual(['other@example.com']);
+  });
+
+  it('leaves no notice behind when a warned user confirms an email change and then deletes the account', async () => {
+    const owner = await seedUser('old@example.com');
+    await database('subscriptions').insert({
+      email: 'payer@example.com',
+      linked_email: 'old@example.com',
+    });
+    await database('pause_resume_warning_notices').insert({
+      subscription_email: 'old@example.com',
+      resumes_at: FUTURE,
+    });
+    const [{ id: tokenId }] = await database('email_change_tokens')
+      .insert({ user_id: Number(owner), expires_at: FUTURE })
+      .returning('id');
+
+    const changed = await repo.applyEmailChange({
+      userId: Number(owner),
+      newEmail: 'new@example.com',
+      tokenId: tokenId as number,
+      now: PAST,
+    });
+    await repo.deleteUser(owner);
+
+    expect(changed).toEqual({ ok: true });
+    expect(await remainingNoticeKeys()).toEqual([]);
+  });
+
+  it('leaves no notice behind when ops changes a warned unlinked payer email and the account is then deleted', async () => {
+    const owner = await seedUser('old@example.com');
+    await database('subscriptions').insert({
+      email: 'old@example.com',
+      linked_email: null,
+    });
+    await database('pause_resume_warning_notices').insert({
+      subscription_email: 'old@example.com',
+      resumes_at: FUTURE,
+    });
+
+    await repo.changeEmailAndRelinkSubscriptions(
+      'old@example.com',
+      'new@example.com'
+    );
+    await repo.deleteUser(owner);
+
+    expect(await remainingNoticeKeys()).toEqual([]);
   });
 
   it("leaves an unrelated account's notice alone", async () => {
