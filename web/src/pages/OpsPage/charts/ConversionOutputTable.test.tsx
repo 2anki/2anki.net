@@ -47,6 +47,33 @@ describe('ConversionOutputTable', () => {
     expect(screen.getByText('0.0%')).toBeInTheDocument();
   });
 
+  test('renders the legacy convert row and each per-type convert row as its own row', () => {
+    const row = (source: string, cards: number, emptyBack: number) => ({
+      source,
+      decks: 1,
+      cards,
+      empty_back_cards: emptyBack,
+      first_seen: '2026-06-01T00:00:00.000Z',
+      last_seen: '2026-07-01T00:00:00.000Z',
+    });
+    const { container } = render(
+      <ConversionOutputTable
+        rows={[
+          row('convert', 400, 40),
+          row('convert:page', 200, 50),
+          row('convert:dropbox', 100, 1),
+        ]}
+      />
+    );
+
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(3);
+    expect(screen.getByText('convert')).toBeInTheDocument();
+    expect(screen.getByText('convert:page')).toBeInTheDocument();
+    expect(screen.getByText('convert:dropbox')).toBeInTheDocument();
+    expect(screen.getByText('25.0%')).toBeInTheDocument();
+    expect(screen.getByText('1.0%')).toBeInTheDocument();
+  });
+
   test('renders an empty body when given no rows', () => {
     const { container } = render(<ConversionOutputTable rows={[]} />);
     expect(container.querySelectorAll('tbody tr')).toHaveLength(0);

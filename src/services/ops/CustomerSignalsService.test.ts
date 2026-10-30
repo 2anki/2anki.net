@@ -139,6 +139,29 @@ describe('CustomerSignalsService', () => {
     expect(zeroCards).toMatchObject({ count: 6, bucket: 'pain-killer' });
   });
 
+  it('sums empty backs across the per-type convert rows and the legacy convert row', async () => {
+    const service = buildService({
+      emptyBack: [
+        statsRow('upload', 4),
+        statsRow('convert', 7),
+        statsRow('convert:page', 3),
+        statsRow('convert:database', 2),
+        statsRow('convert:google_drive', 1),
+      ],
+    });
+
+    const result = await service.getSignals(since);
+
+    const emptyBackRows = (result.signals ?? []).filter(
+      (row) => row.source === 'empty_back'
+    );
+    expect(emptyBackRows).toHaveLength(1);
+    expect(emptyBackRows[0]).toMatchObject({
+      label: 'Cards generated with an empty back (all-time)',
+      count: 17,
+    });
+  });
+
   it('omits behavioral rows whose count is zero', async () => {
     const service = buildService({
       dropoff: {
