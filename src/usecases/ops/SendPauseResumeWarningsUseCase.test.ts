@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, type Mock } from 'vitest';
 import {
   SendPauseResumeWarningsUseCase,
   formatAmount,
@@ -127,6 +127,123 @@ describe('SendPauseResumeWarningsUseCase', () => {
     expect(
       emailService.sendSubscriptionResumingSoonEmail
     ).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends one warning when two subscriptions with different payer emails reach one account', async () => {
+    const repo = new FakeRepository();
+    repo.rows = [
+      {
+        email: 'payer@example.com',
+        linked_email: 'account@example.com',
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+      {
+        email: 'account@example.com',
+        linked_email: null,
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+    ];
+    const emailService = makeEmailService();
+    const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
+
+    const result = await useCase.execute(NOW);
+
+    expect(result.count).toBe(1);
+    expect(
+      emailService.sendSubscriptionResumingSoonEmail
+    ).toHaveBeenCalledTimes(1);
+    expect(emailService.sendSubscriptionResumingSoonEmail).toHaveBeenCalledWith(
+      'account@example.com',
+      new Date(RESUMES_AT_SECONDS * 1000),
+      '$7.99'
+    );
+    expect([...repo.claimed]).toEqual([
+      `account@example.com|${new Date(RESUMES_AT_SECONDS * 1000).toISOString()}`,
+    ]);
+  });
+
+  it('warns the new address once when the account email changes after the warning went out', async () => {
+    const repo = new FakeRepository();
+    const row: PausedSubscriptionRow = {
+      email: 'payer@example.com',
+      linked_email: 'old@example.com',
+      payload: makePayload(RESUMES_AT_SECONDS),
+    };
+    repo.rows = [row];
+    const emailService = makeEmailService();
+    const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
+
+    await useCase.execute(NOW);
+    row.linked_email = 'new@example.com';
+    const afterChange = await useCase.execute(NOW);
+    const nextDay = await useCase.execute(NOW);
+
+    expect(afterChange.count).toBe(1);
+    expect(nextDay.count).toBe(0);
+    expect(
+      (emailService.sendSubscriptionResumingSoonEmail as Mock).mock.calls.map(
+        ([recipient]) => recipient
+      )
+    ).toEqual(['old@example.com', 'new@example.com']);
+  });
+
+  it('keys an unlinked subscription on its payer email, the address it is sent to', async () => {
+    const repo = new FakeRepository();
+    repo.rows = [
+      {
+        email: 'stripe@example.com',
+        linked_email: null,
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+    ];
+    const useCase = new SendPauseResumeWarningsUseCase(
+      repo,
+      makeEmailService()
+    );
+
+    await useCase.execute(NOW);
+
+    expect([...repo.claimed]).toEqual([
+      `stripe@example.com|${new Date(RESUMES_AT_SECONDS * 1000).toISOString()}`,
+    ]);
+  });
+
+  it('releases the claim on the linked account email when its send fails, so the next run retries it', async () => {
+    const repo = new FakeRepository();
+    repo.rows = [
+      {
+        email: 'payer@example.com',
+        linked_email: 'account@example.com',
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+    ];
+    const emailService = {
+      sendSubscriptionResumingSoonEmail: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('smtp down'))
+        .mockResolvedValue(undefined),
+    } as unknown as IEmailService;
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const release = vi.spyOn(repo, 'releaseNotice');
+    const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
+
+    const first = await useCase.execute(NOW);
+    expect(release).toHaveBeenCalledWith(
+      'account@example.com',
+      new Date(RESUMES_AT_SECONDS * 1000)
+    );
+    expect(repo.claimed.size).toBe(0);
+    const second = await useCase.execute(NOW);
+
+    expect(first.count).toBe(0);
+    expect(second.count).toBe(1);
+    expect(
+      emailService.sendSubscriptionResumingSoonEmail
+    ).toHaveBeenLastCalledWith(
+      'account@example.com',
+      expect.any(Date),
+      '$7.99'
+    );
   });
 
   it('claims the notice before the email goes out, so a run cut short after the send never repeats it', async () => {

@@ -77,11 +77,11 @@ export class SendPauseResumeWarningsUseCase {
       return false;
     }
     const resumesAt = new Date(pause.resumesAtSeconds * 1000);
-    if (!(await this.repository.claimNotice(row.email, resumesAt))) {
+    const recipient = row.linked_email ?? row.email;
+    if (!(await this.repository.claimNotice(recipient, resumesAt))) {
       return false;
     }
 
-    const recipient = row.linked_email ?? row.email;
     try {
       await this.emailService.sendSubscriptionResumingSoonEmail(
         recipient,
@@ -94,16 +94,19 @@ export class SendPauseResumeWarningsUseCase {
         '[pause-resume-warnings] failed to send a warning:',
         error instanceof Error ? error.message : 'unknown error'
       );
-      await this.releaseClaim(row.email, resumesAt);
+      await this.releaseClaim(recipient, resumesAt);
       return false;
     }
   }
 
   // A knex error inlines its bindings into the message, so it would put the
-  // subscription email in the log. Only a fixed string goes out.
-  private async releaseClaim(email: string, resumesAt: Date): Promise<void> {
+  // recipient email in the log. Only a fixed string goes out.
+  private async releaseClaim(
+    recipient: string,
+    resumesAt: Date
+  ): Promise<void> {
     try {
-      await this.repository.releaseNotice(email, resumesAt);
+      await this.repository.releaseNotice(recipient, resumesAt);
     } catch {
       console.error(
         '[pause-resume-warnings] failed to release a claim; that warning will not be retried'

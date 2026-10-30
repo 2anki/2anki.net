@@ -258,6 +258,11 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       }),
     });
     const subsWhere = vi.fn().mockReturnValue({ update: subsUpdate });
+    const noticesWhereRaw = vi.fn().mockReturnValue({
+      whereNotExists: vi.fn().mockReturnValue({
+        del: vi.fn().mockResolvedValue(0),
+      }),
+    });
     const magicTokens = {
       whereIn: vi.fn().mockReturnValue({
         whereNull: vi.fn().mockReturnValue({
@@ -270,23 +275,43 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
         return { whereRaw: usersWhereRaw };
       }
       if (table === 'subscriptions') {
-        return { where: subsWhere };
+        return {
+          where: subsWhere,
+          select: vi.fn().mockReturnValue({ whereRaw: vi.fn() }),
+        };
       }
       if (table === 'magic_tokens' || table === 'email_change_tokens') {
         return magicTokens;
       }
+      if (table === 'pause_resume_warning_notices') {
+        return { whereRaw: noticesWhereRaw };
+      }
       return {};
     });
     trx.fn = { now: vi.fn().mockReturnValue('now()') };
+    trx.raw = vi.fn();
     const transaction = vi.fn().mockImplementation(async (cb) => cb(trx));
     const knex: any = vi.fn();
     knex.transaction = transaction;
-    return { knex, usersWhereRaw, usersUpdate, subsWhere, subsUpdate };
+    return {
+      knex,
+      usersWhereRaw,
+      usersUpdate,
+      subsWhere,
+      subsUpdate,
+      noticesWhereRaw,
+    };
   }
 
   it('moves users.email and subscriptions.linked_email in one transaction', async () => {
-    const { knex, usersWhereRaw, usersUpdate, subsWhere, subsUpdate } =
-      buildTrxKnex();
+    const {
+      knex,
+      usersWhereRaw,
+      usersUpdate,
+      subsWhere,
+      subsUpdate,
+      noticesWhereRaw,
+    } = buildTrxKnex();
     const repo = new UsersRepository(knex as any);
 
     await repo.changeEmailAndRelinkSubscriptions(
@@ -307,6 +332,10 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
     expect(subsUpdate).toHaveBeenCalledWith({
       linked_email: 'new@example.com',
     });
+    expect(noticesWhereRaw).toHaveBeenCalledWith(
+      'lower(subscription_email) = ?',
+      ['old@example.com']
+    );
   });
 });
 
@@ -326,6 +355,7 @@ describe('UsersRepository.deleteUser', () => {
         return Promise.resolve(1);
       });
       const chain: any = { del };
+      chain.orWhere = vi.fn().mockReturnValue(chain);
       chain.orWhereRaw = vi.fn().mockReturnValue(chain);
       chain.whereRaw = vi.fn().mockReturnValue(chain);
       chain.select = vi.fn().mockReturnValue(chain);

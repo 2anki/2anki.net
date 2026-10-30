@@ -235,8 +235,12 @@ class UsersRepository {
         // the entitlement was granted to — often different people. Deleting on
         // the payer address alone would revoke a live third party's paid
         // access, so a payer-matched row is only purged when it is unlinked or
-        // linked back to this same user. Same reason the warning-notice rows
-        // are scoped through the subscription rows this user actually owns.
+        // linked back to this same user. A warning notice is keyed on the
+        // address the warning went to, which for every row this user owns is
+        // the account address. Older notices were keyed on the payer; a payer
+        // address can now be another account's recipient key, so those are
+        // only purged once their resume date has passed and no warning hangs
+        // on them.
         const ownedSubscriptionEmails = trx('subscriptions')
           .where((qb) =>
             qb
@@ -247,9 +251,12 @@ class UsersRepository {
           )
           .orWhereRaw('lower(linked_email) = ?', [normalized])
           .select('email');
-        await trx('pause_resume_warning_notices')
-          .whereIn('subscription_email', ownedSubscriptionEmails)
-          .del();
+        await this.deletePauseNoticesForAccountQuery(
+          trx,
+          normalized,
+          ownedSubscriptionEmails,
+          new Date()
+        );
         await trx('subscriptions')
           .where((qb) =>
             qb
@@ -266,6 +273,42 @@ class UsersRepository {
       }
       await trx(this.table).where({ id: owner }).del();
     });
+  }
+
+  deletePauseNoticesForAccountQuery(
+    executor: Knex | Knex.Transaction,
+    normalizedEmail: string,
+    ownedSubscriptionEmails: Knex.QueryBuilder,
+    now: Date
+  ) {
+    return executor('pause_resume_warning_notices')
+      .whereRaw('lower(subscription_email) = ?', [normalizedEmail])
+      .orWhere((legacy) =>
+        legacy
+          .whereIn('subscription_email', ownedSubscriptionEmails)
+          .where('resumes_at', '<', now)
+      )
+      .del();
+  }
+
+  // A warning notice is keyed on the address it went to. Once no subscription
+  // sends to an address any more, its notice dedupes nothing and would outlive
+  // a later account deletion, which only knows the new address. The ops email
+  // change relinks only payer-matched rows, so a row linked to the old address
+  // can still send there and keeps its notice.
+  forgetPauseNoticesForAddressQuery(
+    executor: Knex | Knex.Transaction,
+    address: string
+  ) {
+    const normalized = address.trim().toLowerCase();
+    return executor('pause_resume_warning_notices')
+      .whereRaw('lower(subscription_email) = ?', [normalized])
+      .whereNotExists(
+        executor('subscriptions')
+          .select(executor.raw('1'))
+          .whereRaw('lower(coalesce(linked_email, email)) = ?', [normalized])
+      )
+      .del();
   }
 
   private async snapshotUsageForTombstone(
@@ -316,6 +359,7 @@ class UsersRepository {
       await trx('subscriptions')
         .where({ email: current.toLowerCase() })
         .update({ linked_email: next });
+      await this.forgetPauseNoticesForAddressQuery(trx, current);
     });
   }
 
@@ -389,6 +433,7 @@ class UsersRepository {
           oldEmail,
           nextEmail
         );
+        await this.forgetPauseNoticesForAddressQuery(trx, oldEmail);
         await trx('email_change_tokens')
           .where({ user_id: params.userId })
           .whereNull('consumed_at')
