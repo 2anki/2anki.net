@@ -36,16 +36,23 @@ vi.mock('@aws-sdk/client-s3', async (importActual) => {
 
 const passCredits = vi.hoisted(() => ({ spentUsd: 0 }));
 
-vi.mock('../../data_layer/createAnonymousPassCreditReaders', () => ({
-  createAnonymousPassCreditReaders: () => ({
-    getPass: () =>
-      Promise.resolve({
-        kind: '24h',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+vi.mock(
+  '../../data_layer/createAnonymousPassCreditReaders',
+  async (importActual) => {
+    const actual =
+      await importActual<
+        typeof import('../../data_layer/createAnonymousPassCreditReaders')
+      >();
+    return {
+      createAnonymousPassCreditReaders: (
+        ...args: Parameters<typeof actual.createAnonymousPassCreditReaders>
+      ) => ({
+        ...actual.createAnonymousPassCreditReaders(...args),
+        passCostSince: () => Promise.resolve(passCredits.spentUsd),
       }),
-    passCostSince: () => Promise.resolve(passCredits.spentUsd),
-  }),
-}));
+    };
+  }
+);
 
 vi.mock('../../lib/anki/CardGenerator', () => ({
   __esModule: true,
@@ -475,6 +482,7 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
 const AI_ON = { 'claude-ai-flashcards': 'true' };
 const PAYING_OWNER = 4343;
 const PASS_SESSION_ID = 'cs_golden_pass';
+const LOCALS_PASS_ID = 7;
 const FREE_SESSION = jwt.sign({ userId: OWNER }, SESSION_SECRET);
 const PAYING_SESSION = jwt.sign({ userId: PAYING_OWNER }, SESSION_SECRET);
 const SIGNED_OUT_SESSION = jwt.sign(
@@ -587,7 +595,11 @@ const aiCases: [string, keyof typeof UPLOADS, Population][] = [
     'small',
     {
       ...signedOut,
-      locals: { subscriber: true, passKind: '24h', anonymousPassId: 7 },
+      locals: {
+        subscriber: true,
+        passKind: '24h',
+        anonymousPassId: LOCALS_PASS_ID,
+      },
       headers: { 'x-pass-token': 'golden-pass-token' },
       fields: AI_ON,
     },
@@ -597,7 +609,11 @@ const aiCases: [string, keyof typeof UPLOADS, Population][] = [
     'small',
     {
       ...signedOut,
-      locals: { subscriber: true, passKind: '24h', anonymousPassId: 7 },
+      locals: {
+        subscriber: true,
+        passKind: '24h',
+        anonymousPassId: LOCALS_PASS_ID,
+      },
       headers: { 'x-pass-token': 'golden-pass-token' },
       fields: AI_ON,
       passSpentUsd: 1000,
@@ -857,6 +873,14 @@ async function seedAuthDatabase() {
     payment_intent_id: 'pi_golden',
     activated_at: new Date(),
   });
+  await database('anonymous_passes').insert({
+    id: LOCALS_PASS_ID,
+    stripe_session_id: 'cs_golden_locals_pass',
+    kind: '24h',
+    expires_at: dayFromNow,
+    payment_intent_id: 'pi_golden_locals',
+    activated_at: new Date(),
+  });
 }
 
 const CLIENT_HEADERS = [
@@ -1015,9 +1039,7 @@ beforeAll(async () => {
     (req, res, next) => {
       res.locals.requestId = 'golden-request';
       if (population.realAuth === true) {
-        return RequireAllowedOrigin(req, res, () =>
-          tellUploadOwner(req, res, next)
-        );
+        return RequireAllowedOrigin(req, res, next);
       }
       Object.assign(res.locals, population.locals);
       next();
