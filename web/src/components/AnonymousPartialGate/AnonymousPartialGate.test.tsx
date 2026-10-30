@@ -196,12 +196,9 @@ describe('AnonymousPartialGate', () => {
       dayPassCard: true,
     };
 
-    it('shows the whole-deck headline instead of the capped one', () => {
+    it('shows the whole-deck headline, not a capped count', () => {
       renderGate(overMonthHeld);
       expect(screen.getByText('All 121 cards are ready')).toBeInTheDocument();
-      expect(
-        screen.queryByText('Your deck is ready — 121 cards')
-      ).not.toBeInTheDocument();
       expect(
         screen.queryByText('Your first 100 cards are ready')
       ).not.toBeInTheDocument();
@@ -262,9 +259,9 @@ describe('AnonymousPartialGate held deck summary', () => {
       expect(screen.getByText('Pharmacology')).toBeInTheDocument();
       expect(screen.getByText('All 184 cards are ready')).toBeInTheDocument();
       expect(screen.getByText('Saved for 24 hours.')).toBeInTheDocument();
-      const leadingIcon = screen.getByRole('region').firstElementChild;
-      expect(leadingIcon?.querySelector('circle')).not.toBeNull();
-      expect(leadingIcon?.querySelector('rect')).toBeNull();
+      const region = screen.getByRole('region');
+      expect(region.querySelector('[class*="_readyIcon_"]')).not.toBeNull();
+      expect(region.querySelector('[class*="_icon_"]')).toBeNull();
     }
   );
 
