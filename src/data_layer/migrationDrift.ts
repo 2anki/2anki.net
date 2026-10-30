@@ -6,7 +6,17 @@ import type { Knex } from 'knex';
 export const BOOT_MIGRATIONS_TABLE = 'knex_migrations';
 export const BOOT_MIGRATIONS_DIRECTORY = './migrations';
 
-const MIGRATION_EXTENSIONS = new Set(['.js', '.cjs', '.mjs', '.ts']);
+const KNEX_DEFAULT_LOAD_EXTENSIONS = new Set([
+  '.co',
+  '.coffee',
+  '.eg',
+  '.iced',
+  '.js',
+  '.cjs',
+  '.litcoffee',
+  '.ls',
+  '.ts',
+]);
 
 export type MigrationDrift = {
   aheadOfBuild: string[];
@@ -23,20 +33,18 @@ export async function findMigrationDrift(
     .orderBy('id')
     .pluck('name');
   const entries = await fs.readdir(path.resolve(BOOT_MIGRATIONS_DIRECTORY));
-  const files = new Set(entries);
   const migrationFiles = entries
-    .filter((entry) => MIGRATION_EXTENSIONS.has(path.extname(entry)))
+    .filter((entry) => KNEX_DEFAULT_LOAD_EXTENSIONS.has(path.extname(entry)))
     .sort();
-  const newestFile: string | undefined =
-    migrationFiles[migrationFiles.length - 1];
+  const files = new Set(migrationFiles);
   const missing = applied.filter((name) => !files.has(name));
+  if (migrationFiles.length === 0) {
+    return { aheadOfBuild: [], withinBuild: missing };
+  }
+  const newestFile = migrationFiles[migrationFiles.length - 1];
   return {
-    aheadOfBuild: missing.filter(
-      (name) => newestFile === undefined || name > newestFile
-    ),
-    withinBuild: missing.filter(
-      (name) => newestFile !== undefined && name <= newestFile
-    ),
+    aheadOfBuild: missing.filter((name) => name > newestFile),
+    withinBuild: missing.filter((name) => name <= newestFile),
   };
 }
 

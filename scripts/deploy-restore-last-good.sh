@@ -38,7 +38,7 @@ log "restoring disk from $CURRENT to last-good $LAST_GOOD"
 
 if ADDED_MIGRATIONS="$(git -C "$SERVER_DIR" diff --no-renames --name-only --diff-filter=A "$LAST_GOOD" HEAD -- migrations/)"; then
   if [ -n "$ADDED_MIGRATIONS" ]; then
-    log "migrations added since last-good, leaving applied if the failed build ran them (boot tolerates ones newer than every last-good migration, with a warning): $(echo "$ADDED_MIGRATIONS" | tr '\n' ' ')"
+    log "migrations added since last-good, leaving applied if the failed build ran them; boot tolerates them only if all sort after last-good's newest migration, otherwise check knex_migrations before restarting: $(echo "$ADDED_MIGRATIONS" | sed 's#^migrations/##' | tr '\n' ' ')"
   else
     log "no migrations added since last-good"
   fi

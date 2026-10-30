@@ -105,7 +105,7 @@ describe('deploy-restore-last-good.sh migration log', () => {
     const log = restore(lastGood);
 
     const leftApplied = lineWith(log, 'leaving applied');
-    expect(leftApplied).toContain('migrations/20260102000000_new.js');
+    expect(leftApplied).toContain(': 20260102000000_new.js');
     expect(leftApplied).not.toContain('20260101000000_old.js');
     expect(log.indexOf('leaving applied')).toBeLessThan(
       log.indexOf('disk restored to last-good')
@@ -126,7 +126,7 @@ describe('deploy-restore-last-good.sh migration log', () => {
     const log = restore(lastGood);
 
     expect(lineWith(log, 'leaving applied')).toContain(
-      'migrations/20260103000000_renamed.js'
+      ': 20260103000000_renamed.js'
     );
   });
 
@@ -146,10 +146,13 @@ describe('deploy-restore-last-good.sh migration log', () => {
     commitFiles({ 'migrations/20260101000000_old.js': 'old' });
     const head = commitFiles({ 'src/unrelated.ts': 'x' });
 
-    const log = restore('--output=/tmp/should-not-exist');
+    const injected = path.join(root, 'injected');
+
+    const log = restore(`--output=${injected}`);
 
     expect(log).toContain('is not a commit sha');
     expect(log).not.toContain('no migrations added since last-good');
+    expect(fs.existsSync(injected)).toBe(false);
     expect(git('rev-parse', 'HEAD')).toBe(head);
   });
 

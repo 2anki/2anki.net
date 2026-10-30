@@ -101,6 +101,33 @@ describe('setupDatabase migration list drift', () => {
     ]);
   });
 
+  it('keeps strict validation when one missing migration is newer than the build and another is not', async () => {
+    await setupDatabase(database);
+    fs.rmSync(path.join(migrationsDir, JOBS_MIGRATION));
+    fs.rmSync(path.join(migrationsDir, EXTRA_MIGRATION));
+    fs.writeFileSync(
+      path.join(migrationsDir, '20260101000001_create_jobs_renamed.js'),
+      CREATE_JOBS
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(setupDatabase(database)).rejects.toThrow('process.exit(1)');
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('keeps strict validation when the build has no migration files at all', async () => {
+    await setupDatabase(database);
+    fs.rmSync(path.join(migrationsDir, JOBS_MIGRATION));
+    fs.rmSync(path.join(migrationsDir, EXTRA_MIGRATION));
+    fs.writeFileSync(path.join(migrationsDir, 'README.md'), 'not a migration');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(setupDatabase(database)).rejects.toThrow('process.exit(1)');
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it('keeps strict migration-list validation when every applied migration has a file', async () => {
     await setupDatabase(database);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
