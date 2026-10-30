@@ -4,9 +4,11 @@ PreToolUse -> Bash: block `gh pr merge` when a user-visible PR (a feat: or fix:
 commit touching non-test source) ships without a changelog entry AND without an
 explicit out-clause in the PR body.
 
-Mirrors check-browser-attestation.py: fetches the PR via gh, fails open on any
-tooling error, exempts dependabot. The out-clause keeps it from over-firing on
-internal feat:/fix: work that genuinely needs no entry.
+Mirrors check-browser-attestation.py: fetches the PR via gh, fails open when
+`gh pr view` errors, exempts dependabot. Changed paths are `gh pr view`'s
+`files` (capped at 100) plus `gh pr diff --name-only` (uncapped); when the diff
+call fails, only the first 100 files are checked. The out-clause keeps it from
+over-firing on internal feat:/fix: work that genuinely needs no entry.
 
 CLAUDE.md > Changelog is the rule this enforces.
 """
@@ -85,21 +87,31 @@ def fetch_changed_paths(pr_ref):
         args.append(pr_ref)
     args.append("--name-only")
     try:
-        result = subprocess.run(args, capture_output=True, text=True, timeout=15)
+        result = subprocess.run(
+            args, capture_output=True, text=True, errors="replace", timeout=15
+        )
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
         sys.stderr.write(
             f"[check-changelog-on-merge] could not run gh pr diff ({exc}); "
-            "checking gh pr view's first 100 files instead.\n"
+            "checking only gh pr view's first 100 files.\n"
         )
         return None
     if result.returncode != 0:
         sys.stderr.write(
             "[check-changelog-on-merge] gh pr diff failed; "
-            "checking gh pr view's first 100 files instead. "
+            "checking only gh pr view's first 100 files. "
             f"stderr: {result.stderr.strip()[:300]}\n"
         )
         return None
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def diff_failure_note(diff_paths):
+    if diff_paths is None:
+        return (
+            "\n\ngh pr diff failed, so only the first 100 changed files were checked."
+        )
+    return ""
 
 
 def has_user_visible_commit(commits):
@@ -148,9 +160,9 @@ def main():
     if not has_user_visible_commit(pr_data.get("commits") or []):
         allow()
 
-    paths = fetch_changed_paths(pr_ref)
-    if paths is None:
-        paths = [f.get("path", "") for f in (pr_data.get("files") or [])]
+    view_paths = [f.get("path", "") for f in (pr_data.get("files") or [])]
+    diff_paths = fetch_changed_paths(pr_ref)
+    paths = view_paths + (diff_paths or [])
 
     if not any(is_non_test_source(p) for p in paths):
         allow()
@@ -170,6 +182,7 @@ def main():
         "  Or, if no user would notice this change, state so in the PR body with a line\n"
         "  containing \"no changelog entry\" (e.g. \"no changelog entry — internal refactor\").\n\n"
         "Dependabot PRs are exempt automatically."
+        + diff_failure_note(diff_paths)
     )
 
 
