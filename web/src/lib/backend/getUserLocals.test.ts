@@ -64,16 +64,123 @@ describe('getUserLocals', () => {
 
     await getUserLocals();
 
-    expect(await getLastDeckStore().load()).toBeNull();
+    await vi.waitFor(async () =>
+      expect(await getLastDeckStore().load()).toBeNull()
+    );
+  });
+
+  it('moves a signed-out deck into the account once the visitor is signed in', async () => {
+    await getLastDeckStore().save(keptDeck());
+    fetchSpy.mockImplementation(async (url: string) =>
+      url.endsWith('upload/claim/recovery')
+        ? new Response(JSON.stringify({ downloadKey: 'k.apkg' }), {
+            status: 200,
+          })
+        : signedInLocals()
+    );
+
+    await getUserLocals();
+
+    await vi.waitFor(() => expect(claimCalls()).toHaveLength(1));
+    expect(claimCalls()[0][1]).toMatchObject({
+      method: 'POST',
+      credentials: 'include',
+      body: JSON.stringify({
+        recoveryToken: keptDeck().recoveryToken,
+        deckName: 'Biology.apkg',
+      }),
+    });
+    await vi.waitFor(async () =>
+      expect(await getLastDeckStore().load()).toBeNull()
+    );
+  });
+
+  it('posts the deck once when two reads land together', async () => {
+    await getLastDeckStore().save(keptDeck());
+    fetchSpy.mockImplementation(async (url: string) =>
+      url.endsWith('upload/claim/recovery')
+        ? new Response('{}', { status: 200 })
+        : signedInLocals()
+    );
+
+    await Promise.all([getUserLocals(), getUserLocals()]);
+
+    await vi.waitFor(async () =>
+      expect(await getLastDeckStore().load()).toBeNull()
+    );
+    expect(claimCalls()).toHaveLength(1);
+  });
+
+  it('forgets the deck when the server no longer has it', async () => {
+    await getLastDeckStore().save(keptDeck());
+    fetchSpy.mockImplementation(async (url: string) =>
+      url.endsWith('upload/claim/recovery')
+        ? new Response('{}', { status: 404 })
+        : signedInLocals()
+    );
+
+    await getUserLocals();
+
+    await vi.waitFor(async () =>
+      expect(await getLastDeckStore().load()).toBeNull()
+    );
+  });
+
+  it('keeps the deck for the next read when the move fails on the server', async () => {
+    await getLastDeckStore().save(keptDeck());
+    fetchSpy.mockImplementation(async (url: string) =>
+      url.endsWith('upload/claim/recovery')
+        ? new Response('{}', { status: 503 })
+        : signedInLocals()
+    );
+
+    await getUserLocals();
+
+    await vi.waitFor(() => expect(claimCalls()).toHaveLength(1));
+    await settleClaim();
+    expect(await getLastDeckStore().load()).toEqual(keptDeck());
+  });
+
+  it('keeps the deck for the next read when the move cannot reach the server', async () => {
+    await getLastDeckStore().save(keptDeck());
+    fetchSpy.mockImplementation(async (url: string) => {
+      if (url.endsWith('upload/claim/recovery')) {
+        throw new TypeError('Failed to fetch');
+      }
+      return signedInLocals();
+    });
+
+    await getUserLocals();
+
+    await vi.waitFor(() => expect(claimCalls()).toHaveLength(1));
+    await settleClaim();
+    expect(await getLastDeckStore().load()).toEqual(keptDeck());
+  });
+
+  it('posts nothing for a signed-in visitor with no signed-out deck', async () => {
+    fetchSpy.mockImplementation(async () => signedInLocals());
+
+    await getUserLocals();
+    await settleClaim();
+
+    expect(claimCalls()).toHaveLength(0);
   });
 
   it('keeps the deck while the visitor is signed out', async () => {
     await getLastDeckStore().save(keptDeck());
 
     await getUserLocals();
+    await settleClaim();
 
     expect(await getLastDeckStore().load()).toEqual(keptDeck());
+    expect(claimCalls()).toHaveLength(0);
   });
+
+  function claimCalls() {
+    return fetchSpy.mock.calls.filter(([url]) =>
+      String(url).endsWith('upload/claim/recovery')
+    );
+  }
 });
 
 const KEPT_AT = Date.now();
@@ -84,4 +191,16 @@ function keptDeck() {
     deckName: 'Biology.apkg',
     savedAt: KEPT_AT,
   };
+}
+
+function signedInLocals(): Response {
+  return new Response(JSON.stringify({ locals: {}, user: { id: 9 } }), {
+    status: 200,
+  });
+}
+
+async function settleClaim(): Promise<void> {
+  for (let i = 0; i < 5; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
 }

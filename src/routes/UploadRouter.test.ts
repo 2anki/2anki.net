@@ -114,6 +114,16 @@ vi.mock('../usecases/uploads/ConvertSampleDeckUseCase', () => ({
   }),
 }));
 
+const mockClaimRecovery = vi.fn();
+
+vi.mock('../controllers/Upload/ClaimRecoveryDeckController', () => ({
+  ClaimRecoveryDeckController: vi.fn().mockImplementation(function () {
+    return {
+      claim: mockClaimRecovery,
+    };
+  }),
+}));
+
 import UploadRouter from './UploadRouter';
 import ErrorHandler from './middleware/ErrorHandler';
 
@@ -216,6 +226,45 @@ describe('UploadRouter POST /api/upload/sample', () => {
       expect(res.status).toBe(200);
       expect(res.headers.get('X-Card-Count')).toBe('8');
       expect(mockSample).toHaveBeenCalledTimes(1);
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe('UploadRouter POST /api/upload/claim/recovery', () => {
+  beforeEach(() => {
+    mockAuthOwner = 42;
+    mockClaimRecovery.mockReset();
+    mockClaimRecovery.mockImplementation(
+      (_req: express.Request, res: express.Response) => {
+        res.status(200).json({ downloadKey: 'k.apkg', deckName: 'd.apkg' });
+      }
+    );
+  });
+
+  it('rejects a signed-out claim with 401', async () => {
+    mockAuthOwner = null;
+    const { url, close } = await startServer();
+    try {
+      const res = await fetch(`${url}/api/upload/claim/recovery`, {
+        method: 'POST',
+      });
+      expect(res.status).toBe(401);
+      expect(mockClaimRecovery).not.toHaveBeenCalled();
+    } finally {
+      await close();
+    }
+  });
+
+  it('forwards a signed-in claim to the controller', async () => {
+    const { url, close } = await startServer();
+    try {
+      const res = await fetch(`${url}/api/upload/claim/recovery`, {
+        method: 'POST',
+      });
+      expect(res.status).toBe(200);
+      expect(mockClaimRecovery).toHaveBeenCalledTimes(1);
     } finally {
       await close();
     }

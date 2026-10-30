@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-30-signed-out-deck-to-my-decks",
+  "date": "2026-10-30",
+  "type": "fix",
+  "title": "A deck built with a pass while signed out moves to My decks when you create an account within a day"
+}

@@ -538,6 +538,21 @@ export class Backend {
     });
   }
 
+  async claimRecoveryDeck(
+    recoveryToken: string,
+    deckName: string
+  ): Promise<number> {
+    try {
+      const response = await post(`${this.baseURL}upload/claim/recovery`, {
+        recoveryToken,
+        deckName,
+      });
+      return response.status;
+    } catch {
+      return 0;
+    }
+  }
+
   async claimHeldDeck(): Promise<ClaimHeldDeckResult> {
     const response = await post(`${this.baseURL}upload/claim`, {});
     if (response.status === OK) {

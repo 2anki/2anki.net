@@ -43,6 +43,8 @@ import { GetRecentSourcesUseCase } from '../usecases/uploads/GetRecentSourcesUse
 import { RecentSourcesController } from '../controllers/Upload/RecentSourcesController';
 import { ClaimHeldDeckController } from '../controllers/Upload/ClaimHeldDeckController';
 import { ClaimHeldDeckUseCase } from '../usecases/uploads/ClaimHeldDeckUseCase';
+import { ClaimRecoveryDeckController } from '../controllers/Upload/ClaimRecoveryDeckController';
+import { ClaimRecoveryDeckUseCase } from '../usecases/uploads/ClaimRecoveryDeckUseCase';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import { AiPreviewResumeController } from '../controllers/Upload/AiPreviewResumeController';
@@ -101,6 +103,9 @@ const UploadRouter = () => {
       uploadService,
       () => getFeatureFlag(LIMIT_WALL_PASS_FIRST_FLAG, false)
     )
+  );
+  const claimRecoveryDeckController = new ClaimRecoveryDeckController(
+    new ClaimRecoveryDeckUseCase(new StorageHandler(), uploadService)
   );
   const thinDeckAiPreviewController = new ThinDeckAiPreviewController();
   const readCheckoutBinding = (sessionId: string) => {
@@ -268,6 +273,45 @@ const UploadRouter = () => {
   );
   router.post('/api/upload/claim', RequireAuthentication, (req, res) =>
     claimHeldDeckController.claim(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/upload/claim/recovery:
+   *   post:
+   *     summary: Move a signed-out deck into My decks
+   *     description: Copies the deck a signed-out upload kept for a day into the signed-in account and adds it to My decks. The kept copy is matched to the anon_id cookie and the recovery token the browser sent with the upload, and is deleted once moved, so a second claim finds nothing.
+   *     tags: [Upload]
+   *     security:
+   *       - cookieAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required: [recoveryToken, deckName]
+   *             properties:
+   *               recoveryToken:
+   *                 type: string
+   *                 format: uuid
+   *               deckName:
+   *                 type: string
+   *                 maxLength: 200
+   *     responses:
+   *       200:
+   *         description: Deck added to My decks
+   *       400:
+   *         description: Token is not a UUID or the deck name is missing
+   *       401:
+   *         description: Authentication required
+   *       404:
+   *         description: No deck kept for this browser and token within the last day
+   *       503:
+   *         description: The deck could not be saved to the account
+   */
+  router.post('/api/upload/claim/recovery', RequireAuthentication, (req, res) =>
+    claimRecoveryDeckController.claim(req, res)
   );
 
   /**

@@ -1203,6 +1203,15 @@ class UploadService {
     }
   }
 
+  saveRecoveredDeck(
+    owner: string,
+    deckName: string,
+    apkg: Buffer,
+    requestId: string | undefined
+  ): Promise<string | null> {
+    return this.persistSyncDeck(owner, deckName, apkg, null, requestId);
+  }
+
   /**
    * An anonymous deck has no My Decks row to fall back on, so a dropped
    * response used to lose it (#4651). Keep a copy the uploading browser can
