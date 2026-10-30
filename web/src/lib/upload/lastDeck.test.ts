@@ -144,6 +144,50 @@ describe('keepLastDeck', () => {
     ).resolves.toBe(false);
   });
 
+  it('stops waiting on a store that never answers and promises nothing', async () => {
+    vi.useFakeTimers();
+    try {
+      installLastDeckStoreForTests(
+        {
+          save: () => new Promise<void>(() => {}),
+          load: async () => null,
+          clear: async () => {},
+        },
+        'lasting'
+      );
+
+      const kept = keepLastDeck({
+        passToken: 'cs_pass',
+        recoveryToken: TOKEN,
+        deckName: 'Biology.apkg',
+      });
+      await vi.advanceTimersByTimeAsync(500);
+
+      await expect(kept).resolves.toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('promises nothing when the store holds a different deck after the save', async () => {
+    installLastDeckStoreForTests(
+      {
+        save: () => Promise.reject(new Error('quota')),
+        load: async () => lastDeck({ recoveryToken: LATER_TOKEN }),
+        clear: async () => {},
+      },
+      'lasting'
+    );
+
+    await expect(
+      keepLastDeck({
+        passToken: 'cs_pass',
+        recoveryToken: TOKEN,
+        deckName: 'Biology.apkg',
+      })
+    ).resolves.toBe(false);
+  });
+
   it('says nothing was kept for an upload without a pass', async () => {
     installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
 

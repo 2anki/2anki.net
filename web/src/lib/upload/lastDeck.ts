@@ -92,7 +92,7 @@ function quietAndInOrder(store: LastDeckStore): LastDeckStore {
   };
 }
 
-type StoreLifetime = 'lasting' | 'page';
+export type StoreLifetime = 'lasting' | 'page';
 
 let defaultStore: LastDeckStore | null = null;
 let defaultStoreLifetime: StoreLifetime = 'page';
@@ -122,13 +122,10 @@ function keepsLastDeck(
   return upload.passToken != null && upload.recoveryToken != null;
 }
 
-// Resolves true only when the record will still be there after the full page
-// load a sign-in causes, so the page never promises a move it cannot make.
-export async function keepLastDeck(
-  upload: FinishedUpload,
-  now: () => number = Date.now
+async function saveAndConfirm(
+  upload: FinishedUpload & { passToken: string; recoveryToken: string },
+  now: () => number
 ): Promise<boolean> {
-  if (!keepsLastDeck(upload)) return false;
   const store = getLastDeckStore();
   await store.save({
     recoveryToken: upload.recoveryToken,
@@ -138,6 +135,22 @@ export async function keepLastDeck(
   if (defaultStoreLifetime !== 'lasting') return false;
   const kept = await store.load();
   return kept?.recoveryToken === upload.recoveryToken;
+}
+
+// Resolves true only when the record will still be there after the full page
+// load a sign-in causes, so the page never promises a move it cannot make. The
+// deck waits on this, so a browser store that never answers counts as not kept
+// after a short wait while the save carries on.
+export function keepLastDeck(
+  upload: FinishedUpload,
+  now: () => number = Date.now,
+  waitMs = 500
+): Promise<boolean> {
+  if (!keepsLastDeck(upload)) return Promise.resolve(false);
+  return Promise.race([
+    saveAndConfirm(upload, now),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), waitMs)),
+  ]);
 }
 
 export function forgetLastDeck(waitMs = 500): Promise<void> {

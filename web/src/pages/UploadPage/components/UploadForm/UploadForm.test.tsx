@@ -4964,6 +4964,32 @@ describe('limit state', () => {
     }
   });
 
+  it('shows the deck with the guest notice when the browser store never answers', async () => {
+    installLastDeckStoreForTests(
+      {
+        save: () => new Promise<void>(() => {}),
+        load: async () => null,
+        clear: async () => {},
+      },
+      'lasting'
+    );
+    document.cookie = 'anon_id=anon-stuck-store';
+    try {
+      await submitAsSignedOutPassHolder();
+
+      expect(
+        await screen.findByText(
+          'This deck lives only on this device',
+          {},
+          { timeout: 3000 }
+        )
+      ).toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
   it('keeps the guest notice for a pass holder whose browser blocks the anon_id cookie', async () => {
     installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
     try {
