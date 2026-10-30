@@ -187,6 +187,7 @@ type ResumeOffer =
   | { kind: 'reattach'; filename: string };
 const CHECKOUT_CLAIM_RETRIES = 5;
 const CHECKOUT_CLAIM_RETRY_MS = 3000;
+const RETRY_BUILDING_AFTER_MS = 1000;
 
 function isLimitRedirect(url: URL): boolean {
   return (
@@ -416,6 +417,24 @@ async function requestHeldDeck(passToken: string): Promise<Response | null> {
   }
 }
 
+// A retry Stripe still refuses answers in well under a second, so the status
+// line moves back to checking the pass only once the retry is clearly the
+// deck being built.
+async function retryHeldDeck(
+  passToken: string,
+  onPhase: (phase: PassDeckPhase) => void
+): Promise<Response | null> {
+  const showChecking = setTimeout(
+    () => onPhase('held'),
+    RETRY_BUILDING_AFTER_MS
+  );
+  try {
+    return await requestHeldDeck(passToken);
+  } finally {
+    clearTimeout(showChecking);
+  }
+}
+
 // The held claim goes first because it answers fast when there is no hold,
 // while the AI resume is the slow conversion itself; a held claim that fails
 // still lets an AI preview buyer resume, and when both fail the visitor hears
@@ -432,7 +451,10 @@ async function deliverPassDeck(
   while (true) {
     await Promise.resolve();
     if (isCancelled()) return null;
-    const held = await requestHeldDeck(passToken);
+    const held =
+      attempt === 0
+        ? await requestHeldDeck(passToken)
+        : await retryHeldDeck(passToken, onPhase);
     const heldStatus = held?.status ?? HELD_REQUEST_FAILED;
     if (heldStatus === 403 && attempt < CHECKOUT_CLAIM_RETRIES) {
       attempt += 1;
@@ -440,7 +462,6 @@ async function deliverPassDeck(
       await new Promise((resolve) =>
         setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
       );
-      onPhase('held');
       continue;
     }
     if (held != null && !triesPreviewAfter(heldStatus)) {
@@ -4586,6 +4607,7 @@ function UploadForm({
     : (passResumeNotice ?? '');
 
   const renderLiveStatus = (): string => {
+    if (resumingPreview) return '';
     if (guardrailVisible && validation) return validation.title;
     if (zoneState === 'error' && senderUnknown) {
       return t('upload.form.senderUnknown');

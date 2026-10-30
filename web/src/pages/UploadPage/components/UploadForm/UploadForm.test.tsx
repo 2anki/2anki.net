@@ -443,7 +443,7 @@ describe('UploadForm', () => {
         await screen.findByText('Confirming your payment.')
       ).toBeInTheDocument();
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(4000);
+        await vi.advanceTimersByTimeAsync(4500);
       });
       expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(2);
       expect(screen.getByText('Checking your pass.')).toBeInTheDocument();
@@ -458,6 +458,60 @@ describe('UploadForm', () => {
       ).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
+      restore();
+    }
+  });
+
+  test('keeps saying the payment is confirming while a quick retry is refused again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    stubPassReturn('cs_still_unconfirmed');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValueOnce(statusResponse(403))
+      .mockImplementation(
+        () =>
+          new Promise<Response>((resolve) => {
+            setTimeout(() => resolve(statusResponse(403)), 300);
+          })
+      );
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Confirming your payment.')
+      ).toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3_100);
+      });
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Confirming your payment.')).toBeInTheDocument();
+      expect(screen.queryByText('Checking your pass.')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+      restore();
+    }
+  });
+
+  test('leaves the form announcement to the pass return region while the pass is checked', async () => {
+    stubPassReturn('cs_one_voice');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockReturnValue(new Promise<Response>(() => {}));
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      expect(
+        await screen.findByText('Checking your pass.')
+      ).toBeInTheDocument();
+      const formAnnouncement = container.querySelector(
+        'output[aria-live="polite"]'
+      );
+      expect(formAnnouncement).toHaveTextContent(/^$/);
+    } finally {
       restore();
     }
   });

@@ -57,6 +57,8 @@ describe('anonymousPass', () => {
       deckName: 'Biology',
       '2anki-theme': 'dark',
       ankify_anki_web_acknowledged: 'true',
+      'pdf-fallback': 'pairs',
+      'block-id-identity': 'true',
     });
     Object.defineProperty(globalThis, 'localStorage', {
       value: storage,
@@ -67,6 +69,8 @@ describe('anonymousPass', () => {
     expect(storedCardOptions()).toEqual({
       'basic-reversed': 'true',
       deckName: 'Biology',
+      'pdf-fallback': 'pairs',
+      'block-id-identity': 'true',
     });
   });
 
