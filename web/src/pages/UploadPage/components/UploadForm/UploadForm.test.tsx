@@ -6240,6 +6240,37 @@ describe('UploadForm anonymous deck recovery', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('keeps the guest notice for a pass holder whose lost response is recovered, since no deck is kept to move', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+    stubApi(vi.fn().mockResolvedValue(new Blob(['apkg'])));
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_lost_response');
+    document.cookie = 'anon_id=anon-lost';
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      selectFile(container, 'biochem.pdf');
+      await submitForm(container);
+
+      await screen.findByRole('link', { name: 'Download deck' });
+      expect(
+        screen.getByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
   it('keeps looking through a busy-storage answer, then shows the deck', async () => {
     vi.stubGlobal(
       'fetch',
