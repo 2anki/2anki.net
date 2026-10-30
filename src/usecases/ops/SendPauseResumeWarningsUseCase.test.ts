@@ -129,6 +129,72 @@ describe('SendPauseResumeWarningsUseCase', () => {
     ).toHaveBeenCalledTimes(1);
   });
 
+  it('sends one warning when two subscriptions with different payer emails link to one account', async () => {
+    const repo = new FakeRepository();
+    repo.rows = [
+      {
+        email: 'payer-one@example.com',
+        linked_email: 'account@example.com',
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+      {
+        email: 'payer-two@example.com',
+        linked_email: 'account@example.com',
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+    ];
+    const emailService = makeEmailService();
+    const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
+
+    const result = await useCase.execute(NOW);
+
+    expect(result.count).toBe(1);
+    expect(
+      emailService.sendSubscriptionResumingSoonEmail
+    ).toHaveBeenCalledTimes(1);
+    expect(emailService.sendSubscriptionResumingSoonEmail).toHaveBeenCalledWith(
+      'account@example.com',
+      new Date(RESUMES_AT_SECONDS * 1000),
+      '$7.99'
+    );
+    expect([...repo.claimed]).toEqual([
+      `account@example.com|${new Date(RESUMES_AT_SECONDS * 1000).toISOString()}`,
+    ]);
+  });
+
+  it('releases the claim on the linked account email when its send fails, so the next run retries it', async () => {
+    const repo = new FakeRepository();
+    repo.rows = [
+      {
+        email: 'payer@example.com',
+        linked_email: 'account@example.com',
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+    ];
+    const emailService = {
+      sendSubscriptionResumingSoonEmail: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('smtp down'))
+        .mockResolvedValue(undefined),
+    } as unknown as IEmailService;
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
+
+    const first = await useCase.execute(NOW);
+    expect(repo.claimed.size).toBe(0);
+    const second = await useCase.execute(NOW);
+
+    expect(first.count).toBe(0);
+    expect(second.count).toBe(1);
+    expect(
+      emailService.sendSubscriptionResumingSoonEmail
+    ).toHaveBeenLastCalledWith(
+      'account@example.com',
+      expect.any(Date),
+      '$7.99'
+    );
+  });
+
   it('claims the notice before the email goes out, so a run cut short after the send never repeats it', async () => {
     const repo = new FakeRepository();
     repo.rows = [
