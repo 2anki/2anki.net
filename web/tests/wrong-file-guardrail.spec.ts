@@ -94,6 +94,40 @@ test('a saved link to a Notion page offers the Notion route', async ({
   expect(
     errors.filter((e) => !/favicon|Failed to load resource/.test(e))
   ).toEqual([]);
+
+  const colors = () =>
+    notionLink.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { text: style.color, background: style.backgroundColor };
+    });
+  const resting = await colors();
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('DOM.enable');
+  await cdp.send('CSS.enable');
+  const { root } = await cdp.send('DOM.getDocument');
+  const { nodeId } = await cdp.send('DOM.querySelector', {
+    nodeId: root.nodeId,
+    selector: '#upload-panel-local a[href="/notion"]',
+  });
+  await cdp.send('CSS.forcePseudoState', {
+    nodeId,
+    forcedPseudoClasses: ['hover'],
+  });
+  await expect
+    .poll(async () => (await colors()).background)
+    .not.toBe(resting.background);
+  await page.waitForTimeout(300);
+  const hovered = await colors();
+  expect(hovered.text).not.toBe(hovered.background);
+  await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
+
+  let pickerOpened = false;
+  page.on('filechooser', () => {
+    pickerOpened = true;
+  });
+  await notionLink.click();
+  await expect(page).toHaveURL(/notion/);
+  expect(pickerOpened).toBe(false);
 });
 
 test('an icon file is named as an icon, not study material', async ({

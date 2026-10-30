@@ -5600,6 +5600,7 @@ describe('limit state', () => {
     it('names a dropped icon file as an icon and uploads nothing', async () => {
       setUserLocals(anonymousData);
       const fetchMock = stubPendingFetch();
+      vi.mocked(track).mockClear();
       const { container } = renderUploadForm(
         <UploadForm setErrorMessage={vi.fn()} />
       );
@@ -5613,6 +5614,15 @@ describe('limit state', () => {
         ).toBe('That is an icon, not your notes');
       });
       expect(screen.queryByText('Convert anyway')).toBeNull();
+      expect(
+        screen.queryByRole('link', { name: 'Convert from Notion' })
+      ).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Pick a different file' })
+      ).toBeInTheDocument();
+      expect(vi.mocked(track)).toHaveBeenCalledWith('upload_guardrail_shown', {
+        kind: 'icon',
+      });
       expect(
         fetchMock.mock.calls.filter(([url]) => url === '/api/upload/file')
       ).toHaveLength(0);

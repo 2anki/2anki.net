@@ -326,6 +326,7 @@
 
 .actionButton:hover:not(:disabled) {
   background: var(--color-primary-hover);
+  color: var(--color-bg-primary);
   box-shadow: var(--shadow-sm);
 }
 

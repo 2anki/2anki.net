@@ -2,5 +2,5 @@
   "id": "2026-10-30-upload-link-and-icon-files",
   "date": "2026-10-30",
   "type": "fix",
-  "title": "Upload sends a saved Notion link to the Notion page picker and asks for your notes or slides when you add an icon file"
+  "title": "Upload offers the Notion page picker for a saved Notion link and asks for your notes or slides when you add an icon file"
 }
