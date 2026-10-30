@@ -3,6 +3,7 @@ const VALID_PRICING_VARIANTS = new Set([
   'unlimited-first',
   'minimal',
   'semester-first',
+  'mcp-day-first',
 ]);
 
 /**

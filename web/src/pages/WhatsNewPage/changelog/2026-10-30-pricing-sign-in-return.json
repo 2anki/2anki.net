@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-30-pricing-sign-in-return",
+  "date": "2026-10-30",
+  "type": "fix",
+  "title": "Signing in with your password from the pricing page brings you back to it, with yearly billing still selected"
+}

@@ -2043,6 +2043,23 @@ describe('UsersController.login — Notion-aware redirect', () => {
     const payload = res.json.mock.calls[0][0];
     expect(payload.redirect).toBe('/downloads');
   });
+
+  it('returns a connector visitor to the pricing view they signed in from', async () => {
+    MockedNotionRepo.prototype.getNotionData = vi
+      .fn()
+      .mockResolvedValue({ token: 'stored-tok', owner: 5 });
+    const { controller } = buildLoginController();
+    const req = {
+      body: { email: 'u@example.com', credentials: 'mock' },
+      query: { redirect: '/pricing?ref=mcp&interval=year' },
+    } as unknown as express.Request;
+    const res = buildLoginRes();
+
+    await controller.login(req, res, vi.fn());
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.redirect).toBe('/pricing?ref=mcp&interval=year');
+  });
 });
 
 describe('UsersController.loginWithNotion — error recording', () => {
@@ -4038,5 +4055,46 @@ describe('UsersController — sign-in returns a connector to the authorize scree
     );
 
     expect(res.redirect).toHaveBeenCalledWith(AUTHORIZE_URL);
+  });
+
+  it('GET /login for a signed-in user returns a connector visitor to the pricing view', async () => {
+    const controller = new UsersController(
+      {} as UsersService,
+      {
+        getUserFrom: vi.fn().mockResolvedValue(existingUser),
+      } as unknown as AuthenticationService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const res = buildSigninRes();
+
+    await controller.checkUser(
+      {
+        query: { redirect: '/pricing?ref=mcp' },
+        body: {},
+        cookies: { token: 'session-jwt' },
+      } as unknown as express.Request,
+      res
+    );
+
+    expect(res.redirect).toHaveBeenCalledWith('/pricing?ref=mcp');
+  });
+
+  it('a magic link login returns a connector visitor to the pricing view', async () => {
+    const res = buildSigninRes();
+
+    await buildSigninController().verifyMagicLink(
+      {
+        params: { token: 'valid-tok' },
+        query: { redirect: '/pricing?ref=mcp' },
+        cookies: {},
+      } as unknown as express.Request,
+      res,
+      vi.fn()
+    );
+
+    expect(res.json).toHaveBeenCalledWith({
+      token: 'session-jwt',
+      redirect: '/pricing?ref=mcp',
+    });
   });
 });
