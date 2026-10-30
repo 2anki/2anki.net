@@ -12155,6 +12155,49 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
     } as unknown as ReturnType<typeof useUserLocals>;
   }
 
+  test('keeps the resumed thin deck for the account and says so to a signed-out buyer', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: null,
+        locals: {
+          owner: 0,
+          patreon: false,
+          subscriber: false,
+          subscriptionInfo: { active: false, email: '', linked_email: '' },
+        },
+        linked_email: '',
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    stubPassReturn('cs_thin_kept');
+    markThinDeckResume();
+    await saveWithAi(null);
+    const restore = installResumeApi(vi.fn());
+    vi.stubGlobal('fetch', okApkgFetch());
+    document.cookie = 'anon_id=anon-thin-kept';
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+      expect(
+        await screen.findByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).toBeInTheDocument();
+      await vi.waitFor(async () =>
+        expect(await getLastDeckStore().load()).toMatchObject({
+          recoveryToken: expect.stringMatching(/^[0-9a-f-]{36}$/),
+        })
+      );
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      restore();
+    }
+  });
+
   test('sends the saved file again with AI on for a visitor back from checkout', async () => {
     stubPassReturn('cs_thin');
     markThinDeckResume();
