@@ -46,3 +46,80 @@ test('a shortcut file gets a next step instead of a failed conversion', async ({
     errors.filter((e) => !/favicon|Failed to load resource/.test(e))
   ).toEqual([]);
 });
+
+test('a saved link to a Notion page offers the Notion route', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  const requested: string[] = [];
+  page.on('request', (request) => requested.push(request.url()));
+  let uploads = 0;
+  await page.route('**/api/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  );
+  await page.route('**/api/upload/file', (route) => {
+    uploads += 1;
+    return route.fulfill({ status: 500, body: '' });
+  });
+
+  await page.goto('/upload');
+  await expect(page.locator('#upload-panel-local')).toBeVisible();
+  await page.locator('#pakker').setInputFiles({
+    name: 'Biology.url',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(
+      '[InternetShortcut]\r\nURL=https://www.notion.so/Biology-13ad6043d0164833bcc33d2a60ed6dcc\r\n'
+    ),
+  });
+
+  const panel = page.locator('#upload-panel-local');
+  await expect(
+    panel.getByText('That is a link to a Notion page')
+  ).toBeVisible();
+  const notionLink = panel.getByRole('link', { name: 'Convert from Notion' });
+  await expect(notionLink).toBeVisible();
+  await expect(notionLink).toHaveAttribute('href', '/notion');
+  await expect(
+    page.getByRole('button', { name: 'Convert anyway' })
+  ).toHaveCount(0);
+  expect(uploads).toBe(0);
+  expect(requested.some((url) => url.includes('notion.so'))).toBe(false);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth
+  );
+  expect(overflow).toBe(false);
+  expect(
+    errors.filter((e) => !/favicon|Failed to load resource/.test(e))
+  ).toEqual([]);
+});
+
+test('an icon file is named as an icon, not study material', async ({
+  page,
+}) => {
+  await page.route('**/api/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  );
+
+  await page.goto('/upload');
+  await expect(page.locator('#upload-panel-local')).toBeVisible();
+  await page.locator('#pakker').setInputFiles({
+    name: 'favicon.ico',
+    mimeType: 'image/x-icon',
+    buffer: Buffer.from([0, 0, 1, 0]),
+  });
+
+  const panel = page.locator('#upload-panel-local');
+  await expect(
+    panel.getByText('That is an icon, not your notes')
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Convert anyway' })
+  ).toHaveCount(0);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth
+  );
+  expect(overflow).toBe(false);
+});

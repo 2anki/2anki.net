@@ -442,9 +442,22 @@
         "title": "Das ist ein Link, keine Datei",
         "body": "Das ist eine Internetverknüpfung, ein gespeicherter Link. Öffne den Link, lade die Datei herunter (PDF, Word, HTML oder einen Notion-Export) und lade diese hoch. Eine Notion-Seite konvertierst du direkt über den Notion-Tab."
       },
+      "internetShortcutNotion": {
+        "title": "Das ist ein Link zu einer Notion-Seite",
+        "body": "Diese Datei ist ein gespeicherter Link zu einer Notion-Seite, nicht die Seite selbst. Verbinde Notion und wähle die Seite, dann konvertiert 2anki sie direkt.",
+        "action": "Über Notion konvertieren"
+      },
+      "internetShortcutLink": {
+        "title": "Das ist ein Link, keine Datei",
+        "body": "Diese Datei ist ein gespeicherter Link zu einer Webseite, nicht die Datei selbst. Öffne den Link, lade die Datei herunter und lade diese hoch: PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML oder ein Notion-Export."
+      },
       "goodnotes": {
         "title": "GoodNotes-Notizbücher können nicht direkt gelesen werden",
         "body": "Exportiere das Notizbuch in GoodNotes als PDF (Teilen, Exportieren, PDF) und lade stattdessen dieses PDF hoch. 2anki macht aus PDFs Karten."
+      },
+      "icon": {
+        "title": "Das ist ein Symbol, nicht deine Notizen",
+        "body": "Das ist ein Symbolbild, kein Lernmaterial. Wähle stattdessen die Datei mit deinen Notizen oder Folien."
       }
     }
   },

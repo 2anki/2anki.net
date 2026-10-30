@@ -5335,6 +5335,39 @@ describe('limit state', () => {
       });
     });
 
+    it('offers the Notion route for a dropped link to a Notion page', async () => {
+      const fetchMock = pendingFetch();
+      vi.stubGlobal('fetch', fetchMock);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const fileInput = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      setInputFile(
+        fileInput,
+        new File(
+          ['[InternetShortcut]\r\nURL=https://www.notion.so/Biology-1\r\n'],
+          'Biology.url'
+        )
+      );
+      await act(async () => {
+        fireEvent.change(fileInput);
+      });
+      const link = await screen.findByRole('link', {
+        name: 'Convert from Notion',
+      });
+      expect(link.getAttribute('href')).toBe('/notion');
+      expect(
+        container.querySelector('[class*="validationTitle"]')?.textContent
+      ).toBe('That is a link to a Notion page');
+      expect(screen.queryByText('Convert anyway')).toBeNull();
+      const uploadCalls = fetchMock.mock.calls.filter(
+        ([url]) => url === '/api/upload/file'
+      );
+      expect(uploadCalls).toHaveLength(0);
+    });
+
     it('announces the guardrail title in the polite live region', async () => {
       const { container } = renderUploadForm(
         <UploadForm setErrorMessage={vi.fn()} />

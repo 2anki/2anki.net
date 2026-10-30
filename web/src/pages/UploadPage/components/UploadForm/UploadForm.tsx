@@ -2875,6 +2875,14 @@ function UploadForm({
           >
             {t('upload.validation.pickDifferent')}
           </button>
+          {validation?.actionLink != null && (
+            <Link
+              to={validation.actionLink.href}
+              className={formStyles.resetLink}
+            >
+              {validation.actionLink.label}
+            </Link>
+          )}
           {validation?.blocking !== true && (
             <button
               type="button"
