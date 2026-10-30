@@ -29,15 +29,15 @@ function featuredTitles(): string[] {
 
 describe('PassCards featuring', () => {
   it.each<[string, Overrides, string[]]>([
-    ['the limit wall', { featureDayPass: true }, ['Day Pass']],
+    ['the limit wall', { featureDayPass: true, benefits: [] }, ['Day Pass']],
     [
       'the limit wall in its semester arm',
-      { featureDayPass: false, featureSemester: true },
+      { featureDayPass: false, featureSemester: true, benefits: [] },
       ['Semester Pass'],
     ],
     [
       'the pricing page and preview page',
-      { featureDayPass: false, featureSemester: true, benefits: [] },
+      { featureDayPass: false, featureSemester: true },
       ['Semester Pass'],
     ],
     ['no featured pass', { featureDayPass: false }, []],

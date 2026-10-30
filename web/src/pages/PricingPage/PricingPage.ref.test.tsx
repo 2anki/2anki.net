@@ -243,6 +243,41 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
   });
 });
 
+describe('PricingPage for a signed-in free connector visitor', () => {
+  const freeEntitlement: PricingEntitlement = {
+    subscriber: false,
+    passKind: null,
+    passExpiresAt: null,
+  };
+
+  it('orders the cards Day Pass, Pro, Week Pass, Semester Pass', () => {
+    renderAt('/pricing/?ref=mcp', true, freeEntitlement);
+    expect(planHeadings().map((h) => h.textContent)).toEqual(PLAN_TITLES);
+  });
+
+  it('explains why the deck was not made', () => {
+    renderAt('/pricing/?ref=mcp', true, freeEntitlement);
+    expect(screen.getByText(CONNECTOR_INTRO)).toBeInTheDocument();
+  });
+
+  it('tags a Day Pass checkout with the connector variant', async () => {
+    mockStartPassCheckout.mockResolvedValue({
+      url: 'https://checkout.stripe.test/day',
+    });
+    renderAt('/pricing/?ref=mcp', true, freeEntitlement);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
+
+    await waitFor(() =>
+      expect(mockStartPassCheckout).toHaveBeenCalledWith(
+        '24h',
+        'mcp-day-first',
+        'pricing_page'
+      )
+    );
+  });
+});
+
 describe('PricingPage for a connector visitor who already owns ongoing access', () => {
   it.each<[string, PricingEntitlement]>([
     ['Pro', { subscriber: true, passKind: null }],
