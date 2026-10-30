@@ -81,6 +81,15 @@ beforeEach(() => {
   mockStartPassCheckout.mockReset();
   mockStartUnlimitedCheckout.mockReset();
   mockStartAutoSyncCheckout.mockReset();
+  mockStartPassCheckout.mockResolvedValue({
+    url: 'https://checkout.stripe.test/pass',
+  });
+  mockStartUnlimitedCheckout.mockResolvedValue({
+    url: 'https://checkout.stripe.test/pro',
+  });
+  mockStartAutoSyncCheckout.mockResolvedValue({
+    url: 'https://checkout.stripe.test/auto-sync',
+  });
   mockGetAutoSyncPrice.mockResolvedValue(null);
   Object.defineProperty(globalThis, 'location', {
     writable: true,
@@ -353,6 +362,19 @@ describe('PricingPage for a connector visitor holding an active pass', () => {
     });
     expect(planHeadings().map((h) => h.textContent)).toEqual(PLAN_TITLES);
     expect(screen.queryByText(CONNECTOR_INTRO)).not.toBeInTheDocument();
+  });
+
+  it('hides the signed-out intro from a pass bought without an account', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-30T12:00:00Z'));
+    renderAt('/pricing/?ref=mcp', false, {
+      passKind: '24h',
+      passExpiresAt: '2026-10-31T12:00:00Z',
+    });
+    expect(planHeadings().map((h) => h.textContent)).toEqual(PLAN_TITLES);
+    expect(
+      screen.queryByText(SIGNED_OUT_CONNECTOR_INTRO)
+    ).not.toBeInTheDocument();
   });
 });
 

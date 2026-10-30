@@ -252,7 +252,7 @@ describe('getRedirect security tests', () => {
       ['/pricing/../admin?ref=mcp', '/pricing'],
     ];
     offSite.forEach(([target, expected]) => {
-      it(`does not treat a look-alike as pricing: ${JSON.stringify(target)}`, () => {
+      it(`keeps no pricing params for a look-alike: ${JSON.stringify(target)}`, () => {
         expect(getRedirect(createMockRequest(target))).toBe(expected);
       });
     });
