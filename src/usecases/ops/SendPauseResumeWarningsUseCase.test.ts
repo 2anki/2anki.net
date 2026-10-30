@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, type Mock } from 'vitest';
 import {
   SendPauseResumeWarningsUseCase,
   formatAmount,
@@ -129,17 +129,17 @@ describe('SendPauseResumeWarningsUseCase', () => {
     ).toHaveBeenCalledTimes(1);
   });
 
-  it('sends one warning when two subscriptions with different payer emails link to one account', async () => {
+  it('sends one warning when two subscriptions with different payer emails reach one account', async () => {
     const repo = new FakeRepository();
     repo.rows = [
       {
-        email: 'payer-one@example.com',
+        email: 'payer@example.com',
         linked_email: 'account@example.com',
         payload: makePayload(RESUMES_AT_SECONDS),
       },
       {
-        email: 'payer-two@example.com',
-        linked_email: 'account@example.com',
+        email: 'account@example.com',
+        linked_email: null,
         payload: makePayload(RESUMES_AT_SECONDS),
       },
     ];
@@ -159,6 +159,52 @@ describe('SendPauseResumeWarningsUseCase', () => {
     );
     expect([...repo.claimed]).toEqual([
       `account@example.com|${new Date(RESUMES_AT_SECONDS * 1000).toISOString()}`,
+    ]);
+  });
+
+  it('warns the new address once when the account email changes after the warning went out', async () => {
+    const repo = new FakeRepository();
+    const row: PausedSubscriptionRow = {
+      email: 'payer@example.com',
+      linked_email: 'old@example.com',
+      payload: makePayload(RESUMES_AT_SECONDS),
+    };
+    repo.rows = [row];
+    const emailService = makeEmailService();
+    const useCase = new SendPauseResumeWarningsUseCase(repo, emailService);
+
+    await useCase.execute(NOW);
+    row.linked_email = 'new@example.com';
+    const afterChange = await useCase.execute(NOW);
+    const nextDay = await useCase.execute(NOW);
+
+    expect(afterChange.count).toBe(1);
+    expect(nextDay.count).toBe(0);
+    expect(
+      (emailService.sendSubscriptionResumingSoonEmail as Mock).mock.calls.map(
+        ([recipient]) => recipient
+      )
+    ).toEqual(['old@example.com', 'new@example.com']);
+  });
+
+  it('keys an unlinked subscription on its payer email, the address it is sent to', async () => {
+    const repo = new FakeRepository();
+    repo.rows = [
+      {
+        email: 'stripe@example.com',
+        linked_email: null,
+        payload: makePayload(RESUMES_AT_SECONDS),
+      },
+    ];
+    const useCase = new SendPauseResumeWarningsUseCase(
+      repo,
+      makeEmailService()
+    );
+
+    await useCase.execute(NOW);
+
+    expect([...repo.claimed]).toEqual([
+      `stripe@example.com|${new Date(RESUMES_AT_SECONDS * 1000).toISOString()}`,
     ]);
   });
 

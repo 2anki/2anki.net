@@ -326,6 +326,7 @@ describe('UsersRepository.deleteUser', () => {
         return Promise.resolve(1);
       });
       const chain: any = { del };
+      chain.orWhere = vi.fn().mockReturnValue(chain);
       chain.orWhereRaw = vi.fn().mockReturnValue(chain);
       chain.whereRaw = vi.fn().mockReturnValue(chain);
       chain.select = vi.fn().mockReturnValue(chain);

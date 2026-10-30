@@ -235,8 +235,12 @@ class UsersRepository {
         // the entitlement was granted to — often different people. Deleting on
         // the payer address alone would revoke a live third party's paid
         // access, so a payer-matched row is only purged when it is unlinked or
-        // linked back to this same user. Same reason the warning-notice rows
-        // are scoped through the subscription rows this user actually owns.
+        // linked back to this same user. A warning notice is keyed on the
+        // address the warning went to, which for every row this user owns is
+        // the account address. Older notices were keyed on the payer; a payer
+        // address can now be another account's recipient key, so those are
+        // only purged once their resume date has passed and no warning hangs
+        // on them.
         const ownedSubscriptionEmails = trx('subscriptions')
           .where((qb) =>
             qb
@@ -248,7 +252,12 @@ class UsersRepository {
           .orWhereRaw('lower(linked_email) = ?', [normalized])
           .select('email');
         await trx('pause_resume_warning_notices')
-          .whereIn('subscription_email', ownedSubscriptionEmails)
+          .whereRaw('lower(subscription_email) = ?', [normalized])
+          .orWhere((legacy) =>
+            legacy
+              .whereIn('subscription_email', ownedSubscriptionEmails)
+              .where('resumes_at', '<', new Date())
+          )
           .del();
         await trx('subscriptions')
           .where((qb) =>
