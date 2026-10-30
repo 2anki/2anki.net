@@ -56,7 +56,7 @@ def fetch_pr_data(pr_ref):
     args = ["gh", "pr", "view"]
     if pr_ref is not None:
         args.append(pr_ref)
-    args.extend(["--json", "author,body,commits"])
+    args.extend(["--json", "author,body,files,commits"])
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=15)
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
@@ -88,12 +88,14 @@ def fetch_changed_paths(pr_ref):
         result = subprocess.run(args, capture_output=True, text=True, timeout=15)
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
         sys.stderr.write(
-            f"[check-changelog-on-merge] could not run gh ({exc}); allowing merge.\n"
+            f"[check-changelog-on-merge] could not run gh pr diff ({exc}); "
+            "checking gh pr view's first 100 files instead.\n"
         )
         return None
     if result.returncode != 0:
         sys.stderr.write(
-            "[check-changelog-on-merge] gh pr diff failed; allowing merge. "
+            "[check-changelog-on-merge] gh pr diff failed; "
+            "checking gh pr view's first 100 files instead. "
             f"stderr: {result.stderr.strip()[:300]}\n"
         )
         return None
@@ -148,7 +150,7 @@ def main():
 
     paths = fetch_changed_paths(pr_ref)
     if paths is None:
-        allow()
+        paths = [f.get("path", "") for f in (pr_data.get("files") or [])]
 
     if not any(is_non_test_source(p) for p in paths):
         allow()
