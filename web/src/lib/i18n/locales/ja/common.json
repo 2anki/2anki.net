@@ -421,7 +421,7 @@
       "internetShortcutNotion": {
         "title": "これは Notion ページへのリンクです",
         "body": "このファイルは Notion ページへの保存されたリンクで、ページそのものではありません。Notion を接続してページを選ぶと、2anki が直接変換します。",
-        "action": "Notion から変換"
+        "action": "Notion から変換する"
       },
       "internetShortcutLink": {
         "title": "これはリンクで、ファイルではありません",

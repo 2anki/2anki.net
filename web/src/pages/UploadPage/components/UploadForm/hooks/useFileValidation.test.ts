@@ -280,7 +280,12 @@ describe('detectInternetShortcutIssue', () => {
   it.each([
     ['an empty file', ''],
     ['no URL line', '[InternetShortcut]\r\nIDList=\r\n'],
-    ['a URL line that is not a link', '[InternetShortcut]\r\nURL=not a link'],
+    ['a URL line with spaces in it', '[InternetShortcut]\r\nURL=not a link'],
+    ['a URL line that does not parse', '[InternetShortcut]\r\nURL=notalink'],
+    [
+      'a link to a file on this computer',
+      '[InternetShortcut]\r\nURL=file:///C:/Notes/lecture.pdf',
+    ],
   ])('leaves %s to the plain shortcut message', async (_label, text) => {
     expect(
       await detectInternetShortcutIssue([new File([text], 'Page.url')])

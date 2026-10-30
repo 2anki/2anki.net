@@ -34,6 +34,7 @@ export interface FileValidationResult {
 const ZIP_PEEK_BUDGET_BYTES = 200 * 1024 * 1024;
 const INTERNET_SHORTCUT_READ_BUDGET_BYTES = 64 * 1024;
 const NOTION_HOSTS = ['notion.so', 'notion.site'];
+const WEB_PROTOCOLS = new Set(['http:', 'https:']);
 
 function translate(t: ValidationTranslator | undefined, key: string): string {
   return t ? t(key) : key;
@@ -169,11 +170,13 @@ async function readShortcutUrl(file: File): Promise<URL | null> {
     .map((line) => /^\s*URL\s*=\s*(\S+)\s*$/i.exec(line))
     .find((match) => match != null);
   if (urlLine == null) return null;
+  let url: URL;
   try {
-    return new URL(urlLine[1]);
+    url = new URL(urlLine[1]);
   } catch {
     return null;
   }
+  return WEB_PROTOCOLS.has(url.protocol) ? url : null;
 }
 
 export async function detectInternetShortcutIssue(

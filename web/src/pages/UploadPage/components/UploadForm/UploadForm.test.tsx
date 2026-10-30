@@ -5519,6 +5519,9 @@ describe('limit state', () => {
         container.querySelector('[class*="validationTitle"]')?.textContent
       ).toBe('That is a link to a Notion page');
       expect(screen.queryByText('Convert anyway')).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Pick a different file' })
+      ).toBeInTheDocument();
       expect(vi.mocked(track)).toHaveBeenCalledWith('upload_guardrail_shown', {
         kind: 'internet_shortcut_notion',
       });
@@ -5555,6 +5558,32 @@ describe('limit state', () => {
       );
       await drop(container, notionShortcut());
       await expectNotionOffer(container, fetchMock);
+    });
+
+    it('takes the visitor to the Notion page picker when they follow the offer', async () => {
+      setUserLocals(loggedInData);
+      stubPendingFetch();
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const { container } = render(
+        <MemoryRouter initialEntries={['/upload']}>
+          <QueryClientProvider client={queryClient}>
+            <Routes>
+              <Route
+                path="/upload"
+                element={<UploadForm setErrorMessage={vi.fn()} />}
+              />
+              <Route path="/notion" element={<p>Notion page picker</p>} />
+            </Routes>
+          </QueryClientProvider>
+        </MemoryRouter>
+      );
+      await pick(container, notionShortcut());
+      fireEvent.click(
+        await screen.findByRole('link', { name: 'Convert from Notion' })
+      );
+      expect(await screen.findByText('Notion page picker')).toBeInTheDocument();
     });
 
     it('offers the Notion route on the home page sample form', async () => {
