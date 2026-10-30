@@ -242,6 +242,10 @@ export class DeckParser {
 
   emptyBackCount: number;
 
+  // Of emptyBackCount, the cards that were toggles in a Notion export (they
+  // carry a Notion block id), so the notice can say where to add the answer.
+  notionEmptyBackCount: number;
+
   // Basic-mode cards that carry {{cN::…}} markup; Anki renders the braces
   // literally, so the conversion report warns and offers cloze mode (#4402).
   strayClozeCount: number;
@@ -315,6 +319,7 @@ export class DeckParser {
     this.missingLocalImageCount = 0;
     this.plainTextFallbackImageCount = 0;
     this.emptyBackCount = 0;
+    this.notionEmptyBackCount = 0;
     this.strayClozeCount = 0;
     this.recognizedCardStructureCount = 0;
     this.cardsRemovedByUserFilter = 0;
@@ -1844,6 +1849,7 @@ export class DeckParser {
     }
 
     this.emptyBackCount = 0;
+    this.notionEmptyBackCount = 0;
     this.strayClozeCount = 0;
     await runSequentially(this.payload, async (deck) => {
       deck.id = get16DigitRandomId();
@@ -1877,14 +1883,24 @@ export class DeckParser {
       });
       const kept = deck.cards.filter((card) => !replaced.has(card));
       const produced = kept.concat(addThese);
+      const dropsWhenBackIsEmpty = (card: Note) =>
+        !card.isValidMCQNote() &&
+        !card.isValidClozeNote() &&
+        !card.isValidInputNote();
       this.emptyBackCount += countEmptyBacks(
         produced,
         (card) => card.back,
         (card) => card.name,
+        dropsWhenBackIsEmpty
+      );
+      this.notionEmptyBackCount += countEmptyBacks(
+        produced,
+        (card) => card.back,
+        (card) => card.name,
         (card) =>
-          !card.isValidMCQNote() &&
-          !card.isValidClozeNote() &&
-          !card.isValidInputNote()
+          dropsWhenBackIsEmpty(card) &&
+          card.notionId != null &&
+          DeckParser.NOTION_BLOCK_ID_PATTERN.test(card.notionId)
       );
       deck.cards = Deck.CleanCards(produced);
       this.applyGlobalTags(deck.cards);
@@ -2120,7 +2136,10 @@ export class DeckParser {
   // text, then text that held no structure the parser recognises; anything else
   // stays honest as unknown. Page text is measured only when extraction found
   // no card, so a page whose toggles all came out blank never set it: recognised
-  // structure means there was text to read.
+  // structure means there was text to read. Notion-export toggles whose answers
+  // were all blank read as empty_answers, as on the Notion connection; blank
+  // backs on toggles our own converters built stay unknown, since that copy
+  // sends people to Notion.
   emptyDeckReason(): EmptyDeckReason {
     if (this.cardsRemovedByUserFilter > 0) {
       return 'all_filtered';
@@ -2130,6 +2149,12 @@ export class DeckParser {
     }
     if (this.recognizedCardStructureCount === 0) {
       return 'no_toggles';
+    }
+    if (
+      this.emptyBackCount > 0 &&
+      this.notionEmptyBackCount === this.emptyBackCount
+    ) {
+      return 'empty_answers';
     }
     return 'unknown';
   }

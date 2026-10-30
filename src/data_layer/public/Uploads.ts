@@ -27,6 +27,8 @@ export default interface Uploads {
   dropped_image_count: number | null;
 
   image_drop_reason: string | null;
+
+  empty_back_count: number | null;
 }
 
 /** Represents the initializer for the table public.uploads */
@@ -54,6 +56,8 @@ export interface UploadsInitializer {
   dropped_image_count?: number | null;
 
   image_drop_reason?: string | null;
+
+  empty_back_count?: number | null;
 }
 
 /** Represents the mutator for the table public.uploads */
@@ -79,4 +83,6 @@ export interface UploadsMutator {
   dropped_image_count?: number | null;
 
   image_drop_reason?: string | null;
+
+  empty_back_count?: number | null;
 }

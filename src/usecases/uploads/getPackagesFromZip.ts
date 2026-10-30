@@ -262,6 +262,7 @@ async function buildDeckBatch(
       pkg.plainTextFallbackImageCount = result.plainTextFallbackImageCount ?? 0;
       pkg.coloredTextPageCount = result.coloredTextPageCount ?? 0;
       pkg.cherrySkippedCount = result.cherrySkippedCount ?? 0;
+      pkg.notionEmptyBackCount = result.notionEmptyBackCount ?? 0;
       packages.push(pkg);
       if (result.warning) warnings.push(result.warning);
     });
@@ -364,6 +365,7 @@ async function buildStragglerDecks(
         outcome.plainTextFallbackImageCount ?? 0;
       pkg.coloredTextPageCount = outcome.coloredTextPageCount ?? 0;
       pkg.cherrySkippedCount = outcome.cherrySkippedCount ?? 0;
+      pkg.notionEmptyBackCount = outcome.notionEmptyBackCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
     }
@@ -423,6 +425,7 @@ async function buildClaudeFlashcardDeck(
     pkg.plainTextFallbackImageCount = deck.plainTextFallbackImageCount ?? 0;
     pkg.coloredTextPageCount = deck.coloredTextPageCount ?? 0;
     pkg.cherrySkippedCount = deck.cherrySkippedCount ?? 0;
+    pkg.notionEmptyBackCount = deck.notionEmptyBackCount ?? 0;
     packages.push(pkg);
     if (deck.warning) warnings.push(deck.warning);
   }
@@ -524,6 +527,7 @@ async function buildAllInOneSlot(
         outcome.plainTextFallbackImageCount ?? 0;
       pkg.coloredTextPageCount = outcome.coloredTextPageCount ?? 0;
       pkg.cherrySkippedCount = outcome.cherrySkippedCount ?? 0;
+      pkg.notionEmptyBackCount = outcome.notionEmptyBackCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
       if (perFileCardLimit != null) {

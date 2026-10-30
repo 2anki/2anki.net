@@ -1034,6 +1034,24 @@ describe('getPackagesFromZip — toggles Cherry-pick left out', () => {
     expect(result.packages.map((p) => p.cherrySkippedCount)).toEqual([4]);
   });
 
+  it('carries the Notion-export empty-back count onto the package of a single-file zip', async () => {
+    zipOf(['only.html']);
+    mockPrepareDeck.mockResolvedValue({
+      name: 'only.html',
+      apkg: Buffer.from(''),
+      deck: [],
+      cardCount: 1,
+      emptyBackCount: 3,
+      notionEmptyBackCount: 2,
+    });
+
+    const result = await run();
+
+    expect(
+      result.packages.map((p) => [p.emptyBackCount, p.notionEmptyBackCount])
+    ).toEqual([[3, 2]]);
+  });
+
   it('carries each file count onto its package in a batch build', async () => {
     const fileNames = Array.from({ length: 8 }, (_, i) => `deck${i}.html`);
     zipOf(fileNames);

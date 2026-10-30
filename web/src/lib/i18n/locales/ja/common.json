@@ -294,6 +294,7 @@
       "readingNextAnswers": "トグルのタイトルに質問を、その中に答えを書いてから、もう一度変換してください。",
       "readingRescueVerdict": "そのままではカードになりませんでした。",
       "readingNoPairs": "質問と答えのペアにできるものはありませんでした。",
+      "readingEmptyAnswers": "トグルの中に答えが入っていません。",
       "readingTogglesNoPairs_other": "質問とその答えが中に入っているトグルはありませんでした。",
       "readingToggles_other": "{{n}} 個のトグル",
       "readingNextToggles": "各質問をトグルに入れ、その中に答えを書いてから、もう一度変換してください。",

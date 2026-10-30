@@ -39,6 +39,15 @@ function countedParts(
     );
 }
 
+// The parser found toggles but every answer inside them was blank, so the
+// fix is the answers, not the structure.
+function emptyAnswersReading(lead: string, t: TFunction): EmptyReadingCopy {
+  return {
+    text: `${lead} ${t('upload.form.readingEmptyAnswers')}`,
+    next: 'readingNextAnswers',
+  };
+}
+
 // One or two sentences saying what the parser saw in the file, plus which
 // next step fits, so "no cards" stops being a verdict and becomes a reading
 // the user can act on. A reading that ends on its own instruction (no text,
@@ -80,6 +89,9 @@ export function describeEmptyReading(
         next: null,
       };
     }
+    if (emptyReason === 'empty_answers') {
+      return emptyAnswersReading(lead, t);
+    }
     return {
       text: `${lead} ${t('upload.form.readingNoPairs')}`,
       next: 'readingNext',
@@ -112,6 +124,9 @@ export function describeEmptyReading(
       })}`,
       next: 'readingNextAnswers',
     };
+  }
+  if (emptyReason === 'empty_answers') {
+    return emptyAnswersReading(lead, t);
   }
   // "No toggles and no pairs" is only true when the parser said so; an
   // unknown reason means it recognised a card shape that still yielded nothing.

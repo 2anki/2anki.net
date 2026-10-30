@@ -63,6 +63,50 @@ describe('DeckParser.emptyDeckReason', () => {
   it('reports no_content for an empty plain-text file', () => {
     expect(makeParser('blank.txt', '   ').emptyDeckReason()).toBe('no_content');
   });
+
+  it('reports empty_answers when every toggle had nothing inside', async () => {
+    const answerless = page(
+      '<ul id="3e432d87-07b3-8057-a7da-000000000001" class="toggle"><li><details><summary>Capital of France</summary><p></p></details></li></ul>' +
+        '<ul id="3e432d87-07b3-8057-a7da-000000000002" class="toggle"><li><details><summary>Capital of Spain</summary></details></li></ul>'
+    );
+    const workspace = new Workspace(true, 'fs');
+    const parser = makeParser('answerless.html', answerless);
+
+    await parser.writeDeckInfo(workspace);
+
+    expect(parser.totalCardCount()).toBe(0);
+    expect(parser.emptyBackCount).toBe(2);
+    expect(parser.emptyDeckReason()).toBe('empty_answers');
+  });
+
+  it('keeps unknown for blank answers on toggles our converters built, which carry no Notion id', async () => {
+    const converted = page(
+      '<ul class="toggle"><li><details><summary>Front one</summary><p></p></details></li></ul>' +
+        '<ul class="toggle"><li><details><summary>Front two</summary><p></p></details></li></ul>'
+    );
+    const workspace = new Workspace(true, 'fs');
+    const parser = makeParser('sheet.xlsx.html', converted, { cloze: 'false' });
+
+    await parser.writeDeckInfo(workspace);
+
+    expect(parser.totalCardCount()).toBe(0);
+    expect(parser.emptyBackCount).toBe(2);
+    expect(parser.emptyDeckReason()).toBe('unknown');
+  });
+
+  it('keeps all_filtered ahead of empty_answers', async () => {
+    const mixed = page(
+      '<ul class="toggle"><li><details><summary>🥑 Draft</summary><p>Later</p></details></li></ul>' +
+        '<ul id="3e432d87-07b3-8057-a7da-000000000003" class="toggle"><li><details><summary>Capital of Spain</summary><p></p></details></li></ul>'
+    );
+    const workspace = new Workspace(true, 'fs');
+    const parser = makeParser('mixed.html', mixed, { avocado: 'true' });
+
+    await parser.writeDeckInfo(workspace);
+
+    expect(parser.totalCardCount()).toBe(0);
+    expect(parser.emptyDeckReason()).toBe('all_filtered');
+  });
 });
 
 describe('EmptyDeckError carries the classified reason', () => {

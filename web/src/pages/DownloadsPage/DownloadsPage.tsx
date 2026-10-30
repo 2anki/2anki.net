@@ -1241,6 +1241,19 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     </td>
                                   </tr>
                                 )}
+                              {row.emptyBackCount > 0 && (
+                                <tr key={`upload-${u.key}-empty-back`}>
+                                  <td
+                                    colSpan={4}
+                                    className={styles.emptyTogglePanel}
+                                  >
+                                    <EmptyBackNotice
+                                      count={row.emptyBackCount}
+                                      surface="downloads_row"
+                                    />
+                                  </td>
+                                </tr>
+                              )}
                             </Fragment>
                           );
                         }

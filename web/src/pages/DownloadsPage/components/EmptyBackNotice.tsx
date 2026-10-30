@@ -2,22 +2,29 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { track } from '../../../lib/analytics/track';
 
+export type EmptyBackSource = 'upload' | 'notion';
+
 interface EmptyBackNoticeProps {
   count: number;
   multipleDecks?: boolean;
-  source?: 'upload' | 'notion';
+  source?: EmptyBackSource;
+  surface?: 'downloads_row';
 }
 
 export function EmptyBackNotice({
   count,
   multipleDecks = false,
   source = 'upload',
+  surface,
 }: Readonly<EmptyBackNoticeProps>) {
   const { t } = useTranslation('downloadsx');
 
   useEffect(() => {
-    track('empty_back_notice_shown', { empty_back_count: count });
-  }, [count]);
+    track('empty_back_notice_shown', {
+      empty_back_count: count,
+      ...(surface != null ? { surface } : {}),
+    });
+  }, [count, surface]);
 
   const notionKey = 'emptyBack.notion';
   const uploadKey = multipleDecks

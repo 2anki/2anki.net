@@ -309,6 +309,7 @@
       "readingNextAnswers": "Wpisz pytanie w tytule toggle'a, odpowiedź w jego środku, a potem przekonwertuj ponownie.",
       "readingRescueVerdict": "Nic z tego samo nie dało kart.",
       "readingNoPairs": "Nic nie dało się połączyć w pytanie z odpowiedzią.",
+      "readingEmptyAnswers": "Toggle'e nie mają w środku odpowiedzi.",
       "readingTogglesNoPairs_one": "Toggle nie zawierał pytania z odpowiedzią w środku.",
       "readingTogglesNoPairs_few": "Żaden z toggle'i nie zawierał pytania z odpowiedzią w środku.",
       "readingTogglesNoPairs_many": "Żaden z toggle'i nie zawierał pytania z odpowiedzią w środku.",

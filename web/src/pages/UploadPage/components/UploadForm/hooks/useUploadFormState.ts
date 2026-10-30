@@ -6,6 +6,7 @@ import type {
 } from '../../../../../lib/upload/pdfFallback';
 import type { StructureRescueRule } from '../../../../DownloadsPage/helpers/parseStructureRescuedPayload';
 import type { UploadSource } from '../UploadSourceChips';
+import type { EmptyBackSource } from '../../../../DownloadsPage/components/EmptyBackNotice';
 
 export type ZoneState =
   | 'idle'
@@ -87,6 +88,8 @@ export function useUploadFormState(onReset: () => void) {
     useState<number>(0);
   const [coloredTextPageCount, setColoredTextPageCount] = useState<number>(0);
   const [emptyBackCount, setEmptyBackCount] = useState<number>(0);
+  const [emptyBackSource, setEmptyBackSource] =
+    useState<EmptyBackSource>('upload');
   const [cherrySkippedCount, setCherrySkippedCount] = useState<number>(0);
   const [cardsHeldBack, setCardsHeldBack] = useState<number>(0);
   const [heldForPlan, setHeldForPlan] = useState(false);
@@ -146,6 +149,7 @@ export function useUploadFormState(onReset: () => void) {
     setExpiredNotionImageCount(0);
     setColoredTextPageCount(0);
     setEmptyBackCount(0);
+    setEmptyBackSource('upload');
     setCherrySkippedCount(0);
     setCardsHeldBack(0);
     setHeldForPlan(false);
@@ -210,6 +214,8 @@ export function useUploadFormState(onReset: () => void) {
     setColoredTextPageCount,
     emptyBackCount,
     setEmptyBackCount,
+    emptyBackSource,
+    setEmptyBackSource,
     cherrySkippedCount,
     setCherrySkippedCount,
     cardsHeldBack,

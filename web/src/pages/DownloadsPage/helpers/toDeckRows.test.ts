@@ -35,6 +35,7 @@ const makeUpload = (overrides: Partial<UserUpload> = {}): UserUpload => ({
   source: null,
   dropped_image_count: null,
   image_drop_reason: null,
+  empty_back_count: null,
   ...overrides,
 });
 

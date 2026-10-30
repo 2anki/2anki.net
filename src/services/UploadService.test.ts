@@ -2269,6 +2269,94 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(res.set).toHaveBeenCalledWith('X-Empty-Back-Count', '3');
   });
 
+  it('stores the empty-back count on the My decks row of a signed-in upload', async () => {
+    const update = vi.fn().mockResolvedValue([] as Uploads[]);
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 9,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              emptyBackCount: 3,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      { ...buildRepository(), update },
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await service.handleUpload(buildRequest(), res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(update).toHaveBeenCalledWith(
+      42,
+      'deck',
+      expect.any(String),
+      expect.any(Number),
+      null,
+      { droppedImageCount: 0, imageDropReason: null, emptyBackCount: 3 }
+    );
+  });
+
+  it.each([
+    { notionEmptyBackCount: 3, expected: 'notion' },
+    { notionEmptyBackCount: 1, expected: undefined },
+  ])(
+    'marks the empty backs as Notion toggles only when all $notionEmptyBackCount of 3 were',
+    async ({ notionEmptyBackCount, expected }) => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({
+            packages: [
+              {
+                name: 'deck',
+                cardCount: 9,
+                mcqCount: 0,
+                mcqSkippedCount: 0,
+                emptyBackCount: 3,
+                notionEmptyBackCount,
+              },
+            ],
+            warnings: [],
+          }),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res } = buildResponse();
+
+      await service.handleUpload(buildRequest(), res);
+
+      const sourceCall = (res.set as Mock).mock.calls.find(
+        ([name]) => name === 'X-Empty-Back-Source'
+      );
+      expect(sourceCall?.[1]).toBe(expected);
+      if (expected != null) {
+        expect(res.set).toHaveBeenCalledWith(
+          'Access-Control-Expose-Headers',
+          expect.stringContaining('X-Empty-Back-Source')
+        );
+      }
+    }
+  );
+
   it('does not set X-Empty-Back-Count when no cards were empty-back', async () => {
     mockPackages([{ name: 'deck', cardCount: 12 }]);
 
