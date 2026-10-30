@@ -139,6 +139,25 @@ describe('PassCheckoutController', () => {
     );
   });
 
+  it('records the connector pricing variant on checkout_started', async () => {
+    const { controller, record } = makeController(resolving());
+    const req = {
+      body: { surface: 'pricing_page', variant: 'mcp-day-first' },
+    } as never;
+
+    await controller.createSession(req, makeRes());
+
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'checkout_started',
+        props: expect.objectContaining({
+          surface: 'pricing_page',
+          variant: 'mcp-day-first',
+        }),
+      })
+    );
+  });
+
   it('records nothing when checkout could not be created', async () => {
     const execute = vi.fn().mockRejectedValue(new Error('stripe down'));
     const { controller, record } = makeController(execute);

@@ -867,6 +867,38 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
     );
   });
 
+  it('carries the connector pricing variant from session metadata onto checkout_completed', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_connector',
+          mode: 'payment',
+          metadata: {
+            user_id: '12',
+            pass_kind: '24h',
+            pricing_variant: 'mcp-day-first',
+            surface: 'pricing_page',
+          },
+        },
+      },
+    };
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({
+        userId: 12,
+        props: expect.objectContaining({
+          plan: '24h',
+          variant: 'mcp-day-first',
+          surface: 'pricing_page',
+        }),
+      })
+    );
+  });
+
   it('emits checkout_completed with surface when session metadata carries it', async () => {
     mockWebhookEvent = {
       type: 'checkout.session.completed',

@@ -17,7 +17,13 @@ import {
 } from './components/AutoSyncCard';
 import { ComparisonTable } from './components/ComparisonTable';
 import { FeatureGrid } from './components/FeatureGrid';
-import { PassCards } from './components/PassCards';
+import {
+  DayPassCard,
+  PASS_BENEFIT_KEYS,
+  PassCards,
+  SemesterPassCard,
+  WeekPassCard,
+} from './components/PassCards';
 import { PricingFaq } from './components/PricingFaq';
 import { UnlimitedCard } from './components/UnlimitedCard';
 import { LapsedPlanChoice } from './components/LapsedPlanChoice';
@@ -202,6 +208,22 @@ export default function PricingPage({
     }
   }, [fromPaywall]);
 
+  const connectorFirst = pricingOrder === 'mcp-day-first';
+
+  const connectorRefParams = () => {
+    const params = new URLSearchParams();
+    const ref = searchParams.get('ref');
+    if (connectorFirst && ref != null) {
+      params.set('ref', ref);
+    }
+    return params;
+  };
+
+  const pricingPath = (params: URLSearchParams, hash = '') => {
+    const query = params.toString();
+    return query === '' ? `/pricing${hash}` : `/pricing?${query}${hash}`;
+  };
+
   const handlePassCheckout = async (kind: '24h' | '7d' | '120d') => {
     const planByKind = {
       '24h': 'day_pass',
@@ -244,9 +266,11 @@ export default function PricingPage({
       variant: pricingOrder,
     });
     if (!isLoggedIn) {
-      const target =
-        billingCycle === 'year' ? '/pricing?interval=year' : '/pricing';
-      globalThis.location.href = `/login?redirect=${encodeURIComponent(target)}`;
+      const params = connectorRefParams();
+      if (billingCycle === 'year') {
+        params.set('interval', 'year');
+      }
+      globalThis.location.href = `/login?redirect=${encodeURIComponent(pricingPath(params))}`;
       return;
     }
     setConflict(null);
@@ -283,7 +307,7 @@ export default function PricingPage({
       variant: pricingOrder,
     });
     if (!isLoggedIn) {
-      globalThis.location.href = `/login?redirect=${encodeURIComponent('/pricing#auto-sync')}`;
+      globalThis.location.href = `/login?redirect=${encodeURIComponent(pricingPath(connectorRefParams(), '#auto-sync'))}`;
       return;
     }
     setConflict(null);
@@ -355,7 +379,9 @@ export default function PricingPage({
 
   const unlimitedFirst = pricingOrder === 'unlimited-first';
   const semesterFirst = pricingOrder === 'semester-first';
-  const minimalHeader = pricingOrder === 'minimal' || semesterFirst;
+  const minimalHeader =
+    pricingOrder === 'minimal' || semesterFirst || connectorFirst;
+  const showConnectorIntro = connectorFirst && !ownsOngoingAccess(entitlement);
 
   const passCards = (
     <PassCards
@@ -371,21 +397,23 @@ export default function PricingPage({
     />
   );
 
+  const unlimitedCard = (featured: boolean) => (
+    <UnlimitedCard
+      isLoggedIn={isLoggedIn}
+      billingCycle={billingCycle}
+      onBillingCycleChange={selectBillingCycle}
+      yearlyAvailable={yearlyAvailable}
+      onUpgrade={() => void handleUnlimitedUpgrade()}
+      pending={unlimitedPending}
+      monthlyCents={pricing.monthlyCents}
+      annualCents={pricing.annualCents}
+      error={unlimitedError}
+      featured={featured}
+    />
+  );
+
   const monthlyPlans = (
-    <div className={styles.grid}>
-      <UnlimitedCard
-        isLoggedIn={isLoggedIn}
-        billingCycle={billingCycle}
-        onBillingCycleChange={selectBillingCycle}
-        yearlyAvailable={yearlyAvailable}
-        onUpgrade={() => void handleUnlimitedUpgrade()}
-        pending={unlimitedPending}
-        monthlyCents={pricing.monthlyCents}
-        annualCents={pricing.annualCents}
-        error={unlimitedError}
-        featured={!semesterFirst}
-      />
-    </div>
+    <div className={styles.grid}>{unlimitedCard(!semesterFirst)}</div>
   );
 
   const passesSection = (
@@ -401,6 +429,58 @@ export default function PricingPage({
       {monthlyPlans}
     </>
   );
+
+  const passBenefits = PASS_BENEFIT_KEYS.map((key) => t(key));
+
+  const connectorSections = (
+    <>
+      <h2 className={sharedStyles.srOnly}>{t('pricing.kicker')}</h2>
+      <div className={styles.passGrid}>
+        <DayPassCard
+          onSelect={() => handlePassCheckout('24h')}
+          pending={dayPassState === 'pending'}
+          price={passPrices['24h']}
+          benefits={passBenefits}
+          featured
+        />
+        {unlimitedCard(false)}
+      </div>
+      <h2 className={styles.sectionLabel}>{t('pricing.morePassesSection')}</h2>
+      <div className={styles.passGrid}>
+        <WeekPassCard
+          onSelect={() => handlePassCheckout('7d')}
+          pending={weekPassState === 'pending'}
+          price={passPrices['7d']}
+          benefits={passBenefits}
+        />
+        <SemesterPassCard
+          onSelect={() => handlePassCheckout('120d')}
+          pending={semesterPassState === 'pending'}
+          price={passPrices['120d']}
+          benefits={passBenefits}
+        />
+      </div>
+    </>
+  );
+
+  const planSections = () => {
+    if (ownsOngoingAccess(entitlement)) return null;
+    if (connectorFirst) return connectorSections;
+    if (unlimitedFirst) {
+      return (
+        <>
+          {monthlySection}
+          {passesSection}
+        </>
+      );
+    }
+    return (
+      <>
+        {passesSection}
+        {monthlySection}
+      </>
+    );
+  };
 
   return (
     <div className={styles.page}>
@@ -420,6 +500,9 @@ export default function PricingPage({
           <div className={styles.contextBanner} role="status">
             {t('pricing.contextBanner')}
           </div>
+        )}
+        {showConnectorIntro && (
+          <p className={styles.intro}>{t('pricing.connectorIntro')}</p>
         )}
         {!minimalHeader && (
           <p className={styles.intro}>
@@ -455,17 +538,7 @@ export default function PricingPage({
         )}
       </div>
 
-      {ownsOngoingAccess(entitlement) ? null : unlimitedFirst ? (
-        <>
-          {monthlySection}
-          {passesSection}
-        </>
-      ) : (
-        <>
-          {passesSection}
-          {monthlySection}
-        </>
-      )}
+      {planSections()}
 
       {autoSyncSection}
 

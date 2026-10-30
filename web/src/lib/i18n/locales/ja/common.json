@@ -540,6 +540,8 @@
     "socialProof": "世界中の 15,000 人以上の学習者に利用されています",
     "payOnceSection": "一度だけのお支払い — サブスクリプションなし",
     "monthlySection": "サブスクリプションがお好みですか？",
+    "connectorIntro": "Claude または ChatGPT に依頼したデッキは無料プランの月間上限を超えたため、作成されませんでした。下のどのプランでも上限がなくなります。その後、もう一度デッキを依頼してください。",
+    "morePassesSection": "より長いパス",
     "pricesNote": "価格は米ドル表示です。チェックアウト時にお使いの地域通貨で請求されます。",
     "reassuranceCancel": "いつでも解約 — ワンクリック",
     "reassuranceOwn": "デッキはあなたのもの — ネイティブ .apkg で、どの Anki クライアントでも使えます",

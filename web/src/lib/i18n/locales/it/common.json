@@ -564,6 +564,8 @@
     "socialProof": "Scelto da oltre 15 000 studenti in tutto il mondo",
     "payOnceSection": "Paghi una volta — niente abbonamento",
     "monthlySection": "Preferisci un abbonamento?",
+    "connectorIntro": "Il mazzo che hai chiesto a Claude o ChatGPT superava il limite mensile del piano gratuito, quindi non è stato creato. Qualsiasi piano qui sotto rimuove il limite. Poi chiedi di nuovo il mazzo.",
+    "morePassesSection": "Pass più lunghi",
     "pricesNote": "Prezzi in USD. La tua carta viene addebitata nella valuta locale al momento del pagamento.",
     "reassuranceCancel": "Disdici quando vuoi — con un clic",
     "reassuranceOwn": "I tuoi mazzi sono tuoi — .apkg nativo, funziona con qualsiasi client Anki",
