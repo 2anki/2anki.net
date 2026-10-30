@@ -462,6 +462,18 @@ describe('UploadForm', () => {
     }
   });
 
+  test('keeps the pass return region empty and hidden for a visitor who is not back from checkout', () => {
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const regions = [
+      ...container.querySelectorAll('p[role="status"][aria-live="polite"]'),
+    ];
+    expect(regions).toHaveLength(1);
+    expect(regions[0]).toHaveTextContent(/^$/);
+    expect(regions[0].className).toMatch(/srOnly/);
+  });
+
   test('announces the pass return status and its notice in one persistent live region', async () => {
     stubPassReturn('cs_one_region');
     let finish: (response: Response) => void = () => {};
