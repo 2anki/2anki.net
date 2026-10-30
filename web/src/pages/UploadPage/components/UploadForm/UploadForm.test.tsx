@@ -3643,6 +3643,7 @@ describe('UploadForm analytics events', () => {
       name: 'Create a free account',
     });
     expect(cta).toHaveAttribute('href', '/register?redirect=/photo-to-deck');
+    expect(cta.className).toContain('actionButton');
     expect(
       screen.getByText('5 photos a month are free with an account.')
     ).toBeInTheDocument();
@@ -4424,6 +4425,7 @@ describe('UploadForm multi-deck batch', () => {
       'Download all (zip)'
     ) as HTMLAnchorElement;
     expect(downloadAll.getAttribute('href')).toBe('/download/ws-1/bulk');
+    expect(downloadAll.className).toContain('actionButton');
   });
 
   it('suppresses deck names in the batch list from Hotjar recordings', async () => {
@@ -5434,6 +5436,198 @@ describe('limit state', () => {
         ([event]) => event === 'upload_guardrail_shown'
       );
       expect(impressions).toEqual([]);
+    });
+  });
+
+  describe('internet shortcut and icon guardrail', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    const payingData = {
+      user: { id: 3, email: 'paying@example.com' },
+      locals: {
+        owner: 3,
+        patreon: false,
+        subscriber: true,
+        subscriptionInfo: { active: true, email: '', linked_email: '' },
+      },
+      linked_email: '',
+    } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+    const passHolderData = {
+      user: { id: 7, email: 'learner@example.com' },
+      locals: {
+        owner: 7,
+        patreon: false,
+        subscriber: true,
+        passKind: '120d',
+        planSource: null,
+      },
+      features: {},
+    } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+    const notionShortcut = () =>
+      new File(
+        ['[InternetShortcut]\r\nURL=https://www.notion.so/Biology-1\r\n'],
+        'Biology.url'
+      );
+
+    function stubPendingFetch() {
+      const fetchMock = vi.fn().mockImplementation(() => new Promise(() => {}));
+      vi.stubGlobal('fetch', fetchMock);
+      return fetchMock;
+    }
+
+    function fileInputOf(container: HTMLElement) {
+      return container.querySelector('input[type="file"]') as HTMLInputElement;
+    }
+
+    async function pick(container: HTMLElement, file: File) {
+      const fileInput = fileInputOf(container);
+      Object.defineProperty(fileInput, 'files', {
+        value: [file],
+        configurable: true,
+      });
+      await act(async () => {
+        fireEvent.change(fileInput);
+      });
+    }
+
+    async function drop(container: HTMLElement, file: File) {
+      Object.defineProperty(fileInputOf(container), 'files', {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      const event = new Event('drop', { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', {
+        value: { items: [], files: [file] },
+      });
+      await act(async () => {
+        document.body.dispatchEvent(event);
+      });
+    }
+
+    async function expectNotionOffer(
+      container: HTMLElement,
+      fetchMock: ReturnType<typeof vi.fn>
+    ) {
+      const link = await screen.findByRole('link', {
+        name: 'Convert from Notion',
+      });
+      expect(link.getAttribute('href')).toBe('/notion');
+      expect(
+        container.querySelector('[class*="validationTitle"]')?.textContent
+      ).toBe('That is a link to a Notion page');
+      expect(screen.queryByText('Convert anyway')).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Pick a different file' })
+      ).toBeInTheDocument();
+      expect(vi.mocked(track)).toHaveBeenCalledWith('upload_guardrail_shown', {
+        kind: 'internet_shortcut_notion',
+      });
+      expect(
+        fetchMock.mock.calls.filter(([url]) => url === '/api/upload/file')
+      ).toHaveLength(0);
+    }
+
+    it.each([
+      ['a signed-out visitor', anonymousData],
+      ['a signed-in free user', loggedInData],
+      ['a paying subscriber', payingData],
+      ['a pass holder', passHolderData],
+    ])(
+      'offers %s the Notion route when a picked shortcut links to a Notion page',
+      async (_population, data) => {
+        setUserLocals(data);
+        const fetchMock = stubPendingFetch();
+        vi.mocked(track).mockClear();
+        const { container } = renderUploadForm(
+          <UploadForm setErrorMessage={vi.fn()} />
+        );
+        await pick(container, notionShortcut());
+        await expectNotionOffer(container, fetchMock);
+      }
+    );
+
+    it('offers the Notion route when the shortcut is dropped on the page', async () => {
+      setUserLocals(anonymousData);
+      const fetchMock = stubPendingFetch();
+      vi.mocked(track).mockClear();
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      await drop(container, notionShortcut());
+      await expectNotionOffer(container, fetchMock);
+    });
+
+    it('takes the visitor to the Notion page picker when they follow the offer', async () => {
+      setUserLocals(loggedInData);
+      stubPendingFetch();
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const { container } = render(
+        <MemoryRouter initialEntries={['/upload']}>
+          <QueryClientProvider client={queryClient}>
+            <Routes>
+              <Route
+                path="/upload"
+                element={<UploadForm setErrorMessage={vi.fn()} />}
+              />
+              <Route path="/notion" element={<p>Notion page picker</p>} />
+            </Routes>
+          </QueryClientProvider>
+        </MemoryRouter>
+      );
+      await pick(container, notionShortcut());
+      fireEvent.click(
+        await screen.findByRole('link', { name: 'Convert from Notion' })
+      );
+      expect(await screen.findByText('Notion page picker')).toBeInTheDocument();
+    });
+
+    it('offers the Notion route on the home page sample form', async () => {
+      setUserLocals(anonymousData);
+      const fetchMock = stubPendingFetch();
+      vi.mocked(track).mockClear();
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} sample />
+      );
+      await pick(container, notionShortcut());
+      await expectNotionOffer(container, fetchMock);
+    });
+
+    it('names a dropped icon file as an icon and uploads nothing', async () => {
+      setUserLocals(anonymousData);
+      const fetchMock = stubPendingFetch();
+      vi.mocked(track).mockClear();
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      await drop(
+        container,
+        new File([new Uint8Array([0, 0, 1, 0])], 'favicon.ico')
+      );
+      await waitFor(() => {
+        expect(
+          container.querySelector('[class*="validationTitle"]')?.textContent
+        ).toBe('That is an icon, not your notes');
+      });
+      expect(screen.queryByText('Convert anyway')).toBeNull();
+      expect(
+        screen.queryByRole('link', { name: 'Convert from Notion' })
+      ).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Pick a different file' })
+      ).toBeInTheDocument();
+      expect(vi.mocked(track)).toHaveBeenCalledWith('upload_guardrail_shown', {
+        kind: 'icon',
+      });
+      expect(
+        fetchMock.mock.calls.filter(([url]) => url === '/api/upload/file')
+      ).toHaveLength(0);
     });
   });
 });

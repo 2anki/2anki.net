@@ -442,9 +442,22 @@
         "title": "Ceci est un lien, pas un fichier",
         "body": "C’est un raccourci internet, un lien enregistré. Ouvre le lien, télécharge le fichier (PDF, Word, HTML ou export Notion) et envoie celui-ci. Pour une page Notion, utilise l’onglet Notion pour la convertir directement."
       },
+      "internetShortcutNotion": {
+        "title": "Ceci est un lien vers une page Notion",
+        "body": "Ce fichier est un lien enregistré vers une page Notion, pas la page elle-même. Connecte Notion et choisis la page : 2anki la convertit directement.",
+        "action": "Convertir depuis Notion"
+      },
+      "internetShortcutLink": {
+        "title": "Ceci est un lien, pas un fichier",
+        "body": "Ce fichier est un lien enregistré vers une page web, pas le fichier lui-même. Ouvre le lien, télécharge le fichier (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML ou export Notion) et envoie celui-ci."
+      },
       "goodnotes": {
         "title": "Les carnets GoodNotes ne peuvent pas être lus directement",
         "body": "Exporte le carnet depuis GoodNotes en PDF (Partager, Exporter, PDF) et envoie ce PDF à la place. 2anki transforme les PDF en cartes."
+      },
+      "icon": {
+        "title": "Ceci est une icône, pas tes notes",
+        "body": "C’est une image d’icône, pas un support de révision. Choisis plutôt le fichier de tes notes ou de tes diapositives."
       }
     }
   },

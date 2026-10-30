@@ -3,6 +3,8 @@ import { describe, it, expect } from 'vitest';
 import {
   detectUploadIssues,
   detectMarkdownZipIssue,
+  detectInternetShortcutIssue,
+  detectFileIssues,
 } from './useFileValidation';
 
 function fakeFile(name: string): File {
@@ -195,6 +197,7 @@ describe('detectUploadIssues — files that are not the study material', () => {
     ['Notes.lnk', 'shortcut'],
     ['Page.url', 'internet_shortcut'],
     ['Notebook.goodnotes', 'goodnotes'],
+    ['favicon.ico', 'icon'],
   ])('stops %s with a next step and no convert-anyway button', (name, code) => {
     const result = detectUploadIssues([fakeFile(name)]);
     expect(result).toMatchObject({ status: 'error', code, blocking: true });
@@ -204,5 +207,145 @@ describe('detectUploadIssues — files that are not the study material', () => {
     expect(
       detectUploadIssues([fakeFile('Notes.lnk'), fakeFile('Notes.pdf')])
     ).toBeNull();
+  });
+});
+
+describe('detectUploadIssues — icon files', () => {
+  it('names an icon as an icon and points at the notes file', () => {
+    const result = detectUploadIssues(
+      [fakeFile('favicon.ico')],
+      (key) => `translated:${key}`
+    );
+    expect(result).toEqual({
+      status: 'error',
+      title: 'translated:upload.validation.icon.title',
+      body: 'translated:upload.validation.icon.body',
+      continueLabel: '',
+      code: 'icon',
+      blocking: true,
+    });
+  });
+});
+
+function internetShortcut(name: string, url: string): File {
+  return new File([`[InternetShortcut]\r\nURL=${url}\r\nIDList=\r\n`], name);
+}
+
+describe('detectInternetShortcutIssue', () => {
+  it.each([
+    'https://www.notion.so/Biology-13ad6043d0164833bcc33d2a60ed6dcc',
+    'https://notion.so/workspace/Page-13ad6043d0164833bcc33d2a60ed6dcc',
+    'https://beryl-jaguar-018.notion.site/Page-13ad6043d0164833bcc33d2a60ed6dcc',
+  ])('offers the Notion route for a link to %s', async (url) => {
+    const result = await detectInternetShortcutIssue(
+      [internetShortcut('Biology.url', url)],
+      (key) => `translated:${key}`
+    );
+    expect(result).toEqual({
+      status: 'error',
+      title: 'translated:upload.validation.internetShortcutNotion.title',
+      body: 'translated:upload.validation.internetShortcutNotion.body',
+      continueLabel: '',
+      code: 'internet_shortcut_notion',
+      blocking: true,
+      actionLink: {
+        label: 'translated:upload.validation.internetShortcutNotion.action',
+        href: '/notion',
+      },
+    });
+  });
+
+  it('says a link to any other site is a link and names the formats', async () => {
+    const result = await detectInternetShortcutIssue(
+      [internetShortcut('Lecture.url', 'https://example.com/lecture-4.pdf')],
+      (key) => `translated:${key}`
+    );
+    expect(result).toEqual({
+      status: 'error',
+      title: 'translated:upload.validation.internetShortcutLink.title',
+      body: 'translated:upload.validation.internetShortcutLink.body',
+      continueLabel: '',
+      code: 'internet_shortcut_link',
+      blocking: true,
+    });
+  });
+
+  it('does not treat a look-alike host as Notion', async () => {
+    const result = await detectInternetShortcutIssue([
+      internetShortcut('Page.url', 'https://notion.so.example.com/page'),
+    ]);
+    expect(result?.code).toBe('internet_shortcut_link');
+  });
+
+  it.each([
+    ['an empty file', ''],
+    ['no URL line', '[InternetShortcut]\r\nIDList=\r\n'],
+    ['a URL line with spaces in it', '[InternetShortcut]\r\nURL=not a link'],
+    ['a URL line that does not parse', '[InternetShortcut]\r\nURL=notalink'],
+    [
+      'a link to a file on this computer',
+      '[InternetShortcut]\r\nURL=file:///C:/Notes/lecture.pdf',
+    ],
+  ])('leaves %s to the plain shortcut message', async (_label, text) => {
+    expect(
+      await detectInternetShortcutIssue([new File([text], 'Page.url')])
+    ).toBeNull();
+  });
+
+  it('leaves a shortcut the browser cannot read to the plain shortcut message', async () => {
+    const file = internetShortcut('Page.url', 'https://www.notion.so/Page');
+    Object.defineProperty(file, 'text', {
+      value: () => Promise.reject(new DOMException('NotReadableError')),
+    });
+    expect(await detectInternetShortcutIssue([file])).toBeNull();
+    expect(await detectFileIssues([file])).toMatchObject({
+      code: 'internet_shortcut',
+      blocking: true,
+    });
+  });
+
+  it('skips reading a file too large to be a shortcut', async () => {
+    const file = internetShortcut('Page.url', 'https://www.notion.so/Page');
+    Object.defineProperty(file, 'size', { value: 2 * 1024 * 1024 });
+    expect(await detectInternetShortcutIssue([file])).toBeNull();
+  });
+
+  it('ignores files that are not internet shortcuts', async () => {
+    expect(
+      await detectInternetShortcutIssue([
+        new File(['URL=https://www.notion.so/Page'], 'notes.txt'),
+      ])
+    ).toBeNull();
+  });
+
+  it('stays quiet when a shortcut comes with a real file', async () => {
+    expect(
+      await detectInternetShortcutIssue([
+        internetShortcut('Page.url', 'https://www.notion.so/Page'),
+        fakeFile('Notes.pdf'),
+      ])
+    ).toBeNull();
+  });
+});
+
+describe('detectFileIssues', () => {
+  it('answers a Notion shortcut with the Notion route', async () => {
+    const result = await detectFileIssues([
+      internetShortcut('Page.url', 'https://www.notion.so/Page'),
+    ]);
+    expect(result?.code).toBe('internet_shortcut_notion');
+  });
+
+  it('keeps the plain shortcut message for a shortcut with no URL line', async () => {
+    const result = await detectFileIssues([fakeFile('Page.url')]);
+    expect(result).toMatchObject({
+      code: 'internet_shortcut',
+      title: 'upload.validation.internetShortcut.title',
+      blocking: true,
+    });
+  });
+
+  it('lets a pdf through', async () => {
+    expect(await detectFileIssues([fakeFile('Notes.pdf')])).toBeNull();
   });
 });

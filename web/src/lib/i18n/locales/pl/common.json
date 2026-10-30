@@ -490,9 +490,22 @@
         "title": "To jest link, a nie plik",
         "body": "To skrót internetowy, czyli zapisany link. Otwórz link, pobierz plik (PDF, Word, HTML lub eksport z Notion) i wgraj go. Stronę Notion przekonwertujesz bezpośrednio na karcie Notion."
       },
+      "internetShortcutNotion": {
+        "title": "To jest link do strony Notion",
+        "body": "Ten plik to zapisany link do strony Notion, a nie sama strona. Połącz Notion i wybierz stronę, a 2anki przekonwertuje ją bezpośrednio.",
+        "action": "Konwertuj z Notion"
+      },
+      "internetShortcutLink": {
+        "title": "To jest link, a nie plik",
+        "body": "Ten plik to zapisany link do strony internetowej, a nie sam plik. Otwórz link, pobierz plik (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML lub eksport z Notion) i wgraj go."
+      },
       "goodnotes": {
         "title": "Notatników GoodNotes nie da się wczytać bezpośrednio",
         "body": "Wyeksportuj notatnik z GoodNotes jako PDF (Udostępnij, Eksportuj, PDF) i wgraj ten PDF. 2anki zamienia pliki PDF na karty."
+      },
+      "icon": {
+        "title": "To jest ikona, a nie twoje notatki",
+        "body": "To obraz ikony, a nie materiał do nauki. Wybierz zamiast tego plik z notatkami lub slajdami."
       }
     }
   },

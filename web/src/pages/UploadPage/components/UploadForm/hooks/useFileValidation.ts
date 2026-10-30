@@ -21,13 +21,20 @@ export interface FileValidationResult {
     | 'markdown_zip'
     | 'shortcut'
     | 'internet_shortcut'
-    | 'goodnotes';
+    | 'internet_shortcut_notion'
+    | 'internet_shortcut_link'
+    | 'goodnotes'
+    | 'icon';
   // A file 2anki cannot read at all: the only way forward is another file, so
   // there is no convert-anyway button.
   blocking?: boolean;
+  actionLink?: { label: string; href: string };
 }
 
 const ZIP_PEEK_BUDGET_BYTES = 200 * 1024 * 1024;
+const INTERNET_SHORTCUT_READ_BUDGET_BYTES = 64 * 1024;
+const NOTION_HOSTS = ['notion.so', 'notion.site'];
+const WEB_PROTOCOLS = new Set(['http:', 'https:']);
 
 function translate(t: ValidationTranslator | undefined, key: string): string {
   return t ? t(key) : key;
@@ -57,6 +64,7 @@ const WRONG_FILE_RULES = [
   { extension: '.lnk', key: 'shortcut', code: 'shortcut' },
   { extension: '.url', key: 'internetShortcut', code: 'internet_shortcut' },
   { extension: '.goodnotes', key: 'goodnotes', code: 'goodnotes' },
+  { extension: '.ico', key: 'icon', code: 'icon' },
 ] as const;
 
 function wrongFileResult(
@@ -138,6 +146,78 @@ export function detectUploadIssues(
   return null;
 }
 
+function isInternetShortcut(file: File): boolean {
+  return file.name.toLowerCase().endsWith('.url');
+}
+
+function isNotionHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return NOTION_HOSTS.some(
+    (notionHost) => host === notionHost || host.endsWith(`.${notionHost}`)
+  );
+}
+
+async function readShortcutUrl(file: File): Promise<URL | null> {
+  if (file.size > INTERNET_SHORTCUT_READ_BUDGET_BYTES) return null;
+  let text: string;
+  try {
+    text = await file.text();
+  } catch {
+    return null;
+  }
+  const urlLine = text
+    .split(/\r?\n/)
+    .map((line) => /^\s*URL\s*=\s*(\S+)\s*$/i.exec(line))
+    .find((match) => match != null);
+  if (urlLine == null) return null;
+  let url: URL;
+  try {
+    url = new URL(urlLine[1]);
+  } catch {
+    return null;
+  }
+  return WEB_PROTOCOLS.has(url.protocol) ? url : null;
+}
+
+export async function detectInternetShortcutIssue(
+  files: FileList | File[],
+  t?: ValidationTranslator
+): Promise<FileValidationResult | null> {
+  const fileArray = Array.from(files);
+  if (fileArray.length === 0 || !fileArray.every(isInternetShortcut)) {
+    return null;
+  }
+
+  const urls = (await Promise.all(fileArray.map(readShortcutUrl))).filter(
+    (url): url is URL => url != null
+  );
+  if (urls.length === 0) return null;
+
+  if (urls.some((url) => isNotionHost(url.hostname))) {
+    return {
+      status: 'error',
+      title: translate(t, 'upload.validation.internetShortcutNotion.title'),
+      body: translate(t, 'upload.validation.internetShortcutNotion.body'),
+      continueLabel: '',
+      code: 'internet_shortcut_notion',
+      blocking: true,
+      actionLink: {
+        label: translate(t, 'upload.validation.internetShortcutNotion.action'),
+        href: '/notion',
+      },
+    };
+  }
+
+  return {
+    status: 'error',
+    title: translate(t, 'upload.validation.internetShortcutLink.title'),
+    body: translate(t, 'upload.validation.internetShortcutLink.body'),
+    continueLabel: '',
+    code: 'internet_shortcut_link',
+    blocking: true,
+  };
+}
+
 function listZipEntryNames(file: File): Promise<string[]> {
   return file.arrayBuffer().then(
     (buffer) =>
@@ -190,6 +270,17 @@ export async function detectMarkdownZipIssue(
   return null;
 }
 
+export async function detectFileIssues(
+  files: FileList | File[],
+  t?: ValidationTranslator
+): Promise<FileValidationResult | null> {
+  return (
+    (await detectInternetShortcutIssue(files, t)) ??
+    detectUploadIssues(files, t) ??
+    (await detectMarkdownZipIssue(files, t))
+  );
+}
+
 export function trackValidationShown(result: FileValidationResult): void {
   if (result.code === 'unbundled_html') {
     track('unbundled_html_warning_shown');
@@ -216,9 +307,7 @@ export function useFileValidation(t?: ValidationTranslator) {
 
   const validate = useCallback(
     async (files: FileList): Promise<boolean> => {
-      const result =
-        detectUploadIssues(files, t) ??
-        (await detectMarkdownZipIssue(files, t));
+      const result = await detectFileIssues(files, t);
       if (result) {
         setValidation(result);
         setPendingFiles(files);

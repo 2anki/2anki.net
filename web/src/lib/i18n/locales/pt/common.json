@@ -442,9 +442,22 @@
         "title": "Isso é um link, não um arquivo",
         "body": "Este é um atalho de internet, um link salvo. Abra o link, baixe o arquivo (PDF, Word, HTML ou uma exportação do Notion) e envie esse. Para uma página do Notion, use a aba Notion para converter diretamente."
       },
+      "internetShortcutNotion": {
+        "title": "Isso é um link para uma página do Notion",
+        "body": "Este arquivo é um link salvo para uma página do Notion, não a página em si. Conecte o Notion e escolha a página, e o 2anki converte direto.",
+        "action": "Converter pelo Notion"
+      },
+      "internetShortcutLink": {
+        "title": "Isso é um link, não um arquivo",
+        "body": "Este arquivo é um link salvo para uma página da web, não o arquivo em si. Abra o link, baixe o arquivo (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML ou uma exportação do Notion) e envie esse."
+      },
       "goodnotes": {
         "title": "Cadernos do GoodNotes não podem ser lidos diretamente",
         "body": "Exporte o caderno do GoodNotes como PDF (Compartilhar, Exportar, PDF) e envie esse PDF. O 2anki transforma PDFs em cartões."
+      },
+      "icon": {
+        "title": "Isso é um ícone, não suas anotações",
+        "body": "É uma imagem de ícone, não material de estudo. Escolha o arquivo das suas anotações ou slides."
       }
     }
   },

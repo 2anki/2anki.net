@@ -2862,9 +2862,21 @@ function UploadForm({
         <p className={formStyles.validationTitle}>{validation?.title}</p>
         <p className={formStyles.validationBody}>{validation?.body}</p>
         <div className={formStyles.validationActions}>
+          {validation?.actionLink != null && (
+            <Link
+              to={validation.actionLink.href}
+              className={formStyles.actionButton}
+            >
+              {validation.actionLink.label}
+            </Link>
+          )}
           <button
             type="button"
-            className={formStyles.actionButton}
+            className={
+              validation?.actionLink == null
+                ? formStyles.actionButton
+                : formStyles.resetLink
+            }
             onClick={(e) => {
               e.preventDefault();
               resetValidation();

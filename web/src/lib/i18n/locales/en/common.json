@@ -442,9 +442,22 @@
         "title": "That is a link, not a file",
         "body": "This is an internet shortcut, a saved link. Open the link, download the file (PDF, Word, HTML or a Notion export) and upload that. For a Notion page, use the Notion tab to convert it directly."
       },
+      "internetShortcutNotion": {
+        "title": "That is a link to a Notion page",
+        "body": "This file is a saved link to a Notion page, not the page itself. Connect Notion and pick the page: 2anki converts it directly.",
+        "action": "Convert from Notion"
+      },
+      "internetShortcutLink": {
+        "title": "That is a link, not a file",
+        "body": "This file is a saved link to a web page, not the file itself. Open the link, download the file (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML, or a Notion export), and upload that."
+      },
       "goodnotes": {
         "title": "GoodNotes notebooks cannot be read directly",
         "body": "Export the notebook from GoodNotes as a PDF (Share, Export, PDF) and upload that PDF instead. 2anki turns PDFs into cards."
+      },
+      "icon": {
+        "title": "That is an icon, not your notes",
+        "body": "This is an icon image, not study material, so choose the notes or slides file instead."
       }
     }
   },

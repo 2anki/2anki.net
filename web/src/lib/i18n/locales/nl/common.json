@@ -442,9 +442,22 @@
         "title": "Dit is een link, geen bestand",
         "body": "Dit is een internetsnelkoppeling, een opgeslagen link. Open de link, download het bestand (PDF, Word, HTML of een Notion-export) en upload dat. Een Notion-pagina zet je direct om via het Notion-tabblad."
       },
+      "internetShortcutNotion": {
+        "title": "Dit is een link naar een Notion-pagina",
+        "body": "Dit bestand is een opgeslagen link naar een Notion-pagina, niet de pagina zelf. Koppel Notion en kies de pagina, dan zet 2anki hem direct om.",
+        "action": "Omzetten via Notion"
+      },
+      "internetShortcutLink": {
+        "title": "Dit is een link, geen bestand",
+        "body": "Dit bestand is een opgeslagen link naar een webpagina, niet het bestand zelf. Open de link, download het bestand (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML of een Notion-export) en upload dat."
+      },
       "goodnotes": {
         "title": "GoodNotes-notitieboeken kunnen niet direct worden gelezen",
         "body": "Exporteer het notitieboek vanuit GoodNotes als PDF (Delen, Exporteren, PDF) en upload die PDF. 2anki maakt kaarten van PDF’s."
+      },
+      "icon": {
+        "title": "Dit is een pictogram, niet je aantekeningen",
+        "body": "Dit is een pictogramafbeelding, geen studiemateriaal. Kies in plaats daarvan het bestand met je aantekeningen of dia’s."
       }
     }
   },
