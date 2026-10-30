@@ -11222,6 +11222,34 @@ describe('UploadForm monthly-limit partial offer', () => {
       expect.anything()
     );
   });
+
+  it('keeps no signed-out deck and shows no account notice for a signed-in upload, even with a stored pass', async () => {
+    setUserLocals({
+      user: { id: 2, email: 'free@example.com' },
+      locals: { owner: 2, patreon: false, subscriber: false },
+    } as unknown as ReturnType<typeof useUserLocals>['data']);
+    installLastDeckStoreForTests(createMemoryLastDeckStore(), 'lasting');
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_signed_in');
+    document.cookie = 'anon_id=anon-signed-in';
+
+    try {
+      await uploadWithHeaders({ 'X-Card-Count': '42' });
+
+      expect(screen.getByText('How was your experience?')).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).toBeNull();
+      expect(
+        screen.queryByText('This deck lives only on this device')
+      ).toBeNull();
+      expect(await getLastDeckStore().load()).toBeNull();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
 });
 
 describe('claiming a held deck after sign-in', () => {
