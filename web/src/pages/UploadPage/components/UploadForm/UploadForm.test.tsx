@@ -3643,6 +3643,7 @@ describe('UploadForm analytics events', () => {
       name: 'Create a free account',
     });
     expect(cta).toHaveAttribute('href', '/register?redirect=/photo-to-deck');
+    expect(cta.className).toContain('actionButton');
     expect(
       screen.getByText('5 photos a month are free with an account.')
     ).toBeInTheDocument();
@@ -4424,6 +4425,7 @@ describe('UploadForm multi-deck batch', () => {
       'Download all (zip)'
     ) as HTMLAnchorElement;
     expect(downloadAll.getAttribute('href')).toBe('/download/ws-1/bulk');
+    expect(downloadAll.className).toContain('actionButton');
   });
 
   it('suppresses deck names in the batch list from Hotjar recordings', async () => {

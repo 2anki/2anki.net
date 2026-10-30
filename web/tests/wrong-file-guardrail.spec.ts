@@ -130,6 +130,72 @@ test('a saved link to a Notion page offers the Notion route', async ({
   expect(pickerOpened).toBe(false);
 });
 
+test('a link or button styled as the primary action keeps its label visible on hover', async ({
+  page,
+}) => {
+  await page.route('**/api/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  );
+  await page.goto('/upload');
+  await page.locator('#pakker').setInputFiles({
+    name: 'Biology.url',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from(
+      '[InternetShortcut]\r\nURL=https://www.notion.so/Biology-1\r\n'
+    ),
+  });
+  const notionLink = page.getByRole('link', { name: 'Convert from Notion' });
+  await expect(notionLink).toBeVisible();
+  await page.evaluate(
+    (className) => {
+      const host = document.createElement('div');
+      host.id = 'primary-action-probes';
+      const anchor = document.createElement('a');
+      anchor.id = 'probe-anchor';
+      anchor.href = '/download/ws-1/bulk';
+      anchor.className = className;
+      anchor.textContent = 'Download all (zip)';
+      const button = document.createElement('button');
+      button.id = 'probe-button';
+      button.type = 'button';
+      button.className = className;
+      button.textContent = 'Try again';
+      host.append(anchor, button);
+      document.body.append(host);
+    },
+    (await notionLink.getAttribute('class')) ?? ''
+  );
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('DOM.enable');
+  await cdp.send('CSS.enable');
+  const { root } = await cdp.send('DOM.getDocument');
+  for (const selector of ['#probe-anchor', '#probe-button']) {
+    const probe = page.locator(selector);
+    const colors = () =>
+      probe.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { text: style.color, background: style.backgroundColor };
+      });
+    const resting = await colors();
+    const { nodeId } = await cdp.send('DOM.querySelector', {
+      nodeId: root.nodeId,
+      selector,
+    });
+    await cdp.send('CSS.forcePseudoState', {
+      nodeId,
+      forcedPseudoClasses: ['hover'],
+    });
+    await expect
+      .poll(async () => (await colors()).background)
+      .not.toBe(resting.background);
+    await page.waitForTimeout(300);
+    const hovered = await colors();
+    expect(hovered.text).toBe(resting.text);
+    expect(hovered.text).not.toBe(hovered.background);
+  }
+});
+
 test('an icon file is named as an icon, not study material', async ({
   page,
 }) => {
