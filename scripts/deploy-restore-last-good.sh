@@ -23,6 +23,10 @@ if [ ! -s "$LAST_GOOD_FILE" ]; then
 fi
 
 LAST_GOOD="$(tr -d '[:space:]' < "$LAST_GOOD_FILE")"
+if ! [[ "$LAST_GOOD" =~ ^[0-9a-f]{7,40}$ ]]; then
+  log "$LAST_GOOD_FILE holds '$LAST_GOOD', which is not a commit sha — cannot restore; disk may not match the live process"
+  exit 0
+fi
 CURRENT="$(git -C "$SERVER_DIR" rev-parse HEAD 2>/dev/null || echo unknown)"
 
 if [ "$CURRENT" = "$LAST_GOOD" ]; then
@@ -31,6 +35,16 @@ if [ "$CURRENT" = "$LAST_GOOD" ]; then
 fi
 
 log "restoring disk from $CURRENT to last-good $LAST_GOOD"
+
+if ADDED_MIGRATIONS="$(git -C "$SERVER_DIR" diff --no-color --no-renames --name-only --diff-filter=A "$LAST_GOOD" HEAD -- migrations/)"; then
+  if [ -n "$ADDED_MIGRATIONS" ]; then
+    log "migrations added since last-good (left applied if the failed build ran them): $(echo "$ADDED_MIGRATIONS" | sed 's#^migrations/##' | tr '\n' ' ')— boot tolerates them only if all sort after last-good's newest migration; otherwise check knex_migrations before restarting"
+  else
+    log "no migrations added since last-good"
+  fi
+else
+  log "could not list migrations added since last-good — check knex_migrations by hand before restarting the live color"
+fi
 
 if ! git -C "$SERVER_DIR" checkout --detach "$LAST_GOOD"; then
   log "FAILED to check out $LAST_GOOD — disk is still poisoned; do not restart the live color"

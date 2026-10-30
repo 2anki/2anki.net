@@ -18,11 +18,7 @@ const KnexConfig: Knex.Config = {
   migrations: {
     tableName: 'knex_migrations',
     directory: process.env.MIGRATIONS_DIR || 'migrations',
-    // Local dev DBs accumulate knex_migrations rows for files that were later
-    // renamed on main, which makes migrate.latest() crash the boot with
-    // "migration directory is corrupt". Skip that check in local dev only;
-    // prod and CI keep strict validation.
-    disableMigrationsListValidation: process.env.LOCAL_DEV === 'true',
+    disableMigrationsListValidation: false,
   },
 };
 
