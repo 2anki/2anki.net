@@ -41,6 +41,14 @@
   line-height: var(--leading-normal);
 }
 
+.cookieLost {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-warning-text);
+  line-height: var(--leading-normal);
+}
+
 .saved {
   margin: 0;
   font-size: var(--text-xs);

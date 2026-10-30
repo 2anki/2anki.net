@@ -52,6 +52,13 @@ function LockIcon() {
   );
 }
 
+function hasAnonIdCookie(): boolean {
+  return document.cookie.split(';').some((pair) => {
+    const [name, value] = pair.trim().split('=');
+    return name === 'anon_id' && value != null && value.length > 0;
+  });
+}
+
 function ReadyIcon() {
   return (
     <span className={styles.readyIcon} aria-hidden="true">
@@ -72,7 +79,13 @@ function ReadyIcon() {
   );
 }
 
-function HeldDeckSummary({ held }: { readonly held: HeldDeckState }) {
+function HeldDeckSummary({
+  held,
+  cookieLost,
+}: {
+  readonly held: HeldDeckState;
+  readonly cookieLost: boolean;
+}) {
   const { t } = useTranslation('anonymousPartial');
   return (
     <>
@@ -83,7 +96,8 @@ function HeldDeckSummary({ held }: { readonly held: HeldDeckState }) {
       <p className={styles.headline}>
         {t('gateHeadlineAll', { total: held.totalCards })}
       </p>
-      {held.savedForHours != null && (
+      {cookieLost && <p className={styles.cookieLost}>{t('gateCookieLost')}</p>}
+      {!cookieLost && held.savedForHours != null && (
         <p className={styles.saved}>
           {t('gateSaved', { count: held.savedForHours })}
         </p>
@@ -113,15 +127,29 @@ function FreeSignupLink({ monthly }: { readonly monthly: number }) {
 
 // Pass-first: the passes lead and a free account (the 21-card preview) is a
 // text link. The held deck stays saved, so signing up still claims it.
-function PassFirstGate({ held }: Props) {
+function PassFirstGate({
+  held,
+  cookieLost,
+}: {
+  readonly held: HeldDeckState;
+  readonly cookieLost: boolean;
+}) {
   const { t } = useTranslation('passFirst');
+  const { t: tPartial } = useTranslation('anonymousPartial');
   return (
     <div className={styles.gate}>
       <LockIcon />
+      {cookieLost && (
+        <p className={styles.cookieLost}>{tPartial('gateCookieLost')}</p>
+      )}
       <PassFirstOffer
         surface={SURFACE}
         headline={t('readyTotal', { total: held.totalCards })}
-        body={t('gateBody', { cap: ANONYMOUS_CARD_CAP })}
+        body={
+          cookieLost
+            ? t('afterPayRedropTotal', { total: held.totalCards })
+            : t('gateBody', { cap: ANONYMOUS_CARD_CAP })
+        }
       >
         <Link
           to="/register?redirect=/upload"
@@ -156,17 +184,21 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
   const [error, setError] = useState('');
   const fitsFreeMonth = held.totalCards <= FREE_MONTHLY_CARDS;
   const leadWithDayPass = held.dayPassCard === true;
+  const [cookieLost] = useState(
+    () => held.cookieMinted === true && !hasAnonIdCookie()
+  );
 
   useEffect(() => {
     if (shownRef.current) return;
     shownRef.current = true;
     track('anonymous_partial_gate_shown', {
       cards_held_back: held.cardsHeldBack,
+      ...(cookieLost ? { cookie_lost: true } : {}),
     });
-  }, [held.cardsHeldBack]);
+  }, [held.cardsHeldBack, cookieLost]);
 
   if (passFirst) {
-    return <PassFirstGate held={held} />;
+    return <PassFirstGate held={held} cookieLost={cookieLost} />;
   }
 
   const registerForm = (
@@ -188,14 +220,14 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
   if (leadWithDayPass) {
     return (
       <section className={styles.gate} aria-label={t('gateAria')}>
-        <HeldDeckSummary held={held} />
+        <HeldDeckSummary held={held} cookieLost={cookieLost} />
         {errorMessage}
         <div className={styles.leadCard}>
           <AnonymousDayPassOffer
             surface={SURFACE}
             totalCards={held.totalCards}
             dayPassCard
-            held
+            held={!cookieLost}
             emphasis="primary"
           />
         </div>
@@ -211,18 +243,20 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
     <AnonymousDayPassOffer
       surface={SURFACE}
       totalCards={held.totalCards}
-      held
+      held={!cookieLost}
     />
   );
 
   return (
     <section className={styles.gate} aria-label={t('gateAria')}>
-      <HeldDeckSummary held={held} />
+      <HeldDeckSummary held={held} cookieLost={cookieLost} />
       {fitsFreeMonth ? (
         <>
-          <p className={styles.body}>
-            {t('gateBody', { monthly: FREE_MONTHLY_CARDS })}
-          </p>
+          {!cookieLost && (
+            <p className={styles.body}>
+              {t('gateBody', { monthly: FREE_MONTHLY_CARDS })}
+            </p>
+          )}
           {errorMessage}
           {registerForm}
           {dayPassOffer}

@@ -4,6 +4,7 @@
   "gateHeadlineAll": "Alle {{total}} kaarten zijn klaar",
   "gateSaved_one": "{{count}} uur bewaard.",
   "gateSaved_other": "{{count}} uur bewaard.",
+  "gateCookieLost": "Deze browser kan je deck niet bewaren. Registreer je eerst en upload het bestand daarna opnieuw.",
   "gateBody": "Maak een gratis account om ze te downloaden. Tot {{monthly}} kaarten per maand, gratis.",
   "gateFreeLeadIn": "Of maak een gratis account voor je eerste {{monthly}} kaarten.",
   "gateFreeLink": "Of maak een gratis account voor de eerste {{monthly}} kaarten",

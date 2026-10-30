@@ -426,6 +426,62 @@ test.describe('golden path @golden', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
+  test('a held deck in a browser that dropped the anon id cookie says to sign up first at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    await page.route('**/api/upload/file', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          kind: 'held',
+          cardCount: 21,
+          cardsHeldBack: 163,
+          totalCards: 184,
+          deckName: 'Organic Chemistry Ch. 4',
+          savedForHours: 24,
+          dayPassCard: true,
+          cookieMinted: true,
+        }),
+      })
+    );
+
+    await page.goto('/upload');
+    await page.setInputFiles('#pakker', {
+      name: 'notes.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('notes'),
+    });
+
+    await expect(
+      page.getByText(
+        "This browser can't keep your deck. Sign up first, then upload again.",
+        { exact: true }
+      )
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Saved for/)).toHaveCount(0);
+    await expect(
+      page.getByText(
+        'After paying, drop the file again to get all 184 cards.',
+        { exact: true }
+      )
+    ).toBeVisible();
+    const scrollWidth = await page.evaluate(
+      () => document.documentElement.scrollWidth
+    );
+    expect(scrollWidth).toBeLessThanOrEqual(376);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
   test('the signed-in limit wall leads with the passes at 375px', async ({
     page,
   }) => {

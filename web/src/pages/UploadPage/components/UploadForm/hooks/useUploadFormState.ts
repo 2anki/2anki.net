@@ -32,6 +32,7 @@ export interface HeldDeckState {
   deckName?: string;
   savedForHours?: number;
   dayPassCard?: boolean;
+  cookieMinted?: boolean;
 }
 
 export interface AiPreviewCard {

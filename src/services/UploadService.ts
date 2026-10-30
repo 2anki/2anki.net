@@ -235,6 +235,7 @@ export interface HeldUploadResponse {
   deckName: string;
   savedForHours: number;
   dayPassCard?: boolean;
+  cookieMinted?: boolean;
 }
 
 export interface AiPreviewUploadResponse {
@@ -2742,6 +2743,12 @@ class UploadService {
     const dayPassCard =
       totalCards > MONTHLY_CARD_LIMIT &&
       (await getFeatureFlag(ANONYMOUS_DAY_PASS_CARD_FLAG, false));
+    const cookieMinted = this.resolveAnonId(req) == null;
+    if (cookieMinted) {
+      console.info('[UploadService] held deck under a just-minted anon id', {
+        requestId: res.locals.requestId,
+      });
+    }
     const body: HeldUploadResponse = {
       kind: 'held',
       cardCount,
@@ -2753,6 +2760,7 @@ class UploadService {
           : toText(path.parse(file.originalname).name),
       savedForHours: HELD_DECK_TTL_MS / HOUR_MS,
       ...(dayPassCard ? { dayPassCard: true } : {}),
+      ...(cookieMinted ? { cookieMinted: true } : {}),
     };
     return res.status(200).json(body);
   }

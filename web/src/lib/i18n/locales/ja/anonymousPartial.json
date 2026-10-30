@@ -3,6 +3,7 @@
   "untitledDeck": "無題のデッキ",
   "gateHeadlineAll": "{{total}}枚すべてのカードが準備できました",
   "gateSaved_other": "{{count}}時間保存されます。",
+  "gateCookieLost": "このブラウザではデッキを保存できません。先に登録してから、もう一度アップロードしてください。",
   "gateBody": "ダウンロードするには無料アカウントを作成してください。毎月{{monthly}}枚まで無料です。",
   "gateFreeLeadIn": "または無料アカウントを作成すれば、最初の{{monthly}}枚のカードを入手できます。",
   "gateFreeLink": "または無料アカウントを作成して最初の{{monthly}}枚を入手",

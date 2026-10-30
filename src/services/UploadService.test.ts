@@ -7499,6 +7499,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       totalCards: 30,
       deckName: 'deck',
       savedForHours: 24,
+      cookieMinted: true,
     });
     expect(heldDeck.rows).toHaveLength(1);
     expect(heldDeck.rows[0]).toMatchObject({
