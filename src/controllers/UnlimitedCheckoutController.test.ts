@@ -147,6 +147,20 @@ describe('UnlimitedCheckoutController', () => {
     );
   });
 
+  it('forwards the connector pricing variant to the use case', async () => {
+    const req = {
+      body: { interval: 'month', variant: 'mcp-day-first' },
+    } as unknown as Request;
+    const uc = makeUseCase();
+    const controller = new UnlimitedCheckoutController(uc, makeSink());
+
+    await controller.createSession(req, makeResponse() as unknown as Response);
+
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'mcp-day-first' })
+    );
+  });
+
   it('returns 503 and records no event when pricing resolution fails', async () => {
     const execute = vi
       .fn()

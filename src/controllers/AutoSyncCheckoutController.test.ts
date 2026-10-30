@@ -69,6 +69,20 @@ describe('AutoSyncCheckoutController', () => {
     expect(res.body).toEqual({ status: 'already_subscribed' });
   });
 
+  test('forwards the connector pricing variant to the use case', async () => {
+    const uc = makeUseCase({ url: 'https://checkout.stripe.com/test' });
+    const controller = new AutoSyncCheckoutController(uc);
+    const req = { body: { variant: 'mcp-day-first' } } as unknown as Request;
+    const res = makeResponse();
+    res.locals = { owner: 42, email: 'user@example.com' };
+
+    await controller.createSession(req, res as unknown as Response);
+
+    expect(uc.execute as Mock).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'mcp-day-first' })
+    );
+  });
+
   test('forwards the anon_id cookie to the use case when present', async () => {
     const uc = makeUseCase({ url: 'https://checkout.stripe.com/test' });
     const controller = new AutoSyncCheckoutController(uc);

@@ -13,7 +13,7 @@ const renderAt = (path: string) =>
   });
 
 describe('usePricingOrderVariant', () => {
-  it('puts the Semester Pass first for every visitor', () => {
+  it('puts the Semester Pass first for a visitor without a connector ref', () => {
     const { result } = renderAt('/pricing');
     expect(result.current).toBe('semester-first');
   });

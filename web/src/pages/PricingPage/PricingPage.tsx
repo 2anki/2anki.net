@@ -37,6 +37,7 @@ import { buildPricingFaq } from './pricingFaq';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import {
   OwnedPlanNotice,
+  activePassKind,
   ownsOngoingAccess,
   type PricingEntitlement,
 } from './components/OwnedPlanNotice';
@@ -212,9 +213,8 @@ export default function PricingPage({
 
   const connectorRefParams = () => {
     const params = new URLSearchParams();
-    const ref = searchParams.get('ref');
-    if (connectorFirst && ref != null) {
-      params.set('ref', ref);
+    if (connectorFirst) {
+      params.set('ref', 'mcp');
     }
     return params;
   };
@@ -381,7 +381,10 @@ export default function PricingPage({
   const semesterFirst = pricingOrder === 'semester-first';
   const minimalHeader =
     pricingOrder === 'minimal' || semesterFirst || connectorFirst;
-  const showConnectorIntro = connectorFirst && !ownsOngoingAccess(entitlement);
+  const showConnectorIntro =
+    connectorFirst &&
+    !ownsOngoingAccess(entitlement) &&
+    activePassKind(entitlement) == null;
 
   const passCards = (
     <PassCards

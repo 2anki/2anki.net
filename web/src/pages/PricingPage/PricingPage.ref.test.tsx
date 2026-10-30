@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -85,6 +85,15 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
     expect(planHeadings().map((h) => h.textContent)).toEqual(PLAN_TITLES);
   });
 
+  it('puts Day Pass and Pro in the first row, Week and Semester in the second', () => {
+    renderAt('/pricing/?ref=mcp');
+    const firstRow = cardOf('Day Pass')?.parentElement;
+    const secondRow = cardOf('Week Pass')?.parentElement;
+    expect(cardOf('Pro')?.parentElement).toBe(firstRow);
+    expect(cardOf('Semester Pass')?.parentElement).toBe(secondRow);
+    expect(firstRow).not.toBe(secondRow);
+  });
+
   it('features only the Day Pass', () => {
     renderAt('/pricing/?ref=mcp');
     const featured = PLAN_TITLES.filter((title) =>
@@ -105,16 +114,25 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
       label.compareDocumentPosition(week as HTMLElement) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('drops the default pay-once section label', () => {
+    renderAt('/pricing/?ref=mcp');
     expect(
       screen.queryByText('Pay once — no subscription')
     ).not.toBeInTheDocument();
   });
 
-  it('keeps the study-horizon captions and the Best value badge', () => {
+  it.each(['One study day', 'One exam week', 'A full term'])(
+    'keeps the study-horizon caption %s',
+    (caption) => {
+      renderAt('/pricing/?ref=mcp');
+      expect(screen.getByText(caption)).toBeInTheDocument();
+    }
+  );
+
+  it('keeps the Best value badge on the Semester Pass', () => {
     renderAt('/pricing/?ref=mcp');
-    expect(screen.getByText('One study day')).toBeInTheDocument();
-    expect(screen.getByText('One exam week')).toBeInTheDocument();
-    expect(screen.getByText('A full term')).toBeInTheDocument();
     expect(
       screen.getByText('Best value').closest('div')?.textContent
     ).toContain('Semester Pass');
@@ -226,11 +244,33 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
 });
 
 describe('PricingPage for a connector visitor who already owns ongoing access', () => {
-  it('shows no plan cards', () => {
-    renderAt('/pricing/?ref=mcp', true, { subscriber: true, passKind: null });
+  it.each<[string, PricingEntitlement]>([
+    ['Pro', { subscriber: true, passKind: null }],
+    ['Lifetime', { patreon: true }],
+    ['Apple', { subscriber: true, planSource: 'apple' }],
+  ])('shows a %s owner no plan cards and no intro', (_label, entitlement) => {
+    renderAt('/pricing/?ref=mcp', true, entitlement);
     expect(planHeadings()).toEqual([]);
     expect(screen.queryByText(CONNECTOR_INTRO)).not.toBeInTheDocument();
     expect(screen.queryByText('Longer passes')).not.toBeInTheDocument();
+  });
+});
+
+describe('PricingPage for a connector visitor holding an active pass', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('shows the cards without the over-the-limit intro', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-30T12:00:00Z'));
+    renderAt('/pricing/?ref=mcp', true, {
+      subscriber: true,
+      passKind: '7d',
+      passExpiresAt: '2026-11-02T12:00:00Z',
+    });
+    expect(planHeadings().map((h) => h.textContent)).toEqual(PLAN_TITLES);
+    expect(screen.queryByText(CONNECTOR_INTRO)).not.toBeInTheDocument();
   });
 });
 
