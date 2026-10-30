@@ -2502,17 +2502,19 @@ export class DeckParser {
         .parents('.toggle')
         .toArray()
         .some((ancestor) => keptToggles.has(ancestor));
-    const keepToggle = (note: Note, toggle: Element): boolean => {
+    const keepCard = (note: Note, toggle: Element): boolean => {
       const outcome = this.keepOrDropCard(note, cards);
-      if (outcome === 'kept') {
-        keptToggles.add(toggle);
-      } else if (
-        outcome === 'cherry_skipped' &&
-        !shipsInKeptAncestorBack(toggle)
-      ) {
+      if (outcome === 'cherry_skipped' && !shipsInKeptAncestorBack(toggle)) {
         cherrySkippedCount += 1;
       }
       return outcome === 'kept';
+    };
+    const keepCardWithNestedBack = (note: Note, toggle: Element): boolean => {
+      const kept = keepCard(note, toggle);
+      if (kept) {
+        keptToggles.add(toggle);
+      }
+      return kept;
     };
 
     toggleList.forEach((t) => {
@@ -2591,7 +2593,7 @@ export class DeckParser {
                 note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
-                if (keepToggle(note, t)) {
+                if (keepCard(note, t)) {
                   this.applyParentContext(dom, summary, note);
                 }
                 return;
@@ -2622,7 +2624,7 @@ export class DeckParser {
                   note.back += link;
                 }
               }
-              if (keepToggle(note, t)) {
+              if (keepCardWithNestedBack(note, t)) {
                 this.applyParentContext(dom, summary, note);
               }
               for (const child of promoted) {

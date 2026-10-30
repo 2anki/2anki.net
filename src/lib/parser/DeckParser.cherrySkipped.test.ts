@@ -91,6 +91,28 @@ describe('cherry-skipped toggle count (upload path)', () => {
       }
     );
 
+    it('still counts a child under a kept multiple-choice card, whose back holds no nested toggles', async () => {
+      const options =
+        '<ul class="to-do-list"><li><div class="checkbox checkbox-on"></div> Mitochondrion</li><li><div class="checkbox checkbox-off"></div> Ribosome</li></ul>';
+      const [deck] = await parse(
+        pageOf(
+          wrapped(
+            '🍒 Which organelle makes ATP?',
+            options + wrapped('Atrium', '<p>Child answer.</p>')
+          )
+        ),
+        {
+          cherry: 'true',
+          'mcq-enabled': 'true',
+          'max-one-toggle-per-card': 'false',
+        }
+      );
+
+      expect(deck.mcqCount).toBe(1);
+      expect(deck.cards[0].back).not.toContain('Child answer');
+      expect(deck.cherrySkippedCount).toBe(1);
+    });
+
     it('still counts a dropped child whose title also appears in the parent text', async () => {
       const [deck] = await parse(
         wrappedShape('<p>Atrium contracts first.</p>', ['Atrium', 'p']),

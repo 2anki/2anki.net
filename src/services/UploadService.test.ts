@@ -7894,7 +7894,11 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
   }
 
   function mockPartial(
-    packages: Array<{ name: string; cardCount: number }>,
+    packages: Array<{
+      name: string;
+      cardCount: number;
+      cherrySkippedCount?: number;
+    }>,
     cardsHeldBack?: number
   ) {
     const execute = vi
@@ -8063,6 +8067,24 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
     expect(heldUploads()).toHaveLength(0);
     expect(heldDeck.rows).toHaveLength(0);
     expect(headerValue(res, 'X-Held-For-Plan')).toBeUndefined();
+  });
+
+  it('still says how many toggles Cherry-pick left out on a partial deck held for a plan', async () => {
+    mockStorageUploadFile.mockClear();
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    mockPartial([{ name: 'deck', cardCount: 10, cherrySkippedCount: 6 }], 5);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo, heldDeck).handleUpload(
+      partialRequestWithBytes(),
+      res
+    );
+
+    expect(headerValue(res, 'X-Held-For-Plan')).toBe('1');
+    expect(headerValue(res, 'X-Cherry-Skipped-Count')).toBe('6');
+    expect(exposedHeaders(res)).toContain('X-Cherry-Skipped-Count');
   });
 
   it('truncates a free user over their remaining allowance to a partial deck', async () => {
