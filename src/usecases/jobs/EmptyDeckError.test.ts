@@ -69,6 +69,12 @@ describe('mostSpecificEmptyReason', () => {
     ).toBe('no_toggles');
   });
 
+  it('lets one file of answerless Notion toggles name the reason for a mixed zip', () => {
+    expect(
+      mostSpecificEmptyReason(['unknown', 'no_toggles', 'empty_answers'])
+    ).toBe('empty_answers');
+  });
+
   it('prefers no_content over unknown', () => {
     expect(mostSpecificEmptyReason(['unknown', 'no_content'])).toBe(
       'no_content'
