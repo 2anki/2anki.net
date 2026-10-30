@@ -423,6 +423,140 @@ describe('UploadForm', () => {
     }
   });
 
+  test('stops saying the payment is confirming once the retried claim goes through', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    stubPassReturn('cs_late_build');
+    let finish: (response: Response) => void = () => {};
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValueOnce(statusResponse(403))
+      .mockReturnValue(
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        })
+      );
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Confirming your payment.')
+      ).toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4500);
+      });
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Checking your pass.')).toBeInTheDocument();
+      expect(
+        screen.queryByText('Confirming your payment.')
+      ).not.toBeInTheDocument();
+      await act(async () => {
+        finish(apkgResumeResponse());
+      });
+      expect(
+        await screen.findByText('Your deck is ready — 58 cards.')
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+      restore();
+    }
+  });
+
+  test('keeps saying the payment is confirming while a quick retry is refused again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    stubPassReturn('cs_still_unconfirmed');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockResolvedValueOnce(statusResponse(403))
+      .mockImplementation(
+        () =>
+          new Promise<Response>((resolve) => {
+            setTimeout(() => resolve(statusResponse(403)), 300);
+          })
+      );
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText('Confirming your payment.')
+      ).toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4_500);
+      });
+      expect(claimHeldDeckWithPass).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Confirming your payment.')).toBeInTheDocument();
+      expect(screen.queryByText('Checking your pass.')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+      restore();
+    }
+  });
+
+  test('leaves the form announcement to the pass return region while the pass is checked', async () => {
+    stubPassReturn('cs_one_voice');
+    const claimHeldDeckWithPass = vi
+      .fn()
+      .mockReturnValue(new Promise<Response>(() => {}));
+    const restore = installResumeApi(vi.fn(), claimHeldDeckWithPass);
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      expect(
+        await screen.findByText('Checking your pass.')
+      ).toBeInTheDocument();
+      const formAnnouncement = container.querySelector(
+        'output[aria-live="polite"]'
+      );
+      expect(formAnnouncement).toHaveTextContent(/^$/);
+    } finally {
+      restore();
+    }
+  });
+
+  test('keeps the pass return region empty and hidden for a visitor who is not back from checkout', () => {
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const regions = [
+      ...container.querySelectorAll('p[role="status"][aria-live="polite"]'),
+    ];
+    expect(regions).toHaveLength(1);
+    expect(regions[0]).toHaveTextContent(/^$/);
+    expect(regions[0].className).toMatch(/srOnly/);
+  });
+
+  test('announces the pass return status and its notice in one persistent live region', async () => {
+    stubPassReturn('cs_one_region');
+    let finish: (response: Response) => void = () => {};
+    const claimHeldDeckWithPass = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      })
+    );
+    const restore = installResumeApi(
+      vi.fn().mockResolvedValue(statusResponse(404)),
+      claimHeldDeckWithPass
+    );
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      const region = await screen.findByText('Checking your pass.');
+      expect(region).toHaveAttribute('role', 'status');
+      await act(async () => {
+        finish(statusResponse(404));
+      });
+      const notice = await screen.findByText(
+        'Your pass is active. Drop your file again to get every card.'
+      );
+      expect(notice).toBe(region);
+    } finally {
+      restore();
+    }
+  });
+
   test('says the payment is still confirming when the pass never clears', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     stubPassReturn('cs_unconfirmed');
@@ -576,6 +710,27 @@ describe('UploadForm', () => {
       expect(
         await screen.findByText('Your deck is ready — 58 cards.')
       ).toBeInTheDocument();
+      expect(aiPreviewCheckoutMarked()).toBe(false);
+    } finally {
+      clearAiPreviewCheckout();
+      restore();
+    }
+  });
+
+  test('forgets the AI preview checkout when the pass return is abandoned', async () => {
+    markAiPreviewCheckout();
+    stubPassReturn('cs_left_page');
+    const resumeAiPreview = vi
+      .fn()
+      .mockReturnValue(new Promise<Response>(() => {}));
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      const { unmount } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      await waitFor(() => expect(resumeAiPreview).toHaveBeenCalled());
+      unmount();
       expect(aiPreviewCheckoutMarked()).toBe(false);
     } finally {
       clearAiPreviewCheckout();
@@ -11701,6 +11856,28 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
       expect(body.getAll('kept-owner')).toEqual(['none']);
       expect(resumeAiPreview).not.toHaveBeenCalled();
     } finally {
+      restore();
+    }
+  });
+
+  test('forgets an earlier AI preview checkout when the thin deck resume takes the return', async () => {
+    markAiPreviewCheckout();
+    stubPassReturn('cs_thin_marker');
+    markThinDeckResume();
+    await saveWithAi(null);
+    const restore = installResumeApi(vi.fn());
+    const fetchMock = okApkgFetch();
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+      await waitFor(() =>
+        expect(aiFlagFromFetch(fetchMock, '/api/upload/file')).toBe('true')
+      );
+      expect(aiPreviewCheckoutMarked()).toBe(false);
+    } finally {
+      clearAiPreviewCheckout();
       restore();
     }
   });
