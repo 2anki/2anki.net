@@ -133,6 +133,27 @@ describe('setupDatabase migration list drift', () => {
     ]);
   });
 
+  it('keeps strict validation when nothing is pending but a missing migration sorts within the build', async () => {
+    const middle = '20260101120000_create_middle.js';
+    const latest = '20260103000000_create_latest.js';
+    fs.writeFileSync(
+      path.join(migrationsDir, middle),
+      CREATE_EXTRA.replaceAll("'extra'", "'middle'")
+    );
+    fs.writeFileSync(
+      path.join(migrationsDir, latest),
+      CREATE_EXTRA.replaceAll("'extra'", "'latest'")
+    );
+    await setupDatabase(database);
+    fs.rmSync(path.join(migrationsDir, middle));
+    fs.rmSync(path.join(migrationsDir, latest));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(setupDatabase(database)).rejects.toThrow('process.exit(1)');
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it('keeps strict validation when the build has no migration files at all', async () => {
     await setupDatabase(database);
     fs.rmSync(path.join(migrationsDir, JOBS_MIGRATION));
