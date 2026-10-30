@@ -425,7 +425,7 @@
       },
       "internetShortcutLink": {
         "title": "これはリンクで、ファイルではありません",
-        "body": "このファイルは Web ページへの保存されたリンクで、ファイルそのものではありません。リンクを開いてファイルをダウンロードし、そのファイルをアップロードしてください：PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML、または Notion のエクスポート。"
+        "body": "このファイルは Web ページへの保存されたリンクで、ファイルそのものではありません。リンクを開いてファイル（PDF、Word、PowerPoint、Excel、CSV、Markdown、HTML、または Notion のエクスポート）をダウンロードし、そのファイルをアップロードしてください。"
       },
       "goodnotes": {
         "title": "GoodNotes のノートは直接読み込めません",

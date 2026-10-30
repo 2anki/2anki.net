@@ -287,6 +287,18 @@ describe('detectInternetShortcutIssue', () => {
     ).toBeNull();
   });
 
+  it('leaves a shortcut the browser cannot read to the plain shortcut message', async () => {
+    const file = internetShortcut('Page.url', 'https://www.notion.so/Page');
+    Object.defineProperty(file, 'text', {
+      value: () => Promise.reject(new DOMException('NotReadableError')),
+    });
+    expect(await detectInternetShortcutIssue([file])).toBeNull();
+    expect(await detectFileIssues([file])).toMatchObject({
+      code: 'internet_shortcut',
+      blocking: true,
+    });
+  });
+
   it('skips reading a file too large to be a shortcut', async () => {
     const file = internetShortcut('Page.url', 'https://www.notion.so/Page');
     Object.defineProperty(file, 'size', { value: 2 * 1024 * 1024 });
@@ -319,7 +331,7 @@ describe('detectFileIssues', () => {
     expect(result?.code).toBe('internet_shortcut_notion');
   });
 
-  it('keeps the plain shortcut message for an unreadable shortcut', async () => {
+  it('keeps the plain shortcut message for a shortcut with no URL line', async () => {
     const result = await detectFileIssues([fakeFile('Page.url')]);
     expect(result).toMatchObject({
       code: 'internet_shortcut',

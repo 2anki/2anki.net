@@ -444,12 +444,12 @@
       },
       "internetShortcutNotion": {
         "title": "That is a link to a Notion page",
-        "body": "This file is a saved link to a Notion page, not the page itself. Connect Notion and pick the page, and 2anki converts it directly.",
+        "body": "This file is a saved link to a Notion page, not the page itself. Connect Notion and pick the page: 2anki converts it directly.",
         "action": "Convert from Notion"
       },
       "internetShortcutLink": {
         "title": "That is a link, not a file",
-        "body": "This file is a saved link to a web page, not the file itself. Open the link, download the file and upload that: PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML or a Notion export."
+        "body": "This file is a saved link to a web page, not the file itself. Open the link, download the file (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML, or a Notion export), and upload that."
       },
       "goodnotes": {
         "title": "GoodNotes notebooks cannot be read directly",

@@ -444,12 +444,12 @@
       },
       "internetShortcutNotion": {
         "title": "Eso es un enlace a una página de Notion",
-        "body": "Este archivo es un enlace guardado a una página de Notion, no la página en sí. Conecta Notion y elige la página, y 2anki la convierte directamente.",
+        "body": "Este archivo es un enlace guardado a una página de Notion, no la página en sí. Conecta Notion y elige la página: 2anki la convierte directamente.",
         "action": "Convertir desde Notion"
       },
       "internetShortcutLink": {
         "title": "Eso es un enlace, no un archivo",
-        "body": "Este archivo es un enlace guardado a una página web, no el archivo en sí. Abre el enlace, descarga el archivo y sube ese: PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML o una exportación de Notion."
+        "body": "Este archivo es un enlace guardado a una página web, no el archivo en sí. Abre el enlace, descarga el archivo (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML o una exportación de Notion) y sube ese."
       },
       "goodnotes": {
         "title": "Los cuadernos de GoodNotes no se pueden leer directamente",

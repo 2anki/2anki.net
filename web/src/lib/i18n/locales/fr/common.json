@@ -444,12 +444,12 @@
       },
       "internetShortcutNotion": {
         "title": "Ceci est un lien vers une page Notion",
-        "body": "Ce fichier est un lien enregistré vers une page Notion, pas la page elle-même. Connecte Notion et choisis la page, et 2anki la convertit directement.",
+        "body": "Ce fichier est un lien enregistré vers une page Notion, pas la page elle-même. Connecte Notion et choisis la page : 2anki la convertit directement.",
         "action": "Convertir depuis Notion"
       },
       "internetShortcutLink": {
         "title": "Ceci est un lien, pas un fichier",
-        "body": "Ce fichier est un lien enregistré vers une page web, pas le fichier lui-même. Ouvre le lien, télécharge le fichier et envoie celui-ci : PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML ou un export Notion."
+        "body": "Ce fichier est un lien enregistré vers une page web, pas le fichier lui-même. Ouvre le lien, télécharge le fichier (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML ou export Notion) et envoie celui-ci."
       },
       "goodnotes": {
         "title": "Les carnets GoodNotes ne peuvent pas être lus directement",

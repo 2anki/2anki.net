@@ -444,12 +444,12 @@
       },
       "internetShortcutNotion": {
         "title": "Das ist ein Link zu einer Notion-Seite",
-        "body": "Diese Datei ist ein gespeicherter Link zu einer Notion-Seite, nicht die Seite selbst. Verbinde Notion und wähle die Seite, dann konvertiert 2anki sie direkt.",
+        "body": "Diese Datei ist ein gespeicherter Link zu einer Notion-Seite, nicht die Seite selbst. Verbinde Notion und wähle die Seite aus, dann konvertiert 2anki sie direkt.",
         "action": "Über Notion konvertieren"
       },
       "internetShortcutLink": {
         "title": "Das ist ein Link, keine Datei",
-        "body": "Diese Datei ist ein gespeicherter Link zu einer Webseite, nicht die Datei selbst. Öffne den Link, lade die Datei herunter und lade diese hoch: PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML oder ein Notion-Export."
+        "body": "Diese Datei ist ein gespeicherter Link zu einer Webseite, nicht die Datei selbst. Öffne den Link, lade die Datei herunter (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML oder einen Notion-Export) und lade diese hoch."
       },
       "goodnotes": {
         "title": "GoodNotes-Notizbücher können nicht direkt gelesen werden",
@@ -457,7 +457,7 @@
       },
       "icon": {
         "title": "Das ist ein Symbol, nicht deine Notizen",
-        "body": "Das ist ein Symbolbild, kein Lernmaterial. Wähle stattdessen die Datei mit deinen Notizen oder Folien."
+        "body": "Das ist eine Icon-Datei, kein Lernmaterial. Wähle stattdessen die Datei mit deinen Notizen oder Folien."
       }
     }
   },

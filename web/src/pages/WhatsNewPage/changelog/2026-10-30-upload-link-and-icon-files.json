@@ -2,5 +2,5 @@
   "id": "2026-10-30-upload-link-and-icon-files",
   "date": "2026-10-30",
   "type": "fix",
-  "title": "Dropping a saved link to a Notion page on Upload points you to Notion, and an icon file gets a clear next step"
+  "title": "Upload points a saved link to a Notion page to Notion, and asks for your notes or slides when you drop an icon file"
 }

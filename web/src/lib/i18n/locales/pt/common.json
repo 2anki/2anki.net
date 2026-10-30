@@ -449,7 +449,7 @@
       },
       "internetShortcutLink": {
         "title": "Isso é um link, não um arquivo",
-        "body": "Este arquivo é um link salvo para uma página da web, não o arquivo em si. Abra o link, baixe o arquivo e envie esse: PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML ou uma exportação do Notion."
+        "body": "Este arquivo é um link salvo para uma página da web, não o arquivo em si. Abra o link, baixe o arquivo (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML ou uma exportação do Notion) e envie esse."
       },
       "goodnotes": {
         "title": "Cadernos do GoodNotes não podem ser lidos diretamente",

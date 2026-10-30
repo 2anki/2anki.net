@@ -449,7 +449,7 @@
       },
       "internetShortcutLink": {
         "title": "Dit is een link, geen bestand",
-        "body": "Dit bestand is een opgeslagen link naar een webpagina, niet het bestand zelf. Open de link, download het bestand en upload dat: PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML of een Notion-export."
+        "body": "Dit bestand is een opgeslagen link naar een webpagina, niet het bestand zelf. Open de link, download het bestand (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML of een Notion-export) en upload dat."
       },
       "goodnotes": {
         "title": "GoodNotes-notitieboeken kunnen niet direct worden gelezen",

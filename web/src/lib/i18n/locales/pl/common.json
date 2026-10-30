@@ -497,7 +497,7 @@
       },
       "internetShortcutLink": {
         "title": "To jest link, a nie plik",
-        "body": "Ten plik to zapisany link do strony internetowej, a nie sam plik. Otwórz link, pobierz plik i wgraj go: PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML lub eksport z Notion."
+        "body": "Ten plik to zapisany link do strony internetowej, a nie sam plik. Otwórz link, pobierz plik (PDF, Word, PowerPoint, Excel, CSV, Markdown, HTML lub eksport z Notion) i wgraj go."
       },
       "goodnotes": {
         "title": "Notatników GoodNotes nie da się wczytać bezpośrednio",
