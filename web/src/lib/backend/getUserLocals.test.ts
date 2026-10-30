@@ -194,6 +194,24 @@ describe('getUserLocals', () => {
     );
   });
 
+  it.each([[401], [403], [409]])(
+    'keeps the deck for the next page load when the move answers %s',
+    async (status) => {
+      await getLastDeckStore().save(keptDeck());
+      fetchSpy.mockImplementation(async (url: string) =>
+        url.endsWith('upload/claim/recovery')
+          ? new Response('{}', { status })
+          : signedInLocals()
+      );
+
+      await getUserLocals();
+
+      await vi.waitFor(() => expect(claimCalls()).toHaveLength(1));
+      await settleClaim();
+      expect(await getLastDeckStore().load()).toEqual(keptDeck());
+    }
+  );
+
   it('forgets a deck the server refuses as malformed', async () => {
     await getLastDeckStore().save(keptDeck());
     fetchSpy.mockImplementation(async (url: string) =>

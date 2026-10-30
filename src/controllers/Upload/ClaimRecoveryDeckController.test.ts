@@ -168,6 +168,57 @@ describe('ClaimRecoveryDeckController', () => {
     );
   });
 
+  it('never cuts an emoji in half when shortening the deck name', async () => {
+    const { controller, saveRecoveredDeck } = buildController(keptDeck());
+
+    await controller.claim(
+      buildRequest({
+        recoveryToken: TOKEN,
+        deckName: `${'a'.repeat(199)}🧬🧬`,
+      }),
+      buildResponse().res
+    );
+
+    expect(saveRecoveredDeck).toHaveBeenCalledWith(
+      '7',
+      `${'a'.repeat(199)}🧬`,
+      expect.any(Buffer),
+      'req-1'
+    );
+  });
+
+  it('answers 409 while another claim for the same deck is still running', async () => {
+    const objects = keptDeck();
+    let finishSave: (key: string) => void = () => {};
+    const store: RecoveryDeckStore = {
+      listObjectsByPrefix: async (prefix) =>
+        [...objects.keys()]
+          .filter((key) => key.startsWith(prefix))
+          .map((key) => ({ Key: key, LastModified: new Date() })),
+      getFileContents: async (key) => ({ Body: objects.get(key) }),
+      delete: async (key) => objects.delete(key),
+    };
+    const saveRecoveredDeck = vi.fn().mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        finishSave = resolve;
+      })
+    );
+    const controller = new ClaimRecoveryDeckController(
+      new ClaimRecoveryDeckUseCase(store, { saveRecoveredDeck })
+    );
+    const body = { recoveryToken: TOKEN, deckName: 'Biology.apkg' };
+
+    const first = controller.claim(buildRequest(body), buildResponse().res);
+    await vi.waitFor(() => expect(saveRecoveredDeck).toHaveBeenCalledTimes(1));
+    const second = buildResponse();
+    await controller.claim(buildRequest(body), second.res);
+    finishSave('owner-7-deck.apkg');
+    await first;
+
+    expect(second.status()).toBe(409);
+    expect(second.json()).toEqual({ code: 'recovery_claim_in_progress' });
+  });
+
   it('keeps path separators out of the saved deck name', async () => {
     const { controller, saveRecoveredDeck } = buildController(keptDeck());
 

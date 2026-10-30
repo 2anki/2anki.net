@@ -112,11 +112,17 @@ interface FinishedUpload {
   deckName: string;
 }
 
+export function keepsLastDeck(
+  upload: FinishedUpload
+): upload is FinishedUpload & { passToken: string; recoveryToken: string } {
+  return upload.passToken != null && upload.recoveryToken != null;
+}
+
 export function keepLastDeck(
   upload: FinishedUpload,
   now: () => number = Date.now
 ): Promise<void> {
-  if (upload.passToken == null || upload.recoveryToken == null) {
+  if (!keepsLastDeck(upload)) {
     return Promise.resolve();
   }
   return getLastDeckStore().save({

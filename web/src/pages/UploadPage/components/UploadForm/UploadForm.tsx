@@ -32,7 +32,7 @@ import {
   type ConversionSuccessHandlers,
 } from './uploadResponse';
 import { LastDeckOffer } from './LastDeckOffer';
-import { keepLastDeck } from '../../../../lib/upload/lastDeck';
+import { keepLastDeck, keepsLastDeck } from '../../../../lib/upload/lastDeck';
 import { BuyCreditsButton } from '../../../../components/BuyCreditsButton/BuyCreditsButton';
 import { getDownloadFileName } from '../../../DownloadsPage/helpers/getDownloadFileName';
 import { ImageDropNotice } from '../../../DownloadsPage/components/ImageDropNotice';
@@ -121,6 +121,7 @@ import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/
 import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
 import {
   AnonymousPartialGate,
+  hasAnonIdCookie,
   isHeldDeckCookieLost,
 } from '../../../../components/AnonymousPartialGate/AnonymousPartialGate';
 import { AiPreviewGate } from '../../../../components/AiPreviewGate/AiPreviewGate';
@@ -890,7 +891,11 @@ function UploadForm({
     setHeldDeck,
     setAiPreviewCards,
     setAiPreviewUnavailable,
-    setZoneState,
+    setZoneState: (state) => {
+      setDeckKeptForAccount(keptForAccountRef.current);
+      keptForAccountRef.current = false;
+      setZoneState(state);
+    },
     setStructureRescuedRule,
     setPdfFallbackMode,
     recoverDownload: (recoveryUrl, errorMessage) => {
@@ -926,6 +931,7 @@ function UploadForm({
   const [dayPassPending, setDayPassPending] = useState(false);
   const [anonCopyRecovered, setAnonCopyRecovered] = useState(false);
   const [deckKeptForAccount, setDeckKeptForAccount] = useState(false);
+  const keptForAccountRef = useRef(false);
   const recoveryTokenRef = useRef<string | null>(null);
   const recoverySubmittedAtRef = useRef(0);
   const pdfPageRangeRef = useRef<string | null>(null);
@@ -2307,12 +2313,14 @@ function UploadForm({
       }
       const deliveredDeckName = singleDeckName(request.headers);
       if (deliveredDeckName != null) {
-        void keepLastDeck({
+        const finished = {
           passToken,
           recoveryToken,
           deckName: deliveredDeckName,
-        });
-        setDeckKeptForAccount(passToken != null && recoveryToken != null);
+        };
+        void keepLastDeck(finished);
+        keptForAccountRef.current =
+          keepsLastDeck(finished) && hasAnonIdCookie();
       }
       await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {

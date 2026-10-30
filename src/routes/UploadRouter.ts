@@ -297,7 +297,7 @@ const UploadRouter = () => {
    *                 format: uuid
    *               deckName:
    *                 type: string
-   *                 maxLength: 200
+   *                 description: Names longer than 200 characters are shortened
    *     responses:
    *       200:
    *         description: Deck added to My decks
@@ -307,6 +307,8 @@ const UploadRouter = () => {
    *         description: Authentication required
    *       404:
    *         description: No deck kept for this browser and token within the last day
+   *       409:
+   *         description: Another claim for the same deck is still running
    *       503:
    *         description: The deck could not be saved to the account
    */

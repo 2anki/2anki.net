@@ -1287,6 +1287,82 @@ describe('UploadForm Google Drive picker interaction', () => {
     expect(globalThis.localStorage.getItem('pdf-page-range')).toBeNull();
   });
 
+  it('drops the kept-deck notice for a Drive deck made after a kept pass upload', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        user: null,
+        locals: {},
+        features: { kiUI: false },
+      },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    stubGoogleDrivePicked();
+    vi.stubGlobal('scrollTo', vi.fn());
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="deck.apkg"',
+        'X-Card-Count': '3',
+      }),
+      blob: () => Promise.resolve(new Blob(['fake'])),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_kept_then_drive');
+    document.cookie = 'anon_id=anon-kept';
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      await act(async () => {
+        container
+          .querySelector('form')!
+          .dispatchEvent(
+            new Event('submit', { bubbles: true, cancelable: true })
+          );
+      });
+      expect(
+        await screen.findByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Make another deck' })
+      );
+
+      fireEvent.click(
+        within(container).getByRole('button', { name: 'Google Drive' })
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Choose from Google Drive' })
+      );
+
+      expect(
+        await screen.findByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+      mockUseUserLocals.mockReturnValue({
+        data: undefined,
+        isLoading: false,
+        error: null,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useUserLocals>);
+    }
+  });
+
   it('keeps the card count when a signed-out Drive import hits the anonymous limit with pass-first on', async () => {
     mockUseUserLocals.mockReturnValue({
       data: {
@@ -4705,9 +4781,7 @@ describe('limit state', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('tells a signed-out pass holder the deck moves to My decks if they sign up within a day', async () => {
-    setUserLocals(anonymousData);
-    globalThis.localStorage.setItem('2anki_pass_token', 'cs_kept');
+  function stubPassUploadFetch(): void {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -4721,23 +4795,53 @@ describe('limit state', () => {
         blob: () => Promise.resolve(new Blob(['fake'])),
       })
     );
+  }
 
-    try {
-      const { container } = renderUploadForm(
-        <UploadForm setErrorMessage={vi.fn()} />
+  async function submitAsSignedOutPassHolder(): Promise<void> {
+    setUserLocals(anonymousData);
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_kept');
+    stubPassUploadFetch();
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
       );
-      const form = container.querySelector('form')!;
-      await act(async () => {
-        form.dispatchEvent(
-          new Event('submit', { bubbles: true, cancelable: true })
-        );
-      });
+    });
+  }
+
+  it('tells a signed-out pass holder the deck moves to My decks if they sign up within a day', async () => {
+    document.cookie = 'anon_id=anon-kept';
+    try {
+      await submitAsSignedOutPassHolder();
 
       expect(
-        await screen.findByText('Sign up within a day to keep this deck')
+        await screen.findByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
       ).toBeInTheDocument();
       expect(
         screen.queryByText('This deck lives only on this device')
+      ).not.toBeInTheDocument();
+    } finally {
+      document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      globalThis.localStorage.removeItem('2anki_pass_token');
+    }
+  });
+
+  it('keeps the guest notice for a pass holder whose browser blocks the anon_id cookie', async () => {
+    try {
+      await submitAsSignedOutPassHolder();
+
+      expect(
+        await screen.findByText('This deck lives only on this device')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'Sign up within a day to add your latest deck to My decks'
+        )
       ).not.toBeInTheDocument();
     } finally {
       globalThis.localStorage.removeItem('2anki_pass_token');

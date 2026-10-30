@@ -49,8 +49,10 @@ interface GetUserLocalsResponse {
 let lastDeckMove: Promise<void> | null = null;
 let lastDeckMoveFailed = false;
 
-function serverAnswered(status: number): boolean {
-  return status > 0 && status < 500;
+const SETTLED_CLAIM_STATUSES = new Set([200, 400, 404]);
+
+function claimSettled(status: number): boolean {
+  return SETTLED_CLAIM_STATUSES.has(status);
 }
 
 // A deck a pass built while signed out is kept on the server for a day. Once
@@ -64,7 +66,7 @@ async function moveLastDeckToAccount(): Promise<void> {
     deck.recoveryToken,
     deck.deckName
   );
-  if (serverAnswered(status)) {
+  if (claimSettled(status)) {
     await forgetLastDeck();
   } else {
     lastDeckMoveFailed = true;

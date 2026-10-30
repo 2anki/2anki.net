@@ -2,5 +2,5 @@
   "id": "2026-10-30-signed-out-deck-to-my-decks",
   "date": "2026-10-30",
   "type": "fix",
-  "title": "A deck you upload with a pass while signed out moves to My decks when you sign up or sign in in that browser within a day"
+  "title": "Your latest deck from a signed-out pass upload moves to My decks when you sign up or sign in on that browser within a day"
 }

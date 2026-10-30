@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import {
   ClaimRecoveryDeckUseCase,
   NoRecoveryDeckError,
+  RecoveryClaimInProgressError,
   RecoveryDeckNotSavedError,
 } from '../../usecases/uploads/ClaimRecoveryDeckUseCase';
 import { isRecoveryToken } from '../../lib/upload/anonymousRecovery';
@@ -17,7 +18,9 @@ function deckNameFrom(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   if (trimmed.length === 0) return null;
-  return getSafeFilename(trimmed.slice(0, MAX_DECK_NAME_LENGTH));
+  return getSafeFilename(
+    Array.from(trimmed).slice(0, MAX_DECK_NAME_LENGTH).join('')
+  );
 }
 
 export class ClaimRecoveryDeckController {
@@ -51,6 +54,9 @@ export class ClaimRecoveryDeckController {
     } catch (err) {
       if (err instanceof NoRecoveryDeckError) {
         return res.status(404).json({ code: 'no_recovery_deck' });
+      }
+      if (err instanceof RecoveryClaimInProgressError) {
+        return res.status(409).json({ code: 'recovery_claim_in_progress' });
       }
       if (err instanceof RecoveryDeckNotSavedError) {
         return res.status(503).json({ code: 'recovery_deck_not_saved' });

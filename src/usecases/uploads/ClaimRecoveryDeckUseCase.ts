@@ -10,6 +10,13 @@ export class NoRecoveryDeckError extends Error {
   }
 }
 
+export class RecoveryClaimInProgressError extends Error {
+  constructor() {
+    super('Another claim for this deck is still running');
+    this.name = 'RecoveryClaimInProgressError';
+  }
+}
+
 export class RecoveryDeckNotSavedError extends Error {
   constructor() {
     super('The recovered deck could not be saved to the account');
@@ -74,7 +81,7 @@ export class ClaimRecoveryDeckUseCase {
     }
     const key = anonRecoveryKey(anonId, recoveryToken);
     if (this.claimsInFlight.has(key)) {
-      throw new NoRecoveryDeckError();
+      throw new RecoveryClaimInProgressError();
     }
     this.claimsInFlight.add(key);
     try {

@@ -53,11 +53,13 @@ describe('CreateAccountNotice', () => {
     );
 
     expect(
-      screen.getByText('Sign up within a day to keep this deck')
+      screen.getByText(
+        'Sign up within a day to add your latest deck to My decks'
+      )
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Pharmacology Week 3 is kept for a day. Create a free account in this browser before then and it moves to My decks, along with every deck you convert after.'
+        'Pharmacology Week 3 is kept for a day. Sign up for free or sign in on this browser before then, and your latest deck moves to My decks. Every deck you convert after that is saved there too.'
       )
     ).toBeInTheDocument();
     expect(screen.queryByText(/as a guest/)).not.toBeInTheDocument();

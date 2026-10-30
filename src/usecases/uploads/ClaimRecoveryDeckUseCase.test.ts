@@ -6,6 +6,7 @@ import {
 import {
   ClaimRecoveryDeckUseCase,
   NoRecoveryDeckError,
+  RecoveryClaimInProgressError,
   RecoveryDeckNotSavedError,
   type RecoveredDeckSaver,
   type RecoveryDeckStore,
@@ -134,7 +135,9 @@ describe('ClaimRecoveryDeckUseCase', () => {
 
     const first = claim(useCase);
     await vi.waitFor(() => expect(saveRecoveredDeck).toHaveBeenCalledTimes(1));
-    await expect(claim(useCase)).rejects.toBeInstanceOf(NoRecoveryDeckError);
+    await expect(claim(useCase)).rejects.toBeInstanceOf(
+      RecoveryClaimInProgressError
+    );
     finishSave('owner-7-deck.apkg');
 
     await expect(first).resolves.toEqual({
@@ -199,12 +202,15 @@ describe('ClaimRecoveryDeckUseCase', () => {
       () => NOW
     );
 
-    await expect(claim(useCase)).resolves.toMatchObject({
-      downloadKey: 'owner-7-deck.apkg',
-    });
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(String(warn.mock.calls[0])).not.toContain(TOKEN);
-    warn.mockRestore();
+    try {
+      await expect(claim(useCase)).resolves.toMatchObject({
+        downloadKey: 'owner-7-deck.apkg',
+      });
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0])).not.toContain(TOKEN);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('refuses a deck kept for longer than the day it is offered', async () => {

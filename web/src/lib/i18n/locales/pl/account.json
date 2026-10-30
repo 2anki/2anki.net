@@ -161,9 +161,9 @@
     "body": "Talia {{deckName}} powstała w trybie gościa, więc nie ma kopii online, do której można wrócić. Z darmowym kontem każda przekonwertowana talia trafia do sekcji Moje talie — pobierzesz ją ponownie kiedy chcesz, z dowolnego urządzenia.",
     "bodyNoName": "Ta talia powstała w trybie gościa, więc nie ma kopii online, do której można wrócić. Z darmowym kontem każda przekonwertowana talia trafia do sekcji Moje talie — pobierzesz ją ponownie kiedy chcesz, z dowolnego urządzenia.",
     "cta": "Zapisz swoje talie — za darmo",
-    "keptHeadline": "Zarejestruj się w ciągu doby, aby zachować tę talię",
-    "keptBody": "Talia {{deckName}} jest przechowywana przez dobę. Załóż w tym czasie darmowe konto w tej przeglądarce, a trafi do sekcji Moje talie, razem z każdą talią, którą przekonwertujesz później.",
-    "keptBodyNoName": "Ta talia jest przechowywana przez dobę. Załóż w tym czasie darmowe konto w tej przeglądarce, a trafi do sekcji Moje talie, razem z każdą talią, którą przekonwertujesz później."
+    "keptHeadline": "Zarejestruj się w ciągu doby, aby dodać najnowszą talię do sekcji Moje talie",
+    "keptBody": "Talia {{deckName}} jest przechowywana przez dobę. Zarejestruj się za darmo lub zaloguj w tej przeglądarce przed upływem tego czasu, a twoja najnowsza talia trafi do sekcji Moje talie. Każda talia, którą przekonwertujesz później, też tam trafi.",
+    "keptBodyNoName": "Ta talia jest przechowywana przez dobę. Zarejestruj się za darmo lub zaloguj w tej przeglądarce przed upływem tego czasu, a twoja najnowsza talia trafi do sekcji Moje talie. Każda talia, którą przekonwertujesz później, też tam trafi."
   },
   "accessBanner": {
     "active": "{{passLabel}} aktywny — wygasa {{date}}. Konwertuj, ile chcesz.",
