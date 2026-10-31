@@ -355,6 +355,15 @@ class TestSnapshotChanges(unittest.TestCase):
         self.assertIn("## Removed for users", result["reason"])
 
 
+class TestGateError(unittest.TestCase):
+    def test_an_error_inside_the_gate_denies_instead_of_crashing_open(self):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), REMOVED_KEY_DIFF)
+        with patch.object(hook, "find_removals", side_effect=TypeError("odd shape")):
+            result = run_hook(MERGE_1, fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("merge gate failed", result["reason"])
+
+
 class TestFailedView(unittest.TestCase):
     def test_a_failed_view_denies_the_merge(self):
         for fake in (

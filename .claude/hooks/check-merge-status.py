@@ -39,9 +39,10 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
 Only the exact merge command /ship runs is accepted
 (`merge_command.allowed_merge`); any other merge form is denied, and so is a
 merge whose `gh pr view` fails or resolves another repo or PR (#5193). A human
-merges from the GitHub UI, where these hooks do not run. The changed files come from `merge_command.changed_files` (the paginated REST
-list, not `gh pr view`'s first 100); when that call fails, conditions 4 and 7
-read `gh pr view`'s files as they did before.
+merges from the GitHub UI, where these hooks do not run. The changed files
+come from `merge_command.changed_files` (the paginated REST list, not `gh pr
+view`'s first 100); when that call fails, conditions 4 and 7 read `gh pr
+view`'s files as they did before.
 
 Hard-rail PRs (`hard_rails.py`) are no longer refused here (removed 2026-10-05):
 /ship classifies them and runs extra verification instead of parking them.
@@ -134,7 +135,7 @@ def is_gh_pr_merge(cmd):
 
 def run_gh(args, label):
     try:
-        result = subprocess.run(args, capture_output=True, text=True, timeout=15)
+        result = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
     except (subprocess.TimeoutExpired, OSError) as exc:
         sys.stderr.write(f"[check-merge-status] could not run gh for {label} ({exc}); refusing.\n")
         return None
@@ -422,10 +423,14 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
+    merge_command.deny_on_error(gate, cmd, deny)
+
+
+def gate(cmd):
     if merge_command.is_graphql_merge(cmd):
         deny(
             "Refusing a GraphQL mergePullRequest mutation — no PR number to gate on. "
-            "Merge through /ship with `gh pr merge <n>`."
+            "Merge through /ship with `gh pr merge <n> --repo 2anki/server --squash`."
         )
 
     form_violation = merge_command.merge_form_violation(cmd)

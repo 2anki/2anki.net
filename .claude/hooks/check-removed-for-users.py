@@ -154,7 +154,7 @@ def gh_args(subcommand, number, repo, extra):
 
 
 def fetch_pr_data(number, repo):
-    stdout = run_gh(gh_args("view", number, repo, ["--json", "number,url,author,body,files"]), "this gate")
+    stdout = run_gh(gh_args("view", number, repo, ["--json", "number,url,author,body,files"]), "the PR view and refusing the merge")
     if stdout is None:
         return None
     try:
@@ -455,6 +455,10 @@ def main():
     if not merge_command.is_gh_pr_merge(cmd):
         allow()
 
+    merge_command.deny_on_error(gate, cmd, deny)
+
+
+def gate(cmd):
     form_violation = merge_command.merge_form_violation(cmd)
     if form_violation:
         deny(form_violation)

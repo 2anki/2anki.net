@@ -327,6 +327,14 @@ class TestRestFailure(unittest.TestCase):
         self.assertEqual(result["result"], "deny")
 
 
+class TestGateError(unittest.TestCase):
+    def test_an_odd_view_shape_denies_instead_of_crashing_open(self):
+        view = json.dumps({**json.loads(make_pr_json("alex", "", ["web/src/App.tsx"])), "author": "alex"})
+        result = run_hook(MERGE, subprocess_result={"stdout": view})
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("merge gate failed", result["reason"])
+
+
 class TestFailedView(unittest.TestCase):
     def test_a_failed_view_denies_the_merge(self):
         import subprocess

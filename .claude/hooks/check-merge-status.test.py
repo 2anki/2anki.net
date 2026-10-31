@@ -450,6 +450,11 @@ class MainWiringTest(unittest.TestCase):
                 check_merge_status.main()
         return json.loads(stdout.getvalue())
 
+    def test_an_odd_view_shape_denies_instead_of_crashing_open(self):
+        pr = {**self.pr(REACH_TABLE), "statusCheckRollup": ["not a dict"]}
+        _, output = self.run_main(pr)
+        self.assertIn("merge gate failed", output["hookSpecificOutput"]["permissionDecisionReason"])
+
     def test_a_failed_view_denies_the_merge(self):
         for answer in (None, "not json", "[]"):
             calls = []

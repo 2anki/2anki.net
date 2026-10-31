@@ -281,6 +281,31 @@ REJECTED_FORMS = (
     "gh --repo 2anki/server pr merge 42",
     "gh pr merge 42 --repo 2anki/server --squash # trailing comment",
     "gh pr merge 42 --repo 2anki/server --squash 'unbalanced",
+    'gh pr -b x "merge" 42 --repo 2anki/server --squash',
+    "gh pr --subject x m\\erge 42",
+    'gh -b x pr "merge" 42',
+    "gh pr --json number merge 42",
+    "gh $'pr' merge 42",
+    'gh $"pr" merge 42',
+    "gh $(echo pr) merge 42",
+    "gh ${P:-pr} merge 42",
+    "gh p\\\nr merge 42",
+    "gh pr mer\\\nge 42",
+    "g\\\nh pr merge 42",
+    "GH pr merge 42 --repo 2anki/server --squash",
+    "/usr/local/bin/GH pr merge 42",
+    "G=gh; $G pr merge 42",
+    "$(which gh) pr merge 42",
+    'eval "gh pr merge 42"',
+    "bash -c 'gh pr merge 42'",
+    "/bin/sh -c \"gh pr merge 42\"",
+    "printf merge | xargs gh pr",
+    "gh alias set pm 'pr merge'",
+    'gh api -X PUT repos/2anki/server/pulls/"42"/merge',
+    'gh api -X PUT repos/2anki/server/pulls/42/merg"e"',
+    "gh api -X PUT repos/2anki/server/pulls/$N/merge",
+    'gh api -X P"UT" repos/2anki/server/pulls/42/merge',
+    "gh api graphql -F query=@merge.graphql",
     "gh api -X PUT repos/2anki/2anki.net/pulls/42/merge",
     "curl -X PUT https://api.github.com/repos/2anki/2anki.net/pulls/42/merge",
     "gh api graphql -f query='mutation { mergePullRequest(input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'",
@@ -308,6 +333,18 @@ class TestAllowedMerge(unittest.TestCase):
             'gh pr view "$PR" --json title',
             'git commit -m "fix: gh pr merge reads every file" -m "why: the gate missed files"',
             "gh pr checkout 5 && git merge origin/main",
+            "gh pr checkout 5193\ngit merge origin/main",
+            "gh pr view 5 --json headRefName\ngit merge --ff-only origin/main",
+            "gh pr view 5\n# merge next",
+            'gh pr create --repo 2anki/server --base main --head fix/x --title "fix: x" --body "$(cat <<\'EOF\'\nwhy\nEOF\n)"',
+            "gh pr view 5193 --repo 2anki/server --json number,isDraft,files,headRefName,headRefOid,body,author,statusCheckRollup",
+            "gh pr view 5193 --json mergeStateStatus,statusCheckRollup",
+            "gh api graphql -f query='{ repository(owner:\"2anki\", name:\"2anki.net\") { pullRequest(number:5193) { state mergeCommit { oid } } } }'",
+            "gh api repos/2anki/2anki.net/pulls/5193/merge",
+            "gh pr ready 5193",
+            "gh run rerun 123 --failed",
+            'git commit -m "fix: costs $5 and gh pr merge" -m "why: the merge hook missed files"',
+            "gh pr edit 5193 --repo 2anki/server --body-file /tmp/body.md",
         ):
             self.assertFalse(mc.is_gh_pr_merge(cmd), cmd)
 
@@ -315,14 +352,33 @@ class TestAllowedMerge(unittest.TestCase):
         for cmd in (None, 42, ["gh", "pr", "merge"]):
             self.assertIsNone(mc.allowed_merge(cmd))
 
+    def test_an_error_inside_the_gate_denies(self):
+        denied = []
+
+        def broken_gate(cmd):
+            raise AttributeError("str has no get")
+
+        mc.deny_on_error(broken_gate, "gh pr merge 1 --repo 2anki/server --squash", denied.append)
+        self.assertEqual(len(denied), 1)
+        self.assertIn("AttributeError", denied[0])
+
+    def test_a_gate_that_exits_is_left_alone(self):
+        def exiting_gate(cmd):
+            raise SystemExit(0)
+
+        with self.assertRaises(SystemExit):
+            mc.deny_on_error(exiting_gate, "gh pr merge 1 --repo 2anki/server --squash", lambda reason: None)
+
     def test_a_failed_view_message_names_the_pr(self):
         self.assertIn("PR 42", mc.view_failed_violation("42"))
 
 
 class TestViewRepo(unittest.TestCase):
     def test_a_canonical_url_for_the_merged_number_passes(self):
-        for url in ("https://github.com/2anki/2anki.net/pull/5", "https://github.com/2anki/server/pull/5"):
-            self.assertIsNone(mc.view_repo_violation({"number": 5, "url": url}, "5"), url)
+        self.assertIsNone(mc.view_repo_violation({"number": 5, "url": "https://github.com/2anki/2anki.net/pull/5"}, "5"))
+
+    def test_a_url_under_the_old_name_is_refused(self):
+        self.assertIsNotNone(mc.view_repo_violation({"number": 5, "url": "https://github.com/2anki/server/pull/5"}, "5"))
 
     def test_a_url_in_another_repo_is_refused(self):
         view = {"number": 5, "url": "https://github.com/someone/fork/pull/5"}

@@ -40,7 +40,7 @@ def is_gh_pr_merge(cmd):
 def fetch_pr_data(number, repo):
     args = ["gh", "pr", "view", number, "-R", repo, "--json", "number,url,author,body,files"]
     try:
-        result = subprocess.run(args, capture_output=True, text=True, timeout=15)
+        result = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
     except (subprocess.TimeoutExpired, OSError) as exc:
         sys.stderr.write(f"[check-browser-attestation] could not run gh ({exc}); refusing merge.\n")
         return None
@@ -92,6 +92,10 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
+    merge_command.deny_on_error(gate, cmd, deny)
+
+
+def gate(cmd):
     form_violation = merge_command.merge_form_violation(cmd)
     if form_violation:
         deny(form_violation)

@@ -62,7 +62,7 @@ def is_gh_pr_merge(cmd):
 def fetch_pr_data(number, repo):
     args = ["gh", "pr", "view", number, "-R", repo, "--json", "number,url,author,body,files,commits"]
     try:
-        result = subprocess.run(args, capture_output=True, text=True, timeout=15)
+        result = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
     except (subprocess.TimeoutExpired, OSError) as exc:
         sys.stderr.write(f"{TAG} could not run gh ({exc}); refusing merge.\n")
         return None
@@ -108,11 +108,9 @@ def list_paths_past_view_cap(view_paths, number, repo):
     return fetch_changed_paths(number, repo)
 
 
-def diff_failure_note(diff_paths):
+def diff_failure_note(diff_paths, checked):
     if diff_paths is None:
-        return (
-            "\n\ngh pr diff failed, so only the first 100 changed files were checked."
-        )
+        return f"\n\ngh pr diff failed, so only the first {checked} changed files were checked."
     return ""
 
 
@@ -151,6 +149,10 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
+    merge_command.deny_on_error(gate, cmd, deny)
+
+
+def gate(cmd):
     form_violation = merge_command.merge_form_violation(cmd)
     if form_violation:
         deny(form_violation)
@@ -172,6 +174,7 @@ def main():
 
     files, complete = merge_command.changed_files(pr_data, number, TAG)
     paths = [f.get("path", "") for f in files]
+    listed_count = len(paths)
     diff_paths = [] if complete else list_paths_past_view_cap(paths, number, repo)
     paths = paths + (diff_paths or [])
 
@@ -193,7 +196,7 @@ def main():
         "  Or, if no user would notice this change, state so in the PR body with a line\n"
         "  containing \"no changelog entry\" (e.g. \"no changelog entry — internal refactor\").\n\n"
         "Dependabot PRs are exempt automatically."
-        + diff_failure_note(diff_paths)
+        + diff_failure_note(diff_paths, listed_count)
     )
 
 
