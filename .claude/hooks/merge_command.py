@@ -36,8 +36,8 @@ again with quotes and backslashes removed, so `"g"h pr "mer"ge` counts:
   count, so `gh pr view "$B"` and `echo $HOME` under `github.com` pass.
 - Any `$'` at all, since an ANSI-C quote can encode either word; `$'` almost
   never appears in gh or git work (write `grep -vx main`, not `'^main$'`).
-- A character escape (`\\x67`, `\\147`, `\\u0067`) with `eval`, `$(`, a
-  backtick, `printf` or `echo -e`, which decode it.
+- A character escape (`\\x`, `\\u`, `\\U`, `\\c`, `\\0`-`\\7`) with `echo`,
+  `printf`, `eval`, `$(`, a backtick, or a pipe into a shell or `xargs`.
 - Targeted, for a word built in place: a `$` or backtick in the word after
   `gh`, `pr` or `api`, flags skipped (`gh pr me$x`).
 
@@ -53,7 +53,8 @@ because a hook that crashes lets the merge through.
 There is no decoder; a false positive is denied with a message naming the rule
 that fired and its fix (`trigger_reason`). Known limitation: a merge run from a
 script file, another language, a gh alias defined earlier, a word rebuilt by a
-pipe (`echo egrem | rev | xargs ...`) or a glob (`gh pr m[e]rge`) is not seen.
+pipe (`echo egrem | rev | xargs ...`) or a glob (`gh pr m[e]rge`, `/usr/bin/g[h]`)
+is not seen.
 That is a policy violation, like `CLAUDE_SKIP_SAFETY`, not a hook gap.
 
 `changed_files` is the file list all four hooks gate on. `gh pr view --json
@@ -77,11 +78,13 @@ MERGE_WORD = re.compile(r"\bmerge\b(?!-)", re.I)
 GH_API = re.compile(r"\bgh\s+api\b", re.I)
 BUILT_AT_RUN_TIME = re.compile(r"\$['({]|`")
 ANSI_C_QUOTE = "$'"
-CHARACTER_ESCAPE = re.compile(r"\\x[0-9a-f]|\\[0-7]{3}|\\u[0-9a-f]{4}", re.I)
-DECODER = re.compile(r"\beval\b|\$\(|`|\bprintf\b|\becho\s+-[a-z]*e", re.I)
+CHARACTER_ESCAPE = re.compile(r"\\[xuUc0-7]")
+DECODER = re.compile(
+    r"\becho\b|\bprintf\b|\beval\b|\$\(|`|\|\s*(?:\S*/)?(?:sh|bash|zsh|dash|ksh|xargs)\b", re.I
+)
 RUNTIME_TERMS = ("github", "pulls/")
 API_WORD = re.compile(r"(?<![/.\w-])api\b", re.I)
-FLAGS_BEFORE_WORD = r"(?:-\S*\s+(?:[^\s-]\S*\s+)?)*"
+FLAGS_BEFORE_WORD = r"(?:-\S*\s+(?:[^\s-]\S*\s+)?){0,8}"
 RUNTIME_SUBCOMMAND = re.compile(
     r"(?:^|[\s;&|()`/])(?:gh|pr|api)(?:\s+" + FLAGS_BEFORE_WORD + r"\S*)?[$`]", re.I
 )
@@ -140,7 +143,7 @@ def has_ansi_c_quote(cmd, normalized):
 
 
 def decodes_escapes(cmd, normalized):
-    return bool(CHARACTER_ESCAPE.search(cmd) and DECODER.search(cmd))
+    return either(CHARACTER_ESCAPE, cmd, normalized) and either(DECODER, cmd, normalized)
 
 
 def builds_subcommand_at_run_time(cmd, normalized):
@@ -174,18 +177,17 @@ MERGE_RULES = (
     (
         is_built_at_run_time,
         "it pairs `$(`, `${` or a backtick with `gh`, `github`, an `api` word or `pulls/`",
-        "write values literally, pass a PR body with `--body-file`, and run that command on its own "
-        "(a bare `$VAR` is fine)",
+        "copy the value in literally or pass it with `--body-file` (a bare `$VAR` is fine)",
     ),
     (
         has_ansi_c_quote,
-        "it contains an ANSI-C quote (`$'`)",
+        "it contains `$'` (an ANSI-C quote, or a `$` just before a quote)",
         "write the value without `$'`: use a plain quoted string",
     ),
     (
         decodes_escapes,
-        "it pairs a character escape (`\\x..`, `\\NNN`, `\\u....`) with `eval`, `$(`, a backtick, "
-        "`printf` or `echo -e`",
+        "it pairs a character escape (`\\x`, `\\u`, `\\U`, `\\c`, `\\0`-`\\7`) with `echo`, `printf`, "
+        "`eval`, `$(`, a backtick, or a pipe into a shell or `xargs`",
         "write the characters literally",
     ),
     (
