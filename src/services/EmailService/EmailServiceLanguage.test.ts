@@ -238,11 +238,12 @@ describe('EmailService renders copy in the recipient language', () => {
 
       const msg = lastMessage();
       expect(msg.subject).toBe(
-        'Dein 2anki-Bezahlvorgang wurde nicht abgeschlossen'
+        'Dein Bezahlvorgang bei 2anki ist nicht abgeschlossen'
       );
-      expect(msg.html).toContain('Dir wurde nichts berechnet');
-      expect(msg.html).toContain('Bezahlvorgang abschließen');
-      expect(msg.html).not.toContain('Abo begonnen');
+      expect(msg.html).toContain('Dafür wurde dir nichts berechnet');
+      expect(msg.html).toContain('weder ein Abo noch ein Pass gestartet');
+      expect(msg.html).toContain('Zurück zum Bezahlvorgang');
+      expect(msg.html).not.toContain('Pro-Abo');
       expect(msg.html).toContain('Das 2anki-Team');
       expect(msg.html).toContain('Keine E-Mails wie diese? Abmelden');
       expect(msg.html).toContain(
@@ -262,11 +263,23 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe("Your 2anki checkout didn't go through");
-      expect(msg.html).toContain('You were not charged');
-      expect(msg.html).toContain('Finish checkout');
-      expect(msg.html).not.toContain('You started a 2anki Pro subscription');
+      expect(msg.subject).toBe("You didn't finish checking out on 2anki");
+      expect(msg.html).toContain("You weren't charged for this checkout");
+      expect(msg.html).toContain("it didn't start a subscription or a pass");
+      expect(msg.html).toContain('Return to checkout');
+      expect(msg.html).not.toContain('Pro subscription');
       expect(msg.html).toContain("Don't want emails like this? Unsubscribe");
+    });
+
+    it('renders English copy for a recipient in a locale without email strings', async () => {
+      await serviceFor('fr').sendAbandonedCheckoutRecoveryEmail(
+        'fr-user@example.com',
+        'tok-checkout3'
+      );
+
+      const msg = lastMessage();
+      expect(msg.subject).toBe("You didn't finish checking out on 2anki");
+      expect(msg.html).toContain("You weren't charged for this checkout");
     });
   });
 

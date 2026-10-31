@@ -2,5 +2,5 @@
   "id": "2026-10-31-unfinished-checkout-email-not-charged",
   "date": "2026-10-31",
   "type": "fix",
-  "title": "The unfinished checkout email says up front that you were not charged and have no new subscription"
+  "title": "The unfinished checkout email says up front that you were not charged and no subscription or pass started"
 }
