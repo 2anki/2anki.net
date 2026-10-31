@@ -1202,24 +1202,45 @@ describe('UploadService.handleUpload — error paths', () => {
     }),
   });
 
+  const standardConversion = {};
+  const aiConversion = { 'claude-ai-flashcards': 'true' };
+
   it.each([
-    ['a signed-out visitor', {}, regularUsage],
-    ['a signed-in free user', { owner: 42 }, regularUsage],
-    ['a free user over the monthly limit', { owner: 42 }, usageOverTheLimit],
-    ['a paying subscriber', { owner: 42, subscriber: true }, regularUsage],
+    ['a signed-out visitor', {}, regularUsage, standardConversion],
+    ['a signed-in free user', { owner: 42 }, regularUsage, standardConversion],
+    [
+      'a free user over the monthly limit',
+      { owner: 42 },
+      usageOverTheLimit,
+      standardConversion,
+    ],
+    [
+      'a paying subscriber',
+      { owner: 42, subscriber: true },
+      regularUsage,
+      standardConversion,
+    ],
     [
       'a signed-in pass holder',
       { owner: 42, subscriber: true, passKind: 'day' },
       regularUsage,
+      standardConversion,
     ],
     [
       'a signed-out pass holder',
       { anonymousPassId: 7, subscriber: true, passKind: 'day' },
       regularUsage,
+      standardConversion,
+    ],
+    [
+      'a signed-out pass holder converting with AI',
+      { anonymousPassId: 7, subscriber: true, passKind: 'day' },
+      regularUsage,
+      aiConversion,
     ],
   ])(
     'answers an Anki-package zip from %s with its explanation and logs no error',
-    async (_who, locals, usage) => {
+    async (_who, locals, usage, body) => {
       rejectWithAnkiPackageZip();
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -1242,6 +1263,7 @@ describe('UploadService.handleUpload — error paths', () => {
               buffer: Buffer.from('PK'),
             },
           ],
+          body,
         } as unknown as Partial<express.Request>),
         res
       );
