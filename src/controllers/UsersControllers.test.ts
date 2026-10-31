@@ -4229,6 +4229,37 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       }
     });
 
+    it('GET /login from the register page Log in link remembers /upload', async () => {
+      const res = await signedOutLoginPage('/upload');
+
+      expect(loginReturnCookies(res)).toEqual([
+        [LOGIN_RETURN, '/upload', expect.objectContaining({ httpOnly: true })],
+      ]);
+    });
+
+    it('a signed-in GET /login sets no login return', async () => {
+      const res = buildSigninRes();
+      const controller = new UsersController(
+        {} as UsersService,
+        {
+          getUserFrom: vi.fn().mockResolvedValue(existingUser),
+        } as unknown as AuthenticationService,
+        {} as ReturnType<typeof import('../data_layer').getDatabase>
+      );
+
+      await controller.checkUser(
+        {
+          query: { redirect: PRICING },
+          body: {},
+          cookies: { token: 'session-jwt' },
+        } as unknown as express.Request,
+        res
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith(PRICING);
+      expect(loginReturnCookies(res)).toEqual([]);
+    });
+
     it.each(['/limit', '/convert/apkg-to-csv'])(
       'GET /login from a page that is not on the allowlist (%s) remembers nothing',
       async (redirect) => {
@@ -4364,6 +4395,17 @@ describe('UsersController — sign-in returns a connector to the authorize scree
         } finally {
           info.mockRestore();
         }
+      }
+    );
+
+    it.each(providerCallbacks)(
+      '%s sign-in from /login?redirect=/upload lands on /upload, not /notion',
+      async (_provider, signIn) => {
+        const res = buildSigninRes();
+
+        await signIn(res, { [LOGIN_RETURN]: '/upload' });
+
+        expect(res.redirect).toHaveBeenCalledWith('/upload');
       }
     );
 
