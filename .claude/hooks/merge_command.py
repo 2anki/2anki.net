@@ -198,14 +198,14 @@ MERGE_RULES = (
         "message with `git commit -F <file>`",
     ),
     (
+        has_ansi_c_quote,
+        "it contains `$'` (an ANSI-C quote, or a `$` just before a single quote)",
+        "write the value without `$'`: use a plain quoted string",
+    ),
+    (
         is_built_at_run_time,
         "it pairs `$(`, `${` or a backtick with `gh`, `github`, an `api` word or `pulls/`",
         "copy the value in literally or pass it with `--body-file`",
-    ),
-    (
-        has_ansi_c_quote,
-        "it contains `$'` (an ANSI-C quote, or a `$` just before a quote)",
-        "write the value without `$'`: use a plain quoted string",
     ),
     (
         decodes_escapes,

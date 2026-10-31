@@ -28,7 +28,7 @@ Put the read date in the title too (`Adoption review (by 2026-11-24): <surface>,
 
 ## Recipe
 
-The first command prints the new item's id; paste it in place of `<item-id>`. The merge hooks deny a `gh` command with a `$` or a backtick after `gh`, or that names the word `merge`. So the id is written out, not captured with `$( )`, and the title and body carry no backtick and no `merge` (`merged` is fine); `gh project item-create` has no body-file option.
+The first command prints the new item's id; paste it in place of `<item-id>`. The merge hooks deny a `gh` command with a `$` or a backtick after `gh`, or that names the word `merge`. So the id is written out, not captured with `$( )`, and the title and body carry no `$`, no backtick and no `merge` (`merged` is fine); `gh project item-create` has no body-file option.
 
 ```bash
 gh project item-create 4 --owner Laer-Smart --title "<title>" --body "<body>" --format json --jq .id

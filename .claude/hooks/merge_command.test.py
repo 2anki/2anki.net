@@ -186,6 +186,17 @@ class TestDetection(unittest.TestCase):
 
     def test_harmless_commands_the_broad_rules_still_deny(self):
         for cmd in (
+            "printf '\\033[1mbold\\033[0m\\n'",
+            "echo -e '\\x1b[31mred'",
+            "tr '\\0' '\\n' < f | xargs ls",
+            "sed -E 's/(a)/\\1/' f; echo ok",
+            "cd api && ls $(pwd)",
+            "X=$(date); cat pr.md",
+            "echo $PWD; gh pr list",
+            "grep -rn enablePullRequestAutoMerge src/",
+            "grep -rn mergeBranch src",
+            "ls docs/merges",
+            "grep -v '^main$' branches.txt",
             'B=$(git branch --show-current); gh pr view "$B"',
             'gh pr view "$N" --json headRefOid --jq .headRefOid',
             'gh pr create --repo 2anki/server --base main --head x --body "$(cat f.md)"',
