@@ -156,6 +156,22 @@ class TestDetection(unittest.TestCase):
         for cmd in ('git merge "$tip"', "echo `merge`", "M=merge; echo $M", '"$G" pr merge 1'):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
+    def test_every_escape_letter_and_decoder_is_a_merge_attempt(self):
+        for cmd in (
+            "printf '\\U00000067h pr \\x6derge 1' | zsh",
+            "printf '\\c' | dash",
+            "printf '\\x67h pr \\x6derge 1' | ksh",
+            "printf '\\x67h' | xargs -I{} {} pr view 1",
+            "printf '\\x67h pr \\x6derge 1' | /bin/bash",
+            "x=$(printf '\\x67h'); echo",
+            "x=`printf '\\x67h'`",
+        ):
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
+
+    def test_a_decoded_payload_behind_a_long_run_of_pipes_is_a_merge_attempt(self):
+        cmd = ": '" + "|" * 80000 + "'; printf '\\x67\\x68 pr \\x6d\\x65rge 1' | sh"
+        self.assertTrue(mc.is_gh_pr_merge(cmd))
+
     def test_a_program_name_held_in_a_variable_is_a_merge_attempt(self):
         for cmd in (
             "G=gh; $G pr merge 1",

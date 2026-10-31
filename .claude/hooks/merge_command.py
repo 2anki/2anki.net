@@ -85,7 +85,7 @@ BUILT_AT_RUN_TIME = re.compile(r"\$['({]|`")
 ANSI_C_QUOTE = "$'"
 CHARACTER_ESCAPE = re.compile(r"\\[xuUc0-7]")
 DECODER = re.compile(
-    r"\becho\b|\bprintf\b|\beval\b|\$\(|`|\|\s*(?:\S*/)?(?:sh|bash|zsh|dash|ksh|xargs)\b", re.I
+    r"\becho\b|\bprintf\b|\beval\b|\$\(|`|\|\s*(?:[^\s|]*/)?(?:sh|bash|zsh|dash|ksh|xargs)\b", re.I
 )
 RUNTIME_TERMS = ("github", "pulls/")
 MERGE_MUTATIONS = ("mergepullrequest", "enablepullrequestautomerge", "enqueuepullrequest", "mergebranch")
