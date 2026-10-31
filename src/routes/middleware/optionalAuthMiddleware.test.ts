@@ -13,7 +13,9 @@ function fakeAuthService(): AuthenticationService {
       if (value === 'database-down') {
         throw new TypeError('connection lost');
       }
-      return value === 'valid-session' ? { owner: 42 } : null;
+      return value === 'valid-session'
+        ? { owner: 42, email: 'buyer@example.com' }
+        : null;
     }),
   } as unknown as AuthenticationService;
 }
@@ -36,6 +38,35 @@ describe('makeOptionalAuthMiddleware', () => {
     expect(res.locals.owner).toBe(42);
     expect(next).toHaveBeenCalledTimes(1);
   });
+
+  it('sets the account email for a valid session so checkout can prefill it', async () => {
+    const res = { locals: {} } as Response;
+
+    await makeOptionalAuthMiddleware(fakeAuthService())(
+      request('valid-session'),
+      res,
+      vi.fn()
+    );
+
+    expect(res.locals.email).toBe('buyer@example.com');
+  });
+
+  it.each([undefined, 'expired-session'])(
+    'leaves owner and email unset when the session is %s',
+    async (token) => {
+      const res = { locals: {} } as Response;
+      const next = vi.fn();
+
+      await makeOptionalAuthMiddleware(fakeAuthService())(
+        request(token),
+        res,
+        next
+      );
+
+      expect(res.locals).toEqual({});
+      expect(next).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('still rejects when the session lookup fails, so owner-gated routes never read it as signed out', async () => {
     const next = vi.fn();
