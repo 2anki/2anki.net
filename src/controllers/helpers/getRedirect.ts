@@ -73,6 +73,33 @@ const resolvePricingReturn = (candidate: string): string | null => {
   return `/pricing${query === '' ? '' : `?${query}`}${hash}`;
 };
 
+const LIMIT_PATHS = new Set(['/limit', '/limit/']);
+const SIGNED_IN_LIMIT_KINDS = new Set(['card_count', 'file_size']);
+const ANONYMOUS_LIMIT_KIND = 'anonymous';
+
+const resolveLimitReturn = (candidate: string): string | null => {
+  if (!candidate.startsWith('/limit')) {
+    return null;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate, SAME_SITE_BASE);
+  } catch {
+    return null;
+  }
+  if (parsed.origin !== SAME_SITE_BASE || !LIMIT_PATHS.has(parsed.pathname)) {
+    return null;
+  }
+  const kind = parsed.searchParams.get('kind');
+  if (kind === ANONYMOUS_LIMIT_KIND) {
+    return null;
+  }
+  if (kind != null && SIGNED_IN_LIMIT_KINDS.has(kind)) {
+    return `/limit?kind=${kind}`;
+  }
+  return '/limit';
+};
+
 const resolveAllowedOrigin = (candidate: string): string | null => {
   let parsed: URL;
   try {
@@ -98,6 +125,7 @@ const resolveAllowedOrigin = (candidate: string): string | null => {
 export const resolveRedirect = (redirectParam: string): string | null =>
   asMcpAuthorizeReturn(redirectParam) ??
   resolvePricingReturn(redirectParam) ??
+  resolveLimitReturn(redirectParam) ??
   resolveInternalPath(redirectParam) ??
   resolveAllowedOrigin(redirectParam);
 

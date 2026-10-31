@@ -258,6 +258,72 @@ describe('getRedirect security tests', () => {
     });
   });
 
+  describe('should return a visitor to the limit page they signed in from', () => {
+    const kept: [string, string][] = [
+      ['/limit', '/limit'],
+      ['/limit/', '/limit'],
+      ['/limit?kind=card_count', '/limit?kind=card_count'],
+      ['/limit?kind=file_size', '/limit?kind=file_size'],
+      ['/limit/?kind=card_count', '/limit?kind=card_count'],
+    ];
+    kept.forEach(([input, expected]) => {
+      it(`keeps ${input} as ${expected}`, () => {
+        expect(getRedirect(createMockRequest(input))).toBe(expected);
+      });
+    });
+
+    it('reads the limit return from the request body as well', () => {
+      const req = createMockRequest(undefined, '/limit?kind=card_count');
+      expect(getRedirect(req)).toBe('/limit?kind=card_count');
+    });
+
+    const stripped: [string, string][] = [
+      ['/limit?kind=evil', '/limit'],
+      ['/limit?kind=__proto__', '/limit'],
+      ['/limit?cards=240', '/limit'],
+      ['/limit?ref=limit-wall', '/limit'],
+      [
+        '/limit?kind=card_count&next=https://evil.com',
+        '/limit?kind=card_count',
+      ],
+      ['/limit?kind=card_count&kind=evil', '/limit?kind=card_count'],
+      ['/limit#javascript:alert(1)', '/limit'],
+    ];
+    stripped.forEach(([input, expected]) => {
+      it(`drops anything outside the allowlist: ${input} -> ${expected}`, () => {
+        expect(getRedirect(createMockRequest(input))).toBe(expected);
+      });
+    });
+
+    const anonymousWall = [
+      '/limit?kind=anonymous',
+      '/limit?kind=anonymous&cards=240',
+      '/limit/?kind=anonymous',
+    ];
+    anonymousWall.forEach((target) => {
+      it(`sends a visitor who hit the signed-out wall back to upload: ${target}`, () => {
+        expect(getRedirect(createMockRequest(target))).toBe('/upload');
+      });
+    });
+
+    const offSite = [
+      '/limit/anything',
+      '/limit/anything?kind=card_count',
+      '//evil.com',
+      '//evil.com/limit',
+      '/\\evil.com/limit',
+      'https://evil.com/limit',
+      'https://evil.com/limit?kind=anonymous',
+      '/limitless',
+      '/limit\r\nLocation: //evil.com',
+    ];
+    offSite.forEach((target) => {
+      it(`refuses a limit look-alike: ${JSON.stringify(target)}`, () => {
+        expect(getRedirect(createMockRequest(target))).toBe('/upload');
+      });
+    });
+  });
+
   describe('should read redirect from request body as fallback', () => {
     it('returns body redirect when query param is absent', () => {
       const req = createMockRequest(undefined, '/card-options');

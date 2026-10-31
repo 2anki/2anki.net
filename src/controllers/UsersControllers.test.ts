@@ -2077,6 +2077,20 @@ describe('UsersController.login — Notion-aware redirect', () => {
     const payload = res.json.mock.calls[0][0];
     expect(payload.redirect).toBe('/pricing?ref=mcp&interval=year');
   });
+
+  it('returns a visitor to the limit page they signed in from', async () => {
+    const { controller } = buildLoginController();
+    const req = {
+      body: { email: 'u@example.com', credentials: 'mock' },
+      query: { redirect: '/limit?kind=card_count' },
+    } as unknown as express.Request;
+    const res = buildLoginRes();
+
+    await controller.login(req, res, vi.fn());
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.redirect).toBe('/limit?kind=card_count');
+  });
 });
 
 describe('UsersController.loginWithNotion — error recording', () => {
@@ -4232,6 +4246,29 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       expect(res.redirect).toHaveBeenCalledWith(download);
     });
 
+    it('a Google sign-in from the limit page lands back on the limit page', async () => {
+      const limit = '/limit?kind=card_count';
+      const login = await signedOutLoginPage(limit);
+      expect(loginReturnCookies(login)).toEqual([
+        [LOGIN_RETURN, limit, expect.objectContaining({ httpOnly: true })],
+      ]);
+      const res = buildSigninRes();
+
+      await buildSigninController().loginWithGoogle(
+        {
+          query: { code: 'gauth-code', state: 'google-state' },
+          cookies: {
+            google_login_state: 'google-state',
+            [LOGIN_RETURN]: limit,
+          },
+          headers: {},
+        } as unknown as express.Request,
+        res
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith(limit);
+    });
+
     it('a cancelled Google sign-in bounced to /login?error= keeps the return for the retry', async () => {
       const res = buildSigninRes();
       Object.assign(res, { set: vi.fn(), send: vi.fn() });
@@ -4316,7 +4353,29 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       expect(loginReturnCookies(res)).toEqual([]);
     });
 
-    it.each(['/limit', '/convert/apkg-to-csv'])(
+    it('a signed-in GET /login?redirect=/limit goes straight to the limit page', async () => {
+      const res = buildSigninRes();
+      const controller = new UsersController(
+        {} as UsersService,
+        {
+          getUserFrom: vi.fn().mockResolvedValue(existingUser),
+        } as unknown as AuthenticationService,
+        {} as ReturnType<typeof import('../data_layer').getDatabase>
+      );
+
+      await controller.checkUser(
+        {
+          query: { redirect: '/limit?kind=file_size' },
+          body: {},
+          cookies: { token: 'session-jwt' },
+        } as unknown as express.Request,
+        res
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith('/limit?kind=file_size');
+    });
+
+    it.each(['/limitless', '/convert/apkg-to-csv'])(
       'GET /login from a page that is not on the allowlist (%s) remembers nothing',
       async (redirect) => {
         const res = await signedOutLoginPage(redirect);
@@ -4465,6 +4524,28 @@ describe('UsersController — sign-in returns a connector to the authorize scree
         await signIn(res, { [LOGIN_RETURN]: '/upload' });
 
         expect(res.redirect).toHaveBeenCalledWith('/upload');
+      }
+    );
+
+    it.each(providerCallbacks)(
+      '%s sign-in from /login?redirect=/limit lands back on the limit page',
+      async (_provider, signIn) => {
+        const res = buildSigninRes();
+
+        await signIn(res, { [LOGIN_RETURN]: '/limit?kind=card_count' });
+
+        expect(res.redirect).toHaveBeenCalledWith('/limit?kind=card_count');
+      }
+    );
+
+    it.each(providerCallbacks)(
+      '%s sign-in from the signed-out limit wall does not land on the limit page',
+      async (_provider, signIn) => {
+        const res = buildSigninRes();
+
+        await signIn(res, { [LOGIN_RETURN]: '/limit?kind=anonymous' });
+
+        expect(res.redirect).toHaveBeenCalledWith('/notion');
       }
     );
 
