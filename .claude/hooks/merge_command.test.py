@@ -44,6 +44,10 @@ class TestDetection(unittest.TestCase):
             "gh pr $'\\x6derge' 1",
             "G=g; ${G}h pr merge 1",
             "$'\\x67\\x68' pr $'\\x6d\\x65\\x72\\x67\\x65' 1",
+            "gh pr me$x 1",
+            "gh pr `echo merge` 1",
+            "gh pr $(printf me; printf rge) 1",
+            "curl -X PUT https://api.github.com/repos/2anki/2anki.net/pulls/1/${WORD}",
         ):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
             self.assertIsNotNone(mc.merge_form_violation(cmd), cmd)

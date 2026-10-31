@@ -23,7 +23,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
   gh pr view <n> --json headRefOid --jq .headRefOid > <scratchpad>/ship-sha-<n>.txt
   gh pr view <n> --json files --jq '.files[].path' > <scratchpad>/ship-paths-<n>.txt
   gh pr diff <n> > <scratchpad>/ship-diff-<n>.txt
-  [ "$(gh pr view <n> --json headRefOid --jq .headRefOid)" = "$(cat <scratchpad>/ship-sha-<n>.txt)" ] || { echo "head moved while saving: run this block again"; exit 1; }
+  gh pr view <n> --json headRefOid --jq .headRefOid | diff -q - <scratchpad>/ship-sha-<n>.txt || { echo "head moved while saving: run this block again"; exit 1; }
   python3 -c "import sys; sys.path.insert(0,'.claude/hooks'); import hard_rails as r; p=open('<scratchpad>/ship-paths-<n>.txt').read().split(); print(r.rail_paths(p)); print(r.rail_content_hits(open('<scratchpad>/ship-diff-<n>.txt').read()))"
   ```
   `<scratchpad>` is the session scratchpad's absolute path (the environment block names it); write it out in full, including inside the python string. The file names carry the PR number: two ships running at once wrote the same `ship-diff.txt` on 2026-10-15 and one overwrote the other mid-review (#4758). Regenerate all three files after every push to the branch, the rebase push below included; a reviewer reading a stale file reviews the wrong round, and a stale `ship-sha-<n>.txt` blocks the step 2 marker.
@@ -58,11 +58,13 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
   - The other halts are the first three sub-bullets of the halt bullet at the top of `CLAUDE.md` Process (value, spend, destructive), most often a value only Alexander holds (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping behind a safe default if one exists until he answers; with no default, hold this PR as draft and continue with other items. For a value only he holds, an unattended run (`/overnight-prs`) ships behind a safe default if one exists, otherwise leaves the PR draft and names the value in the morning summary, as step 1 does; a price, payment or Stripe value, a payment card, or a third-party bump decision never ships behind a default, it stays draft and is named in the summary. Spend and destructive halts never ship behind a default: spend leaves the PR draft, a destructive step is not executed, and both are named in the summary. An auth, JWT, webhook or signing secret never gets a default either: a missing one fails closed at boot and the PR stays draft with the variable named.
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash
-  HEAD=$(gh pr view <n> --json headRefOid --jq .headRefOid)
-  [ "$HEAD" = "$(cat <scratchpad>/ship-sha-<n>.txt)" ] || { echo "head moved since review"; exit 1; }
-  gh pr review <n> --comment --body "$(printf '%s\n\n<!-- ship-review: pass sha=%s -->' "<one-paragraph verdict>" "$HEAD")"
+  gh pr view <n> --json headRefOid --jq .headRefOid | diff -q - <scratchpad>/ship-sha-<n>.txt || { echo "head moved since review"; exit 1; }
   ```
-  Keep the word `merge` out of the verdict paragraph: the merge hooks deny any Bash command that contains `merge` together with `gh` or a `$`, unless it is the step 4 command. The marker is what `check-merge-status.py` looks for. It is bound to the SHA — any later push invalidates it and you re-review. The check against `ship-sha-<n>.txt` (written with the diff in step 1) stops a marker for a head pushed while the reviewers were reading the old one: on a mismatch, restart from step 1, which regenerates all three files and reruns the classifier.
+  Then write `<scratchpad>/ship-marker-<n>.md` with the Write tool (the one-paragraph verdict, a blank line, then `<!-- ship-review: pass sha=<the SHA in ship-sha-<n>.txt> -->`) and post it:
+  ```bash
+  gh pr review <n> --comment --body-file <scratchpad>/ship-marker-<n>.md
+  ```
+  No `$`, backtick or `merge` in these commands: the merge hooks deny any Bash command that contains `gh` (or `github`) with a `$` or backtick, or `gh` with `merge`, unless it is the step 4 command. The marker is what `check-merge-status.py` looks for. It is bound to the SHA — any later push invalidates it and you re-review. The check against `ship-sha-<n>.txt` (written with the diff in step 1) stops a marker for a head pushed while the reviewers were reading the old one: on a mismatch, restart from step 1, which regenerates all three files and reruns the classifier.
 
 **Browser attestation for `web/src/` diffs happens here.** If the diff touches `web/src/` (beyond changelog JSON) and the PR body carries neither the two ticked checkboxes nor the `Browser check: not applicable —` out-clause: start the dev server (`pnpm dev`, sanctioned inside `/ship` only), walk the golden path at 375px through the Playwright MCP, confirm no console errors, tick the boxes with `gh pr edit <n> --body`, then **kill the dev server** before moving on (`scripts/reap-orphans.sh --force` if a process survives). If the change has no runtime-visible effect, write the out-clause honestly instead — never claim a check you did not run.
 

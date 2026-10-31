@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 """
+Threat model: these hooks guard against an agent merging a PR by accident or
+without a review. They do not guard against a determined adversary who already
+has a shell, who could call the GitHub merge API with curl and a token; no
+string scan stops that. The deny-by-default allowlist (`allowed_merge`) is the
+control. Obfuscation detection is best effort on top of it; every form the
+#5193 security reviews flagged is denied and tested, and further
+string-obfuscation findings are accepted residuals, not fixed here.
+
 Shared code for the four merge-gate hooks. This deliberately narrows what the
 hooks accept (#5193): rounds of shell-parsing fixes kept finding forms where
 the PR the gate read was not the PR that merged, or where a merge was not seen
 at all, so detection fails closed and only one exact command form passes.
 
 `is_gh_pr_merge`: a Bash command is a merge attempt when it contains `gh` (or
-`github`, for curl to the API) and `merge`, case-insensitive and anywhere (inside `eval`, `bash -c`, heredocs,
-redirections and quotes too), checked on the raw command and again with
+`github`, for curl to the API) and `merge`, case-insensitive and anywhere
+(inside `eval`, `bash -c`, heredocs, redirections and quotes too), checked on
+the raw command and again with
 quotes, backslashes and backslash-newlines removed, so `"g"h pr "mer"ge` counts.
 This also catches commands that only mention a merge (`gh pr view --json
 mergeStateStatus`, a commit message that names `gh` and `merge` in one `-m`);
@@ -23,10 +32,13 @@ deny when its `url` is not `https://github.com/2anki/2anki.net/pull/<n>` for
 that number, and (`deny_on_error`) deny when anything after detection raises,
 because a hook that crashes lets the merge through.
 
-Words assembled at run time fail closed too: a command that contains `merge`
-and any `$` or backtick (`$(echo gh) pr merge`, `g$''h pr merge`) is a merge
-attempt, and so is any command containing an ANSI-C quote `$'`, since `merge`
-itself can be encoded (`$'\\x6derge'`). There is no decoder; a false positive
+Words assembled at run time fail closed too: a command that contains `merge`,
+`gh` or `github` together with any `$` or backtick (`$(echo gh) pr merge`,
+`g$''h pr merge`, `gh pr me$x`) is a merge attempt, and so is any command
+containing an ANSI-C quote `$'`, since `merge` itself can be encoded
+(`$'\\x6derge'`). That denies every `gh` command that uses a variable or a
+command substitution, and every command naming a path under `github.com` that
+does; write those values out literally, or pass bodies with `--body-file`. There is no decoder; a false positive
 only denies with the allowed-form message. Known limitation: a merge run
 from a script file, another language or a gh alias defined earlier, where
 the Bash command shows neither word nor a `$'`, is not seen. That is a policy
@@ -70,8 +82,17 @@ def names_gh_and_merge(text):
     return ("gh" in lowered or "github" in lowered) and "merge" in lowered
 
 
+def names_gh(text):
+    lowered = text.lower()
+    return "gh" in lowered or "github" in lowered
+
+
 def is_built_at_run_time(cmd, normalized):
-    return "$'" in cmd or ("merge" in normalized.lower() and ("$" in cmd or "`" in cmd))
+    if "$'" in cmd:
+        return True
+    if "$" not in cmd and "`" not in cmd:
+        return False
+    return "merge" in normalized.lower() or names_gh(cmd) or names_gh(normalized)
 
 
 def is_gh_pr_merge(cmd):
