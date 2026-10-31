@@ -61,12 +61,20 @@ import {
   UploadGenerationTask,
 } from './uploadGenerationTypes';
 
-export function getFileContents(
-  file: UploadedFile,
-  enqueuedAt?: number
-): Buffer {
-  const readAt = Date.now();
+function logFileRead(
+  readStartedAt: number,
+  mode: 'buffer' | 'disk' | 'buffer-fallback',
+  contents: Buffer
+): void {
+  console.info('[upload] tempfile read', {
+    readMs: Date.now() - readStartedAt,
+    mode,
+    fileSizeBytes: contents.byteLength,
+  });
+}
 
+export function getFileContents(file: UploadedFile): Buffer {
+  const readStartedAt = Date.now();
   let result: Buffer;
 
   if (!file.path) {
@@ -74,22 +82,14 @@ export function getFileContents(
       throw new Error('Uploaded file has neither a path nor a buffer');
     }
     result = Buffer.from(file.buffer);
-    console.info('[upload] tempfile dwell', {
-      dwellMs: readAt - (enqueuedAt ?? readAt),
-      mode: 'buffer',
-      fileSizeBytes: result.byteLength,
-    });
+    logFileRead(readStartedAt, 'buffer', result);
     return result;
   }
 
   try {
     if (fs.existsSync(file.path)) {
       result = fs.readFileSync(file.path);
-      console.info('[upload] tempfile dwell', {
-        dwellMs: readAt - (enqueuedAt ?? readAt),
-        mode: 'disk',
-        fileSizeBytes: result.byteLength,
-      });
+      logFileRead(readStartedAt, 'disk', result);
       return result;
     }
   } catch (error) {
@@ -104,11 +104,7 @@ export function getFileContents(
     );
   }
   result = Buffer.from(file.buffer);
-  console.info('[upload] tempfile dwell', {
-    dwellMs: readAt - (enqueuedAt ?? readAt),
-    mode: 'buffer-fallback',
-    fileSizeBytes: result.byteLength,
-  });
+  logFileRead(readStartedAt, 'buffer-fallback', result);
   return result;
 }
 
@@ -473,6 +469,11 @@ async function doGenerationWork(
   const emptyReasons: EmptyDeckReason[] = [];
   const rescueCandidateSets: RescueCandidate[][] = [];
 
+  console.info('[upload] tempfile dwell', {
+    dwellMs: Date.now() - enqueuedAt,
+    fileCount: files.length,
+  });
+
   const dedupeAcrossDecks = shouldDedupeAcrossDecks(
     paying,
     settings,
@@ -487,7 +488,7 @@ async function doGenerationWork(
   const convert = (upload: UploadedFile, fileWorkspace: Workspace) => {
     const { file, contents } = asReadableUpload(
       upload,
-      getFileContents(upload, enqueuedAt)
+      getFileContents(upload)
     );
     return processFile(
       file,
