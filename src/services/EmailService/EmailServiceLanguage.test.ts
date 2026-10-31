@@ -237,9 +237,12 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe('Schließe dein 2anki-Pro-Abo ab');
-      expect(msg.html).toContain('Du hast ein 2anki-Pro-Abo begonnen');
-      expect(msg.html).toContain('Anmeldung abschließen');
+      expect(msg.subject).toBe(
+        'Dein 2anki-Bezahlvorgang wurde nicht abgeschlossen'
+      );
+      expect(msg.html).toContain('Dir wurde nichts berechnet');
+      expect(msg.html).toContain('Bezahlvorgang abschließen');
+      expect(msg.html).not.toContain('Abo begonnen');
       expect(msg.html).toContain('Das 2anki-Team');
       expect(msg.html).toContain('Keine E-Mails wie diese? Abmelden');
       expect(msg.html).toContain(
@@ -259,8 +262,10 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe('Finish your 2anki Pro subscription');
-      expect(msg.html).toContain('You started a 2anki Pro subscription');
+      expect(msg.subject).toBe("Your 2anki checkout didn't go through");
+      expect(msg.html).toContain('You were not charged');
+      expect(msg.html).toContain('Finish checkout');
+      expect(msg.html).not.toContain('You started a 2anki Pro subscription');
       expect(msg.html).toContain("Don't want emails like this? Unsubscribe");
     });
   });
