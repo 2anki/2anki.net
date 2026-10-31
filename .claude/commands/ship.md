@@ -84,7 +84,7 @@ The merge queue on `main` was switched off on 2026-10-15 (ruleset `main merge qu
 gh pr merge <n> --repo 2anki/server --squash
 ```
 
-The `check-merge-status.py`, `check-browser-attestation.py`, `check-changelog-on-merge.py`, and `check-removed-for-users.py` hooks re-verify everything before the merge. A deny prints the reason — act on it, never bypass. They accept that command and nothing else: run it exactly as written, alone in the Bash call (a trailing ` 2>&1` is the only suffix allowed). They also deny any other Bash command that contains `gh` and the word `merge` (`merged`, `mergeable` and `mergeStateStatus` are fine), or pairs `gh` with `$(`, `${`, `$'` or a backtick.
+The `check-merge-status.py`, `check-browser-attestation.py`, `check-changelog-on-merge.py`, and `check-removed-for-users.py` hooks re-verify everything before the merge. A deny prints the reason — act on it, never bypass. They accept that command and nothing else: run it exactly as written, alone in the Bash call (a trailing ` 2>&1` is the only suffix allowed). They also deny any other Bash command that contains `gh` and the word `merge` (`merged`, `mergeable` and `mergeStateStatus` are fine), or pairs `$(`, `${` or a backtick with `gh`, `github`, an `api` word or `pulls/`, or contains `$'` at all.
 
 Then read the merge SHA:
 
@@ -145,7 +145,7 @@ Do not skip this because the checkout already moved to another branch. Agents go
 If the deploy run failed, `/api/version` does not report the merge SHA after the run finished, or `/deploy-status` says "broken":
 
 1. `git checkout main && git pull --ff-only && git checkout -b revert/<slug>`
-2. `git revert --no-commit <MERGE_SHA> && git commit -m "revert: <original subject>" -m "Deploy run <run URL> failed after merging #<n>: <one line on what broke>. Reverts <original PR URL>."` — git's default `Revert "…"` subject fails the conventional-prefix hook, so write the subject yourself (≤72 chars).
+2. `git revert --no-commit <MERGE_SHA>`, then write the message to a scratchpad file with the Write tool (first line `revert: <original subject>`, then a blank line, then `Deploy run <run URL> failed after #<n> landed: <one line on what broke>. Reverts <original PR URL>.`) and run `git add -A && git commit -F <that file>` — git's default `Revert "…"` subject fails the conventional-prefix hook, so write the subject yourself (≤72 chars). The file keeps free text out of the Bash command: a subject naming `gh` and `merge`, or a backtick next to the run URL, is denied by the merge hooks.
 3. `git push -u origin revert/<slug>` and `gh pr create --repo 2anki/server --base main --head revert/<slug> --fill-first`, which takes the title and body (the failed run and the original PR) from the step 2 commit, so an original subject naming `merge` never sits next to `gh` in one command, where the merge hooks deny it. Keep `merge` out of `<slug>` for the same reason.
 4. Ship the revert through this command. A pure `git revert` of the PR just merged skips step 2's review agent: post the marker directly with the verdict "mechanical revert of #<n> after a failed deploy". CI and the hooks still gate it.
 5. Comment the revert PR URL on the deploy-failure issue the workflow opened (`gh issue list --repo 2anki/2anki.net --search "Production deploy failed" --state open` — the search API does not follow the `2anki/server` rename, so list/search calls use the canonical name).

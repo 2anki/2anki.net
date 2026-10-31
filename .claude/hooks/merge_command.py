@@ -20,9 +20,9 @@ anywhere, or either one with any `$`) refused `--state merged`, `--json
 mergeable` and commit bodies with a URL. The rules match words, not shell
 syntax, so there is no wrapper list to keep complete (`trap`, `python -c`,
 `git -c alias` are caught by position-free matching); in exchange they deny a
-few harmless commands, such as `gh pr create --body "$(cat f.md)"`. Each rule
-runs on the raw command and again with quotes, backslashes and
-backslash-newlines removed, so `"g"h pr "mer"ge` counts:
+few harmless commands, such as `gh pr create --body "$(cat f.md)"`.
+Backslash-newlines are removed first; each rule then runs on that command and
+again with quotes and backslashes removed, so `"g"h pr "mer"ge` counts:
 
 - `gh` as a word (a path ending in `/gh` counts) and `merge` as a whole word,
   anywhere. `merged`, `mergeable`, `mergeStateStatus` and `merge-base` are not
@@ -31,12 +31,15 @@ backslash-newlines removed, so `"g"h pr "mer"ge` counts:
   `graphql` with the word `merge`, so an API merge sent without `gh` stays
   caught.
 - Any `$` or backtick with the word `merge`.
-- `$(`, `${`, `$'` or a backtick with `gh`, `github`, an `api` word (not a URL
+- `$(`, `${` or a backtick with `gh`, `github`, an `api` word (not a URL
   path segment such as `/api/version`) or `pulls/`. A bare `$VAR` does not
   count, so `gh pr view "$B"` and `echo $HOME` under `github.com` pass.
-- Targeted, for shapes that hide both words: an ANSI-C quote that encodes
-  characters (`$'\\x67\\x68'`, octal, `\\u`), and a `$` or backtick in the word
-  after `gh`, `pr` or `api`, flags skipped (`gh pr me$x`).
+- Any `$'` at all, since an ANSI-C quote can encode either word; `$'` almost
+  never appears in gh or git work (write `grep -vx main`, not `'^main$'`).
+- A character escape (`\\x67`, `\\147`, `\\u0067`) with `eval`, `$(`, a
+  backtick, `printf` or `echo -e`, which decode it.
+- Targeted, for a word built in place: a `$` or backtick in the word after
+  `gh`, `pr` or `api`, flags skipped (`gh pr me$x`).
 
 `allowed_merge`: the only command that passes is the one `/ship` runs, the
 whole trimmed command matching `gh pr merge <n> --repo 2anki/server --squash`
@@ -67,13 +70,15 @@ import re
 import subprocess
 import sys
 
-OBFUSCATION = re.compile(r"\\\n|[\"'\\]")
+LINE_CONTINUATION = "\\\n"
+OBFUSCATION = re.compile(r"[\"'\\]")
 GH_WORD = re.compile(r"\bgh\b", re.I)
 MERGE_WORD = re.compile(r"\bmerge\b(?!-)", re.I)
 GH_API = re.compile(r"\bgh\s+api\b", re.I)
 BUILT_AT_RUN_TIME = re.compile(r"\$['({]|`")
-ANSI_C_QUOTE = re.compile(r"\$'((?:[^'\\]|\\.)*)")
-CHARACTER_ESCAPE = re.compile(r"\\(?:[xuUc0-7])")
+ANSI_C_QUOTE = "$'"
+CHARACTER_ESCAPE = re.compile(r"\\x[0-9a-f]|\\[0-7]{3}|\\u[0-9a-f]{4}", re.I)
+DECODER = re.compile(r"\beval\b|\$\(|`|\bprintf\b|\becho\s+-[a-z]*e", re.I)
 RUNTIME_TERMS = ("github", "pulls/")
 API_WORD = re.compile(r"(?<![/.\w-])api\b", re.I)
 FLAGS_BEFORE_WORD = r"(?:-\S*\s+(?:[^\s-]\S*\s+)?)*"
@@ -130,8 +135,12 @@ def is_built_at_run_time(cmd, normalized):
     return any(term in lowered for term in RUNTIME_TERMS)
 
 
-def encodes_characters(cmd, normalized):
-    return any(CHARACTER_ESCAPE.search(body) for body in ANSI_C_QUOTE.findall(cmd))
+def has_ansi_c_quote(cmd, normalized):
+    return ANSI_C_QUOTE in cmd
+
+
+def decodes_escapes(cmd, normalized):
+    return bool(CHARACTER_ESCAPE.search(cmd) and DECODER.search(cmd))
 
 
 def builds_subcommand_at_run_time(cmd, normalized):
@@ -153,22 +162,30 @@ MERGE_RULES = (
     (
         calls_the_merge_api,
         "it names a `pulls/` path with `gh api`, or `pulls/` or `graphql` with the word `merge`",
-        "keep `pulls/` paths out of `gh api` calls, and keep `merge` out of a command that names an API path",
+        "read PR data with `gh pr view --json` instead of `gh api` on `pulls/`, and keep `merge` out of a "
+        "command that names an API path",
     ),
     (
         names_merge_with_a_dollar,
         "it pairs the word `merge` with a `$` or a backtick",
-        "write the value literally, or pass text that names `merge` with `--body-file`",
+        "write the value literally; pass text that names `merge` with `--body-file`, or a commit "
+        "message with `git commit -F <file>`",
     ),
     (
         is_built_at_run_time,
-        "it pairs `$'`, `$(`, `${` or a backtick with `gh`, `github`, `api` or `pulls/`",
+        "it pairs `$(`, `${` or a backtick with `gh`, `github`, an `api` word or `pulls/`",
         "write values literally, pass a PR body with `--body-file`, and run that command on its own "
         "(a bare `$VAR` is fine)",
     ),
     (
-        encodes_characters,
-        "an ANSI-C quote encodes characters (`$'\\x..'`, `$'\\0..'`, `$'\\u..'`)",
+        has_ansi_c_quote,
+        "it contains an ANSI-C quote (`$'`)",
+        "write the value without `$'`: use a plain quoted string",
+    ),
+    (
+        decodes_escapes,
+        "it pairs a character escape (`\\x..`, `\\NNN`, `\\u....`) with `eval`, `$(`, a backtick, "
+        "`printf` or `echo -e`",
         "write the characters literally",
     ),
     (
@@ -180,6 +197,7 @@ MERGE_RULES = (
 
 
 def fired_rule(cmd):
+    cmd = cmd.replace(LINE_CONTINUATION, "")
     normalized = OBFUSCATION.sub("", cmd)
     for rule in MERGE_RULES:
         if rule[0](cmd, normalized):

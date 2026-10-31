@@ -92,6 +92,13 @@ class TestDetection(unittest.TestCase):
             "bash -c $'\\x67\\x68 pr \\x6d\\x65\\x72\\x67\\x65 1'",
             "sudo $'\\x67\\x68' pr merge 1",
             "eval $'\\147\\150 pr \\155erge 1'",
+            "eval $'\\x6\\\n7\\x68 pr \\x6d\\x65\\x72\\x67\\x65 1'",
+            "eval $\\\n'\\x67\\x68 pr \\x6d\\x65\\x72\\x67\\x65 1'",
+            "printf '\\x67\\x68 pr \\x6d\\x65rge 1' | sh",
+            "printf '\\x67\\x68 pr merge 1' | sh",
+            "echo -e '\\x67h pr \\x6derge 1' | sh",
+            "echo -ne '\\147\\150 pr \\155erge 1' | bash",
+            "eval \"\\u0067h pr \\u006derge 1\"",
             "gh pr me$x 1",
             "gh pr me${x}rge 1",
             "gh pr -R 2anki/server me$x 1",
@@ -137,6 +144,8 @@ class TestDetection(unittest.TestCase):
             'gh pr create --repo 2anki/server --base main --head x --body "$(cat f.md)"',
             "gh pr review 5 --comment --body \"see `x`\"",
             "cd /Users/a/src/github.com/2anki/server && echo $(date)",
+            "IFS=$'\\n' read -r line",
+            "printf $'\\e[31mred\\n'",
         ):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
@@ -149,9 +158,7 @@ class TestDetection(unittest.TestCase):
             'gh pr view "$N" --json headRefOid --jq .headRefOid',
             "cd /Users/a/src/github.com/2anki/server && echo $HOME",
             "python3 /Users/a/src/github.com/2anki/server/.claude/hooks/check-merge-status.test.py",
-            "IFS=$'\\n' read -r line",
             "ssh h 'S=$(date -u +%FT%H); grep -c \"POST /api/apkg/pdf\" /tmp/x.log'",
-            "printf $'\\e[31mred\\n'",
             'tip=$(git rev-parse "$b")\nif git merge-base --is-ancestor "$tip" origin/main; then echo "MERGED $b"; fi',
             "curl https://example.com/merge-guide",
             "gh pr view fix/narrow-merge-scan --json state",
@@ -429,10 +436,11 @@ class TestAllowedMerge(unittest.TestCase):
         for cmd, reason, fix in (
             ('git commit -m "docs: gh pr merge"', "contains `gh` and the word `merge`", "git commit -F"),
             ("grep -rn mergePullRequest src/", "`mergePullRequest`", "keep `mergePullRequest` out"),
-            ("gh api repos/a/b/pulls/1/files", "`pulls/` path with `gh api`", "out of `gh api` calls"),
+            ("gh api repos/a/b/pulls/1/files", "`pulls/` path with `gh api`", "gh pr view --json"),
             ('git merge "$tip"', "the word `merge` with a `$`", "write the value literally"),
             ('gh pr create --body "$(cat f.md)"', "`$(`", "--body-file"),
-            ("eval $'\\x67\\x68'", "encodes characters", "write the characters literally"),
+            ("IFS=$'\\n' read -r x", "ANSI-C quote", "plain quoted string"),
+            ("printf '\\x67\\x68 pr' | sh", "character escape", "write the characters literally"),
             ("gh pr me$x 1", "builds the subcommand", "write the subcommand literally"),
         ):
             message = mc.merge_form_violation(cmd)
@@ -456,12 +464,13 @@ class TestAllowedMerge(unittest.TestCase):
             else:
                 self.assertFalse(mc.is_gh_pr_merge(line), line)
 
-    def test_every_deploy_status_command_is_left_alone(self):
-        doc = open(os.path.join(HOOKS_DIR, "..", "commands", "deploy-status.md")).read()
-        lines = [line.strip() for block in re.findall(r"```bash\n(.*?)```", doc, re.S) for line in block.splitlines() if line.strip()]
-        self.assertGreater(len(lines), 1)
-        for line in lines:
-            self.assertFalse(mc.is_gh_pr_merge(line), line)
+    def test_every_deploy_status_and_cleanup_command_is_left_alone(self):
+        for name in ("deploy-status.md", "cleanup.md"):
+            doc = open(os.path.join(HOOKS_DIR, "..", "commands", name)).read()
+            blocks = [block.strip() for block in re.findall(r"```bash\n(.*?)```", doc, re.S)]
+            self.assertGreater(len(blocks), 1, name)
+            for block in blocks:
+                self.assertFalse(mc.is_gh_pr_merge(block), block)
 
     def test_a_trailing_2_to_1_redirect_is_the_only_suffix_allowed(self):
         self.assertEqual(mc.allowed_merge("gh pr merge 42 --repo 2anki/server --squash 2>&1"), ("42", "2anki/server"))
