@@ -80,6 +80,9 @@ class TestDetection(unittest.TestCase):
             "git log origin/main --format=%H -1 --grep='(#5193)'",
             "git fetch origin main && git rebase origin/main",
             "M=$(jq 'length' /tmp/overnight-backlog.json)",
+            "git branch -D fix/merge-hooks-full-file-list",
+            "git merge-base --is-ancestor abc origin/main",
+            "git push --force-with-lease origin fix/merge-hooks-full-file-list",
             "npx playwright test $SPEC",
             "ls src | grep -c highlight && echo $?",
             "gh pr ready 5193",
@@ -303,6 +306,7 @@ class TestAllowedMerge(unittest.TestCase):
             ("IFS=$'\\n' read -r x", "ANSI-C quote", "without `$'`"),
             ('gh pr edit 5 --body "see `x`"', "with a `$` or a backtick", "--body-file"),
             ("curl https://example.com/merge", "next to `pulls/`", "URL or an API path"),
+            ("grep -rn mergePullRequest src/", "`mergePullRequest`", "keep `mergePullRequest` out"),
         ):
             message = mc.merge_form_violation(cmd)
             self.assertIn(reason, message, cmd)

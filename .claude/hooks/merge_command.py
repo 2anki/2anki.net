@@ -38,9 +38,9 @@ Words assembled at run time fail closed too: a command that contains `merge`,
 `g$''h pr merge`, `gh pr me$x`) is a merge attempt, and so is any command
 containing an ANSI-C quote `$'`, since `merge` itself can be encoded
 (`$'\\x6derge'`). A command with `merge` and `pulls/`, `graphql`, `curl`, `wget`
-or `http` counts as well, so an API merge sent without `gh` in the command
-(curl to an IP with a Host header) stays caught, as main's API and GraphQL
-rules caught it. That denies every `gh` command that uses a variable or a
+or `http` counts as well, and so does `mergePullRequest` on its own, so an API
+merge sent without `gh` in the command (curl to an IP with a Host header) stays
+caught, as main's API and GraphQL rules caught it. That denies every `gh` command that uses a variable or a
 command substitution, and every command naming a path under `github.com` that
 does; write those values out literally, or pass bodies with `--body-file`.
 There is no decoder; a false positive is denied with a message naming the rule
@@ -146,6 +146,11 @@ def trigger_reason(cmd):
             "it pairs `gh`, `github` or `merge` with a `$` or a backtick",
             "write values literally and pass a PR body with `--body-file`; a path under `github.com` "
             "counts, so run that command from the repo by a relative path",
+        )
+    if "mergepullrequest" in normalized.lower():
+        return (
+            "it contains `mergePullRequest`, the GraphQL merge mutation",
+            "keep `mergePullRequest` out of the command (search for it with a pattern such as `mergePull`)",
         )
     return (
         "it contains `merge` next to `pulls/`, `graphql`, `curl`, `wget` or `http`",
