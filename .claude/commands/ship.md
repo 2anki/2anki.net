@@ -84,7 +84,7 @@ The merge queue on `main` was switched off on 2026-10-15 (ruleset `main merge qu
 gh pr merge <n> --repo 2anki/server --squash
 ```
 
-The `check-merge-status.py`, `check-browser-attestation.py`, `check-changelog-on-merge.py`, and `check-removed-for-users.py` hooks re-verify everything before the merge. A deny prints the reason — act on it, never bypass. They accept that command and nothing else: run it exactly as written, alone in the Bash call (a trailing ` 2>&1` is the only suffix allowed). They also deny any other Bash command that contains `gh` and the word `merge` (`merged`, `mergeable` and `mergeStateStatus` are fine), or has a `$` or backtick after `gh`, or pairs `$(`, `${` or a backtick with `github`, an `api` word or `pulls/`, or contains `$'` at all.
+The `check-merge-status.py`, `check-browser-attestation.py`, `check-changelog-on-merge.py`, and `check-removed-for-users.py` hooks re-verify everything before the merge. A deny prints the reason — act on it, never bypass. They accept that command and nothing else: run it exactly as written, alone in the Bash call (a trailing ` 2>&1` is the only suffix allowed). They also deny any other merge attempt, including a `gh` command whose inline text names the word `merge` or carries a `$` or backtick; `.claude/docs/autonomous-shipping.md` lists every rule.
 
 Then read the merge SHA:
 

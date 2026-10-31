@@ -78,6 +78,7 @@ import sys
 
 LINE_CONTINUATION = "\\\n"
 OBFUSCATION = re.compile(r"[\"'\\]")
+QUOTES = re.compile(r"[\"']")
 GH_WORD = re.compile(r"\bgh\b", re.I)
 MERGE_WORD = re.compile(r"\bmerge\b(?!-)", re.I)
 GH_API = re.compile(r"\bgh\s+api\b", re.I)
@@ -148,7 +149,8 @@ def has_ansi_c_quote(cmd, normalized):
 
 
 def decodes_escapes(cmd, normalized):
-    return either(CHARACTER_ESCAPE, cmd, normalized) and either(DECODER, cmd, normalized)
+    unquoted = QUOTES.sub("", cmd)
+    return either(CHARACTER_ESCAPE, cmd, unquoted) and either(DECODER, cmd, normalized)
 
 
 def has_a_dollar_after_gh(text):

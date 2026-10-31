@@ -168,9 +168,27 @@ class TestDetection(unittest.TestCase):
         ):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
+    def test_an_escape_split_by_quotes_is_a_merge_attempt(self):
+        for cmd in (
+            "printf '\\''x67'h pr ''\\''x6d'erge 1 | sh",
+            "printf '\\'\"x67\"h | sh",
+            "printf '\\'x67'\\'x68' pr ''\\'x6derge' 1' | sh",
+        ):
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
+
     def test_a_decoded_payload_behind_a_long_run_of_pipes_is_a_merge_attempt(self):
         cmd = ": '" + "|" * 80000 + "'; printf '\\x67\\x68 pr \\x6d\\x65rge 1' | sh"
         self.assertTrue(mc.is_gh_pr_merge(cmd))
+
+    def test_detection_finishes_on_large_crafted_input(self):
+        script = (
+            "import sys; sys.path.insert(0, sys.argv[1]); import merge_command as mc; "
+            "B = chr(92); "
+            "[mc.is_gh_pr_merge(c) for c in (B + 'x' + '|' * 200000, B + 'x' + '|a' * 100000, "
+            "'pr -a ' * 34000, 'gh ' * 60000, chr(36) + ' pr' * 60000)]"
+        )
+        result = subprocess.run([sys.executable, "-c", script, HOOKS_DIR], timeout=20, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_a_program_name_held_in_a_variable_is_a_merge_attempt(self):
         for cmd in (
