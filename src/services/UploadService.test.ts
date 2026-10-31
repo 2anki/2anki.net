@@ -1422,6 +1422,74 @@ describe('UploadService.handleUpload — error paths', () => {
     }
   );
 
+  describe('for a user who shares files for debugging', () => {
+    const PRESERVING = 'Preserving files for debugging...';
+
+    async function uploadSharingFiles(): Promise<{
+      infoLines: unknown[][];
+      status: number;
+      json: unknown;
+    }> {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse();
+      Object.assign(res.locals, { owner: 42 });
+
+      await service.handleUpload(
+        buildRequest({
+          files: [ankiPackageZip],
+          body: { 'share-files-for-debugging': 'true' },
+        } as unknown as Partial<express.Request>),
+        res
+      );
+
+      const infoLines = infoSpy.mock.calls;
+      infoSpy.mockRestore();
+      errorSpy.mockRestore();
+      for (const [label, directory] of infoLines) {
+        if (label === 'Debug directory:' && typeof directory === 'string') {
+          fs.rmSync(directory, { recursive: true, force: true });
+        }
+      }
+      return { infoLines, status: capturedStatus(), json: capturedJson() };
+    }
+
+    it('keeps their files for an unexpected failure', async () => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi
+            .fn()
+            .mockRejectedValue(
+              Object.assign(new Error('boom'), { name: 'TypeError' })
+            ),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+
+      const { infoLines } = await uploadSharingFiles();
+
+      expect(infoLines).toContainEqual([PRESERVING]);
+    });
+
+    it('does not keep their files for an Anki-package zip', async () => {
+      rejectWithAnkiPackageZip();
+
+      const { infoLines, status, json } = await uploadSharingFiles();
+
+      expect(infoLines).not.toContainEqual([PRESERVING]);
+      expect(status).toBe(400);
+      expect(json).toEqual({
+        code: 'unknown',
+        message: ANKI_PACKAGE_ZIP_MESSAGE,
+      });
+    });
+  });
+
   it('answers an Anki-package zip with no AI preview available from a signed-out AI upload without logging an error', async () => {
     rejectWithAnkiPackageZip();
     mockGetFeatureFlag.mockResolvedValue(true);
