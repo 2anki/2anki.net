@@ -4256,8 +4256,11 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 
       await buildSigninController().loginWithGoogle(
         {
-          query: { code: 'gauth-code' },
-          cookies: { [LOGIN_RETURN]: limit },
+          query: { code: 'gauth-code', state: 'google-state' },
+          cookies: {
+            google_login_state: 'google-state',
+            [LOGIN_RETURN]: limit,
+          },
           headers: {},
         } as unknown as express.Request,
         res
