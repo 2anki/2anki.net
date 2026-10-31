@@ -108,7 +108,6 @@ PLACEHOLDERS = {
     "tbd", "todo",
 }
 CHECKBOX = re.compile(r"\[[ xX]\]")
-DEPENDABOT_LOGINS = {"dependabot[bot]", "app/dependabot"}
 
 
 def allow():
@@ -473,7 +472,7 @@ def gate(cmd):
         deny(view_violation)
 
     author = pr_data.get("author")
-    if isinstance(author, dict) and author.get("login") in DEPENDABOT_LOGINS:
+    if isinstance(author, dict) and author.get("login") in merge_command.DEPENDABOT_LOGINS:
         allow()
 
     files, _ = merge_command.changed_files(pr_data, number, TAG)

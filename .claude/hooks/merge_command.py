@@ -96,6 +96,9 @@ API_WORD = re.compile(r"(?<![/.\w-])api\b", re.I)
 SUBCOMMAND_WORD = re.compile(r"(?<![/.\w-])(?:pr|api)\b", re.I)
 FIRST_DOLLAR_OR_BACKTICK = re.compile(r"[$`]")
 CANONICAL_REPO = "2anki/2anki.net"
+# `gh pr view --json author` reports the bot as `app/dependabot`; the GitHub UI
+# and the REST API spell it `dependabot[bot]` (#4555, #5200).
+DEPENDABOT_LOGINS = frozenset({"dependabot[bot]", "app/dependabot"})
 ALLOWED_MERGE = re.compile(r"gh pr merge ([1-9][0-9]{0,8}) --repo (2anki/server|2anki/2anki\.net) --squash(?: 2>&1)?")
 ALLOWED_FORM = "gh pr merge <n> --repo 2anki/server --squash"
 VIEW_URL = re.compile(r"https://github\.com/([^/\s]+)/([^/\s]+)/pull/([0-9]+)")

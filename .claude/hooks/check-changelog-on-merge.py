@@ -36,8 +36,6 @@ GH_PR_VIEW_FILES_CAP = 100
 
 TAG = "[check-changelog-on-merge]"
 
-DEPENDABOT_LOGINS = frozenset({"dependabot[bot]", "app/dependabot"})
-
 USER_VISIBLE_PREFIX = re.compile(r"^(feat|fix)(\([^)]*\))?!?:", re.IGNORECASE)
 
 
@@ -168,7 +166,7 @@ def gate(cmd):
     if view_violation:
         deny(view_violation)
 
-    if (pr_data.get("author") or {}).get("login", "") in DEPENDABOT_LOGINS:
+    if (pr_data.get("author") or {}).get("login", "") in merge_command.DEPENDABOT_LOGINS:
         allow()
 
     if not has_user_visible_commit(pr_data.get("commits") or []):

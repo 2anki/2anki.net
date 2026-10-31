@@ -14,7 +14,6 @@ CHECKBOX_GOLDEN_PATH = "- [x] Golden path on localhost:3000"
 CHECKBOX_CONSOLE_ERRORS = "- [x] No console errors at 375px"
 OUT_CLAUSE_PREFIX = "Browser check: not applicable —"
 CHANGELOG_DIR_PREFIX = "web/src/pages/WhatsNewPage/changelog/"
-DEPENDABOT_LOGINS = frozenset({"dependabot[bot]", "app/dependabot"})
 
 
 
@@ -111,7 +110,7 @@ def gate(cmd):
         deny(view_violation)
 
     author = (pr_data.get("author") or {}).get("login", "")
-    if author in DEPENDABOT_LOGINS:
+    if author in merge_command.DEPENDABOT_LOGINS:
         allow()
 
     files, _ = merge_command.changed_files(pr_data, number, "[check-browser-attestation]")
