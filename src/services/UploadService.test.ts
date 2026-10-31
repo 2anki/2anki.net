@@ -98,6 +98,7 @@ import { writePdfImageFallbackMarker } from '../infrastracture/adapters/fileConv
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
+import { ANKI_PACKAGE_ZIP_MESSAGE } from '../usecases/uploads/isAnkiPackageZip';
 import { buildPdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
 import {
   createWorkerTerminationError,
@@ -1137,6 +1138,88 @@ describe('UploadService.handleUpload — error paths', () => {
         'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.',
     });
     errorSpy.mockRestore();
+  });
+
+  it('logs the worker stack when a sync upload fails unexpectedly', async () => {
+    const crash = Object.assign(
+      new Error("Cannot read properties of undefined (reading '0')"),
+      { name: 'TypeError' }
+    );
+    crash.stack =
+      "TypeError: Cannot read properties of undefined (reading '0')\n" +
+      '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(crash),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res } = buildResponse();
+
+    await service.handleUpload(buildRequest(), res);
+
+    const logged = errorSpy.mock.calls.map((call) => String(call[0]));
+    errorSpy.mockRestore();
+    expect(logged).toEqual([
+      expect.stringContaining(
+        'at firstCell (/app/src/lib/parser/tables.ts:12:3)'
+      ),
+    ]);
+  });
+
+  it('answers an Anki-package zip with its explanation and logs no error', async () => {
+    const workerError = new Error(ANKI_PACKAGE_ZIP_MESSAGE);
+    workerError.stack =
+      `Error: ${ANKI_PACKAGE_ZIP_MESSAGE}\n` +
+      '    at getPackagesFromZip (/app/src/usecases/uploads/getPackagesFromZip.ts:630:11)';
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(workerError),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(
+      buildRequest({
+        files: [
+          {
+            originalname: 'export.zip',
+            mimetype: 'application/zip',
+            size: 20,
+            buffer: Buffer.from('PK'),
+          },
+        ],
+      } as unknown as Partial<express.Request>),
+      res
+    );
+
+    const errorCalls = errorSpy.mock.calls.length;
+    errorSpy.mockRestore();
+    expect(errorCalls).toBe(0);
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message: ANKI_PACKAGE_ZIP_MESSAGE,
+    });
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.anything()
+    );
   });
 
   it('answers a sync upload whose worker hit a filesystem error with the generic 500, not its path', async () => {

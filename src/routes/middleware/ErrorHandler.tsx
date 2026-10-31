@@ -89,17 +89,22 @@ ${buildFileSnippets(uploadedFiles)}`,
   }
 }
 
+// A failed email send is always ours, even when its code (ECONNRESET) looks
+// like a client abort, and its message names the provider's account state.
+function isQuietError(err: Error): boolean {
+  return (
+    !(err instanceof EmailSendError) &&
+    (isLimitError(err) || isExpectedClientFault(err))
+  );
+}
+
 export default async function ErrorHandler(
   res: express.Response,
   req: express.Request,
   err: Error
 ) {
   const uploadedFiles = req.files as UploadedFile[];
-  const isLimit = isLimitError(err);
-  // A failed email send is always ours, even when its code (ECONNRESET) looks
-  // like a client abort, and its message names the provider's account state.
-  const quietError =
-    !(err instanceof EmailSendError) && (isLimit || isExpectedClientFault(err));
+  const quietError = isQuietError(err);
 
   if (!quietError) {
     console.info('Send error');
@@ -114,9 +119,15 @@ export default async function ErrorHandler(
     } catch (emailErr) {
       console.error('Failed to send error email:', emailErr);
     }
-  } else if (isLimit) {
+  } else if (isLimitError(err)) {
     console.info('User no limit reached');
   }
+
+  sendErrorResponse(res, err);
+}
+
+export function sendErrorResponse(res: express.Response, err: Error): void {
+  const quietError = isQuietError(err);
 
   if (res.headersSent) {
     console.info('Skipping error response: headers already sent');

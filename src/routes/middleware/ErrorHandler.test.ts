@@ -3,7 +3,7 @@ import { APIErrorCode, APIResponseError } from '@notionhq/client';
 import express from 'express';
 import multer from 'multer';
 
-import ErrorHandler from './ErrorHandler';
+import ErrorHandler, { sendErrorResponse } from './ErrorHandler';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import { EmailSendError } from '../../services/EmailService/sendMail';
@@ -642,5 +642,40 @@ describe('ErrorHandler', () => {
     expect(logged).not.toContain('cus_Qx1aBcD2eFgH3i');
     errorSpy.mockRestore();
     infoSpy.mockRestore();
+  });
+});
+
+describe('sendErrorResponse', () => {
+  test('answers a plain error the way ErrorHandler does, without logging it', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeResponse(false);
+
+    sendErrorResponse(
+      res as unknown as express.Response,
+      new Error('This zip is already an Anki deck.')
+    );
+
+    const errorCalls = errorSpy.mock.calls.length;
+    errorSpy.mockRestore();
+    expect(errorCalls).toBe(0);
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      code: 'unknown',
+      message: 'This zip is already an Anki deck.',
+    });
+  });
+
+  test('keeps the generic 500 for an internal fault', () => {
+    const res = makeResponse(false);
+    const rebuilt = Object.assign(new Error('boom'), { name: 'TypeError' });
+
+    sendErrorResponse(res as unknown as express.Response, rebuilt);
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({
+      code: 'unknown',
+      message:
+        'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.',
+    });
   });
 });
