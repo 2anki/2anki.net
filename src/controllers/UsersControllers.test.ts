@@ -4229,6 +4229,15 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       }
     });
 
+    it.each(['/limit', '/convert/apkg-to-csv'])(
+      'GET /login from a page that is not on the allowlist (%s) remembers nothing',
+      async (redirect) => {
+        const res = await signedOutLoginPage(redirect);
+
+        expect(loginReturnCookies(res)).toEqual([]);
+      }
+    );
+
     it('GET /login for a connector authorize leaves it to the connector cookie', async () => {
       const res = await signedOutLoginPage(AUTHORIZE_URL);
 

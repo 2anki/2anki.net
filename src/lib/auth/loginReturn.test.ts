@@ -51,6 +51,8 @@ describe('asLoginReturn', () => {
     'javascript:alert(1)',
     'https://2anki.net/pricing',
     '/not-a-section',
+    '/limit',
+    '/convert/apkg-to-csv',
     '/api/download/u/../../etc',
     '',
     `/pricing?ref=${'a'.repeat(3000)}`,
