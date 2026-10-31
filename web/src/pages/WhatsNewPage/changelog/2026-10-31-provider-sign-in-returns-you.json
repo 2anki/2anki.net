@@ -1,0 +1,6 @@
+{
+  "id": "2026-10-31-provider-sign-in-returns-you",
+  "date": "2026-10-31",
+  "type": "fix",
+  "title": "Signing in with Google, Microsoft, Apple or Notion takes you back to the page you came from, like pricing"
+}

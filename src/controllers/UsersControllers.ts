@@ -19,6 +19,7 @@ import { getRedirect } from './helpers/getRedirect';
 import { recordUnverifiedSignin } from './helpers/recordUnverifiedSignin';
 import { sanitizeRelativeRedirect } from './helpers/sanitizeRelativeRedirect';
 import { takeMcpLoginReturn } from '../lib/mcp/loginReturn';
+import { rememberLoginReturn, takeLoginReturn } from '../lib/auth/loginReturn';
 import { parseSignupOrigin } from './helpers/parseSignupOrigin';
 import {
   parseFirstTouch,
@@ -746,10 +747,11 @@ class UsersController {
 
   async checkUser(req: express.Request, res: express.Response) {
     const user = await this.authService.getUserFrom(req.cookies.token);
-    if (!user) {
-      sendIndex(res, '', consentRegionForRequest(req));
-    } else {
+    if (user) {
       res.redirect(getRedirect(req));
+    } else {
+      rememberLoginReturn(req, res);
+      sendIndex(res, '', consentRegionForRequest(req));
     }
   }
 
@@ -1362,7 +1364,9 @@ class UsersController {
     await notionRepository.saveNotionToken(user.id, accessData, hashToken);
 
     res.cookie('token', token, sessionCookieOptions());
-    return res.status(200).redirect(takeMcpLoginReturn(req, res) ?? '/notion');
+    const mcpReturn = takeMcpLoginReturn(req, res);
+    const loginReturn = takeLoginReturn(req, res);
+    return res.status(200).redirect(mcpReturn ?? loginReturn ?? '/notion');
   }
 
   async requestMagicLink(
@@ -1542,11 +1546,15 @@ class UsersController {
     userId: number
   ): Promise<string> {
     const mcpReturn = takeMcpLoginReturn(req, res);
+    const loginReturn = takeLoginReturn(req, res);
     if (this.hasExplicitRedirect(req)) {
       return getRedirect(req);
     }
     if (mcpReturn != null) {
       return mcpReturn;
+    }
+    if (loginReturn != null) {
+      return loginReturn;
     }
     const notionData = await new NotionRepository(this.db).getNotionData(
       userId
