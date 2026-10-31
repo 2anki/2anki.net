@@ -2,6 +2,7 @@ import type { IHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import type { IAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import type { UploadedFile } from '../../lib/storage/types';
 import { previewHoldKey } from '../../lib/upload/anonymousAiPreview';
+import { AiCreditsExhaustedError } from '../../lib/claude/aiSpendGuard';
 
 export class NoAiPreviewHoldError extends Error {
   constructor() {
@@ -50,6 +51,10 @@ export interface CheckoutPreviewBinding {
   surface: string | null;
 }
 
+export interface PassCreditCheck {
+  isExhausted(anonymousPassId: number): Promise<boolean>;
+}
+
 export type CheckoutBindingReader = (
   stripeSessionId: string
 ) => Promise<CheckoutPreviewBinding>;
@@ -83,7 +88,8 @@ export class ResumeAnonymousAiPreviewUseCase {
     private readonly store: HeldFileStore,
     private readonly converter: AiPreviewPassConverter,
     private readonly passRepository: Pick<IAnonymousPassRepository, 'findById'>,
-    private readonly readBinding: CheckoutBindingReader
+    private readonly readBinding: CheckoutBindingReader,
+    private readonly passCredits: PassCreditCheck
   ) {}
 
   async execute(params: ResumeAiPreviewParams): Promise<AiPreviewConversion> {
@@ -107,7 +113,17 @@ export class ResumeAnonymousAiPreviewUseCase {
     if (hold == null) {
       throw new NoAiPreviewHoldError();
     }
-    // Claim the hold atomically before doing any work: a second concurrent
+    // A spent pass is refused before any work, so the hold stays untouched and
+    // a file the parser cannot read either still answers with the credits stop.
+    if (await this.passCredits.isExhausted(anonymousPassId)) {
+      console.info('[ai-preview] resume refused: pass AI credits spent', {
+        requestId,
+        anonymousPassId,
+        stage: 'before-conversion',
+      });
+      throw new AiCreditsExhaustedError();
+    }
+    // Claim the hold atomically before converting: a second concurrent
     // resume loses the claim and gets nothing, so the pass is billed once.
     if (!(await this.repository.claimForConversion(hold.id, new Date()))) {
       throw new NoAiPreviewHoldError();

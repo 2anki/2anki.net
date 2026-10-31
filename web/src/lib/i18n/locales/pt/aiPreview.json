@@ -22,7 +22,7 @@
   "choicePrivacy": "Política de privacidade",
   "unavailableNotice": "A prévia com IA não está disponível agora, então aqui estão cartas baseadas na estrutura do seu arquivo. Tente a IA mais tarde ou fique com este baralho.",
   "resumeActiveDropAgain": "Seu Day Pass está ativo. Solte seu arquivo de novo para obter todas as cartas.",
-  "resumeOutOfCredits": "Seu Day Pass está sem créditos de IA por enquanto. Escreva para support@2anki.net e ajudamos você.",
+  "resumeOutOfCredits": "Seu Day Pass está sem créditos de IA. Faça login para adicionar uma recarga e depois solte seu arquivo de novo.",
   "resumeEmpty": "Não encontramos cartas nesse arquivo. Tente outro arquivo ou escreva para support@2anki.net.",
   "resumeError": "Algo deu errado ao finalizar seu baralho com IA. Escreva para support@2anki.net e resolvemos."
 }

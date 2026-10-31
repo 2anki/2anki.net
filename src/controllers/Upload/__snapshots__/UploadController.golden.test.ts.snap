@@ -749,7 +749,7 @@ exports[`what each population gets back from an AI upload > signed-out pass hold
     "x-card-count": "5",
     "x-mcq-count": "0",
     "x-mcq-skipped-count": "0",
-    "x-warning": "You're out of AI credits, so this deck was built without AI. A one-time top-up adds enough for several more decks.",
+    "x-warning": "You're out of AI credits, so this deck was built without AI. Sign in to add a one-time top-up for several more decks.",
     "x-warning-code": "ai-credits-exhausted",
   },
   "status": 200,
@@ -961,6 +961,36 @@ exports[`what each population gets back from the Day Pass AI preview resume > Da
   "heldObjectsLeft": 0,
   "heldPreviewsLeft": 0,
   "status": 200,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from the Day Pass AI preview resume > Day Pass holder resuming while the pass balance cannot be read 1`] = `
+{
+  "body": {
+    "code": "ai_credits_exhausted",
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "heldObjectsLeft": 1,
+  "heldPreviewsLeft": 1,
+  "status": 402,
+  "storedObjects": [],
+}
+`;
+
+exports[`what each population gets back from the Day Pass AI preview resume > Day Pass holder resuming with the AI credits spent 1`] = `
+{
+  "body": {
+    "code": "ai_credits_exhausted",
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "heldObjectsLeft": 1,
+  "heldPreviewsLeft": 1,
+  "status": 402,
   "storedObjects": [],
 }
 `;

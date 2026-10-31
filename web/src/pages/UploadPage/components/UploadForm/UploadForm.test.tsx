@@ -832,7 +832,9 @@ describe('UploadForm', () => {
     try {
       renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
       expect(
-        await screen.findByText(/no AI credits left right now/)
+        await screen.findByText(
+          'Your Day Pass has no AI credits left. Sign in to add a top-up, then drop your file again.'
+        )
       ).toBeInTheDocument();
     } finally {
       restore();

@@ -22,7 +22,7 @@
   "choicePrivacy": "Informativa sulla privacy",
   "unavailableNotice": "L'anteprima IA non è disponibile al momento, quindi ecco delle carte basate sulla struttura del tuo file. Riprova con l'IA più tardi o tieni questo mazzo.",
   "resumeActiveDropAgain": "Il tuo Day Pass è attivo. Rilascia di nuovo il tuo file per ottenere tutte le carte.",
-  "resumeOutOfCredits": "Il tuo Day Pass non ha più crediti IA per ora. Scrivi a support@2anki.net e ti aiutiamo.",
+  "resumeOutOfCredits": "Il tuo Day Pass non ha più crediti IA. Accedi per aggiungere una ricarica, poi rilascia di nuovo il file.",
   "resumeEmpty": "Non abbiamo trovato carte in quel file. Prova un altro file o scrivi a support@2anki.net.",
   "resumeError": "Qualcosa è andato storto nel completare il tuo mazzo IA. Scrivi a support@2anki.net e risolviamo."
 }

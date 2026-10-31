@@ -22,7 +22,7 @@
   "choicePrivacy": "Politique de confidentialité",
   "unavailableNotice": "L'aperçu IA n'est pas disponible pour le moment, voici donc des cartes basées sur la structure de ton fichier. Réessaie l'IA plus tard ou garde ce paquet.",
   "resumeActiveDropAgain": "Ton Day Pass est actif. Dépose à nouveau ton fichier pour obtenir toutes les cartes.",
-  "resumeOutOfCredits": "Ton Day Pass n'a plus de crédits IA pour le moment. Écris à support@2anki.net, on t'aide.",
+  "resumeOutOfCredits": "Ton Day Pass n'a plus de crédits IA. Connecte-toi pour ajouter une recharge, puis dépose à nouveau ton fichier.",
   "resumeEmpty": "Nous n'avons trouvé aucune carte dans ce fichier. Essaie un autre fichier ou écris à support@2anki.net.",
   "resumeError": "Un problème est survenu en terminant ton paquet IA. Écris à support@2anki.net, on s'en occupe."
 }
