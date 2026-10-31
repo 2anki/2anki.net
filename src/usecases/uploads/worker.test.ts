@@ -115,20 +115,20 @@ describe('getFileContents', () => {
       vi.useRealTimers();
     });
 
-    it('logs the time since the file turn started when reading from buffer', () => {
+    it('logs the read time and size when reading from buffer', () => {
       const content = Buffer.from('hello');
       const file = makeFile({ path: '', buffer: content });
 
-      getFileContents(file, 900);
+      getFileContents(file);
 
       expect(infoSpy).toHaveBeenCalledWith('[upload] tempfile read', {
-        sinceTurnMs: 100,
+        readMs: 0,
         mode: 'buffer',
         fileSizeBytes: 5,
       });
     });
 
-    it('counts a slow disk read in the time since the file turn started', () => {
+    it('counts a slow disk read in the read time', () => {
       const content = Buffer.from('disk content');
       const file = makeFile({ path: '/tmp/upload-exists' });
       mockFs.existsSync = vi.fn().mockReturnValue(true);
@@ -140,7 +140,7 @@ describe('getFileContents', () => {
       getFileContents(file);
 
       expect(infoSpy).toHaveBeenCalledWith('[upload] tempfile read', {
-        sinceTurnMs: 300,
+        readMs: 300,
         mode: 'disk',
         fileSizeBytes: 12,
       });
@@ -1205,35 +1205,36 @@ describe('runUploadGenerationInWorker — queue wait logging', () => {
   afterEach(() => {
     infoSpy.mockRestore();
     vi.useRealTimers();
+    vi.mocked(Workspace.subdir).mockReset();
+    mockPrepareDeck.mockReset();
+    mockGetPackagesFromZip.mockReset();
+  });
+
+  it.each([
+    ['a three-file task converted in parallel', ['a.html', 'b.html', 'c.html']],
+    ['a three-file task converted in sequence', ['a.zip', 'b.zip', 'c.zip']],
+    ['a single-file task', ['a.html']],
+  ])('reports the queue wait once for %s', async (_mode, names) => {
+    const result = await runUploadGenerationInWorker(threeFileTask(names));
+
+    expect(result.ok).toBe(true);
+    const dwells = loggedFields()
+      .filter((fields) => 'dwellMs' in fields)
+      .map((fields) => fields.dwellMs);
+    expect(dwells).toEqual([QUEUE_WAIT_MS]);
   });
 
   it.each([
     ['in parallel', ['a.html', 'b.html', 'c.html']],
     ['in sequence', ['a.zip', 'b.zip', 'c.zip']],
   ])(
-    'reports the queue wait once for a three-file task converted %s',
-    async (_mode, names) => {
-      const result = await runUploadGenerationInWorker(threeFileTask(names));
-
-      expect(result.ok).toBe(true);
-      const dwells = loggedFields()
-        .filter((fields) => 'dwellMs' in fields)
-        .map((fields) => fields.dwellMs);
-      expect(dwells).toEqual([QUEUE_WAIT_MS]);
-    }
-  );
-
-  it.each([
-    ['in parallel', ['a.html', 'b.html', 'c.html']],
-    ['in sequence', ['a.zip', 'b.zip', 'c.zip']],
-  ])(
-    'logs each file read without earlier files conversion time when converted %s',
+    "logs each file read without earlier files' conversion time when converted %s",
     async (_mode, names) => {
       await runUploadGenerationInWorker(threeFileTask(names));
 
       const reads = loggedFields().filter((fields) => 'mode' in fields);
       expect(reads).toEqual(
-        names.map(() => ({ sinceTurnMs: 0, mode: 'buffer', fileSizeBytes: 9 }))
+        names.map(() => ({ readMs: 0, mode: 'buffer', fileSizeBytes: 9 }))
       );
     }
   );

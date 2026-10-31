@@ -62,21 +62,19 @@ import {
 } from './uploadGenerationTypes';
 
 function logFileRead(
-  turnStartedAt: number,
+  readStartedAt: number,
   mode: 'buffer' | 'disk' | 'buffer-fallback',
   contents: Buffer
 ): void {
   console.info('[upload] tempfile read', {
-    sinceTurnMs: Date.now() - turnStartedAt,
+    readMs: Date.now() - readStartedAt,
     mode,
     fileSizeBytes: contents.byteLength,
   });
 }
 
-export function getFileContents(
-  file: UploadedFile,
-  turnStartedAt: number = Date.now()
-): Buffer {
+export function getFileContents(file: UploadedFile): Buffer {
+  const readStartedAt = Date.now();
   let result: Buffer;
 
   if (!file.path) {
@@ -84,14 +82,14 @@ export function getFileContents(
       throw new Error('Uploaded file has neither a path nor a buffer');
     }
     result = Buffer.from(file.buffer);
-    logFileRead(turnStartedAt, 'buffer', result);
+    logFileRead(readStartedAt, 'buffer', result);
     return result;
   }
 
   try {
     if (fs.existsSync(file.path)) {
       result = fs.readFileSync(file.path);
-      logFileRead(turnStartedAt, 'disk', result);
+      logFileRead(readStartedAt, 'disk', result);
       return result;
     }
   } catch (error) {
@@ -106,7 +104,7 @@ export function getFileContents(
     );
   }
   result = Buffer.from(file.buffer);
-  logFileRead(turnStartedAt, 'buffer-fallback', result);
+  logFileRead(readStartedAt, 'buffer-fallback', result);
   return result;
 }
 
