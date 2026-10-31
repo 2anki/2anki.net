@@ -1,55 +1,77 @@
 #!/usr/bin/env python3
 """
-Shared matcher for the four merge-gate hooks: does this Bash command *run*
-`gh pr merge`, as opposed to merely mentioning it?
+Shared code for the four merge-gate hooks.
 
-A mention inside a commit message, a heredoc'd doc edit, or an echo used to
-trip every gate (2026-08-26: two doc-edit commands were denied as hard-rail
-merges). Heredoc bodies and quoted literals are stripped first; whatever is
-left is real shell, so any remaining occurrence counts — `then gh pr merge`,
-`exec gh pr merge`, and backtick substitution all match (a command-position
-anchor missed those, per the PR #4244 security review).
+`is_gh_pr_merge`: does this Bash command *run* `gh pr merge`, as opposed to
+merely mentioning it? A mention inside a commit message, a heredoc'd doc edit,
+or an echo used to trip every gate (2026-08-26: two doc-edit commands were
+denied as hard-rail merges). Heredoc bodies and quoted literals are stripped
+first; whatever is left is real shell, so any remaining occurrence counts —
+`then gh pr merge`, `exec gh pr merge`, and backtick substitution all match (a
+command-position anchor missed those, per the PR #4244 security review), and so
+do flags between the words (`gh pr -R o/r merge`, a valid gh command). The
+command is also split the way the shell splits it (`shlex`), so a quoted or
+escaped subcommand (`gh pr "merge"`, `gh pr m\\erge`) or one built with `$` or a
+backtick counts, while a quoted mention in another command's argument does
+not; a command shlex cannot split counts when it contains both `gh` and
+`merge`. The
+REST merge endpoint (`gh api -X PUT repos/o/r/pulls/N/merge`, or curl to the
+same URL) and the GraphQL `mergePullRequest` mutation count too. Known
+limitation: `bash -c "gh pr merge 1"` hides the merge inside a quoted literal
+and is not matched. That is a policy violation, not a hook gap.
 
-The REST merge endpoint (`gh api -X PUT repos/o/r/pulls/N/merge`, or curl to
-the same URL) and the GraphQL `mergePullRequest` mutation count too. Those two
-are matched with quotes kept (the URL is often quoted) but heredoc bodies
-stripped, so a script that merely mentions the path is not a merge — it was used once, on 2026-08-26, to merge #4244 on
-Alexander's instruction after the hook (correctly) refused the rail PR, and that
-is exactly the path an agent must not have.
+`allowed_merge`: the only merge the hooks let through is the one `/ship` runs,
+exactly `gh pr merge <n> --repo 2anki/server --squash` (or `--repo
+2anki/2anki.net`), alone in the Bash call. Every other merge form is denied:
+a branch, `#N`, a URL, another repo, extra or clustered flags, `GH_REPO=` or
+`cd` prefixes, chained commands, API and GraphQL merges. Parsing gh's argument
+grammar kept growing edge cases where the PR the gate read was not the PR that
+merged (#5193 security reviews); an exact form removes the differential. The
+hooks pass the matched repo literal, never a raw token, to `gh pr view -R`,
+deny when `gh pr view` fails, and deny when its `url` is not that repo's PR
+with that number.
 
-Known limitation: `bash -c "gh pr merge 1"` hides the merge inside a quoted
-literal and is not matched. That is a policy violation, not a hook gap.
-
-`changed_files` is the file list all four merge hooks gate on.
-`gh pr view --json files` stops at a PR's first 100 files (#5172), so the
-list comes from the paginated REST endpoint for 2anki/2anki.net instead:
-exact names, up to the 3000 files GitHub returns, no diff-size limit. It is
-merged with the view's files, so it never holds less than the view did; when
-the REST call fails the view's files are returned and each hook falls back to
-what it checked before.
-
-The repo is read from the merge command, never from what `gh pr view`
-answers. `command_repo_violation` denies a command that names any repo but
-2anki/2anki.net (or its old name 2anki/server) through `-R`/`--repo`,
-`GH_REPO=`, a PR URL or a `repos/O/R/pulls/N/merge` path; the hooks pass the
-named repo to `gh pr view -R`; and `view_repo_violation` denies when the
-viewed PR's `url` is not that repo's PR with that number. Without that, a
-merge aimed at one repo could be gated on another PR's files.
+`changed_files` is the file list all four hooks gate on. `gh pr view --json
+files` stops at a PR's first 100 files (#5172), so the list comes from the
+paginated REST endpoint for 2anki/2anki.net: exact names, up to the 3000 files
+GitHub returns, no diff-size limit. It is merged with the view's files, so it
+never holds less than the view did, and it is complete only when it covers
+every view file and is under GitHub's 3000-file cap; when the REST call fails the view's files are returned and
+each hook falls back to what it checked before.
 """
 import json
 import re
+import shlex
 import subprocess
 import sys
 
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.S | re.M)
 QUOTED_LITERAL = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
-GH_PR_MERGE = re.compile(r"\bgh\s+pr\s+merge\b")
+GH_PR_MERGE = re.compile(r"\bgh(?:\s+[^\s;&|]+)*?\s+pr(?:\s+[^\s;&|]+)*?\s+merge\b")
 API_MERGE_PATH = re.compile(r"\bpulls/(\d+)/merge\b")
 API_WRITE_SIGNAL = re.compile(
     r"(?:-X|--method|--request)[= ]*PUT\b|(?:^|\s)(?:-f|-F|--input|--raw-field|--field)\b"
 )
 GRAPHQL_MERGE = re.compile(r"\bmergePullRequest\b")
-PR_URL = re.compile(r"https?://github\.com/[^/]+/[^/]+/pull/(\d+)")
+VALUE_FLAGS = frozenset({"-R", "--repo", "--hostname"})
+
+CANONICAL_REPO = "2anki/2anki.net"
+CANONICAL_REPOS = frozenset({"2anki/2anki.net", "2anki/server"})
+ALLOWED_MERGE = re.compile(r"gh pr merge ([1-9][0-9]{0,8}) --repo (2anki/server|2anki/2anki\.net) --squash")
+ALLOWED_FORM = "gh pr merge <n> --repo 2anki/server --squash"
+VIEW_URL = re.compile(r"https://github\.com/([^/\s]+)/([^/\s]+)/pull/([0-9]+)")
+REST_FILES_TIMEOUT_SECONDS = 20
+REST_FILES_CAP = 3000
+REST_FILES_JQ = ".[] | [.filename, .status, .additions, .deletions] | @json"
+REST_STATUS_TO_CHANGE_TYPE = {
+    "added": "ADDED",
+    "removed": "DELETED",
+    "modified": "MODIFIED",
+    "renamed": "RENAMED",
+    "copied": "COPIED",
+    "changed": "CHANGED",
+    "unchanged": "UNCHANGED",
+}
 
 
 def strip_heredocs(cmd):
@@ -69,130 +91,109 @@ def is_graphql_merge(cmd):
     return bool(GRAPHQL_MERGE.search(strip_heredocs(cmd)))
 
 
+def shell_words(cmd):
+    lexer = shlex.shlex(strip_heredocs(cmd), posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    return list(lexer)
+
+
+def skip_flags(words, start):
+    index = start
+    while index < len(words) and words[index].startswith("-"):
+        index += 2 if words[index] in VALUE_FLAGS else 1
+    return index
+
+
+def subcommand_is_merge(word):
+    return "merge" in word or "$" in word or "`" in word
+
+
+def runs_gh_pr_merge(words):
+    for index, word in enumerate(words):
+        if word != "gh" and not word.endswith("/gh"):
+            continue
+        group = skip_flags(words, index + 1)
+        if group >= len(words) or words[group] != "pr":
+            continue
+        action = skip_flags(words, group + 1)
+        if action < len(words) and subcommand_is_merge(words[action]):
+            return True
+    return False
+
+
+def is_shell_merge(cmd):
+    try:
+        words = shell_words(cmd)
+    except ValueError:
+        return "merge" in cmd and "gh" in cmd
+    return runs_gh_pr_merge(words)
+
+
 def is_gh_pr_merge(cmd):
     return bool(
         GH_PR_MERGE.search(strip_literals(cmd))
+        or is_shell_merge(cmd)
         or is_api_merge(cmd)
         or is_graphql_merge(cmd)
     )
 
 
-def extract_pr_ref(cmd):
-    """PR number the command merges, or None when `gh pr merge` targets the current branch."""
-    if is_api_merge(cmd):
-        return API_MERGE_PATH.search(strip_heredocs(cmd)).group(1)
-    parts = GH_PR_MERGE.split(strip_literals(cmd), 1)
-    if len(parts) < 2:
+def allowed_merge(cmd):
+    """(number, repo) when the command is exactly the merge /ship runs, else None."""
+    if not isinstance(cmd, str):
         return None
-    after = re.split(r"[;&|]", parts[1], maxsplit=1)[0]
-    url_match = PR_URL.search(after)
-    if url_match:
-        return url_match.group(1)
-    for token in after.split():
-        if token.isdigit():
-            return token
-    return None
+    match = ALLOWED_MERGE.fullmatch(cmd.strip(" \n"))
+    return (match.group(1), match.group(2)) if match else None
 
 
-CANONICAL_REPO = "2anki/2anki.net"
-CANONICAL_REPOS = frozenset({"2anki/2anki.net", "2anki/server"})
-QUOTE_CHARS = re.compile(r"['\"]")
-REPO_FLAG = re.compile(r"(?:^|\s)(?:-R|--repo)(?:=|\s+)?(?=\S)(\S+)")
-GH_REPO_ENV = re.compile(r"\bGH_REPO=(\S*)")
-ANY_PR_URL = re.compile(r"\bhttps?://([^/\s]+)/([^/\s]+)/([^/\s]+)/pull/\d+")
-API_REPO_PATH = re.compile(r"\brepos/([^/\s]+)/([^/\s]+)/pulls/\d+/merge\b")
-API_PLACEHOLDER = re.compile(r"^\{[a-z]+\}$")
-VIEW_URL = re.compile(r"^https://github\.com/([^/\s]+)/([^/\s]+)/pull/(\d+)$")
-REST_FILES_TIMEOUT_SECONDS = 20
-REST_FILES_JQ = ".[] | [.filename, .status, .additions, .deletions] | @json"
-REST_STATUS_TO_CHANGE_TYPE = {
-    "added": "ADDED",
-    "removed": "DELETED",
-    "modified": "MODIFIED",
-    "renamed": "RENAMED",
-    "copied": "COPIED",
-    "changed": "CHANGED",
-    "unchanged": "UNCHANGED",
-}
-
-
-def pr_number(pr_data, pr_ref):
-    for candidate in (pr_data.get("number"), pr_ref):
-        if isinstance(candidate, bool):
-            continue
-        text = str(candidate) if isinstance(candidate, int) else candidate
-        if isinstance(text, str) and text.isdigit():
-            return text
-    return None
-
-
-def normalize_repo(value):
-    text = value.strip().lower()
-    for prefix in ("https://", "http://"):
-        text = text.removeprefix(prefix)
-    return text.rstrip(";&|)").removeprefix("github.com/").removesuffix("/").removesuffix(".git")
-
-
-def is_canonical_repo(value):
-    return normalize_repo(value) in CANONICAL_REPOS
-
-
-def command_repos(cmd):
-    """Every repo the command names, as written, quotes dropped."""
-    shell = QUOTE_CHARS.sub("", strip_heredocs(cmd))
-    named = [match.group(1) for match in REPO_FLAG.finditer(shell)]
-    named += [match.group(1) for match in GH_REPO_ENV.finditer(shell)]
-    named += [f"{m.group(1)}/{m.group(2)}/{m.group(3)}" for m in ANY_PR_URL.finditer(shell)]
-    for match in API_REPO_PATH.finditer(shell):
-        owner, repo = match.group(1), match.group(2)
-        if not (API_PLACEHOLDER.match(owner) and API_PLACEHOLDER.match(repo)):
-            named.append(f"{owner}/{repo}")
-    return named
-
-
-def command_repo_violation(cmd):
-    foreign = sorted({repo[:80] for repo in command_repos(cmd) if not is_canonical_repo(repo)})
-    if not foreign:
+def merge_form_violation(cmd):
+    if allowed_merge(cmd) is not None:
         return None
     return (
-        f"Refusing this merge: it names a repo other than {CANONICAL_REPO} "
-        f"({', '.join(foreign)}). The merge hooks only gate {CANONICAL_REPO} "
-        "(or its old name 2anki/server); merge with `gh pr merge <n> --repo 2anki/server`."
+        f"Refusing this merge: the merge hooks only accept the command /ship runs, exactly "
+        f"`{ALLOWED_FORM}` (or `--repo {CANONICAL_REPO}`), alone in the Bash call. Any other "
+        "form (a branch, a URL, another repo, extra flags, a prefix, a chained command, an API "
+        "or GraphQL merge) is denied, so the PR the gate reads is the PR that merges."
     )
 
 
-def command_repo(cmd):
-    """The repo to pass to `gh pr view -R`, or None when the command names none."""
-    repos = command_repos(cmd)
-    return repos[0] if repos else None
+def view_failed_violation(number):
+    return (
+        f"Refusing this merge: gh pr view could not read PR {number}, so the gate cannot check it. "
+        "Fix gh (auth, network) and run the merge again."
+    )
 
 
-def repo_args(repo):
-    return ["-R", repo] if repo is not None else []
+def pr_number(pr_data):
+    candidate = pr_data.get("number")
+    if isinstance(candidate, bool) or not isinstance(candidate, (int, str)):
+        return None
+    text = str(candidate)
+    return text if text.isdigit() else None
 
 
-def view_repo_reason(pr_data, pr_ref):
+def view_repo_reason(pr_data, number):
     url = pr_data.get("url")
     match = VIEW_URL.fullmatch(url) if isinstance(url, str) else None
     if match is None:
         return "gh pr view returned no readable PR url"
-    owner, repo, number = match.groups()
-    if not is_canonical_repo(f"{owner}/{repo}"):
+    owner, repo, viewed = match.groups()
+    if f"{owner}/{repo}".lower() not in CANONICAL_REPOS:
         return f"gh pr view resolved a PR in {owner[:80]}/{repo[:80]}"
-    if pr_ref is not None and number != pr_ref:
-        return f"gh pr view resolved PR {number}, not PR {pr_ref}"
-    if pr_number(pr_data, None) not in (None, number):
+    if viewed != number:
+        return f"gh pr view resolved PR {viewed}, not PR {number}"
+    if pr_number(pr_data) != number:
         return "gh pr view's number and url disagree"
     return None
 
 
-def view_repo_violation(pr_data, pr_ref):
-    reason = view_repo_reason(pr_data, pr_ref)
+def view_repo_violation(pr_data, number):
+    reason = view_repo_reason(pr_data, number)
     if reason is None:
         return None
     return (
         f"Refusing this merge: {reason}, so the gate cannot be sure it read the PR being "
-        f"merged. Merge {CANONICAL_REPO} PRs with `gh pr merge <n> --repo 2anki/server`."
+        f"merged. Merge with `{ALLOWED_FORM}`."
     )
 
 
@@ -250,13 +251,12 @@ def view_files(pr_data):
     return [entry for entry in files if isinstance(entry, dict)]
 
 
-def changed_files(pr_data, pr_ref, tag):
+def changed_files(pr_data, number, tag):
     """(files, complete): every changed file, or gh pr view's files and False when REST fails."""
     viewed = view_files(pr_data)
-    number = pr_number(pr_data, pr_ref)
-    listed = fetch_rest_files(number, tag) if number is not None else None
+    listed = fetch_rest_files(number, tag) if isinstance(number, str) and number.isdigit() else None
     if listed is None:
         return viewed, False
     listed_paths = {entry["path"] for entry in listed}
     missing = [entry for entry in viewed if not isinstance(entry.get("path"), str) or entry["path"] not in listed_paths]
-    return listed + missing, not missing
+    return listed + missing, not missing and len(listed) < REST_FILES_CAP

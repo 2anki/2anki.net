@@ -89,28 +89,11 @@ class TestApiMerge(unittest.TestCase):
         cmd = "gh api graphql -f query='mutation { mergePullRequest(input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
         self.assertTrue(mc.is_gh_pr_merge(cmd))
         self.assertTrue(mc.is_graphql_merge(cmd))
-        self.assertIsNone(mc.extract_pr_ref(cmd))
+        self.assertIsNone(mc.allowed_merge(cmd))
 
     def test_graphql_mention_inside_heredoc_is_not_merge(self):
         cmd = "cat <<'EOF' > notes.md\nthe mergePullRequest mutation is denied\nEOF"
         self.assertFalse(mc.is_gh_pr_merge(cmd))
-
-
-class TestExtractPrRef(unittest.TestCase):
-    def test_number(self):
-        self.assertEqual(mc.extract_pr_ref("gh pr merge 4244 --squash"), "4244")
-
-    def test_url(self):
-        self.assertEqual(mc.extract_pr_ref("gh pr merge https://github.com/2anki/server/pull/4244"), "4244")
-
-    def test_current_branch(self):
-        self.assertIsNone(mc.extract_pr_ref("gh pr merge --squash --delete-branch"))
-
-    def test_api_endpoint(self):
-        self.assertEqual(mc.extract_pr_ref("gh api -X PUT repos/2anki/server/pulls/4244/merge"), "4244")
-
-    def test_quoted_mention_before_real_merge(self):
-        self.assertEqual(mc.extract_pr_ref('echo "gh pr merge" && gh pr merge 4244'), "4244")
 
 
 class TestMentionsOnly(unittest.TestCase):
@@ -159,10 +142,12 @@ def ok(stdout):
 MANY_PATHS = [f"docs/page{i}.md" for i in range(150)] + ["web/src/App.tsx"]
 
 
+
+
 class TestChangedFiles(unittest.TestCase):
-    def changed(self, pr_data, pr_ref="42", run=None):
+    def changed(self, pr_data, number="42", run=None):
         with patch("subprocess.run", side_effect=run) as fake:
-            result = mc.changed_files(pr_data, pr_ref, "[test]")
+            result = mc.changed_files(pr_data, number, "[test]")
         return result, [call.args[0] for call in fake.call_args_list]
 
     def test_lists_files_past_the_first_100_from_the_rest_endpoint(self):
@@ -172,13 +157,9 @@ class TestChangedFiles(unittest.TestCase):
         self.assertEqual(len(files), 151)
         self.assertGreater([f["path"] for f in files].index("web/src/App.tsx"), 100)
 
-    def test_calls_the_paginated_rest_endpoint_for_the_pr_number(self):
-        _, argv = self.changed({"number": 42, "files": []}, run=[ok("")])
+    def test_calls_the_paginated_rest_endpoint_of_2anki_net_for_the_merged_number(self):
+        _, argv = self.changed({"number": 42, "url": "https://github.com/someone/fork/pull/42", "files": []}, run=[ok("")])
         self.assertEqual(argv[0][:4], ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/42/files?per_page=100"])
-
-    def test_a_current_branch_merge_uses_the_number_gh_pr_view_returned(self):
-        _, argv = self.changed({"number": 5172, "files": []}, pr_ref=None, run=[ok("")])
-        self.assertIn("repos/2anki/2anki.net/pulls/5172/files?per_page=100", argv[0])
 
     def test_maps_rest_statuses_to_gh_pr_view_change_types(self):
         stdout = "".join(
@@ -196,6 +177,18 @@ class TestChangedFiles(unittest.TestCase):
         (files, complete), _ = self.changed(view, run=[ok(rest_stdout(["src/b.ts"]))])
         self.assertFalse(complete)
         self.assertEqual(sorted(f["path"] for f in files), ["src/a.ts", "src/b.ts"])
+
+    def test_a_rest_list_covering_every_view_file_is_complete(self):
+        view = {"number": 42, "files": [{"path": "src/a.ts"}]}
+        (_, complete), _ = self.changed(view, run=[ok(rest_stdout(["src/a.ts", "src/b.ts"]))])
+        self.assertTrue(complete)
+
+    def test_a_rest_list_at_githubs_3000_file_cap_is_reported_incomplete(self):
+        paths = [f"src/file{i}.ts" for i in range(mc.REST_FILES_CAP)]
+        view = {"number": 42, "files": [{"path": p} for p in paths[:100]]}
+        (files, complete), _ = self.changed(view, run=[ok(rest_stdout(paths))])
+        self.assertFalse(complete)
+        self.assertEqual(len(files), mc.REST_FILES_CAP)
 
     def test_a_rest_failure_falls_back_to_the_view_files(self):
         view = {"number": 42, "files": [{"path": "src/a.ts"}]}
@@ -218,21 +211,12 @@ class TestChangedFiles(unittest.TestCase):
             self.assertFalse(complete)
             self.assertEqual(files, [{"path": "src/a.ts"}])
 
-    def test_no_usable_pr_number_skips_the_call_and_falls_back(self):
-        for number in (None, "", "12/../13", True):
-            (files, complete), argv = self.changed({"number": number, "files": [{"path": "a"}]}, pr_ref=None, run=[])
+    def test_no_usable_number_skips_the_call_and_falls_back(self):
+        for number in (None, "", "12/../13", True, 42):
+            (files, complete), argv = self.changed({"files": [{"path": "a"}]}, number=number, run=[])
             self.assertFalse(complete)
             self.assertEqual(argv, [])
             self.assertEqual(files, [{"path": "a"}])
-
-    def test_falls_back_to_the_merge_command_number_when_view_has_none(self):
-        _, argv = self.changed({"files": []}, pr_ref="77", run=[ok("")])
-        self.assertIn("repos/2anki/2anki.net/pulls/77/files?per_page=100", argv[0])
-
-    def test_the_view_url_never_picks_the_repo_listed(self):
-        view = {"number": 5, "url": "https://github.com/someone/fork/pull/5", "files": []}
-        _, argv = self.changed(view, run=[ok("")])
-        self.assertIn("repos/2anki/2anki.net/pulls/5/files?per_page=100", argv[0])
 
     def test_a_unicode_line_separator_in_a_name_does_not_force_the_fallback(self):
         odd = "web/src/a b\u0085c d.tsx"
@@ -246,69 +230,99 @@ class TestChangedFiles(unittest.TestCase):
         self.assertFalse(complete)
         self.assertEqual([f["path"] for f in files], ["a", ["b"]])
 
-    def test_a_rest_list_covering_every_view_file_is_complete(self):
-        view = {"number": 42, "files": [{"path": "src/a.ts"}]}
-        (_, complete), _ = self.changed(view, run=[ok(rest_stdout(["src/a.ts", "src/b.ts"]))])
-        self.assertTrue(complete)
 
-
-FOREIGN_COMMANDS = (
-    "gh pr merge -R other/repo 5",
-    "gh pr merge 5 --repo other/repo --squash",
-    "gh pr merge 5 --repo=other/repo",
-    "gh pr merge 5 -Rother/repo",
-    'gh pr merge 5 -R "other/repo"',
-    "gh pr merge 5 --repo github.com/other/repo",
-    "gh pr merge 5 --repo ghe.example.com/2anki/server",
-    "GH_REPO=other/repo gh pr merge 5",
-    "export GH_REPO=other/repo; gh pr merge 5",
-    "gh pr merge https://github.com/other/repo/pull/5",
-    "gh pr merge https://ghe.example.com/2anki/server/pull/5",
-    "gh api -X PUT repos/other/repo/pulls/5/merge",
-    "gh api -X PUT /repos/other/repo/pulls/5/merge",
-    "curl -X PUT https://api.github.com/repos/other/repo/pulls/5/merge",
-    "gh pr merge 5 -R 2anki/server && gh pr merge 6 -R other/repo",
+GHE = "ghe.example.com"
+REJECTED_FORMS = (
+    "gh pr merge 42",
+    "gh pr merge 42 --squash",
+    "gh pr merge --squash",
+    "gh pr merge --squash --delete-branch",
+    "gh pr merge some-branch --repo 2anki/server --squash",
+    "gh pr merge fix/other --repo 2anki/server --squash",
+    "gh pr merge #42 --repo 2anki/server --squash",
+    "gh pr merge '#42' --repo 2anki/server --squash",
+    'gh pr merge "42" --repo 2anki/server --squash',
+    "gh pr merge '42' --repo 2anki/server --squash",
+    "gh pr merge 042 --repo 2anki/server --squash",
+    "gh pr merge 42 -sR other/repo",
+    "gh pr merge 42 -sR 2anki/server",
+    "gh pr merge 42 -R 2anki/server --squash",
+    "gh pr merge 42 --repo=2anki/server --squash",
+    "gh pr merge 42 --repo 2anki/server;x --squash",
+    "gh pr merge 42 --squash --repo 2anki/server; true",
+    "gh pr merge 42 --repo 2anki/server --squash; true",
+    "gh pr merge 42 --repo 2anki/server) --squash",
+    "gh pr merge 42 --repo '2anki/server' --squash",
+    "gh pr merge 42 --repo $(echo 2anki/server) --squash",
+    "gh pr merge 42 --repo 2anki/server --squash --admin",
+    "gh pr merge 42 --repo 2anki/server --squash --delete-branch",
+    "gh pr merge 42  --repo 2anki/server --squash",
+    "gh pr merge 42\t--repo 2anki/server --squash",
+    "gh pr merge 42 --repo 2anki/server --squash\ngh pr merge 43 --repo other/repo --squash",
+    "gh pr merge 42 --repo 2anki/server --squash && gh pr merge 43 --repo other/repo --squash",
+    "gh pr merge 42 --repo 2Anki/Server --squash",
+    "gh pr merge 42 --repo other/repo --squash",
+    f"gh pr merge 42 --repo {GHE}/2anki/server --squash",
+    "gh pr merge 42 --repo github.com/2anki/server --squash",
+    "gh pr merge https://github.com/2anki/server/pull/42 --repo 2anki/server --squash",
+    "GH_REPO=other/repo gh pr merge 42 --repo 2anki/server --squash",
+    f"GH_HOST={GHE} gh pr merge 42 --repo 2anki/server --squash",
+    "cd /tmp/other && gh pr merge 42 --repo 2anki/server --squash",
+    "gh -R other/repo pr merge 42 --repo 2anki/server --squash",
+    "gh pr -R other/repo merge 42",
+    "gh pr --repo other/repo merge 42 --squash",
+    "gh pr -R 2anki/server merge 42 --repo 2anki/server --squash",
+    'gh pr "merge" 42 --repo 2anki/server --squash',
+    "gh pr m\\erge 42 --repo 2anki/server --squash",
+    "gh pr $'merge' 42",
+    "gh pr $(echo merge) 42",
+    "gh pr `echo merge` 42",
+    "/opt/homebrew/bin/gh pr merge 42 --repo 2anki/server --squash",
+    "gh --repo 2anki/server pr merge 42",
+    "gh pr merge 42 --repo 2anki/server --squash # trailing comment",
+    "gh pr merge 42 --repo 2anki/server --squash 'unbalanced",
+    "gh api -X PUT repos/2anki/2anki.net/pulls/42/merge",
+    "curl -X PUT https://api.github.com/repos/2anki/2anki.net/pulls/42/merge",
+    "gh api graphql -f query='mutation { mergePullRequest(input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'",
 )
 
-CANONICAL_COMMANDS = (
-    "gh pr merge 5 --squash",
-    "gh pr merge 5 --repo 2anki/server --squash",
-    "gh pr merge 5 -R 2anki/2anki.net",
-    "gh pr merge 5 --repo=2Anki/2anki.NET",
-    "gh pr merge 5 --repo github.com/2anki/server",
-    "gh pr merge 5 --repo https://github.com/2anki/server.git",
-    "gh pr merge https://github.com/2anki/server/pull/5",
-    "gh api -X PUT repos/2anki/2anki.net/pulls/5/merge",
-    "gh api -X PUT repos/{owner}/{repo}/pulls/5/merge",
-)
 
+class TestAllowedMerge(unittest.TestCase):
+    def test_accepts_exactly_the_ship_command_and_its_canonical_name_variant(self):
+        self.assertEqual(mc.allowed_merge("gh pr merge 42 --repo 2anki/server --squash"), ("42", "2anki/server"))
+        self.assertEqual(mc.allowed_merge("gh pr merge 5193 --repo 2anki/2anki.net --squash"), ("5193", "2anki/2anki.net"))
+        self.assertEqual(mc.allowed_merge("gh pr merge 42 --repo 2anki/server --squash\n"), ("42", "2anki/server"))
+        self.assertIsNone(mc.merge_form_violation("gh pr merge 42 --repo 2anki/server --squash"))
 
-class TestCommandRepo(unittest.TestCase):
-    def test_a_command_naming_another_repo_is_refused(self):
-        for cmd in FOREIGN_COMMANDS:
-            self.assertIsNotNone(mc.command_repo_violation(cmd), cmd)
+    def test_every_other_form_is_refused(self):
+        for cmd in REJECTED_FORMS:
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
+            self.assertIsNone(mc.allowed_merge(cmd), cmd)
+            self.assertIn("gh pr merge <n> --repo 2anki/server --squash", mc.merge_form_violation(cmd), cmd)
 
-    def test_a_command_naming_the_canonical_repo_or_none_is_allowed(self):
-        for cmd in CANONICAL_COMMANDS:
-            self.assertIsNone(mc.command_repo_violation(cmd), cmd)
+    def test_gh_commands_that_only_read_merge_fields_are_not_merges(self):
+        for cmd in (
+            "gh pr view 5 --json mergeStateStatus,mergeable",
+            "gh pr list --json mergedAt --state merged",
+            "gh pr view 5 --json number && git merge --ff-only origin/main",
+            'gh pr view "$PR" --json title',
+            'git commit -m "fix: gh pr merge reads every file" -m "why: the gate missed files"',
+            "gh pr checkout 5 && git merge origin/main",
+        ):
+            self.assertFalse(mc.is_gh_pr_merge(cmd), cmd)
 
-    def test_the_named_repo_is_what_gh_pr_view_is_pointed_at(self):
-        self.assertEqual(mc.command_repo("gh pr merge 5 --repo 2anki/server"), "2anki/server")
-        self.assertEqual(mc.command_repo("gh api -X PUT repos/2anki/2anki.net/pulls/5/merge"), "2anki/2anki.net")
-        self.assertIsNone(mc.command_repo("gh pr merge 5 --squash"))
+    def test_non_strings_are_refused(self):
+        for cmd in (None, 42, ["gh", "pr", "merge"]):
+            self.assertIsNone(mc.allowed_merge(cmd))
 
-    def test_repo_args(self):
-        self.assertEqual(mc.repo_args("2anki/server"), ["-R", "2anki/server"])
-        self.assertEqual(mc.repo_args(None), [])
+    def test_a_failed_view_message_names_the_pr(self):
+        self.assertIn("PR 42", mc.view_failed_violation("42"))
 
 
 class TestViewRepo(unittest.TestCase):
     def test_a_canonical_url_for_the_merged_number_passes(self):
         for url in ("https://github.com/2anki/2anki.net/pull/5", "https://github.com/2anki/server/pull/5"):
             self.assertIsNone(mc.view_repo_violation({"number": 5, "url": url}, "5"), url)
-
-    def test_a_current_branch_merge_accepts_the_viewed_number(self):
-        self.assertIsNone(mc.view_repo_violation({"number": 9, "url": "https://github.com/2anki/2anki.net/pull/9"}, None))
 
     def test_a_url_in_another_repo_is_refused(self):
         view = {"number": 5, "url": "https://github.com/someone/fork/pull/5"}
@@ -319,11 +333,19 @@ class TestViewRepo(unittest.TestCase):
         self.assertIn("not PR 5", mc.view_repo_violation(view, "5"))
 
     def test_a_number_that_disagrees_with_the_url_is_refused(self):
-        view = {"number": 7, "url": "https://github.com/2anki/2anki.net/pull/6"}
-        self.assertIsNotNone(mc.view_repo_violation(view, None))
+        for number in (7, None, "x", True):
+            view = {"number": number, "url": "https://github.com/2anki/2anki.net/pull/6"}
+            self.assertIsNotNone(mc.view_repo_violation(view, "6"), number)
 
     def test_a_missing_or_odd_url_is_refused(self):
-        for url in (None, "", 7, "https://ghe.example.com/2anki/server/pull/5", "https://github.com/2anki/server/pull/5/files"):
+        for url in (
+            None,
+            "",
+            7,
+            f"https://{GHE}/2anki/server/pull/5",
+            "https://github.com/2anki/server/pull/5/files",
+            "https://github.com/2anki/server/pull/5\n",
+        ):
             self.assertIsNotNone(mc.view_repo_violation({"number": 5, "url": url}, "5"), url)
 
 

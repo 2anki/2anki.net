@@ -42,11 +42,12 @@ The hook exits 0 (allow) without checking the body when:
 - **Dependabot author** — `author.login == "dependabot[bot]"`.
 - **Changelog-only diff** — every `web/src/` file in the diff lives under `web/src/pages/WhatsNewPage/changelog/`.
 - **No `web/src/` files** — the diff contains no files under `web/src/`.
-- **Tooling error** — `gh` is not on PATH, times out, or returns a non-zero exit code. The hook is fail-open to avoid blocking merges for tooling reasons unrelated to the spec.
+
+A tooling error no longer allows the merge: since #5193, when `gh pr view` is missing, times out or fails, the hook denies, because an unread PR cannot be gated. A human merges from the GitHub UI, where the hook does not run.
 
 ## How the check works
 
-`check-browser-attestation.py` is a PreToolUse Bash hook. It reads the `tool_input.command` from stdin (standard Claude hook protocol) and acts only on `gh pr merge` commands. When the command matches, it calls `gh pr view <n> --json number,url,author,body,files` synchronously, lists the PR's files over REST, and inspects the result. If `gh pr view` fails for any reason, it allows the merge (fail-open); if only the REST list fails, it checks `gh pr view`'s first 100 files as before. A merge command naming a repo other than 2anki/2anki.net (or 2anki/server), or a view that resolves another repo or PR, is denied. If the result is present and the body does not satisfy the attestation, it returns `permissionDecision: deny` with a diagnostic message listing both options.
+`check-browser-attestation.py` is a PreToolUse Bash hook. It reads the `tool_input.command` from stdin (standard Claude hook protocol) and acts only on merge commands. It accepts only the exact command `/ship` runs, `gh pr merge <n> --repo 2anki/server --squash` (or `--repo 2anki/2anki.net`), and denies any other merge form. It then calls `gh pr view <n> -R <that repo> --json number,url,author,body,files` synchronously, lists the PR's files over REST, and inspects the result. If `gh pr view` fails, or its `url` is another repo's PR or another PR, it denies; if only the REST list fails, it checks `gh pr view`'s first 100 files as before. If the result is present and the body does not satisfy the attestation, it returns `permissionDecision: deny` with a diagnostic message listing both options.
 
 The hook does not auto-write or modify the PR body. Attestation is honor-system — the gate confirms the words are there, not that the engineer ran the app.
 
@@ -62,7 +63,7 @@ A green run is the substance behind ticking `- [x] Golden path on localhost:3000
 
 ### Decision: warn, not block (for now)
 
-The spec is **not** wired into the merge gate; the hook stays **honor-system and fail-open** — a flaky e2e blocking every `web/src/` merge is worse than the gap it closes. Promote it to a blocker only after it runs green across several web PRs (start as a non-required CI job): then make it a required check, or teach `check-browser-attestation.py` to confirm a recorded pass. Until then it's a trusted run an engineer can point to. Do not change the hook's blocking behaviour or fail-open property when adding the spec.
+The spec is **not** wired into the merge gate; the hook stays **honor-system** — a flaky e2e blocking every `web/src/` merge is worse than the gap it closes. Promote it to a blocker only after it runs green across several web PRs (start as a non-required CI job): then make it a required check, or teach `check-browser-attestation.py` to confirm a recorded pass. Until then it's a trusted run an engineer can point to. Do not change the hook's blocking behaviour when adding the spec.
 
 ## Connection to CLAUDE.md
 

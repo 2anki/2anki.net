@@ -63,8 +63,9 @@ in a diff GitHub refuses to serve or over 2 MB, where the string and constant
 checks fail open while the file-list checks still run. Past 10,000 changed en
 locale entries the string check stops and asks for the section anyway.
 
-Fetches the PR via `gh pr view` and exempts dependabot. A `gh pr view` error
-fails open. The file list is `merge_command.changed_files`, shared by every
+Accepts only the exact merge command /ship runs (`merge_command.allowed_merge`),
+fetches the PR via `gh pr view -R`, refuses the merge when that errors, and
+exempts dependabot. The file list is `merge_command.changed_files`, shared by every
 merge hook; when its REST call fails the hook checks `gh pr view`'s first 100
 files rather than allowing the merge.
 """
@@ -148,27 +149,24 @@ def run_gh(args, label):
     return result.stdout
 
 
-def gh_args(subcommand, pr_ref, extra, repo=None):
-    args = ["gh", "pr", subcommand]
-    if pr_ref is not None:
-        args.append(pr_ref)
-    return args + merge_command.repo_args(repo) + extra
+def gh_args(subcommand, number, repo, extra):
+    return ["gh", "pr", subcommand, number, "-R", repo] + extra
 
 
-def fetch_pr_data(pr_ref, repo=None):
-    stdout = run_gh(gh_args("view", pr_ref, ["--json", "number,url,author,body,files"], repo), "this gate")
+def fetch_pr_data(number, repo):
+    stdout = run_gh(gh_args("view", number, repo, ["--json", "number,url,author,body,files"]), "this gate")
     if stdout is None:
         return None
     try:
         parsed = json.loads(stdout)
     except json.JSONDecodeError:
-        sys.stderr.write(f"{TAG} could not parse gh JSON; allowing merge.\n")
+        sys.stderr.write(f"{TAG} could not parse gh JSON; refusing merge.\n")
         return None
     return parsed if isinstance(parsed, dict) else None
 
 
-def fetch_diff(pr_ref, repo=None):
-    return run_gh(gh_args("diff", pr_ref, ["--color", "never"], repo), "the string and constant checks")
+def fetch_diff(number, repo):
+    return run_gh(gh_args("diff", number, repo, ["--color", "never"]), "the string and constant checks")
 
 
 def is_en_locale(path):
@@ -430,11 +428,11 @@ def snapshot_problem(snapshots):
     )
 
 
-def find_removals(files, pr_ref, repo=None):
+def find_removals(files, number, repo):
     removals = removed_notice_components(files)
     if not needs_diff(files):
         return removals
-    diff_text = fetch_diff(pr_ref, repo)
+    diff_text = fetch_diff(number, repo)
     if diff_text is None:
         return removals
     if len(diff_text) > MAX_DIFF_BYTES or len(diff_text.encode("utf-8", "replace")) > MAX_DIFF_BYTES:
@@ -457,17 +455,16 @@ def main():
     if not merge_command.is_gh_pr_merge(cmd):
         allow()
 
-    repo_violation = merge_command.command_repo_violation(cmd)
-    if repo_violation:
-        deny(repo_violation)
+    form_violation = merge_command.merge_form_violation(cmd)
+    if form_violation:
+        deny(form_violation)
 
-    repo = merge_command.command_repo(cmd)
-    pr_ref = merge_command.extract_pr_ref(cmd)
-    pr_data = fetch_pr_data(pr_ref, repo)
+    number, repo = merge_command.allowed_merge(cmd)
+    pr_data = fetch_pr_data(number, repo)
     if pr_data is None:
-        allow()
+        deny(merge_command.view_failed_violation(number))
 
-    view_violation = merge_command.view_repo_violation(pr_data, pr_ref)
+    view_violation = merge_command.view_repo_violation(pr_data, number)
     if view_violation:
         deny(view_violation)
 
@@ -475,13 +472,13 @@ def main():
     if isinstance(author, dict) and author.get("login") in DEPENDABOT_LOGINS:
         allow()
 
-    files, _ = merge_command.changed_files(pr_data, pr_ref, TAG)
+    files, _ = merge_command.changed_files(pr_data, number, TAG)
     raw_body = pr_data.get("body")
     body = raw_body if isinstance(raw_body, str) else ""
 
     problems = []
     if not filled_sections(body, REMOVED_SECTION):
-        removals = find_removals(files, pr_ref, repo)
+        removals = find_removals(files, number, repo)
         if removals:
             problems.append(removal_problem(removals))
 

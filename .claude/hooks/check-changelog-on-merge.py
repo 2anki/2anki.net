@@ -4,8 +4,9 @@ PreToolUse -> Bash: block `gh pr merge` when a user-visible PR (a feat: or fix:
 commit touching non-test source) ships without a changelog entry AND without an
 explicit out-clause in the PR body.
 
-Mirrors check-browser-attestation.py: fetches the PR via gh, fails open when
-`gh pr view` errors, exempts dependabot. Changed paths come from
+Mirrors check-browser-attestation.py: accepts only the exact merge command
+/ship runs (`merge_command.allowed_merge`), fetches the PR via `gh pr view -R`,
+refuses the merge when that errors, exempts dependabot. Changed paths come from
 `merge_command.changed_files`, the paginated REST list every merge hook
 shares. When that call fails the hook checks what it did before: `gh pr
 view`'s first 100 files, plus `gh pr diff --name-only` when the view hits that
@@ -58,44 +59,29 @@ def is_gh_pr_merge(cmd):
     return merge_command.is_gh_pr_merge(cmd)
 
 
-def extract_pr_ref(cmd):
-    return merge_command.extract_pr_ref(cmd)
-
-
-def fetch_pr_data(pr_ref, repo=None):
-    args = ["gh", "pr", "view"]
-    if pr_ref is not None:
-        args.append(pr_ref)
-    args.extend(merge_command.repo_args(repo))
-    args.extend(["--json", "number,url,author,body,files,commits"])
+def fetch_pr_data(number, repo):
+    args = ["gh", "pr", "view", number, "-R", repo, "--json", "number,url,author,body,files,commits"]
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=15)
     except (subprocess.TimeoutExpired, OSError) as exc:
-        sys.stderr.write(
-            f"[check-changelog-on-merge] could not run gh ({exc}); allowing merge.\n"
-        )
+        sys.stderr.write(f"{TAG} could not run gh ({exc}); refusing merge.\n")
         return None
     if result.returncode != 0:
         sys.stderr.write(
-            "[check-changelog-on-merge] gh pr view failed; allowing merge. "
+            f"{TAG} gh pr view failed; refusing merge. "
             f"stderr: {result.stderr.strip()[:300]}\n"
         )
         return None
     try:
-        return json.loads(result.stdout)
+        parsed = json.loads(result.stdout)
     except json.JSONDecodeError:
-        sys.stderr.write(
-            "[check-changelog-on-merge] could not parse gh JSON; allowing merge.\n"
-        )
+        sys.stderr.write(f"{TAG} could not parse gh JSON; refusing merge.\n")
         return None
+    return parsed if isinstance(parsed, dict) else None
 
 
-def fetch_changed_paths(pr_ref, repo=None):
-    args = ["gh", "pr", "diff"]
-    if pr_ref is not None:
-        args.append(pr_ref)
-    args.extend(merge_command.repo_args(repo))
-    args.append("--name-only")
+def fetch_changed_paths(number, repo):
+    args = ["gh", "pr", "diff", number, "-R", repo, "--name-only"]
     try:
         result = subprocess.run(
             args, capture_output=True, text=True, errors="replace", timeout=15
@@ -116,10 +102,10 @@ def fetch_changed_paths(pr_ref, repo=None):
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
-def list_paths_past_view_cap(view_paths, pr_ref, repo=None):
+def list_paths_past_view_cap(view_paths, number, repo):
     if len(view_paths) < GH_PR_VIEW_FILES_CAP:
         return []
-    return fetch_changed_paths(pr_ref, repo)
+    return fetch_changed_paths(number, repo)
 
 
 def diff_failure_note(diff_paths):
@@ -165,29 +151,28 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
-    repo_violation = merge_command.command_repo_violation(cmd)
-    if repo_violation:
-        deny(repo_violation)
+    form_violation = merge_command.merge_form_violation(cmd)
+    if form_violation:
+        deny(form_violation)
 
-    repo = merge_command.command_repo(cmd)
-    pr_ref = extract_pr_ref(cmd)
-    pr_data = fetch_pr_data(pr_ref, repo)
+    number, repo = merge_command.allowed_merge(cmd)
+    pr_data = fetch_pr_data(number, repo)
     if pr_data is None:
-        allow()
+        deny(merge_command.view_failed_violation(number))
 
-    view_violation = merge_command.view_repo_violation(pr_data, pr_ref)
+    view_violation = merge_command.view_repo_violation(pr_data, number)
     if view_violation:
         deny(view_violation)
 
-    if pr_data.get("author", {}).get("login", "") == "dependabot[bot]":
+    if (pr_data.get("author") or {}).get("login", "") == "dependabot[bot]":
         allow()
 
     if not has_user_visible_commit(pr_data.get("commits") or []):
         allow()
 
-    files, complete = merge_command.changed_files(pr_data, pr_ref, TAG)
+    files, complete = merge_command.changed_files(pr_data, number, TAG)
     paths = [f.get("path", "") for f in files]
-    diff_paths = [] if complete else list_paths_past_view_cap(paths, pr_ref, repo)
+    diff_paths = [] if complete else list_paths_past_view_cap(paths, number, repo)
     paths = paths + (diff_paths or [])
 
     if not any(is_non_test_source(p) for p in paths):

@@ -37,36 +37,25 @@ def is_gh_pr_merge(cmd):
     return merge_command.is_gh_pr_merge(cmd)
 
 
-def extract_pr_ref(cmd):
-    return merge_command.extract_pr_ref(cmd)
-
-
-def fetch_pr_data(pr_ref, repo=None):
-    args = ["gh", "pr", "view"]
-    if pr_ref is not None:
-        args.append(pr_ref)
-    args.extend(merge_command.repo_args(repo))
-    args.extend(["--json", "number,url,author,body,files"])
+def fetch_pr_data(number, repo):
+    args = ["gh", "pr", "view", number, "-R", repo, "--json", "number,url,author,body,files"]
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=15)
-    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-        sys.stderr.write(
-            f"[check-browser-attestation] could not run gh ({exc}); allowing merge.\n"
-        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        sys.stderr.write(f"[check-browser-attestation] could not run gh ({exc}); refusing merge.\n")
         return None
     if result.returncode != 0:
         sys.stderr.write(
-            "[check-browser-attestation] gh pr view failed; allowing merge. "
+            "[check-browser-attestation] gh pr view failed; refusing merge. "
             f"stderr: {result.stderr.strip()[:300]}\n"
         )
         return None
     try:
-        return json.loads(result.stdout)
+        parsed = json.loads(result.stdout)
     except json.JSONDecodeError:
-        sys.stderr.write(
-            "[check-browser-attestation] could not parse gh JSON; allowing merge.\n"
-        )
+        sys.stderr.write("[check-browser-attestation] could not parse gh JSON; refusing merge.\n")
         return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def web_src_files(files):
@@ -103,24 +92,24 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
-    repo_violation = merge_command.command_repo_violation(cmd)
-    if repo_violation:
-        deny(repo_violation)
+    form_violation = merge_command.merge_form_violation(cmd)
+    if form_violation:
+        deny(form_violation)
 
-    pr_ref = extract_pr_ref(cmd)
-    pr_data = fetch_pr_data(pr_ref, merge_command.command_repo(cmd))
+    number, repo = merge_command.allowed_merge(cmd)
+    pr_data = fetch_pr_data(number, repo)
     if pr_data is None:
-        allow()
+        deny(merge_command.view_failed_violation(number))
 
-    view_violation = merge_command.view_repo_violation(pr_data, pr_ref)
+    view_violation = merge_command.view_repo_violation(pr_data, number)
     if view_violation:
         deny(view_violation)
 
-    author = pr_data.get("author", {}).get("login", "")
+    author = (pr_data.get("author") or {}).get("login", "")
     if author == "dependabot[bot]":
         allow()
 
-    files, _ = merge_command.changed_files(pr_data, pr_ref, "[check-browser-attestation]")
+    files, _ = merge_command.changed_files(pr_data, number, "[check-browser-attestation]")
     touching = web_src_files(files)
 
     if not touching:

@@ -38,6 +38,23 @@ def file_entry(path, change_type="MODIFIED", deletions=1):
 GH_PR_VIEW_FILES_CAP = 100
 REST_STATUS = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed"}
 REST_FAILURE = {"returncode": 1, "stdout": "", "stderr": "HTTP 502"}
+MERGE_1 = "gh pr merge 1 --repo 2anki/server --squash"
+MERGE_4589 = "gh pr merge 4589 --repo 2anki/server --squash"
+REJECTED_FORMS = (
+    "gh pr merge 1",
+    "gh pr merge --squash",
+    "gh pr merge some-branch --repo 2anki/server --squash",
+    "gh pr merge #1 --repo 2anki/server --squash",
+    'gh pr merge "1" --repo 2anki/server --squash',
+    "gh pr merge 1 -sR other/repo",
+    "gh pr -R other/repo merge 1",
+    "gh pr merge 1 --squash --repo 2anki/server; true",
+    "gh pr merge 1 --repo other/repo --squash",
+    "gh pr merge https://github.com/2anki/server/pull/1 --repo 2anki/server --squash",
+    "GH_REPO=other/repo gh pr merge 1 --repo 2anki/server --squash",
+    "cd /tmp/other && gh pr merge 1 --repo 2anki/server --squash",
+    "gh api -X PUT repos/2anki/2anki.net/pulls/1/merge",
+)
 
 
 def pr_json(files, body="", author="alemayhu"):
@@ -169,7 +186,7 @@ class TestPassthrough(unittest.TestCase):
         self.assertEqual(run_hook("git status")["result"], "allow")
 
     def test_non_bash_tool_allows(self):
-        self.assertEqual(run_hook("gh pr merge 1", tool_name="Edit")["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, tool_name="Edit")["result"], "allow")
 
     def test_merge_mentioned_in_commit_message_allows(self):
         self.assertEqual(
@@ -178,26 +195,26 @@ class TestPassthrough(unittest.TestCase):
 
     def test_unrelated_files_allow_without_fetching_diff(self):
         fake = gh_responder(pr_json([file_entry("web/src/App.tsx"), file_entry("README.md")]))
-        self.assertEqual(run_hook("gh pr merge 12 --squash", fake)["result"], "allow")
+        self.assertEqual(run_hook("gh pr merge 12 --repo 2anki/server --squash", fake)["result"], "allow")
         self.assertFalse(any(c[:3] == ["gh", "pr", "diff"] for c in fake.calls))
 
     def test_dependabot_is_exempt_under_both_login_spellings(self):
         for login in ("app/dependabot", "dependabot[bot]"):
             fake = gh_responder(pr_json([file_entry(PARSER_SNAP)], author=login))
-            self.assertEqual(run_hook("gh pr merge 12", fake)["result"], "allow", login)
+            self.assertEqual(run_hook("gh pr merge 12 --repo 2anki/server --squash", fake)["result"], "allow", login)
 
 
 class TestRemovedTranslatedStrings(unittest.TestCase):
     def test_deleted_en_key_denies_without_section(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), REMOVED_KEY_DIFF)
-        result = run_hook("gh pr merge 4589 --squash", fake)
+        result = run_hook(MERGE_4589, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn("anonymousPartial.json: heldBack_other", result["reason"])
         self.assertIn("## Removed for users", result["reason"])
 
     def test_value_change_on_same_key_is_not_a_removal(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), REMOVED_KEY_DIFF)
-        result = run_hook("gh pr merge 4589", fake)
+        result = run_hook(MERGE_4589, fake)
         self.assertNotIn("anonymousPartial.json: headline", result["reason"])
 
     def test_renamed_key_with_same_value_allows(self):
@@ -205,12 +222,12 @@ class TestRemovedTranslatedStrings(unittest.TestCase):
             pr_json([file_entry(EN_LOCALE), file_entry(EN_OTHER, "ADDED", 0)]),
             RENAMED_KEY_DIFF,
         )
-        self.assertEqual(run_hook("gh pr merge 7", fake)["result"], "allow")
+        self.assertEqual(run_hook("gh pr merge 7 --repo 2anki/server --squash", fake)["result"], "allow")
 
     def test_removal_in_non_source_locale_only_allows(self):
         diff = diff_block(DE_LOCALE, removed=['  "cta": "Kostenloses Konto erstellen"'])
         fake = gh_responder(pr_json([file_entry(DE_LOCALE)]), diff)
-        self.assertEqual(run_hook("gh pr merge 7", fake)["result"], "allow")
+        self.assertEqual(run_hook("gh pr merge 7 --repo 2anki/server --squash", fake)["result"], "allow")
 
     def test_section_with_content_allows(self):
         body = (
@@ -219,32 +236,32 @@ class TestRemovedTranslatedStrings(unittest.TestCase):
             "## Risks\nnone\n"
         )
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF)
-        self.assertEqual(run_hook("gh pr merge 4589", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_4589, fake)["result"], "allow")
 
     def test_empty_section_denies(self):
         body = "## Removed for users\n\n<!-- fill me -->\n\n## Risks\nnone\n"
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF)
-        self.assertEqual(run_hook("gh pr merge 4589", fake)["result"], "deny")
+        self.assertEqual(run_hook(MERGE_4589, fake)["result"], "deny")
 
     def test_bare_none_denies(self):
         body = "## Removed for users\nNone.\n"
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF)
-        self.assertEqual(run_hook("gh pr merge 4589", fake)["result"], "deny")
+        self.assertEqual(run_hook(MERGE_4589, fake)["result"], "deny")
 
     def test_none_with_reason_allows(self):
         body = "## Removed for users\nNone, the strings moved to the gate component.\n"
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF)
-        self.assertEqual(run_hook("gh pr merge 4589", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_4589, fake)["result"], "allow")
 
     def test_diff_fetch_error_fails_open(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), "", diff_returncode=1)
-        self.assertEqual(run_hook("gh pr merge 4589", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_4589, fake)["result"], "allow")
 
 
 class TestRemovedNoticeComponents(unittest.TestCase):
     def test_deleted_notice_component_denies(self):
         fake = gh_responder(pr_json([file_entry(NOTICE, "DELETED", 58)]))
-        result = run_hook("gh pr merge 4589", fake)
+        result = run_hook(MERGE_4589, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn(NOTICE, result["reason"])
 
@@ -253,18 +270,18 @@ class TestRemovedNoticeComponents(unittest.TestCase):
             file_entry(NOTICE.replace(".tsx", ".test.tsx"), "DELETED"),
             file_entry(NOTICE.replace(".tsx", ".module.css"), "DELETED"),
         ]))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_moved_notice_component_allows(self):
         fake = gh_responder(pr_json([
             file_entry(NOTICE, "DELETED", 58),
             file_entry("web/src/components/upload/AnonymousPartialNotice.tsx", "ADDED", 0),
         ]))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_deleted_non_notice_component_allows(self):
         fake = gh_responder(pr_json([file_entry("web/src/components/Spinner/Spinner.tsx", "DELETED")]))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
 
 class TestRemovedServerWarnings(unittest.TestCase):
@@ -274,7 +291,7 @@ class TestRemovedServerWarnings(unittest.TestCase):
             removed=["export const AI_CREDITS_EXHAUSTED_WARNING_CODE = 'ai-credits-exhausted';"],
         )
         fake = gh_responder(pr_json([file_entry(WARNING_SRC)]), diff)
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn("AI_CREDITS_EXHAUSTED_WARNING_CODE", result["reason"])
 
@@ -290,26 +307,26 @@ class TestRemovedServerWarnings(unittest.TestCase):
             pr_json([file_entry(WARNING_SRC), file_entry("src/lib/upload/warningCodes.ts", "ADDED", 0)]),
             diff,
         )
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_warning_constant_in_test_file_allows(self):
         path = "src/lib/claude/aiCredits/uploadWarning.test.ts"
         diff = diff_block(path, removed=["const FAKE_WARNING = 'x';"])
         fake = gh_responder(pr_json([file_entry(path)]), diff)
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
 
 class TestSnapshotChanges(unittest.TestCase):
     def test_modified_golden_snapshot_denies(self):
         fake = gh_responder(pr_json([file_entry(PARSER_SNAP)]))
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn(PARSER_SNAP, result["reason"])
         self.assertIn("## Snapshot changes", result["reason"])
 
     def test_golden_test_source_change_allows(self):
         fake = gh_responder(pr_json([file_entry("src/lib/parser/golden/conversionGolden.test.ts")]))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_section_naming_each_snapshot_allows(self):
         body = (
@@ -318,12 +335,12 @@ class TestSnapshotChanges(unittest.TestCase):
             "- renderBlocksGolden.test.ts.snap: callouts render with the icon span.\n"
         )
         fake = gh_responder(pr_json([file_entry(PARSER_SNAP), file_entry(RENDER_SNAP)], body))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_section_missing_one_snapshot_denies(self):
         body = "## Snapshot changes\n- conversionGolden.test.ts.snap: toggle cards keep their image.\n"
         fake = gh_responder(pr_json([file_entry(PARSER_SNAP), file_entry(RENDER_SNAP)], body))
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn(RENDER_SNAP, result["reason"])
         self.assertNotIn(f"  {PARSER_SNAP}", result["reason"])
@@ -333,45 +350,34 @@ class TestSnapshotChanges(unittest.TestCase):
         fake = gh_responder(
             pr_json([file_entry(PARSER_SNAP), file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF
         )
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn("## Removed for users", result["reason"])
 
 
-class TestFailOpen(unittest.TestCase):
-    def test_gh_view_nonzero_allows(self):
-        fake = gh_responder("", view_returncode=1)
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
-
-    def test_gh_missing_allows(self):
-        self.assertEqual(
-            run_hook("gh pr merge 1", fake_run=FileNotFoundError("gh"))["result"], "allow"
-        )
-
-    def test_gh_timeout_allows(self):
-        self.assertEqual(
-            run_hook("gh pr merge 1", fake_run=subprocess.TimeoutExpired("gh", hook.GH_TIMEOUT_SECONDS))["result"],
-            "allow",
-        )
-
-    def test_gh_bad_json_allows(self):
-        fake = gh_responder("not json")
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+class TestFailedView(unittest.TestCase):
+    def test_a_failed_view_denies_the_merge(self):
+        for fake in (
+            gh_responder("", view_returncode=1),
+            gh_responder("not json"),
+            gh_responder("[]"),
+            FileNotFoundError("gh"),
+            PermissionError("gh"),
+            subprocess.TimeoutExpired("gh", hook.GH_TIMEOUT_SECONDS),
+        ):
+            result = run_hook(MERGE_1, fake_run=fake)
+            self.assertEqual(result["result"], "deny", fake)
+            self.assertIn("could not read PR 1", result["reason"])
 
 
 class TestPrRefPassing(unittest.TestCase):
-    def test_pr_number_reaches_view_and_diff(self):
-        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), REMOVED_KEY_DIFF)
-        run_hook("gh pr merge 4589 --squash", fake)
-        self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "4589"])
-        self.assertEqual(fake.calls[1][:4], ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/4589/files?per_page=100"])
-        self.assertEqual(fake.calls[2][:4], ["gh", "pr", "diff", "4589"])
-
-    def test_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
-        fake = gh_responder(pr_json([file_entry(NOTICE, "DELETED")]))
-        run_hook("gh pr merge --squash", fake)
-        self.assertEqual(fake.calls[0][:5], ["gh", "pr", "view", "--json", "number,url,author,body,files"])
-        self.assertIn("repos/2anki/2anki.net/pulls/4589/files?per_page=100", fake.calls[1])
+    def test_the_matched_repo_reaches_view_and_diff(self):
+        for command, repo in ((MERGE_4589, "2anki/server"), ("gh pr merge 4589 --repo 2anki/2anki.net --squash", "2anki/2anki.net")):
+            fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), REMOVED_KEY_DIFF)
+            run_hook(command, fake)
+            self.assertEqual(fake.calls[0][:6], ["gh", "pr", "view", "4589", "-R", repo])
+            self.assertEqual(fake.calls[1][:4], ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/4589/files?per_page=100"])
+            self.assertEqual(fake.calls[2][:6], ["gh", "pr", "diff", "4589", "-R", repo])
 
 
 FILLER = [file_entry(f"docs/page{i}.md") for i in range(150)]
@@ -381,7 +387,7 @@ class TestFilesPastTheFirst100(unittest.TestCase):
     def test_deleted_notice_component_past_the_first_100_files_denies(self):
         files = FILLER + [file_entry(NOTICE, "DELETED")]
         fake = gh_responder(pr_json(files), rest_files=files)
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn(NOTICE, result["reason"])
 
@@ -389,87 +395,59 @@ class TestFilesPastTheFirst100(unittest.TestCase):
         moved = "web/src/components/Moved/AnonymousPartialNotice.tsx"
         files = [file_entry(NOTICE, "DELETED")] + FILLER + [file_entry(moved, "ADDED", 0)]
         fake = gh_responder(pr_json(files), rest_files=files)
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_changed_snapshot_past_the_first_100_files_denies(self):
         files = FILLER + [file_entry(PARSER_SNAP)]
         fake = gh_responder(pr_json(files), rest_files=files)
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn(PARSER_SNAP, result["reason"])
 
     def test_removed_en_string_past_the_first_100_files_denies(self):
         files = FILLER + [file_entry(EN_LOCALE)]
         fake = gh_responder(pr_json(files), REMOVED_KEY_DIFF, rest_files=files)
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn("heldBack_other", result["reason"])
 
-    def test_a_rest_api_merge_sees_a_deleted_notice_past_the_first_100_files(self):
-        files = FILLER + [file_entry(NOTICE, "DELETED")]
-        fake = gh_responder(pr_json(files), rest_files=files)
-        self.assertEqual(run_hook("gh api -X PUT repos/2anki/2anki.net/pulls/4589/merge", fake)["result"], "deny")
-        self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "4589"])
 
-    def test_a_graphql_merge_sees_a_deleted_notice_past_the_first_100_files(self):
-        files = FILLER + [file_entry(NOTICE, "DELETED")]
-        fake = gh_responder(pr_json(files), rest_files=files)
-        command = (
-            "gh api graphql -f query='mutation { mergePullRequest("
-            "input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
-        )
-        self.assertEqual(run_hook(command, fake)["result"], "deny")
-
-
-    def test_a_pr_url_merge_sees_a_deleted_notice_past_the_first_100_files(self):
-        files = FILLER + [file_entry(NOTICE, "DELETED")]
-        fake = gh_responder(pr_json(files), rest_files=files)
-        self.assertEqual(run_hook("gh pr merge https://github.com/2anki/server/pull/4589", fake)["result"], "deny")
-        self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "4589"])
-
-
-class TestRepoMismatch(unittest.TestCase):
-    def test_a_command_naming_another_repo_is_denied_without_calling_gh(self):
-        for command in ("gh pr merge 1 --repo other/repo", "gh api -X PUT repos/other/repo/pulls/1/merge",
-                        "gh pr merge https://github.com/other/repo/pull/1", "GH_REPO=other/repo gh pr merge 1"):
+class TestMergeForm(unittest.TestCase):
+    def test_every_other_merge_form_is_denied_without_calling_gh(self):
+        for command in REJECTED_FORMS:
             fake = gh_responder(pr_json([file_entry(EN_LOCALE)]))
             result = run_hook(command, fake)
             self.assertEqual(result["result"], "deny", command)
-            self.assertIn("other/repo", result["reason"])
+            self.assertIn("gh pr merge <n> --repo 2anki/server --squash", result["reason"])
             self.assertEqual(fake.calls, [])
 
+
+class TestViewMismatch(unittest.TestCase):
     def test_a_view_resolving_another_repo_is_denied(self):
         view = json.dumps({**json.loads(pr_json([])), "url": "https://github.com/someone/fork/pull/4589"})
-        result = run_hook("gh pr merge 4589", gh_responder(view))
+        result = run_hook(MERGE_4589, gh_responder(view))
         self.assertEqual(result["result"], "deny")
         self.assertIn("someone/fork", result["reason"])
 
     def test_a_view_resolving_another_pr_is_denied(self):
         view = json.dumps({**json.loads(pr_json([])), "url": "https://github.com/2anki/2anki.net/pull/9"})
-        self.assertEqual(run_hook("gh pr merge 4589", gh_responder(view))["result"], "deny")
-
-    def test_the_named_canonical_repo_reaches_view_and_diff(self):
-        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), REMOVED_KEY_DIFF)
-        run_hook("gh pr merge 4589 -R 2anki/server --squash", fake)
-        self.assertEqual(fake.calls[0][:6], ["gh", "pr", "view", "4589", "-R", "2anki/server"])
-        self.assertIn("repos/2anki/2anki.net/pulls/4589/files?per_page=100", fake.calls[1])
-        self.assertEqual(fake.calls[2][:6], ["gh", "pr", "diff", "4589", "-R", "2anki/server"])
+        self.assertEqual(run_hook(MERGE_4589, gh_responder(view))["result"], "deny")
 
 
 class TestRestFailure(unittest.TestCase):
     def test_rest_failure_still_gates_a_notice_component_in_the_first_100_files(self):
         files = [file_entry(NOTICE, "DELETED")] + FILLER
         fake = gh_responder(pr_json(files), rest_result=REST_FAILURE)
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "deny")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "deny")
 
     def test_rest_failure_falls_back_to_the_first_100_files_as_before(self):
         files = FILLER + [file_entry(NOTICE, "DELETED")]
         fake = gh_responder(pr_json(files), rest_result=REST_FAILURE)
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_rest_os_error_still_gates_a_snapshot_in_the_first_100_files(self):
         view = MagicMock(returncode=0, stdout=pr_json([file_entry(PARSER_SNAP)] + FILLER), stderr="")
-        result = run_hook("gh pr merge 1", fake_run=[view, PermissionError("gh")])
+        result = run_hook(MERGE_1, fake_run=[view, PermissionError("gh")])
         self.assertEqual(result["result"], "deny")
 
 
@@ -506,20 +484,20 @@ NESTED_COPY_EDIT = nested_hunk(EN_LOCALE, [
 class TestNestedLocaleKeys(unittest.TestCase):
     def test_replacing_a_nested_block_with_a_same_leaf_key_denies(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), NESTED_BLOCK_SWAP)
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn("anonymousPartial.json: notice.title", result["reason"])
 
     def test_copy_edit_inside_a_nested_block_allows(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), NESTED_COPY_EDIT)
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
 
 class TestDiffParsing(unittest.TestCase):
     def test_deleted_en_file_denies(self):
         diff = diff_block(EN_LOCALE, removed=['  "cta": "Create a free account"'], deleted_file=True)
         fake = gh_responder(pr_json([file_entry(EN_LOCALE, "DELETED")]), diff)
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn("anonymousPartial.json: cta", result["reason"])
 
@@ -533,7 +511,7 @@ class TestDiffParsing(unittest.TestCase):
 
     def test_files_without_deletions_skip_the_diff_fetch(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE, "MODIFIED", 0)]))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
         self.assertFalse(any(c[:3] == ["gh", "pr", "diff"] for c in fake.calls))
 
     def test_removed_lines_over_the_length_cap_are_skipped(self):
@@ -552,15 +530,15 @@ class TestDiffParsing(unittest.TestCase):
 class TestFileListEdges(unittest.TestCase):
     def test_renamed_notice_component_allows(self):
         fake = gh_responder(pr_json([file_entry(NOTICE, "RENAMED", 0)]))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_added_golden_snapshot_allows(self):
         fake = gh_responder(pr_json([file_entry(PARSER_SNAP, "ADDED", 0)]))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_add_only_edit_to_existing_snapshot_allows(self):
         fake = gh_responder(pr_json([file_entry(PARSER_SNAP, "MODIFIED", 0)]))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_snapshot_names_split_across_two_sections_allow(self):
         body = (
@@ -568,17 +546,17 @@ class TestFileListEdges(unittest.TestCase):
             "## Snapshot changes\n- renderBlocksGolden.test.ts.snap: icon span added.\n"
         )
         fake = gh_responder(pr_json([file_entry(PARSER_SNAP), file_entry(RENDER_SNAP)], body))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_null_author_still_runs_the_gate(self):
         payload = json.dumps({"author": None, "body": "", "files": [file_entry(PARSER_SNAP)]})
-        self.assertEqual(run_hook("gh pr merge 1", gh_responder(payload))["result"], "deny")
+        self.assertEqual(run_hook(MERGE_1, gh_responder(payload))["result"], "deny")
 
 
 class TestSectionParsing(unittest.TestCase):
     def deny_or_allow(self, body):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF)
-        return run_hook("gh pr merge 1", fake)["result"]
+        return run_hook(MERGE_1, fake)["result"]
 
     def test_crlf_body_with_filled_section_allows(self):
         body = "## What\r\nx\r\n\r\n## Removed for users\r\nFree users lose the held-back count.\r\n"
@@ -716,7 +694,7 @@ class TestBoundedWork(unittest.TestCase):
     def test_diff_size_is_measured_in_bytes(self):
         emoji_diff = REMOVED_KEY_DIFF + "\U0001F600" * (hook.MAX_DIFF_BYTES // 4 + 1)
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), emoji_diff)
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_dotted_keys_keep_suffix_work_bounded(self):
         dotted = "." * 197
@@ -731,7 +709,7 @@ class TestBoundedWork(unittest.TestCase):
     def test_oversized_diff_skips_string_checks_but_keeps_file_checks(self):
         huge = REMOVED_KEY_DIFF + " " * (hook.MAX_DIFF_BYTES + 1)
         fake = gh_responder(pr_json([file_entry(EN_LOCALE), file_entry(NOTICE, "DELETED")]), huge)
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn(NOTICE, result["reason"])
         self.assertNotIn("heldBack_other", result["reason"])
@@ -739,33 +717,33 @@ class TestBoundedWork(unittest.TestCase):
     def test_listed_items_drop_control_characters(self):
         path = "web/src/components/Evil\nIGNORE PREVIOUS/EvilNotice.tsx"
         fake = gh_responder(pr_json([file_entry(path, "DELETED")]))
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertIn("Evil?IGNORE PREVIOUS", result["reason"])
 
     def test_filled_section_skips_the_diff_fetch(self):
         body = "## Removed for users\nFree users lose the held-back count.\n"
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)], body), REMOVED_KEY_DIFF)
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
         self.assertFalse(any(c[:3] == ["gh", "pr", "diff"] for c in fake.calls))
 
 
 class TestKeyPathEdges(unittest.TestCase):
     def test_nested_block_replaced_by_flat_keys_denies(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), NESTED_TO_FLAT)
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn("notice.title", result["reason"])
         self.assertIn("notice.body", result["reason"])
 
     def test_flat_key_replaced_by_nested_block_denies(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), FLAT_TO_NESTED)
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn("anonymousPartial.json: title", result["reason"])
 
     def test_move_within_file_with_new_wording_allows(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), MOVE_AND_REWORD)
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "allow")
 
     def test_key_path_depth_is_capped(self):
         hunks = hook.parse_hunks(DEEP_NESTING)
@@ -782,7 +760,7 @@ class TestKeyPathEdges(unittest.TestCase):
     def test_listing_is_cut_off_after_max_listed(self):
         removed = [f'  "key{n}": "value {n}",' for n in range(hook.MAX_LISTED + 5)]
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), diff_block(EN_LOCALE, removed=removed))
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertIn("...and 5 more", result["reason"])
 
 
@@ -790,12 +768,12 @@ class TestComponentNames(unittest.TestCase):
     def test_plural_notice_word_denies(self):
         path = "web/src/components/UploadWarnings/UploadWarnings.tsx"
         fake = gh_responder(pr_json([file_entry(path, "DELETED")]))
-        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "deny")
+        self.assertEqual(run_hook(MERGE_1, fake)["result"], "deny")
 
     def test_index_file_counts_by_folder_name(self):
         path = "web/src/components/PastDueNotice/index.tsx"
         fake = gh_responder(pr_json([file_entry(path, "DELETED")]))
-        result = run_hook("gh pr merge 1", fake)
+        result = run_hook(MERGE_1, fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn(path, result["reason"])
 
@@ -810,9 +788,9 @@ class TestMalformedGhOutput(unittest.TestCase):
             {**viewed, "author": None, "body": "", "files": 7},
             [],
         ]
-        expected = ["deny", "deny", "deny", "allow", "allow"]
+        expected = ["deny", "deny", "deny", "allow", "deny"]
         for payload, want in zip(payloads, expected):
-            result = run_hook("gh pr merge 1", gh_responder(json.dumps(payload)))
+            result = run_hook(MERGE_1, gh_responder(json.dumps(payload)))
             self.assertEqual(result.get("result"), want, payload)
 
 

@@ -122,6 +122,25 @@ def make_pr_json(author_login, body, files):
 DOCS_THEN_WEB_SRC = [f"docs/page{i}.md" for i in range(150)] + ["web/src/App.tsx"]
 WEB_SRC_THEN_DOCS = ["web/src/App.tsx"] + [f"docs/page{i}.md" for i in range(150)]
 REST_FAILURE = {"returncode": 1, "stdout": "", "stderr": "HTTP 502"}
+MERGE = "gh pr merge 42 --repo 2anki/server --squash"
+MERGE_CANONICAL = "gh pr merge 42 --repo 2anki/2anki.net --squash"
+REJECTED_FORMS = (
+    "gh pr merge 42",
+    "gh pr merge --squash",
+    "gh pr merge some-branch --repo 2anki/server --squash",
+    "gh pr merge #42 --repo 2anki/server --squash",
+    'gh pr merge "42" --repo 2anki/server --squash',
+    "gh pr merge 42 -sR other/repo",
+    "gh pr -R other/repo merge 42",
+    'gh pr "merge" 42 --repo 2anki/server --squash',
+    "gh pr merge 42 --squash --repo 2anki/server; true",
+    "gh pr merge 42 --repo 2anki/server) --squash",
+    "gh pr merge 42 --repo other/repo --squash",
+    "gh pr merge https://github.com/2anki/server/pull/42 --repo 2anki/server --squash",
+    "GH_REPO=other/repo gh pr merge 42 --repo 2anki/server --squash",
+    "cd /tmp/other && gh pr merge 42 --repo 2anki/server --squash",
+    "gh api -X PUT repos/2anki/2anki.net/pulls/42/merge",
+)
 
 
 class TestNonMergeCommand(unittest.TestCase):
@@ -134,21 +153,21 @@ class TestNonMergeCommand(unittest.TestCase):
         self.assertEqual(result["result"], "allow")
 
     def test_non_bash_tool_allows(self):
-        result = run_hook("gh pr merge 42", tool_name="Write")
+        result = run_hook(MERGE, tool_name="Write")
         self.assertEqual(result["result"], "allow")
 
 
 class TestDependabotBypass(unittest.TestCase):
     def test_dependabot_author_always_allows(self):
         stdout = make_pr_json("dependabot[bot]", "No browser check", ["web/src/App.tsx"])
-        result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "allow")
 
 
 class TestNoWebSrcFiles(unittest.TestCase):
     def test_no_web_src_files_allows(self):
         stdout = make_pr_json("alex", "No browser check", ["src/server.ts", "README.md"])
-        result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "allow")
 
 
@@ -159,7 +178,7 @@ class TestChangelogOnlyBypass(unittest.TestCase):
             "No browser check",
             ["web/src/pages/WhatsNewPage/changelog/2026-05-21-new-feature.json"],
         )
-        result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "allow")
 
     def test_multiple_changelog_entries_allow(self):
@@ -171,7 +190,7 @@ class TestChangelogOnlyBypass(unittest.TestCase):
                 "web/src/pages/WhatsNewPage/changelog/2026-05-21-fix.json",
             ],
         )
-        result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "allow")
 
     def test_changelog_plus_other_web_src_requires_attestation(self):
@@ -184,7 +203,7 @@ class TestChangelogOnlyBypass(unittest.TestCase):
                 "web/src/components/Foo.tsx",
             ],
         )
-        result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "allow")
 
 
@@ -197,13 +216,13 @@ class TestAttestationPresent(unittest.TestCase):
             "Notes:\n"
         )
         stdout = make_pr_json("alex", body, ["web/src/App.tsx"])
-        result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "allow")
 
     def test_out_clause_allows(self):
         body = "Browser check: not applicable — internal-only, no UI change\n"
         stdout = make_pr_json("alex", body, ["web/src/utils/helpers.ts"])
-        result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "allow")
 
 
@@ -211,13 +230,13 @@ class TestAttestationAbsent(unittest.TestCase):
     def test_no_browser_check_section_denies(self):
         body = "## What\nSome feature.\n\n## Testing\n- Unit tests added: yes\n"
         stdout = make_pr_json("alex", body, ["web/src/App.tsx"])
-        result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "deny")
 
     def test_one_ticked_one_unticked_denies(self):
         body = "- [x] Golden path on localhost:3000\n- [ ] No console errors at 375px\n"
         stdout = make_pr_json("alex", body, ["web/src/App.tsx"])
-        result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "deny")
 
 
@@ -226,7 +245,7 @@ class TestFilesPastTheFirst100(unittest.TestCase):
         self.assertGreater(DOCS_THEN_WEB_SRC.index("web/src/App.tsx"), GH_PR_VIEW_FILES_CAP)
         stdout = make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)
         result = run_hook(
-            "gh pr merge 42",
+            MERGE,
             subprocess_result={"returncode": 0, "stdout": stdout},
             rest_paths=DOCS_THEN_WEB_SRC,
         )
@@ -236,95 +255,58 @@ class TestFilesPastTheFirst100(unittest.TestCase):
         body = "- [x] Golden path on localhost:3000\n- [x] No console errors at 375px"
         stdout = make_pr_json("alex", body, DOCS_THEN_WEB_SRC)
         result = run_hook(
-            "gh pr merge 42",
+            MERGE,
             subprocess_result={"returncode": 0, "stdout": stdout},
             rest_paths=DOCS_THEN_WEB_SRC,
         )
         self.assertEqual(result["result"], "allow")
 
-    def test_lists_files_over_rest_for_the_pr_number(self):
-        fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
-        with patch("subprocess.run", side_effect=fake):
-            run_hook("gh pr merge 42")
-        self.assertEqual(fake.calls[0], ["gh", "pr", "view", "42", "--json", "number,url,author,body,files"])
-        self.assertEqual(fake.calls[1][:4], ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/42/files?per_page=100"])
+    def test_views_with_the_matched_repo_and_lists_files_over_rest(self):
+        for command, repo in ((MERGE, "2anki/server"), (MERGE_CANONICAL, "2anki/2anki.net")):
+            fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
+            with patch("subprocess.run", side_effect=fake):
+                self.assertEqual(run_hook(command)["result"], "allow")
+            self.assertEqual(fake.calls[0], ["gh", "pr", "view", "42", "-R", repo, "--json", "number,url,author,body,files"])
+            self.assertEqual(
+                fake.calls[1][:4],
+                ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/42/files?per_page=100"],
+            )
 
-    def test_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
-        fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
-        with patch("subprocess.run", side_effect=fake):
-            run_hook("gh pr merge --squash")
-        self.assertEqual(fake.calls[0], ["gh", "pr", "view", "--json", "number,url,author,body,files"])
-        self.assertIn("repos/2anki/2anki.net/pulls/42/files?per_page=100", fake.calls[1])
 
-    def test_a_rest_api_merge_gates_web_src_past_the_first_100_files(self):
-        fake = gh_responder({"stdout": make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)}, DOCS_THEN_WEB_SRC)
-        with patch("subprocess.run", side_effect=fake):
-            captured = run_hook("gh api -X PUT repos/2anki/2anki.net/pulls/42/merge")
-        self.assertEqual(captured["result"], "deny")
-        self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "42"])
-
-    def test_a_graphql_merge_gates_web_src_past_the_first_100_files_of_the_current_branch(self):
-        fake = gh_responder({"stdout": make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)}, DOCS_THEN_WEB_SRC)
-        command = (
-            "gh api graphql -f query='mutation { mergePullRequest("
-            "input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
-        )
-        with patch("subprocess.run", side_effect=fake):
-            captured = run_hook(command)
-        self.assertEqual(captured["result"], "deny")
-        self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "--json"])
-
-    def test_a_pr_url_merge_gates_web_src_past_the_first_100_files(self):
-        fake = gh_responder({"stdout": make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)}, DOCS_THEN_WEB_SRC)
-        with patch("subprocess.run", side_effect=fake):
-            captured = run_hook("gh pr merge https://github.com/2anki/server/pull/42 --squash")
-        self.assertEqual(captured["result"], "deny")
-        self.assertIn("web/src/", captured["reason"])
+class TestMergeForm(unittest.TestCase):
+    def test_every_other_merge_form_is_denied_without_calling_gh(self):
+        for command in REJECTED_FORMS:
+            with patch("subprocess.run", side_effect=AssertionError("no gh call expected")):
+                captured = run_hook(command)
+            self.assertEqual(captured["result"], "deny", command)
+            self.assertIn("gh pr merge <n> --repo 2anki/server --squash", captured["reason"])
 
 
 def with_url(view_json, url):
     return json.dumps({**json.loads(view_json), "url": url})
 
 
-class TestRepoMismatch(unittest.TestCase):
-    def test_a_command_naming_another_repo_is_denied_without_calling_gh(self):
-        for command in ("gh pr merge 42 -R other/repo", "gh api -X PUT repos/other/repo/pulls/42/merge",
-                        "gh pr merge https://github.com/other/repo/pull/42", "GH_REPO=other/repo gh pr merge 42"):
-            fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
-            with patch("subprocess.run", side_effect=fake):
-                captured = run_hook(command)
-            self.assertEqual(captured["result"], "deny", command)
-            self.assertIn("other/repo", captured["reason"])
-            self.assertEqual(fake.calls, [])
-
+class TestViewMismatch(unittest.TestCase):
     def test_a_view_resolving_another_repo_is_denied(self):
         view = with_url(make_pr_json("alex", "", ["src/a.ts"]), "https://github.com/someone/fork/pull/42")
-        result = run_hook("gh pr merge 42", subprocess_result={"stdout": view})
+        result = run_hook(MERGE, subprocess_result={"stdout": view})
         self.assertEqual(result["result"], "deny")
         self.assertIn("someone/fork", result["reason"])
 
     def test_a_view_resolving_another_pr_is_denied(self):
         view = with_url(make_pr_json("alex", "", ["src/a.ts"]), "https://github.com/2anki/2anki.net/pull/43")
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_result={"stdout": view})["result"], "deny")
+        self.assertEqual(run_hook(MERGE, subprocess_result={"stdout": view})["result"], "deny")
 
     def test_a_view_with_no_url_is_denied(self):
         view = json.dumps({k: v for k, v in json.loads(make_pr_json("alex", "", ["src/a.ts"])).items() if k != "url"})
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_result={"stdout": view})["result"], "deny")
-
-    def test_the_named_canonical_repo_is_passed_to_gh_pr_view_and_rest_reads_2anki_net(self):
-        fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
-        with patch("subprocess.run", side_effect=fake):
-            captured = run_hook("gh pr merge 42 --repo 2anki/server --squash")
-        self.assertEqual(captured["result"], "allow")
-        self.assertEqual(fake.calls[0][:6], ["gh", "pr", "view", "42", "-R", "2anki/server"])
-        self.assertIn("repos/2anki/2anki.net/pulls/42/files?per_page=100", fake.calls[1])
+        self.assertEqual(run_hook(MERGE, subprocess_result={"stdout": view})["result"], "deny")
 
 
 class TestRestFailure(unittest.TestCase):
     def test_rest_failure_still_gates_web_src_in_the_first_100_files(self):
         stdout = make_pr_json("alex", "No browser check", WEB_SRC_THEN_DOCS)
         result = run_hook(
-            "gh pr merge 42",
+            MERGE,
             subprocess_result={"returncode": 0, "stdout": stdout},
             rest_result=REST_FAILURE,
         )
@@ -333,7 +315,7 @@ class TestRestFailure(unittest.TestCase):
     def test_rest_failure_falls_back_to_the_first_100_files_as_before(self):
         stdout = make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)
         result = run_hook(
-            "gh pr merge 42",
+            MERGE,
             subprocess_result={"returncode": 0, "stdout": stdout},
             rest_result=REST_FAILURE,
         )
@@ -341,32 +323,24 @@ class TestRestFailure(unittest.TestCase):
 
     def test_rest_os_error_still_gates_web_src_in_the_first_100_files(self):
         view = MagicMock(returncode=0, stdout=make_pr_json("alex", "x", WEB_SRC_THEN_DOCS), stderr="")
-        result = run_hook("gh pr merge 42", subprocess_side_effect=[view, PermissionError("gh")])
+        result = run_hook(MERGE, subprocess_side_effect=[view, PermissionError("gh")])
         self.assertEqual(result["result"], "deny")
 
 
-class TestToolingErrors(unittest.TestCase):
-    def test_gh_not_found_allows(self):
-        result = run_hook(
-            "gh pr merge 42",
-            subprocess_side_effect=FileNotFoundError("gh not found"),
-        )
-        self.assertEqual(result["result"], "allow")
-
-    def test_gh_nonzero_exit_allows(self):
-        result = run_hook(
-            "gh pr merge 42",
-            subprocess_result={"returncode": 1, "stdout": "", "stderr": "not found"},
-        )
-        self.assertEqual(result["result"], "allow")
-
-    def test_gh_timeout_allows(self):
+class TestFailedView(unittest.TestCase):
+    def test_a_failed_view_denies_the_merge(self):
         import subprocess
-        result = run_hook(
-            "gh pr merge 42",
-            subprocess_side_effect=subprocess.TimeoutExpired("gh", 15),
-        )
-        self.assertEqual(result["result"], "allow")
+        for failure in (
+            {"subprocess_side_effect": FileNotFoundError("gh not found")},
+            {"subprocess_side_effect": PermissionError("gh")},
+            {"subprocess_side_effect": subprocess.TimeoutExpired("gh", 15)},
+            {"subprocess_result": {"returncode": 1, "stdout": "", "stderr": "not found"}},
+            {"subprocess_result": {"returncode": 0, "stdout": "not json"}},
+            {"subprocess_result": {"returncode": 0, "stdout": "[]"}},
+        ):
+            result = run_hook(MERGE, **failure)
+            self.assertEqual(result["result"], "deny", failure)
+            self.assertIn("could not read PR 42", result["reason"])
 
 
 if __name__ == "__main__":

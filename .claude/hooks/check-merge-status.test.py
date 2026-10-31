@@ -371,10 +371,28 @@ def rest_stdout(paths):
 GH_PR_VIEW_FILES_CAP = 100
 DOCS = [f"docs/page{i}.md" for i in range(150)]
 REST_FAILURE = mock.MagicMock(returncode=1, stdout="", stderr="HTTP 502")
+MERGE = "gh pr merge 1 --repo 2anki/server --squash"
+REJECTED_FORMS = (
+    "gh pr merge 1",
+    "gh pr merge 1 --squash",
+    "gh pr merge --squash",
+    "gh pr merge some-branch --repo 2anki/server --squash",
+    "gh pr merge #1 --repo 2anki/server --squash",
+    'gh pr merge "1" --repo 2anki/server --squash',
+    "gh pr merge 1 -sR other/repo",
+    "gh pr -R other/repo merge 1",
+    "gh pr merge 1 --squash --repo 2anki/server; true",
+    "gh pr merge 1 --repo other/repo --squash",
+    "gh pr merge https://github.com/2anki/server/pull/1 --repo 2anki/server --squash",
+    "GH_REPO=other/repo gh pr merge 1 --repo 2anki/server --squash",
+    "cd /tmp/other && gh pr merge 1 --repo 2anki/server --squash",
+    "gh api -X PUT repos/2anki/2anki.net/pulls/1/merge",
+    "gh api graphql -f query='mutation { mergePullRequest(input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'",
+)
 
 
 class MainWiringTest(unittest.TestCase):
-    def run_main(self, pr_data, rest_paths=None, rest_result=None, command="gh pr merge 1 --squash"):
+    def run_main(self, pr_data, rest_paths=None, rest_result=None, command=MERGE):
         captured = {"rest": []}
         listed = rest_paths if rest_paths is not None else [f["path"] for f in pr_data.get("files") or []]
         viewed = {
@@ -419,22 +437,44 @@ class MainWiringTest(unittest.TestCase):
             "comments": [{"body": f"<!-- ship-review: pass sha={sha} -->"}],
         }
 
-    def test_a_gh_failure_still_fails_open(self):
-        calls = []
-        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
+    def hook_output(self, command, run_gh):
+        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
         stdout = io.StringIO()
-        with mock.patch.object(check_merge_status, "run_gh", lambda args, label: calls.append(args)), \
+        with mock.patch.object(check_merge_status, "run_gh", run_gh), \
+                mock.patch("subprocess.run", side_effect=AssertionError("no REST call expected")), \
                 mock.patch.dict(os.environ, {}, clear=False), \
                 mock.patch("sys.stdin", stdin), \
                 mock.patch("sys.stdout", stdout):
             os.environ.pop("CLAUDE_SKIP_SAFETY", None)
             with self.assertRaises(SystemExit):
                 check_merge_status.main()
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(json.loads(stdout.getvalue()), {"continue": True})
+        return json.loads(stdout.getvalue())
+
+    def test_a_failed_view_denies_the_merge(self):
+        for answer in (None, "not json", "[]"):
+            calls = []
+            output = self.hook_output(MERGE, lambda args, label, answer=answer: calls.append(args) or answer)
+            decision = output["hookSpecificOutput"]
+            self.assertEqual(decision["permissionDecision"], "deny", answer)
+            self.assertIn("could not read PR 1", decision["permissionDecisionReason"])
+            self.assertEqual(len(calls), 1)
+
+    def test_run_gh_returns_nothing_on_any_os_error(self):
+        import subprocess
+        for error in (FileNotFoundError("gh"), PermissionError("gh"), subprocess.TimeoutExpired("gh", 15)):
+            with mock.patch("subprocess.run", side_effect=error):
+                self.assertIsNone(check_merge_status.run_gh(["gh", "pr", "view"], "pr view"))
+
+    def test_every_other_merge_form_is_denied_without_calling_gh(self):
+        for command in REJECTED_FORMS:
+            calls = []
+            output = self.hook_output(command, lambda args, label: calls.append(args))
+            decision = output["hookSpecificOutput"]
+            self.assertEqual(decision["permissionDecision"], "deny", command)
+            self.assertEqual(calls, [], command)
 
     def test_the_launch_time_bypass_skips_the_reach_check(self):
-        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
+        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": MERGE}}))
         stdout = io.StringIO()
         with mock.patch.object(check_merge_status, "run_gh", lambda args, label: json.dumps(self.pr(""))), \
                 mock.patch.dict(os.environ, {"CLAUDE_SKIP_SAFETY": "1"}, clear=False), \
@@ -517,53 +557,6 @@ class MainWiringTest(unittest.TestCase):
             ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/1/files?per_page=100"],
         )
 
-    def test_a_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
-        pr = {**self.pr(REACH_TABLE), "number": 5172}
-        self.run_main(pr, command="gh pr merge --squash")
-        self.assertIn("repos/2anki/2anki.net/pulls/5172/files?per_page=100", self.rest_calls[0])
-
-    def test_a_rest_api_merge_lists_files_past_the_first_100_for_its_number(self):
-        pr = {**self.pr("## What\nx"), "files": files(*DOCS, "src/usecases/x.ts")}
-        _, output = self.run_main(pr, command="gh api -X PUT repos/2anki/2anki.net/pulls/1/merge")
-        self.assertIn("Who else this reaches", output["hookSpecificOutput"]["permissionDecisionReason"])
-        self.assertIn("repos/2anki/2anki.net/pulls/1/files?per_page=100", self.rest_calls[0])
-
-    def test_lists_files_from_the_repo_in_the_pr_url(self):
-        pr = {**self.pr(REACH_TABLE), "url": "https://github.com/2anki/2anki.net/pull/1"}
-        args, _ = self.run_main(pr)
-        self.assertIn("url", args[args.index("--json") + 1].split(","))
-        self.assertIn("repos/2anki/2anki.net/pulls/1/files?per_page=100", self.rest_calls[0])
-
-    def test_a_pr_url_merge_lists_files_past_the_first_100_for_its_number(self):
-        pr = {**self.pr("## What\nx"), "files": files(*DOCS, "src/usecases/x.ts")}
-        _, output = self.run_main(pr, command="gh pr merge https://github.com/2anki/server/pull/1 --squash")
-        self.assertIn("Who else this reaches", output["hookSpecificOutput"]["permissionDecisionReason"])
-
-    def test_a_branch_name_merge_lists_files_for_the_number_gh_pr_view_returned(self):
-        pr = {**self.pr(REACH_TABLE), "number": 77}
-        args, _ = self.run_main(pr, command="gh pr merge some-branch --squash")
-        self.assertEqual(args[:4], ["gh", "pr", "view", "--json"])
-        self.assertIn("repos/2anki/2anki.net/pulls/77/files?per_page=100", self.rest_calls[0])
-
-    def test_a_command_naming_another_repo_is_denied_without_calling_gh(self):
-        for command in ("gh pr merge 1 -R other/repo", "gh api -X PUT repos/other/repo/pulls/1/merge",
-                        "gh pr merge https://github.com/other/repo/pull/1", "GH_REPO=other/repo gh pr merge 1"):
-            calls = []
-            stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
-            stdout = io.StringIO()
-            with mock.patch.object(check_merge_status, "run_gh", lambda args, label: calls.append(args)), \
-                    mock.patch("subprocess.run", side_effect=AssertionError("no gh call expected")), \
-                    mock.patch.dict(os.environ, {}, clear=False), \
-                    mock.patch("sys.stdin", stdin), \
-                    mock.patch("sys.stdout", stdout):
-                os.environ.pop("CLAUDE_SKIP_SAFETY", None)
-                with self.assertRaises(SystemExit):
-                    check_merge_status.main()
-            decision = json.loads(stdout.getvalue())["hookSpecificOutput"]
-            self.assertEqual(decision["permissionDecision"], "deny", command)
-            self.assertIn("other/repo", decision["permissionDecisionReason"])
-            self.assertEqual(calls, [])
-
     def test_a_view_resolving_another_repo_is_denied(self):
         pr = {**self.pr(REACH_TABLE), "url": "https://github.com/someone/fork/pull/1"}
         _, output = self.run_main(pr)
@@ -575,11 +568,13 @@ class MainWiringTest(unittest.TestCase):
         _, output = self.run_main(pr)
         self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
 
-    def test_the_named_canonical_repo_is_passed_to_gh_pr_view(self):
-        args, output = self.run_main(self.pr(REACH_TABLE), command="gh pr merge 1 --repo 2anki/server --squash")
-        self.assertEqual(output, {"continue": True})
-        self.assertEqual(args[:6], ["gh", "pr", "view", "1", "-R", "2anki/server"])
-        self.assertIn("repos/2anki/2anki.net/pulls/1/files?per_page=100", self.rest_calls[0])
+    def test_views_the_pr_with_the_matched_repo(self):
+        for command, repo in ((MERGE, "2anki/server"), ("gh pr merge 1 --repo 2anki/2anki.net --squash", "2anki/2anki.net")):
+            args, output = self.run_main(self.pr(REACH_TABLE), command=command)
+            self.assertEqual(output, {"continue": True})
+            self.assertEqual(args[:6], ["gh", "pr", "view", "1", "-R", repo])
+            self.assertIn("url", args[args.index("--json") + 1].split(","))
+            self.assertIn("repos/2anki/2anki.net/pulls/1/files?per_page=100", self.rest_calls[0])
 
     def test_a_rest_failure_still_gates_source_in_the_first_100_files(self):
         pr = {**self.pr("## What\nx"), "files": files("src/usecases/x.ts", *DOCS)}

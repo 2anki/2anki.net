@@ -102,6 +102,23 @@ CHANGELOG = "web/src/pages/WhatsNewPage/changelog/2026-06-19-x.json"
 CAPPED_SOURCE_FILES = ["src/server.ts"] + [f"src/file{i}.ts" for i in range(150)]
 REST_FAILURE = {"returncode": 1, "stdout": "", "stderr": "HTTP 502"}
 REST_VIEW_ARGV = ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/42/files?per_page=100"]
+MERGE = "gh pr merge 42 --repo 2anki/server --squash"
+MERGE_CANONICAL = "gh pr merge 42 --repo 2anki/2anki.net --squash"
+REJECTED_FORMS = (
+    "gh pr merge 42",
+    "gh pr merge --squash",
+    "gh pr merge some-branch --repo 2anki/server --squash",
+    "gh pr merge #42 --repo 2anki/server --squash",
+    'gh pr merge "42" --repo 2anki/server --squash',
+    "gh pr merge 42 -sR other/repo",
+    "gh pr -R other/repo merge 42",
+    "gh pr merge 42 --squash --repo 2anki/server; true",
+    "gh pr merge 42 --repo other/repo --squash",
+    "gh pr merge https://github.com/2anki/server/pull/42 --repo 2anki/server --squash",
+    "GH_REPO=other/repo gh pr merge 42 --repo 2anki/server --squash",
+    "cd /tmp/other && gh pr merge 42 --repo 2anki/server --squash",
+    "gh api -X PUT repos/2anki/2anki.net/pulls/42/merge",
+)
 DIFF_TOO_LARGE_STDERR = (
     "could not find pull request diff: HTTP 406: Sorry, the diff exceeded "
     "the maximum number of files (300)."
@@ -116,59 +133,59 @@ class TestPassthrough(unittest.TestCase):
         self.assertEqual(run_hook("gh pr view 42")["result"], "allow")
 
     def test_non_bash_tool_allows(self):
-        self.assertEqual(run_hook("gh pr merge 42", tool_name="Write")["result"], "allow")
+        self.assertEqual(run_hook(MERGE, tool_name="Write")["result"], "allow")
 
 
 class TestExemptions(unittest.TestCase):
     def test_dependabot_allows(self):
         responses = gh_responses("dependabot[bot]", "", ["src/server.ts"], ["fix: bump"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "allow")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
 
     def test_no_feat_or_fix_commit_allows(self):
         responses = gh_responses("alex", "", ["src/server.ts"], ["chore: tidy", "refactor: rename"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "allow")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
 
     def test_feat_but_no_source_touched_allows(self):
         responses = gh_responses("alex", "", ["README.md", "docs/x.md"], ["feat: docs only"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "allow")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
 
     def test_only_test_files_touched_allows(self):
         responses = gh_responses("alex", "", ["src/foo.test.ts"], ["fix: test"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "allow")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
 
     def test_changelog_entry_present_allows(self):
         responses = gh_responses("alex", "", ["src/server.ts", CHANGELOG], ["feat: thing"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "allow")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
 
     def test_changelog_entry_past_first_100_files_allows(self):
         files = [f"src/file{i}.ts" for i in range(122)] + [CHANGELOG]
         self.assertGreater(files.index(CHANGELOG), GH_PR_VIEW_FILES_CAP)
         responses = gh_responses("alex", "", files, ["fix: big"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "allow")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
 
     def test_out_clause_allows(self):
         body = "What: internal refactor.\nno changelog entry — internal only"
         responses = gh_responses("alex", body, ["src/server.ts"], ["fix: internal"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "allow")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
 
 
 class TestDenies(unittest.TestCase):
     def test_feat_source_no_changelog_no_outclause_denies(self):
         responses = gh_responses("alex", "Just a feature.", ["src/server.ts"], ["feat: thing"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "deny")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "deny")
 
     def test_fix_web_src_denies(self):
         responses = gh_responses("alex", "A fix.", ["web/src/App.tsx"], ["fix: bug"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "deny")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "deny")
 
     def test_source_file_past_first_100_files_denies(self):
         files = [f"docs/page{i}.md" for i in range(120)] + ["src/server.ts"]
         responses = gh_responses("alex", "x", files, ["fix: big"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "deny")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "deny")
 
     def test_scoped_feat_prefix_denies(self):
         responses = gh_responses("alex", "x", ["src/server.ts"], ["feat(parser): thing"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "deny")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "deny")
 
 
 class TestRestFileList(unittest.TestCase):
@@ -176,37 +193,16 @@ class TestRestFileList(unittest.TestCase):
         crafted = "docs/z b/web/src/pages/WhatsNewPage/changelog/2026-06-19-x.json"
         files = [f"src/file{i}.ts" for i in range(120)] + [crafted]
         responses = gh_responses("alex", "x", files, ["fix: big"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "deny")
-
-    def test_a_rest_api_merge_sees_source_past_the_first_100_files(self):
-        files = [f"docs/page{i}.md" for i in range(120)] + ["src/server.ts"]
-        responses = gh_responses("alex", "x", files, ["fix: big"])
-        result = run_hook("gh api -X PUT repos/2anki/2anki.net/pulls/42/merge", subprocess_results=responses)
-        self.assertEqual(result["result"], "deny")
-
-    def test_a_graphql_merge_sees_source_past_the_first_100_files(self):
-        files = [f"docs/page{i}.md" for i in range(120)] + ["src/server.ts"]
-        responses = gh_responses("alex", "x", files, ["fix: big"])
-        command = (
-            "gh api graphql -f query='mutation { mergePullRequest("
-            "input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
-        )
-        self.assertEqual(run_hook(command, subprocess_results=responses)["result"], "deny")
-
-    def test_a_pr_url_merge_sees_source_past_the_first_100_files(self):
-        files = [f"docs/page{i}.md" for i in range(120)] + ["src/server.ts"]
-        responses = gh_responses("alex", "x", files, ["fix: big"])
-        result = run_hook("gh pr merge https://github.com/2anki/server/pull/42", subprocess_results=responses)
-        self.assertEqual(result["result"], "deny")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "deny")
 
     def test_more_than_300_files_with_the_changelog_last_allows(self):
         files = [f"src/file{i}.ts" for i in range(320)] + [CHANGELOG]
         responses = gh_responses("alex", "x", files, ["fix: big"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "allow")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
 
     def test_a_complete_rest_list_deny_omits_the_100_files_note(self):
         responses = gh_responses("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"])
-        result = run_hook("gh pr merge 42", subprocess_results=responses)
+        result = run_hook(MERGE, subprocess_results=responses)
         self.assertEqual(result["result"], "deny")
         self.assertNotIn("first 100", result["reason"])
 
@@ -215,72 +211,69 @@ def view_with(url):
     return json.dumps({**json.loads(make_pr_json("alex", "", ["src/server.ts", CHANGELOG], ["fix: x"])), "url": url})
 
 
-class TestRepoMismatch(unittest.TestCase):
-    def test_a_command_naming_another_repo_is_denied_without_calling_gh(self):
-        for command in ("gh pr merge 42 -R other/repo", "gh api -X PUT repos/other/repo/pulls/42/merge",
-                        "gh pr merge https://github.com/other/repo/pull/42", "GH_REPO=other/repo gh pr merge 42"):
+class TestMergeForm(unittest.TestCase):
+    def test_every_other_merge_form_is_denied_without_calling_gh(self):
+        for command in REJECTED_FORMS:
             with patch("subprocess.run") as run:
                 result = run_hook(command)
             self.assertEqual(result["result"], "deny", command)
-            self.assertIn("other/repo", result["reason"])
+            self.assertIn("gh pr merge <n> --repo 2anki/server --squash", result["reason"])
             run.assert_not_called()
 
+
+class TestViewMismatch(unittest.TestCase):
     def test_a_view_resolving_another_repo_is_denied(self):
-        result = run_hook("gh pr merge 42", subprocess_results=[{"stdout": view_with("https://github.com/someone/fork/pull/42")}])
+        result = run_hook(MERGE, subprocess_results=[{"stdout": view_with("https://github.com/someone/fork/pull/42")}])
         self.assertEqual(result["result"], "deny")
         self.assertIn("someone/fork", result["reason"])
 
     def test_a_view_resolving_another_pr_is_denied(self):
-        result = run_hook("gh pr merge 42", subprocess_results=[{"stdout": view_with("https://github.com/2anki/2anki.net/pull/7")}])
+        result = run_hook(MERGE, subprocess_results=[{"stdout": view_with("https://github.com/2anki/2anki.net/pull/7")}])
         self.assertEqual(result["result"], "deny")
 
 
-class TestToolingErrors(unittest.TestCase):
-    def test_gh_not_found_allows(self):
-        result = run_hook("gh pr merge 42", subprocess_side_effect=FileNotFoundError("gh"))
-        self.assertEqual(result["result"], "allow")
-
-    def test_other_os_error_on_gh_pr_view_allows_without_crashing(self):
-        result = run_hook("gh pr merge 42", subprocess_side_effect=PermissionError("gh"))
-        self.assertEqual(result["result"], "allow")
-
-    def test_gh_nonzero_exit_allows(self):
-        result = run_hook("gh pr merge 42", subprocess_results=[{"returncode": 1, "stdout": ""}])
-        self.assertEqual(result["result"], "allow")
-
-    def test_gh_timeout_allows(self):
+class TestFailedView(unittest.TestCase):
+    def test_a_failed_view_denies_the_merge(self):
         import subprocess
-        result = run_hook("gh pr merge 42", subprocess_side_effect=subprocess.TimeoutExpired("gh", 15))
-        self.assertEqual(result["result"], "allow")
+        for failure in (
+            {"subprocess_side_effect": FileNotFoundError("gh")},
+            {"subprocess_side_effect": PermissionError("gh")},
+            {"subprocess_side_effect": subprocess.TimeoutExpired("gh", 15)},
+            {"subprocess_results": [{"returncode": 1, "stdout": ""}]},
+            {"subprocess_results": [{"stdout": "not json"}]},
+            {"subprocess_results": [{"stdout": "[]"}]},
+        ):
+            result = run_hook(MERGE, **failure)
+            self.assertEqual(result["result"], "deny", failure)
+            self.assertIn("could not read PR 42", result["reason"])
 
 
 class TestRestFailureFallsBackToGhPrDiff(unittest.TestCase):
     def test_changelog_entry_past_first_100_files_allows_through_gh_pr_diff(self):
         files = [f"src/file{i}.ts" for i in range(122)] + [CHANGELOG]
         responses = gh_responses_rest_failed("alex", "", files, ["fix: big"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "allow")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
 
     def test_source_file_past_first_100_files_denies_through_gh_pr_diff(self):
         files = [f"docs/page{i}.md" for i in range(120)] + ["src/server.ts"]
         responses = gh_responses_rest_failed("alex", "x", files, ["fix: big"])
-        self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "deny")
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "deny")
 
     def test_under_100_view_files_skip_gh_pr_diff_and_still_deny(self):
         view = {"stdout": make_pr_json("alex", "x", ["src/server.ts"], ["fix: bug"])}
-        result = run_hook("gh pr merge 42", subprocess_results=[view, REST_FAILURE])
+        result = run_hook(MERGE, subprocess_results=[view, REST_FAILURE])
         self.assertEqual(result["result"], "deny")
         self.assertNotIn("first 100", result["reason"])
 
     def test_gh_pr_diff_too_large_falls_back_to_view_files_and_denies(self):
         view = {"stdout": make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"])}
         too_large = {"returncode": 1, "stdout": "", "stderr": DIFF_TOO_LARGE_STDERR}
-        result = run_hook("gh pr merge 42", subprocess_results=[view, REST_FAILURE, too_large])
+        result = run_hook(MERGE, subprocess_results=[view, REST_FAILURE, too_large])
         self.assertEqual(result["result"], "deny")
 
     def test_gh_pr_diff_failure_says_only_the_first_100_files_were_checked(self):
         view = {"stdout": make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"])}
-        result = run_hook(
-            "gh pr merge 42",
+        result = run_hook(MERGE,
             subprocess_results=[view, REST_FAILURE, {"returncode": 1, "stdout": ""}],
         )
         self.assertIn("only the first 100 changed files were checked", result["reason"])
@@ -289,31 +282,30 @@ class TestRestFailureFallsBackToGhPrDiff(unittest.TestCase):
         files = [f"src/file{i}.ts" for i in range(320)] + [CHANGELOG]
         view = {"stdout": make_pr_json("alex", "x", files, ["fix: big"])}
         too_large = {"returncode": 1, "stdout": "", "stderr": DIFF_TOO_LARGE_STDERR}
-        result = run_hook("gh pr merge 42", subprocess_results=[view, REST_FAILURE, too_large])
+        result = run_hook(MERGE, subprocess_results=[view, REST_FAILURE, too_large])
         self.assertEqual(result["result"], "deny")
 
     def test_oversized_diff_with_source_only_past_first_100_files_allows_as_before(self):
         files = [f"docs/page{i}.md" for i in range(320)] + ["src/server.ts"]
         view = {"stdout": make_pr_json("alex", "x", files, ["fix: big"])}
         too_large = {"returncode": 1, "stdout": "", "stderr": DIFF_TOO_LARGE_STDERR}
-        result = run_hook("gh pr merge 42", subprocess_results=[view, REST_FAILURE, too_large])
+        result = run_hook(MERGE, subprocess_results=[view, REST_FAILURE, too_large])
         self.assertEqual(result["result"], "allow")
 
     def test_gh_pr_diff_empty_success_still_sees_view_source_and_denies(self):
         view = {"stdout": make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"])}
-        result = run_hook("gh pr merge 42", subprocess_results=[view, REST_FAILURE, {"stdout": ""}])
+        result = run_hook(MERGE, subprocess_results=[view, REST_FAILURE, {"stdout": ""}])
         self.assertEqual(result["result"], "deny")
 
     def test_gh_pr_diff_misparsed_name_still_sees_view_source_and_denies(self):
         files = ["src/a b/c.ts"] + [f"docs/page{i}.md" for i in range(150)]
         view = {"stdout": make_pr_json("alex", "x", files, ["fix: bug"])}
-        result = run_hook("gh pr merge 42", subprocess_results=[view, REST_FAILURE, {"stdout": "c.ts\n"}])
+        result = run_hook(MERGE, subprocess_results=[view, REST_FAILURE, {"stdout": "c.ts\n"}])
         self.assertEqual(result["result"], "deny")
 
     def test_rest_os_error_then_gh_missing_on_diff_falls_back_to_view_files_and_denies(self):
         view = MagicMock(returncode=0, stdout=make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"]), stderr="")
-        result = run_hook(
-            "gh pr merge 42",
+        result = run_hook(MERGE,
             subprocess_side_effect=[view, PermissionError("gh"), FileNotFoundError("gh")],
         )
         self.assertEqual(result["result"], "deny")
@@ -321,8 +313,7 @@ class TestRestFailureFallsBackToGhPrDiff(unittest.TestCase):
     def test_rest_timeout_then_diff_timeout_falls_back_to_view_files_and_denies(self):
         import subprocess
         view = MagicMock(returncode=0, stdout=make_pr_json("alex", "x", CAPPED_SOURCE_FILES, ["fix: bug"]), stderr="")
-        result = run_hook(
-            "gh pr merge 42",
+        result = run_hook(MERGE,
             subprocess_side_effect=[view, subprocess.TimeoutExpired("gh", 20), subprocess.TimeoutExpired("gh", 15)],
         )
         self.assertEqual(result["result"], "deny")
@@ -341,55 +332,21 @@ class TestGhCalls(unittest.TestCase):
             run_hook(command)
         return [call.args[0] for call in run.call_args_list]
 
-    def test_numbered_merge_views_then_lists_files_over_rest(self):
-        argv = self.gh_argv("gh pr merge 42")
-        self.assertEqual(argv[0], ["gh", "pr", "view", "42", "--json", "number,url,author,body,files,commits"])
-        self.assertEqual(argv[1][:4], REST_VIEW_ARGV)
-        self.assertEqual(len(argv), 2)
+    def test_the_ship_merge_views_with_the_matched_repo_then_lists_files_over_rest(self):
+        for command, repo in ((MERGE, "2anki/server"), (MERGE_CANONICAL, "2anki/2anki.net")):
+            argv = self.gh_argv(command)
+            self.assertEqual(argv[0], ["gh", "pr", "view", "42", "-R", repo, "--json", "number,url,author,body,files,commits"])
+            self.assertEqual(argv[1][:4], REST_VIEW_ARGV)
+            self.assertEqual(len(argv), 2)
 
-    def test_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
-        argv = self.gh_argv("gh pr merge --squash")
-        self.assertEqual(argv[0], ["gh", "pr", "view", "--json", "number,url,author,body,files,commits"])
-        self.assertEqual(argv[1][:4], REST_VIEW_ARGV)
-
-    def test_rest_failure_with_100_view_files_calls_gh_pr_diff(self):
+    def test_rest_failure_with_100_view_files_diffs_the_matched_repo(self):
         files = [f"src/file{i}.ts" for i in range(99)] + [CHANGELOG]
-        argv = self.gh_argv("gh pr merge 42", files=files, rest_fails=True)
-        self.assertEqual(argv[2], ["gh", "pr", "diff", "42", "--name-only"])
+        argv = self.gh_argv(MERGE, files=files, rest_fails=True)
+        self.assertEqual(argv[2], ["gh", "pr", "diff", "42", "-R", "2anki/server", "--name-only"])
 
     def test_rest_failure_with_99_view_files_skips_gh_pr_diff(self):
         files = [f"src/file{i}.ts" for i in range(98)] + [CHANGELOG]
-        self.assertEqual(len(self.gh_argv("gh pr merge 42", files=files, rest_fails=True)), 2)
-
-    def test_rest_failure_on_a_current_branch_merge_diffs_the_current_branch(self):
-        self.assertEqual(
-            self.gh_argv("gh pr merge --squash", rest_fails=True)[2],
-            ["gh", "pr", "diff", "--name-only"],
-        )
-
-    def test_rest_failure_on_a_branch_name_merge_diffs_the_current_branch(self):
-        self.assertEqual(
-            self.gh_argv("gh pr merge some-branch --squash", rest_fails=True)[2],
-            ["gh", "pr", "diff", "--name-only"],
-        )
-
-    def test_a_branch_name_merge_lists_files_for_the_number_gh_pr_view_returned(self):
-        argv = self.gh_argv("gh pr merge some-branch --squash")
-        self.assertEqual(argv[0], ["gh", "pr", "view", "--json", "number,url,author,body,files,commits"])
-        self.assertEqual(argv[1][:4], REST_VIEW_ARGV)
-
-    def test_rest_failure_with_a_named_repo_diffs_that_repo(self):
-        files = [f"src/file{i}.ts" for i in range(99)] + [CHANGELOG]
-        argv = self.gh_argv("gh pr merge 42 --repo 2anki/server", files=files, rest_fails=True)
-        self.assertEqual(argv[0][:6], ["gh", "pr", "view", "42", "-R", "2anki/server"])
-        self.assertEqual(argv[2], ["gh", "pr", "diff", "42", "-R", "2anki/server", "--name-only"])
-
-    def test_rest_failure_on_a_graphql_merge_diffs_the_current_branch(self):
-        command = (
-            "gh api graphql -f query='mutation { mergePullRequest("
-            "input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
-        )
-        self.assertEqual(self.gh_argv(command, rest_fails=True)[2], ["gh", "pr", "diff", "--name-only"])
+        self.assertEqual(len(self.gh_argv(MERGE, files=files, rest_fails=True)), 2)
 
 
 if __name__ == "__main__":
