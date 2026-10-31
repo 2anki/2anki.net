@@ -512,14 +512,42 @@ class TestAllowedMerge(unittest.TestCase):
             else:
                 self.assertFalse(mc.is_gh_pr_merge(line), line)
 
-    def test_every_deploy_status_and_cleanup_command_is_left_alone(self):
-        for name in ("deploy-status.md", "cleanup.md"):
-            with open(os.path.join(HOOKS_DIR, "..", "commands", name)) as handle:
+    def test_every_command_block_in_the_changed_docs_is_left_alone(self):
+        for name in (
+            "commands/ship.md",
+            "commands/deploy-status.md",
+            "commands/cleanup.md",
+            "commands/review-pr.md",
+            "commands/overnight-prs.md",
+            "commands/pr-visual-diff.md",
+            "docs/follow-ups-project.md",
+            "docs/prod-ops.md",
+        ):
+            with open(os.path.join(HOOKS_DIR, "..", name)) as handle:
                 doc = handle.read()
-            blocks = [block.strip() for block in re.findall(r"```bash\n(.*?)```", doc, re.S)]
-            self.assertGreater(len(blocks), 1, name)
-            for block in blocks:
-                self.assertFalse(mc.is_gh_pr_merge(block), block)
+            blocks = [
+                match.group(1).strip()
+                for match in re.finditer(r"```bash\n(.*?)```", doc, re.S)
+                if not doc[: match.start()].rstrip().endswith("with the Write tool:")
+            ]
+            inline = [
+                command
+                for command in re.findall(r"(?<!`)`((?:gh|git) [^`]+)`(?!`)", doc)
+                if not command.startswith("gh pr merge")
+            ]
+            self.assertGreater(len(blocks) + len(inline), 0, name)
+            for command in blocks + inline:
+                if mc.allowed_merge(command.replace("<n>", "42")) is None:
+                    self.assertFalse(mc.is_gh_pr_merge(command), (name, command))
+
+    def test_a_variable_title_or_body_never_reaches_the_sibling_hooks(self):
+        for cmd in (
+            'T=x; gh issue create --title "$T"',
+            'gh pr create --title x --body "$B"',
+            'gh pr create --title x --body-file "$F"',
+            'gh pr edit 5 --body "${B}"',
+        ):
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
     def test_a_trailing_2_to_1_redirect_is_the_only_suffix_allowed(self):
         self.assertEqual(mc.allowed_merge("gh pr merge 42 --repo 2anki/server --squash 2>&1"), ("42", "2anki/server"))
