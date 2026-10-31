@@ -123,7 +123,7 @@ export class ResumeAnonymousAiPreviewUseCase {
       });
       throw new AiCreditsExhaustedError();
     }
-    // Claim the hold atomically before doing any work: a second concurrent
+    // Claim the hold atomically before converting: a second concurrent
     // resume loses the claim and gets nothing, so the pass is billed once.
     if (!(await this.repository.claimForConversion(hold.id, new Date()))) {
       throw new NoAiPreviewHoldError();

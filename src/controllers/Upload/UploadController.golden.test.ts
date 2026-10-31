@@ -34,7 +34,11 @@ vi.mock('@aws-sdk/client-s3', async (importActual) => {
   return { ...actual, S3Client: RecordingS3Client };
 });
 
-const passCredits = vi.hoisted(() => ({ spentUsd: 0, readFails: false }));
+const passCredits = vi.hoisted(() => ({
+  spentUsd: 0,
+  readFails: false,
+  resumeSkipsBalanceCheck: false,
+}));
 
 vi.mock(
   '../../data_layer/createAnonymousPassCreditReaders',
@@ -1006,6 +1010,7 @@ function goldenResumeController(): AiPreviewResumeController {
       (sessionId) => getCheckoutSessionBinding(stubStripe, sessionId),
       {
         isExhausted: async (anonymousPassId) =>
+          !passCredits.resumeSkipsBalanceCheck &&
           (await getAiBudgetStatus({ anonymousPassId })).exhausted,
       }
     )
@@ -1078,6 +1083,7 @@ afterEach(() => {
   checkoutMetadata.clear();
   passCredits.spentUsd = 0;
   passCredits.readFails = false;
+  passCredits.resumeSkipsBalanceCheck = false;
   s3Objects.clear();
   s3Puts.length = 0;
   cardUsageCharges.length = 0;
@@ -1461,6 +1467,23 @@ describe('what each population gets back from the Day Pass AI preview resume', (
     const retried = await resumeAiPreview(dayPassHolderOnThisBrowser);
     expect(retried.status).toBe(200);
     expect(retried.heldPreviewsLeft).toBe(0);
+  }, 20_000);
+
+  it('refuses a deck the conversion built without AI when credits ran out after the balance check', async () => {
+    passCredits.resumeSkipsBalanceCheck = true;
+
+    const spent = await previewThenResume({
+      previewedFirst: true,
+      boughtOnAnonId: 'golden-anon',
+      who: { ...dayPassHolderOnThisBrowser, passSpentUsd: 1000 },
+    });
+
+    expect(spent).toMatchObject({
+      status: 402,
+      body: { code: 'ai_credits_exhausted' },
+      heldPreviewsLeft: 1,
+      heldObjectsLeft: 1,
+    });
   }, 20_000);
 
   it('answers spent credits, not an empty deck, when the parser finds no cards in the held file', async () => {
