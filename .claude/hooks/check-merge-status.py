@@ -119,6 +119,8 @@ REACH_EXCLUDED_PARTS = (
     "_mock/",
     "/setupTests.",
 )
+
+
 def is_dependabot(login):
     return login in merge_command.DEPENDABOT_LOGINS
 
