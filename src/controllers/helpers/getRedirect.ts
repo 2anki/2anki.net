@@ -18,7 +18,6 @@ const ALLOWED_REDIRECT_PATHS = [
   '/settings',
   '/anki',
   '/card-options',
-  '/limit',
 ];
 
 const ALLOWED_REDIRECT_ORIGINS = ALLOWED_ORIGINS.map((origin) => {
@@ -75,8 +74,8 @@ const resolvePricingReturn = (candidate: string): string | null => {
 };
 
 const LIMIT_PATHS = new Set(['/limit', '/limit/']);
-const LIMIT_KINDS = new Set(['anonymous', 'card_count', 'file_size']);
-const LIMIT_CARD_COUNT = /^\d{1,5}$/;
+const SIGNED_IN_LIMIT_KINDS = new Set(['card_count', 'file_size']);
+const ANONYMOUS_LIMIT_KIND = 'anonymous';
 
 const resolveLimitReturn = (candidate: string): string | null => {
   if (!candidate.startsWith('/limit')) {
@@ -91,17 +90,14 @@ const resolveLimitReturn = (candidate: string): string | null => {
   if (parsed.origin !== SAME_SITE_BASE || !LIMIT_PATHS.has(parsed.pathname)) {
     return null;
   }
-  const kept = new URLSearchParams();
   const kind = parsed.searchParams.get('kind');
-  if (kind != null && LIMIT_KINDS.has(kind)) {
-    kept.set('kind', kind);
+  if (kind === ANONYMOUS_LIMIT_KIND) {
+    return null;
   }
-  const cards = parsed.searchParams.get('cards');
-  if (cards != null && LIMIT_CARD_COUNT.test(cards)) {
-    kept.set('cards', cards);
+  if (kind != null && SIGNED_IN_LIMIT_KINDS.has(kind)) {
+    return `/limit?kind=${kind}`;
   }
-  const query = kept.toString();
-  return `/limit${query === '' ? '' : `?${query}`}`;
+  return '/limit';
 };
 
 const resolveAllowedOrigin = (candidate: string): string | null => {

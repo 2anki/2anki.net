@@ -262,11 +262,9 @@ describe('getRedirect security tests', () => {
     const kept: [string, string][] = [
       ['/limit', '/limit'],
       ['/limit/', '/limit'],
-      ['/limit?kind=anonymous', '/limit?kind=anonymous'],
       ['/limit?kind=card_count', '/limit?kind=card_count'],
       ['/limit?kind=file_size', '/limit?kind=file_size'],
-      ['/limit?kind=anonymous&cards=240', '/limit?kind=anonymous&cards=240'],
-      ['/limit?cards=240&kind=anonymous', '/limit?kind=anonymous&cards=240'],
+      ['/limit/?kind=card_count', '/limit?kind=card_count'],
     ];
     kept.forEach(([input, expected]) => {
       it(`keeps ${input} as ${expected}`, () => {
@@ -281,14 +279,15 @@ describe('getRedirect security tests', () => {
 
     const stripped: [string, string][] = [
       ['/limit?kind=evil', '/limit'],
-      ['/limit?cards=-1', '/limit'],
-      ['/limit?cards=12a', '/limit'],
-      ['/limit?cards=1234567', '/limit'],
+      ['/limit?kind=__proto__', '/limit'],
+      ['/limit?cards=240', '/limit'],
       ['/limit?ref=limit-wall', '/limit'],
-      ['/limit?kind=anonymous&next=https://evil.com', '/limit?kind=anonymous'],
-      ['/limit?kind=anonymous&kind=evil', '/limit?kind=anonymous'],
+      [
+        '/limit?kind=card_count&next=https://evil.com',
+        '/limit?kind=card_count',
+      ],
+      ['/limit?kind=card_count&kind=evil', '/limit?kind=card_count'],
       ['/limit#javascript:alert(1)', '/limit'],
-      ['/limit/anything?kind=anonymous', '/limit'],
     ];
     stripped.forEach(([input, expected]) => {
       it(`drops anything outside the allowlist: ${input} -> ${expected}`, () => {
@@ -296,7 +295,20 @@ describe('getRedirect security tests', () => {
       });
     });
 
+    const anonymousWall = [
+      '/limit?kind=anonymous',
+      '/limit?kind=anonymous&cards=240',
+      '/limit/?kind=anonymous',
+    ];
+    anonymousWall.forEach((target) => {
+      it(`sends a visitor who hit the signed-out wall back to upload: ${target}`, () => {
+        expect(getRedirect(createMockRequest(target))).toBe('/upload');
+      });
+    });
+
     const offSite = [
+      '/limit/anything',
+      '/limit/anything?kind=card_count',
       '//evil.com',
       '//evil.com/limit',
       '/\\evil.com/limit',

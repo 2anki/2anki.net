@@ -2082,14 +2082,14 @@ describe('UsersController.login — Notion-aware redirect', () => {
     const { controller } = buildLoginController();
     const req = {
       body: { email: 'u@example.com', credentials: 'mock' },
-      query: { redirect: '/limit?kind=anonymous&cards=240' },
+      query: { redirect: '/limit?kind=card_count' },
     } as unknown as express.Request;
     const res = buildLoginRes();
 
     await controller.login(req, res, vi.fn());
 
     const payload = res.json.mock.calls[0][0];
-    expect(payload.redirect).toBe('/limit?kind=anonymous&cards=240');
+    expect(payload.redirect).toBe('/limit?kind=card_count');
   });
 });
 
@@ -4350,6 +4350,28 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       expect(loginReturnCookies(res)).toEqual([]);
     });
 
+    it('a signed-in GET /login?redirect=/limit goes straight to the limit page', async () => {
+      const res = buildSigninRes();
+      const controller = new UsersController(
+        {} as UsersService,
+        {
+          getUserFrom: vi.fn().mockResolvedValue(existingUser),
+        } as unknown as AuthenticationService,
+        {} as ReturnType<typeof import('../data_layer').getDatabase>
+      );
+
+      await controller.checkUser(
+        {
+          query: { redirect: '/limit?kind=file_size' },
+          body: {},
+          cookies: { token: 'session-jwt' },
+        } as unknown as express.Request,
+        res
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith('/limit?kind=file_size');
+    });
+
     it.each(['/limitless', '/convert/apkg-to-csv'])(
       'GET /login from a page that is not on the allowlist (%s) remembers nothing',
       async (redirect) => {
@@ -4499,6 +4521,28 @@ describe('UsersController — sign-in returns a connector to the authorize scree
         await signIn(res, { [LOGIN_RETURN]: '/upload' });
 
         expect(res.redirect).toHaveBeenCalledWith('/upload');
+      }
+    );
+
+    it.each(providerCallbacks)(
+      '%s sign-in from /login?redirect=/limit lands back on the limit page',
+      async (_provider, signIn) => {
+        const res = buildSigninRes();
+
+        await signIn(res, { [LOGIN_RETURN]: '/limit?kind=card_count' });
+
+        expect(res.redirect).toHaveBeenCalledWith('/limit?kind=card_count');
+      }
+    );
+
+    it.each(providerCallbacks)(
+      '%s sign-in from the signed-out limit wall does not land on the limit page',
+      async (_provider, signIn) => {
+        const res = buildSigninRes();
+
+        await signIn(res, { [LOGIN_RETURN]: '/limit?kind=anonymous' });
+
+        expect(res.redirect).toHaveBeenCalledWith('/notion');
       }
     );
 
