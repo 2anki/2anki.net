@@ -1174,53 +1174,66 @@ describe('UploadService.handleUpload — error paths', () => {
     ]);
   });
 
-  it('answers an Anki-package zip with its explanation and logs no error', async () => {
-    const workerError = new Error(ANKI_PACKAGE_ZIP_MESSAGE);
-    workerError.stack =
-      `Error: ${ANKI_PACKAGE_ZIP_MESSAGE}\n` +
-      '    at getPackagesFromZip (/app/src/usecases/uploads/getPackagesFromZip.ts:630:11)';
-    MockGeneratePackagesUseCase.mockImplementation(function () {
-      return {
-        execute: vi.fn().mockRejectedValue(workerError),
-      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
-    });
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it.each([
+    ['a signed-out visitor', {}],
+    ['a signed-in free user', { owner: 42 }],
+    ['a paying subscriber', { owner: 42, subscriber: true }],
+    [
+      'a signed-in pass holder',
+      { owner: 42, subscriber: true, passKind: 'day' },
+    ],
+    ['a signed-out pass holder', { anonymousPassId: 7 }],
+  ])(
+    'answers an Anki-package zip from %s with its explanation and logs no error',
+    async (_who, locals) => {
+      const workerError = new Error(ANKI_PACKAGE_ZIP_MESSAGE);
+      workerError.stack =
+        `Error: ${ANKI_PACKAGE_ZIP_MESSAGE}\n` +
+        '    at getPackagesFromZip (/app/src/usecases/uploads/getPackagesFromZip.ts:630:11)';
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockRejectedValue(workerError),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    const service = new UploadService(
-      buildRepository(),
-      {} as JobRepository,
-      buildUsersRepo(),
-      ...fakeUploadServiceDeps()
-    );
-    const { res, capturedStatus, capturedJson } = buildResponse();
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse();
+      Object.assign(res.locals, locals);
 
-    await service.handleUpload(
-      buildRequest({
-        files: [
-          {
-            originalname: 'export.zip',
-            mimetype: 'application/zip',
-            size: 20,
-            buffer: Buffer.from('PK'),
-          },
-        ],
-      } as unknown as Partial<express.Request>),
-      res
-    );
+      await service.handleUpload(
+        buildRequest({
+          files: [
+            {
+              originalname: 'export.zip',
+              mimetype: 'application/zip',
+              size: 20,
+              buffer: Buffer.from('PK'),
+            },
+          ],
+        } as unknown as Partial<express.Request>),
+        res
+      );
 
-    const errorCalls = errorSpy.mock.calls.length;
-    errorSpy.mockRestore();
-    expect(errorCalls).toBe(0);
-    expect(capturedStatus()).toBe(400);
-    expect(capturedJson()).toEqual({
-      code: 'unknown',
-      message: ANKI_PACKAGE_ZIP_MESSAGE,
-    });
-    expect(trackMock).not.toHaveBeenCalledWith(
-      'conversion_failed',
-      expect.anything()
-    );
-  });
+      const errorCalls = errorSpy.mock.calls.length;
+      errorSpy.mockRestore();
+      expect(errorCalls).toBe(0);
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code: 'unknown',
+        message: ANKI_PACKAGE_ZIP_MESSAGE,
+      });
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.anything()
+      );
+    }
+  );
 
   it('answers a sync upload whose worker hit a filesystem error with the generic 500, not its path', async () => {
     const crash = Object.assign(
