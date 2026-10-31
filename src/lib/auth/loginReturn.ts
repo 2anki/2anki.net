@@ -66,5 +66,13 @@ export function takeLoginReturn(
   }
   const cookies = req.cookies as Record<string, unknown>;
   res.clearCookie(LOGIN_RETURN_COOKIE, cookieOptions());
-  return asLoginReturn(cookies[LOGIN_RETURN_COOKIE]);
+  const safe = asLoginReturn(cookies[LOGIN_RETURN_COOKIE]);
+  if (safe != null) {
+    console.info(`[login-return] used section=${sectionOf(safe)}`);
+  }
+  return safe;
+}
+
+function sectionOf(path: string): string {
+  return path.slice(1).split(/[/?#]/, 1)[0];
 }

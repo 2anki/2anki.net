@@ -133,6 +133,21 @@ describe('takeLoginReturn', () => {
     );
   });
 
+  it('logs the section it returns to, never the full path', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    takeLoginReturn(
+      loginRequest(undefined, {
+        [LOGIN_RETURN_COOKIE]: '/api/download/u/secret-key',
+      }),
+      fakeRes()
+    );
+
+    expect(info).toHaveBeenCalledWith('[login-return] used section=api');
+    expect(JSON.stringify(info.mock.calls)).not.toContain('secret-key');
+    info.mockRestore();
+  });
+
   it.each(['//evil.com', 'https://evil.com/pricing', '/\\evil.com', 42])(
     'refuses a tampered cookie %s and still clears it',
     (value) => {
