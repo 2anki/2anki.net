@@ -45,7 +45,7 @@ def fetch_pr_data(pr_ref):
     args = ["gh", "pr", "view"]
     if pr_ref is not None:
         args.append(pr_ref)
-    args.extend(["--json", "author,body,files"])
+    args.extend(["--json", "number,author,body,files"])
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=15)
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
@@ -111,7 +111,7 @@ def main():
     if author == "dependabot[bot]":
         allow()
 
-    files = pr_data.get("files") or []
+    files, _ = merge_command.changed_files(pr_data, pr_ref, "[check-browser-attestation]")
     touching = web_src_files(files)
 
     if not touching:

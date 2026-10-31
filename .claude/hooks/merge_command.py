@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Shared matcher for the three merge-gate hooks: does this Bash command *run*
+Shared matcher for the four merge-gate hooks: does this Bash command *run*
 `gh pr merge`, as opposed to merely mentioning it?
 
 A mention inside a commit message, a heredoc'd doc edit, or an echo used to
@@ -19,8 +19,19 @@ is exactly the path an agent must not have.
 
 Known limitation: `bash -c "gh pr merge 1"` hides the merge inside a quoted
 literal and is not matched. That is a policy violation, not a hook gap.
+
+`changed_files` is the file list all four merge hooks gate on.
+`gh pr view --json files` stops at a PR's first 100 files (#5172), so the
+list comes from the paginated REST endpoint instead: exact names, up to the
+3000 files GitHub returns, no diff-size limit. It is merged with the view's
+files, so it never holds less than the view did; when the REST call fails
+the view's files are returned and each hook falls back to what it checked
+before.
 """
+import json
 import re
+import subprocess
+import sys
 
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.S | re.M)
 QUOTED_LITERAL = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
@@ -73,3 +84,92 @@ def extract_pr_ref(cmd):
         if token.isdigit():
             return token
     return None
+
+
+CANONICAL_REPO = "2anki/2anki.net"
+REST_FILES_TIMEOUT_SECONDS = 20
+REST_FILES_JQ = ".[] | [.filename, .status, .additions, .deletions] | @json"
+REST_STATUS_TO_CHANGE_TYPE = {
+    "added": "ADDED",
+    "removed": "DELETED",
+    "modified": "MODIFIED",
+    "renamed": "RENAMED",
+    "copied": "COPIED",
+    "changed": "CHANGED",
+    "unchanged": "UNCHANGED",
+}
+
+
+def pr_number(pr_data, pr_ref):
+    for candidate in (pr_data.get("number"), pr_ref):
+        if isinstance(candidate, bool):
+            continue
+        text = str(candidate) if isinstance(candidate, int) else candidate
+        if isinstance(text, str) and text.isdigit():
+            return text
+    return None
+
+
+def rest_files_args(number):
+    return [
+        "gh", "api", "--paginate",
+        f"repos/{CANONICAL_REPO}/pulls/{number}/files?per_page=100",
+        "--jq", REST_FILES_JQ,
+    ]
+
+
+def parse_rest_line(line):
+    row = json.loads(line)
+    if not (isinstance(row, list) and len(row) == 4 and isinstance(row[0], str) and isinstance(row[1], str)):
+        raise ValueError("unexpected REST file row")
+    path, status, additions, deletions = row
+    return {
+        "path": path,
+        "changeType": REST_STATUS_TO_CHANGE_TYPE.get(status, status.upper()),
+        "additions": additions,
+        "deletions": deletions,
+    }
+
+
+def fetch_rest_files(number, tag):
+    try:
+        result = subprocess.run(
+            rest_files_args(number),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=REST_FILES_TIMEOUT_SECONDS,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        sys.stderr.write(f"{tag} could not list the PR's files over REST ({exc}); using gh pr view's.\n")
+        return None
+    if result.returncode != 0:
+        sys.stderr.write(
+            f"{tag} REST file list failed; using gh pr view's. "
+            f"stderr: {result.stderr.strip()[:300]}\n"
+        )
+        return None
+    try:
+        return [parse_rest_line(line) for line in result.stdout.splitlines() if line.strip()]
+    except ValueError:
+        sys.stderr.write(f"{tag} could not parse the REST file list; using gh pr view's.\n")
+        return None
+
+
+def view_files(pr_data):
+    files = pr_data.get("files")
+    if not isinstance(files, list):
+        return []
+    return [entry for entry in files if isinstance(entry, dict)]
+
+
+def changed_files(pr_data, pr_ref, tag):
+    """(files, complete): every changed file, or gh pr view's files and False when REST fails."""
+    viewed = view_files(pr_data)
+    number = pr_number(pr_data, pr_ref)
+    listed = fetch_rest_files(number, tag) if number is not None else None
+    if listed is None:
+        return viewed, False
+    listed_paths = {entry["path"] for entry in listed}
+    return listed + [entry for entry in viewed if entry.get("path") not in listed_paths], True

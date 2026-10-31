@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import importlib.util
+import json
 import os
+import subprocess
 import unittest
+from unittest.mock import patch, MagicMock
 
 HOOKS_DIR = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location(
@@ -139,6 +142,97 @@ class TestMentionsOnly(unittest.TestCase):
     def test_merge_after_quoted_mention_still_counts(self):
         cmd = 'echo "shipping via gh pr merge" && gh pr merge 4244'
         self.assertTrue(mc.is_gh_pr_merge(cmd))
+
+
+def rest_line(path, status="modified", additions=1, deletions=1):
+    return json.dumps([path, status, additions, deletions])
+
+
+def rest_stdout(paths, status="modified"):
+    return "".join(rest_line(p, status) + "\n" for p in paths)
+
+
+def ok(stdout):
+    return MagicMock(returncode=0, stdout=stdout, stderr="")
+
+
+MANY_PATHS = [f"docs/page{i}.md" for i in range(150)] + ["web/src/App.tsx"]
+
+
+class TestChangedFiles(unittest.TestCase):
+    def changed(self, pr_data, pr_ref="42", run=None):
+        with patch("subprocess.run", side_effect=run) as fake:
+            result = mc.changed_files(pr_data, pr_ref, "[test]")
+        return result, [call.args[0] for call in fake.call_args_list]
+
+    def test_lists_files_past_the_first_100_from_the_rest_endpoint(self):
+        view = {"number": 42, "files": [{"path": p} for p in MANY_PATHS[:100]]}
+        (files, complete), _ = self.changed(view, run=[ok(rest_stdout(MANY_PATHS))])
+        self.assertTrue(complete)
+        self.assertEqual(len(files), 151)
+        self.assertGreater([f["path"] for f in files].index("web/src/App.tsx"), 100)
+
+    def test_calls_the_paginated_rest_endpoint_for_the_pr_number(self):
+        _, argv = self.changed({"number": 42, "files": []}, run=[ok("")])
+        self.assertEqual(argv[0][:4], ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/42/files?per_page=100"])
+
+    def test_a_current_branch_merge_uses_the_number_gh_pr_view_returned(self):
+        _, argv = self.changed({"number": 5172, "files": []}, pr_ref=None, run=[ok("")])
+        self.assertIn("repos/2anki/2anki.net/pulls/5172/files?per_page=100", argv[0])
+
+    def test_maps_rest_statuses_to_gh_pr_view_change_types(self):
+        stdout = "".join(
+            rest_line(path, status, 2, 3) + "\n"
+            for path, status in (("a", "added"), ("b", "removed"), ("c", "modified"), ("d", "renamed"))
+        )
+        (files, _), _ = self.changed({"number": 42, "files": []}, run=[ok(stdout)])
+        self.assertEqual(
+            [(f["path"], f["changeType"], f["additions"], f["deletions"]) for f in files],
+            [("a", "ADDED", 2, 3), ("b", "DELETED", 2, 3), ("c", "MODIFIED", 2, 3), ("d", "RENAMED", 2, 3)],
+        )
+
+    def test_keeps_a_view_file_the_rest_list_lacks(self):
+        view = {"number": 42, "files": [{"path": "src/a.ts", "changeType": "MODIFIED"}]}
+        (files, complete), _ = self.changed(view, run=[ok(rest_stdout(["src/b.ts"]))])
+        self.assertTrue(complete)
+        self.assertEqual(sorted(f["path"] for f in files), ["src/a.ts", "src/b.ts"])
+
+    def test_a_rest_failure_falls_back_to_the_view_files(self):
+        view = {"number": 42, "files": [{"path": "src/a.ts"}]}
+        failed = MagicMock(returncode=1, stdout="", stderr="HTTP 502")
+        (files, complete), _ = self.changed(view, run=[failed])
+        self.assertFalse(complete)
+        self.assertEqual(files, [{"path": "src/a.ts"}])
+
+    def test_an_os_error_or_timeout_falls_back_to_the_view_files(self):
+        view = {"number": 42, "files": [{"path": "src/a.ts"}]}
+        for error in (PermissionError("gh"), FileNotFoundError("gh"), subprocess.TimeoutExpired("gh", 20)):
+            (files, complete), _ = self.changed(view, run=error)
+            self.assertFalse(complete)
+            self.assertEqual(files, [{"path": "src/a.ts"}])
+
+    def test_unparseable_rest_output_falls_back_to_the_view_files(self):
+        view = {"number": 42, "files": [{"path": "src/a.ts"}]}
+        for stdout in ("not json\n", '{"path": "x"}\n', '["x", "modified"]\n', "[1, \"modified\", 1, 1]\n"):
+            (files, complete), _ = self.changed(view, run=[ok(stdout)])
+            self.assertFalse(complete)
+            self.assertEqual(files, [{"path": "src/a.ts"}])
+
+    def test_no_usable_pr_number_skips_the_call_and_falls_back(self):
+        for number in (None, "", "12/../13", True):
+            (files, complete), argv = self.changed({"number": number, "files": [{"path": "a"}]}, pr_ref=None, run=[])
+            self.assertFalse(complete)
+            self.assertEqual(argv, [])
+            self.assertEqual(files, [{"path": "a"}])
+
+    def test_falls_back_to_the_merge_command_number_when_view_has_none(self):
+        _, argv = self.changed({"files": []}, pr_ref="77", run=[ok("")])
+        self.assertIn("repos/2anki/2anki.net/pulls/77/files?per_page=100", argv[0])
+
+    def test_odd_view_shapes_do_not_raise(self):
+        (files, complete), _ = self.changed({"number": 42, "files": [None, "x", {"path": "a"}]}, run=[ok("")])
+        self.assertTrue(complete)
+        self.assertEqual(files, [{"path": "a"}])
 
 
 if __name__ == "__main__":

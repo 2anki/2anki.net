@@ -35,8 +35,36 @@ def file_entry(path, change_type="MODIFIED", deletions=1):
     return {"path": path, "changeType": change_type, "additions": 1, "deletions": deletions}
 
 
+GH_PR_VIEW_FILES_CAP = 100
+REST_STATUS = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed"}
+REST_FAILURE = {"returncode": 1, "stdout": "", "stderr": "HTTP 502"}
+
+
 def pr_json(files, body="", author="alemayhu"):
-    return json.dumps({"author": {"login": author}, "body": body, "files": files})
+    return json.dumps({
+        "number": 4589,
+        "author": {"login": author},
+        "body": body,
+        "files": files[:GH_PR_VIEW_FILES_CAP],
+    })
+
+
+def rest_stdout(files):
+    return "".join(
+        json.dumps([f["path"], REST_STATUS[f["changeType"]], f["additions"], f["deletions"]]) + "\n"
+        for f in files
+    )
+
+
+def view_files(view_stdout):
+    try:
+        files = json.loads(view_stdout).get("files")
+    except (ValueError, AttributeError):
+        return []
+    listable = ("path", "changeType", "additions", "deletions")
+    if not isinstance(files, list):
+        return []
+    return [f for f in files if isinstance(f, dict) and all(f.get(k) is not None for k in listable)]
 
 
 def diff_block(path, removed=(), added=(), deleted_file=False):
@@ -54,13 +82,18 @@ def diff_block(path, removed=(), added=(), deleted_file=False):
     return "\n".join(lines) + "\n"
 
 
-def gh_responder(view_stdout, diff_stdout="", diff_returncode=0, view_returncode=0):
+def gh_responder(view_stdout, diff_stdout="", diff_returncode=0, view_returncode=0, rest_files=None, rest_result=None):
     calls = []
 
     def fake_run(args, **kwargs):
         calls.append(args)
         if args[:3] == ["gh", "pr", "view"]:
             return MagicMock(returncode=view_returncode, stdout=view_stdout, stderr="boom")
+        if args[:2] == ["gh", "api"]:
+            if rest_result is not None:
+                return MagicMock(**rest_result)
+            listed = view_files(view_stdout) if rest_files is None else rest_files
+            return MagicMock(returncode=0, stdout=rest_stdout(listed), stderr="")
         if args[:3] == ["gh", "pr", "diff"]:
             return MagicMock(returncode=diff_returncode, stdout=diff_stdout, stderr="too large")
         raise AssertionError(f"unexpected command {args}")
@@ -318,7 +351,63 @@ class TestPrRefPassing(unittest.TestCase):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), REMOVED_KEY_DIFF)
         run_hook("gh pr merge 4589 --squash", fake)
         self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "4589"])
-        self.assertEqual(fake.calls[1][:4], ["gh", "pr", "diff", "4589"])
+        self.assertEqual(fake.calls[1][:4], ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/4589/files?per_page=100"])
+        self.assertEqual(fake.calls[2][:4], ["gh", "pr", "diff", "4589"])
+
+    def test_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
+        fake = gh_responder(pr_json([file_entry(NOTICE, "DELETED")]))
+        run_hook("gh pr merge --squash", fake)
+        self.assertEqual(fake.calls[0][:5], ["gh", "pr", "view", "--json", "number,author,body,files"])
+        self.assertIn("repos/2anki/2anki.net/pulls/4589/files?per_page=100", fake.calls[1])
+
+
+FILLER = [file_entry(f"docs/page{i}.md") for i in range(150)]
+
+
+class TestFilesPastTheFirst100(unittest.TestCase):
+    def test_deleted_notice_component_past_the_first_100_files_denies(self):
+        files = FILLER + [file_entry(NOTICE, "DELETED")]
+        fake = gh_responder(pr_json(files), rest_files=files)
+        result = run_hook("gh pr merge 1", fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn(NOTICE, result["reason"])
+
+    def test_notice_component_surviving_past_the_first_100_files_is_a_move(self):
+        moved = "web/src/components/Moved/AnonymousPartialNotice.tsx"
+        files = [file_entry(NOTICE, "DELETED")] + FILLER + [file_entry(moved, "ADDED", 0)]
+        fake = gh_responder(pr_json(files), rest_files=files)
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+
+    def test_changed_snapshot_past_the_first_100_files_denies(self):
+        files = FILLER + [file_entry(PARSER_SNAP)]
+        fake = gh_responder(pr_json(files), rest_files=files)
+        result = run_hook("gh pr merge 1", fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn(PARSER_SNAP, result["reason"])
+
+    def test_removed_en_string_past_the_first_100_files_denies(self):
+        files = FILLER + [file_entry(EN_LOCALE)]
+        fake = gh_responder(pr_json(files), REMOVED_KEY_DIFF, rest_files=files)
+        result = run_hook("gh pr merge 1", fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("heldBack_other", result["reason"])
+
+
+class TestRestFailure(unittest.TestCase):
+    def test_rest_failure_still_gates_a_notice_component_in_the_first_100_files(self):
+        files = [file_entry(NOTICE, "DELETED")] + FILLER
+        fake = gh_responder(pr_json(files), rest_result=REST_FAILURE)
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "deny")
+
+    def test_rest_failure_falls_back_to_the_first_100_files_as_before(self):
+        files = FILLER + [file_entry(NOTICE, "DELETED")]
+        fake = gh_responder(pr_json(files), rest_result=REST_FAILURE)
+        self.assertEqual(run_hook("gh pr merge 1", fake)["result"], "allow")
+
+    def test_rest_os_error_still_gates_a_snapshot_in_the_first_100_files(self):
+        view = MagicMock(returncode=0, stdout=pr_json([file_entry(PARSER_SNAP)] + FILLER), stderr="")
+        result = run_hook("gh pr merge 1", fake_run=[view, PermissionError("gh")])
+        self.assertEqual(result["result"], "deny")
 
 
 def nested_hunk(path, lines):

@@ -57,13 +57,16 @@ literals outside the locale files; a server warning built from a string
 literal with no named constant; a removed string whose value is common enough
 to be added elsewhere in en ("Cancel"); a nested string swapped for one with
 the same leaf at the same depth, when an opener on either side sits outside
-its hunk; a PR past the file list gh returns; and anything in a diff GitHub
-refuses to serve or over 2 MB, where the string and constant checks fail open
-while the file-list checks still run. Past 10,000 changed en locale entries the
-string check stops and asks for the section anyway.
+its hunk; files past the 3000 the REST file list returns (past the first 100
+when that call fails and `gh pr view`'s list is used, as before); and anything
+in a diff GitHub refuses to serve or over 2 MB, where the string and constant
+checks fail open while the file-list checks still run. Past 10,000 changed en
+locale entries the string check stops and asks for the section anyway.
 
-Mirrors check-changelog-on-merge.py: fetches the PR via gh, fails open on any
-tooling error, exempts dependabot.
+Fetches the PR via `gh pr view` and exempts dependabot. A `gh pr view` error
+fails open. The file list is `merge_command.changed_files`, shared by every
+merge hook; when its REST call fails the hook checks `gh pr view`'s first 100
+files rather than allowing the merge.
 """
 import json
 import os
@@ -153,7 +156,7 @@ def gh_args(subcommand, pr_ref, extra):
 
 
 def fetch_pr_data(pr_ref):
-    stdout = run_gh(gh_args("view", pr_ref, ["--json", "author,body,files"]), "this gate")
+    stdout = run_gh(gh_args("view", pr_ref, ["--json", "number,author,body,files"]), "this gate")
     if stdout is None:
         return None
     try:
@@ -463,8 +466,7 @@ def main():
     if isinstance(author, dict) and author.get("login") in DEPENDABOT_LOGINS:
         allow()
 
-    raw_files = pr_data.get("files")
-    files = [f for f in raw_files if isinstance(f, dict)] if isinstance(raw_files, list) else []
+    files, _ = merge_command.changed_files(pr_data, pr_ref, TAG)
     raw_body = pr_data.get("body")
     body = raw_body if isinstance(raw_body, str) else ""
 

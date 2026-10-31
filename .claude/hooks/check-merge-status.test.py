@@ -364,23 +364,42 @@ class OddShapesTest(unittest.TestCase):
         self.assertIsNotNone(check_merge_status.reach_violation(pr))
 
 
+def rest_stdout(paths):
+    return "".join(json.dumps([p, "modified", 1, 1]) + "\n" for p in paths)
+
+
+GH_PR_VIEW_FILES_CAP = 100
+DOCS = [f"docs/page{i}.md" for i in range(150)]
+REST_FAILURE = mock.MagicMock(returncode=1, stdout="", stderr="HTTP 502")
+
+
 class MainWiringTest(unittest.TestCase):
-    def run_main(self, pr_data):
-        captured = {}
+    def run_main(self, pr_data, rest_paths=None, rest_result=None, command="gh pr merge 1 --squash"):
+        captured = {"rest": []}
+        listed = rest_paths if rest_paths is not None else [f["path"] for f in pr_data.get("files") or []]
+        viewed = {**pr_data, "files": (pr_data.get("files") or [])[:GH_PR_VIEW_FILES_CAP]}
 
         def fake_run_gh(args, label):
             captured["args"] = args
-            return json.dumps(pr_data)
+            return json.dumps(viewed)
 
-        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
+        def fake_subprocess_run(args, **kwargs):
+            captured["rest"].append(args)
+            if rest_result is not None:
+                return rest_result
+            return mock.MagicMock(returncode=0, stdout=rest_stdout(listed), stderr="")
+
+        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
         stdout = io.StringIO()
         with mock.patch.object(check_merge_status, "run_gh", fake_run_gh), \
+                mock.patch("subprocess.run", side_effect=fake_subprocess_run), \
                 mock.patch.dict(os.environ, {}, clear=False), \
                 mock.patch("sys.stdin", stdin), \
                 mock.patch("sys.stdout", stdout):
             os.environ.pop("CLAUDE_SKIP_SAFETY", None)
             with self.assertRaises(SystemExit):
                 check_merge_status.main()
+        self.rest_calls = captured["rest"]
         return captured["args"], json.loads(stdout.getvalue())
 
     def pr(self, body):
@@ -476,6 +495,43 @@ class MainWiringTest(unittest.TestCase):
         pr = {**self.pr(""), "title": "chore: rename", "commits": commits("chore: rename")}
         _, output = self.run_main(pr)
         self.assertEqual(output, {"continue": True})
+
+    def test_source_past_the_first_100_files_still_needs_the_section(self):
+        pr = {**self.pr("## What\nx"), "files": files(*DOCS, "src/usecases/x.ts")}
+        _, output = self.run_main(pr)
+        self.assertIn("Who else this reaches", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_a_lockfile_past_the_first_100_files_still_needs_a_test_run(self):
+        pr = {**self.pr(REACH_TABLE), "files": files(*DOCS, "src/usecases/x.ts", "pnpm-lock.yaml")}
+        _, output = self.run_main(pr)
+        self.assertIn("pnpm-lock.yaml", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_lists_files_over_rest_for_the_pr_number(self):
+        self.run_main(self.pr(REACH_TABLE))
+        self.assertEqual(
+            self.rest_calls[0][:4],
+            ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/1/files?per_page=100"],
+        )
+
+    def test_a_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
+        pr = {**self.pr(REACH_TABLE), "number": 5172}
+        self.run_main(pr, command="gh pr merge --squash")
+        self.assertIn("repos/2anki/2anki.net/pulls/5172/files?per_page=100", self.rest_calls[0])
+
+    def test_a_rest_failure_still_gates_source_in_the_first_100_files(self):
+        pr = {**self.pr("## What\nx"), "files": files("src/usecases/x.ts", *DOCS)}
+        _, output = self.run_main(pr, rest_result=REST_FAILURE)
+        self.assertIn("Who else this reaches", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_a_rest_failure_falls_back_to_the_first_100_files_as_before(self):
+        pr = {**self.pr("## What\nx"), "files": files(*DOCS, "src/usecases/x.ts")}
+        _, output = self.run_main(pr, rest_result=REST_FAILURE)
+        self.assertEqual(output, {"continue": True})
+
+    def test_a_rest_failure_still_denies_a_failed_check(self):
+        pr = {**self.pr(REACH_TABLE), "statusCheckRollup": [{"name": "test", "status": "COMPLETED", "conclusion": "FAILURE"}]}
+        _, output = self.run_main(pr, rest_result=REST_FAILURE)
+        self.assertIn("test: FAILURE", output["hookSpecificOutput"]["permissionDecisionReason"])
 
     def test_the_deny_names_the_trigger_and_where_to_look(self):
         _, output = self.run_main(self.pr(""))

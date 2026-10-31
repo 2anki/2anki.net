@@ -13,7 +13,7 @@ Before this, every merge was a human step — but branch protection on `main` re
 
 | # | Condition | How it is checked |
 | --- | --- | --- |
-| 2 | Every rollup entry COMPLETED and non-FAILURE; every `test*` check RAN; dep changes have a SUCCESS test | `gh pr view --json statusCheckRollup,files` |
+| 2 | Every rollup entry COMPLETED and non-FAILURE; every `test*` check RAN; dep changes have a SUCCESS test | `gh pr view --json statusCheckRollup`; changed files from the paginated REST list all four merge hooks share (`merge_command.changed_files`), `gh pr view`'s first 100 when that call fails |
 | 3 | Review-agent pass marker for the head SHA | `<!-- ship-review: pass sha=<headRefOid> -->` in a PR review or comment; dependabot exempt. **Honor-system**, like the browser attestation: anyone who can comment can post it — it binds the operator's session to having run the review, it does not prove the review ran |
 | 5 | Browser attestation (web/src diffs) and changelog (feat/fix) | existing hooks |
 | 6 | PR came from a spec (`<type>/spec-<slug>` branch + a spec-lifecycle commit) → body carries `## Deviations from spec` | `gh pr view --json headRefName,body,commits`; non-spec PRs unaffected |

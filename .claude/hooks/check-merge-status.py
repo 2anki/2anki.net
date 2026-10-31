@@ -37,6 +37,9 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
      the diff for the intended change and nobody listed who else reached it.
 
 `gh pr view` tooling errors fail open (a broken gh should not block a human).
+The changed files come from `merge_command.changed_files` (the paginated REST
+list, not `gh pr view`'s first 100); when that call fails, conditions 4 and 7
+read `gh pr view`'s files as they did before.
 
 Hard-rail PRs (`hard_rails.py`) are no longer refused here (removed 2026-10-05):
 /ship classifies them and runs extra verification instead of parking them.
@@ -436,7 +439,8 @@ def main():
         allow()
 
     rollup = pr_data.get("statusCheckRollup") or []
-    files = pr_data.get("files") or []
+    files, _ = merge_command.changed_files(pr_data, pr_ref, "[check-merge-status]")
+    pr_data = {**pr_data, "files": files}
     author = (pr_data.get("author") or {}).get("login", "")
 
     violations = classify(rollup, files)

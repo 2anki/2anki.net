@@ -19,7 +19,53 @@ def make_input(command, tool_name="Bash"):
     return json.dumps({"tool_name": tool_name, "tool_input": {"command": command}})
 
 
-def run_hook(command, tool_name="Bash", env=None, subprocess_side_effect=None, subprocess_result=None):
+GH_PR_VIEW_FILES_CAP = 100
+
+
+def rest_stdout(paths):
+    return "".join(json.dumps([p, "modified", 1, 1]) + "\n" for p in paths)
+
+
+def view_paths(view_stdout):
+    try:
+        return [f["path"] for f in json.loads(view_stdout).get("files", [])]
+    except (ValueError, AttributeError):
+        return []
+
+
+def gh_responder(view_result, rest_paths=None, rest_result=None):
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        if args[:2] == ["gh", "api"]:
+            if rest_result is not None:
+                return MagicMock(
+                    returncode=rest_result.get("returncode", 0),
+                    stdout=rest_result.get("stdout", ""),
+                    stderr=rest_result.get("stderr", ""),
+                )
+            paths = view_paths(view_result.get("stdout", "")) if rest_paths is None else rest_paths
+            return MagicMock(returncode=0, stdout=rest_stdout(paths), stderr="")
+        return MagicMock(
+            returncode=view_result.get("returncode", 0),
+            stdout=view_result.get("stdout", ""),
+            stderr=view_result.get("stderr", ""),
+        )
+
+    fake_run.calls = calls
+    return fake_run
+
+
+def run_hook(
+    command,
+    tool_name="Bash",
+    env=None,
+    subprocess_side_effect=None,
+    subprocess_result=None,
+    rest_paths=None,
+    rest_result=None,
+):
     env_patch = env or {}
     stdin_data = make_input(command, tool_name)
     captured = {}
@@ -36,11 +82,10 @@ def run_hook(command, tool_name="Bash", env=None, subprocess_side_effect=None, s
     if subprocess_side_effect is not None:
         run_patcher = patch("subprocess.run", side_effect=subprocess_side_effect)
     elif subprocess_result is not None:
-        run_patcher = patch("subprocess.run", return_value=MagicMock(
-            returncode=subprocess_result.get("returncode", 0),
-            stdout=subprocess_result.get("stdout", ""),
-            stderr=subprocess_result.get("stderr", ""),
-        ))
+        run_patcher = patch(
+            "subprocess.run",
+            side_effect=gh_responder(subprocess_result, rest_paths, rest_result),
+        )
     else:
         run_patcher = None
 
@@ -66,10 +111,16 @@ def run_hook(command, tool_name="Bash", env=None, subprocess_side_effect=None, s
 
 def make_pr_json(author_login, body, files):
     return json.dumps({
+        "number": 42,
         "author": {"login": author_login},
         "body": body,
-        "files": [{"path": f} for f in files],
+        "files": [{"path": f} for f in files[:GH_PR_VIEW_FILES_CAP]],
     })
+
+
+DOCS_THEN_WEB_SRC = [f"docs/page{i}.md" for i in range(150)] + ["web/src/App.tsx"]
+WEB_SRC_THEN_DOCS = ["web/src/App.tsx"] + [f"docs/page{i}.md" for i in range(150)]
+REST_FAILURE = {"returncode": 1, "stdout": "", "stderr": "HTTP 502"}
 
 
 class TestNonMergeCommand(unittest.TestCase):
@@ -166,6 +217,67 @@ class TestAttestationAbsent(unittest.TestCase):
         body = "- [x] Golden path on localhost:3000\n- [ ] No console errors at 375px\n"
         stdout = make_pr_json("alex", body, ["web/src/App.tsx"])
         result = run_hook("gh pr merge 42", subprocess_result={"returncode": 0, "stdout": stdout})
+        self.assertEqual(result["result"], "deny")
+
+
+class TestFilesPastTheFirst100(unittest.TestCase):
+    def test_web_src_file_past_the_first_100_files_requires_the_attestation(self):
+        self.assertGreater(DOCS_THEN_WEB_SRC.index("web/src/App.tsx"), GH_PR_VIEW_FILES_CAP)
+        stdout = make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)
+        result = run_hook(
+            "gh pr merge 42",
+            subprocess_result={"returncode": 0, "stdout": stdout},
+            rest_paths=DOCS_THEN_WEB_SRC,
+        )
+        self.assertEqual(result["result"], "deny")
+
+    def test_web_src_file_past_the_first_100_files_with_the_attestation_allows(self):
+        body = "- [x] Golden path on localhost:3000\n- [x] No console errors at 375px"
+        stdout = make_pr_json("alex", body, DOCS_THEN_WEB_SRC)
+        result = run_hook(
+            "gh pr merge 42",
+            subprocess_result={"returncode": 0, "stdout": stdout},
+            rest_paths=DOCS_THEN_WEB_SRC,
+        )
+        self.assertEqual(result["result"], "allow")
+
+    def test_lists_files_over_rest_for_the_pr_number(self):
+        fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
+        with patch("subprocess.run", side_effect=fake):
+            run_hook("gh pr merge 42")
+        self.assertEqual(fake.calls[0], ["gh", "pr", "view", "42", "--json", "number,author,body,files"])
+        self.assertEqual(fake.calls[1][:4], ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/42/files?per_page=100"])
+
+    def test_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
+        fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
+        with patch("subprocess.run", side_effect=fake):
+            run_hook("gh pr merge --squash")
+        self.assertEqual(fake.calls[0], ["gh", "pr", "view", "--json", "number,author,body,files"])
+        self.assertIn("repos/2anki/2anki.net/pulls/42/files?per_page=100", fake.calls[1])
+
+
+class TestRestFailure(unittest.TestCase):
+    def test_rest_failure_still_gates_web_src_in_the_first_100_files(self):
+        stdout = make_pr_json("alex", "No browser check", WEB_SRC_THEN_DOCS)
+        result = run_hook(
+            "gh pr merge 42",
+            subprocess_result={"returncode": 0, "stdout": stdout},
+            rest_result=REST_FAILURE,
+        )
+        self.assertEqual(result["result"], "deny")
+
+    def test_rest_failure_falls_back_to_the_first_100_files_as_before(self):
+        stdout = make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)
+        result = run_hook(
+            "gh pr merge 42",
+            subprocess_result={"returncode": 0, "stdout": stdout},
+            rest_result=REST_FAILURE,
+        )
+        self.assertEqual(result["result"], "allow")
+
+    def test_rest_os_error_still_gates_web_src_in_the_first_100_files(self):
+        view = MagicMock(returncode=0, stdout=make_pr_json("alex", "x", WEB_SRC_THEN_DOCS), stderr="")
+        result = run_hook("gh pr merge 42", subprocess_side_effect=[view, PermissionError("gh")])
         self.assertEqual(result["result"], "deny")
 
 
