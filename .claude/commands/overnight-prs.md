@@ -51,7 +51,12 @@ from the start:
 gh issue list --repo 2anki/server --state open --limit 1000 \
   --json number,title,createdAt,labels \
   --jq 'sort_by(.createdAt)' > /tmp/overnight-backlog.json
-M=$(jq 'length' /tmp/overnight-backlog.json)   # the denominator for the coverage line
+```
+
+Then, as a separate Bash call (the merge hooks deny a command that pairs `gh` with `$(`):
+
+```bash
+jq 'length' /tmp/overnight-backlog.json   # M, the denominator for the coverage line
 ```
 
 - `--limit 1000` overrides the 30 default and covers the current backlog with headroom. If the

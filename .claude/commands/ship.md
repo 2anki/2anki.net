@@ -23,7 +23,7 @@ gh pr view <n> --repo 2anki/server --json number,isDraft,files,headRefName,headR
   gh pr view <n> --json headRefOid --jq .headRefOid > <scratchpad>/ship-sha-<n>.txt
   gh pr view <n> --json files --jq '.files[].path' > <scratchpad>/ship-paths-<n>.txt
   gh pr diff <n> > <scratchpad>/ship-diff-<n>.txt
-  [ "$(gh pr view <n> --json headRefOid --jq .headRefOid)" = "$(cat <scratchpad>/ship-sha-<n>.txt)" ] || { echo "head moved while saving: run this block again"; exit 1; }
+  gh pr view <n> --json headRefOid --jq .headRefOid | diff -q - <scratchpad>/ship-sha-<n>.txt || { echo "head moved while saving: run this block again"; exit 1; }
   python3 -c "import sys; sys.path.insert(0,'.claude/hooks'); import hard_rails as r; p=open('<scratchpad>/ship-paths-<n>.txt').read().split(); print(r.rail_paths(p)); print(r.rail_content_hits(open('<scratchpad>/ship-diff-<n>.txt').read()))"
   ```
   `<scratchpad>` is the session scratchpad's absolute path (the environment block names it); write it out in full, including inside the python string. The file names carry the PR number: two ships running at once wrote the same `ship-diff.txt` on 2026-10-15 and one overwrote the other mid-review (#4758). Regenerate all three files after every push to the branch, the rebase push below included; a reviewer reading a stale file reviews the wrong round, and a stale `ship-sha-<n>.txt` blocks the step 2 marker.
@@ -58,15 +58,15 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
   - The other halts are the first three sub-bullets of the halt bullet at the top of `CLAUDE.md` Process (value, spend, destructive), most often a value only Alexander holds (a prod secret, a third-party dashboard setting). In an interactive run ask Alexander for that one thing in the chat and keep shipping behind a safe default if one exists until he answers; with no default, hold this PR as draft and continue with other items. For a value only he holds, an unattended run (`/overnight-prs`) ships behind a safe default if one exists, otherwise leaves the PR draft and names the value in the morning summary, as step 1 does; a price, payment or Stripe value, a payment card, or a third-party bump decision never ships behind a default, it stays draft and is named in the summary. Spend and destructive halts never ship behind a default: spend leaves the PR draft, a destructive step is not executed, and both are named in the summary. An auth, JWT, webhook or signing secret never gets a default either: a missing one fails closed at boot and the PR stays draft with the variable named.
 - **Clean** → post the pass marker for the exact head SHA:
   ```bash
-  [ "$(gh pr view <n> --json headRefOid --jq .headRefOid)" = "$(cat <scratchpad>/ship-sha-<n>.txt)" ] || { echo "head moved since review"; exit 1; }
+  gh pr view <n> --json headRefOid --jq .headRefOid | diff -q - <scratchpad>/ship-sha-<n>.txt || { echo "head moved since review"; exit 1; }
   ```
   Then write `<scratchpad>/ship-marker-<n>.md` with the Write tool (the one-paragraph verdict, a blank line, then `<!-- ship-review: pass sha=<the SHA in ship-sha-<n>.txt> -->`) and post it:
   ```bash
   gh pr review <n> --comment --body-file <scratchpad>/ship-marker-<n>.md
   ```
-  The verdict goes through a file because it is free text: a `gh` command that carries the word `merge` inline is a merge attempt to the merge hooks. The marker is what `check-merge-status.py` looks for. It is bound to the SHA — any later push invalidates it and you re-review. The check against `ship-sha-<n>.txt` (written with the diff in step 1) stops a marker for a head pushed while the reviewers were reading the old one: on a mismatch, restart from step 1, which regenerates all three files and reruns the classifier.
+  No `$(`, `${`, `$'`, backtick or the word `merge` in these commands: the merge hooks deny a Bash command that pairs `gh` with any of them, unless it is the step 4 command, and the verdict is free text that may carry either. The marker is what `check-merge-status.py` looks for. It is bound to the SHA — any later push invalidates it and you re-review. The check against `ship-sha-<n>.txt` (written with the diff in step 1) stops a marker for a head pushed while the reviewers were reading the old one: on a mismatch, restart from step 1, which regenerates all three files and reruns the classifier.
 
-**Browser attestation for `web/src/` diffs happens here.** If the diff touches `web/src/` (beyond changelog JSON) and the PR body carries neither the two ticked checkboxes nor the `Browser check: not applicable —` out-clause: start the dev server (`pnpm dev`, sanctioned inside `/ship` only), walk the golden path at 375px through the Playwright MCP, confirm no console errors, tick the boxes in `<scratchpad>/ship-body-<n>.txt` with the Write tool and run `gh pr edit <n> --body-file <scratchpad>/ship-body-<n>.txt` (an inline `--body` naming `merge` is denied by the merge hooks), then **kill the dev server** before moving on (`scripts/reap-orphans.sh --force` if a process survives). If the change has no runtime-visible effect, write the out-clause honestly instead — never claim a check you did not run.
+**Browser attestation for `web/src/` diffs happens here.** If the diff touches `web/src/` (beyond changelog JSON) and the PR body carries neither the two ticked checkboxes nor the `Browser check: not applicable —` out-clause: start the dev server (`pnpm dev`, sanctioned inside `/ship` only), walk the golden path at 375px through the Playwright MCP, confirm no console errors, tick the boxes in `<scratchpad>/ship-body-<n>.txt` with the Write tool and run `gh pr edit <n> --body-file <scratchpad>/ship-body-<n>.txt` (an inline `--body` naming `merge` or carrying a backtick or `$(` is denied by the merge hooks), then **kill the dev server** before moving on (`scripts/reap-orphans.sh --force` if a process survives). If the change has no runtime-visible effect, write the out-clause honestly instead — never claim a check you did not run.
 
 ## 3. Wait for green
 
@@ -84,7 +84,7 @@ The merge queue on `main` was switched off on 2026-10-15 (ruleset `main merge qu
 gh pr merge <n> --repo 2anki/server --squash
 ```
 
-The `check-merge-status.py`, `check-browser-attestation.py`, `check-changelog-on-merge.py`, and `check-removed-for-users.py` hooks re-verify everything before the merge. A deny prints the reason — act on it, never bypass. They accept that command and nothing else: run it exactly as written, alone in the Bash call (a trailing ` 2>&1` is the only suffix allowed). They also deny any other merge attempt, including a `gh` command whose inline text names the word `merge` (`merged`, `mergeable` and `mergeStateStatus` are fine).
+The `check-merge-status.py`, `check-browser-attestation.py`, `check-changelog-on-merge.py`, and `check-removed-for-users.py` hooks re-verify everything before the merge. A deny prints the reason — act on it, never bypass. They accept that command and nothing else: run it exactly as written, alone in the Bash call (a trailing ` 2>&1` is the only suffix allowed). They also deny any other Bash command that contains `gh` and the word `merge` (`merged`, `mergeable` and `mergeStateStatus` are fine), or pairs `gh` with `$(`, `${`, `$'` or a backtick.
 
 Then read the merge SHA:
 
@@ -106,7 +106,7 @@ A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.m
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
 ```
 
-Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the merge; `ScheduleWakeup` 60s if not yet listed). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s or a `Monitor` over holding the shell.
+Find the run whose `headSha` is `<MERGE_SHA>` (it appears within ~30s of the merge; `ScheduleWakeup` 60s if not yet listed). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s or a `Monitor` over holding the shell.
 
 ## 6. Verify prod
 
@@ -114,7 +114,7 @@ Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the merg
 curl -fsS https://2anki.net/api/version | jq -r .sha
 ```
 
-Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s, reporting the evidence each round; the loop ends only at healthy or broken, never report healthy while watching; the run continues with other items meanwhile, this holds only this PR's deploy verdict. A failed deploy run is "watching" only once its log confirms the last-good restore ran; otherwise it is "broken" (the 2026-08-06 shape: live process up, poisoned disk). Verdict "broken" → step 8.
+Must equal `<MERGE_SHA>`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s, reporting the evidence each round; the loop ends only at healthy or broken, never report healthy while watching; the run continues with other items meanwhile, this holds only this PR's deploy verdict. A failed deploy run is "watching" only once its log confirms the last-good restore ran; otherwise it is "broken" (the 2026-08-06 shape: live process up, poisoned disk). Verdict "broken" → step 8.
 
 The pre-cutover smoke check (`scripts/prod-smoke.ts`) prints to the deploy run log, not pm2 (`gh run view <id> --log | grep -E '\[smoke\]|\[blue-green\]'`): `[smoke] passed against` is part of "healthy"; `[smoke] FAILED`, or `[smoke]` lines with no summary line, means traffic never switched, the `[smoke] FAIL` lines name what broke, and it is "broken" → step 8 even though the last-good restore ran. A `[blue-green] server-<color> failed the smoke check` line is "broken" → step 8 on its own, with or without `[smoke]` lines: `scripts/prod-smoke.ts` can crash before it prints any (a module load error, a missing `tsx`). A run with no `[smoke]` lines and no failed-smoke-check line failed before the smoke step and follows the rule above.
 
@@ -146,7 +146,7 @@ If the deploy run failed, `/api/version` does not report the merge SHA after the
 
 1. `git checkout main && git pull --ff-only && git checkout -b revert/<slug>`
 2. `git revert --no-commit <MERGE_SHA> && git commit -m "revert: <original subject>" -m "Deploy run <run URL> failed after merging #<n>: <one line on what broke>. Reverts <original PR URL>."` — git's default `Revert "…"` subject fails the conventional-prefix hook, so write the subject yourself (≤72 chars).
-3. `git push -u origin revert/<slug>` and `gh pr create --repo 2anki/server --base main --head revert/<slug> --fill-first`, which takes the title and body (the failed run and the original PR) from the step 2 commit, so an original subject naming `merge` never sits inline in a `gh` command, where the merge hooks deny it. Keep `merge` out of `<slug>` for the same reason.
+3. `git push -u origin revert/<slug>` and `gh pr create --repo 2anki/server --base main --head revert/<slug> --fill-first`, which takes the title and body (the failed run and the original PR) from the step 2 commit, so an original subject naming `merge` never sits next to `gh` in one command, where the merge hooks deny it. Keep `merge` out of `<slug>` for the same reason.
 4. Ship the revert through this command. A pure `git revert` of the PR just merged skips step 2's review agent: post the marker directly with the verdict "mechanical revert of #<n> after a failed deploy". CI and the hooks still gate it.
 5. Comment the revert PR URL on the deploy-failure issue the workflow opened (`gh issue list --repo 2anki/2anki.net --search "Production deploy failed" --state open` — the search API does not follow the `2anki/server` rename, so list/search calls use the canonical name).
 6. Reopen the original issue if the PR had closed one, with one line on what failed.

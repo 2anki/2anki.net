@@ -193,17 +193,11 @@ class TestPassthrough(unittest.TestCase):
     def test_non_bash_tool_allows(self):
         self.assertEqual(run_hook(MERGE_1, tool_name="Edit")["result"], "allow")
 
-    def test_merge_mentioned_in_commit_message_allows_without_calling_gh(self):
+    def test_merge_mentioned_in_commit_message_is_denied_without_calling_gh(self):
         fake = gh_responder(pr_json([file_entry(EN_LOCALE)]))
         result = run_hook('git commit -m "docs: explain gh pr merge"', fake)
-        self.assertEqual(result["result"], "allow")
-        self.assertEqual(fake.calls, [])
-
-    def test_merge_named_in_a_gh_title_is_denied_without_calling_gh(self):
-        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]))
-        result = run_hook('gh pr edit 5 --title "docs: merge notes"', fake)
         self.assertEqual(result["result"], "deny")
-        self.assertIn("--body-file", result["reason"])
+        self.assertIn("git commit -F", result["reason"])
         self.assertEqual(fake.calls, [])
 
     def test_unrelated_files_allow_without_fetching_diff(self):

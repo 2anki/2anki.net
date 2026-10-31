@@ -68,12 +68,10 @@ curl -sI <raw-url> | grep -iE "^HTTP|content-type"   # expect: 200 + content-typ
 
 ### 5. Comment
 
+Write the body to a scratchpad file with the Write tool (a `## Before / after — captured with Playwright` heading, then `![before vs after](<raw-url>)` for each pair) and post it; the merge hooks deny a `gh` command that carries `$(` or a backtick, so the body does not go through a heredoc:
+
 ```bash
-gh pr comment <n> --repo <owner>/<repo> --body "$(cat <<'EOF'
-## Before / after — captured with Playwright
-... ![before vs after](<raw-url>) ...
-EOF
-)"
+gh pr comment <n> --repo <owner>/<repo> --body-file <that file>
 ```
 
 State honestly that it's an **isolated harness using the app's real tokens** (not a full-page shot), and that motion fixes are shown as GIFs because a still can't convey easing or perpetual motion. Never imply a UI state you didn't actually render.
