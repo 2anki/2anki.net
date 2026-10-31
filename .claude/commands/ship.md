@@ -41,7 +41,7 @@ Run every row that matches the hit. Any failure → fix on the branch and restar
 | auth, login, oauth, session, jwt, password, signup, token storage and checks (`*TokenRepository`, `*TokensRepository`, `resettoken`, `NotionRespository`, `hashToken`, `unHashToken`, `hmacToken`, `configureUserLocal`, `ConfirmEmailChangeUseCase`), duplicate-purchase guard (`RejectDuplicatePurchase`), pass stores (`*PassRepository`), Apple in-app purchase (`/iap`, `storekit`, `appletransaction`) | `/security-review` on the diff; full server suite |
 | Quota constants, prod safety limits | Find the evidence that set the old value (`git log -S` plus pm2 logs, per `.claude/docs/prod-ops.md`) and state it in the PR body |
 | `.github/`, `scripts/deploy-` | Read the workflow diff for removed gates; the PR's own CI run must exercise the changed job |
-| `.claude/`, `CLAUDE.md` | Run every touched hook's `*.test.py` |
+| `.claude/`, `CLAUDE.md` | Run every touched hook's `*.test.py` by its path relative to the repo root (an absolute path under `github.com` with `merge` in the file name is denied by the merge hooks) |
 
 ## 2. Review agent
 
@@ -66,7 +66,7 @@ Run the review fan-out on `<n>` (security / engineering / ux-voice, fresh contex
   ```
   No `$`, backtick or `merge` in these commands: the merge hooks deny any Bash command that contains `gh` (or `github`) with a `$` or backtick, or `gh` with `merge`, unless it is the step 4 command. The marker is what `check-merge-status.py` looks for. It is bound to the SHA — any later push invalidates it and you re-review. The check against `ship-sha-<n>.txt` (written with the diff in step 1) stops a marker for a head pushed while the reviewers were reading the old one: on a mismatch, restart from step 1, which regenerates all three files and reruns the classifier.
 
-**Browser attestation for `web/src/` diffs happens here.** If the diff touches `web/src/` (beyond changelog JSON) and the PR body carries neither the two ticked checkboxes nor the `Browser check: not applicable —` out-clause: start the dev server (`pnpm dev`, sanctioned inside `/ship` only), walk the golden path at 375px through the Playwright MCP, confirm no console errors, tick the boxes with `gh pr edit <n> --body`, then **kill the dev server** before moving on (`scripts/reap-orphans.sh --force` if a process survives). If the change has no runtime-visible effect, write the out-clause honestly instead — never claim a check you did not run.
+**Browser attestation for `web/src/` diffs happens here.** If the diff touches `web/src/` (beyond changelog JSON) and the PR body carries neither the two ticked checkboxes nor the `Browser check: not applicable —` out-clause: start the dev server (`pnpm dev`, sanctioned inside `/ship` only), walk the golden path at 375px through the Playwright MCP, confirm no console errors, tick the boxes in `<scratchpad>/ship-body-<n>.txt` with the Write tool and run `gh pr edit <n> --body-file <scratchpad>/ship-body-<n>.txt` (an inline `--body` with a backtick or `$` is denied by the merge hooks), then **kill the dev server** before moving on (`scripts/reap-orphans.sh --force` if a process survives). If the change has no runtime-visible effect, write the out-clause honestly instead — never claim a check you did not run.
 
 ## 3. Wait for green
 

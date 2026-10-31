@@ -124,15 +124,36 @@ def allowed_merge(cmd):
     return (match.group(1), match.group(2)) if match else None
 
 
+def trigger_reason(cmd):
+    normalized = OBFUSCATION.sub("", cmd)
+    if names_gh_and_merge(cmd) or names_gh_and_merge(normalized):
+        return (
+            "it contains `gh` (or `github`) and `merge`",
+            "keep the two words out of one command: write a commit message with `git commit -F <file>`, "
+            "pass a PR body with `--body-file`, and run files by a relative path",
+        )
+    if "$'" in cmd:
+        return ("it contains an ANSI-C quote `$'`", "write the value without `$'`")
+    if is_built_at_run_time(cmd, normalized):
+        return (
+            "it pairs `gh`, `github` or `merge` with a `$` or a backtick",
+            "write values literally and pass a PR body with `--body-file`; a path under `github.com` "
+            "counts, so run that command from the repo by a relative path",
+        )
+    return (
+        "it contains `merge` next to `pulls/`, `graphql`, `curl`, `wget` or `http`",
+        "keep `merge` out of a command that names a URL or an API path",
+    )
+
+
 def merge_form_violation(cmd):
     if allowed_merge(cmd) is not None:
         return None
+    reason, fix = trigger_reason(cmd)
     return (
-        f"Refusing this command: it contains `gh` and `merge`, and the merge hooks accept only "
-        f"the merge /ship runs, exactly `{ALLOWED_FORM}` (or `--repo {CANONICAL_REPO}`), alone in "
-        "the Bash call. Every other form is denied: a branch, a URL, another repo, extra flags, "
-        "a prefix, a chained or nested command, an API or GraphQL merge. If this is not a merge, "
-        "keep `gh` and `merge` out of one command (write a commit message with `git commit -F <file>`)."
+        f"Refusing this command: {reason}, so the merge hooks treat it as a merge attempt, and "
+        f"they accept only the merge /ship runs, exactly `{ALLOWED_FORM}` (or `--repo "
+        f"{CANONICAL_REPO}`), alone in the Bash call. If this is not a merge, {fix}."
     )
 
 

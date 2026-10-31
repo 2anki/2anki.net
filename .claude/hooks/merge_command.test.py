@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import unittest
 from unittest.mock import patch, MagicMock
@@ -280,6 +281,34 @@ class TestAllowedMerge(unittest.TestCase):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
             self.assertIsNone(mc.allowed_merge(cmd), cmd)
             self.assertIn("gh pr merge <n> --repo 2anki/server --squash", mc.merge_form_violation(cmd), cmd)
+
+    def test_the_deny_names_the_rule_that_fired_and_its_fix(self):
+        for cmd, reason, fix in (
+            ('git commit -m "docs: gh pr merge"', "contains `gh` (or `github`) and `merge`", "git commit -F"),
+            ("IFS=$'\\n' read -r x", "ANSI-C quote", "without `$'`"),
+            ('gh pr edit 5 --body "see `x`"', "with a `$` or a backtick", "--body-file"),
+            ("curl https://example.com/merge", "next to `pulls/`", "URL or an API path"),
+        ):
+            message = mc.merge_form_violation(cmd)
+            self.assertIn(reason, message, cmd)
+            self.assertIn(fix, message, cmd)
+
+    def test_every_ship_command_but_the_step_4_one_is_left_alone(self):
+        ship = open(os.path.join(HOOKS_DIR, "..", "commands", "ship.md")).read()
+        blocks = re.findall(r"```bash\n(.*?)```", ship, re.S)
+        scratchpad = "/private/tmp/claude-501/-Users-a-src-github-com-2anki-server/session/scratchpad"
+        lines = [
+            line.strip().replace("<scratchpad>", scratchpad)
+            for block in blocks
+            for line in block.splitlines()
+            if line.strip()
+        ]
+        self.assertGreater(len(lines), 8)
+        for line in lines:
+            if line.startswith("gh pr merge "):
+                self.assertEqual(mc.allowed_merge(line.replace("<n>", "42")), ("42", "2anki/server"), line)
+            else:
+                self.assertFalse(mc.is_gh_pr_merge(line), line)
 
     def test_a_trailing_2_to_1_redirect_is_the_only_suffix_allowed(self):
         self.assertEqual(mc.allowed_merge("gh pr merge 42 --repo 2anki/server --squash 2>&1"), ("42", "2anki/server"))
