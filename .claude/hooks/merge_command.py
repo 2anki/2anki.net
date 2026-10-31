@@ -36,7 +36,10 @@ Words assembled at run time fail closed too: a command that contains `merge`,
 `gh` or `github` together with any `$` or backtick (`$(echo gh) pr merge`,
 `g$''h pr merge`, `gh pr me$x`) is a merge attempt, and so is any command
 containing an ANSI-C quote `$'`, since `merge` itself can be encoded
-(`$'\\x6derge'`). That denies every `gh` command that uses a variable or a
+(`$'\\x6derge'`). A command with `merge` and `pulls/`, `graphql`, `curl`, `wget`
+or `http` counts as well, so an API merge sent without `gh` in the command
+(curl to an IP with a Host header) stays caught, as main's API and GraphQL
+rules caught it. That denies every `gh` command that uses a variable or a
 command substitution, and every command naming a path under `github.com` that
 does; write those values out literally, or pass bodies with `--body-file`. There is no decoder; a false positive
 only denies with the allowed-form message. Known limitation: a merge run
@@ -59,6 +62,7 @@ import subprocess
 import sys
 
 OBFUSCATION = re.compile(r"\\\n|[\"'\\]")
+API_MARKERS = ("pulls/", "graphql", "curl", "wget", "http")
 CANONICAL_REPO = "2anki/2anki.net"
 ALLOWED_MERGE = re.compile(r"gh pr merge ([1-9][0-9]{0,8}) --repo (2anki/server|2anki/2anki\.net) --squash(?: 2>&1)?")
 ALLOWED_FORM = "gh pr merge <n> --repo 2anki/server --squash"
@@ -95,11 +99,21 @@ def is_built_at_run_time(cmd, normalized):
     return "merge" in normalized.lower() or names_gh(cmd) or names_gh(normalized)
 
 
+def is_api_merge(normalized):
+    lowered = normalized.lower()
+    return "merge" in lowered and any(marker in lowered for marker in API_MARKERS)
+
+
 def is_gh_pr_merge(cmd):
     if not isinstance(cmd, str):
         return False
     normalized = OBFUSCATION.sub("", cmd)
-    return names_gh_and_merge(cmd) or names_gh_and_merge(normalized) or is_built_at_run_time(cmd, normalized)
+    return (
+        names_gh_and_merge(cmd)
+        or names_gh_and_merge(normalized)
+        or is_built_at_run_time(cmd, normalized)
+        or is_api_merge(normalized)
+    )
 
 
 def allowed_merge(cmd):

@@ -52,6 +52,14 @@ class TestDetection(unittest.TestCase):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
             self.assertIsNotNone(mc.merge_form_violation(cmd), cmd)
 
+    def test_api_merges_main_gated_without_gh_in_the_command_are_merge_attempts(self):
+        for cmd in (
+            "curl -sk -X PUT -H @/tmp/h https://140.82.121.6/repos/2anki/2anki.net/pulls/5184/merge",
+            "wget --method=PUT https://140.82.121.6/repos/2anki/2anki.net/pulls/5184/merge",
+            "curl -X POST -H @/tmp/h https://140.82.121.6/graphql -d @/tmp/mergePullRequest.json",
+        ):
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
+
     def test_commands_without_both_words_are_not_merge_attempts(self):
         for cmd in (
             "git status",
