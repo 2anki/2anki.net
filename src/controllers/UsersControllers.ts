@@ -25,6 +25,18 @@ import {
   rememberLoginReturn,
   takeLoginReturn,
 } from '../lib/auth/loginReturn';
+import {
+  GOOGLE_STATE_COOKIE,
+  MICROSOFT_STATE_COOKIE,
+  NOTION_STATE_COOKIE,
+  notionLoginNonce,
+  startOAuthSignIn,
+  takeOAuthState,
+} from '../lib/auth/oauthState';
+import {
+  googleSignInUrl,
+  microsoftSignInUrl,
+} from '../lib/auth/providerSignInUrl';
 import { parseSignupOrigin } from './helpers/parseSignupOrigin';
 import {
   parseFirstTouch,
@@ -776,8 +788,44 @@ class UsersController {
     return true;
   }
 
+  startGoogleSignIn(_req: express.Request, res: express.Response) {
+    const url = startOAuthSignIn(res, GOOGLE_STATE_COOKIE, googleSignInUrl);
+    return res.redirect(url ?? '/login?error=google_signin_failed');
+  }
+
+  startMicrosoftSignIn(_req: express.Request, res: express.Response) {
+    const url = startOAuthSignIn(
+      res,
+      MICROSOFT_STATE_COOKIE,
+      microsoftSignInUrl
+    );
+    return res.redirect(url ?? '/login?error=microsoft_signin_failed');
+  }
+
+  async #recordStateMismatch(
+    req: express.Request,
+    surface: 'oauth_google' | 'oauth_microsoft' | 'oauth_notion',
+    stateCookie: string
+  ) {
+    const cookies = req.cookies as Record<string, unknown> | undefined;
+    await this.recordError?.execute({
+      userId: null,
+      surface,
+      code: 'oauth_state_mismatch',
+      context: {
+        hadStateCookie: cookies?.[stateCookie] != null,
+        hadStateParam: req.query?.state != null,
+        userAgent: req.headers?.['user-agent'] ?? null,
+      },
+    });
+  }
+
   async loginWithGoogle(req: express.Request, res: express.Response) {
     console.debug('Login with google');
+    if (!takeOAuthState(req, res, GOOGLE_STATE_COOKIE, req.query.state)) {
+      await this.#recordStateMismatch(req, 'oauth_google', GOOGLE_STATE_COOKIE);
+      return res.redirect('/login?error=google_signin_failed');
+    }
     const { code } = req.query;
     if (!code) {
       await this.recordError?.execute({
@@ -883,6 +931,14 @@ class UsersController {
 
   async loginWithMicrosoft(req: express.Request, res: express.Response) {
     console.debug('Login with microsoft');
+    if (!takeOAuthState(req, res, MICROSOFT_STATE_COOKIE, req.query.state)) {
+      await this.#recordStateMismatch(
+        req,
+        'oauth_microsoft',
+        MICROSOFT_STATE_COOKIE
+      );
+      return res.redirect('/login?error=microsoft_signin_failed');
+    }
     const { code } = req.query;
     if (!code) {
       await this.recordError?.execute({
@@ -1299,6 +1355,17 @@ class UsersController {
   }
 
   async loginWithNotion(req: express.Request, res: express.Response) {
+    if (
+      !takeOAuthState(
+        req,
+        res,
+        NOTION_STATE_COOKIE,
+        notionLoginNonce(req.query.state)
+      )
+    ) {
+      await this.#recordStateMismatch(req, 'oauth_notion', NOTION_STATE_COOKIE);
+      return res.redirect('/login?error=notion_cancelled');
+    }
     const { code } = req.query;
     if (!code) {
       await this.recordError?.execute({

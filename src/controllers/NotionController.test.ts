@@ -1210,8 +1210,26 @@ describe('NotionController', () => {
 
       expect(service.connectToNotion).not.toHaveBeenCalled();
       expect(res.redirect).toHaveBeenCalledWith(
-        '/api/users/auth/notion?code=auth-code'
+        '/api/users/auth/notion?code=auth-code&state=login%3Anonce-1'
       );
+    });
+
+    it('leaves the login state cookie for the sign-in callback to check', async () => {
+      service = buildConnectService();
+      controller = new NotionController(service);
+      req = {
+        query: { code: 'auth-code', state: 'login:nonce-1' },
+        cookies: { notion_login_state: 'nonce-1' },
+      } as any;
+      res = {
+        redirect: vi.fn().mockReturnThis(),
+        clearCookie: vi.fn().mockReturnThis(),
+        locals: {},
+      } as any;
+
+      await controller.connect(req as express.Request, res as express.Response);
+
+      expect(res.clearCookie).not.toHaveBeenCalled();
     });
   });
 });

@@ -4,14 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { WithMicrosoftLink } from './WithMicrosoftLink';
 
 describe('WithMicrosoftLink', () => {
-  it('renders a link to the Microsoft authorize endpoint', () => {
+  it('starts the sign-in on the server, which binds the OAuth state to this browser', () => {
     render(<WithMicrosoftLink text="Sign in with Microsoft" />);
     const link = screen.getByRole('link', {
       name: /Sign in with Microsoft/i,
     });
-    expect(link.getAttribute('href')).toContain(
-      'login.microsoftonline.com/common/oauth2/v2.0/authorize'
-    );
+    expect(link).toHaveAttribute('href', '/api/users/auth/microsoft/init');
   });
 
   it('displays the provided text', () => {

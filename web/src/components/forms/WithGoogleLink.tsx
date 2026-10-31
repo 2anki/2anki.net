@@ -1,4 +1,3 @@
-import { getGoogleSignInUrl } from '../../lib/backend/getGoogleSignInUrl';
 import styles from '../../styles/auth.module.css';
 
 interface WithGoogleLinkProps {
@@ -15,7 +14,7 @@ export function WithGoogleLink({
   const isCard = variant === 'card';
   return (
     <a
-      href={getGoogleSignInUrl()}
+      href="/api/users/auth/google/init"
       className={isCard ? styles.oauthCard : styles.googleButton}
       aria-label={isCard ? text : undefined}
       onClick={onSelect}

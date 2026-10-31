@@ -19,6 +19,10 @@ import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { MagicTokenRepository } from '../data_layer/MagicTokenRepository';
 import { UserVisibleErrorsRepository } from '../data_layer/UserVisibleErrorsRepository';
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
+import {
+  NOTION_LOGIN_STATE_PREFIX,
+  NOTION_STATE_COOKIE,
+} from '../lib/auth/oauthState';
 
 const UserRouter = () => {
   const router = express.Router();
@@ -868,14 +872,29 @@ const UserRouter = () => {
 
   /**
    * @swagger
-   * /api/users/auth/google:
+   * /api/users/auth/google/init:
    *   get:
-   *     summary: Google OAuth authentication
-   *     description: Initiate Google OAuth authentication flow
+   *     summary: Initiate Google OAuth login
+   *     description: Sets a short-lived httpOnly state cookie (SameSite=Lax) and redirects to Google's authorization page with the same state.
    *     tags: [Authentication]
    *     responses:
    *       302:
    *         description: Redirect to Google OAuth
+   */
+  router.get('/api/users/auth/google/init', (req, res) =>
+    controller.startGoogleSignIn(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/users/auth/google:
+   *   get:
+   *     summary: Google OAuth callback
+   *     description: Checks the state against the cookie set by /api/users/auth/google/init, exchanges the authorization code for an id_token, then signs the user in (creating an account if needed).
+   *     tags: [Authentication]
+   *     responses:
+   *       302:
+   *         description: Redirect to the post-login destination, or /login?error=google_signin_failed
    */
   router.get('/api/users/auth/google', (req, res) =>
     controller.loginWithGoogle(req, res)
@@ -883,10 +902,25 @@ const UserRouter = () => {
 
   /**
    * @swagger
+   * /api/users/auth/microsoft/init:
+   *   get:
+   *     summary: Initiate Microsoft OAuth login
+   *     description: Sets a short-lived httpOnly state cookie (SameSite=Lax) and redirects to Microsoft's authorization page with the same state and response_mode=query.
+   *     tags: [Authentication]
+   *     responses:
+   *       302:
+   *         description: Redirect to Microsoft OAuth
+   */
+  router.get('/api/users/auth/microsoft/init', (req, res) =>
+    controller.startMicrosoftSignIn(req, res)
+  );
+
+  /**
+   * @swagger
    * /api/users/auth/microsoft:
    *   get:
    *     summary: Microsoft OAuth authentication
-   *     description: Microsoft OAuth callback. Exchanges the authorization code for an id_token, verifies it against Microsoft's JWKS, then signs the user in (creating an account if needed).
+   *     description: Microsoft OAuth callback. Checks the state against the cookie set by /api/users/auth/microsoft/init, exchanges the authorization code for an id_token, verifies it against Microsoft's JWKS, then signs the user in (creating an account if needed).
    *     tags: [Authentication]
    *     responses:
    *       302:
@@ -1019,12 +1053,12 @@ const UserRouter = () => {
       return res.redirect('/login?error=notion_cancelled');
     }
     const nonce = crypto.randomBytes(16).toString('hex');
-    res.cookie('notion_login_state', nonce, {
+    res.cookie(NOTION_STATE_COOKIE, nonce, {
       httpOnly: true,
       sameSite: 'lax',
       maxAge: 300_000,
     });
-    const state = `login:${nonce}`;
+    const state = `${NOTION_LOGIN_STATE_PREFIX}${nonce}`;
     const url = `https://api.notion.com/v1/oauth/authorize?owner=user&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${encodeURIComponent(state)}`;
     return res.redirect(url);
   });

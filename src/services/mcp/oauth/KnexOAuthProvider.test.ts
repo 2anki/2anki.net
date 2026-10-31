@@ -787,6 +787,9 @@ describe('signed-out connect: authorize -> sign in -> back to authorize', () => 
     app.post('/api/users/login', express.json(), (req, res, next) =>
       controller.login(req, res, next)
     );
+    app.get('/api/users/auth/google/init', (req, res) =>
+      controller.startGoogleSignIn(req, res)
+    );
     app.get('/api/users/auth/google', (req, res) =>
       controller.loginWithGoogle(req, res)
     );
@@ -835,17 +838,60 @@ describe('signed-out connect: authorize -> sign in -> back to authorize', () => 
     });
   });
 
+  it('a Google callback whose state was not issued to this browser never reaches the consent screen', async () => {
+    await withSigninServer(async (base) => {
+      const start = await startSignedOut(base);
+      const cookiePair = (start.returnCookie ?? '').split(';')[0];
+
+      const google = await fetch(
+        `${base}/api/users/auth/google?code=g1&state=attacker-state`,
+        {
+          headers: { cookie: cookiePair },
+          redirect: 'manual',
+        }
+      );
+
+      expect(google.status).toBe(302);
+      expect(google.headers.get('location')).toBe(
+        '/login?error=google_signin_failed'
+      );
+      expect(
+        google.headers.getSetCookie().some((c) => c.startsWith('token='))
+      ).toBe(false);
+    });
+  });
+
   it('Google sign-in comes back to the consent screen through the return cookie', async () => {
     await withSigninServer(async (base) => {
       const start = await startSignedOut(base);
       expect(start.returnCookie).toContain('HttpOnly');
       expect(start.returnCookie).toContain('Secure');
       const cookiePair = (start.returnCookie ?? '').split(';')[0];
+      vi.stubEnv('GOOGLE_CLIENT_ID', 'google-client');
+      vi.stubEnv('GOOGLE_REDIRECT_URI', `${base}/api/users/auth/google`);
 
-      const google = await fetch(`${base}/api/users/auth/google?code=g1`, {
+      const init = await fetch(`${base}/api/users/auth/google/init`, {
         headers: { cookie: cookiePair },
         redirect: 'manual',
       });
+      vi.unstubAllEnvs();
+      const state =
+        new URL(init.headers.get('location') ?? '').searchParams.get('state') ??
+        '';
+      const stateCookie = (
+        init.headers
+          .getSetCookie()
+          .find((c) => c.startsWith('google_login_state=')) ?? ''
+      ).split(';')[0];
+      expect(stateCookie).toBe(`google_login_state=${state}`);
+
+      const google = await fetch(
+        `${base}/api/users/auth/google?code=g1&state=${encodeURIComponent(state)}`,
+        {
+          headers: { cookie: `${cookiePair}; ${stateCookie}` },
+          redirect: 'manual',
+        }
+      );
       expect(google.status).toBe(302);
       expect(google.headers.get('location')).toBe(authorizeUrl);
       expect(

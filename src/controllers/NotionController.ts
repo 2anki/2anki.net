@@ -41,6 +41,7 @@ import {
   isNativeOAuthState,
   verifyNativeOAuthState,
 } from '../services/NotionService/nativeOAuthState';
+import { isNotionLoginState } from '../lib/auth/oauthState';
 import { getDatabase } from '../data_layer';
 import { getNotionId } from '../services/NotionService/getNotionId';
 import { getOwner } from '../lib/User/getOwner';
@@ -166,18 +167,11 @@ class NotionController {
       return res.redirect('/notion');
     }
 
-    const stateStr = state as string | undefined;
-    if (stateStr?.startsWith('login:')) {
-      const nonce = stateStr.slice('login:'.length);
-      const expected = req.cookies?.notion_login_state as string | undefined;
-      res.clearCookie('notion_login_state');
-      if (!nonce || !expected || nonce !== expected) {
-        return res.redirect('/login?error=notion_cancelled');
-      }
-      return res.redirect(
-        `/api/users/auth/notion?code=${encodeURIComponent(code as string)}`
-      );
+    if (isNotionLoginState(state)) {
+      const signIn = new URLSearchParams({ code: code as string, state });
+      return res.redirect(`/api/users/auth/notion?${signIn.toString()}`);
     }
+    const stateStr = state as string | undefined;
 
     const authorizationCode = code as string;
     if (stateStr != null && isNativeOAuthState(stateStr)) {

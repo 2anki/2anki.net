@@ -4,12 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { WithGoogleLink } from './WithGoogleLink';
 
 describe('WithGoogleLink', () => {
-  it('renders a link to the Google sign-in endpoint', () => {
+  it('starts the sign-in on the server, which binds the OAuth state to this browser', () => {
     render(<WithGoogleLink text="Sign in with Google" />);
     const link = screen.getByRole('link', { name: /Sign in with Google/i });
-    expect(link.getAttribute('href')).toContain(
-      'accounts.google.com/o/oauth2/v2/auth'
-    );
+    expect(link).toHaveAttribute('href', '/api/users/auth/google/init');
   });
 
   it('displays the provided text in row variant', () => {

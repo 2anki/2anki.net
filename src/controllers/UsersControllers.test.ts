@@ -1158,10 +1158,17 @@ describe('UsersController.loginWithGoogle', () => {
   const buildGoogleRes = () => {
     const redirect = vi.fn();
     const cookie = vi.fn();
+    const clearCookie = vi.fn();
     const status = vi.fn().mockReturnThis();
-    return { redirect, cookie, status } as unknown as express.Response & {
+    return {
+      redirect,
+      cookie,
+      clearCookie,
+      status,
+    } as unknown as express.Response & {
       redirect: Mock;
       cookie: Mock;
+      clearCookie: Mock;
       status: Mock;
     };
   };
@@ -1172,8 +1179,8 @@ describe('UsersController.loginWithGoogle', () => {
       registerVerifiedIdentity: register,
     });
     const req = {
-      query: { code: 'gauth-code' },
-      cookies: {},
+      query: { code: 'gauth-code', state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
       headers: {},
     } as unknown as express.Request;
     const res = buildGoogleRes();
@@ -1198,8 +1205,8 @@ describe('UsersController.loginWithGoogle', () => {
       registerVerifiedIdentity: register,
     });
     const req = {
-      query: { code: 'gauth-code' },
-      cookies: {},
+      query: { code: 'gauth-code', state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
       headers: {},
     } as unknown as express.Request;
     const res = buildGoogleRes();
@@ -1219,8 +1226,8 @@ describe('UsersController.loginWithGoogle', () => {
     });
     const { controller } = buildGoogleController({ getUserFrom });
     const req = {
-      query: { code: 'gauth-code' },
-      cookies: {},
+      query: { code: 'gauth-code', state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
       headers: {},
     } as unknown as express.Request;
 
@@ -1236,8 +1243,8 @@ describe('UsersController.loginWithGoogle', () => {
     trackMock.mockClear();
     const { controller } = buildGoogleController();
     const req = {
-      query: { code: 'gauth-code' },
-      cookies: {},
+      query: { code: 'gauth-code', state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
       headers: {},
     } as unknown as express.Request;
 
@@ -1258,8 +1265,8 @@ describe('UsersController.loginWithGoogle', () => {
     });
     const { controller } = buildGoogleController({ loginWithGoogle });
     const req = {
-      query: { code: 'gauth-code' },
-      cookies: {},
+      query: { code: 'gauth-code', state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
       headers: {},
     } as unknown as express.Request;
     const res = buildGoogleRes();
@@ -1274,8 +1281,8 @@ describe('UsersController.loginWithGoogle', () => {
   it('redirects with error=google_signin_failed when the OAuth code is missing', async () => {
     const { controller } = buildGoogleController();
     const req = {
-      query: {},
-      cookies: {},
+      query: { state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
       headers: {},
     } as unknown as express.Request;
     const res = buildGoogleRes();
@@ -1357,18 +1364,28 @@ describe('UsersController.loginWithMicrosoft', () => {
   const buildMicrosoftRes = () => {
     const redirect = vi.fn();
     const cookie = vi.fn();
+    const clearCookie = vi.fn();
     const status = vi.fn().mockReturnThis();
-    return { redirect, cookie, status } as unknown as express.Response & {
+    return {
+      redirect,
+      cookie,
+      clearCookie,
+      status,
+    } as unknown as express.Response & {
       redirect: Mock;
       cookie: Mock;
+      clearCookie: Mock;
       status: Mock;
     };
   };
 
   const buildReq = (code: string | null = 'mauth-code') =>
     ({
-      query: code == null ? {} : { code },
-      cookies: {},
+      query:
+        code == null
+          ? { state: 'microsoft-state' }
+          : { code, state: 'microsoft-state' },
+      cookies: { microsoft_login_state: 'microsoft-state' },
       headers: {},
     }) as unknown as express.Request;
 
@@ -2093,15 +2110,20 @@ describe('UsersController.loginWithNotion — error recording', () => {
   const buildRedirectRes = () => {
     const redirect = vi.fn();
     const status = vi.fn().mockReturnValue({ send: vi.fn() });
-    return { redirect, status } as unknown as express.Response & {
+    const clearCookie = vi.fn();
+    return { redirect, status, clearCookie } as unknown as express.Response & {
       redirect: Mock;
       status: Mock;
+      clearCookie: Mock;
     };
   };
 
   it('records oauth_cancelled when code query param is absent', async () => {
     const { controller, recordExecute } = buildNotionController(null);
-    const req = { query: {} } as unknown as express.Request;
+    const req = {
+      query: { state: 'login:notion-state' },
+      cookies: { notion_login_state: 'notion-state' },
+    } as unknown as express.Request;
     const res = buildRedirectRes();
 
     await controller.loginWithNotion(req, res);
@@ -2117,7 +2139,8 @@ describe('UsersController.loginWithNotion — error recording', () => {
   it('records oauth_token_exchange_failed when loginWithNotion returns null', async () => {
     const { controller, recordExecute } = buildNotionController(null);
     const req = {
-      query: { code: 'notion-code' },
+      query: { code: 'notion-code', state: 'login:notion-state' },
+      cookies: { notion_login_state: 'notion-state' },
     } as unknown as express.Request;
     const res = buildRedirectRes();
 
@@ -2136,7 +2159,8 @@ describe('UsersController.loginWithNotion — error recording', () => {
       null
     );
     const req = {
-      query: { code: 'notion-code' },
+      query: { code: 'notion-code', state: 'login:notion-state' },
+      cookies: { notion_login_state: 'notion-state' },
       headers: {},
     } as unknown as express.Request;
     const res = buildRedirectRes();
@@ -2183,15 +2207,20 @@ describe('UsersController.loginWithGoogle — error recording', () => {
   const buildRedirectRes = () => {
     const redirect = vi.fn();
     const status = vi.fn().mockReturnValue({ send: vi.fn() });
-    return { redirect, status } as unknown as express.Response & {
+    const clearCookie = vi.fn();
+    return { redirect, status, clearCookie } as unknown as express.Response & {
       redirect: Mock;
       status: Mock;
+      clearCookie: Mock;
     };
   };
 
   it('records oauth_cancelled when code query param is absent', async () => {
     const { controller, recordExecute } = buildOAuthController(null);
-    const req = { query: {} } as unknown as express.Request;
+    const req = {
+      query: { state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
+    } as unknown as express.Request;
     const res = buildRedirectRes();
 
     await controller.loginWithGoogle(req, res);
@@ -2213,7 +2242,8 @@ describe('UsersController.loginWithGoogle — error recording', () => {
       message: 'JsonWebTokenError: invalid signature',
     });
     const req = {
-      query: { code: 'auth-code-123' },
+      query: { code: 'auth-code-123', state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
     } as unknown as express.Request;
     const res = buildRedirectRes();
 
@@ -2240,7 +2270,8 @@ describe('UsersController.loginWithGoogle — error recording', () => {
       null
     );
     const req = {
-      query: { code: 'auth-code-123' },
+      query: { code: 'auth-code-123', state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
       headers: {},
     } as unknown as express.Request;
     const res = buildRedirectRes();
@@ -2261,7 +2292,8 @@ describe('UsersController.loginWithGoogle — error recording', () => {
       message: 'Google reports the email as unverified',
     });
     const req = {
-      query: { code: 'auth-code-123' },
+      query: { code: 'auth-code-123', state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
     } as unknown as express.Request;
     const res = buildRedirectRes();
 
@@ -2353,10 +2385,17 @@ describe('UsersController.loginWithNotion', () => {
   const buildNotionRes = () => {
     const redirect = vi.fn();
     const cookie = vi.fn();
+    const clearCookie = vi.fn();
     const status = vi.fn().mockReturnThis();
-    return { redirect, cookie, status } as unknown as express.Response & {
+    return {
+      redirect,
+      cookie,
+      clearCookie,
+      status,
+    } as unknown as express.Response & {
       redirect: Mock;
       cookie: Mock;
+      clearCookie: Mock;
       status: Mock;
     };
   };
@@ -2367,8 +2406,8 @@ describe('UsersController.loginWithNotion', () => {
       registerVerifiedIdentity: register,
     });
     const req = {
-      query: { code: 'notion-code' },
-      cookies: {},
+      query: { code: 'notion-code', state: 'login:notion-state' },
+      cookies: { notion_login_state: 'notion-state' },
       headers: {},
     } as unknown as express.Request;
     const res = buildNotionRes();
@@ -2393,8 +2432,8 @@ describe('UsersController.loginWithNotion', () => {
       registerVerifiedIdentity: register,
     });
     const req = {
-      query: { code: 'notion-code' },
-      cookies: {},
+      query: { code: 'notion-code', state: 'login:notion-state' },
+      cookies: { notion_login_state: 'notion-state' },
       headers: {},
     } as unknown as express.Request;
     const res = buildNotionRes();
@@ -2541,13 +2580,14 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       {} as ReturnType<typeof import('../data_layer').getDatabase>
     );
     const req = {
-      query: { code: 'gauth' },
-      cookies: {},
+      query: { code: 'gauth', state: 'google-state' },
+      cookies: { google_login_state: 'google-state' },
       headers: {},
     } as unknown as express.Request;
     const res = {
       redirect: vi.fn(),
       cookie: vi.fn(),
+      clearCookie: vi.fn(),
       status: vi.fn().mockReturnThis(),
     } as unknown as express.Response & { cookie: Mock };
 
@@ -2601,13 +2641,14 @@ describe('UsersController cookie options — 30-day persistent session', () => {
       {} as ReturnType<typeof import('../data_layer').getDatabase>
     );
     const req = {
-      query: { code: 'mauth' },
-      cookies: {},
+      query: { code: 'mauth', state: 'microsoft-state' },
+      cookies: { microsoft_login_state: 'microsoft-state' },
       headers: {},
     } as unknown as express.Request;
     const res = {
       redirect: vi.fn(),
       cookie: vi.fn(),
+      clearCookie: vi.fn(),
       status: vi.fn().mockReturnThis(),
     } as unknown as express.Response & { cookie: Mock };
 
@@ -2724,13 +2765,14 @@ describe('UsersController cookie options — 30-day persistent session', () => {
     } as unknown as AuthenticationService;
     const controller = new UsersController(userService, authService, mockDb);
     const req = {
-      query: { code: 'notion-code' },
-      cookies: {},
+      query: { code: 'notion-code', state: 'login:notion-state' },
+      cookies: { notion_login_state: 'notion-state' },
       headers: {},
     } as unknown as express.Request;
     const res = {
       redirect: vi.fn(),
       cookie: vi.fn(),
+      clearCookie: vi.fn(),
       status: vi.fn().mockReturnThis(),
     } as unknown as express.Response & { cookie: Mock };
 
@@ -3954,8 +3996,11 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 
     await buildSigninController().loginWithGoogle(
       {
-        query: { code: 'gauth-code' },
-        cookies: { [RETURN_COOKIE]: AUTHORIZE_URL },
+        query: { code: 'gauth-code', state: 'google-state' },
+        cookies: {
+          google_login_state: 'google-state',
+          [RETURN_COOKIE]: AUTHORIZE_URL,
+        },
         headers: {},
       } as unknown as express.Request,
       res
@@ -3992,8 +4037,11 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 
     await buildSigninController().loginWithNotion(
       {
-        query: { code: 'notion-code' },
-        cookies: { [RETURN_COOKIE]: AUTHORIZE_URL },
+        query: { code: 'notion-code', state: 'login:notion-state' },
+        cookies: {
+          notion_login_state: 'notion-state',
+          [RETURN_COOKIE]: AUTHORIZE_URL,
+        },
         headers: {},
       } as unknown as express.Request,
       res
@@ -4011,15 +4059,18 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 
     await buildSigninController().loginWithNotion(
       {
-        query: { code: 'notion-code' },
-        cookies: {},
+        query: { code: 'notion-code', state: 'login:notion-state' },
+        cookies: { notion_login_state: 'notion-state' },
         headers: {},
       } as unknown as express.Request,
       res
     );
 
     expect(res.redirect).toHaveBeenCalledWith('/notion');
-    expect(res.clearCookie).not.toHaveBeenCalled();
+    expect(res.clearCookie).not.toHaveBeenCalledWith(
+      RETURN_COOKIE,
+      expect.anything()
+    );
   });
 
   it('a magic link login returns the authorize URL from the return cookie', async () => {
@@ -4169,8 +4220,11 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 
       await buildSigninController().loginWithGoogle(
         {
-          query: { code: 'gauth-code' },
-          cookies: { [LOGIN_RETURN]: download },
+          query: { code: 'gauth-code', state: 'google-state' },
+          cookies: {
+            google_login_state: 'google-state',
+            [LOGIN_RETURN]: download,
+          },
           headers: {},
         } as unknown as express.Request,
         res
@@ -4202,8 +4256,11 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       const retry = buildSigninRes();
       await buildSigninController().loginWithGoogle(
         {
-          query: { code: 'gauth-code' },
-          cookies: { [LOGIN_RETURN]: PRICING },
+          query: { code: 'gauth-code', state: 'google-state' },
+          cookies: {
+            google_login_state: 'google-state',
+            [LOGIN_RETURN]: PRICING,
+          },
           headers: {},
         } as unknown as express.Request,
         retry
@@ -4283,8 +4340,11 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 
       await buildSigninController().loginWithGoogle(
         {
-          query: { code: 'gauth-code' },
-          cookies: { [LOGIN_RETURN]: '//evil.com/pricing' },
+          query: { code: 'gauth-code', state: 'google-state' },
+          cookies: {
+            google_login_state: 'google-state',
+            [LOGIN_RETURN]: '//evil.com/pricing',
+          },
           headers: {},
         } as unknown as express.Request,
         res
@@ -4309,8 +4369,8 @@ describe('UsersController — sign-in returns a connector to the authorize scree
         (res, cookies) =>
           buildSigninController().loginWithGoogle(
             {
-              query: { code: 'gauth-code' },
-              cookies,
+              query: { code: 'gauth-code', state: 'google-state' },
+              cookies: { google_login_state: 'google-state', ...cookies },
               headers: {},
             } as unknown as express.Request,
             res
@@ -4321,8 +4381,8 @@ describe('UsersController — sign-in returns a connector to the authorize scree
         (res, cookies) =>
           buildSigninController().loginWithMicrosoft(
             {
-              query: { code: 'mauth-code' },
-              cookies,
+              query: { code: 'mauth-code', state: 'microsoft-state' },
+              cookies: { microsoft_login_state: 'microsoft-state', ...cookies },
               headers: {},
             } as unknown as express.Request,
             res
@@ -4346,8 +4406,8 @@ describe('UsersController — sign-in returns a connector to the authorize scree
         (res, cookies) =>
           buildSigninController().loginWithNotion(
             {
-              query: { code: 'notion-code' },
-              cookies,
+              query: { code: 'notion-code', state: 'login:notion-state' },
+              cookies: { notion_login_state: 'notion-state', ...cookies },
               headers: {},
             } as unknown as express.Request,
             res
@@ -4504,4 +4564,288 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       }
     });
   });
+});
+
+describe('UsersController — provider sign-ins bind the OAuth state to the browser', () => {
+  const LOGIN_RETURN = 'login_return';
+  const PRICING = '/pricing?ref=mcp';
+  const GOOGLE_STATE = 'google_login_state';
+  const MICROSOFT_STATE = 'microsoft_login_state';
+  const NOTION_STATE = 'notion_login_state';
+
+  const MockedNotionRepo = NotionRepository as MockedClass<
+    typeof NotionRepository
+  >;
+  const MockedOauthIdentitiesRepo = OauthIdentitiesRepository as MockedClass<
+    typeof OauthIdentitiesRepository
+  >;
+
+  beforeEach(() => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'google-client');
+    vi.stubEnv(
+      'GOOGLE_REDIRECT_URI',
+      'https://2anki.net/api/users/auth/google'
+    );
+    vi.stubEnv('MICROSOFT_CLIENT_ID', 'microsoft-client');
+    vi.stubEnv(
+      'MICROSOFT_REDIRECT_URI',
+      'https://2anki.net/api/users/auth/microsoft'
+    );
+    MockedNotionRepo.prototype.getNotionData = vi
+      .fn()
+      .mockResolvedValue({ token: 'stored-tok', owner: 5 });
+    MockedNotionRepo.prototype.saveNotionToken = vi
+      .fn()
+      .mockResolvedValue(undefined);
+    MockedOauthIdentitiesRepo.prototype.findByProviderAndSubject = vi
+      .fn()
+      .mockResolvedValue(null);
+    MockedOauthIdentitiesRepo.prototype.link = vi
+      .fn()
+      .mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const existingUser = { id: 5, email: 'u@example.com' };
+
+  const build = () => {
+    const userService = {
+      getUserFrom: vi.fn().mockResolvedValue(existingUser),
+      getUserById: vi.fn().mockResolvedValue(existingUser),
+      markEmailVerified: vi.fn().mockResolvedValue(1),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+    } as unknown as UsersService;
+    const authService = {
+      newJWTToken: vi.fn().mockResolvedValue('session-jwt'),
+      persistToken: vi.fn().mockResolvedValue(undefined),
+      getHashPassword: vi.fn().mockReturnValue('hashed'),
+      loginWithGoogle: vi
+        .fn()
+        .mockResolvedValue({ ok: true, email: 'u@example.com', name: 'U' }),
+      loginWithMicrosoft: vi.fn().mockResolvedValue({
+        subject: 'ms-sub-001',
+        email: 'u@example.com',
+        name: 'U',
+        emailVerified: true,
+      }),
+      loginWithNotion: vi.fn().mockResolvedValue({
+        email: 'u@example.com',
+        name: 'U',
+        accessData: {},
+      }),
+    };
+    const recordError = { execute: vi.fn().mockResolvedValue(undefined) };
+    const controller = new UsersController(
+      userService,
+      authService as unknown as AuthenticationService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>,
+      recordError as unknown as ConstructorParameters<typeof UsersController>[3]
+    );
+    return { controller, authService, recordError };
+  };
+
+  const buildStateRes = () => {
+    const res = {
+      cookie: vi.fn(),
+      clearCookie: vi.fn(),
+      redirect: vi.fn(),
+    } as unknown as express.Response & {
+      cookie: Mock;
+      clearCookie: Mock;
+      redirect: Mock;
+      status: Mock;
+    };
+    res.status = vi.fn().mockReturnValue(res);
+    return res;
+  };
+
+  const sessionCookies = (res: { cookie: Mock }) =>
+    res.cookie.mock.calls.filter(([name]) => name === 'token');
+
+  const starts = [
+    {
+      provider: 'Google',
+      start: (c: UsersController, res: express.Response) =>
+        c.startGoogleSignIn({} as express.Request, res),
+      authorize: 'https://accounts.google.com/o/oauth2/v2/auth',
+      cookie: GOOGLE_STATE,
+      failure: '/login?error=google_signin_failed',
+      envVar: 'GOOGLE_CLIENT_ID',
+    },
+    {
+      provider: 'Microsoft',
+      start: (c: UsersController, res: express.Response) =>
+        c.startMicrosoftSignIn({} as express.Request, res),
+      authorize:
+        'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+      cookie: MICROSOFT_STATE,
+      failure: '/login?error=microsoft_signin_failed',
+      envVar: 'MICROSOFT_CLIENT_ID',
+    },
+  ];
+
+  describe.each(starts)(
+    'starting a $provider sign-in',
+    ({ start, authorize, cookie, failure, envVar }) => {
+      it('sets the state cookie and sends the browser to the provider with the same state', () => {
+        const res = buildStateRes();
+
+        start(build().controller, res);
+
+        const location = new URL(res.redirect.mock.calls[0][0]);
+        expect(location.origin + location.pathname).toBe(authorize);
+        const state = location.searchParams.get('state');
+        expect(state).toMatch(/^[0-9a-f-]{36}$/);
+        expect(res.cookie).toHaveBeenCalledWith(
+          cookie,
+          state,
+          expect.objectContaining({
+            httpOnly: true,
+            sameSite: 'lax',
+            maxAge: 10 * 60 * 1000,
+          })
+        );
+      });
+
+      it('falls back to the generic sign-in error when the provider is not configured', () => {
+        vi.stubEnv(envVar, '');
+        const res = buildStateRes();
+
+        start(build().controller, res);
+
+        expect(res.redirect).toHaveBeenCalledWith(failure);
+        expect(res.cookie).not.toHaveBeenCalled();
+      });
+    }
+  );
+
+  type Callback = (
+    c: UsersController,
+    res: express.Response,
+    state: unknown,
+    cookies: Record<string, unknown>
+  ) => Promise<unknown>;
+
+  const callbackRequest = (
+    code: string,
+    state: unknown,
+    cookies: Record<string, unknown>
+  ) =>
+    ({
+      query: { code, state },
+      cookies,
+      headers: {},
+    }) as unknown as express.Request;
+
+  const googleCallback: Callback = (c, res, state, cookies) =>
+    c.loginWithGoogle(callbackRequest('gauth-code', state, cookies), res);
+  const microsoftCallback: Callback = (c, res, state, cookies) =>
+    c.loginWithMicrosoft(callbackRequest('mauth-code', state, cookies), res);
+  const notionCallback: Callback = (c, res, state, cookies) =>
+    c.loginWithNotion(callbackRequest('notion-code', state, cookies), res);
+
+  describe.each([
+    {
+      provider: 'Google',
+      cookie: GOOGLE_STATE,
+      failure: '/login?error=google_signin_failed',
+      surface: 'oauth_google',
+      exchange: 'loginWithGoogle' as const,
+      call: googleCallback,
+      stateFor: (nonce: string) => nonce,
+    },
+    {
+      provider: 'Microsoft',
+      cookie: MICROSOFT_STATE,
+      failure: '/login?error=microsoft_signin_failed',
+      surface: 'oauth_microsoft',
+      exchange: 'loginWithMicrosoft' as const,
+      call: microsoftCallback,
+      stateFor: (nonce: string) => nonce,
+    },
+    {
+      provider: 'Notion',
+      cookie: NOTION_STATE,
+      failure: '/login?error=notion_cancelled',
+      surface: 'oauth_notion',
+      exchange: 'loginWithNotion' as const,
+      call: notionCallback,
+      stateFor: (nonce: string) => 'login:' + nonce,
+    },
+  ])(
+    'the $provider callback',
+    ({ cookie, failure, surface, exchange, call, stateFor }) => {
+      it.each([
+        ['a missing state', undefined, { [cookie]: 'nonce-1' }],
+        ['a wrong state', stateFor('nonce-2'), { [cookie]: 'nonce-1' }],
+        ['a state with no cookie', stateFor('nonce-1'), {}],
+      ])(
+        'refuses %s with the generic sign-in error and signs nobody in',
+        async (_label, state, cookies) => {
+          const { controller, authService, recordError } = build();
+          const res = buildStateRes();
+
+          await call(controller, res, state, cookies);
+
+          expect(res.redirect).toHaveBeenCalledWith(failure);
+          expect(authService[exchange]).not.toHaveBeenCalled();
+          expect(sessionCookies(res)).toEqual([]);
+          expect(res.clearCookie).toHaveBeenCalledWith(
+            cookie,
+            expect.objectContaining({ path: '/' })
+          );
+          expect(recordError.execute).toHaveBeenCalledWith(
+            expect.objectContaining({ surface, code: 'oauth_state_mismatch' })
+          );
+        }
+      );
+
+      it('accepts the matching state, clears its cookie and lands on the login return', async () => {
+        const { controller, authService } = build();
+        const res = buildStateRes();
+
+        await call(controller, res, stateFor('nonce-1'), {
+          [cookie]: 'nonce-1',
+          [LOGIN_RETURN]: PRICING,
+        });
+
+        expect(authService[exchange]).toHaveBeenCalledTimes(1);
+        expect(sessionCookies(res)).toHaveLength(1);
+        expect(res.redirect).toHaveBeenCalledWith(PRICING);
+        expect(res.clearCookie).toHaveBeenCalledWith(
+          cookie,
+          expect.objectContaining({ path: '/' })
+        );
+      });
+    }
+  );
+
+  it.each([
+    ['Google', starts[0], googleCallback],
+    ['Microsoft', starts[1], microsoftCallback],
+  ] as const)(
+    'a %s sign-in started here completes with the state it was handed',
+    async (_provider, { start, cookie }, callback) => {
+      const { controller } = build();
+      const startRes = buildStateRes();
+      start(controller, startRes);
+      const state = new URL(
+        startRes.redirect.mock.calls[0][0]
+      ).searchParams.get('state');
+      const issued = startRes.cookie.mock.calls.find(
+        ([name]) => name === cookie
+      )?.[1];
+      const res = buildStateRes();
+
+      await callback(controller, res, state, {
+        [cookie]: issued,
+        [LOGIN_RETURN]: PRICING,
+      });
+
+      expect(res.redirect).toHaveBeenCalledWith(PRICING);
+    }
+  );
 });
