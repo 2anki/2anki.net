@@ -22,7 +22,7 @@
   "choicePrivacy": "Polityka prywatności",
   "unavailableNotice": "Podgląd z AI jest teraz niedostępny, więc oto fiszki na podstawie struktury Twojego pliku. Spróbuj AI później albo zachowaj tę talię.",
   "resumeActiveDropAgain": "Twój Day Pass jest aktywny. Upuść plik ponownie, aby otrzymać wszystkie fiszki.",
-  "resumeOutOfCredits": "Twój Day Pass nie ma teraz kredytów AI. Napisz na support@2anki.net, a pomożemy.",
+  "resumeOutOfCredits": "Twój Day Pass nie ma już kredytów AI. Zaloguj się, aby dokupić kredyty, a potem upuść plik ponownie.",
   "resumeEmpty": "Nie znaleźliśmy fiszek w tym pliku. Spróbuj innego pliku lub napisz na support@2anki.net.",
   "resumeError": "Coś poszło nie tak przy kończeniu Twojej talii z AI. Napisz na support@2anki.net, a zajmiemy się tym."
 }

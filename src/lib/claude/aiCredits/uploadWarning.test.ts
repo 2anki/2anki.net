@@ -35,6 +35,14 @@ describe('uploadWarning', () => {
     expect(text).not.toContain('90 days');
   });
 
+  it('tells a signed-out pass holder to sign in before a top-up', () => {
+    const text = aiCreditsExhaustedWarningText('signed-out-pass');
+    expect(text).toBe(
+      "You're out of AI credits, so this deck was built without AI. Sign in " +
+        'to add a one-time top-up for several more decks.'
+    );
+  });
+
   it('falls back to the no-reset line when the balance read fails (null)', () => {
     expect(aiCreditsExhaustedWarningText(null)).toBe(
       aiCreditsExhaustedWarningText('pass')

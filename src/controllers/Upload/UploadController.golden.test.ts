@@ -1310,6 +1310,14 @@ const resumeCases: [string, ResumeCase][] = [
       who: { ...signedOut, realAuth: true },
     },
   ],
+  [
+    'Day Pass holder resuming with the AI credits spent',
+    {
+      previewedFirst: true,
+      boughtOnAnonId: 'golden-anon',
+      who: { ...dayPassHolderOnThisBrowser, passSpentUsd: 1000 },
+    },
+  ],
 ];
 
 async function resumeAiPreview(who: Population) {
@@ -1372,5 +1380,24 @@ describe('what each population gets back from the Day Pass AI preview resume', (
     expect(first.status).toBe(200);
     expect(second.status).toBe(404);
     expect(second.body).toEqual({ code: 'no_ai_preview' });
+  }, 20_000);
+
+  it('refuses a resume on spent credits and keeps the held file for a retry', async () => {
+    const spent = await previewThenResume({
+      previewedFirst: true,
+      boughtOnAnonId: 'golden-anon',
+      who: { ...dayPassHolderOnThisBrowser, passSpentUsd: 1000 },
+    });
+
+    expect(spent).toMatchObject({
+      status: 402,
+      body: { code: 'ai_credits_exhausted' },
+      heldPreviewsLeft: 1,
+      heldObjectsLeft: 1,
+    });
+
+    const retried = await resumeAiPreview(dayPassHolderOnThisBrowser);
+    expect(retried.status).toBe(200);
+    expect(retried.heldPreviewsLeft).toBe(0);
   }, 20_000);
 });

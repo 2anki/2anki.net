@@ -149,10 +149,10 @@ import { parsePdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
 import { isPdfPageRangeError } from '../lib/pdf/pdfPageRange';
 import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
+  AiCreditsWarningAudience,
   aiCreditsExhaustedWarningText,
   includesAiCreditsWarning,
 } from '../lib/claude/aiCredits/uploadWarning';
-import { CreditWindowReset } from '../lib/claude/aiCredits/allowance';
 import {
   AiCreditsExhaustedError,
   getAiBudgetStatus,
@@ -275,10 +275,10 @@ function strayClozeWarning(count: number): string {
 
 function aiCreditsWarningText(
   warnings: string[],
-  resets: CreditWindowReset | null
+  audience: AiCreditsWarningAudience | null
 ): string | null {
   if (warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE)) {
-    return aiCreditsExhaustedWarningText(resets);
+    return aiCreditsExhaustedWarningText(audience);
   }
   return null;
 }
@@ -286,13 +286,18 @@ function aiCreditsWarningText(
 // The exhausted copy promises a reset only when one is real. Pass holders
 // (`resets: 'pass'`) have `isPaying` true but no reset inside the pass window,
 // so the word chosen must come from the credit window's reset type, read from
-// the same balance the guard uses, not from whether the user is paying.
-async function aiCreditsResetType(
+// the same balance the guard uses, not from whether the user is paying. With
+// no account, only a Day Pass reaches AI, and that pass cannot hold a top-up
+// until its holder signs in.
+async function aiCreditsWarningAudience(
   warnings: string[] | undefined,
   userId: number | null
-): Promise<CreditWindowReset | null> {
-  if (userId == null || !includesAiCreditsWarning(warnings)) {
+): Promise<AiCreditsWarningAudience | null> {
+  if (!includesAiCreditsWarning(warnings)) {
     return null;
+  }
+  if (userId == null) {
+    return 'signed-out-pass';
   }
   const status = await getAiBudgetStatus(userId);
   return status.balance?.resets ?? null;
@@ -300,7 +305,7 @@ async function aiCreditsResetType(
 
 export function resolveUploadWarning(
   warnings: string[] | undefined,
-  resets: CreditWindowReset | null
+  audience: AiCreditsWarningAudience | null
 ): string | null {
   if (!warnings || warnings.length === 0) return null;
   for (const warning of warnings) {
@@ -311,7 +316,7 @@ export function resolveUploadWarning(
     w.includes('password-protected')
   );
   if (passwordWarning) return passwordWarning;
-  const creditsWarning = aiCreditsWarningText(warnings, resets);
+  const creditsWarning = aiCreditsWarningText(warnings, audience);
   if (creditsWarning) return creditsWarning;
   let duplicateGuids = 0;
   for (const warning of warnings) {
@@ -2174,7 +2179,7 @@ class UploadService {
       }
       const warningText = resolveUploadWarning(
         syncWarnings,
-        await aiCreditsResetType(syncWarnings, syncOwnerId)
+        await aiCreditsWarningAudience(syncWarnings, syncOwnerId)
       );
       if (warningText) {
         res.set('X-Warning', latin1HeaderValue(warningText));
@@ -2246,7 +2251,7 @@ class UploadService {
     if (owner != null) {
       await this.usersRepository.incrementCardUsage(owner, totalCards);
     }
-    const batchResetType = await aiCreditsResetType(
+    const batchWarningAudience = await aiCreditsWarningAudience(
       warnings,
       syncOwnerIdOrNull
     );
@@ -2255,7 +2260,7 @@ class UploadService {
       .json(
         await this.buildBatchResponse(
           ws,
-          resolveUploadWarning(warnings, batchResetType),
+          resolveUploadWarning(warnings, batchWarningAudience),
           sumDroppedImages(packages),
           totalEmptyBackCount,
           shippedRescueRule(packages),
@@ -2551,6 +2556,8 @@ class UploadService {
   // pass holder. paying is true so PrepareDeck takes the Claude branch and the
   // no-account cap does not apply; anonymousPassId threads through so the credit
   // guard meters the call against the pass and fails closed on an exhausted one.
+  // The visitor paid for the AI deck, so a deck the conversion built without AI
+  // on spent credits is refused rather than shipped, and the hold stays.
   async convertStoredFileWithAiForPass(
     anonymousPassId: number,
     file: UploadedFile,
@@ -2559,7 +2566,7 @@ class UploadService {
     const settings = new CardOption({ 'claude-ai-flashcards': 'true' });
     const ws = new Workspace(true, 'fs');
     const useCase = new GeneratePackagesUseCase();
-    const { packages } = await useCase.execute(
+    const { packages, warnings } = await useCase.execute(
       true,
       [file],
       settings,
@@ -2568,6 +2575,12 @@ class UploadService {
       null,
       { requestId, anonymousPassId }
     );
+    if (includesAiCreditsWarning(warnings)) {
+      console.info('[ai-preview] resume refused: pass AI credits spent', {
+        requestId,
+      });
+      throw new AiCreditsExhaustedError();
+    }
     const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
     if (totalCards === 0) {
       throw new EmptyDeckError();

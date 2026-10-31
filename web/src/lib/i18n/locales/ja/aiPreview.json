@@ -22,7 +22,7 @@
   "choicePrivacy": "プライバシーポリシー",
   "unavailableNotice": "AIプレビューは現在ご利用いただけないため、ファイルの構造に基づくカードを表示しています。後でもう一度AIをお試しいただくか、このデッキをそのままご利用ください。",
   "resumeActiveDropAgain": "Day Passが有効です。もう一度ファイルをドロップして、すべてのカードを入手してください。",
-  "resumeOutOfCredits": "Day PassのAIクレジットが現在ありません。support@2anki.net までご連絡ください。お手伝いします。",
+  "resumeOutOfCredits": "Day PassのAIクレジットがなくなりました。ログインしてクレジットを追加してから、もう一度ファイルをドロップしてください。",
   "resumeEmpty": "そのファイルにカードが見つかりませんでした。別のファイルをお試しいただくか、support@2anki.net までご連絡ください。",
   "resumeError": "AIデッキの仕上げ中に問題が発生しました。support@2anki.net までご連絡ください。対応します。"
 }
