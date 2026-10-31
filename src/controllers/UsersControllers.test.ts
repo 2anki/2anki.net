@@ -3847,6 +3847,12 @@ describe('UsersController — sign-in returns a connector to the authorize scree
         name: 'U',
         accessData: {},
       }),
+      loginWithMicrosoft: vi.fn().mockResolvedValue({
+        subject: 'ms-sub-001',
+        email: 'u@example.com',
+        name: 'U',
+        emailVerified: true,
+      }),
     } as unknown as AuthenticationService;
     return new UsersController(
       userService,
@@ -4095,6 +4101,407 @@ describe('UsersController — sign-in returns a connector to the authorize scree
     expect(res.json).toHaveBeenCalledWith({
       token: 'session-jwt',
       redirect: '/pricing?ref=mcp',
+    });
+  });
+
+  describe('a provider sign-in returns to the page that sent the visitor to /login', () => {
+    const LOGIN_RETURN = 'login_return';
+    const PRICING = '/pricing?ref=mcp';
+
+    const signedOutLoginPage = async (redirect: string) => {
+      const res = buildSigninRes();
+      const controller = new UsersController(
+        {} as UsersService,
+        {
+          getUserFrom: vi.fn().mockResolvedValue(null),
+        } as unknown as AuthenticationService,
+        {} as ReturnType<typeof import('../data_layer').getDatabase>
+      );
+      Object.assign(res, { set: vi.fn(), send: vi.fn() });
+      await controller.checkUser(
+        {
+          query: { redirect },
+          body: {},
+          cookies: {},
+          headers: {},
+        } as unknown as express.Request,
+        res
+      );
+      return res;
+    };
+
+    const loginReturnCookies = (res: { cookie: Mock }) =>
+      res.cookie.mock.calls.filter(([name]) => name === LOGIN_RETURN);
+
+    it('GET /login with a redirect remembers it in a short-lived httpOnly cookie', async () => {
+      const res = await signedOutLoginPage(PRICING);
+
+      expect(loginReturnCookies(res)).toEqual([
+        [
+          LOGIN_RETURN,
+          PRICING,
+          expect.objectContaining({
+            httpOnly: true,
+            secure: true,
+            path: '/',
+            maxAge: 10 * 60 * 1000,
+          }),
+        ],
+      ]);
+    });
+
+    it.each(['https://evil.com/pricing', '//evil.com', '/\\evil.com'])(
+      'GET /login never remembers a foreign redirect %s',
+      async (redirect) => {
+        const res = await signedOutLoginPage(redirect);
+
+        expect(loginReturnCookies(res)).toEqual([]);
+      }
+    );
+
+    it('a Google sign-in from an emailed download link lands on the download', async () => {
+      const download = '/api/download/u/abc123';
+      const login = await signedOutLoginPage(download);
+      expect(loginReturnCookies(login)).toEqual([
+        [LOGIN_RETURN, download, expect.objectContaining({ httpOnly: true })],
+      ]);
+      const res = buildSigninRes();
+
+      await buildSigninController().loginWithGoogle(
+        {
+          query: { code: 'gauth-code' },
+          cookies: { [LOGIN_RETURN]: download },
+          headers: {},
+        } as unknown as express.Request,
+        res
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith(download);
+    });
+
+    it('a cancelled Google sign-in bounced to /login?error= keeps the return for the retry', async () => {
+      const res = buildSigninRes();
+      Object.assign(res, { set: vi.fn(), send: vi.fn() });
+      const controller = new UsersController(
+        {} as UsersService,
+        {
+          getUserFrom: vi.fn().mockResolvedValue(null),
+        } as unknown as AuthenticationService,
+        {} as ReturnType<typeof import('../data_layer').getDatabase>
+      );
+
+      await controller.checkUser(
+        {
+          query: { error: 'google_signin_failed' },
+          body: {},
+          cookies: { [LOGIN_RETURN]: PRICING },
+          headers: {},
+        } as unknown as express.Request,
+        res
+      );
+      const retry = buildSigninRes();
+      await buildSigninController().loginWithGoogle(
+        {
+          query: { code: 'gauth-code' },
+          cookies: { [LOGIN_RETURN]: PRICING },
+          headers: {},
+        } as unknown as express.Request,
+        retry
+      );
+
+      expect(res.clearCookie).not.toHaveBeenCalled();
+      expect(retry.redirect).toHaveBeenCalledWith(PRICING);
+    });
+
+    it('a password sign-in the login return steers logs via=password', async () => {
+      const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+      try {
+        await passwordLogin({ cookies: { [LOGIN_RETURN]: PRICING } });
+
+        const lines = info.mock.calls.filter(([line]) =>
+          String(line).startsWith('[login-return]')
+        );
+        expect(lines).toEqual([
+          ['[login-return] used via=password section=pricing'],
+        ]);
+      } finally {
+        info.mockRestore();
+      }
+    });
+
+    it('GET /login from the register page Log in link remembers /upload', async () => {
+      const res = await signedOutLoginPage('/upload');
+
+      expect(loginReturnCookies(res)).toEqual([
+        [LOGIN_RETURN, '/upload', expect.objectContaining({ httpOnly: true })],
+      ]);
+    });
+
+    it('a signed-in GET /login sets no login return', async () => {
+      const res = buildSigninRes();
+      const controller = new UsersController(
+        {} as UsersService,
+        {
+          getUserFrom: vi.fn().mockResolvedValue(existingUser),
+        } as unknown as AuthenticationService,
+        {} as ReturnType<typeof import('../data_layer').getDatabase>
+      );
+
+      await controller.checkUser(
+        {
+          query: { redirect: PRICING },
+          body: {},
+          cookies: { token: 'session-jwt' },
+        } as unknown as express.Request,
+        res
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith(PRICING);
+      expect(loginReturnCookies(res)).toEqual([]);
+    });
+
+    it.each(['/limit', '/convert/apkg-to-csv'])(
+      'GET /login from a page that is not on the allowlist (%s) remembers nothing',
+      async (redirect) => {
+        const res = await signedOutLoginPage(redirect);
+
+        expect(loginReturnCookies(res)).toEqual([]);
+      }
+    );
+
+    it('GET /login for a connector authorize leaves it to the connector cookie', async () => {
+      const res = await signedOutLoginPage(AUTHORIZE_URL);
+
+      expect(loginReturnCookies(res)).toEqual([]);
+    });
+
+    it('a Google sign-in with a foreign return cookie and no Notion page lands on /upload', async () => {
+      MockedNotionRepo.prototype.getNotionData = vi
+        .fn()
+        .mockResolvedValue(null);
+      const res = buildSigninRes();
+
+      await buildSigninController().loginWithGoogle(
+        {
+          query: { code: 'gauth-code' },
+          cookies: { [LOGIN_RETURN]: '//evil.com/pricing' },
+          headers: {},
+        } as unknown as express.Request,
+        res
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith('/upload');
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        LOGIN_RETURN,
+        expect.anything()
+      );
+    });
+
+    const providerCallbacks: [
+      string,
+      (
+        res: ReturnType<typeof buildSigninRes>,
+        cookies: Record<string, string>
+      ) => Promise<unknown>,
+    ][] = [
+      [
+        'Google',
+        (res, cookies) =>
+          buildSigninController().loginWithGoogle(
+            {
+              query: { code: 'gauth-code' },
+              cookies,
+              headers: {},
+            } as unknown as express.Request,
+            res
+          ),
+      ],
+      [
+        'Microsoft',
+        (res, cookies) =>
+          buildSigninController().loginWithMicrosoft(
+            {
+              query: { code: 'mauth-code' },
+              cookies,
+              headers: {},
+            } as unknown as express.Request,
+            res
+          ),
+      ],
+      [
+        'Apple (cross-site form POST)',
+        (res, cookies) =>
+          buildSigninController().loginWithApple(
+            {
+              body: { state: 'apple-state', code: 'apple-code' },
+              cookies: { apple_login_state: 'apple-state', ...cookies },
+              headers: {},
+              query: {},
+            } as unknown as express.Request,
+            res
+          ),
+      ],
+      [
+        'Notion',
+        (res, cookies) =>
+          buildSigninController().loginWithNotion(
+            {
+              query: { code: 'notion-code' },
+              cookies,
+              headers: {},
+            } as unknown as express.Request,
+            res
+          ),
+      ],
+    ];
+
+    it.each(providerCallbacks)(
+      '%s sign-in lands on /pricing?ref=mcp from the return cookie and clears it',
+      async (_provider, signIn) => {
+        const res = buildSigninRes();
+
+        await signIn(res, { [LOGIN_RETURN]: PRICING });
+
+        expect(res.redirect).toHaveBeenCalledWith(PRICING);
+        expect(res.clearCookie).toHaveBeenCalledWith(
+          LOGIN_RETURN,
+          expect.objectContaining({ path: '/' })
+        );
+      }
+    );
+
+    it.each([
+      ['google', providerCallbacks[0][1]],
+      ['microsoft', providerCallbacks[1][1]],
+      ['apple', providerCallbacks[2][1]],
+      ['notion', providerCallbacks[3][1]],
+    ] as const)(
+      'a %s sign-in the login return steers logs one line naming it',
+      async (via, signIn) => {
+        const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+        try {
+          await signIn(buildSigninRes(), { [LOGIN_RETURN]: PRICING });
+          await signIn(buildSigninRes(), {
+            [RETURN_COOKIE]: AUTHORIZE_URL,
+            [LOGIN_RETURN]: PRICING,
+          });
+
+          const lines = info.mock.calls.filter(([line]) =>
+            String(line).startsWith('[login-return]')
+          );
+          expect(lines).toEqual([
+            [`[login-return] used via=${via} section=pricing`],
+          ]);
+        } finally {
+          info.mockRestore();
+        }
+      }
+    );
+
+    it.each(providerCallbacks)(
+      '%s sign-in from /login?redirect=/upload lands on /upload, not /notion',
+      async (_provider, signIn) => {
+        const res = buildSigninRes();
+
+        await signIn(res, { [LOGIN_RETURN]: '/upload' });
+
+        expect(res.redirect).toHaveBeenCalledWith('/upload');
+      }
+    );
+
+    it.each(providerCallbacks)(
+      '%s sign-in refuses a foreign return cookie, lands as usual and clears it',
+      async (_provider, signIn) => {
+        const res = buildSigninRes();
+
+        await signIn(res, { [LOGIN_RETURN]: '//evil.com/pricing' });
+
+        expect(res.redirect).toHaveBeenCalledWith('/notion');
+        expect(res.clearCookie).toHaveBeenCalledWith(
+          LOGIN_RETURN,
+          expect.anything()
+        );
+      }
+    );
+
+    it.each(providerCallbacks)(
+      '%s sign-in keeps the connector return ahead of the login return and clears both',
+      async (_provider, signIn) => {
+        const res = buildSigninRes();
+
+        await signIn(res, {
+          [RETURN_COOKIE]: AUTHORIZE_URL,
+          [LOGIN_RETURN]: PRICING,
+        });
+
+        expect(res.redirect).toHaveBeenCalledWith(AUTHORIZE_URL);
+        expect(res.clearCookie).toHaveBeenCalledWith(
+          RETURN_COOKIE,
+          expect.anything()
+        );
+        expect(res.clearCookie).toHaveBeenCalledWith(
+          LOGIN_RETURN,
+          expect.anything()
+        );
+      }
+    );
+
+    it('password login without a redirect falls back to the login return and clears it', async () => {
+      const res = await passwordLogin({ cookies: { [LOGIN_RETURN]: PRICING } });
+
+      expect(res.json).toHaveBeenCalledWith({
+        token: 'session-jwt',
+        redirect: PRICING,
+      });
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        LOGIN_RETURN,
+        expect.anything()
+      );
+    });
+
+    it('a magic link login leaves the login return alone, as before', async () => {
+      const res = buildSigninRes();
+
+      await buildSigninController().verifyMagicLink(
+        {
+          params: { token: 'valid-tok' },
+          query: {},
+          cookies: { [LOGIN_RETURN]: PRICING },
+        } as unknown as express.Request,
+        res,
+        vi.fn()
+      );
+
+      expect(res.json).toHaveBeenCalledWith({ token: 'session-jwt' });
+      expect(res.clearCookie).not.toHaveBeenCalledWith(
+        LOGIN_RETURN,
+        expect.anything()
+      );
+    });
+
+    it('password login with an explicit redirect still wins and clears the login return', async () => {
+      const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+      try {
+        const res = await passwordLogin({
+          query: { redirect: '/downloads' },
+          cookies: { [LOGIN_RETURN]: PRICING },
+        });
+
+        expect(res.json).toHaveBeenCalledWith({
+          token: 'session-jwt',
+          redirect: '/downloads',
+        });
+        expect(res.clearCookie).toHaveBeenCalledWith(
+          LOGIN_RETURN,
+          expect.anything()
+        );
+        const loginReturnLines = info.mock.calls.filter(([line]) =>
+          String(line).startsWith('[login-return]')
+        );
+        expect(loginReturnLines).toEqual([]);
+      } finally {
+        info.mockRestore();
+      }
     });
   });
 });

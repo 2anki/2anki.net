@@ -19,6 +19,12 @@ import { getRedirect } from './helpers/getRedirect';
 import { recordUnverifiedSignin } from './helpers/recordUnverifiedSignin';
 import { sanitizeRelativeRedirect } from './helpers/sanitizeRelativeRedirect';
 import { takeMcpLoginReturn } from '../lib/mcp/loginReturn';
+import {
+  type LoginReturnMethod,
+  logLoginReturnUsed,
+  rememberLoginReturn,
+  takeLoginReturn,
+} from '../lib/auth/loginReturn';
 import { parseSignupOrigin } from './helpers/parseSignupOrigin';
 import {
   parseFirstTouch,
@@ -238,7 +244,12 @@ class UsersController {
         await this.authService.persistToken(token, user.id.toString());
         await this.userService.updateLastLoginAt(user.id.toString());
         res.cookie('token', token, sessionCookieOptions());
-        const redirect = await this.landingForUser(req, res, user.id);
+        const redirect = await this.landingForUser(
+          req,
+          res,
+          user.id,
+          'password'
+        );
         res.status(200).json({ token, redirect });
       }
     } catch (error) {
@@ -746,10 +757,11 @@ class UsersController {
 
   async checkUser(req: express.Request, res: express.Response) {
     const user = await this.authService.getUserFrom(req.cookies.token);
-    if (!user) {
-      sendIndex(res, '', consentRegionForRequest(req));
-    } else {
+    if (user) {
       res.redirect(getRedirect(req));
+    } else {
+      rememberLoginReturn(req, res);
+      sendIndex(res, '', consentRegionForRequest(req));
     }
   }
 
@@ -864,7 +876,9 @@ class UsersController {
     await this.authService.persistToken(token, user.id.toString());
     await this.userService.updateLastLoginAt(user.id.toString());
     res.cookie('token', token, sessionCookieOptions());
-    res.status(200).redirect(await this.landingForUser(req, res, user.id));
+    res
+      .status(200)
+      .redirect(await this.landingForUser(req, res, user.id, 'google'));
   }
 
   async loginWithMicrosoft(req: express.Request, res: express.Response) {
@@ -991,7 +1005,9 @@ class UsersController {
     await this.authService.persistToken(token, user.id.toString());
     await this.userService.updateLastLoginAt(user.id.toString());
     res.cookie('token', token, sessionCookieOptions());
-    res.status(200).redirect(await this.landingForUser(req, res, user.id));
+    res
+      .status(200)
+      .redirect(await this.landingForUser(req, res, user.id, 'microsoft'));
   }
 
   async loginWithApple(req: express.Request, res: express.Response) {
@@ -1076,7 +1092,7 @@ class UsersController {
     res.cookie('token', result.token, sessionCookieOptions());
     return res
       .status(200)
-      .redirect(await this.landingForUser(req, res, result.user.id));
+      .redirect(await this.landingForUser(req, res, result.user.id, 'apple'));
   }
 
   async loginWithAppleNative(req: express.Request, res: express.Response) {
@@ -1362,7 +1378,12 @@ class UsersController {
     await notionRepository.saveNotionToken(user.id, accessData, hashToken);
 
     res.cookie('token', token, sessionCookieOptions());
-    return res.status(200).redirect(takeMcpLoginReturn(req, res) ?? '/notion');
+    const mcpReturn = takeMcpLoginReturn(req, res);
+    const loginReturn = takeLoginReturn(req, res);
+    if (mcpReturn == null && loginReturn != null) {
+      logLoginReturnUsed(loginReturn, 'notion');
+    }
+    return res.status(200).redirect(mcpReturn ?? loginReturn ?? '/notion');
   }
 
   async requestMagicLink(
@@ -1539,14 +1560,20 @@ class UsersController {
   private async landingForUser(
     req: express.Request,
     res: express.Response,
-    userId: number
+    userId: number,
+    via: LoginReturnMethod
   ): Promise<string> {
     const mcpReturn = takeMcpLoginReturn(req, res);
+    const loginReturn = takeLoginReturn(req, res);
     if (this.hasExplicitRedirect(req)) {
       return getRedirect(req);
     }
     if (mcpReturn != null) {
       return mcpReturn;
+    }
+    if (loginReturn != null) {
+      logLoginReturnUsed(loginReturn, via);
+      return loginReturn;
     }
     const notionData = await new NotionRepository(this.db).getNotionData(
       userId

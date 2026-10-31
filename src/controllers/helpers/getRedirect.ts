@@ -92,6 +92,15 @@ const resolveAllowedOrigin = (candidate: string): string | null => {
   );
 };
 
+// A connector authorize request needs its whole query (client_id,
+// redirect_uri, state, code_challenge) to resume, so it keeps the full
+// value instead of collapsing to an allowlisted section root.
+export const resolveRedirect = (redirectParam: string): string | null =>
+  asMcpAuthorizeReturn(redirectParam) ??
+  resolvePricingReturn(redirectParam) ??
+  resolveInternalPath(redirectParam) ??
+  resolveAllowedOrigin(redirectParam);
+
 export const getRedirect = (req: Request): string => {
   const queryRedirect = req.query.redirect?.toString();
   const bodyRedirect =
@@ -102,14 +111,5 @@ export const getRedirect = (req: Request): string => {
     return DEFAULT_REDIRECT;
   }
 
-  // A connector authorize request needs its whole query (client_id,
-  // redirect_uri, state, code_challenge) to resume, so it keeps the full
-  // value instead of collapsing to an allowlisted section root.
-  return (
-    asMcpAuthorizeReturn(redirectParam) ??
-    resolvePricingReturn(redirectParam) ??
-    resolveInternalPath(redirectParam) ??
-    resolveAllowedOrigin(redirectParam) ??
-    DEFAULT_REDIRECT
-  );
+  return resolveRedirect(redirectParam) ?? DEFAULT_REDIRECT;
 };
