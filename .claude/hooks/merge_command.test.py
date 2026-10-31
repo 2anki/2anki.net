@@ -107,6 +107,9 @@ class TestDetection(unittest.TestCase):
             "gh pr me$x 1",
             "gh pr me${x}rge 1",
             "gh pr -R 2anki/server me$x 1",
+            "gh pr -a 1 -b 2 -c 3 -d 4 -e 5 -f 6 -g 7 -h 8 -i 9 me$x 1",
+            "gh -a 1 -b 2 -c 3 -d 4 -e 5 -f 6 -g 7 -h 8 -i 9 -j 10 $P $V 1",
+            "gh pr " + "-a 1 " * 5000 + "me`printf x`rge 1",
             "gh${IFS}pr${IFS}me${x}rge${IFS}1",
             "gh $P $V 1",
             "gh pr `echo merge` 1",
@@ -139,6 +142,16 @@ class TestDetection(unittest.TestCase):
     def test_the_graphql_merge_mutation_alone_is_a_merge_attempt_as_on_main(self):
         self.assertTrue(mc.is_gh_pr_merge("python3 /tmp/s.py mergePullRequest"))
 
+    def test_auto_queue_and_branch_merge_apis_are_merge_attempts(self):
+        for cmd in (
+            "gh api graphql -f query='mutation { enablePullRequestAutoMerge(input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'",
+            "curl -X POST -H @/tmp/h https://140.82.121.6/graphql -d '{\"query\":\"mutation { enablePullRequestAutoMerge(input:{}) { clientMutationId } }\"}'",
+            "gh api graphql -f query='mutation { enqueuePullRequest(input:{}) { clientMutationId } }'",
+            "gh api graphql -f query='mutation { mergeBranch(input:{}) { clientMutationId } }'",
+            "gh api -X POST repos/2anki/2anki.net/merges -f base=main -f head=x",
+        ):
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
+
     def test_merge_with_a_dollar_or_backtick_is_a_merge_attempt_without_gh(self):
         for cmd in ('git merge "$tip"', "echo `merge`", "M=merge; echo $M", '"$G" pr merge 1'):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
@@ -146,6 +159,7 @@ class TestDetection(unittest.TestCase):
     def test_harmless_commands_the_broad_rules_still_deny(self):
         for cmd in (
             'B=$(git branch --show-current); gh pr view "$B"',
+            'gh pr view "$N" --json headRefOid --jq .headRefOid',
             'gh pr create --repo 2anki/server --base main --head x --body "$(cat f.md)"',
             "gh pr review 5 --comment --body \"see `x`\"",
             "cd /Users/a/src/github.com/2anki/server && echo $(date)",
@@ -160,7 +174,6 @@ class TestDetection(unittest.TestCase):
             "gh api graphql -f query='{ repository(owner:\"2anki\", name:\"2anki.net\") { pullRequest(number:1) { state mergeCommit { oid } } } }'",
             "gh api repos/2anki/2anki.net/issues/5/events --jq '[.[] | select(.event==\"closed\") | .actor.login] | last'",
             "gh pr view 1 --json mergedAt,mergedBy",
-            'gh pr view "$N" --json headRefOid --jq .headRefOid',
             "cd /Users/a/src/github.com/2anki/server && echo $HOME",
             "python3 /Users/a/src/github.com/2anki/server/.claude/hooks/check-merge-status.test.py",
             "ssh h 'S=$(date -u +%FT%H); grep -c \"POST /api/apkg/pdf\" /tmp/x.log'",
@@ -440,20 +453,21 @@ class TestAllowedMerge(unittest.TestCase):
     def test_the_deny_names_the_rule_that_fired_and_its_fix(self):
         for cmd, reason, fix in (
             ('git commit -m "docs: gh pr merge"', "contains `gh` and the word `merge`", "git commit -F"),
-            ("grep -rn mergePullRequest src/", "`mergePullRequest`", "keep `mergePullRequest` out"),
+            ("grep -rn mergePullRequest src/", "merge mutation", "keep it out of the command"),
             ("gh api repos/a/b/pulls/1/files", "`pulls/` path with `gh api`", "gh pr view --json"),
             ('git merge "$tip"', "the word `merge` with a `$`", "write the value literally"),
             ('gh pr create --body "$(cat f.md)"', "`$(`", "--body-file"),
             ("IFS=$'\\n' read -r x", "ANSI-C quote", "plain quoted string"),
             ("printf '\\x67\\x68 pr' | sh", "character escape", "write the characters literally"),
-            ("gh pr me$x 1", "builds the subcommand", "write the subcommand literally"),
+            ("gh pr me$x 1", "a `$` or a backtick after `gh`", "write values literally"),
         ):
             message = mc.merge_form_violation(cmd)
             self.assertIn(reason, message, cmd)
             self.assertIn(fix, message, cmd)
 
     def test_every_ship_command_but_the_step_4_one_is_left_alone(self):
-        ship = open(os.path.join(HOOKS_DIR, "..", "commands", "ship.md")).read()
+        with open(os.path.join(HOOKS_DIR, "..", "commands", "ship.md")) as handle:
+            ship = handle.read()
         blocks = re.findall(r"```bash\n(.*?)```", ship, re.S)
         scratchpad = "/private/tmp/claude-501/-Users-a-src-github-com-2anki-server/session/scratchpad"
         lines = [
@@ -471,7 +485,8 @@ class TestAllowedMerge(unittest.TestCase):
 
     def test_every_deploy_status_and_cleanup_command_is_left_alone(self):
         for name in ("deploy-status.md", "cleanup.md"):
-            doc = open(os.path.join(HOOKS_DIR, "..", "commands", name)).read()
+            with open(os.path.join(HOOKS_DIR, "..", "commands", name)) as handle:
+                doc = handle.read()
             blocks = [block.strip() for block in re.findall(r"```bash\n(.*?)```", doc, re.S)]
             self.assertGreater(len(blocks), 1, name)
             for block in blocks:

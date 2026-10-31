@@ -53,7 +53,7 @@ gh issue list --repo 2anki/server --state open --limit 1000 \
   --jq 'sort_by(.createdAt)' > /tmp/overnight-backlog.json
 ```
 
-Then, as a separate Bash call (the merge hooks deny a command that pairs `gh` with `$(`):
+Then, as a separate Bash call (the merge hooks deny a command with a `$` after `gh`):
 
 ```bash
 jq 'length' /tmp/overnight-backlog.json   # M, the denominator for the coverage line
