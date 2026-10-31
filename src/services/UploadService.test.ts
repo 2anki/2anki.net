@@ -123,6 +123,9 @@ import { setMintedAnonId } from '../lib/User/getOwner';
 import { toCardCountBucket } from '../lib/analytics/cardCountBucket';
 import { mcpOptionsToCardSettings } from './mcp/mcpOptionsToCardSettings';
 import { McpToolsService } from './mcp/McpToolsService';
+import instrumentedAxios from './observability/instrumentedAxios';
+import { handleDropbox } from '../controllers/Upload/helpers/handleDropbox';
+import { handleGoogleDrive } from '../controllers/Upload/helpers/handleGoogleDrive';
 import type { DeckPersistence } from './mcp/McpDeckPersistence';
 import type ApkgPreviewService from './ApkgPreviewService/ApkgPreviewService';
 import type DownloadService from './DownloadService';
@@ -1191,38 +1194,39 @@ describe('UploadService.handleUpload — error paths', () => {
     });
   }
 
-  const freeUserOverTheLimit: Partial<UsersRepository> = {
+  const regularUsage = (): Partial<UsersRepository> => ({});
+  const usageOverTheLimit = (): Partial<UsersRepository> => ({
     getCardUsage: vi.fn().mockResolvedValue({
       cards_used: MONTHLY_CARD_LIMIT,
       month_started_at: new Date(),
     }),
-  };
+  });
 
   it.each([
-    ['a signed-out visitor', {}, {}],
-    ['a signed-in free user', { owner: 42 }, {}],
-    ['a free user over the monthly limit', { owner: 42 }, freeUserOverTheLimit],
-    ['a paying subscriber', { owner: 42, subscriber: true }, {}],
+    ['a signed-out visitor', {}, regularUsage],
+    ['a signed-in free user', { owner: 42 }, regularUsage],
+    ['a free user over the monthly limit', { owner: 42 }, usageOverTheLimit],
+    ['a paying subscriber', { owner: 42, subscriber: true }, regularUsage],
     [
       'a signed-in pass holder',
       { owner: 42, subscriber: true, passKind: 'day' },
-      {},
+      regularUsage,
     ],
     [
       'a signed-out pass holder',
       { anonymousPassId: 7, subscriber: true, passKind: 'day' },
-      {},
+      regularUsage,
     ],
   ])(
     'answers an Anki-package zip from %s with its explanation and logs no error',
-    async (_who, locals, usersRepoOverrides) => {
+    async (_who, locals, usage) => {
       rejectWithAnkiPackageZip();
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const service = new UploadService(
         buildRepository(),
         {} as JobRepository,
-        buildUsersRepo(usersRepoOverrides),
+        buildUsersRepo(usage()),
         ...fakeUploadServiceDeps()
       );
       const { res, capturedStatus, capturedJson } = buildResponse();
@@ -1293,6 +1297,109 @@ describe('UploadService.handleUpload — error paths', () => {
       message: ANKI_PACKAGE_ZIP_MESSAGE,
     });
   });
+
+  it('answers an Anki-package zip with no AI preview available from a signed-out AI upload without logging an error', async () => {
+    rejectWithAnkiPackageZip();
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGenerateAiPreview.mockResolvedValue([]);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(anonAiMarkdownRequest('visitor-zip'), res);
+
+    const errorCalls = errorSpy.mock.calls.length;
+    errorSpy.mockRestore();
+    expect(mockGenerateAiPreview).toHaveBeenCalledTimes(1);
+    expect(errorCalls).toBe(0);
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message: ANKI_PACKAGE_ZIP_MESSAGE,
+    });
+  });
+
+  it.each([
+    [
+      'Dropbox',
+      (
+        req: express.Request,
+        res: express.Response,
+        upload: (req: express.Request, res: express.Response) => void
+      ) => handleDropbox(req, res, upload),
+      {
+        files: JSON.stringify([
+          {
+            bytes: 20,
+            id: 'id:export',
+            isDir: false,
+            link: 'https://dl.dropboxusercontent.com/s/export.zip',
+            name: 'export.zip',
+          },
+        ]),
+      },
+    ],
+    [
+      'Google Drive',
+      (
+        req: express.Request,
+        res: express.Response,
+        upload: (req: express.Request, res: express.Response) => void
+      ) => handleGoogleDrive(req, res, upload),
+      {
+        files: JSON.stringify([
+          {
+            id: 'export-file-id',
+            name: 'export.zip',
+            mimeType: 'application/zip',
+            sizeBytes: 20,
+          },
+        ]),
+        googleDriveAuth: 'drive-token',
+      },
+    ],
+  ])(
+    'answers an Anki-package zip picked from %s without logging an error',
+    async (_source, pick, body) => {
+      rejectWithAnkiPackageZip();
+      const download = vi
+        .spyOn(instrumentedAxios, 'get')
+        .mockResolvedValue({ data: Buffer.from('PK') } as never);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse();
+      let conversion: Promise<unknown> = Promise.resolve();
+
+      await pick(
+        buildRequest({ files: undefined, body } as Partial<express.Request>),
+        res,
+        (req, uploadRes) => {
+          conversion = service.handleUpload(req, uploadRes);
+        }
+      );
+      await conversion;
+
+      const errorCalls = errorSpy.mock.calls.length;
+      errorSpy.mockRestore();
+      download.mockRestore();
+      expect(errorCalls).toBe(0);
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code: 'unknown',
+        message: ANKI_PACKAGE_ZIP_MESSAGE,
+      });
+    }
+  );
 
   it('answers a sync upload whose worker hit a filesystem error with the generic 500, not its path', async () => {
     const crash = Object.assign(
