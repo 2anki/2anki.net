@@ -32,6 +32,8 @@ The mock server runs on `http://localhost:2020` and provides mocked responses fo
 - `POST /api/users/logout` - Logout user
 - `POST /api/users/login` - Login user
 - `POST /api/users/link_email` - Link email to account
+- `GET /api/users/auth/google/init` - Start Google sign-in (redirects to a mock authorize URL)
+- `GET /api/users/auth/microsoft/init` - Start Microsoft sign-in (redirects to a mock authorize URL)
 - `GET /api/users/auth/google` - Google OAuth redirect
 
 ### Notion Integration

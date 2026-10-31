@@ -1,4 +1,3 @@
-import { getMicrosoftSignInUrl } from '../../lib/backend/getMicrosoftSignInUrl';
 import styles from '../../styles/auth.module.css';
 
 interface WithMicrosoftLinkProps {
@@ -15,7 +14,7 @@ export function WithMicrosoftLink({
   const isCard = variant === 'card';
   return (
     <a
-      href={getMicrosoftSignInUrl()}
+      href="/api/users/auth/microsoft/init"
       className={isCard ? styles.oauthCard : styles.microsoftButton}
       aria-label={isCard ? text : undefined}
       onClick={onSelect}
