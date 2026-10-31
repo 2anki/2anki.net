@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
+import glob
 import importlib.util
 import json
-import glob
 import os
 import re
 import subprocess
@@ -257,10 +257,27 @@ class TestDetection(unittest.TestCase):
             self.assertFalse(mc.is_gh_pr_merge(cmd), cmd)
 
 
-COMMAND_START = re.compile(r"^\s*(?:gh|git|pnpm|npx|cd|curl|ssh|scp|python3|for|\[|[A-Z][A-Z0-9_]*=)\b")
-DOCUMENTED_DENIED_EXAMPLES = (
-    'gh pr create --body "$(cat f.md)"',
-    'gh pr view "$B"',
+COMMAND_START = re.compile(
+    r"^\s*(?:(?:gh|git|pnpm|npx|npm|node|cd|curl|ssh|scp|python3|for|echo|sed|bash|jq)\b|\[|[A-Za-z_][A-Za-z0-9_]*=)"
+)
+FENCE = re.compile(r"^[ \t]*```([\w-]*)[^\n]*\n(.*?)^[ \t]*```", re.S | re.M)
+COMMAND_FENCE_LABELS = frozenset({"bash", "sh", ""})
+DOCUMENTED_DENIED_EXAMPLES = frozenset({
+    ("autonomous-shipping.md", 'gh pr create --body "$(cat f.md)"'),
+    ("autonomous-shipping.md", 'gh pr view "$B"'),
+})
+DOCS_THIS_PR_CHANGES = (
+    "CLAUDE.md",
+    "ship.md",
+    "cleanup.md",
+    "deploy-status.md",
+    "review-pr.md",
+    "overnight-prs.md",
+    "pr-visual-diff.md",
+    "autonomous-shipping.md",
+    "browser-attestation.md",
+    "follow-ups-project.md",
+    "prod-ops.md",
 )
 MERGE_HOOKS = (
     "check-merge-status.py",
@@ -554,35 +571,42 @@ class TestAllowedMerge(unittest.TestCase):
             paths += glob.glob(os.path.join(claude_dir, pattern), recursive=True)
         commands = []
         for path in paths:
+            name = os.path.basename(path)
             with open(path) as handle:
                 doc = handle.read()
-            for match in re.finditer(r"```(bash|sh)?\n(.*?)```", doc, re.S):
-                block = match.group(2).strip()
+            for match in FENCE.finditer(doc):
+                label, block = match.group(1), match.group(2).strip()
                 is_file_content = doc[: match.start()].rstrip().endswith("with the Write tool:")
-                is_prose = match.group(1) is None and not COMMAND_START.match(block)
-                if not (is_file_content or is_prose):
-                    commands.append((path, block))
+                is_prose = label == "" and not COMMAND_START.match(block)
+                if label in COMMAND_FENCE_LABELS and not (is_file_content or is_prose):
+                    commands.append((name, block))
             for command in re.findall(r"(?<!`)`((?:gh|git) [^`]+)`(?!`)", doc):
                 if not command.startswith("gh pr merge"):
-                    commands.append((path, command))
+                    commands.append((name, command))
         return paths, commands
 
     def test_every_command_in_the_instruction_docs_is_left_alone(self):
         paths, commands = self.instruction_doc_commands()
         self.assertGreater(len(paths), 40)
-        self.assertGreater(len(commands), 200)
         for path, command in commands:
-            if command in DOCUMENTED_DENIED_EXAMPLES:
+            if (path, command) in DOCUMENTED_DENIED_EXAMPLES:
                 continue
             if mc.allowed_merge(command.replace("<n>", "42")) is None:
-                self.assertFalse(mc.is_gh_pr_merge(command), (os.path.basename(path), command))
+                self.assertFalse(mc.is_gh_pr_merge(command), (path, command))
+
+    def test_every_doc_this_pr_changes_contributes_commands(self):
+        _, commands = self.instruction_doc_commands()
+        names = [name for name, _ in commands]
+        for name in DOCS_THIS_PR_CHANGES:
+            self.assertGreater(names.count(name), 0, name)
+        self.assertGreaterEqual(names.count("pr-visual-diff.md"), 4)
 
     def test_the_denied_examples_the_docs_quote_are_denied(self):
         _, commands = self.instruction_doc_commands()
-        quoted = {command for _, command in commands}
+        quoted = set(commands)
         for example in DOCUMENTED_DENIED_EXAMPLES:
             self.assertIn(example, quoted)
-            self.assertTrue(mc.is_gh_pr_merge(example), example)
+            self.assertTrue(mc.is_gh_pr_merge(example[1]), example)
 
     def test_a_variable_title_or_body_never_reaches_the_sibling_hooks(self):
         for cmd in (
