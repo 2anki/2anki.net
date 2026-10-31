@@ -54,6 +54,11 @@ REJECTED_FORMS = (
     "GH_REPO=other/repo gh pr merge 1 --repo 2anki/server --squash",
     "cd /tmp/other && gh pr merge 1 --repo 2anki/server --squash",
     "gh api -X PUT repos/2anki/2anki.net/pulls/1/merge",
+    "bash -lc 'gh pr merge 1 --repo 2anki/server --squash'",
+    "eval gh pr merge 1 --repo 2anki/server --squash",
+    "eval 'gh pr' 'merge 1' '--repo 2anki/server --squash'",
+    "gh pr merge 1 --repo 2anki/server --squash > /tmp/out",
+    "gh pr merge 1 --repo 2anki/server --squash 2>&1 | tee /tmp/log",
 )
 
 
@@ -188,10 +193,12 @@ class TestPassthrough(unittest.TestCase):
     def test_non_bash_tool_allows(self):
         self.assertEqual(run_hook(MERGE_1, tool_name="Edit")["result"], "allow")
 
-    def test_merge_mentioned_in_commit_message_allows(self):
-        self.assertEqual(
-            run_hook('git commit -m "docs: explain gh pr merge"')["result"], "allow"
-        )
+    def test_merge_mentioned_in_commit_message_is_denied_without_calling_gh(self):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]))
+        result = run_hook('git commit -m "docs: explain gh pr merge"', fake)
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("git commit -F", result["reason"])
+        self.assertEqual(fake.calls, [])
 
     def test_unrelated_files_allow_without_fetching_diff(self):
         fake = gh_responder(pr_json([file_entry("web/src/App.tsx"), file_entry("README.md")]))

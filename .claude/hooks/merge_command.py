@@ -1,47 +1,32 @@
 #!/usr/bin/env python3
 """
-Shared code for the four merge-gate hooks.
+Shared code for the four merge-gate hooks. This deliberately narrows what the
+hooks accept (#5193): rounds of shell-parsing fixes kept finding forms where
+the PR the gate read was not the PR that merged, or where a merge was not seen
+at all, so detection fails closed and only one exact command form passes.
 
-`is_gh_pr_merge`: does this Bash command *run* `gh pr merge`, as opposed to
-merely mentioning it? A mention inside a commit message, a heredoc'd doc edit,
-or an echo used to trip every gate (2026-08-26: two doc-edit commands were
-denied as hard-rail merges). Heredoc bodies and quoted literals are stripped
-first; whatever is left is real shell, so any remaining occurrence counts —
-`then gh pr merge`, `exec gh pr merge`, and backtick substitution all match (a
-command-position anchor missed those, per the PR #4244 security review), and so
-do flags between the words on one line (`gh pr -R o/r merge`). The command is
-also split into words the way the shell does (`shlex`, backslash-newlines
-removed), and every `gh` word (any case, any path) is followed the way cobra
-picks subcommands: a flag without `=` that is not `-h`/`--help`/`--version`
-takes the next word as its value. If the group word is `pr` and the action word
-is `merge`, it is a merge; a word built with `$` or a backtick where gh, the
-group or the action would be counts as all three, and so does `gh pr` with no
-action (`xargs gh pr`). A quoted mention inside another command's argument is
-one word and does not count; a command shlex cannot split counts when it
-contains `gh` and `merge`. `gh alias set|import` with `merge` in its expansion,
-the REST merge endpoint (`gh api -X PUT repos/o/r/pulls/N/merge`, or curl to the
-same URL, read both raw and as shell words), the GraphQL `mergePullRequest`
-mutation and a GraphQL query read from a file count too, and the argument of
-`eval` or of `bash|sh|zsh|dash|ksh -c` is checked the same way.
+`is_gh_pr_merge`: a Bash command is a merge attempt when it contains `gh` (or
+`github`, for curl to the API) and `merge`, case-insensitive and anywhere (inside `eval`, `bash -c`, heredocs,
+redirections and quotes too), checked on the raw command and again with
+quotes, backslashes and backslash-newlines removed, so `"g"h pr "mer"ge` counts.
+This also catches commands that only mention a merge (`gh pr view --json
+mergeStateStatus`, a commit message that names `gh` and `merge` in one `-m`);
+those are denied too. Keep `gh` and `merge` out of one non-merge command, for
+example by writing a commit message with `git commit -F <file>`.
 
-Known limitations, policy violations rather than hook gaps: a merge run
-through anything the hook cannot read as shell words, such as a script file,
-another language (`python -c "os.system(...)"`), a heredoc fed to a shell, a
-gh alias defined in an earlier call, or a shell function or alias from the
-user's profile.
+`allowed_merge`: the only command that passes is the one `/ship` runs, the
+whole trimmed command matching `gh pr merge <n> --repo 2anki/server --squash`
+(or `--repo 2anki/2anki.net`), optionally followed by ` 2>&1`. Nothing may
+precede or follow it. The number and repo come only from that match; the
+hooks pass that repo literal to `gh pr view -R`, deny when `gh pr view` fails,
+deny when its `url` is not `https://github.com/2anki/2anki.net/pull/<n>` for
+that number, and (`deny_on_error`) deny when anything after detection raises,
+because a hook that crashes lets the merge through.
 
-`allowed_merge`: the only merge the hooks let through is the one `/ship` runs,
-exactly `gh pr merge <n> --repo 2anki/server --squash` (or `--repo
-2anki/2anki.net`), alone in the Bash call. Every other detected merge is denied:
-a branch, `#N`, a URL, another repo, extra or clustered flags, `GH_REPO=` or
-`cd` prefixes, chained commands, API and GraphQL merges. Parsing gh's argument
-grammar kept growing edge cases where the PR the gate read was not the PR that
-merged (#5193 security reviews); an exact form removes the differential. The
-hooks pass the matched repo literal, never a raw token, to `gh pr view -R`,
-deny when `gh pr view` fails, deny when its `url` is not
-`https://github.com/2anki/2anki.net/pull/<n>` for that number, and
-(`deny_on_error`) deny when anything after detection raises, because a hook
-that crashes lets the merge through.
+Known limitation: a merge whose `gh` or `merge` is assembled at run time
+(`g$(true)h`, a variable, a script file, another language, a gh alias defined
+earlier) does not contain the words and is not seen. That is a policy
+violation, like `CLAUDE_SKIP_SAFETY`, not a hook gap.
 
 `changed_files` is the file list all four hooks gate on. `gh pr view --json
 files` stops at a PR's first 100 files (#5172), so the list comes from the
@@ -54,23 +39,12 @@ before.
 """
 import json
 import re
-import shlex
 import subprocess
 import sys
 
-HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.S | re.M)
-QUOTED_LITERAL = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
-GH_PR_MERGE = re.compile(r"\bgh(?:[ \t]+[^\s;&|]+)*?[ \t]+pr(?:[ \t]+[^\s;&|]+)*?[ \t]+merge\b")
-API_MERGE_PATH = re.compile(r"\bpulls/[^/\s]+/merge\b")
-API_WRITE_SIGNAL = re.compile(
-    r"(?:-X|--method|--request)[= ]*PUT\b|(?:^|\s)(?:-f|-F|--input|--raw-field|--field)\b"
-)
-GRAPHQL_MERGE = re.compile(r"\bmergePullRequest\b")
-BOOL_FLAGS = frozenset({"-h", "--help", "--version"})
-SHELLS = frozenset({"bash", "sh", "zsh", "dash", "ksh"})
-
+OBFUSCATION = re.compile(r"\\\n|[\"'\\]")
 CANONICAL_REPO = "2anki/2anki.net"
-ALLOWED_MERGE = re.compile(r"gh pr merge ([1-9][0-9]{0,8}) --repo (2anki/server|2anki/2anki\.net) --squash")
+ALLOWED_MERGE = re.compile(r"gh pr merge ([1-9][0-9]{0,8}) --repo (2anki/server|2anki/2anki\.net) --squash(?: 2>&1)?")
 ALLOWED_FORM = "gh pr merge <n> --repo 2anki/server --squash"
 VIEW_URL = re.compile(r"https://github\.com/([^/\s]+)/([^/\s]+)/pull/([0-9]+)")
 REST_FILES_TIMEOUT_SECONDS = 20
@@ -87,108 +61,15 @@ REST_STATUS_TO_CHANGE_TYPE = {
 }
 
 
-def strip_heredocs(cmd):
-    return HEREDOC.sub("", cmd)
-
-
-def strip_literals(cmd):
-    return QUOTED_LITERAL.sub("", strip_heredocs(cmd))
-
-
-def is_api_merge(cmd):
-    shell = strip_heredocs(cmd)
-    return bool(API_MERGE_PATH.search(shell) and API_WRITE_SIGNAL.search(shell))
-
-
-def is_graphql_merge(cmd):
-    return bool(GRAPHQL_MERGE.search(strip_heredocs(cmd)))
-
-
-def shell_words(cmd):
-    lexer = shlex.shlex(strip_heredocs(cmd).replace("\\\n", ""), posix=True, punctuation_chars=";&|")
-    lexer.whitespace_split = True
-    return list(lexer)
-
-
-def is_computed(word):
-    return "$" in word or "`" in word
-
-
-def is_gh_word(word):
-    return is_computed(word) or word.strip("()").rsplit("/", 1)[-1].lower() == "gh"
-
-
-def cobra_word(words, start):
-    """Index of the word cobra takes as the next subcommand, or None when a computed word makes it unknowable."""
-    index = start
-    while index < len(words):
-        word = words[index]
-        if is_computed(word):
-            return None
-        if word == "--" or not word.startswith("-"):
-            return index + 1 if word == "--" else index
-        takes_value = "=" not in word and word not in BOOL_FLAGS and (word.startswith("--") or len(word) == 2)
-        index += 2 if takes_value else 1
-    return len(words)
-
-
-def is_word(words, index, expected):
-    if index is None or index >= len(words):
-        return True
-    return is_computed(words[index]) or words[index].lower() in expected
-
-
-def runs_gh_merge(words):
-    for index, word in enumerate(words):
-        if not is_gh_word(word):
-            continue
-        group = cobra_word(words, index + 1)
-        if group is not None and group < len(words) and words[group].lower() == "alias":
-            if any("merge" in later.lower() for later in words[group + 1:]):
-                return True
-            continue
-        if group is not None and group >= len(words):
-            continue
-        if not is_word(words, group, {"pr"}):
-            continue
-        action = None if group is None else cobra_word(words, group + 1)
-        if is_word(words, action, {"merge"}):
-            return True
-    return False
-
-
-def nested_commands(words):
-    for index, word in enumerate(words[:-1]):
-        name = word.rsplit("/", 1)[-1]
-        if name == "eval" or (name == "-c" and index > 0 and words[index - 1].rsplit("/", 1)[-1] in SHELLS):
-            yield words[index + 1]
-
-
-def is_shell_merge(cmd, depth=0):
-    try:
-        words = shell_words(cmd)
-    except ValueError:
-        lowered = cmd.lower()
-        return "merge" in lowered and "gh" in lowered
-    if runs_gh_merge(words):
-        return True
-    joined = " ".join(words)
-    if is_api_merge(joined) or is_graphql_merge(joined) or is_graphql_from_file(words):
-        return True
-    return depth < 3 and any(is_shell_merge(inner, depth + 1) for inner in nested_commands(words))
-
-
-def is_graphql_from_file(words):
-    return "graphql" in words and any("=@" in word or word == "--input" for word in words)
+def names_gh_and_merge(text):
+    lowered = text.lower()
+    return ("gh" in lowered or "github" in lowered) and "merge" in lowered
 
 
 def is_gh_pr_merge(cmd):
-    return bool(
-        GH_PR_MERGE.search(strip_literals(cmd))
-        or is_shell_merge(cmd)
-        or is_api_merge(cmd)
-        or is_graphql_merge(cmd)
-    )
+    if not isinstance(cmd, str):
+        return False
+    return names_gh_and_merge(cmd) or names_gh_and_merge(OBFUSCATION.sub("", cmd))
 
 
 def allowed_merge(cmd):
@@ -203,10 +84,11 @@ def merge_form_violation(cmd):
     if allowed_merge(cmd) is not None:
         return None
     return (
-        f"Refusing this merge: the merge hooks only accept the command /ship runs, exactly "
-        f"`{ALLOWED_FORM}` (or `--repo {CANONICAL_REPO}`), alone in the Bash call. Any other "
-        "form (a branch, a URL, another repo, extra flags, a prefix, a chained command, an API "
-        "or GraphQL merge) is denied, so the PR the gate reads is the PR that merges."
+        f"Refusing this command: it contains `gh` and `merge`, and the merge hooks accept only "
+        f"the merge /ship runs, exactly `{ALLOWED_FORM}` (or `--repo {CANONICAL_REPO}`), alone in "
+        "the Bash call. Every other form is denied: a branch, a URL, another repo, extra flags, "
+        "a prefix, a chained or nested command, an API or GraphQL merge. If this is not a merge, "
+        "keep `gh` and `merge` out of one command (write a commit message with `git commit -F <file>`)."
     )
 
 

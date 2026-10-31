@@ -427,12 +427,6 @@ def main():
 
 
 def gate(cmd):
-    if merge_command.is_graphql_merge(cmd):
-        deny(
-            "Refusing a GraphQL mergePullRequest mutation — no PR number to gate on. "
-            "Merge through /ship with `gh pr merge <n> --repo 2anki/server --squash`."
-        )
-
     form_violation = merge_command.merge_form_violation(cmd)
     if form_violation:
         deny(form_violation)

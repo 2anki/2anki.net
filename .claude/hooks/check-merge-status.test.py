@@ -387,6 +387,11 @@ REJECTED_FORMS = (
     "GH_REPO=other/repo gh pr merge 1 --repo 2anki/server --squash",
     "cd /tmp/other && gh pr merge 1 --repo 2anki/server --squash",
     "gh api -X PUT repos/2anki/2anki.net/pulls/1/merge",
+    "bash -lc 'gh pr merge 1 --repo 2anki/server --squash'",
+    "eval gh pr merge 1 --repo 2anki/server --squash",
+    "eval 'gh pr' 'merge 1' '--repo 2anki/server --squash'",
+    "gh pr merge 1 --repo 2anki/server --squash > /tmp/out",
+    "gh pr merge 1 --repo 2anki/server --squash 2>&1 | tee /tmp/log",
     "gh api graphql -f query='mutation { mergePullRequest(input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'",
 )
 
