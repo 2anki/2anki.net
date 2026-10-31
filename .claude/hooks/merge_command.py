@@ -8,21 +8,36 @@ control. Obfuscation detection is best effort on top of it; every form the
 #5193 security reviews flagged is denied and tested, and further
 string-obfuscation findings are accepted residuals, not fixed here.
 
-Shared code for the four merge-gate hooks. This deliberately narrows what the
-hooks accept (#5193): rounds of shell-parsing fixes kept finding forms where
-the PR the gate read was not the PR that merged, or where a merge was not seen
-at all, so detection fails closed and only one exact command form passes.
+Shared code for the four merge-gate hooks. Only one exact merge form passes
+(#5193): rounds of shell-parsing fixes kept finding forms where the PR the gate
+read was not the PR that merged, so the gate does not parse merges; it
+recognises the one `/ship` runs and denies every other merge attempt.
 
-`is_gh_pr_merge`: a Bash command is a merge attempt when it contains `gh` as a
-word (not inside `overnight` or `highlight`) or `github` (for curl to the API),
-and `merge`, case-insensitive and anywhere
-(inside `eval`, `bash -c`, heredocs, redirections and quotes too), checked on
-the raw command and again with
-quotes, backslashes and backslash-newlines removed, so `"g"h pr "mer"ge` counts.
-This also catches commands that only mention a merge (`gh pr view --json
-mergeStateStatus`, a commit message that names `gh` and `merge` in one `-m`);
-those are denied too. Keep `gh` and `merge` out of one non-merge command, for
-example by writing a commit message with `git commit -F <file>`.
+`is_gh_pr_merge` decides what counts as a merge attempt (`MERGE_RULES`; the
+first rule that fires is named in the deny). Narrowed on 2026-10-31 at
+Alexander's ask, because the #5193 rule (`gh` or `github` anywhere plus `merge`
+anywhere, or either one with any `$`) refused ordinary reads, PR bodies and
+commit messages. Each rule runs on the raw command and again with quotes,
+backslashes and backslash-newlines removed, so `"g"h pr "mer"ge` counts:
+
+- `gh` (or a path ending in `/gh`) runs as a command, and `merge` appears as a
+  whole word anywhere in the command. `merged`, `mergeable`, `mergeStateStatus`
+  and `merge-base` are not the word (gh has no `merge-` subcommand). `gh` runs
+  when it is the first word of a segment split on `;`, `&&`, `||`, `|`, `&`,
+  newline, parentheses and backticks, after assignments, redirections and
+  keywords such as `if` or `{`; or anywhere after a wrapper (`eval`, `sudo`,
+  `env`, `xargs`, a shell, so `bash -c` counts).
+- `mergePullRequest` anywhere, or `merge` with `pulls/`, `graphql` or a
+  `curl`/`wget`/`http` command, so an API merge sent without `gh` stays caught.
+- A `$` or backtick together with `merge`, `gh api`, `gh alias` or a `pulls/`
+  path (`$(echo gh) pr merge`, `g$''h pr merge`, `pulls/1/${WORD}`).
+- Targeted, for shapes that hide `merge` itself: a `$` or backtick in the word
+  after `gh`, `pr` or `api`, flags skipped (`gh pr me$x`, `gh pr $'\\x6derge'`),
+  and an ANSI-C quote as the command name.
+
+A `$` elsewhere is fine (`gh pr view "$B"`, `--body "$(cat f.md)"`), and so is
+a path under `github.com`. A commit message passes unless `gh` also runs in
+the same command.
 
 `allowed_merge`: the only command that passes is the one `/ship` runs, the
 whole trimmed command matching `gh pr merge <n> --repo 2anki/server --squash`
@@ -33,21 +48,11 @@ deny when its `url` is not `https://github.com/2anki/2anki.net/pull/<n>` for
 that number, and (`deny_on_error`) deny when anything after detection raises,
 because a hook that crashes lets the merge through.
 
-Words assembled at run time fail closed too: a command that contains `merge`,
-`gh` or `github` together with any `$` or backtick (`$(echo gh) pr merge`,
-`g$''h pr merge`, `gh pr me$x`) is a merge attempt, and so is any command
-containing an ANSI-C quote `$'`, since `merge` itself can be encoded
-(`$'\\x6derge'`). A command with `merge` and `pulls/`, `graphql`, `curl`, `wget`
-or `http` counts as well, and so does `mergePullRequest` on its own, so an API
-merge sent without `gh` in the command (curl to an IP with a Host header) stays
-caught, as main's API and GraphQL rules caught it. That denies every `gh` command that uses a variable or a
-command substitution, and every command naming a path under `github.com` that
-does; write those values out literally, or pass bodies with `--body-file`.
 There is no decoder; a false positive is denied with a message naming the rule
-that fired and its fix (`trigger_reason`). Known limitation: a merge run
-from a script file, another language or a gh alias defined earlier, where
-the Bash command shows neither word nor a `$'`, is not seen. That is a policy
-violation, like `CLAUDE_SKIP_SAFETY`, not a hook gap.
+that fired and its fix (`trigger_reason`). Known limitation: a merge run from a
+script file, another language, a gh alias defined earlier, a word rebuilt by a
+pipe (`echo egrem | rev | xargs ...`) or a glob (`gh pr m[e]rge`) is not seen.
+That is a policy violation, like `CLAUDE_SKIP_SAFETY`, not a hook gap.
 
 `changed_files` is the file list all four hooks gate on. `gh pr view --json
 files` stops at a PR's first 100 files (#5172), so the list comes from the
@@ -64,8 +69,24 @@ import subprocess
 import sys
 
 OBFUSCATION = re.compile(r"\\\n|[\"'\\]")
-API_MARKERS = ("pulls/", "graphql", "curl", "wget", "http")
-GH_WORD = re.compile(r"(?<![a-z0-9_])gh(?![a-z0-9_])")
+MERGE_WORD = re.compile(r"\bmerge\b(?!-)", re.I)
+SEGMENT_SEPARATOR = re.compile(r"&&|\|\||(?<![<>])&(?!>)|[;|\n()`]")
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+REDIRECTION = re.compile(r"[0-9]*(?:&>>?|>&|<&|>>?|<<<|<<-?|<>|<)(.*)", re.S)
+LEADING_KEYWORDS = frozenset({"!", "{", "}", "if", "then", "else", "elif", "do", "while", "until", "time"})
+WRAPPERS = frozenset({
+    "eval", "sudo", "doas", "env", "xargs", "exec", "command", "builtin", "nohup", "time", "nice",
+    "ionice", "timeout", "stdbuf", "watch", "caffeinate", "script", "unbuffer", "chronic", "setsid",
+    "flock", "find", "parallel", "ssh", "npx", "pnpm", "yarn", "bunx",
+    "bash", "sh", "zsh", "dash", "ksh", "fish", "csh", "tcsh",
+})
+API_CLIENTS = frozenset({"curl", "wget", "http", "https", "xh"})
+API_PATHS = ("pulls/", "graphql")
+FLAGS_BEFORE_WORD = r"(?:-\S*\s+(?:[^\s-]\S*\s+)?)*"
+RUNTIME_SUBCOMMAND = re.compile(
+    r"(?:^|[\s;&|()`/])(?:gh|pr|api)(?:\s+" + FLAGS_BEFORE_WORD + r"\S*)?[$`]", re.I
+)
+GH_API_OR_ALIAS = re.compile(r"(?:^|[\s;&|()`/])gh\s+" + FLAGS_BEFORE_WORD + r"(?:api|alias)\b", re.I)
 CANONICAL_REPO = "2anki/2anki.net"
 ALLOWED_MERGE = re.compile(r"gh pr merge ([1-9][0-9]{0,8}) --repo (2anki/server|2anki/2anki\.net) --squash(?: 2>&1)?")
 ALLOWED_FORM = "gh pr merge <n> --repo 2anki/server --squash"
@@ -84,40 +105,127 @@ REST_STATUS_TO_CHANGE_TYPE = {
 }
 
 
-def names_gh(text):
-    lowered = text.lower()
-    return bool(GH_WORD.search(lowered)) or "github" in lowered
+def program_name(token):
+    return token.rsplit("/", 1)[-1].lower()
 
 
-def names_gh_and_merge(text):
-    return names_gh(text) and "merge" in text.lower()
+def command_word_index(tokens):
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        redirection = REDIRECTION.fullmatch(token)
+        if redirection is not None:
+            index += 1 if redirection.group(1) else 2
+        elif ASSIGNMENT.match(token) or token.lower() in LEADING_KEYWORDS:
+            index += 1
+        else:
+            return index
+    return None
+
+
+def runs_program(text, programs):
+    for segment in SEGMENT_SEPARATOR.split(text):
+        tokens = segment.split()
+        index = command_word_index(tokens)
+        if index is None:
+            continue
+        name = program_name(tokens[index])
+        if name in programs:
+            return True
+        if name in WRAPPERS and any(program_name(token) in programs for token in tokens[index + 1:]):
+            return True
+    return False
+
+
+def has_ansi_c_command_word(cmd, normalized):
+    for segment in SEGMENT_SEPARATOR.split(cmd):
+        tokens = segment.split()
+        index = command_word_index(tokens)
+        if index is not None and "$'" in tokens[index]:
+            return True
+    return False
+
+
+def names_merge(cmd, normalized):
+    return bool(MERGE_WORD.search(cmd) or MERGE_WORD.search(normalized))
+
+
+def runs_gh_with_merge(cmd, normalized):
+    return names_merge(cmd, normalized) and (runs_program(cmd, {"gh"}) or runs_program(normalized, {"gh"}))
+
+
+def names_merge_mutation(cmd, normalized):
+    return "mergepullrequest" in normalized.lower()
+
+
+def sends_merge_to_api(cmd, normalized):
+    if not names_merge(cmd, normalized):
+        return False
+    lowered = normalized.lower()
+    return any(path in lowered for path in API_PATHS) or runs_program(normalized, API_CLIENTS)
 
 
 def is_built_at_run_time(cmd, normalized):
-    if "$'" in cmd:
-        return True
     if "$" not in cmd and "`" not in cmd:
         return False
-    return "merge" in normalized.lower() or names_gh(cmd) or names_gh(normalized)
+    return (
+        names_merge(cmd, normalized)
+        or bool(GH_API_OR_ALIAS.search(normalized))
+        or "pulls/" in normalized.lower()
+    )
 
 
-def is_api_merge(normalized):
-    lowered = normalized.lower()
-    if "mergepullrequest" in lowered:
-        return True
-    return "merge" in lowered and any(marker in lowered for marker in API_MARKERS)
+def builds_subcommand_at_run_time(cmd, normalized):
+    return bool(RUNTIME_SUBCOMMAND.search(cmd) or RUNTIME_SUBCOMMAND.search(normalized))
+
+
+MERGE_RULES = (
+    (
+        runs_gh_with_merge,
+        "it runs `gh` and contains the word `merge`",
+        "keep `merge` out of a command that runs `gh`: pass a PR body with `--body-file` and run the "
+        "`gh` call on its own",
+    ),
+    (
+        names_merge_mutation,
+        "it contains `mergePullRequest`, the GraphQL merge mutation",
+        "keep `mergePullRequest` out of the command (search for it with a pattern such as `mergePull`)",
+    ),
+    (
+        sends_merge_to_api,
+        "it contains `merge` next to `pulls/`, `graphql`, or a `curl`, `wget` or `http` call",
+        "keep `merge` out of a command that calls an API",
+    ),
+    (
+        is_built_at_run_time,
+        "it pairs `merge`, `gh api`, `gh alias` or a `pulls/` path with a `$` or a backtick",
+        "write the value literally, or pass text that names `merge` with `--body-file`",
+    ),
+    (
+        builds_subcommand_at_run_time,
+        "a `$` or backtick builds the subcommand after `gh`, `pr` or `api`",
+        "write the subcommand literally; a `$` in a later argument, as in `gh pr view \"$B\"`, is fine",
+    ),
+    (
+        has_ansi_c_command_word,
+        "the command name is an ANSI-C quote (`$'…'`)",
+        "write the command name literally",
+    ),
+)
+
+
+def fired_rule(cmd):
+    normalized = OBFUSCATION.sub("", cmd)
+    for rule in MERGE_RULES:
+        if rule[0](cmd, normalized):
+            return rule
+    return None
 
 
 def is_gh_pr_merge(cmd):
     if not isinstance(cmd, str):
         return False
-    normalized = OBFUSCATION.sub("", cmd)
-    return (
-        names_gh_and_merge(cmd)
-        or names_gh_and_merge(normalized)
-        or is_built_at_run_time(cmd, normalized)
-        or is_api_merge(normalized)
-    )
+    return fired_rule(cmd) is not None
 
 
 def allowed_merge(cmd):
@@ -129,33 +237,10 @@ def allowed_merge(cmd):
 
 
 def trigger_reason(cmd):
-    normalized = OBFUSCATION.sub("", cmd)
-    if names_gh_and_merge(cmd) or names_gh_and_merge(normalized):
-        return (
-            "it contains `gh` (or `github`) and `merge`",
-            "keep the two words out of one command: write a commit message with `git commit -F <file>`, "
-            "pass a PR body with `--body-file`, and run files by a relative path",
-        )
-    if "$'" in cmd:
-        return (
-            "it contains `$'` (an ANSI-C quote, or a `$` right before a closing single quote)",
-            "write the value without `$'`: use double quotes, or drop the `$`",
-        )
-    if is_built_at_run_time(cmd, normalized):
-        return (
-            "it pairs `gh`, `github` or `merge` with a `$` or a backtick",
-            "write values literally and pass a PR body with `--body-file`; a path under `github.com` "
-            "counts, so run that command from the repo by a relative path",
-        )
-    if "mergepullrequest" in normalized.lower():
-        return (
-            "it contains `mergePullRequest`, the GraphQL merge mutation",
-            "keep `mergePullRequest` out of the command (search for it with a pattern such as `mergePull`)",
-        )
-    return (
-        "it contains `merge` next to `pulls/`, `graphql`, `curl`, `wget` or `http`",
-        "keep `merge` out of a command that names a URL or an API path",
-    )
+    rule = fired_rule(cmd)
+    if rule is None:
+        return ("it is not the merge /ship runs", "run that merge exactly as written")
+    return rule[1], rule[2]
 
 
 def merge_form_violation(cmd):

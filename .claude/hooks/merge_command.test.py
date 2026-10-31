@@ -4,6 +4,8 @@ import json
 import os
 import re
 import subprocess
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -16,23 +18,43 @@ _spec.loader.exec_module(mc)
 
 
 class TestDetection(unittest.TestCase):
-    def test_any_command_naming_gh_and_merge_is_a_merge_attempt(self):
+    def test_gh_run_as_a_command_with_the_word_merge_is_a_merge_attempt(self):
         for cmd in (
             "gh pr merge 4244 --squash",
             "GH PR MERGE 1",
-            "gh pr view 5 --json mergeStateStatus",
-            'git commit -m "fix: gate gh pr merge on rails"',
+            "/opt/homebrew/bin/gh pr merge 1",
             "cat <<EOF > notes.md\ngh pr merge 1\nEOF",
+            "git status; gh pr merge 1",
+            "git fetch && gh pr merge 1",
+            "false || gh pr merge 1",
+            "echo 1 | gh pr merge",
+            "(gh pr merge 1)",
+            "{ gh pr merge 1; }",
+            "if gh pr merge 1; then echo ok; fi",
+            "x=$(gh pr merge 1)",
+            "x=`gh pr merge 1`",
             "eval gh pr merge 1",
+            "sudo gh pr merge 1",
+            "sudo -u root gh pr merge 1",
+            "env GH_TOKEN=x gh pr merge 1",
+            "GH_REPO=a/b gh pr merge 1",
+            "printf 1 | xargs -I{} gh pr merge {}",
+            "printf merge | xargs gh pr",
             "bash -lc 'gh pr merge 1'",
+            "/bin/sh -c \"gh pr merge 1\"",
+            "nohup gh pr merge 1 &",
+            "2>&1 gh pr merge 1",
+            "> /tmp/out gh pr merge 1",
             "gh pr merge 1 > /tmp/out 2>&1",
+            "gh alias set pm 'pr merge'",
             "gh api -X PUT repos/2anki/server/pulls/1/merge",
+            "gh api graphql -F query=@merge.graphql",
             "gh api graphql -f query='mutation { mergePullRequest(input:{}) { clientMutationId } }'",
         ):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
     def test_quotes_and_backslashes_cannot_split_the_words(self):
-        for cmd in ('"g"h pr merge 1', "gh pr \"mer\"ge 1", "gh pr m\\erge 1", "g\\\nh pr me\\\nrge 1", "'g'h pr 'mer'ge 1"):
+        for cmd in ('"g"h pr merge 1', "gh pr \"mer\"ge 1", "gh pr m\\erge 1", "g\\\nh pr me\\\nrge 1", "'g'h pr 'mer'ge 1", "\\gh pr merge 1"):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
     def test_words_built_at_run_time_are_merge_attempts(self):
@@ -45,43 +67,70 @@ class TestDetection(unittest.TestCase):
             "gh pr $'\\x6derge' 1",
             "G=g; ${G}h pr merge 1",
             "$'\\x67\\x68' pr $'\\x6d\\x65\\x72\\x67\\x65' 1",
+            "$'\\x67\\x68' $'\\x70\\x72' $'\\x6d\\x65\\x72\\x67\\x65' 1",
             "gh pr me$x 1",
+            "gh pr me${x}rge 1",
+            "gh pr -R 2anki/server me$x 1",
+            "gh${IFS}pr${IFS}me${x}rge${IFS}1",
+            "gh $P $V 1",
             "gh pr `echo merge` 1",
+            "gh pr `printf me; printf rge` 1",
             "gh pr $(printf me; printf rge) 1",
+            "$(echo gh) pr me$x 1",
+            "gh api repos/2anki/server/pulls/1/$WORD",
+            "gh alias set pm \"pr $V\"",
             "curl -X PUT https://api.github.com/repos/2anki/2anki.net/pulls/1/${WORD}",
         ):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
             self.assertIsNotNone(mc.merge_form_violation(cmd), cmd)
 
-    def test_api_merges_main_gated_without_gh_in_the_command_are_merge_attempts(self):
+    def test_api_merges_without_gh_in_the_command_are_merge_attempts(self):
         for cmd in (
             "curl -sk -X PUT -H @/tmp/h https://140.82.121.6/repos/2anki/2anki.net/pulls/5184/merge",
             "wget --method=PUT https://140.82.121.6/repos/2anki/2anki.net/pulls/5184/merge",
             "curl -X POST -H @/tmp/h https://140.82.121.6/graphql -d @/tmp/mergePullRequest.json",
-        ):
-            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
-
-    def test_non_merge_commands_without_gh_are_denied_by_the_other_rules(self):
-        for cmd in (
-            'git merge-base HEAD "$tip"',
-            "cd /Users/a/src/github.com/2anki/server && echo $HOME",
-            "IFS=$'\\n' read -r line",
-            "curl https://example.com/merge-guide",
+            "http PUT https://140.82.121.6/repos/2anki/2anki.net/pulls/5184/merge",
+            "sudo curl -X PUT https://140.82.121.6/merge",
         ):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
     def test_the_graphql_merge_mutation_alone_is_a_merge_attempt_as_on_main(self):
         self.assertTrue(mc.is_gh_pr_merge("python3 /tmp/s.py mergePullRequest"))
 
-    def test_commands_without_both_words_are_not_merge_attempts(self):
+    def test_merge_with_a_dollar_or_backtick_is_still_a_merge_attempt_without_gh(self):
+        for cmd in ('git merge "$tip"', "echo `merge`", "M=merge; echo $M"):
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
+
+    def test_ordinary_commands_are_not_merge_attempts(self):
         for cmd in (
+            "gh pr list --repo 2anki/server --state merged --limit 5",
+            'gh pr create --repo 2anki/server --base main --head x --body "$(cat f.md)"',
+            "cd /Users/a/src/github.com/2anki/server && git log -1 --format=%H",
+            'git commit -m "fix: describe the merge gate"',
+            "gh pr view 1 --json mergeable,mergeStateStatus",
+            "gh run list --workflow deploy.2anki.net.yml --json headSha --jq '.[0].headSha'",
+            'B=$(git branch --show-current); gh pr view "$B"',
+            'git commit -m "fix: gate gh pr merge on rails"',
+            'git commit -m "docs: merge notes" -m "See https://github.com/2anki/server/pull/5193"',
+            "gh api graphql -f query='{ repository(owner:\"2anki\", name:\"2anki.net\") { pullRequest(number:1) { state mergeCommit { oid } } } }'",
+            "gh pr view 1 --json mergedAt,mergedBy",
+            "echo gh pr merge 1",
+            "cd /Users/a/src/github.com/2anki/server && echo $HOME",
+            "python3 /Users/a/src/github.com/2anki/server/.claude/hooks/check-merge-status.test.py",
+            "IFS=$'\\n' read -r line",
+            '[ "$(gh pr view 1 --json headRefOid --jq .headRefOid)" = "$(cat /tmp/sha.txt)" ] || exit 1',
+            "P=PVT_x; ID=$(gh project item-create 4 --owner Laer-Smart --title t --format json --jq .id); gh project item-edit --project-id $P --id $ID",
+            "gh pr review 5 --comment --body \"see `x`\"",
+            "gh issue list --repo 2anki/server --state open --json number\nM=$(jq 'length' /tmp/overnight-backlog.json)",
             "git status",
             "gh pr view 5193 --repo 2anki/server --json number,headRefOid,statusCheckRollup",
             "git log origin/main --format=%H -1 --grep='(#5193)'",
             "git fetch origin main && git rebase origin/main",
-            "M=$(jq 'length' /tmp/overnight-backlog.json)",
             "git branch -D fix/merge-hooks-full-file-list",
             "git merge-base --is-ancestor abc origin/main",
+            'tip=$(git rev-parse "$b")\nif git merge-base --is-ancestor "$tip" origin/main; then echo "MERGED $b"; fi',
+            "curl https://example.com/merge-guide",
+            "gh pr view fix/narrow-merge-scan --json state",
             "git push --force-with-lease origin fix/merge-hooks-full-file-list",
             "npx playwright test $SPEC",
             "ls src | grep -c highlight && echo $?",
@@ -90,6 +139,58 @@ class TestDetection(unittest.TestCase):
             42,
         ):
             self.assertFalse(mc.is_gh_pr_merge(cmd), cmd)
+
+
+ORDINARY_COMMANDS = (
+    "gh pr list --repo 2anki/server --state merged --limit 5",
+    'gh pr create --repo 2anki/server --base main --head x --body "$(cat f.md)"',
+    "cd /Users/a/src/github.com/2anki/server && git log -1 --format=%H",
+    'git commit -m "fix: describe the merge gate"',
+    "gh pr view 1 --json mergeable,mergeStateStatus",
+    "gh run list --workflow deploy.2anki.net.yml --json headSha --jq '.[0].headSha'",
+    'B=$(git branch --show-current); gh pr view "$B"',
+)
+MERGE_HOOKS = (
+    "check-merge-status.py",
+    "check-browser-attestation.py",
+    "check-changelog-on-merge.py",
+    "check-removed-for-users.py",
+)
+
+
+class TestTheFourHooksEndToEnd(unittest.TestCase):
+    def run_hook(self, script, command):
+        with tempfile.TemporaryDirectory() as bin_dir:
+            marker = os.path.join(bin_dir, "gh-was-called")
+            fake_gh = os.path.join(bin_dir, "gh")
+            with open(fake_gh, "w") as handle:
+                handle.write(f"#!/bin/sh\ntouch {marker}\nexit 1\n")
+            os.chmod(fake_gh, 0o755)
+            env = {**os.environ, "PATH": bin_dir + os.pathsep + "/usr/bin:/bin"}
+            env.pop("CLAUDE_SKIP_SAFETY", None)
+            result = subprocess.run(
+                [sys.executable, os.path.join(HOOKS_DIR, script)],
+                input=json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}),
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=30,
+            )
+            return result, os.path.exists(marker)
+
+    def test_ordinary_commands_pass_every_merge_hook_without_calling_gh(self):
+        for script in MERGE_HOOKS:
+            for command in ORDINARY_COMMANDS:
+                result, called_gh = self.run_hook(script, command)
+                self.assertEqual(result.returncode, 0, (script, command, result.stderr))
+                self.assertNotIn("permissionDecision", result.stdout, (script, command))
+                self.assertFalse(called_gh, (script, command))
+
+    def test_a_merge_named_next_to_gh_is_still_denied_by_every_merge_hook(self):
+        for script in MERGE_HOOKS:
+            result, called_gh = self.run_hook(script, 'gh pr edit 5 --title "docs: merge notes"')
+            self.assertEqual(json.loads(result.stdout)["hookSpecificOutput"]["permissionDecision"], "deny", script)
+            self.assertFalse(called_gh, script)
 
 
 def rest_line(path, status="modified", additions=1, deletions=1):
@@ -302,11 +403,12 @@ class TestAllowedMerge(unittest.TestCase):
 
     def test_the_deny_names_the_rule_that_fired_and_its_fix(self):
         for cmd, reason, fix in (
-            ('git commit -m "docs: gh pr merge"', "contains `gh` (or `github`) and `merge`", "git commit -F"),
-            ("IFS=$'\\n' read -r x", "ANSI-C quote", "without `$'`"),
-            ('gh pr edit 5 --body "see `x`"', "with a `$` or a backtick", "--body-file"),
-            ("curl https://example.com/merge", "next to `pulls/`", "URL or an API path"),
+            ('gh pr edit 5 --title "docs: merge notes"', "runs `gh` and contains the word `merge`", "--body-file"),
             ("grep -rn mergePullRequest src/", "`mergePullRequest`", "keep `mergePullRequest` out"),
+            ("curl https://example.com/merge", "next to `pulls/`", "calls an API"),
+            ('git merge "$tip"', "with a `$` or a backtick", "write the value literally"),
+            ("gh pr me$x 1", "builds the subcommand", "write the subcommand literally"),
+            ("$'\\x67\\x68' $'\\x70\\x72' 1", "ANSI-C quote", "write the command name literally"),
         ):
             message = mc.merge_form_violation(cmd)
             self.assertIn(reason, message, cmd)

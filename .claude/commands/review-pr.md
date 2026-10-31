@@ -7,7 +7,7 @@ Three parallel reviewers fan out, each focused on one axis. You synthesize and p
 
 ## Step 1 — gather context (single call, in your own context)
 
-- `gh pr view <n> --json title,body,author,additions,deletions,changedFiles,files,baseRefName,headRefName,labels,isDraft,statusCheckRollup` (no merge-state field: the merge hooks deny a command that contains both `gh` and `merge`)
+- `gh pr view <n> --json title,body,author,additions,deletions,changedFiles,files,baseRefName,headRefName,labels,isDraft,mergeable,statusCheckRollup`
 - `gh pr diff <n>` — capture full diff
 - If the PR touches `web/src/**` or `src/services/EmailService/templates/**`, mark `userFacing = true`. Otherwise `userFacing = false`.
 
@@ -102,7 +102,7 @@ Write the review to a scratchpad file with the Write tool, then post it with:
 gh pr review <n> --comment --body-file <that file>
 ```
 
-Do not pipe it in through a heredoc: its suggestion blocks put backticks in the Bash command, which the merge hooks deny next to `gh`. Write a single comment with this shape:
+Do not pipe it in through a heredoc: a review routinely names `merge`, and a `gh` command that carries the word inline is denied by the merge hooks. Write a single comment with this shape:
 ```
 **Verdict**: approve | request-changes | comment-only
 

@@ -26,20 +26,9 @@ Each color logs to a fixed path — `~/.pm2/logs/server-<color>-{out,error}.log`
 
 For a one-off aggregate read (funnel questions, "how many owners did X"), run `psql` on the box against the app's connection string, and pull that one variable with `grep` — **never `source` or `set -a; . .env`**: the file holds multi-line PEM keys that bash then tries to execute, spraying key fragments into your terminal and session transcript (2026-09-10).
 
-Write `q.sh` next to `query.sql` with the Write tool:
-
-```bash
-U=$(grep -E "^DATABASE_URL=" ~/src/github.com/2anki/2anki.net/.env | cut -d= -f2- | tr -d "\"'")
-psql "$U" -q -f /tmp/q.sql
-rm -f /tmp/q.sql /tmp/q.sh
-```
-
-then copy both and run it (the merge hooks deny a Bash command that pairs `github` with `$`, so the lookup lives in the file, not the command):
-
 ```bash
 scp query.sql alemayhu@2anki.net:/tmp/q.sql
-scp q.sh alemayhu@2anki.net:/tmp/q.sh
-ssh alemayhu@2anki.net 'bash /tmp/q.sh'
+ssh alemayhu@2anki.net 'U=$(grep -E "^DATABASE_URL=" ~/src/github.com/2anki/2anki.net/.env | cut -d= -f2- | tr -d "\"'"'"'"); psql "$U" -q -f /tmp/q.sql; rm -f /tmp/q.sql'
 ```
 
 Aggregates only in anything that leaves the session (issue comments, PR bodies): counts, shares, medians — never rows, emails, filenames or deck titles (`.claude/rules/support-confidentiality.md`). Known gap: `uploads.dedupe_key` has never been populated and `uploads.filename` is the produced `.apkg` name, not the source file, so "edited re-upload" questions need a size/time proxy or the `conversion_succeeded.input_format` event prop (present on ~25% of events).
