@@ -17,17 +17,24 @@ vi.mock('../lib/integrations/stripe', () => ({
   }),
 }));
 
-const mockDatabase: { current: Knex | null } = { current: null };
+const mockDatabase = vi.hoisted(() => ({
+  instance: null as unknown as Knex,
+}));
 
 vi.mock('../data_layer', () => ({
-  getDatabase: () => mockDatabase.current,
+  getDatabase: () => mockDatabase.instance,
 }));
+
+const TABLES = ['users', 'access_tokens', 'subscriptions', 'user_passes'];
 
 const SECRET = 'pass-customer-test-secret';
 const OWNER = 42;
 const ACCOUNT_EMAIL = 'buyer@example.com';
 
 async function createSchema(database: Knex) {
+  for (const table of TABLES) {
+    await database.schema.dropTableIfExists(table);
+  }
   await database.schema.createTable('users', (t) => {
     t.integer('id').primary();
     t.text('email');
@@ -70,7 +77,7 @@ async function buildServer() {
   return { server, url: `http://127.0.0.1:${port}` };
 }
 
-const lastSessionParams = () => mockSessionCreate.mock.calls[0][0];
+const firstSessionParams = () => mockSessionCreate.mock.calls[0][0];
 
 describe('CheckoutRouter — pass checkout reaches Stripe with the account', () => {
   let server: http.Server;
@@ -88,13 +95,19 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
     });
 
   beforeAll(async () => {
-    process.env.SECRET = SECRET;
-    process.env.THE_HASHING_SECRET = 'pass-customer-test-hash-secret';
-    process.env.PASS_24H_PRICE_ID = 'price_24h_test';
-    process.env.PASS_7D_PRICE_ID = 'price_7d_test';
-    process.env.PASS_120D_PRICE_ID = 'price_120d_test';
+    vi.stubEnv('SECRET', SECRET);
+    vi.stubEnv('THE_HASHING_SECRET', 'pass-customer-test-hash-secret');
+    vi.stubEnv('PASS_24H_PRICE_ID', 'price_24h_test');
+    vi.stubEnv('PASS_7D_PRICE_ID', 'price_7d_test');
+    vi.stubEnv('PASS_120D_PRICE_ID', 'price_120d_test');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'info').mockImplementation(() => {});
+    database = knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    mockDatabase.instance = database;
     ({ server, url } = await buildServer());
   });
 
@@ -103,16 +116,12 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
     const { resetEventsSinkForTesting } =
       await import('../services/events/eventsSinkInstance');
     resetEventsSinkForTesting();
+    await database.destroy();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   beforeEach(async () => {
-    database = knex({
-      client: 'better-sqlite3',
-      connection: { filename: ':memory:' },
-      useNullAsDefault: true,
-    });
-    mockDatabase.current = database;
     await createSchema(database);
     await database('users').insert({ id: OWNER, email: ACCOUNT_EMAIL });
     mockSessionCreate.mockReset();
@@ -123,8 +132,8 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
     mockCustomerCreate.mockResolvedValue({ id: 'cus_created_for_account' });
   });
 
-  afterEach(async () => {
-    await database.destroy();
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it.each(['24h', '7d', '120d'])(
@@ -139,12 +148,12 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
         email: ACCOUNT_EMAIL,
         metadata: { user_id: String(OWNER) },
       });
-      expect(lastSessionParams()).toMatchObject({
+      expect(firstSessionParams()).toMatchObject({
         customer: 'cus_created_for_account',
         metadata: { pass_kind: kind, user_id: String(OWNER) },
       });
-      expect(lastSessionParams().customer_email).toBeUndefined();
-      expect(lastSessionParams().custom_fields).toBeUndefined();
+      expect(firstSessionParams().customer_email).toBeUndefined();
+      expect(firstSessionParams().custom_fields).toBeUndefined();
       const stored = await database('users')
         .where({ id: OWNER })
         .first('stripe_customer_id');
@@ -161,7 +170,43 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
     await buyPass('24h', token);
 
     expect(mockCustomerCreate).not.toHaveBeenCalled();
-    expect(lastSessionParams().customer).toBe('cus_existing');
+    expect(firstSessionParams().customer).toBe('cus_existing');
+  });
+
+  it('replaces a linked customer that Stripe no longer has and retries the session', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await database('users')
+      .where({ id: OWNER })
+      .update({ stripe_customer_id: 'cus_deleted_in_stripe' });
+    mockSessionCreate.mockRejectedValueOnce(
+      Object.assign(new Error('No such customer'), {
+        type: 'StripeInvalidRequestError',
+        code: 'resource_missing',
+        param: 'customer',
+      })
+    );
+    const token = await signIn(database);
+
+    const res = await buyPass('120d', token);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      url: 'https://checkout.stripe.com/c/pay/test',
+    });
+    expect(mockSessionCreate).toHaveBeenCalledTimes(2);
+    expect(firstSessionParams().customer).toBe('cus_deleted_in_stripe');
+    expect(mockSessionCreate.mock.calls[1][0]).toMatchObject({
+      customer: 'cus_created_for_account',
+      metadata: { pass_kind: '120d', user_id: String(OWNER) },
+    });
+    expect(mockCustomerCreate).toHaveBeenCalledTimes(1);
+    const stored = await database('users')
+      .where({ id: OWNER })
+      .first('stripe_customer_id');
+    expect(stored.stripe_customer_id).toBe('cus_created_for_account');
+    expect(warn).toHaveBeenCalledWith('checkout.session.customer_refreshed', {
+      error_code: 'resource_missing',
+    });
   });
 
   it('prefills the account email when the customer cannot be resolved', async () => {
@@ -176,11 +221,11 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
     const res = await buyPass('7d', token);
 
     expect(res.status).toBe(200);
-    expect(lastSessionParams()).toMatchObject({
+    expect(firstSessionParams()).toMatchObject({
       customer_email: ACCOUNT_EMAIL,
       metadata: { user_id: String(OWNER) },
     });
-    expect(lastSessionParams().customer).toBeUndefined();
+    expect(firstSessionParams().customer).toBeUndefined();
     expect(error).toHaveBeenCalledWith('checkout.customer_resolve_failed', {
       user_id: OWNER,
       error_name: 'Error',
@@ -197,7 +242,7 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
 
     expect(res.status).toBe(200);
     expect(mockCustomerCreate).not.toHaveBeenCalled();
-    const params = lastSessionParams();
+    const params = firstSessionParams();
     expect(params.customer).toBeUndefined();
     expect(params.customer_email).toBeUndefined();
     expect(params.metadata).toMatchObject({
@@ -222,7 +267,6 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
     const token = await signIn(database);
 
     const res = await buyPass('24h', token);
-    vi.useRealTimers();
 
     expect(res.status).toBe(409);
     expect(await res.json()).toMatchObject({
