@@ -237,9 +237,13 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe('Schließe dein 2anki-Pro-Abo ab');
-      expect(msg.html).toContain('Du hast ein 2anki-Pro-Abo begonnen');
-      expect(msg.html).toContain('Anmeldung abschließen');
+      expect(msg.subject).toBe(
+        'Dein Bezahlvorgang bei 2anki ist nicht abgeschlossen'
+      );
+      expect(msg.html).toContain('Dafür wurde dir nichts berechnet');
+      expect(msg.html).toContain('weder ein Abo noch ein Pass gestartet');
+      expect(msg.html).toContain('Zurück zum Bezahlvorgang');
+      expect(msg.html).not.toContain('Pro-Abo');
       expect(msg.html).toContain('Das 2anki-Team');
       expect(msg.html).toContain('Keine E-Mails wie diese? Abmelden');
       expect(msg.html).toContain(
@@ -259,9 +263,23 @@ describe('EmailService renders copy in the recipient language', () => {
       );
 
       const msg = lastMessage();
-      expect(msg.subject).toBe('Finish your 2anki Pro subscription');
-      expect(msg.html).toContain('You started a 2anki Pro subscription');
+      expect(msg.subject).toBe("You didn't finish checking out on 2anki");
+      expect(msg.html).toContain("You weren't charged for this checkout");
+      expect(msg.html).toContain("it didn't start a subscription or a pass");
+      expect(msg.html).toContain('Return to checkout');
+      expect(msg.html).not.toContain('Pro subscription');
       expect(msg.html).toContain("Don't want emails like this? Unsubscribe");
+    });
+
+    it('renders English copy for a recipient in a locale without email strings', async () => {
+      await serviceFor('fr').sendAbandonedCheckoutRecoveryEmail(
+        'fr-user@example.com',
+        'tok-checkout3'
+      );
+
+      const msg = lastMessage();
+      expect(msg.subject).toBe("You didn't finish checking out on 2anki");
+      expect(msg.html).toContain("You weren't charged for this checkout");
     });
   });
 

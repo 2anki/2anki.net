@@ -73,13 +73,13 @@ export const de: DeepPartial<EmailStrings> = {
     signoff: 'Das 2anki-Team',
   },
   abandonedCheckout: {
-    subject: 'Schließe dein 2anki-Pro-Abo ab',
-    title: '2anki.net – Schließe dein Pro-Abo ab',
+    subject: 'Dein Bezahlvorgang bei 2anki ist nicht abgeschlossen',
+    title: '2anki.net – Dein Bezahlvorgang ist nicht abgeschlossen',
     bodyStarted:
-      'Du hast ein 2anki-Pro-Abo begonnen und den Bezahlvorgang nicht abgeschlossen.',
+      'Du hast den Bezahlvorgang bei 2anki begonnen, aber nicht abgeschlossen. Dafür wurde dir nichts berechnet, und es wurde weder ein Abo noch ein Pass gestartet.',
     bodySnag:
       'Die meisten, die hier aufhören, sind beim Bezahlen auf ein Problem gestoßen, nicht auf einen Sinneswandel. Wenn etwas nicht funktioniert hat oder du eine Frage hast, antworte auf diese E-Mail — Alexander liest jede einzelne.',
-    cta: 'Anmeldung abschließen',
+    cta: 'Zurück zum Bezahlvorgang',
     signoff: 'Das 2anki-Team',
   },
   passEnding: {

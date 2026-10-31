@@ -70,13 +70,13 @@ export const en: EmailStrings = {
     signoff: 'The 2anki Team',
   },
   abandonedCheckout: {
-    subject: 'Finish your 2anki Pro subscription',
-    title: '2anki.net — Finish your Pro subscription',
+    subject: "You didn't finish checking out on 2anki",
+    title: "2anki.net — You didn't finish checking out",
     bodyStarted:
-      "You started a 2anki Pro subscription and didn't finish checkout.",
+      "You started checking out on 2anki and didn't finish. You weren't charged for this checkout, and it didn't start a subscription or a pass.",
     bodySnag:
       'Most people who stop here hit a snag at payment, not a change of mind. If something broke or you have a question, reply to this email — Alexander reads every one.',
-    cta: 'Finish signing up',
+    cta: 'Return to checkout',
     signoff: 'The 2anki Team',
   },
   passEnding: {
