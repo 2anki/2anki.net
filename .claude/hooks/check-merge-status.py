@@ -153,9 +153,9 @@ def pr_args(pr_ref):
     return [pr_ref] if pr_ref is not None else []
 
 
-def fetch_pr_data(pr_ref):
+def fetch_pr_data(pr_ref, repo=None):
     stdout = run_gh(
-        ["gh", "pr", "view", *pr_args(pr_ref), "--json",
+        ["gh", "pr", "view", *pr_args(pr_ref), *merge_command.repo_args(repo), "--json",
          "number,url,title,headRefOid,headRefName,body,author,files,commits,statusCheckRollup,reviews,comments"],
         "pr view",
     )
@@ -433,10 +433,18 @@ def main():
             "Merge through /ship with `gh pr merge <n>`."
         )
 
+    repo_violation = merge_command.command_repo_violation(cmd)
+    if repo_violation:
+        deny(repo_violation)
+
     pr_ref = extract_pr_ref(cmd)
-    pr_data = fetch_pr_data(pr_ref)
+    pr_data = fetch_pr_data(pr_ref, merge_command.command_repo(cmd))
     if pr_data is None:
         allow()
+
+    view_violation = merge_command.view_repo_violation(pr_data, pr_ref)
+    if view_violation:
+        deny(view_violation)
 
     rollup = pr_data.get("statusCheckRollup") or []
     files, _ = merge_command.changed_files(pr_data, pr_ref, "[check-merge-status]")

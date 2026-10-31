@@ -4,7 +4,7 @@ Any PR that touches `web/src/` cannot be merged via `gh pr merge` unless the PR 
 
 ## When the gate fires
 
-The hook intercepts every `gh pr merge <n>` command and fetches `gh pr view <n> --json author,body,files`. It fires — and blocks the merge — when:
+The hook intercepts every `gh pr merge <n>` command and fetches `gh pr view <n> --json number,url,author,body,files`, then the PR's full file list over REST (`merge_command.changed_files`; `gh pr view` alone stops at 100 files). It fires — and blocks the merge — when:
 
 - At least one file in the PR diff starts with `web/src/`, **and**
 - The PR body does not satisfy the attestation (see below).
@@ -46,7 +46,7 @@ The hook exits 0 (allow) without checking the body when:
 
 ## How the check works
 
-`check-browser-attestation.py` is a PreToolUse Bash hook. It reads the `tool_input.command` from stdin (standard Claude hook protocol) and acts only on `gh pr merge` commands. When the command matches, it calls `gh pr view <n> --json author,body,files` synchronously and inspects the result. If the call fails for any reason, it allows the merge (fail-open). If the result is present and the body does not satisfy the attestation, it returns `permissionDecision: deny` with a diagnostic message listing both options.
+`check-browser-attestation.py` is a PreToolUse Bash hook. It reads the `tool_input.command` from stdin (standard Claude hook protocol) and acts only on `gh pr merge` commands. When the command matches, it calls `gh pr view <n> --json number,url,author,body,files` synchronously, lists the PR's files over REST, and inspects the result. If `gh pr view` fails for any reason, it allows the merge (fail-open); if only the REST list fails, it checks `gh pr view`'s first 100 files as before. A merge command naming a repo other than 2anki/2anki.net (or 2anki/server), or a view that resolves another repo or PR, is denied. If the result is present and the body does not satisfy the attestation, it returns `permissionDecision: deny` with a diagnostic message listing both options.
 
 The hook does not auto-write or modify the PR body. Attestation is honor-system — the gate confirms the words are there, not that the engineer ran the app.
 

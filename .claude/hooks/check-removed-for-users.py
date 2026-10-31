@@ -148,15 +148,15 @@ def run_gh(args, label):
     return result.stdout
 
 
-def gh_args(subcommand, pr_ref, extra):
+def gh_args(subcommand, pr_ref, extra, repo=None):
     args = ["gh", "pr", subcommand]
     if pr_ref is not None:
         args.append(pr_ref)
-    return args + extra
+    return args + merge_command.repo_args(repo) + extra
 
 
-def fetch_pr_data(pr_ref):
-    stdout = run_gh(gh_args("view", pr_ref, ["--json", "number,url,author,body,files"]), "this gate")
+def fetch_pr_data(pr_ref, repo=None):
+    stdout = run_gh(gh_args("view", pr_ref, ["--json", "number,url,author,body,files"], repo), "this gate")
     if stdout is None:
         return None
     try:
@@ -167,8 +167,8 @@ def fetch_pr_data(pr_ref):
     return parsed if isinstance(parsed, dict) else None
 
 
-def fetch_diff(pr_ref):
-    return run_gh(gh_args("diff", pr_ref, ["--color", "never"]), "the string and constant checks")
+def fetch_diff(pr_ref, repo=None):
+    return run_gh(gh_args("diff", pr_ref, ["--color", "never"], repo), "the string and constant checks")
 
 
 def is_en_locale(path):
@@ -430,11 +430,11 @@ def snapshot_problem(snapshots):
     )
 
 
-def find_removals(files, pr_ref):
+def find_removals(files, pr_ref, repo=None):
     removals = removed_notice_components(files)
     if not needs_diff(files):
         return removals
-    diff_text = fetch_diff(pr_ref)
+    diff_text = fetch_diff(pr_ref, repo)
     if diff_text is None:
         return removals
     if len(diff_text) > MAX_DIFF_BYTES or len(diff_text.encode("utf-8", "replace")) > MAX_DIFF_BYTES:
@@ -457,10 +457,19 @@ def main():
     if not merge_command.is_gh_pr_merge(cmd):
         allow()
 
+    repo_violation = merge_command.command_repo_violation(cmd)
+    if repo_violation:
+        deny(repo_violation)
+
+    repo = merge_command.command_repo(cmd)
     pr_ref = merge_command.extract_pr_ref(cmd)
-    pr_data = fetch_pr_data(pr_ref)
+    pr_data = fetch_pr_data(pr_ref, repo)
     if pr_data is None:
         allow()
+
+    view_violation = merge_command.view_repo_violation(pr_data, pr_ref)
+    if view_violation:
+        deny(view_violation)
 
     author = pr_data.get("author")
     if isinstance(author, dict) and author.get("login") in DEPENDABOT_LOGINS:
@@ -472,7 +481,7 @@ def main():
 
     problems = []
     if not filled_sections(body, REMOVED_SECTION):
-        removals = find_removals(files, pr_ref)
+        removals = find_removals(files, pr_ref, repo)
         if removals:
             problems.append(removal_problem(removals))
 

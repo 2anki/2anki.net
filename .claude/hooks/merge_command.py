@@ -22,12 +22,19 @@ literal and is not matched. That is a policy violation, not a hook gap.
 
 `changed_files` is the file list all four merge hooks gate on.
 `gh pr view --json files` stops at a PR's first 100 files (#5172), so the
-list comes from the paginated REST endpoint instead (for the repo in `gh pr
-view`'s `url`, else 2anki/2anki.net): exact names, up to the 3000 files GitHub
-returns, no diff-size limit. It is merged with the view's
-files, so it never holds less than the view did; when the REST call fails
-the view's files are returned and each hook falls back to what it checked
-before.
+list comes from the paginated REST endpoint for 2anki/2anki.net instead:
+exact names, up to the 3000 files GitHub returns, no diff-size limit. It is
+merged with the view's files, so it never holds less than the view did; when
+the REST call fails the view's files are returned and each hook falls back to
+what it checked before.
+
+The repo is read from the merge command, never from what `gh pr view`
+answers. `command_repo_violation` denies a command that names any repo but
+2anki/2anki.net (or its old name 2anki/server) through `-R`/`--repo`,
+`GH_REPO=`, a PR URL or a `repos/O/R/pulls/N/merge` path; the hooks pass the
+named repo to `gh pr view -R`; and `view_repo_violation` denies when the
+viewed PR's `url` is not that repo's PR with that number. Without that, a
+merge aimed at one repo could be gated on another PR's files.
 """
 import json
 import re
@@ -88,7 +95,14 @@ def extract_pr_ref(cmd):
 
 
 CANONICAL_REPO = "2anki/2anki.net"
-PR_REPO_URL = re.compile(r"^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/pull/(\d+)$")
+CANONICAL_REPOS = frozenset({"2anki/2anki.net", "2anki/server"})
+QUOTE_CHARS = re.compile(r"['\"]")
+REPO_FLAG = re.compile(r"(?:^|\s)(?:-R|--repo)(?:=|\s+)?(?=\S)(\S+)")
+GH_REPO_ENV = re.compile(r"\bGH_REPO=(\S*)")
+ANY_PR_URL = re.compile(r"\bhttps?://([^/\s]+)/([^/\s]+)/([^/\s]+)/pull/\d+")
+API_REPO_PATH = re.compile(r"\brepos/([^/\s]+)/([^/\s]+)/pulls/\d+/merge\b")
+API_PLACEHOLDER = re.compile(r"^\{[a-z]+\}$")
+VIEW_URL = re.compile(r"^https://github\.com/([^/\s]+)/([^/\s]+)/pull/(\d+)$")
 REST_FILES_TIMEOUT_SECONDS = 20
 REST_FILES_JQ = ".[] | [.filename, .status, .additions, .deletions] | @json"
 REST_STATUS_TO_CHANGE_TYPE = {
@@ -112,18 +126,80 @@ def pr_number(pr_data, pr_ref):
     return None
 
 
-def pr_repo(pr_data, number):
+def normalize_repo(value):
+    text = value.strip().lower()
+    for prefix in ("https://", "http://"):
+        text = text.removeprefix(prefix)
+    return text.rstrip(";&|)").removeprefix("github.com/").removesuffix("/").removesuffix(".git")
+
+
+def is_canonical_repo(value):
+    return normalize_repo(value) in CANONICAL_REPOS
+
+
+def command_repos(cmd):
+    """Every repo the command names, as written, quotes dropped."""
+    shell = QUOTE_CHARS.sub("", strip_heredocs(cmd))
+    named = [match.group(1) for match in REPO_FLAG.finditer(shell)]
+    named += [match.group(1) for match in GH_REPO_ENV.finditer(shell)]
+    named += [f"{m.group(1)}/{m.group(2)}/{m.group(3)}" for m in ANY_PR_URL.finditer(shell)]
+    for match in API_REPO_PATH.finditer(shell):
+        owner, repo = match.group(1), match.group(2)
+        if not (API_PLACEHOLDER.match(owner) and API_PLACEHOLDER.match(repo)):
+            named.append(f"{owner}/{repo}")
+    return named
+
+
+def command_repo_violation(cmd):
+    foreign = sorted({repo[:80] for repo in command_repos(cmd) if not is_canonical_repo(repo)})
+    if not foreign:
+        return None
+    return (
+        f"Refusing this merge: it names a repo other than {CANONICAL_REPO} "
+        f"({', '.join(foreign)}). The merge hooks only gate {CANONICAL_REPO} "
+        "(or its old name 2anki/server); merge with `gh pr merge <n> --repo 2anki/server`."
+    )
+
+
+def command_repo(cmd):
+    """The repo to pass to `gh pr view -R`, or None when the command names none."""
+    repos = command_repos(cmd)
+    return repos[0] if repos else None
+
+
+def repo_args(repo):
+    return ["-R", repo] if repo is not None else []
+
+
+def view_repo_reason(pr_data, pr_ref):
     url = pr_data.get("url")
-    match = PR_REPO_URL.match(url) if isinstance(url, str) else None
-    if match is None or match.group(3) != number or ".." in match.group(1) + match.group(2):
-        return CANONICAL_REPO
-    return f"{match.group(1)}/{match.group(2)}"
+    match = VIEW_URL.fullmatch(url) if isinstance(url, str) else None
+    if match is None:
+        return "gh pr view returned no readable PR url"
+    owner, repo, number = match.groups()
+    if not is_canonical_repo(f"{owner}/{repo}"):
+        return f"gh pr view resolved a PR in {owner[:80]}/{repo[:80]}"
+    if pr_ref is not None and number != pr_ref:
+        return f"gh pr view resolved PR {number}, not PR {pr_ref}"
+    if pr_number(pr_data, None) not in (None, number):
+        return "gh pr view's number and url disagree"
+    return None
 
 
-def rest_files_args(repo, number):
+def view_repo_violation(pr_data, pr_ref):
+    reason = view_repo_reason(pr_data, pr_ref)
+    if reason is None:
+        return None
+    return (
+        f"Refusing this merge: {reason}, so the gate cannot be sure it read the PR being "
+        f"merged. Merge {CANONICAL_REPO} PRs with `gh pr merge <n> --repo 2anki/server`."
+    )
+
+
+def rest_files_args(number):
     return [
         "gh", "api", "--paginate",
-        f"repos/{repo}/pulls/{number}/files?per_page=100",
+        f"repos/{CANONICAL_REPO}/pulls/{number}/files?per_page=100",
         "--jq", REST_FILES_JQ,
     ]
 
@@ -141,10 +217,10 @@ def parse_rest_line(line):
     }
 
 
-def fetch_rest_files(repo, number, tag):
+def fetch_rest_files(number, tag):
     try:
         result = subprocess.run(
-            rest_files_args(repo, number),
+            rest_files_args(number),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -178,8 +254,9 @@ def changed_files(pr_data, pr_ref, tag):
     """(files, complete): every changed file, or gh pr view's files and False when REST fails."""
     viewed = view_files(pr_data)
     number = pr_number(pr_data, pr_ref)
-    listed = fetch_rest_files(pr_repo(pr_data, number), number, tag) if number is not None else None
+    listed = fetch_rest_files(number, tag) if number is not None else None
     if listed is None:
         return viewed, False
     listed_paths = {entry["path"] for entry in listed}
-    return listed + [entry for entry in viewed if entry.get("path") not in listed_paths], True
+    missing = [entry for entry in viewed if not isinstance(entry.get("path"), str) or entry["path"] not in listed_paths]
+    return listed + missing, not missing

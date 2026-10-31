@@ -62,10 +62,11 @@ def extract_pr_ref(cmd):
     return merge_command.extract_pr_ref(cmd)
 
 
-def fetch_pr_data(pr_ref):
+def fetch_pr_data(pr_ref, repo=None):
     args = ["gh", "pr", "view"]
     if pr_ref is not None:
         args.append(pr_ref)
+    args.extend(merge_command.repo_args(repo))
     args.extend(["--json", "number,url,author,body,files,commits"])
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=15)
@@ -89,10 +90,11 @@ def fetch_pr_data(pr_ref):
         return None
 
 
-def fetch_changed_paths(pr_ref):
+def fetch_changed_paths(pr_ref, repo=None):
     args = ["gh", "pr", "diff"]
     if pr_ref is not None:
         args.append(pr_ref)
+    args.extend(merge_command.repo_args(repo))
     args.append("--name-only")
     try:
         result = subprocess.run(
@@ -114,10 +116,10 @@ def fetch_changed_paths(pr_ref):
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
-def list_paths_past_view_cap(view_paths, pr_ref):
+def list_paths_past_view_cap(view_paths, pr_ref, repo=None):
     if len(view_paths) < GH_PR_VIEW_FILES_CAP:
         return []
-    return fetch_changed_paths(pr_ref)
+    return fetch_changed_paths(pr_ref, repo)
 
 
 def diff_failure_note(diff_paths):
@@ -163,10 +165,19 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
+    repo_violation = merge_command.command_repo_violation(cmd)
+    if repo_violation:
+        deny(repo_violation)
+
+    repo = merge_command.command_repo(cmd)
     pr_ref = extract_pr_ref(cmd)
-    pr_data = fetch_pr_data(pr_ref)
+    pr_data = fetch_pr_data(pr_ref, repo)
     if pr_data is None:
         allow()
+
+    view_violation = merge_command.view_repo_violation(pr_data, pr_ref)
+    if view_violation:
+        deny(view_violation)
 
     if pr_data.get("author", {}).get("login", "") == "dependabot[bot]":
         allow()
@@ -176,7 +187,7 @@ def main():
 
     files, complete = merge_command.changed_files(pr_data, pr_ref, TAG)
     paths = [f.get("path", "") for f in files]
-    diff_paths = [] if complete else list_paths_past_view_cap(paths, pr_ref)
+    diff_paths = [] if complete else list_paths_past_view_cap(paths, pr_ref, repo)
     paths = paths + (diff_paths or [])
 
     if not any(is_non_test_source(p) for p in paths):

@@ -112,6 +112,7 @@ def run_hook(
 def make_pr_json(author_login, body, files):
     return json.dumps({
         "number": 42,
+        "url": "https://github.com/2anki/2anki.net/pull/42",
         "author": {"login": author_login},
         "body": body,
         "files": [{"path": f} for f in files[:GH_PR_VIEW_FILES_CAP]],
@@ -255,7 +256,6 @@ class TestFilesPastTheFirst100(unittest.TestCase):
         self.assertEqual(fake.calls[0], ["gh", "pr", "view", "--json", "number,url,author,body,files"])
         self.assertIn("repos/2anki/2anki.net/pulls/42/files?per_page=100", fake.calls[1])
 
-
     def test_a_rest_api_merge_gates_web_src_past_the_first_100_files(self):
         fake = gh_responder({"stdout": make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)}, DOCS_THEN_WEB_SRC)
         with patch("subprocess.run", side_effect=fake):
@@ -273,6 +273,51 @@ class TestFilesPastTheFirst100(unittest.TestCase):
             captured = run_hook(command)
         self.assertEqual(captured["result"], "deny")
         self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "--json"])
+
+    def test_a_pr_url_merge_gates_web_src_past_the_first_100_files(self):
+        fake = gh_responder({"stdout": make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)}, DOCS_THEN_WEB_SRC)
+        with patch("subprocess.run", side_effect=fake):
+            captured = run_hook("gh pr merge https://github.com/2anki/server/pull/42 --squash")
+        self.assertEqual(captured["result"], "deny")
+        self.assertIn("web/src/", captured["reason"])
+
+
+def with_url(view_json, url):
+    return json.dumps({**json.loads(view_json), "url": url})
+
+
+class TestRepoMismatch(unittest.TestCase):
+    def test_a_command_naming_another_repo_is_denied_without_calling_gh(self):
+        for command in ("gh pr merge 42 -R other/repo", "gh api -X PUT repos/other/repo/pulls/42/merge",
+                        "gh pr merge https://github.com/other/repo/pull/42", "GH_REPO=other/repo gh pr merge 42"):
+            fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
+            with patch("subprocess.run", side_effect=fake):
+                captured = run_hook(command)
+            self.assertEqual(captured["result"], "deny", command)
+            self.assertIn("other/repo", captured["reason"])
+            self.assertEqual(fake.calls, [])
+
+    def test_a_view_resolving_another_repo_is_denied(self):
+        view = with_url(make_pr_json("alex", "", ["src/a.ts"]), "https://github.com/someone/fork/pull/42")
+        result = run_hook("gh pr merge 42", subprocess_result={"stdout": view})
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("someone/fork", result["reason"])
+
+    def test_a_view_resolving_another_pr_is_denied(self):
+        view = with_url(make_pr_json("alex", "", ["src/a.ts"]), "https://github.com/2anki/2anki.net/pull/43")
+        self.assertEqual(run_hook("gh pr merge 42", subprocess_result={"stdout": view})["result"], "deny")
+
+    def test_a_view_with_no_url_is_denied(self):
+        view = json.dumps({k: v for k, v in json.loads(make_pr_json("alex", "", ["src/a.ts"])).items() if k != "url"})
+        self.assertEqual(run_hook("gh pr merge 42", subprocess_result={"stdout": view})["result"], "deny")
+
+    def test_the_named_canonical_repo_is_passed_to_gh_pr_view_and_rest_reads_2anki_net(self):
+        fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
+        with patch("subprocess.run", side_effect=fake):
+            captured = run_hook("gh pr merge 42 --repo 2anki/server --squash")
+        self.assertEqual(captured["result"], "allow")
+        self.assertEqual(fake.calls[0][:6], ["gh", "pr", "view", "42", "-R", "2anki/server"])
+        self.assertIn("repos/2anki/2anki.net/pulls/42/files?per_page=100", fake.calls[1])
 
 
 class TestRestFailure(unittest.TestCase):

@@ -191,10 +191,10 @@ class TestChangedFiles(unittest.TestCase):
             [("a", "ADDED", 2, 3), ("b", "DELETED", 2, 3), ("c", "MODIFIED", 2, 3), ("d", "RENAMED", 2, 3)],
         )
 
-    def test_keeps_a_view_file_the_rest_list_lacks(self):
+    def test_keeps_a_view_file_the_rest_list_lacks_and_reports_the_list_incomplete(self):
         view = {"number": 42, "files": [{"path": "src/a.ts", "changeType": "MODIFIED"}]}
         (files, complete), _ = self.changed(view, run=[ok(rest_stdout(["src/b.ts"]))])
-        self.assertTrue(complete)
+        self.assertFalse(complete)
         self.assertEqual(sorted(f["path"] for f in files), ["src/a.ts", "src/b.ts"])
 
     def test_a_rest_failure_falls_back_to_the_view_files(self):
@@ -229,18 +229,8 @@ class TestChangedFiles(unittest.TestCase):
         _, argv = self.changed({"files": []}, pr_ref="77", run=[ok("")])
         self.assertIn("repos/2anki/2anki.net/pulls/77/files?per_page=100", argv[0])
 
-    def test_lists_files_from_the_repo_gh_pr_view_resolved(self):
+    def test_the_view_url_never_picks_the_repo_listed(self):
         view = {"number": 5, "url": "https://github.com/someone/fork/pull/5", "files": []}
-        _, argv = self.changed(view, run=[ok("")])
-        self.assertIn("repos/someone/fork/pulls/5/files?per_page=100", argv[0])
-
-    def test_an_unreadable_url_falls_back_to_the_canonical_repo(self):
-        for url in (None, "", "https://example.com/a/b/pull/5", "https://github.com/a/../pull/5", 7):
-            _, argv = self.changed({"number": 5, "url": url, "files": []}, run=[ok("")])
-            self.assertIn("repos/2anki/2anki.net/pulls/5/files?per_page=100", argv[0])
-
-    def test_a_url_for_another_pr_number_falls_back_to_the_canonical_repo(self):
-        view = {"number": 5, "url": "https://github.com/someone/fork/pull/6", "files": []}
         _, argv = self.changed(view, run=[ok("")])
         self.assertIn("repos/2anki/2anki.net/pulls/5/files?per_page=100", argv[0])
 
@@ -252,9 +242,89 @@ class TestChangedFiles(unittest.TestCase):
         self.assertEqual([f["path"] for f in files], [odd, "src/x.ts"])
 
     def test_odd_view_shapes_do_not_raise(self):
-        (files, complete), _ = self.changed({"number": 42, "files": [None, "x", {"path": "a"}]}, run=[ok("")])
+        (files, complete), _ = self.changed({"number": 42, "files": [None, "x", {"path": "a"}, {"path": ["b"]}]}, run=[ok(rest_stdout(["a"]))])
+        self.assertFalse(complete)
+        self.assertEqual([f["path"] for f in files], ["a", ["b"]])
+
+    def test_a_rest_list_covering_every_view_file_is_complete(self):
+        view = {"number": 42, "files": [{"path": "src/a.ts"}]}
+        (_, complete), _ = self.changed(view, run=[ok(rest_stdout(["src/a.ts", "src/b.ts"]))])
         self.assertTrue(complete)
-        self.assertEqual(files, [{"path": "a"}])
+
+
+FOREIGN_COMMANDS = (
+    "gh pr merge -R other/repo 5",
+    "gh pr merge 5 --repo other/repo --squash",
+    "gh pr merge 5 --repo=other/repo",
+    "gh pr merge 5 -Rother/repo",
+    'gh pr merge 5 -R "other/repo"',
+    "gh pr merge 5 --repo github.com/other/repo",
+    "gh pr merge 5 --repo ghe.example.com/2anki/server",
+    "GH_REPO=other/repo gh pr merge 5",
+    "export GH_REPO=other/repo; gh pr merge 5",
+    "gh pr merge https://github.com/other/repo/pull/5",
+    "gh pr merge https://ghe.example.com/2anki/server/pull/5",
+    "gh api -X PUT repos/other/repo/pulls/5/merge",
+    "gh api -X PUT /repos/other/repo/pulls/5/merge",
+    "curl -X PUT https://api.github.com/repos/other/repo/pulls/5/merge",
+    "gh pr merge 5 -R 2anki/server && gh pr merge 6 -R other/repo",
+)
+
+CANONICAL_COMMANDS = (
+    "gh pr merge 5 --squash",
+    "gh pr merge 5 --repo 2anki/server --squash",
+    "gh pr merge 5 -R 2anki/2anki.net",
+    "gh pr merge 5 --repo=2Anki/2anki.NET",
+    "gh pr merge 5 --repo github.com/2anki/server",
+    "gh pr merge 5 --repo https://github.com/2anki/server.git",
+    "gh pr merge https://github.com/2anki/server/pull/5",
+    "gh api -X PUT repos/2anki/2anki.net/pulls/5/merge",
+    "gh api -X PUT repos/{owner}/{repo}/pulls/5/merge",
+)
+
+
+class TestCommandRepo(unittest.TestCase):
+    def test_a_command_naming_another_repo_is_refused(self):
+        for cmd in FOREIGN_COMMANDS:
+            self.assertIsNotNone(mc.command_repo_violation(cmd), cmd)
+
+    def test_a_command_naming_the_canonical_repo_or_none_is_allowed(self):
+        for cmd in CANONICAL_COMMANDS:
+            self.assertIsNone(mc.command_repo_violation(cmd), cmd)
+
+    def test_the_named_repo_is_what_gh_pr_view_is_pointed_at(self):
+        self.assertEqual(mc.command_repo("gh pr merge 5 --repo 2anki/server"), "2anki/server")
+        self.assertEqual(mc.command_repo("gh api -X PUT repos/2anki/2anki.net/pulls/5/merge"), "2anki/2anki.net")
+        self.assertIsNone(mc.command_repo("gh pr merge 5 --squash"))
+
+    def test_repo_args(self):
+        self.assertEqual(mc.repo_args("2anki/server"), ["-R", "2anki/server"])
+        self.assertEqual(mc.repo_args(None), [])
+
+
+class TestViewRepo(unittest.TestCase):
+    def test_a_canonical_url_for_the_merged_number_passes(self):
+        for url in ("https://github.com/2anki/2anki.net/pull/5", "https://github.com/2anki/server/pull/5"):
+            self.assertIsNone(mc.view_repo_violation({"number": 5, "url": url}, "5"), url)
+
+    def test_a_current_branch_merge_accepts_the_viewed_number(self):
+        self.assertIsNone(mc.view_repo_violation({"number": 9, "url": "https://github.com/2anki/2anki.net/pull/9"}, None))
+
+    def test_a_url_in_another_repo_is_refused(self):
+        view = {"number": 5, "url": "https://github.com/someone/fork/pull/5"}
+        self.assertIn("someone/fork", mc.view_repo_violation(view, "5"))
+
+    def test_a_url_for_another_pr_is_refused(self):
+        view = {"number": 6, "url": "https://github.com/2anki/2anki.net/pull/6"}
+        self.assertIn("not PR 5", mc.view_repo_violation(view, "5"))
+
+    def test_a_number_that_disagrees_with_the_url_is_refused(self):
+        view = {"number": 7, "url": "https://github.com/2anki/2anki.net/pull/6"}
+        self.assertIsNotNone(mc.view_repo_violation(view, None))
+
+    def test_a_missing_or_odd_url_is_refused(self):
+        for url in (None, "", 7, "https://ghe.example.com/2anki/server/pull/5", "https://github.com/2anki/server/pull/5/files"):
+            self.assertIsNotNone(mc.view_repo_violation({"number": 5, "url": url}, "5"), url)
 
 
 if __name__ == "__main__":

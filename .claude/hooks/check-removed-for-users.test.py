@@ -82,13 +82,26 @@ def diff_block(path, removed=(), added=(), deleted_file=False):
     return "\n".join(lines) + "\n"
 
 
+def viewed_as(view_stdout, args):
+    try:
+        parsed = json.loads(view_stdout)
+    except ValueError:
+        return view_stdout
+    if not isinstance(parsed, dict) or "number" not in parsed:
+        return view_stdout
+    number = args[3] if len(args) > 3 and args[3].isdigit() else parsed["number"]
+    parsed.setdefault("url", f"https://github.com/2anki/2anki.net/pull/{number}")
+    parsed["number"] = int(number)
+    return json.dumps(parsed)
+
+
 def gh_responder(view_stdout, diff_stdout="", diff_returncode=0, view_returncode=0, rest_files=None, rest_result=None):
     calls = []
 
     def fake_run(args, **kwargs):
         calls.append(args)
         if args[:3] == ["gh", "pr", "view"]:
-            return MagicMock(returncode=view_returncode, stdout=view_stdout, stderr="boom")
+            return MagicMock(returncode=view_returncode, stdout=viewed_as(view_stdout, args), stderr="boom")
         if args[:2] == ["gh", "api"]:
             if rest_result is not None:
                 return MagicMock(**rest_result)
@@ -392,7 +405,6 @@ class TestFilesPastTheFirst100(unittest.TestCase):
         self.assertEqual(result["result"], "deny")
         self.assertIn("heldBack_other", result["reason"])
 
-
     def test_a_rest_api_merge_sees_a_deleted_notice_past_the_first_100_files(self):
         files = FILLER + [file_entry(NOTICE, "DELETED")]
         fake = gh_responder(pr_json(files), rest_files=files)
@@ -407,6 +419,41 @@ class TestFilesPastTheFirst100(unittest.TestCase):
             "input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
         )
         self.assertEqual(run_hook(command, fake)["result"], "deny")
+
+
+    def test_a_pr_url_merge_sees_a_deleted_notice_past_the_first_100_files(self):
+        files = FILLER + [file_entry(NOTICE, "DELETED")]
+        fake = gh_responder(pr_json(files), rest_files=files)
+        self.assertEqual(run_hook("gh pr merge https://github.com/2anki/server/pull/4589", fake)["result"], "deny")
+        self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "4589"])
+
+
+class TestRepoMismatch(unittest.TestCase):
+    def test_a_command_naming_another_repo_is_denied_without_calling_gh(self):
+        for command in ("gh pr merge 1 --repo other/repo", "gh api -X PUT repos/other/repo/pulls/1/merge",
+                        "gh pr merge https://github.com/other/repo/pull/1", "GH_REPO=other/repo gh pr merge 1"):
+            fake = gh_responder(pr_json([file_entry(EN_LOCALE)]))
+            result = run_hook(command, fake)
+            self.assertEqual(result["result"], "deny", command)
+            self.assertIn("other/repo", result["reason"])
+            self.assertEqual(fake.calls, [])
+
+    def test_a_view_resolving_another_repo_is_denied(self):
+        view = json.dumps({**json.loads(pr_json([])), "url": "https://github.com/someone/fork/pull/4589"})
+        result = run_hook("gh pr merge 4589", gh_responder(view))
+        self.assertEqual(result["result"], "deny")
+        self.assertIn("someone/fork", result["reason"])
+
+    def test_a_view_resolving_another_pr_is_denied(self):
+        view = json.dumps({**json.loads(pr_json([])), "url": "https://github.com/2anki/2anki.net/pull/9"})
+        self.assertEqual(run_hook("gh pr merge 4589", gh_responder(view))["result"], "deny")
+
+    def test_the_named_canonical_repo_reaches_view_and_diff(self):
+        fake = gh_responder(pr_json([file_entry(EN_LOCALE)]), REMOVED_KEY_DIFF)
+        run_hook("gh pr merge 4589 -R 2anki/server --squash", fake)
+        self.assertEqual(fake.calls[0][:6], ["gh", "pr", "view", "4589", "-R", "2anki/server"])
+        self.assertIn("repos/2anki/2anki.net/pulls/4589/files?per_page=100", fake.calls[1])
+        self.assertEqual(fake.calls[2][:6], ["gh", "pr", "diff", "4589", "-R", "2anki/server"])
 
 
 class TestRestFailure(unittest.TestCase):
@@ -755,11 +802,12 @@ class TestComponentNames(unittest.TestCase):
 
 class TestMalformedGhOutput(unittest.TestCase):
     def test_odd_field_types_do_not_crash(self):
+        viewed = {"number": 1}
         payloads = [
-            {"author": "someone", "body": "", "files": [file_entry(PARSER_SNAP)]},
-            {"author": None, "body": ["x"], "files": [file_entry(PARSER_SNAP)]},
-            {"author": None, "body": "", "files": [{"path": None, "changeType": "DELETED"}, file_entry(PARSER_SNAP)]},
-            {"author": None, "body": "", "files": 7},
+            {**viewed, "author": "someone", "body": "", "files": [file_entry(PARSER_SNAP)]},
+            {**viewed, "author": None, "body": ["x"], "files": [file_entry(PARSER_SNAP)]},
+            {**viewed, "author": None, "body": "", "files": [{"path": None, "changeType": "DELETED"}, file_entry(PARSER_SNAP)]},
+            {**viewed, "author": None, "body": "", "files": 7},
             [],
         ]
         expected = ["deny", "deny", "deny", "allow", "allow"]

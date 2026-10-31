@@ -41,10 +41,11 @@ def extract_pr_ref(cmd):
     return merge_command.extract_pr_ref(cmd)
 
 
-def fetch_pr_data(pr_ref):
+def fetch_pr_data(pr_ref, repo=None):
     args = ["gh", "pr", "view"]
     if pr_ref is not None:
         args.append(pr_ref)
+    args.extend(merge_command.repo_args(repo))
     args.extend(["--json", "number,url,author,body,files"])
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=15)
@@ -102,10 +103,18 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
+    repo_violation = merge_command.command_repo_violation(cmd)
+    if repo_violation:
+        deny(repo_violation)
+
     pr_ref = extract_pr_ref(cmd)
-    pr_data = fetch_pr_data(pr_ref)
+    pr_data = fetch_pr_data(pr_ref, merge_command.command_repo(cmd))
     if pr_data is None:
         allow()
+
+    view_violation = merge_command.view_repo_violation(pr_data, pr_ref)
+    if view_violation:
+        deny(view_violation)
 
     author = pr_data.get("author", {}).get("login", "")
     if author == "dependabot[bot]":
