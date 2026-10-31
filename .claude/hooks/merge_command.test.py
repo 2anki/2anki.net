@@ -34,6 +34,20 @@ class TestDetection(unittest.TestCase):
         for cmd in ('"g"h pr merge 1', "gh pr \"mer\"ge 1", "gh pr m\\erge 1", "g\\\nh pr me\\\nrge 1", "'g'h pr 'mer'ge 1"):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
+    def test_words_built_at_run_time_are_merge_attempts(self):
+        for cmd in (
+            "$'g\\x68' pr merge 1",
+            "g$''h pr merge 1",
+            'g$""h pr merge 1',
+            "$(echo gh) pr merge 1",
+            "`echo gh` pr merge 1",
+            "gh pr $'\\x6derge' 1",
+            "G=g; ${G}h pr merge 1",
+            "$'\\x67\\x68' pr $'\\x6d\\x65\\x72\\x67\\x65' 1",
+        ):
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
+            self.assertIsNotNone(mc.merge_form_violation(cmd), cmd)
+
     def test_commands_without_both_words_are_not_merge_attempts(self):
         for cmd in (
             "git status",

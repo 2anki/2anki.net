@@ -23,9 +23,13 @@ deny when its `url` is not `https://github.com/2anki/2anki.net/pull/<n>` for
 that number, and (`deny_on_error`) deny when anything after detection raises,
 because a hook that crashes lets the merge through.
 
-Known limitation: a merge whose `gh` or `merge` is assembled at run time
-(`g$(true)h`, a variable, a script file, another language, a gh alias defined
-earlier) does not contain the words and is not seen. That is a policy
+Words assembled at run time fail closed too: a command that contains `merge`
+and any `$` or backtick (`$(echo gh) pr merge`, `g$''h pr merge`) is a merge
+attempt, and so is any command containing an ANSI-C quote `$'`, since `merge`
+itself can be encoded (`$'\\x6derge'`). There is no decoder; a false positive
+only denies with the allowed-form message. Known limitation: a merge run
+from a script file, another language or a gh alias defined earlier, where
+the Bash command shows neither word nor a `$'`, is not seen. That is a policy
 violation, like `CLAUDE_SKIP_SAFETY`, not a hook gap.
 
 `changed_files` is the file list all four hooks gate on. `gh pr view --json
@@ -66,10 +70,15 @@ def names_gh_and_merge(text):
     return ("gh" in lowered or "github" in lowered) and "merge" in lowered
 
 
+def is_built_at_run_time(cmd, normalized):
+    return "$'" in cmd or ("merge" in normalized.lower() and ("$" in cmd or "`" in cmd))
+
+
 def is_gh_pr_merge(cmd):
     if not isinstance(cmd, str):
         return False
-    return names_gh_and_merge(cmd) or names_gh_and_merge(OBFUSCATION.sub("", cmd))
+    normalized = OBFUSCATION.sub("", cmd)
+    return names_gh_and_merge(cmd) or names_gh_and_merge(normalized) or is_built_at_run_time(cmd, normalized)
 
 
 def allowed_merge(cmd):
