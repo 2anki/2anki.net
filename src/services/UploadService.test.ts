@@ -98,6 +98,7 @@ import { writePdfImageFallbackMarker } from '../infrastracture/adapters/fileConv
 import type { PhotoToFlashcardsUseCase } from '../usecases/imageOcclusion/PhotoToFlashcardsUseCase';
 import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
+import { ANKI_PACKAGE_ZIP_MESSAGE } from '../usecases/uploads/isAnkiPackageZip';
 import { buildPdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
 import {
   createWorkerTerminationError,
@@ -112,6 +113,7 @@ import UploadService, {
 } from './UploadService';
 import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
 import { ANONYMOUS_AI_PREVIEW_FLAG } from '../lib/upload/anonymousAiPreview';
+import { ASYNC_SLOW_UPLOADS_FLAG } from '../lib/upload/asyncSlowUploads';
 import {
   AiCreditsTrippedWithSalvage,
   DeckInfo,
@@ -121,6 +123,14 @@ import { track } from './events/track';
 import { setMintedAnonId } from '../lib/User/getOwner';
 import { toCardCountBucket } from '../lib/analytics/cardCountBucket';
 import { mcpOptionsToCardSettings } from './mcp/mcpOptionsToCardSettings';
+import { McpToolsService } from './mcp/McpToolsService';
+import instrumentedAxios from './observability/instrumentedAxios';
+import { handleDropbox } from '../controllers/Upload/helpers/handleDropbox';
+import { handleGoogleDrive } from '../controllers/Upload/helpers/handleGoogleDrive';
+import type { DeckPersistence } from './mcp/McpDeckPersistence';
+import type ApkgPreviewService from './ApkgPreviewService/ApkgPreviewService';
+import type DownloadService from './DownloadService';
+import type StorageHandler from '../lib/storage/StorageHandler';
 
 const trackMock = track as Mock;
 import { IUploadRepository } from '../data_layer/UploadRespository';
@@ -1138,6 +1148,450 @@ describe('UploadService.handleUpload — error paths', () => {
     });
     errorSpy.mockRestore();
   });
+
+  it('logs the worker stack when a sync upload fails unexpectedly', async () => {
+    const crash = Object.assign(
+      new Error("Cannot read properties of undefined (reading '0')"),
+      { name: 'TypeError' }
+    );
+    crash.stack =
+      "TypeError: Cannot read properties of undefined (reading '0')\n" +
+      '    at firstCell (/app/src/lib/parser/tables.ts:12:3)';
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(crash),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res } = buildResponse();
+
+    await service.handleUpload(buildRequest(), res);
+
+    const logged = errorSpy.mock.calls.map((call) => String(call[0]));
+    errorSpy.mockRestore();
+    expect(logged).toEqual([
+      expect.stringContaining(
+        'at firstCell (/app/src/lib/parser/tables.ts:12:3)'
+      ),
+    ]);
+  });
+
+  function rejectWithAnkiPackageZip(): void {
+    const workerError = new Error(ANKI_PACKAGE_ZIP_MESSAGE);
+    workerError.stack =
+      `Error: ${ANKI_PACKAGE_ZIP_MESSAGE}\n` +
+      '    at getPackagesFromZip (/app/src/usecases/uploads/getPackagesFromZip.ts:630:11)';
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(workerError),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+  }
+
+  const regularUsage = (): Partial<UsersRepository> => ({});
+  const usageOverTheLimit = (): Partial<UsersRepository> => ({
+    getCardUsage: vi.fn().mockResolvedValue({
+      cards_used: MONTHLY_CARD_LIMIT,
+      month_started_at: new Date(),
+    }),
+  });
+
+  const standardConversion = {};
+  const aiConversion = { 'claude-ai-flashcards': 'true' };
+
+  it.each([
+    ['a signed-out visitor', {}, regularUsage, standardConversion],
+    ['a signed-in free user', { owner: 42 }, regularUsage, standardConversion],
+    [
+      'a free user over the monthly limit',
+      { owner: 42 },
+      usageOverTheLimit,
+      standardConversion,
+    ],
+    [
+      'a paying subscriber',
+      { owner: 42, subscriber: true },
+      regularUsage,
+      standardConversion,
+    ],
+    [
+      'a signed-in pass holder',
+      { owner: 42, subscriber: true, passKind: '24h' },
+      regularUsage,
+      standardConversion,
+    ],
+    [
+      'a signed-out pass holder',
+      { anonymousPassId: 7, subscriber: true, passKind: '24h' },
+      regularUsage,
+      standardConversion,
+    ],
+    [
+      'a signed-out pass holder converting with AI',
+      { anonymousPassId: 7, subscriber: true, passKind: '24h' },
+      regularUsage,
+      aiConversion,
+    ],
+  ])(
+    'answers an Anki-package zip from %s with its explanation and logs no error',
+    async (_who, locals, usage, body) => {
+      rejectWithAnkiPackageZip();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(usage()),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse();
+      Object.assign(res.locals, locals);
+
+      await service.handleUpload(
+        buildRequest({
+          files: [
+            {
+              originalname: 'export.zip',
+              mimetype: 'application/zip',
+              size: 20,
+              buffer: Buffer.from('PK'),
+            },
+          ],
+          body,
+        } as unknown as Partial<express.Request>),
+        res
+      );
+
+      const errorCalls = errorSpy.mock.calls.length;
+      errorSpy.mockRestore();
+      expect(errorCalls).toBe(0);
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code: 'unknown',
+        message: ANKI_PACKAGE_ZIP_MESSAGE,
+      });
+      expect(trackMock).not.toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.anything()
+      );
+    }
+  );
+
+  const ankiPackageZip = {
+    originalname: 'export.zip',
+    mimetype: 'application/zip',
+    size: 20,
+    buffer: Buffer.from('PK'),
+  };
+
+  it.each([
+    [
+      'the iOS app',
+      { owner: 42, subscriber: true },
+      { files: [ankiPackageZip], body: { source: 'app' } },
+      [],
+    ],
+    [
+      'a signed-out AI upload with the preview flag off',
+      {},
+      { files: [ankiPackageZip], body: { 'claude-ai-flashcards': 'true' } },
+      [ANONYMOUS_AI_PREVIEW_FLAG],
+    ],
+    [
+      'a signed-out AI upload carrying a pass token that did not validate',
+      {},
+      {
+        files: [ankiPackageZip],
+        body: { 'claude-ai-flashcards': 'true' },
+        headers: { 'x-pass-token': 'expired-token' },
+      },
+      [],
+    ],
+    [
+      'a paying slow upload with async slow uploads off',
+      { owner: 42, subscriber: true },
+      {
+        files: [
+          {
+            originalname: 'lecture.pptx',
+            mimetype:
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            size: 20,
+            buffer: Buffer.from('PK'),
+          },
+        ],
+        body: {},
+      },
+      [ASYNC_SLOW_UPLOADS_FLAG],
+    ],
+  ])(
+    'answers an expected failure from %s without logging an error',
+    async (_who, locals, request, flagsRead) => {
+      rejectWithAnkiPackageZip();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse();
+      Object.assign(res.locals, locals);
+
+      await service.handleUpload(
+        buildRequest(request as unknown as Partial<express.Request>),
+        res
+      );
+
+      const errorCalls = errorSpy.mock.calls.length;
+      errorSpy.mockRestore();
+      expect(mockGetFeatureFlag.mock.calls.map(([flag]) => flag)).toEqual(
+        expect.arrayContaining(flagsRead)
+      );
+      expect(mockGenerateAiPreview).not.toHaveBeenCalled();
+      expect(errorCalls).toBe(0);
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code: 'unknown',
+        message: ANKI_PACKAGE_ZIP_MESSAGE,
+      });
+    }
+  );
+
+  it.each([
+    [
+      'convert_to_deck',
+      (tools: McpToolsService) =>
+        tools.convertToDeck(
+          { text: 'Some notes to study', filename: 'notes.md' },
+          '42',
+          { owner: 42 }
+        ),
+    ],
+    [
+      'create_deck',
+      (tools: McpToolsService) =>
+        tools.createDeck(
+          [{ front: 'What is ATP?', back: 'The cell energy carrier' }],
+          'Biology',
+          undefined,
+          '42',
+          { owner: 42 }
+        ),
+    ],
+  ])(
+    'answers an expected failure from the MCP %s tool without logging an error',
+    async (_tool, callTool) => {
+      rejectWithAnkiPackageZip();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const uploadService = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const tools = new McpToolsService(
+        { getJobsByOwner: vi.fn(async () => []) },
+        {} as DownloadService,
+        {} as ApkgPreviewService,
+        (req, res) => uploadService.handleUpload(req, res),
+        {} as StorageHandler,
+        { persist: vi.fn() } as unknown as DeckPersistence,
+        {} as PhotoToFlashcardsUseCase,
+        buildUsersRepo(),
+        'https://mcp.test'
+      );
+
+      const result = await callTool(tools);
+
+      const errorCalls = errorSpy.mock.calls.length;
+      errorSpy.mockRestore();
+      expect(errorCalls).toBe(0);
+      expect(result).toEqual({
+        kind: 'error',
+        code: 'unknown',
+        message: ANKI_PACKAGE_ZIP_MESSAGE,
+      });
+    }
+  );
+
+  describe('for a user who shares files for debugging', () => {
+    const PRESERVING = 'Preserving files for debugging...';
+
+    async function uploadSharingFiles(): Promise<{
+      infoLines: unknown[][];
+      status: number;
+      json: unknown;
+    }> {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse();
+      Object.assign(res.locals, { owner: 42 });
+
+      await service.handleUpload(
+        buildRequest({
+          files: [ankiPackageZip],
+          body: { 'share-files-for-debugging': 'true' },
+        } as unknown as Partial<express.Request>),
+        res
+      );
+
+      const infoLines = infoSpy.mock.calls;
+      infoSpy.mockRestore();
+      errorSpy.mockRestore();
+      for (const [label, directory] of infoLines) {
+        if (label === 'Debug directory:' && typeof directory === 'string') {
+          fs.rmSync(directory, { recursive: true, force: true });
+        }
+      }
+      return { infoLines, status: capturedStatus(), json: capturedJson() };
+    }
+
+    it('keeps their files for an unexpected failure', async () => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi
+            .fn()
+            .mockRejectedValue(
+              Object.assign(new Error('boom'), { name: 'TypeError' })
+            ),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+
+      const { infoLines } = await uploadSharingFiles();
+
+      expect(infoLines).toContainEqual([PRESERVING]);
+    });
+
+    it('does not keep their files for an Anki-package zip', async () => {
+      rejectWithAnkiPackageZip();
+
+      const { infoLines, status, json } = await uploadSharingFiles();
+
+      expect(infoLines).not.toContainEqual([PRESERVING]);
+      expect(status).toBe(400);
+      expect(json).toEqual({
+        code: 'unknown',
+        message: ANKI_PACKAGE_ZIP_MESSAGE,
+      });
+    });
+  });
+
+  it('answers an Anki-package zip with no AI preview available from a signed-out AI upload without logging an error', async () => {
+    rejectWithAnkiPackageZip();
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGenerateAiPreview.mockResolvedValue([]);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(anonAiMarkdownRequest('visitor-zip'), res);
+
+    const errorCalls = errorSpy.mock.calls.length;
+    errorSpy.mockRestore();
+    expect(mockGenerateAiPreview).toHaveBeenCalledTimes(1);
+    expect(errorCalls).toBe(0);
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message: ANKI_PACKAGE_ZIP_MESSAGE,
+    });
+  });
+
+  it.each([
+    [
+      'Dropbox',
+      (
+        req: express.Request,
+        res: express.Response,
+        upload: (req: express.Request, res: express.Response) => void
+      ) => handleDropbox(req, res, upload),
+      {
+        files: JSON.stringify([
+          {
+            bytes: 20,
+            id: 'id:export',
+            isDir: false,
+            link: 'https://dl.dropboxusercontent.com/s/export.zip',
+            name: 'export.zip',
+          },
+        ]),
+      },
+    ],
+    [
+      'Google Drive',
+      (
+        req: express.Request,
+        res: express.Response,
+        upload: (req: express.Request, res: express.Response) => void
+      ) => handleGoogleDrive(req, res, upload),
+      {
+        files: JSON.stringify([
+          {
+            id: 'export-file-id',
+            name: 'export.zip',
+            mimeType: 'application/zip',
+            sizeBytes: 20,
+          },
+        ]),
+        googleDriveAuth: 'drive-token',
+      },
+    ],
+  ])(
+    'answers an Anki-package zip picked from %s without logging an error',
+    async (_source, pick, body) => {
+      rejectWithAnkiPackageZip();
+      const download = vi
+        .spyOn(instrumentedAxios, 'get')
+        .mockResolvedValue({ data: Buffer.from('PK') } as never);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse();
+      let conversion: Promise<unknown> = Promise.resolve();
+
+      await pick(
+        buildRequest({ files: undefined, body } as Partial<express.Request>),
+        res,
+        (req, uploadRes) => {
+          conversion = service.handleUpload(req, uploadRes);
+        }
+      );
+      await conversion;
+
+      const errorCalls = errorSpy.mock.calls.length;
+      errorSpy.mockRestore();
+      download.mockRestore();
+      expect(errorCalls).toBe(0);
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code: 'unknown',
+        message: ANKI_PACKAGE_ZIP_MESSAGE,
+      });
+    }
+  );
 
   it('answers a sync upload whose worker hit a filesystem error with the generic 500, not its path', async () => {
     const crash = Object.assign(
@@ -5785,6 +6239,28 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
         props: expect.objectContaining({ reason: 'image_429' }),
       })
     );
+  });
+
+  it('answers an expected vision failure on a signed-in image upload without logging an error', async () => {
+    const parseError = Object.assign(
+      new Error('We could not read cards from this photo.'),
+      { name: 'ClaudeParseError' }
+    );
+    const execute = vi.fn().mockRejectedValue(parseError);
+    const service = buildServiceWithVision(buildVisionUseCase(execute));
+    const { res, capturedStatus, capturedJson } = signedInResponse();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await service.handleUpload(buildImageRequest(), res);
+
+    const errorCalls = errorSpy.mock.calls.length;
+    errorSpy.mockRestore();
+    expect(errorCalls).toBe(0);
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message: 'We could not read cards from this photo.',
+    });
   });
 
   it('leaves an anonymous image upload on the image_only_no_text floor and never calls vision', async () => {

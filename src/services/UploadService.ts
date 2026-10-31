@@ -21,7 +21,9 @@ import { IAiCardFingerprintRepository } from '../data_layer/AiCardFingerprintRep
 import { IAiRequestCostReader } from '../data_layer/AiUsageMetricsRepository';
 import { CREDIT_UNIT_USD } from '../lib/claude/aiCredits/balance';
 import { getConversionResultCache } from '../data_layer/ConversionResultCacheRepository';
-import ErrorHandler from '../routes/middleware/ErrorHandler';
+import ErrorHandler, {
+  sendErrorResponse,
+} from '../routes/middleware/ErrorHandler';
 import CardOption from '../lib/parser/Settings';
 import Workspace from '../lib/parser/WorkSpace';
 import { logEmptyBackAttribution } from '../lib/parser/logEmptyBackAttribution';
@@ -1503,10 +1505,13 @@ class UploadService {
           message:
             "We couldn't read this .docx. It may have been renamed from another format. Try re-exporting it from Word or Google Docs.",
         });
+      } else if (isExpectedUploadState(err)) {
+        console.info('[UploadService] sync upload user-input state', {
+          kind: (err as Error).name,
+        });
+        return sendErrorResponse(res, err as Error);
       } else {
-        if (!isExpectedUploadState(err)) {
-          this.trackUploadFailed(req, res, uploadFailureReason(err));
-        }
+        this.trackUploadFailed(req, res, uploadFailureReason(err));
         return ErrorHandler(res, req, err as Error);
       }
     }
