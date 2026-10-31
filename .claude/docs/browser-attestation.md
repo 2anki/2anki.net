@@ -39,7 +39,7 @@ The line must start with `Browser check: not applicable —` (exact prefix, incl
 
 The hook exits 0 (allow) without checking the body when:
 
-- **Dependabot author** — `author.login == "dependabot[bot]"`.
+- **Dependabot author** — `author.login` is `dependabot[bot]` or `app/dependabot` (`gh` reports either, depending on the call).
 - **Changelog-only diff** — every `web/src/` file in the diff lives under `web/src/pages/WhatsNewPage/changelog/`.
 - **No `web/src/` files** — the diff contains no files under `web/src/`.
 

@@ -142,9 +142,17 @@ class TestPassthrough(unittest.TestCase):
 
 
 class TestExemptions(unittest.TestCase):
-    def test_dependabot_allows(self):
+    def test_dependabot_bot_login_allows(self):
         responses = gh_responses("dependabot[bot]", "", ["src/server.ts"], ["fix: bump"])
         self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
+
+    def test_dependabot_app_login_allows(self):
+        responses = gh_responses("app/dependabot", "", ["src/server.ts"], ["fix: bump"])
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "allow")
+
+    def test_lookalike_login_is_not_exempt(self):
+        responses = gh_responses("dependabot", "", ["src/server.ts"], ["fix: bump"])
+        self.assertEqual(run_hook(MERGE, subprocess_results=responses)["result"], "deny")
 
     def test_no_feat_or_fix_commit_allows(self):
         responses = gh_responses("alex", "", ["src/server.ts"], ["chore: tidy", "refactor: rename"])

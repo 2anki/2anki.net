@@ -110,7 +110,7 @@ def gate(cmd):
         deny(view_violation)
 
     author = (pr_data.get("author") or {}).get("login", "")
-    if author == "dependabot[bot]":
+    if author in merge_command.DEPENDABOT_LOGINS:
         allow()
 
     files, _ = merge_command.changed_files(pr_data, number, "[check-browser-attestation]")

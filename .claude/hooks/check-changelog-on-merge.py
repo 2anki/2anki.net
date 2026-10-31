@@ -166,7 +166,7 @@ def gate(cmd):
     if view_violation:
         deny(view_violation)
 
-    if (pr_data.get("author") or {}).get("login", "") == "dependabot[bot]":
+    if (pr_data.get("author") or {}).get("login", "") in merge_command.DEPENDABOT_LOGINS:
         allow()
 
     if not has_user_visible_commit(pr_data.get("commits") or []):
