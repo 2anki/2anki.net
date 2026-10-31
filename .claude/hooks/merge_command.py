@@ -13,8 +13,9 @@ hooks accept (#5193): rounds of shell-parsing fixes kept finding forms where
 the PR the gate read was not the PR that merged, or where a merge was not seen
 at all, so detection fails closed and only one exact command form passes.
 
-`is_gh_pr_merge`: a Bash command is a merge attempt when it contains `gh` (or
-`github`, for curl to the API) and `merge`, case-insensitive and anywhere
+`is_gh_pr_merge`: a Bash command is a merge attempt when it contains `gh` as a
+word (not inside `overnight` or `highlight`) or `github` (for curl to the API),
+and `merge`, case-insensitive and anywhere
 (inside `eval`, `bash -c`, heredocs, redirections and quotes too), checked on
 the raw command and again with
 quotes, backslashes and backslash-newlines removed, so `"g"h pr "mer"ge` counts.
@@ -63,6 +64,7 @@ import sys
 
 OBFUSCATION = re.compile(r"\\\n|[\"'\\]")
 API_MARKERS = ("pulls/", "graphql", "curl", "wget", "http")
+GH_WORD = re.compile(r"(?<![a-z0-9_])gh(?![a-z0-9_])")
 CANONICAL_REPO = "2anki/2anki.net"
 ALLOWED_MERGE = re.compile(r"gh pr merge ([1-9][0-9]{0,8}) --repo (2anki/server|2anki/2anki\.net) --squash(?: 2>&1)?")
 ALLOWED_FORM = "gh pr merge <n> --repo 2anki/server --squash"
@@ -81,14 +83,13 @@ REST_STATUS_TO_CHANGE_TYPE = {
 }
 
 
-def names_gh_and_merge(text):
-    lowered = text.lower()
-    return ("gh" in lowered or "github" in lowered) and "merge" in lowered
-
-
 def names_gh(text):
     lowered = text.lower()
-    return "gh" in lowered or "github" in lowered
+    return bool(GH_WORD.search(lowered)) or "github" in lowered
+
+
+def names_gh_and_merge(text):
+    return names_gh(text) and "merge" in text.lower()
 
 
 def is_built_at_run_time(cmd, normalized):

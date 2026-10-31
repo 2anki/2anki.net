@@ -107,7 +107,7 @@ A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.m
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
 ```
 
-Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the merge; `ScheduleWakeup` 60s if not yet listed). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s or a `Monitor` over holding the shell.
+Find the run whose `headSha` is `<MERGE_SHA>` (it appears within ~30s of the merge; `ScheduleWakeup` 60s if not yet listed). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s or a `Monitor` over holding the shell.
 
 ## 6. Verify prod
 
@@ -115,7 +115,7 @@ Find the run whose `headSha` is `$MERGE_SHA` (it appears within ~30s of the merg
 curl -fsS https://2anki.net/api/version | jq -r .sha
 ```
 
-Must equal `$MERGE_SHA`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s, reporting the evidence each round; the loop ends only at healthy or broken, never report healthy while watching; the run continues with other items meanwhile, this holds only this PR's deploy verdict. A failed deploy run is "watching" only once its log confirms the last-good restore ran; otherwise it is "broken" (the 2026-08-06 shape: live process up, poisoned disk). Verdict "broken" → step 8.
+Must equal `<MERGE_SHA>`. Then run `/deploy-status` (read-only SSH; this is the one sanctioned exception to "never touch the prod host"). Verdict "deploy healthy" → step 6b for a rail PR, step 7 otherwise. Verdict "watching X" → re-run `/deploy-status` after a `ScheduleWakeup` of 270s, reporting the evidence each round; the loop ends only at healthy or broken, never report healthy while watching; the run continues with other items meanwhile, this holds only this PR's deploy verdict. A failed deploy run is "watching" only once its log confirms the last-good restore ran; otherwise it is "broken" (the 2026-08-06 shape: live process up, poisoned disk). Verdict "broken" → step 8.
 
 The pre-cutover smoke check (`scripts/prod-smoke.ts`) prints to the deploy run log, not pm2 (`gh run view <id> --log | grep -E '\[smoke\]|\[blue-green\]'`): `[smoke] passed against` is part of "healthy"; `[smoke] FAILED`, or `[smoke]` lines with no summary line, means traffic never switched, the `[smoke] FAIL` lines name what broke, and it is "broken" → step 8 even though the last-good restore ran. A `[blue-green] server-<color> failed the smoke check` line is "broken" → step 8 on its own, with or without `[smoke]` lines: `scripts/prod-smoke.ts` can crash before it prints any (a module load error, a missing `tsx`). A run with no `[smoke]` lines and no failed-smoke-check line failed before the smoke step and follows the rule above.
 
