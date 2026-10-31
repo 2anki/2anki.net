@@ -42,8 +42,9 @@ or `http` counts as well, so an API merge sent without `gh` in the command
 (curl to an IP with a Host header) stays caught, as main's API and GraphQL
 rules caught it. That denies every `gh` command that uses a variable or a
 command substitution, and every command naming a path under `github.com` that
-does; write those values out literally, or pass bodies with `--body-file`. There is no decoder; a false positive
-only denies with the allowed-form message. Known limitation: a merge run
+does; write those values out literally, or pass bodies with `--body-file`.
+There is no decoder; a false positive is denied with a message naming the rule
+that fired and its fix (`trigger_reason`). Known limitation: a merge run
 from a script file, another language or a gh alias defined earlier, where
 the Bash command shows neither word nor a `$'`, is not seen. That is a policy
 violation, like `CLAUDE_SKIP_SAFETY`, not a hook gap.
@@ -102,6 +103,8 @@ def is_built_at_run_time(cmd, normalized):
 
 def is_api_merge(normalized):
     lowered = normalized.lower()
+    if "mergepullrequest" in lowered:
+        return True
     return "merge" in lowered and any(marker in lowered for marker in API_MARKERS)
 
 
@@ -134,7 +137,10 @@ def trigger_reason(cmd):
             "pass a PR body with `--body-file`, and run files by a relative path",
         )
     if "$'" in cmd:
-        return ("it contains an ANSI-C quote `$'`", "write the value without `$'`")
+        return (
+            "it contains `$'` (an ANSI-C quote, or a `$` right before a closing single quote)",
+            "write the value without `$'`: use double quotes, or drop the `$`",
+        )
     if is_built_at_run_time(cmd, normalized):
         return (
             "it pairs `gh`, `github` or `merge` with a `$` or a backtick",

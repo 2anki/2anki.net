@@ -61,6 +61,18 @@ class TestDetection(unittest.TestCase):
         ):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
+    def test_non_merge_commands_without_gh_are_denied_by_the_other_rules(self):
+        for cmd in (
+            'git merge-base HEAD "$tip"',
+            "cd /Users/a/src/github.com/2anki/server && echo $HOME",
+            "IFS=$'\\n' read -r line",
+            "curl https://example.com/merge-guide",
+        ):
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
+
+    def test_the_graphql_merge_mutation_alone_is_a_merge_attempt_as_on_main(self):
+        self.assertTrue(mc.is_gh_pr_merge("python3 /tmp/s.py mergePullRequest"))
+
     def test_commands_without_both_words_are_not_merge_attempts(self):
         for cmd in (
             "git status",
