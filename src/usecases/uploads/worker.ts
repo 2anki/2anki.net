@@ -61,12 +61,22 @@ import {
   UploadGenerationTask,
 } from './uploadGenerationTypes';
 
+function logFileRead(
+  turnStartedAt: number,
+  mode: 'buffer' | 'disk' | 'buffer-fallback',
+  contents: Buffer
+): void {
+  console.info('[upload] tempfile read', {
+    sinceTurnMs: Date.now() - turnStartedAt,
+    mode,
+    fileSizeBytes: contents.byteLength,
+  });
+}
+
 export function getFileContents(
   file: UploadedFile,
-  enqueuedAt?: number
+  turnStartedAt: number = Date.now()
 ): Buffer {
-  const readAt = Date.now();
-
   let result: Buffer;
 
   if (!file.path) {
@@ -74,22 +84,14 @@ export function getFileContents(
       throw new Error('Uploaded file has neither a path nor a buffer');
     }
     result = Buffer.from(file.buffer);
-    console.info('[upload] tempfile dwell', {
-      dwellMs: readAt - (enqueuedAt ?? readAt),
-      mode: 'buffer',
-      fileSizeBytes: result.byteLength,
-    });
+    logFileRead(turnStartedAt, 'buffer', result);
     return result;
   }
 
   try {
     if (fs.existsSync(file.path)) {
       result = fs.readFileSync(file.path);
-      console.info('[upload] tempfile dwell', {
-        dwellMs: readAt - (enqueuedAt ?? readAt),
-        mode: 'disk',
-        fileSizeBytes: result.byteLength,
-      });
+      logFileRead(turnStartedAt, 'disk', result);
       return result;
     }
   } catch (error) {
@@ -104,11 +106,7 @@ export function getFileContents(
     );
   }
   result = Buffer.from(file.buffer);
-  console.info('[upload] tempfile dwell', {
-    dwellMs: readAt - (enqueuedAt ?? readAt),
-    mode: 'buffer-fallback',
-    fileSizeBytes: result.byteLength,
-  });
+  logFileRead(turnStartedAt, 'buffer-fallback', result);
   return result;
 }
 
@@ -473,6 +471,11 @@ async function doGenerationWork(
   const emptyReasons: EmptyDeckReason[] = [];
   const rescueCandidateSets: RescueCandidate[][] = [];
 
+  console.info('[upload] tempfile dwell', {
+    dwellMs: Date.now() - enqueuedAt,
+    fileCount: files.length,
+  });
+
   const dedupeAcrossDecks = shouldDedupeAcrossDecks(
     paying,
     settings,
@@ -487,7 +490,7 @@ async function doGenerationWork(
   const convert = (upload: UploadedFile, fileWorkspace: Workspace) => {
     const { file, contents } = asReadableUpload(
       upload,
-      getFileContents(upload, enqueuedAt)
+      getFileContents(upload)
     );
     return processFile(
       file,

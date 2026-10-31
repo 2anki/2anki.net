@@ -101,63 +101,49 @@ describe('getFileContents', () => {
     vi.clearAllMocks();
   });
 
-  describe('dwell time logging', () => {
+  describe('read time logging', () => {
     let infoSpy: MockInstance;
 
     beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(1000);
       infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     });
 
     afterEach(() => {
       infoSpy.mockRestore();
+      vi.useRealTimers();
     });
 
-    it('logs dwellMs >= 0 when reading from buffer', () => {
-      vi.useFakeTimers();
-      vi.setSystemTime(1000);
-
+    it('logs the time since the file turn started when reading from buffer', () => {
       const content = Buffer.from('hello');
       const file = makeFile({ path: '', buffer: content });
 
       getFileContents(file, 900);
 
-      expect(infoSpy).toHaveBeenCalledWith(
-        '[upload] tempfile dwell',
-        expect.objectContaining({
-          dwellMs: expect.any(Number),
-          mode: 'buffer',
-          fileSizeBytes: 5,
-        })
-      );
-      const logged = infoSpy.mock.calls[0][1] as { dwellMs: number };
-      expect(logged.dwellMs).toBeGreaterThanOrEqual(0);
-
-      vi.useRealTimers();
+      expect(infoSpy).toHaveBeenCalledWith('[upload] tempfile read', {
+        sinceTurnMs: 100,
+        mode: 'buffer',
+        fileSizeBytes: 5,
+      });
     });
 
-    it('logs dwellMs >= 0 when reading from disk', () => {
-      vi.useFakeTimers();
-      vi.setSystemTime(2000);
-
+    it('counts a slow disk read in the time since the file turn started', () => {
       const content = Buffer.from('disk content');
       const file = makeFile({ path: '/tmp/upload-exists' });
       mockFs.existsSync = vi.fn().mockReturnValue(true);
-      mockFs.readFileSync = vi.fn().mockReturnValue(content);
+      mockFs.readFileSync = vi.fn().mockImplementation(() => {
+        vi.setSystemTime(1300);
+        return content;
+      });
 
-      getFileContents(file, 1500);
+      getFileContents(file);
 
-      expect(infoSpy).toHaveBeenCalledWith(
-        '[upload] tempfile dwell',
-        expect.objectContaining({
-          dwellMs: expect.any(Number),
-          mode: 'disk',
-          fileSizeBytes: 12,
-        })
-      );
-      const logged = infoSpy.mock.calls[0][1] as { dwellMs: number };
-      expect(logged.dwellMs).toBeGreaterThanOrEqual(0);
-
-      vi.useRealTimers();
+      expect(infoSpy).toHaveBeenCalledWith('[upload] tempfile read', {
+        sinceTurnMs: 300,
+        mode: 'disk',
+        fileSizeBytes: 12,
+      });
     });
   });
 
@@ -1160,4 +1146,95 @@ describe('runUploadGenerationInWorker — cross-file dedup (loose multi-file)', 
     expect(options?.cardLimit).toBe(21);
     expect(result).toMatchObject({ ok: true, cardsHeldBack: 9 });
   });
+});
+
+describe('runUploadGenerationInWorker — queue wait logging', () => {
+  const ENQUEUED_AT = 1_000_000;
+  const QUEUE_WAIT_MS = 6_000;
+  const CONVERSION_MS = 50_000;
+
+  const makeUpload = (name: string) =>
+    makeFile({
+      originalname: name,
+      filename: name,
+      key: name,
+      path: '',
+      buffer: Buffer.from('<p>hi</p>'),
+    });
+
+  const threeFileTask = (names: string[]): UploadGenerationTask => ({
+    paying: false,
+    files: names.map(makeUpload),
+    settings: new CardOption({}),
+    workspace: { location: '/tmp/ws-parent' } as Workspace,
+    enqueuedAt: ENQUEUED_AT,
+    userId: null,
+  });
+
+  const spendConversionTime = () =>
+    vi.setSystemTime(Date.now() + CONVERSION_MS);
+
+  let infoSpy: MockInstance;
+
+  const loggedFields = () =>
+    infoSpy.mock.calls
+      .filter(([message]) => String(message).startsWith('[upload] tempfile'))
+      .map(([, fields]) => fields as Record<string, unknown>);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(ENQUEUED_AT + QUEUE_WAIT_MS);
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+    let n = 0;
+    vi.mocked(Workspace.subdir).mockImplementation((parent: string) => {
+      n += 1;
+      return { id: `sub-${n}`, location: `${parent}/sub-${n}` } as Workspace;
+    });
+    mockPrepareDeck.mockImplementation(async (input) => {
+      spendConversionTime();
+      return { name: input.name, cardCount: 1, deck: [] } as never;
+    });
+    mockGetPackagesFromZip.mockImplementation(async () => {
+      spendConversionTime();
+      return { packages: [], warnings: [] };
+    });
+  });
+
+  afterEach(() => {
+    infoSpy.mockRestore();
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['in parallel', ['a.html', 'b.html', 'c.html']],
+    ['in sequence', ['a.zip', 'b.zip', 'c.zip']],
+  ])(
+    'reports the queue wait once for a three-file task converted %s',
+    async (_mode, names) => {
+      const result = await runUploadGenerationInWorker(threeFileTask(names));
+
+      expect(result.ok).toBe(true);
+      const dwells = loggedFields()
+        .filter((fields) => 'dwellMs' in fields)
+        .map((fields) => fields.dwellMs);
+      expect(dwells).toEqual([QUEUE_WAIT_MS]);
+    }
+  );
+
+  it.each([
+    ['in parallel', ['a.html', 'b.html', 'c.html']],
+    ['in sequence', ['a.zip', 'b.zip', 'c.zip']],
+  ])(
+    'logs each file read without earlier files conversion time when converted %s',
+    async (_mode, names) => {
+      await runUploadGenerationInWorker(threeFileTask(names));
+
+      const reads = loggedFields().filter((fields) => 'mode' in fields);
+      expect(reads).toEqual(
+        names.map(() => ({ sinceTurnMs: 0, mode: 'buffer', fileSizeBytes: 9 }))
+      );
+    }
+  );
 });
