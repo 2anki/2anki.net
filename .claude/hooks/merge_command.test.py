@@ -156,6 +156,18 @@ class TestDetection(unittest.TestCase):
         for cmd in ('git merge "$tip"', "echo `merge`", "M=merge; echo $M", '"$G" pr merge 1'):
             self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
 
+    def test_a_program_name_held_in_a_variable_is_a_merge_attempt(self):
+        for cmd in (
+            "G=gh; $G pr merge 1",
+            "${G} pr merge 1",
+            "`which gh` pr merge 1",
+            "$G api repos/2anki/2anki.net/pulls/1/merge -X PUT",
+            "$G pr view 1",
+            "$G api repos/a/b/issues/1",
+            "`which x` pr view 1",
+        ):
+            self.assertTrue(mc.is_gh_pr_merge(cmd), cmd)
+
     def test_harmless_commands_the_broad_rules_still_deny(self):
         for cmd in (
             'B=$(git branch --show-current); gh pr view "$B"',
@@ -460,6 +472,7 @@ class TestAllowedMerge(unittest.TestCase):
             ("IFS=$'\\n' read -r x", "ANSI-C quote", "plain quoted string"),
             ("printf '\\x67\\x68 pr' | sh", "character escape", "write the characters literally"),
             ("gh pr me$x 1", "a `$` or a backtick after `gh`", "write values literally"),
+            ("$G pr view 1", "`pr` or `api` after a `$`", "program name and values literally"),
         ):
             message = mc.merge_form_violation(cmd)
             self.assertIn(reason, message, cmd)

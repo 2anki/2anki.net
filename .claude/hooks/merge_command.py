@@ -34,7 +34,9 @@ again with quotes and backslashes removed, so `"g"h pr "mer"ge` counts:
   caught.
 - Any `$` or backtick with the word `merge`.
 - Any `$` or backtick after a `gh` word (`gh pr view "$B"` is denied; write
-  the value literally).
+  the value literally), and the word `pr` or `api` (not in a URL path) after
+  any `$` or backtick, so a program name in a variable (`$G pr view 1`)
+  counts.
 - `$(`, `${` or a backtick with `github`, an `api` word (not a URL path
   segment such as `/api/version`) or `pulls/`. A bare `$VAR` there does not
   count, so `echo $HOME` under `github.com` passes.
@@ -88,6 +90,8 @@ DECODER = re.compile(
 RUNTIME_TERMS = ("github", "pulls/")
 MERGE_MUTATIONS = ("mergepullrequest", "enablepullrequestautomerge", "enqueuepullrequest", "mergebranch")
 API_WORD = re.compile(r"(?<![/.\w-])api\b", re.I)
+SUBCOMMAND_WORD = re.compile(r"(?<![/.\w-])(?:pr|api)\b", re.I)
+FIRST_DOLLAR_OR_BACKTICK = re.compile(r"[$`]")
 CANONICAL_REPO = "2anki/2anki.net"
 ALLOWED_MERGE = re.compile(r"gh pr merge ([1-9][0-9]{0,8}) --repo (2anki/server|2anki/2anki\.net) --squash(?: 2>&1)?")
 ALLOWED_FORM = "gh pr merge <n> --repo 2anki/server --squash"
@@ -159,6 +163,15 @@ def builds_text_after_gh(cmd, normalized):
     return has_a_dollar_after_gh(cmd) or has_a_dollar_after_gh(normalized)
 
 
+def has_a_subcommand_after_a_dollar(text):
+    match = FIRST_DOLLAR_OR_BACKTICK.search(text)
+    return match is not None and SUBCOMMAND_WORD.search(text, match.start()) is not None
+
+
+def builds_the_program_at_run_time(cmd, normalized):
+    return has_a_subcommand_after_a_dollar(cmd) or has_a_subcommand_after_a_dollar(normalized)
+
+
 MERGE_RULES = (
     (
         names_gh_and_merge,
@@ -204,6 +217,11 @@ MERGE_RULES = (
         builds_text_after_gh,
         "it has a `$` or a backtick after `gh`",
         "write values literally and pass a PR body with `--body-file`",
+    ),
+    (
+        builds_the_program_at_run_time,
+        "it has the word `pr` or `api` after a `$` or a backtick",
+        "write the program name and values literally",
     ),
 )
 
