@@ -357,7 +357,7 @@ class TestPrRefPassing(unittest.TestCase):
     def test_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
         fake = gh_responder(pr_json([file_entry(NOTICE, "DELETED")]))
         run_hook("gh pr merge --squash", fake)
-        self.assertEqual(fake.calls[0][:5], ["gh", "pr", "view", "--json", "number,author,body,files"])
+        self.assertEqual(fake.calls[0][:5], ["gh", "pr", "view", "--json", "number,url,author,body,files"])
         self.assertIn("repos/2anki/2anki.net/pulls/4589/files?per_page=100", fake.calls[1])
 
 
@@ -391,6 +391,22 @@ class TestFilesPastTheFirst100(unittest.TestCase):
         result = run_hook("gh pr merge 1", fake)
         self.assertEqual(result["result"], "deny")
         self.assertIn("heldBack_other", result["reason"])
+
+
+    def test_a_rest_api_merge_sees_a_deleted_notice_past_the_first_100_files(self):
+        files = FILLER + [file_entry(NOTICE, "DELETED")]
+        fake = gh_responder(pr_json(files), rest_files=files)
+        self.assertEqual(run_hook("gh api -X PUT repos/2anki/2anki.net/pulls/4589/merge", fake)["result"], "deny")
+        self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "4589"])
+
+    def test_a_graphql_merge_sees_a_deleted_notice_past_the_first_100_files(self):
+        files = FILLER + [file_entry(NOTICE, "DELETED")]
+        fake = gh_responder(pr_json(files), rest_files=files)
+        command = (
+            "gh api graphql -f query='mutation { mergePullRequest("
+            "input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
+        )
+        self.assertEqual(run_hook(command, fake)["result"], "deny")
 
 
 class TestRestFailure(unittest.TestCase):

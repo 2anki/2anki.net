@@ -229,6 +229,28 @@ class TestChangedFiles(unittest.TestCase):
         _, argv = self.changed({"files": []}, pr_ref="77", run=[ok("")])
         self.assertIn("repos/2anki/2anki.net/pulls/77/files?per_page=100", argv[0])
 
+    def test_lists_files_from_the_repo_gh_pr_view_resolved(self):
+        view = {"number": 5, "url": "https://github.com/someone/fork/pull/5", "files": []}
+        _, argv = self.changed(view, run=[ok("")])
+        self.assertIn("repos/someone/fork/pulls/5/files?per_page=100", argv[0])
+
+    def test_an_unreadable_url_falls_back_to_the_canonical_repo(self):
+        for url in (None, "", "https://example.com/a/b/pull/5", "https://github.com/a/../pull/5", 7):
+            _, argv = self.changed({"number": 5, "url": url, "files": []}, run=[ok("")])
+            self.assertIn("repos/2anki/2anki.net/pulls/5/files?per_page=100", argv[0])
+
+    def test_a_url_for_another_pr_number_falls_back_to_the_canonical_repo(self):
+        view = {"number": 5, "url": "https://github.com/someone/fork/pull/6", "files": []}
+        _, argv = self.changed(view, run=[ok("")])
+        self.assertIn("repos/2anki/2anki.net/pulls/5/files?per_page=100", argv[0])
+
+    def test_a_unicode_line_separator_in_a_name_does_not_force_the_fallback(self):
+        odd = "web/src/a b\u0085c d.tsx"
+        stdout = json.dumps([odd, "modified", 1, 1], ensure_ascii=False) + "\n" + rest_line("src/x.ts") + "\n"
+        (files, complete), _ = self.changed({"number": 42, "files": []}, run=[ok(stdout)])
+        self.assertTrue(complete)
+        self.assertEqual([f["path"] for f in files], [odd, "src/x.ts"])
+
     def test_odd_view_shapes_do_not_raise(self):
         (files, complete), _ = self.changed({"number": 42, "files": [None, "x", {"path": "a"}]}, run=[ok("")])
         self.assertTrue(complete)

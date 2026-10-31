@@ -245,15 +245,34 @@ class TestFilesPastTheFirst100(unittest.TestCase):
         fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
         with patch("subprocess.run", side_effect=fake):
             run_hook("gh pr merge 42")
-        self.assertEqual(fake.calls[0], ["gh", "pr", "view", "42", "--json", "number,author,body,files"])
+        self.assertEqual(fake.calls[0], ["gh", "pr", "view", "42", "--json", "number,url,author,body,files"])
         self.assertEqual(fake.calls[1][:4], ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/42/files?per_page=100"])
 
     def test_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
         fake = gh_responder({"stdout": make_pr_json("alex", "", ["src/a.ts"])})
         with patch("subprocess.run", side_effect=fake):
             run_hook("gh pr merge --squash")
-        self.assertEqual(fake.calls[0], ["gh", "pr", "view", "--json", "number,author,body,files"])
+        self.assertEqual(fake.calls[0], ["gh", "pr", "view", "--json", "number,url,author,body,files"])
         self.assertIn("repos/2anki/2anki.net/pulls/42/files?per_page=100", fake.calls[1])
+
+
+    def test_a_rest_api_merge_gates_web_src_past_the_first_100_files(self):
+        fake = gh_responder({"stdout": make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)}, DOCS_THEN_WEB_SRC)
+        with patch("subprocess.run", side_effect=fake):
+            captured = run_hook("gh api -X PUT repos/2anki/2anki.net/pulls/42/merge")
+        self.assertEqual(captured["result"], "deny")
+        self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "42"])
+
+    def test_a_graphql_merge_gates_web_src_past_the_first_100_files_of_the_current_branch(self):
+        fake = gh_responder({"stdout": make_pr_json("alex", "No browser check", DOCS_THEN_WEB_SRC)}, DOCS_THEN_WEB_SRC)
+        command = (
+            "gh api graphql -f query='mutation { mergePullRequest("
+            "input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
+        )
+        with patch("subprocess.run", side_effect=fake):
+            captured = run_hook(command)
+        self.assertEqual(captured["result"], "deny")
+        self.assertEqual(fake.calls[0][:4], ["gh", "pr", "view", "--json"])
 
 
 class TestRestFailure(unittest.TestCase):

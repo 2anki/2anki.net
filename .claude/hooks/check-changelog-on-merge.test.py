@@ -177,6 +177,21 @@ class TestRestFileList(unittest.TestCase):
         responses = gh_responses("alex", "x", files, ["fix: big"])
         self.assertEqual(run_hook("gh pr merge 42", subprocess_results=responses)["result"], "deny")
 
+    def test_a_rest_api_merge_sees_source_past_the_first_100_files(self):
+        files = [f"docs/page{i}.md" for i in range(120)] + ["src/server.ts"]
+        responses = gh_responses("alex", "x", files, ["fix: big"])
+        result = run_hook("gh api -X PUT repos/2anki/2anki.net/pulls/42/merge", subprocess_results=responses)
+        self.assertEqual(result["result"], "deny")
+
+    def test_a_graphql_merge_sees_source_past_the_first_100_files(self):
+        files = [f"docs/page{i}.md" for i in range(120)] + ["src/server.ts"]
+        responses = gh_responses("alex", "x", files, ["fix: big"])
+        command = (
+            "gh api graphql -f query='mutation { mergePullRequest("
+            "input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'"
+        )
+        self.assertEqual(run_hook(command, subprocess_results=responses)["result"], "deny")
+
     def test_more_than_300_files_with_the_changelog_last_allows(self):
         files = [f"src/file{i}.ts" for i in range(320)] + [CHANGELOG]
         responses = gh_responses("alex", "x", files, ["fix: big"])
@@ -297,13 +312,13 @@ class TestGhCalls(unittest.TestCase):
 
     def test_numbered_merge_views_then_lists_files_over_rest(self):
         argv = self.gh_argv("gh pr merge 42")
-        self.assertEqual(argv[0], ["gh", "pr", "view", "42", "--json", "number,author,body,files,commits"])
+        self.assertEqual(argv[0], ["gh", "pr", "view", "42", "--json", "number,url,author,body,files,commits"])
         self.assertEqual(argv[1][:4], REST_VIEW_ARGV)
         self.assertEqual(len(argv), 2)
 
     def test_current_branch_merge_lists_files_for_the_number_gh_pr_view_returned(self):
         argv = self.gh_argv("gh pr merge --squash")
-        self.assertEqual(argv[0], ["gh", "pr", "view", "--json", "number,author,body,files,commits"])
+        self.assertEqual(argv[0], ["gh", "pr", "view", "--json", "number,url,author,body,files,commits"])
         self.assertEqual(argv[1][:4], REST_VIEW_ARGV)
 
     def test_rest_failure_with_100_view_files_calls_gh_pr_diff(self):

@@ -22,8 +22,9 @@ literal and is not matched. That is a policy violation, not a hook gap.
 
 `changed_files` is the file list all four merge hooks gate on.
 `gh pr view --json files` stops at a PR's first 100 files (#5172), so the
-list comes from the paginated REST endpoint instead: exact names, up to the
-3000 files GitHub returns, no diff-size limit. It is merged with the view's
+list comes from the paginated REST endpoint instead (for the repo in `gh pr
+view`'s `url`, else 2anki/2anki.net): exact names, up to the 3000 files GitHub
+returns, no diff-size limit. It is merged with the view's
 files, so it never holds less than the view did; when the REST call fails
 the view's files are returned and each hook falls back to what it checked
 before.
@@ -87,6 +88,7 @@ def extract_pr_ref(cmd):
 
 
 CANONICAL_REPO = "2anki/2anki.net"
+PR_REPO_URL = re.compile(r"^https://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)/pull/(\d+)$")
 REST_FILES_TIMEOUT_SECONDS = 20
 REST_FILES_JQ = ".[] | [.filename, .status, .additions, .deletions] | @json"
 REST_STATUS_TO_CHANGE_TYPE = {
@@ -110,10 +112,18 @@ def pr_number(pr_data, pr_ref):
     return None
 
 
-def rest_files_args(number):
+def pr_repo(pr_data, number):
+    url = pr_data.get("url")
+    match = PR_REPO_URL.match(url) if isinstance(url, str) else None
+    if match is None or match.group(3) != number or ".." in match.group(1) + match.group(2):
+        return CANONICAL_REPO
+    return f"{match.group(1)}/{match.group(2)}"
+
+
+def rest_files_args(repo, number):
     return [
         "gh", "api", "--paginate",
-        f"repos/{CANONICAL_REPO}/pulls/{number}/files?per_page=100",
+        f"repos/{repo}/pulls/{number}/files?per_page=100",
         "--jq", REST_FILES_JQ,
     ]
 
@@ -131,10 +141,10 @@ def parse_rest_line(line):
     }
 
 
-def fetch_rest_files(number, tag):
+def fetch_rest_files(repo, number, tag):
     try:
         result = subprocess.run(
-            rest_files_args(number),
+            rest_files_args(repo, number),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -151,7 +161,7 @@ def fetch_rest_files(number, tag):
         )
         return None
     try:
-        return [parse_rest_line(line) for line in result.stdout.splitlines() if line.strip()]
+        return [parse_rest_line(line) for line in result.stdout.split("\n") if line.strip()]
     except ValueError:
         sys.stderr.write(f"{tag} could not parse the REST file list; using gh pr view's.\n")
         return None
@@ -168,7 +178,7 @@ def changed_files(pr_data, pr_ref, tag):
     """(files, complete): every changed file, or gh pr view's files and False when REST fails."""
     viewed = view_files(pr_data)
     number = pr_number(pr_data, pr_ref)
-    listed = fetch_rest_files(number, tag) if number is not None else None
+    listed = fetch_rest_files(pr_repo(pr_data, number), number, tag) if number is not None else None
     if listed is None:
         return viewed, False
     listed_paths = {entry["path"] for entry in listed}

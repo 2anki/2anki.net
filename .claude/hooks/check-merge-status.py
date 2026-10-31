@@ -156,7 +156,7 @@ def pr_args(pr_ref):
 def fetch_pr_data(pr_ref):
     stdout = run_gh(
         ["gh", "pr", "view", *pr_args(pr_ref), "--json",
-         "number,title,headRefOid,headRefName,body,author,files,commits,statusCheckRollup,reviews,comments"],
+         "number,url,title,headRefOid,headRefName,body,author,files,commits,statusCheckRollup,reviews,comments"],
         "pr view",
     )
     if stdout is None:

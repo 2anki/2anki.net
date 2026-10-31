@@ -45,7 +45,7 @@ def fetch_pr_data(pr_ref):
     args = ["gh", "pr", "view"]
     if pr_ref is not None:
         args.append(pr_ref)
-    args.extend(["--json", "number,author,body,files"])
+    args.extend(["--json", "number,url,author,body,files"])
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=15)
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:

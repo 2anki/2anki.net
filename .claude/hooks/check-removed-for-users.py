@@ -156,7 +156,7 @@ def gh_args(subcommand, pr_ref, extra):
 
 
 def fetch_pr_data(pr_ref):
-    stdout = run_gh(gh_args("view", pr_ref, ["--json", "number,author,body,files"]), "this gate")
+    stdout = run_gh(gh_args("view", pr_ref, ["--json", "number,url,author,body,files"]), "this gate")
     if stdout is None:
         return None
     try:

@@ -518,6 +518,18 @@ class MainWiringTest(unittest.TestCase):
         self.run_main(pr, command="gh pr merge --squash")
         self.assertIn("repos/2anki/2anki.net/pulls/5172/files?per_page=100", self.rest_calls[0])
 
+    def test_a_rest_api_merge_lists_files_past_the_first_100_for_its_number(self):
+        pr = {**self.pr("## What\nx"), "files": files(*DOCS, "src/usecases/x.ts")}
+        _, output = self.run_main(pr, command="gh api -X PUT repos/2anki/2anki.net/pulls/1/merge")
+        self.assertIn("Who else this reaches", output["hookSpecificOutput"]["permissionDecisionReason"])
+        self.assertIn("repos/2anki/2anki.net/pulls/1/files?per_page=100", self.rest_calls[0])
+
+    def test_lists_files_from_the_repo_in_the_pr_url(self):
+        pr = {**self.pr(REACH_TABLE), "url": "https://github.com/2anki/2anki.net/pull/1"}
+        args, _ = self.run_main(pr)
+        self.assertIn("url", args[args.index("--json") + 1].split(","))
+        self.assertIn("repos/2anki/2anki.net/pulls/1/files?per_page=100", self.rest_calls[0])
+
     def test_a_rest_failure_still_gates_source_in_the_first_100_files(self):
         pr = {**self.pr("## What\nx"), "files": files("src/usecases/x.ts", *DOCS)}
         _, output = self.run_main(pr, rest_result=REST_FAILURE)
