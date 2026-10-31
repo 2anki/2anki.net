@@ -965,6 +965,21 @@ exports[`what each population gets back from the Day Pass AI preview resume > Da
 }
 `;
 
+exports[`what each population gets back from the Day Pass AI preview resume > Day Pass holder resuming while the pass balance cannot be read 1`] = `
+{
+  "body": {
+    "code": "ai_credits_exhausted",
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "heldObjectsLeft": 1,
+  "heldPreviewsLeft": 1,
+  "status": 402,
+  "storedObjects": [],
+}
+`;
+
 exports[`what each population gets back from the Day Pass AI preview resume > Day Pass holder resuming with the AI credits spent 1`] = `
 {
   "body": {

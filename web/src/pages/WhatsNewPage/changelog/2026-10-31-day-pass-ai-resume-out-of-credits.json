@@ -2,5 +2,5 @@
   "id": "2026-10-31-day-pass-ai-resume-out-of-credits",
   "date": "2026-10-31",
   "type": "fix",
-  "title": "A Day Pass with no AI credits left says to sign in for a top-up instead of handing back a deck built without AI"
+  "title": "Finishing a Day Pass AI preview with no AI credits left asks you to sign in for a top-up instead of building without AI"
 }

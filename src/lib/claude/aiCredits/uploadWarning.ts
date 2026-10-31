@@ -1,3 +1,4 @@
+import type { ConversionEngine } from '../../parser/conversionEngine';
 import { CreditWindowReset } from './allowance';
 
 export const AI_CREDITS_EXHAUSTED_WARNING_CODE = 'ai-credits-exhausted';
@@ -36,4 +37,30 @@ export function includesAiCreditsWarning(
     return false;
   }
   return warnings.includes(AI_CREDITS_EXHAUSTED_WARNING_CODE);
+}
+
+// With no account, only a Day Pass reaches AI, and that pass cannot hold a
+// top-up until its holder signs in.
+export async function aiCreditsWarningAudience(
+  warnings: string[] | undefined,
+  userId: number | null,
+  readResets: (userId: number) => Promise<CreditWindowReset | null>
+): Promise<AiCreditsWarningAudience | null> {
+  if (!includesAiCreditsWarning(warnings)) {
+    return null;
+  }
+  if (userId == null) {
+    return 'signed-out-pass';
+  }
+  return readResets(userId);
+}
+
+export function builtWithoutAiOnSpentCredits(
+  warnings: string[] | undefined,
+  engines: (ConversionEngine | undefined)[]
+): boolean {
+  return (
+    includesAiCreditsWarning(warnings) &&
+    !engines.some((engine) => engine === 'claude')
+  );
 }

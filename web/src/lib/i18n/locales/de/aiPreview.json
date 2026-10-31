@@ -22,7 +22,7 @@
   "choicePrivacy": "Datenschutzerklärung",
   "unavailableNotice": "Die KI-Vorschau ist gerade nicht verfügbar, daher hier Karten aus der Struktur deiner Datei. Versuch es später erneut mit KI oder behalte diesen Stapel.",
   "resumeActiveDropAgain": "Dein Day Pass ist aktiv. Leg deine Datei erneut ab, um alle Karten zu erhalten.",
-  "resumeOutOfCredits": "Dein Day Pass hat keine KI-Credits mehr. Melde dich an, um Credits nachzukaufen, und zieh deine Datei dann erneut hierher.",
+  "resumeOutOfCredits": "Dein Day Pass hat keine KI-Credits mehr. Melde dich an, um eine Aufladung zu kaufen, und leg deine Datei dann erneut ab.",
   "resumeEmpty": "Wir konnten in dieser Datei keine Karten finden. Probier eine andere Datei oder schreib an support@2anki.net.",
   "resumeError": "Beim Fertigstellen deines KI-Stapels ist etwas schiefgelaufen. Schreib an support@2anki.net, wir kümmern uns darum."
 }

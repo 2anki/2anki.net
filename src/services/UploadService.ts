@@ -151,8 +151,11 @@ import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
   AiCreditsWarningAudience,
   aiCreditsExhaustedWarningText,
+  aiCreditsWarningAudience,
+  builtWithoutAiOnSpentCredits,
   includesAiCreditsWarning,
 } from '../lib/claude/aiCredits/uploadWarning';
+import { CreditWindowReset } from '../lib/claude/aiCredits/allowance';
 import {
   AiCreditsExhaustedError,
   getAiBudgetStatus,
@@ -286,19 +289,10 @@ function aiCreditsWarningText(
 // The exhausted copy promises a reset only when one is real. Pass holders
 // (`resets: 'pass'`) have `isPaying` true but no reset inside the pass window,
 // so the word chosen must come from the credit window's reset type, read from
-// the same balance the guard uses, not from whether the user is paying. With
-// no account, only a Day Pass reaches AI, and that pass cannot hold a top-up
-// until its holder signs in.
-async function aiCreditsWarningAudience(
-  warnings: string[] | undefined,
-  userId: number | null
-): Promise<AiCreditsWarningAudience | null> {
-  if (!includesAiCreditsWarning(warnings)) {
-    return null;
-  }
-  if (userId == null) {
-    return 'signed-out-pass';
-  }
+// the same balance the guard uses, not from whether the user is paying.
+async function readCreditWindowReset(
+  userId: number
+): Promise<CreditWindowReset | null> {
   const status = await getAiBudgetStatus(userId);
   return status.balance?.resets ?? null;
 }
@@ -2179,7 +2173,11 @@ class UploadService {
       }
       const warningText = resolveUploadWarning(
         syncWarnings,
-        await aiCreditsWarningAudience(syncWarnings, syncOwnerId)
+        await aiCreditsWarningAudience(
+          syncWarnings,
+          syncOwnerId,
+          readCreditWindowReset
+        )
       );
       if (warningText) {
         res.set('X-Warning', latin1HeaderValue(warningText));
@@ -2253,7 +2251,8 @@ class UploadService {
     }
     const batchWarningAudience = await aiCreditsWarningAudience(
       warnings,
-      syncOwnerIdOrNull
+      syncOwnerIdOrNull,
+      readCreditWindowReset
     );
     return res
       .status(200)
@@ -2557,7 +2556,9 @@ class UploadService {
   // no-account cap does not apply; anonymousPassId threads through so the credit
   // guard meters the call against the pass and fails closed on an exhausted one.
   // The visitor paid for the AI deck, so a deck the conversion built without AI
-  // on spent credits is refused rather than shipped, and the hold stays.
+  // on spent credits is refused rather than shipped, and the hold stays. A run
+  // the guard stopped after some AI cards were made still ships them: those
+  // credits are spent, and a retry could only build without AI.
   async convertStoredFileWithAiForPass(
     anonymousPassId: number,
     file: UploadedFile,
@@ -2575,9 +2576,16 @@ class UploadService {
       null,
       { requestId, anonymousPassId }
     );
-    if (includesAiCreditsWarning(warnings)) {
+    if (
+      builtWithoutAiOnSpentCredits(
+        warnings,
+        packages.map((p) => p.engine)
+      )
+    ) {
       console.info('[ai-preview] resume refused: pass AI credits spent', {
         requestId,
+        anonymousPassId,
+        stage: 'conversion',
       });
       throw new AiCreditsExhaustedError();
     }

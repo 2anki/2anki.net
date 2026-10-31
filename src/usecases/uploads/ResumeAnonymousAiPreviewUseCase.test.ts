@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import { InMemoryAnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import { previewHoldKey } from '../../lib/upload/anonymousAiPreview';
+import { AiCreditsExhaustedError } from '../../lib/claude/aiSpendGuard';
 import {
   AiPreviewHoldExpiredError,
   NoAiPreviewHoldError,
@@ -10,6 +11,7 @@ import {
   type CheckoutBindingReader,
   type CheckoutPreviewBinding,
   type HeldFileStore,
+  type PassCreditCheck,
 } from './ResumeAnonymousAiPreviewUseCase';
 
 function seedPreviewHold(
@@ -73,6 +75,10 @@ function bindingReader(
 
 const AI_PREVIEW: CheckoutPreviewBinding['surface'] = 'ai-preview';
 
+const passWithCredits: PassCreditCheck = {
+  isExhausted: async () => false,
+};
+
 describe('ResumeAnonymousAiPreviewUseCase', () => {
   it('converts the hold the pass was bought for, metered against the pass, then consumes it', async () => {
     const repo = new InMemoryHeldDeckRepository();
@@ -86,7 +92,10 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       store,
       converter,
       passes,
-      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
+      bindingReader({
+        cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW },
+      }),
+      passWithCredits
     );
 
     const result = await useCase.execute({
@@ -121,7 +130,8 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       passes,
       bindingReader({
         cs_limitwall: { anonId: 'visitor-1', surface: 'anonymous-limit-wall' },
-      })
+      }),
+      passWithCredits
     );
 
     await expect(
@@ -148,7 +158,8 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       passes,
       bindingReader({
         cs_attacker: { anonId: 'attacker', surface: AI_PREVIEW },
-      })
+      }),
+      passWithCredits
     );
 
     await expect(
@@ -175,7 +186,8 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       store,
       converter,
       passes,
-      bindingReader({ cs_a: { anonId: 'buyer-a', surface: AI_PREVIEW } })
+      bindingReader({ cs_a: { anonId: 'buyer-a', surface: AI_PREVIEW } }),
+      passWithCredits
     );
 
     await useCase.execute({
@@ -200,7 +212,10 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       fakeStore(Buffer.from('bytes')),
       fakeConverter(),
       passes,
-      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
+      bindingReader({
+        cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW },
+      }),
+      passWithCredits
     );
 
     await useCase.execute({
@@ -238,7 +253,10 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       fakeStore(Buffer.from('bytes')),
       converter,
       passes,
-      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
+      bindingReader({
+        cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW },
+      }),
+      passWithCredits
     );
 
     const first = useCase.execute({
@@ -256,6 +274,38 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
     release();
     await first;
     expect(converter.convertStoredFileWithAiForPass).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a spent pass before converting, leaving the hold unclaimed', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    const hold = await seedPreviewHold(repo, 'visitor-1');
+    const passes = new InMemoryAnonymousPassRepository();
+    const passId = await seedPass(passes, 'cs_buyer1');
+    const converter = fakeConverter();
+    const isExhausted = vi.fn().mockResolvedValue(true);
+    const store = fakeStore(Buffer.from('bytes'));
+    const useCase = new ResumeAnonymousAiPreviewUseCase(
+      repo,
+      store,
+      converter,
+      passes,
+      bindingReader({
+        cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW },
+      }),
+      { isExhausted }
+    );
+
+    await expect(
+      useCase.execute({
+        anonymousPassId: passId,
+        anonId: 'visitor-1',
+        requestId: 'r',
+      })
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    expect(isExhausted).toHaveBeenCalledWith(passId);
+    expect(converter.convertStoredFileWithAiForPass).not.toHaveBeenCalled();
+    expect(store.delete).not.toHaveBeenCalled();
+    expect(repo.rows.find((r) => r.id === hold.id)?.claimed_at).toBeNull();
   });
 
   it('releases the claim when conversion fails so the visitor can retry', async () => {
@@ -276,7 +326,10 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       fakeStore(Buffer.from('bytes')),
       converter,
       passes,
-      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
+      bindingReader({
+        cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW },
+      }),
+      passWithCredits
     );
 
     await expect(
@@ -306,7 +359,8 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       fakeStore(Buffer.from('x')),
       converter,
       passes,
-      bindingReader({})
+      bindingReader({}),
+      passWithCredits
     );
 
     await expect(
@@ -337,7 +391,10 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       fakeStore(Buffer.from('x')),
       converter,
       passes,
-      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
+      bindingReader({
+        cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW },
+      }),
+      passWithCredits
     );
     await expect(
       useCase.execute({
@@ -361,7 +418,10 @@ describe('ResumeAnonymousAiPreviewUseCase', () => {
       store,
       converter,
       passes,
-      bindingReader({ cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW } })
+      bindingReader({
+        cs_buyer1: { anonId: 'visitor-1', surface: AI_PREVIEW },
+      }),
+      passWithCredits
     );
 
     await expect(

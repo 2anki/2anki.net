@@ -57,6 +57,7 @@ import { getStripe } from '../lib/integrations/stripe';
 import { ThinDeckAiPreviewController } from '../controllers/Upload/ThinDeckAiPreviewController';
 import { SampleUploadController } from '../controllers/Upload/SampleUploadController';
 import { ConvertSampleDeckUseCase } from '../usecases/uploads/ConvertSampleDeckUseCase';
+import { getAiBudgetStatus } from '../lib/claude/aiSpendGuard';
 
 const UploadRouter = () => {
   const router = express.Router();
@@ -119,7 +120,11 @@ const UploadRouter = () => {
       new StorageHandler(),
       uploadService,
       new AnonymousPassRepository(database),
-      readCheckoutBinding
+      readCheckoutBinding,
+      {
+        isExhausted: async (anonymousPassId) =>
+          (await getAiBudgetStatus({ anonymousPassId })).exhausted,
+      }
     )
   );
   const heldDeckPassClaimController = new HeldDeckPassClaimController(
@@ -349,6 +354,10 @@ const UploadRouter = () => {
    *     responses:
    *       200:
    *         description: Full AI deck built from the stored source
+   *       400:
+   *         description: The held source file produced no cards
+   *       402:
+   *         description: The pass has no AI credits left; the held source file is kept
    *       403:
    *         description: No valid pass on the request
    *       404:

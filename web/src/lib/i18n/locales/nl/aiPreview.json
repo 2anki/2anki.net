@@ -22,7 +22,7 @@
   "choicePrivacy": "Privacybeleid",
   "unavailableNotice": "Het AI-voorbeeld is nu niet beschikbaar, dus hier zijn kaarten op basis van de structuur van je bestand. Probeer AI later opnieuw of behoud dit pakket.",
   "resumeActiveDropAgain": "Je Day Pass is actief. Zet je bestand opnieuw neer om alle kaarten te krijgen.",
-  "resumeOutOfCredits": "Je Day Pass heeft geen AI-credits meer. Log in om credits bij te kopen en sleep je bestand daarna opnieuw hierheen.",
+  "resumeOutOfCredits": "Je Day Pass heeft geen AI-credits meer. Log in om bij te vullen en zet je bestand daarna opnieuw neer.",
   "resumeEmpty": "We vonden geen kaarten in dat bestand. Probeer een ander bestand of mail naar support@2anki.net.",
   "resumeError": "Er ging iets mis bij het afmaken van je AI-pakket. Mail naar support@2anki.net en we lossen het op."
 }

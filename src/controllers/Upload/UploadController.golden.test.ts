@@ -34,7 +34,7 @@ vi.mock('@aws-sdk/client-s3', async (importActual) => {
   return { ...actual, S3Client: RecordingS3Client };
 });
 
-const passCredits = vi.hoisted(() => ({ spentUsd: 0 }));
+const passCredits = vi.hoisted(() => ({ spentUsd: 0, readFails: false }));
 
 vi.mock(
   '../../data_layer/createAnonymousPassCreditReaders',
@@ -48,7 +48,10 @@ vi.mock(
         ...args: Parameters<typeof actual.createAnonymousPassCreditReaders>
       ) => ({
         ...actual.createAnonymousPassCreditReaders(...args),
-        passCostSince: () => Promise.resolve(passCredits.spentUsd),
+        passCostSince: () =>
+          passCredits.readFails
+            ? Promise.reject(new Error('golden: pass spend read failed'))
+            : Promise.resolve(passCredits.spentUsd),
       }),
     };
   }
@@ -233,6 +236,7 @@ import { AiPreviewResumeController } from './AiPreviewResumeController';
 import { ResumeAnonymousAiPreviewUseCase } from '../../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
 import { getCheckoutSessionBinding } from '../../usecases/checkout/getCheckoutSessionBinding';
 import StorageHandler from '../../lib/storage/StorageHandler';
+import { getAiBudgetStatus } from '../../lib/claude/aiSpendGuard';
 
 const SMALL_DECK_CARDS = 5;
 const LARGE_DECK_CARDS = 120;
@@ -275,6 +279,11 @@ const UPLOADS = {
     body: notionToggleExport('Golden Large', LARGE_DECK_CARDS),
     type: 'text/html',
   },
+  prose: {
+    filename: 'Golden Prose.txt',
+    body: 'Osmosis moves water across a membrane toward the side with more solute, and it keeps going until both sides balance.',
+    type: 'text/plain',
+  },
   photo: {
     filename: 'Golden Photo.png',
     body: ONE_PIXEL_PNG,
@@ -294,6 +303,8 @@ interface Population {
   realAuth?: boolean;
   mintsAnonId?: boolean;
   passSpentUsd?: number;
+  passCreditsReadFails?: boolean;
+  alsoUploads?: keyof typeof UPLOADS;
 }
 
 const signedOut: Population = {
@@ -992,7 +1003,11 @@ function goldenResumeController(): AiPreviewResumeController {
       new StorageHandler(),
       goldenService(),
       new AnonymousPassRepository(getDatabase()),
-      (sessionId) => getCheckoutSessionBinding(stubStripe, sessionId)
+      (sessionId) => getCheckoutSessionBinding(stubStripe, sessionId),
+      {
+        isExhausted: async (anonymousPassId) =>
+          (await getAiBudgetStatus({ anonymousPassId })).exhausted,
+      }
     )
   );
 }
@@ -1062,6 +1077,7 @@ afterEach(() => {
   heldDecks = new InMemoryHeldDeckRepository();
   checkoutMetadata.clear();
   passCredits.spentUsd = 0;
+  passCredits.readFails = false;
   s3Objects.clear();
   s3Puts.length = 0;
   cardUsageCharges.length = 0;
@@ -1071,6 +1087,7 @@ afterEach(() => {
 async function upload(file: keyof typeof UPLOADS, who: Population) {
   population = who;
   passCredits.spentUsd = who.passSpentUsd ?? 0;
+  passCredits.readFails = who.passCreditsReadFails === true;
   __setFeatureFlagDependencies({ repository: inMemoryFlags(who.flags) });
   Object.assign(claudeReplies, CLAUDE_REPLIES, {
     preview: who.previewReply ?? CLAUDE_REPLIES.preview,
@@ -1084,6 +1101,14 @@ async function upload(file: keyof typeof UPLOADS, who: Population) {
     new Blob([UPLOADS[file].body], { type: UPLOADS[file].type }),
     UPLOADS[file].filename
   );
+  if (who.alsoUploads != null) {
+    const second = UPLOADS[who.alsoUploads];
+    form.append(
+      'pakker',
+      new Blob([second.body], { type: second.type }),
+      second.filename
+    );
+  }
   const cookie = Object.entries(who.cookies)
     .map(([name, value]) => `${name}=${value}`)
     .join('; ');
@@ -1229,6 +1254,32 @@ describe('what each population gets back from an AI upload', () => {
     },
     20_000
   );
+
+  it('tells a signed-out pass holder to sign in for a top-up on a two-file batch', async () => {
+    const batch = await upload('small', {
+      ...signedOut,
+      locals: {
+        subscriber: true,
+        passKind: '24h',
+        anonymousPassId: LOCALS_PASS_ID,
+      },
+      headers: { 'x-pass-token': 'golden-pass-token' },
+      fields: AI_ON,
+      passSpentUsd: 1000,
+      alsoUploads: 'large',
+    });
+
+    expect(batch).toMatchObject({
+      status: 200,
+      body: {
+        kind: 'batch',
+        deckCount: 2,
+        warning:
+          "You're out of AI credits, so this deck was built without AI. Sign in to add a one-time top-up for several more decks.",
+        warningCode: 'ai-credits-exhausted',
+      },
+    });
+  }, 20_000);
 });
 
 describe('what each population gets back from a photo upload', () => {
@@ -1267,6 +1318,7 @@ interface ResumeCase {
   previewedFirst: boolean;
   boughtOnAnonId: string;
   who: Population;
+  previewed?: keyof typeof UPLOADS;
 }
 
 const resumeCases: [string, ResumeCase][] = [
@@ -1318,11 +1370,20 @@ const resumeCases: [string, ResumeCase][] = [
       who: { ...dayPassHolderOnThisBrowser, passSpentUsd: 1000 },
     },
   ],
+  [
+    'Day Pass holder resuming while the pass balance cannot be read',
+    {
+      previewedFirst: true,
+      boughtOnAnonId: 'golden-anon',
+      who: { ...dayPassHolderOnThisBrowser, passCreditsReadFails: true },
+    },
+  ],
 ];
 
 async function resumeAiPreview(who: Population) {
   population = who;
   passCredits.spentUsd = who.passSpentUsd ?? 0;
+  passCredits.readFails = who.passCreditsReadFails === true;
   __setFeatureFlagDependencies({ repository: inMemoryFlags(who.flags) });
   Object.assign(claudeReplies, CLAUDE_REPLIES);
   s3Puts.length = 0;
@@ -1352,13 +1413,14 @@ async function previewThenResume({
   previewedFirst,
   boughtOnAnonId,
   who,
+  previewed = 'small',
 }: ResumeCase) {
   checkoutMetadata.set(PASS_SESSION_ID, {
     anon_id: boughtOnAnonId,
     surface: 'ai-preview',
   });
   if (previewedFirst) {
-    const preview = await upload('small', AI_PREVIEW_VISITOR);
+    const preview = await upload(previewed, AI_PREVIEW_VISITOR);
     expect(preview.status).toBe(200);
   }
   return resumeAiPreview(who);
@@ -1399,5 +1461,21 @@ describe('what each population gets back from the Day Pass AI preview resume', (
     const retried = await resumeAiPreview(dayPassHolderOnThisBrowser);
     expect(retried.status).toBe(200);
     expect(retried.heldPreviewsLeft).toBe(0);
+  }, 20_000);
+
+  it('answers spent credits, not an empty deck, when the parser finds no cards in the held file', async () => {
+    const spent = await previewThenResume({
+      previewedFirst: true,
+      boughtOnAnonId: 'golden-anon',
+      who: { ...dayPassHolderOnThisBrowser, passSpentUsd: 1000 },
+      previewed: 'prose',
+    });
+
+    expect(spent).toMatchObject({
+      status: 402,
+      body: { code: 'ai_credits_exhausted' },
+      heldPreviewsLeft: 1,
+      heldObjectsLeft: 1,
+    });
   }, 20_000);
 });
