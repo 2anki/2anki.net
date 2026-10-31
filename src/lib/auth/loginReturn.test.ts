@@ -5,6 +5,7 @@ import {
   LOGIN_RETURN_COOKIE,
   LOGIN_RETURN_MAX_AGE_MS,
   asLoginReturn,
+  logLoginReturnUsed,
   rememberLoginReturn,
   takeLoginReturn,
 } from './loginReturn';
@@ -25,6 +26,10 @@ function loginRequest(
 ): Request {
   return { query: { redirect }, cookies } as unknown as Request;
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('asLoginReturn', () => {
   it.each([
@@ -49,6 +54,8 @@ describe('asLoginReturn', () => {
     '/api/download/u/../../etc',
     '',
     `/pricing?ref=${'a'.repeat(3000)}`,
+    '/mcp/authorize?client_id=c1&state=s1',
+    `/mcp/authorize?state=${'界'.repeat(1000)}`,
   ])('refuses %s', (input) => {
     expect(asLoginReturn(input)).toBeUndefined();
   });
@@ -117,6 +124,20 @@ describe('rememberLoginReturn', () => {
   });
 });
 
+describe('logLoginReturnUsed', () => {
+  it('logs the sign-in method and the section, never the full path', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    logLoginReturnUsed('/api/download/u/secret-key', 'google');
+
+    expect(info).toHaveBeenCalledWith(
+      '[login-return] used via=google section=api'
+    );
+    expect(JSON.stringify(info.mock.calls)).not.toContain('secret-key');
+    info.mockRestore();
+  });
+});
+
 describe('takeLoginReturn', () => {
   it('returns the remembered path and clears the cookie', () => {
     const res = fakeRes();
@@ -133,18 +154,15 @@ describe('takeLoginReturn', () => {
     );
   });
 
-  it('logs the section it returns to, never the full path', () => {
+  it('does not log by itself, since another return may still win', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     takeLoginReturn(
-      loginRequest(undefined, {
-        [LOGIN_RETURN_COOKIE]: '/api/download/u/secret-key',
-      }),
+      loginRequest(undefined, { [LOGIN_RETURN_COOKIE]: '/pricing' }),
       fakeRes()
     );
 
-    expect(info).toHaveBeenCalledWith('[login-return] used section=api');
-    expect(JSON.stringify(info.mock.calls)).not.toContain('secret-key');
+    expect(info).not.toHaveBeenCalled();
     info.mockRestore();
   });
 

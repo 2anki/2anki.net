@@ -4159,6 +4159,34 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       }
     );
 
+    it('GET /login for a connector authorize leaves it to the connector cookie', async () => {
+      const res = await signedOutLoginPage(AUTHORIZE_URL);
+
+      expect(loginReturnCookies(res)).toEqual([]);
+    });
+
+    it('a Google sign-in with a foreign return cookie and no Notion page lands on /upload', async () => {
+      MockedNotionRepo.prototype.getNotionData = vi
+        .fn()
+        .mockResolvedValue(null);
+      const res = buildSigninRes();
+
+      await buildSigninController().loginWithGoogle(
+        {
+          query: { code: 'gauth-code' },
+          cookies: { [LOGIN_RETURN]: '//evil.com/pricing' },
+          headers: {},
+        } as unknown as express.Request,
+        res
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith('/upload');
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        LOGIN_RETURN,
+        expect.anything()
+      );
+    });
+
     const providerCallbacks: [
       string,
       (
@@ -4229,6 +4257,34 @@ describe('UsersController — sign-in returns a connector to the authorize scree
           LOGIN_RETURN,
           expect.objectContaining({ path: '/' })
         );
+      }
+    );
+
+    it.each([
+      ['google', providerCallbacks[0][1]],
+      ['microsoft', providerCallbacks[1][1]],
+      ['apple', providerCallbacks[2][1]],
+      ['notion', providerCallbacks[3][1]],
+    ] as const)(
+      'a %s sign-in the login return steers logs one line naming it',
+      async (via, signIn) => {
+        const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+        try {
+          await signIn(buildSigninRes(), { [LOGIN_RETURN]: PRICING });
+          await signIn(buildSigninRes(), {
+            [RETURN_COOKIE]: AUTHORIZE_URL,
+            [LOGIN_RETURN]: PRICING,
+          });
+
+          const lines = info.mock.calls.filter(([line]) =>
+            String(line).startsWith('[login-return]')
+          );
+          expect(lines).toEqual([
+            [`[login-return] used via=${via} section=pricing`],
+          ]);
+        } finally {
+          info.mockRestore();
+        }
       }
     );
 
@@ -4303,19 +4359,28 @@ describe('UsersController — sign-in returns a connector to the authorize scree
     });
 
     it('password login with an explicit redirect still wins and clears the login return', async () => {
-      const res = await passwordLogin({
-        query: { redirect: '/downloads' },
-        cookies: { [LOGIN_RETURN]: PRICING },
-      });
+      const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+      try {
+        const res = await passwordLogin({
+          query: { redirect: '/downloads' },
+          cookies: { [LOGIN_RETURN]: PRICING },
+        });
 
-      expect(res.json).toHaveBeenCalledWith({
-        token: 'session-jwt',
-        redirect: '/downloads',
-      });
-      expect(res.clearCookie).toHaveBeenCalledWith(
-        LOGIN_RETURN,
-        expect.anything()
-      );
+        expect(res.json).toHaveBeenCalledWith({
+          token: 'session-jwt',
+          redirect: '/downloads',
+        });
+        expect(res.clearCookie).toHaveBeenCalledWith(
+          LOGIN_RETURN,
+          expect.anything()
+        );
+        const loginReturnLines = info.mock.calls.filter(([line]) =>
+          String(line).startsWith('[login-return]')
+        );
+        expect(loginReturnLines).toEqual([]);
+      } finally {
+        info.mockRestore();
+      }
     });
   });
 });

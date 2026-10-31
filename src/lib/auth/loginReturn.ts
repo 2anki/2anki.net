@@ -1,5 +1,6 @@
 import type { CookieOptions, Request, Response } from 'express';
 import { resolveRedirect } from '../../controllers/helpers/getRedirect';
+import { MCP_AUTHORIZE_PATH } from '../mcp/loginReturn';
 
 export const LOGIN_RETURN_COOKIE = 'login_return';
 export const LOGIN_RETURN_MAX_AGE_MS = 10 * 60 * 1000;
@@ -32,7 +33,12 @@ export function asLoginReturn(value: unknown): string | undefined {
     return undefined;
   }
   const resolved = resolveRedirect(value);
-  if (resolved == null || !isSameOriginPath(resolved)) {
+  if (
+    resolved == null ||
+    !isSameOriginPath(resolved) ||
+    resolved.startsWith(MCP_AUTHORIZE_PATH) ||
+    encodeURIComponent(resolved).length > MAX_REMEMBERED_LENGTH
+  ) {
     return undefined;
   }
   return resolved;
@@ -66,13 +72,13 @@ export function takeLoginReturn(
   }
   const cookies = req.cookies as Record<string, unknown>;
   res.clearCookie(LOGIN_RETURN_COOKIE, cookieOptions());
-  const safe = asLoginReturn(cookies[LOGIN_RETURN_COOKIE]);
-  if (safe != null) {
-    console.info(`[login-return] used section=${sectionOf(safe)}`);
-  }
-  return safe;
+  return asLoginReturn(cookies[LOGIN_RETURN_COOKIE]);
 }
 
 function sectionOf(path: string): string {
   return path.slice(1).split(/[/?#]/, 1)[0];
+}
+
+export function logLoginReturnUsed(path: string, via: string): void {
+  console.info(`[login-return] used via=${via} section=${sectionOf(path)}`);
 }
