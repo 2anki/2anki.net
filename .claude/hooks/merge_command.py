@@ -21,8 +21,10 @@ mergeable` and commit bodies with a URL. The rules match words, not shell
 syntax, so there is no wrapper list to keep complete (`trap`, `python -c`,
 `git -c alias` are caught by position-free matching); in exchange they deny a
 few harmless commands, such as `gh pr create --body "$(cat f.md)"`.
-Backslash-newlines are removed first; each rule then runs on that command and
-again with quotes and backslashes removed, so `"g"h pr "mer"ge` counts:
+Backslash-newlines are removed first. Most rules then read that command and
+again with quotes and backslashes removed, so `"g"h pr "mer"ge` counts; the
+`$'` rule reads only the command, and the escape rule reads it with only
+quotes removed, since stripping backslashes would erase the escape:
 
 - `gh` as a word (a path ending in `/gh` counts) and `merge` as a whole word,
   anywhere. `merged`, `mergeable`, `mergeStateStatus` and `merge-base` are not
@@ -202,7 +204,7 @@ MERGE_RULES = (
     (
         has_ansi_c_quote,
         "it contains `$'` (an ANSI-C quote, or a `$` just before a single quote)",
-        "write the value without `$'`: use a plain quoted string",
+        "drop the `$` before the quote; for a regex end anchor use a fixed match such as `grep -vx main`",
     ),
     (
         is_built_at_run_time,

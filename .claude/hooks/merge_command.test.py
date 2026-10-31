@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import importlib.util
 import json
+import glob
 import os
 import re
 import subprocess
@@ -256,6 +257,11 @@ class TestDetection(unittest.TestCase):
             self.assertFalse(mc.is_gh_pr_merge(cmd), cmd)
 
 
+COMMAND_START = re.compile(r"^\s*(?:gh|git|pnpm|npx|cd|curl|ssh|scp|python3|for|\[|[A-Z][A-Z0-9_]*=)\b")
+DOCUMENTED_DENIED_EXAMPLES = (
+    'gh pr create --body "$(cat f.md)"',
+    'gh pr view "$B"',
+)
 MERGE_HOOKS = (
     "check-merge-status.py",
     "check-browser-attestation.py",
@@ -514,7 +520,7 @@ class TestAllowedMerge(unittest.TestCase):
             ("gh api repos/a/b/pulls/1/files", "`pulls/` path with `gh api`", "gh pr view --json"),
             ('git merge "$tip"', "the word `merge` with a `$`", "write the value literally"),
             ('gh pr create --body "$(cat f.md)"', "`$(`", "--body-file"),
-            ("IFS=$'\\n' read -r x", "ANSI-C quote", "plain quoted string"),
+            ("IFS=$'\\n' read -r x", "ANSI-C quote", "grep -vx main"),
             ("printf '\\x67\\x68 pr' | sh", "character escape", "write the characters literally"),
             ("gh pr me$x 1", "a `$` or a backtick after `gh`", "write values literally"),
             ("$G pr view 1", "`pr` or `api` after a `$`", "program name and values literally"),
@@ -541,33 +547,42 @@ class TestAllowedMerge(unittest.TestCase):
             else:
                 self.assertFalse(mc.is_gh_pr_merge(line), line)
 
-    def test_every_command_block_in_the_changed_docs_is_left_alone(self):
-        for name in (
-            "commands/ship.md",
-            "commands/deploy-status.md",
-            "commands/cleanup.md",
-            "commands/review-pr.md",
-            "commands/overnight-prs.md",
-            "commands/pr-visual-diff.md",
-            "docs/follow-ups-project.md",
-            "docs/prod-ops.md",
-        ):
-            with open(os.path.join(HOOKS_DIR, "..", name)) as handle:
+    def instruction_doc_commands(self):
+        claude_dir = os.path.join(HOOKS_DIR, "..")
+        paths = [os.path.join(claude_dir, "..", "CLAUDE.md")]
+        for pattern in ("commands/**/*.md", "agents/*.md", "rules/*.md", "docs/*.md", "skills/**/*.md"):
+            paths += glob.glob(os.path.join(claude_dir, pattern), recursive=True)
+        commands = []
+        for path in paths:
+            with open(path) as handle:
                 doc = handle.read()
-            blocks = [
-                match.group(1).strip()
-                for match in re.finditer(r"```bash\n(.*?)```", doc, re.S)
-                if not doc[: match.start()].rstrip().endswith("with the Write tool:")
-            ]
-            inline = [
-                command
-                for command in re.findall(r"(?<!`)`((?:gh|git) [^`]+)`(?!`)", doc)
-                if not command.startswith("gh pr merge")
-            ]
-            self.assertGreater(len(blocks) + len(inline), 0, name)
-            for command in blocks + inline:
-                if mc.allowed_merge(command.replace("<n>", "42")) is None:
-                    self.assertFalse(mc.is_gh_pr_merge(command), (name, command))
+            for match in re.finditer(r"```(bash|sh)?\n(.*?)```", doc, re.S):
+                block = match.group(2).strip()
+                is_file_content = doc[: match.start()].rstrip().endswith("with the Write tool:")
+                is_prose = match.group(1) is None and not COMMAND_START.match(block)
+                if not (is_file_content or is_prose):
+                    commands.append((path, block))
+            for command in re.findall(r"(?<!`)`((?:gh|git) [^`]+)`(?!`)", doc):
+                if not command.startswith("gh pr merge"):
+                    commands.append((path, command))
+        return paths, commands
+
+    def test_every_command_in_the_instruction_docs_is_left_alone(self):
+        paths, commands = self.instruction_doc_commands()
+        self.assertGreater(len(paths), 40)
+        self.assertGreater(len(commands), 200)
+        for path, command in commands:
+            if command in DOCUMENTED_DENIED_EXAMPLES:
+                continue
+            if mc.allowed_merge(command.replace("<n>", "42")) is None:
+                self.assertFalse(mc.is_gh_pr_merge(command), (os.path.basename(path), command))
+
+    def test_the_denied_examples_the_docs_quote_are_denied(self):
+        _, commands = self.instruction_doc_commands()
+        quoted = {command for _, command in commands}
+        for example in DOCUMENTED_DENIED_EXAMPLES:
+            self.assertIn(example, quoted)
+            self.assertTrue(mc.is_gh_pr_merge(example), example)
 
     def test_a_variable_title_or_body_never_reaches_the_sibling_hooks(self):
         for cmd in (
