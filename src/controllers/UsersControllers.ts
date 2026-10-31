@@ -66,6 +66,7 @@ import EmailChangeTokenRepository from '../data_layer/EmailChangeTokenRepository
 import { RequestEmailChangeUseCase } from '../usecases/users/RequestEmailChangeUseCase';
 import { ConfirmEmailChangeUseCase } from '../usecases/users/ConfirmEmailChangeUseCase';
 import type { IEmailService } from '../services/EmailService/EmailService';
+import { StripeCustomerEmailService } from '../services/StripeCustomerEmailService';
 
 function readFirstTouchCookie(req: express.Request): FirstTouchAttribution {
   const cookies = req.cookies as Record<string, unknown> | undefined;
@@ -581,7 +582,8 @@ class UsersController {
     const useCase = new ConfirmEmailChangeUseCase(
       new EmailChangeTokenRepository(this.db),
       new UsersRepository(this.db),
-      (userId) => this.authService.logOutEverywhere(userId)
+      (userId) => this.authService.logOutEverywhere(userId),
+      new StripeCustomerEmailService()
     );
 
     const outcome = await useCase.execute(rawToken);
@@ -595,6 +597,22 @@ class UsersController {
       return res.status(409).json({
         reason: 'email_taken',
         message: 'That email is now in use by another account.',
+      });
+    }
+
+    if (outcome.reason === 'payer_relay_address') {
+      return res.status(409).json({
+        reason: 'payer_relay_address',
+        message:
+          "Use an address you can receive billing email at. Apple Hide My Email addresses can't receive receipts from our payment provider.",
+      });
+    }
+
+    if (outcome.reason === 'billing_update_failed') {
+      return res.status(502).json({
+        reason: 'billing_update_failed',
+        message:
+          "We couldn't update the email on your billing record, so your email stays the same. Open the link again in a few minutes.",
       });
     }
 

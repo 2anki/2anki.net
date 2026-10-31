@@ -1,16 +1,26 @@
 import type { IEmailChangeTokenRepository } from '../../data_layer/EmailChangeTokenRepository';
 import type UsersRepository from '../../data_layer/UsersRepository';
+import type { StripeCustomerEmails } from '../../services/StripeCustomerEmailService';
 import hmacToken from '../../lib/misc/hmacToken';
+import { moveBillingEmail } from './moveBillingEmail';
 
 export type ConfirmEmailChangeOutcome =
   | { ok: true; userId: number }
-  | { ok: false; reason: 'invalid_token' | 'email_taken' };
+  | {
+      ok: false;
+      reason:
+        | 'invalid_token'
+        | 'email_taken'
+        | 'payer_relay_address'
+        | 'billing_update_failed';
+    };
 
 export class ConfirmEmailChangeUseCase {
   constructor(
     private readonly tokensRepo: IEmailChangeTokenRepository,
     private readonly usersRepo: UsersRepository,
-    private readonly revokeSessions: (userId: number) => Promise<unknown>
+    private readonly revokeSessions: (userId: number) => Promise<unknown>,
+    private readonly stripeCustomers: StripeCustomerEmails
   ) {}
 
   async execute(rawToken: string): Promise<ConfirmEmailChangeOutcome> {
@@ -36,13 +46,40 @@ export class ConfirmEmailChangeUseCase {
       return { ok: false, reason: 'email_taken' };
     }
 
-    const result = await this.usersRepo.applyEmailChange({
-      userId,
-      newEmail: nextEmail,
-      tokenId: Number(tokenRow.id),
-    });
+    const user = await this.usersRepo.getById(String(userId));
+    if (user == null) {
+      return { ok: false, reason: 'invalid_token' };
+    }
+
+    const billing = await moveBillingEmail(
+      this.usersRepo,
+      this.stripeCustomers,
+      { userId, currentEmail: String(user.email), newEmail: nextEmail }
+    );
+    if (!billing.ok) {
+      if (billing.reason === 'subscription_address_taken') {
+        return { ok: false, reason: 'email_taken' };
+      }
+      if (billing.reason === 'payer_relay_address') {
+        return { ok: false, reason: 'payer_relay_address' };
+      }
+      return { ok: false, reason: 'billing_update_failed' };
+    }
+
+    let result: Awaited<ReturnType<UsersRepository['applyEmailChange']>>;
+    try {
+      result = await this.usersRepo.applyEmailChange({
+        userId,
+        newEmail: nextEmail,
+        tokenId: Number(tokenRow.id),
+      });
+    } catch (error) {
+      await billing.revert();
+      throw error;
+    }
 
     if (!result.ok) {
+      await billing.revert();
       return result;
     }
 

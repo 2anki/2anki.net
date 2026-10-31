@@ -128,6 +128,10 @@
     "invalidTitle": "Link scaduto o non valido.",
     "invalidBody": "Questo link di conferma non è più valido. Avvia un nuovo cambio email dal tuo account.",
     "takenTitle": "Questa email è già in uso.",
-    "takenBody": "Un altro account usa già questa email, quindi la modifica non è andata a buon fine. Prova con un altro indirizzo dal tuo account."
+    "takenBody": "Un altro account usa già questa email, quindi la modifica non è andata a buon fine. Prova con un altro indirizzo dal tuo account.",
+    "relayTitle": "Usa un altro indirizzo.",
+    "relayBody": "Usa un indirizzo a cui puoi ricevere le email di fatturazione. Gli indirizzi Nascondi la mia email di Apple non possono ricevere le ricevute del nostro fornitore di pagamenti. Avvia un nuovo cambio di email dal tuo account.",
+    "billingTitle": "Email non modificata.",
+    "billingBody": "Non siamo riusciti ad aggiornare l'email dei tuoi dati di fatturazione, quindi la tua email resta la stessa. Riapri questo link tra qualche minuto o scrivi a support@2anki.net."
   }
 }

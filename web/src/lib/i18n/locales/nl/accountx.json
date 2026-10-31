@@ -128,6 +128,10 @@
     "invalidTitle": "Link verlopen of ongeldig.",
     "invalidBody": "Deze bevestigingslink is niet meer geldig. Start een nieuwe e-mailwijziging vanuit je account.",
     "takenTitle": "Dat e-mailadres is al in gebruik.",
-    "takenBody": "Een ander account gebruikt dit e-mailadres al, dus de wijziging is niet doorgevoerd. Probeer een ander adres vanuit je account."
+    "takenBody": "Een ander account gebruikt dit e-mailadres al, dus de wijziging is niet doorgevoerd. Probeer een ander adres vanuit je account.",
+    "relayTitle": "Gebruik een ander adres.",
+    "relayBody": "Gebruik een adres waarop je factuurmails kunt ontvangen. Adressen van Apples Verberg mijn e-mail kunnen geen bonnen van onze betaalprovider ontvangen. Start een nieuwe e-mailwijziging vanuit je account.",
+    "billingTitle": "E-mailadres niet gewijzigd.",
+    "billingBody": "We konden het e-mailadres in je factuurgegevens niet bijwerken, dus je e-mailadres blijft hetzelfde. Open deze link over een paar minuten opnieuw of mail naar support@2anki.net."
   }
 }

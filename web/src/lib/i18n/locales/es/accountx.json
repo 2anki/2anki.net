@@ -128,6 +128,10 @@
     "invalidTitle": "Enlace caducado o no válido.",
     "invalidBody": "Este enlace de confirmación ya no es válido. Inicia un nuevo cambio de correo desde tu cuenta.",
     "takenTitle": "Ese correo ya está en uso.",
-    "takenBody": "Otra cuenta ya usa este correo, así que el cambio no se completó. Prueba con otra dirección desde tu cuenta."
+    "takenBody": "Otra cuenta ya usa este correo, así que el cambio no se completó. Prueba con otra dirección desde tu cuenta.",
+    "relayTitle": "Usa otra dirección.",
+    "relayBody": "Usa una dirección en la que puedas recibir correos de facturación. Las direcciones de Ocultar mi correo de Apple no pueden recibir recibos de nuestro proveedor de pagos. Inicia un nuevo cambio de correo desde tu cuenta.",
+    "billingTitle": "Correo sin cambiar.",
+    "billingBody": "No pudimos actualizar el correo de tu registro de facturación, así que tu correo sigue igual. Vuelve a abrir este enlace en unos minutos o escribe a support@2anki.net."
   }
 }

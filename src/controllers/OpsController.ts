@@ -106,6 +106,20 @@ class OpsController {
           .json({ message: 'Another account already uses that email.' });
         return;
       }
+      if (outcome.reason === 'payer_relay_address') {
+        res.status(409).json({
+          message:
+            'This account pays for a subscription, and an Apple Hide My Email address cannot receive Stripe receipts or failed-payment email. Use a real address. Nothing changed.',
+        });
+        return;
+      }
+      if (outcome.reason === 'stripe_update_failed') {
+        res.status(502).json({
+          message:
+            'Could not update the Stripe customer email, so nothing changed. Try again in a few minutes.',
+        });
+        return;
+      }
       res
         .status(409)
         .json({ message: 'The new email matches the current one.' });

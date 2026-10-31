@@ -132,6 +132,10 @@
     "invalidTitle": "Link wygasł lub jest nieprawidłowy.",
     "invalidBody": "Ten link potwierdzający już nie działa. Rozpocznij nową zmianę adresu e-mail w swoim koncie.",
     "takenTitle": "Ten adres e-mail jest zajęty.",
-    "takenBody": "Inne konto już używa tego adresu e-mail, więc zmiana się nie powiodła. Spróbuj innego adresu w swoim koncie."
+    "takenBody": "Inne konto już używa tego adresu e-mail, więc zmiana się nie powiodła. Spróbuj innego adresu w swoim koncie.",
+    "relayTitle": "Użyj innego adresu.",
+    "relayBody": "Użyj adresu, na który możesz odbierać e-maile rozliczeniowe. Adresy Apple Ukryj mój e-mail nie mogą odbierać potwierdzeń od naszego operatora płatności. Rozpocznij nową zmianę adresu e-mail w swoim koncie.",
+    "billingTitle": "Adres e-mail nie został zmieniony.",
+    "billingBody": "Nie udało nam się zaktualizować adresu e-mail w Twoich danych rozliczeniowych, więc Twój adres się nie zmienił. Otwórz ten link ponownie za kilka minut albo napisz na support@2anki.net."
   }
 }

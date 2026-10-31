@@ -54,7 +54,11 @@
     "invalidTitle": "Link expired or invalid.",
     "invalidBody": "This confirmation link is no longer valid. Start a new email change from your account.",
     "takenTitle": "That email is taken.",
-    "takenBody": "Another account is already using this email, so the change didn't go through. Try a different address from your account."
+    "takenBody": "Another account is already using this email, so the change didn't go through. Try a different address from your account.",
+    "relayTitle": "Use a different address.",
+    "relayBody": "Use an address you can receive billing email at. Apple Hide My Email addresses can't receive receipts from our payment provider. Start a new email change from your account.",
+    "billingTitle": "Email not changed.",
+    "billingBody": "We couldn't update the email on your billing record, so your email stays the same. Open this link again in a few minutes, or email support@2anki.net."
   },
   "deleteAccount": {
     "delete": "Delete",

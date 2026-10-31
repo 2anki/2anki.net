@@ -128,6 +128,10 @@
     "invalidTitle": "Lien expiré ou invalide.",
     "invalidBody": "Ce lien de confirmation n'est plus valide. Relance un changement d'e-mail depuis ton compte.",
     "takenTitle": "Cet e-mail est déjà pris.",
-    "takenBody": "Un autre compte utilise déjà cet e-mail, le changement n'a donc pas abouti. Essaie une autre adresse depuis ton compte."
+    "takenBody": "Un autre compte utilise déjà cet e-mail, le changement n'a donc pas abouti. Essaie une autre adresse depuis ton compte.",
+    "relayTitle": "Utilise une autre adresse.",
+    "relayBody": "Utilise une adresse où tu peux recevoir les e-mails de facturation. Les adresses « Masquer mon adresse e-mail » d'Apple ne peuvent pas recevoir les reçus de notre prestataire de paiement. Relance un changement d'e-mail depuis ton compte.",
+    "billingTitle": "E-mail non modifié.",
+    "billingBody": "Nous n'avons pas pu mettre à jour l'e-mail de ton dossier de facturation, ton e-mail reste donc le même. Rouvre ce lien dans quelques minutes ou écris à support@2anki.net."
   }
 }

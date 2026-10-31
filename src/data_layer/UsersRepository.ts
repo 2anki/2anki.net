@@ -356,7 +356,7 @@ class UsersRepository {
         .whereIn('user_id', ownerIds)
         .whereNull('consumed_at')
         .update({ consumed_at: trx.fn.now() });
-      await this.relinkSubscriptionsForEmailChangeQuery(trx, current, next);
+      await this.relinkSubscriptionsForEmailChange(trx, current, next);
       await this.forgetPauseNoticesForAddressQuery(trx, current);
     });
   }
@@ -372,26 +372,82 @@ class UsersRepository {
       .update({ used_at: executor.fn.now() });
   }
 
-  // A subscription's recipient is linked_email, or the payer email when it is
-  // unlinked. Only rows sending to the old address move; a row this user only
-  // pays for keeps pointing at the account it was linked to.
-  relinkSubscriptionsForEmailChangeQuery(
+  // Each side keeps its own column: a payer moving moves subscriptions.email,
+  // the address the Stripe customer now carries too, so webhooks keep
+  // upserting onto this row; a recipient moving moves linked_email. A row the
+  // user both pays for and receives moves on both.
+  movePayerSubscriptionsQuery(
     executor: Knex | Knex.Transaction,
     oldEmail: string,
     newEmail: string
   ) {
-    const old = oldEmail.trim().toLowerCase();
     return executor('subscriptions')
-      .where((recipient) =>
-        recipient
-          .whereRaw('lower(linked_email) = ?', [old])
-          .orWhere((unlinked) =>
-            unlinked
-              .whereNull('linked_email')
-              .whereRaw('lower(email) = ?', [old])
-          )
-      )
+      .whereRaw('lower(email) = ?', [oldEmail.trim().toLowerCase()])
+      .update({ email: newEmail.trim().toLowerCase() });
+  }
+
+  moveRecipientSubscriptionsQuery(
+    executor: Knex | Knex.Transaction,
+    oldEmail: string,
+    newEmail: string
+  ) {
+    return executor('subscriptions')
+      .whereRaw('lower(linked_email) = ?', [oldEmail.trim().toLowerCase()])
       .update({ linked_email: newEmail.trim().toLowerCase() });
+  }
+
+  async relinkSubscriptionsForEmailChange(
+    executor: Knex | Knex.Transaction,
+    oldEmail: string,
+    newEmail: string
+  ): Promise<void> {
+    await this.movePayerSubscriptionsQuery(executor, oldEmail, newEmail);
+    await this.moveRecipientSubscriptionsQuery(executor, oldEmail, newEmail);
+  }
+
+  subscriptionAddressTakenQuery(email: string) {
+    const normalized = email.trim().toLowerCase();
+    return this.database('subscriptions')
+      .whereRaw('lower(email) = ?', [normalized])
+      .orWhereRaw('lower(linked_email) = ?', [normalized])
+      .select('id')
+      .first();
+  }
+
+  async subscriptionAddressTaken(email: string): Promise<boolean> {
+    return (await this.subscriptionAddressTakenQuery(email)) != null;
+  }
+
+  payerCustomerIdsQuery(payerEmail: string) {
+    return this.database('subscriptions')
+      .whereRaw('lower(email) = ?', [payerEmail.trim().toLowerCase()])
+      .select(this.database.raw("payload->>'customer' as customer"));
+  }
+
+  // The Stripe customers whose email has to follow a payer's email change: the
+  // account's own customer first, then the customer behind each row it pays
+  // for. A user who pays for nothing has none, so a recipient-only change never
+  // reaches Stripe.
+  async payerBilling(
+    userId: number,
+    payerEmail: string
+  ): Promise<{ isPayer: boolean; stripeCustomerIds: string[] }> {
+    const rows: Array<{ customer: string | null }> =
+      await this.payerCustomerIdsQuery(payerEmail);
+    if (rows.length === 0) {
+      return { isPayer: false, stripeCustomerIds: [] };
+    }
+    const user = await this.database(this.table)
+      .where({ id: userId })
+      .select('stripe_customer_id')
+      .first();
+    const ids = [
+      user?.stripe_customer_id,
+      ...rows.map((row) => row.customer),
+    ].filter(
+      (id): id is string => typeof id === 'string' && id.trim().length > 0
+    );
+    return { isPayer: true, stripeCustomerIds: [...new Set(ids)] };
   }
 
   async applyEmailChange(params: {
@@ -437,7 +493,7 @@ class UsersRepository {
           .where({ id: params.userId })
           .update({ email: nextEmail, ...CLEARED_RESET_TOKEN });
         await this.spendUnusedMagicTokensQuery(trx, [params.userId]);
-        await this.relinkSubscriptionsForEmailChangeQuery(
+        await this.relinkSubscriptionsForEmailChange(
           trx,
           oldEmail,
           nextEmail

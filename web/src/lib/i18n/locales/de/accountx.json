@@ -128,6 +128,10 @@
     "invalidTitle": "Link abgelaufen oder ungültig.",
     "invalidBody": "Dieser Bestätigungslink ist nicht mehr gültig. Starte die E-Mail-Änderung erneut über dein Konto.",
     "takenTitle": "Diese E-Mail-Adresse ist vergeben.",
-    "takenBody": "Ein anderes Konto verwendet diese E-Mail-Adresse bereits, daher konnte die Änderung nicht abgeschlossen werden. Versuche es mit einer anderen Adresse über dein Konto."
+    "takenBody": "Ein anderes Konto verwendet diese E-Mail-Adresse bereits, daher konnte die Änderung nicht abgeschlossen werden. Versuche es mit einer anderen Adresse über dein Konto.",
+    "relayTitle": "Verwende eine andere Adresse.",
+    "relayBody": "Verwende eine Adresse, an der du Rechnungs-E-Mails empfangen kannst. Apple-„E-Mail-Adresse verbergen“-Adressen können keine Belege von unserem Zahlungsanbieter empfangen. Starte die E-Mail-Änderung erneut über dein Konto.",
+    "billingTitle": "E-Mail-Adresse nicht geändert.",
+    "billingBody": "Wir konnten die E-Mail-Adresse in deinen Zahlungsdaten nicht aktualisieren, daher bleibt deine E-Mail-Adresse unverändert. Öffne diesen Link in ein paar Minuten erneut oder schreib an support@2anki.net."
   }
 }

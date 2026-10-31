@@ -96,6 +96,7 @@ import { TodaySnapshotService } from '../services/ops/TodaySnapshotService';
 import { GetTodaySnapshotUseCase } from '../usecases/ops/GetTodaySnapshotUseCase';
 import { PruneDeadUploadsUseCase } from '../usecases/ops/PruneDeadUploadsUseCase';
 import UploadRepository from '../data_layer/UploadRespository';
+import { StripeCustomerEmailService } from '../services/StripeCustomerEmailService';
 
 const OpsRouter = () => {
   const router = express.Router();
@@ -250,7 +251,11 @@ const OpsRouter = () => {
       new UsersRepository(database),
       new UserPreferencesRepository(database)
     ),
-    new ChangeUserEmailUseCase(new UsersRepository(database), getEventsSink()),
+    new ChangeUserEmailUseCase(
+      new UsersRepository(database),
+      new StripeCustomerEmailService(),
+      getEventsSink()
+    ),
     new GetEmailDeliveryMetricsUseCase(
       new EmailDeliveryMetricsService({
         repo: new EmailDeliveryMetricsRepository(database),

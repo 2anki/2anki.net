@@ -128,6 +128,10 @@
     "invalidTitle": "Link expirado ou inválido.",
     "invalidBody": "Este link de confirmação não é mais válido. Inicie uma nova alteração de e-mail na sua conta.",
     "takenTitle": "Esse e-mail já está em uso.",
-    "takenBody": "Outra conta já usa este e-mail, então a alteração não foi concluída. Tente outro endereço na sua conta."
+    "takenBody": "Outra conta já usa este e-mail, então a alteração não foi concluída. Tente outro endereço na sua conta.",
+    "relayTitle": "Use outro endereço.",
+    "relayBody": "Use um endereço em que você possa receber e-mails de cobrança. Endereços do Ocultar Meu E-mail da Apple não recebem recibos do nosso provedor de pagamentos. Inicie uma nova troca de e-mail pela sua conta.",
+    "billingTitle": "E-mail não alterado.",
+    "billingBody": "Não conseguimos atualizar o e-mail do seu cadastro de cobrança, então seu e-mail continua o mesmo. Abra este link de novo em alguns minutos ou escreva para support@2anki.net."
   }
 }
