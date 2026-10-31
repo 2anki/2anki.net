@@ -255,6 +255,20 @@ function buildResponse(): {
   };
 }
 
+async function waitForRestartToSettle(
+  db: Knex,
+  objectId: string
+): Promise<void> {
+  for (let i = 0; i < 200; i++) {
+    const row = await db('jobs').where({ object_id: objectId }).first();
+    if (row == null || JobRepository.TERMINAL_STATUSES.includes(row.status)) {
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  throw new Error(`restart of ${objectId} never settled`);
+}
+
 describe('UploadService.handleUpload — error paths', () => {
   const originalWorkspaceBase = process.env.WORKSPACE_BASE;
 
@@ -4399,6 +4413,8 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
       await new Promise((r) => setTimeout(r, 10));
     }
 
+    await waitForRestartToSettle(db, 'job-obj-settings');
+
     const [decks] = configure.mock.calls[0] as [
       Array<{ settings: Record<string, unknown> }>,
     ];
@@ -4472,6 +4488,8 @@ describe('UploadService.restartClaudeJob — replays original conversion setting
       '42',
       expect.objectContaining({ template: 'custom' })
     );
+    await waitForRestartToSettle(db, 'job-obj-settings');
+
     const [decks] = configure.mock.calls[0] as [
       Array<{ settings: Record<string, unknown> }>,
     ];
@@ -5351,6 +5369,7 @@ describe('UploadService.restartClaudeJob — mid-loop credit trip with salvage',
 
     await service.restartClaudeJob(req, res);
     await waitForUpload();
+    await waitForRestartToSettle(db, 'job-obj-salvage');
 
     expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
   });
