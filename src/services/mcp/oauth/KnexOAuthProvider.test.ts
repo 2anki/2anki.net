@@ -869,12 +869,10 @@ describe('signed-out connect: authorize -> sign in -> back to authorize', () => 
       const cookiePair = (start.returnCookie ?? '').split(';')[0];
       vi.stubEnv('GOOGLE_CLIENT_ID', 'google-client');
       vi.stubEnv('GOOGLE_REDIRECT_URI', `${base}/api/users/auth/google`);
-
       const init = await fetch(`${base}/api/users/auth/google/init`, {
         headers: { cookie: cookiePair },
         redirect: 'manual',
-      });
-      vi.unstubAllEnvs();
+      }).finally(() => vi.unstubAllEnvs());
       const state =
         new URL(init.headers.get('location') ?? '').searchParams.get('state') ??
         '';

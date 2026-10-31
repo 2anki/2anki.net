@@ -1056,6 +1056,8 @@ const UserRouter = () => {
     res.cookie(NOTION_STATE_COOKIE, nonce, {
       httpOnly: true,
       sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
       maxAge: 300_000,
     });
     const state = `${NOTION_LOGIN_STATE_PREFIX}${nonce}`;
@@ -1068,7 +1070,7 @@ const UserRouter = () => {
    * /api/users/auth/notion:
    *   get:
    *     summary: Notion OAuth callback
-   *     description: Exchanges the Notion OAuth code for a session. Upserts the user by email, mints a JWT, and saves the Notion workspace token.
+   *     description: Exchanges the Notion OAuth code for a session after checking the state nonce against the notion_login_state cookie set by /api/users/auth/notion/init. Upserts the user by email, mints a JWT, and saves the Notion workspace token.
    *     tags: [Authentication]
    *     parameters:
    *       - in: query
@@ -1077,6 +1079,12 @@ const UserRouter = () => {
    *         schema:
    *           type: string
    *         description: Authorization code from Notion OAuth
+   *       - in: query
+   *         name: state
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: The login:<nonce> state forwarded by /api/notion/connect; the nonce must match the notion_login_state cookie
    *     responses:
    *       302:
    *         description: Redirect to home on success, or /login?error=notion_cancelled on failure

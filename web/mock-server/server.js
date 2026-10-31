@@ -202,6 +202,16 @@ app.post('/api/users/link_email', (req, res) => {
   res.json({ success: true });
 });
 
+app.get('/api/users/auth/google/init', (req, res) => {
+  res.redirect('https://accounts.google.com/oauth/authorize?mock=true');
+});
+
+app.get('/api/users/auth/microsoft/init', (req, res) => {
+  res.redirect(
+    'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?mock=true'
+  );
+});
+
 app.get('/api/users/auth/google', (req, res) => {
   res.redirect('https://accounts.google.com/oauth/authorize?mock=true');
 });

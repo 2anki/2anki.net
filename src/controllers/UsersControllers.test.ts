@@ -4067,10 +4067,9 @@ describe('UsersController — sign-in returns a connector to the authorize scree
     );
 
     expect(res.redirect).toHaveBeenCalledWith('/notion');
-    expect(res.clearCookie).not.toHaveBeenCalledWith(
-      RETURN_COOKIE,
-      expect.anything()
-    );
+    expect(res.clearCookie.mock.calls.map(([name]) => name)).toEqual([
+      'notion_login_state',
+    ]);
   });
 
   it('a magic link login returns the authorize URL from the return cookie', async () => {
