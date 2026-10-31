@@ -163,10 +163,20 @@ class TestNonMergeCommand(unittest.TestCase):
 
 
 class TestDependabotBypass(unittest.TestCase):
-    def test_dependabot_author_always_allows(self):
+    def test_dependabot_bot_login_always_allows(self):
         stdout = make_pr_json("dependabot[bot]", "No browser check", ["web/src/App.tsx"])
         result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
         self.assertEqual(result["result"], "allow")
+
+    def test_dependabot_app_login_always_allows(self):
+        stdout = make_pr_json("app/dependabot", "No browser check", ["web/src/App.tsx"])
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
+        self.assertEqual(result["result"], "allow")
+
+    def test_lookalike_login_is_not_exempt(self):
+        stdout = make_pr_json("dependabot", "No browser check", ["web/src/App.tsx"])
+        result = run_hook(MERGE, subprocess_result={"returncode": 0, "stdout": stdout})
+        self.assertEqual(result["result"], "deny")
 
 
 class TestNoWebSrcFiles(unittest.TestCase):
