@@ -7,7 +7,7 @@ Three parallel reviewers fan out, each focused on one axis. You synthesize and p
 
 ## Step 1 — gather context (single call, in your own context)
 
-- `gh pr view <n> --json title,body,author,additions,deletions,changedFiles,files,baseRefName,headRefName,labels,isDraft,statusCheckRollup` (no merge-state field: the merge hooks deny a command that contains both `gh` and `merge`)
+- `gh pr view <n> --json title,body,author,additions,deletions,changedFiles,files,baseRefName,headRefName,labels,isDraft,mergeable,statusCheckRollup`
 - `gh pr diff <n>` — capture full diff
 - If the PR touches `web/src/**` or `src/services/EmailService/templates/**`, mark `userFacing = true`. Otherwise `userFacing = false`.
 

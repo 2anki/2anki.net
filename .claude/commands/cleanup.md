@@ -16,7 +16,7 @@ git fetch --prune origin
 For every local branch except `main`, decide keep-or-delete:
 
 ```bash
-for b in $(git branch --format='%(refname:short)' | grep -v '^main$'); do
+for b in $(git branch --format='%(refname:short)' | grep -vx main); do
   tip=$(git rev-parse "$b")
   if git merge-base --is-ancestor "$tip" origin/main; then
     echo "MERGED   $b"

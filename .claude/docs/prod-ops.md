@@ -34,7 +34,7 @@ psql "$U" -q -f /tmp/q.sql
 rm -f /tmp/q.sql /tmp/q.sh
 ```
 
-then copy both and run it (the merge hooks deny a Bash command that pairs `github` with `$`, so the lookup lives in the file, not the command):
+then copy both and run it (the merge hooks deny a Bash command that pairs `github` with `$(`, so the lookup lives in the file, not the command):
 
 ```bash
 scp query.sql alemayhu@2anki.net:/tmp/q.sql
