@@ -18,6 +18,7 @@ const ALLOWED_REDIRECT_PATHS = [
   '/settings',
   '/anki',
   '/card-options',
+  '/limit',
 ];
 
 const ALLOWED_REDIRECT_ORIGINS = ALLOWED_ORIGINS.map((origin) => {
@@ -73,6 +74,36 @@ const resolvePricingReturn = (candidate: string): string | null => {
   return `/pricing${query === '' ? '' : `?${query}`}${hash}`;
 };
 
+const LIMIT_PATHS = new Set(['/limit', '/limit/']);
+const LIMIT_KINDS = new Set(['anonymous', 'card_count', 'file_size']);
+const LIMIT_CARD_COUNT = /^\d{1,5}$/;
+
+const resolveLimitReturn = (candidate: string): string | null => {
+  if (!candidate.startsWith('/limit')) {
+    return null;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate, SAME_SITE_BASE);
+  } catch {
+    return null;
+  }
+  if (parsed.origin !== SAME_SITE_BASE || !LIMIT_PATHS.has(parsed.pathname)) {
+    return null;
+  }
+  const kept = new URLSearchParams();
+  const kind = parsed.searchParams.get('kind');
+  if (kind != null && LIMIT_KINDS.has(kind)) {
+    kept.set('kind', kind);
+  }
+  const cards = parsed.searchParams.get('cards');
+  if (cards != null && LIMIT_CARD_COUNT.test(cards)) {
+    kept.set('cards', cards);
+  }
+  const query = kept.toString();
+  return `/limit${query === '' ? '' : `?${query}`}`;
+};
+
 const resolveAllowedOrigin = (candidate: string): string | null => {
   let parsed: URL;
   try {
@@ -98,6 +129,7 @@ const resolveAllowedOrigin = (candidate: string): string | null => {
 export const resolveRedirect = (redirectParam: string): string | null =>
   asMcpAuthorizeReturn(redirectParam) ??
   resolvePricingReturn(redirectParam) ??
+  resolveLimitReturn(redirectParam) ??
   resolveInternalPath(redirectParam) ??
   resolveAllowedOrigin(redirectParam);
 

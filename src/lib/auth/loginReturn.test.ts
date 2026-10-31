@@ -39,6 +39,9 @@ describe('asLoginReturn', () => {
     ['/upload', '/upload'],
     ['/notion/some-page', '/notion'],
     ['/api/download/u/abc123', '/api/download/u/abc123'],
+    ['/limit', '/limit'],
+    ['/limit?kind=anonymous&cards=240', '/limit?kind=anonymous&cards=240'],
+    ['/limit?kind=card_count&next=//evil.com', '/limit?kind=card_count'],
   ])('keeps %s as a same-origin path (%s)', (input, expected) => {
     expect(asLoginReturn(input)).toBe(expected);
   });
@@ -51,7 +54,8 @@ describe('asLoginReturn', () => {
     'javascript:alert(1)',
     'https://2anki.net/pricing',
     '/not-a-section',
-    '/limit',
+    '//evil.com/limit',
+    'https://evil.com/limit',
     '/convert/apkg-to-csv',
     '/api/download/u/../../etc',
     '',
