@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-01-pass-checkout-account-email",
+  "date": "2026-11-01",
+  "type": "fix",
+  "title": "Buying a pass while signed in fills in your account email on the payment page"
+}

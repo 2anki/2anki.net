@@ -17,6 +17,7 @@ export const makeOptionalAuthMiddleware = (
       const user = await authService.getUserFrom(token);
       if (user) {
         res.locals.owner = user.owner;
+        res.locals.email = user.email;
       }
     }
     next();
