@@ -203,8 +203,8 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
     expect(await remainingNoticeKeys()).toEqual([]);
   });
 
-  it('keeps the notice when an ops email change leaves a subscription still sending to the old address', async () => {
-    await seedUser('old@example.com');
+  it('leaves no notice behind when ops moves a subscription another payer linked to the old address, and the account is then deleted', async () => {
+    const owner = await seedUser('old@example.com');
     await database('subscriptions').insert({
       email: 'payer@example.com',
       linked_email: 'old@example.com',
@@ -218,8 +218,29 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
       'old@example.com',
       'new@example.com'
     );
+    expect(await remainingNoticeKeys()).toEqual([]);
 
-    expect(await remainingNoticeKeys()).toEqual(['old@example.com']);
+    await repo.deleteUser(owner);
+    expect(await remainingNoticeKeys()).toEqual([]);
+  });
+
+  it("keeps another account's notice when the changing user only pays for that account's link", async () => {
+    await seedUser('old@example.com');
+    await database('subscriptions').insert({
+      email: 'old@example.com',
+      linked_email: 'friend@example.com',
+    });
+    await database('pause_resume_warning_notices').insert({
+      subscription_email: 'friend@example.com',
+      resumes_at: FUTURE,
+    });
+
+    await repo.changeEmailAndRelinkSubscriptions(
+      'old@example.com',
+      'new@example.com'
+    );
+
+    expect(await remainingNoticeKeys()).toEqual(['friend@example.com']);
   });
 
   it("leaves an unrelated account's notice alone", async () => {

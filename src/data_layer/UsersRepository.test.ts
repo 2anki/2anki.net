@@ -328,7 +328,7 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       reset_token: null,
       reset_token_expires_at: null,
     });
-    expect(subsWhere).toHaveBeenCalledWith({ email: 'old@example.com' });
+    expect(subsWhere).toHaveBeenCalledWith(expect.any(Function));
     expect(subsUpdate).toHaveBeenCalledWith({
       linked_email: 'new@example.com',
     });

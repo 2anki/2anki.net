@@ -10,18 +10,19 @@ describe('UsersRepository email-change relink SQL', () => {
     await pg.destroy();
   });
 
-  it('relinks subscriptions matched by payer or linked email, lowercased', () => {
+  it('relinks the rows whose recipient is the old address, lowercased', () => {
     const { sql, bindings } = repository
       .relinkSubscriptionsForEmailChangeQuery(
         pg,
-        'OLD@Example.com',
+        ' OLD@Example.com ',
         'New@Example.com'
       )
       .toSQL();
 
     expect(sql).toBe(
       'update "subscriptions" set "linked_email" = ? ' +
-        'where LOWER(email) = ? OR LOWER(linked_email) = ?'
+        'where (lower(linked_email) = ? or ' +
+        '("linked_email" is null and lower(email) = ?))'
     );
     expect(bindings).toEqual([
       'new@example.com',

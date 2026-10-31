@@ -293,9 +293,9 @@ class UsersRepository {
 
   // A warning notice is keyed on the address it went to. Once no subscription
   // sends to an address any more, its notice dedupes nothing and would outlive
-  // a later account deletion, which only knows the new address. The ops email
-  // change relinks only payer-matched rows, so a row linked to the old address
-  // can still send there and keeps its notice.
+  // a later account deletion, which only knows the new address. Both email
+  // changes relink every row sending to the old address first, so its notice
+  // goes; a notice on the address of an account the user only pays for stays.
   forgetPauseNoticesForAddressQuery(
     executor: Knex | Knex.Transaction,
     address: string
@@ -356,9 +356,7 @@ class UsersRepository {
         .whereIn('user_id', ownerIds)
         .whereNull('consumed_at')
         .update({ consumed_at: trx.fn.now() });
-      await trx('subscriptions')
-        .where({ email: current.toLowerCase() })
-        .update({ linked_email: next });
+      await this.relinkSubscriptionsForEmailChangeQuery(trx, current, next);
       await this.forgetPauseNoticesForAddressQuery(trx, current);
     });
   }
@@ -374,6 +372,9 @@ class UsersRepository {
       .update({ used_at: executor.fn.now() });
   }
 
+  // A subscription's recipient is linked_email, or the payer email when it is
+  // unlinked. Only rows sending to the old address move; a row this user only
+  // pays for keeps pointing at the account it was linked to.
   relinkSubscriptionsForEmailChangeQuery(
     executor: Knex | Knex.Transaction,
     oldEmail: string,
@@ -381,7 +382,15 @@ class UsersRepository {
   ) {
     const old = oldEmail.trim().toLowerCase();
     return executor('subscriptions')
-      .whereRaw('LOWER(email) = ? OR LOWER(linked_email) = ?', [old, old])
+      .where((recipient) =>
+        recipient
+          .whereRaw('lower(linked_email) = ?', [old])
+          .orWhere((unlinked) =>
+            unlinked
+              .whereNull('linked_email')
+              .whereRaw('lower(email) = ?', [old])
+          )
+      )
       .update({ linked_email: newEmail.trim().toLowerCase() });
   }
 
