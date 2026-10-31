@@ -57,13 +57,17 @@ literals outside the locale files; a server warning built from a string
 literal with no named constant; a removed string whose value is common enough
 to be added elsewhere in en ("Cancel"); a nested string swapped for one with
 the same leaf at the same depth, when an opener on either side sits outside
-its hunk; a PR past the file list gh returns; and anything in a diff GitHub
-refuses to serve or over 2 MB, where the string and constant checks fail open
-while the file-list checks still run. Past 10,000 changed en locale entries the
-string check stops and asks for the section anyway.
+its hunk; files past the 3000 the REST file list returns (past the first 100
+when that call fails and `gh pr view`'s list is used, as before); and anything
+in a diff GitHub refuses to serve or over 2 MB, where the string and constant
+checks fail open while the file-list checks still run. Past 10,000 changed en
+locale entries the string check stops and asks for the section anyway.
 
-Mirrors check-changelog-on-merge.py: fetches the PR via gh, fails open on any
-tooling error, exempts dependabot.
+Accepts only the exact merge command /ship runs (`merge_command.allowed_merge`),
+fetches the PR via `gh pr view -R`, refuses the merge when that errors, and
+exempts dependabot. The file list is `merge_command.changed_files`, shared by every
+merge hook; when its REST call fails the hook checks `gh pr view`'s first 100
+files rather than allowing the merge.
 """
 import json
 import os
@@ -145,27 +149,24 @@ def run_gh(args, label):
     return result.stdout
 
 
-def gh_args(subcommand, pr_ref, extra):
-    args = ["gh", "pr", subcommand]
-    if pr_ref is not None:
-        args.append(pr_ref)
-    return args + extra
+def gh_args(subcommand, number, repo, extra):
+    return ["gh", "pr", subcommand, number, "-R", repo] + extra
 
 
-def fetch_pr_data(pr_ref):
-    stdout = run_gh(gh_args("view", pr_ref, ["--json", "author,body,files"]), "this gate")
+def fetch_pr_data(number, repo):
+    stdout = run_gh(gh_args("view", number, repo, ["--json", "number,url,author,body,files"]), "the PR view and refusing the merge")
     if stdout is None:
         return None
     try:
         parsed = json.loads(stdout)
     except json.JSONDecodeError:
-        sys.stderr.write(f"{TAG} could not parse gh JSON; allowing merge.\n")
+        sys.stderr.write(f"{TAG} could not parse gh JSON; refusing merge.\n")
         return None
     return parsed if isinstance(parsed, dict) else None
 
 
-def fetch_diff(pr_ref):
-    return run_gh(gh_args("diff", pr_ref, ["--color", "never"]), "the string and constant checks")
+def fetch_diff(number, repo):
+    return run_gh(gh_args("diff", number, repo, ["--color", "never"]), "the string and constant checks")
 
 
 def is_en_locale(path):
@@ -427,11 +428,11 @@ def snapshot_problem(snapshots):
     )
 
 
-def find_removals(files, pr_ref):
+def find_removals(files, number, repo):
     removals = removed_notice_components(files)
     if not needs_diff(files):
         return removals
-    diff_text = fetch_diff(pr_ref)
+    diff_text = fetch_diff(number, repo)
     if diff_text is None:
         return removals
     if len(diff_text) > MAX_DIFF_BYTES or len(diff_text.encode("utf-8", "replace")) > MAX_DIFF_BYTES:
@@ -454,23 +455,34 @@ def main():
     if not merge_command.is_gh_pr_merge(cmd):
         allow()
 
-    pr_ref = merge_command.extract_pr_ref(cmd)
-    pr_data = fetch_pr_data(pr_ref)
+    merge_command.deny_on_error(gate, cmd, deny)
+
+
+def gate(cmd):
+    form_violation = merge_command.merge_form_violation(cmd)
+    if form_violation:
+        deny(form_violation)
+
+    number, repo = merge_command.allowed_merge(cmd)
+    pr_data = fetch_pr_data(number, repo)
     if pr_data is None:
-        allow()
+        deny(merge_command.view_failed_violation(number))
+
+    view_violation = merge_command.view_repo_violation(pr_data, number)
+    if view_violation:
+        deny(view_violation)
 
     author = pr_data.get("author")
     if isinstance(author, dict) and author.get("login") in DEPENDABOT_LOGINS:
         allow()
 
-    raw_files = pr_data.get("files")
-    files = [f for f in raw_files if isinstance(f, dict)] if isinstance(raw_files, list) else []
+    files, _ = merge_command.changed_files(pr_data, number, TAG)
     raw_body = pr_data.get("body")
     body = raw_body if isinstance(raw_body, str) else ""
 
     problems = []
     if not filled_sections(body, REMOVED_SECTION):
-        removals = find_removals(files, pr_ref)
+        removals = find_removals(files, number, repo)
         if removals:
             problems.append(removal_problem(removals))
 

@@ -364,23 +364,69 @@ class OddShapesTest(unittest.TestCase):
         self.assertIsNotNone(check_merge_status.reach_violation(pr))
 
 
+def rest_stdout(paths):
+    return "".join(json.dumps([p, "modified", 1, 1]) + "\n" for p in paths)
+
+
+GH_PR_VIEW_FILES_CAP = 100
+DOCS = [f"docs/page{i}.md" for i in range(150)]
+REST_FAILURE = mock.MagicMock(returncode=1, stdout="", stderr="HTTP 502")
+MERGE = "gh pr merge 1 --repo 2anki/server --squash"
+REJECTED_FORMS = (
+    "gh pr merge 1",
+    "gh pr merge 1 --squash",
+    "gh pr merge --squash",
+    "gh pr merge some-branch --repo 2anki/server --squash",
+    "gh pr merge #1 --repo 2anki/server --squash",
+    'gh pr merge "1" --repo 2anki/server --squash',
+    "gh pr merge 1 -sR other/repo",
+    "gh pr -R other/repo merge 1",
+    "gh pr merge 1 --squash --repo 2anki/server; true",
+    "gh pr merge 1 --repo other/repo --squash",
+    "gh pr merge https://github.com/2anki/server/pull/1 --repo 2anki/server --squash",
+    "GH_REPO=other/repo gh pr merge 1 --repo 2anki/server --squash",
+    "cd /tmp/other && gh pr merge 1 --repo 2anki/server --squash",
+    "gh api -X PUT repos/2anki/2anki.net/pulls/1/merge",
+    "bash -lc 'gh pr merge 1 --repo 2anki/server --squash'",
+    "eval gh pr merge 1 --repo 2anki/server --squash",
+    "eval 'gh pr' 'merge 1' '--repo 2anki/server --squash'",
+    "gh pr merge 1 --repo 2anki/server --squash > /tmp/out",
+    "gh pr merge 1 --repo 2anki/server --squash 2>&1 | tee /tmp/log",
+    "gh api graphql -f query='mutation { mergePullRequest(input:{pullRequestId:\"PR_x\"}) { clientMutationId } }'",
+)
+
+
 class MainWiringTest(unittest.TestCase):
-    def run_main(self, pr_data):
-        captured = {}
+    def run_main(self, pr_data, rest_paths=None, rest_result=None, command=MERGE):
+        captured = {"rest": []}
+        listed = rest_paths if rest_paths is not None else [f["path"] for f in pr_data.get("files") or []]
+        viewed = {
+            "url": f"https://github.com/2anki/2anki.net/pull/{pr_data.get('number')}",
+            **pr_data,
+            "files": (pr_data.get("files") or [])[:GH_PR_VIEW_FILES_CAP],
+        }
 
         def fake_run_gh(args, label):
             captured["args"] = args
-            return json.dumps(pr_data)
+            return json.dumps(viewed)
 
-        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
+        def fake_subprocess_run(args, **kwargs):
+            captured["rest"].append(args)
+            if rest_result is not None:
+                return rest_result
+            return mock.MagicMock(returncode=0, stdout=rest_stdout(listed), stderr="")
+
+        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
         stdout = io.StringIO()
         with mock.patch.object(check_merge_status, "run_gh", fake_run_gh), \
+                mock.patch("subprocess.run", side_effect=fake_subprocess_run), \
                 mock.patch.dict(os.environ, {}, clear=False), \
                 mock.patch("sys.stdin", stdin), \
                 mock.patch("sys.stdout", stdout):
             os.environ.pop("CLAUDE_SKIP_SAFETY", None)
             with self.assertRaises(SystemExit):
                 check_merge_status.main()
+        self.rest_calls = captured["rest"]
         return captured["args"], json.loads(stdout.getvalue())
 
     def pr(self, body):
@@ -396,22 +442,49 @@ class MainWiringTest(unittest.TestCase):
             "comments": [{"body": f"<!-- ship-review: pass sha={sha} -->"}],
         }
 
-    def test_a_gh_failure_still_fails_open(self):
-        calls = []
-        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
+    def hook_output(self, command, run_gh):
+        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": command}}))
         stdout = io.StringIO()
-        with mock.patch.object(check_merge_status, "run_gh", lambda args, label: calls.append(args)), \
+        with mock.patch.object(check_merge_status, "run_gh", run_gh), \
+                mock.patch("subprocess.run", side_effect=AssertionError("no REST call expected")), \
                 mock.patch.dict(os.environ, {}, clear=False), \
                 mock.patch("sys.stdin", stdin), \
                 mock.patch("sys.stdout", stdout):
             os.environ.pop("CLAUDE_SKIP_SAFETY", None)
             with self.assertRaises(SystemExit):
                 check_merge_status.main()
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(json.loads(stdout.getvalue()), {"continue": True})
+        return json.loads(stdout.getvalue())
+
+    def test_an_odd_view_shape_denies_instead_of_crashing_open(self):
+        pr = {**self.pr(REACH_TABLE), "statusCheckRollup": ["not a dict"]}
+        _, output = self.run_main(pr)
+        self.assertIn("merge gate failed", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_a_failed_view_denies_the_merge(self):
+        for answer in (None, "not json", "[]"):
+            calls = []
+            output = self.hook_output(MERGE, lambda args, label, answer=answer: calls.append(args) or answer)
+            decision = output["hookSpecificOutput"]
+            self.assertEqual(decision["permissionDecision"], "deny", answer)
+            self.assertIn("could not read PR 1", decision["permissionDecisionReason"])
+            self.assertEqual(len(calls), 1)
+
+    def test_run_gh_returns_nothing_on_any_os_error(self):
+        import subprocess
+        for error in (FileNotFoundError("gh"), PermissionError("gh"), subprocess.TimeoutExpired("gh", 15)):
+            with mock.patch("subprocess.run", side_effect=error):
+                self.assertIsNone(check_merge_status.run_gh(["gh", "pr", "view"], "pr view"))
+
+    def test_every_other_merge_form_is_denied_without_calling_gh(self):
+        for command in REJECTED_FORMS:
+            calls = []
+            output = self.hook_output(command, lambda args, label: calls.append(args))
+            decision = output["hookSpecificOutput"]
+            self.assertEqual(decision["permissionDecision"], "deny", command)
+            self.assertEqual(calls, [], command)
 
     def test_the_launch_time_bypass_skips_the_reach_check(self):
-        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1 --squash"}}))
+        stdin = io.StringIO(json.dumps({"tool_name": "Bash", "tool_input": {"command": MERGE}}))
         stdout = io.StringIO()
         with mock.patch.object(check_merge_status, "run_gh", lambda args, label: json.dumps(self.pr(""))), \
                 mock.patch.dict(os.environ, {"CLAUDE_SKIP_SAFETY": "1"}, clear=False), \
@@ -476,6 +549,57 @@ class MainWiringTest(unittest.TestCase):
         pr = {**self.pr(""), "title": "chore: rename", "commits": commits("chore: rename")}
         _, output = self.run_main(pr)
         self.assertEqual(output, {"continue": True})
+
+    def test_source_past_the_first_100_files_still_needs_the_section(self):
+        pr = {**self.pr("## What\nx"), "files": files(*DOCS, "src/usecases/x.ts")}
+        _, output = self.run_main(pr)
+        self.assertIn("Who else this reaches", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_a_lockfile_past_the_first_100_files_still_needs_a_test_run(self):
+        pr = {**self.pr(REACH_TABLE), "files": files(*DOCS, "src/usecases/x.ts", "pnpm-lock.yaml")}
+        _, output = self.run_main(pr)
+        self.assertIn("pnpm-lock.yaml", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_lists_files_over_rest_for_the_pr_number(self):
+        self.run_main(self.pr(REACH_TABLE))
+        self.assertEqual(
+            self.rest_calls[0][:4],
+            ["gh", "api", "--paginate", "repos/2anki/2anki.net/pulls/1/files?per_page=100"],
+        )
+
+    def test_a_view_resolving_another_repo_is_denied(self):
+        pr = {**self.pr(REACH_TABLE), "url": "https://github.com/someone/fork/pull/1"}
+        _, output = self.run_main(pr)
+        self.assertIn("someone/fork", output["hookSpecificOutput"]["permissionDecisionReason"])
+        self.assertEqual(self.rest_calls, [])
+
+    def test_a_view_resolving_another_pr_is_denied(self):
+        pr = {**self.pr(REACH_TABLE), "url": "https://github.com/2anki/2anki.net/pull/2"}
+        _, output = self.run_main(pr)
+        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_views_the_pr_with_the_matched_repo(self):
+        for command, repo in ((MERGE, "2anki/server"), ("gh pr merge 1 --repo 2anki/2anki.net --squash", "2anki/2anki.net")):
+            args, output = self.run_main(self.pr(REACH_TABLE), command=command)
+            self.assertEqual(output, {"continue": True})
+            self.assertEqual(args[:6], ["gh", "pr", "view", "1", "-R", repo])
+            self.assertIn("url", args[args.index("--json") + 1].split(","))
+            self.assertIn("repos/2anki/2anki.net/pulls/1/files?per_page=100", self.rest_calls[0])
+
+    def test_a_rest_failure_still_gates_source_in_the_first_100_files(self):
+        pr = {**self.pr("## What\nx"), "files": files("src/usecases/x.ts", *DOCS)}
+        _, output = self.run_main(pr, rest_result=REST_FAILURE)
+        self.assertIn("Who else this reaches", output["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_a_rest_failure_falls_back_to_the_first_100_files_as_before(self):
+        pr = {**self.pr("## What\nx"), "files": files(*DOCS, "src/usecases/x.ts")}
+        _, output = self.run_main(pr, rest_result=REST_FAILURE)
+        self.assertEqual(output, {"continue": True})
+
+    def test_a_rest_failure_still_denies_a_failed_check(self):
+        pr = {**self.pr(REACH_TABLE), "statusCheckRollup": [{"name": "test", "status": "COMPLETED", "conclusion": "FAILURE"}]}
+        _, output = self.run_main(pr, rest_result=REST_FAILURE)
+        self.assertIn("test: FAILURE", output["hookSpecificOutput"]["permissionDecisionReason"])
 
     def test_the_deny_names_the_trigger_and_where_to_look(self):
         _, output = self.run_main(self.pr(""))

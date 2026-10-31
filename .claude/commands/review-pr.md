@@ -7,7 +7,7 @@ Three parallel reviewers fan out, each focused on one axis. You synthesize and p
 
 ## Step 1 — gather context (single call, in your own context)
 
-- `gh pr view <n> --json title,body,author,additions,deletions,changedFiles,files,baseRefName,headRefName,labels,isDraft,mergeable,statusCheckRollup`
+- `gh pr view <n> --json title,body,author,additions,deletions,changedFiles,files,baseRefName,headRefName,labels,isDraft,statusCheckRollup` (no merge-state field: the merge hooks deny a command that contains both `gh` and `merge`)
 - `gh pr diff <n>` — capture full diff
 - If the PR touches `web/src/**` or `src/services/EmailService/templates/**`, mark `userFacing = true`. Otherwise `userFacing = false`.
 
@@ -97,12 +97,12 @@ Read the three (or two) summaries. Dedupe overlapping findings. Classify:
 - **Missing reach section** — a `feat:`/`fix:`/`perf:`/`refactor:` PR (title or any commit headline) changing reach source (condition 7: `src/` or `web/src/` other than tests, snapshots, fixtures, changelog JSON and `.md` docs; reverts exempt) with no non-empty `## Who else this reaches` section is Blocking even though there is no line to quote: it cannot merge (`check-merge-status.py` condition 7). Point the contributor at `.claude/agents/engineer.md` step 10 for the rows.
 - **First-time contributor?** Check `gh pr view <n> --json authorAssociation`. If `FIRST_TIME_CONTRIBUTOR` or `FIRST_TIMER`, add one warm sentence at the top.
 
-Post the review with:
+Write the review to a scratchpad file with the Write tool, then post it with:
 ```
-gh pr review <n> --comment --body-file -
+gh pr review <n> --comment --body-file <that file>
 ```
 
-Pipe a single comment with this shape:
+Do not pipe it in through a heredoc: its suggestion blocks put backticks in the Bash command, which the merge hooks deny next to `gh`. Write a single comment with this shape:
 ```
 **Verdict**: approve | request-changes | comment-only
 

@@ -36,7 +36,13 @@ Denies the merge when ANY of these hold (see .claude/docs/autonomous-shipping.md
      (#4789); #4730 broke prerendered landing pages (#4901). Both reviews read
      the diff for the intended change and nobody listed who else reached it.
 
-`gh pr view` tooling errors fail open (a broken gh should not block a human).
+Only the exact merge command /ship runs is accepted
+(`merge_command.allowed_merge`); any other merge form is denied, and so is a
+merge whose `gh pr view` fails or resolves another repo or PR (#5193). A human
+merges from the GitHub UI, where these hooks do not run. The changed files
+come from `merge_command.changed_files` (the paginated REST list, not `gh pr
+view`'s first 100); when that call fails, conditions 4 and 7 read `gh pr
+view`'s files as they did before.
 
 Hard-rail PRs (`hard_rails.py`) are no longer refused here (removed 2026-10-05):
 /ship classifies them and runs extra verification instead of parking them.
@@ -127,42 +133,35 @@ def is_gh_pr_merge(cmd):
     return merge_command.is_gh_pr_merge(cmd)
 
 
-def extract_pr_ref(cmd):
-    return merge_command.extract_pr_ref(cmd)
-
-
 def run_gh(args, label):
     try:
-        result = subprocess.run(args, capture_output=True, text=True, timeout=15)
-    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-        sys.stderr.write(f"[check-merge-status] could not run gh for {label} ({exc}); allowing.\n")
+        result = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        sys.stderr.write(f"[check-merge-status] could not run gh for {label} ({exc}); refusing.\n")
         return None
     if result.returncode != 0:
         sys.stderr.write(
-            f"[check-merge-status] gh {label} failed; allowing. "
+            f"[check-merge-status] gh {label} failed; refusing. "
             f"stderr: {result.stderr.strip()[:300]}\n"
         )
         return None
     return result.stdout
 
 
-def pr_args(pr_ref):
-    return [pr_ref] if pr_ref is not None else []
-
-
-def fetch_pr_data(pr_ref):
+def fetch_pr_data(number, repo):
     stdout = run_gh(
-        ["gh", "pr", "view", *pr_args(pr_ref), "--json",
-         "number,title,headRefOid,headRefName,body,author,files,commits,statusCheckRollup,reviews,comments"],
+        ["gh", "pr", "view", number, "-R", repo, "--json",
+         "number,url,title,headRefOid,headRefName,body,author,files,commits,statusCheckRollup,reviews,comments"],
         "pr view",
     )
     if stdout is None:
         return None
     try:
-        return json.loads(stdout)
+        parsed = json.loads(stdout)
     except json.JSONDecodeError:
-        sys.stderr.write("[check-merge-status] could not parse gh JSON; allowing merge.\n")
+        sys.stderr.write("[check-merge-status] could not parse gh JSON; refusing merge.\n")
         return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def entry_name(entry):
@@ -424,19 +423,26 @@ def main():
     if not is_gh_pr_merge(cmd):
         allow()
 
-    if merge_command.is_graphql_merge(cmd):
-        deny(
-            "Refusing a GraphQL mergePullRequest mutation — no PR number to gate on. "
-            "Merge through /ship with `gh pr merge <n>`."
-        )
+    merge_command.deny_on_error(gate, cmd, deny)
 
-    pr_ref = extract_pr_ref(cmd)
-    pr_data = fetch_pr_data(pr_ref)
+
+def gate(cmd):
+    form_violation = merge_command.merge_form_violation(cmd)
+    if form_violation:
+        deny(form_violation)
+
+    number, repo = merge_command.allowed_merge(cmd)
+    pr_data = fetch_pr_data(number, repo)
     if pr_data is None:
-        allow()
+        deny(merge_command.view_failed_violation(number))
+
+    view_violation = merge_command.view_repo_violation(pr_data, number)
+    if view_violation:
+        deny(view_violation)
 
     rollup = pr_data.get("statusCheckRollup") or []
-    files = pr_data.get("files") or []
+    files, _ = merge_command.changed_files(pr_data, number, "[check-merge-status]")
+    pr_data = {**pr_data, "files": files}
     author = (pr_data.get("author") or {}).get("login", "")
 
     violations = classify(rollup, files)

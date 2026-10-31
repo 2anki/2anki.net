@@ -28,13 +28,14 @@ Put the read date in the title too (`Adoption review (by 2026-11-24): <surface>,
 
 ## Recipe
 
+The first command prints the new item's id; paste it in place of `<item-id>`. The merge hooks deny a `gh` command that uses `$` or a backtick, or that names `merge` (a full PR URL names `github`, so a title or body with the word and a URL is denied too). So the id is written out, not captured in a variable, and the title and body carry no backtick, `$` or `merge`; `gh project item-create` has no body-file option.
+
 ```bash
-P=PVT_kwDOC1YeNs4Bo_mp
-ID=$(gh project item-create 4 --owner Laer-Smart --title "<title>" --body "<body>" --format json --jq .id)
-gh project item-edit --project-id $P --id $ID --field-id PVTSSF_lADOC1YeNs4Bo_mpzhndKnE --single-select-option-id <status-option-id>
-gh project item-edit --project-id $P --id $ID --field-id PVTSSF_lADOC1YeNs4Bo_mpzhndKqU --single-select-option-id <area-option-id>
-gh project item-edit --project-id $P --id $ID --field-id PVTSSF_lADOC1YeNs4Bo_mpzhndKqk --single-select-option-id <owner-option-id>
-gh project item-edit --project-id $P --id $ID --field-id PVTF_lADOC1YeNs4Bo_mpzhndKqo --date <YYYY-MM-DD>
+gh project item-create 4 --owner Laer-Smart --title "<title>" --body "<body>" --format json --jq .id
+gh project item-edit --project-id PVT_kwDOC1YeNs4Bo_mp --id <item-id> --field-id PVTSSF_lADOC1YeNs4Bo_mpzhndKnE --single-select-option-id <status-option-id>
+gh project item-edit --project-id PVT_kwDOC1YeNs4Bo_mp --id <item-id> --field-id PVTSSF_lADOC1YeNs4Bo_mpzhndKqU --single-select-option-id <area-option-id>
+gh project item-edit --project-id PVT_kwDOC1YeNs4Bo_mp --id <item-id> --field-id PVTSSF_lADOC1YeNs4Bo_mpzhndKqk --single-select-option-id <owner-option-id>
+gh project item-edit --project-id PVT_kwDOC1YeNs4Bo_mp --id <item-id> --field-id PVTF_lADOC1YeNs4Bo_mpzhndKqo --date <YYYY-MM-DD>
 ```
 
 | Field | Option IDs |
