@@ -51,16 +51,13 @@ function hasLoginReturnCookie(req: Request): boolean {
 
 export function rememberLoginReturn(req: Request, res: Response): void {
   const safe = asLoginReturn(req.query?.redirect);
-  if (safe != null) {
-    res.cookie(LOGIN_RETURN_COOKIE, safe, {
-      ...cookieOptions(),
-      maxAge: LOGIN_RETURN_MAX_AGE_MS,
-    });
+  if (safe == null) {
     return;
   }
-  if (hasLoginReturnCookie(req)) {
-    res.clearCookie(LOGIN_RETURN_COOKIE, cookieOptions());
-  }
+  res.cookie(LOGIN_RETURN_COOKIE, safe, {
+    ...cookieOptions(),
+    maxAge: LOGIN_RETURN_MAX_AGE_MS,
+  });
 }
 
 export function takeLoginReturn(
@@ -79,6 +76,13 @@ function sectionOf(path: string): string {
   return path.slice(1).split(/[/?#]/, 1)[0];
 }
 
-export function logLoginReturnUsed(path: string, via: string): void {
+export type LoginReturnMethod =
+  | 'password'
+  | 'google'
+  | 'microsoft'
+  | 'apple'
+  | 'notion';
+
+export function logLoginReturnUsed(path: string, via: LoginReturnMethod): void {
   console.info(`[login-return] used via=${via} section=${sectionOf(path)}`);
 }

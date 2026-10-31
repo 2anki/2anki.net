@@ -4159,6 +4159,76 @@ describe('UsersController — sign-in returns a connector to the authorize scree
       }
     );
 
+    it('a Google sign-in from an emailed download link lands on the download', async () => {
+      const download = '/api/download/u/abc123';
+      const login = await signedOutLoginPage(download);
+      expect(loginReturnCookies(login)).toEqual([
+        [LOGIN_RETURN, download, expect.objectContaining({ httpOnly: true })],
+      ]);
+      const res = buildSigninRes();
+
+      await buildSigninController().loginWithGoogle(
+        {
+          query: { code: 'gauth-code' },
+          cookies: { [LOGIN_RETURN]: download },
+          headers: {},
+        } as unknown as express.Request,
+        res
+      );
+
+      expect(res.redirect).toHaveBeenCalledWith(download);
+    });
+
+    it('a cancelled Google sign-in bounced to /login?error= keeps the return for the retry', async () => {
+      const res = buildSigninRes();
+      Object.assign(res, { set: vi.fn(), send: vi.fn() });
+      const controller = new UsersController(
+        {} as UsersService,
+        {
+          getUserFrom: vi.fn().mockResolvedValue(null),
+        } as unknown as AuthenticationService,
+        {} as ReturnType<typeof import('../data_layer').getDatabase>
+      );
+
+      await controller.checkUser(
+        {
+          query: { error: 'google_signin_failed' },
+          body: {},
+          cookies: { [LOGIN_RETURN]: PRICING },
+          headers: {},
+        } as unknown as express.Request,
+        res
+      );
+      const retry = buildSigninRes();
+      await buildSigninController().loginWithGoogle(
+        {
+          query: { code: 'gauth-code' },
+          cookies: { [LOGIN_RETURN]: PRICING },
+          headers: {},
+        } as unknown as express.Request,
+        retry
+      );
+
+      expect(res.clearCookie).not.toHaveBeenCalled();
+      expect(retry.redirect).toHaveBeenCalledWith(PRICING);
+    });
+
+    it('a password sign-in the login return steers logs via=password', async () => {
+      const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+      try {
+        await passwordLogin({ cookies: { [LOGIN_RETURN]: PRICING } });
+
+        const lines = info.mock.calls.filter(([line]) =>
+          String(line).startsWith('[login-return]')
+        );
+        expect(lines).toEqual([
+          ['[login-return] used via=password section=pricing'],
+        ]);
+      } finally {
+        info.mockRestore();
+      }
+    });
+
     it('GET /login for a connector authorize leaves it to the connector cookie', async () => {
       const res = await signedOutLoginPage(AUTHORIZE_URL);
 

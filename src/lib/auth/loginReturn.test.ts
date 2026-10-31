@@ -99,20 +99,28 @@ describe('rememberLoginReturn', () => {
     }
   );
 
-  it('clears a stale cookie when /login opens without a usable redirect', () => {
-    const res = fakeRes();
+  it.each([
+    [{ error: 'google_signin_failed' }],
+    [{ error: 'notion_cancelled' }],
+    [{}],
+    [{ redirect: '//evil.com' }],
+  ])(
+    'keeps an earlier cookie when /login opens with %o, so a retried or cancelled sign-in still lands',
+    (query) => {
+      const res = fakeRes();
 
-    rememberLoginReturn(
-      loginRequest(undefined, { [LOGIN_RETURN_COOKIE]: '/pricing' }),
-      res
-    );
+      rememberLoginReturn(
+        {
+          query,
+          cookies: { [LOGIN_RETURN_COOKIE]: '/pricing?ref=mcp' },
+        } as unknown as Request,
+        res
+      );
 
-    expect(res.cookie).not.toHaveBeenCalled();
-    expect(res.clearCookie).toHaveBeenCalledWith(
-      LOGIN_RETURN_COOKIE,
-      expect.objectContaining({ path: '/', sameSite: 'none', secure: true })
-    );
-  });
+      expect(res.cookie).not.toHaveBeenCalled();
+      expect(res.clearCookie).not.toHaveBeenCalled();
+    }
+  );
 
   it('leaves the response alone when there is no redirect and no cookie', () => {
     const res = fakeRes();

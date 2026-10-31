@@ -20,6 +20,7 @@ import { recordUnverifiedSignin } from './helpers/recordUnverifiedSignin';
 import { sanitizeRelativeRedirect } from './helpers/sanitizeRelativeRedirect';
 import { takeMcpLoginReturn } from '../lib/mcp/loginReturn';
 import {
+  type LoginReturnMethod,
   logLoginReturnUsed,
   rememberLoginReturn,
   takeLoginReturn,
@@ -1560,7 +1561,7 @@ class UsersController {
     req: express.Request,
     res: express.Response,
     userId: number,
-    via: string
+    via: LoginReturnMethod
   ): Promise<string> {
     const mcpReturn = takeMcpLoginReturn(req, res);
     const loginReturn = takeLoginReturn(req, res);
