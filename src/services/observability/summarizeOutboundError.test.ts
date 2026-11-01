@@ -51,6 +51,14 @@ describe('summarizeOutboundError', () => {
     expect(inspect(summary, { depth: null })).not.toContain(CLIENT_SECRET);
   });
 
+  it('caps a provider code from an untrusted host', () => {
+    const summary = summarizeOutboundError(
+      makeTokenExchangeError(400, { error: 'x'.repeat(500) })
+    );
+
+    expect(summary.providerCode).toHaveLength(100);
+  });
+
   it('summarizes a network error with no response', () => {
     const error = Object.assign(new Error('socket hang up'), {
       code: 'ECONNRESET',

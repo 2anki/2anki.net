@@ -123,9 +123,6 @@ describe('NotionService.getAccessData failure log', () => {
   };
 
   const loggedFailure = async () => {
-    const infoLog = vi
-      .spyOn(console, 'info')
-      .mockImplementation(() => undefined);
     const errorLog = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
@@ -137,7 +134,6 @@ describe('NotionService.getAccessData failure log', () => {
 
     const printed = inspect(errorLog.mock.calls, { depth: null });
     errorLog.mockRestore();
-    infoLog.mockRestore();
     return printed;
   };
 
@@ -153,7 +149,7 @@ describe('NotionService.getAccessData failure log', () => {
   test('logs the status and the Notion error code', async () => {
     const printed = await loggedFailure();
 
-    expect(printed).toContain('400');
+    expect(printed).toContain('status: 400');
     expect(printed).toContain('invalid_grant');
   });
 });

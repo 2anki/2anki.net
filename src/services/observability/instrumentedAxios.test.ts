@@ -107,7 +107,7 @@ describe('instrumentedAxios', () => {
     expect(repo.outbound[0].duration_ms).toBeGreaterThanOrEqual(0);
   });
 
-  it('records non-2xx status from an axios error and rethrows the error untouched', async () => {
+  it('records non-2xx status from an axios error and rethrows the same error object', async () => {
     const repo = new FakeRepo();
     const sink = new ObservabilitySink(repo);
     const client = makeInstrumentedAxios(sink);
@@ -955,6 +955,27 @@ describe('instrumentedAxios error redaction', () => {
       expect(error).toMatchObject({ response: { status: 403 } });
     }
   );
+
+  it('drops credentials from an axios error nested as the cause', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    mockedAxios.post.mockImplementationOnce((url, body, config) =>
+      failLikeAxios(400, null, url, body, config ?? {}).catch((inner) => {
+        const outer = new actualAxios.AxiosError(
+          'maxBodyLength size of 1 exceeded',
+          'ERR_FR_MAX_BODY_LENGTH_EXCEEDED',
+          inner.config
+        );
+        outer.cause = inner;
+        return Promise.reject(outer);
+      })
+    );
+
+    const error = await captureRejection(notionTokenExchange(client));
+
+    const printed = inspect(error, { depth: null });
+    expect(printed).not.toContain(CLIENT_SECRET);
+    expect(printed).not.toContain(BASIC_CREDENTIAL);
+  });
 
   it('drops a client secret sent in a form-encoded request body from a failed request', async () => {
     const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));

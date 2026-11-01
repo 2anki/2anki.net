@@ -6,6 +6,7 @@ export interface OutboundErrorSummary {
 }
 
 const MAX_MESSAGE_LENGTH = 200;
+const MAX_PROVIDER_CODE_LENGTH = 100;
 
 const stringOrNull = (value: unknown): string | null =>
   typeof value === 'string' && value.length > 0 ? value : null;
@@ -15,9 +16,12 @@ const readProperty = (value: unknown, key: string): unknown =>
     ? (value as Record<string, unknown>)[key]
     : undefined;
 
-const providerCodeFrom = (responseData: unknown): string | null =>
-  stringOrNull(readProperty(responseData, 'code')) ??
-  stringOrNull(readProperty(responseData, 'error'));
+const providerCodeFrom = (responseData: unknown): string | null => {
+  const providerCode =
+    stringOrNull(readProperty(responseData, 'code')) ??
+    stringOrNull(readProperty(responseData, 'error'));
+  return providerCode?.slice(0, MAX_PROVIDER_CODE_LENGTH) ?? null;
+};
 
 export const summarizeOutboundError = (
   error: unknown

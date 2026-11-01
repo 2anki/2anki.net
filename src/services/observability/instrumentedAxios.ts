@@ -408,7 +408,9 @@ const withoutCredentials = (
   } as InternalAxiosRequestConfig;
 };
 
-const redactCredentials = (error: unknown): unknown => {
+const MAX_REDACTED_CAUSE_DEPTH = 3;
+
+const redactCredentials = (error: unknown, depth = 0): unknown => {
   if (!axios.isAxiosError(error)) return error;
   if (error.config != null) {
     error.config = withoutCredentials(error.config);
@@ -420,6 +422,9 @@ const redactCredentials = (error: unknown): unknown => {
       response.config = withoutCredentials(response.config);
     }
     delete response.request;
+  }
+  if (depth < MAX_REDACTED_CAUSE_DEPTH) {
+    redactCredentials(error.cause, depth + 1);
   }
   return error;
 };
