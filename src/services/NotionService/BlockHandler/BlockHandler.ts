@@ -453,6 +453,8 @@ class BlockHandler implements IBlockRenderer {
 
   tagRegistry: TagRegistry;
 
+  private headingTags = false;
+
   constructor(
     exporter: CustomExporter,
     api: NotionAPIWrapper,
@@ -466,7 +468,9 @@ class BlockHandler implements IBlockRenderer {
     this.settings = settings;
     this.settingsRepository = settingsRepository;
     this.owner = owner;
-    this.tagRegistry = new TagRegistry(settings.useTags);
+    this.tagRegistry = new TagRegistry(
+      () => this.settings.useTags && !this.headingTags
+    );
   }
 
   private applyDeckNameNumbering(name: string): string {
@@ -676,9 +680,9 @@ class BlockHandler implements IBlockRenderer {
         this.settings,
         this.tagRegistry
       ).replaceAll('\n', '<br />');
+      const back = await this.getBackSide(child);
       const tags = [...this.tagRegistry.strikethroughs];
       this.tagRegistry.clear();
-      const back = await this.getBackSide(child);
       const media = this.exporter.media;
       this.exporter.media = [];
       if (name && back?.trim()) {
@@ -869,6 +873,7 @@ class BlockHandler implements IBlockRenderer {
 
       if (!name) {
         console.debug('name is not valid for front, skipping', name, back);
+        this.tagRegistry.clear();
         continue;
       }
 
@@ -1064,6 +1069,7 @@ class BlockHandler implements IBlockRenderer {
   }
 
   async findFlashcards(locator: Finder): Promise<Deck[]> {
+    this.headingTags = locator.rules.TAGS === 'heading';
     this.chosenRescueRule = locator.rescueRule;
     this.deferredChosen = [];
     const decks = await this.findDecks(locator);
@@ -1984,7 +1990,12 @@ class BlockHandler implements IBlockRenderer {
     const { winner, best, candidates } = runInduction(
       rules,
       (rule) =>
-        induceNotesFromBlocks(blocks, rule, this.settings, new TagRegistry()),
+        induceNotesFromBlocks(
+          blocks,
+          rule,
+          this.settings,
+          new TagRegistry(() => false)
+        ),
       blocksPlainTextLength(blocks)
     );
     if (winner == null) {
@@ -2070,7 +2081,12 @@ class BlockHandler implements IBlockRenderer {
     rule: InducedRule
   ): Note[] {
     return Deck.CleanCards(
-      induceNotesFromBlocks(blocks, rule, this.settings, new TagRegistry())
+      induceNotesFromBlocks(
+        blocks,
+        rule,
+        this.settings,
+        new TagRegistry(() => false)
+      )
     );
   }
 
@@ -2152,7 +2168,12 @@ class BlockHandler implements IBlockRenderer {
     const { winner, best } = runInduction(
       this.rescueCandidateRules(),
       (rule) =>
-        induceNotesFromBlocks(blocks, rule, this.settings, new TagRegistry()),
+        induceNotesFromBlocks(
+          blocks,
+          rule,
+          this.settings,
+          new TagRegistry(() => false)
+        ),
       docChars
     );
     if (winner == null || winner.score.score <= existingScore.score) {

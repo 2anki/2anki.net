@@ -20,7 +20,7 @@ describe('TagRegistry', () => {
   });
 
   it('refuses strikethroughs and says so when tags are off', () => {
-    const registry = new TagRegistry(false);
+    const registry = new TagRegistry(() => false);
 
     expect(registry.addStrikethrough('kept-as-text')).toBe(false);
     expect(registry.strikethroughs).toEqual([]);

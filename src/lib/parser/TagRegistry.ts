@@ -1,15 +1,15 @@
 export default class TagRegistry {
   strikethroughs: string[];
 
-  private readonly collecting: boolean;
+  private readonly isCollecting: () => boolean;
 
-  constructor(collecting = true) {
+  constructor(isCollecting: () => boolean = () => true) {
     this.strikethroughs = [];
-    this.collecting = collecting;
+    this.isCollecting = isCollecting;
   }
 
   addStrikethrough(strikethrough: string): boolean {
-    if (!this.collecting) {
+    if (!this.isCollecting()) {
       return false;
     }
     this.strikethroughs.push(strikethrough);
