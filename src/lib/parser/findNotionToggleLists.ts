@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import type { CheerioAPI } from 'cheerio';
+import hasVisibleContent from './hasVisibleContent';
 import type { Element } from 'domhandler';
 
 import CardOption from './Settings';
@@ -57,13 +58,24 @@ export interface MarkdownMcqResult {
   options: string[];
 }
 
+function optionText($: CheerioAPI, li: Element): string {
+  const $li = $(li).clone();
+  $li.find('.checkbox').remove();
+  return $li.text().trim();
+}
+
+function isBlankOption($: CheerioAPI, li: Element): boolean {
+  return !hasVisibleContent($.html(li));
+}
+
 export function detectNotionApiMCQ(bodyHtml: string): MarkdownMcqResult {
   const $ = cheerio.load(bodyHtml);
   const todoItems = $('ul.to-do-list > li').toArray() as Element[];
   const hasTodoItems = todoItems.length > 0;
-  const items = hasTodoItems
+  const listed = hasTodoItems
     ? todoItems
     : ($('ul.bulleted-list > li').toArray() as Element[]);
+  const items = listed.filter((li) => !isBlankOption($, li));
 
   if (items.length < MCQ_MIN_OPTIONS || items.length > MCQ_MAX_OPTIONS) {
     return { isMcqShape: false, correctIndex: -1, options: [] };
@@ -73,11 +85,7 @@ export function detectNotionApiMCQ(bodyHtml: string): MarkdownMcqResult {
     ? checkedTodoIndex(items, $)
     : fullyBoldedIndex(items, $);
 
-  const options = items.map((li) => {
-    const $li = $(li);
-    $li.find('.checkbox').remove();
-    return $li.text().trim();
-  });
+  const options = items.map((li) => optionText($, li));
 
   return { isMcqShape: true, correctIndex, options };
 }

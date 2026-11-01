@@ -55,7 +55,7 @@ export const BlockHeading = (
   }
 
   if (handler.settings?.isTextOnlyBack) {
-    return getPlainText(headingText);
+    return getPlainText(headingText, handler.tagRegistry);
   }
 
   return ReactDOMServer.renderToStaticMarkup(

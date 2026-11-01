@@ -101,6 +101,28 @@ describe('renderTextChildren — strikethrough tag collection', () => {
     expect(conversionB.strikethroughs).toEqual(['b-tag']);
   });
 
+  it('renders struck text as <del> when no registry is handed in', () => {
+    const html = renderTextChildren(
+      [makeText('keep', { strikethrough: true })],
+      defaultSettings
+    );
+
+    expect(html).toBe('<del>keep</del>');
+  });
+
+  it('renders struck text as <del> when the registry is not collecting', () => {
+    const registry = new TagRegistry(() => false);
+
+    const html = renderTextChildren(
+      [makeText('keep', { strikethrough: true })],
+      defaultSettings,
+      registry
+    );
+
+    expect(html).toBe('<del>keep</del>');
+    expect(registry.strikethroughs).toEqual([]);
+  });
+
   it('leaves the registry empty when no text is struck through', () => {
     const registry = new TagRegistry();
 

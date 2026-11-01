@@ -5,13 +5,15 @@ import {
 
 import ParserRules from '../../../lib/parser/ParserRules';
 import Note from '../../../lib/parser/Note';
+import type TagRegistry from '../../../lib/parser/TagRegistry';
 import isColumnList from './isColumnList';
 import { getRichTextFromBlock } from './getRichTextFromBlock';
 
 // The user wants to turn under lines into input cards <strong>keyword</strong> becomes {{type::word}}
 export default function getInputCard(
   rules: ParserRules,
-  block: GetBlockResponse
+  block: GetBlockResponse,
+  tagRegistry?: TagRegistry
 ): Note | undefined {
   let isInput = false;
   let name = '';
@@ -21,6 +23,9 @@ export default function getInputCard(
     return undefined;
   }
   for (const cb of flashcardBlock) {
+    if (cb.annotations.strikethrough && tagRegistry?.collects()) {
+      continue;
+    }
     const text = (cb as TextRichTextItemResponse).text;
     if (cb.annotations.underline || cb.annotations.bold) {
       answer += text?.content;

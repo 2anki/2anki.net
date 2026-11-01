@@ -12,7 +12,7 @@ const BlockCode = (block: CodeBlockObjectResponse, handler: IBlockRenderer) => {
   const { rich_text: richText } = code;
 
   if (handler.settings?.isTextOnlyBack) {
-    return getPlainText(richText);
+    return getPlainText(richText, handler.tagRegistry);
   }
 
   return ReactDOMServer.renderToStaticMarkup(
