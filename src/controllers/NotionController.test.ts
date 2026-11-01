@@ -1159,7 +1159,7 @@ describe('NotionController', () => {
       );
     });
 
-    it('redirects to /notion after a web connect with no state', async () => {
+    it('refuses a web connect with no state and redirects to /notion', async () => {
       service = buildConnectService();
       controller = new NotionController(service);
       req = { query: { code: 'auth-code' } };
@@ -1171,7 +1171,7 @@ describe('NotionController', () => {
 
       await controller.connect(req as express.Request, res as express.Response);
 
-      expect(service.connectToNotion).toHaveBeenCalledWith('auth-code', 42);
+      expect(service.connectToNotion).not.toHaveBeenCalled();
       expect(res.redirect).toHaveBeenCalledWith('/notion');
     });
 

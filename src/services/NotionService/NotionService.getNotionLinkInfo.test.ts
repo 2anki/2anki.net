@@ -55,10 +55,10 @@ describe('getNotionLinkInfo', () => {
     expect(result.workspace).toBe('My Workspace');
   });
 
-  it('omits state from the link by default (web flow unchanged)', async () => {
+  it('hands the web flow the same-origin start path that binds the state', async () => {
     const service = new NotionService(makeRepo());
     const result = await service.getNotionLinkInfo(1);
-    expect(new URL(result.link).searchParams.has('state')).toBe(false);
+    expect(result.link).toBe('/api/notion/connect/init');
   });
 
   it('carries a signed native state encoding the app owner when client is native', async () => {
