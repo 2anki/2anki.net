@@ -186,4 +186,41 @@ describe('detectNotionApiMCQ', () => {
     expect(result.correctIndex).toBe(1);
     expect(result.options).toEqual(['A', 'B']);
   });
+
+  test('leaves a blank to-do out of the choices and keeps the checked index', () => {
+    const result = detectNotionApiMCQ(`
+      <ul class="to-do-list">
+        <li><div class="checkbox checkbox-off"></div>Three</li>
+        <li><div class="checkbox checkbox-off"></div></li>
+        <li><div class="checkbox checkbox-on"></div>Four</li>
+        <li><div class="checkbox checkbox-off"></div>Five</li>
+      </ul>
+    `);
+    expect(result.options).toEqual(['Three', 'Four', 'Five']);
+    expect(result.correctIndex).toBe(1);
+  });
+
+  test('leaves a blank bullet out and keeps the bolded answer index', () => {
+    const result = detectNotionApiMCQ(`
+      <ul class="bulleted-list">
+        <li><div></div></li>
+        <li><div>London</div></li>
+        <li><div><strong>Paris</strong></div></li>
+      </ul>
+    `);
+    expect(result.options).toEqual(['London', 'Paris']);
+    expect(result.correctIndex).toBe(1);
+  });
+
+  test('keeps an image-only option as a choice', () => {
+    const result = detectNotionApiMCQ(`
+      <ul class="to-do-list">
+        <li><div class="checkbox checkbox-off"></div>Text</li>
+        <li><div class="checkbox checkbox-on"></div><img src="a.png" /></li>
+      </ul>
+    `);
+    expect(result.isMcqShape).toBe(true);
+    expect(result.options).toEqual(['Text', '']);
+    expect(result.correctIndex).toBe(1);
+  });
 });

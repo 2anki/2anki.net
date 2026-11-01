@@ -762,3 +762,34 @@ describe('strikethrough edge cases on table headers, equations and typed answers
     expect(card.tags).toEqual([]);
   });
 });
+
+describe('a toggle whose whole answer is struck', () => {
+  it('becomes tags only, so the card is dropped as an empty answer', async () => {
+    const handler = new BlockHandler(
+      new CustomExporter('', new Workspace(true, 'fs').location),
+      makeApi({
+        'page-1': [
+          block('t-1', 'toggle', [richText('Only tags inside')], true),
+          block('t-2', 'toggle', [richText('Has an answer')], true),
+        ],
+        't-1': [block('p-1', 'paragraph', [struck('2025')])],
+        't-2': [block('p-2', 'paragraph', [richText('Answer')])],
+      }),
+      new CardOption({})
+    );
+
+    const decks = await handler.findFlashcards({
+      parentType: 'page',
+      topLevelId: 'page-1',
+      rules: new ParserRules(),
+      decks: [],
+      parentName: '',
+    });
+
+    const cards = decks.flatMap((deck) => deck.cards);
+    expect(cards.map((card) => [card.name, card.tags])).toEqual([
+      ['Has an answer', []],
+    ]);
+    expect(handler.emptyBackCount).toBe(1);
+  });
+});

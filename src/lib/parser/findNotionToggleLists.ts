@@ -63,6 +63,12 @@ function optionText($: CheerioAPI, li: Element): string {
   return $li.text().trim();
 }
 
+function isBlankOption($: CheerioAPI, li: Element): boolean {
+  return (
+    optionText($, li) === '' && $(li).find('img, audio, video').length === 0
+  );
+}
+
 export function detectNotionApiMCQ(bodyHtml: string): MarkdownMcqResult {
   const $ = cheerio.load(bodyHtml);
   const todoItems = $('ul.to-do-list > li').toArray() as Element[];
@@ -70,7 +76,7 @@ export function detectNotionApiMCQ(bodyHtml: string): MarkdownMcqResult {
   const listed = hasTodoItems
     ? todoItems
     : ($('ul.bulleted-list > li').toArray() as Element[]);
-  const items = listed.filter((li) => optionText($, li) !== '');
+  const items = listed.filter((li) => !isBlankOption($, li));
 
   if (items.length < MCQ_MIN_OPTIONS || items.length > MCQ_MAX_OPTIONS) {
     return { isMcqShape: false, correctIndex: -1, options: [] };
