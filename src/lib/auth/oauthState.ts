@@ -5,6 +5,8 @@ export const GOOGLE_STATE_COOKIE = 'google_login_state';
 export const MICROSOFT_STATE_COOKIE = 'microsoft_login_state';
 export const NOTION_STATE_COOKIE = 'notion_login_state';
 export const NOTION_LOGIN_STATE_PREFIX = 'login:';
+export const NOTION_CONNECT_STATE_COOKIE = 'notion_connect_state';
+export const NOTION_CONNECT_STATE_PREFIX = 'connect:';
 export const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 // SameSite=Lax is enough here, and only here: Google and Microsoft both come
@@ -55,6 +57,17 @@ export function notionLoginNonce(state: unknown): string | undefined {
     : undefined;
 }
 
+export function notionConnectNonce(state: unknown): string | undefined {
+  return typeof state === 'string' &&
+    state.startsWith(NOTION_CONNECT_STATE_PREFIX)
+    ? state.slice(NOTION_CONNECT_STATE_PREFIX.length)
+    : undefined;
+}
+
+export function clearOAuthState(res: Response, cookieName: string): void {
+  res.clearCookie(cookieName, stateCookieOptions());
+}
+
 export function takeOAuthState(
   req: Request,
   res: Response,
@@ -63,7 +76,7 @@ export function takeOAuthState(
 ): boolean {
   const cookies = req.cookies as Record<string, unknown> | undefined;
   const expected = cookies?.[cookieName];
-  res.clearCookie(cookieName, stateCookieOptions());
+  clearOAuthState(res, cookieName);
   if (
     typeof expected !== 'string' ||
     expected === '' ||

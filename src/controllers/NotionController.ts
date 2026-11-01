@@ -41,7 +41,14 @@ import {
   isNativeOAuthState,
   verifyNativeOAuthState,
 } from '../services/NotionService/nativeOAuthState';
-import { isNotionLoginState } from '../lib/auth/oauthState';
+import {
+  NOTION_CONNECT_STATE_COOKIE,
+  clearOAuthState,
+  isNotionLoginState,
+  notionConnectNonce,
+  startOAuthSignIn,
+  takeOAuthState,
+} from '../lib/auth/oauthState';
 import { getDatabase } from '../data_layer';
 import { getNotionId } from '../services/NotionService/getNotionId';
 import { getOwner } from '../lib/User/getOwner';
@@ -161,9 +168,17 @@ class NotionController {
     return sendErrorResponse(error, res);
   }
 
+  startConnect(_req: Request, res: Response) {
+    const url = startOAuthSignIn(res, NOTION_CONNECT_STATE_COOKIE, (nonce) =>
+      this.service.webConnectAuthorizationLink(nonce)
+    );
+    return res.redirect(url ?? '/notion');
+  }
+
   async connect(req: Request, res: Response) {
     const { code, state } = req.query;
     if (!code) {
+      clearOAuthState(res, NOTION_CONNECT_STATE_COOKIE);
       return res.redirect('/notion');
     }
 
@@ -178,12 +193,30 @@ class NotionController {
       return this.connectNative(authorizationCode, stateStr, res);
     }
 
+    const cookies = req.cookies as Record<string, unknown> | undefined;
+    const hadStateCookie = cookies?.[NOTION_CONNECT_STATE_COOKIE] != null;
+    const stateMatches = takeOAuthState(
+      req,
+      res,
+      NOTION_CONNECT_STATE_COOKIE,
+      notionConnectNonce(state)
+    );
+
     const owner = res.locals.owner;
     if (owner == null) {
       return res.status(401).json({
         code: 'notion_unauthorized',
         message: 'Sign in before connecting Notion.',
       });
+    }
+
+    if (!stateMatches) {
+      console.warn('[notion] web connect refused: state mismatch', {
+        owner,
+        hadStateCookie,
+        hadStateParam: state != null,
+      });
+      return res.redirect('/notion');
     }
 
     try {
