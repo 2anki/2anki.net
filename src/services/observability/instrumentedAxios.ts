@@ -1,4 +1,8 @@
-import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, {
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from 'axios';
 import dns from 'node:dns';
 
 import { ObservabilitySink } from './ObservabilitySink';
@@ -376,6 +380,50 @@ export const stripAuthForCrossHostHop = (
   return { ...rest, headers: cleaned };
 };
 
+const CREDENTIAL_HEADER_NAMES = new Set([
+  'authorization',
+  'proxy-authorization',
+]);
+
+const withoutCredentialHeaders = (
+  headers: unknown
+): Record<string, unknown> => {
+  const kept: Record<string, unknown> = {};
+  if (headers == null || typeof headers !== 'object') return kept;
+  for (const [name, value] of Object.entries(headers)) {
+    if (!CREDENTIAL_HEADER_NAMES.has(name.toLowerCase())) {
+      kept[name] = value;
+    }
+  }
+  return kept;
+};
+
+const withoutCredentials = (
+  config: InternalAxiosRequestConfig
+): InternalAxiosRequestConfig => {
+  const { auth: _auth, data: _data, headers, ...rest } = config;
+  return {
+    ...rest,
+    headers: withoutCredentialHeaders(headers),
+  } as InternalAxiosRequestConfig;
+};
+
+const redactCredentials = (error: unknown): unknown => {
+  if (!axios.isAxiosError(error)) return error;
+  if (error.config != null) {
+    error.config = withoutCredentials(error.config);
+  }
+  delete error.request;
+  const { response } = error;
+  if (response != null) {
+    if (response.config != null) {
+      response.config = withoutCredentials(response.config);
+    }
+    delete response.request;
+  }
+  return error;
+};
+
 const measure = async <T>(
   sink: ObservabilitySink,
   service: string,
@@ -417,7 +465,9 @@ const measure = async <T>(
         extractStatusFromError(error),
         Date.now() - start
       );
-      if (redirectTarget == null || !followRedirects) throw error;
+      if (redirectTarget == null || !followRedirects) {
+        throw redactCredentials(error);
+      }
       ({ currentUrl, endpoint, lookup } = await resolveNextHop(
         redirectTarget,
         service

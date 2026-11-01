@@ -3,6 +3,7 @@ import { track } from '../events/track';
 
 import { INotionRepository } from '../../data_layer/NotionRespository';
 import instrumentedAxios from '../observability/instrumentedAxios';
+import { summarizeOutboundError } from '../observability/summarizeOutboundError';
 import type { IBlocksCacheRepository } from '../../data_layer/BlocksCacheRepository';
 import {
   INotionTopLevelPagesRepository,
@@ -300,8 +301,10 @@ export class NotionService {
           }
         })
         .catch((err) => {
-          console.info('Get access data failed');
-          console.error(err);
+          console.error(
+            '[notion] token exchange failed',
+            summarizeOutboundError(err)
+          );
           reject(err);
         });
     });

@@ -10,6 +10,7 @@ import UsersRepository from '../data_layer/UsersRepository';
 import Users from '../data_layer/public/Users';
 import type { Knex } from 'knex';
 import instrumentedAxios from './observability/instrumentedAxios';
+import { summarizeOutboundError } from './observability/summarizeOutboundError';
 import { SESSION_JWT_EXPIRY } from '../shared/session';
 import { withRetry, WithRetryOptions } from './NotionService/helpers/withRetry';
 
@@ -423,8 +424,10 @@ class AuthenticationService {
         accessData: result.data as { [key: string]: string },
       };
     } catch (error) {
-      console.info("Couldn't login with Notion");
-      console.error(error);
+      console.error(
+        "Couldn't login with Notion",
+        summarizeOutboundError(error)
+      );
       return null;
     }
   }

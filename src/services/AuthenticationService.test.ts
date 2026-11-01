@@ -1,8 +1,10 @@
 import { vi, type Mock, type Mocked } from 'vitest';
 import crypto from 'crypto';
 
+import { AxiosError, AxiosHeaders } from 'axios';
 import jwt from 'jsonwebtoken';
 import knex, { Knex } from 'knex';
+import { inspect } from 'node:util';
 
 import AuthenticationService, {
   __resetMicrosoftJwksCacheForTests,
@@ -192,6 +194,41 @@ describe('loginWithNotion', () => {
 
     expect(result).toBeNull();
     expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs the failed token exchange without the client secret', async () => {
+    const config = {
+      url: 'https://api.notion.com/v1/oauth/token',
+      auth: { username: 'test-client-id', password: 'test-client-secret' },
+      headers: new AxiosHeaders({ 'Content-Type': 'application/json' }),
+    };
+    const request = { _header: 'Authorization: Basic test-client-secret' };
+    mockedAxios.post = vi.fn().mockRejectedValue(
+      new AxiosError(
+        'Request failed with status code 400',
+        'ERR_BAD_REQUEST',
+        config,
+        request,
+        {
+          status: 400,
+          statusText: '',
+          headers: {},
+          config,
+          request,
+          data: { error: 'invalid_grant' },
+        }
+      )
+    );
+    const errorLog = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    await createService().loginWithNotion('auth-code');
+
+    const printed = inspect(errorLog.mock.calls, { depth: null });
+    errorLog.mockRestore();
+    expect(printed).not.toContain('test-client-secret');
+    expect(printed).toContain('invalid_grant');
   });
 
   it('returns null when NOTION_CLIENT_ID is not set', async () => {
