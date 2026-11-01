@@ -2,5 +2,5 @@
   "id": "2026-11-01-notion-strikethrough-tags",
   "date": "2026-11-01",
   "type": "fix",
-  "title": "Pages from your Notion connection — strikethrough text becomes a tag on that card and comes off the front and back"
+  "title": "Notion connection: struck text moves off each card into its own tags; turn off Treat strikethrough as tags to keep it"
 }

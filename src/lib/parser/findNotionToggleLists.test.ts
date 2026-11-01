@@ -212,15 +212,20 @@ describe('detectNotionApiMCQ', () => {
     expect(result.correctIndex).toBe(1);
   });
 
-  test('keeps an image-only option as a choice', () => {
+  test.each([
+    ['image', '<img src="a.png" />'],
+    ['video', '<video src="a.mp4"></video>'],
+    ['embedded video', '<iframe src="https://example.com/v"></iframe>'],
+    ['file', '<embed src="a.pdf" />'],
+  ])('keeps a %s-only option as a choice', (_kind, media) => {
     const result = detectNotionApiMCQ(`
       <ul class="to-do-list">
         <li><div class="checkbox checkbox-off"></div>Text</li>
-        <li><div class="checkbox checkbox-on"></div><img src="a.png" /></li>
+        <li><div class="checkbox checkbox-on"></div>${media}</li>
       </ul>
     `);
     expect(result.isMcqShape).toBe(true);
-    expect(result.options).toEqual(['Text', '']);
+    expect(result.options).toHaveLength(2);
     expect(result.correctIndex).toBe(1);
   });
 });

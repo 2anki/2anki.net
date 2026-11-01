@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import type { CheerioAPI } from 'cheerio';
+import hasVisibleContent from './hasVisibleContent';
 import type { Element } from 'domhandler';
 
 import CardOption from './Settings';
@@ -64,9 +65,7 @@ function optionText($: CheerioAPI, li: Element): string {
 }
 
 function isBlankOption($: CheerioAPI, li: Element): boolean {
-  return (
-    optionText($, li) === '' && $(li).find('img, audio, video').length === 0
-  );
+  return !hasVisibleContent($.html(li));
 }
 
 export function detectNotionApiMCQ(bodyHtml: string): MarkdownMcqResult {
