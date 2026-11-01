@@ -24,9 +24,9 @@ A 90-day `user_passes` row at the `unlimited` kind, granted by hand:
 ## The reply template
 
 Support-email rules apply: saved to `~/Downloads/reply-<name>.txt`, no dashes,
-no gender inference, first-name salutation, sentence case, no exclamation marks.
+no gender inference, `Hei <first name>,` salutation, sentence case, no exclamation marks.
 
-    Hi <first name>,
+    Hei <first name>,
 
     Thank you, that genuinely made my day.
 
