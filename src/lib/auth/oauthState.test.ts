@@ -6,6 +6,7 @@ import {
   MICROSOFT_STATE_COOKIE,
   OAUTH_STATE_MAX_AGE_MS,
   isNotionLoginState,
+  notionConnectNonce,
   notionLoginNonce,
   startOAuthSignIn,
   takeOAuthState,
@@ -177,5 +178,19 @@ describe('Notion login state', () => {
     [undefined, undefined],
   ])('notionLoginNonce(%j) is %j', (state, expected) => {
     expect(notionLoginNonce(state)).toBe(expected);
+  });
+});
+
+describe('Notion connect state', () => {
+  it.each([
+    ['connect:abc', 'abc'],
+    ['connect:', ''],
+    ['login:abc', undefined],
+    ['native:7:1:ff', undefined],
+    ['abc', undefined],
+    [undefined, undefined],
+    [['connect:abc'], undefined],
+  ])('notionConnectNonce(%j) is %j', (state, expected) => {
+    expect(notionConnectNonce(state)).toBe(expected);
   });
 });

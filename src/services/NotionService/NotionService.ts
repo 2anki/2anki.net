@@ -10,6 +10,7 @@ import {
 } from '../../data_layer/NotionTopLevelPagesRepository';
 import hashToken from '../../lib/misc/hashToken';
 import { buildNativeOAuthState } from './nativeOAuthState';
+import { NOTION_CONNECT_STATE_PREFIX } from '../../lib/auth/oauthState';
 import NotionAPIWrapper from './NotionAPIWrapper';
 import { getNotionId } from './getNotionId';
 import {
@@ -24,6 +25,8 @@ export interface NotionLinkInfo {
   isConnected: boolean;
   workspace: string | null;
 }
+
+export const NOTION_WEB_CONNECT_START_PATH = '/api/notion/connect/init';
 
 export const TOP_LEVEL_PAGES_STALE_AFTER_MS = 5 * 60 * 1000;
 
@@ -66,6 +69,16 @@ export class NotionService {
       params.set('state', state);
     }
     return `https://api.notion.com/v1/oauth/authorize?${params.toString()}`;
+  }
+
+  webConnectAuthorizationLink(nonce: string): string | null {
+    if (!this.clientId || !this.redirectURI) {
+      return null;
+    }
+    return this.getNotionAuthorizationLink(
+      this.clientId,
+      `${NOTION_CONNECT_STATE_PREFIX}${nonce}`
+    );
   }
 
   isValidUUID(id: string | undefined | null) {
@@ -250,7 +263,7 @@ export class NotionService {
             clientId,
             buildNativeOAuthState(owner, process.env.SECRET ?? '')
           )
-        : this.getNotionAuthorizationLink(clientId);
+        : NOTION_WEB_CONNECT_START_PATH;
 
     if (!notionData) {
       return {

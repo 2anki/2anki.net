@@ -61,6 +61,21 @@ const NotionRouter = () => {
 
   /**
    * @swagger
+   * /api/notion/connect/init:
+   *   get:
+   *     summary: Start a web Notion connect
+   *     description: Sets a ten-minute notion_connect_state cookie and redirects to Notion's authorize page with state connect:<nonce>. /api/notion/connect refuses a web callback whose state does not match the cookie.
+   *     tags: [Notion]
+   *     responses:
+   *       302:
+   *         description: Redirect to Notion OAuth, or to /notion when Notion is not configured
+   */
+  router.get('/api/notion/connect/init', (req, res) =>
+    controller.startConnect(req, res)
+  );
+
+  /**
+   * @swagger
    * /api/notion/pages:
    *   post:
    *     summary: Search Notion pages
@@ -173,8 +188,11 @@ const NotionRouter = () => {
    *               properties:
    *                 link:
    *                   type: string
-   *                   format: uri
-   *                   description: Notion OAuth authorization URL
+   *                   description: |
+   *                     Web: the same-origin path /api/notion/connect/init,
+   *                     which binds the OAuth state to the browser and
+   *                     redirects to Notion. client=native: the Notion OAuth
+   *                     authorization URL with a signed native state.
    *                 isConnected:
    *                   type: boolean
    *                   description: Whether user is connected to Notion
