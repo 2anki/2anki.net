@@ -155,9 +155,11 @@ const NotionRouter = () => {
    * @swagger
    * /api/notion/get-notion-link:
    *   get:
-   *     summary: Get Notion connection link (Notion OAuth login URL)
+   *     summary: Get the Notion connect link
    *     description: |
-   *       Returns the OAuth link to connect to Notion. The link itself is
+   *       Returns the link that starts a Notion connect: the same-origin
+   *       path /api/notion/connect/init for web callers, or the Notion
+   *       OAuth authorization URL for client=native. The link itself is
    *       public — anonymous and expired-session users still get back a
    *       working URL so the "Connect to Notion" button never goes inert.
    *       `isConnected` and `workspace` are only populated when the caller
