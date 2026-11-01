@@ -362,3 +362,127 @@ describe('the single-block preview renderer with default card options', () => {
     expect(html).not.toContain('2025');
   });
 });
+
+describe('strikethrough tags on table cards', () => {
+  function tableRow(id: string, cells: ReturnType<typeof richText>[][]) {
+    return { ...block(id, 'table_row', []), table_row: { cells } };
+  }
+
+  it('tags only the row whose cell holds the struck text', async () => {
+    const rules = new ParserRules();
+    rules.setFlashcardTypes(['table']);
+    const table = {
+      ...block('tb-1', 'table', [], true),
+      table: {
+        table_width: 2,
+        has_column_header: false,
+        has_row_header: false,
+      },
+    };
+
+    const cards = await convert(
+      new CardOption({}),
+      {
+        'page-1': [table],
+        'tb-1': [
+          tableRow('r-1', [[richText('France')], [richText('Paris')]]),
+          tableRow('r-2', [
+            [richText('Spain')],
+            [richText('Madrid '), struck('cap')],
+          ]),
+          tableRow('r-3', [[richText('Italy')], [struck('draft')]]),
+          tableRow('r-4', [[richText('Peru')], [richText('Lima')]]),
+        ],
+      },
+      { rules }
+    );
+
+    expect(cards.map((card) => [card.name, card.tags])).toEqual([
+      ['France', []],
+      ['Spain', ['cap']],
+      ['Peru', []],
+    ]);
+    expect(cards[1].back).not.toContain('cap');
+  });
+});
+
+describe('strikethrough tags on cloze and typed-answer fronts', () => {
+  function annotated(
+    content: string,
+    annotations: Partial<ReturnType<typeof richText>['annotations']>
+  ) {
+    const base = richText(content);
+    return { ...base, annotations: { ...base.annotations, ...annotations } };
+  }
+
+  it('leaves a struck run off a cloze front and keeps it as a tag', async () => {
+    const [card] = await convert(new CardOption({ cloze: 'true' }), {
+      'page-1': [
+        block(
+          't-1',
+          'toggle',
+          [
+            richText('The capital is '),
+            annotated('Paris', { code: true }),
+            richText(' '),
+            struck('2025'),
+          ],
+          true
+        ),
+      ],
+      't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+    });
+
+    expect(card.cloze).toBe(true);
+    expect(card.name).toContain('{{c1::Paris}}');
+    expect(card.name).not.toContain('2025');
+    expect(card.tags).toEqual(['2025']);
+  });
+
+  it('keeps a struck run on a cloze front when tags are off', async () => {
+    const [card] = await convert(
+      new CardOption({ cloze: 'true', tags: 'false' }),
+      {
+        'page-1': [
+          block(
+            't-1',
+            'toggle',
+            [annotated('Paris', { code: true }), richText(' '), struck('2025')],
+            true
+          ),
+        ],
+        't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+      }
+    );
+
+    expect(card.name).toContain('2025');
+    expect(card.tags).toEqual([]);
+  });
+
+  it('leaves a struck run off a typed-answer front and keeps it as a tag', async () => {
+    const [card] = await convert(
+      new CardOption({ 'enable-input': 'true', cloze: 'false' }),
+      {
+        'page-1': [
+          block(
+            't-1',
+            'toggle',
+            [
+              richText('Capital of France: '),
+              annotated('Paris', { bold: true }),
+              richText(' '),
+              struck('2025'),
+            ],
+            true
+          ),
+        ],
+        't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+      }
+    );
+
+    expect(card.enableInput).toBe(true);
+    expect(card.answer).toBe('Paris');
+    expect(card.name).not.toContain('2025');
+    expect(card.tags).toEqual(['2025']);
+  });
+});

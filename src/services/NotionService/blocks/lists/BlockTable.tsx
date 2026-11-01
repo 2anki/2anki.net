@@ -14,6 +14,7 @@ interface TableCard {
   front: string;
   back: string;
   isCloze: boolean;
+  tags: string[];
 }
 
 interface ColumnRoles {
@@ -23,14 +24,19 @@ interface ColumnRoles {
 
 const DEFAULT_COLUMN_ROLES: ColumnRoles = { frontIndex: 0, backIndex: 1 };
 
-function toClozeCard(front: string, back: string): TableCard {
+function toClozeCard(front: string, back: string, tags: string[]): TableCard {
   if (hasInlineClozeCode(front)) {
-    return { front: handleClozeDeletions(front), back, isCloze: true };
+    return { front: handleClozeDeletions(front), back, isCloze: true, tags };
   }
   if (hasInlineClozeCode(back)) {
-    return { front: handleClozeDeletions(back), back: front, isCloze: true };
+    return {
+      front: handleClozeDeletions(back),
+      back: front,
+      isCloze: true,
+      tags,
+    };
   }
-  return { front, back, isCloze: false };
+  return { front, back, isCloze: false, tags };
 }
 
 function renderCell(
@@ -106,6 +112,7 @@ export function tableRowsToCards(
     block.table.has_column_header,
     handler
   );
+  handler.tagRegistry.clear();
   const dataRows = block.table.has_column_header ? rows.slice(1) : rows;
 
   let skippedCount = 0;
@@ -117,6 +124,7 @@ export function tableRowsToCards(
     const backColumn = renderCell(cells[roles.backIndex] ?? [], handler);
 
     if (!front || !backColumn) {
+      handler.tagRegistry.clear();
       skippedCount++;
       continue;
     }
@@ -126,11 +134,13 @@ export function tableRowsToCards(
       extraCells.length > 0
         ? backColumn + buildExtraColumnsTable(extraCells, handler)
         : backColumn;
+    const tags = [...handler.tagRegistry.strikethroughs];
+    handler.tagRegistry.clear();
 
     if (handler.settings.isCloze) {
-      cards.push(toClozeCard(front, back));
+      cards.push(toClozeCard(front, back, tags));
     } else {
-      cards.push({ front, back, isCloze: false });
+      cards.push({ front, back, isCloze: false, tags });
     }
   }
 

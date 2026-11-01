@@ -8,8 +8,12 @@ export default class TagRegistry {
     this.isCollecting = isCollecting;
   }
 
+  collects(): boolean {
+    return this.isCollecting();
+  }
+
   addStrikethrough(strikethrough: string): boolean {
-    if (!this.isCollecting()) {
+    if (!this.collects()) {
       return false;
     }
     this.strikethroughs.push(strikethrough);

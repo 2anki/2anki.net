@@ -797,6 +797,7 @@ class BlockHandler implements IBlockRenderer {
     let counter = 0;
 
     for (const block of flashcardBlocks) {
+      this.tagRegistry.clear();
       if (this.rowWalkBudgetSpent()) {
         break;
       }
@@ -812,7 +813,7 @@ class BlockHandler implements IBlockRenderer {
         });
         this.recordNestedTruncation(tableChildren);
         const tableCards = tableRowsToCards(tableBlock, tableChildren, this);
-        for (const { front, back: tableBack, isCloze } of tableCards) {
+        for (const { front, back: tableBack, isCloze, tags } of tableCards) {
           const ankiNote = new Note(front, tableBack);
           ankiNote.cloze = isCloze;
           ankiNote.media = this.exporter.media;
@@ -826,7 +827,7 @@ class BlockHandler implements IBlockRenderer {
           ankiNote.tags =
             rules.TAGS === 'heading'
               ? headingTagsFor(tableBlock.id, headingTagMap)
-              : this.tagRegistry.strikethroughs;
+              : tags;
           ankiNote.number = counter++;
           if (hierarchyEnabled) {
             applyHierarchyFields(ankiNote, tableBlock.id, headingContextMap);
@@ -892,7 +893,7 @@ class BlockHandler implements IBlockRenderer {
       }
       // Look for cloze deletion cards
       if (!ankiNote.mcq && this.settings.isCloze) {
-        const clozeCard = getClozeDeletionCard(block);
+        const clozeCard = getClozeDeletionCard(block, this.tagRegistry);
         if (clozeCard) {
           isBasicType = false;
           ankiNote.copyValues(clozeCard);
@@ -910,7 +911,7 @@ class BlockHandler implements IBlockRenderer {
       }
       // Look for input cards
       if (!ankiNote.mcq && this.settings.useInput) {
-        const inputCard = getInputCard(rules, block);
+        const inputCard = getInputCard(rules, block, this.tagRegistry);
         if (inputCard) {
           isBasicType = false;
           ankiNote.copyValues(inputCard);
