@@ -1,5 +1,7 @@
 import { vi, type Mock } from 'vitest';
 import express from 'express';
+import { AxiosError, AxiosHeaders } from 'axios';
+import { inspect } from 'node:util';
 import {
   APIErrorCode,
   APIResponseError,
@@ -1192,6 +1194,75 @@ describe('NotionController', () => {
       const body = (res.json as Mock).mock.calls[0]?.[0];
       expect(body.code).toBe('notion_unauthorized');
     });
+
+    const CONNECT_CLIENT_SECRET = ['connect', 'client', 'secret'].join('-');
+
+    const rawTokenExchangeFailure = () => {
+      const config = {
+        url: 'https://api.notion.com/v1/oauth/token',
+        auth: { username: 'client-id', password: CONNECT_CLIENT_SECRET },
+        headers: new AxiosHeaders({ 'Content-Type': 'application/json' }),
+      };
+      const request = { _header: `Authorization: ${CONNECT_CLIENT_SECRET}` };
+      return new AxiosError(
+        'Request failed with status code 400',
+        'ERR_BAD_REQUEST',
+        config,
+        request,
+        {
+          status: 400,
+          statusText: '',
+          headers: {},
+          config,
+          request,
+          data: { error: 'invalid_grant' },
+        }
+      );
+    };
+
+    it.each([
+      {
+        flow: 'web',
+        state: () => undefined,
+        redirect: '/notion',
+      },
+      {
+        flow: 'native',
+        state: () =>
+          buildNativeOAuthState(7, process.env.SECRET ?? 'controller-secret'),
+        redirect:
+          'twoanki://x-callback-url/notion-connected?error=connect_failed',
+      },
+    ])(
+      'logs a failed $flow connect without the client secret',
+      async ({ state, redirect }) => {
+        process.env.SECRET = 'controller-secret';
+        service = {
+          connectToNotion: vi.fn().mockRejectedValue(rawTokenExchangeFailure()),
+        } as any;
+        controller = new NotionController(service);
+        req = { query: { code: 'auth-code', state: state() } };
+        res = {
+          redirect: vi.fn().mockReturnThis(),
+          clearCookie: vi.fn().mockReturnThis(),
+          locals: { owner: 42 },
+        } as any;
+        const errorLog = vi
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+
+        await controller.connect(
+          req as express.Request,
+          res as express.Response
+        );
+
+        const printed = inspect(errorLog.mock.calls, { depth: null });
+        errorLog.mockRestore();
+        expect(printed).not.toContain(CONNECT_CLIENT_SECRET);
+        expect(printed).toContain('invalid_grant');
+        expect(res.redirect).toHaveBeenCalledWith(redirect);
+      }
+    );
 
     it('preserves the login: branch and does not call connectToNotion', async () => {
       service = buildConnectService();

@@ -37,6 +37,7 @@ import {
 } from '@notionhq/client';
 import { getNotionObjectTitle } from 'get-notion-object-title';
 import NotionService from '../services/NotionService';
+import { summarizeOutboundError } from '../services/observability/summarizeOutboundError';
 import {
   isNativeOAuthState,
   verifyNativeOAuthState,
@@ -190,8 +191,7 @@ class NotionController {
       await this.service.connectToNotion(authorizationCode, owner);
       return res.redirect('/notion');
     } catch (err) {
-      console.info('Connect to Notion failed');
-      console.error(err);
+      console.error('Connect to Notion failed', summarizeOutboundError(err));
       return res.redirect('/notion');
     }
   }
@@ -210,8 +210,7 @@ class NotionController {
       await this.service.connectToNotion(authorizationCode, owner);
       return res.redirect(NATIVE_NOTION_RETURN_URL);
     } catch (err) {
-      console.info('Connect to Notion failed');
-      console.error(err);
+      console.error('Connect to Notion failed', summarizeOutboundError(err));
       return res.redirect(`${NATIVE_NOTION_RETURN_URL}?error=connect_failed`);
     }
   }

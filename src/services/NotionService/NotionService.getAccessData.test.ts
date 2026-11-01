@@ -1,4 +1,6 @@
 import { vi, type Mocked } from 'vitest';
+import { AxiosError, AxiosHeaders } from 'axios';
+import { inspect } from 'node:util';
 import { NotionService } from './NotionService';
 import instrumentedAxios from '../observability/instrumentedAxios';
 import type { INotionRepository } from '../../data_layer/NotionRespository';
@@ -91,5 +93,63 @@ describe('NotionService.getAccessData settles per the OAuth response', () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(settled).not.toHaveBeenCalled();
+  });
+});
+
+describe('NotionService.getAccessData failure log', () => {
+  const rawTokenExchangeFailure = () => {
+    const config = {
+      url: 'https://api.notion.com/v1/oauth/token',
+      auth: { username: 'client-abc', password: 'secret-xyz' },
+      headers: new AxiosHeaders({ 'Content-Type': 'application/json' }),
+    };
+    const request = {
+      _header: `Authorization: Basic ${Buffer.from('client-abc:secret-xyz').toString('base64')}`,
+    };
+    return new AxiosError(
+      'Request failed with status code 400',
+      'ERR_BAD_REQUEST',
+      config,
+      request,
+      {
+        status: 400,
+        statusText: '',
+        headers: {},
+        config,
+        request,
+        data: { error: 'invalid_grant' },
+      }
+    );
+  };
+
+  const loggedFailure = async () => {
+    const errorLog = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    mockedAxios.post.mockRejectedValue(rawTokenExchangeFailure());
+
+    await makeService()
+      .getAccessData('auth-code-123')
+      .catch(() => undefined);
+
+    const printed = inspect(errorLog.mock.calls, { depth: null });
+    errorLog.mockRestore();
+    return printed;
+  };
+
+  test('logs neither the client secret nor the Basic credential', async () => {
+    const printed = await loggedFailure();
+
+    expect(printed).not.toContain('secret-xyz');
+    expect(printed).not.toContain(
+      Buffer.from('client-abc:secret-xyz').toString('base64')
+    );
+  });
+
+  test('logs the status and the Notion error code', async () => {
+    const printed = await loggedFailure();
+
+    expect(printed).toContain('status: 400');
+    expect(printed).toContain('invalid_grant');
   });
 });

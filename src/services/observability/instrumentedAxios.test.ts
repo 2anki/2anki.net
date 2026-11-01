@@ -1,6 +1,7 @@
 import { vi, type Mock, type Mocked } from 'vitest';
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 import dns from 'dns';
+import { inspect } from 'node:util';
 
 import {
   makeInstrumentedAxios,
@@ -106,7 +107,7 @@ describe('instrumentedAxios', () => {
     expect(repo.outbound[0].duration_ms).toBeGreaterThanOrEqual(0);
   });
 
-  it('records non-2xx status from an axios error and rethrows the error untouched', async () => {
+  it('records non-2xx status from an axios error and rethrows the same error object', async () => {
     const repo = new FakeRepo();
     const sink = new ObservabilitySink(repo);
     const client = makeInstrumentedAxios(sink);
@@ -787,5 +788,211 @@ describe('instrumentedAxios', () => {
       client.get('notion', 'https://api.notion.com/v1/pages/abc')
     ).resolves.toEqual({ status: 200, data: 'ok' });
     errSpy.mockRestore();
+  });
+});
+
+describe('instrumentedAxios error redaction', () => {
+  let actualAxios: typeof import('axios');
+
+  beforeAll(async () => {
+    actualAxios = await vi.importActual<typeof import('axios')>('axios');
+  });
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockPublicLookup();
+  });
+
+  const CLIENT_ID = 'fixture-client-id';
+  const CLIENT_SECRET = ['fixture', 'client', 'secret'].join('-');
+  const BEARER_TOKEN = ['fixture', 'bearer', 'token'].join('-');
+  const BASIC_CREDENTIAL = Buffer.from(
+    `${CLIENT_ID}:${CLIENT_SECRET}`
+  ).toString('base64');
+
+  const authorizationLineFor = (config: AxiosRequestConfig): string => {
+    if (config.auth != null) {
+      const { username, password } = config.auth;
+      return `Authorization: Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
+    }
+    const headers = (config.headers ?? {}) as Record<string, unknown>;
+    return Object.entries(headers)
+      .map(([name, value]) => `${name}: ${String(value)}`)
+      .join('\r\n');
+  };
+
+  const failLikeAxios = (
+    status: number,
+    responseData: unknown,
+    url: string,
+    body: unknown,
+    config: AxiosRequestConfig
+  ): Promise<never> => {
+    const internalConfig = {
+      ...config,
+      url,
+      data: body,
+      headers: new actualAxios.AxiosHeaders(
+        (config.headers ?? {}) as Record<string, string>
+      ),
+    };
+    const request = {
+      method: 'POST',
+      _header: `POST ${new URL(url).pathname} HTTP/1.1\r\n${authorizationLineFor(config)}\r\n\r\n`,
+    };
+    const response = {
+      status,
+      statusText: '',
+      headers: {},
+      config: internalConfig,
+      request,
+      data: responseData,
+    };
+    return Promise.reject(
+      new actualAxios.AxiosError(
+        `Request failed with status code ${status}`,
+        'ERR_BAD_REQUEST',
+        internalConfig,
+        request,
+        response
+      )
+    );
+  };
+
+  const failPostWith = (status: number, responseData: unknown) =>
+    mockedAxios.post.mockImplementationOnce((url, body, config) =>
+      failLikeAxios(status, responseData, url, body, config ?? {})
+    );
+
+  const failGetWith = (status: number, responseData: unknown) =>
+    mockedAxios.get.mockImplementationOnce((url, config) =>
+      failLikeAxios(status, responseData, url, undefined, config ?? {})
+    );
+
+  const captureRejection = async (call: Promise<unknown>): Promise<unknown> => {
+    try {
+      await call;
+    } catch (error) {
+      return error;
+    }
+    throw new Error('expected the request to fail');
+  };
+
+  const notionTokenExchange = (
+    client: ReturnType<typeof makeInstrumentedAxios>
+  ) =>
+    client.post(
+      'notion',
+      'https://api.notion.com/v1/oauth/token',
+      { grant_type: 'authorization_code', code: 'fixture-code' },
+      {
+        auth: { username: CLIENT_ID, password: CLIENT_SECRET },
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+
+  it('drops the Basic auth password and credential from a failed request before it reaches the caller', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    failPostWith(400, { error: 'invalid_grant' });
+
+    const error = await captureRejection(notionTokenExchange(client));
+
+    const printed = inspect(error, { depth: null });
+    expect(printed).not.toContain(CLIENT_SECRET);
+    expect(printed).not.toContain(BASIC_CREDENTIAL);
+  });
+
+  it('keeps the status, code, message and body callers branch on', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    failPostWith(400, { error: 'invalid_grant' });
+
+    const error = await captureRejection(notionTokenExchange(client));
+
+    expect(actualAxios.isAxiosError(error)).toBe(true);
+    expect(error).toMatchObject({
+      message: 'Request failed with status code 400',
+      code: 'ERR_BAD_REQUEST',
+      response: { status: 400, data: { error: 'invalid_grant' } },
+    });
+  });
+
+  it('leaves the caller-supplied config untouched so a retry still authenticates', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    failPostWith(503, null);
+    const config = {
+      auth: { username: CLIENT_ID, password: CLIENT_SECRET },
+      headers: { Authorization: `Bearer ${BEARER_TOKEN}` },
+    };
+
+    await captureRejection(
+      client.post('notion', 'https://api.notion.com/v1/oauth/token', {}, config)
+    );
+
+    expect(config).toEqual({
+      auth: { username: CLIENT_ID, password: CLIENT_SECRET },
+      headers: { Authorization: `Bearer ${BEARER_TOKEN}` },
+    });
+  });
+
+  it.each(['Authorization', 'authorization', 'Proxy-Authorization'])(
+    'drops a bearer token sent in the %s header from a failed request',
+    async (headerName) => {
+      const client = makeInstrumentedAxios(
+        new ObservabilitySink(new FakeRepo())
+      );
+      failGetWith(403, { error: 'forbidden' });
+
+      const error = await captureRejection(
+        client.get(
+          'google_drive',
+          'https://www.googleapis.com/drive/v3/files/abc',
+          { headers: { [headerName]: `Bearer ${BEARER_TOKEN}` } }
+        )
+      );
+
+      expect(inspect(error, { depth: null })).not.toContain(BEARER_TOKEN);
+      expect(actualAxios.isAxiosError(error)).toBe(true);
+      expect(error).toMatchObject({ response: { status: 403 } });
+    }
+  );
+
+  it('drops credentials from an axios error nested as the cause', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    mockedAxios.post.mockImplementationOnce((url, body, config) =>
+      failLikeAxios(400, null, url, body, config ?? {}).catch((inner) => {
+        const outer = new actualAxios.AxiosError(
+          'maxBodyLength size of 1 exceeded',
+          'ERR_FR_MAX_BODY_LENGTH_EXCEEDED',
+          inner.config
+        );
+        outer.cause = inner;
+        return Promise.reject(outer);
+      })
+    );
+
+    const error = await captureRejection(notionTokenExchange(client));
+
+    const printed = inspect(error, { depth: null });
+    expect(printed).not.toContain(CLIENT_SECRET);
+    expect(printed).not.toContain(BASIC_CREDENTIAL);
+  });
+
+  it('drops a client secret sent in a form-encoded request body from a failed request', async () => {
+    const client = makeInstrumentedAxios(new ObservabilitySink(new FakeRepo()));
+    failPostWith(400, { error: 'invalid_client' });
+
+    const error = await captureRejection(
+      client.post(
+        'microsoft_login',
+        'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+        `client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}`,
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      )
+    );
+
+    expect(inspect(error, { depth: null })).not.toContain(CLIENT_SECRET);
+    expect(error).toMatchObject({
+      response: { status: 400, data: { error: 'invalid_client' } },
+    });
   });
 });
