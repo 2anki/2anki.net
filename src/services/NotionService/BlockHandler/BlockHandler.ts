@@ -466,7 +466,7 @@ class BlockHandler implements IBlockRenderer {
     this.settings = settings;
     this.settingsRepository = settingsRepository;
     this.owner = owner;
-    this.tagRegistry = new TagRegistry();
+    this.tagRegistry = new TagRegistry(settings.useTags);
   }
 
   private applyDeckNameNumbering(name: string): string {

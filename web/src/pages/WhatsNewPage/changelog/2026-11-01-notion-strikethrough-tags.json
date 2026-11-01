@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-01-notion-strikethrough-tags",
+  "date": "2026-11-01",
+  "type": "fix",
+  "title": "Struck-through tags on connected Notion pages no longer stay on the card. Turn off Tags to keep struck text as text"
+}

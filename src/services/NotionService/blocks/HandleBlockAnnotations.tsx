@@ -36,7 +36,9 @@ const HandleBlockAnnotations = (
     styledContent = <code>{styledContent}</code>;
   }
   if (annotations.strikethrough) {
-    options.tagRegistry?.addStrikethrough(content);
+    if (options.tagRegistry?.addStrikethrough(content)) {
+      return null;
+    }
     styledContent = <del>{styledContent}</del>;
   }
   if (annotations.italic) {
