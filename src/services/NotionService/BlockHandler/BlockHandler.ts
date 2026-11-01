@@ -224,6 +224,8 @@ interface PromotedToggleCard {
   media: string[];
 }
 
+const nonCollectingTagRegistry = () => new TagRegistry(() => false);
+
 function activeNonPageDeckTypes(rules: ParserRules): Set<string> {
   return new Set(
     rules.deckTypes().filter((type) => !PAGE_LIKE_DECK_TYPES.has(type))
@@ -813,7 +815,12 @@ class BlockHandler implements IBlockRenderer {
         });
         this.recordNestedTruncation(tableChildren);
         const tableCards = tableRowsToCards(tableBlock, tableChildren, this);
-        for (const { front, back: tableBack, isCloze, tags } of tableCards) {
+        for (const {
+          front,
+          back: tableBack,
+          isCloze,
+          tags: rowTags,
+        } of tableCards) {
           const ankiNote = new Note(front, tableBack);
           ankiNote.cloze = isCloze;
           ankiNote.media = this.exporter.media;
@@ -827,7 +834,7 @@ class BlockHandler implements IBlockRenderer {
           ankiNote.tags =
             rules.TAGS === 'heading'
               ? headingTagsFor(tableBlock.id, headingTagMap)
-              : tags;
+              : rowTags;
           ankiNote.number = counter++;
           if (hierarchyEnabled) {
             applyHierarchyFields(ankiNote, tableBlock.id, headingContextMap);
@@ -1995,7 +2002,7 @@ class BlockHandler implements IBlockRenderer {
           blocks,
           rule,
           this.settings,
-          new TagRegistry(() => false)
+          nonCollectingTagRegistry()
         ),
       blocksPlainTextLength(blocks)
     );
@@ -2086,7 +2093,7 @@ class BlockHandler implements IBlockRenderer {
         blocks,
         rule,
         this.settings,
-        new TagRegistry(() => false)
+        nonCollectingTagRegistry()
       )
     );
   }
@@ -2173,7 +2180,7 @@ class BlockHandler implements IBlockRenderer {
           blocks,
           rule,
           this.settings,
-          new TagRegistry(() => false)
+          nonCollectingTagRegistry()
         ),
       docChars
     );

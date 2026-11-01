@@ -486,3 +486,279 @@ describe('strikethrough tags on cloze and typed-answer fronts', () => {
     expect(card.tags).toEqual(['2025']);
   });
 });
+
+describe('strikethrough tags in lists, nested toggles and column cards', () => {
+  it('tags and removes struck runs in list items and a nested toggle on the answer', async () => {
+    const [card] = await convert(new CardOption({}), {
+      'page-1': [block('t-1', 'toggle', [richText('Lists')], true)],
+      't-1': [
+        block('b-1', 'bulleted_list_item', [
+          richText('Bullet '),
+          struck('b-tag'),
+        ]),
+        block('n-1', 'numbered_list_item', [
+          richText('Number '),
+          struck('n-tag'),
+        ]),
+        block('t-2', 'toggle', [richText('Inner '), struck('i-tag')], true),
+      ],
+      't-2': [block('p-1', 'paragraph', [richText('Inner answer')])],
+    });
+
+    expect(card.tags).toEqual(['b-tag', 'n-tag', 'i-tag']);
+    expect(card.back).toContain('Bullet');
+    expect(card.back).not.toMatch(/b-tag|n-tag|i-tag|<del>/);
+  });
+
+  it('tags a column-list card with the struck runs in its own columns only', async () => {
+    const rules = new ParserRules();
+    rules.setFlashcardTypes(['column_list']);
+    const cards = await convert(
+      new CardOption({}),
+      {
+        'page-1': [
+          block('cl-1', 'column_list', [], true),
+          block('cl-2', 'column_list', [], true),
+        ],
+        'cl-1': [
+          block('c-1', 'column', [], true),
+          block('c-2', 'column', [], true),
+        ],
+        'c-1': [block('p-1', 'paragraph', [richText('Front one')])],
+        'c-2': [
+          block('p-2', 'paragraph', [richText('Back one '), struck('2025')]),
+        ],
+        'cl-2': [
+          block('c-3', 'column', [], true),
+          block('c-4', 'column', [], true),
+        ],
+        'c-3': [block('p-3', 'paragraph', [richText('Front two')])],
+        'c-4': [block('p-4', 'paragraph', [richText('Back two')])],
+      },
+      { rules }
+    );
+
+    expect(cards.map((card) => card.tags)).toEqual([['2025'], []]);
+    expect(cards[0].back).not.toContain('2025');
+  });
+});
+
+describe('strikethrough tags with a plain-text answer', () => {
+  it('tags and removes struck runs in paragraphs, quotes, headings and code', async () => {
+    const [card] = await convert(new CardOption({ paragraph: 'true' }), {
+      'page-1': [block('t-1', 'toggle', [richText('Plain')], true)],
+      't-1': [
+        block('p-1', 'paragraph', [richText('Para '), struck('p-tag')]),
+        block('q-1', 'quote', [richText('Quote '), struck('q-tag')]),
+        withFields(
+          block('h-1', 'heading_2', [richText('Head '), struck('h-tag')]),
+          'heading_2',
+          { is_toggleable: false }
+        ),
+        withFields(
+          block('k-1', 'code', [richText('code '), struck('k-tag')]),
+          'code',
+          { language: 'javascript', caption: [] }
+        ),
+      ],
+    });
+
+    expect(card.tags).toEqual(['p-tag', 'q-tag', 'h-tag', 'k-tag']);
+    expect(card.back).toContain('Quote');
+    expect(card.back).not.toMatch(/p-tag|q-tag|h-tag|k-tag/);
+  });
+
+  it('keeps struck text in a plain-text answer when tags are off', async () => {
+    const [card] = await convert(
+      new CardOption({ paragraph: 'true', tags: 'false' }),
+      {
+        'page-1': [block('t-1', 'toggle', [richText('Plain')], true)],
+        't-1': [block('q-1', 'quote', [richText('Quote '), struck('q-tag')])],
+      }
+    );
+
+    expect(card.tags).toEqual([]);
+    expect(card.back).toContain('q-tag');
+  });
+});
+
+describe('strikethrough tags on multiple-choice cards', () => {
+  const bold = (content: string) => ({
+    ...richText(content),
+    annotations: { ...richText(content).annotations, bold: true },
+  });
+
+  it('takes struck text out of the options, drops an all-struck option and keeps the answer', async () => {
+    const [card] = await convert(new CardOption({ 'mcq-enabled': 'true' }), {
+      'page-1': [
+        block('t-1', 'toggle', [richText('Capital of France?')], true),
+      ],
+      't-1': [
+        block('o-1', 'bulleted_list_item', [richText('London')]),
+        block('o-2', 'bulleted_list_item', [struck('2025')]),
+        block('o-3', 'bulleted_list_item', [
+          bold('Paris'),
+          richText(' '),
+          struck('2004'),
+        ]),
+        block('o-4', 'bulleted_list_item', [richText('Berlin')]),
+      ],
+    });
+
+    expect(card.mcq).toBe(true);
+    expect(card.options).toEqual(['London', 'Paris', 'Berlin']);
+    expect(card.correctIndices).toEqual([1]);
+    expect(card.tags).toEqual(['2025', '2004']);
+  });
+});
+
+describe('strikethrough on rescued decks', () => {
+  const heading = (id: string, text: string) =>
+    withFields(block(id, 'heading_2', [richText(text)]), 'heading_2', {
+      is_toggleable: false,
+    });
+
+  it('keeps struck text on cards from an automatically shipped rescue', async () => {
+    const cards = await convert(new CardOption({}), {
+      'page-1': [
+        block('t-1', 'toggle', [richText('An empty toggle')]),
+        heading('h-1', 'What is spaced repetition?'),
+        block('p-1', 'paragraph', [
+          richText('A method that spaces reviews '),
+          struck('draft'),
+        ]),
+        heading('h-2', 'What is a flashcard?'),
+        block('p-2', 'paragraph', [
+          richText('A prompt paired with an answer.'),
+        ]),
+        heading('h-3', 'What is active recall?'),
+        block('p-3', 'paragraph', [richText('Retrieving a fact from memory.')]),
+      ],
+    });
+
+    expect(cards).toHaveLength(3);
+    expect(cards[0].back).toContain('<del>draft</del>');
+  });
+
+  it('keeps struck text on cards from a degenerate-yield rescue', async () => {
+    const oversized = 'Photosynthesis stores light energy in glucose. '.repeat(
+      30
+    );
+    const cards = await convert(new CardOption({}), {
+      'page-1': [
+        block('t-1', 'toggle', [richText('Cell biology overview')], true),
+        heading('h-1', 'What is the cell membrane?'),
+        block('p-1', 'paragraph', [
+          richText('A lipid bilayer. '),
+          struck('draft'),
+        ]),
+        heading('h-2', 'What is the nucleus?'),
+        block('p-2', 'paragraph', [
+          richText('It houses the genetic material.'),
+        ]),
+        heading('h-3', 'What are mitochondria?'),
+        block('p-3', 'paragraph', [richText('They generate chemical energy.')]),
+        heading('h-4', 'What is the cytoplasm?'),
+        block('p-4', 'paragraph', [richText('The fluid inside a cell.')]),
+      ],
+      't-1': [block('p-0', 'paragraph', [richText(oversized)])],
+    });
+
+    const membrane = cards.find((card) => card.name.includes('cell membrane'));
+    expect(membrane?.back).toContain('<del>draft</del>');
+  });
+});
+
+describe('strikethrough edge cases on table headers, equations and typed answers', () => {
+  it('keeps struck header text off the first row', async () => {
+    const rules = new ParserRules();
+    rules.setFlashcardTypes(['table']);
+    const tableRow = (id: string, cells: ReturnType<typeof richText>[][]) => ({
+      ...block(id, 'table_row', []),
+      table_row: { cells },
+    });
+    const cards = await convert(
+      new CardOption({}),
+      {
+        'page-1': [
+          {
+            ...block('tb-1', 'table', [], true),
+            table: {
+              table_width: 2,
+              has_column_header: true,
+              has_row_header: false,
+            },
+          },
+        ],
+        'tb-1': [
+          tableRow('r-0', [
+            [richText('Front')],
+            [richText('Back '), struck('h-tag')],
+          ]),
+          tableRow('r-1', [[richText('France')], [richText('Paris')]]),
+        ],
+      },
+      { rules }
+    );
+
+    expect(cards.map((card) => card.tags)).toEqual([[]]);
+  });
+
+  it('keeps a struck inline equation on a cloze front', async () => {
+    const equation = {
+      type: 'equation' as const,
+      equation: { expression: 'E=mc^2' },
+      annotations: { ...richText('x').annotations, strikethrough: true },
+      plain_text: 'E=mc^2',
+      href: null,
+    };
+    const [card] = await convert(new CardOption({ cloze: 'true' }), {
+      'page-1': [
+        block(
+          't-1',
+          'toggle',
+          [
+            {
+              ...richText('Paris'),
+              annotations: { ...richText('x').annotations, code: true },
+            },
+            richText(' and '),
+            equation as unknown as ReturnType<typeof richText>,
+          ],
+          true
+        ),
+      ],
+      't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+    });
+
+    expect(card.cloze).toBe(true);
+    expect(card.name).toContain('E=mc^2');
+  });
+
+  it('keeps a struck run on a typed-answer front when tags are off', async () => {
+    const [card] = await convert(
+      new CardOption({ 'enable-input': 'true', cloze: 'false', tags: 'false' }),
+      {
+        'page-1': [
+          block(
+            't-1',
+            'toggle',
+            [
+              {
+                ...richText('Paris'),
+                annotations: { ...richText('x').annotations, bold: true },
+              },
+              richText(' '),
+              struck('2025'),
+            ],
+            true
+          ),
+        ],
+        't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+      }
+    );
+
+    expect(card.name).toContain('2025');
+    expect(card.tags).toEqual([]);
+  });
+});

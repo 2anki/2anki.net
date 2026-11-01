@@ -26,9 +26,6 @@ export default function getClozeDeletionCard(
     return undefined;
   }
   for (const cb of richText) {
-    if (cb.annotations.strikethrough && tagRegistry?.collects()) {
-      continue;
-    }
     if (isEquation(cb)) {
       const rendered = renderInlineEquation(cb as EquationRichTextItemResponse);
       if (cb.annotations.code) {
@@ -38,6 +35,9 @@ export default function getClozeDeletionCard(
       } else {
         name += rendered;
       }
+      continue;
+    }
+    if (cb.annotations.strikethrough && tagRegistry?.collects()) {
       continue;
     }
     const text = (cb as TextRichTextItemResponse).text;

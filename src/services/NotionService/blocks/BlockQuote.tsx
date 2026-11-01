@@ -13,7 +13,7 @@ export const BlockQuote = (
   const { rich_text: richText } = quote;
 
   if (handler.settings?.isTextOnlyBack) {
-    return getPlainText(richText);
+    return getPlainText(richText, handler.tagRegistry);
   }
 
   return ReactDOMServer.renderToStaticMarkup(
