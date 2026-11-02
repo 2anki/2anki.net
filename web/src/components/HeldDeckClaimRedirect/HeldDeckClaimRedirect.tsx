@@ -10,7 +10,8 @@ interface Props {
 }
 
 // Most signup paths land on /upload, where the upload form claims the held
-// deck on mount. Notion connect (and a returning user who already has Notion)
+// deck on mount. The Auto Sync setup page claims in place after checkout, so
+// it is skipped too rather than sending the buyer away from setup. Notion connect (and a returning user who already has Notion)
 // lands on /notion instead, so this shell-level check runs once per signed-in
 // session and sends the visitor to /upload when a hold is waiting.
 export function HeldDeckClaimRedirect({ isLoggedIn }: Props) {
@@ -20,7 +21,8 @@ export function HeldDeckClaimRedirect({ isLoggedIn }: Props) {
 
   useEffect(() => {
     if (!isLoggedIn || checkedRef.current) return;
-    if (location.pathname.replace(/\/$/, '') === '/upload') return;
+    const path = location.pathname.replace(/\/$/, '');
+    if (path === '/upload' || path === '/ankify/setup') return;
     if (globalThis.sessionStorage?.getItem(SESSION_KEY) === '1') return;
     checkedRef.current = true;
     let cancelled = false;

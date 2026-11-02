@@ -57,6 +57,13 @@ describe('HeldDeckClaimRedirect', () => {
     expect(await findByText('upload')).toBeInTheDocument();
   });
 
+  it('leaves the Auto Sync setup page to claim in place', async () => {
+    getHeldDeck.mockResolvedValue({ cardCount: 0, cardsHeldBack: 40 });
+    renderAt('/ankify/setup?checkout=success', true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(getHeldDeck).not.toHaveBeenCalled();
+  });
+
   it('stays put when there is no hold', async () => {
     getHeldDeck.mockResolvedValue(null);
     const { findByText } = renderAt('/notion', true);

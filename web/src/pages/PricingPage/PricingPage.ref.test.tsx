@@ -478,6 +478,19 @@ describe('PricingPage for a connector visitor whose deck is saved', () => {
     expect(screen.queryByText(HELD_INTRO_SIGNED_OUT)).not.toBeInTheDocument();
   });
 
+  it('keeps held_until and the yearly interval through the sign-in redirect', () => {
+    renderAt(HELD);
+
+    fireEvent.click(screen.getByRole('radio', { name: /^Yearly/ }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed yearly' })
+    );
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&held_until=2026-11-09&interval=year')}`
+    );
+  });
+
   it('keeps held_until through the sign-in redirect for a signed-out Auto Sync click', async () => {
     mockGetAutoSyncPrice.mockResolvedValue({
       display: '$9',

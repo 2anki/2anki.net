@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AnkifyPage.module.css';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
+import { useClaimHeldDeckAfterCheckout } from '../../lib/hooks/useClaimHeldDeckAfterCheckout';
 import { Backend } from '../../lib/backend/Backend';
 import AnkifyClient from '../../lib/interfaces/AnkifyClient';
 import { Skeleton } from '../../components/Skeleton/Skeleton';
@@ -117,6 +118,7 @@ export default function AnkifySetupPage({ backend }: Props) {
   const [checkoutWaitTimedOut, setCheckoutWaitTimedOut] = useState(false);
 
   const hasAutoSyncAccess = userLocals?.autoSyncActive === true;
+  useClaimHeldDeckAfterCheckout(api, returnedFromCheckout && hasAutoSyncAccess);
 
   useEffect(() => {
     if (!returnedFromCheckout || hasAutoSyncAccess || checkoutWaitTimedOut) {
