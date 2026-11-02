@@ -2618,7 +2618,7 @@ class UploadService {
   ): Promise<PassHeldDeckConversion> {
     const settings = new CardOption({
       ...cardOptions,
-      'claude-ai-flashcards': 'false',
+      ...CLAIM_INFERENCE_OFF,
     });
     const ws = new Workspace(true, 'fs');
     const { packages, emptyReason } =

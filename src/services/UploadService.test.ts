@@ -8003,7 +8003,13 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
         getCardUsage: vi
           .fn()
           .mockResolvedValue({ cards_used: 100, month_started_at: new Date() }),
-      }),
+        getCardOptions: vi.fn().mockResolvedValue({
+          'font-size': '32',
+          'basic-reversed': 'true',
+          'claude-ai-flashcards': 'true',
+          email: 'learner@example.com',
+        }),
+      } as unknown as Partial<UsersRepository>),
       ...fakeUploadServiceDeps({ heldDeck })
     );
 
@@ -8025,6 +8031,37 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       anon_id: planHoldKey('4242'),
       card_count: 0,
       cards_held_back: 184,
+    });
+    expect(heldDeck.rows[0].card_options).toEqual({
+      'font-size': '32',
+      'basic-reversed': 'true',
+    });
+  });
+
+  it('builds a pass claim with Claude and image quiz off whatever the options ask', async () => {
+    const execute = mockPartial([{ name: 'deck', cardCount: 5 }]);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({})
+    );
+
+    await service.convertHeldFileForPass(
+      7,
+      heldSourceFile(),
+      {
+        'claude-ai-flashcards': 'true',
+        'image-quiz-html-to-anki': 'true',
+        'basic-reversed': 'true',
+      },
+      'req-1'
+    );
+
+    expect(execute.mock.calls[0][2]).toMatchObject({
+      claudeAIFlashcards: false,
+      imageQuizHtmlToAnki: false,
+      basicReversed: true,
     });
   });
 

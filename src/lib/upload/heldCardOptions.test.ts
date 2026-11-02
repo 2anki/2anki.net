@@ -40,6 +40,7 @@ describe('allowedHeldCardOptions', () => {
     'ai-comprehensive',
     'image-quiz-html-to-anki',
     'share-files-for-debugging',
+    'user-instructions',
     'pdf-page-range',
     'pdf-fallback',
   ])('never holds %s', (key) => {
@@ -52,7 +53,6 @@ describe('allowedHeldCardOptions', () => {
 
   it.each([
     ['deckName', 512],
-    ['user-instructions', 4000],
     ['field-mapping', 10_000],
   ])('keeps %s up to %i characters and drops it past that', (key, max) => {
     expect(allowedHeldCardOptions({ [key]: 'x'.repeat(max) })).toEqual({

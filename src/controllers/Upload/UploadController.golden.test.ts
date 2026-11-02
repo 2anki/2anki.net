@@ -8,6 +8,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import jwt from 'jsonwebtoken';
+import { strToU8, zipSync } from 'fflate';
 
 const s3Puts = vi.hoisted(() => [] as string[]);
 const s3Objects = vi.hoisted(() => new Map<string, Buffer>());
@@ -308,6 +309,18 @@ const UPLOADS = {
     filename: 'Golden Photo.png',
     body: ONE_PIXEL_PNG,
     type: 'image/png',
+  },
+  zipWithImage: {
+    filename: 'Golden Quiz.zip',
+    body: Buffer.from(
+      zipSync({
+        'Golden Large.html': strToU8(
+          notionToggleExport('Golden Large', LARGE_DECK_CARDS)
+        ),
+        'quiz.png': ONE_PIXEL_PNG,
+      })
+    ),
+    type: 'application/zip',
   },
 };
 
@@ -1441,6 +1454,24 @@ describe('a plan hold claimed after paying', () => {
       paying: true,
       requestId: 'golden-claim',
     });
+
+    expect(claimed).toMatchObject({
+      kind: 'plan',
+      cardCount: LARGE_DECK_CARDS,
+    });
+    expect(claudeCalls.count).toBe(0);
+  }, 20_000);
+
+  it('never runs image quiz vision on a claimed ZIP when the account has it on', async () => {
+    await upload('zipWithImage', { ...signedInFree, cardsUsed: 90 });
+    expect(heldDecks.rows).toHaveLength(1);
+    claudeCalls.count = 0;
+    population = {
+      ...signedInFree,
+      accountCardOptions: { 'image-quiz-html-to-anki': 'true' },
+    };
+
+    const { claimed } = await claimAsSubscriber();
 
     expect(claimed).toMatchObject({
       kind: 'plan',
