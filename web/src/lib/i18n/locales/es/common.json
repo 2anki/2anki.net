@@ -566,7 +566,7 @@
     "monthlySection": "¿Prefieres una suscripción?",
     "connectorIntro": "El mazo que le pediste a Claude o ChatGPT superaba el límite mensual del plan gratuito, así que no se creó. Cualquier plan de abajo quita el límite. Luego vuelve a pedir el mazo.",
     "connectorIntroSignedOut": "El mazo que le pediste a Claude o ChatGPT superaba el límite mensual del plan gratuito, así que no se creó. Cualquier plan de abajo quita el límite. Si eliges un pase, escribe el correo de tu cuenta de 2anki al pagar para que llegue a la cuenta que conectaste. Luego vuelve a pedir el mazo.",
-    "connectorHeldIntro": "El mazo que le pediste a Claude o ChatGPT está guardado en tu cuenta de 2anki hasta el {{date}}. Cualquier plan de abajo desbloquea el mazo completo, y aparece en Mis mazos justo después de pagar.",
+    "connectorHeldIntro": "El mazo que le pediste a Claude o ChatGPT está guardado en tu cuenta de 2anki hasta el {{date}}. Cualquier plan de abajo desbloquea el mazo completo. Estará listo la próxima vez que abras 2anki después de pagar, y luego aparecerá en Mis mazos.",
     "connectorHeldIntroSignedOut": "El mazo que le pediste a Claude o ChatGPT está guardado en tu cuenta de 2anki hasta el {{date}}. Inicia sesión con la cuenta que conectaste y luego elige cualquier plan de abajo para desbloquear el mazo completo.",
     "morePassesSection": "Pases más largos",
     "pricesNote": "Precios en USD. Se cobra en tu moneda local al pagar.",

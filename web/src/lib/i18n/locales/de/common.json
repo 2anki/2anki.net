@@ -566,7 +566,7 @@
     "monthlySection": "Lieber ein Abo?",
     "connectorIntro": "Der Stapel, den du bei Claude oder ChatGPT angefragt hast, lag über dem Monatslimit des kostenlosen Tarifs und wurde deshalb nicht erstellt. Jeder Tarif unten hebt das Limit auf. Frag danach noch einmal nach dem Stapel.",
     "connectorIntroSignedOut": "Der Stapel, den du bei Claude oder ChatGPT angefragt hast, lag über dem Monatslimit des kostenlosen Tarifs und wurde deshalb nicht erstellt. Jeder Tarif unten hebt das Limit auf. Gib bei einem Pass an der Kasse die E-Mail-Adresse deines 2anki-Kontos ein, damit er beim verbundenen Konto ankommt. Frag danach noch einmal nach dem Stapel.",
-    "connectorHeldIntro": "Der Stapel, den du bei Claude oder ChatGPT angefragt hast, ist bis zum {{date}} in deinem Konto bei 2anki gespeichert. Jeder Tarif unten schaltet den ganzen Stapel frei, und er erscheint direkt nach dem Bezahlen in Meine Stapel.",
+    "connectorHeldIntro": "Der Stapel, den du bei Claude oder ChatGPT angefragt hast, ist bis zum {{date}} in deinem Konto bei 2anki gespeichert. Jeder Tarif unten schaltet den ganzen Stapel frei. Er ist bereit, wenn du 2anki nach dem Bezahlen das nächste Mal öffnest, und erscheint dann in Meine Stapel.",
     "connectorHeldIntroSignedOut": "Der Stapel, den du bei Claude oder ChatGPT angefragt hast, ist bis zum {{date}} in deinem Konto bei 2anki gespeichert. Melde dich mit dem verbundenen Konto an und wähle dann einen Tarif unten, um den ganzen Stapel freizuschalten.",
     "morePassesSection": "Längere Pässe",
     "pricesNote": "Preise in USD. Deine Karte wird beim Checkout in deiner lokalen Währung belastet.",

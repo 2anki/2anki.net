@@ -419,7 +419,7 @@ describe('PricingPage without a connector ref', () => {
 describe('PricingPage for a connector visitor whose deck is saved', () => {
   const HELD = '/pricing?ref=mcp&held_until=2026-11-09';
   const HELD_INTRO =
-    'The deck you asked Claude or ChatGPT for is saved on your 2anki account until November 9. Any plan below unlocks the full deck, and it appears in My decks right after checkout.';
+    'The deck you asked Claude or ChatGPT for is saved on your 2anki account until November 9. Any plan below unlocks the full deck. It is ready the next time you open 2anki after checkout, and then appears in My decks.';
   const HELD_INTRO_SIGNED_OUT =
     'The deck you asked Claude or ChatGPT for is saved on your 2anki account until November 9. Sign in with the account you connected, then choose any plan below to unlock the full deck.';
 
@@ -448,10 +448,17 @@ describe('PricingPage for a connector visitor whose deck is saved', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows the saved deck still on its last day', () => {
-    vi.setSystemTime(new Date('2026-11-09T23:00:00Z'));
+  it('shows the saved deck through the day before it expires', () => {
+    vi.setSystemTime(new Date('2026-11-08T23:59:00Z'));
     renderAt(HELD, true);
     expect(screen.getByText(HELD_INTRO)).toBeInTheDocument();
+  });
+
+  it('falls back to the connector intro on the day the deck expires', () => {
+    vi.setSystemTime(new Date('2026-11-09T00:01:00Z'));
+    renderAt(HELD, true);
+    expect(screen.getByText(CONNECTOR_INTRO)).toBeInTheDocument();
+    expect(screen.queryByText(HELD_INTRO)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -463,9 +470,28 @@ describe('PricingPage for a connector visitor whose deck is saved', () => {
     expect(screen.queryByText(HELD_INTRO_SIGNED_OUT)).not.toBeInTheDocument();
   });
 
-  it('ignores held_until without the connector ref', () => {
-    renderAt('/pricing?held_until=2026-11-09');
+  it.each([
+    '/pricing?held_until=2026-11-09',
+    '/pricing?ref=ai&held_until=2026-11-09',
+  ])('ignores held_until without the connector ref at %s', (path) => {
+    renderAt(path);
     expect(screen.queryByText(HELD_INTRO_SIGNED_OUT)).not.toBeInTheDocument();
+  });
+
+  it('keeps held_until through the sign-in redirect for a signed-out Auto Sync click', async () => {
+    mockGetAutoSyncPrice.mockResolvedValue({
+      display: '$9',
+      interval: 'month',
+    });
+    renderAt(HELD);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Get Auto Sync' })
+    );
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&held_until=2026-11-09#auto-sync')}`
+    );
   });
 
   it('formats the date in the page language', async () => {

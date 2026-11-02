@@ -11574,6 +11574,35 @@ describe('claiming a held deck after sign-in', () => {
     }
   );
 
+  it('adds no extra line to a sign-up claim', async () => {
+    signIn();
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi
+        .fn()
+        .mockResolvedValue({ cardCount: 21, cardsHeldBack: 0 }),
+      claimHeldDeck: vi.fn().mockResolvedValue({
+        status: 200,
+        downloadKey: 'owner-key.apkg',
+        cardCount: 21,
+        deckName: 'notes',
+        kind: 'signup',
+        error: null,
+        alsoClaimed: 2,
+      }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('link', { name: /download/i })
+      ).toBeInTheDocument()
+    );
+    expect(screen.queryByText(/more decks? (is|are) in My decks/)).toBeNull();
+  });
+
   it('adds no extra line when the claim built one deck', async () => {
     signIn();
     mockPlanClaim();

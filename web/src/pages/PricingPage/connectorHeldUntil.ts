@@ -1,8 +1,9 @@
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-// The connector links here with the day its saved deck expires. Only a real
-// calendar day that has not passed counts: a stale or hand-edited link falls
-// back to the plain connector page.
+// The connector links here with the UTC day its saved deck expires, without
+// the time. The hold may end at any moment of that day, so the page promises
+// the deck only while that day is still ahead; on the day itself, and for a
+// stale or hand-edited link, it falls back to the plain connector page.
 export function connectorHeldUntil(
   raw: string | null,
   now: Date = new Date()
@@ -25,7 +26,7 @@ export function connectorHeldUntil(
     now.getUTCMonth(),
     now.getUTCDate()
   );
-  return date.getTime() >= today ? raw : null;
+  return date.getTime() > today ? raw : null;
 }
 
 export function formatHeldUntil(isoDate: string, language: string): string {
