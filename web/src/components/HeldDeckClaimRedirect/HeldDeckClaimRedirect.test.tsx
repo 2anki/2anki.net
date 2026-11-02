@@ -21,6 +21,7 @@ function renderAt(path: string, isLoggedIn: boolean) {
       <Routes>
         <Route path="/notion" element={<p>notion</p>} />
         <Route path="/upload" element={<p>upload</p>} />
+        <Route path="/ankify/setup" element={<p>setup</p>} />
       </Routes>
     </MemoryRouter>
   );
@@ -57,12 +58,22 @@ describe('HeldDeckClaimRedirect', () => {
     expect(await findByText('upload')).toBeInTheDocument();
   });
 
-  it('leaves the Auto Sync setup page to claim in place', async () => {
+  it('leaves an Auto Sync checkout return to claim in place on setup', async () => {
     getHeldDeck.mockResolvedValue({ cardCount: 0, cardsHeldBack: 40 });
-    renderAt('/ankify/setup?checkout=success', true);
+    const { findByText } = renderAt('/ankify/setup?checkout=success', true);
+    expect(await findByText('setup')).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(getHeldDeck).not.toHaveBeenCalled();
   });
+
+  it.each(['/ankify/setup', '/ankify/setup?ref=ai'])(
+    'still sends a visitor with a waiting hold from %s to /upload',
+    async (path) => {
+      getHeldDeck.mockResolvedValue({ cardCount: 21, cardsHeldBack: 13 });
+      const { findByText } = renderAt(path, true);
+      expect(await findByText('upload')).toBeInTheDocument();
+    }
+  );
 
   it('stays put when there is no hold', async () => {
     getHeldDeck.mockResolvedValue(null);

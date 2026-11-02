@@ -30,6 +30,7 @@ export function useClaimHeldDeckAfterCheckout(
     if (!ready || startedRef.current) return;
     startedRef.current = true;
     let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const claimer = apiRef.current;
     (async () => {
       try {
@@ -39,9 +40,9 @@ export function useClaimHeldDeckAfterCheckout(
           hold == null && attempt < CHECKOUT_CLAIM_RETRIES;
           attempt++
         ) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS)
-          );
+          await new Promise((resolve) => {
+            retryTimer = setTimeout(resolve, CHECKOUT_CLAIM_RETRY_MS);
+          });
           if (cancelled) return;
           hold = await claimer.getHeldDeck();
         }
@@ -61,6 +62,7 @@ export function useClaimHeldDeckAfterCheckout(
     })();
     return () => {
       cancelled = true;
+      clearTimeout(retryTimer);
       startedRef.current = false;
     };
   }, [ready]);

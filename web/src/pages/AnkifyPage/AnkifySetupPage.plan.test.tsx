@@ -286,13 +286,16 @@ describe('AnkifySetupPage claims a deck saved for a plan after checkout', () => 
     expect(reportClientError).not.toHaveBeenCalled();
   });
 
-  test('stays quiet when there is no saved deck to claim', async () => {
+  test.each([
+    ['no saved deck', 404],
+    ['an expired saved deck', 410],
+  ])('stays quiet when there is %s to claim', async (_label, status) => {
     vi.mocked(getUserLocals).mockResolvedValue(localsWith(true));
     const getHeldDeck = vi.fn(async () => ({
       cardCount: 0,
       cardsHeldBack: 40,
     }));
-    const claimHeldDeck = vi.fn(async () => claimResult(404));
+    const claimHeldDeck = vi.fn(async () => claimResult(status));
 
     renderSetup(makeBackend({ getHeldDeck, claimHeldDeck }), {
       path: '/ankify/setup?checkout=success',
@@ -301,6 +304,49 @@ describe('AnkifySetupPage claims a deck saved for a plan after checkout', () => 
     await waitFor(() => expect(claimHeldDeck).toHaveBeenCalledTimes(1));
     expect(reportClientError).not.toHaveBeenCalled();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('reports a claim that fails on our side', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(true));
+    const claimHeldDeck = vi.fn(async () => claimResult(500));
+
+    renderSetup(
+      makeBackend({
+        getHeldDeck: vi.fn(async () => ({ cardCount: 0, cardsHeldBack: 40 })),
+        claimHeldDeck,
+      }),
+      { path: '/ankify/setup?checkout=success' }
+    );
+
+    await waitFor(() =>
+      expect(reportClientError).toHaveBeenCalledWith(expect.any(Error), {
+        surface: 'held_deck_claim_after_checkout',
+      })
+    );
+    expect((reportClientError.mock.calls[0][0] as Error).message).toContain(
+      'HTTP 500'
+    );
+  });
+
+  test('reports a claim that throws', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(true));
+    const failure = new TypeError('Failed to parse the claim');
+
+    renderSetup(
+      makeBackend({
+        getHeldDeck: vi.fn(async () => ({ cardCount: 0, cardsHeldBack: 40 })),
+        claimHeldDeck: vi.fn(async () => {
+          throw failure;
+        }),
+      }),
+      { path: '/ankify/setup?checkout=success' }
+    );
+
+    await waitFor(() =>
+      expect(reportClientError).toHaveBeenCalledWith(failure, {
+        surface: 'held_deck_claim_after_checkout',
+      })
+    );
   });
 
   test('waits for the plan before looking for a saved deck', async () => {
