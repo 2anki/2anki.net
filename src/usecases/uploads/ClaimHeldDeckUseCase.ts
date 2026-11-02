@@ -1,4 +1,7 @@
-import type { IHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
+import type {
+  HeldDeckSource,
+  IHeldDeckRepository,
+} from '../../data_layer/HeldDeckRepository';
 import type { UploadedFile } from '../../lib/storage/types';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import {
@@ -66,6 +69,8 @@ export interface ClaimResult {
   heldForPlan?: boolean;
   // Other plan holds the same claim built into My decks.
   alsoClaimed?: number;
+  // Set when the claimed deck was saved by the connector.
+  source?: HeldDeckSource;
 }
 
 export interface ClaimParams {
@@ -252,6 +257,7 @@ export class ClaimHeldDeckUseCase {
         cardCount: conversion.cardCount,
         deckName: conversion.deckName,
         kind,
+        ...(hold.source === 'mcp' ? { source: 'mcp' as const } : {}),
         ...(capToPreview
           ? {
               cardsHeldBack: conversion.cardsHeldBack,

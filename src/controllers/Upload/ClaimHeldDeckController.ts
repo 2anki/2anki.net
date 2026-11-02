@@ -47,6 +47,7 @@ export class ClaimHeldDeckController {
           props: {
             card_count: result.cardCount,
             also_claimed: result.alsoClaimed ?? 0,
+            ...(result.source === 'mcp' ? { source: 'mcp' } : {}),
           },
         });
       } else {

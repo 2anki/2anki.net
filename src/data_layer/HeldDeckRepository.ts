@@ -10,7 +10,10 @@ export interface HeldDeckInsert {
   cardsHeldBack: number;
   expiresAt: Date;
   cardOptions?: Record<string, string> | null;
+  source?: HeldDeckSource | null;
 }
+
+export type HeldDeckSource = 'mcp';
 
 export interface ExpiredHeldDeck {
   id: number;
@@ -58,6 +61,7 @@ export class HeldDeckRepository implements IHeldDeckRepository {
         expires_at: row.expiresAt,
         card_options:
           row.cardOptions == null ? null : JSON.stringify(row.cardOptions),
+        source: row.source ?? null,
       })
       .returning('*');
   }
@@ -268,6 +272,7 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
       claimed_at: null,
       claimed_by: null,
       card_options: row.cardOptions ?? null,
+      source: row.source ?? null,
     } as HeldDecks;
     this.rows.push(stored);
     return stored;

@@ -343,6 +343,32 @@ describe('ClaimHeldDeckController', () => {
       );
     });
 
+    it('records a claim of a deck the connector saved as coming from the connector', async () => {
+      trackMock.mockClear();
+      const repo = new InMemoryHeldDeckRepository();
+      await repo.insert({
+        storageKey: 'held/connector.md',
+        anonId: planHoldKey('42'),
+        filename: 'Biology.md',
+        cardCount: 0,
+        cardsHeldBack: 15,
+        expiresAt: new Date(Date.now() + 60_000),
+        source: 'mcp',
+      });
+      const controller = new ClaimHeldDeckController(buildUseCase(repo));
+      const { res, capturedJson } = buildResponse(42);
+      (res.locals as Record<string, unknown>).subscriber = true;
+
+      await controller.claim(buildRequest(null), res);
+
+      expect(capturedJson()).not.toHaveProperty('source');
+      expect(trackMock).toHaveBeenCalledWith('monthly_partial_claimed', {
+        userId: 42,
+        anonymousId: null,
+        props: { card_count: 34, also_claimed: 0, source: 'mcp' },
+      });
+    });
+
     it('says how many other plan decks the claim built, and records it', async () => {
       trackMock.mockClear();
       const repo = new InMemoryHeldDeckRepository();
