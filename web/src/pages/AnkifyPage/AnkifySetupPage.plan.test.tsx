@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
@@ -14,6 +14,11 @@ vi.mock('../../lib/backend/getUserLocals', () => ({
 const track = vi.fn();
 vi.mock('../../lib/analytics/track', () => ({
   track: (...args: unknown[]) => track(...args),
+}));
+
+const reportClientError = vi.fn();
+vi.mock('../../lib/reportClientError', () => ({
+  reportClientError: (...args: unknown[]) => reportClientError(...args),
 }));
 
 vi.mock('../../lib/analytics/reportPurchaseConversion', () => ({
@@ -234,5 +239,141 @@ describe('AnkifySetupPage plan panel', () => {
     expect(
       screen.queryByText(/anki couldn't start\. try again/i)
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('AnkifySetupPage claims a deck saved for a plan after checkout', () => {
+  beforeEach(() => {
+    vi.mocked(getUserLocals).mockReset();
+    reportClientError.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const claimResult = (status: number) => ({
+    status,
+    downloadKey: status === 200 ? 'full-deck.apkg' : null,
+    cardCount: status === 200 ? 40 : null,
+    deckName: status === 200 ? 'notes' : null,
+    kind: status === 200 ? ('plan' as const) : null,
+    error: null,
+  });
+
+  test('builds the saved deck once the plan is active, retrying while it appears', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(true));
+    const getHeldDeck = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ cardCount: 0, cardsHeldBack: 40 });
+    const claimHeldDeck = vi.fn(async () => claimResult(200));
+
+    renderSetup(makeBackend({ getHeldDeck, claimHeldDeck }), {
+      path: '/ankify/setup?checkout=success&session_id=cs_auto',
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(7000);
+    });
+
+    await waitFor(() => expect(claimHeldDeck).toHaveBeenCalledTimes(1));
+    expect(getHeldDeck).toHaveBeenCalledTimes(3);
+    expect(
+      await screen.findByRole('button', { name: /start anki/i })
+    ).toBeInTheDocument();
+    expect(reportClientError).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['no saved deck', 404],
+    ['an expired saved deck', 410],
+  ])('stays quiet when there is %s to claim', async (_label, status) => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(true));
+    const getHeldDeck = vi.fn(async () => ({
+      cardCount: 0,
+      cardsHeldBack: 40,
+    }));
+    const claimHeldDeck = vi.fn(async () => claimResult(status));
+
+    renderSetup(makeBackend({ getHeldDeck, claimHeldDeck }), {
+      path: '/ankify/setup?checkout=success',
+    });
+
+    await waitFor(() => expect(claimHeldDeck).toHaveBeenCalledTimes(1));
+    expect(reportClientError).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('reports a claim that fails on our side', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(true));
+    const claimHeldDeck = vi.fn(async () => claimResult(500));
+
+    renderSetup(
+      makeBackend({
+        getHeldDeck: vi.fn(async () => ({ cardCount: 0, cardsHeldBack: 40 })),
+        claimHeldDeck,
+      }),
+      { path: '/ankify/setup?checkout=success' }
+    );
+
+    await waitFor(() =>
+      expect(reportClientError).toHaveBeenCalledWith(expect.any(Error), {
+        surface: 'held_deck_claim_after_checkout',
+      })
+    );
+    expect((reportClientError.mock.calls[0][0] as Error).message).toContain(
+      'HTTP 500'
+    );
+  });
+
+  test('reports a claim that throws', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(true));
+    const failure = new TypeError('Failed to parse the claim');
+
+    renderSetup(
+      makeBackend({
+        getHeldDeck: vi.fn(async () => ({ cardCount: 0, cardsHeldBack: 40 })),
+        claimHeldDeck: vi.fn(async () => {
+          throw failure;
+        }),
+      }),
+      { path: '/ankify/setup?checkout=success' }
+    );
+
+    await waitFor(() =>
+      expect(reportClientError).toHaveBeenCalledWith(failure, {
+        surface: 'held_deck_claim_after_checkout',
+      })
+    );
+  });
+
+  test('waits for the plan before looking for a saved deck', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(false));
+    const getHeldDeck = vi.fn(async () => null);
+
+    renderSetup(makeBackend({ getHeldDeck, claimHeldDeck: vi.fn() }), {
+      path: '/ankify/setup?checkout=success',
+    });
+
+    await waitFor(() => expect(getUserLocals).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(getHeldDeck).not.toHaveBeenCalled();
+  });
+
+  test('claims nothing on a visit that is not a checkout return', async () => {
+    vi.mocked(getUserLocals).mockResolvedValue(localsWith(true));
+    const getHeldDeck = vi.fn(async () => ({
+      cardCount: 0,
+      cardsHeldBack: 40,
+    }));
+    const claimHeldDeck = vi.fn();
+
+    renderSetup(makeBackend({ getHeldDeck, claimHeldDeck }));
+
+    await screen.findByRole('button', { name: /start anki/i });
+    expect(getHeldDeck).not.toHaveBeenCalled();
+    expect(claimHeldDeck).not.toHaveBeenCalled();
   });
 });

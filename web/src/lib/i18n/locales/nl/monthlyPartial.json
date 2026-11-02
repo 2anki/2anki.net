@@ -10,5 +10,7 @@
   "proPrice": "Upgraden naar Pro · {{price}}/maand",
   "checkoutError": "Afrekenen kon niet starten. Probeer het opnieuw of mail support@2anki.net.",
   "readyBody": "Je volledige deck is klaar. Het staat ook in Mijn decks.",
+  "alsoClaimed_one": "Nog {{count}} deck staat in Mijn decks.",
+  "alsoClaimed_other": "Nog {{count}} decks staan in Mijn decks.",
   "expiredBody": "Tegengehouden decks blijven 7 dagen bewaard. Upload het bestand opnieuw om het volledige deck te maken."
 }

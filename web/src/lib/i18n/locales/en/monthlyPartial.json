@@ -10,5 +10,7 @@
   "proPrice": "Upgrade to Pro · {{price}}/month",
   "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net.",
   "readyBody": "Your full deck is ready. It's in My decks too.",
+  "alsoClaimed_one": "{{count}} more deck is in My decks.",
+  "alsoClaimed_other": "{{count}} more decks are in My decks.",
   "expiredBody": "Held decks are kept for 7 days. Drop the file again to make the full deck."
 }

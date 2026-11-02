@@ -566,6 +566,8 @@
     "monthlySection": "Prefer a subscription?",
     "connectorIntro": "The deck you asked Claude or ChatGPT for went over the free plan's monthly limit, so it wasn't made. Any plan below removes the limit. Then ask for the deck again.",
     "connectorIntroSignedOut": "The deck you asked Claude or ChatGPT for went over the free plan's monthly limit, so it wasn't made. Any plan below removes the limit. For a pass, enter your 2anki account email at checkout so it reaches the account you connected. Then ask for the deck again.",
+    "connectorHeldIntro": "The deck you asked Claude or ChatGPT for is saved on your 2anki account until {{date}}. Any plan below unlocks the full deck. It is ready the next time you open 2anki after checkout, and then appears in My decks.",
+    "connectorHeldIntroSignedOut": "The deck you asked Claude or ChatGPT for is saved on your 2anki account until {{date}}. Sign in with the account you connected, then choose any plan below to unlock the full deck.",
     "morePassesSection": "Longer passes",
     "pricesNote": "Prices in USD. Your card is charged in your local currency at checkout.",
     "reassuranceCancel": "Cancel anytime — one click",

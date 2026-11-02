@@ -10,5 +10,7 @@
   "proPrice": "Passer à Pro · {{price}}/mois",
   "checkoutError": "Impossible de lancer le paiement. Réessaie ou écris à support@2anki.net.",
   "readyBody": "Ton paquet complet est prêt. Il est aussi dans Mes paquets.",
+  "alsoClaimed_one": "{{count}} autre paquet est dans Mes paquets.",
+  "alsoClaimed_other": "{{count}} autres paquets sont dans Mes paquets.",
   "expiredBody": "Les paquets retenus sont gardés 7 jours. Dépose à nouveau le fichier pour créer le paquet complet."
 }

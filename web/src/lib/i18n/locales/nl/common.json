@@ -566,6 +566,8 @@
     "monthlySection": "Liever een abonnement?",
     "connectorIntro": "Het deck waar je Claude of ChatGPT om vroeg, overschreed de maandlimiet van het gratis plan en is daarom niet gemaakt. Elke optie hieronder heft de limiet op. Vraag daarna opnieuw om het deck.",
     "connectorIntroSignedOut": "Het deck waar je Claude of ChatGPT om vroeg, overschreed de maandlimiet van het gratis plan en is daarom niet gemaakt. Elke optie hieronder heft de limiet op. Kies je een pass, vul dan bij het afrekenen het e-mailadres van je 2anki-account in, zodat hij bij het gekoppelde account terechtkomt. Vraag daarna opnieuw om het deck.",
+    "connectorHeldIntro": "Het deck waar je Claude of ChatGPT om vroeg, staat tot {{date}} opgeslagen in je account bij 2anki. Elke optie hieronder ontgrendelt het volledige deck. Het staat klaar zodra je 2anki na het afrekenen weer opent, en verschijnt dan in Mijn decks.",
+    "connectorHeldIntroSignedOut": "Het deck waar je Claude of ChatGPT om vroeg, staat tot {{date}} opgeslagen in je account bij 2anki. Log in met het account dat je hebt gekoppeld en kies daarna een optie hieronder om het volledige deck te ontgrendelen.",
     "morePassesSection": "Langere passes",
     "pricesNote": "Prijzen in USD. Je kaart wordt bij het afrekenen in je lokale valuta belast.",
     "reassuranceCancel": "Altijd opzegbaar — met één klik",

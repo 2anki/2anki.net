@@ -26,6 +26,8 @@ const PLURAL_FORMS: Record<string, string[]> = {
 const KEYS: [namespace: string, key: string, plural: boolean][] = [
   ['monthlyPartial', 'bodySaved', true],
   ['monthlyPartial', 'readyBody', false],
+  ['monthlyPartial', 'alsoClaimed', true],
+  ['common', 'pricing.connectorHeldIntro', false],
   ['passFirst', 'previewSaved', false],
   ['previews', 'page.alreadyConverting', false],
   ['previews', 'apkg.backToDownloads', false],

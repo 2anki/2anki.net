@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+import i18n from '../../lib/i18n';
 import PricingPage from './PricingPage';
 import { track } from '../../lib/analytics/track';
 import type { PricingEntitlement } from './components/OwnedPlanNotice';
@@ -412,5 +413,155 @@ describe('PricingPage without a connector ref', () => {
     expect(globalThis.location.href).toBe(
       `/login?redirect=${encodeURIComponent('/pricing')}`
     );
+  });
+});
+
+describe('PricingPage for a connector visitor whose deck is saved', () => {
+  const HELD = '/pricing?ref=mcp&held_until=2026-11-09';
+  const HELD_INTRO =
+    'The deck you asked Claude or ChatGPT for is saved on your 2anki account until November 9. Any plan below unlocks the full deck. It is ready the next time you open 2anki after checkout, and then appears in My decks.';
+  const HELD_INTRO_SIGNED_OUT =
+    'The deck you asked Claude or ChatGPT for is saved on your 2anki account until November 9. Sign in with the account you connected, then choose any plan below to unlock the full deck.';
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-02T12:00:00Z'));
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    await i18n.changeLanguage('en');
+  });
+
+  it('tells a signed-in visitor the deck is saved until the date', () => {
+    renderAt(HELD, true);
+    expect(screen.getByText(HELD_INTRO)).toBeInTheDocument();
+    expect(screen.queryByText(CONNECTOR_INTRO)).not.toBeInTheDocument();
+    expect(screen.queryByText(/wasn't made/)).not.toBeInTheDocument();
+  });
+
+  it('tells a signed-out visitor to sign in with the connected account', () => {
+    renderAt(HELD);
+    expect(screen.getByText(HELD_INTRO_SIGNED_OUT)).toBeInTheDocument();
+    expect(
+      screen.queryByText(SIGNED_OUT_CONNECTOR_INTRO)
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the saved deck through the day before it expires', () => {
+    vi.setSystemTime(new Date('2026-11-08T23:59:00Z'));
+    renderAt(HELD, true);
+    expect(screen.getByText(HELD_INTRO)).toBeInTheDocument();
+  });
+
+  it('falls back to the connector intro on the day the deck expires', () => {
+    vi.setSystemTime(new Date('2026-11-09T00:01:00Z'));
+    renderAt(HELD, true);
+    expect(screen.getByText(CONNECTOR_INTRO)).toBeInTheDocument();
+    expect(screen.queryByText(HELD_INTRO)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['a past date', '/pricing?ref=mcp&held_until=2026-11-01'],
+    ['a date that is not a day', '/pricing?ref=mcp&held_until=soon'],
+  ])('falls back to the connector intro for %s', (_label, path) => {
+    renderAt(path);
+    expect(screen.getByText(SIGNED_OUT_CONNECTOR_INTRO)).toBeInTheDocument();
+    expect(screen.queryByText(HELD_INTRO_SIGNED_OUT)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    '/pricing?held_until=2026-11-09',
+    '/pricing?ref=ai&held_until=2026-11-09',
+  ])('ignores held_until without the connector ref at %s', (path) => {
+    renderAt(path);
+    expect(screen.queryByText(HELD_INTRO_SIGNED_OUT)).not.toBeInTheDocument();
+  });
+
+  it('keeps held_until and the yearly interval through the sign-in redirect', () => {
+    renderAt(HELD);
+
+    fireEvent.click(screen.getByRole('radio', { name: /^Yearly/ }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed yearly' })
+    );
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&held_until=2026-11-09&interval=year')}`
+    );
+  });
+
+  it('keeps held_until through the sign-in redirect for a signed-out Auto Sync click', async () => {
+    mockGetAutoSyncPrice.mockResolvedValue({
+      display: '$9',
+      interval: 'month',
+    });
+    renderAt(HELD);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Get Auto Sync' })
+    );
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&held_until=2026-11-09#auto-sync')}`
+    );
+  });
+
+  it('formats the date in the page language', async () => {
+    await i18n.changeLanguage('de');
+    renderAt(HELD, true);
+    expect(
+      screen.getByText(/bis zum 9\. November in deinem Konto/)
+    ).toBeInTheDocument();
+  });
+
+  it('sends a signed-out pass click to sign in first, keeping the saved deck', () => {
+    renderAt(HELD);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&held_until=2026-11-09')}`
+    );
+    expect(mockStartPassCheckout).not.toHaveBeenCalled();
+    expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: 'pricing_page',
+      plan: 'day_pass',
+      variant: 'mcp-day-first',
+    });
+  });
+
+  it('keeps held_until through the sign-in redirect for a signed-out Pro click', () => {
+    renderAt(HELD);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Get Pro — billed monthly' })
+    );
+
+    expect(globalThis.location.href).toBe(
+      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&held_until=2026-11-09')}`
+    );
+  });
+
+  it('starts a signed-in pass checkout as usual', async () => {
+    renderAt(HELD, true);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
+
+    await waitFor(() =>
+      expect(mockStartPassCheckout).toHaveBeenCalledWith(
+        '24h',
+        'mcp-day-first',
+        'pricing_page'
+      )
+    );
+  });
+
+  it('starts a signed-out pass checkout as usual once the date has passed', async () => {
+    renderAt('/pricing?ref=mcp&held_until=2026-11-01');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Get Day Pass · / }));
+
+    await waitFor(() => expect(mockStartPassCheckout).toHaveBeenCalled());
   });
 });
