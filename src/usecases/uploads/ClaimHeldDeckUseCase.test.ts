@@ -5,6 +5,7 @@ import { MonthlyLimitError } from '../users/CheckMonthlyCardLimitUseCase';
 import {
   ClaimHeldDeckUseCase,
   HeldDeckExpiredError,
+  MAX_PLAN_HOLDS,
   NoHeldDeckError,
   planHoldKey,
   type HeldDeckConversion,
@@ -382,6 +383,161 @@ describe('ClaimHeldDeckUseCase', () => {
   });
 
   describe('plan holds', () => {
+    async function seedPlanHolds(
+      repo: InMemoryHeldDeckRepository,
+      count: number
+    ) {
+      for (let i = 0; i < count; i += 1) {
+        await repo.insert({
+          storageKey: `held/plan-${i}.html`,
+          anonId: planHoldKey(OWNER),
+          filename: `deck-${i}.html`,
+          cardCount: 10,
+          cardsHeldBack: 5,
+          expiresAt: new Date(Date.now() + 60_000),
+          cardOptions: { deckName: `Deck ${i}` },
+        });
+      }
+    }
+
+    function claimAsPayingOwner(useCase: ClaimHeldDeckUseCase) {
+      return useCase.execute({
+        anonId: null,
+        owner: OWNER,
+        paying: true,
+        requestId: 'req-1',
+      });
+    }
+
+    it('builds every waiting plan hold, each with its own options', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedPlanHolds(repo, 3);
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter
+      );
+
+      const result = await claimAsPayingOwner(useCase);
+
+      expect(result).toMatchObject({ kind: 'plan', alsoClaimed: 2 });
+      expect(repo.rows.every((row) => row.claimed_at != null)).toBe(true);
+      expect(
+        convertHeldFileForOwner.mock.calls.map((call) => call[5]).sort()
+      ).toEqual([
+        { deckName: 'Deck 0' },
+        { deckName: 'Deck 1' },
+        { deckName: 'Deck 2' },
+      ]);
+    });
+
+    it('reports no extra decks when only one plan hold waits', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedPlanHolds(repo, 1);
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        buildConverter().converter
+      );
+
+      const result = await claimAsPayingOwner(useCase);
+
+      expect(result).not.toHaveProperty('alsoClaimed');
+    });
+
+    it('builds no more than the per-owner cap of plan holds in one claim', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedPlanHolds(repo, MAX_PLAN_HOLDS + 2);
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter
+      );
+
+      const result = await claimAsPayingOwner(useCase);
+
+      expect(convertHeldFileForOwner).toHaveBeenCalledTimes(MAX_PLAN_HOLDS);
+      expect(result.alsoClaimed).toBe(MAX_PLAN_HOLDS - 1);
+    });
+
+    it('keeps the first deck and leaves a transient failure claimable', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedPlanHolds(repo, 2);
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      convertHeldFileForOwner
+        .mockResolvedValueOnce({
+          downloadKey: 'owner-key.apkg',
+          cardCount: 34,
+          cardsHeldBack: 0,
+          deckName: 'study-notes',
+        })
+        .mockRejectedValueOnce(new Error('storage busy'));
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter
+      );
+
+      const result = await claimAsPayingOwner(useCase);
+
+      expect(result).toMatchObject({ downloadKey: 'owner-key.apkg' });
+      expect(result).not.toHaveProperty('alsoClaimed');
+      expect(repo.rows.filter((row) => row.claimed_at == null)).toHaveLength(1);
+    });
+
+    it('consumes another plan hold the parser refuses, without failing the claim', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedPlanHolds(repo, 2);
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      convertHeldFileForOwner
+        .mockResolvedValueOnce({
+          downloadKey: 'owner-key.apkg',
+          cardCount: 34,
+          cardsHeldBack: 0,
+          deckName: 'study-notes',
+        })
+        .mockRejectedValueOnce(new EmptyDeckError());
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter
+      );
+
+      const result = await claimAsPayingOwner(useCase);
+
+      expect(result).toMatchObject({ downloadKey: 'owner-key.apkg' });
+      expect(repo.rows.every((row) => row.claimed_at != null)).toBe(true);
+    });
+
+    it('leaves plan holds alone when the claim releases a sign-up hold', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo);
+      await seedPlanHolds(repo, 2);
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter
+      );
+
+      const result = await useCase.execute({
+        anonId: ANON,
+        owner: OWNER,
+        paying: true,
+        requestId: 'req-1',
+      });
+
+      expect(result.kind).toBe('signup');
+      expect(convertHeldFileForOwner).toHaveBeenCalledTimes(1);
+      expect(
+        repo.rows.filter(
+          (row) => row.anon_id === planHoldKey(OWNER) && row.claimed_at == null
+        )
+      ).toHaveLength(2);
+    });
+
     it('hides a plan hold until the owner pays', async () => {
       const repo = new InMemoryHeldDeckRepository();
       await seedHold(repo, { anonId: planHoldKey(OWNER) });

@@ -245,7 +245,11 @@ import RequireAllowedOrigin from '../../routes/middleware/RequireAllowedOrigin';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 import { anonIdMiddleware } from '../../routes/middleware/anonIdMiddleware';
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
-import { ClaimHeldDeckUseCase } from '../../usecases/uploads/ClaimHeldDeckUseCase';
+import {
+  ClaimHeldDeckUseCase,
+  MAX_PLAN_HOLDS,
+  planHoldKey,
+} from '../../usecases/uploads/ClaimHeldDeckUseCase';
 import {
   McpToolsService,
   type JobLister,
@@ -1460,6 +1464,48 @@ describe('a plan hold claimed after paying', () => {
       cardCount: LARGE_DECK_CARDS,
     });
     expect(claudeCalls.count).toBe(0);
+  }, 20_000);
+
+  it('builds every deck held for the plan in one claim', async () => {
+    await upload('large', {
+      ...signedInFree,
+      cardsUsed: 90,
+      fields: { deckName: 'Golden First' },
+    });
+    await upload('large', {
+      ...signedInFree,
+      cardsUsed: 90,
+      fields: { deckName: 'Golden Second' },
+    });
+
+    const { claimed } = await claimAsSubscriber();
+
+    expect(claimed).toMatchObject({ kind: 'plan', alsoClaimed: 1 });
+    expect(bridgeDecks.map((deck) => deck.name).sort()).toEqual([
+      'Golden First',
+      'Golden Second',
+    ]);
+    expect(heldDecks.rows.every((row) => row.claimed_at != null)).toBe(true);
+  }, 20_000);
+
+  it('holds no more decks for a plan once the per-owner cap is reached', async () => {
+    for (let i = 0; i < MAX_PLAN_HOLDS; i += 1) {
+      await heldDecks.insert({
+        storageKey: `held/waiting-${i}`,
+        anonId: planHoldKey(String(OWNER)),
+        filename: `waiting-${i}.html`,
+        cardCount: 10,
+        cardsHeldBack: 5,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+    }
+
+    const result = await upload('large', { ...signedInFree, cardsUsed: 90 });
+
+    expect(result.status).toBe(200);
+    expect(result.headers).toMatchObject({ 'x-cards-held-back': '110' });
+    expect(result.headers).not.toHaveProperty('x-held-for-plan');
+    expect(heldDecks.rows).toHaveLength(MAX_PLAN_HOLDS);
   }, 20_000);
 
   it('never runs image quiz vision on a claimed ZIP when the account has it on', async () => {

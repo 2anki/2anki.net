@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-02-claim-every-saved-deck",
+  "date": "2026-11-02",
+  "type": "fix",
+  "title": "Choosing a plan unlocks every deck saved for it, not only the newest, and each one lands in My decks"
+}

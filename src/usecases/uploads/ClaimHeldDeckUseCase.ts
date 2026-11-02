@@ -64,6 +64,8 @@ export interface ClaimResult {
   // Set only when a sign-up claim was cut to the preview.
   cardsHeldBack?: number;
   heldForPlan?: boolean;
+  // Other plan holds the same claim built into My decks.
+  alsoClaimed?: number;
 }
 
 export interface ClaimParams {
@@ -78,6 +80,11 @@ export interface ClaimParams {
 // pay. Only the owner reaches it: holdKeys derives it from the session, and
 // isPlanHoldKey keeps a cookie forged in this shape out of the lookup.
 const PLAN_HOLD_PREFIX = 'plan:';
+
+// One claim builds every plan hold an owner has, one conversion after another
+// inside the request, so the count is capped where holds are written and the
+// claim never runs more conversions than that.
+export const MAX_PLAN_HOLDS = 5;
 
 export function planHoldKey(owner: string): string {
   return `${PLAN_HOLD_PREFIX}${owner}`;
@@ -212,6 +219,7 @@ export class ClaimHeldDeckUseCase {
     if (!claimed) {
       throw new HeldDeckExpiredError();
     }
+    let result: ClaimResult;
     try {
       const file = await readHeldFile(
         this.store,
@@ -239,7 +247,7 @@ export class ClaimHeldDeckUseCase {
             requestId,
             hold.card_options
           );
-      return {
+      result = {
         downloadKey: conversion.downloadKey,
         cardCount: conversion.cardCount,
         deckName: conversion.deckName,
@@ -261,6 +269,68 @@ export class ClaimHeldDeckUseCase {
       }
       throw error;
     }
+    if (kind !== 'plan') {
+      return result;
+    }
+    const alsoClaimed = await this.claimOtherPlanHolds(
+      owner,
+      paying,
+      requestId,
+      hold.id
+    );
+    return alsoClaimed > 0 ? { ...result, alsoClaimed } : result;
+  }
+
+  // The deck the visitor sees is already built, so a failure here costs only
+  // that one held deck: a transient error leaves it claimable for the next
+  // visit, a deterministic refusal consumes it, and neither fails the claim.
+  private async claimOtherPlanHolds(
+    owner: string,
+    paying: boolean,
+    requestId: string | undefined,
+    claimedId: number
+  ): Promise<number> {
+    const others = (
+      await this.repository.findClaimable(
+        planHoldKey(owner),
+        new Date(),
+        MAX_PLAN_HOLDS - 1
+      )
+    ).filter((hold) => hold.id !== claimedId);
+    let released = 0;
+    for (const hold of others) {
+      if (
+        !(await this.repository.markClaimed(hold.id, Number(owner), new Date()))
+      ) {
+        continue;
+      }
+      try {
+        const file = await readHeldFile(
+          this.store,
+          hold.storage_key,
+          hold.filename
+        );
+        await this.converter.convertHeldFileForOwner(
+          owner,
+          file,
+          paying,
+          null,
+          requestId,
+          hold.card_options
+        );
+        released += 1;
+      } catch (error) {
+        if (!isDeterministicRefusal(error)) {
+          await this.repository.releaseClaim(hold.id, Number(owner));
+        }
+        console.error('[ClaimHeldDeck] could not build another plan hold', {
+          requestId,
+          holdId: hold.id,
+          error: error instanceof Error ? error.name : 'unknown',
+        });
+      }
+    }
+    return released;
   }
 
   private async findClaimable(keys: { key: string; kind: HoldKind }[]) {

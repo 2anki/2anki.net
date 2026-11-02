@@ -20,6 +20,8 @@ export interface ExpiredHeldDeck {
 export interface IHeldDeckRepository {
   insert(row: HeldDeckInsert): Promise<HeldDecks>;
   findNewestClaimable(anonId: string, now: Date): Promise<HeldDecks | null>;
+  /** Unclaimed, unexpired holds for the key, newest first, at most limit. */
+  findClaimable(anonId: string, now: Date, limit: number): Promise<HeldDecks[]>;
   findNewestByAnonId(anonId: string): Promise<HeldDecks | null>;
   findUnclaimedByAnonId(anonId: string): Promise<ExpiredHeldDeck[]>;
   /** Claims the row only if nobody has; false means another claim won. */
@@ -82,6 +84,31 @@ export class HeldDeckRepository implements IHeldDeckRepository {
       | HeldDecks
       | undefined;
     return row ?? null;
+  }
+
+  buildFindClaimableQuery(
+    anonId: string,
+    now: Date,
+    limit: number
+  ): Knex.QueryBuilder {
+    return this.database(this.table)
+      .where('anon_id', anonId)
+      .whereNull('claimed_at')
+      .where('expires_at', '>', now)
+      .orderBy('created_at', 'desc')
+      .limit(limit);
+  }
+
+  async findClaimable(
+    anonId: string,
+    now: Date,
+    limit: number
+  ): Promise<HeldDecks[]> {
+    return (await this.buildFindClaimableQuery(
+      anonId,
+      now,
+      limit
+    )) as HeldDecks[];
   }
 
   buildFindNewestByAnonIdQuery(anonId: string): Knex.QueryBuilder {
@@ -259,6 +286,19 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
           row.claimed_at == null && row.expires_at.getTime() > now.getTime()
       ) ?? null
     );
+  }
+
+  async findClaimable(
+    anonId: string,
+    now: Date,
+    limit: number
+  ): Promise<HeldDecks[]> {
+    return this.newestForAnon(anonId)
+      .filter(
+        (row) =>
+          row.claimed_at == null && row.expires_at.getTime() > now.getTime()
+      )
+      .slice(0, limit);
   }
 
   async findNewestByAnonId(anonId: string): Promise<HeldDecks | null> {

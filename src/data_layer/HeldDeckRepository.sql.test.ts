@@ -75,6 +75,17 @@ describe('HeldDeckRepository generated SQL', () => {
     expect(bindings).toEqual(['anon-1', now, 1]);
   });
 
+  it('lists unclaimed, unexpired holds for a key, newest first, up to a limit', () => {
+    const { sql, bindings } = repository
+      .buildFindClaimableQuery('plan:7', now, 5)
+      .toSQL();
+
+    expect(sql).toBe(
+      'select * from "held_decks" where "anon_id" = ? and "claimed_at" is null and "expires_at" > ? order by "created_at" desc limit ?'
+    );
+    expect(bindings).toEqual(['plan:7', now, 5]);
+  });
+
   it('finds the newest hold for an anonymous id regardless of state', () => {
     const { sql, bindings } = repository
       .buildFindNewestByAnonIdQuery('anon-1')
