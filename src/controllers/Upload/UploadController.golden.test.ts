@@ -204,7 +204,7 @@ vi.mock(
         get: (
           ...args: Parameters<typeof actual.default.get>
         ): ReturnType<typeof actual.default.get> =>
-          args[0] === 'google_drive'
+          args[0] === 'google_drive' || args[0] === 'dropbox'
             ? (Promise.resolve({
                 data: Buffer.from(driveDownload.body),
               }) as ReturnType<typeof actual.default.get>)
@@ -904,6 +904,15 @@ async function seedAuthDatabase() {
     t.text('buyer_email_hash');
     t.timestamp('activated_at');
   });
+  await database.schema.createTable('dropbox_uploads', (t) => {
+    t.increments('id').primary();
+    for (const column of ['icon', 'dropbox_id', 'link', 'linkType', 'name']) {
+      t.text(column);
+    }
+    t.integer('bytes');
+    t.boolean('isDir');
+    t.integer('owner');
+  });
   await database.schema.createTable('google_drive_uploads', (t) => {
     t.text('id').primary();
     for (const column of [
@@ -1112,6 +1121,16 @@ beforeAll(async () => {
     (req, res) => goldenController().googleDrive(req, res)
   );
   app.post(
+    '/api/upload/dropbox',
+    (req, res, next) => {
+      res.locals.requestId = 'golden-request';
+      Object.assign(res.locals, population.locals);
+      next();
+    },
+    multer().none(),
+    (req, res) => goldenController().dropbox(req, res)
+  );
+  app.post(
     '/api/upload/ai-preview/resume',
     (req, res, next) => {
       res.locals.requestId = 'golden-request';
@@ -1212,6 +1231,40 @@ async function goldenResult(response: Response, jobSettled: Promise<void>) {
     storedObjects: s3Puts.map(storedObjectKind),
     cardsCharged: [...cardUsageCharges],
   };
+}
+
+async function dropboxImport(file: keyof typeof UPLOADS, who: Population) {
+  population = who;
+  __setFeatureFlagDependencies({ repository: inMemoryFlags(who.flags) });
+  driveDownload.body = String(UPLOADS[file].body);
+  const form = new FormData();
+  form.append(
+    'files',
+    JSON.stringify([
+      {
+        id: 'golden-dropbox-file',
+        name: UPLOADS[file].filename,
+        bytes: Buffer.byteLength(String(UPLOADS[file].body)),
+        icon: '',
+        isDir: false,
+        link: 'https://dl.dropboxusercontent.com/golden-dropbox-link',
+        linkType: 'direct',
+      },
+    ])
+  );
+  const cookie = Object.entries(who.cookies)
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ');
+  const jobSettled = new Promise<void>((resolve) => {
+    settleJob = resolve;
+  });
+  const response = await fetch(`${baseUrl}/api/upload/dropbox`, {
+    method: 'POST',
+    body: form,
+    redirect: 'manual',
+    headers: cookie === '' ? {} : { cookie },
+  });
+  return goldenResult(response, jobSettled);
 }
 
 async function driveImport(file: keyof typeof UPLOADS, who: Population) {
@@ -1533,6 +1586,52 @@ describe('a plan hold claimed after paying', () => {
     ]);
     expect(s3Objects.has(keys[0])).toBe(false);
     expect(s3Objects.has(keys[1])).toBe(true);
+  }, 20_000);
+
+  it.each([
+    [7, 3],
+    [4, 0],
+  ])(
+    'with %i waiting holds, a new plan hold evicts the oldest %i',
+    async (waiting, evictedCount) => {
+      const keys = await seedWaitingPlanHolds(waiting);
+
+      await upload('large', { ...signedInFree, cardsUsed: 90 });
+
+      const kept = Math.min(waiting + 1, MAX_PLAN_HOLDS);
+      expect(waitingPlanHolds()).toHaveLength(kept);
+      expect(waitingPlanHolds()[kept - 1].filename).toBe('Golden Large.html');
+      expect(keys.filter((key) => !s3Objects.has(key))).toEqual(
+        keys.slice(0, evictedCount)
+      );
+    },
+    20_000
+  );
+
+  it('keeps every old plan hold when storing the new one fails', async () => {
+    const keys = await seedWaitingPlanHolds(MAX_PLAN_HOLDS);
+    vi.spyOn(heldDecks, 'insert').mockRejectedValueOnce(
+      new Error('connection reset')
+    );
+
+    const result = await upload('large', { ...signedInFree, cardsUsed: 90 });
+
+    expect(result.headers).not.toHaveProperty('x-held-for-plan');
+    expect(waitingPlanHolds()).toHaveLength(MAX_PLAN_HOLDS);
+    expect(keys.every((key) => s3Objects.has(key))).toBe(true);
+  }, 20_000);
+
+  it('saves a Dropbox import cut at the limit without its link or file list', async () => {
+    const result = await dropboxImport('large', {
+      ...signedInFree,
+      cardsUsed: 90,
+    });
+
+    expect(result.headers).toMatchObject({ 'x-held-for-plan': '1' });
+    expect(heldDecks.rows).toHaveLength(1);
+    const held = JSON.stringify(heldDecks.rows[0].card_options ?? {});
+    expect(held).not.toContain('golden-dropbox-link');
+    expect(held).not.toContain('golden-dropbox-file');
   }, 20_000);
 
   it('still saves the new plan hold when eviction fails', async () => {

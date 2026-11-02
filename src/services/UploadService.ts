@@ -2861,11 +2861,12 @@ class UploadService {
   }
 
   // An owner keeps at most MAX_PLAN_HOLDS waiting plan holds. The newest deck
-  // always wins: the oldest waiting ones make room before the new one is
-  // stored. Eviction is best-effort, so a failure here never costs the deck
-  // just made; the TTL sweep bounds whatever is left behind.
+  // always wins: once it is stored, the oldest waiting ones past the cap go,
+  // so a failed upload or insert never costs an old deck. Eviction is
+  // best-effort, and the TTL sweep bounds whatever a failure leaves behind.
   private async evictOldestPlanHolds(
     owner: string,
+    keptId: number,
     storage: StorageHandler,
     requestId: string | undefined
   ): Promise<void> {
@@ -2875,10 +2876,13 @@ class UploadService {
         new Date(),
         PLAN_HOLD_EVICTION_SCAN
       );
-      const evicted = waiting.slice(MAX_PLAN_HOLDS - 1).map((hold) => ({
-        id: hold.id as number,
-        storageKey: hold.storage_key,
-      }));
+      const evicted = waiting
+        .slice(MAX_PLAN_HOLDS)
+        .filter((hold) => hold.id !== keptId)
+        .map((hold) => ({
+          id: hold.id as number,
+          storageKey: hold.storage_key,
+        }));
       await this.pruneSupersededHolds(evicted, storage, requestId);
     } catch (error) {
       console.error('[UploadService] could not evict old plan holds', {
@@ -2902,10 +2906,9 @@ class UploadService {
         return false;
       }
       const storage = new StorageHandler();
-      await this.evictOldestPlanHolds(owner, storage, requestId);
       const storageKey = `held/${randomUUID()}`;
       await storage.uploadFile(storageKey, bytes);
-      await this.heldDeckRepository.insert({
+      const stored = await this.heldDeckRepository.insert({
         storageKey,
         anonId: planHoldKey(owner),
         filename: file.originalname,
@@ -2914,6 +2917,12 @@ class UploadService {
         expiresAt: new Date(Date.now() + PLAN_HOLD_TTL_MS),
         cardOptions: allowedHeldCardOptions(resolvedCardOptions),
       });
+      await this.evictOldestPlanHolds(
+        owner,
+        stored.id as number,
+        storage,
+        requestId
+      );
       return true;
     } catch (error) {
       console.error('[UploadService] could not hold the deck for a plan', {

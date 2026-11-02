@@ -81,7 +81,7 @@ describe('HeldDeckRepository generated SQL', () => {
       .toSQL();
 
     expect(sql).toBe(
-      'select * from "held_decks" where "anon_id" = ? and "claimed_at" is null and "expires_at" > ? order by "created_at" desc limit ?'
+      'select * from "held_decks" where "anon_id" = ? and "claimed_at" is null and "expires_at" > ? order by "created_at" desc, "id" desc limit ?'
     );
     expect(bindings).toEqual(['plan:7', now, 5]);
   });

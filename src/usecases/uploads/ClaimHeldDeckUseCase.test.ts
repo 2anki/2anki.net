@@ -424,7 +424,9 @@ describe('ClaimHeldDeckUseCase', () => {
       expect(result).toMatchObject({ kind: 'plan', alsoClaimed: 2 });
       expect(repo.rows.every((row) => row.claimed_at != null)).toBe(true);
       expect(
-        convertHeldFileForOwner.mock.calls.map((call) => call[5]).sort()
+        convertHeldFileForOwner.mock.calls
+          .map((call) => call[5] as { deckName: string })
+          .sort((a, b) => a.deckName.localeCompare(b.deckName))
       ).toEqual([
         { deckName: 'Deck 0' },
         { deckName: 'Deck 1' },

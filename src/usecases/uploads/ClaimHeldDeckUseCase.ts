@@ -291,7 +291,7 @@ export class ClaimHeldDeckUseCase {
     requestId: string | undefined,
     claimedId: number
   ): Promise<number> {
-    const progress = { released: 0 };
+    const progress: { released: number; holdId?: number } = { released: 0 };
     try {
       await this.buildOtherPlanHolds(
         owner,
@@ -303,6 +303,7 @@ export class ClaimHeldDeckUseCase {
     } catch (error) {
       console.error('[ClaimHeldDeck] stopped building other plan holds', {
         requestId,
+        holdId: progress.holdId,
         error: error instanceof Error ? error.name : 'unknown',
       });
     }
@@ -314,7 +315,7 @@ export class ClaimHeldDeckUseCase {
     paying: boolean,
     requestId: string | undefined,
     claimedId: number,
-    progress: { released: number }
+    progress: { released: number; holdId?: number }
   ): Promise<void> {
     const others = (
       await this.repository.findClaimable(
@@ -324,6 +325,7 @@ export class ClaimHeldDeckUseCase {
       )
     ).filter((hold) => hold.id !== claimedId);
     for (const hold of others) {
+      progress.holdId = hold.id;
       if (
         !(await this.repository.markClaimed(hold.id, Number(owner), new Date()))
       ) {

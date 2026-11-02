@@ -95,7 +95,10 @@ export class HeldDeckRepository implements IHeldDeckRepository {
       .where('anon_id', anonId)
       .whereNull('claimed_at')
       .where('expires_at', '>', now)
-      .orderBy('created_at', 'desc')
+      .orderBy([
+        { column: 'created_at', order: 'desc' },
+        { column: 'id', order: 'desc' },
+      ])
       .limit(limit);
   }
 
@@ -293,10 +296,17 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
     now: Date,
     limit: number
   ): Promise<HeldDecks[]> {
-    return this.newestForAnon(anonId)
+    return this.rows
       .filter(
         (row) =>
-          row.claimed_at == null && row.expires_at.getTime() > now.getTime()
+          row.anon_id === anonId &&
+          row.claimed_at == null &&
+          row.expires_at.getTime() > now.getTime()
+      )
+      .sort(
+        (a, b) =>
+          b.created_at.getTime() - a.created_at.getTime() ||
+          (b.id as number) - (a.id as number)
       )
       .slice(0, limit);
   }
