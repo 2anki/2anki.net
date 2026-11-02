@@ -50,7 +50,10 @@ import {
 } from '../lib/upload/duplicateGuidWarning';
 import { countDuplicateGuids } from '../lib/anki/countDuplicateGuids';
 import { latin1HeaderValue } from '../lib/upload/latin1HeaderValue';
-import { cardOptionsToHold } from '../lib/upload/cardOptionsToHold';
+import {
+  CLAIM_INFERENCE_OFF,
+  allowedHeldCardOptions,
+} from '../lib/upload/heldCardOptions';
 import { UploadedFile } from '../lib/storage/types';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
 import { toText } from './NotionService/BlockHandler/helpers/deckNameToText';
@@ -2877,7 +2880,7 @@ class UploadService {
         cardCount,
         cardsHeldBack,
         expiresAt: new Date(Date.now() + PLAN_HOLD_TTL_MS),
-        cardOptions: cardOptionsToHold(resolvedCardOptions),
+        cardOptions: allowedHeldCardOptions(resolvedCardOptions),
       });
       return true;
     } catch (error) {
@@ -2910,7 +2913,13 @@ class UploadService {
     deckName: string;
     heldForPlan?: boolean;
   }> {
-    const body = await this.resolveCardOptionInput(owner, heldCardOptions);
+    const body = {
+      ...(await this.resolveCardOptionInput(
+        owner,
+        allowedHeldCardOptions(heldCardOptions) ?? {}
+      )),
+      ...CLAIM_INFERENCE_OFF,
+    };
     const settings = new CardOption(body as { [key: string]: string });
     if (settings.n2aBasic == null) {
       await this.settingsRepository.attachCustomTemplates(owner, settings);

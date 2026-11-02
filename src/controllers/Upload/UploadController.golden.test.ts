@@ -99,6 +99,7 @@ const claudeReplies = vi.hoisted(() => ({
   preview: '',
   vision: '',
 }));
+const claudeCalls = vi.hoisted(() => ({ count: 0 }));
 
 vi.mock('@anthropic-ai/sdk', async (importActual) => {
   const actual = await importActual<typeof import('@anthropic-ai/sdk')>();
@@ -121,20 +122,23 @@ vi.mock('@anthropic-ai/sdk', async (importActual) => {
   class StubAnthropic {
     messages = {
       stream: () => {
+        claudeCalls.count += 1;
         const stream = {
           on: () => stream,
           finalMessage: () => Promise.resolve(reply(claudeReplies.conversion)),
         };
         return stream;
       },
-      create: (params: { messages: { content: unknown }[] }) =>
-        Promise.resolve(
+      create: (params: { messages: { content: unknown }[] }) => {
+        claudeCalls.count += 1;
+        return Promise.resolve(
           reply(
             isVisionRequest(params)
               ? claudeReplies.vision
               : claudeReplies.preview
           )
-        ),
+        );
+      },
     };
   }
   return { ...actual, default: StubAnthropic };
@@ -321,6 +325,7 @@ interface Population {
   passSpentUsd?: number;
   passCreditsReadFails?: boolean;
   alsoUploads?: keyof typeof UPLOADS;
+  accountCardOptions?: Record<string, string>;
 }
 
 const signedOut: Population = {
@@ -770,7 +775,8 @@ function inMemoryUsers(initialCardsUsed: number): UsersRepository {
       cardUsageCharges.push(count);
       return Promise.resolve(1);
     },
-    getCardOptions: () => Promise.resolve(null),
+    getCardOptions: () =>
+      Promise.resolve(population.accountCardOptions ?? null),
   } as unknown as UsersRepository;
 }
 
@@ -879,6 +885,26 @@ async function seedAuthDatabase() {
     t.integer('claimed_by_user_id');
     t.text('buyer_email_hash');
     t.timestamp('activated_at');
+  });
+  await database.schema.createTable('google_drive_uploads', (t) => {
+    t.text('id').primary();
+    for (const column of [
+      'description',
+      'embedUrl',
+      'iconUrl',
+      'lastEditedUtc',
+      'mimeType',
+      'name',
+      'organizationDisplayName',
+      'parentId',
+      'serviceId',
+      'sizeBytes',
+      'type',
+      'url',
+    ]) {
+      t.text(column);
+    }
+    t.integer('owner');
   });
   await database('users').insert([
     { id: OWNER, email: 'free@example.com', patreon: false },
@@ -1058,6 +1084,7 @@ beforeAll(async () => {
     '/api/upload/google_drive',
     (req, res, next) => {
       res.locals.requestId = 'golden-request';
+      Object.assign(res.locals, population.locals);
       if (population.mintsAnonId === true) {
         return anonIdMiddleware(req, res, next);
       }
@@ -1099,6 +1126,7 @@ afterEach(() => {
   s3Objects.clear();
   s3Puts.length = 0;
   bridgeDecks.length = 0;
+  claudeCalls.count = 0;
   cardUsageCharges.length = 0;
   jobTimelines.length = 0;
 });
@@ -1263,6 +1291,7 @@ describe('a plan hold claimed after paying', () => {
     population = {
       ...signedInFree,
       locals: { owner: OWNER, patreon: false, subscriber: true },
+      accountCardOptions: population.accountCardOptions,
     };
     const claim = new ClaimHeldDeckUseCase(
       heldDecks,
@@ -1351,6 +1380,126 @@ describe('a plan hold claimed after paying', () => {
     expect(claimed).toMatchObject({ kind: 'plan', cardCount: 15 });
     expect(deck.name).toBe('Golden Connector Deck');
     expect(deck.cards[0].tags).toContain('connector-tag');
+  }, 20_000);
+
+  it('builds a connector convert_to_deck hold with its tags and note type', async () => {
+    population = { ...signedInFree, cardsUsed: 90 };
+    __setFeatureFlagDependencies({ repository: inMemoryFlags({}) });
+    const text = Array.from(
+      { length: 15 },
+      (_, i) => `## Question ${i + 1}\n\nAnswer ${i + 1}`
+    ).join('\n\n');
+
+    await connectorTools().convertToDeck(
+      { text, options: { tags: ['convert-tag'], noteType: 'input' } },
+      String(OWNER),
+      { owner: OWNER, patreon: false, subscriber: false }
+    );
+    expect(heldDecks.rows[0].card_options).toMatchObject({
+      'global-tags': 'convert-tag',
+      'enable-input': 'true',
+    });
+    const { claimed, deck } = await claimAsSubscriber();
+
+    expect(claimed).toMatchObject({ kind: 'plan', cardCount: 15 });
+    expect(deck.cards[0].tags).toContain('convert-tag');
+  }, 20_000);
+
+  it('never runs Claude when a free upload with AI on is claimed after paying', async () => {
+    await upload('large', { ...signedInFree, cardsUsed: 90, fields: AI_ON });
+    expect(heldDecks.rows[0].card_options ?? {}).not.toHaveProperty(
+      'claude-ai-flashcards'
+    );
+    claudeCalls.count = 0;
+
+    const { claimed } = await claimAsSubscriber();
+
+    expect(claimed).toMatchObject({
+      kind: 'plan',
+      cardCount: LARGE_DECK_CARDS,
+    });
+    expect(claudeCalls.count).toBe(0);
+  }, 20_000);
+
+  it('never runs Claude on a claim when the account has AI switched on', async () => {
+    await upload('large', { ...signedInFree, cardsUsed: 90 });
+    claudeCalls.count = 0;
+    bridgeDecks.length = 0;
+    population = {
+      ...signedInFree,
+      locals: { owner: OWNER, patreon: false, subscriber: true },
+      accountCardOptions: AI_ON,
+    };
+
+    const claimed = await new ClaimHeldDeckUseCase(
+      heldDecks,
+      new StorageHandler(),
+      goldenService()
+    ).execute({
+      anonId: null,
+      owner: String(OWNER),
+      paying: true,
+      requestId: 'golden-claim',
+    });
+
+    expect(claimed).toMatchObject({
+      kind: 'plan',
+      cardCount: LARGE_DECK_CARDS,
+    });
+    expect(claudeCalls.count).toBe(0);
+  }, 20_000);
+
+  it('saves a Drive import cut at the limit without its token or file list', async () => {
+    await driveImport('large', { ...signedInFree, cardsUsed: 90 });
+
+    expect(heldDecks.rows).toHaveLength(1);
+    const held = JSON.stringify(heldDecks.rows[0].card_options ?? {});
+    expect(held).not.toContain('golden-drive-token');
+    expect(held).not.toContain('golden-drive-file');
+    expect(heldDecks.rows[0].card_options ?? {}).not.toHaveProperty(
+      'googleDriveAuth'
+    );
+    expect(heldDecks.rows[0].card_options ?? {}).not.toHaveProperty('files');
+  }, 20_000);
+
+  it('keeps the options of a pass-first sign-up claim for the later plan claim', async () => {
+    await upload('large', {
+      ...signedOut,
+      flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true },
+    });
+    population = {
+      ...signedInFree,
+      accountCardOptions: { reversed: 'true', 'font-size': '32' },
+    };
+    const signupClaim = await new ClaimHeldDeckUseCase(
+      heldDecks,
+      new StorageHandler(),
+      goldenService(),
+      () => Promise.resolve(true)
+    ).execute({
+      anonId: 'golden-anon',
+      owner: String(OWNER),
+      paying: false,
+      requestId: 'golden-signup-claim',
+    });
+    const planHold = heldDecks.rows.find((row) =>
+      row.anon_id.startsWith('plan:')
+    );
+
+    expect(signupClaim).toMatchObject({ kind: 'signup', heldForPlan: true });
+    expect(planHold?.card_options).toMatchObject({
+      reversed: 'true',
+      'font-size': '32',
+    });
+
+    population = { ...population, accountCardOptions: { reversed: 'false' } };
+    const { claimed, deck } = await claimAsSubscriber();
+
+    expect(claimed).toMatchObject({
+      kind: 'plan',
+      cardCount: LARGE_DECK_CARDS,
+    });
+    expect(deck.cards[0].name).toContain('Answer 1');
   }, 20_000);
 });
 
