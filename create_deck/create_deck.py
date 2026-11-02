@@ -121,6 +121,13 @@ def _style_changed_at_for(css, deck_style, style_changed_at):
     return 0
 
 
+def mcq_option_html(option):
+    # The MCQ template reads these fields inside a double-quoted JS string, so
+    # the plain-text option has to survive both HTML and that string literal.
+    escaped = html.escape(option, quote=True).replace('\\', '&#92;')
+    return ' '.join(escaped.replace('\x1f', ' ').splitlines())
+
+
 def build_one_deck(data_file, template_dir):
     # pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements,import-outside-toplevel
     """
@@ -262,7 +269,7 @@ def build_one_deck(data_file, template_dir):
                 )
                 fields = [get_safe_value(value) for value in custom_fields]
             elif card.get('mcq', False):
-                options = card.get('options', [])
+                options = [mcq_option_html(option) for option in card.get('options', [])]
                 correct_indices = card.get('correctIndices', [])
                 options_html = "<br>".join(options)
                 correct_answer = options[correct_indices[0]] if correct_indices and correct_indices[0] < len(options) else ""
