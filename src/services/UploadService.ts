@@ -117,7 +117,6 @@ import {
 import { isPartialDeliveryEligible } from '../usecases/uploads/isPartialDeliveryEligible';
 import {
   isPlanHoldKey,
-  MAX_PLAN_HOLDS,
   planHoldKey,
 } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
@@ -2870,18 +2869,6 @@ class UploadService {
     try {
       const bytes = await readUploadBytes(file);
       if (bytes == null) {
-        return false;
-      }
-      const waiting = await this.heldDeckRepository.findClaimable(
-        planHoldKey(owner),
-        new Date(),
-        MAX_PLAN_HOLDS
-      );
-      if (waiting.length >= MAX_PLAN_HOLDS) {
-        console.info('[UploadService] plan hold skipped at the per-owner cap', {
-          requestId,
-          cap: MAX_PLAN_HOLDS,
-        });
         return false;
       }
       const storageKey = `held/${randomUUID()}`;

@@ -81,9 +81,9 @@ export interface ClaimParams {
 // isPlanHoldKey keeps a cookie forged in this shape out of the lookup.
 const PLAN_HOLD_PREFIX = 'plan:';
 
-// One claim builds every plan hold an owner has, one conversion after another
-// inside the request, so the count is capped where holds are written and the
-// claim never runs more conversions than that.
+// A claim builds the owner's plan holds one conversion after another inside
+// the request, so it builds at most this many, newest first. Older ones stay
+// claimable for the next claim until their TTL ends.
 export const MAX_PLAN_HOLDS = 5;
 
 export function planHoldKey(owner: string): string {
@@ -281,15 +281,41 @@ export class ClaimHeldDeckUseCase {
     return alsoClaimed > 0 ? { ...result, alsoClaimed } : result;
   }
 
-  // The deck the visitor sees is already built, so a failure here costs only
-  // that one held deck: a transient error leaves it claimable for the next
-  // visit, a deterministic refusal consumes it, and neither fails the claim.
+  // The deck the visitor sees is already built and charged, so nothing here
+  // may fail the claim: a transient error leaves that hold claimable for the
+  // next visit, a deterministic refusal consumes it, and a database error
+  // stops the extra builds with the decks made so far.
   private async claimOtherPlanHolds(
     owner: string,
     paying: boolean,
     requestId: string | undefined,
     claimedId: number
   ): Promise<number> {
+    const progress = { released: 0 };
+    try {
+      await this.buildOtherPlanHolds(
+        owner,
+        paying,
+        requestId,
+        claimedId,
+        progress
+      );
+    } catch (error) {
+      console.error('[ClaimHeldDeck] stopped building other plan holds', {
+        requestId,
+        error: error instanceof Error ? error.name : 'unknown',
+      });
+    }
+    return progress.released;
+  }
+
+  private async buildOtherPlanHolds(
+    owner: string,
+    paying: boolean,
+    requestId: string | undefined,
+    claimedId: number,
+    progress: { released: number }
+  ): Promise<void> {
     const others = (
       await this.repository.findClaimable(
         planHoldKey(owner),
@@ -297,7 +323,6 @@ export class ClaimHeldDeckUseCase {
         MAX_PLAN_HOLDS - 1
       )
     ).filter((hold) => hold.id !== claimedId);
-    let released = 0;
     for (const hold of others) {
       if (
         !(await this.repository.markClaimed(hold.id, Number(owner), new Date()))
@@ -318,7 +343,7 @@ export class ClaimHeldDeckUseCase {
           requestId,
           hold.card_options
         );
-        released += 1;
+        progress.released += 1;
       } catch (error) {
         if (!isDeterministicRefusal(error)) {
           await this.repository.releaseClaim(hold.id, Number(owner));
@@ -330,7 +355,6 @@ export class ClaimHeldDeckUseCase {
         });
       }
     }
-    return released;
   }
 
   private async findClaimable(keys: { key: string; kind: HoldKind }[]) {
