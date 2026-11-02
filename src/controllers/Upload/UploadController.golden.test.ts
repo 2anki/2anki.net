@@ -11,6 +11,9 @@ import jwt from 'jsonwebtoken';
 
 const s3Puts = vi.hoisted(() => [] as string[]);
 const s3Objects = vi.hoisted(() => new Map<string, Buffer>());
+const bridgeDecks = vi.hoisted(
+  () => [] as { name: string; cards: { name: string; tags: string[] }[] }[]
+);
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
   const actual = await importActual<typeof import('@aws-sdk/client-s3')>();
@@ -71,7 +74,8 @@ vi.mock('../../lib/anki/CardGenerator', () => ({
           path.join(this.currentDirectory, 'deck_info.json'),
           'utf8'
         )
-      ) as { cards: unknown[] }[];
+      ) as (typeof bridgeDecks)[number][];
+      bridgeDecks.push(...deckInfo);
       const cards = deckInfo.reduce((sum, deck) => sum + deck.cards.length, 0);
       const apkgPath = path.join(this.currentDirectory, 'golden.apkg');
       fs.writeFileSync(apkgPath, `golden-apkg cards=${cards}`);
@@ -144,9 +148,10 @@ vi.mock('node:child_process', async (importActual) => {
       stdout: new EventEmitter(),
       stderr: new EventEmitter(),
     });
-    const deckInfo = JSON.parse(fs.readFileSync(deckInfoPath, 'utf8')) as {
-      cards: unknown[];
-    }[];
+    const deckInfo = JSON.parse(
+      fs.readFileSync(deckInfoPath, 'utf8')
+    ) as (typeof bridgeDecks)[number][];
+    bridgeDecks.push(...deckInfo);
     const cards = deckInfo.reduce((sum, deck) => sum + deck.cards.length, 0);
     const apkgPath = path.join(path.dirname(deckInfoPath), 'golden.apkg');
     fs.writeFileSync(apkgPath, `golden-apkg cards=${cards}`);
@@ -235,6 +240,13 @@ import RequireAllowedOrigin from '../../routes/middleware/RequireAllowedOrigin';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 import { anonIdMiddleware } from '../../routes/middleware/anonIdMiddleware';
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
+import { ClaimHeldDeckUseCase } from '../../usecases/uploads/ClaimHeldDeckUseCase';
+import {
+  McpToolsService,
+  type JobLister,
+} from '../../services/mcp/McpToolsService';
+import ApkgPreviewService from '../../services/ApkgPreviewService/ApkgPreviewService';
+import type DownloadService from '../../services/DownloadService';
 import { AnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import { AiPreviewResumeController } from './AiPreviewResumeController';
 import { ResumeAnonymousAiPreviewUseCase } from '../../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
@@ -1086,6 +1098,7 @@ afterEach(() => {
   passCredits.resumeSkipsBalanceCheck = false;
   s3Objects.clear();
   s3Puts.length = 0;
+  bridgeDecks.length = 0;
   cardUsageCharges.length = 0;
   jobTimelines.length = 0;
 });
@@ -1236,6 +1249,109 @@ describe('a signed-out upload held over the cap', () => {
     expect(result.body).toMatchObject({ kind: 'held' });
     expect(result.body).not.toHaveProperty('cookieMinted');
   });
+});
+
+describe('a plan hold claimed after paying', () => {
+  const chosenOptions = {
+    deckName: 'Golden Chosen Name',
+    'global-tags': 'golden-tag',
+    reversed: 'true',
+  };
+
+  async function claimAsSubscriber() {
+    bridgeDecks.length = 0;
+    population = {
+      ...signedInFree,
+      locals: { owner: OWNER, patreon: false, subscriber: true },
+    };
+    const claim = new ClaimHeldDeckUseCase(
+      heldDecks,
+      new StorageHandler(),
+      goldenService()
+    );
+    const claimed = await claim.execute({
+      anonId: null,
+      owner: String(OWNER),
+      paying: true,
+      requestId: 'golden-claim',
+    });
+    return { claimed, deck: bridgeDecks[0] };
+  }
+
+  async function holdThenClaimAsSubscriber(
+    before: () => void = () => undefined
+  ) {
+    await upload('large', {
+      ...signedInFree,
+      cardsUsed: 90,
+      fields: chosenOptions,
+    });
+    before();
+    return claimAsSubscriber();
+  }
+
+  function connectorTools(): McpToolsService {
+    return new McpToolsService(
+      { getJobsByOwner: () => Promise.resolve([]) } as JobLister,
+      {} as DownloadService,
+      new ApkgPreviewService(),
+      (req, res) => goldenService().handleUpload(req, res),
+      new StorageHandler(),
+      { persist: (_owner, objectId) => Promise.resolve(objectId) },
+      {} as PhotoToFlashcardsUseCase,
+      {} as UsersRepository
+    );
+  }
+
+  it('builds the full deck with the deck name, tags and note options of the upload', async () => {
+    const { claimed, deck } = await holdThenClaimAsSubscriber();
+
+    expect(claimed).toMatchObject({
+      kind: 'plan',
+      cardCount: LARGE_DECK_CARDS,
+      deckName: 'Golden Chosen Name.apkg',
+    });
+    expect(deck.name).toBe('Golden Chosen Name');
+    expect(deck.cards[0].tags).toContain('golden-tag');
+    expect(deck.cards[0].name).toContain('Answer 1');
+  }, 20_000);
+
+  it('builds a hold saved without options from the account settings, as before', async () => {
+    const { claimed, deck } = await holdThenClaimAsSubscriber(() => {
+      heldDecks.rows[0].card_options = null;
+    });
+
+    expect(claimed).toMatchObject({
+      kind: 'plan',
+      cardCount: LARGE_DECK_CARDS,
+      deckName: 'Golden Large.apkg',
+    });
+    expect(deck.name).toBe('Golden Large');
+    expect(deck.cards[0].tags).not.toContain('golden-tag');
+    expect(deck.cards[0].name).toContain('Question 1');
+  }, 20_000);
+
+  it('builds a connector create_deck hold under its deck name, not its first card', async () => {
+    population = { ...signedInFree, cardsUsed: 90 };
+    __setFeatureFlagDependencies({ repository: inMemoryFlags({}) });
+    const cards = Array.from({ length: 15 }, (_, i) => ({
+      front: `Front ${i + 1}`,
+      back: `Back ${i + 1}`,
+    }));
+
+    await connectorTools().createDeck(
+      cards,
+      'Golden Connector Deck',
+      { tags: ['connector-tag'] },
+      String(OWNER),
+      { owner: OWNER, patreon: false, subscriber: false }
+    );
+    const { claimed, deck } = await claimAsSubscriber();
+
+    expect(claimed).toMatchObject({ kind: 'plan', cardCount: 15 });
+    expect(deck.name).toBe('Golden Connector Deck');
+    expect(deck.cards[0].tags).toContain('connector-tag');
+  }, 20_000);
 });
 
 describe('a signed-out pass holder can fetch the paid deck again', () => {

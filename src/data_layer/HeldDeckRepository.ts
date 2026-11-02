@@ -9,6 +9,7 @@ export interface HeldDeckInsert {
   cardCount: number;
   cardsHeldBack: number;
   expiresAt: Date;
+  cardOptions?: Record<string, string> | null;
 }
 
 export interface ExpiredHeldDeck {
@@ -53,6 +54,8 @@ export class HeldDeckRepository implements IHeldDeckRepository {
         card_count: row.cardCount,
         cards_held_back: row.cardsHeldBack,
         expires_at: row.expiresAt,
+        card_options:
+          row.cardOptions == null ? null : JSON.stringify(row.cardOptions),
       })
       .returning('*');
   }
@@ -234,6 +237,7 @@ export class InMemoryHeldDeckRepository implements IHeldDeckRepository {
       expires_at: row.expiresAt,
       claimed_at: null,
       claimed_by: null,
+      card_options: row.cardOptions ?? null,
     } as HeldDecks;
     this.rows.push(stored);
     return stored;
