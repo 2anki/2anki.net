@@ -134,11 +134,8 @@ import {
 } from '../lib/claude/ClaudeService';
 import CustomExporter from '../lib/parser/exporters/CustomExporter';
 import Deck from '../lib/parser/Deck';
-import {
-  isCompressedFile,
-  isHTMLFile,
-  isMarkdownFile,
-} from '../lib/storage/checks';
+import { isHTMLFile, isMarkdownFile } from '../lib/storage/checks';
+import { isConnectorPlanHoldEligible } from '../lib/upload/isConnectorPlanHoldEligible';
 import { BytesToMegaBytes, FileSizeInMegaBytes } from '../lib/misc/file';
 import {
   isWorkerTerminationError,
@@ -455,19 +452,6 @@ async function readUploadBytes(file: {
     }
   }
   return null;
-}
-
-// The connector saves a deck for a plan only from one text-like source the
-// claim can rebuild on its own. A zip or an image keeps today's refusal.
-function isConnectorPlanHoldEligible(
-  files: UploadedFile[] | undefined
-): boolean {
-  return (
-    isPartialDeliveryEligible(files) &&
-    files != null &&
-    !isCompressedFile(files[0].originalname) &&
-    !isImageOnlyUpload(files)
-  );
 }
 
 function deckNameFromImageFilename(name: string): string {

@@ -1153,7 +1153,9 @@ afterAll(async () => {
   applyEnv(originalEnv);
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await getDatabase()('google_drive_uploads').del();
+  await getDatabase()('dropbox_uploads').del();
   __resetFeatureFlagModuleForTests();
   heldDecks = new InMemoryHeldDeckRepository();
   checkoutMetadata.clear();
@@ -1401,13 +1403,13 @@ describe('a plan hold claimed after paying', () => {
       {} as PhotoToFlashcardsUseCase,
       {} as UsersRepository,
       {
-        holdForPlan: (owner, file, cardCount, cardOptions) =>
+        holdForPlan: (owner, file, cardCount, cardOptions, requestId) =>
           goldenService().holdConnectorDeckForPlan(
             owner,
             file,
             cardCount,
             cardOptions,
-            undefined
+            requestId
           ),
       }
     );
@@ -2062,13 +2064,13 @@ describe('the connector at the monthly card limit', () => {
       {} as PhotoToFlashcardsUseCase,
       {} as UsersRepository,
       {
-        holdForPlan: (owner, file, cardCount, cardOptions) =>
+        holdForPlan: (owner, file, cardCount, cardOptions, requestId) =>
           goldenService().holdConnectorDeckForPlan(
             owner,
             file,
             cardCount,
             cardOptions,
-            undefined
+            requestId
           ),
       }
     );
@@ -2185,6 +2187,46 @@ describe('the connector at the monthly card limit', () => {
     expect(result).toMatchObject({ kind: 'error', code: 'monthly_limit' });
     expect(heldDecks.rows).toHaveLength(0);
   }, 20_000);
+
+  it('gives a paying caller the whole deck with no plan lines', async () => {
+    population = {
+      ...signedInFree,
+      locals: { owner: OWNER, patreon: false, subscriber: true },
+      cardsUsed: 100,
+    };
+    __setFeatureFlagDependencies({ repository: inMemoryFlags({}) });
+
+    const result = await connector().createDeck(
+      cards,
+      'Golden Connector Deck',
+      undefined,
+      String(OWNER),
+      { owner: OWNER, patreon: false, subscriber: true }
+    );
+
+    expect(result).toMatchObject({ kind: 'deck', cardCount: 15 });
+    expect(result).not.toHaveProperty('cards_held_back');
+    expect(result).not.toHaveProperty('plan_notice');
+    expect(heldDecks.rows).toHaveLength(0);
+  }, 20_000);
+
+  it.each([
+    ['Google Drive', driveImport],
+    ['Dropbox', dropboxImport],
+  ])(
+    'saves nothing and adds no header for a %s import with no free cards left',
+    async (_label, importFile) => {
+      const result = await importFile('large', {
+        ...signedInFree,
+        cardsUsed: 100,
+      });
+
+      expect(result.status).toBe(302);
+      expect(result.headers).not.toHaveProperty('x-cards-over-limit');
+      expect(heldDecks.rows).toHaveLength(0);
+    },
+    20_000
+  );
 
   it('saves nothing and adds no header for a web upload with no free cards left', async () => {
     const result = await upload('large', { ...signedInFree, cardsUsed: 100 });

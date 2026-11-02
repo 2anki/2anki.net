@@ -1407,13 +1407,13 @@ describe('UploadService.handleUpload — error paths', () => {
         {} as PhotoToFlashcardsUseCase,
         buildUsersRepo(),
         {
-          holdForPlan: (owner, file, cardCount, cardOptions) =>
+          holdForPlan: (owner, file, cardCount, cardOptions, requestId) =>
             uploadService.holdConnectorDeckForPlan(
               owner,
               file,
               cardCount,
               cardOptions,
-              undefined
+              requestId
             ),
         },
         'https://mcp.test'

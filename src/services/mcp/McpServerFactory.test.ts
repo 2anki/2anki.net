@@ -507,7 +507,7 @@ describe('monthly limit results', () => {
       cards_delivered: 0,
       held_until: '2026-11-09',
     },
-    summary: 'Deck saved for a plan: Biochemistry. 15 cards.',
+    summary: 'Deck saved for a plan. 15 cards.',
     plan_notice: notice,
   };
 
@@ -580,7 +580,7 @@ describe('monthly limit results', () => {
     });
     expect(result.structuredContent).not.toHaveProperty('downloadUrl');
     expect(result.content[0].text).toBe(
-      `**Deck saved for a plan: Biochemistry. 15 cards.**\n\n${notice}`
+      `**Deck saved for a plan. 15 cards.**\n\n${notice}`
     );
     expect(result.content[0].text).not.toContain('untrusted-data');
     expect(calls).toEqual([

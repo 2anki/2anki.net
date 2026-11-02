@@ -178,8 +178,9 @@ function heldPlanStep(
   };
 }
 
-// The deck name reaches prose outside the untrusted-data wrapper, so it is
-// kept to one short plain line that cannot open a tag or break out of quotes.
+// The deck name comes from a document title, a filename or a URL, so it only
+// appears in structured fields and inside the untrusted-data wrapper, never in
+// the plan lines outside it. It is kept to one short plain line regardless.
 const MAX_NOTICE_DECK_NAME = 120;
 
 function noticeDeckName(name: string): string {
@@ -225,14 +226,10 @@ function savedOthersLine(
   return `${others} ${verb} saved on your 2anki account until ${longDate(heldUntil)}. Any plan unlocks ${pronoun}, and the full ${total}-card deck then appears in My decks on 2anki.net.`;
 }
 
-function heldForPlanLines(
-  deckName: string,
-  cardCount: number,
-  heldUntil: Date
-): string[] {
+function heldForPlanLines(cardCount: number, heldUntil: Date): string[] {
   const cards = cardCount === 1 ? '1 card' : `${cardCount} cards`;
   return [
-    `Your deck "${deckName}" has ${cards} and is saved on your 2anki account until ${longDate(heldUntil)}. No deck file was made yet, because this month's ${MONTHLY_CARD_LIMIT} free cards are already used.`,
+    `Your deck has ${cards} and is saved on your 2anki account until ${longDate(heldUntil)}. No deck file was made yet, because this month's ${MONTHLY_CARD_LIMIT} free cards are already used.`,
     'Any plan unlocks the full deck, and it then appears in My decks on 2anki.net.',
     `The free count resets on ${nextMonthlyReset()}, when you can make up to ${MONTHLY_CARD_LIMIT} cards again.`,
   ];
@@ -257,18 +254,17 @@ function heldForPlanResult(
     cards_delivered: 0,
   });
   const next_step = heldPlanStep(cardCount, 0, heldUntil);
-  const name = noticeDeckName(deckName);
   return {
     kind: 'held',
     code: HELD_FOR_PLAN_CODE,
-    deckName: name,
+    deckName: noticeDeckName(deckName),
     cardCount,
     cards_held_back: cardCount,
     cards_delivered: 0,
     next_step,
-    summary: `Deck saved for a plan: ${name}. ${cardCount === 1 ? '1 card' : `${cardCount} cards`}.`,
+    summary: `Deck saved for a plan. ${cardCount === 1 ? '1 card' : `${cardCount} cards`}.`,
     plan_notice: [
-      ...heldForPlanLines(name, cardCount, heldUntil),
+      ...heldForPlanLines(cardCount, heldUntil),
       ...plansLines(next_step.plans_url),
     ].join('\n'),
   };
@@ -481,7 +477,8 @@ export interface ConnectorPlanHolds {
     owner: string,
     file: UploadedFile,
     cardCount: number,
-    cardOptions: Record<string, unknown>
+    cardOptions: Record<string, unknown>,
+    requestId: string | undefined
   ): Promise<Date | null>;
 }
 
@@ -1163,11 +1160,13 @@ export class McpToolsService {
       return null;
     }
     const body = (res.req.body ?? {}) as Record<string, unknown>;
+    const requestId = res.locals.requestId;
     const heldUntil = await this.planHolds.holdForPlan(
       owner,
       file,
       overLimit,
-      body
+      body,
+      typeof requestId === 'string' ? requestId : undefined
     );
     if (heldUntil == null) {
       return null;
