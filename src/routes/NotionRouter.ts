@@ -39,15 +39,15 @@ const NotionRouter = () => {
    * @swagger
    * /api/notion/connect:
    *   get:
-   *     summary: Connect to Notion
-   *     description: Establish a connection to Notion using OAuth. Redirects to Notion authorization page.
+   *     summary: Notion OAuth callback
+   *     description: Notion returns here after consent. A connect:<nonce> state must match the notion_connect_state cookie before the code is exchanged; a missing or empty state (a Notion Marketplace install) restarts through /api/notion/connect/init; a wrong state redirects to /notion. login: and native: states go to their own flows.
    *     tags: [Notion]
    *     security:
    *       - bearerAuth: []
    *       - cookieAuth: []
    *     responses:
    *       302:
-   *         description: Redirect to Notion OAuth authorization
+   *         description: Redirect to /notion, /api/notion/connect/init, the sign-in callback or the app deep link
    *       401:
    *         description: Authentication required
    *         content:
@@ -57,6 +57,21 @@ const NotionRouter = () => {
    */
   router.get('/api/notion/connect', OptionalAuthentication, (req, res) =>
     controller.connect(req, res)
+  );
+
+  /**
+   * @swagger
+   * /api/notion/connect/init:
+   *   get:
+   *     summary: Start a web Notion connect
+   *     description: Sets a ten-minute notion_connect_state cookie and redirects to Notion's authorize page with state connect:<nonce>. /api/notion/connect refuses a web callback whose state does not match the cookie.
+   *     tags: [Notion]
+   *     responses:
+   *       302:
+   *         description: Redirect to Notion OAuth, or to /notion when Notion is not configured
+   */
+  router.get('/api/notion/connect/init', (req, res) =>
+    controller.startConnect(req, res)
   );
 
   /**
@@ -140,9 +155,11 @@ const NotionRouter = () => {
    * @swagger
    * /api/notion/get-notion-link:
    *   get:
-   *     summary: Get Notion connection link (Notion OAuth login URL)
+   *     summary: Get the Notion connect link
    *     description: |
-   *       Returns the OAuth link to connect to Notion. The link itself is
+   *       Returns the link that starts a Notion connect: the absolute
+   *       /api/notion/connect/init URL on the callback host for web callers, or the Notion
+   *       OAuth authorization URL for client=native. The link itself is
    *       public — anonymous and expired-session users still get back a
    *       working URL so the "Connect to Notion" button never goes inert.
    *       `isConnected` and `workspace` are only populated when the caller
@@ -173,8 +190,11 @@ const NotionRouter = () => {
    *               properties:
    *                 link:
    *                   type: string
-   *                   format: uri
-   *                   description: Notion OAuth authorization URL
+   *                   description: |
+   *                     Web: the /api/notion/connect/init URL on the callback host,
+   *                     which binds the OAuth state to the browser and
+   *                     redirects to Notion. client=native: the Notion OAuth
+   *                     authorization URL with a signed native state.
    *                 isConnected:
    *                   type: boolean
    *                   description: Whether user is connected to Notion

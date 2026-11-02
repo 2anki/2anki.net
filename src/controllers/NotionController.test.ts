@@ -1159,7 +1159,7 @@ describe('NotionController', () => {
       );
     });
 
-    it('redirects to /notion after a web connect with no state', async () => {
+    it('restarts a web connect with no state through the start path', async () => {
       service = buildConnectService();
       controller = new NotionController(service);
       req = { query: { code: 'auth-code' } };
@@ -1171,8 +1171,8 @@ describe('NotionController', () => {
 
       await controller.connect(req as express.Request, res as express.Response);
 
-      expect(service.connectToNotion).toHaveBeenCalledWith('auth-code', 42);
-      expect(res.redirect).toHaveBeenCalledWith('/notion');
+      expect(service.connectToNotion).not.toHaveBeenCalled();
+      expect(res.redirect).toHaveBeenCalledWith('/api/notion/connect/init');
     });
 
     it('returns 401 and never calls connectToNotion when the owner is missing', async () => {
@@ -1223,7 +1223,7 @@ describe('NotionController', () => {
     it.each([
       {
         flow: 'web',
-        state: () => undefined,
+        state: () => 'connect:nonce-1',
         redirect: '/notion',
       },
       {
@@ -1241,7 +1241,10 @@ describe('NotionController', () => {
           connectToNotion: vi.fn().mockRejectedValue(rawTokenExchangeFailure()),
         } as any;
         controller = new NotionController(service);
-        req = { query: { code: 'auth-code', state: state() } };
+        req = {
+          query: { code: 'auth-code', state: state() },
+          cookies: { notion_connect_state: 'nonce-1' },
+        } as any;
         res = {
           redirect: vi.fn().mockReturnThis(),
           clearCookie: vi.fn().mockReturnThis(),

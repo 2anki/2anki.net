@@ -74,6 +74,30 @@ describe('SearchPage over the monthly limit', () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId('search-container')).not.toBeInTheDocument();
   });
+
+  it('keeps Switch workspace on the start URL the server handed back', () => {
+    mockUseNotionData.mockReturnValue({
+      connected: true,
+      connectionLink: 'https://2anki.net/api/notion/connect/init',
+      error: null,
+      loading: false,
+      refetch: vi.fn(),
+      workSpace: 'Workspace',
+    });
+
+    render(
+      <MemoryRouter>
+        <SearchPage setError={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText("You've used all 100 cards this month")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Switch workspace' })
+    ).toHaveAttribute('href', 'https://2anki.net/api/notion/connect/init');
+  });
 });
 
 describe('SearchPage Hotjar suppression', () => {
@@ -147,5 +171,56 @@ describe('SearchPage when Notion rejects the token mid-search', () => {
     searchContainerProps.setError?.(new Error('Failed to fetch'));
 
     expect(refetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('SearchPage Notion connect links', () => {
+  const START_PATH = 'https://2anki.net/api/notion/connect/init';
+
+  beforeEach(() => {
+    mockUseUserLocals.mockReturnValue({ data: undefined } as unknown);
+    mockUseCardUsage.mockReturnValue(null as unknown);
+  });
+
+  it('points Connect to Notion at the start URL the server handed back', () => {
+    mockUseNotionData.mockReturnValue({
+      connected: false,
+      connectionLink: START_PATH,
+      error: null,
+      loading: false,
+      refetch: vi.fn(),
+      workSpace: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <SearchPage setError={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Connect to Notion' })
+    ).toHaveAttribute('href', START_PATH);
+  });
+
+  it('points Switch workspace at the same start path', () => {
+    mockUseNotionData.mockReturnValue({
+      connected: true,
+      connectionLink: START_PATH,
+      error: null,
+      loading: false,
+      refetch: vi.fn(),
+      workSpace: 'Workspace',
+    });
+
+    render(
+      <MemoryRouter>
+        <SearchPage setError={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Switch workspace' })
+    ).toHaveAttribute('href', START_PATH);
   });
 });

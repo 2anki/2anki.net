@@ -20,10 +20,14 @@ function makeRepo(
 }
 
 beforeEach(() => {
-  process.env.NOTION_CLIENT_ID = 'client-abc';
-  process.env.NOTION_CLIENT_SECRET = 'secret-xyz';
-  process.env.NOTION_REDIRECT_URI = 'https://2anki.net/api/notion/connect';
-  process.env.SECRET = 'link-info-secret';
+  vi.stubEnv('NOTION_CLIENT_ID', 'client-abc');
+  vi.stubEnv('NOTION_CLIENT_SECRET', 'secret-xyz');
+  vi.stubEnv('NOTION_REDIRECT_URI', 'https://2anki.net/api/notion/connect');
+  vi.stubEnv('SECRET', 'link-info-secret');
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe('getNotionLinkInfo', () => {
@@ -55,10 +59,17 @@ describe('getNotionLinkInfo', () => {
     expect(result.workspace).toBe('My Workspace');
   });
 
-  it('omits state from the link by default (web flow unchanged)', async () => {
+  it('hands the web flow an absolute start URL on the callback host, so any caller can open it', async () => {
     const service = new NotionService(makeRepo());
     const result = await service.getNotionLinkInfo(1);
-    expect(new URL(result.link).searchParams.has('state')).toBe(false);
+    expect(result.link).toBe('https://2anki.net/api/notion/connect/init');
+  });
+
+  it('falls back to the start path when the redirect URI is unset', async () => {
+    vi.stubEnv('NOTION_REDIRECT_URI', '');
+    const service = new NotionService(makeRepo());
+    const result = await service.getNotionLinkInfo(1);
+    expect(result.link).toBe('/api/notion/connect/init');
   });
 
   it('carries a signed native state encoding the app owner when client is native', async () => {

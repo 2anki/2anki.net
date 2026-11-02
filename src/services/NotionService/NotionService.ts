@@ -11,6 +11,7 @@ import {
 } from '../../data_layer/NotionTopLevelPagesRepository';
 import hashToken from '../../lib/misc/hashToken';
 import { buildNativeOAuthState } from './nativeOAuthState';
+import { NOTION_CONNECT_STATE_PREFIX } from '../../lib/auth/oauthState';
 import NotionAPIWrapper from './NotionAPIWrapper';
 import { getNotionId } from './getNotionId';
 import {
@@ -25,6 +26,8 @@ export interface NotionLinkInfo {
   isConnected: boolean;
   workspace: string | null;
 }
+
+export const NOTION_WEB_CONNECT_START_PATH = '/api/notion/connect/init';
 
 export const TOP_LEVEL_PAGES_STALE_AFTER_MS = 5 * 60 * 1000;
 
@@ -67,6 +70,25 @@ export class NotionService {
       params.set('state', state);
     }
     return `https://api.notion.com/v1/oauth/authorize?${params.toString()}`;
+  }
+
+  // Absolute on the callback host so the state cookie lands where Notion
+  // returns, and so a caller that is not the web app can still open it.
+  webConnectStartLink(): string {
+    if (!this.redirectURI) {
+      return NOTION_WEB_CONNECT_START_PATH;
+    }
+    return new URL(NOTION_WEB_CONNECT_START_PATH, this.redirectURI).toString();
+  }
+
+  webConnectAuthorizationLink(nonce: string): string | null {
+    if (!this.clientId || !this.redirectURI) {
+      return null;
+    }
+    return this.getNotionAuthorizationLink(
+      this.clientId,
+      `${NOTION_CONNECT_STATE_PREFIX}${nonce}`
+    );
   }
 
   isValidUUID(id: string | undefined | null) {
@@ -251,7 +273,7 @@ export class NotionService {
             clientId,
             buildNativeOAuthState(owner, process.env.SECRET ?? '')
           )
-        : this.getNotionAuthorizationLink(clientId);
+        : this.webConnectStartLink();
 
     if (!notionData) {
       return {
