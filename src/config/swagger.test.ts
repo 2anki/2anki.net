@@ -211,6 +211,18 @@ describe('Swagger Documentation Coverage', () => {
     expect(undocumentedRoutes).toHaveLength(0);
   });
 
+  it('parses every route file swagger block into the spec', () => {
+    const documentedPaths = extractSwaggerPaths();
+    const lostToYamlErrors = extractRouteDefinitions()
+      .filter((route) =>
+        hasSwaggerDocInFile(route.file, route.path, route.method)
+      )
+      .map((route) => `${route.method} ${route.path}`)
+      .filter((key) => !documentedPaths.has(key));
+
+    expect(lostToYamlErrors).toEqual([]);
+  });
+
   it('should have valid Swagger specification', () => {
     const spec = swaggerSpec as SwaggerSpec;
     expect(spec).toBeDefined();
