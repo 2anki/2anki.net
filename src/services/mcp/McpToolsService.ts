@@ -65,6 +65,7 @@ const EMPTY_BACK_MESSAGE =
   'Some cards have an empty back. Every card needs both a front and a back.';
 const GENERIC_CONVERT_ERROR = 'Could not convert this input.';
 const MONTHLY_LIMIT_CODE = 'monthly_limit';
+const HELD_FOR_PLAN_CODE = 'held_for_plan';
 const CARD_LIMIT_REDIRECT_PREFIX = '/limit?kind=card_count';
 // Directory review rules allow a link to an informational plans page, never a
 // page that starts a checkout. /pricing lists the plans and starts nothing on
@@ -85,6 +86,23 @@ function nextMonthlyReset(now: Date = new Date()): string {
 // used up.
 function monthlyLimitMessage(heldBack: string): string {
   return `This deck would go over the free plan's ${MONTHLY_CARD_LIMIT} cards for this month, so it wasn't created.${heldBack} The count resets on ${nextMonthlyReset()}. Plan details: ${PLANS_URL}`;
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function heldUntilFromHeaders(res: {
+  get(name: string): string | undefined;
+}): Date | null {
+  const raw = res.get('X-Held-Until');
+  if (
+    res.get('X-Held-For-Plan') !== '1' ||
+    raw == null ||
+    !ISO_DATE.test(raw)
+  ) {
+    return null;
+  }
+  const date = new Date(`${raw}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function isFreePhotoQuotaError(
@@ -123,13 +141,147 @@ function heldBackSentence(count: number): string {
   return ` ${count} cards were held back.`;
 }
 
+function longDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+const SHARE_PLANS_LINK =
+  'Share the plans link with the user exactly as written, on its own line.';
+
+function plansLines(plansUrl: string): string[] {
+  return ['Plans on 2anki.net:', plansUrl, SHARE_PLANS_LINK];
+}
+
+function heldPlanStep(
+  cardsHeldBack: number,
+  cardsDelivered: number,
+  heldUntil: Date | null
+): McpNextStep {
+  const plansUrl =
+    heldUntil == null
+      ? PLANS_URL
+      : `${PLANS_URL}&held_until=${isoDate(heldUntil)}`;
+  return {
+    plans_url: plansUrl,
+    upgrade_url: plansUrl,
+    cards_held_back: cardsHeldBack,
+    cards_delivered: cardsDelivered,
+    ...(heldUntil == null ? {} : { held_until: isoDate(heldUntil) }),
+  };
+}
+
+// The deck name reaches prose outside the untrusted-data wrapper, so it is
+// kept to one short plain line that cannot open a tag or break out of quotes.
+const MAX_NOTICE_DECK_NAME = 120;
+
+function noticeDeckName(name: string): string {
+  const plain = name
+    .replace(/\.apkg$/i, '')
+    .replace(/[\r\n\t"<>`]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_NOTICE_DECK_NAME)
+    .trim();
+  return plain.length > 0 ? plain : DEFAULT_DECK_NAME;
+}
+
+function partialDeliveryLines(
+  delivered: number,
+  heldBack: number,
+  heldUntil: Date | null
+): string[] {
+  const total = delivered + heldBack;
+  const first =
+    delivered === 1
+      ? `This deck has the first card of ${total}, which is what was left of this month's ${MONTHLY_CARD_LIMIT} free cards.`
+      : `This deck has the first ${delivered} of ${total} cards, which is what was left of this month's ${MONTHLY_CARD_LIMIT} free cards.`;
+  const others =
+    heldBack === 1 ? 'The other card' : `The other ${heldBack} cards`;
+  return [
+    first,
+    heldUntil == null
+      ? `${others} could not be saved this time. With any plan, convert this again for the full ${total}-card deck.`
+      : savedOthersLine(others, heldBack, total, heldUntil),
+    `The free count resets on ${nextMonthlyReset()}.`,
+  ];
+}
+
+function savedOthersLine(
+  others: string,
+  heldBack: number,
+  total: number,
+  heldUntil: Date
+): string {
+  const verb = heldBack === 1 ? 'is' : 'are';
+  const pronoun = heldBack === 1 ? 'it' : 'them';
+  return `${others} ${verb} saved on your 2anki account until ${longDate(heldUntil)}. Any plan unlocks ${pronoun}, and the full ${total}-card deck then appears in My decks on 2anki.net.`;
+}
+
+function heldForPlanLines(
+  deckName: string,
+  cardCount: number,
+  heldUntil: Date
+): string[] {
+  const cards = cardCount === 1 ? '1 card' : `${cardCount} cards`;
+  return [
+    `Your deck "${deckName}" has ${cards} and is saved on your 2anki account until ${longDate(heldUntil)}. No deck file was made yet, because this month's ${MONTHLY_CARD_LIMIT} free cards are already used.`,
+    'Any plan unlocks the full deck, and it then appears in My decks on 2anki.net.',
+    `The free count resets on ${nextMonthlyReset()}, when you can make up to ${MONTHLY_CARD_LIMIT} cards again.`,
+  ];
+}
+
+function trackPlanPaywall(owner: string, props: Record<string, unknown>) {
+  track('paywall_shown', {
+    userId: ownerToUserId(owner),
+    props: { source: 'mcp', surface: 'mcp', kind: 'card_count', ...props },
+  });
+}
+
+function heldForPlanResult(
+  owner: string,
+  deckName: string,
+  cardCount: number,
+  heldUntil: Date
+): ConvertResult {
+  trackPlanPaywall(owner, {
+    cards_held_back: cardCount,
+    held_for_plan: true,
+    cards_delivered: 0,
+  });
+  const next_step = heldPlanStep(cardCount, 0, heldUntil);
+  const name = noticeDeckName(deckName);
+  return {
+    kind: 'held',
+    code: HELD_FOR_PLAN_CODE,
+    deckName: name,
+    cardCount,
+    cards_held_back: cardCount,
+    cards_delivered: 0,
+    next_step,
+    summary: `Deck saved for a plan: ${name}. ${cardCount === 1 ? '1 card' : `${cardCount} cards`}.`,
+    plan_notice: [
+      ...heldForPlanLines(name, cardCount, heldUntil),
+      ...plansLines(next_step.plans_url),
+    ].join('\n'),
+  };
+}
+
 function monthlyLimitResult(
   owner: string,
   cardsHeldBack?: number
 ): ConvertResult {
-  track('paywall_shown', {
-    userId: ownerToUserId(owner),
-    props: { source: 'mcp', surface: 'mcp', kind: 'card_count' },
+  trackPlanPaywall(owner, {
+    cards_held_back: cardsHeldBack ?? 0,
+    held_for_plan: false,
+    cards_delivered: 0,
   });
   const next_step: McpNextStep = {
     plans_url: PLANS_URL,
@@ -290,17 +442,47 @@ export type ConvertResult =
       applied?: AppliedOptions;
       ignored?: IgnoredOption[];
       summary: string;
+      cards_held_back?: number;
+      cards_delivered?: number;
+      next_step?: McpNextStep;
+      plan_notice?: string;
+    }
+  | {
+      kind: 'held';
+      code: 'held_for_plan';
+      deckName: string;
+      cardCount: number;
+      cards_held_back: number;
+      cards_delivered: number;
+      next_step: McpNextStep;
+      summary: string;
+      plan_notice: string;
     }
   | { kind: 'error'; message: string; code?: string; next_step?: McpNextStep };
 
-// Attached to a monthly-limit error so the assistant can relay the limit and
+// Attached to a monthly-limit result so the assistant can relay the limit and
 // where to read about plans in the same turn (#4393). The link is an
 // informational page with no checkout. upgrade_url is a deprecated alias of
 // plans_url, kept for one release for clients that already read it (#4790).
+// held_until is set only when the cards over the limit are saved for a plan.
 export interface McpNextStep {
   cards_held_back?: number;
+  cards_delivered?: number;
+  held_until?: string;
   plans_url: string;
   upgrade_url: string;
+}
+
+// Saves a connector source the monthly limit refused outright, so a plan
+// bought later releases it. Resolves to the hold's expiry, or null when it
+// could not be saved.
+export interface ConnectorPlanHolds {
+  holdForPlan(
+    owner: string,
+    file: UploadedFile,
+    cardCount: number,
+    cardOptions: Record<string, unknown>
+  ): Promise<Date | null>;
 }
 
 export interface ConvertInput {
@@ -396,6 +578,7 @@ export class McpToolsService {
     private readonly deckPersistence: DeckPersistence,
     private readonly photoToFlashcards: PhotoToFlashcardsUseCase,
     private readonly usersRepository: UsersRepository,
+    private readonly planHolds: ConnectorPlanHolds,
     private readonly baseUrl: string = mcpBaseUrl()
   ) {}
 
@@ -956,7 +1139,10 @@ export class McpToolsService {
       return this.persistDeckResult(res.bodyBuffer, res, owner, fallbackTitle);
     }
     if (res.redirectedTo?.startsWith(CARD_LIMIT_REDIRECT_PREFIX)) {
-      return monthlyLimitResult(owner, candidateCards);
+      return (
+        (await this.holdOverLimitDeck(res, owner, fallbackTitle)) ??
+        monthlyLimitResult(owner, candidateCards)
+      );
     }
     const code = this.errorCode(res.body);
     return {
@@ -964,6 +1150,33 @@ export class McpToolsService {
       message: this.errorMessage(res.body, code),
       ...(code != null ? { code } : {}),
     };
+  }
+
+  private async holdOverLimitDeck(
+    res: CapturingResponse,
+    owner: string,
+    fallbackTitle: string
+  ): Promise<ConvertResult | null> {
+    const overLimit = Number(res.get('X-Cards-Over-Limit'));
+    const file = (res.req.files as unknown as UploadedFile[] | undefined)?.[0];
+    if (!Number.isInteger(overLimit) || overLimit <= 0 || file == null) {
+      return null;
+    }
+    const body = (res.req.body ?? {}) as Record<string, unknown>;
+    const heldUntil = await this.planHolds.holdForPlan(
+      owner,
+      file,
+      overLimit,
+      body
+    );
+    if (heldUntil == null) {
+      return null;
+    }
+    const deckName =
+      typeof body.deckName === 'string' && body.deckName.trim() !== ''
+        ? body.deckName
+        : fallbackTitle.replace(/\.[^.]+$/, '');
+    return heldForPlanResult(owner, deckName, overLimit, heldUntil);
   }
 
   private async persistDeckResult(
@@ -980,6 +1193,18 @@ export class McpToolsService {
     await this.deckPersistence.persist(owner, objectId, title, bytes);
     const downloadUrl = this.mcpDeckDownloadUrl(objectId);
     const preview = await this.previewFromBytes(bytes, `mcp:${objectId}`);
+    const heldBack = Number(res.get('X-Cards-Held-Back') ?? 0);
+    if (cardCount != null && Number.isInteger(heldBack) && heldBack > 0) {
+      return {
+        kind: 'deck',
+        jobId: objectId,
+        cardCount,
+        filename,
+        downloadUrl,
+        ...preview,
+        ...this.partialDeliveryFields(res, owner, title, cardCount, heldBack),
+      };
+    }
     const summary =
       cardCount != null
         ? `${cardCount} cards. Ready to download.`
@@ -992,6 +1217,33 @@ export class McpToolsService {
       downloadUrl,
       ...preview,
       summary,
+    };
+  }
+
+  private partialDeliveryFields(
+    res: CapturingResponse,
+    owner: string,
+    title: string,
+    delivered: number,
+    heldBack: number
+  ) {
+    const heldUntil = heldUntilFromHeaders(res);
+    trackPlanPaywall(owner, {
+      partial: true,
+      cards_held_back: heldBack,
+      held_for_plan: heldUntil != null,
+      cards_delivered: delivered,
+    });
+    const next_step = heldPlanStep(heldBack, delivered, heldUntil);
+    return {
+      summary: `Deck ready: ${noticeDeckName(title)}. ${delivered} of ${delivered + heldBack} cards.`,
+      cards_held_back: heldBack,
+      cards_delivered: delivered,
+      next_step,
+      plan_notice: [
+        ...partialDeliveryLines(delivered, heldBack, heldUntil),
+        ...plansLines(next_step.plans_url),
+      ].join('\n'),
     };
   }
 

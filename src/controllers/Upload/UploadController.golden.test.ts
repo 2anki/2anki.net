@@ -1399,7 +1399,17 @@ describe('a plan hold claimed after paying', () => {
       new StorageHandler(),
       { persist: (_owner, objectId) => Promise.resolve(objectId) },
       {} as PhotoToFlashcardsUseCase,
-      {} as UsersRepository
+      {} as UsersRepository,
+      {
+        holdForPlan: (owner, file, cardCount, cardOptions) =>
+          goldenService().holdConnectorDeckForPlan(
+            owner,
+            file,
+            cardCount,
+            cardOptions,
+            undefined
+          ),
+      }
     );
   }
 
@@ -2027,4 +2037,181 @@ describe('what each population gets back from the Day Pass AI preview resume', (
       heldObjectsLeft: 1,
     });
   }, 20_000);
+});
+
+describe('the connector at the monthly card limit', () => {
+  const cards = Array.from({ length: 15 }, (_, i) => ({
+    front: `Front ${i + 1}`,
+    back: `Back ${i + 1}`,
+  }));
+  const freeLocals = { owner: OWNER, patreon: false, subscriber: false };
+
+  function connector(persisted: string[] = []): McpToolsService {
+    return new McpToolsService(
+      { getJobsByOwner: () => Promise.resolve([]) } as JobLister,
+      {} as DownloadService,
+      new ApkgPreviewService(),
+      (req, res) => goldenService().handleUpload(req, res),
+      new StorageHandler(),
+      {
+        persist: (_owner, objectId) => {
+          persisted.push(objectId);
+          return Promise.resolve(objectId);
+        },
+      },
+      {} as PhotoToFlashcardsUseCase,
+      {} as UsersRepository,
+      {
+        holdForPlan: (owner, file, cardCount, cardOptions) =>
+          goldenService().holdConnectorDeckForPlan(
+            owner,
+            file,
+            cardCount,
+            cardOptions,
+            undefined
+          ),
+      }
+    );
+  }
+
+  function atCardsUsed(cardsUsed: number) {
+    population = { ...signedInFree, cardsUsed };
+    __setFeatureFlagDependencies({ repository: inMemoryFlags({}) });
+  }
+
+  it('delivers the cards that fit and saves the deck for a plan', async () => {
+    atCardsUsed(90);
+
+    const result = await connector().createDeck(
+      cards,
+      'Golden Connector Deck',
+      undefined,
+      String(OWNER),
+      freeLocals
+    );
+
+    const heldUntil = heldDecks.rows[0].expires_at.toISOString().slice(0, 10);
+    expect(result).toMatchObject({
+      kind: 'deck',
+      cardCount: 10,
+      cards_held_back: 5,
+      cards_delivered: 10,
+      summary: 'Deck ready: Golden Connector Deck. 10 of 15 cards.',
+      next_step: {
+        plans_url: `https://2anki.net/pricing/?ref=mcp&held_until=${heldUntil}`,
+        held_until: heldUntil,
+      },
+    });
+    expect(heldDecks.rows[0]).toMatchObject({
+      card_count: 10,
+      cards_held_back: 5,
+      source: 'mcp',
+    });
+  }, 20_000);
+
+  it('saves the whole deck for a plan when no free cards are left, and a plan releases it', async () => {
+    atCardsUsed(100);
+    const persisted: string[] = [];
+
+    const result = await connector(persisted).createDeck(
+      cards,
+      'Golden Connector Deck',
+      { tags: ['connector-tag'] },
+      String(OWNER),
+      freeLocals
+    );
+
+    expect(result).toMatchObject({
+      kind: 'held',
+      code: 'held_for_plan',
+      cardCount: 15,
+      cards_held_back: 15,
+      cards_delivered: 0,
+    });
+    expect(result).not.toHaveProperty('downloadUrl');
+    expect(persisted).toEqual([]);
+    expect(cardUsageCharges).toEqual([]);
+    expect(heldDecks.rows).toHaveLength(1);
+    expect(heldDecks.rows[0]).toMatchObject({
+      card_count: 0,
+      cards_held_back: 15,
+      source: 'mcp',
+      card_options: {
+        deckName: 'Golden Connector Deck',
+        'global-tags': 'connector-tag',
+      },
+    });
+
+    bridgeDecks.length = 0;
+    population = {
+      ...signedInFree,
+      locals: { owner: OWNER, patreon: false, subscriber: true },
+    };
+    const claimed = await new ClaimHeldDeckUseCase(
+      heldDecks,
+      new StorageHandler(),
+      goldenService()
+    ).execute({
+      anonId: null,
+      owner: String(OWNER),
+      paying: true,
+      requestId: 'golden-claim',
+    });
+    const deck = bridgeDecks[0];
+
+    expect(claimed).toMatchObject({
+      kind: 'plan',
+      cardCount: 15,
+      source: 'mcp',
+    });
+    expect(deck.name).toBe('Golden Connector Deck');
+    expect(deck.cards[0].tags).toContain('connector-tag');
+  }, 20_000);
+
+  it('refuses as before when the deck cannot be saved', async () => {
+    atCardsUsed(100);
+    vi.spyOn(heldDecks, 'insert').mockRejectedValueOnce(
+      new Error('connection reset')
+    );
+
+    const result = await connector().createDeck(
+      cards,
+      'Golden Connector Deck',
+      undefined,
+      String(OWNER),
+      freeLocals
+    );
+
+    expect(result).toMatchObject({ kind: 'error', code: 'monthly_limit' });
+    expect(heldDecks.rows).toHaveLength(0);
+  }, 20_000);
+
+  it('saves nothing and adds no header for a web upload with no free cards left', async () => {
+    const result = await upload('large', { ...signedInFree, cardsUsed: 100 });
+
+    expect(result.status).toBe(302);
+    expect(result.headers).toEqual({ location: '/limit?kind=card_count' });
+    expect(heldDecks.rows).toHaveLength(0);
+  }, 20_000);
+
+  it.each([
+    ['a text upload', 'large' as const, { 'x-cards-over-limit': '120' }],
+    ['a ZIP', 'zipWithImage' as const, {}],
+  ])(
+    'tells the connector how many cards went over the limit for %s',
+    async (_label, file, extraHeaders) => {
+      const result = await upload(file, {
+        ...signedInFree,
+        cardsUsed: 100,
+        locals: { ...signedInFree.locals, mcp_auth: true },
+      });
+
+      expect(result.headers).toEqual({
+        location: '/limit?kind=card_count',
+        ...extraHeaders,
+      });
+      expect(heldDecks.rows).toHaveLength(0);
+    },
+    20_000
+  );
 });

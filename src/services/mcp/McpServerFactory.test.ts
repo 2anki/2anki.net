@@ -467,3 +467,175 @@ describe('tool result metric', () => {
     expect(failCalls).toEqual([['create_deck', false, 'empty_export']]);
   });
 });
+
+describe('monthly limit results', () => {
+  const plansUrl = 'https://2anki.net/pricing/?ref=mcp&held_until=2026-11-09';
+  const notice = [
+    'The other 5 cards are saved on your 2anki account until November 9.',
+    'Plans on 2anki.net:',
+    plansUrl,
+    'Share the plans link with the user exactly as written, on its own line.',
+  ].join('\n');
+  const partialDeck = {
+    kind: 'deck' as const,
+    cardCount: 10,
+    filename: 'Biology.apkg',
+    downloadUrl: 'https://mcp.test/api/mcp/decks/abc/download',
+    summary: 'Deck ready: Biology. 10 of 15 cards.',
+    cards_held_back: 5,
+    cards_delivered: 10,
+    next_step: {
+      plans_url: plansUrl,
+      upgrade_url: plansUrl,
+      cards_held_back: 5,
+      cards_delivered: 10,
+      held_until: '2026-11-09',
+    },
+    plan_notice: notice,
+  };
+  const heldDeck = {
+    kind: 'held' as const,
+    code: 'held_for_plan' as const,
+    deckName: 'Biochemistry',
+    cardCount: 15,
+    cards_held_back: 15,
+    cards_delivered: 0,
+    next_step: {
+      plans_url: plansUrl,
+      upgrade_url: plansUrl,
+      cards_held_back: 15,
+      cards_delivered: 0,
+      held_until: '2026-11-09',
+    },
+    summary: 'Deck saved for a plan: Biochemistry. 15 cards.',
+    plan_notice: notice,
+  };
+
+  type Call = [string, boolean, string | undefined, Record<string, unknown>?];
+
+  it('puts the plan lines after the untrusted-data wrapper on a partial deck', async () => {
+    const calls: Call[] = [];
+    const handler = getHandler(
+      buildContext({
+        toolsService: {
+          convertToDeck: vi.fn(async () => partialDeck),
+        } as unknown as McpToolsService,
+        recordToolResult: (tool, success, code, extra) =>
+          calls.push([tool, success, code, extra]),
+      }),
+      'convert_to_deck'
+    );
+
+    const result = await handler({ text: 'Q :: A' });
+
+    const text = result.content[0].text;
+    const closing = text.lastIndexOf('</untrusted-data-');
+    expect(closing).toBeGreaterThan(0);
+    expect(text.indexOf(notice)).toBeGreaterThan(closing);
+    expect(text.endsWith(notice)).toBe(true);
+    expect(text.split('\n')).toContain(plansUrl);
+    expect(result.isError).toBeUndefined();
+    expect(calls).toEqual([
+      [
+        'convert_to_deck',
+        true,
+        undefined,
+        {
+          inputSource: 'text',
+          inputFormat: 'none',
+          cards_held_back: 5,
+          held_for_plan: true,
+          cards_delivered: 10,
+        },
+      ],
+    ]);
+  });
+
+  it('answers a deck saved for a plan as a success with no download link', async () => {
+    const calls: Call[] = [];
+    const handler = getHandler(
+      buildContext({
+        toolsService: {
+          createDeck: vi.fn(async () => heldDeck),
+        } as unknown as McpToolsService,
+        recordToolResult: (tool, success, code, extra) =>
+          calls.push([tool, success, code, extra]),
+      }),
+      'create_deck'
+    );
+
+    const result = (await handler({
+      cards: [{ front: 'Q', back: 'A' }],
+    })) as unknown as {
+      content: { text: string }[];
+      isError?: boolean;
+      structuredContent: Record<string, unknown>;
+    };
+
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent).toMatchObject({
+      kind: 'held',
+      code: 'held_for_plan',
+      next_step: { plans_url: plansUrl, held_until: '2026-11-09' },
+    });
+    expect(result.structuredContent).not.toHaveProperty('downloadUrl');
+    expect(result.content[0].text).toBe(
+      `**Deck saved for a plan: Biochemistry. 15 cards.**\n\n${notice}`
+    );
+    expect(result.content[0].text).not.toContain('untrusted-data');
+    expect(calls).toEqual([
+      [
+        'create_deck',
+        true,
+        undefined,
+        {
+          subdeckCount: 1,
+          cards_held_back: 15,
+          held_for_plan: true,
+          cards_delivered: 0,
+        },
+      ],
+    ]);
+  });
+
+  it('records a monthly limit refusal as held for no plan', async () => {
+    const calls: Call[] = [];
+    const handler = getHandler(
+      buildContext({
+        toolsService: {
+          createDeck: vi.fn(async () => ({
+            kind: 'error' as const,
+            code: 'monthly_limit',
+            message: 'over the limit',
+            next_step: {
+              plans_url: 'https://2anki.net/pricing/?ref=mcp',
+              upgrade_url: 'https://2anki.net/pricing/?ref=mcp',
+              cards_held_back: 2,
+            },
+          })),
+        } as unknown as McpToolsService,
+        recordToolResult: (tool, success, code, extra) =>
+          calls.push([tool, success, code, extra]),
+      }),
+      'create_deck'
+    );
+
+    await handler({ cards: [{ front: 'Q', back: 'A' }] });
+
+    expect(calls).toEqual([
+      [
+        'create_deck',
+        false,
+        'monthly_limit',
+        { cards_held_back: 2, held_for_plan: false, cards_delivered: 0 },
+      ],
+    ]);
+  });
+
+  it('tells hosts to show the plans link exactly as written', () => {
+    const lines = MCP_SERVER_INSTRUCTIONS.split('\n');
+    expect(lines[lines.length - 1]).toBe(
+      'When a result includes next_step.plans_url, show that link to the user exactly as written; it lists the plans that unlock cards saved on their 2anki account.'
+    );
+  });
+});

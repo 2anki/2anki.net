@@ -49,6 +49,26 @@ describe('HeldDeckRepository generated SQL', () => {
     expect(bindings).toContain('{"deckName":"Biology","global-tags":"cells"}');
   });
 
+  it('stores where a hold came from, or null', () => {
+    const base = {
+      storageKey: 'held/abc',
+      anonId: 'plan:7',
+      filename: 'notes.md',
+      cardCount: 0,
+      cardsHeldBack: 15,
+      expiresAt: now,
+    };
+
+    const connector = repository
+      .buildInsertQuery({ ...base, source: 'mcp' })
+      .toSQL();
+    const web = repository.buildInsertQuery(base).toSQL();
+
+    expect(connector.sql).toContain('"source"');
+    expect(connector.bindings).toContain('mcp');
+    expect(web.bindings).not.toContain('mcp');
+  });
+
   it('stores no card options as null', () => {
     const { bindings } = repository
       .buildInsertQuery({

@@ -1406,6 +1406,16 @@ describe('UploadService.handleUpload — error paths', () => {
         { persist: vi.fn() } as unknown as DeckPersistence,
         {} as PhotoToFlashcardsUseCase,
         buildUsersRepo(),
+        {
+          holdForPlan: (owner, file, cardCount, cardOptions) =>
+            uploadService.holdConnectorDeckForPlan(
+              owner,
+              file,
+              cardCount,
+              cardOptions,
+              undefined
+            ),
+        },
         'https://mcp.test'
       );
 

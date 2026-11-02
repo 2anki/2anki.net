@@ -29,6 +29,8 @@ export default interface HeldDecks {
   claimed_by: UsersId | null;
 
   card_options: unknown | null;
+
+  source: string | null;
 }
 
 /** Represents the initializer for the table public.held_decks */
@@ -56,6 +58,8 @@ export interface HeldDecksInitializer {
   claimed_by?: UsersId | null;
 
   card_options?: unknown | null;
+
+  source?: string | null;
 }
 
 /** Represents the mutator for the table public.held_decks */
@@ -81,4 +85,6 @@ export interface HeldDecksMutator {
   claimed_by?: UsersId | null;
 
   card_options?: unknown | null;
+
+  source?: string | null;
 }

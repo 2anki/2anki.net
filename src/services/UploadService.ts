@@ -9,6 +9,7 @@ import {
 } from '../data_layer/UploadRespository';
 import {
   ExpiredHeldDeck,
+  HeldDeckSource,
   IHeldDeckRepository,
 } from '../data_layer/HeldDeckRepository';
 import JobRepository from '../data_layer/JobRepository';
@@ -133,7 +134,11 @@ import {
 } from '../lib/claude/ClaudeService';
 import CustomExporter from '../lib/parser/exporters/CustomExporter';
 import Deck from '../lib/parser/Deck';
-import { isHTMLFile, isMarkdownFile } from '../lib/storage/checks';
+import {
+  isCompressedFile,
+  isHTMLFile,
+  isMarkdownFile,
+} from '../lib/storage/checks';
 import { BytesToMegaBytes, FileSizeInMegaBytes } from '../lib/misc/file';
 import {
   isWorkerTerminationError,
@@ -271,6 +276,12 @@ const SERVER_WRITE_ERRORS = new Set([
 ]);
 const PLAN_HOLD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PLAN_HOLD_EVICTION_SCAN = 100;
+
+export interface HeldSourceFile {
+  originalname: string;
+  buffer?: Buffer;
+  path?: string;
+}
 
 const MARKDOWN_HEURISTIC_WARNING =
   'Your Markdown file was processed using heuristic detection. For reliable results, use the nested bullet format or enable Claude AI in settings.';
@@ -429,7 +440,10 @@ function isImageOnlyZip(reading: EmptyUploadReading | null): boolean {
   );
 }
 
-async function readUploadBytes(file: UploadedFile): Promise<Buffer | null> {
+async function readUploadBytes(file: {
+  buffer?: Buffer;
+  path?: string;
+}): Promise<Buffer | null> {
   if (file.buffer != null) {
     return file.buffer;
   }
@@ -441,6 +455,19 @@ async function readUploadBytes(file: UploadedFile): Promise<Buffer | null> {
     }
   }
   return null;
+}
+
+// The connector saves a deck for a plan only from one text-like source the
+// claim can rebuild on its own. A zip or an image keeps today's refusal.
+function isConnectorPlanHoldEligible(
+  files: UploadedFile[] | undefined
+): boolean {
+  return (
+    isPartialDeliveryEligible(files) &&
+    files != null &&
+    !isCompressedFile(files[0].originalname) &&
+    !isImageOnlyUpload(files)
+  );
 }
 
 function deckNameFromImageFilename(name: string): string {
@@ -1368,6 +1395,13 @@ class UploadService {
           anonymousId,
           props: { source, kind: 'card_count' },
         });
+        if (
+          res.locals.mcp_auth === true &&
+          owner != null &&
+          isConnectorPlanHoldEligible(req.files as UploadedFile[] | undefined)
+        ) {
+          res.set('X-Cards-Over-Limit', err.candidate.toString());
+        }
         return res.redirect('/limit?kind=card_count');
       } else if (err instanceof AnonymousCardCapError) {
         const owner = getOwner(res);
@@ -2153,13 +2187,16 @@ class UploadService {
         res.set('X-Cards-Held-Back', heldBack.toString());
         exposedHeaders.push('X-Cards-Held-Back');
       }
-      const heldForPlan =
+      const heldUntil =
         owner != null && signedInMonthlyPartial && heldBack > 0
           ? await this.holdDeckForPlan(req, res, owner, totalCards, heldBack)
-          : false;
-      if (heldForPlan) {
+          : null;
+      if (heldUntil != null) {
         res.set('X-Held-For-Plan', '1');
         exposedHeaders.push('X-Held-For-Plan');
+        if (res.locals.mcp_auth === true) {
+          res.set('X-Held-Until', heldUntil.toISOString().slice(0, 10));
+        }
       }
       if (packages.some((p) => p.overSplit)) {
         res.set('X-Over-Split', '1');
@@ -2229,7 +2266,7 @@ class UploadService {
             ? {
                 card_limit_partial: true,
                 cards_held_back: heldBack,
-                ...(heldForPlan ? { held_for_plan: true } : {}),
+                ...(heldUntil != null ? { held_for_plan: true } : {}),
               }
             : {}),
         },
@@ -2845,19 +2882,41 @@ class UploadService {
     owner: string,
     cardCount: number,
     cardsHeldBack: number
-  ): Promise<boolean> {
+  ): Promise<Date | null> {
     const file = (req.files as UploadedFile[] | undefined)?.[0];
     if (file == null) {
-      return false;
+      return null;
     }
-    return this.holdFileForPlan(
+    return this.holdFileForPlan({
       file,
       owner,
       cardCount,
       cardsHeldBack,
-      req.body,
-      res.locals.requestId
-    );
+      resolvedCardOptions: req.body,
+      requestId: res.locals.requestId,
+      source: res.locals.mcp_auth === true ? 'mcp' : null,
+    });
+  }
+
+  // A connector call at the monthly limit with no free cards left builds no
+  // deck at all, so the whole source is saved for a plan. Returns when the
+  // hold expires, or null when it could not be saved.
+  async holdConnectorDeckForPlan(
+    owner: string,
+    file: HeldSourceFile,
+    cardCount: number,
+    cardOptions: Record<string, unknown>,
+    requestId: string | undefined
+  ): Promise<Date | null> {
+    return this.holdFileForPlan({
+      file,
+      owner,
+      cardCount: 0,
+      cardsHeldBack: cardCount,
+      resolvedCardOptions: cardOptions,
+      requestId,
+      source: 'mcp',
+    });
   }
 
   // An owner keeps at most MAX_PLAN_HOLDS waiting plan holds. The newest deck
@@ -2892,19 +2951,22 @@ class UploadService {
     }
   }
 
-  private async holdFileForPlan(
-    file: UploadedFile,
-    owner: string,
-    cardCount: number,
-    cardsHeldBack: number,
-    resolvedCardOptions: unknown,
-    requestId: string | undefined
-  ): Promise<boolean> {
+  private async holdFileForPlan(hold: {
+    file: HeldSourceFile;
+    owner: string;
+    cardCount: number;
+    cardsHeldBack: number;
+    resolvedCardOptions: unknown;
+    requestId: string | undefined;
+    source: HeldDeckSource | null;
+  }): Promise<Date | null> {
+    const { file, owner, requestId } = hold;
     try {
       const bytes = await readUploadBytes(file);
       if (bytes == null) {
-        return false;
+        return null;
       }
+      const expiresAt = new Date(Date.now() + PLAN_HOLD_TTL_MS);
       const storage = new StorageHandler();
       const storageKey = `held/${randomUUID()}`;
       await storage.uploadFile(storageKey, bytes);
@@ -2912,10 +2974,11 @@ class UploadService {
         storageKey,
         anonId: planHoldKey(owner),
         filename: file.originalname,
-        cardCount,
-        cardsHeldBack,
-        expiresAt: new Date(Date.now() + PLAN_HOLD_TTL_MS),
-        cardOptions: allowedHeldCardOptions(resolvedCardOptions),
+        cardCount: hold.cardCount,
+        cardsHeldBack: hold.cardsHeldBack,
+        expiresAt,
+        cardOptions: allowedHeldCardOptions(hold.resolvedCardOptions),
+        source: hold.source,
       });
       await this.evictOldestPlanHolds(
         owner,
@@ -2923,13 +2986,13 @@ class UploadService {
         storage,
         requestId
       );
-      return true;
+      return expiresAt;
     } catch (error) {
       console.error('[UploadService] could not hold the deck for a plan', {
         requestId,
         error: error instanceof Error ? error.message : String(error),
       });
-      return false;
+      return null;
     }
   }
 
@@ -2987,14 +3050,15 @@ class UploadService {
       } else if (options != null) {
         // No free cards left: save the deck for a pass, then refuse at the
         // monthly limit before building a deck that would be thrown away.
-        await this.holdFileForPlan(
+        await this.holdFileForPlan({
           file,
           owner,
-          0,
-          options.heldCards,
-          body,
-          requestId
-        );
+          cardCount: 0,
+          cardsHeldBack: options.heldCards,
+          resolvedCardOptions: body,
+          requestId,
+          source: null,
+        });
         await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
           userId: owner,
           candidateCardCount: options.heldCards,
@@ -3057,14 +3121,15 @@ class UploadService {
     }
     const heldForPlan =
       heldBack > 0 &&
-      (await this.holdFileForPlan(
+      (await this.holdFileForPlan({
         file,
         owner,
-        totalCards,
-        heldBack,
-        body,
-        requestId
-      ));
+        cardCount: totalCards,
+        cardsHeldBack: heldBack,
+        resolvedCardOptions: body,
+        requestId,
+        source: null,
+      })) != null;
     return {
       downloadKey,
       cardCount: totalCards,

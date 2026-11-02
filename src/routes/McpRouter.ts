@@ -90,7 +90,17 @@ const McpRouter = () => {
       storage
     ),
     new PhotoToFlashcardsUseCase(new EventsRepository(database)),
-    usersRepository
+    usersRepository,
+    {
+      holdForPlan: (owner, file, cardCount, cardOptions) =>
+        uploadService.holdConnectorDeckForPlan(
+          owner,
+          file,
+          cardCount,
+          cardOptions,
+          undefined
+        ),
+    }
   );
 
   const onAuthenticatedPost: RequestHandler = async (req, res) => {
