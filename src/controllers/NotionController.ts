@@ -206,10 +206,7 @@ class NotionController {
 
     const owner = res.locals.owner;
     if (owner == null) {
-      return res.status(401).json({
-        code: 'notion_unauthorized',
-        message: 'Sign in before connecting Notion.',
-      });
+      return res.redirect(`/login?redirect=${encodeURIComponent('/notion')}`);
     }
 
     if (!stateMatches && (stateStr == null || stateStr === '')) {

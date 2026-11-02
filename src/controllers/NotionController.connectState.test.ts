@@ -326,7 +326,7 @@ describe('web Notion connect binds its state to the browser', () => {
     expect(res.redirect).toHaveBeenCalledWith('/notion');
   });
 
-  it('still answers 401 to a signed-out callback and links nothing', async () => {
+  it('sends a signed-out callback to sign in and links nothing', async () => {
     const { controller, repo } = build();
     const { location, issued } = startConnect(controller);
     const state = new URL(location).searchParams.get('state');
@@ -340,15 +340,16 @@ describe('web Notion connect binds its state to the browser', () => {
       res
     );
 
+    expect(notionTokenExchanges()).toHaveLength(0);
     expect(repo.saveNotionToken).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.redirect).toHaveBeenCalledWith('/login?redirect=%2Fnotion');
     expect(res.clearCookie).toHaveBeenCalledWith(
       NOTION_CONNECT_STATE_COOKIE,
       expect.objectContaining({ httpOnly: true })
     );
   });
 
-  it('answers 401 to a signed-out Marketplace install and exchanges no code', async () => {
+  it('sends a signed-out Marketplace install to sign in and exchanges no code', async () => {
     const { controller, repo } = build();
     const res = fakeRes(null);
 
@@ -356,8 +357,8 @@ describe('web Notion connect binds its state to the browser', () => {
 
     expect(notionTokenExchanges()).toHaveLength(0);
     expect(repo.saveNotionToken).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.redirect).not.toHaveBeenCalled();
+    expect(res.redirect).toHaveBeenCalledWith('/login?redirect=%2Fnotion');
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it('leaves the Notion sign-in state and its cookie to the sign-in callback', async () => {
