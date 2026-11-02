@@ -206,3 +206,10 @@ class TestMCQPlainTextOptions:
         fields = _mcq_fields(["C:\\new folder", "line one\nline two", "a\x1fb"], 1)
         assert fields[1] == "C:&#92;new folder<br>line one line two<br>a b"
         assert fields[2] == "line one line two"
+
+    def test_escapes_brackets_so_anki_does_not_expand_media_tokens(self):
+        # Anki swaps [sound:...] for player markup with double quotes before the
+        # template script runs, which would close the JS string early.
+        fields = _mcq_fields(["[sound:clip.mp3]", "[$]x^2[/$]", "plain"], 0)
+        assert fields[1] == "&#91;sound:clip.mp3]<br>&#91;$]x^2&#91;/$]<br>plain"
+        assert fields[2] == "&#91;sound:clip.mp3]"
