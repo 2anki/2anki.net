@@ -28,6 +28,24 @@ function makeText(
   } as unknown as RichTextItemResponse;
 }
 
+function makeRun(
+  type: 'mention' | 'equation',
+  plainText: string,
+  annotations: Partial<typeof baseAnnotations> = {}
+): RichTextItemResponse {
+  const payload =
+    type === 'equation'
+      ? { equation: { expression: plainText } }
+      : { mention: { type: 'date', date: { start: '2026-11-02', end: null } } };
+  return {
+    type,
+    ...payload,
+    annotations: { ...baseAnnotations, ...annotations },
+    plain_text: plainText,
+    href: null,
+  } as unknown as RichTextItemResponse;
+}
+
 function makeToggle(
   richText: RichTextItemResponse[]
 ): ToggleBlockObjectResponse {
@@ -62,5 +80,32 @@ describe('getInputCard', () => {
     );
 
     expect(note).toBeUndefined();
+  });
+
+  it('uses the text Notion shows for a mention instead of undefined', () => {
+    const note = getInputCard(
+      new ParserRules(),
+      makeToggle([
+        makeText('Meeting on '),
+        makeRun('mention', 'November 2, 2026'),
+        makeText('? '),
+        makeRun('mention', 'R&D page', { bold: true }),
+      ])
+    );
+
+    expect(note?.name).toBe('Meeting on November 2, 2026? ');
+    expect(note?.answer).toBe('R&amp;D page');
+  });
+
+  it('renders an inline equation the way cloze cards do', () => {
+    const note = getInputCard(
+      new ParserRules(),
+      makeToggle([
+        makeText('Area: '),
+        makeRun('equation', 'a<b', { underline: true }),
+      ])
+    );
+
+    expect(note?.answer).toBe('\\(a&lt;b\\)');
   });
 });

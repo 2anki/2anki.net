@@ -40,6 +40,19 @@ function makeEquation(
   } as unknown as RichTextItemResponse;
 }
 
+function makeMention(
+  plainText: string,
+  annotations: Partial<typeof baseAnnotations> = {}
+): RichTextItemResponse {
+  return {
+    type: 'mention',
+    mention: { type: 'date', date: { start: '2026-11-02', end: null } },
+    annotations: { ...baseAnnotations, ...annotations },
+    plain_text: plainText,
+    href: null,
+  } as unknown as RichTextItemResponse;
+}
+
 function makeToggle(
   richText: RichTextItemResponse[]
 ): ToggleBlockObjectResponse {
@@ -126,5 +139,20 @@ describe('getClozeDeletionCard — plain text is escaped', () => {
     );
 
     expect(note?.name).toBe('{{c2::Tom &amp; Jerry}}');
+  });
+});
+
+describe('getClozeDeletionCard — mentions', () => {
+  it('uses the text Notion shows for a mention, in the text and in a cloze', () => {
+    const note = getClozeDeletionCard(
+      makeToggle([
+        makeText('Due '),
+        makeMention('November 2, 2026'),
+        makeText(' by '),
+        makeMention('R&D page', { code: true }),
+      ])
+    );
+
+    expect(note?.name).toBe('Due November 2, 2026 by {{c1::R&amp;D page}}');
   });
 });

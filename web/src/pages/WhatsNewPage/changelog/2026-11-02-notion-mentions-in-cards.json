@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-02-notion-mentions-in-cards",
+  "date": "2026-11-02",
+  "type": "fix",
+  "title": "Dates, page links and equations in connected Notion cloze and typed-answer cards show their text instead of undefined"
+}
