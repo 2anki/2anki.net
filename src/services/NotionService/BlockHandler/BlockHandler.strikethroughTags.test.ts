@@ -446,6 +446,37 @@ describe('strikethrough tags on cloze and typed-answer fronts', () => {
     expect(card.tags).toEqual(['2025']);
   });
 
+  it('leaves a struck mention off a cloze front and keeps it as a tag', async () => {
+    const mention = {
+      type: 'mention' as const,
+      mention: { type: 'date', date: { start: '2026-11-02', end: null } },
+      annotations: { ...richText('x').annotations, strikethrough: true },
+      plain_text: '2026-11-02',
+      href: null,
+    };
+    const [card] = await convert(new CardOption({ cloze: 'true' }), {
+      'page-1': [
+        block(
+          't-1',
+          'toggle',
+          [
+            richText('The capital is '),
+            annotated('Paris', { code: true }),
+            richText(' '),
+            mention as unknown as ReturnType<typeof richText>,
+          ],
+          true
+        ),
+      ],
+      't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+    });
+
+    expect(card.cloze).toBe(true);
+    expect(card.name).toContain('{{c1::Paris}}');
+    expect(card.name).not.toContain('2026-11-02');
+    expect(card.tags).toEqual(['2026-11-02']);
+  });
+
   it('keeps a struck run on a cloze front when tags are off', async () => {
     const [card] = await convert(
       new CardOption({ cloze: 'true', tags: 'false' }),
@@ -741,6 +772,167 @@ describe('strikethrough edge cases on table headers, equations and typed answers
     expect(card.cloze).toBe(true);
     expect(card.name).toContain('E=mc^2');
   });
+
+  async function typedAnswerCardWithStruckEquation(
+    type: string,
+    flashcardTypes: string[],
+    toggleable = false
+  ) {
+    const equation = {
+      type: 'equation' as const,
+      equation: { expression: 'E=mc^2' },
+      annotations: { ...richText('x').annotations, strikethrough: true },
+      plain_text: 'E=mc^2',
+      href: null,
+    };
+    const front = block(
+      'f-1',
+      type,
+      [
+        {
+          ...richText('Paris'),
+          annotations: { ...richText('x').annotations, bold: true },
+        },
+        richText(' and '),
+        equation as unknown as ReturnType<typeof richText>,
+      ],
+      true
+    );
+    if (toggleable) {
+      Object.assign(front[type as keyof typeof front] as object, {
+        is_toggleable: true,
+      });
+    }
+    const rules = new ParserRules();
+    rules.setFlashcardTypes(flashcardTypes);
+    const [card] = await convert(
+      new CardOption({ 'enable-input': 'true', cloze: 'false' }),
+      {
+        'page-1': [front],
+        'f-1': [block('p-1', 'paragraph', [richText('Extra')])],
+      },
+      { rules }
+    );
+    return card;
+  }
+
+  it.each([
+    'toggle',
+    'paragraph',
+    'bulleted_list_item',
+    'numbered_list_item',
+    'to_do',
+  ])(
+    'keeps a struck inline equation on a %s typed-answer front, with no tag',
+    async (type) => {
+      const card = await typedAnswerCardWithStruckEquation(type, [type]);
+
+      expect(card.enableInput).toBe(true);
+      expect(card.name).toContain('E=mc^2');
+      expect(card.tags).toEqual([]);
+    }
+  );
+
+  it('keeps a struck inline equation on a toggleable heading typed-answer front, with no tag', async () => {
+    const card = await typedAnswerCardWithStruckEquation(
+      'heading_1',
+      ['toggle'],
+      true
+    );
+
+    expect(card.enableInput).toBe(true);
+    expect(card.name).toContain('E=mc^2');
+    expect(card.tags).toEqual([]);
+  });
+
+  it.each([
+    ['quote', ['quote']],
+    ['callout', ['callout']],
+    ['code', ['code']],
+    ['heading_1', ['heading']],
+  ])(
+    'shows a struck equation on a %s typed-answer front and keeps its tag, as cloze does',
+    async (type, flashcardTypes) => {
+      const card = await typedAnswerCardWithStruckEquation(
+        type,
+        flashcardTypes
+      );
+
+      expect(card.enableInput).toBe(true);
+      expect(card.name).toContain('E=mc^2');
+      expect(card.tags).toEqual(['E=mc^2']);
+    }
+  );
+
+  it('turns a struck mention on a toggle typed-answer front into a tag, off the front', async () => {
+    const mention = {
+      type: 'mention' as const,
+      mention: { type: 'date', date: { start: '2026-11-02', end: null } },
+      annotations: { ...richText('x').annotations, strikethrough: true },
+      plain_text: '2026-11-02',
+      href: null,
+    };
+    const [card] = await convert(
+      new CardOption({ 'enable-input': 'true', cloze: 'false' }),
+      {
+        'page-1': [
+          block(
+            't-1',
+            'toggle',
+            [
+              {
+                ...richText('Paris'),
+                annotations: { ...richText('x').annotations, bold: true },
+              },
+              richText(' due '),
+              mention as unknown as ReturnType<typeof richText>,
+            ],
+            true
+          ),
+        ],
+        't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+      }
+    );
+
+    expect(card.enableInput).toBe(true);
+    expect(card.name).not.toContain('2026-11-02');
+    expect(card.tags).toEqual(['2026-11-02']);
+  });
+
+  it.each(['bulleted_list_item', 'numbered_list_item', 'to_do'])(
+    'drops a struck text run from a %s typed-answer front without a tag, as before',
+    async (type) => {
+      const rules = new ParserRules();
+      rules.setFlashcardTypes([type]);
+      const [card] = await convert(
+        new CardOption({ 'enable-input': 'true', cloze: 'false' }),
+        {
+          'page-1': [
+            block(
+              'f-1',
+              type,
+              [
+                {
+                  ...richText('Paris'),
+                  annotations: { ...richText('x').annotations, bold: true },
+                },
+                richText(' '),
+                struck('2025'),
+              ],
+              true
+            ),
+          ],
+          'f-1': [block('p-1', 'paragraph', [richText('Extra')])],
+        },
+        { rules }
+      );
+
+      expect(card.enableInput).toBe(true);
+      expect(card.answer).toBe('Paris');
+      expect(card.name).not.toContain('2025');
+      expect(card.tags).toEqual([]);
+    }
+  );
 
   it('keeps a struck run on a typed-answer front when tags are off', async () => {
     const [card] = await convert(

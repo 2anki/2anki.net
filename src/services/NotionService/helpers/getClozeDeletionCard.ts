@@ -43,8 +43,9 @@ export default function getClozeDeletionCard(
     if (cb.annotations.strikethrough && tagRegistry?.collects()) {
       continue;
     }
-    const raw = (cb as TextRichTextItemResponse).text?.content;
-    const content = raw == null ? undefined : escapeHtml(raw);
+    const content = escapeHtml(
+      (cb as TextRichTextItemResponse).text?.content ?? cb.plain_text
+    );
     if (cb.annotations.code) {
       if (content?.includes('::')) {
         if (content.match(/[cC]\d+::/)) {

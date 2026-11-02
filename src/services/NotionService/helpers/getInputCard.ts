@@ -1,4 +1,5 @@
 import {
+  EquationRichTextItemResponse,
   GetBlockResponse,
   TextRichTextItemResponse,
 } from '@notionhq/client/build/src/api-endpoints';
@@ -7,7 +8,9 @@ import { escapeHtml } from '../../../lib/notion-render/escape';
 import ParserRules from '../../../lib/parser/ParserRules';
 import Note from '../../../lib/parser/Note';
 import type TagRegistry from '../../../lib/parser/TagRegistry';
+import { renderInlineEquation } from '../blocks/BlockEquation';
 import isColumnList from './isColumnList';
+import isEquation from './isEquation';
 import { getRichTextFromBlock } from './getRichTextFromBlock';
 
 // The user wants to turn under lines into input cards <strong>keyword</strong> becomes {{type::word}}
@@ -24,11 +27,19 @@ export default function getInputCard(
     return undefined;
   }
   for (const cb of flashcardBlock) {
-    if (cb.annotations.strikethrough && tagRegistry?.collects()) {
+    // A struck equation stays on the front, as in getClozeDeletionCard.
+    if (
+      !isEquation(cb) &&
+      cb.annotations.strikethrough &&
+      tagRegistry?.collects()
+    ) {
       continue;
     }
-    const raw = (cb as TextRichTextItemResponse).text?.content;
-    const content = raw == null ? raw : escapeHtml(raw);
+    const content = isEquation(cb)
+      ? escapeHtml(renderInlineEquation(cb as EquationRichTextItemResponse))
+      : escapeHtml(
+          (cb as TextRichTextItemResponse).text?.content ?? cb.plain_text
+        );
     if (cb.annotations.underline || cb.annotations.bold) {
       answer += content;
       isInput = true;
