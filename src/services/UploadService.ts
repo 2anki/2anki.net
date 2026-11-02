@@ -50,6 +50,10 @@ import {
 } from '../lib/upload/duplicateGuidWarning';
 import { countDuplicateGuids } from '../lib/anki/countDuplicateGuids';
 import { latin1HeaderValue } from '../lib/upload/latin1HeaderValue';
+import {
+  CLAIM_INFERENCE_OFF,
+  allowedHeldCardOptions,
+} from '../lib/upload/heldCardOptions';
 import { UploadedFile } from '../lib/storage/types';
 import GeneratePackagesUseCase from '../usecases/uploads/GeneratePackagesUseCase';
 import { toText } from './NotionService/BlockHandler/helpers/deckNameToText';
@@ -2614,7 +2618,7 @@ class UploadService {
   ): Promise<PassHeldDeckConversion> {
     const settings = new CardOption({
       ...cardOptions,
-      'claude-ai-flashcards': 'false',
+      ...CLAIM_INFERENCE_OFF,
     });
     const ws = new Workspace(true, 'fs');
     const { packages, emptyReason } =
@@ -2849,6 +2853,7 @@ class UploadService {
       owner,
       cardCount,
       cardsHeldBack,
+      req.body,
       res.locals.requestId
     );
   }
@@ -2858,6 +2863,7 @@ class UploadService {
     owner: string,
     cardCount: number,
     cardsHeldBack: number,
+    resolvedCardOptions: unknown,
     requestId: string | undefined
   ): Promise<boolean> {
     try {
@@ -2874,6 +2880,7 @@ class UploadService {
         cardCount,
         cardsHeldBack,
         expiresAt: new Date(Date.now() + PLAN_HOLD_TTL_MS),
+        cardOptions: allowedHeldCardOptions(resolvedCardOptions),
       });
       return true;
     } catch (error) {
@@ -2897,6 +2904,7 @@ class UploadService {
     paying: boolean,
     source: UploadSource | null,
     requestId: string | undefined,
+    heldCardOptions: unknown,
     options?: { previewCap: number; heldCards: number }
   ): Promise<{
     downloadKey: string;
@@ -2905,7 +2913,13 @@ class UploadService {
     deckName: string;
     heldForPlan?: boolean;
   }> {
-    const body = await this.resolveCardOptionInput(owner, {});
+    const body = {
+      ...(await this.resolveCardOptionInput(
+        owner,
+        allowedHeldCardOptions(heldCardOptions) ?? {}
+      )),
+      ...CLAIM_INFERENCE_OFF,
+    };
     const settings = new CardOption(body as { [key: string]: string });
     if (settings.n2aBasic == null) {
       await this.settingsRepository.attachCustomTemplates(owner, settings);
@@ -2937,6 +2951,7 @@ class UploadService {
           owner,
           0,
           options.heldCards,
+          body,
           requestId
         );
         await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
@@ -3006,6 +3021,7 @@ class UploadService {
         owner,
         totalCards,
         heldBack,
+        body,
         requestId
       ));
     return {

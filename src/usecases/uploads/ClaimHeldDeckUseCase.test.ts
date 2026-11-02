@@ -449,9 +449,41 @@ describe('ClaimHeldDeckUseCase', () => {
         expect.objectContaining({ originalname: 'study-notes.html' }),
         true,
         null,
-        'req-1'
+        'req-1',
+        null
       );
       expect(repo.rows[0].claimed_by).toBe(Number(OWNER));
+    });
+
+    it('rebuilds the deck with the card options saved on the hold', async () => {
+      const repo = new InMemoryHeldDeckRepository();
+      await repo.insert({
+        storageKey: 'held/abc.html',
+        anonId: planHoldKey(OWNER),
+        filename: 'study-notes.html',
+        cardCount: 10,
+        cardsHeldBack: 110,
+        expiresAt: new Date(Date.now() + 60_000),
+        cardOptions: { deckName: 'Biology', 'global-tags': 'cells' },
+      });
+      const { converter, convertHeldFileForOwner } = buildConverter();
+      const useCase = new ClaimHeldDeckUseCase(
+        repo,
+        buildStore().store,
+        converter
+      );
+
+      await useCase.execute({
+        anonId: null,
+        owner: OWNER,
+        paying: true,
+        requestId: 'req-1',
+      });
+
+      expect(convertHeldFileForOwner.mock.calls[0][5]).toEqual({
+        deckName: 'Biology',
+        'global-tags': 'cells',
+      });
     });
 
     it("claims another owner's plan hold never", async () => {
@@ -556,7 +588,7 @@ describe('ClaimHeldDeckUseCase', () => {
         requestId: undefined,
       });
 
-      expect(convertHeldFileForOwner.mock.calls[0][5]).toEqual({
+      expect(convertHeldFileForOwner.mock.calls[0][6]).toEqual({
         previewCap: 21,
         heldCards: 34,
       });
@@ -591,7 +623,7 @@ describe('ClaimHeldDeckUseCase', () => {
       expect(result.kind).toBe('plan');
       const call = convertHeldFileForOwner.mock.calls[0];
       expect(call[2]).toBe(true);
-      expect(call[5]).toBeUndefined();
+      expect(call[6]).toBeUndefined();
     });
 
     it('builds the full deck when a paying account claims a sign-up hold', async () => {
@@ -612,7 +644,7 @@ describe('ClaimHeldDeckUseCase', () => {
         requestId: undefined,
       });
 
-      expect(convertHeldFileForOwner.mock.calls[0][5]).toBeUndefined();
+      expect(convertHeldFileForOwner.mock.calls[0][6]).toBeUndefined();
     });
 
     it.each([
@@ -638,7 +670,7 @@ describe('ClaimHeldDeckUseCase', () => {
           requestId: undefined,
         });
 
-        expect(convertHeldFileForOwner.mock.calls[0]).toHaveLength(5);
+        expect(convertHeldFileForOwner.mock.calls[0]).toHaveLength(6);
         expect(result).toEqual({
           downloadKey: 'owner-key.apkg',
           cardCount: 34,

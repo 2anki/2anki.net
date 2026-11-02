@@ -32,6 +32,38 @@ describe('HeldDeckRepository generated SQL', () => {
     expect(sql).toContain('returning *');
   });
 
+  it('stores the card options as one JSON binding', () => {
+    const { sql, bindings } = repository
+      .buildInsertQuery({
+        storageKey: 'held/abc',
+        anonId: 'plan:7',
+        filename: 'notes.html',
+        cardCount: 10,
+        cardsHeldBack: 110,
+        expiresAt: now,
+        cardOptions: { deckName: 'Biology', 'global-tags': 'cells' },
+      })
+      .toSQL();
+
+    expect(sql).toContain('"card_options"');
+    expect(bindings).toContain('{"deckName":"Biology","global-tags":"cells"}');
+  });
+
+  it('stores no card options as null', () => {
+    const { bindings } = repository
+      .buildInsertQuery({
+        storageKey: 'held/abc',
+        anonId: 'anon-1',
+        filename: 'notes.html',
+        cardCount: 21,
+        cardsHeldBack: 13,
+        expiresAt: now,
+      })
+      .toSQL();
+
+    expect(bindings).toContain(null);
+  });
+
   it('finds the newest unclaimed, unexpired hold for an anonymous id', () => {
     const { sql, bindings } = repository
       .buildFindNewestClaimableQuery('anon-1', now)

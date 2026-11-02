@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-02-held-deck-keeps-options",
+  "date": "2026-11-02",
+  "type": "fix",
+  "title": "A deck saved for a plan unlocks with the deck name, tags and note type you chose when you made it"
+}

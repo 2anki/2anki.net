@@ -49,6 +49,7 @@ export interface HeldDeckConverter {
     paying: boolean,
     source: null,
     requestId: string | undefined,
+    cardOptions: unknown,
     options?: HeldDeckConversionOptions
   ): Promise<HeldDeckConversion>;
 }
@@ -224,6 +225,7 @@ export class ClaimHeldDeckUseCase {
             paying,
             null,
             requestId,
+            hold.card_options,
             {
               previewCap: ANONYMOUS_CARD_CAP,
               heldCards: hold.card_count + hold.cards_held_back,
@@ -234,7 +236,8 @@ export class ClaimHeldDeckUseCase {
             file,
             paying,
             null,
-            requestId
+            requestId,
+            hold.card_options
           );
       return {
         downloadKey: conversion.downloadKey,
