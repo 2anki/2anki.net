@@ -10,5 +10,7 @@
   "proPrice": "Passa a Pro · {{price}}/mese",
   "checkoutError": "Impossibile avviare il pagamento. Riprova o scrivi a support@2anki.net.",
   "readyBody": "Il tuo mazzo completo è pronto. Lo trovi anche tra I miei mazzi.",
+  "alsoClaimed_one": "Trovi {{count}} altro mazzo tra I miei mazzi.",
+  "alsoClaimed_other": "Trovi altri {{count}} mazzi tra I miei mazzi.",
   "expiredBody": "I mazzi trattenuti restano salvati per 7 giorni. Ricarica il file per creare il mazzo completo."
 }

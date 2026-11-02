@@ -11535,6 +11535,57 @@ describe('claiming a held deck after sign-in', () => {
     expect(mockReportClientError).not.toHaveBeenCalled();
   });
 
+  function mockPlanClaim(alsoClaimed?: number) {
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi
+        .fn()
+        .mockResolvedValue({ cardCount: 0, cardsHeldBack: 40 }),
+      claimHeldDeck: vi.fn().mockResolvedValue({
+        status: 200,
+        downloadKey: 'full-deck.apkg',
+        cardCount: 40,
+        deckName: 'notes',
+        kind: 'plan',
+        error: null,
+        ...(alsoClaimed == null ? {} : { alsoClaimed }),
+      }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+  }
+
+  it.each([
+    [1, '1 more deck is in My decks.'],
+    [3, '3 more decks are in My decks.'],
+  ])(
+    'says %i other saved deck is in My decks after a plan claim',
+    async (count, line) => {
+      signIn();
+      mockPlanClaim(count);
+
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+      expect(
+        await screen.findByText(
+          "Your full deck is ready. It's in My decks too."
+        )
+      ).toBeInTheDocument();
+      expect(screen.getByText(line)).toBeInTheDocument();
+    }
+  );
+
+  it('adds no extra line when the claim built one deck', async () => {
+    signIn();
+    mockPlanClaim();
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText("Your full deck is ready. It's in My decks too.")
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/more decks? (is|are) in My decks/)).toBeNull();
+  });
+
   it('offers the passes for the rest of a sign-up claim cut to the preview', async () => {
     signIn();
     mockGet2ankiApi.mockReturnValue({

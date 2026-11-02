@@ -10,5 +10,7 @@
   "proPrice": "Fazer upgrade para o Pro · {{price}}/mês",
   "checkoutError": "Não foi possível iniciar o pagamento. Tente de novo ou escreva para support@2anki.net.",
   "readyBody": "Seu baralho completo está pronto. Ele também está em Meus baralhos.",
+  "alsoClaimed_one": "Mais {{count}} baralho está em Meus baralhos.",
+  "alsoClaimed_other": "Mais {{count}} baralhos estão em Meus baralhos.",
   "expiredBody": "Baralhos retidos ficam salvos por 7 dias. Envie o arquivo de novo para criar o baralho completo."
 }

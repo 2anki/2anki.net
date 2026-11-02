@@ -145,6 +145,8 @@ export interface ClaimHeldDeckResult {
   // Present only when a free sign-up claim was cut to the preview.
   cardsHeldBack?: number;
   heldForPlan?: boolean;
+  // Other decks saved for the plan that the same claim built into My decks.
+  alsoClaimed?: number;
 }
 
 function toClaimError(body: unknown): UploadErrorBody | null {
@@ -563,6 +565,7 @@ export class Backend {
         kind?: unknown;
         cardsHeldBack?: unknown;
         heldForPlan?: unknown;
+        alsoClaimed?: unknown;
       };
       return {
         status: OK,
@@ -576,6 +579,11 @@ export class Backend {
               cardsHeldBack: body.cardsHeldBack,
               heldForPlan: body.heldForPlan === true,
             }
+          : {}),
+        ...(typeof body.alsoClaimed === 'number' &&
+        Number.isInteger(body.alsoClaimed) &&
+        body.alsoClaimed > 0
+          ? { alsoClaimed: body.alsoClaimed }
           : {}),
       };
     }

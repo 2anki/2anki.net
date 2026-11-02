@@ -10,5 +10,7 @@
   "proPrice": "Mejora a Pro · {{price}}/mes",
   "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo o escribe a support@2anki.net.",
   "readyBody": "Tu mazo completo está listo. También está en Mis mazos.",
+  "alsoClaimed_one": "{{count}} mazo más está en Mis mazos.",
+  "alsoClaimed_other": "{{count}} mazos más están en Mis mazos.",
   "expiredBody": "Los mazos retenidos se guardan 7 días. Vuelve a subir el archivo para crear el mazo completo."
 }

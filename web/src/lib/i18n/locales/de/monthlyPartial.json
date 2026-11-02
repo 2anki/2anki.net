@@ -10,5 +10,7 @@
   "proPrice": "Auf Pro upgraden · {{price}}/Monat",
   "checkoutError": "Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.",
   "readyBody": "Dein kompletter Stapel ist fertig. Er liegt auch in Meine Stapel.",
+  "alsoClaimed_one": "{{count}} weiterer Stapel liegt in Meine Stapel.",
+  "alsoClaimed_other": "{{count}} weitere Stapel liegen in Meine Stapel.",
   "expiredBody": "Zurückgehaltene Stapel bleiben 7 Tage gespeichert. Lade die Datei erneut hoch, um den ganzen Stapel zu erstellen."
 }

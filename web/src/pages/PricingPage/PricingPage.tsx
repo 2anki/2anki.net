@@ -41,6 +41,7 @@ import {
   ownsOngoingAccess,
   type PricingEntitlement,
 } from './components/OwnedPlanNotice';
+import { connectorHeldUntil, formatHeldUntil } from './connectorHeldUntil';
 
 interface PricingPageProps {
   isLoggedIn: boolean;
@@ -210,11 +211,17 @@ export default function PricingPage({
   }, [fromPaywall]);
 
   const connectorFirst = pricingOrder === 'mcp-day-first';
+  const heldUntil = connectorFirst
+    ? connectorHeldUntil(searchParams.get('held_until'))
+    : null;
 
   const connectorRefParams = () => {
     const params = new URLSearchParams();
     if (connectorFirst) {
       params.set('ref', 'mcp');
+    }
+    if (heldUntil != null) {
+      params.set('held_until', heldUntil);
     }
     return params;
   };
@@ -240,6 +247,12 @@ export default function PricingPage({
       plan: planByKind[kind],
       variant: pricingOrder,
     });
+    // A pass bought without an account never reaches the deck the connector
+    // saved on the account, so a signed-out visitor signs in first.
+    if (heldUntil != null && !isLoggedIn) {
+      globalThis.location.href = `/login?redirect=${encodeURIComponent(pricingPath(connectorRefParams()))}`;
+      return;
+    }
     setConflict(null);
     setPassState('pending');
     const result = await get2ankiApi().startPassCheckout(
@@ -386,6 +399,18 @@ export default function PricingPage({
     !ownsOngoingAccess(entitlement) &&
     activePassKind(entitlement) == null;
 
+  const connectorIntro = () => {
+    if (heldUntil == null) {
+      return isLoggedIn
+        ? t('pricing.connectorIntro')
+        : t('pricing.connectorIntroSignedOut');
+    }
+    const date = formatHeldUntil(heldUntil, i18n.language);
+    return isLoggedIn
+      ? t('pricing.connectorHeldIntro', { date })
+      : t('pricing.connectorHeldIntroSignedOut', { date });
+  };
+
   const passCards = (
     <PassCards
       onDayPass={() => handlePassCheckout('24h')}
@@ -505,11 +530,7 @@ export default function PricingPage({
           </div>
         )}
         {showConnectorIntro && (
-          <p className={styles.intro}>
-            {isLoggedIn
-              ? t('pricing.connectorIntro')
-              : t('pricing.connectorIntroSignedOut')}
-          </p>
+          <p className={styles.intro}>{connectorIntro()}</p>
         )}
         {!minimalHeader && (
           <p className={styles.intro}>

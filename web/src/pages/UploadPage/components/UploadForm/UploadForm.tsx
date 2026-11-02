@@ -978,6 +978,7 @@ function UploadForm({
   const driveButtonRef = useRef<HTMLButtonElement>(null);
   const claimAttemptedRef = useRef(false);
   const [planClaim, setPlanClaim] = useState(false);
+  const [alsoClaimed, setAlsoClaimed] = useState(0);
   // A free sign-up claim cut to the preview: what is still held back, and
   // whether the source is saved so a pass releases it without a re-upload.
   const [claimPreview, setClaimPreview] = useState<{
@@ -1039,6 +1040,7 @@ function UploadForm({
         if (cancelled) return;
         if (result.status === 200 && result.downloadKey != null) {
           setPlanClaim(result.kind === 'plan');
+          setAlsoClaimed(result.alsoClaimed ?? 0);
           setClaimPreview(
             result.cardsHeldBack != null && result.cardsHeldBack > 0
               ? {
@@ -4217,6 +4219,11 @@ function UploadForm({
           ? t('monthlyPartial:readyBody')
           : t('anonymousPartial:readyBody')}
       </p>
+      {planClaim && alsoClaimed > 0 && (
+        <p className={formStyles.successSecondary}>
+          {t('monthlyPartial:alsoClaimed', { count: alsoClaimed })}
+        </p>
+      )}
       {downloadLink && (
         <a
           href={downloadLink}

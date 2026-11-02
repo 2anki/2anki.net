@@ -12,5 +12,9 @@
   "proPrice": "Przejdź na Pro · {{price}}/mies.",
   "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie lub napisz na support@2anki.net.",
   "readyBody": "Twoja pełna talia jest gotowa. Jest też w sekcji Moje talie.",
+  "alsoClaimed_one": "Jeszcze {{count}} talia jest w sekcji Moje talie.",
+  "alsoClaimed_few": "Jeszcze {{count}} talie są w sekcji Moje talie.",
+  "alsoClaimed_many": "Jeszcze {{count}} talii jest w sekcji Moje talie.",
+  "alsoClaimed_other": "Jeszcze {{count}} talii jest w sekcji Moje talie.",
   "expiredBody": "Wstrzymane talie są przechowywane przez 7 dni. Prześlij plik ponownie, aby utworzyć pełną talię."
 }
