@@ -27,7 +27,7 @@ export default function getInputCard(
     return undefined;
   }
   for (const cb of flashcardBlock) {
-    // Equations never reach the tag registry, so a struck one stays on the card.
+    // A struck equation stays on the front, as in getClozeDeletionCard.
     if (
       !isEquation(cb) &&
       cb.annotations.strikethrough &&

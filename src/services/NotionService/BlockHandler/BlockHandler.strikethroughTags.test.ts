@@ -776,6 +776,44 @@ describe('strikethrough edge cases on table headers, equations and typed answers
     expect(card.name).toContain('E=mc^2');
   });
 
+  it('shows a struck equation on a quote typed-answer front and keeps its tag, as cloze does', async () => {
+    const equation = {
+      type: 'equation' as const,
+      equation: { expression: 'E=mc^2' },
+      annotations: { ...richText('x').annotations, strikethrough: true },
+      plain_text: 'E=mc^2',
+      href: null,
+    };
+    const rules = new ParserRules();
+    rules.setFlashcardTypes(['quote']);
+    const [card] = await convert(
+      new CardOption({ 'enable-input': 'true', cloze: 'false' }),
+      {
+        'page-1': [
+          block(
+            'q-1',
+            'quote',
+            [
+              {
+                ...richText('Paris'),
+                annotations: { ...richText('x').annotations, bold: true },
+              },
+              richText(' and '),
+              equation as unknown as ReturnType<typeof richText>,
+            ],
+            true
+          ),
+        ],
+        'q-1': [block('p-1', 'paragraph', [richText('Extra')])],
+      },
+      { rules }
+    );
+
+    expect(card.enableInput).toBe(true);
+    expect(card.name).toContain('E=mc^2');
+    expect(card.tags).toEqual(['E=mc^2']);
+  });
+
   it('keeps a struck run on a typed-answer front when tags are off', async () => {
     const [card] = await convert(
       new CardOption({ 'enable-input': 'true', cloze: 'false', tags: 'false' }),
