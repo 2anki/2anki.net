@@ -40,7 +40,12 @@ const NotionRouter = () => {
    * /api/notion/connect:
    *   get:
    *     summary: Notion OAuth callback
-   *     description: Notion returns here after consent. A connect:<nonce> state must match the notion_connect_state cookie before the code is exchanged; a missing or empty state (a Notion Marketplace install) restarts through /api/notion/connect/init; a wrong state redirects to /notion. login: and native: states go to their own flows.
+   *     description: |
+   *       Notion returns here after consent. A connect:<nonce> state must
+   *       match the notion_connect_state cookie before the code is exchanged;
+   *       a missing or empty state (a Notion Marketplace install) restarts
+   *       through /api/notion/connect/init; a wrong state redirects to
+   *       /notion. login: and native: states go to their own flows.
    *     tags: [Notion]
    *     security:
    *       - bearerAuth: []
