@@ -833,6 +833,74 @@ describe('strikethrough edge cases on table headers, equations and typed answers
     }
   );
 
+  it('turns a struck mention on a toggle typed-answer front into a tag, off the front', async () => {
+    const mention = {
+      type: 'mention' as const,
+      mention: { type: 'date', date: { start: '2026-11-02', end: null } },
+      annotations: { ...richText('x').annotations, strikethrough: true },
+      plain_text: '2026-11-02',
+      href: null,
+    };
+    const [card] = await convert(
+      new CardOption({ 'enable-input': 'true', cloze: 'false' }),
+      {
+        'page-1': [
+          block(
+            't-1',
+            'toggle',
+            [
+              {
+                ...richText('Paris'),
+                annotations: { ...richText('x').annotations, bold: true },
+              },
+              richText(' due '),
+              mention as unknown as ReturnType<typeof richText>,
+            ],
+            true
+          ),
+        ],
+        't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+      }
+    );
+
+    expect(card.enableInput).toBe(true);
+    expect(card.name).not.toContain('2026-11-02');
+    expect(card.tags).toEqual(['2026-11-02']);
+  });
+
+  it.each(['bulleted_list_item', 'to_do'])(
+    'drops a struck text run from a %s typed-answer front without a tag, as before',
+    async (type) => {
+      const rules = new ParserRules();
+      rules.setFlashcardTypes([type]);
+      const [card] = await convert(
+        new CardOption({ 'enable-input': 'true', cloze: 'false' }),
+        {
+          'page-1': [
+            block(
+              'f-1',
+              type,
+              [
+                {
+                  ...richText('Paris'),
+                  annotations: { ...richText('x').annotations, bold: true },
+                },
+                richText(' '),
+                struck('2025'),
+              ],
+              true
+            ),
+          ],
+          'f-1': [block('p-1', 'paragraph', [richText('Extra')])],
+        },
+        { rules }
+      );
+
+      expect(card.name).not.toContain('2025');
+      expect(card.tags).toEqual([]);
+    }
+  );
+
   it('keeps a struck run on a typed-answer front when tags are off', async () => {
     const [card] = await convert(
       new CardOption({ 'enable-input': 'true', cloze: 'false', tags: 'false' }),
