@@ -9,6 +9,7 @@ import {
   NOTION_CONNECT_STATE_COOKIE,
   NOTION_STATE_COOKIE,
 } from '../lib/auth/oauthState';
+import { buildNativeOAuthState } from '../services/NotionService/nativeOAuthState';
 
 vi.mock('../services/events/track', () => ({ track: vi.fn() }));
 vi.mock('../services/observability/instrumentedAxios', () => ({
@@ -359,6 +360,21 @@ describe('web Notion connect binds its state to the browser', () => {
     expect(repo.saveNotionToken).not.toHaveBeenCalled();
     expect(res.redirect).toHaveBeenCalledWith('/login?redirect=%2Fnotion');
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('connects a signed-out native app callback to the owner in its signed state', async () => {
+    const { controller, repo } = build();
+    const res = fakeRes(null);
+    const state = buildNativeOAuthState(7, 'connect-state-secret');
+
+    await controller.connect(fakeReq({ code: 'auth-code', state }), res);
+
+    expect(notionTokenExchanges()).toHaveLength(1);
+    expect((repo.saveNotionToken as Mock).mock.calls[0]?.[0]).toBe(7);
+    expect(res.redirect).toHaveBeenCalledWith(
+      'twoanki://x-callback-url/notion-connected'
+    );
+    expect(res.redirect).not.toHaveBeenCalledWith('/login?redirect=%2Fnotion');
   });
 
   it('leaves the Notion sign-in state and its cookie to the sign-in callback', async () => {
