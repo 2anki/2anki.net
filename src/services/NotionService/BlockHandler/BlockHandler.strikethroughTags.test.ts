@@ -446,6 +446,37 @@ describe('strikethrough tags on cloze and typed-answer fronts', () => {
     expect(card.tags).toEqual(['2025']);
   });
 
+  it('leaves a struck mention off a cloze front and keeps it as a tag', async () => {
+    const mention = {
+      type: 'mention' as const,
+      mention: { type: 'date', date: { start: '2026-11-02', end: null } },
+      annotations: { ...richText('x').annotations, strikethrough: true },
+      plain_text: '2026-11-02',
+      href: null,
+    };
+    const [card] = await convert(new CardOption({ cloze: 'true' }), {
+      'page-1': [
+        block(
+          't-1',
+          'toggle',
+          [
+            richText('The capital is '),
+            annotated('Paris', { code: true }),
+            richText(' '),
+            mention as unknown as ReturnType<typeof richText>,
+          ],
+          true
+        ),
+      ],
+      't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+    });
+
+    expect(card.cloze).toBe(true);
+    expect(card.name).toContain('{{c1::Paris}}');
+    expect(card.name).not.toContain('2026-11-02');
+    expect(card.tags).toEqual(['2026-11-02']);
+  });
+
   it('keeps a struck run on a cloze front when tags are off', async () => {
     const [card] = await convert(
       new CardOption({ cloze: 'true', tags: 'false' }),
@@ -868,7 +899,7 @@ describe('strikethrough edge cases on table headers, equations and typed answers
     expect(card.tags).toEqual(['2026-11-02']);
   });
 
-  it.each(['bulleted_list_item', 'to_do'])(
+  it.each(['bulleted_list_item', 'numbered_list_item', 'to_do'])(
     'drops a struck text run from a %s typed-answer front without a tag, as before',
     async (type) => {
       const rules = new ParserRules();
@@ -896,6 +927,8 @@ describe('strikethrough edge cases on table headers, equations and typed answers
         { rules }
       );
 
+      expect(card.enableInput).toBe(true);
+      expect(card.answer).toBe('Paris');
       expect(card.name).not.toContain('2025');
       expect(card.tags).toEqual([]);
     }
