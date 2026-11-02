@@ -40,6 +40,7 @@ export default function getInputCard(
     const note = new Note(name, '');
     note.enableInput = isInput;
     note.answer = answer;
+    note.frontEscaped = true;
     return note;
   }
   return undefined;

@@ -66,6 +66,7 @@ export default function getClozeDeletionCard(
   if (isCloze) {
     const note = new Note(name, '');
     note.cloze = isCloze;
+    note.frontEscaped = true;
     return note;
   }
   return undefined;
