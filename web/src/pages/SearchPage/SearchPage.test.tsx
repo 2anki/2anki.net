@@ -74,6 +74,30 @@ describe('SearchPage over the monthly limit', () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId('search-container')).not.toBeInTheDocument();
   });
+
+  it('keeps Switch workspace on the start URL the server handed back', () => {
+    mockUseNotionData.mockReturnValue({
+      connected: true,
+      connectionLink: 'https://2anki.net/api/notion/connect/init',
+      error: null,
+      loading: false,
+      refetch: vi.fn(),
+      workSpace: 'Workspace',
+    });
+
+    render(
+      <MemoryRouter>
+        <SearchPage setError={vi.fn()} />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText("You've used all 100 cards this month")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Switch workspace' })
+    ).toHaveAttribute('href', 'https://2anki.net/api/notion/connect/init');
+  });
 });
 
 describe('SearchPage Hotjar suppression', () => {
@@ -151,14 +175,14 @@ describe('SearchPage when Notion rejects the token mid-search', () => {
 });
 
 describe('SearchPage Notion connect links', () => {
-  const START_PATH = '/api/notion/connect/init';
+  const START_PATH = 'https://2anki.net/api/notion/connect/init';
 
   beforeEach(() => {
     mockUseUserLocals.mockReturnValue({ data: undefined } as unknown);
     mockUseCardUsage.mockReturnValue(null as unknown);
   });
 
-  it('points Connect to Notion at the same-origin start path the server handed back', () => {
+  it('points Connect to Notion at the start URL the server handed back', () => {
     mockUseNotionData.mockReturnValue({
       connected: false,
       connectionLink: START_PATH,
