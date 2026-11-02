@@ -100,7 +100,7 @@ describe('web Notion connect binds its state to the browser', () => {
     ['a signed-in user', OWNER],
     ['a signed-out visitor', null],
   ])(
-    'get-notion-link hands %s a same-origin start path, not a Notion URL',
+    'get-notion-link hands %s the start URL on the callback host, not a Notion URL',
     async (_who, owner) => {
       const { controller } = build();
       const res = fakeRes(owner);
@@ -108,7 +108,9 @@ describe('web Notion connect binds its state to the browser', () => {
       await controller.getNotionLink(fakeReq({}), res);
 
       expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({ link: '/api/notion/connect/init' })
+        expect.objectContaining({
+          link: 'https://2anki.net/api/notion/connect/init',
+        })
       );
       expect(res.cookie).not.toHaveBeenCalled();
     }
@@ -344,6 +346,18 @@ describe('web Notion connect binds its state to the browser', () => {
       NOTION_CONNECT_STATE_COOKIE,
       expect.objectContaining({ httpOnly: true })
     );
+  });
+
+  it('answers 401 to a signed-out Marketplace install and exchanges no code', async () => {
+    const { controller, repo } = build();
+    const res = fakeRes(null);
+
+    await controller.connect(fakeReq({ code: 'install-code', state: '' }), res);
+
+    expect(notionTokenExchanges()).toHaveLength(0);
+    expect(repo.saveNotionToken).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.redirect).not.toHaveBeenCalled();
   });
 
   it('leaves the Notion sign-in state and its cookie to the sign-in callback', async () => {

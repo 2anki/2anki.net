@@ -39,15 +39,15 @@ const NotionRouter = () => {
    * @swagger
    * /api/notion/connect:
    *   get:
-   *     summary: Connect to Notion
-   *     description: Establish a connection to Notion using OAuth. Redirects to Notion authorization page.
+   *     summary: Notion OAuth callback
+   *     description: Notion returns here after consent. A connect:<nonce> state must match the notion_connect_state cookie before the code is exchanged; a missing or empty state (a Notion Marketplace install) restarts through /api/notion/connect/init; a wrong state redirects to /notion. login: and native: states go to their own flows.
    *     tags: [Notion]
    *     security:
    *       - bearerAuth: []
    *       - cookieAuth: []
    *     responses:
    *       302:
-   *         description: Redirect to Notion OAuth authorization
+   *         description: Redirect to /notion, /api/notion/connect/init, the sign-in callback or the app deep link
    *       401:
    *         description: Authentication required
    *         content:
@@ -157,8 +157,8 @@ const NotionRouter = () => {
    *   get:
    *     summary: Get the Notion connect link
    *     description: |
-   *       Returns the link that starts a Notion connect: the same-origin
-   *       path /api/notion/connect/init for web callers, or the Notion
+   *       Returns the link that starts a Notion connect: the absolute
+   *       /api/notion/connect/init URL on the callback host for web callers, or the Notion
    *       OAuth authorization URL for client=native. The link itself is
    *       public — anonymous and expired-session users still get back a
    *       working URL so the "Connect to Notion" button never goes inert.
@@ -191,7 +191,7 @@ const NotionRouter = () => {
    *                 link:
    *                   type: string
    *                   description: |
-   *                     Web: the same-origin path /api/notion/connect/init,
+   *                     Web: the /api/notion/connect/init URL on the callback host,
    *                     which binds the OAuth state to the browser and
    *                     redirects to Notion. client=native: the Notion OAuth
    *                     authorization URL with a signed native state.

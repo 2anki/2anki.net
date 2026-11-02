@@ -72,6 +72,15 @@ export class NotionService {
     return `https://api.notion.com/v1/oauth/authorize?${params.toString()}`;
   }
 
+  // Absolute on the callback host so the state cookie lands where Notion
+  // returns, and so a caller that is not the web app can still open it.
+  webConnectStartLink(): string {
+    if (!this.redirectURI) {
+      return NOTION_WEB_CONNECT_START_PATH;
+    }
+    return new URL(NOTION_WEB_CONNECT_START_PATH, this.redirectURI).toString();
+  }
+
   webConnectAuthorizationLink(nonce: string): string | null {
     if (!this.clientId || !this.redirectURI) {
       return null;
@@ -264,7 +273,7 @@ export class NotionService {
             clientId,
             buildNativeOAuthState(owner, process.env.SECRET ?? '')
           )
-        : NOTION_WEB_CONNECT_START_PATH;
+        : this.webConnectStartLink();
 
     if (!notionData) {
       return {

@@ -224,7 +224,7 @@ class NotionController {
       console.warn('[notion] web connect refused: state mismatch', {
         owner,
         hadStateCookie,
-        hadStateParam: state != null,
+        hadConnectPrefix: notionConnectNonce(state) != null,
       });
       return res.redirect('/notion');
     }

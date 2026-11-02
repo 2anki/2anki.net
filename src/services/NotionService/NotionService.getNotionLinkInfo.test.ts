@@ -55,7 +55,14 @@ describe('getNotionLinkInfo', () => {
     expect(result.workspace).toBe('My Workspace');
   });
 
-  it('hands the web flow the same-origin start path that binds the state', async () => {
+  it('hands the web flow an absolute start URL on the callback host, so any caller can open it', async () => {
+    const service = new NotionService(makeRepo());
+    const result = await service.getNotionLinkInfo(1);
+    expect(result.link).toBe('https://2anki.net/api/notion/connect/init');
+  });
+
+  it('falls back to the start path when the redirect URI is unset', async () => {
+    process.env.NOTION_REDIRECT_URI = '';
     const service = new NotionService(makeRepo());
     const result = await service.getNotionLinkInfo(1);
     expect(result.link).toBe('/api/notion/connect/init');
