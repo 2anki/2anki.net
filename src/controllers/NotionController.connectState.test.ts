@@ -194,6 +194,60 @@ describe('web Notion connect binds its state to the browser', () => {
       {},
       { [NOTION_CONNECT_STATE_COOKIE]: 'nonce-1' },
     ],
+    [
+      'the empty state Notion sends for a Marketplace install',
+      { state: '' },
+      {},
+    ],
+  ])(
+    'restarts a web callback with %s through the start path and links no workspace',
+    async (_case, query, cookies) => {
+      const { controller, repo } = build();
+      const res = fakeRes();
+
+      await controller.connect(
+        fakeReq({ code: 'auth-code', ...query }, cookies),
+        res
+      );
+
+      expect(notionTokenExchanges()).toHaveLength(0);
+      expect(repo.saveNotionToken).not.toHaveBeenCalled();
+      expect(res.redirect).toHaveBeenCalledWith('/api/notion/connect/init');
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        NOTION_CONNECT_STATE_COOKIE,
+        expect.objectContaining({ httpOnly: true, path: '/' })
+      );
+    }
+  );
+
+  it('connects a Marketplace install on its second pass, once the start path has bound a state', async () => {
+    const { controller, repo } = build();
+    const first = fakeRes();
+    await controller.connect(
+      fakeReq({ code: 'install-code', state: '' }),
+      first
+    );
+    expect(first.redirect).toHaveBeenCalledWith('/api/notion/connect/init');
+
+    const { location, issued } = startConnect(controller);
+    const res = fakeRes();
+    await controller.connect(
+      fakeReq(
+        {
+          code: 'auth-code',
+          state: new URL(location).searchParams.get('state'),
+        },
+        { [NOTION_CONNECT_STATE_COOKIE]: issued?.[1] }
+      ),
+      res
+    );
+
+    expect(notionTokenExchanges()).toHaveLength(1);
+    expect(repo.saveNotionToken).toHaveBeenCalledTimes(1);
+    expect(res.redirect).toHaveBeenCalledWith('/notion');
+  });
+
+  it.each([
     ['a state but no cookie', { state: 'connect:nonce-1' }, {}],
     [
       'a wrong state',

@@ -37,6 +37,7 @@ import {
 } from '@notionhq/client';
 import { getNotionObjectTitle } from 'get-notion-object-title';
 import NotionService from '../services/NotionService';
+import { NOTION_WEB_CONNECT_START_PATH } from '../services/NotionService/NotionService';
 import { summarizeOutboundError } from '../services/observability/summarizeOutboundError';
 import {
   isNativeOAuthState,
@@ -209,6 +210,14 @@ class NotionController {
         code: 'notion_unauthorized',
         message: 'Sign in before connecting Notion.',
       });
+    }
+
+    if (!stateMatches && (stateStr == null || stateStr === '')) {
+      console.warn('[notion] web connect restarted: no state', {
+        owner,
+        hadStateCookie,
+      });
+      return res.redirect(NOTION_WEB_CONNECT_START_PATH);
     }
 
     if (!stateMatches) {
