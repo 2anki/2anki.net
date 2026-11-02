@@ -64,7 +64,10 @@ function blockList(results: unknown[]) {
   };
 }
 
-function makeApi(childrenById: Record<string, unknown[]>): NotionAPIWrapper {
+function makeApi(
+  childrenById: Record<string, unknown[]>,
+  topLevelTags: string[] = []
+): NotionAPIWrapper {
   return {
     getPage: vi.fn().mockResolvedValue({
       id: 'page-1',
@@ -73,7 +76,7 @@ function makeApi(childrenById: Record<string, unknown[]>): NotionAPIWrapper {
       last_edited_time: '',
     }),
     getPageTitle: vi.fn().mockResolvedValue('Physiology'),
-    getTopLevelTags: vi.fn().mockResolvedValue([]),
+    getTopLevelTags: vi.fn().mockResolvedValue(topLevelTags),
     getBlocks: vi
       .fn()
       .mockImplementation(({ id }: { id: string }) =>
@@ -91,11 +94,15 @@ function headingRules(): ParserRules {
 async function convert(
   settings: CardOption,
   childrenById: Record<string, unknown[]> = page,
-  options: { rules?: ParserRules; rescueRule?: RescueRule } = {}
+  options: {
+    rules?: ParserRules;
+    rescueRule?: RescueRule;
+    topLevelTags?: string[];
+  } = {}
 ) {
   const handler = new BlockHandler(
     new CustomExporter('', new Workspace(true, 'fs').location),
-    makeApi(childrenById),
+    makeApi(childrenById, options.topLevelTags),
     settings
   );
   const decks = await handler.findFlashcards({
@@ -794,20 +801,83 @@ describe('a toggle whose whole answer is struck', () => {
   });
 });
 
-describe('struck tags match uploads without top-level tags', () => {
+describe('struck tags follow the upload rule', () => {
+  const toggleWithStruckTags = {
+    'page-1': [
+      block(
+        't-1',
+        'toggle',
+        [richText('What lowers FRC? '), struck('Physiology, Year 1')],
+        true
+      ),
+    ],
+    't-1': [block('p-1', 'paragraph', [richText('Obesity')])],
+  };
+
   it('splits struck text on commas and joins words with a dash', async () => {
-    const [card] = await convert(new CardOption({}), {
-      'page-1': [
-        block(
-          't-1',
-          'toggle',
-          [richText('What lowers FRC? '), struck('Physiology, Year 1')],
-          true
-        ),
-      ],
-      't-1': [block('p-1', 'paragraph', [richText('Obesity')])],
-    });
+    const [card] = await convert(new CardOption({}), toggleWithStruckTags);
 
     expect(card.tags).toEqual(['Physiology', 'Year-1']);
+  });
+
+  it('gives the same tags next to the page top-level tags', async () => {
+    const [card] = await convert(new CardOption({}), toggleWithStruckTags, {
+      topLevelTags: ['global'],
+    });
+
+    expect(card.tags).toEqual(['global', 'Physiology', 'Year-1']);
+  });
+
+  it('splits struck text on a promoted nested toggle', async () => {
+    const cards = await convert(
+      new CardOption({ 'promote-nested-toggles': 'true' }),
+      {
+        'page-1': [block('t-1', 'toggle', [richText('Lungs')], true)],
+        't-1': [block('n-1', 'toggle', [richText('Define FRC')], true)],
+        'n-1': [
+          block('p-1', 'paragraph', [
+            richText('Rest volume '),
+            struck('Physiology, Year 1'),
+          ]),
+        ],
+      }
+    );
+
+    const promoted = cards.find((card) => card.name.includes('Define FRC'));
+    expect(promoted?.tags).toEqual(['Physiology', 'Year-1']);
+  });
+
+  it('splits struck text in a table row', async () => {
+    const rules = new ParserRules();
+    rules.setFlashcardTypes(['table']);
+    const [card] = await convert(
+      new CardOption({}),
+      {
+        'page-1': [
+          {
+            ...block('tb-1', 'table', [], true),
+            table: {
+              table_width: 2,
+              has_column_header: false,
+              has_row_header: false,
+            },
+          },
+        ],
+        'tb-1': [
+          {
+            ...block('r-1', 'table_row', []),
+            table_row: {
+              cells: [
+                [richText('Spain')],
+                [richText('Madrid '), struck('Geography, Year 1')],
+              ],
+            },
+          },
+        ],
+      },
+      { rules }
+    );
+
+    expect(card.tags).toEqual(['Geography', 'Year-1']);
   });
 });
