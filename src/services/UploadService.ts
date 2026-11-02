@@ -117,6 +117,7 @@ import {
 import { isPartialDeliveryEligible } from '../usecases/uploads/isPartialDeliveryEligible';
 import {
   isPlanHoldKey,
+  MAX_PLAN_HOLDS,
   planHoldKey,
 } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
@@ -269,6 +270,7 @@ const SERVER_WRITE_ERRORS = new Set([
   'EROFS',
 ]);
 const PLAN_HOLD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const PLAN_HOLD_EVICTION_SCAN = 100;
 
 const MARKDOWN_HEURISTIC_WARNING =
   'Your Markdown file was processed using heuristic detection. For reliable results, use the nested bullet format or enable Claude AI in settings.';
@@ -2858,6 +2860,38 @@ class UploadService {
     );
   }
 
+  // An owner keeps at most MAX_PLAN_HOLDS waiting plan holds. The newest deck
+  // always wins: once it is stored, the oldest waiting ones past the cap go,
+  // so a failed upload or insert never costs an old deck. Eviction is
+  // best-effort, and the TTL sweep bounds whatever a failure leaves behind.
+  private async evictOldestPlanHolds(
+    owner: string,
+    keptId: number,
+    storage: StorageHandler,
+    requestId: string | undefined
+  ): Promise<void> {
+    try {
+      const waiting = await this.heldDeckRepository.findClaimable(
+        planHoldKey(owner),
+        new Date(),
+        PLAN_HOLD_EVICTION_SCAN
+      );
+      const evicted = waiting
+        .slice(MAX_PLAN_HOLDS)
+        .filter((hold) => hold.id !== keptId)
+        .map((hold) => ({
+          id: hold.id as number,
+          storageKey: hold.storage_key,
+        }));
+      await this.pruneSupersededHolds(evicted, storage, requestId);
+    } catch (error) {
+      console.error('[UploadService] could not evict old plan holds', {
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   private async holdFileForPlan(
     file: UploadedFile,
     owner: string,
@@ -2871,9 +2905,10 @@ class UploadService {
       if (bytes == null) {
         return false;
       }
+      const storage = new StorageHandler();
       const storageKey = `held/${randomUUID()}`;
-      await new StorageHandler().uploadFile(storageKey, bytes);
-      await this.heldDeckRepository.insert({
+      await storage.uploadFile(storageKey, bytes);
+      const stored = await this.heldDeckRepository.insert({
         storageKey,
         anonId: planHoldKey(owner),
         filename: file.originalname,
@@ -2882,6 +2917,12 @@ class UploadService {
         expiresAt: new Date(Date.now() + PLAN_HOLD_TTL_MS),
         cardOptions: allowedHeldCardOptions(resolvedCardOptions),
       });
+      await this.evictOldestPlanHolds(
+        owner,
+        stored.id as number,
+        storage,
+        requestId
+      );
       return true;
     } catch (error) {
       console.error('[UploadService] could not hold the deck for a plan', {

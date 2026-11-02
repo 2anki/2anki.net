@@ -44,7 +44,10 @@ export class ClaimHeldDeckController {
         track('monthly_partial_claimed', {
           userId: Number(owner),
           anonymousId: anonIdCookie(req),
-          props: { card_count: result.cardCount },
+          props: {
+            card_count: result.cardCount,
+            also_claimed: result.alsoClaimed ?? 0,
+          },
         });
       } else {
         track('anonymous_partial_claimed', {
@@ -58,6 +61,9 @@ export class ClaimHeldDeckController {
         cardCount: result.cardCount,
         deckName: result.deckName,
         kind: result.kind,
+        ...(result.alsoClaimed != null
+          ? { alsoClaimed: result.alsoClaimed }
+          : {}),
         ...(result.cardsHeldBack != null
           ? {
               cardsHeldBack: result.cardsHeldBack,

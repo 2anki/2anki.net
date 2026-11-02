@@ -204,7 +204,7 @@ vi.mock(
         get: (
           ...args: Parameters<typeof actual.default.get>
         ): ReturnType<typeof actual.default.get> =>
-          args[0] === 'google_drive'
+          args[0] === 'google_drive' || args[0] === 'dropbox'
             ? (Promise.resolve({
                 data: Buffer.from(driveDownload.body),
               }) as ReturnType<typeof actual.default.get>)
@@ -245,7 +245,12 @@ import RequireAllowedOrigin from '../../routes/middleware/RequireAllowedOrigin';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 import { anonIdMiddleware } from '../../routes/middleware/anonIdMiddleware';
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
-import { ClaimHeldDeckUseCase } from '../../usecases/uploads/ClaimHeldDeckUseCase';
+import {
+  ClaimHeldDeckUseCase,
+  MAX_PLAN_HOLDS,
+  planHoldKey,
+} from '../../usecases/uploads/ClaimHeldDeckUseCase';
+import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUseCase';
 import {
   McpToolsService,
   type JobLister,
@@ -899,6 +904,15 @@ async function seedAuthDatabase() {
     t.text('buyer_email_hash');
     t.timestamp('activated_at');
   });
+  await database.schema.createTable('dropbox_uploads', (t) => {
+    t.increments('id').primary();
+    for (const column of ['icon', 'dropbox_id', 'link', 'linkType', 'name']) {
+      t.text(column);
+    }
+    t.integer('bytes');
+    t.boolean('isDir');
+    t.integer('owner');
+  });
   await database.schema.createTable('google_drive_uploads', (t) => {
     t.text('id').primary();
     for (const column of [
@@ -1107,6 +1121,16 @@ beforeAll(async () => {
     (req, res) => goldenController().googleDrive(req, res)
   );
   app.post(
+    '/api/upload/dropbox',
+    (req, res, next) => {
+      res.locals.requestId = 'golden-request';
+      Object.assign(res.locals, population.locals);
+      next();
+    },
+    multer().none(),
+    (req, res) => goldenController().dropbox(req, res)
+  );
+  app.post(
     '/api/upload/ai-preview/resume',
     (req, res, next) => {
       res.locals.requestId = 'golden-request';
@@ -1207,6 +1231,40 @@ async function goldenResult(response: Response, jobSettled: Promise<void>) {
     storedObjects: s3Puts.map(storedObjectKind),
     cardsCharged: [...cardUsageCharges],
   };
+}
+
+async function dropboxImport(file: keyof typeof UPLOADS, who: Population) {
+  population = who;
+  __setFeatureFlagDependencies({ repository: inMemoryFlags(who.flags) });
+  driveDownload.body = String(UPLOADS[file].body);
+  const form = new FormData();
+  form.append(
+    'files',
+    JSON.stringify([
+      {
+        id: 'golden-dropbox-file',
+        name: UPLOADS[file].filename,
+        bytes: Buffer.byteLength(String(UPLOADS[file].body)),
+        icon: '',
+        isDir: false,
+        link: 'https://dl.dropboxusercontent.com/golden-dropbox-link',
+        linkType: 'direct',
+      },
+    ])
+  );
+  const cookie = Object.entries(who.cookies)
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ');
+  const jobSettled = new Promise<void>((resolve) => {
+    settleJob = resolve;
+  });
+  const response = await fetch(`${baseUrl}/api/upload/dropbox`, {
+    method: 'POST',
+    body: form,
+    redirect: 'manual',
+    headers: cookie === '' ? {} : { cookie },
+  });
+  return goldenResult(response, jobSettled);
 }
 
 async function driveImport(file: keyof typeof UPLOADS, who: Population) {
@@ -1459,6 +1517,178 @@ describe('a plan hold claimed after paying', () => {
       kind: 'plan',
       cardCount: LARGE_DECK_CARDS,
     });
+    expect(claudeCalls.count).toBe(0);
+  }, 20_000);
+
+  it('builds every deck held for the plan in one claim', async () => {
+    await upload('large', {
+      ...signedInFree,
+      cardsUsed: 90,
+      fields: { deckName: 'Golden First' },
+    });
+    await upload('large', {
+      ...signedInFree,
+      cardsUsed: 90,
+      fields: { deckName: 'Golden Second' },
+    });
+
+    const { claimed } = await claimAsSubscriber();
+
+    expect(claimed).toMatchObject({ kind: 'plan', alsoClaimed: 1 });
+    expect(bridgeDecks.map((deck) => deck.name).sort()).toEqual([
+      'Golden First',
+      'Golden Second',
+    ]);
+    expect(heldDecks.rows.every((row) => row.claimed_at != null)).toBe(true);
+  }, 20_000);
+
+  async function seedWaitingPlanHolds(count: number): Promise<string[]> {
+    const keys: string[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const storageKey = `held/waiting-${i}`;
+      s3Objects.set(
+        storageKey,
+        Buffer.from(notionToggleExport(`Waiting ${i}`, 3))
+      );
+      const row = await heldDecks.insert({
+        storageKey,
+        anonId: planHoldKey(String(OWNER)),
+        filename: `Waiting ${i}.html`,
+        cardCount: 3,
+        cardsHeldBack: 1,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+      row.created_at = new Date(Date.now() - (count - i) * 60_000);
+      keys.push(storageKey);
+    }
+    return keys;
+  }
+
+  function waitingPlanHolds() {
+    return heldDecks.rows.filter(
+      (row) => row.anon_id === planHoldKey(String(OWNER))
+    );
+  }
+
+  it('makes room for a new plan hold by evicting the oldest row and its file', async () => {
+    const keys = await seedWaitingPlanHolds(MAX_PLAN_HOLDS);
+
+    const result = await upload('large', { ...signedInFree, cardsUsed: 90 });
+
+    expect(result.headers).toMatchObject({ 'x-held-for-plan': '1' });
+    expect(waitingPlanHolds()).toHaveLength(MAX_PLAN_HOLDS);
+    expect(waitingPlanHolds().map((row) => row.filename)).toEqual([
+      'Waiting 1.html',
+      'Waiting 2.html',
+      'Waiting 3.html',
+      'Waiting 4.html',
+      'Golden Large.html',
+    ]);
+    expect(s3Objects.has(keys[0])).toBe(false);
+    expect(s3Objects.has(keys[1])).toBe(true);
+  }, 20_000);
+
+  it.each([
+    [7, 3],
+    [4, 0],
+  ])(
+    'with %i waiting holds, a new plan hold evicts the oldest %i',
+    async (waiting, evictedCount) => {
+      const keys = await seedWaitingPlanHolds(waiting);
+
+      await upload('large', { ...signedInFree, cardsUsed: 90 });
+
+      const kept = Math.min(waiting + 1, MAX_PLAN_HOLDS);
+      expect(waitingPlanHolds()).toHaveLength(kept);
+      expect(waitingPlanHolds()[kept - 1].filename).toBe('Golden Large.html');
+      expect(keys.filter((key) => !s3Objects.has(key))).toEqual(
+        keys.slice(0, evictedCount)
+      );
+    },
+    20_000
+  );
+
+  it('keeps every old plan hold when storing the new one fails', async () => {
+    const keys = await seedWaitingPlanHolds(MAX_PLAN_HOLDS);
+    vi.spyOn(heldDecks, 'insert').mockRejectedValueOnce(
+      new Error('connection reset')
+    );
+
+    const result = await upload('large', { ...signedInFree, cardsUsed: 90 });
+
+    expect(result.headers).not.toHaveProperty('x-held-for-plan');
+    expect(waitingPlanHolds()).toHaveLength(MAX_PLAN_HOLDS);
+    expect(keys.every((key) => s3Objects.has(key))).toBe(true);
+  }, 20_000);
+
+  it('saves a Dropbox import cut at the limit without its link or file list', async () => {
+    const result = await dropboxImport('large', {
+      ...signedInFree,
+      cardsUsed: 90,
+    });
+
+    expect(result.headers).toMatchObject({ 'x-held-for-plan': '1' });
+    expect(heldDecks.rows).toHaveLength(1);
+    const held = JSON.stringify(heldDecks.rows[0].card_options ?? {});
+    expect(held).not.toContain('golden-dropbox-link');
+    expect(held).not.toContain('golden-dropbox-file');
+  }, 20_000);
+
+  it('still saves the new plan hold when eviction fails', async () => {
+    await seedWaitingPlanHolds(MAX_PLAN_HOLDS);
+    vi.spyOn(heldDecks, 'findClaimable').mockRejectedValueOnce(
+      new Error('connection reset')
+    );
+
+    const result = await upload('large', { ...signedInFree, cardsUsed: 90 });
+
+    expect(result.headers).toMatchObject({ 'x-held-for-plan': '1' });
+    expect(waitingPlanHolds()).toHaveLength(MAX_PLAN_HOLDS + 1);
+  }, 20_000);
+
+  it('saves the deck of a pass-first claim with no free cards left at the cap', async () => {
+    await seedWaitingPlanHolds(MAX_PLAN_HOLDS);
+    await upload('large', {
+      ...signedOut,
+      flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true },
+    });
+    population = { ...signedInFree, cardsUsed: 100 };
+
+    await expect(
+      new ClaimHeldDeckUseCase(
+        heldDecks,
+        new StorageHandler(),
+        goldenService(),
+        () => Promise.resolve(true)
+      ).execute({
+        anonId: 'golden-anon',
+        owner: String(OWNER),
+        paying: false,
+        requestId: 'golden-signup-claim',
+      })
+    ).rejects.toBeInstanceOf(MonthlyLimitError);
+
+    expect(waitingPlanHolds()).toHaveLength(MAX_PLAN_HOLDS);
+    expect(waitingPlanHolds()[MAX_PLAN_HOLDS - 1]).toMatchObject({
+      card_count: 0,
+      cards_held_back: LARGE_DECK_CARDS,
+      claimed_at: null,
+    });
+    expect(
+      waitingPlanHolds().some((row) => row.filename === 'Waiting 0.html')
+    ).toBe(false);
+  }, 20_000);
+
+  it('builds the extra decks without Claude when the account has AI on', async () => {
+    await upload('large', { ...signedInFree, cardsUsed: 90 });
+    await upload('large', { ...signedInFree, cardsUsed: 90 });
+    claudeCalls.count = 0;
+    population = { ...signedInFree, accountCardOptions: AI_ON };
+
+    const { claimed } = await claimAsSubscriber();
+
+    expect(claimed).toMatchObject({ kind: 'plan', alsoClaimed: 1 });
+    expect(bridgeDecks).toHaveLength(2);
     expect(claudeCalls.count).toBe(0);
   }, 20_000);
 

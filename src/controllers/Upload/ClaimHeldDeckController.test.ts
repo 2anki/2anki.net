@@ -335,12 +335,31 @@ describe('ClaimHeldDeckController', () => {
       expect(trackMock).toHaveBeenCalledWith('monthly_partial_claimed', {
         userId: 42,
         anonymousId: null,
-        props: { card_count: 34 },
+        props: { card_count: 34, also_claimed: 0 },
       });
       expect(trackMock).not.toHaveBeenCalledWith(
         'anonymous_partial_claimed',
         expect.anything()
       );
+    });
+
+    it('says how many other plan decks the claim built, and records it', async () => {
+      trackMock.mockClear();
+      const repo = new InMemoryHeldDeckRepository();
+      await seedPlanHold(repo);
+      await seedPlanHold(repo);
+      const controller = new ClaimHeldDeckController(buildUseCase(repo));
+      const { res, capturedJson } = buildResponse(42);
+      (res.locals as Record<string, unknown>).subscriber = true;
+
+      await controller.claim(buildRequest(null), res);
+
+      expect(capturedJson()).toMatchObject({ kind: 'plan', alsoClaimed: 1 });
+      expect(trackMock).toHaveBeenCalledWith('monthly_partial_claimed', {
+        userId: 42,
+        anonymousId: null,
+        props: { card_count: 34, also_claimed: 1 },
+      });
     });
   });
 });
