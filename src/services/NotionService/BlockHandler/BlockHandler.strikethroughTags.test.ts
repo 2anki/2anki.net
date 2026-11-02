@@ -742,48 +742,11 @@ describe('strikethrough edge cases on table headers, equations and typed answers
     expect(card.name).toContain('E=mc^2');
   });
 
-  it.each(['toggle', 'paragraph', 'bulleted_list_item'])(
-    'keeps a struck inline equation on a %s typed-answer front, with no tag',
-    async (type) => {
-      const equation = {
-        type: 'equation' as const,
-        equation: { expression: 'E=mc^2' },
-        annotations: { ...richText('x').annotations, strikethrough: true },
-        plain_text: 'E=mc^2',
-        href: null,
-      };
-      const rules = new ParserRules();
-      rules.setFlashcardTypes([type]);
-      const [card] = await convert(
-        new CardOption({ 'enable-input': 'true', cloze: 'false' }),
-        {
-          'page-1': [
-            block(
-              't-1',
-              type,
-              [
-                {
-                  ...richText('Paris'),
-                  annotations: { ...richText('x').annotations, bold: true },
-                },
-                richText(' and '),
-                equation as unknown as ReturnType<typeof richText>,
-              ],
-              true
-            ),
-          ],
-          't-1': [block('p-1', 'paragraph', [richText('Extra')])],
-        },
-        { rules }
-      );
-
-      expect(card.enableInput).toBe(true);
-      expect(card.name).toContain('E=mc^2');
-      expect(card.tags).toEqual([]);
-    }
-  );
-
-  it('shows a struck equation on a quote typed-answer front and keeps its tag, as cloze does', async () => {
+  async function typedAnswerCardWithStruckEquation(
+    type: string,
+    flashcardTypes: string[],
+    toggleable = false
+  ) {
     const equation = {
       type: 'equation' as const,
       equation: { expression: 'E=mc^2' },
@@ -791,35 +754,84 @@ describe('strikethrough edge cases on table headers, equations and typed answers
       plain_text: 'E=mc^2',
       href: null,
     };
+    const front = block(
+      'f-1',
+      type,
+      [
+        {
+          ...richText('Paris'),
+          annotations: { ...richText('x').annotations, bold: true },
+        },
+        richText(' and '),
+        equation as unknown as ReturnType<typeof richText>,
+      ],
+      true
+    );
+    if (toggleable) {
+      Object.assign(front[type as keyof typeof front] as object, {
+        is_toggleable: true,
+      });
+    }
     const rules = new ParserRules();
-    rules.setFlashcardTypes(['quote']);
+    rules.setFlashcardTypes(flashcardTypes);
     const [card] = await convert(
       new CardOption({ 'enable-input': 'true', cloze: 'false' }),
       {
-        'page-1': [
-          block(
-            'q-1',
-            'quote',
-            [
-              {
-                ...richText('Paris'),
-                annotations: { ...richText('x').annotations, bold: true },
-              },
-              richText(' and '),
-              equation as unknown as ReturnType<typeof richText>,
-            ],
-            true
-          ),
-        ],
-        'q-1': [block('p-1', 'paragraph', [richText('Extra')])],
+        'page-1': [front],
+        'f-1': [block('p-1', 'paragraph', [richText('Extra')])],
       },
       { rules }
+    );
+    return card;
+  }
+
+  it.each([
+    'toggle',
+    'paragraph',
+    'bulleted_list_item',
+    'numbered_list_item',
+    'to_do',
+  ])(
+    'keeps a struck inline equation on a %s typed-answer front, with no tag',
+    async (type) => {
+      const card = await typedAnswerCardWithStruckEquation(type, [type]);
+
+      expect(card.enableInput).toBe(true);
+      expect(card.name).toContain('E=mc^2');
+      expect(card.tags).toEqual([]);
+    }
+  );
+
+  it('keeps a struck inline equation on a toggleable heading typed-answer front, with no tag', async () => {
+    const card = await typedAnswerCardWithStruckEquation(
+      'heading_1',
+      ['toggle'],
+      true
     );
 
     expect(card.enableInput).toBe(true);
     expect(card.name).toContain('E=mc^2');
-    expect(card.tags).toEqual(['E=mc^2']);
+    expect(card.tags).toEqual([]);
   });
+
+  it.each([
+    ['quote', ['quote']],
+    ['callout', ['callout']],
+    ['code', ['code']],
+    ['heading_1', ['heading']],
+  ])(
+    'shows a struck equation on a %s typed-answer front and keeps its tag, as cloze does',
+    async (type, flashcardTypes) => {
+      const card = await typedAnswerCardWithStruckEquation(
+        type,
+        flashcardTypes
+      );
+
+      expect(card.enableInput).toBe(true);
+      expect(card.name).toContain('E=mc^2');
+      expect(card.tags).toEqual(['E=mc^2']);
+    }
+  );
 
   it('keeps a struck run on a typed-answer front when tags are off', async () => {
     const [card] = await convert(
