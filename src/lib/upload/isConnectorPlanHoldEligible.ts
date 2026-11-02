@@ -3,7 +3,6 @@
 // spreadsheets, slides, archives and images keep today's refusal.
 const TEXT_SOURCE_EXTENSIONS = new Set([
   'md',
-  'markdown',
   'txt',
   'csv',
   'tsv',

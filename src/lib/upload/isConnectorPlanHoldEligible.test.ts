@@ -3,7 +3,6 @@ import { isConnectorPlanHoldEligible } from './isConnectorPlanHoldEligible';
 describe('isConnectorPlanHoldEligible', () => {
   it.each([
     'deck.md',
-    'notes.markdown',
     'notes.txt',
     'n5.csv',
     'n5.tsv',
@@ -21,6 +20,7 @@ describe('isConnectorPlanHoldEligible', () => {
     'export.zip',
     'photo.png',
     'download',
+    'notes.markdown',
     '.md',
   ])('keeps the refusal for %s', (name) => {
     expect(isConnectorPlanHoldEligible([{ originalname: name }])).toBe(false);

@@ -189,6 +189,7 @@ vi.mock('../../data_layer', async (importActual) => {
 });
 
 const driveDownload = vi.hoisted(() => ({ body: '' }));
+const connectorFetch = vi.hoisted(() => ({ body: null as Buffer | null }));
 
 vi.mock(
   '../../services/observability/instrumentedAxios',
@@ -204,11 +205,15 @@ vi.mock(
         get: (
           ...args: Parameters<typeof actual.default.get>
         ): ReturnType<typeof actual.default.get> =>
-          args[0] === 'google_drive' || args[0] === 'dropbox'
+          args[0] === 'mcp' && connectorFetch.body != null
             ? (Promise.resolve({
-                data: Buffer.from(driveDownload.body),
+                data: connectorFetch.body,
               }) as ReturnType<typeof actual.default.get>)
-            : actual.default.get(...args),
+            : args[0] === 'google_drive' || args[0] === 'dropbox'
+              ? (Promise.resolve({
+                  data: Buffer.from(driveDownload.body),
+                }) as ReturnType<typeof actual.default.get>)
+              : actual.default.get(...args),
       },
     };
   }
@@ -256,6 +261,7 @@ import {
   type JobLister,
 } from '../../services/mcp/McpToolsService';
 import ApkgPreviewService from '../../services/ApkgPreviewService/ApkgPreviewService';
+import { buildMcpServer } from '../../services/mcp/McpServerFactory';
 import type DownloadService from '../../services/DownloadService';
 import { AnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import { AiPreviewResumeController } from './AiPreviewResumeController';
@@ -1166,6 +1172,7 @@ afterEach(async () => {
   s3Puts.length = 0;
   bridgeDecks.length = 0;
   claudeCalls.count = 0;
+  connectorFetch.body = null;
   cardUsageCharges.length = 0;
   jobTimelines.length = 0;
 });
@@ -2186,6 +2193,63 @@ describe('the connector at the monthly card limit', () => {
 
     expect(result).toMatchObject({ kind: 'error', code: 'monthly_limit' });
     expect(heldDecks.rows).toHaveLength(0);
+  }, 20_000);
+
+  it('returns a photo converted by URL unchanged, with no plan lines', async () => {
+    atCardsUsed(90);
+    connectorFetch.body = ONE_PIXEL_PNG;
+    const recorded: Record<string, unknown>[] = [];
+    const server = buildMcpServer({
+      owner: String(OWNER),
+      locals: freeLocals,
+      toolsService: connector(),
+      recordToolCall: () => undefined,
+      recordToolResult: (tool, success, code, extra) =>
+        recorded.push({ tool, success, code, ...extra }),
+    });
+    const handler = (
+      server as unknown as {
+        _registeredTools: Record<
+          string,
+          {
+            handler: (args: Record<string, unknown>) => Promise<{
+              content: { text: string }[];
+              structuredContent?: Record<string, unknown>;
+            }>;
+          }
+        >;
+      }
+    )._registeredTools.convert_to_deck.handler;
+
+    const result = await handler({ url: 'https://example.com/notes.png' });
+
+    expect(result.structuredContent).toMatchObject({ kind: 'deck' });
+    expect(result.structuredContent).not.toHaveProperty('cards_held_back');
+    expect(result.structuredContent).not.toHaveProperty('plan_notice');
+    expect(result.content[0].text).not.toContain('Plans on 2anki.net');
+    expect(recorded).toEqual([
+      {
+        tool: 'convert_to_deck',
+        success: true,
+        code: undefined,
+        inputSource: 'url',
+        inputFormat: 'other',
+      },
+    ]);
+    expect(recorded[0]).not.toHaveProperty('held_for_plan');
+    expect(heldDecks.rows).toHaveLength(0);
+  }, 20_000);
+
+  it('keeps a signed-in Drive deck cut at the limit marked as not from the connector', async () => {
+    const result = await driveImport('large', {
+      ...signedInFree,
+      cardsUsed: 90,
+    });
+
+    expect(result.headers).toMatchObject({ 'x-held-for-plan': '1' });
+    expect(result.headers).not.toHaveProperty('x-held-until');
+    expect(heldDecks.rows).toHaveLength(1);
+    expect(heldDecks.rows[0].source).toBeNull();
   }, 20_000);
 
   it('gives a paying caller the whole deck with no plan lines', async () => {

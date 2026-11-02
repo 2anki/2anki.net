@@ -1956,6 +1956,26 @@ describe('McpToolsService at the monthly card limit', () => {
     });
   });
 
+  it('passes the request id to the plan hold', async () => {
+    const holdForPlan = vi.fn(async () => new Date('2026-11-09T12:00:00Z'));
+    const { service } = makeService({
+      uploadEntry: overLimitRedirect(4),
+      holdForPlan,
+    });
+
+    await service.convertToDeck({ text: 'x' }, 'owner-9', {
+      requestId: 'req-42',
+    });
+
+    expect(holdForPlan).toHaveBeenCalledWith(
+      'owner-9',
+      expect.anything(),
+      4,
+      expect.anything(),
+      'req-42'
+    );
+  });
+
   it('refuses without trying to save when the upload gives no over-limit count', async () => {
     const holdForPlan = vi.fn(async () => new Date());
     const { service } = makeService({
