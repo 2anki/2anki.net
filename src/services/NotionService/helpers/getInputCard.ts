@@ -27,7 +27,12 @@ export default function getInputCard(
     return undefined;
   }
   for (const cb of flashcardBlock) {
-    if (cb.annotations.strikethrough && tagRegistry?.collects()) {
+    // Equations never reach the tag registry, so a struck one stays on the card.
+    if (
+      !isEquation(cb) &&
+      cb.annotations.strikethrough &&
+      tagRegistry?.collects()
+    ) {
       continue;
     }
     const content = isEquation(cb)

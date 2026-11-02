@@ -742,6 +742,40 @@ describe('strikethrough edge cases on table headers, equations and typed answers
     expect(card.name).toContain('E=mc^2');
   });
 
+  it('keeps a struck inline equation on a typed-answer front', async () => {
+    const equation = {
+      type: 'equation' as const,
+      equation: { expression: 'E=mc^2' },
+      annotations: { ...richText('x').annotations, strikethrough: true },
+      plain_text: 'E=mc^2',
+      href: null,
+    };
+    const [card] = await convert(
+      new CardOption({ 'enable-input': 'true', cloze: 'false' }),
+      {
+        'page-1': [
+          block(
+            't-1',
+            'toggle',
+            [
+              {
+                ...richText('Paris'),
+                annotations: { ...richText('x').annotations, bold: true },
+              },
+              richText(' and '),
+              equation as unknown as ReturnType<typeof richText>,
+            ],
+            true
+          ),
+        ],
+        't-1': [block('p-1', 'paragraph', [richText('Extra')])],
+      }
+    );
+
+    expect(card.enableInput).toBe(true);
+    expect(card.name).toContain('E=mc^2');
+  });
+
   it('keeps a struck run on a typed-answer front when tags are off', async () => {
     const [card] = await convert(
       new CardOption({ 'enable-input': 'true', cloze: 'false', tags: 'false' }),
