@@ -3,6 +3,7 @@ import {
   TextRichTextItemResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 
+import { escapeHtml } from '../../../lib/notion-render/escape';
 import ParserRules from '../../../lib/parser/ParserRules';
 import Note from '../../../lib/parser/Note';
 import type TagRegistry from '../../../lib/parser/TagRegistry';
@@ -26,12 +27,13 @@ export default function getInputCard(
     if (cb.annotations.strikethrough && tagRegistry?.collects()) {
       continue;
     }
-    const text = (cb as TextRichTextItemResponse).text;
+    const raw = (cb as TextRichTextItemResponse).text?.content;
+    const content = raw == null ? raw : escapeHtml(raw);
     if (cb.annotations.underline || cb.annotations.bold) {
-      answer += text?.content;
+      answer += content;
       isInput = true;
     } else {
-      name += text?.content;
+      name += content;
     }
   }
   if (isInput) {

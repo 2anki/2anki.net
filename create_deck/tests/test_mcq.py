@@ -171,3 +171,38 @@ class TestMCQDeckBuild:
                 assert result.endswith(".apkg")
             finally:
                 os.chdir(old_cwd)
+
+
+def _mcq_fields(options: list, correct_index: int) -> list:
+    data = _mcq_deck_info("Pick one", options, correct_index)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        old_cwd = os.getcwd()
+        os.chdir(tmpdir)
+        try:
+            info_path = _write_deck_info(tmpdir, data)
+            result = build_one_deck(info_path, TEMPLATE_DIR)
+            extract_dir = os.path.join(tmpdir, "unpacked")
+            with zipfile.ZipFile(result) as archive:
+                archive.extractall(extract_dir)
+            conn = sqlite3.connect(os.path.join(extract_dir, "collection.anki21"))
+            try:
+                flds = conn.execute("select flds from notes").fetchone()[0]
+            finally:
+                conn.close()
+            return flds.split("\x1f")
+        finally:
+            os.chdir(old_cwd)
+
+
+class TestMCQPlainTextOptions:
+    def test_escapes_markup_characters_in_options_and_answer(self):
+        fields = _mcq_fields(['He said "hi"', "a < b", "x & y", "<b>bold</b>"], 0)
+        assert fields[1] == (
+            "He said &quot;hi&quot;<br>a &lt; b<br>x &amp; y<br>&lt;b&gt;bold&lt;/b&gt;"
+        )
+        assert fields[2] == "He said &quot;hi&quot;"
+
+    def test_keeps_the_template_string_intact_for_backslashes_and_newlines(self):
+        fields = _mcq_fields(["C:\\new folder", "line one\nline two"], 1)
+        assert fields[1] == "C:&#92;new folder<br>line one line two"
+        assert fields[2] == "line one line two"

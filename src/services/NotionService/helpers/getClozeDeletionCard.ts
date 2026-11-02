@@ -6,6 +6,7 @@ import {
 
 import Note from '../../../lib/parser/Note';
 import type TagRegistry from '../../../lib/parser/TagRegistry';
+import { escapeHtml } from '../../../lib/notion-render/escape';
 import { renderInlineEquation } from '../blocks/BlockEquation';
 import { getRichTextFromBlock } from './getRichTextFromBlock';
 import isColumnList from './isColumnList';
@@ -40,25 +41,26 @@ export default function getClozeDeletionCard(
     if (cb.annotations.strikethrough && tagRegistry?.collects()) {
       continue;
     }
-    const text = (cb as TextRichTextItemResponse).text;
+    const raw = (cb as TextRichTextItemResponse).text?.content;
+    const content = raw == null ? undefined : escapeHtml(raw);
     if (cb.annotations.code) {
-      if (text?.content.includes('::')) {
-        if (text?.content.match(/[cC]\d+::/)) {
-          name += `{{${text?.content}}}`;
+      if (content?.includes('::')) {
+        if (content.match(/[cC]\d+::/)) {
+          name += `{{${content}}}`;
         } else {
           const clozeIndex = `{{c${index}::`;
           if (!name.includes(clozeIndex)) {
-            name += `{{c${index}::${text?.content}}}`;
+            name += `{{c${index}::${content}}}`;
           }
         }
       } else {
-        name += `{{c${index}::${text?.content}}}`;
+        name += `{{c${index}::${content}}}`;
       }
       name = name.replace('{{{{', '{{').replace('}}}}', '}}');
       isCloze = true;
       index++;
-    } else if (text?.content) {
-      name += text.content;
+    } else if (content) {
+      name += content;
     }
   }
   if (isCloze) {

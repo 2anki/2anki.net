@@ -99,3 +99,24 @@ describe('getClozeDeletionCard — inline equations marked as code', () => {
     expect(note?.name).not.toContain('}}}');
   });
 });
+
+describe('getClozeDeletionCard — plain text is escaped', () => {
+  it('escapes markup characters in the text and in the cloze answer', () => {
+    const note = getClozeDeletionCard(
+      makeToggle([
+        makeText('If a < b then '),
+        makeText('x & <y>', { code: true }),
+      ])
+    );
+
+    expect(note?.name).toBe('If a &lt; b then {{c1::x &amp; &lt;y&gt;}}');
+  });
+
+  it('keeps an explicit cloze number while escaping its answer', () => {
+    const note = getClozeDeletionCard(
+      makeToggle([makeText('c2::Tom & Jerry', { code: true })])
+    );
+
+    expect(note?.name).toBe('{{c2::Tom &amp; Jerry}}');
+  });
+});
