@@ -683,7 +683,7 @@ class BlockHandler implements IBlockRenderer {
         this.tagRegistry
       ).replaceAll('\n', '<br />');
       const back = await this.getBackSide(child);
-      const tags = [...this.tagRegistry.strikethroughs];
+      const tags = this.tagRegistry.tags();
       this.tagRegistry.clear();
       const media = this.exporter.media;
       this.exporter.media = [];
@@ -940,7 +940,7 @@ class BlockHandler implements IBlockRenderer {
       ankiNote.tags =
         rules.TAGS === 'heading'
           ? headingTagsFor(block.id, headingTagMap)
-          : tr.strikethroughs;
+          : tr.tags();
       ankiNote.number = counter++;
       if (hierarchyEnabled && isBasicType) {
         applyHierarchyFields(ankiNote, block.id, headingContextMap);

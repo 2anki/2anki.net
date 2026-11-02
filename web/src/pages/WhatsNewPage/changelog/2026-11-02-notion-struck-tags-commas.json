@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-02-notion-struck-tags-commas",
+  "date": "2026-11-02",
+  "type": "fix",
+  "title": "Notion connection: struck text with commas becomes one tag per item, the same as uploads"
+}

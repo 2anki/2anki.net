@@ -134,7 +134,7 @@ export function tableRowsToCards(
       extraCells.length > 0
         ? backColumn + buildExtraColumnsTable(extraCells, handler)
         : backColumn;
-    const tags = [...handler.tagRegistry.strikethroughs];
+    const tags = handler.tagRegistry.tags();
     handler.tagRegistry.clear();
 
     if (handler.settings.isCloze) {
