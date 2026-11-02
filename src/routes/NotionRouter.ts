@@ -45,20 +45,15 @@ const NotionRouter = () => {
    *       match the notion_connect_state cookie before the code is exchanged;
    *       a missing or empty state (a Notion Marketplace install) restarts
    *       through /api/notion/connect/init; a wrong state redirects to
-   *       /notion. login: and native: states go to their own flows.
+   *       /notion; a signed-out browser goes to /login?redirect=%2Fnotion.
+   *       login: and native: states go to their own flows.
    *     tags: [Notion]
    *     security:
    *       - bearerAuth: []
    *       - cookieAuth: []
    *     responses:
    *       302:
-   *         description: Redirect to /notion, /api/notion/connect/init, the sign-in callback or the app deep link
-   *       401:
-   *         description: Authentication required
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Error'
+   *         description: Redirect to /notion, /api/notion/connect/init, /login, the sign-in callback or the app deep link
    */
   router.get('/api/notion/connect', OptionalAuthentication, (req, res) =>
     controller.connect(req, res)

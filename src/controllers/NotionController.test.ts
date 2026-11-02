@@ -1175,7 +1175,7 @@ describe('NotionController', () => {
       expect(res.redirect).toHaveBeenCalledWith('/api/notion/connect/init');
     });
 
-    it('returns 401 and never calls connectToNotion when the owner is missing', async () => {
+    it('sends a signed-out browser to sign in and never calls connectToNotion', async () => {
       service = buildConnectService();
       controller = new NotionController(service);
       req = { query: { code: 'auth-code' } };
@@ -1190,9 +1190,8 @@ describe('NotionController', () => {
       await controller.connect(req as express.Request, res as express.Response);
 
       expect(service.connectToNotion).not.toHaveBeenCalled();
-      expect(res.status).toHaveBeenCalledWith(401);
-      const body = (res.json as Mock).mock.calls[0]?.[0];
-      expect(body.code).toBe('notion_unauthorized');
+      expect(res.redirect).toHaveBeenCalledWith('/login?redirect=%2Fnotion');
+      expect(res.status).not.toHaveBeenCalled();
     });
 
     const CONNECT_CLIENT_SECRET = ['connect', 'client', 'secret'].join('-');
