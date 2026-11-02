@@ -245,7 +245,12 @@ import RequireAllowedOrigin from '../../routes/middleware/RequireAllowedOrigin';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 import { anonIdMiddleware } from '../../routes/middleware/anonIdMiddleware';
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
-import { ClaimHeldDeckUseCase } from '../../usecases/uploads/ClaimHeldDeckUseCase';
+import {
+  ClaimHeldDeckUseCase,
+  MAX_PLAN_HOLDS,
+  planHoldKey,
+} from '../../usecases/uploads/ClaimHeldDeckUseCase';
+import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUseCase';
 import {
   McpToolsService,
   type JobLister,
@@ -1482,6 +1487,97 @@ describe('a plan hold claimed after paying', () => {
       'Golden Second',
     ]);
     expect(heldDecks.rows.every((row) => row.claimed_at != null)).toBe(true);
+  }, 20_000);
+
+  async function seedWaitingPlanHolds(count: number): Promise<string[]> {
+    const keys: string[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const storageKey = `held/waiting-${i}`;
+      s3Objects.set(
+        storageKey,
+        Buffer.from(notionToggleExport(`Waiting ${i}`, 3))
+      );
+      const row = await heldDecks.insert({
+        storageKey,
+        anonId: planHoldKey(String(OWNER)),
+        filename: `Waiting ${i}.html`,
+        cardCount: 3,
+        cardsHeldBack: 1,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+      row.created_at = new Date(Date.now() - (count - i) * 60_000);
+      keys.push(storageKey);
+    }
+    return keys;
+  }
+
+  function waitingPlanHolds() {
+    return heldDecks.rows.filter(
+      (row) => row.anon_id === planHoldKey(String(OWNER))
+    );
+  }
+
+  it('makes room for a new plan hold by evicting the oldest row and its file', async () => {
+    const keys = await seedWaitingPlanHolds(MAX_PLAN_HOLDS);
+
+    const result = await upload('large', { ...signedInFree, cardsUsed: 90 });
+
+    expect(result.headers).toMatchObject({ 'x-held-for-plan': '1' });
+    expect(waitingPlanHolds()).toHaveLength(MAX_PLAN_HOLDS);
+    expect(waitingPlanHolds().map((row) => row.filename)).toEqual([
+      'Waiting 1.html',
+      'Waiting 2.html',
+      'Waiting 3.html',
+      'Waiting 4.html',
+      'Golden Large.html',
+    ]);
+    expect(s3Objects.has(keys[0])).toBe(false);
+    expect(s3Objects.has(keys[1])).toBe(true);
+  }, 20_000);
+
+  it('still saves the new plan hold when eviction fails', async () => {
+    await seedWaitingPlanHolds(MAX_PLAN_HOLDS);
+    vi.spyOn(heldDecks, 'findClaimable').mockRejectedValueOnce(
+      new Error('connection reset')
+    );
+
+    const result = await upload('large', { ...signedInFree, cardsUsed: 90 });
+
+    expect(result.headers).toMatchObject({ 'x-held-for-plan': '1' });
+    expect(waitingPlanHolds()).toHaveLength(MAX_PLAN_HOLDS + 1);
+  }, 20_000);
+
+  it('saves the deck of a pass-first claim with no free cards left at the cap', async () => {
+    await seedWaitingPlanHolds(MAX_PLAN_HOLDS);
+    await upload('large', {
+      ...signedOut,
+      flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true },
+    });
+    population = { ...signedInFree, cardsUsed: 100 };
+
+    await expect(
+      new ClaimHeldDeckUseCase(
+        heldDecks,
+        new StorageHandler(),
+        goldenService(),
+        () => Promise.resolve(true)
+      ).execute({
+        anonId: 'golden-anon',
+        owner: String(OWNER),
+        paying: false,
+        requestId: 'golden-signup-claim',
+      })
+    ).rejects.toBeInstanceOf(MonthlyLimitError);
+
+    expect(waitingPlanHolds()).toHaveLength(MAX_PLAN_HOLDS);
+    expect(waitingPlanHolds()[MAX_PLAN_HOLDS - 1]).toMatchObject({
+      card_count: 0,
+      cards_held_back: LARGE_DECK_CARDS,
+      claimed_at: null,
+    });
+    expect(
+      waitingPlanHolds().some((row) => row.filename === 'Waiting 0.html')
+    ).toBe(false);
   }, 20_000);
 
   it('builds the extra decks without Claude when the account has AI on', async () => {
