@@ -186,10 +186,10 @@ def _mcq_fields(options: list, correct_index: int) -> list:
                 archive.extractall(extract_dir)
             conn = sqlite3.connect(os.path.join(extract_dir, "collection.anki21"))
             try:
-                flds = conn.execute("select flds from notes").fetchone()[0]
+                flds, guid = conn.execute("select flds, guid from notes").fetchone()
             finally:
                 conn.close()
-            return flds.split("\x1f")
+            return flds.split("\x1f") + [guid]
         finally:
             os.chdir(old_cwd)
 
@@ -206,3 +206,15 @@ class TestMCQPlainTextOptions:
         fields = _mcq_fields(["C:\\new folder", "line one\nline two", "a\x1fb"], 1)
         assert fields[1] == "C:&#92;new folder<br>line one line two<br>a b"
         assert fields[2] == "line one line two"
+
+    def test_escapes_brackets_so_anki_does_not_expand_media_tokens(self):
+        # Anki swaps [sound:...] for player markup with double quotes before the
+        # template script runs, which would close the JS string early.
+        fields = _mcq_fields(["[sound:clip.mp3]", "[$]x^2[/$]", "plain"], 0)
+        assert fields[1] == "&#91;sound:clip.mp3]<br>&#91;$]x^2&#91;/$]<br>plain"
+        assert fields[2] == "&#91;sound:clip.mp3]"
+
+    def test_note_guid_does_not_depend_on_the_options(self):
+        bracketed = _mcq_fields(["[sound:clip.mp3]", "plain"], 1)
+        plain = _mcq_fields(["clip", "plain"], 1)
+        assert bracketed[-1] == plain[-1]

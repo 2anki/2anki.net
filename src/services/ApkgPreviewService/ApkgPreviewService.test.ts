@@ -374,6 +374,21 @@ describe('ApkgPreviewService.getCardsPage', () => {
       expect(result.cards[0].back).not.toContain('<form');
     });
 
+    it('marks a bracket-escaped option and shows it with its bracket', () => {
+      const parsed = makeParsed(
+        makeMcqCollection({
+          choices: '&#91;a] Zurich<br>&#91;b] Bern',
+          correct: '&#91;b] Bern',
+        })
+      );
+      const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');
+
+      expect(result.cards[0].back).toContain(
+        '<mark>✓ <strong>[b] Bern</strong></mark>'
+      );
+      expect(result.cards[0].front).toContain('[a] Zurich');
+    });
+
     it('still includes the MCQ card in the deck list — does not drop it', () => {
       const parsed = makeParsed(makeMcqCollection());
       const result = service.getCardsPage(parsed, 0, 10, 'http://example.com');

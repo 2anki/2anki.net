@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-02-mcq-bracket-options",
+  "date": "2026-11-02",
+  "type": "fix",
+  "title": "Multiple choice options that contain [sound: or [$] show as written instead of breaking the card"
+}

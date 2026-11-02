@@ -124,7 +124,9 @@ def _style_changed_at_for(css, deck_style, style_changed_at):
 def mcq_option_html(option):
     # The MCQ template reads these fields inside a double-quoted JS string, so
     # the plain-text option has to survive both HTML and that string literal.
-    escaped = html.escape(option, quote=True).replace('\\', '&#92;')
+    # Anki expands [sound:...] and [$] into markup with double quotes before the
+    # script runs, so an opening bracket is escaped too.
+    escaped = html.escape(option, quote=True).replace('\\', '&#92;').replace('[', '&#91;')
     return ' '.join(escaped.replace('\x1f', ' ').splitlines())
 
 
