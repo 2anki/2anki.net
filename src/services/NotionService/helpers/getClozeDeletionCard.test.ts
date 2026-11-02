@@ -112,6 +112,14 @@ describe('getClozeDeletionCard — plain text is escaped', () => {
     expect(note?.name).toBe('If a &lt; b then {{c1::x &amp; &lt;y&gt;}}');
   });
 
+  it('escapes an inline equation so a < in LaTeX is not read as a tag', () => {
+    const note = getClozeDeletionCard(
+      makeToggle([makeText('Solve '), makeEquation('a<b', { code: true })])
+    );
+
+    expect(note?.name).toBe('Solve {{c1::\\(a&lt;b\\)}}');
+  });
+
   it('keeps an explicit cloze number while escaping its answer', () => {
     const note = getClozeDeletionCard(
       makeToggle([makeText('c2::Tom & Jerry', { code: true })])

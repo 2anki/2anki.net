@@ -203,6 +203,6 @@ class TestMCQPlainTextOptions:
         assert fields[2] == "He said &quot;hi&quot;"
 
     def test_keeps_the_template_string_intact_for_backslashes_and_newlines(self):
-        fields = _mcq_fields(["C:\\new folder", "line one\nline two"], 1)
-        assert fields[1] == "C:&#92;new folder<br>line one line two"
+        fields = _mcq_fields(["C:\\new folder", "line one\nline two", "a\x1fb"], 1)
+        assert fields[1] == "C:&#92;new folder<br>line one line two<br>a b"
         assert fields[2] == "line one line two"

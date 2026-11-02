@@ -904,7 +904,6 @@ class BlockHandler implements IBlockRenderer {
         if (clozeCard) {
           isBasicType = false;
           ankiNote.copyValues(clozeCard);
-          ankiNote.frontEscaped = clozeCard.frontEscaped;
         } else if (
           back &&
           this.settings.clozeFromToggleContent &&
@@ -923,7 +922,6 @@ class BlockHandler implements IBlockRenderer {
         if (inputCard) {
           isBasicType = false;
           ankiNote.copyValues(inputCard);
-          ankiNote.frontEscaped = inputCard.frontEscaped;
         }
       }
 

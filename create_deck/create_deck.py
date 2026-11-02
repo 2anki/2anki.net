@@ -125,7 +125,7 @@ def mcq_option_html(option):
     # The MCQ template reads these fields inside a double-quoted JS string, so
     # the plain-text option has to survive both HTML and that string literal.
     escaped = html.escape(option, quote=True).replace('\\', '&#92;')
-    return ' '.join(escaped.splitlines())
+    return ' '.join(escaped.replace('\x1f', ' ').splitlines())
 
 
 def build_one_deck(data_file, template_dir):

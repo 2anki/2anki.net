@@ -28,7 +28,9 @@ export default function getClozeDeletionCard(
   }
   for (const cb of richText) {
     if (isEquation(cb)) {
-      const rendered = renderInlineEquation(cb as EquationRichTextItemResponse);
+      const rendered = escapeHtml(
+        renderInlineEquation(cb as EquationRichTextItemResponse)
+      );
       if (cb.annotations.code) {
         name += `{{c${index}::${rendered}}}`;
         isCloze = true;
@@ -66,7 +68,6 @@ export default function getClozeDeletionCard(
   if (isCloze) {
     const note = new Note(name, '');
     note.cloze = isCloze;
-    note.frontEscaped = true;
     return note;
   }
   return undefined;

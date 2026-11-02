@@ -2,5 +2,5 @@
   "id": "2026-11-02-escape-card-text",
   "date": "2026-11-02",
   "type": "fix",
-  "title": "Multiple choice cards with quotes in an option show their choices again, and < or & in Notion cloze and typed-answer cards shows as written"
+  "title": "Multiple choice options with quotes, and < or & in Notion cloze and typed-answer cards, show as written"
 }
