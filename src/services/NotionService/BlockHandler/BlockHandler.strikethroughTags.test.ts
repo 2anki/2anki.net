@@ -793,3 +793,21 @@ describe('a toggle whose whole answer is struck', () => {
     expect(handler.emptyBackCount).toBe(1);
   });
 });
+
+describe('struck tags match uploads without top-level tags', () => {
+  it('splits struck text on commas and joins words with a dash', async () => {
+    const [card] = await convert(new CardOption({}), {
+      'page-1': [
+        block(
+          't-1',
+          'toggle',
+          [richText('What lowers FRC? '), struck('Physiology, Year 1')],
+          true
+        ),
+      ],
+      't-1': [block('p-1', 'paragraph', [richText('Obesity')])],
+    });
+
+    expect(card.tags).toEqual(['Physiology', 'Year-1']);
+  });
+});

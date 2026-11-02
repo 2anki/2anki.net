@@ -10,6 +10,16 @@ describe('TagRegistry', () => {
     expect(registry.strikethroughs).toEqual(['chapter-1', 'verb']);
   });
 
+  it('turns struck text into tags the way uploads do', () => {
+    const registry = new TagRegistry();
+
+    registry.addStrikethrough('Biology, Year 1');
+    registry.addStrikethrough('  cell   wall ');
+    registry.addStrikethrough(',');
+
+    expect(registry.tags()).toEqual(['Biology', 'Year-1', 'cell-wall']);
+  });
+
   it('clear empties the strikethroughs', () => {
     const registry = new TagRegistry();
     registry.addStrikethrough('done');
