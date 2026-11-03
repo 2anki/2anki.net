@@ -998,6 +998,9 @@ describe('UploadForm', () => {
         count: 5,
         can_promote: true,
       });
+      expect(
+        screen.queryByText(/The new deck counts toward your card limit\./)
+      ).toBeNull();
 
       await act(async () => {
         screen

@@ -2759,6 +2759,58 @@ describe('PrepareDeck — nested toggles folded into card backs', () => {
     expect(result?.foldedToggleCount).toBe(2);
   });
 
+  it('reports no count for a deck Claude wrote for a pass holder', async () => {
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Letters',
+        image: '',
+        style: null,
+        id: 111222333444556,
+        settings: {},
+        cards: [
+          {
+            name: 'What is shaddah?',
+            back: 'Doubling.',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    const result = await PrepareDeck({
+      name: 'sections.html',
+      files: [{ name: 'sections.html', contents: sectionsPage }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      anonymousPassId: 7,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.engine).not.toBe('parser');
+    expect(result?.foldedToggleCount ?? 0).toBe(0);
+  });
+
+  it("carries the count when a pass holder's AI conversion falls back to the parser", async () => {
+    generateDeckInfo.mockRejectedValueOnce(new AiCreditsExhaustedError());
+
+    const result = await PrepareDeck({
+      name: 'sections.html',
+      files: [{ name: 'sections.html', contents: sectionsPage }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      anonymousPassId: 7,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.engine).toBe('parser');
+    expect(result?.foldedToggleCount).toBe(2);
+  });
+
   it('reports the same count for a zip entry built in a batch', async () => {
     const result = await prepareDeckInfoOnly(
       {
