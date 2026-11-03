@@ -463,7 +463,7 @@
       "count_many": "{{count}} przełączników było wewnątrz innych przełączników. Trafiły na tył zewnętrznych kart zamiast stać się osobnymi kartami.",
       "count_other": "{{count}} przełączników było wewnątrz innych przełączników. Trafiły na tył zewnętrznych kart zamiast stać się osobnymi kartami.",
       "action": "Zrób karty także z wewnętrznych przełączników",
-      "note": "To konwertuje plik jeszcze raz i pobiera nową talię. Zewnętrzne karty zostają. Twoje kolejne przesłania też tak zrobią. Możesz to wyłączyć w opcjach kart („{{option}}”).",
+      "note": "To konwertuje plik jeszcze raz i pobiera nową talię. Zewnętrzne karty zostają. Opcja pozostanie włączona dla kolejnych przesyłanych plików. Możesz to wyłączyć w opcjach kart („{{option}}”).",
       "link": "Włącz „{{option}}” w opcjach kart, a potem przekonwertuj plik jeszcze raz"
     },
     "validation": {

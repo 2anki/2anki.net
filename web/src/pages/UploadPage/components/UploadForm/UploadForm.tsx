@@ -2767,7 +2767,8 @@ function UploadForm({
           formData.append(key, value);
         }
         attachPdfPageRange(formData);
-        applyAnonymousAiFlag(formData, false);
+        // The deck on screen came from the parser; never spend credits on it.
+        formData.set('claude-ai-flashcards', 'false');
         setLocalError(null);
         setZoneState('converting');
         setProgressWidth(10);
@@ -3235,6 +3236,22 @@ function UploadForm({
           )}
         </div>
       )}
+      {foldedToggleCount > 0 && cardsHeldBack === 0 && (
+        <FoldedTogglesNotice
+          count={foldedToggleCount}
+          onPromote={
+            rescueFiles.length > 0 && !keptFilesBelongElsewhere
+              ? handlePromoteFoldedToggles
+              : undefined
+          }
+          actionLabel={resendLabel(
+            'promoteNestedToggles',
+            t('upload.foldedToggles.action')
+          )}
+          disabled={resendPending}
+          busy={resendTapped === 'promoteNestedToggles'}
+        />
+      )}
       {thinDeckAiOffer != null && (
         <ThinDeckAiOffer
           file={thinDeckAiOffer.file}
@@ -3283,22 +3300,6 @@ function UploadForm({
             {resendLabel('rebuild', t('upload.form.aiRebuildButton'))}
           </button>
         </div>
-      )}
-      {foldedToggleCount > 0 && (
-        <FoldedTogglesNotice
-          count={foldedToggleCount}
-          onPromote={
-            rescueFiles.length > 0 && !keptFilesBelongElsewhere
-              ? handlePromoteFoldedToggles
-              : undefined
-          }
-          actionLabel={resendLabel(
-            'promoteNestedToggles',
-            t('upload.foldedToggles.action')
-          )}
-          disabled={resendPending}
-          busy={resendTapped === 'promoteNestedToggles'}
-        />
       )}
       {renderClaudeResendHeld()}
       {switchLineShown && renderSignInChanged()}

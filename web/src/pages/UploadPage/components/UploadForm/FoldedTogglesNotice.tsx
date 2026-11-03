@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { track } from '../../../../lib/analytics/track';
@@ -21,12 +21,17 @@ export function FoldedTogglesNotice({
   busy = false,
 }: Readonly<FoldedTogglesNoticeProps>) {
   const { t } = useTranslation();
-  const canPromote = onPromote != null;
+  // Recorded once per result: a session change in another tab swaps the
+  // button for the link without a second impression.
+  const canPromoteWhenShown = useRef(onPromote != null);
   const option = t('cardoptions:options.promote-nested-toggles.label');
 
   useEffect(() => {
-    track('folded_toggles_notice_shown', { count, can_promote: canPromote });
-  }, [count, canPromote]);
+    track('folded_toggles_notice_shown', {
+      count,
+      can_promote: canPromoteWhenShown.current,
+    });
+  }, [count]);
 
   return (
     <div className={formStyles.aiRescueActions}>

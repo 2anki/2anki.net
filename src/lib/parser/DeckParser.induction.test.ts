@@ -276,6 +276,24 @@ describe('DeckParser degenerate-yield rescue', () => {
     });
   });
 
+  it('reports no folded toggles once the rescue replaced the toggle cards', () => {
+    const section = (n: number) =>
+      `<details open="" class="toggle"><summary>Section ${n}</summary><div class="indented"><details open="" class="toggle"><summary>Inner question ${n}?</summary><div class="indented"><p>Inner answer ${n}.</p></div></details></div></details>`;
+    const sections = `${section(1)}${section(2)}`;
+    const smallPage = parse(
+      page(sections),
+      new CardOption({ cherry: 'false' })
+    );
+    const parser = parse(
+      page(`${sections}${bigHeadingSections(40)}`),
+      new CardOption({ cherry: 'false' })
+    );
+
+    expect(smallPage.payload[0].foldedToggleCount).toBe(2);
+    expect(parser.inducedRule).toMatchObject({ outcome: 'rescue_shipped' });
+    expect(parser.payload[0].foldedToggleCount).toBe(0);
+  });
+
   it('leaves a small document with 2 usable cards alone', () => {
     const parser = parse(
       page(`${USABLE_TOGGLE(1)}${USABLE_TOGGLE(2)}${bigHeadingSections(2)}`),

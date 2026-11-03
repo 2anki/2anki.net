@@ -36,7 +36,7 @@ describe('FoldedTogglesNotice', () => {
       can_promote: true,
     });
     expect(
-      screen.getByText(/Your next uploads will do this too\./)
+      screen.getByText(/The option stays on for your next uploads\./)
     ).toHaveTextContent('(“Nested toggles become their own cards”)');
   });
 

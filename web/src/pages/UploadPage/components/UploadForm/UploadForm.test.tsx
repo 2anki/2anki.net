@@ -965,64 +965,69 @@ describe('UploadForm', () => {
 
   test('turns nested toggles into their own cards and converts the same file again in one click', async () => {
     localStorage.removeItem('promote-nested-toggles');
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(foldedToggleResponse('5'))
-      .mockResolvedValueOnce(foldedToggleResponse(null));
-    vi.stubGlobal('fetch', fetchMock);
-    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    const input = container.querySelector(
-      'input[type="file"]'
-    ) as HTMLInputElement;
-    const file = new File(['<p>sections</p>'], 'sections.zip', {
-      type: 'application/zip',
-    });
-    Object.defineProperty(input, 'files', { value: [file] });
-    const form = container.querySelector('form')!;
-    await act(async () => {
-      form.dispatchEvent(
-        new Event('submit', { bubbles: true, cancelable: true })
+    try {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(foldedToggleResponse('5'))
+        .mockResolvedValueOnce(foldedToggleResponse(null));
+      vi.stubGlobal('fetch', fetchMock);
+      globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
       );
-    });
+      const input = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      const file = new File(['<p>sections</p>'], 'sections.zip', {
+        type: 'application/zip',
+      });
+      Object.defineProperty(input, 'files', { value: [file] });
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
 
-    expect(
-      await screen.findByText(
-        '5 toggles were inside other toggles. They went on the back of the outer cards instead of becoming cards of their own.'
-      )
-    ).toBeInTheDocument();
-    expect(track).toHaveBeenCalledWith('folded_toggles_notice_shown', {
-      count: 5,
-      can_promote: true,
-    });
-
-    await act(async () => {
-      screen
-        .getByRole('button', { name: 'Make cards from the inner toggles too' })
-        .click();
-    });
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-    });
-    const [, resend] = fetchMock.mock.calls[1] as [string, RequestInit];
-    const sent = resend.body as FormData;
-    expect(sent.get('promote-nested-toggles')).toBe('true');
-    expect((sent.get('pakker') as File).name).toBe('sections.zip');
-    expect(localStorage.getItem('promote-nested-toggles')).toBe('true');
-    expect(track).toHaveBeenCalledWith('folded_toggles_promoted', {
-      count: 5,
-    });
-    await waitFor(() => {
       expect(
-        screen.queryByRole('button', {
-          name: 'Make cards from the inner toggles too',
-        })
-      ).not.toBeInTheDocument();
-    });
-    localStorage.removeItem('promote-nested-toggles');
+        await screen.findByText(
+          '5 toggles were inside other toggles. They went on the back of the outer cards instead of becoming cards of their own.'
+        )
+      ).toBeInTheDocument();
+      expect(track).toHaveBeenCalledWith('folded_toggles_notice_shown', {
+        count: 5,
+        can_promote: true,
+      });
+
+      await act(async () => {
+        screen
+          .getByRole('button', {
+            name: 'Make cards from the inner toggles too',
+          })
+          .click();
+      });
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      });
+      const [, resend] = fetchMock.mock.calls[1] as [string, RequestInit];
+      const sent = resend.body as FormData;
+      expect(sent.get('promote-nested-toggles')).toBe('true');
+      expect((sent.get('pakker') as File).name).toBe('sections.zip');
+      expect(localStorage.getItem('promote-nested-toggles')).toBe('true');
+      expect(track).toHaveBeenCalledWith('folded_toggles_promoted', {
+        count: 5,
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', {
+            name: 'Make cards from the inner toggles too',
+          })
+        ).not.toBeInTheDocument();
+      });
+    } finally {
+      localStorage.removeItem('promote-nested-toggles');
+    }
   });
 
   test('links to card options when the file cannot be sent again from the page', async () => {
@@ -13501,5 +13506,222 @@ describe('UploadForm last deck for a signed-out pass holder', () => {
     expect(await getLastDeckStore().load()).toMatchObject({
       recoveryToken: TOKEN,
     });
+  });
+});
+
+describe('UploadForm folded toggles notice, signed in', () => {
+  const freeSignedInData = {
+    user: { id: 2, email: 'free@example.com' },
+    locals: { owner: 2, patreon: false, subscriber: false },
+  } as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  function setSignedIn() {
+    mockUseUserLocals.mockReturnValue({
+      data: freeSignedInData,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi
+        .fn()
+        .mockResolvedValue({ status: 'success', data: freeSignedInData }),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  }
+
+  const deckResponse = (headers: Record<string, string>) => ({
+    redirected: false,
+    status: 200,
+    headers: new Headers({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': 'attachment; filename="deck.apkg"',
+      ...headers,
+    }),
+    blob: () => Promise.resolve(new Blob(['fake'])),
+  });
+
+  async function uploadSections(container: HTMLElement) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['x'], 'sections.zip')],
+      configurable: true,
+    });
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+  }
+
+  beforeEach(() => {
+    vi.mocked(track).mockClear();
+    mockUseCardUsage.mockReturnValue(null);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getCheckoutPrices: vi.fn().mockResolvedValue(null),
+      getHeldDeck: vi.fn().mockResolvedValue(null),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    setSignedIn();
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+  });
+
+  afterEach(() => {
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+    vi.unstubAllGlobals();
+    localStorage.removeItem('promote-nested-toggles');
+    localStorage.removeItem('claude-ai-flashcards');
+  });
+
+  it('sends the same file again for the signed-in account that uploaded it', async () => {
+    localStorage.setItem('claude-ai-flashcards', 'true');
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        deckResponse({
+          'X-Card-Count': '2',
+          'X-Upload-Owner': '2',
+          'X-Folded-Toggle-Count': '4',
+        })
+      )
+      .mockResolvedValueOnce(
+        deckResponse({ 'X-Card-Count': '6', 'X-Upload-Owner': '2' })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadSections(container);
+
+    await act(async () => {
+      (
+        await screen.findByRole('button', {
+          name: 'Make cards from the inner toggles too',
+        })
+      ).click();
+    });
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const sent = (fetchMock.mock.calls[1] as [string, RequestInit])[1]
+      .body as FormData;
+    expect(sent.get('promote-nested-toggles')).toBe('true');
+    expect((sent.get('pakker') as File).name).toBe('sections.zip');
+    expect(sent.get('claude-ai-flashcards')).toBe('false');
+  });
+
+  it('links to card options when the deck came from another account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        deckResponse({
+          'X-Card-Count': '2',
+          'X-Upload-Owner': '99',
+          'X-Folded-Toggle-Count': '4',
+        })
+      )
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadSections(container);
+
+    expect(
+      await screen.findByRole('link', {
+        name: /in card options, then convert the file again/,
+      })
+    ).toHaveAttribute('href', '/card-options?returnTo=/upload');
+    expect(
+      screen.queryByRole('button', {
+        name: 'Make cards from the inner toggles too',
+      })
+    ).toBeNull();
+  });
+
+  it('stays out of the way when the monthly limit held cards back', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        deckResponse({
+          'X-Card-Count': '2',
+          'X-Upload-Owner': '2',
+          'X-Folded-Toggle-Count': '4',
+          'X-Cards-Held-Back': '5',
+          'X-Held-For-Plan': '1',
+        })
+      )
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadSections(container);
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    expect(screen.queryByText(/toggles were inside other toggles/)).toBeNull();
+    expect(track).not.toHaveBeenCalledWith(
+      'folded_toggles_notice_shown',
+      expect.anything()
+    );
+  });
+
+  it('offers a card options link after a Dropbox upload, whose bytes the page never holds', async () => {
+    const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
+    process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
+    (window as unknown as { Dropbox?: unknown }).Dropbox = {
+      choose: ({ success }: { success: (files: unknown[]) => void }) => {
+        success([
+          {
+            id: 'id:3',
+            name: 'sections.zip',
+            bytes: 100,
+            icon: 'page',
+            isDir: false,
+            link: 'https://dl.dropboxusercontent.com/x/sections.zip',
+            linkType: 'direct',
+          },
+        ]);
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        deckResponse({
+          'X-Card-Count': '2',
+          'X-Upload-Owner': '2',
+          'X-Folded-Toggle-Count': '3',
+        })
+      )
+    );
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const button = container.querySelector(
+        'button[aria-label="Choose from Dropbox"]'
+      ) as HTMLButtonElement;
+      await act(async () => {
+        button.click();
+      });
+
+      expect(
+        await screen.findByRole('link', {
+          name: /in card options, then convert the file again/,
+        })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', {
+          name: 'Make cards from the inner toggles too',
+        })
+      ).toBeNull();
+    } finally {
+      delete (window as unknown as { Dropbox?: unknown }).Dropbox;
+      process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
+    }
   });
 });

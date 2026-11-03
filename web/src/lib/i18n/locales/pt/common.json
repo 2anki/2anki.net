@@ -413,7 +413,7 @@
       "count_one": "{{count}} toggle estava dentro de outro toggle. Ele foi para o verso do cartão externo em vez de virar um cartão próprio.",
       "count_other": "{{count}} toggles estavam dentro de outros toggles. Eles foram para o verso dos cartões externos em vez de virar cartões próprios.",
       "action": "Criar cartões também com os toggles internos",
-      "note": "Isso converte o arquivo de novo e baixa um novo baralho. Os cartões externos ficam. Seus próximos envios também farão isso. Você pode desativar nas opções de cartão (“{{option}}”).",
+      "note": "Isso converte o arquivo de novo e baixa um novo baralho. Os cartões externos ficam. A opção continua ativada nos seus próximos envios. Você pode desativar nas opções de cartão (“{{option}}”).",
       "link": "Ative “{{option}}” nas opções de cartão e converta o arquivo de novo"
     },
     "validation": {

@@ -2776,3 +2776,34 @@ describe('PrepareDeck — nested toggles folded into card backs', () => {
     expect(result.foldedToggleCount).toBe(2);
   });
 });
+
+describe('PrepareDeck — folded nested toggles across sub-pages', () => {
+  const sectionPage = (title: string, extra: string) =>
+    `<html><head><title>${title}</title></head><body><article class="page sans"><header><h1 class="page-title">${title}</h1></header><div class="page-body">` +
+    `<details open="" class="toggle"><summary>${title} section</summary><div class="indented">` +
+    `<details open="" class="toggle"><summary>${title} question one</summary><div class="indented"><p>One.</p></div></details>` +
+    `<details open="" class="toggle"><summary>${title} question two</summary><div class="indented"><p>Two.</p></div></details>` +
+    `</div></details>${extra}</div></article></body></html>`;
+
+  it('sums the count over the parent page and its sub-page decks', async () => {
+    const result = await PrepareDeck({
+      name: 'parent.html',
+      files: [
+        {
+          name: 'parent.html',
+          contents: sectionPage(
+            'Parent',
+            '<figure class="link-to-page"><a href="sub.html">Sub</a></figure>'
+          ),
+        },
+        { name: 'sub.html', contents: sectionPage('Sub', '') },
+      ],
+      settings: makeSettings({}),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.deck).toHaveLength(2);
+    expect(result?.foldedToggleCount).toBe(4);
+  });
+});

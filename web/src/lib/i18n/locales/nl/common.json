@@ -413,7 +413,7 @@
       "count_one": "{{count}} toggle zat in een andere toggle. Hij kwam op de achterkant van de buitenste kaart terecht in plaats van op een eigen kaart.",
       "count_other": "{{count}} toggles zaten in andere toggles. Ze kwamen op de achterkant van de buitenste kaarten terecht in plaats van op eigen kaarten.",
       "action": "Maak ook kaarten van de binnenste toggles",
-      "note": "Dit zet het bestand opnieuw om en downloadt een nieuw deck. De buitenste kaarten blijven. Je volgende uploads doen dit ook. Je kunt het uitzetten in de kaartopties (“{{option}}”).",
+      "note": "Dit zet het bestand opnieuw om en downloadt een nieuw deck. De buitenste kaarten blijven. De optie blijft aan voor je volgende uploads. Je kunt het uitzetten in de kaartopties (“{{option}}”).",
       "link": "Zet “{{option}}” aan in de kaartopties en zet het bestand daarna opnieuw om"
     },
     "validation": {

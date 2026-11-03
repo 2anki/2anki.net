@@ -413,7 +413,7 @@
       "count_one": "{{count}} toggle era dentro un altro toggle. È finito sul retro della carta esterna invece di diventare una carta a sé.",
       "count_other": "{{count}} toggle erano dentro altri toggle. Sono finiti sul retro delle carte esterne invece di diventare carte a sé.",
       "action": "Crea carte anche dai toggle interni",
-      "note": "Così il file viene convertito di nuovo e scarichi un nuovo mazzo. Le carte esterne restano. Anche i tuoi prossimi caricamenti lo faranno. Puoi disattivarlo nelle opzioni delle carte (“{{option}}”).",
+      "note": "Così il file viene convertito di nuovo e scarichi un nuovo mazzo. Le carte esterne restano. L'opzione resta attiva per i tuoi prossimi caricamenti. Puoi disattivarlo nelle opzioni delle carte (“{{option}}”).",
       "link": "Attiva “{{option}}” nelle opzioni delle carte, poi converti di nuovo il file"
     },
     "validation": {
