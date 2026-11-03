@@ -55,8 +55,16 @@ import type {
   ChurnTierPoint,
   ConversionsChurnWeekPoint,
   FailedPaymentsWeekPoint,
+  MonthlySales,
   MrrTimeseriesPoint,
 } from '../../types/ops/BusinessMetrics';
+import {
+  computeMonthlySales,
+  OneTimeSale,
+  oneTimeSaleFromCheckoutSession,
+  SaleCharge,
+  salesWindowStartMs,
+} from './monthlySales';
 
 export type {
   ActiveSubsTimeseriesPoint,
@@ -108,6 +116,9 @@ const STRIPE_PAGE_LIMIT = 100;
 const MRR_HISTORY_DAYS = 90;
 const WEEKLY_HISTORY_WEEKS = 12;
 const FAILED_INVOICES_LOOKBACK_DAYS = WEEKLY_HISTORY_WEEKS * 7;
+// A pass charge lands minutes after its Checkout session is created, so a
+// day of slack before the sales window catches every session it needs.
+const SALES_SESSION_SLACK_MS = SECONDS_PER_DAY * 1000;
 
 const INTERVAL_TO_MONTHLY_FACTOR: Record<string, number> = {
   month: 1,
@@ -276,6 +287,9 @@ export class BusinessMetricsService {
 
     const response: BusinessMetricsResponse = {
       mrr_usd: fromSubs((s) => computeMrrUsd(s, now)),
+      sales_monthly: dbValueByKey.has('sales_monthly')
+        ? (dbValueByKey.get('sales_monthly') as MonthlySales | null)
+        : null,
       net_new_mrr_mtd_usd: fromSubs((s) => computeNetNewMrrMtdUsd(s, now)),
       active_paying_subs: fromSubs((s) => computeActiveCount(s, now)),
       churn_30d_pct: fromSubs((s) => computeChurn30dPct(s, now)),
@@ -403,6 +417,10 @@ export class BusinessMetricsService {
       key: BusinessMetricKey;
       fetch: () => Promise<unknown>;
     }> = [
+      {
+        key: 'sales_monthly',
+        fetch: () => this.fetchMonthlySales(now),
+      },
       {
         key: 'cancellation_reasons_top',
         fetch: () =>
@@ -701,6 +719,73 @@ export class BusinessMetricsService {
     return result;
   }
 
+  private async fetchMonthlySales(now: Date): Promise<MonthlySales> {
+    const stripe = this.stripeFactory();
+    const windowStartMs = salesWindowStartMs(now);
+    const [charges, oneTimeSales] = await Promise.all([
+      this.fetchSaleCharges(stripe, windowStartMs),
+      this.fetchOneTimeSales(stripe, windowStartMs - SALES_SESSION_SLACK_MS),
+    ]);
+    return computeMonthlySales(charges, oneTimeSales, now);
+  }
+
+  private async fetchSaleCharges(
+    stripe: Stripe,
+    sinceMs: number
+  ): Promise<SaleCharge[]> {
+    const result: SaleCharge[] = [];
+    let startingAfter: string | undefined;
+    let hasMore = true;
+    while (hasMore) {
+      const page: StripeTypes.ApiList<StripeTypes.Charge> =
+        await stripe.charges.list({
+          created: { gte: Math.floor(sinceMs / 1000) },
+          limit: STRIPE_PAGE_LIMIT,
+          starting_after: startingAfter,
+        });
+      for (const charge of page.data) {
+        if (charge.status !== 'succeeded') continue;
+        result.push({
+          createdMs: charge.created * 1000,
+          amountCents: charge.amount,
+          refundedCents: charge.amount_refunded,
+          currency: charge.currency,
+          paymentIntentId: idOf(charge.payment_intent),
+        });
+      }
+      hasMore = page.has_more === true && page.data.length > 0;
+      startingAfter = hasMore ? page.data[page.data.length - 1].id : undefined;
+    }
+    return result;
+  }
+
+  private async fetchOneTimeSales(
+    stripe: Stripe,
+    sinceMs: number
+  ): Promise<Map<string, OneTimeSale>> {
+    const result = new Map<string, OneTimeSale>();
+    let startingAfter: string | undefined;
+    let hasMore = true;
+    while (hasMore) {
+      const page: StripeTypes.ApiList<StripeTypes.Checkout.Session> =
+        await stripe.checkout.sessions.list({
+          created: { gte: Math.floor(sinceMs / 1000) },
+          status: 'complete',
+          limit: STRIPE_PAGE_LIMIT,
+          starting_after: startingAfter,
+        });
+      for (const session of page.data) {
+        const paymentIntentId = idOf(session.payment_intent);
+        const sale = oneTimeSaleFromCheckoutSession(session);
+        if (paymentIntentId == null || sale == null) continue;
+        result.set(paymentIntentId, sale);
+      }
+      hasMore = page.has_more === true && page.data.length > 0;
+      startingAfter = hasMore ? page.data[page.data.length - 1].id : undefined;
+    }
+    return result;
+  }
+
   private async fetchInvoices(now: Date): Promise<NormalizedInvoice[]> {
     const stripe = this.stripeFactory();
     const since = epochSecondsDaysAgo(now, FAILED_INVOICES_LOOKBACK_DAYS);
@@ -724,6 +809,11 @@ export class BusinessMetricsService {
     return result;
   }
 }
+
+const idOf = (value: string | { id: string } | null): string | null => {
+  if (value == null) return null;
+  return typeof value === 'string' ? value : value.id;
+};
 
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);

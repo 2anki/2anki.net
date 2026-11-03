@@ -14,6 +14,7 @@ function makeBusiness(
 ): BusinessMetricsResponse {
   return {
     mrr_usd: 1823,
+    sales_monthly: null,
     net_new_mrr_mtd_usd: 312,
     active_paying_subs: 759,
     churn_30d_pct: 18.2,
@@ -196,6 +197,7 @@ describe('buildClaudePrompt — business', () => {
     const prompt = buildClaudePrompt('business', makeBusiness());
     expect(prompt).toContain('## Business metrics — weekly revenue review');
     expect(prompt).toContain('MRR (USD):                 1823');
+    expect(prompt).toContain('Sales this month (USD):    —');
     expect(prompt).toContain('Active paying subs:        759');
     expect(prompt).toContain('Churn 30d (%):             18.2');
     expect(prompt).toContain('MRR timeseries (90d)');

@@ -9,6 +9,7 @@ describe('GetBusinessMetricsUseCase', () => {
   it('delegates to the service and returns its response unchanged', async () => {
     const fake: BusinessMetricsResponse = {
       mrr_usd: 4820,
+      sales_monthly: null,
       net_new_mrr_mtd_usd: 312,
       active_paying_subs: 184,
       churn_30d_pct: 2.1,

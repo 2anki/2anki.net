@@ -32,6 +32,7 @@ import SignupCountriesChart from './charts/SignupCountriesChart';
 import CollapsibleSection from './CollapsibleSection';
 import PaidValueMonitorTab from './PaidValueMonitorTab';
 import PassUnlockMonitorTab from './PassUnlockMonitorTab';
+import { buildSalesFootnote, salesValue } from './salesSummary';
 import { useSectionSummaries } from './useSectionSummary';
 import styles from './OpsPage.module.css';
 import { useBusinessMetrics } from './useBusinessMetrics';
@@ -164,6 +165,11 @@ export default function BusinessTab() {
       )}
 
       <div className={styles.cardGrid}>
+        <MetricCard
+          title="Sales this month (Stripe)"
+          value={salesValue(visible?.sales_monthly ?? null)}
+          footnote={buildSalesFootnote(visible?.sales_monthly ?? null)}
+        />
         <MetricCard
           title="MRR"
           value={formatNumberOrDash(visible?.mrr_usd ?? null, formatUsd)}

@@ -2,6 +2,7 @@ import { BusinessMetricsResponse } from './businessTypes';
 import { ConversionMetricsResponse } from './conversionTypes';
 import { OpsMetricsResponse } from './opsTypes';
 import { ReturnRateMetricsResponse } from './returnRateTypes';
+import { buildSalesFootnote, salesValue } from './salesSummary';
 import { UploadFunnelResponse } from './uploadFunnelTypes';
 import { sanitizeInlineErrorText } from './sanitizeUntrustedErrorText';
 
@@ -60,9 +61,11 @@ function buildBusinessPrompt(payload: BusinessMetricsResponse): string {
   }
 
   lines.push(
-    'Window: MRR/subs over the last 90 days; churn 30d; failed payments & new paid over 7d.',
+    'Window: Stripe sales by calendar month (UTC), net of refunds, App Store purchases not included; MRR/subs over the last 90 days; churn 30d; failed payments & new paid over 7d.',
     '',
     'Current numbers:',
+    `Sales this month (USD):    ${salesValue(payload.sales_monthly)}`,
+    `Sales breakdown:           ${buildSalesFootnote(payload.sales_monthly) ?? '—'}`,
     `MRR (USD):                 ${numberOrDash(payload.mrr_usd)}`,
     `Net new MRR MTD (USD):     ${numberOrDash(payload.net_new_mrr_mtd_usd)}`,
     `Active paying subs:        ${numberOrDash(payload.active_paying_subs)}`,
