@@ -70,7 +70,7 @@ class StallReadTest(unittest.TestCase):
             memory(stamp(1, 1), 2),
             memory(stamp(1, 2), 12, interactive=1),
             memory(stamp(1, 3), 4, interactive=2),
-            *[no_response(stamp(1, 4))] * 11,
+            *[no_response(stamp(1, 4))] * 10,
             *[no_response(stamp(3, 4))] * 9,
             f"{stamp(1, 6)}: [upload] tempfile dwell {{ dwellMs: 125000, fileCount: 1 }}",
             f"{stamp(1, 7)}: [upload] tempfile dwell {{ dwellMs: 900, fileCount: 1 }}",
@@ -84,7 +84,7 @@ class StallReadTest(unittest.TestCase):
         self.assertEqual(out.stderr, "")
         self.assertEqual(section(out.stdout, "max pool_queue"), [f"{hour} 12"])
         self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), [f"blue {stamp(1, 2)[:16]} 2"])
-        self.assertEqual(section(out.stdout, "no-response"), [f"11 {hour}"])
+        self.assertEqual(section(out.stdout, "no-response"), [f"10 {hour}"])
         self.assertNotIn(quiet_hour, out.stdout)
         self.assertEqual(section(out.stdout, "stall lines"), ["1"])
         self.assertEqual(section(out.stdout, "max tempfile dwell"), ["125000"])
