@@ -176,6 +176,7 @@ interface PrepareDeckResult {
   mcqCount: number;
   mcqSkippedCount: number;
   cherrySkippedCount?: number;
+  foldedToggleCount?: number;
   notionEmptyBackCount?: number;
   warning?: string;
   droppedImageCount: number;
@@ -944,6 +945,10 @@ async function buildParserResult(
     (sum, d) => sum + d.cherrySkippedCount,
     0
   );
+  const foldedToggleCount = parser.payload.reduce(
+    (sum, d) => sum + d.foldedToggleCount,
+    0
+  );
   const apkg = await parser.build(input.workspace);
   return {
     name: getDeckFilename(parser.name),
@@ -953,6 +958,7 @@ async function buildParserResult(
     mcqCount,
     mcqSkippedCount,
     cherrySkippedCount,
+    foldedToggleCount,
     notionEmptyBackCount: parser.notionEmptyBackCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
@@ -1379,6 +1385,7 @@ export interface DeckInfoOnlyResult {
   mcqCount: number;
   mcqSkippedCount: number;
   cherrySkippedCount?: number;
+  foldedToggleCount?: number;
   notionEmptyBackCount?: number;
   warning?: string;
   droppedImageCount: number;
@@ -1465,6 +1472,10 @@ export async function prepareDeckInfoOnly(
     (sum, d) => sum + d.cherrySkippedCount,
     0
   );
+  const foldedToggleCount = parser.payload.reduce(
+    (sum, d) => sum + d.foldedToggleCount,
+    0
+  );
 
   return {
     deckInfoPath,
@@ -1476,6 +1487,7 @@ export async function prepareDeckInfoOnly(
     mcqCount,
     mcqSkippedCount,
     cherrySkippedCount,
+    foldedToggleCount,
     notionEmptyBackCount: parser.notionEmptyBackCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,

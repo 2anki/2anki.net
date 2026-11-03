@@ -409,6 +409,13 @@
       "groupAria": "Andere Upload-Quellen"
     },
     "overSplit": "Viele Kartenvorderseiten bestehen nur aus ein oder zwei Wörtern, was meist bedeutet, dass die Datei mitten im Satz getrennt wurde. Sieh den Stapel vor dem Lernen durch oder lade die ursprüngliche Word- oder Notion-Datei hoch, um sauberere Karten zu erhalten.",
+    "foldedToggles": {
+      "count_one": "{{count}} Toggle lag in einem anderen Toggle. Es ist auf der Rückseite der äußeren Karte gelandet statt auf einer eigenen Karte.",
+      "count_other": "{{count}} Toggles lagen in anderen Toggles. Sie sind auf der Rückseite der äußeren Karten gelandet statt auf eigenen Karten.",
+      "action": "Auch aus den inneren Toggles Karten machen",
+      "note": "Damit wird die Datei noch einmal umgewandelt und ein neues Deck heruntergeladen. Die äußeren Karten bleiben. Deine nächsten Uploads machen das auch. Du kannst es in den Kartenoptionen ausschalten („{{option}}“).",
+      "link": "Schalte „{{option}}“ in den Kartenoptionen ein und wandle die Datei dann noch einmal um"
+    },
     "validation": {
       "continue": "Trotzdem konvertieren",
       "pickDifferent": "Andere Datei wählen",

@@ -91,6 +91,7 @@ export function useUploadFormState(onReset: () => void) {
   const [emptyBackSource, setEmptyBackSource] =
     useState<EmptyBackSource>('upload');
   const [cherrySkippedCount, setCherrySkippedCount] = useState<number>(0);
+  const [foldedToggleCount, setFoldedToggleCount] = useState<number>(0);
   const [cardsHeldBack, setCardsHeldBack] = useState<number>(0);
   const [heldForPlan, setHeldForPlan] = useState(false);
   const [heldDeck, setHeldDeck] = useState<HeldDeckState | null>(null);
@@ -151,6 +152,7 @@ export function useUploadFormState(onReset: () => void) {
     setEmptyBackCount(0);
     setEmptyBackSource('upload');
     setCherrySkippedCount(0);
+    setFoldedToggleCount(0);
     setCardsHeldBack(0);
     setHeldForPlan(false);
     setHeldDeck(null);
@@ -218,6 +220,8 @@ export function useUploadFormState(onReset: () => void) {
     setEmptyBackSource,
     cherrySkippedCount,
     setCherrySkippedCount,
+    foldedToggleCount,
+    setFoldedToggleCount,
     cardsHeldBack,
     setCardsHeldBack,
     heldForPlan,

@@ -2911,6 +2911,62 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('sets and exposes X-Folded-Toggle-Count on a single-deck upload with nested toggles folded into backs', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 2,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              foldedToggleCount: 12,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).toHaveBeenCalledWith('X-Folded-Toggle-Count', '12');
+    expect(res.set).toHaveBeenCalledWith(
+      'Access-Control-Expose-Headers',
+      expect.stringContaining('X-Folded-Toggle-Count')
+    );
+  });
+
+  it('does not set X-Folded-Toggle-Count when no nested toggle was folded', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Folded-Toggle-Count',
+      expect.anything()
+    );
+  });
+
   it('sets X-Structure-Rescued to the shipped rescue rule on a single-deck sync upload', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {

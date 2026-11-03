@@ -759,6 +759,8 @@ export class DeckParser {
       pageDeck.mcqSkippedCount += deck === pageDeck ? 0 : deck.mcqSkippedCount;
       pageDeck.cherrySkippedCount +=
         deck === pageDeck ? 0 : deck.cherrySkippedCount;
+      pageDeck.foldedToggleCount +=
+        deck === pageDeck ? 0 : deck.foldedToggleCount;
       pageDeck.globalTags = [
         ...new Set([...pageDeck.globalTags, ...deck.globalTags]),
       ];
@@ -863,15 +865,18 @@ export class DeckParser {
     // empty deck. hasSalvageableCards also treats raw-stage cloze notes (their
     // cloze flag not yet set) as usable, so a healthy cloze deck is never
     // rescued. The rescued set replaces the unusable cards outright.
+    let togglesReplaced = false;
     if (!this.hasSalvageableCards(cards)) {
       const rescued = this.induceCardsFromStructure(dom);
       if (rescued != null) {
         cards = rescued;
+        togglesReplaced = true;
       }
     } else if (!this.parsingInParts && this.isDegenerateYield(cards, dom)) {
       const richer = this.induceRicherDeck(cards, dom);
       if (richer != null) {
         cards = richer;
+        togglesReplaced = true;
       }
     }
 
@@ -888,6 +893,9 @@ export class DeckParser {
     deck.mcqCount = extractResult.mcqCount;
     deck.mcqSkippedCount = extractResult.mcqSkippedCount;
     deck.cherrySkippedCount = extractResult.cherrySkippedCount;
+    deck.foldedToggleCount = togglesReplaced
+      ? 0
+      : extractResult.foldedToggleCount;
     decks.push(deck);
 
     const subpages = dom('.link-to-page').toArray();
@@ -2507,11 +2515,14 @@ export class DeckParser {
     mcqCount: number;
     mcqSkippedCount: number;
     cherrySkippedCount: number;
+    foldedToggleCount: number;
   } {
     const cards: Note[] = [];
     let mcqCount = 0;
     let mcqSkippedCount = 0;
     let cherrySkippedCount = 0;
+    let foldedToggleCount = 0;
+    const listedToggles = new Set(toggleList);
     let promotedCount = 0;
     const pageId = dom('article').attr('id');
 
@@ -2577,6 +2588,12 @@ export class DeckParser {
             ? `<div class='${parentClass}'>${validSummary}</div>`
             : validSummary;
           if (toggle || this.settings.maxOne) {
+            // Counted before the cloze promotion rewrites the titles it takes.
+            const foldedToggles = this.countFoldedToggles(
+              toggle,
+              dom,
+              listedToggles
+            );
             const nestedToggleCards = this.promoteNestedToggles(
               toggle,
               dom,
@@ -2651,6 +2668,7 @@ export class DeckParser {
               }
               if (keepCardWithNestedBack(note, t)) {
                 this.applyParentContext(dom, summary, note);
+                foldedToggleCount += foldedToggles;
               }
               for (const child of promoted) {
                 child.sourcePageId = pageId;
@@ -2669,7 +2687,13 @@ export class DeckParser {
         }
       );
     }
-    return { cards, mcqCount, mcqSkippedCount, cherrySkippedCount };
+    return {
+      cards,
+      mcqCount,
+      mcqSkippedCount,
+      cherrySkippedCount,
+      foldedToggleCount,
+    };
   }
 
   private userFilterOutcome(note: Note): CardFilterOutcome {
@@ -2731,9 +2755,29 @@ export class DeckParser {
     if (!this.settings.promoteNestedToggles || this.settings.isCherry) {
       return [];
     }
+    return this.nestedTogglesWorthACard(toggle, dom).map(
+      ({ $details, summaryHTML, body }) => {
+        const front = preserveNewlinesIfApplicable(summaryHTML, this.settings);
+        const note = new Note(
+          parentClass ? `<div class='${parentClass}'>${front}</div>` : front,
+          this.buildToggleBackSide(body, isNewFormat)
+        );
+        note.notionId = this.resolveNestedToggleBlockId($details);
+        note.sectionTags = sectionTagsOfElement($details, sectionTagsOf);
+        return note;
+      }
+    );
+  }
+
+  // The nested toggles promote-nested-toggles turns into cards: a title and
+  // something inside, minus the ones the cloze option already promotes.
+  private nestedTogglesWorthACard(
+    toggle: cheerio.Cheerio<Element>,
+    dom: cheerio.CheerioAPI
+  ) {
     const clozePromotes =
       this.settings.isCloze && this.settings.promoteNestedCloze;
-    const captured = toggle
+    return toggle
       .find('details')
       .toArray()
       .map((el) => {
@@ -2753,16 +2797,27 @@ export class DeckParser {
           bodyHasContent(body) &&
           !(clozePromotes && hasInlineClozeCode(summaryHTML))
       );
-    return captured.map(({ $details, summaryHTML, body }) => {
-      const front = preserveNewlinesIfApplicable(summaryHTML, this.settings);
-      const note = new Note(
-        parentClass ? `<div class='${parentClass}'>${front}</div>` : front,
-        this.buildToggleBackSide(body, isNewFormat)
-      );
-      note.notionId = this.resolveNestedToggleBlockId($details);
-      note.sectionTags = sectionTagsOfElement($details, sectionTagsOf);
-      return note;
-    });
+  }
+
+  // With the option off, how many of those stayed folded into this card's
+  // back. One that is already its own card in the toggle list is not.
+  private countFoldedToggles(
+    toggle: cheerio.Cheerio<Element>,
+    dom: cheerio.CheerioAPI,
+    listed: Set<Element>
+  ): number {
+    if (this.settings.promoteNestedToggles || this.settings.isCherry) {
+      return 0;
+    }
+    const root = toggle.get(0);
+    return this.nestedTogglesWorthACard(toggle, dom).filter(({ $details }) => {
+      const el = $details.get(0);
+      if (el == null || listed.has(el)) return false;
+      return !$details
+        .parentsUntil(root)
+        .toArray()
+        .some((ancestor) => listed.has(ancestor));
+    }).length;
   }
 
   // A nested toggle whose title carries the inline-code cloze marker is a

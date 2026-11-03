@@ -556,6 +556,25 @@ describe('runUploadGenerationInWorker — files converted in parallel', () => {
     expect(counts).toEqual([3, 0]);
   });
 
+  it('carries each file count of folded nested toggles onto its package', async () => {
+    mockPrepareDeck.mockImplementation(
+      async (input) =>
+        ({
+          ...deckFor(input.name),
+          foldedToggleCount: input.name === 'b.html' ? 4 : 0,
+        }) as never
+    );
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    const counts = result.ok
+      ? result.packages.map((p) => p.foldedToggleCount)
+      : [];
+    expect(counts).toEqual([0, 4]);
+  });
+
   it('carries the Notion-export empty-back count onto each package', async () => {
     mockPrepareDeck.mockImplementation(
       async (input) =>

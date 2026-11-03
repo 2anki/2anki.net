@@ -950,6 +950,124 @@ describe('UploadForm', () => {
     ).toHaveAttribute('href', '/card-options?returnTo=/upload');
   });
 
+  const foldedToggleResponse = (count: string | null) => ({
+    redirected: false,
+    status: 200,
+    headers: new Headers({
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': 'attachment; filename="deck.apkg"',
+      'X-Card-Count': count == null ? '7' : '2',
+      'X-Upload-Owner': 'none',
+      ...(count == null ? {} : { 'X-Folded-Toggle-Count': count }),
+    }),
+    blob: () => Promise.resolve(new Blob(['fake'])),
+  });
+
+  test('turns nested toggles into their own cards and converts the same file again in one click', async () => {
+    localStorage.removeItem('promote-nested-toggles');
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(foldedToggleResponse('5'))
+      .mockResolvedValueOnce(foldedToggleResponse(null));
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const input = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    const file = new File(['<p>sections</p>'], 'sections.zip', {
+      type: 'application/zip',
+    });
+    Object.defineProperty(input, 'files', { value: [file] });
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(
+      await screen.findByText(
+        '5 toggles were inside other toggles. They went on the back of the outer cards instead of becoming cards of their own.'
+      )
+    ).toBeInTheDocument();
+    expect(track).toHaveBeenCalledWith('folded_toggles_notice_shown', {
+      count: 5,
+      can_promote: true,
+    });
+
+    await act(async () => {
+      screen
+        .getByRole('button', { name: 'Make cards from the inner toggles too' })
+        .click();
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    const [, resend] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const sent = resend.body as FormData;
+    expect(sent.get('promote-nested-toggles')).toBe('true');
+    expect((sent.get('pakker') as File).name).toBe('sections.zip');
+    expect(localStorage.getItem('promote-nested-toggles')).toBe('true');
+    expect(track).toHaveBeenCalledWith('folded_toggles_promoted', {
+      count: 5,
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', {
+          name: 'Make cards from the inner toggles too',
+        })
+      ).not.toBeInTheDocument();
+    });
+    localStorage.removeItem('promote-nested-toggles');
+  });
+
+  test('links to card options when the file cannot be sent again from the page', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': 'attachment; filename="deck.apkg"',
+          'X-Card-Count': '2',
+          'X-Folded-Toggle-Count': '1',
+        }),
+        blob: () => Promise.resolve(new Blob(['fake'])),
+      })
+    );
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(
+      await screen.findByText(
+        /1 toggle was inside another toggle\. It went on the back of the outer card/
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', {
+        name: 'Turn on “Nested toggles become their own cards” in card options, then convert the file again',
+      })
+    ).toHaveAttribute('href', '/card-options?returnTo=/upload');
+    expect(
+      screen.queryByRole('button', {
+        name: 'Make cards from the inner toggles too',
+      })
+    ).not.toBeInTheDocument();
+  });
+
   test('a signed-out upload with the toggle on sends AI on', async () => {
     const fetchMock = okApkgFetch();
     vi.stubGlobal('fetch', fetchMock);

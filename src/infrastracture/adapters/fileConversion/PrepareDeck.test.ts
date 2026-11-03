@@ -2736,3 +2736,43 @@ describe('PrepareDeck — empty backs from Notion-export toggles', () => {
     expect(result.notionEmptyBackCount).toBe(1);
   });
 });
+
+describe('PrepareDeck — nested toggles folded into card backs', () => {
+  const sectionsPage =
+    '<html><head><title>T</title></head><body><article class="page sans"><header><h1 class="page-title">T</h1></header><div class="page-body">' +
+    '<details open="" class="toggle"><summary>Letters</summary><div class="indented">' +
+    '<details open="" class="toggle"><summary>What is shaddah?</summary><div class="indented"><p>Doubling.</p></div></details>' +
+    '<details open="" class="toggle"><summary>What is hamzah?</summary><div class="indented"><p>A glottal stop.</p></div></details>' +
+    '</div></details>' +
+    '</div></article></body></html>';
+
+  it('reports how many nested toggles a single-file upload folded', async () => {
+    const result = await PrepareDeck({
+      name: 'sections.html',
+      files: [{ name: 'sections.html', contents: sectionsPage }],
+      settings: makeSettings({}),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(1);
+    expect(result?.foldedToggleCount).toBe(2);
+  });
+
+  it('reports the same count for a zip entry built in a batch', async () => {
+    const result = await prepareDeckInfoOnly(
+      {
+        name: 'sections.html',
+        files: [{ name: 'sections.html', contents: sectionsPage }],
+        settings: makeSettings({}),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      },
+      makeWorkspace(),
+      makeWorkspace()
+    );
+
+    expect(result.cardCount).toBe(1);
+    expect(result.foldedToggleCount).toBe(2);
+  });
+});

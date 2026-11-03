@@ -25,6 +25,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setEmptyBackCount: vi.fn(),
     setEmptyBackSource: vi.fn(),
     setCherrySkippedCount: vi.fn(),
+    setFoldedToggleCount: vi.fn(),
     setCardsHeldBack: vi.fn(),
     setHeldForPlan: vi.fn(),
     setOverSplit: vi.fn(),
@@ -411,6 +412,25 @@ describe('applyConversionSuccess', () => {
     await applyConversionSuccess(singleDeckResponse(), handlers);
 
     expect(handlers.setCherrySkippedCount).toHaveBeenCalledWith(0);
+  });
+
+  it('reads the folded nested toggle count from the X-Folded-Toggle-Count header', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(
+      singleDeckResponse({ 'X-Folded-Toggle-Count': '12' }),
+      handlers
+    );
+
+    expect(handlers.setFoldedToggleCount).toHaveBeenCalledWith(12);
+  });
+
+  it('sets the folded nested toggle count to 0 when the header is absent', async () => {
+    const handlers = buildHandlers();
+
+    await applyConversionSuccess(singleDeckResponse(), handlers);
+
+    expect(handlers.setFoldedToggleCount).toHaveBeenCalledWith(0);
   });
 
   it('uses the Notion wording for empty backs the server marks as Notion toggles', async () => {
