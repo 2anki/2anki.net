@@ -4902,6 +4902,39 @@ describe('limit state', () => {
     });
   });
 
+  it('reports a Day Pass click from the locked wall under the upload wall surface', async () => {
+    setUserLocals(loggedInData);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+    const startPassCheckout = vi.fn().mockResolvedValue({ status: 'error' });
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout,
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Get Day Pass/ }));
+    });
+
+    expect(startPassCheckout).toHaveBeenCalledWith(
+      '24h',
+      undefined,
+      'upload-limit-wall'
+    );
+    expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: 'upload-limit-wall',
+      plan: 'day_pass',
+    });
+    expect(track).toHaveBeenCalledWith('paywall_pass_clicked', {
+      surface: 'upload-limit-wall',
+      plan: 'day',
+    });
+  });
+
   it('leads the locked wall with the Semester Pass when the pass-first flag is on', () => {
     setUserLocals({
       ...loggedInData,
@@ -4924,6 +4957,7 @@ describe('limit state', () => {
       day.compareDocumentPosition(plans) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(screen.getAllByRole('button', { name: /Day Pass/ })).toHaveLength(1);
+    expect(screen.getByText('Pay once — no subscription')).toBeInTheDocument();
   });
 
   it('does not lock the form when the free user is under the limit', () => {
@@ -5173,6 +5207,39 @@ describe('limit state', () => {
       expect(errorEl?.textContent).toMatch(/couldn't start checkout/i);
     });
     expect(container.querySelector('[class*="limitContent"]')).not.toBeNull();
+  });
+
+  it('keeps the sign-up-first row on a signed-out card limit wall when pass-first is off', async () => {
+    setUserLocals(anonymousData);
+    stubLimitFetch('card_count');
+    const container = await submitAndReachLimit();
+    expect(
+      container.querySelector('a[href*="register"]')?.textContent
+    ).toContain('Create a free account');
+    expect(
+      screen.queryByRole('button', { name: /Semester Pass/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Day Pass/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers both passes on a card limit wall reached while the session is still loading', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    stubLimitFetch('card_count');
+    await submitAndReachLimit();
+    const day = screen.getByRole('button', { name: /Get Day Pass/ });
+    const semester = screen.getByRole('button', { name: /Get Semester Pass/ });
+    expect(
+      day.compareDocumentPosition(semester) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'See plans' })).toBeInTheDocument();
   });
 
   it('uses the file_size title when kind=file_size', async () => {
