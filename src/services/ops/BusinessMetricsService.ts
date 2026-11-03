@@ -248,7 +248,7 @@ export class BusinessMetricsService {
     if (sources.subsEntry != null) usedEntries.push(sources.subsEntry);
     if (sources.invoicesEntry != null) usedEntries.push(sources.invoicesEntry);
 
-    const salesMonthly = await this.resolveSales(
+    const salesPending = this.resolveSales(
       cachedByKey,
       now,
       usedEntries,
@@ -272,6 +272,8 @@ export class BusinessMetricsService {
         })
       )
     );
+
+    const salesMonthly = await salesPending;
 
     if (freshEntries.length > 0) {
       try {
@@ -734,7 +736,9 @@ export class BusinessMetricsService {
     errors: BusinessMetricError[]
   ): Promise<MonthlySales | null> {
     const cached = cachedByKey.get('sales_monthly');
-    if (cached != null) {
+    // A row written last month holds last month as "this month", so after a
+    // restart on the 1st it counts as no row at all and the request waits.
+    if (cached != null && isSameSalesMonth(cached.value, now)) {
       if (cached.expiresAt.getTime() <= now.getTime()) {
         this.startOrJoinSalesRefresh(now).catch((error: unknown) => {
           console.error(
@@ -888,6 +892,11 @@ export class BusinessMetricsService {
     return result;
   }
 }
+
+const isSameSalesMonth = (value: unknown, now: Date): boolean => {
+  const start = (value as MonthlySales | null)?.this_month?.start;
+  return start === new Date(startOfMonthUtcMs(now)).toISOString();
+};
 
 const idOf = (value: string | { id: string } | null): string | null => {
   if (value == null) return null;

@@ -595,6 +595,38 @@ describe('BusinessMetricsService', () => {
       consoleError.mockRestore();
     });
 
+    it('fetches once for concurrent cold requests', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+
+      const [first, second] = await Promise.all([
+        service.getMetrics(),
+        service.getMetrics(),
+      ]);
+
+      expect(stripe.charges.list).toHaveBeenCalledTimes(1);
+      expect(first.sales_monthly).toEqual(second.sales_monthly);
+    });
+
+    it('treats a row cached last month as missing after a restart on the 1st', async () => {
+      const sharedCache = new InMemoryBusinessMetricsCacheRepository();
+      const { service: before } = buildService(oneSale(799), {
+        cacheRepository: sharedCache,
+      });
+      vi.setSystemTime(new Date('2026-04-30T23:50:00Z'));
+      await before.getMetrics();
+
+      vi.setSystemTime(new Date('2026-05-01T00:10:00Z'));
+      const { service: after, stripe } = buildService(oneSale(799), {
+        cacheRepository: sharedCache,
+      });
+      const result = await after.getMetrics();
+
+      expect(stripe.charges.list).toHaveBeenCalledTimes(1);
+      expect(result.sales_monthly?.this_month.start).toBe(
+        '2026-05-01T00:00:00.000Z'
+      );
+    });
+
     it('does not cache a failed cold fetch, so the next request tries again', async () => {
       const { service, stripe } = buildService(oneSale(799));
       stripe.charges.list.mockRejectedValueOnce(new Error('stripe down'));
