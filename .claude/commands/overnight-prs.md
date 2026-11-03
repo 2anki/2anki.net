@@ -231,7 +231,7 @@ List each judgment call the trio made, so the morning review is a yes/no, not an
 Running log, one line per issue, with a running counter so the log reconciles against M:
 `[idx/M] #NNN <title> → <state>`. There are FIVE terminal states — every issue you reach lands in
 exactly one, so the log accounts for every issue you opened, not just the ones you acted on:
-- `SHIPPED <url> (T1|T2, healthy|healthy, stall read failed|superseded|no deploy|reverted)` — merged and deployed through `/ship`.
+- `SHIPPED <url> (T1|T2, healthy|healthy (stall read failed)|no deploy|reverted)` — merged and deployed through `/ship`.
 - `PR <url> (T1|T2|T3, draft: <blocker>)` — a draft left by `/ship` step 1 or step 4 or by Tier 3:
   a value only Alexander holds with no safe default, new spend, a rail-path assumption, or a run
   failure the branch cannot fix (that last case is written only when the night ends with its wakeup
