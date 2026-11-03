@@ -30,9 +30,14 @@ def no_response(ts):
     return f'{ts}: 1.2.3.4 - - [x] "GET /api/upload/jobs HTTP/1.1" - - "-" "ua"'
 
 
-def run(out_lines, error_lines=(), *args):
+def run(out_lines, error_lines=(), *args, green_out=()):
     with tempfile.TemporaryDirectory() as logs:
-        for name, lines in (("server-blue-out.log", out_lines), ("server-blue-error.log", error_lines)):
+        files = (
+            ("server-blue-out.log", out_lines),
+            ("server-blue-error.log", error_lines),
+            ("server-green-out.log", green_out),
+        )
+        for name, lines in files:
             with open(os.path.join(logs, name), "w") as f:
                 f.write("\n".join(lines) + "\n")
         with open(SCRIPT) as script:
@@ -77,7 +82,7 @@ class StallReadTest(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(out.stderr, "")
         self.assertEqual(section(out.stdout, "max pool_queue"), [f"{hour} 12"])
-        self.assertEqual(section(out.stdout, "pool_queue_interactive"), [f"2 {hour}"])
+        self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), [f"blue {stamp(1, 2)[:16]} 2"])
         self.assertEqual(section(out.stdout, "no-response"), [f"11 {hour}"])
         self.assertNotIn(quiet_hour, out.stdout)
         self.assertEqual(section(out.stdout, "stall lines"), ["1"])
@@ -91,9 +96,20 @@ class StallReadTest(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(out.stderr, "")
         self.assertEqual(section(out.stdout, "max pool_queue"), [])
-        self.assertEqual(section(out.stdout, "pool_queue_interactive"), [])
+        self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), [])
         self.assertEqual(section(out.stdout, "stall lines"), ["0"])
         self.assertIn(", 1 lines", out.stdout)
+
+    def test_interactive_streak_needs_consecutive_samples_from_one_color(self):
+        blue = [memory(stamp(1, 5), 1, interactive=1), memory(stamp(1, 45), 1, interactive=1)]
+        green = [memory(stamp(1, 6), 1, interactive=1)]
+        out = run(blue, [], green_out=green)
+
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(
+            section(out.stdout, "longest pool_queue_interactive"),
+            [f"blue {stamp(1, 5)[:16]} 1", f"green {stamp(1, 6)[:16]} 1"],
+        )
 
     def test_hours_argument_widens_the_window(self):
         out = run([], [stall(stamp(30, 1))], "48")

@@ -35,8 +35,20 @@ grep -a '\[memory\]' "$WINDOW" \
          END { for (k in m) if (m[k] >= 3) print k, m[k] }' \
   | sort
 
-echo "== pool_queue_interactive >= 1, samples per hour"
-grep -aE 'pool_queue_interactive=[1-9]' "$WINDOW" | cut -c1-13 | uniq -c
+# Each process samples once a minute, so a streak is counted per color: during a
+# blue-green cutover both colors log, and their samples must not join up.
+echo "== longest pool_queue_interactive >= 1 streak per color (samples, one a minute)"
+for color in blue green; do
+  cat "$LOG_DIR"/server-"$color"-out*.log 2>/dev/null \
+    | awk -v s="$SINCE" '/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]/ && substr($0,1,13) >= s && /\[memory\]/ && /pool_queue_interactive=[1-9]/' \
+    | sort \
+    | awk -v c="$color" '
+        { d = substr($0,1,10); m = substr($0,12,2) * 60 + substr($0,15,2)
+          if (d == pd && m - pm <= 2) n++; else { n = 1; start = substr($0,1,16) }
+          if (n > best) { best = n; bstart = start }
+          pd = d; pm = m }
+        END { if (best > 0) print c, bstart, best }'
+done
 
 echo "== no-response requests per hour (>=10)"
 grep -aE 'HTTP/1.1" - - ' "$WINDOW" | cut -c1-13 | uniq -c | awk '$1 >= 10'
