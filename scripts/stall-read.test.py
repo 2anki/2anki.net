@@ -137,10 +137,46 @@ class StallReadTest(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), ["blue 2026-01-31T23:59 2"])
 
+    def test_interactive_streak_breaks_on_a_gap_across_midnight(self):
+        blue = [
+            memory("2026-01-31T23:59:00.000+00:00", 1, interactive=1),
+            memory("2026-02-01T00:30:00.000+00:00", 1, interactive=1),
+        ]
+        out = run(blue, [], "2026-01-31T00")
+
+        self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), ["blue 2026-01-31T23:59 1"])
+
+    def test_interactive_streak_runs_across_new_year(self):
+        blue = [
+            memory("2025-12-31T23:59:00.000+00:00", 1, interactive=1),
+            memory("2026-01-01T00:00:00.000+00:00", 1, interactive=1),
+        ]
+        out = run(blue, [], "2025-12-31T00")
+
+        self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), ["blue 2025-12-31T23:59 2"])
+
+    def test_interactive_streak_skips_a_second_sample_in_the_same_minute(self):
+        blue = [
+            memory("2026-01-31T10:00:00.000+00:00", 1, interactive=1),
+            memory("2026-01-31T10:00:40.000+00:00", 1, interactive=1),
+        ]
+        out = run(blue, [], "2026-01-31T00")
+
+        self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), ["blue 2026-01-31T10:00 1"])
+
     def test_start_argument_counts_only_lines_after_it(self):
         out_lines = [memory("2026-01-31T09:10:00.000+00:00", 0), memory("2026-01-31T09:40:00.000+00:00", 0)]
         errors = [stall("2026-01-31T09:10:00.000+00:00"), stall("2026-01-31T09:40:00.000+00:00")]
         out = run(out_lines, errors, "2026-01-31T09:30")
+
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("from 2026-01-31T09:30 UTC", out.stdout)
+        self.assertEqual(section(out.stdout, "stall lines"), ["1"])
+
+    def test_start_argument_accepts_a_github_timestamp(self):
+        out_lines = [memory("2026-01-31T09:29:00.000+00:00", 0), memory("2026-01-31T09:31:00.000+00:00", 0)]
+        errors = [stall("2026-01-31T09:29:00.000+00:00"), stall("2026-01-31T09:31:00.000+00:00")]
+        out = run(out_lines, errors, "2026-01-31T09:30:12Z")
 
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("from 2026-01-31T09:30 UTC", out.stdout)

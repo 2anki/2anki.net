@@ -13,11 +13,16 @@ ARG="${1:-24}"
 if [[ "$ARG" =~ ^[0-9]+$ ]]; then
   SINCE=$(date -u -d "-${ARG} hours" +%FT%H 2>/dev/null || date -u -v-"${ARG}"H +%FT%H)
   LABEL="last ${ARG}h"
-elif [[ "$ARG" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}(:[0-9]{2})?$ ]]; then
-  SINCE="$ARG"
-  LABEL="from ${ARG} UTC"
+elif [[ "$ARG" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}(:[0-9]{2}(:[0-9]{2})?)?Z?$ ]]; then
+  SINCE="${ARG%Z}"
+  SINCE="${SINCE:0:16}"
+  LABEL="from ${SINCE} UTC"
 else
   echo "window must be whole hours or a UTC start like 2026-11-03T09:30, got: $ARG" >&2
+  exit 2
+fi
+if [ -z "$SINCE" ]; then
+  echo "could not work out a window start from: $ARG" >&2
   exit 2
 fi
 LOG_DIR="${STALL_LOG_DIR:-$HOME/.pm2/logs}"
