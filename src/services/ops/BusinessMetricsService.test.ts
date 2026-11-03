@@ -511,6 +511,104 @@ describe('BusinessMetricsService', () => {
       );
     });
 
+    const oneSale = (amount: number) => ({
+      charges: [
+        [
+          {
+            id: 'ch_1',
+            status: 'succeeded',
+            created: thisMonth,
+            amount,
+            payment_intent: 'pi_invoice',
+          },
+        ],
+      ],
+    });
+
+    it('serves sales from the cache inside the TTL without calling Stripe', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+
+      await service.getMetrics();
+      vi.advanceTimersByTime(10 * 60 * 1000);
+      const second = await service.getMetrics();
+
+      expect(stripe.charges.list).toHaveBeenCalledTimes(1);
+      expect(stripe.checkout.sessions.list).toHaveBeenCalledTimes(1);
+      expect(second.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        799
+      );
+    });
+
+    it('serves stale sales at once and refreshes them in the background', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+
+      await service.getMetrics();
+      vi.advanceTimersByTime(16 * 60 * 1000);
+      stripe.charges.list.mockResolvedValueOnce({
+        data: [
+          {
+            id: 'ch_2',
+            status: 'succeeded',
+            created: thisMonth,
+            amount: 2900,
+            amount_refunded: 0,
+            currency: 'usd',
+            payment_intent: 'pi_invoice',
+          },
+        ],
+        has_more: false,
+      });
+      const stale = await service.getMetrics();
+      await service.waitForInflightSalesRefresh();
+      const fresh = await service.getMetrics();
+
+      expect(stale.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        799
+      );
+      expect(stale.cache_age_seconds).toBe(16 * 60);
+      expect(fresh.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        2900
+      );
+      expect(stripe.charges.list).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps serving the last sales figure when a background refresh fails', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      await service.getMetrics();
+      vi.advanceTimersByTime(16 * 60 * 1000);
+      stripe.charges.list.mockRejectedValueOnce(new Error('stripe down'));
+      await service.getMetrics();
+      await service.waitForInflightSalesRefresh();
+      const after = await service.getMetrics();
+
+      expect(after.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        799
+      );
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ops] sales background refresh failed:',
+        'stripe down'
+      );
+      consoleError.mockRestore();
+    });
+
+    it('does not cache a failed cold fetch, so the next request tries again', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+      stripe.charges.list.mockRejectedValueOnce(new Error('stripe down'));
+
+      const failed = await service.getMetrics();
+      const retried = await service.getMetrics();
+
+      expect(failed.sales_monthly).toBeNull();
+      expect(retried.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        799
+      );
+      expect(retried.errors).toBeUndefined();
+    });
+
     it('reports a Stripe failure on sales alone and keeps MRR', async () => {
       const { service, stripe } = buildService({
         allSubs: [sub('sub_1', [monthly(2000)])],

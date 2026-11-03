@@ -208,6 +208,39 @@ describe('buildClaudePrompt — business', () => {
     expect(prompt).toContain('Repo: 2anki/server');
   });
 
+  it('carries this month’s sales and their split', () => {
+    const period = (totalCents: number) => ({
+      start: '2026-11-01T00:00:00.000Z',
+      end: '2026-11-03T10:00:00.000Z',
+      by_currency: [
+        {
+          currency: 'usd',
+          subscriptions_cents: 0,
+          passes_cents: totalCents,
+          credit_packs_cents: 0,
+          other_cents: 0,
+          total_cents: totalCents,
+          charges: 1,
+        },
+      ],
+    });
+    const prompt = buildClaudePrompt(
+      'business',
+      makeBusiness({
+        sales_monthly: {
+          this_month: period(2900),
+          last_month_to_date: period(600),
+          last_month: period(12_000),
+        },
+      })
+    );
+
+    expect(prompt).toContain('Sales this month (USD):    $29');
+    expect(prompt).toContain(
+      'Sales breakdown:           subscriptions $0 · passes $29 · last month by this day $6 · all of last month $120'
+    );
+  });
+
   it('includes the untrusted notice when a cancellation comment is present', () => {
     const prompt = buildClaudePrompt('business', makeBusiness());
     expect(prompt).toContain(UNTRUSTED);

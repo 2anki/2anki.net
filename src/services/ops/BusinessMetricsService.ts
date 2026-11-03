@@ -208,6 +208,9 @@ export class BusinessMetricsService {
 
   private inflightSourceRefresh: Promise<SourceRefreshResult> | null = null;
 
+  private inflightSalesRefresh: Promise<BusinessMetricsCacheEntry> | null =
+    null;
+
   constructor(deps: BusinessMetricsServiceDeps = {}) {
     this.stripeFactory = deps.stripeFactory ?? (() => getStripe());
     this.cacheTtlMs = deps.cacheTtlMs ?? BUSINESS_METRICS_CACHE_TTL_MS;
@@ -244,6 +247,13 @@ export class BusinessMetricsService {
 
     if (sources.subsEntry != null) usedEntries.push(sources.subsEntry);
     if (sources.invoicesEntry != null) usedEntries.push(sources.invoicesEntry);
+
+    const salesMonthly = await this.resolveSales(
+      cachedByKey,
+      now,
+      usedEntries,
+      errors
+    );
 
     const dbSettled = await Promise.all(
       dbTasks.map(({ key, fetch }) =>
@@ -287,9 +297,7 @@ export class BusinessMetricsService {
 
     const response: BusinessMetricsResponse = {
       mrr_usd: fromSubs((s) => computeMrrUsd(s, now)),
-      sales_monthly: dbValueByKey.has('sales_monthly')
-        ? (dbValueByKey.get('sales_monthly') as MonthlySales | null)
-        : null,
+      sales_monthly: salesMonthly,
       net_new_mrr_mtd_usd: fromSubs((s) => computeNetNewMrrMtdUsd(s, now)),
       active_paying_subs: fromSubs((s) => computeActiveCount(s, now)),
       churn_30d_pct: fromSubs((s) => computeChurn30dPct(s, now)),
@@ -417,10 +425,6 @@ export class BusinessMetricsService {
       key: BusinessMetricKey;
       fetch: () => Promise<unknown>;
     }> = [
-      {
-        key: 'sales_monthly',
-        fetch: () => this.fetchMonthlySales(now),
-      },
       {
         key: 'cancellation_reasons_top',
         fetch: () =>
@@ -717,6 +721,81 @@ export class BusinessMetricsService {
       }
     }
     return result;
+  }
+
+  // Sales page through two months of Stripe charges, so they refresh in the
+  // background the way subscriptions and invoices do: a stale figure is served
+  // at once and only a cold start waits on Stripe. A failed fetch caches
+  // nothing, so the next request tries again.
+  private async resolveSales(
+    cachedByKey: Map<BusinessCacheKey, BusinessMetricsCacheEntry>,
+    now: Date,
+    usedEntries: BusinessMetricsCacheEntry[],
+    errors: BusinessMetricError[]
+  ): Promise<MonthlySales | null> {
+    const cached = cachedByKey.get('sales_monthly');
+    if (cached != null) {
+      if (cached.expiresAt.getTime() <= now.getTime()) {
+        this.startOrJoinSalesRefresh(now).catch((error: unknown) => {
+          console.error(
+            '[ops] sales background refresh failed:',
+            messageOf(error)
+          );
+        });
+      }
+      usedEntries.push(cached);
+      return cached.value as MonthlySales;
+    }
+    try {
+      const entry = await this.startOrJoinSalesRefresh(now);
+      usedEntries.push(entry);
+      return entry.value as MonthlySales;
+    } catch (error) {
+      errors.push({ metric: 'sales_monthly', message: messageOf(error) });
+      return null;
+    }
+  }
+
+  // Test helper: lets a test await a background sales refresh.
+  async waitForInflightSalesRefresh(): Promise<void> {
+    try {
+      await this.inflightSalesRefresh;
+    } catch {
+      // the refresh logs its own failure
+    }
+  }
+
+  private startOrJoinSalesRefresh(
+    now: Date
+  ): Promise<BusinessMetricsCacheEntry> {
+    if (this.inflightSalesRefresh != null) {
+      return this.inflightSalesRefresh;
+    }
+    const promise = this.runSalesRefresh(now);
+    this.inflightSalesRefresh = promise;
+    promise
+      .catch(() => undefined)
+      .finally(() => {
+        if (this.inflightSalesRefresh === promise) {
+          this.inflightSalesRefresh = null;
+        }
+      });
+    return promise;
+  }
+
+  private async runSalesRefresh(now: Date): Promise<BusinessMetricsCacheEntry> {
+    const entry: BusinessMetricsCacheEntry = {
+      key: 'sales_monthly',
+      value: await this.fetchMonthlySales(now),
+      cachedAt: now,
+      expiresAt: new Date(now.getTime() + this.cacheTtlMs),
+    };
+    try {
+      await this.cacheRepository.upsertMany([entry]);
+    } catch (error) {
+      console.error('[ops] sales cache upsert failed', error);
+    }
+    return entry;
   }
 
   private async fetchMonthlySales(now: Date): Promise<MonthlySales> {
