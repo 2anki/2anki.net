@@ -3236,7 +3236,7 @@ function UploadForm({
           )}
         </div>
       )}
-      {foldedToggleCount > 0 && cardsHeldBack === 0 && (
+      {foldedToggleCount > 0 && cardsHeldBack === 0 && !downloadRecovered && (
         <FoldedTogglesNotice
           count={foldedToggleCount}
           onPromote={
@@ -3250,6 +3250,11 @@ function UploadForm({
           )}
           disabled={resendPending}
           busy={resendTapped === 'promoteNestedToggles'}
+          countsTowardLimit={
+            isAuthenticated
+              ? cardUsage != null && !cardUsage.unlimited
+              : getStoredPassToken() == null
+          }
         />
       )}
       {thinDeckAiOffer != null && (

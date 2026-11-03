@@ -2522,7 +2522,6 @@ export class DeckParser {
     let mcqSkippedCount = 0;
     let cherrySkippedCount = 0;
     let foldedToggleCount = 0;
-    const listedToggles = new Set(toggleList);
     let promotedCount = 0;
     const pageId = dom('article').attr('id');
 
@@ -2589,11 +2588,7 @@ export class DeckParser {
             : validSummary;
           if (toggle || this.settings.maxOne) {
             // Counted before the cloze promotion rewrites the titles it takes.
-            const foldedToggles = this.countFoldedToggles(
-              toggle,
-              dom,
-              listedToggles
-            );
+            const foldedToggles = this.countFoldedToggles(toggle, dom);
             const nestedToggleCards = this.promoteNestedToggles(
               toggle,
               dom,
@@ -2799,25 +2794,15 @@ export class DeckParser {
       );
   }
 
-  // With the option off, how many of those stayed folded into this card's
-  // back. One that is already its own card in the toggle list is not.
+  // With the option off, how many cards the option would add for this toggle.
   private countFoldedToggles(
     toggle: cheerio.Cheerio<Element>,
-    dom: cheerio.CheerioAPI,
-    listed: Set<Element>
+    dom: cheerio.CheerioAPI
   ): number {
     if (this.settings.promoteNestedToggles || this.settings.isCherry) {
       return 0;
     }
-    const root = toggle.get(0);
-    return this.nestedTogglesWorthACard(toggle, dom).filter(({ $details }) => {
-      const el = $details.get(0);
-      if (el == null || listed.has(el)) return false;
-      return !$details
-        .parentsUntil(root)
-        .toArray()
-        .some((ancestor) => listed.has(ancestor));
-    }).length;
+    return this.nestedTogglesWorthACard(toggle, dom).length;
   }
 
   // A nested toggle whose title carries the inline-code cloze marker is a

@@ -410,11 +410,12 @@
     },
     "overSplit": "Muchos anversos de tarjeta tienen solo una o dos palabras, lo que suele significar que el archivo se dividió a mitad de una frase. Revisa el mazo antes de estudiar o sube el archivo original de Word o Notion para obtener tarjetas más limpias.",
     "foldedToggles": {
-      "count_one": "{{count}} toggle estaba dentro de otro toggle. Quedó en el reverso de la tarjeta exterior en vez de ser una tarjeta propia.",
-      "count_other": "{{count}} toggles estaban dentro de otros toggles. Quedaron en el reverso de las tarjetas exteriores en vez de ser tarjetas propias.",
+      "count_one": "{{count}} toggle estaba dentro de otro toggle, así que no se convirtió en una tarjeta propia.",
+      "count_other": "{{count}} toggles estaban dentro de otros toggles, así que no se convirtieron en tarjetas propias.",
       "action": "Crear tarjetas también con los toggles interiores",
-      "note": "Esto vuelve a convertir el archivo y descarga un mazo nuevo. Las tarjetas exteriores se quedan. La opción sigue activada para tus próximas subidas. Puedes desactivarlo en las opciones de tarjeta (“{{option}}”).",
-      "link": "Activa “{{option}}” en las opciones de tarjeta y vuelve a convertir el archivo"
+      "note": "Esto vuelve a convertir el archivo y descarga un mazo nuevo. Las tarjetas exteriores se mantienen. La opción sigue activada para tus próximas subidas. Puedes desactivarla en las opciones de tarjeta (“{{option}}”).",
+      "link": "Activa “{{option}}” en las opciones de tarjeta y vuelve a convertir el archivo",
+      "limit": "El mazo nuevo también cuenta para tu límite de tarjetas."
     },
     "validation": {
       "continue": "Convertir de todos modos",

@@ -10,34 +10,66 @@ vi.mock('../../../../lib/analytics/track', () => ({ track: vi.fn() }));
 const renderNotice = (ui: React.ReactElement) =>
   render(<MemoryRouter>{ui}</MemoryRouter>);
 
+const ACTION = 'Make cards from the inner toggles too';
+
 describe('FoldedTogglesNotice', () => {
   beforeEach(() => {
     vi.mocked(track).mockClear();
   });
 
-  it('offers one click to make each nested toggle its own card', () => {
+  it('says how many toggles stayed inside other toggles', () => {
+    renderNotice(<FoldedTogglesNotice count={3} onPromote={vi.fn()} />);
+
+    expect(
+      screen.getByText(
+        '3 toggles were inside other toggles, so they did not become cards of their own.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('calls onPromote when the button is clicked', () => {
     const onPromote = vi.fn();
     renderNotice(<FoldedTogglesNotice count={3} onPromote={onPromote} />);
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Make cards from the inner toggles too',
-      })
-    );
+    fireEvent.click(screen.getByRole('button', { name: ACTION }));
 
     expect(onPromote).toHaveBeenCalledTimes(1);
-    expect(
-      screen.getByText(
-        '3 toggles were inside other toggles. They went on the back of the outer cards instead of becoming cards of their own.'
-      )
-    ).toBeInTheDocument();
+  });
+
+  it('records one impression that says the button was offered', () => {
+    renderNotice(<FoldedTogglesNotice count={3} onPromote={vi.fn()} />);
+
+    expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith('folded_toggles_notice_shown', {
       count: 3,
       can_promote: true,
     });
+  });
+
+  it('names the card option the click turns on and that it stays on', () => {
+    renderNotice(<FoldedTogglesNotice count={3} onPromote={vi.fn()} />);
+
     expect(
       screen.getByText(/The option stays on for your next uploads\./)
     ).toHaveTextContent('(“Nested toggles become their own cards”)');
+  });
+
+  it('leaves out the card limit line when the new deck counts toward none', () => {
+    renderNotice(<FoldedTogglesNotice count={3} onPromote={vi.fn()} />);
+
+    expect(
+      screen.queryByText(/counts toward your card limit/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('adds the card limit line when the new deck counts toward one', () => {
+    renderNotice(
+      <FoldedTogglesNotice count={3} onPromote={vi.fn()} countsTowardLimit />
+    );
+
+    expect(
+      screen.getByText(/The new deck counts toward your card limit too\./)
+    ).toBeInTheDocument();
   });
 
   it('marks the button busy while the file goes back', () => {
@@ -65,6 +97,11 @@ describe('FoldedTogglesNotice', () => {
       })
     ).toHaveAttribute('href', '/card-options?returnTo=/upload');
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('records an impression without the button when only the link is offered', () => {
+    renderNotice(<FoldedTogglesNotice count={1} />);
+
     expect(track).toHaveBeenCalledWith('folded_toggles_notice_shown', {
       count: 1,
       can_promote: false,

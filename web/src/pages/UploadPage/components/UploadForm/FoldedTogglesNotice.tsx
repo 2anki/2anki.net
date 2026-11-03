@@ -11,6 +11,7 @@ interface FoldedTogglesNoticeProps {
   actionLabel?: string;
   disabled?: boolean;
   busy?: boolean;
+  countsTowardLimit?: boolean;
 }
 
 export function FoldedTogglesNotice({
@@ -19,6 +20,7 @@ export function FoldedTogglesNotice({
   actionLabel,
   disabled = false,
   busy = false,
+  countsTowardLimit = false,
 }: Readonly<FoldedTogglesNoticeProps>) {
   const { t } = useTranslation();
   // Recorded once per result: a session change in another tab swaps the
@@ -58,6 +60,7 @@ export function FoldedTogglesNotice({
           </button>
           <p className={formStyles.successSecondary}>
             {t('upload.foldedToggles.note', { option })}
+            {countsTowardLimit && ` ${t('upload.foldedToggles.limit')}`}
           </p>
         </>
       )}

@@ -59,6 +59,32 @@ describe('nested toggles folded into a card back (upload path)', () => {
     }
   );
 
+  it.each(['true', 'false'])(
+    'builds the same section cards it always did with the option off (max-one %s)',
+    async (maxOne) => {
+      const [deck] = await parse(sectionsOf(toggle), {
+        'max-one-toggle-per-card': maxOne,
+      });
+
+      expect(deck.cards.map((card) => card.name)).toEqual([
+        expect.stringContaining('Letters'),
+        expect.stringContaining('Sun and moon'),
+      ]);
+      expect(
+        deck.cards.some((card) => card.name.includes('What is shaddah?'))
+      ).toBe(false);
+    }
+  );
+
+  it('keeps the inner questions on the section back when max-one is off', async () => {
+    const [deck] = await parse(sectionsOf(toggle), {
+      'max-one-toggle-per-card': 'false',
+    });
+
+    expect(deck.cards[0].back).toContain('What is shaddah?');
+    expect(deck.cards[0].back).toContain('Doubling.');
+  });
+
   it('matches the cards the option adds when it is turned on', async () => {
     const [off] = await parse(sectionsOf(toggle), {});
     const [on] = await parse(sectionsOf(toggle), {
