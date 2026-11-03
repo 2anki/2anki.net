@@ -111,8 +111,51 @@ class StallReadTest(unittest.TestCase):
             [f"blue {stamp(1, 5)[:16]} 1", f"green {stamp(1, 6)[:16]} 1"],
         )
 
+    def test_interactive_streak_ends_at_a_zero_sample(self):
+        blue = [
+            memory(stamp(1, 5), 1, interactive=1),
+            memory(stamp(1, 6), 1, interactive=0),
+            memory(stamp(1, 7), 1, interactive=1),
+        ]
+        out = run(blue)
+
+        self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), [f"blue {stamp(1, 5)[:16]} 1"])
+
+    def test_interactive_streak_survives_one_missing_sample(self):
+        blue = [memory(stamp(1, 5), 1, interactive=1), memory(stamp(1, 7), 1, interactive=1)]
+        out = run(blue)
+
+        self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), [f"blue {stamp(1, 5)[:16]} 2"])
+
+    def test_interactive_streak_runs_across_midnight(self):
+        blue = [
+            memory("2026-01-31T23:59:00.000+00:00", 1, interactive=1),
+            memory("2026-02-01T00:00:00.000+00:00", 1, interactive=2),
+        ]
+        out = run(blue, [], "2026-01-31T00")
+
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), ["blue 2026-01-31T23:59 2"])
+
+    def test_start_argument_counts_only_lines_after_it(self):
+        out_lines = [memory("2026-01-31T09:10:00.000+00:00", 0), memory("2026-01-31T09:40:00.000+00:00", 0)]
+        errors = [stall("2026-01-31T09:10:00.000+00:00"), stall("2026-01-31T09:40:00.000+00:00")]
+        out = run(out_lines, errors, "2026-01-31T09:30")
+
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("from 2026-01-31T09:30 UTC", out.stdout)
+        self.assertEqual(section(out.stdout, "stall lines"), ["1"])
+
+    def test_fails_loudly_when_the_out_logs_were_not_read(self):
+        out = run([], [stall(stamp(1, 5))])
+
+        self.assertEqual(out.returncode, 4)
+        self.assertIn("0 memory samples", out.stdout)
+        self.assertIn("out logs were not read", out.stderr)
+        self.assertNotIn("== stall lines", out.stdout)
+
     def test_hours_argument_widens_the_window(self):
-        out = run([], [stall(stamp(30, 1))], "48")
+        out = run([memory(stamp(1), 0)], [stall(stamp(30, 1))], "48")
 
         self.assertEqual(section(out.stdout, "stall lines"), ["1"])
         self.assertIn("last 48h", out.stdout)

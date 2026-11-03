@@ -19,17 +19,18 @@ Then run the **stall-signal read** as a second SSH call. Run it every time: a st
 git fetch -q origin main && git cat-file -e origin/main:scripts/stall-read.sh && git show origin/main:scripts/stall-read.sh | ssh -o ConnectTimeout=10 alemayhu@2anki.net 'bash -s -- 24'
 ```
 
-Trust the read only when it prints the `== window:` header with a non-zero line count, prints nothing on stderr, and exits 0. Anything else means the read did not run, and that is not "Stalls: none": report **Stalls: read failed** with the error. A failed read alone does not make the verdict "watching", so it never holds `/ship` step 6 in its watch loop.
+The argument is the window: whole hours (`24`), or a UTC start to the hour or minute (`2026-11-03T09:30`). **Inside `/ship` steps 6 and 8, pass the deploy run's start time in UTC**, so a signal from before the merge cannot hold the watch loop on an unrelated PR. Run on its own, keep the hours. "Errors in the last 7 days" means `168` here too.
+
+Trust the read only when it prints the `== window:` header with non-zero lines and memory samples, prints nothing on stderr, and exits 0. Anything else means the read did not run, and that is not "Stalls: none": report **Stalls: read failed** with the error. A failed read alone does not make the verdict "watching", so it never holds `/ship` step 6 in its watch loop.
 
 The read lives in `scripts/stall-read.sh` (tests: `python3 scripts/stall-read.test.py`) and is fed to the box over stdin from `origin/main`, so it runs the same from any branch, worktree or subdirectory of the repo. It reads the out and error logs together, because the stall watch writes its lines with `console.warn`. Do not inline it back into this file: the command loader rewrites dollar-digit references, and the remote shell expanded the rest inside double quotes, so the old inline read printed awk syntax errors next to an innocent-looking `0` for every count.
 
 Thresholds. Any one of these makes the verdict **"watching: uploads queued"**, whatever the error count says:
-- `pool_queue_interactive` is 1 or more for longer than a minute, which is a streak of 2 or more under `== longest pool_queue_interactive` (each color samples once a minute, and the streak counts consecutive samples from one color), or `pool_queue` is 10 or more in any hour;
+- `pool_queue_interactive` is 1 or more for longer than a minute: a streak of 2 or more under `== longest pool_queue_interactive`. Each color samples once a minute. A zero sample or a gap of more than two minutes ends a streak, so one late or missing sample does not;
+- `pool_queue` is 10 or more in any hour;
 - 10 or more requests with no status (`HTTP/1.1" - -`) in an hour, meaning requests the server never answered;
-- any `[conversion-pool] stall` line (the watch emails ops once an upload waits 120s);
+- any `[conversion-pool] stall oldest_wait_s=` sample under `== stall lines` (the watch emails ops once an upload waits 120s);
 - a max `tempfile dwell` above 120000 ms.
-
-Widen the `24` (hours) to match the window you were asked about. "Errors in the last 7 days" means this read over 7 days too.
 
 Then report concisely:
 
