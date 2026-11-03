@@ -14007,6 +14007,127 @@ describe('UploadForm folded toggles notice, signed in', () => {
     expect(screen.queryByText(/toggles were inside other toggles/)).toBeNull();
   });
 
+  function setPayingWithFeatures(features: Record<string, boolean>) {
+    const data = {
+      user: { id: 2, email: 'paying@example.com' },
+      locals: { owner: 2, patreon: false, subscriber: true },
+      features,
+    } as unknown as ReturnType<typeof useUserLocals>['data'];
+    mockUseUserLocals.mockReturnValue({
+      data,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn().mockResolvedValue({ status: 'success', data }),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  }
+
+  function routeFetch(deckHeaders: Record<string, string>) {
+    return vi.fn((url: string) =>
+      Promise.resolve(
+        url === '/api/ai/credits'
+          ? new Response(
+              JSON.stringify({
+                credits: 1347,
+                used: 153,
+                allowance: 1500,
+                usable: true,
+                windowEnd: null,
+                resets: 'pass',
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            )
+          : deckResponse(deckHeaders)
+      )
+    );
+  }
+
+  async function uploadNamed(container: HTMLElement, name: string) {
+    const fileInput = container.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['x'], name)],
+      configurable: true,
+    });
+    await act(async () => {
+      container
+        .querySelector('form')!
+        .dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+    });
+  }
+
+  function uploadCalls(fetchMock: Mock) {
+    return fetchMock.mock.calls.filter(
+      (call) => call[0] === '/api/upload/file'
+    ) as Array<[string, RequestInit]>;
+  }
+
+  it('shows the free offer above the thin-deck Claude offer and resends without AI', async () => {
+    setPayingWithFeatures({ thinDeckAiOffer: true });
+    const fetchMock = routeFetch({
+      'X-Card-Count': '2',
+      'X-Upload-Owner': '2',
+      'X-Folded-Toggle-Count': '3',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await uploadNamed(container, 'notes.html');
+
+    const promote = await screen.findByRole('button', {
+      name: 'Make cards from the inner toggles too',
+    });
+    const thinOffer = screen.getByRole('region', {
+      name: 'Preview what Claude would write from this file',
+    });
+    expect(
+      promote.compareDocumentPosition(thinOffer) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    await act(async () => {
+      promote.click();
+    });
+
+    await waitFor(() => expect(uploadCalls(fetchMock)).toHaveLength(2));
+    const sent = uploadCalls(fetchMock)[1][1].body as FormData;
+    expect(sent.get('promote-nested-toggles')).toBe('true');
+    expect(sent.get('claude-ai-flashcards')).toBe('false');
+  });
+
+  it('shows the free offer beside the Claude rebuild offer on a paying PDF deck', async () => {
+    setPayingWithFeatures({});
+    localStorage.setItem('claude-ai-flashcards', 'false');
+    const fetchMock = routeFetch({
+      'X-Card-Count': '12',
+      'X-Upload-Owner': '2',
+      'X-Folded-Toggle-Count': '3',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await uploadNamed(container, 'lecture.pdf');
+
+    expect(
+      await screen.findByRole('button', { name: 'Rebuild with Claude' })
+    ).toBeInTheDocument();
+    await act(async () => {
+      screen
+        .getByRole('button', { name: 'Make cards from the inner toggles too' })
+        .click();
+    });
+
+    await waitFor(() => expect(uploadCalls(fetchMock)).toHaveLength(2));
+    const sent = uploadCalls(fetchMock)[1][1].body as FormData;
+    expect(sent.get('promote-nested-toggles')).toBe('true');
+    expect(sent.get('claude-ai-flashcards')).toBe('false');
+  });
+
   it('links to card options when the deck came from another account', async () => {
     vi.stubGlobal(
       'fetch',

@@ -724,6 +724,28 @@ describe('CardOptionsForm loads a saved per-page payload', () => {
     expect(codeTheme.value).toBe('dracula');
   });
 
+  it('opens a Notion page with no saved nested-toggle choice ticked after the upload offer saved it', async () => {
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'promote-nested-toggles',
+        'Nested toggles become their own cards',
+        'Turn every toggle nested inside another toggle into its own card.',
+        false
+      ),
+    ]);
+    localStorage.setItem('promote-nested-toggles', 'true');
+    mockGetSettings.mockResolvedValue({ deckName: 'Saved Pharmacology Deck' });
+
+    renderPageForm({ setError: vi.fn() });
+
+    const toggle = await screen.findByRole('checkbox', {
+      name: 'Nested toggles become their own cards',
+    });
+    await waitFor(() => {
+      expect(toggle).toBeChecked();
+    });
+  });
+
   it('ticks a saved checkbox option from a flat payload', async () => {
     mockGetSettings.mockResolvedValue({ 'no-underline': 'true' });
 
