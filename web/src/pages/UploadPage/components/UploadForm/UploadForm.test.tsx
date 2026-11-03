@@ -4844,6 +4844,56 @@ describe('limit state', () => {
     expect(screen.queryByText('Choose files')).not.toBeInTheDocument();
   });
 
+  it('offers the Semester Pass beside the leading Day Pass on the locked wall', () => {
+    setUserLocals(loggedInData);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+    const day = screen.getByRole('button', { name: /Get Day Pass/ });
+    const semester = screen.getByRole('button', { name: /Get Semester Pass/ });
+    const plans = screen.getByRole('link', { name: 'See plans' });
+    expect(
+      day.compareDocumentPosition(semester) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      semester.compareDocumentPosition(plans) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(day.className).toContain('primary');
+    expect(screen.getAllByRole('button', { name: /Day Pass/ })).toHaveLength(1);
+    expect(screen.getByText('Pay once — no subscription')).toBeInTheDocument();
+  });
+
+  it('starts a Semester Pass checkout from the locked wall tagged to the upload wall', async () => {
+    setUserLocals(loggedInData);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+    const startPassCheckout = vi.fn().mockResolvedValue({ status: 'error' });
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout,
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: /Get Semester Pass/ })
+      );
+    });
+
+    expect(startPassCheckout).toHaveBeenCalledWith(
+      '120d',
+      undefined,
+      'upload-limit-wall'
+    );
+  });
+
   it('leads the locked wall with the Semester Pass when the pass-first flag is on', () => {
     setUserLocals({
       ...loggedInData,
@@ -5153,6 +5203,28 @@ describe('limit state', () => {
     expect(title?.textContent).toMatch(
       /over your free limit of 100 cards a month/i
     );
+  });
+
+  it('offers both passes on the over-the-limit wall, Day Pass first, with plans and a different file', async () => {
+    setUserLocals(loggedInData);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 0,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+    stubLimitFetch('card_count');
+    await submitAndReachLimit();
+    const day = screen.getByRole('button', { name: /Get Day Pass/ });
+    const semester = screen.getByRole('button', { name: /Get Semester Pass/ });
+    expect(
+      day.compareDocumentPosition(semester) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'See plans' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Try a different file' })
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Day Pass/ })).toHaveLength(1);
   });
 
   it('leads the over-the-limit wall with the Semester Pass when the pass-first flag is on', async () => {

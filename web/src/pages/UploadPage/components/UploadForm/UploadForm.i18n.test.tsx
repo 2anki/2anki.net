@@ -155,7 +155,7 @@ describe('UploadForm card-limit wall in German', () => {
     renderUploadForm();
     fireEvent.click(screen.getByRole('button', { name: /Day Pass holen/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Der Checkout konnte nicht gestartet werden. Überprüfe deine Verbindung und versuch es erneut.'
+      'Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.'
     );
   });
 });

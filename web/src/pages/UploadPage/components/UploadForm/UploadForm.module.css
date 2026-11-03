@@ -775,6 +775,13 @@
   animation: fadeIn 150ms ease;
 }
 
+/* The pass buttons sit a step further from the usage line than the lines
+   above sit from each other, as the old action row did. */
+.limitOffer {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
 .limitActions {
   display: flex;
   justify-content: center;
