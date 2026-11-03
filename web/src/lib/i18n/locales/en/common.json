@@ -413,9 +413,9 @@
       "count_one": "{{count}} toggle was inside another toggle, so it did not become a card of its own.",
       "count_other": "{{count}} toggles were inside other toggles, so they did not become cards of their own.",
       "action": "Make cards from the inner toggles too",
-      "note": "This converts the file again and downloads a new deck. The outer cards stay. The option stays on for your next uploads. You can turn it off in card options (“{{option}}”).",
+      "note": "This turns on “{{option}}” in card options, converts the file again and downloads a new deck. The outer cards stay. The option stays on for your next uploads.",
       "link": "Turn on “{{option}}” in card options, then convert the file again",
-      "limit": "The new deck counts toward your card limit too."
+      "limit": "The new deck counts toward your card limit."
     },
     "validation": {
       "continue": "Convert anyway",

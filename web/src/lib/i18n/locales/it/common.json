@@ -413,9 +413,9 @@
       "count_one": "{{count}} toggle era dentro un altro toggle, quindi non è diventato una carta a sé.",
       "count_other": "{{count}} toggle erano dentro altri toggle, quindi non sono diventati carte a sé.",
       "action": "Crea carte anche dai toggle interni",
-      "note": "Così il file viene convertito di nuovo e scarichi un nuovo mazzo. Le carte esterne restano. L'opzione resta attiva per i tuoi prossimi caricamenti. Puoi disattivarla nelle opzioni delle carte (“{{option}}”).",
+      "note": "Così si attiva “{{option}}” nelle opzioni delle carte, il file viene convertito di nuovo e scarichi un nuovo mazzo. Le carte esterne restano. L'opzione resta attiva per i tuoi prossimi caricamenti.",
       "link": "Attiva “{{option}}” nelle opzioni delle carte, poi converti di nuovo il file",
-      "limit": "Anche il nuovo mazzo conta per il tuo limite di carte."
+      "limit": "Il nuovo mazzo conta nel tuo limite di carte."
     },
     "validation": {
       "continue": "Converti comunque",

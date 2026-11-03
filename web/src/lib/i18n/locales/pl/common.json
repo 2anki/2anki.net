@@ -463,9 +463,9 @@
       "count_many": "{{count}} przełączników było wewnątrz innych przełączników, więc nie stało się osobnymi kartami.",
       "count_other": "{{count}} przełączników było wewnątrz innych przełączników, więc nie stało się osobnymi kartami.",
       "action": "Zrób karty także z wewnętrznych przełączników",
-      "note": "To konwertuje plik jeszcze raz i pobiera nową talię. Zewnętrzne karty zostają. Opcja pozostanie włączona dla kolejnych przesyłanych plików. Możesz to wyłączyć w opcjach kart („{{option}}”).",
+      "note": "To włącza „{{option}}” w opcjach kart, konwertuje plik jeszcze raz i pobiera nową talię. Zewnętrzne karty zostają. Opcja pozostanie włączona dla kolejnych przesyłanych plików.",
       "link": "Włącz „{{option}}” w opcjach kart, a potem przekonwertuj plik jeszcze raz",
-      "limit": "Nowa talia też liczy się do twojego limitu kart."
+      "limit": "Nowa talia liczy się do twojego limitu kart."
     },
     "validation": {
       "continue": "Konwertuj mimo to",

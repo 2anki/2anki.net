@@ -3236,27 +3236,26 @@ function UploadForm({
           )}
         </div>
       )}
-      {foldedToggleCount > 0 && cardsHeldBack === 0 && !downloadRecovered && (
-        <FoldedTogglesNotice
-          count={foldedToggleCount}
-          onPromote={
-            rescueFiles.length > 0 && !keptFilesBelongElsewhere
-              ? handlePromoteFoldedToggles
-              : undefined
-          }
-          actionLabel={resendLabel(
-            'promoteNestedToggles',
-            t('upload.foldedToggles.action')
-          )}
-          disabled={resendPending}
-          busy={resendTapped === 'promoteNestedToggles'}
-          countsTowardLimit={
-            isAuthenticated
-              ? cardUsage != null && !cardUsage.unlimited
-              : getStoredPassToken() == null
-          }
-        />
-      )}
+      {foldedToggleCount > 0 &&
+        cardsHeldBack === 0 &&
+        !downloadRecovered &&
+        !isUploadLocked && (
+          <FoldedTogglesNotice
+            count={foldedToggleCount}
+            onPromote={
+              rescueFiles.length > 0 && !keptFilesBelongElsewhere
+                ? handlePromoteFoldedToggles
+                : undefined
+            }
+            actionLabel={resendLabel(
+              'promoteNestedToggles',
+              t('upload.foldedToggles.action')
+            )}
+            disabled={resendPending}
+            busy={resendTapped === 'promoteNestedToggles'}
+            countsTowardLimit={!isPaying && cardUsage?.unlimited !== true}
+          />
+        )}
       {thinDeckAiOffer != null && (
         <ThinDeckAiOffer
           file={thinDeckAiOffer.file}

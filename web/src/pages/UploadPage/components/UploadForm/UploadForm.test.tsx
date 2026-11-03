@@ -1065,9 +1065,7 @@ describe('UploadForm', () => {
         );
       });
       expect(
-        await screen.findByText(
-          /The new deck counts toward your card limit too\./
-        )
+        await screen.findByText(/The new deck counts toward your card limit\./)
       ).toBeInTheDocument();
       await act(async () => {
         screen
@@ -1088,8 +1086,63 @@ describe('UploadForm', () => {
     }
   });
 
+  function setPassLocals(subscriber: boolean) {
+    mockUseUserLocals.mockReturnValue({
+      data: { user: null, locals: { owner: 0, subscriber } },
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  }
+
+  function restoreSignedOutLocals() {
+    mockUseUserLocals.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useUserLocals>);
+  }
+
+  test('says an expired pass still counts the new deck toward the free cap', async () => {
+    storePassToken('cs_expired_pass');
+    setPassLocals(false);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(foldedToggleResponse('5'))
+    );
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const input = container.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        value: [new File(['x'], 'sections.zip')],
+      });
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+
+      expect(
+        await screen.findByText(/The new deck counts toward your card limit\./)
+      ).toBeInTheDocument();
+    } finally {
+      clearPassToken();
+      restoreSignedOutLocals();
+    }
+  });
+
   test('sends a pass holder resend with the pass token and no card limit line', async () => {
     storePassToken('cs_folded_pass');
+    setPassLocals(true);
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(foldedToggleResponse('5'))
@@ -1116,7 +1169,7 @@ describe('UploadForm', () => {
         name: 'Make cards from the inner toggles too',
       });
       expect(
-        screen.queryByText(/The new deck counts toward your card limit too\./)
+        screen.queryByText(/The new deck counts toward your card limit\./)
       ).toBeNull();
       await act(async () => {
         screen
@@ -1133,6 +1186,7 @@ describe('UploadForm', () => {
       });
     } finally {
       clearPassToken();
+      restoreSignedOutLocals();
       localStorage.removeItem('promote-nested-toggles');
     }
   });
@@ -13723,6 +13777,7 @@ describe('UploadForm folded toggles notice, signed in', () => {
       isError: false,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useUserLocals>);
+    mockUseCardUsage.mockReset();
     mockUseCardUsage.mockReturnValue(null);
     mockGet2ankiApi.mockReturnValue({
       startPassCheckout: vi.fn().mockResolvedValue({ status: 'error' }),
@@ -13771,7 +13826,7 @@ describe('UploadForm folded toggles notice, signed in', () => {
     expect(sent.get('claude-ai-flashcards')).toBe('false');
   });
 
-  const limitLine = /The new deck counts toward your card limit too\./;
+  const limitLine = /The new deck counts toward your card limit\./;
 
   function sectionsThenDeck(second: ReturnType<typeof deckResponse> | object) {
     return vi
@@ -13919,6 +13974,36 @@ describe('UploadForm folded toggles notice, signed in', () => {
 
     const link = await screen.findByRole('link', { name: 'Download deck' });
     expect(link).toHaveAttribute('href', '/api/download/u/promoted-key');
+    expect(screen.queryByText(/toggles were inside other toggles/)).toBeNull();
+  });
+
+  it('stays out of the way when the deck used up the rest of the month', async () => {
+    let used = 90;
+    mockUseCardUsage.mockImplementation(() => ({
+      cards_used: used,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => {
+        used = 100;
+        return Promise.resolve(
+          deckResponse({
+            'X-Card-Count': '10',
+            'X-Upload-Owner': '2',
+            'X-Folded-Toggle-Count': '4',
+          })
+        );
+      })
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    await uploadSections(container);
+
+    await screen.findByRole('button', { name: 'Make another deck' });
     expect(screen.queryByText(/toggles were inside other toggles/)).toBeNull();
   });
 

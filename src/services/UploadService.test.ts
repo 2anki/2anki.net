@@ -6457,6 +6457,34 @@ describe('UploadService.handleUpload — stored card options', () => {
     );
   });
 
+  it('applies a stored promote-nested-toggles to a connector upload that does not send it', async () => {
+    mockOneDeck();
+    const attachCustomTemplates = vi.fn().mockResolvedValue(undefined);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardOptions: vi
+          .fn()
+          .mockResolvedValue({ 'promote-nested-toggles': 'true' }),
+      } as unknown as Partial<UsersRepository>),
+      ...fakeUploadServiceDeps({
+        settings: { attachCustomTemplates } as unknown as ISettingsRepository,
+      })
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).mcp_auth = true;
+
+    await service.handleUpload(req, res);
+
+    expect(attachCustomTemplates).toHaveBeenCalledWith(
+      '42',
+      expect.objectContaining({ promoteNestedToggles: true })
+    );
+  });
+
   it('lets the browser win for an ordinary option it did send', async () => {
     mockOneDeck();
     const attachCustomTemplates = vi.fn().mockResolvedValue(undefined);

@@ -51,7 +51,9 @@ describe('FoldedTogglesNotice', () => {
 
     expect(
       screen.getByText(/The option stays on for your next uploads\./)
-    ).toHaveTextContent('(“Nested toggles become their own cards”)');
+    ).toHaveTextContent(
+      'This turns on “Nested toggles become their own cards”'
+    );
   });
 
   it('leaves out the card limit line when the new deck counts toward none', () => {
@@ -68,7 +70,7 @@ describe('FoldedTogglesNotice', () => {
     );
 
     expect(
-      screen.getByText(/The new deck counts toward your card limit too\./)
+      screen.getByText(/The new deck counts toward your card limit\./)
     ).toBeInTheDocument();
   });
 
