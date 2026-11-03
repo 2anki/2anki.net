@@ -271,6 +271,40 @@ describe('buildScoreRows', () => {
     expect(row).toMatchObject({ value: null, status: 'none' });
   });
 
+  it('scores the same rows whether or not the sales figure came through', () => {
+    const inputs = {
+      conversion: conversion(),
+      unresolvedErrorGroups: 3,
+      passUnlock: passUnlock(1),
+      paidValue: paidValue(2, 1),
+    };
+    const period = {
+      start: '2026-09-01T00:00:00.000Z',
+      end: '2026-09-09T00:00:00.000Z',
+      by_currency: [],
+    };
+    const withSales = buildScoreRows({
+      ...inputs,
+      business: business({
+        sales_monthly: {
+          this_month: period,
+          last_month_to_date: period,
+          last_month: period,
+        },
+      }),
+    });
+    const withSalesError = buildScoreRows({
+      ...inputs,
+      business: business({
+        sales_monthly: null,
+        errors: [{ metric: 'sales_monthly', message: 'stripe down' }],
+      }),
+    });
+
+    expect(withSales).toEqual(rows);
+    expect(withSalesError).toEqual(rows);
+  });
+
   it('renders every row with a null value when a source is missing', () => {
     const empty = buildScoreRows({
       business: null,

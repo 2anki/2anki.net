@@ -33,6 +33,7 @@ const buildSampleMetrics = (
   overrides: Partial<BusinessMetricsResponse> = {}
 ): BusinessMetricsResponse => ({
   mrr_usd: 4820,
+  sales_monthly: null,
   net_new_mrr_mtd_usd: 312,
   active_paying_subs: 184,
   churn_30d_pct: 2.1,
@@ -153,6 +154,47 @@ describe('BusinessTab', () => {
     expect(screen.getByText('Pass unlocks')).toBeInTheDocument();
     expect(screen.getByText('Paid value')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Check passes' })).toBeNull();
+  });
+
+  test('shows sales this month with passes beside subscriptions', async () => {
+    const period = (totalCents: number, subs = 0, passes = 0) => ({
+      start: '2026-11-01T00:00:00.000Z',
+      end: '2026-11-03T10:00:00.000Z',
+      by_currency: [
+        {
+          currency: 'usd',
+          subscriptions_cents: subs,
+          passes_cents: passes,
+          credit_packs_cents: 0,
+          other_cents: 0,
+          total_cents: totalCents,
+          charges: 3,
+        },
+      ],
+    });
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: async () =>
+        buildSampleMetrics({
+          sales_monthly: {
+            this_month: period(101_200, 40_000, 61_200),
+            last_month_to_date: period(90_000),
+            last_month: period(410_000),
+          },
+        }),
+    });
+
+    renderTab();
+
+    await waitFor(() => expect(screen.getByText('$1,012')).toBeInTheDocument());
+    expect(screen.getByText('Sales this month (Stripe)')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'subscriptions $400 · passes $612 · last month by this day $900 · all of last month $4,100'
+      )
+    ).toBeInTheDocument();
   });
 
   test('renders all six big-number cards from the response', async () => {

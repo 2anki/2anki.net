@@ -14,6 +14,7 @@ function makeBusiness(
 ): BusinessMetricsResponse {
   return {
     mrr_usd: 1823,
+    sales_monthly: null,
     net_new_mrr_mtd_usd: 312,
     active_paying_subs: 759,
     churn_30d_pct: 18.2,
@@ -196,6 +197,7 @@ describe('buildClaudePrompt — business', () => {
     const prompt = buildClaudePrompt('business', makeBusiness());
     expect(prompt).toContain('## Business metrics — weekly revenue review');
     expect(prompt).toContain('MRR (USD):                 1823');
+    expect(prompt).toContain('Sales this month (USD):    —');
     expect(prompt).toContain('Active paying subs:        759');
     expect(prompt).toContain('Churn 30d (%):             18.2');
     expect(prompt).toContain('MRR timeseries (90d)');
@@ -204,6 +206,39 @@ describe('buildClaudePrompt — business', () => {
       'name the biggest revenue risk this week and propose one change'
     );
     expect(prompt).toContain('Repo: 2anki/server');
+  });
+
+  it('carries this month’s sales and their split', () => {
+    const period = (totalCents: number) => ({
+      start: '2026-11-01T00:00:00.000Z',
+      end: '2026-11-03T10:00:00.000Z',
+      by_currency: [
+        {
+          currency: 'usd',
+          subscriptions_cents: 0,
+          passes_cents: totalCents,
+          credit_packs_cents: 0,
+          other_cents: 0,
+          total_cents: totalCents,
+          charges: 1,
+        },
+      ],
+    });
+    const prompt = buildClaudePrompt(
+      'business',
+      makeBusiness({
+        sales_monthly: {
+          this_month: period(2900),
+          last_month_to_date: period(600),
+          last_month: period(12_000),
+        },
+      })
+    );
+
+    expect(prompt).toContain('Sales this month (USD):    $29');
+    expect(prompt).toContain(
+      'Sales breakdown:           subscriptions $0 · passes $29 · last month by this day $6 · all of last month $120'
+    );
   });
 
   it('includes the untrusted notice when a cancellation comment is present', () => {

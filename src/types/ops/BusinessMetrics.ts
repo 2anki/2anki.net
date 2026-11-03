@@ -19,8 +19,34 @@ export interface PassSalesCounts {
   semester_passes: number;
 }
 
+// Money that actually came in through Stripe, by the month the charge was
+// made, net of refunds. MRR only counts subscriptions, so it left out passes
+// and credit packs, which by 2026-10 were about half of sales.
+export interface SalesCurrencyTotal {
+  currency: string;
+  subscriptions_cents: number;
+  passes_cents: number;
+  credit_packs_cents: number;
+  other_cents: number;
+  total_cents: number;
+  charges: number;
+}
+
+export interface SalesPeriod {
+  start: string;
+  end: string;
+  by_currency: SalesCurrencyTotal[];
+}
+
+export interface MonthlySales {
+  this_month: SalesPeriod;
+  last_month_to_date: SalesPeriod;
+  last_month: SalesPeriod;
+}
+
 export type BusinessMetricKey =
   | 'mrr_usd'
+  | 'sales_monthly'
   | 'net_new_mrr_mtd_usd'
   | 'active_paying_subs'
   | 'churn_30d_pct'
@@ -93,6 +119,7 @@ export interface ChurnBreakdown {
 
 export interface BusinessMetricsResponse {
   mrr_usd: number | null;
+  sales_monthly: MonthlySales | null;
   net_new_mrr_mtd_usd: number | null;
   active_paying_subs: number | null;
   churn_30d_pct: number | null;

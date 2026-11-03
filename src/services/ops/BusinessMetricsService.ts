@@ -55,8 +55,16 @@ import type {
   ChurnTierPoint,
   ConversionsChurnWeekPoint,
   FailedPaymentsWeekPoint,
+  MonthlySales,
   MrrTimeseriesPoint,
 } from '../../types/ops/BusinessMetrics';
+import {
+  computeMonthlySales,
+  OneTimeSale,
+  oneTimeSaleFromCheckoutSession,
+  SaleCharge,
+  salesWindowStartMs,
+} from './monthlySales';
 
 export type {
   ActiveSubsTimeseriesPoint,
@@ -108,6 +116,9 @@ const STRIPE_PAGE_LIMIT = 100;
 const MRR_HISTORY_DAYS = 90;
 const WEEKLY_HISTORY_WEEKS = 12;
 const FAILED_INVOICES_LOOKBACK_DAYS = WEEKLY_HISTORY_WEEKS * 7;
+// A pass charge lands minutes after its Checkout session is created, so a
+// day of slack before the sales window catches every session it needs.
+const SALES_SESSION_SLACK_MS = SECONDS_PER_DAY * 1000;
 
 const INTERVAL_TO_MONTHLY_FACTOR: Record<string, number> = {
   month: 1,
@@ -197,6 +208,9 @@ export class BusinessMetricsService {
 
   private inflightSourceRefresh: Promise<SourceRefreshResult> | null = null;
 
+  private inflightSalesRefresh: Promise<BusinessMetricsCacheEntry> | null =
+    null;
+
   constructor(deps: BusinessMetricsServiceDeps = {}) {
     this.stripeFactory = deps.stripeFactory ?? (() => getStripe());
     this.cacheTtlMs = deps.cacheTtlMs ?? BUSINESS_METRICS_CACHE_TTL_MS;
@@ -234,6 +248,13 @@ export class BusinessMetricsService {
     if (sources.subsEntry != null) usedEntries.push(sources.subsEntry);
     if (sources.invoicesEntry != null) usedEntries.push(sources.invoicesEntry);
 
+    const salesPending = this.resolveSales(
+      cachedByKey,
+      now,
+      usedEntries,
+      errors
+    );
+
     const dbSettled = await Promise.all(
       dbTasks.map(({ key, fetch }) =>
         this.resolveMetric(
@@ -251,6 +272,8 @@ export class BusinessMetricsService {
         })
       )
     );
+
+    const salesMonthly = await salesPending;
 
     if (freshEntries.length > 0) {
       try {
@@ -276,6 +299,7 @@ export class BusinessMetricsService {
 
     const response: BusinessMetricsResponse = {
       mrr_usd: fromSubs((s) => computeMrrUsd(s, now)),
+      sales_monthly: salesMonthly,
       net_new_mrr_mtd_usd: fromSubs((s) => computeNetNewMrrMtdUsd(s, now)),
       active_paying_subs: fromSubs((s) => computeActiveCount(s, now)),
       churn_30d_pct: fromSubs((s) => computeChurn30dPct(s, now)),
@@ -701,6 +725,150 @@ export class BusinessMetricsService {
     return result;
   }
 
+  // Sales page through two months of Stripe charges, so they refresh in the
+  // background the way subscriptions and invoices do: a stale figure is served
+  // at once and only a cold start waits on Stripe. A failed fetch caches
+  // nothing, so the next request tries again.
+  private async resolveSales(
+    cachedByKey: Map<BusinessCacheKey, BusinessMetricsCacheEntry>,
+    now: Date,
+    usedEntries: BusinessMetricsCacheEntry[],
+    errors: BusinessMetricError[]
+  ): Promise<MonthlySales | null> {
+    const cached = cachedByKey.get('sales_monthly');
+    // A row written last month holds last month as "this month", so after a
+    // restart on the 1st it counts as no row at all and the request waits.
+    if (cached != null && isSameSalesMonth(cached.value, now)) {
+      if (cached.expiresAt.getTime() <= now.getTime()) {
+        this.startOrJoinSalesRefresh(now).catch((error: unknown) => {
+          console.error(
+            '[ops] sales background refresh failed:',
+            messageOf(error)
+          );
+        });
+      }
+      usedEntries.push(cached);
+      return cached.value as MonthlySales;
+    }
+    try {
+      const entry = await this.startOrJoinSalesRefresh(now);
+      usedEntries.push(entry);
+      return entry.value as MonthlySales;
+    } catch (error) {
+      errors.push({ metric: 'sales_monthly', message: messageOf(error) });
+      return null;
+    }
+  }
+
+  // Test helper: lets a test await a background sales refresh.
+  async waitForInflightSalesRefresh(): Promise<void> {
+    try {
+      await this.inflightSalesRefresh;
+    } catch {
+      // the refresh logs its own failure
+    }
+  }
+
+  private startOrJoinSalesRefresh(
+    now: Date
+  ): Promise<BusinessMetricsCacheEntry> {
+    if (this.inflightSalesRefresh != null) {
+      return this.inflightSalesRefresh;
+    }
+    const promise = this.runSalesRefresh(now);
+    this.inflightSalesRefresh = promise;
+    promise
+      .catch(() => undefined)
+      .finally(() => {
+        if (this.inflightSalesRefresh === promise) {
+          this.inflightSalesRefresh = null;
+        }
+      });
+    return promise;
+  }
+
+  private async runSalesRefresh(now: Date): Promise<BusinessMetricsCacheEntry> {
+    const entry: BusinessMetricsCacheEntry = {
+      key: 'sales_monthly',
+      value: await this.fetchMonthlySales(now),
+      cachedAt: now,
+      expiresAt: new Date(now.getTime() + this.cacheTtlMs),
+    };
+    try {
+      await this.cacheRepository.upsertMany([entry]);
+    } catch (error) {
+      console.error('[ops] sales cache upsert failed', error);
+    }
+    return entry;
+  }
+
+  private async fetchMonthlySales(now: Date): Promise<MonthlySales> {
+    const stripe = this.stripeFactory();
+    const windowStartMs = salesWindowStartMs(now);
+    const [charges, oneTimeSales] = await Promise.all([
+      this.fetchSaleCharges(stripe, windowStartMs),
+      this.fetchOneTimeSales(stripe, windowStartMs - SALES_SESSION_SLACK_MS),
+    ]);
+    return computeMonthlySales(charges, oneTimeSales, now);
+  }
+
+  private async fetchSaleCharges(
+    stripe: Stripe,
+    sinceMs: number
+  ): Promise<SaleCharge[]> {
+    const result: SaleCharge[] = [];
+    let startingAfter: string | undefined;
+    let hasMore = true;
+    while (hasMore) {
+      const page: StripeTypes.ApiList<StripeTypes.Charge> =
+        await stripe.charges.list({
+          created: { gte: Math.floor(sinceMs / 1000) },
+          limit: STRIPE_PAGE_LIMIT,
+          starting_after: startingAfter,
+        });
+      for (const charge of page.data) {
+        if (charge.status !== 'succeeded') continue;
+        result.push({
+          createdMs: charge.created * 1000,
+          amountCents: charge.amount,
+          refundedCents: charge.amount_refunded,
+          currency: charge.currency,
+          paymentIntentId: idOf(charge.payment_intent),
+        });
+      }
+      hasMore = page.has_more === true && page.data.length > 0;
+      startingAfter = hasMore ? page.data[page.data.length - 1].id : undefined;
+    }
+    return result;
+  }
+
+  private async fetchOneTimeSales(
+    stripe: Stripe,
+    sinceMs: number
+  ): Promise<Map<string, OneTimeSale>> {
+    const result = new Map<string, OneTimeSale>();
+    let startingAfter: string | undefined;
+    let hasMore = true;
+    while (hasMore) {
+      const page: StripeTypes.ApiList<StripeTypes.Checkout.Session> =
+        await stripe.checkout.sessions.list({
+          created: { gte: Math.floor(sinceMs / 1000) },
+          status: 'complete',
+          limit: STRIPE_PAGE_LIMIT,
+          starting_after: startingAfter,
+        });
+      for (const session of page.data) {
+        const paymentIntentId = idOf(session.payment_intent);
+        const sale = oneTimeSaleFromCheckoutSession(session);
+        if (paymentIntentId == null || sale == null) continue;
+        result.set(paymentIntentId, sale);
+      }
+      hasMore = page.has_more === true && page.data.length > 0;
+      startingAfter = hasMore ? page.data[page.data.length - 1].id : undefined;
+    }
+    return result;
+  }
+
   private async fetchInvoices(now: Date): Promise<NormalizedInvoice[]> {
     const stripe = this.stripeFactory();
     const since = epochSecondsDaysAgo(now, FAILED_INVOICES_LOOKBACK_DAYS);
@@ -724,6 +892,16 @@ export class BusinessMetricsService {
     return result;
   }
 }
+
+const isSameSalesMonth = (value: unknown, now: Date): boolean => {
+  const start = (value as MonthlySales | null)?.this_month?.start;
+  return start === new Date(startOfMonthUtcMs(now)).toISOString();
+};
+
+const idOf = (value: string | { id: string } | null): string | null => {
+  if (value == null) return null;
+  return typeof value === 'string' ? value : value.id;
+};
 
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);

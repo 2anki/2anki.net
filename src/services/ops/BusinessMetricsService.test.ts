@@ -88,8 +88,30 @@ const sub = (
   items: { data: items },
 });
 
+interface FakeCharge {
+  id: string;
+  status: string;
+  created: number;
+  amount: number;
+  amount_refunded?: number;
+  currency?: string;
+  payment_intent: string | null;
+}
+
+interface FakeCheckoutSession {
+  id: string;
+  mode: 'payment' | 'subscription';
+  payment_intent: string | null;
+  metadata: Record<string, string> | null;
+  amount_total: number | null;
+  currency?: string;
+  currency_conversion?: { amount_total: number; source_currency: string };
+}
+
 interface FakeStripeOptions {
   allSubs?: FakeSubscription[];
+  charges?: FakeCharge[][];
+  sessions?: FakeCheckoutSession[];
   invoices?: Array<{
     id: string;
     status: string;
@@ -103,8 +125,33 @@ const buildFakeStripe = (options: FakeStripeOptions = {}) => {
     data: options.invoices ?? [],
     has_more: false,
   }));
+  const chargePages = options.charges ?? [[]];
+  const chargesList = vi.fn(async (params: { starting_after?: string }) => {
+    const index =
+      params.starting_after == null
+        ? 0
+        : chargePages.findIndex(
+            (page) => page[page.length - 1]?.id === params.starting_after
+          ) + 1;
+    const data = (chargePages[index] ?? []).map((c) => ({
+      amount_refunded: 0,
+      currency: 'usd',
+      ...c,
+    }));
+    return { data, has_more: index < chargePages.length - 1 };
+  });
+  const sessionsList = vi.fn(async () => ({
+    data: (options.sessions ?? []).map((session) => ({
+      currency: 'usd',
+      currency_conversion: null,
+      ...session,
+    })),
+    has_more: false,
+  }));
   return {
     invoices: { list: invoicesList },
+    charges: { list: chargesList },
+    checkout: { sessions: { list: sessionsList } },
   };
 };
 
@@ -349,6 +396,265 @@ describe('BusinessMetricsService', () => {
     expect(result.active_subs_timeseries).toHaveLength(90);
     expect(result.conversions_vs_churn_weekly).toHaveLength(12);
     expect(result.failed_payments_weekly).toHaveLength(12);
+  });
+
+  describe('sales_monthly', () => {
+    const thisMonth = Math.floor(Date.UTC(2026, 4, 2) / 1000);
+    const lastMonth = Math.floor(Date.UTC(2026, 3, 20) / 1000);
+
+    it('counts subscriptions, passes and credit packs that came in, across pages', async () => {
+      const { service, stripe } = buildService({
+        charges: [
+          [
+            {
+              id: 'ch_sub',
+              status: 'succeeded',
+              created: thisMonth,
+              amount: 799,
+              payment_intent: 'pi_invoice',
+            },
+            {
+              id: 'ch_pass',
+              status: 'succeeded',
+              created: thisMonth,
+              amount: 2700,
+              currency: 'eur',
+              payment_intent: 'pi_pass',
+            },
+          ],
+          [
+            {
+              id: 'ch_credit',
+              status: 'succeeded',
+              created: thisMonth,
+              amount: 500,
+              payment_intent: 'pi_credit',
+            },
+            {
+              id: 'ch_failed',
+              status: 'failed',
+              created: thisMonth,
+              amount: 2900,
+              payment_intent: 'pi_failed',
+            },
+            {
+              id: 'ch_last_month',
+              status: 'succeeded',
+              created: lastMonth,
+              amount: 600,
+              payment_intent: 'pi_day',
+            },
+          ],
+        ],
+        sessions: [
+          {
+            id: 'cs_pass',
+            mode: 'payment',
+            payment_intent: 'pi_pass',
+            metadata: { pass_kind: '120d' },
+            amount_total: 2700,
+            currency: 'eur',
+            currency_conversion: { amount_total: 2900, source_currency: 'usd' },
+          },
+          {
+            id: 'cs_day',
+            mode: 'payment',
+            payment_intent: 'pi_day',
+            metadata: { pass_kind: '24h', pass_anonymous: '1' },
+            amount_total: 600,
+          },
+          {
+            id: 'cs_credit',
+            mode: 'payment',
+            payment_intent: 'pi_credit',
+            metadata: { credit_pack: '1' },
+            amount_total: 500,
+          },
+          {
+            id: 'cs_sub',
+            mode: 'subscription',
+            payment_intent: null,
+            metadata: {},
+            amount_total: 799,
+          },
+        ],
+      });
+
+      const result = await service.getMetrics();
+
+      expect(result.errors).toBeUndefined();
+      expect(result.sales_monthly?.this_month.by_currency).toEqual([
+        {
+          currency: 'usd',
+          subscriptions_cents: 799,
+          passes_cents: 2900,
+          credit_packs_cents: 500,
+          other_cents: 0,
+          total_cents: 4199,
+          charges: 3,
+        },
+      ]);
+      expect(result.sales_monthly?.last_month.by_currency).toEqual([
+        expect.objectContaining({ passes_cents: 600, total_cents: 600 }),
+      ]);
+      expect(stripe.charges.list).toHaveBeenCalledTimes(2);
+      expect(stripe.charges.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          created: { gte: Math.floor(Date.UTC(2026, 3, 1) / 1000) },
+        })
+      );
+      expect(stripe.checkout.sessions.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'complete',
+          created: { gte: Math.floor(Date.UTC(2026, 2, 31) / 1000) },
+        })
+      );
+    });
+
+    const oneSale = (amount: number) => ({
+      charges: [
+        [
+          {
+            id: 'ch_1',
+            status: 'succeeded',
+            created: thisMonth,
+            amount,
+            payment_intent: 'pi_invoice',
+          },
+        ],
+      ],
+    });
+
+    it('serves sales from the cache inside the TTL without calling Stripe', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+
+      await service.getMetrics();
+      vi.advanceTimersByTime(10 * 60 * 1000);
+      const second = await service.getMetrics();
+
+      expect(stripe.charges.list).toHaveBeenCalledTimes(1);
+      expect(stripe.checkout.sessions.list).toHaveBeenCalledTimes(1);
+      expect(second.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        799
+      );
+    });
+
+    it('serves stale sales at once and refreshes them in the background', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+
+      await service.getMetrics();
+      vi.advanceTimersByTime(16 * 60 * 1000);
+      stripe.charges.list.mockResolvedValueOnce({
+        data: [
+          {
+            id: 'ch_2',
+            status: 'succeeded',
+            created: thisMonth,
+            amount: 2900,
+            amount_refunded: 0,
+            currency: 'usd',
+            payment_intent: 'pi_invoice',
+          },
+        ],
+        has_more: false,
+      });
+      const stale = await service.getMetrics();
+      await service.waitForInflightSalesRefresh();
+      const fresh = await service.getMetrics();
+
+      expect(stale.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        799
+      );
+      expect(stale.cache_age_seconds).toBe(16 * 60);
+      expect(fresh.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        2900
+      );
+      expect(stripe.charges.list).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps serving the last sales figure when a background refresh fails', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      await service.getMetrics();
+      vi.advanceTimersByTime(16 * 60 * 1000);
+      stripe.charges.list.mockRejectedValueOnce(new Error('stripe down'));
+      await service.getMetrics();
+      await service.waitForInflightSalesRefresh();
+      const after = await service.getMetrics();
+
+      expect(after.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        799
+      );
+      expect(consoleError).toHaveBeenCalledWith(
+        '[ops] sales background refresh failed:',
+        'stripe down'
+      );
+      consoleError.mockRestore();
+    });
+
+    it('fetches once for concurrent cold requests', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+
+      const [first, second] = await Promise.all([
+        service.getMetrics(),
+        service.getMetrics(),
+      ]);
+
+      expect(stripe.charges.list).toHaveBeenCalledTimes(1);
+      expect(first.sales_monthly).toEqual(second.sales_monthly);
+    });
+
+    it('treats a row cached last month as missing after a restart on the 1st', async () => {
+      const sharedCache = new InMemoryBusinessMetricsCacheRepository();
+      const { service: before } = buildService(oneSale(799), {
+        cacheRepository: sharedCache,
+      });
+      vi.setSystemTime(new Date('2026-04-30T23:50:00Z'));
+      await before.getMetrics();
+
+      vi.setSystemTime(new Date('2026-05-01T00:10:00Z'));
+      const { service: after, stripe } = buildService(oneSale(799), {
+        cacheRepository: sharedCache,
+      });
+      const result = await after.getMetrics();
+
+      expect(stripe.charges.list).toHaveBeenCalledTimes(1);
+      expect(result.sales_monthly?.this_month.start).toBe(
+        '2026-05-01T00:00:00.000Z'
+      );
+    });
+
+    it('does not cache a failed cold fetch, so the next request tries again', async () => {
+      const { service, stripe } = buildService(oneSale(799));
+      stripe.charges.list.mockRejectedValueOnce(new Error('stripe down'));
+
+      const failed = await service.getMetrics();
+      const retried = await service.getMetrics();
+
+      expect(failed.sales_monthly).toBeNull();
+      expect(retried.sales_monthly?.this_month.by_currency[0].total_cents).toBe(
+        799
+      );
+      expect(retried.errors).toBeUndefined();
+    });
+
+    it('reports a Stripe failure on sales alone and keeps MRR', async () => {
+      const { service, stripe } = buildService({
+        allSubs: [sub('sub_1', [monthly(2000)])],
+      });
+      stripe.charges.list.mockRejectedValueOnce(new Error('stripe down'));
+
+      const result = await service.getMetrics();
+
+      expect(result.sales_monthly).toBeNull();
+      expect(result.mrr_usd).toBeCloseTo(20, 5);
+      expect(result.errors).toEqual([
+        { metric: 'sales_monthly', message: 'stripe down' },
+      ]);
+    });
   });
 
   it('excludes paused subscriptions from active count, MRR, and churn', async () => {
