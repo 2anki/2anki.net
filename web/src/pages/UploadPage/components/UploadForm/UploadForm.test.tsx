@@ -4892,6 +4892,14 @@ describe('limit state', () => {
       undefined,
       'upload-limit-wall'
     );
+    expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: 'upload-limit-wall',
+      plan: 'semester_pass',
+    });
+    expect(track).toHaveBeenCalledWith('paywall_pass_clicked', {
+      surface: 'upload-limit-wall',
+      plan: 'semester',
+    });
   });
 
   it('leads the locked wall with the Semester Pass when the pass-first flag is on', () => {
@@ -5220,6 +5228,10 @@ describe('limit state', () => {
     expect(
       day.compareDocumentPosition(semester) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+    expect(day.className).toContain('primary');
+    expect(
+      screen.getByText('After paying, drop the file again to get every card.')
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'See plans' })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Try a different file' })

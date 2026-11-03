@@ -43,8 +43,9 @@ interface PassFirstOfferProps {
   readonly headline?: string;
   readonly body?: string;
   readonly note?: string;
-  // Which pass is the primary button. The pass-first wall leads with the
-  // Semester Pass; the default walls lead with the Day Pass, as /limit does.
+  // Which pass is the primary button. The pass-first walls lead with the
+  // Semester Pass; the upload page's default wall leads with the Day Pass,
+  // matching the Day Pass /limit features when pass-first is off.
   readonly lead?: PassKind;
   // Free sign-up, sign-in or a plans link, rendered as plain text links below
   // the passes.

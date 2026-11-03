@@ -148,7 +148,7 @@ describe('UploadForm card-limit wall in German', () => {
     );
   });
 
-  it('explains an unreachable Day Pass checkout in German', async () => {
+  it('explains an unreachable Day Pass checkout in German with the general retry message', async () => {
     vi.mocked(get2ankiApi).mockReturnValue({
       startPassCheckout: vi.fn().mockRejectedValue(new TypeError('offline')),
     } as unknown as ReturnType<typeof get2ankiApi>);
