@@ -22,10 +22,19 @@ def request(ts, path, status):
     return f'{ts}: 1.2.3.4 - - [x] "POST {path} HTTP/1.1" {status} 10 "-" "ua"'
 
 
-def run(lines, *args):
+def stall(ts):
+    return f"{ts}: [conversion-pool] stall oldest_wait_s=130 queue=4 busy_background=2"
+
+
+def no_response(ts):
+    return f'{ts}: 1.2.3.4 - - [x] "GET /api/upload/jobs HTTP/1.1" - - "-" "ua"'
+
+
+def run(out_lines, error_lines=(), *args):
     with tempfile.TemporaryDirectory() as logs:
-        with open(os.path.join(logs, "server-blue-out.log"), "w") as f:
-            f.write("\n".join(lines) + "\n")
+        for name, lines in (("server-blue-out.log", out_lines), ("server-blue-error.log", error_lines)):
+            with open(os.path.join(logs, name), "w") as f:
+                f.write("\n".join(lines) + "\n")
         with open(SCRIPT) as script:
             return subprocess.run(
                 ["bash", "-s", "--", *args],
@@ -49,50 +58,53 @@ def section(output, title):
 
 class StallReadTest(unittest.TestCase):
     def test_reports_each_signal_from_recent_lines(self):
-        recent = stamp(1)
-        hour = recent[:13]
-        lines = [
+        hour = stamp(1)[:13]
+        quiet_hour = stamp(3)[:13]
+        out_lines = [
             memory(stamp(1, 1), 2),
             memory(stamp(1, 2), 12, interactive=1),
             memory(stamp(1, 3), 4, interactive=2),
-            *[f'{stamp(1, 4)}: 1.2.3.4 - - [x] "GET /api/upload/jobs HTTP/1.1" - - "-" "ua"'] * 11,
-            f"{stamp(1, 5)}: [conversion-pool] stall upload waited 130s",
-            f"{stamp(1, 6)}: tempfile dwellMs: 125000",
-            f"{stamp(1, 7)}: tempfile dwellMs: 900",
+            *[no_response(stamp(1, 4))] * 11,
+            *[no_response(stamp(3, 4))] * 9,
+            f"{stamp(1, 6)}: [upload] tempfile dwell {{ dwellMs: 125000, fileCount: 1 }}",
+            f"{stamp(1, 7)}: [upload] tempfile dwell {{ dwellMs: 900, fileCount: 1 }}",
             request(stamp(1, 8), "/api/apkg/pdf", 500),
             request(stamp(1, 9), "/api/apkg/pdf", 200),
         ]
-        out = run(lines)
+        out = run(out_lines, [stall(stamp(1, 5))])
 
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(out.stderr, "")
         self.assertEqual(section(out.stdout, "max pool_queue"), [f"{hour} 12"])
         self.assertEqual(section(out.stdout, "pool_queue_interactive"), [f"2 {hour}"])
         self.assertEqual(section(out.stdout, "no-response"), [f"11 {hour}"])
+        self.assertNotIn(quiet_hour, out.stdout)
         self.assertEqual(section(out.stdout, "stall lines"), ["1"])
         self.assertEqual(section(out.stdout, "max tempfile dwell"), ["125000"])
         self.assertEqual(section(out.stdout, "PDF 500s"), ["1"])
 
     def test_ignores_lines_older_than_the_window(self):
-        lines = [
-            memory(stamp(30), 50, interactive=3),
-            f"{stamp(30, 1)}: [conversion-pool] stall upload waited 130s",
-            memory(stamp(1), 0),
-        ]
-        out = run(lines)
+        out_lines = [memory(stamp(30), 50, interactive=3), memory(stamp(1), 0), "{ untimestamped: 'continuation' }"]
+        out = run(out_lines, [stall(stamp(30, 1))])
 
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(out.stderr, "")
         self.assertEqual(section(out.stdout, "max pool_queue"), [])
         self.assertEqual(section(out.stdout, "pool_queue_interactive"), [])
         self.assertEqual(section(out.stdout, "stall lines"), ["0"])
+        self.assertIn(", 1 lines", out.stdout)
 
     def test_hours_argument_widens_the_window(self):
-        lines = [f"{stamp(30, 1)}: [conversion-pool] stall upload waited 130s"]
-        out = run(lines, "48")
+        out = run([], [stall(stamp(30, 1))], "48")
 
         self.assertEqual(section(out.stdout, "stall lines"), ["1"])
         self.assertIn("last 48h", out.stdout)
+
+    def test_rejects_hours_that_are_not_a_number(self):
+        out = run([], [], "24h")
+
+        self.assertEqual(out.returncode, 2)
+        self.assertEqual(out.stdout, "")
 
 
 if __name__ == "__main__":

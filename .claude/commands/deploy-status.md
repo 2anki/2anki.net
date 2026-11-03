@@ -16,13 +16,13 @@ Every app line carries an ISO timestamp prefix (`log_date_format` in `ecosystem.
 Then run the **stall-signal read** as a second SSH call. Run it every time: a stalled conversion queue produces no error line, so the error tail above is blind to it by construction. Between 2026-10-09 and 10-11, three stalls hung every upload for up to 88 minutes, and the only report was a customer email.
 
 ```bash
-ssh -o ConnectTimeout=10 alemayhu@2anki.net 'bash -s -- 24' < scripts/stall-read.sh
+git fetch -q origin main && git show origin/main:scripts/stall-read.sh | ssh -o ConnectTimeout=10 alemayhu@2anki.net 'bash -s -- 24'
 ```
 
-The read lives in `scripts/stall-read.sh` (tests: `python3 scripts/stall-read.test.py`), fed to the box over stdin. Do not inline it back into this file: the command loader rewrites `$1`/`$2`, and the remote shell expands `$0` inside double quotes, so the inline version printed awk syntax errors next to an innocent-looking `0` for every count.
+The read lives in `scripts/stall-read.sh` (tests: `python3 scripts/stall-read.test.py`) and is fed to the box over stdin from `origin/main`, so it runs the same from any branch, worktree or subdirectory of the repo. It reads the out and error logs together, because the stall watch writes its lines with `console.warn`. Do not inline it back into this file: the command loader rewrites dollar-digit references, and the remote shell expanded the rest inside double quotes, so the old inline read printed awk syntax errors next to an innocent-looking `0` for every count.
 
 Thresholds. Any one of these makes the verdict **"watching: uploads queued"**, whatever the error count says:
-- `pool_queue_interactive` is 1 or more for longer than a minute, or `pool_queue` is 10 or more in any hour;
+- `pool_queue_interactive` is 1 or more for longer than a minute (memory samples come once a minute, so 2 or more samples in an hour under `== pool_queue_interactive`), or `pool_queue` is 10 or more in any hour;
 - 10 or more requests with no status (`HTTP/1.1" - -`) in an hour, meaning requests the server never answered;
 - any `[conversion-pool] stall` line (the watch emails ops once an upload waits 120s);
 - a max `tempfile dwell` above 120000 ms.
