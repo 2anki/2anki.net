@@ -9,7 +9,7 @@
 set -u
 export LC_ALL=C
 
-ARG="${1:-24}"
+ARG="${1-24}"
 if [[ "$ARG" =~ ^[0-9]+$ ]]; then
   SINCE=$(date -u -d "-${ARG} hours" +%FT%H 2>/dev/null || date -u -v-"${ARG}"H +%FT%H)
   LABEL="last ${ARG}h"
@@ -26,6 +26,7 @@ if [ -z "$SINCE" ]; then
   exit 2
 fi
 LOG_DIR="${STALL_LOG_DIR:-$HOME/.pm2/logs}"
+UNTIL=$(date -u +%FT%H:%M)
 
 in_window() {
   awk -v s="$SINCE" '/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]/ && substr($0,1,length(s)) >= s'
@@ -38,7 +39,7 @@ cat "$LOG_DIR"/server-*-out*.log "$LOG_DIR"/server-*-error*.log 2>/dev/null | in
 
 LINES=$(wc -l < "$WINDOW" | tr -d ' ')
 SAMPLES=$(grep -ac '\[memory\]' "$WINDOW")
-echo "== window: ${LABEL} (since ${SINCE}), ${LINES} lines, ${SAMPLES} memory samples"
+echo "== window: ${LABEL} (since ${SINCE}, until ${UNTIL}), ${LINES} lines, ${SAMPLES} memory samples"
 if [ "$LINES" -eq 0 ]; then
   echo "no log lines in the window under $LOG_DIR, so there is nothing to read" >&2
   exit 3

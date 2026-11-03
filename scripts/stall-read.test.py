@@ -30,12 +30,13 @@ def no_response(ts):
     return f'{ts}: 1.2.3.4 - - [x] "GET /api/upload/jobs HTTP/1.1" - - "-" "ua"'
 
 
-def run(out_lines, error_lines=(), *args, green_out=()):
+def run(out_lines, error_lines=(), *args, green_out=(), extra_files=()):
     with tempfile.TemporaryDirectory() as logs:
         files = (
             ("server-blue-out.log", out_lines),
             ("server-blue-error.log", error_lines),
             ("server-green-out.log", green_out),
+            *extra_files,
         )
         for name, lines in files:
             with open(os.path.join(logs, name), "w") as f:
@@ -181,6 +182,32 @@ class StallReadTest(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("from 2026-01-31T09:30 UTC", out.stdout)
         self.assertEqual(section(out.stdout, "stall lines"), ["1"])
+
+    def test_start_argument_accepts_an_hour_with_a_z(self):
+        out = run([memory("2026-01-31T08:59:00.000+00:00", 0), memory("2026-01-31T09:01:00.000+00:00", 0)], [], "2026-01-31T09Z")
+
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("from 2026-01-31T09 UTC", out.stdout)
+        self.assertIn("1 memory samples", out.stdout)
+
+    def test_header_says_when_the_read_ran(self):
+        out = run([memory(stamp(1), 0)])
+
+        now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H")
+        self.assertRegex(out.stdout.splitlines()[0], r"until " + now + r":[0-9]{2}\)")
+
+    def test_streak_orders_samples_from_rotated_files(self):
+        current = [memory("2026-01-31T10:01:00.000+00:00", 1, interactive=1)]
+        rotated = ("server-blue-out__2026-01-31_10-00-30.log", [memory("2026-01-31T10:00:00.000+00:00", 1, interactive=1)])
+        out = run(current, [], "2026-01-31T00", extra_files=(rotated,))
+
+        self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), ["blue 2026-01-31T10:00 2"])
+
+    def test_rejects_an_empty_window_argument(self):
+        out = run([memory(stamp(1), 0)], [], "")
+
+        self.assertEqual(out.returncode, 2)
+        self.assertEqual(out.stdout, "")
 
     def test_fails_loudly_when_the_out_logs_were_not_read(self):
         out = run([], [stall(stamp(1, 5))])
