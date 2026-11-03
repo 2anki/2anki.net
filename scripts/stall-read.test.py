@@ -90,6 +90,16 @@ class StallReadTest(unittest.TestCase):
         self.assertEqual(section(out.stdout, "max tempfile dwell"), ["125000"])
         self.assertEqual(section(out.stdout, "PDF 500s"), ["1"])
 
+    def test_pool_queue_prints_hours_peaking_at_three_or_more(self):
+        out_lines = [
+            memory("2026-01-31T08:10:00.000+00:00", 2),
+            memory("2026-01-31T09:10:00.000+00:00", 3),
+            memory("2026-01-31T10:10:00.000+00:00", 10),
+        ]
+        out = run(out_lines, [], "2026-01-31T00")
+
+        self.assertEqual(section(out.stdout, "max pool_queue"), ["2026-01-31T09 3", "2026-01-31T10 10"])
+
     def test_ignores_lines_older_than_the_window(self):
         out_lines = [memory(stamp(30), 50, interactive=3), memory(stamp(1), 0), "{ untimestamped: 'continuation' }"]
         out = run(out_lines, [stall(stamp(30, 1))])
