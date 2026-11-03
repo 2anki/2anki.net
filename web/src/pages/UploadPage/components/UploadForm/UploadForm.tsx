@@ -3253,7 +3253,9 @@ function UploadForm({
             )}
             disabled={resendPending}
             busy={resendTapped === 'promoteNestedToggles'}
-            countsTowardLimit={!isPaying && cardUsage?.unlimited !== true}
+            countsTowardLimit={
+              isAuthenticated && !isPaying && cardUsage?.unlimited !== true
+            }
           />
         )}
       {thinDeckAiOffer != null && (

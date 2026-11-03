@@ -1064,15 +1064,12 @@ describe('UploadForm', () => {
           new Event('submit', { bubbles: true, cancelable: true })
         );
       });
-      expect(
-        await screen.findByText(/The new deck counts toward your card limit\./)
-      ).toBeInTheDocument();
       await act(async () => {
-        screen
-          .getByRole('button', {
+        (
+          await screen.findByRole('button', {
             name: 'Make cards from the inner toggles too',
           })
-          .click();
+        ).click();
       });
 
       await waitFor(() => {
@@ -1106,7 +1103,7 @@ describe('UploadForm', () => {
     } as unknown as ReturnType<typeof useUserLocals>);
   }
 
-  test('says an expired pass still counts the new deck toward the free cap', async () => {
+  test('shows no running card limit line to a signed-out visitor with an expired pass, whose free cap is per deck', async () => {
     storePassToken('cs_expired_pass');
     setPassLocals(false);
     vi.stubGlobal(
@@ -1131,9 +1128,12 @@ describe('UploadForm', () => {
         );
       });
 
+      await screen.findByRole('button', {
+        name: 'Make cards from the inner toggles too',
+      });
       expect(
-        await screen.findByText(/The new deck counts toward your card limit\./)
-      ).toBeInTheDocument();
+        screen.queryByText(/The new deck counts toward your card limit\./)
+      ).toBeNull();
     } finally {
       clearPassToken();
       restoreSignedOutLocals();
@@ -13828,7 +13828,7 @@ describe('UploadForm folded toggles notice, signed in', () => {
 
   const limitLine = /The new deck counts toward your card limit\./;
 
-  function sectionsThenDeck(second: ReturnType<typeof deckResponse> | object) {
+  function sectionsThenDeck(second: () => Promise<unknown>) {
     return vi
       .fn()
       .mockResolvedValueOnce(
@@ -13838,7 +13838,7 @@ describe('UploadForm folded toggles notice, signed in', () => {
           'X-Folded-Toggle-Count': '4',
         })
       )
-      .mockResolvedValueOnce(second);
+      .mockImplementationOnce(second);
   }
 
   async function clickPromote() {
@@ -13860,7 +13860,9 @@ describe('UploadForm folded toggles notice, signed in', () => {
     });
     vi.stubGlobal(
       'fetch',
-      sectionsThenDeck(deckResponse({ 'X-Card-Count': '6' }))
+      sectionsThenDeck(() =>
+        Promise.resolve(deckResponse({ 'X-Card-Count': '6' }))
+      )
     );
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />
@@ -13890,8 +13892,10 @@ describe('UploadForm folded toggles notice, signed in', () => {
       unlimited: true,
       loading: false,
     });
-    const fetchMock = sectionsThenDeck(
-      deckResponse({ 'X-Card-Count': '6', 'X-Upload-Owner': '2' })
+    const fetchMock = sectionsThenDeck(() =>
+      Promise.resolve(
+        deckResponse({ 'X-Card-Count': '6', 'X-Upload-Owner': '2' })
+      )
     );
     vi.stubGlobal('fetch', fetchMock);
     const { container } = renderUploadForm(
@@ -13914,13 +13918,16 @@ describe('UploadForm folded toggles notice, signed in', () => {
   it('shows the partial-deck offer when the resend goes over the monthly limit', async () => {
     vi.stubGlobal(
       'fetch',
-      sectionsThenDeck(
-        deckResponse({
-          'X-Card-Count': '3',
-          'X-Upload-Owner': '2',
-          'X-Cards-Held-Back': '3',
-          'X-Held-For-Plan': '1',
-        })
+      sectionsThenDeck(() =>
+        Promise.resolve(
+          deckResponse({
+            'X-Card-Count': '3',
+            'X-Upload-Owner': '2',
+            'X-Cards-Held-Back': '3',
+            'X-Held-For-Plan': '1',
+            'X-Folded-Toggle-Count': '2',
+          })
+        )
       )
     );
     const { container } = renderUploadForm(
@@ -13963,7 +13970,7 @@ describe('UploadForm folded toggles notice, signed in', () => {
     } as unknown as ReturnType<typeof get2ankiApi>);
     vi.stubGlobal(
       'fetch',
-      sectionsThenDeck(Promise.reject(new TypeError('Failed to fetch')))
+      sectionsThenDeck(() => Promise.reject(new TypeError('Failed to fetch')))
     );
     const { container } = renderUploadForm(
       <UploadForm setErrorMessage={vi.fn()} />
@@ -14087,7 +14094,7 @@ describe('UploadForm folded toggles notice, signed in', () => {
     expect(
       promote.compareDocumentPosition(thinOffer) &
         Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
     await act(async () => {
       promote.click();
