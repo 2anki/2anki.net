@@ -16,8 +16,10 @@ Every app line carries an ISO timestamp prefix (`log_date_format` in `ecosystem.
 Then run the **stall-signal read** as a second SSH call. Run it every time: a stalled conversion queue produces no error line, so the error tail above is blind to it by construction. Between 2026-10-09 and 10-11, three stalls hung every upload for up to 88 minutes, and the only report was a customer email.
 
 ```bash
-git fetch -q origin main && git show origin/main:scripts/stall-read.sh | ssh -o ConnectTimeout=10 alemayhu@2anki.net 'bash -s -- 24'
+git fetch -q origin main && git cat-file -e origin/main:scripts/stall-read.sh && git show origin/main:scripts/stall-read.sh | ssh -o ConnectTimeout=10 alemayhu@2anki.net 'bash -s -- 24'
 ```
+
+Trust the read only when it prints the `== window:` header with a non-zero line count and exits 0. A non-zero exit, or output with no header, means the read did not run, and that is not "Stalls: none".
 
 The read lives in `scripts/stall-read.sh` (tests: `python3 scripts/stall-read.test.py`) and is fed to the box over stdin from `origin/main`, so it runs the same from any branch, worktree or subdirectory of the repo. It reads the out and error logs together, because the stall watch writes its lines with `console.warn`. Do not inline it back into this file: the command loader rewrites dollar-digit references, and the remote shell expanded the rest inside double quotes, so the old inline read printed awk syntax errors next to an innocent-looking `0` for every count.
 

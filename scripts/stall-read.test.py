@@ -71,7 +71,8 @@ class StallReadTest(unittest.TestCase):
             request(stamp(1, 8), "/api/apkg/pdf", 500),
             request(stamp(1, 9), "/api/apkg/pdf", 200),
         ]
-        out = run(out_lines, [stall(stamp(1, 5))])
+        cleared = f"{stamp(1, 6)}: [conversion-pool] stall cleared after 40s"
+        out = run(out_lines, [stall(stamp(1, 5)), cleared])
 
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(out.stderr, "")
@@ -99,6 +100,14 @@ class StallReadTest(unittest.TestCase):
 
         self.assertEqual(section(out.stdout, "stall lines"), ["1"])
         self.assertIn("last 48h", out.stdout)
+
+    def test_fails_loudly_when_the_window_is_empty(self):
+        out = run([memory(stamp(30), 0)], [])
+
+        self.assertEqual(out.returncode, 3)
+        self.assertIn("0 lines", out.stdout)
+        self.assertIn("no log lines in the window", out.stderr)
+        self.assertNotIn("== stall lines", out.stdout)
 
     def test_rejects_hours_that_are_not_a_number(self):
         out = run([], [], "24h")

@@ -22,7 +22,12 @@ cat "$LOG_DIR"/server-*-out*.log "$LOG_DIR"/server-*-error*.log 2>/dev/null \
   | awk -v s="$SINCE" '/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]/ && substr($0,1,13) >= s' \
   | sort > "$WINDOW"
 
-echo "== window: last ${HOURS}h (since ${SINCE}), $(wc -l < "$WINDOW" | tr -d ' ') lines"
+LINES=$(wc -l < "$WINDOW" | tr -d ' ')
+echo "== window: last ${HOURS}h (since ${SINCE}), ${LINES} lines"
+if [ "$LINES" -eq 0 ]; then
+  echo "no log lines in the window under $LOG_DIR, so there is nothing to read" >&2
+  exit 3
+fi
 
 echo "== max pool_queue per hour (>=3)"
 grep -a '\[memory\]' "$WINDOW" \
@@ -37,7 +42,7 @@ echo "== no-response requests per hour (>=10)"
 grep -aE 'HTTP/1.1" - - ' "$WINDOW" | cut -c1-13 | uniq -c | awk '$1 >= 10'
 
 echo "== stall lines"
-grep -ac '\[conversion-pool\] stall' "$WINDOW" || true
+grep -ac '\[conversion-pool\] stall oldest_wait_s=' "$WINDOW" || true
 
 echo "== max tempfile dwell (ms)"
 grep -aoE 'dwellMs: [0-9]+' "$WINDOW" | awk '{ if ($2 > m) m = $2 } END { print m + 0 }'
