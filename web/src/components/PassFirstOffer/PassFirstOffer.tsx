@@ -20,23 +20,46 @@ const PASS_CLICK_PLAN: Record<PassKind, string> = {
   '120d': 'semester',
 };
 
+const PASS_ORDER: readonly PassKind[] = ['120d', '24h'];
+
+const PASS_COPY: Record<
+  PassKind,
+  { label: string; hint: string; badge: string }
+> = {
+  '120d': {
+    label: 'semester',
+    hint: 'semesterHint',
+    badge: 'common:pricing.pass.bestValue',
+  },
+  '24h': {
+    label: 'day',
+    hint: 'dayHint',
+    badge: 'common:pricing.pass.mostPopular',
+  },
+};
+
 interface PassFirstOfferProps {
   readonly surface: string;
   readonly headline?: string;
   readonly body?: string;
   readonly note?: string;
+  // Which pass is the primary button. The pass-first walls lead with the
+  // Semester Pass; the upload page's default wall leads with the Day Pass,
+  // matching the Day Pass /limit features when pass-first is off.
+  readonly lead?: PassKind;
   // Free sign-up, sign-in or a plans link, rendered as plain text links below
   // the passes.
   readonly children?: ReactNode;
 }
 
-// The pass-first limit wall: the Semester Pass leads, the Day Pass sits beside
-// it, and anything free drops to a text link underneath.
+// Both passes side by side, one of them primary, and anything free as a text
+// link underneath.
 export function PassFirstOffer({
   surface,
   headline,
   body,
   note,
+  lead = '120d',
   children,
 }: PassFirstOfferProps) {
   const { t, i18n } = useTranslation('passFirst');
@@ -81,38 +104,27 @@ export function PassFirstOffer({
         </p>
       )}
       <div className={styles.plans}>
-        <button
-          type="button"
-          className={styles.primary}
-          disabled={pending != null}
-          onClick={() => void buy('120d')}
-        >
-          <span className={styles.planLabel}>
-            {pending === '120d'
-              ? t('starting')
-              : t('semester', { price: prices['120d'] })}
-          </span>
-          <span className={styles.planHint}>{t('semesterHint')}</span>
-          <span className={styles.planBadge}>
-            {t('common:pricing.pass.bestValue')}
-          </span>
-        </button>
-        <button
-          type="button"
-          className={styles.secondary}
-          disabled={pending != null}
-          onClick={() => void buy('24h')}
-        >
-          <span className={styles.planLabel}>
-            {pending === '24h'
-              ? t('starting')
-              : t('day', { price: prices['24h'] })}
-          </span>
-          <span className={styles.planHint}>{t('dayHint')}</span>
-          <span className={styles.planBadge}>
-            {t('common:pricing.pass.mostPopular')}
-          </span>
-        </button>
+        {(lead === '120d' ? PASS_ORDER : [...PASS_ORDER].reverse()).map(
+          (kind) => (
+            <button
+              key={kind}
+              type="button"
+              className={kind === lead ? styles.primary : styles.secondary}
+              disabled={pending != null}
+              onClick={() => void buy(kind)}
+            >
+              <span className={styles.planLabel}>
+                {pending === kind
+                  ? t('starting')
+                  : t(PASS_COPY[kind].label, { price: prices[kind] })}
+              </span>
+              <span className={styles.planHint}>{t(PASS_COPY[kind].hint)}</span>
+              <span className={styles.planBadge}>
+                {t(PASS_COPY[kind].badge)}
+              </span>
+            </button>
+          )
+        )}
       </div>
       {note && <p className={styles.note}>{note}</p>}
       {children != null && <p className={styles.links}>{children}</p>}

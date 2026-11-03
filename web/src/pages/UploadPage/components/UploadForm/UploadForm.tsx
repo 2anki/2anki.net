@@ -3683,47 +3683,50 @@ function UploadForm({
             {dayPassError}
           </p>
         )}
-        {passFirst && !isFileSize ? (
-          <PassFirstOffer
-            surface="upload-limit-wall"
-            note={t('passFirst:afterPayRedrop')}
-          >
-            {showSignInPrompt ? (
-              <>
-                <Link
-                  to="/register?redirect=/upload"
-                  onClick={() => {
-                    saveFilenameForReattach(limitInfo?.filename ?? null);
-                    track('paywall_upgrade_clicked', {
-                      surface: 'upload-limit-wall',
-                      plan: 'free_signup',
-                    });
-                  }}
-                >
-                  {t('passFirst:freeSignup')}
+        {(passFirst || !showSignInPrompt) && !isFileSize ? (
+          <div className={formStyles.limitOffer}>
+            <PassFirstOffer
+              surface="upload-limit-wall"
+              lead={passFirst ? '120d' : '24h'}
+              note={t('passFirst:afterPayRedrop')}
+            >
+              {showSignInPrompt ? (
+                <>
+                  <Link
+                    to="/register?redirect=/upload"
+                    onClick={() => {
+                      saveFilenameForReattach(limitInfo?.filename ?? null);
+                      track('paywall_upgrade_clicked', {
+                        surface: 'upload-limit-wall',
+                        plan: 'free_signup',
+                      });
+                    }}
+                  >
+                    {t('passFirst:freeSignup')}
+                  </Link>
+                  <Link
+                    to="/login?redirect=/upload"
+                    onClick={() => {
+                      saveFilenameForReattach(limitInfo?.filename ?? null);
+                      track('paywall_upgrade_clicked', {
+                        surface: 'upload-limit-wall',
+                        plan: 'sign_in',
+                      });
+                    }}
+                  >
+                    {t('passFirst:signIn')}
+                  </Link>
+                </>
+              ) : (
+                <Link to="/limit?ref=upload-limit-wall">
+                  {t('upload.limit.seePlans')}
                 </Link>
-                <Link
-                  to="/login?redirect=/upload"
-                  onClick={() => {
-                    saveFilenameForReattach(limitInfo?.filename ?? null);
-                    track('paywall_upgrade_clicked', {
-                      surface: 'upload-limit-wall',
-                      plan: 'sign_in',
-                    });
-                  }}
-                >
-                  {t('passFirst:signIn')}
-                </Link>
-              </>
-            ) : (
-              <Link to="/limit?ref=upload-limit-wall">
-                {t('upload.limit.seePlans')}
-              </Link>
-            )}
-            <button type="button" onClick={startOver}>
-              {t('upload.form.tryDifferent')}
-            </button>
-          </PassFirstOffer>
+              )}
+              <button type="button" onClick={startOver}>
+                {t('upload.form.tryDifferent')}
+              </button>
+            </PassFirstOffer>
+          </div>
         ) : (
           <div className={formStyles.limitActions}>
             {showSignInPrompt ? (
@@ -4328,37 +4331,17 @@ function UploadForm({
         <p className={formStyles.limitDescription}>
           {t('upload.limit.usage', { used, limit, resetsOn })}
         </p>
-        {dayPassError && (
-          <p className={formStyles.limitError} role="alert">
-            {dayPassError}
-          </p>
-        )}
-        {passFirst ? (
-          <PassFirstOffer surface="upload-limit-wall">
+        <div className={formStyles.limitOffer}>
+          <PassFirstOffer
+            surface="upload-limit-wall"
+            lead={passFirst ? '120d' : '24h'}
+            note={t('accountx:limit.payOnce')}
+          >
             <Link to="/limit?ref=upload-limit-wall">
               {t('upload.limit.seePlans')}
             </Link>
           </PassFirstOffer>
-        ) : (
-          <div className={formStyles.limitActions}>
-            <button
-              type="button"
-              className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
-              onClick={handleDayPass}
-              disabled={dayPassPending}
-            >
-              {dayPassPending
-                ? t('upload.limit.startingCheckout')
-                : t('upload.limit.getDayPass', { price: passPrices['24h'] })}
-            </button>
-            <Link
-              to="/limit?ref=upload-limit-wall"
-              className={`${sharedStyles.btnSecondary} ${sharedStyles.btnInline}`}
-            >
-              {t('upload.limit.seePlans')}
-            </Link>
-          </div>
-        )}
+        </div>
       </div>
     );
   };

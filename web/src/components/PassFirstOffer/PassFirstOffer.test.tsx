@@ -30,6 +30,17 @@ describe('PassFirstOffer', () => {
     expect(screen.getByText('184 cards ready')).toBeInTheDocument();
   });
 
+  it('leads with the Day Pass when asked, keeping the Semester Pass beside it', () => {
+    render(<PassFirstOffer surface="test-wall" lead="24h" />);
+    const [day, semester] = screen.getAllByRole('button');
+    expect(day).toHaveTextContent('Get Day Pass · $6');
+    expect(day.className).toContain('primary');
+    expect(day).toHaveTextContent('Most popular');
+    expect(semester).toHaveTextContent('Get Semester Pass · $29');
+    expect(semester.className).toContain('secondary');
+    expect(semester).toHaveTextContent('Best value');
+  });
+
   it('marks the Day Pass Most popular and the Semester Pass Best value', () => {
     render(<PassFirstOffer surface="test-wall" />);
     const [semester, day] = screen.getAllByRole('button');

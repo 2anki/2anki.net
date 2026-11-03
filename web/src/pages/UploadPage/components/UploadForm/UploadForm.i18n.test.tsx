@@ -148,14 +148,14 @@ describe('UploadForm card-limit wall in German', () => {
     );
   });
 
-  it('explains an unreachable Day Pass checkout in German', async () => {
+  it('explains an unreachable Day Pass checkout in German with the general retry message', async () => {
     vi.mocked(get2ankiApi).mockReturnValue({
       startPassCheckout: vi.fn().mockRejectedValue(new TypeError('offline')),
     } as unknown as ReturnType<typeof get2ankiApi>);
     renderUploadForm();
     fireEvent.click(screen.getByRole('button', { name: /Day Pass holen/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Der Checkout konnte nicht gestartet werden. Überprüfe deine Verbindung und versuch es erneut.'
+      'Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.'
     );
   });
 });
