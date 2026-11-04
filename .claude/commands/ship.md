@@ -81,13 +81,13 @@ Every entry must be COMPLETED and non-FAILURE. Don't busy-poll — use `Monitor`
 
 The merge queue on `main` was switched off on 2026-10-15 (ruleset `main merge queue`, enforcement `disabled`): it rebuilt `main` + the PR and re-ran the same required workflows that had just passed on the head SHA, about seven minutes per PR with nothing new learned. Classic branch protection still gates the merge on green required checks, and this flow has already rebased on `origin/main` and waited for the rollup, so `gh pr merge` merges directly.
 
-**One deploy watch at a time.** A second deploy landing inside this PR's step 6 watch puts its restarts, errors and stall signals in this PR's verdict, so they can hold it at "watching" or revert it in step 8 for a fault it did not cause (#5232). Before merging, take the deploy lock. It is one file per machine, shared by every worktree of the checkout: `git rev-parse --git-common-dir` names the directory, and the lock is `ship-deploy.lock` inside it.
+**One deploy watch at a time.** A second deploy landing inside this PR's step 6 watch puts its restarts, errors and stall signals in this PR's verdict, so they can hold it at "watching" or revert it in step 8 for a fault it did not cause (#5232). Before every merge attempt, this one and any retry below, take the deploy lock. It is one file per machine, shared by every worktree: run `git rev-parse --path-format=absolute --git-common-dir` on its own and use `<that dir>/ship-deploy.lock` as a literal path from then on. Keep the lock reads, writes and deletes in Bash calls of their own, apart from any `gh` command, because the merge hooks deny a `$(` or a path containing `github` next to `gh`.
 
-1. Read the lock, and list deploy runs in flight with `gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 3 --json headSha,status`. A `queued` or `in_progress` run comes from a merge this lock never saw (another machine, or a merge by hand).
-2. If the lock names another PR and its time is under 60 minutes old, or a deploy run is in flight, wait on a `ScheduleWakeup` of 270s and read again. This waits on another ship, not on Alexander: the run continues with other items, and only this PR's merge waits. A lock older than 60 minutes belongs to a ship that died mid-watch. Overwrite it, and name the PR it held in the Report.
-3. Otherwise write `<n> <head SHA> <UTC ISO time>` to the lock with the Write tool, then merge.
+1. Read the lock (`cat` the literal path), and in a separate call list deploy runs in flight with `gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 3 --json headSha,status`. A `queued` or `in_progress` run comes from a merge this lock never saw.
+2. If the lock names another PR and its time is under 60 minutes old, or a deploy run is in flight, wait on a `ScheduleWakeup` of 270s and read again. This waits on another ship, not on Alexander: the run continues with other items, and only this PR's merge waits. A lock naming a PR this session is still shipping is never stale. Any other lock older than 60 minutes belongs to a ship that died mid-watch: overwrite it and add `stale lock: #<that PR>` to the Report.
+3. Otherwise write `<n> <head SHA> <UTC ISO time>` to the lock with the Write tool, read it back, and merge only if it still names this PR. Another ship that wrote in between goes first, and this one returns to 1.
 
-The lock is released by deleting the file, only while it still names this PR. Release it once this PR's prod verdict is final: "deploy healthy" in step 6 (at the end of step 6b for a rail PR), step 5's `no deploy` branch, a merge that comes back `OPEN` or `CLOSED` below, or step 8 before the revert ships (the revert's own ship takes the lock again). Each "watching" round in step 6 rewrites the lock's time, so a long watch never looks stale.
+The lock is released by deleting the file, only while it still names this PR. Release it once this PR's prod verdict is final: "deploy healthy" in step 6 (at the end of step 6b for a rail PR), or step 5's `no deploy` branch. Also release it when the merge does not happen: a hook denies the merge command, or the merge comes back `OPEN` or `CLOSED` below. A broken deploy keeps the lock through step 8, so nothing merges on top of the breakage. Rewrite the lock's time when step 5 finds the run, on each step 6 "watching" round and at each step 6b check, so a long watch never looks stale. The lock covers ships on this machine and, through the in-flight check, deploys still running. It does not stop a merge by hand, or from another machine or a cloud agent, landing after that deploy finished but during this PR's watch.
 
 ```bash
 gh pr merge <n> --repo 2anki/server --squash
@@ -115,7 +115,7 @@ A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.m
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
 ```
 
-Find the run whose `headSha` is `<MERGE_SHA>` (it appears within ~30s of the merge; `ScheduleWakeup` 60s if not yet listed). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s or a `Monitor` over holding the shell.
+Find the run whose `headSha` is `<MERGE_SHA>` (it appears within ~30s of the merge; `ScheduleWakeup` 60s if not yet listed), and rewrite the deploy lock's time (step 4). Then `gh run watch <id> --exit-status` — deploys take 6–10 minutes; prefer `ScheduleWakeup` 270s or a `Monitor` over holding the shell.
 
 ## 6. Verify prod
 
@@ -134,7 +134,7 @@ The pre-cutover smoke check (`scripts/prod-smoke.ts`) prints to the deploy run l
 - Auth or token storage: pm2 logs show successful logins since the deploy and no spike in 401/500 on auth routes.
 - Apple in-app purchase: pm2 logs show no new errors on the `/iap` routes since the deploy.
 
-Watch for 15 minutes after the deploy, then release the deploy lock (step 4). Any regression → step 8 revert.
+Watch for 15 minutes after the deploy, rewriting the deploy lock's time at each check, then release it (step 4). Any regression → step 8 revert.
 
 ## 7. Local cleanup
 
@@ -153,7 +153,7 @@ Do not skip this because the checkout already moved to another branch. Agents go
 
 If the deploy run failed, `/api/version` does not report the merge SHA after the run finished, or `/deploy-status` says "broken":
 
-1. Release the deploy lock (step 4); the revert's own ship takes it again. Then `git checkout main && git pull --ff-only && git checkout -b revert/<slug>`
+1. Keep the deploy lock (step 4) and rewrite it to name the revert PR once it exists; the revert's ship treats a lock naming it, or the PR it reverts, as its own and releases it at its own final verdict. Then `git checkout main && git pull --ff-only && git checkout -b revert/<slug>`
 2. `git revert --no-commit <MERGE_SHA>`, then write the message to a scratchpad file with the Write tool (first line `revert: <original subject>`, then a blank line, then `Deploy run <run URL> failed after #<n> landed: <one line on what broke>. Reverts <original PR URL>.`) and run `git add -A && git commit -F <that file>` — git's default `Revert "…"` subject fails the conventional-prefix hook, so write the subject yourself (≤72 chars). The file keeps free text out of the Bash command: a subject naming `gh` and `merge`, or a backtick next to the run URL, is denied by the merge hooks.
 3. `git push -u origin revert/<slug>` and `gh pr create --repo 2anki/server --base main --head revert/<slug> --fill-first`, which takes the title and body (the failed run and the original PR) from the step 2 commit, so an original subject naming `merge` never sits next to `gh` in one command, where the merge hooks deny it. Keep `merge` out of `<slug>` for the same reason.
 4. Ship the revert through this command. A pure `git revert` of the PR just merged skips step 2's review agent: post the marker directly with the verdict "mechanical revert of #<n> after a failed deploy". CI and the hooks still gate it.
@@ -162,6 +162,6 @@ If the deploy run failed, `/api/version` does not report the merge SHA after the
 
 ## Report
 
-End with two lines: the PR URL, and the deploy verdict (`healthy <sha>` / `healthy <sha> (stall read failed)` / `no deploy` / `reverted → <revert PR URL>`). Add a third line, `kept: <branch or worktree path> (<reason>)`, only when step 7 left something in place.
+End with two lines: the PR URL, and the deploy verdict (`healthy <sha>` / `healthy <sha> (stall read failed)` / `no deploy` / `reverted → <revert PR URL>`). Add a third line, `kept: <branch or worktree path> (<reason>)`, only when step 7 left something in place, and a `stale lock: #<n>` line only when step 4 overwrote one.
 
 Trio calls stay in the PR body under `## Decisions`; Alexander overrides one by commenting on the merged PR or opening a follow-up. If the PR leaves a step only Alexander can do (a prod secret, a Stripe dashboard setting, confirming on a specific account), ask Alexander for it in the chat and add it to the private Follow-ups project with Owner `Alexander` (`.claude/docs/follow-ups-project.md`); an unattended run also names it in the morning summary. Do not open a `Needs you` issue. Do not create a daily `Shipped <date>` digest issue: those were dropped 2026-09-08 because they duplicated the merged-PR list and added an issue a day to close.
