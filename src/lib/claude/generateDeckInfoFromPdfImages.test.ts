@@ -16,17 +16,34 @@ import {
 import { AiCreditsExhaustedError } from './aiSpendGuard';
 import { combineIntoHTML } from '../pdf/combineIntoHTML';
 
-const mockCreateFn = vi.hoisted(() => vi.fn());
+const mockVisionFn = vi.hoisted(() => vi.fn());
+const mockStreamFn = vi.hoisted(() =>
+  vi.fn((params: { max_tokens: number }) => ({
+    finalMessage: () => mockVisionFn(params),
+  }))
+);
+// The real SDK refuses a non-streaming request whose max_tokens implies more
+// than ten minutes, before anything is sent.
+const mockNonStreamingCreateFn = vi.hoisted(() =>
+  vi.fn((params: { max_tokens: number }) =>
+    (60 * 60 * params.max_tokens) / 128000 > 600
+      ? Promise.reject(new Error('Streaming is required'))
+      : mockVisionFn(params)
+  )
+);
 
 vi.mock('@anthropic-ai/sdk', () => ({
   __esModule: true,
   default: vi.fn().mockImplementation(function () {
-    return { messages: { create: mockCreateFn } };
+    return {
+      messages: { create: mockNonStreamingCreateFn, stream: mockStreamFn },
+    };
   }),
 }));
 
 function visionResponse(json: string, stopReason = 'end_turn') {
   return {
+    model: 'claude-sonnet-5',
     content: [{ type: 'text', text: json }],
     stop_reason: stopReason,
     usage: { input_tokens: 100, output_tokens: 50 },
@@ -59,7 +76,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   </body></html>`;
 
   it('sends each page image to Claude vision and returns the extracted cards', async () => {
-    mockCreateFn.mockResolvedValue(
+    mockVisionFn.mockResolvedValue(
       visionResponse(
         JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
       )
@@ -69,8 +86,8 @@ describe('generateDeckInfoFromPdfImages', () => {
       mediaBaseDir: baseDir,
     });
 
-    expect(mockCreateFn).toHaveBeenCalledTimes(2);
-    const firstCall = mockCreateFn.mock.calls[0][0];
+    expect(mockVisionFn).toHaveBeenCalledTimes(2);
+    const firstCall = mockVisionFn.mock.calls[0][0];
     const imageBlock = firstCall.messages[0].content.find(
       (b: { type: string }) => b.type === 'image'
     );
@@ -85,6 +102,9 @@ describe('generateDeckInfoFromPdfImages', () => {
       (b: { type: string }) => b.type === 'text'
     );
     expect(promptBlock.cache_control).toEqual({ type: 'ephemeral' });
+    expect(promptBlock.text).toBe(buildPdfPageVisionPrompt());
+    expect(firstCall.model).toBe('claude-sonnet-5');
+    expect(firstCall.max_tokens).toBe(16384);
     const totalCards = decks.reduce((sum, d) => sum + d.cards.length, 0);
     expect(totalCards).toBeGreaterThan(0);
   });
@@ -98,7 +118,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   ])(
     'reads every page image the builder links for an upload named %s',
     async (name) => {
-      mockCreateFn.mockResolvedValue(
+      mockVisionFn.mockResolvedValue(
         visionResponse(
           JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
         )
@@ -118,7 +138,7 @@ describe('generateDeckInfoFromPdfImages', () => {
         { mediaBaseDir: baseDir }
       );
 
-      const sent = mockCreateFn.mock.calls.map(
+      const sent = mockVisionFn.mock.calls.map(
         ([request]) =>
           request.messages[0].content.find(
             (block: { type: string }) => block.type === 'image'
@@ -140,7 +160,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   ])(
     'puts the page image on the back of each card for an upload named %s',
     async (name) => {
-      mockCreateFn.mockResolvedValue(
+      mockVisionFn.mockResolvedValue(
         visionResponse(
           JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
         )
@@ -162,7 +182,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   );
 
   it('reads a page whose link was written before links were encoded, as a restarted job does', async () => {
-    mockCreateFn.mockResolvedValue(
+    mockVisionFn.mockResolvedValue(
       visionResponse(
         JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
       )
@@ -183,7 +203,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('attributes every vision usage event to the converting user', async () => {
-    mockCreateFn.mockResolvedValue(
+    mockVisionFn.mockResolvedValue(
       visionResponse(
         JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
       )
@@ -205,8 +225,16 @@ describe('generateDeckInfoFromPdfImages', () => {
         (call: unknown[]) => call[0] === 'ai_usage_recorded'
       );
       expect(usageCalls.length).toBeGreaterThan(0);
+      expect(usageCalls).toHaveLength(2);
       for (const usageCall of usageCalls) {
-        expect((usageCall[1] as { userId?: number | null }).userId).toBe(77);
+        expect(usageCall[1]).toMatchObject({
+          userId: 77,
+          props: {
+            surface: 'pdf_page_vision',
+            model: 'claude-sonnet-5',
+            usage: { input_tokens: 100, output_tokens: 50 },
+          },
+        });
       }
     } finally {
       trackSpy.mockRestore();
@@ -214,7 +242,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('retries a page once at a larger token budget when the response is truncated', async () => {
-    mockCreateFn
+    mockVisionFn
       .mockResolvedValueOnce(visionResponse('[', 'max_tokens'))
       .mockResolvedValueOnce(
         visionResponse(
@@ -235,8 +263,78 @@ describe('generateDeckInfoFromPdfImages', () => {
     expect(totalCards).toBeGreaterThan(0);
   });
 
+  it('sends every page once when the upload made one card per page', async () => {
+    mockVisionFn.mockResolvedValue(
+      visionResponse(
+        JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+      )
+    );
+    const pages = [1, 2, 3].map((page) => {
+      const pagePath = path.join(baseDir, 'pdf-abc', `single-page${page}.png`);
+      fs.writeFileSync(pagePath, Buffer.from(`single ${page}`));
+      return pagePath;
+    });
+
+    await generateDeckInfoFromPdfImages(
+      combineIntoHTML(pages, 'single.pdf', baseDir, 'single'),
+      { mediaBaseDir: baseDir }
+    );
+
+    const sent = mockVisionFn.mock.calls.map(
+      ([request]) =>
+        request.messages[0].content.find(
+          (block: { type: string }) => block.type === 'image'
+        ).source.data
+    );
+    expect(sent.sort()).toEqual(
+      [1, 2, 3].map((page) => Buffer.from(`single ${page}`).toString('base64'))
+    );
+    expect(mockStreamFn).toHaveBeenCalledTimes(3);
+  });
+
+  it('sends the truncation retry as a streaming request at the larger budget', async () => {
+    const page1 = Buffer.from('fakepng1').toString('base64');
+    const cardsFor = (q: string) =>
+      visionResponse(
+        JSON.stringify([{ deck: 'Study', cards: [{ q, a: 'A' }] }])
+      );
+    mockVisionFn.mockImplementation(
+      (params: {
+        max_tokens: number;
+        messages: { content: { source?: { data: string } }[] }[];
+      }) => {
+        const isPage1 = params.messages[0].content[0].source?.data === page1;
+        if (!isPage1) return Promise.resolve(cardsFor('Page 2'));
+        if (params.max_tokens === 16384)
+          return Promise.resolve(visionResponse('[', 'max_tokens'));
+        return Promise.resolve(cardsFor('Page 1 retried'));
+      }
+    );
+
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
+      .mockImplementation(() => undefined);
+
+    const decks = await generateDeckInfoFromPdfImages(html, {
+      mediaBaseDir: baseDir,
+    });
+
+    const usageEvents = trackSpy.mock.calls.filter(
+      (call: unknown[]) => call[0] === 'ai_usage_recorded'
+    );
+    trackSpy.mockRestore();
+    expect(usageEvents).toHaveLength(3);
+    expect(mockStreamFn.mock.calls.map(([p]) => p.max_tokens)).toContain(32768);
+    expect(mockStreamFn).toHaveBeenCalledTimes(3);
+    expect(mockNonStreamingCreateFn).not.toHaveBeenCalled();
+    expect(decks.flatMap((d) => d.cards.map((c) => c.name)).sort()).toEqual([
+      'Page 1 retried',
+      'Page 2',
+    ]);
+  });
+
   it('throws the empty-content message when vision finds no cards on any page', async () => {
-    mockCreateFn.mockResolvedValue(visionResponse('[]'));
+    mockVisionFn.mockResolvedValue(visionResponse('[]'));
 
     await expect(
       generateDeckInfoFromPdfImages(html, { mediaBaseDir: baseDir })
@@ -244,7 +342,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('keeps cards from readable pages when one page comes back blank', async () => {
-    mockCreateFn
+    mockVisionFn
       .mockResolvedValueOnce(visionResponse('[]'))
       .mockResolvedValue(
         visionResponse(
@@ -261,7 +359,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('keeps cards from readable pages when one page fails outright', async () => {
-    mockCreateFn
+    mockVisionFn
       .mockRejectedValueOnce(new Error('overloaded_error'))
       .mockResolvedValue(
         visionResponse(
@@ -278,7 +376,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('surfaces the page failure when every page fails', async () => {
-    mockCreateFn.mockRejectedValue(new Error('overloaded_error'));
+    mockVisionFn.mockRejectedValue(new Error('overloaded_error'));
 
     await expect(
       generateDeckInfoFromPdfImages(html, { mediaBaseDir: baseDir })
@@ -286,7 +384,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('propagates a mid-run credit trip carrying the pages produced so far', async () => {
-    mockCreateFn
+    mockVisionFn
       .mockRejectedValueOnce(new AiCreditsExhaustedError())
       .mockResolvedValue(
         visionResponse(
@@ -308,7 +406,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('propagates a credit trip with no salvage when every page trips', async () => {
-    mockCreateFn.mockRejectedValue(new AiCreditsExhaustedError());
+    mockVisionFn.mockRejectedValue(new AiCreditsExhaustedError());
 
     let thrown: unknown;
     try {
@@ -322,7 +420,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('attaches each page image to its cards as media and an image on the back', async () => {
-    mockCreateFn.mockResolvedValue(
+    mockVisionFn.mockResolvedValue(
       visionResponse(
         JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
       )
@@ -345,7 +443,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('attributes each page its own image', async () => {
-    mockCreateFn.mockImplementation((req: unknown) => {
+    mockVisionFn.mockImplementation((req: unknown) => {
       const content = (
         req as {
           messages: {
@@ -380,7 +478,7 @@ describe('generateDeckInfoFromPdfImages', () => {
   });
 
   it('omits page images when attachPageImages is false', async () => {
-    mockCreateFn.mockResolvedValue(
+    mockVisionFn.mockResolvedValue(
       visionResponse(
         JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
       )
@@ -402,12 +500,12 @@ describe('generateDeckInfoFromPdfImages', () => {
   it('ignores images whose path escapes the media base directory', async () => {
     const escaping =
       '<html><body><img src="../../etc/passwd.png"/></body></html>';
-    mockCreateFn.mockResolvedValue(visionResponse('[]'));
+    mockVisionFn.mockResolvedValue(visionResponse('[]'));
 
     await expect(
       generateDeckInfoFromPdfImages(escaping, { mediaBaseDir: baseDir })
     ).rejects.toThrow(EMPTY_CONTENT_UPLOAD_MESSAGE);
-    expect(mockCreateFn).not.toHaveBeenCalled();
+    expect(mockVisionFn).not.toHaveBeenCalled();
   });
 });
 

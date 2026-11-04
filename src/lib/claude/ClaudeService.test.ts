@@ -740,12 +740,6 @@ describe('generateDeckInfo — PDF image fallback', () => {
   });
 
   it('routes page images to Claude vision instead of throwing ImageOnlyContentError', async () => {
-    mockCreateFn.mockResolvedValue({
-      content: [{ type: 'text', text: FAKE_DECK_JSON }],
-      stop_reason: 'end_turn',
-      usage: { input_tokens: 1, output_tokens: 1 },
-    });
-
     const result = await generateDeckInfo(
       fallbackHtml,
       [],
@@ -758,8 +752,16 @@ describe('generateDeckInfo — PDF image fallback', () => {
     );
 
     expect(result.length).toBeGreaterThan(0);
-    expect(mockCreateFn).toHaveBeenCalled();
-    expect(mockStreamFn).not.toHaveBeenCalled();
+    expect(mockStreamFn).toHaveBeenCalledTimes(1);
+    const sentContent = mockStreamFn.mock.calls[0][0].messages[0].content;
+    expect(sentContent[0]).toMatchObject({
+      type: 'image',
+      source: {
+        type: 'base64',
+        data: Buffer.from('pngbytes').toString('base64'),
+      },
+    });
+    expect(mockCreateFn).not.toHaveBeenCalled();
   });
 
   it('still rejects a genuine image-only upload when no fallback flag is set', async () => {
