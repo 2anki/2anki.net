@@ -121,6 +121,28 @@ describe('nested toggles folded into a card back (upload path)', () => {
     expect(deck.foldedToggleCount).toBe(0);
   });
 
+  it.each([['notes.md', '- Letters\n  - What is shaddah?\n    - Doubling.\n']])(
+    'counts nothing for %s, which never reaches the toggle parser',
+    async (name, contents) => {
+      const workspace = new Workspace(true, 'fs');
+      const parser = new DeckParser({
+        name,
+        settings: new CardOption({ cherry: 'false' }),
+        files: [{ name, contents }],
+        noLimits: true,
+        workspace,
+      });
+      await parser.build(workspace);
+
+      expect(
+        parser.payload.flatMap((deck) => deck.cards).length
+      ).toBeGreaterThan(0);
+      expect(
+        parser.payload.reduce((sum, deck) => sum + deck.foldedToggleCount, 0)
+      ).toBe(0);
+    }
+  );
+
   it('leaves out a nested cloze toggle the cloze option already promotes', async () => {
     const [deck] = await parse(
       pageOf(

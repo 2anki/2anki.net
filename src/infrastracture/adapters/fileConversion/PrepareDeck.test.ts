@@ -2763,6 +2763,28 @@ describe('PrepareDeck — nested toggles folded into card backs', () => {
     expect(result?.foldedToggleCount).toBe(2);
   });
 
+  it.each([
+    [
+      'notes.csv',
+      'front,back\nWhat is shaddah?,Doubling.\nWhat is hamzah?,A glottal stop.\n',
+    ],
+    ['notes.md', '- Letters\n  - What is shaddah?\n    - Doubling.\n'],
+  ])(
+    'reports no count for %s, which never reaches the toggle parser',
+    async (name, contents) => {
+      const result = await PrepareDeck({
+        name,
+        files: [{ name, contents }],
+        settings: makeSettings({}),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      });
+
+      expect(result?.cardCount).toBeGreaterThan(0);
+      expect(result?.foldedToggleCount ?? 0).toBe(0);
+    }
+  );
+
   it('reports no count for a deck Claude wrote for a pass holder', async () => {
     generateDeckInfo.mockResolvedValueOnce([
       {
