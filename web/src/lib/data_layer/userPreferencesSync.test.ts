@@ -194,6 +194,24 @@ describe('userPreferencesSync — hydrate (authenticated)', () => {
     expect(localStorage.getItem('cherry')).toBe('true');
   });
 
+  it('lets an account that already chose nested toggles overwrite a choice made while signed out', async () => {
+    localStorage.setItem('promote-nested-toggles', 'true');
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          cardOptions: { 'promote-nested-toggles': 'false' },
+          theme: null,
+          ankiWebAcknowledgedAt: null,
+        }),
+        { status: 200 }
+      )
+    );
+
+    await hydrateFromServer();
+
+    expect(localStorage.getItem('promote-nested-toggles')).toBe('false');
+  });
+
   it('applies a server language to i18n and localStorage', async () => {
     fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
