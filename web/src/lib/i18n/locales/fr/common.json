@@ -412,10 +412,10 @@
     "foldedToggles": {
       "count_one": "{{count}} toggle était dans un autre toggle, il n'est donc pas devenu une carte à part.",
       "count_other": "{{count}} toggles étaient dans d'autres toggles, ils ne sont donc pas devenus des cartes à part.",
-      "action": "Faire aussi des cartes avec les toggles intérieurs",
-      "note": "Cela active « {{option}} » dans les options de carte, convertit à nouveau le fichier et télécharge un nouveau paquet. Les cartes extérieures restent. L'option reste activée pour tes prochains imports.",
+      "action": "Faire aussi des cartes à partir des toggles intérieurs",
+      "note": "Cela active « {{option}} » dans les options de carte et convertit à nouveau le fichier, pour que les toggles intérieurs deviennent aussi des cartes. Les cartes extérieures restent. L'option reste activée pour tes prochains imports.",
       "link": "Active « {{option}} » dans les options de carte, puis convertis à nouveau le fichier",
-      "limit": "Le nouveau paquet compte dans ta limite de cartes."
+      "limit": "Le nouveau paquet compte dans ta limite mensuelle de cartes."
     },
     "validation": {
       "continue": "Convertir quand même",

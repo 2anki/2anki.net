@@ -22,7 +22,7 @@ describe('FoldedTogglesNotice', () => {
 
     expect(
       screen.getByText(
-        '3 toggles were inside other toggles, so they did not become cards of their own.'
+        "3 toggles were inside other toggles, so they didn't become cards of their own."
       )
     ).toBeInTheDocument();
   });
@@ -70,7 +70,7 @@ describe('FoldedTogglesNotice', () => {
     );
 
     expect(
-      screen.getByText(/The new deck counts toward your card limit\./)
+      screen.getByText(/The new deck counts toward your monthly card limit\./)
     ).toBeInTheDocument();
   });
 

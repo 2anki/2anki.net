@@ -991,7 +991,7 @@ describe('UploadForm', () => {
 
       expect(
         await screen.findByText(
-          '5 toggles were inside other toggles, so they did not become cards of their own.'
+          "5 toggles were inside other toggles, so they didn't become cards of their own."
         )
       ).toBeInTheDocument();
       expect(track).toHaveBeenCalledWith('folded_toggles_notice_shown', {
@@ -999,7 +999,9 @@ describe('UploadForm', () => {
         can_promote: true,
       });
       expect(
-        screen.queryByText(/The new deck counts toward your card limit\./)
+        screen.queryByText(
+          /The new deck counts toward your monthly card limit\./
+        )
       ).toBeNull();
 
       await act(async () => {
@@ -1135,7 +1137,9 @@ describe('UploadForm', () => {
         name: 'Make cards from the inner toggles too',
       });
       expect(
-        screen.queryByText(/The new deck counts toward your card limit\./)
+        screen.queryByText(
+          /The new deck counts toward your monthly card limit\./
+        )
       ).toBeNull();
     } finally {
       clearPassToken();
@@ -1172,7 +1176,9 @@ describe('UploadForm', () => {
         name: 'Make cards from the inner toggles too',
       });
       expect(
-        screen.queryByText(/The new deck counts toward your card limit\./)
+        screen.queryByText(
+          /The new deck counts toward your monthly card limit\./
+        )
       ).toBeNull();
       await act(async () => {
         screen
@@ -1222,7 +1228,7 @@ describe('UploadForm', () => {
 
     expect(
       await screen.findByText(
-        /1 toggle was inside another toggle, so it did not become a card of its own/
+        /1 toggle was inside another toggle, so it didn't become a card of its own/
       )
     ).toBeInTheDocument();
     expect(
@@ -13894,7 +13900,7 @@ describe('UploadForm folded toggles notice, signed in', () => {
     expect(sent.get('claude-ai-flashcards')).toBe('false');
   });
 
-  const limitLine = /The new deck counts toward your card limit\./;
+  const limitLine = /The new deck counts toward your monthly card limit\./;
 
   function sectionsThenDeck(second: () => Promise<unknown>) {
     return vi

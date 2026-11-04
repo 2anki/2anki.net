@@ -412,10 +412,10 @@
     "foldedToggles": {
       "count_one": "{{count}} toggle estaba dentro de otro toggle, así que no se convirtió en una tarjeta propia.",
       "count_other": "{{count}} toggles estaban dentro de otros toggles, así que no se convirtieron en tarjetas propias.",
-      "action": "Crear tarjetas también con los toggles interiores",
-      "note": "Esto activa “{{option}}” en las opciones de tarjeta, vuelve a convertir el archivo y descarga un mazo nuevo. Las tarjetas exteriores se mantienen. La opción sigue activada para tus próximas subidas.",
+      "action": "Crear tarjetas también a partir de los toggles interiores",
+      "note": "Esto activa “{{option}}” en las opciones de tarjeta y vuelve a convertir el archivo, así que los toggles interiores también se convierten en tarjetas. Las tarjetas exteriores se mantienen. La opción sigue activada para tus próximas subidas.",
       "link": "Activa “{{option}}” en las opciones de tarjeta y vuelve a convertir el archivo",
-      "limit": "El mazo nuevo cuenta para tu límite de tarjetas."
+      "limit": "El mazo nuevo cuenta para tu límite mensual de tarjetas."
     },
     "validation": {
       "continue": "Convertir de todos modos",

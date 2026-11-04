@@ -410,12 +410,12 @@
     },
     "overSplit": "Many card fronts are just one or two words, which usually means the file split mid-sentence. Look over the deck before you study, or upload the original Word or Notion file for cleaner cards.",
     "foldedToggles": {
-      "count_one": "{{count}} toggle was inside another toggle, so it did not become a card of its own.",
-      "count_other": "{{count}} toggles were inside other toggles, so they did not become cards of their own.",
+      "count_one": "{{count}} toggle was inside another toggle, so it didn't become a card of its own.",
+      "count_other": "{{count}} toggles were inside other toggles, so they didn't become cards of their own.",
       "action": "Make cards from the inner toggles too",
-      "note": "This turns on “{{option}}” in card options, converts the file again and downloads a new deck. The outer cards stay. The option stays on for your next uploads.",
+      "note": "This turns on “{{option}}” in card options and converts the file again, so the inner toggles become cards too. The outer cards stay. The option stays on for your next uploads.",
       "link": "Turn on “{{option}}” in card options, then convert the file again",
-      "limit": "The new deck counts toward your card limit."
+      "limit": "The new deck counts toward your monthly card limit."
     },
     "validation": {
       "continue": "Convert anyway",

@@ -412,10 +412,10 @@
     "foldedToggles": {
       "count_one": "{{count}} toggle estava dentro de outro toggle, então não virou um cartão próprio.",
       "count_other": "{{count}} toggles estavam dentro de outros toggles, então não viraram cartões próprios.",
-      "action": "Criar cartões também com os toggles internos",
-      "note": "Isso ativa “{{option}}” nas opções de cartão, converte o arquivo de novo e baixa um novo baralho. Os cartões externos continuam. A opção continua ativada nos seus próximos envios.",
+      "action": "Criar cartões também a partir dos toggles internos",
+      "note": "Isso ativa “{{option}}” nas opções de cartão e converte o arquivo de novo, então os toggles internos também viram cartões. Os cartões externos são mantidos. A opção continua ativada nos seus próximos envios.",
       "link": "Ative “{{option}}” nas opções de cartão e converta o arquivo de novo",
-      "limit": "O novo baralho conta para o seu limite de cartões."
+      "limit": "O novo baralho conta para o seu limite mensal de cartões."
     },
     "validation": {
       "continue": "Converter mesmo assim",
