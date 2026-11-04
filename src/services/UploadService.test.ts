@@ -8086,6 +8086,47 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(heldDeck.rows[0]).toMatchObject({ cards_held_back: 174 });
   });
 
+  it.each([
+    [
+      'takes the saved option when the hold has no nested-toggle choice',
+      {},
+      true,
+    ],
+    [
+      'keeps the choice the hold was made with',
+      { 'promote-nested-toggles': 'false' },
+      false,
+    ],
+  ])(
+    'claims a held deck after the folded-toggle offer saved the option: %s',
+    async (_case, heldCardOptions, promoted) => {
+      const execute = mockPartial([{ name: 'deck', cardCount: 7 }]);
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo({
+          getCardOptions: vi
+            .fn()
+            .mockResolvedValue({ 'promote-nested-toggles': 'true' }),
+        } as unknown as Partial<UsersRepository>),
+        ...fakeUploadServiceDeps({})
+      );
+
+      await service.convertHeldFileForOwner(
+        '4242',
+        heldSourceFile(),
+        true,
+        null,
+        'req-1',
+        heldCardOptions
+      );
+
+      expect(execute.mock.calls[0][2]).toMatchObject({
+        promoteNestedToggles: promoted,
+      });
+    }
+  );
+
   it('saves the deck for a pass before refusing a preview claim with no free cards left', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 184 }]);
