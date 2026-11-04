@@ -282,10 +282,19 @@ describe('generateDeckInfoFromPdfImages', () => {
       }
     );
 
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
+      .mockImplementation(() => undefined);
+
     const decks = await generateDeckInfoFromPdfImages(html, {
       mediaBaseDir: baseDir,
     });
 
+    const usageEvents = trackSpy.mock.calls.filter(
+      (call: unknown[]) => call[0] === 'ai_usage_recorded'
+    );
+    trackSpy.mockRestore();
+    expect(usageEvents).toHaveLength(3);
     expect(mockStreamFn.mock.calls.map(([p]) => p.max_tokens)).toContain(32768);
     expect(mockStreamFn).toHaveBeenCalledTimes(3);
     expect(mockNonStreamingCreateFn).not.toHaveBeenCalled();

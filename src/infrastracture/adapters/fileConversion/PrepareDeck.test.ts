@@ -1112,6 +1112,10 @@ describe('PrepareDeck — page pairs wins over AI conversion', () => {
     });
 
     expect(generateDeckInfo).toHaveBeenCalled();
+    const visionCalls = generateDeckInfo.mock.calls.filter(
+      (call) => call[7]?.pdfImageFallback != null
+    );
+    expect(visionCalls).toHaveLength(1);
   });
 
   it('still sends a non-PDF upload to Claude when page pairs is on', async () => {
@@ -2211,6 +2215,24 @@ describe('PrepareDeck — PowerPoint text-first cards', () => {
 
     expect(extractPptxSourceUnits).not.toHaveBeenCalled();
     expect(convertPDFToImages).toHaveBeenCalledTimes(1);
+  });
+
+  it('hands the binary .ppt page images to Claude vision when AI is on', async () => {
+    generateDeckInfo.mockResolvedValueOnce([]);
+
+    await PrepareDeck({
+      name: 'old.ppt',
+      files: [{ name: 'old.ppt', contents: Buffer.from('PK fake ppt') }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch(() => undefined);
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(generateDeckInfo.mock.calls[0][7].pdfImageFallback).toEqual({
+      mediaBaseDir: '/tmp/test-workspace',
+      attachPageImages: true,
+    });
   });
 });
 
