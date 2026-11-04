@@ -8127,6 +8127,42 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     }
   );
 
+  it('cuts a free claim built with the saved option to what the account has left', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 9);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardOptions: vi
+          .fn()
+          .mockResolvedValue({ 'promote-nested-toggles': 'true' }),
+      } as unknown as Partial<UsersRepository>),
+      ...fakeUploadServiceDeps({ heldDeck })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      false,
+      null,
+      'req-1',
+      {},
+      { previewCap: 21, heldCards: 30 }
+    );
+
+    expect(execute.mock.calls[0][2]).toMatchObject({
+      promoteNestedToggles: true,
+    });
+    expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 21 });
+    expect(result).toMatchObject({
+      cardCount: 21,
+      cardsHeldBack: 9,
+      heldForPlan: true,
+    });
+  });
+
   it('saves the deck for a pass before refusing a preview claim with no free cards left', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 184 }]);

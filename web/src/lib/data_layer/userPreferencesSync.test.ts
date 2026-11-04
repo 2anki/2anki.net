@@ -120,6 +120,19 @@ describe('userPreferencesSync — authenticated user (token cookie present)', ()
     });
   });
 
+  it('migrateToServer carries a nested-toggle choice saved while signed out', async () => {
+    localStorage.setItem('promote-nested-toggles', 'true');
+
+    await migrateToServer();
+
+    const body = JSON.parse(
+      (fetchSpy.mock.calls[0][1] as { body: string }).body
+    );
+    expect(body.cardOptions).toMatchObject({
+      'promote-nested-toggles': 'true',
+    });
+  });
+
   it('scheduleSync carries the time of the last card style change', async () => {
     localStorage.setItem('font-size', '32');
     localStorage.setItem('style-changed-at', '1793275200');
