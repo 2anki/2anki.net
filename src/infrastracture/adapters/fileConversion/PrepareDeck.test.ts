@@ -2738,6 +2738,10 @@ describe('PrepareDeck — empty backs from Notion-export toggles', () => {
 });
 
 describe('PrepareDeck — nested toggles folded into card backs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   const sectionsPage =
     '<html><head><title>T</title></head><body><article class="page sans"><header><h1 class="page-title">T</h1></header><div class="page-body">' +
     '<details open="" class="toggle"><summary>Letters</summary><div class="indented">' +
@@ -2791,7 +2795,8 @@ describe('PrepareDeck — nested toggles folded into card backs', () => {
       workspace: makeWorkspace(),
     });
 
-    expect(result?.engine).not.toBe('parser');
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(result?.engine).toBe('claude');
     expect(result?.foldedToggleCount ?? 0).toBe(0);
   });
 
@@ -2807,6 +2812,7 @@ describe('PrepareDeck — nested toggles folded into card backs', () => {
       workspace: makeWorkspace(),
     });
 
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
     expect(result?.engine).toBe('parser');
     expect(result?.foldedToggleCount).toBe(2);
   });

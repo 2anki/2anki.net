@@ -9166,6 +9166,71 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect((resent.get('pakker') as File).name).toBe('lecture.pdf');
   });
 
+  it("offers the free nested-toggle fix on the deck a visitor's Continue without AI built", async () => {
+    setUserLocals(signedOutWithAiPreview);
+    const fetchMock = stubServer([
+      jsonAnswer(200, {
+        kind: 'ai_preview',
+        cards: [{ front: 'What is shaddah?', back: 'Doubling' }],
+      }),
+      deckResponse(2, { 'X-Folded-Toggle-Count': '3' }),
+      deckResponse(5),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
+    );
+    await submitFiles(container, ['sections.html']);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Continue without AI' })
+    );
+    try {
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Make cards from the inner toggles too',
+        })
+      );
+
+      await waitFor(() =>
+        expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(3)
+      );
+      const resent = callsTo(fetchMock, '/api/upload/file')[2][1]
+        .body as FormData;
+      expect(resent.get('promote-nested-toggles')).toBe('true');
+      expect(resent.getAll('claude-ai-flashcards')).toEqual(['false']);
+    } finally {
+      globalThis.localStorage.removeItem('promote-nested-toggles');
+    }
+  });
+
+  it('offers the free nested-toggle fix when a visitor with AI on gets a parser deck without a preview', async () => {
+    setUserLocals(signedOut);
+    const fetchMock = stubServer([
+      deckResponse(2, { 'X-Folded-Toggle-Count': '3' }),
+      deckResponse(5),
+    ]);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
+    );
+    await submitFiles(container, ['sections.html']);
+    try {
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Make cards from the inner toggles too',
+        })
+      );
+
+      await waitFor(() =>
+        expect(callsTo(fetchMock, '/api/upload/file')).toHaveLength(2)
+      );
+      const resent = callsTo(fetchMock, '/api/upload/file')[1][1]
+        .body as FormData;
+      expect(resent.get('promote-nested-toggles')).toBe('true');
+      expect(resent.getAll('claude-ai-flashcards')).toEqual(['false']);
+    } finally {
+      globalThis.localStorage.removeItem('promote-nested-toggles');
+    }
+  });
+
   it("sends nothing when another account continues without AI from a visitor's preview", async () => {
     setUserLocals(signedOutWithAiPreview);
     const fetchMock = stubServer([
