@@ -26,6 +26,7 @@ describe('UsersRepository email change voids links mailed to the old address', (
       t.increments('id').primary();
       t.text('email');
       t.text('linked_email');
+      t.boolean('active').defaultTo(true);
     });
     await database.schema.createTable('email_change_tokens', (t) => {
       t.increments('id').primary();

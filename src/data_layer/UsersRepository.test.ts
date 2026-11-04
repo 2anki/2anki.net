@@ -258,7 +258,9 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
     });
     const subsWhereRaw = vi.fn().mockReturnValue({
       select: vi.fn().mockResolvedValue([]),
-      update: vi.fn().mockResolvedValue(0),
+      whereNotIn: vi.fn().mockReturnValue({
+        first: vi.fn().mockResolvedValue(undefined),
+      }),
     });
     const noticesWhereRaw = vi.fn().mockReturnValue({
       whereNotExists: vi.fn().mockReturnValue({
@@ -279,6 +281,9 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       if (table === 'subscriptions') {
         return {
           whereRaw: subsWhereRaw,
+          where: vi.fn().mockReturnValue({
+            update: vi.fn().mockResolvedValue(0),
+          }),
           select: vi.fn().mockReturnValue({ whereRaw: vi.fn() }),
         };
       }
