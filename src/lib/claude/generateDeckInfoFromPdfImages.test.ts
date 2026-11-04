@@ -263,6 +263,35 @@ describe('generateDeckInfoFromPdfImages', () => {
     expect(totalCards).toBeGreaterThan(0);
   });
 
+  it('sends every page once when the upload made one card per page', async () => {
+    mockVisionFn.mockResolvedValue(
+      visionResponse(
+        JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+      )
+    );
+    const pages = [1, 2, 3].map((page) => {
+      const pagePath = path.join(baseDir, 'pdf-abc', `single-page${page}.png`);
+      fs.writeFileSync(pagePath, Buffer.from(`single ${page}`));
+      return pagePath;
+    });
+
+    await generateDeckInfoFromPdfImages(
+      combineIntoHTML(pages, 'single.pdf', baseDir, 'single'),
+      { mediaBaseDir: baseDir }
+    );
+
+    const sent = mockVisionFn.mock.calls.map(
+      ([request]) =>
+        request.messages[0].content.find(
+          (block: { type: string }) => block.type === 'image'
+        ).source.data
+    );
+    expect(sent.sort()).toEqual(
+      [1, 2, 3].map((page) => Buffer.from(`single ${page}`).toString('base64'))
+    );
+    expect(mockStreamFn).toHaveBeenCalledTimes(3);
+  });
+
   it('sends the truncation retry as a streaming request at the larger budget', async () => {
     const page1 = Buffer.from('fakepng1').toString('base64');
     const cardsFor = (q: string) =>
