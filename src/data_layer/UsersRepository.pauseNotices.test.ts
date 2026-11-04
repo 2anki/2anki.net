@@ -39,6 +39,7 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
       t.timestamp('prints_month_started_at');
       t.text('reset_token');
       t.timestamp('reset_token_expires_at');
+      t.text('stripe_customer_id').nullable();
     });
     await database.schema.createTable('email_change_tokens', (t) => {
       t.increments('id').primary();
@@ -77,6 +78,7 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
       t.increments('id').primary();
       t.text('email').unique();
       t.text('linked_email');
+      t.text('payload').nullable();
     });
     await database.schema.createTable('pause_resume_warning_notices', (t) => {
       t.increments('id').primary();
@@ -203,12 +205,31 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
     expect(await remainingNoticeKeys()).toEqual([]);
   });
 
-  it('keeps the notice when an ops email change leaves a subscription still sending to the old address', async () => {
+  it('forgets the notice when an ops email change moves the linked subscription to the new address', async () => {
     await seedUser('old@example.com');
     await database('subscriptions').insert({
       email: 'payer@example.com',
       linked_email: 'old@example.com',
     });
+    await database('pause_resume_warning_notices').insert({
+      subscription_email: 'old@example.com',
+      resumes_at: FUTURE,
+    });
+
+    await repo.changeEmailAndRelinkSubscriptions(
+      'old@example.com',
+      'new@example.com'
+    );
+
+    expect(await remainingNoticeKeys()).toEqual([]);
+  });
+
+  it('keeps the notice when an ops email change leaves a subscription still sending to the old address', async () => {
+    await seedUser('old@example.com');
+    await database('subscriptions').insert([
+      { email: 'old@example.com', linked_email: null },
+      { email: 'payer@example.com', linked_email: 'old@example.com' },
+    ]);
     await database('pause_resume_warning_notices').insert({
       subscription_email: 'old@example.com',
       resumes_at: FUTURE,

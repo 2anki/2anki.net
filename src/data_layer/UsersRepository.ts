@@ -43,6 +43,25 @@ const CLEARED_RESET_TOKEN = {
   reset_token_expires_at: null,
 };
 
+function customerIdOfPayload(payload: unknown): string | null {
+  let parsed: unknown = payload;
+  if (typeof payload === 'string') {
+    try {
+      parsed = JSON.parse(payload);
+    } catch {
+      return null;
+    }
+  }
+  if (parsed == null || typeof parsed !== 'object') return null;
+  const customer = (parsed as { customer?: unknown }).customer;
+  if (typeof customer === 'string') return customer;
+  if (customer != null && typeof customer === 'object') {
+    const id = (customer as { id?: unknown }).id;
+    return typeof id === 'string' ? id : null;
+  }
+  return null;
+}
+
 class UsersRepository {
   table: string;
   private deletedUserUsage: DeletedUserUsageRepository;
@@ -293,9 +312,9 @@ class UsersRepository {
 
   // A warning notice is keyed on the address it went to. Once no subscription
   // sends to an address any more, its notice dedupes nothing and would outlive
-  // a later account deletion, which only knows the new address. The ops email
-  // change relinks only payer-matched rows, so a row linked to the old address
-  // can still send there and keeps its notice.
+  // a later account deletion, which only knows the new address. A row the ops
+  // email change could not move to the new address still sends to the old one
+  // and keeps its notice.
   forgetPauseNoticesForAddressQuery(
     executor: Knex | Knex.Transaction,
     address: string
@@ -356,9 +375,12 @@ class UsersRepository {
         .whereIn('user_id', ownerIds)
         .whereNull('consumed_at')
         .update({ consumed_at: trx.fn.now() });
-      await trx('subscriptions')
-        .where({ email: current.toLowerCase() })
-        .update({ linked_email: next });
+      await this.relinkSubscriptionsForOpsEmailChangeQuery(
+        trx,
+        ownerIds,
+        current,
+        next
+      );
       await this.forgetPauseNoticesForAddressQuery(trx, current);
     });
   }
@@ -372,6 +394,62 @@ class UsersRepository {
       .whereIn('owner', owners)
       .whereNull('used_at')
       .update({ used_at: executor.fn.now() });
+  }
+
+  // The account's own paid row takes the new address as before. A row someone
+  // else pays for, linked to the old address, follows only when no Stripe
+  // webhook can later write the new address onto a second row: the account
+  // has no paid row and no Stripe customer of its own other than that payer's.
+  // Either of those keeps a customer on the old address whose webhooks would
+  // collide with the moved row on the unique linked_email.
+  async relinkSubscriptionsForOpsEmailChangeQuery(
+    trx: Knex.Transaction,
+    ownerIds: number[],
+    oldEmail: string,
+    newEmail: string
+  ) {
+    const old = oldEmail.trim().toLowerCase();
+    const next = newEmail.trim().toLowerCase();
+    const ownRow = await trx('subscriptions')
+      .whereRaw('LOWER(email) = ?', [old])
+      .first('id');
+    const linkedRow: { id: number; payload: unknown } | undefined = await trx(
+      'subscriptions'
+    )
+      .whereRaw('LOWER(linked_email) = ? AND LOWER(email) <> ?', [old, old])
+      .first('id', 'payload');
+    if (ownRow == null && linkedRow != null) {
+      const payerCustomer = customerIdOfPayload(linkedRow.payload);
+      const owners: Array<{ stripe_customer_id: string | null }> = await trx(
+        this.table
+      )
+        .whereIn('id', ownerIds)
+        .select('stripe_customer_id');
+      const noOtherCustomer = owners.every(
+        (owner) =>
+          owner.stripe_customer_id == null ||
+          owner.stripe_customer_id === '' ||
+          owner.stripe_customer_id === payerCustomer
+      );
+      const newAddressTaken = await trx('subscriptions')
+        .whereRaw('LOWER(linked_email) = ?', [next])
+        .first('id');
+      if (noOtherCustomer && newAddressTaken == null) {
+        await trx('subscriptions')
+          .where({ id: linkedRow.id })
+          .update({ linked_email: next });
+        return;
+      }
+    }
+    if (linkedRow != null) {
+      console.warn(
+        '[users] ops email change left a linked subscription on the old address',
+        { subscriptionId: linkedRow.id }
+      );
+    }
+    await trx('subscriptions')
+      .where({ email: old })
+      .update({ linked_email: next });
   }
 
   relinkSubscriptionsForEmailChangeQuery(
