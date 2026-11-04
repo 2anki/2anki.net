@@ -120,6 +120,33 @@ describe('userPreferencesSync — authenticated user (token cookie present)', ()
     });
   });
 
+  it('scheduleSync writes a nested-toggle choice saved in this browser to the account', async () => {
+    localStorage.setItem('promote-nested-toggles', 'true');
+
+    scheduleSync();
+    await flushDebounce();
+
+    const body = JSON.parse(
+      (fetchSpy.mock.calls[0][1] as { body: string }).body
+    );
+    expect(body.cardOptions).toMatchObject({
+      'promote-nested-toggles': 'true',
+    });
+  });
+
+  it('migrateToServer carries a nested-toggle choice saved while signed out', async () => {
+    localStorage.setItem('promote-nested-toggles', 'true');
+
+    await migrateToServer();
+
+    const body = JSON.parse(
+      (fetchSpy.mock.calls[0][1] as { body: string }).body
+    );
+    expect(body.cardOptions).toMatchObject({
+      'promote-nested-toggles': 'true',
+    });
+  });
+
   it('scheduleSync carries the time of the last card style change', async () => {
     localStorage.setItem('font-size', '32');
     localStorage.setItem('style-changed-at', '1793275200');
@@ -179,6 +206,24 @@ describe('userPreferencesSync — hydrate (authenticated)', () => {
 
     expect(localStorage.getItem('basic-reversed')).toBe('true');
     expect(localStorage.getItem('cherry')).toBe('true');
+  });
+
+  it('lets an account that already chose nested toggles overwrite a choice made while signed out', async () => {
+    localStorage.setItem('promote-nested-toggles', 'true');
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          cardOptions: { 'promote-nested-toggles': 'false' },
+          theme: null,
+          ankiWebAcknowledgedAt: null,
+        }),
+        { status: 200 }
+      )
+    );
+
+    await hydrateFromServer();
+
+    expect(localStorage.getItem('promote-nested-toggles')).toBe('false');
   });
 
   it('applies a server language to i18n and localStorage', async () => {

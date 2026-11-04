@@ -29,6 +29,8 @@ class Package {
 
   cherrySkippedCount = 0;
 
+  foldedToggleCount = 0;
+
   notionEmptyBackCount = 0;
 
   // Set by the worker from the conversion result so `conversion_succeeded` can

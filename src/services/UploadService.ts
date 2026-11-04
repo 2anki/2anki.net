@@ -2166,6 +2166,14 @@ class UploadService {
         res.set('X-Cherry-Skipped-Count', totalCherrySkippedCount.toString());
         exposedHeaders.push('X-Cherry-Skipped-Count');
       }
+      const totalFoldedToggleCount = packages.reduce(
+        (sum, p) => sum + (p.foldedToggleCount ?? 0),
+        0
+      );
+      if (totalFoldedToggleCount > 0) {
+        res.set('X-Folded-Toggle-Count', totalFoldedToggleCount.toString());
+        exposedHeaders.push('X-Folded-Toggle-Count');
+      }
       const heldBack = cardsHeldBack ?? 0;
       if (heldBack > 0) {
         res.set('X-Cards-Held-Back', heldBack.toString());

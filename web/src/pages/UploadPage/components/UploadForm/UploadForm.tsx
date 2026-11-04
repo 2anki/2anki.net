@@ -53,6 +53,8 @@ import {
 } from '../ThinDeckAiOffer/thinDeckResume';
 import { ConversionResult } from '../../../DownloadsPage/components/ConversionResult/ConversionResult';
 import { OverSplitNotice } from './OverSplitNotice';
+import { FoldedTogglesNotice } from './FoldedTogglesNotice';
+import { saveValueInLocalStorage } from '../../../../lib/data_layer/saveValueInLocalStorage';
 import { getEmptyDeckChatPrompt } from '../../helpers/getEmptyDeckChatPrompt';
 import {
   describeEmptyReading,
@@ -764,6 +766,8 @@ function UploadForm({
     setEmptyBackSource,
     cherrySkippedCount,
     setCherrySkippedCount,
+    foldedToggleCount,
+    setFoldedToggleCount,
     cardsHeldBack,
     setCardsHeldBack,
     heldForPlan,
@@ -884,6 +888,7 @@ function UploadForm({
     setEmptyBackCount,
     setEmptyBackSource,
     setCherrySkippedCount,
+    setFoldedToggleCount,
     setCardsHeldBack,
     setHeldForPlan,
     setOverSplit,
@@ -2743,6 +2748,38 @@ function UploadForm({
     );
   };
 
+  // The folded-toggles notice: the option goes on for this and later uploads,
+  // and the same files go back so the person sees the new deck at once.
+  const handlePromoteFoldedToggles = () => {
+    const files = rescueFiles;
+    if (files.length === 0) return;
+    const count = foldedToggleCount;
+    void resendKeptFiles(
+      'promoteNestedToggles',
+      () => {
+        track('folded_toggles_promoted', { count });
+        saveValueInLocalStorage('promote-nested-toggles', 'true', null);
+        const formData = new FormData();
+        for (const file of files) {
+          formData.append('pakker', file, file.name);
+        }
+        for (const [key, value] of Object.entries(globalThis.localStorage)) {
+          formData.append(key, value);
+        }
+        attachPdfPageRange(formData);
+        // The deck on screen came from the parser; never spend credits on it.
+        formData.set('claude-ai-flashcards', 'false');
+        setLocalError(null);
+        setZoneState('converting');
+        setProgressWidth(10);
+        setProgressSlow(false);
+        setShowFallback(false);
+        return { formData, files, isRetry: false };
+      },
+      'send'
+    );
+  };
+
   // From the AI preview gate: build the deck from the same file without AI, the
   // free path up to the no-account cap. The AI flag is forced off so the server
   // runs the standard parser instead of another preview.
@@ -3199,6 +3236,28 @@ function UploadForm({
           )}
         </div>
       )}
+      {foldedToggleCount > 0 &&
+        cardsHeldBack === 0 &&
+        !downloadRecovered &&
+        !isUploadLocked && (
+          <FoldedTogglesNotice
+            count={foldedToggleCount}
+            onPromote={
+              rescueFiles.length > 0 && !keptFilesBelongElsewhere
+                ? handlePromoteFoldedToggles
+                : undefined
+            }
+            actionLabel={resendLabel(
+              'promoteNestedToggles',
+              t('upload.foldedToggles.action')
+            )}
+            disabled={resendPending}
+            busy={resendTapped === 'promoteNestedToggles'}
+            countsTowardLimit={
+              isAuthenticated && !isPaying && cardUsage?.unlimited !== true
+            }
+          />
+        )}
       {thinDeckAiOffer != null && (
         <ThinDeckAiOffer
           file={thinDeckAiOffer.file}

@@ -1694,6 +1694,44 @@ describe('McpToolsService.createDeck with subdecks', () => {
   });
 });
 
+describe('McpToolsService with a folded nested-toggle count on the upload', () => {
+  function deckUpload(headers: Record<string, string>): UploadEntrypoint {
+    return (_req, res) => {
+      res.set('X-Card-Count', '2');
+      res.set('File-Name', 'Letters.apkg');
+      for (const [name, value] of Object.entries(headers)) {
+        res.set(name, value);
+      }
+      res.status(200).send(Buffer.from('APKG-BYTES'));
+    };
+  }
+
+  it('returns the same deck result whether or not the header is set', async () => {
+    const plain = makeService({ uploadEntry: deckUpload({}) });
+    const folded = makeService({
+      uploadEntry: deckUpload({ 'X-Folded-Toggle-Count': '3' }),
+    });
+
+    const withoutCount = await plain.service.convertToDeck(
+      { text: 'x' },
+      'owner-9',
+      {}
+    );
+    const withCount = await folded.service.convertToDeck(
+      { text: 'x' },
+      'owner-9',
+      {}
+    );
+
+    expect(withCount).toEqual({
+      ...withoutCount,
+      downloadUrl: expect.any(String),
+      jobId: expect.any(String),
+    });
+    expect(JSON.stringify(withCount)).not.toMatch(/fold/i);
+  });
+});
+
 describe('McpToolsService at the monthly card limit', () => {
   const PLANS = 'https://2anki.net/pricing/?ref=mcp';
 

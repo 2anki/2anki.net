@@ -409,6 +409,14 @@
       "groupAria": "Outras fontes de upload"
     },
     "overSplit": "Muitas frentes de cartão têm apenas uma ou duas palavras, o que geralmente significa que o arquivo foi dividido no meio de uma frase. Revise o baralho antes de estudar ou envie o arquivo original do Word ou Notion para cartões mais limpos.",
+    "foldedToggles": {
+      "count_one": "{{count}} toggle estava dentro de outro toggle, então não virou um cartão próprio.",
+      "count_other": "{{count}} toggles estavam dentro de outros toggles, então não viraram cartões próprios.",
+      "action": "Criar cartões também com os toggles internos",
+      "note": "Isso ativa “{{option}}” nas opções de cartão, converte o arquivo de novo e baixa um novo baralho. Os cartões externos continuam. A opção continua ativada nos seus próximos envios.",
+      "link": "Ative “{{option}}” nas opções de cartão e converta o arquivo de novo",
+      "limit": "O novo baralho conta para o seu limite de cartões."
+    },
     "validation": {
       "continue": "Converter mesmo assim",
       "pickDifferent": "Escolher outro arquivo",

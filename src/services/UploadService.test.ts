@@ -2911,6 +2911,62 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('sets and exposes X-Folded-Toggle-Count on a single-deck upload with nested toggles folded into backs', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'deck',
+              cardCount: 2,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              foldedToggleCount: 12,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).toHaveBeenCalledWith('X-Folded-Toggle-Count', '12');
+    expect(res.set).toHaveBeenCalledWith(
+      'Access-Control-Expose-Headers',
+      expect.stringContaining('X-Folded-Toggle-Count')
+    );
+  });
+
+  it('does not set X-Folded-Toggle-Count when no nested toggle was folded', async () => {
+    mockPackages([{ name: 'deck', cardCount: 12 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Folded-Toggle-Count',
+      expect.anything()
+    );
+  });
+
   it('sets X-Structure-Rescued to the shipped rescue rule on a single-deck sync upload', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {
@@ -6401,6 +6457,34 @@ describe('UploadService.handleUpload — stored card options', () => {
     );
   });
 
+  it('applies a stored promote-nested-toggles to a connector upload that does not send it', async () => {
+    mockOneDeck();
+    const attachCustomTemplates = vi.fn().mockResolvedValue(undefined);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardOptions: vi
+          .fn()
+          .mockResolvedValue({ 'promote-nested-toggles': 'true' }),
+      } as unknown as Partial<UsersRepository>),
+      ...fakeUploadServiceDeps({
+        settings: { attachCustomTemplates } as unknown as ISettingsRepository,
+      })
+    );
+    const req = buildRequest();
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).mcp_auth = true;
+
+    await service.handleUpload(req, res);
+
+    expect(attachCustomTemplates).toHaveBeenCalledWith(
+      '42',
+      expect.objectContaining({ promoteNestedToggles: true })
+    );
+  });
+
   it('lets the browser win for an ordinary option it did send', async () => {
     mockOneDeck();
     const attachCustomTemplates = vi.fn().mockResolvedValue(undefined);
@@ -8000,6 +8084,83 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 10 });
     expect(result).toMatchObject({ cardCount: 10, heldForPlan: true });
     expect(heldDeck.rows[0]).toMatchObject({ cards_held_back: 174 });
+  });
+
+  it.each([
+    [
+      'takes the saved option when the hold has no nested-toggle choice',
+      {},
+      true,
+    ],
+    [
+      'keeps the choice the hold was made with',
+      { 'promote-nested-toggles': 'false' },
+      false,
+    ],
+  ])(
+    'claims a held deck after the folded-toggle offer saved the option: %s',
+    async (_case, heldCardOptions, promoted) => {
+      const execute = mockPartial([{ name: 'deck', cardCount: 7 }]);
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo({
+          getCardOptions: vi
+            .fn()
+            .mockResolvedValue({ 'promote-nested-toggles': 'true' }),
+        } as unknown as Partial<UsersRepository>),
+        ...fakeUploadServiceDeps({})
+      );
+
+      await service.convertHeldFileForOwner(
+        '4242',
+        heldSourceFile(),
+        true,
+        null,
+        'req-1',
+        heldCardOptions
+      );
+
+      expect(execute.mock.calls[0][2]).toMatchObject({
+        promoteNestedToggles: promoted,
+      });
+    }
+  );
+
+  it('cuts a free claim built with the saved option to what the account has left', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 9);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({
+        getCardOptions: vi
+          .fn()
+          .mockResolvedValue({ 'promote-nested-toggles': 'true' }),
+      } as unknown as Partial<UsersRepository>),
+      ...fakeUploadServiceDeps({ heldDeck })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      false,
+      null,
+      'req-1',
+      {},
+      { previewCap: 21, heldCards: 30 }
+    );
+
+    expect(execute.mock.calls[0][2]).toMatchObject({
+      promoteNestedToggles: true,
+    });
+    expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 21 });
+    expect(result).toMatchObject({
+      cardCount: 21,
+      cardsHeldBack: 9,
+      heldForPlan: true,
+    });
   });
 
   it('saves the deck for a pass before refusing a preview claim with no free cards left', async () => {

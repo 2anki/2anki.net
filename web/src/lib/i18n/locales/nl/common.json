@@ -409,6 +409,14 @@
       "groupAria": "Andere uploadbronnen"
     },
     "overSplit": "Veel voorkanten van kaarten bestaan uit slechts één of twee woorden, wat meestal betekent dat het bestand middenin een zin is gesplitst. Bekijk het deck voordat je studeert, of upload het oorspronkelijke Word- of Notion-bestand voor nettere kaarten.",
+    "foldedToggles": {
+      "count_one": "{{count}} toggle zat in een andere toggle en werd daarom geen eigen kaart.",
+      "count_other": "{{count}} toggles zaten in andere toggles en werden daarom geen eigen kaarten.",
+      "action": "Maak ook kaarten van de binnenste toggles",
+      "note": "Dit zet “{{option}}” aan in de kaartopties, zet het bestand opnieuw om en downloadt een nieuw deck. De buitenste kaarten blijven. De optie blijft aan voor je volgende uploads.",
+      "link": "Zet “{{option}}” aan in de kaartopties en zet het bestand daarna opnieuw om",
+      "limit": "Het nieuwe deck telt mee voor je kaartlimiet."
+    },
     "validation": {
       "continue": "Toch converteren",
       "pickDifferent": "Kies een ander bestand",

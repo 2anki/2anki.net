@@ -457,6 +457,16 @@
       "groupAria": "Inne źródła przesyłania"
     },
     "overSplit": "Wiele przodów kart ma tylko jedno lub dwa słowa, co zwykle oznacza, że plik został podzielony w środku zdania. Przejrzyj talię przed nauką lub prześlij oryginalny plik Word albo Notion, aby uzyskać czytelniejsze karty.",
+    "foldedToggles": {
+      "count_one": "{{count}} przełącznik był wewnątrz innego przełącznika, więc nie stał się osobną kartą.",
+      "count_few": "{{count}} przełączniki były wewnątrz innych przełączników, więc nie stały się osobnymi kartami.",
+      "count_many": "{{count}} przełączników było wewnątrz innych przełączników, więc nie stało się osobnymi kartami.",
+      "count_other": "{{count}} przełączników było wewnątrz innych przełączników, więc nie stało się osobnymi kartami.",
+      "action": "Zrób karty także z wewnętrznych przełączników",
+      "note": "To włącza „{{option}}” w opcjach kart, konwertuje plik jeszcze raz i pobiera nową talię. Zewnętrzne karty zostają. Opcja pozostanie włączona dla kolejnych przesyłanych plików.",
+      "link": "Włącz „{{option}}” w opcjach kart, a potem przekonwertuj plik jeszcze raz",
+      "limit": "Nowa talia liczy się do twojego limitu kart."
+    },
     "validation": {
       "continue": "Konwertuj mimo to",
       "pickDifferent": "Wybierz inny plik",

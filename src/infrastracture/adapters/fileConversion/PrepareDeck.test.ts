@@ -2736,3 +2736,154 @@ describe('PrepareDeck — empty backs from Notion-export toggles', () => {
     expect(result.notionEmptyBackCount).toBe(1);
   });
 });
+
+describe('PrepareDeck — nested toggles folded into card backs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const sectionsPage =
+    '<html><head><title>T</title></head><body><article class="page sans"><header><h1 class="page-title">T</h1></header><div class="page-body">' +
+    '<details open="" class="toggle"><summary>Letters</summary><div class="indented">' +
+    '<details open="" class="toggle"><summary>What is shaddah?</summary><div class="indented"><p>Doubling.</p></div></details>' +
+    '<details open="" class="toggle"><summary>What is hamzah?</summary><div class="indented"><p>A glottal stop.</p></div></details>' +
+    '</div></details>' +
+    '</div></article></body></html>';
+
+  it('reports how many nested toggles a single-file upload folded', async () => {
+    const result = await PrepareDeck({
+      name: 'sections.html',
+      files: [{ name: 'sections.html', contents: sectionsPage }],
+      settings: makeSettings({}),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(1);
+    expect(result?.foldedToggleCount).toBe(2);
+  });
+
+  it.each([
+    [
+      'notes.csv',
+      'front,back\nWhat is shaddah?,Doubling.\nWhat is hamzah?,A glottal stop.\n',
+    ],
+    ['notes.md', '- Letters\n  - What is shaddah?\n    - Doubling.\n'],
+  ])(
+    'reports no count for %s, which never reaches the toggle parser',
+    async (name, contents) => {
+      const result = await PrepareDeck({
+        name,
+        files: [{ name, contents }],
+        settings: makeSettings({}),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      });
+
+      expect(result?.cardCount).toBeGreaterThan(0);
+      expect(result?.foldedToggleCount ?? 0).toBe(0);
+    }
+  );
+
+  it('reports no count for a deck Claude wrote for a pass holder', async () => {
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Letters',
+        image: '',
+        style: null,
+        id: 111222333444556,
+        settings: {},
+        cards: [
+          {
+            name: 'What is shaddah?',
+            back: 'Doubling.',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    const result = await PrepareDeck({
+      name: 'sections.html',
+      files: [{ name: 'sections.html', contents: sectionsPage }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      anonymousPassId: 7,
+      workspace: makeWorkspace(),
+    });
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(result?.engine).toBe('claude');
+    expect(result?.foldedToggleCount ?? 0).toBe(0);
+  });
+
+  it("carries the count when a pass holder's AI conversion falls back to the parser", async () => {
+    generateDeckInfo.mockRejectedValueOnce(new AiCreditsExhaustedError());
+
+    const result = await PrepareDeck({
+      name: 'sections.html',
+      files: [{ name: 'sections.html', contents: sectionsPage }],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      anonymousPassId: 7,
+      workspace: makeWorkspace(),
+    });
+
+    expect(generateDeckInfo).toHaveBeenCalledTimes(1);
+    expect(result?.engine).toBe('parser');
+    expect(result?.foldedToggleCount).toBe(2);
+  });
+
+  it('reports the same count for a zip entry built in a batch', async () => {
+    const result = await prepareDeckInfoOnly(
+      {
+        name: 'sections.html',
+        files: [{ name: 'sections.html', contents: sectionsPage }],
+        settings: makeSettings({}),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      },
+      makeWorkspace(),
+      makeWorkspace()
+    );
+
+    expect(result.cardCount).toBe(1);
+    expect(result.foldedToggleCount).toBe(2);
+  });
+});
+
+describe('PrepareDeck — folded nested toggles across sub-pages', () => {
+  const sectionPage = (title: string, extra: string) =>
+    `<html><head><title>${title}</title></head><body><article class="page sans"><header><h1 class="page-title">${title}</h1></header><div class="page-body">` +
+    `<details open="" class="toggle"><summary>${title} section</summary><div class="indented">` +
+    `<details open="" class="toggle"><summary>${title} question one</summary><div class="indented"><p>One.</p></div></details>` +
+    `<details open="" class="toggle"><summary>${title} question two</summary><div class="indented"><p>Two.</p></div></details>` +
+    `</div></details>${extra}</div></article></body></html>`;
+
+  it('sums the count over the parent page and its sub-page decks', async () => {
+    const result = await PrepareDeck({
+      name: 'parent.html',
+      files: [
+        {
+          name: 'parent.html',
+          contents: sectionPage(
+            'Parent',
+            '<figure class="link-to-page"><a href="sub.html">Sub</a></figure>'
+          ),
+        },
+        { name: 'sub.html', contents: sectionPage('Sub', '') },
+      ],
+      settings: makeSettings({}),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.deck).toHaveLength(2);
+    expect(result?.foldedToggleCount).toBe(4);
+  });
+});
