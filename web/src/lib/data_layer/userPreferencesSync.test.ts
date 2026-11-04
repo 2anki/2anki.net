@@ -120,6 +120,20 @@ describe('userPreferencesSync — authenticated user (token cookie present)', ()
     });
   });
 
+  it('scheduleSync writes a nested-toggle choice saved in this browser to the account', async () => {
+    localStorage.setItem('promote-nested-toggles', 'true');
+
+    scheduleSync();
+    await flushDebounce();
+
+    const body = JSON.parse(
+      (fetchSpy.mock.calls[0][1] as { body: string }).body
+    );
+    expect(body.cardOptions).toMatchObject({
+      'promote-nested-toggles': 'true',
+    });
+  });
+
   it('migrateToServer carries a nested-toggle choice saved while signed out', async () => {
     localStorage.setItem('promote-nested-toggles', 'true');
 
