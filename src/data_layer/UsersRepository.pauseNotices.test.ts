@@ -77,7 +77,6 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
       t.increments('id').primary();
       t.text('email').unique();
       t.text('linked_email');
-      t.boolean('active').defaultTo(true);
     });
     await database.schema.createTable('pause_resume_warning_notices', (t) => {
       t.increments('id').primary();

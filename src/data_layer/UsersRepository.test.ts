@@ -257,10 +257,7 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       }),
     });
     const subsWhereRaw = vi.fn().mockReturnValue({
-      select: vi.fn().mockResolvedValue([]),
-      whereNotIn: vi.fn().mockReturnValue({
-        first: vi.fn().mockResolvedValue(undefined),
-      }),
+      first: vi.fn().mockResolvedValue(undefined),
     });
     const noticesWhereRaw = vi.fn().mockReturnValue({
       whereNotExists: vi.fn().mockReturnValue({

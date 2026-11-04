@@ -43,16 +43,6 @@ const CLEARED_RESET_TOKEN = {
   reset_token_expires_at: null,
 };
 
-function pickRowForNewAddress<
-  Row extends { email: string; active: boolean | null },
->(rows: Row[], oldEmail: string): Row | undefined {
-  const own = rows.find((row) => row.email.toLowerCase() === oldEmail);
-  const linked = rows.find((row) => row !== own);
-  if (own == null) return linked;
-  if (Boolean(linked?.active) && !own.active) return linked;
-  return own;
-}
-
 class UsersRepository {
   table: string;
   private deletedUserUsage: DeletedUserUsageRepository;
@@ -382,11 +372,11 @@ class UsersRepository {
       .update({ used_at: executor.fn.now() });
   }
 
-  // linked_email is unique, so only one row can take the new address. Prefer
-  // the account's own paid row unless it has lapsed and the row linked to it
-  // is live. When another row already holds the new address, nothing moves
-  // beyond what this change did before. Rows left on the old address are
-  // logged by id for support.
+  // The account's own paid row takes the new address as before. Only when it
+  // has none does a row someone else pays for, linked to the old address,
+  // follow it: an own row keeps its Stripe customer on the old address, whose
+  // webhooks write the new address back as its link and would collide with a
+  // moved row on the unique linked_email.
   async relinkSubscriptionsForOpsEmailChangeQuery(
     trx: Knex.Transaction,
     oldEmail: string,
@@ -394,36 +384,31 @@ class UsersRepository {
   ) {
     const old = oldEmail.trim().toLowerCase();
     const next = newEmail.trim().toLowerCase();
-    const rows: Array<{ id: number; email: string; active: boolean | null }> =
-      await trx('subscriptions')
-        .whereRaw('LOWER(email) = ? OR LOWER(linked_email) = ?', [old, old])
-        .select('id', 'email', 'active');
-    const newAddressTaken = await trx('subscriptions')
-      .whereRaw('LOWER(linked_email) = ?', [next])
-      .whereNotIn(
-        'id',
-        rows.map((row) => row.id)
-      )
+    const ownRow = await trx('subscriptions')
+      .whereRaw('LOWER(email) = ?', [old])
       .first('id');
-    const moving =
-      newAddressTaken == null ? pickRowForNewAddress(rows, old) : undefined;
-    const leftBehind = rows.filter(
-      (row) => row.id !== moving?.id && row.email.toLowerCase() !== old
-    );
-    if (leftBehind.length > 0) {
+    const linkedRow = await trx('subscriptions')
+      .whereRaw('LOWER(linked_email) = ? AND LOWER(email) <> ?', [old, old])
+      .first('id');
+    if (ownRow == null && linkedRow != null) {
+      const newAddressTaken = await trx('subscriptions')
+        .whereRaw('LOWER(linked_email) = ?', [next])
+        .first('id');
+      if (newAddressTaken == null) {
+        await trx('subscriptions')
+          .where({ id: linkedRow.id })
+          .update({ linked_email: next });
+        return;
+      }
+    }
+    if (linkedRow != null) {
       console.warn(
         '[users] ops email change left a linked subscription on the old address',
-        { subscriptionIds: leftBehind.map((row) => row.id) }
+        { subscriptionId: linkedRow.id }
       );
     }
-    if (moving == null) {
-      await trx('subscriptions')
-        .where({ email: old })
-        .update({ linked_email: next });
-      return;
-    }
     await trx('subscriptions')
-      .where({ id: moving.id })
+      .where({ email: old })
       .update({ linked_email: next });
   }
 

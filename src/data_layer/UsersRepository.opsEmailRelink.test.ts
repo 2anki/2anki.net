@@ -22,7 +22,6 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions relinks subscription
       t.increments('id').primary();
       t.text('email').unique();
       t.text('linked_email').unique().nullable();
-      t.boolean('active').defaultTo(true);
     });
     await database.schema.createTable('email_change_tokens', (t) => {
       t.increments('id').primary();
@@ -96,23 +95,18 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions relinks subscription
     );
   });
 
-  it("moves the live linked subscription when the user's own one has lapsed", async () => {
-    await database('subscriptions').insert([
-      { email: 'old@example.com', linked_email: null, active: false },
-      {
-        email: 'payer@example.com',
-        linked_email: 'old@example.com',
-        active: true,
-      },
-    ]);
+  it("moves the user's own row to the new address even when it links someone else, as before", async () => {
+    await database('subscriptions').insert({
+      email: 'old@example.com',
+      linked_email: 'friend@example.com',
+    });
 
     await repo.changeEmailAndRelinkSubscriptions(
       'old@example.com',
       'new@example.com'
     );
 
-    expect(await linkedEmailOf('payer@example.com')).toBe('new@example.com');
-    expect(await linkedEmailOf('old@example.com')).toBeNull();
+    expect(await linkedEmailOf('old@example.com')).toBe('new@example.com');
   });
 
   it('keeps the change going when another subscription already holds the new address', async () => {
