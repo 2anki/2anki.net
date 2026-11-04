@@ -60,7 +60,7 @@ describe('FoldedTogglesNotice', () => {
     renderNotice(<FoldedTogglesNotice count={3} onPromote={vi.fn()} />);
 
     expect(
-      screen.queryByText(/counts toward your card limit/)
+      screen.queryByText(/counts toward your monthly card limit/)
     ).not.toBeInTheDocument();
   });
 
@@ -71,7 +71,9 @@ describe('FoldedTogglesNotice', () => {
 
     expect(
       screen.getByText(/The new deck counts toward your monthly card limit\./)
-    ).toBeInTheDocument();
+    ).toHaveTextContent(
+      /^The new deck counts toward your monthly card limit\.$/
+    );
   });
 
   it('marks the button busy while the file goes back', () => {

@@ -413,9 +413,9 @@
       "count_one": "{{count}} toggle era dentro un altro toggle, quindi non è diventato una carta a sé.",
       "count_other": "{{count}} toggle erano dentro altri toggle, quindi non sono diventati carte a sé.",
       "action": "Crea carte anche dai toggle interni",
-      "note": "Attivi “{{option}}” nelle opzioni carta e converti di nuovo il file: anche i toggle interni diventano carte. Le carte esterne restano. L'opzione resta attiva per i tuoi prossimi caricamenti.",
+      "note": "Così attivi “{{option}}” nelle opzioni carta e converti di nuovo il file: anche i toggle interni diventano carte. Le carte esterne restano. L'opzione resta attiva per i tuoi prossimi caricamenti.",
       "link": "Attiva “{{option}}” nelle opzioni carta, poi converti di nuovo il file",
-      "limit": "Il nuovo mazzo rientra nel tuo limite mensile di carte."
+      "limit": "Il nuovo mazzo conta per il tuo limite mensile di carte."
     },
     "validation": {
       "continue": "Converti comunque",
