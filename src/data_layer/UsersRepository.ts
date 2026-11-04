@@ -356,9 +356,7 @@ class UsersRepository {
         .whereIn('user_id', ownerIds)
         .whereNull('consumed_at')
         .update({ consumed_at: trx.fn.now() });
-      await trx('subscriptions')
-        .where({ email: current.toLowerCase() })
-        .update({ linked_email: next });
+      await this.relinkSubscriptionsForOpsEmailChangeQuery(trx, current, next);
       await this.forgetPauseNoticesForAddressQuery(trx, current);
     });
   }
@@ -372,6 +370,31 @@ class UsersRepository {
       .whereIn('owner', owners)
       .whereNull('used_at')
       .update({ used_at: executor.fn.now() });
+  }
+
+  // linked_email is unique, so when the user pays for a subscription and is
+  // also linked to someone else's, only the one they pay for can take the new
+  // address; the other keeps the old link for support to sort out.
+  async relinkSubscriptionsForOpsEmailChangeQuery(
+    trx: Knex.Transaction,
+    oldEmail: string,
+    newEmail: string
+  ) {
+    const old = oldEmail.trim().toLowerCase();
+    const rows: Array<{ id: number }> = await trx('subscriptions')
+      .whereRaw('LOWER(email) = ? OR LOWER(linked_email) = ?', [old, old])
+      .select('id');
+    if (rows.length <= 1) {
+      await this.relinkSubscriptionsForEmailChangeQuery(trx, old, newEmail);
+      return;
+    }
+    console.warn(
+      '[users] ops email change left a linked subscription on the old address',
+      { subscriptionIds: rows.map((row) => row.id) }
+    );
+    await trx('subscriptions')
+      .where({ email: old })
+      .update({ linked_email: newEmail.trim().toLowerCase() });
   }
 
   relinkSubscriptionsForEmailChangeQuery(

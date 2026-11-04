@@ -251,13 +251,15 @@ describe('UsersRepository.createUserAndSeedFromTombstone', () => {
 describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
   function buildTrxKnex() {
     const usersUpdate = vi.fn().mockResolvedValue(1);
-    const subsUpdate = vi.fn().mockResolvedValue(1);
     const usersWhereRaw = vi.fn().mockReturnValue({
       update: usersUpdate.mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: 1 }]),
       }),
     });
-    const subsWhere = vi.fn().mockReturnValue({ update: subsUpdate });
+    const subsWhereRaw = vi.fn().mockReturnValue({
+      select: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue(0),
+    });
     const noticesWhereRaw = vi.fn().mockReturnValue({
       whereNotExists: vi.fn().mockReturnValue({
         del: vi.fn().mockResolvedValue(0),
@@ -276,7 +278,7 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       }
       if (table === 'subscriptions') {
         return {
-          where: subsWhere,
+          whereRaw: subsWhereRaw,
           select: vi.fn().mockReturnValue({ whereRaw: vi.fn() }),
         };
       }
@@ -297,21 +299,13 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       knex,
       usersWhereRaw,
       usersUpdate,
-      subsWhere,
-      subsUpdate,
       noticesWhereRaw,
     };
   }
 
-  it('moves users.email and subscriptions.linked_email in one transaction', async () => {
-    const {
-      knex,
-      usersWhereRaw,
-      usersUpdate,
-      subsWhere,
-      subsUpdate,
-      noticesWhereRaw,
-    } = buildTrxKnex();
+  it('moves users.email in one transaction', async () => {
+    const { knex, usersWhereRaw, usersUpdate, noticesWhereRaw } =
+      buildTrxKnex();
     const repo = new UsersRepository(knex as any);
 
     await repo.changeEmailAndRelinkSubscriptions(
@@ -327,10 +321,6 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       email: 'new@example.com',
       reset_token: null,
       reset_token_expires_at: null,
-    });
-    expect(subsWhere).toHaveBeenCalledWith({ email: 'old@example.com' });
-    expect(subsUpdate).toHaveBeenCalledWith({
-      linked_email: 'new@example.com',
     });
     expect(noticesWhereRaw).toHaveBeenCalledWith(
       'lower(subscription_email) = ?',
