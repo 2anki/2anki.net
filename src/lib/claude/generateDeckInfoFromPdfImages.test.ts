@@ -43,6 +43,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
 
 function visionResponse(json: string, stopReason = 'end_turn') {
   return {
+    model: 'claude-sonnet-5',
     content: [{ type: 'text', text: json }],
     stop_reason: stopReason,
     usage: { input_tokens: 100, output_tokens: 50 },
@@ -101,6 +102,9 @@ describe('generateDeckInfoFromPdfImages', () => {
       (b: { type: string }) => b.type === 'text'
     );
     expect(promptBlock.cache_control).toEqual({ type: 'ephemeral' });
+    expect(promptBlock.text).toBe(buildPdfPageVisionPrompt());
+    expect(firstCall.model).toBe('claude-sonnet-5');
+    expect(firstCall.max_tokens).toBe(16384);
     const totalCards = decks.reduce((sum, d) => sum + d.cards.length, 0);
     expect(totalCards).toBeGreaterThan(0);
   });
@@ -221,8 +225,16 @@ describe('generateDeckInfoFromPdfImages', () => {
         (call: unknown[]) => call[0] === 'ai_usage_recorded'
       );
       expect(usageCalls.length).toBeGreaterThan(0);
+      expect(usageCalls).toHaveLength(2);
       for (const usageCall of usageCalls) {
-        expect((usageCall[1] as { userId?: number | null }).userId).toBe(77);
+        expect(usageCall[1]).toMatchObject({
+          userId: 77,
+          props: {
+            surface: 'pdf_page_vision',
+            model: 'claude-sonnet-5',
+            usage: { input_tokens: 100, output_tokens: 50 },
+          },
+        });
       }
     } finally {
       trackSpy.mockRestore();
@@ -275,6 +287,7 @@ describe('generateDeckInfoFromPdfImages', () => {
     });
 
     expect(mockStreamFn.mock.calls.map(([p]) => p.max_tokens)).toContain(32768);
+    expect(mockStreamFn).toHaveBeenCalledTimes(3);
     expect(mockNonStreamingCreateFn).not.toHaveBeenCalled();
     expect(decks.flatMap((d) => d.cards.map((c) => c.name)).sort()).toEqual([
       'Page 1 retried',
