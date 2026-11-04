@@ -60,8 +60,12 @@ export function FoldedTogglesNotice({
           </button>
           <p className={formStyles.successSecondary}>
             {t('upload.foldedToggles.note', { option })}
-            {countsTowardLimit && ` ${t('upload.foldedToggles.limit')}`}
           </p>
+          {countsTowardLimit && (
+            <p className={formStyles.successSecondary}>
+              {t('upload.foldedToggles.limit')}
+            </p>
+          )}
         </>
       )}
     </div>

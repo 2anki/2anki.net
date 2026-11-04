@@ -22,7 +22,7 @@ describe('FoldedTogglesNotice', () => {
 
     expect(
       screen.getByText(
-        '3 toggles were inside other toggles, so they did not become cards of their own.'
+        "3 toggles were inside other toggles, so they didn't become cards of their own."
       )
     ).toBeInTheDocument();
   });
@@ -60,7 +60,7 @@ describe('FoldedTogglesNotice', () => {
     renderNotice(<FoldedTogglesNotice count={3} onPromote={vi.fn()} />);
 
     expect(
-      screen.queryByText(/counts toward your card limit/)
+      screen.queryByText(/counts toward your monthly card limit/)
     ).not.toBeInTheDocument();
   });
 
@@ -70,8 +70,10 @@ describe('FoldedTogglesNotice', () => {
     );
 
     expect(
-      screen.getByText(/The new deck counts toward your card limit\./)
-    ).toBeInTheDocument();
+      screen.getByText(/The new deck counts toward your monthly card limit\./)
+    ).toHaveTextContent(
+      /^The new deck counts toward your monthly card limit\.$/
+    );
   });
 
   it('marks the button busy while the file goes back', () => {
