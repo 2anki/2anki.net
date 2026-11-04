@@ -21,11 +21,13 @@ describe('UsersRepository email change voids links mailed to the old address', (
       t.text('reset_token').nullable();
       t.timestamp('reset_token_expires_at').nullable();
       t.timestamp('reset_token_used_at').nullable();
+      t.text('stripe_customer_id').nullable();
     });
     await database.schema.createTable('subscriptions', (t) => {
       t.increments('id').primary();
       t.text('email');
       t.text('linked_email');
+      t.text('payload').nullable();
     });
     await database.schema.createTable('email_change_tokens', (t) => {
       t.increments('id').primary();

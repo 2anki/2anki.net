@@ -17,11 +17,13 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions relinks subscription
       t.text('email').notNullable();
       t.text('reset_token').nullable();
       t.timestamp('reset_token_expires_at').nullable();
+      t.text('stripe_customer_id').nullable();
     });
     await database.schema.createTable('subscriptions', (t) => {
       t.increments('id').primary();
       t.text('email').unique();
       t.text('linked_email').unique().nullable();
+      t.text('payload').nullable();
     });
     await database.schema.createTable('email_change_tokens', (t) => {
       t.increments('id').primary();
@@ -63,6 +65,57 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions relinks subscription
     );
 
     expect(await linkedEmailOf('payer@example.com')).toBe('new@example.com');
+  });
+
+  it("moves it when the account already uses the payer's Stripe customer", async () => {
+    await database('users').update({ stripe_customer_id: 'cus_payer' });
+    await database('subscriptions').insert({
+      email: 'payer@example.com',
+      linked_email: 'old@example.com',
+      payload: JSON.stringify({ customer: 'cus_payer' }),
+    });
+
+    await repo.changeEmailAndRelinkSubscriptions(
+      'old@example.com',
+      'new@example.com'
+    );
+
+    expect(await linkedEmailOf('payer@example.com')).toBe('new@example.com');
+  });
+
+  it('leaves it on the old address when the account has a Stripe customer of its own', async () => {
+    await database('users').update({ stripe_customer_id: 'cus_own' });
+    await database('subscriptions').insert({
+      email: 'payer@example.com',
+      linked_email: 'old@example.com',
+      payload: JSON.stringify({ customer: 'cus_payer' }),
+    });
+
+    await repo.changeEmailAndRelinkSubscriptions(
+      'old@example.com',
+      'new@example.com'
+    );
+
+    const user = await database('users').first();
+    expect(user.email).toBe('new@example.com');
+    expect(await linkedEmailOf('payer@example.com')).toBe('old@example.com');
+  });
+
+  it('throws as before when the account has its own row and the new address is already linked elsewhere', async () => {
+    await database('subscriptions').insert([
+      { email: 'old@example.com', linked_email: null },
+      { email: 'stale@example.com', linked_email: 'new@example.com' },
+    ]);
+
+    await expect(
+      repo.changeEmailAndRelinkSubscriptions(
+        'old@example.com',
+        'new@example.com'
+      )
+    ).rejects.toThrow();
+
+    const user = await database('users').first();
+    expect(user.email).toBe('old@example.com');
   });
 
   it("links the user's own subscription to the new address", async () => {

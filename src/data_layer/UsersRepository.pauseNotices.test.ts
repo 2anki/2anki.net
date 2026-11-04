@@ -39,6 +39,7 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
       t.timestamp('prints_month_started_at');
       t.text('reset_token');
       t.timestamp('reset_token_expires_at');
+      t.text('stripe_customer_id').nullable();
     });
     await database.schema.createTable('email_change_tokens', (t) => {
       t.increments('id').primary();
@@ -77,6 +78,7 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
       t.increments('id').primary();
       t.text('email').unique();
       t.text('linked_email');
+      t.text('payload').nullable();
     });
     await database.schema.createTable('pause_resume_warning_notices', (t) => {
       t.increments('id').primary();

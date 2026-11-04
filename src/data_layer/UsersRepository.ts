@@ -43,6 +43,25 @@ const CLEARED_RESET_TOKEN = {
   reset_token_expires_at: null,
 };
 
+function customerIdOfPayload(payload: unknown): string | null {
+  let parsed: unknown = payload;
+  if (typeof payload === 'string') {
+    try {
+      parsed = JSON.parse(payload);
+    } catch {
+      return null;
+    }
+  }
+  if (parsed == null || typeof parsed !== 'object') return null;
+  const customer = (parsed as { customer?: unknown }).customer;
+  if (typeof customer === 'string') return customer;
+  if (customer != null && typeof customer === 'object') {
+    const id = (customer as { id?: unknown }).id;
+    return typeof id === 'string' ? id : null;
+  }
+  return null;
+}
+
 class UsersRepository {
   table: string;
   private deletedUserUsage: DeletedUserUsageRepository;
@@ -356,7 +375,12 @@ class UsersRepository {
         .whereIn('user_id', ownerIds)
         .whereNull('consumed_at')
         .update({ consumed_at: trx.fn.now() });
-      await this.relinkSubscriptionsForOpsEmailChangeQuery(trx, current, next);
+      await this.relinkSubscriptionsForOpsEmailChangeQuery(
+        trx,
+        ownerIds,
+        current,
+        next
+      );
       await this.forgetPauseNoticesForAddressQuery(trx, current);
     });
   }
@@ -372,13 +396,15 @@ class UsersRepository {
       .update({ used_at: executor.fn.now() });
   }
 
-  // The account's own paid row takes the new address as before. Only when it
-  // has none does a row someone else pays for, linked to the old address,
-  // follow it: an own row keeps its Stripe customer on the old address, whose
-  // webhooks write the new address back as its link and would collide with a
-  // moved row on the unique linked_email.
+  // The account's own paid row takes the new address as before. A row someone
+  // else pays for, linked to the old address, follows only when no Stripe
+  // webhook can later write the new address onto a second row: the account
+  // has no paid row and no Stripe customer of its own other than that payer's.
+  // Either of those keeps a customer on the old address whose webhooks would
+  // collide with the moved row on the unique linked_email.
   async relinkSubscriptionsForOpsEmailChangeQuery(
     trx: Knex.Transaction,
+    ownerIds: number[],
     oldEmail: string,
     newEmail: string
   ) {
@@ -387,14 +413,28 @@ class UsersRepository {
     const ownRow = await trx('subscriptions')
       .whereRaw('LOWER(email) = ?', [old])
       .first('id');
-    const linkedRow = await trx('subscriptions')
+    const linkedRow: { id: number; payload: unknown } | undefined = await trx(
+      'subscriptions'
+    )
       .whereRaw('LOWER(linked_email) = ? AND LOWER(email) <> ?', [old, old])
-      .first('id');
+      .first('id', 'payload');
     if (ownRow == null && linkedRow != null) {
+      const payerCustomer = customerIdOfPayload(linkedRow.payload);
+      const owners: Array<{ stripe_customer_id: string | null }> = await trx(
+        this.table
+      )
+        .whereIn('id', ownerIds)
+        .select('stripe_customer_id');
+      const noOtherCustomer = owners.every(
+        (owner) =>
+          owner.stripe_customer_id == null ||
+          owner.stripe_customer_id === '' ||
+          owner.stripe_customer_id === payerCustomer
+      );
       const newAddressTaken = await trx('subscriptions')
         .whereRaw('LOWER(linked_email) = ?', [next])
         .first('id');
-      if (newAddressTaken == null) {
+      if (noOtherCustomer && newAddressTaken == null) {
         await trx('subscriptions')
           .where({ id: linkedRow.id })
           .update({ linked_email: next });
