@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-04-scanned-pdf-dense-page",
+  "date": "2026-11-04",
+  "type": "fix",
+  "title": "Scanned PDF pages packed with text keep their cards instead of being skipped"
+}

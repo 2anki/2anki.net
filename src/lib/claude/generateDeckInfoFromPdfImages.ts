@@ -148,35 +148,39 @@ async function visionCardsForPage(
 ): Promise<CompactDeck[]> {
   const client = getAnthropicClient();
 
+  // Streamed because the SDK refuses a non-streaming request at the retry's
+  // max_tokens before sending it (#5227).
   const callVision = (maxTokens: number) =>
-    client.messages.create({
-      model: 'claude-sonnet-5',
-      max_tokens: maxTokens,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: image.mediaType,
-                data: image.data,
+    client.messages
+      .stream({
+        model: 'claude-sonnet-5',
+        max_tokens: maxTokens,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: image.mediaType,
+                  data: image.data,
+                },
               },
-            },
-            // Breakpoint after the image: the truncation retry re-sends this
-            // exact page at a larger max_tokens (which does not invalidate the
-            // cache), so the image tokens come back as a 0.1x cache read
-            // instead of being re-billed in full (#4188).
-            {
-              type: 'text',
-              text: prompt,
-              cache_control: { type: 'ephemeral' },
-            },
-          ],
-        },
-      ],
-    });
+              // Breakpoint after the image: the truncation retry re-sends this
+              // exact page at a larger max_tokens (which does not invalidate the
+              // cache), so the image tokens come back as a 0.1x cache read
+              // instead of being re-billed in full (#4188).
+              {
+                type: 'text',
+                text: prompt,
+                cache_control: { type: 'ephemeral' },
+              },
+            ],
+          },
+        ],
+      })
+      .finalMessage();
 
   let response = await callVision(PDF_PAGE_VISION_MAX_TOKENS);
   recordClaudeUsage({
