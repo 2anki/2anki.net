@@ -3,6 +3,7 @@ import { RetryPdfWithCredentialUseCase } from './RetryPdfWithCredentialUseCase';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import CardOption from '../../lib/parser/Settings';
 import Workspace from '../../lib/parser/WorkSpace';
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 
 vi.mock('../../infrastracture/adapters/fileConversion/PrepareDeck', () => ({
   PrepareDeck: vi.fn(),
@@ -56,4 +57,39 @@ describe('RetryPdfWithCredentialUseCase', () => {
     expect(mockPrepareDeck.mock.calls[0][0].userId).toBeNull();
     expect(mockPrepareDeck.mock.calls[0][0].anonymousPassId).toBe(7);
   });
+
+  it.each([
+    ['a signed-out visitor', false, null, null],
+    ['a free user, before any limit check', false, 42, null],
+    ['a paying user', true, 42, null],
+    ['a signed-out pass holder', true, null, 7],
+  ])(
+    'rethrows a deck-writer crash for %s unchanged, so error capture receives it',
+    async (_who, paying, userId, anonymousPassId) => {
+      const crash = new PythonExitError('The deck writer stopped.', {
+        kind: 'unknown',
+        rawOutput: "KeyError: 'Front'",
+        code: 1,
+      });
+      mockPrepareDeck.mockRejectedValueOnce(crash);
+      const cardUsage = {
+        getCardUsage: vi.fn(),
+        incrementCardUsage: vi.fn(),
+      };
+
+      await expect(
+        new RetryPdfWithCredentialUseCase(cardUsage).execute(
+          Buffer.from('%PDF-1.4'),
+          'lecture.pdf',
+          'secret',
+          paying,
+          new CardOption({}),
+          { location: '/tmp/retry-test' } as Workspace,
+          userId,
+          anonymousPassId
+        )
+      ).rejects.toBe(crash);
+      expect(cardUsage.getCardUsage).not.toHaveBeenCalled();
+    }
+  );
 });
