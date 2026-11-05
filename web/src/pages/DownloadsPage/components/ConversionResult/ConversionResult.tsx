@@ -54,9 +54,23 @@ const EMPTY_DECK_ALL_FILTERED_MARKER = 'card filter removed';
 const EMPTY_DECK_NO_CONTENT_MARKER = 'no text we could read';
 const EMPTY_DECK_NOTION_EMPTY_PAGE_MARKER = 'Notion page looks empty';
 const EMPTY_DECK_EMPTY_ANSWERS_MARKER = 'no answer inside them';
+// A mistyped PDF page range reads "... has a page number that is too large."
+// Keep in sync with src/lib/pdf/pdfPageRange.ts.
+const PDF_PAGE_RANGE_MARKER = 'has a page number that is too large';
 const TOGGLES_DOCS_HREF = '/documentation/cards/notion-blocks';
 const FILE_FORMATS_DOCS_HREF = '/documentation/reference/file-formats';
 const CONNECT_NOTION_DOCS_HREF = '/documentation/start-here/connect-notion';
+
+function reasonCode(failureReason: string): UploadErrorCode {
+  if (failureReason.includes(PDF_PAGE_RANGE_MARKER)) {
+    return 'pdf_page_range';
+  }
+  const isTooLarge =
+    failureReason.includes('too large') ||
+    failureReason.includes('MemoryError') ||
+    failureReason.includes('Killed');
+  return isTooLarge ? 'too_large' : 'unknown';
+}
 
 // A Map so a rule name off the wire can never reach an Object.prototype key.
 const RESCUE_LABEL_KEYS = new Map<RescueRule, string>([
@@ -392,14 +406,9 @@ function FailedVariant({
     );
   }
 
-  const isTooLarge =
-    failureReason.includes('too large') ||
-    failureReason.includes('MemoryError') ||
-    failureReason.includes('Killed');
   const errorBody: UploadErrorBody = {
     code:
-      CLAUDE_REASON_CODES[failureReason.trim()] ??
-      (isTooLarge ? 'too_large' : 'unknown'),
+      CLAUDE_REASON_CODES[failureReason.trim()] ?? reasonCode(failureReason),
     message: failureReason,
   };
   const friendly =

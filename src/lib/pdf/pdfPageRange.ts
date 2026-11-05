@@ -32,7 +32,7 @@ function echo(part: string): string {
 function parsePageNumber(token: string, part: string): number {
   if (token.length > MAX_DIGITS) {
     throw new PdfPageRangeError(
-      `'${echo(part)}' has a page number that is too large.`
+      `'${echo(part)}' has a page number that is too large. Use page numbers from your PDF, like 12-30, 45.`
     );
   }
   return Number(token);

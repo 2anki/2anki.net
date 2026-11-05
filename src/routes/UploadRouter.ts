@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 
+import { answerUploadFieldTooLong } from './middleware/answerUploadFieldTooLong';
 import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import RequireAuthentication from './middleware/RequireAuthentication';
 import { tellUploadOwner } from './middleware/tellUploadOwner';
@@ -533,7 +534,9 @@ const UploadRouter = () => {
     RequireAllowedOrigin,
     RequireAuthentication,
     multer({ dest: '/tmp' }).none(),
-    (req, res) => uploadController.dropbox(req, res)
+    answerUploadFieldTooLong,
+    (req: express.Request, res: express.Response) =>
+      uploadController.dropbox(req, res)
   );
 
   /**
@@ -574,7 +577,9 @@ const UploadRouter = () => {
     '/api/upload/google_drive',
     RequireAllowedOrigin,
     multer({ dest: '/tmp' }).none(),
-    (req, res) => uploadController.googleDrive(req, res)
+    answerUploadFieldTooLong,
+    (req: express.Request, res: express.Response) =>
+      uploadController.googleDrive(req, res)
   );
 
   /**

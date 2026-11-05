@@ -559,19 +559,25 @@ describe('ErrorHandler', () => {
     errorSpy.mockRestore();
   });
 
-  test('an over-long form field responds 413 with a friendly message', async () => {
-    const res = makeResponse(false);
-    const req = makeRequest();
+  test.each([
+    ['content', 'Message is too long — shorten it and try again.'],
+    [
+      'user-instructions',
+      'Part of this form is too long to send. Shorten it and try again.',
+    ],
+  ])(
+    'an over-long %s field responds 413 with copy about that field',
+    async (field, message) => {
+      const res = makeResponse(false);
+      const req = makeRequest();
 
-    const fieldError = new multer.MulterError('LIMIT_FIELD_VALUE');
-    await ErrorHandler(res as unknown as express.Response, req, fieldError);
+      const fieldError = new multer.MulterError('LIMIT_FIELD_VALUE', field);
+      await ErrorHandler(res as unknown as express.Response, req, fieldError);
 
-    expect(res.statusCode).toBe(413);
-    expect(res.body).toEqual({
-      code: 'too_large',
-      message: 'Message is too long — shorten it and try again.',
-    });
-  });
+      expect(res.statusCode).toBe(413);
+      expect(res.body).toEqual({ code: 'unknown', message });
+    }
+  );
 
   test('a malformed-JSON body error keeps its 400 and message', async () => {
     const res = makeResponse(false);

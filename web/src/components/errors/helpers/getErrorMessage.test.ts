@@ -199,6 +199,18 @@ describe('classifyUploadError', () => {
     });
   });
 
+  test('a saved setting over the field size limit shows its own message, not file copy', () => {
+    const body: UploadErrorBody = {
+      code: 'unknown',
+      message:
+        'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.',
+    };
+    expect(classifyUploadError(body)).toEqual({
+      title:
+        'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.',
+    });
+  });
+
   test('notion_unavailable returns copy about Notion having trouble', () => {
     const body: UploadErrorBody = {
       code: 'notion_unavailable',

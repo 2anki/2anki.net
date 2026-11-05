@@ -204,6 +204,42 @@ describe('UploadRouter POST /api/upload/dropbox', () => {
   });
 });
 
+describe('UploadRouter answers an over-long saved setting on a cloud pick', () => {
+  // Over multer's default 1 MB field limit on these routes.
+  const tooLong = 'x'.repeat(1024 * 1024 + 1);
+
+  it.each([
+    [
+      'dropbox',
+      'user-instructions',
+      'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
+    ],
+    [
+      'google_drive',
+      'deckName',
+      'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.',
+    ],
+  ])(
+    'on /api/upload/%s with the upload copy for %s',
+    async (route, field, message) => {
+      mockAuthOwner = 42;
+      const { url, close } = await startServer();
+      try {
+        const form = new FormData();
+        form.append(field, tooLong);
+        const res = await fetch(`${url}/api/upload/${route}`, {
+          method: 'POST',
+          body: form,
+        });
+        expect(res.status).toBe(413);
+        expect(await res.json()).toEqual({ code: 'unknown', message });
+      } finally {
+        await close();
+      }
+    }
+  );
+});
+
 describe('UploadRouter POST /api/upload/sample', () => {
   beforeEach(() => {
     mockSample.mockReset();

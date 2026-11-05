@@ -5,6 +5,7 @@ import multer from 'multer';
 import nodemailer from 'nodemailer';
 import { UploadedFile } from '../../lib/storage/types';
 import { isLimitError } from '../../lib/misc/isLimitError';
+import { formFieldTooLongMessage } from '../../lib/upload/fieldTooLongMessage';
 import {
   exposedHttpClientStatus,
   isExpectedClientFault,
@@ -246,11 +247,12 @@ function toMulterErrorBody(err: multer.MulterError): {
         "This file type isn't supported. Use .zip, .html, .md, .csv, or .apkg.",
     };
   }
+  // Not too_large: that code renders file-size copy, and this is a text field.
   if (err.code === 'LIMIT_FIELD_VALUE') {
     return {
       status: 413,
-      code: 'too_large',
-      message: 'Message is too long — shorten it and try again.',
+      code: 'unknown',
+      message: formFieldTooLongMessage(err.field),
     };
   }
   return { status: 400, code: 'unknown', message: err.message };

@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-05-page-range-text-limit-copy",
+  "date": "2026-11-05",
+  "type": "fix",
+  "title": "Upload errors name a mistyped PDF page range or an over-long saved setting and say how to fix it"
+}
