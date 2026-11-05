@@ -197,6 +197,39 @@ describe('jobFailureReasonFromError', () => {
     );
   });
 
+  it('keeps the message of an unclassified crash that already named its job', () => {
+    const pythonError = buildPythonExitError({
+      code: 1,
+      stdout: '',
+      stderr: "KeyError: 'Front'",
+      jobId: 'page-123',
+    });
+
+    expect(jobFailureReasonFromError(pythonError, 'page-123')).toBe(
+      pythonError.message
+    );
+  });
+
+  it.each([
+    [
+      'invalid markup',
+      'UserWarning: Field contained the following invalid HTML tags',
+      1,
+    ],
+    ['an unsupported Notion view', "Unsupported 'data_source'!", 1],
+    ['running out of memory', 'Killed', 137],
+    ['a slash in the title', "FileNotFoundError: [Errno 2] -> 'a/b.apkg'", 1],
+  ])(
+    'keeps the fixed message of a crash caused by %s',
+    (_label, stderr, code) => {
+      const pythonError = buildPythonExitError({ code, stdout: '', stderr });
+
+      expect(jobFailureReasonFromError(pythonError, 'job-abc')).toBe(
+        pythonError.message
+      );
+    }
+  );
+
   it('keeps the crash message when no job ID is known', () => {
     const pythonError = buildPythonExitError({
       code: 1,
@@ -549,6 +582,15 @@ describe('jobFailureReasonFromError on worker-flattened errors', () => {
   it('keeps the python exit message when the class was flattened', () => {
     expect(
       jobFailureReasonFromError(flatten('PythonExitError', 'genanki blew up'))
+    ).toBe('genanki blew up');
+  });
+
+  it('keeps the python exit message when the class was flattened and a job ID is known', () => {
+    expect(
+      jobFailureReasonFromError(
+        flatten('PythonExitError', 'genanki blew up'),
+        'job-abc'
+      )
     ).toBe('genanki blew up');
   });
 
