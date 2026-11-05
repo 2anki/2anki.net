@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-05-upload-crash-job-id",
+  "date": "2026-11-05",
+  "type": "fix",
+  "title": "A failed upload shows its job ID in the error, so support can find it"
+}

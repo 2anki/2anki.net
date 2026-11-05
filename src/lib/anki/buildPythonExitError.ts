@@ -104,7 +104,10 @@ function classify(
   return null;
 }
 
-function messageFor(kind: PythonCrashKind, jobId: string | undefined): string {
+export function pythonExitMessage(
+  kind: PythonCrashKind,
+  jobId: string | undefined
+): string {
   if (kind === 'invalid-markup') {
     return INVALID_MARKUP_MESSAGE;
   }
@@ -132,7 +135,7 @@ export function buildPythonExitError({
   const kind: PythonCrashKind = rawOutput
     ? (classify(rawOutput, code) ?? 'unknown')
     : 'unknown';
-  return new PythonExitError(messageFor(kind, jobId), {
+  return new PythonExitError(pythonExitMessage(kind, jobId), {
     kind,
     rawOutput,
     code,

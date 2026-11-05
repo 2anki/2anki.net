@@ -1,5 +1,8 @@
 import { APIResponseError, APIErrorCode } from '@notionhq/client';
-import { PythonExitError } from '../../lib/anki/buildPythonExitError';
+import {
+  PythonExitError,
+  pythonExitMessage,
+} from '../../lib/anki/buildPythonExitError';
 import {
   ClaudeLargeSectionError,
   EmptyContentError,
@@ -363,6 +366,11 @@ export function jobFailureReasonFromError(
     (error as Error).message === CONVERSION_TRUNCATED_MESSAGE
   ) {
     return (error as Error).message;
+  }
+  // The upload path's deck writer has no job ID, so its crash message says
+  // "job ID unavailable"; the job is known here.
+  if (error instanceof PythonExitError && jobId != null) {
+    return pythonExitMessage(error.kind, jobId);
   }
   if (error instanceof PythonExitError || hasName(error, 'PythonExitError')) {
     return (error as Error).message;

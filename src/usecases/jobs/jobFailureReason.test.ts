@@ -183,6 +183,30 @@ describe('jobFailureReasonFromError', () => {
     expect(reason).not.toMatch(/^Technical error/);
   });
 
+  it('names the job in an unclassified deck-writer crash built without one', () => {
+    const pythonError = buildPythonExitError({
+      code: 1,
+      stdout: '',
+      stderr: "KeyError: 'Front'",
+    });
+
+    const reason = jobFailureReasonFromError(pythonError, 'job-abc');
+
+    expect(reason).toBe(
+      "Something went wrong on our end converting this page. Email support@2anki.net with job ID job-abc and we'll take a look."
+    );
+  });
+
+  it('keeps the crash message when no job ID is known', () => {
+    const pythonError = buildPythonExitError({
+      code: 1,
+      stdout: '',
+      stderr: "KeyError: 'Front'",
+    });
+
+    expect(jobFailureReasonFromError(pythonError)).toBe(pythonError.message);
+  });
+
   it('returns the generic fallback with job ID for an unknown error', () => {
     const reason = jobFailureReasonFromError(new Error('boom'), 'job-xyz');
     expect(reason).toContain('job-xyz');
