@@ -2,5 +2,5 @@
   "id": "2026-11-05-page-range-text-limit-copy",
   "date": "2026-11-05",
   "type": "fix",
-  "title": "Upload errors for a mistyped PDF page range or over-long card options say what to fix, not that the file is too large"
+  "title": "Upload errors name a mistyped PDF page range or an over-long saved setting and say how to fix it"
 }

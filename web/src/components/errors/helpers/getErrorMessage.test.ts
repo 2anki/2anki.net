@@ -203,11 +203,11 @@ describe('classifyUploadError', () => {
     const body: UploadErrorBody = {
       code: 'unknown',
       message:
-        'A setting saved in this browser is too long to send with your upload. Reset your card options to defaults and upload again.',
+        'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.',
     };
     expect(classifyUploadError(body)).toEqual({
       title:
-        'A setting saved in this browser is too long to send with your upload. Reset your card options to defaults and upload again.',
+        'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.',
     });
   });
 

@@ -5,7 +5,7 @@ import multer from 'multer';
 import nodemailer from 'nodemailer';
 import { UploadedFile } from '../../lib/storage/types';
 import { isLimitError } from '../../lib/misc/isLimitError';
-import { fieldTooLongMessage } from '../../lib/upload/fieldTooLongMessage';
+import { formFieldTooLongMessage } from '../../lib/upload/fieldTooLongMessage';
 import {
   exposedHttpClientStatus,
   isExpectedClientFault,
@@ -252,7 +252,7 @@ function toMulterErrorBody(err: multer.MulterError): {
     return {
       status: 413,
       code: 'unknown',
-      message: fieldTooLongMessage(err.field),
+      message: formFieldTooLongMessage(err.field),
     };
   }
   return { status: 400, code: 'unknown', message: err.message };

@@ -285,11 +285,11 @@ describe('Upload file — multer error handling', () => {
   test.each([
     [
       'user-instructions',
-      'Your instructions for PDF conversion in Card options are too long. Shorten them and upload again.',
+      'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
     ],
     [
-      'deck-name',
-      'A setting saved in this browser is too long to send with your upload. Reset your card options to defaults and upload again.',
+      'deckName',
+      'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.',
     ],
   ])(
     'answers an over-long %s field with 413 and copy about that setting',

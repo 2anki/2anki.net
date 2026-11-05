@@ -632,7 +632,7 @@ describe('ConversionResult — failed variant', () => {
         <ConversionResult
           variant="failed"
           title="Lecture slides"
-          failureReason="'1234567' has a page number that is too large."
+          failureReason="'1234567' has a page number that is too large. Use page numbers from your PDF, like 12-30, 45."
           source="upload"
           onMapColumns={vi.fn()}
         />
@@ -640,7 +640,9 @@ describe('ConversionResult — failed variant', () => {
     );
 
     expect(
-      screen.getByText("'1234567' has a page number that is too large.")
+      screen.getByText(
+        "'1234567' has a page number that is too large. Use page numbers from your PDF, like 12-30, 45."
+      )
     ).toBeInTheDocument();
     expect(screen.queryByText(/smaller files/i)).toBeNull();
   });

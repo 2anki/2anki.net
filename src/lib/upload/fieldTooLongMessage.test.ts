@@ -1,21 +1,34 @@
-import { fieldTooLongMessage } from './fieldTooLongMessage';
+import {
+  formFieldTooLongMessage,
+  uploadFieldTooLongMessage,
+} from './fieldTooLongMessage';
 
-describe('fieldTooLongMessage', () => {
+const SAVED_SETTING =
+  'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.';
+const MESSAGE = 'Message is too long — shorten it and try again.';
+const FORM = 'Part of this form is too long to send. Shorten it and try again.';
+
+describe('uploadFieldTooLongMessage', () => {
   it.each([
-    ['message', 'Message is too long — shorten it and try again.'],
     [
       'user-instructions',
-      'Your instructions for PDF conversion in Card options are too long. Shorten them and upload again.',
+      'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
     ],
-    [
-      'deck-name',
-      'A setting saved in this browser is too long to send with your upload. Reset your card options to defaults and upload again.',
-    ],
-    [
-      undefined,
-      'A setting saved in this browser is too long to send with your upload. Reset your card options to defaults and upload again.',
-    ],
+    ['deckName', SAVED_SETTING],
+    [undefined, SAVED_SETTING],
   ])('names the %s field', (field, message) => {
-    expect(fieldTooLongMessage(field)).toBe(message);
+    expect(uploadFieldTooLongMessage(field)).toBe(message);
+  });
+});
+
+describe('formFieldTooLongMessage', () => {
+  it.each([
+    ['content', MESSAGE],
+    ['history', MESSAGE],
+    ['message', MESSAGE],
+    ['data', FORM],
+    [undefined, FORM],
+  ])('names the %s field', (field, message) => {
+    expect(formFieldTooLongMessage(field)).toBe(message);
   });
 });

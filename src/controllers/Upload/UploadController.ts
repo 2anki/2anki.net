@@ -20,7 +20,7 @@ import {
 } from '../../lib/misc/GetUploadHandler';
 import { getMaxUploadCount } from '../../lib/misc/getMaxUploadCount';
 import { isLimitError } from '../../lib/misc/isLimitError';
-import { fieldTooLongMessage } from '../../lib/upload/fieldTooLongMessage';
+import { uploadFieldTooLongMessage } from '../../lib/upload/fieldTooLongMessage';
 import { handleUploadLimitError } from './helpers/handleUploadLimitError';
 import { handleDropbox } from './helpers/handleDropbox';
 import { handleGoogleDrive } from './helpers/handleGoogleDrive';
@@ -171,9 +171,13 @@ class UploadController {
           error instanceof multer.MulterError &&
           error.code === 'LIMIT_FIELD_VALUE'
         ) {
+          console.info('[upload] field over the size limit', {
+            requestId: res.locals.requestId,
+            field: error.field,
+          });
           return res.status(413).json({
             code: 'unknown',
-            message: fieldTooLongMessage(error.field),
+            message: uploadFieldTooLongMessage(error.field),
           });
         }
         if (isFileCountError(error)) {

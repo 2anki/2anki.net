@@ -57,7 +57,7 @@ describe('parsePdfPageRange', () => {
   // The downloads page keys its copy off this wording (web ConversionResult).
   it('names an over-long page number in the wording the downloads page matches', () => {
     expect(() => parsePdfPageRange('1234567')).toThrow(
-      "'1234567' has a page number that is too large."
+      "'1234567' has a page number that is too large. Use page numbers from your PDF, like 12-30, 45."
     );
   });
 
