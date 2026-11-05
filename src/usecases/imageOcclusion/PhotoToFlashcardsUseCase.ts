@@ -9,6 +9,7 @@ import {
   getAnthropicClient,
   normalizeTag,
 } from '../../lib/claude/ClaudeService';
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import { ANKI_MATH_FRAGMENT } from '../../lib/claude/ankiMathFragment';
 import { withAiBudget } from '../../lib/claude/aiSpendGuard';
 import {
@@ -214,6 +215,19 @@ function findPython(): string {
   return 'python3';
 }
 
+const DECK_BUILDER_FAILED_MESSAGE =
+  'Something broke on our end building this deck. Try again — if it keeps failing, email support@2anki.net.';
+
+// The builder's output carries the card text, so it rides on a
+// PythonExitError, which keeps it out of logs and the response.
+function deckBuilderError(code: number | null, rawOutput: string): Error {
+  return new PythonExitError(DECK_BUILDER_FAILED_MESSAGE, {
+    kind: 'unknown',
+    rawOutput,
+    code,
+  });
+}
+
 function runDeckBridge(workspaceDir: string): Promise<string> {
   const python = findPython();
   const deckInfoPath = path.join(workspaceDir, 'deck_info.json');
@@ -229,20 +243,15 @@ function runDeckBridge(workspaceDir: string): Promise<string> {
     proc.stderr.on('data', (chunk) => stderrChunks.push(chunk.toString()));
     proc.on('error', reject);
     proc.on('close', (code) => {
+      const output = stdoutChunks.join('').trim();
       if (code !== 0) {
-        const stderr = stderrChunks.join('');
         return reject(
-          new Error(`Deck builder exited with code ${code}: ${stderr}`)
+          deckBuilderError(code, stderrChunks.join('').trim() || output)
         );
       }
-      const output = stdoutChunks.join('').trim();
       const lastLine = output.split('\n').pop() ?? '';
       if (!lastLine.endsWith('.apkg')) {
-        return reject(
-          new Error(
-            `Deck builder did not return a valid .apkg path. stdout: ${output || '(empty)'}`
-          )
-        );
+        return reject(deckBuilderError(code, output));
       }
       resolve(lastLine);
     });

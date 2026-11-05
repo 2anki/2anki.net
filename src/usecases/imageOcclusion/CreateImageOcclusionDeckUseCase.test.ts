@@ -1,4 +1,6 @@
 import { vi, type Mock } from 'vitest';
+import { inspect } from 'node:util';
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import {
   CreateImageOcclusionDeckUseCase,
   CreateImageOcclusionDeckInput,
@@ -223,5 +225,59 @@ describe('CreateImageOcclusionDeckUseCase', () => {
       ).rejects.toMatchObject({ status: 404, code: 'image_missing' });
       expect(mockGetFileContents).toHaveBeenCalledWith('io-drafts/7/a.jpg');
     });
+  });
+
+  describe('deck builder failures', () => {
+    const IMAGE_NAME = 'Cardiac Anatomy Midterm.png';
+
+    function runBuilder(stdout: string, stderr: string, exitCode: number) {
+      (mockFs.mkdirSync as Mock).mockImplementation(() => undefined);
+      (mockFs.existsSync as Mock).mockReturnValue(false);
+      (mockFs.copyFileSync as Mock).mockImplementation(() => undefined);
+      (mockFs.writeFileSync as Mock).mockImplementation(() => undefined);
+      (mockFs.rmSync as Mock).mockImplementation(() => undefined);
+      const mockProcess = {
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn(),
+      };
+      (mockChild.spawn as Mock).mockReturnValue(mockProcess);
+
+      const promise = new CreateImageOcclusionDeckUseCase().execute(
+        buildInput({
+          images: [{ imageName: IMAGE_NAME, header: '', rects: [] }],
+          imageFiles: [{ name: IMAGE_NAME, path: `/tmp/${IMAGE_NAME}` }],
+        })
+      );
+      const handler = (calls: unknown[][], event: string) =>
+        calls.find(([e]) => e === event)?.[1] as (arg: unknown) => void;
+      handler(mockProcess.stdout.on.mock.calls, 'data')(stdout);
+      handler(mockProcess.stderr.on.mock.calls, 'data')(stderr);
+      handler(mockProcess.on.mock.calls, 'close')(exitCode);
+      return promise.catch((e: unknown) => e);
+    }
+
+    it.each([
+      [
+        'a crash',
+        '',
+        `Traceback (most recent call last):\nFileNotFoundError: [Errno 2] No such file or directory: '/tmp/ws/${IMAGE_NAME}'`,
+        1,
+      ],
+      ['a missing apkg path', `Wrote /tmp/ws/${IMAGE_NAME}`, '', 0],
+    ])(
+      'answers %s with a fixed message and keeps the image name out of logs',
+      async (_case, stdout, stderr, exitCode) => {
+        const err = await runBuilder(stdout, stderr, exitCode);
+
+        expect(err).toBeInstanceOf(PythonExitError);
+        expect(err).toMatchObject({
+          kind: 'unknown',
+          message:
+            'Something broke on our end building this deck. Try again — if it keeps failing, email support@2anki.net.',
+        });
+        expect(inspect(err)).not.toContain('Cardiac Anatomy');
+      }
+    );
   });
 });
