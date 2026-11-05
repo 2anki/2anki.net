@@ -367,6 +367,45 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(executeMock).not.toHaveBeenCalled();
   });
 
+  it('answers a deck-writer crash with its fixed message when the AI preview flag is on but no preview came back', async () => {
+    const crash = new PythonExitError('The deck writer stopped.', {
+      kind: 'unknown',
+      rawOutput: 'Wrote /tmp/ws/Organic Chemistry Week 3.txt',
+      code: 0,
+    });
+    const executeMock = vi.fn().mockRejectedValue(crash);
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return { execute: executeMock } as unknown as InstanceType<
+        typeof GeneratePackagesUseCase
+      >;
+    });
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockGenerateAiPreview.mockResolvedValue([]);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await service.handleUpload(
+      anonAiMarkdownRequest('visitor-no-preview'),
+      res
+    );
+
+    expect(mockGenerateAiPreview).toHaveBeenCalledTimes(1);
+    expect(executeMock).toHaveBeenCalledTimes(1);
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message: 'The deck writer stopped.',
+    });
+    errorSpy.mockRestore();
+  });
+
   it('does not run the AI preview when the request carries a pass token that did not validate', async () => {
     const executeMock = vi.fn().mockResolvedValue({ packages: [] });
     MockGeneratePackagesUseCase.mockImplementation(function () {
