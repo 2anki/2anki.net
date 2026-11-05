@@ -2,5 +2,5 @@
   "id": "2026-11-05-ai-rewritten-answer",
   "date": "2026-11-05",
   "type": "fix",
-  "title": "AI decks keep the cards from a page when the AI starts its answer over halfway"
+  "title": "AI decks keep a page's cards when the AI rewrites its answer partway, instead of skipping the page"
 }

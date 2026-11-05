@@ -267,6 +267,25 @@ describe('parseDeckResponse', () => {
     ]);
   });
 
+  it('keeps a complete first array when the rewrite after it is cut off', () => {
+    const cleaned =
+      '[{"deck":"Optics","cards":[{"q":"What bends light?","a":"A lens."},{"q":"What focuses it?","a":"The cornea.","tags":["eye"]}]}]\n\n' +
+      'Let me redo this with tags.\n\n' +
+      '[{"deck":"Optics","cards":[{"q":"What bends light?","a":"A lens.","tags":["lens"]},{"q":"What foc';
+
+    const parsed = parseDeckResponse(cleaned, cleaned, 0);
+
+    expect(parsed).toEqual([
+      {
+        deck: 'Optics',
+        cards: [
+          { q: 'What bends light?', a: 'A lens.' },
+          { q: 'What focuses it?', a: 'The cornea.', tags: ['eye'] },
+        ],
+      },
+    ]);
+  });
+
   it('logs the full raw response body on unrecoverable parse failure for reproducibility', () => {
     const errorSpy = vi
       .spyOn(console, 'error')

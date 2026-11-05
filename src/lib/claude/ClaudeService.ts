@@ -874,25 +874,46 @@ function tryRepairDeckArray(toParse: string): unknown[] | null {
 }
 
 const DECK_ARRAY_START = /\[\s*\{\s*"deck"/g;
+const REWRITE_ATTEMPTS = 3;
+
+function balancedArrayAt(text: string, start: number): string | null {
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      if (c === '\\') i++;
+      else if (c === '"') inString = false;
+    } else if (c === '"') {
+      inString = true;
+    } else if (c === '[') {
+      depth++;
+    } else if (c === ']') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
 
 // The model sometimes abandons a broken array mid-reply ("Let me redo this
 // properly.") and writes a second one. One deck array opens with `[{"deck"`
-// once, so a second opening is a rewrite, and the last one is its final word.
+// once, so a second opening is a rewrite. The last openings are tried, each
+// for its own complete array, and only one that parses as written counts: a
+// cut-off rewrite never wins over a complete earlier attempt.
 function tryRewrittenDeckArray(cleaned: string): unknown[] | null {
   const starts = [...cleaned.matchAll(DECK_ARRAY_START)].map(
     (match) => match.index
   );
   if (starts.length < 2) return null;
-  const end = cleaned.lastIndexOf(']');
-  for (const start of starts.reverse()) {
-    if (end <= start) continue;
-    const candidate = cleaned.slice(start, end + 1);
+  for (const start of starts.slice(-REWRITE_ATTEMPTS).reverse()) {
+    const candidate = balancedArrayAt(cleaned, start);
+    if (candidate == null) continue;
     try {
       const parsed: unknown = JSON.parse(candidate);
       if (Array.isArray(parsed) && hasUsableCard(parsed)) return parsed;
     } catch {
-      const repaired = tryRepairDeckArray(candidate);
-      if (repaired) return repaired;
+      // A broken attempt; an earlier opening may still hold a complete one.
     }
   }
   return null;
@@ -1006,7 +1027,7 @@ export function parseDeckResponse(
     const repaired = rewritten ? null : tryRepairDeckArray(toParse);
     if (rewritten) {
       parsed = rewritten;
-      console.log('[Claude] Recovered the rewritten JSON array', {
+      console.info('[Claude] Recovered the rewritten JSON array', {
         chunkIndex,
       });
     } else if (repaired) {
