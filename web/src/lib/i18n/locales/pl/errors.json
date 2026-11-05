@@ -51,6 +51,10 @@
       "detail": "Użyj {{formats}}."
     },
     "too_large": {
+      "title": "Ten plik jest za duży, aby przekonwertować go za jednym razem.",
+      "detail": "Podziel go na mniejsze pliki i przekonwertuj każdy osobno."
+    },
+    "too_large_notion": {
       "title": "Ten eksport jest za duży, aby przekonwertować go za jednym razem.",
       "detail": "Podziel go na mniejsze podstrony Notion i przekonwertuj każdą osobno."
     },
@@ -63,8 +67,8 @@
       "detail": "Otwórz źródło, usuń lub uprość blok, który sprawił problem, i spróbuj ponownie."
     },
     "malformed_notion": {
-      "title": "Nie udało się przetworzyć tego eksportu Notion.",
-      "detail": "Wyeksportuj stronę ponownie z Notion i spróbuj jeszcze raz."
+      "title": "Ta baza danych Notion używa widoku, którego jeszcze nie obsługujemy.",
+      "detail": "Przekonwertuj stronę nadrzędną albo przełącz bazę danych na inny widok i spróbuj ponownie."
     },
     "corrupted_apkg": {
       "title": "Ten plik .apkg jest uszkodzony.",

@@ -51,6 +51,10 @@
       "detail": "Usa {{formats}}."
     },
     "too_large": {
+      "title": "Questo file è troppo grande per convertirlo in una volta sola.",
+      "detail": "Dividilo in file più piccoli e convertili uno alla volta."
+    },
+    "too_large_notion": {
       "title": "Questo export è troppo grande per essere convertito in una volta sola.",
       "detail": "Suddividilo in sottopagine di Notion più piccole e converti ciascuna separatamente."
     },
@@ -63,8 +67,8 @@
       "detail": "Apri la sorgente, rimuovi o semplifica il blocco che ha creato problemi e riprova."
     },
     "malformed_notion": {
-      "title": "Non è stato possibile analizzare questo export di Notion.",
-      "detail": "Riesporta la pagina da Notion e riprova."
+      "title": "Questo database di Notion usa una vista che non supportiamo ancora.",
+      "detail": "Converti la pagina principale, oppure passa a un'altra vista del database e riprova."
     },
     "corrupted_apkg": {
       "title": "Questo file .apkg è danneggiato.",

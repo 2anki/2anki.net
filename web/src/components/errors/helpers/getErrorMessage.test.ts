@@ -2,8 +2,10 @@ import {
   classifyError,
   getErrorMessage,
   classifyUploadError,
+  classifyNotionTooLarge,
 } from './getErrorMessage';
 import type { UploadErrorBody } from '../../../types/UploadErrorBody';
+import i18n from '../../../lib/i18n';
 
 describe('classifyError', () => {
   test('TypeError: Failed to fetch is a network error', () => {
@@ -180,11 +182,68 @@ describe('classifyUploadError', () => {
     }
   });
 
-  test('too_large returns copy about splitting into subpages', () => {
+  test('too_large returns copy about splitting into smaller files, for any upload', () => {
     const body: UploadErrorBody = { code: 'too_large', message: 'original' };
     const result = classifyUploadError(body);
-    expect(result.title).toBe('This export is too large to convert in one go.');
-    expect(result.detail).toMatch(/subpage/i);
+    expect(result.title).toBe('This file is too large to convert in one go.');
+    expect(result.detail).toBe(
+      'Split it into smaller files and convert each one separately.'
+    );
+  });
+
+  test('a Notion page that is too large is told to split into subpages', () => {
+    expect(classifyNotionTooLarge()).toEqual({
+      title: 'This export is too large to convert in one go.',
+      detail:
+        'Split it into smaller Notion subpages and convert each one separately.',
+    });
+  });
+
+  test('notion_unavailable returns copy about Notion having trouble', () => {
+    const body: UploadErrorBody = {
+      code: 'notion_unavailable',
+      message: 'raw server text',
+    };
+    expect(classifyUploadError(body)).toEqual({
+      title: 'Notion is having trouble right now.',
+      detail: 'Try again in a minute.',
+    });
+  });
+
+  test.each(['de', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt', 'ru'])(
+    'a Notion page that is too large keeps its %s subpages copy',
+    async (language) => {
+      await i18n.changeLanguage(language);
+      try {
+        const title = i18n.getResource(
+          language,
+          'errors',
+          'upload.too_large_notion.title'
+        );
+        const detail = i18n.getResource(
+          language,
+          'errors',
+          'upload.too_large_notion.detail'
+        );
+        expect(typeof title).toBe('string');
+        expect(classifyNotionTooLarge()).toEqual({ title, detail });
+      } finally {
+        await i18n.changeLanguage('en');
+      }
+    }
+  );
+
+  test('a German Notion page that is too large keeps the wording it had', async () => {
+    await i18n.changeLanguage('de');
+    try {
+      expect(classifyNotionTooLarge()).toEqual({
+        title: 'Dieser Export ist zu groß, um ihn auf einmal zu konvertieren.',
+        detail:
+          'Teile ihn in kleinere Notion-Unterseiten auf und konvertiere jede einzeln.',
+      });
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   test('password_protected_pdf returns specific copy about removing the password', () => {
@@ -230,23 +289,18 @@ describe('classifyUploadError', () => {
     expect(result.detail).not.toMatch(/add credits/i);
   });
 
-  test('malformed_notion returns specific copy (not the server message)', () => {
-    const body: UploadErrorBody = {
-      code: 'malformed_notion',
-      message: 'Notion error.',
-    };
-    const result = classifyUploadError(body);
-    expect(result.title).toBe("This Notion export couldn't be parsed.");
-  });
-
-  it('malformed_notion returns specific copy about re-exporting from Notion', () => {
+  it('malformed_notion names the unsupported database view and the two ways out', () => {
     const body: UploadErrorBody = {
       code: 'malformed_notion',
       message: 'raw server text',
     };
     const result = classifyUploadError(body);
-    expect(result.title).toBe("This Notion export couldn't be parsed.");
-    expect(result.detail).toBe('Re-export the page from Notion and try again.');
+    expect(result.title).toBe(
+      "This Notion database uses a view we don't support yet."
+    );
+    expect(result.detail).toBe(
+      'Convert the parent page, or switch the database to a different view and try again.'
+    );
   });
 
   it('corrupted_apkg returns specific copy about re-exporting from Anki', () => {

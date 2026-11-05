@@ -7,7 +7,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { classifyUploadError } from '../../../../components/errors/helpers/getErrorMessage';
+import {
+  classifyNotionTooLarge,
+  classifyUploadError,
+} from '../../../../components/errors/helpers/getErrorMessage';
 import { parseAmbiguousColumnsPayload } from '../../../../lib/fieldMapping/types';
 import { usePassPrices } from '../../../../lib/hooks/usePassPrices';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
@@ -399,7 +402,10 @@ function FailedVariant({
       (isTooLarge ? 'too_large' : 'unknown'),
     message: failureReason,
   };
-  const friendly = classifyUploadError(errorBody);
+  const friendly =
+    errorBody.code === 'too_large' && source === 'notion'
+      ? classifyNotionTooLarge()
+      : classifyUploadError(errorBody);
   return (
     <>
       <p>

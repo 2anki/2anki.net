@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-05-upload-error-copy-any-file",
+  "date": "2026-11-05",
+  "type": "fix",
+  "title": "Upload errors for too-large files and unsupported Notion database views say exactly what to do next"
+}
