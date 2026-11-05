@@ -237,6 +237,36 @@ describe('parseDeckResponse', () => {
     expect(parsed[0].cards[0].a).toBe('Tab\there');
   });
 
+  it('uses the rewritten array when the model abandons a broken one (the "Let me redo this" prod failure)', () => {
+    const cleaned =
+      '[{"deck":"Chapter 9","cards":[[][0]]}]\n\nLet me redo this properly.\n\n' +
+      '[{"deck":"Chapter 9","cards":[{"q":"Why do rods work at night?","a":"They respond to dim light."}]}]';
+
+    expect(parseDeckResponse(cleaned, cleaned, 0)).toEqual([
+      {
+        deck: 'Chapter 9',
+        cards: [
+          { q: 'Why do rods work at night?', a: 'They respond to dim light.' },
+        ],
+      },
+    ]);
+  });
+
+  it('prefers the rewrite over the cards of a half-written first attempt', () => {
+    const cleaned =
+      '[{"deck":"Pharmacology","cards":[{"q":"What is tolerance?","a":"A smaller response to the same dose."},{"q":"True or false: the same dose always","a":"Fa\n\n' +
+      'Wait, let me redo this.\n\n' +
+      '[{"deck":"Pharmacology","cards":[{"q":"What is tolerance?","a":"A smaller response to the same dose."},{"q":"Does the same dose always give the same response?","a":"No."}]}]';
+
+    const parsed = parseDeckResponse(cleaned, cleaned, 0);
+
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].cards.map((card) => card.q)).toEqual([
+      'What is tolerance?',
+      'Does the same dose always give the same response?',
+    ]);
+  });
+
   it('logs the full raw response body on unrecoverable parse failure for reproducibility', () => {
     const errorSpy = vi
       .spyOn(console, 'error')

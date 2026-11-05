@@ -873,6 +873,31 @@ function tryRepairDeckArray(toParse: string): unknown[] | null {
   return hasUsableCard(candidate) ? candidate : null;
 }
 
+const DECK_ARRAY_START = /\[\s*\{\s*"deck"/g;
+
+// The model sometimes abandons a broken array mid-reply ("Let me redo this
+// properly.") and writes a second one. One deck array opens with `[{"deck"`
+// once, so a second opening is a rewrite, and the last one is its final word.
+function tryRewrittenDeckArray(cleaned: string): unknown[] | null {
+  const starts = [...cleaned.matchAll(DECK_ARRAY_START)].map(
+    (match) => match.index
+  );
+  if (starts.length < 2) return null;
+  const end = cleaned.lastIndexOf(']');
+  for (const start of starts.reverse()) {
+    if (end <= start) continue;
+    const candidate = cleaned.slice(start, end + 1);
+    try {
+      const parsed: unknown = JSON.parse(candidate);
+      if (Array.isArray(parsed) && hasUsableCard(parsed)) return parsed;
+    } catch {
+      const repaired = tryRepairDeckArray(candidate);
+      if (repaired) return repaired;
+    }
+  }
+  return null;
+}
+
 export type RepairFailureReason =
   | 'jsonrepair-threw'
   | 'not-array'
@@ -977,8 +1002,14 @@ export function parseDeckResponse(
   try {
     parsed = JSON.parse(toParse);
   } catch {
-    const repaired = tryRepairDeckArray(toParse);
-    if (repaired) {
+    const rewritten = tryRewrittenDeckArray(cleaned);
+    const repaired = rewritten ? null : tryRepairDeckArray(toParse);
+    if (rewritten) {
+      parsed = rewritten;
+      console.log('[Claude] Recovered the rewritten JSON array', {
+        chunkIndex,
+      });
+    } else if (repaired) {
       parsed = repaired;
       console.log('[Claude] Recovered malformed JSON via jsonrepair', {
         chunkIndex,
