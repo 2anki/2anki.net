@@ -51,6 +51,10 @@
       "detail": "Gebruik {{formats}}."
     },
     "too_large": {
+      "title": "Dit bestand is te groot om in één keer om te zetten.",
+      "detail": "Splits het op in kleinere bestanden en zet ze één voor één om."
+    },
+    "too_large_notion": {
       "title": "Deze export is te groot om in één keer om te zetten.",
       "detail": "Splits hem op in kleinere Notion-subpagina's en zet elke pagina afzonderlijk om."
     },
@@ -63,8 +67,8 @@
       "detail": "Open de bron, verwijder of vereenvoudig het blok dat kapot ging en probeer het opnieuw."
     },
     "malformed_notion": {
-      "title": "Deze Notion-export kon niet worden verwerkt.",
-      "detail": "Exporteer de pagina opnieuw uit Notion en probeer het opnieuw."
+      "title": "Deze Notion-database gebruikt een weergave die we nog niet ondersteunen.",
+      "detail": "Zet de bovenliggende pagina om, of schakel de database over naar een andere weergave en probeer het opnieuw."
     },
     "corrupted_apkg": {
       "title": "Dit .apkg-bestand is beschadigd.",

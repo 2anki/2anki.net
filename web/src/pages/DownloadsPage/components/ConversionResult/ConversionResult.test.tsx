@@ -580,4 +580,25 @@ describe('ConversionResult — failed variant', () => {
 
     expect(screen.getByText(/subpage/i)).toBeInTheDocument();
   });
+
+  it('tells a file upload that ran out of room to split into smaller files', () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Big lecture PDF"
+          failureReason="This page is too large for us to convert in one go."
+          source="upload"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText(
+        'This file is too large to convert in one go. Split it into smaller files and convert each one separately.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/subpage/i)).toBeNull();
+  });
 });

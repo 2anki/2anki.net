@@ -222,9 +222,8 @@ const UPLOAD_CODE_DEFAULTS: Partial<
     detail: 'Use {{formats}}.',
   },
   too_large: {
-    title: 'This export is too large to convert in one go.',
-    detail:
-      'Split it into smaller Notion subpages and convert each one separately.',
+    title: 'This file is too large to convert in one go.',
+    detail: 'Split it into smaller files and convert each one separately.',
   },
   password_protected_pdf: {
     title: 'This PDF is password-protected.',
@@ -237,8 +236,9 @@ const UPLOAD_CODE_DEFAULTS: Partial<
       'Open the source, remove or simplify the block that broke, and try again.',
   },
   malformed_notion: {
-    title: "This Notion export couldn't be parsed.",
-    detail: 'Re-export the page from Notion and try again.',
+    title: "This Notion database uses a view we don't support yet.",
+    detail:
+      'Convert the parent page, or switch the database to a different view and try again.',
   },
   corrupted_apkg: {
     title: 'This .apkg file is damaged.',
@@ -310,6 +310,18 @@ function localizeUploadCode(
     localized.detail = tr(`upload.${code}.detail`, defaults.detail, values);
   }
   return localized;
+}
+
+const NOTION_TOO_LARGE_TITLE = 'This export is too large to convert in one go.';
+const NOTION_TOO_LARGE_DETAIL =
+  'Split it into smaller Notion subpages and convert each one separately.';
+
+// A Notion page job that ran out of room splits into subpages, not files.
+export function classifyNotionTooLarge(): FriendlyError {
+  return {
+    title: tr('upload.too_large_notion.title', NOTION_TOO_LARGE_TITLE),
+    detail: tr('upload.too_large_notion.detail', NOTION_TOO_LARGE_DETAIL),
+  };
 }
 
 export function classifyUploadError(body: UploadErrorBody): FriendlyError {

@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-05-upload-error-copy-any-file",
+  "date": "2026-11-05",
+  "type": "fix",
+  "title": "A file too large to convert, or a Notion database view we don't support yet, gets advice that fits it"
+}

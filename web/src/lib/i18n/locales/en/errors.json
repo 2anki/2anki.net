@@ -51,6 +51,10 @@
       "detail": "Use {{formats}}."
     },
     "too_large": {
+      "title": "This file is too large to convert in one go.",
+      "detail": "Split it into smaller files and convert each one separately."
+    },
+    "too_large_notion": {
       "title": "This export is too large to convert in one go.",
       "detail": "Split it into smaller Notion subpages and convert each one separately."
     },
@@ -63,8 +67,8 @@
       "detail": "Open the source, remove or simplify the block that broke, and try again."
     },
     "malformed_notion": {
-      "title": "This Notion export couldn't be parsed.",
-      "detail": "Re-export the page from Notion and try again."
+      "title": "This Notion database uses a view we don't support yet.",
+      "detail": "Convert the parent page, or switch the database to a different view and try again."
     },
     "corrupted_apkg": {
       "title": "This .apkg file is damaged.",

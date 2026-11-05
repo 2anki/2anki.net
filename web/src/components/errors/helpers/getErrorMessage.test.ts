@@ -2,6 +2,7 @@ import {
   classifyError,
   getErrorMessage,
   classifyUploadError,
+  classifyNotionTooLarge,
 } from './getErrorMessage';
 import type { UploadErrorBody } from '../../../types/UploadErrorBody';
 
@@ -180,11 +181,21 @@ describe('classifyUploadError', () => {
     }
   });
 
-  test('too_large returns copy about splitting into subpages', () => {
+  test('too_large returns copy about splitting into smaller files, for any upload', () => {
     const body: UploadErrorBody = { code: 'too_large', message: 'original' };
     const result = classifyUploadError(body);
-    expect(result.title).toBe('This export is too large to convert in one go.');
-    expect(result.detail).toMatch(/subpage/i);
+    expect(result.title).toBe('This file is too large to convert in one go.');
+    expect(result.detail).toBe(
+      'Split it into smaller files and convert each one separately.'
+    );
+  });
+
+  test('a Notion page that is too large is told to split into subpages', () => {
+    expect(classifyNotionTooLarge()).toEqual({
+      title: 'This export is too large to convert in one go.',
+      detail:
+        'Split it into smaller Notion subpages and convert each one separately.',
+    });
   });
 
   test('password_protected_pdf returns specific copy about removing the password', () => {
@@ -230,23 +241,18 @@ describe('classifyUploadError', () => {
     expect(result.detail).not.toMatch(/add credits/i);
   });
 
-  test('malformed_notion returns specific copy (not the server message)', () => {
-    const body: UploadErrorBody = {
-      code: 'malformed_notion',
-      message: 'Notion error.',
-    };
-    const result = classifyUploadError(body);
-    expect(result.title).toBe("This Notion export couldn't be parsed.");
-  });
-
-  it('malformed_notion returns specific copy about re-exporting from Notion', () => {
+  it('malformed_notion names the unsupported database view and the two ways out', () => {
     const body: UploadErrorBody = {
       code: 'malformed_notion',
       message: 'raw server text',
     };
     const result = classifyUploadError(body);
-    expect(result.title).toBe("This Notion export couldn't be parsed.");
-    expect(result.detail).toBe('Re-export the page from Notion and try again.');
+    expect(result.title).toBe(
+      "This Notion database uses a view we don't support yet."
+    );
+    expect(result.detail).toBe(
+      'Convert the parent page, or switch the database to a different view and try again.'
+    );
   });
 
   it('corrupted_apkg returns specific copy about re-exporting from Anki', () => {
