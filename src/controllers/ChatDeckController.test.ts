@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { Request, Response } from 'express';
 import ChatDeckController from './ChatDeckController';
 import { MonthlyLimitError } from '../usecases/users/CheckMonthlyCardLimitUseCase';
+import { PythonExitError } from '../lib/anki/buildPythonExitError';
 
 function buildRes(): Response {
   return {
@@ -186,6 +187,25 @@ describe('ChatDeckController.generate', () => {
       limit: 100,
       reset_on: resetOn,
     });
+    expect(res.send).not.toHaveBeenCalled();
+  });
+
+  it('rethrows a deck-writer crash unchanged, so error capture records it redacted', async () => {
+    const crash = new PythonExitError('The deck writer stopped.', {
+      kind: 'unknown',
+      rawOutput: "KeyError: 'Front'",
+      code: 1,
+    });
+    const useCase = { execute: vi.fn().mockRejectedValue(crash) };
+    const controller = new ChatDeckController(useCase as never);
+    const res = buildRes();
+
+    await expect(
+      controller.generate(
+        buildReq({ cards: validCards, deckName: 'My Deck' }),
+        res
+      )
+    ).rejects.toBe(crash);
     expect(res.send).not.toHaveBeenCalled();
   });
 });
