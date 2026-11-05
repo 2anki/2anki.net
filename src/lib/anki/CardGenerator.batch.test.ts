@@ -182,4 +182,20 @@ describe('CardGenerator.run zero-card sentinel', () => {
     });
     expect(inspect(err)).not.toContain('Organic Chemistry');
   });
+
+  it('answers a missing apkg path from an upload, which has no job ID, with the same message', async () => {
+    mockedSpawn.mockReturnValue(
+      makeProcessStub('Writing /tmp/ws/Organic Chemistry Week 3.apkg.tmp', 0)
+    );
+
+    const err = await new CardGenerator(workspace)
+      .run()
+      .catch((e: unknown) => e);
+
+    expect(err).toMatchObject({
+      kind: 'unknown',
+      message: pythonExitMessage('unknown', undefined),
+    });
+    expect(inspect(err)).not.toContain('Organic Chemistry');
+  });
 });

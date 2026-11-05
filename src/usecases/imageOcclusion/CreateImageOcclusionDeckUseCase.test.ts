@@ -230,7 +230,29 @@ describe('CreateImageOcclusionDeckUseCase', () => {
   describe('deck builder failures', () => {
     const IMAGE_NAME = 'Cardiac Anatomy Midterm.png';
 
-    function runBuilder(stdout: string, stderr: string, exitCode: number) {
+    const UPLOADED = buildInput({
+      images: [{ imageName: IMAGE_NAME, header: '', rects: [] }],
+      imageFiles: [{ name: IMAGE_NAME, path: `/tmp/${IMAGE_NAME}` }],
+    });
+    const FROM_DRAFT = buildInput({
+      imageFiles: [],
+      images: [
+        {
+          imageName: IMAGE_NAME,
+          header: '',
+          rects: [],
+          s3Key: `io-drafts/7/${IMAGE_NAME}`,
+        },
+      ],
+    });
+
+    async function runBuilder(
+      input: CreateImageOcclusionDeckInput,
+      stdout: string,
+      stderr: string,
+      exitCode: number
+    ) {
+      mockGetFileContents.mockResolvedValue({ Body: Buffer.from('png') });
       (mockFs.mkdirSync as Mock).mockImplementation(() => undefined);
       (mockFs.existsSync as Mock).mockReturnValue(false);
       (mockFs.copyFileSync as Mock).mockImplementation(() => undefined);
@@ -243,32 +265,35 @@ describe('CreateImageOcclusionDeckUseCase', () => {
       };
       (mockChild.spawn as Mock).mockReturnValue(mockProcess);
 
-      const promise = new CreateImageOcclusionDeckUseCase().execute(
-        buildInput({
-          images: [{ imageName: IMAGE_NAME, header: '', rects: [] }],
-          imageFiles: [{ name: IMAGE_NAME, path: `/tmp/${IMAGE_NAME}` }],
-        })
-      );
+      const promise = new CreateImageOcclusionDeckUseCase()
+        .execute(input)
+        .catch((e: unknown) => e);
+      await vi.waitFor(() => expect(mockProcess.on).toHaveBeenCalled());
       const handler = (calls: unknown[][], event: string) =>
         calls.find(([e]) => e === event)?.[1] as (arg: unknown) => void;
       handler(mockProcess.stdout.on.mock.calls, 'data')(stdout);
       handler(mockProcess.stderr.on.mock.calls, 'data')(stderr);
       handler(mockProcess.on.mock.calls, 'close')(exitCode);
-      return promise.catch((e: unknown) => e);
+      return promise;
     }
 
+    const CRASH = `Traceback (most recent call last):\nFileNotFoundError: [Errno 2] No such file or directory: '/tmp/ws/${IMAGE_NAME}'`;
+
     it.each([
+      ['a crash', 'an uploaded image', UPLOADED, '', CRASH, 1],
+      ['a crash', 'a draft image from Notion', FROM_DRAFT, '', CRASH, 1],
       [
-        'a crash',
+        'a missing apkg path',
+        'an uploaded image',
+        UPLOADED,
+        `Wrote /tmp/ws/${IMAGE_NAME}`,
         '',
-        `Traceback (most recent call last):\nFileNotFoundError: [Errno 2] No such file or directory: '/tmp/ws/${IMAGE_NAME}'`,
-        1,
+        0,
       ],
-      ['a missing apkg path', `Wrote /tmp/ws/${IMAGE_NAME}`, '', 0],
     ])(
-      'answers %s with a fixed message and keeps the image name out of logs',
-      async (_case, stdout, stderr, exitCode) => {
-        const err = await runBuilder(stdout, stderr, exitCode);
+      'answers %s for %s with a fixed message and keeps the image name out of logs',
+      async (_case, _source, input, stdout, stderr, exitCode) => {
+        const err = await runBuilder(input, stdout, stderr, exitCode);
 
         expect(err).toBeInstanceOf(PythonExitError);
         expect(err).toMatchObject({

@@ -219,8 +219,12 @@ const DECK_BUILDER_FAILED_MESSAGE =
   'Something broke on our end building this deck. Try again — if it keeps failing, email support@2anki.net.';
 
 // The builder's output carries the card text, so it rides on a
-// PythonExitError, which keeps it out of logs and the response.
-function deckBuilderError(code: number | null, rawOutput: string): Error {
+// PythonExitError: the response never carries it, and logs get only a
+// redacted tail.
+function deckBuilderError(
+  code: number | null,
+  rawOutput: string
+): PythonExitError {
   return new PythonExitError(DECK_BUILDER_FAILED_MESSAGE, {
     kind: 'unknown',
     rawOutput,
