@@ -1,3 +1,4 @@
+import { inspect } from 'node:util';
 import {
   buildPythonExitError,
   PythonExitError,
@@ -181,5 +182,37 @@ describe('toUploadErrorCode', () => {
 
   it('maps unknown to unknown', () => {
     expect(toUploadErrorCode('unknown')).toBe('unknown');
+  });
+});
+
+describe('PythonExitError output in logs', () => {
+  const crash = () =>
+    buildPythonExitError({
+      code: 1,
+      stdout: '',
+      stderr:
+        "Traceback (most recent call last):\nOSError: cannot open '/srv/ws/1/Week 3 lab notes.apkg'",
+    });
+
+  it('keeps the raw output readable for classification and redaction', () => {
+    expect(crash().rawOutput).toContain('Week 3 lab notes.apkg');
+  });
+
+  it('prints only the redacted output when the error is logged', () => {
+    const printed = inspect(crash());
+
+    expect(printed).toContain('OSError: cannot open [file]');
+    expect(printed).not.toContain('Week 3 lab notes');
+  });
+
+  it('prints only the redacted output when logged inside another object', () => {
+    const printed = inspect({ jobId: 'job-1', err: crash() });
+
+    expect(printed).toContain('OSError: cannot open [file]');
+    expect(printed).not.toContain('Week 3 lab notes');
+  });
+
+  it('leaves the raw output out of JSON', () => {
+    expect(JSON.stringify(crash())).not.toContain('Week 3 lab notes');
   });
 });

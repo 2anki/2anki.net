@@ -1,4 +1,6 @@
+import { inspect, type InspectOptions } from 'node:util';
 import type { UploadErrorCode } from '../../types/UploadErrorBody';
+import { scrubPythonRawOutputTail } from './redactPythonOutput';
 
 export type PythonCrashKind =
   | 'invalid-markup'
@@ -30,15 +32,33 @@ interface PythonExitErrorDetails {
 
 export class PythonExitError extends Error {
   readonly kind: PythonCrashKind;
-  readonly rawOutput: string;
+  declare readonly rawOutput: string;
   readonly code: number | null;
 
   constructor(message: string, details: PythonExitErrorDetails) {
     super(message);
     this.name = 'PythonExitError';
     this.kind = details.kind;
-    this.rawOutput = details.rawOutput;
+    // Kept off the enumerable fields so no log or JSON of the error carries
+    // the deck writer's unredacted output; inspect shows the redacted tail.
+    Object.defineProperty(this, 'rawOutput', {
+      value: details.rawOutput,
+      enumerable: false,
+    });
     this.code = details.code;
+  }
+
+  [inspect.custom](
+    _depth: number,
+    options: InspectOptions,
+    inspectNested: typeof inspect
+  ): string {
+    const details = {
+      kind: this.kind,
+      code: this.code,
+      output: scrubPythonRawOutputTail(this.rawOutput),
+    };
+    return `${this.stack ?? `${this.name}: ${this.message}`} ${inspectNested(details, options)}`;
   }
 }
 

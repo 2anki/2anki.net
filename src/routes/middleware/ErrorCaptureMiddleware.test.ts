@@ -249,11 +249,29 @@ describe('makeErrorCaptureMiddleware', () => {
     const context = repo.inserts[0].context as Record<string, unknown>;
     expect(context.python_crash_kind).toBe('unknown');
     expect(context.python_exit_code).toBe(1);
-    expect(context.python_raw_output).toMatch(/^KeyError: \[path\] exploded/);
+    expect(context.python_raw_output).toMatch(/^KeyError: \[path\]\n/);
     expect((context.python_raw_output as string).length).toBeLessThanOrEqual(
       500
     );
     expect(next).toHaveBeenCalledWith(err);
+  });
+
+  it('redacts card text from an in-process crash that reaches capture unscrubbed', async () => {
+    const repo = makeRepository();
+    const middleware = makeErrorCaptureMiddleware(repo);
+    const err = new PythonExitError('generic message', {
+      kind: 'unknown',
+      rawOutput:
+        "ValueError: no back for {'Front': 'Who wrote the cell theory'}",
+      code: 1,
+    });
+
+    await middleware(err, makeReq(), makeRes(), makeNext());
+
+    const context = repo.inserts[0].context as Record<string, unknown>;
+    expect(context.python_raw_output).toBe(
+      "ValueError: no back for {'Front': [text]}"
+    );
   });
 
   it('sets context to null for a classified PythonExitError', async () => {
