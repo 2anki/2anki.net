@@ -33,13 +33,21 @@ function redactPath(path: string): string {
   return basename.endsWith('.py') ? basename : '[path]';
 }
 
-export function scrubPythonRawOutput(rawOutput: string): string {
+function redactPythonOutput(rawOutput: string): string {
   return rawOutput
     .replace(QUOTED_FILENAME_PATTERN, '[file]')
     .replace(ABSOLUTE_PATH_PATTERN, redactPath)
     .replace(EMAIL_PATTERN, '[email]')
-    .replace(TOKEN_PATTERN, '[token]')
-    .slice(0, RAW_OUTPUT_MAX_LENGTH);
+    .replace(TOKEN_PATTERN, '[token]');
+}
+
+export function scrubPythonRawOutput(rawOutput: string): string {
+  return redactPythonOutput(rawOutput).slice(0, RAW_OUTPUT_MAX_LENGTH);
+}
+
+// A traceback names the exception on its last line, so a log keeps the end.
+export function scrubPythonRawOutputTail(rawOutput: string): string {
+  return redactPythonOutput(rawOutput).slice(-RAW_OUTPUT_MAX_LENGTH);
 }
 
 export function buildUnknownPythonErrorContext(

@@ -15,6 +15,8 @@ import pLimit from 'p-limit';
 import { asReadableUpload } from '../../lib/rtf/readableUpload';
 import { hasUnknownExtension } from '../../lib/storage/sniffUpload';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
+import { scrubPythonRawOutputTail } from '../../lib/anki/scrubPythonRawOutput';
 import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
   isImageFile,
@@ -57,6 +59,7 @@ import {
   mostSpecificEmptyReason,
 } from '../jobs/EmptyDeckError';
 import {
+  UploadGenerationFailure,
   UploadGenerationResult,
   UploadGenerationTask,
 } from './uploadGenerationTypes';
@@ -588,6 +591,17 @@ export function systemErrorOf(
   return undefined;
 }
 
+// The deck writer's exit code and output explain a crash; the parent logs them,
+// so the output crosses already redacted.
+function pythonExitOf(err: unknown): UploadGenerationFailure['python'] {
+  if (!(err instanceof PythonExitError)) return undefined;
+  return {
+    kind: err.kind,
+    code: err.code,
+    rawOutput: scrubPythonRawOutputTail(err.rawOutput),
+  };
+}
+
 export async function runUploadGenerationInWorker(
   task: UploadGenerationTask,
   onProgress: (step: string) => void = () => {}
@@ -618,6 +632,7 @@ export async function runUploadGenerationInWorker(
         name: err instanceof Error ? err.name : undefined,
         stack: err instanceof Error ? err.stack : undefined,
         systemError: systemErrorOf(err),
+        python: pythonExitOf(err),
         sourceFormat:
           err instanceof EmptyDeckError ? err.sourceFormat : undefined,
         reason: err instanceof EmptyDeckError ? err.reason : undefined,

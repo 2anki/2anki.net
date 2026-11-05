@@ -25,6 +25,7 @@ import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/
 import { getPackagesFromZip } from './getPackagesFromZip';
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
 import { createWorkerTerminationError } from '../../lib/workerTermination';
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 
 vi.mock('fs');
 vi.mock('../../lib/parser/WorkSpace');
@@ -308,6 +309,41 @@ describe('runUploadGenerationInWorker', () => {
     expect(result.error.systemError).toEqual({ code: 'ENOENT', errno: -2 });
   });
 
+  it('sends the exit code and the end of the Python output when deck writing crashes', async () => {
+    const traceback =
+      'Traceback (most recent call last):\n' +
+      '  File "/srv/app/create_deck/create_deck.py", line 40, in <module>\n' +
+      "KeyError: 'Front'";
+    mockPrepareDeck.mockRejectedValueOnce(
+      new PythonExitError('Something went wrong', {
+        kind: 'unknown',
+        rawOutput: traceback,
+        code: 1,
+      })
+    );
+    const file = makeFile({
+      originalname: 'lecture.pdf',
+      filename: 'lecture.pdf',
+      key: 'lecture.pdf',
+      path: '',
+      buffer: Buffer.from('%PDF-1.4'),
+    });
+
+    const result = await runUploadGenerationInWorker(makeTask(file));
+
+    if (result.ok) {
+      throw new Error('expected a failure result');
+    }
+    expect(result.error.python).toEqual({
+      kind: 'unknown',
+      code: 1,
+      rawOutput:
+        'Traceback (most recent call last):\n' +
+        '  File "create_deck.py", line 40, in <module>\n' +
+        "KeyError: 'Front'",
+    });
+  });
+
   it('sends no system error fields for an ordinary thrown error', async () => {
     const file = makeFile({
       originalname: 'existing.apkg',
@@ -322,6 +358,7 @@ describe('runUploadGenerationInWorker', () => {
       throw new Error('expected a failure result');
     }
     expect(result.error.systemError).toBeUndefined();
+    expect(result.error.python).toBeUndefined();
   });
 
   it('drains recorded spend even when generation throws', async () => {

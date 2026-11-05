@@ -1,6 +1,7 @@
 import {
   buildUnknownPythonErrorContext,
   scrubPythonRawOutput,
+  scrubPythonRawOutputTail,
 } from './scrubPythonRawOutput';
 import { PythonExitError } from './buildPythonExitError';
 
@@ -41,6 +42,29 @@ describe('scrubPythonRawOutput', () => {
   it('truncates output to 500 characters', () => {
     const raw = 'KeyError: nested lookup failed\n'.repeat(100);
     expect(scrubPythonRawOutput(raw)).toHaveLength(500);
+  });
+});
+
+describe('scrubPythonRawOutputTail', () => {
+  it('keeps the last 500 characters, where the exception line is', () => {
+    const raw =
+      '  File "/app/create_deck/create_deck.py", line 12, in <module>\n'.repeat(
+        20
+      ) + 'KeyError: missing note field';
+
+    const tail = scrubPythonRawOutputTail(raw);
+
+    expect(tail).toHaveLength(500);
+    expect(tail.endsWith('KeyError: missing note field')).toBe(true);
+  });
+
+  it('redacts a filename before keeping the tail', () => {
+    const raw =
+      "FileNotFoundError: [Errno 2] No such file: 'Week 3 notes.apkg'";
+
+    expect(scrubPythonRawOutputTail(raw)).toBe(
+      'FileNotFoundError: [Errno 2] No such file: [file]'
+    );
   });
 });
 
