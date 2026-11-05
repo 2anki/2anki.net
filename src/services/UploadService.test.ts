@@ -6451,6 +6451,35 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
     });
   });
 
+  it('answers a photo deck-builder crash on a signed-in image upload with its fixed message', async () => {
+    const crash = new PythonExitError(
+      'Something broke on our end building this deck. Try again — if it keeps failing, email support@2anki.net.',
+      {
+        kind: 'unknown',
+        rawOutput: "FileNotFoundError: '/tmp/ws/What is photosynthesis.png'",
+        code: 1,
+      }
+    );
+    const execute = vi.fn().mockRejectedValue(crash);
+    const service = buildServiceWithVision(buildVisionUseCase(execute));
+    const { res, capturedStatus, capturedJson } = signedInResponse();
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await service.handleUpload(buildImageRequest(), res);
+
+    const logged = errorSpy.mock.calls.map((call) =>
+      call.map(String).join(' ')
+    );
+    errorSpy.mockRestore();
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message:
+        'Something broke on our end building this deck. Try again — if it keeps failing, email support@2anki.net.',
+    });
+    expect(logged.join('\n')).not.toContain('photosynthesis');
+  });
+
   it('leaves an anonymous image upload on the image_only_no_text floor and never calls vision', async () => {
     const execute = vi.fn();
     const service = buildServiceWithVision(buildVisionUseCase(execute));
