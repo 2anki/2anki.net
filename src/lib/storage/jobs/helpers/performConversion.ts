@@ -28,7 +28,7 @@ import {
   jobFailureReasonFromError,
 } from '../../../../usecases/jobs/jobFailureReason';
 import { PythonExitError } from '../../../anki/buildPythonExitError';
-import { scrubPythonRawOutputTail } from '../../../anki/scrubPythonRawOutput';
+import { scrubPythonRawOutputTail } from '../../../anki/redactPythonOutput';
 import { EmptyDeckError } from '../../../../usecases/jobs/EmptyDeckError';
 import { NotionDatabaseColumnsError } from '../../../../services/NotionService/helpers/NotionDatabaseColumnsError';
 import {

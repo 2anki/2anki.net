@@ -16,7 +16,7 @@ import { asReadableUpload } from '../../lib/rtf/readableUpload';
 import { hasUnknownExtension } from '../../lib/storage/sniffUpload';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
-import { scrubPythonRawOutputTail } from '../../lib/anki/scrubPythonRawOutput';
+import { scrubPythonRawOutputTail } from '../../lib/anki/redactPythonOutput';
 import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
   isImageFile,

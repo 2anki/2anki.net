@@ -903,55 +903,69 @@ describe('performConversion — heavy pipeline', () => {
     );
   });
 
-  it('logs the deck-writer crash output redacted', async () => {
-    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
-      return {
-        execute: vi.fn().mockResolvedValue({
-          ws: {},
-          exporter: {},
-          settings: {},
-          bl: {},
-          rules: {},
-        }),
-      };
-    });
-    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
-      return {
-        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
-      };
-    });
-    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
-      return {
-        execute: vi.fn().mockResolvedValue(undefined),
-      };
-    });
-    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
-      return {
-        execute: vi.fn().mockRejectedValue(
-          new PythonExitError('python died', {
-            kind: 'unknown',
-            rawOutput:
-              "OSError: cannot open '/srv/ws/1/Week 3 lab notes.apkg'\nValueError: no back for 'Who wrote the cell theory'",
-            code: 1,
-          })
+  it.each([
+    ['within the monthly limit', () => Promise.resolve(undefined)],
+    [
+      'over the limit with cards left, so a partial deck is built',
+      () =>
+        Promise.reject(
+          new MonthlyLimitError(99, 100, 3, '2026-07-01T00:00:00.000Z')
         ),
-      };
-    });
+    ],
+  ])(
+    'logs the deck-writer crash output redacted for a conversion %s',
+    async (_label, checkLimit) => {
+      (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({
+            ws: {},
+            exporter: {},
+            settings: {},
+            bl: {},
+            rules: {},
+          }),
+        };
+      });
+      (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+        };
+      });
+      (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+        return {
+          execute: vi.fn().mockImplementation(checkLimit),
+        };
+      });
+      (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+        return {
+          execute: vi.fn().mockRejectedValue(
+            new PythonExitError('python died', {
+              kind: 'unknown',
+              rawOutput:
+                "OSError: cannot open '/srv/ws/1/Week 3 lab notes.apkg'\nValueError: no back for 'Who wrote the cell theory'",
+              code: 1,
+            })
+          ),
+        };
+      });
 
-    const errorSpy = vi.mocked(console.error);
+      const errorSpy = vi.mocked(console.error);
+      errorSpy.mockClear();
 
-    await performConversion(mockDatabase, baseRequest);
+      await performConversion(mockDatabase, baseRequest);
 
-    const crashLog = errorSpy.mock.calls.find(
-      ([message]) =>
-        typeof message === 'string' && message.endsWith('python crash')
-    );
-    expect(crashLog?.[1]).toMatchObject({
-      kind: 'unknown',
-      code: 1,
-      rawOutput: 'OSError: cannot open [file]\nValueError: no back for [text]',
-    });
-  });
+      const crashLog = errorSpy.mock.calls.find(
+        ([message]) =>
+          typeof message === 'string' && message.endsWith('python crash')
+      );
+      expect(crashLog?.[1]).toMatchObject({
+        kind: 'unknown',
+        code: 1,
+        rawOutput:
+          'OSError: cannot open [file]\nValueError: no back for [text]',
+      });
+    }
+  );
 });
 
 describe('performConversion — signup_origin attribution', () => {
