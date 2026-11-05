@@ -1,4 +1,10 @@
 import { vi, type Mock } from 'vitest';
+import { inspect } from 'node:util';
+import CustomExporter from '../../lib/parser/exporters/CustomExporter';
+import {
+  PythonExitError,
+  pythonExitMessage,
+} from '../../lib/anki/buildPythonExitError';
 import express from 'express';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -1552,6 +1558,30 @@ describe('McpToolsService.createDeck with subdecks', () => {
         ],
       },
     });
+  });
+
+  it('rejects with the fixed crash message when the subdeck deck writer returns no deck', async () => {
+    const crash = new PythonExitError(pythonExitMessage('unknown', undefined), {
+      kind: 'unknown',
+      rawOutput: 'Writing /tmp/ws/JLPT N5 Vocabulary.apkg.tmp',
+      code: 0,
+    });
+    const save = vi
+      .spyOn(CustomExporter.prototype, 'save')
+      .mockRejectedValue(crash);
+    const { service, persist } = makeService({});
+
+    const err = await service
+      .createDeck(subdeckCards(), 'JLPT N5', undefined, 'owner-9', {})
+      .catch((e: unknown) => e);
+    save.mockRestore();
+
+    expect(err).toBeInstanceOf(PythonExitError);
+    expect((err as Error).message).toBe(
+      pythonExitMessage('unknown', undefined)
+    );
+    expect(inspect(err)).not.toContain('JLPT N5 Vocabulary');
+    expect(persist).not.toHaveBeenCalled();
   });
 
   it('keeps noteType basic and reports it ignored when subdeck cards are involved', async () => {

@@ -3,7 +3,9 @@ import { EventEmitter } from 'node:events';
 import * as childProcess from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { inspect } from 'node:util';
 import CardGenerator from './CardGenerator';
+import { PythonExitError, pythonExitMessage } from './buildPythonExitError';
 
 vi.mock('node:child_process', async () => ({
   ...(await vi.importActual<typeof import('node:child_process')>(
@@ -165,10 +167,35 @@ describe('CardGenerator.run zero-card sentinel', () => {
     });
   });
 
-  it('keeps the generic error for a missing apkg path without the sentinel', async () => {
-    mockedSpawn.mockReturnValue(makeProcessStub('some unrelated output', 0));
+  it('answers a missing apkg path with the job ID and keeps stdout out of the message', async () => {
+    mockedSpawn.mockReturnValue(
+      makeProcessStub('Writing /tmp/ws/Organic Chemistry Week 3.apkg.tmp', 0)
+    );
 
-    const gen = new CardGenerator(workspace);
-    await expect(gen.run()).rejects.toMatchObject({ name: 'Error' });
+    const gen = new CardGenerator(workspace, 'job-42');
+    const err = await gen.run().catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(PythonExitError);
+    expect(err).toMatchObject({
+      kind: 'unknown',
+      message: pythonExitMessage('unknown', 'job-42'),
+    });
+    expect(inspect(err)).not.toContain('Organic Chemistry');
+  });
+
+  it('answers a missing apkg path from an upload, which has no job ID, with the same message', async () => {
+    mockedSpawn.mockReturnValue(
+      makeProcessStub('Writing /tmp/ws/Organic Chemistry Week 3.apkg.tmp', 0)
+    );
+
+    const err = await new CardGenerator(workspace)
+      .run()
+      .catch((e: unknown) => e);
+
+    expect(err).toMatchObject({
+      kind: 'unknown',
+      message: pythonExitMessage('unknown', undefined),
+    });
+    expect(inspect(err)).not.toContain('Organic Chemistry');
   });
 });

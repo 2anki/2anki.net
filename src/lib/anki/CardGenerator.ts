@@ -9,7 +9,11 @@ import {
   CREATE_DECK_SCRIPT_PATH,
   resolvePath,
 } from '../constants';
-import { buildPythonExitError } from './buildPythonExitError';
+import {
+  buildPythonExitError,
+  PythonExitError,
+  pythonExitMessage,
+} from './buildPythonExitError';
 import {
   PYTHON_NO_CARDS_SENTINEL,
   PythonZeroCardsError,
@@ -141,9 +145,11 @@ class CardGenerator {
             return reject(new PythonZeroCardsError(output));
           }
           return reject(
-            new Error(
-              `Python script did not return a valid .apkg path. stdout: ${output || '(empty)'}`
-            )
+            new PythonExitError(pythonExitMessage('unknown', jobId), {
+              kind: 'unknown',
+              rawOutput: output,
+              code,
+            })
           );
         }
         resolve(lastLine);

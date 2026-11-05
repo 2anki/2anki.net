@@ -9,6 +9,8 @@ import {
 import type { IEventsRepository } from '../../data_layer/EventsRepository';
 import { getAnthropicClient } from '../../lib/claude/ClaudeService';
 import { track } from '../../services/events/track';
+import { inspect } from 'node:util';
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 
 vi.mock('node:fs');
 vi.mock('node:child_process');
@@ -1396,6 +1398,51 @@ describe('PhotoToFlashcardsUseCase', () => {
       });
       logSpy.mockRestore();
     });
+  });
+
+  describe('deck builder failures', () => {
+    function mockBuilder(stdout: string, stderr: string, exitCode: number) {
+      (mockChild.spawn as Mock).mockReturnValue({
+        stdout: { on: (_e: string, cb: (d: string) => void) => cb(stdout) },
+        stderr: { on: (_e: string, cb: (d: string) => void) => cb(stderr) },
+        on: (event: string, cb: (code: number) => void) => {
+          if (event === 'close') setTimeout(() => cb(exitCode), 0);
+        },
+      });
+    }
+
+    it.each([
+      [
+        'a crash',
+        '',
+        "Traceback (most recent call last):\nFileNotFoundError: [Errno 2] No such file or directory: '/tmp/ws/What is photosynthesis.png'",
+        1,
+      ],
+      [
+        'a missing apkg path',
+        'Wrote /tmp/ws/What is photosynthesis.txt',
+        '',
+        0,
+      ],
+    ])(
+      'answers %s with a fixed message and keeps the card text out of logs',
+      async (_case, stdout, stderr, exitCode) => {
+        mockBuilder(stdout, stderr, exitCode);
+        const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+
+        const err = await useCase
+          .execute({ ...BASE_INPUT, isPaying: true })
+          .catch((e: unknown) => e);
+
+        expect(err).toBeInstanceOf(PythonExitError);
+        expect(err).toMatchObject({
+          kind: 'unknown',
+          message:
+            'Something broke on our end building this deck. Try again — if it keeps failing, email support@2anki.net.',
+        });
+        expect(inspect(err)).not.toContain('photosynthesis');
+      }
+    );
   });
 
   describe('deck builder invocation', () => {

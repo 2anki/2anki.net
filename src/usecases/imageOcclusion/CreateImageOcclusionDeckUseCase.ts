@@ -6,6 +6,7 @@ import { homedir } from 'node:os';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
 
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import { CREATE_DECK_DIR } from '../../lib/constants';
 import { FREE_TIER_IMAGE_LIMIT, ImageLimitError } from './ImageLimitError';
 
@@ -53,6 +54,23 @@ function assertOwnDraftKey(key: string, ownerId: number | null): void {
       'invalid_image_key'
     );
   }
+}
+
+const DECK_BUILDER_FAILED_MESSAGE =
+  'Something broke on our end building this deck. Try again — if it keeps failing, email support@2anki.net.';
+
+// The builder's output names the user's images, so it rides on a
+// PythonExitError: the response never carries it, and logs get only a
+// redacted tail.
+function deckBuilderError(
+  code: number | null,
+  rawOutput: string
+): PythonExitError {
+  return new PythonExitError(DECK_BUILDER_FAILED_MESSAGE, {
+    kind: 'unknown',
+    rawOutput,
+    code,
+  });
 }
 
 function isMissingObject(error: unknown): boolean {
@@ -192,20 +210,15 @@ export class CreateImageOcclusionDeckUseCase {
       proc.on('error', reject);
 
       proc.on('close', (code) => {
+        const output = stdoutChunks.join('').trim();
         if (code !== 0) {
-          const stderr = stderrChunks.join('');
           return reject(
-            new Error(`IO deck builder exited with code ${code}: ${stderr}`)
+            deckBuilderError(code, stderrChunks.join('').trim() || output)
           );
         }
-        const output = stdoutChunks.join('').trim();
         const lastLine = output.split('\n').pop() ?? '';
         if (!lastLine.endsWith('.apkg')) {
-          return reject(
-            new Error(
-              `IO deck builder did not return a valid .apkg path. stdout: ${output || '(empty)'}`
-            )
-          );
+          return reject(deckBuilderError(code, output));
         }
         resolve(lastLine);
       });

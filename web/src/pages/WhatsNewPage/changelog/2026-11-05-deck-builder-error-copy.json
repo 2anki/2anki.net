@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-05-deck-builder-error-copy",
+  "date": "2026-11-05",
+  "type": "fix",
+  "title": "An image occlusion or photo deck that fails to build shows a plain message, not internal details"
+}
