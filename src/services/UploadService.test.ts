@@ -145,6 +145,7 @@ import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 import { InMemoryHeldDeckRepository } from '../data_layer/HeldDeckRepository';
 import { planHoldKey } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
+import { PythonExitError } from '../lib/anki/buildPythonExitError';
 import {
   ANONYMOUS_CARD_CAP,
   MONTHLY_CARD_LIMIT,
@@ -1148,6 +1149,88 @@ describe('UploadService.handleUpload — error paths', () => {
     });
     errorSpy.mockRestore();
   });
+
+  const crashCallers: Array<
+    [string, Record<string, unknown>, Partial<UsersRepository>, object]
+  > = [
+    ['a signed-out visitor', {}, {}, {}],
+    ['a signed-in free user', { owner: 42 }, {}, {}],
+    [
+      'a free user over the monthly limit',
+      { owner: 42 },
+      {
+        getCardUsage: vi.fn().mockResolvedValue({
+          cards_used: MONTHLY_CARD_LIMIT,
+          month_started_at: new Date(),
+        }),
+      },
+      {},
+    ],
+    ['a paying subscriber', { owner: 42, subscriber: true }, {}, {}],
+    [
+      'a signed-in pass holder',
+      { owner: 42, subscriber: true, passKind: '24h' },
+      {},
+      {},
+    ],
+    [
+      'a signed-out pass holder',
+      { anonymousPassId: 7, subscriber: true, passKind: '24h' },
+      {},
+      {},
+    ],
+    ['the iOS app', { owner: 42, subscriber: true }, {}, { source: 'app' }],
+    ['the MCP connector', { owner: 42, mcp_auth: true }, {}, {}],
+  ];
+
+  it.each(
+    crashCallers.flatMap(([who, locals, usage, body]) =>
+      (
+        [
+          ['too-large', 'too_large'],
+          ['invalid-markup', 'invalid_markup'],
+          ['unsupported-data-source', 'malformed_notion'],
+          ['unknown', 'unknown'],
+        ] as const
+      ).map(([kind, code]) => [who, kind, code, locals, usage, body] as const)
+    )
+  )(
+    'answers a sync upload from %s whose deck writer crashed with kind %s as code %s and its own message',
+    async (_who, kind, code, locals, usage, body) => {
+      const crash = new PythonExitError('The deck writer stopped.', {
+        kind,
+        rawOutput: 'Killed',
+        code: 137,
+      });
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockRejectedValue(crash),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(usage),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse();
+      Object.assign(res.locals, locals);
+
+      await service.handleUpload(
+        buildRequest({ body } as unknown as Partial<express.Request>),
+        res
+      );
+
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code,
+        message: 'The deck writer stopped.',
+      });
+      errorSpy.mockRestore();
+    }
+  );
 
   it('logs the worker stack when a sync upload fails unexpectedly', async () => {
     const crash = Object.assign(

@@ -727,6 +727,22 @@ describe('McpToolsService.convertToDeck', () => {
     );
   });
 
+  it('passes a deck-writer crash code and its message through unchanged', async () => {
+    const uploadEntry: UploadEntrypoint = (_req, res) => {
+      res.status(400).json({
+        code: 'too_large',
+        message: 'This page is too large for us to convert in one go.',
+      });
+    };
+    const { service } = makeService({ uploadEntry });
+    const result = await service.convertToDeck({ text: 'x' }, 'owner', {});
+    expect(result).toMatchObject({
+      kind: 'error',
+      code: 'too_large',
+      message: 'This page is too large for us to convert in one go.',
+    });
+  });
+
   it('echoes the applied options back in the public option vocabulary', async () => {
     const uploadEntry: UploadEntrypoint = (_req, res) => {
       res.set('X-Card-Count', '3');

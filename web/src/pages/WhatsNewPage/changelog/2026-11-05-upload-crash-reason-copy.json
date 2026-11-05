@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-05-upload-crash-reason-copy",
+  "date": "2026-11-05",
+  "type": "fix",
+  "title": "An upload too large to convert, or with formatting we can't read, says so in your language"
+}

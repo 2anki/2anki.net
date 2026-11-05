@@ -13,6 +13,7 @@ import { UploadedFile } from '../../lib/storage/types';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from './UploadFileUnavailableError';
 import { UploadGenerationTask } from './uploadGenerationTypes';
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 
 const mockRunUploadGeneration = runUploadGeneration as MockedFunction<
   typeof runUploadGeneration
@@ -444,5 +445,38 @@ describe('GeneratePackagesUseCase', () => {
 
     expect(err.code).toBe('ENOENT');
     expect(err.errno).toBe(-2);
+  });
+
+  it('rebuilds a deck-writing crash with its exit code and Python output', async () => {
+    mockRunUploadGeneration.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        message: 'Something went wrong on our end converting this page.',
+        name: 'PythonExitError',
+        stack:
+          'PythonExitError: x\n    at CardGenerator.run (CardGenerator.ts:91:83)',
+        python: { kind: 'unknown', code: 1, rawOutput: "KeyError: 'Front'" },
+      },
+    });
+    const useCase = new GeneratePackagesUseCase();
+
+    const err = await useCase
+      .execute(
+        false,
+        [makeFile('lecture.pdf')],
+        makeSettings(),
+        makeWorkspace()
+      )
+      .catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(PythonExitError);
+    expect(err).toMatchObject({
+      message: 'Something went wrong on our end converting this page.',
+      kind: 'unknown',
+      code: 1,
+      rawOutput: "KeyError: 'Front'",
+      stack:
+        'PythonExitError: x\n    at CardGenerator.run (CardGenerator.ts:91:83)',
+    });
   });
 });

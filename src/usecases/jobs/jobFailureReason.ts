@@ -123,9 +123,10 @@ function hasCode(error: unknown, code: string): boolean {
   );
 }
 
-// The upload worker serialises errors across a thread boundary as
+// The upload worker serialises errors across a process boundary as
 // { message, name }, and GeneratePackagesUseCase rebuilds a plain Error from
-// that. Every instanceof below therefore fails on the async upload path, so the
+// that; only EmptyDeckError and PythonExitError come back as their own class.
+// Every other instanceof below therefore fails on the async upload path, so the
 // classes whose message is meant to reach the user are matched by the name that
 // survived instead.
 function hasName(error: unknown, name: string): boolean {

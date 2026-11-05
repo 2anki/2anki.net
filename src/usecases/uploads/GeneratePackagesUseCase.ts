@@ -12,6 +12,7 @@ import Workspace from '../../lib/parser/WorkSpace';
 import { EmptyDeckError, EmptyDeckReason } from '../jobs/EmptyDeckError';
 import { runUploadGeneration } from '../../lib/conversionPool';
 import { UploadGenerationFailure } from './uploadGenerationTypes';
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import { ensureUploadBytes } from './ensureUploadBytes';
 import { UploadFileUnavailableError } from './UploadFileUnavailableError';
 
@@ -45,7 +46,10 @@ function buildWorkerError(failure: UploadGenerationFailure): Error {
     );
   }
   if (failure.message != null && failure.message.trim() !== '') {
-    const e = new Error(failure.message);
+    const e =
+      failure.python == null
+        ? new Error(failure.message)
+        : new PythonExitError(failure.message, failure.python);
     if (failure.name != null) {
       e.name = failure.name;
     }

@@ -1,4 +1,5 @@
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
+import type { PythonCrashKind } from '../../lib/anki/buildPythonExitError';
 import type { RescueCandidate } from '../../types/RescueCandidate';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import type Package from '../../lib/parser/Package';
@@ -27,6 +28,7 @@ export interface UploadGenerationFailure {
   name?: string;
   stack?: string;
   systemError?: { code: string; errno: number };
+  python?: { kind: PythonCrashKind; code: number | null; rawOutput: string };
   sourceFormat?: 'markdown';
   reason?: EmptyDeckReason;
   rescueCandidates?: RescueCandidate[];
