@@ -45,14 +45,15 @@ function lastWholeLines(rawOutput: string): string {
 }
 
 // A quoted name ending in an extension is a file, except the deck writer's own
-// .py frames, which the path pass trims to their basename. Any other quoted
+// whitespace-free .py frames, which the path pass trims to their basename. Any other quoted
 // value with whitespace in it is user text (a deck name, a card front); a
 // one-word value usually names the failing field and is kept.
 function redactQuoted(token: string, quoted: string): string {
   const value = quoted.slice(1, -1);
   const extension = FILE_EXTENSION.exec(value)?.[1];
   if (extension != null) {
-    return extension.toLowerCase() === 'py' ? token : '[file]';
+    const isFrame = extension.toLowerCase() === 'py' && !WHITESPACE.test(value);
+    return isFrame ? token : '[file]';
   }
   return WHITESPACE.test(value) ? '[text]' : token;
 }

@@ -121,6 +121,11 @@ describe('scrubPythonRawOutput', () => {
       "Skipping media outside the working directory: /srv/ws/abc/Sam's biology notes.png",
       'Skipping media outside the working directory: [path]',
     ],
+    [
+      'a quoted user file name ending in .py',
+      "FileNotFoundError: [Errno 2] No such file or directory: 'Sam Smith secrets.py'",
+      'FileNotFoundError: [Errno 2] No such file or directory: [file]',
+    ],
   ])('redacts %s', (_label, raw, expected) => {
     expect(scrubPythonRawOutput(raw)).toBe(expected);
   });
