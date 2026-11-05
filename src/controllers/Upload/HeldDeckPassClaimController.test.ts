@@ -15,6 +15,7 @@ import type AuthenticationService from '../../services/AuthenticationService';
 import type { CheckoutPreviewBinding } from '../../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
 import { track } from '../../services/events/track';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
+import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 
 const trackMock = track as Mock;
 const BUYER = 'anon-buyer-1';
@@ -341,5 +342,23 @@ describe('HeldDeckPassClaimController through the pass middleware', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ code: 'empty_export' });
+  });
+
+  it('rethrows a deck-writer crash unchanged, so the app error handler answers it', async () => {
+    const { passes, convertHeldFileForPass, request } = await setup();
+    await passes.insert({
+      stripeSessionId: 'cs_crash',
+      kind: '24h',
+      expiresAt: new Date(Date.now() + 60_000),
+      paymentIntentId: 'pi_crash',
+    });
+    const crash = new PythonExitError('The deck writer stopped.', {
+      kind: 'too-large',
+      rawOutput: 'Killed',
+      code: 137,
+    });
+    convertHeldFileForPass.mockRejectedValueOnce(crash);
+
+    await expect(request(mockReq(BUYER, 'cs_crash'))).rejects.toBe(crash);
   });
 });

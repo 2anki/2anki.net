@@ -1150,13 +1150,53 @@ describe('UploadService.handleUpload — error paths', () => {
     errorSpy.mockRestore();
   });
 
-  it.each([
-    ['too-large', 'too_large'],
-    ['invalid-markup', 'invalid_markup'],
-    ['unknown', 'unknown'],
-  ] as const)(
-    'answers a sync upload whose deck writer crashed with kind %s as code %s and its own message',
-    async (kind, code) => {
+  const crashCallers: Array<
+    [string, Record<string, unknown>, Partial<UsersRepository>, object]
+  > = [
+    ['a signed-out visitor', {}, {}, {}],
+    ['a signed-in free user', { owner: 42 }, {}, {}],
+    [
+      'a free user over the monthly limit',
+      { owner: 42 },
+      {
+        getCardUsage: vi.fn().mockResolvedValue({
+          cards_used: MONTHLY_CARD_LIMIT,
+          month_started_at: new Date(),
+        }),
+      },
+      {},
+    ],
+    ['a paying subscriber', { owner: 42, subscriber: true }, {}, {}],
+    [
+      'a signed-in pass holder',
+      { owner: 42, subscriber: true, passKind: '24h' },
+      {},
+      {},
+    ],
+    [
+      'a signed-out pass holder',
+      { anonymousPassId: 7, subscriber: true, passKind: '24h' },
+      {},
+      {},
+    ],
+    ['the iOS app', { owner: 42, subscriber: true }, {}, { source: 'app' }],
+    ['the MCP connector', { owner: 42, mcp_auth: true }, {}, {}],
+  ];
+
+  it.each(
+    crashCallers.flatMap(([who, locals, usage, body]) =>
+      (
+        [
+          ['too-large', 'too_large'],
+          ['invalid-markup', 'invalid_markup'],
+          ['unsupported-data-source', 'malformed_notion'],
+          ['unknown', 'unknown'],
+        ] as const
+      ).map(([kind, code]) => [who, kind, code, locals, usage, body] as const)
+    )
+  )(
+    'answers a sync upload from %s whose deck writer crashed with kind %s as code %s and its own message',
+    async (_who, kind, code, locals, usage, body) => {
       const crash = new PythonExitError('The deck writer stopped.', {
         kind,
         rawOutput: 'Killed',
@@ -1172,12 +1212,16 @@ describe('UploadService.handleUpload — error paths', () => {
       const service = new UploadService(
         buildRepository(),
         {} as JobRepository,
-        buildUsersRepo(),
+        buildUsersRepo(usage),
         ...fakeUploadServiceDeps()
       );
       const { res, capturedStatus, capturedJson } = buildResponse();
+      Object.assign(res.locals, locals);
 
-      await service.handleUpload(buildRequest(), res);
+      await service.handleUpload(
+        buildRequest({ body } as unknown as Partial<express.Request>),
+        res
+      );
 
       expect(capturedStatus()).toBe(400);
       expect(capturedJson()).toEqual({
