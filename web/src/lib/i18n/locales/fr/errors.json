@@ -51,8 +51,8 @@
       "detail": "Utilise {{formats}}."
     },
     "too_large": {
-      "title": "Ce fichier est trop volumineux pour être converti en une seule fois.",
-      "detail": "Divise-le en fichiers plus petits et convertis-les un par un."
+      "title": "Ce fichier est trop volumineux pour être converti d'un coup.",
+      "detail": "Découpe-le en fichiers plus petits et convertis-les un par un."
     },
     "too_large_notion": {
       "title": "Cet export est trop volumineux pour être converti d'un coup.",
@@ -68,7 +68,7 @@
     },
     "malformed_notion": {
       "title": "Cette base de données Notion utilise une vue que nous ne prenons pas encore en charge.",
-      "detail": "Convertis la page parente, ou passe la base de données à une autre vue, puis réessaie."
+      "detail": "Convertis la page parente, ou affiche la base de données dans une autre vue, puis réessaie."
     },
     "corrupted_apkg": {
       "title": "Ce fichier .apkg est endommagé.",

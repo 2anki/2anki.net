@@ -5,6 +5,7 @@ import {
   classifyNotionTooLarge,
 } from './getErrorMessage';
 import type { UploadErrorBody } from '../../../types/UploadErrorBody';
+import i18n from '../../../lib/i18n';
 
 describe('classifyError', () => {
   test('TypeError: Failed to fetch is a network error', () => {
@@ -196,6 +197,53 @@ describe('classifyUploadError', () => {
       detail:
         'Split it into smaller Notion subpages and convert each one separately.',
     });
+  });
+
+  test('notion_unavailable returns copy about Notion having trouble', () => {
+    const body: UploadErrorBody = {
+      code: 'notion_unavailable',
+      message: 'raw server text',
+    };
+    expect(classifyUploadError(body)).toEqual({
+      title: 'Notion is having trouble right now.',
+      detail: 'Try again in a minute.',
+    });
+  });
+
+  test.each(['de', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt', 'ru'])(
+    'a Notion page that is too large keeps its %s subpages copy',
+    async (language) => {
+      await i18n.changeLanguage(language);
+      try {
+        const title = i18n.getResource(
+          language,
+          'errors',
+          'upload.too_large_notion.title'
+        );
+        const detail = i18n.getResource(
+          language,
+          'errors',
+          'upload.too_large_notion.detail'
+        );
+        expect(typeof title).toBe('string');
+        expect(classifyNotionTooLarge()).toEqual({ title, detail });
+      } finally {
+        await i18n.changeLanguage('en');
+      }
+    }
+  );
+
+  test('a German Notion page that is too large keeps the wording it had', async () => {
+    await i18n.changeLanguage('de');
+    try {
+      expect(classifyNotionTooLarge()).toEqual({
+        title: 'Dieser Export ist zu groß, um ihn auf einmal zu konvertieren.',
+        detail:
+          'Teile ihn in kleinere Notion-Unterseiten auf und konvertiere jede einzeln.',
+      });
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   test('password_protected_pdf returns specific copy about removing the password', () => {

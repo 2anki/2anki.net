@@ -68,7 +68,7 @@
     },
     "malformed_notion": {
       "title": "Questo database di Notion usa una vista che non supportiamo ancora.",
-      "detail": "Converti la pagina principale, oppure passa il database a un'altra vista e riprova."
+      "detail": "Converti la pagina principale, oppure passa a un'altra vista del database e riprova."
     },
     "corrupted_apkg": {
       "title": "Questo file .apkg è danneggiato.",

@@ -51,7 +51,7 @@
       "detail": "Użyj {{formats}}."
     },
     "too_large": {
-      "title": "Ten plik jest za duży, żeby przekonwertować go za jednym razem.",
+      "title": "Ten plik jest za duży, aby przekonwertować go za jednym razem.",
       "detail": "Podziel go na mniejsze pliki i przekonwertuj każdy osobno."
     },
     "too_large_notion": {
