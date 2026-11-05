@@ -13,7 +13,11 @@ import { UploadedFile } from '../../lib/storage/types';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from './UploadFileUnavailableError';
 import { UploadGenerationTask } from './uploadGenerationTypes';
-import { PythonExitError } from '../../lib/anki/buildPythonExitError';
+import {
+  buildPythonExitError,
+  PythonExitError,
+} from '../../lib/anki/buildPythonExitError';
+import { jobFailureReasonFromError } from '../jobs/jobFailureReason';
 
 const mockRunUploadGeneration = runUploadGeneration as MockedFunction<
   typeof runUploadGeneration
@@ -478,5 +482,40 @@ describe('GeneratePackagesUseCase', () => {
       stack:
         'PythonExitError: x\n    at CardGenerator.run (CardGenerator.ts:91:83)',
     });
+  });
+
+  it('names the job when a deck-writer crash from the worker becomes the failure reason', async () => {
+    const workerCrash = buildPythonExitError({
+      code: 1,
+      stdout: '',
+      stderr: "KeyError: 'Front'",
+    });
+    mockRunUploadGeneration.mockResolvedValueOnce({
+      ok: false,
+      error: {
+        message: workerCrash.message,
+        name: workerCrash.name,
+        python: {
+          kind: workerCrash.kind,
+          code: 1,
+          rawOutput: "KeyError: 'Front'",
+        },
+      },
+    });
+    const useCase = new GeneratePackagesUseCase();
+
+    const err = await useCase
+      .execute(
+        false,
+        [makeFile('lecture.pdf')],
+        makeSettings(),
+        makeWorkspace()
+      )
+      .catch((e: unknown) => e);
+
+    expect(workerCrash.message).toContain('job ID unavailable');
+    expect(jobFailureReasonFromError(err, 'job-abc')).toBe(
+      "Something went wrong on our end converting this page. Email support@2anki.net with job ID job-abc and we'll take a look."
+    );
   });
 });
