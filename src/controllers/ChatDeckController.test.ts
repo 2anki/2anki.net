@@ -190,7 +190,7 @@ describe('ChatDeckController.generate', () => {
     expect(res.send).not.toHaveBeenCalled();
   });
 
-  it('rethrows a deck-writer crash unchanged, so error capture records it redacted', async () => {
+  it('rethrows a deck-writer crash unchanged, so the app error capture receives it', async () => {
     const crash = new PythonExitError('The deck writer stopped.', {
       kind: 'unknown',
       rawOutput: "KeyError: 'Front'",

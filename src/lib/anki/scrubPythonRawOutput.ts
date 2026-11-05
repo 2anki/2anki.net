@@ -2,27 +2,26 @@ import { PythonExitError } from './buildPythonExitError';
 
 const RAW_OUTPUT_MAX_LENGTH = 500;
 // Only the whole lines within this many characters of the kept slice are
-// redacted, so a warning repeated thousands of times stays cheap and no line
-// is redacted from half its text.
+// redacted (the output arrives trimmed), so a warning repeated thousands of
+// times stays cheap and no line is redacted from half its text.
 const REDACTION_WINDOW = 20_000;
 // One line longer than the window can't be redacted whole, so none of it is kept.
 const TRUNCATED = '[truncated]';
 
-// A quote counts only when no word character touches it on the outside, so
-// the apostrophe in "Couldn't" or the end of 'Front' in ['Front', 'Back'] is
-// never taken for an opening quote. A Python string prefix (b'', u'', rb'')
-// belongs to the literal.
-// A quoted name ending in any extension is a file; a deck-writer .py stays so
-// a traceback still names its frame.
-const QUOTED_FILENAME_PATTERN =
-  /(?<!\w)[bBuUrRfF]{0,2}"[^"\n]{0,200}\.(\w{1,8})"(?!\w)|(?<!\w)[bBuUrRfF]{0,2}'[^'\n]{0,200}\.(\w{1,8})'(?!\w)/g;
-// A quoted value with whitespace in it is user text (a deck name, a card
-// front); a one-word value usually names the failing field and is kept.
-const QUOTED_TEXT_PATTERN =
-  /(?<!\w)[bBuUrRfF]{0,2}"[^"\s]*[^\S\n][^"\n]*"(?!\w)|(?<!\w)[bBuUrRfF]{0,2}'[^'\s]*[^\S\n][^'\n]*'(?!\w)/g;
+// Every quoted value is read as one token, so each one uses up its own closing
+// quote and a closing quote is never paired with the next value's opening one.
+// A quote counts only when no letter or digit touches it on the outside (the
+// apostrophe in "Couldn't" is not a quote), and a Python string prefix (b'',
+// u'', rb'') belongs to the literal.
+const QUOTED_PATTERN =
+  /(?<![\p{L}\p{N}_])[bBuUrRfF]{0,2}("[^"\n]*"|'[^'\n]*')(?![\p{L}\p{N}_])/gu;
+const FILE_EXTENSION = /\.(\w{1,8})$/;
+const WHITESPACE = /[^\S\n]/;
+
 // Once a path starts, everything up to the end of the line or a quote is its
-// name: user file names hold spaces, colons and non-ASCII letters. Only a
-// frame's ":<line>:" ("create_deck.py:159: UserWarning") ends it early.
+// name, prose after it included: user file names hold spaces, colons and
+// non-ASCII letters. Only a frame's ":<line>:" ("create_deck.py:159:
+// UserWarning") ends it early.
 const ABSOLUTE_PATH_PATTERN =
   /(?:\/(?:[^\s/'":]|:(?!\d+:))+){2,}(?:[^\S\n](?:[^\n'":]|:(?!\d+:))*)?/g;
 const EMAIL_PATTERN = /[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}/g;
@@ -47,19 +46,22 @@ function lastWholeLines(rawOutput: string): string {
   return firstBreak === -1 ? TRUNCATED : window.slice(firstBreak + 1);
 }
 
-function redactQuotedFilename(
-  quoted: string,
-  doubleQuotedExtension: string | undefined,
-  singleQuotedExtension: string | undefined
-): string {
-  const extension = doubleQuotedExtension ?? singleQuotedExtension ?? '';
-  return extension.toLowerCase() === 'py' ? quoted : '[file]';
+// A quoted name ending in an extension is a file, except the deck writer's own
+// .py frames, which the path pass trims to their basename. Any other quoted
+// value with whitespace in it is user text (a deck name, a card front); a
+// one-word value usually names the failing field and is kept.
+function redactQuoted(token: string, quoted: string): string {
+  const value = quoted.slice(1, -1);
+  const extension = FILE_EXTENSION.exec(value)?.[1];
+  if (extension != null) {
+    return extension.toLowerCase() === 'py' ? token : '[file]';
+  }
+  return WHITESPACE.test(value) ? '[text]' : token;
 }
 
 function redactPythonOutput(rawOutput: string): string {
   return rawOutput
-    .replace(QUOTED_FILENAME_PATTERN, redactQuotedFilename)
-    .replace(QUOTED_TEXT_PATTERN, '[text]')
+    .replace(QUOTED_PATTERN, redactQuoted)
     .replace(ABSOLUTE_PATH_PATTERN, redactPath)
     .replace(EMAIL_PATTERN, '[email]')
     .replace(TOKEN_PATTERN, '[token]');

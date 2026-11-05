@@ -93,6 +93,26 @@ describe('scrubPythonRawOutput', () => {
       'Skipping media outside the working directory: /srv/ws/abc/Week 3: Optics.png',
       'Skipping media outside the working directory: [path]',
     ],
+    [
+      'a multi-word value after an empty one in a list',
+      "ValueError: no back for ['', 'Übung und Anatomie']",
+      "ValueError: no back for ['', [text]]",
+    ],
+    [
+      'a multi-word value after a non-ASCII one-word value',
+      "KeyError: ['Café', 'Übung Anatomie']",
+      "KeyError: ['Café', [text]]",
+    ],
+    [
+      'a multi-word value after one ending in punctuation',
+      "KeyError: ['Front?', '(a) the cell theory']",
+      "KeyError: ['Front?', [text]]",
+    ],
+    [
+      'a long quoted file name with no spaces',
+      `OSError: cannot open '${'uke_3_Biologi_'.repeat(20)}.apkg'`,
+      'OSError: cannot open [file]',
+    ],
   ])('redacts %s', (_label, raw, expected) => {
     expect(scrubPythonRawOutput(raw)).toBe(expected);
   });
@@ -133,7 +153,7 @@ describe('scrubPythonRawOutput', () => {
     );
   });
 
-  it('redacts no quoted value from half its text when the window cuts into it', () => {
+  it('drops a line the window cuts into', () => {
     const raw = "'Sam Smith " + 'z'.repeat(25_000) + "'\nKeyError: 'Front'";
 
     expect(scrubPythonRawOutputTail(raw)).toBe("KeyError: 'Front'");
