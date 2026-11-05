@@ -145,6 +145,7 @@ import type { IssuedCardGuid } from '../lib/anki/guidLedgerTypes';
 import { InMemoryHeldDeckRepository } from '../data_layer/HeldDeckRepository';
 import { planHoldKey } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
+import { PythonExitError } from '../lib/anki/buildPythonExitError';
 import {
   ANONYMOUS_CARD_CAP,
   MONTHLY_CARD_LIMIT,
@@ -1148,6 +1149,44 @@ describe('UploadService.handleUpload — error paths', () => {
     });
     errorSpy.mockRestore();
   });
+
+  it.each([
+    ['too-large', 'too_large'],
+    ['invalid-markup', 'invalid_markup'],
+    ['unknown', 'unknown'],
+  ] as const)(
+    'answers a sync upload whose deck writer crashed with kind %s as code %s and its own message',
+    async (kind, code) => {
+      const crash = new PythonExitError('The deck writer stopped.', {
+        kind,
+        rawOutput: 'Killed',
+        code: 137,
+      });
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockRejectedValue(crash),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse();
+
+      await service.handleUpload(buildRequest(), res);
+
+      expect(capturedStatus()).toBe(400);
+      expect(capturedJson()).toEqual({
+        code,
+        message: 'The deck writer stopped.',
+      });
+      errorSpy.mockRestore();
+    }
+  );
 
   it('logs the worker stack when a sync upload fails unexpectedly', async () => {
     const crash = Object.assign(

@@ -43,6 +43,14 @@ describe('scrubPythonRawOutput', () => {
     const raw = 'KeyError: nested lookup failed\n'.repeat(100);
     expect(scrubPythonRawOutput(raw)).toHaveLength(500);
   });
+
+  it('keeps the start of long output, where the traceback begins', () => {
+    const raw = 'Traceback (most recent call last):\n' + 'x'.repeat(600);
+
+    expect(
+      scrubPythonRawOutput(raw).startsWith('Traceback (most recent call last):')
+    ).toBe(true);
+  });
 });
 
 describe('scrubPythonRawOutputTail', () => {
