@@ -126,6 +126,11 @@ describe('scrubPythonRawOutput', () => {
       "FileNotFoundError: [Errno 2] No such file or directory: 'Sam Smith secrets.py'",
       'FileNotFoundError: [Errno 2] No such file or directory: [file]',
     ],
+    [
+      'an email address with non-ASCII letters',
+      'ValueError: bad value for jörg.müller@example.com in field',
+      'ValueError: bad value for [email] in field',
+    ],
   ])('redacts %s', (_label, raw, expected) => {
     expect(scrubPythonRawOutput(raw)).toBe(expected);
   });

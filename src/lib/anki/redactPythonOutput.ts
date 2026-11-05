@@ -12,7 +12,7 @@ const TRUNCATED = '[truncated]';
 // apostrophe in "Couldn't" is not a quote), and a Python string prefix (b'',
 // u'', rb'') belongs to the literal.
 const QUOTED_PATTERN =
-  /(?<![\p{L}\p{N}_])[bBuUrRfF]{0,2}("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')(?![\p{L}\p{N}_])/gu;
+  /(?<![\p{L}\p{N}_\\])[bBuUrRfF]{0,2}("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')(?![\p{L}\p{N}_])/gu;
 const FILE_EXTENSION = /\.(\w{1,8})$/;
 const WHITESPACE = /[^\S\n]/;
 
@@ -22,7 +22,8 @@ const WHITESPACE = /[^\S\n]/;
 // UserWarning") ends it early.
 const ABSOLUTE_PATH_PATTERN =
   /(?:\/(?:[^\s/'":]|'(?=\p{L})|:(?!\d+:))+){2,}(?:[^\S\n](?:[^\n'":]|'(?=\p{L})|:(?!\d+:))*)?/gu;
-const EMAIL_PATTERN = /[\w.+-]{1,64}@[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}/g;
+const EMAIL_PATTERN =
+  /[\p{L}\p{N}_.+-]{1,64}@[\p{L}\p{N}_-]{1,63}(?:\.[\p{L}\p{N}_-]{1,63}){1,8}/gu;
 const TOKEN_PATTERN = /\b[A-Za-z0-9_-]{32,}\b/g;
 
 function redactPath(path: string): string {
