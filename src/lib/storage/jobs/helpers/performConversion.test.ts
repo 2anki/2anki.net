@@ -902,6 +902,56 @@ describe('performConversion — heavy pipeline', () => {
       })
     );
   });
+
+  it('logs the deck-writer crash output redacted', async () => {
+    (CreateJobWorkSpaceUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          ws: {},
+          exporter: {},
+          settings: {},
+          bl: {},
+          rules: {},
+        }),
+      };
+    });
+    (CreateFlashcardsForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue([{ cards: [1, 2, 3] }]),
+      };
+    });
+    (CheckMonthlyCardLimitUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    (BuildDeckForJobUseCase as Mock).mockImplementation(function () {
+      return {
+        execute: vi.fn().mockRejectedValue(
+          new PythonExitError('python died', {
+            kind: 'unknown',
+            rawOutput:
+              "OSError: cannot open '/srv/ws/1/Week 3 lab notes.apkg'\nValueError: no back for 'Who wrote the cell theory'",
+            code: 1,
+          })
+        ),
+      };
+    });
+
+    const errorSpy = vi.mocked(console.error);
+
+    await performConversion(mockDatabase, baseRequest);
+
+    const crashLog = errorSpy.mock.calls.find(
+      ([message]) =>
+        typeof message === 'string' && message.endsWith('python crash')
+    );
+    expect(crashLog?.[1]).toMatchObject({
+      kind: 'unknown',
+      code: 1,
+      rawOutput: 'OSError: cannot open [file]\nValueError: no back for [text]',
+    });
+  });
 });
 
 describe('performConversion — signup_origin attribution', () => {

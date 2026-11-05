@@ -28,6 +28,7 @@ import {
   jobFailureReasonFromError,
 } from '../../../../usecases/jobs/jobFailureReason';
 import { PythonExitError } from '../../../anki/buildPythonExitError';
+import { scrubPythonRawOutputTail } from '../../../anki/scrubPythonRawOutput';
 import { EmptyDeckError } from '../../../../usecases/jobs/EmptyDeckError';
 import { NotionDatabaseColumnsError } from '../../../../services/NotionService/helpers/NotionDatabaseColumnsError';
 import {
@@ -486,7 +487,7 @@ export default async function performConversion(
         pageId: id,
         kind: error.kind,
         code: error.code,
-        rawOutput: error.rawOutput,
+        rawOutput: scrubPythonRawOutputTail(error.rawOutput),
       });
     } else {
       console.error(`${logPrefix} failed`, { pageId: id, error });

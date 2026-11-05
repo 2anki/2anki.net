@@ -27,6 +27,46 @@ describe('scrubPythonRawOutput', () => {
     );
   });
 
+  it.each([
+    [
+      'an unquoted path with spaces in the file name',
+      'Skipping media outside the working directory: /srv/ws/abc/Week 3 lab scan.png',
+      'Skipping media outside the working directory: [path]',
+    ],
+    [
+      'a quoted file name with an extension off the old list',
+      "Missing media: {'Lecture 5 anatomy.svg'}",
+      'Missing media: {[file]}',
+    ],
+    [
+      'a double-quoted path with an apostrophe in it',
+      'OSError: cannot open "/srv/ws/x/Sam\'s biology notes.apkg"',
+      'OSError: cannot open [file]',
+    ],
+    [
+      'a multi-word quoted value in an exception message',
+      "ValueError: no back for 'Who wrote the first cell theory'",
+      'ValueError: no back for [text]',
+    ],
+  ])('redacts %s', (_label, raw, expected) => {
+    expect(scrubPythonRawOutput(raw)).toBe(expected);
+  });
+
+  it('keeps the exception line of output far longer than the redaction window', () => {
+    const raw =
+      "UserWarning: Field contained the following invalid HTML tags: 'x y'\n".repeat(
+        5000
+      ) + "KeyError: 'Front'";
+
+    expect(scrubPythonRawOutputTail(raw).endsWith("KeyError: 'Front'")).toBe(
+      true
+    );
+  });
+
+  it('keeps a one-word quoted value, which names the failing field', () => {
+    expect(scrubPythonRawOutput("KeyError: 'Front'")).toBe("KeyError: 'Front'");
+  });
+
   it('redacts email addresses', () => {
     const raw = 'ValueError: bad value for student@example.com in field';
     expect(scrubPythonRawOutput(raw)).toBe(
