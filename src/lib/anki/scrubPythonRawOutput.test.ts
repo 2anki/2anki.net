@@ -78,6 +78,21 @@ describe('scrubPythonRawOutput', () => {
       'Skipping media outside the working directory: /srv/ws/abc/My study plan.py',
       'Skipping media outside the working directory: [path]',
     ],
+    [
+      'a bytes literal holding user text',
+      "UnicodeDecodeError: cannot decode b'Sam Smith notes'",
+      'UnicodeDecodeError: cannot decode [text]',
+    ],
+    [
+      'a unicode-prefixed literal holding user text',
+      "ValueError: no back for u'Who wrote it'",
+      'ValueError: no back for [text]',
+    ],
+    [
+      'a path whose file name has a colon in it',
+      'Skipping media outside the working directory: /srv/ws/abc/Week 3: Optics.png',
+      'Skipping media outside the working directory: [path]',
+    ],
   ])('redacts %s', (_label, raw, expected) => {
     expect(scrubPythonRawOutput(raw)).toBe(expected);
   });
@@ -91,6 +106,13 @@ describe('scrubPythonRawOutput', () => {
     expect(scrubPythonRawOutputTail(raw).endsWith("KeyError: 'Front'")).toBe(
       true
     );
+  });
+
+  it('keeps none of a single line longer than the redaction window', () => {
+    const raw = "ValueError: 'Sam Smith " + 'z'.repeat(25_000) + "'";
+
+    expect(scrubPythonRawOutputTail(raw)).toBe('[truncated]');
+    expect(scrubPythonRawOutput(raw)).toBe('[truncated]');
   });
 
   it('keeps one-word field names in a list', () => {
