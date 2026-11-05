@@ -205,6 +205,13 @@ describe('PythonExitError output in logs', () => {
     expect(printed).not.toContain('Week 3 lab notes');
   });
 
+  it('prints only the redacted output when logged inside another object', () => {
+    const printed = inspect({ jobId: 'job-1', err: crash() });
+
+    expect(printed).toContain('OSError: cannot open [file]');
+    expect(printed).not.toContain('Week 3 lab notes');
+  });
+
   it('leaves the raw output out of JSON', () => {
     expect(JSON.stringify(crash())).not.toContain('Week 3 lab notes');
   });
