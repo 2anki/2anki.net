@@ -246,11 +246,12 @@ function toMulterErrorBody(err: multer.MulterError): {
         "This file type isn't supported. Use .zip, .html, .md, .csv, or .apkg.",
     };
   }
+  // Not too_large: that code renders file-size copy, and this is a text field.
   if (err.code === 'LIMIT_FIELD_VALUE') {
     return {
       status: 413,
-      code: 'too_large',
-      message: 'Message is too long — shorten it and try again.',
+      code: 'unknown',
+      message: 'This text is too long — shorten it and try again.',
     };
   }
   return { status: 400, code: 'unknown', message: err.message };

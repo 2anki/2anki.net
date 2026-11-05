@@ -601,4 +601,23 @@ describe('ConversionResult — failed variant', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/subpage/i)).toBeNull();
   });
+
+  it('shows a mistyped PDF page range as itself, not as a file too large', () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Lecture slides"
+          failureReason="'1234567' has a page number that is too large."
+          source="upload"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText("'1234567' has a page number that is too large.")
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/smaller files/i)).toBeNull();
+  });
 });

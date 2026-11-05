@@ -199,6 +199,16 @@ describe('classifyUploadError', () => {
     });
   });
 
+  test('a text field over the size limit shows its own message, not file copy', () => {
+    const body: UploadErrorBody = {
+      code: 'unknown',
+      message: 'This text is too long — shorten it and try again.',
+    };
+    expect(classifyUploadError(body)).toEqual({
+      title: 'This text is too long — shorten it and try again.',
+    });
+  });
+
   test('notion_unavailable returns copy about Notion having trouble', () => {
     const body: UploadErrorBody = {
       code: 'notion_unavailable',

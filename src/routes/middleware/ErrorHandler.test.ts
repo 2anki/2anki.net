@@ -568,8 +568,8 @@ describe('ErrorHandler', () => {
 
     expect(res.statusCode).toBe(413);
     expect(res.body).toEqual({
-      code: 'too_large',
-      message: 'Message is too long — shorten it and try again.',
+      code: 'unknown',
+      message: 'This text is too long — shorten it and try again.',
     });
   });
 

@@ -54,6 +54,13 @@ describe('parsePdfPageRange', () => {
     }
   });
 
+  // The downloads page keys its copy off this wording (web ConversionResult).
+  it('names an over-long page number in the wording the downloads page matches', () => {
+    expect(() => parsePdfPageRange('1234567')).toThrow(
+      "'1234567' has a page number that is too large."
+    );
+  });
+
   it('rejects a page number with too many digits before expanding anything', () => {
     expect(() => parsePdfPageRange('1-999999999')).toThrow(PdfPageRangeError);
     expect(() => parsePdfPageRange('1234567')).toThrow(PdfPageRangeError);

@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-05-page-range-text-limit-copy",
+  "date": "2026-11-05",
+  "type": "fix",
+  "title": "A mistyped PDF page range or a text that is too long no longer says your file is too large"
+}
