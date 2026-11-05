@@ -199,13 +199,15 @@ describe('classifyUploadError', () => {
     });
   });
 
-  test('a text field over the size limit shows its own message, not file copy', () => {
+  test('a saved setting over the field size limit shows its own message, not file copy', () => {
     const body: UploadErrorBody = {
       code: 'unknown',
-      message: 'This text is too long — shorten it and try again.',
+      message:
+        'A setting saved in this browser is too long to send with your upload. Reset your card options to defaults and upload again.',
     };
     expect(classifyUploadError(body)).toEqual({
-      title: 'This text is too long — shorten it and try again.',
+      title:
+        'A setting saved in this browser is too long to send with your upload. Reset your card options to defaults and upload again.',
     });
   });
 

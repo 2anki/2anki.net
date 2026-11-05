@@ -282,6 +282,40 @@ describe('Upload file — multer error handling', () => {
     }
   );
 
+  test.each([
+    [
+      'user-instructions',
+      'Your instructions for PDF conversion in Card options are too long. Shorten them and upload again.',
+    ],
+    [
+      'deck-name',
+      'A setting saved in this browser is too long to send with your upload. Reset your card options to defaults and upload again.',
+    ],
+  ])(
+    'answers an over-long %s field with 413 and copy about that setting',
+    async (field, message) => {
+      const { controller, handleUpload } = brokenUploadController(
+        new multer.MulterError('LIMIT_FIELD_VALUE', field)
+      );
+      let status = 0;
+      const jsonSpy = vi.fn();
+      const fakeRes = {
+        locals: {},
+        status: (code: number) => {
+          status = code;
+          return { json: jsonSpy };
+        },
+      } as unknown as express.Response;
+
+      controller.file({ cookies: {} } as express.Request, fakeRes);
+      await new Promise((r) => setImmediate(r));
+
+      expect(handleUpload).not.toHaveBeenCalled();
+      expect(status).toBe(413);
+      expect(jsonSpy).toHaveBeenCalledWith({ code: 'unknown', message });
+    }
+  );
+
   test('asks for a few files at a time when a batch broke off', async () => {
     const { controller } = brokenUploadController(new Error('Request closed'), [
       { path: '/gone/1' },

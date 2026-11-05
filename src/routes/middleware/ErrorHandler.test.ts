@@ -559,17 +559,17 @@ describe('ErrorHandler', () => {
     errorSpy.mockRestore();
   });
 
-  test('an over-long form field responds 413 with a friendly message', async () => {
+  test('an over-long chat message responds 413 with copy about the message', async () => {
     const res = makeResponse(false);
     const req = makeRequest();
 
-    const fieldError = new multer.MulterError('LIMIT_FIELD_VALUE');
+    const fieldError = new multer.MulterError('LIMIT_FIELD_VALUE', 'message');
     await ErrorHandler(res as unknown as express.Response, req, fieldError);
 
     expect(res.statusCode).toBe(413);
     expect(res.body).toEqual({
       code: 'unknown',
-      message: 'This text is too long — shorten it and try again.',
+      message: 'Message is too long — shorten it and try again.',
     });
   });
 

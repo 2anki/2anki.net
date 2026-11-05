@@ -563,6 +563,30 @@ describe('ConversionResult — failed variant', () => {
     expect(screen.queryByRole('button', { name: /paragraphs/ })).toBeNull();
   });
 
+  it.each([
+    ['upload', 'MemoryError', /smaller files/i],
+    ['upload', 'Killed', /smaller files/i],
+    ['notion', 'MemoryError', /subpage/i],
+    ['notion', 'Killed', /subpage/i],
+  ] as const)(
+    'keeps the too-large copy for a %s job whose reason carries %s',
+    (source, marker, copy) => {
+      render(
+        <MemoryRouter>
+          <ConversionResult
+            variant="failed"
+            title="Big export"
+            failureReason={`Traceback (most recent call last):\n${marker}`}
+            source={source}
+            onMapColumns={vi.fn()}
+          />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText(copy)).toBeInTheDocument();
+    }
+  );
+
   it('shows a subpages recovery hint when the server reports a too-large OOM failure', () => {
     const tooLargeReason =
       'This page is too large for us to convert in one go. Split it into smaller pages — or convert it section by section — and try again.';
