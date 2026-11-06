@@ -8642,6 +8642,73 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     ).toBeInTheDocument();
   });
 
+  it('keeps the unlock step and says why when password attempts are rate limited', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/ai/credits') {
+        return Promise.resolve(creditsResponse(1347));
+      }
+      if (url === '/api/upload/file') {
+        return Promise.resolve(needsPassword);
+      }
+      if (url === '/api/upload/retry-with-credential') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ message: 'Too many password attempts.' }),
+            { status: 429 }
+          )
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText('Too many password attempts.')
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('PDF password')).toBeInTheDocument();
+  });
+
+  it('keeps the unlock step when the server refuses the password itself', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/ai/credits') {
+        return Promise.resolve(creditsResponse(1347));
+      }
+      if (url === '/api/upload/file') {
+        return Promise.resolve(needsPassword);
+      }
+      if (url === '/api/upload/retry-with-credential') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: 'needs_password',
+              message: 'Invalid credential.',
+            }),
+            { status: 400 }
+          )
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText(
+        "That didn't open the file. Check for typos and try again."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('PDF password')).toBeInTheDocument();
+  });
+
   it('keeps the unlock step when the server says the password was wrong', async () => {
     const fetchMock = vi.fn((url: string) => {
       if (url === '/api/ai/credits') {

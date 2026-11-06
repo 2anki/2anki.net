@@ -322,13 +322,15 @@ const PDF_CHOICE_COPY = new Map<
   ],
 ]);
 
-// A wrong password answers with an error code and no message, so a message
-// means the password worked and the conversion after it failed.
-async function carriesServerMessage(response: Response): Promise<boolean> {
+// A rate limit and a wrong password both leave the person at the password
+// prompt. Any other failure with a message came after the password worked.
+async function failedAfterUnlock(response: Response): Promise<boolean> {
+  if (response.status === 429) return false;
   const body = await response
     .clone()
     .json()
     .catch(() => null);
+  if (body?.error === 'needs_password') return false;
   return typeof body?.message === 'string' && body.message.trim().length > 0;
 }
 
@@ -4154,7 +4156,7 @@ function UploadForm({
         await applyConversionSuccess(request, conversionSuccessHandlers);
         return;
       }
-      if (await carriesServerMessage(request)) {
+      if (await failedAfterUnlock(request)) {
         const failure = await extractErrorMessage(request);
         setLockedPdfInfo(null);
         setLocalError(failure);
@@ -4165,7 +4167,11 @@ function UploadForm({
 
       const newAttemptCount = pdfAttemptCount + 1;
       setPdfAttemptCount(newAttemptCount);
-      setPdfUnlockError(t('upload.form.unlockFailed'));
+      setPdfUnlockError(
+        request.status === 429
+          ? (await extractErrorMessage(request)).message
+          : t('upload.form.unlockFailed')
+      );
       setZoneState('lockedPdf');
     } catch (error) {
       setPdfUnlockError(toFriendlyThrownError(error).message);

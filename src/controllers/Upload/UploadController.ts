@@ -386,7 +386,9 @@ class UploadController {
       (req.body as Record<string, unknown>).credential
     );
     if (credential == null) {
-      return res.status(400).json({ message: 'Invalid credential.' });
+      return res
+        .status(400)
+        .json({ error: 'needs_password', message: 'Invalid credential.' });
     }
 
     let fileBuffer: Buffer;
