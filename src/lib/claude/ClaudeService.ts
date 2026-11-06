@@ -744,8 +744,9 @@ export class ClaudeLargeSectionError extends Error {
   }
 }
 
-// Claude answered with stop_reason 'refusal' and no text. Sending the same
-// chunk again gets the same answer, so it is never retried.
+// Claude answered with stop_reason 'refusal' and no cards could be read from
+// what it sent first. Sending the same chunk again gets the same answer, so it
+// is never retried.
 export class ClaudeRefusalError extends Error {
   constructor() {
     super(CLAUDE_REFUSAL_USER_MESSAGE);
@@ -1242,11 +1243,21 @@ async function generateDeckInfoFromChunk(
   const cleaned = raw.replace(/^```json\n?|^```\n?|```\s*$/gm, '').trim();
 
   if (response.stop_reason === 'refusal') {
+    // A refusal can stop the stream partway; keep any cards already written.
+    const salvaged = cleaned
+      ? salvageTruncatedDecks(cleaned, raw, availableMediaFiles, chunkIndex)
+      : [];
+    const salvagedCards = salvaged.reduce(
+      (sum, deck) => sum + deck.cards.length,
+      0
+    );
     console.warn('[Claude] Claude declined the chunk', {
       requestId,
       chunkIndex,
       totalChunks,
+      salvagedCards,
     });
+    if (salvagedCards > 0) return salvaged;
     throw new ClaudeRefusalError();
   }
 

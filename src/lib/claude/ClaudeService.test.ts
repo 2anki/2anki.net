@@ -1177,6 +1177,60 @@ describe('generateDeckInfo — Claude declines a chunk', () => {
     }
   });
 
+  it('keeps the cards Claude wrote before it declined partway through', async () => {
+    mockStream.finalMessage.mockResolvedValue({
+      ...salvageableTruncatedResponse(),
+      stop_reason: 'refusal',
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      const result = await generateDeckInfo(htmlOneChunk, []);
+
+      expect(result[0].cards.map((card) => card.name)).toEqual(
+        expect.arrayContaining(['SALVAGE-Q1', 'SALVAGE-Q2'])
+      );
+      expect(warn).toHaveBeenCalledWith(
+        '[Claude] Claude declined the chunk',
+        expect.objectContaining({ chunkIndex: 0 })
+      );
+    } finally {
+      warn.mockRestore();
+      error.mockRestore();
+    }
+  });
+
+  it('rejects with the refusal copy on the heading-driven style with comprehensive on', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(
+        '<h1>Cells</h1><p>The cell is the basic unit of life.</p>' +
+          '<h1>Tissues</h1><p>Tissues are groups of similar cells.</p>',
+        [],
+        undefined,
+        undefined,
+        'heading-driven',
+        undefined,
+        undefined,
+        { isPaying: true, userId: 42, comprehensive: true }
+      ).catch((err: unknown) => err);
+
+      expect(
+        log.mock.calls.some(([msg]) => msg === '[Claude] heading-driven chunks')
+      ).toBe(true);
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+    } finally {
+      warn.mockRestore();
+      log.mockRestore();
+    }
+  });
+
   it('ships the cards from the chunk Claude answered when another is declined', async () => {
     mockStream.finalMessage
       .mockResolvedValueOnce(fakeResponse())
