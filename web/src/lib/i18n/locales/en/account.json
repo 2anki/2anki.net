@@ -114,6 +114,7 @@
     "autoSyncMeta": "Live Notion sync, no monthly card limit.",
     "passEnds": "Ends {{date}}",
     "free": "Free",
+    "pastDue": "Payment failed",
     "freeMeta": "100 cards per month.",
     "seePlans": "See plans"
   },

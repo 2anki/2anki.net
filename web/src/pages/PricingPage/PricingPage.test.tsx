@@ -11,6 +11,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import PricingPage from './PricingPage';
+import { getSubscriptionStatus } from '../../lib/backend/getSubscriptionStatus';
 
 const mockStartPassCheckout = vi.fn();
 const mockStartUnlimitedCheckout = vi.fn();
@@ -26,6 +27,10 @@ vi.mock('../../lib/backend/get2ankiApi', () => ({
     getAutoSyncPrice: mockGetAutoSyncPrice,
     startAutoSyncCheckout: mockStartAutoSyncCheckout,
   }),
+}));
+
+vi.mock('../../lib/backend/getSubscriptionStatus', () => ({
+  getSubscriptionStatus: vi.fn().mockResolvedValue({ subscriptions: [] }),
 }));
 
 vi.mock('../../components/TopMessage/TopMessage', () => ({
@@ -1135,5 +1140,59 @@ describe('PricingPage Auto Sync', () => {
 
     await waitFor(() => expect(mockGetAutoSyncPrice).toHaveBeenCalled());
     expect(screen.queryByTestId('auto-sync-card')).not.toBeInTheDocument();
+  });
+});
+
+describe('PricingPage after a failed renewal', () => {
+  const lapsedEntitlement = {
+    subscriber: false,
+    patreon: false,
+    subscriptionInfo: { email: 'payer@example.com' },
+  };
+
+  beforeEach(() => {
+    vi.mocked(getSubscriptionStatus).mockReset();
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({ subscriptions: [] });
+  });
+
+  it('sends the person to fix the payment above the plans', async () => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [
+        {
+          id: 'sub_test',
+          status: 'past_due',
+          created: null,
+          cancel_at_period_end: false,
+          cancel_at: null,
+          canceled_at: null,
+          current_period_end: null,
+          paused_until: null,
+          cancellation_reason: null,
+          plan: null,
+        },
+      ],
+    });
+
+    renderAt('/pricing', { isLoggedIn: true, entitlement: lapsedEntitlement });
+
+    const fix = await screen.findByRole('link', {
+      name: 'Update payment details',
+    });
+    const firstPlan = screen.getByRole('button', {
+      name: /^Get Week Pass · /,
+    });
+    expect(
+      fix.compareDocumentPosition(firstPlan) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it.each([
+    ['a signed-out visitor', undefined],
+    ['someone who has never paid', { subscriber: false, patreon: false }],
+    ['a subscriber', { ...lapsedEntitlement, subscriber: true }],
+  ])('does not read Stripe for %s', (_who, entitlement) => {
+    renderAt('/pricing', { isLoggedIn: entitlement != null, entitlement });
+
+    expect(getSubscriptionStatus).not.toHaveBeenCalled();
   });
 });

@@ -7,6 +7,7 @@ export interface PricingEntitlement {
   planSource?: 'stripe' | 'apple' | 'lifetime' | null;
   passKind?: '24h' | '7d' | '120d' | 'unlimited' | null;
   passExpiresAt?: string | null;
+  subscriptionInfo?: { email?: string | null } | null;
 }
 
 const PASS_LABELS: Record<string, string> = {

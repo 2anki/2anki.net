@@ -28,6 +28,7 @@ export interface SidebarLocals {
   autoSyncActive?: boolean;
   passExpiresAt?: string | null;
   passKind?: '24h' | '7d' | '120d' | 'unlimited' | null;
+  subscriptionInfo?: { email?: string | null } | null;
 }
 
 export interface SidebarFeatures {

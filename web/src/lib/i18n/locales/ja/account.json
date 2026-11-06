@@ -114,6 +114,7 @@
     "autoSyncMeta": "Notion のライブ同期、月間カードの上限なし。",
     "passEnds": "{{date}} に終了",
     "free": "無料",
+    "pastDue": "お支払いに失敗しました",
     "freeMeta": "毎月100枚のカード。",
     "seePlans": "プランを見る"
   },

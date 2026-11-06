@@ -16,6 +16,7 @@ export type PlanName =
   | 'dayPass'
   | 'weekPass'
   | 'semesterPass'
+  | 'pastDue'
   | 'free';
 
 const DATED_PASS_PLAN: Record<'24h' | '7d' | '120d', PlanName> = {

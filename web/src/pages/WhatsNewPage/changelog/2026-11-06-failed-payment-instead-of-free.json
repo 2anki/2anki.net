@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-06-failed-payment-instead-of-free",
+  "date": "2026-11-06",
+  "type": "fix",
+  "title": "After a failed renewal, the account menu, account page and pricing page show the failed payment and how to fix it"
+}

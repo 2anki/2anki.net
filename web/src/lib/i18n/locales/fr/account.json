@@ -114,6 +114,7 @@
     "autoSyncMeta": "Synchronisation Notion en direct, pas de plafond mensuel de cartes.",
     "passEnds": "Se termine le {{date}}",
     "free": "Gratuit",
+    "pastDue": "Paiement échoué",
     "freeMeta": "100 cartes par mois.",
     "seePlans": "Voir les offres"
   },

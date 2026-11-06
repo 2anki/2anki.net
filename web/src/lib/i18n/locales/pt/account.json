@@ -114,6 +114,7 @@
     "autoSyncMeta": "Sincronização ao vivo com o Notion, sem teto mensal de cartões.",
     "passEnds": "Termina em {{date}}",
     "free": "Free",
+    "pastDue": "Pagamento não concluído",
     "freeMeta": "100 cartões por mês.",
     "seePlans": "Ver planos"
   },

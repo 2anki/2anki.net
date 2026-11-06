@@ -76,4 +76,16 @@ describe('PlanDetails', () => {
     expect(screen.getByText(/18 November 2026/)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'See plans' })).toBeNull();
   });
+
+  it('shows a failed payment instead of Free', () => {
+    mockHook.mockReturnValue(null);
+    render(<PlanDetails plan="pastDue" />);
+    expect(screen.getByText('Payment failed')).toBeInTheDocument();
+    expect(
+      screen.getByText(/paused until this payment goes through/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Free')).toBeNull();
+    expect(screen.queryByText('100 cards per month.')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'See plans' })).toBeNull();
+  });
 });

@@ -9,7 +9,7 @@ interface PlanDetailsProps {
   readonly passExpiresAt?: string | null;
 }
 
-const PLAN_NAME: Record<Exclude<PlanName, 'free'>, string> = {
+const PLAN_NAME: Record<Exclude<PlanName, 'free' | 'pastDue'>, string> = {
   pro: 'Pro',
   autoSync: 'Auto Sync',
   lifetime: 'Lifetime',
@@ -42,6 +42,18 @@ export function PlanDetails({ plan, passExpiresAt }: PlanDetailsProps) {
         <a href="/pricing" className={styles.primaryButton}>
           {t('planDetails.seePlans')}
         </a>
+      </section>
+    );
+  }
+
+  if (plan === 'pastDue') {
+    return (
+      <section className={styles.section}>
+        <p className={styles.planTier}>{t('planDetails.pastDue')}</p>
+        <p className={styles.planMeta}>
+          {t('subscription.pastDueAccessPaused')}
+        </p>
+        <AiCreditsAccountLine />
       </section>
     );
   }

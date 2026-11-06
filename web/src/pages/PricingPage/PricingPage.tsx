@@ -10,6 +10,7 @@ import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import type { CheckoutConflict } from '../../lib/checkout/checkoutConflict';
 import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
+import { mayHaveLapsedPayment } from '../../lib/hooks/useLapsedPayment';
 import { usePricingOrderVariant } from '../../lib/hooks/usePricingOrderVariant';
 import {
   AutoSyncCard,
@@ -28,6 +29,7 @@ import { PricingFaq } from './components/PricingFaq';
 import { UnlimitedCard } from './components/UnlimitedCard';
 import { LapsedPlanChoice } from './components/LapsedPlanChoice';
 import { ProducerCaptureModal } from '../../components/ProducerCaptureModal/ProducerCaptureModal';
+import { PastDueNotice } from '../../components/PastDueNotice/PastDueNotice';
 import { TrustNote } from '../../components/TrustNote/TrustNote';
 import { useInViewOnce } from '../../lib/hooks/useInViewOnce';
 import styles from './PricingPage.module.css';
@@ -543,6 +545,11 @@ export default function PricingPage({
       </div>
 
       <OwnedPlanNotice entitlement={entitlement} />
+
+      <PastDueNotice
+        surface="pricing_page"
+        enabled={mayHaveLapsedPayment(entitlement)}
+      />
 
       <div ref={conflictRef}>
         {conflict?.lapsedPlan == null ? (

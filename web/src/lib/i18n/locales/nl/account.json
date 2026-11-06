@@ -114,6 +114,7 @@
     "autoSyncMeta": "Live Notion-synchronisatie, geen maandelijkse kaartlimiet.",
     "passEnds": "Eindigt op {{date}}",
     "free": "Free",
+    "pastDue": "Betaling mislukt",
     "freeMeta": "100 kaarten per maand.",
     "seePlans": "Bekijk abonnementen"
   },

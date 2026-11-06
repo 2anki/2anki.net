@@ -114,6 +114,7 @@
     "autoSyncMeta": "Live-Notion-Sync, kein monatliches Kartenlimit.",
     "passEnds": "Endet am {{date}}",
     "free": "Kostenlos",
+    "pastDue": "Zahlung fehlgeschlagen",
     "freeMeta": "100 Karten pro Monat.",
     "seePlans": "Tarife ansehen"
   },

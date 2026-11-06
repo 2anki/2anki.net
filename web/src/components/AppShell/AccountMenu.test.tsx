@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { track } from '../../lib/analytics/track';
 import { getCardUsage } from '../../lib/backend/getCardUsage';
 import { getAiCredits } from '../../lib/backend/getAiCredits';
+import { getSubscriptionStatus } from '../../lib/backend/getSubscriptionStatus';
+import { STRIPE_CUSTOMER_PORTAL_URL } from '../../lib/stripePortal';
 import { AccountMenu } from './AccountMenu';
 
 vi.mock('../../lib/analytics/track', () => ({
@@ -24,12 +26,36 @@ vi.mock('../../lib/backend/getAiCredits', () => ({
   getAiCredits: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock('../../lib/backend/getSubscriptionStatus', () => ({
+  getSubscriptionStatus: vi.fn().mockResolvedValue({ subscriptions: [] }),
+}));
+
+const stripeSubscription = (status: string) => ({
+  id: 'sub_test',
+  status,
+  created: null,
+  cancel_at_period_end: false,
+  cancel_at: null,
+  canceled_at: status === 'canceled' ? Date.now() / 1000 : null,
+  current_period_end: null,
+  paused_until: null,
+  cancellation_reason: null,
+  plan: { amount: 799, currency: 'usd', interval: 'month' },
+});
+
+const lapsedLocals = {
+  patreon: false,
+  subscriber: false,
+  subscriptionInfo: { email: 'payer@example.com' },
+};
+
 interface RenderOpts {
   email?: string | null;
   locals?: {
     patreon?: boolean;
     subscriber?: boolean;
     autoSyncActive?: boolean;
+    subscriptionInfo?: { email?: string | null } | null;
   } | null;
   onLogOut?: (event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void;
 }
@@ -61,6 +87,8 @@ beforeEach(() => {
   vi.mocked(getCardUsage).mockClear();
   vi.mocked(getAiCredits).mockReset();
   vi.mocked(getAiCredits).mockResolvedValue(null);
+  vi.mocked(getSubscriptionStatus).mockReset();
+  vi.mocked(getSubscriptionStatus).mockResolvedValue({ subscriptions: [] });
 });
 
 describe('AccountMenu trigger', () => {
@@ -406,5 +434,125 @@ describe('AccountMenu links', () => {
     openMenu();
     fireEvent.click(screen.getByRole('link', { name: /log out/i }));
     expect(onLogOut).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AccountMenu after a failed renewal', () => {
+  it.each(['past_due', 'unpaid'])(
+    'shows the failed payment instead of Free for a %s subscription',
+    async (status) => {
+      vi.mocked(getSubscriptionStatus).mockResolvedValue({
+        subscriptions: [stripeSubscription(status)],
+      });
+      renderMenu({ locals: lapsedLocals });
+      openMenu();
+
+      expect(await screen.findByText('Payment failed')).toBeVisible();
+      expect(screen.queryByText('Free')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'Upgrade' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Update payment details' })
+      ).toHaveAttribute('href', STRIPE_CUSTOMER_PORTAL_URL);
+    }
+  );
+
+  it('tracks the click on Update payment details', async () => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [stripeSubscription('past_due')],
+    });
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    fireEvent.click(
+      await screen.findByRole('link', { name: 'Update payment details' })
+    );
+
+    expect(track).toHaveBeenCalledWith('subscription_manage_billing_clicked', {
+      from: 'past_due',
+      surface: 'account_menu',
+    });
+  });
+
+  it('records that the failed payment was shown in the menu', async () => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [stripeSubscription('past_due')],
+    });
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    await screen.findByText('Payment failed');
+
+    expect(track).toHaveBeenCalledWith('subscription_past_due_shown', {
+      subscription_id: 'sub_test',
+      surface: 'account_menu',
+    });
+  });
+
+  it('shows neither Free nor Upgrade while the subscription is being read', async () => {
+    vi.mocked(getSubscriptionStatus).mockReturnValue(new Promise(() => {}));
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    expect(screen.queryByText('Free')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Upgrade' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not read Stripe until the menu is opened', () => {
+    renderMenu({ locals: lapsedLocals });
+
+    expect(getSubscriptionStatus).not.toHaveBeenCalled();
+  });
+
+  it('keeps Free and Upgrade for someone who has never paid, with no Stripe read', () => {
+    renderMenu({
+      locals: {
+        patreon: false,
+        subscriber: false,
+        subscriptionInfo: { active: false } as { email?: string | null },
+      },
+    });
+    openMenu();
+
+    expect(getSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.getByText('Free')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toBeVisible();
+  });
+
+  it('keeps Free and Upgrade for a former subscriber who cancelled', async () => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [stripeSubscription('canceled')],
+    });
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    expect(await screen.findByText('Free')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toBeVisible();
+    expect(screen.queryByText('Payment failed')).not.toBeInTheDocument();
+  });
+
+  it('falls back to Free and Upgrade when the read fails', async () => {
+    vi.mocked(getSubscriptionStatus).mockRejectedValue(new Error('offline'));
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    expect(await screen.findByText('Free')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toBeVisible();
+  });
+
+  it.each([
+    ['a subscriber', { subscriber: true, patreon: false }],
+    ['a lifetime holder', { subscriber: false, patreon: true }],
+  ])('does not read Stripe for %s', (_who, locals) => {
+    renderMenu({
+      locals: { ...locals, subscriptionInfo: { email: 'payer@example.com' } },
+    });
+    openMenu();
+
+    expect(getSubscriptionStatus).not.toHaveBeenCalled();
   });
 });
