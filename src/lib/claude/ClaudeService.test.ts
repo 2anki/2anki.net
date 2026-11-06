@@ -1821,7 +1821,7 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
     }
   });
 
-  it('comprehensive on — with nothing declined, the first top-up goes to the thinnest quarter of chunks', async () => {
+  it('comprehensive on — with nothing declined, each top-up round goes to the thinnest quarter of chunks', async () => {
     let call = 0;
     mockStream.finalMessage.mockImplementation(async () => {
       const index = call++;
@@ -1845,8 +1845,7 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       const sentChunks = log.mock.calls
         .filter(([msg]) => msg === '[Claude] Sending request to Claude API')
         .map(([, meta]) => (meta as { chunkIndex: number }).chunkIndex);
-      const firstTopUpRound = sentChunks.slice(6, 8);
-      expect(new Set(firstTopUpRound)).toEqual(new Set([2, 4]));
+      expect(sentChunks).toEqual([0, 1, 2, 3, 4, 5, 2, 4, 0, 1]);
     } finally {
       log.mockRestore();
     }
@@ -1957,9 +1956,7 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       }
     );
 
-    expect(mockStream.finalMessage.mock.calls.length).toBeLessThanOrEqual(
-      6 + 6 + 6
-    );
+    expect(mockStream.finalMessage).toHaveBeenCalledTimes(6 + 2 + 2);
   });
 
   it('comprehensive on but isPaying=false — no top-up, no floor enforcement', async () => {
@@ -2138,7 +2135,7 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       }
     );
 
-    expect(mockStream.finalMessage.mock.calls.length).toBeLessThan(6 + 6 + 6);
+    expect(mockStream.finalMessage).toHaveBeenCalledTimes(6 + 2);
   });
 });
 
