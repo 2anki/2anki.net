@@ -15,7 +15,8 @@ export function PastDueNotice({
 }: Readonly<{ surface: string; enabled?: boolean }>) {
   const { t } = useTranslation('account');
   const { view } = useStripeSubscriptions(enabled);
-  const pastDue = view.kind === 'past_due' ? view.subscription : null;
+  const pastDue =
+    enabled && view.kind === 'past_due' ? view.subscription : null;
   const trackedRef = useRef<string | null>(null);
 
   useEffect(() => {

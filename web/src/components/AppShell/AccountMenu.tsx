@@ -240,8 +240,11 @@ export function AccountMenu({
   }, [open]);
 
   const lapsedSubscriptionId = lapsedSubscription?.id ?? null;
+  const trackedLapsedIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!open || lapsedSubscriptionId == null) return;
+    if (trackedLapsedIdRef.current === lapsedSubscriptionId) return;
+    trackedLapsedIdRef.current = lapsedSubscriptionId;
     track('subscription_past_due_shown', {
       subscription_id: lapsedSubscriptionId,
       surface: 'account_menu',

@@ -49,7 +49,11 @@ vi.mock('../../lib/hooks/useCardUsage', () => ({
 
 const { mockPricingVariant } = vi.hoisted(() => ({
   mockPricingVariant: {
-    current: 'minimal' as 'minimal' | 'unlimited-first' | 'semester-first',
+    current: 'minimal' as
+      | 'minimal'
+      | 'unlimited-first'
+      | 'semester-first'
+      | 'mcp-day-first',
   },
 }));
 
@@ -1155,35 +1159,72 @@ describe('PricingPage after a failed renewal', () => {
     vi.mocked(getSubscriptionStatus).mockResolvedValue({ subscriptions: [] });
   });
 
-  it('sends the person to fix the payment above the plans', async () => {
+  const subscription = (status: string) => ({
+    id: 'sub_test',
+    status,
+    created: null,
+    cancel_at_period_end: false,
+    cancel_at: null,
+    canceled_at: null,
+    current_period_end: null,
+    paused_until: null,
+    cancellation_reason: null,
+    plan: null,
+  });
+
+  it.each(['semester-first', 'mcp-day-first'] as const)(
+    'sends the person to fix the payment above the plans on the %s arm',
+    async (arm) => {
+      mockPricingVariant.current = arm;
+      vi.mocked(getSubscriptionStatus).mockResolvedValue({
+        subscriptions: [subscription('past_due')],
+      });
+
+      renderAt('/pricing', {
+        isLoggedIn: true,
+        entitlement: lapsedEntitlement,
+      });
+
+      const fix = await screen.findByRole('link', {
+        name: 'Update payment details',
+      });
+      const firstPlan = screen.getByRole('button', {
+        name: /^Get Week Pass · /,
+      });
+      expect(
+        fix.compareDocumentPosition(firstPlan) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    }
+  );
+
+  it('shows a former subscriber who cancelled no notice', async () => {
     vi.mocked(getSubscriptionStatus).mockResolvedValue({
-      subscriptions: [
-        {
-          id: 'sub_test',
-          status: 'past_due',
-          created: null,
-          cancel_at_period_end: false,
-          cancel_at: null,
-          canceled_at: null,
-          current_period_end: null,
-          paused_until: null,
-          cancellation_reason: null,
-          plan: null,
-        },
-      ],
+      subscriptions: [subscription('canceled')],
     });
 
     renderAt('/pricing', { isLoggedIn: true, entitlement: lapsedEntitlement });
 
-    const fix = await screen.findByRole('link', {
-      name: 'Update payment details',
-    });
-    const firstPlan = screen.getByRole('button', {
-      name: /^Get Week Pass · /,
-    });
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
     expect(
-      fix.compareDocumentPosition(firstPlan) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      screen.queryByRole('link', { name: 'Update payment details' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the plans and shows no notice when the read fails', async () => {
+    vi.mocked(getSubscriptionStatus).mockRejectedValue(
+      new Error('stripe down')
+    );
+
+    renderAt('/pricing', { isLoggedIn: true, entitlement: lapsedEntitlement });
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    expect(
+      screen.queryByRole('link', { name: 'Update payment details' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /^Get Week Pass · / })
+    ).toBeInTheDocument();
   });
 
   it.each([

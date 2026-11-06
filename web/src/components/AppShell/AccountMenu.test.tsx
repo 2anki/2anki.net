@@ -36,7 +36,7 @@ const stripeSubscription = (status: string) => ({
   created: null,
   cancel_at_period_end: false,
   cancel_at: null,
-  canceled_at: status === 'canceled' ? Date.now() / 1000 : null,
+  canceled_at: status === 'canceled' ? 1 : null,
   current_period_end: null,
   paused_until: null,
   cancellation_reason: null,
@@ -55,6 +55,8 @@ interface RenderOpts {
     patreon?: boolean;
     subscriber?: boolean;
     autoSyncActive?: boolean;
+    passKind?: '24h' | '7d' | '120d' | 'unlimited' | null;
+    planSource?: 'stripe' | 'apple' | 'lifetime' | null;
     subscriptionInfo?: { email?: string | null } | null;
   } | null;
   onLogOut?: (event: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => void;
@@ -490,6 +492,24 @@ describe('AccountMenu after a failed renewal', () => {
     });
   });
 
+  it('records the failed payment once across repeat opens', async () => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [stripeSubscription('past_due')],
+    });
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+    await screen.findByText('Payment failed');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    openMenu();
+    await screen.findByText('Payment failed');
+
+    const shown = vi
+      .mocked(track)
+      .mock.calls.filter(([name]) => name === 'subscription_past_due_shown');
+    expect(shown).toHaveLength(1);
+  });
+
   it('shows neither Free nor Upgrade while the subscription is being read', async () => {
     vi.mocked(getSubscriptionStatus).mockReturnValue(new Promise(() => {}));
     renderMenu({ locals: lapsedLocals });
@@ -535,6 +555,38 @@ describe('AccountMenu after a failed renewal', () => {
     expect(screen.queryByText('Payment failed')).not.toBeInTheDocument();
   });
 
+  it('keeps Free and Upgrade for someone who has never paid and is over the limit', async () => {
+    vi.mocked(getCardUsage).mockResolvedValueOnce({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+    });
+    renderMenu({ locals: { patreon: false, subscriber: false } });
+    openMenu();
+
+    expect(await screen.findByText('100')).toBeVisible();
+    expect(getSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.getByText('Free')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toBeVisible();
+  });
+
+  it('shows the failed payment to a lapsed subscriber who is over the limit', async () => {
+    vi.mocked(getCardUsage).mockResolvedValueOnce({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+    });
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [stripeSubscription('past_due')],
+    });
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    expect(await screen.findByText('100')).toBeVisible();
+    expect(await screen.findByText('Payment failed')).toBeVisible();
+    expect(screen.queryByText('Free')).not.toBeInTheDocument();
+  });
+
   it('falls back to Free and Upgrade when the read fails', async () => {
     vi.mocked(getSubscriptionStatus).mockRejectedValue(new Error('offline'));
     renderMenu({ locals: lapsedLocals });
@@ -545,14 +597,31 @@ describe('AccountMenu after a failed renewal', () => {
   });
 
   it.each([
-    ['a subscriber', { subscriber: true, patreon: false }],
-    ['a lifetime holder', { subscriber: false, patreon: true }],
-  ])('does not read Stripe for %s', (_who, locals) => {
+    ['a subscriber', { subscriber: true, patreon: false }, 'Pro'],
+    [
+      'an active Auto Sync subscriber',
+      { subscriber: true, patreon: false, autoSyncActive: true },
+      'Pro',
+    ],
+    [
+      'a pass holder with a lapsed plan',
+      { subscriber: true, patreon: false, passKind: '7d' as const },
+      'Pro',
+    ],
+    [
+      'an Apple subscriber with a lapsed plan',
+      { subscriber: true, patreon: false, planSource: 'apple' as const },
+      'Pro',
+    ],
+    ['a lifetime holder', { subscriber: false, patreon: true }, 'Lifetime'],
+  ])('does not read Stripe for %s', (_who, locals, label) => {
     renderMenu({
       locals: { ...locals, subscriptionInfo: { email: 'payer@example.com' } },
     });
     openMenu();
 
     expect(getSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.getByText(label)).toBeVisible();
+    expect(screen.queryByText('Payment failed')).not.toBeInTheDocument();
   });
 });

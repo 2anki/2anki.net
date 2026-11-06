@@ -17,6 +17,7 @@ export interface StripeSubscriptionsState {
   activeSubscriptions: StripeSubscriptionSummary[];
   view: SubscriptionViewState;
   isLoading: boolean;
+  failureCount: number;
   isError: boolean;
   refetch: () => Promise<unknown>;
 }
@@ -64,7 +65,7 @@ export function deriveView(
 export function useStripeSubscriptions(
   enabled: boolean
 ): StripeSubscriptionsState {
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, failureCount, isError, refetch } = useQuery({
     queryKey: ['stripeSubscriptions'],
     queryFn: getSubscriptionStatus,
     enabled,
@@ -81,6 +82,7 @@ export function useStripeSubscriptions(
     activeSubscriptions,
     view: deriveView(subscriptions),
     isLoading,
+    failureCount,
     isError,
     refetch,
   };

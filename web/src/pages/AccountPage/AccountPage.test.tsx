@@ -160,8 +160,9 @@ describe('AccountPage plan card after a failed renewal', () => {
 
     renderWithLocals({ subscriptionInfo: { email: 'payer@example.com' } });
 
-    expect(await screen.findByText('pastDue')).toBeTruthy();
-    expect(screen.queryByText('free')).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('pastDue')
+    );
   });
 
   it('holds the plan card back while the subscription is being read', async () => {
@@ -171,6 +172,52 @@ describe('AccountPage plan card after a failed renewal', () => {
 
     await waitFor(() => expect(mockGetSubscriptionStatus).toHaveBeenCalled());
     expect(screen.queryByTestId('plan-details')).toBeNull();
+  });
+
+  it('shows Free once the read finds a cancelled subscription', async () => {
+    mockGetSubscriptionStatus.mockResolvedValue({
+      subscriptions: [{ ...lapsedSubscription, status: 'canceled' }],
+    });
+
+    renderWithLocals({ subscriptionInfo: { email: 'payer@example.com' } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('free')
+    );
+  });
+
+  it('shows Free when the read fails', async () => {
+    mockGetSubscriptionStatus.mockRejectedValue(new Error('stripe down'));
+
+    renderWithLocals({ subscriptionInfo: { email: 'payer@example.com' } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('free')
+    );
+  });
+
+  it('keeps a pass holder on their pass with no Stripe read', () => {
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: {
+          subscriber: true,
+          passKind: '7d',
+          subscriptionInfo: { email: 'payer@example.com' },
+        },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'weekPass',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(mockGetSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('plan-details').textContent).toBe('weekPass');
   });
 
   it('shows Free with no Stripe read for someone who has never paid', () => {

@@ -58,7 +58,7 @@ describe('PastDueNotice', () => {
       await screen.findByText("Your payment didn't go through")
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Pro is paused until this payment goes through/)
+      screen.getByText(/Your plan is paused until this payment goes through/)
     ).toBeInTheDocument();
     const link = screen.getByRole('link', { name: 'Update payment details' });
     expect(link).toHaveAttribute('href', STRIPE_CUSTOMER_PORTAL_URL);
@@ -82,6 +82,23 @@ describe('PastDueNotice', () => {
     expect(
       screen.queryByText("Your payment didn't go through")
     ).not.toBeInTheDocument();
+  });
+
+  test('stays hidden when disabled even with a past-due read in the cache', () => {
+    const client = new QueryClient();
+    client.setQueryData(['stripeSubscriptions'], {
+      subscriptions: [subscription('past_due')],
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <PastDueNotice surface="pricing_page" enabled={false} />
+      </QueryClientProvider>
+    );
+
+    expect(
+      screen.queryByText("Your payment didn't go through")
+    ).not.toBeInTheDocument();
+    expect(track).not.toHaveBeenCalled();
   });
 
   test('shows nothing and asks nothing when disabled', async () => {

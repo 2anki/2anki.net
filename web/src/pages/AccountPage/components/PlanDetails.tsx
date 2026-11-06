@@ -50,9 +50,6 @@ export function PlanDetails({ plan, passExpiresAt }: PlanDetailsProps) {
     return (
       <section className={styles.section}>
         <p className={styles.planTier}>{t('planDetails.pastDue')}</p>
-        <p className={styles.planMeta}>
-          {t('subscription.pastDueAccessPaused')}
-        </p>
         <AiCreditsAccountLine />
       </section>
     );

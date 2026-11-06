@@ -21,11 +21,13 @@ export function useLapsedPayment(
   enabled = true
 ) {
   const eligible = mayHaveLapsedPayment(locals);
-  const { view, isLoading } = useStripeSubscriptions(eligible && enabled);
+  const { view, isLoading, failureCount } = useStripeSubscriptions(
+    eligible && enabled
+  );
 
   return {
     subscription:
       eligible && view.kind === 'past_due' ? view.subscription : null,
-    checking: eligible && enabled && isLoading,
+    checking: eligible && enabled && isLoading && failureCount === 0,
   };
 }
