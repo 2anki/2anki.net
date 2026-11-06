@@ -8619,6 +8619,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     ['a zip', ['notes.zip']],
     ['a zip picked beside a PDF', ['notes.zip', 'other.pdf']],
   ])('offers no prompt for a locked PDF inside %s', async (_pick, files) => {
+    setUserLocals(payingWithoutAccount);
     const fetchMock = stubLockedPdfServer(40);
     const respond = fetchMock.getMockImplementation() as (
       url: string
@@ -8638,7 +8639,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
         : respond(url)
     );
     const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
     );
     await submitFiles(container, files);
 
@@ -8802,8 +8803,14 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
   );
 
   it.each([
-    { population: 'a pass holder with no account', data: () => payingWithoutAccount },
-    { population: 'a Pro subscriber who turned AI on at the prompt', data: () => paidAccount({ planSource: 'stripe' }) },
+    {
+      population: 'a pass holder with no account',
+      data: () => payingWithoutAccount,
+    },
+    {
+      population: 'a Pro subscriber who turned AI on at the prompt',
+      data: () => paidAccount({ planSource: 'stripe' }),
+    },
   ])(
     'sends the stored AI choice with the retry of $population',
     async ({ data }) => {
