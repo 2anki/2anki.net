@@ -1203,6 +1203,33 @@ describe('generateDeckInfo — Claude declines a chunk', () => {
     }
   });
 
+  it('answers with the refusal copy when the text before a refusal holds no cards', async () => {
+    mockStream.finalMessage.mockResolvedValue({
+      content: [{ type: 'text', text: "I can't help make cards from this." }],
+      stop_reason: 'refusal',
+      usage: { input_tokens: 51, output_tokens: 9 },
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(htmlOneChunk, []).catch(
+        (err: unknown) => err
+      );
+
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+      expect(warn).toHaveBeenCalledWith(
+        '[Claude] Claude declined the chunk',
+        expect.objectContaining({ salvagedCards: 0 })
+      );
+    } finally {
+      warn.mockRestore();
+      error.mockRestore();
+    }
+  });
+
   it('rejects with the refusal copy on the heading-driven style with comprehensive on', async () => {
     mockStream.finalMessage.mockResolvedValue(refusedResponse());
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -1902,6 +1929,40 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       expect(sentChunks).toEqual([0, 1, 2, 3, 4, 5, 2, 4, 0, 1]);
     } finally {
       log.mockRestore();
+    }
+  });
+
+  it('comprehensive on — a refusal that salvaged cards ships them', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      call++ === 0
+        ? { ...salvageableTruncatedResponse(), stop_reason: 'refusal' }
+        : deckResponse(5, 'C' + call)
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      const result = await generateDeckInfo(
+        sixChunkHtml,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { isPaying: true, userId: 42, comprehensive: true }
+      );
+
+      const fronts = result.flatMap((deck) => deck.cards.map((c) => c.name));
+      expect(fronts).toEqual(
+        expect.arrayContaining(['SALVAGE-Q1', 'SALVAGE-Q2'])
+      );
+    } finally {
+      warn.mockRestore();
+      error.mockRestore();
     }
   });
 
