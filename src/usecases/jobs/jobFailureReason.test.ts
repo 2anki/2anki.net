@@ -13,7 +13,10 @@ import {
   EXPECTED_ERROR_NAMES,
   EXPECTED_MESSAGE_PATTERNS,
 } from '../../lib/upload/isExpectedUploadState';
-import { IMAGE_ONLY_USER_MESSAGE } from '../../lib/claude/ClaudeService';
+import {
+  CLAUDE_REFUSAL_USER_MESSAGE,
+  IMAGE_ONLY_USER_MESSAGE,
+} from '../../lib/claude/ClaudeService';
 import {
   CLAUDE_PARSE_FAILED_REASON,
   COLUMNS_AMBIGUOUS_PREFIX,
@@ -694,6 +697,12 @@ describe('jobFailureReason — expected upload states on the async path', () => 
       'docx_parse_failed: End of data reached',
       DOCX_UNREADABLE_REASON,
       'docx_unreadable',
+    ],
+    [
+      'ClaudeRefusalError',
+      CLAUDE_REFUSAL_USER_MESSAGE,
+      CLAUDE_REFUSAL_USER_MESSAGE,
+      'claude_refusal',
     ],
     ['EmptyDeckError', 'No cards', EMPTY_DECK_FAILURE_REASON, 'empty_deck'],
     [

@@ -12,6 +12,7 @@ describe('isExpectedUploadState', () => {
     'PythonZeroCardsError',
     'ClaudeParseError',
     'ClaudeLargeSectionError',
+    'ClaudeRefusalError',
     'ImageOnlyContentError',
     'DeckTooLargeError',
     'IncompleteZipError',

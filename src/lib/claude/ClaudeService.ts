@@ -103,6 +103,9 @@ export const EMPTY_CONTENT_UPLOAD_MESSAGE =
 export const LARGE_SECTION_USER_MESSAGE =
   "Couldn't finish converting a large section of this page. Try converting a smaller part, or split the page and convert each part separately.";
 
+export const CLAUDE_REFUSAL_USER_MESSAGE =
+  'Claude declined to make cards from this file. If you added custom instructions, remove them under PDF & AI in Settings and try again. If it keeps happening, email support@2anki.net.';
+
 export const IMAGE_ONLY_USER_MESSAGE =
   "This file only contains images — there's no text to turn into cards. Export your notes with text, or paste the text directly, then convert again.";
 
@@ -741,6 +744,15 @@ export class ClaudeLargeSectionError extends Error {
   }
 }
 
+// Claude answered with stop_reason 'refusal' and no text. Sending the same
+// chunk again gets the same answer, so it is never retried.
+export class ClaudeRefusalError extends Error {
+  constructor() {
+    super(CLAUDE_REFUSAL_USER_MESSAGE);
+    this.name = 'ClaudeRefusalError';
+  }
+}
+
 export class EmptyContentError extends Error {
   constructor(message: string = EMPTY_CONTENT_USER_MESSAGE) {
     super(message);
@@ -1229,6 +1241,16 @@ async function generateDeckInfoFromChunk(
 
   const cleaned = raw.replace(/^```json\n?|^```\n?|```\s*$/gm, '').trim();
 
+  if (response.stop_reason === 'refusal') {
+    console.warn('[Claude] Claude declined the chunk', {
+      requestId,
+      chunkIndex,
+      totalChunks,
+      hasUserInstructions: Boolean(userInstructions),
+    });
+    throw new ClaudeRefusalError();
+  }
+
   if (response.stop_reason === 'max_tokens') {
     const salvaged = salvageTruncatedDecks(
       cleaned,
@@ -1609,6 +1631,10 @@ async function runChunks(
   }
 
   if (succeeded.length === 0) {
+    const refusal = settled.find(
+      (r) => r.status === 'rejected' && r.reason instanceof ClaudeRefusalError
+    );
+    if (refusal?.status === 'rejected') throw refusal.reason;
     throw new Error(failures[0]?.reason ?? 'All Claude chunks failed');
   }
 

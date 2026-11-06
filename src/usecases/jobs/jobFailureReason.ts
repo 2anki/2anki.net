@@ -153,6 +153,7 @@ const MESSAGE_IS_REASON_NAMES = [
   'EpubTooLargeError',
   'NotionDatabaseColumnsError',
   'PdfPageRangeError',
+  'ClaudeRefusalError',
 ] as const;
 
 const carriesItsOwnReason = (error: unknown): error is Error =>
@@ -202,6 +203,7 @@ export type JobFailureReasonCode =
   | 'deck_too_large'
   | 'claude_parse_failed'
   | 'claude_large_section'
+  | 'claude_refusal'
   | 'empty_content'
   | 'conversion_process_crashed'
   | 'unknown';
@@ -220,6 +222,9 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
     hasName(error, 'ClaudeLargeSectionError')
   ) {
     return 'claude_large_section';
+  }
+  if (hasName(error, 'ClaudeRefusalError')) {
+    return 'claude_refusal';
   }
   if (
     error instanceof EmptyContentError ||

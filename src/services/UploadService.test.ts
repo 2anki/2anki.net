@@ -116,6 +116,7 @@ import { ANONYMOUS_AI_PREVIEW_FLAG } from '../lib/upload/anonymousAiPreview';
 import { ASYNC_SLOW_UPLOADS_FLAG } from '../lib/upload/asyncSlowUploads';
 import {
   AiCreditsTrippedWithSalvage,
+  CLAUDE_REFUSAL_USER_MESSAGE,
   DeckInfo,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
 } from '../lib/claude/ClaudeService';
@@ -7331,6 +7332,24 @@ describe('UploadService.handleUpload — failure events for the success-rate til
     }
   );
 
+  it('answers a declined conversion with the refusal copy and does not count it', async () => {
+    failWith(
+      Object.assign(new Error(CLAUDE_REFUSAL_USER_MESSAGE), {
+        name: 'ClaudeRefusalError',
+      })
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'unknown',
+      message: CLAUDE_REFUSAL_USER_MESSAGE,
+    });
+    expect(conversionFailedReasons()).toEqual([]);
+  });
+
   it.each([
     [
       'a client that hung up mid upload',
@@ -7428,6 +7447,27 @@ describe('UploadService.handleUpload — failure events for the success-rate til
         expect(conversionFailedReasons()).toEqual([]);
       }
     );
+
+    it('stores the refusal copy on the job when Claude declines a background conversion', async () => {
+      failWith(
+        Object.assign(new Error(CLAUDE_REFUSAL_USER_MESSAGE), {
+          name: 'ClaudeRefusalError',
+        })
+      );
+      const jobRepository = buildJobRepo();
+      const { res } = buildPayingResponse();
+
+      await buildService(jobRepository).handleUpload(buildAiRequest(), res);
+      await settle();
+
+      expect(jobRepository.updateJobStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        'failed',
+        CLAUDE_REFUSAL_USER_MESSAGE
+      );
+      expect(conversionFailedReasons()).toEqual([]);
+    });
 
     it('records a credits error that lost its class across the worker boundary as ai_credits_exhausted', async () => {
       failWith(

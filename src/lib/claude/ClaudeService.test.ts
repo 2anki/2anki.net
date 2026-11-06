@@ -28,6 +28,8 @@ import {
   generateDeckInfo,
   ClaudeParseError,
   ClaudeLargeSectionError,
+  ClaudeRefusalError,
+  CLAUDE_REFUSAL_USER_MESSAGE,
   LARGE_SECTION_USER_MESSAGE,
   ImageOnlyContentError,
   IMAGE_ONLY_USER_MESSAGE,
@@ -1064,6 +1066,78 @@ describe('generateDeckInfo — partial chunk success (default)', () => {
     await expect(generateDeckInfo(htmlTwoChunks, [])).rejects.toThrow(
       'chunk 0 failed'
     );
+  });
+});
+
+function refusedResponse() {
+  return {
+    content: [],
+    stop_reason: 'refusal',
+    usage: { input_tokens: 51, output_tokens: 0 },
+  };
+}
+
+describe('generateDeckInfo — Claude declines a chunk', () => {
+  const htmlOneChunk =
+    '<html><body><h1>Cells</h1><p>The cell is the basic unit of life.</p></body></html>';
+  const htmlTwoChunks = '<p>' + 'x'.repeat(39_990) + '</p><p>y</p>';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockStreamFn.mockReturnValue(mockStream);
+    mockStream.on.mockReturnThis();
+  });
+
+  it('rejects with the refusal copy instead of the large-section copy', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    try {
+      const caught = await generateDeckInfo(htmlOneChunk, []).catch(
+        (err: unknown) => err
+      );
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+      expect((caught as Error).message).toBe(CLAUDE_REFUSAL_USER_MESSAGE);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[Claude] Claude declined the chunk',
+        expect.objectContaining({ chunkIndex: 0, totalChunks: 1 })
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('does not send a declined chunk again', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+
+    await expect(generateDeckInfo(htmlOneChunk, [])).rejects.toThrow(
+      CLAUDE_REFUSAL_USER_MESSAGE
+    );
+    expect(mockStream.finalMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the refusal error by name when every chunk is declined', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+
+    const caught = await generateDeckInfo(htmlTwoChunks, []).catch(
+      (err: unknown) => err
+    );
+
+    expect(caught).toBeInstanceOf(ClaudeRefusalError);
+    expect((caught as Error).name).toBe('ClaudeRefusalError');
+  });
+
+  it('ships the cards from the chunk Claude answered when another is declined', async () => {
+    mockStream.finalMessage
+      .mockResolvedValueOnce(fakeResponse())
+      .mockResolvedValueOnce(refusedResponse());
+
+    const result = await generateDeckInfo(htmlTwoChunks, []);
+
+    expect(result[0].cards).toEqual([
+      expect.objectContaining({ name: 'Q1', back: 'A1' }),
+    ]);
   });
 });
 
