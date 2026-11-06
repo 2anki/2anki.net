@@ -51,31 +51,37 @@ describe('RetryPdfWithCredentialUseCase', () => {
       'a scanned file the image fallback cannot reopen',
       'pdfinfo_password path=scan.pdf',
       LOCKED_PDF_UNREADABLE_REASON,
+      'password_protected_pdf',
     ],
     [
       'a pdfinfo failure',
       'pdfinfo_failed code=1 signal=null path=a.pdf stderr=boom',
       PDF_UNREADABLE_REASON,
+      'pdf_processing_failed',
     ],
     [
       'pdfinfo failing to start',
       'pdfinfo_spawn_failed: ENOENT /usr/bin/pdfinfo',
       PDF_UNREADABLE_REASON,
+      'pdf_processing_failed',
     ],
-  ])('answers with readable copy for %s', async (_failure, raw, unreadable) => {
-    mockPrepareDeck.mockRejectedValueOnce(new Error(raw));
+  ])(
+    'answers with readable copy for %s',
+    async (_failure, raw, unreadable, code) => {
+      mockPrepareDeck.mockRejectedValueOnce(new Error(raw));
 
-    const result = await new RetryPdfWithCredentialUseCase().execute(
-      Buffer.from('%PDF-1.4'),
-      'scan.pdf',
-      'secret',
-      true,
-      new CardOption({}),
-      { location: '/tmp/retry-test' } as Workspace
-    );
+      const result = await new RetryPdfWithCredentialUseCase().execute(
+        Buffer.from('%PDF-1.4'),
+        'scan.pdf',
+        'secret',
+        true,
+        new CardOption({}),
+        { location: '/tmp/retry-test' } as Workspace
+      );
 
-    expect(result).toEqual({ unreadable });
-  });
+      expect(result).toEqual({ unreadable, code });
+    }
+  );
 
   const runFailure = (error: Error) => {
     mockPrepareDeck.mockRejectedValueOnce(error);
@@ -95,7 +101,10 @@ describe('RetryPdfWithCredentialUseCase', () => {
   it('answers with readable copy for a pdf.js failure', async () => {
     await expect(
       runFailure(named('UnknownErrorException', 'pdf.js internals'))
-    ).resolves.toEqual({ unreadable: PDF_UNREADABLE_REASON });
+    ).resolves.toEqual({
+      unreadable: PDF_UNREADABLE_REASON,
+      code: 'pdf_processing_failed',
+    });
   });
 
   it.each([

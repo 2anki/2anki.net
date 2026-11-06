@@ -335,6 +335,15 @@ async function unlockCannotContinue(response: Response): Promise<boolean> {
   return typeof body?.message === 'string' && body.message.trim().length > 0;
 }
 
+// A locked PDF inside a zip has no file of its own to send back with the
+// password, so it gets no prompt.
+function findLockedPdf(files: File[], lockedName: unknown): File | undefined {
+  const named = files.find((file) => file.name === lockedName);
+  if (named != null) return named;
+  if (files.some((file) => /\.zip$/i.test(file.name))) return undefined;
+  return files.find((file) => /\.pdf$/i.test(file.name));
+}
+
 function zoneStateForUploadError(
   message: UploadErrorBody
 ): 'emptyDeck' | 'imageOnly' | 'error' {
@@ -2027,11 +2036,16 @@ function UploadForm({
       const body = await cloned.json();
       const firstFile = uploadedFiles[0];
       if (body?.error === 'needs_password' && firstFile) {
-        showLockedPdfState(
-          uploadedFiles.find((file) => file.name === body.filename) ??
-            uploadedFiles.find((file) => /\.pdf$/i.test(file.name)) ??
-            firstFile
-        );
+        const lockedPdf = findLockedPdf(uploadedFiles, body.filename);
+        if (lockedPdf == null) {
+          setLocalError({
+            code: 'password_protected_pdf',
+            message: 'This PDF is password-protected.',
+          });
+          setZoneState('error');
+          return false;
+        }
+        showLockedPdfState(lockedPdf);
         return false;
       }
       const prompt = readPdfChoicePrompt(body);

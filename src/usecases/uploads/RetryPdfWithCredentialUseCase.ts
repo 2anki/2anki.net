@@ -39,6 +39,7 @@ export interface RetryPdfLimitReached {
 
 export interface RetryPdfUnreadable {
   unreadable: string;
+  code: 'password_protected_pdf' | 'pdf_processing_failed';
 }
 
 export type RetryPdfOutcome =
@@ -140,10 +141,16 @@ export class RetryPdfWithCredentialUseCase {
         return { needsCredential: true, reason: 'wrong_password' };
       }
       if (isLockedPdfError(error)) {
-        return { unreadable: LOCKED_PDF_UNREADABLE_REASON };
+        return {
+          unreadable: LOCKED_PDF_UNREADABLE_REASON,
+          code: 'password_protected_pdf',
+        };
       }
       if (isUnreadablePdfError(error) || isPdfLibraryError(error)) {
-        return { unreadable: PDF_UNREADABLE_REASON };
+        return {
+          unreadable: PDF_UNREADABLE_REASON,
+          code: 'pdf_processing_failed',
+        };
       }
       if (carriesRawText(error)) {
         console.error('[retry-pdf] conversion failed', error);

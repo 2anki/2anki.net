@@ -180,7 +180,7 @@ describe('a password unlock of a kept file on /api/upload/retry-with-credential'
     expect(result).toEqual({
       status: 400,
       body: {
-        code: 'pdf_processing_failed',
+        code: 'password_protected_pdf',
         message: LOCKED_PDF_UNREADABLE_REASON,
       },
     });

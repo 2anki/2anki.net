@@ -434,7 +434,7 @@ class UploadController {
     }
     if ('unreadable' in outcome) {
       return res.status(400).json({
-        code: 'pdf_processing_failed',
+        code: outcome.code,
         message: outcome.unreadable,
       });
     }

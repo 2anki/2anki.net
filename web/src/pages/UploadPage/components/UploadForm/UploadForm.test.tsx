@@ -8590,7 +8590,7 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       'a PDF the server cannot read',
       400,
       'pdf_processing_failed',
-      'Remove the password, save a copy, and upload that.',
+      'We could not read this PDF.',
     ],
     ['an empty deck', 400, 'unknown', 'No cards found in your upload.'],
     ['Claude declining the file', 400, 'unknown', 'Claude declined this file.'],
@@ -8614,6 +8614,56 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       ).toBeNull();
     }
   );
+
+  it.each([
+    ['a zip', ['notes.zip']],
+    ['a zip picked beside a PDF', ['notes.zip', 'other.pdf']],
+  ])('offers no prompt for a locked PDF inside %s', async (_pick, files) => {
+    const fetchMock = stubLockedPdfServer(40);
+    const respond = fetchMock.getMockImplementation() as (
+      url: string
+    ) => Promise<Response>;
+    fetchMock.mockImplementation((url: string) =>
+      url === '/api/upload/file'
+        ? Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: 'needs_password',
+                reason: 'missing_password',
+                filename: 'inside.pdf',
+              }),
+              { status: 400 }
+            )
+          )
+        : respond(url)
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, files);
+
+    expect(
+      await screen.findByText(/This PDF is password-protected\./)
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('PDF password')).toBeNull();
+  });
+
+  it('shows the localized locked copy when the retry cannot read a locked PDF', async () => {
+    stubUnlockAnswer(
+      { code: 'password_protected_pdf', message: 'English server copy.' },
+      400
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText(/This PDF is password-protected\./)
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('PDF password')).toBeNull();
+  });
 
   it('unlocks the PDF the server named when two PDFs were picked', async () => {
     const fetchMock = stubLockedPdfServer(40);
@@ -8675,11 +8725,15 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(screen.queryByLabelText('PDF password')).toBeNull();
   });
 
-  const paidAccount = (locals: Record<string, unknown>) =>
+  const paidAccount = (
+    locals: Record<string, unknown>,
+    account: Record<string, unknown> = {}
+  ) =>
     ({
       user: { id: 7, email: 'learner@example.com' },
       locals: { owner: 7, patreon: false, subscriber: true, ...locals },
       features: {},
+      ...account,
     }) as unknown as ReturnType<typeof useUserLocals>['data'];
 
   it.each([
@@ -8691,7 +8745,8 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     },
     {
       population: 'an Auto Sync subscriber',
-      data: () => paidAccount({ planSource: 'stripe', autoSyncActive: true }),
+      data: () =>
+        paidAccount({ planSource: 'stripe' }, { autoSyncActive: true }),
       aiOn: false,
     },
     {
