@@ -8796,6 +8796,29 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     }
   );
 
+  it('sends the stored AI choice with the retry of a pass holder with no account', async () => {
+    setUserLocals(payingWithoutAccount);
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+    stubUnlockAnswer(
+      { code: 'unknown', message: 'Claude declined this file.' },
+      400
+    );
+    const fetchMock = vi.mocked(globalThis.fetch) as unknown as Mock;
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText('Claude declined this file.')
+    ).toBeInTheDocument();
+    const [, init] = callsTo(fetchMock, '/api/upload/retry-with-credential')[0];
+    expect(
+      ((init as RequestInit).body as FormData).get('claude-ai-flashcards')
+    ).toBe('true');
+  });
+
   it('keeps the unlock step, says why and counts no attempt when rate limited', async () => {
     stubUnlockAnswer({ message: 'Too many password attempts.' }, 429);
     const { container } = renderUploadForm(

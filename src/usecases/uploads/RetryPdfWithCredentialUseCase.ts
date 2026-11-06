@@ -71,7 +71,7 @@ const WRITTEN_FOR_THE_PERSON = new Set([
 export const RETRY_FAILED_MESSAGE =
   'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.';
 
-const isPdfLibraryError = (error: unknown): boolean =>
+const isPdfLibraryError = (error: unknown): error is Error =>
   error instanceof Error && error.name.endsWith('Exception');
 
 // The form shows what this route sends, and a plain Error or a provider's API
@@ -147,6 +147,10 @@ export class RetryPdfWithCredentialUseCase {
         };
       }
       if (isUnreadablePdfError(error) || isPdfLibraryError(error)) {
+        console.error('[retry-pdf] unreadable PDF', {
+          kind: error.message.split(/[ :]/)[0],
+          name: error.name,
+        });
         return {
           unreadable: PDF_UNREADABLE_REASON,
           code: 'pdf_processing_failed',
