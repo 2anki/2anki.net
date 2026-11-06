@@ -9,6 +9,7 @@ import { startUnlimitedUpgrade } from '../../lib/backend/startUnlimitedUpgrade';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { usePassPrices } from '../../lib/hooks/usePassPrices';
 import { PastDueNotice } from '../../components/PastDueNotice/PastDueNotice';
+import { mayHaveLapsedPayment } from '../../lib/hooks/useLapsedPayment';
 import { AnonymousDayPassOffer } from '../../components/AnonymousDayPassOffer/AnonymousDayPassOffer';
 import { PassFirstOffer } from '../../components/PassFirstOffer/PassFirstOffer';
 import { deckCardsBucket } from './deckCardsBucket';
@@ -412,7 +413,14 @@ export function LimitPage() {
       unlimitedPrice={unlimitedPrice}
       passPrices={passPrices}
       onUnlimitedClick={handleUnlimitedClick}
-      notice={isLoggedIn ? <PastDueNotice surface={REF} /> : null}
+      notice={
+        isLoggedIn ? (
+          <PastDueNotice
+            surface={REF}
+            enabled={mayHaveLapsedPayment(userLocals?.locals)}
+          />
+        ) : null
+      }
     />
   );
 }

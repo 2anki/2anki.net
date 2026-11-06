@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AccountPage from './AccountPage';
@@ -16,9 +16,15 @@ vi.mock('../../lib/backend/api', () => ({
   post: vi.fn(),
 }));
 
+vi.mock('../../lib/backend/getSubscriptionStatus', () => ({
+  getSubscriptionStatus: vi.fn(),
+}));
+
 vi.mock('./components', () => ({
   UserProfile: () => null,
-  PlanDetails: () => null,
+  PlanDetails: ({ plan }: { plan: string }) => (
+    <div data-testid="plan-details">{plan}</div>
+  ),
   ClaimSubscription: () => <div>Paid with a different email?</div>,
   SubscriptionManagement: () => null,
   AccountDeletion: () => null,
@@ -26,8 +32,10 @@ vi.mock('./components', () => ({
 }));
 
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { getSubscriptionStatus } from '../../lib/backend/getSubscriptionStatus';
 import { useSubscriptionStatus } from './hooks';
 
+const mockGetSubscriptionStatus = vi.mocked(getSubscriptionStatus);
 const mockUseUserLocals = useUserLocals as ReturnType<typeof vi.fn>;
 const mockUseSubscriptionStatus = useSubscriptionStatus as ReturnType<
   typeof vi.fn
@@ -111,5 +119,158 @@ describe('AccountPage ClaimSubscription gate', () => {
     renderAccountPage();
 
     expect(screen.queryByText(/250 credits added\./)).toBeNull();
+  });
+});
+
+describe('AccountPage plan card after a failed renewal', () => {
+  const lapsedSubscription = {
+    id: 'sub_test',
+    status: 'past_due',
+    created: null,
+    cancel_at_period_end: false,
+    cancel_at: null,
+    canceled_at: null,
+    current_period_end: null,
+    paused_until: null,
+    cancellation_reason: null,
+    plan: null,
+  };
+
+  const renderWithLocals = (locals: Record<string, unknown>) => {
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: { user: { email: 'learner@example.com' }, locals },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'free',
+      hasActivePlan: false,
+    });
+    renderAccountPage();
+  };
+
+  beforeEach(() => {
+    mockGetSubscriptionStatus.mockReset();
+  });
+
+  it('passes the failed payment to the plan card', async () => {
+    mockGetSubscriptionStatus.mockResolvedValue({
+      subscriptions: [lapsedSubscription],
+    });
+
+    renderWithLocals({ subscriptionInfo: { email: 'payer@example.com' } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('pastDue')
+    );
+  });
+
+  it('holds the plan card back while the subscription is being read', async () => {
+    mockGetSubscriptionStatus.mockReturnValue(new Promise(() => {}));
+
+    renderWithLocals({ subscriptionInfo: { email: 'payer@example.com' } });
+
+    await waitFor(() => expect(mockGetSubscriptionStatus).toHaveBeenCalled());
+    expect(screen.queryByTestId('plan-details')).toBeNull();
+  });
+
+  it('shows Free once the read finds a cancelled subscription', async () => {
+    mockGetSubscriptionStatus.mockResolvedValue({
+      subscriptions: [{ ...lapsedSubscription, status: 'canceled' }],
+    });
+
+    renderWithLocals({ subscriptionInfo: { email: 'payer@example.com' } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('free')
+    );
+  });
+
+  it.each([
+    [
+      'a paused subscription',
+      [{ ...lapsedSubscription, status: 'active', paused_until: 1893456000 }],
+    ],
+    [
+      'an incomplete first charge',
+      [{ ...lapsedSubscription, status: 'incomplete' }],
+    ],
+    [
+      'an active plan beside a lapsed one',
+      [{ ...lapsedSubscription, status: 'active' }, lapsedSubscription],
+    ],
+  ])('shows Free for %s', async (_who, subscriptions) => {
+    mockGetSubscriptionStatus.mockResolvedValue({ subscriptions });
+
+    renderWithLocals({ subscriptionInfo: { email: 'payer@example.com' } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('free')
+    );
+  });
+
+  it('shows Free when the read fails', async () => {
+    mockGetSubscriptionStatus.mockRejectedValue(new Error('stripe down'));
+
+    renderWithLocals({ subscriptionInfo: { email: 'payer@example.com' } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('free')
+    );
+  });
+
+  it('keeps the pass on the plan card with no lapsed-payment read', () => {
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: {
+          subscriber: true,
+          passKind: '7d',
+          subscriptionInfo: { email: 'payer@example.com' },
+        },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'weekPass',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(mockGetSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('plan-details').textContent).toBe('weekPass');
+  });
+
+  it('keeps an Apple plan on the plan card with no lapsed-payment read', () => {
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: {
+          subscriber: true,
+          planSource: 'apple',
+          subscriptionInfo: { email: 'payer@example.com' },
+        },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'pro',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(mockGetSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('plan-details').textContent).toBe('pro');
+  });
+
+  it('shows Free with no Stripe read for someone who has never paid', () => {
+    renderWithLocals({ subscriptionInfo: {} });
+
+    expect(mockGetSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('plan-details').textContent).toBe('free');
   });
 });

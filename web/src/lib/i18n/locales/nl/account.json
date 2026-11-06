@@ -35,7 +35,7 @@
     "pastDueTitle": "Je betaling is niet gelukt",
     "pastDueBody": "We konden je kaart niet belasten voor {{plan}}. We proberen het de komende dagen opnieuw. Werk je betaalgegevens bij om je abonnement te behouden.",
     "pastDueBodyNoPlan": "We konden je kaart niet belasten. We proberen het de komende dagen opnieuw. Werk je betaalgegevens bij om je abonnement te behouden.",
-    "pastDueAccessPaused": "Pro staat op pauze tot deze betaling lukt. Zodra dat gebeurt, komt Pro vanzelf terug.",
+    "pastDueAccessPaused": "Je abonnement staat op pauze tot deze betaling lukt. Zodra dat gebeurt, komt het vanzelf terug.",
     "endedPaymentFailed": "Je abonnement is beëindigd omdat je betaling niet is gelukt.",
     "statusLoadFailed": "We konden je abonnement nu niet laden. Vernieuw de pagina om het opnieuw te proberen.",
     "linkedEmailHeading": "Gekoppelde 2anki.net-e-mail",
@@ -114,6 +114,7 @@
     "autoSyncMeta": "Live Notion-synchronisatie, geen maandelijkse kaartlimiet.",
     "passEnds": "Eindigt op {{date}}",
     "free": "Free",
+    "pastDue": "Betaling mislukt",
     "freeMeta": "100 kaarten per maand.",
     "seePlans": "Bekijk abonnementen"
   },

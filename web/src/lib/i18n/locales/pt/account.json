@@ -35,7 +35,7 @@
     "pastDueTitle": "Seu pagamento não foi concluído",
     "pastDueBody": "Não conseguimos cobrar seu cartão por {{plan}}. Vamos tentar de novo nos próximos dias. Atualize seus dados de pagamento para manter sua assinatura.",
     "pastDueBodyNoPlan": "Não conseguimos cobrar seu cartão. Vamos tentar de novo nos próximos dias. Atualize seus dados de pagamento para manter sua assinatura.",
-    "pastDueAccessPaused": "O Pro fica pausado até este pagamento ser concluído. Ele volta sozinho assim que isso acontecer.",
+    "pastDueAccessPaused": "Sua assinatura fica pausada até este pagamento ser concluído. Ela volta sozinha assim que isso acontecer.",
     "endedPaymentFailed": "Sua assinatura terminou porque seu pagamento não foi concluído.",
     "statusLoadFailed": "Não conseguimos carregar sua assinatura agora. Atualize a página para tentar de novo.",
     "linkedEmailHeading": "E-mail do 2anki.net vinculado",
@@ -114,6 +114,7 @@
     "autoSyncMeta": "Sincronização ao vivo com o Notion, sem teto mensal de cartões.",
     "passEnds": "Termina em {{date}}",
     "free": "Free",
+    "pastDue": "Falha no pagamento",
     "freeMeta": "100 cartões por mês.",
     "seePlans": "Ver planos"
   },

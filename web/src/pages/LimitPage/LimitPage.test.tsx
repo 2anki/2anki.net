@@ -1,11 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
 import { LimitPage } from './LimitPage';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { track } from '../../lib/analytics/track';
+import { getSubscriptionStatus } from '../../lib/backend/getSubscriptionStatus';
 
 vi.mock('../../lib/analytics/track', () => ({
   track: vi.fn(),
@@ -40,6 +48,10 @@ const mockStartUnlimitedUpgrade = vi.fn();
 vi.mock('../../lib/backend/startUnlimitedUpgrade', () => ({
   startUnlimitedUpgrade: (...args: unknown[]) =>
     mockStartUnlimitedUpgrade(...args),
+}));
+
+vi.mock('../../lib/backend/getSubscriptionStatus', () => ({
+  getSubscriptionStatus: vi.fn().mockResolvedValue({ subscriptions: [] }),
 }));
 
 const mockedUseUserLocals = vi.mocked(useUserLocals);
@@ -730,5 +742,153 @@ describe('LimitPage — loading state', () => {
     expect(
       screen.queryByText('You hit the limit for converting without an account')
     ).toBeNull();
+  });
+});
+
+describe('LimitPage — failed renewal', () => {
+  it.each([
+    ['the pass-first wall', true],
+    ['the Pro wall', false],
+  ])('explains the paused plan on %s', async (_wall, limitWallPassFirst) => {
+    mockedUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 1, email: 'test@example.com' },
+        features: { limitWallPassFirst },
+        locals: { subscriptionInfo: { email: 'payer@example.com' } },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    vi.mocked(getSubscriptionStatus).mockResolvedValueOnce({
+      subscriptions: [
+        {
+          id: 'sub_test',
+          status: 'past_due',
+          created: null,
+          cancel_at_period_end: false,
+          cancel_at: null,
+          canceled_at: null,
+          current_period_end: null,
+          paused_until: null,
+          cancellation_reason: null,
+          plan: null,
+        },
+      ],
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/^Your subscription is paused until/)
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['a paused subscription', [{ status: 'active', paused_until: 1893456000 }]],
+    ['an incomplete first charge', [{ status: 'incomplete' }]],
+    [
+      'an active plan beside a lapsed one',
+      [{ status: 'active' }, { status: 'past_due' }],
+    ],
+  ])('shows no notice for %s', async (_who, subscriptions) => {
+    mockedUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 1, email: 'test@example.com' },
+        locals: { subscriptionInfo: { email: 'payer@example.com' } },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    vi.mocked(getSubscriptionStatus).mockClear();
+    vi.mocked(getSubscriptionStatus).mockResolvedValueOnce({
+      subscriptions: subscriptions.map((fields, index) => ({
+        id: String(index),
+        created: null,
+        cancel_at_period_end: false,
+        cancel_at: null,
+        canceled_at: null,
+        current_period_end: null,
+        paused_until: null,
+        cancellation_reason: null,
+        plan: null,
+        ...fields,
+      })),
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(screen.queryByText(/^Your subscription is paused until/)).toBeNull();
+  });
+
+  it('shows a former subscriber who cancelled no notice', async () => {
+    mockedUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 1, email: 'test@example.com' },
+        locals: { subscriptionInfo: { email: 'payer@example.com' } },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    vi.mocked(getSubscriptionStatus).mockClear();
+    vi.mocked(getSubscriptionStatus).mockResolvedValueOnce({
+      subscriptions: [
+        {
+          id: 'sub_test',
+          status: 'canceled',
+          created: null,
+          cancel_at_period_end: false,
+          cancel_at: null,
+          canceled_at: 1,
+          current_period_end: null,
+          paused_until: null,
+          cancellation_reason: null,
+          plan: null,
+        },
+      ],
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(screen.queryByText(/^Your subscription is paused until/)).toBeNull();
+  });
+
+  it.each([
+    ['someone who has never paid', { subscriptionInfo: {} }],
+    [
+      'a subscriber',
+      { subscriber: true, subscriptionInfo: { email: 'payer@example.com' } },
+    ],
+    [
+      'a pass holder with a lapsed plan',
+      {
+        subscriber: true,
+        passKind: '7d',
+        subscriptionInfo: { email: 'payer@example.com' },
+      },
+    ],
+    [
+      'an Apple subscriber with a lapsed plan',
+      {
+        subscriber: true,
+        planSource: 'apple',
+        subscriptionInfo: { email: 'payer@example.com' },
+      },
+    ],
+    [
+      'a lifetime holder',
+      { patreon: true, subscriptionInfo: { email: 'payer@example.com' } },
+    ],
+  ])('reads nothing and shows no notice for %s', async (_who, locals) => {
+    vi.mocked(getSubscriptionStatus).mockClear();
+    mockedUseUserLocals.mockReturnValue({
+      data: { user: { id: 1, email: 'test@example.com' }, locals },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useUserLocals>);
+
+    renderPage();
+
+    expect(getSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.queryByText(/^Your subscription is paused until/)).toBeNull();
   });
 });

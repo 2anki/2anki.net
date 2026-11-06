@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
+import { useLapsedPayment } from '../../lib/hooks/useLapsedPayment';
 import { AI_CREDITS_QUERY_KEY } from '../../lib/hooks/useAiCredits';
 import { formatCreditPackExpiry } from '../../lib/credits/formatCreditPackExpiry';
-import { SkeletonPage } from '../../components/Skeleton/Skeleton';
+import { Skeleton, SkeletonPage } from '../../components/Skeleton/Skeleton';
 import { useSubscriptionStatus } from './hooks';
 import {
   UserProfile,
@@ -28,6 +29,8 @@ export default function AccountPage() {
     data?.locals,
     data?.autoSyncActive ?? false
   );
+  const { subscription: lapsedSubscription, checking: checkingPlan } =
+    useLapsedPayment(data?.locals);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const justSubscribed = searchParams.get('subscribed') === '1';
@@ -147,7 +150,16 @@ export default function AccountPage() {
         <CookieSettings />
       </section>
 
-      <PlanDetails plan={plan} passExpiresAt={passExpiresAt} />
+      {checkingPlan ? (
+        <section className={styles.section} aria-busy="true">
+          <Skeleton width="40%" height="1.5rem" />
+        </section>
+      ) : (
+        <PlanDetails
+          plan={lapsedSubscription == null ? plan : 'pastDue'}
+          passExpiresAt={passExpiresAt}
+        />
+      )}
 
       {canClaimSubscription && <ClaimSubscription />}
 

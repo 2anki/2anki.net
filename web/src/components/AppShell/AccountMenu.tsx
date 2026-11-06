@@ -7,6 +7,8 @@ import {
   type AiCreditsState,
 } from '../../lib/hooks/useAiCredits';
 import { useDialogFocus } from '../../lib/hooks/useDialogFocus';
+import { useLapsedPayment } from '../../lib/hooks/useLapsedPayment';
+import { STRIPE_CUSTOMER_PORTAL_URL } from '../../lib/stripePortal';
 import { track } from '../../lib/analytics/track';
 import { formatLongDate } from '../../pages/AccountPage/utils/formatLongDate';
 import {
@@ -209,7 +211,14 @@ export function AccountMenu({
   const panelId = useId();
   const isLoggedIn = locals != null;
   const paying = isPayingUser(locals);
-  const planLabel = getPlanLabel(locals);
+  const { subscription: lapsedSubscription, checking } = useLapsedPayment(
+    locals,
+    open
+  );
+  const pastDue = lapsedSubscription != null;
+  const planLabel = pastDue
+    ? t('account:planDetails.pastDue')
+    : getPlanLabel(locals);
   const usage = useCardUsage(isLoggedIn && !paying);
   const credits = useAiCredits(isLoggedIn);
   const showUsage = usage != null && !usage.unlimited && !usage.loading;
@@ -230,6 +239,18 @@ export function AccountMenu({
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, [open]);
 
+  const lapsedSubscriptionId = lapsedSubscription?.id ?? null;
+  const trackedLapsedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open || lapsedSubscriptionId == null) return;
+    if (trackedLapsedIdRef.current === lapsedSubscriptionId) return;
+    trackedLapsedIdRef.current = lapsedSubscriptionId;
+    track('subscription_past_due_shown', {
+      subscription_id: lapsedSubscriptionId,
+      surface: 'account_menu',
+    });
+  }, [open, lapsedSubscriptionId]);
+
   const toggle = () => {
     if (!open) track('account_menu_opened');
     setOpen((value) => !value);
@@ -237,6 +258,14 @@ export function AccountMenu({
 
   const onUpgradeClick = () => {
     track('upgrade_clicked', { source: 'avatar' });
+    close();
+  };
+
+  const onUpdatePaymentClick = () => {
+    track('subscription_manage_billing_clicked', {
+      from: 'past_due',
+      surface: 'account_menu',
+    });
     close();
   };
 
@@ -278,7 +307,9 @@ export function AccountMenu({
             >
               {email ?? t('nav.account')}
             </span>
-            <span className={styles.identityPlan}>{planLabel}</span>
+            {!checking && (
+              <span className={styles.identityPlan}>{planLabel}</span>
+            )}
           </div>
           <div className={styles.accountBalance}>
             {showUsage && usage && (
@@ -293,7 +324,18 @@ export function AccountMenu({
               </span>
             )}
             <AiCreditsLine credits={credits} />
-            {!paying && (
+            {pastDue && (
+              <a
+                href={STRIPE_CUSTOMER_PORTAL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onUpdatePaymentClick}
+                className={styles.accountUpgrade}
+              >
+                {t('account:subscription.updatePayment')}
+              </a>
+            )}
+            {!paying && !pastDue && !checking && (
               <Link
                 to="/pricing?from=avatar"
                 onClick={onUpgradeClick}

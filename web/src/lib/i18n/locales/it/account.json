@@ -35,7 +35,7 @@
     "pastDueTitle": "Il tuo pagamento non è andato a buon fine",
     "pastDueBody": "Non siamo riusciti ad addebitare la tua carta per {{plan}}. Riproveremo nei prossimi giorni. Aggiorna i tuoi dati di pagamento per mantenere il tuo abbonamento.",
     "pastDueBodyNoPlan": "Non siamo riusciti ad addebitare la tua carta. Riproveremo nei prossimi giorni. Aggiorna i tuoi dati di pagamento per mantenere il tuo abbonamento.",
-    "pastDueAccessPaused": "Pro è in pausa finché questo pagamento non va a buon fine. Torna da solo appena succede.",
+    "pastDueAccessPaused": "Il tuo abbonamento è in pausa finché questo pagamento non va a buon fine. Torna da solo appena succede.",
     "endedPaymentFailed": "Il tuo abbonamento è terminato perché il pagamento non è andato a buon fine.",
     "statusLoadFailed": "Non siamo riusciti a caricare il tuo abbonamento in questo momento. Ricarica la pagina per riprovare.",
     "linkedEmailHeading": "Email 2anki.net collegata",
@@ -114,6 +114,7 @@
     "autoSyncMeta": "Sincronizzazione live con Notion, nessun tetto mensile di carte.",
     "passEnds": "Termina il {{date}}",
     "free": "Free",
+    "pastDue": "Pagamento non riuscito",
     "freeMeta": "100 carte al mese.",
     "seePlans": "Vedi i piani"
   },

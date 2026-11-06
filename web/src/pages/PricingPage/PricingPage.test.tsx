@@ -11,6 +11,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import PricingPage from './PricingPage';
+import { getSubscriptionStatus } from '../../lib/backend/getSubscriptionStatus';
 
 const mockStartPassCheckout = vi.fn();
 const mockStartUnlimitedCheckout = vi.fn();
@@ -26,6 +27,10 @@ vi.mock('../../lib/backend/get2ankiApi', () => ({
     getAutoSyncPrice: mockGetAutoSyncPrice,
     startAutoSyncCheckout: mockStartAutoSyncCheckout,
   }),
+}));
+
+vi.mock('../../lib/backend/getSubscriptionStatus', () => ({
+  getSubscriptionStatus: vi.fn().mockResolvedValue({ subscriptions: [] }),
 }));
 
 vi.mock('../../components/TopMessage/TopMessage', () => ({
@@ -44,7 +49,11 @@ vi.mock('../../lib/hooks/useCardUsage', () => ({
 
 const { mockPricingVariant } = vi.hoisted(() => ({
   mockPricingVariant: {
-    current: 'minimal' as 'minimal' | 'unlimited-first' | 'semester-first',
+    current: 'minimal' as
+      | 'minimal'
+      | 'unlimited-first'
+      | 'semester-first'
+      | 'mcp-day-first',
   },
 }));
 
@@ -1135,5 +1144,128 @@ describe('PricingPage Auto Sync', () => {
 
     await waitFor(() => expect(mockGetAutoSyncPrice).toHaveBeenCalled());
     expect(screen.queryByTestId('auto-sync-card')).not.toBeInTheDocument();
+  });
+});
+
+describe('PricingPage after a failed renewal', () => {
+  const lapsedEntitlement = {
+    subscriber: false,
+    patreon: false,
+    subscriptionInfo: { email: 'payer@example.com' },
+  };
+
+  beforeEach(() => {
+    vi.mocked(getSubscriptionStatus).mockReset();
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({ subscriptions: [] });
+  });
+
+  const subscription = (status: string) => ({
+    id: 'sub_test',
+    status,
+    created: null,
+    cancel_at_period_end: false,
+    cancel_at: null,
+    canceled_at: null,
+    current_period_end: null,
+    paused_until: null,
+    cancellation_reason: null,
+    plan: null,
+  });
+
+  it.each(['semester-first', 'mcp-day-first'] as const)(
+    'sends the person to fix the payment above the plans on the %s arm',
+    async (arm) => {
+      mockPricingVariant.current = arm;
+      vi.mocked(getSubscriptionStatus).mockResolvedValue({
+        subscriptions: [subscription('past_due')],
+      });
+
+      renderAt('/pricing', {
+        isLoggedIn: true,
+        entitlement: lapsedEntitlement,
+      });
+
+      const fix = await screen.findByRole('link', {
+        name: 'Update payment details',
+      });
+      const [firstPlan] = screen.getAllByRole('button', {
+        name: /^Get (Day|Week|Semester) Pass · /,
+      });
+      expect(
+        fix.compareDocumentPosition(firstPlan) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    }
+  );
+
+  it.each([
+    [
+      'a paused subscription',
+      [{ ...subscription('active'), paused_until: 1893456000 }],
+    ],
+    ['an incomplete first charge', [subscription('incomplete')]],
+    [
+      'an active plan beside a lapsed one',
+      [subscription('active'), subscription('past_due')],
+    ],
+  ])('shows no notice for %s', async (_who, subscriptions) => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({ subscriptions });
+
+    renderAt('/pricing', { isLoggedIn: true, entitlement: lapsedEntitlement });
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(
+      screen.queryByRole('link', { name: 'Update payment details' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a former subscriber who cancelled no notice', async () => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [subscription('canceled')],
+    });
+
+    renderAt('/pricing', { isLoggedIn: true, entitlement: lapsedEntitlement });
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(
+      screen.queryByRole('link', { name: 'Update payment details' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the plans and shows no notice when the read fails', async () => {
+    vi.mocked(getSubscriptionStatus).mockRejectedValue(
+      new Error('stripe down')
+    );
+
+    renderAt('/pricing', { isLoggedIn: true, entitlement: lapsedEntitlement });
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(
+      screen.queryByRole('link', { name: 'Update payment details' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /^Get Week Pass · / })
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['a signed-out visitor', undefined],
+    ['someone who has never paid', { subscriber: false, patreon: false }],
+    ['a subscriber', { ...lapsedEntitlement, subscriber: true }],
+    [
+      'a pass holder with a lapsed plan',
+      { ...lapsedEntitlement, subscriber: true, passKind: '7d' as const },
+    ],
+    [
+      'an Apple subscriber with a lapsed plan',
+      { ...lapsedEntitlement, subscriber: true, planSource: 'apple' as const },
+    ],
+  ])('does not read Stripe for %s', (_who, entitlement) => {
+    renderAt('/pricing', { isLoggedIn: entitlement != null, entitlement });
+
+    expect(getSubscriptionStatus).not.toHaveBeenCalled();
   });
 });

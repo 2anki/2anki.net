@@ -6,16 +6,17 @@ import { STRIPE_CUSTOMER_PORTAL_URL } from '../../lib/stripePortal';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './PastDueNotice.module.css';
 
-// A failed renewal ends Pro at once, so the person lands on a limit wall with
-// no idea why. This says why and how to get Pro back, ahead of any offer to
-// buy something new.
+// A failed renewal ends the plan at once, so the person lands on a limit wall
+// with no idea why. This says why and how to get the plan back, ahead of any
+// offer to buy something new.
 export function PastDueNotice({
   surface,
   enabled = true,
 }: Readonly<{ surface: string; enabled?: boolean }>) {
   const { t } = useTranslation('account');
   const { view } = useStripeSubscriptions(enabled);
-  const pastDue = view.kind === 'past_due' ? view.subscription : null;
+  const pastDue =
+    enabled && view.kind === 'past_due' ? view.subscription : null;
   const trackedRef = useRef<string | null>(null);
 
   useEffect(() => {

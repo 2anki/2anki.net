@@ -451,6 +451,9 @@ describe('SubscriptionManagement', () => {
       renderStripeManagement();
 
       expect(screen.getByText("Your payment didn't go through")).toBeTruthy();
+      expect(
+        screen.getByText(/^Your subscription is paused until/)
+      ).toBeTruthy();
       const link = screen.getByRole('link', { name: 'Update payment details' });
       expect(link).toHaveAttribute('href', STRIPE_CUSTOMER_PORTAL_URL);
       const cancel = screen.getByRole('button', {
@@ -696,6 +699,14 @@ describe('SubscriptionManagement for a pass holder', () => {
       Date.now() + 90 * 24 * 60 * 60 * 1000
     ).toISOString(),
   };
+
+  it('tells a pass holder their lapsed subscription is paused, not their pass', () => {
+    stubStripePastDue();
+    renderPassHolder();
+
+    expect(screen.getByText(/^Your subscription is paused until/)).toBeTruthy();
+    expect(screen.queryByText(/^Your plan is paused/)).toBeNull();
+  });
 
   function renderPassHolder() {
     return render(

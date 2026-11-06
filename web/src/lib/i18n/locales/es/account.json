@@ -35,7 +35,7 @@
     "pastDueTitle": "Tu pago no se ha procesado",
     "pastDueBody": "No pudimos cobrar tu tarjeta por {{plan}}. Lo intentaremos de nuevo en los próximos días. Actualiza tus datos de pago para mantener tu suscripción.",
     "pastDueBodyNoPlan": "No pudimos cobrar tu tarjeta. Lo intentaremos de nuevo en los próximos días. Actualiza tus datos de pago para mantener tu suscripción.",
-    "pastDueAccessPaused": "Pro está en pausa hasta que este pago se complete. Vuelve solo en cuanto se haga.",
+    "pastDueAccessPaused": "Tu suscripción está en pausa hasta que este pago se complete. Vuelve sola en cuanto se haga.",
     "endedPaymentFailed": "Tu suscripción terminó porque tu pago no se procesó.",
     "statusLoadFailed": "No pudimos cargar tu suscripción ahora mismo. Recarga la página para intentarlo de nuevo.",
     "linkedEmailHeading": "Correo de 2anki.net vinculado",
@@ -114,6 +114,7 @@
     "autoSyncMeta": "Sincronización en vivo con Notion, sin tope mensual de tarjetas.",
     "passEnds": "Termina el {{date}}",
     "free": "Free",
+    "pastDue": "Pago fallido",
     "freeMeta": "100 tarjetas al mes.",
     "seePlans": "Ver planes"
   },
