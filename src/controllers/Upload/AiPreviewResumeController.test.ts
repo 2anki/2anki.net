@@ -6,6 +6,7 @@ import {
   NoAiPreviewHoldError,
 } from '../../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
 import { AiCreditsExhaustedError } from '../../lib/claude/aiSpendGuard';
+import { CLAUDE_REFUSAL_USER_MESSAGE } from '../../lib/claude/ClaudeService';
 
 function mockRes(anonymousPassId: number | null): Response {
   const res = {
@@ -108,6 +109,23 @@ describe('AiPreviewResumeController', () => {
     );
     expect(res.json).not.toHaveBeenCalled();
     expect(res.send).not.toHaveBeenCalled();
+  });
+
+  it('answers a declined conversion with the refusal copy instead of the error handler', async () => {
+    const declined = Object.assign(new Error(CLAUDE_REFUSAL_USER_MESSAGE), {
+      name: 'ClaudeRefusalError',
+    });
+    const execute = vi.fn().mockRejectedValue(declined);
+    const controller = new AiPreviewResumeController(useCaseStub(execute));
+    const res = mockRes(88);
+
+    await controller.resume(mockReq('visitor-1'), res);
+
+    expect((res as unknown as { statusCode: number }).statusCode).toBe(400);
+    expect((res as unknown as { body: unknown }).body).toEqual({
+      code: 'unknown',
+      message: CLAUDE_REFUSAL_USER_MESSAGE,
+    });
   });
 
   it('returns 404 when no preview hold is waiting', async () => {
