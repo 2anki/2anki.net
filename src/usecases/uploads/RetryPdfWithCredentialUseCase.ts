@@ -6,8 +6,11 @@ import { processUploadedPdf } from './processUploadedPdf';
 import {
   isLockedPdfError,
   isUnreadablePdfError,
+  jobFailureReasonCode,
   PDF_UNREADABLE_REASON,
 } from '../jobs/jobFailureReason';
+import { PDF_EXCEEDS_MAX_PAGE_LIMIT } from '../../infrastracture/adapters/fileConversion/convertPDFToImages';
+import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import type UsersRepository from '../../data_layer/UsersRepository';
 import {
   ANONYMOUS_CARD_CAP,
@@ -50,6 +53,35 @@ export type CardUsage = Pick<
   'getCardUsage' | 'incrementCardUsage'
 >;
 
+const NO_CARDS_MESSAGE = 'PDF conversion produced no cards';
+
+const WRITTEN_FOR_THE_PERSON = new Set([
+  PDF_EXCEEDS_MAX_PAGE_LIMIT,
+  NO_CARDS_MESSAGE,
+]);
+
+export const RETRY_FAILED_MESSAGE =
+  'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.';
+
+const isPdfLibraryError = (error: unknown): boolean =>
+  error instanceof Error && error.name.endsWith('Exception');
+
+// The form shows what this route sends, and a plain Error or a provider's API
+// error carries text written for logs: a tool's output or an upstream status.
+const carriesRawText = (error: unknown): error is Error => {
+  if (!(error instanceof Error) || error instanceof HttpCodedError) {
+    return false;
+  }
+  if (WRITTEN_FOR_THE_PERSON.has(error.message)) return false;
+  const isPlainError = error.constructor === Error;
+  const isProviderError =
+    typeof (error as { status?: unknown }).status === 'number';
+  return (
+    (isPlainError || isProviderError) &&
+    jobFailureReasonCode(error) === 'unknown'
+  );
+};
+
 export class RetryPdfWithCredentialUseCase {
   constructor(private readonly cardUsage?: CardUsage) {}
 
@@ -76,7 +108,7 @@ export class RetryPdfWithCredentialUseCase {
       });
 
       if (result == null) {
-        throw new Error('PDF conversion produced no cards');
+        throw new Error(NO_CARDS_MESSAGE);
       }
 
       // The same limits an ordinary upload checks after converting: once the
@@ -103,8 +135,12 @@ export class RetryPdfWithCredentialUseCase {
       if (isLockedPdfError(error)) {
         return { unreadable: LOCKED_PDF_UNREADABLE_REASON };
       }
-      if (isUnreadablePdfError(error)) {
+      if (isUnreadablePdfError(error) || isPdfLibraryError(error)) {
         return { unreadable: PDF_UNREADABLE_REASON };
+      }
+      if (carriesRawText(error)) {
+        console.error('[retry-pdf] conversion failed', error);
+        throw new HttpCodedError(RETRY_FAILED_MESSAGE, 500, 'unknown');
       }
       throw error;
     }

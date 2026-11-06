@@ -2027,7 +2027,11 @@ function UploadForm({
       const body = await cloned.json();
       const firstFile = uploadedFiles[0];
       if (body?.error === 'needs_password' && firstFile) {
-        showLockedPdfState(firstFile);
+        showLockedPdfState(
+          uploadedFiles.find((file) => file.name === body.filename) ??
+            uploadedFiles.find((file) => /\.pdf$/i.test(file.name)) ??
+            firstFile
+        );
         return false;
       }
       const prompt = readPdfChoicePrompt(body);

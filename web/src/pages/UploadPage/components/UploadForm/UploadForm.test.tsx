@@ -8615,6 +8615,21 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     }
   );
 
+  it('unlocks the locked PDF when it was picked after another file', async () => {
+    const fetchMock = stubLockedPdfServer(40);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['notes.md', 'locked.pdf']);
+    await unlockWithPassword();
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    const [, init] = callsTo(fetchMock, '/api/upload/retry-with-credential')[0];
+    expect(((init as RequestInit).body as FormData).get('file')).toMatchObject({
+      name: 'locked.pdf',
+    });
+  });
+
   it('leaves the unlock step with the too-large copy when the retry is over its size cap', async () => {
     stubUnlockAnswer({ code: 'too_large', message: 'File too large.' }, 413);
     const { container } = renderUploadForm(
@@ -8633,6 +8648,10 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     { population: 'a pass holder', data: () => passHolder },
     { population: 'a signed-in free account', data: () => freeSignedIn },
     { population: 'a signed-out visitor', data: () => signedOutWithAiPreview },
+    {
+      population: 'a pass holder with no account',
+      data: () => payingWithoutAccount,
+    },
   ])(
     'shows the server copy after a failed unlock for $population',
     async ({ data }) => {
