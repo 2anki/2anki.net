@@ -35,6 +35,24 @@ describe('mayHaveLapsedPayment', () => {
 });
 
 describe('useLapsedPayment', () => {
+  it.each([
+    ['a pass holder', { subscriber: true, passKind: '7d', ...onRecord }],
+    ['a lifetime holder', { patreon: true, ...onRecord }],
+  ])('ignores a past-due read already in the cache for %s', (_who, locals) => {
+    const client = new QueryClient();
+    client.setQueryData(['stripeSubscriptions'], {
+      subscriptions: [{ id: 'sub_lapsed', status: 'past_due' }],
+    });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+
+    const { result } = renderHook(() => useLapsedPayment(locals), {
+      wrapper,
+    });
+
+    expect(result.current).toEqual({ subscription: null, checking: false });
+  });
+
   it('stops holding the plan back after the first failed read, while retries run', async () => {
     vi.mocked(getSubscriptionStatus).mockRejectedValue(
       new Error('stripe down')

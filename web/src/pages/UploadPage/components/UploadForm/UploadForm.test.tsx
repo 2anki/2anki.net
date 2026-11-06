@@ -5269,6 +5269,7 @@ describe('limit state', () => {
     expect(
       await screen.findByText(/^Your subscription is paused until/)
     ).toBeInTheDocument();
+    vi.unstubAllGlobals();
   });
 
   it('offers the Semester Pass beside the leading Day Pass on the locked wall', () => {
