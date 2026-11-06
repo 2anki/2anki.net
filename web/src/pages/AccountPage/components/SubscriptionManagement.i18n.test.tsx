@@ -13,6 +13,7 @@ const PAST_DUE_KEYS = [
   'pastDueTitle',
   'pastDueBody',
   'pastDueBodyNoPlan',
+  'pastDueAccessPaused',
   'endedPaymentFailed',
   'statusLoadFailed',
 ];

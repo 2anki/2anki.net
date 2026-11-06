@@ -33,6 +33,13 @@ const isRecentlyCancelled = (
   return secondsSinceCancel <= RECENT_CANCEL_WINDOW_SECONDS;
 };
 
+export const findLapsedSubscription = (
+  subscriptions: StripeSubscriptionSummary[]
+): StripeSubscriptionSummary | null =>
+  subscriptions.find(
+    (sub) => sub.status === 'past_due' || sub.status === 'unpaid'
+  ) ?? null;
+
 export function deriveView(
   subscriptions: StripeSubscriptionSummary[],
   nowMs: number = Date.now()
@@ -47,9 +54,7 @@ export function deriveView(
       : { kind: 'active', subscription: active };
   }
 
-  const pastDue = subscriptions.find(
-    (sub) => sub.status === 'past_due' || sub.status === 'unpaid'
-  );
+  const pastDue = findLapsedSubscription(subscriptions);
   if (pastDue) {
     return { kind: 'past_due', subscription: pastDue };
   }

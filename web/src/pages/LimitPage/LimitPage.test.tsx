@@ -6,6 +6,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { LimitPage } from './LimitPage';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { track } from '../../lib/analytics/track';
+import { getSubscriptionStatus } from '../../lib/backend/getSubscriptionStatus';
 
 vi.mock('../../lib/analytics/track', () => ({
   track: vi.fn(),
@@ -40,6 +41,10 @@ const mockStartUnlimitedUpgrade = vi.fn();
 vi.mock('../../lib/backend/startUnlimitedUpgrade', () => ({
   startUnlimitedUpgrade: (...args: unknown[]) =>
     mockStartUnlimitedUpgrade(...args),
+}));
+
+vi.mock('../../lib/backend/getSubscriptionStatus', () => ({
+  getSubscriptionStatus: vi.fn().mockResolvedValue({ subscriptions: [] }),
 }));
 
 const mockedUseUserLocals = vi.mocked(useUserLocals);
@@ -730,5 +735,42 @@ describe('LimitPage — loading state', () => {
     expect(
       screen.queryByText('You hit the limit for converting without an account')
     ).toBeNull();
+  });
+});
+
+describe('LimitPage — failed renewal', () => {
+  it.each([
+    ['the pass-first wall', true],
+    ['the Pro wall', false],
+  ])('explains the paused plan on %s', async (_wall, limitWallPassFirst) => {
+    mockedUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 1, email: 'test@example.com' },
+        features: { limitWallPassFirst },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    vi.mocked(getSubscriptionStatus).mockResolvedValueOnce({
+      subscriptions: [
+        {
+          id: 'sub_test',
+          status: 'past_due',
+          created: null,
+          cancel_at_period_end: false,
+          cancel_at: null,
+          canceled_at: null,
+          current_period_end: null,
+          paused_until: null,
+          cancellation_reason: null,
+          plan: null,
+        },
+      ],
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/^Your plan is paused until/)
+    ).toBeInTheDocument();
   });
 });

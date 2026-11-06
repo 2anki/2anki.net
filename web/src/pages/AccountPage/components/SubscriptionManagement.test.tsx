@@ -451,6 +451,7 @@ describe('SubscriptionManagement', () => {
       renderStripeManagement();
 
       expect(screen.getByText("Your payment didn't go through")).toBeTruthy();
+      expect(screen.getByText(/^Your plan is paused until/)).toBeTruthy();
       const link = screen.getByRole('link', { name: 'Update payment details' });
       expect(link).toHaveAttribute('href', STRIPE_CUSTOMER_PORTAL_URL);
       const cancel = screen.getByRole('button', {

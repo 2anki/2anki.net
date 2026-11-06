@@ -1,4 +1,7 @@
-import { useStripeSubscriptions } from './useStripeSubscriptions';
+import {
+  findLapsedSubscription,
+  useStripeSubscriptions,
+} from './useStripeSubscriptions';
 
 export interface LapsedPaymentLocals {
   subscriber?: boolean;
@@ -7,7 +10,9 @@ export interface LapsedPaymentLocals {
 }
 
 // Only someone with a Stripe subscription on record can have a failed renewal,
-// so nobody who has never paid costs a Stripe read.
+// so nobody without one costs a Stripe read. The lapsed plan is looked for
+// beside any active row: a developer tier stays active while the base plan
+// lapses, and the base plan is what ended this person's access.
 export function mayHaveLapsedPayment(
   locals: LapsedPaymentLocals | undefined | null
 ): boolean {
@@ -21,13 +26,12 @@ export function useLapsedPayment(
   enabled = true
 ) {
   const eligible = mayHaveLapsedPayment(locals);
-  const { view, isLoading, failureCount } = useStripeSubscriptions(
+  const { subscriptions, isLoading, failureCount } = useStripeSubscriptions(
     eligible && enabled
   );
 
   return {
-    subscription:
-      eligible && view.kind === 'past_due' ? view.subscription : null,
+    subscription: eligible ? findLapsedSubscription(subscriptions) : null,
     checking: eligible && enabled && isLoading && failureCount === 0,
   };
 }

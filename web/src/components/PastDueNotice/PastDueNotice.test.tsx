@@ -50,7 +50,7 @@ describe('PastDueNotice', () => {
     vi.clearAllMocks();
   });
 
-  test('tells a past-due subscriber why Pro stopped and how to get it back', async () => {
+  test('tells a past-due subscriber why the plan stopped and how to get it back', async () => {
     mockSubscriptions(['past_due']);
     renderNotice();
 
@@ -72,6 +72,15 @@ describe('PastDueNotice', () => {
       from: 'past_due',
       surface: 'upload_limit_wall',
     });
+  });
+
+  test('shows beside a live developer tier when the base plan lapsed', async () => {
+    mockSubscriptions(['active', 'past_due']);
+    renderNotice();
+
+    expect(
+      await screen.findByText("Your payment didn't go through")
+    ).toBeInTheDocument();
   });
 
   test('shows nothing for someone whose subscription is active', async () => {

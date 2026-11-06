@@ -460,6 +460,54 @@ describe('AccountMenu after a failed renewal', () => {
     }
   );
 
+  it.each([
+    ['an Auto Sync plan', 1900],
+    ['a developer tier', 4900],
+  ])('shows the failed payment for %s', async (_plan, amount) => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [
+        {
+          ...stripeSubscription('past_due'),
+          plan: { amount, currency: 'usd', interval: 'month' },
+        },
+      ],
+    });
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    expect(await screen.findByText('Payment failed')).toBeVisible();
+    expect(screen.queryByText('Free')).not.toBeInTheDocument();
+  });
+
+  it('shows the failed payment when a developer tier is still active', async () => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [
+        { ...stripeSubscription('active'), id: 'sub_developer' },
+        stripeSubscription('past_due'),
+      ],
+    });
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    expect(await screen.findByText('Payment failed')).toBeVisible();
+    expect(screen.queryByText('Free')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['paused', { ...stripeSubscription('active'), paused_until: 1893456000 }],
+    ['incomplete', stripeSubscription('incomplete')],
+  ])('keeps Free and Upgrade for a %s subscription', async (_kind, sub) => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [sub],
+    });
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    expect(await screen.findByText('Free')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toBeVisible();
+    expect(screen.queryByText('Payment failed')).not.toBeInTheDocument();
+  });
+
   it('tracks the click on Update payment details', async () => {
     vi.mocked(getSubscriptionStatus).mockResolvedValue({
       subscriptions: [stripeSubscription('past_due')],

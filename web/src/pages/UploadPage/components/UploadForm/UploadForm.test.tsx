@@ -5232,6 +5232,45 @@ describe('limit state', () => {
     expect(screen.queryByText('Choose files')).not.toBeInTheDocument();
   });
 
+  it('explains the paused plan on the locked wall after a failed renewal', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        redirected: false,
+        json: async () => ({
+          subscriptions: [
+            {
+              id: 'sub_test',
+              status: 'past_due',
+              created: null,
+              cancel_at_period_end: false,
+              cancel_at: null,
+              canceled_at: null,
+              current_period_end: null,
+              paused_until: null,
+              cancellation_reason: null,
+              plan: null,
+            },
+          ],
+        }),
+      })
+    );
+    setUserLocals(loggedInData);
+    mockUseCardUsage.mockReturnValue({
+      cards_used: 100,
+      cards_limit: 100,
+      unlimited: false,
+      loading: false,
+    });
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText(/^Your plan is paused until/)
+    ).toBeInTheDocument();
+  });
+
   it('offers the Semester Pass beside the leading Day Pass on the locked wall', () => {
     setUserLocals(loggedInData);
     mockUseCardUsage.mockReturnValue({

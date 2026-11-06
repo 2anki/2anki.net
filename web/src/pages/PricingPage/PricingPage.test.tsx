@@ -1206,6 +1206,7 @@ describe('PricingPage after a failed renewal', () => {
     renderAt('/pricing', { isLoggedIn: true, entitlement: lapsedEntitlement });
 
     await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(
       screen.queryByRole('link', { name: 'Update payment details' })
     ).not.toBeInTheDocument();
@@ -1219,6 +1220,7 @@ describe('PricingPage after a failed renewal', () => {
     renderAt('/pricing', { isLoggedIn: true, entitlement: lapsedEntitlement });
 
     await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(
       screen.queryByRole('link', { name: 'Update payment details' })
     ).not.toBeInTheDocument();
