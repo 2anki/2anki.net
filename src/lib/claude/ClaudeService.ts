@@ -1964,11 +1964,6 @@ async function runFloorV1(
     throw new AiCreditsTrippedWithSalvage(mergeDeckInfoArrays(initialDecks));
   }
 
-  const firstRefusal = refusalIn(firstRoundResults);
-  if (firstRefusal && firstRoundResults.every((r) => r.status === 'rejected')) {
-    throw firstRefusal;
-  }
-
   let merged = mergeDeckInfoArrays(initialDecks);
   let topUpRounds = 0;
 

@@ -1798,12 +1798,12 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
     }
   });
 
-  it('comprehensive on — every chunk declined rejects with the refusal copy and sends no top-up', async () => {
+  it('comprehensive on — every chunk declined returns no cards, as before, and sends no top-up', async () => {
     mockStream.finalMessage.mockResolvedValue(refusedResponse());
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     try {
-      const caught = await generateDeckInfo(
+      const result = await generateDeckInfo(
         sixChunkHtml,
         [],
         undefined,
@@ -1812,9 +1812,9 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
         undefined,
         undefined,
         { isPaying: true, userId: 42, comprehensive: true }
-      ).catch((err: unknown) => err);
+      );
 
-      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+      expect(result).toEqual([]);
       expect(mockStream.finalMessage).toHaveBeenCalledTimes(6);
     } finally {
       warn.mockRestore();
