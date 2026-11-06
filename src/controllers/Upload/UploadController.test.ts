@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { vi, type Mock } from 'vitest';
 import express from 'express';
 import multer from 'multer';
@@ -514,6 +517,86 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
         message: expect.stringContaining('Too many password attempts'),
       })
     );
+  });
+
+  test('keeps a refused password at the prompt with needs_password', async () => {
+    const repository = {
+      deleteUpload: vi.fn(),
+      getUploadsByOwner: vi.fn().mockResolvedValue([]),
+      findByIdAndOwner: vi.fn().mockResolvedValue(null),
+      findByObjectId: vi.fn().mockResolvedValue(null),
+      findByKey: vi.fn().mockResolvedValue(null),
+      findAllByObjectIdAndOwner: vi.fn().mockResolvedValue([]),
+      update: vi.fn().mockResolvedValue([]),
+      getLastUploadForUser: vi.fn().mockResolvedValue(null),
+      getLastReconvertibleUpload: vi.fn().mockResolvedValue(null),
+      findByOwnerAndDedupeKey: vi.fn().mockResolvedValue(null),
+      insertNativeDeck: vi.fn(),
+      insertConvertedDeck: vi.fn(),
+    };
+    const notionRepository: INotionRepository = {
+      getNotionData: vi.fn() as INotionRepository['getNotionData'],
+      saveNotionToken: vi.fn() as INotionRepository['saveNotionToken'],
+      getNotionToken: vi.fn() as INotionRepository['getNotionToken'],
+      deleteBlocksByOwner: vi.fn() as INotionRepository['deleteBlocksByOwner'],
+      deleteNotionData: vi.fn() as INotionRepository['deleteNotionData'],
+      markTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      clearTokenInvalid: vi.fn().mockResolvedValue(undefined),
+      setReconnectEmailSent: vi.fn().mockResolvedValue(true),
+    };
+    const uploadService = new UploadService(
+      repository,
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const notionService = new NotionService(notionRepository);
+
+    const allowingLimiter = { check: vi.fn().mockReturnValue(true) };
+    const controller = new UploadController(
+      uploadService,
+      notionService,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      allowingLimiter
+    );
+
+    const tempPdf = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'retry-credential-')),
+      'upload.pdf'
+    );
+    fs.writeFileSync(tempPdf, '%PDF-1.4');
+    const jsonSpy = vi.fn();
+    let capturedStatus = 0;
+
+    const req = {
+      file: {
+        path: tempPdf,
+        originalname: 'foo.pdf',
+      },
+      body: {},
+      headers: { 'x-forwarded-for': '10.0.0.1' },
+      socket: { remoteAddress: '10.0.0.1' },
+    } as unknown as express.Request;
+
+    const res = {
+      locals: {},
+      status: (code: number) => {
+        capturedStatus = code;
+        return { json: jsonSpy } as unknown as express.Response;
+      },
+    } as unknown as express.Response;
+
+    await controller.retryPdfWithCredential(req, res);
+
+    expect(capturedStatus).toBe(400);
+    expect(jsonSpy).toHaveBeenCalledWith({
+      error: 'needs_password',
+      message: 'Invalid credential.',
+    });
+    await vi.waitFor(() => expect(fs.existsSync(tempPdf)).toBe(false));
   });
 
   test('returns 400 when no file is provided (before rate limit check)', async () => {

@@ -16,7 +16,10 @@ vi.mock('../../infrastracture/adapters/fileConversion/PrepareDeck', () => ({
 import UploadController from './UploadController';
 import type UploadService from '../../services/UploadService';
 import type NotionService from '../../services/NotionService';
-import type { CardUsage } from '../../usecases/uploads/RetryPdfWithCredentialUseCase';
+import {
+  LOCKED_PDF_UNREADABLE_REASON,
+  type CardUsage,
+} from '../../usecases/uploads/RetryPdfWithCredentialUseCase';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { normalizeUploadFilenames } from '../../routes/middleware/normalizeUploadFilenames';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
@@ -165,6 +168,22 @@ describe('a password unlock of a kept file on /api/upload/retry-with-credential'
 
     expect(result).toEqual({ status: 200, body: 'unlocked-apkg' });
     expect(prepareDeck).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers a PDF the image fallback cannot reopen with readable copy', async () => {
+    prepareDeck.mockRejectedValueOnce(
+      new Error('pdfinfo_password path=Locked notes.pdf')
+    );
+
+    const result = await unlock(signedIn);
+
+    expect(result).toEqual({
+      status: 400,
+      body: {
+        code: 'password_protected_pdf',
+        message: LOCKED_PDF_UNREADABLE_REASON,
+      },
+    });
   });
 
   it('streams the unlocked deck as application/octet-stream', async () => {

@@ -386,7 +386,10 @@ class UploadController {
       (req.body as Record<string, unknown>).credential
     );
     if (credential == null) {
-      return res.status(400).json({ message: 'Invalid credential.' });
+      void removeTempUpload(uploadedFile.path);
+      return res
+        .status(400)
+        .json({ error: 'needs_password', message: 'Invalid credential.' });
     }
 
     let fileBuffer: Buffer;
@@ -428,6 +431,12 @@ class UploadController {
     }
     if ('limitReached' in outcome) {
       return res.redirect(await limitWallUrl(outcome));
+    }
+    if ('unreadable' in outcome) {
+      return res.status(400).json({
+        code: outcome.code,
+        message: outcome.unreadable,
+      });
     }
 
     const { apkg, cardCount, name } = outcome;

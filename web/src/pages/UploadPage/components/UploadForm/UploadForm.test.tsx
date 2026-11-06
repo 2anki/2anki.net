@@ -8569,6 +8569,319 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(screen.getByLabelText('PDF password')).toBeInTheDocument();
   });
 
+  function stubUnlockAnswer(body: unknown, status: number) {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/ai/credits') {
+        return Promise.resolve(creditsResponse(1347));
+      }
+      if (url === '/api/upload/file') {
+        return Promise.resolve(needsPassword);
+      }
+      if (url === '/api/upload/retry-with-credential') {
+        return Promise.resolve(new Response(JSON.stringify(body), { status }));
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+  }
+
+  it.each([
+    [
+      'a PDF the server cannot read',
+      400,
+      'pdf_processing_failed',
+      'We could not read this PDF.',
+    ],
+    ['an empty deck', 400, 'unknown', 'No cards found in your upload.'],
+    ['Claude declining the file', 400, 'unknown', 'Claude declined this file.'],
+    ['a deck writer crash', 500, 'unknown', 'Something broke on our end.'],
+  ])(
+    'leaves the unlock step and shows the server copy for %s',
+    async (_failure, status, code, message) => {
+      stubUnlockAnswer({ code, message }, status);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitFiles(container, ['locked.pdf']);
+      await unlockWithPassword();
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(screen.queryByLabelText('PDF password')).toBeNull();
+      expect(
+        screen.queryByText(
+          "That didn't open the file. Check for typos and try again."
+        )
+      ).toBeNull();
+    }
+  );
+
+  it.each([
+    ['a zip', ['notes.zip']],
+    ['a zip picked beside a PDF', ['notes.zip', 'other.pdf']],
+  ])('offers no prompt for a locked PDF inside %s', async (_pick, files) => {
+    setUserLocals(payingWithoutAccount);
+    const fetchMock = stubLockedPdfServer(40);
+    const respond = fetchMock.getMockImplementation() as (
+      url: string
+    ) => Promise<Response>;
+    fetchMock.mockImplementation((url: string) =>
+      url === '/api/upload/file'
+        ? Promise.resolve(
+            new Response(
+              JSON.stringify({
+                error: 'needs_password',
+                reason: 'missing_password',
+                filename: 'inside.pdf',
+              }),
+              { status: 400 }
+            )
+          )
+        : respond(url)
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn />
+    );
+    await submitFiles(container, files);
+
+    expect(
+      await screen.findByText(/This PDF is password-protected\./)
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('PDF password')).toBeNull();
+  });
+
+  it('shows the localized locked copy when the retry cannot read a locked PDF', async () => {
+    stubUnlockAnswer(
+      { code: 'password_protected_pdf', message: 'English server copy.' },
+      400
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText(/This PDF is password-protected\./)
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('PDF password')).toBeNull();
+  });
+
+  it('unlocks the PDF the server named when two PDFs were picked', async () => {
+    const fetchMock = stubLockedPdfServer(40);
+    const lockedAnswer = new Response(
+      JSON.stringify({
+        error: 'needs_password',
+        reason: 'missing_password',
+        filename: 'locked.pdf',
+      }),
+      { status: 400 }
+    );
+    const respond = fetchMock.getMockImplementation() as (
+      url: string
+    ) => Promise<Response>;
+    fetchMock.mockImplementation((url: string) =>
+      url === '/api/upload/file'
+        ? Promise.resolve(lockedAnswer.clone())
+        : respond(url)
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['open.pdf', 'locked.pdf']);
+    await unlockWithPassword();
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    const [, init] = callsTo(fetchMock, '/api/upload/retry-with-credential')[0];
+    expect(((init as RequestInit).body as FormData).get('file')).toMatchObject({
+      name: 'locked.pdf',
+    });
+  });
+
+  it('unlocks the locked PDF when it was picked after another file', async () => {
+    const fetchMock = stubLockedPdfServer(40);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['notes.md', 'locked.pdf']);
+    await unlockWithPassword();
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    const [, init] = callsTo(fetchMock, '/api/upload/retry-with-credential')[0];
+    expect(((init as RequestInit).body as FormData).get('file')).toMatchObject({
+      name: 'locked.pdf',
+    });
+  });
+
+  it('leaves the unlock step with the too-large copy when the retry is over its size cap', async () => {
+    stubUnlockAnswer({ code: 'too_large', message: 'File too large.' }, 413);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText(/This file is too large to convert in one go\./)
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('PDF password')).toBeNull();
+  });
+
+  const paidAccount = (
+    locals: Record<string, unknown>,
+    account: Record<string, unknown> = {}
+  ) =>
+    ({
+      user: { id: 7, email: 'learner@example.com' },
+      locals: { owner: 7, patreon: false, subscriber: true, ...locals },
+      features: {},
+      ...account,
+    }) as unknown as ReturnType<typeof useUserLocals>['data'];
+
+  it.each([
+    { population: 'a pass holder', data: () => passHolder, aiOn: false },
+    {
+      population: 'a Pro subscriber',
+      data: () => paidAccount({ planSource: 'stripe' }),
+      aiOn: false,
+    },
+    {
+      population: 'an Auto Sync subscriber',
+      data: () =>
+        paidAccount({ planSource: 'stripe' }, { autoSyncActive: true }),
+      aiOn: false,
+    },
+    {
+      population: 'a lifetime holder',
+      data: () => paidAccount({ patreon: true, subscriber: false }),
+      aiOn: false,
+    },
+    {
+      population: 'a signed-in free account',
+      data: () => freeSignedIn,
+      aiOn: false,
+    },
+    { population: 'a signed-out visitor', data: () => signedOut, aiOn: false },
+    {
+      population: 'a signed-out visitor who chose AI',
+      data: () => signedOut,
+      aiOn: true,
+    },
+    {
+      population: 'a signed-out visitor with the AI preview on',
+      data: () => signedOutWithAiPreview,
+      aiOn: false,
+    },
+    {
+      population: 'a pass holder with no account',
+      data: () => payingWithoutAccount,
+      aiOn: false,
+    },
+    {
+      population: 'a pass holder with no account and AI on',
+      data: () => payingWithoutAccount,
+      aiOn: true,
+    },
+  ])(
+    'shows the server copy after a failed unlock for $population',
+    async ({ data, aiOn }) => {
+      setUserLocals(data());
+      stubUnlockAnswer(
+        { code: 'unknown', message: 'Claude declined this file.' },
+        400
+      );
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={aiOn} />
+      );
+      await submitFiles(container, ['locked.pdf']);
+      await unlockWithPassword();
+
+      expect(
+        await screen.findByText('Claude declined this file.')
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText('PDF password')).toBeNull();
+    }
+  );
+
+  it.each([
+    {
+      population: 'a pass holder with no account',
+      data: () => payingWithoutAccount,
+    },
+    {
+      population: 'a Pro subscriber who turned AI on at the prompt',
+      data: () => paidAccount({ planSource: 'stripe' }),
+    },
+  ])(
+    'sends the stored AI choice with the retry of $population',
+    async ({ data }) => {
+      setUserLocals(data());
+      globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
+      stubUnlockAnswer(
+        { code: 'unknown', message: 'Claude declined this file.' },
+        400
+      );
+      const fetchMock = vi.mocked(globalThis.fetch) as unknown as Mock;
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn />
+      );
+      await submitFiles(container, ['locked.pdf']);
+      await unlockWithPassword();
+
+      expect(
+        await screen.findByText('Claude declined this file.')
+      ).toBeInTheDocument();
+      const [, init] = callsTo(
+        fetchMock,
+        '/api/upload/retry-with-credential'
+      )[0];
+      expect(
+        ((init as RequestInit).body as FormData).get('claude-ai-flashcards')
+      ).toBe('true');
+    }
+  );
+
+  it('keeps the unlock step, says why and counts no attempt when rate limited', async () => {
+    stubUnlockAnswer({ message: 'Too many password attempts.' }, 429);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+    await screen.findByText('Too many password attempts.');
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock' }));
+    await settle();
+
+    expect(screen.getByLabelText('PDF password')).toBeInTheDocument();
+    expect(screen.queryByText(/^Still stuck\?/)).toBeNull();
+  });
+
+  it.each([
+    [
+      'the server refuses the password itself',
+      { error: 'needs_password', message: 'Invalid credential.' },
+    ],
+    [
+      'the password was wrong',
+      { error: 'needs_password', reason: 'wrong_password' },
+    ],
+  ])('keeps the unlock step when %s', async (_case, body) => {
+    stubUnlockAnswer(body, 400);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText(
+        "That didn't open the file. Check for typos and try again."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('PDF password')).toBeInTheDocument();
+  });
+
   it('follows the server to the limit page when an unlocked PDF is over the card limit', async () => {
     const locationStub = { href: '', origin: 'http://localhost' } as Location;
     vi.stubGlobal('location', locationStub);

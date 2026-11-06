@@ -3796,6 +3796,29 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     );
   });
 
+  it('keeps a PowerPoint on the normal path for a pass holder with no account', async () => {
+    zeroCardUseCase();
+    asyncSlowFlag(true);
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const built = buildResponse();
+    (built.res.locals as Record<string, unknown>).subscriber = true;
+
+    await service.handleUpload(slidesRequest(), built.res);
+
+    expect(jobRepository.create).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      'upload'
+    );
+  });
+
   it('does not recurse: a fallback job that itself yields zero cards is marked failed once, never re-dispatched', async () => {
     zeroCardUseCase();
     let failedCount = 0;

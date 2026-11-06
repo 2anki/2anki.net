@@ -1,5 +1,15 @@
 import { vi } from 'vitest';
-import { RetryPdfWithCredentialUseCase } from './RetryPdfWithCredentialUseCase';
+import {
+  LOCKED_PDF_UNREADABLE_REASON,
+  RETRY_FAILED_MESSAGE,
+  RetryPdfWithCredentialUseCase,
+} from './RetryPdfWithCredentialUseCase';
+import { PDF_EXCEEDS_MAX_PAGE_LIMIT } from '../../infrastracture/adapters/fileConversion/convertPDFToImages';
+import {
+  EMPTY_CONTENT_USER_MESSAGE,
+  LARGE_SECTION_USER_MESSAGE,
+} from '../../lib/claude/ClaudeService';
+import { PDF_UNREADABLE_REASON } from '../jobs/jobFailureReason';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import CardOption from '../../lib/parser/Settings';
 import Workspace from '../../lib/parser/WorkSpace';
@@ -34,6 +44,98 @@ describe('RetryPdfWithCredentialUseCase', () => {
       cardCount: 3,
       name: 'lecture.apkg',
     });
+  });
+
+  it.each([
+    [
+      'a scanned file the image fallback cannot reopen',
+      'pdfinfo_password path=scan.pdf',
+      LOCKED_PDF_UNREADABLE_REASON,
+      'password_protected_pdf',
+    ],
+    [
+      'a pdfinfo failure',
+      'pdfinfo_failed code=1 signal=null path=a.pdf stderr=boom',
+      PDF_UNREADABLE_REASON,
+      'pdf_processing_failed',
+    ],
+    [
+      'pdfinfo failing to start',
+      'pdfinfo_spawn_failed: ENOENT /usr/bin/pdfinfo',
+      PDF_UNREADABLE_REASON,
+      'pdf_processing_failed',
+    ],
+  ])(
+    'answers with readable copy for %s',
+    async (_failure, raw, unreadable, code) => {
+      mockPrepareDeck.mockRejectedValueOnce(new Error(raw));
+
+      const result = await new RetryPdfWithCredentialUseCase().execute(
+        Buffer.from('%PDF-1.4'),
+        'scan.pdf',
+        'secret',
+        true,
+        new CardOption({}),
+        { location: '/tmp/retry-test' } as Workspace
+      );
+
+      expect(result).toEqual({ unreadable, code });
+    }
+  );
+
+  const runFailure = (error: Error) => {
+    mockPrepareDeck.mockRejectedValueOnce(error);
+    return new RetryPdfWithCredentialUseCase().execute(
+      Buffer.from('%PDF-1.4'),
+      'scan.pdf',
+      'secret',
+      true,
+      new CardOption({}),
+      { location: '/tmp/retry-test' } as Workspace
+    );
+  };
+
+  const named = (name: string, message: string) =>
+    Object.assign(new (class extends Error {})(message), { name });
+
+  it('answers with readable copy for a pdf.js failure', async () => {
+    await expect(
+      runFailure(named('UnknownErrorException', 'pdf.js internals'))
+    ).resolves.toEqual({
+      unreadable: PDF_UNREADABLE_REASON,
+      code: 'pdf_processing_failed',
+    });
+  });
+
+  it.each([
+    ['a plain tool failure', new Error('pdftoppm process exited with 1')],
+    ['Claude text in a plain error', new Error('529 overloaded_error')],
+    [
+      'a provider API error',
+      Object.assign(named('InternalServerError', '500 upstream'), {
+        status: 500,
+      }),
+    ],
+  ])('hides the raw text of %s', async (_failure, error) => {
+    const failure = await runFailure(error).catch((thrown) => thrown);
+
+    expect(failure).toMatchObject({
+      message: RETRY_FAILED_MESSAGE,
+      status: 500,
+      code: 'unknown',
+    });
+  });
+
+  it.each([
+    ['the page limit', new Error(PDF_EXCEEDS_MAX_PAGE_LIMIT)],
+    ['a large section from Claude', new Error(LARGE_SECTION_USER_MESSAGE)],
+    ['empty content from Claude', new Error(EMPTY_CONTENT_USER_MESSAGE)],
+    [
+      'an error class with its own copy',
+      named('ClaudeRefusalError', 'Declined'),
+    ],
+  ])('keeps the message of %s', async (_failure, error) => {
+    await expect(runFailure(error)).rejects.toBe(error);
   });
 
   it('meters an anonymous pass holder by threading the pass id into PrepareDeck', async () => {

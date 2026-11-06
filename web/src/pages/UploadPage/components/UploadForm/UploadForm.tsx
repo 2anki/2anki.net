@@ -322,6 +322,28 @@ const PDF_CHOICE_COPY = new Map<
   ],
 ]);
 
+// A rate limit and a wrong password both leave the person at the password
+// prompt. Any other failure with a message ends the unlock: retyping the
+// password cannot change it.
+async function unlockCannotContinue(response: Response): Promise<boolean> {
+  if (response.status === 429) return false;
+  const body = await response
+    .clone()
+    .json()
+    .catch(() => null);
+  if (body?.error === 'needs_password') return false;
+  return typeof body?.message === 'string' && body.message.trim().length > 0;
+}
+
+// A locked PDF inside a zip has no file of its own to send back with the
+// password, so it gets no prompt.
+function findLockedPdf(files: File[], lockedName: unknown): File | undefined {
+  const named = files.find((file) => file.name === lockedName);
+  if (named != null) return named;
+  if (files.some((file) => /\.zip$/i.test(file.name))) return undefined;
+  return files.find((file) => /\.pdf$/i.test(file.name));
+}
+
 function zoneStateForUploadError(
   message: UploadErrorBody
 ): 'emptyDeck' | 'imageOnly' | 'error' {
@@ -2014,7 +2036,16 @@ function UploadForm({
       const body = await cloned.json();
       const firstFile = uploadedFiles[0];
       if (body?.error === 'needs_password' && firstFile) {
-        showLockedPdfState(firstFile);
+        const lockedPdf = findLockedPdf(uploadedFiles, body.filename);
+        if (lockedPdf == null) {
+          setLocalError({
+            code: 'password_protected_pdf',
+            message: 'This PDF is password-protected.',
+          });
+          setZoneState('error');
+          return false;
+        }
+        showLockedPdfState(lockedPdf);
         return false;
       }
       const prompt = readPdfChoicePrompt(body);
@@ -4144,15 +4175,19 @@ function UploadForm({
         await applyConversionSuccess(request, conversionSuccessHandlers);
         return;
       }
-      if (request.status === 409) {
-        const refusal = await extractErrorMessage(request);
-        if (refusal.code === 'owner_changed') {
-          setLockedPdfInfo(null);
-          setLocalError(refusal);
-          setZoneState('error');
-          void refetchUserLocals();
-          return;
-        }
+      if (await unlockCannotContinue(request)) {
+        const failure = await extractErrorMessage(request);
+        setLockedPdfInfo(null);
+        setLocalError(failure);
+        setZoneState(zoneStateForUploadError(failure));
+        if (failure.code === 'owner_changed') void refetchUserLocals();
+        return;
+      }
+
+      if (request.status === 429) {
+        setPdfUnlockError((await extractErrorMessage(request)).message);
+        setZoneState('lockedPdf');
+        return;
       }
 
       const newAttemptCount = pdfAttemptCount + 1;
