@@ -58,7 +58,9 @@ describe('PastDueNotice', () => {
       await screen.findByText("Your payment didn't go through")
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Your plan is paused until this payment goes through/)
+      screen.getByText(
+        /Your subscription is paused until this payment goes through/
+      )
     ).toBeInTheDocument();
     const link = screen.getByRole('link', { name: 'Update payment details' });
     expect(link).toHaveAttribute('href', STRIPE_CUSTOMER_PORTAL_URL);

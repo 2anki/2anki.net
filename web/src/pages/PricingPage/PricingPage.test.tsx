@@ -1198,6 +1198,28 @@ describe('PricingPage after a failed renewal', () => {
     }
   );
 
+  it.each([
+    [
+      'a paused subscription',
+      [{ ...subscription('active'), paused_until: 1893456000 }],
+    ],
+    ['an incomplete first charge', [subscription('incomplete')]],
+    [
+      'an active plan beside a lapsed one',
+      [subscription('active'), subscription('past_due')],
+    ],
+  ])('shows no notice for %s', async (_who, subscriptions) => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({ subscriptions });
+
+    renderAt('/pricing', { isLoggedIn: true, entitlement: lapsedEntitlement });
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(
+      screen.queryByRole('link', { name: 'Update payment details' })
+    ).not.toBeInTheDocument();
+  });
+
   it('shows a former subscriber who cancelled no notice', async () => {
     vi.mocked(getSubscriptionStatus).mockResolvedValue({
       subscriptions: [subscription('canceled')],

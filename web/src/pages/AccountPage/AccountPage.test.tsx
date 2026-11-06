@@ -186,6 +186,29 @@ describe('AccountPage plan card after a failed renewal', () => {
     );
   });
 
+  it.each([
+    [
+      'a paused subscription',
+      [{ ...lapsedSubscription, status: 'active', paused_until: 1893456000 }],
+    ],
+    [
+      'an incomplete first charge',
+      [{ ...lapsedSubscription, status: 'incomplete' }],
+    ],
+    [
+      'an active plan beside a lapsed one',
+      [{ ...lapsedSubscription, status: 'active' }, lapsedSubscription],
+    ],
+  ])('shows Free for %s', async (_who, subscriptions) => {
+    mockGetSubscriptionStatus.mockResolvedValue({ subscriptions });
+
+    renderWithLocals({ subscriptionInfo: { email: 'payer@example.com' } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('free')
+    );
+  });
+
   it('shows Free when the read fails', async () => {
     mockGetSubscriptionStatus.mockRejectedValue(new Error('stripe down'));
 

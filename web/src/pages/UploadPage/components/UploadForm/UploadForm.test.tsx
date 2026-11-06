@@ -5267,7 +5267,7 @@ describe('limit state', () => {
     renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
 
     expect(
-      await screen.findByText(/^Your plan is paused until/)
+      await screen.findByText(/^Your subscription is paused until/)
     ).toBeInTheDocument();
   });
 

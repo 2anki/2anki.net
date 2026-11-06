@@ -778,8 +778,46 @@ describe('LimitPage — failed renewal', () => {
     renderPage();
 
     expect(
-      await screen.findByText(/^Your plan is paused until/)
+      await screen.findByText(/^Your subscription is paused until/)
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['a paused subscription', [{ status: 'active', paused_until: 1893456000 }]],
+    ['an incomplete first charge', [{ status: 'incomplete' }]],
+    [
+      'an active plan beside a lapsed one',
+      [{ status: 'active' }, { status: 'past_due' }],
+    ],
+  ])('shows no notice for %s', async (_who, subscriptions) => {
+    mockedUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 1, email: 'test@example.com' },
+        locals: { subscriptionInfo: { email: 'payer@example.com' } },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    vi.mocked(getSubscriptionStatus).mockClear();
+    vi.mocked(getSubscriptionStatus).mockResolvedValueOnce({
+      subscriptions: subscriptions.map((fields, index) => ({
+        id: String(index),
+        created: null,
+        cancel_at_period_end: false,
+        cancel_at: null,
+        canceled_at: null,
+        current_period_end: null,
+        paused_until: null,
+        cancellation_reason: null,
+        plan: null,
+        ...fields,
+      })),
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(screen.queryByText(/^Your subscription is paused until/)).toBeNull();
   });
 
   it('shows a former subscriber who cancelled no notice', async () => {
@@ -812,7 +850,7 @@ describe('LimitPage — failed renewal', () => {
 
     await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
-    expect(screen.queryByText(/^Your plan is paused until/)).toBeNull();
+    expect(screen.queryByText(/^Your subscription is paused until/)).toBeNull();
   });
 
   it.each([
@@ -851,6 +889,6 @@ describe('LimitPage — failed renewal', () => {
     renderPage();
 
     expect(getSubscriptionStatus).not.toHaveBeenCalled();
-    expect(screen.queryByText(/^Your plan is paused until/)).toBeNull();
+    expect(screen.queryByText(/^Your subscription is paused until/)).toBeNull();
   });
 });
