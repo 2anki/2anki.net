@@ -1821,6 +1821,37 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
     }
   });
 
+  it('comprehensive on — with nothing declined, the first top-up goes to the thinnest quarter of chunks', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () => {
+      const index = call++;
+      const thin = index === 2 || index === 4;
+      return deckResponse(thin ? 1 : 10, 'C' + index);
+    });
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfo(
+        sixChunkHtml,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { isPaying: true, userId: 42, comprehensive: true }
+      );
+
+      const sentChunks = log.mock.calls
+        .filter(([msg]) => msg === '[Claude] Sending request to Claude API')
+        .map(([, meta]) => (meta as { chunkIndex: number }).chunkIndex);
+      const firstTopUpRound = sentChunks.slice(6, 8);
+      expect(new Set(firstTopUpRound)).toEqual(new Set([2, 4]));
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it('comprehensive on — top-ups never resend a declined chunk', async () => {
     let call = 0;
     mockStream.finalMessage.mockImplementation(async () =>
