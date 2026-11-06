@@ -7332,15 +7332,21 @@ describe('UploadService.handleUpload — failure events for the success-rate til
     }
   );
 
-  it('answers a declined conversion with the refusal copy and does not count it', async () => {
+  it('answers a signed-out pass holder whose conversion Claude declined with the refusal copy, and does not count it', async () => {
     failWith(
       Object.assign(new Error(CLAUDE_REFUSAL_USER_MESSAGE), {
         name: 'ClaudeRefusalError',
       })
     );
     const { res, capturedStatus, capturedJson } = buildResponse();
+    Object.assign(res.locals, { subscriber: true, anonymousPassId: 31 });
+    const req = buildRequest({
+      body: { 'claude-ai-flashcards': 'true' },
+      headers: { 'x-pass-token': 'cs_pass' },
+      cookies: { anon_id: 'visitor-with-pass' },
+    } as unknown as Partial<express.Request>);
 
-    await buildService().handleUpload(buildRequest(), res);
+    await buildService().handleUpload(req, res);
 
     expect(capturedStatus()).toBe(400);
     expect(capturedJson()).toEqual({

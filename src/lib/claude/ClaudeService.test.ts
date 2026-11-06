@@ -1152,6 +1152,31 @@ describe('generateDeckInfo — Claude declines a chunk', () => {
     }
   });
 
+  it('rejects with the refusal copy on the heading-driven card style', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(
+        '<h1>Cells</h1><p>The cell is the basic unit of life.</p>' +
+          '<h1>Tissues</h1><p>Tissues are groups of similar cells.</p>',
+        [],
+        undefined,
+        undefined,
+        'heading-driven'
+      ).catch((err: unknown) => err);
+
+      expect(
+        log.mock.calls.some(([msg]) => msg === '[Claude] heading-driven chunks')
+      ).toBe(true);
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+    } finally {
+      warn.mockRestore();
+      log.mockRestore();
+    }
+  });
+
   it('ships the cards from the chunk Claude answered when another is declined', async () => {
     mockStream.finalMessage
       .mockResolvedValueOnce(fakeResponse())
