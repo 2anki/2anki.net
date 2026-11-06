@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-06-pdf-unlock-real-error",
+  "date": "2026-11-06",
+  "type": "fix",
+  "title": "Password-protected PDFs show why a conversion failed instead of saying the password was wrong"
+}

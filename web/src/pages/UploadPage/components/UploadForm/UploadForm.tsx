@@ -322,6 +322,16 @@ const PDF_CHOICE_COPY = new Map<
   ],
 ]);
 
+// A wrong password answers with an error code and no message, so a message
+// means the password worked and the conversion after it failed.
+async function carriesServerMessage(response: Response): Promise<boolean> {
+  const body = await response
+    .clone()
+    .json()
+    .catch(() => null);
+  return typeof body?.message === 'string' && body.message.trim().length > 0;
+}
+
 function zoneStateForUploadError(
   message: UploadErrorBody
 ): 'emptyDeck' | 'imageOnly' | 'error' {
@@ -4144,15 +4154,13 @@ function UploadForm({
         await applyConversionSuccess(request, conversionSuccessHandlers);
         return;
       }
-      if (request.status === 409) {
-        const refusal = await extractErrorMessage(request);
-        if (refusal.code === 'owner_changed') {
-          setLockedPdfInfo(null);
-          setLocalError(refusal);
-          setZoneState('error');
-          void refetchUserLocals();
-          return;
-        }
+      if (await carriesServerMessage(request)) {
+        const failure = await extractErrorMessage(request);
+        setLockedPdfInfo(null);
+        setLocalError(failure);
+        setZoneState(zoneStateForUploadError(failure));
+        if (failure.code === 'owner_changed') void refetchUserLocals();
+        return;
       }
 
       const newAttemptCount = pdfAttemptCount + 1;

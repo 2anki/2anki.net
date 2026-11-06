@@ -8569,6 +8569,115 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(screen.getByLabelText('PDF password')).toBeInTheDocument();
   });
 
+  it.each([
+    ['an empty deck', 400, 'empty_export', 'No cards came out of this file.'],
+    ['the large-section answer', 400, 'unknown', 'Split this file up first.'],
+    ['Claude declining the file', 400, 'unknown', 'Claude declined this file.'],
+    ['a deck writer crash', 500, 'unknown', 'Something broke on our end.'],
+  ])(
+    'leaves the unlock step and shows the server copy for %s',
+    async (_failure, status, code, message) => {
+      const fetchMock = vi.fn((url: string) => {
+        if (url === '/api/ai/credits') {
+          return Promise.resolve(creditsResponse(1347));
+        }
+        if (url === '/api/upload/file') {
+          return Promise.resolve(needsPassword);
+        }
+        if (url === '/api/upload/retry-with-credential') {
+          return Promise.resolve(
+            new Response(JSON.stringify({ code, message }), { status })
+          );
+        }
+        return Promise.resolve(new Response(null, { status: 204 }));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitFiles(container, ['locked.pdf']);
+      await unlockWithPassword();
+
+      await waitFor(() =>
+        expect(screen.queryByLabelText('PDF password')).toBeNull()
+      );
+      expect(
+        screen.queryByText(
+          "That didn't open the file. Check for typos and try again."
+        )
+      ).toBeNull();
+    }
+  );
+
+  it('shows the server copy after a conversion error on an unlocked PDF', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/ai/credits') {
+        return Promise.resolve(creditsResponse(1347));
+      }
+      if (url === '/api/upload/file') {
+        return Promise.resolve(needsPassword);
+      }
+      if (url === '/api/upload/retry-with-credential') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              code: 'unknown',
+              message: 'Claude declined this file.',
+            }),
+            { status: 400 }
+          )
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText(/Claude declined this file\./)
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the unlock step when the server says the password was wrong', async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/ai/credits') {
+        return Promise.resolve(creditsResponse(1347));
+      }
+      if (url === '/api/upload/file') {
+        return Promise.resolve(needsPassword);
+      }
+      if (url === '/api/upload/retry-with-credential') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: 'needs_password',
+              reason: 'wrong_password',
+            }),
+            { status: 400 }
+          )
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['locked.pdf']);
+    await unlockWithPassword();
+
+    expect(
+      await screen.findByText(
+        "That didn't open the file. Check for typos and try again."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('PDF password')).toBeInTheDocument();
+  });
+
   it('follows the server to the limit page when an unlocked PDF is over the card limit', async () => {
     const locationStub = { href: '', origin: 'http://localhost' } as Location;
     vi.stubGlobal('location', locationStub);
