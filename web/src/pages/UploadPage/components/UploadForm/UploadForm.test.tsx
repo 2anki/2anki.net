@@ -8615,6 +8615,37 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     }
   );
 
+  it('unlocks the PDF the server named when two PDFs were picked', async () => {
+    const fetchMock = stubLockedPdfServer(40);
+    const lockedAnswer = new Response(
+      JSON.stringify({
+        error: 'needs_password',
+        reason: 'missing_password',
+        filename: 'locked.pdf',
+      }),
+      { status: 400 }
+    );
+    const respond = fetchMock.getMockImplementation() as (
+      url: string
+    ) => Promise<Response>;
+    fetchMock.mockImplementation((url: string) =>
+      url === '/api/upload/file'
+        ? Promise.resolve(lockedAnswer.clone())
+        : respond(url)
+    );
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+    );
+    await submitFiles(container, ['open.pdf', 'locked.pdf']);
+    await unlockWithPassword();
+
+    await screen.findByRole('button', { name: 'Make another deck' });
+    const [, init] = callsTo(fetchMock, '/api/upload/retry-with-credential')[0];
+    expect(((init as RequestInit).body as FormData).get('file')).toMatchObject({
+      name: 'locked.pdf',
+    });
+  });
+
   it('unlocks the locked PDF when it was picked after another file', async () => {
     const fetchMock = stubLockedPdfServer(40);
     const { container } = renderUploadForm(
@@ -8644,24 +8675,61 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
     expect(screen.queryByLabelText('PDF password')).toBeNull();
   });
 
+  const paidAccount = (locals: Record<string, unknown>) =>
+    ({
+      user: { id: 7, email: 'learner@example.com' },
+      locals: { owner: 7, patreon: false, subscriber: true, ...locals },
+      features: {},
+    }) as unknown as ReturnType<typeof useUserLocals>['data'];
+
   it.each([
-    { population: 'a pass holder', data: () => passHolder },
-    { population: 'a signed-in free account', data: () => freeSignedIn },
-    { population: 'a signed-out visitor', data: () => signedOutWithAiPreview },
+    { population: 'a pass holder', data: () => passHolder, aiOn: false },
+    {
+      population: 'a Pro subscriber',
+      data: () => paidAccount({ planSource: 'stripe' }),
+      aiOn: false,
+    },
+    {
+      population: 'an Auto Sync subscriber',
+      data: () => paidAccount({ planSource: 'stripe', autoSyncActive: true }),
+      aiOn: false,
+    },
+    {
+      population: 'a lifetime holder',
+      data: () => paidAccount({ patreon: true, subscriber: false }),
+      aiOn: false,
+    },
+    {
+      population: 'a signed-in free account',
+      data: () => freeSignedIn,
+      aiOn: false,
+    },
+    { population: 'a signed-out visitor', data: () => signedOut, aiOn: false },
+    {
+      population: 'a signed-out visitor with the AI preview on',
+      data: () => signedOutWithAiPreview,
+      aiOn: false,
+    },
     {
       population: 'a pass holder with no account',
       data: () => payingWithoutAccount,
+      aiOn: false,
+    },
+    {
+      population: 'a pass holder with no account and AI on',
+      data: () => payingWithoutAccount,
+      aiOn: true,
     },
   ])(
     'shows the server copy after a failed unlock for $population',
-    async ({ data }) => {
+    async ({ data, aiOn }) => {
       setUserLocals(data());
       stubUnlockAnswer(
         { code: 'unknown', message: 'Claude declined this file.' },
         400
       );
       const { container } = renderUploadForm(
-        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+        <UploadForm setErrorMessage={vi.fn()} aiOn={aiOn} />
       );
       await submitFiles(container, ['locked.pdf']);
       await unlockWithPassword();

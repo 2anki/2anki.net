@@ -11,6 +11,10 @@ import {
 } from '../jobs/jobFailureReason';
 import { PDF_EXCEEDS_MAX_PAGE_LIMIT } from '../../infrastracture/adapters/fileConversion/convertPDFToImages';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
+import {
+  EMPTY_CONTENT_USER_MESSAGE,
+  LARGE_SECTION_USER_MESSAGE,
+} from '../../lib/claude/ClaudeService';
 import type UsersRepository from '../../data_layer/UsersRepository';
 import {
   ANONYMOUS_CARD_CAP,
@@ -55,9 +59,12 @@ export type CardUsage = Pick<
 
 const NO_CARDS_MESSAGE = 'PDF conversion produced no cards';
 
+// The chunk runner rewraps a failed chunk as a plain Error with this text.
 const WRITTEN_FOR_THE_PERSON = new Set([
   PDF_EXCEEDS_MAX_PAGE_LIMIT,
   NO_CARDS_MESSAGE,
+  LARGE_SECTION_USER_MESSAGE,
+  EMPTY_CONTENT_USER_MESSAGE,
 ]);
 
 export const RETRY_FAILED_MESSAGE =

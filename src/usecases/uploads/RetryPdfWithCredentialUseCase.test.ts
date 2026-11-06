@@ -5,6 +5,10 @@ import {
   RetryPdfWithCredentialUseCase,
 } from './RetryPdfWithCredentialUseCase';
 import { PDF_EXCEEDS_MAX_PAGE_LIMIT } from '../../infrastracture/adapters/fileConversion/convertPDFToImages';
+import {
+  EMPTY_CONTENT_USER_MESSAGE,
+  LARGE_SECTION_USER_MESSAGE,
+} from '../../lib/claude/ClaudeService';
 import { PDF_UNREADABLE_REASON } from '../jobs/jobFailureReason';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import CardOption from '../../lib/parser/Settings';
@@ -115,6 +119,8 @@ describe('RetryPdfWithCredentialUseCase', () => {
 
   it.each([
     ['the page limit', new Error(PDF_EXCEEDS_MAX_PAGE_LIMIT)],
+    ['a large section from Claude', new Error(LARGE_SECTION_USER_MESSAGE)],
+    ['empty content from Claude', new Error(EMPTY_CONTENT_USER_MESSAGE)],
     [
       'an error class with its own copy',
       named('ClaudeRefusalError', 'Declined'),
