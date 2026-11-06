@@ -103,6 +103,9 @@ export const EMPTY_CONTENT_UPLOAD_MESSAGE =
 export const LARGE_SECTION_USER_MESSAGE =
   "Couldn't finish converting a large section of this page. Try converting a smaller part, or split the page and convert each part separately.";
 
+export const CLAUDE_REFUSAL_USER_MESSAGE =
+  'Claude declined to make cards from this file. If you added user instructions for PDF conversion, remove them under PDF & AI in Settings and try again. If it keeps happening, email support@2anki.net.';
+
 export const IMAGE_ONLY_USER_MESSAGE =
   "This file only contains images — there's no text to turn into cards. Export your notes with text, or paste the text directly, then convert again.";
 
@@ -741,6 +744,16 @@ export class ClaudeLargeSectionError extends Error {
   }
 }
 
+// Claude answered with stop_reason 'refusal' and no cards could be read from
+// what it sent first. Sending the same chunk again gets the same answer, so it
+// is never retried.
+export class ClaudeRefusalError extends Error {
+  constructor() {
+    super(CLAUDE_REFUSAL_USER_MESSAGE);
+    this.name = 'ClaudeRefusalError';
+  }
+}
+
 export class EmptyContentError extends Error {
   constructor(message: string = EMPTY_CONTENT_USER_MESSAGE) {
     super(message);
@@ -1229,6 +1242,25 @@ async function generateDeckInfoFromChunk(
 
   const cleaned = raw.replace(/^```json\n?|^```\n?|```\s*$/gm, '').trim();
 
+  if (response.stop_reason === 'refusal') {
+    // A refusal can stop the stream partway; keep any cards already written.
+    const salvaged = cleaned
+      ? salvageTruncatedDecks(cleaned, raw, availableMediaFiles, chunkIndex)
+      : [];
+    const salvagedCards = salvaged.reduce(
+      (sum, deck) => sum + deck.cards.length,
+      0
+    );
+    console.warn('[Claude] Claude declined the chunk', {
+      requestId,
+      chunkIndex,
+      totalChunks,
+      salvagedCards,
+    });
+    if (salvagedCards > 0) return salvaged;
+    throw new ClaudeRefusalError();
+  }
+
   if (response.stop_reason === 'max_tokens') {
     const salvaged = salvageTruncatedDecks(
       cleaned,
@@ -1394,8 +1426,13 @@ function cardCountByChunk(decks: DeckInfo[], chunkCount: number): number[] {
   return counts;
 }
 
-function thinnestQuartileIndices(perChunkCounts: number[]): number[] {
-  const indexed = perChunkCounts.map((count, index) => ({ count, index }));
+function thinnestQuartileIndices(
+  perChunkCounts: number[],
+  skipped: ReadonlySet<number>
+): number[] {
+  const indexed = perChunkCounts
+    .map((count, index) => ({ count, index }))
+    .filter((entry) => !skipped.has(entry.index));
   indexed.sort((a, b) => a.count - b.count);
   const quartileSize = Math.max(1, Math.ceil(indexed.length / 4));
   return indexed.slice(0, quartileSize).map((entry) => entry.index);
@@ -1525,6 +1562,17 @@ function stampChunkIndex(decks: DeckInfo[], chunkIndex: number): DeckInfo[] {
   return decks;
 }
 
+function refusalIn(
+  settled: PromiseSettledResult<unknown>[]
+): ClaudeRefusalError | undefined {
+  for (const r of settled) {
+    if (r.status === 'rejected' && r.reason instanceof ClaudeRefusalError) {
+      return r.reason;
+    }
+  }
+  return undefined;
+}
+
 function salvageOrThrow(err: ClaudeTruncatedError): DeckInfo[] {
   if (err.salvagedDecks.length === 0) throw err;
   console.info('[Claude] Keeping cards salvaged from the truncated response', {
@@ -1566,7 +1614,11 @@ async function runChunkWithTruncationRetry(
     // Under Promise.all a second truncation on one half discarded the cards the
     // other half had already produced, and the caller saw the chunk as a total
     // loss — 53 cards shipped where 129 were parsed. Half a chunk beats none.
-    if (recovered.length === 0) return salvageOrThrow(err);
+    if (recovered.length === 0) {
+      const refusal = refusalIn(settled);
+      if (refusal && err.salvagedDecks.length === 0) throw refusal;
+      return salvageOrThrow(err);
+    }
     if (fulfilled < halves.length) {
       console.info('[Claude] Keeping the halves that parsed', {
         ok: fulfilled,
@@ -1609,6 +1661,8 @@ async function runChunks(
   }
 
   if (succeeded.length === 0) {
+    const refusal = refusalIn(settled);
+    if (refusal) throw refusal;
     throw new Error(failures[0]?.reason ?? 'All Claude chunks failed');
   }
 
@@ -1903,10 +1957,13 @@ async function runFloorV1(
   );
 
   const initialDecks: DeckInfo[] = [];
+  // A declined chunk is declined again, so top-ups never resend it.
+  const refusedChunks = new Set<number>();
   firstRoundResults.forEach((r, i) => {
     if (r.status === 'fulfilled') {
       initialDecks.push(...r.value);
     } else {
+      if (r.reason instanceof ClaudeRefusalError) refusedChunks.add(i);
       console.warn('[Claude] floor v1 chunk failed', {
         chunkIndex: i,
         reason: String(r.reason),
@@ -1928,7 +1985,8 @@ async function runFloorV1(
   ) {
     const beforeCount = totalCardCount(merged);
     const perChunkCounts = cardCountByChunk(merged, chunks.length);
-    const targetChunks = thinnestQuartileIndices(perChunkCounts);
+    const targetChunks = thinnestQuartileIndices(perChunkCounts, refusedChunks);
+    if (targetChunks.length === 0) break;
     const existingFronts = collectExistingFronts(merged);
     const topUpInstruction = buildTopUpInstruction(existingFronts, cardSize);
     const combinedInstructions = userInstructions
@@ -1964,6 +2022,9 @@ async function runFloorV1(
       if (r.status === 'fulfilled') {
         newDecks.push(...r.value);
       } else {
+        if (r.reason instanceof ClaudeRefusalError) {
+          refusedChunks.add(targetChunks[i]);
+        }
         console.warn('[Claude] floor v1 top-up chunk failed', {
           chunkIndex: targetChunks[i],
           reason: String(r.reason),

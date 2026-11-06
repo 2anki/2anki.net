@@ -4,6 +4,7 @@ import express from 'express';
 import multer from 'multer';
 
 import ErrorHandler, { sendErrorResponse } from './ErrorHandler';
+import { CLAUDE_REFUSAL_USER_MESSAGE } from '../../lib/claude/ClaudeService';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import { EmailSendError } from '../../services/EmailService/sendMail';
@@ -668,6 +669,21 @@ describe('sendErrorResponse', () => {
     expect(res.body).toEqual({
       code: 'unknown',
       message: 'This zip is already an Anki deck.',
+    });
+  });
+
+  test('answers a declined conversion with its own copy, as the password retry route sends it here', () => {
+    const res = makeResponse(false);
+    const declined = Object.assign(new Error(CLAUDE_REFUSAL_USER_MESSAGE), {
+      name: 'ClaudeRefusalError',
+    });
+
+    sendErrorResponse(res as unknown as express.Response, declined);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      code: 'unknown',
+      message: CLAUDE_REFUSAL_USER_MESSAGE,
     });
   });
 

@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-06-claude-refusal-copy",
+  "date": "2026-11-06",
+  "type": "fix",
+  "title": "When Claude declines to make cards from a file, the error says so instead of blaming the file's size"
+}

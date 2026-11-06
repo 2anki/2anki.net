@@ -13,6 +13,7 @@ export const EXPECTED_ERROR_NAMES = new Set([
   'PythonZeroCardsError',
   'ClaudeParseError',
   'ClaudeLargeSectionError',
+  'ClaudeRefusalError',
   'ImageOnlyContentError',
   'DeckTooLargeError',
   'IncompleteZipError',

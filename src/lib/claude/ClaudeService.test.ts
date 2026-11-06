@@ -28,6 +28,8 @@ import {
   generateDeckInfo,
   ClaudeParseError,
   ClaudeLargeSectionError,
+  ClaudeRefusalError,
+  CLAUDE_REFUSAL_USER_MESSAGE,
   LARGE_SECTION_USER_MESSAGE,
   ImageOnlyContentError,
   IMAGE_ONLY_USER_MESSAGE,
@@ -1067,6 +1069,208 @@ describe('generateDeckInfo — partial chunk success (default)', () => {
   });
 });
 
+function refusedResponse() {
+  return {
+    content: [],
+    stop_reason: 'refusal',
+    usage: { input_tokens: 51, output_tokens: 0 },
+  };
+}
+
+describe('generateDeckInfo — Claude declines a chunk', () => {
+  const htmlOneChunk =
+    '<html><body><h1>Cells</h1><p>The cell is the basic unit of life.</p></body></html>';
+  const htmlTwoChunks = '<p>' + 'x'.repeat(39_990) + '</p><p>y</p>';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockStreamFn.mockReturnValue(mockStream);
+    mockStream.on.mockReturnThis();
+  });
+
+  it('rejects with the refusal copy instead of the large-section copy', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    try {
+      const caught = await generateDeckInfo(htmlOneChunk, []).catch(
+        (err: unknown) => err
+      );
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+      expect((caught as Error).message).toBe(CLAUDE_REFUSAL_USER_MESSAGE);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[Claude] Claude declined the chunk',
+        expect.objectContaining({ chunkIndex: 0, totalChunks: 1 })
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('does not send a declined chunk again', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+
+    await expect(generateDeckInfo(htmlOneChunk, [])).rejects.toThrow(
+      CLAUDE_REFUSAL_USER_MESSAGE
+    );
+    expect(mockStream.finalMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the refusal error by name when every chunk is declined', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+
+    const caught = await generateDeckInfo(htmlTwoChunks, []).catch(
+      (err: unknown) => err
+    );
+
+    expect(caught).toBeInstanceOf(ClaudeRefusalError);
+    expect((caught as Error).name).toBe('ClaudeRefusalError');
+  });
+
+  it('keeps the refusal when a truncated chunk is split and both halves are declined', async () => {
+    const htmlSplittable =
+      '<details>' +
+      'x'.repeat(10_000) +
+      '</details><details>' +
+      'y'.repeat(10_000) +
+      '</details>';
+    mockStream.finalMessage
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValue(refusedResponse());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(htmlSplittable, []).catch(
+        (err: unknown) => err
+      );
+
+      expect(mockStream.finalMessage).toHaveBeenCalledTimes(3);
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('rejects with the refusal copy on the heading-driven card style', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(
+        '<h1>Cells</h1><p>The cell is the basic unit of life.</p>' +
+          '<h1>Tissues</h1><p>Tissues are groups of similar cells.</p>',
+        [],
+        undefined,
+        undefined,
+        'heading-driven'
+      ).catch((err: unknown) => err);
+
+      expect(
+        log.mock.calls.some(([msg]) => msg === '[Claude] heading-driven chunks')
+      ).toBe(true);
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+    } finally {
+      warn.mockRestore();
+      log.mockRestore();
+    }
+  });
+
+  it('keeps the cards Claude wrote before it declined partway through', async () => {
+    mockStream.finalMessage.mockResolvedValue({
+      ...salvageableTruncatedResponse(),
+      stop_reason: 'refusal',
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      const result = await generateDeckInfo(htmlOneChunk, []);
+
+      expect(result[0].cards.map((card) => card.name)).toEqual(
+        expect.arrayContaining(['SALVAGE-Q1', 'SALVAGE-Q2'])
+      );
+      expect(warn).toHaveBeenCalledWith(
+        '[Claude] Claude declined the chunk',
+        expect.objectContaining({ chunkIndex: 0 })
+      );
+    } finally {
+      warn.mockRestore();
+      error.mockRestore();
+    }
+  });
+
+  it('answers with the refusal copy when the text before a refusal holds no cards', async () => {
+    mockStream.finalMessage.mockResolvedValue({
+      content: [{ type: 'text', text: "I can't help make cards from this." }],
+      stop_reason: 'refusal',
+      usage: { input_tokens: 51, output_tokens: 9 },
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(htmlOneChunk, []).catch(
+        (err: unknown) => err
+      );
+
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+      expect(warn).toHaveBeenCalledWith(
+        '[Claude] Claude declined the chunk',
+        expect.objectContaining({ salvagedCards: 0 })
+      );
+    } finally {
+      warn.mockRestore();
+      error.mockRestore();
+    }
+  });
+
+  it('rejects with the refusal copy on the heading-driven style with comprehensive on', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(
+        '<h1>Cells</h1><p>The cell is the basic unit of life.</p>' +
+          '<h1>Tissues</h1><p>Tissues are groups of similar cells.</p>',
+        [],
+        undefined,
+        undefined,
+        'heading-driven',
+        undefined,
+        undefined,
+        { isPaying: true, userId: 42, comprehensive: true }
+      ).catch((err: unknown) => err);
+
+      expect(
+        log.mock.calls.some(([msg]) => msg === '[Claude] heading-driven chunks')
+      ).toBe(true);
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+    } finally {
+      warn.mockRestore();
+      log.mockRestore();
+    }
+  });
+
+  it('ships the cards from the chunk Claude answered when another is declined', async () => {
+    mockStream.finalMessage
+      .mockResolvedValueOnce(fakeResponse())
+      .mockResolvedValueOnce(refusedResponse());
+
+    const result = await generateDeckInfo(htmlTwoChunks, []);
+
+    expect(result[0].cards).toEqual([
+      expect.objectContaining({ name: 'Q1', back: 'A1' }),
+    ]);
+  });
+});
+
 describe('generateDeckInfo — truncated chunk retry', () => {
   const htmlOneChunk =
     '<details>' +
@@ -1675,6 +1879,124 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
     }
   });
 
+  it('comprehensive on — every chunk declined returns no cards, as before, and sends no top-up', async () => {
+    mockStream.finalMessage.mockResolvedValue(refusedResponse());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const result = await generateDeckInfo(
+        sixChunkHtml,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { isPaying: true, userId: 42, comprehensive: true }
+      );
+
+      expect(result).toEqual([]);
+      expect(mockStream.finalMessage).toHaveBeenCalledTimes(6);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('comprehensive on — with nothing declined, each top-up round goes to the thinnest quarter of chunks', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () => {
+      const index = call++;
+      const thin = index === 2 || index === 4;
+      return deckResponse(thin ? 1 : 10, 'C' + index);
+    });
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfo(
+        sixChunkHtml,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { isPaying: true, userId: 42, comprehensive: true }
+      );
+
+      const sentChunks = log.mock.calls
+        .filter(([msg]) => msg === '[Claude] Sending request to Claude API')
+        .map(([, meta]) => (meta as { chunkIndex: number }).chunkIndex);
+      expect(sentChunks).toEqual([0, 1, 2, 3, 4, 5, 2, 4, 0, 1]);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it('comprehensive on — a refusal that salvaged cards ships them', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      call++ === 0
+        ? { ...salvageableTruncatedResponse(), stop_reason: 'refusal' }
+        : deckResponse(5, 'C' + call)
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      const result = await generateDeckInfo(
+        sixChunkHtml,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { isPaying: true, userId: 42, comprehensive: true }
+      );
+
+      const fronts = result.flatMap((deck) => deck.cards.map((c) => c.name));
+      expect(fronts).toEqual(
+        expect.arrayContaining(['SALVAGE-Q1', 'SALVAGE-Q2'])
+      );
+    } finally {
+      warn.mockRestore();
+      error.mockRestore();
+    }
+  });
+
+  it('comprehensive on — top-ups never resend a declined chunk', async () => {
+    let call = 0;
+    mockStream.finalMessage.mockImplementation(async () =>
+      call++ === 0 ? refusedResponse() : deckResponse(5, 'C' + call)
+    );
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfo(
+        sixChunkHtml,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { isPaying: true, userId: 42, comprehensive: true }
+      );
+
+      const sentChunks = log.mock.calls
+        .filter(([msg]) => msg === '[Claude] Sending request to Claude API')
+        .map(([, meta]) => (meta as { chunkIndex: number }).chunkIndex);
+      expect(sentChunks.length).toBeGreaterThan(6);
+      expect(sentChunks.filter((idx) => idx === 0)).toHaveLength(1);
+    } finally {
+      log.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
   it('comprehensive on — total ≥ floor after first round skips top-up', async () => {
     let call = 0;
     mockStream.finalMessage.mockImplementation(async () =>
@@ -1749,9 +2071,7 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       }
     );
 
-    expect(mockStream.finalMessage.mock.calls.length).toBeLessThanOrEqual(
-      6 + 6 + 6
-    );
+    expect(mockStream.finalMessage).toHaveBeenCalledTimes(6 + 2 + 2);
   });
 
   it('comprehensive on but isPaying=false — no top-up, no floor enforcement', async () => {
@@ -1930,7 +2250,7 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
       }
     );
 
-    expect(mockStream.finalMessage.mock.calls.length).toBeLessThan(6 + 6 + 6);
+    expect(mockStream.finalMessage).toHaveBeenCalledTimes(6 + 2);
   });
 });
 
