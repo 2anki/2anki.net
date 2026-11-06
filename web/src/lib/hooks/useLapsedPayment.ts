@@ -7,7 +7,7 @@ export interface LapsedPaymentLocals {
 }
 
 // Only someone with a Stripe subscription on record can have a failed renewal,
-// so nobody without one costs a Stripe read.
+// so nobody without one needs this Stripe read.
 export function mayHaveLapsedPayment(
   locals: LapsedPaymentLocals | undefined | null
 ): boolean {

@@ -196,7 +196,7 @@ describe('AccountPage plan card after a failed renewal', () => {
     );
   });
 
-  it('keeps a pass holder on their pass with no Stripe read', () => {
+  it('keeps the pass on the plan card with no lapsed-payment read', () => {
     mockUseUserLocals.mockReturnValue({
       isLoading: false,
       data: {
@@ -218,6 +218,30 @@ describe('AccountPage plan card after a failed renewal', () => {
 
     expect(mockGetSubscriptionStatus).not.toHaveBeenCalled();
     expect(screen.getByTestId('plan-details').textContent).toBe('weekPass');
+  });
+
+  it('keeps an Apple plan on the plan card with no lapsed-payment read', () => {
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: {
+          subscriber: true,
+          planSource: 'apple',
+          subscriptionInfo: { email: 'payer@example.com' },
+        },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'pro',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(mockGetSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('plan-details').textContent).toBe('pro');
   });
 
   it('shows Free with no Stripe read for someone who has never paid', () => {

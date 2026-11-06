@@ -1188,8 +1188,8 @@ describe('PricingPage after a failed renewal', () => {
       const fix = await screen.findByRole('link', {
         name: 'Update payment details',
       });
-      const firstPlan = screen.getByRole('button', {
-        name: /^Get Week Pass · /,
+      const [firstPlan] = screen.getAllByRole('button', {
+        name: /^Get (Day|Week|Semester) Pass · /,
       });
       expect(
         fix.compareDocumentPosition(firstPlan) &
@@ -1233,6 +1233,14 @@ describe('PricingPage after a failed renewal', () => {
     ['a signed-out visitor', undefined],
     ['someone who has never paid', { subscriber: false, patreon: false }],
     ['a subscriber', { ...lapsedEntitlement, subscriber: true }],
+    [
+      'a pass holder with a lapsed plan',
+      { ...lapsedEntitlement, subscriber: true, passKind: '7d' as const },
+    ],
+    [
+      'an Apple subscriber with a lapsed plan',
+      { ...lapsedEntitlement, subscriber: true, planSource: 'apple' as const },
+    ],
   ])('does not read Stripe for %s', (_who, entitlement) => {
     renderAt('/pricing', { isLoggedIn: entitlement != null, entitlement });
 

@@ -491,6 +491,21 @@ describe('AccountMenu after a failed renewal', () => {
     expect(screen.queryByText('Payment failed')).not.toBeInTheDocument();
   });
 
+  it('keeps Free and Upgrade when Stripe has an active plan the account row marks inactive', async () => {
+    vi.mocked(getSubscriptionStatus).mockResolvedValue({
+      subscriptions: [
+        stripeSubscription('active'),
+        { ...stripeSubscription('past_due'), id: 'sub_lapsed' },
+      ],
+    });
+    renderMenu({ locals: lapsedLocals });
+    openMenu();
+
+    expect(await screen.findByText('Free')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toBeVisible();
+    expect(screen.queryByText('Payment failed')).not.toBeInTheDocument();
+  });
+
   it('tracks the click on Update payment details', async () => {
     vi.mocked(getSubscriptionStatus).mockResolvedValue({
       subscriptions: [stripeSubscription('past_due')],

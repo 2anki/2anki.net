@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
@@ -775,6 +782,39 @@ describe('LimitPage — failed renewal', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows a former subscriber who cancelled no notice', async () => {
+    mockedUseUserLocals.mockReturnValue({
+      data: {
+        user: { id: 1, email: 'test@example.com' },
+        locals: { subscriptionInfo: { email: 'payer@example.com' } },
+      },
+      isLoading: false,
+    } as ReturnType<typeof useUserLocals>);
+    vi.mocked(getSubscriptionStatus).mockClear();
+    vi.mocked(getSubscriptionStatus).mockResolvedValueOnce({
+      subscriptions: [
+        {
+          id: 'sub_test',
+          status: 'canceled',
+          created: null,
+          cancel_at_period_end: false,
+          cancel_at: null,
+          canceled_at: 1,
+          current_period_end: null,
+          paused_until: null,
+          cancellation_reason: null,
+          plan: null,
+        },
+      ],
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(getSubscriptionStatus).toHaveBeenCalled());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(screen.queryByText(/^Your plan is paused until/)).toBeNull();
+  });
+
   it.each([
     ['someone who has never paid', { subscriptionInfo: {} }],
     [
@@ -786,6 +826,14 @@ describe('LimitPage — failed renewal', () => {
       {
         subscriber: true,
         passKind: '7d',
+        subscriptionInfo: { email: 'payer@example.com' },
+      },
+    ],
+    [
+      'an Apple subscriber with a lapsed plan',
+      {
+        subscriber: true,
+        planSource: 'apple',
         subscriptionInfo: { email: 'payer@example.com' },
       },
     ],
