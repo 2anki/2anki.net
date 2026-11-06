@@ -1,5 +1,9 @@
 import { vi } from 'vitest';
-import { RetryPdfWithCredentialUseCase } from './RetryPdfWithCredentialUseCase';
+import {
+  LOCKED_PDF_UNREADABLE_REASON,
+  RetryPdfWithCredentialUseCase,
+} from './RetryPdfWithCredentialUseCase';
+import { PDF_UNREADABLE_REASON } from '../jobs/jobFailureReason';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import CardOption from '../../lib/parser/Settings';
 import Workspace from '../../lib/parser/WorkSpace';
@@ -34,6 +38,37 @@ describe('RetryPdfWithCredentialUseCase', () => {
       cardCount: 3,
       name: 'lecture.apkg',
     });
+  });
+
+  it.each([
+    [
+      'a scanned file the image fallback cannot reopen',
+      'pdfinfo_password path=scan.pdf',
+      LOCKED_PDF_UNREADABLE_REASON,
+    ],
+    [
+      'a pdfinfo failure',
+      'pdfinfo_failed code=1 signal=null path=a.pdf stderr=boom',
+      PDF_UNREADABLE_REASON,
+    ],
+    [
+      'pdfinfo failing to start',
+      'pdfinfo_spawn_failed: ENOENT /usr/bin/pdfinfo',
+      PDF_UNREADABLE_REASON,
+    ],
+  ])('answers with readable copy for %s', async (_failure, raw, unreadable) => {
+    mockPrepareDeck.mockRejectedValueOnce(new Error(raw));
+
+    const result = await new RetryPdfWithCredentialUseCase().execute(
+      Buffer.from('%PDF-1.4'),
+      'scan.pdf',
+      'secret',
+      true,
+      new CardOption({}),
+      { location: '/tmp/retry-test' } as Workspace
+    );
+
+    expect(result).toEqual({ unreadable });
   });
 
   it('meters an anonymous pass holder by threading the pass id into PrepareDeck', async () => {

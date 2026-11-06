@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { vi, type Mock } from 'vitest';
 import express from 'express';
 import multer from 'multer';
@@ -560,12 +563,17 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
       allowingLimiter
     );
 
+    const tempPdf = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'retry-credential-')),
+      'upload.pdf'
+    );
+    fs.writeFileSync(tempPdf, '%PDF-1.4');
     const jsonSpy = vi.fn();
     let capturedStatus = 0;
 
     const req = {
       file: {
-        path: '/tmp/does-not-need-to-exist.pdf',
+        path: tempPdf,
         originalname: 'foo.pdf',
       },
       body: {},
@@ -588,6 +596,7 @@ describe('UploadController.retryPdfWithCredential rate limit', () => {
       error: 'needs_password',
       message: 'Invalid credential.',
     });
+    await vi.waitFor(() => expect(fs.existsSync(tempPdf)).toBe(false));
   });
 
   test('returns 400 when no file is provided (before rate limit check)', async () => {

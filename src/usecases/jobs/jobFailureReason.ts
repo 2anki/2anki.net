@@ -162,7 +162,7 @@ const carriesItsOwnReason = (error: unknown): error is Error =>
 // The synchronous upload path turns this sentinel into the enter-a-password
 // state; the async (job) path has no such state, so the job needs the same
 // message pdfinfo's own password error gets, not the generic fallback.
-const isLockedPdfError = (error: unknown): error is Error =>
+export const isLockedPdfError = (error: unknown): error is Error =>
   error instanceof Error &&
   (error.message.startsWith('pdfinfo_password') ||
     isPdfPasswordSentinel(error.message));

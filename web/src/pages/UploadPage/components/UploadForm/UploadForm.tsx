@@ -323,8 +323,9 @@ const PDF_CHOICE_COPY = new Map<
 ]);
 
 // A rate limit and a wrong password both leave the person at the password
-// prompt. Any other failure with a message came after the password worked.
-async function failedAfterUnlock(response: Response): Promise<boolean> {
+// prompt. Any other failure with a message ends the unlock: retyping the
+// password cannot change it.
+async function unlockCannotContinue(response: Response): Promise<boolean> {
   if (response.status === 429) return false;
   const body = await response
     .clone()
@@ -4156,7 +4157,7 @@ function UploadForm({
         await applyConversionSuccess(request, conversionSuccessHandlers);
         return;
       }
-      if (await failedAfterUnlock(request)) {
+      if (await unlockCannotContinue(request)) {
         const failure = await extractErrorMessage(request);
         setLockedPdfInfo(null);
         setLocalError(failure);
@@ -4165,13 +4166,15 @@ function UploadForm({
         return;
       }
 
+      if (request.status === 429) {
+        setPdfUnlockError((await extractErrorMessage(request)).message);
+        setZoneState('lockedPdf');
+        return;
+      }
+
       const newAttemptCount = pdfAttemptCount + 1;
       setPdfAttemptCount(newAttemptCount);
-      setPdfUnlockError(
-        request.status === 429
-          ? (await extractErrorMessage(request)).message
-          : t('upload.form.unlockFailed')
-      );
+      setPdfUnlockError(t('upload.form.unlockFailed'));
       setZoneState('lockedPdf');
     } catch (error) {
       setPdfUnlockError(toFriendlyThrownError(error).message);

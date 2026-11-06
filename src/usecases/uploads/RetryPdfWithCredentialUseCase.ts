@@ -3,6 +3,11 @@ import Workspace from '../../lib/parser/WorkSpace';
 import CardOption from '../../lib/parser/Settings';
 import { isPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
 import { processUploadedPdf } from './processUploadedPdf';
+import {
+  isLockedPdfError,
+  isUnreadablePdfError,
+  PDF_UNREADABLE_REASON,
+} from '../jobs/jobFailureReason';
 import type UsersRepository from '../../data_layer/UsersRepository';
 import {
   ANONYMOUS_CARD_CAP,
@@ -25,10 +30,20 @@ export interface RetryPdfLimitReached {
   cardCount: number;
 }
 
+export interface RetryPdfUnreadable {
+  unreadable: string;
+}
+
 export type RetryPdfOutcome =
   | RetryPdfResult
   | RetryPdfNeedsCredential
-  | RetryPdfLimitReached;
+  | RetryPdfLimitReached
+  | RetryPdfUnreadable;
+
+// The image fallback reopens the PDF without the password, so a scanned file
+// that opened fine still fails here with pdfinfo's raw text.
+export const LOCKED_PDF_UNREADABLE_REASON =
+  "We can't make cards from this locked PDF. Remove the password, save a copy, and upload that.";
 
 export type CardUsage = Pick<
   UsersRepository,
@@ -84,6 +99,12 @@ export class RetryPdfWithCredentialUseCase {
     } catch (error) {
       if (error instanceof Error && isPdfPasswordSentinel(error.message)) {
         return { needsCredential: true, reason: 'wrong_password' };
+      }
+      if (isLockedPdfError(error)) {
+        return { unreadable: LOCKED_PDF_UNREADABLE_REASON };
+      }
+      if (isUnreadablePdfError(error)) {
+        return { unreadable: PDF_UNREADABLE_REASON };
       }
       throw error;
     }
