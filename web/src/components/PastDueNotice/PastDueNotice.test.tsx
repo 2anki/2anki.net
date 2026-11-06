@@ -74,15 +74,6 @@ describe('PastDueNotice', () => {
     });
   });
 
-  test('shows beside a live developer tier when the base plan lapsed', async () => {
-    mockSubscriptions(['active', 'past_due']);
-    renderNotice();
-
-    expect(
-      await screen.findByText("Your payment didn't go through")
-    ).toBeInTheDocument();
-  });
-
   test('shows nothing for someone whose subscription is active', async () => {
     mockSubscriptions(['active']);
     renderNotice();

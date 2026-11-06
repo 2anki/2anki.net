@@ -747,6 +747,7 @@ describe('LimitPage — failed renewal', () => {
       data: {
         user: { id: 1, email: 'test@example.com' },
         features: { limitWallPassFirst },
+        locals: { subscriptionInfo: { email: 'payer@example.com' } },
       },
       isLoading: false,
     } as ReturnType<typeof useUserLocals>);
@@ -772,5 +773,36 @@ describe('LimitPage — failed renewal', () => {
     expect(
       await screen.findByText(/^Your plan is paused until/)
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['someone who has never paid', { subscriptionInfo: {} }],
+    [
+      'a subscriber',
+      { subscriber: true, subscriptionInfo: { email: 'payer@example.com' } },
+    ],
+    [
+      'a pass holder with a lapsed plan',
+      {
+        subscriber: true,
+        passKind: '7d',
+        subscriptionInfo: { email: 'payer@example.com' },
+      },
+    ],
+    [
+      'a lifetime holder',
+      { patreon: true, subscriptionInfo: { email: 'payer@example.com' } },
+    ],
+  ])('reads nothing and shows no notice for %s', async (_who, locals) => {
+    vi.mocked(getSubscriptionStatus).mockClear();
+    mockedUseUserLocals.mockReturnValue({
+      data: { user: { id: 1, email: 'test@example.com' }, locals },
+      isLoading: false,
+    } as unknown as ReturnType<typeof useUserLocals>);
+
+    renderPage();
+
+    expect(getSubscriptionStatus).not.toHaveBeenCalled();
+    expect(screen.queryByText(/^Your plan is paused until/)).toBeNull();
   });
 });

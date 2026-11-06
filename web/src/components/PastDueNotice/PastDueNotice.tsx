@@ -1,10 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { track } from '../../lib/analytics/track';
-import {
-  findLapsedSubscription,
-  useStripeSubscriptions,
-} from '../../lib/hooks/useStripeSubscriptions';
+import { useStripeSubscriptions } from '../../lib/hooks/useStripeSubscriptions';
 import { STRIPE_CUSTOMER_PORTAL_URL } from '../../lib/stripePortal';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './PastDueNotice.module.css';
@@ -17,8 +14,9 @@ export function PastDueNotice({
   enabled = true,
 }: Readonly<{ surface: string; enabled?: boolean }>) {
   const { t } = useTranslation('account');
-  const { subscriptions } = useStripeSubscriptions(enabled);
-  const pastDue = enabled ? findLapsedSubscription(subscriptions) : null;
+  const { view } = useStripeSubscriptions(enabled);
+  const pastDue =
+    enabled && view.kind === 'past_due' ? view.subscription : null;
   const trackedRef = useRef<string | null>(null);
 
   useEffect(() => {

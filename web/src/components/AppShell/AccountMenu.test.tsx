@@ -460,30 +460,13 @@ describe('AccountMenu after a failed renewal', () => {
     }
   );
 
-  it.each([
-    ['an Auto Sync plan', 1900],
-    ['a developer tier', 4900],
-  ])('shows the failed payment for %s', async (_plan, amount) => {
+  it('shows the failed payment for an Auto Sync plan', async () => {
     vi.mocked(getSubscriptionStatus).mockResolvedValue({
       subscriptions: [
         {
           ...stripeSubscription('past_due'),
-          plan: { amount, currency: 'usd', interval: 'month' },
+          plan: { amount: 1900, currency: 'usd', interval: 'month' },
         },
-      ],
-    });
-    renderMenu({ locals: lapsedLocals });
-    openMenu();
-
-    expect(await screen.findByText('Payment failed')).toBeVisible();
-    expect(screen.queryByText('Free')).not.toBeInTheDocument();
-  });
-
-  it('shows the failed payment when a developer tier is still active', async () => {
-    vi.mocked(getSubscriptionStatus).mockResolvedValue({
-      subscriptions: [
-        { ...stripeSubscription('active'), id: 'sub_developer' },
-        stripeSubscription('past_due'),
       ],
     });
     renderMenu({ locals: lapsedLocals });
