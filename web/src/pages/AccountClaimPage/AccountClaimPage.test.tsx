@@ -76,7 +76,7 @@ describe('AccountClaimPage', () => {
       ).toBeTruthy();
     });
     expect(
-      screen.getByText(/confirm your email with a sign-in link/)
+      screen.getByText(/sign out and confirm your email with a sign-in link/)
     ).toBeTruthy();
   });
 

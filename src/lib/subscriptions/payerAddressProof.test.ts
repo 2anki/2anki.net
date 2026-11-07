@@ -291,7 +291,15 @@ describe('payerAddressIsProven', () => {
       await addAccount(false, AFTER);
     });
 
-    it('is true for a past-due plan the account cannot use', async () => {
+    it('is true for a plan the account cannot use', async () => {
+      await expect(isLockedOutOfPlan(database, ADDRESS)).resolves.toBe(true);
+    });
+
+    it('is true for an unverified account older only than a linked plan it cannot prove', async () => {
+      await database('subscriptions')
+        .where({ email: ADDRESS })
+        .update({ linked_email: OWNER_ADDRESS, active: true });
+
       await expect(isLockedOutOfPlan(database, ADDRESS)).resolves.toBe(true);
     });
 

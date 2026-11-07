@@ -63,3 +63,34 @@ describe('SubscriptionRecoveryNotificationsRepository — generated SQL shape', 
     pgKnex.destroy();
   });
 });
+
+describe('SubscriptionRecoveryNotificationsRepository.forgetNotified', () => {
+  it('forgets a claim without touching other addresses', async () => {
+    const database = knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await database.schema.createTable(
+      'subscription_recovery_notifications',
+      (t) => {
+        t.increments('id').primary();
+        t.text('email_hash').notNullable();
+        t.timestamp('notified_at').defaultTo(database.fn.now());
+      }
+    );
+    const repo = new SubscriptionRecoveryNotificationsRepository(database);
+    await repo.recordNotified('hash-a');
+    await repo.recordNotified('hash-b');
+
+    await repo.forgetNotified('hash-a');
+
+    await expect(repo.wasNotifiedSince('hash-a', new Date(0))).resolves.toBe(
+      false
+    );
+    await expect(repo.wasNotifiedSince('hash-b', new Date(0))).resolves.toBe(
+      true
+    );
+    await database.destroy();
+  });
+});

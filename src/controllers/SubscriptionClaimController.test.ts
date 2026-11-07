@@ -133,7 +133,7 @@ describe('SubscriptionClaimController.confirm', () => {
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({
       message: expect.stringContaining(
-        'confirm your email with a sign-in link'
+        'sign out and confirm your email with a sign-in link'
       ),
     });
   });

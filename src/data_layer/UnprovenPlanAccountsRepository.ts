@@ -4,9 +4,10 @@ export interface IUnprovenPlanAccountsRepository {
   findCandidateEmails(): Promise<string[]>;
 }
 
-// Unverified accounts on the payer address of a row linked to nobody. A row with
-// a link leaves out a person who still has the plan on that account. This only
-// narrows the list, past-due and paused plans included: isLockedOutOfPlan decides.
+// Unverified accounts on the payer address of an active plan linked to nobody. A
+// row with a link leaves out a person who still has the plan on that account. A
+// past-due or paused plan is out too: confirming would not bring it back.
+// isLockedOutOfPlan decides from here.
 export const buildCandidateEmailsQuery = (database: Knex): Knex.QueryBuilder =>
   database('users')
     .join('subscriptions', function joinPayerRow() {
@@ -17,6 +18,7 @@ export const buildCandidateEmailsQuery = (database: Knex): Knex.QueryBuilder =>
       );
     })
     .where('users.email_verified', false)
+    .where('subscriptions.active', true)
     .whereNull('subscriptions.linked_email')
     .select('users.email');
 

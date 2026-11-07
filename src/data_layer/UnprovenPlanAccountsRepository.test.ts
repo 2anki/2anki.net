@@ -13,6 +13,7 @@ describe('buildCandidateEmailsQuery SQL', () => {
       'lower(trim(users.email)) = lower(trim(subscriptions.email))'
     );
     expect(sql).toContain('"users"."email_verified" = false');
+    expect(sql).toContain('"subscriptions"."active" = true');
     expect(sql).toContain('"subscriptions"."linked_email" is null');
   });
 });
@@ -74,11 +75,11 @@ describe('UnprovenPlanAccountsRepository', () => {
     );
   });
 
-  it('returns unverified accounts on a row linked to nobody, past-due and paused plans included', async () => {
+  it('returns only unverified accounts on an active plan linked to nobody', async () => {
     const emails = await new UnprovenPlanAccountsRepository(
       database
     ).findCandidateEmails();
 
-    expect(emails.sort()).toEqual(['ended@x.test', 'unlinked@x.test']);
+    expect(emails).toEqual(['unlinked@x.test']);
   });
 });

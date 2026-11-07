@@ -41,7 +41,7 @@ class SubscriptionLifecycleController {
       if (applied.length === 0) {
         return res.status(422).json({
           message:
-            "No active subscription found for this account. If this email pays for a plan, confirm it with a sign-in link. If you paid with a different email, use the form below to connect it — we'll send a confirmation link to that inbox.",
+            "No active subscription found for this account. If this email pays for a plan, sign out and confirm it with a sign-in link. If you paid with a different email, use the form below to connect it — we'll send a confirmation link to that inbox.",
         });
       }
 
