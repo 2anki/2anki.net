@@ -1,9 +1,10 @@
 import knex, { Knex } from 'knex';
 
 import {
+  accountOwnsAddress,
   holdsUnprovenPlan,
   payerAddressIsProven,
-  stripeAddressIsOpen,
+  stripeReachOf,
 } from './payerAddressProof';
 
 const ADDRESS = 'payer@example.com';
@@ -34,6 +35,7 @@ describe('payerAddressIsProven', () => {
       t.text('email').notNullable();
       t.boolean('email_verified').notNullable().defaultTo(false);
       t.text('created_at').nullable();
+      t.text('stripe_customer_id').nullable();
     });
   });
 
@@ -47,6 +49,7 @@ describe('payerAddressIsProven', () => {
     created_at?: string | null;
     active?: boolean;
     stripeCreated?: number;
+    status?: string;
   }) =>
     database('subscriptions').insert({
       email: ADDRESS,
@@ -57,6 +60,7 @@ describe('payerAddressIsProven', () => {
       payload: JSON.stringify({
         id: 'sub_1',
         created: fields.stripeCreated,
+        status: fields.status,
         metadata:
           fields.metadataUserId == null
             ? {}
@@ -195,45 +199,89 @@ describe('payerAddressIsProven', () => {
     }) as unknown as Knex;
 
     await expect(payerAddressIsProven(stubbed, ADDRESS)).resolves.toBe(true);
-    await expect(stripeAddressIsOpen(stubbed, ADDRESS)).resolves.toBe(false);
+    await expect(accountOwnsAddress(stubbed, ADDRESS)).resolves.toBe(false);
   });
 
-  describe('stripeAddressIsOpen', () => {
+  describe('accountOwnsAddress', () => {
     it('is open when no account sits on the address', async () => {
-      await expect(stripeAddressIsOpen(database, ADDRESS)).resolves.toBe(true);
+      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(true);
     });
 
     it('is open for a verified account with no row', async () => {
       await addAccount(true, AFTER);
 
-      await expect(stripeAddressIsOpen(database, ADDRESS)).resolves.toBe(true);
+      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(true);
     });
 
     it('is closed for an unverified account with no row', async () => {
       await addAccount(false, BEFORE);
 
-      await expect(stripeAddressIsOpen(database, ADDRESS)).resolves.toBe(false);
+      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(false);
     });
 
     it('is open for an unverified account older than an unlinked plan', async () => {
       await addRow({});
       await addAccount(false, BEFORE);
 
-      await expect(stripeAddressIsOpen(database, ADDRESS)).resolves.toBe(true);
+      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(true);
     });
 
     it('stays closed when a checkout of its own names a newer account', async () => {
       const id = await addAccount(false, AFTER);
       await addRow({ metadataUserId: String(id) });
 
-      await expect(stripeAddressIsOpen(database, ADDRESS)).resolves.toBe(false);
+      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(false);
     });
 
     it('is closed on a row linked to someone else', async () => {
       await addRow({ linked_email: OWNER_ADDRESS });
       await addAccount(false, BEFORE);
 
-      await expect(stripeAddressIsOpen(database, ADDRESS)).resolves.toBe(false);
+      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(false);
+    });
+  });
+
+  describe('stripeReachOf', () => {
+    it('searches the address for a verified account', async () => {
+      await addAccount(true, AFTER);
+
+      await expect(stripeReachOf(database, ADDRESS)).resolves.toEqual({
+        byAddress: true,
+        customerId: null,
+      });
+    });
+
+    it('searches the address when no account sits on it', async () => {
+      await expect(stripeReachOf(database, ADDRESS)).resolves.toEqual({
+        byAddress: true,
+        customerId: null,
+      });
+    });
+
+    it('gives an unverified account only its stored customer', async () => {
+      const id = await addAccount(false, BEFORE);
+      await addRow({});
+      await database('users')
+        .where({ id })
+        .update({ stripe_customer_id: 'cus_own' });
+
+      await expect(stripeReachOf(database, ADDRESS)).resolves.toEqual({
+        byAddress: false,
+        customerId: 'cus_own',
+      });
+    });
+
+    it('gives an unverified account nothing on an address it cannot prove', async () => {
+      const id = await addAccount(false, AFTER);
+      await addRow({ linked_email: OWNER_ADDRESS });
+      await database('users')
+        .where({ id })
+        .update({ stripe_customer_id: 'cus_stamped' });
+
+      await expect(stripeReachOf(database, ADDRESS)).resolves.toEqual({
+        byAddress: false,
+        customerId: null,
+      });
     });
   });
 
@@ -245,8 +293,26 @@ describe('payerAddressIsProven', () => {
       await expect(holdsUnprovenPlan(database, ADDRESS)).resolves.toBe(true);
     });
 
-    it('ignores a plan that has ended', async () => {
-      await addRow({ linked_email: OWNER_ADDRESS, active: false });
+    it('finds a past-due plan, which stores active false', async () => {
+      await addRow({ active: false, status: 'past_due' });
+      await addAccount(false, AFTER);
+
+      await expect(holdsUnprovenPlan(database, ADDRESS)).resolves.toBe(true);
+    });
+
+    it('finds an ended plan that stays linked to someone else', async () => {
+      await addRow({
+        linked_email: OWNER_ADDRESS,
+        active: false,
+        status: 'canceled',
+      });
+      await addAccount(false, AFTER);
+
+      await expect(holdsUnprovenPlan(database, ADDRESS)).resolves.toBe(true);
+    });
+
+    it('ignores an ended unlinked plan, which a new checkout takes over', async () => {
+      await addRow({ active: false, status: 'canceled' });
       await addAccount(false, AFTER);
 
       await expect(holdsUnprovenPlan(database, ADDRESS)).resolves.toBe(false);

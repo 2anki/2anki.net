@@ -15,6 +15,7 @@ export type PurchaseBlockCode =
   | 'already_lifetime'
   | 'already_unlimited'
   | 'already_subscribed'
+  | 'confirm_address'
   | 'billed_through_apple'
   | 'pass_still_active';
 
@@ -55,8 +56,8 @@ export const resolvePurchaseBlock = (
   // but a new one would write over the same row, whoever owns it.
   if (held.unprovenSubscription) {
     return block(
-      'already_subscribed',
-      'You already have an active subscription.'
+      'confirm_address',
+      'A plan is already billed to this email. Confirm it with a sign-in link, then try again.'
     );
   }
   // Auto Sync replaces a Pro subscription in place (AutoSyncCheckoutUseCase),

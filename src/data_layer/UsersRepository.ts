@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import { randomUUID } from 'node:crypto';
 import type { AdClickAttribution } from '../lib/attribution/adClick';
 
 import Users from './public/Users';
@@ -7,7 +8,10 @@ import { isNewMonth } from '../lib/User/isNewMonth';
 import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 import DeletedUserUsageRepository from './DeletedUserUsageRepository';
 import { emailHash } from '../lib/emailHash';
-import { payerAddressIsProven } from '../lib/subscriptions/payerAddressProof';
+import {
+  accountOwnsAddress,
+  payerAddressIsProven,
+} from '../lib/subscriptions/payerAddressProof';
 import type { SignupCountryCount } from '../types/ops/BusinessMetrics';
 
 export type { SignupCountryCount };
@@ -439,7 +443,7 @@ class UsersRepository {
         // an address with no account reads as proven. Confirming the new
         // address says nothing about the old one, so an unproven account
         // leaves its plan and any customer a webhook stamped on it behind.
-        const ownsOldAddress = await payerAddressIsProven(trx, oldEmail);
+        const ownsOldAddress = await accountOwnsAddress(trx, oldEmail);
         await trx(this.table)
           .where({ id: params.userId })
           .update({
@@ -515,7 +519,34 @@ class UsersRepository {
     });
   }
 
+  // Someone just proved this mailbox. An account that sat on it without proof
+  // may not be theirs, so whoever set it up loses their sessions and password,
+  // or the plan this confirms would go to them too. The mailbox owner signs in
+  // again with a link or a reset.
   markEmailVerified(userId: string) {
+    return this.database.transaction(async (trx) => {
+      const user = await trx(this.table)
+        .where({ id: userId })
+        .select('email', 'email_verified')
+        .first();
+      const heldWithoutProof =
+        user != null &&
+        !user.email_verified &&
+        !(await payerAddressIsProven(trx, user.email));
+      if (!heldWithoutProof) {
+        return trx(this.table)
+          .where({ id: userId })
+          .update({ email_verified: true });
+      }
+      await trx('access_tokens').where({ owner: userId }).del();
+      return trx(this.table)
+        .where({ id: userId })
+        .update({ email_verified: true, password: randomUUID() });
+    });
+  }
+
+  // The reset already replaced the password and ended every session.
+  markEmailVerifiedAfterReset(userId: string) {
     return this.database(this.table)
       .where({ id: userId })
       .update({ email_verified: true });

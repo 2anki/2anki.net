@@ -39,6 +39,26 @@ describe('DeleteAccountPage', () => {
     resetPendingUploadStoreForTests();
   });
 
+  it('shows the refusal and stays signed in when the account was not deleted', async () => {
+    const refusal = 'A plan is billed to this email.';
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ message: refusal }), { status: 409 })
+        )
+    );
+    const setError = vi.fn();
+    render(<DeleteAccountPage setError={setError} />);
+
+    confirmDeletion();
+
+    await waitFor(() => expect(setError).toHaveBeenCalled());
+    expect(setError.mock.calls[0][0]).toMatchObject({ message: refusal });
+    expect(location.href).toBe('');
+  });
+
   it('forgets the deck a signed-out pass bought on this device', async () => {
     vi.stubGlobal('indexedDB', undefined);
     await getLastDeckStore().save(keptDeck);

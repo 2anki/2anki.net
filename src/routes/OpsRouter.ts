@@ -582,14 +582,8 @@ const OpsRouter = () => {
     new DeleteAccountByEmailUseCase({
       accounts: new AccountDeletionPreviewRepository(database),
       entitlements: {
-        hasActiveSubscription: async (email) =>
-          (await opsAuthService.getIsSubscriber(database, email)) ||
-          (await opsAuthService.holdsUnprovenPlan(database, email)) ||
-          (
-            await SubscriptionService.findActiveStripeSubscriptionsForAddress(
-              email
-            )
-          ).length > 0,
+        hasActiveSubscription: (email) =>
+          SubscriptionService.addressHoldsPlan(email),
         findActivePass: (userId, now) =>
           new UserPassRepository(database).findActive(userId, now),
       },

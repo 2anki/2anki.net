@@ -14,6 +14,13 @@ interface Prop {
   setError: ErrorHandlerType;
 }
 
+const refusalMessage = async (response: Response): Promise<string> => {
+  const body = await response.json().catch(() => null);
+  return typeof body?.message === 'string'
+    ? body.message
+    : 'Failed to delete account';
+};
+
 export function DeleteAccountPage({ setError }: Readonly<Prop>) {
   const { t } = useTranslation('accountx');
   const [count, setCount] = React.useState(0);
@@ -29,7 +36,10 @@ export function DeleteAccountPage({ setError }: Readonly<Prop>) {
 
     setIsDeleting(true);
     try {
-      await get2ankiApi().deleteAccount(count === 2);
+      const response = await get2ankiApi().deleteAccount(count === 2);
+      if (!response.ok) {
+        throw new Error(await refusalMessage(response));
+      }
       localStorage.clear();
       sessionStorage.clear();
       await forgetPendingUpload();

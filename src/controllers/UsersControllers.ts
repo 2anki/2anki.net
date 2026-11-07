@@ -672,10 +672,10 @@ class UsersController {
 
       // This account may not cancel a plan on an address it has not proven, and
       // deleting past it would leave that plan billing with no account.
-      if (await this.authService.holdsUnprovenPlan(this.db, user.email)) {
+      if (await SubscriptionService.hasPlanOutOfReach(user.email)) {
         return res.status(409).json({
           message:
-            'A plan is paid from this email address. Sign in with an email link to confirm it, then delete your account.',
+            'A plan is billed to this email. Confirm it with a sign-in link, then delete your account.',
         });
       }
 
@@ -1565,14 +1565,16 @@ class UsersController {
             .status(400)
             .json({ message: 'This link is invalid or has expired.' });
         }
-        const jwtToken = await this.authService.newJWTToken(user.id);
-        await this.authService.persistToken(jwtToken, user.id.toString());
-        await this.userService.updateLastLoginAt(user.id.toString());
         recordUnverifiedSignin(user, 'magic_link');
+        // Before the new session exists: confirming an address can end the
+        // sessions an unproven account already held.
         await this.userService.markEmailVerified(
           user.id.toString(),
           'magic_link'
         );
+        const jwtToken = await this.authService.newJWTToken(user.id);
+        await this.authService.persistToken(jwtToken, user.id.toString());
+        await this.userService.updateLastLoginAt(user.id.toString());
         res.cookie('token', jwtToken, sessionCookieOptions());
         const mcpReturn = takeMcpLoginReturn(req, res);
         const redirect =

@@ -815,6 +815,50 @@ describe('UsersController.requestMagicLink', () => {
   });
 });
 
+describe('UsersController.verifyMagicLink — session order', () => {
+  it('confirms the address before it creates the new session', async () => {
+    const order: string[] = [];
+    const userService = {
+      verifyMagicToken: vi
+        .fn()
+        .mockResolvedValue({ userId: 5, purpose: 'login' }),
+      getUserById: vi
+        .fn()
+        .mockResolvedValue({ id: 5, email: 'al@example.com' }),
+      updateLastLoginAt: vi.fn().mockResolvedValue(undefined),
+      markEmailVerified: vi.fn(async () => {
+        order.push('confirmed');
+        return 1;
+      }),
+    } as unknown as UsersService;
+    const authService = {
+      newJWTToken: vi.fn().mockResolvedValue('jwt-order'),
+      persistToken: vi.fn(async () => {
+        order.push('session');
+      }),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const json = vi.fn();
+    const res = {
+      json,
+      status: vi.fn().mockReturnValue({ json }),
+      cookie: vi.fn(),
+    } as unknown as express.Response;
+
+    await controller.verifyMagicLink(
+      { params: { token: 'valid-tok' } } as unknown as express.Request,
+      res,
+      vi.fn()
+    );
+
+    expect(order).toEqual(['confirmed', 'session']);
+  });
+});
+
 describe('UsersController.verifyMagicLink', () => {
   const buildVerifyController = (overrides?: {
     verifyMagicToken?: Mock;
@@ -1815,6 +1859,7 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
   >;
   const SubscriptionServiceMock = SubscriptionService as unknown as {
     cancelUserSubscriptions: Mock;
+    hasPlanOutOfReach: Mock;
   };
 
   beforeEach(() => {
@@ -1822,13 +1867,15 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
     SubscriptionServiceMock.cancelUserSubscriptions = vi
       .fn()
       .mockResolvedValue(undefined);
+    SubscriptionServiceMock.hasPlanOutOfReach = vi
+      .fn()
+      .mockResolvedValue(false);
   });
 
   const buildDeleteController = (overrides?: {
     refreshToken?: string | null;
     revokeAppleToken?: Mock;
     deleteUser?: Mock;
-    holdsUnprovenPlan?: boolean;
   }) => {
     MockedOauthIdentitiesRepo.prototype.findRefreshTokenByUserAndProvider = vi
       .fn()
@@ -1844,9 +1891,6 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
     const authService = {
       revokeAppleToken:
         overrides?.revokeAppleToken ?? vi.fn().mockResolvedValue(true),
-      holdsUnprovenPlan: vi
-        .fn()
-        .mockResolvedValue(overrides?.holdsUnprovenPlan ?? false),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -1943,11 +1987,9 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
   });
 
   it('refuses with 409 and cancels nothing over a plan the account has not proven', async () => {
+    SubscriptionServiceMock.hasPlanOutOfReach.mockResolvedValue(true);
     const deleteUser = vi.fn().mockResolvedValue(undefined);
-    const { controller } = buildDeleteController({
-      deleteUser,
-      holdsUnprovenPlan: true,
-    });
+    const { controller } = buildDeleteController({ deleteUser });
     const res = buildDeleteRes();
 
     await controller.deleteAccount(
@@ -2399,6 +2441,7 @@ describe('UsersController.loginWithNotion', () => {
         vi.fn().mockResolvedValue([{ id: 11 }]),
       updateLastLoginAt:
         overrides?.updateLastLoginAt ?? vi.fn().mockResolvedValue(undefined),
+      markEmailVerified: vi.fn().mockResolvedValue(1),
     } as unknown as UsersService;
     const authService = {
       loginWithNotion:
@@ -2461,6 +2504,31 @@ describe('UsersController.loginWithNotion', () => {
       'notion_oauth',
       expect.objectContaining({ method: 'notion_oauth' })
     );
+  });
+
+  it('leaves the address unconfirmed for a Notion sign-in', async () => {
+    const { controller, userService } = buildNotionController({
+      getUserFrom: vi
+        .fn()
+        .mockResolvedValue({ id: 12, email: 'existing@example.com' }),
+    });
+    const res = buildNotionRes();
+
+    await controller.loginWithNotion(
+      {
+        query: { code: 'notion-code', state: 'login:notion-state' },
+        cookies: { notion_login_state: 'notion-state' },
+        headers: {},
+      } as unknown as express.Request,
+      res
+    );
+
+    expect(res.cookie).toHaveBeenCalledWith(
+      'token',
+      'notion-jwt',
+      expect.anything()
+    );
+    expect(userService.markEmailVerified).not.toHaveBeenCalled();
   });
 
   it('does not call register for an existing Notion user', async () => {

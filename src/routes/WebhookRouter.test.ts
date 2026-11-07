@@ -31,6 +31,7 @@ const {
   mockSessionsRetrieve,
   mockUpdateStoreSubscription,
   mockResolveAccountForSubscription,
+  mockDeactivateSubscriptionRow,
 } = vi.hoisted(() => ({
   mockCustomersRetrieve: vi.fn(),
   mockSessionsRetrieve: vi.fn(),
@@ -38,6 +39,7 @@ const {
     .fn()
     .mockResolvedValue({ status: 'linked', resolvedUserId: 1 }),
   mockResolveAccountForSubscription: vi.fn().mockResolvedValue(null),
+  mockDeactivateSubscriptionRow: vi.fn().mockResolvedValue(1),
 }));
 
 vi.mock('../lib/integrations/stripe', () => ({
@@ -54,6 +56,7 @@ vi.mock('../lib/integrations/stripe', () => ({
     e == null ? null : e.toLowerCase().trim(),
   updateStoreSubscription: mockUpdateStoreSubscription,
   resolveAccountForSubscription: mockResolveAccountForSubscription,
+  deactivateSubscriptionRow: mockDeactivateSubscriptionRow,
 }));
 
 vi.mock('../data_layer', () => ({ getDatabase: vi.fn() }));
@@ -1189,7 +1192,7 @@ describe('WebhookRouter — customer.subscription.deleted', () => {
     expect(mockUpdateStoreSubscription).toHaveBeenCalled();
   });
 
-  it('skips a customer that resolves to no account at all', async () => {
+  it('only ends the row of a customer that resolves to no account at all', async () => {
     mockGetByEmail.mockResolvedValue(null);
     mockResolveAccountForSubscription.mockResolvedValue(null);
 
@@ -1197,6 +1200,7 @@ describe('WebhookRouter — customer.subscription.deleted', () => {
 
     expect(res.status).toBe(200);
     expect(mockUpdateStoreSubscription).not.toHaveBeenCalled();
+    expect(mockDeactivateSubscriptionRow).toHaveBeenCalled();
   });
 
   it('deactivates the developer tier even when no account resolves', async () => {

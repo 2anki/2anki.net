@@ -170,6 +170,21 @@ const stampCustomerId = async (
     .update({ stripe_customer_id: customerId });
 };
 
+// A plan that ended with no account to resolve still has to read as ended, or
+// the row keeps blocking checkout and grants access once an address is proven.
+// Keyed on the id, so it cannot touch a newer plan that took over the row.
+export const deactivateSubscriptionRow = (
+  db: Knex,
+  subscription: StripeTypes.Subscription
+) =>
+  db('subscriptions')
+    .whereRaw("payload->>'id' = ?", [subscription.id])
+    .update({
+      active: false,
+      payload: JSON.stringify(subscription),
+      updated_at: new Date(),
+    });
+
 export const updateStoreSubscription = async (
   db: Knex,
   customer: StripeTypes.Customer,

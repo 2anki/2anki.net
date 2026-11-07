@@ -4,6 +4,7 @@ import knexLib, { Knex } from 'knex';
 import type StripeTypes from 'stripe';
 
 import {
+  deactivateSubscriptionRow,
   resolveAccountForSubscription,
   updateStoreSubscription,
 } from './stripe';
@@ -95,6 +96,23 @@ describe('a Stripe event for a payer address held by an unverified account', () 
       .select('id');
     expect(result.resolvedUserId).toBe(1);
     expect(stamped).toEqual([{ id: 1 }]);
+  });
+
+  it('ends the row of a plan that ended with no account resolved', async () => {
+    await deactivateSubscriptionRow(db, subscription);
+
+    const row = await db('subscriptions').where({ email: PAYER }).first();
+    expect(Boolean(row.active)).toBe(false);
+  });
+
+  it('leaves a newer plan on the row alone', async () => {
+    await deactivateSubscriptionRow(db, {
+      ...subscription,
+      id: 'sub_older',
+    } as StripeTypes.Subscription);
+
+    const row = await db('subscriptions').where({ email: PAYER }).first();
+    expect(Boolean(row.active)).toBe(true);
   });
 
   it('resolves to a verified account on the address as before', async () => {

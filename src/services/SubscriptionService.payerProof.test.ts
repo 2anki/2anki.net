@@ -56,6 +56,7 @@ describe('SubscriptionService and an address the account has not proven', () => 
       t.text('email').notNullable();
       t.boolean('email_verified').notNullable().defaultTo(false);
       t.text('created_at').nullable();
+      t.text('stripe_customer_id').nullable();
     });
     await database('subscriptions').insert({
       email: PAYER,
@@ -194,6 +195,103 @@ describe('SubscriptionService and an address the account has not proven', () => 
 
     expect(subs).toEqual([]);
     expect(stripe.customers.list).not.toHaveBeenCalled();
+  });
+
+  it('lets an unverified account reach a plan of its own by its stored customer', async () => {
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({ linked_email: null, created_at: '2026-04-01T00:00:00.000Z' });
+    await database('users')
+      .where({ email: PAYER })
+      .update({ stripe_customer_id: 'cus_own' });
+
+    const subs = await SubscriptionService.findRecentStripeSubscriptions(PAYER);
+
+    expect(subs).toEqual([liveSubscription]);
+    expect(stripe.customers.list).not.toHaveBeenCalled();
+    expect(stripe.subscriptions.list).toHaveBeenCalledWith({
+      customer: 'cus_own',
+      status: 'all',
+      limit: 10,
+    });
+  });
+
+  it('reads a stored customer Stripe no longer has as no plans', async () => {
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({ linked_email: null, created_at: '2026-04-01T00:00:00.000Z' });
+    await database('users')
+      .where({ email: PAYER })
+      .update({ stripe_customer_id: 'cus_gone' });
+    stripe.subscriptions.list.mockRejectedValue(
+      Object.assign(new Error('No such customer'), { code: 'resource_missing' })
+    );
+
+    const subs = await SubscriptionService.findRecentStripeSubscriptions(PAYER);
+
+    expect(subs).toEqual([]);
+  });
+
+  it('flags a plan on the address this account cannot cancel', async () => {
+    await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
+      true
+    );
+  });
+
+  it('flags nothing once the plans on the address are all ended', async () => {
+    stripe.subscriptions.list.mockResolvedValue({
+      data: [{ ...liveSubscription, status: 'canceled' }],
+    });
+
+    await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
+      false
+    );
+  });
+
+  it('flags nothing for a plan the account can cancel itself', async () => {
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({ linked_email: null, created_at: '2026-04-01T00:00:00.000Z' });
+    await database('users')
+      .where({ email: PAYER })
+      .update({ stripe_customer_id: 'cus_own' });
+
+    await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
+      false
+    );
+  });
+
+  it('flags nothing for a verified account, whose cancel reaches everything', async () => {
+    await database('users')
+      .where({ email: PAYER })
+      .update({ email_verified: true });
+
+    await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
+      false
+    );
+  });
+
+  it('shows ops the plan on an unproven address', async () => {
+    await expect(SubscriptionService.addressHoldsPlan(PAYER)).resolves.toBe(
+      true
+    );
+  });
+
+  it('shows ops a plan Stripe holds with no active row', async () => {
+    await database('subscriptions').update({ active: false });
+
+    await expect(SubscriptionService.addressHoldsPlan(PAYER)).resolves.toBe(
+      true
+    );
+  });
+
+  it('shows ops nothing on an address with no plan', async () => {
+    await database('subscriptions').update({ active: false });
+    stripe.subscriptions.list.mockResolvedValue({ data: [] });
+
+    await expect(SubscriptionService.addressHoldsPlan(PAYER)).resolves.toBe(
+      false
+    );
   });
 
   it('lets ops end every live plan on a typed address', async () => {

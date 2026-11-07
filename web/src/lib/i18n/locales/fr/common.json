@@ -1020,6 +1020,7 @@
     "conflict": {
       "already_lifetime": "Tu as déjà un accès à vie — pas besoin d'acheter à nouveau.",
       "already_subscribed": "Tu as déjà un abonnement actif — pas besoin d'acheter à nouveau.",
+      "confirm_address": "Un forfait est déjà facturé à cet e-mail. Confirme-le avec un lien de connexion, puis réessaie.",
       "already_unlimited": "Tu as déjà un accès illimité — pas besoin d'acheter à nouveau.",
       "already_unlimited_until": "Tu as un accès illimité jusqu'au {{date}}.",
       "billed_through_apple": "Ton forfait est facturé via Apple. Gère-le dans tes abonnements Apple.",

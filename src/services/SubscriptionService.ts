@@ -6,7 +6,7 @@ import Subscriptions from '../data_layer/public/Subscriptions';
 import { isPaused } from '../lib/subscriptions/isPaused';
 import {
   payerAddressIsProven,
-  stripeAddressIsOpen,
+  stripeReachOf,
 } from '../lib/subscriptions/payerAddressProof';
 
 export type CancelMode = 'immediate' | 'period_end';
@@ -97,13 +97,6 @@ async function collectLinkedPayerEmails(normalized: string): Promise<string[]> {
     .map((row) => row.email.toLowerCase());
 }
 
-async function collectCandidateEmails(userEmail: string): Promise<string[]> {
-  const normalized = userEmail.toLowerCase();
-  const linked = await collectLinkedPayerEmails(normalized);
-  const open = await stripeAddressIsOpen(getDatabase(), normalized);
-  return [...new Set(open ? [normalized, ...linked] : linked)];
-}
-
 async function findStripeCustomersByEmail(
   stripe: ReturnType<typeof getStripe>,
   email: string
@@ -150,23 +143,92 @@ async function listStripeSubscriptionsAt(
   return subs;
 }
 
+async function listStripeSubscriptionsOfCustomer(
+  customerId: string,
+  status: StripeTypes.SubscriptionListParams['status']
+): Promise<StripeTypes.Subscription[]> {
+  try {
+    const list = await getStripe().subscriptions.list({
+      customer: customerId,
+      status,
+      limit: 10,
+    });
+    return list.data;
+  } catch (error) {
+    if ((error as { code?: string }).code === 'resource_missing') {
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function listStripeSubscriptionsFor(
+  userEmail: string,
+  status: StripeTypes.SubscriptionListParams['status']
+): Promise<StripeTypes.Subscription[]> {
+  const normalized = userEmail.toLowerCase();
+  const linked = await collectLinkedPayerEmails(normalized);
+  const reach = await stripeReachOf(getDatabase(), normalized);
+  const addresses = reach.byAddress ? [normalized, ...linked] : linked;
+  const atAddresses = await listStripeSubscriptionsAt(
+    [...new Set(addresses)],
+    status
+  );
+  if (reach.customerId == null) {
+    return atAddresses;
+  }
+  const ofCustomer = await listStripeSubscriptionsOfCustomer(
+    reach.customerId,
+    status
+  );
+  const seen = new Set(atAddresses.map((sub) => sub.id));
+  return [...atAddresses, ...ofCustomer.filter((sub) => !seen.has(sub.id))];
+}
+
 export class SubscriptionService {
-  static async findActiveStripeSubscriptions(
+  static findActiveStripeSubscriptions(
     userEmail: string
   ): Promise<StripeTypes.Subscription[]> {
-    return listStripeSubscriptionsAt(
-      await collectCandidateEmails(userEmail),
-      'active'
+    return listStripeSubscriptionsFor(userEmail, 'active');
+  }
+
+  static findRecentStripeSubscriptions(
+    userEmail: string
+  ): Promise<StripeTypes.Subscription[]> {
+    return listStripeSubscriptionsFor(userEmail, 'all');
+  }
+
+  // Deleting the account would leave these billing with nobody to stop them:
+  // open plans on its address that this account may not cancel.
+  static async hasPlanOutOfReach(userEmail: string): Promise<boolean> {
+    const normalized = userEmail.toLowerCase();
+    const reach = await stripeReachOf(getDatabase(), normalized);
+    if (reach.byAddress) {
+      return false;
+    }
+    const reachable = await this.findRecentStripeSubscriptions(normalized);
+    const reachableIds = new Set(reachable.map((sub) => sub.id));
+    const atAddress = await listStripeSubscriptionsAt([normalized], 'all');
+    return atAddress.some(
+      (sub) => sub.status !== 'canceled' && !reachableIds.has(sub.id)
     );
   }
 
-  static async findRecentStripeSubscriptions(
-    userEmail: string
-  ): Promise<StripeTypes.Subscription[]> {
-    return listStripeSubscriptionsAt(
-      await collectCandidateEmails(userEmail),
-      'all'
-    );
+  // The ops delete preview: anything live on a typed address, proven or not.
+  static async addressHoldsPlan(address: string): Promise<boolean> {
+    const normalized = address.toLowerCase();
+    const row = await getDatabase()('subscriptions')
+      .where(function () {
+        this.where({ email: normalized }).orWhere({ linked_email: normalized });
+      })
+      .andWhere({ active: true })
+      .select('id')
+      .first();
+    if (row != null) {
+      return true;
+    }
+    const subs = await this.findActiveStripeSubscriptionsForAddress(normalized);
+    return subs.length > 0;
   }
 
   // For an address typed by someone other than its account: the claim flow

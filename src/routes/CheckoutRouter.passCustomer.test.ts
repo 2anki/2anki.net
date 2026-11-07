@@ -185,9 +185,13 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
     });
     await database('subscriptions').insert({
       email: ACCOUNT_EMAIL,
-      linked_email: 'owner@example.com',
+      linked_email: null,
       active: false,
-      payload: JSON.stringify({ id: 'sub_1', metadata: {} }),
+      payload: JSON.stringify({
+        id: 'sub_1',
+        status: 'canceled',
+        metadata: {},
+      }),
       created_at: '2026-02-01T00:00:00.000Z',
     });
     const token = await signIn(database);

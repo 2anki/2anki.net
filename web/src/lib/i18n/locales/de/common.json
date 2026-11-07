@@ -1020,6 +1020,7 @@
     "conflict": {
       "already_lifetime": "Du hast bereits lebenslangen Zugang — du musst nichts erneut kaufen.",
       "already_subscribed": "Du hast bereits ein aktives Abo — du musst nichts erneut kaufen.",
+      "confirm_address": "Für diese E-Mail-Adresse läuft schon ein Plan. Bestätige sie mit einem Anmeldelink und versuch es dann noch einmal.",
       "already_unlimited": "Du hast bereits unbegrenzten Zugang — du musst nichts erneut kaufen.",
       "already_unlimited_until": "Du hast unbegrenzten Zugang bis zum {{date}}.",
       "billed_through_apple": "Dein Plan wird über Apple abgerechnet. Verwalte ihn in deinen Apple-Abos.",

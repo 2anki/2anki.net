@@ -113,8 +113,9 @@ describe('RejectDuplicatePurchase', () => {
       expect(next).not.toHaveBeenCalled();
       expect(status).toHaveBeenCalledWith(409);
       expect(json).toHaveBeenCalledWith({
-        code: 'already_subscribed',
-        message: 'You already have an active subscription.',
+        code: 'confirm_address',
+        message:
+          'A plan is already billed to this email. Confirm it with a sign-in link, then try again.',
         expiresAt: null,
       });
     }

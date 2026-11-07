@@ -1020,6 +1020,7 @@
     "conflict": {
       "already_lifetime": "Je hebt al levenslange toegang — je hoeft niets opnieuw te kopen.",
       "already_subscribed": "Je hebt al een actief abonnement — je hoeft niets opnieuw te kopen.",
+      "confirm_address": "Er wordt al een abonnement gefactureerd op dit e-mailadres. Bevestig het met een inloglink en probeer het opnieuw.",
       "already_unlimited": "Je hebt al onbeperkte toegang — je hoeft niets opnieuw te kopen.",
       "already_unlimited_until": "Je hebt onbeperkte toegang tot {{date}}.",
       "billed_through_apple": "Je plan wordt via Apple gefactureerd. Beheer het in je Apple-abonnementen.",
