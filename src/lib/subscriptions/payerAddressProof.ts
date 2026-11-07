@@ -92,8 +92,9 @@ const normalizeAddress = (email: string): string => email.toLowerCase().trim();
 
 // Signup does not verify an address, so an account sitting on a payer's address
 // proves nothing by itself. subscriptions.email is one row per address, so this
-// answers for every plan paid from it. A checkout that named the account proves
-// that purchase, not the address: accountOwnsAddress leaves it out.
+// answers for every plan paid from it. A checkout that named the account shows
+// the plan is its own, which is all this check needs; it is not proof of the
+// mailbox, so storedCustomerFollowsAccount and stripeReachOf ask for more.
 export const payerAddressIsProven = async (
   db: Knex,
   email: string
@@ -181,20 +182,28 @@ const isOpenPlan = (row: PayerRow & { active: unknown }): boolean => {
   );
 };
 
-// True when a checkout from this account would write over a row it cannot use:
-// an open plan, or one that stays linked to someone else after this purchase.
-export const holdsUnprovenPlan = async (
+// A row still in force: an open plan, or a link to someone else that outlives
+// the plan. An ended row linked to nobody says nothing about the address now.
+export const addressCarriesPlan = async (
   db: Knex,
   email: string
 ): Promise<boolean> => {
   const address = normalizeAddress(email);
   const row = await db('subscriptions')
-    .where({ email: address })
+    .whereRaw('lower(email) = ?', [address])
     .select('active', 'linked_email', 'created_at', 'payload')
     .first();
-  if (row == null || (await payerAddressIsProven(db, address))) {
+  if (row == null) {
     return false;
   }
   const linkedEmail = row.linked_email?.toLowerCase().trim();
   return isOpenPlan(row) || (linkedEmail != null && linkedEmail !== address);
 };
+
+// True when a checkout from this account would write over a row it cannot use.
+export const holdsUnprovenPlan = async (
+  db: Knex,
+  email: string
+): Promise<boolean> =>
+  (await addressCarriesPlan(db, email)) &&
+  !(await payerAddressIsProven(db, email));

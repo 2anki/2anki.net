@@ -67,26 +67,29 @@ describe('ConfirmSubscriptionClaimUseCase for a claim on the account address', (
       } as unknown as StripeTypes
     ).execute(7, 'raw-token', 'ip-hash', 'email-hash');
 
-  const verified = async () =>
-    (await database('users').where({ id: 7 }).first()).email_verified;
+  const claimed = async () =>
+    (await database('users').where({ id: 7 }).first()).stripe_customer_id;
 
-  it('confirms the address when the link went to the account address', async () => {
+  it('answers that a plan is already there, and proves nothing, on the account address', async () => {
     const outcome = await confirm('PAYER@example.com');
 
-    expect(outcome).toEqual({ success: true });
-    expect(Boolean(await verified())).toBe(true);
+    expect(outcome).toEqual({ success: false, reason: 'user_has_active_sub' });
+    await expect(claimed()).resolves.toBeNull();
+    expect(
+      Boolean((await database('users').where({ id: 7 }).first()).email_verified)
+    ).toBe(false);
   });
 
-  it('leaves the address alone when the link went to another mailbox', async () => {
+  it('claims a plan paid from another mailbox', async () => {
     const outcome = await confirm('other@example.com');
 
     expect(outcome).toEqual({ success: true });
-    expect(Boolean(await verified())).toBe(false);
+    await expect(claimed()).resolves.toBe('cus_1');
   });
 
-  it('leaves the address alone when the customer has no email', async () => {
-    await confirm(null);
+  it('claims for a customer with no email', async () => {
+    const outcome = await confirm(null);
 
-    expect(Boolean(await verified())).toBe(false);
+    expect(outcome).toEqual({ success: true });
   });
 });

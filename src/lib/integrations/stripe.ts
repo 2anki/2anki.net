@@ -265,6 +265,15 @@ export const updateStoreSubscription = async (
   if (linkedEmail != null) {
     mergeColumns.linked_email = linkedEmail;
   }
+  // The account's own checkout on its own address: a link left by an earlier
+  // plan on this row must not hand this one to someone else.
+  const checkoutNamedAccount =
+    account != null &&
+    subscription.metadata?.user_id === String(account.id) &&
+    accountEmail === stripeEmail;
+  if (checkoutNamedAccount) {
+    mergeColumns.linked_email = null;
+  }
 
   await db('subscriptions')
     .insert(insertRow)

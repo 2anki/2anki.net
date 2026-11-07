@@ -272,6 +272,56 @@ describe('SubscriptionService and an address the account has not proven', () => 
     expect(subs).toEqual([]);
   });
 
+  it('reaches the stored customer of a checkout-named account with no proof of the mailbox', async () => {
+    const account = await database('users').where({ email: PAYER }).first();
+    await database('users')
+      .where({ email: PAYER })
+      .update({ stripe_customer_id: 'cus_own' });
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({
+        linked_email: null,
+        payload: JSON.stringify({
+          id: 'sub_2',
+          metadata: { user_id: String(account.id) },
+        }),
+      });
+
+    const subs = await SubscriptionService.findRecentStripeSubscriptions(PAYER);
+
+    expect(subs).toEqual([liveSubscription]);
+    expect(stripe.customers.list).not.toHaveBeenCalled();
+  });
+
+  it('reaches a stored customer before the first row arrives', async () => {
+    await database('subscriptions').where({ email: PAYER }).del();
+    await database('users')
+      .where({ email: PAYER })
+      .update({ stripe_customer_id: 'cus_own' });
+
+    const subs = await SubscriptionService.findRecentStripeSubscriptions(PAYER);
+
+    expect(subs).toEqual([liveSubscription]);
+    expect(stripe.customers.list).not.toHaveBeenCalled();
+  });
+
+  it('flags nothing for an unverified free account with no plan anywhere', async () => {
+    await database('subscriptions').where({ email: PAYER }).del();
+    stripe.customers.list.mockResolvedValue({ data: [] });
+
+    await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
+      false
+    );
+  });
+
+  it('flags a plan Stripe holds before any row arrives', async () => {
+    await database('subscriptions').where({ email: PAYER }).del();
+
+    await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
+      true
+    );
+  });
+
   it('flags a plan on the address this account cannot cancel', async () => {
     await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
       true

@@ -29,6 +29,7 @@ describe('UsersRepository email change voids links mailed to the old address', (
       t.increments('id').primary();
       t.text('email');
       t.text('linked_email');
+      t.boolean('active').defaultTo(false);
       t.text('payload');
       t.text('created_at');
     });
@@ -235,6 +236,7 @@ describe('UsersRepository email change voids links mailed to the old address', (
       const userId = await seedUserWithPendingLinks('someone@example.com');
       await database('subscriptions').insert({
         email: 'new@example.com',
+        active: true,
         payload: JSON.stringify({ id: 'sub_2' }),
         created_at: SUBSCRIBED,
       });
@@ -242,6 +244,20 @@ describe('UsersRepository email change voids links mailed to the old address', (
       const result = await changeEmail(userId);
 
       expect(result).toEqual({ ok: false, reason: 'email_taken' });
+    });
+
+    it('allows a move onto an address whose plan ended', async () => {
+      const userId = await seedUserWithPendingLinks('someone@example.com');
+      await database('subscriptions').insert({
+        email: 'new@example.com',
+        active: false,
+        payload: JSON.stringify({ id: 'sub_2', status: 'canceled' }),
+        created_at: SUBSCRIBED,
+      });
+
+      const result = await changeEmail(userId);
+
+      expect(result).toEqual({ ok: true });
     });
 
     it('allows a move onto the address that pays for this account', async () => {

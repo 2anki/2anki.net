@@ -9,6 +9,7 @@ import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 import DeletedUserUsageRepository from './DeletedUserUsageRepository';
 import { emailHash } from '../lib/emailHash';
 import {
+  addressCarriesPlan,
   payerAddressIsProven,
   storedCustomerFollowsAccount,
 } from '../lib/subscriptions/payerAddressProof';
@@ -441,13 +442,14 @@ class UsersRepository {
         const oldEmail = String(user.email).trim().toLowerCase();
         // A plan paid from the new address belongs to someone, and the link
         // that confirms this change is one click in that person's mailbox.
-        const paidFromNewAddress = await trx('subscriptions')
+        const linkedToThisAccount = await trx('subscriptions')
           .whereRaw('LOWER(email) = ?', [nextEmail])
-          .select('linked_email')
+          .whereRaw('LOWER(linked_email) = ?', [oldEmail])
+          .select('email')
           .first();
         if (
-          paidFromNewAddress != null &&
-          paidFromNewAddress.linked_email?.trim().toLowerCase() !== oldEmail
+          linkedToThisAccount == null &&
+          (await addressCarriesPlan(trx, nextEmail))
         ) {
           throw new EmailAlreadyInUseError();
         }
@@ -546,11 +548,7 @@ class UsersRepository {
     if (user == null || user.email_verified) {
       return false;
     }
-    const paidRow = await trx('subscriptions')
-      .where({ email: String(user.email).trim().toLowerCase() })
-      .select('email')
-      .first();
-    if (paidRow == null) {
+    if (!(await addressCarriesPlan(trx, String(user.email)))) {
       return false;
     }
     const now = trx.fn.now();
@@ -563,6 +561,10 @@ class UsersRepository {
       .where({ user_id: userId })
       .whereNull('revoked_at')
       .update({ revoked_at: now });
+    await trx('mcp_authorization_codes')
+      .where({ user_id: userId })
+      .whereNull('consumed_at')
+      .update({ consumed_at: now });
     await trx('email_change_tokens')
       .where({ user_id: userId })
       .whereNull('consumed_at')

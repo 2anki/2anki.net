@@ -28,6 +28,11 @@ export type ConfirmOutcome =
 // reads as a race, as the unique-key clash on this path always did.
 class ClaimResolvedElsewhereError extends Error {}
 
+// A plan on the account's own address needs no claim, and this link proves no
+// mailbox: customers can edit their Stripe email in the portal, so the address
+// read here need not be the one the link went to. A sign-in link proves it.
+class ClaimOnOwnAddressError extends Error {}
+
 export class ConfirmSubscriptionClaimUseCase {
   constructor(
     private readonly db: Knex,
@@ -101,6 +106,14 @@ export class ConfirmSubscriptionClaimUseCase {
           }
         )) as StripeTypes.Customer;
 
+        const ownAddress = normalizeEmail(accountEmail);
+        if (
+          ownAddress != null &&
+          normalizeEmail(customer.email) === ownAddress
+        ) {
+          throw new ClaimOnOwnAddressError();
+        }
+
         const activeSubs =
           customer.subscriptions?.data?.filter((s) => s.status === 'active') ??
           [];
@@ -113,20 +126,17 @@ export class ConfirmSubscriptionClaimUseCase {
             throw new ClaimResolvedElsewhereError();
           }
         }
-
-        // The link went to the customer's mailbox. On the account's own address
-        // that proves it, and the plan stays locked to the account without it.
-        const ownAddress = normalizeEmail(accountEmail);
-        if (
-          ownAddress != null &&
-          normalizeEmail(customer.email) === ownAddress
-        ) {
-          await trx('users')
-            .where({ id: userId })
-            .update({ email_verified: true });
-        }
       });
     } catch (err) {
+      if (err instanceof ClaimOnOwnAddressError) {
+        await this.auditRepo.insert({
+          user_id: userId as UsersId,
+          email_hash: emailHash,
+          ip_hash: ipHash,
+          outcome: 'confirm_user_has_active_sub',
+        });
+        return { success: false, reason: 'user_has_active_sub' };
+      }
       const pgErr = err as { code?: string };
       if (
         err instanceof ClaimResolvedElsewhereError ||

@@ -119,6 +119,27 @@ describe('a Stripe event for a payer address held by an unverified account', () 
     expect(Boolean(row.active)).toBe(true);
   });
 
+  it('clears a link left by an earlier plan when the account buys on its own address', async () => {
+    await db('users').where({ id: 2 }).update({ email_verified: true });
+
+    await updateStoreSubscription(db, customer, {
+      ...subscription,
+      metadata: { user_id: '2' },
+    } as unknown as StripeTypes.Subscription);
+
+    const row = await db('subscriptions').where({ email: PAYER }).first();
+    expect(row.linked_email).toBeNull();
+  });
+
+  it('keeps the link when the account did not buy this plan', async () => {
+    await db('users').where({ id: 2 }).update({ email_verified: true });
+
+    await updateStoreSubscription(db, customer, subscription);
+
+    const row = await db('subscriptions').where({ email: PAYER }).first();
+    expect(row.linked_email).toBe(OWNER);
+  });
+
   it('resolves to a verified account on the address as before', async () => {
     await db('users').where({ id: 2 }).update({ email_verified: true });
 

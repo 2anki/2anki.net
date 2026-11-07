@@ -28,6 +28,7 @@ describe('UsersRepository.markEmailVerified', () => {
       t.increments('id').primary();
       t.text('email').notNullable();
       t.text('linked_email').nullable();
+      t.boolean('active').notNullable().defaultTo(false);
       t.text('payload').nullable();
       t.text('created_at').nullable();
     });
@@ -42,14 +43,13 @@ describe('UsersRepository.markEmailVerified', () => {
       });
       await database(table).insert([{ user_id: 7 }, { user_id: 8 }]);
     }
-    await database.schema.createTable('email_change_tokens', (t) => {
-      t.integer('user_id').notNullable();
-      t.timestamp('consumed_at').nullable();
-    });
-    await database('email_change_tokens').insert([
-      { user_id: 7 },
-      { user_id: 8 },
-    ]);
+    for (const table of ['email_change_tokens', 'mcp_authorization_codes']) {
+      await database.schema.createTable(table, (t) => {
+        t.integer('user_id').notNullable();
+        t.timestamp('consumed_at').nullable();
+      });
+      await database(table).insert([{ user_id: 7 }, { user_id: 8 }]);
+    }
     await database('users').insert({
       id: 7,
       email: ADDRESS,
@@ -102,19 +102,53 @@ describe('UsersRepository.markEmailVerified', () => {
     }
   );
 
-  it('spends a pending email change of an account that held the address unproven', async () => {
-    await seedRow();
+  it.each(['email_change_tokens', 'mcp_authorization_codes'])(
+    'spends the %s of an account that held the address unproven',
+    async (table) => {
+      await seedRow();
+
+      await repository.markEmailVerified('7');
+
+      await expect(openTokens(table, 'consumed_at')).resolves.toEqual([8]);
+    }
+  );
+
+  it('ends the access of an account older than its own open plan', async () => {
+    await database('subscriptions').insert({
+      email: ADDRESS,
+      active: true,
+      payload: JSON.stringify({ id: 'sub_1', metadata: {} }),
+      created_at: '2026-04-01T00:00:00.000Z',
+    });
 
     await repository.markEmailVerified('7');
 
-    await expect(
-      openTokens('email_change_tokens', 'consumed_at')
-    ).resolves.toEqual([8]);
+    expect((await account()).password).not.toBe(STORED_HASH);
+    await expect(sessions()).resolves.toEqual(['someone-else']);
+  });
+
+  it('keeps the access of a former payer whose plan ended', async () => {
+    await database('subscriptions').insert({
+      email: ADDRESS,
+      active: false,
+      payload: JSON.stringify({
+        id: 'sub_1',
+        status: 'canceled',
+        metadata: {},
+      }),
+      created_at: SUBSCRIBED,
+    });
+
+    await repository.markEmailVerified('7');
+
+    expect((await account()).password).toBe(STORED_HASH);
+    await expect(sessions()).resolves.toHaveLength(2);
   });
 
   it('counts an account named by its own checkout as holding the address unproven', async () => {
     await database('subscriptions').insert({
       email: ADDRESS,
+      active: true,
       payload: JSON.stringify({ id: 'sub_1', metadata: { user_id: '7' } }),
       created_at: SIGNED_UP_LATER,
     });

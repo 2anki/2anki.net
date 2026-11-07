@@ -80,6 +80,7 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
       t.increments('id').primary();
       t.text('email').unique();
       t.text('linked_email');
+      t.boolean('active').defaultTo(false);
       t.text('payload');
       t.text('created_at');
     });
