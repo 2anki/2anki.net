@@ -22,6 +22,7 @@ import {
   CONTACT_CONFIRMATION_TEMPLATE,
   PASS_CLAIM_CONFIRMATION_TEMPLATE,
   ANONYMOUS_PASS_CLAIM_TEMPLATE,
+  CONFIRM_EMAIL_NOTICE_TEMPLATE,
   SUBSCRIPTION_RECOVERY_TEMPLATE,
   SUBSCRIPTION_SCHEDULED_CANCELLATION_TEMPLATE,
   SUBSCRIPTION_RESUMING_SOON_TEMPLATE,
@@ -153,6 +154,7 @@ export interface IEmailService {
     variant: 'a' | 'b'
   ): Promise<void>;
   sendSubscriptionRecoveryEmail(to: string, paidEmail: string): Promise<void>;
+  sendConfirmEmailNotice(to: string): Promise<void>;
   sendEmailChangeConfirmationEmail(
     newEmail: string,
     confirmUrl: string
@@ -165,6 +167,9 @@ export interface IEmailService {
     params: LowRatingFeedbackEmailParams
   ): Promise<void>;
 }
+
+export const CONFIRM_EMAIL_NOTICE_SUBJECT =
+  'Your 2anki plan needs one quick step';
 
 export const SUBSCRIPTION_RECOVERY_SUBJECT =
   "Your 2anki payment isn't linked to an account yet";
@@ -1099,7 +1104,7 @@ export class EmailService implements IEmailService {
     paidEmail: string
   ): Promise<void> {
     const domain = process.env.DOMAIN ?? 'https://2anki.net';
-    const registerUrl = `${domain}/register?email=${encodeURIComponent(paidEmail)}`;
+    const registerUrl = `${domain}/login`;
     const accountUrl = `${domain}/account`;
 
     const markup = SUBSCRIPTION_RECOVERY_TEMPLATE.replaceAll(
@@ -1126,6 +1131,36 @@ export class EmailService implements IEmailService {
     } catch (error) {
       console.error(
         `Failed to send subscription recovery email to ${emailHash(to)}:`,
+        error
+      );
+      throw error;
+    }
+  }
+
+  async sendConfirmEmailNotice(to: string): Promise<void> {
+    const domain = process.env.DOMAIN ?? 'https://2anki.net';
+    const markup = CONFIRM_EMAIL_NOTICE_TEMPLATE.replaceAll(
+      '{{signInUrl}}',
+      `${domain}/login`
+    );
+    const $ = cheerio.load(markup);
+    const text = $('body').text().replace(/\s+/g, ' ').trim();
+
+    try {
+      await this.deliver(
+        {
+          to,
+          from: this.defaultSender,
+          subject: CONFIRM_EMAIL_NOTICE_SUBJECT,
+          text,
+          html: markup,
+          replyTo: 'support@2anki.net',
+        },
+        EMAIL_CATEGORIES.confirmEmailNotice
+      );
+    } catch (error) {
+      console.error(
+        `Failed to send confirm email notice to ${emailHash(to)}:`,
         error
       );
       throw error;
@@ -1424,6 +1459,10 @@ export class UnimplementedEmailService implements IEmailService {
     paidEmail: string
   ): Promise<void> {
     console.info('sendSubscriptionRecoveryEmail not handled', to, paidEmail);
+  }
+
+  async sendConfirmEmailNotice(to: string): Promise<void> {
+    console.info('sendConfirmEmailNotice not handled', to);
   }
 
   async sendEmailChangeConfirmationEmail(

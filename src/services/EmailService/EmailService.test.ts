@@ -601,6 +601,10 @@ describe('EmailService tags every outgoing send with a template category', () =>
       run: (s) =>
         s.sendSubscriptionRecoveryEmail('user@example.com', 'paid@example.com'),
     },
+    {
+      category: EMAIL_CATEGORIES.confirmEmailNotice,
+      run: (s) => s.sendConfirmEmailNotice('user@example.com'),
+    },
   ];
 
   it('tags an AI spend alert with its own category', async () => {

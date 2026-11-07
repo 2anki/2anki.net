@@ -100,6 +100,11 @@ export const ANONYMOUS_PASS_CLAIM_TEMPLATE = fs.readFileSync(
   'utf8'
 );
 
+export const CONFIRM_EMAIL_NOTICE_TEMPLATE = fs.readFileSync(
+  path.join(EMAIL_TEMPLATES_DIRECTORY, 'confirm-email-notice.html'),
+  'utf8'
+);
+
 export const SUBSCRIPTION_RECOVERY_TEMPLATE = fs.readFileSync(
   path.join(EMAIL_TEMPLATES_DIRECTORY, 'subscription-recovery.html'),
   'utf8'
@@ -131,6 +136,7 @@ export const EMAIL_CATEGORIES = {
   notionReconnect: 'notion-reconnect',
   priceLockIn: 'price-lock-in',
   subscriptionRecovery: 'subscription-recovery',
+  confirmEmailNotice: 'confirm-email-notice',
   emailChangeConfirmation: 'email-change-confirmation',
   emailChangeNotification: 'email-change-notification',
   lowRatingFeedback: 'low-rating-feedback',

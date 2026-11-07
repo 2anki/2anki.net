@@ -82,7 +82,7 @@ export class SubscriptionClaimController {
     if (outcome.reason === 'user_has_active_sub') {
       res.status(409).json({
         message:
-          'This account already has an active subscription. Cancel it first or contact support.',
+          'This account already has an active subscription. Cancel it first or contact support. If your account shows as Free, sign in with an email link to confirm your address.',
       });
       return;
     }

@@ -21,7 +21,7 @@
     "alreadyUsedTitle": "Link bereits verwendet.",
     "alreadyUsedBody": "Dieser Link wurde bereits verwendet. Melde dich an und versuche es erneut von deiner Kontoseite, wenn du erneut übernehmen möchtest.",
     "activeSubTitle": "Konto hat bereits ein Abo.",
-    "activeSubBody": "Dieses Konto hat bereits ein aktives Abo. Kündige es zuerst oder wende dich an den Support.",
+    "activeSubBody": "Dieses Konto hat bereits ein aktives Abo. Kündige es zuerst oder wende dich an den Support. Wenn dein Konto als Free angezeigt wird, melde dich mit einem Anmeldelink an, um deine Adresse zu bestätigen.",
     "passSuccessTitle": "Pass eingelöst.",
     "passSuccessBody": "{{passKind}} ist jetzt mit diesem Konto verknüpft — aktiv bis {{expiry}}.",
     "passAlreadyClaimedTitle": "Pass bereits eingelöst.",

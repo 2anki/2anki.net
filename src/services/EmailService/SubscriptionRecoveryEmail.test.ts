@@ -54,7 +54,7 @@ describe('EmailService.sendSubscriptionRecoveryEmail', () => {
 
     const msg = lastMessage();
     expect(msg.to).toBe('payer@example.com');
-    expect(msg.html).toContain('https://2anki.net/register');
+    expect(msg.html).toContain('href="https://2anki.net/login"');
     expect(msg.html).toContain('https://2anki.net/account');
     expect(msg.html).toContain('payer@example.com');
     expect(msg.html).not.toContain('{{paidEmail}}');

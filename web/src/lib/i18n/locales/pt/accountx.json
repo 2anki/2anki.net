@@ -21,7 +21,7 @@
     "alreadyUsedTitle": "Link já utilizado.",
     "alreadyUsedBody": "Este link já foi utilizado. Faça login e tente novamente na página da sua conta se precisar reivindicar de novo.",
     "activeSubTitle": "A conta já tem uma assinatura.",
-    "activeSubBody": "Esta conta já tem uma assinatura ativa. Cancele-a primeiro ou entre em contato com o suporte.",
+    "activeSubBody": "Esta conta já tem uma assinatura ativa. Cancele-a primeiro ou entre em contato com o suporte. Se sua conta aparecer como Free, entre com um link de acesso para confirmar seu endereço.",
     "passSuccessTitle": "Passe resgatado.",
     "passSuccessBody": "{{passKind}} vinculado a esta conta — ativo até {{expiry}}.",
     "passAlreadyClaimedTitle": "Passe já resgatado.",

@@ -50,7 +50,25 @@ async function callInactivityWarnings(
   return response.json();
 }
 
+async function callConfirmEmailNotices(
+  dryRun: boolean
+): Promise<{ count: number; dryRun: boolean }> {
+  const response = await fetch(
+    `/api/ops/send-confirm-email-notices?dryRun=${dryRun}`,
+    { method: 'POST', credentials: 'include' }
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(
+      data.message ?? `${response.status} ${response.statusText}`
+    );
+  }
+  return response.json();
+}
+
 export default function CommandsTab() {
+  const [confirmStatus, setConfirmStatus] = useState<Status>('idle');
+  const [confirmMessage, setConfirmMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
   const [syncStatus, setSyncStatus] = useState<Status>('idle');
@@ -207,6 +225,34 @@ export default function CommandsTab() {
     } catch (error) {
       setStatus('error');
       setMessage(error instanceof Error ? error.message : 'Unknown error');
+    }
+  };
+
+  const runConfirmEmailNotices = async (dryRun: boolean) => {
+    if (
+      !dryRun &&
+      !globalThis.confirm(
+        'Send the confirm-your-email notice to every locked-out payer? Each address gets it once.'
+      )
+    ) {
+      return;
+    }
+    setConfirmStatus('loading');
+    setConfirmMessage('');
+    try {
+      const result = await callConfirmEmailNotices(dryRun);
+      const noun = `account${result.count === 1 ? '' : 's'}`;
+      setConfirmStatus('success');
+      setConfirmMessage(
+        result.dryRun
+          ? `${result.count} ${noun} would get the notice.`
+          : `Notice sent to ${result.count} ${noun}.`
+      );
+    } catch (error) {
+      setConfirmStatus('error');
+      setConfirmMessage(
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   };
 
@@ -445,6 +491,44 @@ export default function CommandsTab() {
           batch email or cleanup, capped per run
         </p>
       </div>
+
+      <section className={`${sharedStyles.surface} ${styles.card}`}>
+        <h3 className={styles.cardTitle}>Confirm email notice</h3>
+        <p className={styles.panelSubtitle}>
+          Finds unverified payers locked out of their own plan and emails each
+          one, once, asking them to confirm their address. Plans linked to
+          another account are left out.
+        </p>
+        <div className={styles.controls}>
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={() => runConfirmEmailNotices(true)}
+            disabled={confirmStatus === 'loading'}
+          >
+            {confirmStatus === 'loading' ? 'Working…' : 'Count recipients'}
+          </button>
+          <button
+            type="button"
+            className={sharedStyles.btnSmall}
+            onClick={() => runConfirmEmailNotices(false)}
+            disabled={confirmStatus === 'loading'}
+          >
+            Send notice
+          </button>
+        </div>
+      </section>
+
+      {confirmStatus === 'success' && confirmMessage && (
+        <div className={`${sharedStyles.alertSuccess} ${styles.banner}`}>
+          {confirmMessage}
+        </div>
+      )}
+      {confirmStatus === 'error' && confirmMessage && (
+        <div className={`${sharedStyles.alertDanger} ${styles.banner}`}>
+          {confirmMessage}
+        </div>
+      )}
 
       <section className={`${sharedStyles.surface} ${styles.card}`}>
         <h3 className={styles.cardTitle}>Inactivity warnings</h3>

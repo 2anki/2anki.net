@@ -21,7 +21,7 @@
     "alreadyUsedTitle": "Enlace ya utilizado.",
     "alreadyUsedBody": "Este enlace ya se ha utilizado. Inicia sesión e inténtalo de nuevo desde tu página de cuenta si necesitas reclamarla.",
     "activeSubTitle": "La cuenta ya tiene una suscripción.",
-    "activeSubBody": "Esta cuenta ya tiene una suscripción activa. Cancélala primero o contacta con soporte.",
+    "activeSubBody": "Esta cuenta ya tiene una suscripción activa. Cancélala primero o contacta con soporte. Si tu cuenta aparece como Free, inicia sesión con un enlace de acceso para confirmar tu dirección.",
     "passSuccessTitle": "Pase reclamado.",
     "passSuccessBody": "{{passKind}} vinculado a esta cuenta — activo hasta el {{expiry}}.",
     "passAlreadyClaimedTitle": "Pase ya reclamado.",

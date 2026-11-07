@@ -21,7 +21,7 @@
     "alreadyUsedTitle": "Link al gebruikt.",
     "alreadyUsedBody": "Deze link is al gebruikt. Meld je aan en probeer het opnieuw vanaf je accountpagina als je opnieuw wilt claimen.",
     "activeSubTitle": "Account heeft al een abonnement.",
-    "activeSubBody": "Dit account heeft al een actief abonnement. Zeg het eerst op of neem contact op met support.",
+    "activeSubBody": "Dit account heeft al een actief abonnement. Zeg het eerst op of neem contact op met support. Staat je account op Free, log dan in met een inloglink om je adres te bevestigen.",
     "passSuccessTitle": "Pass geclaimd.",
     "passSuccessBody": "{{passKind}} gekoppeld aan dit account — actief tot {{expiry}}.",
     "passAlreadyClaimedTitle": "Pass al geclaimd.",
