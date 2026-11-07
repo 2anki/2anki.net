@@ -8,6 +8,10 @@ import {
   CheckoutCustomerRefresher,
   recoverWith,
 } from './StaleCheckoutCustomerRefresher';
+import {
+  LapsedSubscriptionError,
+  LapsedSubscriptionGateway,
+} from './LapsedSubscriptions';
 
 export type AutoSyncCheckoutResult =
   | { url: string }
@@ -26,7 +30,8 @@ export class AutoSyncCheckoutUseCase {
     private readonly priceId: string,
     private readonly productId: string,
     maxSubscribers?: number,
-    private readonly refresher?: CheckoutCustomerRefresher
+    private readonly refresher?: CheckoutCustomerRefresher,
+    private readonly lapsed?: LapsedSubscriptionGateway
   ) {
     this.maxSubscribers = maxSubscribers ?? DEFAULT_MAX_SUBSCRIBERS;
   }
@@ -41,6 +46,7 @@ export class AutoSyncCheckoutUseCase {
     gaClientId?: string;
     gaSessionId?: string;
     adClick?: AdClickAttribution;
+    replaceLapsed?: boolean;
   }): Promise<AutoSyncCheckoutResult> {
     console.info('auto_sync.checkout.started', { user_id: input.userId });
 
@@ -85,6 +91,12 @@ export class AutoSyncCheckoutUseCase {
       );
     }
 
+    await this.settleLapsedPlans(
+      input.stripeCustomerId,
+      input.replaceLapsed === true,
+      input.userId
+    );
+
     const sessionParams: StripeTypes.Checkout.SessionCreateParams = {
       mode: 'subscription',
       line_items: [{ price: this.priceId, quantity: 1 }],
@@ -120,6 +132,35 @@ export class AutoSyncCheckoutUseCase {
     });
 
     return { url: session.url! };
+  }
+
+  // A plan whose last payment failed reads as inactive here, so it would not
+  // stop this checkout, and a second live plan then shares one row with it. The
+  // person chooses: pay the old plan, or end it and switch.
+  private async settleLapsedPlans(
+    customerId: string | null | undefined,
+    replaceLapsed: boolean,
+    userId: number
+  ): Promise<void> {
+    if (this.lapsed == null || customerId == null) {
+      return;
+    }
+    const plans = await this.lapsed.find(customerId);
+    if (plans.length === 0) {
+      return;
+    }
+    if (!replaceLapsed) {
+      console.info('auto_sync.checkout.lapsed_plan_found', {
+        user_id: userId,
+        count: plans.length,
+      });
+      throw new LapsedSubscriptionError(plans[0]);
+    }
+    await this.lapsed.close(plans);
+    console.info('auto_sync.checkout.lapsed_plan_closed', {
+      user_id: userId,
+      count: plans.length,
+    });
   }
 
   private async switchExistingSubscription(

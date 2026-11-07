@@ -67,6 +67,7 @@ export default function PricingPage({
   const { t, i18n } = useTranslation();
   const isUS = signupCountry === 'US';
   const [conflict, setConflict] = useState<CheckoutConflict | null>(null);
+  const [lapsedTarget, setLapsedTarget] = useState<'pro' | 'auto_sync'>('pro');
   const conflictRef = useRef<HTMLDivElement>(null);
 
   // The conflict renders above the cards, out of view of the button that
@@ -309,13 +310,14 @@ export default function PricingPage({
           has_pay_link: result.lapsedPlan.payUrl != null,
         });
       }
+      setLapsedTarget('pro');
       setConflict(result);
       return;
     }
     setUnlimitedError(true);
   };
 
-  const handleAutoSyncCheckout = async () => {
+  const handleAutoSyncCheckout = async (replaceLapsed = false) => {
     track('paywall_upgrade_clicked', {
       surface: 'pricing_page',
       plan: 'auto_sync',
@@ -330,7 +332,8 @@ export default function PricingPage({
     setAutoSyncPending(true);
     const result = await get2ankiApi().startAutoSyncCheckout(
       pricingOrder,
-      'pricing_page'
+      'pricing_page',
+      replaceLapsed
     );
     if ('url' in result) {
       globalThis.location.href = result.url;
@@ -338,6 +341,13 @@ export default function PricingPage({
     }
     setAutoSyncPending(false);
     if (result.status === 'conflict') {
+      if (result.lapsedPlan != null) {
+        track('checkout_lapsed_plan_shown', {
+          interval: 'month',
+          has_pay_link: result.lapsedPlan.payUrl != null,
+        });
+      }
+      setLapsedTarget('auto_sync');
       setConflict(result);
       return;
     }
@@ -373,7 +383,7 @@ export default function PricingPage({
             interval={autoSyncPrice.interval}
             state={autoSyncCardState()}
             pending={autoSyncPending}
-            onBuy={handleAutoSyncCheckout}
+            onBuy={() => void handleAutoSyncCheckout()}
           />
         </div>
       </>
@@ -561,13 +571,18 @@ export default function PricingPage({
         ) : (
           <LapsedPlanChoice
             plan={conflict.lapsedPlan}
-            pending={unlimitedPending}
+            target={lapsedTarget}
+            pending={unlimitedPending || autoSyncPending}
             onPay={() =>
               track('checkout_lapsed_plan_choice', { choice: 'pay' })
             }
             onSwitch={() => {
               track('checkout_lapsed_plan_choice', { choice: 'switch' });
-              void handleUnlimitedUpgrade(true);
+              if (lapsedTarget === 'auto_sync') {
+                void handleAutoSyncCheckout(true);
+              } else {
+                void handleUnlimitedUpgrade(true);
+              }
             }}
           />
         )}

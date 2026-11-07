@@ -1039,6 +1039,7 @@
       "payNote": "Öffnet die offene Rechnung. Du behältst {{plan}}.",
       "payNoteAccount": "Aktualisiere deine Karte auf deiner Kontoseite. Du behältst deinen aktuellen Plan.",
       "switchButton": "Beenden und zu Pro wechseln",
+      "switchButtonAutoSync": "Beenden und zu Auto Sync wechseln",
       "switchNote": "Wir beenden deinen aktuellen Plan jetzt und stornieren die offene Zahlung, danach bezahlst du Pro an der Kasse. {{plan}} gibt es danach nicht mehr."
     }
   }
