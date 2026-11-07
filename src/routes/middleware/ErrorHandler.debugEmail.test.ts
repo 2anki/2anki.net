@@ -56,6 +56,32 @@ describe('ErrorHandler debug email', () => {
     expect(message.text).toContain('Biology');
   });
 
+  it('keeps a secret in the query out of the email', async () => {
+    const request = req({ 'share-files-for-debugging': 'true' });
+    Object.assign(request, { query: { token: 'query-secret' } });
+
+    await ErrorHandler(res(), request, new Error('conversion broke'));
+
+    const message = sendMail.mock.calls[0][0] as { text: string };
+    expect(message.text).not.toContain('query-secret');
+  });
+
+  it('keeps the Drive token out when the opt-in came from stored options, on an MCP request with no path or query', async () => {
+    await ErrorHandler(
+      res(),
+      {
+        body: {
+          'share-files-for-debugging': true,
+          googleDriveAuth: 'drive-secret',
+        },
+      } as unknown as express.Request,
+      new Error('conversion broke')
+    );
+
+    const message = sendMail.mock.calls[0][0] as { text: string };
+    expect(message.text).not.toContain('drive-secret');
+  });
+
   it('sends nothing without the debugging opt-in', async () => {
     await ErrorHandler(
       res(),

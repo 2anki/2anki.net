@@ -78,7 +78,7 @@ ${error.stack}
 
 Request path: ${req.path}
 Method: ${req.method}
-Query: ${JSON.stringify(req.query)}
+Query: ${JSON.stringify(redactRequestBody(req.query))}
 Body: ${JSON.stringify(redactRequestBody(req.body))}
 ${buildFileSnippets(uploadedFiles)}`,
     attachments: buildAttachments(uploadedFiles),
