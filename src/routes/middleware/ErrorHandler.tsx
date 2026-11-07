@@ -14,6 +14,7 @@ import { isEmptyPayload } from '../../lib/misc/isEmptyPayload';
 import { redactStripeIds } from '../../lib/log/redactStripeIds';
 import { isStripeAccessError } from '../../lib/misc/isStripeAccessError';
 import { preserveFilesForDebugging } from '../../lib/debug/preserveFilesForDebugging';
+import { redactRequestBody } from '../../lib/debug/redactRequestBody';
 import { shouldShareFilesForDebugging } from './shouldShareFilesForDebugging';
 import * as cheerio from 'cheerio';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
@@ -78,7 +79,7 @@ ${error.stack}
 Request path: ${req.path}
 Method: ${req.method}
 Query: ${JSON.stringify(req.query)}
-Body: ${JSON.stringify(req.body)}
+Body: ${JSON.stringify(redactRequestBody(req.body))}
 ${buildFileSnippets(uploadedFiles)}`,
     attachments: buildAttachments(uploadedFiles),
   };

@@ -39,6 +39,25 @@ describe('preserveFilesForDebugging', () => {
     }
   });
 
+  test('keeps the PDF password out of the saved request', () => {
+    const debugBase = path.join(os.tmpdir(), 'debug');
+    const before = fs.readdirSync(debugBase);
+
+    preserveFilesForDebugging(
+      { body: { credential: 'pdf-secret' } } as unknown as express.Request,
+      [],
+      new Error('simulated failure')
+    );
+
+    const createdPath = path.join(debugBase, findDebugDir(before) as string);
+    const saved = fs.readFileSync(
+      path.join(createdPath, 'request.json'),
+      'utf8'
+    );
+    expect(saved).not.toContain('pdf-secret');
+    fs.rmSync(createdPath, { recursive: true, force: true });
+  });
+
   test('skips files with no path or originalname instead of crashing', () => {
     const debugBase = path.join(os.tmpdir(), 'debug');
     const before = fs.readdirSync(debugBase);
