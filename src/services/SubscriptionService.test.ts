@@ -35,6 +35,7 @@ function buildDbMock(linkedRows: Array<{ email: string }> = []): Mock & {
     whereRaw: whereRawSpy,
     andWhere: vi.fn().mockReturnThis(),
     orWhere: vi.fn().mockReturnThis(),
+    first: vi.fn().mockResolvedValue(undefined),
     update: updateSpy,
     delete: deleteSpy,
     then: (resolve: (value: unknown) => void) => resolve(linkedRows),

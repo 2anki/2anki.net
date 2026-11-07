@@ -9,6 +9,8 @@ async function createSchema(db: Knex): Promise<void> {
     t.text('email').notNullable();
     t.boolean('patreon').defaultTo(false);
     t.boolean('ankify_access').defaultTo(false);
+    t.boolean('email_verified').defaultTo(false);
+    t.text('created_at');
   });
   await db.schema.createTable('subscriptions', (t) => {
     t.increments('id').primary();
@@ -16,6 +18,7 @@ async function createSchema(db: Knex): Promise<void> {
     t.text('linked_email');
     t.boolean('active').defaultTo(false);
     t.text('payload');
+    t.text('created_at');
   });
   await db.schema.createTable('user_passes', (t) => {
     t.increments('id').primary();
@@ -54,7 +57,11 @@ describe('createAiCreditReaders', () => {
   });
 
   it('reads plan inputs from every active subscription row, not one cherry-picked', async () => {
-    await db('users').insert({ id: 7, email: 'user@example.com' });
+    await db('users').insert({
+      id: 7,
+      email: 'user@example.com',
+      email_verified: true,
+    });
     await db('subscriptions').insert([
       { email: 'user@example.com', active: true, payload: subPayload(200) },
       {
@@ -72,6 +79,34 @@ describe('createAiCreditReaders', () => {
       .map((s) => s.unitAmount)
       .sort((a, b) => (a ?? 0) - (b ?? 0));
     expect(amounts).toEqual([200, 799]);
+  });
+
+  it('reads no plan from a payer row linked to another account while unverified', async () => {
+    await db('users').insert({ id: 7, email: 'user@example.com' });
+    await db('subscriptions').insert({
+      email: 'user@example.com',
+      linked_email: 'owner@example.com',
+      active: true,
+      payload: subPayload(799),
+    });
+
+    const inputs = await createAiCreditReaders(db).getPlanInputs(7, NOW);
+
+    expect(inputs?.subscriptions).toEqual([]);
+  });
+
+  it('keeps the plan linked to an unverified account', async () => {
+    await db('users').insert({ id: 7, email: 'owner@example.com' });
+    await db('subscriptions').insert({
+      email: 'payer@example.com',
+      linked_email: 'owner@example.com',
+      active: true,
+      payload: subPayload(799),
+    });
+
+    const inputs = await createAiCreditReaders(db).getPlanInputs(7, NOW);
+
+    expect(inputs?.subscriptions.map((s) => s.unitAmount)).toEqual([799]);
   });
 
   it('returns null plan inputs for an unknown user', async () => {

@@ -4,6 +4,7 @@ import {
   SubscriptionPlanInputs,
 } from '../lib/claude/aiCredits/allowance';
 import UserPassRepository from './UserPassRepository';
+import { payerAddressIsProven } from '../lib/subscriptions/payerAddressProof';
 
 export interface IAiCreditsPlanReader {
   getPlanInputs(userId: number, now: Date): Promise<PlanInputs | null>;
@@ -82,6 +83,12 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
       .select('payload');
   }
 
+  buildLinkedSubscriptionQuery(email: string): Knex.QueryBuilder {
+    return this.database('subscriptions')
+      .where({ linked_email: email.toLowerCase(), active: true })
+      .select('payload');
+  }
+
   async getPlanInputs(userId: number, now: Date): Promise<PlanInputs | null> {
     const user = (await this.database('users')
       .where({ id: userId })
@@ -96,9 +103,12 @@ export class AiCreditsRepository implements IAiCreditsPlanReader {
       return null;
     }
 
+    const provenPayer = await payerAddressIsProven(this.database, user.email);
     const [passes, subscriptionRows] = await Promise.all([
       new UserPassRepository(this.database).findActivePasses(userId, now),
-      this.buildActiveSubscriptionQuery(user.email) as Promise<
+      (provenPayer
+        ? this.buildActiveSubscriptionQuery(user.email)
+        : this.buildLinkedSubscriptionQuery(user.email)) as Promise<
         Array<{ payload: unknown }>
       >,
     ]);

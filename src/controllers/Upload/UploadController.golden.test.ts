@@ -881,6 +881,8 @@ async function seedAuthDatabase() {
     t.integer('id').primary();
     t.text('email').notNullable();
     t.boolean('patreon').defaultTo(false);
+    t.boolean('email_verified').defaultTo(false);
+    t.timestamp('created_at').defaultTo(database.fn.now());
   });
   await database.schema.createTable('access_tokens', (t) => {
     t.integer('owner').notNullable();
@@ -892,6 +894,8 @@ async function seedAuthDatabase() {
     t.text('email');
     t.text('linked_email');
     t.boolean('active').defaultTo(false);
+    t.text('payload');
+    t.timestamp('created_at').defaultTo(database.fn.now());
   });
   await database.schema.createTable('user_passes', (t) => {
     t.increments('id').primary();
@@ -941,7 +945,12 @@ async function seedAuthDatabase() {
   });
   await database('users').insert([
     { id: OWNER, email: 'free@example.com', patreon: false },
-    { id: PAYING_OWNER, email: 'paying@example.com', patreon: false },
+    {
+      id: PAYING_OWNER,
+      email: 'paying@example.com',
+      patreon: false,
+      email_verified: true,
+    },
   ]);
   await database('access_tokens').insert([
     { owner: OWNER, token: FREE_SESSION },

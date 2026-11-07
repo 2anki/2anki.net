@@ -13,6 +13,7 @@ import instrumentedAxios from './observability/instrumentedAxios';
 import { summarizeOutboundError } from './observability/summarizeOutboundError';
 import { SESSION_JWT_EXPIRY } from '../shared/session';
 import { withRetry, WithRetryOptions } from './NotionService/helpers/withRetry';
+import { payerAddressIsProven } from '../lib/subscriptions/payerAddressProof';
 
 // OAuth token exchanges die transiently at the last step of signup (network
 // blips, provider 5xx). withRetry only re-attempts the transient class
@@ -350,7 +351,7 @@ class AuthenticationService {
       .where({ email: email.toLowerCase(), active: true })
       .first();
 
-    return !!result;
+    return result != null && payerAddressIsProven(db, email);
   }
 
   async getSubscriptionInfo(db: Knex, email: string) {
@@ -369,10 +370,12 @@ class AuthenticationService {
       };
     }
 
-    const payer = await db('subscriptions')
-      .select(['active', 'email', 'linked_email'])
-      .where({ email: normalized })
-      .first();
+    const payer = (await payerAddressIsProven(db, normalized))
+      ? await db('subscriptions')
+          .select(['active', 'email', 'linked_email'])
+          .where({ email: normalized })
+          .first()
+      : undefined;
 
     const fallback = payer ?? linked;
     return {

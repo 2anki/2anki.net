@@ -7,6 +7,7 @@ import { isNewMonth } from '../lib/User/isNewMonth';
 import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 import DeletedUserUsageRepository from './DeletedUserUsageRepository';
 import { emailHash } from '../lib/emailHash';
+import { payerAddressIsProven } from '../lib/subscriptions/payerAddressProof';
 import type { SignupCountryCount } from '../types/ops/BusinessMetrics';
 
 export type { SignupCountryCount };
@@ -456,7 +457,7 @@ class UsersRepository {
 
   async getSubscriptionLinkedEmail(owner: string) {
     const user = await this.database(this.table).where({ id: owner }).first();
-    if (!user) {
+    if (!user || !(await payerAddressIsProven(this.database, user.email))) {
       return null;
     }
 

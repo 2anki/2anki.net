@@ -4,6 +4,7 @@ import { getStripe } from '../lib/integrations/stripe';
 import { getDefaultEmailService } from './EmailService/EmailService';
 import Subscriptions from '../data_layer/public/Subscriptions';
 import { isPaused } from '../lib/subscriptions/isPaused';
+import { payerAddressIsProven } from '../lib/subscriptions/payerAddressProof';
 
 export type CancelMode = 'immediate' | 'period_end';
 
@@ -84,20 +85,20 @@ const resumesAtEpoch = (now: Date, months: PauseMonths): number => {
   return Math.floor(resumeDate.getTime() / 1000);
 };
 
-async function collectCandidateEmails(userEmail: string): Promise<string[]> {
-  const normalized = userEmail.toLowerCase();
-  const db = getDatabase();
-  const linked: Array<{ email: string }> = await db('subscriptions')
+async function collectLinkedPayerEmails(normalized: string): Promise<string[]> {
+  const linked: Array<{ email: string }> = await getDatabase()('subscriptions')
     .select('email')
     .where({ linked_email: normalized });
+  return linked
+    .filter((row) => row.email)
+    .map((row) => row.email.toLowerCase());
+}
 
-  const emails = new Set<string>([normalized]);
-  for (const row of linked) {
-    if (row.email) {
-      emails.add(row.email.toLowerCase());
-    }
-  }
-  return [...emails];
+async function collectCandidateEmails(userEmail: string): Promise<string[]> {
+  const normalized = userEmail.toLowerCase();
+  const linked = await collectLinkedPayerEmails(normalized);
+  const proven = await payerAddressIsProven(getDatabase(), normalized);
+  return [...new Set(proven ? [normalized, ...linked] : linked)];
 }
 
 async function findStripeCustomersByEmail(
@@ -117,17 +118,16 @@ async function findStripeCustomersByEmail(
   return searched.data;
 }
 
-async function listStripeSubscriptionsFor(
-  userEmail: string,
+async function listStripeSubscriptionsAt(
+  addresses: string[],
   status: StripeTypes.SubscriptionListParams['status']
 ): Promise<StripeTypes.Subscription[]> {
   const stripe = getStripe();
-  const candidateEmails = await collectCandidateEmails(userEmail);
 
   const seen = new Set<string>();
   const subs: StripeTypes.Subscription[] = [];
 
-  for (const email of candidateEmails) {
+  for (const email of addresses) {
     const customers = await findStripeCustomersByEmail(stripe, email);
     for (const customer of customers) {
       const list = await stripe.subscriptions.list({
@@ -148,16 +148,35 @@ async function listStripeSubscriptionsFor(
 }
 
 export class SubscriptionService {
-  static findActiveStripeSubscriptions(
+  static async findActiveStripeSubscriptions(
     userEmail: string
   ): Promise<StripeTypes.Subscription[]> {
-    return listStripeSubscriptionsFor(userEmail, 'active');
+    return listStripeSubscriptionsAt(
+      await collectCandidateEmails(userEmail),
+      'active'
+    );
   }
 
-  static findRecentStripeSubscriptions(
+  static async findRecentStripeSubscriptions(
     userEmail: string
   ): Promise<StripeTypes.Subscription[]> {
-    return listStripeSubscriptionsFor(userEmail, 'all');
+    return listStripeSubscriptionsAt(
+      await collectCandidateEmails(userEmail),
+      'all'
+    );
+  }
+
+  // For an address someone typed, not the one on their account: the claim flow
+  // proves the mailbox itself with an emailed link.
+  static async findActiveStripeSubscriptionsForAddress(
+    address: string
+  ): Promise<StripeTypes.Subscription[]> {
+    const normalized = address.toLowerCase();
+    const linked = await collectLinkedPayerEmails(normalized);
+    return listStripeSubscriptionsAt(
+      [...new Set([normalized, ...linked])],
+      'active'
+    );
   }
 
   // Returns the mode applied to each subscription it processed, so a caller
@@ -303,12 +322,15 @@ export class SubscriptionService {
     userEmail: string
   ): Promise<Subscriptions[]> {
     const database = getDatabase();
+    const normalized = userEmail.toLowerCase();
+    const provenPayer = await payerAddressIsProven(database, normalized);
 
     return database('subscriptions')
       .where(function () {
-        this.where({ email: userEmail.toLowerCase() }).orWhere({
-          linked_email: userEmail.toLowerCase(),
-        });
+        this.where({ linked_email: normalized });
+        if (provenPayer) {
+          this.orWhere({ email: normalized });
+        }
       })
       .andWhere({ active: true });
   }
