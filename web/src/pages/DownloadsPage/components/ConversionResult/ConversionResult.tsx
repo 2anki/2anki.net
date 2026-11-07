@@ -142,6 +142,7 @@ function PaywalledVariant({
       surface: PAYWALL_SURFACE,
       plan: kind === '24h' ? 'day' : 'week',
     });
+    setPassConflict(null);
     setPendingKind(kind);
     const result = await get2ankiApi().startPassCheckout(
       kind,

@@ -256,6 +256,20 @@ describe('LimitPage', () => {
     expect(alert.textContent).toContain('Buy the next one when it runs out');
   });
 
+  it('says to confirm the email when the pass is refused over an unproven plan', async () => {
+    mockStartPassCheckout.mockResolvedValue({
+      status: 'conflict',
+      code: 'confirm_address',
+      expiresAt: null,
+    });
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass · $6' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(
+      'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.'
+    );
+  });
+
   it('leads with the passes and puts Pro after them', () => {
     renderPage();
     const passesLabel = screen.getByText('Pay once — no subscription');
