@@ -94,7 +94,7 @@ const normalizeAddress = (email: string): string => email.toLowerCase().trim();
 // proves nothing by itself. subscriptions.email is one row per address, so this
 // answers for every plan paid from it. A checkout that named the account shows
 // the plan is its own, which is all this check needs; it is not proof of the
-// mailbox, so storedCustomerFollowsAccount and stripeReachOf ask for more.
+// mailbox, so accountHoldsAddress and stripeReachOf ask for more.
 export const payerAddressIsProven = async (
   db: Knex,
   email: string
@@ -116,10 +116,10 @@ export const payerAddressIsProven = async (
   );
 };
 
-// Whether the customer stored on this account leaves the address with it. With
-// no row, an unverified account has shown nothing, and a customer it carried
-// away would keep billing under this address.
-export const storedCustomerFollowsAccount = async (
+// Stricter than payerAddressIsProven where there is no row to read: an
+// unverified account has then shown nothing. Webhooks use this to match by
+// email, and an email change to decide whether a stored customer moves.
+export const accountHoldsAddress = async (
   db: Knex,
   email: string
 ): Promise<boolean> => {
@@ -133,6 +133,7 @@ export const storedCustomerFollowsAccount = async (
 };
 
 export interface StripeReach {
+  accountId: number | null;
   byAddress: boolean;
   customerId: string | null;
 }
@@ -148,11 +149,12 @@ export const stripeReachOf = async (
 ): Promise<StripeReach> => {
   const address = normalizeAddress(email);
   const account = await readAccount(db, address);
+  const accountId = account?.id ?? null;
   if (account == null || account.email_verified) {
-    return { byAddress: true, customerId: null };
+    return { accountId, byAddress: true, customerId: null };
   }
   if (!(await payerAddressIsProven(db, address))) {
-    return { byAddress: false, customerId: null };
+    return { accountId, byAddress: false, customerId: null };
   }
   const stored = await db('users')
     .where({ id: account.id })
@@ -160,6 +162,7 @@ export const stripeReachOf = async (
     .first();
   const row = await readPayerRow(db, address);
   return {
+    accountId,
     byAddress: false,
     customerId: stored?.stripe_customer_id ?? planCustomerId(row) ?? null,
   };
@@ -191,6 +194,7 @@ export const addressCarriesPlan = async (
   const address = normalizeAddress(email);
   const row = await db('subscriptions')
     .whereRaw('lower(email) = ?', [address])
+    .orderBy('active', 'desc')
     .select('active', 'linked_email', 'created_at', 'payload')
     .first();
   if (row == null) {

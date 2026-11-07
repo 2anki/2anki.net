@@ -58,11 +58,14 @@ describe('applyUserLocals, the web, iOS and MCP session path', () => {
     await database.destroy();
   });
 
-  const locals = async (passes = new InMemoryUserPassRepository()) => {
+  const locals = async (
+    passes = new InMemoryUserPassRepository(),
+    patreon = false
+  ) => {
     const res = { locals: {} } as unknown as Response;
     await applyUserLocals(
       res,
-      { owner: 7, email: PAYER, patreon: false } as unknown as UserWithOwner,
+      { owner: 7, email: PAYER, patreon } as unknown as UserWithOwner,
       authService,
       database,
       NOW,
@@ -91,6 +94,29 @@ describe('applyUserLocals, the web, iOS and MCP session path', () => {
       subscriber: true,
       passKind: '7d',
       planSource: null,
+    });
+  });
+
+  it('reads a lifetime holder on the row as lifetime', async () => {
+    expect(await locals(undefined, true)).toMatchObject({
+      subscriber: false,
+      planSource: 'lifetime',
+      patreon: true,
+    });
+  });
+
+  it('reads an Apple plan on the row as Apple', async () => {
+    const passes = new InMemoryUserPassRepository();
+    passes.seed({
+      user_id: 7,
+      kind: 'unlimited',
+      expires_at: new Date('2026-06-08T00:00:00.000Z'),
+      stripe_payment_intent_id: 'apple:txn_1',
+    } as Parameters<InMemoryUserPassRepository['seed']>[0]);
+
+    expect(await locals(passes)).toMatchObject({
+      subscriber: true,
+      planSource: 'apple',
     });
   });
 

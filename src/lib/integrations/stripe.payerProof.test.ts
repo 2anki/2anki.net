@@ -60,6 +60,16 @@ describe('a Stripe event for a payer address held by an unverified account', () 
       t.increments('id');
       t.string('stripe_product_id');
     });
+    await db.schema.createTable('subscriptions_developer', (t) => {
+      t.increments('id');
+      t.string('stripe_subscription_id').unique();
+      t.integer('user_id');
+      t.string('email');
+      t.string('stripe_product_id');
+      t.boolean('active');
+      t.json('payload');
+      t.timestamp('updated_at');
+    });
     await db('users').insert([
       { id: 1, email: OWNER, created_at: '2026-01-01T00:00:00.000Z' },
       { id: 2, email: PAYER, created_at: '2026-03-01T00:00:00.000Z' },
@@ -138,6 +148,54 @@ describe('a Stripe event for a payer address held by an unverified account', () 
 
     const row = await db('subscriptions').where({ email: PAYER }).first();
     expect(row.linked_email).toBe(OWNER);
+  });
+
+  describe('on a developer tier, which has no base row', () => {
+    const NEW_ADDRESS = 'tier@example.com';
+    const tierCustomer = {
+      ...customer,
+      email: NEW_ADDRESS,
+    } as StripeTypes.Customer;
+    const tierSubscription = {
+      ...subscription,
+      id: 'sub_tier',
+      items: { data: [{ price: { product: 'prod_tier' } }] },
+    } as unknown as StripeTypes.Subscription;
+
+    beforeEach(async () => {
+      await db('developer_tiers').insert({ stripe_product_id: 'prod_tier' });
+      await db('users').insert({
+        id: 3,
+        email: NEW_ADDRESS,
+        created_at: '2026-03-01T00:00:00.000Z',
+      });
+    });
+
+    it('leaves an unverified account on the address bare', async () => {
+      const result = await updateStoreSubscription(
+        db,
+        tierCustomer,
+        tierSubscription
+      );
+
+      const account = await db('users').where({ id: 3 }).first();
+      const tier = await db('subscriptions_developer').first();
+      expect(result).toEqual({ status: 'unlinked', resolvedUserId: null });
+      expect(account.stripe_customer_id).toBeNull();
+      expect(tier.user_id).toBeNull();
+    });
+
+    it('resolves to a verified account on the address', async () => {
+      await db('users').where({ id: 3 }).update({ email_verified: true });
+
+      const result = await updateStoreSubscription(
+        db,
+        tierCustomer,
+        tierSubscription
+      );
+
+      expect(result).toEqual({ status: 'linked', resolvedUserId: 3 });
+    });
   });
 
   it('resolves to a verified account on the address as before', async () => {

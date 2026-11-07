@@ -83,6 +83,8 @@ async function buildDatabase(): Promise<Knex> {
     t.increments('id');
     t.string('email');
     t.string('stripe_customer_id').unique();
+    t.boolean('email_verified').defaultTo(true);
+    t.text('created_at');
   });
   await db.schema.createTable('subscriptions', (t) => {
     t.increments('id');

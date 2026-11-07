@@ -3,7 +3,7 @@ import knex, { Knex } from 'knex';
 import {
   holdsUnprovenPlan,
   payerAddressIsProven,
-  storedCustomerFollowsAccount,
+  accountHoldsAddress,
   stripeReachOf,
 } from './payerAddressProof';
 
@@ -204,45 +204,35 @@ describe('payerAddressIsProven', () => {
     });
   });
 
-  describe('storedCustomerFollowsAccount', () => {
+  describe('accountHoldsAddress', () => {
     it('follows when no account sits on the address', async () => {
-      await expect(
-        storedCustomerFollowsAccount(database, ADDRESS)
-      ).resolves.toBe(true);
+      await expect(accountHoldsAddress(database, ADDRESS)).resolves.toBe(true);
     });
 
     it('follows a verified account with no row', async () => {
       await addAccount(true, AFTER);
 
-      await expect(
-        storedCustomerFollowsAccount(database, ADDRESS)
-      ).resolves.toBe(true);
+      await expect(accountHoldsAddress(database, ADDRESS)).resolves.toBe(true);
     });
 
     it('stays behind for an unverified account with no row', async () => {
       await addAccount(false, BEFORE);
 
-      await expect(
-        storedCustomerFollowsAccount(database, ADDRESS)
-      ).resolves.toBe(false);
+      await expect(accountHoldsAddress(database, ADDRESS)).resolves.toBe(false);
     });
 
     it('follows an unverified account on a row it can prove', async () => {
       await addRow({});
       await addAccount(false, BEFORE);
 
-      await expect(
-        storedCustomerFollowsAccount(database, ADDRESS)
-      ).resolves.toBe(true);
+      await expect(accountHoldsAddress(database, ADDRESS)).resolves.toBe(true);
     });
 
     it('stays behind on a row linked to someone else', async () => {
       await addRow({ linked_email: OWNER_ADDRESS });
       await addAccount(false, BEFORE);
 
-      await expect(
-        storedCustomerFollowsAccount(database, ADDRESS)
-      ).resolves.toBe(false);
+      await expect(accountHoldsAddress(database, ADDRESS)).resolves.toBe(false);
     });
   });
 
@@ -251,6 +241,7 @@ describe('payerAddressIsProven', () => {
       await addAccount(true, AFTER);
 
       await expect(stripeReachOf(database, ADDRESS)).resolves.toEqual({
+        accountId: expect.any(Number),
         byAddress: true,
         customerId: null,
       });
@@ -258,6 +249,7 @@ describe('payerAddressIsProven', () => {
 
     it('searches the address when no account sits on it', async () => {
       await expect(stripeReachOf(database, ADDRESS)).resolves.toEqual({
+        accountId: null,
         byAddress: true,
         customerId: null,
       });
@@ -271,6 +263,7 @@ describe('payerAddressIsProven', () => {
         .update({ stripe_customer_id: 'cus_own' });
 
       await expect(stripeReachOf(database, ADDRESS)).resolves.toEqual({
+        accountId: id,
         byAddress: false,
         customerId: 'cus_own',
       });
@@ -284,6 +277,7 @@ describe('payerAddressIsProven', () => {
         .update({ stripe_customer_id: 'cus_stamped' });
 
       await expect(stripeReachOf(database, ADDRESS)).resolves.toEqual({
+        accountId: id,
         byAddress: false,
         customerId: null,
       });

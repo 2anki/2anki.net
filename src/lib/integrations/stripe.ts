@@ -4,7 +4,7 @@ import type { Knex } from 'knex';
 import { DeveloperSubscriptionsRepository } from '../../data_layer/DeveloperSubscriptionsRepository';
 import { isPaused } from '../subscriptions/isPaused';
 import { emailHash } from '../emailHash';
-import { payerAddressIsProven } from '../subscriptions/payerAddressProof';
+import { accountHoldsAddress } from '../subscriptions/payerAddressProof';
 
 let stripeInstance: InstanceType<typeof Stripe> | null = null;
 
@@ -94,7 +94,7 @@ export const resolveAccountForSubscription = async (
       .whereRaw('lower(trim(email)) = ?', [stripeEmail])
       .select('id', 'email')
       .first();
-    if (byEmail != null && (await payerAddressIsProven(db, stripeEmail))) {
+    if (byEmail != null && (await accountHoldsAddress(db, stripeEmail))) {
       return { id: byEmail.id, email: byEmail.email ?? null };
     }
 

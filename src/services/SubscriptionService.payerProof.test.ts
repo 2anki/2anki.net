@@ -236,7 +236,7 @@ describe('SubscriptionService and an address the account has not proven', () => 
     });
   });
 
-  it('reaches only the plan customer on a linked row, not the payer address', async () => {
+  it('reaches the plan customer on a linked row', async () => {
     await database('subscriptions')
       .where({ email: PAYER })
       .update({
@@ -245,15 +245,40 @@ describe('SubscriptionService and an address the account has not proven', () => 
 
     await SubscriptionService.findRecentStripeSubscriptions(OWNER);
 
-    expect(stripe.customers.list).not.toHaveBeenCalledWith({
-      email: PAYER,
-      limit: 10,
-    });
     expect(stripe.subscriptions.list).toHaveBeenCalledWith({
       customer: 'cus_plan',
       status: 'all',
       limit: 10,
     });
+  });
+
+  it('keeps a plan the linked owner bought under another customer in reach', async () => {
+    const owner = await database('users').where({ email: OWNER }).first();
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({
+        payload: JSON.stringify({ id: 'sub_1', customer: 'cus_plan' }),
+      });
+    const ownPlan = {
+      ...liveSubscription,
+      id: 'sub_own',
+      metadata: { user_id: String(owner.id) },
+    };
+    const strangerPlan = {
+      ...liveSubscription,
+      id: 'sub_stranger',
+      metadata: {},
+    };
+    stripe.subscriptions.list.mockImplementation(
+      async ({ customer }: { customer: string }) =>
+        customer === 'cus_plan'
+          ? { data: [liveSubscription] }
+          : { data: [ownPlan, strangerPlan] }
+    );
+
+    const subs = await SubscriptionService.findRecentStripeSubscriptions(OWNER);
+
+    expect(subs.map((sub) => sub.id).sort()).toEqual(['sub_1', 'sub_own']);
   });
 
   it('reads a stored customer Stripe no longer has as no plans', async () => {
@@ -322,6 +347,15 @@ describe('SubscriptionService and an address the account has not proven', () => 
     );
   });
 
+  it('flags an unproven plan from the row alone, whatever Stripe lists', async () => {
+    stripe.customers.list.mockResolvedValue({ data: [] });
+
+    await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
+      true
+    );
+    expect(stripe.customers.list).not.toHaveBeenCalled();
+  });
+
   it('flags a plan on the address this account cannot cancel', async () => {
     await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
       true
@@ -329,6 +363,7 @@ describe('SubscriptionService and an address the account has not proven', () => 
   });
 
   it('flags nothing once the plans on the address are all ended', async () => {
+    await database('subscriptions').where({ email: PAYER }).del();
     stripe.subscriptions.list.mockResolvedValue({
       data: [{ ...liveSubscription, status: 'canceled' }],
     });
@@ -339,6 +374,7 @@ describe('SubscriptionService and an address the account has not proven', () => 
   });
 
   it('flags nothing for a checkout that expired before it started', async () => {
+    await database('subscriptions').where({ email: PAYER }).del();
     stripe.subscriptions.list.mockResolvedValue({
       data: [{ ...liveSubscription, status: 'incomplete_expired' }],
     });

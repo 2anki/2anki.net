@@ -5,6 +5,7 @@ import { getDefaultEmailService } from './EmailService/EmailService';
 import Subscriptions from '../data_layer/public/Subscriptions';
 import { isPaused } from '../lib/subscriptions/isPaused';
 import {
+  holdsUnprovenPlan,
   isEndedStatus,
   payerAddressIsProven,
   planCustomerId,
@@ -191,21 +192,29 @@ async function listStripeSubscriptionsFor(
     }
   }
 
-  const atAddresses = await listStripeSubscriptionsAt([...addresses], status);
-  const seen = new Set(atAddresses.map((sub) => sub.id));
-  const subs = [...atAddresses];
+  const found: StripeTypes.Subscription[] = [
+    ...(await listStripeSubscriptionsAt([...addresses], status)),
+  ];
   for (const customer of customers) {
-    for (const sub of await listStripeSubscriptionsOfCustomer(
-      customer,
-      status
-    )) {
-      if (!seen.has(sub.id)) {
-        seen.add(sub.id);
-        subs.push(sub);
-      }
-    }
+    found.push(...(await listStripeSubscriptionsOfCustomer(customer, status)));
   }
-  return subs;
+  // One payer can hold several customers, and a row keeps only the latest. A
+  // plan this account bought stays in reach wherever its customer sits.
+  const payerAddresses = linkedRows
+    .filter((row) => planCustomerId(row) != null && row.email)
+    .map((row) => row.email.toLowerCase());
+  if (reach.accountId != null && payerAddresses.length > 0) {
+    const atPayers = await listStripeSubscriptionsAt(
+      [...new Set(payerAddresses)],
+      status
+    );
+    found.push(
+      ...atPayers.filter(
+        (sub) => sub.metadata?.user_id === String(reach.accountId)
+      )
+    );
+  }
+  return [...new Map(found.map((sub) => [sub.id, sub])).values()];
 }
 
 export class SubscriptionService {
@@ -225,7 +234,13 @@ export class SubscriptionService {
   // open plans on its address that this account may not cancel.
   static async hasPlanOutOfReach(userEmail: string): Promise<boolean> {
     const normalized = userEmail.toLowerCase();
-    const reach = await stripeReachOf(getDatabase(), normalized);
+    const db = getDatabase();
+    // The local row first: Stripe's list by email can be crowded by customers
+    // anyone can point at this address.
+    if (await holdsUnprovenPlan(db, normalized)) {
+      return true;
+    }
+    const reach = await stripeReachOf(db, normalized);
     if (reach.byAddress) {
       return false;
     }

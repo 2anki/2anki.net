@@ -9,9 +9,9 @@ import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 import DeletedUserUsageRepository from './DeletedUserUsageRepository';
 import { emailHash } from '../lib/emailHash';
 import {
+  accountHoldsAddress,
   addressCarriesPlan,
   payerAddressIsProven,
-  storedCustomerFollowsAccount,
 } from '../lib/subscriptions/payerAddressProof';
 import type { SignupCountryCount } from '../types/ops/BusinessMetrics';
 
@@ -458,7 +458,7 @@ class UsersRepository {
         // address says nothing about the old one, so an unproven account
         // leaves its plan and any customer a webhook stamped on it behind.
         const ownsPlan = await payerAddressIsProven(trx, oldEmail);
-        const keepsCustomer = await storedCustomerFollowsAccount(trx, oldEmail);
+        const keepsCustomer = await accountHoldsAddress(trx, oldEmail);
         await trx(this.table)
           .where({ id: params.userId })
           .update({
