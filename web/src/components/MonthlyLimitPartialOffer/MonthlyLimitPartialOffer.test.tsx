@@ -103,6 +103,23 @@ describe('MonthlyLimitPartialOffer', () => {
     ]);
   });
 
+  it('says to confirm the email when the pass is refused over an unproven plan', async () => {
+    startPassCheckout.mockResolvedValue({
+      status: 'conflict',
+      code: 'confirm_address',
+      expiresAt: null,
+    });
+    render(<MonthlyLimitPartialOffer delivered={42} heldBack={300} saved />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Get Semester Pass · \$29/ })
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.'
+    );
+  });
+
   it('starts a Semester Pass checkout attributed to this surface', async () => {
     startPassCheckout.mockResolvedValue({ status: 'error' });
     render(<MonthlyLimitPartialOffer delivered={42} heldBack={300} saved />);

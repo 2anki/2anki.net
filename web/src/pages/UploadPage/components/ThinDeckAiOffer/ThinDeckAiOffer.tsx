@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { purchaseConflictMessage } from '../../../../lib/checkout/purchaseConflictMessage';
 import { track } from '../../../../lib/analytics/track';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { usePassPrices } from '../../../../lib/hooks/usePassPrices';
@@ -32,11 +33,11 @@ export function ThinDeckAiOffer({
   onMakeFullDeck,
   onBeforeCheckout,
 }: Readonly<ThinDeckAiOfferProps>) {
-  const { t } = useTranslation('thinDeckAi');
+  const { t, i18n } = useTranslation('thinDeckAi');
   const prices = usePassPrices();
   const [phase, setPhase] = useState<Phase>({ name: 'idle' });
   const [checkoutPending, setCheckoutPending] = useState(false);
-  const [checkoutError, setCheckoutError] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const resultRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
@@ -67,7 +68,7 @@ export function ThinDeckAiOffer({
       return;
     }
     track('thin_deck_ai_unlock_clicked', { plan: 'day_pass' });
-    setCheckoutError(false);
+    setCheckoutError(null);
     setCheckoutPending(true);
     try {
       await onBeforeCheckout();
@@ -81,7 +82,11 @@ export function ThinDeckAiOffer({
         return;
       }
       clearThinDeckResume();
-      setCheckoutError(true);
+      setCheckoutError(
+        result.status === 'conflict'
+          ? purchaseConflictMessage(t, result, i18n.language)
+          : t('checkoutError')
+      );
     } finally {
       setCheckoutPending(false);
     }
@@ -138,9 +143,9 @@ export function ThinDeckAiOffer({
               </li>
             ))}
           </ul>
-          {checkoutError && (
+          {checkoutError != null && (
             <p className={styles.error} role="alert">
-              {t('checkoutError')}
+              {checkoutError}
             </p>
           )}
           <button

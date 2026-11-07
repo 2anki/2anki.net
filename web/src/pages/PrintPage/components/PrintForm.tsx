@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { purchaseConflictMessage } from '../../../lib/checkout/purchaseConflictMessage';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styles from './PrintForm.module.css';
 import sharedStyles from '../../../styles/shared.module.css';
@@ -109,7 +110,7 @@ interface PreviewResponse {
 }
 
 export default function PrintForm() {
-  const { t } = useTranslation(['tools', 'accountx']);
+  const { t, i18n } = useTranslation(['tools', 'accountx']);
   const messages: PrintMessages = {
     wrongType: t('print.wrongType'),
     corrupted: t('print.corrupted'),
@@ -332,7 +333,10 @@ export default function PrintForm() {
       }
       setDownloadError({
         status: 0,
-        message: t('limit.checkoutError', { ns: 'accountx' }),
+        message:
+          result.status === 'conflict'
+            ? purchaseConflictMessage(t, result, i18n.language)
+            : t('limit.checkoutError', { ns: 'accountx' }),
       });
     } finally {
       setPassBusy(false);

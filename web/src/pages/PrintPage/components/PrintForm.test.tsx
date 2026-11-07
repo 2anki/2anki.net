@@ -111,6 +111,40 @@ describe('PrintForm', () => {
     );
   });
 
+  test('says to confirm the email when the pass is refused over an unproven plan', async () => {
+    localsHolder.value = {
+      data: {
+        locals: { patreon: false, subscriber: false },
+        freePrintAvailable: false,
+      },
+    };
+    routeFetch({
+      preview: jsonResponse(200, {
+        image: 'data:image/png;base64,AAA',
+        totalCards: 42,
+        previewedCards: 3,
+      }),
+      download: jsonResponse(409, {
+        code: 'confirm_address',
+        message: 'server copy',
+        expiresAt: null,
+      }),
+    });
+
+    renderForm();
+    pickApkg();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Get a day pass/i })
+    );
+
+    expect(
+      await screen.findByText(
+        'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.'
+      )
+    ).toBeInTheDocument();
+  });
+
   test('fires print_preview_shown once with the deck counts', async () => {
     routeFetch({
       preview: jsonResponse(200, {
