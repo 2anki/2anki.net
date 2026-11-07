@@ -675,7 +675,7 @@ class UsersController {
       if (await SubscriptionService.hasPlanOutOfReach(user.email)) {
         return res.status(409).json({
           message:
-            'A plan is billed to this email. Confirm it with a sign-in link, then delete your account.',
+            'A plan is billed to this email. Confirm this email with a sign-in link, then delete your account.',
         });
       }
 

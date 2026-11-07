@@ -192,6 +192,72 @@ describe('UsersRepository email change voids links mailed to the old address', (
       expect(user.stripe_customer_id).toBe('cus_own');
     });
 
+    it('moves a plan the account bought itself, with its customer', async () => {
+      const userId = await seedUserWithPendingLinks('old@example.com');
+      await database('users').where({ id: userId }).update({
+        email_verified: false,
+        created_at: SIGNED_UP_LATER,
+        stripe_customer_id: 'cus_own',
+      });
+      await database('subscriptions').insert({
+        email: 'old@example.com',
+        payload: JSON.stringify({
+          id: 'sub_1',
+          metadata: { user_id: String(userId) },
+        }),
+        created_at: SUBSCRIBED,
+      });
+
+      await changeEmail(userId);
+
+      const row = await database('subscriptions')
+        .where({ email: 'old@example.com' })
+        .first();
+      const user = await database('users').where({ id: userId }).first();
+      expect(row.linked_email).toBe('new@example.com');
+      expect(user.stripe_customer_id).toBe('cus_own');
+    });
+
+    it('clears a customer when no row shows the account owned it', async () => {
+      const userId = await seedUserWithPendingLinks('old@example.com');
+      await database('users').where({ id: userId }).update({
+        email_verified: false,
+        stripe_customer_id: 'cus_minted',
+      });
+
+      await changeEmail(userId);
+
+      const user = await database('users').where({ id: userId }).first();
+      expect(user.stripe_customer_id).toBeNull();
+    });
+
+    it('refuses a move onto an address a plan is paid from', async () => {
+      const userId = await seedUserWithPendingLinks('someone@example.com');
+      await database('subscriptions').insert({
+        email: 'new@example.com',
+        payload: JSON.stringify({ id: 'sub_2' }),
+        created_at: SUBSCRIBED,
+      });
+
+      const result = await changeEmail(userId);
+
+      expect(result).toEqual({ ok: false, reason: 'email_taken' });
+    });
+
+    it('allows a move onto the address that pays for this account', async () => {
+      const userId = await seedUserWithPendingLinks('owner@example.com');
+      await database('subscriptions').insert({
+        email: 'new@example.com',
+        linked_email: 'owner@example.com',
+        payload: JSON.stringify({ id: 'sub_2' }),
+        created_at: SUBSCRIBED,
+      });
+
+      const result = await changeEmail(userId);
+
+      expect(result).toEqual({ ok: true });
+    });
+
     it('keeps a plan linked to an unverified account on its new address', async () => {
       const userId = await seedUserWithPendingLinks('owner@example.com');
       await database('users')

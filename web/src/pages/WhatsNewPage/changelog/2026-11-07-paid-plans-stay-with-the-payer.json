@@ -2,5 +2,5 @@
   "id": "2026-11-07-paid-plans-stay-with-the-payer",
   "date": "2026-11-07",
   "type": "fix",
-  "title": "Paid plans matched by email need a confirmed address — a sign-in link or password reset confirms yours"
+  "title": "Paid plans need a confirmed email — a sign-in link or password reset confirms yours"
 }

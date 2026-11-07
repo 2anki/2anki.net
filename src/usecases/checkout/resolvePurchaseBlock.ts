@@ -57,7 +57,7 @@ export const resolvePurchaseBlock = (
   if (held.unprovenSubscription) {
     return block(
       'confirm_address',
-      'A plan is already billed to this email. Confirm it with a sign-in link, then try again.'
+      'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.'
     );
   }
   // Auto Sync replaces a Pro subscription in place (AutoSyncCheckoutUseCase),

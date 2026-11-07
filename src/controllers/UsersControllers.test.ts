@@ -1217,6 +1217,31 @@ describe('UsersController.loginWithGoogle', () => {
     };
   };
 
+  it('confirms the address before it creates the session', async () => {
+    const order: string[] = [];
+    const { controller } = buildGoogleController({
+      getUserFrom: vi.fn().mockResolvedValue({ id: 7, email: 'g@example.com' }),
+      markEmailVerified: vi.fn(async () => {
+        order.push('confirmed');
+        return 1;
+      }),
+      persistToken: vi.fn(async () => {
+        order.push('session');
+      }),
+    });
+
+    await controller.loginWithGoogle(
+      {
+        query: { code: 'gauth-code', state: 'google-state' },
+        cookies: { google_login_state: 'google-state' },
+        headers: {},
+      } as unknown as express.Request,
+      buildGoogleRes()
+    );
+
+    expect(order).toEqual(['confirmed', 'session']);
+  });
+
   it("registers new Google users with signup_origin set to 'google'", async () => {
     const register = vi.fn().mockResolvedValue([{ id: 7 }]);
     const { controller } = buildGoogleController({
@@ -1432,6 +1457,26 @@ describe('UsersController.loginWithMicrosoft', () => {
       cookies: { microsoft_login_state: 'microsoft-state' },
       headers: {},
     }) as unknown as express.Request;
+
+  it('confirms the address before it creates the session', async () => {
+    const order: string[] = [];
+    const { controller } = buildMicrosoftController({
+      getUserFrom: vi
+        .fn()
+        .mockResolvedValue({ id: 11, email: 'm@example.com' }),
+      markEmailVerified: vi.fn(async () => {
+        order.push('confirmed');
+        return 1;
+      }),
+      persistToken: vi.fn(async () => {
+        order.push('session');
+      }),
+    });
+
+    await controller.loginWithMicrosoft(buildReq(), buildMicrosoftRes());
+
+    expect(order).toEqual(['confirmed', 'session']);
+  });
 
   it("creates a new user, links the identity, and stamps signup_origin='microsoft' when the verified email has no existing account", async () => {
     const register = vi.fn().mockResolvedValue([{ id: 11 }]);
@@ -1673,6 +1718,26 @@ describe('UsersController.loginWithApple', () => {
       query: {},
     } as unknown as express.Request;
   };
+
+  it('confirms the address before it creates the session', async () => {
+    const order: string[] = [];
+    const { controller } = buildAppleController({
+      getUserFrom: vi
+        .fn()
+        .mockResolvedValue({ id: 13, email: 'a@example.com' }),
+      markEmailVerified: vi.fn(async () => {
+        order.push('confirmed');
+        return 1;
+      }),
+      persistToken: vi.fn(async () => {
+        order.push('session');
+      }),
+    });
+
+    await controller.loginWithApple(buildReq(), buildAppleRes());
+
+    expect(order).toEqual(['confirmed', 'session']);
+  });
 
   it("creates a new user, links the identity, and stamps signup_origin='apple' when the email has no existing account", async () => {
     const register = vi.fn().mockResolvedValue([{ id: 20 }]);

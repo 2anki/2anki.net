@@ -5,7 +5,9 @@ import { getDefaultEmailService } from './EmailService/EmailService';
 import Subscriptions from '../data_layer/public/Subscriptions';
 import { isPaused } from '../lib/subscriptions/isPaused';
 import {
+  isEndedStatus,
   payerAddressIsProven,
+  planCustomerId,
   stripeReachOf,
 } from '../lib/subscriptions/payerAddressProof';
 
@@ -167,22 +169,43 @@ async function listStripeSubscriptionsFor(
   status: StripeTypes.SubscriptionListParams['status']
 ): Promise<StripeTypes.Subscription[]> {
   const normalized = userEmail.toLowerCase();
-  const linked = await collectLinkedPayerEmails(normalized);
-  const reach = await stripeReachOf(getDatabase(), normalized);
-  const addresses = reach.byAddress ? [normalized, ...linked] : linked;
-  const atAddresses = await listStripeSubscriptionsAt(
-    [...new Set(addresses)],
-    status
+  const db = getDatabase();
+  const reach = await stripeReachOf(db, normalized);
+  // A row linked to this account names the plan's customer. Searching its payer
+  // address instead would show every other customer on that address.
+  const linkedRows: Array<{ email: string; payload?: unknown }> = await db(
+    'subscriptions'
+  )
+    .select('email', 'payload')
+    .where({ linked_email: normalized });
+  const customers = new Set<string>(
+    reach.customerId == null ? [] : [reach.customerId]
   );
-  if (reach.customerId == null) {
-    return atAddresses;
+  const addresses = new Set<string>(reach.byAddress ? [normalized] : []);
+  for (const row of linkedRows) {
+    const customer = planCustomerId(row);
+    if (customer != null) {
+      customers.add(customer);
+    } else if (row.email) {
+      addresses.add(row.email.toLowerCase());
+    }
   }
-  const ofCustomer = await listStripeSubscriptionsOfCustomer(
-    reach.customerId,
-    status
-  );
+
+  const atAddresses = await listStripeSubscriptionsAt([...addresses], status);
   const seen = new Set(atAddresses.map((sub) => sub.id));
-  return [...atAddresses, ...ofCustomer.filter((sub) => !seen.has(sub.id))];
+  const subs = [...atAddresses];
+  for (const customer of customers) {
+    for (const sub of await listStripeSubscriptionsOfCustomer(
+      customer,
+      status
+    )) {
+      if (!seen.has(sub.id)) {
+        seen.add(sub.id);
+        subs.push(sub);
+      }
+    }
+  }
+  return subs;
 }
 
 export class SubscriptionService {
@@ -210,7 +233,7 @@ export class SubscriptionService {
     const reachableIds = new Set(reachable.map((sub) => sub.id));
     const atAddress = await listStripeSubscriptionsAt([normalized], 'all');
     return atAddress.some(
-      (sub) => sub.status !== 'canceled' && !reachableIds.has(sub.id)
+      (sub) => !isEndedStatus(sub.status) && !reachableIds.has(sub.id)
     );
   }
 

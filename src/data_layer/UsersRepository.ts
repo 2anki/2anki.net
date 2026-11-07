@@ -9,8 +9,8 @@ import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 import DeletedUserUsageRepository from './DeletedUserUsageRepository';
 import { emailHash } from '../lib/emailHash';
 import {
-  accountOwnsAddress,
   payerAddressIsProven,
+  storedCustomerFollowsAccount,
 } from '../lib/subscriptions/payerAddressProof';
 import type { SignupCountryCount } from '../types/ops/BusinessMetrics';
 
@@ -439,20 +439,33 @@ class UsersRepository {
         }
 
         const oldEmail = String(user.email).trim().toLowerCase();
+        // A plan paid from the new address belongs to someone, and the link
+        // that confirms this change is one click in that person's mailbox.
+        const paidFromNewAddress = await trx('subscriptions')
+          .whereRaw('LOWER(email) = ?', [nextEmail])
+          .select('linked_email')
+          .first();
+        if (
+          paidFromNewAddress != null &&
+          paidFromNewAddress.linked_email?.trim().toLowerCase() !== oldEmail
+        ) {
+          throw new EmailAlreadyInUseError();
+        }
         // Read before the address moves: afterwards no account sits on it, and
         // an address with no account reads as proven. Confirming the new
         // address says nothing about the old one, so an unproven account
         // leaves its plan and any customer a webhook stamped on it behind.
-        const ownsOldAddress = await accountOwnsAddress(trx, oldEmail);
+        const ownsPlan = await payerAddressIsProven(trx, oldEmail);
+        const keepsCustomer = await storedCustomerFollowsAccount(trx, oldEmail);
         await trx(this.table)
           .where({ id: params.userId })
           .update({
             email: nextEmail,
             ...CLEARED_RESET_TOKEN,
-            ...(ownsOldAddress ? {} : { stripe_customer_id: null }),
+            ...(keepsCustomer ? {} : { stripe_customer_id: null }),
           });
         await this.spendUnusedMagicTokensQuery(trx, [params.userId]);
-        await (ownsOldAddress
+        await (ownsPlan
           ? this.relinkSubscriptionsForEmailChangeQuery(
               trx,
               oldEmail,
@@ -519,37 +532,65 @@ class UsersRepository {
     });
   }
 
-  // Someone just proved this mailbox. An account that sat on it without proof
-  // may not be theirs, so whoever set it up loses their sessions and password,
-  // or the plan this confirms would go to them too. The mailbox owner signs in
-  // again with a link or a reset.
+  // Someone just proved this mailbox. Every paid row lands on it, and signup
+  // proved nothing, so whoever set this account up loses every way back in or
+  // the plan would go to them too. Returns whether it did.
+  private async endAccessOfUnprovenHolder(
+    trx: Knex.Transaction,
+    userId: string
+  ): Promise<boolean> {
+    const user = await trx(this.table)
+      .where({ id: userId })
+      .select('email', 'email_verified')
+      .first();
+    if (user == null || user.email_verified) {
+      return false;
+    }
+    const paidRow = await trx('subscriptions')
+      .where({ email: String(user.email).trim().toLowerCase() })
+      .select('email')
+      .first();
+    if (paidRow == null) {
+      return false;
+    }
+    const now = trx.fn.now();
+    await trx('access_tokens').where({ owner: userId }).del();
+    await trx('mcp_access_tokens')
+      .where({ user_id: userId })
+      .whereNull('revoked_at')
+      .update({ revoked_at: now });
+    await trx('mcp_refresh_tokens')
+      .where({ user_id: userId })
+      .whereNull('revoked_at')
+      .update({ revoked_at: now });
+    await trx('email_change_tokens')
+      .where({ user_id: userId })
+      .whereNull('consumed_at')
+      .update({ consumed_at: now });
+    return true;
+  }
+
+  // The mailbox owner signs back in with a link or a reset.
   markEmailVerified(userId: string) {
     return this.database.transaction(async (trx) => {
-      const user = await trx(this.table)
-        .where({ id: userId })
-        .select('email', 'email_verified')
-        .first();
-      const heldWithoutProof =
-        user != null &&
-        !user.email_verified &&
-        !(await payerAddressIsProven(trx, user.email));
-      if (!heldWithoutProof) {
-        return trx(this.table)
-          .where({ id: userId })
-          .update({ email_verified: true });
-      }
-      await trx('access_tokens').where({ owner: userId }).del();
+      const ended = await this.endAccessOfUnprovenHolder(trx, userId);
       return trx(this.table)
         .where({ id: userId })
-        .update({ email_verified: true, password: randomUUID() });
+        .update({
+          email_verified: true,
+          ...(ended ? { password: randomUUID() } : {}),
+        });
     });
   }
 
-  // The reset already replaced the password and ended every session.
+  // The reset already replaced the password with one the mailbox owner chose.
   markEmailVerifiedAfterReset(userId: string) {
-    return this.database(this.table)
-      .where({ id: userId })
-      .update({ email_verified: true });
+    return this.database.transaction(async (trx) => {
+      await this.endAccessOfUnprovenHolder(trx, userId);
+      return trx(this.table)
+        .where({ id: userId })
+        .update({ email_verified: true });
+    });
   }
 
   updatePatreonByEmail(email: string, patreon: boolean): Promise<number> {

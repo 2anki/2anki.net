@@ -99,10 +99,14 @@ describe('a Stripe event for a payer address held by an unverified account', () 
   });
 
   it('ends the row of a plan that ended with no account resolved', async () => {
-    await deactivateSubscriptionRow(db, subscription);
+    await deactivateSubscriptionRow(db, {
+      ...subscription,
+      status: 'canceled',
+    } as StripeTypes.Subscription);
 
     const row = await db('subscriptions').where({ email: PAYER }).first();
     expect(Boolean(row.active)).toBe(false);
+    expect(JSON.parse(row.payload)).toMatchObject({ status: 'canceled' });
   });
 
   it('leaves a newer plan on the row alone', async () => {

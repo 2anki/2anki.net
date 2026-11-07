@@ -115,7 +115,7 @@ describe('RejectDuplicatePurchase', () => {
       expect(json).toHaveBeenCalledWith({
         code: 'confirm_address',
         message:
-          'A plan is already billed to this email. Confirm it with a sign-in link, then try again.',
+          'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.',
         expiresAt: null,
       });
     }

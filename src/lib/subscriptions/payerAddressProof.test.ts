@@ -1,9 +1,9 @@
 import knex, { Knex } from 'knex';
 
 import {
-  accountOwnsAddress,
   holdsUnprovenPlan,
   payerAddressIsProven,
+  storedCustomerFollowsAccount,
   stripeReachOf,
 } from './payerAddressProof';
 
@@ -199,45 +199,50 @@ describe('payerAddressIsProven', () => {
     }) as unknown as Knex;
 
     await expect(payerAddressIsProven(stubbed, ADDRESS)).resolves.toBe(true);
-    await expect(accountOwnsAddress(stubbed, ADDRESS)).resolves.toBe(false);
+    await expect(stripeReachOf(stubbed, ADDRESS)).resolves.toMatchObject({
+      byAddress: false,
+    });
   });
 
-  describe('accountOwnsAddress', () => {
-    it('is open when no account sits on the address', async () => {
-      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(true);
+  describe('storedCustomerFollowsAccount', () => {
+    it('follows when no account sits on the address', async () => {
+      await expect(
+        storedCustomerFollowsAccount(database, ADDRESS)
+      ).resolves.toBe(true);
     });
 
-    it('is open for a verified account with no row', async () => {
+    it('follows a verified account with no row', async () => {
       await addAccount(true, AFTER);
 
-      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(true);
+      await expect(
+        storedCustomerFollowsAccount(database, ADDRESS)
+      ).resolves.toBe(true);
     });
 
-    it('is closed for an unverified account with no row', async () => {
+    it('stays behind for an unverified account with no row', async () => {
       await addAccount(false, BEFORE);
 
-      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(false);
+      await expect(
+        storedCustomerFollowsAccount(database, ADDRESS)
+      ).resolves.toBe(false);
     });
 
-    it('is open for an unverified account older than an unlinked plan', async () => {
+    it('follows an unverified account on a row it can prove', async () => {
       await addRow({});
       await addAccount(false, BEFORE);
 
-      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(true);
+      await expect(
+        storedCustomerFollowsAccount(database, ADDRESS)
+      ).resolves.toBe(true);
     });
 
-    it('stays closed when a checkout of its own names a newer account', async () => {
-      const id = await addAccount(false, AFTER);
-      await addRow({ metadataUserId: String(id) });
-
-      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(false);
-    });
-
-    it('is closed on a row linked to someone else', async () => {
+    it('stays behind on a row linked to someone else', async () => {
       await addRow({ linked_email: OWNER_ADDRESS });
       await addAccount(false, BEFORE);
 
-      await expect(accountOwnsAddress(database, ADDRESS)).resolves.toBe(false);
+      await expect(
+        storedCustomerFollowsAccount(database, ADDRESS)
+      ).resolves.toBe(false);
     });
   });
 

@@ -216,6 +216,46 @@ describe('SubscriptionService and an address the account has not proven', () => 
     });
   });
 
+  it('falls back to the customer on the plan with none stored', async () => {
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({
+        linked_email: null,
+        created_at: '2026-04-01T00:00:00.000Z',
+        payload: JSON.stringify({ id: 'sub_1', customer: 'cus_plan' }),
+      });
+
+    const subs = await SubscriptionService.findRecentStripeSubscriptions(PAYER);
+
+    expect(subs).toEqual([liveSubscription]);
+    expect(stripe.customers.list).not.toHaveBeenCalled();
+    expect(stripe.subscriptions.list).toHaveBeenCalledWith({
+      customer: 'cus_plan',
+      status: 'all',
+      limit: 10,
+    });
+  });
+
+  it('reaches only the plan customer on a linked row, not the payer address', async () => {
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({
+        payload: JSON.stringify({ id: 'sub_1', customer: 'cus_plan' }),
+      });
+
+    await SubscriptionService.findRecentStripeSubscriptions(OWNER);
+
+    expect(stripe.customers.list).not.toHaveBeenCalledWith({
+      email: PAYER,
+      limit: 10,
+    });
+    expect(stripe.subscriptions.list).toHaveBeenCalledWith({
+      customer: 'cus_plan',
+      status: 'all',
+      limit: 10,
+    });
+  });
+
   it('reads a stored customer Stripe no longer has as no plans', async () => {
     await database('subscriptions')
       .where({ email: PAYER })
@@ -241,6 +281,16 @@ describe('SubscriptionService and an address the account has not proven', () => 
   it('flags nothing once the plans on the address are all ended', async () => {
     stripe.subscriptions.list.mockResolvedValue({
       data: [{ ...liveSubscription, status: 'canceled' }],
+    });
+
+    await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
+      false
+    );
+  });
+
+  it('flags nothing for a checkout that expired before it started', async () => {
+    stripe.subscriptions.list.mockResolvedValue({
+      data: [{ ...liveSubscription, status: 'incomplete_expired' }],
     });
 
     await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(

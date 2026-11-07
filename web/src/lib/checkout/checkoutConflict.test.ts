@@ -6,6 +6,7 @@ describe('isPurchaseBlockCode', () => {
     expect(isPurchaseBlockCode('already_lifetime')).toBe(true);
     expect(isPurchaseBlockCode('already_unlimited')).toBe(true);
     expect(isPurchaseBlockCode('already_subscribed')).toBe(true);
+    expect(isPurchaseBlockCode('confirm_address')).toBe(true);
     expect(isPurchaseBlockCode('billed_through_apple')).toBe(true);
     expect(isPurchaseBlockCode('pass_still_active')).toBe(true);
     expect(isPurchaseBlockCode('lapsed_subscription')).toBe(true);

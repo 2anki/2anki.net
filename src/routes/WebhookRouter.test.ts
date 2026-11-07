@@ -1200,7 +1200,10 @@ describe('WebhookRouter — customer.subscription.deleted', () => {
 
     expect(res.status).toBe(200);
     expect(mockUpdateStoreSubscription).not.toHaveBeenCalled();
-    expect(mockDeactivateSubscriptionRow).toHaveBeenCalled();
+    expect(mockDeactivateSubscriptionRow).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ id: expect.any(String) })
+    );
   });
 
   it('deactivates the developer tier even when no account resolves', async () => {

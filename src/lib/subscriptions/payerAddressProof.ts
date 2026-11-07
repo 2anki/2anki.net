@@ -14,6 +14,7 @@ interface PayerAddressAccount {
 
 interface StripePayload {
   created?: unknown;
+  customer?: unknown;
   status?: unknown;
   metadata?: { user_id?: unknown };
 }
@@ -32,6 +33,13 @@ const readPayload = (payload: unknown): StripePayload | null => {
 const checkoutAccountId = (row: PayerRow): string | null => {
   const id = readPayload(row.payload)?.metadata?.user_id;
   return typeof id === 'string' && id.length > 0 ? id : null;
+};
+
+export const planCustomerId = (
+  row: { payload?: unknown } | undefined
+): string | null => {
+  const customer = readPayload(row?.payload)?.customer;
+  return typeof customer === 'string' && customer.length > 0 ? customer : null;
 };
 
 // The row's own date alone would not do: a deleted row comes back dated today.
@@ -107,10 +115,10 @@ export const payerAddressIsProven = async (
   );
 };
 
-// For moving what hangs off an address to another one. With no row to read, an
-// unverified account has shown nothing. An address with no account has nobody
-// to doubt.
-export const accountOwnsAddress = async (
+// Whether the customer stored on this account leaves the address with it. With
+// no row, an unverified account has shown nothing, and a customer it carried
+// away would keep billing under this address.
+export const storedCustomerFollowsAccount = async (
   db: Knex,
   email: string
 ): Promise<boolean> => {
@@ -120,11 +128,7 @@ export const accountOwnsAddress = async (
     return true;
   }
   const row = await readPayerRow(db, address);
-  return (
-    row != null &&
-    !belongsToAnotherAccount(account, row, address) &&
-    predatesPlan(account, row)
-  );
+  return row != null && (await payerAddressIsProven(db, address));
 };
 
 export interface StripeReach {
@@ -135,7 +139,8 @@ export interface StripeReach {
 // Stripe lists every customer on an address, whoever's plan they carry, so only
 // a verified address opens that search. An unverified account reaches the one
 // customer stored on it, on an address it can prove, which covers a plan of its
-// own without showing it anyone else's.
+// own without showing it anyone else's. Older rows predate the stored column,
+// so the plan's own customer stands in.
 export const stripeReachOf = async (
   db: Knex,
   email: string
@@ -152,13 +157,20 @@ export const stripeReachOf = async (
     .where({ id: account.id })
     .select('stripe_customer_id')
     .first();
-  return { byAddress: false, customerId: stored?.stripe_customer_id ?? null };
+  const row = await readPayerRow(db, address);
+  return {
+    byAddress: false,
+    customerId: stored?.stripe_customer_id ?? planCustomerId(row) ?? null,
+  };
 };
 
 const ENDED_STATUSES: ReadonlySet<string> = new Set([
   'canceled',
   'incomplete_expired',
 ]);
+
+export const isEndedStatus = (status: string): boolean =>
+  ENDED_STATUSES.has(status);
 
 // A paused or past-due plan stores active = false and is still open in Stripe.
 const isOpenPlan = (row: PayerRow & { active: unknown }): boolean => {
