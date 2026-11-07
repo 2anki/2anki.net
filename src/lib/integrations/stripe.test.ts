@@ -43,6 +43,8 @@ describe('updateStoreSubscription', () => {
     await db.schema.createTable('users', (t) => {
       t.increments('id');
       t.string('email');
+      t.boolean('email_verified').defaultTo(true);
+      t.text('created_at');
       t.string('stripe_customer_id');
     });
     await db.schema.createTable('subscriptions', (t) => {
@@ -317,6 +319,8 @@ describe('updateStoreSubscription linked_email resolution', () => {
     await db.schema.createTable('users', (t) => {
       t.increments('id');
       t.string('email');
+      t.boolean('email_verified').defaultTo(true);
+      t.text('created_at');
       t.string('stripe_customer_id');
     });
     await db.schema.createTable('subscriptions', (t) => {
@@ -419,6 +423,8 @@ describe('updateStoreSubscription developer tiers', () => {
     await db.schema.createTable('users', (t) => {
       t.increments('id');
       t.string('email');
+      t.boolean('email_verified').defaultTo(true);
+      t.text('created_at');
       t.string('stripe_customer_id');
     });
     await db.schema.createTable('subscriptions', (t) => {
@@ -552,6 +558,8 @@ describe('updateStoreSubscription when a unique link is already taken', () => {
     await db.schema.createTable('users', (t) => {
       t.increments('id');
       t.string('email');
+      t.boolean('email_verified').defaultTo(true);
+      t.text('created_at');
       t.string('stripe_customer_id').unique();
     });
     await db.schema.createTable('subscriptions', (t) => {

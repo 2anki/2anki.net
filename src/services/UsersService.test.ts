@@ -215,6 +215,22 @@ describe('UsersService.markEmailVerified', () => {
     });
   });
 
+  it('keeps the password a reset just set', async () => {
+    const repository = {
+      markEmailVerified: vi.fn(),
+      markEmailVerifiedAfterReset: vi.fn().mockResolvedValue(1),
+    } as unknown as UsersRepository & {
+      markEmailVerified: Mock;
+      markEmailVerifiedAfterReset: Mock;
+    };
+    const service = new UsersService(repository, buildEmailService());
+
+    await service.markEmailVerified('42', 'password_reset');
+
+    expect(repository.markEmailVerifiedAfterReset).toHaveBeenCalledWith('42');
+    expect(repository.markEmailVerified).not.toHaveBeenCalled();
+  });
+
   it('does not fire the event for a non-numeric user id', async () => {
     const repository = {
       markEmailVerified: vi.fn().mockResolvedValue(1),

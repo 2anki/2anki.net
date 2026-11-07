@@ -116,6 +116,28 @@ describe('ThinDeckAiOffer', () => {
     });
   });
 
+  it('says to confirm the email when the pass is refused over an unproven plan', async () => {
+    startPassCheckout.mockResolvedValue({
+      status: 'conflict',
+      code: 'confirm_address',
+      expiresAt: null,
+    });
+    renderOffer(false);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Preview cards Claude would write' })
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Get every card: Day Pass $6',
+      })
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.'
+    );
+  });
+
   it('keeps the file for the return before it leaves for checkout', async () => {
     startPassCheckout.mockResolvedValue({ status: 'error' });
     const order: string[] = [];

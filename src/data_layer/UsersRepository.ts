@@ -1,4 +1,6 @@
 import { Knex } from 'knex';
+import { randomUUID } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import type { AdClickAttribution } from '../lib/attribution/adClick';
 
 import Users from './public/Users';
@@ -7,6 +9,11 @@ import { isNewMonth } from '../lib/User/isNewMonth';
 import { startOfMonthUtc } from '../lib/User/startOfMonthUtc';
 import DeletedUserUsageRepository from './DeletedUserUsageRepository';
 import { emailHash } from '../lib/emailHash';
+import {
+  accountHoldsAddress,
+  addressCarriesPlan,
+  payerAddressIsProven,
+} from '../lib/subscriptions/payerAddressProof';
 import type { SignupCountryCount } from '../types/ops/BusinessMetrics';
 
 export type { SignupCountryCount };
@@ -374,6 +381,16 @@ class UsersRepository {
       .update({ used_at: executor.fn.now() });
   }
 
+  relinkSubscriptionsOwnedByAccountQuery(
+    executor: Knex | Knex.Transaction,
+    oldEmail: string,
+    newEmail: string
+  ) {
+    return executor('subscriptions')
+      .whereRaw('LOWER(linked_email) = ?', [oldEmail.trim().toLowerCase()])
+      .update({ linked_email: newEmail.trim().toLowerCase() });
+  }
+
   relinkSubscriptionsForEmailChangeQuery(
     executor: Knex | Knex.Transaction,
     oldEmail: string,
@@ -424,15 +441,38 @@ class UsersRepository {
         }
 
         const oldEmail = String(user.email).trim().toLowerCase();
+        // A plan paid from the new address belongs to someone, and the link
+        // that confirms this change is one click in that person's mailbox. A
+        // row linked to this account proves nothing here: editing a Stripe
+        // customer's email can plant one.
+        if (await addressCarriesPlan(trx, nextEmail)) {
+          throw new EmailAlreadyInUseError();
+        }
+        // Read before the address moves: afterwards no account sits on it, and
+        // an address with no account reads as proven. Confirming the new
+        // address says nothing about the old one, so an unproven account
+        // leaves its plan and any customer a webhook stamped on it behind.
+        const ownsPlan = await payerAddressIsProven(trx, oldEmail);
+        const keepsCustomer = await accountHoldsAddress(trx, oldEmail);
         await trx(this.table)
           .where({ id: params.userId })
-          .update({ email: nextEmail, ...CLEARED_RESET_TOKEN });
+          .update({
+            email: nextEmail,
+            ...CLEARED_RESET_TOKEN,
+            ...(keepsCustomer ? {} : { stripe_customer_id: null }),
+          });
         await this.spendUnusedMagicTokensQuery(trx, [params.userId]);
-        await this.relinkSubscriptionsForEmailChangeQuery(
-          trx,
-          oldEmail,
-          nextEmail
-        );
+        await (ownsPlan
+          ? this.relinkSubscriptionsForEmailChangeQuery(
+              trx,
+              oldEmail,
+              nextEmail
+            )
+          : this.relinkSubscriptionsOwnedByAccountQuery(
+              trx,
+              oldEmail,
+              nextEmail
+            ));
         await this.forgetPauseNoticesForAddressQuery(trx, oldEmail);
         await trx('email_change_tokens')
           .where({ user_id: params.userId })
@@ -456,7 +496,7 @@ class UsersRepository {
 
   async getSubscriptionLinkedEmail(owner: string) {
     const user = await this.database(this.table).where({ id: owner }).first();
-    if (!user) {
+    if (!user || !(await payerAddressIsProven(this.database, user.email))) {
       return null;
     }
 
@@ -489,10 +529,66 @@ class UsersRepository {
     });
   }
 
-  markEmailVerified(userId: string) {
-    return this.database(this.table)
+  // Someone just proved this mailbox. Every paid row lands on it, and signup
+  // proved nothing, so whoever set this account up loses its sessions, MCP
+  // access and pending email change, or the plan would go to them too. Returns
+  // whether it did. Notion sign-in stays: Notion's address counts as the owner's.
+  private async endAccessOfUnprovenHolder(
+    trx: Knex.Transaction,
+    userId: string
+  ): Promise<boolean> {
+    const user = await trx(this.table)
       .where({ id: userId })
-      .update({ email_verified: true });
+      .select('email', 'email_verified')
+      .first();
+    if (user == null || user.email_verified) {
+      return false;
+    }
+    if (!(await addressCarriesPlan(trx, String(user.email)))) {
+      return false;
+    }
+    const now = trx.fn.now();
+    await trx('access_tokens').where({ owner: userId }).del();
+    await trx('mcp_access_tokens')
+      .where({ user_id: userId })
+      .whereNull('revoked_at')
+      .update({ revoked_at: now });
+    await trx('mcp_refresh_tokens')
+      .where({ user_id: userId })
+      .whereNull('revoked_at')
+      .update({ revoked_at: now });
+    await trx('mcp_authorization_codes')
+      .where({ user_id: userId })
+      .whereNull('consumed_at')
+      .update({ consumed_at: now });
+    await trx('email_change_tokens')
+      .where({ user_id: userId })
+      .whereNull('consumed_at')
+      .update({ consumed_at: now });
+    return true;
+  }
+
+  // The mailbox owner signs back in with a link or a reset.
+  markEmailVerified(userId: string) {
+    return this.database.transaction(async (trx) => {
+      const ended = await this.endAccessOfUnprovenHolder(trx, userId);
+      return trx(this.table)
+        .where({ id: userId })
+        .update({
+          email_verified: true,
+          ...(ended ? { password: await bcrypt.hash(randomUUID(), 12) } : {}),
+        });
+    });
+  }
+
+  // The reset already replaced the password with one the mailbox owner chose.
+  markEmailVerifiedAfterReset(userId: string) {
+    return this.database.transaction(async (trx) => {
+      await this.endAccessOfUnprovenHolder(trx, userId);
+      return trx(this.table)
+        .where({ id: userId })
+        .update({ email_verified: true });
+    });
   }
 
   updatePatreonByEmail(email: string, patreon: boolean): Promise<number> {

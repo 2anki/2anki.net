@@ -670,6 +670,15 @@ class UsersController {
         return res.status(404).json({ message: 'User not found' });
       }
 
+      // This account may not cancel a plan on an address it has not proven, and
+      // deleting past it would leave that plan billing with no account.
+      if (await SubscriptionService.hasPlanOutOfReach(user.email)) {
+        return res.status(409).json({
+          message:
+            "We can't cancel a plan billed to this email from here. Confirm your email with a sign-in link and try again, or email support@2anki.net.",
+        });
+      }
+
       // A failed Stripe cancel must block the deletion: with the account row
       // gone there is no user left to retry from, the reconcile sweep is off
       // in production, and the subscription would keep billing a ghost.
@@ -1556,14 +1565,16 @@ class UsersController {
             .status(400)
             .json({ message: 'This link is invalid or has expired.' });
         }
-        const jwtToken = await this.authService.newJWTToken(user.id);
-        await this.authService.persistToken(jwtToken, user.id.toString());
-        await this.userService.updateLastLoginAt(user.id.toString());
         recordUnverifiedSignin(user, 'magic_link');
+        // Before the new session exists: confirming an address can end the
+        // sessions an unproven account already held.
         await this.userService.markEmailVerified(
           user.id.toString(),
           'magic_link'
         );
+        const jwtToken = await this.authService.newJWTToken(user.id);
+        await this.authService.persistToken(jwtToken, user.id.toString());
+        await this.userService.updateLastLoginAt(user.id.toString());
         res.cookie('token', jwtToken, sessionCookieOptions());
         const mcpReturn = takeMcpLoginReturn(req, res);
         const redirect =

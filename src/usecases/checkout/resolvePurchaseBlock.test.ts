@@ -3,6 +3,7 @@ import { HeldEntitlements, resolvePurchaseBlock } from './resolvePurchaseBlock';
 const nothing: HeldEntitlements = {
   lifetime: false,
   activeSubscription: false,
+  unprovenSubscription: false,
   billedThroughApple: false,
   activePassKind: null,
   activePassExpiresAt: null,
@@ -15,6 +16,22 @@ describe('resolvePurchaseBlock', () => {
     expect(resolvePurchaseBlock('subscription', nothing)).toBeNull();
     expect(resolvePurchaseBlock('pass', nothing)).toBeNull();
   });
+
+  it.each([
+    ['lifetime', { lifetime: true }, 'already_lifetime'],
+    ['Apple', { billedThroughApple: true }, 'billed_through_apple'],
+  ] as const)(
+    'answers a %s holder with its own code over an unproven plan',
+    (_label, held, code) => {
+      expect(
+        resolvePurchaseBlock('subscription', {
+          ...nothing,
+          ...held,
+          unprovenSubscription: true,
+        })?.code
+      ).toBe(code);
+    }
+  );
 
   it.each(['subscription', 'pass'] as const)(
     'blocks a %s for a lifetime holder',

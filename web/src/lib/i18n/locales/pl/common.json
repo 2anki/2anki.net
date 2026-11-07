@@ -1078,6 +1078,7 @@
     "conflict": {
       "already_lifetime": "Masz już dostęp dożywotni — nie musisz kupować ponownie.",
       "already_subscribed": "Masz już aktywną subskrypcję — nie musisz kupować ponownie.",
+      "confirm_address": "Ten adres e-mail jest już rozliczany w ramach planu. Potwierdź go linkiem do logowania i spróbuj ponownie.",
       "already_unlimited": "Masz już nieograniczony dostęp — nie musisz kupować ponownie.",
       "already_unlimited_until": "Masz nieograniczony dostęp do {{date}}.",
       "billed_through_apple": "Twój plan jest rozliczany przez Apple. Zarządzaj nim w subskrypcjach Apple.",

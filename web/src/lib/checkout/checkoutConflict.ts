@@ -2,6 +2,7 @@ export const PURCHASE_BLOCK_CODES = [
   'already_lifetime',
   'already_unlimited',
   'already_subscribed',
+  'confirm_address',
   'billed_through_apple',
   'pass_still_active',
   'lapsed_subscription',

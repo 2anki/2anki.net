@@ -90,7 +90,7 @@ const makeStripe = (
 
 const makeSubscriptionService = (subs: StripeTypes.Subscription[] = []) =>
   ({
-    findActiveStripeSubscriptions: vi.fn().mockResolvedValue(subs),
+    findActiveStripeSubscriptionsForAddress: vi.fn().mockResolvedValue(subs),
   }) as unknown as typeof SubscriptionService;
 
 const baseInput = {

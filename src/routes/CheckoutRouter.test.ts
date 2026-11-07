@@ -52,6 +52,9 @@ let mockHeldPass: {
 } | null = null;
 
 vi.mock('../data_layer', () => ({ getDatabase: () => ({}) }));
+vi.mock('../lib/subscriptions/payerAddressProof', () => ({
+  payerAddressIsProven: async () => true,
+}));
 
 vi.mock('../lib/misc/hashToken', () => ({
   default: (value: string) => `hashed:${value}`,
@@ -84,6 +87,9 @@ vi.mock('../data_layer/UserPassRepository', () => ({
 vi.mock('../services/AuthenticationService', () => ({
   __esModule: true,
   default: class {
+    async holdsUnprovenPlan() {
+      return false;
+    }
     async getIsSubscriber() {
       return mockHeldSubscriber;
     }

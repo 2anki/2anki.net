@@ -40,6 +40,8 @@ async function createSchema(database: Knex) {
     t.text('email');
     t.boolean('patreon').defaultTo(false);
     t.text('stripe_customer_id').nullable();
+    t.boolean('email_verified').defaultTo(true);
+    t.text('created_at').nullable();
   });
   await database.schema.createTable('access_tokens', (t) => {
     t.integer('owner').notNullable();
@@ -50,6 +52,8 @@ async function createSchema(database: Knex) {
     t.text('email');
     t.text('linked_email');
     t.boolean('active');
+    t.text('payload');
+    t.text('created_at');
   });
   await database.schema.createTable('user_passes', (t) => {
     t.increments('id');
@@ -98,6 +102,7 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
     vi.stubEnv('SECRET', SECRET);
     vi.stubEnv('THE_HASHING_SECRET', 'pass-customer-test-hash-secret');
     vi.stubEnv('PASS_24H_PRICE_ID', 'price_24h_test');
+    vi.stubEnv('CREDIT_PACK_PRICE_ID', 'price_credit_pack_test');
     vi.stubEnv('PASS_7D_PRICE_ID', 'price_7d_test');
     vi.stubEnv('PASS_120D_PRICE_ID', 'price_120d_test');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -171,6 +176,60 @@ describe('CheckoutRouter — pass checkout reaches Stripe with the account', () 
 
     expect(mockCustomerCreate).not.toHaveBeenCalled();
     expect(firstSessionParams().customer).toBe('cus_existing');
+  });
+
+  it('leaves a stored customer out on an address the account has not proven', async () => {
+    await database('users').where({ id: OWNER }).update({
+      stripe_customer_id: 'cus_stamped',
+      email_verified: false,
+      created_at: '2026-03-01T00:00:00.000Z',
+    });
+    await database('subscriptions').insert({
+      email: ACCOUNT_EMAIL,
+      linked_email: null,
+      active: false,
+      payload: JSON.stringify({
+        id: 'sub_1',
+        status: 'canceled',
+        metadata: {},
+      }),
+      created_at: '2026-02-01T00:00:00.000Z',
+    });
+    const token = await signIn(database);
+
+    await buyPass('24h', token);
+
+    expect(firstSessionParams().customer).toBeUndefined();
+    expect(firstSessionParams().customer_email).toBe(ACCOUNT_EMAIL);
+  });
+
+  it('leaves a stored customer out of a credit pack on an unproven address', async () => {
+    await database('users').where({ id: OWNER }).update({
+      stripe_customer_id: 'cus_stamped',
+      email_verified: false,
+      created_at: '2026-03-01T00:00:00.000Z',
+    });
+    await database('subscriptions').insert({
+      email: ACCOUNT_EMAIL,
+      linked_email: 'owner@example.com',
+      active: true,
+      payload: JSON.stringify({ id: 'sub_1', metadata: {} }),
+      created_at: '2026-02-01T00:00:00.000Z',
+    });
+    const token = await signIn(database);
+
+    const res = await fetch(`${url}/api/checkout/credit-pack`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `token=${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+
+    expect(res.status).toBe(200);
+    expect(firstSessionParams().customer).toBeUndefined();
+    expect(firstSessionParams().customer_email).toBe(ACCOUNT_EMAIL);
   });
 
   it('replaces a linked customer that Stripe no longer has and retries the session', async () => {

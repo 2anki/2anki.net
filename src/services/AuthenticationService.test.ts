@@ -1735,6 +1735,14 @@ describe('subscription lookups by linked_email', () => {
       t.text('email').nullable();
       t.text('linked_email').nullable();
       t.boolean('active').notNullable().defaultTo(false);
+      t.text('payload').nullable();
+      t.text('created_at').nullable();
+    });
+    await database.schema.createTable('users', (t) => {
+      t.increments('id').primary();
+      t.text('email').notNullable();
+      t.boolean('email_verified').notNullable().defaultTo(false);
+      t.text('created_at').nullable();
     });
     service = new AuthenticationService(
       new TokenRepository(database),
@@ -1744,6 +1752,99 @@ describe('subscription lookups by linked_email', () => {
 
   afterEach(async () => {
     await database.destroy();
+  });
+
+  describe('an unverified account on a payer address', () => {
+    const SUBSCRIBED = '2026-02-01T00:00:00.000Z';
+    const SIGNED_UP_LATER = '2026-03-01T00:00:00.000Z';
+
+    beforeEach(async () => {
+      await database('subscriptions').insert({
+        email: 'payer@example.com',
+        linked_email: 'owner@example.com',
+        active: true,
+        payload: JSON.stringify({ id: 'sub_1', metadata: {} }),
+        created_at: SUBSCRIBED,
+      });
+      await database('users').insert({
+        email: 'payer@example.com',
+        email_verified: false,
+        created_at: SIGNED_UP_LATER,
+      });
+    });
+
+    it('does not count as a subscriber', async () => {
+      const result = await service.getIsSubscriber(
+        database,
+        'payer@example.com'
+      );
+
+      expect(result).toBe(false);
+    });
+
+    it('reads no subscription details', async () => {
+      const result = await service.getSubscriptionInfo(
+        database,
+        'payer@example.com'
+      );
+
+      expect(result).toEqual({
+        active: false,
+        email: undefined,
+        linked_email: undefined,
+      });
+    });
+
+    it('leaves the linked owner subscribed', async () => {
+      const result = await service.getIsSubscriber(
+        database,
+        'owner@example.com'
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('reads nothing from a lapsed row either', async () => {
+      await database('subscriptions')
+        .where({ email: 'payer@example.com' })
+        .update({ active: false });
+
+      const result = await service.getSubscriptionInfo(
+        database,
+        'payer@example.com'
+      );
+
+      expect(result.email).toBeUndefined();
+    });
+
+    it('keeps the lapsed row for an account older than the plan', async () => {
+      await database('subscriptions')
+        .where({ email: 'payer@example.com' })
+        .update({ active: false, linked_email: null });
+      await database('users')
+        .where({ email: 'payer@example.com' })
+        .update({ created_at: '2026-01-01T00:00:00.000Z' });
+
+      const result = await service.getSubscriptionInfo(
+        database,
+        'payer@example.com'
+      );
+
+      expect(result.email).toBe('payer@example.com');
+    });
+
+    it('counts as a subscriber once the address is verified', async () => {
+      await database('users')
+        .where({ email: 'payer@example.com' })
+        .update({ email_verified: true });
+
+      const result = await service.getIsSubscriber(
+        database,
+        'payer@example.com'
+      );
+
+      expect(result).toBe(true);
+    });
   });
 
   it('getIsSubscriber returns true when an active row shares a linked_email with an older inactive one', async () => {

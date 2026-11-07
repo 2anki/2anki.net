@@ -5817,6 +5817,30 @@ describe('limit state', () => {
     }
   );
 
+  it('says to confirm the email when a Day Pass on the file-size wall is refused', async () => {
+    setUserLocals({
+      ...loggedInData,
+      features: { kiUI: false, limitWallPassFirst: false },
+    } as ReturnType<typeof useUserLocals>['data']);
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({
+        status: 'conflict',
+        code: 'confirm_address',
+        expiresAt: null,
+      }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    stubLimitFetch('file_size');
+    await submitAndReachLimit();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Get Day Pass/ }));
+    });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.'
+    );
+  });
+
   it('navigates to /limit?kind=anonymous on an anonymous limit redirect', async () => {
     setUserLocals(anonymousData);
     const locationStub = { href: '', origin: 'http://localhost' } as Location;

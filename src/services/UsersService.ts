@@ -272,7 +272,10 @@ class UsersService {
   }
 
   async markEmailVerified(userId: string, method: EmailVerificationMethod) {
-    const result = await this.repository.markEmailVerified(userId);
+    const result =
+      method === 'password_reset'
+        ? await this.repository.markEmailVerifiedAfterReset(userId)
+        : await this.repository.markEmailVerified(userId);
     const numericUserId = Number(userId);
     if (Number.isFinite(numericUserId)) {
       track('email_verified', {

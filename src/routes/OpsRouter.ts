@@ -582,20 +582,14 @@ const OpsRouter = () => {
     new DeleteAccountByEmailUseCase({
       accounts: new AccountDeletionPreviewRepository(database),
       entitlements: {
-        hasActiveSubscription: async (email) =>
-          (await opsAuthService.getIsSubscriber(database, email)) ||
-          (await SubscriptionService.findActiveStripeSubscriptions(email))
-            .length > 0,
+        hasActiveSubscription: (email) =>
+          SubscriptionService.addressHoldsPlan(email),
         findActivePass: (userId, now) =>
           new UserPassRepository(database).findActive(userId, now),
       },
       billing: {
         cancelAllSubscriptions: async (email) => {
-          await SubscriptionService.cancelUserSubscriptions(
-            email,
-            'immediate',
-            true
-          );
+          await SubscriptionService.cancelEverySubscriptionAtAddress(email);
         },
       },
       appleTokens: {

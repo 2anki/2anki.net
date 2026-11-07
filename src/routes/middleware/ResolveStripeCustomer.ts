@@ -5,6 +5,7 @@ import { getDatabase } from '../../data_layer';
 import { getStripe } from '../../lib/integrations/stripe';
 import { StripeCustomerResolver } from '../../services/StripeCustomerResolver';
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
+import { payerAddressIsProven } from '../../lib/subscriptions/payerAddressProof';
 
 export interface StripeCustomerResolution {
   resolveOrCreate(userId: number, email: string): Promise<string>;
@@ -44,8 +45,29 @@ export const applyResolvedStripeCustomer = async (
   }
 };
 
-export const resolveStripeCustomer = (res: Response): Promise<void> =>
-  applyResolvedStripeCustomer(
+// A webhook used to stamp a customer on any account at its address, so a stored
+// id only counts on an address the account has proven. Without one, checkout
+// takes its customer_email path, as it does when resolving fails.
+const ownsStoredCustomer = async (res: Response): Promise<boolean> => {
+  const email = res.locals.email;
+  if (typeof email !== 'string' || email === '') {
+    return true;
+  }
+  try {
+    return await payerAddressIsProven(getDatabase(), email);
+  } catch (error) {
+    console.error('checkout.customer_proof_failed', {
+      error_name: (error as Error)?.name,
+    });
+    return false;
+  }
+};
+
+export const resolveStripeCustomer = async (res: Response): Promise<void> => {
+  if (!(await ownsStoredCustomer(res))) {
+    return;
+  }
+  await applyResolvedStripeCustomer(
     res,
     () =>
       new StripeCustomerResolver(
@@ -66,3 +88,4 @@ export const resolveStripeCustomer = (res: Response): Promise<void> =>
       }
     }
   );
+};

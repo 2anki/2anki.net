@@ -1020,6 +1020,7 @@
     "conflict": {
       "already_lifetime": "Ya tienes acceso de por vida — no necesitas comprar otra vez.",
       "already_subscribed": "Ya tienes una suscripción activa — no necesitas comprar otra vez.",
+      "confirm_address": "Ya hay un plan facturado a este correo. Confirma este correo con un enlace de acceso e inténtalo de nuevo.",
       "already_unlimited": "Ya tienes acceso ilimitado — no necesitas comprar otra vez.",
       "already_unlimited_until": "Tienes acceso ilimitado hasta el {{date}}.",
       "billed_through_apple": "Tu plan se cobra a través de Apple. Gestiónalo en tus suscripciones de Apple.",

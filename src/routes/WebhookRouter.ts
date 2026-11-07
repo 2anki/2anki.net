@@ -13,6 +13,7 @@ import {
   extractProductId,
   getCustomerId,
   getStripe,
+  deactivateSubscriptionRow,
   normalizeEmail,
   resolveAccountForSubscription,
   updateStoreSubscription,
@@ -346,6 +347,10 @@ const WebhooksRouter = () => {
               )
             );
             if (!deletedAccount) {
+              await deactivateSubscriptionRow(
+                getDatabase(),
+                customerSubscriptionDeleted
+              );
               break;
             }
 

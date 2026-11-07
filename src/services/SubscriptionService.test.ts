@@ -35,6 +35,8 @@ function buildDbMock(linkedRows: Array<{ email: string }> = []): Mock & {
     whereRaw: whereRawSpy,
     andWhere: vi.fn().mockReturnThis(),
     orWhere: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    first: vi.fn().mockResolvedValue(undefined),
     update: updateSpy,
     delete: deleteSpy,
     then: (resolve: (value: unknown) => void) => resolve(linkedRows),
@@ -572,7 +574,7 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
     await SubscriptionService.cancelSubscriptionById(email, 'sub_owned');
 
     expect(db.deleteSpy).not.toHaveBeenCalled();
-    expect(db.whereRawSpy).not.toHaveBeenCalled();
+    expect(db.updateSpy).not.toHaveBeenCalled();
   });
 
   it('does not write the Stripe id to the logs', async () => {

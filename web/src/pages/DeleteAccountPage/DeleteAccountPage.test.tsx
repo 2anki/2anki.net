@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import Cookies from 'universal-cookie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DeleteAccountPage } from './DeleteAccountPage';
 import {
@@ -37,6 +38,28 @@ describe('DeleteAccountPage', () => {
     vi.unstubAllGlobals();
     resetLastDeckStoreForTests();
     resetPendingUploadStoreForTests();
+  });
+
+  it('shows the refusal and stays signed in when the account was not deleted', async () => {
+    const refusal = 'A plan is billed to this email.';
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ message: refusal }), { status: 409 })
+        )
+    );
+    new Cookies().set('token', 'kept');
+    const setError = vi.fn();
+    render(<DeleteAccountPage setError={setError} />);
+
+    confirmDeletion();
+
+    await waitFor(() => expect(setError).toHaveBeenCalled());
+    expect(setError.mock.calls[0][0]).toMatchObject({ message: refusal });
+    expect(location.href).toBe('');
+    expect(new Cookies().get('token')).toBe('kept');
   });
 
   it('forgets the deck a signed-out pass bought on this device', async () => {

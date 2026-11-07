@@ -59,7 +59,7 @@ export class ClaimSubscriptionUseCase {
     });
 
     const activeSubs =
-      await this.subscriptionService.findActiveStripeSubscriptions(
+      await this.subscriptionService.findActiveStripeSubscriptionsForAddress(
         input.submittedEmail
       );
 

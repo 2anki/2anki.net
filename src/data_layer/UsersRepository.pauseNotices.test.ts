@@ -33,6 +33,9 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
     await database.schema.createTable('users', (t) => {
       t.increments('id').primary();
       t.text('email');
+      t.boolean('email_verified').defaultTo(true);
+      t.text('stripe_customer_id');
+      t.text('created_at');
       t.integer('cards_used_this_month');
       t.timestamp('cards_month_started_at');
       t.integer('pdf_prints_this_month');
@@ -77,6 +80,9 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
       t.increments('id').primary();
       t.text('email').unique();
       t.text('linked_email');
+      t.boolean('active').defaultTo(false);
+      t.text('payload');
+      t.text('created_at');
     });
     await database.schema.createTable('pause_resume_warning_notices', (t) => {
       t.increments('id').primary();

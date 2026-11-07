@@ -4,6 +4,7 @@ import type { Knex } from 'knex';
 import { DeveloperSubscriptionsRepository } from '../../data_layer/DeveloperSubscriptionsRepository';
 import { isPaused } from '../subscriptions/isPaused';
 import { emailHash } from '../emailHash';
+import { accountHoldsAddress } from '../subscriptions/payerAddressProof';
 
 let stripeInstance: InstanceType<typeof Stripe> | null = null;
 
@@ -93,7 +94,7 @@ export const resolveAccountForSubscription = async (
       .whereRaw('lower(trim(email)) = ?', [stripeEmail])
       .select('id', 'email')
       .first();
-    if (byEmail != null) {
+    if (byEmail != null && (await accountHoldsAddress(db, stripeEmail))) {
       return { id: byEmail.id, email: byEmail.email ?? null };
     }
 
@@ -168,6 +169,21 @@ const stampCustomerId = async (
     .where({ id: account.id })
     .update({ stripe_customer_id: customerId });
 };
+
+// A plan that ended with no account to resolve still has to read as ended, or
+// the row keeps blocking checkout and grants access once an address is proven.
+// Keyed on the id, so it cannot touch a newer plan that took over the row.
+export const deactivateSubscriptionRow = (
+  db: Knex,
+  subscription: StripeTypes.Subscription
+) =>
+  db('subscriptions')
+    .whereRaw("payload->>'id' = ?", [subscription.id])
+    .update({
+      active: false,
+      payload: JSON.stringify(subscription),
+      updated_at: new Date(),
+    });
 
 export const updateStoreSubscription = async (
   db: Knex,
@@ -248,6 +264,22 @@ export const updateStoreSubscription = async (
   };
   if (linkedEmail != null) {
     mergeColumns.linked_email = linkedEmail;
+  }
+  // The account's own checkout on an address it has proven: a link left by an
+  // earlier plan on this row must not hand this one to someone else. Unproven,
+  // the link stands, or a purchase would take the row from its owner.
+  if (
+    account != null &&
+    subscription.metadata?.user_id === String(account.id) &&
+    accountEmail === stripeEmail
+  ) {
+    const buyer = await db('users')
+      .where({ id: account.id })
+      .select('email_verified')
+      .first();
+    if (buyer?.email_verified) {
+      mergeColumns.linked_email = null;
+    }
   }
 
   await db('subscriptions')

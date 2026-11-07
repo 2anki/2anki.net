@@ -16,7 +16,10 @@ import {
 
 export interface PurchaseGuardDeps {
   database: Knex;
-  authService: Pick<AuthenticationService, 'getIsSubscriber'>;
+  authService: Pick<
+    AuthenticationService,
+    'getIsSubscriber' | 'holdsUnprovenPlan'
+  >;
   usersRepository: Pick<UsersRepository, 'getById'>;
   userPassRepository: IUserPassRepository;
   now: () => Date;
@@ -41,6 +44,10 @@ export const readHeldEntitlements = async (
     email === ''
       ? false
       : await deps.authService.getIsSubscriber(deps.database, email);
+  const unprovenSubscription =
+    email === ''
+      ? false
+      : await deps.authService.holdsUnprovenPlan(deps.database, email);
   const activePass = await deps.userPassRepository.findActive(
     owner,
     deps.now()
@@ -49,6 +56,7 @@ export const readHeldEntitlements = async (
   return {
     lifetime: user?.patreon === true,
     activeSubscription,
+    unprovenSubscription,
     billedThroughApple: isAppleBilled(
       activePass?.kind ?? null,
       activePass?.stripe_payment_intent_id
