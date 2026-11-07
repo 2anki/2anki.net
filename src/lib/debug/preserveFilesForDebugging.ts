@@ -7,6 +7,7 @@ import express from 'express';
 import { getRandomUUID } from '../../shared/helpers/getRandomUUID';
 import { UploadedFile } from '../storage/types';
 import { sanitizeForLog } from '../../lib/log/sanitizeForLog';
+import { redactRequestBody } from './redactRequestBody';
 
 export function preserveFilesForDebugging(
   request: express.Request,
@@ -25,7 +26,7 @@ export function preserveFilesForDebugging(
 
     fs.writeFileSync(
       `${debugDirectory}/request.json`,
-      JSON.stringify(request.body, null, 2)
+      JSON.stringify(redactRequestBody(request.body), null, 2)
     );
 
     const timestamp = new Date().toISOString();
