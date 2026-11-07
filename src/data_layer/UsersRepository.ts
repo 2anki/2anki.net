@@ -530,8 +530,9 @@ class UsersRepository {
   }
 
   // Someone just proved this mailbox. Every paid row lands on it, and signup
-  // proved nothing, so whoever set this account up loses every way back in or
-  // the plan would go to them too. Returns whether it did.
+  // proved nothing, so whoever set this account up loses its sessions, MCP
+  // access and pending email change, or the plan would go to them too. Returns
+  // whether it did. Notion sign-in stays: Notion's address counts as the owner's.
   private async endAccessOfUnprovenHolder(
     trx: Knex.Transaction,
     userId: string

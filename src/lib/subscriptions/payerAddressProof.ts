@@ -94,7 +94,7 @@ const normalizeAddress = (email: string): string => email.toLowerCase().trim();
 // proves nothing by itself. subscriptions.email is one row per address, so this
 // answers for every plan paid from it. A checkout that named the account shows
 // the plan is its own, which is all this check needs; it is not proof of the
-// mailbox, so accountHoldsAddress and stripeReachOf ask for more.
+// mailbox, so stripeReachOf asks for more.
 export const payerAddressIsProven = async (
   db: Knex,
   email: string
