@@ -43,6 +43,8 @@ describe('UnprovenPlanAccountsRepository', () => {
       { email: 'second-account@x.test', email_verified: false },
       { email: 'verified@x.test', email_verified: true },
       { email: 'ended@x.test', email_verified: false },
+      { email: 'past-due@x.test', email_verified: false },
+      { email: 'self-linked@x.test', email_verified: false },
     ]);
     await database('subscriptions').insert([
       { email: 'unlinked@x.test', linked_email: null, active: true },
@@ -53,6 +55,12 @@ describe('UnprovenPlanAccountsRepository', () => {
       },
       { email: 'verified@x.test', linked_email: null, active: true },
       { email: 'ended@x.test', linked_email: null, active: false },
+      { email: 'past-due@x.test', linked_email: null, active: false },
+      {
+        email: 'self-linked@x.test',
+        linked_email: 'self-linked@x.test',
+        active: true,
+      },
     ]);
   });
 

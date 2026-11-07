@@ -114,6 +114,23 @@ describe('UsersRepository.markEmailVerified', () => {
     }
   );
 
+  it('ends the access of a notice recipient on an active unlinked plan', async () => {
+    await database('subscriptions').insert({
+      email: ADDRESS,
+      active: true,
+      payload: JSON.stringify({ id: 'sub_1', metadata: {} }),
+      created_at: SUBSCRIBED,
+    });
+
+    await repository.markEmailVerified('7');
+
+    expect((await account()).password).not.toBe(STORED_HASH);
+    await expect(sessions()).resolves.toEqual(['someone-else']);
+    await expect(
+      openTokens('mcp_refresh_tokens', 'revoked_at')
+    ).resolves.toEqual([8]);
+  });
+
   it('ends the access of an account older than its own open plan', async () => {
     await database('subscriptions').insert({
       email: ADDRESS,

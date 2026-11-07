@@ -420,7 +420,7 @@ const OpsRouter = () => {
    *   post:
    *     summary: Email unverified payers locked out of their own plan
    *     description: |
-   *       Finds unverified accounts on the payer address of an open plan linked
+   *       Finds unverified accounts on the payer address of an active plan linked
    *       to nobody that the real ownership check locks out, and sends each
    *       one email, once ever, asking them to confirm their address.
    *       Pass ?dryRun=false to send; omit or pass ?dryRun=true to count only.

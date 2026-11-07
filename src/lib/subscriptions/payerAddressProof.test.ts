@@ -286,24 +286,45 @@ describe('payerAddressIsProven', () => {
   });
 
   describe('isLockedOutOfPlan', () => {
-    beforeEach(async () => {
-      await addRow({ active: false, status: 'past_due' });
+    it('is true for an active plan the account cannot use', async () => {
+      await addRow({ active: true, status: 'active' });
       await addAccount(false, AFTER);
-    });
 
-    it('is true for a plan the account cannot use', async () => {
       await expect(isLockedOutOfPlan(database, ADDRESS)).resolves.toBe(true);
     });
 
-    it('is true for an unverified account older only than a linked plan it cannot prove', async () => {
-      await database('subscriptions')
-        .where({ email: ADDRESS })
-        .update({ linked_email: OWNER_ADDRESS, active: true });
+    it('is false for an unverified account older than its plan', async () => {
+      await addRow({ active: true, status: 'active' });
+      await addAccount(false, BEFORE);
+
+      await expect(isLockedOutOfPlan(database, ADDRESS)).resolves.toBe(false);
+    });
+
+    it('is false for an unverified account the checkout named', async () => {
+      const id = await addAccount(false, AFTER);
+      await addRow({
+        active: true,
+        status: 'active',
+        metadataUserId: String(id),
+      });
+
+      await expect(isLockedOutOfPlan(database, ADDRESS)).resolves.toBe(false);
+    });
+
+    it('reads no pass, lifetime or Auto Sync access, only subscription rows', async () => {
+      await addRow({ active: true, status: 'active' });
+      await addAccount(false, AFTER);
+      await database.schema.alterTable('users', (t) => {
+        t.boolean('patreon').defaultTo(true);
+        t.boolean('ankify_access').defaultTo(true);
+      });
 
       await expect(isLockedOutOfPlan(database, ADDRESS)).resolves.toBe(true);
     });
 
     it('is false when another live plan is linked to the account', async () => {
+      await addRow({ active: true, status: 'active' });
+      await addAccount(false, AFTER);
       await database('subscriptions').insert({
         email: 'other-payer@example.com',
         linked_email: ADDRESS,
