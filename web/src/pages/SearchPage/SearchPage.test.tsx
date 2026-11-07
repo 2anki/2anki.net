@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -20,8 +20,9 @@ vi.mock('./components/SearchContainer', () => ({
   },
 }));
 
+const mockStartPassCheckout = vi.fn();
 vi.mock('../../lib/backend/get2ankiApi', () => ({
-  get2ankiApi: () => ({ startPassCheckout: vi.fn() }),
+  get2ankiApi: () => ({ startPassCheckout: mockStartPassCheckout }),
 }));
 
 const mockUseUserLocals = vi.fn(() => ({ data: undefined }) as unknown);
@@ -73,6 +74,27 @@ describe('SearchPage over the monthly limit', () => {
       screen.getByRole('button', { name: /Get Day Pass/ })
     ).toBeInTheDocument();
     expect(screen.queryByTestId('search-container')).not.toBeInTheDocument();
+  });
+
+  it('says to confirm the email when the pass is refused over an unproven plan', async () => {
+    mockStartPassCheckout.mockResolvedValue({
+      status: 'conflict',
+      code: 'confirm_address',
+      expiresAt: null,
+    });
+    const setError = vi.fn();
+    render(
+      <MemoryRouter>
+        <SearchPage setError={setError} />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Get Day Pass/ }));
+
+    await waitFor(() => expect(setError).toHaveBeenCalled());
+    expect((setError.mock.calls[0][0] as Error).message).toBe(
+      'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.'
+    );
   });
 
   it('keeps Switch workspace on the start URL the server handed back', () => {

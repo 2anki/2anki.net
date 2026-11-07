@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { purchaseConflictMessage } from '../../../../lib/checkout/purchaseConflictMessage';
 import { Link } from 'react-router-dom';
 import {
   classifyNotionTooLarge,
@@ -123,10 +124,11 @@ function PaywalledVariant({
   cardsUsed,
   resetOn,
 }: Omit<PaywalledProps, 'variant' | 'title'>) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const passPrices = usePassPrices();
   const shownFiredRef = useRef(false);
   const [pendingKind, setPendingKind] = useState<'24h' | '7d' | null>(null);
+  const [passConflict, setPassConflict] = useState<string | null>(null);
   const resetDate = formatResetDate(resetOn);
 
   useEffect(() => {
@@ -149,6 +151,9 @@ function PaywalledVariant({
     if ('url' in result) {
       globalThis.location.href = result.url;
       return;
+    }
+    if (result.status === 'conflict') {
+      setPassConflict(purchaseConflictMessage(t, result, i18n.language));
     }
     setPendingKind(null);
   };
@@ -212,6 +217,11 @@ function PaywalledVariant({
           {t('conversionResult.paywall.upgradeUnlimited')}
         </a>
       </div>
+      {passConflict != null && (
+        <p className={styles.paywallBody} role="alert">
+          {passConflict}
+        </p>
+      )}
     </div>
   );
 }

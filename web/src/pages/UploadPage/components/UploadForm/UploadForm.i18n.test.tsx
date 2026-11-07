@@ -148,6 +148,21 @@ describe('UploadForm card-limit wall in German', () => {
     );
   });
 
+  it('says to confirm the email in German when the pass is refused over an unproven plan', async () => {
+    vi.mocked(get2ankiApi).mockReturnValue({
+      startPassCheckout: vi.fn().mockResolvedValue({
+        status: 'conflict',
+        code: 'confirm_address',
+        expiresAt: null,
+      }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+    renderUploadForm();
+    fireEvent.click(screen.getByRole('button', { name: /Day Pass holen/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Für diese E-Mail-Adresse läuft schon ein Plan.'
+    );
+  });
+
   it('explains an unreachable Day Pass checkout in German with the general retry message', async () => {
     vi.mocked(get2ankiApi).mockReturnValue({
       startPassCheckout: vi.fn().mockRejectedValue(new TypeError('offline')),

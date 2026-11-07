@@ -1,4 +1,5 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
+import { purchaseConflictMessage } from '../../../../lib/checkout/purchaseConflictMessage';
 import { flushSync } from 'react-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -1217,7 +1218,11 @@ function UploadForm({
         leaveTo(result.url);
         return;
       }
-      setDayPassError(t('upload.limit.checkoutError'));
+      setDayPassError(
+        result.status === 'conflict'
+          ? purchaseConflictMessage(t, result, i18n.language)
+          : t('upload.limit.checkoutError')
+      );
     } catch {
       setDayPassError(t('upload.limit.checkoutOffline'));
     } finally {

@@ -155,6 +155,21 @@ describe('ConversionResult — paywalled variant', () => {
     });
   });
 
+  it('says to confirm the email when the pass is refused over an unproven plan', async () => {
+    mockStartPassCheckout.mockResolvedValue({
+      status: 'conflict',
+      code: 'confirm_address',
+      expiresAt: null,
+    });
+    renderPaywall();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Get Day Pass · $6' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.'
+    );
+  });
+
   it('fires paywall_pass_clicked with plan=week and starts the 7d checkout', async () => {
     mockStartPassCheckout.mockResolvedValue({ status: 'error' });
     renderPaywall();

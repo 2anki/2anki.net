@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMessage';
 import { ErrorPresenter } from '../../components/errors/ErrorPresenter';
 import { ErrorHandlerType } from '../../components/errors/helpers/getErrorMessage';
 import { SkeletonList } from '../../components/Skeleton/Skeleton';
@@ -21,7 +22,7 @@ interface SearchPageProps {
 }
 
 export function SearchPage({ setError }: Readonly<SearchPageProps>) {
-  const { t } = useTranslation('search');
+  const { t, i18n } = useTranslation('search');
   const passPrices = usePassPrices();
   const notionData = useNotionData(get2ankiApi());
   const { data: userLocals } = useUserLocals();
@@ -47,6 +48,9 @@ export function SearchPage({ setError }: Readonly<SearchPageProps>) {
       if ('url' in result) {
         globalThis.location.href = result.url;
         return;
+      }
+      if (result.status === 'conflict') {
+        setError(new Error(purchaseConflictMessage(t, result, i18n.language)));
       }
     } finally {
       setDayPassPending(false);
