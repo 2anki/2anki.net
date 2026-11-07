@@ -13,6 +13,7 @@ describe('redactRequestBody', () => {
     'token',
     'api_key',
     'clientSecret',
+    'ankify_session_url:12',
   ])('hides %s', (field) => {
     expect(redactRequestBody({ [field]: SAMPLE, deck: 'Biology' })).toEqual({
       [field]: '[redacted]',

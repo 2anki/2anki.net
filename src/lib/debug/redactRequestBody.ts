@@ -1,6 +1,6 @@
 // A match by name, not a fixed list, so a new secret field is hidden by default.
 // Hiding a harmless field from a debug copy costs nothing.
-const SECRET_FIELD = /credential|pass|token|secret|auth|key/i;
+const SECRET_FIELD = /credential|pass|token|secret|auth|key|session/i;
 
 const REDACTED = '[redacted]';
 
