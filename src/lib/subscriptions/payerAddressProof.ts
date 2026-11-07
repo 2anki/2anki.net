@@ -204,6 +204,23 @@ export const addressCarriesPlan = async (
   return isOpenPlan(row) || (linkedEmail != null && linkedEmail !== address);
 };
 
+// Locked out for real: a plan on this address the account cannot use, and no
+// plan linked to it that it can.
+export const isLockedOutOfPlan = async (
+  db: Knex,
+  email: string
+): Promise<boolean> => {
+  if (!(await holdsUnprovenPlan(db, email))) {
+    return false;
+  }
+  const linkedPlan = await db('subscriptions')
+    .whereRaw('lower(linked_email) = ?', [normalizeAddress(email)])
+    .where({ active: true })
+    .select('email')
+    .first();
+  return linkedPlan == null;
+};
+
 // True when a checkout from this account would write over a row it cannot use.
 export const holdsUnprovenPlan = async (
   db: Knex,

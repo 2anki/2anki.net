@@ -241,6 +241,106 @@ describe('CommandsTab — change account email', () => {
   });
 });
 
+describe('CommandsTab — confirm email notice', () => {
+  const originalFetch = globalThis.fetch;
+  const noticeResult = {
+    count: 30,
+    failed: 0,
+    suppressed: 0,
+    alreadyRunning: false,
+  };
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  test('counts recipients without sending or asking', async () => {
+    const confirmSpy = vi.spyOn(globalThis, 'confirm');
+    mockFetch(() => ({ ...noticeResult, dryRun: true }));
+    renderTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Count recipients' }));
+
+    expect(
+      await screen.findByText('30 accounts would get the notice.')
+    ).toBeInTheDocument();
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/ops/send-confirm-email-notices?dryRun=true',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  test('sends nothing when the confirmation is dismissed', () => {
+    vi.spyOn(globalThis, 'confirm').mockImplementation(() => false);
+    mockFetch(() => ({ ...noticeResult, dryRun: false }));
+    renderTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send notice' }));
+
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test('reports sent, failed and suppressed after a confirmed send', async () => {
+    vi.spyOn(globalThis, 'confirm').mockImplementation(() => true);
+    mockFetch(() => ({
+      ...noticeResult,
+      failed: 2,
+      suppressed: 1,
+      dryRun: false,
+    }));
+    renderTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send notice' }));
+
+    expect(
+      await screen.findByText(
+        'Notice sent to 30 accounts. 2 failed, 1 suppressed.'
+      )
+    ).toBeInTheDocument();
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/ops/send-confirm-email-notices?dryRun=false',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  test('says so when another run is sending', async () => {
+    vi.spyOn(globalThis, 'confirm').mockImplementation(() => true);
+    mockFetch(() => ({
+      ...noticeResult,
+      count: 0,
+      alreadyRunning: true,
+      dryRun: false,
+    }));
+    renderTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send notice' }));
+
+    expect(
+      await screen.findByText(
+        'Another run is sending. Nothing was sent from this one.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  test('shows the server message when the job fails', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Server Error',
+      json: async () => ({ message: 'Could not run the confirm email job.' }),
+    });
+    renderTab();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Count recipients' }));
+
+    expect(
+      await screen.findByText('Could not run the confirm email job.')
+    ).toBeInTheDocument();
+  });
+});
+
 describe('CommandsTab — prune dead upload rows', () => {
   const originalFetch = globalThis.fetch;
 

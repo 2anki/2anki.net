@@ -131,6 +131,11 @@ describe('SubscriptionClaimController.confirm', () => {
     const res = buildRes(3);
     await controller.confirm(buildReq({ token: 'some-token' }), res);
     expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      message: expect.stringContaining(
+        'confirm your email with a sign-in link'
+      ),
+    });
   });
 
   it('returns 400 for invalid or expired token', async () => {

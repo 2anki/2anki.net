@@ -99,7 +99,7 @@ describe('UsersController.cancelSubscription', () => {
     expect(res.status).toHaveBeenCalledWith(422);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: expect.stringMatching(/different email/i),
+        message: expect.stringMatching(/sign-in link.*different email/i),
       })
     );
   });

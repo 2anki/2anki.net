@@ -7,6 +7,7 @@ describe('confirm email notice template', () => {
       '2anki.net — Turn what you study into Anki flashcards'
     );
     expect(CONFIRM_EMAIL_NOTICE_TEMPLATE).toContain('{{signInUrl}}');
+    expect(CONFIRM_EMAIL_NOTICE_TEMPLATE).toContain('{{email}}');
   });
 
   it('carries none of the recovery email placeholders', () => {

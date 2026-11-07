@@ -50,9 +50,30 @@ async function callInactivityWarnings(
   return response.json();
 }
 
+interface ConfirmEmailNoticesResponse {
+  count: number;
+  failed: number;
+  suppressed: number;
+  alreadyRunning: boolean;
+  dryRun: boolean;
+}
+
+function formatConfirmEmailNotices(
+  result: ConfirmEmailNoticesResponse
+): string {
+  const noun = `account${result.count === 1 ? '' : 's'}`;
+  if (result.dryRun) {
+    return `${result.count} ${noun} would get the notice.`;
+  }
+  if (result.alreadyRunning) {
+    return 'Another run is sending. Nothing was sent from this one.';
+  }
+  return `Notice sent to ${result.count} ${noun}. ${result.failed} failed, ${result.suppressed} suppressed.`;
+}
+
 async function callConfirmEmailNotices(
   dryRun: boolean
-): Promise<{ count: number; dryRun: boolean }> {
+): Promise<ConfirmEmailNoticesResponse> {
   const response = await fetch(
     `/api/ops/send-confirm-email-notices?dryRun=${dryRun}`,
     { method: 'POST', credentials: 'include' }
@@ -241,13 +262,8 @@ export default function CommandsTab() {
     setConfirmMessage('');
     try {
       const result = await callConfirmEmailNotices(dryRun);
-      const noun = `account${result.count === 1 ? '' : 's'}`;
       setConfirmStatus('success');
-      setConfirmMessage(
-        result.dryRun
-          ? `${result.count} ${noun} would get the notice.`
-          : `Notice sent to ${result.count} ${noun}.`
-      );
+      setConfirmMessage(formatConfirmEmailNotices(result));
     } catch (error) {
       setConfirmStatus('error');
       setConfirmMessage(
@@ -496,8 +512,8 @@ export default function CommandsTab() {
         <h3 className={styles.cardTitle}>Confirm email notice</h3>
         <p className={styles.panelSubtitle}>
           Finds unverified payers locked out of their own plan and emails each
-          one, once, asking them to confirm their address. Plans linked to
-          another account are left out.
+          one, once, asking them to confirm their address. Accounts with another
+          working plan are left out.
         </p>
         <div className={styles.controls}>
           <button

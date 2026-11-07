@@ -75,6 +75,9 @@ describe('AccountClaimPage', () => {
         screen.getByText('Account already has a subscription.')
       ).toBeTruthy();
     });
+    expect(
+      screen.getByText(/confirm your email with a sign-in link/)
+    ).toBeTruthy();
   });
 
   it('shows invalid/expired state for an expired or invalid token', async () => {

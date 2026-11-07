@@ -154,7 +154,7 @@ export interface IEmailService {
     variant: 'a' | 'b'
   ): Promise<void>;
   sendSubscriptionRecoveryEmail(to: string, paidEmail: string): Promise<void>;
-  sendConfirmEmailNotice(to: string): Promise<void>;
+  sendConfirmEmailNotice(to: string): Promise<boolean>;
   sendEmailChangeConfirmationEmail(
     newEmail: string,
     confirmUrl: string
@@ -1137,17 +1137,17 @@ export class EmailService implements IEmailService {
     }
   }
 
-  async sendConfirmEmailNotice(to: string): Promise<void> {
+  async sendConfirmEmailNotice(to: string): Promise<boolean> {
     const domain = process.env.DOMAIN ?? 'https://2anki.net';
     const markup = CONFIRM_EMAIL_NOTICE_TEMPLATE.replaceAll(
       '{{signInUrl}}',
       `${domain}/login`
-    );
+    ).replaceAll('{{email}}', to);
     const $ = cheerio.load(markup);
     const text = $('body').text().replace(/\s+/g, ' ').trim();
 
     try {
-      await this.deliver(
+      const delivered = await this.deliver(
         {
           to,
           from: this.defaultSender,
@@ -1158,6 +1158,7 @@ export class EmailService implements IEmailService {
         },
         EMAIL_CATEGORIES.confirmEmailNotice
       );
+      return delivered != null;
     } catch (error) {
       console.error(
         `Failed to send confirm email notice to ${emailHash(to)}:`,
@@ -1461,8 +1462,9 @@ export class UnimplementedEmailService implements IEmailService {
     console.info('sendSubscriptionRecoveryEmail not handled', to, paidEmail);
   }
 
-  async sendConfirmEmailNotice(to: string): Promise<void> {
+  async sendConfirmEmailNotice(to: string): Promise<boolean> {
     console.info('sendConfirmEmailNotice not handled', to);
+    return false;
   }
 
   async sendEmailChangeConfirmationEmail(

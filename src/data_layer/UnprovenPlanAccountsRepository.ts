@@ -4,9 +4,9 @@ export interface IUnprovenPlanAccountsRepository {
   findCandidateEmails(): Promise<string[]>;
 }
 
-// Unverified accounts on the payer address of a live plan linked to nobody else.
-// A row linked to another account leaves out a person who still has the plan on
-// that account. This only narrows the list: holdsUnprovenPlan decides.
+// Unverified accounts on the payer address of a row linked to nobody. A row with
+// a link leaves out a person who still has the plan on that account. This only
+// narrows the list, past-due and paused plans included: isLockedOutOfPlan decides.
 export const buildCandidateEmailsQuery = (database: Knex): Knex.QueryBuilder =>
   database('users')
     .join('subscriptions', function joinPayerRow() {
@@ -17,12 +17,7 @@ export const buildCandidateEmailsQuery = (database: Knex): Knex.QueryBuilder =>
       );
     })
     .where('users.email_verified', false)
-    .where('subscriptions.active', true)
-    .where(function linkedToNobodyElse() {
-      this.whereNull('subscriptions.linked_email').orWhereRaw(
-        'lower(trim(subscriptions.linked_email)) = lower(trim(users.email))'
-      );
-    })
+    .whereNull('subscriptions.linked_email')
     .select('users.email');
 
 export class UnprovenPlanAccountsRepository implements IUnprovenPlanAccountsRepository {
@@ -32,6 +27,6 @@ export class UnprovenPlanAccountsRepository implements IUnprovenPlanAccountsRepo
     const rows: Array<{ email: string }> = await buildCandidateEmailsQuery(
       this.database
     );
-    return rows.map((row) => row.email);
+    return [...new Set(rows.map((row) => row.email.toLowerCase().trim()))];
   }
 }

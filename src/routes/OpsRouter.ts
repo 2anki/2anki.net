@@ -32,7 +32,8 @@ import OpsDeleteAccountController from '../controllers/OpsDeleteAccountControlle
 import OpsConfirmEmailNoticesController from '../controllers/OpsConfirmEmailNoticesController';
 import { SendConfirmEmailNoticesUseCase } from '../usecases/ops/SendConfirmEmailNoticesUseCase';
 import { UnprovenPlanAccountsRepository } from '../data_layer/UnprovenPlanAccountsRepository';
-import { holdsUnprovenPlan } from '../lib/subscriptions/payerAddressProof';
+import { isLockedOutOfPlan } from '../lib/subscriptions/payerAddressProof';
+import { JobLockRepository } from '../data_layer/JobLockRepository';
 import { AccountDeletionPreviewRepository } from '../data_layer/AccountDeletionPreviewRepository';
 import OauthIdentitiesRepository from '../data_layer/OauthIdentitiesRepository';
 import type { UsersId } from '../data_layer/public/Users';
@@ -408,7 +409,8 @@ const OpsRouter = () => {
       new UnprovenPlanAccountsRepository(database),
       new SubscriptionRecoveryNotificationsRepository(database),
       getDefaultEmailService(),
-      (email) => holdsUnprovenPlan(database, email)
+      (email) => isLockedOutOfPlan(database, email),
+      new JobLockRepository(database)
     )
   );
 
@@ -418,8 +420,8 @@ const OpsRouter = () => {
    *   post:
    *     summary: Email unverified payers locked out of their own plan
    *     description: |
-   *       Finds unverified accounts on the payer address of a live plan linked
-   *       to nobody else that the real ownership check locks out, and sends each
+   *       Finds unverified accounts on the payer address of an open plan linked
+   *       to nobody that the real ownership check locks out, and sends each
    *       one email, once ever, asking them to confirm their address.
    *       Pass ?dryRun=false to send; omit or pass ?dryRun=true to count only.
    *     tags: [Ops]

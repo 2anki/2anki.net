@@ -603,7 +603,9 @@ describe('EmailService tags every outgoing send with a template category', () =>
     },
     {
       category: EMAIL_CATEGORIES.confirmEmailNotice,
-      run: (s) => s.sendConfirmEmailNotice('user@example.com'),
+      run: async (s) => {
+        await s.sendConfirmEmailNotice('user@example.com');
+      },
     },
   ];
 

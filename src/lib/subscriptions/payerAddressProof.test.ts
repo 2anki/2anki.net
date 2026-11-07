@@ -2,6 +2,7 @@ import knex, { Knex } from 'knex';
 
 import {
   holdsUnprovenPlan,
+  isLockedOutOfPlan,
   payerAddressIsProven,
   accountHoldsAddress,
   stripeReachOf,
@@ -281,6 +282,27 @@ describe('payerAddressIsProven', () => {
         byAddress: false,
         customerId: null,
       });
+    });
+  });
+
+  describe('isLockedOutOfPlan', () => {
+    beforeEach(async () => {
+      await addRow({ active: false, status: 'past_due' });
+      await addAccount(false, AFTER);
+    });
+
+    it('is true for a past-due plan the account cannot use', async () => {
+      await expect(isLockedOutOfPlan(database, ADDRESS)).resolves.toBe(true);
+    });
+
+    it('is false when another live plan is linked to the account', async () => {
+      await database('subscriptions').insert({
+        email: 'other-payer@example.com',
+        linked_email: ADDRESS,
+        active: true,
+      });
+
+      await expect(isLockedOutOfPlan(database, ADDRESS)).resolves.toBe(false);
     });
   });
 
