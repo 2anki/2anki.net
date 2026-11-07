@@ -1828,6 +1828,7 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
     refreshToken?: string | null;
     revokeAppleToken?: Mock;
     deleteUser?: Mock;
+    holdsUnprovenPlan?: boolean;
   }) => {
     MockedOauthIdentitiesRepo.prototype.findRefreshTokenByUserAndProvider = vi
       .fn()
@@ -1843,6 +1844,9 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
     const authService = {
       revokeAppleToken:
         overrides?.revokeAppleToken ?? vi.fn().mockResolvedValue(true),
+      holdsUnprovenPlan: vi
+        .fn()
+        .mockResolvedValue(overrides?.holdsUnprovenPlan ?? false),
     } as unknown as AuthenticationService;
     const controller = new UsersController(
       userService,
@@ -1936,6 +1940,28 @@ describe('UsersController.deleteAccount — Apple token revocation', () => {
 
     expect(deleteUser).toHaveBeenCalledWith('42');
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('refuses with 409 and cancels nothing over a plan the account has not proven', async () => {
+    const deleteUser = vi.fn().mockResolvedValue(undefined);
+    const { controller } = buildDeleteController({
+      deleteUser,
+      holdsUnprovenPlan: true,
+    });
+    const res = buildDeleteRes();
+
+    await controller.deleteAccount(
+      buildDeleteReq(),
+      Object.assign(res, {
+        locals: { owner: '42' },
+      }) as unknown as express.Response
+    );
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(deleteUser).not.toHaveBeenCalled();
+    expect(
+      SubscriptionServiceMock.cancelUserSubscriptions
+    ).not.toHaveBeenCalled();
   });
 
   it('aborts the deletion with 502 when the subscription cancel fails', async () => {

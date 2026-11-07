@@ -49,6 +49,7 @@ describe('SubscriptionService and an address the account has not proven', () => 
       t.text('stripe_product_id').nullable();
       t.text('payload').nullable();
       t.text('created_at').nullable();
+      t.text('updated_at').nullable();
     });
     await database.schema.createTable('users', (t) => {
       t.increments('id').primary();
@@ -149,6 +150,58 @@ describe('SubscriptionService and an address the account has not proven', () => 
     ).rejects.toBeInstanceOf(SubscriptionNotOwnedError);
 
     expect(stripe.subscriptions.update).not.toHaveBeenCalled();
+  });
+
+  it('does not let the unproven account resume the plan', async () => {
+    stripe.subscriptions.list.mockResolvedValue({
+      data: [
+        {
+          ...liveSubscription,
+          pause_collection: { behavior: 'void', resumes_at: 1_900_000_000 },
+        },
+      ],
+    });
+
+    await expect(
+      SubscriptionService.resumeSubscription(PAYER)
+    ).rejects.toBeInstanceOf(SubscriptionNotOwnedError);
+
+    expect(stripe.subscriptions.update).not.toHaveBeenCalled();
+  });
+
+  it('stays closed after a checkout of its own rewrites the row', async () => {
+    const account = await database('users').where({ email: PAYER }).first();
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({
+        payload: JSON.stringify({
+          id: 'sub_2',
+          metadata: { user_id: String(account.id) },
+        }),
+      });
+
+    const rows = await SubscriptionService.getUserActiveSubscriptions(PAYER);
+    const subs = await SubscriptionService.findRecentStripeSubscriptions(PAYER);
+
+    expect(rows).toEqual([]);
+    expect(subs).toEqual([]);
+  });
+
+  it('keeps Stripe closed to an unverified account with no row', async () => {
+    await database('subscriptions').where({ email: PAYER }).del();
+
+    const subs = await SubscriptionService.findRecentStripeSubscriptions(PAYER);
+
+    expect(subs).toEqual([]);
+    expect(stripe.customers.list).not.toHaveBeenCalled();
+  });
+
+  it('lets ops end every live plan on a typed address', async () => {
+    const applied =
+      await SubscriptionService.cancelEverySubscriptionAtAddress(PAYER);
+
+    expect(applied).toEqual(['immediate']);
+    expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_1');
   });
 
   it('lets the claim flow find the plan of a submitted address', async () => {

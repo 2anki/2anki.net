@@ -670,6 +670,15 @@ class UsersController {
         return res.status(404).json({ message: 'User not found' });
       }
 
+      // This account may not cancel a plan on an address it has not proven, and
+      // deleting past it would leave that plan billing with no account.
+      if (await this.authService.holdsUnprovenPlan(this.db, user.email)) {
+        return res.status(409).json({
+          message:
+            'A plan is paid from this email address. Sign in with an email link to confirm it, then delete your account.',
+        });
+      }
+
       // A failed Stripe cancel must block the deletion: with the account row
       // gone there is no user left to retry from, the reconcile sweep is off
       // in production, and the subscription would keep billing a ghost.

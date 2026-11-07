@@ -4,7 +4,10 @@ import { getStripe } from '../lib/integrations/stripe';
 import { getDefaultEmailService } from './EmailService/EmailService';
 import Subscriptions from '../data_layer/public/Subscriptions';
 import { isPaused } from '../lib/subscriptions/isPaused';
-import { payerAddressIsProven } from '../lib/subscriptions/payerAddressProof';
+import {
+  payerAddressIsProven,
+  stripeAddressIsOpen,
+} from '../lib/subscriptions/payerAddressProof';
 
 export type CancelMode = 'immediate' | 'period_end';
 
@@ -97,8 +100,8 @@ async function collectLinkedPayerEmails(normalized: string): Promise<string[]> {
 async function collectCandidateEmails(userEmail: string): Promise<string[]> {
   const normalized = userEmail.toLowerCase();
   const linked = await collectLinkedPayerEmails(normalized);
-  const proven = await payerAddressIsProven(getDatabase(), normalized);
-  return [...new Set(proven ? [normalized, ...linked] : linked)];
+  const open = await stripeAddressIsOpen(getDatabase(), normalized);
+  return [...new Set(open ? [normalized, ...linked] : linked)];
 }
 
 async function findStripeCustomersByEmail(
@@ -166,8 +169,8 @@ export class SubscriptionService {
     );
   }
 
-  // For an address someone typed, not the one on their account: the claim flow
-  // proves the mailbox itself with an emailed link.
+  // For an address typed by someone other than its account: the claim flow
+  // proves the mailbox with an emailed link, and ops acts on a typed address.
   static async findActiveStripeSubscriptionsForAddress(
     address: string
   ): Promise<StripeTypes.Subscription[]> {
@@ -188,14 +191,42 @@ export class SubscriptionService {
     allStatuses = false,
     sendEmail = true
   ): Promise<CancelMode[]> {
-    const stripe = getStripe();
-    const emailService = getDefaultEmailService();
     const allSubs = allStatuses
       ? await this.findRecentStripeSubscriptions(userEmail)
       : await this.findActiveStripeSubscriptions(userEmail);
     const subs = allStatuses
       ? allSubs.filter((s) => s.status !== 'canceled')
       : allSubs;
+    return this.cancelSubscriptions(subs, userEmail, mode, sendEmail);
+  }
+
+  // Ops deletes the account on a typed address, proven or not, so it ends every
+  // live plan there: nothing else can stop them billing once the account goes.
+  static async cancelEverySubscriptionAtAddress(
+    address: string
+  ): Promise<CancelMode[]> {
+    const normalized = address.toLowerCase();
+    const linked = await collectLinkedPayerEmails(normalized);
+    const subs = await listStripeSubscriptionsAt(
+      [...new Set([normalized, ...linked])],
+      'all'
+    );
+    return this.cancelSubscriptions(
+      subs.filter((s) => s.status !== 'canceled'),
+      normalized,
+      'immediate',
+      true
+    );
+  }
+
+  private static async cancelSubscriptions(
+    subs: StripeTypes.Subscription[],
+    userEmail: string,
+    mode: CancelMode,
+    sendEmail: boolean
+  ): Promise<CancelMode[]> {
+    const stripe = getStripe();
+    const emailService = getDefaultEmailService();
 
     console.log(
       `Found ${subs.length} active Stripe subscription(s) to process`

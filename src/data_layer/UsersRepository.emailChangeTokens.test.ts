@@ -18,6 +18,9 @@ describe('UsersRepository email change voids links mailed to the old address', (
     await database.schema.createTable('users', (t) => {
       t.increments('id').primary();
       t.text('email').notNullable();
+      t.boolean('email_verified').notNullable().defaultTo(true);
+      t.text('stripe_customer_id').nullable();
+      t.text('created_at').nullable();
       t.text('reset_token').nullable();
       t.timestamp('reset_token_expires_at').nullable();
       t.timestamp('reset_token_used_at').nullable();
@@ -26,6 +29,8 @@ describe('UsersRepository email change voids links mailed to the old address', (
       t.increments('id').primary();
       t.text('email');
       t.text('linked_email');
+      t.text('payload');
+      t.text('created_at');
     });
     await database.schema.createTable('email_change_tokens', (t) => {
       t.increments('id').primary();
@@ -124,6 +129,83 @@ describe('UsersRepository email change voids links mailed to the old address', (
     const other = await database('users').where({ id: otherId }).first();
     expect(other).toMatchObject({ reset_token: 'pending-reset' });
     expect(await unusedMagicTokens(otherId)).toHaveLength(1);
+  });
+
+  describe('with a plan paid from the old address', () => {
+    const SUBSCRIBED = '2026-02-01T00:00:00.000Z';
+    const SIGNED_UP_LATER = '2026-03-01T00:00:00.000Z';
+
+    const changeEmail = async (userId: number) => {
+      const [{ id: tokenId }] = await database('email_change_tokens')
+        .insert({ user_id: userId, expires_at: LATER })
+        .returning('id');
+      return repo.applyEmailChange({
+        userId,
+        newEmail: 'new@example.com',
+        tokenId: tokenId as number,
+        now: NOW,
+      });
+    };
+
+    const seedRow = () =>
+      database('subscriptions').insert({
+        email: 'old@example.com',
+        linked_email: 'owner@example.com',
+        payload: JSON.stringify({ id: 'sub_1', metadata: {} }),
+        created_at: SUBSCRIBED,
+      });
+
+    it('leaves the plan with its owner when the account never proved the address', async () => {
+      const userId = await seedUserWithPendingLinks('old@example.com');
+      await database('users').where({ id: userId }).update({
+        email_verified: false,
+        created_at: SIGNED_UP_LATER,
+        stripe_customer_id: 'cus_stamped',
+      });
+      await seedRow();
+
+      await changeEmail(userId);
+
+      const row = await database('subscriptions')
+        .where({ email: 'old@example.com' })
+        .first();
+      const user = await database('users').where({ id: userId }).first();
+      expect(row.linked_email).toBe('owner@example.com');
+      expect(user.stripe_customer_id).toBeNull();
+    });
+
+    it('moves the link when the account proved the address', async () => {
+      const userId = await seedUserWithPendingLinks('old@example.com');
+      await database('users').where({ id: userId }).update({
+        email_verified: true,
+        stripe_customer_id: 'cus_own',
+      });
+      await seedRow();
+
+      await changeEmail(userId);
+
+      const row = await database('subscriptions')
+        .where({ email: 'old@example.com' })
+        .first();
+      const user = await database('users').where({ id: userId }).first();
+      expect(row.linked_email).toBe('new@example.com');
+      expect(user.stripe_customer_id).toBe('cus_own');
+    });
+
+    it('keeps a plan linked to an unverified account on its new address', async () => {
+      const userId = await seedUserWithPendingLinks('owner@example.com');
+      await database('users')
+        .where({ id: userId })
+        .update({ email_verified: false, created_at: SIGNED_UP_LATER });
+      await seedRow();
+
+      await changeEmail(userId);
+
+      const row = await database('subscriptions')
+        .where({ email: 'old@example.com' })
+        .first();
+      expect(row.linked_email).toBe('new@example.com');
+    });
   });
 
   it('leaves pending links alone when the change is refused', async () => {

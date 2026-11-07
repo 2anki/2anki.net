@@ -21,7 +21,8 @@ export const deleteNonSubScriberUploadsInDatabase = async (
   // stale cancelled row and their current live one. A join-row predicate matches
   // the cancelled row and sweeps a paying subscriber's decks. Lowercasing both
   // sides matches AuthenticationService.getIsSubscriber, which is what the rest
-  // of the product uses to decide the same question.
+  // of the product uses to decide the same question, except that an account yet
+  // to prove a payer address keeps its uploads here: this only ever spares them.
   // Developer tiers live in subscriptions_developer (#3902), not subscriptions.
   // Without the second clause a customer whose only paid subscription is a
   // developer tier reads as a free user here and has their uploads deleted from

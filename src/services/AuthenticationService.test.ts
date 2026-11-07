@@ -1804,6 +1804,35 @@ describe('subscription lookups by linked_email', () => {
       expect(result).toBe(true);
     });
 
+    it('reads nothing from a lapsed row either', async () => {
+      await database('subscriptions')
+        .where({ email: 'payer@example.com' })
+        .update({ active: false });
+
+      const result = await service.getSubscriptionInfo(
+        database,
+        'payer@example.com'
+      );
+
+      expect(result.email).toBeUndefined();
+    });
+
+    it('keeps the lapsed row for an account older than the plan', async () => {
+      await database('subscriptions')
+        .where({ email: 'payer@example.com' })
+        .update({ active: false, linked_email: null });
+      await database('users')
+        .where({ email: 'payer@example.com' })
+        .update({ created_at: '2026-01-01T00:00:00.000Z' });
+
+      const result = await service.getSubscriptionInfo(
+        database,
+        'payer@example.com'
+      );
+
+      expect(result.email).toBe('payer@example.com');
+    });
+
     it('counts as a subscriber once the address is verified', async () => {
       await database('users')
         .where({ email: 'payer@example.com' })

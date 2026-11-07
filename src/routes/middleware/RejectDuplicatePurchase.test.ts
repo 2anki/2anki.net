@@ -14,6 +14,7 @@ const EXPIRES = new Date('2026-10-08T00:00:00.000Z');
 interface Held {
   patreon?: boolean;
   subscriber?: boolean;
+  unprovenPlan?: boolean;
   passKind?: PassKind | null;
   paymentIntentId?: string;
 }
@@ -32,6 +33,7 @@ const makeDeps = (held: Held): PurchaseGuardDeps => {
     database: {} as Knex,
     authService: {
       getIsSubscriber: async () => held.subscriber === true,
+      holdsUnprovenPlan: async () => held.unprovenPlan === true,
     } as PurchaseGuardDeps['authService'],
     usersRepository: {
       getById: async () =>
@@ -50,7 +52,7 @@ const makeDeps = (held: Held): PurchaseGuardDeps => {
 };
 
 const run = async (
-  kind: 'subscription' | 'pass',
+  kind: 'subscription' | 'pass' | 'auto_sync',
   held: Held,
   owner: number | null
 ) => {
@@ -98,6 +100,25 @@ describe('RejectDuplicatePurchase', () => {
       expiresAt: null,
     });
   });
+
+  it.each(['subscription', 'pass', 'auto_sync'] as const)(
+    'answers 409 to a %s over a live plan the account has not proven',
+    async (kind) => {
+      const { next, status, json } = await run(
+        kind,
+        { unprovenPlan: true },
+        42
+      );
+
+      expect(next).not.toHaveBeenCalled();
+      expect(status).toHaveBeenCalledWith(409);
+      expect(json).toHaveBeenCalledWith({
+        code: 'already_subscribed',
+        message: 'You already have an active subscription.',
+        expiresAt: null,
+      });
+    }
+  );
 
   it('blocks a second pass and reports when the current one ends', async () => {
     const { status, json } = await run('pass', { passKind: '7d' }, 42);

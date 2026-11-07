@@ -375,6 +375,16 @@ class UsersRepository {
       .update({ used_at: executor.fn.now() });
   }
 
+  relinkSubscriptionsOwnedByAccountQuery(
+    executor: Knex | Knex.Transaction,
+    oldEmail: string,
+    newEmail: string
+  ) {
+    return executor('subscriptions')
+      .whereRaw('LOWER(linked_email) = ?', [oldEmail.trim().toLowerCase()])
+      .update({ linked_email: newEmail.trim().toLowerCase() });
+  }
+
   relinkSubscriptionsForEmailChangeQuery(
     executor: Knex | Knex.Transaction,
     oldEmail: string,
@@ -425,15 +435,30 @@ class UsersRepository {
         }
 
         const oldEmail = String(user.email).trim().toLowerCase();
+        // Read before the address moves: afterwards no account sits on it, and
+        // an address with no account reads as proven. Confirming the new
+        // address says nothing about the old one, so an unproven account
+        // leaves its plan and any customer a webhook stamped on it behind.
+        const ownsOldAddress = await payerAddressIsProven(trx, oldEmail);
         await trx(this.table)
           .where({ id: params.userId })
-          .update({ email: nextEmail, ...CLEARED_RESET_TOKEN });
+          .update({
+            email: nextEmail,
+            ...CLEARED_RESET_TOKEN,
+            ...(ownsOldAddress ? {} : { stripe_customer_id: null }),
+          });
         await this.spendUnusedMagicTokensQuery(trx, [params.userId]);
-        await this.relinkSubscriptionsForEmailChangeQuery(
-          trx,
-          oldEmail,
-          nextEmail
-        );
+        await (ownsOldAddress
+          ? this.relinkSubscriptionsForEmailChangeQuery(
+              trx,
+              oldEmail,
+              nextEmail
+            )
+          : this.relinkSubscriptionsOwnedByAccountQuery(
+              trx,
+              oldEmail,
+              nextEmail
+            ));
         await this.forgetPauseNoticesForAddressQuery(trx, oldEmail);
         await trx('email_change_tokens')
           .where({ user_id: params.userId })

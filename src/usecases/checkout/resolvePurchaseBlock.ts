@@ -5,6 +5,7 @@ export type PurchaseKind = 'subscription' | 'pass' | 'auto_sync';
 export interface HeldEntitlements {
   lifetime: boolean;
   activeSubscription: boolean;
+  unprovenSubscription: boolean;
   billedThroughApple: boolean;
   activePassKind: PassKind | null;
   activePassExpiresAt: Date | null;
@@ -48,6 +49,14 @@ export const resolvePurchaseBlock = (
     return block(
       'billed_through_apple',
       'Your plan is billed through Apple. Manage it in your Apple subscriptions.'
+    );
+  }
+  // A plan paid from this address that the account has not proven reads as Free,
+  // but a new one would write over the same row, whoever owns it.
+  if (held.unprovenSubscription) {
+    return block(
+      'already_subscribed',
+      'You already have an active subscription.'
     );
   }
   // Auto Sync replaces a Pro subscription in place (AutoSyncCheckoutUseCase),

@@ -3,6 +3,7 @@ import { HeldEntitlements, resolvePurchaseBlock } from './resolvePurchaseBlock';
 const nothing: HeldEntitlements = {
   lifetime: false,
   activeSubscription: false,
+  unprovenSubscription: false,
   billedThroughApple: false,
   activePassKind: null,
   activePassExpiresAt: null,

@@ -584,18 +584,18 @@ const OpsRouter = () => {
       entitlements: {
         hasActiveSubscription: async (email) =>
           (await opsAuthService.getIsSubscriber(database, email)) ||
-          (await SubscriptionService.findActiveStripeSubscriptions(email))
-            .length > 0,
+          (await opsAuthService.holdsUnprovenPlan(database, email)) ||
+          (
+            await SubscriptionService.findActiveStripeSubscriptionsForAddress(
+              email
+            )
+          ).length > 0,
         findActivePass: (userId, now) =>
           new UserPassRepository(database).findActive(userId, now),
       },
       billing: {
         cancelAllSubscriptions: async (email) => {
-          await SubscriptionService.cancelUserSubscriptions(
-            email,
-            'immediate',
-            true
-          );
+          await SubscriptionService.cancelEverySubscriptionAtAddress(email);
         },
       },
       appleTokens: {

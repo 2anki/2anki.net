@@ -5,7 +5,10 @@ import type { ISubscriptionClaimTokensRepository } from '../../data_layer/Subscr
 import type { ISubscriptionClaimAuditRepository } from '../../data_layer/SubscriptionClaimAuditRepository';
 import type UsersRepository from '../../data_layer/UsersRepository';
 import type { SubscriptionService } from '../../services/SubscriptionService';
-import { updateStoreSubscription } from '../../lib/integrations/stripe';
+import {
+  normalizeEmail,
+  updateStoreSubscription,
+} from '../../lib/integrations/stripe';
 import type StripeTypes from 'stripe';
 
 export type ConfirmOutcome =
@@ -68,9 +71,10 @@ export class ConfirmSubscriptionClaimUseCase {
       return { success: false, reason: 'already_consumed' };
     }
 
+    const accountEmail = await this.getEmailForUser(userId);
     const existingSubs =
       await this.subscriptionService.findActiveStripeSubscriptions(
-        await this.getEmailForUser(userId)
+        accountEmail
       );
     if (existingSubs.length > 0) {
       await this.auditRepo.insert({
@@ -108,6 +112,18 @@ export class ConfirmSubscriptionClaimUseCase {
           ) {
             throw new ClaimResolvedElsewhereError();
           }
+        }
+
+        // The link went to the customer's mailbox. On the account's own address
+        // that proves it, and the plan stays locked to the account without it.
+        const ownAddress = normalizeEmail(accountEmail);
+        if (
+          ownAddress != null &&
+          normalizeEmail(customer.email) === ownAddress
+        ) {
+          await trx('users')
+            .where({ id: userId })
+            .update({ email_verified: true });
         }
       });
     } catch (err) {

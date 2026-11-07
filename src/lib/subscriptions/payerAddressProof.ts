@@ -12,68 +12,129 @@ interface PayerAddressAccount {
   created_at: Date | string | null;
 }
 
-const checkoutAccountId = (payload: unknown): string | null => {
-  let parsed = payload;
-  if (typeof payload === 'string') {
-    try {
-      parsed = JSON.parse(payload);
-    } catch {
-      return null;
-    }
+interface StripePayload {
+  created?: unknown;
+  metadata?: { user_id?: unknown };
+}
+
+const readPayload = (payload: unknown): StripePayload | null => {
+  if (typeof payload !== 'string') {
+    return payload as StripePayload | null;
   }
-  const id = (parsed as { metadata?: { user_id?: unknown } } | null)?.metadata
-    ?.user_id;
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
+};
+
+const checkoutAccountId = (row: PayerRow): string | null => {
+  const id = readPayload(row.payload)?.metadata?.user_id;
   return typeof id === 'string' && id.length > 0 ? id : null;
 };
 
-const predates = (
-  earlier: Date | string | null,
-  later: Date | string | null
-): boolean =>
-  earlier != null &&
-  later != null &&
-  new Date(earlier).getTime() <= new Date(later).getTime();
+// The row's own date alone would not do: a deleted row comes back dated today.
+const planStartedAt = (row: PayerRow): number => {
+  const created = readPayload(row.payload)?.created;
+  const dates = [
+    row.created_at == null ? Number.NaN : new Date(row.created_at).getTime(),
+    typeof created === 'number' ? created * 1000 : Number.NaN,
+  ].filter(Number.isFinite);
+  return dates.length > 0 ? Math.min(...dates) : Number.NaN;
+};
 
-const accountOwnsPayerRow = (
+const predatesPlan = (account: PayerAddressAccount, row: PayerRow): boolean =>
+  account.created_at != null &&
+  new Date(account.created_at).getTime() <= planStartedAt(row);
+
+const belongsToAnotherAccount = (
   account: PayerAddressAccount,
   row: PayerRow,
   address: string
 ): boolean => {
-  if (account.email_verified) {
-    return true;
-  }
-  const checkoutAccount = checkoutAccountId(row.payload);
-  if (checkoutAccount != null) {
-    return checkoutAccount === String(account.id);
-  }
   const linkedEmail = row.linked_email?.toLowerCase().trim();
   if (linkedEmail != null && linkedEmail !== address) {
-    return false;
+    return true;
   }
-  return predates(account.created_at, row.created_at);
+  const checkoutAccount = checkoutAccountId(row);
+  return checkoutAccount != null && checkoutAccount !== String(account.id);
 };
+
+const readPayerRow = (
+  db: Knex,
+  address: string
+): Promise<PayerRow | undefined> =>
+  db('subscriptions')
+    .where({ email: address })
+    .select('linked_email', 'created_at', 'payload')
+    .first();
+
+const readAccount = (
+  db: Knex,
+  address: string
+): Promise<PayerAddressAccount | undefined> =>
+  db('users')
+    .whereRaw('lower(trim(email)) = ?', [address])
+    .orderBy('id', 'asc')
+    .select('id', 'email_verified', 'created_at')
+    .first();
+
+const normalizeAddress = (email: string): string => email.toLowerCase().trim();
 
 // Signup does not verify an address, so an account sitting on a payer's address
 // proves nothing by itself. subscriptions.email is one row per address, so this
-// answers for every plan paid from it. An address with no row, or with no
-// account, has nobody to doubt: ops, the sweeps and a Stripe lookup for a row
-// that drifted all pass through.
+// answers for every plan paid from it. A checkout that named the account proves
+// that purchase, and a purchase is not proof of the address, so
+// stripeAddressIsOpen leaves it out.
 export const payerAddressIsProven = async (
   db: Knex,
   email: string
 ): Promise<boolean> => {
-  const address = email.toLowerCase().trim();
-  const row: PayerRow | undefined = await db('subscriptions')
-    .where({ email: address })
-    .select('linked_email', 'created_at', 'payload')
-    .first();
+  const address = normalizeAddress(email);
+  const row = await readPayerRow(db, address);
   if (row == null) {
     return true;
   }
-  const account: PayerAddressAccount | undefined = await db('users')
-    .whereRaw('lower(trim(email)) = ?', [address])
-    .orderBy('created_at', 'asc')
-    .select('id', 'email_verified', 'created_at')
+  const account = await readAccount(db, address);
+  if (account == null || account.email_verified) {
+    return true;
+  }
+  if (belongsToAnotherAccount(account, row, address)) {
+    return false;
+  }
+  return (
+    checkoutAccountId(row) === String(account.id) || predatesPlan(account, row)
+  );
+};
+
+// Stripe lists every customer on an address, whoever's plan they carry, so this
+// is stricter: with no row to read, an unverified account has shown nothing.
+// An address with no account has nobody to doubt: the sweeps pass through.
+export const stripeAddressIsOpen = async (
+  db: Knex,
+  email: string
+): Promise<boolean> => {
+  const address = normalizeAddress(email);
+  const account = await readAccount(db, address);
+  if (account == null || account.email_verified) {
+    return true;
+  }
+  const row = await readPayerRow(db, address);
+  return (
+    row != null &&
+    !belongsToAnotherAccount(account, row, address) &&
+    predatesPlan(account, row)
+  );
+};
+
+export const holdsUnprovenPlan = async (
+  db: Knex,
+  email: string
+): Promise<boolean> => {
+  const address = normalizeAddress(email);
+  const activeRow = await db('subscriptions')
+    .where({ email: address, active: true })
+    .select('email')
     .first();
-  return account == null || accountOwnsPayerRow(account, row, address);
+  return activeRow != null && !(await payerAddressIsProven(db, address));
 };
