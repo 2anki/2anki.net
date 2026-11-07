@@ -21,7 +21,7 @@
     "alreadyUsedTitle": "Link already used.",
     "alreadyUsedBody": "This link is already used. Sign in and try again from your account page if you need to reclaim.",
     "activeSubTitle": "Account already has a subscription.",
-    "activeSubBody": "This account already has an active subscription. Cancel it first or contact support.",
+    "activeSubBody": "This account already has an active subscription. Cancel it first or contact support. If your account shows as Free, sign out and confirm your email with a sign-in link.",
     "passSuccessTitle": "Pass claimed.",
     "passSuccessBody": "{{passKind}} attached to this account — active until {{expiry}}.",
     "passAlreadyClaimedTitle": "Pass already claimed.",

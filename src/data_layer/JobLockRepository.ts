@@ -11,6 +11,7 @@ export const JOB_LOCK_KEYS = {
   inactiveUserDeletions: 21004,
   passEndingEmails: 21005,
   metricTripwire: 21006,
+  confirmEmailNotices: 21007,
 } as const;
 
 export interface IJobLockRepository {

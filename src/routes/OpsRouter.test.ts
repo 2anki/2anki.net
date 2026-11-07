@@ -339,6 +339,7 @@ describe('OpsRouter access control', () => {
     ['PUT', '/api/ops/flags/ai-converter-floor-v1', { value: true }],
     ['GET', '/api/ops/subscriptions/orphaned', undefined],
     ['POST', '/api/ops/subscriptions/reconcile', undefined],
+    ['POST', '/api/ops/send-confirm-email-notices', undefined],
   ];
 
   it.each(nonOwnerRoutes)(

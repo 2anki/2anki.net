@@ -21,7 +21,7 @@
     "alreadyUsedTitle": "Link già utilizzato.",
     "alreadyUsedBody": "Questo link è già stato utilizzato. Accedi e riprova dalla pagina del tuo account se devi reclamarlo.",
     "activeSubTitle": "L'account ha già un abbonamento.",
-    "activeSubBody": "Questo account ha già un abbonamento attivo. Annullalo prima o contatta l'assistenza.",
+    "activeSubBody": "Questo account ha già un abbonamento attivo. Annullalo prima o contatta l'assistenza. Se il tuo account risulta Free, esci e conferma il tuo indirizzo con un link di accesso.",
     "passSuccessTitle": "Pass riscattato.",
     "passSuccessBody": "{{passKind}} collegato a questo account — attivo fino al {{expiry}}.",
     "passAlreadyClaimedTitle": "Pass già riscattato.",

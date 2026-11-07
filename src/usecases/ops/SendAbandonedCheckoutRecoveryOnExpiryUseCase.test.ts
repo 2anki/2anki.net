@@ -53,6 +53,7 @@ function makeEmailService(): Mocked<IEmailService> {
     sendContactConfirmationEmail: vi.fn().mockResolvedValue(undefined),
     sendPriceLockInEmail: vi.fn().mockResolvedValue(undefined),
     sendSubscriptionRecoveryEmail: vi.fn().mockResolvedValue(undefined),
+    sendConfirmEmailNotice: vi.fn().mockResolvedValue(undefined),
     sendEmailChangeConfirmationEmail: vi.fn().mockResolvedValue(undefined),
     sendEmailChangeNotificationEmail: vi.fn().mockResolvedValue(undefined),
     sendLowRatingFeedbackEmail: vi.fn().mockResolvedValue(undefined),

@@ -29,6 +29,11 @@ import { SetBlockIdIdentityUseCase } from '../usecases/ops/SetBlockIdIdentityUse
 import { ChangeUserEmailUseCase } from '../usecases/ops/ChangeUserEmailUseCase';
 import { DeleteAccountByEmailUseCase } from '../usecases/ops/DeleteAccountByEmailUseCase';
 import OpsDeleteAccountController from '../controllers/OpsDeleteAccountController';
+import OpsConfirmEmailNoticesController from '../controllers/OpsConfirmEmailNoticesController';
+import { SendConfirmEmailNoticesUseCase } from '../usecases/ops/SendConfirmEmailNoticesUseCase';
+import { UnprovenPlanAccountsRepository } from '../data_layer/UnprovenPlanAccountsRepository';
+import { isLockedOutOfPlan } from '../lib/subscriptions/payerAddressProof';
+import { JobLockRepository } from '../data_layer/JobLockRepository';
 import { AccountDeletionPreviewRepository } from '../data_layer/AccountDeletionPreviewRepository';
 import OauthIdentitiesRepository from '../data_layer/OauthIdentitiesRepository';
 import type { UsersId } from '../data_layer/public/Users';
@@ -397,6 +402,46 @@ const OpsRouter = () => {
     '/api/ops/send-inactivity-warnings',
     RequireOpsAccess,
     (req, res) => controller.sendInactivityWarnings(req, res)
+  );
+
+  const confirmEmailNoticesController = new OpsConfirmEmailNoticesController(
+    new SendConfirmEmailNoticesUseCase(
+      new UnprovenPlanAccountsRepository(database),
+      new SubscriptionRecoveryNotificationsRepository(database),
+      getDefaultEmailService(),
+      (email) => isLockedOutOfPlan(database, email),
+      new JobLockRepository(database)
+    )
+  );
+
+  /**
+   * @swagger
+   * /api/ops/send-confirm-email-notices:
+   *   post:
+   *     summary: Email unverified payers locked out of their own plan
+   *     description: |
+   *       Finds unverified accounts on the payer address of an active plan linked
+   *       to nobody that the real ownership check locks out, and sends each
+   *       one email, once ever, asking them to confirm their address.
+   *       Pass ?dryRun=false to send; omit or pass ?dryRun=true to count only.
+   *     tags: [Ops]
+   *     parameters:
+   *       - in: query
+   *         name: dryRun
+   *         schema:
+   *           type: string
+   *           enum: ['true', 'false']
+   *         description: Defaults to true. Pass false to actually send emails.
+   *     responses:
+   *       200:
+   *         description: Result with the count and dryRun flag
+   *       404:
+   *         description: Not the ops owner
+   */
+  router.post(
+    '/api/ops/send-confirm-email-notices',
+    RequireOpsAccess,
+    (req, res) => confirmEmailNoticesController.send(req, res)
   );
 
   /**
