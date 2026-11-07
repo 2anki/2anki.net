@@ -905,7 +905,8 @@ export class Backend {
 
   async startAutoSyncCheckout(
     variant?: string,
-    surface?: string
+    surface?: string,
+    replaceLapsed = false
   ): Promise<
     | { url: string }
     | {
@@ -922,6 +923,7 @@ export class Backend {
         variant,
         surface,
         campaign: landingCampaignParams(),
+        ...(replaceLapsed === true ? { replaceLapsed: true } : {}),
       });
       if (response.status === CONFLICT) {
         return (await readCheckoutConflict(response)) ?? { status: 'error' };

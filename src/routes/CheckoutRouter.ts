@@ -87,7 +87,8 @@ const CheckoutRouter = () => {
         priceId,
         productId,
         maxSubscribers,
-        staleCustomerRefresher
+        staleCustomerRefresher,
+        new StripeLapsedSubscriptions(getStripe())
       );
       const controller = new AutoSyncCheckoutController(useCase);
       return controller.createSession(req, res);

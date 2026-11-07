@@ -35,6 +35,13 @@ const checkoutAccountId = (row: PayerRow): string | null => {
   return typeof id === 'string' && id.length > 0 ? id : null;
 };
 
+export const planSubscriptionId = (
+  row: { payload?: unknown } | undefined
+): string | null => {
+  const id = (readPayload(row?.payload) as { id?: unknown } | null)?.id;
+  return typeof id === 'string' && id.length > 0 ? id : null;
+};
+
 export const planCustomerId = (
   row: { payload?: unknown } | undefined
 ): string | null => {

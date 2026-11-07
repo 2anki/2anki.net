@@ -4,7 +4,10 @@ import type { Knex } from 'knex';
 import { DeveloperSubscriptionsRepository } from '../../data_layer/DeveloperSubscriptionsRepository';
 import { isPaused } from '../subscriptions/isPaused';
 import { emailHash } from '../emailHash';
-import { accountHoldsAddress } from '../subscriptions/payerAddressProof';
+import {
+  accountHoldsAddress,
+  planSubscriptionId,
+} from '../subscriptions/payerAddressProof';
 
 let stripeInstance: InstanceType<typeof Stripe> | null = null;
 
@@ -185,6 +188,24 @@ export const deactivateSubscriptionRow = (
       updated_at: new Date(),
     });
 
+// One row holds one plan per address. An event from another plan that would
+// turn it off says nothing about the plan the row holds.
+const rowHoldsAnotherLivePlan = async (
+  db: Knex,
+  email: string | null,
+  subscriptionId: string
+): Promise<boolean> => {
+  if (email == null) {
+    return false;
+  }
+  const row = await db('subscriptions')
+    .where({ email })
+    .select('active', 'payload')
+    .first();
+  const heldId = planSubscriptionId(row);
+  return Boolean(row?.active) && heldId != null && heldId !== subscriptionId;
+};
+
 export const updateStoreSubscription = async (
   db: Knex,
   customer: StripeTypes.Customer,
@@ -240,6 +261,16 @@ export const updateStoreSubscription = async (
       active: shouldRemainActive,
       payload: subscription,
     });
+    await stampCustomerId(db, account, customerId);
+    return account != null
+      ? { status: 'linked', resolvedUserId: account.id }
+      : { status: 'unlinked', resolvedUserId: null };
+  }
+
+  if (
+    !shouldRemainActive &&
+    (await rowHoldsAnotherLivePlan(db, stripeEmail, subscription.id))
+  ) {
     await stampCustomerId(db, account, customerId);
     return account != null
       ? { status: 'linked', resolvedUserId: account.id }

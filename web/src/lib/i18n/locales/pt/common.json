@@ -1039,6 +1039,7 @@
       "payNote": "Abre a fatura em aberto. Você continua no {{plan}}.",
       "payNoteAccount": "Atualize seu cartão na sua página de conta. Você mantém seu plano atual.",
       "switchButton": "Encerrar e mudar para o Pro",
+      "switchButtonAutoSync": "Encerrar e mudar para o Auto Sync",
       "switchNote": "Encerramos seu plano atual agora e cancelamos o pagamento em aberto; depois você paga o Pro no checkout. O {{plan}} não estará mais disponível."
     }
   }
