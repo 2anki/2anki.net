@@ -675,7 +675,7 @@ class UsersController {
       if (await SubscriptionService.hasPlanOutOfReach(user.email)) {
         return res.status(409).json({
           message:
-            'A plan is billed to this email. Confirm this email with a sign-in link, then delete your account.',
+            "We can't cancel a plan billed to this email from here. Confirm your email with a sign-in link and try again, or email support@2anki.net.",
         });
       }
 

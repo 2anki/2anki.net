@@ -141,6 +141,16 @@ describe('a Stripe event for a payer address held by an unverified account', () 
     expect(row.linked_email).toBeNull();
   });
 
+  it('keeps the link when an unverified account buys on the address', async () => {
+    await updateStoreSubscription(db, customer, {
+      ...subscription,
+      metadata: { user_id: '2' },
+    } as unknown as StripeTypes.Subscription);
+
+    const row = await db('subscriptions').where({ email: PAYER }).first();
+    expect(row.linked_email).toBe(OWNER);
+  });
+
   it('keeps the link when the account did not buy this plan', async () => {
     await db('users').where({ id: 2 }).update({ email_verified: true });
 

@@ -241,13 +241,20 @@ export class SubscriptionService {
       return true;
     }
     const reach = await stripeReachOf(db, normalized);
-    if (reach.byAddress) {
+    const addresses = await collectLinkedPayerEmails(normalized);
+    if (!reach.byAddress) {
+      addresses.push(normalized);
+    }
+    if (addresses.length === 0) {
       return false;
     }
     const reachable = await this.findRecentStripeSubscriptions(normalized);
     const reachableIds = new Set(reachable.map((sub) => sub.id));
-    const atAddress = await listStripeSubscriptionsAt([normalized], 'all');
-    return atAddress.some(
+    const atAddresses = await listStripeSubscriptionsAt(
+      [...new Set(addresses)],
+      'all'
+    );
+    return atAddresses.some(
       (sub) => !isEndedStatus(sub.status) && !reachableIds.has(sub.id)
     );
   }

@@ -88,6 +88,7 @@ describe('UsersRepository.markEmailVerified', () => {
     const user = await account();
     expect(Boolean(user.email_verified)).toBe(true);
     expect(user.password).not.toBe(STORED_HASH);
+    expect(user.password).toMatch(/^\$2[aby]\$/);
     await expect(sessions()).resolves.toEqual(['someone-else']);
   });
 

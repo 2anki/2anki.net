@@ -1,5 +1,6 @@
 import { Knex } from 'knex';
 import { randomUUID } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import type { AdClickAttribution } from '../lib/attribution/adClick';
 
 import Users from './public/Users';
@@ -441,16 +442,10 @@ class UsersRepository {
 
         const oldEmail = String(user.email).trim().toLowerCase();
         // A plan paid from the new address belongs to someone, and the link
-        // that confirms this change is one click in that person's mailbox.
-        const linkedToThisAccount = await trx('subscriptions')
-          .whereRaw('LOWER(email) = ?', [nextEmail])
-          .whereRaw('LOWER(linked_email) = ?', [oldEmail])
-          .select('email')
-          .first();
-        if (
-          linkedToThisAccount == null &&
-          (await addressCarriesPlan(trx, nextEmail))
-        ) {
+        // that confirms this change is one click in that person's mailbox. A
+        // row linked to this account proves nothing here: editing a Stripe
+        // customer's email can plant one.
+        if (await addressCarriesPlan(trx, nextEmail)) {
           throw new EmailAlreadyInUseError();
         }
         // Read before the address moves: afterwards no account sits on it, and
@@ -580,7 +575,7 @@ class UsersRepository {
         .where({ id: userId })
         .update({
           email_verified: true,
-          ...(ended ? { password: randomUUID() } : {}),
+          ...(ended ? { password: await bcrypt.hash(randomUUID(), 12) } : {}),
         });
     });
   }

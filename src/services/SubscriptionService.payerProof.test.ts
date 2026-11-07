@@ -356,6 +356,47 @@ describe('SubscriptionService and an address the account has not proven', () => 
     expect(stripe.customers.list).not.toHaveBeenCalled();
   });
 
+  it("flags a stray plan on a linked owner's payer address, verified or not", async () => {
+    await database('users')
+      .where({ email: OWNER })
+      .update({ email_verified: true });
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({
+        payload: JSON.stringify({ id: 'sub_1', customer: 'cus_plan' }),
+      });
+    stripe.customers.list.mockImplementation(
+      async ({ email }: { email: string }) => ({
+        data: email === PAYER ? [{ id: 'cus_1' }] : [],
+      })
+    );
+    stripe.subscriptions.list.mockImplementation(
+      async ({ customer }: { customer: string }) =>
+        customer === 'cus_plan'
+          ? { data: [liveSubscription] }
+          : { data: [{ ...liveSubscription, id: 'sub_stray', metadata: {} }] }
+    );
+
+    await expect(SubscriptionService.hasPlanOutOfReach(OWNER)).resolves.toBe(
+      true
+    );
+  });
+
+  it('flags nothing for a linked owner who reaches every plan on the payer address', async () => {
+    await database('users')
+      .where({ email: OWNER })
+      .update({ email_verified: true });
+    await database('subscriptions')
+      .where({ email: PAYER })
+      .update({
+        payload: JSON.stringify({ id: 'sub_1', customer: 'cus_plan' }),
+      });
+
+    await expect(SubscriptionService.hasPlanOutOfReach(OWNER)).resolves.toBe(
+      false
+    );
+  });
+
   it('flags a plan on the address this account cannot cancel', async () => {
     await expect(SubscriptionService.hasPlanOutOfReach(PAYER)).resolves.toBe(
       true

@@ -260,18 +260,19 @@ describe('UsersRepository email change voids links mailed to the old address', (
       expect(result).toEqual({ ok: true });
     });
 
-    it('allows a move onto the address that pays for this account', async () => {
+    it('refuses a move onto a row linked to this account, which a Stripe edit can plant', async () => {
       const userId = await seedUserWithPendingLinks('owner@example.com');
       await database('subscriptions').insert({
         email: 'new@example.com',
         linked_email: 'owner@example.com',
+        active: true,
         payload: JSON.stringify({ id: 'sub_2' }),
         created_at: SUBSCRIBED,
       });
 
       const result = await changeEmail(userId);
 
-      expect(result).toEqual({ ok: true });
+      expect(result).toEqual({ ok: false, reason: 'email_taken' });
     });
 
     it('keeps a plan linked to an unverified account on its new address', async () => {

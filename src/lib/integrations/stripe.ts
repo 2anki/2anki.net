@@ -265,14 +265,21 @@ export const updateStoreSubscription = async (
   if (linkedEmail != null) {
     mergeColumns.linked_email = linkedEmail;
   }
-  // The account's own checkout on its own address: a link left by an earlier
-  // plan on this row must not hand this one to someone else.
-  const checkoutNamedAccount =
+  // The account's own checkout on an address it has proven: a link left by an
+  // earlier plan on this row must not hand this one to someone else. Unproven,
+  // the link stands, or a purchase would take the row from its owner.
+  if (
     account != null &&
     subscription.metadata?.user_id === String(account.id) &&
-    accountEmail === stripeEmail;
-  if (checkoutNamedAccount) {
-    mergeColumns.linked_email = null;
+    accountEmail === stripeEmail
+  ) {
+    const buyer = await db('users')
+      .where({ id: account.id })
+      .select('email_verified')
+      .first();
+    if (buyer?.email_verified) {
+      mergeColumns.linked_email = null;
+    }
   }
 
   await db('subscriptions')
