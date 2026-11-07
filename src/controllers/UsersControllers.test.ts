@@ -4264,6 +4264,28 @@ describe('UsersController — sign-in returns a connector to the authorize scree
     });
   });
 
+  it('GET /login with no redirect sends a signed-in user to /upload', async () => {
+    const controller = new UsersController(
+      {} as UsersService,
+      {
+        getUserFrom: vi.fn().mockResolvedValue(existingUser),
+      } as unknown as AuthenticationService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const res = buildSigninRes();
+
+    await controller.checkUser(
+      {
+        query: {},
+        body: {},
+        cookies: { token: 'session-jwt' },
+      } as unknown as express.Request,
+      res
+    );
+
+    expect(res.redirect).toHaveBeenCalledWith('/upload');
+  });
+
   it('GET /login for a signed-in user sends a connector straight back to authorize', async () => {
     const controller = new UsersController(
       {} as UsersService,
@@ -4331,7 +4353,7 @@ describe('UsersController — sign-in returns a connector to the authorize scree
     const LOGIN_RETURN = 'login_return';
     const PRICING = '/pricing?ref=mcp';
 
-    const signedOutLoginPage = async (redirect: string) => {
+    const signedOutLoginPage = async (redirect?: string) => {
       const res = buildSigninRes();
       const controller = new UsersController(
         {} as UsersService,
@@ -4355,6 +4377,13 @@ describe('UsersController — sign-in returns a connector to the authorize scree
 
     const loginReturnCookies = (res: { cookie: Mock }) =>
       res.cookie.mock.calls.filter(([name]) => name === LOGIN_RETURN);
+
+    it('GET /login serves the page to a signed-out visitor', async () => {
+      const res = await signedOutLoginPage(undefined);
+
+      expect(res.send).toHaveBeenCalledTimes(1);
+      expect(res.redirect).not.toHaveBeenCalled();
+    });
 
     it('GET /login with a redirect remembers it in a short-lived httpOnly cookie', async () => {
       const res = await signedOutLoginPage(PRICING);
