@@ -764,7 +764,7 @@ function salvagedDecksOf(error: AiCreditsExhaustedError): DeckInfo[] {
 // left out and named in a warning, like a failed chunk inside one file. An
 // outage or a credit stop is not about one file and still stops the run, and
 // when every file failed the first file's reason is the upload's answer.
-function skippedFileFailures(fileNames: string[]) {
+function skippedFileFailures(fileCount: number) {
   const errors = new Map<number, unknown>();
   const warningsByIndex = new Map<number, string>();
   const firstError = () =>
@@ -775,22 +775,16 @@ function skippedFileFailures(fileNames: string[]) {
         .sort(([a], [b]) => a - b)
         .map(([, warning]) => warning);
     },
-    get count(): number {
-      return errors.size;
-    },
     firstError,
-    skip(fileName: string, error: unknown): boolean {
-      const reason = fileNames.length >= 2 ? aiFileFailureReason(error) : null;
+    skip(index: number, fileName: string, error: unknown): boolean {
+      const reason = fileCount >= 2 ? aiFileFailureReason(error) : null;
       if (reason == null) return false;
-      const index = fileNames.indexOf(fileName);
       errors.set(index, error);
       warningsByIndex.set(index, aiFileFailedWarning(fileName, reason));
       return true;
     },
     throwIfEveryFileFailed(): void {
-      if (errors.size > 0 && errors.size === fileNames.length) {
-        throw firstError();
-      }
+      if (errors.size > 0 && errors.size === fileCount) throw firstError();
     },
   };
 }
@@ -818,7 +812,7 @@ async function runCrossFileDedupConversion(
   let tripped = false;
   let failed = false;
   let ownSuppressed = 0;
-  const skipped = skippedFileFailures(htmlFiles.map((file) => file.name));
+  const skipped = skippedFileFailures(htmlFiles.length);
   const absorb = (decks: DeckInfo[]): DeckInfo[] => {
     const before = crossFileDedup.suppressed;
     const kept = absorbFileIntoCrossFileDedup(crossFileDedup, decks);
@@ -828,7 +822,7 @@ async function runCrossFileDedupConversion(
   const deckInfoArrays = await mapWithConcurrency(
     htmlFiles,
     AI_FILE_CONCURRENCY,
-    async (file) => {
+    async (file, index) => {
       if (tripped || failed) return [] as DeckInfo[];
       const instructions = composeCrossFileInstructions(
         crossFileDedup.fronts,
@@ -842,7 +836,7 @@ async function runCrossFileDedupConversion(
           tripped = true;
           return absorb(salvagedDecksOf(error));
         }
-        if (skipped.skip(file.name, error)) return [] as DeckInfo[];
+        if (skipped.skip(index, file.name, error)) return [] as DeckInfo[];
         failed = true;
         throw error;
       }

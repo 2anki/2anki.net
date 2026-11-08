@@ -1663,33 +1663,50 @@ async function runChunks(
   if (succeeded.length === 0) {
     const refusal = refusalIn(settled);
     if (refusal) throw refusal;
-    const fileFailure = firstFileFailure(settled);
-    if (fileFailure) throw fileFailure;
-    throw new Error(failures[0]?.reason ?? 'All Claude chunks failed');
+    throw markedFileFailure(
+      new Error(failures[0]?.reason ?? 'All Claude chunks failed'),
+      settled
+    );
   }
 
   return succeeded.flat();
 }
 
-// A failure that says something about the file itself keeps its class, so the
-// upload can show its copy and, in an upload of several files, leave only that
-// file out. Anything else stays a plain error, as before.
-function firstFileFailure(
-  settled: PromiseSettledResult<unknown>[]
-): Error | undefined {
-  for (const r of settled) {
-    if (
-      r.status === 'rejected' &&
-      (r.reason instanceof ClaudeLargeSectionError ||
-        r.reason instanceof ClaudeParseError ||
-        r.reason instanceof EmptyContentError ||
-        r.reason instanceof ImageOnlyContentError ||
-        r.reason instanceof ClaudeTruncatedError)
-    ) {
-      return r.reason;
-    }
+type ChunkFileFailure = 'too_large' | 'no_text' | 'unreadable';
+
+function fileFailureOf(reason: unknown): ChunkFileFailure | null {
+  if (
+    reason instanceof ClaudeLargeSectionError ||
+    reason instanceof ClaudeTruncatedError
+  ) {
+    return 'too_large';
   }
-  return undefined;
+  if (
+    reason instanceof EmptyContentError ||
+    reason instanceof ImageOnlyContentError
+  ) {
+    return 'no_text';
+  }
+  if (reason instanceof ClaudeParseError) return 'unreadable';
+  return null;
+}
+
+// The chunk runner throws a plain Error with the first failure's text, which
+// callers rely on (the PDF password retry keeps the raw text out of replies).
+// When every chunk failed for a reason that belongs to the file, the error
+// also names that reason, so an upload of several files can leave the file
+// out instead of failing.
+function markedFileFailure(
+  error: Error,
+  settled: PromiseSettledResult<unknown>[]
+): Error {
+  const reasons = settled.flatMap((r) =>
+    r.status === 'rejected' ? [fileFailureOf(r.reason)] : []
+  );
+  if (reasons.length === 0 || reasons.some((reason) => reason == null)) {
+    return error;
+  }
+  return Object.assign(error, { chunkFileFailure: reasons[0] });
 }
 
 // The vision path reads image bytes off disk that the cache key does not

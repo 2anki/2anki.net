@@ -18,6 +18,9 @@ export type AiFileFailureReason =
 export function aiFileFailureReason(
   error: unknown
 ): AiFileFailureReason | null {
+  const fromChunks = (error as { chunkFileFailure?: AiFileFailureReason })
+    ?.chunkFileFailure;
+  if (fromChunks != null && REASONS.has(fromChunks)) return fromChunks;
   if (error instanceof ClaudeRefusalError) return 'declined';
   if (error instanceof ClaudeLargeSectionError) return 'too_large';
   if (
@@ -26,12 +29,8 @@ export function aiFileFailureReason(
   ) {
     return 'no_text';
   }
-  if (
-    error instanceof ClaudeParseError ||
-    error instanceof ClaudeTruncatedError
-  ) {
-    return 'unreadable';
-  }
+  if (error instanceof ClaudeTruncatedError) return 'too_large';
+  if (error instanceof ClaudeParseError) return 'unreadable';
   return null;
 }
 
@@ -58,16 +57,25 @@ const WHY: Record<AiFileFailureReason, string> = {
   declined:
     'Claude declined it, so reword or remove the part it would not answer',
   too_large: 'a section was too large, so split it and upload it again',
-  no_text: 'Claude found no text to make cards from',
+  no_text:
+    'Claude found no text to make cards from, so check the file has text in it',
   unreadable: "Claude's answer could not be read, so upload it again",
 };
 
 // A header line stays short however many files a zip skipped.
 const LISTED_FILES = 3;
 
-function baseName(fileName: string): string {
+const CONVERTED_TO_HTML = /\.(pdf|docx?|pptx?|xlsx?|md|txt)\.html$/i;
+const NOTION_PAGE_ID = / [0-9a-f]{32}(?=\.[a-z0-9]+$)/i;
+
+// The name the user uploaded: a zip's PDF converts as `week 3.pdf.html`, and a
+// Notion export page carries its 32-character id before the extension.
+function displayName(fileName: string): string {
   const normalized = fileName.replaceAll('\\', '/');
-  return normalized.slice(normalized.lastIndexOf('/') + 1);
+  return normalized
+    .slice(normalized.lastIndexOf('/') + 1)
+    .replace(CONVERTED_TO_HTML, '.$1')
+    .replace(NOTION_PAGE_ID, '');
 }
 
 export function aiFileFailedWarningText(warnings: string[]): string | null {
@@ -79,7 +87,7 @@ export function aiFileFailedWarningText(warnings: string[]): string | null {
     if (separator < 0 || !REASONS.has(reason)) return [];
     return [
       {
-        name: baseName(rest.slice(separator + 1)),
+        name: displayName(rest.slice(separator + 1)),
         why: WHY[reason as AiFileFailureReason],
       },
     ];
