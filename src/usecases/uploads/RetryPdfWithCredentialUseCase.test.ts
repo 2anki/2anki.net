@@ -128,6 +128,15 @@ describe('RetryPdfWithCredentialUseCase', () => {
       'a provider connection error with no status',
       new Anthropic.APIConnectionError({ message: 'Connection error.' }),
     ],
+    [
+      'a provider stream error with no status',
+      new Anthropic.APIError(
+        undefined,
+        { type: 'error', error: { type: 'overloaded_error' } },
+        'Overloaded',
+        undefined
+      ),
+    ],
   ])('hides the raw text of %s', async (_failure, error) => {
     const failure = await runFailure(error).catch((thrown) => thrown);
 

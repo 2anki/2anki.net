@@ -557,7 +557,10 @@ async function convertPdfPagesToImagesFile(
     pageMode,
     credential: input.pdfCredential,
   }).catch((error: unknown) => {
-    if (error instanceof Error && error.message.startsWith('pdfinfo_password')) {
+    if (
+      error instanceof Error &&
+      error.message.startsWith('pdfinfo_password')
+    ) {
       throw new Error(buildPdfPasswordSentinel(file.name));
     }
     throw error;

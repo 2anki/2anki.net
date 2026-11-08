@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
+import { passwordArgs } from './convertPage';
 
 const DIAGNOSTIC_LOG_BASENAME_MAX = 80;
 
@@ -25,7 +26,7 @@ export function getPageCount(
         ? '/usr/local/bin/pdfinfo'
         : '/usr/bin/pdfinfo';
 
-    const args = credential != null ? ['-upw', credential, pdfPath] : [pdfPath];
+    const args = [...passwordArgs(credential), pdfPath];
 
     const pdfinfoProcess = spawn(pdfinfoBin, args);
 
