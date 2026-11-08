@@ -112,6 +112,7 @@ import { EmptyDeckError } from '../usecases/jobs/EmptyDeckError';
 import { UploadFileUnavailableError } from '../usecases/uploads/UploadFileUnavailableError';
 import { ANKI_PACKAGE_ZIP_MESSAGE } from '../usecases/uploads/isAnkiPackageZip';
 import { buildPdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
+import { buildPdfPasswordSentinel } from '../lib/pdf/pdfPasswordSentinel';
 import {
   createWorkerTerminationError,
   WORKER_INTERRUPTED_REASON,
@@ -1843,6 +1844,39 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(body.message).toMatch(/could not read this PDF/);
     // A damaged file is a user-input state, like a pdfinfo failure: it is not
     // a conversion failure for the funnel or a red tile for ops (#4496).
+    expect(trackMock).not.toHaveBeenCalledWith(
+      'conversion_failed',
+      expect.anything()
+    );
+  });
+
+  it('asks for the password, without a failure event, when a locked PDF reaches the page images', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi
+          .fn()
+          .mockRejectedValue(new Error(buildPdfPasswordSentinel('notes.pdf'))),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({ aborted: false } as Partial<express.Request>);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+    trackMock.mockClear();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      error: 'needs_password',
+      reason: 'missing_password',
+      filename: 'notes.pdf',
+    });
     expect(trackMock).not.toHaveBeenCalledWith(
       'conversion_failed',
       expect.anything()

@@ -1960,6 +1960,80 @@ describe('PrepareDeck — a PDF with no usable text', () => {
     });
   }
 
+  it.each([
+    ['auto-detected', {}, () => convertPdfTextToHtmlAuto],
+    [
+      'extract-text',
+      { 'pdf-extract-text': 'true' },
+      () => convertPdfTextToHtml,
+    ],
+  ])(
+    'renders the page images of a %s scanned PDF with its password',
+    async (_path, extra, textPath) => {
+      textPath().mockResolvedValueOnce(noText);
+
+      await PrepareDeck({
+        name: 'scan.pdf',
+        files: [{ name: 'scan.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+        settings: makeSettings({ 'pdf-fallback': 'pairs', ...extra }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+        pdfCredential: 's3cret',
+      });
+
+      expect(convertPDFToImages).toHaveBeenCalledWith(
+        expect.objectContaining({ credential: 's3cret' })
+      );
+    }
+  );
+
+  it('sends a locked scanned PDF to Claude vision once its password opens it', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Scan',
+        image: '',
+        style: null,
+        id: 111222333444556,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Front',
+            back: 'Back',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    const result = await PrepareDeck({
+      name: 'scan.pdf',
+      files: [{ name: 'scan.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({
+        'pdf-fallback': 'pairs',
+        'claude-ai-flashcards': 'true',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+      pdfCredential: 's3cret',
+    });
+
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ credential: 's3cret' })
+    );
+    expect(
+      generateDeckInfo.mock.calls.some(
+        (call) => call[7]?.pdfImageFallback != null
+      )
+    ).toBe(true);
+    expect(result?.engine).toBe('claude');
+  });
+
   it('stops and asks which cards to make when the upload page asks', async () => {
     convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
 
