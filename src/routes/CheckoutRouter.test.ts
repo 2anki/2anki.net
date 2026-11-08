@@ -8,14 +8,17 @@ const mockStripeCreate = vi.fn();
 const mockStripeRetrieve = vi.fn();
 const mockPriceRetrieve = vi.fn();
 const mockPriceList = vi.fn();
+const mockSubscriptionList = vi.fn().mockResolvedValue({ data: [] });
 
 vi.mock('../lib/integrations/stripe', () => ({
+  isDeveloperTierProduct: async () => false,
+  extractProductId: () => 'prod_pro',
   getStripe: vi.fn().mockReturnValue({
     checkout: {
       sessions: { create: mockStripeCreate, retrieve: mockStripeRetrieve },
     },
     prices: { retrieve: mockPriceRetrieve, list: mockPriceList },
-    subscriptions: { list: vi.fn().mockResolvedValue({ data: [] }) },
+    subscriptions: { list: mockSubscriptionList },
     customers: {
       list: vi.fn().mockResolvedValue({ data: [] }),
       search: vi.fn().mockResolvedValue({ data: [] }),
@@ -439,6 +442,59 @@ describe('CheckoutRouter — pass routes', () => {
       const body = await res.json();
       expect(body.passes).toEqual({});
     });
+  });
+});
+
+describe('CheckoutRouter — Auto Sync with an unpaid plan', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    process.env.AUTO_SYNC_PRICE_ID = 'price_auto_sync_test';
+    ({ server, url } = await buildServer());
+  });
+
+  afterAll(() => server.close());
+
+  it('stops the buyer with the plan Stripe holds for them', async () => {
+    const { default: SubscriptionService } =
+      await import('../services/SubscriptionService');
+    vi.spyOn(SubscriptionService, 'countActiveByProductId').mockResolvedValue(
+      0 as never
+    );
+    vi.spyOn(
+      SubscriptionService,
+      'getUserActiveSubscriptions'
+    ).mockResolvedValue([] as never);
+    mockHeldPatreon = false;
+    mockHeldSubscriber = false;
+    mockHeldPass = null;
+    mockStripeCreate.mockReset();
+    mockSubscriptionList.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'sub_old',
+          status: 'past_due',
+          currency: 'eur',
+          items: {
+            data: [
+              { price: { unit_amount: 200, recurring: { interval: 'month' } } },
+            ],
+          },
+          latest_invoice: null,
+        },
+      ],
+    });
+
+    const res = await fetch(`${url}/api/checkout/auto-sync`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).code).toBe('lapsed_subscription');
+    expect(mockStripeCreate).not.toHaveBeenCalled();
   });
 });
 

@@ -23,7 +23,29 @@ const makeStripe = (data: unknown[]) => ({
   invoices: { voidInvoice: vi.fn().mockResolvedValue({}) },
 });
 
+const gateway = (
+  stripe: ReturnType<typeof makeStripe>,
+  isSeparatePlan: (productId: string) => Promise<boolean> = async () => false
+) => new StripeLapsedSubscriptions(stripe as never, isSeparatePlan);
+
 describe('StripeLapsedSubscriptions.find', () => {
+  it('leaves out a plan billed separately, such as a developer tier', async () => {
+    const plan = (id: string, product: string) => ({
+      ...subscription(id, 'past_due'),
+      items: { data: [{ price: { product, unit_amount: 200 } }] },
+    });
+    const stripe = makeStripe([
+      plan('sub_api', 'prod_api'),
+      plan('sub_pro', 'prod_pro'),
+    ]);
+
+    const plans = await gateway(stripe, async (id) => id === 'prod_api').find(
+      'cus_1'
+    );
+
+    expect(plans.map((found) => found.subscriptionId)).toEqual(['sub_pro']);
+  });
+
   it('returns past_due, unpaid and incomplete plans with their open invoice', async () => {
     const stripe = makeStripe([
       subscription('sub_past_due', 'past_due', {
@@ -38,9 +60,7 @@ describe('StripeLapsedSubscriptions.find', () => {
       subscription('sub_canceled', 'canceled'),
     ]);
 
-    const plans = await new StripeLapsedSubscriptions(stripe as never).find(
-      'cus_1'
-    );
+    const plans = await gateway(stripe).find('cus_1');
 
     expect(stripe.subscriptions.list).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -73,9 +93,7 @@ describe('StripeLapsedSubscriptions.find', () => {
       }),
     ]);
 
-    const [plan] = await new StripeLapsedSubscriptions(stripe as never).find(
-      'cus_1'
-    );
+    const [plan] = await gateway(stripe).find('cus_1');
 
     expect(plan.openInvoiceId).toBeNull();
     expect(plan.payUrl).toBeNull();
@@ -88,18 +106,14 @@ describe('StripeLapsedSubscriptions.find', () => {
       param: 'customer',
     });
 
-    await expect(
-      new StripeLapsedSubscriptions(stripe as never).find('cus_gone')
-    ).resolves.toEqual([]);
+    await expect(gateway(stripe).find('cus_gone')).resolves.toEqual([]);
   });
 
   it('rethrows any other Stripe error', async () => {
     const stripe = makeStripe([]);
     stripe.subscriptions.list.mockRejectedValue(new Error('stripe down'));
 
-    await expect(
-      new StripeLapsedSubscriptions(stripe as never).find('cus_1')
-    ).rejects.toThrow('stripe down');
+    await expect(gateway(stripe).find('cus_1')).rejects.toThrow('stripe down');
   });
 });
 
@@ -123,7 +137,7 @@ describe('StripeLapsedSubscriptions.close', () => {
       order.push('void');
     });
 
-    await new StripeLapsedSubscriptions(stripe as never).close([plan]);
+    await gateway(stripe).close([plan]);
 
     expect(stripe.subscriptions.cancel).toHaveBeenCalledWith('sub_old');
     expect(stripe.invoices.voidInvoice).toHaveBeenCalledWith('in_open');
@@ -133,7 +147,7 @@ describe('StripeLapsedSubscriptions.close', () => {
   it('skips the void when there is no open invoice', async () => {
     const stripe = makeStripe([]);
 
-    await new StripeLapsedSubscriptions(stripe as never).close([
+    await gateway(stripe).close([
       { ...plan, openInvoiceId: null, payUrl: null },
     ]);
 
@@ -146,18 +160,14 @@ describe('StripeLapsedSubscriptions.close', () => {
     stripe.invoices.voidInvoice.mockRejectedValue({ code: 'invoice_not_open' });
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    await expect(
-      new StripeLapsedSubscriptions(stripe as never).close([plan])
-    ).resolves.toBeUndefined();
+    await expect(gateway(stripe).close([plan])).resolves.toBeUndefined();
   });
 
   it('stops when the cancel fails, so no session starts on top of an open plan', async () => {
     const stripe = makeStripe([]);
     stripe.subscriptions.cancel.mockRejectedValue(new Error('stripe down'));
 
-    await expect(
-      new StripeLapsedSubscriptions(stripe as never).close([plan])
-    ).rejects.toThrow('stripe down');
+    await expect(gateway(stripe).close([plan])).rejects.toThrow('stripe down');
     expect(stripe.invoices.voidInvoice).not.toHaveBeenCalled();
   });
 });

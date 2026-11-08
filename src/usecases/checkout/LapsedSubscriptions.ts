@@ -1,4 +1,5 @@
 import type StripeTypes from 'stripe';
+import { extractProductId } from '../../lib/integrations/stripe';
 import { isStaleCustomerError } from './createCheckoutSession';
 
 // Stripe keeps these open on the customer while no payment for the current
@@ -55,7 +56,8 @@ const toLapsedPlan = (subscription: StripeTypes.Subscription): LapsedPlan => {
 
 export class StripeLapsedSubscriptions implements LapsedSubscriptionGateway {
   constructor(
-    private readonly stripe: Pick<StripeTypes, 'subscriptions' | 'invoices'>
+    private readonly stripe: Pick<StripeTypes, 'subscriptions' | 'invoices'>,
+    private readonly isSeparatePlan: (productId: string) => Promise<boolean>
   ) {}
 
   async find(customerId: string): Promise<LapsedPlan[]> {
@@ -66,9 +68,18 @@ export class StripeLapsedSubscriptions implements LapsedSubscriptionGateway {
         limit: 20,
         expand: ['data.latest_invoice'],
       });
-      return list.data
-        .filter((subscription) => LAPSED_STATUSES.has(subscription.status))
-        .map(toLapsedPlan);
+      const lapsed = list.data.filter((subscription) =>
+        LAPSED_STATUSES.has(subscription.status)
+      );
+      const settled = await Promise.all(
+        lapsed.map(async (subscription) => {
+          const productId = extractProductId(subscription);
+          return productId != null && (await this.isSeparatePlan(productId))
+            ? null
+            : toLapsedPlan(subscription);
+        })
+      );
+      return settled.filter((plan) => plan != null);
     } catch (error) {
       // A stale customer has no subscriptions to settle; checkout's own
       // stale-customer recovery takes it from here.
@@ -90,7 +101,7 @@ export class StripeLapsedSubscriptions implements LapsedSubscriptionGateway {
       try {
         await this.stripe.invoices.voidInvoice(plan.openInvoiceId);
       } catch (error) {
-        console.warn('unlimited.checkout.lapsed_invoice_void_failed', {
+        console.warn('checkout.lapsed_invoice_void_failed', {
           error_code: (error as { code?: string }).code,
         });
       }

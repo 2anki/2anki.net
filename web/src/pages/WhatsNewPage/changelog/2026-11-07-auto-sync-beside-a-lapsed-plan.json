@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-07-auto-sync-beside-a-lapsed-plan",
+  "date": "2026-11-07",
+  "type": "fix",
+  "title": "Auto Sync checkout — pay your unpaid plan or end it first, and your paid plan stays on when an old one ends"
+}

@@ -1039,7 +1039,9 @@
       "payNote": "Apre la fattura da pagare. Resti su {{plan}}.",
       "payNoteAccount": "Aggiorna la carta dalla pagina del tuo account. Mantieni il piano attuale.",
       "switchButton": "Chiudilo e passa a Pro",
-      "switchNote": "Chiudiamo subito il tuo piano attuale e annulliamo il pagamento in sospeso, poi paghi Pro al checkout. {{plan}} non sarà più disponibile."
+      "switchButtonAutoSync": "Chiudilo e passa a Auto Sync",
+      "switchNote": "Chiudiamo subito il tuo piano attuale e annulliamo il pagamento in sospeso, poi paghi Pro al checkout. {{plan}} non sarà più disponibile.",
+      "switchNoteAutoSync": "Chiudiamo subito il tuo piano attuale e annulliamo il pagamento in sospeso, poi paghi Auto Sync al checkout. {{plan}} non sarà più disponibile."
     }
   }
 }

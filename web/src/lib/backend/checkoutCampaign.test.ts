@@ -23,6 +23,24 @@ function sentBody(): Record<string, unknown> {
   return vi.mocked(api.post).mock.calls[0][1] as Record<string, unknown>;
 }
 
+describe('the Auto Sync checkout request', () => {
+  beforeEach(() => {
+    vi.mocked(api.post).mockReset().mockResolvedValue(ok());
+  });
+
+  it('carries the choice to end an unpaid plan', async () => {
+    await new Backend().startAutoSyncCheckout(undefined, undefined, true);
+
+    expect(sentBody().replaceLapsed).toBe(true);
+  });
+
+  it('leaves it out until the person chooses', async () => {
+    await new Backend().startAutoSyncCheckout();
+
+    expect(sentBody()).not.toHaveProperty('replaceLapsed');
+  });
+});
+
 describe('checkout requests carry the landing campaign tags', () => {
   beforeEach(() => {
     vi.mocked(api.post).mockReset().mockResolvedValue(ok());

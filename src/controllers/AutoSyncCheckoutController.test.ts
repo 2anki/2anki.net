@@ -2,6 +2,7 @@ import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
 import AutoSyncCheckoutController from './AutoSyncCheckoutController';
 import { AutoSyncCheckoutUseCase } from '../usecases/checkout/AutoSyncCheckoutUseCase';
+import { LapsedSubscriptionError } from '../usecases/checkout/LapsedSubscriptions';
 
 const makeRequest = (locals: Record<string, unknown> = {}): Request =>
   ({ locals }) as unknown as Request;
@@ -43,6 +44,75 @@ describe('AutoSyncCheckoutController', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ url: 'https://checkout.stripe.com/test' });
+  });
+
+  test('answers 409 with the unpaid plan so the person can choose', async () => {
+    const uc = {
+      execute: vi.fn().mockRejectedValue(
+        new LapsedSubscriptionError({
+          subscriptionId: 'sub_old',
+          amount: 200,
+          currency: 'eur',
+          interval: 'month',
+          openInvoiceId: 'in_old',
+          payUrl: 'https://invoice.stripe.com/i/old',
+        })
+      ),
+    } as unknown as AutoSyncCheckoutUseCase;
+    const controller = new AutoSyncCheckoutController(uc);
+    const res = makeResponse();
+
+    await controller.createSession(
+      makeRequest({ owner: 42 }),
+      res as unknown as Response
+    );
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({
+      code: 'lapsed_subscription',
+      message: "Your current plan's last payment didn't go through.",
+      expiresAt: null,
+      lapsedPlan: {
+        amount: 200,
+        currency: 'eur',
+        interval: 'month',
+        payUrl: 'https://invoice.stripe.com/i/old',
+      },
+    });
+  });
+
+  test('answers 409 when an earlier plan locks the currency', async () => {
+    const uc = {
+      execute: vi.fn().mockRejectedValue(
+        Object.assign(new Error('You cannot combine currencies'), {
+          type: 'StripeInvalidRequestError',
+        })
+      ),
+    } as unknown as AutoSyncCheckoutUseCase;
+    const res = makeResponse();
+
+    await new AutoSyncCheckoutController(uc).createSession(
+      makeRequest({ owner: 42 }),
+      res as unknown as Response
+    );
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toMatchObject({ code: 'currency_conflict' });
+  });
+
+  test('passes on an explicit choice to replace the unpaid plan', async () => {
+    const uc = makeUseCase({ url: 'https://checkout.stripe.com/test' });
+    const controller = new AutoSyncCheckoutController(uc);
+    const req = {
+      ...makeRequest({ owner: 42 }),
+      body: { replaceLapsed: true },
+    } as unknown as Request;
+
+    await controller.createSession(req, makeResponse() as unknown as Response);
+
+    expect(uc.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ replaceLapsed: true })
+    );
   });
 
   test('returns 200 with status cap_reached', async () => {

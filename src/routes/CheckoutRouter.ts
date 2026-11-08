@@ -19,7 +19,7 @@ import CreditPackCheckoutController from '../controllers/CreditPackCheckoutContr
 import { ResumeAbandonedCheckoutUseCase } from '../usecases/checkout/ResumeAbandonedCheckoutUseCase';
 import { UnlimitedCheckoutUseCase } from '../usecases/checkout/UnlimitedCheckoutUseCase';
 import { StripeLapsedSubscriptions } from '../usecases/checkout/LapsedSubscriptions';
-import { getStripe } from '../lib/integrations/stripe';
+import { getStripe, isDeveloperTierProduct } from '../lib/integrations/stripe';
 import { getDatabase } from '../data_layer';
 import AbandonedCheckoutRecoveryRepository from '../data_layer/AbandonedCheckoutRecoveryRepository';
 import { getEventsSink } from '../services/events/eventsSinkInstance';
@@ -40,6 +40,11 @@ const CheckoutRouter = () => {
   const staleCustomerRefresher = new StaleCheckoutCustomerRefresher(
     new UsersRepository(getDatabase()),
     new StripeCustomerResolver(getStripe(), new UsersRepository(getDatabase()))
+  );
+
+  const lapsedSubscriptions = new StripeLapsedSubscriptions(
+    getStripe(),
+    (productId) => isDeveloperTierProduct(getDatabase(), productId)
   );
 
   const priceId = process.env.AUTO_SYNC_PRICE_ID ?? '';
@@ -87,7 +92,8 @@ const CheckoutRouter = () => {
         priceId,
         productId,
         maxSubscribers,
-        staleCustomerRefresher
+        staleCustomerRefresher,
+        lapsedSubscriptions
       );
       const controller = new AutoSyncCheckoutController(useCase);
       return controller.createSession(req, res);
@@ -131,7 +137,7 @@ const CheckoutRouter = () => {
         getStripe(),
         priceResolver,
         staleCustomerRefresher,
-        new StripeLapsedSubscriptions(getStripe())
+        lapsedSubscriptions
       );
       const controller = new UnlimitedCheckoutController(
         useCase,

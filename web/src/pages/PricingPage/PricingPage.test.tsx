@@ -1056,6 +1056,43 @@ describe('PricingPage Auto Sync', () => {
     expect(card).toHaveTextContent('Everything in Pro');
   });
 
+  it('asks a buyer with an unpaid plan to choose, then switches to Auto Sync', async () => {
+    mockStartAutoSyncCheckout
+      .mockResolvedValueOnce({
+        status: 'conflict',
+        code: 'lapsed_subscription',
+        expiresAt: null,
+        lapsedPlan: {
+          amount: 200,
+          currency: 'eur',
+          interval: 'month',
+          payUrl: 'https://invoice.stripe.com/i/test',
+        },
+      })
+      .mockResolvedValueOnce({ url: 'https://checkout.stripe.com/switched' });
+    renderAt('/pricing', { isLoggedIn: true });
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Get Auto Sync' })
+    );
+    const switchButton = await screen.findByRole('button', {
+      name: 'End it and switch to Auto Sync',
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'you pay for Auto Sync at checkout'
+    );
+    fireEvent.click(switchButton);
+
+    await waitFor(() =>
+      expect(location.href).toBe('https://checkout.stripe.com/switched')
+    );
+    expect(mockStartAutoSyncCheckout).toHaveBeenLastCalledWith(
+      expect.anything(),
+      'pricing_page',
+      true
+    );
+  });
+
   it('sends a buyer to the checkout url', async () => {
     mockStartAutoSyncCheckout.mockResolvedValue({
       url: 'https://checkout.stripe.com/auto-sync',

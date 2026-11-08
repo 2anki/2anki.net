@@ -24,16 +24,18 @@ export function describeLapsedPlan(
   );
 }
 
-// Shown when someone with an unpaid earlier plan starts Pro checkout. Nothing
+// Shown when someone with an unpaid earlier plan starts a checkout. Nothing
 // happens to the old plan until they pick one of the two: pay it and keep it,
 // or end it and switch. The switch spells out that the old price is gone.
 export function LapsedPlanChoice({
   plan,
+  target,
   pending,
   onPay,
   onSwitch,
 }: Readonly<{
   plan: LapsedPlan;
+  target: 'pro' | 'auto_sync';
   pending: boolean;
   onPay: () => void;
   onSwitch: () => void;
@@ -73,10 +75,19 @@ export function LapsedPlanChoice({
             onClick={onSwitch}
             disabled={pending}
           >
-            {t('checkout.lapsed.switchButton')}
+            {t(
+              target === 'auto_sync'
+                ? 'checkout.lapsed.switchButtonAutoSync'
+                : 'checkout.lapsed.switchButton'
+            )}
           </button>
           <p className={styles.lapsedNote}>
-            {t('checkout.lapsed.switchNote', { plan: planLabel })}
+            {t(
+              target === 'auto_sync'
+                ? 'checkout.lapsed.switchNoteAutoSync'
+                : 'checkout.lapsed.switchNote',
+              { plan: planLabel }
+            )}
           </p>
         </div>
       </div>

@@ -1039,7 +1039,9 @@
       "payNote": "Opens the unpaid invoice. You stay on {{plan}}.",
       "payNoteAccount": "Update your card on your account page. You keep your current plan.",
       "switchButton": "End it and switch to Pro",
-      "switchNote": "We end your current plan now and cancel its unpaid payment, then you pay for Pro at checkout. You can't go back to {{plan}} later."
+      "switchButtonAutoSync": "End it and switch to Auto Sync",
+      "switchNote": "We end your current plan now and cancel its unpaid payment, then you pay for Pro at checkout. You can't go back to {{plan}} later.",
+      "switchNoteAutoSync": "We end your current plan now and cancel its unpaid payment, then you pay for Auto Sync at checkout. You can't go back to {{plan}} later."
     }
   }
 }

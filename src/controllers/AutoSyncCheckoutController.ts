@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { AutoSyncCheckoutUseCase } from '../usecases/checkout/AutoSyncCheckoutUseCase';
+import { LapsedSubscriptionError } from '../usecases/checkout/LapsedSubscriptions';
 import { parsePricingVariant } from '../usecases/checkout/pricingVariant';
 import { parseCheckoutSurface } from '../usecases/checkout/checkoutSurface';
+import { isCurrencyConflictError } from '../usecases/checkout/createCheckoutSession';
 import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readCheckoutAttribution } from '../lib/attribution/adClick';
 
@@ -18,18 +20,45 @@ class AutoSyncCheckoutController {
     const { gaClientId, gaSessionId } = readGaMeasurement(req);
     const adClick = readCheckoutAttribution(req);
 
-    const result = await this.useCase.execute({
-      userId,
-      userEmail,
-      stripeCustomerId,
-      variant,
-      anonId,
-      surface,
-      gaClientId,
-      gaSessionId,
-      adClick,
-    });
-    res.json(result);
+    try {
+      const result = await this.useCase.execute({
+        userId,
+        userEmail,
+        stripeCustomerId,
+        variant,
+        anonId,
+        surface,
+        gaClientId,
+        gaSessionId,
+        adClick,
+        replaceLapsed: req.body?.replaceLapsed === true,
+      });
+      res.json(result);
+    } catch (error) {
+      if (error instanceof LapsedSubscriptionError) {
+        const { amount, currency, interval, payUrl } = error.plan;
+        res.status(409).json({
+          code: 'lapsed_subscription',
+          message: "Your current plan's last payment didn't go through.",
+          expiresAt: null,
+          lapsedPlan: { amount, currency, interval, payUrl },
+        });
+        return;
+      }
+      if (isCurrencyConflictError(error)) {
+        console.warn('auto_sync.checkout.currency_conflict', {
+          user_id: userId,
+        });
+        res.status(409).json({
+          code: 'currency_conflict',
+          message:
+            'Your earlier plan is billed in another currency, so this one cannot start yet.',
+          expiresAt: null,
+        });
+        return;
+      }
+      throw error;
+    }
   }
 }
 
