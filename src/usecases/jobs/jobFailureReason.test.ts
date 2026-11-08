@@ -1,5 +1,6 @@
 import { APIResponseError, APIErrorCode } from '@notionhq/client';
 import { buildPythonExitError } from '../../lib/anki/buildPythonExitError';
+import { PYTHON_ZERO_CARDS_MESSAGE } from '../../lib/anki/PythonZeroCardsError';
 import {
   ClaudeLargeSectionError,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
@@ -557,7 +558,7 @@ describe('jobFailureReasonFromError on worker-flattened errors', () => {
   }
 
   it('maps a flattened PythonZeroCardsError to the empty-deck reason', () => {
-    const flat = flatten('PythonZeroCardsError', 'Python built zero cards.');
+    const flat = flatten('PythonZeroCardsError', PYTHON_ZERO_CARDS_MESSAGE);
     expect(jobFailureReasonFromError(flat)).toBe(EMPTY_DECK_FAILURE_REASON);
     expect(jobFailureReasonCode(flat)).toBe('empty_deck');
   });

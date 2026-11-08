@@ -6,6 +6,7 @@ import * as path from 'node:path';
 import { inspect } from 'node:util';
 import CardGenerator from './CardGenerator';
 import { PythonExitError, pythonExitMessage } from './buildPythonExitError';
+import { PYTHON_ZERO_CARDS_MESSAGE } from './PythonZeroCardsError';
 
 vi.mock('node:child_process', async () => ({
   ...(await vi.importActual<typeof import('node:child_process')>(
@@ -167,6 +168,27 @@ describe('CardGenerator.run zero-card sentinel', () => {
     });
   });
 
+  it('keeps the writer output out of a zero-cards message, its fields and its log line', async () => {
+    mockedSpawn.mockReturnValue(
+      makeProcessStub(
+        'No cards generated from /tmp/ws/Organic Chemistry Week 3.html',
+        0
+      )
+    );
+
+    const err = await new CardGenerator(workspace)
+      .run()
+      .catch((e: unknown) => e);
+
+    expect(err).toMatchObject({
+      name: 'PythonZeroCardsError',
+      message: PYTHON_ZERO_CARDS_MESSAGE,
+    });
+    expect(JSON.stringify(err)).not.toContain('Organic Chemistry');
+    expect(Object.keys(err as object)).not.toContain('rawOutput');
+    expect(inspect(err)).not.toContain('Organic Chemistry');
+  });
+
   it('answers a missing apkg path with the job ID and keeps stdout out of the message', async () => {
     mockedSpawn.mockReturnValue(
       makeProcessStub('Writing /tmp/ws/Organic Chemistry Week 3.apkg.tmp', 0)
@@ -196,6 +218,7 @@ describe('CardGenerator.run zero-card sentinel', () => {
       kind: 'unknown',
       message: pythonExitMessage('unknown', undefined),
     });
+    expect((err as Error).message).not.toMatch(/job ID|unavailable/);
     expect(inspect(err)).not.toContain('Organic Chemistry');
   });
 });

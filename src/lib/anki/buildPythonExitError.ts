@@ -74,7 +74,10 @@ const TOO_LARGE_MESSAGE =
 const BAD_TITLE_MESSAGE =
   'Your page title has a "/" in it, which we can\'t save as a filename. Rename the page in Notion (try a dash or "and") and convert again.';
 
-function genericMessage(jobId = 'unavailable'): string {
+function genericMessage(jobId: string | undefined): string {
+  if (jobId == null || jobId === '') {
+    return "Something went wrong on our end converting this page. Email support@2anki.net and we'll take a look.";
+  }
   return `Something went wrong on our end converting this page. Email support@2anki.net with job ID ${jobId} and we'll take a look.`;
 }
 

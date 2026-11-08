@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-deck-builder-error-copy",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "Clearer messages when a deck comes out empty, when the deck builder fails, and when an image occlusion request has no boxes"
+}
