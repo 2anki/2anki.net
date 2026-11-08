@@ -3143,6 +3143,115 @@ describe('generateDeckInfo — conversion result cache', () => {
     expect(store.save).not.toHaveBeenCalled();
   });
 
+  describe('a result with missing sections', () => {
+    const htmlTwoChunks = '<p>' + 'x'.repeat(39_990) + '</p><p>y</p>';
+    const htmlSplittable =
+      '<details>' +
+      'x'.repeat(10_000) +
+      '</details><details>' +
+      'y'.repeat(10_000) +
+      '</details>';
+    let quiet: Array<{ mockRestore: () => void }>;
+
+    beforeEach(() => {
+      quiet = (['warn', 'info', 'error'] as const).map((level) =>
+        vi.spyOn(console, level).mockImplementation(() => undefined)
+      );
+    });
+
+    afterEach(() => {
+      quiet.forEach((spy) => spy.mockRestore());
+    });
+
+    async function convert(
+      html: string,
+      options: Record<string, unknown> = {}
+    ): Promise<{
+      result: DeckInfo[];
+      store: ReturnType<typeof makeStore>['store'];
+    }> {
+      const { store } = makeStore(undefined);
+      const result = await generateDeckInfo(
+        html,
+        [],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { conversionResultCache: store, ...options }
+      );
+      return { result, store };
+    }
+
+    it('is not stored when one chunk was declined', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(fakeResponse())
+        .mockResolvedValueOnce(refusedResponse());
+
+      const { result, store } = await convert(htmlTwoChunks);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is not stored when one chunk failed for a moment', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(fakeResponse())
+        .mockRejectedValueOnce(new Error('overloaded'));
+
+      const { result, store } = await convert(htmlTwoChunks);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is not stored when a truncated chunk kept only one half', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(truncatedResponse())
+        .mockResolvedValueOnce(fakeResponse())
+        .mockResolvedValueOnce(truncatedResponse());
+
+      const { result, store } = await convert(htmlSplittable);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is not stored when a truncated chunk shipped only its salvaged cards', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(salvageableTruncatedResponse())
+        .mockResolvedValueOnce(truncatedResponse())
+        .mockResolvedValueOnce(truncatedResponse());
+
+      const { result, store } = await convert(textHtml);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is not stored when a comprehensive chunk was declined', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(fakeResponse())
+        .mockResolvedValueOnce(refusedResponse());
+
+      const { result, store } = await convert(htmlTwoChunks, {
+        isPaying: true,
+        comprehensive: true,
+      });
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is stored when every chunk answered', async () => {
+      const { store } = await convert(htmlTwoChunks);
+
+      expect(mockStream.finalMessage).toHaveBeenCalledTimes(2);
+      expect(store.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('converts fresh when the cache read throws', async () => {
     const store = {
       get: vi.fn().mockRejectedValue(new Error('db down')),

@@ -1599,17 +1599,31 @@ function salvageOrThrow(err: ClaudeTruncatedError): DeckInfo[] {
   return err.salvagedDecks;
 }
 
+interface ChunkWatch {
+  onPartial: () => void;
+  onHalfRefused?: () => void;
+}
+
+function salvagePartial(
+  err: ClaudeTruncatedError,
+  watch: ChunkWatch
+): DeckInfo[] {
+  const salvaged = salvageOrThrow(err);
+  watch.onPartial();
+  return salvaged;
+}
+
 async function runChunkWithTruncationRetry(
   content: string,
   call: (content: string) => Promise<DeckInfo[]>,
-  onHalfRefused: () => void = () => {}
+  watch: ChunkWatch
 ): Promise<DeckInfo[]> {
   try {
     return await call(content);
   } catch (err) {
     if (!(err instanceof ClaudeTruncatedError)) throw err;
     const halves = splitChunkInHalf(content);
-    if (halves.length < 2) return salvageOrThrow(err);
+    if (halves.length < 2) return salvagePartial(err, watch);
     console.info('[Claude] Retrying truncated chunk as halves', {
       originalBytes: content.length,
       halfBytes: halves.map((h) => h.length),
@@ -1633,7 +1647,7 @@ async function runChunkWithTruncationRetry(
     // other half had already produced, and the caller saw the chunk as a total
     // loss — 53 cards shipped where 129 were parsed. Half a chunk beats none.
     const refused = refusalAmong(settled);
-    if (refused) onHalfRefused();
+    if (refused) watch.onHalfRefused?.();
     const recoveredNothing =
       recovered.length === 0 ||
       (refused && totalCardCount(recovered.flat()) === 0);
@@ -1641,9 +1655,10 @@ async function runChunkWithTruncationRetry(
       if (refused && err.salvagedDecks.length === 0) {
         throw failureToShow(settled);
       }
-      return salvageOrThrow(err);
+      return salvagePartial(err, watch);
     }
     if (fulfilled < halves.length) {
+      watch.onPartial();
       console.info('[Claude] Keeping the halves that parsed', {
         ok: fulfilled,
         total: halves.length,
@@ -1654,7 +1669,8 @@ async function runChunkWithTruncationRetry(
 }
 
 async function runChunks(
-  thunks: Array<() => Promise<DeckInfo[]>>
+  thunks: Array<() => Promise<DeckInfo[]>>,
+  onPartial: () => void
 ): Promise<DeckInfo[]> {
   const settled = await Promise.allSettled(thunks.map((fn) => fn()));
   const succeeded: DeckInfo[][] = [];
@@ -1671,6 +1687,7 @@ async function runChunks(
   });
 
   if (failures.length > 0) {
+    onPartial();
     console.info('[Claude] Some chunks failed; continuing with the rest', {
       failures,
       ok: succeeded.length,
@@ -1770,6 +1787,7 @@ export async function generateDeckInfo(
   fieldMapping?: FieldMapping,
   options?: GenerateDeckInfoOptions
 ): Promise<DeckInfo[]> {
+  let missingSections = false;
   const compute = () =>
     generateDeckInfoUncached(
       htmlContent,
@@ -1779,7 +1797,10 @@ export async function generateDeckInfo(
       cardStyle,
       cardSize,
       fieldMapping,
-      options
+      options,
+      () => {
+        missingSections = true;
+      }
     );
 
   const store = options?.conversionResultCache;
@@ -1801,19 +1822,21 @@ export async function generateDeckInfo(
       model: CONVERSION_MODEL,
       promptVersion: PROMPT_VERSION,
     },
-    compute
+    compute,
+    () => !missingSections
   );
 }
 
 async function generateDeckInfoUncached(
   htmlContent: string,
   availableMediaFiles: string[],
-  userInstructions?: string,
-  onProgress?: (step: string) => void,
-  cardStyle?: string,
-  cardSize?: string,
-  fieldMapping?: FieldMapping,
-  options?: GenerateDeckInfoOptions
+  userInstructions: string | undefined,
+  onProgress: ((step: string) => void) | undefined,
+  cardStyle: string | undefined,
+  cardSize: string | undefined,
+  fieldMapping: FieldMapping | undefined,
+  options: GenerateDeckInfoOptions | undefined,
+  onPartial: () => void
 ): Promise<DeckInfo[]> {
   const t0 = Date.now();
 
@@ -1902,9 +1925,11 @@ async function generateDeckInfoUncached(
                     undefined,
                     spendAttributionOf(options)
                   )
-                )
+                ),
+              { onPartial }
             )
-        )
+        ),
+        onPartial
       );
       const deckInfo = mergeDeckInfoArrays(chunkResults);
       console.log('[Claude] All heading-driven chunks done', {
@@ -1935,7 +1960,8 @@ async function generateDeckInfoUncached(
       cardStyle,
       cardSize,
       fieldMapping,
-      spendAttributionOf(options)
+      spendAttributionOf(options),
+      onPartial
     );
     const deckInfo = result.deckInfo;
     const elapsedMs = Date.now() - t0;
@@ -1968,24 +1994,28 @@ async function generateDeckInfoUncached(
   const chunkResults = await runChunks(
     chunks.map(
       (chunk, i) => () =>
-        runChunkWithTruncationRetry(chunk, (content) =>
-          withAiBudget(aiSubjectOf(options), () =>
-            generateDeckInfoFromChunk(
-              content,
-              availableMediaFiles,
-              userInstructions,
-              i,
-              chunks.length,
-              onProgress,
-              cardStyle,
-              cardSize,
-              fieldMapping,
-              undefined,
-              spendAttributionOf(options)
-            )
-          )
+        runChunkWithTruncationRetry(
+          chunk,
+          (content) =>
+            withAiBudget(aiSubjectOf(options), () =>
+              generateDeckInfoFromChunk(
+                content,
+                availableMediaFiles,
+                userInstructions,
+                i,
+                chunks.length,
+                onProgress,
+                cardStyle,
+                cardSize,
+                fieldMapping,
+                undefined,
+                spendAttributionOf(options)
+              )
+            ),
+          { onPartial }
         )
-    )
+    ),
+    onPartial
   );
 
   const deckInfo = mergeDeckInfoArrays(chunkResults);
@@ -2013,7 +2043,8 @@ async function runFloorV1(
   cardStyle: string | undefined,
   cardSize: string | undefined,
   fieldMapping: FieldMapping | undefined,
-  attribution?: SpendAttribution
+  attribution: SpendAttribution | undefined,
+  onPartial: () => void
 ): Promise<FloorV1Result> {
   const tStart = Date.now();
   const usages: ChunkUsage[] = [];
@@ -2044,7 +2075,7 @@ async function runFloorV1(
                 attribution
               )
             ),
-          () => refusedChunks.add(i)
+          { onPartial, onHalfRefused: () => refusedChunks.add(i) }
         ).then((decks) => stampChunkIndex(decks, i))
     ),
     FLOOR_V1_MAX_PARALLEL
@@ -2058,6 +2089,7 @@ async function runFloorV1(
     if (r.status === 'fulfilled') {
       initialDecks.push(...r.value);
     } else {
+      onPartial();
       if (r.reason instanceof ClaudeRefusalError) refusedChunks.add(i);
       console.warn('[Claude] floor v1 chunk failed', {
         chunkIndex: i,
@@ -2109,7 +2141,7 @@ async function runFloorV1(
                   attribution
                 )
               ),
-            () => refusedChunks.add(idx)
+            { onPartial, onHalfRefused: () => refusedChunks.add(idx) }
           ).then((decks) => stampChunkIndex(decks, idx))
       ),
       FLOOR_V1_MAX_PARALLEL
@@ -2121,6 +2153,7 @@ async function runFloorV1(
       if (r.status === 'fulfilled') {
         newDecks.push(...r.value);
       } else {
+        onPartial();
         if (r.reason instanceof ClaudeRefusalError) {
           refusedChunks.add(targetChunks[i]);
         }
