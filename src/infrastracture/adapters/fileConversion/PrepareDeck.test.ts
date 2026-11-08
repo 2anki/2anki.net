@@ -620,7 +620,7 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
   });
 
   it('leaves out an image Claude declined and ships the rest of the zip', async () => {
-    convertImageToHTML.mockRejectedValue(new ClaudeRefusalError());
+    convertImageToHTML.mockRejectedValueOnce(new ClaudeRefusalError());
     generateDeckInfo.mockResolvedValue(
       deckWithCards('page', [{ name: 'Kept fact', back: 'Kept' }])
     );
@@ -2896,6 +2896,63 @@ describe('PrepareDeck — empty backs from Notion-export toggles', () => {
 
     expect(result?.emptyBackCount).toBe(1);
     expect(result?.notionEmptyBackCount).toBe(1);
+  });
+
+  it.each([
+    ['one run', false],
+    ['a zip entry built in a batch', true],
+  ])(
+    'leaves out an image Claude declined on the standard parser (%s)',
+    async (_label, batched) => {
+      convertImageToHTML.mockRejectedValueOnce(new ClaudeRefusalError());
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const input = {
+        name: 'page.html',
+        files: [
+          { name: 'page.html', contents: notionPage },
+          { name: 'diagram.png', contents: Buffer.from('png-bytes') },
+        ],
+        settings: makeSettings({
+          cloze: 'false',
+          'image-quiz-html-to-anki': 'true',
+        }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      };
+
+      try {
+        const result = batched
+          ? await prepareDeckInfoOnly(input, makeWorkspace(), makeWorkspace())
+          : await PrepareDeck(input);
+
+        expect(convertImageToHTML).toHaveBeenCalledTimes(1);
+        expect(generateDeckInfo).not.toHaveBeenCalled();
+        expect(result?.emptyBackCount).toBe(1);
+      } finally {
+        warn.mockRestore();
+      }
+    }
+  );
+
+  it('answers a lone image Claude declined as an empty upload', async () => {
+    convertImageToHTML.mockRejectedValueOnce(new ClaudeRefusalError());
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      await expect(
+        PrepareDeck({
+          name: 'diagram.png',
+          files: [{ name: 'diagram.png', contents: Buffer.from('png-bytes') }],
+          settings: makeSettings({ 'image-quiz-html-to-anki': 'true' }),
+          noLimits: true,
+          workspace: makeWorkspace(),
+        })
+      ).rejects.toMatchObject({ name: 'EmptyDeckError' });
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('reports the same for a zip entry built in a batch', async () => {
