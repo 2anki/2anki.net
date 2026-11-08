@@ -1562,15 +1562,32 @@ function stampChunkIndex(decks: DeckInfo[], chunkIndex: number): DeckInfo[] {
   return decks;
 }
 
-function refusalIn(
-  settled: PromiseSettledResult<unknown>[]
-): ClaudeRefusalError | undefined {
-  for (const r of settled) {
-    if (r.status === 'rejected' && r.reason instanceof ClaudeRefusalError) {
-      return r.reason;
-    }
-  }
-  return undefined;
+// A refusal says to change the request. Another failure (an overload, a
+// dropped connection, an answer that would not parse) says something else, so
+// with both in play that one is shown. Callers outside the chunk runner get
+// it through shownFailure, as a plain Error with its text. A truncated half
+// says nothing the refusal does not.
+function failureToShow(settled: PromiseSettledResult<unknown>[]): Error {
+  const reasons = settled.flatMap((r) =>
+    r.status === 'rejected' ? [r.reason] : []
+  );
+  const other = reasons.find(
+    (reason) =>
+      !(reason instanceof ClaudeRefusalError) &&
+      !(reason instanceof ClaudeTruncatedError)
+  );
+  const chosen =
+    other ??
+    reasons.find((reason) => reason instanceof ClaudeRefusalError) ??
+    reasons[0];
+  if (chosen instanceof Error) return chosen;
+  return new Error(String(chosen ?? 'All Claude chunks failed'));
+}
+
+function refusalAmong(settled: PromiseSettledResult<unknown>[]): boolean {
+  return settled.some(
+    (r) => r.status === 'rejected' && r.reason instanceof ClaudeRefusalError
+  );
 }
 
 function salvageOrThrow(err: ClaudeTruncatedError): DeckInfo[] {
@@ -1584,7 +1601,8 @@ function salvageOrThrow(err: ClaudeTruncatedError): DeckInfo[] {
 
 async function runChunkWithTruncationRetry(
   content: string,
-  call: (content: string) => Promise<DeckInfo[]>
+  call: (content: string) => Promise<DeckInfo[]>,
+  onHalfRefused: () => void = () => {}
 ): Promise<DeckInfo[]> {
   try {
     return await call(content);
@@ -1614,9 +1632,15 @@ async function runChunkWithTruncationRetry(
     // Under Promise.all a second truncation on one half discarded the cards the
     // other half had already produced, and the caller saw the chunk as a total
     // loss — 53 cards shipped where 129 were parsed. Half a chunk beats none.
-    if (recovered.length === 0) {
-      const refusal = refusalIn(settled);
-      if (refusal && err.salvagedDecks.length === 0) throw refusal;
+    const refused = refusalAmong(settled);
+    if (refused) onHalfRefused();
+    const recoveredNothing =
+      recovered.length === 0 ||
+      (refused && totalCardCount(recovered.flat()) === 0);
+    if (recoveredNothing) {
+      if (refused && err.salvagedDecks.length === 0) {
+        throw failureToShow(settled);
+      }
       return salvageOrThrow(err);
     }
     if (fulfilled < halves.length) {
@@ -1660,16 +1684,19 @@ async function runChunks(
     throw new AiCreditsTrippedWithSalvage(succeeded.flat());
   }
 
+  const decks = succeeded.flat();
+  const nothingToShip = succeeded.length === 0 || totalCardCount(decks) === 0;
+  if (nothingToShip && refusalAmong(settled)) {
+    throw shownFailure(settled);
+  }
   if (succeeded.length === 0) {
-    const refusal = refusalIn(settled);
-    if (refusal) throw refusal;
     throw markedFileFailure(
       new Error(failures[0]?.reason ?? 'All Claude chunks failed'),
       settled
     );
   }
 
-  return succeeded.flat();
+  return decks;
 }
 
 type ChunkFileFailure = 'too_large' | 'no_text' | 'unreadable';
@@ -1707,6 +1734,27 @@ function markedFileFailure(
     return error;
   }
   return Object.assign(error, { chunkFileFailure: reasons[0] });
+}
+
+// What a conversion that shipped nothing answers with: the refusal by class,
+// or any other failure as the plain error every caller has always received.
+// A refusal belongs to the file as much as an unreadable answer does, so when
+// every failure was one or the other the error still names the file's reason
+// and an upload of several files can leave the file out.
+function shownFailure(settled: PromiseSettledResult<unknown>[]): Error {
+  const failure = failureToShow(settled);
+  if (failure instanceof ClaudeRefusalError) return failure;
+  const error = new Error(failure.message);
+  const shownReason = fileFailureOf(failure);
+  const everyFailureIsTheFile = settled.every(
+    (r) =>
+      r.status === 'fulfilled' ||
+      r.reason instanceof ClaudeRefusalError ||
+      fileFailureOf(r.reason) != null
+  );
+  return shownReason != null && everyFailureIsTheFile
+    ? Object.assign(error, { chunkFileFailure: shownReason })
+    : error;
 }
 
 // The vision path reads image bytes off disk that the cache key does not
@@ -1972,33 +2020,40 @@ async function runFloorV1(
   const collect = (usage: ChunkUsage) => usages.push(usage);
   const bounds = resolveFloorV1Bounds(cardSize);
 
+  // A declined chunk is declined again, so top-ups never resend it, and a
+  // chunk counts as declined when either of its truncation halves was.
+  const refusedChunks = new Set<number>();
   const firstRoundResults = await runWithSemaphore(
     chunks.map(
       (chunk, i) => () =>
-        runChunkWithTruncationRetry(chunk, (content) =>
-          withAiBudget(aiSubjectOf(attribution), () =>
-            generateDeckInfoFromChunk(
-              content,
-              availableMediaFiles,
-              userInstructions,
-              i,
-              chunks.length,
-              onProgress,
-              cardStyle,
-              cardSize,
-              fieldMapping,
-              collect,
-              attribution
-            )
-          )
+        runChunkWithTruncationRetry(
+          chunk,
+          (content) =>
+            withAiBudget(aiSubjectOf(attribution), () =>
+              generateDeckInfoFromChunk(
+                content,
+                availableMediaFiles,
+                userInstructions,
+                i,
+                chunks.length,
+                onProgress,
+                cardStyle,
+                cardSize,
+                fieldMapping,
+                collect,
+                attribution
+              )
+            ),
+          () => refusedChunks.add(i)
         ).then((decks) => stampChunkIndex(decks, i))
     ),
     FLOOR_V1_MAX_PARALLEL
   );
+  const settledRounds: PromiseSettledResult<DeckInfo[]>[] = [
+    ...firstRoundResults,
+  ];
 
   const initialDecks: DeckInfo[] = [];
-  // A declined chunk is declined again, so top-ups never resend it.
-  const refusedChunks = new Set<number>();
   firstRoundResults.forEach((r, i) => {
     if (r.status === 'fulfilled') {
       initialDecks.push(...r.value);
@@ -2036,26 +2091,30 @@ async function runFloorV1(
     const topUpResults = await runWithSemaphore(
       targetChunks.map(
         (idx) => () =>
-          runChunkWithTruncationRetry(chunks[idx], (content) =>
-            withAiBudget(aiSubjectOf(attribution), () =>
-              generateDeckInfoFromChunk(
-                content,
-                availableMediaFiles,
-                combinedInstructions,
-                idx,
-                chunks.length,
-                onProgress,
-                cardStyle,
-                cardSize,
-                fieldMapping,
-                collect,
-                attribution
-              )
-            )
+          runChunkWithTruncationRetry(
+            chunks[idx],
+            (content) =>
+              withAiBudget(aiSubjectOf(attribution), () =>
+                generateDeckInfoFromChunk(
+                  content,
+                  availableMediaFiles,
+                  combinedInstructions,
+                  idx,
+                  chunks.length,
+                  onProgress,
+                  cardStyle,
+                  cardSize,
+                  fieldMapping,
+                  collect,
+                  attribution
+                )
+              ),
+            () => refusedChunks.add(idx)
           ).then((decks) => stampChunkIndex(decks, idx))
       ),
       FLOOR_V1_MAX_PARALLEL
     );
+    settledRounds.push(...topUpResults);
 
     const newDecks: DeckInfo[] = [];
     topUpResults.forEach((r, i) => {
@@ -2089,6 +2148,10 @@ async function runFloorV1(
       });
       break;
     }
+  }
+
+  if (totalCardCount(merged) === 0 && refusalAmong(settledRounds)) {
+    throw shownFailure(settledRounds);
   }
 
   let clampedFrom: number | undefined;
