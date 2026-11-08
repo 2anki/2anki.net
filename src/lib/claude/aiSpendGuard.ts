@@ -355,7 +355,7 @@ async function maybeNotifyAlert(
     `[2anki] AI spend alert — ${target.label.toLowerCase()} crossed $${AI_SPEND_ALERT_THRESHOLD_USD} in 30 days`,
     `${target.label} is at $${cost30d.toFixed(2)} of AI spend over the ` +
       `trailing 30 days (alert threshold $${AI_SPEND_ALERT_THRESHOLD_USD}). ` +
-      `No enforcement has happened — this is the watch signal. Per-user ` +
+      `No enforcement has happened — this is the watch signal. Spend ` +
       `breakdown: /ops AI usage.`
   );
 }

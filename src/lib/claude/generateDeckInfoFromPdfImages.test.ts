@@ -325,6 +325,11 @@ describe('generateDeckInfoFromPdfImages', () => {
     );
     trackSpy.mockRestore();
     expect(usageEvents).toHaveLength(3);
+    expect(usageEvents.map(([, payload]) => payload?.props?.billable)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
     expect(mockStreamFn.mock.calls.map(([p]) => p.max_tokens)).toContain(32768);
     expect(mockStreamFn).toHaveBeenCalledTimes(3);
     expect(mockNonStreamingCreateFn).not.toHaveBeenCalled();
