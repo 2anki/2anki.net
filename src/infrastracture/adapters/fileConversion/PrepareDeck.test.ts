@@ -654,6 +654,38 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     }
   });
 
+  it('keeps the credit stop when an image-only zip has one image declined and one stopped', async () => {
+    convertImageToHTML.mockImplementation(async (base64: string) => {
+      if (Buffer.from(base64, 'base64').toString() === 'declined-png') {
+        throw new ClaudeRefusalError();
+      }
+      throw new AiCreditsExhaustedError();
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const caught = await PrepareDeck({
+        name: 'photos.zip',
+        files: [
+          { name: 'p1.png', contents: Buffer.from('stopped-png') },
+          { name: 'p2.png', contents: Buffer.from('declined-png') },
+        ],
+        settings: makeSettings({
+          'claude-ai-flashcards': 'true',
+          'image-quiz-html-to-anki': 'true',
+        }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      }).catch((err: unknown) => err);
+
+      expect(convertImageToHTML).toHaveBeenCalledTimes(2);
+      expect(caught).not.toBeInstanceOf(ClaudeRefusalError);
+    } finally {
+      warn.mockRestore();
+      convertImageToHTML.mockReset();
+    }
+  });
+
   it('leaves out an image Claude declined and ships the rest of the zip', async () => {
     convertImageToHTML.mockRejectedValueOnce(new ClaudeRefusalError());
     generateDeckInfo.mockResolvedValue(

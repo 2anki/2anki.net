@@ -27,9 +27,6 @@ export const CONVERSION_TRUNCATED_MESSAGE =
 // and the user has no signal that the tail of their document is missing. An
 // error they can act on beats half a deck they cannot detect.
 function assertNotTruncated(stopReason: string | null | undefined): void {
-  if (stopReason === 'refusal') {
-    throw new ClaudeRefusalError();
-  }
   if (stopReason === 'max_tokens') {
     throw new FileConversionError(CONVERSION_TRUNCATED_MESSAGE);
   }
@@ -100,7 +97,13 @@ export async function convertWithClaude(
           requestId: options.requestId,
         });
         assertNotTruncated(response.stop_reason);
-        return joinTextBlocks(response.content);
+        const text = joinTextBlocks(response.content);
+        // What Claude wrote before declining still converts, as on the text
+        // and page paths; a refusal with nothing written says so.
+        if (response.stop_reason === 'refusal' && text.trim() === '') {
+          throw new ClaudeRefusalError();
+        }
+        return text;
       } catch (error) {
         if (
           error instanceof FileConversionError ||

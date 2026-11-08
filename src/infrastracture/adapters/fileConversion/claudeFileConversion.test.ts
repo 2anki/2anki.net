@@ -167,6 +167,16 @@ describe('convertWithClaude', () => {
     expect(mock.messages.stream).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps what Claude wrote before declining', async () => {
+    const mock = makeAnthropicMock('<p>Q1</p>', 'refusal');
+
+    await expect(
+      convertWithClaude(mock as unknown as Anthropic, 'system prompt', [
+        { type: 'text', text: 'user text' },
+      ])
+    ).resolves.toBe('<p>Q1</p>');
+  });
+
   it('joins every text block instead of reading only the first', async () => {
     const mock = makeAnthropicMock('');
     (mock.messages.stream as Mock).mockReturnValue({
