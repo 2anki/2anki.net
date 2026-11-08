@@ -654,7 +654,7 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     }
   });
 
-  it('keeps the credit stop when an image-only zip has one image declined and one stopped', async () => {
+  it('answers an image-only zip with one image declined and one at the credit stop as empty, as before', async () => {
     convertImageToHTML.mockImplementation(async (base64: string) => {
       if (Buffer.from(base64, 'base64').toString() === 'declined-png') {
         throw new ClaudeRefusalError();
@@ -664,7 +664,7 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     try {
-      const caught = await PrepareDeck({
+      const outcome = PrepareDeck({
         name: 'photos.zip',
         files: [
           { name: 'p1.png', contents: Buffer.from('stopped-png') },
@@ -676,10 +676,10 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
         }),
         noLimits: true,
         workspace: makeWorkspace(),
-      }).catch((err: unknown) => err);
+      });
 
+      await expect(outcome).rejects.toMatchObject({ name: 'EmptyDeckError' });
       expect(convertImageToHTML).toHaveBeenCalledTimes(2);
-      expect(caught).not.toBeInstanceOf(ClaudeRefusalError);
     } finally {
       warn.mockRestore();
       convertImageToHTML.mockReset();
