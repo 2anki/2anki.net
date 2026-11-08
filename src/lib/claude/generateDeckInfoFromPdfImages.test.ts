@@ -10,6 +10,7 @@ import {
 } from './generateDeckInfoFromPdfImages';
 import {
   AiCreditsTrippedWithSalvage,
+  ClaudeRefusalError,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
   expandCompactDeckInfo,
 } from './ClaudeService';
@@ -373,6 +374,78 @@ describe('generateDeckInfoFromPdfImages', () => {
 
     const totalCards = decks.reduce((sum, d) => sum + d.cards.length, 0);
     expect(totalCards).toBe(1);
+  });
+
+  it('answers with the refusal, not the scan advice, when every page is declined', async () => {
+    mockVisionFn.mockResolvedValue(visionResponse('', 'refusal'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfoFromPdfImages(html, {
+        mediaBaseDir: baseDir,
+      }).catch((err: unknown) => err);
+
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+      expect(mockVisionFn).toHaveBeenCalledTimes(2);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('answers with the refusal when one page is declined and the other is blank', async () => {
+    mockVisionFn
+      .mockResolvedValueOnce(visionResponse('', 'refusal'))
+      .mockResolvedValue(visionResponse('[]'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfoFromPdfImages(html, {
+        mediaBaseDir: baseDir,
+      }).catch((err: unknown) => err);
+
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('answers with the passing failure when one page is declined and the other fails for a moment', async () => {
+    mockVisionFn
+      .mockResolvedValueOnce(visionResponse('', 'refusal'))
+      .mockRejectedValue(new Error('overloaded_error'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfoFromPdfImages(html, {
+        mediaBaseDir: baseDir,
+      }).catch((err: unknown) => err);
+
+      expect(caught).not.toBeInstanceOf(ClaudeRefusalError);
+      expect((caught as Error).message).toBe('overloaded_error');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('keeps the cards from a page Claude answered when another is declined', async () => {
+    mockVisionFn
+      .mockResolvedValueOnce(visionResponse('', 'refusal'))
+      .mockResolvedValue(
+        visionResponse(
+          JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }])
+        )
+      );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const decks = await generateDeckInfoFromPdfImages(html, {
+        mediaBaseDir: baseDir,
+      });
+
+      expect(decks.reduce((sum, d) => sum + d.cards.length, 0)).toBe(1);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('surfaces the page failure when every page fails', async () => {

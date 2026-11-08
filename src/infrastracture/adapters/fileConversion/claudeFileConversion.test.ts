@@ -3,7 +3,10 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { convertWithClaude, FileConversionError } from './claudeFileConversion';
 import { withAiBudget } from '../../../lib/claude/aiSpendGuard';
 
-vi.mock('../../../lib/claude/aiSpendGuard', () => ({
+vi.mock('../../../lib/claude/aiSpendGuard', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('../../../lib/claude/aiSpendGuard')
+  >()),
   withAiBudget: vi.fn(
     (_userId: number | null | undefined, run: () => Promise<unknown>) => run()
   ),
@@ -151,6 +154,17 @@ describe('convertWithClaude', () => {
         { type: 'text', text: 'user text' },
       ])
     ).rejects.toThrow(/too large to convert in one pass/);
+  });
+
+  it('answers a declined document with the refusal, sent once', async () => {
+    const mock = makeAnthropicMock('', 'refusal');
+
+    await expect(
+      convertWithClaude(mock as unknown as Anthropic, 'system prompt', [
+        { type: 'text', text: 'user text' },
+      ])
+    ).rejects.toMatchObject({ name: 'ClaudeRefusalError' });
+    expect(mock.messages.stream).toHaveBeenCalledTimes(1);
   });
 
   it('joins every text block instead of reading only the first', async () => {

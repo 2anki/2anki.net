@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 
 import { recordClaudeUsage } from '../../../lib/claude/recordClaudeUsage';
 import { withAiBudget } from '../../../lib/claude/aiSpendGuard';
+import { ClaudeRefusalError } from '../../../lib/claude/ClaudeService';
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 // A cap, not a charge — output is billed on tokens actually generated, so a
@@ -26,6 +27,9 @@ export const CONVERSION_TRUNCATED_MESSAGE =
 // and the user has no signal that the tail of their document is missing. An
 // error they can act on beats half a deck they cannot detect.
 function assertNotTruncated(stopReason: string | null | undefined): void {
+  if (stopReason === 'refusal') {
+    throw new ClaudeRefusalError();
+  }
   if (stopReason === 'max_tokens') {
     throw new FileConversionError(CONVERSION_TRUNCATED_MESSAGE);
   }
@@ -98,7 +102,12 @@ export async function convertWithClaude(
         assertNotTruncated(response.stop_reason);
         return joinTextBlocks(response.content);
       } catch (error) {
-        if (error instanceof FileConversionError) throw error;
+        if (
+          error instanceof FileConversionError ||
+          error instanceof ClaudeRefusalError
+        ) {
+          throw error;
+        }
         const message = error instanceof Error ? error.message : String(error);
         throw new FileConversionError(message);
       }

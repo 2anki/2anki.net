@@ -11,6 +11,7 @@ import {
   withAiBudget,
 } from './aiSpendGuard';
 import {
+  ClaudeRefusalError,
   AiCreditsTrippedWithSalvage,
   DeckInfo,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
@@ -191,6 +192,11 @@ async function visionCardsForPage(
     anonymousPassId,
     requestId,
   });
+  // A declined page is declined again, so it is never retried.
+  if (response.stop_reason === 'refusal') {
+    console.warn('[Claude] Claude declined the page', { pageIndex });
+    throw new ClaudeRefusalError();
+  }
   if (response.stop_reason === 'max_tokens') {
     console.warn('[Claude] PDF page vision truncated, retrying', {
       pageIndex,
@@ -228,6 +234,7 @@ async function visionCardsForPage(
 interface PageVisionResult {
   compactDecks: CompactDeck[];
   tripped: boolean;
+  failures: unknown[];
 }
 
 async function runPagesWithConcurrency(
@@ -289,7 +296,7 @@ async function runPagesWithConcurrency(
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
   if (!tripped && failures.length === images.length && failures.length > 0) {
-    throw failures[0];
+    throw failureToShow(failures);
   }
   if (failures.length > 0) {
     console.warn('[Claude] PDF image fallback: some pages failed', {
@@ -297,7 +304,16 @@ async function runPagesWithConcurrency(
       pageCount: images.length,
     });
   }
-  return { compactDecks, tripped };
+  return { compactDecks, tripped, failures };
+}
+
+// A refusal says to change the file; any other failure can pass on another
+// try, so it is shown whenever one happened.
+function failureToShow(failures: unknown[]): unknown {
+  return (
+    failures.find((failure) => !(failure instanceof ClaudeRefusalError)) ??
+    failures[0]
+  );
 }
 
 export async function generateDeckInfoFromPdfImages(
@@ -326,7 +342,7 @@ export async function generateDeckInfoFromPdfImages(
 
   const attachPageImages = context.attachPageImages ?? true;
   const prompt = buildPdfPageVisionPrompt(userInstructions);
-  const { compactDecks, tripped } = await runPagesWithConcurrency(
+  const { compactDecks, tripped, failures } = await runPagesWithConcurrency(
     images,
     prompt,
     attachPageImages,
@@ -360,6 +376,10 @@ export async function generateDeckInfoFromPdfImages(
   }
 
   if (totalCards === 0) {
+    // A declined page is why nothing came back, not a scan without text.
+    if (failures.some((failure) => failure instanceof ClaudeRefusalError)) {
+      throw failureToShow(failures);
+    }
     throw new EmptyContentError(EMPTY_CONTENT_UPLOAD_MESSAGE);
   }
 
