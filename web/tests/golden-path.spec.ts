@@ -602,7 +602,7 @@ test.describe('golden path @golden', () => {
 
     await expect(
       page.getByText(
-        /13 lines past the free limit had no answer, so they were left out of this deck\./
+        /13 more lines were past the free limit and had no answer, so nothing kept them\./
       )
     ).toBeVisible({ timeout: 10_000 });
     const scrollWidth = await page.evaluate(

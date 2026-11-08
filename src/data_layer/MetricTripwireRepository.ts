@@ -23,7 +23,7 @@ export type TripwireRateCounts = Record<TripwireMetricKey, RateCountsRow>;
 export interface FollowThroughSpec {
   baseEvent: KnownEvent;
   baseProps: Record<string, string | boolean> | null;
-  excludeBaseProps: Record<string, string>[];
+  excludeBaseProps: Record<string, string | number>[];
   identity: 'any' | 'signed_in';
   followEvents: KnownEvent[];
 }
@@ -59,10 +59,12 @@ export const FOLLOW_THROUGH_SPECS: Record<
     identity: 'any',
     followEvents: ['upload_started'],
   },
+  // A cut that held nothing back (only answerless lines were left out) shows
+  // no offer or gate, so it can never follow through and stays out of the base.
   partial_notice_signed_in: {
     baseEvent: 'conversion_succeeded',
     baseProps: PARTIAL_UPLOAD_PROPS,
-    excludeBaseProps: [],
+    excludeBaseProps: [{ cards_held_back: 0 }],
     identity: 'signed_in',
     followEvents: PARTIAL_NOTICE_EVENTS,
   },

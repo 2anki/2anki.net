@@ -8027,6 +8027,24 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(heldDeck.rows).toHaveLength(0);
   });
 
+  it('records the answerless lines left out beside the cards held for sign-up', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21, cardsLeftOut: 4 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedJson()).toMatchObject({ kind: 'held', cardsHeldBack: 13 });
+    expect(conversionSucceededProps()).toMatchObject({
+      card_limit_partial: true,
+      cards_held_back: 13,
+      cards_left_out: 4,
+      held: true,
+    });
+  });
+
   it('holds the deck behind an account step', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
@@ -9487,6 +9505,32 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
       cards_left_out: 6,
     });
     expect(conversionSucceededProps()).not.toHaveProperty('held_for_plan');
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
+  });
+
+  it('holds the answered cards for a plan and still counts the answerless lines left out', async () => {
+    mockStorageUploadFile.mockClear();
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    mockPartial([{ name: 'deck', cardCount: 10, cardsLeftOut: 2 }], 5);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo, heldDeck).handleUpload(
+      partialRequestWithBytes(),
+      res
+    );
+
+    expect(capturedStatus()).toBe(200);
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBe('5');
+    expect(headerValue(res, 'X-Cards-Left-Out')).toBe('2');
+    expect(headerValue(res, 'X-Held-For-Plan')).toBe('1');
+    expect(conversionSucceededProps()).toMatchObject({
+      card_limit_partial: true,
+      cards_held_back: 5,
+      cards_left_out: 2,
+      held_for_plan: true,
+    });
     expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
   });
 

@@ -122,8 +122,8 @@
     "notion_other": "{{count}} toggle non avevano una risposta e sono stati saltati, quindi non sono in questo mazzo. Aggiungi una risposta a ciascuno in Notion e converti di nuovo.",
     "blankBacks_one": "{{count}} carta non ha una risposta, quindi il retro è vuoto. Un file senza formato domanda e risposta trasforma ogni riga in una carta. Metti ogni domanda in un elenco puntato con la risposta rientrata sotto, oppure in un foglio di calcolo metti la risposta nella colonna successiva, e converti di nuovo.",
     "blankBacks_other": "{{count}} carte non hanno una risposta, quindi il retro è vuoto. Un file senza formato domanda e risposta trasforma ogni riga in una carta. Metti ogni domanda in un elenco puntato con la risposta rientrata sotto, oppure in un foglio di calcolo metti la risposta nella colonna successiva, e converti di nuovo.",
-    "leftOutAtLimit_one": "{{count}} riga oltre il limite gratuito non aveva una risposta, quindi non è in questo mazzo. Dai una risposta a ogni domanda nel tuo file, ad esempio un elenco puntato con la risposta rientrata sotto, per trasformarla in una carta.",
-    "leftOutAtLimit_other": "{{count}} righe oltre il limite gratuito non avevano una risposta, quindi non sono in questo mazzo. Dai una risposta a ogni domanda nel tuo file, ad esempio un elenco puntato con la risposta rientrata sotto, per trasformarla in una carta."
+    "leftOutAtLimit_one": "{{count}} riga in più superava il limite gratuito e non aveva una risposta, quindi non è stata conservata. Dai una risposta a ogni domanda nel tuo file e converti di nuovo.",
+    "leftOutAtLimit_other": "{{count}} righe in più superavano il limite gratuito e non avevano una risposta, quindi non sono state conservate. Dai una risposta a ogni domanda nel tuo file e converti di nuovo."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} parte di questa pagina non è collegata a 2anki, quindi non è in questo mazzo. Aggiungi 2anki a questa pagina e alle sue sottopagine nel menu Connessioni di Notion, poi converti di nuovo.",

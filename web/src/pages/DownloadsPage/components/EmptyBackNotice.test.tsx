@@ -53,7 +53,7 @@ describe('EmptyBackNotice', () => {
     render(<EmptyBackNotice count={7} source="leftOut" />);
     expect(
       screen.getByText(
-        /7 lines past the free limit had no answer, so they were left out of this deck\./
+        /7 more lines were past the free limit and had no answer, so nothing kept them\./
       )
     ).toBeInTheDocument();
     expect(track).toHaveBeenCalledWith('empty_back_notice_shown', {

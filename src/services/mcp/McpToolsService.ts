@@ -446,6 +446,7 @@ export type ConvertResult =
       summary: string;
       cards_held_back?: number;
       cards_delivered?: number;
+      cards_left_out?: number;
       next_step?: McpNextStep;
       plan_notice?: string;
     }

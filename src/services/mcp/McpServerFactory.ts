@@ -202,6 +202,7 @@ const DECK_RESULT_SHAPE = {
   deckName: z.string().optional(),
   cards_held_back: z.number().optional(),
   cards_delivered: z.number().optional(),
+  cards_left_out: z.number().optional(),
   next_step: z.record(z.string(), z.unknown()).optional(),
   plan_notice: z.string().optional(),
   ...DECK_VIEWER_SHAPE,

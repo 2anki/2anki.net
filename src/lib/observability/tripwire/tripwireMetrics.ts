@@ -42,7 +42,7 @@ export const TRIPWIRE_METRICS: readonly TripwireMetric[] = [
     key: 'partial_notice_signed_in',
     label: 'Signed-in over-limit uploads that showed a held-back offer or gate',
     source:
-      'events: signed-in person-days with an upload conversion_succeeded carrying card_limit_partial that also have monthly_partial_offer_shown or anonymous_partial_gate_shown on the same UTC day. One unit is one person on one day.',
+      'events: signed-in person-days with an upload conversion_succeeded carrying card_limit_partial, leaving out cuts with cards_held_back 0 (only answerless lines left out, so no offer shows), that also have monthly_partial_offer_shown or anonymous_partial_gate_shown on the same UTC day. One unit is one person on one day.',
     minRelativeDrop: 0.4,
   },
 ];

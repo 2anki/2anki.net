@@ -2,5 +2,5 @@
   "id": "2026-11-09-left-out-lines-notice",
   "date": "2026-11-09",
   "type": "fix",
-  "title": "At the free limit, a deck now says how many lines past it had no answer and were left out"
+  "title": "At the free limit, a deck now says how many lines past the limit had no answer and were left out"
 }

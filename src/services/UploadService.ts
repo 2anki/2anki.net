@@ -2065,6 +2065,7 @@ class UploadService {
       0
     );
 
+    const leftOut = packages.reduce((sum, p) => sum + (p.cardsLeftOut ?? 0), 0);
     const first = packages[0];
     if (holdAnonId != null && owner == null && (cardsHeldBack ?? 0) > 0) {
       return await this.holdDeckForSignup(
@@ -2073,7 +2074,8 @@ class UploadService {
         holdAnonId,
         totalCards,
         cardsHeldBack ?? 0,
-        packages.length === 1 ? first.name : ''
+        packages.length === 1 ? first.name : '',
+        leftOut
       );
     }
     if (packages.length === 1) {
@@ -2216,10 +2218,6 @@ class UploadService {
         res.set('X-Cards-Held-Back', heldBack.toString());
         exposedHeaders.push('X-Cards-Held-Back');
       }
-      const leftOut = packages.reduce(
-        (sum, p) => sum + (p.cardsLeftOut ?? 0),
-        0
-      );
       if (leftOut > 0) {
         res.set('X-Cards-Left-Out', leftOut.toString());
         exposedHeaders.push('X-Cards-Left-Out');
@@ -2804,7 +2802,8 @@ class UploadService {
     anonId: string,
     cardCount: number,
     cardsHeldBack: number,
-    singleDeckPackageName: string
+    singleDeckPackageName: string,
+    cardsLeftOut = 0
   ): Promise<express.Response> {
     const file = (req.files as UploadedFile[])[0];
     const bytes = await readUploadBytes(file);
@@ -2882,6 +2881,7 @@ class UploadService {
         card_count_bucket: toCardCountBucket(cardCount + cardsHeldBack),
         card_limit_partial: true,
         cards_held_back: cardsHeldBack,
+        ...(cardsLeftOut > 0 ? { cards_left_out: cardsLeftOut } : {}),
         held: true,
       },
     });
