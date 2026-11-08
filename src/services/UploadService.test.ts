@@ -7652,6 +7652,23 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('serves the capped deck with no account step when no cut card has an answer', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 0);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(execute.mock.calls[0][6]).toMatchObject({
+      cardLimit: ANONYMOUS_CARD_CAP,
+    });
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toBeNull();
+    expect(heldDeck.rows).toHaveLength(0);
+  });
+
   it('holds the deck behind an account step', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 13);
@@ -8274,6 +8291,36 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       cards_held_back: 163,
     });
     expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(4242, 21);
+  });
+
+  it('does not hold a capped claim again when no cut card has an answer', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 0);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      false,
+      null,
+      'req-1',
+      null,
+      { previewCap: 21, heldCards: 184 }
+    );
+
+    expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 21 });
+    expect(result).toMatchObject({
+      cardCount: 21,
+      cardsHeldBack: 0,
+      heldForPlan: false,
+    });
+    expect(heldDeck.rows).toHaveLength(0);
   });
 
   it('cuts a preview-capped claim to what is left of the month when under 21', async () => {

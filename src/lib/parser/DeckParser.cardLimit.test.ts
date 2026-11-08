@@ -132,7 +132,7 @@ describe('DeckParser card limit with reversed cards', () => {
 });
 
 describe('DeckParser card limit on an upload that did not split', () => {
-  function answerlessUpload(cardLimit: number): DeckParser {
+  function answerlessUpload(cardLimit?: number): DeckParser {
     const lines = Array.from(
       { length: 6 },
       (_, i) => `<p>Line ${i + 1} with no answer</p>`
@@ -175,6 +175,14 @@ describe('DeckParser card limit on an upload that did not split', () => {
 
     expect(parser.totalCardCount()).toBe(1);
     expect(parser.cardsHeldBack).toBe(2);
+  });
+
+  it('makes one front-only card per line before any cut', async () => {
+    const parser = answerlessUpload();
+
+    await parser.build(new Workspace(true, 'fs'));
+
+    expect(parser.totalCardCount()).toBe(6);
   });
 
   it('holds back no card that has no answer', async () => {
