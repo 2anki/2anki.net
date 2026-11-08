@@ -271,6 +271,15 @@ describe('two plans sharing one subscription row', () => {
     });
   });
 
+  it('lets another plan take the row when no Auto Sync product is set', async () => {
+    delete process.env.AUTO_SYNC_PRODUCT_ID;
+
+    await receive(plan('sub_pro', 'active', PRO));
+
+    expect((await row()).stripe_product_id).toBe(PRO);
+    expect(retrieve).not.toHaveBeenCalled();
+  });
+
   it('records a lapsed plan on an ended row', async () => {
     await db('subscriptions').where({ email: PAYER }).update({ active: false });
 

@@ -7,8 +7,10 @@ import type StripeTypes from 'stripe';
 import type SubscriptionClaimTokens from '../../data_layer/public/SubscriptionClaimTokens';
 import knexLib, { type Knex } from 'knex';
 import type UsersRepository from '../../data_layer/UsersRepository';
+import { getStripe } from '../../lib/integrations/stripe';
 
 process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
+process.env.STRIPE_KEY ??= 'sk_test_fake_key_for_unit_tests';
 
 const makeFreshToken = (
   overrides: Partial<SubscriptionClaimTokens> = {}
@@ -324,5 +326,76 @@ describe('ConfirmSubscriptionClaimUseCase against a real database', () => {
         .where({ email: 'payer@example.com' })
         .select('linked_email')
     ).toEqual([{ linked_email: 'user@example.com' }]);
+  });
+
+  describe('when the payer address already holds a live Auto Sync plan', () => {
+    const retrieveHeld = vi.spyOn(getStripe().subscriptions, 'retrieve');
+    const heldAutoSync = {
+      ...activeSubscription({}),
+      id: 'sub_held',
+    };
+    const proPlan = {
+      ...activeSubscription({}),
+      items: { data: [{ price: { product: 'prod_pro' } }] },
+    };
+
+    beforeEach(async () => {
+      process.env.AUTO_SYNC_PRODUCT_ID = 'prod_auto_sync';
+      retrieveHeld.mockReset();
+      await db('users').insert({ id: 99, email: 'user@example.com' });
+      await db('subscriptions').insert({
+        email: 'payer@example.com',
+        active: true,
+        payload: JSON.stringify(heldAutoSync),
+        stripe_product_id: 'prod_auto_sync',
+      });
+    });
+
+    afterEach(() => {
+      delete process.env.AUTO_SYNC_PRODUCT_ID;
+    });
+
+    it('links the claimant and keeps Auto Sync on the row', async () => {
+      retrieveHeld.mockResolvedValue(heldAutoSync as never);
+
+      const result = await useCaseFor(stripeWith(proPlan)).execute(
+        99,
+        'raw-token',
+        'ip-hash',
+        'email-hash'
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(
+        await db('subscriptions')
+          .where({ email: 'payer@example.com' })
+          .select('linked_email', 'stripe_product_id')
+      ).toEqual([
+        {
+          linked_email: 'user@example.com',
+          stripe_product_id: 'prod_auto_sync',
+        },
+      ]);
+    });
+
+    it('rolls the claim back when Stripe cannot answer', async () => {
+      retrieveHeld.mockRejectedValue(new Error('rate limited'));
+
+      await expect(
+        useCaseFor(stripeWith(proPlan)).execute(
+          99,
+          'raw-token',
+          'ip-hash',
+          'email-hash'
+        )
+      ).rejects.toThrow();
+
+      const account = await db('users').where({ id: 99 }).first();
+      expect(account.stripe_customer_id).toBeNull();
+      const row = await db('subscriptions')
+        .where({ email: 'payer@example.com' })
+        .first();
+      expect(row.linked_email).toBeNull();
+    });
   });
 });
