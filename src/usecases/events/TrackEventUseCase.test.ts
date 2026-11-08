@@ -139,6 +139,7 @@ describe('TrackEventUseCase', () => {
     'inactive_users_deleted',
     'ai_spend_alert_sent',
     'ai_credits_exhausted',
+    'ai_usage_recorded',
     'mcp_tool_called',
     'mcp_tool_result',
   ])(
@@ -162,6 +163,21 @@ describe('TrackEventUseCase', () => {
       expect(inserted).toEqual([]);
     }
   );
+
+  it('drops a signed-in client usage record so it cannot change their AI credits', async () => {
+    const { repo, inserted } = makeFakeRepository();
+    const sink = new EventsSink(repo, { flushThreshold: 1 });
+    const useCase = new TrackEventUseCase(sink);
+    useCase.execute({
+      name: 'ai_usage_recorded',
+      unknown: false,
+      userId: 42,
+      anonymousId: null,
+      props: { cost_usd: -1000, model: 'claude', surface: 'upload' },
+    });
+    await sink.flush();
+    expect(inserted).toEqual([]);
+  });
 
   it('strips the server-only server_marker prop from any client event', async () => {
     const { repo, inserted } = makeFakeRepository();
