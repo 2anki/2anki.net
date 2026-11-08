@@ -283,6 +283,47 @@ describe('two plans sharing one subscription row', () => {
       expect(await heldId()).toBe('sub_pro');
     });
 
+    it.each([
+      ['Auto Sync first', ['sub_auto_sync', 'sub_pro']],
+      ['Pro first', ['sub_pro', 'sub_auto_sync']],
+    ])(
+      'ends the row when every plan is cancelled and the events arrive %s',
+      async (_order, eventOrder) => {
+        stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
+        stripeHolds(plan('sub_pro', 'canceled', PRO));
+
+        for (const id of eventOrder) {
+          await receive(stripePlans.get(id)!);
+        }
+
+        expect(Boolean((await row()).active)).toBe(false);
+      }
+    );
+
+    it('ends the row when the plans are cancelled one after another', async () => {
+      stripeHolds(plan('sub_pro', 'active', PRO));
+      await receive(stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC)));
+      expect(await heldId()).toBe('sub_pro');
+
+      await receive(stripeHolds(plan('sub_pro', 'canceled', PRO)));
+
+      expect(Boolean((await row()).active)).toBe(false);
+    });
+
+    it('links the row to the account the live plan names', async () => {
+      await db('users').insert({ id: 2, email: 'owner@example.com' });
+      stripeHolds(
+        plan('sub_pro', 'active', PRO, { metadata: { user_id: '2' } })
+      );
+
+      await receive(stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC)));
+
+      const stored = await row();
+      expect(Boolean(stored.active)).toBe(true);
+      expect(await heldId()).toBe('sub_pro');
+      expect(stored.linked_email).toBe('owner@example.com');
+    });
+
     it('skips a paused plan when choosing who takes the row', async () => {
       await holdOnRow(plan('sub_pro_a', 'active', PRO));
       stripeHolds(
