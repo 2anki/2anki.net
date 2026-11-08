@@ -38,6 +38,7 @@ describe('two plans sharing one subscription row', () => {
   let db: Knex;
   let stripePlans: Map<string, StripeTypes.Subscription>;
   const retrieve = vi.spyOn(getStripe().subscriptions, 'retrieve');
+  const list = vi.spyOn(getStripe().subscriptions, 'list');
 
   const row = () => db('subscriptions').where({ email: PAYER }).first();
   const heldId = async () => JSON.parse((await row()).payload).id;
@@ -59,6 +60,17 @@ describe('two plans sharing one subscription row', () => {
       }
       return found;
     }) as never);
+    list.mockReset();
+    list.mockImplementation((async (params: {
+      customer: string;
+      status: string;
+    }) => ({
+      data: [...stripePlans.values()].filter(
+        (candidate) =>
+          candidate.customer === params.customer &&
+          candidate.status === params.status
+      ),
+    })) as never);
     db = knexLib({
       client: 'better-sqlite3',
       connection: { filename: ':memory:' },
@@ -189,16 +201,68 @@ describe('two plans sharing one subscription row', () => {
       }
     );
 
-    it('reads off until the plan still running sends its next event', async () => {
-      stripeHolds(plan('sub_pro', 'active', PRO));
-      await receive(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
-      expect(Boolean((await row()).active)).toBe(false);
+    const holdOnRow = (subscription: StripeTypes.Subscription) =>
+      db('subscriptions')
+        .where({ email: PAYER })
+        .update({
+          payload: JSON.stringify(subscription),
+          stripe_product_id: subscription.items.data[0].price.product,
+        });
+    const paidUntil = (end: number) => ({
+      items: { data: [{ price: { product: PRO }, current_period_end: end }] },
+    });
 
-      await receive(plan('sub_pro', 'active', PRO));
+    it('hands the row to the plan still running', async () => {
+      stripeHolds(plan('sub_pro', 'active', PRO));
+      const ended = stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
+
+      await receive(ended);
 
       const stored = await row();
       expect(Boolean(stored.active)).toBe(true);
       expect(stored.stripe_product_id).toBe(PRO);
+      expect(await heldId()).toBe('sub_pro');
+    });
+
+    it('hands the row to Auto Sync before a plan paid further ahead', async () => {
+      await holdOnRow(plan('sub_pro_a', 'active', PRO));
+      stripeHolds(plan('sub_pro_b', 'active', PRO, paidUntil(2_000_000_000)));
+
+      await receive(plan('sub_pro_a', 'canceled', PRO));
+
+      expect((await row()).stripe_product_id).toBe(AUTO_SYNC);
+      expect(await heldId()).toBe('sub_auto_sync');
+    });
+
+    it('hands the row to the plan paid furthest ahead when no Auto Sync runs', async () => {
+      stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
+      await holdOnRow(plan('sub_pro_a', 'active', PRO));
+      stripeHolds(plan('sub_pro_b', 'active', PRO, paidUntil(1_900_000_000)));
+      stripeHolds(plan('sub_pro_c', 'active', PRO, paidUntil(2_000_000_000)));
+
+      await receive(plan('sub_pro_a', 'canceled', PRO));
+
+      expect(Boolean((await row()).active)).toBe(true);
+      expect(await heldId()).toBe('sub_pro_c');
+    });
+
+    it('does not hand the row to a developer tier', async () => {
+      await db('developer_tiers').insert({ stripe_product_id: 'prod_dev' });
+      stripeHolds(plan('sub_dev', 'active', 'prod_dev'));
+
+      await receive(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
+
+      expect(Boolean((await row()).active)).toBe(false);
+    });
+
+    it('leaves the row as it was when Stripe cannot list the plans', async () => {
+      list.mockRejectedValue(new Error('rate limited'));
+
+      await expect(
+        receive(plan('sub_auto_sync', 'canceled', AUTO_SYNC))
+      ).rejects.toThrow();
+
+      expect(Boolean((await row()).active)).toBe(true);
     });
   });
 

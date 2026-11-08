@@ -275,6 +275,76 @@ const rowKeepsItsPlan = async (
   return heldPlanStillRuns(heldId);
 };
 
+const rowHoldsLivePlan = async (
+  db: Knex,
+  email: string | null,
+  subscriptionId: string
+): Promise<boolean> => {
+  if (email == null) {
+    return false;
+  }
+  const row = await db('subscriptions')
+    .where({ email })
+    .select('active', 'payload')
+    .first();
+  return Boolean(row?.active) && planSubscriptionId(row) === subscriptionId;
+};
+
+const periodEndOf = (subscription: StripeTypes.Subscription): number => {
+  const itemEnd = (
+    subscription.items?.data?.[0] as { current_period_end?: number } | undefined
+  )?.current_period_end;
+  const topLevelEnd = (subscription as { current_period_end?: number })
+    .current_period_end;
+  return itemEnd ?? topLevelEnd ?? 0;
+};
+
+// Decided 2026-11-08: when the plan a row holds ends and the payer still runs
+// another, Auto Sync takes the row first (its access reads stripe_product_id),
+// otherwise the plan paid furthest ahead. Developer tiers keep their own table.
+const liveSuccessorPlan = async (
+  db: Knex,
+  customerId: string,
+  endedSubscriptionId: string
+): Promise<StripeTypes.Subscription | null> => {
+  let listed: StripeTypes.ApiList<StripeTypes.Subscription>;
+  try {
+    listed = await getStripe().subscriptions.list({
+      customer: customerId,
+      status: 'active',
+      limit: 20,
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code === 'resource_missing') {
+      return null;
+    }
+    throw error;
+  }
+  const candidates: StripeTypes.Subscription[] = [];
+  for (const candidate of listed.data) {
+    if (candidate.id === endedSubscriptionId || !planGrantsAccess(candidate)) {
+      continue;
+    }
+    const productId = extractProductId(candidate);
+    if (productId != null && (await isDeveloperTierProduct(db, productId))) {
+      continue;
+    }
+    candidates.push(candidate);
+  }
+  const autoSyncProductId = process.env.AUTO_SYNC_PRODUCT_ID;
+  const isAutoSync = (candidate: StripeTypes.Subscription) =>
+    autoSyncProductId != null &&
+    autoSyncProductId !== '' &&
+    extractProductId(candidate) === autoSyncProductId;
+  candidates.sort((a, b) => {
+    if (isAutoSync(a) !== isAutoSync(b)) {
+      return isAutoSync(a) ? -1 : 1;
+    }
+    return periodEndOf(b) - periodEndOf(a);
+  });
+  return candidates[0] ?? null;
+};
+
 export const updateStoreSubscription = async (
   db: Knex,
   customer: StripeTypes.Customer,
@@ -335,6 +405,17 @@ export const updateStoreSubscription = async (
     return account != null
       ? { status: 'linked', resolvedUserId: account.id }
       : { status: 'unlinked', resolvedUserId: null };
+  }
+
+  if (
+    !shouldRemainActive &&
+    customerId != null &&
+    (await rowHoldsLivePlan(db, stripeEmail, subscription.id))
+  ) {
+    const successor = await liveSuccessorPlan(db, customerId, subscription.id);
+    if (successor != null) {
+      return updateStoreSubscription(db, customer, successor);
+    }
   }
 
   const planColumns = {
