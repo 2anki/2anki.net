@@ -1840,7 +1840,47 @@ describe('WebhookRouter — customer.subscription.created', () => {
     }
   );
 
-  it('answers 500 and writes nothing when Stripe cannot say the current state', async () => {
+  it.each([
+    ['records', 'past_due', 'active', 1],
+    ['does not record', 'active', 'canceled', 0],
+  ])(
+    '%s an unlinked payment on an update when the copy says %s and Stripe says %s',
+    async (_verb, eventStatus, currentStatus, alerts) => {
+      const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+        updateStoreSubscription: Mock;
+      };
+      updateStoreSubscription.mockResolvedValueOnce({
+        status: 'unlinked',
+        resolvedUserId: null,
+      });
+      const eventCopy = {
+        id: 'sub_unlinked_upd',
+        customer: 'cus_abc',
+        status: eventStatus,
+        items: { data: [{ price: { product: 'prod_unlimited' } }] },
+        cancel_at_period_end: false,
+        cancel_at: null,
+      };
+      mockLatestSubscriptionState.mockResolvedValueOnce({
+        ...eventCopy,
+        status: currentStatus,
+      });
+      mockWebhookEvent = {
+        type: 'customer.subscription.updated',
+        data: { object: eventCopy },
+      };
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      const unlinkedAlerts = mockRecordError.mock.calls.filter(
+        ([input]) => (input as { code?: string }).code === 'unlinked_payment'
+      );
+      expect(unlinkedAlerts).toHaveLength(alerts);
+    }
+  );
+
+  it('answers an error and writes nothing when Stripe cannot say the current state', async () => {
     const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
       updateStoreSubscription: Mock;
     };
