@@ -1058,6 +1058,32 @@ describe('generateDeckInfo — partial chunk success (default)', () => {
     }
   });
 
+  it('keeps the large-section error by name when every chunk answers with JSON that cannot be read', async () => {
+    const unreadable = {
+      content: [
+        { type: 'text', text: '[{"deck":"Bio","cards":[{"q":"What is' },
+      ],
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 100, output_tokens: 50 },
+    };
+    mockStream.finalMessage.mockResolvedValue(unreadable);
+    const quiet = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(htmlTwoChunks, []).catch(
+        (err: unknown) => err
+      );
+
+      expect(caught).toBeInstanceOf(ClaudeLargeSectionError);
+    } finally {
+      quiet.mockRestore();
+      info.mockRestore();
+    }
+  });
+
   it('all chunks fail → call rejects with the first failure reason', async () => {
     mockStream.finalMessage
       .mockRejectedValueOnce(new Error('chunk 0 failed'))

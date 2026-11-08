@@ -1663,10 +1663,33 @@ async function runChunks(
   if (succeeded.length === 0) {
     const refusal = refusalIn(settled);
     if (refusal) throw refusal;
+    const fileFailure = firstFileFailure(settled);
+    if (fileFailure) throw fileFailure;
     throw new Error(failures[0]?.reason ?? 'All Claude chunks failed');
   }
 
   return succeeded.flat();
+}
+
+// A failure that says something about the file itself keeps its class, so the
+// upload can show its copy and, in an upload of several files, leave only that
+// file out. Anything else stays a plain error, as before.
+function firstFileFailure(
+  settled: PromiseSettledResult<unknown>[]
+): Error | undefined {
+  for (const r of settled) {
+    if (
+      r.status === 'rejected' &&
+      (r.reason instanceof ClaudeLargeSectionError ||
+        r.reason instanceof ClaudeParseError ||
+        r.reason instanceof EmptyContentError ||
+        r.reason instanceof ImageOnlyContentError ||
+        r.reason instanceof ClaudeTruncatedError)
+    ) {
+      return r.reason;
+    }
+  }
+  return undefined;
 }
 
 // The vision path reads image bytes off disk that the cache key does not

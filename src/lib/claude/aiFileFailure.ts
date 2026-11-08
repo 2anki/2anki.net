@@ -43,6 +43,10 @@ const REASONS: ReadonlySet<string> = new Set([
   'unreadable',
 ]);
 
+export function isAiFileFailedWarning(warning: string): boolean {
+  return warning.startsWith(WARNING_PREFIX);
+}
+
 export function aiFileFailedWarning(
   fileName: string,
   reason: AiFileFailureReason
@@ -51,11 +55,15 @@ export function aiFileFailedWarning(
 }
 
 const WHY: Record<AiFileFailureReason, string> = {
-  declined: 'Claude declined it',
-  too_large: 'a section was too large for Claude',
+  declined:
+    'Claude declined it, so reword or remove the part it would not answer',
+  too_large: 'a section was too large, so split it and upload it again',
   no_text: 'Claude found no text to make cards from',
-  unreadable: "Claude's answer could not be read",
+  unreadable: "Claude's answer could not be read, so upload it again",
 };
+
+// A header line stays short however many files a zip skipped.
+const LISTED_FILES = 3;
 
 function baseName(fileName: string): string {
   const normalized = fileName.replaceAll('\\', '/');
@@ -81,6 +89,13 @@ export function aiFileFailedWarningText(warnings: string[]): string | null {
     const [only] = failures;
     return `No cards from ${only.name}: ${only.why}. The other files are in your deck.`;
   }
-  const listed = failures.map((f) => `${f.name} (${f.why})`).join(', ');
-  return `No cards from ${failures.length} files: ${listed}. The other files are in your deck.`;
+  const listed = failures
+    .slice(0, LISTED_FILES)
+    .map((f) => `${f.name} (${f.why})`)
+    .join(', ');
+  const more =
+    failures.length > LISTED_FILES
+      ? ` and ${failures.length - LISTED_FILES} more`
+      : '';
+  return `No cards from ${failures.length} files: ${listed}${more}. The other files are in your deck.`;
 }

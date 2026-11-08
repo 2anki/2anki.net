@@ -7152,7 +7152,7 @@ describe('resolveUploadWarning — a file Claude made no cards from', () => {
         null
       )
     ).toBe(
-      'No cards from lecture.pdf: Claude declined it. The other files are in your deck.'
+      'No cards from lecture.pdf: Claude declined it, so reword or remove the part it would not answer. The other files are in your deck.'
     );
   });
 
@@ -7162,7 +7162,18 @@ describe('resolveUploadWarning — a file Claude made no cards from', () => {
         ['ai-file-failed:declined:lecture.pdf', 'ai-credits-exhausted'],
         null
       )
-    ).not.toContain('No cards from');
+    ).toBe(resolveUploadWarning(['ai-credits-exhausted'], null));
+  });
+
+  it('never shows the code for a file whose name mentions a password', () => {
+    expect(
+      resolveUploadWarning(
+        ['ai-file-failed:declined:password-protected notes.pdf'],
+        null
+      )
+    ).toBe(
+      'No cards from password-protected notes.pdf: Claude declined it, so reword or remove the part it would not answer. The other files are in your deck.'
+    );
   });
 });
 

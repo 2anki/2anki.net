@@ -497,7 +497,7 @@ async function doGenerationWork(
   // One file Claude could not make cards from does not sink the others: it is
   // named in a warning instead. An outage or a credit stop still fails the
   // upload, and so does every file failing, with the first file's reason.
-  const skippedFailures: unknown[] = [];
+  const skippedFailures = new Map<number, unknown>();
   const convert = async (
     upload: UploadedFile,
     fileWorkspace: Workspace
@@ -508,7 +508,7 @@ async function doGenerationWork(
     } catch (error) {
       const reason = aiFileFailureReason(error);
       if (reason == null) throw error;
-      skippedFailures.push(error);
+      skippedFailures.set(files.indexOf(upload), error);
       return {
         packages: [],
         warnings: [aiFileFailedWarning(upload.originalname, reason)],
@@ -542,9 +542,6 @@ async function doGenerationWork(
   const results = canConvertInParallel(files)
     ? await convertInParallel(files, workspace, convert, concurrency)
     : await convertInSequence(files, workspace, convert);
-  if (files.length > 1 && skippedFailures.length === files.length) {
-    throw skippedFailures[0];
-  }
 
   for (const result of results) {
     packages = packages.concat(result.packages);
@@ -554,6 +551,13 @@ async function doGenerationWork(
     if (result.rescueCandidates != null) {
       rescueCandidateSets.push(result.rescueCandidates);
     }
+  }
+
+  // A skipped file and no cards from the rest: the first skipped file, in
+  // upload order, answers the upload, as it would have before the skip.
+  const cardsMade = packages.reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
+  if (skippedFailures.size > 0 && cardsMade === 0) {
+    throw [...skippedFailures.entries()].sort(([a], [b]) => a - b)[0][1];
   }
 
   // Only report a reason when the whole upload produced no cards. A reason from

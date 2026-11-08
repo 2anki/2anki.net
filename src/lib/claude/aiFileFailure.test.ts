@@ -2,7 +2,9 @@ import {
   ClaudeLargeSectionError,
   ClaudeParseError,
   ClaudeRefusalError,
+  ClaudeTruncatedError,
   EmptyContentError,
+  ImageOnlyContentError,
 } from './ClaudeService';
 import {
   aiFileFailedWarning,
@@ -16,6 +18,8 @@ describe('aiFileFailureReason', () => {
     [new ClaudeLargeSectionError(), 'too_large'],
     [new EmptyContentError('empty'), 'no_text'],
     [new ClaudeParseError(), 'unreadable'],
+    [new ImageOnlyContentError(), 'no_text'],
+    [new ClaudeTruncatedError('chunk'), 'unreadable'],
   ])('names %s', (error, reason) => {
     expect(aiFileFailureReason(error)).toBe(reason);
   });
@@ -33,7 +37,7 @@ describe('aiFileFailedWarningText', () => {
         aiFileFailedWarning('notes/week 3.pdf', 'declined'),
       ])
     ).toBe(
-      'No cards from week 3.pdf: Claude declined it. The other files are in your deck.'
+      'No cards from week 3.pdf: Claude declined it, so reword or remove the part it would not answer. The other files are in your deck.'
     );
   });
 
@@ -44,7 +48,7 @@ describe('aiFileFailedWarningText', () => {
         aiFileFailedWarning('b.md', 'no_text'),
       ])
     ).toBe(
-      'No cards from 2 files: a.html (a section was too large for Claude), b.md (Claude found no text to make cards from). The other files are in your deck.'
+      'No cards from 2 files: a.html (a section was too large, so split it and upload it again), b.md (Claude found no text to make cards from). The other files are in your deck.'
     );
   });
 
@@ -54,7 +58,17 @@ describe('aiFileFailedWarningText', () => {
         aiFileFailedWarning('Ch 1: Cells.md', 'unreadable'),
       ])
     ).toBe(
-      "No cards from Ch 1: Cells.md: Claude's answer could not be read. The other files are in your deck."
+      "No cards from Ch 1: Cells.md: Claude's answer could not be read, so upload it again. The other files are in your deck."
+    );
+  });
+
+  it('lists three files and counts the rest', () => {
+    const warnings = ['a', 'b', 'c', 'd', 'e'].map((name) =>
+      aiFileFailedWarning(`${name}.md`, 'no_text')
+    );
+
+    expect(aiFileFailedWarningText(warnings)).toBe(
+      'No cards from 5 files: a.md (Claude found no text to make cards from), b.md (Claude found no text to make cards from), c.md (Claude found no text to make cards from) and 2 more. The other files are in your deck.'
     );
   });
 

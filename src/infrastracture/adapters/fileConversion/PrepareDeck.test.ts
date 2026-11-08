@@ -553,6 +553,40 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
     ).rejects.toBeInstanceOf(ClaudeRefusalError);
   });
 
+  it('answers with the skipped file when the other files make no cards', async () => {
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('page 1')) throw new ClaudeRefusalError();
+      return [];
+    });
+
+    await expect(
+      PrepareDeck({
+        name: 'export.zip',
+        files: [
+          { name: 'page-0.html', contents: '<p>page 0</p>' },
+          { name: 'page-1.html', contents: '<p>page 1</p>' },
+        ],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      })
+    ).rejects.toBeInstanceOf(ClaudeRefusalError);
+  });
+
+  it('leaves a single-file upload Claude declined failing, as before', async () => {
+    generateDeckInfo.mockRejectedValue(new ClaudeRefusalError());
+
+    await expect(
+      PrepareDeck({
+        name: 'page-0.html',
+        files: [{ name: 'page-0.html', contents: '<p>page 0</p>' }],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      })
+    ).rejects.toBeInstanceOf(ClaudeRefusalError);
+  });
+
   it('still stops on an outage in one file', async () => {
     generateDeckInfo.mockImplementation(async (html: string) => {
       if (html.includes('page 1')) throw new Error('overloaded');
