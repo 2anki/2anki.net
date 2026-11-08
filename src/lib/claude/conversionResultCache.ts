@@ -84,7 +84,8 @@ async function writeConversionCache<T>(
 export async function withConversionResultCache<T>(
   store: ConversionResultCacheStore<T> | undefined,
   keyInput: ConversionCacheKeyInput,
-  compute: () => Promise<T>
+  compute: () => Promise<T>,
+  mayCache: () => boolean = () => true
 ): Promise<T> {
   if (store == null) return compute();
 
@@ -99,6 +100,17 @@ export async function withConversionResultCache<T>(
   }
 
   const result = await compute();
+  // A result missing some sections would answer every retry of the same file
+  // with the same gaps, so only a complete one is kept.
+  if (!mayCache()) {
+    console.info(
+      '[Claude] conversion result not cached: some sections failed',
+      {
+        key: key.slice(0, 12),
+      }
+    );
+    return result;
+  }
   await writeConversionCache(store, {
     key,
     result,

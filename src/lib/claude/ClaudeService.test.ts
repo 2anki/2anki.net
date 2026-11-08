@@ -3143,6 +3143,175 @@ describe('generateDeckInfo — conversion result cache', () => {
     expect(store.save).not.toHaveBeenCalled();
   });
 
+  describe('a result with missing sections', () => {
+    const htmlTwoChunks = '<p>' + 'x'.repeat(39_990) + '</p><p>y</p>';
+    const htmlSplittable =
+      '<details>' +
+      'x'.repeat(10_000) +
+      '</details><details>' +
+      'y'.repeat(10_000) +
+      '</details>';
+    let quiet: Array<{ mockRestore: () => void }>;
+
+    beforeEach(() => {
+      quiet = (['warn', 'info', 'error'] as const).map((level) =>
+        vi.spyOn(console, level).mockImplementation(() => undefined)
+      );
+    });
+
+    afterEach(() => {
+      quiet.forEach((spy) => spy.mockRestore());
+    });
+
+    async function convert(
+      html: string,
+      options: Record<string, unknown> = {},
+      cardStyle?: string
+    ): Promise<{
+      result: DeckInfo[];
+      store: ReturnType<typeof makeStore>['store'];
+    }> {
+      const { store } = makeStore(undefined);
+      const result = await generateDeckInfo(
+        html,
+        [],
+        undefined,
+        undefined,
+        cardStyle,
+        undefined,
+        undefined,
+        { conversionResultCache: store, ...options }
+      );
+      return { result, store };
+    }
+
+    const headingHtml =
+      '<h1>Cells</h1><p>The cell is the basic unit of life.</p>' +
+      '<h1>Tissues</h1><p>Tissues are groups of similar cells.</p>';
+
+    it.each([
+      ['default', htmlTwoChunks, undefined],
+      ['heading-driven', headingHtml, 'heading-driven'],
+    ])(
+      'is not stored when one chunk was declined (%s)',
+      async (_style, html, cardStyle) => {
+        mockStream.finalMessage
+          .mockResolvedValueOnce(fakeResponse())
+          .mockResolvedValueOnce(refusedResponse());
+
+        const { result, store } = await convert(html, {}, cardStyle);
+
+        expect(result[0].cards.length).toBeGreaterThan(0);
+        expect(store.save).not.toHaveBeenCalled();
+      }
+    );
+
+    it('is not stored when Claude declined part of a chunk after writing cards', async () => {
+      mockStream.finalMessage.mockResolvedValueOnce({
+        content: [{ type: 'text', text: FAKE_DECK_JSON }],
+        stop_reason: 'refusal',
+        usage: { input_tokens: 100, output_tokens: 50 },
+      });
+
+      const { result, store } = await convert(textHtml);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is stored when a chunk held nothing to make cards from', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(fakeResponse())
+        .mockResolvedValueOnce({
+          content: [
+            {
+              type: 'text',
+              text: 'This section is a table of contents, so there is no flashcard content here.',
+            },
+          ],
+          stop_reason: 'end_turn',
+          usage: { input_tokens: 100, output_tokens: 50 },
+        });
+
+      const { result, store } = await convert(htmlTwoChunks);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('is not stored when one chunk failed', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(fakeResponse())
+        .mockRejectedValueOnce(new Error('overloaded'));
+
+      const { result, store } = await convert(htmlTwoChunks);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is not stored when a truncated chunk kept only one half', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(truncatedResponse())
+        .mockResolvedValueOnce(fakeResponse())
+        .mockResolvedValueOnce(truncatedResponse());
+
+      const { result, store } = await convert(htmlSplittable);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is not stored when a truncated chunk shipped only its salvaged cards', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(salvageableTruncatedResponse())
+        .mockResolvedValueOnce(truncatedResponse())
+        .mockResolvedValueOnce(truncatedResponse());
+
+      const { result, store } = await convert(textHtml);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is stored when every comprehensive chunk answered and only a top-up failed', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(fakeResponse())
+        .mockResolvedValueOnce(fakeResponse())
+        .mockRejectedValue(new Error('overloaded'));
+
+      const { result, store } = await convert(htmlTwoChunks, {
+        isPaying: true,
+        comprehensive: true,
+      });
+
+      expect(mockStream.finalMessage.mock.calls.length).toBeGreaterThan(2);
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('is not stored when a comprehensive chunk was declined', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(fakeResponse())
+        .mockResolvedValueOnce(refusedResponse());
+
+      const { result, store } = await convert(htmlTwoChunks, {
+        isPaying: true,
+        comprehensive: true,
+      });
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is stored when every chunk answered', async () => {
+      const { store } = await convert(htmlTwoChunks);
+
+      expect(mockStream.finalMessage).toHaveBeenCalledTimes(2);
+      expect(store.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('converts fresh when the cache read throws', async () => {
     const store = {
       get: vi.fn().mockRejectedValue(new Error('db down')),

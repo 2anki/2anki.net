@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-08-retry-after-failed-sections",
+  "date": "2026-11-08",
+  "type": "fix",
+  "title": "Converting a file again after some sections failed now retries those sections"
+}

@@ -155,6 +155,25 @@ describe('withConversionResultCache', () => {
     expect(result).toEqual(sampleDeck());
   });
 
+  it('returns the result without saving it when it may not be cached', async () => {
+    const store: ConversionResultCacheStore<DeckInfo[]> = {
+      get: vi.fn().mockResolvedValue(undefined),
+      save: vi.fn(),
+    };
+    const compute = vi.fn().mockResolvedValue(sampleDeck());
+
+    const result = await withConversionResultCache(
+      store,
+      keyInput,
+      compute,
+      () => false
+    );
+
+    expect(compute).toHaveBeenCalledTimes(1);
+    expect(store.save).not.toHaveBeenCalled();
+    expect(result).toEqual(sampleDeck());
+  });
+
   it('returns the cached decks without computing on a hit', async () => {
     const cached = sampleDeck('cached-front');
     const store: ConversionResultCacheStore<DeckInfo[]> = {
