@@ -6,7 +6,6 @@ import {
   ResumeAnonymousAiPreviewUseCase,
 } from '../../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
 import { AiCreditsExhaustedError } from '../../lib/claude/aiSpendGuard';
-import { CLAUDE_REFUSAL_USER_MESSAGE } from '../../lib/claude/ClaudeService';
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { getAnonymousPassId } from '../../lib/User/getOwner';
 import { anonIdCookie } from './anonIdCookie';
@@ -56,9 +55,7 @@ export class AiPreviewResumeController {
       }
       // Matched by name: the conversion worker rebuilds errors as plain ones.
       if (err instanceof Error && err.name === 'ClaudeRefusalError') {
-        return res
-          .status(400)
-          .json({ code: 'unknown', message: CLAUDE_REFUSAL_USER_MESSAGE });
+        return res.status(400).json({ code: 'claude_refusal' });
       }
       throw err;
     }

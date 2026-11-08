@@ -24,5 +24,6 @@
   "resumeActiveDropAgain": "Tu Day Pass está activo. Vuelve a soltar tu archivo para obtener todas las tarjetas.",
   "resumeOutOfCredits": "Tu Day Pass se ha quedado sin créditos de IA. Inicia sesión para añadir una recarga y luego suelta tu archivo de nuevo.",
   "resumeEmpty": "No encontramos tarjetas en ese archivo. Prueba con otro archivo o escribe a support@2anki.net.",
+  "resumeDeclined": "Claude se negó a crear tarjetas con ese archivo. Desactiva la IA y suelta el archivo de nuevo para crear un mazo a partir de su estructura.",
   "resumeError": "Algo salió mal al terminar tu mazo con IA. Escribe a support@2anki.net y lo resolvemos."
 }

@@ -370,17 +370,35 @@ function buildFormData(form: HTMLFormElement): FormData {
 
 // The next step to show when an AI-preview resume did not return a deck. A pass
 // is active either way, so the message always points somewhere useful.
-function resumeNoticeFor(status: number, t: (key: string) => string): string {
+function resumeNoticeFor(
+  status: number,
+  code: string | null,
+  t: (key: string) => string
+): string {
   if (status === 404 || status === 410) {
     return t('aiPreview:resumeActiveDropAgain');
   }
   if (status === 402) {
     return t('aiPreview:resumeOutOfCredits');
   }
+  if (status === 400 && code === 'claude_refusal') {
+    return t('aiPreview:resumeDeclined');
+  }
   if (status === 400) {
     return t('aiPreview:resumeEmpty');
   }
   return t('aiPreview:resumeError');
+}
+
+async function resumeErrorCode(
+  response: Response | null
+): Promise<string | null> {
+  try {
+    const body = (await response?.json()) as { code?: unknown } | undefined;
+    return typeof body?.code === 'string' ? body.code : null;
+  } catch {
+    return null;
+  }
 }
 
 function resumeStatusLine(
@@ -1156,10 +1174,13 @@ function UploadForm({
           );
           return;
         }
+        const code =
+          result.phase === 'ai' ? await resumeErrorCode(result.response) : null;
+        if (cancelled) return;
         setPassResumeNotice(
           result.phase === 'held'
             ? heldClaimNoticeFor(result.status, t)
-            : resumeNoticeFor(result.status, t)
+            : resumeNoticeFor(result.status, code, t)
         );
         setZoneState('idle');
         setProgressWidth(10);

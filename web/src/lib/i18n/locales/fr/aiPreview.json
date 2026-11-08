@@ -24,5 +24,6 @@
   "resumeActiveDropAgain": "Ton Day Pass est actif. Dépose à nouveau ton fichier pour obtenir toutes les cartes.",
   "resumeOutOfCredits": "Ton Day Pass n'a plus de crédits IA. Connecte-toi pour ajouter une recharge, puis dépose à nouveau ton fichier.",
   "resumeEmpty": "Nous n'avons trouvé aucune carte dans ce fichier. Essaie un autre fichier ou écris à support@2anki.net.",
+  "resumeDeclined": "Claude a refusé de créer des cartes à partir de ce fichier. Désactive l'IA et dépose-le à nouveau pour créer un paquet à partir de sa structure.",
   "resumeError": "Un problème est survenu en terminant ton paquet IA. Écris à support@2anki.net, on s'en occupe."
 }

@@ -111,7 +111,7 @@ describe('AiPreviewResumeController', () => {
     expect(res.send).not.toHaveBeenCalled();
   });
 
-  it('answers a declined conversion with the refusal copy instead of the error handler', async () => {
+  it('answers a declined conversion with its own code instead of the error handler', async () => {
     const declined = Object.assign(new Error(CLAUDE_REFUSAL_USER_MESSAGE), {
       name: 'ClaudeRefusalError',
     });
@@ -123,8 +123,7 @@ describe('AiPreviewResumeController', () => {
 
     expect((res as unknown as { statusCode: number }).statusCode).toBe(400);
     expect((res as unknown as { body: unknown }).body).toEqual({
-      code: 'unknown',
-      message: CLAUDE_REFUSAL_USER_MESSAGE,
+      code: 'claude_refusal',
     });
   });
 

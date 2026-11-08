@@ -24,5 +24,6 @@
   "resumeActiveDropAgain": "Seu Day Pass está ativo. Solte seu arquivo de novo para obter todas as cartas.",
   "resumeOutOfCredits": "Seu Day Pass está sem créditos de IA. Faça login para adicionar uma recarga e depois solte seu arquivo de novo.",
   "resumeEmpty": "Não encontramos cartas nesse arquivo. Tente outro arquivo ou escreva para support@2anki.net.",
+  "resumeDeclined": "O Claude se recusou a criar cartas com esse arquivo. Desative a IA e solte o arquivo de novo para criar um baralho a partir da estrutura dele.",
   "resumeError": "Algo deu errado ao finalizar seu baralho com IA. Escreva para support@2anki.net e resolvemos."
 }

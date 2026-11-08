@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-08-day-pass-declined-file-notice",
+  "date": "2026-11-08",
+  "type": "fix",
+  "title": "After a Day Pass purchase, a file Claude declines now says so instead of saying no cards were found"
+}
