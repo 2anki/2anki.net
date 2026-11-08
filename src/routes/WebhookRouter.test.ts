@@ -1830,6 +1830,44 @@ describe('WebhookRouter — customer.subscription.created', () => {
     );
   });
 
+  it('provisions an update with no new cancellation and logs no cancellation', async () => {
+    const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+      updateStoreSubscription: Mock;
+    };
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_renewed_1',
+          customer: 'cus_abc',
+          status: 'active',
+          items: { data: [{ price: { product: 'prod_unlimited' } }] },
+          cancel_at_period_end: false,
+          cancel_at: null,
+        },
+        previous_attributes: { current_period_end: 1_790_000_000 },
+      },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(updateStoreSubscription).toHaveBeenCalledWith(
+        undefined,
+        { id: 'cus_abc', email: 'subscriber@example.com' },
+        expect.objectContaining({ id: 'sub_renewed_1', status: 'active' })
+      );
+      expect(infoSpy).not.toHaveBeenCalledWith(
+        'Subscription cancellation scheduled',
+        expect.anything()
+      );
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
   it('logs a scheduled cancellation without the payer address', async () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     mockWebhookEvent = {
