@@ -1880,6 +1880,53 @@ describe('WebhookRouter — customer.subscription.created', () => {
     }
   );
 
+  it('writes the ended state when a late update for an Auto Sync plan says active', async () => {
+    const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+      updateStoreSubscription: Mock;
+    };
+    const previousAutoSync = process.env.AUTO_SYNC_PRODUCT_ID;
+    process.env.AUTO_SYNC_PRODUCT_ID = 'prod_auto_sync';
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const lateCopy = {
+      id: 'sub_auto_sync_ended',
+      customer: 'cus_abc',
+      status: 'active',
+      items: { data: [{ price: { product: 'prod_auto_sync' } }] },
+      cancel_at_period_end: false,
+      cancel_at: null,
+    };
+    mockLatestSubscriptionState.mockResolvedValueOnce({
+      ...lateCopy,
+      status: 'canceled',
+    });
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: { object: lateCopy },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(updateStoreSubscription).toHaveBeenCalledWith(
+        undefined,
+        { id: 'cus_abc', email: 'subscriber@example.com' },
+        expect.objectContaining({
+          id: 'sub_auto_sync_ended',
+          status: 'canceled',
+          items: { data: [{ price: { product: 'prod_auto_sync' } }] },
+        })
+      );
+    } finally {
+      infoSpy.mockRestore();
+      if (previousAutoSync == null) {
+        delete process.env.AUTO_SYNC_PRODUCT_ID;
+      } else {
+        process.env.AUTO_SYNC_PRODUCT_ID = previousAutoSync;
+      }
+    }
+  });
+
   it('answers an error and writes nothing when Stripe cannot say the current state', async () => {
     const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
       updateStoreSubscription: Mock;
