@@ -1432,7 +1432,12 @@ export async function PrepareDeck(
 
   // Images Claude declined, with nothing else to convert: say so, so an upload
   // of several files can leave this one out by name instead of failing.
-  if (ai.declined != null && files.every((file) => isImageFile(file.name))) {
+  if (
+    ai.declined != null &&
+    !ai.tripped &&
+    convertedFiles.length === 0 &&
+    files.every((file) => isImageFile(file.name))
+  ) {
     throw ai.declined;
   }
 
