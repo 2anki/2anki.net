@@ -32,6 +32,7 @@ const {
   mockUpdateStoreSubscription,
   mockResolveAccountForSubscription,
   mockDeactivateSubscriptionRow,
+  mockLatestSubscriptionState,
 } = vi.hoisted(() => ({
   mockCustomersRetrieve: vi.fn(),
   mockSessionsRetrieve: vi.fn(),
@@ -40,6 +41,9 @@ const {
     .mockResolvedValue({ status: 'linked', resolvedUserId: 1 }),
   mockResolveAccountForSubscription: vi.fn().mockResolvedValue(null),
   mockDeactivateSubscriptionRow: vi.fn().mockResolvedValue(1),
+  mockLatestSubscriptionState: vi.fn(
+    async (subscription: unknown) => subscription
+  ),
 }));
 
 vi.mock('../lib/integrations/stripe', () => ({
@@ -57,6 +61,7 @@ vi.mock('../lib/integrations/stripe', () => ({
   updateStoreSubscription: mockUpdateStoreSubscription,
   resolveAccountForSubscription: mockResolveAccountForSubscription,
   deactivateSubscriptionRow: mockDeactivateSubscriptionRow,
+  latestSubscriptionState: mockLatestSubscriptionState,
 }));
 
 vi.mock('../data_layer', () => ({ getDatabase: vi.fn() }));
@@ -1796,6 +1801,162 @@ describe('WebhookRouter — customer.subscription.created', () => {
       { id: 'cus_abc', email: 'subscriber@example.com' },
       expect.objectContaining({ id: 'sub_new_123', status: 'active' })
     );
+  });
+
+  it.each([
+    ['customer.subscription.created'],
+    ['customer.subscription.updated'],
+  ])(
+    'writes the state Stripe holds now when a late %s says active',
+    async (type) => {
+      const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+        updateStoreSubscription: Mock;
+      };
+      const lateCopy = {
+        id: 'sub_ended_1',
+        customer: 'cus_abc',
+        status: 'active',
+        items: { data: [{ price: { product: 'prod_unlimited' } }] },
+        cancel_at_period_end: false,
+        cancel_at: null,
+      };
+      mockLatestSubscriptionState.mockResolvedValueOnce({
+        ...lateCopy,
+        status: 'canceled',
+      });
+      mockWebhookEvent = { type, data: { object: lateCopy } };
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(mockLatestSubscriptionState).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'sub_ended_1' })
+      );
+      expect(updateStoreSubscription).toHaveBeenCalledWith(
+        undefined,
+        { id: 'cus_abc', email: 'subscriber@example.com' },
+        expect.objectContaining({ id: 'sub_ended_1', status: 'canceled' })
+      );
+    }
+  );
+
+  it.each([
+    ['records', 'past_due', 'active', 1],
+    ['does not record', 'active', 'canceled', 0],
+  ])(
+    '%s an unlinked payment on an update when the copy says %s and Stripe says %s',
+    async (_verb, eventStatus, currentStatus, alerts) => {
+      const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+        updateStoreSubscription: Mock;
+      };
+      updateStoreSubscription.mockResolvedValueOnce({
+        status: 'unlinked',
+        resolvedUserId: null,
+      });
+      const eventCopy = {
+        id: 'sub_unlinked_upd',
+        customer: 'cus_abc',
+        status: eventStatus,
+        items: { data: [{ price: { product: 'prod_unlimited' } }] },
+        cancel_at_period_end: false,
+        cancel_at: null,
+      };
+      mockLatestSubscriptionState.mockResolvedValueOnce({
+        ...eventCopy,
+        status: currentStatus,
+      });
+      mockWebhookEvent = {
+        type: 'customer.subscription.updated',
+        data: { object: eventCopy },
+      };
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      const unlinkedAlerts = mockRecordError.mock.calls.filter(
+        ([input]) => (input as { code?: string }).code === 'unlinked_payment'
+      );
+      expect(unlinkedAlerts).toHaveLength(alerts);
+    }
+  );
+
+  it('writes the ended state when a late update for an Auto Sync plan says active', async () => {
+    const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+      updateStoreSubscription: Mock;
+    };
+    const previousAutoSync = process.env.AUTO_SYNC_PRODUCT_ID;
+    process.env.AUTO_SYNC_PRODUCT_ID = 'prod_auto_sync';
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const lateCopy = {
+      id: 'sub_auto_sync_ended',
+      customer: 'cus_abc',
+      status: 'active',
+      items: { data: [{ price: { product: 'prod_auto_sync' } }] },
+      cancel_at_period_end: false,
+      cancel_at: null,
+    };
+    mockLatestSubscriptionState.mockResolvedValueOnce({
+      ...lateCopy,
+      status: 'canceled',
+    });
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: { object: lateCopy },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(updateStoreSubscription).toHaveBeenCalledWith(
+        undefined,
+        { id: 'cus_abc', email: 'subscriber@example.com' },
+        expect.objectContaining({
+          id: 'sub_auto_sync_ended',
+          status: 'canceled',
+          items: { data: [{ price: { product: 'prod_auto_sync' } }] },
+        })
+      );
+    } finally {
+      infoSpy.mockRestore();
+      if (previousAutoSync == null) {
+        delete process.env.AUTO_SYNC_PRODUCT_ID;
+      } else {
+        process.env.AUTO_SYNC_PRODUCT_ID = previousAutoSync;
+      }
+    }
+  });
+
+  it('answers an error and writes nothing when Stripe cannot say the current state', async () => {
+    const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+      updateStoreSubscription: Mock;
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockLatestSubscriptionState.mockRejectedValueOnce(
+      Object.assign(new Error('Too many requests'), { code: 'rate_limit' })
+    );
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_busy_1',
+          customer: 'cus_abc',
+          status: 'active',
+          items: { data: [{ price: { product: 'prod_unlimited' } }] },
+          cancel_at_period_end: false,
+          cancel_at: null,
+        },
+      },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBeGreaterThanOrEqual(500);
+      expect(updateStoreSubscription).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it('records an unlinked_payment alert when no account resolves', async () => {

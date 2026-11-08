@@ -217,6 +217,22 @@ const heldPlanStillRuns = async (subscriptionId: string): Promise<boolean> => {
   }
 };
 
+// Stripe neither orders nor dedupes webhook events, so the subscription inside
+// one can be older than the row: an "active" copy redelivered after the plan
+// ended would turn access back on, and nothing on prod repairs the row later.
+export const latestSubscriptionState = async (
+  subscription: StripeTypes.Subscription
+): Promise<StripeTypes.Subscription> => {
+  try {
+    return await getStripe().subscriptions.retrieve(subscription.id);
+  } catch (error) {
+    if ((error as { code?: string }).code === 'resource_missing') {
+      return { ...subscription, status: 'canceled' };
+    }
+    throw error;
+  }
+};
+
 const wouldReplaceAutoSync = (
   heldProductId: string | null | undefined,
   incomingProductId: string | null
