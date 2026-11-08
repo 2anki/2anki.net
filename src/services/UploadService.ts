@@ -164,6 +164,7 @@ import {
 } from '../lib/claude/aiCredits/uploadWarning';
 import {
   aiFileFailedWarningText,
+  aiFileFailureReason,
   isAiFileFailedWarning,
 } from '../lib/claude/aiFileFailure';
 import { CreditWindowReset } from '../lib/claude/aiCredits/allowance';
@@ -576,6 +577,7 @@ async function runClaudeRestartFiles(
   onProgress: (step: string) => Promise<void>
 ): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
   const deckInfoArrays: DeckInfo[][] = [];
+  const skipped: unknown[] = [];
   let tripped = false;
   for (const htmlFile of htmlFiles) {
     const content = await fs.promises.readFile(htmlFile, 'utf8');
@@ -616,9 +618,20 @@ async function runClaudeRestartFiles(
         tripped = true;
         break;
       }
-      throw error;
+      // A restart leaves out a file Claude made nothing from, as the upload
+      // did, so the other files still ship.
+      const reason = htmlFiles.length > 1 ? aiFileFailureReason(error) : null;
+      if (reason == null) throw error;
+      console.info('[UploadService] Claude restart left out a file', {
+        reason,
+      });
+      skipped.push(error);
     }
   }
+  const madeCards = deckInfoArrays.some((decks) =>
+    decks.some((deck) => deck.cards.length > 0)
+  );
+  if (skipped.length > 0 && !madeCards && !tripped) throw skipped[0];
   return { deckInfoArrays, tripped };
 }
 

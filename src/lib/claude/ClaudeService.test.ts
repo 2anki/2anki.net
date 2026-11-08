@@ -1431,7 +1431,7 @@ describe('generateDeckInfo — Claude declines a chunk', () => {
     }
   });
 
-  it('names the file on the error when one chunk is declined and the other answers unreadable JSON', async () => {
+  it('names the file on the error when one chunk is declined and the other is too large', async () => {
     mockStream.finalMessage
       .mockResolvedValueOnce({
         content: [

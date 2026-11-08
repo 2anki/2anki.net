@@ -129,6 +129,7 @@ import { ASYNC_SLOW_UPLOADS_FLAG } from '../lib/upload/asyncSlowUploads';
 import {
   AiCreditsTrippedWithSalvage,
   CLAUDE_REFUSAL_USER_MESSAGE,
+  ClaudeRefusalError,
   DeckInfo,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
 } from '../lib/claude/ClaudeService';
@@ -6050,6 +6051,131 @@ describe('UploadService.restartClaudeJob — mid-loop credit trip with salvage',
     await waitForRestartToSettle(db, 'job-obj-salvage');
 
     expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('UploadService.restartClaudeJob — a file Claude declined', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let db: Knex;
+  let workspaceBase: string;
+  const objectId = 'job-obj-declined';
+
+  beforeAll(() => {
+    workspaceBase = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'restart-declined-base-')
+    );
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterAll(() => {
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  beforeEach(async () => {
+    mockGenerateDeckInfo.mockReset();
+    mockStorageUploadFile.mockClear();
+    db = knex({
+      client: 'better-sqlite3',
+      connection: { filename: ':memory:' },
+      useNullAsDefault: true,
+    });
+    await db.schema.createTable('jobs', (t) => {
+      t.increments('id');
+      t.string('owner').notNullable();
+      t.string('object_id').notNullable();
+      t.string('title');
+      t.string('type');
+      t.string('status');
+      t.timestamp('created_at').defaultTo(db.fn.now());
+      t.timestamp('last_edited_time');
+      t.string('job_reason_failure');
+      t.integer('card_count');
+    });
+    const workspaceDir = path.join(workspaceBase, objectId);
+    fs.mkdirSync(workspaceDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(workspaceDir, 'kept.html'),
+      '<html><body>Kept page</body></html>'
+    );
+    fs.writeFileSync(
+      path.join(workspaceDir, 'declined.html'),
+      '<html><body>Declined page</body></html>'
+    );
+    fs.writeFileSync(path.join(workspaceDir, 'deck.apkg'), Buffer.from('apkg'));
+    await db('jobs').insert({
+      owner: '42',
+      object_id: objectId,
+      title: 'Deck',
+      type: 'claude',
+      status: 'done',
+      last_edited_time: new Date(),
+    });
+  });
+
+  afterEach(async () => {
+    await db.destroy();
+  });
+
+  async function restart(): Promise<void> {
+    const service = new UploadService(
+      buildRepository(),
+      new JobRepository(db),
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = {
+      params: { jobId: objectId },
+      body: {},
+    } as unknown as express.Request;
+    const { res } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+    (res.locals as Record<string, unknown>).subscriber = true;
+    await service.restartClaudeJob(req, res);
+    await waitForRestartToSettle(db, objectId);
+  }
+
+  it('ships the other file when Claude declines one of two', async () => {
+    mockGenerateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('Declined page')) throw new ClaudeRefusalError();
+      return [
+        { name: 'Deck', cards: [{ name: 'q', back: 'a' }] },
+      ] as unknown as DeckInfo[];
+    });
+
+    await restart();
+
+    expect(mockGenerateDeckInfo).toHaveBeenCalledTimes(2);
+    expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails with the refusal when the other file makes no cards', async () => {
+    mockGenerateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('Declined page')) throw new ClaudeRefusalError();
+      return [];
+    });
+
+    await restart();
+
+    const row = await db('jobs').where({ object_id: objectId }).first();
+    expect(row.status).toBe('failed');
+    expect(row.job_reason_failure).toBe(CLAUDE_REFUSAL_USER_MESSAGE);
+    expect(mockStorageUploadFile).not.toHaveBeenCalled();
+  });
+
+  it('still fails the restart on an outage in one file', async () => {
+    mockGenerateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('Declined page')) throw new Error('overloaded');
+      return [
+        { name: 'Deck', cards: [{ name: 'q', back: 'a' }] },
+      ] as unknown as DeckInfo[];
+    });
+
+    await restart();
+
+    const row = await db('jobs').where({ object_id: objectId }).first();
+    expect(row.status).toBe('failed');
+    expect(mockStorageUploadFile).not.toHaveBeenCalled();
   });
 });
 
