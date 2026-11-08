@@ -865,6 +865,50 @@ describe('UploadForm', () => {
     }
   });
 
+  test('says the pass is active when the resume finds the preview expired', async () => {
+    stubPassReturn('cs_resume_expired');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 410,
+      redirected: false,
+      headers: new Headers(),
+      json: () => Promise.resolve({ code: 'ai_preview_expired' }),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          'Your Day Pass is active. Drop your file again to get every card.'
+        )
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says finishing the AI deck failed when the resume answers a server error', async () => {
+    stubPassReturn('cs_resume_500');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 500,
+      redirected: false,
+      headers: new Headers(),
+      json: () => Promise.resolve({ code: 'unknown' }),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          "Something went wrong finishing your AI deck. Email support@2anki.net and we'll sort it out."
+        )
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
   test('shows the out-of-credits notice when the resume is refused for credits', async () => {
     stubPassReturn('cs_nocredits');
     const resumeAiPreview = vi.fn().mockResolvedValue({

@@ -24,6 +24,6 @@
   "resumeActiveDropAgain": "Je Day Pass is actief. Zet je bestand opnieuw neer om alle kaarten te krijgen.",
   "resumeOutOfCredits": "Je Day Pass heeft geen AI-credits meer. Log in om bij te vullen en zet je bestand daarna opnieuw neer.",
   "resumeEmpty": "We vonden geen kaarten in dat bestand. Probeer een ander bestand of mail naar support@2anki.net.",
-  "resumeDeclined": "Claude weigerde kaarten te maken van dat bestand. Zet AI uit en zet het bestand opnieuw neer om een deck te maken op basis van de structuur.",
+  "resumeDeclined": "Claude weigerde kaarten te maken van dat bestand. Zet AI uit en zet het bestand opnieuw neer om een pakket te maken op basis van de structuur ervan.",
   "resumeError": "Er ging iets mis bij het afmaken van je AI-pakket. Mail naar support@2anki.net en we lossen het op."
 }

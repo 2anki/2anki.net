@@ -356,7 +356,7 @@ const UploadRouter = () => {
    *       200:
    *         description: Full AI deck built from the stored source
    *       400:
-   *         description: The held source file produced no cards
+   *         description: The held source file produced no cards (code empty_export), or Claude declined it (code claude_refusal)
    *       402:
    *         description: The pass has no AI credits left; the held source file is kept
    *       403:
