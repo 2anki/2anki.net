@@ -132,6 +132,7 @@ import {
   ClaudeRefusalError,
   DeckInfo,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
+  EmptyContentError,
   ImageOnlyContentError,
 } from '../lib/claude/ClaudeService';
 import { track } from './events/track';
@@ -6175,6 +6176,23 @@ describe('UploadService.restartClaudeJob — a file Claude declined', () => {
     await restart();
 
     expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('still fails the restart when a scanned PDF had no readable page images', async () => {
+    mockGenerateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('Declined page')) {
+        throw new EmptyContentError(EMPTY_CONTENT_UPLOAD_MESSAGE);
+      }
+      return [
+        { name: 'Deck', cards: [{ name: 'q', back: 'a' }] },
+      ] as unknown as DeckInfo[];
+    });
+
+    await restart();
+
+    const row = await db('jobs').where({ object_id: objectId }).first();
+    expect(row.status).toBe('failed');
+    expect(mockStorageUploadFile).not.toHaveBeenCalled();
   });
 
   it('fails a one-file restart Claude declined with the refusal copy', async () => {

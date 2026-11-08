@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { APIConnectionError } from '@anthropic-ai/sdk';
 import * as trackModule from '../../services/events/track';
 import { createHash } from 'node:crypto';
+import { AiCreditsExhaustedError } from './aiSpendGuard';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -26,6 +27,7 @@ import {
   collectNewFingerprints,
   describeRepairFailure,
   generateDeckInfo,
+  AiCreditsTrippedWithSalvage,
   ClaudeParseError,
   ClaudeLargeSectionError,
   ClaudeRefusalError,
@@ -1320,6 +1322,43 @@ describe('generateDeckInfo — Claude declines a chunk', () => {
       log.mockRestore();
     }
   });
+
+  it.each([
+    ['default', undefined],
+    ['comprehensive', { isPaying: true, userId: 42, comprehensive: true }],
+  ])(
+    'answers a credit stop beside a declined chunk as the stop (%s)',
+    async (_path, options) => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(refusedResponse())
+        .mockRejectedValueOnce(new AiCreditsExhaustedError());
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const info = vi
+        .spyOn(console, 'info')
+        .mockImplementation(() => undefined);
+
+      try {
+        const caught = await generateDeckInfo(
+          htmlTwoChunks,
+          [],
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          options
+        ).catch((err: unknown) => err);
+
+        expect(caught).toBeInstanceOf(AiCreditsTrippedWithSalvage);
+        expect(caught).not.toBeInstanceOf(ClaudeRefusalError);
+      } finally {
+        warn.mockRestore();
+        info.mockRestore();
+      }
+    }
+  );
 
   it('answers with the refusal when the chunk Claude answered holds no cards', async () => {
     mockStream.finalMessage
