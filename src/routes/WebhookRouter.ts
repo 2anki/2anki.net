@@ -305,10 +305,13 @@ const WebhooksRouter = () => {
             event.data.previous_attributes?.cancel_at_period_end === false &&
             'email' in customer
           ) {
-            console.info(
-              `Subscription cancellation scheduled for user ${customer.email}, ` +
-                `access remains until ${new Date((customerSubscriptionUpdated.cancel_at ?? 0) * 1000).toISOString()}`
-            );
+            console.info('Subscription cancellation scheduled', {
+              email_hash:
+                customer.email != null ? hashToken(customer.email) : null,
+              access_until: new Date(
+                (customerSubscriptionUpdated.cancel_at ?? 0) * 1000
+              ).toISOString(),
+            });
           }
           break;
         case 'customer.subscription.deleted':

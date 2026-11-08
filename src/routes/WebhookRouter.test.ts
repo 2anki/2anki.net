@@ -234,7 +234,10 @@ vi.mock('../usecases/observability/RecordUserVisibleErrorUseCase', () => ({
 
 let mockWebhookEvent: {
   type: string;
-  data: { object: Record<string, unknown> };
+  data: {
+    object: Record<string, unknown>;
+    previous_attributes?: Record<string, unknown>;
+  };
 };
 
 async function buildServer() {
@@ -1781,6 +1784,43 @@ describe('WebhookRouter — customer.subscription.created', () => {
         code: 'unlinked_payment',
       })
     );
+  });
+
+  it('logs a scheduled cancellation without the payer address', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_cancelling_1',
+          customer: 'cus_abc',
+          status: 'active',
+          items: { data: [{ price: { product: 'prod_unlimited' } }] },
+          cancel_at_period_end: true,
+          cancel_at: 1_800_000_000,
+        },
+        previous_attributes: { cancel_at_period_end: false },
+      },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(infoSpy).toHaveBeenCalledWith(
+        'Subscription cancellation scheduled',
+        {
+          email_hash: 'hashed:subscriber@example.com',
+          access_until: '2027-01-15T08:00:00.000Z',
+        }
+      );
+      const loggedText = infoSpy.mock.calls
+        .map((call) => (typeof call[0] === 'string' ? call[0] : ''))
+        .join('\n');
+      expect(loggedText).not.toContain('subscriber@example.com');
+    } finally {
+      infoSpy.mockRestore();
+    }
   });
 
   it('returns 200 and skips provisioning when customer ID is absent', async () => {
