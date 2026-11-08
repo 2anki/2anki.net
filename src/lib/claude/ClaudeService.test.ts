@@ -1099,6 +1099,8 @@ describe('generateDeckInfo — partial chunk success (default)', () => {
         (err: unknown) => err
       );
 
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toBe(LARGE_SECTION_USER_MESSAGE);
       expect(caught).not.toHaveProperty('chunkFileFailure');
     } finally {
       quiet.mockRestore();

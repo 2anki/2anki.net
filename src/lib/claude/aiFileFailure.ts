@@ -3,6 +3,7 @@ import {
   ClaudeParseError,
   ClaudeRefusalError,
   ClaudeTruncatedError,
+  EMPTY_CONTENT_UPLOAD_MESSAGE,
   EmptyContentError,
   ImageOnlyContentError,
 } from './ClaudeService';
@@ -22,6 +23,14 @@ export function aiFileFailureReason(
     ?.chunkFileFailure;
   if (fromChunks != null && REASONS.has(fromChunks)) return fromChunks;
   if (error instanceof ClaudeRefusalError) return 'declined';
+  // The scanned-PDF path says this when no page gave cards and also when no
+  // page image could be read, which is ours to fix, not the file's.
+  if (
+    error instanceof EmptyContentError &&
+    error.message === EMPTY_CONTENT_UPLOAD_MESSAGE
+  ) {
+    return null;
+  }
   if (error instanceof ClaudeLargeSectionError) return 'too_large';
   if (
     error instanceof EmptyContentError ||

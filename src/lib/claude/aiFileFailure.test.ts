@@ -3,6 +3,7 @@ import {
   ClaudeParseError,
   ClaudeRefusalError,
   ClaudeTruncatedError,
+  EMPTY_CONTENT_UPLOAD_MESSAGE,
   EmptyContentError,
   ImageOnlyContentError,
 } from './ClaudeService';
@@ -28,6 +29,12 @@ describe('aiFileFailureReason', () => {
     ],
   ])('names %s', (error, reason) => {
     expect(aiFileFailureReason(error)).toBe(reason);
+  });
+
+  it('leaves a scanned PDF the vision path read nothing from to fail the whole upload', () => {
+    expect(
+      aiFileFailureReason(new EmptyContentError(EMPTY_CONTENT_UPLOAD_MESSAGE))
+    ).toBeNull();
   });
 
   it('leaves an outage to fail the whole upload', () => {
