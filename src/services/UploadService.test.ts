@@ -4540,6 +4540,45 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
     fs.rmSync(workspaceDir, { recursive: true, force: true });
   });
 
+  it('sums the blank-back count of every deck into the batch JSON', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'Biology 101',
+              cardCount: 3,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              blankBackCount: 3,
+            },
+            {
+              name: 'Chemistry',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              blankBackCount: 0,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedJson()).toMatchObject({ kind: 'batch', blankBackCount: 3 });
+  });
+
   it('returns 200 JSON listing every deck instead of redirecting to /download', async () => {
     MockGeneratePackagesUseCase.mockImplementation(function () {
       return {

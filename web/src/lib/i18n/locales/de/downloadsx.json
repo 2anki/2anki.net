@@ -120,8 +120,8 @@
     "uploadMultiDeck_other": "{{count}} Karten hatten keine Antwort und wurden übersprungen, sie sind also nicht in deinen Stapeln. Füge in deiner Datei jeweils eine Rückseite hinzu und konvertiere erneut.",
     "notion_one": "{{count}} Toggle hatte keine Antwort und wurde übersprungen, er ist also nicht in diesem Stapel. Füge ihm in Notion eine Antwort hinzu und konvertiere erneut.",
     "notion_other": "{{count}} Toggles hatten keine Antwort und wurden übersprungen, sie sind also nicht in diesem Stapel. Füge jedem in Notion eine Antwort hinzu und konvertiere erneut.",
-    "blankBacks_one": "{{count}} Karte hat keine Antwort, ihre Rückseite ist also leer. Deine Datei hat kein Frage-und-Antwort-Layout, darum wurde jede Zeile zu einer eigenen Karte. Schreib jede Frage als Aufzählungspunkt mit der Antwort eingerückt darunter und konvertiere erneut.",
-    "blankBacks_other": "{{count}} Karten haben keine Antwort, ihre Rückseiten sind also leer. Deine Datei hat kein Frage-und-Antwort-Layout, darum wurde jede Zeile zu einer eigenen Karte. Schreib jede Frage als Aufzählungspunkt mit der Antwort eingerückt darunter und konvertiere erneut."
+    "blankBacks_one": "{{count}} Karte hat keine Antwort, ihre Rückseite ist also leer. Eine Datei ohne Frage-und-Antwort-Layout macht aus jeder Zeile eine eigene Karte. Schreib jede Frage als Aufzählungspunkt mit der Antwort eingerückt darunter, oder in einer Tabelle die Antwort in die nächste Spalte, und konvertiere erneut.",
+    "blankBacks_other": "{{count}} Karten haben keine Antwort, ihre Rückseiten sind also leer. Eine Datei ohne Frage-und-Antwort-Layout macht aus jeder Zeile eine eigene Karte. Schreib jede Frage als Aufzählungspunkt mit der Antwort eingerückt darunter, oder in einer Tabelle die Antwort in die nächste Spalte, und konvertiere erneut."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} Teil dieser Seite ist nicht mit 2anki verbunden und fehlt daher in diesem Deck. Füge 2anki dieser Seite und ihren Unterseiten im Verbindungen-Menü von Notion hinzu und konvertiere dann erneut.",

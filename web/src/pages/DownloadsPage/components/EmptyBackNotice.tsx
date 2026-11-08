@@ -23,8 +23,9 @@ export function EmptyBackNotice({
     track('empty_back_notice_shown', {
       empty_back_count: count,
       ...(surface != null ? { surface } : {}),
+      ...(source === 'blank' ? { kind: 'blank_back' } : {}),
     });
-  }, [count, surface]);
+  }, [count, surface, source]);
 
   const notionKey = 'emptyBack.notion';
   const uploadKey = multipleDecks

@@ -19,13 +19,14 @@ vi.mock('./exporters/CustomExporter', () => ({
 
 beforeEach(() => setupTests());
 
-async function builtParser(html: string) {
+async function builtParser(html: string, cardLimit?: number) {
   const parser = new DeckParser({
     name: 'notes.html',
     settings: new CardOption({}),
     files: [{ name: 'notes.html', contents: Buffer.from(html) }],
-    noLimits: true,
+    noLimits: cardLimit == null,
     workspace: new Workspace(true, 'fs'),
+    cardLimit,
   });
   await parser.build(new Workspace(true, 'fs'));
   return parser;
@@ -81,11 +82,50 @@ describe('DeckParser cards that ship with no answer', () => {
           'The {{c1::nucleus}} holds the DNA',
           'The {{c1::ribosome}} builds proteins',
           'Plain line',
+          'Another plain line',
         ])
       )
     );
 
     expect(parser.blankBackCount).toBe(0);
+  });
+
+  it('judges the delivered deck, not the file, when the card limit cuts it', async () => {
+    const parser = await builtParser(
+      page(
+        paragraphs([
+          'The {{c1::cell}} is the unit of life',
+          'The {{c1::nucleus}} holds the DNA',
+          'Plain line one',
+          'Plain line two',
+          'Plain line three',
+          'Plain line four',
+        ])
+      ),
+      3
+    );
+
+    expect(parser.totalCardCount()).toBe(3);
+    expect(parser.blankBackCount).toBe(0);
+  });
+
+  it('counts the blank cards of a one-column CSV on the plain-text fallback', async () => {
+    const parser = new DeckParser({
+      name: 'terms.csv',
+      settings: new CardOption({}),
+      files: [
+        {
+          name: 'terms.csv',
+          contents: Buffer.from('Mitosis\nMeiosis\nOsmosis\n'),
+        },
+      ],
+      noLimits: true,
+      workspace: new Workspace(true, 'fs'),
+    });
+    await parser.tryExperimental();
+
+    expect(parser.totalCardCount()).toBeGreaterThan(0);
+    expect(parser.blankBackCount).toBe(parser.totalCardCount());
   });
 
   it('stays quiet for toggles that all have answers', async () => {
