@@ -130,3 +130,59 @@ describe('DeckParser card limit with reversed cards', () => {
     expect(parser.cardsHeldBack).toBe(3);
   });
 });
+
+describe('DeckParser card limit on an upload that did not split', () => {
+  function answerlessUpload(cardLimit: number): DeckParser {
+    const lines = Array.from(
+      { length: 6 },
+      (_, i) => `<p>Line ${i + 1} with no answer</p>`
+    ).join('');
+    return new DeckParser({
+      name: 'catalog.docx.html',
+      settings: new CardOption({}),
+      files: [
+        {
+          name: 'catalog.docx.html',
+          contents: `<html><head><title>Catalog</title></head><body>${lines}</body></html>`,
+        },
+      ],
+      noLimits: false,
+      workspace: new Workspace(true, 'fs'),
+      cardLimit,
+    });
+  }
+
+  it('still holds back a cloze card, whose answer is on the front', async () => {
+    const clozeToggles = Array.from(
+      { length: 3 },
+      (_, i) =>
+        `<ul class="toggle"><li><details open=""><summary>Capital ${i + 1} is <code>City ${i + 1}</code></summary></details></li></ul>`
+    ).join('\n');
+    const html = toggleHtml(0).replace(
+      '<div class="page-body">',
+      `<div class="page-body">${clozeToggles}`
+    );
+    const parser = new DeckParser({
+      name: 'big-deck.html',
+      settings: new CardOption({ cherry: 'false', cloze: 'true' }),
+      files: [{ name: 'big-deck.html', contents: html }],
+      noLimits: false,
+      workspace: new Workspace(true, 'fs'),
+      cardLimit: 1,
+    });
+
+    await parser.build(new Workspace(true, 'fs'));
+
+    expect(parser.totalCardCount()).toBe(1);
+    expect(parser.cardsHeldBack).toBe(2);
+  });
+
+  it('holds back no card that has no answer', async () => {
+    const parser = answerlessUpload(2);
+
+    await parser.build(new Workspace(true, 'fs'));
+
+    expect(parser.totalCardCount()).toBe(2);
+    expect(parser.cardsHeldBack).toBe(0);
+  });
+});
