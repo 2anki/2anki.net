@@ -290,14 +290,8 @@ const rowHoldsLivePlan = async (
   return Boolean(row?.active) && planSubscriptionId(row) === subscriptionId;
 };
 
-const periodEndOf = (subscription: StripeTypes.Subscription): number => {
-  const itemEnd = (
-    subscription.items?.data?.[0] as { current_period_end?: number } | undefined
-  )?.current_period_end;
-  const topLevelEnd = (subscription as { current_period_end?: number })
-    .current_period_end;
-  return itemEnd ?? topLevelEnd ?? 0;
-};
+const periodEndOf = (subscription: StripeTypes.Subscription): number =>
+  subscription.items?.data?.[0]?.current_period_end ?? 0;
 
 // Decided 2026-11-08: when the plan a row holds ends and the payer still runs
 // another, Auto Sync takes the row first (its access reads stripe_product_id),

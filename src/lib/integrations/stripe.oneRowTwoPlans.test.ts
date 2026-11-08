@@ -212,16 +212,57 @@ describe('two plans sharing one subscription row', () => {
       items: { data: [{ price: { product: PRO }, current_period_end: end }] },
     });
 
-    it('hands the row to the plan still running', async () => {
-      stripeHolds(plan('sub_pro', 'active', PRO));
-      const ended = stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
+    it.each([
+      ['canceled', plan('sub_auto_sync', 'canceled', AUTO_SYNC)],
+      ['past due', plan('sub_auto_sync', 'past_due', AUTO_SYNC)],
+      [
+        'paused',
+        plan('sub_auto_sync', 'active', AUTO_SYNC, {
+          pause_collection: { behavior: 'void' },
+        }),
+      ],
+      [
+        'past its scheduled cancellation',
+        plan('sub_auto_sync', 'active', AUTO_SYNC, {
+          cancel_at_period_end: true,
+          cancel_at: 1_000_000_000,
+        }),
+      ],
+    ])(
+      'hands the row to the plan still running when the held one is %s',
+      async (_state, held) => {
+        stripeHolds(plan('sub_pro', 'active', PRO));
+        const ended = stripeHolds(held);
 
-      await receive(ended);
+        await receive(ended);
 
-      const stored = await row();
-      expect(Boolean(stored.active)).toBe(true);
-      expect(stored.stripe_product_id).toBe(PRO);
-      expect(await heldId()).toBe('sub_pro');
+        const stored = await row();
+        expect(Boolean(stored.active)).toBe(true);
+        expect(stored.stripe_product_id).toBe(PRO);
+        expect(await heldId()).toBe('sub_pro');
+      }
+    );
+
+    it('ends the row when Stripe no longer has the customer', async () => {
+      list.mockRejectedValue(
+        Object.assign(new Error('No such customer'), {
+          code: 'resource_missing',
+        })
+      );
+
+      await receive(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
+
+      expect(Boolean((await row()).active)).toBe(false);
+    });
+
+    it('hands the row by payment date alone when no Auto Sync product is set', async () => {
+      delete process.env.AUTO_SYNC_PRODUCT_ID;
+      await holdOnRow(plan('sub_pro_a', 'active', PRO));
+      stripeHolds(plan('sub_pro_b', 'active', PRO, paidUntil(2_000_000_000)));
+
+      await receive(plan('sub_pro_a', 'canceled', PRO));
+
+      expect(await heldId()).toBe('sub_pro_b');
     });
 
     it('hands the row to Auto Sync before a plan paid further ahead', async () => {
