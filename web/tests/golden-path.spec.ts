@@ -265,6 +265,46 @@ test.describe('golden path @golden', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
+  test('a pass return whose AI preview Claude declines says so at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    await page.route('**/api/upload/claim/pass', (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'no_held_deck' }),
+      })
+    );
+    await page.route('**/api/upload/ai-preview/resume', (route) =>
+      route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'claude_refusal' }),
+      })
+    );
+
+    await page.goto('/upload?pass_session=cs_test_declined');
+
+    await expect(
+      page.getByText(
+        'Claude declined to make cards from that file. Turn AI off and drop it again to make a deck from its structure.'
+      )
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/We couldn't find cards in that file/)
+    ).toHaveCount(0);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
   test('a signed-out pass return delivers the held deck without a re-upload at 375px', async ({
     page,
   }) => {
