@@ -139,6 +139,7 @@ describe('TrackEventUseCase', () => {
     'inactive_users_deleted',
     'ai_spend_alert_sent',
     'ai_credits_exhausted',
+    'ai_usage_recorded',
     'mcp_tool_called',
     'mcp_tool_result',
   ])(
