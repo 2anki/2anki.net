@@ -98,6 +98,85 @@ describe('AutoSyncCheckoutUseCase with an unpaid plan', () => {
 
     expect(result).toEqual({ url: 'https://checkout.stripe.com/new' });
   });
+
+  test('starts no checkout when ending the old plan fails', async () => {
+    const close = vi.fn().mockRejectedValue(new Error('stripe down'));
+
+    await expect(
+      buy({ find: async () => [lapsedPlan], close }, true)
+    ).rejects.toThrow();
+
+    expect(mockStripeCreateSession).not.toHaveBeenCalled();
+  });
+
+  test('asks nothing of a buyer with no Stripe customer yet', async () => {
+    const find = vi.fn();
+    mockCountActive.mockResolvedValue(0);
+    mockGetUserActiveSubscriptions.mockResolvedValue([]);
+    mockStripeCreateSession.mockResolvedValue({
+      id: 'cs_1',
+      url: 'https://checkout.stripe.com/new',
+    });
+
+    const result = await makeUseCase({ find, close: vi.fn() }).execute({
+      userEmail: 'user@example.com',
+      userId: 42,
+      stripeCustomerId: null,
+    });
+
+    expect(find).not.toHaveBeenCalled();
+    expect(result).toEqual({ url: 'https://checkout.stripe.com/new' });
+  });
+
+  test('leaves the old plan alone when the cap is reached', async () => {
+    const find = vi.fn();
+    const close = vi.fn();
+    mockCountActive.mockResolvedValue(MAX_SUBSCRIBERS);
+
+    const result = await makeUseCase({ find, close }).execute({
+      userEmail: 'user@example.com',
+      userId: 42,
+      stripeCustomerId: 'cus_1',
+      replaceLapsed: true,
+    });
+
+    expect(result).toEqual({ status: 'cap_reached' });
+    expect(find).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  test('sends a Pro subscriber to the portal before any unpaid plan is read', async () => {
+    const find = vi.fn();
+    const close = vi.fn();
+    mockCountActive.mockResolvedValue(0);
+    mockGetUserActiveSubscriptions.mockResolvedValue([
+      {
+        active: true,
+        stripe_product_id: 'prod_pro',
+        payload: { id: 'sub_pro' },
+      },
+    ]);
+    mockRetrieveSubscription.mockResolvedValue({
+      id: 'sub_pro',
+      customer: 'cus_1',
+      items: { data: [{ id: 'si_1' }] },
+    });
+    mockCreatePortalSession.mockResolvedValue({
+      id: 'bps_1',
+      url: 'https://billing.stripe.com/session',
+    });
+
+    const result = await makeUseCase({ find, close }).execute({
+      userEmail: 'user@example.com',
+      userId: 42,
+      stripeCustomerId: 'cus_1',
+      replaceLapsed: true,
+    });
+
+    expect(result).toEqual({ url: 'https://billing.stripe.com/session' });
+    expect(find).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
 });
 
 describe('AutoSyncCheckoutUseCase', () => {

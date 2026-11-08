@@ -1098,7 +1098,8 @@
       "payNoteAccount": "Zaktualizuj kartę na stronie konta. Zachowujesz obecny plan.",
       "switchButton": "Zakończ i przejdź na Pro",
       "switchButtonAutoSync": "Zakończ i przejdź na Auto Sync",
-      "switchNote": "Kończymy teraz twój obecny plan i anulujemy jego nieopłaconą płatność, a potem płacisz za Pro przy kasie. {{plan}} nie będzie już dostępny."
+      "switchNote": "Kończymy teraz twój obecny plan i anulujemy jego nieopłaconą płatność, a potem płacisz za Pro przy kasie. {{plan}} nie będzie już dostępny.",
+      "switchNoteAutoSync": "Kończymy teraz twój obecny plan i anulujemy jego nieopłaconą płatność, a potem płacisz za Auto Sync przy kasie. {{plan}} nie będzie już dostępny."
     }
   }
 }

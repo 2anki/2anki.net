@@ -82,7 +82,12 @@ export function LapsedPlanChoice({
             )}
           </button>
           <p className={styles.lapsedNote}>
-            {t('checkout.lapsed.switchNote', { plan: planLabel })}
+            {t(
+              target === 'auto_sync'
+                ? 'checkout.lapsed.switchNoteAutoSync'
+                : 'checkout.lapsed.switchNote',
+              { plan: planLabel }
+            )}
           </p>
         </div>
       </div>

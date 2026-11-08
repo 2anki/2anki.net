@@ -1075,11 +1075,13 @@ describe('PricingPage Auto Sync', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Get Auto Sync' })
     );
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'End it and switch to Auto Sync',
-      })
+    const switchButton = await screen.findByRole('button', {
+      name: 'End it and switch to Auto Sync',
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'you pay for Auto Sync at checkout'
     );
+    fireEvent.click(switchButton);
 
     await waitFor(() =>
       expect(location.href).toBe('https://checkout.stripe.com/switched')

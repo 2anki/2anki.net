@@ -1040,7 +1040,8 @@
       "payNoteAccount": "Mets à jour ta carte sur ta page de compte. Tu gardes ton forfait actuel.",
       "switchButton": "L'arrêter et passer à Pro",
       "switchButtonAutoSync": "L'arrêter et passer à Auto Sync",
-      "switchNote": "On arrête ton forfait actuel maintenant et on annule son paiement impayé, puis tu paies Pro au paiement. {{plan}} ne sera plus disponible."
+      "switchNote": "On arrête ton forfait actuel maintenant et on annule son paiement impayé, puis tu paies Pro au paiement. {{plan}} ne sera plus disponible.",
+      "switchNoteAutoSync": "On arrête ton forfait actuel maintenant et on annule son paiement impayé, puis tu paies Auto Sync au paiement. {{plan}} ne sera plus disponible."
     }
   }
 }

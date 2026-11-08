@@ -1040,7 +1040,8 @@
       "payNoteAccount": "Werk je kaart bij op je accountpagina. Je houdt je huidige abonnement.",
       "switchButton": "Beëindigen en overstappen op Pro",
       "switchButtonAutoSync": "Beëindigen en overstappen op Auto Sync",
-      "switchNote": "We beëindigen je huidige abonnement nu en annuleren de openstaande betaling, daarna betaal je Pro bij het afrekenen. {{plan}} is daarna niet meer beschikbaar."
+      "switchNote": "We beëindigen je huidige abonnement nu en annuleren de openstaande betaling, daarna betaal je Pro bij het afrekenen. {{plan}} is daarna niet meer beschikbaar.",
+      "switchNoteAutoSync": "We beëindigen je huidige abonnement nu en annuleren de openstaande betaling, daarna betaal je Auto Sync bij het afrekenen. {{plan}} is daarna niet meer beschikbaar."
     }
   }
 }

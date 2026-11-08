@@ -81,6 +81,25 @@ describe('AutoSyncCheckoutController', () => {
     });
   });
 
+  test('answers 409 when an earlier plan locks the currency', async () => {
+    const uc = {
+      execute: vi.fn().mockRejectedValue(
+        Object.assign(new Error('You cannot combine currencies'), {
+          type: 'StripeInvalidRequestError',
+        })
+      ),
+    } as unknown as AutoSyncCheckoutUseCase;
+    const res = makeResponse();
+
+    await new AutoSyncCheckoutController(uc).createSession(
+      makeRequest({ owner: 42 }),
+      res as unknown as Response
+    );
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toMatchObject({ code: 'currency_conflict' });
+  });
+
   test('passes on an explicit choice to replace the unpaid plan', async () => {
     const uc = makeUseCase({ url: 'https://checkout.stripe.com/test' });
     const controller = new AutoSyncCheckoutController(uc);

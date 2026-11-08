@@ -1040,7 +1040,8 @@
       "payNoteAccount": "Actualiza tu tarjeta en tu página de cuenta. Mantienes tu plan actual.",
       "switchButton": "Cancelarlo y cambiar a Pro",
       "switchButtonAutoSync": "Cancelarlo y cambiar a Auto Sync",
-      "switchNote": "Cancelamos tu plan actual ahora y anulamos su pago pendiente; después pagas Pro en el checkout. {{plan}} no volverá a estar disponible."
+      "switchNote": "Cancelamos tu plan actual ahora y anulamos su pago pendiente; después pagas Pro en el checkout. {{plan}} no volverá a estar disponible.",
+      "switchNoteAutoSync": "Cancelamos tu plan actual ahora y anulamos su pago pendiente; después pagas Auto Sync en el checkout. {{plan}} no volverá a estar disponible."
     }
   }
 }

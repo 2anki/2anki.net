@@ -145,6 +145,19 @@ const ACCESS_GRANTING_STATUSES = new Set<StripeTypes.Subscription['status']>([
   'active',
 ]);
 
+const planGrantsAccess = (subscription: StripeTypes.Subscription): boolean => {
+  if (
+    !ACCESS_GRANTING_STATUSES.has(subscription.status) ||
+    isPaused(subscription)
+  ) {
+    return false;
+  }
+  if (subscription.cancel_at_period_end !== true) {
+    return true;
+  }
+  return new Date() < new Date((subscription.cancel_at ?? 0) * 1000);
+};
+
 // Records the Stripe customer id on the resolved account, unless another
 // account already holds it: someone paid for a subscription linked to a
 // different account, and users.stripe_customer_id is unique, so the write
@@ -188,22 +201,62 @@ export const deactivateSubscriptionRow = (
       updated_at: new Date(),
     });
 
-// One row holds one plan per address. An event from another plan that would
-// turn it off says nothing about the plan the row holds.
-const rowHoldsAnotherLivePlan = async (
+// The row is only the last event delivered, and events can arrive late, so
+// Stripe says whether the held plan still runs. Any other failure throws: the
+// webhook answers 5xx, Stripe retries, and the row stays as it was.
+const heldPlanStillRuns = async (subscriptionId: string): Promise<boolean> => {
+  try {
+    return planGrantsAccess(
+      await getStripe().subscriptions.retrieve(subscriptionId)
+    );
+  } catch (error) {
+    if ((error as { code?: string }).code === 'resource_missing') {
+      return false;
+    }
+    throw error;
+  }
+};
+
+const wouldReplaceAutoSync = (
+  heldProductId: string | null | undefined,
+  incomingProductId: string | null
+): boolean => {
+  const autoSyncProductId = process.env.AUTO_SYNC_PRODUCT_ID;
+  return (
+    autoSyncProductId != null &&
+    autoSyncProductId !== '' &&
+    heldProductId === autoSyncProductId &&
+    incomingProductId !== autoSyncProductId
+  );
+};
+
+// One row holds one plan per address. Another plan ending says nothing about
+// the plan the row holds, and an older plan coming back must not take the row
+// from Auto Sync, whose access reads stripe_product_id.
+const rowKeepsItsPlan = async (
   db: Knex,
   email: string | null,
-  subscriptionId: string
+  subscription: StripeTypes.Subscription,
+  stripeProductId: string | null
 ): Promise<boolean> => {
   if (email == null) {
     return false;
   }
   const row = await db('subscriptions')
     .where({ email })
-    .select('active', 'payload')
+    .select('active', 'payload', 'stripe_product_id')
     .first();
   const heldId = planSubscriptionId(row);
-  return Boolean(row?.active) && heldId != null && heldId !== subscriptionId;
+  if (!row?.active || heldId == null || heldId === subscription.id) {
+    return false;
+  }
+  if (
+    planGrantsAccess(subscription) &&
+    !wouldReplaceAutoSync(row.stripe_product_id, stripeProductId)
+  ) {
+    return false;
+  }
+  return heldPlanStillRuns(heldId);
 };
 
 export const updateStoreSubscription = async (
@@ -212,18 +265,7 @@ export const updateStoreSubscription = async (
   subscription: StripeTypes.Subscription
 ): Promise<ProvisionResult> => {
   const stripeEmail = normalizeEmail(customer.email);
-  const grantsAccess = ACCESS_GRANTING_STATUSES.has(subscription.status);
-  const isCancelScheduled = subscription.cancel_at_period_end === true;
-
-  let shouldRemainActive = grantsAccess;
-  if (grantsAccess && isCancelScheduled) {
-    const periodEndDate = new Date((subscription.cancel_at ?? 0) * 1000);
-    const currentDate = new Date();
-    shouldRemainActive = currentDate < periodEndDate;
-  }
-  if (isPaused(subscription)) {
-    shouldRemainActive = false;
-  }
+  const shouldRemainActive = planGrantsAccess(subscription);
 
   const stripeProductId = extractProductId(subscription);
 
@@ -267,30 +309,33 @@ export const updateStoreSubscription = async (
       : { status: 'unlinked', resolvedUserId: null };
   }
 
-  if (
-    !shouldRemainActive &&
-    (await rowHoldsAnotherLivePlan(db, stripeEmail, subscription.id))
-  ) {
-    await stampCustomerId(db, account, customerId);
+  const keepsHeldPlan = await rowKeepsItsPlan(
+    db,
+    stripeEmail,
+    subscription,
+    stripeProductId
+  );
+  if (keepsHeldPlan && !shouldRemainActive) {
     return account != null
       ? { status: 'linked', resolvedUserId: account.id }
       : { status: 'unlinked', resolvedUserId: null };
   }
 
-  const insertRow: Record<string, unknown> = {
-    email: stripeEmail,
+  const planColumns = {
     active: shouldRemainActive,
     payload: JSON.stringify(subscription),
     stripe_product_id: stripeProductId,
+  };
+  const insertRow: Record<string, unknown> = {
+    email: stripeEmail,
+    ...planColumns,
   };
   if (linkedEmail != null) {
     insertRow.linked_email = linkedEmail;
   }
 
   const mergeColumns: Record<string, unknown> = {
-    active: shouldRemainActive,
-    payload: JSON.stringify(subscription),
-    stripe_product_id: stripeProductId,
+    ...(keepsHeldPlan ? {} : planColumns),
     updated_at: new Date(),
   };
   if (linkedEmail != null) {

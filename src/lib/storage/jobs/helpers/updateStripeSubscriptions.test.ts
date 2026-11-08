@@ -314,6 +314,45 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
   });
 });
 
+describe('updateStripeSubscriptions with two running plans on one address', () => {
+  let db: Knex;
+
+  afterEach(async () => {
+    delete process.env.AUTO_SYNC_PRODUCT_ID;
+    vi.restoreAllMocks();
+    await db.destroy();
+  });
+
+  it('leaves a live Auto Sync plan on the row', async () => {
+    process.env.AUTO_SYNC_PRODUCT_ID = 'prod_autoSync789';
+    process.env.STRIPE_KEY ??= 'sk_test_fake_key_for_unit_tests';
+    db = await buildDatabase();
+    const autoSync = buildSubscription('prod_autoSync789', {
+      id: 'sub_auto_sync',
+    });
+    await db('subscriptions').insert({
+      email: 'user@example.com',
+      active: true,
+      payload: JSON.stringify(autoSync),
+      stripe_product_id: 'prod_autoSync789',
+    });
+    const { getStripe } = await vi.importActual<
+      typeof import('../../../integrations/stripe')
+    >('../../../integrations/stripe');
+    vi.spyOn(getStripe().subscriptions, 'retrieve').mockResolvedValue(
+      autoSync as never
+    );
+    setupStripeMock([buildSubscription('prod_pro', { id: 'sub_pro' })]);
+
+    await updateStripeSubscriptions(db);
+
+    const row = await db('subscriptions')
+      .where({ email: 'user@example.com' })
+      .first();
+    expect(row.stripe_product_id).toBe('prod_autoSync789');
+  });
+});
+
 describe('updateStripeSubscriptions — does not log raw email or customer id', () => {
   let db: Knex;
   let infoSpy: MockInstance;
