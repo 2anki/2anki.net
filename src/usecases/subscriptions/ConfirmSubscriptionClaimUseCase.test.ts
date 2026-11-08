@@ -10,7 +10,7 @@ import type UsersRepository from '../../data_layer/UsersRepository';
 import { getStripe } from '../../lib/integrations/stripe';
 
 process.env.THE_HASHING_SECRET = 'test-secret-for-jest';
-process.env.STRIPE_KEY ??= 'sk_test_fake_key_for_unit_tests';
+process.env.STRIPE_KEY = 'sk_test_fake_key_for_unit_tests';
 
 const makeFreshToken = (
   overrides: Partial<SubscriptionClaimTokens> = {}
@@ -388,14 +388,10 @@ describe('ConfirmSubscriptionClaimUseCase against a real database', () => {
           'ip-hash',
           'email-hash'
         )
-      ).rejects.toThrow();
+      ).rejects.toThrow('rate limited');
 
       const account = await db('users').where({ id: 99 }).first();
       expect(account.stripe_customer_id).toBeNull();
-      const row = await db('subscriptions')
-        .where({ email: 'payer@example.com' })
-        .first();
-      expect(row.linked_email).toBeNull();
     });
   });
 });

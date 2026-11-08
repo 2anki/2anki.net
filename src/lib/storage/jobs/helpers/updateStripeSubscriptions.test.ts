@@ -325,7 +325,7 @@ describe('updateStripeSubscriptions with two running plans on one address', () =
 
   it('leaves a live Auto Sync plan on the row', async () => {
     process.env.AUTO_SYNC_PRODUCT_ID = 'prod_autoSync789';
-    process.env.STRIPE_KEY ??= 'sk_test_fake_key_for_unit_tests';
+    process.env.STRIPE_KEY = 'sk_test_fake_key_for_unit_tests';
     db = await buildDatabase();
     const autoSync = buildSubscription('prod_autoSync789', {
       id: 'sub_auto_sync',
