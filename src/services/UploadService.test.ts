@@ -2919,6 +2919,53 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(res.set).toHaveBeenCalledWith('X-Empty-Back-Count', '3');
   });
 
+  it.each([
+    [6, '6'],
+    [0, null],
+  ])(
+    'sends %s cards with a blank back as X-Blank-Back-Count %s on a single deck',
+    async (blankBackCount, header) => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({
+            packages: [
+              {
+                name: 'deck',
+                cardCount: 6,
+                mcqCount: 0,
+                mcqSkippedCount: 0,
+                emptyBackCount: 0,
+                blankBackCount,
+              },
+            ],
+            warnings: [],
+          }),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const req = buildRequest();
+      const { res, capturedStatus } = buildResponse();
+
+      await service.handleUpload(req, res);
+
+      expect(capturedStatus()).toBe(200);
+      if (header == null) {
+        expect(res.set).not.toHaveBeenCalledWith(
+          'X-Blank-Back-Count',
+          expect.anything()
+        );
+      } else {
+        expect(res.set).toHaveBeenCalledWith('X-Blank-Back-Count', header);
+      }
+    }
+  );
+
   it('stores the empty-back count on the My decks row of a signed-in upload', async () => {
     const update = vi.fn().mockResolvedValue([] as Uploads[]);
     MockGeneratePackagesUseCase.mockImplementation(function () {
@@ -4491,6 +4538,45 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
 
   afterEach(() => {
     fs.rmSync(workspaceDir, { recursive: true, force: true });
+  });
+
+  it('sums the blank-back count of every deck into the batch JSON', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            {
+              name: 'Biology 101',
+              cardCount: 3,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              blankBackCount: 3,
+            },
+            {
+              name: 'Chemistry',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+              blankBackCount: 0,
+            },
+          ],
+          warnings: [],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest();
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(req, res);
+
+    expect(capturedJson()).toMatchObject({ kind: 'batch', blankBackCount: 3 });
   });
 
   it('returns 200 JSON listing every deck instead of redirecting to /download', async () => {

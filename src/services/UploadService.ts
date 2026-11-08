@@ -243,6 +243,7 @@ interface BatchUploadResponse {
   expiredNotionImageCount?: number;
   coloredTextPageCount?: number;
   emptyBackCount?: number;
+  blankBackCount?: number;
   structureRescuedRule?: string;
   imageDropReason?: string;
 }
@@ -2175,6 +2176,14 @@ class UploadService {
         res.set('X-Empty-Back-Count', totalEmptyBackCount.toString());
         exposedHeaders.push('X-Empty-Back-Count');
       }
+      const totalBlankBackCount = packages.reduce(
+        (sum, p) => sum + (p.blankBackCount ?? 0),
+        0
+      );
+      if (totalBlankBackCount > 0) {
+        res.set('X-Blank-Back-Count', totalBlankBackCount.toString());
+        exposedHeaders.push('X-Blank-Back-Count');
+      }
       const totalNotionEmptyBackCount = packages.reduce(
         (sum, p) => sum + (p.notionEmptyBackCount ?? 0),
         0
@@ -2317,23 +2326,22 @@ class UploadService {
       syncOwnerIdOrNull,
       readCreditWindowReset
     );
-    return res
-      .status(200)
-      .json(
-        await this.buildBatchResponse(
-          ws,
-          resolveUploadWarning(warnings, batchWarningAudience),
-          sumDroppedImages(packages),
-          totalEmptyBackCount,
-          shippedRescueRule(packages),
-          sumExpiredNotionImages(packages),
-          includesAiCreditsWarning(warnings)
-            ? AI_CREDITS_EXHAUSTED_WARNING_CODE
-            : null,
-          sumColoredTextPages(packages),
-          resolveImageDropReason(packages, req.files as UploadedFile[])
-        )
-      );
+    return res.status(200).json(
+      await this.buildBatchResponse(
+        ws,
+        resolveUploadWarning(warnings, batchWarningAudience),
+        sumDroppedImages(packages),
+        totalEmptyBackCount,
+        shippedRescueRule(packages),
+        sumExpiredNotionImages(packages),
+        includesAiCreditsWarning(warnings)
+          ? AI_CREDITS_EXHAUSTED_WARNING_CODE
+          : null,
+        sumColoredTextPages(packages),
+        resolveImageDropReason(packages, req.files as UploadedFile[]),
+        packages.reduce((sum, p) => sum + (p.blankBackCount ?? 0), 0)
+      )
+    );
   }
 
   // Image uploads convert through the same vision pipeline as Photo to Deck
@@ -2492,7 +2500,8 @@ class UploadService {
     expiredNotionImageCount = 0,
     warningCode: string | null = null,
     coloredTextPageCount = 0,
-    imageDropReason: string | null = null
+    imageDropReason: string | null = null,
+    blankBackCount = 0
   ): Promise<BatchUploadResponse> {
     const apkgFilenames = (await fs.promises.readdir(ws.location)).filter(
       (filename) => filename.endsWith('.apkg')
@@ -2514,6 +2523,7 @@ class UploadService {
       ...(expiredNotionImageCount > 0 ? { expiredNotionImageCount } : {}),
       ...(coloredTextPageCount > 0 ? { coloredTextPageCount } : {}),
       ...(emptyBackCount > 0 ? { emptyBackCount } : {}),
+      ...(blankBackCount > 0 ? { blankBackCount } : {}),
       ...(structureRescuedRule == null ? {} : { structureRescuedRule }),
       ...(imageDropReason == null ? {} : { imageDropReason }),
     };

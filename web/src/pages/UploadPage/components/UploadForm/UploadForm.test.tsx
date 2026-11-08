@@ -4903,6 +4903,38 @@ describe('UploadForm multi-deck batch', () => {
     );
   }
 
+  it('shows the blank-back notice under a multi-deck batch', async () => {
+    vi.stubGlobal('location', {
+      href: '',
+      origin: 'http://localhost',
+    } as Location);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        redirected: false,
+        status: 200,
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        json: () => Promise.resolve({ ...batchBody, blankBackCount: 4 }),
+      })
+    );
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(
+      await screen.findByText(
+        /4 cards have no answer, so their backs are blank\./
+      )
+    ).toBeInTheDocument();
+  });
+
   it('renders an in-page deck list instead of navigating away on a multi-deck batch', async () => {
     const locationStub = { href: '', origin: 'http://localhost' } as Location;
     vi.stubGlobal('location', locationStub);

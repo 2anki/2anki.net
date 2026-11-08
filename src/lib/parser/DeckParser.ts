@@ -186,6 +186,14 @@ function hasAnswer(card: Note): boolean {
   );
 }
 
+function blankBacksWhenMostlyBlank(decks: readonly Deck[]): number {
+  const cards = decks.flatMap((deck) => deck.cards);
+  const blank = cards.filter(
+    (card) => hasVisibleContent(card.name) && !hasAnswer(card)
+  ).length;
+  return blank > 0 && blank * 2 >= cards.length ? blank : 0;
+}
+
 function hasNestedBullets(content: string | undefined): boolean {
   if (content == null || content === '') return false;
   return /^[ \t]+[-*+][ \t]/m.test(content);
@@ -257,6 +265,11 @@ export class DeckParser {
   // Of emptyBackCount, the cards that were toggles in a Notion export (they
   // carry a Notion block id), so the notice can say where to add the answer.
   notionEmptyBackCount: number;
+
+  // Cards the deck ships with a blank back: a file with no question and
+  // answer layout makes one per line. Set only when they are at least half the
+  // delivered deck, so a few stray lines in a working deck stay quiet.
+  blankBackCount = 0;
 
   // Basic-mode cards that carry {{cN::…}} markup; Anki renders the braces
   // literally, so the conversion report warns and offers cloze mode (#4402).
@@ -1927,6 +1940,7 @@ export class DeckParser {
     });
 
     this.applyCardLimit();
+    this.blankBackCount = blankBacksWhenMostlyBlank(this.payload);
 
     this.markUploadDecks();
     this.applyLedgerGuids();
@@ -2138,6 +2152,7 @@ export class DeckParser {
 
     this.applyFallbackCardOptions();
     this.applyCardLimit();
+    this.blankBackCount = blankBacksWhenMostlyBlank(this.payload);
     this.markUploadDecks();
     this.applyUploadIdentityGuids();
     this.issuedGuidEntries = this.uploadIdentityEntries;

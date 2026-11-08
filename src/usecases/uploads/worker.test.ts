@@ -636,6 +636,25 @@ describe('runUploadGenerationInWorker — files converted in parallel', () => {
     expect(counts).toEqual([2, 0]);
   });
 
+  it('carries the blank-back count onto each package', async () => {
+    mockPrepareDeck.mockImplementation(
+      async (input) =>
+        ({
+          ...deckFor(input.name),
+          blankBackCount: input.name === 'a.html' ? 5 : 0,
+        }) as never
+    );
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    const counts = result.ok
+      ? result.packages.map((p) => p.blankBackCount)
+      : [];
+    expect(counts).toEqual([5, 0]);
+  });
+
   it('keeps packages in upload order when a later file finishes first', async () => {
     mockPrepareDeck.mockImplementation(async (input) => {
       if (input.name === 'a.html') {

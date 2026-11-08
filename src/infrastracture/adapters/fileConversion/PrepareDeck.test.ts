@@ -3055,6 +3055,40 @@ describe('PrepareDeck — toggles Cherry-pick left out', () => {
   });
 });
 
+describe('PrepareDeck — cards that ship with a blank back', () => {
+  const lines =
+    '<html><body><p>The cell is the unit of life</p><p>Mitochondria make energy</p><p>Ribosomes build proteins</p></body></html>';
+
+  it('carries the blank-back count of an HTML file of plain lines', async () => {
+    const result = await PrepareDeck({
+      name: 'notes.html',
+      files: [{ name: 'notes.html', contents: lines }],
+      settings: makeSettings(),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(3);
+    expect(result?.blankBackCount).toBe(3);
+    expect(result?.emptyBackCount).toBe(0);
+  });
+
+  it('carries the blank-back count of a Word file of plain lines', async () => {
+    const convertDocxToHTML = convertDocxToHTMLImport as unknown as Mock;
+    convertDocxToHTML.mockResolvedValueOnce(lines);
+
+    const result = await PrepareDeck({
+      name: 'notes.docx',
+      files: [{ name: 'notes.docx', contents: Buffer.from('PK-docx') }],
+      settings: makeSettings(),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.blankBackCount).toBe(3);
+  });
+});
+
 describe('PrepareDeck — empty backs from Notion-export toggles', () => {
   const notionPage =
     '<html><head><title>T</title></head><body><article class="page sans"><header><h1 class="page-title">T</h1></header><div class="page-body">' +

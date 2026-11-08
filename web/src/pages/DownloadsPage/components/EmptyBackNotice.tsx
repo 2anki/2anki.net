@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { track } from '../../../lib/analytics/track';
 
-export type EmptyBackSource = 'upload' | 'notion';
+export type EmptyBackSource = 'upload' | 'notion' | 'blank';
 
 interface EmptyBackNoticeProps {
   count: number;
@@ -23,14 +23,20 @@ export function EmptyBackNotice({
     track('empty_back_notice_shown', {
       empty_back_count: count,
       ...(surface != null ? { surface } : {}),
+      ...(source === 'blank' ? { kind: 'blank_back' } : {}),
     });
-  }, [count, surface]);
+  }, [count, surface, source]);
 
   const notionKey = 'emptyBack.notion';
   const uploadKey = multipleDecks
     ? 'emptyBack.uploadMultiDeck'
     : 'emptyBack.uploadSingleDeck';
-  const key = source === 'notion' ? notionKey : uploadKey;
+  const keyBySource: Record<EmptyBackSource, string> = {
+    upload: uploadKey,
+    notion: notionKey,
+    blank: 'emptyBack.blankBacks',
+  };
+  const key = keyBySource[source];
 
   return <p>{t(key, { count })}</p>;
 }

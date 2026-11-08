@@ -63,6 +63,7 @@ export interface ConversionSuccessHandlers {
   setColoredTextPageCount: (value: number) => void;
   setEmptyBackCount: (value: number) => void;
   setEmptyBackSource: (value: EmptyBackSource) => void;
+  setBlankBackCount: (value: number) => void;
   setCherrySkippedCount: (value: number) => void;
   setFoldedToggleCount: (value: number) => void;
   setCardsHeldBack: (value: number) => void;
@@ -160,6 +161,7 @@ export async function applyConversionSuccess(
       handlers.setExpiredNotionImageCount(body.expiredNotionImageCount ?? 0);
       handlers.setColoredTextPageCount(body.coloredTextPageCount ?? 0);
       handlers.setEmptyBackCount(body.emptyBackCount ?? 0);
+      handlers.setBlankBackCount(body.blankBackCount ?? 0);
       handlers.setStructureRescuedRule(
         parseStructureRescuedValue(body.structureRescuedRule)
       );
@@ -221,6 +223,9 @@ export async function applyConversionSuccess(
     response.headers.get('X-Empty-Back-Source') === 'notion'
       ? 'notion'
       : 'upload'
+  );
+  handlers.setBlankBackCount(
+    parseNonNegativeIntHeader(response.headers, 'X-Blank-Back-Count')
   );
   handlers.setCherrySkippedCount(
     parseNonNegativeIntHeader(response.headers, 'X-Cherry-Skipped-Count')

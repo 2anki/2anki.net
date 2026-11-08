@@ -1067,6 +1067,57 @@ describe('getPackagesFromZip — toggles Cherry-pick left out', () => {
     ).toEqual([[3, 2]]);
   });
 
+  it('carries the blank-back count onto the package of a single-file zip', async () => {
+    zipOf(['only.html']);
+    mockPrepareDeck.mockResolvedValue({
+      name: 'only.html',
+      apkg: Buffer.from(''),
+      deck: [],
+      cardCount: 4,
+      emptyBackCount: 0,
+      blankBackCount: 4,
+    });
+
+    const result = await run();
+
+    expect(result.packages.map((p) => p.blankBackCount)).toEqual([4]);
+  });
+
+  it('carries each file blank-back count onto its package in a batch build', async () => {
+    const fileNames = Array.from({ length: 8 }, (_, i) => `deck${i}.html`);
+    zipOf(fileNames);
+    mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        deckInfoPath: `/fake/${name}/deck_info.json`,
+        outputPath: `/fake/${name}/out.apkg`,
+        name,
+        inputFileName: name,
+        deck: [],
+        cardCount: 1,
+        blankBackCount: fileNames.indexOf(name),
+        needsIndividualBuild: false,
+      })
+    );
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(entries.map((e) => e.output))
+          ),
+      };
+    });
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
+
+    const result = await run();
+
+    expect(
+      result.packages.map((p) => p.blankBackCount).sort((x, y) => x - y)
+    ).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+
   it('carries each file count onto its package in a batch build', async () => {
     const fileNames = Array.from({ length: 8 }, (_, i) => `deck${i}.html`);
     zipOf(fileNames);

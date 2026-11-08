@@ -31,6 +31,24 @@ describe('EmptyBackNotice', () => {
     ).toBeInTheDocument();
   });
 
+  it('says the backs are blank, not skipped, for cards the deck kept', () => {
+    render(<EmptyBackNotice count={6} source="blank" />);
+    expect(
+      screen.getByText(
+        /6 cards have no answer, so their backs are blank\. .*in a spreadsheet put the answer in the next column/
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
+  });
+
+  it('tags the event so blank backs stay apart from skipped cards', () => {
+    render(<EmptyBackNotice count={6} source="blank" />);
+    expect(track).toHaveBeenCalledWith('empty_back_notice_shown', {
+      empty_back_count: 6,
+      kind: 'blank_back',
+    });
+  });
+
   it('says "your decks" for a multi-deck batch upload', () => {
     render(<EmptyBackNotice count={4} multipleDecks />);
     expect(screen.getByText(/aren't in your decks/)).toBeInTheDocument();
