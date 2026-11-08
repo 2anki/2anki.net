@@ -3,9 +3,10 @@ import { scrubPythonRawOutputTail } from './redactPythonOutput';
 
 export const PYTHON_NO_CARDS_SENTINEL = 'No cards generated';
 
-// A sync upload shows this message as is, so it is written for the person.
+// A sync upload, chat, mindmap and MCP create_deck show this message as is,
+// so it is written for the person and fits a file or a conversation alike.
 export const PYTHON_ZERO_CARDS_MESSAGE =
-  'No cards came out of this file. Give each question an answer, then convert again.';
+  'No cards came out of this. Lay it out as questions with answers, then convert again.';
 
 // The upload worker serialises errors as { message, name } and rebuilds a plain
 // Error, so the name is the only thing that survives to jobFailureReason. The

@@ -81,6 +81,19 @@ describe('CreateImageOcclusionDeckUseCase', () => {
     });
   });
 
+  describe('a free request over the image limit with no boxes', () => {
+    it('answers the image limit first, as before', async () => {
+      const useCase = new CreateImageOcclusionDeckUseCase();
+      const input = buildFourImageInput();
+      input.images = input.images.map((img) => ({ ...img, rects: [] }));
+
+      await expect(useCase.execute(input)).rejects.toMatchObject({
+        code: 'image_limit',
+        status: 403,
+      });
+    });
+  });
+
   describe('free tier limit enforcement', () => {
     it('rejects when a free user submits more than 3 images', async () => {
       const useCase = new CreateImageOcclusionDeckUseCase();
