@@ -132,6 +132,7 @@ import {
   ClaudeRefusalError,
   DeckInfo,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
+  ImageOnlyContentError,
 } from '../lib/claude/ClaudeService';
 import { track } from './events/track';
 import { setMintedAnonId } from '../lib/User/getOwner';
@@ -6161,6 +6162,31 @@ describe('UploadService.restartClaudeJob — a file Claude declined', () => {
     expect(row.status).toBe('failed');
     expect(row.job_reason_failure).toBe(CLAUDE_REFUSAL_USER_MESSAGE);
     expect(mockStorageUploadFile).not.toHaveBeenCalled();
+  });
+
+  it('ships the other file when one holds only images', async () => {
+    mockGenerateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('Declined page')) throw new ImageOnlyContentError();
+      return [
+        { name: 'Deck', cards: [{ name: 'q', back: 'a' }] },
+      ] as unknown as DeckInfo[];
+    });
+
+    await restart();
+
+    expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails a one-file restart Claude declined with the refusal copy', async () => {
+    fs.rmSync(path.join(workspaceBase, objectId, 'kept.html'));
+    mockGenerateDeckInfo.mockRejectedValue(new ClaudeRefusalError());
+
+    await restart();
+
+    const row = await db('jobs').where({ object_id: objectId }).first();
+    expect(row.status).toBe('failed');
+    expect(row.job_reason_failure).toBe(CLAUDE_REFUSAL_USER_MESSAGE);
+    expect(mockGenerateDeckInfo).toHaveBeenCalledTimes(1);
   });
 
   it('still fails the restart on an outage in one file', async () => {
