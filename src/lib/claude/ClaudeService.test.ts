@@ -3165,7 +3165,8 @@ describe('generateDeckInfo — conversion result cache', () => {
 
     async function convert(
       html: string,
-      options: Record<string, unknown> = {}
+      options: Record<string, unknown> = {},
+      cardStyle?: string
     ): Promise<{
       result: DeckInfo[];
       store: ReturnType<typeof makeStore>['store'];
@@ -3176,7 +3177,7 @@ describe('generateDeckInfo — conversion result cache', () => {
         [],
         undefined,
         undefined,
-        undefined,
+        cardStyle,
         undefined,
         undefined,
         { conversionResultCache: store, ...options }
@@ -3184,18 +3185,61 @@ describe('generateDeckInfo — conversion result cache', () => {
       return { result, store };
     }
 
-    it('is not stored when one chunk was declined', async () => {
-      mockStream.finalMessage
-        .mockResolvedValueOnce(fakeResponse())
-        .mockResolvedValueOnce(refusedResponse());
+    const headingHtml =
+      '<h1>Cells</h1><p>The cell is the basic unit of life.</p>' +
+      '<h1>Tissues</h1><p>Tissues are groups of similar cells.</p>';
 
-      const { result, store } = await convert(htmlTwoChunks);
+    it.each([
+      ['default', htmlTwoChunks, undefined],
+      ['heading-driven', headingHtml, 'heading-driven'],
+    ])(
+      'is not stored when one chunk was declined (%s)',
+      async (_style, html, cardStyle) => {
+        mockStream.finalMessage
+          .mockResolvedValueOnce(fakeResponse())
+          .mockResolvedValueOnce(refusedResponse());
+
+        const { result, store } = await convert(html, {}, cardStyle);
+
+        expect(result[0].cards.length).toBeGreaterThan(0);
+        expect(store.save).not.toHaveBeenCalled();
+      }
+    );
+
+    it('is not stored when Claude declined part of a chunk after writing cards', async () => {
+      mockStream.finalMessage.mockResolvedValueOnce({
+        content: [{ type: 'text', text: FAKE_DECK_JSON }],
+        stop_reason: 'refusal',
+        usage: { input_tokens: 100, output_tokens: 50 },
+      });
+
+      const { result, store } = await convert(textHtml);
 
       expect(result[0].cards.length).toBeGreaterThan(0);
       expect(store.save).not.toHaveBeenCalled();
     });
 
-    it('is not stored when one chunk failed for a moment', async () => {
+    it('is stored when a chunk held nothing to make cards from', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(fakeResponse())
+        .mockResolvedValueOnce({
+          content: [
+            {
+              type: 'text',
+              text: 'This section is a table of contents, so there is no flashcard content here.',
+            },
+          ],
+          stop_reason: 'end_turn',
+          usage: { input_tokens: 100, output_tokens: 50 },
+        });
+
+      const { result, store } = await convert(htmlTwoChunks);
+
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('is not stored when one chunk failed', async () => {
       mockStream.finalMessage
         .mockResolvedValueOnce(fakeResponse())
         .mockRejectedValueOnce(new Error('overloaded'));
@@ -3228,6 +3272,22 @@ describe('generateDeckInfo — conversion result cache', () => {
 
       expect(result[0].cards.length).toBeGreaterThan(0);
       expect(store.save).not.toHaveBeenCalled();
+    });
+
+    it('is stored when every comprehensive chunk answered and only a top-up failed', async () => {
+      mockStream.finalMessage
+        .mockResolvedValueOnce(fakeResponse())
+        .mockResolvedValueOnce(fakeResponse())
+        .mockRejectedValue(new Error('overloaded'));
+
+      const { result, store } = await convert(htmlTwoChunks, {
+        isPaying: true,
+        comprehensive: true,
+      });
+
+      expect(mockStream.finalMessage.mock.calls.length).toBeGreaterThan(2);
+      expect(result[0].cards.length).toBeGreaterThan(0);
+      expect(store.save).toHaveBeenCalledTimes(1);
     });
 
     it('is not stored when a comprehensive chunk was declined', async () => {

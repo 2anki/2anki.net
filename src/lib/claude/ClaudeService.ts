@@ -1257,7 +1257,10 @@ async function generateDeckInfoFromChunk(
       totalChunks,
       salvagedCards,
     });
-    if (salvagedCards > 0) return salvaged;
+    if (salvagedCards > 0) {
+      declinedPartway.add(salvaged);
+      return salvaged;
+    }
     throw new ClaudeRefusalError();
   }
 
@@ -1604,6 +1607,24 @@ interface ChunkWatch {
   onHalfRefused?: () => void;
 }
 
+// Cards Claude wrote before declining the rest of a chunk: the chunk answered,
+// but part of its section is missing.
+const declinedPartway = new WeakSet<DeckInfo[]>();
+
+function watchedResult(decks: DeckInfo[], watch: ChunkWatch): DeckInfo[] {
+  if (declinedPartway.has(decks)) watch.onPartial();
+  return decks;
+}
+
+// A section with nothing to make cards from is not missing: a retry finds
+// nothing either, so it does not keep the rest of the result out of the cache.
+function losesSection(reason: unknown): boolean {
+  return !(
+    reason instanceof EmptyContentError ||
+    reason instanceof ImageOnlyContentError
+  );
+}
+
 function salvagePartial(
   err: ClaudeTruncatedError,
   watch: ChunkWatch
@@ -1619,7 +1640,7 @@ async function runChunkWithTruncationRetry(
   watch: ChunkWatch
 ): Promise<DeckInfo[]> {
   try {
-    return await call(content);
+    return watchedResult(await call(content), watch);
   } catch (err) {
     if (!(err instanceof ClaudeTruncatedError)) throw err;
     const halves = splitChunkInHalf(content);
@@ -1633,7 +1654,7 @@ async function runChunkWithTruncationRetry(
     const recovered = settled.flatMap((r) => {
       if (r.status === 'fulfilled') {
         fulfilled += 1;
-        return [r.value];
+        return [watchedResult(r.value, watch)];
       }
       if (
         r.reason instanceof ClaudeTruncatedError &&
@@ -1686,8 +1707,10 @@ async function runChunks(
     }
   });
 
-  if (failures.length > 0) {
+  if (settled.some((r) => r.status === 'rejected' && losesSection(r.reason))) {
     onPartial();
+  }
+  if (failures.length > 0) {
     console.info('[Claude] Some chunks failed; continuing with the rest', {
       failures,
       ok: succeeded.length,
@@ -2089,7 +2112,7 @@ async function runFloorV1(
     if (r.status === 'fulfilled') {
       initialDecks.push(...r.value);
     } else {
-      onPartial();
+      if (losesSection(r.reason)) onPartial();
       if (r.reason instanceof ClaudeRefusalError) refusedChunks.add(i);
       console.warn('[Claude] floor v1 chunk failed', {
         chunkIndex: i,
@@ -2141,7 +2164,10 @@ async function runFloorV1(
                   attribution
                 )
               ),
-            { onPartial, onHalfRefused: () => refusedChunks.add(idx) }
+            {
+              onPartial: () => {},
+              onHalfRefused: () => refusedChunks.add(idx),
+            }
           ).then((decks) => stampChunkIndex(decks, idx))
       ),
       FLOOR_V1_MAX_PARALLEL
@@ -2153,7 +2179,6 @@ async function runFloorV1(
       if (r.status === 'fulfilled') {
         newDecks.push(...r.value);
       } else {
-        onPartial();
         if (r.reason instanceof ClaudeRefusalError) {
           refusedChunks.add(targetChunks[i]);
         }
