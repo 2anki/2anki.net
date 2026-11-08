@@ -88,6 +88,12 @@ export async function convertWithClaude(
             messages: [{ role: 'user', content: userContent }],
           })
           .finalMessage();
+        const text = joinTextBlocks(response.content);
+        // What Claude wrote before declining still converts, as on the text
+        // and page paths; a refusal with nothing written says so and is
+        // recorded without being billed.
+        const declinedWithNothing =
+          response.stop_reason === 'refusal' && text.trim() === '';
         recordClaudeUsage({
           surface: 'file_conversion',
           model: response.model,
@@ -95,12 +101,10 @@ export async function convertWithClaude(
           userId: options.userId,
           anonymousPassId: options.anonymousPassId,
           requestId: options.requestId,
+          billable: !declinedWithNothing,
         });
         assertNotTruncated(response.stop_reason);
-        const text = joinTextBlocks(response.content);
-        // What Claude wrote before declining still converts, as on the text
-        // and page paths; a refusal with nothing written says so.
-        if (response.stop_reason === 'refusal' && text.trim() === '') {
+        if (declinedWithNothing) {
           throw new ClaudeRefusalError();
         }
         return text;

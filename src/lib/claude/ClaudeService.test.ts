@@ -2563,6 +2563,63 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
     }
   });
 
+  it.each([
+    ['declined with nothing written', refusedResponse(), false],
+    [
+      'declined with prose that holds no cards',
+      {
+        content: [{ type: 'text', text: 'I am not able to help with this.' }],
+        stop_reason: 'refusal',
+        usage: { input_tokens: 100, output_tokens: 10 },
+      },
+      false,
+    ],
+    [
+      'declined after writing cards',
+      {
+        content: [{ type: 'text', text: FAKE_DECK_JSON }],
+        stop_reason: 'refusal',
+        usage: { input_tokens: 100, output_tokens: 50 },
+      },
+      true,
+    ],
+    ['answered', fakeResponse(), true],
+  ])(
+    'bills a chunk %s only when it wrote something usable',
+    async (_label, response, billed) => {
+      mockStream.finalMessage.mockResolvedValue(response);
+      const trackSpy = vi
+        .spyOn(trackModule, 'track')
+        .mockImplementation(() => undefined);
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      try {
+        await generateDeckInfo(
+          '<p>The cell is the basic unit of life.</p>',
+          [],
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          { isPaying: true, userId: 42 }
+        ).catch(() => undefined);
+
+        const usage = trackSpy.mock.calls.filter(
+          (call: unknown[]) => call[0] === 'ai_usage_recorded'
+        );
+        expect(usage).toHaveLength(1);
+        const props = (usage[0][1] as { props: Record<string, unknown> }).props;
+        expect(props.billable).toBe(billed ? undefined : false);
+      } finally {
+        trackSpy.mockRestore();
+        warn.mockRestore();
+      }
+    }
+  );
+
   it('attributes every ai_usage_recorded event to the converting user', async () => {
     let call = 0;
     mockStream.finalMessage.mockImplementation(async () =>

@@ -2,6 +2,7 @@ import { vi, type Mock } from 'vitest';
 import type Anthropic from '@anthropic-ai/sdk';
 import { convertWithClaude, FileConversionError } from './claudeFileConversion';
 import { withAiBudget } from '../../../lib/claude/aiSpendGuard';
+import * as trackModule from '../../../services/events/track';
 
 vi.mock('../../../lib/claude/aiSpendGuard', async (importOriginal) => ({
   ...(await importOriginal<
@@ -166,6 +167,46 @@ describe('convertWithClaude', () => {
     ).rejects.toMatchObject({ name: 'ClaudeRefusalError' });
     expect(mock.messages.stream).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ['nothing', '', false],
+    ['only whitespace', '  \n ', false],
+    ['some text', '<p>Q1</p>', true],
+  ])(
+    'bills a declined document that wrote %s only when it wrote something',
+    async (_label, text, billed) => {
+      const response = {
+        content: [{ type: 'text', text }],
+        stop_reason: 'refusal',
+        model: 'claude-sonnet-5',
+        usage: { input_tokens: 100, output_tokens: 0 },
+      };
+      const mock = {
+        messages: { stream: makeStream(response), create: vi.fn() },
+      };
+      const trackSpy = vi
+        .spyOn(trackModule, 'track')
+        .mockImplementation(() => undefined);
+      vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+      try {
+        await convertWithClaude(
+          mock as unknown as Anthropic,
+          'system prompt',
+          [{ type: 'text', text: 'user text' }],
+          { anonymousPassId: 7 }
+        ).catch(() => undefined);
+
+        expect(trackSpy).toHaveBeenCalledTimes(1);
+        const props = (
+          trackSpy.mock.calls[0][1] as { props: Record<string, unknown> }
+        ).props;
+        expect(props.billable).toBe(billed ? undefined : false);
+      } finally {
+        trackSpy.mockRestore();
+      }
+    }
+  );
 
   it('keeps what Claude wrote before declining', async () => {
     const mock = makeAnthropicMock('<p>Q1</p>', 'refusal');

@@ -325,6 +325,11 @@ describe('generateDeckInfoFromPdfImages', () => {
     );
     trackSpy.mockRestore();
     expect(usageEvents).toHaveLength(3);
+    expect(usageEvents.map(([, payload]) => payload?.props?.billable)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
     expect(mockStreamFn.mock.calls.map(([p]) => p.max_tokens)).toContain(32768);
     expect(mockStreamFn).toHaveBeenCalledTimes(3);
     expect(mockNonStreamingCreateFn).not.toHaveBeenCalled();
@@ -423,6 +428,111 @@ describe('generateDeckInfoFromPdfImages', () => {
       expect(caught).not.toBeInstanceOf(ClaudeRefusalError);
       expect((caught as Error).message).toBe('overloaded_error');
     } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('records a declined page without billing it, its truncated first try included', async () => {
+    mockVisionFn.mockImplementation(async (params: { max_tokens: number }) =>
+      params.max_tokens < 32768
+        ? visionResponse('[{"deck":"S', 'max_tokens')
+        : visionResponse('', 'refusal')
+    );
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
+      .mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfoFromPdfImages(
+        html,
+        { mediaBaseDir: baseDir },
+        undefined,
+        undefined,
+        77
+      ).catch(() => undefined);
+
+      const usage = trackSpy.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'ai_usage_recorded'
+      );
+      expect(usage).toHaveLength(4);
+      for (const call of usage) {
+        expect(call[1]).toMatchObject({ props: { billable: false } });
+      }
+    } finally {
+      trackSpy.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
+  it('records the truncated first try when the retry fails', async () => {
+    mockVisionFn.mockImplementation(async (params: { max_tokens: number }) => {
+      if (params.max_tokens < 32768) {
+        return visionResponse('[{"deck":"S', 'max_tokens');
+      }
+      throw new Error('overloaded_error');
+    });
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
+      .mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfoFromPdfImages(
+        html,
+        { mediaBaseDir: baseDir },
+        undefined,
+        undefined,
+        77
+      ).catch(() => undefined);
+
+      const usage = trackSpy.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'ai_usage_recorded'
+      );
+      expect(usage).toHaveLength(2);
+      for (const call of usage) {
+        expect(
+          (call[1] as { props: Record<string, unknown> }).props.billable
+        ).toBeUndefined();
+      }
+    } finally {
+      trackSpy.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
+  it('bills a page Claude declined after writing cards', async () => {
+    mockVisionFn.mockResolvedValue(
+      visionResponse(
+        JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }]),
+        'refusal'
+      )
+    );
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
+      .mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfoFromPdfImages(
+        html,
+        { mediaBaseDir: baseDir },
+        undefined,
+        undefined,
+        77
+      );
+
+      const usage = trackSpy.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'ai_usage_recorded'
+      );
+      expect(usage).toHaveLength(2);
+      for (const call of usage) {
+        expect(
+          (call[1] as { props: Record<string, unknown> }).props.billable
+        ).toBeUndefined();
+      }
+    } finally {
+      trackSpy.mockRestore();
       warn.mockRestore();
     }
   });

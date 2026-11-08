@@ -4,7 +4,7 @@ import { AiUsageMetricsRepository } from './AiUsageMetricsRepository';
 const pg = knex({ client: 'pg' });
 
 describe('AiUsageMetricsRepository.buildUserCostQuery generated SQL', () => {
-  it('sums cost_usd from the props JSONB for one user since a date', () => {
+  it('charges cost_usd from the props JSONB for one user since a date, leaving out refusals that wrote nothing', () => {
     const repo = new AiUsageMetricsRepository(pg);
     const since = new Date('2026-05-01T00:00:00.000Z');
     const sql = repo.buildUserCostQuery(42, since).toString();
@@ -12,13 +12,13 @@ describe('AiUsageMetricsRepository.buildUserCostQuery generated SQL', () => {
     expect(sql).toContain('"name" = \'ai_usage_recorded\'');
     expect(sql).toContain('"user_id" = 42');
     expect(sql).toContain(
-      "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
+      "coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false'), 0) as cost_usd"
     );
   });
 });
 
 describe('AiUsageMetricsRepository.buildAnonymousPassCostQuery generated SQL', () => {
-  it('sums cost_usd from the props JSONB for one anonymous pass since a date', () => {
+  it('charges cost_usd from the props JSONB for one anonymous pass since a date, leaving out refusals that wrote nothing', () => {
     const repo = new AiUsageMetricsRepository(pg);
     const since = new Date('2026-05-01T00:00:00.000Z');
     const sql = repo.buildAnonymousPassCostQuery(7, since).toString();
@@ -26,7 +26,7 @@ describe('AiUsageMetricsRepository.buildAnonymousPassCostQuery generated SQL', (
     expect(sql).toContain('"name" = \'ai_usage_recorded\'');
     expect(sql).toContain('"anonymous_pass_id" = 7');
     expect(sql).toContain(
-      "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
+      "coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false'), 0) as cost_usd"
     );
   });
 });
