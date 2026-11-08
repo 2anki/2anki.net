@@ -232,15 +232,27 @@ describe('countWords through censusFromHtml', () => {
     expect(censusFromHtml('<h1>Cell</h1><p>biology</p>').words).toBe(2);
   });
 
-  it('finishes a long unbroken run without counting it as prose', () => {
-    const html = '<p>' + '<'.repeat(2_000_000) + ' word</p>';
-    expect(censusFromHtml(html).words).toBe(1);
-  });
+  // These parse megabytes of HTML: under one second alone, but over the 5s
+  // default when the whole suite shares the CPU (#5276).
+  const LARGE_INPUT_TIMEOUT_MS = 30_000;
 
-  it('stops scanning past the word budget', () => {
-    const html = '<p>' + 'ab '.repeat(3_000_000) + '</p>';
-    expect(censusFromHtml(html).words).toBe(1_747_627);
-  });
+  it(
+    'finishes a long unbroken run without counting it as prose',
+    () => {
+      const html = '<p>' + '<'.repeat(2_000_000) + ' word</p>';
+      expect(censusFromHtml(html).words).toBe(1);
+    },
+    LARGE_INPUT_TIMEOUT_MS
+  );
+
+  it(
+    'stops scanning past the word budget',
+    () => {
+      const html = '<p>' + 'ab '.repeat(3_000_000) + '</p>';
+      expect(censusFromHtml(html).words).toBe(1_747_627);
+    },
+    LARGE_INPUT_TIMEOUT_MS
+  );
 });
 
 describe('censusFromHtml on a Notion export fixture', () => {

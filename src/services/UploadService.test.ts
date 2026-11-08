@@ -47,7 +47,19 @@ vi.mock('../lib/featureFlags/getFeatureFlag', () => ({
   getFeatureFlag: (...args: unknown[]) => mockGetFeatureFlag(...args),
 }));
 
-let mockWorkspaceLocation = '';
+// A blank location resolves to the working directory, so a conversion that
+// writes into its workspace would drop files into the repo root.
+let mockWorkspaceLocation = fs.mkdtempSync(
+  path.join(os.tmpdir(), 'upload-service-ws-')
+);
+const repoRootEntriesBefore = new Set(fs.readdirSync(process.cwd()));
+
+afterAll(() => {
+  const added = fs
+    .readdirSync(process.cwd())
+    .filter((entry) => !repoRootEntriesBefore.has(entry));
+  expect(added).toEqual([]);
+});
 let mockWorkspaceId = 'test-ws-id';
 let mockFirstApkg: Buffer | null = null;
 vi.mock('../lib/parser/WorkSpace', () => {
