@@ -52,6 +52,10 @@ import {
 import type { PageImageCardMode } from '../../../lib/pdf/combineIntoHTML';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
+import {
+  aiFileFailedWarning,
+  aiFileFailureReason,
+} from '../../../lib/claude/aiFileFailure';
 import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
 import {
   generateDeckInfo,
@@ -172,6 +176,8 @@ interface PrepareDeckResult {
   apkg: Buffer;
   deck: Deck[];
   cardCount: number;
+  // One entry per file of several that Claude made no cards from.
+  failedFileWarnings?: string[];
   cardsHeldBack?: number;
   mcqCount: number;
   mcqSkippedCount: number;
@@ -737,6 +743,10 @@ interface ClaudeConversionResult {
   // The credit guard tripped mid-run; the caller ships the cards produced so
   // far and attaches the credits warning.
   tripped: boolean;
+  // Files of several that Claude made no cards from, in upload order, and
+  // the first one's error for when nothing else ships.
+  failedFileWarnings: string[];
+  firstSkippedError: unknown;
 }
 
 // The per-call guard can trip mid-run when a concurrent conversion drains the
@@ -748,6 +758,35 @@ function salvagedDecksOf(error: AiCreditsExhaustedError): DeckInfo[] {
   return error instanceof AiCreditsTrippedWithSalvage
     ? error.salvagedDecks
     : [];
+}
+
+// In an upload of several files, one Claude could not make cards from is
+// left out and named in a warning, like a failed chunk inside one file. An
+// outage or a credit stop is not about one file and still stops the run, and
+// when every file failed the first file's reason is the upload's answer.
+function skippedFileFailures(fileCount: number) {
+  const errors = new Map<number, unknown>();
+  const warningsByIndex = new Map<number, string>();
+  const firstError = () =>
+    [...errors.entries()].sort(([a], [b]) => a - b)[0]?.[1];
+  return {
+    get warnings(): string[] {
+      return [...warningsByIndex.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([, warning]) => warning);
+    },
+    firstError,
+    skip(index: number, fileName: string, error: unknown): boolean {
+      const reason = fileCount >= 2 ? aiFileFailureReason(error) : null;
+      if (reason == null) return false;
+      errors.set(index, error);
+      warningsByIndex.set(index, aiFileFailedWarning(fileName, reason));
+      return true;
+    },
+    throwIfEveryFileFailed(): void {
+      if (errors.size > 0 && errors.size === fileCount) throw firstError();
+    },
+  };
 }
 
 // Files convert at AI_FILE_CONCURRENCY at a time. A file that starts after
@@ -767,10 +806,13 @@ async function runCrossFileDedupConversion(
   deckInfoArrays: DeckInfo[][];
   tripped: boolean;
   ownSuppressed: number;
+  failedFileWarnings: string[];
+  firstSkippedError: unknown;
 }> {
   let tripped = false;
   let failed = false;
   let ownSuppressed = 0;
+  const skipped = skippedFileFailures(htmlFiles.length);
   const absorb = (decks: DeckInfo[]): DeckInfo[] => {
     const before = crossFileDedup.suppressed;
     const kept = absorbFileIntoCrossFileDedup(crossFileDedup, decks);
@@ -780,7 +822,7 @@ async function runCrossFileDedupConversion(
   const deckInfoArrays = await mapWithConcurrency(
     htmlFiles,
     AI_FILE_CONCURRENCY,
-    async (file) => {
+    async (file, index) => {
       if (tripped || failed) return [] as DeckInfo[];
       const instructions = composeCrossFileInstructions(
         crossFileDedup.fronts,
@@ -794,12 +836,20 @@ async function runCrossFileDedupConversion(
           tripped = true;
           return absorb(salvagedDecksOf(error));
         }
+        if (skipped.skip(index, file.name, error)) return [] as DeckInfo[];
         failed = true;
         throw error;
       }
     }
   );
-  return { deckInfoArrays, tripped, ownSuppressed };
+  skipped.throwIfEveryFileFailed();
+  return {
+    deckInfoArrays,
+    tripped,
+    ownSuppressed,
+    failedFileWarnings: skipped.warnings,
+    firstSkippedError: skipped.firstError(),
+  };
 }
 
 async function runConcurrentClaudeConversion(
@@ -846,7 +896,13 @@ async function runClaudeConversion(
   const crossFileDedup =
     threadedDedup ?? (ownsDedup ? createCrossFileDedupState() : undefined);
 
-  const { deckInfoArrays, tripped, ownSuppressed } = crossFileDedup
+  const {
+    deckInfoArrays,
+    tripped,
+    ownSuppressed,
+    failedFileWarnings,
+    firstSkippedError,
+  } = crossFileDedup
     ? await runCrossFileDedupConversion(
         htmlFiles,
         generateForFile,
@@ -861,9 +917,19 @@ async function runClaudeConversion(
           userInstructions
         )),
         ownSuppressed: 0,
+        failedFileWarnings: [],
+        firstSkippedError: undefined,
       };
 
-  return { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped };
+  return {
+    deckInfoArrays,
+    crossFileDedup,
+    ownsDedup,
+    ownSuppressed,
+    tripped,
+    failedFileWarnings,
+    firstSkippedError,
+  };
 }
 
 function emitCrossFileConversionEvent(
@@ -1096,14 +1162,21 @@ async function buildClaudeDeck(
       optionsForFile(f)
     ).then((decks) => withDeckStyle(decks, input.settings));
 
-  const { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped } =
-    await runClaudeConversion(
-      htmlFiles,
-      generateForFile,
-      userInstructions,
-      input.settings.cardSize,
-      input.crossFileDedup
-    );
+  const {
+    deckInfoArrays,
+    crossFileDedup,
+    ownsDedup,
+    ownSuppressed,
+    tripped,
+    failedFileWarnings,
+    firstSkippedError,
+  } = await runClaudeConversion(
+    htmlFiles,
+    generateForFile,
+    userInstructions,
+    input.settings.cardSize,
+    input.crossFileDedup
+  );
 
   if (ownsDedup && crossFileDedup) {
     emitCrossFileConversionEvent(input.userId ?? null, crossFileDedup);
@@ -1161,6 +1234,9 @@ async function buildClaudeDeck(
   // An empty AI deck must never reach the Python exporter — a zero-card deck
   // throws PythonZeroCardsError and fails the whole upload.
   if (deckInfo.length === 0) {
+    // A skipped file and nothing from the rest: the skipped file's reason
+    // answers the upload, as it would have before files could be skipped.
+    if (firstSkippedError != null && !tripped) throw firstSkippedError;
     // In a multi-file upload a later file whose cards were all covered by
     // earlier files has nothing of its own to export; drop it and let the
     // earlier files carry the upload.
@@ -1204,6 +1280,7 @@ async function buildClaudeDeck(
     deck: [],
     cardCount: claudeCardCount,
     warning: creditsWarning,
+    failedFileWarnings,
     // The Claude branch returns deck: [], so a caller that scores from `deck`
     // measures nothing on every AI conversion. Scored here, where the cards
     // still exist.

@@ -7144,6 +7144,39 @@ describe('UploadService.handleUpload — image drops without a vision path (#440
   });
 });
 
+describe('resolveUploadWarning — a file Claude made no cards from', () => {
+  it('names the file and why', () => {
+    expect(
+      resolveUploadWarning(
+        ['ai-file-failed:declined:lecture.pdf', 'stray-cloze:2'],
+        null
+      )
+    ).toBe(
+      'No cards from lecture.pdf: Claude declined it, so reword or remove the part it would not answer. The other files are in your deck.'
+    );
+  });
+
+  it('ranks the credits stop first', () => {
+    expect(
+      resolveUploadWarning(
+        ['ai-file-failed:declined:lecture.pdf', 'ai-credits-exhausted'],
+        null
+      )
+    ).toBe(resolveUploadWarning(['ai-credits-exhausted'], null));
+  });
+
+  it('never shows the code for a file whose name mentions a password', () => {
+    expect(
+      resolveUploadWarning(
+        ['ai-file-failed:declined:password-protected notes.pdf'],
+        null
+      )
+    ).toBe(
+      'No cards from password-protected notes.pdf: Claude declined it, so reword or remove the part it would not answer. The other files are in your deck.'
+    );
+  });
+});
+
 describe('resolveUploadWarning — stray cloze markup', () => {
   it('turns the coded count into user copy, summing across decks', () => {
     expect(resolveUploadWarning(['stray-cloze:2', 'stray-cloze:1'], null)).toBe(

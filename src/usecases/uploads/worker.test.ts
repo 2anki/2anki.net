@@ -26,6 +26,10 @@ import { getPackagesFromZip } from './getPackagesFromZip';
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
 import { createWorkerTerminationError } from '../../lib/workerTermination';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
+import {
+  ClaudeLargeSectionError,
+  ClaudeRefusalError,
+} from '../../lib/claude/ClaudeService';
 
 vi.mock('fs');
 vi.mock('../../lib/parser/WorkSpace');
@@ -679,6 +683,83 @@ describe('runUploadGenerationInWorker — files converted in parallel', () => {
 
     expect(result.ok).toBe(false);
     expect(result.ok ? '' : result.error.message).toBe('first file broke');
+  });
+
+  it('ships the other files and names the one Claude declined', async () => {
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.name === 'a.html') throw new ClaudeRefusalError();
+      return deckFor(input.name) as never;
+    });
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.packages.map((p) => p.name) : []).toEqual([
+      'b.html',
+    ]);
+    expect(result.ok ? result.warnings : []).toContain(
+      'ai-file-failed:declined:a.html'
+    );
+  });
+
+  it('fails with the skipped file when the other file makes no cards', async () => {
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.name === 'a.html') throw new ClaudeRefusalError();
+      return { ...deckFor(input.name), cardCount: 0 } as never;
+    });
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? null : result.error.name).toBe('ClaudeRefusalError');
+  });
+
+  it('answers with the first file in upload order when every file failed', async () => {
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.name === 'a.html') {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        throw new ClaudeLargeSectionError();
+      }
+      throw new ClaudeRefusalError();
+    });
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    expect(result.ok ? null : result.error.name).toBe(
+      'ClaudeLargeSectionError'
+    );
+  });
+
+  it('leaves a single-file upload Claude declined failing, as before', async () => {
+    mockPrepareDeck.mockRejectedValue(new ClaudeRefusalError());
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html')])
+    );
+
+    expect(result.ok ? null : result.error.name).toBe('ClaudeRefusalError');
+  });
+
+  it('fails with the first reason when Claude made cards from no file', async () => {
+    mockPrepareDeck.mockImplementation(async (input) => {
+      if (input.name === 'a.html') throw new ClaudeLargeSectionError();
+      throw new ClaudeRefusalError();
+    });
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? null : result.error.name).toBe(
+      'ClaudeLargeSectionError'
+    );
   });
 
   it('does not start queued files after one fails', async () => {

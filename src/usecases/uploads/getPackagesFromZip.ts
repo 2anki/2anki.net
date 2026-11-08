@@ -370,6 +370,7 @@ async function buildStragglerDecks(
       pkg.notionEmptyBackCount = outcome.notionEmptyBackCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
+      warnings.push(...(outcome.failedFileWarnings ?? []));
     }
   }
 
@@ -431,6 +432,7 @@ async function buildClaudeFlashcardDeck(
     pkg.notionEmptyBackCount = deck.notionEmptyBackCount ?? 0;
     packages.push(pkg);
     if (deck.warning) warnings.push(deck.warning);
+    warnings.push(...(deck.failedFileWarnings ?? []));
   }
   return { packages, warnings };
 }
@@ -534,6 +536,7 @@ async function buildAllInOneSlot(
       pkg.notionEmptyBackCount = outcome.notionEmptyBackCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
+      warnings.push(...(outcome.failedFileWarnings ?? []));
       if (perFileCardLimit != null) {
         cardsHeldBack = outcome.cardsHeldBack ?? 0;
       }

@@ -1663,10 +1663,50 @@ async function runChunks(
   if (succeeded.length === 0) {
     const refusal = refusalIn(settled);
     if (refusal) throw refusal;
-    throw new Error(failures[0]?.reason ?? 'All Claude chunks failed');
+    throw markedFileFailure(
+      new Error(failures[0]?.reason ?? 'All Claude chunks failed'),
+      settled
+    );
   }
 
   return succeeded.flat();
+}
+
+type ChunkFileFailure = 'too_large' | 'no_text' | 'unreadable';
+
+function fileFailureOf(reason: unknown): ChunkFileFailure | null {
+  if (
+    reason instanceof ClaudeLargeSectionError ||
+    reason instanceof ClaudeTruncatedError
+  ) {
+    return 'too_large';
+  }
+  if (
+    reason instanceof EmptyContentError ||
+    reason instanceof ImageOnlyContentError
+  ) {
+    return 'no_text';
+  }
+  if (reason instanceof ClaudeParseError) return 'unreadable';
+  return null;
+}
+
+// The chunk runner throws a plain Error with the first failure's text, which
+// callers rely on (the PDF password retry keeps the raw text out of replies).
+// When every chunk failed for a reason that belongs to the file, the error
+// also names that reason, so an upload of several files can leave the file
+// out instead of failing.
+function markedFileFailure(
+  error: Error,
+  settled: PromiseSettledResult<unknown>[]
+): Error {
+  const reasons = settled.flatMap((r) =>
+    r.status === 'rejected' ? [fileFailureOf(r.reason)] : []
+  );
+  if (reasons.length === 0 || reasons.some((reason) => reason == null)) {
+    return error;
+  }
+  return Object.assign(error, { chunkFileFailure: reasons[0] });
 }
 
 // The vision path reads image bytes off disk that the cache key does not

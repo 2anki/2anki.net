@@ -34,6 +34,10 @@ import {
 import { getPackagesFromZip } from './getPackagesFromZip';
 import { liftDecksToParent } from './liftDecksToParent';
 import { resolvePerWorkerPythonCap } from '../../lib/pythonWorkerBudget';
+import {
+  aiFileFailedWarning,
+  aiFileFailureReason,
+} from '../../lib/claude/aiFileFailure';
 import { AI_FILE_CONCURRENCY } from '../../lib/claude/aiFileConcurrency';
 import { isWorkerTerminationError } from '../../lib/workerTermination';
 import Workspace from '../../lib/parser/WorkSpace';
@@ -343,6 +347,7 @@ async function processFile(
       singleFilePackage.notionEmptyBackCount = d.notionEmptyBackCount ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
+      warnings.push(...(d.failedFileWarnings ?? []));
       emptyReason = d.emptyReason;
       rescueCandidates = d.rescueCandidates;
     }
@@ -489,7 +494,28 @@ async function doGenerationWork(
       ? createCrossFileDedupState(existingCardFingerprints ?? [])
       : undefined;
 
-  const convert = (upload: UploadedFile, fileWorkspace: Workspace) => {
+  // One file Claude could not make cards from does not sink the others: it is
+  // named in a warning instead. An outage or a credit stop still fails the
+  // upload, and so does every file failing, with the first file's reason.
+  const skippedFailures = new Map<number, unknown>();
+  const convert = async (
+    upload: UploadedFile,
+    fileWorkspace: Workspace
+  ): Promise<FileResult> => {
+    if (files.length < 2) return convertOne(upload, fileWorkspace);
+    try {
+      return await convertOne(upload, fileWorkspace);
+    } catch (error) {
+      const reason = aiFileFailureReason(error);
+      if (reason == null) throw error;
+      skippedFailures.set(files.indexOf(upload), error);
+      return {
+        packages: [],
+        warnings: [aiFileFailedWarning(upload.originalname, reason)],
+      };
+    }
+  };
+  const convertOne = (upload: UploadedFile, fileWorkspace: Workspace) => {
     const { file, contents } = asReadableUpload(
       upload,
       getFileContents(upload)
@@ -525,6 +551,13 @@ async function doGenerationWork(
     if (result.rescueCandidates != null) {
       rescueCandidateSets.push(result.rescueCandidates);
     }
+  }
+
+  // A skipped file and no cards from the rest: the first skipped file, in
+  // upload order, answers the upload, as it would have before the skip.
+  const cardsMade = packages.reduce((sum, p) => sum + (p.cardCount ?? 0), 0);
+  if (skippedFailures.size > 0 && cardsMade === 0) {
+    throw [...skippedFailures.entries()].sort(([a], [b]) => a - b)[0][1];
   }
 
   // Only report a reason when the whole upload produced no cards. A reason from

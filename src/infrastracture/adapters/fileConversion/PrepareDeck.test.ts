@@ -21,6 +21,7 @@ import {
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import {
   AiCreditsTrippedWithSalvage,
+  ClaudeRefusalError,
   bundledMediaName,
   expandCompactDeckInfo,
   generateDeckInfo as generateDeckInfoImport,
@@ -511,6 +512,100 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
       },
     ];
   }
+
+  it('ships the other files and names the one Claude declined', async () => {
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('page 1')) throw new ClaudeRefusalError();
+      return deckWithCards('page', [{ name: 'Kept fact', back: 'Kept' }]);
+    });
+
+    const result = await PrepareDeck({
+      name: 'export.zip',
+      files: [
+        { name: 'page-0.html', contents: '<p>page 0</p>' },
+        { name: 'page-1.html', contents: '<p>page 1</p>' },
+      ],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(1);
+    expect(result?.failedFileWarnings).toEqual([
+      'ai-file-failed:declined:page-1.html',
+    ]);
+  });
+
+  it('fails with the first reason when Claude made cards from no file', async () => {
+    generateDeckInfo.mockRejectedValue(new ClaudeRefusalError());
+
+    await expect(
+      PrepareDeck({
+        name: 'export.zip',
+        files: [
+          { name: 'page-0.html', contents: '<p>page 0</p>' },
+          { name: 'page-1.html', contents: '<p>page 1</p>' },
+        ],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      })
+    ).rejects.toBeInstanceOf(ClaudeRefusalError);
+  });
+
+  it('answers with the skipped file when the other files make no cards', async () => {
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('page 1')) throw new ClaudeRefusalError();
+      return [];
+    });
+
+    await expect(
+      PrepareDeck({
+        name: 'export.zip',
+        files: [
+          { name: 'page-0.html', contents: '<p>page 0</p>' },
+          { name: 'page-1.html', contents: '<p>page 1</p>' },
+        ],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      })
+    ).rejects.toBeInstanceOf(ClaudeRefusalError);
+  });
+
+  it('leaves a single-file upload Claude declined failing, as before', async () => {
+    generateDeckInfo.mockRejectedValue(new ClaudeRefusalError());
+
+    await expect(
+      PrepareDeck({
+        name: 'page-0.html',
+        files: [{ name: 'page-0.html', contents: '<p>page 0</p>' }],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      })
+    ).rejects.toBeInstanceOf(ClaudeRefusalError);
+  });
+
+  it('still stops on an outage in one file', async () => {
+    generateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('page 1')) throw new Error('overloaded');
+      return deckWithCards('page', [{ name: 'Kept fact', back: 'Kept' }]);
+    });
+
+    await expect(
+      PrepareDeck({
+        name: 'export.zip',
+        files: [
+          { name: 'page-0.html', contents: '<p>page 0</p>' },
+          { name: 'page-1.html', contents: '<p>page 1</p>' },
+        ],
+        settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      })
+    ).rejects.toThrow('overloaded');
+  });
 
   it('converts files side by side and threads finished fronts into later prompts', async () => {
     const fileCount = AI_FILE_CONCURRENCY + 2;

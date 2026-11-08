@@ -1058,6 +1058,56 @@ describe('generateDeckInfo — partial chunk success (default)', () => {
     }
   });
 
+  const unreadableJson = {
+    content: [{ type: 'text', text: '[{"deck":"Bio","cards":[{"q":"What is' }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 100, output_tokens: 50 },
+  };
+
+  it('names a too-large file on the plain error when every chunk answers with JSON that cannot be read', async () => {
+    mockStream.finalMessage.mockResolvedValue(unreadableJson);
+    const quiet = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(htmlTwoChunks, []).catch(
+        (err: unknown) => err
+      );
+
+      expect(caught).not.toBeInstanceOf(ClaudeLargeSectionError);
+      expect((caught as Error).message).toBe(LARGE_SECTION_USER_MESSAGE);
+      expect(caught).toMatchObject({ chunkFileFailure: 'too_large' });
+    } finally {
+      quiet.mockRestore();
+      info.mockRestore();
+    }
+  });
+
+  it('does not name the file when another chunk failed for a moment', async () => {
+    mockStream.finalMessage
+      .mockResolvedValueOnce(unreadableJson)
+      .mockRejectedValueOnce(new Error('overloaded'));
+    const quiet = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfo(htmlTwoChunks, []).catch(
+        (err: unknown) => err
+      );
+
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toBe(LARGE_SECTION_USER_MESSAGE);
+      expect(caught).not.toHaveProperty('chunkFileFailure');
+    } finally {
+      quiet.mockRestore();
+      info.mockRestore();
+    }
+  });
+
   it('all chunks fail → call rejects with the first failure reason', async () => {
     mockStream.finalMessage
       .mockRejectedValueOnce(new Error('chunk 0 failed'))

@@ -162,6 +162,10 @@ import {
   builtWithoutAiOnSpentCredits,
   includesAiCreditsWarning,
 } from '../lib/claude/aiCredits/uploadWarning';
+import {
+  aiFileFailedWarningText,
+  isAiFileFailedWarning,
+} from '../lib/claude/aiFileFailure';
 import { CreditWindowReset } from '../lib/claude/aiCredits/allowance';
 import {
   AiCreditsExhaustedError,
@@ -320,12 +324,14 @@ export function resolveUploadWarning(
     const oversize = APKG_OVERSIZE_WARNING_RE.exec(warning);
     if (oversize) return apkgOversizeWarningText(Number(oversize[1]));
   }
-  const passwordWarning = warnings.find((w) =>
-    w.includes('password-protected')
+  const passwordWarning = warnings.find(
+    (w) => w.includes('password-protected') && !isAiFileFailedWarning(w)
   );
   if (passwordWarning) return passwordWarning;
   const creditsWarning = aiCreditsWarningText(warnings, audience);
   if (creditsWarning) return creditsWarning;
+  const failedFiles = aiFileFailedWarningText(warnings);
+  if (failedFiles) return failedFiles;
   let duplicateGuids = 0;
   for (const warning of warnings) {
     const match = DUPLICATE_GUID_WARNING_RE.exec(warning);
@@ -1666,6 +1672,15 @@ class UploadService {
           console.info(
             '[UploadService] async upload fell back to the parser on AI credits',
             { jobId: ws.id }
+          );
+        }
+        const skippedAiFiles = (warnings ?? []).filter(
+          isAiFileFailedWarning
+        ).length;
+        if (skippedAiFiles > 0) {
+          console.info(
+            '[UploadService] async upload shipped without files Claude made no cards from',
+            { jobId: ws.id, skippedAiFiles }
           );
         }
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
