@@ -820,6 +820,95 @@ describe('UploadForm', () => {
     }
   });
 
+  test('says Claude declined the file when the resume is refused', async () => {
+    stubPassReturn('cs_declined');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 400,
+      redirected: false,
+      headers: new Headers(),
+      json: () => Promise.resolve({ code: 'claude_refusal' }),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          'Claude declined to make cards from that file. Turn AI off and drop it again to make a deck from its structure.'
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/We couldn't find cards in that file/)
+      ).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says no cards were found when the resume builds an empty deck', async () => {
+    stubPassReturn('cs_resume_empty');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 400,
+      redirected: false,
+      headers: new Headers(),
+      json: () => Promise.resolve({ code: 'empty_export' }),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(/We couldn't find cards in that file/)
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says the pass is active when the resume finds the preview expired', async () => {
+    stubPassReturn('cs_resume_expired');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 410,
+      redirected: false,
+      headers: new Headers(),
+      json: () => Promise.resolve({ code: 'ai_preview_expired' }),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          'Your Day Pass is active. Drop your file again to get every card.'
+        )
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  test('says finishing the AI deck failed when the resume answers a server error', async () => {
+    stubPassReturn('cs_resume_500');
+    const resumeAiPreview = vi.fn().mockResolvedValue({
+      status: 500,
+      redirected: false,
+      headers: new Headers(),
+      json: () => Promise.resolve({ code: 'unknown' }),
+    } as unknown as Response);
+    const restore = installResumeApi(resumeAiPreview);
+
+    try {
+      renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+      expect(
+        await screen.findByText(
+          "Something went wrong finishing your AI deck. Email support@2anki.net and we'll sort it out."
+        )
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
   test('shows the out-of-credits notice when the resume is refused for credits', async () => {
     stubPassReturn('cs_nocredits');
     const resumeAiPreview = vi.fn().mockResolvedValue({

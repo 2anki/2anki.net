@@ -24,5 +24,6 @@
   "resumeActiveDropAgain": "Your Day Pass is active. Drop your file again to get every card.",
   "resumeOutOfCredits": "Your Day Pass has no AI credits left. Sign in to add a top-up, then drop your file again.",
   "resumeEmpty": "We couldn't find cards in that file. Try a different file, or email support@2anki.net.",
+  "resumeDeclined": "Claude declined to make cards from that file. Turn AI off and drop it again to make a deck from its structure.",
   "resumeError": "Something went wrong finishing your AI deck. Email support@2anki.net and we'll sort it out."
 }
