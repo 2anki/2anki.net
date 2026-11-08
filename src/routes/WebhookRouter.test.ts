@@ -1298,6 +1298,50 @@ describe('WebhookRouter — lifetime product-ID allowlist', () => {
     );
   });
 
+  it('logs an unlocked lifetime purchase without the payer address', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockSessionsRetrieve.mockResolvedValue({
+      id: 'cs_lifetime_test',
+      line_items: { data: [{ price: { product: LIFETIME_PRODUCT_ID } }] },
+    });
+    mockWebhookEvent = makeLifetimeEvent(LIFETIME_PRODUCT_ID);
+
+    try {
+      const res = await postWebhookLifetime();
+
+      expect(res.status).toBe(200);
+      expect(infoSpy).toHaveBeenCalledWith(
+        '[webhook] checkout.session.completed: unlocked lifetime access',
+        { email_hash: 'hashed:user@example.com', rows_updated: 1 }
+      );
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('logs a lifetime purchase with no email without the customer id', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockCustomersRetrieve.mockResolvedValue({ id: 'cus_abc', email: null });
+    mockSessionsRetrieve.mockResolvedValue({
+      id: 'cs_lifetime_test',
+      line_items: { data: [{ price: { product: LIFETIME_PRODUCT_ID } }] },
+    });
+    mockWebhookEvent = makeLifetimeEvent(LIFETIME_PRODUCT_ID);
+
+    try {
+      const res = await postWebhookLifetime();
+
+      expect(res.status).toBe(200);
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[webhook] checkout.session.completed: lifetime customer has no email; quota not unlocked',
+        { customer_id_hash: 'hashed:cus_abc' }
+      );
+      expect(mockUpdatePatreonByEmail).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it('does not grant lifetime access when product is NOT in LIFETIME_PRICE_IDS', async () => {
     mockSessionsRetrieve.mockResolvedValue({
       id: 'cs_lifetime_test',

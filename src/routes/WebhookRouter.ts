@@ -732,7 +732,8 @@ const WebhooksRouter = () => {
 
                 if (lifeTimeEmail == null) {
                   console.error(
-                    `[webhook] checkout.session.completed: lifetime customer ${lifeTimeCustomer.id} has no email; quota not unlocked`
+                    '[webhook] checkout.session.completed: lifetime customer has no email; quota not unlocked',
+                    { customer_id_hash: hashToken(lifeTimeCustomer.id) }
                   );
                 } else {
                   const users = new UsersRepository(getDatabase());
@@ -757,7 +758,11 @@ const WebhooksRouter = () => {
                     );
                   } else {
                     console.info(
-                      `[webhook] checkout.session.completed: unlocked lifetime access for email=${lifeTimeEmail} (${rowsAffected} row(s) updated)`
+                      '[webhook] checkout.session.completed: unlocked lifetime access',
+                      {
+                        email_hash: hashToken(lifeTimeEmail),
+                        rows_updated: rowsAffected,
+                      }
                     );
                   }
                 }
