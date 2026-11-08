@@ -257,7 +257,7 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
         returning: vi.fn().mockResolvedValue([{ id: 1 }]),
       }),
     });
-    const subsWhere = vi.fn().mockReturnValue({ update: subsUpdate });
+    const subsWhereRaw = vi.fn().mockReturnValue({ update: subsUpdate });
     const noticesWhereRaw = vi.fn().mockReturnValue({
       whereNotExists: vi.fn().mockReturnValue({
         del: vi.fn().mockResolvedValue(0),
@@ -276,7 +276,7 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       }
       if (table === 'subscriptions') {
         return {
-          where: subsWhere,
+          whereRaw: subsWhereRaw,
           select: vi.fn().mockReturnValue({ whereRaw: vi.fn() }),
         };
       }
@@ -297,7 +297,7 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       knex,
       usersWhereRaw,
       usersUpdate,
-      subsWhere,
+      subsWhereRaw,
       subsUpdate,
       noticesWhereRaw,
     };
@@ -308,7 +308,7 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       knex,
       usersWhereRaw,
       usersUpdate,
-      subsWhere,
+      subsWhereRaw,
       subsUpdate,
       noticesWhereRaw,
     } = buildTrxKnex();
@@ -328,7 +328,10 @@ describe('UsersRepository.changeEmailAndRelinkSubscriptions', () => {
       reset_token: null,
       reset_token_expires_at: null,
     });
-    expect(subsWhere).toHaveBeenCalledWith({ email: 'old@example.com' });
+    expect(subsWhereRaw).toHaveBeenCalledWith(
+      'LOWER(linked_email) = ? OR (LOWER(email) = ? AND linked_email IS NULL)',
+      ['old@example.com', 'old@example.com']
+    );
     expect(subsUpdate).toHaveBeenCalledWith({
       linked_email: 'new@example.com',
     });

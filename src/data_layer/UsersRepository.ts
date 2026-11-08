@@ -300,9 +300,9 @@ class UsersRepository {
 
   // A warning notice is keyed on the address it went to. Once no subscription
   // sends to an address any more, its notice dedupes nothing and would outlive
-  // a later account deletion, which only knows the new address. The ops email
-  // change relinks only payer-matched rows, so a row linked to the old address
-  // can still send there and keeps its notice.
+  // a later account deletion, which only knows the new address. An unproven
+  // account leaves its own plan at the old address, so that row still sends
+  // there and keeps its notice.
   forgetPauseNoticesForAddressQuery(
     executor: Knex | Knex.Transaction,
     address: string
@@ -363,9 +363,7 @@ class UsersRepository {
         .whereIn('user_id', ownerIds)
         .whereNull('consumed_at')
         .update({ consumed_at: trx.fn.now() });
-      await trx('subscriptions')
-        .where({ email: current.toLowerCase() })
-        .update({ linked_email: next });
+      await this.relinkSubscriptionsForEmailChangeQuery(trx, current, next);
       await this.forgetPauseNoticesForAddressQuery(trx, current);
     });
   }
@@ -391,6 +389,9 @@ class UsersRepository {
       .update({ linked_email: newEmail.trim().toLowerCase() });
   }
 
+  // Move the rows the old address receives: those linked to it, and its own
+  // plans that link to nobody else. A plan it pays for someone else stays with
+  // that person (#5180).
   relinkSubscriptionsForEmailChangeQuery(
     executor: Knex | Knex.Transaction,
     oldEmail: string,
@@ -398,7 +399,10 @@ class UsersRepository {
   ) {
     const old = oldEmail.trim().toLowerCase();
     return executor('subscriptions')
-      .whereRaw('LOWER(email) = ? OR LOWER(linked_email) = ?', [old, old])
+      .whereRaw(
+        'LOWER(linked_email) = ? OR (LOWER(email) = ? AND linked_email IS NULL)',
+        [old, old]
+      )
       .update({ linked_email: newEmail.trim().toLowerCase() });
   }
 

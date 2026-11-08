@@ -392,6 +392,78 @@ describe('two plans sharing one subscription row', () => {
     });
   });
 
+  describe('after the payer edits the billing email in Stripe', () => {
+    const edited = {
+      ...customer,
+      email: 'edited@example.com',
+    } as unknown as StripeTypes.Customer;
+    const receiveEdited = (subscription: StripeTypes.Subscription) =>
+      updateStoreSubscription(db, edited, subscription);
+    const editedRow = () =>
+      db('subscriptions').where({ email: 'edited@example.com' }).first();
+
+    it('ends the plan on the row that holds it', async () => {
+      await receiveEdited(
+        stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC))
+      );
+
+      expect(Boolean((await row()).active)).toBe(false);
+      expect(await editedRow()).toBeUndefined();
+    });
+
+    it('hands that row to the plan still running', async () => {
+      stripeHolds(plan('sub_pro', 'active', PRO));
+
+      await receiveEdited(
+        stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC))
+      );
+
+      expect(Boolean((await row()).active)).toBe(true);
+      expect(await heldId()).toBe('sub_pro');
+      expect(await editedRow()).toBeUndefined();
+    });
+
+    it('does not copy a plan another row already holds when the old plan ends', async () => {
+      await receiveEdited(stripeHolds(plan('sub_new', 'active', PRO)));
+
+      await receiveEdited(
+        stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC))
+      );
+
+      expect(Boolean((await row()).active)).toBe(false);
+      expect(await heldId()).toBe('sub_auto_sync');
+      expect(Boolean((await editedRow()).active)).toBe(true);
+
+      await receiveEdited(stripeHolds(plan('sub_new', 'canceled', PRO)));
+
+      const stillActive = await db('subscriptions').where({ active: true });
+      expect(stillActive).toEqual([]);
+      expect(await editedRow()).toMatchObject({ stripe_product_id: PRO });
+    });
+
+    it('ends the plan on its row when the Stripe customer has no email', async () => {
+      const emailless = {
+        ...customer,
+        email: null,
+      } as unknown as StripeTypes.Customer;
+
+      await updateStoreSubscription(
+        db,
+        emailless,
+        stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC))
+      );
+
+      expect(Boolean((await row()).active)).toBe(false);
+      expect(await db('subscriptions').whereNull('email')).toEqual([]);
+    });
+
+    it('opens a row at the new address for a plan no row holds yet', async () => {
+      await receiveEdited(plan('sub_new', 'active', PRO));
+
+      expect(await editedRow()).toMatchObject({ stripe_product_id: PRO });
+    });
+  });
+
   describe('when another plan runs', () => {
     it.each([
       ['recovers from a failed payment', plan('sub_pro', 'active', PRO)],

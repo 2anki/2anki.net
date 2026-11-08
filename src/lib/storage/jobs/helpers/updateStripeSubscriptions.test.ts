@@ -92,7 +92,7 @@ async function buildDatabase(): Promise<Knex> {
     t.boolean('active');
     t.json('payload');
     t.string('stripe_product_id');
-    t.string('linked_email').unique();
+    t.string('linked_email').index();
     t.timestamp('created_at');
     t.timestamp('updated_at');
   });
@@ -184,9 +184,10 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
     }
   );
 
-  // The sync used to write such a row unlinked, which cancelUnlinkedSubscriptions
-  // would then cancel; it now fails the row the way the webhook always has.
-  it('leaves a row alone, like the webhook, when another row already links the account', async () => {
+  // The sync once wrote such a row unlinked, then failed on the unique link;
+  // an account may now receive more than one plan, so the new plan opens its
+  // own row linked to the account (#5180).
+  it('links a second plan billed elsewhere to the account that holds its customer id', async () => {
     await db('users').insert({
       email: 'owner@example.com',
       stripe_customer_id: 'cus_test456',
@@ -201,8 +202,35 @@ describe('updateStripeSubscriptions writes through the webhook path', () => {
 
     await updateStripeSubscriptions(db);
 
+    expect(await row('new-billing@example.com')).toMatchObject({
+      linked_email: 'owner@example.com',
+    });
+    expect(await row('old-billing@example.com')).toMatchObject({
+      linked_email: 'owner@example.com',
+    });
+  });
+
+  it('keeps a plan on its row after the payer edits the billing email', async () => {
+    await db('users').insert({
+      email: 'owner@example.com',
+      stripe_customer_id: 'cus_test456',
+    });
+    await db('subscriptions').insert({
+      email: 'old-billing@example.com',
+      active: true,
+      payload: JSON.stringify(buildSubscription()),
+      linked_email: 'owner@example.com',
+    });
+    setupStripeMock(
+      [buildSubscription('prod_upgraded')],
+      'new-billing@example.com'
+    );
+
+    await updateStripeSubscriptions(db);
+
     expect(await row('new-billing@example.com')).toBeUndefined();
     expect(await row('old-billing@example.com')).toMatchObject({
+      stripe_product_id: 'prod_upgraded',
       linked_email: 'owner@example.com',
     });
   });

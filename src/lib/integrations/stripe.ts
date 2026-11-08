@@ -295,13 +295,35 @@ const rowHoldsPlan = async (
 const periodEndOf = (subscription: StripeTypes.Subscription): number =>
   subscription.items?.data?.[0]?.current_period_end ?? 0;
 
+// The row already holding a plan stays its home even after the payer edits
+// the Stripe customer's email: keyed on that new address, the next event would
+// open a second row and the first would never see the plan end.
+const emailOfRowHoldingPlan = async (
+  db: Knex,
+  subscriptionId: string | null | undefined
+): Promise<string | null> => {
+  if (subscriptionId == null) {
+    return null;
+  }
+  const row = await db('subscriptions')
+    .whereRaw("payload->>'id' = ?", [subscriptionId])
+    .orderBy([
+      { column: 'active', order: 'desc' },
+      { column: 'updated_at', order: 'desc' },
+    ])
+    .select('email')
+    .first();
+  return normalizeEmail(row?.email);
+};
+
 // Decided 2026-11-08: when the plan a row holds ends and the payer still runs
 // another, Auto Sync takes the row first (its access reads stripe_product_id),
 // otherwise the plan paid furthest ahead. Developer tiers keep their own table.
 const liveSuccessorPlan = async (
   db: Knex,
   customerId: string,
-  endedSubscriptionId: string
+  endedSubscriptionId: string,
+  homeEmail: string | null
 ): Promise<StripeTypes.Subscription | null> => {
   let listed: StripeTypes.ApiList<StripeTypes.Subscription>;
   try {
@@ -325,6 +347,12 @@ const liveSuccessorPlan = async (
     if (productId != null && (await isDeveloperTierProduct(db, productId))) {
       continue;
     }
+    // A plan another row already holds grants access there; copying it here
+    // would leave two rows to end when it does, and its end reaches one.
+    const heldAt = await emailOfRowHoldingPlan(db, candidate.id);
+    if (heldAt != null && heldAt !== homeEmail) {
+      continue;
+    }
     candidates.push(candidate);
   }
   const autoSyncProductId = process.env.AUTO_SYNC_PRODUCT_ID;
@@ -341,10 +369,17 @@ const liveSuccessorPlan = async (
   return candidates[0] ?? null;
 };
 
-export const updateStoreSubscription = async (
+export const updateStoreSubscription = (
   db: Knex,
   customer: StripeTypes.Customer,
   subscription: StripeTypes.Subscription
+): Promise<ProvisionResult> => writeStorePlan(db, customer, subscription, null);
+
+const writeStorePlan = async (
+  db: Knex,
+  customer: StripeTypes.Customer,
+  subscription: StripeTypes.Subscription,
+  homeEmail: string | null
 ): Promise<ProvisionResult> => {
   const stripeEmail = normalizeEmail(customer.email);
   const shouldRemainActive = planGrantsAccess(subscription);
@@ -363,9 +398,13 @@ export const updateStoreSubscription = async (
     stripeEmail
   );
 
+  const rowEmail =
+    homeEmail ??
+    (await emailOfRowHoldingPlan(db, subscription.id)) ??
+    stripeEmail;
   const accountEmail = normalizeEmail(account?.email);
   const linkedEmail =
-    accountEmail != null && accountEmail !== stripeEmail ? accountEmail : null;
+    accountEmail != null && accountEmail !== rowEmail ? accountEmail : null;
 
   // A developer tier is a SECOND concurrent subscription — a base-plan
   // subscriber can also hold Starter or Growth. The subscriptions table upserts
@@ -393,7 +432,7 @@ export const updateStoreSubscription = async (
 
   const keepsHeldPlan = await rowKeepsItsPlan(
     db,
-    stripeEmail,
+    rowEmail,
     subscription,
     stripeProductId
   );
@@ -406,11 +445,16 @@ export const updateStoreSubscription = async (
   if (
     !shouldRemainActive &&
     customerId != null &&
-    (await rowHoldsPlan(db, stripeEmail, subscription.id))
+    (await rowHoldsPlan(db, rowEmail, subscription.id))
   ) {
-    const successor = await liveSuccessorPlan(db, customerId, subscription.id);
+    const successor = await liveSuccessorPlan(
+      db,
+      customerId,
+      subscription.id,
+      rowEmail
+    );
     if (successor != null) {
-      return updateStoreSubscription(db, customer, successor);
+      return writeStorePlan(db, customer, successor, rowEmail);
     }
   }
 
@@ -420,7 +464,7 @@ export const updateStoreSubscription = async (
     stripe_product_id: stripeProductId,
   };
   const insertRow: Record<string, unknown> = {
-    email: stripeEmail,
+    email: rowEmail,
     ...planColumns,
   };
   if (linkedEmail != null) {
@@ -440,7 +484,7 @@ export const updateStoreSubscription = async (
   if (
     account != null &&
     subscription.metadata?.user_id === String(account.id) &&
-    accountEmail === stripeEmail
+    accountEmail === rowEmail
   ) {
     const buyer = await db('users')
       .where({ id: account.id })
