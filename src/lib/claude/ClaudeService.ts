@@ -1564,8 +1564,9 @@ function stampChunkIndex(decks: DeckInfo[], chunkIndex: number): DeckInfo[] {
 
 // A refusal says to change the request. Another failure (an overload, a
 // dropped connection, an answer that would not parse) says something else, so
-// with both in play that one is shown, as its own error so its name and copy
-// survive the worker. A truncated half says nothing the refusal does not.
+// with both in play that one is shown. Callers outside the chunk runner get
+// it through shownFailure, as a plain Error with its text. A truncated half
+// says nothing the refusal does not.
 function failureToShow(settled: PromiseSettledResult<unknown>[]): Error {
   const reasons = settled.flatMap((r) =>
     r.status === 'rejected' ? [r.reason] : []
@@ -1737,10 +1738,23 @@ function markedFileFailure(
 
 // What a conversion that shipped nothing answers with: the refusal by class,
 // or any other failure as the plain error every caller has always received.
+// A refusal belongs to the file as much as an unreadable answer does, so when
+// every failure was one or the other the error still names the file's reason
+// and an upload of several files can leave the file out.
 function shownFailure(settled: PromiseSettledResult<unknown>[]): Error {
   const failure = failureToShow(settled);
   if (failure instanceof ClaudeRefusalError) return failure;
-  return markedFileFailure(new Error(failure.message), settled);
+  const error = new Error(failure.message);
+  const shownReason = fileFailureOf(failure);
+  const everyFailureIsTheFile = settled.every(
+    (r) =>
+      r.status === 'fulfilled' ||
+      r.reason instanceof ClaudeRefusalError ||
+      fileFailureOf(r.reason) != null
+  );
+  return shownReason != null && everyFailureIsTheFile
+    ? Object.assign(error, { chunkFileFailure: shownReason })
+    : error;
 }
 
 // The vision path reads image bytes off disk that the cache key does not
