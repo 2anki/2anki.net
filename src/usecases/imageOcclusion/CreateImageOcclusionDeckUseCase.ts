@@ -129,6 +129,14 @@ export class CreateImageOcclusionDeckUseCase {
       throw new ImageLimitError(FREE_TIER_IMAGE_LIMIT);
     }
 
+    if (input.images.every((img) => img.rects.length === 0)) {
+      throw new HttpCodedError(
+        'Draw at least one box over the part of the image to hide, then create the deck.',
+        400,
+        'no_occlusion_boxes'
+      );
+    }
+
     for (const img of input.images) {
       if (img.s3Key != null) assertOwnDraftKey(img.s3Key, input.ownerId);
     }

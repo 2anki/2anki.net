@@ -2,6 +2,7 @@ import { inspect } from 'node:util';
 import {
   buildPythonExitError,
   PythonExitError,
+  pythonExitMessage,
   toUploadErrorCode,
 } from './buildPythonExitError';
 
@@ -214,5 +215,20 @@ describe('PythonExitError output in logs', () => {
 
   it('leaves the raw output out of JSON', () => {
     expect(JSON.stringify(crash())).not.toContain('Week 3 lab notes');
+  });
+});
+
+describe('pythonExitMessage reference sentence', () => {
+  it.each([undefined, ''])(
+    'leaves the job reference out when there is no job ID (%s)',
+    (jobId) => {
+      expect(pythonExitMessage('unknown', jobId)).toBe(
+        "Something went wrong on our end converting this page. Email support@2anki.net and we'll take a look."
+      );
+    }
+  );
+
+  it('names the job when there is one', () => {
+    expect(pythonExitMessage('unknown', 'job-42')).toContain('job ID job-42');
   });
 });

@@ -513,7 +513,7 @@ describe('GeneratePackagesUseCase', () => {
       )
       .catch((e: unknown) => e);
 
-    expect(workerCrash.message).toContain('job ID unavailable');
+    expect(workerCrash.message).not.toMatch(/job ID/);
     expect(jobFailureReasonFromError(err, 'job-abc')).toBe(
       "Something went wrong on our end converting this page. Email support@2anki.net with job ID job-abc and we'll take a look."
     );

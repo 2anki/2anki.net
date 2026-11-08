@@ -372,8 +372,8 @@ export function jobFailureReasonFromError(
   ) {
     return (error as Error).message;
   }
-  // The upload path's deck writer has no job ID, so its crash message says
-  // "job ID unavailable"; the job is known here.
+  // The upload path's deck writer has no job ID, so its crash message names
+  // none; the job is known here.
   if (error instanceof PythonExitError && jobId != null) {
     return pythonExitMessage(error.kind, jobId);
   }

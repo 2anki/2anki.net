@@ -56,6 +56,31 @@ function buildFourImageInput(): CreateImageOcclusionDeckInput {
 }
 
 describe('CreateImageOcclusionDeckUseCase', () => {
+  describe('a request with no boxes drawn', () => {
+    it('answers 400 with how to fix it and never runs the deck builder', async () => {
+      const useCase = new CreateImageOcclusionDeckUseCase();
+      const input = buildInput({
+        images: [
+          { imageName: 'a.jpg', header: '', rects: [] },
+          { imageName: 'b.jpg', header: '', rects: [] },
+        ],
+        imageFiles: [
+          { name: 'a.jpg', path: '/tmp/a.jpg' },
+          { name: 'b.jpg', path: '/tmp/b.jpg' },
+        ],
+        isPaying: true,
+      });
+
+      await expect(useCase.execute(input)).rejects.toMatchObject({
+        status: 400,
+        code: 'no_occlusion_boxes',
+        message:
+          'Draw at least one box over the part of the image to hide, then create the deck.',
+      });
+      expect(mockFs.mkdirSync).not.toHaveBeenCalled();
+    });
+  });
+
   describe('free tier limit enforcement', () => {
     it('rejects when a free user submits more than 3 images', async () => {
       const useCase = new CreateImageOcclusionDeckUseCase();
@@ -231,7 +256,13 @@ describe('CreateImageOcclusionDeckUseCase', () => {
     const IMAGE_NAME = 'Cardiac Anatomy Midterm.png';
 
     const UPLOADED = buildInput({
-      images: [{ imageName: IMAGE_NAME, header: '', rects: [] }],
+      images: [
+        {
+          imageName: IMAGE_NAME,
+          header: '',
+          rects: [{ x: 0, y: 0, w: 10, h: 10, label: '' }],
+        },
+      ],
       imageFiles: [{ name: IMAGE_NAME, path: `/tmp/${IMAGE_NAME}` }],
     });
     const FROM_DRAFT = buildInput({
@@ -240,7 +271,7 @@ describe('CreateImageOcclusionDeckUseCase', () => {
         {
           imageName: IMAGE_NAME,
           header: '',
-          rects: [],
+          rects: [{ x: 0, y: 0, w: 10, h: 10, label: '' }],
           s3Key: `io-drafts/7/${IMAGE_NAME}`,
         },
       ],
