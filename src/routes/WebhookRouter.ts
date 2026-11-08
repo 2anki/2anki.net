@@ -14,6 +14,7 @@ import {
   getCustomerId,
   getStripe,
   deactivateSubscriptionRow,
+  latestSubscriptionState,
   normalizeEmail,
   resolveAccountForSubscription,
   updateStoreSubscription,
@@ -209,13 +210,14 @@ const WebhooksRouter = () => {
         const customer = (await stripe.customers.retrieve(
           customerId
         )) as StripeTypes.Customer;
+        const current = await latestSubscriptionState(subscription);
         const provisionResult = await updateStoreSubscription(
           getDatabase(),
           customer,
-          subscription
+          current
         );
         if (provisionResult.status === 'unlinked') {
-          await alertUnlinkedPayment(customer, subscription, customerId);
+          await alertUnlinkedPayment(customer, current, customerId);
         }
         return true;
       };
@@ -242,18 +244,21 @@ const WebhooksRouter = () => {
           )) as StripeTypes.Customer;
 
           {
+            const currentSubscription = await latestSubscriptionState(
+              customerSubscriptionUpdated
+            );
             const updatedProvisionResult = await updateStoreSubscription(
               getDatabase(),
               customer,
-              customerSubscriptionUpdated
+              currentSubscription
             );
             if (
               updatedProvisionResult.status === 'unlinked' &&
-              customerSubscriptionUpdated.status === 'active'
+              currentSubscription.status === 'active'
             ) {
               await alertUnlinkedPayment(
                 customer,
-                customerSubscriptionUpdated,
+                currentSubscription,
                 customerId
               );
             }

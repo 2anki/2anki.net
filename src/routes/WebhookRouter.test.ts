@@ -32,6 +32,7 @@ const {
   mockUpdateStoreSubscription,
   mockResolveAccountForSubscription,
   mockDeactivateSubscriptionRow,
+  mockLatestSubscriptionState,
 } = vi.hoisted(() => ({
   mockCustomersRetrieve: vi.fn(),
   mockSessionsRetrieve: vi.fn(),
@@ -40,6 +41,9 @@ const {
     .mockResolvedValue({ status: 'linked', resolvedUserId: 1 }),
   mockResolveAccountForSubscription: vi.fn().mockResolvedValue(null),
   mockDeactivateSubscriptionRow: vi.fn().mockResolvedValue(1),
+  mockLatestSubscriptionState: vi.fn(
+    async (subscription: unknown) => subscription
+  ),
 }));
 
 vi.mock('../lib/integrations/stripe', () => ({
@@ -57,6 +61,7 @@ vi.mock('../lib/integrations/stripe', () => ({
   updateStoreSubscription: mockUpdateStoreSubscription,
   resolveAccountForSubscription: mockResolveAccountForSubscription,
   deactivateSubscriptionRow: mockDeactivateSubscriptionRow,
+  latestSubscriptionState: mockLatestSubscriptionState,
 }));
 
 vi.mock('../data_layer', () => ({ getDatabase: vi.fn() }));
@@ -1796,6 +1801,75 @@ describe('WebhookRouter — customer.subscription.created', () => {
       { id: 'cus_abc', email: 'subscriber@example.com' },
       expect.objectContaining({ id: 'sub_new_123', status: 'active' })
     );
+  });
+
+  it.each([
+    ['customer.subscription.created'],
+    ['customer.subscription.updated'],
+  ])(
+    'writes the state Stripe holds now when a late %s says active',
+    async (type) => {
+      const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+        updateStoreSubscription: Mock;
+      };
+      const lateCopy = {
+        id: 'sub_ended_1',
+        customer: 'cus_abc',
+        status: 'active',
+        items: { data: [{ price: { product: 'prod_unlimited' } }] },
+        cancel_at_period_end: false,
+        cancel_at: null,
+      };
+      mockLatestSubscriptionState.mockResolvedValueOnce({
+        ...lateCopy,
+        status: 'canceled',
+      });
+      mockWebhookEvent = { type, data: { object: lateCopy } };
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(mockLatestSubscriptionState).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'sub_ended_1' })
+      );
+      expect(updateStoreSubscription).toHaveBeenCalledWith(
+        undefined,
+        { id: 'cus_abc', email: 'subscriber@example.com' },
+        expect.objectContaining({ id: 'sub_ended_1', status: 'canceled' })
+      );
+    }
+  );
+
+  it('answers 500 and writes nothing when Stripe cannot say the current state', async () => {
+    const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+      updateStoreSubscription: Mock;
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockLatestSubscriptionState.mockRejectedValueOnce(
+      Object.assign(new Error('Too many requests'), { code: 'rate_limit' })
+    );
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_busy_1',
+          customer: 'cus_abc',
+          status: 'active',
+          items: { data: [{ price: { product: 'prod_unlimited' } }] },
+          cancel_at_period_end: false,
+          cancel_at: null,
+        },
+      },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBeGreaterThanOrEqual(500);
+      expect(updateStoreSubscription).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it('records an unlinked_payment alert when no account resolves', async () => {
