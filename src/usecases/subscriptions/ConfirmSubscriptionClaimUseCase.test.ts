@@ -249,7 +249,7 @@ describe('ConfirmSubscriptionClaimUseCase against a real database', () => {
       t.boolean('active');
       t.json('payload');
       t.string('stripe_product_id');
-      t.string('linked_email').unique();
+      t.string('linked_email').index();
       t.timestamp('created_at');
       t.timestamp('updated_at');
     });

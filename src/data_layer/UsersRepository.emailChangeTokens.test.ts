@@ -175,7 +175,7 @@ describe('UsersRepository email change voids links mailed to the old address', (
       expect(user.stripe_customer_id).toBeNull();
     });
 
-    it('moves the link when the account proved the address', async () => {
+    it('leaves a plan the account pays for someone else with that person', async () => {
       const userId = await seedUserWithPendingLinks('old@example.com');
       await database('users').where({ id: userId }).update({
         email_verified: true,
@@ -189,7 +189,7 @@ describe('UsersRepository email change voids links mailed to the old address', (
         .where({ email: 'old@example.com' })
         .first();
       const user = await database('users').where({ id: userId }).first();
-      expect(row.linked_email).toBe('new@example.com');
+      expect(row.linked_email).toBe('owner@example.com');
       expect(user.stripe_customer_id).toBe('cus_own');
     });
 

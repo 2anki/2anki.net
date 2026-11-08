@@ -546,7 +546,7 @@ describe('updateStoreSubscription developer tiers', () => {
   });
 });
 
-describe('updateStoreSubscription when a unique link is already taken', () => {
+describe('updateStoreSubscription when the account already receives a plan', () => {
   let db: Knex;
 
   beforeEach(async () => {
@@ -568,7 +568,7 @@ describe('updateStoreSubscription when a unique link is already taken', () => {
       t.boolean('active');
       t.json('payload');
       t.string('stripe_product_id');
-      t.string('linked_email').unique();
+      t.string('linked_email').index();
       t.timestamp('created_at');
       t.timestamp('updated_at');
     });
@@ -612,7 +612,7 @@ describe('updateStoreSubscription when a unique link is already taken', () => {
   });
 
   test.each([true, false])(
-    'leaves a row its link and fails loudly, as before (old row active=%s)',
+    'links a second plan billed elsewhere to the same account (old row active=%s)',
     async (oldActive) => {
       await db('users').insert({
         email: 'owner@example.com',
@@ -625,18 +625,24 @@ describe('updateStoreSubscription when a unique link is already taken', () => {
         linked_email: 'owner@example.com',
       });
 
-      await expect(
-        updateStoreSubscription(
-          db,
-          makeCustomer('new-billing@example.com'),
-          makeSubscription('active', 'prod_auto_sync')
-        )
-      ).rejects.toThrow();
+      await updateStoreSubscription(
+        db,
+        makeCustomer('new-billing@example.com'),
+        makeSubscription('active', 'prod_auto_sync')
+      );
+
       expect(
         await db('subscriptions')
-          .where({ email: 'old-billing@example.com' })
-          .first()
-      ).toMatchObject({ linked_email: 'owner@example.com' });
+          .whereIn('email', [
+            'old-billing@example.com',
+            'new-billing@example.com',
+          ])
+          .orderBy('email', 'desc')
+          .select('email', 'linked_email')
+      ).toEqual([
+        { email: 'old-billing@example.com', linked_email: 'owner@example.com' },
+        { email: 'new-billing@example.com', linked_email: 'owner@example.com' },
+      ]);
     }
   );
 });

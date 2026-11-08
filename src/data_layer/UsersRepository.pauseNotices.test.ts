@@ -209,7 +209,7 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
     expect(await remainingNoticeKeys()).toEqual([]);
   });
 
-  it('keeps the notice when an ops email change leaves a subscription still sending to the old address', async () => {
+  it('forgets the notice when an ops email change moves a plan linked to the old address', async () => {
     await seedUser('old@example.com');
     await database('subscriptions').insert({
       email: 'payer@example.com',
@@ -225,7 +225,12 @@ describe('UsersRepository pause-resume warning notices across the account lifecy
       'new@example.com'
     );
 
-    expect(await remainingNoticeKeys()).toEqual(['old@example.com']);
+    expect(await remainingNoticeKeys()).toEqual([]);
+    expect(
+      await database('subscriptions')
+        .where({ email: 'payer@example.com' })
+        .first()
+    ).toMatchObject({ linked_email: 'new@example.com' });
   });
 
   it("leaves an unrelated account's notice alone", async () => {
