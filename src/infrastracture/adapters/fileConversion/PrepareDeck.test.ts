@@ -37,6 +37,7 @@ import {
 } from './convertPDFToImages';
 import { combineIntoHTML } from '../../../lib/pdf/combineIntoHTML';
 import { convertDocxToHTML as convertDocxToHTMLImport } from './convertDocxToHTML';
+import { convertImageToHTML as convertImageToHTMLImport } from './convertImageToHTML';
 import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
 import { parsePdfFallbackChoiceSentinel } from '../../../lib/pdf/pdfFallbackChoice';
 import { downloadMediaOrSkip as downloadMediaOrSkipImport } from '../../../services/NotionService/helpers/downloadMediaOrSkip';
@@ -124,6 +125,10 @@ vi.mock('./convertDocxToHTML', () => ({
   convertDocxToHTML: vi.fn(),
 }));
 
+vi.mock('./convertImageToHTML', () => ({
+  convertImageToHTML: vi.fn(),
+}));
+
 vi.mock('../../../services/NotionService/helpers/downloadMediaOrSkip', () => ({
   downloadMediaOrSkip: vi.fn(),
 }));
@@ -148,6 +153,7 @@ vi.mock('../../../services/events/track', () => ({
 }));
 
 const downloadMediaOrSkip = downloadMediaOrSkipImport as unknown as Mock;
+const convertImageToHTML = convertImageToHTMLImport as unknown as Mock;
 const generateDeckInfo = generateDeckInfoImport as unknown as Mock;
 const getAiBudgetStatus = getAiBudgetStatusImport as unknown as Mock;
 const CustomExporterMock = CustomExporterDefault as unknown as Mock;
@@ -585,6 +591,62 @@ describe('PrepareDeck — Claude cross-file dedup (multi-file)', () => {
         workspace: makeWorkspace(),
       })
     ).rejects.toBeInstanceOf(ClaudeRefusalError);
+  });
+
+  it('ships the other files and names the scanned PDF Claude declined', async () => {
+    generateDeckInfo.mockImplementation(
+      async (_html: string, _media: string[], ...rest: unknown[]) => {
+        const options = rest[5] as { pdfImageFallback?: unknown } | undefined;
+        if (options?.pdfImageFallback != null) throw new ClaudeRefusalError();
+        return deckWithCards('page', [{ name: 'Kept fact', back: 'Kept' }]);
+      }
+    );
+
+    const result = await PrepareDeck({
+      name: 'upload.zip',
+      files: [
+        { name: 'page-0.html', contents: '<p>page 0</p>' },
+        { name: 'scan.pdf', contents: Buffer.from('%PDF-1.4 fake') },
+      ],
+      settings: makeSettings({ 'claude-ai-flashcards': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    });
+
+    expect(result?.cardCount).toBe(1);
+    expect(result?.failedFileWarnings).toEqual([
+      'ai-file-failed:declined:scan.pdf.html',
+    ]);
+  });
+
+  it('leaves out an image Claude declined and ships the rest of the zip', async () => {
+    convertImageToHTML.mockRejectedValue(new ClaudeRefusalError());
+    generateDeckInfo.mockResolvedValue(
+      deckWithCards('page', [{ name: 'Kept fact', back: 'Kept' }])
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const result = await PrepareDeck({
+        name: 'export.zip',
+        files: [
+          { name: 'page-0.html', contents: '<p>page 0</p>' },
+          { name: 'diagram.png', contents: Buffer.from('png-bytes') },
+        ],
+        settings: makeSettings({
+          'claude-ai-flashcards': 'true',
+          'image-quiz-html-to-anki': 'true',
+        }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+      });
+
+      expect(convertImageToHTML).toHaveBeenCalledTimes(1);
+      expect(result?.cardCount).toBe(1);
+      expect(result?.failedFileWarnings ?? []).toEqual([]);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('still stops on an outage in one file', async () => {

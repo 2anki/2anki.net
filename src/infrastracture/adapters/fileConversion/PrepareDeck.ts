@@ -60,6 +60,7 @@ import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
 import {
   generateDeckInfo,
   AiCreditsTrippedWithSalvage,
+  ClaudeRefusalError,
   DeckInfo,
   CrossFileDedupState,
   createCrossFileDedupState,
@@ -259,8 +260,9 @@ interface AiConversionState {
 }
 
 // A mid-run guard trip inside a vision/quiz conversion skips that file and flags
-// the credits warning rather than failing the whole upload; any other error
-// propagates.
+// the credits warning rather than failing the whole upload. An image Claude
+// declines is left out like an image it found nothing in, so the rest of a zip
+// still ships; any other error propagates.
 async function runVisionConversion(
   ai: AiConversionState,
   produce: () => Promise<ConvertedFile>
@@ -270,6 +272,10 @@ async function runVisionConversion(
   } catch (error) {
     if (error instanceof AiCreditsExhaustedError) {
       ai.tripped = true;
+      return null;
+    }
+    if (error instanceof ClaudeRefusalError) {
+      console.warn('[PrepareDeck] Claude declined an image; leaving it out');
       return null;
     }
     throw error;

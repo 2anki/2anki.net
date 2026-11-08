@@ -192,9 +192,19 @@ async function visionCardsForPage(
     anonymousPassId,
     requestId,
   });
-  // A declined page is declined again, so it is never retried.
+  // A declined page is declined again, so it is never retried. Cards Claude
+  // wrote before it stopped still ship, as on the text path.
   if (response.stop_reason === 'refusal') {
-    console.warn('[Claude] Claude declined the page', { pageIndex });
+    const salvaged = cardsWrittenBeforeDeclining(response, pageIndex);
+    const salvagedCards = salvaged.reduce(
+      (sum, deck) => sum + deck.cards.length,
+      0
+    );
+    console.warn('[Claude] Claude declined the page', {
+      pageIndex,
+      salvagedCards,
+    });
+    if (salvagedCards > 0) return salvaged;
     throw new ClaudeRefusalError();
   }
   if (response.stop_reason === 'max_tokens') {
@@ -214,11 +224,7 @@ async function visionCardsForPage(
     });
   }
 
-  const raw = response.content
-    .filter((b) => b.type === 'text')
-    .map((b) => (b as { type: 'text'; text: string }).text)
-    .join('');
-  const cleaned = raw.replace(/```json|```/g, '').trim();
+  const { raw, cleaned } = pageText(response);
 
   try {
     return parseDeckResponse(cleaned, raw, pageIndex);
@@ -227,6 +233,30 @@ async function visionCardsForPage(
       pageIndex,
       error: err instanceof Error ? err.message : String(err),
     });
+    return [];
+  }
+}
+
+function pageText(response: { content: Array<{ type: string }> }): {
+  raw: string;
+  cleaned: string;
+} {
+  const raw = response.content
+    .filter((b) => b.type === 'text')
+    .map((b) => (b as { type: 'text'; text: string }).text)
+    .join('');
+  return { raw, cleaned: raw.replace(/```json|```/g, '').trim() };
+}
+
+function cardsWrittenBeforeDeclining(
+  response: { content: Array<{ type: string }> },
+  pageIndex: number
+): ReturnType<typeof parseDeckResponse> {
+  const { raw, cleaned } = pageText(response);
+  if (cleaned === '') return [];
+  try {
+    return parseDeckResponse(cleaned, raw, pageIndex);
+  } catch {
     return [];
   }
 }

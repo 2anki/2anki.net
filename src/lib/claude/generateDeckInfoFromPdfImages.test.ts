@@ -427,6 +427,29 @@ describe('generateDeckInfoFromPdfImages', () => {
     }
   });
 
+  it('keeps the cards Claude wrote on a page before declining it', async () => {
+    mockVisionFn
+      .mockResolvedValueOnce(
+        visionResponse(
+          JSON.stringify([{ deck: 'Study', cards: [{ q: 'Q1', a: 'A1' }] }]),
+          'refusal'
+        )
+      )
+      .mockResolvedValue(visionResponse('', 'refusal'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const decks = await generateDeckInfoFromPdfImages(html, {
+        mediaBaseDir: baseDir,
+      });
+
+      expect(decks.reduce((sum, d) => sum + d.cards.length, 0)).toBe(1);
+      expect(mockVisionFn).toHaveBeenCalledTimes(2);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('keeps the cards from a page Claude answered when another is declined', async () => {
     mockVisionFn
       .mockResolvedValueOnce(visionResponse('', 'refusal'))
