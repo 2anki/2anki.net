@@ -432,11 +432,29 @@ describe('two plans sharing one subscription row', () => {
 
       expect(Boolean((await row()).active)).toBe(false);
       expect(await heldId()).toBe('sub_auto_sync');
+      expect(Boolean((await editedRow()).active)).toBe(true);
 
       await receiveEdited(stripeHolds(plan('sub_new', 'canceled', PRO)));
 
       const stillActive = await db('subscriptions').where({ active: true });
       expect(stillActive).toEqual([]);
+      expect(await editedRow()).toMatchObject({ stripe_product_id: PRO });
+    });
+
+    it('ends the plan on its row when the Stripe customer has no email', async () => {
+      const emailless = {
+        ...customer,
+        email: null,
+      } as unknown as StripeTypes.Customer;
+
+      await updateStoreSubscription(
+        db,
+        emailless,
+        stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC))
+      );
+
+      expect(Boolean((await row()).active)).toBe(false);
+      expect(await db('subscriptions').whereNull('email')).toEqual([]);
     });
 
     it('opens a row at the new address for a plan no row holds yet', async () => {
