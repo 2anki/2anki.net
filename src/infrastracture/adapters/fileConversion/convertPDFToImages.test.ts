@@ -87,6 +87,23 @@ describe('convertPDFToImages — concurrent-run isolation', () => {
     }
   });
 
+  it('reads and renders a locked PDF with its password', async () => {
+    await convertPDFToImages({
+      name: 'notes.pdf',
+      workspace: makeWorkspace(),
+      noLimits: true,
+      contents: Buffer.from('%PDF-1.4'),
+      settings: makeSettings(),
+      credential: 's3cret',
+    });
+
+    expect(getPageCount).toHaveBeenCalledWith(expect.any(String), 's3cret');
+    expect(convertPage.mock.calls.map((call) => call[3])).toEqual([
+      's3cret',
+      's3cret',
+    ]);
+  });
+
   it('creates a unique subdirectory inside the workspace for each call', async () => {
     const workspace = makeWorkspace();
 

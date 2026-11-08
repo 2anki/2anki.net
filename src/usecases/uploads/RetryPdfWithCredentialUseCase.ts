@@ -48,8 +48,8 @@ export type RetryPdfOutcome =
   | RetryPdfLimitReached
   | RetryPdfUnreadable;
 
-// The image fallback reopens the PDF without the password, so a scanned file
-// that opened fine still fails here with pdfinfo's raw text.
+// A locked-PDF error that reaches the route without becoming the password
+// sentinel; the page-image path converts its own into the sentinel.
 export const LOCKED_PDF_UNREADABLE_REASON =
   "We can't make cards from this locked PDF. Remove the password, save a copy, and upload that.";
 
@@ -76,6 +76,17 @@ const isPdfLibraryError = (error: unknown): error is Error =>
 
 // The form shows what this route sends, and a plain Error or a provider's API
 // error carries text written for logs: a tool's output or an upstream status.
+// Anthropic SDK errors that carry no status: connection and abort errors, and
+// the base APIError a stream raises for an error event mid-response.
+const STATUSLESS_PROVIDER_ERRORS = new Set([
+  'AnthropicError',
+  'APIError',
+  'APIConnectionError',
+  'APIConnectionTimeoutError',
+  'APIUserAbortError',
+  'RetryableError',
+]);
+
 const carriesRawText = (error: unknown): error is Error => {
   if (!(error instanceof Error) || error instanceof HttpCodedError) {
     return false;
@@ -83,7 +94,8 @@ const carriesRawText = (error: unknown): error is Error => {
   if (WRITTEN_FOR_THE_PERSON.has(error.message)) return false;
   const isPlainError = error.constructor === Error;
   const isProviderError =
-    typeof (error as { status?: unknown }).status === 'number';
+    typeof (error as { status?: unknown }).status === 'number' ||
+    STATUSLESS_PROVIDER_ERRORS.has(error.constructor.name);
   return (
     (isPlainError || isProviderError) &&
     jobFailureReasonCode(error) === 'unknown'

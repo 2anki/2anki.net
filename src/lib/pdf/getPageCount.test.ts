@@ -110,6 +110,19 @@ describe('getPageCount', () => {
     await expect(getPageCount(longPath)).resolves.toBe(3);
   }, 10000);
 
+  it('reads a locked PDF with either of its passwords', async () => {
+    fakePdfinfo({ stdout: 'Pages: 4\n', code: 0 });
+
+    await expect(getPageCount(pdfPath, 's3cret')).resolves.toBe(4);
+    expect(spawnMock.mock.calls[0][1]).toEqual([
+      '-opw',
+      's3cret',
+      '-upw',
+      's3cret',
+      pdfPath,
+    ]);
+  });
+
   it('rejects encrypted PDFs with a message the failure classifier reads as pdf_password', async () => {
     fakePdfinfo({
       stderr: 'Command Line Error: Incorrect password\nEncrypted',

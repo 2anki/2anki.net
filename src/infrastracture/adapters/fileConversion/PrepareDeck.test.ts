@@ -40,6 +40,10 @@ import { convertDocxToHTML as convertDocxToHTMLImport } from './convertDocxToHTM
 import { convertImageToHTML as convertImageToHTMLImport } from './convertImageToHTML';
 import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
 import { parsePdfFallbackChoiceSentinel } from '../../../lib/pdf/pdfFallbackChoice';
+import {
+  isPdfPasswordSentinel,
+  parsePdfPasswordSentinel,
+} from '../../../lib/pdf/pdfPasswordSentinel';
 import { downloadMediaOrSkip as downloadMediaOrSkipImport } from '../../../services/NotionService/helpers/downloadMediaOrSkip';
 import * as trackModule from '../../../services/events/track';
 
@@ -1259,6 +1263,38 @@ describe('PrepareDeck — PDF text-vs-image gate', () => {
     expect(convertPdfTextToHtml).not.toHaveBeenCalled();
   });
 
+  it('asks for the password when page pairs meet a locked PDF', async () => {
+    (convertPDFToImages as Mock).mockRejectedValueOnce(
+      new Error('pdfinfo_password path=notes.pdf')
+    );
+
+    const error = (await PrepareDeck({
+      name: 'notes.pdf',
+      files: [{ name: 'notes.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({ 'pdf-page-pairs': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch((e: unknown) => e)) as Error;
+
+    expect(isPdfPasswordSentinel(error.message)).toBe(true);
+    expect(parsePdfPasswordSentinel(error.message)).toBe('notes.pdf');
+  });
+
+  it('renders page images with the password the person entered', async () => {
+    await PrepareDeck({
+      name: 'notes.pdf',
+      files: [{ name: 'notes.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({ 'pdf-page-pairs': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+      pdfCredential: 's3cret',
+    }).catch(() => undefined);
+
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ credential: 's3cret' })
+    );
+  });
+
   it('lets page-pairs win over pdf-extract-text when both are on', async () => {
     await runPdf(
       makeSettings({ 'pdf-page-pairs': 'true', 'pdf-extract-text': 'true' })
@@ -1923,6 +1959,80 @@ describe('PrepareDeck — a PDF with no usable text', () => {
       workspace: makeWorkspace(),
     });
   }
+
+  it.each([
+    ['auto-detected', {}, () => convertPdfTextToHtmlAuto],
+    [
+      'extract-text',
+      { 'pdf-extract-text': 'true' },
+      () => convertPdfTextToHtml,
+    ],
+  ])(
+    'renders the page images of a %s scanned PDF with its password',
+    async (_path, extra, textPath) => {
+      textPath().mockResolvedValueOnce(noText);
+
+      await PrepareDeck({
+        name: 'scan.pdf',
+        files: [{ name: 'scan.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+        settings: makeSettings({ 'pdf-fallback': 'pairs', ...extra }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+        pdfCredential: 's3cret',
+      });
+
+      expect(convertPDFToImages).toHaveBeenCalledWith(
+        expect.objectContaining({ credential: 's3cret' })
+      );
+    }
+  );
+
+  it('sends a locked scanned PDF to Claude vision once its password opens it', async () => {
+    convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
+    generateDeckInfo.mockResolvedValueOnce([
+      {
+        name: 'Scan',
+        image: '',
+        style: null,
+        id: 111222333444556,
+        settings: { template: 'specialstyle' },
+        cards: [
+          {
+            name: 'Front',
+            back: 'Back',
+            tags: [],
+            cloze: false,
+            number: 0,
+            enableInput: false,
+            answer: '',
+            media: [],
+          },
+        ],
+      },
+    ]);
+
+    const result = await PrepareDeck({
+      name: 'scan.pdf',
+      files: [{ name: 'scan.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({
+        'pdf-fallback': 'pairs',
+        'claude-ai-flashcards': 'true',
+      }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+      pdfCredential: 's3cret',
+    });
+
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ credential: 's3cret' })
+    );
+    expect(
+      generateDeckInfo.mock.calls.some(
+        (call) => call[7]?.pdfImageFallback != null
+      )
+    ).toBe(true);
+    expect(result?.engine).toBe('claude');
+  });
 
   it('stops and asks which cards to make when the upload page asks', async () => {
     convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);

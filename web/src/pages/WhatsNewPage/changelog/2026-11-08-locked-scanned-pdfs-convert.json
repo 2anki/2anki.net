@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-08-locked-scanned-pdfs-convert",
+  "date": "2026-11-08",
+  "type": "fix",
+  "title": "A password-protected scanned PDF now converts once you enter its password, and page pairs ask for the password instead of showing an error"
+}

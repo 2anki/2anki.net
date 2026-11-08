@@ -541,6 +541,8 @@ function pdfImageLoader(
   return () => extractPdfImages(file.contents as Buffer);
 }
 
+// A locked PDF asks for its password here too: page pairs skip the text
+// path, which is where every other PDF finds out it is locked.
 async function convertPdfPagesToImagesFile(
   file: DeckParserInput['files'][number],
   input: DeckParserInput,
@@ -553,6 +555,15 @@ async function convertPdfPagesToImagesFile(
     contents: file.contents as Buffer,
     settings: input.settings,
     pageMode,
+    credential: input.pdfCredential,
+  }).catch((error: unknown) => {
+    if (
+      error instanceof Error &&
+      error.message.startsWith('pdfinfo_password')
+    ) {
+      throw new Error(buildPdfPasswordSentinel(file.name));
+    }
+    throw error;
   });
   return {
     name: `${file.name}.html`,

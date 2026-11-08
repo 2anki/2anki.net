@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import Anthropic from '@anthropic-ai/sdk';
 import {
   LOCKED_PDF_UNREADABLE_REASON,
   RETRY_FAILED_MESSAGE,
@@ -10,6 +11,7 @@ import {
   LARGE_SECTION_USER_MESSAGE,
 } from '../../lib/claude/ClaudeService';
 import { PDF_UNREADABLE_REASON } from '../jobs/jobFailureReason';
+import { buildPdfPasswordSentinel } from '../../lib/pdf/pdfPasswordSentinel';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import CardOption from '../../lib/parser/Settings';
 import Workspace from '../../lib/parser/WorkSpace';
@@ -48,7 +50,7 @@ describe('RetryPdfWithCredentialUseCase', () => {
 
   it.each([
     [
-      'a scanned file the image fallback cannot reopen',
+      'a locked-PDF error that reaches the route unconverted',
       'pdfinfo_password path=scan.pdf',
       LOCKED_PDF_UNREADABLE_REASON,
       'password_protected_pdf',
@@ -98,6 +100,12 @@ describe('RetryPdfWithCredentialUseCase', () => {
   const named = (name: string, message: string) =>
     Object.assign(new (class extends Error {})(message), { name });
 
+  it('keeps a password the page images refuse at the prompt as a wrong password', async () => {
+    await expect(
+      runFailure(new Error(buildPdfPasswordSentinel('scan.pdf')))
+    ).resolves.toEqual({ needsCredential: true, reason: 'wrong_password' });
+  });
+
   it('answers with readable copy for a pdf.js failure', async () => {
     await expect(
       runFailure(named('UnknownErrorException', 'pdf.js internals'))
@@ -115,6 +123,19 @@ describe('RetryPdfWithCredentialUseCase', () => {
       Object.assign(named('InternalServerError', '500 upstream'), {
         status: 500,
       }),
+    ],
+    [
+      'a provider connection error with no status',
+      new Anthropic.APIConnectionError({ message: 'Connection error.' }),
+    ],
+    [
+      'a provider stream error with no status',
+      new Anthropic.APIError(
+        undefined,
+        { type: 'error', error: { type: 'overloaded_error' } },
+        'Overloaded',
+        undefined
+      ),
     ],
   ])('hides the raw text of %s', async (_failure, error) => {
     const failure = await runFailure(error).catch((thrown) => thrown);

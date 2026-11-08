@@ -1,10 +1,17 @@
 import { spawn } from 'child_process';
 import os from 'os';
 
+// The person may know either password: pdf.js accepts both on the text path,
+// and poppler tries the owner password first, then the user password.
+export function passwordArgs(credential?: string): string[] {
+  return credential == null ? [] : ['-opw', credential, '-upw', credential];
+}
+
 export function convertPage(
   pdfPath: string,
   pageNumber: number,
-  totalPageCount: number
+  totalPageCount: number,
+  credential?: string
 ): Promise<string> {
   const outputFileNameBase = `${pdfPath}-page${pageNumber}`;
 
@@ -32,6 +39,7 @@ export function convertPage(
       pageNumber.toString(),
       '-l',
       pageNumber.toString(),
+      ...passwordArgs(credential),
       pdfPath,
       outputFileNameBase,
     ]);
