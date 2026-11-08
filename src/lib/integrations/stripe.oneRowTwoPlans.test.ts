@@ -243,7 +243,8 @@ describe('two plans sharing one subscription row', () => {
       }
     );
 
-    it('ends the row when Stripe no longer has the customer', async () => {
+    it('ends the row when the customer vanishes before its plans are listed', async () => {
+      stripeHolds(plan('sub_pro', 'active', PRO));
       list.mockRejectedValue(
         Object.assign(new Error('No such customer'), {
           code: 'resource_missing',
@@ -252,7 +253,49 @@ describe('two plans sharing one subscription row', () => {
 
       await receive(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
 
+      expect(list).toHaveBeenCalled();
       expect(Boolean((await row()).active)).toBe(false);
+    });
+
+    it('hands the row over after an in-app cancel already turned it off', async () => {
+      stripeHolds(plan('sub_pro', 'active', PRO));
+      const ended = stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
+      await db('subscriptions')
+        .where({ email: PAYER })
+        .update({ active: false, payload: JSON.stringify(ended) });
+
+      await receive(ended);
+
+      const stored = await row();
+      expect(Boolean(stored.active)).toBe(true);
+      expect(await heldId()).toBe('sub_pro');
+    });
+
+    it('hands the row over for a payer with no account', async () => {
+      await db('users').where({ id: 1 }).delete();
+      stripeHolds(plan('sub_pro', 'active', PRO));
+      const ended = stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
+
+      const result = await receive(ended);
+
+      expect(result).toEqual({ status: 'unlinked', resolvedUserId: null });
+      expect(Boolean((await row()).active)).toBe(true);
+      expect(await heldId()).toBe('sub_pro');
+    });
+
+    it('skips a paused plan when choosing who takes the row', async () => {
+      await holdOnRow(plan('sub_pro_a', 'active', PRO));
+      stripeHolds(
+        plan('sub_auto_sync', 'active', AUTO_SYNC, {
+          pause_collection: { behavior: 'void' },
+        })
+      );
+      stripeHolds(plan('sub_pro_b', 'active', PRO, paidUntil(2_000_000_000)));
+
+      await receive(plan('sub_pro_a', 'canceled', PRO));
+
+      expect(Boolean((await row()).active)).toBe(true);
+      expect(await heldId()).toBe('sub_pro_b');
     });
 
     it('hands the row by payment date alone when no Auto Sync product is set', async () => {
@@ -293,6 +336,7 @@ describe('two plans sharing one subscription row', () => {
 
       await receive(plan('sub_auto_sync', 'canceled', AUTO_SYNC));
 
+      expect(list).toHaveBeenCalled();
       expect(Boolean((await row()).active)).toBe(false);
     });
 

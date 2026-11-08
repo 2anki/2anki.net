@@ -275,7 +275,9 @@ const rowKeepsItsPlan = async (
   return heldPlanStillRuns(heldId);
 };
 
-const rowHoldsLivePlan = async (
+// Active or not: an in-app cancel turns the row off before Stripe's deleted
+// event arrives, and that event must still hand the row to a live plan.
+const rowHoldsPlan = async (
   db: Knex,
   email: string | null,
   subscriptionId: string
@@ -285,9 +287,9 @@ const rowHoldsLivePlan = async (
   }
   const row = await db('subscriptions')
     .where({ email })
-    .select('active', 'payload')
+    .select('payload')
     .first();
-  return Boolean(row?.active) && planSubscriptionId(row) === subscriptionId;
+  return planSubscriptionId(row) === subscriptionId;
 };
 
 const periodEndOf = (subscription: StripeTypes.Subscription): number =>
@@ -404,7 +406,7 @@ export const updateStoreSubscription = async (
   if (
     !shouldRemainActive &&
     customerId != null &&
-    (await rowHoldsLivePlan(db, stripeEmail, subscription.id))
+    (await rowHoldsPlan(db, stripeEmail, subscription.id))
   ) {
     const successor = await liveSuccessorPlan(db, customerId, subscription.id);
     if (successor != null) {
