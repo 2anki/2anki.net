@@ -1216,6 +1216,23 @@ async function generateDeckInfoFromChunk(
     chunkIndex,
     totalChunks,
   });
+  const raw = (response.content as Array<{ type: string; text?: string }>)
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text ?? '')
+    .join('');
+
+  const cleaned = raw.replace(/^```json\n?|^```\n?|```\s*$/gm, '').trim();
+
+  // A refusal can stop the stream partway; keep any cards already written. A
+  // refusal that wrote nothing usable is recorded but never billed.
+  const salvaged =
+    response.stop_reason === 'refusal' && cleaned
+      ? salvageTruncatedDecks(cleaned, raw, availableMediaFiles, chunkIndex)
+      : [];
+  const salvagedCards = salvaged.reduce(
+    (sum, deck) => sum + deck.cards.length,
+    0
+  );
   recordClaudeUsage({
     surface: 'conversion',
     model: response.model,
@@ -1224,6 +1241,7 @@ async function generateDeckInfoFromChunk(
     anonymousPassId,
     requestId,
     durationMs: apiMs,
+    billable: !(response.stop_reason === 'refusal' && salvagedCards === 0),
   });
   if (usageCollector && response.usage) {
     usageCollector({
@@ -1235,22 +1253,7 @@ async function generateDeckInfoFromChunk(
     });
   }
 
-  const raw = (response.content as Array<{ type: string; text?: string }>)
-    .filter((block) => block.type === 'text')
-    .map((block) => block.text ?? '')
-    .join('');
-
-  const cleaned = raw.replace(/^```json\n?|^```\n?|```\s*$/gm, '').trim();
-
   if (response.stop_reason === 'refusal') {
-    // A refusal can stop the stream partway; keep any cards already written.
-    const salvaged = cleaned
-      ? salvageTruncatedDecks(cleaned, raw, availableMediaFiles, chunkIndex)
-      : [];
-    const salvagedCards = salvaged.reduce(
-      (sum, deck) => sum + deck.cards.length,
-      0
-    );
     console.warn('[Claude] Claude declined the chunk', {
       requestId,
       chunkIndex,

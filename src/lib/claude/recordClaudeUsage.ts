@@ -11,6 +11,9 @@ export interface RecordClaudeUsageOptions {
   anonymousPassId?: number | null;
   requestId?: string;
   durationMs?: number;
+  // False for a call Claude declined without writing anything usable: its cost
+  // is still recorded for ops, but never counted against anyone's AI credits.
+  billable?: boolean;
 }
 
 export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
@@ -22,6 +25,7 @@ export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
     anonymousPassId,
     requestId,
     durationMs,
+    billable = true,
   } = options;
   if (usage == null) return;
   const input = usage.input_tokens ?? 0;
@@ -33,7 +37,7 @@ export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
   const biller =
     userId ?? (anonymousPassId != null ? `pass:${anonymousPassId}` : 'anon');
   console.info(
-    `[claude-usage] surface=${surface} model=${model ?? 'unknown'} user=${biller}${request} input=${input} output=${output} cache_create=${cacheCreate} cache_read=${cacheRead} cost_usd=${costUsd}`
+    `[claude-usage] surface=${surface} model=${model ?? 'unknown'} user=${biller}${request} input=${input} output=${output} cache_create=${cacheCreate} cache_read=${cacheRead} cost_usd=${costUsd}${billable ? '' : ' billable=false'}`
   );
   try {
     track('ai_usage_recorded', {
@@ -45,6 +49,7 @@ export function recordClaudeUsage(options: RecordClaudeUsageOptions): void {
         cost_usd: costUsd,
         ...(requestId != null ? { request_id: requestId } : {}),
         ...(durationMs != null ? { duration_ms: durationMs } : {}),
+        ...(billable ? {} : { billable: false }),
         usage: {
           input_tokens: input,
           output_tokens: output,

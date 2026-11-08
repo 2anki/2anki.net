@@ -50,6 +50,24 @@ describe('recordClaudeUsage', () => {
     });
   });
 
+  it('marks a call that may not be billed so credits leave it out', () => {
+    recordClaudeUsage({
+      surface: 'conversion',
+      model: 'claude-sonnet-5',
+      usage: { input_tokens: 100, output_tokens: 0 },
+      anonymousPassId: 7,
+      billable: false,
+    });
+
+    expect(trackMock).toHaveBeenCalledWith(
+      'ai_usage_recorded',
+      expect.objectContaining({
+        anonymousPassId: 7,
+        props: expect.objectContaining({ billable: false }),
+      })
+    );
+  });
+
   it('persists the request id in the tracked props when one is known', () => {
     recordClaudeUsage({
       surface: 'conversion',

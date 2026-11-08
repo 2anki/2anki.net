@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-08-declined-files-cost-no-credits",
+  "date": "2026-11-08",
+  "type": "fix",
+  "title": "A file or section Claude declines without writing cards no longer uses your AI credits"
+}

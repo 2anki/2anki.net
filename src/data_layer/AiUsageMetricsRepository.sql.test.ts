@@ -69,9 +69,20 @@ describe('AiUsageMetricsRepository generated SQL', () => {
     const { sql, bindings } = repository.buildUserCostQuery(42, since).toSQL();
 
     expect(sql).toBe(
-      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and "user_id" = ?`
+      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and props->>'billable' is distinct from 'false' and "user_id" = ?`
     );
     expect(bindings).toEqual(['ai_usage_recorded', since, 42]);
+  });
+
+  it('sums a pass cost over the window, leaving out calls that were not billed', () => {
+    const { sql, bindings } = repository
+      .buildAnonymousPassCostQuery(7, since)
+      .toSQL();
+
+    expect(sql).toBe(
+      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and props->>'billable' is distinct from 'false' and "anonymous_pass_id" = ?`
+    );
+    expect(bindings).toEqual(['ai_usage_recorded', since, 7]);
   });
 
   it('adds spend on the passes the user claimed', () => {
@@ -80,7 +91,7 @@ describe('AiUsageMetricsRepository generated SQL', () => {
       .toSQL();
 
     expect(sql).toBe(
-      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and ("user_id" = ? or "anonymous_pass_id" in (?, ?))`
+      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and props->>'billable' is distinct from 'false' and ("user_id" = ? or "anonymous_pass_id" in (?, ?))`
     );
     expect(bindings).toEqual(['ai_usage_recorded', since, 42, 7, 9]);
   });
@@ -91,7 +102,7 @@ describe('AiUsageMetricsRepository generated SQL', () => {
       .toSQL();
 
     expect(sql).toBe(
-      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and "user_id" = ? and props->>'request_id' = ?`
+      `select coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd from "events" where "name" = ? and "created_at" >= ? and props->>'billable' is distinct from 'false' and "user_id" = ? and props->>'request_id' = ?`
     );
     expect(bindings).toEqual(['ai_usage_recorded', since, 42, 'req-abc']);
   });

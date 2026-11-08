@@ -107,6 +107,14 @@ export class AiUsageMetricsRepository
       .where('created_at', '>=', since);
   }
 
+  // What a user or pass is charged: every recorded call except those marked
+  // billable=false (a call Claude declined without writing anything usable).
+  private billableQuery(since: Date): Knex.QueryBuilder {
+    return this.baseQuery(since).whereRaw(
+      "props->>'billable' is distinct from 'false'"
+    );
+  }
+
   buildTotalsQuery(since: Date): Knex.QueryBuilder {
     return this.baseQuery(since).select(...this.usageSums());
   }
@@ -147,8 +155,8 @@ export class AiUsageMetricsRepository
   ): Knex.QueryBuilder {
     const scoped =
       claimedPassIds.length === 0
-        ? this.baseQuery(since).where('user_id', userId)
-        : this.baseQuery(since).where((scope) =>
+        ? this.billableQuery(since).where('user_id', userId)
+        : this.billableQuery(since).where((scope) =>
             scope
               .where('user_id', userId)
               .orWhereIn('anonymous_pass_id', claimedPassIds)
@@ -164,7 +172,7 @@ export class AiUsageMetricsRepository
     anonymousPassId: number,
     since: Date
   ): Knex.QueryBuilder {
-    return this.baseQuery(since)
+    return this.billableQuery(since)
       .where('anonymous_pass_id', anonymousPassId)
       .select(
         this.database.raw(
@@ -190,7 +198,7 @@ export class AiUsageMetricsRepository
     requestId: string,
     since: Date
   ): Knex.QueryBuilder {
-    return this.baseQuery(since)
+    return this.billableQuery(since)
       .where('user_id', userId)
       .whereRaw("props->>'request_id' = ?", [requestId])
       .select(

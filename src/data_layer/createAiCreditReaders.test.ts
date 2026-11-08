@@ -165,6 +165,7 @@ describe('createAiCreditReaders userCostSince wiring', () => {
   it('delegates to the real usage repository', async () => {
     const builder = {
       where: () => builder,
+      whereRaw: () => builder,
       select: () => builder,
       first: async () => ({ cost_usd: '1.25' }),
       then: (resolve: (rows: unknown[]) => unknown) => resolve([]),

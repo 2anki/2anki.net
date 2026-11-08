@@ -184,14 +184,7 @@ async function visionCardsForPage(
       .finalMessage();
 
   let response = await callVision(PDF_PAGE_VISION_MAX_TOKENS);
-  recordClaudeUsage({
-    surface: 'pdf_page_vision',
-    model: response.model,
-    usage: response.usage,
-    userId,
-    anonymousPassId,
-    requestId,
-  });
+  const calls = [response];
   if (response.stop_reason === 'max_tokens') {
     console.warn('[Claude] PDF page vision truncated, retrying', {
       pageIndex,
@@ -199,13 +192,28 @@ async function visionCardsForPage(
       retryMaxTokens: PDF_PAGE_VISION_RETRY_MAX_TOKENS,
     });
     response = await callVision(PDF_PAGE_VISION_RETRY_MAX_TOKENS);
+    calls.push(response);
+  }
+  // A page Claude declined without writing anything usable is never billed,
+  // its truncated first try included: the page as a whole was refused.
+  const salvaged =
+    response.stop_reason === 'refusal'
+      ? cardsWrittenBeforeDeclining(response, pageIndex)
+      : [];
+  const salvagedCards = salvaged.reduce(
+    (sum, deck) => sum + deck.cards.length,
+    0
+  );
+  const billable = !(response.stop_reason === 'refusal' && salvagedCards === 0);
+  for (const call of calls) {
     recordClaudeUsage({
       surface: 'pdf_page_vision',
-      model: response.model,
-      usage: response.usage,
+      model: call.model,
+      usage: call.usage,
       userId,
       anonymousPassId,
       requestId,
+      billable,
     });
   }
 
@@ -213,11 +221,6 @@ async function visionCardsForPage(
   // retry above runs only on max_tokens, and its answer can be a refusal too).
   // Cards Claude wrote before it stopped still ship, as on the text path.
   if (response.stop_reason === 'refusal') {
-    const salvaged = cardsWrittenBeforeDeclining(response, pageIndex);
-    const salvagedCards = salvaged.reduce(
-      (sum, deck) => sum + deck.cards.length,
-      0
-    );
     console.warn('[Claude] Claude declined the page', {
       pageIndex,
       salvagedCards,
