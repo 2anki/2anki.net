@@ -34,6 +34,10 @@ import {
 import { getPackagesFromZip } from './getPackagesFromZip';
 import { liftDecksToParent } from './liftDecksToParent';
 import { resolvePerWorkerPythonCap } from '../../lib/pythonWorkerBudget';
+import {
+  aiFileFailedWarning,
+  aiFileFailureReason,
+} from '../../lib/claude/aiFileFailure';
 import { AI_FILE_CONCURRENCY } from '../../lib/claude/aiFileConcurrency';
 import { isWorkerTerminationError } from '../../lib/workerTermination';
 import Workspace from '../../lib/parser/WorkSpace';
@@ -343,6 +347,7 @@ async function processFile(
       singleFilePackage.notionEmptyBackCount = d.notionEmptyBackCount ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
+      warnings.push(...(d.failedFileWarnings ?? []));
       emptyReason = d.emptyReason;
       rescueCandidates = d.rescueCandidates;
     }
@@ -489,7 +494,28 @@ async function doGenerationWork(
       ? createCrossFileDedupState(existingCardFingerprints ?? [])
       : undefined;
 
-  const convert = (upload: UploadedFile, fileWorkspace: Workspace) => {
+  // One file Claude could not make cards from does not sink the others: it is
+  // named in a warning instead. An outage or a credit stop still fails the
+  // upload, and so does every file failing, with the first file's reason.
+  const skippedFailures: unknown[] = [];
+  const convert = async (
+    upload: UploadedFile,
+    fileWorkspace: Workspace
+  ): Promise<FileResult> => {
+    if (files.length < 2) return convertOne(upload, fileWorkspace);
+    try {
+      return await convertOne(upload, fileWorkspace);
+    } catch (error) {
+      const reason = aiFileFailureReason(error);
+      if (reason == null) throw error;
+      skippedFailures.push(error);
+      return {
+        packages: [],
+        warnings: [aiFileFailedWarning(upload.originalname, reason)],
+      };
+    }
+  };
+  const convertOne = (upload: UploadedFile, fileWorkspace: Workspace) => {
     const { file, contents } = asReadableUpload(
       upload,
       getFileContents(upload)
@@ -516,6 +542,9 @@ async function doGenerationWork(
   const results = canConvertInParallel(files)
     ? await convertInParallel(files, workspace, convert, concurrency)
     : await convertInSequence(files, workspace, convert);
+  if (files.length > 1 && skippedFailures.length === files.length) {
+    throw skippedFailures[0];
+  }
 
   for (const result of results) {
     packages = packages.concat(result.packages);

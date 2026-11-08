@@ -52,6 +52,10 @@ import {
 import type { PageImageCardMode } from '../../../lib/pdf/combineIntoHTML';
 import { convertXLSXToHTML } from './convertXLSXToHTML';
 import { convertDocxToHTML } from './convertDocxToHTML';
+import {
+  aiFileFailedWarning,
+  aiFileFailureReason,
+} from '../../../lib/claude/aiFileFailure';
 import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
 import {
   generateDeckInfo,
@@ -172,6 +176,8 @@ interface PrepareDeckResult {
   apkg: Buffer;
   deck: Deck[];
   cardCount: number;
+  // One entry per file of several that Claude made no cards from.
+  failedFileWarnings?: string[];
   cardsHeldBack?: number;
   mcqCount: number;
   mcqSkippedCount: number;
@@ -737,6 +743,7 @@ interface ClaudeConversionResult {
   // The credit guard tripped mid-run; the caller ships the cards produced so
   // far and attaches the credits warning.
   tripped: boolean;
+  failedFileWarnings: string[];
 }
 
 // The per-call guard can trip mid-run when a concurrent conversion drains the
@@ -748,6 +755,28 @@ function salvagedDecksOf(error: AiCreditsExhaustedError): DeckInfo[] {
   return error instanceof AiCreditsTrippedWithSalvage
     ? error.salvagedDecks
     : [];
+}
+
+// In an upload of several files, one Claude could not make cards from is
+// left out and named in a warning, like a failed chunk inside one file. An
+// outage or a credit stop is not about one file and still stops the run, and
+// when every file failed the first file's reason is the upload's answer.
+function skippedFileFailures(fileCount: number) {
+  const errors: unknown[] = [];
+  const warnings: string[] = [];
+  return {
+    warnings,
+    skip(fileName: string, error: unknown): boolean {
+      const reason = fileCount >= 2 ? aiFileFailureReason(error) : null;
+      if (reason == null) return false;
+      errors.push(error);
+      warnings.push(aiFileFailedWarning(fileName, reason));
+      return true;
+    },
+    throwIfEveryFileFailed(): void {
+      if (errors.length > 0 && errors.length === fileCount) throw errors[0];
+    },
+  };
 }
 
 // Files convert at AI_FILE_CONCURRENCY at a time. A file that starts after
@@ -767,10 +796,12 @@ async function runCrossFileDedupConversion(
   deckInfoArrays: DeckInfo[][];
   tripped: boolean;
   ownSuppressed: number;
+  failedFileWarnings: string[];
 }> {
   let tripped = false;
   let failed = false;
   let ownSuppressed = 0;
+  const skipped = skippedFileFailures(htmlFiles.length);
   const absorb = (decks: DeckInfo[]): DeckInfo[] => {
     const before = crossFileDedup.suppressed;
     const kept = absorbFileIntoCrossFileDedup(crossFileDedup, decks);
@@ -794,12 +825,19 @@ async function runCrossFileDedupConversion(
           tripped = true;
           return absorb(salvagedDecksOf(error));
         }
+        if (skipped.skip(file.name, error)) return [] as DeckInfo[];
         failed = true;
         throw error;
       }
     }
   );
-  return { deckInfoArrays, tripped, ownSuppressed };
+  skipped.throwIfEveryFileFailed();
+  return {
+    deckInfoArrays,
+    tripped,
+    ownSuppressed,
+    failedFileWarnings: skipped.warnings,
+  };
 }
 
 async function runConcurrentClaudeConversion(
@@ -809,8 +847,13 @@ async function runConcurrentClaudeConversion(
     instructions?: string
   ) => Promise<DeckInfo[]>,
   userInstructions: string | undefined
-): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
+): Promise<{
+  deckInfoArrays: DeckInfo[][];
+  tripped: boolean;
+  failedFileWarnings: string[];
+}> {
   let tripped = false;
+  const skipped = skippedFileFailures(htmlFiles.length);
   const perFile = await mapWithConcurrency(
     htmlFiles,
     HTML_GENERATION_CONCURRENCY,
@@ -825,11 +868,17 @@ async function runConcurrentClaudeConversion(
           tripped = true;
           return salvagedDecksOf(error);
         }
+        if (skipped.skip(file.name, error)) return [] as DeckInfo[];
         throw error;
       }
     }
   );
-  return { deckInfoArrays: perFile, tripped };
+  skipped.throwIfEveryFileFailed();
+  return {
+    deckInfoArrays: perFile,
+    tripped,
+    failedFileWarnings: skipped.warnings,
+  };
 }
 
 async function runClaudeConversion(
@@ -846,24 +895,32 @@ async function runClaudeConversion(
   const crossFileDedup =
     threadedDedup ?? (ownsDedup ? createCrossFileDedupState() : undefined);
 
-  const { deckInfoArrays, tripped, ownSuppressed } = crossFileDedup
-    ? await runCrossFileDedupConversion(
-        htmlFiles,
-        generateForFile,
-        userInstructions,
-        cardSize,
-        crossFileDedup
-      )
-    : {
-        ...(await runConcurrentClaudeConversion(
+  const { deckInfoArrays, tripped, ownSuppressed, failedFileWarnings } =
+    crossFileDedup
+      ? await runCrossFileDedupConversion(
           htmlFiles,
           generateForFile,
-          userInstructions
-        )),
-        ownSuppressed: 0,
-      };
+          userInstructions,
+          cardSize,
+          crossFileDedup
+        )
+      : {
+          ...(await runConcurrentClaudeConversion(
+            htmlFiles,
+            generateForFile,
+            userInstructions
+          )),
+          ownSuppressed: 0,
+        };
 
-  return { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped };
+  return {
+    deckInfoArrays,
+    crossFileDedup,
+    ownsDedup,
+    ownSuppressed,
+    tripped,
+    failedFileWarnings,
+  };
 }
 
 function emitCrossFileConversionEvent(
@@ -1096,14 +1153,20 @@ async function buildClaudeDeck(
       optionsForFile(f)
     ).then((decks) => withDeckStyle(decks, input.settings));
 
-  const { deckInfoArrays, crossFileDedup, ownsDedup, ownSuppressed, tripped } =
-    await runClaudeConversion(
-      htmlFiles,
-      generateForFile,
-      userInstructions,
-      input.settings.cardSize,
-      input.crossFileDedup
-    );
+  const {
+    deckInfoArrays,
+    crossFileDedup,
+    ownsDedup,
+    ownSuppressed,
+    tripped,
+    failedFileWarnings,
+  } = await runClaudeConversion(
+    htmlFiles,
+    generateForFile,
+    userInstructions,
+    input.settings.cardSize,
+    input.crossFileDedup
+  );
 
   if (ownsDedup && crossFileDedup) {
     emitCrossFileConversionEvent(input.userId ?? null, crossFileDedup);
@@ -1180,7 +1243,13 @@ async function buildClaudeDeck(
     console.info('[PrepareDeck] Claude branch: no AI cards, parser fallback', {
       tripped,
     });
-    return buildParserResult(input, allFiles, convertedFiles, creditsWarning);
+    const parserResult = await buildParserResult(
+      input,
+      allFiles,
+      convertedFiles,
+      creditsWarning
+    );
+    return { ...parserResult, failedFileWarnings };
   }
 
   const deckName =
@@ -1204,6 +1273,7 @@ async function buildClaudeDeck(
     deck: [],
     cardCount: claudeCardCount,
     warning: creditsWarning,
+    failedFileWarnings,
     // The Claude branch returns deck: [], so a caller that scores from `deck`
     // measures nothing on every AI conversion. Scored here, where the cards
     // still exist.

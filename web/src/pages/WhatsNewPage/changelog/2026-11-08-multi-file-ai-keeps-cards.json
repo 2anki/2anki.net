@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-08-multi-file-ai-keeps-cards",
+  "date": "2026-11-08",
+  "type": "fix",
+  "title": "AI uploads of several files keep the cards from the files that worked and name the one that did not"
+}

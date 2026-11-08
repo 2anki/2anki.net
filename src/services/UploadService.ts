@@ -1,3 +1,4 @@
+import { aiFileFailedWarningText } from '../lib/claude/aiFileFailure';
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -326,6 +327,8 @@ export function resolveUploadWarning(
   if (passwordWarning) return passwordWarning;
   const creditsWarning = aiCreditsWarningText(warnings, audience);
   if (creditsWarning) return creditsWarning;
+  const failedFiles = aiFileFailedWarningText(warnings);
+  if (failedFiles) return failedFiles;
   let duplicateGuids = 0;
   for (const warning of warnings) {
     const match = DUPLICATE_GUID_WARNING_RE.exec(warning);
