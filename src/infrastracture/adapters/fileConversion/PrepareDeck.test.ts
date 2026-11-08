@@ -3073,6 +3073,21 @@ describe('PrepareDeck — cards that ship with a blank back', () => {
     expect(result?.emptyBackCount).toBe(0);
   });
 
+  it('carries the answerless lines the card limit left out', async () => {
+    const result = await PrepareDeck({
+      name: 'notes.html',
+      files: [{ name: 'notes.html', contents: lines }],
+      settings: makeSettings(),
+      noLimits: false,
+      workspace: makeWorkspace(),
+      cardLimit: 1,
+    });
+
+    expect(result?.cardCount).toBe(1);
+    expect(result?.cardsHeldBack).toBe(0);
+    expect(result?.cardsLeftOut).toBe(2);
+  });
+
   it('carries the blank-back count of a Word file of plain lines', async () => {
     const convertDocxToHTML = convertDocxToHTMLImport as unknown as Mock;
     convertDocxToHTML.mockResolvedValueOnce(lines);

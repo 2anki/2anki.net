@@ -121,7 +121,9 @@
     "notion_one": "{{count}} toggle no tenía respuesta y se omitió, así que no está en este mazo. Añádele una respuesta en Notion y vuelve a convertir.",
     "notion_other": "{{count}} toggles no tenían respuesta y se omitieron, así que no están en este mazo. Añade una respuesta a cada uno en Notion y vuelve a convertir.",
     "blankBacks_one": "{{count}} tarjeta no tiene respuesta, por lo que su reverso está vacío. Un archivo sin formato de pregunta y respuesta convierte cada línea en una tarjeta. Pon cada pregunta en una viñeta con su respuesta sangrada debajo, o en una hoja de cálculo pon la respuesta en la columna siguiente, y vuelve a convertir.",
-    "blankBacks_other": "{{count}} tarjetas no tienen respuesta, por lo que sus reversos están vacíos. Un archivo sin formato de pregunta y respuesta convierte cada línea en una tarjeta. Pon cada pregunta en una viñeta con su respuesta sangrada debajo, o en una hoja de cálculo pon la respuesta en la columna siguiente, y vuelve a convertir."
+    "blankBacks_other": "{{count}} tarjetas no tienen respuesta, por lo que sus reversos están vacíos. Un archivo sin formato de pregunta y respuesta convierte cada línea en una tarjeta. Pon cada pregunta en una viñeta con su respuesta sangrada debajo, o en una hoja de cálculo pon la respuesta en la columna siguiente, y vuelve a convertir.",
+    "leftOutAtLimit_one": "{{count}} línea más superaba el límite gratuito y no tenía respuesta, así que no se guardó. Da una respuesta a cada pregunta en tu archivo y vuelve a convertir.",
+    "leftOutAtLimit_other": "{{count}} líneas más superaban el límite gratuito y no tenían respuesta, así que no se guardaron. Da una respuesta a cada pregunta en tu archivo y vuelve a convertir."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} parte de esta página no está conectada a 2anki, así que no está en este mazo. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir.",

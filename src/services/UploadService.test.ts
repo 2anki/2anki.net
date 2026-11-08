@@ -7895,7 +7895,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   }
 
   function mockPartial(
-    packages: Array<{ name: string; cardCount: number }>,
+    packages: Array<{ name: string; cardCount: number; cardsLeftOut?: number }>,
     cardsHeldBack?: number
   ) {
     const execute = vi
@@ -7987,6 +7987,29 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
   });
 
+  it('says how many answerless lines the cap left out and still marks the cut as partial', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21, cardsLeftOut: 13 }], 0);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedStatus } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(heldDeck.rows).toHaveLength(0);
+    expect(res.set).toHaveBeenCalledWith('X-Cards-Left-Out', '13');
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Cards-Held-Back',
+      expect.anything()
+    );
+    expect(conversionSucceededProps()).toMatchObject({
+      card_limit_partial: true,
+      cards_held_back: 0,
+      cards_left_out: 13,
+    });
+  });
+
   it('serves the capped deck with no account step when no cut card has an answer', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 0);
@@ -8002,6 +8025,24 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(capturedStatus()).toBe(200);
     expect(capturedJson()).toBeNull();
     expect(heldDeck.rows).toHaveLength(0);
+  });
+
+  it('records the answerless lines left out beside the cards held for sign-up', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21, cardsLeftOut: 4 }], 13);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest(TREATMENT_ID);
+    const { res, capturedJson } = buildResponse();
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedJson()).toMatchObject({ kind: 'held', cardsHeldBack: 13 });
+    expect(conversionSucceededProps()).toMatchObject({
+      card_limit_partial: true,
+      cards_held_back: 13,
+      cards_left_out: 4,
+      held: true,
+    });
   });
 
   it('holds the deck behind an account step', async () => {
@@ -9361,6 +9402,7 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
       name: string;
       cardCount: number;
       cherrySkippedCount?: number;
+      cardsLeftOut?: number;
     }>,
     cardsHeldBack?: number
   ) {
@@ -9439,6 +9481,58 @@ describe('UploadService.handleSyncUpload — signed-in monthly partial delivery'
       ],
     } as unknown as Partial<express.Request>);
   }
+
+  it('delivers the deck, holds nothing and says how many answerless lines the limit left out', async () => {
+    mockStorageUploadFile.mockClear();
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    mockPartial([{ name: 'deck', cardCount: 10, cardsLeftOut: 6 }], 0);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo, heldDeck).handleUpload(
+      partialRequestWithBytes(),
+      res
+    );
+
+    expect(capturedStatus()).toBe(200);
+    expect(heldUploads()).toHaveLength(0);
+    expect(headerValue(res, 'X-Cards-Left-Out')).toBe('6');
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBeUndefined();
+    expect(exposedHeaders(res)).toContain('X-Cards-Left-Out');
+    expect(conversionSucceededProps()).toMatchObject({
+      card_limit_partial: true,
+      cards_left_out: 6,
+    });
+    expect(conversionSucceededProps()).not.toHaveProperty('held_for_plan');
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
+  });
+
+  it('holds the answered cards for a plan and still counts the answerless lines left out', async () => {
+    mockStorageUploadFile.mockClear();
+    const usersRepo = usersRepoAt(MONTHLY_CARD_LIMIT - 10);
+    mockPartial([{ name: 'deck', cardCount: 10, cardsLeftOut: 2 }], 5);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const { res, capturedStatus } = buildResponse();
+    (res.locals as Record<string, unknown>).owner = 42;
+
+    await serviceUnderTest(usersRepo, heldDeck).handleUpload(
+      partialRequestWithBytes(),
+      res
+    );
+
+    expect(capturedStatus()).toBe(200);
+    expect(headerValue(res, 'X-Cards-Held-Back')).toBe('5');
+    expect(headerValue(res, 'X-Cards-Left-Out')).toBe('2');
+    expect(headerValue(res, 'X-Held-For-Plan')).toBe('1');
+    expect(conversionSucceededProps()).toMatchObject({
+      card_limit_partial: true,
+      cards_held_back: 5,
+      cards_left_out: 2,
+      held_for_plan: true,
+    });
+    expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(42, 10);
+  });
 
   it('holds the source file under the owner for a week so a plan can unlock the full deck', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });

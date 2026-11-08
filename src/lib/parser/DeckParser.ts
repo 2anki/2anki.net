@@ -317,6 +317,10 @@ export class DeckParser {
 
   cardsHeldBack = 0;
 
+  // Cards the card limit cut that had no answer, so nothing holds them: the
+  // result says how many lines were left out and why.
+  cardsLeftOut = 0;
+
   workspace: Workspace;
   customExporter: CustomExporter;
 
@@ -1979,11 +1983,13 @@ export class DeckParser {
     if (this.cardLimit == null) {
       return;
     }
-    this.cardsHeldBack = truncateDecksToCardLimit(
+    const { heldBack, leftOut } = truncateDecksToCardLimit(
       this.payload,
       this.cardLimit,
       hasAnswer
-    ).heldBack;
+    );
+    this.cardsHeldBack = heldBack;
+    this.cardsLeftOut = leftOut;
   }
 
   // Upload decks get the legacy content-formula GUID from python so a deck a

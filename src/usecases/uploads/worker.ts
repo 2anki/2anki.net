@@ -346,6 +346,7 @@ async function processFile(
       singleFilePackage.foldedToggleCount = d.foldedToggleCount ?? 0;
       singleFilePackage.notionEmptyBackCount = d.notionEmptyBackCount ?? 0;
       singleFilePackage.blankBackCount = d.blankBackCount ?? 0;
+      singleFilePackage.cardsLeftOut = d.cardsLeftOut ?? 0;
       packages.push(singleFilePackage);
       if (d.warning) warnings.push(d.warning);
       warnings.push(...(d.failedFileWarnings ?? []));

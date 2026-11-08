@@ -636,6 +636,23 @@ describe('runUploadGenerationInWorker — files converted in parallel', () => {
     expect(counts).toEqual([2, 0]);
   });
 
+  it('carries the lines the card limit left out onto each package', async () => {
+    mockPrepareDeck.mockImplementation(
+      async (input) =>
+        ({
+          ...deckFor(input.name),
+          cardsLeftOut: input.name === 'a.html' ? 4 : 0,
+        }) as never
+    );
+
+    const result = await runUploadGenerationInWorker(
+      task([makeHtml('a.html'), makeHtml('b.html')])
+    );
+
+    const counts = result.ok ? result.packages.map((p) => p.cardsLeftOut) : [];
+    expect(counts).toEqual([4, 0]);
+  });
+
   it('carries the blank-back count onto each package', async () => {
     mockPrepareDeck.mockImplementation(
       async (input) =>

@@ -25,6 +25,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setEmptyBackCount: vi.fn(),
     setEmptyBackSource: vi.fn(),
     setBlankBackCount: vi.fn(),
+    setCardsLeftOut: vi.fn(),
     setCherrySkippedCount: vi.fn(),
     setFoldedToggleCount: vi.fn(),
     setCardsHeldBack: vi.fn(),
@@ -404,6 +405,25 @@ describe('applyConversionSuccess', () => {
       );
 
       expect(handlers.setBlankBackCount).toHaveBeenCalledWith(expected);
+    }
+  );
+
+  it.each([
+    ['7', 7],
+    [null, 0],
+  ])(
+    'reads X-Cards-Left-Out %s as %s answerless lines cut at the limit',
+    async (header, expected) => {
+      const handlers = buildHandlers();
+
+      await applyConversionSuccess(
+        singleDeckResponse(
+          header == null ? {} : { 'X-Cards-Left-Out': header }
+        ),
+        handlers
+      );
+
+      expect(handlers.setCardsLeftOut).toHaveBeenCalledWith(expected);
     }
   );
 

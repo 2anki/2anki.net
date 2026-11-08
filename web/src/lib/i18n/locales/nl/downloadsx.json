@@ -121,7 +121,9 @@
     "notion_one": "{{count}} toggle had geen antwoord en is overgeslagen, dus zit niet in dit pakket. Voeg in Notion een antwoord toe en converteer opnieuw.",
     "notion_other": "{{count}} toggles hadden geen antwoord en zijn overgeslagen, dus zitten niet in dit pakket. Voeg in Notion aan elke een antwoord toe en converteer opnieuw.",
     "blankBacks_one": "{{count}} kaart heeft geen antwoord, dus de achterkant is leeg. Een bestand zonder vraag-en-antwoordindeling maakt van elke regel een eigen kaart. Zet elke vraag als opsommingspunt met het antwoord ingesprongen eronder, of zet in een spreadsheet het antwoord in de volgende kolom, en converteer opnieuw.",
-    "blankBacks_other": "{{count}} kaarten hebben geen antwoord, dus de achterkanten zijn leeg. Een bestand zonder vraag-en-antwoordindeling maakt van elke regel een eigen kaart. Zet elke vraag als opsommingspunt met het antwoord ingesprongen eronder, of zet in een spreadsheet het antwoord in de volgende kolom, en converteer opnieuw."
+    "blankBacks_other": "{{count}} kaarten hebben geen antwoord, dus de achterkanten zijn leeg. Een bestand zonder vraag-en-antwoordindeling maakt van elke regel een eigen kaart. Zet elke vraag als opsommingspunt met het antwoord ingesprongen eronder, of zet in een spreadsheet het antwoord in de volgende kolom, en converteer opnieuw.",
+    "leftOutAtLimit_one": "Nog {{count}} regel viel boven de gratis limiet en had geen antwoord, dus die is niet bewaard. Geef elke vraag in je bestand een antwoord en converteer opnieuw.",
+    "leftOutAtLimit_other": "Nog {{count}} regels vielen boven de gratis limiet en hadden geen antwoord, dus die zijn niet bewaard. Geef elke vraag in je bestand een antwoord en converteer opnieuw."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} deel van deze pagina is niet met 2anki verbonden, dus het staat niet in dit deck. Voeg 2anki toe aan deze pagina en de subpagina's via het menu Verbindingen in Notion en converteer opnieuw.",

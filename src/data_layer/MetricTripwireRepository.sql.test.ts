@@ -74,7 +74,7 @@ describe('MetricTripwireRepository generated SQL', () => {
     ]);
   });
 
-  it('pairs each signed-in partial with a notice shown to the same person on the same UTC day', () => {
+  it('pairs each signed-in partial that held cards back with a notice shown to the same person on the same UTC day', () => {
     const { sql, bindings } = buildFollowThroughQuery(
       pg,
       FOLLOW_THROUGH_SPECS.partial_notice_signed_in,
@@ -87,7 +87,7 @@ describe('MetricTripwireRepository generated SQL', () => {
     expect(sql).toBe(
       `with "base" as (select distinct ${identity} as ident, ${day} as day from "events" ` +
         `where "name" = ? and "created_at" >= ? and "created_at" < ? and ${identity} is not null ` +
-        'and props @> ?::jsonb and "user_id" is not null), ' +
+        'and props @> ?::jsonb and not (props @> ?::jsonb) and "user_id" is not null), ' +
         `"follow" as (select distinct ${identity} as ident, ${day} as day from "events" ` +
         'where "name" in (?, ?) and "created_at" >= ? and "created_at" < ?) ' +
         'select count(*) as denominator, count(follow.ident) as numerator from "base" ' +
@@ -98,6 +98,7 @@ describe('MetricTripwireRepository generated SQL', () => {
       start,
       end,
       JSON.stringify({ card_limit_partial: true, source: 'upload' }),
+      JSON.stringify({ cards_held_back: 0 }),
       'monthly_partial_offer_shown',
       'anonymous_partial_gate_shown',
       start,

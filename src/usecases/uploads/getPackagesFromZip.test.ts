@@ -1067,6 +1067,22 @@ describe('getPackagesFromZip — toggles Cherry-pick left out', () => {
     ).toEqual([[3, 2]]);
   });
 
+  it('carries the lines the card limit left out onto the package of a single-file zip', async () => {
+    zipOf(['only.html']);
+    mockPrepareDeck.mockResolvedValue({
+      name: 'only.html',
+      apkg: Buffer.from(''),
+      deck: [],
+      cardCount: 4,
+      cardsHeldBack: 0,
+      cardsLeftOut: 6,
+    });
+
+    const result = await run();
+
+    expect(result.packages.map((p) => p.cardsLeftOut)).toEqual([6]);
+  });
+
   it('carries the blank-back count onto the package of a single-file zip', async () => {
     zipOf(['only.html']);
     mockPrepareDeck.mockResolvedValue({

@@ -180,6 +180,7 @@ interface PrepareDeckResult {
   // One entry per file of several that Claude made no cards from.
   failedFileWarnings?: string[];
   cardsHeldBack?: number;
+  cardsLeftOut?: number;
   mcqCount: number;
   mcqSkippedCount: number;
   cherrySkippedCount?: number;
@@ -1017,6 +1018,7 @@ async function buildParserResult(
         guidEntries: parser.issuedGuidEntries,
         uploadIdentityStats: uploadIdentityStatsFor(input, parser),
         cardsHeldBack: parser.cardsHeldBack,
+        cardsLeftOut: parser.cardsLeftOut,
         pdfPageCount: sumPdfPageCount(convertedFiles),
         pdfFallbackMode: pdfFallbackModeOf(convertedFiles),
       };
@@ -1068,6 +1070,7 @@ async function buildParserResult(
     guidEntries: parser.issuedGuidEntries,
     uploadIdentityStats: uploadIdentityStatsFor(input, parser),
     cardsHeldBack: parser.cardsHeldBack,
+    cardsLeftOut: parser.cardsLeftOut,
     pdfPageCount: sumPdfPageCount(convertedFiles),
     pdfFallbackMode: pdfFallbackModeOf(convertedFiles),
     emptyReason:

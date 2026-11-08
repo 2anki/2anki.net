@@ -161,7 +161,11 @@
     "blankBacks_one": "{{count}} karta nie ma odpowiedzi, więc jej tył jest pusty. Plik bez układu pytanie i odpowiedź zamienia każdy wiersz w osobną kartę. Zapisz każde pytanie jako punkt listy z odpowiedzią wciętą pod spodem albo w arkuszu wpisz odpowiedź w następnej kolumnie i przekonwertuj ponownie.",
     "blankBacks_few": "{{count}} karty nie mają odpowiedzi, więc ich tyły są puste. Plik bez układu pytanie i odpowiedź zamienia każdy wiersz w osobną kartę. Zapisz każde pytanie jako punkt listy z odpowiedzią wciętą pod spodem albo w arkuszu wpisz odpowiedź w następnej kolumnie i przekonwertuj ponownie.",
     "blankBacks_many": "{{count}} kart nie ma odpowiedzi, więc ich tyły są puste. Plik bez układu pytanie i odpowiedź zamienia każdy wiersz w osobną kartę. Zapisz każde pytanie jako punkt listy z odpowiedzią wciętą pod spodem albo w arkuszu wpisz odpowiedź w następnej kolumnie i przekonwertuj ponownie.",
-    "blankBacks_other": "{{count}} kart nie ma odpowiedzi, więc ich tyły są puste. Plik bez układu pytanie i odpowiedź zamienia każdy wiersz w osobną kartę. Zapisz każde pytanie jako punkt listy z odpowiedzią wciętą pod spodem albo w arkuszu wpisz odpowiedź w następnej kolumnie i przekonwertuj ponownie."
+    "blankBacks_other": "{{count}} kart nie ma odpowiedzi, więc ich tyły są puste. Plik bez układu pytanie i odpowiedź zamienia każdy wiersz w osobną kartę. Zapisz każde pytanie jako punkt listy z odpowiedzią wciętą pod spodem albo w arkuszu wpisz odpowiedź w następnej kolumnie i przekonwertuj ponownie.",
+    "leftOutAtLimit_one": "Jeszcze {{count}} wiersz był ponad darmowym limitem i nie miał odpowiedzi, więc nic go nie zachowało. Daj każdemu pytaniu w pliku odpowiedź i przekonwertuj ponownie.",
+    "leftOutAtLimit_few": "Jeszcze {{count}} wiersze były ponad darmowym limitem i nie miały odpowiedzi, więc nic ich nie zachowało. Daj każdemu pytaniu w pliku odpowiedź i przekonwertuj ponownie.",
+    "leftOutAtLimit_many": "Jeszcze {{count}} wierszy było ponad darmowym limitem i nie miało odpowiedzi, więc nic ich nie zachowało. Daj każdemu pytaniu w pliku odpowiedź i przekonwertuj ponownie.",
+    "leftOutAtLimit_other": "Jeszcze {{count}} wierszy było ponad darmowym limitem i nie miało odpowiedzi, więc nic ich nie zachowało. Daj każdemu pytaniu w pliku odpowiedź i przekonwertuj ponownie."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} część tej strony nie jest połączona z 2anki, więc nie ma jej w tej talii. Dodaj 2anki do tej strony i jej podstron w menu Połączenia w Notion, a następnie przekonwertuj ponownie.",
