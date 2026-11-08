@@ -805,6 +805,8 @@ function UploadForm({
     setEmptyBackCount,
     emptyBackSource,
     setEmptyBackSource,
+    blankBackCount,
+    setBlankBackCount,
     cherrySkippedCount,
     setCherrySkippedCount,
     foldedToggleCount,
@@ -928,6 +930,7 @@ function UploadForm({
     setColoredTextPageCount,
     setEmptyBackCount,
     setEmptyBackSource,
+    setBlankBackCount,
     setCherrySkippedCount,
     setFoldedToggleCount,
     setCardsHeldBack,
@@ -3253,6 +3256,11 @@ function UploadForm({
           <EmptyBackNotice count={emptyBackCount} source={emptyBackSource} />
         </div>
       )}
+      {blankBackCount > 0 && (
+        <div className={formStyles.warningInline}>
+          <EmptyBackNotice count={blankBackCount} source="blank" />
+        </div>
+      )}
       {cherrySkippedCount > 0 && (
         <div className={formStyles.warningInline}>
           <CherrySkippedNotice count={cherrySkippedCount} returnTo="/upload" />
@@ -3457,6 +3465,11 @@ function UploadForm({
         {emptyBackCount > 0 && (
           <div className={formStyles.warningInline}>
             <EmptyBackNotice count={emptyBackCount} multipleDecks />
+          </div>
+        )}
+        {blankBackCount > 0 && (
+          <div className={formStyles.warningInline}>
+            <EmptyBackNotice count={blankBackCount} source="blank" />
           </div>
         )}
         {coloredTextPageCount > 0 && (

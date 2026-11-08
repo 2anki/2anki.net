@@ -157,7 +157,11 @@
     "notion_one": "{{count}} przełącznik bez odpowiedzi został pominięty, więc nie ma go w tej talii. Dodaj odpowiedź w Notion i przekonwertuj ponownie.",
     "notion_few": "{{count}} przełączniki bez odpowiedzi zostały pominięte, więc nie ma ich w tej talii. Dodaj odpowiedź do każdego w Notion i przekonwertuj ponownie.",
     "notion_many": "{{count}} przełączników bez odpowiedzi zostało pominiętych, więc nie ma ich w tej talii. Dodaj odpowiedź do każdego w Notion i przekonwertuj ponownie.",
-    "notion_other": "{{count}} przełączników bez odpowiedzi zostało pominiętych, więc nie ma ich w tej talii. Dodaj odpowiedź do każdego w Notion i przekonwertuj ponownie."
+    "notion_other": "{{count}} przełączników bez odpowiedzi zostało pominiętych, więc nie ma ich w tej talii. Dodaj odpowiedź do każdego w Notion i przekonwertuj ponownie.",
+    "blankBacks_one": "{{count}} karta nie ma odpowiedzi, więc jej tył jest pusty. Twój plik nie ma układu pytanie i odpowiedź, więc każdy wiersz stał się osobną kartą. Zapisz każde pytanie jako punkt listy z odpowiedzią wciętą pod spodem i przekonwertuj ponownie.",
+    "blankBacks_few": "{{count}} karty nie mają odpowiedzi, więc ich tył jest pusty. Twój plik nie ma układu pytanie i odpowiedź, więc każdy wiersz stał się osobną kartą. Zapisz każde pytanie jako punkt listy z odpowiedzią wciętą pod spodem i przekonwertuj ponownie.",
+    "blankBacks_many": "{{count}} kart nie ma odpowiedzi, więc ich tył jest pusty. Twój plik nie ma układu pytanie i odpowiedź, więc każdy wiersz stał się osobną kartą. Zapisz każde pytanie jako punkt listy z odpowiedzią wciętą pod spodem i przekonwertuj ponownie.",
+    "blankBacks_other": "{{count}} kart nie ma odpowiedzi, więc ich tył jest pusty. Twój plik nie ma układu pytanie i odpowiedź, więc każdy wiersz stał się osobną kartą. Zapisz każde pytanie jako punkt listy z odpowiedzią wciętą pod spodem i przekonwertuj ponownie."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} część tej strony nie jest połączona z 2anki, więc nie ma jej w tej talii. Dodaj 2anki do tej strony i jej podstron w menu Połączenia w Notion, a następnie przekonwertuj ponownie.",

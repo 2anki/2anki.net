@@ -264,6 +264,7 @@ async function buildDeckBatch(
       pkg.cherrySkippedCount = result.cherrySkippedCount ?? 0;
       pkg.foldedToggleCount = result.foldedToggleCount ?? 0;
       pkg.notionEmptyBackCount = result.notionEmptyBackCount ?? 0;
+      pkg.blankBackCount = result.blankBackCount ?? 0;
       packages.push(pkg);
       if (result.warning) warnings.push(result.warning);
     });
@@ -368,6 +369,7 @@ async function buildStragglerDecks(
       pkg.cherrySkippedCount = outcome.cherrySkippedCount ?? 0;
       pkg.foldedToggleCount = outcome.foldedToggleCount ?? 0;
       pkg.notionEmptyBackCount = outcome.notionEmptyBackCount ?? 0;
+      pkg.blankBackCount = outcome.blankBackCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
       warnings.push(...(outcome.failedFileWarnings ?? []));
@@ -430,6 +432,7 @@ async function buildClaudeFlashcardDeck(
     pkg.cherrySkippedCount = deck.cherrySkippedCount ?? 0;
     pkg.foldedToggleCount = deck.foldedToggleCount ?? 0;
     pkg.notionEmptyBackCount = deck.notionEmptyBackCount ?? 0;
+    pkg.blankBackCount = deck.blankBackCount ?? 0;
     packages.push(pkg);
     if (deck.warning) warnings.push(deck.warning);
     warnings.push(...(deck.failedFileWarnings ?? []));
@@ -534,6 +537,7 @@ async function buildAllInOneSlot(
       pkg.cherrySkippedCount = outcome.cherrySkippedCount ?? 0;
       pkg.foldedToggleCount = outcome.foldedToggleCount ?? 0;
       pkg.notionEmptyBackCount = outcome.notionEmptyBackCount ?? 0;
+      pkg.blankBackCount = outcome.blankBackCount ?? 0;
       packages.push(pkg);
       if (outcome.warning) warnings.push(outcome.warning);
       warnings.push(...(outcome.failedFileWarnings ?? []));

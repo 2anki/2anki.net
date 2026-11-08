@@ -119,7 +119,9 @@
     "uploadMultiDeck_one": "{{count}} tarjeta no tenía respuesta y se omitió, así que no está en tus mazos. Añade un reverso en tu archivo y vuelve a convertir.",
     "uploadMultiDeck_other": "{{count}} tarjetas no tenían respuesta y se omitieron, así que no están en tus mazos. Añade un reverso a cada una en tu archivo y vuelve a convertir.",
     "notion_one": "{{count}} toggle no tenía respuesta y se omitió, así que no está en este mazo. Añádele una respuesta en Notion y vuelve a convertir.",
-    "notion_other": "{{count}} toggles no tenían respuesta y se omitieron, así que no están en este mazo. Añade una respuesta a cada uno en Notion y vuelve a convertir."
+    "notion_other": "{{count}} toggles no tenían respuesta y se omitieron, así que no están en este mazo. Añade una respuesta a cada uno en Notion y vuelve a convertir.",
+    "blankBacks_one": "{{count}} tarjeta no tiene respuesta, así que su reverso está vacío. Tu archivo no tiene un formato de pregunta y respuesta, así que cada línea se convirtió en una tarjeta. Pon cada pregunta en una viñeta con su respuesta sangrada debajo y vuelve a convertir.",
+    "blankBacks_other": "{{count}} tarjetas no tienen respuesta, así que sus reversos están vacíos. Tu archivo no tiene un formato de pregunta y respuesta, así que cada línea se convirtió en una tarjeta. Pon cada pregunta en una viñeta con su respuesta sangrada debajo y vuelve a convertir."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} parte de esta página no está conectada a 2anki, así que no está en este mazo. Añade 2anki a esta página y sus subpáginas en el menú Conexiones de Notion y vuelve a convertir.",

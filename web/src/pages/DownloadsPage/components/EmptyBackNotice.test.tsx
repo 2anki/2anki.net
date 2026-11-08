@@ -31,6 +31,16 @@ describe('EmptyBackNotice', () => {
     ).toBeInTheDocument();
   });
 
+  it('says the backs are blank, not skipped, for cards the deck kept', () => {
+    render(<EmptyBackNotice count={6} source="blank" />);
+    expect(
+      screen.getByText(
+        /6 cards have no answer, so their backs are blank\. .*each line became a card of its own/
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
+  });
+
   it('says "your decks" for a multi-deck batch upload', () => {
     render(<EmptyBackNotice count={4} multipleDecks />);
     expect(screen.getByText(/aren't in your decks/)).toBeInTheDocument();

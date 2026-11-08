@@ -522,6 +522,50 @@ test.describe('golden path @golden', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
+  test('a deck of blank-back cards says how to lay out answers at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    await page.route('**/api/upload/file', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: {
+          'Content-Type': 'application/apkg',
+          'X-Card-Count': '6',
+          'X-Blank-Back-Count': '6',
+          'File-Name': 'notes',
+          'Access-Control-Expose-Headers':
+            'File-Name, X-Card-Count, X-Blank-Back-Count',
+        },
+        body: 'APKG',
+      })
+    );
+
+    await page.goto('/upload');
+    await page.setInputFiles('#pakker', {
+      name: 'notes.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('Only a line'),
+    });
+
+    await expect(
+      page.getByText(/6 cards have no answer, so their backs are blank\./)
+    ).toBeVisible({ timeout: 10_000 });
+    const scrollWidth = await page.evaluate(
+      () => document.documentElement.scrollWidth
+    );
+    expect(scrollWidth).toBeLessThanOrEqual(376);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
   test('the signed-in limit wall leads with the passes at 375px', async ({
     page,
   }) => {

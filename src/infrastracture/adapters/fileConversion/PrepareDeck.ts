@@ -185,6 +185,7 @@ interface PrepareDeckResult {
   cherrySkippedCount?: number;
   foldedToggleCount?: number;
   notionEmptyBackCount?: number;
+  blankBackCount?: number;
   warning?: string;
   droppedImageCount: number;
   coloredTextPageCount: number;
@@ -996,6 +997,7 @@ async function buildParserResult(
         missingLocalImageCount: parser.missingLocalImageCount,
         plainTextFallbackImageCount: parser.plainTextFallbackImageCount,
         emptyBackCount: parser.emptyBackCount,
+        blankBackCount: parser.blankBackCount,
         // This is the branch a document takes when nothing recognised it, so it
         // is exactly the population a rescue has to clear. Without a score here
         // the corpus is made only of successes, and a floor calibrated on
@@ -1045,6 +1047,7 @@ async function buildParserResult(
     cherrySkippedCount,
     foldedToggleCount,
     notionEmptyBackCount: parser.notionEmptyBackCount,
+    blankBackCount: parser.blankBackCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     coloredTextPageCount,
@@ -1494,6 +1497,7 @@ export interface DeckInfoOnlyResult {
   cherrySkippedCount?: number;
   foldedToggleCount?: number;
   notionEmptyBackCount?: number;
+  blankBackCount?: number;
   warning?: string;
   droppedImageCount: number;
   coloredTextPageCount: number;
@@ -1596,6 +1600,7 @@ export async function prepareDeckInfoOnly(
     cherrySkippedCount,
     foldedToggleCount,
     notionEmptyBackCount: parser.notionEmptyBackCount,
+    blankBackCount: parser.blankBackCount,
     warning: aiWarning ?? parserWarning(parser),
     droppedImageCount: parser.droppedImageCount,
     coloredTextPageCount,

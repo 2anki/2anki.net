@@ -58,6 +58,7 @@ export interface BatchResult {
   expiredNotionImageCount?: number;
   coloredTextPageCount?: number;
   emptyBackCount?: number;
+  blankBackCount?: number;
   structureRescuedRule?: string;
   imageDropReason?: string;
 }
@@ -90,6 +91,7 @@ export function useUploadFormState(onReset: () => void) {
   const [emptyBackCount, setEmptyBackCount] = useState<number>(0);
   const [emptyBackSource, setEmptyBackSource] =
     useState<EmptyBackSource>('upload');
+  const [blankBackCount, setBlankBackCount] = useState<number>(0);
   const [cherrySkippedCount, setCherrySkippedCount] = useState<number>(0);
   const [foldedToggleCount, setFoldedToggleCount] = useState<number>(0);
   const [cardsHeldBack, setCardsHeldBack] = useState<number>(0);
@@ -151,6 +153,7 @@ export function useUploadFormState(onReset: () => void) {
     setColoredTextPageCount(0);
     setEmptyBackCount(0);
     setEmptyBackSource('upload');
+    setBlankBackCount(0);
     setCherrySkippedCount(0);
     setFoldedToggleCount(0);
     setCardsHeldBack(0);
@@ -218,6 +221,8 @@ export function useUploadFormState(onReset: () => void) {
     setEmptyBackCount,
     emptyBackSource,
     setEmptyBackSource,
+    blankBackCount,
+    setBlankBackCount,
     cherrySkippedCount,
     setCherrySkippedCount,
     foldedToggleCount,

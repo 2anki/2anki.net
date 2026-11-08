@@ -24,6 +24,7 @@ function buildHandlers(): ConversionSuccessHandlers {
     setColoredTextPageCount: vi.fn(),
     setEmptyBackCount: vi.fn(),
     setEmptyBackSource: vi.fn(),
+    setBlankBackCount: vi.fn(),
     setCherrySkippedCount: vi.fn(),
     setFoldedToggleCount: vi.fn(),
     setCardsHeldBack: vi.fn(),
@@ -387,6 +388,25 @@ describe('applyConversionSuccess', () => {
     expect(handlers.setCardsHeldBack).toHaveBeenCalledWith(0);
   });
 
+  it.each([
+    ['3', 3],
+    [null, 0],
+  ])(
+    'reads X-Blank-Back-Count %s as %s cards shipped with a blank back',
+    async (header, expected) => {
+      const handlers = buildHandlers();
+
+      await applyConversionSuccess(
+        singleDeckResponse(
+          header == null ? {} : { 'X-Blank-Back-Count': header }
+        ),
+        handlers
+      );
+
+      expect(handlers.setBlankBackCount).toHaveBeenCalledWith(expected);
+    }
+  );
+
   it('sets the empty-back count to 0 when the X-Empty-Back-Count header is absent', async () => {
     const handlers = buildHandlers();
 
@@ -456,6 +476,32 @@ describe('applyConversionSuccess', () => {
     );
 
     expect(handlers.setEmptyBackSource).toHaveBeenCalledWith('upload');
+  });
+
+  it('reads blankBackCount from the batch JSON body', async () => {
+    const handlers = buildHandlers();
+    const response = {
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: () =>
+        Promise.resolve({
+          kind: 'batch',
+          workspaceId: 'ws-1',
+          deckCount: 1,
+          decks: [
+            {
+              name: 'A',
+              filename: 'A.apkg',
+              downloadUrl: '/download/ws-1/A.apkg',
+            },
+          ],
+          bulkUrl: '/download/ws-1/bulk',
+          blankBackCount: 4,
+        }),
+    } as unknown as Response;
+
+    await applyConversionSuccess(response, handlers);
+
+    expect(handlers.setBlankBackCount).toHaveBeenCalledWith(4);
   });
 
   it('reads emptyBackCount from the batch JSON body', async () => {
