@@ -1830,6 +1830,37 @@ describe('WebhookRouter — customer.subscription.created', () => {
     );
   });
 
+  it('logs a scheduled cancellation with no hash when the customer has no email', async () => {
+    mockCustomersRetrieve.mockResolvedValue({ id: 'cus_abc', email: null });
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_cancelling_2',
+          customer: 'cus_abc',
+          status: 'active',
+          items: { data: [{ price: { product: 'prod_unlimited' } }] },
+          cancel_at_period_end: true,
+          cancel_at: 1_800_000_000,
+        },
+        previous_attributes: { cancel_at_period_end: false },
+      },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(infoSpy).toHaveBeenCalledWith(
+        'Subscription cancellation scheduled',
+        { email_hash: null, access_until: '2027-01-15T08:00:00.000Z' }
+      );
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
   it('provisions an update with no new cancellation and logs no cancellation', async () => {
     const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
       updateStoreSubscription: Mock;
