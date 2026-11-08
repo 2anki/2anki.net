@@ -288,50 +288,92 @@ export async function getAiBudgetStatus(
   return budgetStatusFor(normalized, resolved);
 }
 
+// Who the watch alert is about, with that subject's own readers: a user's
+// spend includes the passes they claimed, a pass's is the pass's alone.
+interface AlertTarget {
+  label: string;
+  recordedCostSince: (since: Date) => Promise<number>;
+  alertsSentSince: (since: Date) => Promise<number>;
+  recordAlertSent: () => void;
+}
+
+function alertTargetFor(
+  deps: AiBudgetDeps,
+  subject: NormalizedSubject
+): AlertTarget | null {
+  if (subject.kind === 'user') {
+    const userId = subject.userId;
+    return {
+      label: `User ${userId}`,
+      recordedCostSince: (since) =>
+        deps.reader.userRecordedCostSince(userId, since),
+      alertsSentSince: (since) =>
+        deps.reader.eventCountSince(ALERT_EVENT, userId, since),
+      recordAlertSent: () =>
+        track(ALERT_EVENT, { userId, props: withServerMarker({}) }),
+    };
+  }
+  const passReader = deps.passReader;
+  if (subject.kind === 'pass' && passReader != null) {
+    const anonymousPassId = subject.anonymousPassId;
+    return {
+      label: `Anonymous pass ${anonymousPassId}`,
+      recordedCostSince: (since) =>
+        passReader.anonymousPassRecordedCostSince(anonymousPassId, since),
+      alertsSentSince: (since) =>
+        passReader.anonymousPassEventCountSince(
+          ALERT_EVENT,
+          anonymousPassId,
+          since
+        ),
+      recordAlertSent: () =>
+        track(ALERT_EVENT, { anonymousPassId, props: withServerMarker({}) }),
+    };
+  }
+  return null;
+}
+
 async function maybeNotifyAlert(
   deps: AiBudgetDeps,
-  userId: number,
+  target: AlertTarget,
   now: Date
 ): Promise<void> {
-  const cost30d = await deps.reader.userRecordedCostSince(
-    userId,
+  const cost30d = await target.recordedCostSince(
     new Date(now.getTime() - ALERT_WINDOW_MS)
   );
   if (cost30d < AI_SPEND_ALERT_THRESHOLD_USD) {
     return;
   }
-  const dedupSince = new Date(now.getTime() - ALERT_DEDUP_MS);
-  const alreadySent = await deps.reader.eventCountSince(
-    ALERT_EVENT,
-    userId,
-    dedupSince
+  const alreadySent = await target.alertsSentSince(
+    new Date(now.getTime() - ALERT_DEDUP_MS)
   );
   if (alreadySent > 0) {
     return;
   }
-  track(ALERT_EVENT, { userId, props: withServerMarker({}) });
+  target.recordAlertSent();
   await deps.sendAlert(
-    `[2anki] AI spend alert — user ${userId} crossed $${AI_SPEND_ALERT_THRESHOLD_USD} in 30 days`,
-    `User ${userId} is at $${cost30d.toFixed(2)} of AI spend over the ` +
+    `[2anki] AI spend alert — ${target.label.toLowerCase()} crossed $${AI_SPEND_ALERT_THRESHOLD_USD} in 30 days`,
+    `${target.label} is at $${cost30d.toFixed(2)} of AI spend over the ` +
       `trailing 30 days (alert threshold $${AI_SPEND_ALERT_THRESHOLD_USD}). ` +
       `No enforcement has happened — this is the watch signal. Per-user ` +
       `breakdown: /ops AI usage.`
   );
 }
 
-// The watch alert is an ops signal for runaway per-user spend, not part of the
-// paying call's critical path, so it runs detached. Only signed-in users can
-// reach the threshold — an anonymous pass caps its own spend at the pass
-// allowance — so it is skipped for passes.
+// The watch alert is an ops signal for runaway spend, not part of the paying
+// call's critical path, so it runs detached. A pass's allowance caps what it
+// is charged, but calls Claude declined are not charged, so a pass that keeps
+// retrying a declined file is watched the same way a user is.
 function maybeNotifyAlertForSubject(
   deps: AiBudgetDeps,
   subject: NormalizedSubject,
   now: Date
 ): void {
-  if (subject.kind !== 'user') {
+  const target = alertTargetFor(deps, subject);
+  if (target == null) {
     return;
   }
-  void maybeNotifyAlert(deps, subject.userId, now).catch((error) =>
+  void maybeNotifyAlert(deps, target, now).catch((error) =>
     console.error('[ai-credits] spend alert check failed', error)
   );
 }

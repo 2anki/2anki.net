@@ -428,10 +428,14 @@ function passBalanceWith(rawCredits: number): AiCreditBalance {
 function makePassDeps(overrides: {
   balance?: AiCreditBalance | null;
   passEventCount?: number;
+  passCost30d?: number;
 }): AiBudgetDeps & {
   computeAnonymousPassBalance: Mock;
   sendAlert: Mock;
-  passReader: { anonymousPassEventCountSince: Mock };
+  passReader: {
+    anonymousPassRecordedCostSince: Mock;
+    anonymousPassEventCountSince: Mock;
+  };
 } {
   return {
     computeBalance: vi.fn().mockResolvedValue(null),
@@ -444,6 +448,9 @@ function makePassDeps(overrides: {
     },
     passReader: {
       anonymousPassCostSince: vi.fn().mockResolvedValue(0),
+      anonymousPassRecordedCostSince: vi
+        .fn()
+        .mockResolvedValue(overrides.passCost30d ?? 0),
       anonymousPassEventCountSince: vi
         .fn()
         .mockResolvedValue(overrides.passEventCount ?? 0),
@@ -513,12 +520,65 @@ describe('anonymous pass metering', () => {
     expect(trackMock).not.toHaveBeenCalled();
   });
 
-  it('never sends the per-user watch alert for an anonymous pass', async () => {
+  it('never reads the per-user spend for an anonymous pass', async () => {
     const deps = makePassDeps({ balance: passBalanceWith(400) });
     await assertAiBudget({ anonymousPassId: 7 }, deps);
     await flushAsync();
     expect(deps.sendAlert).not.toHaveBeenCalled();
     expect(deps.reader.userRecordedCostSince).not.toHaveBeenCalled();
+    expect(deps.passReader.anonymousPassRecordedCostSince).toHaveBeenCalledWith(
+      7,
+      new Date('2026-08-08T12:00:00.000Z')
+    );
+  });
+
+  it('emails the watch alert once when a pass crosses the threshold, refusals included', async () => {
+    const deps = makePassDeps({
+      balance: passBalanceWith(400),
+      passCost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    await withAiBudget({ anonymousPassId: 7 }, async () => 'ok', deps);
+    await flushAsync();
+    expect(trackMock).toHaveBeenCalledWith('ai_spend_alert_sent', {
+      anonymousPassId: 7,
+      props: { server_marker: true },
+    });
+    expect(deps.passReader.anonymousPassEventCountSince).toHaveBeenCalledWith(
+      'ai_spend_alert_sent',
+      7,
+      new Date('2026-08-31T12:00:00.000Z')
+    );
+    expect(deps.sendAlert).toHaveBeenCalledWith(
+      expect.stringContaining('anonymous pass 7 crossed $25 in 30 days'),
+      expect.stringContaining('Anonymous pass 7 is at $25.00')
+    );
+  });
+
+  it('dedupes the pass watch alert inside seven days', async () => {
+    const deps = makePassDeps({
+      balance: passBalanceWith(400),
+      passCost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+      passEventCount: 1,
+    });
+    await assertAiBudget({ anonymousPassId: 7 }, deps);
+    await flushAsync();
+    expect(deps.sendAlert).not.toHaveBeenCalled();
+    expect(trackMock).not.toHaveBeenCalled();
+  });
+
+  it('still alerts on a pass that is also exhausted', async () => {
+    const deps = makePassDeps({
+      balance: passBalanceWith(0),
+      passCost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    await expect(
+      assertAiBudget({ anonymousPassId: 7 }, deps)
+    ).rejects.toBeInstanceOf(AiCreditsExhaustedError);
+    await flushAsync();
+    expect(deps.sendAlert).toHaveBeenCalledWith(
+      expect.stringContaining('anonymous pass 7'),
+      expect.any(String)
+    );
   });
 
   it('skips a caller with neither a user id nor a pass id', async () => {

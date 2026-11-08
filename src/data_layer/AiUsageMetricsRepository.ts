@@ -34,6 +34,10 @@ export interface IAiSpendReader {
 
 export interface IAnonymousPassSpendReader {
   anonymousPassCostSince(anonymousPassId: number, since: Date): Promise<number>;
+  anonymousPassRecordedCostSince(
+    anonymousPassId: number,
+    since: Date
+  ): Promise<number>;
   anonymousPassEventCountSince(
     name: string,
     anonymousPassId: number,
@@ -200,6 +204,17 @@ export class AiUsageMetricsRepository
       .select(this.chargedCost());
   }
 
+  // Everything a pass's calls cost us, refusals included: the spend alert
+  // watches this, not what the pass is charged.
+  buildAnonymousPassRecordedCostQuery(
+    anonymousPassId: number,
+    since: Date
+  ): Knex.QueryBuilder {
+    return this.baseQuery(since)
+      .where('anonymous_pass_id', anonymousPassId)
+      .select(this.recordedCost());
+  }
+
   buildAnonymousPassEventCountQuery(
     name: string,
     anonymousPassId: number,
@@ -304,6 +319,17 @@ export class AiUsageMetricsRepository
     since: Date
   ): Promise<number> {
     const row = (await this.buildAnonymousPassCostQuery(
+      anonymousPassId,
+      since
+    ).first()) as { cost_usd: number | string } | undefined;
+    return Number(row?.cost_usd ?? 0);
+  }
+
+  async anonymousPassRecordedCostSince(
+    anonymousPassId: number,
+    since: Date
+  ): Promise<number> {
+    const row = (await this.buildAnonymousPassRecordedCostQuery(
       anonymousPassId,
       since
     ).first()) as { cost_usd: number | string } | undefined;
