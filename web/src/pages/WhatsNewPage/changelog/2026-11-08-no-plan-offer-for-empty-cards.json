@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-08-no-plan-offer-for-empty-cards",
+  "date": "2026-11-08",
+  "type": "fix",
+  "title": "Uploads over your monthly limit hold back only cards with an answer for a plan"
+}

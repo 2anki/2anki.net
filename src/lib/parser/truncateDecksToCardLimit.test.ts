@@ -54,4 +54,14 @@ describe('truncateDecksToCardLimit', () => {
     expect(result).toEqual({ delivered: 0, heldBack: 2 });
     expect(decks[0].cards).toEqual([]);
   });
+
+  it('counts only the cut cards the caller says are worth holding back', () => {
+    const decks = [deck(1, 2, 3), deck(4, 5, 6)];
+
+    const result = truncateDecksToCardLimit(decks, 2, (card) => card % 2 === 0);
+
+    expect(result).toEqual({ delivered: 2, heldBack: 2 });
+    expect(decks[0].cards).toEqual([1, 2]);
+    expect(decks[1].cards).toEqual([]);
+  });
 });

@@ -174,6 +174,18 @@ export interface UploadIdentityStats {
   guarded: number;
 }
 
+// A card cut by the free limit is held for a plan, so only one a user could
+// study counts: an upload that never split leaves front-only cards, and those
+// must not be sold as held-back cards.
+function hasAnswer(card: Note): boolean {
+  return (
+    hasVisibleContent(card.back) ||
+    card.isValidMCQNote() ||
+    (Boolean(card.isValidClozeNote()) && card.hasClozeDeletion()) ||
+    Boolean(card.isValidInputNote())
+  );
+}
+
 function hasNestedBullets(content: string | undefined): boolean {
   if (content == null || content === '') return false;
   return /^[ \t]+[-*+][ \t]/m.test(content);
@@ -1955,7 +1967,8 @@ export class DeckParser {
     }
     this.cardsHeldBack = truncateDecksToCardLimit(
       this.payload,
-      this.cardLimit
+      this.cardLimit,
+      hasAnswer
     ).heldBack;
   }
 
