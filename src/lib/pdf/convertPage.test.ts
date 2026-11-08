@@ -44,6 +44,35 @@ describe('convertPage', () => {
     }
   );
 
+  it('opens a locked PDF with its password and keeps it out of the error', async () => {
+    fakePdftoppm(1, null);
+
+    const caught = await convertPage('/tmp/sample.pdf', 2, 3, 's3cret').catch(
+      (error: unknown) => error as Error
+    );
+
+    expect(spawnMock.mock.calls[0][1]).toEqual([
+      '-png',
+      '-f',
+      '2',
+      '-l',
+      '2',
+      '-upw',
+      's3cret',
+      '/tmp/sample.pdf',
+      '/tmp/sample.pdf-page2',
+    ]);
+    expect((caught as Error).message).not.toContain('s3cret');
+  });
+
+  it('sends no password option for an unlocked PDF', async () => {
+    fakePdftoppm(0, null);
+
+    await convertPage('/tmp/sample.pdf', 1, 1);
+
+    expect(spawnMock.mock.calls[0][1]).not.toContain('-upw');
+  });
+
   it('surfaces a non-zero exit code with no signal', async () => {
     fakePdftoppm(1, null);
 

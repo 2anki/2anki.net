@@ -4,7 +4,8 @@ import os from 'os';
 export function convertPage(
   pdfPath: string,
   pageNumber: number,
-  totalPageCount: number
+  totalPageCount: number,
+  credential?: string
 ): Promise<string> {
   const outputFileNameBase = `${pdfPath}-page${pageNumber}`;
 
@@ -32,6 +33,7 @@ export function convertPage(
       pageNumber.toString(),
       '-l',
       pageNumber.toString(),
+      ...(credential == null ? [] : ['-upw', credential]),
       pdfPath,
       outputFileNameBase,
     ]);

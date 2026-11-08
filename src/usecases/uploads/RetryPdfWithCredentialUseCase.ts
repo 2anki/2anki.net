@@ -76,6 +76,14 @@ const isPdfLibraryError = (error: unknown): error is Error =>
 
 // The form shows what this route sends, and a plain Error or a provider's API
 // error carries text written for logs: a tool's output or an upstream status.
+// The Anthropic SDK's connection and abort errors carry no status.
+const STATUSLESS_PROVIDER_ERRORS = new Set([
+  'AnthropicError',
+  'APIConnectionError',
+  'APIConnectionTimeoutError',
+  'APIUserAbortError',
+]);
+
 const carriesRawText = (error: unknown): error is Error => {
   if (!(error instanceof Error) || error instanceof HttpCodedError) {
     return false;
@@ -83,7 +91,8 @@ const carriesRawText = (error: unknown): error is Error => {
   if (WRITTEN_FOR_THE_PERSON.has(error.message)) return false;
   const isPlainError = error.constructor === Error;
   const isProviderError =
-    typeof (error as { status?: unknown }).status === 'number';
+    typeof (error as { status?: unknown }).status === 'number' ||
+    STATUSLESS_PROVIDER_ERRORS.has(error.constructor.name);
   return (
     (isPlainError || isProviderError) &&
     jobFailureReasonCode(error) === 'unknown'

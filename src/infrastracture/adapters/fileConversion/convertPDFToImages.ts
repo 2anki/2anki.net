@@ -17,6 +17,7 @@ interface ConvertPDFToImagesInput {
   name?: string;
   settings?: CardOption;
   pageMode?: PageImageCardMode;
+  credential?: string;
 }
 
 export const PDF_FREE_MAX_PAGES = 100;
@@ -43,7 +44,7 @@ export async function convertPDFToImages(
 export async function renderPdfPageImages(
   input: ConvertPDFToImagesInput
 ): Promise<{ imagePaths: string[]; title: string }> {
-  const { contents, workspace, noLimits, name } = input;
+  const { contents, workspace, noLimits, name, credential } = input;
   const fileName = name
     ? path.basename(name).replace(/\.pptx?$/i, '.pdf')
     : 'Default.pdf';
@@ -54,7 +55,7 @@ export async function renderPdfPageImages(
 
   await writeFile(pdfPath, Buffer.from(contents as Buffer));
 
-  const pageCount = await getPageCount(pdfPath);
+  const pageCount = await getPageCount(pdfPath, credential);
   const title = path.basename(pdfPath);
   if (!noLimits && pageCount > PDF_FREE_MAX_PAGES) {
     throw new Error(PDF_EXCEEDS_MAX_PAGE_LIMIT);
@@ -62,7 +63,7 @@ export async function renderPdfPageImages(
 
   const imagePaths = await Promise.all(
     Array.from({ length: pageCount }, (_, i) =>
-      convertPage(pdfPath, i + 1, pageCount)
+      convertPage(pdfPath, i + 1, pageCount, credential)
     )
   );
 

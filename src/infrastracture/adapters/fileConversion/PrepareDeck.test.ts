@@ -40,6 +40,10 @@ import { convertDocxToHTML as convertDocxToHTMLImport } from './convertDocxToHTM
 import { convertImageToHTML as convertImageToHTMLImport } from './convertImageToHTML';
 import { extractPptxSourceUnits as extractPptxSourceUnitsImport } from '../../../lib/parser/sourceUnits/extractPptxSourceUnits';
 import { parsePdfFallbackChoiceSentinel } from '../../../lib/pdf/pdfFallbackChoice';
+import {
+  isPdfPasswordSentinel,
+  parsePdfPasswordSentinel,
+} from '../../../lib/pdf/pdfPasswordSentinel';
 import { downloadMediaOrSkip as downloadMediaOrSkipImport } from '../../../services/NotionService/helpers/downloadMediaOrSkip';
 import * as trackModule from '../../../services/events/track';
 
@@ -1257,6 +1261,38 @@ describe('PrepareDeck — PDF text-vs-image gate', () => {
     expect(convertPDFToImages).toHaveBeenCalledTimes(1);
     expect(convertPdfTextToHtmlAuto).not.toHaveBeenCalled();
     expect(convertPdfTextToHtml).not.toHaveBeenCalled();
+  });
+
+  it('asks for the password when page pairs meet a locked PDF', async () => {
+    (convertPDFToImages as Mock).mockRejectedValueOnce(
+      new Error('pdfinfo_password path=notes.pdf')
+    );
+
+    const error = (await PrepareDeck({
+      name: 'notes.pdf',
+      files: [{ name: 'notes.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({ 'pdf-page-pairs': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+    }).catch((e: unknown) => e)) as Error;
+
+    expect(isPdfPasswordSentinel(error.message)).toBe(true);
+    expect(parsePdfPasswordSentinel(error.message)).toBe('notes.pdf');
+  });
+
+  it('renders page images with the password the person entered', async () => {
+    await PrepareDeck({
+      name: 'notes.pdf',
+      files: [{ name: 'notes.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({ 'pdf-page-pairs': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+      pdfCredential: 's3cret',
+    }).catch(() => undefined);
+
+    expect(convertPDFToImages).toHaveBeenCalledWith(
+      expect.objectContaining({ credential: 's3cret' })
+    );
   });
 
   it('lets page-pairs win over pdf-extract-text when both are on', async () => {
