@@ -427,6 +427,26 @@ describe('generateDeckInfoFromPdfImages', () => {
     }
   });
 
+  it('answers with the refusal when the truncation retry is declined', async () => {
+    mockVisionFn.mockImplementation(async (params: { max_tokens: number }) =>
+      params.max_tokens < 32768
+        ? visionResponse('[{"deck":"S', 'max_tokens')
+        : visionResponse('', 'refusal')
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const caught = await generateDeckInfoFromPdfImages(html, {
+        mediaBaseDir: baseDir,
+      }).catch((err: unknown) => err);
+
+      expect(caught).toBeInstanceOf(ClaudeRefusalError);
+      expect(mockVisionFn).toHaveBeenCalledTimes(4);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('keeps the cards Claude wrote on a page before declining it', async () => {
     mockVisionFn
       .mockResolvedValueOnce(

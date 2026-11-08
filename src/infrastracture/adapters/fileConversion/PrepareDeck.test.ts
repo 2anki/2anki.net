@@ -2936,24 +2936,38 @@ describe('PrepareDeck — empty backs from Notion-export toggles', () => {
     }
   );
 
-  it('answers a lone image Claude declined as an empty upload', async () => {
-    convertImageToHTML.mockRejectedValueOnce(new ClaudeRefusalError());
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  it.each([
+    ['AI cards off', {}],
+    ['AI cards on', { 'claude-ai-flashcards': 'true' }],
+  ])(
+    'answers a lone image Claude declined with the refusal (%s)',
+    async (_label, extra) => {
+      convertImageToHTML.mockRejectedValueOnce(new ClaudeRefusalError());
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
 
-    try {
-      await expect(
-        PrepareDeck({
-          name: 'diagram.png',
-          files: [{ name: 'diagram.png', contents: Buffer.from('png-bytes') }],
-          settings: makeSettings({ 'image-quiz-html-to-anki': 'true' }),
-          noLimits: true,
-          workspace: makeWorkspace(),
-        })
-      ).rejects.toMatchObject({ name: 'EmptyDeckError' });
-    } finally {
-      warn.mockRestore();
+      try {
+        await expect(
+          PrepareDeck({
+            name: 'diagram.png',
+            files: [
+              { name: 'diagram.png', contents: Buffer.from('png-bytes') },
+            ],
+            settings: makeSettings({
+              'image-quiz-html-to-anki': 'true',
+              ...extra,
+            }),
+            noLimits: true,
+            workspace: makeWorkspace(),
+          })
+        ).rejects.toBeInstanceOf(ClaudeRefusalError);
+        expect(generateDeckInfo).not.toHaveBeenCalled();
+      } finally {
+        warn.mockRestore();
+      }
     }
-  });
+  );
 
   it('reports the same for a zip entry built in a batch', async () => {
     const result = await prepareDeckInfoOnly(

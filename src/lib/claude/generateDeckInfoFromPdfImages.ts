@@ -192,21 +192,6 @@ async function visionCardsForPage(
     anonymousPassId,
     requestId,
   });
-  // A declined page is declined again, so it is never retried. Cards Claude
-  // wrote before it stopped still ship, as on the text path.
-  if (response.stop_reason === 'refusal') {
-    const salvaged = cardsWrittenBeforeDeclining(response, pageIndex);
-    const salvagedCards = salvaged.reduce(
-      (sum, deck) => sum + deck.cards.length,
-      0
-    );
-    console.warn('[Claude] Claude declined the page', {
-      pageIndex,
-      salvagedCards,
-    });
-    if (salvagedCards > 0) return salvaged;
-    throw new ClaudeRefusalError();
-  }
   if (response.stop_reason === 'max_tokens') {
     console.warn('[Claude] PDF page vision truncated, retrying', {
       pageIndex,
@@ -222,6 +207,23 @@ async function visionCardsForPage(
       anonymousPassId,
       requestId,
     });
+  }
+
+  // A declined page is declined again, so a refusal is never retried (the
+  // retry above runs only on max_tokens, and its answer can be a refusal too).
+  // Cards Claude wrote before it stopped still ship, as on the text path.
+  if (response.stop_reason === 'refusal') {
+    const salvaged = cardsWrittenBeforeDeclining(response, pageIndex);
+    const salvagedCards = salvaged.reduce(
+      (sum, deck) => sum + deck.cards.length,
+      0
+    );
+    console.warn('[Claude] Claude declined the page', {
+      pageIndex,
+      salvagedCards,
+    });
+    if (salvagedCards > 0) return salvaged;
+    throw new ClaudeRefusalError();
   }
 
   const { raw, cleaned } = pageText(response);

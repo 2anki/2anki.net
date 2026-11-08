@@ -257,6 +257,7 @@ export function parserWarning(parser: {
 interface AiConversionState {
   exhausted: boolean;
   tripped: boolean;
+  declined?: ClaudeRefusalError;
 }
 
 // A mid-run guard trip inside a vision/quiz conversion skips that file and flags
@@ -276,6 +277,7 @@ async function runVisionConversion(
     }
     if (error instanceof ClaudeRefusalError) {
       console.warn('[PrepareDeck] Claude declined an image; leaving it out');
+      ai.declined = error;
       return null;
     }
     throw error;
@@ -1427,6 +1429,12 @@ export async function PrepareDeck(
     convertedCount: convertedFiles.length,
     durationMs: Date.now() - tConvert,
   });
+
+  // Images Claude declined, with nothing else to convert: say so, so an upload
+  // of several files can leave this one out by name instead of failing.
+  if (ai.declined != null && files.every((file) => isImageFile(file.name))) {
+    throw ai.declined;
+  }
 
   const pdfImageFallbackNames = new Set(
     convertedFiles.filter((f) => f.imageFallback).map((f) => f.name)
