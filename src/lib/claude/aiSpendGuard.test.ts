@@ -44,12 +44,12 @@ function makeDeps(overrides: {
   eventCount?: number;
 }): AiBudgetDeps & {
   sendAlert: Mock;
-  reader: { userCostSince: Mock; eventCountSince: Mock };
+  reader: { userRecordedCostSince: Mock; eventCountSince: Mock };
 } {
   return {
     computeBalance: vi.fn().mockResolvedValue(overrides.balance ?? null),
     reader: {
-      userCostSince: vi.fn().mockResolvedValue(overrides.cost30d ?? 0),
+      userRecordedCostSince: vi.fn().mockResolvedValue(overrides.cost30d ?? 0),
       eventCountSince: vi.fn().mockResolvedValue(overrides.eventCount ?? 0),
     },
     sendAlert: vi.fn().mockResolvedValue(undefined),
@@ -439,7 +439,7 @@ function makePassDeps(overrides: {
       .fn()
       .mockResolvedValue(overrides.balance ?? null),
     reader: {
-      userCostSince: vi.fn().mockResolvedValue(0),
+      userRecordedCostSince: vi.fn().mockResolvedValue(0),
       eventCountSince: vi.fn().mockResolvedValue(0),
     },
     passReader: {
@@ -518,7 +518,7 @@ describe('anonymous pass metering', () => {
     await assertAiBudget({ anonymousPassId: 7 }, deps);
     await flushAsync();
     expect(deps.sendAlert).not.toHaveBeenCalled();
-    expect(deps.reader.userCostSince).not.toHaveBeenCalled();
+    expect(deps.reader.userRecordedCostSince).not.toHaveBeenCalled();
   });
 
   it('skips a caller with neither a user id nor a pass id', async () => {

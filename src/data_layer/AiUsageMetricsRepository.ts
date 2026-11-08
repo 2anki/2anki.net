@@ -28,7 +28,7 @@ export interface IAiUsageMetricsRepository {
 }
 
 export interface IAiSpendReader {
-  userCostSince(userId: number, since: Date): Promise<number>;
+  userRecordedCostSince(userId: number, since: Date): Promise<number>;
   eventCountSince(name: string, userId: number, since: Date): Promise<number>;
 }
 
@@ -108,11 +108,32 @@ export class AiUsageMetricsRepository
   }
 
   // What a user or pass is charged: every recorded call except those marked
-  // billable=false (a call Claude declined without writing anything usable).
-  private billableQuery(since: Date): Knex.QueryBuilder {
-    return this.baseQuery(since).whereRaw(
-      "props->>'billable' is distinct from 'false'"
+  // billable=false (Claude declined without writing anything usable). The
+  // spend alert reads recordedCost instead, so ops still sees their cost.
+  private chargedCost(): Knex.Raw {
+    return this.database.raw(
+      "coalesce(sum((props->>'cost_usd')::numeric) filter (where props->>'billable' is distinct from 'false'), 0) as cost_usd"
     );
+  }
+
+  private recordedCost(): Knex.Raw {
+    return this.database.raw(
+      "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
+    );
+  }
+
+  private userScoped(
+    userId: number,
+    since: Date,
+    claimedPassIds: number[]
+  ): Knex.QueryBuilder {
+    return claimedPassIds.length === 0
+      ? this.baseQuery(since).where('user_id', userId)
+      : this.baseQuery(since).where((scope) =>
+          scope
+            .where('user_id', userId)
+            .orWhereIn('anonymous_pass_id', claimedPassIds)
+        );
   }
 
   buildTotalsQuery(since: Date): Knex.QueryBuilder {
@@ -153,18 +174,20 @@ export class AiUsageMetricsRepository
     since: Date,
     claimedPassIds: number[] = []
   ): Knex.QueryBuilder {
-    const scoped =
-      claimedPassIds.length === 0
-        ? this.billableQuery(since).where('user_id', userId)
-        : this.billableQuery(since).where((scope) =>
-            scope
-              .where('user_id', userId)
-              .orWhereIn('anonymous_pass_id', claimedPassIds)
-          );
-    return scoped.select(
-      this.database.raw(
-        "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
-      )
+    return this.userScoped(userId, since, claimedPassIds).select(
+      this.chargedCost()
+    );
+  }
+
+  // Everything the user's calls cost us, refusals included: the spend alert
+  // watches this, not what the user is charged.
+  buildUserRecordedCostQuery(
+    userId: number,
+    since: Date,
+    claimedPassIds: number[] = []
+  ): Knex.QueryBuilder {
+    return this.userScoped(userId, since, claimedPassIds).select(
+      this.recordedCost()
     );
   }
 
@@ -172,13 +195,9 @@ export class AiUsageMetricsRepository
     anonymousPassId: number,
     since: Date
   ): Knex.QueryBuilder {
-    return this.billableQuery(since)
+    return this.baseQuery(since)
       .where('anonymous_pass_id', anonymousPassId)
-      .select(
-        this.database.raw(
-          "coalesce(sum((props->>'cost_usd')::numeric), 0) as cost_usd"
-        )
-      );
+      .select(this.chargedCost());
   }
 
   buildAnonymousPassEventCountQuery(
@@ -198,7 +217,8 @@ export class AiUsageMetricsRepository
     requestId: string,
     since: Date
   ): Knex.QueryBuilder {
-    return this.billableQuery(since)
+    return this.baseQuery(since)
+      .whereRaw("props->>'billable' is distinct from 'false'")
       .where('user_id', userId)
       .whereRaw("props->>'request_id' = ?", [requestId])
       .select(
@@ -254,15 +274,27 @@ export class AiUsageMetricsRepository
     return mapAiUsageGroupRows(rows);
   }
 
-  async userCostSince(userId: number, since: Date): Promise<number> {
+  private async claimedPassIds(userId: number): Promise<number[]> {
     const claimed = (await this.database('anonymous_passes')
       .select('id')
       .where('claimed_by_user_id', userId)) as { id: number | string }[];
-    const claimedPassIds = claimed.map((row) => Number(row.id));
+    return claimed.map((row) => Number(row.id));
+  }
+
+  async userCostSince(userId: number, since: Date): Promise<number> {
     const row = (await this.buildUserCostQuery(
       userId,
       since,
-      claimedPassIds
+      await this.claimedPassIds(userId)
+    ).first()) as { cost_usd: number | string } | undefined;
+    return Number(row?.cost_usd ?? 0);
+  }
+
+  async userRecordedCostSince(userId: number, since: Date): Promise<number> {
+    const row = (await this.buildUserRecordedCostQuery(
+      userId,
+      since,
+      await this.claimedPassIds(userId)
     ).first()) as { cost_usd: number | string } | undefined;
     return Number(row?.cost_usd ?? 0);
   }

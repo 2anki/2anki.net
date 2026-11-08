@@ -191,7 +191,21 @@ async function visionCardsForPage(
       maxTokens: PDF_PAGE_VISION_MAX_TOKENS,
       retryMaxTokens: PDF_PAGE_VISION_RETRY_MAX_TOKENS,
     });
-    response = await callVision(PDF_PAGE_VISION_RETRY_MAX_TOKENS);
+    try {
+      response = await callVision(PDF_PAGE_VISION_RETRY_MAX_TOKENS);
+    } catch (error) {
+      // The truncated first try was answered, so it is recorded and billed
+      // even when the retry never comes back.
+      recordClaudeUsage({
+        surface: 'pdf_page_vision',
+        model: calls[0].model,
+        usage: calls[0].usage,
+        userId,
+        anonymousPassId,
+        requestId,
+      });
+      throw error;
+    }
     calls.push(response);
   }
   // A page Claude declined without writing anything usable is never billed,

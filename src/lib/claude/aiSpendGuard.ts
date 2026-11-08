@@ -293,7 +293,7 @@ async function maybeNotifyAlert(
   userId: number,
   now: Date
 ): Promise<void> {
-  const cost30d = await deps.reader.userCostSince(
+  const cost30d = await deps.reader.userRecordedCostSince(
     userId,
     new Date(now.getTime() - ALERT_WINDOW_MS)
   );

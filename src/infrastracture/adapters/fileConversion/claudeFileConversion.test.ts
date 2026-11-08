@@ -170,6 +170,7 @@ describe('convertWithClaude', () => {
 
   it.each([
     ['nothing', '', false],
+    ['only whitespace', '  \n ', false],
     ['some text', '<p>Q1</p>', true],
   ])(
     'bills a declined document that wrote %s only when it wrote something',

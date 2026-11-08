@@ -2566,6 +2566,15 @@ describe('generateDeckInfo — floor v1 (comprehensive CardOption)', () => {
   it.each([
     ['declined with nothing written', refusedResponse(), false],
     [
+      'declined with prose that holds no cards',
+      {
+        content: [{ type: 'text', text: 'I am not able to help with this.' }],
+        stop_reason: 'refusal',
+        usage: { input_tokens: 100, output_tokens: 10 },
+      },
+      false,
+    ],
+    [
       'declined after writing cards',
       {
         content: [{ type: 'text', text: FAKE_DECK_JSON }],

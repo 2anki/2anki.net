@@ -460,6 +460,42 @@ describe('generateDeckInfoFromPdfImages', () => {
     }
   });
 
+  it('records the truncated first try when the retry fails', async () => {
+    mockVisionFn.mockImplementation(async (params: { max_tokens: number }) => {
+      if (params.max_tokens < 32768) {
+        return visionResponse('[{"deck":"S', 'max_tokens');
+      }
+      throw new Error('overloaded_error');
+    });
+    const trackSpy = vi
+      .spyOn(trackModule, 'track')
+      .mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      await generateDeckInfoFromPdfImages(
+        html,
+        { mediaBaseDir: baseDir },
+        undefined,
+        undefined,
+        77
+      ).catch(() => undefined);
+
+      const usage = trackSpy.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'ai_usage_recorded'
+      );
+      expect(usage).toHaveLength(2);
+      for (const call of usage) {
+        expect(
+          (call[1] as { props: Record<string, unknown> }).props.billable
+        ).toBeUndefined();
+      }
+    } finally {
+      trackSpy.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
   it('bills a page Claude declined after writing cards', async () => {
     mockVisionFn.mockResolvedValue(
       visionResponse(
