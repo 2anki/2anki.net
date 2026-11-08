@@ -234,7 +234,10 @@ vi.mock('../usecases/observability/RecordUserVisibleErrorUseCase', () => ({
 
 let mockWebhookEvent: {
   type: string;
-  data: { object: Record<string, unknown> };
+  data: {
+    object: Record<string, unknown>;
+    previous_attributes?: Record<string, unknown>;
+  };
 };
 
 async function buildServer() {
@@ -1295,6 +1298,50 @@ describe('WebhookRouter — lifetime product-ID allowlist', () => {
     );
   });
 
+  it('logs an unlocked lifetime purchase without the payer address', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockSessionsRetrieve.mockResolvedValue({
+      id: 'cs_lifetime_test',
+      line_items: { data: [{ price: { product: LIFETIME_PRODUCT_ID } }] },
+    });
+    mockWebhookEvent = makeLifetimeEvent(LIFETIME_PRODUCT_ID);
+
+    try {
+      const res = await postWebhookLifetime();
+
+      expect(res.status).toBe(200);
+      expect(infoSpy).toHaveBeenCalledWith(
+        '[webhook] checkout.session.completed: unlocked lifetime access',
+        { email_hash: 'hashed:user@example.com', rows_updated: 1 }
+      );
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('logs a lifetime purchase with no email without the customer id', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockCustomersRetrieve.mockResolvedValue({ id: 'cus_abc', email: null });
+    mockSessionsRetrieve.mockResolvedValue({
+      id: 'cs_lifetime_test',
+      line_items: { data: [{ price: { product: LIFETIME_PRODUCT_ID } }] },
+    });
+    mockWebhookEvent = makeLifetimeEvent(LIFETIME_PRODUCT_ID);
+
+    try {
+      const res = await postWebhookLifetime();
+
+      expect(res.status).toBe(200);
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[webhook] checkout.session.completed: lifetime customer has no email; quota not unlocked',
+        { customer_id_hash: 'hashed:cus_abc' }
+      );
+      expect(mockUpdatePatreonByEmail).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it('does not grant lifetime access when product is NOT in LIFETIME_PRICE_IDS', async () => {
     mockSessionsRetrieve.mockResolvedValue({
       id: 'cs_lifetime_test',
@@ -1781,6 +1828,112 @@ describe('WebhookRouter — customer.subscription.created', () => {
         code: 'unlinked_payment',
       })
     );
+  });
+
+  it('logs a scheduled cancellation with no hash when the customer has no email', async () => {
+    mockCustomersRetrieve.mockResolvedValue({ id: 'cus_abc', email: null });
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_cancelling_2',
+          customer: 'cus_abc',
+          status: 'active',
+          items: { data: [{ price: { product: 'prod_unlimited' } }] },
+          cancel_at_period_end: true,
+          cancel_at: 1_800_000_000,
+        },
+        previous_attributes: { cancel_at_period_end: false },
+      },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(infoSpy).toHaveBeenCalledWith(
+        'Subscription cancellation scheduled',
+        { email_hash: null, access_until: '2027-01-15T08:00:00.000Z' }
+      );
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('provisions an update with no new cancellation and logs no cancellation', async () => {
+    const { updateStoreSubscription } = stripeIntegrationMock as unknown as {
+      updateStoreSubscription: Mock;
+    };
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_renewed_1',
+          customer: 'cus_abc',
+          status: 'active',
+          items: { data: [{ price: { product: 'prod_unlimited' } }] },
+          cancel_at_period_end: false,
+          cancel_at: null,
+        },
+        previous_attributes: { current_period_end: 1_790_000_000 },
+      },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(updateStoreSubscription).toHaveBeenCalledWith(
+        undefined,
+        { id: 'cus_abc', email: 'subscriber@example.com' },
+        expect.objectContaining({ id: 'sub_renewed_1', status: 'active' })
+      );
+      expect(infoSpy).not.toHaveBeenCalledWith(
+        'Subscription cancellation scheduled',
+        expect.anything()
+      );
+    } finally {
+      infoSpy.mockRestore();
+    }
+  });
+
+  it('logs a scheduled cancellation without the payer address', async () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    mockWebhookEvent = {
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_cancelling_1',
+          customer: 'cus_abc',
+          status: 'active',
+          items: { data: [{ price: { product: 'prod_unlimited' } }] },
+          cancel_at_period_end: true,
+          cancel_at: 1_800_000_000,
+        },
+        previous_attributes: { cancel_at_period_end: false },
+      },
+    };
+
+    try {
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(infoSpy).toHaveBeenCalledWith(
+        'Subscription cancellation scheduled',
+        {
+          email_hash: 'hashed:subscriber@example.com',
+          access_until: '2027-01-15T08:00:00.000Z',
+        }
+      );
+      const loggedText = infoSpy.mock.calls
+        .map((call) => (typeof call[0] === 'string' ? call[0] : ''))
+        .join('\n');
+      expect(loggedText).not.toContain('subscriber@example.com');
+    } finally {
+      infoSpy.mockRestore();
+    }
   });
 
   it('returns 200 and skips provisioning when customer ID is absent', async () => {
