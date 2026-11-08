@@ -60,6 +60,7 @@ import { createWorkspaceDocxImageMediaSink } from './docxImageMediaSink';
 import {
   generateDeckInfo,
   AiCreditsTrippedWithSalvage,
+  ClaudeRefusalError,
   DeckInfo,
   CrossFileDedupState,
   createCrossFileDedupState,
@@ -256,11 +257,13 @@ export function parserWarning(parser: {
 interface AiConversionState {
   exhausted: boolean;
   tripped: boolean;
+  declined?: ClaudeRefusalError;
 }
 
 // A mid-run guard trip inside a vision/quiz conversion skips that file and flags
-// the credits warning rather than failing the whole upload; any other error
-// propagates.
+// the credits warning rather than failing the whole upload. An image Claude
+// declines is left out like an image it found nothing in, so the rest of a zip
+// still ships; any other error propagates.
 async function runVisionConversion(
   ai: AiConversionState,
   produce: () => Promise<ConvertedFile>
@@ -270,6 +273,11 @@ async function runVisionConversion(
   } catch (error) {
     if (error instanceof AiCreditsExhaustedError) {
       ai.tripped = true;
+      return null;
+    }
+    if (error instanceof ClaudeRefusalError) {
+      console.warn('[PrepareDeck] Claude declined an image; leaving it out');
+      ai.declined = error;
       return null;
     }
     throw error;
@@ -1421,6 +1429,17 @@ export async function PrepareDeck(
     convertedCount: convertedFiles.length,
     durationMs: Date.now() - tConvert,
   });
+
+  // Images Claude declined, with nothing else to convert: say so, so an upload
+  // of several files can leave this one out by name instead of failing.
+  if (
+    ai.declined != null &&
+    !ai.tripped &&
+    convertedFiles.length === 0 &&
+    files.every((file) => isImageFile(file.name))
+  ) {
+    throw ai.declined;
+  }
 
   const pdfImageFallbackNames = new Set(
     convertedFiles.filter((f) => f.imageFallback).map((f) => f.name)

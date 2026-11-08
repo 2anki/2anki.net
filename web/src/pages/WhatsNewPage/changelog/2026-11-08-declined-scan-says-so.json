@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-08-declined-scan-says-so",
+  "date": "2026-11-08",
+  "type": "fix",
+  "title": "Scanned PDFs Claude declines now say so, instead of saying the file has no text"
+}

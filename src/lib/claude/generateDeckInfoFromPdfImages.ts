@@ -11,6 +11,7 @@ import {
   withAiBudget,
 } from './aiSpendGuard';
 import {
+  ClaudeRefusalError,
   AiCreditsTrippedWithSalvage,
   DeckInfo,
   EMPTY_CONTENT_UPLOAD_MESSAGE,
@@ -208,11 +209,24 @@ async function visionCardsForPage(
     });
   }
 
-  const raw = response.content
-    .filter((b) => b.type === 'text')
-    .map((b) => (b as { type: 'text'; text: string }).text)
-    .join('');
-  const cleaned = raw.replace(/```json|```/g, '').trim();
+  // A declined page is declined again, so a refusal is never retried (the
+  // retry above runs only on max_tokens, and its answer can be a refusal too).
+  // Cards Claude wrote before it stopped still ship, as on the text path.
+  if (response.stop_reason === 'refusal') {
+    const salvaged = cardsWrittenBeforeDeclining(response, pageIndex);
+    const salvagedCards = salvaged.reduce(
+      (sum, deck) => sum + deck.cards.length,
+      0
+    );
+    console.warn('[Claude] Claude declined the page', {
+      pageIndex,
+      salvagedCards,
+    });
+    if (salvagedCards > 0) return salvaged;
+    throw new ClaudeRefusalError();
+  }
+
+  const { raw, cleaned } = pageText(response);
 
   try {
     return parseDeckResponse(cleaned, raw, pageIndex);
@@ -225,9 +239,34 @@ async function visionCardsForPage(
   }
 }
 
+function pageText(response: { content: Array<{ type: string }> }): {
+  raw: string;
+  cleaned: string;
+} {
+  const raw = response.content
+    .filter((b) => b.type === 'text')
+    .map((b) => (b as { type: 'text'; text: string }).text)
+    .join('');
+  return { raw, cleaned: raw.replace(/```json|```/g, '').trim() };
+}
+
+function cardsWrittenBeforeDeclining(
+  response: { content: Array<{ type: string }> },
+  pageIndex: number
+): ReturnType<typeof parseDeckResponse> {
+  const { raw, cleaned } = pageText(response);
+  if (cleaned === '') return [];
+  try {
+    return parseDeckResponse(cleaned, raw, pageIndex);
+  } catch {
+    return [];
+  }
+}
+
 interface PageVisionResult {
   compactDecks: CompactDeck[];
   tripped: boolean;
+  failures: unknown[];
 }
 
 async function runPagesWithConcurrency(
@@ -289,7 +328,7 @@ async function runPagesWithConcurrency(
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
   if (!tripped && failures.length === images.length && failures.length > 0) {
-    throw failures[0];
+    throw failureToShow(failures);
   }
   if (failures.length > 0) {
     console.warn('[Claude] PDF image fallback: some pages failed', {
@@ -297,7 +336,16 @@ async function runPagesWithConcurrency(
       pageCount: images.length,
     });
   }
-  return { compactDecks, tripped };
+  return { compactDecks, tripped, failures };
+}
+
+// A refusal says to change the file; any other failure can pass on another
+// try, so it is shown whenever one happened.
+function failureToShow(failures: unknown[]): unknown {
+  return (
+    failures.find((failure) => !(failure instanceof ClaudeRefusalError)) ??
+    failures[0]
+  );
 }
 
 export async function generateDeckInfoFromPdfImages(
@@ -326,7 +374,7 @@ export async function generateDeckInfoFromPdfImages(
 
   const attachPageImages = context.attachPageImages ?? true;
   const prompt = buildPdfPageVisionPrompt(userInstructions);
-  const { compactDecks, tripped } = await runPagesWithConcurrency(
+  const { compactDecks, tripped, failures } = await runPagesWithConcurrency(
     images,
     prompt,
     attachPageImages,
@@ -360,6 +408,10 @@ export async function generateDeckInfoFromPdfImages(
   }
 
   if (totalCards === 0) {
+    // A declined page is why nothing came back, not a scan without text.
+    if (failures.some((failure) => failure instanceof ClaudeRefusalError)) {
+      throw failureToShow(failures);
+    }
     throw new EmptyContentError(EMPTY_CONTENT_UPLOAD_MESSAGE);
   }
 

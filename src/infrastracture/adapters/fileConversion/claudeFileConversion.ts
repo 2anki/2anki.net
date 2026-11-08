@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 
 import { recordClaudeUsage } from '../../../lib/claude/recordClaudeUsage';
 import { withAiBudget } from '../../../lib/claude/aiSpendGuard';
+import { ClaudeRefusalError } from '../../../lib/claude/ClaudeService';
 
 const DEFAULT_MODEL = 'claude-sonnet-5';
 // A cap, not a charge — output is billed on tokens actually generated, so a
@@ -96,9 +97,20 @@ export async function convertWithClaude(
           requestId: options.requestId,
         });
         assertNotTruncated(response.stop_reason);
-        return joinTextBlocks(response.content);
+        const text = joinTextBlocks(response.content);
+        // What Claude wrote before declining still converts, as on the text
+        // and page paths; a refusal with nothing written says so.
+        if (response.stop_reason === 'refusal' && text.trim() === '') {
+          throw new ClaudeRefusalError();
+        }
+        return text;
       } catch (error) {
-        if (error instanceof FileConversionError) throw error;
+        if (
+          error instanceof FileConversionError ||
+          error instanceof ClaudeRefusalError
+        ) {
+          throw error;
+        }
         const message = error instanceof Error ? error.message : String(error);
         throw new FileConversionError(message);
       }
