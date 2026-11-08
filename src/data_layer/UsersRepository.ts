@@ -300,9 +300,9 @@ class UsersRepository {
 
   // A warning notice is keyed on the address it went to. Once no subscription
   // sends to an address any more, its notice dedupes nothing and would outlive
-  // a later account deletion, which only knows the new address. A row paid
-  // from the old address and linked to someone else is not relinked, so it can
-  // still send there and keeps its notice.
+  // a later account deletion, which only knows the new address. An unproven
+  // account leaves its own plan at the old address, so that row still sends
+  // there and keeps its notice.
   forgetPauseNoticesForAddressQuery(
     executor: Knex | Knex.Transaction,
     address: string

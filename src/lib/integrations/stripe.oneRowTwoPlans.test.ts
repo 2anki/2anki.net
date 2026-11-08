@@ -423,6 +423,22 @@ describe('two plans sharing one subscription row', () => {
       expect(await editedRow()).toBeUndefined();
     });
 
+    it('does not copy a plan another row already holds when the old plan ends', async () => {
+      await receiveEdited(stripeHolds(plan('sub_new', 'active', PRO)));
+
+      await receiveEdited(
+        stripeHolds(plan('sub_auto_sync', 'canceled', AUTO_SYNC))
+      );
+
+      expect(Boolean((await row()).active)).toBe(false);
+      expect(await heldId()).toBe('sub_auto_sync');
+
+      await receiveEdited(stripeHolds(plan('sub_new', 'canceled', PRO)));
+
+      const stillActive = await db('subscriptions').where({ active: true });
+      expect(stillActive).toEqual([]);
+    });
+
     it('opens a row at the new address for a plan no row holds yet', async () => {
       await receiveEdited(plan('sub_new', 'active', PRO));
 

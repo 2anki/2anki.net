@@ -4,6 +4,9 @@
 // errored forever while the payer had no access (#5180). Access readers
 // already read every row that names an address.
 exports.up = async (knex) => {
+  // Waiting behind an open transaction would queue every subscriptions read
+  // behind this one; failing the boot lets the deploy restore last-good.
+  await knex.raw("SET LOCAL lock_timeout = '5s'");
   await knex.schema.alterTable('subscriptions', (table) => {
     table.dropUnique(['linked_email']);
     table.index(['linked_email']);

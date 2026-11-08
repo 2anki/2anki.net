@@ -192,8 +192,8 @@ describe('ConfirmSubscriptionClaimUseCase', () => {
     expect(result).toEqual({ success: false, reason: 'user_has_active_sub' });
   });
 
-  // A unique-key clash in the transaction (another row already links the
-  // claimant, or another account holds the customer id) reads as a race.
+  // A unique-key clash in the transaction (another account holds the
+  // customer id) reads as a race.
   it('returns race when the claim hits a unique key', async () => {
     const useCase = new ConfirmSubscriptionClaimUseCase(
       makeTransactionalDb(true),
@@ -308,6 +308,34 @@ describe('ConfirmSubscriptionClaimUseCase against a real database', () => {
 
     expect(result).toEqual({ success: false, reason: 'race' });
     expect(await db('subscriptions').select('email')).toEqual([]);
+  });
+
+  it('links a paid plan to a claimant already linked to an ended one', async () => {
+    await db('users').insert({ id: 99, email: 'user@example.com' });
+    await db('subscriptions').insert({
+      email: 'old-payer@example.com',
+      active: false,
+      payload: '{}',
+      linked_email: 'user@example.com',
+    });
+
+    const result = await useCaseFor(stripeWith(activeSubscription({}))).execute(
+      99,
+      'raw-token',
+      'ip-hash',
+      'email-hash'
+    );
+
+    expect(result).toEqual({ success: true });
+    expect(
+      await db('subscriptions')
+        .where({ linked_email: 'user@example.com' })
+        .orderBy('email')
+        .select('email', 'active')
+    ).toEqual([
+      { email: 'old-payer@example.com', active: 0 },
+      { email: 'payer@example.com', active: 1 },
+    ]);
   });
 
   it('links an unlinked payment to the claimant', async () => {
