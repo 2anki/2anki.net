@@ -807,6 +807,8 @@ function UploadForm({
     setEmptyBackSource,
     blankBackCount,
     setBlankBackCount,
+    cardsLeftOut,
+    setCardsLeftOut,
     cherrySkippedCount,
     setCherrySkippedCount,
     foldedToggleCount,
@@ -931,6 +933,7 @@ function UploadForm({
     setEmptyBackCount,
     setEmptyBackSource,
     setBlankBackCount,
+    setCardsLeftOut,
     setCherrySkippedCount,
     setFoldedToggleCount,
     setCardsHeldBack,
@@ -3259,6 +3262,11 @@ function UploadForm({
       {blankBackCount > 0 && (
         <div className={formStyles.warningInline}>
           <EmptyBackNotice count={blankBackCount} source="blank" />
+        </div>
+      )}
+      {cardsLeftOut > 0 && (
+        <div className={formStyles.warningInline}>
+          <EmptyBackNotice count={cardsLeftOut} source="leftOut" />
         </div>
       )}
       {cherrySkippedCount > 0 && (

@@ -1821,6 +1821,48 @@ describe('McpToolsService at the monthly card limit', () => {
     return text.replace(/https:\/\/2anki\.net\/pricing\/\S*/g, '');
   }
 
+  it('says how many answerless lines the limit left out', async () => {
+    const { service } = makeService({
+      uploadEntry: (_req, res) => {
+        res.set('X-Card-Count', '10');
+        res.set('File-Name', 'Biology.apkg');
+        res.set('X-Cards-Left-Out', '4');
+        res.status(200).send(Buffer.from('APKG-BYTES'));
+      },
+    });
+
+    const result = await service.convertToDeck({ text: 'x' }, 'owner-9', {});
+
+    expect(result).toMatchObject({
+      kind: 'deck',
+      cardCount: 10,
+      cards_left_out: 4,
+      summary:
+        '10 cards. Ready to download. 4 lines past the free limit had no answer, so they were left out. Give each question an answer in the file to turn it into a card.',
+    });
+  });
+
+  it('adds the left-out lines to a partial delivery', async () => {
+    const { service } = makeService({
+      uploadEntry: (_req, res) => {
+        res.set('X-Card-Count', '10');
+        res.set('File-Name', 'Biology.apkg');
+        res.set('X-Cards-Held-Back', '5');
+        res.set('X-Cards-Left-Out', '1');
+        res.status(200).send(Buffer.from('APKG-BYTES'));
+      },
+    });
+
+    const result = await service.convertToDeck({ text: 'x' }, 'owner-9', {});
+
+    expect(result).toMatchObject({
+      cards_held_back: 5,
+      cards_left_out: 1,
+      summary:
+        'Deck ready: Biology. 10 of 15 cards. 1 line past the free limit had no answer, so it was left out. Give each question an answer in the file to turn it into a card.',
+    });
+  });
+
   it('delivers the cards that fit and says the rest are saved for a plan', async () => {
     const { service } = makeService({
       uploadEntry: partialUpload(10, 5, '2026-11-09'),

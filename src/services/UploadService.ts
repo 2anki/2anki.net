@@ -2216,6 +2216,14 @@ class UploadService {
         res.set('X-Cards-Held-Back', heldBack.toString());
         exposedHeaders.push('X-Cards-Held-Back');
       }
+      const leftOut = packages.reduce(
+        (sum, p) => sum + (p.cardsLeftOut ?? 0),
+        0
+      );
+      if (leftOut > 0) {
+        res.set('X-Cards-Left-Out', leftOut.toString());
+        exposedHeaders.push('X-Cards-Left-Out');
+      }
       const heldUntil =
         owner != null && signedInMonthlyPartial && heldBack > 0
           ? await this.holdDeckForPlan(req, res, owner, totalCards, heldBack)
@@ -2291,10 +2299,11 @@ class UploadService {
           ...this.baseFunnelProps(req, res),
           card_count_bucket: bucket,
           ...this.pdfPageCountProps(packages),
-          ...(heldBack > 0
+          ...(heldBack > 0 || leftOut > 0
             ? {
                 card_limit_partial: true,
                 cards_held_back: heldBack,
+                ...(leftOut > 0 ? { cards_left_out: leftOut } : {}),
                 ...(heldUntil != null ? { held_for_plan: true } : {}),
               }
             : {}),

@@ -136,6 +136,12 @@ function ownerToUserId(owner: string): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+function leftOutSentence(count: number): string {
+  const lines = count === 1 ? '1 line' : `${count} lines`;
+  const verb = count === 1 ? 'was' : 'were';
+  return ` ${lines} past the free limit had no answer, so ${count === 1 ? 'it' : 'they'} ${verb} left out. Give each question an answer in the file to turn it into a card.`;
+}
+
 function heldBackSentence(count: number): string {
   if (count === 1) return ' 1 card was held back.';
   return ` ${count} cards were held back.`;
@@ -1193,7 +1199,19 @@ export class McpToolsService {
     const downloadUrl = this.mcpDeckDownloadUrl(objectId);
     const preview = await this.previewFromBytes(bytes, `mcp:${objectId}`);
     const heldBack = Number(res.get('X-Cards-Held-Back') ?? 0);
+    const leftOut = Number(res.get('X-Cards-Left-Out') ?? 0);
+    const leftOutFields =
+      Number.isInteger(leftOut) && leftOut > 0
+        ? { cards_left_out: leftOut, leftOutText: leftOutSentence(leftOut) }
+        : null;
     if (cardCount != null && Number.isInteger(heldBack) && heldBack > 0) {
+      const partial = this.partialDeliveryFields(
+        res,
+        owner,
+        title,
+        cardCount,
+        heldBack
+      );
       return {
         kind: 'deck',
         jobId: objectId,
@@ -1201,7 +1219,13 @@ export class McpToolsService {
         filename,
         downloadUrl,
         ...preview,
-        ...this.partialDeliveryFields(res, owner, title, cardCount, heldBack),
+        ...partial,
+        ...(leftOutFields == null
+          ? {}
+          : {
+              summary: partial.summary + leftOutFields.leftOutText,
+              cards_left_out: leftOutFields.cards_left_out,
+            }),
       };
     }
     const summary =
@@ -1215,7 +1239,10 @@ export class McpToolsService {
       filename,
       downloadUrl,
       ...preview,
-      summary,
+      summary: summary + (leftOutFields?.leftOutText ?? ''),
+      ...(leftOutFields == null
+        ? {}
+        : { cards_left_out: leftOutFields.cards_left_out }),
     };
   }
 

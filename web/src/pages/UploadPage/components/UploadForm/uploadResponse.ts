@@ -64,6 +64,7 @@ export interface ConversionSuccessHandlers {
   setEmptyBackCount: (value: number) => void;
   setEmptyBackSource: (value: EmptyBackSource) => void;
   setBlankBackCount: (value: number) => void;
+  setCardsLeftOut: (value: number) => void;
   setCherrySkippedCount: (value: number) => void;
   setFoldedToggleCount: (value: number) => void;
   setCardsHeldBack: (value: number) => void;
@@ -226,6 +227,9 @@ export async function applyConversionSuccess(
   );
   handlers.setBlankBackCount(
     parseNonNegativeIntHeader(response.headers, 'X-Blank-Back-Count')
+  );
+  handlers.setCardsLeftOut(
+    parseNonNegativeIntHeader(response.headers, 'X-Cards-Left-Out')
   );
   handlers.setCherrySkippedCount(
     parseNonNegativeIntHeader(response.headers, 'X-Cherry-Skipped-Count')

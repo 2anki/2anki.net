@@ -49,6 +49,19 @@ describe('EmptyBackNotice', () => {
     });
   });
 
+  it('says how many answerless lines the free limit left out', () => {
+    render(<EmptyBackNotice count={7} source="leftOut" />);
+    expect(
+      screen.getByText(
+        /7 lines past the free limit had no answer, so they were left out of this deck\./
+      )
+    ).toBeInTheDocument();
+    expect(track).toHaveBeenCalledWith('empty_back_notice_shown', {
+      empty_back_count: 7,
+      kind: 'left_out_at_limit',
+    });
+  });
+
   it('says "your decks" for a multi-deck batch upload', () => {
     render(<EmptyBackNotice count={4} multipleDecks />);
     expect(screen.getByText(/aren't in your decks/)).toBeInTheDocument();

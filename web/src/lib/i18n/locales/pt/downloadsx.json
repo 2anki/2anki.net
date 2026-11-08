@@ -121,7 +121,9 @@
     "notion_one": "{{count}} toggle não tinha resposta e foi ignorado, então não está neste baralho. Adicione uma resposta no Notion e converta novamente.",
     "notion_other": "{{count}} toggles não tinham resposta e foram ignorados, então não estão neste baralho. Adicione uma resposta a cada um no Notion e converta novamente.",
     "blankBacks_one": "{{count}} cartão não tem resposta, então o verso está vazio. Um arquivo sem formato de pergunta e resposta transforma cada linha em um cartão. Coloque cada pergunta em um marcador com a resposta recuada abaixo, ou numa planilha coloque a resposta na coluna seguinte, e converta novamente.",
-    "blankBacks_other": "{{count}} cartões não têm resposta, então os versos estão vazios. Um arquivo sem formato de pergunta e resposta transforma cada linha em um cartão. Coloque cada pergunta em um marcador com a resposta recuada abaixo, ou numa planilha coloque a resposta na coluna seguinte, e converta novamente."
+    "blankBacks_other": "{{count}} cartões não têm resposta, então os versos estão vazios. Um arquivo sem formato de pergunta e resposta transforma cada linha em um cartão. Coloque cada pergunta em um marcador com a resposta recuada abaixo, ou numa planilha coloque a resposta na coluna seguinte, e converta novamente.",
+    "leftOutAtLimit_one": "{{count}} linha além do limite gratuito não tinha resposta, então não está neste baralho. Dê uma resposta a cada pergunta no seu arquivo, por exemplo um marcador com a resposta recuada abaixo, para transformá-la em cartão.",
+    "leftOutAtLimit_other": "{{count}} linhas além do limite gratuito não tinham resposta, então não estão neste baralho. Dê uma resposta a cada pergunta no seu arquivo, por exemplo um marcador com a resposta recuada abaixo, para transformá-la em cartão."
   },
   "blocksForbidden": {
     "notion_one": "{{count}} parte desta página não está conectada ao 2anki, então não está neste baralho. Adicione o 2anki a esta página e às suas subpáginas no menu Conexões do Notion e converta novamente.",

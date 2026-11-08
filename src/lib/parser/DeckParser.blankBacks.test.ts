@@ -128,6 +128,26 @@ describe('DeckParser cards that ship with no answer', () => {
     expect(parser.blankBackCount).toBe(parser.totalCardCount());
   });
 
+  it('reports the answerless lines the card limit cut as left out, not held back', async () => {
+    const parser = await builtParser(
+      page(
+        paragraphs([
+          'The {{c1::cell}} is the unit of life',
+          'The {{c1::nucleus}} holds the DNA',
+          'Plain line one',
+          'The {{c1::ribosome}} builds proteins',
+          'Plain line two',
+          'Plain line three',
+        ])
+      ),
+      2
+    );
+
+    expect(parser.totalCardCount()).toBe(2);
+    expect(parser.cardsHeldBack).toBe(1);
+    expect(parser.cardsLeftOut).toBe(3);
+  });
+
   it('stays quiet for toggles that all have answers', async () => {
     const parser = await builtParser(
       page(toggle('Q1', 'A1') + toggle('Q2', 'A2'))
