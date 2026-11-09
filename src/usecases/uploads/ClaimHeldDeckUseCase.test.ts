@@ -889,6 +889,7 @@ describe('ClaimHeldDeckUseCase', () => {
         kind: 'signup',
         cardsHeldBack: 163,
         heldForPlan: true,
+        cutAt: 'preview',
       });
     });
 

@@ -8761,6 +8761,30 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(result).toMatchObject({ cardCount: 21, cardsLeftOut: 6 });
   });
 
+  it('saves nothing for a plan when a paying claim builds the whole deck', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 50 }], 0);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      true,
+      null,
+      'req-1',
+      null
+    );
+
+    expect(result).not.toHaveProperty('heldForPlan');
+    expect(heldDeck.rows).toHaveLength(0);
+  });
+
   it('does not hold a capped claim again when no cut card has an answer', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 0);
@@ -8996,7 +9020,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(result).toMatchObject({ cardCount: 21, heldForPlan: false });
   });
 
-  it('keeps the monthly allowance and saves no plan hold without a preview cap', async () => {
+  it('keeps the monthly allowance and saves the answered rest for a plan without a preview cap', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 100 }], 84);
     const heldDeck = new InMemoryHeldDeckRepository();
@@ -9017,8 +9041,17 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
 
     expect(execute.mock.calls[0][6]).toMatchObject({ cardLimit: 100 });
-    expect(result).not.toHaveProperty('heldForPlan');
-    expect(heldDeck.rows).toHaveLength(0);
+    expect(result).toMatchObject({
+      cardCount: 100,
+      cardsHeldBack: 84,
+      heldForPlan: true,
+    });
+    expect(heldDeck.rows).toHaveLength(1);
+    expect(heldDeck.rows[0]).toMatchObject({
+      anon_id: planHoldKey('4242'),
+      card_count: 100,
+      cards_held_back: 84,
+    });
   });
 
   it('carries the stored style change time into a claimed held file', async () => {

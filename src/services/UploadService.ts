@@ -3178,7 +3178,7 @@ class UploadService {
       (sum, p) => sum + (p.cardsLeftOut ?? 0),
       0
     );
-    if (options == null || paying) {
+    if (paying) {
       return {
         downloadKey,
         cardCount: totalCards,
@@ -3187,6 +3187,9 @@ class UploadService {
         deckName,
       };
     }
+    // A free claim cut at the preview or at the cards left this month keeps
+    // the answered rest as a plan hold, so a pass releases it without a
+    // re-upload.
     const heldForPlan =
       heldBack > 0 &&
       (await this.holdFileForPlan({

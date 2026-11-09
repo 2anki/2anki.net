@@ -12782,10 +12782,10 @@ describe('claiming a held deck after sign-in', () => {
     ).toBeInTheDocument();
   });
 
-  it('says how many answerless lines a claim cut to the preview left out, beside the pass offer', async () => {
-    signIn();
+  const mockCutClaim = (claim: Record<string, unknown>) =>
     mockGet2ankiApi.mockReturnValue({
       startPassCheckout: vi.fn(),
+      getCheckoutPrices: vi.fn().mockResolvedValue(null),
       getUploads: vi.fn().mockResolvedValue([]),
       getHeldDeck: vi
         .fn()
@@ -12793,15 +12793,44 @@ describe('claiming a held deck after sign-in', () => {
       claimHeldDeck: vi.fn().mockResolvedValue({
         status: 200,
         downloadKey: 'owner-key.apkg',
-        cardCount: 21,
         deckName: 'notes',
         kind: 'signup',
         error: null,
-        cardsHeldBack: 163,
-        heldForPlan: true,
-        cardsLeftOut: 4,
+        ...claim,
       }),
     } as unknown as ReturnType<typeof get2ankiApi>);
+
+  it('counts the answerless lines in the pass offer when the rest of a preview is saved', async () => {
+    signIn();
+    mockCutClaim({
+      cardCount: 21,
+      cardsHeldBack: 163,
+      heldForPlan: true,
+      cutAt: 'preview',
+      cardsLeftOut: 4,
+    });
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText('188 cards ready, 21 shown')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /more lines were past the free limit and had no answer/
+      )
+    ).toBeNull();
+  });
+
+  it('says how many answerless lines a preview left out when nothing was saved', async () => {
+    signIn();
+    mockCutClaim({
+      cardCount: 21,
+      cardsHeldBack: 163,
+      heldForPlan: false,
+      cutAt: 'preview',
+      cardsLeftOut: 4,
+    });
 
     renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
 
@@ -12811,6 +12840,23 @@ describe('claiming a held deck after sign-in', () => {
       )
     ).toBeInTheDocument();
     expect(screen.getByText('184 cards ready, 21 shown')).toBeInTheDocument();
+  });
+
+  it('offers the passes for the rest of a claim cut at the free month', async () => {
+    signIn();
+    mockCutClaim({
+      cardCount: 10,
+      cardsHeldBack: 24,
+      heldForPlan: true,
+      cutAt: 'month',
+    });
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText('This deck has 10 of 34 cards')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/cards ready, \d+ shown/)).toBeNull();
   });
 
   it('adds no extra line when the claim built one deck', async () => {

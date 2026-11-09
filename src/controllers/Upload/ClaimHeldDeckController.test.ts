@@ -193,6 +193,43 @@ describe('ClaimHeldDeckController', () => {
       kind: 'signup',
       cardsHeldBack: 13,
       heldForPlan: true,
+      cutAt: 'preview',
+    });
+  });
+
+  it('POST returns the held-back count when a sign-up claim is cut at the free month', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const converter: HeldDeckConverter = {
+      convertHeldFileForOwner: vi.fn().mockResolvedValue({
+        downloadKey: 'owner-key.apkg',
+        cardCount: 10,
+        cardsHeldBack: 24,
+        deckName: 'notes',
+        heldForPlan: true,
+      }),
+    };
+    const store: HeldFileStore = {
+      getFileContents: vi
+        .fn()
+        .mockResolvedValue({ Body: Buffer.from('<html></html>') }),
+    };
+    const controller = new ClaimHeldDeckController(
+      new ClaimHeldDeckUseCase(repo, store, converter, async () => false)
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse(7);
+
+    await controller.claim(buildRequest(ANON), res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toEqual({
+      downloadKey: 'owner-key.apkg',
+      cardCount: 10,
+      deckName: 'notes',
+      kind: 'signup',
+      cardsHeldBack: 24,
+      heldForPlan: true,
+      cutAt: 'month',
     });
   });
 

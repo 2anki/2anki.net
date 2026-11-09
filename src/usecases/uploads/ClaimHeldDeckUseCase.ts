@@ -66,8 +66,10 @@ export interface ClaimResult {
   cardCount: number;
   deckName: string;
   kind: HoldKind;
-  // Set only when a sign-up claim was cut to the preview.
+  // Set when a free sign-up claim was cut, at the preview or at the cards
+  // left this month, and had answered cards past the cut.
   cardsHeldBack?: number;
+  cutAt?: 'preview' | 'month';
   // Set when the cut also left out lines with no answer.
   cardsLeftOut?: number;
   heldForPlan?: boolean;
@@ -265,10 +267,11 @@ export class ClaimHeldDeckUseCase {
           ? { cardsLeftOut: conversion.cardsLeftOut }
           : {}),
         ...(hold.source === 'mcp' ? { source: 'mcp' as const } : {}),
-        ...(capToPreview
+        ...(capToPreview || conversion.cardsHeldBack > 0
           ? {
               cardsHeldBack: conversion.cardsHeldBack,
               heldForPlan: conversion.heldForPlan === true,
+              cutAt: capToPreview ? ('preview' as const) : ('month' as const),
             }
           : {}),
       };

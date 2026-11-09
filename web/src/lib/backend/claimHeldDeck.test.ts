@@ -89,3 +89,36 @@ describe('Backend.claimHeldDeck', () => {
     expect(result).not.toHaveProperty('alsoClaimed');
   });
 });
+
+describe('Backend.claimHeldDeck cut', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ['month', 'month'],
+    ['preview', 'preview'],
+    [undefined, 'preview'],
+    ['toString', 'preview'],
+  ])('reads a cut at %s as %s', async (cutAt, expected) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          downloadKey: 'owner-key.apkg',
+          cardCount: 10,
+          deckName: 'notes',
+          kind: 'signup',
+          cardsHeldBack: 24,
+          heldForPlan: true,
+          cutAt,
+        })
+      )
+    );
+
+    await expect(new Backend().claimHeldDeck()).resolves.toMatchObject({
+      cardsHeldBack: 24,
+      cutAt: expected,
+    });
+  });
+});
