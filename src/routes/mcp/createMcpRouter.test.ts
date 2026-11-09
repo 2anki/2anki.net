@@ -300,6 +300,40 @@ describe('McpRouter mistyped connector URLs', () => {
     }
   );
 
+  it('redirects a POST to the site root to /mcp keeping the query', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/?x=1`, {
+        method: 'POST',
+        redirect: 'manual',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+      });
+      expect(res.status).toBe(308);
+      expect(res.headers.get('location')).toBe('/mcp?x=1');
+    });
+  });
+
+  it('leaves a GET to the site root for the web app', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/`, { redirect: 'manual' });
+      expect(res.status).toBe(404);
+    });
+  });
+
+  it('lands an unauthenticated POST to the site root on the bearer challenge', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+      });
+      expect(res.status).toBe(401);
+      expect(res.headers.get('www-authenticate')).toContain(
+        'resource_metadata'
+      );
+    });
+  });
+
   it('redirects a GET, such as a browser visit, to /mcp', async () => {
     await withServer(async (base) => {
       const res = await fetch(`${base}/mc`, { redirect: 'manual' });
