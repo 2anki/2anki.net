@@ -1,6 +1,6 @@
-// The upload form sends every setting saved in the browser as a form field,
-// so an over-long field on an upload is a saved setting, not something the
-// person typed into the form.
+// The upload form sends the card settings saved in the browser as form
+// fields, so an over-long field on an upload is a saved setting, not something
+// the person typed into the form.
 export function uploadFieldTooLongMessage(field: string | undefined): string {
   if (field === 'user-instructions') {
     return 'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.';

@@ -1,9 +1,10 @@
 import { ALLOWED_CARD_OPTION_KEYS } from '../../data_layer/UserPreferencesRepository';
 
 // A held deck is rebuilt with nobody on the page, so only the options that
-// shape the deck travel with it. The request body also carries the browser's
-// whole localStorage, cloud-import tokens and file lists; none of that is an
-// option, so the keys are an allowlist, never a denylist.
+// shape the deck travel with it. The request body also carries cloud-import
+// tokens and file lists, and older clients sent the browser's whole
+// localStorage; none of that is an option, so the keys are an allowlist,
+// never a denylist.
 //
 // The paid-inference switches never travel: a held deck was always built
 // without AI, so its claim must not start a Claude run the hold never had.

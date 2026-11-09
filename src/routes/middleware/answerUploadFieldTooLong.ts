@@ -3,8 +3,8 @@ import multer from 'multer';
 
 import { uploadFieldTooLongMessage } from '../../lib/upload/fieldTooLongMessage';
 
-// Dropbox and Drive picks and the password retry send every saved browser
-// setting as a field, as the file upload does, so an over-long one gets the
+// Dropbox and Drive picks and the password retry send the saved card
+// settings as fields, as the file upload does, so an over-long one gets the
 // upload copy rather than the form copy ErrorHandler gives every other route.
 export function answerUploadFieldTooLong(
   err: unknown,

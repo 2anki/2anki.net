@@ -2776,6 +2776,8 @@ describe('UploadForm analytics events', () => {
   });
 
   it('posts to /api/upload/dropbox when the chooser returns a file', async () => {
+    globalThis.localStorage.setItem('deckName', 'Pharmacology');
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_not_a_setting');
     const previousKey = process.env.REACT_APP_DROPBOX_APP_KEY;
     process.env.REACT_APP_DROPBOX_APP_KEY = 'test-key';
     (window as unknown as { Dropbox?: unknown }).Dropbox = {
@@ -2828,8 +2830,12 @@ describe('UploadForm analytics events', () => {
     expect(JSON.parse(body.get('files') as string)).toEqual([
       expect.objectContaining({ name: 'pharm.pdf', linkType: 'direct' }),
     ]);
+    expect(body.get('deckName')).toBe('Pharmacology');
+    expect(body.has('2anki_pass_token')).toBe(false);
 
     delete (window as unknown as { Dropbox?: unknown }).Dropbox;
+    globalThis.localStorage.removeItem('deckName');
+    globalThis.localStorage.removeItem('2anki_pass_token');
     process.env.REACT_APP_DROPBOX_APP_KEY = previousKey;
   });
 
