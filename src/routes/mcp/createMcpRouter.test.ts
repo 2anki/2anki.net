@@ -3,6 +3,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { OAuthServerProvider } from '@modelcontextprotocol/sdk/server/auth/provider.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
+import { InvalidTokenError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 import { InMemoryRateLimiter } from '../../lib/rateLimit/InMemoryRateLimiter';
 
@@ -31,6 +32,9 @@ function fakeProvider(): OAuthServerProvider {
       token_type: 'bearer',
     }),
     verifyAccessToken: async (token: string): Promise<AuthInfo> => {
+      if (token === 'expired') {
+        throw new InvalidTokenError('expired');
+      }
       if (token !== 'good') {
         throw new Error('bad token');
       }
@@ -299,6 +303,98 @@ describe('McpRouter mistyped connector URLs', () => {
       });
     }
   );
+
+  it('redirects a POST to the site root to /mcp keeping the query', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/?x=1`, {
+        method: 'POST',
+        redirect: 'manual',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+      });
+      expect(res.status).toBe(308);
+      expect(res.headers.get('location')).toBe('/mcp?x=1');
+    });
+  });
+
+  it('does not claim a GET to the site root', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/`, { redirect: 'manual' });
+      expect(res.status).toBe(404);
+    });
+  });
+
+  it('reaches the authenticated handler when a token holder POSTs to the site root', async () => {
+    let reached = false;
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer good',
+          },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(200);
+      },
+      (_req, res) => {
+        reached = true;
+        res.json({ ok: true });
+      }
+    );
+    expect(reached).toBe(true);
+  });
+
+  it('refuses an expired token on a POST to the site root and logs why', async () => {
+    const lines: string[] = [];
+    let reached = false;
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer expired',
+          },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(401);
+        await res.text();
+      },
+      (_req, res) => {
+        reached = true;
+        res.json({ ok: true });
+      },
+      undefined,
+      { logClientError: (line) => lines.push(line) }
+    );
+    expect(reached).toBe(false);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('[mcp] POST /mcp 401 code=invalid_token');
+  });
+
+  it('answers OPTIONS on the site root with the POST it now accepts', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/`, { method: 'OPTIONS' });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('allow')).toBe('POST');
+    });
+  });
+
+  it('lands an unauthenticated POST to the site root on the bearer challenge', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+      });
+      expect(res.status).toBe(401);
+      expect(res.headers.get('www-authenticate')).toContain(
+        'resource_metadata'
+      );
+    });
+  });
 
   it('redirects a GET, such as a browser visit, to /mcp', async () => {
     await withServer(async (base) => {
