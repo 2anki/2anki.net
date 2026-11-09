@@ -308,6 +308,29 @@ describe('parseDeckResponse', () => {
     }
   });
 
+  it('throws the empty-content error for a prose reply and logs none of it', () => {
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      const raw =
+        'PRIVATE-NOTE: The provided HTML content is a template but has no actual question-and-answer content to convert.';
+      expect(() => parseDeckResponse(raw, raw, 0)).toThrow(
+        expect.objectContaining({
+          name: 'EmptyContentError',
+          message: EMPTY_CONTENT_USER_MESSAGE,
+        })
+      );
+      const summary = errorSpy.mock.calls.find(
+        ([msg]) => msg === '[Claude] Failed to parse response as JSON'
+      );
+      expect(summary![1]).toMatchObject({ parseErrorPosition: null });
+      expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('PRIVATE');
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
   it('keeps the reply text out of the log when the reply is valid JSON but not a deck array', () => {
     const errorSpy = vi
       .spyOn(console, 'error')
