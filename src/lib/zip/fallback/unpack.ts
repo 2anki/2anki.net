@@ -2,26 +2,26 @@ import { spawn } from 'node:child_process';
 import { createWriteStream, promises as fsPromises } from 'node:fs';
 import { join } from 'node:path';
 
-import { MAX_EXTRACTED_BYTES } from '../zipLimits';
+import { MAX_EXTRACTED_BYTES, MAX_RECOVERY_MS } from '../zipLimits';
 import { excludeExtractionArtifacts } from './excludeExtractionArtifacts';
 import { listFiles } from './listFiles';
 import { File } from './types';
-
-export const RECOVERY_TOO_LARGE_MESSAGE =
-  'This upload is too large to process. Split it into smaller uploads and try again.';
+import { ZipRecoveryTooLargeError } from './ZipRecoveryTooLargeError';
 
 export interface UnpackLimits {
   tarPath: string;
   maxBytes: number;
   timeoutMs: number;
   checkIntervalMs: number;
+  killGraceMs: number;
 }
 
 const DEFAULT_LIMITS: UnpackLimits = {
   tarPath: '/usr/bin/bsdtar',
   maxBytes: MAX_EXTRACTED_BYTES,
-  timeoutMs: 120_000,
+  timeoutMs: MAX_RECOVERY_MS,
   checkIntervalMs: 250,
+  killGraceMs: 5000,
 };
 
 async function extractedBytes(
@@ -48,8 +48,9 @@ async function extractedBytes(
 export function unpack(
   filePath: string,
   workspace: string,
-  limits: UnpackLimits = DEFAULT_LIMITS
+  overrides: Partial<UnpackLimits> = {}
 ): Promise<File[]> {
+  const limits = { ...DEFAULT_LIMITS, ...overrides };
   return new Promise((resolve, reject) => {
     const stdoutLogPath = join(workspace, 'tar_stdout.log');
     const stderrLogPath = join(workspace, 'tar_stderr.log');
@@ -68,7 +69,7 @@ export function unpack(
     let checking = false;
 
     const rejectAndClean = () => {
-      const fail = () => reject(new Error(RECOVERY_TOO_LARGE_MESSAGE));
+      const fail = () => reject(new ZipRecoveryTooLargeError());
       fsPromises
         .rm(workspace, { recursive: true, force: true })
         .then(fail, fail);
@@ -79,7 +80,13 @@ export function unpack(
       settled = true;
       clearInterval(sizeCheck);
       clearTimeout(deadline);
-      decompressProcess.once('close', rejectAndClean);
+      // A killed tool normally closes at once. The grace period covers one
+      // whose output pipes are held open, so the upload cannot hang on it.
+      const grace = setTimeout(rejectAndClean, limits.killGraceMs);
+      decompressProcess.once('close', () => {
+        clearTimeout(grace);
+        rejectAndClean();
+      });
       decompressProcess.kill('SIGKILL');
     };
 

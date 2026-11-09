@@ -17,6 +17,7 @@ export const EXPECTED_ERROR_NAMES = new Set([
   'ImageOnlyContentError',
   'DeckTooLargeError',
   'IncompleteZipError',
+  'ZipRecoveryTooLargeError',
   'EpubNoAnnotationsError',
   'EpubTooLargeError',
   'NotionDatabaseColumnsError',

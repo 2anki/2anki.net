@@ -4,12 +4,13 @@ import { strToU8 } from 'fflate';
 import { decompress } from './decompress';
 import { processAndPrepareArchiveData } from './processAndPrepareArchiveData';
 import { File } from './types';
-import { RECOVERY_TOO_LARGE_MESSAGE } from './unpack';
+import { RECOVERY_TOO_LARGE_MESSAGE } from './ZipRecoveryTooLargeError';
 
 vi.mock('./decompress');
 
 const mockedDecompress = decompress as MockedFunction<typeof decompress>;
 const archive = strToU8('archive bytes');
+const budget = { maxBytes: 1000, maxTextBytes: 1000, timeoutMs: 1000 };
 
 function fileOnDisk(
   name: string,
@@ -37,11 +38,19 @@ describe('processAndPrepareArchiveData', () => {
     const photo = fileOnDisk('/w/photo.png', 'png bytes');
     mockedDecompress.mockResolvedValue([page.file, photo.file]);
 
-    const files = await processAndPrepareArchiveData(archive);
+    const files = await processAndPrepareArchiveData(archive, false, budget);
 
     expect(files[0]).toEqual({ name: '/w/page.html', contents: '<p>hi</p>' });
     expect(files[1].name).toBe('/w/photo.png');
     expect(photo.reads()).toBe(0);
+  });
+
+  it("hands the upload's remaining size and time to the extraction", async () => {
+    mockedDecompress.mockResolvedValue([]);
+
+    await processAndPrepareArchiveData(archive, false, budget);
+
+    expect(mockedDecompress).toHaveBeenCalledWith(archive, budget);
   });
 
   it('refuses before reading text past the memory budget', async () => {
@@ -50,7 +59,10 @@ describe('processAndPrepareArchiveData', () => {
     mockedDecompress.mockResolvedValue([small.file, large.file]);
 
     await expect(
-      processAndPrepareArchiveData(archive, false, 50)
+      processAndPrepareArchiveData(archive, false, {
+        ...budget,
+        maxTextBytes: 50,
+      })
     ).rejects.toThrow(RECOVERY_TOO_LARGE_MESSAGE);
     expect(large.reads()).toBe(0);
   });

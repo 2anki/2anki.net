@@ -39,6 +39,7 @@ import {
   PDF_UNREADABLE_REASON,
 } from './jobFailureReason';
 import { DAMAGED_ZIP_MESSAGE } from '../../lib/zip/damagedZipMessage';
+import { RECOVERY_TOO_LARGE_MESSAGE } from '../../lib/zip/fallback/ZipRecoveryTooLargeError';
 import { ConversionChildCrashedError } from '../../lib/workerTermination';
 
 function makeUnauthorizedError(): APIResponseError {
@@ -100,6 +101,17 @@ describe('jobFailureReasonFromError', () => {
     expect(jobFailureReasonCode(rebuilt)).toBe('zip_invalid');
     expect(jobFailureReasonFromError(rebuilt, 'job-1')).toBe(
       DAMAGED_ZIP_MESSAGE
+    );
+  });
+
+  it('stores the too-large sentence for a recovery stopped by its budget', () => {
+    const rebuilt = Object.assign(new Error(RECOVERY_TOO_LARGE_MESSAGE), {
+      name: 'ZipRecoveryTooLargeError',
+    });
+
+    expect(jobFailureReasonCode(rebuilt)).toBe('zip_recovery_too_large');
+    expect(jobFailureReasonFromError(rebuilt, 'job-1')).toBe(
+      RECOVERY_TOO_LARGE_MESSAGE
     );
   });
 

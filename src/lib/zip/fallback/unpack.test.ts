@@ -2,7 +2,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { RECOVERY_TOO_LARGE_MESSAGE, unpack, UnpackLimits } from './unpack';
+import { unpack, UnpackLimits } from './unpack';
+import { RECOVERY_TOO_LARGE_MESSAGE } from './ZipRecoveryTooLargeError';
 
 describe('unpack', () => {
   let scripts: string;
@@ -21,6 +22,7 @@ describe('unpack', () => {
       maxBytes: 1_000_000,
       timeoutMs: 20_000,
       checkIntervalMs: 10,
+      killGraceMs: 5000,
       ...overrides,
     };
   }
@@ -44,7 +46,9 @@ describe('unpack', () => {
 
     expect(files.map((f) => path.basename(f.name))).toEqual(['page.html']);
     expect(files[0].size).toBe(5);
-    expect(files[0].contents).toEqual(new Uint8Array(Buffer.from('hello')));
+    expect(Buffer.from(files[0].contents as Uint8Array).toString()).toBe(
+      'hello'
+    );
   });
 
   it('stops the tool and removes its output once the extracted size passes the budget', async () => {
@@ -89,6 +93,18 @@ describe('unpack', () => {
 
     await expect(
       unpack(archive, workspace, limits({ tarPath, timeoutMs: 100 }))
+    ).rejects.toThrow(RECOVERY_TOO_LARGE_MESSAGE);
+  });
+
+  it('does not hang when a stopped tool leaves its output pipes open', async () => {
+    const tarPath = fakeTar('sleep 2 &\nexec sleep 30');
+
+    await expect(
+      unpack(
+        archive,
+        workspace,
+        limits({ tarPath, timeoutMs: 50, killGraceMs: 50 })
+      )
     ).rejects.toThrow(RECOVERY_TOO_LARGE_MESSAGE);
   });
 

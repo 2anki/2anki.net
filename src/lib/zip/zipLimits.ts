@@ -26,3 +26,7 @@ export const MAX_IN_MEMORY_BYTES = Math.floor(WORKER_OLD_GEN_BYTES * 0.5);
 // (DEFLATE of zeros, ~1000:1; nested archives compound it) still aborts with
 // the friendly error at the census, before a single byte inflates (#3717).
 export const MAX_EXTRACTED_BYTES = 4 * 1024 * 1024 * 1024;
+
+// One upload's total time in the bsdtar recovery step, across every archive
+// in it: the extraction budget above at about 14 MB/s.
+export const MAX_RECOVERY_MS = 300_000;

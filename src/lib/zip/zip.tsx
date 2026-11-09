@@ -19,7 +19,13 @@ import { isZipContentFileSupported } from '../../usecases/uploads/isZipContentFi
 import CardOption from '../parser/Settings';
 import { getRandomUUID } from '../../shared/helpers/getRandomUUID';
 import { convertImageToHTML } from '../../infrastracture/adapters/fileConversion/convertImageToHTML';
-import { MAX_EXTRACTED_BYTES, MAX_IN_MEMORY_BYTES } from './zipLimits';
+import {
+  MAX_EXTRACTED_BYTES,
+  MAX_IN_MEMORY_BYTES,
+  MAX_RECOVERY_MS,
+} from './zipLimits';
+import { RecoveryBudget } from './fallback/types';
+import { ZipRecoveryTooLargeError } from './fallback/ZipRecoveryTooLargeError';
 import { DAMAGED_ZIP_MESSAGE } from './damagedZipMessage';
 
 interface File {
@@ -121,6 +127,8 @@ class ZipHandler {
   maxDecompressedBytes: number;
   maxBatchBytes: number;
   spillLocation?: string;
+  recoveredBytes = 0;
+  recoveryStartedAt?: number;
 
   constructor(
     maxNestedZipFiles: number,
@@ -442,12 +450,36 @@ ${this.combinedHTML}
     }
   }
 
+  // Shared by every archive in the upload, like the census budget. Bytes the
+  // census counted are not subtracted: they are declared sizes of the same
+  // archive being recovered, and would refuse a legitimate large export.
+  private remainingRecoveryBudget(): RecoveryBudget {
+    this.recoveryStartedAt ??= Date.now();
+    const budget = {
+      maxBytes: this.maxDecompressedBytes - this.recoveredBytes,
+      maxTextBytes: this.maxInMemoryBytes - this.inMemoryBytes,
+      timeoutMs: MAX_RECOVERY_MS - (Date.now() - this.recoveryStartedAt),
+    };
+    if (
+      budget.maxBytes <= 0 ||
+      budget.maxTextBytes <= 0 ||
+      budget.timeoutMs <= 0
+    ) {
+      throw new ZipRecoveryTooLargeError();
+    }
+    return budget;
+  }
+
   private async recoverWithFallback(
     zipData: Uint8Array,
     paying: boolean,
     settings: CardOption
   ) {
-    const foundFiles = await processAndPrepareArchiveData(zipData, paying);
+    const foundFiles = await processAndPrepareArchiveData(
+      zipData,
+      paying,
+      this.remainingRecoveryBudget()
+    );
     console.log('Processed files using fallback method:');
     for (const file of foundFiles) {
       const nestedZip = /\.zip$/i.test(file.name) ? file.contents : undefined;
@@ -468,9 +500,12 @@ ${this.combinedHTML}
         continue;
       }
       // A file with a size is still on disk; reading it here would load it.
-      if (file.size == null && typeof file.contents === 'string') {
-        this.trackInMemoryBytes(file.contents.length);
-      }
+      const textBytes =
+        file.size == null && typeof file.contents === 'string'
+          ? file.contents.length
+          : 0;
+      this.recoveredBytes += file.size ?? textBytes;
+      this.trackInMemoryBytes(textBytes);
       this.files.push(file);
     }
   }

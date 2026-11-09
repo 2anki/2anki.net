@@ -10,7 +10,7 @@ function diskBackedFile(filePath: string, size: number): File {
     enumerable: true,
     configurable: true,
     get() {
-      return new Uint8Array(fs.readFileSync(filePath));
+      return fs.readFileSync(filePath);
     },
   });
   return file;
