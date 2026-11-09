@@ -111,7 +111,7 @@
     },
     "zip_damaged": {
       "title": "Une partie de ce zip est endommagée.",
-      "detail": "Téléchargez ou compressez à nouveau les fichiers, puis importez le nouveau zip."
+      "detail": "Télécharge ou compresse à nouveau les fichiers, puis importe le nouveau zip."
     },
     "ai_credits_exhausted": {
       "title": "Tu n'as plus de crédits IA.",

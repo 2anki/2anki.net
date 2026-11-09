@@ -111,7 +111,7 @@
     },
     "zip_damaged": {
       "title": "Ein Teil dieser ZIP-Datei ist beschädigt.",
-      "detail": "Lade die Dateien erneut herunter oder packe sie neu, und lade dann die neue ZIP hoch."
+      "detail": "Lade die Dateien erneut herunter oder packe sie neu und lade dann die neue ZIP hoch."
     },
     "ai_credits_exhausted": {
       "title": "Deine KI-Credits sind aufgebraucht.",

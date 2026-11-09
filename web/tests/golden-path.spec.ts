@@ -199,9 +199,8 @@ test.describe('golden path @golden', () => {
         'No cards came from 1 file. The other files are in this deck.'
       )
     ).toBeVisible({ timeout: 10_000 });
-    await expect(
-      page.getByRole('listitem').filter({ hasText: 'week 3.pdf' })
-    ).toContainText('Claude declined it.');
+    await expect(page.getByRole('listitem').filter({ hasText: 'week 3.pdf' }))
+      .toContainText('Claude declined it.');
     await page.waitForLoadState('networkidle');
     expect(realErrors(errors)).toEqual([]);
   });

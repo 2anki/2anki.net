@@ -73,10 +73,22 @@ function formatGigabytes(bytes: number): string {
 const INCOMPLETE_ZIP_MESSAGE =
   'This zip file is incomplete — it ends before its file index, which usually means it was still downloading or syncing when it was uploaded. Wait for the download to finish, then upload it again.';
 
-// fflate's inflate errors: unexpected EOF, invalid block type, invalid
-// length/literal, invalid distance.
-const DAMAGED_DATA_CODES = new Set([0, 1, 2, 3]);
-const INVALID_ZIP_DATA_CODE = 13;
+const FFLATE_UNEXPECTED_EOF = 0;
+const FFLATE_INVALID_BLOCK_TYPE = 1;
+const FFLATE_INVALID_LENGTH_LITERAL = 2;
+const FFLATE_INVALID_DISTANCE = 3;
+const FFLATE_INVALID_ZIP_DATA = 13;
+const DAMAGED_DATA_CODES = new Set([
+  FFLATE_UNEXPECTED_EOF,
+  FFLATE_INVALID_BLOCK_TYPE,
+  FFLATE_INVALID_LENGTH_LITERAL,
+  FFLATE_INVALID_DISTANCE,
+]);
+
+interface ArchiveStart {
+  fileCount: number;
+  inMemoryBytes: number;
+}
 
 function fflateErrorCode(error: unknown): number | undefined {
   const code = (error as { code?: unknown } | null)?.code;
@@ -231,9 +243,9 @@ class ZipHandler {
       throw new Error('Too many zip files in the upload.');
     }
 
-    const before = {
+    const before: ArchiveStart = {
       fileCount: this.files.length,
-      combinedHTML: this.combinedHTML,
+      inMemoryBytes: this.inMemoryBytes,
     };
     try {
       // Census pass: read every entry's name and declared decompressed size
@@ -376,18 +388,21 @@ ${this.combinedHTML}
     zipData: Uint8Array,
     paying: boolean,
     settings: CardOption,
-    before: { fileCount: number; combinedHTML: string }
+    before: ArchiveStart
   ) {
     const code = fflateErrorCode(error);
     const isDamagedData = code != null && DAMAGED_DATA_CODES.has(code);
-    if (code !== INVALID_ZIP_DATA_CODE && !isDamagedData) {
+    if (code !== FFLATE_INVALID_ZIP_DATA && !isDamagedData) {
       throw error;
     }
 
     // An inflate error can land after earlier passes kept some entries; the
-    // fallback reads the whole archive again, so drop them to avoid doubles.
+    // fallback reads this archive again, so drop them and the memory they
+    // held. The nested-zip count and the decompressed budget never rewind:
+    // they are what bound the total work a crafted upload can cause. OCR
+    // HTML already made from its images stays, since those images read whole.
     this.files.length = before.fileCount;
-    this.combinedHTML = before.combinedHTML;
+    this.inMemoryBytes = before.inMemoryBytes;
 
     const foundFiles = await processAndPrepareArchiveData(zipData, paying);
     console.log('Processed files using fallback method:');

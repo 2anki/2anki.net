@@ -17,6 +17,12 @@ import CardOption from '../parser/Settings';
 import { processAndPrepareArchiveData } from './fallback/processAndPrepareArchiveData';
 
 vi.mock('./fallback/processAndPrepareArchiveData');
+vi.mock(
+  '../../infrastracture/adapters/fileConversion/convertImageToHTML',
+  () => ({
+    convertImageToHTML: vi.fn(async () => '<p>read from the photo</p>'),
+  })
+);
 
 const mockedFallback = processAndPrepareArchiveData as MockedFunction<
   typeof processAndPrepareArchiveData
@@ -482,6 +488,88 @@ describe('ZipHandler damaged archives', () => {
     );
 
     expect(mockedFallback).toHaveBeenCalledTimes(1);
+    expect(handler.getFileNames()).toEqual(['page.html']);
+  });
+
+  it('keeps the outer pages when a nested zip is damaged and nothing in it can be recovered', async () => {
+    const inner = damaged(
+      zipSync({ 'inner.html': strToU8(longPage) }, { level: 9 }),
+      'inner.html',
+      0,
+      0xff
+    );
+    const outer = zipSync({
+      'page.html': strToU8('<p>outer</p>'),
+      'part.zip': inner,
+    });
+    mockedFallback.mockResolvedValue([]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(outer, false, new CardOption({}), makeSpillDir());
+
+    expect(mockedFallback).toHaveBeenCalledTimes(1);
+    expect(mockedFallback.mock.calls[0][0]).toEqual(inner);
+    expect(handler.getFileNames()).toEqual(['page.html']);
+  });
+
+  it('says the zip is damaged when its only content is a damaged nested zip', async () => {
+    const inner = damaged(
+      zipSync({ 'inner.html': strToU8(longPage) }, { level: 9 }),
+      'inner.html',
+      0,
+      0xff
+    );
+    mockedFallback.mockResolvedValue([]);
+    const handler = new ZipHandler(10);
+
+    await expect(
+      handler.build(
+        zipSync({ 'part.zip': inner }),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      )
+    ).rejects.toThrow(DAMAGED_ZIP_MESSAGE);
+  });
+
+  it('does not let the fallback open more nested zips than the limit allows', async () => {
+    const part = zipSync({ 'part.html': strToU8('<p>part</p>') });
+    const zip = zipSync(
+      { 'a-part.zip': part, 'z-notes.pdf': strToU8(longPage) },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([{ name: 'a-part.zip', contents: part }]);
+    const handler = new ZipHandler(1);
+
+    await expect(
+      handler.build(
+        damaged(zip, 'z-notes.pdf', 0, 0xff),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      )
+    ).rejects.toThrow(DAMAGED_ZIP_MESSAGE);
+    expect(handler.zipFileCount).toBe(1);
+  });
+
+  it('keeps the photo text an image quiz already read when a later entry is damaged', async () => {
+    const zip = zipSync(
+      { 'photo.png': strToU8('png bytes'), 'notes.pdf': strToU8(longPage) },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([
+      { name: 'page.html', contents: '<p>recovered</p>' },
+    ]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      damaged(zip, 'notes.pdf', 0, 0xff),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    expect(handler.combinedHTML).toBe('<p>read from the photo</p>');
     expect(handler.getFileNames()).toEqual(['page.html']);
   });
 
