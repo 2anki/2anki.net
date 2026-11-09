@@ -33,6 +33,7 @@ const pass = (kind: PassKind, key: string, expiresAt: string): UserPass => ({
 
 const uploadOnlyAccount: LowRatingAccountContext = {
   email: 'learner@example.com',
+  emailVerified: true,
   userId: '4242',
   isLifetime: false,
   hasActiveSubscription: false,
@@ -71,7 +72,11 @@ async function renderWithContext(
     now: NOW,
   });
   expect(send).toHaveBeenCalledTimes(1);
-  return send.mock.calls[0][0] as { text: string; html: string };
+  return send.mock.calls[0][0] as {
+    text: string;
+    html: string;
+    subject: string;
+  };
 }
 
 describe('NotifyLowRatingUseCase support email', () => {
@@ -159,6 +164,58 @@ describe('NotifyLowRatingUseCase support email', () => {
     expect(msg.html).not.toMatch(/pi_fixture|apple:\d/);
   });
 
+  it('labels a matched account with a confirmed email as verified', async () => {
+    const msg = await renderSupportEmail(uploadOnlyAccount);
+
+    expect(msg.text.split('\n')).toContain(
+      'Address (verified account): learner@example.com'
+    );
+    expect(msg.html).toContain(
+      '<li>Address (verified account): learner@example.com</li>'
+    );
+  });
+
+  it('never calls a matched account verified when its email is not confirmed', async () => {
+    const msg = await renderSupportEmail({
+      ...uploadOnlyAccount,
+      emailVerified: false,
+    });
+
+    expect(msg.text.split('\n')).toEqual(
+      expect.arrayContaining([
+        'Plan: free',
+        'User ID: 4242',
+        'Address (matches the account, not verified): learner@example.com',
+      ])
+    );
+    expect(msg.html).toContain(
+      '<li>Address (matches the account, not verified): learner@example.com</li>'
+    );
+    expect(msg.text).not.toContain('verified account');
+    expect(msg.html).not.toContain('verified account');
+  });
+
+  it('marks an address that matches no account as typed into the form', async () => {
+    const msg = await renderWithContext(
+      { getByOwner: async () => uploadOnlyAccount },
+      'someone-else@example.com'
+    );
+
+    expect(msg.text.split('\n')).toContain(
+      'Address: someone-else@example.com (unverified, typed into the feedback form)'
+    );
+    expect(msg.html).toContain(
+      '<li>Address: someone-else@example.com (unverified, typed into the feedback form)</li>'
+    );
+    expect(msg.text).not.toContain('User ID');
+  });
+
+  it('gives a subject the person can read in a reply', async () => {
+    const msg = await renderSupportEmail(uploadOnlyAccount);
+
+    expect(msg.subject).toBe('Your 1/5 rating on 2anki');
+  });
+
   it('prints the newest saved deck beside an empty job line', async () => {
     const msg = await renderSupportEmail(uploadOnlyAccount);
 
@@ -211,6 +268,7 @@ describe('NotifyLowRatingUseCase support email', () => {
       await db.schema.createTable('users', (t) => {
         t.integer('id').primary();
         t.text('email').notNullable();
+        t.boolean('email_verified').defaultTo(false);
         t.boolean('patreon').defaultTo(false);
       });
       await db.schema.createTable('subscriptions', (t) => {
@@ -287,6 +345,25 @@ describe('NotifyLowRatingUseCase support email', () => {
       );
       expect(msg.text).not.toContain('Lecture');
       expect(msg.html).not.toContain('Lecture');
+    });
+
+    it('labels a signed-in account whose email was never confirmed as not verified', async () => {
+      await db('users').insert({
+        id: 4242,
+        email: 'learner@example.com',
+        email_verified: false,
+        patreon: false,
+      });
+
+      const msg = await renderWithContext(
+        new LowRatingContextRepository(db),
+        'learner@example.com'
+      );
+
+      expect(msg.text.split('\n')).toContain(
+        'Address (matches the account, not verified): learner@example.com'
+      );
+      expect(msg.text).not.toContain('verified account');
     });
   });
 });

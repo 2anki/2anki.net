@@ -4,6 +4,7 @@ import UserPassRepository, { UserPass } from './UserPassRepository';
 
 export interface LowRatingAccountContext {
   email: string;
+  emailVerified: boolean;
   userId: string;
   isLifetime: boolean;
   hasActiveSubscription: boolean;
@@ -24,7 +25,7 @@ export class LowRatingContextRepository implements ILowRatingContextRepository {
   buildUserQuery(owner: number): Knex.QueryBuilder {
     return this.database('users')
       .where({ id: owner })
-      .select('id', 'email', 'patreon')
+      .select('id', 'email', 'email_verified', 'patreon')
       .first();
   }
 
@@ -76,6 +77,7 @@ export class LowRatingContextRepository implements ILowRatingContextRepository {
 
     return {
       email: user.email,
+      emailVerified: Boolean(user.email_verified),
       userId: String(user.id),
       isLifetime: user.patreon === true,
       hasActiveSubscription: activeSubscription != null,

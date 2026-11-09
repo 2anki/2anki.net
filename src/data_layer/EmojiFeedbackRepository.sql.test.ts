@@ -74,7 +74,7 @@ describe('LowRatingContextRepository generated SQL', () => {
 
   it('looks up the account by user id', () => {
     expect(repo.buildUserQuery(21770).toString()).toBe(
-      'select "id", "email", "patreon" from "users" where "id" = 21770 limit 1'
+      'select "id", "email", "email_verified", "patreon" from "users" where "id" = 21770 limit 1'
     );
   });
 
