@@ -8,6 +8,8 @@ import { CLAUDE_REFUSAL_USER_MESSAGE } from '../../lib/claude/ClaudeService';
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import { EmailSendError } from '../../services/EmailService/sendMail';
+import { DAMAGED_ZIP_MESSAGE } from '../../lib/zip/damagedZipMessage';
+import { INCOMPLETE_ZIP_MESSAGE } from '../../lib/zip/zip';
 
 const makeAPIResponseError = (
   code: string,
@@ -702,6 +704,24 @@ describe('sendErrorResponse', () => {
       message: CLAUDE_REFUSAL_USER_MESSAGE,
     });
   });
+
+  test.each([
+    ['zip_damaged', DAMAGED_ZIP_MESSAGE],
+    ['unknown', INCOMPLETE_ZIP_MESSAGE],
+  ])(
+    'answers a zip error rebuilt across the upload worker with code %s',
+    (code, message) => {
+      const res = makeResponse(false);
+      const rebuilt = Object.assign(new Error(message), {
+        name: 'IncompleteZipError',
+      });
+
+      sendErrorResponse(res as unknown as express.Response, rebuilt);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toEqual({ code, message });
+    }
+  );
 
   test('keeps the generic 500 for an internal fault', () => {
     const res = makeResponse(false);

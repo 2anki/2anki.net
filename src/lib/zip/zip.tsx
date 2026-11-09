@@ -19,6 +19,7 @@ import CardOption from '../parser/Settings';
 import { getRandomUUID } from '../../shared/helpers/getRandomUUID';
 import { convertImageToHTML } from '../../infrastracture/adapters/fileConversion/convertImageToHTML';
 import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
+import { DAMAGED_ZIP_MESSAGE } from './damagedZipMessage';
 
 interface File {
   name: string;
@@ -72,13 +73,23 @@ function formatGigabytes(bytes: number): string {
 const INCOMPLETE_ZIP_MESSAGE =
   'This zip file is incomplete — it ends before its file index, which usually means it was still downloading or syncing when it was uploaded. Wait for the download to finish, then upload it again.';
 
+// fflate's inflate errors: unexpected EOF, invalid block type, invalid
+// length/literal, invalid distance.
+const DAMAGED_DATA_CODES = new Set([0, 1, 2, 3]);
+const INVALID_ZIP_DATA_CODE = 13;
+
+function fflateErrorCode(error: unknown): number | undefined {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === 'number' ? code : undefined;
+}
+
 // The name is what survives the upload worker's thread boundary (errors cross
 // it as { message, name }), so jobFailureReason matches on it, not the class.
 class IncompleteZipError extends Error {
   code = 'ZIP_INVALID';
 
-  constructor() {
-    super(INCOMPLETE_ZIP_MESSAGE);
+  constructor(message: string = INCOMPLETE_ZIP_MESSAGE) {
+    super(message);
     this.name = 'IncompleteZipError';
   }
 }
@@ -220,6 +231,10 @@ class ZipHandler {
       throw new Error('Too many zip files in the upload.');
     }
 
+    const before = {
+      fileCount: this.files.length,
+      combinedHTML: this.combinedHTML,
+    };
     try {
       // Census pass: read every entry's name and declared decompressed size
       // from the central directory without inflating anything. The cumulative
@@ -288,7 +303,7 @@ class ZipHandler {
 
       this.addCombinedHTMLToFiles(paying, settings);
     } catch (error: unknown) {
-      await this.handleZipError(error, zipData, paying, settings);
+      await this.handleZipError(error, zipData, paying, settings, before);
     }
   }
 
@@ -360,12 +375,19 @@ ${this.combinedHTML}
     error: unknown,
     zipData: Uint8Array,
     paying: boolean,
-    settings: CardOption
+    settings: CardOption,
+    before: { fileCount: number; combinedHTML: string }
   ) {
-    const isArchiveProcessingError = (error as { code?: number }).code === 13;
-    if (!isArchiveProcessingError) {
+    const code = fflateErrorCode(error);
+    const isDamagedData = code != null && DAMAGED_DATA_CODES.has(code);
+    if (code !== INVALID_ZIP_DATA_CODE && !isDamagedData) {
       throw error;
     }
+
+    // An inflate error can land after earlier passes kept some entries; the
+    // fallback reads the whole archive again, so drop them to avoid doubles.
+    this.files.length = before.fileCount;
+    this.combinedHTML = before.combinedHTML;
 
     const foundFiles = await processAndPrepareArchiveData(zipData, paying);
     console.log('Processed files using fallback method:');
@@ -394,7 +416,9 @@ ${this.combinedHTML}
       isZipContentFileSupported(f.name)
     );
     if (!anySupported) {
-      throw new IncompleteZipError();
+      throw new IncompleteZipError(
+        isDamagedData ? DAMAGED_ZIP_MESSAGE : INCOMPLETE_ZIP_MESSAGE
+      );
     }
   }
 
@@ -408,6 +432,7 @@ export {
   File,
   IncompleteZipError,
   INCOMPLETE_ZIP_MESSAGE,
+  DAMAGED_ZIP_MESSAGE,
   MAX_IN_MEMORY_BYTES,
   MAX_EXTRACTED_BYTES,
   MAX_BATCH_EXTRACT_BYTES,

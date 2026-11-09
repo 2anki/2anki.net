@@ -109,6 +109,10 @@
       "title": "Diese ZIP konnte nicht gelesen werden.",
       "detail": "Stelle sicher, dass es der Markdown-&-CSV-Export aus Notion ist, nicht der HTML-Export."
     },
+    "zip_damaged": {
+      "title": "Ein Teil dieser ZIP-Datei ist beschädigt.",
+      "detail": "Lade die Dateien erneut herunter oder packe sie neu, und lade dann die neue ZIP hoch."
+    },
     "ai_credits_exhausted": {
       "title": "Deine KI-Credits sind aufgebraucht.",
       "detail": "KI-Credits kommen zurück, wenn dein Kontingent zurückgesetzt wird. Schalte Claude-Karten aus, um jetzt mit dem Standard-Parser zu konvertieren."

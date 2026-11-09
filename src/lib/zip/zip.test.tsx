@@ -7,6 +7,7 @@ import { strToU8, zipSync } from 'fflate';
 import {
   ZipHandler,
   INCOMPLETE_ZIP_MESSAGE,
+  DAMAGED_ZIP_MESSAGE,
   MAX_IN_MEMORY_BYTES,
   MAX_EXTRACTED_BYTES,
   MAX_BATCH_EXTRACT_BYTES,
@@ -392,5 +393,105 @@ describe('ZipHandler incomplete archives (#4028)', () => {
         '/tmp/workspaces/x/Private & Shared/Page abc.html',
       ])
     );
+  });
+});
+
+describe('ZipHandler damaged archives', () => {
+  // The zip's index is intact but an entry's compressed data is not, so
+  // fflate reads the census and then throws an inflate error mid-pass.
+  function dataStart(zip: Uint8Array, name: string): number {
+    const nameBytes = strToU8(name);
+    for (let i = 0; i + 30 < zip.length; i++) {
+      const isLocalHeader =
+        zip[i] === 0x50 &&
+        zip[i + 1] === 0x4b &&
+        zip[i + 2] === 0x03 &&
+        zip[i + 3] === 0x04;
+      const nameLength = zip[i + 26] | (zip[i + 27] << 8);
+      const extraLength = zip[i + 28] | (zip[i + 29] << 8);
+      const nameMatches =
+        nameLength === nameBytes.length &&
+        nameBytes.every((byte, j) => zip[i + 30 + j] === byte);
+      if (isLocalHeader && nameMatches) {
+        return i + 30 + nameLength + extraLength;
+      }
+    }
+    throw new Error(`no local header for ${name}`);
+  }
+
+  function damaged(
+    zip: Uint8Array,
+    name: string,
+    offset: number,
+    value: number
+  ): Uint8Array {
+    const copy = zip.slice();
+    copy[dataStart(zip, name) + offset] = value;
+    return copy;
+  }
+
+  const longPage = '<p>' + 'flashcard '.repeat(400) + '</p>';
+
+  beforeEach(() => {
+    mockedFallback.mockReset();
+  });
+
+  it.each([
+    ['an invalid block type', 0, 0xff],
+    ['an early end of stream', 1, 0xff],
+    ['an invalid length', 2, 0x00],
+  ])(
+    'says the zip is damaged, not the unzip error, for %s',
+    async (_label, offset, value) => {
+      mockedFallback.mockResolvedValue([]);
+      const zip = zipSync({ 'page.html': strToU8(longPage) }, { level: 9 });
+      const handler = new ZipHandler(10);
+
+      const failure = handler.build(
+        damaged(zip, 'page.html', offset, value),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      );
+
+      await expect(failure).rejects.toThrow(DAMAGED_ZIP_MESSAGE);
+      await expect(failure).rejects.toMatchObject({
+        name: 'IncompleteZipError',
+      });
+    }
+  );
+
+  it('keeps what the fallback recovers, without the entries read before the damage', async () => {
+    const zip = zipSync(
+      {
+        'page.html': strToU8('<p>intact</p>'),
+        'picture.png': strToU8(longPage),
+      },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([
+      { name: 'page.html', contents: '<p>intact</p>' },
+    ]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      damaged(zip, 'picture.png', 0, 0xff),
+      false,
+      new CardOption({}),
+      makeSpillDir()
+    );
+
+    expect(mockedFallback).toHaveBeenCalledTimes(1);
+    expect(handler.getFileNames()).toEqual(['page.html']);
+  });
+
+  it('still throws an error that is not a damaged zip as it is', async () => {
+    const zip = zipSync({ 'page.html': strToU8(longPage) }, { level: 9 });
+    const handler = new ZipHandler(10, 1024 * 1024, 10);
+
+    await expect(
+      handler.build(zip, false, new CardOption({}), makeSpillDir())
+    ).rejects.toThrow('decompresses to over');
+    expect(mockedFallback).not.toHaveBeenCalled();
   });
 });

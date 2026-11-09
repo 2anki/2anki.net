@@ -662,6 +662,26 @@ describe('ConversionResult — failed variant', () => {
     expect(screen.queryByText(/smaller files/i)).toBeNull();
   });
 
+  it('words a damaged zip from its own copy, not the stored sentence', () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Notes export"
+          failureReason="Part of this zip file is damaged, so 2anki can't read it. Download or zip the files again, then upload the new zip."
+          source="upload"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText(
+        'Part of this zip is damaged. Download or zip the files again, then upload the new zip.'
+      )
+    ).toBeInTheDocument();
+  });
+
   it("words a mistyped page range from the job's details, not the stored sentence", () => {
     render(
       <MemoryRouter>

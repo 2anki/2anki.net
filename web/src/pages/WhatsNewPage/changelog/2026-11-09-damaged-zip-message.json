@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-damaged-zip-message",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "A damaged zip says so and keeps whatever can still be read"
+}

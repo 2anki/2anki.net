@@ -168,6 +168,7 @@ import {
   MONTHLY_CARD_LIMIT,
   MonthlyLimitError,
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
+import { DAMAGED_ZIP_MESSAGE } from '../lib/zip/damagedZipMessage';
 
 const MockGeneratePackagesUseCase = GeneratePackagesUseCase as MockedClass<
   typeof GeneratePackagesUseCase
@@ -7716,6 +7717,24 @@ describe('UploadService.handleUpload — failure events for the success-rate til
       expect(conversionFailedReasons()).toEqual([]);
     }
   );
+
+  it('answers a damaged zip rebuilt by the worker with its own code, and does not count it', async () => {
+    failWith(
+      Object.assign(new Error(DAMAGED_ZIP_MESSAGE), {
+        name: 'IncompleteZipError',
+      })
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'zip_damaged',
+      message: DAMAGED_ZIP_MESSAGE,
+    });
+    expect(conversionFailedReasons()).toEqual([]);
+  });
 
   it('answers a page range error with its details, so the page can translate it', async () => {
     failWith(

@@ -38,6 +38,7 @@ import {
   notionEmptyDeckReasonMessage,
   PDF_UNREADABLE_REASON,
 } from './jobFailureReason';
+import { DAMAGED_ZIP_MESSAGE } from '../../lib/zip/damagedZipMessage';
 import { ConversionChildCrashedError } from '../../lib/workerTermination';
 
 function makeUnauthorizedError(): APIResponseError {
@@ -88,6 +89,17 @@ describe('jobFailureReasonFromError', () => {
 
     expect(jobFailureReasonFromError(rebuilt, 'job-1')).toBe(
       "Something went wrong on our end converting this file. Job ID job-1. Check status at 2anki.net/status — if everything's green, email support@2anki.net with the job ID."
+    );
+  });
+
+  it('stores the damaged-zip sentence for a damaged zip rebuilt from the upload worker', () => {
+    const rebuilt = Object.assign(new Error(DAMAGED_ZIP_MESSAGE), {
+      name: 'IncompleteZipError',
+    });
+
+    expect(jobFailureReasonCode(rebuilt)).toBe('zip_invalid');
+    expect(jobFailureReasonFromError(rebuilt, 'job-1')).toBe(
+      DAMAGED_ZIP_MESSAGE
     );
   });
 

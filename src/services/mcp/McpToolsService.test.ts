@@ -187,6 +187,7 @@ function basicPreview(cards: SampleInput[]): Partial<ApkgPreviewService> {
 
 vi.mock('../events/track', () => ({ track: vi.fn() }));
 import { track } from '../events/track';
+import { DAMAGED_ZIP_MESSAGE } from '../../lib/zip/damagedZipMessage';
 const trackMock = track as Mock;
 
 describe('McpToolsService.listMyDecks', () => {
@@ -667,6 +668,21 @@ describe('McpToolsService.convertToDeck', () => {
     expect(result).toEqual({
       kind: 'error',
       message: 'This file type is not supported.',
+    });
+    expect(persist).not.toHaveBeenCalled();
+  });
+
+  it('passes the damaged-zip sentence, not the unzip error, for a damaged zip', async () => {
+    const uploadEntry: UploadEntrypoint = (_req, res) => {
+      res
+        .status(400)
+        .json({ code: 'zip_damaged', message: DAMAGED_ZIP_MESSAGE });
+    };
+    const { service, persist } = makeService({ uploadEntry });
+    const result = await service.convertToDeck({ text: 'x' }, 'owner', {});
+    expect(result).toMatchObject({
+      kind: 'error',
+      message: DAMAGED_ZIP_MESSAGE,
     });
     expect(persist).not.toHaveBeenCalled();
   });
