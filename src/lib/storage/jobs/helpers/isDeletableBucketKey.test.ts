@@ -16,6 +16,7 @@ describe('isReservedKey', () => {
     'held/anon-1-1700000000000-notes.html',
     'recover/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08.apkg',
     'backups/postgres/daily-Mon.dump.gpg',
+    'chat-attachments/12/34/56/0-notes.pdf',
   ])('reserves %s for the feature that owns it', (key) => {
     expect(isReservedKey(key)).toBe(true);
   });
@@ -57,6 +58,7 @@ describe('isDeletableBucketKey', () => {
     'held/anon-1-1700000000000-notes.html',
     'recover/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08.apkg',
     'backups/postgres/daily-Mon.dump.gpg',
+    'chat-attachments/12/34/56/0-notes.pdf',
   ])('never deletes %s even when unreferenced and old', (key) => {
     expect(
       isDeletableBucketKey({ Key: key, LastModified: old }, referenced, now)

@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-chat-files-stay-attached",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "Regenerating a chat reply keeps the file you attached to that message"
+}
