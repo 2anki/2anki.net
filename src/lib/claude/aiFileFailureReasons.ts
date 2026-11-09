@@ -19,6 +19,22 @@ export interface AiFileFailure {
 }
 
 const MAX_STORED_NAME_LENGTH = 255;
+// Postgres jsonb rejects \u0000, and a control character has no place in a
+// file name shown on My decks.
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/g;
+
+// What `uploads.skipped_ai_files` holds: names cleaned and cut to the length
+// the reader accepts, so a file is never stored and then hidden.
+export function storableAiFileFailures(
+  failures: AiFileFailure[]
+): AiFileFailure[] {
+  return failures.flatMap(({ name, reason }) => {
+    const cleaned = name
+      .replaceAll(CONTROL_CHARACTERS, '')
+      .slice(0, MAX_STORED_NAME_LENGTH);
+    return cleaned.length === 0 ? [] : [{ name: cleaned, reason }];
+  });
+}
 
 function isAiFileFailure(value: unknown): value is AiFileFailure {
   if (value == null || typeof value !== 'object') return false;

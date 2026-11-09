@@ -177,6 +177,8 @@
   "skippedAiFiles": {
     "lead_one": "No salieron tarjetas de {{count}} archivo. Los demás archivos están en este mazo.",
     "lead_other": "No salieron tarjetas de {{count}} archivos. Los demás archivos están en este mazo.",
+    "more_one": "Y {{count}} más.",
+    "more_other": "Y {{count}} más.",
     "why": {
       "declined": "Claude lo rechazó. Reformula o quita la parte que no quiso responder y vuelve a subirlo.",
       "too_large": "Una sección era demasiado grande. Divídela y vuelve a subir el archivo.",

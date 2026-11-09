@@ -253,6 +253,10 @@
     "lead_few": "Z {{count}} plików nie powstały żadne karty. Pozostałe pliki są w tej talii.",
     "lead_many": "Z {{count}} plików nie powstały żadne karty. Pozostałe pliki są w tej talii.",
     "lead_other": "Z {{count}} pliku nie powstały żadne karty. Pozostałe pliki są w tej talii.",
+    "more_one": "I jeszcze {{count}}.",
+    "more_few": "I jeszcze {{count}}.",
+    "more_many": "I jeszcze {{count}}.",
+    "more_other": "I jeszcze {{count}}.",
     "why": {
       "declined": "Claude odmówił. Przeredaguj lub usuń fragment, na który nie chciał odpowiedzieć, i prześlij plik ponownie.",
       "too_large": "Jedna sekcja była za duża. Podziel ją i prześlij plik ponownie.",

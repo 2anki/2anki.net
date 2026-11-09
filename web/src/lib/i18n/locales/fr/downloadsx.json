@@ -175,8 +175,10 @@
     "seeReport": "Voir le rapport complet"
   },
   "skippedAiFiles": {
-    "lead_one": "Aucune carte n'est venue de {{count}} fichier. Les autres fichiers sont dans ce paquet.",
-    "lead_other": "Aucune carte n'est venue de {{count}} fichiers. Les autres fichiers sont dans ce paquet.",
+    "lead_one": "{{count}} fichier n'a donné aucune carte. Les autres fichiers sont dans ce paquet.",
+    "lead_other": "{{count}} fichiers n'ont donné aucune carte. Les autres fichiers sont dans ce paquet.",
+    "more_one": "Et {{count}} autre.",
+    "more_other": "Et {{count}} autres.",
     "why": {
       "declined": "Claude l'a refusé. Reformule ou retire la partie à laquelle il n'a pas voulu répondre, puis importe-le à nouveau.",
       "too_large": "Une section était trop grande. Divise-la et importe le fichier à nouveau.",

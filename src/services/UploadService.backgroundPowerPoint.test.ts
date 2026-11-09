@@ -301,8 +301,14 @@ async function uploadInBackground(deck: Buffer) {
   );
 }
 
+type UploadedTestFile = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
+
 async function upload(
-  file: { originalname: string; mimetype: string; buffer: Buffer },
+  file: UploadedTestFile | UploadedTestFile[],
   flags: Record<string, boolean>,
   body: Record<string, string> = {}
 ) {
@@ -325,7 +331,10 @@ async function upload(
     ...fakeUploadServiceDeps()
   );
   const req = {
-    files: [{ ...file, size: file.buffer.length }],
+    files: (Array.isArray(file) ? file : [file]).map((f) => ({
+      ...f,
+      size: f.buffer.length,
+    })),
     body,
     headers: {},
     cookies: {},
@@ -478,17 +487,17 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
     fs.rmSync(workspaceBase, { recursive: true, force: true });
   });
 
+  const declinedFileLater = {
+    'cells.md': strToU8('# Cells\n\nExocytosis needs calcium.\n'),
+    'week 3.md': strToU8('# Week 3\n\nREFUSED-BY-CLAUDE\n'),
+  };
+
   it('stores the other file in My Decks with the declined file named', async () => {
     const { status, settled, uploads } = await upload(
       {
         originalname: 'notes.zip',
         mimetype: 'application/zip',
-        buffer: Buffer.from(
-          zipSync({
-            'cells.md': strToU8('# Cells\n\nExocytosis needs calcium.\n'),
-            'week 3.md': strToU8('# Week 3\n\nREFUSED-BY-CLAUDE\n'),
-          })
-        ),
+        buffer: Buffer.from(zipSync(declinedFileLater)),
       },
       {},
       { 'claude-ai-flashcards': 'true' }
@@ -500,6 +509,64 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
     expect(builtCards.map((card) => visibleText(card.name))).toEqual([
       'Exocytosis',
     ]);
+    expect(uploads.update).toHaveBeenCalledWith(
+      OWNER,
+      expect.any(String),
+      storedKeys[0],
+      expect.any(Number),
+      null,
+      { skippedAiFiles: [{ name: 'week 3.md', reason: 'declined' }] }
+    );
+  }, 20_000);
+
+  it('names the declined file when the two files are uploaded separately', async () => {
+    const { status, settled, uploads } = await upload(
+      Object.entries(declinedFileLater).map(([name, bytes]) => ({
+        originalname: name,
+        mimetype: 'text/markdown',
+        buffer: Buffer.from(bytes),
+      })),
+      {},
+      { 'claude-ai-flashcards': 'true' }
+    );
+    const outcome = await settled;
+
+    expect(status).toBe(202);
+    expect(outcome).toBe('stored in My Decks');
+    expect(uploads.update).toHaveBeenCalledWith(
+      OWNER,
+      expect.any(String),
+      storedKeys[0],
+      expect.any(Number),
+      null,
+      { skippedAiFiles: [{ name: 'week 3.md', reason: 'declined' }] }
+    );
+  }, 20_000);
+
+  it('names the declined file when AI was never set and the parser found no cards', async () => {
+    const { status, settled, uploads, jobs } = await upload(
+      {
+        originalname: 'notes.zip',
+        mimetype: 'application/zip',
+        buffer: Buffer.from(
+          zipSync({
+            'lecture.pptx': numberedLecture,
+            'week 3.md': strToU8('REFUSED-BY-CLAUDE\n'),
+          })
+        ),
+      },
+      {}
+    );
+    const outcome = await settled;
+
+    expect(status).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      expect.any(String),
+      String(OWNER),
+      expect.any(String),
+      'claude'
+    );
+    expect(outcome).toBe('stored in My Decks');
     expect(uploads.update).toHaveBeenCalledWith(
       OWNER,
       expect.any(String),

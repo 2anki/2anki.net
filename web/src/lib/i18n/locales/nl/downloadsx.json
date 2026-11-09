@@ -177,6 +177,8 @@
   "skippedAiFiles": {
     "lead_one": "Uit {{count}} bestand kwamen geen kaarten. De andere bestanden zitten in dit pakket.",
     "lead_other": "Uit {{count}} bestanden kwamen geen kaarten. De andere bestanden zitten in dit pakket.",
+    "more_one": "En nog {{count}}.",
+    "more_other": "En nog {{count}}.",
     "why": {
       "declined": "Claude heeft het geweigerd. Herschrijf of verwijder het deel dat Claude niet wilde beantwoorden en upload het opnieuw.",
       "too_large": "Een sectie was te groot. Splits die en upload het bestand opnieuw.",

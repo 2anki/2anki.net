@@ -1,4 +1,7 @@
-import { parseStoredAiFileFailures } from './aiFileFailureReasons';
+import {
+  parseStoredAiFileFailures,
+  storableAiFileFailures,
+} from './aiFileFailureReasons';
 
 describe('parseStoredAiFileFailures', () => {
   const stored = [
@@ -31,5 +34,32 @@ describe('parseStoredAiFileFailures', () => {
         { name: 'b.md', reason: 'too_large', extra: '<script>' },
       ])
     ).toEqual([{ name: 'b.md', reason: 'too_large' }]);
+  });
+});
+
+describe('storableAiFileFailures', () => {
+  it('strips characters Postgres jsonb or My decks cannot hold', () => {
+    expect(
+      storableAiFileFailures([
+        { name: 'week\u00003\n.pdf', reason: 'declined' },
+      ])
+    ).toEqual([{ name: 'week3.pdf', reason: 'declined' }]);
+  });
+
+  it('cuts a long name to what the reader keeps, so the file still shows', () => {
+    const [stored] = storableAiFileFailures([
+      { name: `${'a'.repeat(300)}.md`, reason: 'no_text' },
+    ]);
+
+    expect(stored.name).toHaveLength(255);
+    expect(parseStoredAiFileFailures(JSON.stringify([stored]))).toEqual([
+      stored,
+    ]);
+  });
+
+  it('drops a name with nothing left after cleaning', () => {
+    expect(
+      storableAiFileFailures([{ name: '\u0000\u0001', reason: 'declined' }])
+    ).toEqual([]);
   });
 });

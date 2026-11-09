@@ -50,6 +50,25 @@ describe('SkippedAiFilesNotice', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
   });
 
+  it('lists five files and counts the rest', () => {
+    render(
+      <SkippedAiFilesNotice
+        files={['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((name) => ({
+          name: `${name}.md`,
+          reason: 'no_text',
+        }))}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        'No cards came from 7 files. The other files are in this deck.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(5);
+    expect(screen.getByText('And 2 more.')).toBeInTheDocument();
+  });
+
   it('renders nothing when no reason is known', () => {
     const { container } = render(
       <SkippedAiFilesNotice files={[{ name: 'a.md', reason: 'exploded' }]} />

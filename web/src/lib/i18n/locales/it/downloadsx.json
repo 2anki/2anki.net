@@ -175,8 +175,10 @@
     "seeReport": "Vedi il rapporto completo"
   },
   "skippedAiFiles": {
-    "lead_one": "Nessuna carta da {{count}} file. Gli altri file sono in questo mazzo.",
-    "lead_other": "Nessuna carta da {{count}} file. Gli altri file sono in questo mazzo.",
+    "lead_one": "Da {{count}} file non è uscita nessuna carta. Gli altri file sono in questo mazzo.",
+    "lead_other": "Da {{count}} file non è uscita nessuna carta. Gli altri file sono in questo mazzo.",
+    "more_one": "E ancora {{count}}.",
+    "more_other": "E ancora {{count}}.",
     "why": {
       "declined": "Claude l'ha rifiutato. Riformula o togli la parte a cui non ha voluto rispondere, poi caricalo di nuovo.",
       "too_large": "Una sezione era troppo grande. Dividila e carica di nuovo il file.",

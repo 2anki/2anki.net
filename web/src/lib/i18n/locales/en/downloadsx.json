@@ -177,6 +177,8 @@
   "skippedAiFiles": {
     "lead_one": "No cards came from {{count}} file. The other files are in this deck.",
     "lead_other": "No cards came from {{count}} files. The other files are in this deck.",
+    "more_one": "And {{count}} more.",
+    "more_other": "And {{count}} more.",
     "why": {
       "declined": "Claude declined it. Reword or remove the part it would not answer, then upload it again.",
       "too_large": "A section was too large. Split it and upload it again.",

@@ -177,6 +177,8 @@
   "skippedAiFiles": {
     "lead_one": "Aus {{count}} Datei kamen keine Karten. Die anderen Dateien sind in diesem Deck.",
     "lead_other": "Aus {{count}} Dateien kamen keine Karten. Die anderen Dateien sind in diesem Deck.",
+    "more_one": "Und {{count}} weitere.",
+    "more_other": "Und {{count}} weitere.",
     "why": {
       "declined": "Claude hat sie abgelehnt. Formuliere den Teil um, den Claude nicht beantworten wollte, oder entferne ihn, und lade sie erneut hoch.",
       "too_large": "Ein Abschnitt war zu groß. Teile ihn auf und lade die Datei erneut hoch.",

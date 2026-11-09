@@ -9,6 +9,8 @@ const WHY_KEYS = new Map<string, string>([
   ['unreadable', 'skippedAiFiles.why.unreadable'],
 ]);
 
+const LISTED_FILES = 5;
+
 interface SkippedAiFilesNoticeProps {
   files: SkippedAiFile[];
 }
@@ -22,17 +24,19 @@ export function SkippedAiFilesNotice({
     return whyKey == null ? [] : [{ name: file.name, why: t(whyKey) }];
   });
   if (named.length === 0) return null;
+  const unlisted = named.length - LISTED_FILES;
 
   return (
-    <div>
+    <div style={{ overflowWrap: 'anywhere' }}>
       <p>{t('skippedAiFiles.lead', { count: named.length })}</p>
       <ul>
-        {named.map(({ name, why }, index) => (
+        {named.slice(0, LISTED_FILES).map(({ name, why }, index) => (
           <li key={`${index}-${name}`}>
             <span data-hj-suppress>{name}</span>: {why}
           </li>
         ))}
       </ul>
+      {unlisted > 0 && <p>{t('skippedAiFiles.more', { count: unlisted })}</p>}
     </div>
   );
 }
