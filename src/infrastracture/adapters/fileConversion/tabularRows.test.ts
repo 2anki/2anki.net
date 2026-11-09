@@ -78,6 +78,14 @@ describe('rowsFromBuffer with markup at the start of the file', () => {
     );
   });
 
+  it('keeps a comma in a table cell from turning a table into a row', () => {
+    const html = '<table><tr><td>Q, x</td><td>A</td></tr></table>';
+
+    expect(rowsFromBuffer(Buffer.from(html, 'utf8'), 'cards.csv')).toEqual([
+      ['Q, x', 'A'],
+    ]);
+  });
+
   it('leaves html later in a file to the normal reader', () => {
     const csv = 'Front,Back\n<b>Q2</b>,A2\n';
 
@@ -93,6 +101,14 @@ describe('rowsFromBuffer with markup at the start of the file', () => {
       '<html><body><table><tr><td>Q</td><td>A</td></tr></table></body></html>',
     ],
     ['a bare table', '<table><tr><td>Q</td><td>A</td></tr></table>'],
+    [
+      'a style block with a comma in a selector',
+      '<style>td,th{color:red}</style><table><tr><td>Q</td><td>A</td></tr></table>',
+    ],
+    [
+      'a tag with a comma in an attribute',
+      '<div style="font:a,b"><table><tr><td>Q</td><td>A</td></tr></table></div>',
+    ],
     [
       'a table after a charset tag',
       '<meta charset="utf-8"><table><tr><td>Q</td><td>A</td></tr></table>',
@@ -126,6 +142,11 @@ describe('rowsFromBuffer with markup at the start of the file', () => {
     ['a page with only a head', '<head><title>Sign in</title></head>'],
     ['a page with a charset tag', '<meta charset="utf-8"><p>hi</p>'],
     ['a div with no separator', '<div>hello</div>'],
+    [
+      'a known document tag with a comma in its text',
+      '<body>Hello, world</body>',
+    ],
+    ['an image with a comma in an attribute', '<img alt="a,b" src="x">'],
     ['another XML dialect', '<root><a>1</a></root>'],
   ])('finds no rows in %s saved as a csv', (_label, text) => {
     expect(rowsFromBuffer(Buffer.from(text, 'utf8'), 'cards.csv')).toEqual([]);

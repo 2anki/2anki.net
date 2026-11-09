@@ -113,17 +113,35 @@ function rowsFromTextOpeningWithTag(
   return [[cellText(cell).slice(TEXT_GUARD.length), ...cells], ...rest];
 }
 
+const MAX_INSPECTED_LINE_BYTES = 64 * 1024;
+const OPENS_A_TAG = /[a-z/!?]/i;
+
+// One pass, because the line is uploaded content: a pattern over it would let
+// a line of unclosed "<" take minutes.
+function hasSeparatorOutsideTags(line: string): boolean {
+  let insideTag = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (insideTag) {
+      insideTag = char !== '>';
+    } else if (char === '<' && OPENS_A_TAG.test(line[index + 1] ?? '')) {
+      insideTag = true;
+    } else if (char === ',' || char === ';' || char === '\t') {
+      return true;
+    }
+  }
+  return false;
+}
+
 // A delimiter outside the tags on the first line is what separates a row like
 // <div>Front</div>,Back from a document that merely opens with a <div>.
 function opensWithDelimitedRow(bytes: Buffer): boolean {
   const newline = bytes.indexOf(0x0a);
   const firstLine = bytes
     .subarray(0, newline === -1 ? bytes.length : newline)
+    .subarray(0, MAX_INSPECTED_LINE_BYTES)
     .toString('latin1');
-  return (
-    !MARKUP_DOCUMENT.test(firstLine) &&
-    /[,;\t]/.test(firstLine.replace(/<[^>]*>/g, ''))
-  );
+  return !MARKUP_DOCUMENT.test(firstLine) && hasSeparatorOutsideTags(firstLine);
 }
 
 export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
