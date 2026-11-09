@@ -123,15 +123,12 @@ describe('getPackagesFromZip — batch concurrency', () => {
     expect(result.warnings).toEqual(['zip-partly-recovered']);
   });
 
-  it.each([
-    ['a recovered broken zip gets', true, ['zip-partly-recovered']],
-    ['any other zip does not get', false, []],
-  ])('%s the partly recovered note', async (_label, recovered, expected) => {
+  function mockRecoverableZip(fileNames: string[], recovered: boolean) {
     mockZipHandlerClass.mockImplementation(function () {
       return {
         build: vi.fn().mockResolvedValue(undefined),
-        getFileNames: vi.fn().mockReturnValue(['a.html']),
-        files: [{ name: 'a.html', contents: '<html></html>' }],
+        getFileNames: vi.fn().mockReturnValue(fileNames),
+        files: fileNames.map((name) => ({ name, contents: '<html></html>' })),
         recoveredBrokenArchive: recovered,
       };
     });
@@ -158,15 +155,49 @@ describe('getPackagesFromZip — batch concurrency', () => {
     vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
       Buffer.from('fake-apkg')
     );
+  }
 
-    const result = await getPackagesFromZip(
+  function convertZip(paying: boolean, settings: CardOption) {
+    return getPackagesFromZip(
       Buffer.from('fake-zip') as unknown as Uint8Array,
-      false,
-      new CardOption({}),
+      paying,
+      settings,
       { location: FAKE_WORKSPACE_LOCATION } as Workspace
     );
+  }
+
+  it.each([
+    ['a recovered broken zip gets', true, ['zip-partly-recovered']],
+    ['any other zip does not get', false, []],
+  ])('%s the partly recovered note', async (_label, recovered, expected) => {
+    mockRecoverableZip(['a.html'], recovered);
+
+    const result = await convertZip(false, new CardOption({}));
 
     expect(result.warnings ?? []).toEqual(expected);
+  });
+
+  it('adds the partly recovered note to a zip split across batches', async () => {
+    const manyFiles = Array.from({ length: 200 }, (_, i) => `deck${i}.html`);
+    mockRecoverableZip(manyFiles, true);
+
+    const result = await convertZip(false, new CardOption({}));
+
+    expect(result.packages.length).toBeGreaterThan(1);
+    expect(result.warnings).toContain('zip-partly-recovered');
+  });
+
+  it('adds the partly recovered note to an AI conversion of a zip', async () => {
+    mockRecoverableZip(['a.html'], true);
+    mockPrepareDeck.mockResolvedValueOnce(null);
+
+    const result = await convertZip(
+      true,
+      new CardOption({ 'claude-ai-flashcards': 'true' })
+    );
+
+    expect(mockPrepareDeck).toHaveBeenCalledTimes(1);
+    expect(result.warnings).toEqual(['zip-partly-recovered']);
   });
 
   it('threads the userId into every deck conversion so zip uploads are guarded', async () => {

@@ -3328,6 +3328,31 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it('keeps the credits code when credits and a partly recovered zip both warn', async () => {
+    mockPackages(
+      [{ name: 'notes.html', cardCount: 12 }],
+      [ZIP_PARTLY_RECOVERED_WARNING, 'ai-credits-exhausted']
+    );
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res } = buildResponse();
+
+    await service.handleUpload(buildRequest(), res);
+
+    expect(res.set).toHaveBeenCalledWith(
+      'X-Warning-Code',
+      'ai-credits-exhausted'
+    );
+    expect(res.set).not.toHaveBeenCalledWith(
+      'X-Warning-Code',
+      ZIP_PARTLY_RECOVERED_WARNING
+    );
+  });
+
   it('warns on X-Warning when notes in the built package share a guid', async () => {
     const previousLocation = mockWorkspaceLocation;
     mockWorkspaceLocation = fs.mkdtempSync(
@@ -7648,6 +7673,27 @@ describe('resolveUploadWarning — AI credits exhausted', () => {
     expect(resolveUploadWarning([ZIP_PARTLY_RECOVERED_WARNING], null)).toBe(
       ZIP_PARTLY_RECOVERED_WARNING_TEXT
     );
+  });
+
+  it.each([
+    ['an oversize deck', 'apkg-over-100mb:210.4', /AnkiWeb won't sync/],
+    ['a locked PDF', 'This PDF is password-protected.', /password-protected/],
+  ])(
+    'keeps %s ahead of the partly recovered note',
+    (_label, warning, shown) => {
+      expect(
+        resolveUploadWarning([ZIP_PARTLY_RECOVERED_WARNING, warning], null)
+      ).toMatch(shown);
+    }
+  );
+
+  it.each([
+    ['duplicate cards', 'duplicate-guid:2'],
+    ['Markdown parsing', 'markdown-heuristic'],
+  ])('puts the partly recovered note ahead of %s', (_label, warning) => {
+    expect(
+      resolveUploadWarning([warning, ZIP_PARTLY_RECOVERED_WARNING], null)
+    ).toBe(ZIP_PARTLY_RECOVERED_WARNING_TEXT);
   });
 
   it('keeps the partly recovered text within the Latin-1 warning header', () => {
