@@ -15,6 +15,7 @@ describe('isReservedKey', () => {
     'assets/app.js',
     'held/anon-1-1700000000000-notes.html',
     'recover/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08.apkg',
+    'backups/postgres/daily-Mon.dump.gpg',
   ])('reserves %s for the feature that owns it', (key) => {
     expect(isReservedKey(key)).toBe(true);
   });
@@ -55,6 +56,7 @@ describe('isDeletableBucketKey', () => {
     'assets/main.css',
     'held/anon-1-1700000000000-notes.html',
     'recover/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08.apkg',
+    'backups/postgres/daily-Mon.dump.gpg',
   ])('never deletes %s even when unreferenced and old', (key) => {
     expect(
       isDeletableBucketKey({ Key: key, LastModified: old }, referenced, now)

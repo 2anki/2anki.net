@@ -31,7 +31,8 @@ class BackupScriptTest(unittest.TestCase):
         self.key = self.root / 'public.asc'
         self.key.write_text('public key')
         self.work = self.root / 'work'
-        self.stub('pg_dump', 'for a in "$@"; do case "$a" in --file=*) echo plain-rows > "${a#--file=}";; esac; done')
+        self.pg_env = self.root / 'pg.env'
+        self.stub('pg_dump', f'echo "$PGUSER|$PGPASSWORD|$PGHOST|$PGPORT|$PGDATABASE" > {self.pg_env}; for a in "$@"; do case "$a" in --file=*) echo plain-rows > "${{a#--file=}}";; esac; done')
         self.stub('pg_restore', 'echo "1; 0 0 TABLE DATA public users owner"')
         self.stub('gpg', 'while [ $# -gt 0 ]; do if [ "$1" = --output ]; then o="$2"; fi; shift; done; echo ciphertext > "$o"')
         self.stub('aws', 'if [ "$1" = s3api ]; then echo 11; fi')
@@ -85,6 +86,60 @@ class BackupScriptTest(unittest.TestCase):
     def test_removes_its_working_files(self):
         self.run_backup()
         self.assertEqual(self.leftovers(), [])
+
+    def test_keeps_the_password_out_of_process_arguments(self):
+        self.run_backup()
+        self.assertNotIn('s3cret-db-password', self.calls_text())
+        self.assertEqual(
+            self.pg_env.read_text().strip(),
+            'u|s3cret-db-password|localhost|5432|2anki',
+        )
+
+    def test_decodes_a_password_with_escaped_characters(self):
+        self.env_file.write_text(
+            self.env_file.read_text().replace('s3cret-db-password', 'p%40ss')
+        )
+        self.run_backup()
+        self.assertIn('|p@ss|', self.pg_env.read_text())
+
+    def test_a_long_listing_after_the_users_table_does_not_fail_the_backup(self):
+        self.stub(
+            'pg_restore',
+            'echo "1; 0 0 TABLE DATA public users owner"; seq 1 200000',
+        )
+        result = self.run_backup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.mail.exists())
+
+    def test_reads_the_alert_address_from_the_env_file(self):
+        with self.env_file.open('a') as handle:
+            handle.write('BACKUP_ALERT_EMAIL=ops@example.test\n')
+        self.stub('pg_dump', 'exit 3')
+        result = self.run_backup(BACKUP_ALERT_EMAIL='')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('To: ops@example.test', self.mail.read_text())
+
+    def test_uses_the_last_value_of_a_repeated_setting_like_the_app(self):
+        with self.env_file.open('a') as handle:
+            handle.write('SPACES_DEFAULT_BUCKET_NAME=newer\n')
+        self.run_backup()
+        self.assertIn('s3://newer/', self.calls_text())
+
+    def test_removes_a_plain_dump_left_by_a_killed_run(self):
+        stale = self.work / 'run.killed'
+        stale.mkdir(parents=True)
+        (stale / 'dump').write_text('plain-rows')
+        self.run_backup()
+        self.assertFalse(stale.exists())
+
+    def test_stops_and_alerts_on_a_missing_database_url(self):
+        self.env_file.write_text('SPACES_ENDPOINT=https://x\n')
+        self.assert_alerted(self.run_backup(), 'reading configuration')
+        self.assertNotIn('pg_dump', self.calls_text())
+
+    def test_alerts_when_the_monthly_upload_fails(self):
+        self.stub('aws', 'case "$*" in *monthly*) exit 1;; esac; if [ "$1" = s3api ]; then echo 11; fi')
+        self.assert_alerted(self.run_backup(FAKE_DAY='01'), 'uploading monthly-2026-11')
 
     def test_output_holds_no_credentials(self):
         result = self.run_backup()
