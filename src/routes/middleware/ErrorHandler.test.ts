@@ -10,6 +10,7 @@ import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import { EmailSendError } from '../../services/EmailService/sendMail';
 import { DAMAGED_ZIP_MESSAGE } from '../../lib/zip/damagedZipMessage';
 import { INCOMPLETE_ZIP_MESSAGE } from '../../lib/zip/zip';
+import { RECOVERY_TOO_LARGE_MESSAGE } from '../../lib/zip/fallback/ZipRecoveryTooLargeError';
 
 const makeAPIResponseError = (
   code: string,
@@ -707,7 +708,7 @@ describe('sendErrorResponse', () => {
 
   test.each([
     ['zip_damaged', DAMAGED_ZIP_MESSAGE],
-    ['unknown', INCOMPLETE_ZIP_MESSAGE],
+    ['zip_incomplete', INCOMPLETE_ZIP_MESSAGE],
   ])(
     'answers a zip error rebuilt across the upload worker with code %s',
     (code, message) => {
@@ -722,6 +723,21 @@ describe('sendErrorResponse', () => {
       expect(res.body).toEqual({ code, message });
     }
   );
+
+  test('answers a refused zip recovery rebuilt across the upload worker with its own code', () => {
+    const res = makeResponse(false);
+    const rebuilt = Object.assign(new Error(RECOVERY_TOO_LARGE_MESSAGE), {
+      name: 'ZipRecoveryTooLargeError',
+    });
+
+    sendErrorResponse(res as unknown as express.Response, rebuilt);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      code: 'zip_too_large',
+      message: RECOVERY_TOO_LARGE_MESSAGE,
+    });
+  });
 
   test('keeps the generic 500 for an internal fault', () => {
     const res = makeResponse(false);

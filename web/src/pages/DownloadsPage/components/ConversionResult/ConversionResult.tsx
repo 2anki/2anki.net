@@ -61,6 +61,8 @@ const PDF_PAGE_RANGE_MARKER = 'has a page number that is too large';
 // A damaged zip reads "Part of this zip file is damaged, ..."
 // src/lib/zip/damagedZip.parity.test.ts fails if the server copy drifts.
 const DAMAGED_ZIP_MARKER = 'Part of this zip file is damaged';
+const INCOMPLETE_ZIP_MARKER = 'This zip file is incomplete';
+const ZIP_TOO_LARGE_MARKER = 'too large to process. Split';
 const TOGGLES_DOCS_HREF = '/documentation/cards/notion-blocks';
 const FILE_FORMATS_DOCS_HREF = '/documentation/reference/file-formats';
 const CONNECT_NOTION_DOCS_HREF = '/documentation/start-here/connect-notion';
@@ -71,6 +73,12 @@ function reasonCode(failureReason: string): UploadErrorCode {
   }
   if (failureReason.includes(DAMAGED_ZIP_MARKER)) {
     return 'zip_damaged';
+  }
+  if (failureReason.includes(INCOMPLETE_ZIP_MARKER)) {
+    return 'zip_incomplete';
+  }
+  if (failureReason.includes(ZIP_TOO_LARGE_MARKER)) {
+    return 'zip_too_large';
   }
   const isTooLarge =
     failureReason.includes('too large') ||

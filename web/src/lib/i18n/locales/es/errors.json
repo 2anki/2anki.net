@@ -109,6 +109,17 @@
       "title": "No se pudo leer este zip.",
       "detail": "Asegúrate de que sea la exportación en Markdown y CSV de Notion, no la exportación en HTML."
     },
+    "zip_incomplete": {
+      "title": "Este zip está incompleto.",
+      "detail": "Puede que aún se estuviera descargando o sincronizando. Espera a que termine y vuelve a subirlo."
+    },
+    "zip_too_large": {
+      "title": "Este archivo es demasiado grande para procesarlo.",
+      "detail": "Divídelo en archivos más pequeños e inténtalo de nuevo."
+    },
+    "zip_partly_recovered": {
+      "title": "Parte de este zip no se pudo leer, así que puede que falten algunos archivos. Vuelve a descargar o comprimir los archivos y sube el nuevo zip."
+    },
     "zip_damaged": {
       "title": "Parte de este zip está dañada.",
       "detail": "Vuelve a descargar o comprimir los archivos y sube el nuevo zip."

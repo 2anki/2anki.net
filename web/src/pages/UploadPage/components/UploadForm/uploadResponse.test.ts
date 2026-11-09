@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyConversionSuccess,
+  displayedUploadWarning,
   singleDeckName,
   type ConversionSuccessHandlers,
 } from './uploadResponse';
@@ -773,6 +774,26 @@ describe('applyConversionSuccess', () => {
       expect.stringMatching(/^blob:/)
     );
     expect(handlers.recoverDownload).not.toHaveBeenCalled();
+  });
+});
+
+describe('displayedUploadWarning', () => {
+  const t = (key: string, options: { defaultValue: string }) =>
+    `${key}|${options.defaultValue}`;
+
+  it('translates the partly recovered zip note by its code', () => {
+    expect(
+      displayedUploadWarning(t, 'English note', 'zip-partly-recovered')
+    ).toBe('errors:upload.zip_partly_recovered.title|English note');
+  });
+
+  it.each([
+    ['a warning with another code', 'ai-credits-exhausted'],
+    ['a warning with no code', null],
+  ])('shows %s as the server wrote it', (_label, code) => {
+    expect(displayedUploadWarning(t, 'English note', code)).toBe(
+      'English note'
+    );
   });
 });
 

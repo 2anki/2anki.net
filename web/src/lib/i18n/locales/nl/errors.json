@@ -109,6 +109,17 @@
       "title": "Kon deze zip niet lezen.",
       "detail": "Zorg dat het de Markdown- & CSV-export uit Notion is, niet de HTML-export."
     },
+    "zip_incomplete": {
+      "title": "Deze zip is onvolledig.",
+      "detail": "Misschien werd hij nog gedownload of gesynchroniseerd. Wacht tot dat klaar is en upload hem dan opnieuw."
+    },
+    "zip_too_large": {
+      "title": "Deze upload is te groot om te verwerken.",
+      "detail": "Splits hem in kleinere uploads en probeer het opnieuw."
+    },
+    "zip_partly_recovered": {
+      "title": "Een deel van deze zip kon niet worden gelezen, dus er kunnen bestanden ontbreken. Download of zip de bestanden opnieuw en upload daarna de nieuwe zip."
+    },
     "zip_damaged": {
       "title": "Een deel van deze zip is beschadigd.",
       "detail": "Download of zip de bestanden opnieuw en upload daarna de nieuwe zip."

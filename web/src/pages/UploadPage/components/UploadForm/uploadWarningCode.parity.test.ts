@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AI_CREDITS_WARNING_CODE } from './uploadResponse';
+import {
+  AI_CREDITS_WARNING_CODE,
+  ZIP_PARTLY_RECOVERED_WARNING_CODE,
+} from './uploadResponse';
 
 function readServerAiCreditsWarningCode(): string {
   const source = readFileSync(
@@ -20,6 +23,20 @@ function readServerAiCreditsWarningCode(): string {
   }
   return match[1];
 }
+
+function readServerZipWarningCode(): string | undefined {
+  const source = readFileSync(
+    join(__dirname, '../../../../../../', 'src/lib/zip/damagedZipMessage.ts'),
+    'utf8'
+  );
+  return /ZIP_PARTLY_RECOVERED_WARNING = '([a-z-]+)'/.exec(source)?.[1];
+}
+
+describe('partly recovered zip warning code parity', () => {
+  it('the web code equals the server value', () => {
+    expect(ZIP_PARTLY_RECOVERED_WARNING_CODE).toBe(readServerZipWarningCode());
+  });
+});
 
 describe('AI credits warning code parity', () => {
   it('the web warning code the X-Warning-Code header is matched against equals the server value', () => {

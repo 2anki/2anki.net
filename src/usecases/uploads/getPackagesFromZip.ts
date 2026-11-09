@@ -4,6 +4,7 @@ import { collectIssuedGuids } from '../../lib/anki/collectIssuedGuids';
 import type { KnownGuids } from '../../lib/anki/guidLedgerTypes';
 import type { UploadIdentityContext } from '../../lib/parser/DeckParser';
 import CardOption from '../../lib/parser/Settings/CardOption';
+import { ZIP_PARTLY_RECOVERED_WARNING } from '../../lib/zip/damagedZipMessage';
 import { ZipHandler } from '../../lib/zip/zip';
 import {
   PrepareDeck,
@@ -83,6 +84,17 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
     chunks.push(arr.slice(i, i + size));
   }
   return chunks;
+}
+
+function withZipRecoveryWarning(
+  zipHandler: ZipHandler,
+  result: PackageResult
+): PackageResult {
+  if (!zipHandler.recoveredBrokenArchive) return result;
+  return {
+    ...result,
+    warnings: [...(result.warnings ?? []), ZIP_PARTLY_RECOVERED_WARNING],
+  };
 }
 
 interface BatchOutcome {
@@ -649,7 +661,7 @@ export const getPackagesFromZip = async (
     workspace
   );
   if (ankiAppResult) {
-    return ankiAppResult;
+    return withZipRecoveryWarning(zipHandler, ankiAppResult);
   }
 
   const fileNames = zipHandler.getFileNames();
@@ -660,14 +672,17 @@ export const getPackagesFromZip = async (
   );
 
   if (effectiveSettings.claudeAIFlashcards && paying && fileNames.length > 0) {
-    return buildClaudeFlashcardDeck(
-      fileNames[0],
+    return withZipRecoveryWarning(
       zipHandler,
-      effectiveSettings,
-      paying,
-      workspace,
-      onProgress,
-      { userId, requestId, crossFileDedup, anonymousPassId }
+      await buildClaudeFlashcardDeck(
+        fileNames[0],
+        zipHandler,
+        effectiveSettings,
+        paying,
+        workspace,
+        onProgress,
+        { userId, requestId, crossFileDedup, anonymousPassId }
+      )
     );
   }
 
@@ -684,12 +699,15 @@ export const getPackagesFromZip = async (
   };
 
   if (supportedFileNames.length <= 1 || batchSize <= 1) {
-    return buildAllInOneSlot(
-      supportedFileNames,
+    return withZipRecoveryWarning(
       zipHandler,
-      cap,
-      batchCtx,
-      cardLimit
+      await buildAllInOneSlot(
+        supportedFileNames,
+        zipHandler,
+        cap,
+        batchCtx,
+        cardLimit
+      )
     );
   }
 
@@ -727,10 +745,10 @@ export const getPackagesFromZip = async (
   appendLockedPdfWarning(warnings, lockedPdfs);
   appendConversionFailureWarning(warnings, failedFiles);
 
-  return {
+  return withZipRecoveryWarning(zipHandler, {
     packages,
     warnings,
     emptyReason: emptyReasonForEmptyResult(packages, emptyReasons),
     rescueCandidates: rescueForEmptyResult(packages, rescueCandidateSets),
-  };
+  });
 };

@@ -103,6 +103,10 @@ import {
   getOwner,
 } from '../lib/User/getOwner';
 import { isExpectedUploadState } from '../lib/upload/isExpectedUploadState';
+import {
+  ZIP_PARTLY_RECOVERED_WARNING,
+  ZIP_PARTLY_RECOVERED_WARNING_TEXT,
+} from '../lib/zip/damagedZipMessage';
 import { censusUploadedFile } from '../infrastracture/adapters/fileConversion/documentStructureCensus';
 import { formatDeckName } from '../lib/formatDeckName';
 import {
@@ -323,6 +327,18 @@ async function readCreditWindowReset(
   return status.balance?.resets ?? null;
 }
 
+function uploadWarningCode(
+  warnings: string[] | undefined,
+  warningText: string | null
+): string | null {
+  if (includesAiCreditsWarning(warnings)) {
+    return AI_CREDITS_EXHAUSTED_WARNING_CODE;
+  }
+  return warningText === ZIP_PARTLY_RECOVERED_WARNING_TEXT
+    ? ZIP_PARTLY_RECOVERED_WARNING
+    : null;
+}
+
 export function resolveUploadWarning(
   warnings: string[] | undefined,
   audience: AiCreditsWarningAudience | null
@@ -340,6 +356,9 @@ export function resolveUploadWarning(
   if (creditsWarning) return creditsWarning;
   const failedFiles = aiFileFailedWarningText(warnings);
   if (failedFiles) return failedFiles;
+  if (warnings.includes(ZIP_PARTLY_RECOVERED_WARNING)) {
+    return ZIP_PARTLY_RECOVERED_WARNING_TEXT;
+  }
   let duplicateGuids = 0;
   for (const warning of warnings) {
     const match = DUPLICATE_GUID_WARNING_RE.exec(warning);
@@ -2299,8 +2318,9 @@ class UploadService {
       if (warningText) {
         res.set('X-Warning', latin1HeaderValue(warningText));
         exposedHeaders.push('X-Warning');
-        if (includesAiCreditsWarning(syncWarnings)) {
-          res.set('X-Warning-Code', AI_CREDITS_EXHAUSTED_WARNING_CODE);
+        const warningCode = uploadWarningCode(syncWarnings, warningText);
+        if (warningCode) {
+          res.set('X-Warning-Code', warningCode);
           exposedHeaders.push('X-Warning-Code');
         }
       }
@@ -2372,17 +2392,16 @@ class UploadService {
       syncOwnerIdOrNull,
       readCreditWindowReset
     );
+    const batchWarning = resolveUploadWarning(warnings, batchWarningAudience);
     return res.status(200).json(
       await this.buildBatchResponse(
         ws,
-        resolveUploadWarning(warnings, batchWarningAudience),
+        batchWarning,
         sumDroppedImages(packages),
         totalEmptyBackCount,
         shippedRescueRule(packages),
         sumExpiredNotionImages(packages),
-        includesAiCreditsWarning(warnings)
-          ? AI_CREDITS_EXHAUSTED_WARNING_CODE
-          : null,
+        uploadWarningCode(warnings, batchWarning),
         sumColoredTextPages(packages),
         resolveImageDropReason(packages, req.files as UploadedFile[]),
         packages.reduce((sum, p) => sum + (p.blankBackCount ?? 0), 0)

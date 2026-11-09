@@ -29,6 +29,7 @@ import { extractErrorMessage } from '../../helpers/extractErrorMessage';
 import {
   applyConversionSuccess,
   AI_CREDITS_WARNING_CODE,
+  displayedUploadWarning,
   recoveryDownloadUrl,
   singleDeckName,
   type ConversionSuccessHandlers,
@@ -3230,7 +3231,7 @@ function UploadForm({
       )}
       {warningMessage && (
         <p className={formStyles.warningInline}>
-          {warningMessage}
+          {displayedUploadWarning(t, warningMessage, warningCode)}
           {warningCode === AI_CREDITS_WARNING_CODE && (
             <BuyCreditsButton source="credits_conversion" variant="secondary" />
           )}
@@ -3442,7 +3443,7 @@ function UploadForm({
         </p>
         {warning && (
           <p className={formStyles.warningInline}>
-            {warning}
+            {displayedUploadWarning(t, warning, warningCode)}
             {warningCode === AI_CREDITS_WARNING_CODE && (
               <BuyCreditsButton
                 source="credits_conversion"
