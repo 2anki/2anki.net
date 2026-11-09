@@ -660,6 +660,37 @@ describe('ZipHandler damaged archives', () => {
     expect(handler.getFileNames()).toEqual(['page.html']);
   });
 
+  it('marks the upload as partly recovered only when damaged data was recovered', async () => {
+    const zip = zipSync(
+      {
+        'page.html': strToU8('<p>intact</p>'),
+        'picture.png': strToU8(longPage),
+      },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([
+      { name: 'page.html', contents: '<p>intact</p>' },
+    ]);
+    const damagedUpload = new ZipHandler(10);
+    const cutOffUpload = new ZipHandler(10);
+
+    await damagedUpload.build(
+      damaged(zip, 'picture.png', 0, 0xff),
+      false,
+      new CardOption({}),
+      makeSpillDir()
+    );
+    await cutOffUpload.build(
+      zip.slice(0, zip.length - 30),
+      false,
+      new CardOption({}),
+      makeSpillDir()
+    );
+
+    expect(damagedUpload.recoveredDamagedArchive).toBe(true);
+    expect(cutOffUpload.recoveredDamagedArchive).toBe(false);
+  });
+
   it('keeps the outer pages when a nested zip is damaged and nothing in it can be recovered', async () => {
     const inner = damaged(
       zipSync({ 'inner.html': strToU8(longPage) }, { level: 9 }),

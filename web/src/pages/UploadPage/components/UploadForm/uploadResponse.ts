@@ -49,6 +49,20 @@ export function parseNonNegativeIntHeader(
 }
 
 export const AI_CREDITS_WARNING_CODE = 'ai-credits-exhausted';
+const ZIP_PARTLY_RECOVERED_WARNING_CODE = 'zip-partly-recovered';
+
+export function displayedUploadWarning(
+  t: (key: string, options: { defaultValue: string }) => string,
+  warning: string | null | undefined,
+  warningCode: string | null | undefined
+): string | null | undefined {
+  if (warning && warningCode === ZIP_PARTLY_RECOVERED_WARNING_CODE) {
+    return t('errors:upload.zip_partly_recovered.title', {
+      defaultValue: warning,
+    });
+  }
+  return warning;
+}
 
 export interface ConversionSuccessHandlers {
   setWarningMessage: (value: string | null) => void;

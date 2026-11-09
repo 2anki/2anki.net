@@ -109,6 +109,17 @@
       "title": "Nie udało się odczytać tego pliku zip.",
       "detail": "Upewnij się, że to eksport Markdown i CSV z Notion, a nie eksport HTML."
     },
+    "zip_incomplete": {
+      "title": "Ten plik zip jest niekompletny.",
+      "detail": "Być może nadal się pobierał lub synchronizował. Poczekaj, aż to się skończy, i prześlij go ponownie."
+    },
+    "zip_too_large": {
+      "title": "Ten plik jest zbyt duży do przetworzenia.",
+      "detail": "Podziel go na mniejsze części i spróbuj ponownie."
+    },
+    "zip_partly_recovered": {
+      "title": "Część tego pliku zip była uszkodzona, więc w tej talii może brakować niektórych plików."
+    },
     "zip_damaged": {
       "title": "Część tego pliku zip jest uszkodzona.",
       "detail": "Pobierz lub spakuj pliki ponownie, a potem prześlij nowy plik zip."

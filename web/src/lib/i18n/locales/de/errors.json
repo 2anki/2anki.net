@@ -109,6 +109,17 @@
       "title": "Diese ZIP konnte nicht gelesen werden.",
       "detail": "Stelle sicher, dass es der Markdown-&-CSV-Export aus Notion ist, nicht der HTML-Export."
     },
+    "zip_incomplete": {
+      "title": "Diese ZIP-Datei ist unvollständig.",
+      "detail": "Sie wurde vielleicht noch heruntergeladen oder synchronisiert. Warte, bis das fertig ist, und lade sie dann erneut hoch."
+    },
+    "zip_too_large": {
+      "title": "Dieser Upload ist zu groß zum Verarbeiten.",
+      "detail": "Teile ihn in kleinere Uploads auf und versuche es erneut."
+    },
+    "zip_partly_recovered": {
+      "title": "Ein Teil dieser ZIP-Datei war beschädigt, daher fehlen in diesem Stapel vielleicht einige Dateien."
+    },
     "zip_damaged": {
       "title": "Ein Teil dieser ZIP-Datei ist beschädigt.",
       "detail": "Lade die Dateien erneut herunter oder packe sie neu und lade dann die neue ZIP hoch."

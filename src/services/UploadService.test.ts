@@ -168,7 +168,11 @@ import {
   MONTHLY_CARD_LIMIT,
   MonthlyLimitError,
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
-import { DAMAGED_ZIP_MESSAGE } from '../lib/zip/damagedZipMessage';
+import {
+  DAMAGED_ZIP_MESSAGE,
+  ZIP_PARTLY_RECOVERED_WARNING,
+  ZIP_PARTLY_RECOVERED_WARNING_TEXT,
+} from '../lib/zip/damagedZipMessage';
 
 const MockGeneratePackagesUseCase = GeneratePackagesUseCase as MockedClass<
   typeof GeneratePackagesUseCase
@@ -3299,6 +3303,31 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(res.set).toHaveBeenCalledWith('X-Warning', lockedWarning);
   });
 
+  it('sends the partly recovered zip note with its code so the page can translate it', async () => {
+    mockPackages(
+      [{ name: 'notes.html', cardCount: 12 }],
+      [ZIP_PARTLY_RECOVERED_WARNING]
+    );
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res } = buildResponse();
+
+    await service.handleUpload(buildRequest(), res);
+
+    expect(res.set).toHaveBeenCalledWith(
+      'X-Warning',
+      ZIP_PARTLY_RECOVERED_WARNING_TEXT
+    );
+    expect(res.set).toHaveBeenCalledWith(
+      'X-Warning-Code',
+      ZIP_PARTLY_RECOVERED_WARNING
+    );
+  });
+
   it('warns on X-Warning when notes in the built package share a guid', async () => {
     const previousLocation = mockWorkspaceLocation;
     mockWorkspaceLocation = fs.mkdtempSync(
@@ -4581,6 +4610,40 @@ describe('UploadService.handleUpload — multi-deck batch', () => {
     await service.handleUpload(req, res);
 
     expect(capturedJson()).toMatchObject({ kind: 'batch', blankBackCount: 3 });
+  });
+
+  it('sends the partly recovered zip note with its code on a batch', async () => {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({
+          packages: [
+            { name: 'Biology', cardCount: 3, mcqCount: 0, mcqSkippedCount: 0 },
+            {
+              name: 'Chemistry',
+              cardCount: 5,
+              mcqCount: 0,
+              mcqSkippedCount: 0,
+            },
+          ],
+          warnings: [ZIP_PARTLY_RECOVERED_WARNING],
+        }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res, capturedJson } = buildResponse();
+
+    await service.handleUpload(buildRequest(), res);
+
+    expect(capturedJson()).toMatchObject({
+      kind: 'batch',
+      warning: ZIP_PARTLY_RECOVERED_WARNING_TEXT,
+      warningCode: ZIP_PARTLY_RECOVERED_WARNING,
+    });
   });
 
   it('returns 200 JSON listing every deck instead of redirecting to /download', async () => {
@@ -7579,6 +7642,16 @@ describe('resolveUploadWarning — AI credits exhausted', () => {
     expect(text).not.toMatch(/free/);
     expect(text).not.toMatch(/reset/);
     expect(text).not.toMatch(/90 days/);
+  });
+
+  it('says a partly recovered zip may be missing files', () => {
+    expect(resolveUploadWarning([ZIP_PARTLY_RECOVERED_WARNING], null)).toBe(
+      ZIP_PARTLY_RECOVERED_WARNING_TEXT
+    );
+  });
+
+  it('keeps the partly recovered text within the Latin-1 warning header', () => {
+    expect(/^[\x20-\x7e]+$/.test(ZIP_PARTLY_RECOVERED_WARNING_TEXT)).toBe(true);
   });
 
   it('keeps the oversize warning ahead of the credits notice', () => {

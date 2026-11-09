@@ -662,6 +662,31 @@ describe('ConversionResult — failed variant', () => {
     expect(screen.queryByText(/smaller files/i)).toBeNull();
   });
 
+  it.each([
+    [
+      'This zip file is incomplete — it ends before its file index, which usually means it was still downloading or syncing when it was uploaded. Wait for the download to finish, then upload it again.',
+      'This zip is incomplete. It may still have been downloading or syncing. Wait until that finishes, then upload it again.',
+    ],
+    [
+      'This upload is too large to process. Split it into smaller uploads and try again.',
+      'This upload is too large to process. Split it into smaller uploads and try again.',
+    ],
+  ])('words the stored zip failure %s from its own copy', (reason, shown) => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Notes export"
+          failureReason={reason}
+          source="upload"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(shown)).toBeInTheDocument();
+  });
+
   it('words a damaged zip from its own copy, not the stored sentence', () => {
     render(
       <MemoryRouter>

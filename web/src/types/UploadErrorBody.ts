@@ -30,6 +30,8 @@ export const UPLOAD_ERROR_CODES = [
   'apkg_too_large_for_anki',
   'zip_invalid',
   'zip_damaged',
+  'zip_incomplete',
+  'zip_too_large',
   'ai_credits_exhausted',
   'owner_changed',
   'deck_builder_crash',

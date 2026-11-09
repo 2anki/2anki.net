@@ -499,6 +499,26 @@ describe('classifyUploadError — new error codes', () => {
     expect(result.detail).toContain('Markdown & CSV export');
   });
 
+  it.each([
+    [
+      'zip_incomplete',
+      'This zip is incomplete.',
+      'still have been downloading',
+    ],
+    [
+      'zip_too_large',
+      'This upload is too large to process.',
+      'smaller uploads',
+    ],
+  ] as const)('%s uses its own copy', (code, title, detail) => {
+    const result = classifyUploadError({
+      code,
+      message: 'English server text',
+    });
+    expect(result.title).toBe(title);
+    expect(result.detail).toContain(detail);
+  });
+
   it('zip_damaged says the zip is damaged, not the unzip error', () => {
     const body: UploadErrorBody = {
       code: 'zip_damaged',

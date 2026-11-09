@@ -288,6 +288,15 @@ const UPLOAD_CODE_DEFAULTS: Partial<
     detail:
       "Make sure it's the Markdown & CSV export from Notion, not the HTML export.",
   },
+  zip_incomplete: {
+    title: 'This zip is incomplete.',
+    detail:
+      'It may still have been downloading or syncing. Wait until that finishes, then upload it again.',
+  },
+  zip_too_large: {
+    title: 'This upload is too large to process.',
+    detail: 'Split it into smaller uploads and try again.',
+  },
   zip_damaged: {
     title: 'Part of this zip is damaged.',
     detail: 'Download or zip the files again, then upload the new zip.',

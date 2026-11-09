@@ -97,6 +97,52 @@ describe('getPackagesFromZip — batch concurrency', () => {
     expect(result.packages).toHaveLength(fileCount);
   });
 
+  it.each([
+    ['a recovered damaged zip gets', true, ['zip-partly-recovered']],
+    ['any other zip does not get', false, []],
+  ])('%s the partly recovered note', async (_label, recovered, expected) => {
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(['a.html']),
+        files: [{ name: 'a.html', contents: '<html></html>' }],
+        recoveredDamagedArchive: recovered,
+      };
+    });
+    mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>
+      Promise.resolve({
+        deckInfoPath: `/fake/${name}/deck_info.json`,
+        outputPath: `/fake/${name}/out.apkg`,
+        name,
+        inputFileName: name,
+        deck: [],
+        cardCount: 1,
+        needsIndividualBuild: false,
+      })
+    );
+    mockCardGeneratorClass.mockImplementation(function () {
+      return {
+        runBatch: vi
+          .fn()
+          .mockImplementation((entries: Array<{ output: string }>) =>
+            Promise.resolve(entries.map((e) => e.output))
+          ),
+      };
+    });
+    vi.spyOn(nodeFsModule, 'readFileSync').mockReturnValue(
+      Buffer.from('fake-apkg')
+    );
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      new CardOption({}),
+      { location: FAKE_WORKSPACE_LOCATION } as Workspace
+    );
+
+    expect(result.warnings ?? []).toEqual(expected);
+  });
+
   it('threads the userId into every deck conversion so zip uploads are guarded', async () => {
     const fileNames = ['a.html', 'b.html', 'c.html', 'd.html'];
 

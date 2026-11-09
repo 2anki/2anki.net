@@ -24,7 +24,7 @@ import {
   toUploadErrorCode,
 } from '../../lib/anki/buildPythonExitError';
 import { toNotionUploadError } from '../../lib/notion/toNotionUploadError';
-import { isDamagedZipError } from '../../lib/zip/damagedZipMessage';
+import { zipErrorCode } from '../../lib/zip/damagedZipMessage';
 import type {
   UploadErrorBody,
   UploadErrorCode,
@@ -133,8 +133,7 @@ function uploadErrorCodeFor(err: Error): UploadErrorCode {
   if (err instanceof PythonExitError) return toUploadErrorCode(err.kind);
   // Matched by name: the upload worker rebuilds errors as plain ones.
   if (err.name === 'ClaudeRefusalError') return 'claude_refusal';
-  if (isDamagedZipError(err)) return 'zip_damaged';
-  return 'unknown';
+  return zipErrorCode(err) ?? 'unknown';
 }
 
 export function sendErrorResponse(res: express.Response, err: Error): void {
