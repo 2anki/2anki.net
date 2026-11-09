@@ -143,6 +143,68 @@ test.describe('golden path @golden', () => {
     await page.waitForLoadState('networkidle');
     expect(realErrors(errors)).toEqual([]);
   });
+  test('My decks names the file Claude made no cards from at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(AUTHED_LOCALS),
+      })
+    );
+    await page.route('**/api/upload/mine**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 9,
+            owner: 1,
+            key: 'owner-1-notes.apkg',
+            filename: 'notes.apkg',
+            object_id: null,
+            size_mb: 1,
+            created_at: new Date().toISOString(),
+            source: null,
+            dropped_image_count: null,
+            image_drop_reason: null,
+            empty_back_count: null,
+            skipped_ai_files: [{ name: 'week 3.pdf', reason: 'declined' }],
+          },
+        ]),
+      })
+    );
+
+    for (const emptyList of [
+      '**/api/upload/dropbox/mine**',
+      '**/api/upload/google_drive/mine**',
+      '**/api/shares**',
+    ]) {
+      await page.route(emptyList, (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([]),
+        })
+      );
+    }
+
+    await page.goto('/downloads');
+
+    await expect(
+      page.getByText(
+        'No cards came from 1 file. The other files are in this deck.'
+      )
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('listitem').filter({ hasText: 'week 3.pdf' }))
+      .toContainText('Claude declined it.');
+    await page.waitForLoadState('networkidle');
+    expect(realErrors(errors)).toEqual([]);
+  });
+
   test('account page for an active subscriber links the billing portal at 375px', async ({
     page,
   }) => {

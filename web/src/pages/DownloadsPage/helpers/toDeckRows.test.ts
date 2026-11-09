@@ -278,3 +278,21 @@ describe('toDeckRows — MCP job dedupe', () => {
     expect(rows).toHaveLength(2);
   });
 });
+
+describe('toDeckRows — files Claude left out', () => {
+  it('carries the stored list onto the deck row', () => {
+    const skipped = [{ name: 'week 3.pdf', reason: 'declined' }];
+    const [row] = toDeckRows(
+      [],
+      [makeUpload({ skipped_ai_files: skipped })],
+      [],
+      []
+    );
+    expect(row).toMatchObject({ kind: 'file', skippedAiFiles: skipped });
+  });
+
+  it('gives an older row with no list an empty one', () => {
+    const [row] = toDeckRows([], [makeUpload()], [], []);
+    expect(row).toMatchObject({ kind: 'file', skippedAiFiles: [] });
+  });
+});

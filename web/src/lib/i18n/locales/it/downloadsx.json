@@ -173,5 +173,17 @@
     "fewCardsPaidAi_one": "Solo {{count}} carta è nata da questo file. Con un piano a pagamento, Claude può ricavarne più carte.",
     "fewCardsPaidAi_other": "Solo {{count}} carte sono nate da questo file. Con un piano a pagamento, Claude può ricavarne più carte.",
     "seeReport": "Vedi il rapporto completo"
+  },
+  "skippedAiFiles": {
+    "lead_one": "Da {{count}} file non è uscita nessuna carta. Gli altri file sono in questo mazzo.",
+    "lead_other": "Da {{count}} file non è uscita nessuna carta. Gli altri file sono in questo mazzo.",
+    "more_one": "E altri {{count}}.",
+    "more_other": "E altri {{count}}.",
+    "why": {
+      "declined": "Claude l'ha rifiutato. Riformula o togli la parte a cui non ha voluto rispondere, poi caricalo di nuovo.",
+      "too_large": "Una sezione era troppo grande. Dividila e carica di nuovo il file.",
+      "no_text": "Claude non ha trovato testo per creare carte. Controlla che il file contenga del testo.",
+      "unreadable": "Non è stato possibile leggere la risposta di Claude. Carica di nuovo il file."
+    }
   }
 }

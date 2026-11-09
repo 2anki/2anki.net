@@ -1,3 +1,8 @@
+export interface SkippedAiFile {
+  name: string;
+  reason: string;
+}
+
 interface UserUpload {
   id: string;
   size_mb: number;
@@ -10,6 +15,7 @@ interface UserUpload {
   dropped_image_count: number | null;
   image_drop_reason: string | null;
   empty_back_count: number | null;
+  skipped_ai_files?: SkippedAiFile[] | null;
 }
 
 export default UserUpload;

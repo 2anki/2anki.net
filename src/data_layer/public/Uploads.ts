@@ -29,6 +29,8 @@ export default interface Uploads {
   image_drop_reason: string | null;
 
   empty_back_count: number | null;
+
+  skipped_ai_files: unknown | null;
 }
 
 /** Represents the initializer for the table public.uploads */
@@ -58,6 +60,8 @@ export interface UploadsInitializer {
   image_drop_reason?: string | null;
 
   empty_back_count?: number | null;
+
+  skipped_ai_files?: unknown | null;
 }
 
 /** Represents the mutator for the table public.uploads */
@@ -85,4 +89,6 @@ export interface UploadsMutator {
   image_drop_reason?: string | null;
 
   empty_back_count?: number | null;
+
+  skipped_ai_files?: unknown | null;
 }

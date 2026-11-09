@@ -6242,9 +6242,11 @@ describe('UploadService.restartClaudeJob — a file Claude declined', () => {
     await db.destroy();
   });
 
-  async function restart(): Promise<void> {
+  async function restart(
+    repository: IUploadRepository = buildRepository()
+  ): Promise<void> {
     const service = new UploadService(
-      buildRepository(),
+      repository,
       new JobRepository(db),
       buildUsersRepo(),
       ...fakeUploadServiceDeps()
@@ -6272,6 +6274,28 @@ describe('UploadService.restartClaudeJob — a file Claude declined', () => {
 
     expect(mockGenerateDeckInfo).toHaveBeenCalledTimes(2);
     expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('names the declined file on My decks after the restart', async () => {
+    mockGenerateDeckInfo.mockImplementation(async (html: string) => {
+      if (html.includes('Declined page')) throw new ClaudeRefusalError();
+      return [
+        { name: 'Deck', cards: [{ name: 'q', back: 'a' }] },
+      ] as unknown as DeckInfo[];
+    });
+    const repository = buildRepository();
+    const update = vi.spyOn(repository, 'update');
+
+    await restart(repository);
+
+    expect(update).toHaveBeenCalledWith(
+      42,
+      'deck.apkg',
+      expect.any(String),
+      expect.any(Number),
+      null,
+      { skippedAiFiles: [{ name: 'declined.html', reason: 'declined' }] }
+    );
   });
 
   it('fails with the refusal when the other file makes no cards', async () => {

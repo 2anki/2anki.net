@@ -10,6 +10,7 @@ import {
 import {
   aiFileFailedWarning,
   aiFileFailedWarningText,
+  aiFileFailures,
   aiFileFailureReason,
 } from './aiFileFailure';
 
@@ -100,5 +101,24 @@ describe('aiFileFailedWarningText', () => {
 
   it('says nothing when no file failed', () => {
     expect(aiFileFailedWarningText(['markdown-heuristic'])).toBeNull();
+  });
+});
+
+describe('aiFileFailures', () => {
+  it('lists each left-out file by its uploaded name, in upload order', () => {
+    expect(
+      aiFileFailures([
+        'markdown-heuristic',
+        aiFileFailedWarning('lectures/week 3.pdf.html', 'declined'),
+        aiFileFailedWarning('Ch 1: Cells.md', 'unreadable'),
+      ])
+    ).toEqual([
+      { name: 'week 3.pdf', reason: 'declined' },
+      { name: 'Ch 1: Cells.md', reason: 'unreadable' },
+    ]);
+  });
+
+  it('skips a warning with an unknown reason', () => {
+    expect(aiFileFailures(['ai-file-failed:exploded:a.md'])).toEqual([]);
   });
 });

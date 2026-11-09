@@ -173,5 +173,17 @@
     "fewCardsPaidAi_one": "Only {{count}} card came from this file. Claude can write more cards from it on a paid plan.",
     "fewCardsPaidAi_other": "Only {{count}} cards came from this file. Claude can write more cards from it on a paid plan.",
     "seeReport": "See full report"
+  },
+  "skippedAiFiles": {
+    "lead_one": "No cards came from {{count}} file. The other files are in this deck.",
+    "lead_other": "No cards came from {{count}} files. The other files are in this deck.",
+    "more_one": "And {{count}} more.",
+    "more_other": "And {{count}} more.",
+    "why": {
+      "declined": "Claude declined it. Reword or remove the part it would not answer, then upload it again.",
+      "too_large": "A section was too large. Split it and upload it again.",
+      "no_text": "Claude found no text to make cards from. Check the file has text in it.",
+      "unreadable": "Claude's answer could not be read. Upload it again."
+    }
   }
 }

@@ -94,6 +94,9 @@ vi.mock('../lib/claude/ClaudeService', async (importActual) => {
     ...actual,
     generateDeckInfo: vi.fn(async (html: string) => {
       claudeInputs.push(html);
+      if (html.includes('REFUSED-BY-CLAUDE')) {
+        throw new actual.ClaudeRefusalError();
+      }
       return [
         {
           name: 'Cell Biology',
@@ -298,8 +301,14 @@ async function uploadInBackground(deck: Buffer) {
   );
 }
 
+type UploadedTestFile = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
+
 async function upload(
-  file: { originalname: string; mimetype: string; buffer: Buffer },
+  file: UploadedTestFile | UploadedTestFile[],
   flags: Record<string, boolean>,
   body: Record<string, string> = {}
 ) {
@@ -322,7 +331,10 @@ async function upload(
     ...fakeUploadServiceDeps()
   );
   const req = {
-    files: [{ ...file, size: file.buffer.length }],
+    files: (Array.isArray(file) ? file : [file]).map((f) => ({
+      ...f,
+      size: f.buffer.length,
+    })),
     body,
     headers: {},
     cookies: {},
@@ -376,7 +388,8 @@ describe('a paying account with AI off uploads a PowerPoint while background con
       'lecture.apkg',
       storedKeys[0],
       expect.any(Number),
-      null
+      null,
+      { skippedAiFiles: [] }
     );
   }, 20_000);
 });
@@ -449,5 +462,118 @@ describe('a paying account with AI never set uploads a zip holding only a PowerP
     expect(outcome).toBe('stored in My Decks');
     expect(claudeInputs).toHaveLength(1);
     expect(cardFronts(claudeInputs[0])).toEqual(['Exocytosis', 'Mitosis']);
+  }, 20_000);
+});
+
+describe('a paying account with AI on uploads a zip where Claude declines one file', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let workspaceBase: string;
+
+  beforeAll(() => applyEnv(ENV));
+
+  afterAll(() => applyEnv(originalEnv));
+
+  beforeEach(() => {
+    workspaceBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zip-skip-'));
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterEach(() => {
+    __resetFeatureFlagModuleForTests();
+    builtCards.length = 0;
+    storedKeys.length = 0;
+    claudeInputs.length = 0;
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  const declinedFileLater = {
+    'cells.md': strToU8('# Cells\n\nExocytosis needs calcium.\n'),
+    'week 3.md': strToU8('# Week 3\n\nREFUSED-BY-CLAUDE\n'),
+  };
+
+  it('stores the other file in My Decks with the declined file named', async () => {
+    const { status, settled, uploads } = await upload(
+      {
+        originalname: 'notes.zip',
+        mimetype: 'application/zip',
+        buffer: Buffer.from(zipSync(declinedFileLater)),
+      },
+      {},
+      { 'claude-ai-flashcards': 'true' }
+    );
+    const outcome = await settled;
+
+    expect(status).toBe(202);
+    expect(outcome).toBe('stored in My Decks');
+    expect(builtCards.map((card) => visibleText(card.name))).toEqual([
+      'Exocytosis',
+    ]);
+    expect(uploads.update).toHaveBeenCalledWith(
+      OWNER,
+      expect.any(String),
+      storedKeys[0],
+      expect.any(Number),
+      null,
+      { skippedAiFiles: [{ name: 'week 3.md', reason: 'declined' }] }
+    );
+  }, 20_000);
+
+  it('names the declined file when the two files are uploaded separately', async () => {
+    const { status, settled, uploads } = await upload(
+      Object.entries(declinedFileLater).map(([name, bytes]) => ({
+        originalname: name,
+        mimetype: 'text/markdown',
+        buffer: Buffer.from(bytes),
+      })),
+      {},
+      { 'claude-ai-flashcards': 'true' }
+    );
+    const outcome = await settled;
+
+    expect(status).toBe(202);
+    expect(outcome).toBe('stored in My Decks');
+    expect(uploads.update).toHaveBeenCalledWith(
+      OWNER,
+      expect.any(String),
+      storedKeys[0],
+      expect.any(Number),
+      null,
+      { skippedAiFiles: [{ name: 'week 3.md', reason: 'declined' }] }
+    );
+  }, 20_000);
+
+  it('names the declined file when AI was never set and the parser found no cards', async () => {
+    const { status, settled, uploads, jobs } = await upload(
+      {
+        originalname: 'notes.zip',
+        mimetype: 'application/zip',
+        buffer: Buffer.from(
+          zipSync({
+            'lecture.pptx': numberedLecture,
+            'week 3.md': strToU8('REFUSED-BY-CLAUDE\n'),
+          })
+        ),
+      },
+      {}
+    );
+    const outcome = await settled;
+
+    expect(status).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      expect.any(String),
+      String(OWNER),
+      expect.any(String),
+      'claude'
+    );
+    expect(outcome).toBe('stored in My Decks');
+    expect(uploads.update).toHaveBeenCalledWith(
+      OWNER,
+      expect.any(String),
+      storedKeys[0],
+      expect.any(Number),
+      null,
+      { skippedAiFiles: [{ name: 'week 3.md', reason: 'declined' }] }
+    );
   }, 20_000);
 });

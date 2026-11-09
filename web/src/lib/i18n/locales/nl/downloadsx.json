@@ -173,5 +173,17 @@
     "fewCardsPaidAi_one": "Er kwam maar {{count}} kaart uit dit bestand. Met een betaald abonnement kan Claude er meer kaarten uit halen.",
     "fewCardsPaidAi_other": "Er kwamen maar {{count}} kaarten uit dit bestand. Met een betaald abonnement kan Claude er meer kaarten uit halen.",
     "seeReport": "Volledig rapport bekijken"
+  },
+  "skippedAiFiles": {
+    "lead_one": "Uit {{count}} bestand kwamen geen kaarten. De andere bestanden zitten in dit pakket.",
+    "lead_other": "Uit {{count}} bestanden kwamen geen kaarten. De andere bestanden zitten in dit pakket.",
+    "more_one": "En nog {{count}}.",
+    "more_other": "En nog {{count}}.",
+    "why": {
+      "declined": "Claude heeft het geweigerd. Herschrijf of verwijder het deel dat Claude niet wilde beantwoorden en upload het opnieuw.",
+      "too_large": "Een sectie was te groot. Splits die en upload het bestand opnieuw.",
+      "no_text": "Claude vond geen tekst om kaarten van te maken. Controleer of het bestand tekst bevat.",
+      "unreadable": "Het antwoord van Claude kon niet worden gelezen. Upload het bestand opnieuw."
+    }
   }
 }

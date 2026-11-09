@@ -1,4 +1,5 @@
 import express from 'express';
+import type { AiFileFailure } from '../lib/claude/aiFileFailureReasons';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -163,8 +164,10 @@ import {
   includesAiCreditsWarning,
 } from '../lib/claude/aiCredits/uploadWarning';
 import {
+  aiFileFailedWarning,
   aiFileFailedWarningText,
   aiFileFailureReason,
+  aiFileFailures,
   isAiFileFailedWarning,
 } from '../lib/claude/aiFileFailure';
 import { CreditWindowReset } from '../lib/claude/aiCredits/allowance';
@@ -576,9 +579,14 @@ async function runClaudeRestartFiles(
   settings: CardOption | null,
   generateOptions: Parameters<typeof generateDeckInfo>[7],
   onProgress: (step: string) => Promise<void>
-): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
+): Promise<{
+  deckInfoArrays: DeckInfo[][];
+  tripped: boolean;
+  skippedFiles: AiFileFailure[];
+}> {
   const deckInfoArrays: DeckInfo[][] = [];
   const skipped: unknown[] = [];
+  const skippedWarnings: string[] = [];
   let tripped = false;
   for (const htmlFile of htmlFiles) {
     const content = await fs.promises.readFile(htmlFile, 'utf8');
@@ -627,13 +635,20 @@ async function runClaudeRestartFiles(
         reason,
       });
       skipped.push(error);
+      skippedWarnings.push(
+        aiFileFailedWarning(path.relative(workspaceDir, htmlFile), reason)
+      );
     }
   }
   const madeCards = deckInfoArrays.some((decks) =>
     decks.some((deck) => deck.cards.length > 0)
   );
   if (skipped.length > 0 && !madeCards && !tripped) throw skipped[0];
-  return { deckInfoArrays, tripped };
+  return {
+    deckInfoArrays,
+    tripped,
+    skippedFiles: aiFileFailures(skippedWarnings),
+  };
 }
 
 // A restart of a PDF-image-fallback job re-reads the page images the original
@@ -1088,7 +1103,8 @@ class UploadService {
     owner: string,
     totalCards = 0,
     source: UploadSource | null = null,
-    paying = false
+    paying = false,
+    skippedAiFiles: AiFileFailure[] = []
   ): Promise<void> {
     await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
       userId: owner,
@@ -1117,7 +1133,8 @@ class UploadService {
       apkgFilename,
       key,
       sizeMb,
-      source
+      source,
+      { skippedAiFiles }
     );
     await this.usersRepository.incrementCardUsage(Number(owner), totalCards);
     const job = await this.jobRepository.findJobById(objectId, owner);
@@ -1167,15 +1184,16 @@ class UploadService {
       conversionResultCache: getConversionResultCache(),
     };
 
-    const { deckInfoArrays, tripped } = await runClaudeRestartFiles(
-      htmlFiles,
-      mediaFiles,
-      workspaceDir,
-      fallbackNames,
-      settings,
-      generateOptions,
-      onProgress
-    );
+    const { deckInfoArrays, tripped, skippedFiles } =
+      await runClaudeRestartFiles(
+        htmlFiles,
+        mediaFiles,
+        workspaceDir,
+        fallbackNames,
+        settings,
+        generateOptions,
+        onProgress
+      );
 
     const deckInfo = withUserNoteTypes(
       deckInfoArrays.flat().filter((d) => d.cards.length > 0),
@@ -1199,7 +1217,8 @@ class UploadService {
       owner,
       totalCards,
       null,
-      paying
+      paying,
+      skippedFiles
     );
   }
 
@@ -1688,13 +1707,11 @@ class UploadService {
             { jobId: ws.id }
           );
         }
-        const skippedAiFiles = (warnings ?? []).filter(
-          isAiFileFailedWarning
-        ).length;
-        if (skippedAiFiles > 0) {
+        const skippedAiFiles = aiFileFailures(warnings ?? []);
+        if (skippedAiFiles.length > 0) {
           console.info(
             '[UploadService] async upload shipped without files Claude made no cards from',
-            { jobId: ws.id, skippedAiFiles }
+            { jobId: ws.id, skippedAiFiles: skippedAiFiles.length }
           );
         }
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
@@ -1722,7 +1739,8 @@ class UploadService {
             owner,
             totalCards,
             source,
-            paying
+            paying,
+            skippedAiFiles
           );
           track('conversion_succeeded', {
             userId: Number(owner),

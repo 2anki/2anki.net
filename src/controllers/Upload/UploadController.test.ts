@@ -755,4 +755,53 @@ describe('UploadController.getUploads', () => {
       expect.objectContaining({ id: 8, empty_back_count: 5 }),
     ]);
   });
+
+  it('carries the files Claude made no cards from, and none for an older row', async () => {
+    const base = {
+      owner: 42,
+      object_id: null,
+      size_mb: 1,
+      created_at: new Date('2026-11-09T00:00:00Z'),
+      source: null,
+      dropped_image_count: null,
+      image_drop_reason: null,
+      empty_back_count: null,
+    };
+    const rows = [
+      {
+        ...base,
+        id: 9,
+        key: 'owner-42-zip.apkg',
+        filename: 'zip.apkg',
+        skipped_ai_files: [{ name: 'week 3.pdf', reason: 'declined' }],
+      },
+      {
+        ...base,
+        id: 10,
+        key: 'owner-42-old.apkg',
+        filename: 'old.apkg',
+        skipped_ai_files: null,
+      },
+    ] as unknown as Uploads[];
+    const controller = new UploadController(
+      buildService(rows),
+      {} as unknown as NotionService
+    );
+    const jsonSpy = vi.fn();
+    const res = {
+      locals: { owner: 42 },
+      json: jsonSpy,
+      status: vi.fn(),
+    } as unknown as express.Response;
+
+    await controller.getUploads({} as express.Request, res);
+
+    expect(jsonSpy).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 9,
+        skipped_ai_files: [{ name: 'week 3.pdf', reason: 'declined' }],
+      }),
+      expect.objectContaining({ id: 10, skipped_ai_files: [] }),
+    ]);
+  });
 });
