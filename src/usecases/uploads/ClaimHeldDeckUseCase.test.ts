@@ -198,6 +198,29 @@ describe('ClaimHeldDeckUseCase', () => {
     expect(result).toMatchObject({ cardCount: 21, cardsLeftOut: 6 });
   });
 
+  it('says nothing about left-out lines when the claim left none out', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const { store } = buildStore();
+    const { converter } = buildConverter({
+      downloadKey: 'owner-key.apkg',
+      cardCount: 34,
+      cardsHeldBack: 0,
+      cardsLeftOut: 0,
+      deckName: 'study-notes',
+    });
+    const useCase = new ClaimHeldDeckUseCase(repo, store, converter);
+
+    const result = await useCase.execute({
+      anonId: ANON,
+      owner: OWNER,
+      paying: false,
+      requestId: 'req-1',
+    });
+
+    expect(result).not.toHaveProperty('cardsLeftOut');
+  });
+
   it.each([
     {
       kind: 'zip',

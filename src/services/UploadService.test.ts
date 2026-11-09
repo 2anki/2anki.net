@@ -8063,11 +8063,8 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     await serviceUnderTest(heldDeck).handleUpload(req, res);
 
-    expect(capturedJson()).toMatchObject({
-      kind: 'held',
-      cardsHeldBack: 13,
-      cardsLeftOut: 4,
-    });
+    expect(capturedJson()).toMatchObject({ kind: 'held', cardsHeldBack: 13 });
+    expect(capturedJson()).not.toHaveProperty('cardsLeftOut');
     expect(conversionSucceededProps()).toMatchObject({
       card_limit_partial: true,
       cards_held_back: 13,

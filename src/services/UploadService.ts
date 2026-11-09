@@ -260,7 +260,6 @@ export interface HeldUploadResponse {
   savedForHours: number;
   dayPassCard?: boolean;
   cookieMinted?: boolean;
-  cardsLeftOut?: number;
 }
 
 export interface AiPreviewUploadResponse {
@@ -2926,7 +2925,6 @@ class UploadService {
       savedForHours: HELD_DECK_TTL_MS / HOUR_MS,
       ...(dayPassCard ? { dayPassCard: true } : {}),
       ...(cookieMinted ? { cookieMinted: true } : {}),
-      ...(cardsLeftOut > 0 ? { cardsLeftOut } : {}),
     };
     return res.status(200).json(body);
   }

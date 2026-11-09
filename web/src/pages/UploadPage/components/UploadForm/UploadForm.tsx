@@ -4299,14 +4299,6 @@ function UploadForm({
     heldDeck == null ? null : (
       <div className={formStyles.stateContent}>
         <AnonymousPartialGate held={heldDeck} passFirst={passFirst} />
-        {(heldDeck.cardsLeftOut ?? 0) > 0 && (
-          <div className={formStyles.warningInline}>
-            <EmptyBackNotice
-              count={heldDeck.cardsLeftOut ?? 0}
-              source="leftOut"
-            />
-          </div>
-        )}
       </div>
     );
 

@@ -113,9 +113,6 @@ interface HeldResult extends HeldDeckState {
   kind: 'held';
 }
 
-const isPositiveCount = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isInteger(value) && value > 0;
-
 function isHeldResult(value: unknown): value is HeldResult {
   return (
     typeof value === 'object' &&
@@ -186,9 +183,6 @@ export async function applyConversionSuccess(
           ? { savedForHours: body.savedForHours }
           : {}),
         ...(body.cookieMinted === true ? { cookieMinted: true } : {}),
-        ...(isPositiveCount(body.cardsLeftOut)
-          ? { cardsLeftOut: body.cardsLeftOut }
-          : {}),
       });
       handlers.setProgressWidth(100);
       handlers.setZoneState('heldForSignup');
