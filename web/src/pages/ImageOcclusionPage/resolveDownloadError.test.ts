@@ -16,6 +16,7 @@ describe('resolveDownloadError', () => {
     expect(resolveDownloadError(403, { message: 'Forbidden' })).toEqual({
       kind: 'failed',
       message: 'Forbidden',
+      complete: false,
     });
   });
 
@@ -30,6 +31,7 @@ describe('resolveDownloadError', () => {
       kind: 'failed',
       message:
         'Something broke on our end building this deck. Try again. If it keeps failing, email support@2anki.net.',
+      complete: true,
     });
   });
 
@@ -44,6 +46,20 @@ describe('resolveDownloadError', () => {
       kind: 'failed',
       message:
         'Draw at least one box over the part of the image to hide, then create the deck.',
+      complete: false,
+    });
+  });
+
+  it('keeps the server message for an image over the size limit', () => {
+    expect(
+      resolveDownloadError(413, {
+        code: 'too_large',
+        message: 'This image is over the 10 MB limit.',
+      })
+    ).toEqual({
+      kind: 'failed',
+      message: 'This image is over the 10 MB limit.',
+      complete: false,
     });
   });
 
@@ -51,6 +67,7 @@ describe('resolveDownloadError', () => {
     expect(resolveDownloadError(500, 'oops')).toEqual({
       kind: 'failed',
       message: null,
+      complete: false,
     });
   });
 });

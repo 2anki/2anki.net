@@ -119,7 +119,7 @@
     },
     "claude_refusal": {
       "title": "Claude a refusé de créer des cartes à partir de ce fichier.",
-      "detail": "Si tu as ajouté des instructions pour la conversion des PDF, retire-les sous PDF et IA dans les Paramètres et réessaie. Si ça se reproduit, écris à support@2anki.net."
+      "detail": "Si tu as ajouté des instructions pour la conversion des PDF, retire-les sous PDF et IA dans les Réglages et réessaie. Si ça se reproduit, écris à support@2anki.net."
     }
   },
   "presenter": {

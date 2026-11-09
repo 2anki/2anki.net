@@ -157,7 +157,7 @@
     "deckNamePlaceholder": "My image deck",
     "hideAllRevealOne": "Hide all, reveal one",
     "hideOneAtATime": "Hide one at a time",
-    "errorWrapper": "We couldn't make your deck. {{error}}",
+    "errorWrapper": "We couldn't make your deck. {{error}} Please try again.",
     "keptFirstImages_one": "Added the first image — the free plan is 3 images per deck.",
     "keptFirstImages_other": "Added the first {{count}} — the free plan is 3 images per deck.",
     "paywallImages": "The free plan is 3 images per deck. Upgrade or get a pass for more.",

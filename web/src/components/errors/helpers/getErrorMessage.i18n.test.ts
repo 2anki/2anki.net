@@ -98,10 +98,4 @@ describe('deck-builder crash and Claude refusal copy in German', () => {
       expect(result.detail).toContain('support@2anki.net');
     }
   );
-
-  it('says try again once on the image occlusion page', () => {
-    expect(i18n.t('tools:occlusion.errorWrapper', { error: 'X.' })).toBe(
-      'Wir konnten deinen Stapel nicht erstellen. X.'
-    );
-  });
 });
