@@ -40,6 +40,37 @@ describe('Backend.claimHeldDeck', () => {
     });
   });
 
+  it('reads the answerless lines the claim left out', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(200, { ...PLAN_CLAIM, cardsLeftOut: 6 })
+        )
+    );
+
+    await expect(new Backend().claimHeldDeck()).resolves.toMatchObject({
+      cardsLeftOut: 6,
+    });
+  });
+
+  it.each([0, 1.5, '6'])(
+    'leaves the left-out count out for %s',
+    async (cardsLeftOut) => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(jsonResponse(200, { ...PLAN_CLAIM, cardsLeftOut }))
+      );
+
+      const result = await new Backend().claimHeldDeck();
+
+      expect(result).not.toHaveProperty('cardsLeftOut');
+    }
+  );
+
   it.each([
     ['no count', undefined],
     ['zero', 0],

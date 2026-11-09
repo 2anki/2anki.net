@@ -147,6 +147,8 @@ export interface ClaimHeldDeckResult {
   heldForPlan?: boolean;
   // Other decks saved for the plan that the same claim built into My decks.
   alsoClaimed?: number;
+  // Lines with no answer the card limit left out of the claimed deck.
+  cardsLeftOut?: number;
 }
 
 function toClaimError(body: unknown): UploadErrorBody | null {
@@ -566,6 +568,7 @@ export class Backend {
         cardsHeldBack?: unknown;
         heldForPlan?: unknown;
         alsoClaimed?: unknown;
+        cardsLeftOut?: unknown;
       };
       return {
         status: OK,
@@ -584,6 +587,11 @@ export class Backend {
         Number.isInteger(body.alsoClaimed) &&
         body.alsoClaimed > 0
           ? { alsoClaimed: body.alsoClaimed }
+          : {}),
+        ...(typeof body.cardsLeftOut === 'number' &&
+        Number.isInteger(body.cardsLeftOut) &&
+        body.cardsLeftOut > 0
+          ? { cardsLeftOut: body.cardsLeftOut }
           : {}),
       };
     }

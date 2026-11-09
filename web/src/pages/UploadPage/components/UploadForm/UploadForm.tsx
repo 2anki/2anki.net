@@ -1103,6 +1103,7 @@ function UploadForm({
           setDownloadLink(recoveryDownloadUrl(result.downloadKey));
           if (result.deckName) setDeckName(result.deckName);
           setCardCount(result.cardCount);
+          setCardsLeftOut(result.cardsLeftOut ?? 0);
           setProgressWidth(100);
           setZoneState('heldReady');
         } else if (result.status === 404 || result.status === 410) {
@@ -4346,6 +4347,11 @@ function UploadForm({
         <p className={formStyles.successSecondary}>
           {t('monthlyPartial:alsoClaimed', { count: alsoClaimed })}
         </p>
+      )}
+      {cardsLeftOut > 0 && (
+        <div className={formStyles.warningInline}>
+          <EmptyBackNotice count={cardsLeftOut} source="leftOut" />
+        </div>
       )}
       {downloadLink && (
         <a

@@ -32,6 +32,8 @@ export interface HeldDeckConversion {
   downloadKey: string;
   cardCount: number;
   cardsHeldBack: number;
+  // Lines with no answer the card limit cut along with the cards.
+  cardsLeftOut?: number;
   deckName: string;
   heldForPlan?: boolean;
 }
@@ -66,6 +68,8 @@ export interface ClaimResult {
   kind: HoldKind;
   // Set only when a sign-up claim was cut to the preview.
   cardsHeldBack?: number;
+  // Set when the cut also left out lines with no answer.
+  cardsLeftOut?: number;
   heldForPlan?: boolean;
   // Other plan holds the same claim built into My decks.
   alsoClaimed?: number;
@@ -257,6 +261,9 @@ export class ClaimHeldDeckUseCase {
         cardCount: conversion.cardCount,
         deckName: conversion.deckName,
         kind,
+        ...((conversion.cardsLeftOut ?? 0) > 0
+          ? { cardsLeftOut: conversion.cardsLeftOut }
+          : {}),
         ...(hold.source === 'mcp' ? { source: 'mcp' as const } : {}),
         ...(capToPreview
           ? {

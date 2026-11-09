@@ -3071,6 +3071,7 @@ class UploadService {
     downloadKey: string;
     cardCount: number;
     cardsHeldBack: number;
+    cardsLeftOut: number;
     deckName: string;
     heldForPlan?: boolean;
   }> {
@@ -3168,11 +3169,16 @@ class UploadService {
     }
     await this.usersRepository.incrementCardUsage(Number(owner), totalCards);
     const heldBack = cardsHeldBack ?? 0;
+    const cardsLeftOut = packages.reduce(
+      (sum, p) => sum + (p.cardsLeftOut ?? 0),
+      0
+    );
     if (options == null || paying) {
       return {
         downloadKey,
         cardCount: totalCards,
         cardsHeldBack: heldBack,
+        cardsLeftOut,
         deckName,
       };
     }
@@ -3191,6 +3197,7 @@ class UploadService {
       downloadKey,
       cardCount: totalCards,
       cardsHeldBack: heldBack,
+      cardsLeftOut,
       deckName,
       heldForPlan,
     };
