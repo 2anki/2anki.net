@@ -22,6 +22,7 @@ export type UploadErrorCode =
   | 'notion_unavailable'
   | 'apkg_too_large_for_anki'
   | 'zip_invalid'
+  | 'zip_damaged'
   | 'ai_credits_exhausted'
   | 'owner_changed'
   | 'deck_builder_crash'

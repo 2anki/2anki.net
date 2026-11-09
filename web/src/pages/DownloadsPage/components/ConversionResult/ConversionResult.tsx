@@ -58,6 +58,9 @@ const EMPTY_DECK_EMPTY_ANSWERS_MARKER = 'no answer inside them';
 // A mistyped PDF page range reads "... has a page number that is too large."
 // src/lib/pdf/pdfPageRange.parity.test.ts fails if the server copy drifts.
 const PDF_PAGE_RANGE_MARKER = 'has a page number that is too large';
+// A damaged zip reads "Part of this zip file is damaged, ..."
+// src/lib/zip/damagedZip.parity.test.ts fails if the server copy drifts.
+const DAMAGED_ZIP_MARKER = 'Part of this zip file is damaged';
 const TOGGLES_DOCS_HREF = '/documentation/cards/notion-blocks';
 const FILE_FORMATS_DOCS_HREF = '/documentation/reference/file-formats';
 const CONNECT_NOTION_DOCS_HREF = '/documentation/start-here/connect-notion';
@@ -65,6 +68,9 @@ const CONNECT_NOTION_DOCS_HREF = '/documentation/start-here/connect-notion';
 function reasonCode(failureReason: string): UploadErrorCode {
   if (failureReason.includes(PDF_PAGE_RANGE_MARKER)) {
     return 'pdf_page_range';
+  }
+  if (failureReason.includes(DAMAGED_ZIP_MARKER)) {
+    return 'zip_damaged';
   }
   const isTooLarge =
     failureReason.includes('too large') ||

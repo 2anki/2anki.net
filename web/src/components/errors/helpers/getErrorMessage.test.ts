@@ -498,4 +498,16 @@ describe('classifyUploadError — new error codes', () => {
     expect(result.title).toBe("Couldn't read this zip.");
     expect(result.detail).toContain('Markdown & CSV export');
   });
+
+  it('zip_damaged says the zip is damaged, not the unzip error', () => {
+    const body: UploadErrorBody = {
+      code: 'zip_damaged',
+      message: 'English server text',
+    };
+    const result = classifyUploadError(body);
+    expect(result).toEqual({
+      title: 'Part of this zip is damaged.',
+      detail: 'Download or zip the files again, then upload the new zip.',
+    });
+  });
 });

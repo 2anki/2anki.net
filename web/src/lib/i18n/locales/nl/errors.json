@@ -109,6 +109,10 @@
       "title": "Kon deze zip niet lezen.",
       "detail": "Zorg dat het de Markdown- & CSV-export uit Notion is, niet de HTML-export."
     },
+    "zip_damaged": {
+      "title": "Een deel van deze zip is beschadigd.",
+      "detail": "Download of zip de bestanden opnieuw en upload daarna de nieuwe zip."
+    },
     "ai_credits_exhausted": {
       "title": "Je AI-credits zijn op.",
       "detail": "AI-credits komen terug wanneer je tegoed wordt gereset. Schakel Claude-kaarten uit om nu met de standaardparser te converteren."

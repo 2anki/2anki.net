@@ -109,6 +109,10 @@
       "title": "Não foi possível ler este zip.",
       "detail": "Confira se é a exportação em Markdown & CSV do Notion, não a exportação em HTML."
     },
+    "zip_damaged": {
+      "title": "Parte deste zip está danificada.",
+      "detail": "Baixe ou compacte os arquivos novamente e envie o novo zip."
+    },
     "ai_credits_exhausted": {
       "title": "Você ficou sem créditos de IA.",
       "detail": "Os créditos de IA voltam quando sua franquia é redefinida. Desative os cartões do Claude para converter agora com o analisador padrão."

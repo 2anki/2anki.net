@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { createHash } from 'node:crypto';
 import path from 'path';
 import { strFromU8, unzipSync } from 'fflate';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -19,6 +20,7 @@ import CardOption from '../parser/Settings';
 import { getRandomUUID } from '../../shared/helpers/getRandomUUID';
 import { convertImageToHTML } from '../../infrastracture/adapters/fileConversion/convertImageToHTML';
 import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
+import { DAMAGED_ZIP_MESSAGE } from './damagedZipMessage';
 
 interface File {
   name: string;
@@ -72,13 +74,41 @@ function formatGigabytes(bytes: number): string {
 const INCOMPLETE_ZIP_MESSAGE =
   'This zip file is incomplete — it ends before its file index, which usually means it was still downloading or syncing when it was uploaded. Wait for the download to finish, then upload it again.';
 
+const FFLATE_UNEXPECTED_EOF = 0;
+const FFLATE_INVALID_BLOCK_TYPE = 1;
+const FFLATE_INVALID_LENGTH_LITERAL = 2;
+const FFLATE_INVALID_DISTANCE = 3;
+const FFLATE_INVALID_ZIP_DATA = 13;
+const DAMAGED_DATA_CODES = new Set([
+  FFLATE_UNEXPECTED_EOF,
+  FFLATE_INVALID_BLOCK_TYPE,
+  FFLATE_INVALID_LENGTH_LITERAL,
+  FFLATE_INVALID_DISTANCE,
+]);
+
+interface ArchiveStart {
+  fileCount: number;
+  inMemoryBytes: number;
+  photoCount: number;
+}
+
+interface PhotoText {
+  key: string;
+  html: string;
+}
+
+function fflateErrorCode(error: unknown): number | undefined {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === 'number' ? code : undefined;
+}
+
 // The name is what survives the upload worker's thread boundary (errors cross
 // it as { message, name }), so jobFailureReason matches on it, not the class.
 class IncompleteZipError extends Error {
   code = 'ZIP_INVALID';
 
-  constructor() {
-    super(INCOMPLETE_ZIP_MESSAGE);
+  constructor(message: string = INCOMPLETE_ZIP_MESSAGE) {
+    super(message);
     this.name = 'IncompleteZipError';
   }
 }
@@ -106,7 +136,12 @@ class ZipHandler {
   files: File[];
   zipFileCount: number;
   maxZipFiles: number;
-  combinedHTML: string;
+  photoTexts: PhotoText[];
+  // Photos the failed pass of a damaged archive already read. When its
+  // fallback reopens a nested zip, each of these is skipped once, so the
+  // same photo is neither sent to OCR again nor written twice; any other
+  // photo, a duplicate elsewhere included, is read as before.
+  photosToSkipOnReopen: string[];
   inMemoryBytes: number;
   maxInMemoryBytes: number;
   decompressedBytes: number;
@@ -123,7 +158,8 @@ class ZipHandler {
     this.files = [];
     this.zipFileCount = 0;
     this.maxZipFiles = maxNestedZipFiles;
-    this.combinedHTML = '';
+    this.photoTexts = [];
+    this.photosToSkipOnReopen = [];
     this.inMemoryBytes = 0;
     this.maxInMemoryBytes = maxInMemoryBytes;
     this.decompressedBytes = 0;
@@ -195,6 +231,7 @@ class ZipHandler {
     }
 
     await this.processZip(zipData, paying, settings);
+    this.addCombinedHTMLToFiles(paying, settings);
   }
 
   // Entries the census keeps resident in memory when inflated: decoded text
@@ -220,6 +257,15 @@ class ZipHandler {
       throw new Error('Too many zip files in the upload.');
     }
 
+    const before: ArchiveStart = {
+      fileCount: this.files.length,
+      inMemoryBytes: this.inMemoryBytes,
+      photoCount: this.photoTexts.length,
+    };
+    const archiveKey =
+      paying && settings.imageQuizHtmlToAnki
+        ? createHash('sha256').update(zipData).digest('hex')
+        : '';
     try {
       // Census pass: read every entry's name and declared decompressed size
       // from the central directory without inflating anything. The cumulative
@@ -250,7 +296,13 @@ class ZipHandler {
           filter: (file) => memoryBound.has(file.name),
         });
         for (const name in textMap) {
-          await this.handleFile(name, textMap[name], paying, settings);
+          await this.handleFile(
+            name,
+            textMap[name],
+            paying,
+            settings,
+            archiveKey
+          );
         }
       }
 
@@ -266,7 +318,13 @@ class ZipHandler {
           filter: (file) => batch.has(file.name),
         });
         for (const name in batchMap) {
-          await this.handleFile(name, batchMap[name], paying, settings);
+          await this.handleFile(
+            name,
+            batchMap[name],
+            paying,
+            settings,
+            archiveKey
+          );
         }
         batch = new Set<string>();
         batchBytes = 0;
@@ -285,10 +343,8 @@ class ZipHandler {
           'The zip file contains only files with no extension, so 2anki can’t tell what they are. Add the extension back (for example .txt, .md, .html, .csv, .pdf, .docx, .rtf, .xlsx or .pptx) and upload the zip again.'
         );
       }
-
-      this.addCombinedHTMLToFiles(paying, settings);
     } catch (error: unknown) {
-      await this.handleZipError(error, zipData, paying, settings);
+      await this.handleZipError(error, zipData, paying, settings, before);
     }
   }
 
@@ -296,7 +352,8 @@ class ZipHandler {
     name: string,
     file: Uint8Array,
     paying: boolean,
-    settings: CardOption
+    settings: CardOption,
+    archiveKey: string
   ) {
     if (name.includes('__MACOSX/')) return;
 
@@ -319,7 +376,7 @@ class ZipHandler {
       this.files.push({ name, contents: strFromU8(file) });
     } else if (paying && settings.imageQuizHtmlToAnki && isImageFile(name)) {
       this.trackInMemoryBytes(file.length);
-      await this.convertAndAddImageToHTML(name, file);
+      await this.convertAndAddImageToHTML(archiveKey, name, file);
     } else if (isPDFFile(name) && settings.processPDFs === false) {
       // Skip PDF processing when processPDFs is false
       return;
@@ -334,10 +391,24 @@ class ZipHandler {
     }
   }
 
-  private async convertAndAddImageToHTML(name: string, file: Uint8Array) {
+  private async convertAndAddImageToHTML(
+    archiveKey: string,
+    name: string,
+    file: Uint8Array
+  ) {
+    const key = `${archiveKey}\0${name}\0${createHash('sha256').update(file).digest('hex')}`;
+    const readBefore = this.photosToSkipOnReopen.indexOf(key);
+    if (readBefore >= 0) {
+      this.photosToSkipOnReopen.splice(readBefore, 1);
+      return;
+    }
     const html = await convertImageToHTML(Buffer.from(file).toString('base64'));
-    this.combinedHTML += html;
+    this.photoTexts.push({ key, html });
     console.log('Converted image to HTML:', name, html);
+  }
+
+  get combinedHTML(): string {
+    return this.photoTexts.map((photo) => photo.html).join('');
   }
 
   private addCombinedHTMLToFiles(paying: boolean, settings: CardOption) {
@@ -360,13 +431,49 @@ ${this.combinedHTML}
     error: unknown,
     zipData: Uint8Array,
     paying: boolean,
-    settings: CardOption
+    settings: CardOption,
+    before: ArchiveStart
   ) {
-    const isArchiveProcessingError = (error as { code?: number }).code === 13;
-    if (!isArchiveProcessingError) {
+    const code = fflateErrorCode(error);
+    const isDamagedData = code != null && DAMAGED_DATA_CODES.has(code);
+    if (code !== FFLATE_INVALID_ZIP_DATA && !isDamagedData) {
       throw error;
     }
 
+    // An inflate error can land after earlier passes kept some entries; the
+    // fallback reads this archive again, so drop them and the memory they
+    // held. The nested-zip count and the decompressed budget never rewind:
+    // they are what bound the total work a crafted upload can cause. Photo
+    // text already read stays: build() writes it once the whole upload is
+    // read, since the fallback does not read photos again.
+    this.files.length = before.fileCount;
+    this.inMemoryBytes = before.inMemoryBytes;
+
+    const skipStart = this.photosToSkipOnReopen.length;
+    this.photosToSkipOnReopen.push(
+      ...this.photoTexts.slice(before.photoCount).map((photo) => photo.key)
+    );
+    try {
+      await this.recoverWithFallback(zipData, paying, settings);
+    } finally {
+      this.photosToSkipOnReopen.length = skipStart;
+    }
+
+    const anySupported =
+      (paying && this.combinedHTML !== '') ||
+      this.files.some((f) => isZipContentFileSupported(f.name));
+    if (!anySupported) {
+      throw new IncompleteZipError(
+        isDamagedData ? DAMAGED_ZIP_MESSAGE : INCOMPLETE_ZIP_MESSAGE
+      );
+    }
+  }
+
+  private async recoverWithFallback(
+    zipData: Uint8Array,
+    paying: boolean,
+    settings: CardOption
+  ) {
     const foundFiles = await processAndPrepareArchiveData(zipData, paying);
     console.log('Processed files using fallback method:');
     for (const file of foundFiles) {
@@ -389,13 +496,6 @@ ${this.combinedHTML}
       }
       this.files.push(file);
     }
-
-    const anySupported = this.files.some((f) =>
-      isZipContentFileSupported(f.name)
-    );
-    if (!anySupported) {
-      throw new IncompleteZipError();
-    }
   }
 
   getFileNames() {
@@ -408,6 +508,7 @@ export {
   File,
   IncompleteZipError,
   INCOMPLETE_ZIP_MESSAGE,
+  DAMAGED_ZIP_MESSAGE,
   MAX_IN_MEMORY_BYTES,
   MAX_EXTRACTED_BYTES,
   MAX_BATCH_EXTRACT_BYTES,

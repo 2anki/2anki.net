@@ -7,6 +7,7 @@ import { strToU8, zipSync } from 'fflate';
 import {
   ZipHandler,
   INCOMPLETE_ZIP_MESSAGE,
+  DAMAGED_ZIP_MESSAGE,
   MAX_IN_MEMORY_BYTES,
   MAX_EXTRACTED_BYTES,
   MAX_BATCH_EXTRACT_BYTES,
@@ -14,8 +15,15 @@ import {
 import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
 import CardOption from '../parser/Settings';
 import { processAndPrepareArchiveData } from './fallback/processAndPrepareArchiveData';
+import { convertImageToHTML } from '../../infrastracture/adapters/fileConversion/convertImageToHTML';
 
 vi.mock('./fallback/processAndPrepareArchiveData');
+vi.mock(
+  '../../infrastracture/adapters/fileConversion/convertImageToHTML',
+  () => ({
+    convertImageToHTML: vi.fn(async () => '<p>read from the photo</p>'),
+  })
+);
 
 const mockedFallback = processAndPrepareArchiveData as MockedFunction<
   typeof processAndPrepareArchiveData
@@ -392,5 +400,329 @@ describe('ZipHandler incomplete archives (#4028)', () => {
         '/tmp/workspaces/x/Private & Shared/Page abc.html',
       ])
     );
+  });
+});
+
+describe('ZipHandler damaged archives', () => {
+  // The zip's index is intact but an entry's compressed data is not, so
+  // fflate reads the census and then throws an inflate error mid-pass.
+  function dataStart(zip: Uint8Array, name: string): number {
+    const nameBytes = strToU8(name);
+    for (let i = 0; i + 30 < zip.length; i++) {
+      const isLocalHeader =
+        zip[i] === 0x50 &&
+        zip[i + 1] === 0x4b &&
+        zip[i + 2] === 0x03 &&
+        zip[i + 3] === 0x04;
+      const nameLength = zip[i + 26] | (zip[i + 27] << 8);
+      const extraLength = zip[i + 28] | (zip[i + 29] << 8);
+      const nameMatches =
+        nameLength === nameBytes.length &&
+        nameBytes.every((byte, j) => zip[i + 30 + j] === byte);
+      if (isLocalHeader && nameMatches) {
+        return i + 30 + nameLength + extraLength;
+      }
+    }
+    throw new Error(`no local header for ${name}`);
+  }
+
+  function damaged(
+    zip: Uint8Array,
+    name: string,
+    offset: number,
+    value: number
+  ): Uint8Array {
+    const copy = zip.slice();
+    copy[dataStart(zip, name) + offset] = value;
+    return copy;
+  }
+
+  const longPage = '<p>' + 'flashcard '.repeat(400) + '</p>';
+
+  beforeEach(() => {
+    mockedFallback.mockReset();
+  });
+
+  it.each([
+    ['an invalid block type', 0, 0xff],
+    ['an early end of stream', 1, 0xff],
+    ['an invalid length', 2, 0x00],
+  ])(
+    'says the zip is damaged, not the unzip error, for %s',
+    async (_label, offset, value) => {
+      mockedFallback.mockResolvedValue([]);
+      const zip = zipSync({ 'page.html': strToU8(longPage) }, { level: 9 });
+      const handler = new ZipHandler(10);
+
+      const failure = handler.build(
+        damaged(zip, 'page.html', offset, value),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      );
+
+      await expect(failure).rejects.toThrow(DAMAGED_ZIP_MESSAGE);
+      await expect(failure).rejects.toMatchObject({
+        name: 'IncompleteZipError',
+      });
+    }
+  );
+
+  it('keeps what the fallback recovers, without the entries read before the damage', async () => {
+    const zip = zipSync(
+      {
+        'page.html': strToU8('<p>intact</p>'),
+        'picture.png': strToU8(longPage),
+      },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([
+      { name: 'page.html', contents: '<p>intact</p>' },
+    ]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      damaged(zip, 'picture.png', 0, 0xff),
+      false,
+      new CardOption({}),
+      makeSpillDir()
+    );
+
+    expect(mockedFallback).toHaveBeenCalledTimes(1);
+    expect(handler.getFileNames()).toEqual(['page.html']);
+  });
+
+  it('keeps the outer pages when a nested zip is damaged and nothing in it can be recovered', async () => {
+    const inner = damaged(
+      zipSync({ 'inner.html': strToU8(longPage) }, { level: 9 }),
+      'inner.html',
+      0,
+      0xff
+    );
+    const outer = zipSync({
+      'page.html': strToU8('<p>outer</p>'),
+      'part.zip': inner,
+    });
+    mockedFallback.mockResolvedValue([]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(outer, false, new CardOption({}), makeSpillDir());
+
+    expect(mockedFallback).toHaveBeenCalledTimes(1);
+    expect(mockedFallback.mock.calls[0][0]).toEqual(inner);
+    expect(handler.getFileNames()).toEqual(['page.html']);
+  });
+
+  it('says the zip is damaged when its only content is a damaged nested zip', async () => {
+    const inner = damaged(
+      zipSync({ 'inner.html': strToU8(longPage) }, { level: 9 }),
+      'inner.html',
+      0,
+      0xff
+    );
+    mockedFallback.mockResolvedValue([]);
+    const handler = new ZipHandler(10);
+
+    await expect(
+      handler.build(
+        zipSync({ 'part.zip': inner }),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      )
+    ).rejects.toThrow(DAMAGED_ZIP_MESSAGE);
+  });
+
+  it('does not let the fallback open more nested zips than the limit allows', async () => {
+    const part = zipSync({ 'part.html': strToU8('<p>part</p>') });
+    const zip = zipSync(
+      { 'a-part.zip': part, 'z-notes.pdf': strToU8(longPage) },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([{ name: 'a-part.zip', contents: part }]);
+    // One entry per batch, so the part opens before the damaged entry inflates.
+    const handler = new ZipHandler(
+      2,
+      MAX_IN_MEMORY_BYTES,
+      MAX_EXTRACTED_BYTES,
+      1
+    );
+
+    await expect(
+      handler.build(
+        damaged(zip, 'z-notes.pdf', 0, 0xff),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      )
+    ).rejects.toThrow(DAMAGED_ZIP_MESSAGE);
+    expect(handler.zipFileCount).toBe(2);
+  });
+
+  it('keeps the photo text an image quiz already read when a later entry is damaged', async () => {
+    const zip = zipSync(
+      { 'photo.png': strToU8('png bytes'), 'notes.pdf': strToU8(longPage) },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([
+      { name: 'page.html', contents: '<p>recovered</p>' },
+    ]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      damaged(zip, 'notes.pdf', 0, 0xff),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    const names = handler.getFileNames();
+    expect(names).toEqual([
+      'page.html',
+      expect.stringMatching(/^ocr-.+\.html$/),
+    ]);
+    expect(handler.files[1].contents).toContain('<p>read from the photo</p>');
+  });
+
+  it('builds the image quiz from the photo text when the fallback recovers only photos', async () => {
+    const zip = zipSync(
+      { 'photo.png': strToU8('png bytes'), 'notes.pdf': strToU8(longPage) },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([
+      { name: 'photo.png', contents: strToU8('png bytes') },
+    ]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      damaged(zip, 'notes.pdf', 0, 0xff),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    expect(handler.getFileNames()).toEqual([
+      'photo.png',
+      expect.stringMatching(/^ocr-.+\.html$/),
+    ]);
+  });
+
+  it("writes a nested zip's photo text once, not again for the zip around it", async () => {
+    const inner = zipSync({ 'photo.png': strToU8('png bytes') });
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      zipSync({ 'part.zip': inner }),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    const ocrFiles = handler.files.filter((f) => f.name.startsWith('ocr-'));
+    expect(ocrFiles).toHaveLength(1);
+    expect(ocrFiles[0].contents).toContain('<p>read from the photo</p>');
+  });
+
+  it("keeps a nested zip's photo text when the zip around it is damaged later", async () => {
+    const part = zipSync({ 'inner-photo.png': strToU8('inner png bytes') });
+    const zip = zipSync(
+      {
+        'photo.png': strToU8('png bytes'),
+        'a-part.zip': part,
+        'z-notes.pdf': strToU8(longPage),
+      },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([{ name: 'a-part.zip', contents: part }]);
+    const convert = vi.mocked(convertImageToHTML);
+    convert.mockClear();
+    // One entry per batch, so the part opens before the damaged entry inflates.
+    const handler = new ZipHandler(
+      10,
+      MAX_IN_MEMORY_BYTES,
+      MAX_EXTRACTED_BYTES,
+      1
+    );
+
+    await handler.build(
+      damaged(zip, 'z-notes.pdf', 0, 0xff),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    const ocrFiles = handler.files.filter((f) => f.name.startsWith('ocr-'));
+    expect(ocrFiles).toHaveLength(1);
+    expect(convert).toHaveBeenCalledTimes(2);
+    expect(
+      String(ocrFiles[0].contents).split('<p>read from the photo</p>')
+    ).toHaveLength(3);
+  });
+
+  it('reads two entries holding the same photo twice, as before', async () => {
+    const convert = vi.mocked(convertImageToHTML);
+    convert.mockClear();
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      zipSync({
+        'front.png': strToU8('same png bytes'),
+        'copy.png': strToU8('same png bytes'),
+      }),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    const ocrFiles = handler.files.filter((f) => f.name.startsWith('ocr-'));
+    expect(convert).toHaveBeenCalledTimes(2);
+    expect(ocrFiles).toHaveLength(1);
+    expect(
+      String(ocrFiles[0].contents).split('<p>read from the photo</p>')
+    ).toHaveLength(3);
+  });
+
+  it.each([
+    [
+      'a photo and the same photo in a nested zip',
+      {
+        'photo.png': strToU8('same png bytes'),
+        'part.zip': zipSync({ 'photo.png': strToU8('same png bytes') }),
+      },
+    ],
+    [
+      'two copies of the same nested zip',
+      {
+        'part-1.zip': zipSync({ 'photo.png': strToU8('same png bytes') }),
+        'part-2.zip': zipSync({ 'photo.png': strToU8('same png bytes') }),
+      },
+    ],
+  ])('reads %s twice, as before', async (_label, entries) => {
+    const convert = vi.mocked(convertImageToHTML);
+    convert.mockClear();
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      zipSync(entries),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    const ocrFiles = handler.files.filter((f) => f.name.startsWith('ocr-'));
+    expect(convert).toHaveBeenCalledTimes(2);
+    expect(
+      String(ocrFiles[0].contents).split('<p>read from the photo</p>')
+    ).toHaveLength(3);
+  });
+
+  it('still throws an error that is not a damaged zip as it is', async () => {
+    const zip = zipSync({ 'page.html': strToU8(longPage) }, { level: 9 });
+    const handler = new ZipHandler(10, 1024 * 1024, 10);
+
+    await expect(
+      handler.build(zip, false, new CardOption({}), makeSpillDir())
+    ).rejects.toThrow('decompresses to over');
+    expect(mockedFallback).not.toHaveBeenCalled();
   });
 });
