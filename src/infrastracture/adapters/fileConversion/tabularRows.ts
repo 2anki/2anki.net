@@ -50,10 +50,12 @@ export interface SheetRows {
 // cells hold commas splits on the commas. A .tsv whose first line holds a
 // tab is read with the tab fixed as the separator (a mislabeled comma file
 // keeps the guess); the mark is stripped for every text file.
+function withoutByteOrderMark(buffer: Buffer): Buffer {
+  return buffer.subarray(0, 3).equals(UTF8_BOM) ? buffer.subarray(3) : buffer;
+}
+
 function readWorkbook(buffer: Buffer, fileName: string): XLSX.WorkBook {
-  const bytes = buffer.subarray(0, 3).equals(UTF8_BOM)
-    ? buffer.subarray(3)
-    : buffer;
+  const bytes = withoutByteOrderMark(buffer);
   return XLSX.read(bytes, {
     type: 'buffer',
     codepage: 65001,
@@ -69,39 +71,52 @@ function sheetRows(worksheet: XLSX.WorkSheet): TabularRow[] {
 }
 
 const LESS_THAN = 0x3c;
+const LEADING_WHITESPACE = new Set([0x20, 0x0a, 0x0d]);
 const TEXT_GUARD = 'x';
+const MARKUP_DOCUMENT = /^<(\?xml|!doctype|html\b|table\b|workbook\b)/i;
 
-function withoutByteOrderMark(buffer: Buffer): Buffer {
-  return buffer.subarray(0, 3).equals(UTF8_BOM) ? buffer.subarray(3) : buffer;
+function withoutLeadingWhitespace(bytes: Buffer): Buffer {
+  let start = 0;
+  while (LEADING_WHITESPACE.has(bytes[start])) start += 1;
+  return bytes.subarray(start);
 }
 
-// SheetJS reads any input starting with "<" as an XML or HTML workbook, so a
-// CSV whose first cell holds a tag came back with no rows, or threw. Rows files
-// are text, so a guard letter sends them down the delimited path (whitespace
-// would not: SheetJS skips it before looking). A file that really is an HTML
-// table keeps the workbook reader.
-function isDelimitedTextOpeningWithMarkup(bytes: Buffer): boolean {
-  return bytes[0] === LESS_THAN && !/<table/i.test(bytes.toString('latin1'));
+function firstSheetRows(workbook: XLSX.WorkBook): TabularRow[] {
+  return sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
 }
 
-function withoutTextGuard(rows: TabularRow[]): TabularRow[] {
-  const [first, ...rest] = rows;
-  if (first == null) return rows;
+// A whole XML or HTML document saved under a text name. SheetJS reads the ones
+// holding a table and throws on the rest; those have no rows to offer, and the
+// empty deck that follows says so better than its internal error would.
+function rowsFromMarkupDocument(bytes: Buffer, fileName: string): TabularRow[] {
+  try {
+    return firstSheetRows(readWorkbook(bytes, fileName));
+  } catch {
+    return [];
+  }
+}
+
+// SheetJS reads any input opening with "<" as an XML or HTML workbook, once it
+// has skipped whitespace, so a CSV whose first cell held a tag came back with
+// no rows or threw. A guard letter sends it down the delimited path instead.
+function rowsFromTextOpeningWithTag(
+  bytes: Buffer,
+  fileName: string
+): TabularRow[] {
+  const guarded = Buffer.concat([Buffer.from(TEXT_GUARD), bytes]);
+  const [first, ...rest] = firstSheetRows(readWorkbook(guarded, fileName));
   const [cell, ...cells] = first;
   return [[cellText(cell).slice(TEXT_GUARD.length), ...cells], ...rest];
 }
 
 export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
-  const bytes = withoutByteOrderMark(buffer);
-  if (isDelimitedTextOpeningWithMarkup(bytes)) {
-    const guarded = readWorkbook(
-      Buffer.concat([Buffer.from(TEXT_GUARD), bytes]),
-      fileName
-    );
-    return withoutTextGuard(sheetRows(guarded.Sheets[guarded.SheetNames[0]]));
+  const bytes = withoutLeadingWhitespace(withoutByteOrderMark(buffer));
+  if (bytes[0] !== LESS_THAN) {
+    return firstSheetRows(readWorkbook(buffer, fileName));
   }
-  const workbook = readWorkbook(bytes, fileName);
-  return sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
+  return MARKUP_DOCUMENT.test(bytes.subarray(0, 32).toString('latin1'))
+    ? rowsFromMarkupDocument(bytes, fileName)
+    : rowsFromTextOpeningWithTag(bytes, fileName);
 }
 
 // SheetJS keeps hidden and very hidden sheets in SheetNames, marking them in

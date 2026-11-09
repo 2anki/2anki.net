@@ -43,25 +43,70 @@ describe('rowsFromBuffer with markup at the start of the file', () => {
     expect(rowsFromBuffer(Buffer.from(text, 'utf8'), name)).toEqual(rows);
   });
 
-  it('still reads an HTML table saved under a text name', () => {
-    const html =
-      '<html><body><table><tr><td>Q</td><td>A</td></tr></table></body></html>';
+  it.each([
+    [
+      'a card holding a table in a later row',
+      '<b>Q1</b>,back\nQ2,"<table border=1><tr><td>x</td></tr></table>"\nQ3,A3\n',
+      [
+        ['<b>Q1</b>', 'back'],
+        ['Q2', '<table border=1><tr><td>x</td></tr></table>'],
+        ['Q3', 'A3'],
+      ],
+    ],
+    [
+      'a tag whose name only begins like a table',
+      '<tablet>x</tablet>,back\n',
+      [['<tablet>x</tablet>', 'back']],
+    ],
+    [
+      'a blank line before the tag',
+      '\n<b>Q</b>,A\nQ2,A2\n',
+      [
+        ['<b>Q</b>', 'A'],
+        ['Q2', 'A2'],
+      ],
+    ],
+    [
+      'text that only looks like a tag',
+      '<3 cats,love\n',
+      [['<3 cats', 'love']],
+    ],
+  ])('keeps the rows for %s', (_label, text, rows) => {
+    expect(rowsFromBuffer(Buffer.from(text, 'utf8'), 'cards.csv')).toEqual(
+      rows
+    );
+  });
 
-    expect(rowsFromBuffer(Buffer.from(html, 'utf8'), 'cards.csv')).toEqual([
+  it('leaves html later in a file to the normal reader', () => {
+    const csv = 'Front,Back\n<b>Q2</b>,A2\n';
+
+    expect(rowsFromBuffer(Buffer.from(csv, 'utf8'), 'cards.csv')).toEqual([
+      ['Front', 'Back'],
+      ['<b>Q2</b>', 'A2'],
+    ]);
+  });
+
+  it.each([
+    [
+      'an HTML table',
+      '<html><body><table><tr><td>Q</td><td>A</td></tr></table></body></html>',
+    ],
+    [
+      'an Excel XML workbook',
+      '<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="a"><Table><Row><Cell><Data ss:Type="String">Q</Data></Cell><Cell><Data ss:Type="String">A</Data></Cell></Row></Table></Worksheet></Workbook>',
+    ],
+  ])('still reads %s saved under a text name', (_label, document) => {
+    expect(rowsFromBuffer(Buffer.from(document, 'utf8'), 'cards.csv')).toEqual([
       ['Q', 'A'],
     ]);
   });
 
   it.each([
     ['an XML document', '<?xml version="1.0"?>\n<root><a>1</a></root>\n'],
-    [
-      'an HTML page with no table',
-      '<!DOCTYPE html><html><body>hi</body></html>',
-    ],
-  ])('does not crash on %s saved as a csv', (_label, text) => {
-    expect(rowsFromBuffer(Buffer.from(text, 'utf8'), 'cards.csv')).toEqual(
-      expect.any(Array)
-    );
+    ['an HTML page', '<!DOCTYPE html>\n<html>\n<body>hi</body>\n</html>'],
+    ['a blank line before an HTML page', '\n<html><body>hi</body></html>'],
+  ])('finds no rows in %s saved as a csv', (_label, text) => {
+    expect(rowsFromBuffer(Buffer.from(text, 'utf8'), 'cards.csv')).toEqual([]);
   });
 });
 
