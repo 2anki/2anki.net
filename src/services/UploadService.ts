@@ -164,6 +164,7 @@ import {
   includesAiCreditsWarning,
 } from '../lib/claude/aiCredits/uploadWarning';
 import {
+  aiFileFailedWarning,
   aiFileFailedWarningText,
   aiFileFailureReason,
   aiFileFailures,
@@ -578,9 +579,14 @@ async function runClaudeRestartFiles(
   settings: CardOption | null,
   generateOptions: Parameters<typeof generateDeckInfo>[7],
   onProgress: (step: string) => Promise<void>
-): Promise<{ deckInfoArrays: DeckInfo[][]; tripped: boolean }> {
+): Promise<{
+  deckInfoArrays: DeckInfo[][];
+  tripped: boolean;
+  skippedFiles: AiFileFailure[];
+}> {
   const deckInfoArrays: DeckInfo[][] = [];
   const skipped: unknown[] = [];
+  const skippedWarnings: string[] = [];
   let tripped = false;
   for (const htmlFile of htmlFiles) {
     const content = await fs.promises.readFile(htmlFile, 'utf8');
@@ -629,13 +635,20 @@ async function runClaudeRestartFiles(
         reason,
       });
       skipped.push(error);
+      skippedWarnings.push(
+        aiFileFailedWarning(path.relative(workspaceDir, htmlFile), reason)
+      );
     }
   }
   const madeCards = deckInfoArrays.some((decks) =>
     decks.some((deck) => deck.cards.length > 0)
   );
   if (skipped.length > 0 && !madeCards && !tripped) throw skipped[0];
-  return { deckInfoArrays, tripped };
+  return {
+    deckInfoArrays,
+    tripped,
+    skippedFiles: aiFileFailures(skippedWarnings),
+  };
 }
 
 // A restart of a PDF-image-fallback job re-reads the page images the original
@@ -1171,15 +1184,16 @@ class UploadService {
       conversionResultCache: getConversionResultCache(),
     };
 
-    const { deckInfoArrays, tripped } = await runClaudeRestartFiles(
-      htmlFiles,
-      mediaFiles,
-      workspaceDir,
-      fallbackNames,
-      settings,
-      generateOptions,
-      onProgress
-    );
+    const { deckInfoArrays, tripped, skippedFiles } =
+      await runClaudeRestartFiles(
+        htmlFiles,
+        mediaFiles,
+        workspaceDir,
+        fallbackNames,
+        settings,
+        generateOptions,
+        onProgress
+      );
 
     const deckInfo = withUserNoteTypes(
       deckInfoArrays.flat().filter((d) => d.cards.length > 0),
@@ -1203,7 +1217,8 @@ class UploadService {
       owner,
       totalCards,
       null,
-      paying
+      paying,
+      skippedFiles
     );
   }
 

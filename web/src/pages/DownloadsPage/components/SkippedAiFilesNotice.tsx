@@ -32,7 +32,10 @@ export function SkippedAiFilesNotice({
       <ul>
         {named.slice(0, LISTED_FILES).map(({ name, why }, index) => (
           <li key={`${index}-${name}`}>
-            <span data-hj-suppress>{name}</span>: {why}
+            <span data-hj-suppress style={{ fontWeight: 500 }}>
+              {name}
+            </span>
+            : {why}
           </li>
         ))}
       </ul>

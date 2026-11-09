@@ -57,6 +57,15 @@ describe('storableAiFileFailures', () => {
     ]);
   });
 
+  it('never cuts an emoji in half at the length limit', () => {
+    const [stored] = storableAiFileFailures([
+      { name: `${'a'.repeat(254)}\u{1F600}`, reason: 'declined' },
+    ]);
+
+    expect(stored.name).toBe('a'.repeat(254));
+    expect(JSON.stringify(stored)).not.toMatch(/\\ud8/i);
+  });
+
   it('drops a name with nothing left after cleaning', () => {
     expect(
       storableAiFileFailures([{ name: '\u0000\u0001', reason: 'declined' }])

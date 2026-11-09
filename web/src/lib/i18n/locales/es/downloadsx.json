@@ -180,7 +180,7 @@
     "more_one": "Y {{count}} más.",
     "more_other": "Y {{count}} más.",
     "why": {
-      "declined": "Claude lo rechazó. Reformula o quita la parte que no quiso responder y vuelve a subirlo.",
+      "declined": "Claude lo rechazó. Reformula o quita la parte a la que no quiso responder y vuelve a subirlo.",
       "too_large": "Una sección era demasiado grande. Divídela y vuelve a subir el archivo.",
       "no_text": "Claude no encontró texto para hacer tarjetas. Comprueba que el archivo tenga texto.",
       "unreadable": "No se pudo leer la respuesta de Claude. Vuelve a subir el archivo."
