@@ -14,7 +14,7 @@ export function toUploadErrorCode(kind: PythonCrashKind): UploadErrorCode {
   if (kind === 'unsupported-data-source') return 'malformed_notion';
   if (kind === 'too-large') return 'too_large';
   if (kind === 'bad-title') return 'unknown';
-  return 'unknown';
+  return 'deck_builder_crash';
 }
 
 interface PythonExitInfo {

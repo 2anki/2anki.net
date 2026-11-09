@@ -112,6 +112,14 @@
     "ai_credits_exhausted": {
       "title": "You're out of AI credits.",
       "detail": "AI credits come back when your allowance resets. Turn off Claude cards to convert now with the standard parser."
+    },
+    "deck_builder_crash": {
+      "title": "Something broke on our end building this deck.",
+      "detail": "Try again. If it keeps failing, email support@2anki.net."
+    },
+    "claude_refusal": {
+      "title": "Claude declined to make cards from this file.",
+      "detail": "If you added user instructions for PDF conversion, remove them under PDF & AI in Settings and try again. If it keeps happening, email support@2anki.net."
     }
   },
   "presenter": {

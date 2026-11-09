@@ -128,6 +128,13 @@ export default async function ErrorHandler(
   sendErrorResponse(res, err);
 }
 
+function uploadErrorCodeFor(err: Error): UploadErrorCode {
+  if (err instanceof PythonExitError) return toUploadErrorCode(err.kind);
+  // Matched by name: the upload worker rebuilds errors as plain ones.
+  if (err.name === 'ClaudeRefusalError') return 'claude_refusal';
+  return 'unknown';
+}
+
 export function sendErrorResponse(res: express.Response, err: Error): void {
   const quietError = isQuietError(err);
 
@@ -172,8 +179,16 @@ export function sendErrorResponse(res: express.Response, err: Error): void {
     return;
   }
 
-  const code: UploadErrorCode =
-    err instanceof PythonExitError ? toUploadErrorCode(err.kind) : 'unknown';
+  // A deck-builder crash with no known cause is our fault, not the request's.
+  if (err instanceof PythonExitError && err.kind === 'unknown') {
+    const body: UploadErrorBody = {
+      code: 'deck_builder_crash',
+      message: err.message,
+    };
+    res.status(500).json(body);
+    return;
+  }
+  const code: UploadErrorCode = uploadErrorCodeFor(err);
   const body: UploadErrorBody = { code, message: err.message };
   res.status(400).json(body);
 }

@@ -19,6 +19,34 @@ describe('resolveDownloadError', () => {
     });
   });
 
+  it('answers a deck-builder crash with the translated copy, said once', () => {
+    expect(
+      resolveDownloadError(500, {
+        code: 'deck_builder_crash',
+        message:
+          'Something broke on our end building this deck. Try again — if it keeps failing, email support@2anki.net.',
+      })
+    ).toEqual({
+      kind: 'failed',
+      message:
+        'Something broke on our end building this deck. Try again. If it keeps failing, email support@2anki.net.',
+    });
+  });
+
+  it('keeps the server message for a code with no translated copy', () => {
+    expect(
+      resolveDownloadError(400, {
+        code: 'no_occlusion_boxes',
+        message:
+          'Draw at least one box over the part of the image to hide, then create the deck.',
+      })
+    ).toEqual({
+      kind: 'failed',
+      message:
+        'Draw at least one box over the part of the image to hide, then create the deck.',
+    });
+  });
+
   it('returns a null message when the body carries none', () => {
     expect(resolveDownloadError(500, 'oops')).toEqual({
       kind: 'failed',

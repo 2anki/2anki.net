@@ -76,3 +76,32 @@ describe('classifyUploadError in German', () => {
     expect(result.detail).toContain('support@2anki.net');
   });
 });
+
+describe('deck-builder crash and Claude refusal copy in German', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('de');
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  it.each([
+    ['deck_builder_crash', 'Beim Erstellen dieses Stapels'],
+    ['claude_refusal', 'Claude hat abgelehnt'],
+  ] as const)(
+    'translates %s instead of showing the English server message',
+    (code, german) => {
+      const body: UploadErrorBody = { code, message: 'English server text' };
+      const result = classifyUploadError(body);
+      expect(result.title).toContain(german);
+      expect(result.detail).toContain('support@2anki.net');
+    }
+  );
+
+  it('says try again once on the image occlusion page', () => {
+    expect(i18n.t('tools:occlusion.errorWrapper', { error: 'X.' })).toBe(
+      'Wir konnten deinen Stapel nicht erstellen. X.'
+    );
+  });
+});

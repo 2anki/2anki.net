@@ -181,8 +181,8 @@ describe('toUploadErrorCode', () => {
     expect(toUploadErrorCode('too-large')).toBe('too_large');
   });
 
-  it('maps unknown to unknown', () => {
-    expect(toUploadErrorCode('unknown')).toBe('unknown');
+  it('maps an unknown crash to deck_builder_crash', () => {
+    expect(toUploadErrorCode('unknown')).toBe('deck_builder_crash');
   });
 });
 

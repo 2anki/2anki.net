@@ -23,6 +23,8 @@ export type UploadErrorCode =
   | 'zip_invalid'
   | 'ai_credits_exhausted'
   | 'owner_changed'
+  | 'deck_builder_crash'
+  | 'claude_refusal'
   | 'unknown';
 
 import type { EmptyDeckReason } from '../usecases/jobs/EmptyDeckError';

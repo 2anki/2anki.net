@@ -112,6 +112,14 @@
     "ai_credits_exhausted": {
       "title": "Deine KI-Credits sind aufgebraucht.",
       "detail": "KI-Credits kommen zurück, wenn dein Kontingent zurückgesetzt wird. Schalte Claude-Karten aus, um jetzt mit dem Standard-Parser zu konvertieren."
+    },
+    "deck_builder_crash": {
+      "title": "Beim Erstellen dieses Stapels ist bei uns etwas schiefgegangen.",
+      "detail": "Versuch es erneut. Wenn es weiter fehlschlägt, schreib an support@2anki.net."
+    },
+    "claude_refusal": {
+      "title": "Claude hat abgelehnt, aus dieser Datei Karten zu erstellen.",
+      "detail": "Wenn du Benutzeranweisungen für die PDF-Umwandlung hinzugefügt hast, entferne sie unter PDF & KI in den Einstellungen und versuch es erneut. Wenn es weiter passiert, schreib an support@2anki.net."
     }
   },
   "presenter": {

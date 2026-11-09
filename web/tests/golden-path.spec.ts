@@ -612,6 +612,43 @@ test.describe('golden path @golden', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
+  test('a deck-builder crash shows the translated crash copy at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    await page.route('**/api/upload/file', (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'deck_builder_crash',
+          message: 'English server text',
+        }),
+      })
+    );
+
+    await page.goto('/upload');
+    await page.setInputFiles('#pakker', {
+      name: 'notes.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('Only a line'),
+    });
+
+    await expect(
+      page.getByText('Something broke on our end building this deck.')
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('English server text')).toHaveCount(0);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
   test('the signed-in limit wall leads with the passes at 375px', async ({
     page,
   }) => {

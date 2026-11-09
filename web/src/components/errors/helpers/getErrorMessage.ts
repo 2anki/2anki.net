@@ -288,6 +288,15 @@ const UPLOAD_CODE_DEFAULTS: Partial<
     detail:
       "Make sure it's the Markdown & CSV export from Notion, not the HTML export.",
   },
+  deck_builder_crash: {
+    title: 'Something broke on our end building this deck.',
+    detail: 'Try again. If it keeps failing, email support@2anki.net.',
+  },
+  claude_refusal: {
+    title: 'Claude declined to make cards from this file.',
+    detail:
+      'If you added user instructions for PDF conversion, remove them under PDF & AI in Settings and try again. If it keeps happening, email support@2anki.net.',
+  },
   ai_credits_exhausted: {
     title: "You're out of AI credits.",
     detail:

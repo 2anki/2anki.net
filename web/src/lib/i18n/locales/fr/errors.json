@@ -112,6 +112,14 @@
     "ai_credits_exhausted": {
       "title": "Tu n'as plus de crédits IA.",
       "detail": "Les crédits IA reviennent à la réinitialisation de ton quota. Désactive les cartes Claude pour convertir maintenant avec l'analyseur standard."
+    },
+    "deck_builder_crash": {
+      "title": "Un problème de notre côté a empêché la création de ce paquet.",
+      "detail": "Réessaie. Si ça échoue encore, écris à support@2anki.net."
+    },
+    "claude_refusal": {
+      "title": "Claude a refusé de créer des cartes à partir de ce fichier.",
+      "detail": "Si tu as ajouté des instructions pour la conversion des PDF, retire-les sous PDF et IA dans les Paramètres et réessaie. Si ça se reproduit, écris à support@2anki.net."
     }
   },
   "presenter": {

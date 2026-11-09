@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-crash-copy-in-every-language",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "A deck that fails to build, or a file Claude declines, now says so in your language, and image occlusion no longer says try again twice"
+}

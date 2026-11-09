@@ -157,7 +157,7 @@
     "deckNamePlaceholder": "Mi mazo de imágenes",
     "hideAllRevealOne": "Ocultar todo, revelar uno",
     "hideOneAtATime": "Ocultar uno a la vez",
-    "errorWrapper": "No pudimos crear tu mazo. {{error}} Inténtalo de nuevo.",
+    "errorWrapper": "No pudimos crear tu mazo. {{error}}",
     "keptFirstImages_one": "Se añadió la primera imagen — el plan gratis permite 3 imágenes por mazo.",
     "keptFirstImages_other": "Se añadieron las primeras {{count}} — el plan gratis permite 3 imágenes por mazo.",
     "paywallImages": "El plan gratis permite 3 imágenes por mazo. Mejora tu plan o consigue un pase para más.",
