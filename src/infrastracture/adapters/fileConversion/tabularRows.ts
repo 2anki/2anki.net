@@ -50,10 +50,12 @@ export interface SheetRows {
 // cells hold commas splits on the commas. A .tsv whose first line holds a
 // tab is read with the tab fixed as the separator (a mislabeled comma file
 // keeps the guess); the mark is stripped for every text file.
+function withoutByteOrderMark(buffer: Buffer): Buffer {
+  return buffer.subarray(0, 3).equals(UTF8_BOM) ? buffer.subarray(3) : buffer;
+}
+
 function readWorkbook(buffer: Buffer, fileName: string): XLSX.WorkBook {
-  const bytes = buffer.subarray(0, 3).equals(UTF8_BOM)
-    ? buffer.subarray(3)
-    : buffer;
+  const bytes = withoutByteOrderMark(buffer);
   return XLSX.read(bytes, {
     type: 'buffer',
     codepage: 65001,
@@ -68,9 +70,92 @@ function sheetRows(worksheet: XLSX.WorkSheet): TabularRow[] {
   }) as TabularRow[];
 }
 
-export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
-  const workbook = readWorkbook(buffer, fileName);
+const LESS_THAN = 0x3c;
+const LEADING_WHITESPACE = new Set([0x20, 0x0a, 0x0d]);
+const TEXT_GUARD = 'x';
+const MARKUP_DOCUMENT =
+  /^<(\?xml|!doctype|!--|html\b|head\b|body\b|meta\b|style\b|script\b|table\b|([\w-]+:)?workbook\b)/i;
+
+function withoutLeadingWhitespace(bytes: Buffer): Buffer {
+  let start = 0;
+  while (LEADING_WHITESPACE.has(bytes[start])) start += 1;
+  return bytes.subarray(start);
+}
+
+function firstSheetRows(workbook: XLSX.WorkBook): TabularRow[] {
   return sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
+}
+
+// A whole XML or HTML document saved under a text name. SheetJS reads the ones
+// holding a table and throws on the rest; those have no rows to offer, and the
+// empty deck that follows says so better than its internal error would.
+function rowsFromMarkupDocument(bytes: Buffer, fileName: string): TabularRow[] {
+  try {
+    return firstSheetRows(readWorkbook(bytes, fileName));
+  } catch (error) {
+    console.warn('[csv] markup document has no readable table', {
+      kind: (error as Error).name,
+    });
+    return [];
+  }
+}
+
+// SheetJS reads any input opening with "<" as an XML or HTML workbook, once it
+// has skipped whitespace, so a CSV whose first cell held a tag came back with
+// no rows or threw. A guard letter sends it down the delimited path instead.
+function rowsFromTextOpeningWithTag(
+  bytes: Buffer,
+  fileName: string
+): TabularRow[] {
+  const guarded = Buffer.concat([Buffer.from(TEXT_GUARD), bytes]);
+  const [first, ...rest] = firstSheetRows(readWorkbook(guarded, fileName));
+  const [cell, ...cells] = first;
+  return [[cellText(cell).slice(TEXT_GUARD.length), ...cells], ...rest];
+}
+
+const MAX_INSPECTED_LINE_BYTES = 64 * 1024;
+const OPENS_A_TAG = /[a-z/!?]/i;
+
+// One pass, because the line is uploaded content: a pattern over it would let
+// a line of unclosed "<" take minutes.
+function hasSeparatorOutsideTags(line: string): boolean {
+  let insideTag = false;
+  let separatorInOpenTag = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const isSeparator = char === ',' || char === ';' || char === '\t';
+    if (insideTag) {
+      insideTag = char !== '>';
+      separatorInOpenTag = insideTag && (separatorInOpenTag || isSeparator);
+    } else if (char === '<' && OPENS_A_TAG.test(line[index + 1] ?? '')) {
+      insideTag = true;
+    } else if (isSeparator) {
+      return true;
+    }
+  }
+  // A tag that never closes was not a tag, so what it swallowed still counts.
+  return separatorInOpenTag;
+}
+
+// A delimiter outside the tags on the first line is what separates a row like
+// <div>Front</div>,Back from a document that merely opens with a <div>.
+function opensWithDelimitedRow(bytes: Buffer): boolean {
+  const newline = bytes.indexOf(0x0a);
+  const firstLine = bytes
+    .subarray(0, newline === -1 ? bytes.length : newline)
+    .subarray(0, MAX_INSPECTED_LINE_BYTES)
+    .toString('latin1');
+  return !MARKUP_DOCUMENT.test(firstLine) && hasSeparatorOutsideTags(firstLine);
+}
+
+export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
+  const bytes = withoutLeadingWhitespace(withoutByteOrderMark(buffer));
+  if (bytes[0] !== LESS_THAN) {
+    return firstSheetRows(readWorkbook(buffer, fileName));
+  }
+  return opensWithDelimitedRow(bytes)
+    ? rowsFromTextOpeningWithTag(bytes, fileName)
+    : rowsFromMarkupDocument(bytes, fileName);
 }
 
 // SheetJS keeps hidden and very hidden sheets in SheetNames, marking them in

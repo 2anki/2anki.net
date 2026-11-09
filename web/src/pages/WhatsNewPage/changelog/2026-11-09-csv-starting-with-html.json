@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-csv-starting-with-html",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "A CSV whose first cell holds HTML now becomes cards"
+}
