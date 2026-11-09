@@ -1,4 +1,5 @@
 import CardOption from './model/CardOption';
+import { clearSavedCardSettings } from '../upload/savedCardSettings';
 
 export const CARD_OPTION_VALUE_KEYS = [
   'deckName',
@@ -33,4 +34,12 @@ export const resetStoredCardOptions = (options: CardOption[]) => {
   for (const key of CARD_OPTION_VALUE_KEYS) {
     localStorage.removeItem(key);
   }
+};
+
+// Reset to defaults in Settings: also every other setting an upload sends,
+// so the reset the over-long-setting copy suggests always works. A Notion
+// page's reset keeps to the keys above.
+export const resetAllSavedCardSettings = (options: CardOption[]) => {
+  resetStoredCardOptions(options);
+  clearSavedCardSettings();
 };

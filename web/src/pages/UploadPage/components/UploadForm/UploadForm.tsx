@@ -1,4 +1,5 @@
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
+import { appendSavedCardSettings } from '../../../../lib/upload/savedCardSettings';
 import { purchaseConflictMessage } from '../../../../lib/checkout/purchaseConflictMessage';
 import { flushSync } from 'react-dom';
 import { Trans, useTranslation } from 'react-i18next';
@@ -362,9 +363,7 @@ function zoneStateForUploadError(
 
 function buildFormData(form: HTMLFormElement): FormData {
   const formData = new FormData(form);
-  for (const [key, value] of Object.entries(globalThis.localStorage)) {
-    formData.append(key, value);
-  }
+  appendSavedCardSettings(formData);
   return formData;
 }
 
@@ -1649,9 +1648,7 @@ function UploadForm({
         for (const file of files) {
           formData.append('pakker', file, file.name);
         }
-        for (const [key, value] of Object.entries(globalThis.localStorage)) {
-          formData.append(key, value);
-        }
+        appendSavedCardSettings(formData);
         attachPdfPageRange(formData);
         formData.set('claude-ai-flashcards', 'true');
         // The click asks for Claude: two pages make one card, saved on the
@@ -1899,9 +1896,7 @@ function UploadForm({
     try {
       const formData = new FormData();
       formData.append('files', JSON.stringify(files));
-      for (const [key, value] of Object.entries(globalThis.localStorage)) {
-        formData.append(key, value);
-      }
+      appendSavedCardSettings(formData);
       applyAnonymousAiFlag(formData, aiOn);
       attachPdfPageRange(formData);
       const remotePassToken = getStoredPassToken();
@@ -1962,9 +1957,7 @@ function UploadForm({
       const formData = new FormData();
       formData.append('files', JSON.stringify(files));
       formData.append('googleDriveAuth', accessToken);
-      for (const [key, value] of Object.entries(globalThis.localStorage)) {
-        formData.append(key, value);
-      }
+      appendSavedCardSettings(formData);
       applyAnonymousAiFlag(formData, aiOn);
       attachPdfPageRange(formData);
       const remotePassToken = getStoredPassToken();
@@ -2595,9 +2588,7 @@ function UploadForm({
     for (const file of upload.files) {
       formData.append('pakker', file, file.name);
     }
-    for (const [key, value] of Object.entries(globalThis.localStorage)) {
-      formData.append(key, value);
-    }
+    appendSavedCardSettings(formData);
     pdfPageRangeRef.current = upload.pdfPageRange;
     attachPdfPageRange(formData);
     applyAnonymousAiFlag(formData, aiOn);
@@ -2726,9 +2717,7 @@ function UploadForm({
     capturePdfPageRange();
     const formData = new FormData();
     formData.append('pakker', handedOff, handedOff.name);
-    for (const [key, value] of Object.entries(globalThis.localStorage)) {
-      formData.append(key, value);
-    }
+    appendSavedCardSettings(formData);
     attachPdfPageRange(formData);
     applyAnonymousAiFlag(formData, aiOn);
     const handedOffFiles = [handedOff];
@@ -2793,9 +2782,7 @@ function UploadForm({
         for (const file of files) {
           formData.append('pakker', file, file.name);
         }
-        for (const [key, value] of Object.entries(globalThis.localStorage)) {
-          formData.append(key, value);
-        }
+        appendSavedCardSettings(formData);
         attachPdfPageRange(formData);
         formData.set('rescue-rule', rule);
         // Rescue builds the chosen structure, never AI.
@@ -2826,9 +2813,7 @@ function UploadForm({
         for (const file of files) {
           formData.append('pakker', file, file.name);
         }
-        for (const [key, value] of Object.entries(globalThis.localStorage)) {
-          formData.append(key, value);
-        }
+        appendSavedCardSettings(formData);
         attachPdfPageRange(formData);
         // The deck on screen came from the parser; never spend credits on it.
         formData.set('claude-ai-flashcards', 'false');
@@ -2856,9 +2841,7 @@ function UploadForm({
         for (const file of files) {
           formData.append('pakker', file, file.name);
         }
-        for (const [key, value] of Object.entries(globalThis.localStorage)) {
-          formData.append(key, value);
-        }
+        appendSavedCardSettings(formData);
         attachPdfPageRange(formData);
         // The gate's explicit "continue without AI" choice.
         applyAnonymousAiFlag(formData, false);
@@ -2894,9 +2877,7 @@ function UploadForm({
         for (const file of files) {
           formData.append('pakker', file, file.name);
         }
-        for (const [key, value] of Object.entries(globalThis.localStorage)) {
-          formData.append(key, value);
-        }
+        appendSavedCardSettings(formData);
         applyAnonymousAiFlag(formData, aiOn);
         attachPdfPageRange(formData);
         // A Claude resend whose request never arrived goes again as one; any
@@ -4198,9 +4179,7 @@ function UploadForm({
       const formData = new FormData();
       formData.append('file', lockedPdfInfo.file, lockedPdfInfo.filename);
       formData.append('credential', credential);
-      for (const [key, value] of Object.entries(globalThis.localStorage)) {
-        formData.append(key, value);
-      }
+      appendSavedCardSettings(formData);
       formData.set(KEPT_OWNER_FIELD, senderField(rescueFilesOwner));
 
       const passToken = getStoredPassToken();

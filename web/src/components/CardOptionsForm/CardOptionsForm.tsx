@@ -13,7 +13,10 @@ import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { isPayingUser } from '../NavigationBar/helpers/getPlanLabel';
 import { get2ankiApi } from '../../lib/backend/get2ankiApi';
 import { UNAUTHORIZED } from '../../lib/backend/http';
-import { resetStoredCardOptions } from '../../lib/data_layer/resetStoredCardOptions';
+import {
+  resetAllSavedCardSettings,
+  resetStoredCardOptions,
+} from '../../lib/data_layer/resetStoredCardOptions';
 import { getLocalStorageBooleanValue } from '../../lib/data_layer/getLocalStorageBooleanValue';
 import { getLocalStorageValue } from '../../lib/data_layer/getLocalStorageValue';
 import CardOption from '../../lib/data_layer/model/CardOption';
@@ -783,7 +786,11 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           return;
         }
       }
-      resetStoredCardOptions(options ?? []);
+      if (pageId) {
+        resetStoredCardOptions(options ?? []);
+      } else {
+        resetAllSavedCardSettings(options ?? []);
+      }
       const hadCustomStyle =
         fontSize !== '' ||
         textColor !== '' ||

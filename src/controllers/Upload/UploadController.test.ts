@@ -292,6 +292,10 @@ describe('Upload file — multer error handling', () => {
     ],
     [
       'deckName',
+      'Your saved deck name is too long. Shorten it under Deck name in Settings, then upload again.',
+    ],
+    [
+      'template',
       'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.',
     ],
   ])(
