@@ -480,6 +480,21 @@ describe('ZipHandler incomplete archives (#4028)', () => {
     expect(handler.getFileNames()).toEqual(['page.html']);
   });
 
+  it('stops the whole file when a nested recovery is refused inside a zip that reads normally', async () => {
+    const part = truncated(buildZip({ 'Part.html': '<p>part</p>' }));
+    mockedFallback.mockRejectedValueOnce(new ZipRecoveryTooLargeError());
+    const handler = new ZipHandler(10);
+
+    await expect(
+      handler.build(
+        zipSync({ 'page.html': strToU8('<p>outer</p>'), 'Part-1.zip': part }),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      )
+    ).rejects.toMatchObject({ name: 'ZipRecoveryTooLargeError' });
+  });
+
   it('says too large, not incomplete, when a refused recovery leaves nothing', async () => {
     const part = truncated(buildZip({ 'Part.html': '<p>part</p>' }));
     mockedFallback
