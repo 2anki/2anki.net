@@ -112,6 +112,14 @@
     "ai_credits_exhausted": {
       "title": "Você ficou sem créditos de IA.",
       "detail": "Os créditos de IA voltam quando sua franquia é redefinida. Desative os cartões do Claude para converter agora com o analisador padrão."
+    },
+    "deck_builder_crash": {
+      "title": "Algo deu errado do nosso lado ao criar este baralho.",
+      "detail": "Tente de novo. Se continuar falhando, escreva para support@2anki.net."
+    },
+    "claude_refusal": {
+      "title": "O Claude se recusou a criar cartões com este arquivo.",
+      "detail": "Se você adicionou instruções para a conversão de PDF, remova-as em PDF e IA nas Configurações e tente de novo. Se continuar acontecendo, escreva para support@2anki.net."
     }
   },
   "presenter": {

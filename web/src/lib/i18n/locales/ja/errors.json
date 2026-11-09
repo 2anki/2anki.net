@@ -112,6 +112,14 @@
     "ai_credits_exhausted": {
       "title": "AIクレジットを使い切りました。",
       "detail": "AIクレジットは割り当てがリセットされると戻ります。標準パーサーで今すぐ変換するには、Claudeカードをオフにしてください。"
+    },
+    "deck_builder_crash": {
+      "title": "このデッキの作成中に、こちら側で問題が発生しました。",
+      "detail": "もう一度お試しください。それでも失敗する場合は support@2anki.net までご連絡ください。"
+    },
+    "claude_refusal": {
+      "title": "Claude はこのファイルからカードを作成することを断りました。",
+      "detail": "PDF 変換用のユーザー指示を追加している場合は、設定の PDF と AI で削除してからもう一度お試しください。それでも続く場合は support@2anki.net までご連絡ください。"
     }
   },
   "presenter": {

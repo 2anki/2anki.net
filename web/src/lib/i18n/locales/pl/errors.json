@@ -112,6 +112,14 @@
     "ai_credits_exhausted": {
       "title": "Skończyły Ci się kredyty AI.",
       "detail": "Kredyty AI wracają, gdy Twój limit się odnowi. Wyłącz karty Claude, aby przekonwertować teraz standardowym parserem."
+    },
+    "deck_builder_crash": {
+      "title": "Po naszej stronie coś się zepsuło podczas tworzenia tej talii.",
+      "detail": "Spróbuj ponownie. Jeśli dalej nie działa, napisz na support@2anki.net."
+    },
+    "claude_refusal": {
+      "title": "Claude odmówił utworzenia kart z tego pliku.",
+      "detail": "Jeśli dodałeś instrukcje do konwersji PDF, usuń je w sekcji PDF i AI w Ustawieniach i spróbuj ponownie. Jeśli to się powtórzy, napisz na support@2anki.net."
     }
   },
   "presenter": {

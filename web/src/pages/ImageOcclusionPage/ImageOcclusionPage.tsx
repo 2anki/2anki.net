@@ -151,7 +151,14 @@ export function ImageOcclusionPage() {
   const [mode, setMode] = useState<Mode>('hide_all');
   const [draftId, setDraftId] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{
+    text: string;
+    complete: boolean;
+  } | null>(null);
+  const showError = useCallback(
+    (text: string, complete = false) => setError({ text, complete }),
+    []
+  );
   const [imageLimitHit, setImageLimitHit] = useState(false);
   const [keptFirst, setKeptFirst] = useState<number | null>(null);
   const [isNotionConnected, setIsNotionConnected] = useState(false);
@@ -378,14 +385,14 @@ export function ImageOcclusionPage() {
           setEntries((prev) =>
             prev.filter((e) => !placeholders.some((p) => p.id === e.id))
           );
-          setError(t('occlusion.notionRefresh'));
+          showError(t('occlusion.notionRefresh'));
           return;
         }
         if (!res.ok) {
           setEntries((prev) =>
             prev.filter((e) => !placeholders.some((p) => p.id === e.id))
           );
-          setError(t('occlusion.notionUnreachable'));
+          showError(t('occlusion.notionUnreachable'));
           return;
         }
 
@@ -416,19 +423,19 @@ export function ImageOcclusionPage() {
         setEntries((prev) =>
           prev.filter((e) => !placeholders.some((p) => p.id === e.id))
         );
-        setError(t('occlusion.notionUnreachable'));
+        showError(t('occlusion.notionUnreachable'));
       }
     },
-    [t]
+    [t, showError]
   );
 
   const handleDownload = async () => {
     if (entries.length === 0) {
-      setError(t('occlusion.addImageFirst'));
+      showError(t('occlusion.addImageFirst'));
       return;
     }
     if (totalCards === 0) {
-      setError(t('occlusion.drawMaskFirst'));
+      showError(t('occlusion.drawMaskFirst'));
       return;
     }
     setError(null);
@@ -450,7 +457,11 @@ export function ImageOcclusionPage() {
           setImageLimitHit(true);
           return;
         }
-        throw new Error(failure.message ?? t('occlusion.downloadFailed'));
+        showError(
+          failure.message ?? t('occlusion.downloadFailed'),
+          failure.complete
+        );
+        return;
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -462,7 +473,7 @@ export function ImageOcclusionPage() {
       if (isLoggedIn && draftId != null)
         await deleteDraft(draftId).catch(() => undefined);
     } catch (err) {
-      setError(
+      showError(
         err instanceof Error ? err.message : t('occlusion.downloadFailed')
       );
     } finally {
@@ -581,7 +592,9 @@ export function ImageOcclusionPage() {
             )}
             {error != null && (
               <div className={styles.notificationDanger}>
-                {t('occlusion.errorWrapper', { error })}
+                {error.complete
+                  ? error.text
+                  : t('occlusion.errorWrapper', { error: error.text })}
               </div>
             )}
             <button

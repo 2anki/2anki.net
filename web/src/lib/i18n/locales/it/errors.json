@@ -112,6 +112,14 @@
     "ai_credits_exhausted": {
       "title": "Hai esaurito i crediti IA.",
       "detail": "I crediti IA tornano quando la tua quota si azzera. Disattiva le carte Claude per convertire ora con il parser standard."
+    },
+    "deck_builder_crash": {
+      "title": "Qualcosa non ha funzionato da parte nostra durante la creazione di questo mazzo.",
+      "detail": "Riprova. Se continua a non funzionare, scrivi a support@2anki.net."
+    },
+    "claude_refusal": {
+      "title": "Claude ha rifiutato di creare carte da questo file.",
+      "detail": "Se hai aggiunto istruzioni per la conversione dei PDF, rimuovile in PDF e IA nelle Impostazioni e riprova. Se succede ancora, scrivi a support@2anki.net."
     }
   },
   "presenter": {

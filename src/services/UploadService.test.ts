@@ -415,9 +415,9 @@ describe('UploadService.handleUpload — error paths', () => {
 
     expect(mockGenerateAiPreview).toHaveBeenCalledTimes(1);
     expect(executeMock).toHaveBeenCalledTimes(1);
-    expect(capturedStatus()).toBe(400);
+    expect(capturedStatus()).toBe(500);
     expect(capturedJson()).toEqual({
-      code: 'unknown',
+      code: 'deck_builder_crash',
       message: 'The deck writer stopped.',
     });
     errorSpy.mockRestore();
@@ -1243,16 +1243,19 @@ describe('UploadService.handleUpload — error paths', () => {
     crashCallers.flatMap(([who, locals, usage, body]) =>
       (
         [
-          ['too-large', 'too_large'],
-          ['invalid-markup', 'invalid_markup'],
-          ['unsupported-data-source', 'malformed_notion'],
-          ['unknown', 'unknown'],
+          ['too-large', 'too_large', 400],
+          ['invalid-markup', 'invalid_markup', 400],
+          ['unsupported-data-source', 'malformed_notion', 400],
+          ['unknown', 'deck_builder_crash', 500],
         ] as const
-      ).map(([kind, code]) => [who, kind, code, locals, usage, body] as const)
+      ).map(
+        ([kind, code, status]) =>
+          [who, kind, code, status, locals, usage, body] as const
+      )
     )
   )(
-    'answers a sync upload from %s whose deck writer crashed with kind %s as code %s and its own message',
-    async (_who, kind, code, locals, usage, body) => {
+    'answers a sync upload from %s whose deck writer crashed with kind %s as code %s, status %s and its own message',
+    async (_who, kind, code, status, locals, usage, body) => {
       const crash = new PythonExitError('The deck writer stopped.', {
         kind,
         rawOutput: 'Killed',
@@ -1279,7 +1282,7 @@ describe('UploadService.handleUpload — error paths', () => {
         res
       );
 
-      expect(capturedStatus()).toBe(400);
+      expect(capturedStatus()).toBe(status);
       expect(capturedJson()).toEqual({
         code,
         message: 'The deck writer stopped.',
@@ -6797,9 +6800,9 @@ describe('UploadService.handleUpload — image uploads route through vision', ()
       call.map(String).join(' ')
     );
     errorSpy.mockRestore();
-    expect(capturedStatus()).toBe(400);
+    expect(capturedStatus()).toBe(500);
     expect(capturedJson()).toEqual({
-      code: 'unknown',
+      code: 'deck_builder_crash',
       message:
         'Something broke on our end building this deck. Try again — if it keeps failing, email support@2anki.net.',
     });
@@ -7708,7 +7711,7 @@ describe('UploadService.handleUpload — failure events for the success-rate til
 
     expect(capturedStatus()).toBe(400);
     expect(capturedJson()).toEqual({
-      code: 'unknown',
+      code: 'claude_refusal',
       message: CLAUDE_REFUSAL_USER_MESSAGE,
     });
     expect(conversionFailedReasons()).toEqual([]);

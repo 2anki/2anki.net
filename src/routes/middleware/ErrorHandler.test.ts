@@ -216,7 +216,7 @@ describe('ErrorHandler', () => {
     );
   });
 
-  test('never sends raw output to the client for an unknown PythonExitError', async () => {
+  test('answers an unknown deck-builder crash as our fault, without its raw output', async () => {
     const res = makeResponse(false);
     const req = makeRequest();
 
@@ -228,10 +228,26 @@ describe('ErrorHandler', () => {
 
     await ErrorHandler(res as unknown as express.Response, req, err);
 
+    expect(res.statusCode).toBe(500);
+    expect(res.json).toHaveBeenCalledWith({
+      code: 'deck_builder_crash',
+      message: 'generic message',
+    });
+  });
+
+  test('gives a declined upload its own code so the page can translate it', async () => {
+    const res = makeResponse(false);
+    const req = makeRequest();
+    const err = Object.assign(new Error('Claude declined'), {
+      name: 'ClaudeRefusalError',
+    });
+
+    await ErrorHandler(res as unknown as express.Response, req, err);
+
     expect(res.statusCode).toBe(400);
     expect(res.json).toHaveBeenCalledWith({
-      code: 'unknown',
-      message: 'generic message',
+      code: 'claude_refusal',
+      message: 'Claude declined',
     });
   });
 
@@ -682,7 +698,7 @@ describe('sendErrorResponse', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({
-      code: 'unknown',
+      code: 'claude_refusal',
       message: CLAUDE_REFUSAL_USER_MESSAGE,
     });
   });

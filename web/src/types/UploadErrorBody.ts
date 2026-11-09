@@ -30,6 +30,8 @@ export const UPLOAD_ERROR_CODES = [
   'zip_invalid',
   'ai_credits_exhausted',
   'owner_changed',
+  'deck_builder_crash',
+  'claude_refusal',
   'unknown',
 ] as const satisfies readonly UploadErrorCode[];
 

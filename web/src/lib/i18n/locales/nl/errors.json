@@ -112,6 +112,14 @@
     "ai_credits_exhausted": {
       "title": "Je AI-credits zijn op.",
       "detail": "AI-credits komen terug wanneer je tegoed wordt gereset. Schakel Claude-kaarten uit om nu met de standaardparser te converteren."
+    },
+    "deck_builder_crash": {
+      "title": "Er ging bij ons iets mis bij het maken van dit deck.",
+      "detail": "Probeer het opnieuw. Lukt het nog steeds niet, mail dan naar support@2anki.net."
+    },
+    "claude_refusal": {
+      "title": "Claude weigerde kaarten te maken van dit bestand.",
+      "detail": "Heb je gebruikersinstructies voor PDF-conversie toegevoegd, verwijder ze dan onder PDF en AI in Instellingen en probeer het opnieuw. Blijft het gebeuren, mail dan naar support@2anki.net."
     }
   },
   "presenter": {
