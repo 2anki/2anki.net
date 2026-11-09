@@ -23,7 +23,6 @@ deck_info.json shape:
 import json
 import os
 import sys
-import traceback
 
 from helpers.get_model import get_model
 from helpers.get_model_id import get_model_id
@@ -31,7 +30,7 @@ from helpers.guid import guid_for
 from helpers.io_shapes import shapes_to_occlusion_field
 from helpers.n2a_note import N2ANote
 from helpers.write_apkg import _write_new_apkg
-from backend.utils.email_error_alert import send_error_email
+from backend.utils.email_error_alert import operator_error_report, send_error_email
 
 
 IO_MODEL_NAME = "2anki Image Occlusion"
@@ -116,11 +115,5 @@ if __name__ == "__main__":
     except Exception as e:
         if os.getenv("NODE_ENV") != "production":
             raise e
-        ERROR_DETAILS = f"""
-Error: {str(e)}
-Traceback:
-{traceback.format_exc()}
-workspace_dir: {workspace_dir if workspace_dir else 'N/A'}
-"""
-        send_error_email(f"[ERROR] [2anki.net] IO deck - {str(e)}", ERROR_DETAILS)
+        send_error_email(*operator_error_report("IO deck", e))
         raise

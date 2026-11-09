@@ -1,4 +1,5 @@
 import { existsSync, writeFileSync } from 'node:fs';
+import { deckWriterEnv } from './deckWriterEnv';
 import { execFileSync, spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -109,6 +110,7 @@ class CardGenerator {
     return new Promise((resolve, reject) => {
       const process = spawn(PYTHON(), createDeckScriptPathARGS, {
         cwd: this.currentDirectory,
+        env: deckWriterEnv(this.jobId),
       });
 
       process.on('error', (err) => {
@@ -176,7 +178,10 @@ class CardGenerator {
     const jobId = this.jobId;
 
     return new Promise((resolve, reject) => {
-      const proc = spawn(PYTHON(), args, { cwd: this.currentDirectory });
+      const proc = spawn(PYTHON(), args, {
+        cwd: this.currentDirectory,
+        env: deckWriterEnv(this.jobId),
+      });
 
       proc.on('error', (err) => {
         reject(err);

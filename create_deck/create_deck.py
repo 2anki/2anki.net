@@ -8,7 +8,6 @@ Manifest shape: [{"input": "/abs/path/deck_info.json", "output": "/abs/path/out.
 """
 
 import html
-import traceback
 import json
 import sys
 import os
@@ -22,7 +21,7 @@ from helpers.n2a_note import N2ANote
 from helpers.read_template import read_template
 from helpers.sanitize_tags import sanitize_tags
 from helpers.write_apkg import _write_new_apkg
-from backend.utils.email_error_alert import send_error_email
+from backend.utils.email_error_alert import operator_error_report, send_error_email
 
 _MAX_BASENAME_BYTES = 200
 _MAX_MOD = 2 ** 63
@@ -431,12 +430,5 @@ if __name__ == "__main__":
     except Exception as e:
         if os.getenv('NODE_ENV') != 'production':
             raise e
-        error_details = f"""
-Error: {str(e)}
-Traceback:
-{traceback.format_exc()}
-Environment:
-DATA_FILE: {DATA_FILE if 'DATA_FILE' in locals() else 'N/A'}
-"""
-        send_error_email(f"[ERROR] [2anki.net] - {str(e)}", error_details)
+        send_error_email(*operator_error_report("deck writer", e))
         raise

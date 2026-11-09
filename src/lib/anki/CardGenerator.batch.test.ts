@@ -168,6 +168,17 @@ describe('CardGenerator.run zero-card sentinel', () => {
     });
   });
 
+  it('passes the job ID to the deck writer for its operator email', async () => {
+    mockedSpawn.mockReturnValue(makeProcessStub('No cards generated', 0));
+
+    await new CardGenerator(workspace, 'job-42').run().catch(() => undefined);
+
+    const options = mockedSpawn.mock.calls[0][2] as {
+      env?: NodeJS.ProcessEnv;
+    };
+    expect(options.env?.TWOANKI_REQUEST_ID).toBe('job-42');
+  });
+
   it('keeps the writer output out of a zero-cards message, its fields and its log line', async () => {
     mockedSpawn.mockReturnValue(
       makeProcessStub(

@@ -110,6 +110,7 @@ class ImageOcclusionController {
         imageFiles,
         isPaying,
         ownerId: getOwnerId(res),
+        requestId: res.locals.requestId as string | undefined,
       });
     } catch (err) {
       if (err instanceof HttpCodedError) {
