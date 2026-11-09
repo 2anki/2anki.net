@@ -14,6 +14,7 @@ if (existsSync(localEnvFile)) {
 }
 
 import { BUILD_DIR, SUPPORT_CC_ADDRESS } from './lib/constants';
+import { listenHost } from './lib/http/listenHost';
 import { track } from './services/events/track';
 import { mountWebBuild } from './lib/mountWebBuild';
 import ErrorHandler from './routes/middleware/ErrorHandler';
@@ -270,8 +271,8 @@ const serve = async () => {
   process.chdir(cwd);
   assertBootConfig();
   initConversionPool();
-  const port = process.env.PORT || 2020;
-  server.listen(port, () => {
+  const port = Number(process.env.PORT || 2020);
+  server.listen(port, listenHost(), () => {
     console.info(`Running on http://localhost:${port}`);
   });
   registerSignalHandlers(server, database);
