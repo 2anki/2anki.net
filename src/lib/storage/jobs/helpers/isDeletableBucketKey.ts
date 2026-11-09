@@ -17,12 +17,14 @@
 // response can be fetched again. Nothing references those keys by design, so
 // the dangling walk would count every one as an orphan and a busy day would
 // trip its deletion-volume alarm; deleteExpiredRecoveryDecks owns them.
+// 'backups/' holds the encrypted database dumps from scripts/backup-postgres.sh.
 export const RESERVED_KEY_PREFIXES = [
   'mindmaps/',
   'io-drafts/',
   'assets/',
   'held/',
   'recover/',
+  'backups/',
 ] as const;
 
 // An object is only orphaned once its owning row has had time to commit. A
