@@ -3,8 +3,20 @@
   "name": "net.2anki/mcp",
   "title": "2anki",
   "description": "Turn text, files, URLs, or photos into Anki flashcard decks from your AI assistant.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "websiteUrl": "https://2anki.net/documentation/reference/mcp",
+  "icons": [
+    {
+      "src": "https://2anki.net/android-chrome-512x512.png",
+      "mimeType": "image/png",
+      "sizes": ["512x512"]
+    },
+    {
+      "src": "https://2anki.net/android-chrome-192x192.png",
+      "mimeType": "image/png",
+      "sizes": ["192x192"]
+    }
+  ],
   "repository": {
     "url": "https://github.com/2anki/2anki.net",
     "source": "github",
