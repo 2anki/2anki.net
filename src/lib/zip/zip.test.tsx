@@ -660,7 +660,7 @@ describe('ZipHandler damaged archives', () => {
     expect(handler.getFileNames()).toEqual(['page.html']);
   });
 
-  it('marks the upload as partly recovered only when damaged data was recovered', async () => {
+  it('marks the upload as partly recovered for damaged data and for a cut-off zip', async () => {
     const zip = zipSync(
       {
         'page.html': strToU8('<p>intact</p>'),
@@ -687,8 +687,8 @@ describe('ZipHandler damaged archives', () => {
       makeSpillDir()
     );
 
-    expect(damagedUpload.recoveredDamagedArchive).toBe(true);
-    expect(cutOffUpload.recoveredDamagedArchive).toBe(false);
+    expect(damagedUpload.recoveredBrokenArchive).toBe(true);
+    expect(cutOffUpload.recoveredBrokenArchive).toBe(true);
   });
 
   it('keeps the outer pages when a nested zip is damaged and nothing in it can be recovered', async () => {

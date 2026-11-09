@@ -98,7 +98,7 @@ describe('getPackagesFromZip — batch concurrency', () => {
   });
 
   it.each([
-    ['a recovered damaged zip gets', true, ['zip-partly-recovered']],
+    ['a recovered broken zip gets', true, ['zip-partly-recovered']],
     ['any other zip does not get', false, []],
   ])('%s the partly recovered note', async (_label, recovered, expected) => {
     mockZipHandlerClass.mockImplementation(function () {
@@ -106,7 +106,7 @@ describe('getPackagesFromZip — batch concurrency', () => {
         build: vi.fn().mockResolvedValue(undefined),
         getFileNames: vi.fn().mockReturnValue(['a.html']),
         files: [{ name: 'a.html', contents: '<html></html>' }],
-        recoveredDamagedArchive: recovered,
+        recoveredBrokenArchive: recovered,
       };
     });
     mockPrepareDeckInfoOnly.mockImplementation(({ name }: { name: string }) =>

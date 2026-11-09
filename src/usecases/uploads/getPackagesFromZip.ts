@@ -90,7 +90,7 @@ function withZipRecoveryWarning(
   zipHandler: ZipHandler,
   result: PackageResult
 ): PackageResult {
-  if (!zipHandler.recoveredDamagedArchive) return result;
+  if (!zipHandler.recoveredBrokenArchive) return result;
   return {
     ...result,
     warnings: [...(result.warnings ?? []), ZIP_PARTLY_RECOVERED_WARNING],

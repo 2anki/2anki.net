@@ -128,7 +128,7 @@ class ZipHandler {
   maxBatchBytes: number;
   spillLocation?: string;
   recoveredBytes = 0;
-  recoveredDamagedArchive = false;
+  recoveredBrokenArchive = false;
   recoveryStartedAt?: number;
 
   constructor(
@@ -452,7 +452,7 @@ ${this.combinedHTML}
         isDamagedData ? DAMAGED_ZIP_MESSAGE : INCOMPLETE_ZIP_MESSAGE
       );
     }
-    this.recoveredDamagedArchive ||= isDamagedData;
+    this.recoveredBrokenArchive = true;
   }
 
   // Shared by every archive in one uploaded file, like the census budget. Bytes the
