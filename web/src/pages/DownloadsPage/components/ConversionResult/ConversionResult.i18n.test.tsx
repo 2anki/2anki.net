@@ -70,3 +70,32 @@ describe('ConversionResult in German', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('ConversionResult page range in German', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('de');
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  it("words a backwards range from the job's details", () => {
+    renderResult(
+      <ConversionResult
+        variant="failed"
+        title="Vorlesung"
+        failureReason="'30-12' goes backwards. Write the lower page first, like 12-30."
+        pageRange={{ reason: 'backwards', part: '30-12', lower: 12, upper: 30 }}
+        source="upload"
+        onMapColumns={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "'30-12' läuft rückwärts. Schreib die kleinere Seite zuerst, zum Beispiel 12-30."
+      )
+    ).toBeInTheDocument();
+  });
+});

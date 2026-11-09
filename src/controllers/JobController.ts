@@ -1,4 +1,5 @@
 import express from 'express';
+import { pdfPageRangeDetailsOf } from '../lib/pdf/pdfPageRange';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -28,6 +29,36 @@ function rescueOffer(
   return candidates.length > 0 ? { rescue_candidates: candidates } : {};
 }
 
+function storedReport(value: unknown): Record<string, unknown> | null {
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return parsed != null && typeof parsed === 'object'
+    ? (parsed as Record<string, unknown>)
+    : null;
+}
+
+// Served only while the job still fails for that page range: a restart that
+// fails for another reason keeps the old report, and its own reason wins.
+function pageRangeOf(job: JobWithDownloadKey): Pick<JobResponse, 'page_range'> {
+  if (job.status !== 'failed') return {};
+  const report = storedReport(job.conversion_report);
+  if (
+    report == null ||
+    report.page_range_reason == null ||
+    report.page_range_reason !== job.job_reason_failure
+  ) {
+    return {};
+  }
+  const pageRange = pdfPageRangeDetailsOf({ details: report.page_range });
+  return pageRange == null ? {} : { page_range: pageRange };
+}
+
 function toJobResponse(job: JobWithDownloadKey): JobResponse {
   return {
     id: job.id,
@@ -46,6 +77,7 @@ function toJobResponse(job: JobWithDownloadKey): JobResponse {
     empty_back_count: getEmptyBackCount(job.conversion_report),
     cherry_skipped_count: getCherrySkippedCount(job.conversion_report),
     ...rescueOffer(job),
+    ...pageRangeOf(job),
   };
 }
 

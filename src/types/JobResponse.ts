@@ -1,5 +1,6 @@
 import type Jobs from '../data_layer/public/Jobs';
 import type { RescueCandidate } from './RescueCandidate';
+import type { PdfPageRangeDetails } from '../lib/pdf/pdfPageRange';
 
 /**
  * API response shape for a job. Extends the DB row with fields computed
@@ -17,4 +18,7 @@ export default interface JobResponse extends Omit<Jobs, 'conversion_report'> {
   // Set only on a failed empty Notion conversion that can still be cut into
   // cards; the Downloads row offers each with its sample.
   rescue_candidates?: RescueCandidate[];
+  // Set only on a failed upload whose page range was wrong, so the row can
+  // word it in the person's language.
+  page_range?: PdfPageRangeDetails;
 }

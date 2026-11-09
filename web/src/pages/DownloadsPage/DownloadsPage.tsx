@@ -314,7 +314,8 @@ function renderFailurePanelContent(
   source: DeckRow['source'],
   reason: string,
   onMapColumns: () => void,
-  rescue: FailurePanelRescue
+  rescue: FailurePanelRescue,
+  pageRange?: JobResponse['page_range']
 ): ReactNode {
   const monthlyLimit = parseMonthlyLimitPayload(reason);
   if (monthlyLimit != null) {
@@ -333,6 +334,7 @@ function renderFailurePanelContent(
       variant="failed"
       title={null}
       failureReason={reason}
+      pageRange={pageRange}
       source={source === 'notion' ? 'notion' : 'upload'}
       onMapColumns={onMapColumns}
       rescue={rescue.candidates}
@@ -1083,7 +1085,8 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                             rescueState?.jobId === row.job.id
                                               ? rescueState.status
                                               : null,
-                                        }
+                                        },
+                                        row.job.page_range
                                       )}
                                     </td>
                                   </tr>

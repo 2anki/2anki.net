@@ -661,4 +661,24 @@ describe('ConversionResult — failed variant', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/smaller files/i)).toBeNull();
   });
+
+  it("words a mistyped page range from the job's details, not the stored sentence", () => {
+    render(
+      <MemoryRouter>
+        <ConversionResult
+          variant="failed"
+          title="Lecture slides"
+          failureReason="English server text"
+          pageRange={{ reason: 'past_end', first: 11, last: 14, pageCount: 10 }}
+          source="upload"
+          onMapColumns={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getByText('Pages 11-14 are past the end of this 10-page PDF.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('English server text')).toBeNull();
+  });
 });

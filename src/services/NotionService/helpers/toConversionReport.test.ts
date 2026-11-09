@@ -81,3 +81,14 @@ describe('toConversionReport', () => {
     expect(toConversionReport(value)).toBeNull();
   });
 });
+
+describe("toConversionReport and a failed upload's page range report", () => {
+  it('reads a report holding only a page range as no report', () => {
+    expect(
+      toConversionReport({
+        page_range: { reason: 'locked_pdf' },
+        page_range_reason: "Page ranges don't work on password-protected PDFs.",
+      })
+    ).toBeNull();
+  });
+});
