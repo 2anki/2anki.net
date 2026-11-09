@@ -193,6 +193,65 @@ describe('assertAiBudget', () => {
     expect(deps.sendAlert).toHaveBeenCalled();
   });
 
+  it('does not retry a failed alert email inside seven days, since the event was recorded', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(180),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    (deps.sendAlert as Mock).mockRejectedValue(new Error('smtp down'));
+
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    await assertAiBudget(42, deps);
+    await flushAsync();
+
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes over a check whose spend read never settled after five minutes', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(180),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    deps.reader.userRecordedCostSince.mockReturnValueOnce(
+      new Promise(() => undefined)
+    );
+
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    expect(deps.sendAlert).not.toHaveBeenCalled();
+
+    deps.now = () => new Date(NOW.getTime() + 6 * 60 * 1000);
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
+  });
+
+  it('still throws and records the exhausted event once while an alert check is held', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(0),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 5 }, () => assertAiBudget(42, deps))
+    );
+    await flushAsync();
+
+    expect(results.map((r) => r.status)).toEqual(Array(5).fill('rejected'));
+    for (const result of results) {
+      expect((result as PromiseRejectedResult).reason).toBeInstanceOf(
+        AiCreditsExhaustedError
+      );
+    }
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'ai_credits_exhausted')
+    ).toHaveLength(1);
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
+  });
+
   it('still fires the watch alert when the user is also exhausted', async () => {
     const deps = makeDeps({
       balance: balanceWith(0),
@@ -608,13 +667,15 @@ describe('anonymous pass metering', () => {
       passCost30d: AI_SPEND_ALERT_THRESHOLD_USD,
     });
 
-    await Promise.all(
+    const results = await Promise.all(
       Array.from({ length: 5 }, () =>
         withAiBudget({ anonymousPassId: 7 }, async () => 'ok', deps)
       )
     );
     await flushAsync();
 
+    expect(results).toEqual(Array(5).fill('ok'));
+    expect(reservedCreditsForPass(7)).toBe(0);
     expect(deps.sendAlert).toHaveBeenCalledTimes(1);
     expect(
       trackMock.mock.calls.filter(([name]) => name === 'ai_spend_alert_sent')
