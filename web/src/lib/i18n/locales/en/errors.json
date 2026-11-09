@@ -118,7 +118,7 @@
       "detail": "Split it into smaller uploads and try again."
     },
     "zip_partly_recovered": {
-      "title": "Part of this zip was damaged, so some files may be missing from this deck."
+      "title": "Part of this zip couldn't be read, so some files may be missing. Download or zip the files again, then upload the new zip."
     },
     "zip_damaged": {
       "title": "Part of this zip is damaged.",

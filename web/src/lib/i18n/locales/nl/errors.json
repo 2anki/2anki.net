@@ -118,7 +118,7 @@
       "detail": "Splits hem in kleinere uploads en probeer het opnieuw."
     },
     "zip_partly_recovered": {
-      "title": "Een deel van deze zip was beschadigd, dus er kunnen bestanden ontbreken in dit deck."
+      "title": "Een deel van deze zip kon niet worden gelezen, dus er kunnen bestanden ontbreken. Download of zip de bestanden opnieuw en upload daarna de nieuwe zip."
     },
     "zip_damaged": {
       "title": "Een deel van deze zip is beschadigd.",

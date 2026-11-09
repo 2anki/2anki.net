@@ -791,7 +791,7 @@ test.describe('golden path @golden', () => {
 
     await expect(
       page.getByText(
-        'Part of this zip was damaged, so some files may be missing from this deck.'
+        "Part of this zip couldn't be read, so some files may be missing. Download or zip the files again, then upload the new zip."
       )
     ).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('English server text')).toHaveCount(0);

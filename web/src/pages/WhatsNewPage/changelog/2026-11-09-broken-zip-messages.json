@@ -2,5 +2,5 @@
   "id": "2026-11-09-broken-zip-messages",
   "date": "2026-11-09",
   "type": "fix",
-  "title": "Broken zip messages appear in your language, and a partly recovered zip says files may be missing"
+  "title": "A broken zip says so in your language, and a partly recovered one says files may be missing"
 }

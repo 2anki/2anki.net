@@ -8,7 +8,7 @@ export const ZIP_PARTLY_RECOVERED_WARNING = 'zip-partly-recovered';
 
 // This text travels in the X-Warning response header, which is Latin-1 only.
 export const ZIP_PARTLY_RECOVERED_WARNING_TEXT =
-  'Part of this zip was damaged, so some files may be missing from this deck.';
+  "Part of this zip couldn't be read, so some files may be missing. Download or zip the files again, then upload the new zip.";
 
 export function zipErrorCode(
   err: Error

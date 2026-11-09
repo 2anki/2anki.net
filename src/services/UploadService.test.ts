@@ -8843,6 +8843,17 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(usersRepo.incrementCardUsage).not.toHaveBeenCalled();
   });
 
+  function mockPackagesWithWarnings(
+    packages: Array<{ name: string; cardCount: number }>,
+    warnings: string[]
+  ) {
+    MockGeneratePackagesUseCase.mockImplementation(function () {
+      return {
+        execute: vi.fn().mockResolvedValue({ packages, warnings }),
+      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+    });
+  }
+
   function heldSourceFile() {
     return {
       fieldname: 'file',
@@ -8854,6 +8865,34 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       key: 'held/abc',
     } as unknown as Parameters<UploadService['convertHeldFileForOwner']>[1];
   }
+
+  it('does not carry the partly recovered note onto a held claim, which has nowhere to show it', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPackagesWithWarnings(
+      [{ name: 'deck', cardCount: 3 }],
+      [ZIP_PARTLY_RECOVERED_WARNING]
+    );
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck: new InMemoryHeldDeckRepository() })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      true,
+      null,
+      'req-1',
+      null,
+      { previewCap: 21, heldCards: 0 }
+    );
+
+    expect(result).toMatchObject({ cardCount: 3 });
+    expect(result).not.toHaveProperty('warnings');
+    expect(result).not.toHaveProperty('warning');
+  });
 
   it('cuts a preview-capped claim to 21 cards and saves the rest for a plan', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);

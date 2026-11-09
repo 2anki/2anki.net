@@ -118,7 +118,7 @@
       "detail": "Podziel go na mniejsze części i spróbuj ponownie."
     },
     "zip_partly_recovered": {
-      "title": "Część tego pliku zip była uszkodzona, więc w tej talii może brakować niektórych plików."
+      "title": "Części tego pliku zip nie udało się odczytać, więc może brakować niektórych plików. Pobierz lub spakuj pliki ponownie, a potem prześlij nowy plik zip."
     },
     "zip_damaged": {
       "title": "Część tego pliku zip jest uszkodzona.",

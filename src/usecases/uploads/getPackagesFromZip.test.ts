@@ -3,6 +3,7 @@ import { vi, type Mock } from 'vitest';
 import * as nodeFsModule from 'node:fs';
 import { setupTests } from '../../test/configure-jest';
 import { getPackagesFromZip } from './getPackagesFromZip';
+import { convertAnkiAppDecksFromZip } from './convertAnkiAppDecksFromZip';
 import CardOption from '../../lib/parser/Settings/CardOption';
 import Workspace from '../../lib/parser/WorkSpace';
 import { EmptyDeckError } from '../jobs/EmptyDeckError';
@@ -10,6 +11,7 @@ import { EmptyDeckError } from '../jobs/EmptyDeckError';
 vi.mock('node:fs', { spy: true });
 vi.mock('../../infrastracture/adapters/fileConversion/PrepareDeck');
 vi.mock('../../lib/zip/zip');
+vi.mock('./convertAnkiAppDecksFromZip', { spy: true });
 vi.mock('../../lib/anki/CardGenerator');
 vi.mock('../../lib/parser/WorkSpace');
 
@@ -95,6 +97,30 @@ describe('getPackagesFromZip — batch concurrency', () => {
     );
 
     expect(result.packages).toHaveLength(fileCount);
+  });
+
+  it('adds the partly recovered note to a recovered AnkiApp export', async () => {
+    mockZipHandlerClass.mockImplementation(function () {
+      return {
+        build: vi.fn().mockResolvedValue(undefined),
+        getFileNames: vi.fn().mockReturnValue(['deck.xml']),
+        files: [{ name: 'deck.xml', contents: '<deck></deck>' }],
+        recoveredBrokenArchive: true,
+      };
+    });
+    vi.mocked(convertAnkiAppDecksFromZip).mockResolvedValueOnce({
+      packages: [],
+      warnings: [],
+    });
+
+    const result = await getPackagesFromZip(
+      Buffer.from('fake-zip') as unknown as Uint8Array,
+      false,
+      new CardOption({}),
+      { location: FAKE_WORKSPACE_LOCATION } as Workspace
+    );
+
+    expect(result.warnings).toEqual(['zip-partly-recovered']);
   });
 
   it.each([

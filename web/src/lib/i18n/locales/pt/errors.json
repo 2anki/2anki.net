@@ -114,11 +114,11 @@
       "detail": "Talvez ele ainda estivesse sendo baixado ou sincronizado. Espere terminar e envie de novo."
     },
     "zip_too_large": {
-      "title": "Este envio é grande demais para processar.",
-      "detail": "Divida em envios menores e tente de novo."
+      "title": "Este envio é grande demais para ser processado.",
+      "detail": "Divida-o em envios menores e tente de novo."
     },
     "zip_partly_recovered": {
-      "title": "Parte deste zip estava danificada, então alguns arquivos podem estar faltando neste baralho."
+      "title": "Não foi possível ler parte deste zip, então alguns arquivos podem estar faltando. Baixe ou compacte os arquivos novamente e envie o novo zip."
     },
     "zip_damaged": {
       "title": "Parte deste zip está danificada.",

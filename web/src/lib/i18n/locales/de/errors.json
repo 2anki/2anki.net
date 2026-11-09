@@ -114,11 +114,11 @@
       "detail": "Sie wurde vielleicht noch heruntergeladen oder synchronisiert. Warte, bis das fertig ist, und lade sie dann erneut hoch."
     },
     "zip_too_large": {
-      "title": "Dieser Upload ist zu groß zum Verarbeiten.",
+      "title": "Dieser Upload ist zu groß für die Verarbeitung.",
       "detail": "Teile ihn in kleinere Uploads auf und versuche es erneut."
     },
     "zip_partly_recovered": {
-      "title": "Ein Teil dieser ZIP-Datei war beschädigt, daher fehlen in diesem Stapel vielleicht einige Dateien."
+      "title": "Ein Teil dieser ZIP-Datei konnte nicht gelesen werden, daher fehlen vielleicht einige Dateien. Lade die Dateien erneut herunter oder packe sie neu und lade dann die neue ZIP hoch."
     },
     "zip_damaged": {
       "title": "Ein Teil dieser ZIP-Datei ist beschädigt.",

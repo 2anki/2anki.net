@@ -661,7 +661,7 @@ export const getPackagesFromZip = async (
     workspace
   );
   if (ankiAppResult) {
-    return ankiAppResult;
+    return withZipRecoveryWarning(zipHandler, ankiAppResult);
   }
 
   const fileNames = zipHandler.getFileNames();

@@ -114,11 +114,11 @@
       "detail": "Forse era ancora in fase di download o sincronizzazione. Aspetta che finisca, poi caricalo di nuovo."
     },
     "zip_too_large": {
-      "title": "Questo caricamento è troppo grande da elaborare.",
+      "title": "Questo caricamento è troppo grande per essere elaborato.",
       "detail": "Dividilo in caricamenti più piccoli e riprova."
     },
     "zip_partly_recovered": {
-      "title": "Una parte di questo zip era danneggiata, quindi alcuni file potrebbero mancare in questo mazzo."
+      "title": "Non siamo riusciti a leggere una parte di questo zip, quindi alcuni file potrebbero mancare. Scarica o comprimi di nuovo i file, poi carica il nuovo zip."
     },
     "zip_damaged": {
       "title": "Una parte di questo zip è danneggiata.",

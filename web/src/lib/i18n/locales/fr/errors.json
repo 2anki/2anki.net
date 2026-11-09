@@ -118,7 +118,7 @@
       "detail": "Divise-le en imports plus petits et réessaie."
     },
     "zip_partly_recovered": {
-      "title": "Une partie de ce zip était endommagée, il manque peut-être des fichiers dans ce paquet."
+      "title": "Une partie de ce zip n'a pas pu être lue, il manque donc peut-être des fichiers. Télécharge ou compresse à nouveau les fichiers, puis importe le nouveau zip."
     },
     "zip_damaged": {
       "title": "Une partie de ce zip est endommagée.",

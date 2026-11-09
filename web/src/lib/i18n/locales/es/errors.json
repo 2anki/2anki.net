@@ -114,11 +114,11 @@
       "detail": "Puede que aún se estuviera descargando o sincronizando. Espera a que termine y vuelve a subirlo."
     },
     "zip_too_large": {
-      "title": "Esta subida es demasiado grande para procesarla.",
-      "detail": "Divídela en subidas más pequeñas e inténtalo de nuevo."
+      "title": "Este archivo es demasiado grande para procesarlo.",
+      "detail": "Divídelo en archivos más pequeños e inténtalo de nuevo."
     },
     "zip_partly_recovered": {
-      "title": "Parte de este zip estaba dañada, así que puede que falten algunos archivos en este mazo."
+      "title": "Parte de este zip no se pudo leer, así que puede que falten algunos archivos. Vuelve a descargar o comprimir los archivos y sube el nuevo zip."
     },
     "zip_damaged": {
       "title": "Parte de este zip está dañada.",
