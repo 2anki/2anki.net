@@ -246,7 +246,7 @@ async function visionCardsForPage(
   const { raw, cleaned } = pageText(response);
 
   try {
-    return parseDeckResponse(cleaned, raw, pageIndex);
+    return parseDeckResponse(cleaned, raw, pageIndex, response.stop_reason);
   } catch (err) {
     console.warn('[Claude] PDF page vision parse failed; skipping page', {
       pageIndex,
@@ -274,7 +274,7 @@ function cardsWrittenBeforeDeclining(
   const { raw, cleaned } = pageText(response);
   if (cleaned === '') return [];
   try {
-    return parseDeckResponse(cleaned, raw, pageIndex);
+    return parseDeckResponse(cleaned, raw, pageIndex, 'refusal');
   } catch {
     return [];
   }

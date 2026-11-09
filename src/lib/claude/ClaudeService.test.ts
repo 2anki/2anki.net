@@ -290,27 +290,88 @@ describe('parseDeckResponse', () => {
     ]);
   });
 
-  it('logs the full raw response body on unrecoverable parse failure for reproducibility', () => {
+  it('keeps the reply text out of every log level on an unrecoverable parse failure', () => {
+    const spies = (['error', 'warn', 'info', 'log'] as const).map((level) =>
+      vi.spyOn(console, level).mockImplementation(() => undefined)
+    );
+    try {
+      const raw =
+        '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-QUESTION","a"] PRIVATE-TRAILING: {"x"';
+      expect(() => parseDeckResponse(raw, raw, 0)).toThrow(
+        expect.objectContaining({ name: 'ClaudeLargeSectionError' })
+      );
+      const logged = JSON.stringify(spies.map((spy) => spy.mock.calls));
+      expect(logged).toContain('[Claude] Failed to parse response as JSON');
+      expect(logged).not.toContain('PRIVATE');
+    } finally {
+      spies.forEach((spy) => spy.mockRestore());
+    }
+  });
+
+  it('throws the empty-content error for a prose reply and logs none of it', () => {
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      const raw =
+        'PRIVATE-NOTE: The provided HTML content is a template but has no actual question-and-answer content to convert.';
+      expect(() => parseDeckResponse(raw, raw, 0)).toThrow(
+        expect.objectContaining({
+          name: 'EmptyContentError',
+          message: EMPTY_CONTENT_USER_MESSAGE,
+        })
+      );
+      const summary = errorSpy.mock.calls.find(
+        ([msg]) => msg === '[Claude] Failed to parse response as JSON'
+      );
+      expect(summary![1]).toMatchObject({ parseErrorPosition: null });
+      expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('PRIVATE');
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('keeps the reply text out of the log when the reply is valid JSON but not a deck array', () => {
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      const raw = '{"deck":"PRIVATE-DECK"}';
+      expect(() => parseDeckResponse(raw, raw, 0)).toThrow(
+        expect.objectContaining({ name: 'ClaudeParseError' })
+      );
+      const summary = errorSpy.mock.calls.find(
+        ([msg]) => msg === '[Claude] Response is not an array'
+      );
+      expect(summary![1]).toMatchObject({
+        raw: { length: raw.length, sha256_prefix: expect.any(String) },
+      });
+      expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('PRIVATE');
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('logs the stop reason and parse offset on an unrecoverable parse failure', () => {
     const errorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
     try {
       const raw = '[{"deck":"X","cards":[{"q":"a","a"';
       try {
-        parseDeckResponse(raw, raw, 0);
+        parseDeckResponse(raw, raw, 0, 'end_turn');
       } catch {
         // expected
       }
-      const fullDump = errorSpy.mock.calls.find(
-        ([msg]) =>
-          msg === '[Claude] Unrecoverable parse failure — full response'
+      const summary = errorSpy.mock.calls.find(
+        ([msg]) => msg === '[Claude] Failed to parse response as JSON'
       );
-      expect(fullDump).toBeDefined();
-      const payload = fullDump![1] as { chunkIndex: number };
-      expect(payload.chunkIndex).toBe(0);
-      // raw goes as its own string argument: util.inspect truncates strings
-      // inside objects at 10k chars, which silently dropped most of the dump.
-      expect(fullDump![2]).toBe(raw);
+      expect(summary![1]).toMatchObject({
+        chunkIndex: 0,
+        stopReason: 'end_turn',
+        parseErrorPosition: expect.any(Number),
+        raw: { length: raw.length, sha256_prefix: expect.any(String) },
+      });
     } finally {
       errorSpy.mockRestore();
     }
@@ -490,21 +551,15 @@ describe('parseDeckResponse', () => {
       const loggedObj = summary![1] as Record<string, unknown>;
       expect(loggedObj).toMatchObject({
         chunkIndex: 3,
-        raw: expect.objectContaining({
+        raw: { length: expect.any(Number), sha256_prefix: expect.any(String) },
+        cleaned: {
           length: expect.any(Number),
-          prefix: expect.any(String),
           sha256_prefix: expect.any(String),
-        }),
-        cleaned: expect.objectContaining({
+        },
+        toParse: {
           length: expect.any(Number),
-          prefix: expect.any(String),
           sha256_prefix: expect.any(String),
-        }),
-        toParse: expect.objectContaining({
-          length: expect.any(Number),
-          prefix: expect.any(String),
-          sha256_prefix: expect.any(String),
-        }),
+        },
       });
       const rawVal = loggedObj.raw as Record<string, unknown>;
       expect(typeof rawVal.raw).toBe('undefined');
@@ -1574,6 +1629,30 @@ describe('generateDeckInfo — truncated chunk retry', () => {
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
   });
+
+  it.each(['end_turn', 'max_tokens', 'refusal'])(
+    'names stop reason %s when the reply cannot be parsed',
+    async (stopReason) => {
+      mockStream.finalMessage.mockResolvedValue({
+        content: [{ type: 'text', text: 'no json here at all' }],
+        stop_reason: stopReason,
+        usage: { input_tokens: 100, output_tokens: 50 },
+      });
+      const errorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        await generateDeckInfo(htmlOneChunk, []).catch(() => undefined);
+        const summaries = errorSpy.mock.calls.filter(
+          ([msg]) => msg === '[Claude] Failed to parse response as JSON'
+        );
+        expect(summaries[0]?.[1]).toMatchObject({ stopReason });
+      } finally {
+        errorSpy.mockRestore();
+        mockStream.finalMessage.mockReset();
+      }
+    }
+  );
 
   it('stop_reason max_tokens → splits the chunk in half and retries, then succeeds', async () => {
     mockStream.finalMessage
