@@ -20,7 +20,7 @@ import {
 } from '../../lib/misc/GetUploadHandler';
 import { getMaxUploadCount } from '../../lib/misc/getMaxUploadCount';
 import { isLimitError } from '../../lib/misc/isLimitError';
-import { uploadFieldTooLongMessage } from '../../lib/upload/fieldTooLongMessage';
+import { uploadFieldTooLongBody } from '../../lib/upload/fieldTooLongMessage';
 import { handleUploadLimitError } from './helpers/handleUploadLimitError';
 import { handleDropbox } from './helpers/handleDropbox';
 import { handleGoogleDrive } from './helpers/handleGoogleDrive';
@@ -175,10 +175,7 @@ class UploadController {
             requestId: res.locals.requestId,
             field: error.field,
           });
-          return res.status(413).json({
-            code: 'unknown',
-            message: uploadFieldTooLongMessage(error.field),
-          });
+          return res.status(413).json(uploadFieldTooLongBody(error.field));
         }
         if (isFileCountError(error)) {
           const cap = getMaxUploadCount(isPaying(res.locals));

@@ -222,15 +222,17 @@ describe('UploadRouter answers an over-long saved setting on a cloud pick', () =
       'dropbox',
       'user-instructions',
       'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
+      'user_instructions',
     ],
     [
       'google_drive',
       'deckName',
       'Your saved deck name is too long. Shorten it under Deck name in Settings, then upload again.',
+      'deck_name',
     ],
   ])(
     'on /api/upload/%s with the upload copy for %s',
-    async (route, field, message) => {
+    async (route, field, message, setting) => {
       mockAuthOwner = 42;
       const { url, close } = await startServer();
       try {
@@ -241,7 +243,11 @@ describe('UploadRouter answers an over-long saved setting on a cloud pick', () =
           body: form,
         });
         expect(res.status).toBe(413);
-        expect(await res.json()).toEqual({ code: 'unknown', message });
+        expect(await res.json()).toEqual({
+          code: 'setting_too_long',
+          message,
+          setting,
+        });
       } finally {
         await close();
       }
@@ -354,9 +360,10 @@ describe('UploadRouter gives cloud picks the field limit of the caller plan', ()
       });
       expect(res.status).toBe(413);
       expect(await res.json()).toEqual({
-        code: 'unknown',
+        code: 'setting_too_long',
         message:
           'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
+        setting: 'user_instructions',
       });
       expect(mockRetryPdf).not.toHaveBeenCalled();
     } finally {

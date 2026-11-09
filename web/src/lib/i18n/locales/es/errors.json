@@ -120,6 +120,64 @@
     "claude_refusal": {
       "title": "Claude se negó a crear tarjetas con este archivo.",
       "detail": "Si añadiste instrucciones para la conversión de PDF, quítalas en PDF e IA dentro de Ajustes y vuelve a intentarlo. Si sigue pasando, escribe a support@2anki.net."
+    },
+    "setting_too_long": {
+      "user_instructions": {
+        "title": "Tus instrucciones para la conversión de PDF son demasiado largas.",
+        "detail": "Acórtalas en PDF e IA dentro de Ajustes y vuelve a subir el archivo."
+      },
+      "deck_name": {
+        "title": "El nombre del mazo que guardaste es demasiado largo.",
+        "detail": "Acórtalo en Nombre del mazo dentro de Ajustes y vuelve a subir el archivo."
+      },
+      "other": {
+        "title": "Un ajuste guardado en este navegador es demasiado largo para enviarlo con tu archivo.",
+        "detail": "Abre Ajustes, elige Restablecer los valores predeterminados y vuelve a subir el archivo."
+      }
+    },
+    "pdf_page_range": {
+      "too_long": {
+        "title": "Ese rango de páginas es demasiado largo.",
+        "detail": "Que tenga menos de {{max}} caracteres."
+      },
+      "too_many_parts": {
+        "title": "Son demasiados rangos de páginas.",
+        "detail": "Usa como máximo {{max}}."
+      },
+      "number_too_large": {
+        "title": "'{{part}}' tiene un número de página demasiado grande.",
+        "detail": "Usa números de página de tu PDF, como 12-30, 45."
+      },
+      "range_starts_at_zero": {
+        "title": "Las páginas empiezan en 1, así que '{{part}}' no es un rango válido."
+      },
+      "backwards": {
+        "title": "'{{part}}' va al revés.",
+        "detail": "Escribe primero la página menor, como {{lower}}-{{upper}}."
+      },
+      "page_zero": {
+        "title": "Las páginas empiezan en 1, así que '{{part}}' no es una página válida."
+      },
+      "invalid_part": {
+        "title": "'{{part}}' no es una página ni un rango válido.",
+        "detail": "Usa números de página y rangos como 12-30, 45."
+      },
+      "past_end_page": {
+        "title_one": "La página {{first}} está después del final de este PDF de {{pageCount}} página.",
+        "title_other": "La página {{first}} está después del final de este PDF de {{pageCount}} páginas."
+      },
+      "past_end_pages": {
+        "title_one": "Las páginas {{first}}-{{last}} están después del final de este PDF de {{pageCount}} página.",
+        "title_other": "Las páginas {{first}}-{{last}} están después del final de este PDF de {{pageCount}} páginas."
+      },
+      "locked_pdf": {
+        "title": "Los rangos de páginas no funcionan con PDF protegidos con contraseña.",
+        "detail": "Conviértelo de nuevo sin rango de páginas para usar el archivo entero."
+      },
+      "split_timeout": {
+        "title": "Dividir ese PDF en las páginas que pediste tardó demasiado.",
+        "detail": "Prueba con menos páginas."
+      }
     }
   },
   "presenter": {

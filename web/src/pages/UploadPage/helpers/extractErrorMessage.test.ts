@@ -175,3 +175,58 @@ describe('extractErrorMessage', () => {
     expect(result.message).toBe('Something broke on our end');
   });
 });
+
+describe('extractErrorMessage — answers the page translates', () => {
+  test("keeps a page range answer's details", async () => {
+    const result = await extractErrorMessage(
+      jsonResponse({
+        code: 'pdf_page_range',
+        message: "'30-12' goes backwards.",
+        page_range: {
+          reason: 'backwards',
+          part: '30-12',
+          lower: 12,
+          upper: 30,
+        },
+      })
+    );
+    expect(result.page_range).toEqual({
+      reason: 'backwards',
+      part: '30-12',
+      lower: 12,
+      upper: 30,
+    });
+  });
+
+  test.each([
+    ['an unknown reason', { reason: 'toString' }],
+    ['a reason missing its values', { reason: 'past_end', first: 3 }],
+    ['a list', ['backwards']],
+  ])('drops page range details with %s', async (_case, page_range) => {
+    const result = await extractErrorMessage(
+      jsonResponse({ code: 'pdf_page_range', message: 'x', page_range })
+    );
+    expect(result).not.toHaveProperty('page_range');
+  });
+
+  test('keeps the setting an over-long answer names', async () => {
+    const result = await extractErrorMessage(
+      jsonResponse({
+        code: 'setting_too_long',
+        message: 'Your saved deck name is too long.',
+        setting: 'deck_name',
+      })
+    );
+    expect(result).toMatchObject({
+      code: 'setting_too_long',
+      setting: 'deck_name',
+    });
+  });
+
+  test('drops a setting it does not know', async () => {
+    const result = await extractErrorMessage(
+      jsonResponse({ code: 'setting_too_long', message: 'x', setting: 'theme' })
+    );
+    expect(result).not.toHaveProperty('setting');
+  });
+});

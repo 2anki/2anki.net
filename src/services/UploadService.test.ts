@@ -7717,6 +7717,44 @@ describe('UploadService.handleUpload — failure events for the success-rate til
     }
   );
 
+  it('answers a page range error with its details, so the page can translate it', async () => {
+    failWith(
+      Object.assign(
+        new Error('Pages 11-14 are past the end of this 10-page PDF.'),
+        {
+          name: 'PdfPageRangeError',
+          details: { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
+        }
+      )
+    );
+    const { res, capturedStatus, capturedJson } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(capturedStatus()).toBe(400);
+    expect(capturedJson()).toEqual({
+      code: 'pdf_page_range',
+      message: 'Pages 11-14 are past the end of this 10-page PDF.',
+      page_range: { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
+    });
+  });
+
+  it('answers a page range error with no readable details with the sentence alone', async () => {
+    failWith(
+      Object.assign(new Error('That page range is too long.'), {
+        name: 'PdfPageRangeError',
+      })
+    );
+    const { res, capturedJson } = buildResponse();
+
+    await buildService().handleUpload(buildRequest(), res);
+
+    expect(capturedJson()).toEqual({
+      code: 'pdf_page_range',
+      message: 'That page range is too long.',
+    });
+  });
+
   it('answers a signed-out pass holder whose conversion Claude declined with the refusal copy, and does not count it', async () => {
     failWith(
       Object.assign(new Error(CLAUDE_REFUSAL_USER_MESSAGE), {

@@ -91,6 +91,20 @@ describe('jobFailureReasonFromError', () => {
     );
   });
 
+  it('keeps only the English sentence of a page range error that carries details', () => {
+    const rebuilt = Object.assign(
+      new Error('Pages 11-14 are past the end of this 10-page PDF.'),
+      {
+        name: 'PdfPageRangeError',
+        details: { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
+      }
+    );
+
+    expect(jobFailureReasonFromError(rebuilt, 'job-1')).toBe(
+      'Pages 11-14 are past the end of this 10-page PDF.'
+    );
+  });
+
   it('returns the EmptyDeckError reason unchanged', () => {
     const reason = jobFailureReasonFromError(new EmptyDeckError(), 'job-1');
     expect(reason).toBe(EMPTY_DECK_FAILURE_REASON);

@@ -711,6 +711,49 @@ test.describe('golden path @golden', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
+  test('a mistyped page range shows the page-range copy, not the server text, at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    await page.route('**/api/upload/file', (route) =>
+      route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'pdf_page_range',
+          message: 'English server text',
+          page_range: {
+            reason: 'past_end',
+            first: 11,
+            last: 14,
+            pageCount: 10,
+          },
+        }),
+      })
+    );
+
+    await page.goto('/upload');
+    await page.setInputFiles('#pakker', {
+      name: 'notes.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('Only a line'),
+    });
+
+    await expect(
+      page.getByText('Pages 11-14 are past the end of this 10-page PDF.')
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('English server text')).toHaveCount(0);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
   test('the signed-in limit wall leads with the passes at 375px', async ({
     page,
   }) => {

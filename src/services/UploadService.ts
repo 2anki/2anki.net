@@ -154,7 +154,10 @@ import {
   parsePdfPasswordSentinel,
 } from '../lib/pdf/pdfPasswordSentinel';
 import { parsePdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
-import { isPdfPageRangeError } from '../lib/pdf/pdfPageRange';
+import {
+  isPdfPageRangeError,
+  pdfPageRangeDetailsOf,
+} from '../lib/pdf/pdfPageRange';
 import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
   AiCreditsWarningAudience,
@@ -1529,9 +1532,11 @@ class UploadService {
             'Your upload didn’t finish, so there was nothing to convert. Upload the file again.',
         });
       } else if (isPdfPageRangeError(err)) {
+        const pageRange = pdfPageRangeDetailsOf(err);
         return res.status(400).json({
           code: 'pdf_page_range',
           message: err.message,
+          ...(pageRange == null ? {} : { page_range: pageRange }),
         });
       } else if (
         err instanceof Error &&

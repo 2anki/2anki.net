@@ -63,7 +63,8 @@ async function pageCountOrLockedError(
       error.message.startsWith('pdfinfo_password')
     ) {
       throw new PdfPageRangeError(
-        "Page ranges don't work on password-protected PDFs. Convert again without a page range to use the whole file."
+        "Page ranges don't work on password-protected PDFs. Convert again without a page range to use the whole file.",
+        { reason: 'locked_pdf' }
       );
     }
     throw error;

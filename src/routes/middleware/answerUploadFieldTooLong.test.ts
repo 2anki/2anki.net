@@ -36,9 +36,10 @@ describe('answerUploadFieldTooLong', () => {
 
     expect(res.statusCode).toBe(413);
     expect(res.body).toEqual({
-      code: 'unknown',
+      code: 'setting_too_long',
       message:
         'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
+      setting: 'user_instructions',
     });
     expect(next).not.toHaveBeenCalled();
   });

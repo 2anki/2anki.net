@@ -289,18 +289,21 @@ describe('Upload file — multer error handling', () => {
     [
       'user-instructions',
       'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
+      { setting: 'user_instructions' },
     ],
     [
       'deckName',
       'Your saved deck name is too long. Shorten it under Deck name in Settings, then upload again.',
+      { setting: 'deck_name' },
     ],
     [
       'template',
       'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.',
+      {},
     ],
   ])(
     'answers an over-long %s field with 413 and copy about that setting',
-    async (field, message) => {
+    async (field, message, setting) => {
       const { controller, handleUpload } = brokenUploadController(
         new multer.MulterError('LIMIT_FIELD_VALUE', field)
       );
@@ -319,7 +322,11 @@ describe('Upload file — multer error handling', () => {
 
       expect(handleUpload).not.toHaveBeenCalled();
       expect(status).toBe(413);
-      expect(jsonSpy).toHaveBeenCalledWith({ code: 'unknown', message });
+      expect(jsonSpy).toHaveBeenCalledWith({
+        code: 'setting_too_long',
+        message,
+        ...setting,
+      });
     }
   );
 

@@ -1,5 +1,9 @@
 import { stripHtmlTags } from '../../../lib/text/stripHtmlTags';
 import {
+  readPageRangeDetails,
+  readTooLongSetting,
+} from './readUploadErrorDetails';
+import {
   isUploadErrorCode,
   type UploadErrorBody,
   type UploadErrorCode,
@@ -34,6 +38,14 @@ export async function extractErrorMessage(
       }
       if (typeof body.signed_in === 'boolean') {
         result.signed_in = body.signed_in;
+      }
+      const pageRange = readPageRangeDetails(body.page_range);
+      if (code === 'pdf_page_range' && pageRange != null) {
+        result.page_range = pageRange;
+      }
+      const setting = readTooLongSetting(body.setting);
+      if (code === 'setting_too_long' && setting != null) {
+        result.setting = setting;
       }
       return result;
     }

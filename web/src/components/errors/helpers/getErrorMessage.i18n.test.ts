@@ -99,3 +99,58 @@ describe('deck-builder crash and Claude refusal copy in German', () => {
     }
   );
 });
+
+describe('classifyUploadError translated answers', () => {
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  it('words a page range past the end of the PDF in German', async () => {
+    await i18n.changeLanguage('de');
+    expect(
+      classifyUploadError({
+        code: 'pdf_page_range',
+        message: 'Pages 11-14 are past the end of this 10-page PDF.',
+        page_range: { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
+      }).title
+    ).toBe('Die Seiten 11-14 liegen hinter dem Ende dieses 10-seitigen PDFs.');
+  });
+
+  it.each([
+    ['es', 1, 'La página 2 está después del final de este PDF de 1 página.'],
+    ['pl', 3, 'Strona 4 wykracza poza koniec tego PDF-a (3 strony).'],
+    ['pl', 5, 'Strona 6 wykracza poza koniec tego PDF-a (5 stron).'],
+  ])(
+    'takes the %s plural form of a %i-page PDF',
+    async (language, pageCount, title) => {
+      await i18n.changeLanguage(language);
+      expect(
+        classifyUploadError({
+          code: 'pdf_page_range',
+          message: 'English server text',
+          page_range: {
+            reason: 'past_end',
+            first: pageCount + 1,
+            last: pageCount + 1,
+            pageCount,
+          },
+        }).title
+      ).toBe(title);
+    }
+  );
+
+  it('names the over-long deck name setting in Spanish', async () => {
+    await i18n.changeLanguage('es');
+    expect(
+      classifyUploadError({
+        code: 'setting_too_long',
+        message: 'Your saved deck name is too long.',
+        setting: 'deck_name',
+      })
+    ).toEqual({
+      title: 'El nombre del mazo que guardaste es demasiado largo.',
+      detail:
+        'Acórtalo en Nombre del mazo dentro de Ajustes y vuelve a subir el archivo.',
+    });
+  });
+});

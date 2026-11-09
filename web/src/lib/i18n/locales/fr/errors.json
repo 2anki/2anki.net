@@ -120,6 +120,64 @@
     "claude_refusal": {
       "title": "Claude a refusé de créer des cartes à partir de ce fichier.",
       "detail": "Si tu as ajouté des instructions pour la conversion des PDF, retire-les sous PDF et IA dans les Réglages et réessaie. Si ça se reproduit, écris à support@2anki.net."
+    },
+    "setting_too_long": {
+      "user_instructions": {
+        "title": "Tes instructions pour la conversion des PDF sont trop longues.",
+        "detail": "Raccourcis-les sous PDF et IA dans les Réglages, puis importe à nouveau."
+      },
+      "deck_name": {
+        "title": "Le nom de paquet enregistré est trop long.",
+        "detail": "Raccourcis-le sous Nom du paquet dans les Réglages, puis importe à nouveau."
+      },
+      "other": {
+        "title": "Un réglage enregistré dans ce navigateur est trop long pour être envoyé avec ton fichier.",
+        "detail": "Ouvre les Réglages, choisis Réinitialiser aux valeurs par défaut, puis importe à nouveau."
+      }
+    },
+    "pdf_page_range": {
+      "too_long": {
+        "title": "Cette plage de pages est trop longue.",
+        "detail": "Garde-la sous {{max}} caractères."
+      },
+      "too_many_parts": {
+        "title": "Il y a trop de plages de pages.",
+        "detail": "Utilise-en {{max}} au maximum."
+      },
+      "number_too_large": {
+        "title": "'{{part}}' contient un numéro de page trop grand.",
+        "detail": "Utilise des numéros de page de ton PDF, comme 12-30, 45."
+      },
+      "range_starts_at_zero": {
+        "title": "Les pages commencent à 1, donc '{{part}}' n'est pas une plage valide."
+      },
+      "backwards": {
+        "title": "'{{part}}' va à l'envers.",
+        "detail": "Écris d'abord la plus petite page, comme {{lower}}-{{upper}}."
+      },
+      "page_zero": {
+        "title": "Les pages commencent à 1, donc '{{part}}' n'est pas une page valide."
+      },
+      "invalid_part": {
+        "title": "'{{part}}' n'est ni une page ni une plage valide.",
+        "detail": "Utilise des numéros de page et des plages comme 12-30, 45."
+      },
+      "past_end_page": {
+        "title_one": "La page {{first}} est après la fin de ce PDF de {{pageCount}} page.",
+        "title_other": "La page {{first}} est après la fin de ce PDF de {{pageCount}} pages."
+      },
+      "past_end_pages": {
+        "title_one": "Les pages {{first}}-{{last}} sont après la fin de ce PDF de {{pageCount}} page.",
+        "title_other": "Les pages {{first}}-{{last}} sont après la fin de ce PDF de {{pageCount}} pages."
+      },
+      "locked_pdf": {
+        "title": "Les plages de pages ne fonctionnent pas avec les PDF protégés par mot de passe.",
+        "detail": "Convertis à nouveau sans plage de pages pour utiliser tout le fichier."
+      },
+      "split_timeout": {
+        "title": "Découper ce PDF dans les pages demandées a pris trop de temps.",
+        "detail": "Essaie avec moins de pages."
+      }
     }
   },
   "presenter": {

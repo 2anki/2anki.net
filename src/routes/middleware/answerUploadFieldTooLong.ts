@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 
-import { uploadFieldTooLongMessage } from '../../lib/upload/fieldTooLongMessage';
+import { uploadFieldTooLongBody } from '../../lib/upload/fieldTooLongMessage';
 
 // Dropbox and Drive picks and the password retry send the saved card
 // settings as fields, as the file upload does, so an over-long one gets the
@@ -17,10 +17,7 @@ export function answerUploadFieldTooLong(
       requestId: res.locals.requestId,
       field: err.field,
     });
-    res.status(413).json({
-      code: 'unknown',
-      message: uploadFieldTooLongMessage(err.field),
-    });
+    res.status(413).json(uploadFieldTooLongBody(err.field));
     return;
   }
   next(err);

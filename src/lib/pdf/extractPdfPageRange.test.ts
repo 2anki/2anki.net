@@ -164,6 +164,9 @@ describe('runPdfTool', () => {
     } catch (error) {
       expect(isPdfPageRangeError(error)).toBe(true);
       expect((error as Error).message).toContain('took too long');
+      expect((error as { details?: unknown }).details).toEqual({
+        reason: 'split_timeout',
+      });
     }
   });
 

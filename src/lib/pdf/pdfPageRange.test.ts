@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isPdfPageRangeError,
   parsePdfPageRange,
+  pdfPageRangeDetailsOf,
   PdfPageRangeError,
   resolvePdfPages,
 } from './pdfPageRange';
@@ -128,5 +129,83 @@ describe('resolvePdfPages', () => {
         'Page 99 is past the end of this 98-page PDF.'
       );
     }
+  });
+});
+
+function rangeError(run: () => unknown): PdfPageRangeError {
+  try {
+    run();
+  } catch (error) {
+    return error as PdfPageRangeError;
+  }
+  throw new Error('no page range error');
+}
+
+describe('page range error details', () => {
+  it.each([
+    ['too long', 'x'.repeat(201), { reason: 'too_long', max: 200 }],
+    [
+      'too many parts',
+      Array.from({ length: 51 }, (_, i) => String(i + 1)).join(','),
+      { reason: 'too_many_parts', max: 50 },
+    ],
+    [
+      'a number too large',
+      '1234567',
+      { reason: 'number_too_large', part: '1234567' },
+    ],
+    ['a range from 0', '0-3', { reason: 'range_starts_at_zero', part: '0-3' }],
+    [
+      'a backwards range',
+      '30-12',
+      { reason: 'backwards', part: '30-12', lower: 12, upper: 30 },
+    ],
+    ['page 0', '0', { reason: 'page_zero', part: '0' }],
+    ['a word', 'abc', { reason: 'invalid_part', part: 'abc' }],
+  ])('names %s with the values the sentence uses', (_case, raw, details) => {
+    expect(rangeError(() => parsePdfPageRange(raw)).details).toEqual(details);
+  });
+
+  it.each([
+    [
+      [{ start: 12, end: 12 }],
+      { reason: 'past_end', first: 12, last: 12, pageCount: 10 },
+    ],
+    [
+      [{ start: 8, end: 14 }],
+      { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
+    ],
+  ])('names the pages past the end of the PDF', (segments, details) => {
+    expect(rangeError(() => resolvePdfPages(segments, 10)).details).toEqual(
+      details
+    );
+  });
+
+  it('reads the details back off an error rebuilt as plain data', () => {
+    const rebuilt = Object.assign(new Error('rebuilt'), {
+      name: 'PdfPageRangeError',
+      details: { reason: 'backwards', part: '30-12', lower: 12, upper: 30 },
+    });
+
+    expect(pdfPageRangeDetailsOf(rebuilt)).toEqual({
+      reason: 'backwards',
+      part: '30-12',
+      lower: 12,
+      upper: 30,
+    });
+  });
+
+  it.each([
+    ['no details', {}],
+    ['an unknown reason', { details: { reason: 'toString' } }],
+    [
+      'a reason missing its values',
+      { details: { reason: 'past_end', first: 3 } },
+    ],
+    ['a part that is not text', { details: { reason: 'page_zero', part: 0 } }],
+  ])('reads %s as none', (_case, extra) => {
+    expect(
+      pdfPageRangeDetailsOf(Object.assign(new Error('x'), extra))
+    ).toBeNull();
   });
 });
