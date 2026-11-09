@@ -14372,7 +14372,7 @@ describe('UploadForm last deck for a signed-out pass holder', () => {
     expect(
       screen.queryByText(/can be downloaded again until/)
     ).not.toBeInTheDocument();
-    expect(gone).toHaveFocus();
+    await waitFor(() => expect(gone).toHaveFocus());
     expect(await getLastDeckStore().load()).toBeNull();
     expect(trackMock).toHaveBeenCalledWith('anon_deck_refetched', {
       outcome: 'expired',
