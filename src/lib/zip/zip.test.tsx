@@ -682,6 +682,40 @@ describe('ZipHandler damaged archives', () => {
     ).toHaveLength(3);
   });
 
+  it.each([
+    [
+      'a photo and the same photo in a nested zip',
+      {
+        'photo.png': strToU8('same png bytes'),
+        'part.zip': zipSync({ 'photo.png': strToU8('same png bytes') }),
+      },
+    ],
+    [
+      'two copies of the same nested zip',
+      {
+        'part-1.zip': zipSync({ 'photo.png': strToU8('same png bytes') }),
+        'part-2.zip': zipSync({ 'photo.png': strToU8('same png bytes') }),
+      },
+    ],
+  ])('reads %s twice, as before', async (_label, entries) => {
+    const convert = vi.mocked(convertImageToHTML);
+    convert.mockClear();
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      zipSync(entries),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    const ocrFiles = handler.files.filter((f) => f.name.startsWith('ocr-'));
+    expect(convert).toHaveBeenCalledTimes(2);
+    expect(
+      String(ocrFiles[0].contents).split('<p>read from the photo</p>')
+    ).toHaveLength(3);
+  });
+
   it('still throws an error that is not a damaged zip as it is', async () => {
     const zip = zipSync({ 'page.html': strToU8(longPage) }, { level: 9 });
     const handler = new ZipHandler(10, 1024 * 1024, 10);

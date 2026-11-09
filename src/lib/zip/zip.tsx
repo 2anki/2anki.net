@@ -89,6 +89,12 @@ const DAMAGED_DATA_CODES = new Set([
 interface ArchiveStart {
   fileCount: number;
   inMemoryBytes: number;
+  photoCount: number;
+}
+
+interface PhotoText {
+  key: string;
+  html: string;
 }
 
 function fflateErrorCode(error: unknown): number | undefined {
@@ -130,10 +136,12 @@ class ZipHandler {
   files: File[];
   zipFileCount: number;
   maxZipFiles: number;
-  // Keyed by entry name and bytes: the same entry read again (a nested zip
-  // the fallback reopens) is neither sent to OCR again nor written twice,
-  // while two entries that happen to hold the same photo stay two, as before.
-  photoTextByEntry: Map<string, string>;
+  photoTexts: PhotoText[];
+  // Photos the failed pass of a damaged archive already read. When its
+  // fallback reopens a nested zip, each of these is skipped once, so the
+  // same photo is neither sent to OCR again nor written twice; any other
+  // photo, a duplicate elsewhere included, is read as before.
+  photosToSkipOnReopen: string[];
   inMemoryBytes: number;
   maxInMemoryBytes: number;
   decompressedBytes: number;
@@ -150,7 +158,8 @@ class ZipHandler {
     this.files = [];
     this.zipFileCount = 0;
     this.maxZipFiles = maxNestedZipFiles;
-    this.photoTextByEntry = new Map();
+    this.photoTexts = [];
+    this.photosToSkipOnReopen = [];
     this.inMemoryBytes = 0;
     this.maxInMemoryBytes = maxInMemoryBytes;
     this.decompressedBytes = 0;
@@ -251,7 +260,12 @@ class ZipHandler {
     const before: ArchiveStart = {
       fileCount: this.files.length,
       inMemoryBytes: this.inMemoryBytes,
+      photoCount: this.photoTexts.length,
     };
+    const archiveKey =
+      paying && settings.imageQuizHtmlToAnki
+        ? createHash('sha256').update(zipData).digest('hex')
+        : '';
     try {
       // Census pass: read every entry's name and declared decompressed size
       // from the central directory without inflating anything. The cumulative
@@ -282,7 +296,13 @@ class ZipHandler {
           filter: (file) => memoryBound.has(file.name),
         });
         for (const name in textMap) {
-          await this.handleFile(name, textMap[name], paying, settings);
+          await this.handleFile(
+            name,
+            textMap[name],
+            paying,
+            settings,
+            archiveKey
+          );
         }
       }
 
@@ -298,7 +318,13 @@ class ZipHandler {
           filter: (file) => batch.has(file.name),
         });
         for (const name in batchMap) {
-          await this.handleFile(name, batchMap[name], paying, settings);
+          await this.handleFile(
+            name,
+            batchMap[name],
+            paying,
+            settings,
+            archiveKey
+          );
         }
         batch = new Set<string>();
         batchBytes = 0;
@@ -326,7 +352,8 @@ class ZipHandler {
     name: string,
     file: Uint8Array,
     paying: boolean,
-    settings: CardOption
+    settings: CardOption,
+    archiveKey: string
   ) {
     if (name.includes('__MACOSX/')) return;
 
@@ -349,7 +376,7 @@ class ZipHandler {
       this.files.push({ name, contents: strFromU8(file) });
     } else if (paying && settings.imageQuizHtmlToAnki && isImageFile(name)) {
       this.trackInMemoryBytes(file.length);
-      await this.convertAndAddImageToHTML(name, file);
+      await this.convertAndAddImageToHTML(archiveKey, name, file);
     } else if (isPDFFile(name) && settings.processPDFs === false) {
       // Skip PDF processing when processPDFs is false
       return;
@@ -364,17 +391,24 @@ class ZipHandler {
     }
   }
 
-  private async convertAndAddImageToHTML(name: string, file: Uint8Array) {
-    const digest = createHash('sha256').update(file).digest('hex');
-    const key = `${name}\0${digest}`;
-    if (this.photoTextByEntry.has(key)) return;
+  private async convertAndAddImageToHTML(
+    archiveKey: string,
+    name: string,
+    file: Uint8Array
+  ) {
+    const key = `${archiveKey}\0${name}\0${createHash('sha256').update(file).digest('hex')}`;
+    const readBefore = this.photosToSkipOnReopen.indexOf(key);
+    if (readBefore >= 0) {
+      this.photosToSkipOnReopen.splice(readBefore, 1);
+      return;
+    }
     const html = await convertImageToHTML(Buffer.from(file).toString('base64'));
-    this.photoTextByEntry.set(key, html);
+    this.photoTexts.push({ key, html });
     console.log('Converted image to HTML:', name, html);
   }
 
   get combinedHTML(): string {
-    return [...this.photoTextByEntry.values()].join('');
+    return this.photoTexts.map((photo) => photo.html).join('');
   }
 
   private addCombinedHTMLToFiles(paying: boolean, settings: CardOption) {
@@ -415,6 +449,31 @@ ${this.combinedHTML}
     this.files.length = before.fileCount;
     this.inMemoryBytes = before.inMemoryBytes;
 
+    const skipStart = this.photosToSkipOnReopen.length;
+    this.photosToSkipOnReopen.push(
+      ...this.photoTexts.slice(before.photoCount).map((photo) => photo.key)
+    );
+    try {
+      await this.recoverWithFallback(zipData, paying, settings);
+    } finally {
+      this.photosToSkipOnReopen.length = skipStart;
+    }
+
+    const anySupported =
+      (paying && this.combinedHTML !== '') ||
+      this.files.some((f) => isZipContentFileSupported(f.name));
+    if (!anySupported) {
+      throw new IncompleteZipError(
+        isDamagedData ? DAMAGED_ZIP_MESSAGE : INCOMPLETE_ZIP_MESSAGE
+      );
+    }
+  }
+
+  private async recoverWithFallback(
+    zipData: Uint8Array,
+    paying: boolean,
+    settings: CardOption
+  ) {
     const foundFiles = await processAndPrepareArchiveData(zipData, paying);
     console.log('Processed files using fallback method:');
     for (const file of foundFiles) {
@@ -436,15 +495,6 @@ ${this.combinedHTML}
         continue;
       }
       this.files.push(file);
-    }
-
-    const anySupported =
-      (paying && this.combinedHTML !== '') ||
-      this.files.some((f) => isZipContentFileSupported(f.name));
-    if (!anySupported) {
-      throw new IncompleteZipError(
-        isDamagedData ? DAMAGED_ZIP_MESSAGE : INCOMPLETE_ZIP_MESSAGE
-      );
     }
   }
 
