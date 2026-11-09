@@ -68,8 +68,39 @@ function sheetRows(worksheet: XLSX.WorkSheet): TabularRow[] {
   }) as TabularRow[];
 }
 
+const LESS_THAN = 0x3c;
+const TEXT_GUARD = 'x';
+
+function withoutByteOrderMark(buffer: Buffer): Buffer {
+  return buffer.subarray(0, 3).equals(UTF8_BOM) ? buffer.subarray(3) : buffer;
+}
+
+// SheetJS reads any input starting with "<" as an XML or HTML workbook, so a
+// CSV whose first cell holds a tag came back with no rows, or threw. Rows files
+// are text, so a guard letter sends them down the delimited path (whitespace
+// would not: SheetJS skips it before looking). A file that really is an HTML
+// table keeps the workbook reader.
+function isDelimitedTextOpeningWithMarkup(bytes: Buffer): boolean {
+  return bytes[0] === LESS_THAN && !/<table/i.test(bytes.toString('latin1'));
+}
+
+function withoutTextGuard(rows: TabularRow[]): TabularRow[] {
+  const [first, ...rest] = rows;
+  if (first == null) return rows;
+  const [cell, ...cells] = first;
+  return [[cellText(cell).slice(TEXT_GUARD.length), ...cells], ...rest];
+}
+
 export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
-  const workbook = readWorkbook(buffer, fileName);
+  const bytes = withoutByteOrderMark(buffer);
+  if (isDelimitedTextOpeningWithMarkup(bytes)) {
+    const guarded = readWorkbook(
+      Buffer.concat([Buffer.from(TEXT_GUARD), bytes]),
+      fileName
+    );
+    return withoutTextGuard(sheetRows(guarded.Sheets[guarded.SheetNames[0]]));
+  }
+  const workbook = readWorkbook(bytes, fileName);
   return sheetRows(workbook.Sheets[workbook.SheetNames[0]]);
 }
 

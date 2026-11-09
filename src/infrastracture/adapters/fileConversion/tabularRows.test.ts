@@ -4,6 +4,67 @@ import { rowsFromBuffer, sheetsFromBuffer } from './tabularRows';
 const SHEET_HIDDEN = 1;
 const SHEET_VERY_HIDDEN = 2;
 
+describe('rowsFromBuffer with markup at the start of the file', () => {
+  it.each([
+    [
+      'a tag in the first cell',
+      'cards.csv',
+      '<b>Front</b>,Back\n<i>Q2</i>,A2\n',
+      [
+        ['<b>Front</b>', 'Back'],
+        ['<i>Q2</i>', 'A2'],
+      ],
+    ],
+    [
+      'an image in the first cell',
+      'cards.csv',
+      '<img src="x.png">,The answer\nQ2,A2\n',
+      [
+        ['<img src="x.png">', 'The answer'],
+        ['Q2', 'A2'],
+      ],
+    ],
+    [
+      'a tag in a tab-separated file',
+      'cards.tsv',
+      '<b>Front</b>\tBack\nQ2\tA2\n',
+      [
+        ['<b>Front</b>', 'Back'],
+        ['Q2', 'A2'],
+      ],
+    ],
+    [
+      'a byte order mark before the tag',
+      'cards.csv',
+      '﻿<b>Front</b>,Back\n',
+      [['<b>Front</b>', 'Back']],
+    ],
+  ])('keeps the rows for %s', (_label, name, text, rows) => {
+    expect(rowsFromBuffer(Buffer.from(text, 'utf8'), name)).toEqual(rows);
+  });
+
+  it('still reads an HTML table saved under a text name', () => {
+    const html =
+      '<html><body><table><tr><td>Q</td><td>A</td></tr></table></body></html>';
+
+    expect(rowsFromBuffer(Buffer.from(html, 'utf8'), 'cards.csv')).toEqual([
+      ['Q', 'A'],
+    ]);
+  });
+
+  it.each([
+    ['an XML document', '<?xml version="1.0"?>\n<root><a>1</a></root>\n'],
+    [
+      'an HTML page with no table',
+      '<!DOCTYPE html><html><body>hi</body></html>',
+    ],
+  ])('does not crash on %s saved as a csv', (_label, text) => {
+    expect(rowsFromBuffer(Buffer.from(text, 'utf8'), 'cards.csv')).toEqual(
+      expect.any(Array)
+    );
+  });
+});
+
 describe('rowsFromBuffer', () => {
   it('splits a .tsv on tabs even when the cells hold commas', () => {
     const tsv = 'What is osmosis, really?\tWater, crossing a membrane\n';
