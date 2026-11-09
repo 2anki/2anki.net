@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { createHash } from 'node:crypto';
 import path from 'path';
 import { strFromU8, unzipSync } from 'fflate';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -129,7 +130,9 @@ class ZipHandler {
   files: File[];
   zipFileCount: number;
   maxZipFiles: number;
-  combinedHTML: string;
+  // Keyed by the photo's bytes: a photo read again (a nested zip the
+  // fallback reopens) is neither sent to OCR again nor written twice.
+  photoTextByDigest: Map<string, string>;
   inMemoryBytes: number;
   maxInMemoryBytes: number;
   decompressedBytes: number;
@@ -146,7 +149,7 @@ class ZipHandler {
     this.files = [];
     this.zipFileCount = 0;
     this.maxZipFiles = maxNestedZipFiles;
-    this.combinedHTML = '';
+    this.photoTextByDigest = new Map();
     this.inMemoryBytes = 0;
     this.maxInMemoryBytes = maxInMemoryBytes;
     this.decompressedBytes = 0;
@@ -218,6 +221,7 @@ class ZipHandler {
     }
 
     await this.processZip(zipData, paying, settings);
+    this.addCombinedHTMLToFiles(paying, settings);
   }
 
   // Entries the census keeps resident in memory when inflated: decoded text
@@ -312,8 +316,6 @@ class ZipHandler {
           'The zip file contains only files with no extension, so 2anki can’t tell what they are. Add the extension back (for example .txt, .md, .html, .csv, .pdf, .docx, .rtf, .xlsx or .pptx) and upload the zip again.'
         );
       }
-
-      this.addCombinedHTMLToFiles(paying, settings);
     } catch (error: unknown) {
       await this.handleZipError(error, zipData, paying, settings, before);
     }
@@ -362,9 +364,15 @@ class ZipHandler {
   }
 
   private async convertAndAddImageToHTML(name: string, file: Uint8Array) {
+    const digest = createHash('sha256').update(file).digest('hex');
+    if (this.photoTextByDigest.has(digest)) return;
     const html = await convertImageToHTML(Buffer.from(file).toString('base64'));
-    this.combinedHTML += html;
+    this.photoTextByDigest.set(digest, html);
     console.log('Converted image to HTML:', name, html);
+  }
+
+  get combinedHTML(): string {
+    return [...this.photoTextByDigest.values()].join('');
   }
 
   private addCombinedHTMLToFiles(paying: boolean, settings: CardOption) {
@@ -380,9 +388,6 @@ ${this.combinedHTML}
         name: `ocr-${getRandomUUID()}.html`,
         contents: finalHTML,
       });
-      // Each archive level emits only the photo text it has not emitted yet,
-      // so a nested zip's text is not written again by the zip around it.
-      this.combinedHTML = '';
     }
   }
 
@@ -403,8 +408,8 @@ ${this.combinedHTML}
     // fallback reads this archive again, so drop them and the memory they
     // held. The nested-zip count and the decompressed budget never rewind:
     // they are what bound the total work a crafted upload can cause. Photo
-    // text already read stays and is emitted below, since the fallback does
-    // not read photos again.
+    // text already read stays: build() writes it once the whole upload is
+    // read, since the fallback does not read photos again.
     this.files.length = before.fileCount;
     this.inMemoryBytes = before.inMemoryBytes;
 
@@ -430,11 +435,10 @@ ${this.combinedHTML}
       }
       this.files.push(file);
     }
-    this.addCombinedHTMLToFiles(paying, settings);
 
-    const anySupported = this.files.some((f) =>
-      isZipContentFileSupported(f.name)
-    );
+    const anySupported =
+      (paying && this.combinedHTML !== '') ||
+      this.files.some((f) => isZipContentFileSupported(f.name));
     if (!anySupported) {
       throw new IncompleteZipError(
         isDamagedData ? DAMAGED_ZIP_MESSAGE : INCOMPLETE_ZIP_MESSAGE

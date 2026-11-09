@@ -15,6 +15,7 @@ import {
 import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
 import CardOption from '../parser/Settings';
 import { processAndPrepareArchiveData } from './fallback/processAndPrepareArchiveData';
+import { convertImageToHTML } from '../../infrastracture/adapters/fileConversion/convertImageToHTML';
 
 vi.mock('./fallback/processAndPrepareArchiveData');
 vi.mock(
@@ -620,6 +621,42 @@ describe('ZipHandler damaged archives', () => {
     const ocrFiles = handler.files.filter((f) => f.name.startsWith('ocr-'));
     expect(ocrFiles).toHaveLength(1);
     expect(ocrFiles[0].contents).toContain('<p>read from the photo</p>');
+  });
+
+  it("keeps a nested zip's photo text when the zip around it is damaged later", async () => {
+    const part = zipSync({ 'inner-photo.png': strToU8('inner png bytes') });
+    const zip = zipSync(
+      {
+        'photo.png': strToU8('png bytes'),
+        'a-part.zip': part,
+        'z-notes.pdf': strToU8(longPage),
+      },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([{ name: 'a-part.zip', contents: part }]);
+    const convert = vi.mocked(convertImageToHTML);
+    convert.mockClear();
+    // One entry per batch, so the part opens before the damaged entry inflates.
+    const handler = new ZipHandler(
+      10,
+      MAX_IN_MEMORY_BYTES,
+      MAX_EXTRACTED_BYTES,
+      1
+    );
+
+    await handler.build(
+      damaged(zip, 'z-notes.pdf', 0, 0xff),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    const ocrFiles = handler.files.filter((f) => f.name.startsWith('ocr-'));
+    expect(ocrFiles).toHaveLength(1);
+    expect(convert).toHaveBeenCalledTimes(2);
+    expect(
+      String(ocrFiles[0].contents).split('<p>read from the photo</p>')
+    ).toHaveLength(3);
   });
 
   it('still throws an error that is not a damaged zip as it is', async () => {
