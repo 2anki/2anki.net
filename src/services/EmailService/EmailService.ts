@@ -54,7 +54,10 @@ export interface LowRatingFeedbackEmailParams {
   comment: string | null;
   page: string;
   replyTo: string;
-  emailVerified: boolean;
+  // The address typed into the rating form is the signed-in account's email.
+  matchesAccount: boolean;
+  // That account's email has been confirmed (users.email_verified).
+  accountEmailVerified: boolean;
   userId: string | null;
   latestJobId: number | null;
   latestJobStatus: string | null;
@@ -1184,25 +1187,28 @@ export class EmailService implements IEmailService {
         ? '(none stored)'
         : `${params.latestUploadId}, built ${params.latestUploadAt?.toISOString() ?? 'at an unknown time'}`;
 
-    const accountTextLines = params.emailVerified
+    const addressLabel = params.accountEmailVerified
+      ? 'verified account'
+      : 'matches the account, not verified';
+    const accountTextLines = params.matchesAccount
       ? [
           `Plan: ${params.plan ?? 'free'}`,
           `User ID: ${params.userId ?? '(unknown)'}`,
           `Latest job: ${latestJob}`,
           `Latest deck (My Decks): ${latestDeck}`,
-          `Address (verified account): ${params.replyTo}`,
+          `Address (${addressLabel}): ${params.replyTo}`,
         ]
       : [
           `Address: ${params.replyTo} (unverified, typed into the feedback form)`,
         ];
 
-    const accountHtmlLines = params.emailVerified
+    const accountHtmlLines = params.matchesAccount
       ? [
           `<li>Plan: ${escapeHtml(params.plan ?? 'free')}</li>`,
           `<li>User ID: ${escapeHtml(params.userId ?? '(unknown)')}</li>`,
           `<li>Latest job: ${escapeHtml(latestJob)}</li>`,
           `<li>Latest deck (My Decks): ${escapeHtml(latestDeck)}</li>`,
-          `<li>Address (verified account): ${escapeHtml(params.replyTo)}</li>`,
+          `<li>Address (${addressLabel}): ${escapeHtml(params.replyTo)}</li>`,
         ]
       : [
           `<li>Address: ${escapeHtml(params.replyTo)} (unverified, typed into the feedback form)</li>`,
@@ -1237,7 +1243,8 @@ export class EmailService implements IEmailService {
       cc: SUPPORT_CC_ADDRESS,
       from: DEFAULT_SENDER,
       replyTo: params.replyTo,
-      subject: `Low rating ${params.rating}/5 needs a follow-up`,
+      // Support answers by replying, so the person reads this subject too.
+      subject: `Your ${params.rating}/5 rating on 2anki`,
       text: textLines.join('\n'),
       html,
       categories: [EMAIL_CATEGORIES.lowRatingFeedback],

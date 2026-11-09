@@ -148,6 +148,7 @@ describe('EmojiFeedbackController follow-up', () => {
     });
     contextRepo.getByOwner.mockResolvedValue({
       email: 'a@b.co',
+      emailVerified: true,
       userId: '4242',
       isLifetime: false,
       hasActiveSubscription: false,
@@ -171,7 +172,8 @@ describe('EmojiFeedbackController follow-up', () => {
     expect(contextRepo.getByOwner).toHaveBeenCalledWith(4242, expect.any(Date));
     expect(sendLowRatingFeedbackEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        emailVerified: true,
+        matchesAccount: true,
+        accountEmailVerified: true,
         userId: '4242',
         plan: 'Semester Pass (120d), active until 2027-03-01 12:00 UTC',
         latestUploadId: 912,
@@ -307,7 +309,7 @@ describe('EmojiFeedbackController', () => {
       comment: 'cards are wrong',
       page: '/upload',
       replyTo: 'learner@example.com',
-      emailVerified: false,
+      matchesAccount: false,
     });
   });
 

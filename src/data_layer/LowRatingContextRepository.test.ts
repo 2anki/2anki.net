@@ -9,6 +9,7 @@ async function createSchema(db: Knex): Promise<void> {
   await db.schema.createTable('users', (t) => {
     t.integer('id').primary();
     t.text('email').notNullable();
+    t.boolean('email_verified').defaultTo(false);
     t.boolean('patreon').defaultTo(false);
   });
   await db.schema.createTable('subscriptions', (t) => {
@@ -59,6 +60,23 @@ describe('LowRatingContextRepository.getByOwner', () => {
     await db.destroy();
   });
 
+  it.each([
+    [false, false],
+    [true, true],
+  ])(
+    'reads email_verified %s as emailVerified %s',
+    async (stored, expected) => {
+      await db('users').where({ id: OWNER }).update({ email_verified: stored });
+
+      const context = await new LowRatingContextRepository(db).getByOwner(
+        OWNER,
+        NOW
+      );
+
+      expect(context?.emailVerified).toBe(expected);
+    }
+  );
+
   it('reads the active pass and newest upload of a pass holder with no Notion jobs', async () => {
     await db('user_passes').insert({
       user_id: OWNER,
@@ -97,6 +115,7 @@ describe('LowRatingContextRepository.getByOwner', () => {
 
     expect(context).toEqual({
       email: 'pass-holder@example.com',
+      emailVerified: false,
       userId: '4242',
       isLifetime: false,
       hasActiveSubscription: false,

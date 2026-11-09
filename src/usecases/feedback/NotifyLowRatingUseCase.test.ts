@@ -13,6 +13,7 @@ const HOUR = 60 * 60 * 1000;
 
 const account: LowRatingAccountContext = {
   email: 'owner@example.com',
+  emailVerified: true,
   userId: '21770',
   isLifetime: false,
   hasActiveSubscription: true,
@@ -25,6 +26,7 @@ const account: LowRatingAccountContext = {
 
 const semesterPassHolder: LowRatingAccountContext = {
   email: 'pass-holder@example.com',
+  emailVerified: false,
   userId: '4242',
   isLifetime: false,
   hasActiveSubscription: false,
@@ -141,7 +143,8 @@ describe('NotifyLowRatingUseCase', () => {
       comment: 'cards are wrong',
       page: '/upload',
       replyTo: 'typed@example.com',
-      emailVerified: false,
+      matchesAccount: false,
+      accountEmailVerified: false,
       userId: null,
       latestJobId: null,
       latestJobStatus: null,
@@ -164,7 +167,8 @@ describe('NotifyLowRatingUseCase', () => {
       comment: 'cards are wrong',
       page: '/upload',
       replyTo: 'OWNER@example.com',
-      emailVerified: true,
+      matchesAccount: true,
+      accountEmailVerified: true,
       userId: '21770',
       latestJobId: 918,
       latestJobStatus: 'failed',
@@ -190,7 +194,8 @@ describe('NotifyLowRatingUseCase', () => {
       comment: 'cards are wrong',
       page: '/upload',
       replyTo: 'pass-holder@example.com',
-      emailVerified: true,
+      matchesAccount: true,
+      accountEmailVerified: false,
       userId: '4242',
       latestJobId: null,
       latestJobStatus: null,
@@ -210,7 +215,8 @@ describe('NotifyLowRatingUseCase', () => {
     expect(sendLowRatingFeedbackEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         replyTo: 'someone-else@example.com',
-        emailVerified: false,
+        matchesAccount: false,
+        accountEmailVerified: false,
         userId: null,
         latestUploadId: null,
         latestUploadAt: null,
