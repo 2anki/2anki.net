@@ -1847,7 +1847,7 @@ class UploadService {
             'failed',
             reason,
             undefined,
-            { page_range: pageRange }
+            { page_range: pageRange, page_range_reason: reason }
           );
         }
       })

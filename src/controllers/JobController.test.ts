@@ -142,6 +142,7 @@ describe('JobController', () => {
             lower: 12,
             upper: 30,
           },
+          page_range_reason: "'30-12' goes backwards.",
         },
       },
     ]);
@@ -156,12 +157,46 @@ describe('JobController', () => {
       lower: 12,
       upper: 30,
     });
+    expect(sent.empty_back_count).toBe(0);
+    expect(sent.cherry_skipped_count).toBe(0);
+    expect(sent).not.toHaveProperty('rescue_candidates');
     expect(sent).not.toHaveProperty('conversion_report');
   });
 
+  it('serves no page range once a restart failed for another reason', async () => {
+    (jobService.getJobsByOwner as Mock).mockResolvedValue([
+      {
+        id: 11,
+        object_id: 'upload-uuid',
+        status: 'failed',
+        type: 'claude',
+        job_reason_failure: 'No HTML files found in workspace',
+        conversion_report: {
+          page_range: { reason: 'locked_pdf' },
+          page_range_reason:
+            "Page ranges don't work on password-protected PDFs.",
+        },
+      },
+    ]);
+    await jobController.getJobsByOwner(
+      req as express.Request,
+      res as express.Response
+    );
+    const [sent] = (res.send as Mock).mock.calls[0][0];
+    expect(sent).not.toHaveProperty('page_range');
+  });
+
   it.each([
-    ['a done job', 'done', { page_range: { reason: 'locked_pdf' } }],
-    ['malformed details', 'failed', { page_range: { reason: 'toString' } }],
+    [
+      'a done job',
+      'done',
+      { page_range: { reason: 'locked_pdf' }, page_range_reason: 'x' },
+    ],
+    [
+      'malformed details',
+      'failed',
+      { page_range: { reason: 'toString' }, page_range_reason: 'x' },
+    ],
     ['no report', 'failed', null],
   ])('serves no page range details for %s', async (_case, status, report) => {
     (jobService.getJobsByOwner as Mock).mockResolvedValue([

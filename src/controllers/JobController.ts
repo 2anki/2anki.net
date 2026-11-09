@@ -43,10 +43,19 @@ function storedReport(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+// Served only while the job still fails for that page range: a restart that
+// fails for another reason keeps the old report, and its own reason wins.
 function pageRangeOf(job: JobWithDownloadKey): Pick<JobResponse, 'page_range'> {
   if (job.status !== 'failed') return {};
   const report = storedReport(job.conversion_report);
-  const pageRange = pdfPageRangeDetailsOf({ details: report?.page_range });
+  if (
+    report == null ||
+    report.page_range_reason == null ||
+    report.page_range_reason !== job.job_reason_failure
+  ) {
+    return {};
+  }
+  const pageRange = pdfPageRangeDetailsOf({ details: report.page_range });
   return pageRange == null ? {} : { page_range: pageRange };
 }
 

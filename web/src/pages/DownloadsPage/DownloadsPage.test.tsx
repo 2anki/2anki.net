@@ -573,6 +573,28 @@ describe('DownloadsPage failure reason panel', () => {
     ).toBeInTheDocument();
   });
 
+  it("words a failed upload's mistyped page range from the job's details", () => {
+    mockJobs = [
+      buildJob({
+        status: 'failed',
+        type: 'claude',
+        title: 'Lecture slides',
+        job_reason_failure: 'English server text',
+        page_range: { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
+      }),
+    ];
+    renderAt('/downloads');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Show failure reason/i })
+    );
+
+    expect(
+      screen.getByText('Pages 11-14 are past the end of this 10-page PDF.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('English server text')).toBeNull();
+  });
+
   it('collapses panel when clicking chevron again', () => {
     mockJobs = [
       buildJob({
