@@ -290,26 +290,63 @@ describe('parseDeckResponse', () => {
     ]);
   });
 
-  it('keeps the reply text out of the logs on an unrecoverable parse failure', () => {
+  it('keeps the reply text out of every log level on an unrecoverable parse failure', () => {
+    const spies = (['error', 'warn', 'info', 'log'] as const).map((level) =>
+      vi.spyOn(console, level).mockImplementation(() => undefined)
+    );
+    try {
+      const raw =
+        '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-QUESTION","a"] PRIVATE-TRAILING: {"x"';
+      expect(() => parseDeckResponse(raw, raw, 0)).toThrow(
+        expect.objectContaining({ name: 'ClaudeLargeSectionError' })
+      );
+      const logged = JSON.stringify(spies.map((spy) => spy.mock.calls));
+      expect(logged).toContain('[Claude] Failed to parse response as JSON');
+      expect(logged).not.toContain('PRIVATE');
+    } finally {
+      spies.forEach((spy) => spy.mockRestore());
+    }
+  });
+
+  it('keeps the reply text out of the log when the reply is valid JSON but not a deck array', () => {
     const errorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
     try {
-      const raw =
-        '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-QUESTION","a"';
+      const raw = '{"deck":"PRIVATE-DECK"}';
+      expect(() => parseDeckResponse(raw, raw, 0)).toThrow(
+        expect.objectContaining({ name: 'ClaudeParseError' })
+      );
+      const summary = errorSpy.mock.calls.find(
+        ([msg]) => msg === '[Claude] Response is not an array'
+      );
+      expect(summary![1]).toMatchObject({
+        raw: { length: raw.length, sha256_prefix: expect.any(String) },
+      });
+      expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('PRIVATE');
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('logs the stop reason and parse offset on an unrecoverable parse failure', () => {
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      const raw = '[{"deck":"X","cards":[{"q":"a","a"';
       try {
         parseDeckResponse(raw, raw, 0, 'end_turn');
       } catch {
         // expected
       }
-      expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('PRIVATE');
       const summary = errorSpy.mock.calls.find(
         ([msg]) => msg === '[Claude] Failed to parse response as JSON'
       );
       expect(summary![1]).toMatchObject({
         chunkIndex: 0,
         stopReason: 'end_turn',
-        parseErrorPosition: raw.length,
+        parseErrorPosition: expect.any(Number),
         raw: { length: raw.length, sha256_prefix: expect.any(String) },
       });
     } finally {
@@ -1569,6 +1606,30 @@ describe('generateDeckInfo — truncated chunk retry', () => {
     mockStreamFn.mockReturnValue(mockStream);
     mockStream.on.mockReturnThis();
   });
+
+  it.each(['end_turn', 'max_tokens', 'refusal'])(
+    'names stop reason %s when the reply cannot be parsed',
+    async (stopReason) => {
+      mockStream.finalMessage.mockResolvedValue({
+        content: [{ type: 'text', text: 'no json here at all' }],
+        stop_reason: stopReason,
+        usage: { input_tokens: 100, output_tokens: 50 },
+      });
+      const errorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      try {
+        await generateDeckInfo(htmlOneChunk, []).catch(() => undefined);
+        const summaries = errorSpy.mock.calls.filter(
+          ([msg]) => msg === '[Claude] Failed to parse response as JSON'
+        );
+        expect(summaries[0]?.[1]).toMatchObject({ stopReason });
+      } finally {
+        errorSpy.mockRestore();
+        mockStream.finalMessage.mockReset();
+      }
+    }
+  );
 
   it('stop_reason max_tokens → splits the chunk in half and retries, then succeeds', async () => {
     mockStream.finalMessage

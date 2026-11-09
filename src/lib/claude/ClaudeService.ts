@@ -1014,7 +1014,11 @@ function sanitizeCompactDecks(
 // Only the offset: the rest of V8's message can quote the reply.
 function jsonErrorPosition(error: unknown): number | null {
   const match =
-    error instanceof Error ? /position (\d+)/.exec(error.message) : null;
+    error instanceof Error
+      ? /in JSON at position (\d+)(?: \(line \d+ column \d+\))?$/.exec(
+          error.message
+        )
+      : null;
   return match == null ? null : Number(match[1]);
 }
 
@@ -1033,7 +1037,6 @@ export function parseDeckResponse(
       console.warn('[Claude] Trailing prose stripped', {
         chunkIndex,
         strippedBytes: trailing.length,
-        sample: trailing.slice(0, 80),
       });
     }
   }

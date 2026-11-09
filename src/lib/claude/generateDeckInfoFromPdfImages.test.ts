@@ -347,6 +347,33 @@ describe('generateDeckInfoFromPdfImages', () => {
     ).rejects.toThrow(EMPTY_CONTENT_UPLOAD_MESSAGE);
   });
 
+  it.each(['end_turn', 'max_tokens', 'refusal'])(
+    'names stop reason %s when a page reply cannot be parsed',
+    async (stopReason) => {
+      mockVisionFn.mockResolvedValue(
+        visionResponse('no json here at all', stopReason)
+      );
+      const errorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const warnSpy = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      try {
+        await generateDeckInfoFromPdfImages(html, {
+          mediaBaseDir: baseDir,
+        }).catch(() => undefined);
+        const summaries = errorSpy.mock.calls.filter(
+          ([msg]) => msg === '[Claude] Failed to parse response as JSON'
+        );
+        expect(summaries[0]?.[1]).toMatchObject({ stopReason });
+      } finally {
+        errorSpy.mockRestore();
+        warnSpy.mockRestore();
+      }
+    }
+  );
+
   it('keeps cards from readable pages when one page comes back blank', async () => {
     mockVisionFn
       .mockResolvedValueOnce(visionResponse('[]'))
