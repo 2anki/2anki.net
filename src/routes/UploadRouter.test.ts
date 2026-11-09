@@ -5,6 +5,7 @@ import { AddressInfo } from 'node:net';
 
 let mockAuthOwner: number | null = 42;
 let mockOriginOwner: number | undefined;
+let mockOriginSubscriber = false;
 
 vi.mock('./middleware/RequireAuthentication', () => {
   const middleware = (
@@ -34,6 +35,7 @@ vi.mock('./middleware/RequireAllowedOrigin', () => ({
     next: express.NextFunction
   ) => {
     if (mockOriginOwner != null) res.locals.owner = mockOriginOwner;
+    if (mockOriginSubscriber) res.locals.subscriber = true;
     next();
   },
 }));
@@ -54,6 +56,9 @@ const mockDropbox = vi.fn();
 const mockSample = vi.fn();
 const mockFile = vi.fn();
 const mockRetryPdf = vi.fn();
+const mockGoogleDrive = vi.fn((_req: express.Request, res: express.Response) =>
+  res.status(200).json({})
+);
 
 vi.mock('../controllers/Upload/UploadController', () => ({
   __esModule: true,
@@ -62,7 +67,7 @@ vi.mock('../controllers/Upload/UploadController', () => ({
       dropbox: mockDropbox,
       file: mockFile,
       retryPdfWithCredential: mockRetryPdf,
-      googleDrive: vi.fn(),
+      googleDrive: mockGoogleDrive,
       getDropboxUploads: vi.fn(),
       deleteDropboxUpload: vi.fn(),
       getGoogleDriveUploads: vi.fn(),
@@ -205,8 +210,12 @@ describe('UploadRouter POST /api/upload/dropbox', () => {
 });
 
 describe('UploadRouter answers an over-long saved setting on a cloud pick', () => {
-  // Over multer's default 1 MB field limit on these routes.
-  const tooLong = 'x'.repeat(1024 * 1024 + 1);
+  // Over the free plan's 2 MB field limit, the one a file upload has.
+  const tooLong = 'x'.repeat(2 * 1024 * 1024 + 1);
+
+  afterEach(() => {
+    mockOriginSubscriber = false;
+  });
 
   it.each([
     [
@@ -238,6 +247,123 @@ describe('UploadRouter answers an over-long saved setting on a cloud pick', () =
       }
     }
   );
+});
+
+describe('UploadRouter gives cloud picks the field limit of the caller plan', () => {
+  // Over multer's default 1 MB, under the free plan's 2 MB.
+  const overOldLimit = 'x'.repeat(1024 * 1024 + 1);
+  // Over the free plan's 2 MB, under the paying plan's 20 MB.
+  const overFreeLimit = 'x'.repeat(2 * 1024 * 1024 + 1);
+  const controllerFor: Record<string, ReturnType<typeof vi.fn>> = {
+    dropbox: mockDropbox,
+    google_drive: mockGoogleDrive,
+  };
+  const receivedDeckName = (route: string) =>
+    (controllerFor[route].mock.calls[0][0] as express.Request).body.deckName;
+
+  beforeEach(() => {
+    mockAuthOwner = 42;
+    for (const controller of [mockDropbox, mockGoogleDrive, mockRetryPdf]) {
+      controller.mockReset();
+      controller.mockImplementation(
+        (_req: express.Request, res: express.Response) =>
+          res.status(200).json({ ok: true })
+      );
+    }
+  });
+
+  afterEach(() => {
+    mockOriginSubscriber = false;
+  });
+
+  it.each(['dropbox', 'google_drive'])(
+    'lets a free caller send a 1 MB setting on /api/upload/%s, as from disk',
+    async (route) => {
+      mockAuthOwner = 42;
+      const { url, close } = await startServer();
+      try {
+        const form = new FormData();
+        form.append('deckName', overOldLimit);
+        const res = await fetch(`${url}/api/upload/${route}`, {
+          method: 'POST',
+          body: form,
+        });
+        expect(res.status).toBe(200);
+        expect(receivedDeckName(route)).toBe(overOldLimit);
+      } finally {
+        await close();
+      }
+    }
+  );
+
+  it.each(['dropbox', 'google_drive'])(
+    'lets a paying caller send a setting over the free limit on /api/upload/%s',
+    async (route) => {
+      mockAuthOwner = 42;
+      mockOriginSubscriber = true;
+      const { url, close } = await startServer();
+      try {
+        const form = new FormData();
+        form.append('deckName', overFreeLimit);
+        const res = await fetch(`${url}/api/upload/${route}`, {
+          method: 'POST',
+          body: form,
+        });
+        expect(res.status).toBe(200);
+        expect(receivedDeckName(route)).toBe(overFreeLimit);
+      } finally {
+        await close();
+      }
+    }
+  );
+
+  it('lets a free caller send a 1 MB setting on the password retry, as from disk', async () => {
+    mockOriginOwner = 42;
+    const { url, close } = await startServer();
+    try {
+      const form = new FormData();
+      form.append('deckName', overOldLimit);
+      form.append(
+        'file',
+        new Blob(['%PDF-1.4'], { type: 'application/pdf' }),
+        'a.pdf'
+      );
+      const res = await fetch(`${url}/api/upload/retry-with-credential`, {
+        method: 'POST',
+        body: form,
+      });
+      expect(res.status).toBe(200);
+      expect(
+        (mockRetryPdf.mock.calls[0][0] as express.Request).body.deckName
+      ).toBe(overOldLimit);
+    } finally {
+      mockOriginOwner = undefined;
+      await close();
+    }
+  });
+
+  it('answers an over-long setting on the password retry with the upload copy', async () => {
+    mockOriginOwner = 42;
+    const { url, close } = await startServer();
+    try {
+      const form = new FormData();
+      form.append('user-instructions', overFreeLimit);
+      const res = await fetch(`${url}/api/upload/retry-with-credential`, {
+        method: 'POST',
+        body: form,
+      });
+      expect(res.status).toBe(413);
+      expect(await res.json()).toEqual({
+        code: 'unknown',
+        message:
+          'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
+      });
+      expect(mockRetryPdf).not.toHaveBeenCalled();
+    } finally {
+      mockOriginOwner = undefined;
+      await close();
+    }
+  });
 });
 
 describe('UploadRouter POST /api/upload/sample', () => {
