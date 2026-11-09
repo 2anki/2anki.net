@@ -321,6 +321,17 @@ describe('CreateImageOcclusionDeckUseCase', () => {
       return promise;
     }
 
+    it('passes the request ID to the deck builder for its operator email', async () => {
+      await runBuilder({ ...UPLOADED, requestId: 'req-7' }, '', 'boom', 1);
+
+      const options = (mockChild.spawn as Mock).mock.calls[
+        (mockChild.spawn as Mock).mock.calls.length - 1
+      ][2] as {
+        env?: NodeJS.ProcessEnv;
+      };
+      expect(options.env?.TWOANKI_REQUEST_ID).toBe('req-7');
+    });
+
     const CRASH = `Traceback (most recent call last):\nFileNotFoundError: [Errno 2] No such file or directory: '/tmp/ws/${IMAGE_NAME}'`;
 
     it.each([

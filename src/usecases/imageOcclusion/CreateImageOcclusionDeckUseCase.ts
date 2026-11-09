@@ -1,4 +1,5 @@
 import { HttpCodedError } from '../../lib/errors/HttpCodedError';
+import { deckWriterEnv } from '../../lib/anki/deckWriterEnv';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
@@ -35,6 +36,7 @@ export interface CreateImageOcclusionDeckInput {
   imageFiles: { name: string; path: string }[];
   isPaying: boolean;
   ownerId: number | null;
+  requestId?: string;
 }
 
 // The client names the S3 object to read, so a key is honoured only inside
@@ -194,7 +196,10 @@ export class CreateImageOcclusionDeckUseCase {
         'utf-8'
       );
 
-      const apkgPath = await this.runPythonBridge(workspaceDir);
+      const apkgPath = await this.runPythonBridge(
+        workspaceDir,
+        input.requestId
+      );
       return apkgPath;
     } catch (err) {
       fs.rmSync(workspaceDir, { recursive: true, force: true });
@@ -202,11 +207,15 @@ export class CreateImageOcclusionDeckUseCase {
     }
   }
 
-  private runPythonBridge(workspaceDir: string): Promise<string> {
+  private runPythonBridge(
+    workspaceDir: string,
+    requestId: string | undefined
+  ): Promise<string> {
     const python = findPython();
     return new Promise((resolve, reject) => {
       const proc = spawn(python, [IO_SCRIPT_PATH, workspaceDir], {
         cwd: workspaceDir,
+        env: deckWriterEnv(requestId),
       });
 
       const stdoutChunks: string[] = [];
