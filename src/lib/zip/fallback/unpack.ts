@@ -45,6 +45,12 @@ async function extractedBytes(
   return total;
 }
 
+function openLog(logPath: string) {
+  return createWriteStream(logPath, { flags: 'a' }).on('error', () => {
+    console.warn('[zip] recovery log is unavailable');
+  });
+}
+
 export function unpack(
   filePath: string,
   workspace: string,
@@ -55,8 +61,8 @@ export function unpack(
     const stdoutLogPath = join(workspace, 'tar_stdout.log');
     const stderrLogPath = join(workspace, 'tar_stderr.log');
 
-    const stdoutStream = createWriteStream(stdoutLogPath, { flags: 'a' });
-    const stderrStream = createWriteStream(stderrLogPath, { flags: 'a' });
+    const stdoutStream = openLog(stdoutLogPath);
+    const stderrStream = openLog(stderrLogPath);
 
     const decompressProcess = spawn(limits.tarPath, ['xvf', filePath], {
       cwd: workspace,

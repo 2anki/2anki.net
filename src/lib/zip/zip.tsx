@@ -444,13 +444,16 @@ ${this.combinedHTML}
       (paying && this.combinedHTML !== '') ||
       this.files.some((f) => isZipContentFileSupported(f.name));
     if (!anySupported) {
+      if (this.recoveredBytes >= this.maxDecompressedBytes) {
+        throw new ZipRecoveryTooLargeError();
+      }
       throw new IncompleteZipError(
         isDamagedData ? DAMAGED_ZIP_MESSAGE : INCOMPLETE_ZIP_MESSAGE
       );
     }
   }
 
-  // Shared by every archive in the upload, like the census budget. Bytes the
+  // Shared by every archive in one uploaded file, like the census budget. Bytes the
   // census counted are not subtracted: they are declared sizes of the same
   // archive being recovered, and would refuse a legitimate large export.
   private remainingRecoveryBudget(): RecoveryBudget {
@@ -470,23 +473,58 @@ ${this.combinedHTML}
     return budget;
   }
 
+  // Spent in full, so a refused recovery cannot be repeated by the next
+  // archive and the file ends with the too-large message if nothing is left.
+  private refuseRecovery(): ZipRecoveryTooLargeError {
+    this.recoveredBytes = this.maxDecompressedBytes;
+    return new ZipRecoveryTooLargeError();
+  }
+
+  private async readRecoveredArchive(zipData: Uint8Array, paying: boolean) {
+    try {
+      return await processAndPrepareArchiveData(
+        zipData,
+        paying,
+        this.remainingRecoveryBudget()
+      );
+    } catch (error: unknown) {
+      if (error instanceof ZipRecoveryTooLargeError)
+        throw this.refuseRecovery();
+      throw error;
+    }
+  }
+
+  // Charged before any nested zip opens, so it sees what is really left.
+  private chargeRecoveredFiles(files: { size?: number; contents?: unknown }[]) {
+    for (const file of files) {
+      // A file with a size is still on disk; reading it here would load it.
+      const contents = file.size == null ? file.contents : undefined;
+      const textBytes = typeof contents === 'string' ? contents.length : 0;
+      this.recoveredBytes += file.size ?? textBytes;
+      this.inMemoryBytes += textBytes;
+    }
+    if (
+      this.recoveredBytes > this.maxDecompressedBytes ||
+      this.inMemoryBytes > this.maxInMemoryBytes
+    ) {
+      throw this.refuseRecovery();
+    }
+  }
+
   private async recoverWithFallback(
     zipData: Uint8Array,
     paying: boolean,
     settings: CardOption
   ) {
-    const foundFiles = await processAndPrepareArchiveData(
-      zipData,
-      paying,
-      this.remainingRecoveryBudget()
-    );
+    const foundFiles = await this.readRecoveredArchive(zipData, paying);
+    this.chargeRecoveredFiles(foundFiles);
     console.log('Processed files using fallback method:');
     for (const file of foundFiles) {
-      const nestedZip = /\.zip$/i.test(file.name) ? file.contents : undefined;
-      if (
-        nestedZip instanceof Uint8Array &&
-        this.zipFileCount < this.maxZipFiles
-      ) {
+      const nestedZip =
+        /\.zip$/i.test(file.name) && this.zipFileCount < this.maxZipFiles
+          ? file.contents
+          : undefined;
+      if (nestedZip instanceof Uint8Array) {
         // bsdtar reads sequentially and often recovers a nested export part
         // intact even when the outer archive is truncated. Recurse so its
         // pages convert; a nested part that is itself truncated fails its own
@@ -499,13 +537,6 @@ ${this.combinedHTML}
         }
         continue;
       }
-      // A file with a size is still on disk; reading it here would load it.
-      const textBytes =
-        file.size == null && typeof file.contents === 'string'
-          ? file.contents.length
-          : 0;
-      this.recoveredBytes += file.size ?? textBytes;
-      this.trackInMemoryBytes(textBytes);
       this.files.push(file);
     }
   }

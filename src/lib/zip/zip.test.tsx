@@ -14,6 +14,7 @@ import {
 } from './zip';
 import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
 import { MAX_RECOVERY_MS } from './zipLimits';
+import { ZipRecoveryTooLargeError } from './fallback/ZipRecoveryTooLargeError';
 import CardOption from '../parser/Settings';
 import { processAndPrepareArchiveData } from './fallback/processAndPrepareArchiveData';
 import { convertImageToHTML } from '../../infrastracture/adapters/fileConversion/convertImageToHTML';
@@ -393,7 +394,7 @@ describe('ZipHandler incomplete archives (#4028)', () => {
         new CardOption({}),
         makeSpillDir()
       )
-    ).rejects.toThrow('too large to process');
+    ).rejects.toMatchObject({ name: 'ZipRecoveryTooLargeError' });
   });
 
   it('leaves a recovered file on disk until something reads it', async () => {
@@ -440,8 +441,8 @@ describe('ZipHandler incomplete archives (#4028)', () => {
     const part = truncated(buildZip({ 'Part.html': '<p>part</p>' }));
     mockedFallback
       .mockResolvedValueOnce([
+        { name: 'Part-1.zip', size: 100, contents: part },
         { name: 'big.bin', size: 900, contents: undefined },
-        { name: 'Part-1.zip', contents: part },
       ])
       .mockResolvedValueOnce([{ name: 'kept.html', contents: '<p>kept</p>' }]);
     const handler = new ZipHandler(10, 10_000, 5000);
@@ -454,7 +455,46 @@ describe('ZipHandler incomplete archives (#4028)', () => {
     );
 
     expect(mockedFallback.mock.calls[0][2].maxBytes).toBe(5000);
-    expect(mockedFallback.mock.calls[1][2].maxBytes).toBe(4100);
+    expect(mockedFallback.mock.calls[1][2].maxBytes).toBe(4000);
+  });
+
+  it('does not repeat a recovery after one is refused', async () => {
+    const part = truncated(buildZip({ 'Part.html': '<p>part</p>' }));
+    mockedFallback
+      .mockResolvedValueOnce([
+        { name: 'page.html', contents: '<p>kept</p>' },
+        { name: 'Part-1.zip', contents: part },
+        { name: 'Part-2.zip', contents: part },
+      ])
+      .mockRejectedValueOnce(new ZipRecoveryTooLargeError());
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      truncated(buildZip({ 'page.html': '<p>hi</p>' })),
+      false,
+      new CardOption({}),
+      makeSpillDir()
+    );
+
+    expect(mockedFallback).toHaveBeenCalledTimes(2);
+    expect(handler.getFileNames()).toEqual(['page.html']);
+  });
+
+  it('says too large, not incomplete, when a refused recovery leaves nothing', async () => {
+    const part = truncated(buildZip({ 'Part.html': '<p>part</p>' }));
+    mockedFallback
+      .mockResolvedValueOnce([{ name: 'Part-1.zip', contents: part }])
+      .mockRejectedValueOnce(new ZipRecoveryTooLargeError());
+    const handler = new ZipHandler(10);
+
+    await expect(
+      handler.build(
+        truncated(buildZip({ 'page.html': '<p>hi</p>' })),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      )
+    ).rejects.toMatchObject({ name: 'ZipRecoveryTooLargeError' });
   });
 
   it('skips nested recovery once the time budget is spent, and keeps what it has', async () => {

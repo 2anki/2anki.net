@@ -108,6 +108,16 @@ describe('unpack', () => {
     ).rejects.toThrow(RECOVERY_TOO_LARGE_MESSAGE);
   });
 
+  it('rejects when the workspace is gone, without a stray log-file error', async () => {
+    const tarPath = fakeTar('exit 0');
+    const missing = path.join(workspace, 'missing');
+
+    await expect(
+      unpack(archive, missing, limits({ tarPath }))
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+    await new Promise((settle) => setTimeout(settle, 20));
+  });
+
   it('rejects when the tool cannot start', async () => {
     await expect(
       unpack(
