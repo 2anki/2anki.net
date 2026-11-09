@@ -12842,6 +12842,50 @@ describe('claiming a held deck after sign-in', () => {
     expect(screen.getByText('184 cards ready, 21 shown')).toBeInTheDocument();
   });
 
+  it('counts the answerless lines in the month offer when the rest is saved', async () => {
+    signIn();
+    mockCutClaim({
+      cardCount: 10,
+      cardsHeldBack: 24,
+      heldForPlan: true,
+      cutAt: 'month',
+      cardsLeftOut: 4,
+    });
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText('This deck has 10 of 38 cards')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /more lines were past the free limit and had no answer/
+      )
+    ).toBeNull();
+  });
+
+  it('says how many answerless lines a month cut left out when nothing was saved', async () => {
+    signIn();
+    mockCutClaim({
+      cardCount: 10,
+      cardsHeldBack: 24,
+      heldForPlan: false,
+      cutAt: 'month',
+      cardsLeftOut: 4,
+    });
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText('This deck has 10 of 34 cards')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /4 more lines were past the free limit and had no answer/
+      )
+    ).toBeInTheDocument();
+  });
+
   it('offers the passes for the rest of a claim cut at the free month', async () => {
     signIn();
     mockCutClaim({

@@ -8741,11 +8741,12 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   ])('says how many answerless lines %s left out', async (_case, options) => {
     mockGetFeatureFlag.mockResolvedValue(true);
     mockPartial([{ name: 'deck', cardCount: 21, cardsLeftOut: 6 }], 0);
+    const heldDeck = new InMemoryHeldDeckRepository();
     const service = new UploadService(
       buildRepository(),
       {} as JobRepository,
       buildUsersRepo(),
-      ...fakeUploadServiceDeps({ heldDeck: new InMemoryHeldDeckRepository() })
+      ...fakeUploadServiceDeps({ heldDeck })
     );
 
     const result = await service.convertHeldFileForOwner(
@@ -8759,6 +8760,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     );
 
     expect(result).toMatchObject({ cardCount: 21, cardsLeftOut: 6 });
+    expect(heldDeck.rows).toHaveLength(0);
   });
 
   it('saves nothing for a plan when a paying claim builds the whole deck', async () => {
