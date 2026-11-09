@@ -1,5 +1,6 @@
 import { AI_FILE_CONCURRENCY } from '../../../lib/claude/aiFileConcurrency';
 import { vi, type Mock, type MockInstance } from 'vitest';
+import { isLockedPdfError } from '../../../usecases/jobs/jobFailureReason';
 import fsModule from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -1280,6 +1281,42 @@ describe('PrepareDeck — PDF text-vs-image gate', () => {
     expect(parsePdfPasswordSentinel(error.message)).toBe('notes.pdf');
   });
 
+  const lockedPagePairs = (pdfCredential: string) => {
+    (convertPDFToImages as Mock).mockRejectedValueOnce(
+      new Error('pdfinfo_password path=notes.pdf')
+    );
+    return PrepareDeck({
+      name: 'notes.pdf',
+      files: [{ name: 'notes.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+      settings: makeSettings({ 'pdf-page-pairs': 'true' }),
+      noLimits: true,
+      workspace: makeWorkspace(),
+      pdfCredential,
+    }).then(
+      () => new Error('PrepareDeck resolved'),
+      (e: unknown) => e as Error
+    );
+  };
+
+  it.each([
+    ['33 ASCII characters', 'x'.repeat(33)],
+    ['17 two-byte characters (34 bytes)', '\u00e9'.repeat(17)],
+  ])(
+    'never calls a page-image password of %s wrong, since poppler reads only 32 bytes',
+    async (_case, credential) => {
+      const error = await lockedPagePairs(credential);
+
+      expect(isPdfPasswordSentinel(error.message)).toBe(false);
+      expect(isLockedPdfError(error)).toBe(true);
+    }
+  );
+
+  it('still asks again for a 32-byte password the page images refuse', async () => {
+    const error = await lockedPagePairs('x'.repeat(32));
+
+    expect(isPdfPasswordSentinel(error.message)).toBe(true);
+  });
+
   it('renders page images with the password the person entered', async () => {
     await PrepareDeck({
       name: 'notes.pdf',
@@ -1984,6 +2021,43 @@ describe('PrepareDeck — a PDF with no usable text', () => {
       expect(convertPDFToImages).toHaveBeenCalledWith(
         expect.objectContaining({ credential: 's3cret' })
       );
+    }
+  );
+
+  it.each([
+    ['auto-detected', {}, () => convertPdfTextToHtmlAuto],
+    [
+      'extract-text',
+      { 'pdf-extract-text': 'true' },
+      () => convertPdfTextToHtml,
+    ],
+    [
+      'Claude vision',
+      { 'claude-ai-flashcards': 'true' },
+      () => convertPdfTextToHtmlAuto,
+    ],
+  ])(
+    'never calls a %s scanned PDF password over 32 bytes wrong once pdf.js accepted it',
+    async (_path, extra, textPath) => {
+      textPath().mockResolvedValueOnce(noText);
+      (convertPDFToImages as Mock).mockRejectedValueOnce(
+        new Error('pdfinfo_password path=scan.pdf')
+      );
+
+      const error = await PrepareDeck({
+        name: 'scan.pdf',
+        files: [{ name: 'scan.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+        settings: makeSettings({ 'pdf-fallback': 'pairs', ...extra }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+        pdfCredential: 'x'.repeat(33),
+      }).then(
+        () => new Error('PrepareDeck resolved'),
+        (e: unknown) => e as Error
+      );
+
+      expect(isPdfPasswordSentinel(error.message)).toBe(false);
+      expect(isLockedPdfError(error)).toBe(true);
     }
   );
 
