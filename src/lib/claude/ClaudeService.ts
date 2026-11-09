@@ -718,14 +718,12 @@ export function extractJsonArray(text: string): string | null {
 
 type RedactedPayload = {
   length: number;
-  prefix: string;
   sha256_prefix: string;
 };
 
 function redactClaudePayload(text: string): RedactedPayload {
   return {
     length: text.length,
-    prefix: text.slice(0, 80),
     sha256_prefix: createHash('sha256').update(text).digest('hex').slice(0, 12),
   };
 }
@@ -1013,10 +1011,18 @@ function sanitizeCompactDecks(
   return decks;
 }
 
+// Only the offset: the rest of V8's message can quote the reply.
+function jsonErrorPosition(error: unknown): number | null {
+  const match =
+    error instanceof Error ? /position (\d+)/.exec(error.message) : null;
+  return match == null ? null : Number(match[1]);
+}
+
 export function parseDeckResponse(
   cleaned: string,
   raw: string,
-  chunkIndex: number
+  chunkIndex: number,
+  stopReason?: string | null
 ): CompactDeck[] {
   const toParse = extractJsonArray(cleaned) ?? cleaned;
 
@@ -1035,7 +1041,7 @@ export function parseDeckResponse(
   let parsed: unknown;
   try {
     parsed = JSON.parse(toParse);
-  } catch {
+  } catch (parseError) {
     const rewritten = tryRewrittenDeckArray(cleaned);
     const repaired = rewritten ? null : tryRepairDeckArray(toParse);
     if (rewritten) {
@@ -1051,19 +1057,13 @@ export function parseDeckResponse(
     } else {
       console.error('[Claude] Failed to parse response as JSON', {
         chunkIndex,
+        stopReason,
         repairFailureReason: describeRepairFailure(toParse),
-        rawTail: raw.slice(-400),
+        parseErrorPosition: jsonErrorPosition(parseError),
         raw: redactClaudePayload(raw),
         cleaned: redactClaudePayload(cleaned),
         toParse: redactClaudePayload(toParse),
       });
-      // raw passed as its own string argument: util.inspect truncates strings
-      // nested in objects at 10k chars, which silently dropped most of the dump.
-      console.error(
-        '[Claude] Unrecoverable parse failure — full response',
-        { chunkIndex },
-        raw
-      );
       if (looksLikeEmptyContentExplanation(cleaned)) {
         throw new EmptyContentError();
       }
@@ -1087,10 +1087,11 @@ function salvageTruncatedDecks(
   cleaned: string,
   raw: string,
   availableMediaFiles: string[],
-  chunkIndex: number
+  chunkIndex: number,
+  stopReason: string | null
 ): DeckInfo[] {
   try {
-    const parsed = parseDeckResponse(cleaned, raw, chunkIndex);
+    const parsed = parseDeckResponse(cleaned, raw, chunkIndex, stopReason);
     return expandCompactDeckInfo(parsed, availableMediaFiles, null);
   } catch {
     return [];
@@ -1227,7 +1228,13 @@ async function generateDeckInfoFromChunk(
   // refusal that wrote nothing usable is recorded but never billed.
   const salvaged =
     response.stop_reason === 'refusal' && cleaned
-      ? salvageTruncatedDecks(cleaned, raw, availableMediaFiles, chunkIndex)
+      ? salvageTruncatedDecks(
+          cleaned,
+          raw,
+          availableMediaFiles,
+          chunkIndex,
+          response.stop_reason
+        )
       : [];
   const salvagedCards = salvaged.reduce(
     (sum, deck) => sum + deck.cards.length,
@@ -1272,7 +1279,8 @@ async function generateDeckInfoFromChunk(
       cleaned,
       raw,
       availableMediaFiles,
-      chunkIndex
+      chunkIndex,
+      response.stop_reason
     );
     console.warn('[Claude] Response truncated at max_tokens', {
       requestId,
@@ -1286,7 +1294,12 @@ async function generateDeckInfoFromChunk(
   }
 
   const tParse0 = Date.now();
-  const parsed = parseDeckResponse(cleaned, raw, chunkIndex);
+  const parsed = parseDeckResponse(
+    cleaned,
+    raw,
+    chunkIndex,
+    response.stop_reason
+  );
 
   const deckInfo = expandCompactDeckInfo(parsed, availableMediaFiles, null);
   const parseMs = Date.now() - tParse0;

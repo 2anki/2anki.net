@@ -290,27 +290,28 @@ describe('parseDeckResponse', () => {
     ]);
   });
 
-  it('logs the full raw response body on unrecoverable parse failure for reproducibility', () => {
+  it('keeps the reply text out of the logs on an unrecoverable parse failure', () => {
     const errorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
     try {
-      const raw = '[{"deck":"X","cards":[{"q":"a","a"';
+      const raw =
+        '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-QUESTION","a"';
       try {
-        parseDeckResponse(raw, raw, 0);
+        parseDeckResponse(raw, raw, 0, 'end_turn');
       } catch {
         // expected
       }
-      const fullDump = errorSpy.mock.calls.find(
-        ([msg]) =>
-          msg === '[Claude] Unrecoverable parse failure — full response'
+      expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('PRIVATE');
+      const summary = errorSpy.mock.calls.find(
+        ([msg]) => msg === '[Claude] Failed to parse response as JSON'
       );
-      expect(fullDump).toBeDefined();
-      const payload = fullDump![1] as { chunkIndex: number };
-      expect(payload.chunkIndex).toBe(0);
-      // raw goes as its own string argument: util.inspect truncates strings
-      // inside objects at 10k chars, which silently dropped most of the dump.
-      expect(fullDump![2]).toBe(raw);
+      expect(summary![1]).toMatchObject({
+        chunkIndex: 0,
+        stopReason: 'end_turn',
+        parseErrorPosition: raw.length,
+        raw: { length: raw.length, sha256_prefix: expect.any(String) },
+      });
     } finally {
       errorSpy.mockRestore();
     }
@@ -490,21 +491,15 @@ describe('parseDeckResponse', () => {
       const loggedObj = summary![1] as Record<string, unknown>;
       expect(loggedObj).toMatchObject({
         chunkIndex: 3,
-        raw: expect.objectContaining({
+        raw: { length: expect.any(Number), sha256_prefix: expect.any(String) },
+        cleaned: {
           length: expect.any(Number),
-          prefix: expect.any(String),
           sha256_prefix: expect.any(String),
-        }),
-        cleaned: expect.objectContaining({
+        },
+        toParse: {
           length: expect.any(Number),
-          prefix: expect.any(String),
           sha256_prefix: expect.any(String),
-        }),
-        toParse: expect.objectContaining({
-          length: expect.any(Number),
-          prefix: expect.any(String),
-          sha256_prefix: expect.any(String),
-        }),
+        },
       });
       const rawVal = loggedObj.raw as Record<string, unknown>;
       expect(typeof rawVal.raw).toBe('undefined');
