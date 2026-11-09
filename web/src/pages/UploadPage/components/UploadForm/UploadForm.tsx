@@ -1030,11 +1030,13 @@ function UploadForm({
   const claimAttemptedRef = useRef(false);
   const [planClaim, setPlanClaim] = useState(false);
   const [alsoClaimed, setAlsoClaimed] = useState(0);
-  // A free sign-up claim cut to the preview: what is still held back, and
-  // whether the source is saved so a pass releases it without a re-upload.
+  // A free sign-up claim cut at the preview or at the cards left this month:
+  // what is still held back, and whether the source is saved so a pass
+  // releases it without a re-upload.
   const [claimPreview, setClaimPreview] = useState<{
     heldBack: number;
     saved: boolean;
+    cutAt: 'preview' | 'month';
   } | null>(null);
   const [returnedFromCheckout] = useState(() => {
     const params = new URLSearchParams(globalThis.location?.search ?? '');
@@ -1092,18 +1094,25 @@ function UploadForm({
         if (result.status === 200 && result.downloadKey != null) {
           setPlanClaim(result.kind === 'plan');
           setAlsoClaimed(result.alsoClaimed ?? 0);
+          const claimHeldBack = result.cardsHeldBack ?? 0;
+          const claimSaved = result.heldForPlan === true;
+          const claimLeftOut = result.cardsLeftOut ?? 0;
+          // Saved for a plan, a pass builds the answerless lines too, so they
+          // count in the offer instead of a notice to edit the file.
+          const leftOutSaved = claimHeldBack > 0 && claimSaved;
           setClaimPreview(
-            result.cardsHeldBack != null && result.cardsHeldBack > 0
+            claimHeldBack > 0
               ? {
-                  heldBack: result.cardsHeldBack,
-                  saved: result.heldForPlan === true,
+                  heldBack: claimHeldBack + (leftOutSaved ? claimLeftOut : 0),
+                  saved: claimSaved,
+                  cutAt: result.cutAt === 'month' ? 'month' : 'preview',
                 }
               : null
           );
           setDownloadLink(recoveryDownloadUrl(result.downloadKey));
           if (result.deckName) setDeckName(result.deckName);
           setCardCount(result.cardCount);
-          setCardsLeftOut(result.cardsLeftOut ?? 0);
+          setCardsLeftOut(leftOutSaved ? 0 : claimLeftOut);
           setProgressWidth(100);
           setZoneState('heldReady');
         } else if (result.status === 404 || result.status === 410) {
@@ -4366,7 +4375,14 @@ function UploadForm({
           {t('upload.form.downloadDeck')}
         </a>
       )}
-      {claimPreview != null && cardCount != null && (
+      {claimPreview?.cutAt === 'month' && cardCount != null && (
+        <MonthlyLimitPartialOffer
+          delivered={cardCount}
+          heldBack={claimPreview.heldBack}
+          saved={claimPreview.saved}
+        />
+      )}
+      {claimPreview?.cutAt === 'preview' && cardCount != null && (
         <PassFirstOffer
           surface="held-preview"
           headline={t('passFirst:readyShown', {

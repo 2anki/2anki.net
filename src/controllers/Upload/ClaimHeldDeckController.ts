@@ -72,6 +72,7 @@ export class ClaimHeldDeckController {
           ? {
               cardsHeldBack: result.cardsHeldBack,
               heldForPlan: result.heldForPlan === true,
+              cutAt: result.cutAt,
             }
           : {}),
       });

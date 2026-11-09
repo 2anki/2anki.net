@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-free-claim-saves-the-rest",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "A held deck claimed with fewer free cards left this month saves the rest for a pass instead of dropping it"
+}

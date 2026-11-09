@@ -142,9 +142,11 @@ export interface ClaimHeldDeckResult {
   deckName: string | null;
   kind: 'signup' | 'plan' | null;
   error: UploadErrorBody | null;
-  // Present only when a free sign-up claim was cut to the preview.
+  // Present when a free sign-up claim was cut, at the preview or at the cards
+  // left this month, with answered cards past the cut.
   cardsHeldBack?: number;
   heldForPlan?: boolean;
+  cutAt?: 'preview' | 'month';
   // Other decks saved for the plan that the same claim built into My decks.
   alsoClaimed?: number;
   // Lines with no answer the card limit left out of the claimed deck.
@@ -567,6 +569,7 @@ export class Backend {
         kind?: unknown;
         cardsHeldBack?: unknown;
         heldForPlan?: unknown;
+        cutAt?: unknown;
         alsoClaimed?: unknown;
         cardsLeftOut?: unknown;
       };
@@ -581,6 +584,10 @@ export class Backend {
           ? {
               cardsHeldBack: body.cardsHeldBack,
               heldForPlan: body.heldForPlan === true,
+              cutAt:
+                body.cutAt === 'month'
+                  ? ('month' as const)
+                  : ('preview' as const),
             }
           : {}),
         ...(typeof body.alsoClaimed === 'number' &&
