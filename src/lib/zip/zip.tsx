@@ -380,6 +380,9 @@ ${this.combinedHTML}
         name: `ocr-${getRandomUUID()}.html`,
         contents: finalHTML,
       });
+      // Each archive level emits only the photo text it has not emitted yet,
+      // so a nested zip's text is not written again by the zip around it.
+      this.combinedHTML = '';
     }
   }
 
@@ -399,8 +402,9 @@ ${this.combinedHTML}
     // An inflate error can land after earlier passes kept some entries; the
     // fallback reads this archive again, so drop them and the memory they
     // held. The nested-zip count and the decompressed budget never rewind:
-    // they are what bound the total work a crafted upload can cause. OCR
-    // HTML already made from its images stays, since those images read whole.
+    // they are what bound the total work a crafted upload can cause. Photo
+    // text already read stays and is emitted below, since the fallback does
+    // not read photos again.
     this.files.length = before.fileCount;
     this.inMemoryBytes = before.inMemoryBytes;
 
@@ -426,6 +430,7 @@ ${this.combinedHTML}
       }
       this.files.push(file);
     }
+    this.addCombinedHTMLToFiles(paying, settings);
 
     const anySupported = this.files.some((f) =>
       isZipContentFileSupported(f.name)

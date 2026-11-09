@@ -539,7 +539,13 @@ describe('ZipHandler damaged archives', () => {
       { level: 9 }
     );
     mockedFallback.mockResolvedValue([{ name: 'a-part.zip', contents: part }]);
-    const handler = new ZipHandler(1);
+    // One entry per batch, so the part opens before the damaged entry inflates.
+    const handler = new ZipHandler(
+      2,
+      MAX_IN_MEMORY_BYTES,
+      MAX_EXTRACTED_BYTES,
+      1
+    );
 
     await expect(
       handler.build(
@@ -549,7 +555,7 @@ describe('ZipHandler damaged archives', () => {
         makeSpillDir()
       )
     ).rejects.toThrow(DAMAGED_ZIP_MESSAGE);
-    expect(handler.zipFileCount).toBe(1);
+    expect(handler.zipFileCount).toBe(2);
   });
 
   it('keeps the photo text an image quiz already read when a later entry is damaged', async () => {
@@ -569,8 +575,51 @@ describe('ZipHandler damaged archives', () => {
       makeSpillDir()
     );
 
-    expect(handler.combinedHTML).toBe('<p>read from the photo</p>');
-    expect(handler.getFileNames()).toEqual(['page.html']);
+    const names = handler.getFileNames();
+    expect(names).toEqual([
+      'page.html',
+      expect.stringMatching(/^ocr-.+\.html$/),
+    ]);
+    expect(handler.files[1].contents).toContain('<p>read from the photo</p>');
+  });
+
+  it('builds the image quiz from the photo text when the fallback recovers only photos', async () => {
+    const zip = zipSync(
+      { 'photo.png': strToU8('png bytes'), 'notes.pdf': strToU8(longPage) },
+      { level: 9 }
+    );
+    mockedFallback.mockResolvedValue([
+      { name: 'photo.png', contents: strToU8('png bytes') },
+    ]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      damaged(zip, 'notes.pdf', 0, 0xff),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    expect(handler.getFileNames()).toEqual([
+      'photo.png',
+      expect.stringMatching(/^ocr-.+\.html$/),
+    ]);
+  });
+
+  it("writes a nested zip's photo text once, not again for the zip around it", async () => {
+    const inner = zipSync({ 'photo.png': strToU8('png bytes') });
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      zipSync({ 'part.zip': inner }),
+      true,
+      new CardOption({ 'image-quiz-html-to-anki': 'true' }),
+      makeSpillDir()
+    );
+
+    const ocrFiles = handler.files.filter((f) => f.name.startsWith('ocr-'));
+    expect(ocrFiles).toHaveLength(1);
+    expect(ocrFiles[0].contents).toContain('<p>read from the photo</p>');
   });
 
   it('still throws an error that is not a damaged zip as it is', async () => {
