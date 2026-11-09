@@ -49,7 +49,8 @@ export type RetryPdfOutcome =
   | RetryPdfUnreadable;
 
 // A locked-PDF error that reaches the route without becoming the password
-// sentinel; the page-image path converts its own into the sentinel.
+// sentinel. The page-image path converts its own into the sentinel, except a
+// password longer than poppler reads, which it sends here on purpose.
 export const LOCKED_PDF_UNREADABLE_REASON =
   "We can't make cards from this locked PDF. Remove the password, save a copy, and upload that.";
 

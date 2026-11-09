@@ -2024,6 +2024,43 @@ describe('PrepareDeck — a PDF with no usable text', () => {
     }
   );
 
+  it.each([
+    ['auto-detected', {}, () => convertPdfTextToHtmlAuto],
+    [
+      'extract-text',
+      { 'pdf-extract-text': 'true' },
+      () => convertPdfTextToHtml,
+    ],
+    [
+      'Claude vision',
+      { 'claude-ai-flashcards': 'true' },
+      () => convertPdfTextToHtmlAuto,
+    ],
+  ])(
+    'never calls a %s scanned PDF password over 32 bytes wrong once pdf.js accepted it',
+    async (_path, extra, textPath) => {
+      textPath().mockResolvedValueOnce(noText);
+      (convertPDFToImages as Mock).mockRejectedValueOnce(
+        new Error('pdfinfo_password path=scan.pdf')
+      );
+
+      const error = await PrepareDeck({
+        name: 'scan.pdf',
+        files: [{ name: 'scan.pdf', contents: Buffer.from('%PDF-1.4 fake') }],
+        settings: makeSettings({ 'pdf-fallback': 'pairs', ...extra }),
+        noLimits: true,
+        workspace: makeWorkspace(),
+        pdfCredential: 'x'.repeat(33),
+      }).then(
+        () => new Error('PrepareDeck resolved'),
+        (e: unknown) => e as Error
+      );
+
+      expect(isPdfPasswordSentinel(error.message)).toBe(false);
+      expect(isLockedPdfError(error)).toBe(true);
+    }
+  );
+
   it('sends a locked scanned PDF to Claude vision once its password opens it', async () => {
     convertPdfTextToHtmlAuto.mockResolvedValueOnce(noText);
     generateDeckInfo.mockResolvedValueOnce([

@@ -57,7 +57,7 @@ describe('RetryPdfWithCredentialUseCase', () => {
     ],
     [
       'a password too long for the page-image tools',
-      'pdfinfo_password_too_long path=scan.pdf',
+      'pdfinfo_password_too_long',
       LOCKED_PDF_UNREADABLE_REASON,
       'password_protected_pdf',
     ],
