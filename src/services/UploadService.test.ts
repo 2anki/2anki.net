@@ -7898,6 +7898,39 @@ describe('UploadService.handleUpload — failure events for the success-rate til
       expect(conversionFailedReasons()).toEqual([]);
     });
 
+    it("stores a page range error's details with the job, so My decks can translate it", async () => {
+      failWith(
+        Object.assign(
+          new Error('Pages 11-14 are past the end of this 10-page PDF.'),
+          {
+            name: 'PdfPageRangeError',
+            details: { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
+          }
+        )
+      );
+      const jobRepository = buildJobRepo();
+      const { res } = buildPayingResponse();
+
+      await buildService(jobRepository).handleUpload(buildAiRequest(), res);
+      await settle();
+
+      expect(jobRepository.updateJobStatus).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        'failed',
+        'Pages 11-14 are past the end of this 10-page PDF.',
+        undefined,
+        {
+          page_range: {
+            reason: 'past_end',
+            first: 11,
+            last: 14,
+            pageCount: 10,
+          },
+        }
+      );
+    });
+
     it('records a credits error that lost its class across the worker boundary as ai_credits_exhausted', async () => {
       failWith(
         Object.assign(new Error("You're out of AI credits."), {

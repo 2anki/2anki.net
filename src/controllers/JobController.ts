@@ -1,4 +1,5 @@
 import express from 'express';
+import { pdfPageRangeDetailsOf } from '../lib/pdf/pdfPageRange';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -28,6 +29,27 @@ function rescueOffer(
   return candidates.length > 0 ? { rescue_candidates: candidates } : {};
 }
 
+function storedReport(value: unknown): Record<string, unknown> | null {
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return parsed != null && typeof parsed === 'object'
+    ? (parsed as Record<string, unknown>)
+    : null;
+}
+
+function pageRangeOf(job: JobWithDownloadKey): Pick<JobResponse, 'page_range'> {
+  if (job.status !== 'failed') return {};
+  const report = storedReport(job.conversion_report);
+  const pageRange = pdfPageRangeDetailsOf({ details: report?.page_range });
+  return pageRange == null ? {} : { page_range: pageRange };
+}
+
 function toJobResponse(job: JobWithDownloadKey): JobResponse {
   return {
     id: job.id,
@@ -46,6 +68,7 @@ function toJobResponse(job: JobWithDownloadKey): JobResponse {
     empty_back_count: getEmptyBackCount(job.conversion_report),
     cherry_skipped_count: getCherrySkippedCount(job.conversion_report),
     ...rescueOffer(job),
+    ...pageRangeOf(job),
   };
 }
 

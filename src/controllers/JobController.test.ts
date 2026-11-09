@@ -127,6 +127,61 @@ describe('JobController', () => {
     expect(sent).not.toHaveProperty('conversion_report');
   });
 
+  it('serves the page range details stored on a failed upload job', async () => {
+    (jobService.getJobsByOwner as Mock).mockResolvedValue([
+      {
+        id: 9,
+        object_id: 'upload-uuid',
+        status: 'failed',
+        type: 'upload',
+        job_reason_failure: "'30-12' goes backwards.",
+        conversion_report: {
+          page_range: {
+            reason: 'backwards',
+            part: '30-12',
+            lower: 12,
+            upper: 30,
+          },
+        },
+      },
+    ]);
+    await jobController.getJobsByOwner(
+      req as express.Request,
+      res as express.Response
+    );
+    const [sent] = (res.send as Mock).mock.calls[0][0];
+    expect(sent.page_range).toEqual({
+      reason: 'backwards',
+      part: '30-12',
+      lower: 12,
+      upper: 30,
+    });
+    expect(sent).not.toHaveProperty('conversion_report');
+  });
+
+  it.each([
+    ['a done job', 'done', { page_range: { reason: 'locked_pdf' } }],
+    ['malformed details', 'failed', { page_range: { reason: 'toString' } }],
+    ['no report', 'failed', null],
+  ])('serves no page range details for %s', async (_case, status, report) => {
+    (jobService.getJobsByOwner as Mock).mockResolvedValue([
+      {
+        id: 10,
+        object_id: 'upload-uuid',
+        status,
+        type: 'upload',
+        job_reason_failure: 'x',
+        conversion_report: report,
+      },
+    ]);
+    await jobController.getJobsByOwner(
+      req as express.Request,
+      res as express.Response
+    );
+    const [sent] = (res.send as Mock).mock.calls[0][0];
+    expect(sent).not.toHaveProperty('page_range');
+  });
+
   it('serves no stale offer when a re-run failed for another reason', async () => {
     (jobService.getJobsByOwner as Mock).mockResolvedValue([
       {

@@ -101,6 +101,9 @@ interface FailedProps {
   variant: 'failed';
   title: string | null;
   failureReason: string;
+  // A mistyped page range's reason and values, read off the job, so the row
+  // words it in the person's language.
+  pageRange?: UploadErrorBody['page_range'];
   source: Source;
   onMapColumns: () => void;
   rescue?: RescueCandidate[];
@@ -312,6 +315,7 @@ function RescueOffer({
 
 function FailedVariant({
   failureReason,
+  pageRange,
   source,
   onMapColumns,
   rescue = [],
@@ -417,11 +421,19 @@ function FailedVariant({
     );
   }
 
-  const errorBody: UploadErrorBody = {
-    code:
-      CLAUDE_REASON_CODES[failureReason.trim()] ?? reasonCode(failureReason),
-    message: failureReason,
-  };
+  const errorBody: UploadErrorBody =
+    pageRange == null
+      ? {
+          code:
+            CLAUDE_REASON_CODES[failureReason.trim()] ??
+            reasonCode(failureReason),
+          message: failureReason,
+        }
+      : {
+          code: 'pdf_page_range',
+          message: failureReason,
+          page_range: pageRange,
+        };
   const friendly =
     errorBody.code === 'too_large' && source === 'notion'
       ? classifyNotionTooLarge()
@@ -483,6 +495,7 @@ export function ConversionResult(props: Readonly<ConversionResultProps>) {
   return (
     <FailedVariant
       failureReason={props.failureReason}
+      pageRange={props.pageRange}
       source={props.source}
       onMapColumns={props.onMapColumns}
       rescue={props.rescue}

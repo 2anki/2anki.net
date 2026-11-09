@@ -1828,12 +1828,28 @@ class UploadService {
           );
         }
         const reason = resolveAsyncFailureReason(err, ws.id);
-        await this.jobRepository.updateJobStatus(
-          ws.id,
-          owner,
-          'failed',
-          reason
-        );
+        // The job keeps the English sentence; a page range error's details go
+        // in the report so My decks can say it in the person's language.
+        const pageRange = isPdfPageRangeError(err)
+          ? pdfPageRangeDetailsOf(err)
+          : null;
+        if (pageRange == null) {
+          await this.jobRepository.updateJobStatus(
+            ws.id,
+            owner,
+            'failed',
+            reason
+          );
+        } else {
+          await this.jobRepository.updateJobStatus(
+            ws.id,
+            owner,
+            'failed',
+            reason,
+            undefined,
+            { page_range: pageRange }
+          );
+        }
       })
       .finally(() => {
         if (!retriedWithAi) {
