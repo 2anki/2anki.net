@@ -173,5 +173,15 @@
     "fewCardsPaidAi_one": "Seulement {{count}} carte est issue de ce fichier. Avec une offre payante, Claude peut en tirer plus de cartes.",
     "fewCardsPaidAi_other": "Seulement {{count}} cartes sont issues de ce fichier. Avec une offre payante, Claude peut en tirer plus de cartes.",
     "seeReport": "Voir le rapport complet"
+  },
+  "skippedAiFiles": {
+    "lead_one": "Aucune carte n'est venue de {{count}} fichier. Les autres fichiers sont dans ce paquet.",
+    "lead_other": "Aucune carte n'est venue de {{count}} fichiers. Les autres fichiers sont dans ce paquet.",
+    "why": {
+      "declined": "Claude l'a refusé. Reformule ou retire la partie à laquelle il n'a pas voulu répondre, puis importe-le à nouveau.",
+      "too_large": "Une section était trop grande. Divise-la et importe le fichier à nouveau.",
+      "no_text": "Claude n'a trouvé aucun texte pour créer des cartes. Vérifie que le fichier contient du texte.",
+      "unreadable": "La réponse de Claude n'a pas pu être lue. Importe le fichier à nouveau."
+    }
   }
 }

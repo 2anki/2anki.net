@@ -173,5 +173,15 @@
     "fewCardsPaidAi_one": "Nur {{count}} Karte ist aus dieser Datei entstanden. Mit einem bezahlten Plan kann Claude mehr Karten daraus schreiben.",
     "fewCardsPaidAi_other": "Nur {{count}} Karten sind aus dieser Datei entstanden. Mit einem bezahlten Plan kann Claude mehr Karten daraus schreiben.",
     "seeReport": "Vollständigen Bericht ansehen"
+  },
+  "skippedAiFiles": {
+    "lead_one": "Aus {{count}} Datei kamen keine Karten. Die anderen Dateien sind in diesem Deck.",
+    "lead_other": "Aus {{count}} Dateien kamen keine Karten. Die anderen Dateien sind in diesem Deck.",
+    "why": {
+      "declined": "Claude hat sie abgelehnt. Formuliere den Teil um, den Claude nicht beantworten wollte, oder entferne ihn, und lade sie erneut hoch.",
+      "too_large": "Ein Abschnitt war zu groß. Teile ihn auf und lade die Datei erneut hoch.",
+      "no_text": "Claude hat keinen Text für Karten gefunden. Prüfe, ob die Datei Text enthält.",
+      "unreadable": "Claudes Antwort konnte nicht gelesen werden. Lade die Datei erneut hoch."
+    }
   }
 }

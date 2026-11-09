@@ -49,6 +49,7 @@ import {
   shouldShowThinDeckNotice,
 } from './components/ThinDeckNotice';
 import { EmptyBackNotice } from './components/EmptyBackNotice';
+import { SkippedAiFilesNotice } from './components/SkippedAiFilesNotice';
 import { CherrySkippedNotice } from './components/CherrySkippedNotice';
 import { ImageDropNotice } from './components/ImageDropNotice';
 import { PartialDeckNotice } from './components/PartialDeckNotice';
@@ -1250,6 +1251,18 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     <EmptyBackNotice
                                       count={row.emptyBackCount}
                                       surface="downloads_row"
+                                    />
+                                  </td>
+                                </tr>
+                              )}
+                              {row.skippedAiFiles.length > 0 && (
+                                <tr key={`upload-${u.key}-skipped-ai-files`}>
+                                  <td
+                                    colSpan={4}
+                                    className={styles.emptyTogglePanel}
+                                  >
+                                    <SkippedAiFilesNotice
+                                      files={row.skippedAiFiles}
                                     />
                                   </td>
                                 </tr>

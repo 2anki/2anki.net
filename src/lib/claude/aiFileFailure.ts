@@ -7,14 +7,13 @@ import {
   EmptyContentError,
   ImageOnlyContentError,
 } from './ClaudeService';
+import {
+  AI_FILE_FAILURE_REASONS as REASONS,
+  type AiFileFailure,
+  type AiFileFailureReason,
+} from './aiFileFailureReasons';
 
-// Why Claude made no cards from one file of several. Only failures that belong
-// to that file: an outage or a credit stop is about the whole upload.
-export type AiFileFailureReason =
-  | 'declined'
-  | 'too_large'
-  | 'no_text'
-  | 'unreadable';
+export type { AiFileFailureReason } from './aiFileFailureReasons';
 
 export function aiFileFailureReason(
   error: unknown
@@ -44,12 +43,6 @@ export function aiFileFailureReason(
 }
 
 const WARNING_PREFIX = 'ai-file-failed:';
-const REASONS: ReadonlySet<string> = new Set([
-  'declined',
-  'too_large',
-  'no_text',
-  'unreadable',
-]);
 
 export function isAiFileFailedWarning(warning: string): boolean {
   return warning.startsWith(WARNING_PREFIX);
@@ -87,8 +80,9 @@ function displayName(fileName: string): string {
     .replace(NOTION_PAGE_ID, '');
 }
 
-export function aiFileFailedWarningText(warnings: string[]): string | null {
-  const failures = warnings.flatMap((warning) => {
+// The files a run left out, by the name the user uploaded, in upload order.
+export function aiFileFailures(warnings: string[]): AiFileFailure[] {
+  return warnings.flatMap((warning) => {
     if (!warning.startsWith(WARNING_PREFIX)) return [];
     const rest = warning.slice(WARNING_PREFIX.length);
     const separator = rest.indexOf(':');
@@ -97,10 +91,17 @@ export function aiFileFailedWarningText(warnings: string[]): string | null {
     return [
       {
         name: displayName(rest.slice(separator + 1)),
-        why: WHY[reason as AiFileFailureReason],
+        reason: reason as AiFileFailureReason,
       },
     ];
   });
+}
+
+export function aiFileFailedWarningText(warnings: string[]): string | null {
+  const failures = aiFileFailures(warnings).map(({ name, reason }) => ({
+    name,
+    why: WHY[reason],
+  }));
   if (failures.length === 0) return null;
   if (failures.length === 1) {
     const [only] = failures;

@@ -1,5 +1,7 @@
 import type JobResponse from '@server/types/JobResponse';
-import UserUpload from '../../../lib/interfaces/UserUpload';
+import UserUpload, {
+  type SkippedAiFile,
+} from '../../../lib/interfaces/UserUpload';
 import { DropboxUpload, GoogleDriveUpload } from '../../../lib/backend';
 
 export type DeckRow =
@@ -13,6 +15,7 @@ export type DeckRow =
       droppedImageCount: number;
       imageDropReason: string | null;
       emptyBackCount: number;
+      skippedAiFiles: SkippedAiFile[];
       sortKey: Date;
     }
   | { source: 'dropbox'; kind: 'dropbox'; upload: DropboxUpload; sortKey: Date }
@@ -88,6 +91,7 @@ export function toDeckRows(
       droppedImageCount: upload.dropped_image_count ?? 0,
       imageDropReason: upload.image_drop_reason ?? null,
       emptyBackCount: upload.empty_back_count ?? 0,
+      skippedAiFiles: upload.skipped_ai_files ?? [],
       sortKey: toSortKey(upload.created_at),
     });
   }

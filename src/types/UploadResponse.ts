@@ -1,4 +1,8 @@
 import type Uploads from '../data_layer/public/Uploads';
+import {
+  type AiFileFailure,
+  parseStoredAiFileFailures,
+} from '../lib/claude/aiFileFailureReasons';
 
 export interface UploadResponse {
   id: number;
@@ -12,6 +16,7 @@ export interface UploadResponse {
   dropped_image_count: number | null;
   image_drop_reason: string | null;
   empty_back_count: number | null;
+  skipped_ai_files: AiFileFailure[];
 }
 
 export function toUploadResponse(row: Uploads): UploadResponse {
@@ -27,5 +32,6 @@ export function toUploadResponse(row: Uploads): UploadResponse {
     dropped_image_count: row.dropped_image_count,
     image_drop_reason: row.image_drop_reason,
     empty_back_count: row.empty_back_count,
+    skipped_ai_files: parseStoredAiFileFailures(row.skipped_ai_files),
   };
 }

@@ -173,5 +173,15 @@
     "fewCardsPaidAi_one": "Só saiu {{count}} cartão deste arquivo. Com um plano pago, o Claude pode criar mais cartões a partir dele.",
     "fewCardsPaidAi_other": "Só saíram {{count}} cartões deste arquivo. Com um plano pago, o Claude pode criar mais cartões a partir dele.",
     "seeReport": "Ver o relatório completo"
+  },
+  "skippedAiFiles": {
+    "lead_one": "Nenhum cartão saiu de {{count}} arquivo. Os outros arquivos estão neste baralho.",
+    "lead_other": "Nenhum cartão saiu de {{count}} arquivos. Os outros arquivos estão neste baralho.",
+    "why": {
+      "declined": "O Claude recusou. Reescreva ou remova a parte que ele não quis responder e envie de novo.",
+      "too_large": "Uma seção era grande demais. Divida-a e envie o arquivo de novo.",
+      "no_text": "O Claude não encontrou texto para criar cartões. Confira se o arquivo tem texto.",
+      "unreadable": "Não foi possível ler a resposta do Claude. Envie o arquivo de novo."
+    }
   }
 }

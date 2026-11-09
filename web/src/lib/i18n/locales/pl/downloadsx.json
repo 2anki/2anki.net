@@ -247,5 +247,17 @@
     "fewCardsPaidAi_many": "Z tego pliku powstało tylko {{count}} kart. W płatnym planie Claude może napisać z niego więcej kart.",
     "fewCardsPaidAi_other": "Z tego pliku powstało tylko {{count}} karty. W płatnym planie Claude może napisać z niego więcej kart.",
     "seeReport": "Zobacz pełny raport"
+  },
+  "skippedAiFiles": {
+    "lead_one": "Z {{count}} pliku nie powstały żadne karty. Pozostałe pliki są w tej talii.",
+    "lead_few": "Z {{count}} plików nie powstały żadne karty. Pozostałe pliki są w tej talii.",
+    "lead_many": "Z {{count}} plików nie powstały żadne karty. Pozostałe pliki są w tej talii.",
+    "lead_other": "Z {{count}} pliku nie powstały żadne karty. Pozostałe pliki są w tej talii.",
+    "why": {
+      "declined": "Claude odmówił. Przeredaguj lub usuń fragment, na który nie chciał odpowiedzieć, i prześlij plik ponownie.",
+      "too_large": "Jedna sekcja była za duża. Podziel ją i prześlij plik ponownie.",
+      "no_text": "Claude nie znalazł tekstu, z którego mógłby zrobić karty. Sprawdź, czy plik zawiera tekst.",
+      "unreadable": "Nie udało się odczytać odpowiedzi Claude. Prześlij plik ponownie."
+    }
   }
 }

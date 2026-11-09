@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import type { AiFileFailure } from '../lib/claude/aiFileFailureReasons';
 import Uploads from './public/Uploads';
 import { UploadSource } from '../lib/upload/validateUploadSource';
 
@@ -33,6 +34,7 @@ export interface UploadConversionMeta {
   droppedImageCount?: number;
   imageDropReason?: string | null;
   emptyBackCount?: number;
+  skippedAiFiles?: AiFileFailure[];
 }
 
 export interface IUploadRepository {
@@ -164,6 +166,11 @@ class UploadRepository implements IUploadRepository {
       dropped_image_count: conversionMeta?.droppedImageCount ?? null,
       image_drop_reason: conversionMeta?.imageDropReason ?? null,
       empty_back_count: conversionMeta?.emptyBackCount ?? null,
+      skipped_ai_files:
+        conversionMeta?.skippedAiFiles == null ||
+        conversionMeta.skippedAiFiles.length === 0
+          ? null
+          : JSON.stringify(conversionMeta.skippedAiFiles),
     });
   }
 

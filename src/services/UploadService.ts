@@ -1,4 +1,5 @@
 import express from 'express';
+import type { AiFileFailure } from '../lib/claude/aiFileFailureReasons';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -165,6 +166,7 @@ import {
 import {
   aiFileFailedWarningText,
   aiFileFailureReason,
+  aiFileFailures,
   isAiFileFailedWarning,
 } from '../lib/claude/aiFileFailure';
 import { CreditWindowReset } from '../lib/claude/aiCredits/allowance';
@@ -1088,7 +1090,8 @@ class UploadService {
     owner: string,
     totalCards = 0,
     source: UploadSource | null = null,
-    paying = false
+    paying = false,
+    skippedAiFiles: AiFileFailure[] = []
   ): Promise<void> {
     await new CheckMonthlyCardLimitUseCase(this.usersRepository).execute({
       userId: owner,
@@ -1117,7 +1120,8 @@ class UploadService {
       apkgFilename,
       key,
       sizeMb,
-      source
+      source,
+      { skippedAiFiles }
     );
     await this.usersRepository.incrementCardUsage(Number(owner), totalCards);
     const job = await this.jobRepository.findJobById(objectId, owner);
@@ -1688,13 +1692,11 @@ class UploadService {
             { jobId: ws.id }
           );
         }
-        const skippedAiFiles = (warnings ?? []).filter(
-          isAiFileFailedWarning
-        ).length;
-        if (skippedAiFiles > 0) {
+        const skippedAiFiles = aiFileFailures(warnings ?? []);
+        if (skippedAiFiles.length > 0) {
           console.info(
             '[UploadService] async upload shipped without files Claude made no cards from',
-            { jobId: ws.id, skippedAiFiles }
+            { jobId: ws.id, skippedAiFiles: skippedAiFiles.length }
           );
         }
         const totalCards = packages.reduce((s, p) => s + (p.cardCount ?? 0), 0);
@@ -1722,7 +1724,8 @@ class UploadService {
             owner,
             totalCards,
             source,
-            paying
+            paying,
+            skippedAiFiles
           );
           track('conversion_succeeded', {
             userId: Number(owner),

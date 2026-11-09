@@ -94,6 +94,9 @@ vi.mock('../lib/claude/ClaudeService', async (importActual) => {
     ...actual,
     generateDeckInfo: vi.fn(async (html: string) => {
       claudeInputs.push(html);
+      if (html.includes('REFUSED-BY-CLAUDE')) {
+        throw new actual.ClaudeRefusalError();
+      }
       return [
         {
           name: 'Cell Biology',
@@ -376,7 +379,8 @@ describe('a paying account with AI off uploads a PowerPoint while background con
       'lecture.apkg',
       storedKeys[0],
       expect.any(Number),
-      null
+      null,
+      { skippedAiFiles: [] }
     );
   }, 20_000);
 });
@@ -449,5 +453,60 @@ describe('a paying account with AI never set uploads a zip holding only a PowerP
     expect(outcome).toBe('stored in My Decks');
     expect(claudeInputs).toHaveLength(1);
     expect(cardFronts(claudeInputs[0])).toEqual(['Exocytosis', 'Mitosis']);
+  }, 20_000);
+});
+
+describe('a paying account with AI on uploads a zip where Claude declines one file', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let workspaceBase: string;
+
+  beforeAll(() => applyEnv(ENV));
+
+  afterAll(() => applyEnv(originalEnv));
+
+  beforeEach(() => {
+    workspaceBase = fs.mkdtempSync(path.join(os.tmpdir(), 'zip-skip-'));
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterEach(() => {
+    __resetFeatureFlagModuleForTests();
+    builtCards.length = 0;
+    storedKeys.length = 0;
+    claudeInputs.length = 0;
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  it('stores the other file in My Decks with the declined file named', async () => {
+    const { status, settled, uploads } = await upload(
+      {
+        originalname: 'notes.zip',
+        mimetype: 'application/zip',
+        buffer: Buffer.from(
+          zipSync({
+            'cells.md': strToU8('# Cells\n\nExocytosis needs calcium.\n'),
+            'week 3.md': strToU8('# Week 3\n\nREFUSED-BY-CLAUDE\n'),
+          })
+        ),
+      },
+      {},
+      { 'claude-ai-flashcards': 'true' }
+    );
+    const outcome = await settled;
+
+    expect(status).toBe(202);
+    expect(outcome).toBe('stored in My Decks');
+    expect(builtCards.map((card) => visibleText(card.name))).toEqual([
+      'Exocytosis',
+    ]);
+    expect(uploads.update).toHaveBeenCalledWith(
+      OWNER,
+      expect.any(String),
+      storedKeys[0],
+      expect.any(Number),
+      null,
+      { skippedAiFiles: [{ name: 'week 3.md', reason: 'declined' }] }
+    );
   }, 20_000);
 });
