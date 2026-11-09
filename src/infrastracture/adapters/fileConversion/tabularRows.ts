@@ -120,17 +120,21 @@ const OPENS_A_TAG = /[a-z/!?]/i;
 // a line of unclosed "<" take minutes.
 function hasSeparatorOutsideTags(line: string): boolean {
   let insideTag = false;
+  let separatorInOpenTag = false;
   for (let index = 0; index < line.length; index += 1) {
     const char = line[index];
+    const isSeparator = char === ',' || char === ';' || char === '\t';
     if (insideTag) {
       insideTag = char !== '>';
+      separatorInOpenTag = insideTag && (separatorInOpenTag || isSeparator);
     } else if (char === '<' && OPENS_A_TAG.test(line[index + 1] ?? '')) {
       insideTag = true;
-    } else if (char === ',' || char === ';' || char === '\t') {
+    } else if (isSeparator) {
       return true;
     }
   }
-  return false;
+  // A tag that never closes was not a tag, so what it swallowed still counts.
+  return separatorInOpenTag;
 }
 
 // A delimiter outside the tags on the first line is what separates a row like

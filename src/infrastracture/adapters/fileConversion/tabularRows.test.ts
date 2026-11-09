@@ -78,6 +78,21 @@ describe('rowsFromBuffer with markup at the start of the file', () => {
     );
   });
 
+  it.each([
+    [
+      'an unclosed tag before a tab',
+      '<b unclosed\tBack\n',
+      ['<b unclosed', 'Back'],
+    ],
+    ['an unclosed closing tag', '<b>Front</b,Back\n', ['<b>Front</b', 'Back']],
+    ['a later tag left open', '<i>x</i> <y,z\n', ['<i>x</i> <y', 'z']],
+    ['a heart after a tag', '<b>a</b> <3 c,d\n', ['<b>a</b> <3 c', 'd']],
+  ])('keeps the row for %s', (_label, text, row) => {
+    expect(rowsFromBuffer(Buffer.from(text, 'utf8'), 'cards.csv')).toEqual([
+      row,
+    ]);
+  });
+
   it('keeps a comma in a table cell from turning a table into a row', () => {
     const html = '<table><tr><td>Q, x</td><td>A</td></tr></table>';
 
