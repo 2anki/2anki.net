@@ -313,10 +313,40 @@ describe('McpRouter mistyped connector URLs', () => {
     });
   });
 
-  it('leaves a GET to the site root for the web app', async () => {
+  it('does not claim a GET to the site root', async () => {
     await withServer(async (base) => {
       const res = await fetch(`${base}/`, { redirect: 'manual' });
       expect(res.status).toBe(404);
+    });
+  });
+
+  it('reaches the authenticated handler when a token holder POSTs to the site root', async () => {
+    let reached = false;
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer good',
+          },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(200);
+      },
+      (_req, res) => {
+        reached = true;
+        res.json({ ok: true });
+      }
+    );
+    expect(reached).toBe(true);
+  });
+
+  it('answers OPTIONS on the site root with the POST it now accepts', async () => {
+    await withServer(async (base) => {
+      const res = await fetch(`${base}/`, { method: 'OPTIONS' });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('allow')).toBe('POST');
     });
   });
 
