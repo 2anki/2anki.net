@@ -5,7 +5,11 @@ import multer from 'multer';
 import { answerUploadFieldTooLong } from './answerUploadFieldTooLong';
 
 function makeResponse() {
-  const res = { statusCode: 0, body: undefined as unknown };
+  const res = {
+    statusCode: 0,
+    body: undefined as unknown,
+    locals: { requestId: 'req-9' },
+  };
   return Object.assign(res, {
     status(code: number) {
       res.statusCode = code;
@@ -37,6 +41,23 @@ describe('answerUploadFieldTooLong', () => {
         'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
     });
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it('logs the request and the field, as the file upload does', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    answerUploadFieldTooLong(
+      new multer.MulterError('LIMIT_FIELD_VALUE', 'deckName'),
+      {} as express.Request,
+      makeResponse() as unknown as express.Response,
+      vi.fn()
+    );
+
+    expect(info).toHaveBeenCalledWith('[upload] field over the size limit', {
+      requestId: 'req-9',
+      field: 'deckName',
+    });
+    info.mockRestore();
   });
 
   it.each([

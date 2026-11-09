@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-cloud-pick-setting-limit",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "Dropbox and Google Drive picks now accept the same saved settings a file upload does"
+}

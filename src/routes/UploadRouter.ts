@@ -3,6 +3,10 @@ import multer from 'multer';
 import path from 'path';
 
 import { answerUploadFieldTooLong } from './middleware/answerUploadFieldTooLong';
+import {
+  fieldSizeForPlan,
+  uploadFieldsByPlan,
+} from './middleware/uploadFieldsByPlan';
 import RequireAllowedOrigin from './middleware/RequireAllowedOrigin';
 import RequireAuthentication from './middleware/RequireAuthentication';
 import { tellUploadOwner } from './middleware/tellUploadOwner';
@@ -472,15 +476,21 @@ const UploadRouter = () => {
     '/api/upload/retry-with-credential',
     RequireAllowedOrigin,
     tellUploadOwner,
-    multer({
-      dest: '/tmp',
-      limits: { fileSize: 50 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
-        cb(null, path.extname(file.originalname).toLowerCase() === '.pdf');
-      },
-    }).single('file'),
+    (req: express.Request, res: express.Response, next: express.NextFunction) =>
+      multer({
+        dest: '/tmp',
+        limits: {
+          fileSize: 50 * 1024 * 1024,
+          fieldSize: fieldSizeForPlan(res),
+        },
+        fileFilter: (_req, file, cb) => {
+          cb(null, path.extname(file.originalname).toLowerCase() === '.pdf');
+        },
+      }).single('file')(req, res, next),
+    answerUploadFieldTooLong,
     normalizeUploadFilenames,
-    (req, res) => uploadController.retryPdfWithCredential(req, res)
+    (req: express.Request, res: express.Response) =>
+      uploadController.retryPdfWithCredential(req, res)
   );
 
   /**
@@ -533,7 +543,7 @@ const UploadRouter = () => {
     '/api/upload/dropbox',
     RequireAllowedOrigin,
     RequireAuthentication,
-    multer({ dest: '/tmp' }).none(),
+    uploadFieldsByPlan,
     answerUploadFieldTooLong,
     (req: express.Request, res: express.Response) =>
       uploadController.dropbox(req, res)
@@ -576,7 +586,7 @@ const UploadRouter = () => {
   router.post(
     '/api/upload/google_drive',
     RequireAllowedOrigin,
-    multer({ dest: '/tmp' }).none(),
+    uploadFieldsByPlan,
     answerUploadFieldTooLong,
     (req: express.Request, res: express.Response) =>
       uploadController.googleDrive(req, res)
