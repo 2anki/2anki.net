@@ -56,7 +56,7 @@ const EMPTY_DECK_NO_CONTENT_MARKER = 'no text we could read';
 const EMPTY_DECK_NOTION_EMPTY_PAGE_MARKER = 'Notion page looks empty';
 const EMPTY_DECK_EMPTY_ANSWERS_MARKER = 'no answer inside them';
 // A mistyped PDF page range reads "... has a page number that is too large."
-// Keep in sync with src/lib/pdf/pdfPageRange.ts.
+// src/lib/pdf/pdfPageRange.parity.test.ts fails if the server copy drifts.
 const PDF_PAGE_RANGE_MARKER = 'has a page number that is too large';
 const TOGGLES_DOCS_HREF = '/documentation/cards/notion-blocks';
 const FILE_FORMATS_DOCS_HREF = '/documentation/reference/file-formats';
