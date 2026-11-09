@@ -44,6 +44,7 @@ import {
 } from '../../../lib/claude/aiSpendGuard';
 import { AI_CREDITS_EXHAUSTED_WARNING_CODE } from '../../../lib/claude/aiCredits/uploadWarning';
 import { buildPdfPasswordSentinel } from '../../../lib/pdf/pdfPasswordSentinel';
+import { popplerTruncatesPassword } from '../../../lib/pdf/convertPage';
 import {
   buildPdfFallbackChoiceSentinel,
   type PdfFallbackChoice,
@@ -544,7 +545,9 @@ function pdfImageLoader(
 }
 
 // A locked PDF asks for its password here too: page pairs skip the text
-// path, which is where every other PDF finds out it is locked.
+// path, which is where every other PDF finds out it is locked. A password
+// longer than poppler reads is not called wrong: the person gets the locked-PDF
+// answer that asks for an unlocked copy instead.
 async function convertPdfPagesToImagesFile(
   file: DeckParserInput['files'][number],
   input: DeckParserInput,
@@ -563,6 +566,9 @@ async function convertPdfPagesToImagesFile(
       error instanceof Error &&
       error.message.startsWith('pdfinfo_password')
     ) {
+      if (popplerTruncatesPassword(input.pdfCredential)) {
+        throw new Error('pdfinfo_password_too_long');
+      }
       throw new Error(buildPdfPasswordSentinel(file.name));
     }
     throw error;
