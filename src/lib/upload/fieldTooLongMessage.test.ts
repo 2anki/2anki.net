@@ -1,5 +1,6 @@
 import {
   formFieldTooLongMessage,
+  uploadFieldTooLongBody,
   uploadFieldTooLongMessage,
 } from './fieldTooLongMessage';
 
@@ -34,5 +35,20 @@ describe('formFieldTooLongMessage', () => {
     [undefined, FORM],
   ])('names the %s field', (field, message) => {
     expect(formFieldTooLongMessage(field)).toBe(message);
+  });
+});
+
+describe('uploadFieldTooLongBody', () => {
+  it.each([
+    ['user-instructions', { setting: 'user_instructions' }],
+    ['deckName', { setting: 'deck_name' }],
+    ['template', {}],
+    [undefined, {}],
+  ])('answers %s with the setting it names', (field, setting) => {
+    expect(uploadFieldTooLongBody(field)).toEqual({
+      code: 'setting_too_long',
+      message: uploadFieldTooLongMessage(field),
+      ...setting,
+    });
   });
 });

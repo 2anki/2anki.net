@@ -162,11 +162,17 @@
         "title": "'{{part}}' nie jest prawidłową stroną ani zakresem.",
         "detail": "Użyj numerów stron i zakresów, np. 12-30, 45."
       },
-      "past_end_one": {
-        "title": "Strona {{first}} wykracza poza koniec tego PDF-a ({{pageCount}} stron)."
+      "past_end_page": {
+        "title_one": "Strona {{first}} wykracza poza koniec tego PDF-a ({{pageCount}} strona).",
+        "title_few": "Strona {{first}} wykracza poza koniec tego PDF-a ({{pageCount}} strony).",
+        "title_many": "Strona {{first}} wykracza poza koniec tego PDF-a ({{pageCount}} stron).",
+        "title_other": "Strona {{first}} wykracza poza koniec tego PDF-a ({{pageCount}} strony)."
       },
-      "past_end_range": {
-        "title": "Strony {{first}}-{{last}} wykraczają poza koniec tego PDF-a ({{pageCount}} stron)."
+      "past_end_pages": {
+        "title_one": "Strony {{first}}-{{last}} wykraczają poza koniec tego PDF-a ({{pageCount}} strona).",
+        "title_few": "Strony {{first}}-{{last}} wykraczają poza koniec tego PDF-a ({{pageCount}} strony).",
+        "title_many": "Strony {{first}}-{{last}} wykraczają poza koniec tego PDF-a ({{pageCount}} stron).",
+        "title_other": "Strony {{first}}-{{last}} wykraczają poza koniec tego PDF-a ({{pageCount}} strony)."
       },
       "locked_pdf": {
         "title": "Zakresy stron nie działają w PDF-ach chronionych hasłem.",

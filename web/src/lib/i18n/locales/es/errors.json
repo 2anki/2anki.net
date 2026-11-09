@@ -162,11 +162,13 @@
         "title": "'{{part}}' no es una página ni un rango válido.",
         "detail": "Usa números de página y rangos como 12-30, 45."
       },
-      "past_end_one": {
-        "title": "La página {{first}} está después del final de este PDF de {{pageCount}} páginas."
+      "past_end_page": {
+        "title_one": "La página {{first}} está después del final de este PDF de {{pageCount}} página.",
+        "title_other": "La página {{first}} está después del final de este PDF de {{pageCount}} páginas."
       },
-      "past_end_range": {
-        "title": "Las páginas {{first}}-{{last}} están después del final de este PDF de {{pageCount}} páginas."
+      "past_end_pages": {
+        "title_one": "Las páginas {{first}}-{{last}} están después del final de este PDF de {{pageCount}} página.",
+        "title_other": "Las páginas {{first}}-{{last}} están después del final de este PDF de {{pageCount}} páginas."
       },
       "locked_pdf": {
         "title": "Los rangos de páginas no funcionan con PDF protegidos con contraseña.",

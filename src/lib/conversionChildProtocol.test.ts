@@ -27,14 +27,23 @@ describe('task errors across the conversion child', () => {
     });
   });
 
-  it('carries only plain values and no details when there are none', () => {
+  it('carries only plain values of a page range error', () => {
     const withNested = Object.assign(new Error('x'), {
+      name: 'PdfPageRangeError',
       details: { reason: 'locked_pdf', nested: { a: 1 }, run: () => 1 },
     });
 
     expect(serializeTaskError(withNested).details).toEqual({
       reason: 'locked_pdf',
     });
+  });
+
+  it('carries no details for any other error', () => {
+    const thirdParty = Object.assign(new Error('x'), {
+      details: { token: 'secret-value' },
+    });
+
+    expect(serializeTaskError(thirdParty).details).toBeUndefined();
     expect(serializeTaskError(new Error('plain')).details).toBeUndefined();
   });
 });

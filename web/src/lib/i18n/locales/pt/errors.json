@@ -162,11 +162,13 @@
         "title": "'{{part}}' não é uma página nem um intervalo válido.",
         "detail": "Use números de página e intervalos como 12-30, 45."
       },
-      "past_end_one": {
-        "title": "A página {{first}} fica depois do fim deste PDF de {{pageCount}} páginas."
+      "past_end_page": {
+        "title_one": "A página {{first}} fica depois do fim deste PDF de {{pageCount}} página.",
+        "title_other": "A página {{first}} fica depois do fim deste PDF de {{pageCount}} páginas."
       },
-      "past_end_range": {
-        "title": "As páginas {{first}}-{{last}} ficam depois do fim deste PDF de {{pageCount}} páginas."
+      "past_end_pages": {
+        "title_one": "As páginas {{first}}-{{last}} ficam depois do fim deste PDF de {{pageCount}} página.",
+        "title_other": "As páginas {{first}}-{{last}} ficam depois do fim deste PDF de {{pageCount}} páginas."
       },
       "locked_pdf": {
         "title": "Intervalos de páginas não funcionam em PDFs protegidos por senha.",

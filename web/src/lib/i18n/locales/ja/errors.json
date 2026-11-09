@@ -162,11 +162,11 @@
         "title": "'{{part}}' は有効なページでも範囲でもありません。",
         "detail": "ページ番号と範囲を使ってください。例: 12-30, 45"
       },
-      "past_end_one": {
-        "title": "{{first}} ページは、この {{pageCount}} ページの PDF の最後より後です。"
+      "past_end_page": {
+        "title_other": "{{first}} ページは、この {{pageCount}} ページの PDF の最後より後です。"
       },
-      "past_end_range": {
-        "title": "{{first}}-{{last}} ページは、この {{pageCount}} ページの PDF の最後より後です。"
+      "past_end_pages": {
+        "title_other": "{{first}}-{{last}} ページは、この {{pageCount}} ページの PDF の最後より後です。"
       },
       "locked_pdf": {
         "title": "パスワード付きの PDF ではページ範囲を使えません。",

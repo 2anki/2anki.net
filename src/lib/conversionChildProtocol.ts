@@ -22,8 +22,9 @@ export interface SerializedTaskError {
   name?: string;
   code?: string;
   sourceFormat?: 'markdown';
-  // Plain values an error carries for its answer (a page range's reason and
-  // page numbers); nested objects and functions are dropped.
+  // A page range error's reason and page numbers, so its answer can be
+  // translated; only plain values, and only for that error, so no other
+  // error's payload is carried into the parent's logs.
   details?: Record<string, string | number>;
 }
 
@@ -79,7 +80,10 @@ export function serializeTaskError(err: unknown): SerializedTaskError {
       code: typeof withCode.code === 'string' ? withCode.code : undefined,
       sourceFormat:
         withCode.sourceFormat === 'markdown' ? 'markdown' : undefined,
-      details: plainDetails(withCode.details),
+      details:
+        err.name === 'PdfPageRangeError'
+          ? plainDetails(withCode.details)
+          : undefined,
     };
   }
   return { message: String(err) };

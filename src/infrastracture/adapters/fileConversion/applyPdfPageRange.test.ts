@@ -130,7 +130,10 @@ describe('applyPdfPageRange', () => {
 
     await expect(
       applyPdfPageRange(files, '2-3', 7, WORKSPACE, 'notes.pdf', deps)
-    ).rejects.toThrow('password-protected');
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('password-protected'),
+      details: { reason: 'locked_pdf' },
+    });
     expect(deps.extract).not.toHaveBeenCalled();
   });
 

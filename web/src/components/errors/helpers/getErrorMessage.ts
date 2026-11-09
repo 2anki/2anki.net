@@ -333,30 +333,31 @@ export function classifyNotionTooLarge(): FriendlyError {
   };
 }
 
-const SETTING_TOO_LONG: Record<
-  NonNullable<UploadErrorBody['setting']> | 'other',
-  FriendlyError
-> = {
-  user_instructions: {
-    title: 'Your user instructions for PDF conversion are too long.',
-    detail: 'Shorten them under PDF & AI in Settings, then upload again.',
-  },
-  deck_name: {
-    title: 'Your saved deck name is too long.',
-    detail: 'Shorten it under Deck name in Settings, then upload again.',
-  },
-  other: {
-    title:
-      'A setting saved in this browser is too long to send with your upload.',
-    detail: 'Open Settings, choose Reset to defaults, and upload again.',
-  },
-};
+// A Map so a setting off the wire can never reach an Object.prototype key.
+const SETTING_TOO_LONG = new Map<string, FriendlyError>(
+  Object.entries({
+    user_instructions: {
+      title: 'Your user instructions for PDF conversion are too long.',
+      detail: 'Shorten them under PDF & AI in Settings, then upload again.',
+    },
+    deck_name: {
+      title: 'Your saved deck name is too long.',
+      detail: 'Shorten it under Deck name in Settings, then upload again.',
+    },
+    other: {
+      title:
+        'A setting saved in this browser is too long to send with your upload.',
+      detail: 'Open Settings, choose Reset to defaults, and upload again.',
+    },
+  })
+);
 
 function classifySettingTooLong(
   setting: UploadErrorBody['setting']
 ): FriendlyError {
-  const key = setting ?? 'other';
-  const defaults = SETTING_TOO_LONG[key];
+  const key =
+    setting != null && SETTING_TOO_LONG.has(setting) ? setting : 'other';
+  const defaults = SETTING_TOO_LONG.get(key) as FriendlyError;
   return {
     title: tr(`upload.setting_too_long.${key}.title`, defaults.title),
     detail: tr(`upload.setting_too_long.${key}.detail`, defaults.detail ?? ''),
@@ -366,7 +367,8 @@ function classifySettingTooLong(
 type PageRange = NonNullable<UploadErrorBody['page_range']>;
 
 // One entry per sentence the server can say about a page range; past_end
-// reads differently for one page and a run of pages.
+// reads differently for one page and a run of pages, and both take the plural
+// form of the PDF's page count.
 const PAGE_RANGE = new Map<string, FriendlyError>(
   Object.entries({
     too_long: {
@@ -395,10 +397,10 @@ const PAGE_RANGE = new Map<string, FriendlyError>(
       title: "'{{part}}' is not a valid page or range.",
       detail: 'Use page numbers and ranges like 12-30, 45.',
     },
-    past_end_one: {
+    past_end_page: {
       title: 'Page {{first}} is past the end of this {{pageCount}}-page PDF.',
     },
-    past_end_range: {
+    past_end_pages: {
       title:
         'Pages {{first}}-{{last}} are past the end of this {{pageCount}}-page PDF.',
     },
@@ -415,14 +417,18 @@ const PAGE_RANGE = new Map<string, FriendlyError>(
 
 function pageRangeKey(details: PageRange): string {
   if (details.reason !== 'past_end') return details.reason;
-  return details.first === details.last ? 'past_end_one' : 'past_end_range';
+  return details.first === details.last ? 'past_end_page' : 'past_end_pages';
 }
 
 function classifyPageRange(details: PageRange): FriendlyError | null {
   const key = pageRangeKey(details);
   const defaults = PAGE_RANGE.get(key);
   if (defaults == null) return null;
-  const { reason: _reason, ...values } = details;
+  const { reason: _reason, ...rest } = details;
+  const values =
+    details.reason === 'past_end'
+      ? { ...rest, count: details.pageCount }
+      : rest;
   const localized: FriendlyError = {
     title: tr(`upload.pdf_page_range.${key}.title`, defaults.title, values),
   };
