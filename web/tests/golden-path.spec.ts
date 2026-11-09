@@ -199,8 +199,9 @@ test.describe('golden path @golden', () => {
         'No cards came from 1 file. The other files are in this deck.'
       )
     ).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole('listitem').filter({ hasText: 'week 3.pdf' }))
-      .toContainText('Claude declined it.');
+    await expect(
+      page.getByRole('listitem').filter({ hasText: 'week 3.pdf' })
+    ).toContainText('Claude declined it.');
     await page.waitForLoadState('networkidle');
     expect(realErrors(errors)).toEqual([]);
   });
@@ -750,6 +751,43 @@ test.describe('golden path @golden', () => {
     await expect(
       page.getByText('Pages 11-14 are past the end of this 10-page PDF.')
     ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('English server text')).toHaveCount(0);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('a damaged zip shows the damaged-zip copy, not the server text, at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    await page.route('**/api/upload/file', (route) =>
+      route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'zip_damaged',
+          message: 'English server text',
+        }),
+      })
+    );
+
+    await page.goto('/upload');
+    await page.setInputFiles('#pakker', {
+      name: 'notes.zip',
+      mimeType: 'application/zip',
+      buffer: Buffer.from('PK not really a zip'),
+    });
+
+    await expect(page.getByText('Part of this zip is damaged.')).toBeVisible({
+      timeout: 10_000,
+    });
     await expect(page.getByText('English server text')).toHaveCount(0);
     expect(realErrors(errors)).toEqual([]);
   });
