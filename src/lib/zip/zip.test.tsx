@@ -379,6 +379,43 @@ describe('ZipHandler incomplete archives (#4028)', () => {
     expect(handler.getFileNames()).toContain('Recovered Page.html');
   });
 
+  it('counts recovered text against the upload memory budget', async () => {
+    mockedFallback.mockResolvedValue([
+      { name: 'page.html', contents: 'x'.repeat(4096) },
+    ]);
+    const handler = new ZipHandler(10, 2 * 1024);
+
+    await expect(
+      handler.build(
+        truncated(buildZip({ 'page.html': '<p>hi</p>' })),
+        false,
+        new CardOption({}),
+        makeSpillDir()
+      )
+    ).rejects.toThrow('too large to process');
+  });
+
+  it('leaves a recovered file on disk until something reads it', async () => {
+    const read = vi.fn(() => strToU8('png bytes'));
+    const onDisk = { name: 'photo.png', size: 9 };
+    Object.defineProperty(onDisk, 'contents', { enumerable: true, get: read });
+    mockedFallback.mockResolvedValue([
+      onDisk,
+      { name: 'page.html', contents: '<p>recovered</p>' },
+    ]);
+    const handler = new ZipHandler(10);
+
+    await handler.build(
+      truncated(buildZip({ 'page.html': '<p>hi</p>' })),
+      false,
+      new CardOption({}),
+      makeSpillDir()
+    );
+
+    expect(handler.getFileNames()).toEqual(['photo.png', 'page.html']);
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it('keeps directly recovered supported files without throwing', async () => {
     mockedFallback.mockResolvedValue([
       {
