@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-upload-sends-card-settings",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "Uploads send only your card settings, Reset to defaults clears all of them, and a long saved deck name says where to shorten it"
+}

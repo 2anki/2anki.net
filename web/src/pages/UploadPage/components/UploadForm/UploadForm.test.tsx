@@ -930,6 +930,49 @@ describe('UploadForm', () => {
     }
   });
 
+  test('an upload sends the saved card settings and nothing else from this browser', async () => {
+    globalThis.localStorage.setItem('deckName', 'Biology');
+    globalThis.localStorage.setItem('2anki_pass_token', 'cs_not_a_setting');
+    globalThis.localStorage.setItem('2anki-theme', 'dark');
+    const fetchMock = vi.fn().mockResolvedValue({
+      redirected: false,
+      status: 200,
+      headers: new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="deck.apkg"',
+        'X-Card-Count': '5',
+      }),
+      blob: () => Promise.resolve(new Blob(['fake'])),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+
+    try {
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} />
+      );
+      const form = container.querySelector('form')!;
+      await act(async () => {
+        form.dispatchEvent(
+          new Event('submit', { bubbles: true, cancelable: true })
+        );
+      });
+
+      const call = fetchMock.mock.calls.find(
+        (c) => c[0] === '/api/upload/file'
+      );
+      expect(call).toBeDefined();
+      const body = call![1].body as FormData;
+      expect(body.get('deckName')).toBe('Biology');
+      expect(body.has('2anki_pass_token')).toBe(false);
+      expect(body.has('2anki-theme')).toBe(false);
+    } finally {
+      globalThis.localStorage.removeItem('deckName');
+      globalThis.localStorage.removeItem('2anki_pass_token');
+      globalThis.localStorage.removeItem('2anki-theme');
+    }
+  });
+
   test('a signed-out upload with a hidden toggle sends AI off, ignoring a leftover localStorage key', async () => {
     // Simulates a landing page other than the AI page: the toggle is hidden
     // (no aiOn prop) but an old session left claude-ai-flashcards=true.

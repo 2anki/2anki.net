@@ -49,6 +49,20 @@ describe('resetStoredCardOptions', () => {
     expect(localStorage.getItem('deckName')).toBeNull();
   });
 
+  it('clears every setting an upload sends, so a reset always fixes an over-long one, and keeps the pass token', () => {
+    localStorage.setItem('share-files-for-debugging', 'true');
+    localStorage.setItem('pdf-fallback', 'pairs');
+    localStorage.setItem('block-id-identity', 'true');
+    localStorage.setItem('2anki_pass_token', 'cs_pass');
+
+    resetStoredCardOptions([]);
+
+    expect(localStorage.getItem('share-files-for-debugging')).toBeNull();
+    expect(localStorage.getItem('pdf-fallback')).toBeNull();
+    expect(localStorage.getItem('block-id-identity')).toBeNull();
+    expect(localStorage.getItem('2anki_pass_token')).toBe('cs_pass');
+  });
+
   it('includes the keys named in the bug report in the value key list', () => {
     expect(CARD_OPTION_VALUE_KEYS).toEqual(
       expect.arrayContaining([

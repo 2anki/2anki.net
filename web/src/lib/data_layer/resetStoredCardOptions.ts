@@ -1,4 +1,5 @@
 import CardOption from './model/CardOption';
+import { clearSavedCardSettings } from '../upload/savedCardSettings';
 
 export const CARD_OPTION_VALUE_KEYS = [
   'deckName',
@@ -33,4 +34,5 @@ export const resetStoredCardOptions = (options: CardOption[]) => {
   for (const key of CARD_OPTION_VALUE_KEYS) {
     localStorage.removeItem(key);
   }
+  clearSavedCardSettings();
 };

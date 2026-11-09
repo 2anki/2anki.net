@@ -226,7 +226,7 @@ describe('UploadRouter answers an over-long saved setting on a cloud pick', () =
     [
       'google_drive',
       'deckName',
-      'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.',
+      'Your saved deck name is too long. Shorten it under Deck name in Settings, then upload again.',
     ],
   ])(
     'on /api/upload/%s with the upload copy for %s',

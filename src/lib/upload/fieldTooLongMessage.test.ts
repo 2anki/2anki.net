@@ -14,7 +14,11 @@ describe('uploadFieldTooLongMessage', () => {
       'user-instructions',
       'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.',
     ],
-    ['deckName', SAVED_SETTING],
+    [
+      'deckName',
+      'Your saved deck name is too long. Shorten it under Deck name in Settings, then upload again.',
+    ],
+    ['template', SAVED_SETTING],
     [undefined, SAVED_SETTING],
   ])('names the %s field', (field, message) => {
     expect(uploadFieldTooLongMessage(field)).toBe(message);

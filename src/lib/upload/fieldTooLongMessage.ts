@@ -5,6 +5,9 @@ export function uploadFieldTooLongMessage(field: string | undefined): string {
   if (field === 'user-instructions') {
     return 'Your user instructions for PDF conversion are too long. Shorten them under PDF & AI in Settings, then upload again.';
   }
+  if (field === 'deckName') {
+    return 'Your saved deck name is too long. Shorten it under Deck name in Settings, then upload again.';
+  }
   return 'A setting saved in this browser is too long to send with your upload. Open Settings, choose Reset to defaults, and upload again.';
 }
 
