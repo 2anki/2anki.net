@@ -66,6 +66,7 @@ describe('rowsFromBuffer with markup at the start of the file', () => {
         ['Q2', 'A2'],
       ],
     ],
+    ['a div row', '<div>Front</div>,Back\n', [['<div>Front</div>', 'Back']]],
     [
       'text that only looks like a tag',
       '<3 cats,love\n',
@@ -91,6 +92,23 @@ describe('rowsFromBuffer with markup at the start of the file', () => {
       'an HTML table',
       '<html><body><table><tr><td>Q</td><td>A</td></tr></table></body></html>',
     ],
+    ['a bare table', '<table><tr><td>Q</td><td>A</td></tr></table>'],
+    [
+      'a table after a charset tag',
+      '<meta charset="utf-8"><table><tr><td>Q</td><td>A</td></tr></table>',
+    ],
+    [
+      'a table after a style block',
+      '<style>td{color:red}</style><table><tr><td>Q</td><td>A</td></tr></table>',
+    ],
+    [
+      'a table after a comment',
+      '<!-- export --><table><tr><td>Q</td><td>A</td></tr></table>',
+    ],
+    [
+      'a table inside a div, with no comma on the line',
+      '<div><table><tr><td>Q</td><td>A</td></tr></table></div>',
+    ],
     [
       'an Excel XML workbook',
       '<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="a"><Table><Row><Cell><Data ss:Type="String">Q</Data></Cell><Cell><Data ss:Type="String">A</Data></Cell></Row></Table></Worksheet></Workbook>',
@@ -105,6 +123,10 @@ describe('rowsFromBuffer with markup at the start of the file', () => {
     ['an XML document', '<?xml version="1.0"?>\n<root><a>1</a></root>\n'],
     ['an HTML page', '<!DOCTYPE html>\n<html>\n<body>hi</body>\n</html>'],
     ['a blank line before an HTML page', '\n<html><body>hi</body></html>'],
+    ['a page with only a head', '<head><title>Sign in</title></head>'],
+    ['a page with a charset tag', '<meta charset="utf-8"><p>hi</p>'],
+    ['a div with no separator', '<div>hello</div>'],
+    ['another XML dialect', '<root><a>1</a></root>'],
   ])('finds no rows in %s saved as a csv', (_label, text) => {
     expect(rowsFromBuffer(Buffer.from(text, 'utf8'), 'cards.csv')).toEqual([]);
   });

@@ -73,7 +73,8 @@ function sheetRows(worksheet: XLSX.WorkSheet): TabularRow[] {
 const LESS_THAN = 0x3c;
 const LEADING_WHITESPACE = new Set([0x20, 0x0a, 0x0d]);
 const TEXT_GUARD = 'x';
-const MARKUP_DOCUMENT = /^<(\?xml|!doctype|html\b|table\b|workbook\b)/i;
+const MARKUP_DOCUMENT =
+  /^<(\?xml|!doctype|!--|html\b|head\b|body\b|meta\b|style\b|script\b|table\b|([\w-]+:)?workbook\b)/i;
 
 function withoutLeadingWhitespace(bytes: Buffer): Buffer {
   let start = 0;
@@ -91,7 +92,10 @@ function firstSheetRows(workbook: XLSX.WorkBook): TabularRow[] {
 function rowsFromMarkupDocument(bytes: Buffer, fileName: string): TabularRow[] {
   try {
     return firstSheetRows(readWorkbook(bytes, fileName));
-  } catch {
+  } catch (error) {
+    console.warn('[csv] markup document has no readable table', {
+      kind: (error as Error).name,
+    });
     return [];
   }
 }
@@ -109,14 +113,27 @@ function rowsFromTextOpeningWithTag(
   return [[cellText(cell).slice(TEXT_GUARD.length), ...cells], ...rest];
 }
 
+// A delimiter outside the tags on the first line is what separates a row like
+// <div>Front</div>,Back from a document that merely opens with a <div>.
+function opensWithDelimitedRow(bytes: Buffer): boolean {
+  const newline = bytes.indexOf(0x0a);
+  const firstLine = bytes
+    .subarray(0, newline === -1 ? bytes.length : newline)
+    .toString('latin1');
+  return (
+    !MARKUP_DOCUMENT.test(firstLine) &&
+    /[,;\t]/.test(firstLine.replace(/<[^>]*>/g, ''))
+  );
+}
+
 export function rowsFromBuffer(buffer: Buffer, fileName = ''): TabularRow[] {
   const bytes = withoutLeadingWhitespace(withoutByteOrderMark(buffer));
   if (bytes[0] !== LESS_THAN) {
     return firstSheetRows(readWorkbook(buffer, fileName));
   }
-  return MARKUP_DOCUMENT.test(bytes.subarray(0, 32).toString('latin1'))
-    ? rowsFromMarkupDocument(bytes, fileName)
-    : rowsFromTextOpeningWithTag(bytes, fileName);
+  return opensWithDelimitedRow(bytes)
+    ? rowsFromTextOpeningWithTag(bytes, fileName)
+    : rowsFromMarkupDocument(bytes, fileName);
 }
 
 // SheetJS keeps hidden and very hidden sheets in SheetNames, marking them in
