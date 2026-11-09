@@ -3,6 +3,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { OAuthServerProvider } from '@modelcontextprotocol/sdk/server/auth/provider.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
+import { InvalidTokenError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 
 import { InMemoryRateLimiter } from '../../lib/rateLimit/InMemoryRateLimiter';
 
@@ -31,6 +32,9 @@ function fakeProvider(): OAuthServerProvider {
       token_type: 'bearer',
     }),
     verifyAccessToken: async (token: string): Promise<AuthInfo> => {
+      if (token === 'expired') {
+        throw new InvalidTokenError('expired');
+      }
       if (token !== 'good') {
         throw new Error('bad token');
       }
@@ -340,6 +344,34 @@ describe('McpRouter mistyped connector URLs', () => {
       }
     );
     expect(reached).toBe(true);
+  });
+
+  it('refuses an expired token on a POST to the site root and logs why', async () => {
+    const lines: string[] = [];
+    let reached = false;
+    await withServer(
+      async (base) => {
+        const res = await fetch(`${base}/`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            authorization: 'Bearer expired',
+          },
+          body: JSON.stringify({ jsonrpc: '2.0', method: 'ping', id: 1 }),
+        });
+        expect(res.status).toBe(401);
+        await res.text();
+      },
+      (_req, res) => {
+        reached = true;
+        res.json({ ok: true });
+      },
+      undefined,
+      { logClientError: (line) => lines.push(line) }
+    );
+    expect(reached).toBe(false);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('[mcp] POST /mcp 401 code=invalid_token');
   });
 
   it('answers OPTIONS on the site root with the POST it now accepts', async () => {
