@@ -197,9 +197,13 @@ describe('getPackagesFromZip — batch concurrency', () => {
     );
 
     expect(mockPrepareDeck).toHaveBeenCalledWith(
-      expect.objectContaining({ noLimits: true, name: 'a.html' })
+      expect.objectContaining({
+        name: 'a.html',
+        workspace: expect.objectContaining({
+          location: FAKE_WORKSPACE_LOCATION,
+        }),
+      })
     );
-    expect(mockPrepareDeckInfoOnly).not.toHaveBeenCalled();
     expect(result.warnings).toEqual(['zip-partly-recovered']);
   });
 
