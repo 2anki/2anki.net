@@ -136,9 +136,34 @@ function defaultDeps(): AiBudgetDeps {
 const claimedExhaustedWindows = new Map<number, number>();
 const claimedExhaustedPassWindows = new Map<number, number>();
 
-export function resetExhaustedWindowClaims(): void {
+// The watch alert has the same race: `ai_spend_alert_sent` goes through the
+// buffered sink, so guards for one subject that fan out together (a long PDF's
+// pages, concurrent chunks) all read zero sent alerts and each emails. A
+// subject is claimed before its first read: pending while a check runs, sent
+// once it alerts, released when it does not alert or a read fails. A pending
+// claim older than ALERT_PENDING_STALE_MS is taken over, so a read that never
+// settles cannot silence the subject until a restart. Keys carry the subject
+// kind, so a pass never masks a user with the same id. Each worker thread has
+// its own map; the ledger still dedupes across threads and processes.
+const ALERT_PENDING_STALE_MS = 5 * 60 * 1000;
+const alertClaims = new Map<
+  string,
+  { state: 'pending' | 'sent'; at: number }
+>();
+
+function alertClaimHeld(claimKey: string, now: Date): boolean {
+  const claim = alertClaims.get(claimKey);
+  if (claim == null) return false;
+  const age = now.getTime() - claim.at;
+  return claim.state === 'pending'
+    ? age < ALERT_PENDING_STALE_MS
+    : age < ALERT_DEDUP_MS;
+}
+
+export function resetAiSpendClaims(): void {
   claimedExhaustedWindows.clear();
   claimedExhaustedPassWindows.clear();
+  alertClaims.clear();
 }
 
 const windowClaimKey = (windowStart: Date): number =>
@@ -291,6 +316,7 @@ export async function getAiBudgetStatus(
 // Who the watch alert is about, with that subject's own readers: a user's
 // spend includes the passes they claimed, a pass's is the pass's alone.
 interface AlertTarget {
+  claimKey: string;
   label: string;
   recordedCostSince: (since: Date) => Promise<number>;
   alertsSentSince: (since: Date) => Promise<number>;
@@ -304,6 +330,7 @@ function alertTargetFor(
   if (subject.kind === 'user') {
     const userId = subject.userId;
     return {
+      claimKey: `user:${userId}`,
       label: `User ${userId}`,
       recordedCostSince: (since) =>
         deps.reader.userRecordedCostSince(userId, since),
@@ -317,6 +344,7 @@ function alertTargetFor(
   if (subject.kind === 'pass' && passReader != null) {
     const anonymousPassId = subject.anonymousPassId;
     return {
+      claimKey: `pass:${anonymousPassId}`,
       label: `Anonymous pass ${anonymousPassId}`,
       recordedCostSince: (since) =>
         passReader.anonymousPassRecordedCostSince(anonymousPassId, since),
@@ -350,6 +378,7 @@ async function maybeNotifyAlert(
   if (alreadySent > 0) {
     return;
   }
+  alertClaims.set(target.claimKey, { state: 'sent', at: now.getTime() });
   target.recordAlertSent();
   await deps.sendAlert(
     `[2anki] AI spend alert — ${target.label.toLowerCase()} crossed $${AI_SPEND_ALERT_THRESHOLD_USD} in 30 days`,
@@ -373,9 +402,23 @@ function maybeNotifyAlertForSubject(
   if (target == null) {
     return;
   }
-  void maybeNotifyAlert(deps, target, now).catch((error) =>
-    console.error('[ai-credits] spend alert check failed', error)
-  );
+  const { claimKey } = target;
+  if (alertClaimHeld(claimKey, now)) {
+    return;
+  }
+  const pending = { state: 'pending' as const, at: now.getTime() };
+  alertClaims.set(claimKey, pending);
+  const releaseIfPending = () => {
+    if (alertClaims.get(claimKey) === pending) {
+      alertClaims.delete(claimKey);
+    }
+  };
+  void maybeNotifyAlert(deps, target, now)
+    .then(releaseIfPending)
+    .catch((error) => {
+      releaseIfPending();
+      console.error('[ai-credits] spend alert check failed', error);
+    });
 }
 
 function reservedForSubject(subject: NormalizedSubject): number {

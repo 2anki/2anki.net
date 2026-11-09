@@ -5,7 +5,7 @@ import {
   AiCreditsExhaustedError,
   assertAiBudget,
   getAiBudgetStatus,
-  resetExhaustedWindowClaims,
+  resetAiSpendClaims,
   withAiBudget,
 } from './aiSpendGuard';
 import { AiCreditBalance } from './aiCredits/balance';
@@ -60,7 +60,7 @@ function makeDeps(overrides: {
 describe('assertAiBudget', () => {
   beforeEach(() => {
     trackMock.mockReset();
-    resetExhaustedWindowClaims();
+    resetAiSpendClaims();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());
@@ -119,6 +119,54 @@ describe('assertAiBudget', () => {
     );
   });
 
+  it('emails the watch alert once when many guards for one user cross the threshold together', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(200),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+
+    await Promise.all(
+      Array.from({ length: 5 }, () => assertAiBudget(42, deps))
+    );
+    await flushAsync();
+
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'ai_spend_alert_sent')
+    ).toHaveLength(1);
+  });
+
+  it('checks again after a failed spend read, so the alert still goes out', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(200),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    deps.reader.userRecordedCostSince.mockRejectedValueOnce(
+      new Error('db down')
+    );
+
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    await assertAiBudget(42, deps);
+    await flushAsync();
+
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
+  });
+
+  it('checks again while spend is under the threshold', async () => {
+    const deps = makeDeps({ balance: balanceWith(200), cost30d: 1 });
+
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    deps.reader.userRecordedCostSince.mockResolvedValue(
+      AI_SPEND_ALERT_THRESHOLD_USD
+    );
+    await assertAiBudget(42, deps);
+    await flushAsync();
+
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
+  });
+
   it('dedupes the watch alert inside seven days', async () => {
     const deps = makeDeps({
       balance: balanceWith(180),
@@ -143,6 +191,65 @@ describe('assertAiBudget', () => {
     await expect(assertAiBudget(42, deps)).resolves.toBeUndefined();
     await flushAsync();
     expect(deps.sendAlert).toHaveBeenCalled();
+  });
+
+  it('does not retry a failed alert email inside seven days, since the event was recorded', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(180),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    (deps.sendAlert as Mock).mockRejectedValue(new Error('smtp down'));
+
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    await assertAiBudget(42, deps);
+    await flushAsync();
+
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes over a check whose spend read never settled after five minutes', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(180),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    deps.reader.userRecordedCostSince.mockReturnValueOnce(
+      new Promise(() => undefined)
+    );
+
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    expect(deps.sendAlert).not.toHaveBeenCalled();
+
+    deps.now = () => new Date(NOW.getTime() + 6 * 60 * 1000);
+    await assertAiBudget(42, deps);
+    await flushAsync();
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
+  });
+
+  it('still throws and records the exhausted event once while an alert check is held', async () => {
+    const deps = makeDeps({
+      balance: balanceWith(0),
+      cost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 5 }, () => assertAiBudget(42, deps))
+    );
+    await flushAsync();
+
+    expect(results.map((r) => r.status)).toEqual(Array(5).fill('rejected'));
+    for (const result of results) {
+      expect((result as PromiseRejectedResult).reason).toBeInstanceOf(
+        AiCreditsExhaustedError
+      );
+    }
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'ai_credits_exhausted')
+    ).toHaveLength(1);
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
   });
 
   it('still fires the watch alert when the user is also exhausted', async () => {
@@ -171,7 +278,7 @@ describe('withAiBudget', () => {
 
   beforeEach(() => {
     trackMock.mockReset();
-    resetExhaustedWindowClaims();
+    resetAiSpendClaims();
     resetInflightReservations();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
@@ -299,7 +406,7 @@ describe('withAiBudget', () => {
 describe('getAiBudgetStatus', () => {
   beforeEach(() => {
     trackMock.mockReset();
-    resetExhaustedWindowClaims();
+    resetAiSpendClaims();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
   afterEach(() => vi.restoreAllMocks());
@@ -463,7 +570,7 @@ function makePassDeps(overrides: {
 describe('anonymous pass metering', () => {
   beforeEach(() => {
     trackMock.mockReset();
-    resetExhaustedWindowClaims();
+    resetAiSpendClaims();
     resetInflightReservations();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
@@ -552,6 +659,44 @@ describe('anonymous pass metering', () => {
       expect.stringContaining('anonymous pass 7 crossed $25 in 30 days'),
       expect.stringContaining('Anonymous pass 7 is at $25.00')
     );
+  });
+
+  it('emails the pass watch alert once when many guards cross the threshold together', async () => {
+    const deps = makePassDeps({
+      balance: passBalanceWith(400),
+      passCost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        withAiBudget({ anonymousPassId: 7 }, async () => 'ok', deps)
+      )
+    );
+    await flushAsync();
+
+    expect(results).toEqual(Array(5).fill('ok'));
+    expect(reservedCreditsForPass(7)).toBe(0);
+    expect(deps.sendAlert).toHaveBeenCalledTimes(1);
+    expect(
+      trackMock.mock.calls.filter(([name]) => name === 'ai_spend_alert_sent')
+    ).toHaveLength(1);
+  });
+
+  it('keeps a pass and a user with the same id apart', async () => {
+    const deps = makePassDeps({
+      balance: passBalanceWith(400),
+      passCost30d: AI_SPEND_ALERT_THRESHOLD_USD,
+    });
+    (deps.computeBalance as Mock).mockResolvedValue(balanceWith(200));
+    (deps.reader.userRecordedCostSince as Mock).mockResolvedValue(
+      AI_SPEND_ALERT_THRESHOLD_USD
+    );
+
+    await assertAiBudget({ anonymousPassId: 7 }, deps);
+    await assertAiBudget(7, deps);
+    await flushAsync();
+
+    expect(deps.sendAlert).toHaveBeenCalledTimes(2);
   });
 
   it('dedupes the pass watch alert inside seven days', async () => {
