@@ -130,9 +130,10 @@ class ZipHandler {
   files: File[];
   zipFileCount: number;
   maxZipFiles: number;
-  // Keyed by the photo's bytes: a photo read again (a nested zip the
-  // fallback reopens) is neither sent to OCR again nor written twice.
-  photoTextByDigest: Map<string, string>;
+  // Keyed by entry name and bytes: the same entry read again (a nested zip
+  // the fallback reopens) is neither sent to OCR again nor written twice,
+  // while two entries that happen to hold the same photo stay two, as before.
+  photoTextByEntry: Map<string, string>;
   inMemoryBytes: number;
   maxInMemoryBytes: number;
   decompressedBytes: number;
@@ -149,7 +150,7 @@ class ZipHandler {
     this.files = [];
     this.zipFileCount = 0;
     this.maxZipFiles = maxNestedZipFiles;
-    this.photoTextByDigest = new Map();
+    this.photoTextByEntry = new Map();
     this.inMemoryBytes = 0;
     this.maxInMemoryBytes = maxInMemoryBytes;
     this.decompressedBytes = 0;
@@ -365,14 +366,15 @@ class ZipHandler {
 
   private async convertAndAddImageToHTML(name: string, file: Uint8Array) {
     const digest = createHash('sha256').update(file).digest('hex');
-    if (this.photoTextByDigest.has(digest)) return;
+    const key = `${name}\0${digest}`;
+    if (this.photoTextByEntry.has(key)) return;
     const html = await convertImageToHTML(Buffer.from(file).toString('base64'));
-    this.photoTextByDigest.set(digest, html);
+    this.photoTextByEntry.set(key, html);
     console.log('Converted image to HTML:', name, html);
   }
 
   get combinedHTML(): string {
-    return [...this.photoTextByDigest.values()].join('');
+    return [...this.photoTextByEntry.values()].join('');
   }
 
   private addCombinedHTMLToFiles(paying: boolean, settings: CardOption) {
