@@ -1,6 +1,21 @@
 import fs from 'fs';
 
 import { File } from './types';
+
+// Contents stay on disk until something asks for them, so recovering an
+// archive never holds all of its entries in memory at once.
+function diskBackedFile(filePath: string, size: number): File {
+  const file: File = { name: filePath, size };
+  Object.defineProperty(file, 'contents', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      return fs.readFileSync(filePath);
+    },
+  });
+  return file;
+}
+
 export async function listFiles(workspace: string) {
   const files: File[] = [];
 
@@ -14,11 +29,7 @@ export async function listFiles(workspace: string) {
         continue;
       }
       if (stats.isFile()) {
-        const buffer = await fs.promises.readFile(filePath);
-        files.push({
-          name: filePath,
-          contents: new Uint8Array(buffer),
-        });
+        files.push(diskBackedFile(filePath, stats.size));
       } else if (stats.isDirectory()) {
         await explorePath(filePath); // Recursively explore subdirectories
       }

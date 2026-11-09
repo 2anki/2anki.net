@@ -19,7 +19,13 @@ import { isZipContentFileSupported } from '../../usecases/uploads/isZipContentFi
 import CardOption from '../parser/Settings';
 import { getRandomUUID } from '../../shared/helpers/getRandomUUID';
 import { convertImageToHTML } from '../../infrastracture/adapters/fileConversion/convertImageToHTML';
-import { MAX_OLD_GENERATION_SIZE_MB } from '../conversionMemoryLimits';
+import {
+  MAX_EXTRACTED_BYTES,
+  MAX_IN_MEMORY_BYTES,
+  MAX_RECOVERY_MS,
+} from './zipLimits';
+import { RecoveryBudget } from './fallback/types';
+import { ZipRecoveryTooLargeError } from './fallback/ZipRecoveryTooLargeError';
 import { DAMAGED_ZIP_MESSAGE } from './damagedZipMessage';
 
 interface File {
@@ -30,33 +36,6 @@ interface File {
   // trigger the lazy disk read behind `contents`.
   size?: number;
 }
-
-// Conversion runs in a Piscina worker whose V8 old-generation heap is capped at
-// MAX_OLD_GENERATION_SIZE_MB. The text ceiling below derives from that cap so
-// the friendly "too large" error fires BEFORE V8 kills the worker with
-// ERR_WORKER_OUT_OF_MEMORY (#3717). Note the decompressed bytes themselves live
-// mostly in EXTERNAL (ArrayBuffer) memory outside the old-gen cap — the real
-// extraction ceiling is process RSS, which is why extraction is batched below.
-const WORKER_OLD_GEN_BYTES = MAX_OLD_GENERATION_SIZE_MB * 1024 * 1024;
-
-// Text we KEEP in memory (decoded HTML/markdown, the OCR html) is stored as
-// UTF-16 strings — roughly 2× the counted byte length — so hold this ceiling to
-// about half the worker old-gen cap to leave headroom for that overhead, the
-// inflated archive map, and other allocations. Binary entries (images, audio,
-// misc media) are spilled to disk and bounded instead by the compressed-upload
-// cap (`getUploadLimits().fileSize`); they do not count here (#3709/#3711).
-const MAX_IN_MEMORY_BYTES = Math.floor(WORKER_OLD_GEN_BYTES * 0.5);
-
-// Extraction is batched: a census pass reads every entry's declared size from
-// the central directory WITHOUT inflating anything, then entries inflate in
-// bounded batches that spill to disk and release. Peak resident bytes during
-// extraction are therefore one batch (plus the compressed input), never the
-// archive's total decompressed size — which is what let a real 643MB paying
-// export through where the old whole-archive inflation could not. The total
-// decompressed budget moved from a heap bound to a DISK budget: a zip bomb
-// (DEFLATE of zeros, ~1000:1; nested archives compound it) still aborts with
-// the friendly error at the census, before a single byte inflates (#3717).
-const MAX_EXTRACTED_BYTES = 4 * 1024 * 1024 * 1024;
 
 // One extraction batch's decompressed bytes. Far below the worker heap cap so
 // a batch plus the compressed input plus text comfortably fit.
@@ -148,6 +127,8 @@ class ZipHandler {
   maxDecompressedBytes: number;
   maxBatchBytes: number;
   spillLocation?: string;
+  recoveredBytes = 0;
+  recoveryStartedAt?: number;
 
   constructor(
     maxNestedZipFiles: number,
@@ -463,9 +444,70 @@ ${this.combinedHTML}
       (paying && this.combinedHTML !== '') ||
       this.files.some((f) => isZipContentFileSupported(f.name));
     if (!anySupported) {
+      if (this.recoveredBytes >= this.maxDecompressedBytes) {
+        throw new ZipRecoveryTooLargeError();
+      }
       throw new IncompleteZipError(
         isDamagedData ? DAMAGED_ZIP_MESSAGE : INCOMPLETE_ZIP_MESSAGE
       );
+    }
+  }
+
+  // Shared by every archive in one uploaded file, like the census budget. Bytes the
+  // census counted are not subtracted: they are declared sizes of the same
+  // archive being recovered, and would refuse a legitimate large export.
+  private remainingRecoveryBudget(): RecoveryBudget {
+    this.recoveryStartedAt ??= Date.now();
+    const budget = {
+      maxBytes: this.maxDecompressedBytes - this.recoveredBytes,
+      maxTextBytes: this.maxInMemoryBytes - this.inMemoryBytes,
+      timeoutMs: MAX_RECOVERY_MS - (Date.now() - this.recoveryStartedAt),
+    };
+    if (
+      budget.maxBytes <= 0 ||
+      budget.maxTextBytes <= 0 ||
+      budget.timeoutMs <= 0
+    ) {
+      throw new ZipRecoveryTooLargeError();
+    }
+    return budget;
+  }
+
+  // Spent in full, so a refused recovery cannot be repeated by the next
+  // archive and the file ends with the too-large message if nothing is left.
+  private refuseRecovery(): ZipRecoveryTooLargeError {
+    this.recoveredBytes = this.maxDecompressedBytes;
+    return new ZipRecoveryTooLargeError();
+  }
+
+  private async readRecoveredArchive(zipData: Uint8Array, paying: boolean) {
+    try {
+      return await processAndPrepareArchiveData(
+        zipData,
+        paying,
+        this.remainingRecoveryBudget()
+      );
+    } catch (error: unknown) {
+      if (error instanceof ZipRecoveryTooLargeError)
+        throw this.refuseRecovery();
+      throw error;
+    }
+  }
+
+  // Charged before any nested zip opens, so it sees what is really left.
+  private chargeRecoveredFiles(files: { size?: number; contents?: unknown }[]) {
+    for (const file of files) {
+      // A file with a size is still on disk; reading it here would load it.
+      const contents = file.size == null ? file.contents : undefined;
+      const textBytes = typeof contents === 'string' ? contents.length : 0;
+      this.recoveredBytes += file.size ?? textBytes;
+      this.inMemoryBytes += textBytes;
+    }
+    if (
+      this.recoveredBytes > this.maxDecompressedBytes ||
+      this.inMemoryBytes > this.maxInMemoryBytes
+    ) {
+      throw this.refuseRecovery();
     }
   }
 
@@ -474,21 +516,22 @@ ${this.combinedHTML}
     paying: boolean,
     settings: CardOption
   ) {
-    const foundFiles = await processAndPrepareArchiveData(zipData, paying);
+    const foundFiles = await this.readRecoveredArchive(zipData, paying);
+    this.chargeRecoveredFiles(foundFiles);
     console.log('Processed files using fallback method:');
     for (const file of foundFiles) {
-      if (
-        /\.zip$/i.test(file.name) &&
-        file.contents instanceof Uint8Array &&
-        this.zipFileCount < this.maxZipFiles
-      ) {
+      const nestedZip =
+        /\.zip$/i.test(file.name) && this.zipFileCount < this.maxZipFiles
+          ? file.contents
+          : undefined;
+      if (nestedZip instanceof Uint8Array) {
         // bsdtar reads sequentially and often recovers a nested export part
         // intact even when the outer archive is truncated. Recurse so its
         // pages convert; a nested part that is itself truncated fails its own
         // fallback below and is skipped rather than aborting the recovery.
         this.zipFileCount++;
         try {
-          await this.processZip(file.contents, paying, settings);
+          await this.processZip(nestedZip, paying, settings);
         } catch {
           console.warn('Recovered nested zip was itself unreadable, skipping');
         }

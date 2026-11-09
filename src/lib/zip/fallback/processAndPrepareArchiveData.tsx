@@ -1,11 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { getUploadLimits } from '../../misc/getUploadLimits';
 import { decompress } from './decompress';
+import { File, RecoveryBudget } from './types';
+import { ZipRecoveryTooLargeError } from './ZipRecoveryTooLargeError';
 import { isZipContentFileSupported } from '../../../usecases/uploads/isZipContentFileSupported';
 
 export const processAndPrepareArchiveData = async (
   byteArray: Uint8Array,
-  isPatron: boolean = false
+  isPatron: boolean,
+  budget: RecoveryBudget
 ) => {
   const size = Buffer.byteLength(byteArray);
   const limits = getUploadLimits(isPatron);
@@ -23,18 +26,20 @@ export const processAndPrepareArchiveData = async (
     );
   }
 
-  const decompressedData = await decompress(byteArray);
-  const fileNames = decompressedData.map((z) => z.name);
-  const files = [];
+  const decompressedData = await decompress(byteArray, budget);
+  const files: File[] = [];
+  let textBytes = 0;
 
-  for (const name of fileNames) {
-    const file = decompressedData.find((z) => z.name === name);
-    let contents = file?.contents;
-    if (isZipContentFileSupported(name) && contents) {
-      const s = new TextDecoder().decode(contents as Uint8Array);
-      files.push({ name, contents: s });
-    } else if (contents) {
-      files.push({ name, contents });
+  for (const file of decompressedData) {
+    if (isZipContentFileSupported(file.name)) {
+      textBytes += file.size ?? 0;
+      if (textBytes > budget.maxTextBytes) {
+        throw new ZipRecoveryTooLargeError();
+      }
+      const contents = new TextDecoder().decode(file.contents as Uint8Array);
+      files.push({ name: file.name, contents });
+    } else {
+      files.push(file);
     }
   }
 

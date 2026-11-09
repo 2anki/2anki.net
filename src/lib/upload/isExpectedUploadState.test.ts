@@ -16,6 +16,7 @@ describe('isExpectedUploadState', () => {
     'ImageOnlyContentError',
     'DeckTooLargeError',
     'IncompleteZipError',
+    'ZipRecoveryTooLargeError',
     'EpubNoAnnotationsError',
     'EpubTooLargeError',
     'NotionDatabaseColumnsError',

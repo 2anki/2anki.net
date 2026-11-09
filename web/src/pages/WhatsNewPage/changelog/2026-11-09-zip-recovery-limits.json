@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-zip-recovery-limits",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "A very large broken zip stops with a clear message instead of hanging"
+}
