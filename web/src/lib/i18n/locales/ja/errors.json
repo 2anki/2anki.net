@@ -120,6 +120,62 @@
     "claude_refusal": {
       "title": "Claude はこのファイルからカードを作成することを断りました。",
       "detail": "PDF 変換用のユーザー指示を追加している場合は、設定の PDF と AI で削除してからもう一度お試しください。それでも続く場合は support@2anki.net までご連絡ください。"
+    },
+    "setting_too_long": {
+      "user_instructions": {
+        "title": "PDF 変換用のユーザー指示が長すぎます。",
+        "detail": "設定の PDF と AI で短くしてから、もう一度アップロードしてください。"
+      },
+      "deck_name": {
+        "title": "保存したデッキ名が長すぎます。",
+        "detail": "設定のデッキ名で短くしてから、もう一度アップロードしてください。"
+      },
+      "other": {
+        "title": "このブラウザに保存された設定が長すぎて、アップロードと一緒に送れません。",
+        "detail": "設定を開いて「デフォルトに戻す」を選び、もう一度アップロードしてください。"
+      }
+    },
+    "pdf_page_range": {
+      "too_long": {
+        "title": "そのページ範囲は長すぎます。",
+        "detail": "{{max}} 文字未満にしてください。"
+      },
+      "too_many_parts": {
+        "title": "ページ範囲が多すぎます。",
+        "detail": "{{max}} 個までにしてください。"
+      },
+      "number_too_large": {
+        "title": "'{{part}}' のページ番号が大きすぎます。",
+        "detail": "PDF のページ番号を使ってください。例: 12-30, 45"
+      },
+      "range_starts_at_zero": {
+        "title": "ページ番号は 1 から始まるため、'{{part}}' は有効な範囲ではありません。"
+      },
+      "backwards": {
+        "title": "'{{part}}' は逆順になっています。",
+        "detail": "小さいページを先に書いてください。例: {{lower}}-{{upper}}"
+      },
+      "page_zero": {
+        "title": "ページ番号は 1 から始まるため、'{{part}}' は有効なページではありません。"
+      },
+      "invalid_part": {
+        "title": "'{{part}}' は有効なページでも範囲でもありません。",
+        "detail": "ページ番号と範囲を使ってください。例: 12-30, 45"
+      },
+      "past_end_one": {
+        "title": "{{first}} ページは、この {{pageCount}} ページの PDF の最後より後です。"
+      },
+      "past_end_range": {
+        "title": "{{first}}-{{last}} ページは、この {{pageCount}} ページの PDF の最後より後です。"
+      },
+      "locked_pdf": {
+        "title": "パスワード付きの PDF ではページ範囲を使えません。",
+        "detail": "ファイル全体を使うには、ページ範囲なしでもう一度変換してください。"
+      },
+      "split_timeout": {
+        "title": "その PDF を指定したページに分けるのに時間がかかりすぎました。",
+        "detail": "ページ数を減らしてお試しください。"
+      }
     }
   },
   "presenter": {

@@ -22,6 +22,26 @@ export interface SerializedTaskError {
   name?: string;
   code?: string;
   sourceFormat?: 'markdown';
+  // Plain values an error carries for its answer (a page range's reason and
+  // page numbers); nested objects and functions are dropped.
+  details?: Record<string, string | number>;
+}
+
+const MAX_DETAIL_KEYS = 8;
+
+function plainDetails(
+  value: unknown
+): Record<string, string | number> | undefined {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(
+      (entry): entry is [string, string | number] =>
+        typeof entry[1] === 'string' || typeof entry[1] === 'number'
+    )
+    .slice(0, MAX_DETAIL_KEYS);
+  return entries.length === 0 ? undefined : Object.fromEntries(entries);
 }
 
 // The scheduler is payload-agnostic: it routes by taskId and resolves with
@@ -48,13 +68,18 @@ export type ChildToParentMessage =
 
 export function serializeTaskError(err: unknown): SerializedTaskError {
   if (err instanceof Error) {
-    const withCode = err as Error & { code?: unknown; sourceFormat?: unknown };
+    const withCode = err as Error & {
+      code?: unknown;
+      sourceFormat?: unknown;
+      details?: unknown;
+    };
     return {
       message: err.message,
       name: err.name,
       code: typeof withCode.code === 'string' ? withCode.code : undefined,
       sourceFormat:
         withCode.sourceFormat === 'markdown' ? 'markdown' : undefined,
+      details: plainDetails(withCode.details),
     };
   }
   return { message: String(err) };
@@ -64,10 +89,12 @@ export function rebuildTaskError(error: SerializedTaskError): Error {
   const rebuilt = new Error(error.message) as Error & {
     code?: string;
     sourceFormat?: 'markdown';
+    details?: Record<string, string | number>;
   };
   if (error.name != null) rebuilt.name = error.name;
   if (error.code != null) rebuilt.code = error.code;
   if (error.sourceFormat != null) rebuilt.sourceFormat = error.sourceFormat;
+  if (error.details != null) rebuilt.details = error.details;
   return rebuilt;
 }
 

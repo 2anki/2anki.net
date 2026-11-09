@@ -62,7 +62,8 @@ export function runPdfTool(
       child.kill('SIGKILL');
       reject(
         new PdfPageRangeError(
-          'That PDF took too long to split into the pages you asked for. Try fewer pages.'
+          'That PDF took too long to split into the pages you asked for. Try fewer pages.',
+          { reason: 'split_timeout' }
         )
       );
     }, timeoutMs);

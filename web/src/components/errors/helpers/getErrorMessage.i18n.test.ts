@@ -99,3 +99,35 @@ describe('deck-builder crash and Claude refusal copy in German', () => {
     }
   );
 });
+
+describe('classifyUploadError translated answers', () => {
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  it('words a page range past the end of the PDF in German', async () => {
+    await i18n.changeLanguage('de');
+    expect(
+      classifyUploadError({
+        code: 'pdf_page_range',
+        message: 'Pages 11-14 are past the end of this 10-page PDF.',
+        page_range: { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
+      }).title
+    ).toBe('Die Seiten 11-14 liegen hinter dem Ende dieses 10-seitigen PDFs.');
+  });
+
+  it('names the over-long deck name setting in Spanish', async () => {
+    await i18n.changeLanguage('es');
+    expect(
+      classifyUploadError({
+        code: 'setting_too_long',
+        message: 'Your saved deck name is too long.',
+        setting: 'deck_name',
+      })
+    ).toEqual({
+      title: 'El nombre del mazo que guardaste es demasiado largo.',
+      detail:
+        'Acórtalo en Nombre del mazo dentro de Ajustes y vuelve a subir el archivo.',
+    });
+  });
+});

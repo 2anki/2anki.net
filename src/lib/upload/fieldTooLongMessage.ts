@@ -1,3 +1,26 @@
+import type {
+  TooLongSetting,
+  UploadErrorBody,
+} from '../../types/UploadErrorBody';
+
+const TOO_LONG_SETTINGS = new Map<string, TooLongSetting>([
+  ['user-instructions', 'user_instructions'],
+  ['deckName', 'deck_name'],
+]);
+
+// The 413 body for an over-long field on an upload: a code the web translates,
+// the setting when it has its own place in Settings, and the English sentence.
+export function uploadFieldTooLongBody(
+  field: string | undefined
+): UploadErrorBody {
+  const setting = field == null ? undefined : TOO_LONG_SETTINGS.get(field);
+  return {
+    code: 'setting_too_long',
+    message: uploadFieldTooLongMessage(field),
+    ...(setting == null ? {} : { setting }),
+  };
+}
+
 // The upload form sends the card settings saved in the browser as form
 // fields, so an over-long field on an upload is a saved setting, not something
 // the person typed into the form.

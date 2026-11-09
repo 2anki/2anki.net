@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-translate-setting-and-page-range-errors",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "A saved setting that is too long and a mistyped PDF page range now explain the problem in your language"
+}

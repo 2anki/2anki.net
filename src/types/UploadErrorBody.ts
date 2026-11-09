@@ -8,6 +8,7 @@ export type UploadErrorCode =
   | 'password_protected_pdf'
   | 'pdf_processing_failed'
   | 'pdf_page_range'
+  | 'setting_too_long'
   | 'docx_processing_failed'
   | 'claude_parse_failed'
   | 'empty_export'
@@ -30,6 +31,7 @@ export type UploadErrorCode =
 import type { EmptyDeckReason } from '../usecases/jobs/EmptyDeckError';
 import type { EmptyUploadReading } from './EmptyUploadReading';
 import type { RescueCandidate } from './RescueCandidate';
+import type { PdfPageRangeDetails } from '../lib/pdf/pdfPageRange';
 
 export interface UploadErrorBody {
   code: UploadErrorCode;
@@ -40,4 +42,11 @@ export interface UploadErrorBody {
   // On owner_changed: whether the session that sent the refused request is
   // signed in, so the page can say what changed before it reads the account.
   signed_in?: boolean;
+  // On pdf_page_range: what was wrong and the values the sentence names.
+  page_range?: PdfPageRangeDetails;
+  // On setting_too_long: which saved setting, when it has its own place in
+  // Settings.
+  setting?: TooLongSetting;
 }
+
+export type TooLongSetting = 'user_instructions' | 'deck_name';

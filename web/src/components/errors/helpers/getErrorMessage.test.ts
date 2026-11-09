@@ -157,6 +157,78 @@ describe('getErrorMessage', () => {
 });
 
 describe('classifyUploadError', () => {
+  test.each([
+    [
+      'user_instructions' as const,
+      'Your user instructions for PDF conversion are too long.',
+      'Shorten them under PDF & AI in Settings, then upload again.',
+    ],
+    [
+      'deck_name' as const,
+      'Your saved deck name is too long.',
+      'Shorten it under Deck name in Settings, then upload again.',
+    ],
+    [
+      undefined,
+      'A setting saved in this browser is too long to send with your upload.',
+      'Open Settings, choose Reset to defaults, and upload again.',
+    ],
+  ])('names the over-long setting %s', (setting, title, detail) => {
+    const body: UploadErrorBody = {
+      code: 'setting_too_long',
+      message: 'server sentence',
+      ...(setting == null ? {} : { setting }),
+    };
+    expect(classifyUploadError(body)).toEqual({ title, detail });
+  });
+
+  test.each([
+    [
+      { reason: 'backwards', part: '30-12', lower: 12, upper: 30 } as const,
+      "'30-12' goes backwards.",
+      'Write the lower page first, like 12-30.',
+    ],
+    [
+      { reason: 'past_end', first: 12, last: 12, pageCount: 10 } as const,
+      'Page 12 is past the end of this 10-page PDF.',
+      undefined,
+    ],
+    [
+      { reason: 'past_end', first: 11, last: 14, pageCount: 10 } as const,
+      'Pages 11-14 are past the end of this 10-page PDF.',
+      undefined,
+    ],
+    [
+      { reason: 'too_long', max: 200 } as const,
+      'That page range is too long.',
+      'Keep it under 200 characters.',
+    ],
+    [
+      { reason: 'locked_pdf' } as const,
+      "Page ranges don't work on password-protected PDFs.",
+      'Convert again without a page range to use the whole file.',
+    ],
+  ])(
+    'words a page range answer from its details',
+    (page_range, title, detail) => {
+      const result = classifyUploadError({
+        code: 'pdf_page_range',
+        message: 'server sentence',
+        page_range,
+      });
+      expect(result).toEqual(detail == null ? { title } : { title, detail });
+    }
+  );
+
+  test('falls back to the server sentence for a page range answer with no details', () => {
+    expect(
+      classifyUploadError({
+        code: 'pdf_page_range',
+        message: "'1234567' has a page number that is too large.",
+      })
+    ).toEqual({ title: "'1234567' has a page number that is too large." });
+  });
+
   test('unsupported_format returns specific copy about file type', () => {
     const body: UploadErrorBody = {
       code: 'unsupported_format',

@@ -333,7 +333,117 @@ export function classifyNotionTooLarge(): FriendlyError {
   };
 }
 
+const SETTING_TOO_LONG: Record<
+  NonNullable<UploadErrorBody['setting']> | 'other',
+  FriendlyError
+> = {
+  user_instructions: {
+    title: 'Your user instructions for PDF conversion are too long.',
+    detail: 'Shorten them under PDF & AI in Settings, then upload again.',
+  },
+  deck_name: {
+    title: 'Your saved deck name is too long.',
+    detail: 'Shorten it under Deck name in Settings, then upload again.',
+  },
+  other: {
+    title:
+      'A setting saved in this browser is too long to send with your upload.',
+    detail: 'Open Settings, choose Reset to defaults, and upload again.',
+  },
+};
+
+function classifySettingTooLong(
+  setting: UploadErrorBody['setting']
+): FriendlyError {
+  const key = setting ?? 'other';
+  const defaults = SETTING_TOO_LONG[key];
+  return {
+    title: tr(`upload.setting_too_long.${key}.title`, defaults.title),
+    detail: tr(`upload.setting_too_long.${key}.detail`, defaults.detail ?? ''),
+  };
+}
+
+type PageRange = NonNullable<UploadErrorBody['page_range']>;
+
+// One entry per sentence the server can say about a page range; past_end
+// reads differently for one page and a run of pages.
+const PAGE_RANGE = new Map<string, FriendlyError>(
+  Object.entries({
+    too_long: {
+      title: 'That page range is too long.',
+      detail: 'Keep it under {{max}} characters.',
+    },
+    too_many_parts: {
+      title: 'That is too many page ranges.',
+      detail: 'Use at most {{max}}.',
+    },
+    number_too_large: {
+      title: "'{{part}}' has a page number that is too large.",
+      detail: 'Use page numbers from your PDF, like 12-30, 45.',
+    },
+    range_starts_at_zero: {
+      title: "Page numbers start at 1, so '{{part}}' is not a valid range.",
+    },
+    backwards: {
+      title: "'{{part}}' goes backwards.",
+      detail: 'Write the lower page first, like {{lower}}-{{upper}}.',
+    },
+    page_zero: {
+      title: "Page numbers start at 1, so '{{part}}' is not a valid page.",
+    },
+    invalid_part: {
+      title: "'{{part}}' is not a valid page or range.",
+      detail: 'Use page numbers and ranges like 12-30, 45.',
+    },
+    past_end_one: {
+      title: 'Page {{first}} is past the end of this {{pageCount}}-page PDF.',
+    },
+    past_end_range: {
+      title:
+        'Pages {{first}}-{{last}} are past the end of this {{pageCount}}-page PDF.',
+    },
+    locked_pdf: {
+      title: "Page ranges don't work on password-protected PDFs.",
+      detail: 'Convert again without a page range to use the whole file.',
+    },
+    split_timeout: {
+      title: 'That PDF took too long to split into the pages you asked for.',
+      detail: 'Try fewer pages.',
+    },
+  })
+);
+
+function pageRangeKey(details: PageRange): string {
+  if (details.reason !== 'past_end') return details.reason;
+  return details.first === details.last ? 'past_end_one' : 'past_end_range';
+}
+
+function classifyPageRange(details: PageRange): FriendlyError | null {
+  const key = pageRangeKey(details);
+  const defaults = PAGE_RANGE.get(key);
+  if (defaults == null) return null;
+  const { reason: _reason, ...values } = details;
+  const localized: FriendlyError = {
+    title: tr(`upload.pdf_page_range.${key}.title`, defaults.title, values),
+  };
+  if (defaults.detail !== undefined) {
+    localized.detail = tr(
+      `upload.pdf_page_range.${key}.detail`,
+      defaults.detail,
+      values
+    );
+  }
+  return localized;
+}
+
 export function classifyUploadError(body: UploadErrorBody): FriendlyError {
+  if (body.code === 'setting_too_long') {
+    return classifySettingTooLong(body.setting);
+  }
+  if (body.code === 'pdf_page_range' && body.page_range != null) {
+    const pageRange = classifyPageRange(body.page_range);
+    if (pageRange != null) return pageRange;
+  }
   const defaults = UPLOAD_CODE_DEFAULTS[body.code];
   if (defaults) return localizeUploadCode(body.code, defaults);
   const stripped = stripHtmlTags(body.message);
