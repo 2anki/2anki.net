@@ -65,6 +65,9 @@ export class ClaimHeldDeckController {
         ...(result.alsoClaimed != null
           ? { alsoClaimed: result.alsoClaimed }
           : {}),
+        ...(result.cardsLeftOut != null
+          ? { cardsLeftOut: result.cardsLeftOut }
+          : {}),
         ...(result.cardsHeldBack != null
           ? {
               cardsHeldBack: result.cardsHeldBack,

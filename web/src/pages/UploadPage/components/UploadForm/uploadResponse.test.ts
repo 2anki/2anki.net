@@ -168,6 +168,38 @@ describe('applyConversionSuccess', () => {
     });
   });
 
+  it.each([
+    ['six lines', 6, { cardsLeftOut: 6 }],
+    ['zero', 0, {}],
+    ['a fraction', 1.5, {}],
+  ])(
+    'carries the answerless lines a held response left out: %s',
+    async (_case, cardsLeftOut, expected) => {
+      const handlers = buildHandlers();
+      const response = {
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        json: () =>
+          Promise.resolve({
+            kind: 'held',
+            cardCount: 21,
+            cardsHeldBack: 13,
+            totalCards: 34,
+            cardsLeftOut,
+          }),
+      } as unknown as Response;
+
+      await applyConversionSuccess(response, handlers);
+
+      expect(handlers.setHeldDeck).toHaveBeenCalledWith({
+        cardCount: 21,
+        cardsHeldBack: 13,
+        totalCards: 34,
+        dayPassCard: false,
+        ...expected,
+      });
+    }
+  );
+
   it('carries the deck name and saved hours from a held response', async () => {
     const handlers = buildHandlers();
     const response = {

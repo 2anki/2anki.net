@@ -260,6 +260,7 @@ export interface HeldUploadResponse {
   savedForHours: number;
   dayPassCard?: boolean;
   cookieMinted?: boolean;
+  cardsLeftOut?: number;
 }
 
 export interface AiPreviewUploadResponse {
@@ -2925,6 +2926,7 @@ class UploadService {
       savedForHours: HELD_DECK_TTL_MS / HOUR_MS,
       ...(dayPassCard ? { dayPassCard: true } : {}),
       ...(cookieMinted ? { cookieMinted: true } : {}),
+      ...(cardsLeftOut > 0 ? { cardsLeftOut } : {}),
     };
     return res.status(200).json(body);
   }
@@ -3071,6 +3073,7 @@ class UploadService {
     downloadKey: string;
     cardCount: number;
     cardsHeldBack: number;
+    cardsLeftOut: number;
     deckName: string;
     heldForPlan?: boolean;
   }> {
@@ -3168,11 +3171,16 @@ class UploadService {
     }
     await this.usersRepository.incrementCardUsage(Number(owner), totalCards);
     const heldBack = cardsHeldBack ?? 0;
+    const cardsLeftOut = packages.reduce(
+      (sum, p) => sum + (p.cardsLeftOut ?? 0),
+      0
+    );
     if (options == null || paying) {
       return {
         downloadKey,
         cardCount: totalCards,
         cardsHeldBack: heldBack,
+        cardsLeftOut,
         deckName,
       };
     }
@@ -3191,6 +3199,7 @@ class UploadService {
       downloadKey,
       cardCount: totalCards,
       cardsHeldBack: heldBack,
+      cardsLeftOut,
       deckName,
       heldForPlan,
     };

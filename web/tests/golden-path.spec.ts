@@ -472,6 +472,51 @@ test.describe('golden path @golden', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
+  test('a held deck says how many answerless lines it leaves out at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    await page.route('**/api/upload/file', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          kind: 'held',
+          cardCount: 21,
+          cardsHeldBack: 13,
+          totalCards: 34,
+          deckName: 'Organic Chemistry Ch. 4',
+          savedForHours: 24,
+          cardsLeftOut: 6,
+        }),
+      })
+    );
+
+    await page.goto('/upload');
+    await page.setInputFiles('#pakker', {
+      name: 'notes.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('notes'),
+    });
+
+    await expect(
+      page.getByText(/6 more lines were past the free limit and had no answer/)
+    ).toBeVisible({ timeout: 10_000 });
+    const scrollWidth = await page.evaluate(
+      () => document.documentElement.scrollWidth
+    );
+    expect(scrollWidth).toBeLessThanOrEqual(376);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
   test('the Day Pass card lead names the held deck and its expiry at 375px', async ({
     page,
   }) => {

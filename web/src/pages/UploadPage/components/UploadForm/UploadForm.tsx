@@ -1103,6 +1103,7 @@ function UploadForm({
           setDownloadLink(recoveryDownloadUrl(result.downloadKey));
           if (result.deckName) setDeckName(result.deckName);
           setCardCount(result.cardCount);
+          setCardsLeftOut(result.cardsLeftOut ?? 0);
           setProgressWidth(100);
           setZoneState('heldReady');
         } else if (result.status === 404 || result.status === 410) {
@@ -4298,6 +4299,14 @@ function UploadForm({
     heldDeck == null ? null : (
       <div className={formStyles.stateContent}>
         <AnonymousPartialGate held={heldDeck} passFirst={passFirst} />
+        {(heldDeck.cardsLeftOut ?? 0) > 0 && (
+          <div className={formStyles.warningInline}>
+            <EmptyBackNotice
+              count={heldDeck.cardsLeftOut ?? 0}
+              source="leftOut"
+            />
+          </div>
+        )}
       </div>
     );
 
@@ -4346,6 +4355,11 @@ function UploadForm({
         <p className={formStyles.successSecondary}>
           {t('monthlyPartial:alsoClaimed', { count: alsoClaimed })}
         </p>
+      )}
+      {cardsLeftOut > 0 && (
+        <div className={formStyles.warningInline}>
+          <EmptyBackNotice count={cardsLeftOut} source="leftOut" />
+        </div>
       )}
       {downloadLink && (
         <a

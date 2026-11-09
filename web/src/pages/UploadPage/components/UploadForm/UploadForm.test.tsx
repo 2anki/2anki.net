@@ -5143,6 +5143,7 @@ describe('held-deck gate screen-reader announcement', () => {
     cardsHeldBack: number;
     totalCards: number;
     cookieMinted?: boolean;
+    cardsLeftOut?: number;
   }) {
     vi.stubGlobal(
       'fetch',
@@ -5160,6 +5161,7 @@ describe('held-deck gate screen-reader announcement', () => {
     cardsHeldBack: number;
     totalCards: number;
     cookieMinted?: boolean;
+    cardsLeftOut?: number;
   }) {
     stubHeldFetch(held);
     const { container } = renderUploadForm(
@@ -5173,6 +5175,21 @@ describe('held-deck gate screen-reader announcement', () => {
     });
     return container;
   }
+
+  it('says how many answerless lines the held deck leaves out', async () => {
+    await submitHeld({
+      cardCount: 21,
+      cardsHeldBack: 13,
+      totalCards: 34,
+      cardsLeftOut: 6,
+    });
+
+    expect(
+      await screen.findByText(
+        /6 more lines were past the free limit and had no answer/
+      )
+    ).toBeInTheDocument();
+  });
 
   it('announces the whole file when it fits a free month', async () => {
     const container = await submitHeld({
@@ -12752,6 +12769,34 @@ describe('claiming a held deck after sign-in', () => {
       ).toBeInTheDocument()
     );
     expect(screen.queryByText(/more decks? (is|are) in My decks/)).toBeNull();
+  });
+
+  it('says how many answerless lines the claim left out', async () => {
+    signIn();
+    mockGet2ankiApi.mockReturnValue({
+      startPassCheckout: vi.fn(),
+      getUploads: vi.fn().mockResolvedValue([]),
+      getHeldDeck: vi
+        .fn()
+        .mockResolvedValue({ cardCount: 21, cardsHeldBack: 0 }),
+      claimHeldDeck: vi.fn().mockResolvedValue({
+        status: 200,
+        downloadKey: 'owner-key.apkg',
+        cardCount: 21,
+        deckName: 'notes',
+        kind: 'signup',
+        error: null,
+        cardsLeftOut: 6,
+      }),
+    } as unknown as ReturnType<typeof get2ankiApi>);
+
+    renderUploadForm(<UploadForm setErrorMessage={vi.fn()} />);
+
+    expect(
+      await screen.findByText(
+        /6 more lines were past the free limit and had no answer/
+      )
+    ).toBeInTheDocument();
   });
 
   it('adds no extra line when the claim built one deck', async () => {

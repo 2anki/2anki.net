@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-09-held-decks-say-lines-left-out",
+  "date": "2026-11-09",
+  "type": "fix",
+  "title": "A deck saved for sign-up, and the deck you claim after signing up, say how many lines with no answer were left out at the free limit"
+}

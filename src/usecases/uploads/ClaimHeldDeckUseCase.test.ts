@@ -175,6 +175,29 @@ describe('ClaimHeldDeckUseCase', () => {
     expect(repo.rows[0].claimed_by).toBe(4242);
   });
 
+  it('carries the answerless lines the claim left out', async () => {
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo);
+    const { store } = buildStore();
+    const { converter } = buildConverter({
+      downloadKey: 'owner-key.apkg',
+      cardCount: 21,
+      cardsHeldBack: 0,
+      cardsLeftOut: 6,
+      deckName: 'study-notes',
+    });
+    const useCase = new ClaimHeldDeckUseCase(repo, store, converter);
+
+    const result = await useCase.execute({
+      anonId: ANON,
+      owner: OWNER,
+      paying: false,
+      requestId: 'req-1',
+    });
+
+    expect(result).toMatchObject({ cardCount: 21, cardsLeftOut: 6 });
+  });
+
   it.each([
     {
       kind: 'zip',

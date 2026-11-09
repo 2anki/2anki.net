@@ -8063,7 +8063,11 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
 
     await serviceUnderTest(heldDeck).handleUpload(req, res);
 
-    expect(capturedJson()).toMatchObject({ kind: 'held', cardsHeldBack: 13 });
+    expect(capturedJson()).toMatchObject({
+      kind: 'held',
+      cardsHeldBack: 13,
+      cardsLeftOut: 4,
+    });
     expect(conversionSucceededProps()).toMatchObject({
       card_limit_partial: true,
       cards_held_back: 13,
@@ -8694,6 +8698,32 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       cards_held_back: 163,
     });
     expect(usersRepo.incrementCardUsage).toHaveBeenCalledWith(4242, 21);
+  });
+
+  it.each([
+    ['a preview-capped claim', { previewCap: 21, heldCards: 184 }],
+    ['a claim cut to the free month', undefined],
+  ])('says how many answerless lines %s left out', async (_case, options) => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21, cardsLeftOut: 6 }], 0);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps({ heldDeck: new InMemoryHeldDeckRepository() })
+    );
+
+    const result = await service.convertHeldFileForOwner(
+      '4242',
+      heldSourceFile(),
+      false,
+      null,
+      'req-1',
+      null,
+      options
+    );
+
+    expect(result).toMatchObject({ cardCount: 21, cardsLeftOut: 6 });
   });
 
   it('does not hold a capped claim again when no cut card has an answer', async () => {

@@ -196,6 +196,46 @@ describe('ClaimHeldDeckController', () => {
     });
   });
 
+  it.each([
+    ['cut to the preview', true],
+    ['cut to the free month', false],
+  ])(
+    'POST says how many answerless lines a sign-up claim %s left out',
+    async (_case, previewFirst) => {
+      const repo = new InMemoryHeldDeckRepository();
+      await seedHold(repo);
+      const converter: HeldDeckConverter = {
+        convertHeldFileForOwner: vi.fn().mockResolvedValue({
+          downloadKey: 'owner-key.apkg',
+          cardCount: 21,
+          cardsHeldBack: 0,
+          cardsLeftOut: 6,
+          deckName: 'notes',
+          heldForPlan: false,
+        }),
+      };
+      const store: HeldFileStore = {
+        getFileContents: vi
+          .fn()
+          .mockResolvedValue({ Body: Buffer.from('<html></html>') }),
+      };
+      const controller = new ClaimHeldDeckController(
+        new ClaimHeldDeckUseCase(
+          repo,
+          store,
+          converter,
+          async () => previewFirst
+        )
+      );
+      const { res, capturedStatus, capturedJson } = buildResponse(7);
+
+      await controller.claim(buildRequest(ANON), res);
+
+      expect(capturedStatus()).toBe(200);
+      expect(capturedJson()).toMatchObject({ cardCount: 21, cardsLeftOut: 6 });
+    }
+  );
+
   it('POST 200s with the download key and fires anonymous_partial_claimed', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo);
