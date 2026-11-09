@@ -18,8 +18,9 @@
 // the dangling walk would count every one as an orphan and a busy day would
 // trip its deletion-volume alarm; deleteExpiredRecoveryDecks owns them.
 // 'backups/' holds the encrypted database dumps from scripts/backup-postgres.sh.
-// 'chat-attachments/' keeps a chat's files for replay. They are tracked in
-// chat_attachments, not uploads, and expire through their own 90-day sweep.
+// 'chat-attachments/' keeps a chat's files so a reply can be regenerated. They
+// are tracked in chat_attachments, not uploads, and the bucket's lifecycle rule
+// expire-chat-attachments-90d is what removes the objects.
 export const RESERVED_KEY_PREFIXES = [
   'mindmaps/',
   'io-drafts/',
