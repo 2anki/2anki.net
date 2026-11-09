@@ -196,7 +196,10 @@ describe('getPackagesFromZip — batch concurrency', () => {
       new CardOption({ 'claude-ai-flashcards': 'true' })
     );
 
-    expect(mockPrepareDeck).toHaveBeenCalledTimes(1);
+    expect(mockPrepareDeck).toHaveBeenCalledWith(
+      expect.objectContaining({ noLimits: true, name: 'a.html' })
+    );
+    expect(mockPrepareDeckInfoOnly).not.toHaveBeenCalled();
     expect(result.warnings).toEqual(['zip-partly-recovered']);
   });
 

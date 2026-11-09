@@ -7678,6 +7678,11 @@ describe('resolveUploadWarning — AI credits exhausted', () => {
   it.each([
     ['an oversize deck', 'apkg-over-100mb:210.4', /AnkiWeb won't sync/],
     ['a locked PDF', 'This PDF is password-protected.', /password-protected/],
+    [
+      'an AI-skipped file',
+      'ai-file-failed:declined:lecture.pdf',
+      /lecture\.pdf/,
+    ],
   ])(
     'keeps %s ahead of the partly recovered note',
     (_label, warning, shown) => {
@@ -7687,9 +7692,19 @@ describe('resolveUploadWarning — AI credits exhausted', () => {
     }
   );
 
+  it('keeps the credits text ahead of the partly recovered note', () => {
+    expect(
+      resolveUploadWarning(
+        [ZIP_PARTLY_RECOVERED_WARNING, 'ai-credits-exhausted'],
+        null
+      )
+    ).toBe(resolveUploadWarning(['ai-credits-exhausted'], null));
+  });
+
   it.each([
     ['duplicate cards', 'duplicate-guid:2'],
     ['Markdown parsing', 'markdown-heuristic'],
+    ['stray cloze markers', 'stray-cloze:2'],
   ])('puts the partly recovered note ahead of %s', (_label, warning) => {
     expect(
       resolveUploadWarning([warning, ZIP_PARTLY_RECOVERED_WARNING], null)
