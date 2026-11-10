@@ -348,6 +348,7 @@ type VisionParseOutcome =
   | 'empty'
   | 'no_questions';
 
+// Length and hash only: the reply can quote the photographed notes.
 function logVisionParseOutcome(raw: string, reason: VisionParseOutcome): void {
   console.log(
     JSON.stringify({
@@ -359,8 +360,6 @@ function logVisionParseOutcome(raw: string, reason: VisionParseOutcome): void {
         .update(raw)
         .digest('hex')
         .slice(0, 12),
-      response_prefix: raw.slice(0, 200),
-      response_tail: raw.slice(-200),
     })
   );
 }

@@ -1375,6 +1375,42 @@ describe('PhotoToFlashcardsUseCase', () => {
       });
     });
 
+    it.each([
+      ['unparseable', '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-Q'],
+      ['not_array', '{"deck":"PRIVATE-DECK"}'],
+      ['empty', '[{"deck":"PRIVATE-DECK","cards":[]}]'],
+    ])(
+      'logs a %s reply by length and hash, never its text',
+      async (reason, text) => {
+        const logSpy = vi
+          .spyOn(console, 'log')
+          .mockImplementation(() => undefined);
+        try {
+          mockMessageCreate.mockResolvedValueOnce({
+            content: [{ type: 'text', text }],
+            usage: { input_tokens: 100, output_tokens: 10 },
+          });
+          const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+          await expect(
+            useCase.execute({ ...BASE_INPUT, isPaying: true })
+          ).rejects.toMatchObject({ status: 422 });
+
+          const lines = logSpy.mock.calls.map(([line]) => String(line));
+          const logged = lines.find((line) =>
+            line.includes('vision_parse_failed')
+          );
+          expect(JSON.parse(logged!)).toMatchObject({
+            reason,
+            response_length: text.length,
+            response_sha256_prefix: expect.any(String),
+          });
+          expect(lines.join('\n')).not.toContain('PRIVATE');
+        } finally {
+          logSpy.mockRestore();
+        }
+      }
+    );
+
     it('logs reason no_questions for a verbatim empty parse so prod can tell it from a misread', async () => {
       const logSpy = vi
         .spyOn(console, 'log')
