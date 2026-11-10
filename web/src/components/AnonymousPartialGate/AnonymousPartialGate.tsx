@@ -11,6 +11,8 @@ import {
 } from '../../pages/LimitPage/LimitWall';
 import { track } from '../../lib/analytics/track';
 import type { HeldDeckState } from '../../pages/UploadPage/components/UploadForm/hooks/useUploadFormState';
+import { getDownloadFileName } from '../../pages/DownloadsPage/helpers/getDownloadFileName';
+import sharedStyles from '../../styles/shared.module.css';
 import styles from './AnonymousPartialGate.module.css';
 
 // The server releases a held deck only for a pass bought under this surface
@@ -110,6 +112,33 @@ function HeldDeckSummary({
   );
 }
 
+// The capped deck the server stored under this upload's recovery token, the
+// same copy the anonymous recovery download serves.
+function PreviewCardsDownload({
+  held,
+  cookieLost,
+}: {
+  readonly held: HeldDeckState;
+  readonly cookieLost: boolean;
+}) {
+  const { t } = useTranslation('anonymousPartial');
+  if (held.previewCardsToken == null || cookieLost) return null;
+  return (
+    <a
+      href={`/api/download/recover/${encodeURIComponent(held.previewCardsToken)}`}
+      download={getDownloadFileName(held.deckName ?? t('untitledDeck'))}
+      className={`${sharedStyles.btnSecondary} ${styles.previewDownload}`}
+      onClick={() =>
+        track('anonymous_preview_cards_downloaded', {
+          cards_held_back: held.cardsHeldBack,
+        })
+      }
+    >
+      {t('previewCardsDownload', { cap: ANONYMOUS_CARD_CAP })}
+    </a>
+  );
+}
+
 function FreeSignupLink({ monthly }: { readonly monthly: number }) {
   const { t } = useTranslation('anonymousPartial');
   return (
@@ -177,6 +206,7 @@ function PassFirstGate({
           {t('signIn')}
         </Link>
       </PassFirstOffer>
+      <PreviewCardsDownload held={held} cookieLost={cookieLost} />
     </div>
   );
 }
@@ -195,8 +225,11 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
     track('anonymous_partial_gate_shown', {
       cards_held_back: held.cardsHeldBack,
       ...(cookieLost ? { cookie_lost: true } : {}),
+      ...(held.previewCardsArm == null
+        ? {}
+        : { preview_cards_arm: held.previewCardsArm }),
     });
-  }, [held.cardsHeldBack, cookieLost]);
+  }, [held.cardsHeldBack, held.previewCardsArm, cookieLost]);
 
   if (passFirst) {
     return <PassFirstGate held={held} cookieLost={cookieLost} />;
@@ -222,6 +255,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
     return (
       <section className={styles.gate} aria-label={t('gateAria')}>
         <HeldDeckSummary held={held} cookieLost={cookieLost} />
+        <PreviewCardsDownload held={held} cookieLost={cookieLost} />
         {errorMessage}
         <div className={styles.leadCard}>
           <AnonymousDayPassOffer
@@ -251,6 +285,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
   return (
     <section className={styles.gate} aria-label={t('gateAria')}>
       <HeldDeckSummary held={held} cookieLost={cookieLost} />
+      <PreviewCardsDownload held={held} cookieLost={cookieLost} />
       {fitsFreeMonth ? (
         <>
           {!cookieLost && (

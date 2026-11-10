@@ -90,3 +90,7 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
 }
+
+.previewDownload {
+  margin-top: 0.25rem;
+}

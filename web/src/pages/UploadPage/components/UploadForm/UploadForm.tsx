@@ -2400,7 +2400,11 @@ function UploadForm({
         keptThisRun = (await keepLastDeck(finished)) && hasAnonIdCookie();
         keptForAccountRef.current = keptThisRun;
       }
-      await applyConversionSuccess(request, conversionSuccessHandlers);
+      await applyConversionSuccess(
+        request,
+        conversionSuccessHandlers,
+        recoveryToken
+      );
     } catch (error) {
       keptForAccountRef.current = false;
       setDeckKeptForAccount(keptThisRun);

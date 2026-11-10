@@ -8,6 +8,7 @@
   "gateBody": "Erstelle ein kostenloses Konto, um sie herunterzuladen. Bis zu {{monthly}} Karten pro Monat, kostenlos.",
   "gateFreeLeadIn": "Oder erstelle ein kostenloses Konto für deine ersten {{monthly}} Karten.",
   "gateFreeLink": "Oder erstelle ein kostenloses Konto für die ersten {{monthly}} Karten",
+  "previewCardsDownload": "Die ersten {{cap}} Karten herunterladen",
   "gateLiveAll": "Alle {{total}} Karten sind fertig. Erstelle ein kostenloses Konto, um sie herunterzuladen.",
   "gateLiveOverMonth": "Alle {{total}} Karten sind fertig. Mit einem Day Pass bekommst du jetzt alle, mit einem kostenlosen Konto die ersten {{monthly}}.",
   "preparing": "Dein Download wird vorbereitet",

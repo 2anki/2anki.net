@@ -26,6 +26,8 @@ interface GateHeld {
   savedForHours?: number;
   dayPassCard?: boolean;
   cookieMinted?: boolean;
+  previewCardsArm?: 'control' | 'treatment';
+  previewCardsToken?: string;
 }
 
 function renderGate(
@@ -497,4 +499,114 @@ describe('AnonymousPartialGate checkout surface', () => {
       );
     }
   );
+});
+
+describe('AnonymousPartialGate — first cards beside the hold', () => {
+  const TOKEN = '5c4b3a29-1e0d-4f8a-9b7c-6d5e4f3a2b1c';
+  const treatmentHeld: GateHeld = {
+    cardCount: 21,
+    cardsHeldBack: 13,
+    totalCards: 34,
+    deckName: 'Pharmacology',
+    savedForHours: 24,
+    previewCardsArm: 'treatment',
+    previewCardsToken: TOKEN,
+  };
+
+  beforeEach(() => {
+    vi.mocked(track).mockClear();
+  });
+
+  afterEach(() => {
+    document.cookie = 'anon_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  });
+
+  function renderHeld(held: GateHeld, passFirst = false) {
+    return render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <AnonymousPartialGate held={held} passFirst={passFirst} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+
+  it.each([
+    ['the default gate', false],
+    ['the pass-first gate', true],
+  ])('links %s to the first cards this upload stored', (_label, passFirst) => {
+    renderHeld(treatmentHeld, passFirst);
+    const link = screen.getByRole('link', {
+      name: 'Download the first 21 cards',
+    });
+    expect(link).toHaveAttribute('href', `/api/download/recover/${TOKEN}`);
+    expect(link).toHaveAttribute('download', 'Pharmacology.apkg');
+  });
+
+  it('offers the first cards beside the Day Pass card lead too', () => {
+    renderHeld({
+      ...treatmentHeld,
+      cardsHeldBack: 100,
+      totalCards: 121,
+      dayPassCard: true,
+    });
+    expect(
+      screen.getByRole('link', { name: 'Download the first 21 cards' })
+    ).toBeInTheDocument();
+  });
+
+  it.each<[string, Partial<GateHeld>]>([
+    ['a control visitor', { previewCardsArm: 'control' }],
+    [
+      'a treatment visitor whose first cards were not stored',
+      { previewCardsArm: 'treatment' },
+    ],
+    ['a visitor outside the test', {}],
+  ])('offers no first cards to %s', (_label, preview) => {
+    renderHeld({
+      cardCount: 21,
+      cardsHeldBack: 13,
+      totalCards: 34,
+      ...preview,
+    });
+    expect(
+      screen.queryByRole('link', { name: /Download the first/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers no first cards when this browser lost the cookie they are keyed to', () => {
+    renderHeld({ ...treatmentHeld, cookieMinted: true });
+    expect(
+      screen.queryByRole('link', { name: /Download the first/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('records the download click', () => {
+    renderHeld(treatmentHeld);
+    fireEvent.click(
+      screen.getByRole('link', { name: 'Download the first 21 cards' })
+    );
+    expect(track).toHaveBeenCalledWith('anonymous_preview_cards_downloaded', {
+      cards_held_back: 13,
+    });
+  });
+
+  it.each<[string, GateHeld]>([
+    ['treatment', treatmentHeld],
+    [
+      'control',
+      {
+        cardCount: 21,
+        cardsHeldBack: 13,
+        totalCards: 34,
+        previewCardsArm: 'control',
+      },
+    ],
+  ])('names the %s arm on the gate-shown event', (arm, held) => {
+    renderHeld(held);
+    expect(track).toHaveBeenCalledWith('anonymous_partial_gate_shown', {
+      cards_held_back: 13,
+      preview_cards_arm: arm,
+    });
+  });
 });

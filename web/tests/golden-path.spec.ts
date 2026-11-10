@@ -199,8 +199,9 @@ test.describe('golden path @golden', () => {
         'No cards came from 1 file. The other files are in this deck.'
       )
     ).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole('listitem').filter({ hasText: 'week 3.pdf' }))
-      .toContainText('Claude declined it.');
+    await expect(
+      page.getByRole('listitem').filter({ hasText: 'week 3.pdf' })
+    ).toContainText('Claude declined it.');
     await page.waitForLoadState('networkidle');
     expect(realErrors(errors)).toEqual([]);
   });
@@ -465,6 +466,67 @@ test.describe('golden path @golden', () => {
         name: 'Or create a free account for the first 100 cards',
       })
     ).toBeVisible();
+    const scrollWidth = await page.evaluate(
+      () => document.documentElement.scrollWidth
+    );
+    expect(scrollWidth).toBeLessThanOrEqual(376);
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('a held deck in the preview cards treatment downloads the first 21 cards at 375px', async ({
+    page,
+  }) => {
+    const errors = collectConsoleErrors(page);
+    await mockBackend(page);
+    await page.route('**/api/users/debug/locals**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Not authenticated' }),
+      })
+    );
+    const sentTokens: (string | undefined)[] = [];
+    await page.route('**/api/upload/file', (route) => {
+      sentTokens.push(route.request().headers()['x-recovery-token']);
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          kind: 'held',
+          cardCount: 21,
+          cardsHeldBack: 63,
+          totalCards: 84,
+          deckName: 'Organic Chemistry Ch. 4',
+          savedForHours: 24,
+          previewCardsArm: 'treatment',
+          previewCards: true,
+        }),
+      });
+    });
+
+    await page.goto('/upload');
+    await page.setInputFiles('#pakker', {
+      name: 'notes.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('notes'),
+    });
+
+    const previewLink = page.getByRole('link', {
+      name: 'Download the first 21 cards',
+    });
+    await expect(previewLink).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText('All 84 cards are ready', { exact: true })
+    ).toBeVisible();
+    const downloadStarted = page.waitForEvent('download');
+    await previewLink.click();
+    const download = await downloadStarted;
+
+    expect(download.suggestedFilename()).toBe('Organic Chemistry Ch. 4.apkg');
+    expect(sentTokens).toHaveLength(1);
+    expect(new URL(download.url()).pathname).toBe(
+      `/api/download/recover/${sentTokens[0]}`
+    );
     const scrollWidth = await page.evaluate(
       () => document.documentElement.scrollWidth
     );

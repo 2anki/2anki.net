@@ -305,6 +305,71 @@ exports[`what each population gets back from /api/upload/file > signed-out over 
 }
 `;
 
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, preview cards control arm with a recovery token 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "previewCardsArm": "control",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, preview cards treatment arm with a recovery token 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "previewCards": true,
+    "previewCardsArm": "treatment",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+    "recovery copy",
+  ],
+}
+`;
+
+exports[`what each population gets back from /api/upload/file > signed-out over the cap, preview cards treatment arm without a recovery token 1`] = `
+{
+  "body": {
+    "cardCount": 21,
+    "cardsHeldBack": 99,
+    "deckName": "Golden Large",
+    "kind": "held",
+    "previewCardsArm": "treatment",
+    "savedForHours": 24,
+    "totalCards": 120,
+  },
+  "cardsCharged": [],
+  "contentType": "application/json",
+  "headers": {},
+  "status": 200,
+  "storedObjects": [
+    "held source file",
+  ],
+}
+`;
+
 exports[`what each population gets back from /api/upload/file > signed-out pass holder 1`] = `
 {
   "body": {

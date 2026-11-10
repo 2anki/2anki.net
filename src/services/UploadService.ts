@@ -127,6 +127,10 @@ import {
   planHoldKey,
 } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
+import {
+  ANONYMOUS_PREVIEW_CARDS_FLAG,
+  resolvePreviewCardsArm,
+} from '../lib/upload/anonymousPreviewCards';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import {
   anonRecoveryKey,
@@ -267,6 +271,8 @@ export interface HeldUploadResponse {
   savedForHours: number;
   dayPassCard?: boolean;
   cookieMinted?: boolean;
+  previewCardsArm?: 'control' | 'treatment';
+  previewCards?: boolean;
 }
 
 export interface AiPreviewUploadResponse {
@@ -2133,6 +2139,7 @@ class UploadService {
         totalCards,
         cardsHeldBack ?? 0,
         packages.length === 1 ? first.name : '',
+        packages.length === 1 ? () => ws.getFirstAPKG() : null,
         leftOut
       );
     }
@@ -2861,6 +2868,7 @@ class UploadService {
     cardCount: number,
     cardsHeldBack: number,
     singleDeckPackageName: string,
+    loadCappedDeck: (() => Promise<Buffer | null>) | null,
     cardsLeftOut = 0
   ): Promise<express.Response> {
     const file = (req.files as UploadedFile[])[0];
@@ -2931,6 +2939,16 @@ class UploadService {
       storage,
       res.locals.requestId
     );
+    const previewCardsArm = resolvePreviewCardsArm(
+      anonId,
+      await getFeatureFlag(ANONYMOUS_PREVIEW_CARDS_FLAG, false).catch(
+        () => false
+      )
+    );
+    const previewCards =
+      previewCardsArm === 'treatment' &&
+      loadCappedDeck != null &&
+      (await this.storePreviewCards(req, anonId, loadCappedDeck));
     track('conversion_succeeded', {
       userId: null,
       anonymousId: anonId,
@@ -2941,6 +2959,8 @@ class UploadService {
         cards_held_back: cardsHeldBack,
         ...(cardsLeftOut > 0 ? { cards_left_out: cardsLeftOut } : {}),
         held: true,
+        preview_cards_arm: previewCardsArm,
+        preview_cards_delivered: previewCards,
       },
     });
     const totalCards = cardCount + cardsHeldBack;
@@ -2965,8 +2985,39 @@ class UploadService {
       savedForHours: HELD_DECK_TTL_MS / HOUR_MS,
       ...(dayPassCard ? { dayPassCard: true } : {}),
       ...(cookieMinted ? { cookieMinted: true } : {}),
+      ...(previewCardsArm === 'off' ? {} : { previewCardsArm }),
+      ...(previewCards ? { previewCards: true } : {}),
     };
     return res.status(200).json(body);
+  }
+
+  // The capped deck the conversion already built goes where the anonymous
+  // recovery download looks for it. Keyed by the hold's anon id, so a visitor
+  // whose cookie was minted on this upload can fetch it once the browser keeps
+  // the cookie. Any failure leaves the hold as it is.
+  private async storePreviewCards(
+    req: express.Request,
+    anonId: string,
+    loadCappedDeck: () => Promise<Buffer | null>
+  ): Promise<boolean> {
+    const token = readRecoveryToken(req.headers ?? {});
+    if (token == null) {
+      return false;
+    }
+    try {
+      const apkg = await loadCappedDeck();
+      if (apkg == null) {
+        return false;
+      }
+      await new StorageHandler().uploadFile(
+        anonRecoveryKey(anonId, token),
+        apkg
+      );
+      return true;
+    } catch {
+      console.error('[UploadService] could not store the first held cards');
+      return false;
+    }
   }
 
   // A signed-in free user whose upload was cut to their remaining monthly

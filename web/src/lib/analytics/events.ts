@@ -145,6 +145,7 @@ export const KNOWN_EVENTS = new Set([
   'account_menu_opened',
   'upgrade_clicked',
   'anonymous_partial_gate_shown',
+  'anonymous_preview_cards_downloaded',
   'monthly_partial_offer_shown',
   'ai_preview_shown',
   'ai_preview_pass_clicked',

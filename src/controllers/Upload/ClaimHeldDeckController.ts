@@ -11,6 +11,11 @@ import type { UploadErrorBody } from '../../types/UploadErrorBody';
 import { getOwner } from '../../lib/User/getOwner';
 import { isPaying } from '../../lib/isPaying';
 import { track } from '../../services/events/track';
+import { getFeatureFlag } from '../../lib/featureFlags/getFeatureFlag';
+import {
+  ANONYMOUS_PREVIEW_CARDS_FLAG,
+  resolvePreviewCardsArm,
+} from '../../lib/upload/anonymousPreviewCards';
 import { anonIdCookie } from './anonIdCookie';
 
 export class ClaimHeldDeckController {
@@ -51,10 +56,18 @@ export class ClaimHeldDeckController {
           },
         });
       } else {
+        const anonId = anonIdCookie(req);
+        const previewCardsFlag = await getFeatureFlag(
+          ANONYMOUS_PREVIEW_CARDS_FLAG,
+          false
+        ).catch(() => false);
         track('anonymous_partial_claimed', {
           userId: Number(owner),
-          anonymousId: anonIdCookie(req),
-          props: { arm: 'treatment' },
+          anonymousId: anonId,
+          props: {
+            arm: 'treatment',
+            preview_cards_arm: resolvePreviewCardsArm(anonId, previewCardsFlag),
+          },
         });
       }
       return res.status(200).json({

@@ -18,6 +18,7 @@ const bridgeDecks = vi.hoisted(
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
   const actual = await importActual<typeof import('@aws-sdk/client-s3')>();
+  const { Readable } = await import('node:stream');
   class RecordingS3Client {
     async send(command: { input?: { Key?: string; Body?: unknown } }) {
       const key = command.input?.Key ?? '';
@@ -27,7 +28,12 @@ vi.mock('@aws-sdk/client-s3', async (importActual) => {
       }
       if (command instanceof actual.GetObjectCommand && s3Objects.has(key)) {
         const bytes = s3Objects.get(key) as Buffer;
-        return { Body: { transformToByteArray: async () => bytes } };
+        return {
+          Body: Object.assign(Readable.from([bytes]), {
+            transformToByteArray: async () => bytes,
+          }),
+          ContentLength: bytes.length,
+        };
       }
       if (command instanceof actual.DeleteObjectCommand) {
         s3Objects.delete(key);
@@ -262,7 +268,11 @@ import {
 } from '../../services/mcp/McpToolsService';
 import ApkgPreviewService from '../../services/ApkgPreviewService/ApkgPreviewService';
 import { buildMcpServer } from '../../services/mcp/McpServerFactory';
-import type DownloadService from '../../services/DownloadService';
+import DownloadService from '../../services/DownloadService';
+import DownloadController from '../DownloadController';
+import type DownloadRepository from '../../data_layer/DownloadRepository';
+import { ANONYMOUS_PREVIEW_CARDS_FLAG } from '../../lib/upload/anonymousPreviewCards';
+import { ANONYMOUS_CARD_CAP } from '../../lib/limits';
 import { AnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import { AiPreviewResumeController } from './AiPreviewResumeController';
 import { ResumeAnonymousAiPreviewUseCase } from '../../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
@@ -377,6 +387,19 @@ const signedOutPassHolderWithRecoveryToken: Population = {
   },
 };
 
+const PREVIEW_RECOVERY_TOKEN = '5c4b3a29-1e0d-4f8a-9b7c-6d5e4f3a2b1c';
+
+const previewCardsTreatment: Population = {
+  ...signedOut,
+  flags: { [ANONYMOUS_PREVIEW_CARDS_FLAG]: true },
+  headers: { 'x-recovery-token': PREVIEW_RECOVERY_TOKEN },
+};
+
+const previewCardsControl: Population = {
+  ...previewCardsTreatment,
+  cookies: { anon_id: 'golden-preview-2' },
+};
+
 const cases: [string, keyof typeof UPLOADS, Population][] = [
   ['signed-out under the anonymous cap', 'small', signedOut],
   ['signed-out over the cap', 'large', signedOut],
@@ -389,6 +412,21 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     'signed-out over the cap, pass-first wall on',
     'large',
     { ...signedOut, flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true } },
+  ],
+  [
+    'signed-out over the cap, preview cards treatment arm with a recovery token',
+    'large',
+    previewCardsTreatment,
+  ],
+  [
+    'signed-out over the cap, preview cards treatment arm without a recovery token',
+    'large',
+    { ...previewCardsTreatment, headers: {} },
+  ],
+  [
+    'signed-out over the cap, preview cards control arm with a recovery token',
+    'large',
+    previewCardsControl,
   ],
   [
     'signed-out over the cap, no anon id',
@@ -1157,6 +1195,11 @@ beforeAll(async () => {
     },
     (req, res) => goldenResumeController().resume(req, res)
   );
+  app.get('/api/download/recover/:token', (req, res) =>
+    new DownloadController(
+      new DownloadService({} as DownloadRepository)
+    ).getAnonymousRecovery(req, res, new StorageHandler())
+  );
   server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -1365,6 +1408,39 @@ describe('a signed-out upload held over the cap', () => {
     const result = await upload('large', { ...signedOut, mintsAnonId: true });
     expect(result.body).toMatchObject({ kind: 'held' });
     expect(result.body).not.toHaveProperty('cookieMinted');
+  });
+});
+
+describe('the first cards handed over beside a held deck', () => {
+  function recoverDownload(anonId: string) {
+    return fetch(`${baseUrl}/api/download/recover/${PREVIEW_RECOVERY_TOKEN}`, {
+      headers: { cookie: `anon_id=${anonId}` },
+    });
+  }
+
+  it('serves the capped deck the conversion built from the recovery download', async () => {
+    const result = await upload('large', previewCardsTreatment);
+    expect(result.body).toMatchObject({
+      kind: 'held',
+      cardCount: ANONYMOUS_CARD_CAP,
+      totalCards: LARGE_DECK_CARDS,
+      previewCards: true,
+    });
+
+    const download = await recoverDownload('golden-anon');
+
+    expect(download.status).toBe(200);
+    expect(await download.text()).toBe(
+      `golden-apkg cards=${ANONYMOUS_CARD_CAP}`
+    );
+  });
+
+  it('serves nothing to a control visitor', async () => {
+    await upload('large', previewCardsControl);
+
+    const download = await recoverDownload('golden-preview-2');
+
+    expect(download.status).toBe(404);
   });
 });
 
