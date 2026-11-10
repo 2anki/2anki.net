@@ -1380,13 +1380,25 @@ describe('PhotoToFlashcardsUseCase', () => {
         'unparseable',
         '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-Q',
         'generative',
+        true,
       ],
-      ['not_array', '{"deck":"PRIVATE-DECK"}', 'generative'],
-      ['empty', '[{"deck":"PRIVATE-DECK","cards":[]}]', 'generative'],
-      ['no_questions', '[{"deck":"PRIVATE-DECK","cards":[]}]', 'verbatim'],
+      ['not_array', '{"deck":"PRIVATE-DECK"}', 'generative', true],
+      ['empty', '[{"deck":"PRIVATE-DECK","cards":[]}]', 'generative', true],
+      [
+        'no_questions',
+        '[{"deck":"PRIVATE-DECK","cards":[]}]',
+        'verbatim',
+        true,
+      ],
+      [
+        'unparseable',
+        '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-Q',
+        'generative',
+        false,
+      ],
     ] as const)(
-      'logs a %s reply by length and hash, never its text',
-      async (reason, text, mode) => {
+      'logs a %s reply in %s mode (paying: %s) by length and hash, never its text',
+      async (reason, text, mode, isPaying) => {
         const logSpy = vi
           .spyOn(console, 'log')
           .mockImplementation(() => undefined);
@@ -1395,9 +1407,11 @@ describe('PhotoToFlashcardsUseCase', () => {
             content: [{ type: 'text', text }],
             usage: { input_tokens: 100, output_tokens: 10 },
           });
-          const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
+          const useCase = new PhotoToFlashcardsUseCase(
+            makeEventsStub(FREE_PHOTO_QUOTA_PER_MONTH - 1)
+          );
           await expect(
-            useCase.execute({ ...BASE_INPUT, isPaying: true, mode })
+            useCase.execute({ ...BASE_INPUT, isPaying, mode })
           ).rejects.toMatchObject({ status: 422 });
 
           const lines = logSpy.mock.calls.map(([line]) => String(line));
