@@ -1375,6 +1375,61 @@ describe('PhotoToFlashcardsUseCase', () => {
       });
     });
 
+    it.each([
+      [
+        'unparseable',
+        '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-Q',
+        'generative',
+        true,
+      ],
+      ['not_array', '{"deck":"PRIVATE-DECK"}', 'generative', true],
+      ['empty', '[{"deck":"PRIVATE-DECK","cards":[]}]', 'generative', true],
+      [
+        'no_questions',
+        '[{"deck":"PRIVATE-DECK","cards":[]}]',
+        'verbatim',
+        true,
+      ],
+      [
+        'unparseable',
+        '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-Q',
+        'generative',
+        false,
+      ],
+    ] as const)(
+      'logs a %s reply in %s mode (paying: %s) by length and hash, never its text',
+      async (reason, text, mode, isPaying) => {
+        const logSpy = vi
+          .spyOn(console, 'log')
+          .mockImplementation(() => undefined);
+        try {
+          mockMessageCreate.mockResolvedValueOnce({
+            content: [{ type: 'text', text }],
+            usage: { input_tokens: 100, output_tokens: 10 },
+          });
+          const useCase = new PhotoToFlashcardsUseCase(
+            makeEventsStub(FREE_PHOTO_QUOTA_PER_MONTH - 1)
+          );
+          await expect(
+            useCase.execute({ ...BASE_INPUT, isPaying, mode })
+          ).rejects.toMatchObject({ status: 422 });
+
+          const lines = logSpy.mock.calls.map(([line]) => String(line));
+          const logged = lines.find((line) =>
+            line.includes('vision_parse_failed')
+          );
+          expect(JSON.parse(logged!)).toMatchObject({
+            reason,
+            response_length: text.length,
+            response_sha256_prefix: expect.any(String),
+          });
+          expect(lines.join('\n')).not.toContain('PRIVATE');
+        } finally {
+          logSpy.mockRestore();
+        }
+      }
+    );
+
     it('logs reason no_questions for a verbatim empty parse so prod can tell it from a misread', async () => {
       const logSpy = vi
         .spyOn(console, 'log')
