@@ -28,10 +28,12 @@ export function anonRecoveryKey(anonId: string, token: string): string {
 
 // The first cards of a held deck sit under their own key in the same prefix,
 // so the recovery sweeps clean them up but neither dropped-response recovery
-// nor the recovery claim can mistake them for a finished deck.
+// nor the recovery claim can mistake them for a finished deck. The label goes
+// after the token: the anon id is any client string, while a recovery input
+// always ends in a UUID, so it can never end in the label.
 export function anonPreviewCardsKey(anonId: string, token: string): string {
   const digest = createHash('sha256')
-    .update(`preview-cards:${anonId}:${token.toLowerCase()}`)
+    .update(`${anonId}:${token.toLowerCase()}:preview-cards`)
     .digest('hex');
   return `${ANON_RECOVERY_PREFIX}${digest}.apkg`;
 }

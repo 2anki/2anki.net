@@ -11,7 +11,7 @@
   "gateBodyPreview": "Załóż darmowe konto, aby pobrać wszystkie fiszki ({{total}}).",
   "gateFreeLeadIn": "Albo załóż darmowe konto na pierwsze {{monthly}} fiszek.",
   "gateFreeLink": "Albo załóż darmowe konto na pierwsze {{monthly}} fiszek",
-  "previewCardsDownload": "Pobierz pierwsze fiszki (do {{cap}})",
+  "previewCardsDownload": "Pobierz pierwsze {{cap}} fiszek",
   "gateLiveAll": "Gotowe fiszki: {{total}}. Załóż darmowe konto, aby je pobrać.",
   "gateLiveOverMonth": "Gotowe fiszki: {{total}}. Day Pass daje je wszystkie od razu, a darmowe konto pierwsze {{monthly}}.",
   "preparing": "Przygotowywanie pobierania",

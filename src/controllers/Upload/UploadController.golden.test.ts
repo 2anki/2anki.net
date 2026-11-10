@@ -255,6 +255,7 @@ import { getDatabase } from '../../data_layer';
 import RequireAllowedOrigin from '../../routes/middleware/RequireAllowedOrigin';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 import { anonIdMiddleware } from '../../routes/middleware/anonIdMiddleware';
+import { setMintedAnonId } from '../../lib/User/getOwner';
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import {
   ClaimHeldDeckUseCase,
@@ -356,6 +357,7 @@ interface Population {
   previewReply?: string;
   realAuth?: boolean;
   mintsAnonId?: boolean;
+  mintedAnonId?: string;
   passSpentUsd?: number;
   passCreditsReadFails?: boolean;
   alsoUploads?: keyof typeof UPLOADS;
@@ -1154,6 +1156,9 @@ beforeAll(async () => {
       if (population.mintsAnonId === true) {
         return anonIdMiddleware(req, res, next);
       }
+      if (population.mintedAnonId != null) {
+        setMintedAnonId(res, population.mintedAnonId);
+      }
       next();
     },
     (req, res) => {
@@ -1469,6 +1474,26 @@ describe('the first cards handed over beside a held deck', () => {
     const download = await previewDownload('golden-preview-2');
 
     expect(download.status).toBe(404);
+  });
+
+  it('keeps the first cards under an anon id minted on the upload itself and serves them once the browser holds that cookie', async () => {
+    const result = await upload('large', {
+      ...previewCardsTreatment,
+      cookies: {},
+      mintedAnonId: 'golden-anon',
+    });
+
+    expect(result.body).toMatchObject({
+      kind: 'held',
+      cookieMinted: true,
+      previewCardsArm: 'treatment',
+      previewCards: true,
+    });
+    const download = await previewDownload('golden-anon');
+    expect(download.status).toBe(200);
+    expect(await download.text()).toBe(
+      `golden-apkg cards=${ANONYMOUS_CARD_CAP}`
+    );
   });
 
   it('stores and serves nothing while the pass-first wall is on', async () => {

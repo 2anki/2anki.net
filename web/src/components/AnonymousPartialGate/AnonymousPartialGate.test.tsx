@@ -585,6 +585,15 @@ describe('AnonymousPartialGate — first cards beside the hold', () => {
     expect(previewLink()).not.toBeInTheDocument();
   });
 
+  it('offers the first cards when the cookie minted on this upload stuck', () => {
+    document.cookie = 'anon_id=fresh-anon; path=/';
+    renderHeld({ ...treatmentHeld, cookieMinted: true });
+    expect(previewLink()).toHaveAttribute(
+      'href',
+      `/api/download/recover/${TOKEN}/preview`
+    );
+  });
+
   it('says the free account gets all the cards, beside the first-cards button', () => {
     renderHeld(treatmentHeld);
     expect(

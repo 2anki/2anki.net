@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   ANON_RECOVERY_PREFIX,
   anonPreviewCardsKey,
@@ -73,6 +74,31 @@ describe('anonPreviewCardsKey', () => {
   it('treats the token case-insensitively', () => {
     expect(anonPreviewCardsKey('anon-1', token.toUpperCase())).toBe(
       anonPreviewCardsKey('anon-1', token)
+    );
+  });
+
+  it.each([
+    ['preview-cards:anon-1', 'anon-1'],
+    ['anon-1:preview-cards', 'anon-1'],
+    [`anon-1:${token}:preview-cards`, 'anon-1'],
+    ['preview-cards', ''],
+  ])(
+    'gives no anon id the recovery key of another visitor’s first cards (%s vs %s)',
+    (craftedAnonId, victimAnonId) => {
+      expect(anonRecoveryKey(craftedAnonId, token)).not.toBe(
+        anonPreviewCardsKey(victimAnonId, token)
+      );
+    }
+  );
+
+  it('hashes the label after the token, where a recovery input can only hold a UUID', () => {
+    const recoveryInput = `preview-cards:anon-1:${token}`;
+    const previewInput = `anon-1:${token}:preview-cards`;
+    expect(anonPreviewCardsKey('anon-1', token)).toBe(
+      `recover/${createHash('sha256').update(previewInput).digest('hex')}.apkg`
+    );
+    expect(anonRecoveryKey('preview-cards:anon-1', token)).toBe(
+      `recover/${createHash('sha256').update(recoveryInput).digest('hex')}.apkg`
     );
   });
 });

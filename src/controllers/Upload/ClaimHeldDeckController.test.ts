@@ -346,7 +346,7 @@ describe('ClaimHeldDeckController', () => {
     ['anon-preview-1', 'treatment'],
     ['anon-preview-0', 'control'],
   ])(
-    'records the preview cards arm %s was hashed into at upload time',
+    'records the preview cards arm worked out for %s at claim time',
     async (anonId, previewArm) => {
       previewCardsFlag(true);
       const repo = new InMemoryHeldDeckRepository();

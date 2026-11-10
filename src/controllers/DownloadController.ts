@@ -155,7 +155,8 @@ class DownloadController {
   }
 
   // The first cards of a held deck, kept apart from the recovery copy. The
-  // served event counts decks that reached the browser, not button clicks.
+  // served event fires when streaming starts, so it counts decks the server
+  // began sending rather than button clicks.
   getAnonymousPreviewCards(
     req: Request,
     res: Response,
