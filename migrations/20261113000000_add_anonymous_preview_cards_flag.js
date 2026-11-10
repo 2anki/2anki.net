@@ -10,6 +10,7 @@ exports.up = async (knex) => {
     .ignore();
 };
 
+// A rollback deletes the row, so the flag reads as off until it is seeded again.
 exports.down = async (knex) => {
   await knex('feature_flags').where({ key: 'anonymous_preview_cards' }).del();
 };

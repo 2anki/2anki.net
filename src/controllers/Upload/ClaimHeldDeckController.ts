@@ -11,9 +11,8 @@ import type { UploadErrorBody } from '../../types/UploadErrorBody';
 import { getOwner } from '../../lib/User/getOwner';
 import { isPaying } from '../../lib/isPaying';
 import { track } from '../../services/events/track';
-import { getFeatureFlag } from '../../lib/featureFlags/getFeatureFlag';
 import {
-  ANONYMOUS_PREVIEW_CARDS_FLAG,
+  isPreviewCardsTestLive,
   resolvePreviewCardsArm,
 } from '../../lib/upload/anonymousPreviewCards';
 import { anonIdCookie } from './anonIdCookie';
@@ -57,16 +56,13 @@ export class ClaimHeldDeckController {
         });
       } else {
         const anonId = anonIdCookie(req);
-        const previewCardsFlag = await getFeatureFlag(
-          ANONYMOUS_PREVIEW_CARDS_FLAG,
-          false
-        ).catch(() => false);
+        const previewCardsLive = await isPreviewCardsTestLive();
         track('anonymous_partial_claimed', {
           userId: Number(owner),
           anonymousId: anonId,
           props: {
             arm: 'treatment',
-            preview_cards_arm: resolvePreviewCardsArm(anonId, previewCardsFlag),
+            preview_cards_arm: resolvePreviewCardsArm(anonId, previewCardsLive),
           },
         });
       }

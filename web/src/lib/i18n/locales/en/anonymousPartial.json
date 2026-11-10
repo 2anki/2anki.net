@@ -6,6 +6,7 @@
   "gateSaved_other": "Saved for {{count}} hours.",
   "gateCookieLost": "This browser can't keep your deck. Sign up first, then upload again.",
   "gateBody": "Create a free account to download them. Up to {{monthly}} cards a month, free.",
+  "gateBodyPreview": "Create a free account to download all {{total}}.",
   "gateFreeLeadIn": "Or create a free account for your first {{monthly}} cards.",
   "gateFreeLink": "Or create a free account for the first {{monthly}} cards",
   "previewCardsDownload": "Download the first {{cap}} cards",

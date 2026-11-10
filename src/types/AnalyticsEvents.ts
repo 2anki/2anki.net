@@ -209,6 +209,7 @@ export const KNOWN_EVENTS = new Set([
   'anonymous_partial_gate_shown',
   'anonymous_partial_claimed',
   'anonymous_preview_cards_downloaded',
+  'anonymous_preview_cards_served',
   'anonymous_pass_held_claimed',
   'recovery_deck_claimed',
   'monthly_partial_offer_shown',

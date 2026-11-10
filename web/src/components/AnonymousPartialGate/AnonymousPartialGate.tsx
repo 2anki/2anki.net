@@ -112,8 +112,20 @@ function HeldDeckSummary({
   );
 }
 
-// The capped deck the server stored under this upload's recovery token, the
-// same copy the anonymous recovery download serves.
+function previewCardsArmProps(held: HeldDeckState): {
+  preview_cards_arm?: 'control' | 'treatment';
+} {
+  return held.previewCardsArm == null
+    ? {}
+    : { preview_cards_arm: held.previewCardsArm };
+}
+
+function showsPreviewCards(held: HeldDeckState, cookieLost: boolean): boolean {
+  return held.previewCardsToken != null && !cookieLost;
+}
+
+// The capped deck the server kept beside the hold, under this upload's
+// recovery token but apart from the dropped-response recovery copy.
 function PreviewCardsDownload({
   held,
   cookieLost,
@@ -122,10 +134,12 @@ function PreviewCardsDownload({
   readonly cookieLost: boolean;
 }) {
   const { t } = useTranslation('anonymousPartial');
-  if (held.previewCardsToken == null || cookieLost) return null;
+  if (held.previewCardsToken == null || !showsPreviewCards(held, cookieLost)) {
+    return null;
+  }
   return (
     <a
-      href={`/api/download/recover/${encodeURIComponent(held.previewCardsToken)}`}
+      href={`/api/download/recover/${encodeURIComponent(held.previewCardsToken)}/preview`}
       download={getDownloadFileName(held.deckName ?? t('untitledDeck'))}
       className={`${sharedStyles.btnSecondary} ${styles.previewDownload}`}
       onClick={() =>
@@ -139,7 +153,13 @@ function PreviewCardsDownload({
   );
 }
 
-function FreeSignupLink({ monthly }: { readonly monthly: number }) {
+function FreeSignupLink({
+  monthly,
+  held,
+}: {
+  readonly monthly: number;
+  readonly held: HeldDeckState;
+}) {
   const { t } = useTranslation('anonymousPartial');
   return (
     <p className={styles.freeLink}>
@@ -149,6 +169,7 @@ function FreeSignupLink({ monthly }: { readonly monthly: number }) {
           track('paywall_upgrade_clicked', {
             surface: SURFACE,
             plan: 'free_signup',
+            ...previewCardsArmProps(held),
           })
         }
       >
@@ -189,6 +210,7 @@ function PassFirstGate({
             track('paywall_upgrade_clicked', {
               surface: SURFACE,
               plan: 'free_signup',
+              ...previewCardsArmProps(held),
             })
           }
         >
@@ -200,13 +222,13 @@ function PassFirstGate({
             track('paywall_upgrade_clicked', {
               surface: SURFACE,
               plan: 'sign_in',
+              ...previewCardsArmProps(held),
             })
           }
         >
           {t('signIn')}
         </Link>
       </PassFirstOffer>
-      <PreviewCardsDownload held={held} cookieLost={cookieLost} />
     </div>
   );
 }
@@ -225,9 +247,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
     track('anonymous_partial_gate_shown', {
       cards_held_back: held.cardsHeldBack,
       ...(cookieLost ? { cookie_lost: true } : {}),
-      ...(held.previewCardsArm == null
-        ? {}
-        : { preview_cards_arm: held.previewCardsArm }),
+      ...previewCardsArmProps(held),
     });
   }, [held.cardsHeldBack, held.previewCardsArm, cookieLost]);
 
@@ -264,6 +284,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
             dayPassCard
             held={!cookieLost}
             emphasis="primary"
+            previewCardsArm={held.previewCardsArm}
           />
         </div>
         <p className={styles.leadIn}>
@@ -279,6 +300,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
       surface={SURFACE}
       totalCards={held.totalCards}
       held={!cookieLost}
+      previewCardsArm={held.previewCardsArm}
     />
   );
 
@@ -290,7 +312,9 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
         <>
           {!cookieLost && (
             <p className={styles.body}>
-              {t('gateBody', { monthly: FREE_MONTHLY_CARDS })}
+              {showsPreviewCards(held, cookieLost)
+                ? t('gateBodyPreview', { total: held.totalCards })
+                : t('gateBody', { monthly: FREE_MONTHLY_CARDS })}
             </p>
           )}
           {errorMessage}
@@ -300,7 +324,7 @@ export function AnonymousPartialGate({ held, passFirst = false }: Props) {
       ) : (
         <>
           {dayPassOffer}
-          <FreeSignupLink monthly={FREE_MONTHLY_CARDS} />
+          <FreeSignupLink monthly={FREE_MONTHLY_CARDS} held={held} />
         </>
       )}
     </section>

@@ -1200,6 +1200,11 @@ beforeAll(async () => {
       new DownloadService({} as DownloadRepository)
     ).getAnonymousRecovery(req, res, new StorageHandler())
   );
+  app.get('/api/download/recover/:token/preview', (req, res) =>
+    new DownloadController(
+      new DownloadService({} as DownloadRepository)
+    ).getAnonymousPreviewCards(req, res, new StorageHandler())
+  );
   server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -1412,13 +1417,20 @@ describe('a signed-out upload held over the cap', () => {
 });
 
 describe('the first cards handed over beside a held deck', () => {
-  function recoverDownload(anonId: string) {
+  function previewDownload(anonId: string) {
+    return fetch(
+      `${baseUrl}/api/download/recover/${PREVIEW_RECOVERY_TOKEN}/preview`,
+      { headers: { cookie: `anon_id=${anonId}` } }
+    );
+  }
+
+  function recoveryDownload(anonId: string) {
     return fetch(`${baseUrl}/api/download/recover/${PREVIEW_RECOVERY_TOKEN}`, {
       headers: { cookie: `anon_id=${anonId}` },
     });
   }
 
-  it('serves the capped deck the conversion built from the recovery download', async () => {
+  it('serves the capped deck the conversion built from the preview download', async () => {
     const result = await upload('large', previewCardsTreatment);
     expect(result.body).toMatchObject({
       kind: 'held',
@@ -1427,7 +1439,7 @@ describe('the first cards handed over beside a held deck', () => {
       previewCards: true,
     });
 
-    const download = await recoverDownload('golden-anon');
+    const download = await previewDownload('golden-anon');
 
     expect(download.status).toBe(200);
     expect(await download.text()).toBe(
@@ -1435,12 +1447,42 @@ describe('the first cards handed over beside a held deck', () => {
     );
   });
 
+  it('keeps the first cards out of dropped-response recovery', async () => {
+    await upload('large', previewCardsTreatment);
+
+    const download = await recoveryDownload('golden-anon');
+
+    expect(download.status).toBe(404);
+  });
+
+  it('serves the first cards only to the browser that uploaded', async () => {
+    await upload('large', previewCardsTreatment);
+
+    const download = await previewDownload('golden-preview-2');
+
+    expect(download.status).toBe(404);
+  });
+
   it('serves nothing to a control visitor', async () => {
     await upload('large', previewCardsControl);
 
-    const download = await recoverDownload('golden-preview-2');
+    const download = await previewDownload('golden-preview-2');
 
     expect(download.status).toBe(404);
+  });
+
+  it('stores and serves nothing while the pass-first wall is on', async () => {
+    const result = await upload('large', {
+      ...previewCardsTreatment,
+      flags: {
+        [ANONYMOUS_PREVIEW_CARDS_FLAG]: true,
+        [LIMIT_WALL_PASS_FIRST_FLAG]: true,
+      },
+    });
+
+    expect(result.body).not.toHaveProperty('previewCardsArm');
+    expect(result.storedObjects).toEqual(['held source file']);
+    expect((await previewDownload('golden-anon')).status).toBe(404);
   });
 });
 

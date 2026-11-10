@@ -13,6 +13,7 @@ interface Props {
   readonly dayPassCard?: boolean;
   readonly emphasis?: 'primary' | 'secondary';
   readonly held?: boolean;
+  readonly previewCardsArm?: 'control' | 'treatment';
 }
 
 export function AnonymousDayPassOffer({
@@ -21,6 +22,7 @@ export function AnonymousDayPassOffer({
   dayPassCard = false,
   emphasis = 'secondary',
   held = false,
+  previewCardsArm,
 }: Props) {
   const { t } = useTranslation('anonymousPass');
   const afterPayNote = () => {
@@ -42,6 +44,9 @@ export function AnonymousDayPassOffer({
       surface,
       plan: 'day',
       variant: dayPassCard ? 'card' : 'anonymous',
+      ...(previewCardsArm == null
+        ? {}
+        : { preview_cards_arm: previewCardsArm }),
     });
     setError(null);
     setPending(true);

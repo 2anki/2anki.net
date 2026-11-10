@@ -2,8 +2,27 @@ import { createHash } from 'node:crypto';
 
 import {
   ANONYMOUS_PREVIEW_CARDS_FLAG,
+  isPreviewCardsTestLive,
   resolvePreviewCardsArm,
 } from './anonymousPreviewCards';
+import {
+  __resetFeatureFlagModuleForTests,
+  __setFeatureFlagDependencies,
+} from '../featureFlags/getFeatureFlag';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../featureFlags/limitWallPassFirst';
+
+function flags(values: Record<string, boolean>, fails = false) {
+  __setFeatureFlagDependencies({
+    repository: {
+      getAll: () => Promise.resolve([]),
+      get: (key: string) =>
+        fails
+          ? Promise.reject(new Error('db down'))
+          : Promise.resolve(values[key] ?? null),
+      set: () => Promise.resolve(null),
+    },
+  });
+}
 
 function septemberPartialArm(anonId: string): 'control' | 'treatment' {
   const digest = createHash('sha256').update(anonId).digest();
@@ -59,5 +78,32 @@ describe('resolvePreviewCardsArm', () => {
     ).length;
     expect(agree).toBeGreaterThan(900);
     expect(agree).toBeLessThan(1100);
+  });
+});
+
+describe('isPreviewCardsTestLive', () => {
+  afterEach(() => __resetFeatureFlagModuleForTests());
+
+  it('is live when the preview flag is on and the pass-first wall is off', async () => {
+    flags({ [ANONYMOUS_PREVIEW_CARDS_FLAG]: true });
+    await expect(isPreviewCardsTestLive()).resolves.toBe(true);
+  });
+
+  it('is off while the preview flag is unset', async () => {
+    flags({});
+    await expect(isPreviewCardsTestLive()).resolves.toBe(false);
+  });
+
+  it('is off while the pass-first wall is on', async () => {
+    flags({
+      [ANONYMOUS_PREVIEW_CARDS_FLAG]: true,
+      [LIMIT_WALL_PASS_FIRST_FLAG]: true,
+    });
+    await expect(isPreviewCardsTestLive()).resolves.toBe(false);
+  });
+
+  it('is off when the flags cannot be read', async () => {
+    flags({}, true);
+    await expect(isPreviewCardsTestLive()).resolves.toBe(false);
   });
 });

@@ -6,6 +6,7 @@
   "gateSaved_other": "{{count}} uur bewaard.",
   "gateCookieLost": "Deze browser kan je deck niet bewaren. Registreer je eerst en upload het bestand daarna opnieuw.",
   "gateBody": "Maak een gratis account om ze te downloaden. Tot {{monthly}} kaarten per maand, gratis.",
+  "gateBodyPreview": "Maak een gratis account om alle {{total}} te downloaden.",
   "gateFreeLeadIn": "Of maak een gratis account voor je eerste {{monthly}} kaarten.",
   "gateFreeLink": "Of maak een gratis account voor de eerste {{monthly}} kaarten",
   "previewCardsDownload": "Download de eerste {{cap}} kaarten",

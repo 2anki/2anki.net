@@ -8,6 +8,7 @@
   "gateSaved_other": "Zapisane na {{count}} godziny.",
   "gateCookieLost": "Ta przeglądarka nie może przechować twojej talii. Najpierw się zarejestruj, a potem prześlij plik ponownie.",
   "gateBody": "Załóż darmowe konto, aby je pobrać. Do {{monthly}} fiszek miesięcznie, za darmo.",
+  "gateBodyPreview": "Załóż darmowe konto, aby pobrać wszystkie fiszki ({{total}}).",
   "gateFreeLeadIn": "Albo załóż darmowe konto na pierwsze {{monthly}} fiszek.",
   "gateFreeLink": "Albo załóż darmowe konto na pierwsze {{monthly}} fiszek",
   "previewCardsDownload": "Pobierz pierwsze fiszki (do {{cap}})",

@@ -124,7 +124,11 @@ import UploadService, {
   resolveUploadWarning,
   walkMediaFiles,
 } from './UploadService';
-import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
+import {
+  anonPreviewCardsKey,
+  anonRecoveryKey,
+} from '../lib/upload/anonymousRecovery';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import { ANONYMOUS_AI_PREVIEW_FLAG } from '../lib/upload/anonymousAiPreview';
 import { ANONYMOUS_PREVIEW_CARDS_FLAG } from '../lib/upload/anonymousPreviewCards';
 import { ASYNC_SLOW_UPLOADS_FLAG } from '../lib/upload/asyncSlowUploads';
@@ -8351,7 +8355,6 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       totalCards: 34,
       deckName: 'deck',
       savedForHours: 24,
-      previewCardsArm: 'control',
     });
     expect(capturedSend()).toBeNull();
     expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
@@ -8443,7 +8446,6 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       deckName: 'deck',
       savedForHours: 24,
       dayPassCard: true,
-      previewCardsArm: 'control',
     });
   });
 
@@ -8545,7 +8547,6 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       totalCards: 34,
       deckName: 'deck',
       savedForHours: 24,
-      previewCardsArm: 'control',
     });
     expect(mockStorageUploadFile).toHaveBeenCalledTimes(1);
     const [, bytes] = mockStorageUploadFile.mock.calls[0];
@@ -9449,7 +9450,6 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
       deckName: 'deck',
       savedForHours: 24,
       cookieMinted: true,
-      previewCardsArm: 'control',
     });
     expect(heldDeck.rows).toHaveLength(1);
     expect(heldDeck.rows[0]).toMatchObject({
@@ -9762,8 +9762,11 @@ describe('UploadService.handleSyncUpload — first cards beside the held deck', 
       previewCards: true,
     });
     expect(heldDeck.rows).toHaveLength(1);
+    expect(recoveryKeysStored()).toEqual([
+      anonPreviewCardsKey(TREATMENT_ID, TOKEN),
+    ]);
     expect(mockStorageUploadFile).toHaveBeenCalledWith(
-      anonRecoveryKey(TREATMENT_ID, TOKEN),
+      anonPreviewCardsKey(TREATMENT_ID, TOKEN),
       Buffer.from('capped-apkg')
     );
     expect(heldEventProps()).toMatchObject({
@@ -9787,6 +9790,26 @@ describe('UploadService.handleSyncUpload — first cards beside the held deck', 
     expect(recoveryKeysStored()).toEqual([]);
     expect(heldEventProps()).toMatchObject({
       preview_cards_arm: 'control',
+      preview_cards_delivered: false,
+    });
+  });
+
+  it('runs no test while the pass-first wall is on, since a free account there releases only the first cards', async () => {
+    mockGetFeatureFlag.mockImplementation((key: unknown) =>
+      Promise.resolve(
+        key === ANONYMOUS_PREVIEW_CARDS_FLAG ||
+          key === LIMIT_WALL_PASS_FIRST_FLAG
+      )
+    );
+    heldPackages();
+    const { res, capturedJson } = buildResponse();
+
+    await serviceUnderTest().handleUpload(heldRequest(TREATMENT_ID), res);
+
+    expect(capturedJson()).toEqual(HELD_BODY);
+    expect(recoveryKeysStored()).toEqual([]);
+    expect(heldEventProps()).toMatchObject({
+      preview_cards_arm: 'off',
       preview_cards_delivered: false,
     });
   });

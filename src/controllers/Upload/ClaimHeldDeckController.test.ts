@@ -19,16 +19,22 @@ import {
   __setFeatureFlagDependencies,
 } from '../../lib/featureFlags/getFeatureFlag';
 import { ANONYMOUS_PREVIEW_CARDS_FLAG } from '../../lib/upload/anonymousPreviewCards';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 
 const trackMock = track as Mock;
 const ANON = 'anon-controller-1';
 
-function previewCardsFlag(on: boolean) {
+function previewCardsFlag(on: boolean, passFirst = false) {
   __setFeatureFlagDependencies({
     repository: {
       getAll: () => Promise.resolve([]),
-      get: (key: string) =>
-        Promise.resolve(key === ANONYMOUS_PREVIEW_CARDS_FLAG ? on : null),
+      get: (key: string) => {
+        if (key === ANONYMOUS_PREVIEW_CARDS_FLAG) return Promise.resolve(on);
+        if (key === LIMIT_WALL_PASS_FIRST_FLAG) {
+          return Promise.resolve(passFirst);
+        }
+        return Promise.resolve(null);
+      },
       set: () => Promise.resolve(null),
     },
   });
@@ -316,6 +322,22 @@ describe('ClaimHeldDeckController', () => {
     expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
       userId: 7,
       anonymousId: ANON,
+      props: { arm: 'treatment', preview_cards_arm: 'off' },
+    });
+  });
+
+  it('records the claim outside the test while the pass-first wall is on', async () => {
+    previewCardsFlag(true, true);
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo, undefined, 'anon-preview-1');
+    const controller = new ClaimHeldDeckController(buildUseCase(repo));
+    const { res } = buildResponse(7);
+
+    await controller.claim(buildRequest('anon-preview-1'), res);
+
+    expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
+      userId: 7,
+      anonymousId: 'anon-preview-1',
       props: { arm: 'treatment', preview_cards_arm: 'off' },
     });
   });

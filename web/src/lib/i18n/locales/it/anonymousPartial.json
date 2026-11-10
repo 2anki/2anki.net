@@ -6,6 +6,7 @@
   "gateSaved_other": "Salvato per {{count}} ore.",
   "gateCookieLost": "Questo browser non può conservare il tuo mazzo. Registrati prima, poi carica di nuovo il file.",
   "gateBody": "Crea un account gratuito per scaricarle. Fino a {{monthly}} carte al mese, gratis.",
+  "gateBodyPreview": "Crea un account gratuito per scaricarle tutte e {{total}}.",
   "gateFreeLeadIn": "Oppure crea un account gratuito per le tue prime {{monthly}} carte.",
   "gateFreeLink": "Oppure crea un account gratuito per le prime {{monthly}} carte",
   "previewCardsDownload": "Scarica le prime {{cap}} carte",

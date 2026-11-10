@@ -518,6 +518,11 @@ test.describe('golden path @golden', () => {
     await expect(
       page.getByText('All 84 cards are ready', { exact: true })
     ).toBeVisible();
+    await expect(
+      page.getByText('Create a free account to download all 84.', {
+        exact: true,
+      })
+    ).toBeVisible();
     const downloadStarted = page.waitForEvent('download');
     await previewLink.click();
     const download = await downloadStarted;
@@ -525,7 +530,7 @@ test.describe('golden path @golden', () => {
     expect(download.suggestedFilename()).toBe('Organic Chemistry Ch. 4.apkg');
     expect(sentTokens).toHaveLength(1);
     expect(new URL(download.url()).pathname).toBe(
-      `/api/download/recover/${sentTokens[0]}`
+      `/api/download/recover/${sentTokens[0]}/preview`
     );
     const scrollWidth = await page.evaluate(
       () => document.documentElement.scrollWidth

@@ -6,6 +6,7 @@
   "gateSaved_other": "Salvo por {{count}} horas.",
   "gateCookieLost": "Este navegador não consegue guardar seu baralho. Cadastre-se primeiro e depois envie o arquivo novamente.",
   "gateBody": "Crie uma conta gratuita para baixá-los. Até {{monthly}} cartões por mês, grátis.",
+  "gateBodyPreview": "Crie uma conta gratuita para baixar todos os {{total}}.",
   "gateFreeLeadIn": "Ou crie uma conta gratuita para seus primeiros {{monthly}} cartões.",
   "gateFreeLink": "Ou crie uma conta gratuita para os primeiros {{monthly}} cartões",
   "previewCardsDownload": "Baixe os primeiros {{cap}} cartões",

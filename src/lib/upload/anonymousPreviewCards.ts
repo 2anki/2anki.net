@@ -1,17 +1,33 @@
 import { createHash } from 'node:crypto';
 
+import { getFeatureFlag } from '../featureFlags/getFeatureFlag';
+import { LIMIT_WALL_PASS_FIRST_FLAG } from '../featureFlags/limitWallPassFirst';
+
 export const ANONYMOUS_PREVIEW_CARDS_FLAG = 'anonymous_preview_cards';
 
 export type PreviewCardsArm = 'off' | 'control' | 'treatment';
 
-// A held deck in the treatment arm also hands over the capped deck that was
-// already built. The salt keeps this split independent of the September
-// partial-delivery split, which hashed the bare anon id.
+// Under the pass-first wall a free account releases only the first cards, so
+// handing them over beside the hold would give away what sign-up offers.
+export async function isPreviewCardsTestLive(): Promise<boolean> {
+  try {
+    const [previewOn, passFirstOn] = await Promise.all([
+      getFeatureFlag(ANONYMOUS_PREVIEW_CARDS_FLAG, false),
+      getFeatureFlag(LIMIT_WALL_PASS_FIRST_FLAG, false),
+    ]);
+    return previewOn && !passFirstOn;
+  } catch {
+    return false;
+  }
+}
+
+// The salt keeps this split independent of the September partial-delivery
+// split, which hashed the bare anon id.
 export function resolvePreviewCardsArm(
   anonId: string | null,
-  flagOn: boolean
+  testLive: boolean
 ): PreviewCardsArm {
-  if (!flagOn || anonId == null || anonId === '') {
+  if (!testLive || anonId == null || anonId === '') {
     return 'off';
   }
   const digest = createHash('sha256')

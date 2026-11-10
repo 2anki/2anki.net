@@ -895,3 +895,120 @@ describe('DownloadController.getAnonymousRecovery', () => {
     expect(res.status).toHaveBeenCalledWith(503);
   });
 });
+
+describe('DownloadController.getAnonymousPreviewCards', () => {
+  const token = '3f2b8c1e-9a4d-4e7f-8b21-5c6d7e8f9a0b';
+
+  function previewRequest(
+    params: Record<string, string>,
+    cookies: Record<string, string> = { anon_id: 'anon-1' }
+  ) {
+    return { params, cookies } as unknown as Request;
+  }
+
+  function previewService(overrides: Record<string, unknown> = {}) {
+    return {
+      ...makeService(),
+      getAnonymousRecoveryStream: vi.fn(),
+      getAnonymousPreviewCardsStream: vi
+        .fn()
+        .mockImplementation(async () => fakeApkgStream()),
+      isMissingDownloadError: (e: unknown) =>
+        (e as { name?: string })?.name?.includes('NoSuchKey') === true,
+      isTransientStorageError: () => false,
+      ...overrides,
+    } as {
+      getAnonymousRecoveryStream: Mock;
+      getAnonymousPreviewCardsStream: Mock;
+      [method: string]: unknown;
+    };
+  }
+
+  function servedEvents() {
+    return trackMock.mock.calls.filter(
+      ([name]) => name === 'anonymous_preview_cards_served'
+    );
+  }
+
+  it('streams the first cards kept for the visitor and records a deck served', async () => {
+    const service = previewService();
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousPreviewCards(
+      previewRequest({ token }),
+      res,
+      {} as never
+    );
+    await res._done;
+
+    expect(service.getAnonymousPreviewCardsStream).toHaveBeenCalledWith(
+      'anon-1',
+      token,
+      {}
+    );
+    expect(service.getAnonymousRecoveryStream).not.toHaveBeenCalled();
+    expect(Buffer.concat(res._chunks).toString()).toBe('fake-apkg');
+    expect(res._headers['Content-Type']).toBe('application/octet-stream');
+    expect(res._headers['Cache-Control']).toBe('private, no-store');
+    expect(servedEvents()).toEqual([
+      [
+        'anonymous_preview_cards_served',
+        { userId: null, anonymousId: 'anon-1', props: {} },
+      ],
+    ]);
+  });
+
+  it('answers 400 for a token that is not a UUID', async () => {
+    const service = previewService();
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousPreviewCards(
+      previewRequest({ token: '..%2Fheld%2Fx' }),
+      res,
+      {} as never
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(service.getAnonymousPreviewCardsStream).not.toHaveBeenCalled();
+    expect(servedEvents()).toEqual([]);
+  });
+
+  it('answers 404 without an anon_id cookie', async () => {
+    const service = previewService();
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousPreviewCards(
+      previewRequest({ token }, {}),
+      res,
+      {} as never
+    );
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(service.getAnonymousPreviewCardsStream).not.toHaveBeenCalled();
+    expect(servedEvents()).toEqual([]);
+  });
+
+  it('answers 404 and records nothing when no first cards were kept', async () => {
+    const service = previewService({
+      getAnonymousPreviewCardsStream: vi
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('gone'), { name: 'NoSuchKey' })
+        ),
+    });
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousPreviewCards(
+      previewRequest({ token }),
+      res,
+      {} as never
+    );
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(servedEvents()).toEqual([]);
+  });
+});

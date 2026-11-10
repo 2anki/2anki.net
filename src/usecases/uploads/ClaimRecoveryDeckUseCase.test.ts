@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import {
   ANON_RECOVERY_RETENTION_MS,
+  anonPreviewCardsKey,
   anonRecoveryKey,
 } from '../../lib/upload/anonymousRecovery';
 import {
@@ -67,6 +68,25 @@ function claim(
 }
 
 describe('ClaimRecoveryDeckUseCase', () => {
+  it('never moves the first cards of a held deck into the account', async () => {
+    const objects = new Map([
+      [
+        anonPreviewCardsKey(ANON, TOKEN),
+        { body: DECK, at: new Date(NOW.getTime() - 60_000) },
+      ],
+    ]);
+    const { saver, saveRecoveredDeck } = buildSaver();
+    const useCase = new ClaimRecoveryDeckUseCase(
+      buildStore(objects),
+      saver,
+      () => NOW
+    );
+
+    await expect(claim(useCase)).rejects.toBeInstanceOf(NoRecoveryDeckError);
+    expect(saveRecoveredDeck).not.toHaveBeenCalled();
+    expect(objects.size).toBe(1);
+  });
+
   it('moves the deck kept for this browser into the account', async () => {
     const objects = storedDeck(60_000);
     const { saver, saveRecoveredDeck } = buildSaver();

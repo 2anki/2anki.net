@@ -1,5 +1,6 @@
 import {
   ANON_RECOVERY_PREFIX,
+  anonPreviewCardsKey,
   anonRecoveryKey,
   isRecoveryToken,
   readRecoveryToken,
@@ -52,6 +53,26 @@ describe('anonRecoveryKey', () => {
   it('treats the token case-insensitively', () => {
     expect(anonRecoveryKey('anon-1', token.toUpperCase())).toBe(
       anonRecoveryKey('anon-1', token)
+    );
+  });
+});
+
+describe('anonPreviewCardsKey', () => {
+  it('derives a hashed key under the reserved prefix, so the recovery sweeps cover it', () => {
+    expect(anonPreviewCardsKey('anon-1', token)).toMatch(
+      /^recover\/[0-9a-f]{64}\.apkg$/
+    );
+  });
+
+  it('never matches the recovery key for the same visitor and token', () => {
+    expect(anonPreviewCardsKey('anon-1', token)).not.toBe(
+      anonRecoveryKey('anon-1', token)
+    );
+  });
+
+  it('treats the token case-insensitively', () => {
+    expect(anonPreviewCardsKey('anon-1', token.toUpperCase())).toBe(
+      anonPreviewCardsKey('anon-1', token)
     );
   });
 });

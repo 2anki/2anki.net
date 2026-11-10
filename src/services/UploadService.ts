@@ -128,11 +128,12 @@ import {
 } from '../usecases/uploads/ClaimHeldDeckUseCase';
 import { ANONYMOUS_DAY_PASS_CARD_FLAG } from '../lib/upload/anonymousDayPassCard';
 import {
-  ANONYMOUS_PREVIEW_CARDS_FLAG,
+  isPreviewCardsTestLive,
   resolvePreviewCardsArm,
 } from '../lib/upload/anonymousPreviewCards';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import {
+  anonPreviewCardsKey,
   anonRecoveryKey,
   readRecoveryToken,
 } from '../lib/upload/anonymousRecovery';
@@ -2941,14 +2942,12 @@ class UploadService {
     );
     const previewCardsArm = resolvePreviewCardsArm(
       anonId,
-      await getFeatureFlag(ANONYMOUS_PREVIEW_CARDS_FLAG, false).catch(
-        () => false
-      )
+      await isPreviewCardsTestLive()
     );
     const previewCards =
       previewCardsArm === 'treatment' &&
       loadCappedDeck != null &&
-      (await this.storePreviewCards(req, anonId, loadCappedDeck));
+      (await this.storePreviewCards(req, storage, anonId, loadCappedDeck));
     track('conversion_succeeded', {
       userId: null,
       anonymousId: anonId,
@@ -2991,12 +2990,14 @@ class UploadService {
     return res.status(200).json(body);
   }
 
-  // The capped deck the conversion already built goes where the anonymous
-  // recovery download looks for it. Keyed by the hold's anon id, so a visitor
-  // whose cookie was minted on this upload can fetch it once the browser keeps
-  // the cookie. Any failure leaves the hold as it is.
+  // The capped deck the conversion already built is kept under its own key,
+  // apart from the recovery copy, so a dropped held response is never mistaken
+  // for a finished deck. Keyed by the hold's anon id, so a visitor whose cookie
+  // was minted on this upload can fetch it once the browser keeps the cookie.
+  // Any failure leaves the hold as it is.
   private async storePreviewCards(
     req: express.Request,
+    storage: StorageHandler,
     anonId: string,
     loadCappedDeck: () => Promise<Buffer | null>
   ): Promise<boolean> {
@@ -3009,10 +3010,7 @@ class UploadService {
       if (apkg == null) {
         return false;
       }
-      await new StorageHandler().uploadFile(
-        anonRecoveryKey(anonId, token),
-        apkg
-      );
+      await storage.uploadFile(anonPreviewCardsKey(anonId, token), apkg);
       return true;
     } catch {
       console.error('[UploadService] could not store the first held cards');

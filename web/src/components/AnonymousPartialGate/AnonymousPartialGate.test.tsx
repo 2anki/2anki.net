@@ -512,9 +512,16 @@ describe('AnonymousPartialGate — first cards beside the hold', () => {
     previewCardsArm: 'treatment',
     previewCardsToken: TOKEN,
   };
+  const overMonthTreatment: GateHeld = {
+    ...treatmentHeld,
+    cardsHeldBack: 163,
+    totalCards: 184,
+  };
 
   beforeEach(() => {
     vi.mocked(track).mockClear();
+    startPassCheckout.mockReset();
+    startPassCheckout.mockResolvedValue({ error: 'stay on the page' });
   });
 
   afterEach(() => {
@@ -531,28 +538,29 @@ describe('AnonymousPartialGate — first cards beside the hold', () => {
     );
   }
 
-  it.each([
-    ['the default gate', false],
-    ['the pass-first gate', true],
-  ])('links %s to the first cards this upload stored', (_label, passFirst) => {
-    renderHeld(treatmentHeld, passFirst);
+  function previewLink() {
+    return screen.queryByRole('link', { name: /Download the first/ });
+  }
+
+  it.each<[string, GateHeld]>([
+    ['the gate for a deck that fits a free month', treatmentHeld],
+    ['the gate for a deck over a free month', overMonthTreatment],
+    ['the Day Pass card lead', { ...overMonthTreatment, dayPassCard: true }],
+  ])('links %s to the first cards this upload kept', (_label, held) => {
+    renderHeld(held);
     const link = screen.getByRole('link', {
       name: 'Download the first 21 cards',
     });
-    expect(link).toHaveAttribute('href', `/api/download/recover/${TOKEN}`);
+    expect(link).toHaveAttribute(
+      'href',
+      `/api/download/recover/${TOKEN}/preview`
+    );
     expect(link).toHaveAttribute('download', 'Pharmacology.apkg');
   });
 
-  it('offers the first cards beside the Day Pass card lead too', () => {
-    renderHeld({
-      ...treatmentHeld,
-      cardsHeldBack: 100,
-      totalCards: 121,
-      dayPassCard: true,
-    });
-    expect(
-      screen.getByRole('link', { name: 'Download the first 21 cards' })
-    ).toBeInTheDocument();
+  it('offers no first cards on the pass-first gate, where a free account releases only them', () => {
+    renderHeld(treatmentHeld, true);
+    expect(previewLink()).not.toBeInTheDocument();
   });
 
   it.each<[string, Partial<GateHeld>]>([
@@ -569,16 +577,29 @@ describe('AnonymousPartialGate — first cards beside the hold', () => {
       totalCards: 34,
       ...preview,
     });
-    expect(
-      screen.queryByRole('link', { name: /Download the first/ })
-    ).not.toBeInTheDocument();
+    expect(previewLink()).not.toBeInTheDocument();
   });
 
   it('offers no first cards when this browser lost the cookie they are keyed to', () => {
     renderHeld({ ...treatmentHeld, cookieMinted: true });
+    expect(previewLink()).not.toBeInTheDocument();
+  });
+
+  it('says the free account gets all the cards, beside the first-cards button', () => {
+    renderHeld(treatmentHeld);
     expect(
-      screen.queryByRole('link', { name: /Download the first/ })
+      screen.getByText('Create a free account to download all 34.')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Create a free account to download them/)
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps the usual sign-up line for a control visitor', () => {
+    renderHeld({ ...treatmentHeld, previewCardsToken: undefined });
+    expect(
+      screen.getByText(/Create a free account to download them/)
+    ).toBeInTheDocument();
   });
 
   it('records the download click', () => {
@@ -608,5 +629,45 @@ describe('AnonymousPartialGate — first cards beside the hold', () => {
       cards_held_back: 13,
       preview_cards_arm: arm,
     });
+  });
+
+  it('names the arm on the free sign-up click', () => {
+    renderHeld({ ...overMonthTreatment, previewCardsArm: 'control' });
+    fireEvent.click(
+      screen.getByRole('link', {
+        name: 'Or create a free account for the first 100 cards',
+      })
+    );
+    expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: HELD_DECK_CHECKOUT_SURFACE,
+      plan: 'free_signup',
+      preview_cards_arm: 'control',
+    });
+  });
+
+  it('leaves the free sign-up click as it was outside the test', () => {
+    renderHeld({ cardCount: 21, cardsHeldBack: 163, totalCards: 184 });
+    fireEvent.click(
+      screen.getByRole('link', {
+        name: 'Or create a free account for the first 100 cards',
+      })
+    );
+    expect(track).toHaveBeenCalledWith('paywall_upgrade_clicked', {
+      surface: HELD_DECK_CHECKOUT_SURFACE,
+      plan: 'free_signup',
+    });
+  });
+
+  it.each<[string, GateHeld]>([
+    ['the default gate', overMonthTreatment],
+    ['the Day Pass card lead', { ...overMonthTreatment, dayPassCard: true }],
+  ])('names the arm on the Day Pass click from %s', async (_label, held) => {
+    renderHeld(held);
+    fireEvent.click(screen.getAllByRole('button', { name: /Day Pass|184/ })[0]);
+    await waitFor(() => expect(startPassCheckout).toHaveBeenCalled());
+    expect(track).toHaveBeenCalledWith(
+      'paywall_pass_clicked',
+      expect.objectContaining({ preview_cards_arm: 'treatment' })
+    );
   });
 });
