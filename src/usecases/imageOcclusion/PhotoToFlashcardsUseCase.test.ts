@@ -1376,12 +1376,17 @@ describe('PhotoToFlashcardsUseCase', () => {
     });
 
     it.each([
-      ['unparseable', '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-Q'],
-      ['not_array', '{"deck":"PRIVATE-DECK"}'],
-      ['empty', '[{"deck":"PRIVATE-DECK","cards":[]}]'],
-    ])(
+      [
+        'unparseable',
+        '[{"deck":"PRIVATE-DECK","cards":[{"q":"PRIVATE-Q',
+        'generative',
+      ],
+      ['not_array', '{"deck":"PRIVATE-DECK"}', 'generative'],
+      ['empty', '[{"deck":"PRIVATE-DECK","cards":[]}]', 'generative'],
+      ['no_questions', '[{"deck":"PRIVATE-DECK","cards":[]}]', 'verbatim'],
+    ] as const)(
       'logs a %s reply by length and hash, never its text',
-      async (reason, text) => {
+      async (reason, text, mode) => {
         const logSpy = vi
           .spyOn(console, 'log')
           .mockImplementation(() => undefined);
@@ -1392,7 +1397,7 @@ describe('PhotoToFlashcardsUseCase', () => {
           });
           const useCase = new PhotoToFlashcardsUseCase(makeEventsStub());
           await expect(
-            useCase.execute({ ...BASE_INPUT, isPaying: true })
+            useCase.execute({ ...BASE_INPUT, isPaying: true, mode })
           ).rejects.toMatchObject({ status: 422 });
 
           const lines = logSpy.mock.calls.map(([line]) => String(line));
