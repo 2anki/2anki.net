@@ -12,16 +12,9 @@ const renderFlow = (
   overrides: Partial<Parameters<typeof CancelFlow>[0]> = {}
 ) => {
   const props = {
-    planLabel: 'Monthly',
-    tenureDays: 10,
-    pauseEligible: false,
-    isLegacyRate: false,
     isCancelling: false,
-    isPausing: false,
-    pauseError: '',
     onCancel: vi.fn(),
     onKeep: vi.fn(),
-    onPause: vi.fn(),
     ...overrides,
   };
   render(<CancelFlow {...props} />);
@@ -93,84 +86,36 @@ describe('CancelFlow comment capture', () => {
   });
 });
 
-describe('CancelFlow pause-first ordering', () => {
-  it('shows the pause card on open for an eligible sub with no reason selected', () => {
-    renderFlow({ pauseEligible: true });
+describe('CancelFlow opening step', () => {
+  it('opens on the reason question with no reason selected and no pause offer', () => {
+    renderFlow();
 
     expect(
-      screen.getByRole('button', { name: 'Pause subscription' })
+      screen.getByText('Why are you cancelling? (optional)')
     ).toBeInTheDocument();
     expect(
       screen.getByRole('radio', { name: 'Too expensive' })
     ).not.toBeChecked();
-  });
-
-  it('fires subscription_pause_offered on mount when pause is shown', () => {
-    renderFlow({ pauseEligible: true, tenureDays: 42 });
-
-    expect(track).toHaveBeenCalledWith('subscription_pause_offered', {
-      tenure_days: 42,
-    });
-  });
-
-  it('does not offer pause when the sub is not eligible', () => {
-    renderFlow({ pauseEligible: false });
-
+    expect(screen.queryByText(/Pause/)).not.toBeInTheDocument();
     expect(track).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole('button', { name: 'Pause subscription' })
-    ).not.toBeInTheDocument();
   });
 
-  it('pauses with no reason selected and fires subscription_paused', () => {
-    const { onPause } = renderFlow({ pauseEligible: true, tenureDays: 42 });
+  it('labels the flow for assistive tech in the reader language', () => {
+    renderFlow();
 
-    fireEvent.click(screen.getByRole('button', { name: '2 months' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Pause subscription' }));
-
-    expect(track).toHaveBeenCalledWith('subscription_paused', {
-      pause_months: 2,
-      tenure_days: 42,
-    });
-    expect(onPause).toHaveBeenCalledWith(2, '');
-  });
-
-  it('keeps the reason list and cancel button visible below the pause card', () => {
-    renderFlow({ pauseEligible: true });
-
-    expect(screen.getByText('Still want to cancel?')).toBeInTheDocument();
     expect(
-      screen.getByRole('radio', { name: 'Too expensive' })
+      screen.getByRole('group', { name: 'Cancel subscription' })
     ).toBeInTheDocument();
+  });
+
+  it('offers cancel and keep side by side', () => {
+    renderFlow();
+
     expect(
       screen.getByRole('button', { name: 'Cancel subscription' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Keep subscription' })
-    ).toBeInTheDocument();
-  });
-
-  it('renders todays flow with no pause card or new heading when ineligible', () => {
-    renderFlow({ pauseEligible: false });
-
-    expect(
-      screen.queryByRole('button', { name: 'Pause subscription' })
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('Still want to cancel?')).not.toBeInTheDocument();
-    expect(
-      screen.getByText('Why are you cancelling? (optional)')
-    ).toBeInTheDocument();
-  });
-
-  it('shows the legacy retention line in the pause card for a legacy sub', () => {
-    renderFlow({
-      pauseEligible: true,
-      isLegacyRate: true,
-      planLabel: '$2 / month',
-    });
-
-    expect(
-      screen.getByText(/Pausing keeps your legacy \$2 \/ month rate/)
     ).toBeInTheDocument();
   });
 });

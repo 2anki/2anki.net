@@ -20,37 +20,15 @@ vi.mock('../services/SubscriptionService', () => {
       this.name = 'SubscriptionNotOwnedError';
     }
   }
-  class AnnualPlanNotPausableError extends Error {
-    constructor() {
-      super('Annual plans cannot be paused');
-      this.name = 'AnnualPlanNotPausableError';
-    }
-  }
-  class SubscriptionTooNewToPauseError extends Error {
-    constructor() {
-      super('Subscription is too new to pause');
-      this.name = 'SubscriptionTooNewToPauseError';
-    }
-  }
-  class InvalidPauseMonthsError extends Error {
-    constructor() {
-      super('Pause length must be 1, 2, or 3 months');
-      this.name = 'InvalidPauseMonthsError';
-    }
-  }
   return {
     __esModule: true,
     SubscriptionNotOwnedError,
-    AnnualPlanNotPausableError,
-    SubscriptionTooNewToPauseError,
-    InvalidPauseMonthsError,
     default: {
       cancelUserSubscriptions: vi.fn(),
       cancelSubscriptionById: vi.fn(),
       findRecentStripeSubscriptions: vi.fn(),
       countActiveByProductId: vi.fn().mockResolvedValue(0),
       getUserActiveSubscriptions: vi.fn().mockResolvedValue([]),
-      pauseSubscription: vi.fn(),
       resumeSubscription: vi.fn(),
     },
   };

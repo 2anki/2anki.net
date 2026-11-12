@@ -94,7 +94,7 @@ function CancelFunnelPanel() {
   return (
     <ChartPanel
       title="Cancel-flow funnel, last 30 days"
-      subtitle="How many cancels the pause offer saves"
+      subtitle="Cancel flows opened and subscriptions cancelled"
       isLoading={isLoading && cancelFunnel == null}
       isEmpty={
         cancelFunnel?.stages == null || cancelFunnel.stages.cancel_started === 0

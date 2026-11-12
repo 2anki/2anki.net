@@ -55,7 +55,6 @@
     "cancelledImmediate": "Cancelado. O acesso terminou.",
     "cancelFailed": "Não foi possível cancelar sua assinatura. Tente de novo em instantes.",
     "perPlanCancelFailed": "Não foi possível cancelar este plano. Tente de novo.",
-    "pauseFailed": "Não foi possível pausar sua assinatura. Tente de novo em instantes.",
     "resumeFailed": "Não foi possível retomar sua assinatura. Tente de novo em instantes."
   },
   "cancelFlow": {
@@ -65,22 +64,7 @@
     "keepSubscription": "Manter assinatura",
     "commentAria": "Comentário opcional",
     "commentPlaceholder": "Quer acrescentar algo? (opcional)",
-    "commentPlaceholderTechnical": "O que deu errado? (opcional)",
-    "stillWantToCancel": "Ainda quer cancelar?",
-    "pauseOrCancel": "Pausar ou cancelar"
-  },
-  "pauseCard": {
-    "pauseInstead": "Pause em vez disso — sem cobrança enquanto você estiver fora",
-    "notice": "Vai dar um tempo entre os semestres? Pause sua assinatura em vez de cancelar. Você não será cobrado enquanto estiver pausada, e ela retoma sozinha quando você estiver pronto. Tudo o que você criou fica salvo.",
-    "pauseFor": "Pausar por",
-    "pauseLengthAria": "Duração da pausa",
-    "oneMonth": "1 mês",
-    "nMonths": "{{count}} meses",
-    "resumesLine": "Retoma em {{date}} no {{plan}}. Cancele quando quiser antes disso.",
-    "yourPlan": "seu plano",
-    "pausing": "Pausando…",
-    "pauseSubscription": "Pausar assinatura",
-    "legacyKeeps": "Pausar mantém a sua tarifa antiga de {{plan}}. Cancelar faz você perdê-la."
+    "commentPlaceholderTechnical": "O que deu errado? (opcional)"
   },
   "accountDeletion": {
     "deleteAccount": "Excluir conta",

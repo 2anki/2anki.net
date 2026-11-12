@@ -891,13 +891,10 @@ const OpsRouter = () => {
    * @swagger
    * /api/ops/cancel-funnel:
    *   get:
-   *     summary: Cancel-flow funnel by stage with pause save-rate
+   *     summary: Cancel-flow funnel by stage
    *     description: |
    *       Returns event counts for each cancel-flow stage
-   *       (subscription_cancel_started, subscription_pause_offered,
-   *       subscription_paused, subscription_cancelled,
-   *       subscription_pause_offer_declined), plus the pause save-rate
-   *       (paused ÷ pause_offered) and offer-reach (pause_offered ÷ cancel_started).
+   *       (subscription_cancel_started, subscription_cancelled).
    *       Defaults to the last 30 days; pass ?window=7d|14d|30d|60d|90d.
    *       Internal endpoint locked to the ops owner — returns 404 for everyone else.
    *     tags: [Ops]

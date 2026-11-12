@@ -55,7 +55,6 @@
     "cancelledImmediate": "Gekündigt. Der Zugang ist beendet.",
     "cancelFailed": "Dein Abo konnte nicht gekündigt werden. Versuch es gleich noch einmal.",
     "perPlanCancelFailed": "Dieser Tarif konnte nicht gekündigt werden. Versuch es noch einmal.",
-    "pauseFailed": "Dein Abo konnte nicht pausiert werden. Versuch es gleich noch einmal.",
     "resumeFailed": "Dein Abo konnte nicht fortgesetzt werden. Versuch es gleich noch einmal."
   },
   "cancelFlow": {
@@ -65,22 +64,7 @@
     "keepSubscription": "Abo behalten",
     "commentAria": "Optionaler Kommentar",
     "commentPlaceholder": "Möchtest du noch etwas hinzufügen? (optional)",
-    "commentPlaceholderTechnical": "Was hat nicht funktioniert? (optional)",
-    "stillWantToCancel": "Trotzdem kündigen?",
-    "pauseOrCancel": "Pausieren oder kündigen"
-  },
-  "pauseCard": {
-    "pauseInstead": "Stattdessen pausieren — keine Kosten, während du weg bist",
-    "notice": "Legst du zwischen den Semestern eine Pause ein? Pausiere dein Abo, statt zu kündigen. Während der Pause wirst du nicht belastet, und es setzt sich von selbst fort, wenn du bereit bist. Alles, was du erstellt hast, bleibt gespeichert.",
-    "pauseFor": "Pausieren für",
-    "pauseLengthAria": "Pausendauer",
-    "oneMonth": "1 Monat",
-    "nMonths": "{{count}} Monate",
-    "resumesLine": "Wird am {{date}} zu {{plan}} fortgesetzt. Du kannst jederzeit vorher kündigen.",
-    "yourPlan": "deinem Tarif",
-    "pausing": "Wird pausiert …",
-    "pauseSubscription": "Abo pausieren",
-    "legacyKeeps": "Beim Pausieren behältst du deinen alten Tarif {{plan}}. Beim Kündigen verfällt er."
+    "commentPlaceholderTechnical": "Was hat nicht funktioniert? (optional)"
   },
   "accountDeletion": {
     "deleteAccount": "Konto löschen",

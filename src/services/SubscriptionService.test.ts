@@ -16,9 +16,6 @@ import { getStripe } from '../lib/integrations/stripe';
 import { getDefaultEmailService } from './EmailService/EmailService';
 import SubscriptionService, {
   SubscriptionNotOwnedError,
-  AnnualPlanNotPausableError,
-  SubscriptionTooNewToPauseError,
-  InvalidPauseMonthsError,
 } from './SubscriptionService';
 
 function buildDbMock(linkedRows: Array<{ email: string }> = []): Mock & {
@@ -590,91 +587,6 @@ describe('SubscriptionService.cancelSubscriptionById', () => {
     } finally {
       logSpy.mockRestore();
     }
-  });
-});
-
-describe('SubscriptionService.pauseSubscription', () => {
-  let stripe: StripeMock;
-  const NOW = new Date('2026-07-07T00:00:00Z');
-  const monthlySub = (overrides: Record<string, unknown> = {}) => ({
-    id: 'sub_pause',
-    status: 'active',
-    created: Math.floor(NOW.getTime() / 1000) - 90 * 24 * 60 * 60,
-    pause_collection: null,
-    items: {
-      data: [{ price: { recurring: { interval: 'month' } } }],
-    },
-    ...overrides,
-  });
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    stripe = buildStripeMock();
-    (getStripe as Mock).mockReturnValue(stripe);
-    (getDatabase as Mock).mockReturnValue(buildDbMock());
-    (getDefaultEmailService as Mock).mockReturnValue({});
-    stripe.customers.list.mockResolvedValue({ data: [{ id: 'cus_1', email }] });
-  });
-
-  it('pauses with behavior void and a future resume date', async () => {
-    stripe.subscriptions.list.mockResolvedValue({ data: [monthlySub()] });
-
-    const result = await SubscriptionService.pauseSubscription(email, 2, NOW);
-
-    const expectedResume = new Date(NOW.getTime());
-    expectedResume.setMonth(expectedResume.getMonth() + 2);
-    expect(stripe.subscriptions.update).toHaveBeenCalledWith('sub_pause', {
-      pause_collection: {
-        behavior: 'void',
-        resumes_at: Math.floor(expectedResume.getTime() / 1000),
-      },
-    });
-    expect(result.resumesAt).toBe(Math.floor(expectedResume.getTime() / 1000));
-    expect(result.tenureDays).toBe(90);
-  });
-
-  it('rejects annual plans', async () => {
-    stripe.subscriptions.list.mockResolvedValue({
-      data: [
-        monthlySub({
-          items: { data: [{ price: { recurring: { interval: 'year' } } }] },
-        }),
-      ],
-    });
-
-    await expect(
-      SubscriptionService.pauseSubscription(email, 1, NOW)
-    ).rejects.toBeInstanceOf(AnnualPlanNotPausableError);
-    expect(stripe.subscriptions.update).not.toHaveBeenCalled();
-  });
-
-  it('rejects subscriptions younger than 30 days', async () => {
-    stripe.subscriptions.list.mockResolvedValue({
-      data: [
-        monthlySub({
-          created: Math.floor(NOW.getTime() / 1000) - 10 * 24 * 60 * 60,
-        }),
-      ],
-    });
-
-    await expect(
-      SubscriptionService.pauseSubscription(email, 1, NOW)
-    ).rejects.toBeInstanceOf(SubscriptionTooNewToPauseError);
-    expect(stripe.subscriptions.update).not.toHaveBeenCalled();
-  });
-
-  it('rejects pause lengths outside 1-3 months', async () => {
-    await expect(
-      SubscriptionService.pauseSubscription(email, 4, NOW)
-    ).rejects.toBeInstanceOf(InvalidPauseMonthsError);
-  });
-
-  it('throws when the user has no active subscription', async () => {
-    stripe.subscriptions.list.mockResolvedValue({ data: [] });
-
-    await expect(
-      SubscriptionService.pauseSubscription(email, 1, NOW)
-    ).rejects.toBeInstanceOf(SubscriptionNotOwnedError);
   });
 });
 

@@ -53,6 +53,15 @@ describe('ProCard', () => {
     ).toBeInTheDocument();
   });
 
+  it('promises cancel anytime and makes no pause promise', () => {
+    render(
+      <ProCard onUpgrade={vi.fn()} pending={null} yearlyAvailable {...prices} />
+    );
+
+    expect(screen.getAllByText(/Cancel anytime/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/pause/i)).toBeNull();
+  });
+
   it('leads with the yearly per-month price, not the monthly price', () => {
     render(
       <ProCard onUpgrade={vi.fn()} pending={null} yearlyAvailable {...prices} />

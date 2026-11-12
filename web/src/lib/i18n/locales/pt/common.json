@@ -629,8 +629,7 @@
       "getUnlimitedMonthly": "Obter o Pro — cobrança mensal",
       "termsYearly": "{{annualTotal}} cobrado hoje, renova anualmente. Cancele quando quiser — o acesso continua até o fim do ano pago.",
       "termsMonthly": "{{monthlyTotal}} cobrado hoje, renova mensalmente. Cancele quando quiser.",
-      "checkoutError": "Não foi possível iniciar o checkout. Tente de novo, ou envie um e-mail para support@2anki.net.",
-      "pauseReassurance": "Cancele quando quiser — ou pause entre semestres, sem cobrança enquanto estiver fora."
+      "checkoutError": "Não foi possível iniciar o checkout. Tente de novo, ou envie um e-mail para support@2anki.net."
     },
     "card": {
       "howSyncWorks": "Como funciona a sincronização"

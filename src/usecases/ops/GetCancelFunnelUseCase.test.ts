@@ -8,8 +8,6 @@ import {
 const buildService = () => {
   const getMetrics = vi.fn().mockResolvedValue({
     stages: null,
-    save_rate_pct: 0,
-    offer_reach_pct: 0,
     since: '',
     as_of: '',
   } as CancelFunnelResponse);

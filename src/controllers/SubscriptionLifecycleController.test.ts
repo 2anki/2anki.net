@@ -8,37 +8,15 @@ vi.mock('../services/SubscriptionService', () => {
       this.name = 'SubscriptionNotOwnedError';
     }
   }
-  class AnnualPlanNotPausableError extends Error {
-    constructor() {
-      super('Annual plans cannot be paused');
-      this.name = 'AnnualPlanNotPausableError';
-    }
-  }
-  class SubscriptionTooNewToPauseError extends Error {
-    constructor() {
-      super('Subscription is too new to pause');
-      this.name = 'SubscriptionTooNewToPauseError';
-    }
-  }
-  class InvalidPauseMonthsError extends Error {
-    constructor() {
-      super('Pause length must be 1, 2, or 3 months');
-      this.name = 'InvalidPauseMonthsError';
-    }
-  }
   return {
     __esModule: true,
     SubscriptionNotOwnedError,
-    AnnualPlanNotPausableError,
-    SubscriptionTooNewToPauseError,
-    InvalidPauseMonthsError,
     default: {
       cancelUserSubscriptions: vi.fn(),
       cancelSubscriptionById: vi.fn(),
       findRecentStripeSubscriptions: vi.fn(),
       countActiveByProductId: vi.fn().mockResolvedValue(0),
       getUserActiveSubscriptions: vi.fn().mockResolvedValue([]),
-      pauseSubscription: vi.fn(),
       resumeSubscription: vi.fn(),
     },
   };
@@ -50,7 +28,6 @@ import SubscriptionLifecycleController from './SubscriptionLifecycleController';
 import type UsersService from '../services/UsersService';
 import SubscriptionService, {
   SubscriptionNotOwnedError,
-  AnnualPlanNotPausableError,
 } from '../services/SubscriptionService';
 import { track } from '../services/events/track';
 
@@ -344,94 +321,6 @@ describe('UsersController.getSubscriptionStatus', () => {
     await controller.getSubscriptionStatus({} as express.Request, res);
 
     expect(readSummaries(res)[0].cancellation_reason).toBeNull();
-  });
-});
-
-describe('UsersController.pauseSubscription', () => {
-  const buildPauseController = () => {
-    const userService = {
-      getUserById: vi
-        .fn()
-        .mockResolvedValue({ id: 1, email: 'sub@example.com' }),
-    } as unknown as UsersService;
-    const controller = new SubscriptionLifecycleController(
-      userService,
-      {} as ReturnType<typeof import('../data_layer').getDatabase>
-    );
-    return { controller };
-  };
-
-  const buildResWithLocals = (owner: number | null = 1) => {
-    const json = vi.fn();
-    const status = vi.fn().mockReturnValue({ json });
-    return {
-      json,
-      status,
-      locals: { owner },
-    } as unknown as express.Response & {
-      json: Mock;
-      status: Mock;
-    };
-  };
-
-  beforeEach(() => {
-    (SubscriptionService.pauseSubscription as Mock).mockReset();
-  });
-
-  it('pauses and returns the resume date', async () => {
-    (SubscriptionService.pauseSubscription as Mock).mockResolvedValue({
-      subscriptionId: 'sub_1',
-      resumesAt: 1900000000,
-      tenureDays: 90,
-    });
-    const { controller } = buildPauseController();
-    const req = { body: { months: 2 } } as express.Request;
-    const res = buildResWithLocals();
-
-    await controller.pauseSubscription(req, res);
-
-    expect(SubscriptionService.pauseSubscription).toHaveBeenCalledWith(
-      'sub@example.com',
-      2
-    );
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ resumes_at: 1900000000 })
-    );
-  });
-
-  it('returns 400 for an invalid pause length', async () => {
-    const { controller } = buildPauseController();
-    const req = { body: { months: 5 } } as express.Request;
-    const res = buildResWithLocals();
-
-    await controller.pauseSubscription(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(SubscriptionService.pauseSubscription).not.toHaveBeenCalled();
-  });
-
-  it('maps an annual plan rejection to 422', async () => {
-    (SubscriptionService.pauseSubscription as Mock).mockRejectedValue(
-      new AnnualPlanNotPausableError()
-    );
-    const { controller } = buildPauseController();
-    const req = { body: { months: 1 } } as express.Request;
-    const res = buildResWithLocals();
-
-    await controller.pauseSubscription(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(422);
-  });
-
-  it('returns 401 without an authenticated owner', async () => {
-    const { controller } = buildPauseController();
-    const req = { body: { months: 1 } } as express.Request;
-    const res = buildResWithLocals(null);
-
-    await controller.pauseSubscription(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(401);
   });
 });
 

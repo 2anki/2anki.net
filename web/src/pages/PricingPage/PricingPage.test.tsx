@@ -262,6 +262,13 @@ describe('PricingPage layout', () => {
     ).toBeInTheDocument();
   });
 
+  it('makes no promise that a subscription can be paused', () => {
+    renderAt('/pricing');
+    expect(screen.getByTestId('unlimited-card')).not.toHaveTextContent(
+      /pause/i
+    );
+  });
+
   it('shows Day Pass and Week Pass as full cards with visible buttons', () => {
     renderAt('/pricing');
     expect(

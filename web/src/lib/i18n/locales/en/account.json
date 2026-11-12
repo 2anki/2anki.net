@@ -55,7 +55,6 @@
     "cancelledImmediate": "Cancelled. Access has ended.",
     "cancelFailed": "Couldn't cancel your subscription. Try again in a moment.",
     "perPlanCancelFailed": "Couldn't cancel this plan. Try again.",
-    "pauseFailed": "Couldn't pause your subscription. Try again in a moment.",
     "resumeFailed": "Couldn't resume your subscription. Try again in a moment."
   },
   "cancelFlow": {
@@ -65,22 +64,7 @@
     "keepSubscription": "Keep subscription",
     "commentAria": "Optional comment",
     "commentPlaceholder": "Anything you'd like to add? (optional)",
-    "commentPlaceholderTechnical": "What broke? (optional)",
-    "stillWantToCancel": "Still want to cancel?",
-    "pauseOrCancel": "Pause or cancel"
-  },
-  "pauseCard": {
-    "pauseInstead": "Pause instead — no charge while you're away",
-    "notice": "Taking a break between terms? Pause your subscription instead of cancelling. You won't be charged while it's paused, and it resumes on its own when you're ready. Everything you've made is saved.",
-    "pauseFor": "Pause for",
-    "pauseLengthAria": "Pause length",
-    "oneMonth": "1 month",
-    "nMonths": "{{count}} months",
-    "resumesLine": "Resumes {{date}} at {{plan}}. Cancel anytime before then.",
-    "yourPlan": "your plan",
-    "pausing": "Pausing…",
-    "pauseSubscription": "Pause subscription",
-    "legacyKeeps": "Pausing keeps your legacy {{plan}} rate. Cancelling gives it up."
+    "commentPlaceholderTechnical": "What broke? (optional)"
   },
   "accountDeletion": {
     "deleteAccount": "Delete account",

@@ -22,8 +22,7 @@ vi.mock('../../../lib/backend/cancelSubscription', () => ({
   submitCancellationFeedback: vi.fn(),
 }));
 
-vi.mock('../../../lib/backend/pauseSubscription', () => ({
-  pauseSubscription: vi.fn(),
+vi.mock('../../../lib/backend/resumeSubscription', () => ({
   resumeSubscription: vi.fn(),
 }));
 
@@ -36,7 +35,7 @@ import {
   cancelSubscription,
   cancelSubscriptionById,
 } from '../../../lib/backend/cancelSubscription';
-import { resumeSubscription } from '../../../lib/backend/pauseSubscription';
+import { resumeSubscription } from '../../../lib/backend/resumeSubscription';
 import { track } from '../../../lib/analytics/track';
 
 const mockUseStripeSubscriptions =
@@ -384,7 +383,7 @@ describe('SubscriptionManagement', () => {
     expect(mockUseStripeSubscriptions).not.toHaveBeenCalled();
   });
 
-  it('leads the cancel flow with the pause card for a pause-eligible sub', () => {
+  it('opens the cancel flow on the reason step with no pause offer for a monthly sub past 30 days', () => {
     stubStripeActive();
     renderStripeManagement();
 
@@ -392,26 +391,53 @@ describe('SubscriptionManagement', () => {
       screen.getByRole('button', { name: 'Cancel subscription' })
     );
 
-    expect(screen.getByText(/Pause instead — no charge/)).toBeTruthy();
-    expect(screen.getByText('Still want to cancel?')).toBeTruthy();
-    expect(track).toHaveBeenCalledWith('subscription_pause_offered', {
-      tenure_days: expect.any(Number),
-    });
+    expect(
+      screen.getByText('Why are you cancelling? (optional)')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Pause/)).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Pause subscription' })
+    ).toBeNull();
     expect(
       screen.getByRole('button', { name: 'Keep subscription' })
-    ).toBeTruthy();
+    ).toBeInTheDocument();
+    expect(vi.mocked(track).mock.calls.map((call) => call[0])).toEqual([
+      'subscription_cancel_started',
+    ]);
   });
 
-  it('does not reveal the pause card for annual plans', () => {
-    stubStripeActive({ amount: 6400, currency: 'usd', interval: 'year' });
+  it('keeps the legacy-rate reminder on screen while the cancel flow is open', () => {
+    stubStripeActive({ amount: 600, currency: 'usd', interval: 'month' });
     renderStripeManagement();
 
     fireEvent.click(
-      screen.getAllByRole('button', { name: 'Cancel subscription' })[0]
+      screen.getByRole('button', { name: 'Cancel subscription' })
+    );
+
+    expect(
+      screen.getByText('Why are you cancelling? (optional)')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Cancelling forfeits this legacy rate.')
+    ).toBeInTheDocument();
+  });
+
+  it('cancels at period end from the flow and records no pause event', async () => {
+    stubStripeActive();
+    vi.mocked(cancelSubscription).mockResolvedValue({ message: 'ok' });
+    renderStripeManagement();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cancel subscription' })
     );
     fireEvent.click(screen.getByLabelText('I finished what I needed'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Cancel subscription' })
+    );
 
-    expect(screen.queryByText(/Pause instead — no charge/)).toBeNull();
+    await waitFor(() => expect(cancelSubscription).toHaveBeenCalled());
+    const eventNames = vi.mocked(track).mock.calls.map((call) => call[0]);
+    expect(eventNames.filter((name) => name.includes('pause'))).toEqual([]);
   });
 
   it('renders the paused state with a resume action', async () => {
@@ -426,6 +452,20 @@ describe('SubscriptionManagement', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Resume now' }));
 
     await waitFor(() => expect(resumeSubscription).toHaveBeenCalled());
+  });
+
+  it('tells a paused subscriber when resuming fails', async () => {
+    stubStripePaused();
+    vi.mocked(resumeSubscription).mockRejectedValue(new Error(''));
+    renderStripeManagement();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume now' }));
+
+    expect(
+      await screen.findByText(
+        "Couldn't resume your subscription. Try again in a moment."
+      )
+    ).toBeInTheDocument();
   });
 
   it('cancelling from paused ends now and says so, with no access promised', async () => {

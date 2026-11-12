@@ -379,8 +379,6 @@ describe('BusinessTab', () => {
             statusText: 'OK',
             json: async () => ({
               stages: null,
-              save_rate_pct: 0,
-              offer_reach_pct: 0,
               since: '',
               as_of: '',
             }),

@@ -143,9 +143,6 @@ export function ProCard({
               : t('pricing.unlimited.termsMonthly', { monthlyTotal })}
           </p>
         )}
-        <p className={styles.cardCaption}>
-          {t('pricing.unlimited.pauseReassurance')}
-        </p>
       </div>
     </div>
   );

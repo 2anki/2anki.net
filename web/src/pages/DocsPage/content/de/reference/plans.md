@@ -43,11 +43,9 @@ Nutze das, wenn du eine Woche hast, um dich auf eine Prüfung vorzubereiten, ode
 
 Auto Sync ist nicht auf der Preisseite. Bei jedem Abo schreib eine E-Mail an [support@2anki.net](mailto:support@2anki.net), und wir schalten es für dein Konto frei.
 
-## Ein Abo pausieren
+## Pausierte Abos
 
-Machst du eine Pause zwischen den Terminen? Pausiere ein monatliches Abo für 1, 2 oder 3 Monate, statt zu kündigen. Du wirst nicht belastet, während es pausiert ist, und es setzt sich von selbst am angezeigten Datum fort. Während der Pause sind kostenpflichtige Funktionen aus, und alles, was du gemacht hast, bleibt gespeichert. Setze jederzeit früh von deiner Kontoseite fort.
-
-Pausieren ist bei monatlichen Plänen nach 30 Tagen verfügbar. Jahrespläne und Pässe können nicht pausiert werden.
+Neue Pausen sind nicht mehr möglich. Ist dein Abo bereits pausiert, wirst du nicht belastet, und kostenpflichtige Funktionen sind aus, bis es sich am auf deiner Kontoseite angezeigten Datum von selbst fortsetzt. Alles, was du gemacht hast, bleibt gespeichert. Setze es jederzeit früher über deine Kontoseite fort.
 
 ## Häufige Fehler
 
