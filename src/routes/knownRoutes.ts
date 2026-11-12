@@ -38,6 +38,7 @@ const APP_ROUTES = new Set<string>([
   '/delete-account',
   '/limit',
   '/security',
+  '/tokushoho',
   '/status',
   '/whats-new',
   '/auth/magic',

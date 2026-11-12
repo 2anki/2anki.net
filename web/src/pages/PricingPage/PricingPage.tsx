@@ -501,6 +501,11 @@ export default function PricingPage({
       {planSections()}
 
       <p className={styles.pricesNote}>{t('pricing.pricesNote')}</p>
+      <p className={styles.legalNote}>
+        <a href="/tokushoho/" lang="ja">
+          {t('marketing:footer.tokushoho')}
+        </a>
+      </p>
 
       <ul className={styles.reassurance}>
         <li>{t('pricing.reassuranceCancel')}</li>
