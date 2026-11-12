@@ -10,6 +10,7 @@ export const nothingHeld = (
   billedThroughApple: false,
   activePassKind: null,
   activePassExpiresAt: null,
+  semesterRenewalOpen: false,
   ...over,
 });
 
