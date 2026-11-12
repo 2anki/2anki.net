@@ -866,26 +866,40 @@ describe('BusinessMetricsService', () => {
     }
   );
 
-  it('keeps a past_due subscription in the subscriber count and the MRR chart', async () => {
-    const { service } = buildService({
-      allSubs: [
-        sub('sub_active', [monthly(1500)], { created: daysAgoEpoch(60) }),
-        sub('sub_behind', [monthly(4000)], {
-          created: daysAgoEpoch(60),
-          status: 'past_due',
-        }),
-      ],
-    });
+  it.each(['past_due', 'unpaid'] as const)(
+    'keeps a subscription in %s in the subscriber count, churn and the MRR chart',
+    async (status) => {
+      const { service } = buildService({
+        allSubs: [
+          sub('sub_active', [monthly(1500)], { created: daysAgoEpoch(60) }),
+          sub('sub_behind', [monthly(4000)], {
+            created: daysAgoEpoch(60),
+            status,
+          }),
+          sub('sub_gone', [monthly(1000)], {
+            created: daysAgoEpoch(90),
+            status: 'canceled',
+            ended_at: daysAgoEpoch(5),
+          }),
+        ],
+      });
 
-    const result = await service.getMetrics();
-    const today = new Date(NOW_MS);
-    today.setUTCHours(0, 0, 0, 0);
-    const todayIso = today.toISOString().slice(0, 10);
-    const mrrToday = result.mrr_timeseries!.find((p) => p.t === todayIso);
+      const result = await service.getMetrics();
+      const today = new Date(NOW_MS);
+      today.setUTCHours(0, 0, 0, 0);
+      const todayIso = today.toISOString().slice(0, 10);
+      const mrrToday = result.mrr_timeseries!.find((p) => p.t === todayIso);
+      const activeByTier = result.churn_30d_breakdown!.by_tier.reduce(
+        (sum, point) => sum + point.active,
+        0
+      );
 
-    expect(result.active_paying_subs).toBe(2);
-    expect(mrrToday?.mrr_usd).toBeCloseTo(55, 5);
-  });
+      expect(result.active_paying_subs).toBe(2);
+      expect(result.churn_30d_pct).toBeCloseTo(50, 5);
+      expect(activeByTier).toBe(2);
+      expect(mrrToday?.mrr_usd).toBeCloseTo(55, 5);
+    }
+  );
 
   it('sums MRR across multiple items in one subscription', async () => {
     const { service } = buildService({
