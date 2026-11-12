@@ -89,6 +89,34 @@ describe('DefaultRouter catch-all status', () => {
     expect(body).not.toContain('Google Click ID');
   });
 
+  it('answers the removed deck-sharing survey endpoint with a 404', async () => {
+    const res = await fetch(`${url}/api/deck-distribution-intent`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ answer: 'students', upload_key: 'deck.apkg' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('mounts no router for the removed deck-sharing survey endpoint', () => {
+    const routesDir = __dirname;
+    const server = fs.readFileSync(
+      path.join(__dirname, '..', 'server.ts'),
+      'utf8'
+    );
+    const routerSources = fs
+      .readdirSync(routesDir)
+      .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+      .map((name) => fs.readFileSync(path.join(routesDir, name), 'utf8'));
+
+    expect(server).not.toContain('deckDistributionIntentRouter');
+    expect(
+      routerSources.filter((source) =>
+        source.includes('/api/deck-distribution-intent')
+      )
+    ).toEqual([]);
+  });
+
   it('301s the old API docs path to the MCP connector page', async () => {
     const res = await fetch(`${url}/documentation/api/docs`, {
       redirect: 'manual',

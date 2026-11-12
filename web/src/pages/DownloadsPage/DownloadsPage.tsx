@@ -37,7 +37,6 @@ import {
 import { useActiveShares } from './hooks/useActiveShares';
 import { fireAnalyticsEvent } from '../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../lib/analytics/track';
-import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import type JobResponse from '@server/types/JobResponse';
 import type { RescueCandidate } from '../../lib/upload/isRescueCandidate';
 import {
@@ -61,7 +60,6 @@ import {
   type FieldMapping,
 } from '../../lib/fieldMapping/types';
 import { ConversionResult } from './components/ConversionResult/ConversionResult';
-import { DeckDistributionPanel } from './components/DeckDistributionPanel';
 import { ProducerPrompt } from './components/ProducerPrompt';
 import { ConversionReportModal } from './components/ConversionReportModal/ConversionReportModal';
 import { getThinDeckSignal } from './helpers/getThinDeckSignal';
@@ -389,7 +387,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
     useDropboxUploads(backend);
   const { uploads: googleDriveUploads, deleteUpload: deleteGoogleDriveUpload } =
     useGoogleDriveUploads(backend);
-  const { data } = useUserLocals();
   const activeShares = useActiveShares();
   const sharedKeySet = new Set(activeShares.map((s) => s.upload_key));
 
@@ -417,19 +414,8 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
   const [ratedContext, setRatedContext] = useState<
     DeckFeedbackContext | undefined
   >(undefined);
-  const [distributionPanelKey, setDistributionPanelKey] = useState<
-    string | null
-  >(null);
   const pageViewTracked = useRef(false);
   const navigate = useNavigate();
-
-  const notifyEmail = data?.user?.email ?? null;
-
-  const toggleDistributionPanel = (uploadKey: string) => {
-    const willOpen = distributionPanelKey !== uploadKey;
-    setDistributionPanelKey(willOpen ? uploadKey : null);
-    if (willOpen) track('deck_distribution_intent_clicked');
-  };
 
   useEffect(() => {
     if (pageViewTracked.current) return;
@@ -715,11 +701,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                             : 0;
                           const isTruncatedRow =
                             isNotionDoneRow && hasTruncationSignal(row.job);
-                          const doneDownloadKey =
-                            isDoneJob(row.job.status) &&
-                            row.job.download_key != null
-                              ? row.job.download_key
-                              : null;
                           const isMonthlyLimitRow =
                             isFailed &&
                             parseMonthlyLimitPayload(
@@ -803,23 +784,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                                 </span>
                                               </>
                                             )}
-                                          </button>
-                                        )}
-                                        {doneDownloadKey != null && (
-                                          <button
-                                            type="button"
-                                            className={styles.reportLink}
-                                            aria-expanded={
-                                              distributionPanelKey ===
-                                              doneDownloadKey
-                                            }
-                                            onClick={() =>
-                                              toggleDistributionPanel(
-                                                doneDownloadKey
-                                              )
-                                            }
-                                          >
-                                            {t('deckdistribution:entry')}
                                           </button>
                                         )}
                                       </>
@@ -1015,20 +979,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                   </td>
                                 </tr>
                               )}
-                              {doneDownloadKey != null &&
-                                distributionPanelKey === doneDownloadKey && (
-                                  <tr key={`job-${row.job.id}-distribution`}>
-                                    <td
-                                      colSpan={4}
-                                      className={styles.distributionPanelCell}
-                                    >
-                                      <DeckDistributionPanel
-                                        uploadKey={doneDownloadKey}
-                                        defaultEmail={notifyEmail}
-                                      />
-                                    </td>
-                                  </tr>
-                                )}
                               {isFailed &&
                                 (restartUi[row.job.object_id]?.exhausted ||
                                   restartUi[row.job.object_id]?.expired) && (
@@ -1162,18 +1112,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                     >
                                       <DownloadIcon width={16} height={16} />
                                     </a>
-                                    <button
-                                      type="button"
-                                      className={styles.reportLink}
-                                      aria-expanded={
-                                        distributionPanelKey === u.key
-                                      }
-                                      onClick={() =>
-                                        toggleDistributionPanel(u.key)
-                                      }
-                                    >
-                                      {t('deckdistribution:entry')}
-                                    </button>
                                     <div className={styles.secondaryActions}>
                                       {APKG_PATTERN.test(u.key) && (
                                         <Link
@@ -1212,19 +1150,6 @@ export function DownloadsPage({ setError }: Readonly<DownloadsPageProps>) {
                                   </div>
                                 </td>
                               </tr>
-                              {distributionPanelKey === u.key && (
-                                <tr key={`upload-${u.key}-distribution`}>
-                                  <td
-                                    colSpan={4}
-                                    className={styles.distributionPanelCell}
-                                  >
-                                    <DeckDistributionPanel
-                                      uploadKey={u.key}
-                                      defaultEmail={notifyEmail}
-                                    />
-                                  </td>
-                                </tr>
-                              )}
                               {explainsImageDrop(row.imageDropReason) &&
                                 row.droppedImageCount > 0 && (
                                   <tr key={`upload-${u.key}-image-drop`}>

@@ -214,7 +214,6 @@ export const KNOWN_EVENTS = new Set([
   'recovery_deck_claimed',
   'monthly_partial_offer_shown',
   'monthly_partial_claimed',
-  'deck_distribution_intent_clicked',
   'ai_preview_shown',
   'ai_preview_pass_clicked',
   'thin_deck_ai_preview_shown',

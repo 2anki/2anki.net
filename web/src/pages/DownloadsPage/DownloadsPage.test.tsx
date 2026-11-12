@@ -188,6 +188,48 @@ describe('DownloadsPage translation safety', () => {
   });
 });
 
+describe('DownloadsPage removed deck-sharing survey', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-18T12:00:00Z'));
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    mockJobs = [
+      buildJob({ status: 'done', download_key: 'deck-1.apkg', card_count: 3 }),
+    ];
+    mockUploads = [
+      {
+        id: 'u1',
+        size_mb: 1,
+        owner: 1,
+        key: 'deck-2.apkg',
+        filename: 'deck.apkg',
+        object_id: 'o1',
+        created_at: '2026-05-18T10:00:00Z',
+      },
+    ];
+    mockDropboxUploads = [];
+    mockGoogleDriveUploads = [];
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    delete (globalThis as AnalyticsGlobals).hj;
+    delete (globalThis as AnalyticsGlobals).gtag;
+  });
+
+  it('offers no share-with-your-class entry on ready job or upload rows', () => {
+    renderAt('/downloads');
+    expect(screen.getAllByText('Active conversion').length).toBeGreaterThan(0);
+    expect(
+      screen.queryAllByText('Share with your class or audience')
+    ).toHaveLength(0);
+    expect(
+      screen.queryByText('Who would you share this deck with?')
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('DownloadsPage empty state', () => {
   beforeEach(() => {
     vi.useFakeTimers();
