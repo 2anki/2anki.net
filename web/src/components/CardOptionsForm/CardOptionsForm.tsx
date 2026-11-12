@@ -539,7 +539,8 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
     const claudeOnForPdfsByDefault =
       pageId == null &&
       !aiChoiceRecorded &&
-      userLocals?.claudeCardsByDefault === true;
+      userLocals?.claudeCardsByDefault === true &&
+      checkboxValues['pdf-page-pairs'] !== true;
 
     useEffect(() => {
       if (!options) return;
@@ -551,7 +552,11 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           settings
         );
       });
-      if (claudeOnForPdfsByDefault && 'claude-ai-flashcards' in next) {
+      if (
+        claudeOnForPdfsByDefault &&
+        next['pdf-page-pairs'] !== true &&
+        'claude-ai-flashcards' in next
+      ) {
         next['claude-ai-flashcards'] = true;
       }
       setCheckboxValues(next);

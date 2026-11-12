@@ -417,7 +417,7 @@
       "aiOffBody": "Otrzymasz karty tworzone według reguł na podstawie struktury Twojego pliku.",
       "aiOffIncluded": "Karty Claude są wliczone w Twój plan.",
       "aiOnForPdfs": "AI jest włączone dla PDF i PowerPoint",
-      "aiOnForPdfsBody": "Twój plan obejmuje karty Claude, więc Claude tworzy je, gdy przesyłasz tylko pliki PDF lub PowerPoint. Inne przesłane pliki dostają karty na podstawie swojej struktury.",
+      "aiOnForPdfsBody": "Twój plan obejmuje karty Claude, więc Claude tworzy je, gdy przesyłasz tylko pliki PDF lub PowerPoint. W pozostałych przypadkach karty powstają na podstawie struktury plików.",
       "turnOnClaudeCards": "Włącz karty Claude",
       "upgradeClaude": "Ulepsz plan, aby pisać karty z Claude",
       "aiAnonIntro": "Claude może napisać Twoje karty —",

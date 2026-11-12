@@ -234,6 +234,15 @@ describe('a paying account uploads a PDF or PowerPoint on the web', () => {
     20_000
   );
 
+  it('makes Claude cards for a lifetime Patreon account, who counts as paying', async () => {
+    const { jobType } = await send(
+      { locals: { owner: OWNER, patreon: true } },
+      { name: 'lecture.pdf' }
+    );
+
+    expect(jobType).toBe('claude');
+  }, 20_000);
+
   it('makes Claude cards for a signed-in pass holder, who counts as paying', async () => {
     const { jobType } = await send(
       { locals: { owner: OWNER, subscriber: true, passKind: '7d' } },

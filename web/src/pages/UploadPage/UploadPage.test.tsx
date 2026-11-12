@@ -430,6 +430,13 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
     globalThis.localStorage.clear();
   });
 
+  it('shows the plain off badge when two pages make one card is on', () => {
+    globalThis.localStorage.setItem('pdf-page-pairs', 'true');
+    renderPage();
+
+    expect(screen.queryByText('AI is on for PDF and PowerPoint')).toBeNull();
+  });
+
   it('tells a paying account with no AI choice that Claude writes PDF and PowerPoint cards', () => {
     globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
     renderPage();
@@ -709,6 +716,26 @@ describe('UploadPage AI off badge for a paying account', () => {
       );
     } finally {
       await i18n.changeLanguage('en');
+    }
+  });
+
+  it('tells an account on the PDF default with no credits left that its next deck builds without AI', async () => {
+    fakeLocals = { subscriber: true };
+    fakeClaudeCardsByDefault = true;
+    try {
+      stubCredits(0);
+      renderPage();
+
+      expect(
+        await screen.findByText(
+          '0 AI credits left. Your next deck builds without AI.'
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /turn ai off/i })
+      ).toHaveTextContent('AI is on for PDF and PowerPoint');
+    } finally {
+      fakeClaudeCardsByDefault = undefined;
     }
   });
 

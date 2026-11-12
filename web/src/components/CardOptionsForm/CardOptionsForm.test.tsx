@@ -1082,6 +1082,59 @@ describe('CardOptionsForm AI checkbox analytics', () => {
     ).toBeNull();
   });
 
+  it('keeps a Notion page setting as saved, without the PDF default, when the account has one', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        locals: { patreon: false, subscriber: true },
+        claudeCardsByDefault: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPageForm({ setError: vi.fn() });
+
+    expect(await aiCheckbox()).not.toBeChecked();
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
+  it('drops the PDF default once two pages make one card is on', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        locals: { patreon: false, subscriber: true },
+        claudeCardsByDefault: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'claude-ai-flashcards',
+        'AI flashcards',
+        'Write the cards with Claude.',
+        false
+      ),
+      new CardOptionModel(
+        'pdf-page-pairs',
+        'Two pages make one card',
+        'Pair PDF pages.',
+        false
+      ),
+    ]);
+    localStorage.setItem('pdf-page-pairs', 'true');
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    expect(await aiCheckbox()).not.toBeChecked();
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
   it('leaves the checkbox as stored when the account has no PDF default', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
 
