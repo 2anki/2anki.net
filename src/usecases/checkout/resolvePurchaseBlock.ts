@@ -1,6 +1,10 @@
 import type { PassKind } from '../../data_layer/UserPassRepository';
 
-export type PurchaseKind = 'subscription' | 'pass' | 'auto_sync';
+export type PurchaseKind =
+  | 'subscription'
+  | 'pass'
+  | 'semester_pass'
+  | 'auto_sync';
 
 export interface HeldEntitlements {
   lifetime: boolean;
@@ -9,6 +13,7 @@ export interface HeldEntitlements {
   billedThroughApple: boolean;
   activePassKind: PassKind | null;
   activePassExpiresAt: Date | null;
+  semesterRenewalOpen: boolean;
 }
 
 export type PurchaseBlockCode =
@@ -78,7 +83,11 @@ export const resolvePurchaseBlock = (
       held.activePassExpiresAt
     );
   }
-  if (kind === 'pass' && held.activePassKind != null) {
+  if (kind === 'semester_pass' && held.semesterRenewalOpen) {
+    return null;
+  }
+  const buysPass = kind === 'pass' || kind === 'semester_pass';
+  if (buysPass && held.activePassKind != null) {
     return block(
       'pass_still_active',
       'Your pass is still running. Buy the next one when it runs out.',

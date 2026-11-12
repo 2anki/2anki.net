@@ -1,9 +1,14 @@
-import type { IPassEndingRepository } from '../../data_layer/PassEndingRepository';
+import type {
+  EndingPass,
+  IPassEndingRepository,
+  PassEmailCampaign,
+} from '../../data_layer/PassEndingRepository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
 import { passKindLabel } from '../passes/passKindLabel';
 
 export interface SendPassEndingEmailsResult {
   count: number;
+  renewalCount: number;
   dryRun: boolean;
 }
 
@@ -22,15 +27,49 @@ export class SendPassEndingEmailsUseCase {
     dryRun: boolean,
     limit = 200
   ): Promise<SendPassEndingEmailsResult> {
-    const passes = await this.repo.getPassesEndingSoon(
+    const endingTomorrow = await this.repo.getPassesEndingSoon(
       PASS_ENDING_WINDOW_HOURS,
       limit
     );
+    const upForRenewal = await this.repo.getSemesterPassesUpForRenewal(limit);
 
     if (dryRun) {
-      return { count: passes.length, dryRun: true };
+      return {
+        count: endingTomorrow.length,
+        renewalCount: upForRenewal.length,
+        dryRun: true,
+      };
     }
 
+    const count = await this.sendEach(
+      endingTomorrow,
+      'pass_ending',
+      (pass, token) =>
+        this.emailService.sendPassEndingEmail(
+          pass.email,
+          token,
+          passKindLabel(pass.kind)
+        )
+    );
+    const renewalCount = await this.sendEach(
+      upForRenewal,
+      'pass_renewal',
+      (pass, token) =>
+        this.emailService.sendSemesterRenewalEmail(
+          pass.email,
+          token,
+          pass.expiresAt
+        )
+    );
+
+    return { count, renewalCount, dryRun: false };
+  }
+
+  private async sendEach(
+    passes: EndingPass[],
+    campaign: PassEmailCampaign,
+    send: (pass: EndingPass, token: string) => Promise<void>
+  ): Promise<number> {
     let sent = 0;
     for (const pass of passes) {
       if (await this.isEmailSuppressed(pass.email)) {
@@ -41,27 +80,23 @@ export class SendPassEndingEmailsUseCase {
       const claimed = await this.repo.claimNotification(
         pass.userId,
         pass.passId,
-        token
+        token,
+        campaign
       );
       if (!claimed) {
         continue;
       }
 
       try {
-        await this.emailService.sendPassEndingEmail(
-          pass.email,
-          token,
-          passKindLabel(pass.kind)
-        );
+        await send(pass, token);
         sent++;
       } catch (error) {
         console.error(
-          `[pass-ending] failed to email user ${pass.userId}:`,
+          `[${campaign}] failed to email user ${pass.userId}:`,
           error
         );
       }
     }
-
-    return { count: sent, dryRun: false };
+    return sent;
   }
 }

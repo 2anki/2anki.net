@@ -8,6 +8,7 @@ import UserPassRepository, {
   IUserPassRepository,
 } from '../../data_layer/UserPassRepository';
 import { getDatabase } from '../../data_layer';
+import { isInSemesterRenewalWindow } from '../../lib/passes/semesterRenewal';
 import {
   HeldEntitlements,
   PurchaseKind,
@@ -48,10 +49,10 @@ export const readHeldEntitlements = async (
     email === ''
       ? false
       : await deps.authService.holdsUnprovenPlan(deps.database, email);
-  const activePass = await deps.userPassRepository.findActive(
-    owner,
-    deps.now()
-  );
+  const now = deps.now();
+  const activePass = await deps.userPassRepository.findActive(owner, now);
+  const activePassKind = activePass?.kind ?? null;
+  const activePassExpiresAt = activePass?.expires_at ?? null;
 
   return {
     lifetime: user?.patreon === true,
@@ -61,8 +62,13 @@ export const readHeldEntitlements = async (
       activePass?.kind ?? null,
       activePass?.stripe_payment_intent_id
     ),
-    activePassKind: activePass?.kind ?? null,
-    activePassExpiresAt: activePass?.expires_at ?? null,
+    activePassKind,
+    activePassExpiresAt,
+    semesterRenewalOpen: isInSemesterRenewalWindow(
+      activePassKind,
+      activePassExpiresAt,
+      now
+    ),
   };
 };
 

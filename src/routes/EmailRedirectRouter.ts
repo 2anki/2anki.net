@@ -22,6 +22,7 @@ const EMAIL_DESTINATIONS = new Map<string, string>([
   ['/upload', '/upload'],
   ['/pricing', '/pricing'],
   ['/login', '/login'],
+  ['/account', '/account'],
 ]);
 
 const DEFAULT_EMAIL_DESTINATION = '/';
@@ -42,7 +43,7 @@ const EmailRedirectRouter = () => {
    *     description: |
    *       Records an `email_clicked` analytics event then 302s the user to a
    *       validated destination. Destination is checked against a static
-   *       allowlist (`/`, `/upload`, `/pricing`, `/login`); unknown values fall
+   *       allowlist (`/`, `/upload`, `/pricing`, `/login`, `/account`); unknown values fall
    *       back to `/`. Unknown or missing tokens record an anonymous click and
    *       still redirect — never fails user-visibly.
    *     tags: [Email]
@@ -56,7 +57,7 @@ const EmailRedirectRouter = () => {
    *         name: c
    *         schema:
    *           type: string
-   *           enum: [inactivity, reengagement, price_lock_in, pass_winback, pass_ending]
+   *           enum: [inactivity, reengagement, price_lock_in, pass_winback, pass_ending, pass_renewal]
    *         description: Campaign — disambiguates which table to resolve the token against
    *       - in: query
    *         name: to
@@ -108,7 +109,11 @@ const EmailRedirectRouter = () => {
           userId = result.userId;
           emailId = result.id;
         }
-      } else if (campaign === 'pass_winback' || campaign === 'pass_ending') {
+      } else if (
+        campaign === 'pass_winback' ||
+        campaign === 'pass_ending' ||
+        campaign === 'pass_renewal'
+      ) {
         const result = await new PassWinbackRepository(database)
           .findByToken(token)
           .catch(() => null);

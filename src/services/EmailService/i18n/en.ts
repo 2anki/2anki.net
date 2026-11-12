@@ -102,6 +102,20 @@ export const en: EmailStrings = {
       'A conversion not coming out right? Reply to this email. Alexander reads every one.',
     signoff: 'The 2anki Team',
   },
+  semesterRenewal: {
+    subject: 'Your Semester Pass ends on {{endDate}}',
+    title: 'Your Semester Pass ends on {{endDate}}',
+    intro: 'Your Semester Pass ends on {{endDate}}, about a week from now.',
+    renewBody:
+      'Renew it now and the next 120 days start on {{endDate}}, the day this one ends. You lose no days, and your login and decks stay as they are.',
+    oneTime:
+      'A renewal is a one-time payment, like your first pass. Nothing renews by itself.',
+    cta: 'Renew Semester Pass',
+    ctaNote:
+      'The button opens your account page, where the renewal checkout starts.',
+    replyLine: 'Questions about your pass? Reply to this email.',
+    signoff: 'The 2anki Team',
+  },
   commercialShared: {
     unsubscribe: "Don't want emails like this? Unsubscribe",
   },

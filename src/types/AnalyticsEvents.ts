@@ -211,6 +211,8 @@ export const KNOWN_EVENTS = new Set([
   'anonymous_pass_held_claimed',
   'recovery_deck_claimed',
   'monthly_partial_offer_shown',
+  'semester_renewal_banner_shown',
+  'semester_renewal_clicked',
   'monthly_partial_claimed',
   'ai_preview_shown',
   'ai_preview_pass_clicked',

@@ -1,0 +1,9 @@
+{
+  "aria": "Odnowienie Semester Pass",
+  "title": "Twój Semester Pass kończy się {{date}}",
+  "body": "Odnów teraz, a kolejne 120 dni zacznie się {{date}}, więc nie stracisz ani dnia. Jedna płatność, nic nie odnawia się samo.",
+  "renew": "Odnów Semester Pass",
+  "renewWithPrice": "Odnów Semester Pass · {{price}}",
+  "opening": "Otwieranie płatności",
+  "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie lub napisz na support@2anki.net."
+}

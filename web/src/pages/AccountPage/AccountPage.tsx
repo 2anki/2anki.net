@@ -18,6 +18,7 @@ import {
 } from './components';
 import { LanguagePicker } from '../../components/LanguagePicker/LanguagePicker';
 import { CookieSettings } from './components/CookieSettings';
+import { SemesterRenewalBanner } from './components/SemesterRenewalBanner';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AccountPage.module.css';
 
@@ -157,6 +158,13 @@ export default function AccountPage() {
       ) : (
         <PlanDetails
           plan={lapsedSubscription == null ? plan : 'pastDue'}
+          passExpiresAt={passExpiresAt}
+        />
+      )}
+
+      {plan === 'semesterPass' && !hasActivePlan && (
+        <SemesterRenewalBanner
+          passKind={locals.passKind}
           passExpiresAt={passExpiresAt}
         />
       )}

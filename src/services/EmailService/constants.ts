@@ -70,6 +70,11 @@ export const PASS_ENDING_TEMPLATE = fs.readFileSync(
   'utf8'
 );
 
+export const SEMESTER_RENEWAL_TEMPLATE = fs.readFileSync(
+  path.join(EMAIL_TEMPLATES_DIRECTORY, 'semester-renewal.html'),
+  'utf8'
+);
+
 export const NOTION_RECONNECT_TEMPLATE = fs.readFileSync(
   path.join(EMAIL_TEMPLATES_DIRECTORY, 'notion-reconnect.html'),
   'utf8'
@@ -123,6 +128,7 @@ export const EMAIL_CATEGORIES = {
   abandonedCheckoutRecovery: 'abandoned-checkout-recovery',
   passWinback: 'pass-winback',
   passEnding: 'pass-ending',
+  semesterRenewal: 'semester-renewal',
   subscriptionClaim: 'subscription-claim',
   contactConfirmation: 'contact-confirmation',
   passClaim: 'pass-claim',

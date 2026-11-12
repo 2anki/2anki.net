@@ -1,0 +1,9 @@
+{
+  "aria": "Semester Pass の更新",
+  "title": "Semester Pass は {{date}} に終了します",
+  "body": "今すぐ更新すると、次の 120 日間は {{date}} から始まるので、日数が無駄になりません。お支払いは 1 回のみで、自動更新はありません。",
+  "renew": "Semester Pass を更新",
+  "renewWithPrice": "Semester Pass を更新 · {{price}}",
+  "opening": "決済を開いています",
+  "checkoutError": "決済を開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。"
+}

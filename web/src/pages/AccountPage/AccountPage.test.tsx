@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -18,6 +18,14 @@ vi.mock('../../lib/backend/api', () => ({
 
 vi.mock('../../lib/backend/getSubscriptionStatus', () => ({
   getSubscriptionStatus: vi.fn(),
+}));
+
+vi.mock('../../lib/analytics/track', () => ({ track: vi.fn() }));
+
+vi.mock('../../lib/backend/getPassPricing', () => ({
+  getPassPricing: vi.fn().mockResolvedValue({
+    passes: { '120d': { display: '$29' } },
+  }),
 }));
 
 vi.mock('./components', () => ({
@@ -272,5 +280,75 @@ describe('AccountPage plan card after a failed renewal', () => {
 
     expect(mockGetSubscriptionStatus).not.toHaveBeenCalled();
     expect(screen.getByTestId('plan-details').textContent).toBe('free');
+  });
+});
+
+describe('AccountPage Semester Pass renewal banner', () => {
+  const NOW = new Date('2027-01-10T12:00:00.000Z');
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  const renderPassHolder = (
+    passKind: '7d' | '120d',
+    daysLeft: number,
+    hasActivePlan = false
+  ) => {
+    const passExpiresAt = new Date(
+      NOW.getTime() + daysLeft * DAY_MS
+    ).toISOString();
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: { passKind, passExpiresAt, subscriber: hasActivePlan },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: passKind === '120d' ? 'semesterPass' : 'weekPass',
+      hasActivePlan,
+      passExpiresAt,
+    });
+    renderAccountPage();
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('offers the renewal to a Semester Pass holder in the final week', () => {
+    renderPassHolder('120d', 4);
+
+    expect(
+      screen.getByRole('region', { name: 'Semester Pass renewal' })
+    ).toBeInTheDocument();
+  });
+
+  it('shows no renewal to a Semester Pass holder with more than a week left', () => {
+    renderPassHolder('120d', 30);
+
+    expect(
+      screen.queryByRole('region', { name: 'Semester Pass renewal' })
+    ).toBeNull();
+  });
+
+  it('shows no renewal to a Week Pass holder in the final days', () => {
+    renderPassHolder('7d', 2);
+
+    expect(
+      screen.queryByRole('region', { name: 'Semester Pass renewal' })
+    ).toBeNull();
+  });
+
+  it('shows no renewal to a subscriber who also holds a Semester Pass', () => {
+    renderPassHolder('120d', 4, true);
+
+    expect(
+      screen.queryByRole('region', { name: 'Semester Pass renewal' })
+    ).toBeNull();
   });
 });

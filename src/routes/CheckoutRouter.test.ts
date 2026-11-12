@@ -406,6 +406,68 @@ describe('CheckoutRouter — pass routes', () => {
       );
     });
 
+    describe('renewing a Semester Pass', () => {
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const semesterPassEndingIn = (days: number) => ({
+        kind: '120d',
+        expires_at: new Date(Date.now() + days * DAY_MS),
+        stripe_payment_intent_id: 'pi_first_semester',
+      });
+
+      beforeEach(() => {
+        process.env.PASS_120D_PRICE_ID = 'price_120d_test';
+        process.env.PASS_24H_PRICE_ID = 'price_24h_test';
+        mockStripeCreate.mockResolvedValue({
+          url: 'https://checkout.stripe.com/120d-renewal',
+        });
+        mockOptionalOwner = 42;
+      });
+
+      it('opens checkout for a holder in the final week, tagged with the renewal surface', async () => {
+        mockHeldPass = semesterPassEndingIn(5);
+
+        const res = await fetch(`${url}/api/checkout/pass/120d`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ surface: 'semester-renewal' }),
+        });
+
+        expect(res.status).toBe(200);
+        expect(mockStripeCreate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            metadata: expect.objectContaining({
+              pass_kind: '120d',
+              user_id: '42',
+              surface: 'semester-renewal',
+            }),
+          })
+        );
+      });
+
+      it('answers 409 to a holder with more than a week left', async () => {
+        mockHeldPass = semesterPassEndingIn(20);
+
+        const res = await fetch(`${url}/api/checkout/pass/120d`, {
+          method: 'POST',
+        });
+
+        expect(res.status).toBe(409);
+        expect((await res.json()).code).toBe('pass_still_active');
+        expect(mockStripeCreate).not.toHaveBeenCalled();
+      });
+
+      it('keeps the Day Pass blocked for a holder in the final week', async () => {
+        mockHeldPass = semesterPassEndingIn(5);
+
+        const res = await fetch(`${url}/api/checkout/pass/24h`, {
+          method: 'POST',
+        });
+
+        expect(res.status).toBe(409);
+        expect(mockStripeCreate).not.toHaveBeenCalled();
+      });
+    });
+
     it('uses the PASS_120D_PRICE_ID as the checkout line item', async () => {
       process.env.PASS_120D_PRICE_ID = 'price_120d_test';
       mockStripeCreate.mockResolvedValue({

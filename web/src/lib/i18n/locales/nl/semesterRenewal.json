@@ -1,0 +1,9 @@
+{
+  "aria": "Semester Pass verlengen",
+  "title": "Je Semester Pass eindigt op {{date}}",
+  "body": "Verleng nu en de volgende 120 dagen beginnen op {{date}}, dus je verliest geen dag. Eén betaling, niets verlengt vanzelf.",
+  "renew": "Semester Pass verlengen",
+  "renewWithPrice": "Semester Pass verlengen · {{price}}",
+  "opening": "Afrekenen wordt geopend",
+  "checkoutError": "Afrekenen kon niet starten. Probeer het opnieuw of mail support@2anki.net."
+}

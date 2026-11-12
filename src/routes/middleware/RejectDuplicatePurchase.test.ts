@@ -6,7 +6,12 @@ import {
   makeRejectDuplicatePurchase,
   PurchaseGuardDeps,
 } from './RejectDuplicatePurchase';
-import { PassKind, UserPass } from '../../data_layer/UserPassRepository';
+import {
+  InMemoryUserPassRepository,
+  PassKind,
+  UserPass,
+} from '../../data_layer/UserPassRepository';
+import { PASS_DURATION_MS } from '../../usecases/passes/passDurations';
 
 const NOW = new Date('2026-10-01T00:00:00.000Z');
 const EXPIRES = new Date('2026-10-08T00:00:00.000Z');
@@ -52,7 +57,7 @@ const makeDeps = (held: Held): PurchaseGuardDeps => {
 };
 
 const run = async (
-  kind: 'subscription' | 'pass' | 'auto_sync',
+  kind: 'subscription' | 'pass' | 'semester_pass' | 'auto_sync',
   held: Held,
   owner: number | null
 ) => {
@@ -162,6 +167,106 @@ describe('RejectDuplicatePurchase', () => {
     expect(status).toHaveBeenCalledWith(409);
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'already_lifetime' })
+    );
+  });
+});
+
+describe('RejectDuplicatePurchase Semester Pass renewal', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const USER_ID = 42;
+
+  const guardWith = (passes: InMemoryUserPassRepository, now: Date) => {
+    const deps = {
+      ...makeDeps({}),
+      userPassRepository: passes,
+      now: () => now,
+    };
+    return async () => {
+      const status = vi.fn().mockReturnThis();
+      const json = vi.fn().mockReturnThis();
+      const next = vi.fn() as NextFunction;
+      const res = {
+        locals: { owner: USER_ID },
+        status,
+        json,
+      } as unknown as Response;
+      await makeRejectDuplicatePurchase('semester_pass', deps)(
+        {} as Request,
+        res,
+        next
+      );
+      return { status, json, next };
+    };
+  };
+
+  const seedSemesterPass = (expiresAt: Date) => {
+    const passes = new InMemoryUserPassRepository();
+    passes.seed({
+      user_id: USER_ID,
+      kind: '120d',
+      expires_at: expiresAt,
+      stripe_payment_intent_id: 'pi_first_semester',
+    });
+    return passes;
+  };
+
+  it('lets a holder with 5 days left start a renewal checkout', async () => {
+    const passes = seedSemesterPass(new Date(NOW.getTime() + 5 * DAY_MS));
+
+    const { next, status } = await guardWith(passes, NOW)();
+
+    expect(next).toHaveBeenCalled();
+    expect(status).not.toHaveBeenCalled();
+  });
+
+  it('blocks a holder with 8 days left, as before', async () => {
+    const passes = seedSemesterPass(new Date(NOW.getTime() + 8 * DAY_MS));
+
+    const { next, status, json } = await guardWith(passes, NOW)();
+
+    expect(next).not.toHaveBeenCalled();
+    expect(status).toHaveBeenCalledWith(409);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'pass_still_active' })
+    );
+  });
+
+  it('blocks a Semester Pass checkout while a Week Pass runs out this week', async () => {
+    const passes = new InMemoryUserPassRepository();
+    passes.seed({
+      user_id: USER_ID,
+      kind: '7d',
+      expires_at: new Date(NOW.getTime() + 3 * DAY_MS),
+      stripe_payment_intent_id: 'pi_week',
+    });
+
+    const { status } = await guardWith(passes, NOW)();
+
+    expect(status).toHaveBeenCalledWith(409);
+  });
+
+  it('stacks the renewal onto the current expiry, then blocks a second renewal', async () => {
+    const currentExpiry = new Date(NOW.getTime() + 5 * DAY_MS);
+    const passes = seedSemesterPass(currentExpiry);
+
+    const renewal = await passes.upsertWithExtension(
+      USER_ID,
+      '120d',
+      PASS_DURATION_MS['120d'],
+      'pi_renewal',
+      NOW
+    );
+
+    expect(renewal.expires_at).toEqual(
+      new Date(currentExpiry.getTime() + PASS_DURATION_MS['120d'])
+    );
+    const { status, json } = await guardWith(passes, NOW)();
+    expect(status).toHaveBeenCalledWith(409);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'pass_still_active',
+        expiresAt: renewal.expires_at.toISOString(),
+      })
     );
   });
 });

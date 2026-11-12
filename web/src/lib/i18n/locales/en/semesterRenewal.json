@@ -1,0 +1,9 @@
+{
+  "aria": "Semester Pass renewal",
+  "title": "Your Semester Pass ends on {{date}}",
+  "body": "Renew now and the next 120 days start on {{date}}, so you lose no days. One payment, nothing renews by itself.",
+  "renew": "Renew Semester Pass",
+  "renewWithPrice": "Renew Semester Pass · {{price}}",
+  "opening": "Opening checkout",
+  "checkoutError": "Couldn't start checkout. Try again or email support@2anki.net."
+}

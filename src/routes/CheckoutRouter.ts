@@ -256,7 +256,7 @@ const CheckoutRouter = () => {
     '/api/checkout/pass/120d',
     optionalAuthMiddleware,
     express.json(),
-    RejectDuplicatePurchase('pass'),
+    RejectDuplicatePurchase('semester_pass'),
     async (req, res) => {
       const pass120dPriceId = await pricingService.resolvePriceId('120d');
       if (pass120dPriceId == null) {

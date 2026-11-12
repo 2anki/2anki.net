@@ -283,6 +283,24 @@ describe('EmailService renders copy in the recipient language', () => {
     });
   });
 
+  describe('semester renewal', () => {
+    it('renders German copy with the German end date and unsubscribe footer', async () => {
+      await serviceFor('de').sendSemesterRenewalEmail(
+        'de-user@example.com',
+        'tok-renewal',
+        new Date('2027-01-24T15:00:00.000Z')
+      );
+
+      const msg = lastMessage();
+      expect(msg.subject).toBe('Dein Semester Pass endet am 24. Januar 2027');
+      expect(msg.html).toContain('Semester Pass verlängern');
+      expect(msg.html).toContain('Das 2anki-Team');
+      expect(msg.html).toContain('Keine E-Mails wie diese? Abmelden');
+      expect(msg.html).toContain(MASCOT);
+      expect(msg.html).toContain(FOOTER);
+    });
+  });
+
   describe('pass ending', () => {
     it('renders German copy with the pass name and unsubscribe footer', async () => {
       await serviceFor('de').sendPassEndingEmail(
