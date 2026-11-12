@@ -476,30 +476,36 @@ describe('DownloadController.getLocalFile', () => {
     expect(res.sendFile).toHaveBeenCalled();
   });
 
-  it('records the signed-in user the route resolved on a download', () => {
-    const id = 'local-signed-in-workspace';
-    const workspace = path.join(workspaceBase, id);
-    fs.mkdirSync(workspace);
-    fs.writeFileSync(path.join(workspace, 'one.apkg'), 'a');
+  it.each([
+    ['granted consent', 'granted', 'anon-1'],
+    ['declined', 'denied', null],
+  ])(
+    'records the signed-in user the route resolved on a download, with the anonymous id only when the visitor %s',
+    (_label, consent, expectedAnonymousId) => {
+      const id = `local-signed-in-workspace-${consent}`;
+      const workspace = path.join(workspaceBase, id);
+      fs.mkdirSync(workspace);
+      fs.writeFileSync(path.join(workspace, 'one.apkg'), 'a');
 
-    const controller = new DownloadController(makeService() as any);
-    const req = {
-      params: { id, filename: 'one.apkg' },
-      cookies: { anon_id: 'anon-1' },
-    } as unknown as Request;
-    const res = fileResponse();
-    (res as unknown as { locals: Record<string, unknown> }).locals = {
-      owner: 42,
-    };
+      const controller = new DownloadController(makeService() as any);
+      const req = {
+        params: { id, filename: 'one.apkg' },
+        cookies: { anon_id: 'anon-1', cookie_consent: consent },
+      } as unknown as Request;
+      const res = fileResponse();
+      (res as unknown as { locals: Record<string, unknown> }).locals = {
+        owner: 42,
+      };
 
-    controller.getLocalFile(req, res);
+      controller.getLocalFile(req, res);
 
-    expect(trackMock).toHaveBeenCalledWith('deck_downloaded', {
-      userId: 42,
-      anonymousId: 'anon-1',
-      props: { workspace_id: id, bulk: false },
-    });
-  });
+      expect(trackMock).toHaveBeenCalledWith('deck_downloaded', {
+        userId: 42,
+        anonymousId: expectedAnonymousId,
+        props: { workspace_id: id, bulk: false },
+      });
+    }
+  );
 
   it('does not fire deck_downloaded when the file is missing', () => {
     const id = 'local-missing-workspace';
@@ -936,7 +942,10 @@ describe('DownloadController.getAnonymousPreviewCards', () => {
     const res = mockResponse();
 
     await controller.getAnonymousPreviewCards(
-      previewRequest({ token }),
+      previewRequest(
+        { token },
+        { anon_id: 'anon-1', cookie_consent: 'granted' }
+      ),
       res,
       {} as never
     );
@@ -955,6 +964,32 @@ describe('DownloadController.getAnonymousPreviewCards', () => {
       [
         'anonymous_preview_cards_served',
         { userId: null, anonymousId: 'anon-1', props: {} },
+      ],
+    ]);
+  });
+
+  it('still serves the kept cards to a visitor without consent, recording the event with no anonymous id', async () => {
+    const service = previewService();
+    const controller = new DownloadController(service as never);
+    const res = mockResponse();
+
+    await controller.getAnonymousPreviewCards(
+      previewRequest({ token }),
+      res,
+      {} as never
+    );
+    await res._done;
+
+    expect(service.getAnonymousPreviewCardsStream).toHaveBeenCalledWith(
+      'anon-1',
+      token,
+      {}
+    );
+    expect(Buffer.concat(res._chunks).toString()).toBe('fake-apkg');
+    expect(servedEvents()).toEqual([
+      [
+        'anonymous_preview_cards_served',
+        { userId: null, anonymousId: null, props: {} },
       ],
     ]);
   });

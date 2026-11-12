@@ -745,7 +745,11 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
         object: {
           id: 'cs_join',
           mode: 'subscription',
-          metadata: { user_id: '42', anon_id: 'anon-uuid-123' },
+          metadata: {
+            user_id: '42',
+            anon_id: 'anon-uuid-123',
+            anon_id_consent: 'granted',
+          },
         },
       },
     };
@@ -758,37 +762,50 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
     );
   });
 
-  it('emits checkout_completed with anonymousId for an anonymous pass (no user_id)', async () => {
-    mockWebhookEvent = {
-      type: 'checkout.session.completed',
-      data: {
-        object: {
-          id: 'cs_anon_join',
-          mode: 'payment',
-          payment_intent: 'pi_anon_join',
-          metadata: {
-            pass_kind: '24h',
-            pass_anonymous: '1',
-            anon_id: 'anon-uuid-456',
+  it.each([
+    ['granted consent', { anon_id_consent: 'granted' }, 'anon-uuid-456'],
+    ['gave no consent', {}, null],
+  ])(
+    'records an anonymous pass whose buyer %s, with the anonymous id on checkout_completed only under consent',
+    async (_label, consentMeta, expectedAnonymousId) => {
+      mockWebhookEvent = {
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_anon_join',
+            mode: 'payment',
+            payment_intent: 'pi_anon_join',
+            metadata: {
+              pass_kind: '24h',
+              pass_anonymous: '1',
+              anon_id: 'anon-uuid-456',
+              ...consentMeta,
+            },
           },
         },
-      },
-    };
-    mockAnonInsert.mockResolvedValue({
-      id: 1,
-      stripe_session_id: 'cs_anon_join',
-      kind: '24h',
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      payment_intent_id: 'pi_anon_join',
-    });
+      };
+      mockAnonInsert.mockResolvedValue({
+        id: 1,
+        stripe_session_id: 'cs_anon_join',
+        kind: '24h',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        payment_intent_id: 'pi_anon_join',
+      });
 
-    const res = await postWebhook();
-    expect(res.status).toBe(200);
-    expect(mockTrack).toHaveBeenCalledWith(
-      'checkout_completed',
-      expect.objectContaining({ userId: null, anonymousId: 'anon-uuid-456' })
-    );
-  });
+      const res = await postWebhook();
+      expect(res.status).toBe(200);
+      expect(mockAnonInsert).toHaveBeenCalledWith(
+        expect.objectContaining({ stripeSessionId: 'cs_anon_join' })
+      );
+      expect(mockTrack).toHaveBeenCalledWith(
+        'checkout_completed',
+        expect.objectContaining({
+          userId: null,
+          anonymousId: expectedAnonymousId,
+        })
+      );
+    }
+  );
 
   it('marks checkout_completed as recovered when the session was recovered', async () => {
     mockWebhookEvent = {

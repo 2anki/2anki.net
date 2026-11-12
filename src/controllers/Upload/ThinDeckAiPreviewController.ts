@@ -12,6 +12,7 @@ import { getOwnerId } from '../../lib/User/getOwner';
 import { AiPreviewRateLimiter } from '../../lib/upload/aiPreviewRateLimiter';
 import { extractPreviewText } from '../../lib/upload/extractPreviewText';
 import { track } from '../../services/events/track';
+import { analyticsAnonId } from '../../lib/http/consentRegion';
 import {
   generateThinDeckAiPreview,
   type ThinDeckAiPreviewDeps,
@@ -205,7 +206,8 @@ export class ThinDeckAiPreviewController {
           const userId = getOwnerId(res);
           track('thin_deck_ai_preview_shown', {
             userId,
-            anonymousId: userId == null ? readAnonId(req) : null,
+            anonymousId:
+              userId == null ? analyticsAnonId(req, readAnonId(req)) : null,
             props: { card_count: cardCount },
           });
         },

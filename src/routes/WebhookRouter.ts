@@ -41,6 +41,7 @@ import TokenRepository from '../data_layer/TokenRepository';
 import AuthenticationService from '../services/AuthenticationService';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
 import { PersistStripeSessionUseCase } from '../usecases/checkout/PersistStripeSessionUseCase';
+import { consentedSessionAnonId } from '../usecases/checkout/checkoutMetadata';
 import hashToken from '../lib/misc/hashToken';
 import { errorName } from '../lib/log/errorName';
 import { emailHash } from '../lib/emailHash';
@@ -391,7 +392,6 @@ const WebhooksRouter = () => {
 
           const pricingVariant = sessionMeta.pricing_variant;
           const surface = sessionMeta.surface;
-          const anonId = sessionMeta.anon_id;
           const billingInterval = sessionMeta.interval;
           const attribution = adClickEventProps(
             pickAdClickMetadata(sessionMeta)
@@ -417,7 +417,7 @@ const WebhooksRouter = () => {
           const userIdMeta = Number.parseInt(sessionMeta.user_id ?? '', 10);
           track('checkout_completed', {
             userId: Number.isNaN(userIdMeta) ? null : userIdMeta,
-            anonymousId: anonId != null && anonId !== '' ? anonId : null,
+            anonymousId: consentedSessionAnonId(sessionMeta),
             props: {
               plan:
                 passKind ??

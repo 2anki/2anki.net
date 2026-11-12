@@ -86,3 +86,18 @@ export function trackingAllowedFor(req: express.Request): boolean {
   }
   return consentRegionForRequest(req) === 'other';
 }
+
+/**
+ * The anon_id cookie is functional (held decks, anonymous limits, pass
+ * binding) and is kept for everyone; only its copy on an analytics event is
+ * subject to consent, the same rule the client events ingest applies.
+ */
+export function analyticsAnonId(
+  req: express.Request,
+  anonId: string | null | undefined
+): string | null {
+  if (anonId == null || anonId.length === 0) {
+    return null;
+  }
+  return trackingAllowedFor(req) ? anonId : null;
+}

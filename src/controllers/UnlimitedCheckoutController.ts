@@ -8,6 +8,7 @@ import { parseCheckoutSurface } from '../usecases/checkout/checkoutSurface';
 import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readCheckoutAttribution } from '../lib/attribution/adClick';
 import { checkoutRequestProps } from '../lib/analytics/checkoutRequestProps';
+import { trackingAllowedFor } from '../lib/http/consentRegion';
 import { PricingResolutionError } from '../usecases/checkout/PricingResolutionError';
 import { LapsedSubscriptionError } from '../usecases/checkout/LapsedSubscriptions';
 import { isCurrencyConflictError } from '../usecases/checkout/createCheckoutSession';
@@ -45,6 +46,7 @@ class UnlimitedCheckoutController {
         interval: interval as UnlimitedInterval,
         variant: parsePricingVariant(req.body?.variant),
         anonId,
+        anonIdTrackingAllowed: trackingAllowedFor(req),
         surface,
         gaClientId,
         gaSessionId,

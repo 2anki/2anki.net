@@ -74,7 +74,9 @@ function rebuiltWorkerCrash(): Error {
 const allowingLimiter: RateLimiter = { check: () => true };
 const denyingLimiter: RateLimiter = { check: () => false };
 
-const req = { cookies: { anon_id: 'anon-123' } } as unknown as express.Request;
+const req = {
+  cookies: { anon_id: 'anon-123', cookie_consent: 'granted' },
+} as unknown as express.Request;
 
 beforeEach(() => mockTrack.mockClear());
 
@@ -130,6 +132,26 @@ describe('SampleUploadController', () => {
       'conversion_succeeded',
       expect.anything()
     );
+  });
+
+  it('records the sample event without the anonymous id for a visitor who declined', async () => {
+    const controller = new SampleUploadController(
+      fakeUseCase(8),
+      allowingLimiter
+    );
+    const res = fakeResponse();
+    const declinedReq = {
+      cookies: { anon_id: 'anon-123', cookie_consent: 'denied' },
+    } as unknown as express.Request;
+
+    await controller.sample(declinedReq, res as unknown as express.Response);
+
+    expect(res.statusCode).toBe(200);
+    expect(mockTrack).toHaveBeenCalledWith('sample_conversion_succeeded', {
+      userId: null,
+      anonymousId: null,
+      props: { source: 'sample', card_count: 8 },
+    });
   });
 
   it('attributes a signed-in sample to the owner id', async () => {

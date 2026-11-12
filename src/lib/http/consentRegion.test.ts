@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import geoip from 'geoip-lite';
 import {
+  analyticsAnonId,
   consentRegionFor,
   consentRegionForRequest,
   countryFromClientIp,
@@ -92,5 +93,37 @@ describe('trackingAllowedFor', () => {
     );
     vi.mocked(geoip.lookup).mockReturnValue(null);
     expect(trackingAllowedFor({ headers: {} } as never)).toBe(false);
+  });
+});
+
+describe('analyticsAnonId', () => {
+  it('keeps the anonymous id when the visitor granted consent', () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'DE' } as never);
+    const req = { headers: {}, cookies: { cookie_consent: 'granted' } };
+
+    expect(analyticsAnonId(req as never, 'anon-1')).toBe('anon-1');
+  });
+
+  it('keeps the anonymous id outside the EEA when no choice is stored', () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+
+    expect(analyticsAnonId({ headers: {} } as never, 'anon-1')).toBe('anon-1');
+  });
+
+  it.each([
+    ['an EEA visitor with no choice stored', 'DE', {}],
+    ['a visitor who declined', 'US', { cookie_consent: 'denied' }],
+  ])('drops the anonymous id for %s', (_label, country, cookies) => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country } as never);
+
+    expect(analyticsAnonId({ headers: {}, cookies } as never, 'anon-1')).toBe(
+      null
+    );
+  });
+
+  it.each([null, undefined, ''])('returns null for a missing id (%s)', (id) => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+
+    expect(analyticsAnonId({ headers: {} } as never, id)).toBe(null);
   });
 });

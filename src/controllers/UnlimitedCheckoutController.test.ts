@@ -182,6 +182,31 @@ describe('UnlimitedCheckoutController', () => {
     );
   });
 
+  it.each([
+    ['granted', true],
+    ['denied', false],
+  ])(
+    'tells the use case whether the anon id may be tracked when consent is %s',
+    async (consent, expected) => {
+      const req = {
+        body: { interval: 'month' },
+        cookies: { anon_id: 'anon-uuid-123', cookie_consent: consent },
+      } as unknown as Request;
+      const res = makeResponse();
+      const uc = makeUseCase();
+      const controller = new UnlimitedCheckoutController(uc, makeSink());
+
+      await controller.createSession(req, res as unknown as Response);
+
+      expect(uc.execute as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          anonId: 'anon-uuid-123',
+          anonIdTrackingAllowed: expected,
+        })
+      );
+    }
+  );
+
   it('forwards the connector pricing variant to the use case', async () => {
     const req = {
       body: { interval: 'month', variant: 'mcp-day-first' },

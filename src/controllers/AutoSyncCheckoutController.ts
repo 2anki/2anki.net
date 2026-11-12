@@ -6,6 +6,7 @@ import { parseCheckoutSurface } from '../usecases/checkout/checkoutSurface';
 import { isCurrencyConflictError } from '../usecases/checkout/createCheckoutSession';
 import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readCheckoutAttribution } from '../lib/attribution/adClick';
+import { trackingAllowedFor } from '../lib/http/consentRegion';
 
 class AutoSyncCheckoutController {
   constructor(private readonly useCase: AutoSyncCheckoutUseCase) {}
@@ -27,6 +28,7 @@ class AutoSyncCheckoutController {
         stripeCustomerId,
         variant,
         anonId,
+        anonIdTrackingAllowed: trackingAllowedFor(req),
         surface,
         gaClientId,
         gaSessionId,

@@ -76,6 +76,7 @@ import { isPaying } from '../lib/isPaying';
 import NotionRepository from '../data_layer/NotionRespository';
 import hashToken from '../lib/misc/hashToken';
 import { extractCountryFromRequest } from '../lib/http/extractCountryFromRequest';
+import { analyticsAnonId } from '../lib/http/consentRegion';
 import { RecordUserVisibleErrorUseCase } from '../usecases/observability/RecordUserVisibleErrorUseCase';
 import { mapEntitlement } from './helpers/mapEntitlement';
 import { hasAnkifyAccess } from '../lib/ankify/access';
@@ -90,10 +91,10 @@ function readFirstTouchCookie(req: express.Request): FirstTouchAttribution {
   return parseFirstTouch(cookies?.first_touch);
 }
 
-function readAnonIdCookie(req: express.Request): string | null {
+function readAnalyticsAnonId(req: express.Request): string | null {
   const cookies = req.cookies as Record<string, unknown> | undefined;
   const anonId = cookies?.anon_id;
-  return typeof anonId === 'string' && anonId.length > 0 ? anonId : null;
+  return analyticsAnonId(req, typeof anonId === 'string' ? anonId : null);
 }
 
 class UsersController {
@@ -307,7 +308,7 @@ class UsersController {
         signupOrigin,
         {
           method: 'password',
-          anonymousId: readAnonIdCookie(req),
+          anonymousId: readAnalyticsAnonId(req),
           referrer: firstTouch.signupReferrer,
           attribution: readAdClickCookie(req),
           ...readGaMeasurement(req),
@@ -886,7 +887,7 @@ class UsersController {
         readFirstTouchCookie(req).signupOrigin ?? 'google',
         {
           method: 'google',
-          anonymousId: readAnonIdCookie(req),
+          anonymousId: readAnalyticsAnonId(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
           attribution: readAdClickCookie(req),
           ...readGaMeasurement(req),
@@ -1017,7 +1018,7 @@ class UsersController {
           readFirstTouchCookie(req).signupOrigin ?? 'microsoft',
           {
             method: 'microsoft',
-            anonymousId: readAnonIdCookie(req),
+            anonymousId: readAnalyticsAnonId(req),
             referrer: readFirstTouchCookie(req).signupReferrer,
             attribution: readAdClickCookie(req),
             ...readGaMeasurement(req),
@@ -1269,7 +1270,7 @@ class UsersController {
           readFirstTouchCookie(req).signupOrigin ?? 'apple',
           {
             method: 'apple',
-            anonymousId: readAnonIdCookie(req),
+            anonymousId: readAnalyticsAnonId(req),
             referrer: readFirstTouchCookie(req).signupReferrer,
             attribution: readAdClickCookie(req),
             ...readGaMeasurement(req),
@@ -1407,7 +1408,7 @@ class UsersController {
         readFirstTouchCookie(req).signupOrigin ?? 'notion_oauth',
         {
           method: 'notion_oauth',
-          anonymousId: readAnonIdCookie(req),
+          anonymousId: readAnalyticsAnonId(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
           attribution: readAdClickCookie(req),
           ...readGaMeasurement(req),
@@ -1489,7 +1490,7 @@ class UsersController {
         readFirstTouchCookie(req).signupOrigin,
         redirect,
         {
-          anonymousId: readAnonIdCookie(req),
+          anonymousId: readAnalyticsAnonId(req),
           referrer: readFirstTouchCookie(req).signupReferrer,
           attribution: readAdClickCookie(req),
           ...readGaMeasurement(req),

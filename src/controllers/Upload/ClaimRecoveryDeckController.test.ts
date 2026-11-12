@@ -67,31 +67,40 @@ describe('ClaimRecoveryDeckController', () => {
     trackMock.mockClear();
   });
 
-  it('answers with the saved key and records the move', async () => {
-    const { controller, saveRecoveredDeck } = buildController(keptDeck());
-    const { res, status, json } = buildResponse();
+  it.each([
+    ['granted consent', 'granted', ANON],
+    ['declined', 'denied', null],
+  ])(
+    'answers with the saved key and records the move, with the anonymous id only when the visitor %s',
+    async (_label, consent, expectedAnonymousId) => {
+      const { controller, saveRecoveredDeck } = buildController(keptDeck());
+      const { res, status, json } = buildResponse();
 
-    await controller.claim(
-      buildRequest({ recoveryToken: TOKEN, deckName: 'Biology.apkg' }),
-      res
-    );
+      await controller.claim(
+        buildRequest(
+          { recoveryToken: TOKEN, deckName: 'Biology.apkg' },
+          { anon_id: ANON, cookie_consent: consent }
+        ),
+        res
+      );
 
-    expect(status()).toBe(200);
-    expect(json()).toEqual({
-      downloadKey: 'owner-7-deck.apkg',
-      deckName: 'Biology.apkg',
-    });
-    expect(saveRecoveredDeck).toHaveBeenCalledWith(
-      '7',
-      'Biology.apkg',
-      Buffer.from('fake-apkg'),
-      'req-1'
-    );
-    expect(trackMock).toHaveBeenCalledWith('recovery_deck_claimed', {
-      userId: 7,
-      anonymousId: ANON,
-    });
-  });
+      expect(status()).toBe(200);
+      expect(json()).toEqual({
+        downloadKey: 'owner-7-deck.apkg',
+        deckName: 'Biology.apkg',
+      });
+      expect(saveRecoveredDeck).toHaveBeenCalledWith(
+        '7',
+        'Biology.apkg',
+        Buffer.from('fake-apkg'),
+        'req-1'
+      );
+      expect(trackMock).toHaveBeenCalledWith('recovery_deck_claimed', {
+        userId: 7,
+        anonymousId: expectedAnonymousId,
+      });
+    }
+  );
 
   it('answers 404 when the second claim finds the deck already moved', async () => {
     const { controller } = buildController(keptDeck());

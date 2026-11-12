@@ -505,6 +505,30 @@ describe('NotionController', () => {
       );
     });
 
+    it.each([
+      ['granted consent', 'granted', 'anon-notion'],
+      ['declined', 'denied', undefined],
+    ])(
+      'hands the job and upload_started the anonymous id only when the visitor %s',
+      async (_label, consent, expectedAnonId) => {
+        setupConvertMocks();
+        req.cookies = { anon_id: 'anon-notion', cookie_consent: consent };
+
+        await controller.convert(
+          req as express.Request,
+          res as express.Response
+        );
+
+        expect(runConversion).toHaveBeenCalledWith(
+          expect.objectContaining({ anonId: expectedAnonId })
+        );
+        expect(track).toHaveBeenCalledWith(
+          'upload_started',
+          expect.objectContaining({ anonymousId: expectedAnonId ?? null })
+        );
+      }
+    );
+
     it('passes signupOrigin=null into the runConversion payload when no first_touch cookie is present', async () => {
       setupConvertMocks();
 

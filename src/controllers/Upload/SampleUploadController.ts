@@ -9,6 +9,7 @@ import { isDeploySmokeRequest } from '../../lib/http/isDeploySmokeRequest';
 import { ConvertSampleDeckUseCase } from '../../usecases/uploads/ConvertSampleDeckUseCase';
 import { getOwnerId } from '../../lib/User/getOwner';
 import { track } from '../../services/events/track';
+import { analyticsAnonId } from '../../lib/http/consentRegion';
 
 const SAMPLE_WINDOW_MS = 60_000;
 const SAMPLE_PER_IP_MAX = 20;
@@ -65,7 +66,7 @@ export class SampleUploadController {
     } else {
       track('sample_conversion_succeeded', {
         userId: getOwnerId(res),
-        anonymousId: resolveAnonId(req),
+        anonymousId: analyticsAnonId(req, resolveAnonId(req)),
         props: { source: 'sample', card_count: cardCount },
       });
     }

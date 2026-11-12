@@ -11,6 +11,7 @@ import { getSafeFilename } from '../../lib/getSafeFilename';
 import { getOwner } from '../../lib/User/getOwner';
 import { track } from '../../services/events/track';
 import { anonIdCookie } from './anonIdCookie';
+import { analyticsAnonId } from '../../lib/http/consentRegion';
 
 const MAX_DECK_NAME_LENGTH = 200;
 
@@ -45,7 +46,7 @@ export class ClaimRecoveryDeckController {
       });
       track('recovery_deck_claimed', {
         userId: Number(owner),
-        anonymousId: anonId,
+        anonymousId: analyticsAnonId(req, anonId),
       });
       return res.status(200).json({
         downloadKey: claimed.downloadKey,

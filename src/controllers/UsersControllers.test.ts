@@ -178,7 +178,7 @@ describe('UsersController.register', () => {
         source: '/notion-to-anki',
       },
       query: {},
-      cookies: { anon_id: 'anon-abc-123' },
+      cookies: { anon_id: 'anon-abc-123', cookie_consent: 'granted' },
     } as unknown as express.Request;
     const res = buildRes();
     const next = vi.fn();
@@ -194,6 +194,28 @@ describe('UsersController.register', () => {
         method: 'password',
         anonymousId: 'anon-abc-123',
       })
+    );
+  });
+
+  it('creates the account but keeps the anonymous id off account_created when the visitor declined', async () => {
+    const register = vi.fn().mockResolvedValue([{ id: 1 }]);
+    const { controller } = buildController({ register });
+    const req = {
+      body: { email: 'jane.doe@example.com', password: SAMPLE_PW },
+      query: {},
+      cookies: { anon_id: 'anon-abc-123', cookie_consent: 'denied' },
+    } as unknown as express.Request;
+    const res = buildRes();
+    const next = vi.fn();
+
+    await controller.register(req, res, next);
+
+    expect(register).toHaveBeenCalledWith(
+      '',
+      'hashed',
+      'jane.doe@example.com',
+      null,
+      expect.objectContaining({ method: 'password', anonymousId: null })
     );
   });
 
@@ -235,6 +257,7 @@ describe('UsersController.register', () => {
       query: {},
       cookies: {
         anon_id: 'anon-abc-123',
+        cookie_consent: 'granted',
         first_touch: JSON.stringify({
           landingPath: '/pdf-to-anki',
           referrer: 'chatgpt.com',
@@ -3599,30 +3622,39 @@ describe('UsersController.loginWithAppleNative', () => {
   // account_created row for a new account carries the device's anonymous id
   // and its earlier anonymous events join to the account, the same way the
   // web sign-up paths do.
-  it('forwards the anon_id cookie to account creation for a new account', async () => {
-    const register = vi.fn().mockResolvedValue([{ id: 30 }]);
-    const { controller } = buildNativeController({
-      registerVerifiedIdentity: register,
-    });
-    const res = buildNativeRes();
+  it.each([
+    ['outside the EEA', '8.8.8.8', 'native-anon-1'],
+    [
+      'inside the EEA, where the app has no consent to send',
+      '193.99.144.80',
+      null,
+    ],
+  ])(
+    'forwards the anon_id cookie to account creation for a new account %s only when tracking is allowed',
+    async (_label, ip, expectedAnonymousId) => {
+      const register = vi.fn().mockResolvedValue([{ id: 30 }]);
+      const { controller } = buildNativeController({
+        registerVerifiedIdentity: register,
+      });
+      const res = buildNativeRes();
+      const req = buildReq({}, { anon_id: 'native-anon-1' });
+      Object.assign(req, { ip });
 
-    await controller.loginWithAppleNative(
-      buildReq({}, { anon_id: 'native-anon-1' }),
-      res
-    );
+      await controller.loginWithAppleNative(req, res);
 
-    expect(register).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(String),
-      'native-apple@example.com',
-      'apple',
-      expect.objectContaining({
-        method: 'apple',
-        anonymousId: 'native-anon-1',
-      })
-    );
-    expect(res.status).toHaveBeenCalledWith(200);
-  });
+      expect(register).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'native-apple@example.com',
+        'apple',
+        expect.objectContaining({
+          method: 'apple',
+          anonymousId: expectedAnonymousId,
+        })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+    }
+  );
 
   it('creates the account with a null anonymous id when no anon_id cookie is sent', async () => {
     const register = vi.fn().mockResolvedValue([{ id: 30 }]);

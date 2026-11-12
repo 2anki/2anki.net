@@ -276,6 +276,32 @@ describe('AutoSyncCheckoutUseCase', () => {
     );
   });
 
+  test('stamps the consent marker beside anon_id when tracking is allowed', async () => {
+    mockCountActive.mockResolvedValue(0);
+    mockGetUserActiveSubscriptions.mockResolvedValue([]);
+    mockStripeCreateSession.mockResolvedValue({
+      url: 'https://checkout.stripe.com/test',
+    });
+
+    const uc = makeUseCase();
+    await uc.execute({
+      userEmail: 'user@example.com',
+      userId: 42,
+      anonId: 'anon-uuid-123',
+      anonIdTrackingAllowed: true,
+    });
+
+    expect(mockStripeCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: {
+          user_id: '42',
+          anon_id: 'anon-uuid-123',
+          anon_id_consent: 'granted',
+        },
+      })
+    );
+  });
+
   test('omits optional attribution keys (anon_id, surface) from metadata when absent', async () => {
     mockCountActive.mockResolvedValue(0);
     mockGetUserActiveSubscriptions.mockResolvedValue([]);

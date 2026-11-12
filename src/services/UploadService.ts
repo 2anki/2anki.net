@@ -193,6 +193,7 @@ import {
   ipRateLimitBucket,
   resolveClientIp,
 } from '../lib/rateLimit/ipHelpers';
+import { analyticsAnonId } from '../lib/http/consentRegion';
 import { generateAiPreview, type AiPreviewCard } from '../lib/claude/aiPreview';
 import { extractPreviewText } from '../lib/upload/extractPreviewText';
 import {
@@ -1365,7 +1366,7 @@ class UploadService {
 
       track('upload_started', {
         userId: owner != null ? Number(owner) : null,
-        anonymousId: this.resolveAnonId(req),
+        anonymousId: this.trackedAnonId(req),
         props: {
           ...this.baseFunnelProps(req, res),
           device: classifyDevice(req.headers?.['user-agent']),
@@ -1429,7 +1430,7 @@ class UploadService {
         const owner = getOwner(res);
         const userId = owner != null ? Number(owner) : null;
         const source = this.resolveUploadSource(req);
-        const anonymousId = this.resolveAnonId(req);
+        const anonymousId = this.trackedAnonId(req);
         track('conversion_failed', {
           userId,
           anonymousId,
@@ -1455,7 +1456,10 @@ class UploadService {
         const owner = getOwner(res);
         const userId = owner != null ? Number(owner) : null;
         const source = this.resolveUploadSource(req);
-        const anonymousId = this.resolveSignedOutAnonId(req, res);
+        const anonymousId = analyticsAnonId(
+          req,
+          this.resolveSignedOutAnonId(req, res)
+        );
         track('conversion_failed', {
           userId,
           anonymousId,
@@ -1685,7 +1689,7 @@ class UploadService {
     const ownerForEvent = Number(owner);
     track('conversion_started', {
       userId: Number.isFinite(ownerForEvent) ? ownerForEvent : null,
-      anonymousId: this.resolveAnonId(req),
+      anonymousId: this.trackedAnonId(req),
       props: { source: this.resolveUploadSource(req), mode: 'async' },
     });
 
@@ -1771,7 +1775,7 @@ class UploadService {
           );
           track('conversion_succeeded', {
             userId: Number(owner),
-            anonymousId: this.resolveAnonId(req),
+            anonymousId: this.trackedAnonId(req),
             props: {
               ...this.baseFunnelProps(req, res),
               card_count_bucket: toCardCountBucket(totalCards),
@@ -1784,7 +1788,7 @@ class UploadService {
         ) {
           track('ai_fallback_triggered', {
             userId: ownerId,
-            anonymousId: this.resolveAnonId(req),
+            anonymousId: this.trackedAnonId(req),
             props: {
               reason: 'empty_deck',
               source: this.resolveUploadSource(req),
@@ -1965,7 +1969,7 @@ class UploadService {
     const conversionStart = new Date();
     track('conversion_started', {
       userId: owner != null ? Number(owner) : null,
-      anonymousId: this.resolveSignedOutAnonId(req, res),
+      anonymousId: analyticsAnonId(req, this.resolveSignedOutAnonId(req, res)),
       props: { source: this.resolveUploadSource(req), mode: 'sync' },
     });
 
@@ -2058,7 +2062,7 @@ class UploadService {
       if (includesAiCreditsWarning(warnings)) {
         track('conversion_failed', {
           userId: syncOwnerIdOrNull,
-          anonymousId: this.resolveAnonId(req),
+          anonymousId: this.trackedAnonId(req),
           props: {
             ...this.baseFunnelProps(req, res),
             reason: 'ai_credits_exhausted',
@@ -2070,7 +2074,7 @@ class UploadService {
       if (this.canFallBackToClaude(req, ownerId, paying)) {
         track('ai_fallback_triggered', {
           userId: ownerId,
-          anonymousId: this.resolveAnonId(req),
+          anonymousId: this.trackedAnonId(req),
           props: {
             reason: 'empty_deck',
             source: this.resolveUploadSource(req),
@@ -2088,7 +2092,7 @@ class UploadService {
       const resolvedEmptyReason = emptyReason ?? 'unknown';
       track('conversion_failed', {
         userId: ownerId,
-        anonymousId: this.resolveAnonId(req),
+        anonymousId: this.trackedAnonId(req),
         props: {
           ...this.baseFunnelProps(req, res),
           reason: 'empty_deck',
@@ -2156,7 +2160,7 @@ class UploadService {
       if (duplicateGuidCount > 0) {
         track('upload_duplicate_guids_collapsed', {
           userId: owner != null ? Number(owner) : null,
-          anonymousId: this.resolveAnonId(req),
+          anonymousId: this.trackedAnonId(req),
           props: { count: duplicateGuidCount },
         });
       }
@@ -2355,7 +2359,7 @@ class UploadService {
       );
       track('conversion_succeeded', {
         userId: owner != null ? Number(owner) : null,
-        anonymousId: this.resolveAnonId(req),
+        anonymousId: this.trackedAnonId(req),
         props: {
           ...this.baseFunnelProps(req, res),
           card_count_bucket: bucket,
@@ -2378,7 +2382,7 @@ class UploadService {
 
     track('conversion_succeeded', {
       userId: owner != null ? Number(owner) : null,
-      anonymousId: this.resolveAnonId(req),
+      anonymousId: this.trackedAnonId(req),
       props: {
         ...this.baseFunnelProps(req, res),
         card_count_bucket: toCardCountBucket(totalCards),
@@ -2428,7 +2432,7 @@ class UploadService {
     const file = (req.files as UploadedFile[])[0];
     track('conversion_started', {
       userId: Number(owner),
-      anonymousId: this.resolveAnonId(req),
+      anonymousId: this.trackedAnonId(req),
       props: { source: this.resolveUploadSource(req), mode: 'image' },
     });
 
@@ -2437,7 +2441,7 @@ class UploadService {
     if (decoded == null) {
       track('conversion_failed', {
         userId: Number(owner),
-        anonymousId: this.resolveAnonId(req),
+        anonymousId: this.trackedAnonId(req),
         props: {
           ...this.baseFunnelProps(req, res),
           reason: 'empty_deck',
@@ -2486,7 +2490,7 @@ class UploadService {
     res.attachment(`/${deckName}`);
     track('conversion_succeeded', {
       userId: Number(owner),
-      anonymousId: this.resolveAnonId(req),
+      anonymousId: this.trackedAnonId(req),
       props: {
         ...this.baseFunnelProps(req, res),
         card_count_bucket: toCardCountBucket(result.cardCount),
@@ -2508,7 +2512,7 @@ class UploadService {
     const owner = getOwner(res);
     track('image_only_no_text_shown', {
       userId: owner != null ? Number(owner) : null,
-      anonymousId: this.resolveAnonId(req),
+      anonymousId: this.trackedAnonId(req),
       props: { source: this.resolveUploadSource(req), container },
     });
     const body: ImageOnlyResponse = {
@@ -2537,7 +2541,7 @@ class UploadService {
     const owner = getOwner(res);
     track('conversion_failed', {
       userId: owner != null ? Number(owner) : null,
-      anonymousId: this.resolveAnonId(req),
+      anonymousId: this.trackedAnonId(req),
       props: {
         ...this.baseFunnelProps(req, res),
         reason: `image_${e.code ?? status}`,
@@ -2604,6 +2608,10 @@ class UploadService {
     return typeof anonId === 'string' && anonId.length > 0 ? anonId : null;
   }
 
+  private trackedAnonId(req: express.Request): string | null {
+    return analyticsAnonId(req, this.resolveAnonId(req));
+  }
+
   // A visitor without an account who turned AI on: run the capped preview and,
   // when it produces cards, answer with them so the client can show the sample
   // and the Day Pass offer. Returns null to mean "nothing new" — the caller then
@@ -2649,7 +2657,7 @@ class UploadService {
           this.storeAiPreviewSource(anonId, filename, fileBytes),
         onShown: (anonId, cardCount) => {
           track('ai_preview_shown', {
-            anonymousId: anonId,
+            anonymousId: analyticsAnonId(req, anonId),
             props: { ...this.baseFunnelProps(req, res), card_count: cardCount },
           });
         },
@@ -2946,7 +2954,7 @@ class UploadService {
       (await this.storePreviewCards(req, storage, anonId, loadCappedDeck));
     track('conversion_succeeded', {
       userId: null,
-      anonymousId: anonId,
+      anonymousId: analyticsAnonId(req, anonId),
       props: {
         ...this.baseFunnelProps(req, res),
         card_count_bucket: toCardCountBucket(cardCount + cardsHeldBack),
@@ -3362,7 +3370,7 @@ class UploadService {
     const owner = getOwner(res);
     track('conversion_failed', {
       userId: owner != null ? Number(owner) : null,
-      anonymousId: this.resolveAnonId(req),
+      anonymousId: this.trackedAnonId(req),
       props: { ...this.baseFunnelProps(req, res), reason, ...extraProps },
     });
   }
