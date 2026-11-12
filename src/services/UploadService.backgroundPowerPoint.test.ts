@@ -151,7 +151,6 @@ import {
   __resetFeatureFlagModuleForTests,
   __setFeatureFlagDependencies,
 } from '../lib/featureFlags/getFeatureFlag';
-import { ASYNC_SLOW_UPLOADS_FLAG } from '../lib/upload/asyncSlowUploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 
 const NAMESPACES =
@@ -196,12 +195,10 @@ const numberedLecture = Buffer.from(
 
 const OWNER = 42;
 
-function inMemoryFlags(
-  values: Record<string, boolean>
-): IFeatureFlagsRepository {
+function noFlagsSet(): IFeatureFlagsRepository {
   return {
     getAll: () => Promise.resolve([]),
-    get: (key: string) => Promise.resolve(values[key] ?? null),
+    get: () => Promise.resolve(null),
     set: () => Promise.resolve(null),
   };
 }
@@ -295,10 +292,11 @@ const PPTX_MIMETYPE =
   'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
 async function uploadInBackground(deck: Buffer) {
-  return upload(
-    { originalname: 'lecture.pptx', mimetype: PPTX_MIMETYPE, buffer: deck },
-    { [ASYNC_SLOW_UPLOADS_FLAG]: true }
-  );
+  return upload({
+    originalname: 'lecture.pptx',
+    mimetype: PPTX_MIMETYPE,
+    buffer: deck,
+  });
 }
 
 type UploadedTestFile = {
@@ -309,11 +307,10 @@ type UploadedTestFile = {
 
 async function upload(
   file: UploadedTestFile | UploadedTestFile[],
-  flags: Record<string, boolean>,
   body: Record<string, string> = {}
 ) {
   __setFeatureFlagDependencies({
-    repository: inMemoryFlags(flags),
+    repository: noFlagsSet(),
   });
   const uploads = recordingUploads();
   const { jobs, settled } = backgroundJobs();
@@ -347,7 +344,7 @@ async function upload(
   return { status: status(), jobId, settled, jobs, uploads };
 }
 
-describe('a paying account with AI off uploads a PowerPoint while background conversion is on', () => {
+describe('a paying account with AI off uploads a PowerPoint', () => {
   let jobWorkspace: string | null = null;
 
   beforeAll(() => applyEnv(ENV));
@@ -430,7 +427,6 @@ describe('a paying account with AI never set uploads a zip holding only a PowerP
         mimetype: 'application/zip',
         buffer: Buffer.from(zipSync({ 'lecture.pptx': numberedLecture })),
       },
-      {},
       { template: 'notionstyle', basic_model_name: 'My Basic' }
     );
     await settled;
@@ -442,14 +438,11 @@ describe('a paying account with AI never set uploads a zip holding only a PowerP
   }, 20_000);
 
   it('falls back to Claude after the parser finds no cards and hands it slide headings as fronts, not slide numbers', async () => {
-    const { status, jobId, settled, jobs } = await upload(
-      {
-        originalname: 'slides.zip',
-        mimetype: 'application/zip',
-        buffer: Buffer.from(zipSync({ 'lecture.pptx': numberedLecture })),
-      },
-      {}
-    );
+    const { status, jobId, settled, jobs } = await upload({
+      originalname: 'slides.zip',
+      mimetype: 'application/zip',
+      buffer: Buffer.from(zipSync({ 'lecture.pptx': numberedLecture })),
+    });
     const outcome = await settled;
 
     expect(status).toBe(202);
@@ -499,7 +492,6 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
         mimetype: 'application/zip',
         buffer: Buffer.from(zipSync(declinedFileLater)),
       },
-      {},
       { 'claude-ai-flashcards': 'true' }
     );
     const outcome = await settled;
@@ -526,7 +518,6 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
         mimetype: 'text/markdown',
         buffer: Buffer.from(bytes),
       })),
-      {},
       { 'claude-ai-flashcards': 'true' }
     );
     const outcome = await settled;
@@ -544,19 +535,16 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
   }, 20_000);
 
   it('names the declined file when AI was never set and the parser found no cards', async () => {
-    const { status, settled, uploads, jobs } = await upload(
-      {
-        originalname: 'notes.zip',
-        mimetype: 'application/zip',
-        buffer: Buffer.from(
-          zipSync({
-            'lecture.pptx': numberedLecture,
-            'week 3.md': strToU8('REFUSED-BY-CLAUDE\n'),
-          })
-        ),
-      },
-      {}
-    );
+    const { status, settled, uploads, jobs } = await upload({
+      originalname: 'notes.zip',
+      mimetype: 'application/zip',
+      buffer: Buffer.from(
+        zipSync({
+          'lecture.pptx': numberedLecture,
+          'week 3.md': strToU8('REFUSED-BY-CLAUDE\n'),
+        })
+      ),
+    });
     const outcome = await settled;
 
     expect(status).toBe(202);

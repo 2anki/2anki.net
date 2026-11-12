@@ -116,10 +116,7 @@ import {
 } from '../usecases/users/CheckMonthlyCardLimitUseCase';
 import { ANONYMOUS_CARD_CAP, MONTHLY_CARD_LIMIT } from '../lib/limits';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
-import {
-  asyncSlowUploadsEnabled,
-  isSlowUpload,
-} from '../lib/upload/asyncSlowUploads';
+import { isSlowUpload } from '../lib/upload/asyncSlowUploads';
 import { isPartialDeliveryEligible } from '../usecases/uploads/isPartialDeliveryEligible';
 import {
   isPlanHoldKey,
@@ -1397,8 +1394,7 @@ class UploadService {
       if (
         owner != null &&
         paying &&
-        isSlowUpload(files, settings.pdfFallback) &&
-        (await asyncSlowUploadsEnabled())
+        isSlowUpload(files, settings.pdfFallback)
       ) {
         return await this.handleAsyncUpload(
           req,

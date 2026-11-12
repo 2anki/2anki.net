@@ -1,7 +1,3 @@
-import { getFeatureFlag } from '../featureFlags/getFeatureFlag';
-
-export const ASYNC_SLOW_UPLOADS_FLAG = 'async_slow_uploads';
-
 // A request that has to stay open for a whole slow conversion is the one phones
 // and Safari drop when the tab sleeps or the network changes. PowerPoint always
 // goes through LibreOffice, so it is slow at any size; a PDF only becomes slow
@@ -39,8 +35,4 @@ export function isSlowUpload(
     pdfFallback !== 'ask' &&
     file.size >= ASYNC_PDF_MIN_BYTES
   );
-}
-
-export function asyncSlowUploadsEnabled(): Promise<boolean> {
-  return getFeatureFlag(ASYNC_SLOW_UPLOADS_FLAG, false);
 }
