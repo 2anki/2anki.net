@@ -37,7 +37,7 @@ class BackupScriptTest(unittest.TestCase):
         self.stub('gpg', 'while [ $# -gt 0 ]; do if [ "$1" = --output ]; then o="$2"; fi; shift; done; echo ciphertext > "$o"')
         self.stub('aws', 'if [ "$1" = s3api ]; then echo 11; fi')
         self.stub('sendmail', f'cat >> {self.mail}')
-        self.stub('date', 'case "$*" in *%a*) echo Mon;; *%d*) echo "${FAKE_DAY:-15}";; *%Y-%m*|*%m*) echo 2026-11;; *) echo now;; esac')
+        self.stub('date', 'case "$*" in *%a*) echo Mon;; *%d*) echo "${FAKE_DAY:-15}";; *%Y-%m*|*%m*) echo "${FAKE_MONTH:-2026-11}";; *) echo now;; esac')
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -71,7 +71,7 @@ class BackupScriptTest(unittest.TestCase):
         calls = self.calls_text()
         self.assertIn('s3://bucket/backups/postgres/daily-Mon.dump.gpg', calls)
         self.assertLess(calls.index('gpg '), calls.index('aws s3 cp'))
-        self.assertNotIn('monthly-', calls)
+        self.assertNotIn('monthly-2026-11.dump.gpg', calls)
         self.assertFalse(self.mail.exists())
 
     def test_never_uploads_the_unencrypted_dump(self):
@@ -145,6 +145,85 @@ class BackupScriptTest(unittest.TestCase):
         result = self.run_backup()
         for secret in SECRETS:
             self.assertNotIn(secret, result.stdout + result.stderr)
+
+    def stub_monthly_listing(self, keys):
+        listing = '\\t'.join(keys) if keys else 'None'
+        self.stub(
+            'aws',
+            'case "$2" in list-objects-v2) printf "%b\\n" "' + listing + '";; '
+            'head-object) echo 11;; esac',
+        )
+
+    def removed_keys(self):
+        return [
+            l.split('s3://bucket/')[1]
+            for l in self.calls_text().splitlines()
+            if l.startswith('aws s3 rm')
+        ]
+
+    def test_keeps_the_three_newest_monthly_dumps_and_removes_older_ones(self):
+        self.stub_monthly_listing([
+            f'backups/postgres/monthly-2026-{m:02d}.dump.gpg' for m in range(7, 12)
+        ])
+        result = self.run_backup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.removed_keys(),
+            [
+                'backups/postgres/monthly-2026-07.dump.gpg',
+                'backups/postgres/monthly-2026-08.dump.gpg',
+            ],
+        )
+
+    def test_counts_kept_months_across_a_new_year(self):
+        self.stub_monthly_listing([
+            'backups/postgres/monthly-2026-10.dump.gpg',
+            'backups/postgres/monthly-2026-11.dump.gpg',
+            'backups/postgres/monthly-2026-12.dump.gpg',
+            'backups/postgres/monthly-2027-01.dump.gpg',
+        ])
+        self.run_backup(FAKE_MONTH='2027-01')
+        self.assertEqual(
+            self.removed_keys(), ['backups/postgres/monthly-2026-10.dump.gpg']
+        )
+
+    def test_removes_nothing_when_no_monthly_dump_is_old_enough(self):
+        self.stub_monthly_listing(['backups/postgres/monthly-2026-11.dump.gpg'])
+        result = self.run_backup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.removed_keys(), [])
+
+    def test_removes_nothing_when_there_are_no_monthly_dumps(self):
+        self.stub_monthly_listing([])
+        result = self.run_backup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.removed_keys(), [])
+
+    def test_leaves_keys_that_are_not_monthly_dumps_alone(self):
+        self.stub_monthly_listing([
+            'backups/postgres/monthly-notes.txt',
+            'backups/postgres/monthly-2020-01.dump.gpg.partial',
+        ])
+        self.run_backup()
+        self.assertEqual(self.removed_keys(), [])
+
+    def test_lists_only_the_monthly_prefix(self):
+        self.stub_monthly_listing([])
+        self.run_backup()
+        listing = next(
+            l for l in self.calls_text().splitlines() if 'list-objects-v2' in l
+        )
+        self.assertIn('--prefix backups/postgres/monthly-', listing)
+
+    def test_removes_nothing_when_the_upload_fails(self):
+        self.stub('aws', 'case "$1" in s3) exit 1;; esac; case "$2" in list-objects-v2) echo backups/postgres/monthly-2020-01.dump.gpg;; esac')
+        self.assert_alerted(self.run_backup(), 'uploading daily-Mon')
+        self.assertNotIn('list-objects-v2', self.calls_text())
+        self.assertEqual(self.removed_keys(), [])
+
+    def test_alerts_when_the_monthly_listing_fails(self):
+        self.stub('aws', 'case "$2" in list-objects-v2) exit 1;; head-object) echo 11;; esac')
+        self.assert_alerted(self.run_backup(), 'removing monthly dumps')
 
     def assert_alerted(self, result, stage):
         self.assertNotEqual(result.returncode, 0)
