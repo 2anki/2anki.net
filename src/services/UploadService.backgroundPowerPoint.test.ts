@@ -149,18 +149,20 @@ const savedDropboxFiles = vi.hoisted(
 vi.mock('./observability/instrumentedAxios', async (importActual) => {
   const actual =
     await importActual<typeof import('./observability/instrumentedAxios')>();
-  const remoteAwareGet: typeof actual.default.get = (service, url, config) => {
+  const registeredGet: typeof actual.default.get = (service, url) => {
     const bytes = remoteFiles.get(url);
-    if (bytes != null) {
-      return Promise.resolve({ data: bytes } as never);
+    if (bytes == null) {
+      return Promise.reject(
+        new Error(`unregistered ${service} GET in test: ${url}`)
+      );
     }
-    return actual.default.get(service, url, config);
+    return Promise.resolve({ data: bytes } as never);
   };
   return {
     ...actual,
     default: new Proxy(actual.default, {
       get: (target, property) =>
-        property === 'get' ? remoteAwareGet : Reflect.get(target, property),
+        property === 'get' ? registeredGet : Reflect.get(target, property),
     }),
   };
 });
@@ -187,17 +189,20 @@ vi.mock('../data_layer/GoogleDriveRepository', async (importActual) => {
   return { ...actual, GoogleDriveRepository: RecordingGoogleDriveRepository };
 });
 
-import type { Knex } from 'knex';
+import knex, { type Knex } from 'knex';
 import UploadService from './UploadService';
 import UploadController from '../controllers/Upload/UploadController';
 import NotionService from './NotionService';
 import type { INotionRepository } from '../data_layer/NotionRespository';
 import { McpToolsService } from './mcp/McpToolsService';
-import type AuthenticationService from './AuthenticationService';
+import AuthenticationService from './AuthenticationService';
 import type { UserWithOwner } from './AuthenticationService';
 import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
 import { applyUserLocals } from '../routes/middleware/configureUserLocal';
-import { createGoogleDriveExportLink } from '../controllers/Upload/helpers/createGoogleDriveDownloadLink';
+import {
+  createGoogleDriveDownloadLink,
+  createGoogleDriveExportLink,
+} from '../controllers/Upload/helpers/createGoogleDriveDownloadLink';
 import { ASYNC_PDF_MIN_BYTES } from '../lib/upload/asyncSlowUploads';
 import type JobRepository from '../data_layer/JobRepository';
 import type UsersRepository from '../data_layer/UsersRepository';
@@ -672,6 +677,45 @@ function patreonLocals() {
   return signedInLocals(true, new InMemoryUserPassRepository());
 }
 
+const AUTO_SYNC_PRODUCT = 'prod_auto_sync';
+
+async function autoSyncSubscriberLocals(): Promise<Record<string, unknown>> {
+  const database = knex({
+    client: 'better-sqlite3',
+    connection: { filename: ':memory:' },
+    useNullAsDefault: true,
+  });
+  await database.schema.createTable('subscriptions', (table) => {
+    table.increments('id').primary();
+    table.text('email').nullable();
+    table.text('linked_email').nullable();
+    table.boolean('active').notNullable().defaultTo(false);
+    table.text('stripe_product_id').nullable();
+  });
+  await database('subscriptions').insert({
+    email: 'learner@example.com',
+    linked_email: 'learner@example.com',
+    active: true,
+    stripe_product_id: AUTO_SYNC_PRODUCT,
+  });
+  const res = { locals: {} } as express.Response;
+  await applyUserLocals(
+    res,
+    {
+      owner: OWNER,
+      email: 'learner@example.com',
+      patreon: false,
+      chat_consent_at: null,
+    } as unknown as UserWithOwner,
+    new AuthenticationService({} as never, {} as never),
+    database,
+    SIGNED_IN_AT,
+    new InMemoryUserPassRepository()
+  );
+  await database.destroy();
+  return res.locals;
+}
+
 const lectureFromDropbox = {
   bytes: numberedLecture.length,
   icon: '',
@@ -683,6 +727,109 @@ const lectureFromDropbox = {
 };
 
 const lectureLink = 'https://slides.example/lecture.pptx';
+
+const largePdf = Buffer.concat([
+  Buffer.from('%PDF-1.4 textbook\n'),
+  Buffer.alloc(ASYNC_PDF_MIN_BYTES),
+]);
+
+type LargePdfSent = { answer: Record<string, unknown>; jobId: string };
+
+function uploadController(service: UploadService) {
+  return new UploadController(
+    service,
+    new NotionService({} as INotionRepository)
+  );
+}
+
+async function largePdfFromDropbox(
+  service: UploadService
+): Promise<LargePdfSent> {
+  const picked = {
+    ...lectureFromDropbox,
+    bytes: largePdf.length,
+    id: 'id:textbook',
+    link: 'https://dl.dropboxusercontent.com/s/textbook.pdf',
+    name: 'textbook.pdf',
+  };
+  remoteFiles.set(picked.link, largePdf);
+  const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
+  const req = {
+    body: { files: JSON.stringify([picked]) },
+    headers: {},
+    cookies: {},
+    path: '/api/upload/dropbox',
+  } as unknown as express.Request;
+
+  await uploadController(service).dropbox(req, res);
+  await vi.waitFor(() => expect(status()).not.toBe(0), { timeout: 10_000 });
+  return {
+    answer: { status: status() },
+    jobId: (body() as { jobId: string }).jobId,
+  };
+}
+
+async function largePdfFromDrive(
+  service: UploadService
+): Promise<LargePdfSent> {
+  const picked = {
+    id: 'textbook-file-id',
+    name: 'textbook.pdf',
+    mimeType: 'application/pdf',
+    iconUrl: '',
+    url: '',
+    sizeBytes: 1024,
+    embedUrl: '',
+    description: '',
+    driveSuccess: true,
+    isShared: false,
+    lastEditedUtc: 0,
+    serviceId: '',
+    type: 'document',
+  };
+  remoteFiles.set(createGoogleDriveDownloadLink(picked as never), largePdf);
+  const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
+  const req = {
+    body: {
+      files: JSON.stringify([picked]),
+      googleDriveAuth: 'drive-access-token',
+    },
+    headers: {},
+    cookies: {},
+    path: '/api/upload/google_drive',
+  } as unknown as express.Request;
+
+  await uploadController(service).googleDrive(req, res);
+  await vi.waitFor(() => expect(status()).not.toBe(0), { timeout: 10_000 });
+  return {
+    answer: { status: status() },
+    jobId: (body() as { jobId: string }).jobId,
+  };
+}
+
+async function largePdfFromMcp(service: UploadService): Promise<LargePdfSent> {
+  const link = 'https://books.example/textbook.pdf';
+  remoteFiles.set(link, largePdf);
+  const tools = new McpToolsService(
+    { getJobsByOwner: async () => [] },
+    {} as never,
+    {} as never,
+    (req, res) => service.handleUpload(req, res),
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    { holdForPlan: async () => null },
+    'https://mcp.test'
+  );
+
+  const result = (await tools.convertToDeck(
+    { url: link },
+    String(OWNER),
+    SUBSCRIBER_LOCALS
+  )) as { kind: string; jobId: string };
+  return { answer: { kind: result.kind }, jobId: result.jobId };
+}
 
 describe('a PowerPoint reaching the background path from another entry point', () => {
   const originalWorkspaceBase = process.env.WORKSPACE_BASE;
@@ -710,6 +857,7 @@ describe('a PowerPoint reaching the background path from another entry point', (
   it.each([
     ['an active pass', passHolderLocals],
     ['Patreon lifetime access and no subscription', patreonLocals],
+    ['an active Auto Sync subscription', autoSyncSubscriberLocals],
   ])(
     'builds the deck in the background for a signed-in account with %s',
     async (_account, buildLocals) => {
@@ -740,10 +888,7 @@ describe('a PowerPoint reaching the background path from another entry point', (
   it('builds a PowerPoint picked in Dropbox in the background for a paying account', async () => {
     remoteFiles.set(lectureFromDropbox.link, numberedLecture);
     const { service, jobs, settled } = backgroundService();
-    const controller = new UploadController(
-      service,
-      new NotionService({} as INotionRepository)
-    );
+    const controller = uploadController(service);
     const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
     const req = {
       body: { files: JSON.stringify([lectureFromDropbox]) },
@@ -768,39 +913,28 @@ describe('a PowerPoint reaching the background path from another entry point', (
     ]);
   }, 20_000);
 
-  it('sends a large PDF picked in Dropbox, which carries no PDF answer, to the background for a paying account', async () => {
-    const pdfFromDropbox = {
-      ...lectureFromDropbox,
-      bytes: ASYNC_PDF_MIN_BYTES,
-      id: 'id:textbook',
-      link: 'https://dl.dropboxusercontent.com/s/textbook.pdf',
-      name: 'textbook.pdf',
-    };
-    remoteFiles.set(pdfFromDropbox.link, Buffer.from('%PDF-1.4 textbook'));
-    const { service, jobs, settled } = backgroundService();
-    const controller = new UploadController(
-      service,
-      new NotionService({} as INotionRepository)
-    );
-    const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
-    const req = {
-      body: { files: JSON.stringify([pdfFromDropbox]) },
-      headers: {},
-      cookies: {},
-      path: '/api/upload/dropbox',
-    } as unknown as express.Request;
+  it.each([
+    ['Dropbox', largePdfFromDropbox, { status: 202 }],
+    ['Google Drive', largePdfFromDrive, { status: 202 }],
+    ['an MCP link', largePdfFromMcp, { kind: 'processing' }],
+  ])(
+    'sends a large PDF from %s, which carries no PDF answer, to the background for a paying account',
+    async (_entryPoint, send, expectedAnswer) => {
+      const { service, jobs, settled } = backgroundService();
 
-    await controller.dropbox(req, res);
-    await settled;
+      const { answer, jobId } = await send(service);
+      await settled;
 
-    expect(status()).toBe(202);
-    expect(jobs.create).toHaveBeenCalledWith(
-      (body() as { jobId: string }).jobId,
-      String(OWNER),
-      'textbook.pdf',
-      'upload'
-    );
-  }, 20_000);
+      expect(answer).toEqual(expectedAnswer);
+      expect(jobs.create).toHaveBeenCalledWith(
+        jobId,
+        String(OWNER),
+        'textbook.pdf',
+        'upload'
+      );
+    },
+    20_000
+  );
 
   it('builds Google Slides picked in Drive in the background for a paying account', async () => {
     const slidesFromDrive = {
@@ -826,10 +960,7 @@ describe('a PowerPoint reaching the background path from another entry point', (
       numberedLecture
     );
     const { service, jobs, settled } = backgroundService();
-    const controller = new UploadController(
-      service,
-      new NotionService({} as INotionRepository)
-    );
+    const controller = uploadController(service);
     const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
     const req = {
       body: {
