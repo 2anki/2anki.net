@@ -1,8 +1,11 @@
 import { vi, type Mock } from 'vitest';
 import { Response } from 'express';
+import geoip from 'geoip-lite';
 import PassCheckoutController from './PassCheckoutController';
 import { CreatePassCheckoutUseCase } from '../usecases/checkout/CreatePassCheckoutUseCase';
 import type { PassKind } from '../data_layer/UserPassRepository';
+
+vi.mock('geoip-lite', () => ({ default: { lookup: vi.fn() } }));
 
 const makeRes = (
   locals: Record<string, unknown> = { owner: 42, email: 'a@b.test' }
@@ -225,5 +228,140 @@ describe('PassCheckoutController GA measurement', () => {
         gaSessionId: '1744000000',
       })
     );
+  });
+});
+
+const IPHONE_UA =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+const MAC_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+const CLIENT_IP = '203.0.113.9';
+
+const checkoutRequest = ({
+  cookies = {},
+  headers = {},
+}: {
+  cookies?: Record<string, string>;
+  headers?: Record<string, string>;
+} = {}) => ({ ip: CLIENT_IP, cookies, headers }) as never;
+
+const recordedProps = (record: Mock) =>
+  record.mock.calls[0][0].props as Record<string, unknown>;
+
+describe('PassCheckoutController checkout_started country and device', () => {
+  beforeEach(() => {
+    vi.mocked(geoip.lookup).mockReset();
+  });
+
+  it('records the country for a visitor outside the EEA', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+    const { controller, record } = makeController(resolving());
+
+    await controller.createSession(checkoutRequest(), makeRes({}));
+
+    expect(geoip.lookup).toHaveBeenCalledWith(CLIENT_IP);
+    expect(recordedProps(record)).toMatchObject({ country: 'US' });
+  });
+
+  it('records no country for an EEA visitor who has not consented', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'DE' } as never);
+    const { controller, record } = makeController(resolving());
+
+    await controller.createSession(checkoutRequest(), makeRes({}));
+
+    expect(recordedProps(record)).toMatchObject({ country: null });
+  });
+
+  it('records the country for an EEA visitor who granted consent', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'DE' } as never);
+    const { controller, record } = makeController(resolving());
+
+    await controller.createSession(
+      checkoutRequest({ cookies: { cookie_consent: 'granted' } }),
+      makeRes()
+    );
+
+    expect(recordedProps(record)).toMatchObject({ country: 'DE' });
+  });
+
+  it('records no country when the visitor denied consent outside the EEA', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+    const { controller, record } = makeController(resolving());
+
+    await controller.createSession(
+      checkoutRequest({ cookies: { cookie_consent: 'denied' } }),
+      makeRes()
+    );
+
+    expect(recordedProps(record)).toMatchObject({ country: null });
+  });
+
+  it('ignores a spoofed CDN country header', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'DE' } as never);
+    const { controller, record } = makeController(resolving());
+
+    await controller.createSession(
+      checkoutRequest({ headers: { 'cf-ipcountry': 'US' } }),
+      makeRes({})
+    );
+
+    expect(recordedProps(record)).toMatchObject({ country: null });
+  });
+
+  it.each([
+    ['an iPhone', IPHONE_UA, 'mobile'],
+    ['a Mac', MAC_UA, 'desktop'],
+  ])('records the device class for %s', async (_label, ua, device) => {
+    const { controller, record } = makeController(resolving());
+
+    await controller.createSession(
+      checkoutRequest({ headers: { 'user-agent': ua } }),
+      makeRes({})
+    );
+
+    expect(recordedProps(record)).toMatchObject({ device });
+  });
+
+  it('records the device even when the visitor denied consent', async () => {
+    const { controller, record } = makeController(resolving());
+
+    await controller.createSession(
+      checkoutRequest({
+        cookies: { cookie_consent: 'denied' },
+        headers: { 'user-agent': IPHONE_UA },
+      }),
+      makeRes()
+    );
+
+    expect(recordedProps(record)).toMatchObject({ device: 'mobile' });
+  });
+
+  it('never puts the client IP in the event', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+    const { controller, record } = makeController(resolving());
+
+    await controller.createSession(
+      checkoutRequest({ headers: { 'user-agent': MAC_UA } }),
+      makeRes({})
+    );
+
+    expect(JSON.stringify(record.mock.calls[0][0])).not.toContain(CLIENT_IP);
+  });
+
+  it('returns the checkout session unchanged', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+    const execute = resolving();
+    const { controller } = makeController(execute);
+    const res = makeRes();
+
+    await controller.createSession(
+      checkoutRequest({ headers: { 'user-agent': IPHONE_UA } }),
+      res
+    );
+
+    expect(res.json).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith({ url: 'https://stripe/session' });
+    expect(execute.mock.calls[0][0]).not.toHaveProperty('country');
+    expect(execute.mock.calls[0][0]).not.toHaveProperty('device');
   });
 });

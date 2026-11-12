@@ -1,9 +1,12 @@
 import { vi, type Mock } from 'vitest';
 import { Request, Response } from 'express';
+import geoip from 'geoip-lite';
 import UnlimitedCheckoutController from './UnlimitedCheckoutController';
 import { UnlimitedCheckoutUseCase } from '../usecases/checkout/UnlimitedCheckoutUseCase';
 import { PricingResolutionError } from '../usecases/checkout/PricingResolutionError';
 import { LapsedSubscriptionError } from '../usecases/checkout/LapsedSubscriptions';
+
+vi.mock('geoip-lite', () => ({ default: { lookup: vi.fn() } }));
 
 const makeResponse = (locals: Record<string, unknown> = {}) => {
   const res = {
@@ -93,7 +96,13 @@ describe('UnlimitedCheckoutController', () => {
     expect(sink.record).toHaveBeenCalledWith({
       name: 'checkout_started',
       user_id: 42,
-      props: { plan: 'subscription', interval: 'year', cohort: 'v2' },
+      props: {
+        plan: 'subscription',
+        interval: 'year',
+        cohort: 'v2',
+        country: null,
+        device: 'unknown',
+      },
     });
   });
 
@@ -115,6 +124,8 @@ describe('UnlimitedCheckoutController', () => {
         interval: 'year',
         cohort: 'v2',
         surface: 'limit-wall',
+        country: null,
+        device: 'unknown',
       },
     });
   });
@@ -324,5 +335,116 @@ describe('UnlimitedCheckoutController with a lapsed or foreign-currency plan', (
       code: 'currency_conflict',
       expiresAt: null,
     });
+  });
+});
+
+const IPHONE_UA =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+const MAC_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+const CLIENT_IP = '203.0.113.9';
+
+const checkoutRequest = ({
+  cookies = {},
+  headers = {},
+}: {
+  cookies?: Record<string, string>;
+  headers?: Record<string, string>;
+} = {}) =>
+  ({
+    ip: CLIENT_IP,
+    body: { interval: 'month' },
+    cookies,
+    headers,
+  }) as unknown as Request;
+
+const startCheckout = async (req: Request) => {
+  const sink = makeSink();
+  const res = makeResponse();
+  const uc = makeUseCase();
+  const controller = new UnlimitedCheckoutController(uc, sink);
+  await controller.createSession(req, res as unknown as Response);
+  return { sink, res, uc };
+};
+
+const recordedProps = (sink: ReturnType<typeof makeSink>) =>
+  sink.record.mock.calls[0][0].props as Record<string, unknown>;
+
+describe('UnlimitedCheckoutController checkout_started country and device', () => {
+  beforeEach(() => {
+    vi.mocked(geoip.lookup).mockReset();
+  });
+
+  it('records the country for a subscriber outside the EEA', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+
+    const { sink } = await startCheckout(checkoutRequest());
+
+    expect(geoip.lookup).toHaveBeenCalledWith(CLIENT_IP);
+    expect(recordedProps(sink)).toMatchObject({ country: 'US' });
+  });
+
+  it('records no country for an EEA subscriber who has not consented', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'FR' } as never);
+
+    const { sink } = await startCheckout(checkoutRequest());
+
+    expect(recordedProps(sink)).toMatchObject({ country: null });
+  });
+
+  it('records the country for an EEA subscriber who granted consent', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'FR' } as never);
+
+    const { sink } = await startCheckout(
+      checkoutRequest({ cookies: { cookie_consent: 'granted' } })
+    );
+
+    expect(recordedProps(sink)).toMatchObject({ country: 'FR' });
+  });
+
+  it('records no country when the subscriber denied consent outside the EEA', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+
+    const { sink } = await startCheckout(
+      checkoutRequest({ cookies: { cookie_consent: 'denied' } })
+    );
+
+    expect(recordedProps(sink)).toMatchObject({ country: null });
+  });
+
+  it.each([
+    ['an iPhone', IPHONE_UA, 'mobile'],
+    ['a Mac', MAC_UA, 'desktop'],
+  ])('records the device class for %s', async (_label, ua, device) => {
+    const { sink } = await startCheckout(
+      checkoutRequest({ headers: { 'user-agent': ua } })
+    );
+
+    expect(recordedProps(sink)).toMatchObject({ device });
+  });
+
+  it('never puts the client IP in the event', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+
+    const { sink } = await startCheckout(
+      checkoutRequest({ headers: { 'user-agent': MAC_UA } })
+    );
+
+    expect(JSON.stringify(sink.record.mock.calls[0][0])).not.toContain(
+      CLIENT_IP
+    );
+  });
+
+  it('returns the checkout url unchanged', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+
+    const { res, uc } = await startCheckout(
+      checkoutRequest({ headers: { 'user-agent': IPHONE_UA } })
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ url: 'https://checkout.stripe.com/test' });
+    expect((uc.execute as Mock).mock.calls[0][0]).not.toHaveProperty('country');
+    expect((uc.execute as Mock).mock.calls[0][0]).not.toHaveProperty('device');
   });
 });

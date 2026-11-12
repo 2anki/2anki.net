@@ -4,6 +4,7 @@ import { parsePricingVariant } from '../usecases/checkout/pricingVariant';
 import { parseCheckoutSurface } from '../usecases/checkout/checkoutSurface';
 import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readCheckoutAttribution } from '../lib/attribution/adClick';
+import { checkoutRequestProps } from '../lib/analytics/checkoutRequestProps';
 import type { PassKind } from '../data_layer/UserPassRepository';
 import type { EventsSink } from '../services/events/EventsSink';
 
@@ -48,6 +49,7 @@ class PassCheckoutController {
         plan: this.passKind,
         ...(surface == null ? {} : { surface }),
         ...(variant == null ? {} : { variant }),
+        ...checkoutRequestProps(req),
       },
     });
 

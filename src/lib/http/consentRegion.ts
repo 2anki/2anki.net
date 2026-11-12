@@ -62,9 +62,12 @@ export function consentRegionFor(country: string | null): ConsentRegion {
  * client-prepended X-Forwarded-For; forging it would need a direct connection
  * to the Node port, which the host firewall only allows from the box itself.
  */
+export function countryFromClientIp(req: express.Request): string | null {
+  return geoip.lookup(resolveClientIp(req))?.country ?? null;
+}
+
 export function consentRegionForRequest(req: express.Request): ConsentRegion {
-  const geo = geoip.lookup(resolveClientIp(req));
-  return consentRegionFor(geo?.country ?? null);
+  return consentRegionFor(countryFromClientIp(req));
 }
 
 /**
