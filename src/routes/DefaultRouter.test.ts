@@ -160,6 +160,36 @@ describe('DefaultRouter session hint', () => {
   });
 });
 
+describe('DefaultRouter as the last router, for the removed deck-sharing survey POST', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    ({ server, url } = await buildServer(
+      express.json() as express.RequestHandler,
+      cookieParser()
+    ));
+  });
+
+  afterAll(() => server.close());
+
+  it.each([
+    ['signed out', {}],
+    ['with a session cookie', { cookie: 'token=abc' }],
+  ])(
+    'answers a stale survey submit %s with 404',
+    async (_label, extraHeaders) => {
+      const res = await fetch(`${url}/api/deck-distribution-intent`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...extraHeaders },
+        body: JSON.stringify({ answer: 'students', upload_key: 'deck.apkg' }),
+      });
+      expect(res.ok).toBe(false);
+      expect(res.status).toBe(404);
+    }
+  );
+});
+
 describe('sitemap parity with isKnownAppRoute', () => {
   const sitemap = fs.readFileSync(
     path.resolve(__dirname, '../../web/public/sitemap.xml'),
