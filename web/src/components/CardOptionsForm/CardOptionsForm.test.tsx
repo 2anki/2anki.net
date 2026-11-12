@@ -1053,6 +1053,44 @@ describe('CardOptionsForm AI checkbox analytics', () => {
     expect(localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
   });
 
+  it('shows the PDF default as on, with its hint, until the account chooses', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        locals: { patreon: false, subscriber: true },
+        claudeCardsByDefault: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    const checkbox = await aiCheckbox();
+    expect(checkbox).toBeChecked();
+    expect(
+      screen.getByText(/Claude writes them when you upload only PDF/)
+    ).toBeInTheDocument();
+
+    fireEvent.click(checkbox);
+
+    expect(checkbox).not.toBeChecked();
+    expect(localStorage.getItem('claude-ai-flashcards')).toBe('false');
+    expect(localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
+  it('leaves the checkbox as stored when the account has no PDF default', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    expect(await aiCheckbox()).not.toBeChecked();
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
   it('does not mark a choice for a signed-out visitor', async () => {
     renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
 

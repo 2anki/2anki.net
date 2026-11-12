@@ -118,7 +118,9 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
   const isAiOn = isSignedIn ? isPaying && aiFlag : previewEnabled && aiFlag;
   const sessionHint = hasSessionHint();
   const claudeOnForPdfs =
-    !aiChoiceRecorded && userLocals?.claudeCardsByDefault === true;
+    !aiChoiceRecorded &&
+    userLocals?.claudeCardsByDefault === true &&
+    globalThis.localStorage?.getItem('pdf-page-pairs') !== 'true';
   const aiBadgeState = userLocalsLoading
     ? pendingAiBadgeState(sessionHint)
     : deriveAiBadgeState(
@@ -363,7 +365,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
                 {t('upload.page.aiOnForPdfsBody')}
                 {sentenceGap}
               </span>
-              <Link to="/card-options?returnTo=/upload#pdf-ai">
+              <Link
+                to="/card-options?returnTo=/upload#pdf-ai"
+                onClick={() => track('upload_ai_settings_link_clicked')}
+              >
                 {t('upload.page.manageInSettings')}
               </Link>
               <span>{sentenceEnd}</span>

@@ -68,6 +68,7 @@ import {
   __setFeatureFlagDependencies,
 } from '../lib/featureFlags/getFeatureFlag';
 import { AI_CHOICE_AT_KEY } from '../lib/upload/claudeCardsDefault';
+import { getAiBudgetStatus } from '../lib/claude/aiSpendGuard';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 
 const OWNER = 42;
@@ -126,6 +127,7 @@ const FREE: Account = { locals: { owner: OWNER } };
 interface Sent {
   name: string;
   body?: Record<string, string>;
+  path?: string;
 }
 
 async function send(account: Account, file: Sent) {
@@ -163,7 +165,7 @@ async function send(account: Account, file: Sent) {
     body: file.body ?? {},
     headers: {},
     cookies: {},
-    path: '/api/upload/file',
+    path: file.path ?? '/api/upload/file',
   } as unknown as express.Request;
   let status = 0;
   const res = {
@@ -216,6 +218,42 @@ describe('a paying account uploads a PDF or PowerPoint on the web', () => {
     expect(defaultAppliedEvents()).toEqual([
       expect.objectContaining({ user_id: OWNER, props: { format: 'pdf' } }),
     ]);
+  }, 20_000);
+
+  it.each([
+    ['a Dropbox pick', '/api/upload/dropbox'],
+    ['a Google Drive pick', '/api/upload/google_drive'],
+  ])(
+    'makes Claude cards from %s of a PDF, since it is a web upload',
+    async (_label, path) => {
+      const { jobType } = await send(PAYING, { name: 'lecture.pdf', path });
+
+      expect(jobType).toBe('claude');
+      expect(defaultAppliedEvents()).toHaveLength(1);
+    },
+    20_000
+  );
+
+  it('makes Claude cards for a signed-in pass holder, who counts as paying', async () => {
+    const { jobType } = await send(
+      { locals: { owner: OWNER, subscriber: true, passKind: '7d' } },
+      { name: 'lecture.pdf' }
+    );
+
+    expect(jobType).toBe('claude');
+  }, 20_000);
+
+  it('keeps the parser and records no default when the account has no AI credits left', async () => {
+    vi.mocked(getAiBudgetStatus).mockResolvedValueOnce({
+      exhausted: true,
+      balance: null,
+    });
+
+    const { status, jobType } = await send(PAYING, { name: 'lecture.pdf' });
+
+    expect(status).not.toBe(202);
+    expect(jobType).toBeNull();
+    expect(defaultAppliedEvents()).toEqual([]);
   }, 20_000);
 
   it('keeps AI off for a PowerPoint when a stored off has no recorded toggle', async () => {

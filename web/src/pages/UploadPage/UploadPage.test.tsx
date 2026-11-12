@@ -436,9 +436,11 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
 
     expect(
       screen.getByRole('button', { name: /turn ai off/i })
-    ).toHaveTextContent('AI is on for PDFs and PowerPoint');
+    ).toHaveTextContent('AI is on for PDF and PowerPoint');
     expect(
-      screen.getByText(/Claude writes them for PDF and PowerPoint files/)
+      screen.getByText(
+        /Claude writes them when you upload only PDF or PowerPoint files/
+      )
     ).toBeInTheDocument();
   });
 
@@ -495,7 +497,7 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
       screen.getByRole('link', { name: /upgrade to write cards with claude/i })
     ).toBeInTheDocument();
     expect(
-      screen.queryByText('AI is on for PDFs and PowerPoint')
+      screen.queryByText('AI is on for PDF and PowerPoint')
     ).not.toBeInTheDocument();
   });
 

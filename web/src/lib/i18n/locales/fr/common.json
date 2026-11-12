@@ -369,7 +369,7 @@
       "aiOffBody": "Tu obtiendras des cartes basées sur des règles à partir de la structure de ton fichier.",
       "aiOffIncluded": "Les cartes Claude sont incluses dans ton offre.",
       "aiOnForPdfs": "L'IA est activée pour les PDF et PowerPoint",
-      "aiOnForPdfsBody": "Ton offre inclut les cartes Claude, donc Claude les écrit pour les fichiers PDF et PowerPoint. Les autres fichiers donnent des cartes selon leur structure.",
+      "aiOnForPdfsBody": "Ton offre inclut les cartes Claude, donc Claude les écrit quand tu importes uniquement des fichiers PDF ou PowerPoint. Les autres imports reçoivent des cartes selon leur structure.",
       "turnOnClaudeCards": "Activer les cartes Claude",
       "upgradeClaude": "Passe à une offre supérieure pour écrire des cartes avec Claude",
       "aiAnonIntro": "Claude peut écrire tes cartes —",

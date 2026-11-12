@@ -2,5 +2,5 @@
   "id": "2026-11-12-claude-cards-default-pdf",
   "date": "2026-11-12",
   "type": "feature",
-  "title": "PDF and PowerPoint uploads on a paid plan get Claude cards unless you turned AI off"
+  "title": "On a paid plan, uploading only PDF or PowerPoint files on 2anki.net gets you Claude cards unless you turned AI off"
 }

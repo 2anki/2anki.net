@@ -1979,6 +1979,11 @@ class UploadService {
       this.usersRepository
     );
     if (!turnOn) return options;
+    // With no credits left the job would only fall back to the parser, later
+    // and through a queue, so the default is not applied.
+    if ((await getAiBudgetStatus({ userId: ownerId })).exhausted) {
+      return options;
+    }
     track('upload_ai_default_applied', {
       userId: ownerId,
       props: { format: uploadInputFormat(files) },
