@@ -27,6 +27,10 @@ describe('20261115000000 drop deck_distribution_intent DDL shape', () => {
 
   const recordingKnex = () => ({
     fn: db.fn,
+    raw: (sql: string) => {
+      capturedSql.push(sql);
+      return Promise.resolve();
+    },
     schema: {
       dropTableIfExists: (table: string) =>
         capture(db.schema.dropTableIfExists(table).toSQL()),
@@ -41,6 +45,7 @@ describe('20261115000000 drop deck_distribution_intent DDL shape', () => {
     await migration.up(recordingKnex());
 
     expect(capturedSql).toEqual([
+      "SET LOCAL lock_timeout = '5s'",
       'drop table if exists "deck_distribution_intent"',
     ]);
   });
@@ -48,7 +53,8 @@ describe('20261115000000 drop deck_distribution_intent DDL shape', () => {
   it('recreates the original columns on rollback', async () => {
     await migration.down(recordingKnex());
 
-    expect(capturedSql[0]).toBe(
+    expect(capturedSql[0]).toBe("SET LOCAL lock_timeout = '5s'");
+    expect(capturedSql[1]).toBe(
       'create table "deck_distribution_intent" ("id" serial primary key, "answer" text not null, "notify_email" text null, "user_id" integer not null, "upload_key" text not null, "created_at" timestamptz not null default CURRENT_TIMESTAMP)'
     );
   });
@@ -56,7 +62,7 @@ describe('20261115000000 drop deck_distribution_intent DDL shape', () => {
   it('restores the cascading user foreign key and both indexes on rollback', async () => {
     await migration.down(recordingKnex());
 
-    expect(capturedSql.slice(1)).toEqual([
+    expect(capturedSql.slice(2)).toEqual([
       'alter table "deck_distribution_intent" add constraint "deck_distribution_intent_user_id_foreign" foreign key ("user_id") references "users" ("id") on delete CASCADE',
       'create index "deck_distribution_intent_answer_index" on "deck_distribution_intent" ("answer")',
       'create index "deck_distribution_intent_user_id_index" on "deck_distribution_intent" ("user_id")',
