@@ -3964,32 +3964,35 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     } as Partial<express.Request>);
   }
 
-  it('converts a large PDF already past its question in the background for a paying signed-in user', async () => {
-    zeroCardUseCase();
-    let resolveFailed!: () => void;
-    const failed = new Promise<void>((r) => {
-      resolveFailed = r;
-    });
-    const jobRepository = jobRepositoryWithFailedGate(resolveFailed);
-    const service = new UploadService(
-      buildRepository(),
-      jobRepository,
-      buildUsersRepo(),
-      ...fakeUploadServiceDeps()
-    );
-    const { res, capturedStatus } = entitledResponse();
+  it.each(['pairs', 'single'])(
+    'converts a large PDF already answered as %s in the background for a paying signed-in user',
+    async (pdfFallback) => {
+      zeroCardUseCase();
+      let resolveFailed!: () => void;
+      const failed = new Promise<void>((r) => {
+        resolveFailed = r;
+      });
+      const jobRepository = jobRepositoryWithFailedGate(resolveFailed);
+      const service = new UploadService(
+        buildRepository(),
+        jobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus } = entitledResponse();
 
-    await service.handleUpload(largePdfRequest('pairs'), res);
-    await failed;
+      await service.handleUpload(largePdfRequest(pdfFallback), res);
+      await failed;
 
-    expect(capturedStatus()).toBe(202);
-    expect(jobRepository.create).toHaveBeenCalledWith(
-      expect.any(String),
-      '42',
-      'textbook.pdf',
-      'upload'
-    );
-  });
+      expect(capturedStatus()).toBe(202);
+      expect(jobRepository.create).toHaveBeenCalledWith(
+        expect.any(String),
+        '42',
+        'textbook.pdf',
+        'upload'
+      );
+    }
+  );
 
   it('keeps a large PDF that still has to ask its question on the normal path', async () => {
     zeroCardUseCase();

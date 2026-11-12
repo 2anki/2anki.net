@@ -925,7 +925,7 @@ describe('a PowerPoint reaching the background path from another entry point', (
     expect(outcome).toBe('stored in My Decks');
   }, 20_000);
 
-  it('builds the deck in the background when an MCP caller sends text named as a PowerPoint', async () => {
+  it('starts a background job when an MCP caller sends text named as a PowerPoint', async () => {
     const { service, jobs, settled } = backgroundService();
     const tools = mcpTools(service);
 
