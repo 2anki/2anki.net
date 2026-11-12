@@ -247,6 +247,30 @@ describe('RejectDuplicatePurchase Semester Pass renewal', () => {
     expect(status).toHaveBeenCalledWith(409);
   });
 
+  it.each(['subscription', 'auto_sync'] as const)(
+    'lets a holder in the final week start a %s checkout, as before',
+    async (kind) => {
+      const passes = seedSemesterPass(new Date(NOW.getTime() + 5 * DAY_MS));
+      const deps = {
+        ...makeDeps({}),
+        userPassRepository: passes,
+        now: () => NOW,
+      };
+      const status = vi.fn().mockReturnThis();
+      const next = vi.fn() as NextFunction;
+      const res = {
+        locals: { owner: USER_ID },
+        status,
+        json: vi.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      await makeRejectDuplicatePurchase(kind, deps)({} as Request, res, next);
+
+      expect(next).toHaveBeenCalled();
+      expect(status).not.toHaveBeenCalled();
+    }
+  );
+
   it('blocks a renewal for an Apple-billed holder whose Semester Pass ends later', async () => {
     const passes = seedSemesterPass(new Date(NOW.getTime() + 5 * DAY_MS));
     passes.seed({

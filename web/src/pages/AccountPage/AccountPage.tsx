@@ -162,7 +162,7 @@ export default function AccountPage() {
         />
       )}
 
-      {plan === 'semesterPass' && (
+      {plan === 'semesterPass' && locals.semesterRenewalOpen === true && (
         <SemesterRenewalBanner
           passKind={locals.passKind}
           passExpiresAt={passExpiresAt}

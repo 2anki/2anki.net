@@ -16,6 +16,7 @@ interface GetUserLocalsResponse {
     };
     passExpiresAt?: string | null;
     passKind?: '24h' | '7d' | '120d' | 'unlimited' | null;
+    semesterRenewalOpen?: boolean;
     planSource?: 'stripe' | 'apple' | 'lifetime' | null;
   };
   linked_email: string;

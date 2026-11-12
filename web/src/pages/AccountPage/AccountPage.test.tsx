@@ -287,7 +287,11 @@ describe('AccountPage Semester Pass renewal banner', () => {
   const NOW = new Date('2027-01-10T12:00:00.000Z');
   const DAY_MS = 24 * 60 * 60 * 1000;
 
-  const renderPassHolder = (passKind: '7d' | '120d', daysLeft: number) => {
+  const renderPassHolder = (
+    passKind: '7d' | '120d',
+    daysLeft: number,
+    semesterRenewalOpen = passKind === '120d' && daysLeft <= 7
+  ) => {
     const passExpiresAt = new Date(
       NOW.getTime() + daysLeft * DAY_MS
     ).toISOString();
@@ -295,7 +299,12 @@ describe('AccountPage Semester Pass renewal banner', () => {
       isLoading: false,
       data: {
         user: { email: 'learner@example.com' },
-        locals: { passKind, passExpiresAt, subscriber: true },
+        locals: {
+          passKind,
+          passExpiresAt,
+          subscriber: true,
+          semesterRenewalOpen,
+        },
       },
       refetch: vi.fn(),
     });
@@ -334,6 +343,14 @@ describe('AccountPage Semester Pass renewal banner', () => {
 
   it('shows no renewal to a Week Pass holder in the final days', () => {
     renderPassHolder('7d', 2);
+
+    expect(
+      screen.queryByRole('region', { name: 'Semester Pass renewal' })
+    ).toBeNull();
+  });
+
+  it('shows no renewal in the final week when the server keeps it closed', () => {
+    renderPassHolder('120d', 4, false);
 
     expect(
       screen.queryByRole('region', { name: 'Semester Pass renewal' })

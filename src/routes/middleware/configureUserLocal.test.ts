@@ -146,6 +146,72 @@ describe('configureUserLocal — planSource', () => {
     expect(res.locals.planSource).toBe('apple');
   });
 
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  const localsFor = async (userPassRepo: InMemoryUserPassRepository) => {
+    const res = makeRes();
+    await configureUserLocal(
+      makeReq({}, { token: 't' }),
+      res,
+      makeAuthService({ patreon: false, isSubscriber: false }),
+      noDatabase,
+      new InMemoryAnonymousPassRepository(),
+      now,
+      undefined,
+      userPassRepo
+    );
+    return res.locals;
+  };
+
+  it('opens the Semester Pass renewal for a holder in the final week', async () => {
+    const userPassRepo = new InMemoryUserPassRepository();
+    userPassRepo.seed({
+      user_id: 1,
+      kind: '120d',
+      expires_at: new Date(now.getTime() + 4 * DAY_MS),
+      stripe_payment_intent_id: 'pi_semester',
+    });
+
+    const locals = await localsFor(userPassRepo);
+
+    expect(locals.semesterRenewalOpen).toBe(true);
+  });
+
+  it('keeps the renewal closed with more than a week left', async () => {
+    const userPassRepo = new InMemoryUserPassRepository();
+    userPassRepo.seed({
+      user_id: 1,
+      kind: '120d',
+      expires_at: new Date(now.getTime() + 30 * DAY_MS),
+      stripe_payment_intent_id: 'pi_semester',
+    });
+
+    const locals = await localsFor(userPassRepo);
+
+    expect(locals.semesterRenewalOpen).toBe(false);
+  });
+
+  it('keeps the renewal closed while an Apple-billed pass runs beside the Semester Pass', async () => {
+    const userPassRepo = new InMemoryUserPassRepository();
+    userPassRepo.seed({
+      user_id: 1,
+      kind: '120d',
+      expires_at: new Date(now.getTime() + 4 * DAY_MS),
+      stripe_payment_intent_id: 'pi_semester',
+    });
+    userPassRepo.seed({
+      user_id: 1,
+      kind: 'unlimited',
+      expires_at: new Date(now.getTime() + 2 * DAY_MS),
+      stripe_payment_intent_id: 'apple:txn_overlap',
+    });
+
+    const locals = await localsFor(userPassRepo);
+
+    expect(locals.passKind).toBe('120d');
+    expect(locals.semesterRenewalOpen).toBe(false);
+  });
+
   it("sets planSource 'stripe' when an active Stripe sub exists even if a pass is present", async () => {
     const anonRepo = new InMemoryAnonymousPassRepository();
     const userPassRepo = new InMemoryUserPassRepository();

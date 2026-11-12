@@ -8,7 +8,10 @@ import UserPassRepository, {
   IUserPassRepository,
 } from '../../data_layer/UserPassRepository';
 import { getDatabase } from '../../data_layer';
-import { isInSemesterRenewalWindow } from '../../lib/passes/semesterRenewal';
+import {
+  holdsOnlySemesterPasses,
+  isInSemesterRenewalWindow,
+} from '../../lib/passes/semesterRenewal';
 import {
   HeldEntitlements,
   PurchaseKind,
@@ -34,18 +37,6 @@ const isAppleBilled = (
   paymentIntentId: string | undefined
 ): boolean =>
   kind === 'unlimited' && (paymentIntentId ?? '').startsWith('apple:');
-
-const holdsOnlySemesterPasses = async (
-  owner: number,
-  now: Date,
-  deps: PurchaseGuardDeps
-): Promise<boolean> => {
-  const activePasses = await deps.userPassRepository.findActivePasses(
-    owner,
-    now
-  );
-  return activePasses.every((pass) => pass.kind === '120d');
-};
 
 export const readHeldEntitlements = async (
   owner: number,
@@ -78,7 +69,9 @@ export const readHeldEntitlements = async (
     activePassExpiresAt,
     semesterRenewalOpen:
       isInSemesterRenewalWindow(activePassKind, activePassExpiresAt, now) &&
-      (await holdsOnlySemesterPasses(owner, now, deps)),
+      holdsOnlySemesterPasses(
+        await deps.userPassRepository.findActivePasses(owner, now)
+      ),
   };
 };
 
