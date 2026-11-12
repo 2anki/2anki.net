@@ -1074,6 +1074,29 @@ describe('PricingPage without Auto Sync for sale', () => {
       screen.queryByRole('link', { name: /Auto Sync/ })
     ).not.toBeInTheDocument();
   });
+
+  it.each([
+    'minimal',
+    'unlimited-first',
+    'semester-first',
+    'mcp-day-first',
+  ] as const)('offers no Auto Sync plan on the %s arm', async (arm) => {
+    mockPricingVariant.current = arm;
+
+    renderAt('/pricing', {
+      isLoggedIn: true,
+      entitlement: { subscriber: false, patreon: false },
+    });
+
+    await screen.findByText(
+      'Prices in USD. Your card is charged in your local currency at checkout.'
+    );
+    expect(screen.queryByTestId('auto-sync-card')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sync from Notion')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Auto Sync/ })
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('PricingPage after a failed renewal', () => {

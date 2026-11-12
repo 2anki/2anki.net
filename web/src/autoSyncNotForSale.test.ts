@@ -10,6 +10,8 @@ const MARKETING_SOURCES = [
   'scripts/prerenderLandingPages.ts',
   'src/pages/AnswersPage/answersConfig.ts',
   'src/pages/ConvertLandingPage/convertLandingConfig.ts',
+  'src/pages/DocsPage/content/start-here/what-is-2anki.md',
+  'src/pages/DocsPage/content/de/start-here/what-is-2anki.md',
   ...readdirSync(LANDING_COPY_DIR)
     .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
     .map((name) => `src/pages/LandingPage/copy/${name}`),
