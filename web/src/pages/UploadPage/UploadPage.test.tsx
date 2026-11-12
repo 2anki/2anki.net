@@ -435,6 +435,9 @@ describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => 
     renderPage();
 
     expect(screen.queryByText('AI is on for PDF and PowerPoint')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Turn on Claude cards' })
+    ).toBeInTheDocument();
   });
 
   it('tells a paying account with no AI choice that Claude writes PDF and PowerPoint cards', () => {

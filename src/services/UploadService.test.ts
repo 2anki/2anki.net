@@ -9465,6 +9465,33 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     });
   });
 
+  it('claims a held PDF for a paying owner with nothing stored without the Claude PDF default', async () => {
+    const execute = mockPartial([{ name: 'deck', cardCount: 5 }]);
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo({ getCardOptions: vi.fn().mockResolvedValue(null) }),
+      ...fakeUploadServiceDeps({})
+    );
+
+    await service.convertHeldFileForOwner(
+      '4242',
+      {
+        ...heldSourceFile(),
+        originalname: 'lecture.pdf',
+        mimetype: 'application/pdf',
+      },
+      true,
+      null,
+      'req-1',
+      null
+    );
+
+    expect(execute.mock.calls[0][2]).toMatchObject({
+      claudeAIFlashcards: false,
+    });
+  });
+
   it('builds a pass claim with Claude and image quiz off whatever the options ask', async () => {
     const execute = mockPartial([{ name: 'deck', cardCount: 5 }]);
     const service = new UploadService(
