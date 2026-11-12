@@ -507,12 +507,26 @@ describe('DownloadController.getLocalFile', () => {
   });
 
   it.each([
-    ['granted consent', 'granted', 'anon-1'],
-    ['declined', 'denied', null],
+    [
+      'granted consent',
+      'granted',
+      { cookie_consent: 'granted' },
+      undefined,
+      'anon-1',
+    ],
+    ['declined', 'denied', { cookie_consent: 'denied' }, undefined, null],
+    ['is in the EEA with no choice stored', 'eea', {}, '193.99.144.80', null],
+    [
+      'is outside the EEA with no choice stored',
+      'other',
+      {},
+      '8.8.8.8',
+      'anon-1',
+    ],
   ])(
     'records the signed-in user the route resolved on a download, with the anonymous id only when the visitor %s',
-    (_label, consent, expectedAnonymousId) => {
-      const id = `local-signed-in-workspace-${consent}`;
+    (_label, slug, consentCookies, ip, expectedAnonymousId) => {
+      const id = `local-signed-in-workspace-${slug}`;
       const workspace = path.join(workspaceBase, id);
       fs.mkdirSync(workspace);
       fs.writeFileSync(path.join(workspace, 'one.apkg'), 'a');
@@ -520,7 +534,8 @@ describe('DownloadController.getLocalFile', () => {
       const controller = new DownloadController(makeService() as any);
       const req = {
         params: { id, filename: 'one.apkg' },
-        cookies: { anon_id: 'anon-1', cookie_consent: consent },
+        cookies: { anon_id: 'anon-1', ...consentCookies },
+        ip,
       } as unknown as Request;
       const res = fileResponse();
       (res as unknown as { locals: Record<string, unknown> }).locals = {

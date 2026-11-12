@@ -318,6 +318,47 @@ describe('WebhookRouter — pass grant', () => {
     );
   });
 
+  it.each([
+    ['granted consent', { anon_id_consent: 'granted' }, 'anon-signed-in'],
+    ['gave no consent', {}, null],
+  ])(
+    'grants a signed-in pass whose buyer %s, keeping the user and the anon id only under consent on checkout_completed',
+    async (_label, consentMeta, expectedAnonymousId) => {
+      mockWebhookEvent = makePassSessionEvent({
+        metadata: {
+          user_id: '42',
+          pass_kind: '24h',
+          anon_id: 'anon-signed-in',
+          ...consentMeta,
+        },
+      });
+      mockUpsert.mockResolvedValue({
+        id: 1,
+        user_id: 42,
+        kind: '24h',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        stripe_payment_intent_id: 'pi_test_123',
+      });
+
+      const res = await postWebhook();
+      expect(res.status).toBe(200);
+      expect(mockUpsert).toHaveBeenCalledWith(
+        42,
+        '24h',
+        24 * 60 * 60 * 1000,
+        'pi_test_123',
+        expect.any(Date)
+      );
+      expect(mockTrack).toHaveBeenCalledWith(
+        'checkout_completed',
+        expect.objectContaining({
+          userId: 42,
+          anonymousId: expectedAnonymousId,
+        })
+      );
+    }
+  );
+
   it('grants 7d pass on checkout.session.completed with pass_kind=7d', async () => {
     mockWebhookEvent = makePassSessionEvent({
       metadata: { user_id: '7', pass_kind: '7d' },

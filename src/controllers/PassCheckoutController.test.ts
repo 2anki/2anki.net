@@ -172,6 +172,33 @@ describe('PassCheckoutController', () => {
     }
   );
 
+  it.each([
+    ['granted consent', 'granted', true],
+    ['declined', 'denied', false],
+  ])(
+    'tells the use case whether a signed-in pass buyer who %s may have the anon id tracked, starting under the user only',
+    async (_label, consent, expectedTrackingAllowed) => {
+      const execute = resolving();
+      const { controller, record } = makeController(execute);
+      const req = {
+        cookies: { anon_id: 'anon-uuid-123', cookie_consent: consent },
+      } as never;
+
+      await controller.createSession(req, makeRes());
+
+      expect(execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 42,
+          anonId: 'anon-uuid-123',
+          anonIdTrackingAllowed: expectedTrackingAllowed,
+        })
+      );
+      expect(record).toHaveBeenCalledWith(
+        expect.objectContaining({ user_id: 42, anonymous_id: null })
+      );
+    }
+  );
+
   it('carries the surface and pricing variant so starts join to completions', async () => {
     vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
     const { controller, record } = makeController(resolving());
