@@ -123,7 +123,6 @@ import {
 } from '../../../../lib/photos/photosFromUpload';
 import ChatPanel from '../../../../components/ChatPanel/ChatPanel';
 import { CreateAccountNotice } from '../../../../components/CreateAccountNotice/CreateAccountNotice';
-import { ConfirmEmailNotice } from '../../../../components/ConfirmEmailNotice/ConfirmEmailNotice';
 import {
   AnonymousPartialGate,
   hasAnonIdCookie,
@@ -3101,7 +3100,6 @@ function UploadForm({
 
   const successOffer = resolveSuccessOffer({
     anonymous: userLocals != null && userLocals.user?.email == null,
-    emailVerified: userLocals?.user?.email_verified,
   });
 
   const renderClaudeResendHeld = () =>
@@ -3394,15 +3392,6 @@ function UploadForm({
           keptForAccount={deckKeptForAccount}
         />
       )}
-      {successOffer === 'confirm_email' &&
-        cardsHeldBack === 0 &&
-        !sampleRun &&
-        userLocals?.user?.email != null && (
-          <ConfirmEmailNotice
-            email={userLocals.user.email}
-            deckName={deckName}
-          />
-        )}
       <button
         type="button"
         className={

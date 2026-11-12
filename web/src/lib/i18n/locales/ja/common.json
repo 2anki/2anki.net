@@ -494,7 +494,8 @@
       "emailPlaceholder": "メールアドレス",
       "sending": "送信中",
       "sendResetLink": "リセットリンクを送る",
-      "backToLogin": "ログインに戻る"
+      "backToLogin": "ログインに戻る",
+      "sendError": "今はリンクを送信できませんでした。少し待ってからもう一度お試しください。"
     },
     "newPassword": {
       "title": "新しいパスワードを設定",

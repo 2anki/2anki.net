@@ -29,4 +29,10 @@ describe('changelog loader', () => {
       expect(entry.title.length).toBeGreaterThan(0);
     }
   });
+
+  it('no longer lists the removed confirm-email card', () => {
+    expect(changelog.map((entry) => entry.id)).not.toContain(
+      '2026-10-09-confirm-email-at-first-deck'
+    );
+  });
 });

@@ -28,7 +28,7 @@ function ForgotPasswordForm({ setError }: Readonly<ForgotPasswordProps>) {
         'password_reset'
       );
       if (!response.ok) {
-        setError(new UserNotice(t('account:confirmEmail.error')));
+        setError(new UserNotice(t('auth.forgot.sendError')));
         return;
       }
       setSubmitted(true);

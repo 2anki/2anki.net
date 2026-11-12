@@ -40,6 +40,10 @@ describe('ForgotPasswordForm', () => {
     submit('reader@example.com');
 
     await waitFor(() => expect(setError).toHaveBeenCalledTimes(1));
+    expect(mockRequestMagicLink).toHaveBeenCalledWith(
+      'reader@example.com',
+      'password_reset'
+    );
     const [notice] = setError.mock.calls[0];
     expect(notice).toBeInstanceOf(UserNotice);
     expect(notice.message).toBe(

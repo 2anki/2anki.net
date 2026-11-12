@@ -519,7 +519,8 @@
       "emailPlaceholder": "E-Mail-Adresse",
       "sending": "Wird gesendet",
       "sendResetLink": "Link zum Zurücksetzen senden",
-      "backToLogin": "Zurück zur Anmeldung"
+      "backToLogin": "Zurück zur Anmeldung",
+      "sendError": "Der Link konnte gerade nicht gesendet werden. Versuch es gleich noch einmal."
     },
     "newPassword": {
       "title": "Neues Passwort festlegen",

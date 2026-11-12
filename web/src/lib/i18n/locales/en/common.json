@@ -519,7 +519,8 @@
       "emailPlaceholder": "Email address",
       "sending": "Sending",
       "sendResetLink": "Send reset link",
-      "backToLogin": "Back to login"
+      "backToLogin": "Back to login",
+      "sendError": "Couldn't send the link just now. Try again in a moment."
     },
     "newPassword": {
       "title": "Set a new password",

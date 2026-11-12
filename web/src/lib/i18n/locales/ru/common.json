@@ -569,7 +569,8 @@
       "emailPlaceholder": "E-mail адрес",
       "sending": "Отправка",
       "sendResetLink": "Прислать ссылку для сброса",
-      "backToLogin": "Назад ко входу"
+      "backToLogin": "Назад ко входу",
+      "sendError": "Не удалось отправить ссылку сейчас. Попробуй ещё раз через минуту."
     },
     "newPassword": {
       "title": "Задай новый пароль",
