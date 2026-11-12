@@ -7,6 +7,7 @@ import { parsePricingVariant } from '../usecases/checkout/pricingVariant';
 import { parseCheckoutSurface } from '../usecases/checkout/checkoutSurface';
 import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readCheckoutAttribution } from '../lib/attribution/adClick';
+import { checkoutRequestProps } from '../lib/analytics/checkoutRequestProps';
 import { PricingResolutionError } from '../usecases/checkout/PricingResolutionError';
 import { LapsedSubscriptionError } from '../usecases/checkout/LapsedSubscriptions';
 import { isCurrencyConflictError } from '../usecases/checkout/createCheckoutSession';
@@ -95,6 +96,7 @@ class UnlimitedCheckoutController {
         interval,
         cohort: result.cohort,
         ...(surface == null ? {} : { surface }),
+        ...checkoutRequestProps(req),
       },
     });
 

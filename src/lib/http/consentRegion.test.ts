@@ -3,6 +3,7 @@ import geoip from 'geoip-lite';
 import {
   consentRegionFor,
   consentRegionForRequest,
+  countryFromClientIp,
   trackingAllowedFor,
 } from './consentRegion';
 
@@ -46,6 +47,23 @@ describe('consentRegionForRequest', () => {
     vi.mocked(geoip.lookup).mockReturnValue(null);
 
     expect(consentRegionForRequest({ headers: {} } as never)).toBe('eea');
+  });
+});
+
+describe('countryFromClientIp', () => {
+  it('returns the geo country of the client ip, ignoring CDN headers', () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'DE' } as never);
+
+    expect(
+      countryFromClientIp({ headers: { 'cf-ipcountry': 'US' } } as never)
+    ).toBe('DE');
+    expect(geoip.lookup).toHaveBeenLastCalledWith('203.0.113.9');
+  });
+
+  it('returns null when the ip is unknown to the geo database', () => {
+    vi.mocked(geoip.lookup).mockReturnValue(null);
+
+    expect(countryFromClientIp({ headers: {} } as never)).toBe(null);
   });
 });
 
