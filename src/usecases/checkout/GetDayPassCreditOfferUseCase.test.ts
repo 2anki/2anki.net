@@ -11,14 +11,21 @@ const NOW = new Date('2026-11-12T12:00:00.000Z');
 
 const useCaseFor = (dayPassExpiresAt: Date | null) => {
   const credits = new InMemoryDayPassCreditRepository();
+  const passes = new InMemoryUserPassRepository();
   if (dayPassExpiresAt != null) {
     credits.seedDayPass(42, 'pi_day', dayPassExpiresAt);
+    passes.seed({
+      user_id: 42,
+      kind: '24h',
+      expires_at: dayPassExpiresAt,
+      stripe_payment_intent_id: 'pi_day',
+    });
   }
   const sessions = { retrieve: vi.fn() };
   const useCase = new GetDayPassCreditOfferUseCase(
     new DayPassCreditEligibility({
       credits,
-      passes: new InMemoryUserPassRepository(),
+      passes,
       sessions: sessions as never,
       pricing: new PricingService({
         prices: stripePassPrices({
@@ -50,7 +57,9 @@ describe('GetDayPassCreditOfferUseCase', () => {
       display: '$23.50',
       semesterDisplay: '$29.50',
       dayPassDisplay: '$6',
-      endsAt: new Date(NOW.getTime() + 44 * HOUR).toISOString(),
+      endsAt: new Date(
+        NOW.getTime() + 44 * HOUR - 31 * 60 * 1000
+      ).toISOString(),
       semesterStartsAt: new Date(NOW.getTime() + 20 * HOUR).toISOString(),
     });
   });
@@ -77,6 +86,19 @@ describe('GetDayPassCreditOfferUseCase', () => {
     const credit = await credits.claim(42, 'pi_day');
     await credits.attachSession(credit.id, null, 'cs_paid');
     sessions.retrieve.mockResolvedValue({ id: 'cs_paid', status: 'complete' });
+
+    expect(await useCase.execute(42)).toEqual({ eligible: false });
+  });
+
+  it('answers not eligible when Stripe fails while reading the attached checkout', async () => {
+    const { useCase, credits, sessions } = useCaseFor(
+      new Date(NOW.getTime() + 20 * HOUR)
+    );
+    const credit = await credits.claim(42, 'pi_day');
+    await credits.attachSession(credit.id, null, 'cs_open');
+    sessions.retrieve.mockRejectedValue(
+      Object.assign(new Error('api down'), { type: 'StripeAPIError' })
+    );
 
     expect(await useCase.execute(42)).toEqual({ eligible: false });
   });

@@ -30,15 +30,20 @@ const response = (status: number, body: unknown) => ({
 
 type Reply = ReturnType<typeof response>;
 
-const routeFetch = (offer: Reply, checkout?: Reply) => {
+const routeFetch = (offer: Reply, checkout?: Reply, offerAfter?: Reply) => {
   const creditCalls: string[] = [];
+  let checkedOut = false;
   globalThis.fetch = vi.fn(async (url: string, init?: { method?: string }) => {
     if (!String(url).includes('day-pass-credit')) {
       return response(200, {});
     }
     const method = init?.method ?? 'GET';
     creditCalls.push(method);
-    return method === 'POST' && checkout != null ? checkout : offer;
+    if (method === 'POST') {
+      checkedOut = true;
+      return checkout ?? offer;
+    }
+    return checkedOut && offerAfter != null ? offerAfter : offer;
   }) as unknown as typeof fetch;
   return creditCalls;
 };
@@ -174,6 +179,22 @@ describe('DayPassCreditOffer', () => {
     expect(
       screen.queryByRole('button', { name: ctaName })
     ).not.toBeInTheDocument();
+  });
+
+  test('drops the cached offer after a terminal refusal so the other page does not show it again', async () => {
+    const creditCalls = routeFetch(
+      response(200, OFFER),
+      response(409, { code: 'day_pass_credit_used' }),
+      response(200, { eligible: false })
+    );
+    renderOffer();
+
+    fireEvent.click(await screen.findByRole('button', { name: ctaName }));
+
+    await waitFor(() => expect(creditCalls).toEqual(['GET', 'POST', 'GET']));
+    expect(
+      screen.getByText('This offer is no longer available.')
+    ).toBeInTheDocument();
   });
 
   test.each([

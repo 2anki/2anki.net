@@ -8,7 +8,10 @@ import {
   stripePassPrices,
   type LivePasses,
 } from '../../test/fakes/dayPassCredit';
-import { DayPassCreditEligibility } from './dayPassCredit';
+import {
+  CheckoutSessionReadError,
+  DayPassCreditEligibility,
+} from './dayPassCredit';
 
 const HOUR = 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
@@ -76,7 +79,8 @@ describe('DayPassCreditEligibility', () => {
       eligible: true,
       dayPassPaymentIntentId: 'pi_day',
       endsAt: new Date(NOW.getTime() + 46 * HOUR),
-      checkoutExpiresAt: new Date(NOW.getTime() + 24 * HOUR),
+      offerEndsAt: new Date(NOW.getTime() + 46 * HOUR - 31 * MINUTE),
+      checkoutExpiresAt: new Date(NOW.getTime() + 23 * HOUR + 55 * MINUTE),
       semesterStartsAt: new Date(NOW.getTime() + 22 * HOUR),
       amount: 2300,
       currency: 'usd',
@@ -97,6 +101,7 @@ describe('DayPassCreditEligibility', () => {
     expect(await eligibility.decide(42)).toMatchObject({
       eligible: true,
       endsAt: new Date(NOW.getTime() + 8 * HOUR),
+      offerEndsAt: new Date(NOW.getTime() + 8 * HOUR - 31 * MINUTE),
       checkoutExpiresAt: new Date(NOW.getTime() + 8 * HOUR),
       semesterStartsAt: null,
     });
@@ -130,6 +135,59 @@ describe('DayPassCreditEligibility', () => {
       eligible: true,
       checkoutExpiresAt: new Date(NOW.getTime() + 31 * MINUTE),
     });
+  });
+
+  it('dates the start of the 120 days from the latest running pass, which the grant stacks behind', async () => {
+    const { eligibility, passes } = setup();
+    passes.seed({
+      user_id: 42,
+      kind: '24h',
+      expires_at: new Date(NOW.getTime() + 30 * HOUR),
+      stripe_payment_intent_id: 'apple:claimed-day',
+    });
+
+    expect(await eligibility.decide(42)).toMatchObject({
+      eligible: true,
+      dayPassPaymentIntentId: 'pi_day',
+      semesterStartsAt: new Date(NOW.getTime() + 30 * HOUR),
+    });
+  });
+
+  it('offers the credit to a Day Pass holder whose subscription lapsed and is no longer active', async () => {
+    const { eligibility } = setup({
+      held: nothingHeld({
+        activeSubscription: false,
+        activePassKind: '24h',
+        activePassExpiresAt: new Date(NOW.getTime() + 22 * HOUR),
+      }),
+    });
+
+    expect(await eligibility.decide(42)).toMatchObject({ eligible: true });
+  });
+
+  it('refuses a credit row that belongs to someone else without reading its checkout', async () => {
+    const { eligibility, credits, sessions } = setup();
+    const credit = await credits.claim(7, 'pi_day');
+    await credits.attachSession(credit.id, null, 'cs_theirs');
+
+    expect(await eligibility.decide(42)).toEqual({
+      eligible: false,
+      reason: 'credit_used',
+    });
+    expect(sessions.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('reports a Stripe failure reading the attached checkout as a session read error', async () => {
+    const { eligibility, credits, sessions } = setup();
+    const credit = await credits.claim(42, 'pi_day');
+    await credits.attachSession(credit.id, null, 'cs_open');
+    sessions.retrieve.mockRejectedValue(
+      Object.assign(new Error('api down'), { type: 'StripeAPIError' })
+    );
+
+    await expect(eligibility.decide(42)).rejects.toBeInstanceOf(
+      CheckoutSessionReadError
+    );
   });
 
   it('reads nothing else for an account with no recent Day Pass', async () => {

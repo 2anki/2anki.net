@@ -460,6 +460,81 @@ describe('AccountPage Day Pass credit offer', () => {
     expect(creditRequests).toBe(0);
   });
 
+  it('offers a free account whose Day Pass already ended, starting the 120 days at payment', async () => {
+    globalThis.fetch = vi.fn(async (url: string) => {
+      if (String(url).includes('day-pass-credit')) {
+        creditRequests += 1;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          eligible: true,
+          display: '$23',
+          semesterDisplay: '$29',
+          dayPassDisplay: '$6',
+          endsAt: '2026-11-14T10:00:00.000Z',
+          semesterStartsAt: null,
+        }),
+      };
+    }) as unknown as typeof fetch;
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: { user: { email: 'learner@example.com' }, locals: {} },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'free',
+      hasActivePlan: false,
+    });
+
+    renderAccountPage();
+
+    expect(
+      await screen.findByText('The 120 days start when you pay.')
+    ).toBeInstanceOf(HTMLElement);
+    expect(creditRequests).toBe(1);
+  });
+
+  it('stays quiet for a past-due subscriber so the payment notice is not crowded', async () => {
+    mockGetSubscriptionStatus.mockReset();
+    mockGetSubscriptionStatus.mockResolvedValue({
+      subscriptions: [
+        {
+          id: 'sub_test',
+          status: 'past_due',
+          created: null,
+          cancel_at_period_end: false,
+          cancel_at: null,
+          canceled_at: null,
+          current_period_end: null,
+          paused_until: null,
+          cancellation_reason: null,
+          plan: null,
+        },
+      ],
+    });
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: { subscriptionInfo: { email: 'payer@example.com' } },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'free',
+      hasActivePlan: false,
+    });
+
+    renderAccountPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('pastDue')
+    );
+    expect(creditRequests).toBe(0);
+  });
+
   it('does not ask for the offer on a Pro plan', () => {
     mockUseSubscriptionStatus.mockReturnValue({
       plan: 'pro',

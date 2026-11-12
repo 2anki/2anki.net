@@ -1,4 +1,8 @@
-import { DayPassCreditEligibility } from './dayPassCredit';
+import {
+  CheckoutSessionReadError,
+  DayPassCreditDecision,
+  DayPassCreditEligibility,
+} from './dayPassCredit';
 import { formatDisplay } from './GetPassPricingUseCase';
 
 export type DayPassCreditOfferView =
@@ -18,7 +22,7 @@ export class GetDayPassCreditOfferUseCase {
   constructor(private readonly eligibility: DayPassCreditEligibility) {}
 
   async execute(userId: number): Promise<DayPassCreditOfferView> {
-    const decision = await this.eligibility.decide(userId);
+    const decision = await this.decideQuietly(userId);
     if (!decision.eligible) {
       return { eligible: false };
     }
@@ -32,8 +36,24 @@ export class GetDayPassCreditOfferUseCase {
         decision.currency
       ),
       dayPassDisplay: formatDisplay(decision.dayPassAmount, decision.currency),
-      endsAt: decision.endsAt.toISOString(),
+      endsAt: decision.offerEndsAt.toISOString(),
       semesterStartsAt: decision.semesterStartsAt?.toISOString() ?? null,
     };
+  }
+
+  // Showing the offer is optional; a Stripe hiccup reading the attached
+  // checkout should hide it, not fail the account or upload page request.
+  private async decideQuietly(userId: number): Promise<DayPassCreditDecision> {
+    try {
+      return await this.eligibility.decide(userId);
+    } catch (error) {
+      if (error instanceof CheckoutSessionReadError) {
+        console.warn('checkout.day_pass_credit.session_read_failed', {
+          user_id: userId,
+        });
+        return { eligible: false, reason: 'credit_used' };
+      }
+      throw error;
+    }
   }
 }

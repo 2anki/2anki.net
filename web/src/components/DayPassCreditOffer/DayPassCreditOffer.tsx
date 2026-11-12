@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { track } from '../../lib/analytics/track';
 import {
@@ -33,6 +33,7 @@ export function DayPassCreditOffer({
 }: DayPassCreditOfferProps) {
   const { t, i18n } = useTranslation('dayPassCredit');
   const { data: userLocals } = useUserLocals();
+  const queryClient = useQueryClient();
   const { data: offer } = useQuery({
     queryKey: ['dayPassCredit', userLocals?.user?.id ?? null],
     queryFn: getDayPassCreditOffer,
@@ -51,7 +52,19 @@ export function DayPassCreditOffer({
     track('day_pass_credit_offer_shown', { placement });
   }, [visible, placement]);
 
-  if (!enabled || offer == null) return null;
+  if (!enabled) return null;
+
+  if (refusal === 'unavailable') {
+    return (
+      <section className={styles.offer}>
+        <p role="alert" className={styles.refusal}>
+          {t('unavailable')} <Link to="/pricing">{t('seePlans')}</Link>
+        </p>
+      </section>
+    );
+  }
+
+  if (offer == null) return null;
 
   const handleClick = async () => {
     track('day_pass_credit_offer_clicked', { placement });
@@ -64,17 +77,10 @@ export function DayPassCreditOffer({
     }
     setPending(false);
     setRefusal(result.status);
+    if (result.status === 'unavailable') {
+      await queryClient.invalidateQueries({ queryKey: ['dayPassCredit'] });
+    }
   };
-
-  if (refusal === 'unavailable') {
-    return (
-      <section className={styles.offer}>
-        <p role="alert" className={styles.refusal}>
-          {t('unavailable')} <Link to="/pricing">{t('seePlans')}</Link>
-        </p>
-      </section>
-    );
-  }
 
   const startLine =
     offer.semesterStartsAt == null

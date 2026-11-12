@@ -324,6 +324,7 @@ describe('WebhookRouter — pass grant', () => {
       'pi_test_123',
       expect.any(Date)
     );
+    expect(mockMarkDayPassCreditRedeemed).not.toHaveBeenCalled();
   });
 
   it('grants an ordinary Semester Pass for a paid Day Pass credit session and marks the credit used', async () => {
@@ -470,6 +471,7 @@ describe('WebhookRouter — pass grant', () => {
       'pi_7d',
       expect.any(Date)
     );
+    expect(mockMarkDayPassCreditRedeemed).not.toHaveBeenCalled();
   });
 
   it('grants 120d Semester Pass on checkout.session.completed with pass_kind=120d', async () => {
@@ -1692,6 +1694,50 @@ describe('WebhookRouter — checkout.session.expired', () => {
       expect.any(String),
       null
     );
+    expect(mockSendAbandonedCheckoutRecoveryEmail).toHaveBeenCalledWith(
+      'buyer@example.com',
+      expect.any(String)
+    );
+  });
+
+  it('sends no recovery email when a Day Pass credit checkout expires', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.expired',
+      data: {
+        object: {
+          id: 'cs_expired_credit',
+          customer_details: { email: 'buyer@example.com' },
+          metadata: {
+            pass_kind: '120d',
+            user_id: '42',
+            day_pass_credit: '1',
+          },
+        },
+      },
+    };
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(mockClaimSession).not.toHaveBeenCalled();
+    expect(mockSendAbandonedCheckoutRecoveryEmail).not.toHaveBeenCalled();
+  });
+
+  it('still sends the recovery email when an ordinary pass checkout expires', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.expired',
+      data: {
+        object: {
+          id: 'cs_expired_pass',
+          customer_details: { email: 'buyer@example.com' },
+          metadata: { pass_kind: '120d', user_id: '42' },
+        },
+      },
+    };
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
     expect(mockSendAbandonedCheckoutRecoveryEmail).toHaveBeenCalledWith(
       'buyer@example.com',
       expect.any(String)

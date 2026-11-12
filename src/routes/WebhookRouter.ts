@@ -816,6 +816,7 @@ const WebhooksRouter = () => {
             id: string;
             customer_details?: { email?: string | null } | null;
             customer_email?: string | null;
+            metadata?: Record<string, string> | null;
             after_expiration?: {
               recovery?: {
                 url?: string | null;
@@ -823,6 +824,12 @@ const WebhooksRouter = () => {
               } | null;
             } | null;
           };
+          // A credit checkout expires by design when its offer ends; the
+          // generic recovery email would point the buyer at list price.
+          if (expiredSession.metadata?.day_pass_credit === '1') {
+            console.info('checkout.session.expired.day_pass_credit_skipped');
+            break;
+          }
           const sessionEmail =
             expiredSession.customer_details?.email ??
             expiredSession.customer_email ??

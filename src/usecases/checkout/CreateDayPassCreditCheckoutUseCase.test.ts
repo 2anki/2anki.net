@@ -109,7 +109,7 @@ describe('CreateDayPassCreditCheckoutUseCase', () => {
     await useCase.execute(buyer);
 
     expect(sessions.create.mock.calls[0][0].expires_at).toBe(
-      Math.floor((NOW.getTime() + 24 * HOUR) / 1000)
+      Math.floor((NOW.getTime() + 23 * HOUR + 55 * 60 * 1000) / 1000)
     );
   });
 
@@ -131,6 +131,18 @@ describe('CreateDayPassCreditCheckoutUseCase', () => {
     expect(await credits.findByDayPass('pi_day')).toMatchObject({
       checkoutSessionId: 'cs_1',
     });
+  });
+
+  it('lets a Stripe failure reading the earlier checkout surface instead of opening another', async () => {
+    const { credits, sessions, useCase } = setup();
+    const credit = await credits.claim(42, 'pi_day');
+    await credits.attachSession(credit.id, null, 'cs_open');
+    sessions.retrieve.mockRejectedValue(
+      Object.assign(new Error('api down'), { type: 'StripeAPIError' })
+    );
+
+    await expect(useCase.execute(buyer)).rejects.toThrow();
+    expect(sessions.create).not.toHaveBeenCalled();
   });
 
   it('refuses when another request attached a checkout between the check and the claim', async () => {

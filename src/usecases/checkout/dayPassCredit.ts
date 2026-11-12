@@ -5,6 +5,7 @@ import type {
   RecentDayPass,
 } from '../../data_layer/DayPassCreditRepository';
 import type { IUserPassRepository } from '../../data_layer/UserPassRepository';
+import type { ActivePassRow } from '../../lib/claude/aiCredits/allowance';
 import type {
   PricingService,
   ResolvedPassPrice,
@@ -15,7 +16,7 @@ import { HeldEntitlements, resolvePurchaseBlock } from './resolvePurchaseBlock';
 export const DAY_PASS_CREDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
 export const DAY_PASS_CREDIT_SURFACE = 'day_pass_credit';
 const STRIPE_MINIMUM_CHARGE = 50;
-const CHECKOUT_LONGEST_MS = 24 * 60 * 60 * 1000;
+const CHECKOUT_LONGEST_MS = (23 * 60 + 55) * 60 * 1000;
 const CHECKOUT_SHORTEST_MS = 31 * 60 * 1000;
 
 export type DayPassCreditRefusal =
@@ -28,6 +29,7 @@ export interface DayPassCreditOffer {
   eligible: true;
   dayPassPaymentIntentId: string;
   endsAt: Date;
+  offerEndsAt: Date;
   checkoutExpiresAt: Date;
   semesterStartsAt: Date | null;
   amount: number;
@@ -53,6 +55,13 @@ export interface DayPassCreditEligibilityDeps {
   pricing: Pick<PricingService, 'resolve'>;
   heldEntitlements: (userId: number) => Promise<HeldEntitlements>;
   now: () => Date;
+}
+
+export class CheckoutSessionReadError extends Error {
+  constructor(readonly stripeError: unknown) {
+    super('day_pass_credit.checkout_session_read_failed');
+    this.name = 'CheckoutSessionReadError';
+  }
 }
 
 type EarlierSession =
@@ -84,6 +93,13 @@ const creditEndsAt = (dayPass: RecentDayPass): Date =>
     dayPass.expiresAt.getTime() -
       PASS_DURATION_MS['24h'] +
       DAY_PASS_CREDIT_WINDOW_MS
+  );
+
+const latestExpiry = (running: ActivePassRow[]): Date | null =>
+  running.reduce<Date | null>(
+    (latest, pass) =>
+      latest == null || pass.expiresAt > latest ? pass.expiresAt : latest,
+    null
   );
 
 const isMissingSession = (error: unknown): boolean =>
@@ -142,14 +158,22 @@ export class DayPassCreditEligibility {
       return refuse('no_recent_day_pass');
     }
 
-    if (await this.holdsAnotherPlan(userId, now)) {
+    const held = await this.deps.heldEntitlements(userId);
+    if (holdsBlockingPlan(held)) {
+      return refuse('plan_held');
+    }
+    const running = await this.deps.passes.findActivePasses(userId, now);
+    if (running.some((pass) => pass.kind !== '24h')) {
       return refuse('plan_held');
     }
 
     const credit = await this.deps.credits.findByDayPass(
       dayPass.paymentIntentId
     );
-    if (credit?.redeemedAt != null) {
+    if (
+      credit != null &&
+      (credit.userId !== userId || credit.redeemedAt != null)
+    ) {
       return refuse('credit_used');
     }
     const earlier = await this.earlierSession(credit);
@@ -174,23 +198,15 @@ export class DayPassCreditEligibility {
       eligible: true,
       dayPassPaymentIntentId: dayPass.paymentIntentId,
       endsAt,
+      offerEndsAt: new Date(endsAt.getTime() - CHECKOUT_SHORTEST_MS),
       checkoutExpiresAt: new Date(
         Math.min(endsAt.getTime(), now.getTime() + CHECKOUT_LONGEST_MS)
       ),
-      semesterStartsAt: dayPass.expiresAt > now ? dayPass.expiresAt : null,
+      semesterStartsAt: latestExpiry(running),
       ...price,
       credit,
       openSessionUrl: earlier.status === 'open' ? earlier.url : null,
     };
-  }
-
-  private async holdsAnotherPlan(userId: number, now: Date): Promise<boolean> {
-    const held = await this.deps.heldEntitlements(userId);
-    if (holdsBlockingPlan(held)) {
-      return true;
-    }
-    const running = await this.deps.passes.findActivePasses(userId, now);
-    return running.some((pass) => pass.kind !== '24h');
   }
 
   private async earlierSession(
@@ -206,7 +222,7 @@ export class DayPassCreditEligibility {
       if (isMissingSession(error)) {
         return { status: 'none' };
       }
-      throw error;
+      throw new CheckoutSessionReadError(error);
     }
     if (session.status === 'complete') {
       return { status: 'paid' };
