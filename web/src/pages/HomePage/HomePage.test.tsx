@@ -115,6 +115,15 @@ describe('HomePage (anonymous)', () => {
     ).toHaveAttribute('href', '/convert');
   });
 
+  it('lists no Auto Sync feature, since the plan is not on sale', () => {
+    renderHome();
+    expect(
+      screen.getByRole('heading', { name: 'Other ways to use 2anki' })
+    ).toBeInTheDocument();
+    expect(document.querySelector('a[href="/ankify"]')).toBeNull();
+    expect(screen.queryByText('Auto Sync')).not.toBeInTheDocument();
+  });
+
   it('renders the three how-it-works steps with icons', () => {
     renderHome();
     expect(screen.getByText('Upload')).toBeInTheDocument();

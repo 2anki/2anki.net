@@ -3332,6 +3332,41 @@ describe('UsersController.getLocals', () => {
     expect(payload.autoSyncActive).toBe(true);
   });
 
+  it('counts no Auto Sync seats, since the plan is not on sale', async () => {
+    vi.stubEnv('AUTO_SYNC_PRODUCT_ID', 'prod_auto_sync');
+    (SubscriptionService.countActiveByProductId as Mock).mockClear();
+    const userService = {
+      getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+    } as unknown as UsersService;
+    const authService = {
+      getUserFrom: vi.fn().mockResolvedValue({
+        id: 5,
+        email: 'free@example.com',
+        email_verified: true,
+        patreon: false,
+        owner: 5,
+      }),
+    } as unknown as AuthenticationService;
+    const controller = new UsersController(
+      userService,
+      authService,
+      {} as ReturnType<typeof import('../data_layer').getDatabase>
+    );
+    const req = { cookies: { token: 'valid' } } as unknown as express.Request;
+    const res = {
+      locals: {},
+      json: vi.fn(),
+    } as unknown as express.Response & { json: Mock };
+
+    await controller.getLocals(req, res);
+
+    const payload = res.json.mock.calls[0][0];
+    expect(payload).not.toHaveProperty('autoSyncCapReached');
+    expect(payload.autoSyncActive).toBe(false);
+    expect(SubscriptionService.countActiveByProductId).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+  });
+
   it('surfaces chat_consent_at on the user object so the consent modal closes after accept', async () => {
     const consentAt = new Date('2026-05-16T20:00:00.000Z');
     const mockUser = {

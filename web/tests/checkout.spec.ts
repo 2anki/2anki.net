@@ -9,7 +9,6 @@ const loggedInFreeLocals = {
   },
   locals: { owner: 1, patreon: false, subscriber: false },
   features: {},
-  autoSyncCapReached: false,
   autoSyncActive: false,
 };
 

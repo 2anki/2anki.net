@@ -12,10 +12,6 @@ import { purchaseConflictMessage } from '../../lib/checkout/purchaseConflictMess
 import { useCardUsage } from '../../lib/hooks/useCardUsage';
 import { mayHaveLapsedPayment } from '../../lib/hooks/useLapsedPayment';
 import { usePricingOrderVariant } from '../../lib/hooks/usePricingOrderVariant';
-import {
-  AutoSyncCard,
-  type AutoSyncCardState,
-} from './components/AutoSyncCard';
 import { ComparisonTable } from './components/ComparisonTable';
 import { FeatureGrid } from './components/FeatureGrid';
 import {
@@ -50,8 +46,6 @@ interface PricingPageProps {
   email?: string;
   signupCountry?: string | null;
   entitlement?: PricingEntitlement;
-  autoSyncActive?: boolean;
-  autoSyncCapReached?: boolean;
 }
 
 type PassState = 'idle' | 'pending' | 'error';
@@ -61,13 +55,10 @@ export default function PricingPage({
   email: _email,
   signupCountry,
   entitlement,
-  autoSyncActive = false,
-  autoSyncCapReached = false,
 }: Readonly<PricingPageProps>) {
   const { t, i18n } = useTranslation();
   const isUS = signupCountry === 'US';
   const [conflict, setConflict] = useState<CheckoutConflict | null>(null);
-  const [lapsedTarget, setLapsedTarget] = useState<'pro' | 'auto_sync'>('pro');
   const conflictRef = useRef<HTMLDivElement>(null);
 
   // The conflict renders above the cards, out of view of the button that
@@ -91,14 +82,6 @@ export default function PricingPage({
   const [unlimitedPending, setUnlimitedPending] = useState(false);
   const [unlimitedError, setUnlimitedError] = useState(false);
   const [pricing, setPricing] = useState(LEGACY_UNLIMITED_PRICING);
-  const [autoSyncPrice, setAutoSyncPrice] = useState<{
-    display: string;
-    interval: string;
-  } | null>(null);
-  const [autoSyncPending, setAutoSyncPending] = useState(false);
-  const [autoSyncOutcome, setAutoSyncOutcome] = useState<
-    'unavailable' | 'error' | null
-  >(null);
   const fromPaywall = searchParams.get('source') === 'paywall-cancel';
   const fromContext = searchParams.get('from');
   const showContextBanner =
@@ -128,19 +111,6 @@ export default function PricingPage({
           legacy: result.legacy,
           lockInDeadline: result.lockInDeadline,
         });
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    get2ankiApi()
-      .getAutoSyncPrice()
-      .then((result) => {
-        if (!cancelled) setAutoSyncPrice(result);
       })
       .catch(() => {});
     return () => {
@@ -229,9 +199,9 @@ export default function PricingPage({
     return params;
   };
 
-  const pricingPath = (params: URLSearchParams, hash = '') => {
+  const pricingPath = (params: URLSearchParams) => {
     const query = params.toString();
-    return query === '' ? `/pricing${hash}` : `/pricing?${query}${hash}`;
+    return query === '' ? '/pricing' : `/pricing?${query}`;
   };
 
   const handlePassCheckout = async (kind: '24h' | '7d' | '120d') => {
@@ -310,84 +280,11 @@ export default function PricingPage({
           has_pay_link: result.lapsedPlan.payUrl != null,
         });
       }
-      setLapsedTarget('pro');
       setConflict(result);
       return;
     }
     setUnlimitedError(true);
   };
-
-  const handleAutoSyncCheckout = async (replaceLapsed = false) => {
-    track('paywall_upgrade_clicked', {
-      surface: 'pricing_page',
-      plan: 'auto_sync',
-      variant: pricingOrder,
-    });
-    if (!isLoggedIn) {
-      globalThis.location.href = `/login?redirect=${encodeURIComponent(pricingPath(connectorRefParams(), '#auto-sync'))}`;
-      return;
-    }
-    setConflict(null);
-    setAutoSyncOutcome(null);
-    setAutoSyncPending(true);
-    const result = await get2ankiApi().startAutoSyncCheckout(
-      pricingOrder,
-      'pricing_page',
-      replaceLapsed
-    );
-    if ('url' in result) {
-      globalThis.location.href = result.url;
-      return;
-    }
-    setAutoSyncPending(false);
-    if (result.status === 'conflict') {
-      if (result.lapsedPlan != null) {
-        track('checkout_lapsed_plan_shown', {
-          interval: 'month',
-          has_pay_link: result.lapsedPlan.payUrl != null,
-        });
-      }
-      setLapsedTarget('auto_sync');
-      setConflict(result);
-      return;
-    }
-    if (result.status === 'already_subscribed') {
-      globalThis.location.href = '/ankify/setup';
-      return;
-    }
-    setAutoSyncOutcome(result.status === 'error' ? 'error' : 'unavailable');
-  };
-
-  const autoSyncCardState = (): AutoSyncCardState => {
-    if (autoSyncActive) return 'active';
-    if (autoSyncOutcome != null) return autoSyncOutcome;
-    if (autoSyncCapReached) return 'full';
-    if (ownsOngoingAccess(entitlement)) return 'switch';
-    return 'buy';
-  };
-
-  // Lifetime already includes Auto Sync, and an Apple plan cannot be switched
-  // from here, so neither is offered it.
-  const showAutoSync =
-    autoSyncPrice != null &&
-    entitlement?.patreon !== true &&
-    entitlement?.planSource !== 'apple';
-
-  const autoSyncSection =
-    showAutoSync && autoSyncPrice != null ? (
-      <>
-        <h2 className={styles.sectionLabel}>{t('autosync:section')}</h2>
-        <div className={styles.grid}>
-          <AutoSyncCard
-            price={autoSyncPrice.display}
-            interval={autoSyncPrice.interval}
-            state={autoSyncCardState()}
-            pending={autoSyncPending}
-            onBuy={() => void handleAutoSyncCheckout()}
-          />
-        </div>
-      </>
-    ) : null;
 
   const pricingFaqJsonLd = JSON.stringify({
     '@context': 'https://schema.org',
@@ -571,26 +468,19 @@ export default function PricingPage({
         ) : (
           <LapsedPlanChoice
             plan={conflict.lapsedPlan}
-            target={lapsedTarget}
-            pending={unlimitedPending || autoSyncPending}
+            pending={unlimitedPending}
             onPay={() =>
               track('checkout_lapsed_plan_choice', { choice: 'pay' })
             }
             onSwitch={() => {
               track('checkout_lapsed_plan_choice', { choice: 'switch' });
-              if (lapsedTarget === 'auto_sync') {
-                void handleAutoSyncCheckout(true);
-              } else {
-                void handleUnlimitedUpgrade(true);
-              }
+              void handleUnlimitedUpgrade(true);
             }}
           />
         )}
       </div>
 
       {planSections()}
-
-      {autoSyncSection}
 
       <p className={styles.pricesNote}>{t('pricing.pricesNote')}</p>
 

@@ -357,10 +357,9 @@
     "checkoutStuckHint": "Je abonnement is bevestigd. Als Auto Sync over een paar minuten nog niet klaar is, mail support@2anki.net."
   },
   "plan": {
-    "title": "Auto Sync is een apart abonnement",
+    "title": "Auto Sync is op dit moment niet te koop",
     "subtitle": "Je abonnement bevat het niet.",
     "what": "Auto Sync draait een privé-Anki voor je, controleert Notion elke 5 minuten en houdt je kaarten en AnkiWeb up-to-date.",
-    "seePricing": "Auto Sync-prijzen bekijken",
-    "appleSupport": "Auto Sync is niet beschikbaar via de App Store. Mail support@2anki.net om het te krijgen."
+    "convertNotion": "Zet in plaats daarvan een Notion-pagina om"
   }
 }

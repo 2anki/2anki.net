@@ -38,7 +38,6 @@ interface GetUserLocalsResponse {
     anonymousAiChoice?: boolean;
   };
   autoSyncActive?: boolean;
-  autoSyncCapReached?: boolean;
   freePrintAvailable?: boolean | null;
   claudeCardsByDefault?: boolean;
   pending_email_change?: {

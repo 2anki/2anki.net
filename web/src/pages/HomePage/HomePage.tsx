@@ -90,7 +90,6 @@ const FEATURES = [
   { href: '/templates', tKey: 'noteTypes', Icon: SwatchIcon },
   { href: '/chat', tKey: 'chat', Icon: ChatBubbleIcon },
   { href: '/print', tKey: 'print', Icon: PrinterIcon },
-  { href: '/ankify', tKey: 'autoSync', Icon: SparklesIcon },
 ];
 
 const WALKTHROUGHS: ReadonlyArray<[string, string]> = [

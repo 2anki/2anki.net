@@ -38,7 +38,7 @@ const notionToAnki: LandingCopy = {
     },
     {
       q: 'Can I re-convert a page after editing it in Notion?',
-      a: 'Yes — paste the same link again to get a fresh deck. If you want edits to sync automatically every few minutes, see Auto Sync on the pricing page.',
+      a: 'Yes — paste the same link again to get a fresh deck with your edits.',
     },
   ],
 };
@@ -409,7 +409,7 @@ const notionExportToAnki: LandingCopy = {
   faqs: [
     {
       q: 'Do I need to connect Notion to convert an export?',
-      a: 'No. The export path works without a connection: you already have the file. Connecting Notion is only for pasting a live page link and for Auto Sync, which both re-read the page for you.',
+      a: 'No. The export path works without a connection: you already have the file. Connecting Notion is only for pasting a live page link, which re-reads the page for you.',
     },
     {
       q: 'How do I export a Notion page as HTML?',
@@ -547,7 +547,7 @@ const studystackToAnki: LandingCopy = {
     },
     {
       q: 'How many cards can I import?',
-      a: 'Free 2anki accounts convert up to 100 cards per month — this is the 2anki limit, not a StudyStack restriction. Pro and Auto Sync plans remove the cap — see the pricing page.',
+      a: 'Free 2anki accounts convert up to 100 cards per month — this is the 2anki limit, not a StudyStack restriction. Pro removes the cap — see the pricing page.',
     },
   ],
 };

@@ -29,13 +29,11 @@ export function describeLapsedPlan(
 // or end it and switch. The switch spells out that the old price is gone.
 export function LapsedPlanChoice({
   plan,
-  target,
   pending,
   onPay,
   onSwitch,
 }: Readonly<{
   plan: LapsedPlan;
-  target: 'pro' | 'auto_sync';
   pending: boolean;
   onPay: () => void;
   onSwitch: () => void;
@@ -75,19 +73,10 @@ export function LapsedPlanChoice({
             onClick={onSwitch}
             disabled={pending}
           >
-            {t(
-              target === 'auto_sync'
-                ? 'checkout.lapsed.switchButtonAutoSync'
-                : 'checkout.lapsed.switchButton'
-            )}
+            {t('checkout.lapsed.switchButton')}
           </button>
           <p className={styles.lapsedNote}>
-            {t(
-              target === 'auto_sync'
-                ? 'checkout.lapsed.switchNoteAutoSync'
-                : 'checkout.lapsed.switchNote',
-              { plan: planLabel }
-            )}
+            {t('checkout.lapsed.switchNote', { plan: planLabel })}
           </p>
         </div>
       </div>

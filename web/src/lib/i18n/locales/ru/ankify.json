@@ -367,10 +367,9 @@
     "checkoutStuckHint": "Твоя подписка подтверждена. Если Auto Sync не будет готов через несколько минут, напиши на support@2anki.net."
   },
   "plan": {
-    "title": "Auto Sync продаётся отдельно",
+    "title": "Auto Sync сейчас не продаётся",
     "subtitle": "Твой план его не включает.",
     "what": "Auto Sync запускает для тебя личный Anki, проверяет Notion каждые 5 минут и поддерживает твои карточки и AnkiWeb в актуальном состоянии.",
-    "seePricing": "Посмотреть тарифы Auto Sync",
-    "appleSupport": "Auto Sync нельзя получить через App Store. Напиши на support@2anki.net, чтобы его подключить."
+    "convertNotion": "Вместо этого конвертируй страницу Notion"
   }
 }

@@ -34,7 +34,7 @@ Im Deck:
 
 **Datei hochladen.** Kein Konto nötig. Gut für PDFs, Foliensammlungen, Markdown-Vaults oder eine einmalige CSV. Anleitung: [Stattdessen eine Datei hochladen](/documentation/start-here/upload-a-file).
 
-**Auto Sync.** Kostenpflichtig. Verbinde Notion einmal, und 2anki prüft deine Seiten alle 5 Minuten — Änderungen in Notion fließen automatisch in einen gehosteten Anki-Container, ohne manuellen Re-Export. Nutze das, wenn du täglich lernst und deine Notizen zwischen den Sitzungen aktualisierst. Anleitung: [Wie Sync funktioniert](/documentation/sync/how-it-works).
+**Auto Sync.** Kostenpflichtig und gerade nicht erhältlich. Verbinde Notion einmal, und 2anki prüft deine Seiten alle 5 Minuten — Änderungen in Notion fließen automatisch in einen gehosteten Anki-Container, ohne manuellen Re-Export. Nutze das, wenn du täglich lernst und deine Notizen zwischen den Sitzungen aktualisierst. Anleitung: [Wie Sync funktioniert](/documentation/sync/how-it-works).
 
 ## Kostenlos und kostenpflichtig
 

@@ -21,7 +21,6 @@ const notionCopy: LandingCopy = {
       label: 'Convert Notion tables to Anki',
       href: '/convert/notion-tables-to-anki',
     },
-    { label: 'Keep decks in sync with Notion', href: '/pricing' },
     {
       label: 'Which Notion blocks convert',
       href: '/documentation/cards/notion-blocks',
@@ -57,7 +56,7 @@ const notionCopy: LandingCopy = {
     },
     {
       q: 'Will it sync when I edit the Notion page later?',
-      a: 'A one-time conversion is a snapshot. Re-paste the link to make a fresh deck. If you want changes to flow automatically, see Auto Sync on the pricing page — it polls Notion every few minutes.',
+      a: 'A one-time conversion is a snapshot. Re-paste the link to make a fresh deck with your edits.',
     },
     {
       q: 'Can I convert a Notion export without connecting?',

@@ -1083,21 +1083,6 @@
   display: none !important;
 }
 
-.autoSyncPrompt {
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  margin: 0.5rem 0 0;
-}
-
-.autoSyncPromptLink {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-.autoSyncPromptLink:hover {
-  text-decoration: underline;
-}
-
 /* ── Inline chat panel (empty-deck state) ── */
 
 .inlineChatWrapper {

@@ -45,10 +45,13 @@ describe('NotionZuAnki', () => {
     ).toBeInTheDocument();
   });
 
-  it('links the German related nav to the pricing auto-sync page', () => {
+  it('links the German related nav to other converters, not to Auto Sync', () => {
     renderNotionZuAnki();
     expect(
-      screen.getByRole('link', { name: 'Automatische Synchronisierung' })
-    ).toHaveAttribute('href', '/pricing');
+      screen.getByRole('link', { name: 'Alle Konverter ansehen' })
+    ).toHaveAttribute('href', '/convert');
+    expect(
+      screen.queryByRole('link', { name: 'Automatische Synchronisierung' })
+    ).not.toBeInTheDocument();
   });
 });
