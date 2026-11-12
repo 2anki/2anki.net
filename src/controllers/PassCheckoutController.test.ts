@@ -7,6 +7,27 @@ import type { PassKind } from '../data_layer/UserPassRepository';
 
 vi.mock('geoip-lite', () => ({ default: { lookup: vi.fn() } }));
 
+beforeEach(() => {
+  vi.mocked(geoip.lookup).mockReset();
+});
+
+const IPHONE_UA =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+const MAC_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+const CLIENT_IP = '203.0.113.9';
+
+const checkoutRequest = ({
+  cookies = {},
+  headers = {},
+}: {
+  cookies?: Record<string, string>;
+  headers?: Record<string, string>;
+} = {}) => ({ ip: CLIENT_IP, cookies, headers }) as never;
+
+const recordedProps = (record: Mock) =>
+  record.mock.calls[0][0].props as Record<string, unknown>;
+
 const makeRes = (
   locals: Record<string, unknown> = { owner: 42, email: 'a@b.test' }
 ) => {
@@ -86,14 +107,22 @@ describe('PassCheckoutController', () => {
   it.each<PassKind>(['24h', '7d', '120d'])(
     'records checkout_started carrying %s as the plan',
     async (passKind) => {
+      vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
       const { controller, record } = makeController(resolving(), passKind);
 
-      await controller.createSession({} as never, makeRes());
+      await controller.createSession(
+        checkoutRequest({ headers: { 'user-agent': IPHONE_UA } }),
+        makeRes()
+      );
 
       expect(record).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'checkout_started',
-          props: expect.objectContaining({ plan: passKind }),
+          props: expect.objectContaining({
+            plan: passKind,
+            country: 'US',
+            device: 'mobile',
+          }),
         })
       );
     }
@@ -125,8 +154,11 @@ describe('PassCheckoutController', () => {
   });
 
   it('carries the surface and pricing variant so starts join to completions', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
     const { controller, record } = makeController(resolving());
     const req = {
+      ip: CLIENT_IP,
+      headers: { 'user-agent': MAC_UA },
       body: { surface: 'limit-wall', variant: 'semester-first' },
     } as never;
 
@@ -137,6 +169,8 @@ describe('PassCheckoutController', () => {
         props: expect.objectContaining({
           surface: 'limit-wall',
           variant: 'semester-first',
+          country: 'US',
+          device: 'desktop',
         }),
       })
     );
@@ -231,28 +265,7 @@ describe('PassCheckoutController GA measurement', () => {
   });
 });
 
-const IPHONE_UA =
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
-const MAC_UA =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
-const CLIENT_IP = '203.0.113.9';
-
-const checkoutRequest = ({
-  cookies = {},
-  headers = {},
-}: {
-  cookies?: Record<string, string>;
-  headers?: Record<string, string>;
-} = {}) => ({ ip: CLIENT_IP, cookies, headers }) as never;
-
-const recordedProps = (record: Mock) =>
-  record.mock.calls[0][0].props as Record<string, unknown>;
-
 describe('PassCheckoutController checkout_started country and device', () => {
-  beforeEach(() => {
-    vi.mocked(geoip.lookup).mockReset();
-  });
-
   it('records the country for a visitor outside the EEA', async () => {
     vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
     const { controller, record } = makeController(resolving());
@@ -286,6 +299,18 @@ describe('PassCheckoutController checkout_started country and device', () => {
 
   it('records no country when the visitor denied consent outside the EEA', async () => {
     vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+    const { controller, record } = makeController(resolving());
+
+    await controller.createSession(
+      checkoutRequest({ cookies: { cookie_consent: 'denied' } }),
+      makeRes()
+    );
+
+    expect(recordedProps(record)).toMatchObject({ country: null });
+  });
+
+  it('records no country when an EEA visitor denied consent', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'DE' } as never);
     const { controller, record } = makeController(resolving());
 
     await controller.createSession(

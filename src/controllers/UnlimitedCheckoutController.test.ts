@@ -8,6 +8,30 @@ import { LapsedSubscriptionError } from '../usecases/checkout/LapsedSubscription
 
 vi.mock('geoip-lite', () => ({ default: { lookup: vi.fn() } }));
 
+beforeEach(() => {
+  vi.mocked(geoip.lookup).mockReset();
+});
+
+const IPHONE_UA =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+const MAC_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
+const CLIENT_IP = '203.0.113.9';
+
+const checkoutRequest = ({
+  cookies = {},
+  headers = {},
+}: {
+  cookies?: Record<string, string>;
+  headers?: Record<string, string>;
+} = {}) =>
+  ({
+    ip: CLIENT_IP,
+    body: { interval: 'month' },
+    cookies,
+    headers,
+  }) as unknown as Request;
+
 const makeResponse = (locals: Record<string, unknown> = {}) => {
   const res = {
     statusCode: 200,
@@ -338,26 +362,6 @@ describe('UnlimitedCheckoutController with a lapsed or foreign-currency plan', (
   });
 });
 
-const IPHONE_UA =
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
-const MAC_UA =
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
-const CLIENT_IP = '203.0.113.9';
-
-const checkoutRequest = ({
-  cookies = {},
-  headers = {},
-}: {
-  cookies?: Record<string, string>;
-  headers?: Record<string, string>;
-} = {}) =>
-  ({
-    ip: CLIENT_IP,
-    body: { interval: 'month' },
-    cookies,
-    headers,
-  }) as unknown as Request;
-
 const startCheckout = async (req: Request) => {
   const sink = makeSink();
   const res = makeResponse();
@@ -371,10 +375,6 @@ const recordedProps = (sink: ReturnType<typeof makeSink>) =>
   sink.record.mock.calls[0][0].props as Record<string, unknown>;
 
 describe('UnlimitedCheckoutController checkout_started country and device', () => {
-  beforeEach(() => {
-    vi.mocked(geoip.lookup).mockReset();
-  });
-
   it('records the country for a subscriber outside the EEA', async () => {
     vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
 
@@ -404,6 +404,16 @@ describe('UnlimitedCheckoutController checkout_started country and device', () =
 
   it('records no country when the subscriber denied consent outside the EEA', async () => {
     vi.mocked(geoip.lookup).mockReturnValue({ country: 'US' } as never);
+
+    const { sink } = await startCheckout(
+      checkoutRequest({ cookies: { cookie_consent: 'denied' } })
+    );
+
+    expect(recordedProps(sink)).toMatchObject({ country: null });
+  });
+
+  it('records no country when an EEA subscriber denied consent', async () => {
+    vi.mocked(geoip.lookup).mockReturnValue({ country: 'FR' } as never);
 
     const { sink } = await startCheckout(
       checkoutRequest({ cookies: { cookie_consent: 'denied' } })
