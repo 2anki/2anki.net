@@ -15,6 +15,12 @@ describe('changelog loader', () => {
     }
   });
 
+  it('no longer lists the removed deck-sharing survey', () => {
+    expect(changelog.map((entry) => entry.id)).not.toContain(
+      '2026-10-05-deck-distribution-intent'
+    );
+  });
+
   it('sorts by id descending', () => {
     for (let i = 1; i < changelog.length; i += 1) {
       expect(changelog[i - 1].id >= changelog[i].id).toBe(true);

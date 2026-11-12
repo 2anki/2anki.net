@@ -8,6 +8,7 @@ import { DownloadsPage, renderJobStatusCell } from './DownloadsPage';
 import i18n from '../../lib/i18n';
 import type JobResponse from '@server/types/JobResponse';
 import type { JobsId } from '@server/data_layer/public/Jobs';
+import type { ActiveShare } from '../../lib/backend/getSharedDeck';
 
 vi.mock('./hooks/useJobs', () => ({
   default: () => ({
@@ -66,7 +67,7 @@ vi.mock('./hooks/useGoogleDriveUploads', () => ({
 }));
 
 vi.mock('./hooks/useActiveShares', () => ({
-  useActiveShares: () => [],
+  useActiveShares: () => mockActiveShares,
 }));
 
 type AnalyticsGlobals = {
@@ -77,6 +78,7 @@ type AnalyticsGlobals = {
 const mockGetJobReport = vi.fn().mockResolvedValue(null);
 const mockConvert = vi.fn().mockResolvedValue(new Response(null));
 
+let mockActiveShares: ActiveShare[] = [];
 let mockJobs: JobResponse[] = [];
 let mockUploads: {
   id: string;
@@ -185,6 +187,70 @@ describe('DownloadsPage translation safety', () => {
   it('opts the polling job rows out of browser translation', () => {
     const { container } = renderAt('/downloads');
     expect(container.querySelector('tbody')).toHaveAttribute('translate', 'no');
+  });
+});
+
+describe('DownloadsPage removed deck-sharing survey', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-18T12:00:00Z'));
+    (globalThis as AnalyticsGlobals).hj = vi.fn();
+    (globalThis as AnalyticsGlobals).gtag = vi.fn();
+    mockJobs = [
+      buildJob({ status: 'done', download_key: 'deck-1.apkg', card_count: 3 }),
+    ];
+    mockUploads = [
+      {
+        id: 'u1',
+        size_mb: 1,
+        owner: 1,
+        key: 'deck-2.apkg',
+        filename: 'deck.apkg',
+        object_id: 'o1',
+        created_at: '2026-05-18T10:00:00Z',
+      },
+    ];
+    mockDropboxUploads = [];
+    mockGoogleDriveUploads = [];
+    mockActiveShares = [];
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    delete (globalThis as AnalyticsGlobals).hj;
+    delete (globalThis as AnalyticsGlobals).gtag;
+    mockActiveShares = [];
+  });
+
+  it('offers no share-with-your-class entry on ready job or upload rows', () => {
+    const { container } = renderAt('/downloads');
+    expect(screen.getAllByText('Active conversion').length).toBeGreaterThan(0);
+    expect(
+      container.querySelector('a[href="/api/download/u/deck-2.apkg"]')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryAllByText('Share with your class or audience')
+    ).toHaveLength(0);
+    expect(
+      screen.queryByText('Who would you share this deck with?')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the Shared badge on an upload row with an active share link', () => {
+    mockActiveShares = [
+      {
+        token: 'tok-1',
+        upload_key: 'deck-2.apkg',
+        url: 'https://2anki.net/s/tok-1',
+        created_at: '2026-05-18T10:00:00Z',
+        view_count: 0,
+      },
+    ];
+    renderAt('/downloads');
+    expect(screen.getByRole('link', { name: 'Shared' })).toHaveAttribute(
+      'href',
+      '/preview/apkg/deck-2.apkg'
+    );
   });
 });
 

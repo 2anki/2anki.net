@@ -89,6 +89,25 @@ describe('DefaultRouter catch-all status', () => {
     expect(body).not.toContain('Google Click ID');
   });
 
+  it('mounts no router for the removed deck-sharing survey endpoint', () => {
+    const routesDir = __dirname;
+    const server = fs.readFileSync(
+      path.join(__dirname, '..', 'server.ts'),
+      'utf8'
+    );
+    const routerSources = fs
+      .readdirSync(routesDir)
+      .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+      .map((name) => fs.readFileSync(path.join(routesDir, name), 'utf8'));
+
+    expect(server).not.toContain('deckDistributionIntentRouter');
+    expect(
+      routerSources.filter((source) =>
+        source.includes('/api/deck-distribution-intent')
+      )
+    ).toEqual([]);
+  });
+
   it('301s the old API docs path to the MCP connector page', async () => {
     const res = await fetch(`${url}/documentation/api/docs`, {
       redirect: 'manual',
@@ -139,6 +158,36 @@ describe('DefaultRouter session hint', () => {
     expect(body).toContain('<html data-consent-region="eea">');
     expect(body).not.toContain('data-auth');
   });
+});
+
+describe('DefaultRouter as the last router, for the removed deck-sharing survey POST', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    ({ server, url } = await buildServer(
+      express.json() as express.RequestHandler,
+      cookieParser()
+    ));
+  });
+
+  afterAll(() => server.close());
+
+  it.each([
+    ['signed out', {}],
+    ['with a session cookie', { cookie: 'token=abc' }],
+  ])(
+    'answers a stale survey submit %s with 404',
+    async (_label, extraHeaders) => {
+      const res = await fetch(`${url}/api/deck-distribution-intent`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...extraHeaders },
+        body: JSON.stringify({ answer: 'students', upload_key: 'deck.apkg' }),
+      });
+      expect(res.ok).toBe(false);
+      expect(res.status).toBe(404);
+    }
+  );
 });
 
 describe('sitemap parity with isKnownAppRoute', () => {
