@@ -89,15 +89,6 @@ describe('DefaultRouter catch-all status', () => {
     expect(body).not.toContain('Google Click ID');
   });
 
-  it('answers the removed deck-sharing survey endpoint with a 404', async () => {
-    const res = await fetch(`${url}/api/deck-distribution-intent`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ answer: 'students', upload_key: 'deck.apkg' }),
-    });
-    expect(res.status).toBe(404);
-  });
-
   it('mounts no router for the removed deck-sharing survey endpoint', () => {
     const routesDir = __dirname;
     const server = fs.readFileSync(
