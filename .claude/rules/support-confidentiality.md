@@ -14,6 +14,7 @@ Bug reports, support emails, and feedback frequently arrive with the reporter's 
 ## Where reporter detail is okay
 
 - Local files outside the repo: `~/Downloads/reply-<name>.txt`, `~/Downloads/*.eml`, anything the user keeps offline.
+- Never the harness memory (`~/.claude/projects/.../memory/`): it loads into every later session and nobody reviews it. No names, emails, workspace names, deck titles or filenames there; a numeric user ID at most.
 - The conversation with Al inside Claude Code — explaining what you found is the point of the conversation.
 - The drafted support reply itself — that obviously goes to the reporter.
 - Private support tooling (the inbox, Stripe customer record, Postgres) — Al's eyes only, not public.

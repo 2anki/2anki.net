@@ -22,8 +22,8 @@ Every PR is checked against it: does this make creating flashcards on 2anki.net 
 
 ## Memory & sensitive data
 
-- **File-based memory is on.** Use the harness memory under `~/.claude/projects/.../memory/` for how Alexander likes to work (feedback, preferences) and context that does not belong in git. Rules every agent must follow still go in `CLAUDE.md`, `.claude/rules/*` or the relevant `FEATURE.md`, where they are versioned and reviewed; memory is per-machine and nobody reviews it. The sensitive-data rule below covers memory files too.
-- **Never store sensitive or live data.** Business metrics (MRR, ARPU, churn, sub counts), pricing, Stripe/prod settings, individual subscriber or reporter identifiers — retrieve these from production when needed (prod psql, Stripe dashboard/MCP, `/api/ops/*`, `/deploy-status`), never commit them to the repo or a local file. They go stale and they leak.
+- **File-based memory is on.** Use the harness memory under `~/.claude/projects/.../memory/` for how Alexander likes to work (feedback, preferences) and non-sensitive context that does not belong in git, such as machine setup. Rules every agent must follow still go in `CLAUDE.md`, `.claude/rules/*` or the relevant `FEATURE.md`, where they are versioned and reviewed; memory is per-machine and nobody reviews it. The sensitive-data rule below covers memory files too.
+- **Never store sensitive or live data.** Business metrics (MRR, ARPU, churn, sub counts), pricing, Stripe/prod settings, individual subscriber or reporter identifiers, secrets, keys and tokens — retrieve these from production when needed (prod psql, Stripe dashboard/MCP, `/api/ops/*`, `/deploy-status`), never commit them to the repo and never write them to a local or memory file. They go stale and they leak.
 
 ## Design Context
 - **Register**: product
