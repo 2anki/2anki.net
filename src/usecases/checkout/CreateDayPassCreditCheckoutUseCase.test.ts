@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { InMemoryDayPassCreditRepository } from '../../data_layer/DayPassCreditRepository';
+import { InMemoryUserPassRepository } from '../../data_layer/UserPassRepository';
 import { PricingService } from '../../services/PricingService';
 import { nothingHeld, stripePassPrices } from '../../test/fakes/dayPassCredit';
 import type { HeldEntitlements } from './resolvePurchaseBlock';
@@ -38,6 +39,8 @@ const setup = (options: { held?: HeldEntitlements } = {}) => {
   };
   const eligibility = new DayPassCreditEligibility({
     credits,
+    passes: new InMemoryUserPassRepository(),
+    sessions: sessions as never,
     pricing: new PricingService(stripe as never),
     heldEntitlements: async () => options.held ?? dayPassHolder,
     now: () => NOW,
@@ -98,6 +101,52 @@ describe('CreateDayPassCreditCheckoutUseCase', () => {
     expect(String(params.success_url)).toContain(
       '/upload?from=pass&session_id='
     );
+  });
+
+  it('closes the checkout a day from now at most, so it cannot be paid long after it opened', async () => {
+    const { sessions, useCase } = setup();
+
+    await useCase.execute(buyer);
+
+    expect(sessions.create.mock.calls[0][0].expires_at).toBe(
+      Math.floor((NOW.getTime() + 24 * HOUR) / 1000)
+    );
+  });
+
+  it('replaces an earlier checkout that Stripe no longer has', async () => {
+    const { credits, sessions, useCase } = setup();
+    const credit = await credits.claim(42, 'pi_day');
+    await credits.attachSession(credit.id, null, 'cs_vanished');
+    sessions.retrieve.mockRejectedValue(
+      Object.assign(new Error('No such checkout.session'), {
+        type: 'StripeInvalidRequestError',
+        code: 'resource_missing',
+      })
+    );
+
+    expect(await useCase.execute(buyer)).toEqual({
+      status: 'session',
+      url: 'https://checkout.stripe.com/c/cs_1',
+    });
+    expect(await credits.findByDayPass('pi_day')).toMatchObject({
+      checkoutSessionId: 'cs_1',
+    });
+  });
+
+  it('refuses when another request attached a checkout between the check and the claim', async () => {
+    const { credits, sessions, useCase } = setup();
+    const claim = credits.claim.bind(credits);
+    vi.spyOn(credits, 'claim').mockImplementationOnce(async (userId, pi) => {
+      const claimed = await claim(userId, pi);
+      await credits.attachSession(claimed.id, null, 'cs_other');
+      return { ...claimed, checkoutSessionId: 'cs_other' };
+    });
+
+    expect(await useCase.execute(buyer)).toEqual({
+      status: 'refused',
+      reason: 'checkout_open',
+    });
+    expect(sessions.create).not.toHaveBeenCalled();
   });
 
   it('turns off Stripe checkout recovery so an expired upgrade cannot spawn a second payable session', async () => {

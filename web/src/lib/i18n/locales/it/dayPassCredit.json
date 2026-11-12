@@ -1,8 +1,12 @@
 {
   "title": "Passa al Semester Pass per {{price}}",
-  "body": "I {{dayPassPrice}} che hai pagato per il Day Pass valgono per il Semester Pass da {{semesterPrice}}. L'offerta scade il {{date}}.",
+  "body": "Il prezzo del Day Pass, {{dayPassPrice}}, viene scalato dal Semester Pass da {{semesterPrice}}. Un solo pagamento per 120 giorni, nessun rinnovo.",
+  "startsLater": "I 120 giorni iniziano quando scade il tuo Day Pass, il {{date}}.",
+  "startsNow": "I 120 giorni iniziano dal pagamento.",
+  "offerEnds": "L'offerta scade il {{date}}.",
   "cta": "Prendi il Semester Pass per {{price}}",
   "pending": "Apertura del pagamento",
   "unavailable": "Questa offerta non è più disponibile.",
+  "seePlans": "Vedi tutti i piani",
   "error": "Il pagamento non si è aperto. Riprova."
 }

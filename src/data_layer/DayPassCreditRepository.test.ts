@@ -10,19 +10,25 @@ describe('DayPassCreditRepository generated SQL', () => {
   const repo = new DayPassCreditRepository(pg);
 
   it('reads the latest Stripe Day Pass still within reach, skipping refunded and signed-out purchases', () => {
-    const query = repo.buildFindRecentDayPassQuery(
-      42,
-      new Date('2026-11-12T00:00:00.000Z')
-    );
+    const expiresAfter = new Date('2026-11-11T12:00:00.000Z');
+    const expiresBy = new Date('2026-11-13T12:00:00.000Z');
+    const query = repo.buildFindRecentDayPassQuery(42, {
+      expiresAfter,
+      expiresBy,
+    });
     const sql = query.toString();
     expect(sql).toContain('from "user_passes"');
     expect(sql).toContain('"user_passes"."user_id" = 42');
     expect(sql).toContain('"user_passes"."kind" = \'24h\'');
-    expect(query.toSQL().sql).toContain(
+    const compiled = query.toSQL();
+    expect(compiled.sql).toContain(
       '"user_passes"."stripe_payment_intent_id" like ?'
     );
-    expect(query.toSQL().bindings).toContain('pi\\_%');
-    expect(sql).toContain('"user_passes"."expires_at" >');
+    expect(compiled.sql).toContain('"user_passes"."expires_at" > ?');
+    expect(compiled.sql).toContain('"user_passes"."expires_at" <= ?');
+    expect(compiled.bindings).toEqual(
+      expect.arrayContaining(['pi\\_%', expiresAfter, expiresBy])
+    );
     expect(sql).toContain(
       'not exists (select 1 from "refunded_payment_intents" where "refunded_payment_intents"."payment_intent_id" = "user_passes"."stripe_payment_intent_id")'
     );

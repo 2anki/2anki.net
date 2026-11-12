@@ -1,8 +1,5 @@
 import type StripeTypes from 'stripe';
-import type {
-  DayPassCredit,
-  IDayPassCreditRepository,
-} from '../../data_layer/DayPassCreditRepository';
+import type { IDayPassCreditRepository } from '../../data_layer/DayPassCreditRepository';
 import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { anonIdConsentMetadata, optionalMetadata } from './checkoutMetadata';
 import { createCheckoutSession } from './createCheckoutSession';
@@ -59,6 +56,10 @@ export class CreateDayPassCreditCheckoutUseCase {
       return refused(decision.reason);
     }
 
+    if (decision.openSessionUrl != null) {
+      return { status: 'session', url: decision.openSessionUrl };
+    }
+
     const credit = await this.credits.claim(
       input.userId,
       decision.dayPassPaymentIntentId
@@ -66,13 +67,9 @@ export class CreateDayPassCreditCheckoutUseCase {
     if (credit.userId !== input.userId || credit.redeemedAt != null) {
       return refused('credit_used');
     }
-
-    const earlier = await this.earlierSession(credit);
-    if (earlier.status === 'open') {
-      return { status: 'session', url: earlier.url };
-    }
-    if (earlier.status === 'paid') {
-      return refused('credit_used');
+    const checkedSessionId = decision.credit?.checkoutSessionId ?? null;
+    if (credit.checkoutSessionId !== checkedSessionId) {
+      return refused('checkout_open');
     }
 
     const session = await createCheckoutSession(
@@ -97,26 +94,6 @@ export class CreateDayPassCreditCheckoutUseCase {
       currency: decision.currency,
     });
     return { status: 'session', url: session.url! };
-  }
-
-  private async earlierSession(
-    credit: DayPassCredit
-  ): Promise<
-    { status: 'none' } | { status: 'paid' } | { status: 'open'; url: string }
-  > {
-    if (credit.checkoutSessionId == null) {
-      return { status: 'none' };
-    }
-    const session = await this.stripe.checkout.sessions.retrieve(
-      credit.checkoutSessionId
-    );
-    if (session.status === 'complete') {
-      return { status: 'paid' };
-    }
-    if (session.status === 'open' && session.url != null) {
-      return { status: 'open', url: session.url };
-    }
-    return { status: 'none' };
   }
 
   private async expireQuietly(sessionId: string): Promise<void> {
@@ -163,6 +140,7 @@ export class CreateDayPassCreditCheckoutUseCase {
       ],
       success_url: `${appUrl}/upload?from=pass&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/account`,
+      expires_at: Math.floor(offer.checkoutExpiresAt.getTime() / 1000),
       customer_email:
         input.stripeCustomerId == null ? input.userEmail : undefined,
       customer: input.stripeCustomerId ?? undefined,

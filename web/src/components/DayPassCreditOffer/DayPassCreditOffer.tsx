@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { track } from '../../lib/analytics/track';
 import {
   getDayPassCreditOffer,
@@ -17,7 +18,7 @@ interface DayPassCreditOfferProps {
   readonly enabled: boolean;
 }
 
-const formatOfferEnd = (iso: string, locale: string): string =>
+const formatDateTime = (iso: string, locale: string): string =>
   new Date(iso).toLocaleString(locale, {
     weekday: 'short',
     day: 'numeric',
@@ -65,6 +66,23 @@ export function DayPassCreditOffer({
     setRefusal(result.status);
   };
 
+  if (refusal === 'unavailable') {
+    return (
+      <section className={styles.offer}>
+        <p role="alert" className={styles.refusal}>
+          {t('unavailable')} <Link to="/pricing">{t('seePlans')}</Link>
+        </p>
+      </section>
+    );
+  }
+
+  const startLine =
+    offer.semesterStartsAt == null
+      ? t('startsNow')
+      : t('startsLater', {
+          date: formatDateTime(offer.semesterStartsAt, i18n.language),
+        });
+
   return (
     <section className={styles.offer} aria-labelledby="day-pass-credit-title">
       <p id="day-pass-credit-title" className={styles.title}>
@@ -74,22 +92,25 @@ export function DayPassCreditOffer({
         {t('body', {
           dayPassPrice: offer.dayPassDisplay,
           semesterPrice: offer.semesterDisplay,
-          date: formatOfferEnd(offer.endsAt, i18n.language),
         })}
       </p>
-      {refusal !== 'unavailable' && (
-        <button
-          type="button"
-          className={`${sharedStyles.btnPrimary} ${sharedStyles.btnInline}`}
-          onClick={handleClick}
-          disabled={pending}
-        >
-          {pending ? t('pending') : t('cta', { price: offer.display })}
-        </button>
-      )}
-      {refusal != null && (
+      <p className={styles.body}>{startLine}</p>
+      <p className={styles.body}>
+        {t('offerEnds', {
+          date: formatDateTime(offer.endsAt, i18n.language),
+        })}
+      </p>
+      <button
+        type="button"
+        className={sharedStyles.btnSecondary}
+        onClick={handleClick}
+        disabled={pending}
+      >
+        {pending ? t('pending') : t('cta', { price: offer.display })}
+      </button>
+      {refusal === 'error' && (
         <p role="alert" className={styles.refusal}>
-          {t(refusal)}
+          {t('error')}
         </p>
       )}
     </section>

@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { InMemoryDayPassCreditRepository } from '../../data_layer/DayPassCreditRepository';
+import { InMemoryUserPassRepository } from '../../data_layer/UserPassRepository';
 import { PricingService } from '../../services/PricingService';
 import type { HeldEntitlements } from './resolvePurchaseBlock';
 import {
@@ -10,6 +11,7 @@ import {
 import { DayPassCreditEligibility } from './dayPassCredit';
 
 const HOUR = 60 * 60 * 1000;
+const MINUTE = 60 * 1000;
 const NOW = new Date('2026-11-12T12:00:00.000Z');
 
 const setup = (
@@ -20,34 +22,44 @@ const setup = (
   } = {}
 ) => {
   const credits = new InMemoryDayPassCreditRepository();
+  const passes = new InMemoryUserPassRepository();
   const hoursAgo =
     options.dayPassBoughtHoursAgo === undefined
       ? 2
       : options.dayPassBoughtHoursAgo;
   if (hoursAgo != null) {
-    credits.seedDayPass(
-      42,
-      'pi_day',
-      new Date(NOW.getTime() - hoursAgo * HOUR + 24 * HOUR)
-    );
+    const expiresAt = new Date(NOW.getTime() - hoursAgo * HOUR + 24 * HOUR);
+    credits.seedDayPass(42, 'pi_day', expiresAt);
+    passes.seed({
+      user_id: 42,
+      kind: '24h',
+      expires_at: expiresAt,
+      stripe_payment_intent_id: 'pi_day',
+    });
   }
+  const sessions = { retrieve: vi.fn() };
   const stripe = {
     prices: stripePassPrices(
       options.prices ?? { '24h': { amount: 600 }, '120d': { amount: 2900 } }
     ),
   };
-  const eligibility = new DayPassCreditEligibility({
-    credits,
-    pricing: new PricingService(stripe as never),
-    heldEntitlements: async () =>
+  const heldEntitlements = vi.fn(
+    async () =>
       options.held ??
       nothingHeld({
         activePassKind: '24h',
         activePassExpiresAt: new Date(NOW.getTime() + 22 * HOUR),
-      }),
+      })
+  );
+  const eligibility = new DayPassCreditEligibility({
+    credits,
+    passes,
+    sessions,
+    pricing: new PricingService(stripe as never),
+    heldEntitlements,
     now: () => NOW,
   });
-  return { credits, eligibility, stripe };
+  return { credits, passes, sessions, eligibility, stripe, heldEntitlements };
 };
 
 describe('DayPassCreditEligibility', () => {
@@ -64,15 +76,19 @@ describe('DayPassCreditEligibility', () => {
       eligible: true,
       dayPassPaymentIntentId: 'pi_day',
       endsAt: new Date(NOW.getTime() + 46 * HOUR),
+      checkoutExpiresAt: new Date(NOW.getTime() + 24 * HOUR),
+      semesterStartsAt: new Date(NOW.getTime() + 22 * HOUR),
       amount: 2300,
       currency: 'usd',
       semesterAmount: 2900,
       dayPassAmount: 600,
       semesterProductId: 'prod_120d',
+      credit: null,
+      openSessionUrl: null,
     });
   });
 
-  it('still offers the credit after the Day Pass ran out, inside 48 hours of buying it', async () => {
+  it('still offers the credit after the Day Pass ran out, inside 48 hours of buying it, with checkout closing when the offer ends', async () => {
     const { eligibility } = setup({
       held: nothingHeld(),
       dayPassBoughtHoursAgo: 40,
@@ -81,12 +97,16 @@ describe('DayPassCreditEligibility', () => {
     expect(await eligibility.decide(42)).toMatchObject({
       eligible: true,
       endsAt: new Date(NOW.getTime() + 8 * HOUR),
+      checkoutExpiresAt: new Date(NOW.getTime() + 8 * HOUR),
+      semesterStartsAt: null,
     });
   });
 
   it.each([
     ['bought 48 hours ago', 48],
     ['bought 60 hours ago', 60],
+    ['whose offer has under 31 minutes left', 48 - 30 / 60],
+    ['stacked behind another pass, ending more than a day from now', -100],
     ['no Day Pass at all', null],
   ])('refuses a Day Pass %s', async (_label, hoursAgo) => {
     const { eligibility } = setup({
@@ -100,10 +120,41 @@ describe('DayPassCreditEligibility', () => {
     });
   });
 
+  it('offers the credit with 31 minutes left', async () => {
+    const { eligibility } = setup({
+      held: nothingHeld(),
+      dayPassBoughtHoursAgo: 48 - 31 / 60,
+    });
+
+    expect(await eligibility.decide(42)).toMatchObject({
+      eligible: true,
+      checkoutExpiresAt: new Date(NOW.getTime() + 31 * MINUTE),
+    });
+  });
+
+  it('reads nothing else for an account with no recent Day Pass', async () => {
+    const { eligibility, heldEntitlements, stripe } = setup({
+      dayPassBoughtHoursAgo: null,
+    });
+
+    await eligibility.decide(42);
+
+    expect(heldEntitlements).not.toHaveBeenCalled();
+    expect(stripe.prices.search).not.toHaveBeenCalled();
+  });
+
   it.each<[string, Partial<HeldEntitlements>]>([
     [
       'an active Semester Pass',
       { activePassKind: '120d', activePassExpiresAt: new Date('2027-01-01') },
+    ],
+    [
+      'a Semester Pass inside its renewal window',
+      {
+        activePassKind: '120d',
+        activePassExpiresAt: new Date('2026-11-16'),
+        semesterRenewalOpen: true,
+      },
     ],
     [
       'an active Week Pass',
@@ -131,6 +182,21 @@ describe('DayPassCreditEligibility', () => {
     });
   });
 
+  it('refuses a Day Pass holder who also holds another running pass that expires sooner', async () => {
+    const { eligibility, passes } = setup();
+    passes.seed({
+      user_id: 42,
+      kind: '7d',
+      expires_at: new Date(NOW.getTime() + 10 * HOUR),
+      stripe_payment_intent_id: 'pi_week',
+    });
+
+    expect(await eligibility.decide(42)).toEqual({
+      eligible: false,
+      reason: 'plan_held',
+    });
+  });
+
   it('refuses a Day Pass whose credit was already redeemed', async () => {
     const { eligibility, credits } = setup();
     const credit = await credits.claim(42, 'pi_day');
@@ -143,12 +209,68 @@ describe('DayPassCreditEligibility', () => {
     });
   });
 
-  it('keeps offering the credit while an upgrade checkout is open but unpaid', async () => {
-    const { eligibility, credits } = setup();
+  it('treats a credit as used once Stripe reports its checkout paid, before the webhook lands', async () => {
+    const { eligibility, credits, sessions } = setup();
+    const credit = await credits.claim(42, 'pi_day');
+    await credits.attachSession(credit.id, null, 'cs_paid');
+    sessions.retrieve.mockResolvedValue({ id: 'cs_paid', status: 'complete' });
+
+    expect(await eligibility.decide(42)).toEqual({
+      eligible: false,
+      reason: 'credit_used',
+    });
+    expect(sessions.retrieve).toHaveBeenCalledWith('cs_paid');
+  });
+
+  it('keeps offering the credit while an upgrade checkout is open but unpaid, and returns that checkout', async () => {
+    const { eligibility, credits, sessions } = setup();
     const credit = await credits.claim(42, 'pi_day');
     await credits.attachSession(credit.id, null, 'cs_open');
+    sessions.retrieve.mockResolvedValue({
+      id: 'cs_open',
+      status: 'open',
+      url: 'https://checkout.stripe.com/c/cs_open',
+    });
 
-    expect(await eligibility.decide(42)).toMatchObject({ eligible: true });
+    expect(await eligibility.decide(42)).toMatchObject({
+      eligible: true,
+      openSessionUrl: 'https://checkout.stripe.com/c/cs_open',
+    });
+  });
+
+  it.each([
+    ['expired', async () => ({ id: 'cs_old', status: 'expired' })],
+    [
+      'gone from Stripe',
+      async () => {
+        throw Object.assign(new Error('No such checkout.session'), {
+          type: 'StripeInvalidRequestError',
+          code: 'resource_missing',
+        });
+      },
+    ],
+  ])(
+    'offers the credit again when the earlier checkout is %s',
+    async (_label, retrieve) => {
+      const { eligibility, credits, sessions } = setup();
+      const credit = await credits.claim(42, 'pi_day');
+      await credits.attachSession(credit.id, null, 'cs_old');
+      sessions.retrieve.mockImplementation(retrieve);
+
+      expect(await eligibility.decide(42)).toMatchObject({
+        eligible: true,
+        openSessionUrl: null,
+      });
+    }
+  );
+
+  it('does not read Stripe sessions for a credit with no checkout yet', async () => {
+    const { eligibility, credits, sessions } = setup();
+    await credits.claim(42, 'pi_day');
+
+    await eligibility.decide(42);
+
+    expect(sessions.retrieve).not.toHaveBeenCalled();
   });
 
   it.each<[string, LivePasses]>([
@@ -178,16 +300,5 @@ describe('DayPassCreditEligibility', () => {
       eligible: false,
       reason: 'price_unavailable',
     });
-  });
-
-  it('does not ask Stripe for prices when there is no recent Day Pass', async () => {
-    const { eligibility, stripe } = setup({
-      held: nothingHeld(),
-      dayPassBoughtHoursAgo: null,
-    });
-
-    await eligibility.decide(42);
-
-    expect(stripe.prices.search).not.toHaveBeenCalled();
   });
 });

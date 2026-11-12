@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { InMemoryDayPassCreditRepository } from '../../data_layer/DayPassCreditRepository';
+import { InMemoryUserPassRepository } from '../../data_layer/UserPassRepository';
 import { PricingService } from '../../services/PricingService';
 import { nothingHeld, stripePassPrices } from '../../test/fakes/dayPassCredit';
 import { DayPassCreditEligibility } from './dayPassCredit';
@@ -13,9 +14,12 @@ const useCaseFor = (dayPassExpiresAt: Date | null) => {
   if (dayPassExpiresAt != null) {
     credits.seedDayPass(42, 'pi_day', dayPassExpiresAt);
   }
-  return new GetDayPassCreditOfferUseCase(
+  const sessions = { retrieve: vi.fn() };
+  const useCase = new GetDayPassCreditOfferUseCase(
     new DayPassCreditEligibility({
       credits,
+      passes: new InMemoryUserPassRepository(),
+      sessions: sessions as never,
       pricing: new PricingService({
         prices: stripePassPrices({
           '24h': { amount: 600 },
@@ -26,6 +30,7 @@ const useCaseFor = (dayPassExpiresAt: Date | null) => {
       now: () => NOW,
     })
   );
+  return { useCase, credits, sessions };
 };
 
 describe('GetDayPassCreditOfferUseCase', () => {
@@ -36,11 +41,9 @@ describe('GetDayPassCreditOfferUseCase', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('reports the reduced price, both live prices and when the offer ends', async () => {
-    const view = await useCaseFor(new Date(NOW.getTime() + 20 * HOUR)).execute(
-      42
-    );
+    const { useCase } = useCaseFor(new Date(NOW.getTime() + 20 * HOUR));
 
-    expect(view).toEqual({
+    expect(await useCase.execute(42)).toEqual({
       eligible: true,
       amount: 2350,
       currency: 'usd',
@@ -48,10 +51,33 @@ describe('GetDayPassCreditOfferUseCase', () => {
       semesterDisplay: '$29.50',
       dayPassDisplay: '$6',
       endsAt: new Date(NOW.getTime() + 44 * HOUR).toISOString(),
+      semesterStartsAt: new Date(NOW.getTime() + 20 * HOUR).toISOString(),
+    });
+  });
+
+  it('says the 120 days start now when the Day Pass already ran out', async () => {
+    const { useCase } = useCaseFor(new Date(NOW.getTime() - 4 * HOUR));
+
+    expect(await useCase.execute(42)).toMatchObject({
+      eligible: true,
+      semesterStartsAt: null,
     });
   });
 
   it('reports only that there is no offer, without a reason or the Day Pass id', async () => {
-    expect(await useCaseFor(null).execute(42)).toEqual({ eligible: false });
+    const { useCase } = useCaseFor(null);
+
+    expect(await useCase.execute(42)).toEqual({ eligible: false });
+  });
+
+  it('stops offering the credit to a buyer who just paid the upgrade, before the webhook lands', async () => {
+    const { useCase, credits, sessions } = useCaseFor(
+      new Date(NOW.getTime() + 20 * HOUR)
+    );
+    const credit = await credits.claim(42, 'pi_day');
+    await credits.attachSession(credit.id, null, 'cs_paid');
+    sessions.retrieve.mockResolvedValue({ id: 'cs_paid', status: 'complete' });
+
+    expect(await useCase.execute(42)).toEqual({ eligible: false });
   });
 });

@@ -3,6 +3,7 @@
 // checkout session id keeps at most one payable upgrade session open, and
 // redeemed_at is written by the webhook once that session is paid.
 exports.up = async (knex) => {
+  await knex.raw("SET LOCAL lock_timeout = '5s'");
   await knex.schema.createTable('day_pass_credits', (t) => {
     t.increments('id').primary();
     t.integer('user_id')
@@ -16,9 +17,11 @@ exports.up = async (knex) => {
     t.timestamp('created_at', { useTz: true })
       .notNullable()
       .defaultTo(knex.fn.now());
+    t.index(['user_id'], 'day_pass_credits_user_id_idx');
   });
 };
 
+// Dropping the table discards every redemption record, so a used credit could be offered again.
 exports.down = async (knex) => {
   await knex.schema.dropTable('day_pass_credits');
 };

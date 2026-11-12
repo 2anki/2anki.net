@@ -1,14 +1,16 @@
 import { post } from './api';
-import { CONFLICT, SERVICE_UNAVAILABLE } from './http';
+import { CONFLICT } from './http';
 import { landingCampaignParams } from '../adClick';
 
 const DAY_PASS_CREDIT_PATH = '/api/checkout/pass/120d/day-pass-credit';
+const RETRYABLE_CONFLICT = 'day_pass_credit_checkout_open';
 
 export interface DayPassCreditOffer {
   display: string;
   semesterDisplay: string;
   dayPassDisplay: string;
   endsAt: string;
+  semesterStartsAt: string | null;
 }
 
 export type DayPassCreditCheckout =
@@ -33,7 +35,9 @@ export const getDayPassCreditOffer =
         typeof body.display !== 'string' ||
         typeof body.semesterDisplay !== 'string' ||
         typeof body.dayPassDisplay !== 'string' ||
-        typeof body.endsAt !== 'string'
+        typeof body.endsAt !== 'string' ||
+        (body.semesterStartsAt != null &&
+          typeof body.semesterStartsAt !== 'string')
       ) {
         return null;
       }
@@ -42,6 +46,10 @@ export const getDayPassCreditOffer =
         semesterDisplay: body.semesterDisplay,
         dayPassDisplay: body.dayPassDisplay,
         endsAt: body.endsAt,
+        semesterStartsAt:
+          typeof body.semesterStartsAt === 'string'
+            ? body.semesterStartsAt
+            : null,
       };
     } catch {
       return null;
@@ -54,18 +62,18 @@ export const startDayPassCreditCheckout =
       const response = await post(DAY_PASS_CREDIT_PATH, {
         campaign: landingCampaignParams(),
       });
-      if (
-        response.status === CONFLICT ||
-        response.status === SERVICE_UNAVAILABLE
-      ) {
-        return { status: 'unavailable' };
+      const body = (await response.json().catch(() => null)) as {
+        url?: unknown;
+        code?: unknown;
+      } | null;
+      if (response.status === CONFLICT) {
+        return body?.code === RETRYABLE_CONFLICT
+          ? { status: 'error' }
+          : { status: 'unavailable' };
       }
       if (!response.ok) {
         return { status: 'error' };
       }
-      const body = (await response.json().catch(() => null)) as {
-        url?: unknown;
-      } | null;
       return typeof body?.url === 'string'
         ? { url: body.url }
         : { status: 'error' };

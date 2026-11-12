@@ -14,10 +14,15 @@ export interface RecentDayPass {
   expiresAt: Date;
 }
 
+export interface DayPassExpiryWindow {
+  expiresAfter: Date;
+  expiresBy: Date;
+}
+
 export interface IDayPassCreditRepository {
   findRecentDayPass(
     userId: number,
-    expiresAfter: Date
+    window: DayPassExpiryWindow
   ): Promise<RecentDayPass | null>;
   findByDayPass(dayPassPaymentIntentId: string): Promise<DayPassCredit | null>;
   claim(userId: number, dayPassPaymentIntentId: string): Promise<DayPassCredit>;
@@ -54,13 +59,14 @@ const toCredit = (row: DayPassCreditRow): DayPassCredit => ({
 export class DayPassCreditRepository implements IDayPassCreditRepository {
   constructor(private readonly database: Knex) {}
 
-  buildFindRecentDayPassQuery(userId: number, expiresAfter: Date) {
+  buildFindRecentDayPassQuery(userId: number, window: DayPassExpiryWindow) {
     const query = this.database(PASSES)
       .select(`${PASSES}.stripe_payment_intent_id`, `${PASSES}.expires_at`)
       .where(`${PASSES}.user_id`, userId)
       .where(`${PASSES}.kind`, '24h')
       .where(`${PASSES}.stripe_payment_intent_id`, 'like', 'pi\\_%')
-      .where(`${PASSES}.expires_at`, '>', expiresAfter)
+      .where(`${PASSES}.expires_at`, '>', window.expiresAfter)
+      .where(`${PASSES}.expires_at`, '<=', window.expiresBy)
       .whereNotExists(function signedOutPurchase() {
         this.select(1)
           .from('anonymous_passes')
@@ -77,12 +83,9 @@ export class DayPassCreditRepository implements IDayPassCreditRepository {
 
   async findRecentDayPass(
     userId: number,
-    expiresAfter: Date
+    window: DayPassExpiryWindow
   ): Promise<RecentDayPass | null> {
-    const row = (await this.buildFindRecentDayPassQuery(
-      userId,
-      expiresAfter
-    )) as
+    const row = (await this.buildFindRecentDayPassQuery(userId, window)) as
       | { stripe_payment_intent_id: string; expires_at: Date | string }
       | undefined;
     if (row == null) {
@@ -179,10 +182,15 @@ export class InMemoryDayPassCreditRepository implements IDayPassCreditRepository
 
   async findRecentDayPass(
     userId: number,
-    expiresAfter: Date
+    window: DayPassExpiryWindow
   ): Promise<RecentDayPass | null> {
     const latest = this.dayPasses
-      .filter((pass) => pass.userId === userId && pass.expiresAt > expiresAfter)
+      .filter(
+        (pass) =>
+          pass.userId === userId &&
+          pass.expiresAt > window.expiresAfter &&
+          pass.expiresAt <= window.expiresBy
+      )
       .sort((a, b) => b.expiresAt.getTime() - a.expiresAt.getTime())[0];
     return latest == null
       ? null

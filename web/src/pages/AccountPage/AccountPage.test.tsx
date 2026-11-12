@@ -413,6 +413,7 @@ describe('AccountPage Day Pass credit offer', () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    vi.useRealTimers();
   });
 
   it('offers the Semester Pass with the Day Pass credited in the plan area', async () => {
@@ -426,6 +427,37 @@ describe('AccountPage Day Pass credit offer', () => {
     expect(
       await screen.findByText('Move up to the Semester Pass for $23')
     ).toBeInstanceOf(HTMLElement);
+  });
+
+  it('does not ask for the offer from a Semester Pass holder whose renewal banner is showing', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2027-01-10T12:00:00.000Z'));
+    const passExpiresAt = '2027-01-14T12:00:00.000Z';
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: {
+          passKind: '120d',
+          passExpiresAt,
+          subscriber: true,
+          semesterRenewalOpen: true,
+        },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'semesterPass',
+      hasActivePlan: true,
+      passExpiresAt,
+    });
+
+    renderAccountPage();
+
+    expect(
+      screen.getByRole('region', { name: 'Semester Pass renewal' })
+    ).toBeInTheDocument();
+    expect(creditRequests).toBe(0);
   });
 
   it('does not ask for the offer on a Pro plan', () => {

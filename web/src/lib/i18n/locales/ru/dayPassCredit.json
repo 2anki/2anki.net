@@ -1,8 +1,12 @@
 {
   "title": "Перейди на Semester Pass за {{price}}",
-  "body": "{{dayPassPrice}}, оплаченные за Day Pass, засчитываются в Semester Pass за {{semesterPrice}}. Предложение действует до {{date}}.",
+  "body": "Цена Day Pass ({{dayPassPrice}}) засчитывается в стоимость Semester Pass за {{semesterPrice}}. Один платёж за 120 дней, без автопродления.",
+  "startsLater": "120 дней начнутся, когда закончится твой Day Pass: {{date}}.",
+  "startsNow": "120 дней начнутся с момента оплаты.",
+  "offerEnds": "Предложение действует до {{date}}.",
   "cta": "Взять Semester Pass за {{price}}",
   "pending": "Открываем оплату",
   "unavailable": "Это предложение больше недоступно.",
+  "seePlans": "Посмотреть все тарифы",
   "error": "Не удалось открыть оплату. Попробуй ещё раз."
 }

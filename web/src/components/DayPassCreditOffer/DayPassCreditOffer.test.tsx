@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import i18n from '../../lib/i18n';
 
@@ -17,6 +18,7 @@ const OFFER = {
   semesterDisplay: '$29',
   dayPassDisplay: '$6',
   endsAt: '2026-11-14T10:00:00.000Z',
+  semesterStartsAt: '2026-11-13T10:00:00.000Z',
 };
 
 const response = (status: number, body: unknown) => ({
@@ -48,9 +50,13 @@ const renderOffer = (enabled = true) =>
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <DayPassCreditOffer placement="upload" enabled={enabled} />
+      <MemoryRouter>
+        <DayPassCreditOffer placement="upload" enabled={enabled} />
+      </MemoryRouter>
     </QueryClientProvider>
   );
+
+const ctaName = 'Get the Semester Pass for $23';
 
 describe('DayPassCreditOffer', () => {
   const originalFetch = globalThis.fetch;
@@ -69,7 +75,7 @@ describe('DayPassCreditOffer', () => {
     vi.clearAllMocks();
   });
 
-  test('states the reduced price and that the Day Pass payment counts toward it', async () => {
+  test('says the Day Pass price comes off a single 120-day payment that does not renew', async () => {
     routeFetch(response(200, OFFER));
     renderOffer();
 
@@ -78,12 +84,33 @@ describe('DayPassCreditOffer', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /The \$6 you paid for your Day Pass counts toward the \$29 Semester Pass\./
+        'The Day Pass price, $6, comes off the $29 Semester Pass. One payment for 120 days. Nothing renews.'
       )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/The 120 days start when your Day Pass ends on /)
     ).toBeInTheDocument();
     expect(track).toHaveBeenCalledWith('day_pass_credit_offer_shown', {
       placement: 'upload',
     });
+  });
+
+  test('says the 120 days start at payment when the Day Pass already ended', async () => {
+    routeFetch(response(200, { ...OFFER, semesterStartsAt: null }));
+    renderOffer();
+
+    expect(
+      await screen.findByText('The 120 days start when you pay.')
+    ).toBeInTheDocument();
+  });
+
+  test('gives its button secondary weight so the page keeps one main action', async () => {
+    routeFetch(response(200, OFFER));
+    renderOffer();
+
+    const button = await screen.findByRole('button', { name: ctaName });
+    expect(button.className).toMatch(/btnSecondary/);
+    expect(button.className).not.toMatch(/btnPrimary/);
   });
 
   test('renders nothing and records nothing when the account is not eligible', async () => {
@@ -114,11 +141,7 @@ describe('DayPassCreditOffer', () => {
     );
     renderOffer();
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Get the Semester Pass for $23',
-      })
-    );
+    fireEvent.click(await screen.findByRole('button', { name: ctaName }));
 
     await waitFor(() =>
       expect(assigned.href).toBe('https://checkout.stripe.com/c/cs_1')
@@ -128,24 +151,50 @@ describe('DayPassCreditOffer', () => {
     });
   });
 
-  test('says the offer is gone when the server refuses it', async () => {
+  test('replaces the offer with a way to other plans when the server says it is gone', async () => {
     routeFetch(
       response(200, OFFER),
       response(409, { code: 'day_pass_credit_used' })
     );
     renderOffer();
 
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Get the Semester Pass for $23',
-      })
-    );
+    fireEvent.click(await screen.findByRole('button', { name: ctaName }));
 
     expect(
       await screen.findByText('This offer is no longer available.')
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'See all plans' })).toHaveAttribute(
+      'href',
+      '/pricing'
+    );
     expect(
-      screen.queryByRole('button', { name: /Semester Pass/ })
+      screen.queryByText('Move up to the Semester Pass for $23')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Offer ends/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: ctaName })
     ).not.toBeInTheDocument();
   });
+
+  test.each([
+    [
+      'a checkout is already being opened',
+      409,
+      { code: 'day_pass_credit_checkout_open' },
+    ],
+    ['the prices cannot be read right now', 503, { message: 'unavailable' }],
+  ])(
+    'keeps the offer and asks for a retry when %s',
+    async (_label, status, body) => {
+      routeFetch(response(200, OFFER), response(status, body));
+      renderOffer();
+
+      fireEvent.click(await screen.findByRole('button', { name: ctaName }));
+
+      expect(
+        await screen.findByText("Checkout didn't open. Try again.")
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: ctaName })).toBeEnabled();
+    }
+  );
 });

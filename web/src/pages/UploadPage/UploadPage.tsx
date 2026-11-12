@@ -308,10 +308,6 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           <span>{passConfirmation}</span>
         </div>
       )}
-      <DayPassCreditOffer
-        placement="upload"
-        enabled={userLocals?.locals?.passKind === '24h'}
-      />
       <div
         className={
           holdSignedInBadge
@@ -486,6 +482,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         setErrorMessage={setErrorMessage}
         aiOn={isAiOn}
         onPassDeckStarted={() => setPassDeckStarted(true)}
+      />
+      <DayPassCreditOffer
+        placement="upload"
+        enabled={userLocals?.locals?.passKind === '24h'}
       />
       {isSignedIn && <RecentSources />}
       <ExploreCard />

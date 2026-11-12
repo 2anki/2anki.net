@@ -1,8 +1,12 @@
 {
   "title": "Wechsle für {{price}} zum Semester Pass",
-  "body": "Die {{dayPassPrice}} für deinen Day Pass werden auf den Semester Pass für {{semesterPrice}} angerechnet. Angebot gilt bis {{date}}.",
+  "body": "Der Preis des Day Pass ({{dayPassPrice}}) wird vom Semester Pass für {{semesterPrice}} abgezogen. Eine einmalige Zahlung für 120 Tage, ohne automatische Verlängerung.",
+  "startsLater": "Die 120 Tage beginnen, wenn dein Day Pass endet, am {{date}}.",
+  "startsNow": "Die 120 Tage beginnen mit der Zahlung.",
+  "offerEnds": "Angebot gilt bis {{date}}.",
   "cta": "Semester Pass für {{price}} holen",
   "pending": "Checkout wird geöffnet",
   "unavailable": "Dieses Angebot ist nicht mehr verfügbar.",
+  "seePlans": "Alle Tarife ansehen",
   "error": "Der Checkout ließ sich nicht öffnen. Versuch es noch einmal."
 }

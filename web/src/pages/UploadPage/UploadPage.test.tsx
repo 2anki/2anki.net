@@ -1287,6 +1287,20 @@ describe('UploadPage Day Pass credit offer', () => {
     });
   });
 
+  it('arrives below the upload form so nothing above the drop zone moves', async () => {
+    fakeLocals = { subscriber: true, passKind: '24h', planSource: null };
+
+    renderPage('/upload');
+
+    const offer = await screen.findByText(
+      'Move up to the Semester Pass for $23'
+    );
+    const form = screen.getByTestId('upload-form-stub');
+    expect(
+      form.compareDocumentPosition(offer) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it.each([
     ['a Semester Pass holder', '120d'],
     ['a free account', null],

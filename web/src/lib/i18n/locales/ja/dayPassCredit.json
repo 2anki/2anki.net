@@ -1,8 +1,12 @@
 {
   "title": "{{price}} で Semester Pass にアップグレード",
-  "body": "Day Pass に支払った {{dayPassPrice}} は {{semesterPrice}} の Semester Pass に充当されます。この特典は {{date}} までです。",
+  "body": "Day Pass の価格 {{dayPassPrice}} が {{semesterPrice}} の Semester Pass から差し引かれます。120日分の一回払いで、自動更新はありません。",
+  "startsLater": "120日間は Day Pass が終わる {{date}} から始まります。",
+  "startsNow": "120日間はお支払い時から始まります。",
+  "offerEnds": "この特典は {{date}} までです。",
   "cta": "{{price}} で Semester Pass を購入",
   "pending": "決済画面を開いています",
   "unavailable": "この特典はご利用いただけなくなりました。",
+  "seePlans": "すべてのプランを見る",
   "error": "決済画面を開けませんでした。もう一度お試しください。"
 }

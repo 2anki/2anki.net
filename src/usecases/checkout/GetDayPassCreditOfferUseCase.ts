@@ -11,6 +11,7 @@ export type DayPassCreditOfferView =
       semesterDisplay: string;
       dayPassDisplay: string;
       endsAt: string;
+      semesterStartsAt: string | null;
     };
 
 export class GetDayPassCreditOfferUseCase {
@@ -32,6 +33,7 @@ export class GetDayPassCreditOfferUseCase {
       ),
       dayPassDisplay: formatDisplay(decision.dayPassAmount, decision.currency),
       endsAt: decision.endsAt.toISOString(),
+      semesterStartsAt: decision.semesterStartsAt?.toISOString() ?? null,
     };
   }
 }

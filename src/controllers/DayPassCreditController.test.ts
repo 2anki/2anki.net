@@ -1,6 +1,7 @@
 import { vi, type Mock } from 'vitest';
 import type { Response } from 'express';
 import { InMemoryDayPassCreditRepository } from '../data_layer/DayPassCreditRepository';
+import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
 import { PricingService } from '../services/PricingService';
 import { nothingHeld, stripePassPrices } from '../test/fakes/dayPassCredit';
 import type { HeldEntitlements } from '../usecases/checkout/resolvePurchaseBlock';
@@ -10,6 +11,7 @@ import { GetDayPassCreditOfferUseCase } from '../usecases/checkout/GetDayPassCre
 import DayPassCreditController from './DayPassCreditController';
 
 const HOUR = 60 * 60 * 1000;
+const NOW = new Date('2026-11-12T12:00:00.000Z');
 
 const makeRes = () => {
   const res = {
@@ -26,7 +28,7 @@ const request = () =>
 
 const setup = (held: HeldEntitlements = nothingHeld()) => {
   const credits = new InMemoryDayPassCreditRepository();
-  credits.seedDayPass(42, 'pi_day', new Date(Date.now() + 20 * HOUR));
+  credits.seedDayPass(42, 'pi_day', new Date(NOW.getTime() + 20 * HOUR));
   const stripe = {
     checkout: {
       sessions: {
@@ -45,9 +47,11 @@ const setup = (held: HeldEntitlements = nothingHeld()) => {
   };
   const eligibility = new DayPassCreditEligibility({
     credits,
+    passes: new InMemoryUserPassRepository(),
+    sessions: stripe.checkout.sessions as never,
     pricing: new PricingService(stripe as never),
     heldEntitlements: async () => held,
-    now: () => new Date(),
+    now: () => NOW,
   });
   const record = vi.fn();
   const controller = new DayPassCreditController(

@@ -169,14 +169,6 @@ export default function AccountPage() {
           passExpiresAt={passExpiresAt}
         />
       )}
-      <DayPassCreditOffer
-        placement="account"
-        enabled={
-          !checkingPlan &&
-          lapsedSubscription == null &&
-          (plan === 'dayPass' || plan === 'free')
-        }
-      />
 
       {canClaimSubscription && <ClaimSubscription />}
 
@@ -185,6 +177,15 @@ export default function AccountPage() {
         locals={locals}
         hasActivePlan={hasActivePlan}
         onRefetch={refetch}
+      />
+
+      <DayPassCreditOffer
+        placement="account"
+        enabled={
+          !checkingPlan &&
+          lapsedSubscription == null &&
+          (plan === 'dayPass' || plan === 'free')
+        }
       />
 
       <LogOutEverywhere />

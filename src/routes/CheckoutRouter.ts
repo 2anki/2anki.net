@@ -307,6 +307,8 @@ const CheckoutRouter = () => {
     const credits = new DayPassCreditRepository(database);
     const eligibility = new DayPassCreditEligibility({
       credits,
+      passes: guardDeps.userPassRepository,
+      sessions: getStripe().checkout.sessions,
       pricing: pricingService,
       heldEntitlements: (userId) => readHeldEntitlements(userId, guardDeps),
       now: () => new Date(),
