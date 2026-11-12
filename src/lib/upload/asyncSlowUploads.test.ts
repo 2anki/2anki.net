@@ -28,7 +28,7 @@ describe('isSlowUpload', () => {
     ).toBe(false);
   });
 
-  it.each(['notes.csv', 'page.html', 'notes.md', 'noextension'])(
+  it.each(['notes.csv', 'page.html', 'notes.md', 'export.zip', 'noextension'])(
     'keeps %s on the normal path',
     (name) => {
       expect(isSlowUpload([file(name, 50 * 1024 * 1024)], 'pairs')).toBe(false);

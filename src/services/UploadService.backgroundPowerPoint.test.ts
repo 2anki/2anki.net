@@ -176,6 +176,17 @@ vi.mock('../data_layer/DropboxRepository', async (importActual) => {
   return { ...actual, DropboxRepository: RecordingDropboxRepository };
 });
 
+vi.mock('../data_layer/GoogleDriveRepository', async (importActual) => {
+  const actual =
+    await importActual<typeof import('../data_layer/GoogleDriveRepository')>();
+  class RecordingGoogleDriveRepository {
+    saveFiles() {
+      return Promise.resolve();
+    }
+  }
+  return { ...actual, GoogleDriveRepository: RecordingGoogleDriveRepository };
+});
+
 import type { Knex } from 'knex';
 import UploadService from './UploadService';
 import UploadController from '../controllers/Upload/UploadController';
@@ -186,6 +197,8 @@ import type AuthenticationService from './AuthenticationService';
 import type { UserWithOwner } from './AuthenticationService';
 import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
 import { applyUserLocals } from '../routes/middleware/configureUserLocal';
+import { createGoogleDriveExportLink } from '../controllers/Upload/helpers/createGoogleDriveDownloadLink';
+import { ASYNC_PDF_MIN_BYTES } from '../lib/upload/asyncSlowUploads';
 import type JobRepository from '../data_layer/JobRepository';
 import type UsersRepository from '../data_layer/UsersRepository';
 import type { IUploadRepository } from '../data_layer/UploadRespository';
@@ -753,6 +766,92 @@ describe('a PowerPoint reaching the background path from another entry point', (
     expect(savedDropboxFiles).toEqual([
       { owner: OWNER, names: ['lecture.pptx'] },
     ]);
+  }, 20_000);
+
+  it('sends a large PDF picked in Dropbox, which carries no PDF answer, to the background for a paying account', async () => {
+    const pdfFromDropbox = {
+      ...lectureFromDropbox,
+      bytes: ASYNC_PDF_MIN_BYTES,
+      id: 'id:textbook',
+      link: 'https://dl.dropboxusercontent.com/s/textbook.pdf',
+      name: 'textbook.pdf',
+    };
+    remoteFiles.set(pdfFromDropbox.link, Buffer.from('%PDF-1.4 textbook'));
+    const { service, jobs, settled } = backgroundService();
+    const controller = new UploadController(
+      service,
+      new NotionService({} as INotionRepository)
+    );
+    const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
+    const req = {
+      body: { files: JSON.stringify([pdfFromDropbox]) },
+      headers: {},
+      cookies: {},
+      path: '/api/upload/dropbox',
+    } as unknown as express.Request;
+
+    await controller.dropbox(req, res);
+    await settled;
+
+    expect(status()).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      (body() as { jobId: string }).jobId,
+      String(OWNER),
+      'textbook.pdf',
+      'upload'
+    );
+  }, 20_000);
+
+  it('builds Google Slides picked in Drive in the background for a paying account', async () => {
+    const slidesFromDrive = {
+      id: 'slides-file-id',
+      name: 'lecture',
+      mimeType: 'application/vnd.google-apps.presentation',
+      iconUrl: '',
+      url: '',
+      sizeBytes: numberedLecture.length,
+      embedUrl: '',
+      description: '',
+      driveSuccess: true,
+      isShared: false,
+      lastEditedUtc: 0,
+      serviceId: '',
+      type: 'presentation',
+    };
+    remoteFiles.set(
+      createGoogleDriveExportLink(
+        slidesFromDrive as never,
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      ),
+      numberedLecture
+    );
+    const { service, jobs, settled } = backgroundService();
+    const controller = new UploadController(
+      service,
+      new NotionService({} as INotionRepository)
+    );
+    const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
+    const req = {
+      body: {
+        files: JSON.stringify([slidesFromDrive]),
+        googleDriveAuth: 'drive-access-token',
+      },
+      headers: {},
+      cookies: {},
+      path: '/api/upload/google_drive',
+    } as unknown as express.Request;
+
+    await controller.googleDrive(req, res);
+    const outcome = await settled;
+
+    expect(status()).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      (body() as { jobId: string }).jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+    expect(outcome).toBe('stored in My Decks');
   }, 20_000);
 
   it("answers a paying MCP caller's PowerPoint link as processing and builds it in the background", async () => {
