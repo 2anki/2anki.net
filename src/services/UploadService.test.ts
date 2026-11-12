@@ -129,7 +129,11 @@ import {
   anonRecoveryKey,
 } from '../lib/upload/anonymousRecovery';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
-import { ANONYMOUS_AI_PREVIEW_FLAG } from '../lib/upload/anonymousAiPreview';
+import {
+  ANONYMOUS_AI_PREVIEW_FLAG,
+  previewHoldKey,
+} from '../lib/upload/anonymousAiPreview';
+import { AiPreviewRateLimiter } from '../lib/upload/aiPreviewRateLimiter';
 import { ANONYMOUS_PREVIEW_CARDS_FLAG } from '../lib/upload/anonymousPreviewCards';
 import { ASYNC_PDF_MIN_BYTES } from '../lib/upload/asyncSlowUploads';
 import {
@@ -393,6 +397,46 @@ describe('UploadService.handleUpload — error paths', () => {
     // The preview short-circuits the sync/parser path.
     expect(executeMock).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['granted consent', 'granted', 'visitor-ai'],
+    ['declined', 'denied', null],
+  ])(
+    'limits and holds the AI preview under the raw anon id for a visitor who %s, recording ai_preview_shown with the analytics id',
+    async (_label, consent, expectedAnonymousId) => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({ packages: [] }),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+      mockGetFeatureFlag.mockResolvedValue(true);
+      mockGenerateAiPreview.mockResolvedValue([{ front: 'q', back: 'a' }]);
+      const allowSpy = vi.spyOn(AiPreviewRateLimiter.prototype, 'allow');
+      const heldDeck = new InMemoryHeldDeckRepository();
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps({ heldDeck })
+      );
+      const req = anonAiMarkdownRequest('visitor-ai');
+      Object.assign(req.cookies, { cookie_consent: consent });
+      const { res, capturedJson } = buildResponse();
+
+      await service.handleUpload(req, res);
+
+      expect(capturedJson()).toMatchObject({ kind: 'ai_preview' });
+      expect(allowSpy).toHaveBeenCalledWith('visitor-ai', expect.any(String));
+      expect(heldDeck.rows[0]).toMatchObject({
+        anon_id: previewHoldKey('visitor-ai'),
+      });
+      expect(trackMock).toHaveBeenCalledWith(
+        'ai_preview_shown',
+        expect.objectContaining({ anonymousId: expectedAnonymousId })
+      );
+      allowSpy.mockRestore();
+    }
+  );
 
   it('answers a deck-writer crash with its fixed message when the AI preview flag is on but no preview came back', async () => {
     const crash = new PythonExitError('The deck writer stopped.', {

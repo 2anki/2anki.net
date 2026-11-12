@@ -413,6 +413,36 @@ describe('DownloadController.getBulkDownload', () => {
     });
   });
 
+  it.each([
+    ['granted consent', 'granted', 'anon-bulk'],
+    ['declined', 'denied', null],
+  ])(
+    'serves the bulk zip to a visitor who %s, with the anonymous id on deck_downloaded only under consent',
+    async (_label, consent, expectedAnonymousId) => {
+      const id = `bulk-consent-workspace-${consent}`;
+      const workspace = path.join(workspaceBase, id);
+      fs.mkdirSync(workspace);
+      fs.writeFileSync(path.join(workspace, 'one.apkg'), 'a');
+
+      const controller = new DownloadController(makeService() as any);
+      const req = {
+        params: { id },
+        cookies: { anon_id: 'anon-bulk', cookie_consent: consent },
+      } as unknown as Request;
+      const { res, chunks, done } = streamingResponse();
+
+      controller.getBulkDownload(req, res);
+      await done;
+
+      expect(Buffer.concat(chunks).subarray(0, 2).toString()).toBe('PK');
+      expect(trackMock).toHaveBeenCalledWith('deck_downloaded', {
+        userId: null,
+        anonymousId: expectedAnonymousId,
+        props: { workspace_id: id, bulk: true, file_count: 1 },
+      });
+    }
+  );
+
   it('does not fire deck_downloaded when the workspace has no .apkg files', async () => {
     const id = 'bulk-empty-workspace';
     const workspace = path.join(workspaceBase, id);

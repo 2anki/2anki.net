@@ -807,6 +807,26 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
     }
   );
 
+  it('keeps the user but not the anon id on checkout_completed for a subscription session created before the consent marker existed', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_pre_marker',
+          mode: 'subscription',
+          metadata: { user_id: '42', anon_id: 'anon-uuid-123' },
+        },
+      },
+    };
+
+    const res = await postWebhook();
+    expect(res.status).toBe(200);
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({ userId: 42, anonymousId: null })
+    );
+  });
+
   it('marks checkout_completed as recovered when the session was recovered', async () => {
     mockWebhookEvent = {
       type: 'checkout.session.completed',
