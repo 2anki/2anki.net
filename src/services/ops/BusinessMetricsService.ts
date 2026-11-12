@@ -1018,10 +1018,13 @@ const wasActiveOn = (sub: NormalizedSubscription, atMs: number): boolean => {
   return isPayingHistorical(sub.status);
 };
 
+const isPayingToday = (sub: NormalizedSubscription, nowMs: number): boolean =>
+  sub.status === 'active' && isActiveToday(sub, nowMs);
+
 const computeMrrUsd = (subs: NormalizedSubscription[], now: Date): number => {
   let cents = 0;
   for (const sub of subs) {
-    if (isActiveToday(sub, now.getTime())) {
+    if (isPayingToday(sub, now.getTime())) {
       cents += sub.monthlyCents;
     }
   }

@@ -271,6 +271,18 @@ describe('buildScoreRows', () => {
     expect(row).toMatchObject({ value: null, status: 'none' });
   });
 
+  it('scores the same rows whatever the MRR figure is', () => {
+    const withOtherMrr = buildScoreRows({
+      business: business({ mrr_usd: 15 }),
+      conversion: conversion(),
+      unresolvedErrorGroups: 3,
+      passUnlock: passUnlock(1),
+      paidValue: paidValue(2, 1),
+    });
+
+    expect(withOtherMrr).toEqual(rows);
+  });
+
   it('scores the same rows whether or not the sales figure came through', () => {
     const inputs = {
       conversion: conversion(),
