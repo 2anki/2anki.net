@@ -1004,7 +1004,10 @@ describe('DownloadController.getAnonymousPreviewCards', () => {
     const res = mockResponse();
 
     await controller.getAnonymousPreviewCards(
-      previewRequest({ token }),
+      previewRequest(
+        { token },
+        { anon_id: 'anon-1', cookie_consent: 'denied' }
+      ),
       res,
       {} as never
     );

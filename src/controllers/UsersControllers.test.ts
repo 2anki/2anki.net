@@ -715,6 +715,31 @@ describe('UsersController.requestMagicLink', () => {
     );
   });
 
+  it.each([
+    ['granted', 'anon-magic'],
+    ['denied', null],
+  ])(
+    'hands the magic-link sign-up the anon id only when consent is %s',
+    async (consent, expectedAnonymousId) => {
+      const requestMagicLink = vi.fn().mockResolvedValue(undefined);
+      const { controller } = buildMagicController({ requestMagicLink });
+      const req = {
+        body: { email: 'al@example.com', purpose: 'login' },
+        cookies: { anon_id: 'anon-magic', cookie_consent: consent },
+      } as unknown as express.Request;
+
+      await controller.requestMagicLink(req, buildRes(), vi.fn());
+
+      expect(requestMagicLink).toHaveBeenCalledWith(
+        'al@example.com',
+        'login',
+        null,
+        undefined,
+        expect.objectContaining({ anonymousId: expectedAnonymousId })
+      );
+    }
+  );
+
   it('forwards a validated relative redirect to the service', async () => {
     const requestMagicLink = vi.fn().mockResolvedValue(undefined);
     const { controller } = buildMagicController({ requestMagicLink });
@@ -1288,6 +1313,41 @@ describe('UsersController.loginWithGoogle', () => {
     );
   });
 
+  it.each([
+    ['granted', 'anon-google'],
+    ['denied', null],
+  ])(
+    'hands a new Google account the anon id only when consent is %s',
+    async (consent, expectedAnonymousId) => {
+      const register = vi.fn().mockResolvedValue([{ id: 7 }]);
+      const { controller } = buildGoogleController({
+        registerVerifiedIdentity: register,
+      });
+      const req = {
+        query: { code: 'gauth-code', state: 'google-state' },
+        cookies: {
+          google_login_state: 'google-state',
+          anon_id: 'anon-google',
+          cookie_consent: consent,
+        },
+        headers: {},
+      } as unknown as express.Request;
+
+      await controller.loginWithGoogle(req, buildGoogleRes());
+
+      expect(register).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'g@example.com',
+        'google',
+        expect.objectContaining({
+          method: 'google',
+          anonymousId: expectedAnonymousId,
+        })
+      );
+    }
+  );
+
   it('does not call register for an existing Google user', async () => {
     const existingUser = { id: 9, email: 'existing@example.com' };
     const getUserFrom = vi.fn().mockResolvedValue(existingUser);
@@ -1500,6 +1560,37 @@ describe('UsersController.loginWithMicrosoft', () => {
 
     expect(order).toEqual(['confirmed', 'session']);
   });
+
+  it.each([
+    ['granted', 'anon-microsoft'],
+    ['denied', null],
+  ])(
+    'hands a new Microsoft account the anon id only when consent is %s',
+    async (consent, expectedAnonymousId) => {
+      const register = vi.fn().mockResolvedValue([{ id: 11 }]);
+      const { controller } = buildMicrosoftController({
+        registerVerifiedIdentity: register,
+      });
+      const req = buildReq();
+      Object.assign(req.cookies, {
+        anon_id: 'anon-microsoft',
+        cookie_consent: consent,
+      });
+
+      await controller.loginWithMicrosoft(req, buildMicrosoftRes());
+
+      expect(register).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'm@example.com',
+        'microsoft',
+        expect.objectContaining({
+          method: 'microsoft',
+          anonymousId: expectedAnonymousId,
+        })
+      );
+    }
+  );
 
   it("creates a new user, links the identity, and stamps signup_origin='microsoft' when the verified email has no existing account", async () => {
     const register = vi.fn().mockResolvedValue([{ id: 11 }]);
@@ -2593,6 +2684,41 @@ describe('UsersController.loginWithNotion', () => {
       expect.objectContaining({ method: 'notion_oauth' })
     );
   });
+
+  it.each([
+    ['granted', 'anon-notion'],
+    ['denied', null],
+  ])(
+    'hands a new Notion account the anon id only when consent is %s',
+    async (consent, expectedAnonymousId) => {
+      const register = vi.fn().mockResolvedValue([{ id: 11 }]);
+      const { controller } = buildNotionController({
+        registerVerifiedIdentity: register,
+      });
+      const req = {
+        query: { code: 'notion-code', state: 'login:notion-state' },
+        cookies: {
+          notion_login_state: 'notion-state',
+          anon_id: 'anon-notion',
+          cookie_consent: consent,
+        },
+        headers: {},
+      } as unknown as express.Request;
+
+      await controller.loginWithNotion(req, buildNotionRes());
+
+      expect(register).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'n@example.com',
+        'notion_oauth',
+        expect.objectContaining({
+          method: 'notion_oauth',
+          anonymousId: expectedAnonymousId,
+        })
+      );
+    }
+  );
 
   it('leaves the address unconfirmed for a Notion sign-in', async () => {
     const { controller, userService } = buildNotionController({

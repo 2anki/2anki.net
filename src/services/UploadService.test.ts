@@ -2266,6 +2266,32 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     expect(successCall?.[1].props).toMatchObject({ entry: 'mcp' });
   });
 
+  it('records an MCP conversion with no anonymous id, since the connector request carries no cookies', async () => {
+    mockPackages([{ name: 'deck', cardCount: 10 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      headers: {},
+      cookies: {},
+    } as Partial<express.Request>);
+    const { res } = buildResponse();
+    Object.assign(res.locals, { owner: 42, mcp_auth: true });
+
+    await service.handleUpload(req, res);
+
+    for (const name of ['upload_started', 'conversion_succeeded']) {
+      expect(trackMock).toHaveBeenCalledWith(
+        name,
+        expect.objectContaining({ userId: 42, anonymousId: null })
+      );
+    }
+  });
+
   it('leaves the entry off a browser upload', async () => {
     mockPackages([{ name: 'deck', cardCount: 10 }]);
 
