@@ -1,0 +1,8 @@
+{
+  "title": "{{price}} で Semester Pass にアップグレード",
+  "body": "Day Pass に支払った {{dayPassPrice}} は {{semesterPrice}} の Semester Pass に充当されます。この特典は {{date}} までです。",
+  "cta": "{{price}} で Semester Pass を購入",
+  "pending": "決済画面を開いています",
+  "unavailable": "この特典はご利用いただけなくなりました。",
+  "error": "決済画面を開けませんでした。もう一度お試しください。"
+}

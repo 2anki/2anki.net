@@ -173,6 +173,14 @@ vi.mock('../data_layer/RefundedPaymentIntentsRepository', async () => {
   };
 });
 
+const mockMarkDayPassCreditRedeemed = vi.fn().mockResolvedValue(true);
+vi.mock('../data_layer/DayPassCreditRepository', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(function () {
+    return { markRedeemedBySession: mockMarkDayPassCreditRedeemed };
+  }),
+}));
+
 vi.mock('../data_layer/PassClaimTokensRepository', () => ({
   __esModule: true,
   default: vi.fn().mockImplementation(function () {
@@ -316,6 +324,87 @@ describe('WebhookRouter — pass grant', () => {
       'pi_test_123',
       expect.any(Date)
     );
+  });
+
+  it('grants an ordinary Semester Pass for a paid Day Pass credit session and marks the credit used', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      id: 'cs_credit',
+      amount_total: 2300,
+      metadata: {
+        user_id: '42',
+        pass_kind: '120d',
+        surface: 'day_pass_credit',
+        day_pass_credit: '1',
+      },
+    });
+    mockUpsert.mockResolvedValue({
+      id: 2,
+      user_id: 42,
+      kind: '120d',
+      expires_at: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
+      stripe_payment_intent_id: 'pi_test_123',
+    });
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(mockUpsert).toHaveBeenCalledWith(
+      42,
+      '120d',
+      120 * 24 * 60 * 60 * 1000,
+      'pi_test_123',
+      expect.any(Date)
+    );
+    expect(mockMarkDayPassCreditRedeemed).toHaveBeenCalledWith(
+      'cs_credit',
+      expect.any(Date)
+    );
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          plan: '120d',
+          surface: 'day_pass_credit',
+        }),
+      })
+    );
+  });
+
+  it('leaves Day Pass credits alone for a Semester Pass bought at list price', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      metadata: { user_id: '42', pass_kind: '120d' },
+    });
+    mockUpsert.mockResolvedValue({
+      id: 3,
+      user_id: 42,
+      kind: '120d',
+      expires_at: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
+      stripe_payment_intent_id: 'pi_test_123',
+    });
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(mockMarkDayPassCreditRedeemed).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 so Stripe retries when the credit cannot be marked used', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      metadata: { user_id: '42', pass_kind: '120d', day_pass_credit: '1' },
+    });
+    mockUpsert.mockResolvedValue({
+      id: 2,
+      user_id: 42,
+      kind: '120d',
+      expires_at: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
+      stripe_payment_intent_id: 'pi_test_123',
+    });
+    mockMarkDayPassCreditRedeemed.mockRejectedValueOnce(new Error('db down'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(500);
   });
 
   it.each([

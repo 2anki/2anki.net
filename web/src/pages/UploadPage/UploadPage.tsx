@@ -29,6 +29,7 @@ import {
 import { formatCreditPackExpiry } from '../../lib/credits/formatCreditPackExpiry';
 import styles from '../../styles/shared.module.css';
 import { AiCreditsReadout } from './components/AiCreditsReadout';
+import { DayPassCreditOffer } from '../../components/DayPassCreditOffer/DayPassCreditOffer';
 import { ExploreCard } from './components/ExploreCard/ExploreCard';
 import { RecentSources } from './components/RecentSources/RecentSources';
 import UploadForm from './components/UploadForm/UploadForm';
@@ -307,6 +308,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
           <span>{passConfirmation}</span>
         </div>
       )}
+      <DayPassCreditOffer
+        placement="upload"
+        enabled={userLocals?.locals?.passKind === '24h'}
+      />
       <div
         className={
           holdSignedInBadge

@@ -27,6 +27,7 @@ import UserPassRepository, {
   type PassKind,
 } from '../data_layer/UserPassRepository';
 import AnonymousPassRepository from '../data_layer/AnonymousPassRepository';
+import DayPassCreditRepository from '../data_layer/DayPassCreditRepository';
 import PassClaimTokensRepository from '../data_layer/PassClaimTokensRepository';
 import RefundedPaymentIntentsRepository from '../data_layer/RefundedPaymentIntentsRepository';
 import { SendAnonymousPassClaimEmailUseCase } from '../usecases/passes/SendAnonymousPassClaimEmailUseCase';
@@ -632,6 +633,15 @@ const WebhooksRouter = () => {
                   payment_intent_id_hash: hashToken(paymentIntentId),
                 }
               );
+              if (sessionMeta.day_pass_credit === '1') {
+                const marked = await new DayPassCreditRepository(
+                  getDatabase()
+                ).markRedeemedBySession(session.id, now);
+                console.info('pass.day_pass_credit.redeemed', {
+                  user_id: passUserId,
+                  newly_marked: marked,
+                });
+              }
             } catch (passError) {
               // The upsert is keyed by payment intent, so a retry is safe.
               console.error('pass.webhook.grant_failed', passError);

@@ -131,6 +131,8 @@ export const KNOWN_EVENTS = new Set([
   'pass_claim_email_sent',
   'anonymous_pass_claimed',
   'pass_account_email_autolinked',
+  'day_pass_credit_offer_shown',
+  'day_pass_credit_offer_clicked',
   'email_change_requested',
   'email_change_confirmed',
   'ai_credits_exhausted',

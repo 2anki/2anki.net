@@ -1,7 +1,10 @@
 import express from 'express';
 import RequireAuthentication from './middleware/RequireAuthentication';
 import { optionalAuthMiddleware } from './middleware/optionalAuthMiddleware';
-import { RejectDuplicatePurchase } from './middleware/RejectDuplicatePurchase';
+import {
+  RejectDuplicatePurchase,
+  readHeldEntitlements,
+} from './middleware/RejectDuplicatePurchase';
 import { resolveStripeCustomer } from './middleware/ResolveStripeCustomer';
 import AutoSyncCheckoutController from '../controllers/AutoSyncCheckoutController';
 import AutoSyncPriceController from '../controllers/AutoSyncPriceController';
@@ -31,6 +34,14 @@ import { getPricingService } from '../services/pricingServiceInstance';
 import { GetPassPricingUseCase } from '../usecases/checkout/GetPassPricingUseCase';
 import PassPricingController from '../controllers/PassPricingController';
 import PricingController from '../controllers/PricingController';
+import DayPassCreditController from '../controllers/DayPassCreditController';
+import AuthenticationService from '../services/AuthenticationService';
+import TokenRepository from '../data_layer/TokenRepository';
+import UserPassRepository from '../data_layer/UserPassRepository';
+import DayPassCreditRepository from '../data_layer/DayPassCreditRepository';
+import { DayPassCreditEligibility } from '../usecases/checkout/dayPassCredit';
+import { GetDayPassCreditOfferUseCase } from '../usecases/checkout/GetDayPassCreditOfferUseCase';
+import { CreateDayPassCreditCheckoutUseCase } from '../usecases/checkout/CreateDayPassCreditCheckoutUseCase';
 
 const DEFAULT_MAX_SUBSCRIBERS = 50;
 
@@ -277,6 +288,82 @@ const CheckoutRouter = () => {
         getEventsSink()
       );
       return controller.createSession(req, res);
+    }
+  );
+
+  const dayPassCreditController = () => {
+    const database = getDatabase();
+    const usersRepository = new UsersRepository(database);
+    const guardDeps = {
+      database,
+      authService: new AuthenticationService(
+        new TokenRepository(database),
+        usersRepository
+      ),
+      usersRepository,
+      userPassRepository: new UserPassRepository(database),
+      now: () => new Date(),
+    };
+    const credits = new DayPassCreditRepository(database);
+    const eligibility = new DayPassCreditEligibility({
+      credits,
+      pricing: pricingService,
+      heldEntitlements: (userId) => readHeldEntitlements(userId, guardDeps),
+      now: () => new Date(),
+    });
+    return new DayPassCreditController(
+      new GetDayPassCreditOfferUseCase(eligibility),
+      new CreateDayPassCreditCheckoutUseCase(
+        getStripe(),
+        eligibility,
+        credits,
+        staleCustomerRefresher
+      ),
+      getEventsSink()
+    );
+  };
+
+  /**
+   * @swagger
+   * /api/checkout/pass/120d/day-pass-credit:
+   *   get:
+   *     summary: The Semester Pass offer with the caller's Day Pass credited
+   *     description: |
+   *       For a signed-in buyer of a Day Pass in the last 48 hours who holds no
+   *       Semester Pass or paid plan and has not used the credit: the live
+   *       Semester Pass price minus the live Day Pass price, both live prices,
+   *       and when the offer ends. Everyone else gets `eligible: false`.
+   *     tags: [Payments]
+   *     responses:
+   *       200:
+   *         description: The offer, or `eligible` false
+   *   post:
+   *     summary: Open a Semester Pass checkout with the Day Pass credited
+   *     description: |
+   *       Re-checks eligibility, then returns the one open checkout for this
+   *       credit or opens it. The paid session grants an ordinary 120d pass.
+   *     tags: [Payments]
+   *     responses:
+   *       200:
+   *         description: Checkout URL
+   *       409:
+   *         description: Not eligible, credit already used, or a checkout is already being opened
+   *       503:
+   *         description: The live prices cannot be read
+   */
+  router.get(
+    '/api/checkout/pass/120d/day-pass-credit',
+    RequireAuthentication,
+    (req, res) => dayPassCreditController().getOffer(req, res)
+  );
+
+  router.post(
+    '/api/checkout/pass/120d/day-pass-credit',
+    RequireAuthentication,
+    express.json(),
+    async (req, res) => {
+      await resolveStripeCustomer(res);
+      return dayPassCreditController().createSession(req, res);
     }
   );
 

@@ -1241,3 +1241,60 @@ describe('UploadPage checkout return', () => {
     expect(reportPurchaseConversion).not.toHaveBeenCalled();
   });
 });
+
+describe('UploadPage Day Pass credit offer', () => {
+  const originalFetch = globalThis.fetch;
+  let creditRequests = 0;
+
+  beforeEach(() => {
+    creditRequests = 0;
+    trackMock.mockReset();
+    globalThis.fetch = vi.fn(async (url: string) => {
+      if (String(url).includes('day-pass-credit')) {
+        creditRequests += 1;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          eligible: true,
+          display: '$23',
+          semesterDisplay: '$29',
+          dayPassDisplay: '$6',
+          endsAt: '2026-11-14T10:00:00.000Z',
+        }),
+      };
+    }) as unknown as typeof fetch;
+    fakeUser = { id: 42, email: 'buyer@example.com' };
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    fakeUser = null;
+    fakeLocals = undefined;
+  });
+
+  it('shows a Day Pass holder the Semester Pass with their Day Pass credited', async () => {
+    fakeLocals = { subscriber: true, passKind: '24h', planSource: null };
+
+    renderPage('/upload?from=pass&session_id=cs_test_day');
+
+    expect(
+      await screen.findByText('Move up to the Semester Pass for $23')
+    ).toBeInTheDocument();
+    expect(trackMock).toHaveBeenCalledWith('day_pass_credit_offer_shown', {
+      placement: 'upload',
+    });
+  });
+
+  it.each([
+    ['a Semester Pass holder', '120d'],
+    ['a free account', null],
+  ])('does not ask for the offer for %s', (_who, passKind) => {
+    fakeLocals = { subscriber: passKind != null, passKind, planSource: null };
+
+    renderPage('/upload');
+
+    expect(creditRequests).toBe(0);
+  });
+});

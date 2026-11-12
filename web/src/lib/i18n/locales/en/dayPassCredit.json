@@ -1,0 +1,8 @@
+{
+  "title": "Move up to the Semester Pass for {{price}}",
+  "body": "The {{dayPassPrice}} you paid for your Day Pass counts toward the {{semesterPrice}} Semester Pass. Offer ends {{date}}.",
+  "cta": "Get the Semester Pass for {{price}}",
+  "pending": "Opening checkout",
+  "unavailable": "This offer is no longer available.",
+  "error": "Checkout didn't open. Try again."
+}

@@ -1,0 +1,8 @@
+{
+  "title": "Pásate al Semester Pass por {{price}}",
+  "body": "Los {{dayPassPrice}} que pagaste por tu Day Pass cuentan para el Semester Pass de {{semesterPrice}}. La oferta termina el {{date}}.",
+  "cta": "Consigue el Semester Pass por {{price}}",
+  "pending": "Abriendo el pago",
+  "unavailable": "Esta oferta ya no está disponible.",
+  "error": "No se pudo abrir el pago. Inténtalo de nuevo."
+}

@@ -378,3 +378,64 @@ describe('AccountPage Semester Pass renewal banner', () => {
     ).toBeNull();
   });
 });
+
+describe('AccountPage Day Pass credit offer', () => {
+  const originalFetch = globalThis.fetch;
+  let creditRequests = 0;
+
+  beforeEach(() => {
+    creditRequests = 0;
+    globalThis.fetch = vi.fn(async (url: string) => {
+      if (String(url).includes('day-pass-credit')) {
+        creditRequests += 1;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          eligible: true,
+          display: '$23',
+          semesterDisplay: '$29',
+          dayPassDisplay: '$6',
+          endsAt: '2026-11-14T10:00:00.000Z',
+        }),
+      };
+    }) as unknown as typeof fetch;
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: { passKind: '24h' },
+      },
+      refetch: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('offers the Semester Pass with the Day Pass credited in the plan area', async () => {
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'dayPass',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(
+      await screen.findByText('Move up to the Semester Pass for $23')
+    ).toBeInstanceOf(HTMLElement);
+  });
+
+  it('does not ask for the offer on a Pro plan', () => {
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'pro',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(creditRequests).toBe(0);
+  });
+});

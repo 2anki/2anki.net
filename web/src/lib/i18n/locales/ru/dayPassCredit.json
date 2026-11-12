@@ -1,0 +1,8 @@
+{
+  "title": "Перейди на Semester Pass за {{price}}",
+  "body": "{{dayPassPrice}}, оплаченные за Day Pass, засчитываются в Semester Pass за {{semesterPrice}}. Предложение действует до {{date}}.",
+  "cta": "Взять Semester Pass за {{price}}",
+  "pending": "Открываем оплату",
+  "unavailable": "Это предложение больше недоступно.",
+  "error": "Не удалось открыть оплату. Попробуй ещё раз."
+}

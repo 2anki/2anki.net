@@ -19,6 +19,7 @@ import {
 import { LanguagePicker } from '../../components/LanguagePicker/LanguagePicker';
 import { CookieSettings } from './components/CookieSettings';
 import { SemesterRenewalBanner } from './components/SemesterRenewalBanner';
+import { DayPassCreditOffer } from '../../components/DayPassCreditOffer/DayPassCreditOffer';
 import sharedStyles from '../../styles/shared.module.css';
 import styles from './AccountPage.module.css';
 
@@ -168,6 +169,14 @@ export default function AccountPage() {
           passExpiresAt={passExpiresAt}
         />
       )}
+      <DayPassCreditOffer
+        placement="account"
+        enabled={
+          !checkingPlan &&
+          lapsedSubscription == null &&
+          (plan === 'dayPass' || plan === 'free')
+        }
+      />
 
       {canClaimSubscription && <ClaimSubscription />}
 

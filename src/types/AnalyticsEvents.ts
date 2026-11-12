@@ -196,6 +196,8 @@ export const KNOWN_EVENTS = new Set([
   'pass_refunded',
   'ops_user_email_changed',
   'pass_account_email_autolinked',
+  'day_pass_credit_offer_shown',
+  'day_pass_credit_offer_clicked',
   'email_change_requested',
   'email_change_confirmed',
   'credits_buy_shown',

@@ -16,6 +16,7 @@ describe('GetPassPricingUseCase', () => {
       {
         kind: '24h',
         priceId: 'p1',
+        productId: null,
         amount: 600,
         currency: 'usd',
         source: 'stripe',
@@ -23,6 +24,7 @@ describe('GetPassPricingUseCase', () => {
       {
         kind: '7d',
         priceId: 'p2',
+        productId: null,
         amount: 1200,
         currency: 'usd',
         source: 'stripe',
@@ -30,6 +32,7 @@ describe('GetPassPricingUseCase', () => {
       {
         kind: '120d',
         priceId: 'p3',
+        productId: null,
         amount: 2900,
         currency: 'usd',
         source: 'stripe',
@@ -52,6 +55,7 @@ describe('GetPassPricingUseCase', () => {
       {
         kind: '24h',
         priceId: 'p1',
+        productId: null,
         amount: 650,
         currency: 'usd',
         source: 'stripe',
@@ -68,6 +72,7 @@ describe('GetPassPricingUseCase', () => {
       {
         kind: '24h',
         priceId: 'env_price',
+        productId: null,
         amount: null,
         currency: null,
         source: 'env',
@@ -75,6 +80,7 @@ describe('GetPassPricingUseCase', () => {
       {
         kind: '7d',
         priceId: 'p2',
+        productId: null,
         amount: 1200,
         currency: 'usd',
         source: 'stripe',
@@ -96,6 +102,7 @@ describe('GetPassPricingUseCase', () => {
       {
         kind: '24h',
         priceId: 'p1',
+        productId: null,
         amount: 500,
         currency: 'eur',
         source: 'stripe',

@@ -1,0 +1,8 @@
+{
+  "title": "Przejdź na Semester Pass za {{price}}",
+  "body": "{{dayPassPrice}} zapłacone za Day Pass wliczamy w Semester Pass za {{semesterPrice}}. Oferta kończy się {{date}}.",
+  "cta": "Kup Semester Pass za {{price}}",
+  "pending": "Otwieranie płatności",
+  "unavailable": "Ta oferta nie jest już dostępna.",
+  "error": "Nie udało się otworzyć płatności. Spróbuj ponownie."
+}
