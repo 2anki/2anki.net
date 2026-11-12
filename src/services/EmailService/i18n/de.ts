@@ -110,14 +110,14 @@ export const de: DeepPartial<EmailStrings> = {
   semesterRenewal: {
     subject: 'Dein Semester Pass endet am {{endDate}}',
     title: 'Dein Semester Pass endet am {{endDate}}',
-    intro: 'Dein Semester Pass endet am {{endDate}}, in etwa einer Woche.',
+    intro: 'Dein Semester Pass endet am {{endDate}}.',
     renewBody:
-      'Verlängere ihn jetzt, und die nächsten 120 Tage beginnen am {{endDate}}, dem Tag, an dem dieser endet. Du verlierst keinen Tag, Login und Stapel bleiben, wie sie sind.',
+      'Verlängere ihn jetzt, und die nächsten 120 Tage beginnen am {{endDate}}, dem Tag, an dem dein aktueller Pass endet. Du verlierst keinen Tag. Login und Stapel bleiben, wie sie sind.',
     oneTime:
-      'Eine Verlängerung ist eine einmalige Zahlung, wie dein erster Pass. Nichts verlängert sich von selbst.',
+      'Eine Verlängerung ist eine einmalige Zahlung. Nichts verlängert sich von selbst.',
     cta: 'Semester Pass verlängern',
     ctaNote:
-      'Der Button öffnet deine Kontoseite, dort startet der Bezahlvorgang für die Verlängerung.',
+      'Der Button öffnet deine Kontoseite. Dort startest du die Verlängerung.',
     replyLine: 'Fragen zu deinem Pass? Antworte auf diese E-Mail.',
     signoff: 'Das 2anki-Team',
   },

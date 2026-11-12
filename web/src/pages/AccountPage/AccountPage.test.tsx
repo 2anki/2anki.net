@@ -287,11 +287,7 @@ describe('AccountPage Semester Pass renewal banner', () => {
   const NOW = new Date('2027-01-10T12:00:00.000Z');
   const DAY_MS = 24 * 60 * 60 * 1000;
 
-  const renderPassHolder = (
-    passKind: '7d' | '120d',
-    daysLeft: number,
-    hasActivePlan = false
-  ) => {
+  const renderPassHolder = (passKind: '7d' | '120d', daysLeft: number) => {
     const passExpiresAt = new Date(
       NOW.getTime() + daysLeft * DAY_MS
     ).toISOString();
@@ -299,13 +295,13 @@ describe('AccountPage Semester Pass renewal banner', () => {
       isLoading: false,
       data: {
         user: { email: 'learner@example.com' },
-        locals: { passKind, passExpiresAt, subscriber: hasActivePlan },
+        locals: { passKind, passExpiresAt, subscriber: true },
       },
       refetch: vi.fn(),
     });
     mockUseSubscriptionStatus.mockReturnValue({
       plan: passKind === '120d' ? 'semesterPass' : 'weekPass',
-      hasActivePlan,
+      hasActivePlan: true,
       passExpiresAt,
     });
     renderAccountPage();
@@ -344,8 +340,21 @@ describe('AccountPage Semester Pass renewal banner', () => {
     ).toBeNull();
   });
 
-  it('shows no renewal to a subscriber who also holds a Semester Pass', () => {
-    renderPassHolder('120d', 4, true);
+  it('shows no renewal to a subscriber, whose locals carry no pass', () => {
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: { passKind: null, passExpiresAt: null, subscriber: true },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'pro',
+      hasActivePlan: true,
+      passExpiresAt: null,
+    });
+    renderAccountPage();
 
     expect(
       screen.queryByRole('region', { name: 'Semester Pass renewal' })

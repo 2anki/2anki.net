@@ -51,6 +51,8 @@ const makeDeps = (held: Held): PurchaseGuardDeps => {
     },
     userPassRepository: {
       findActive: async () => pass,
+      findActivePasses: async () =>
+        pass == null ? [] : [{ kind: pass.kind, expiresAt: pass.expires_at }],
     } as unknown as PurchaseGuardDeps['userPassRepository'],
     now: () => NOW,
   };
@@ -106,7 +108,7 @@ describe('RejectDuplicatePurchase', () => {
     });
   });
 
-  it.each(['subscription', 'pass', 'auto_sync'] as const)(
+  it.each(['subscription', 'pass', 'semester_pass', 'auto_sync'] as const)(
     'answers 409 to a %s over a live plan the account has not proven',
     async (kind) => {
       const { next, status, json } = await run(
@@ -243,6 +245,36 @@ describe('RejectDuplicatePurchase Semester Pass renewal', () => {
     const { status } = await guardWith(passes, NOW)();
 
     expect(status).toHaveBeenCalledWith(409);
+  });
+
+  it('blocks a renewal for an Apple-billed holder whose Semester Pass ends later', async () => {
+    const passes = seedSemesterPass(new Date(NOW.getTime() + 5 * DAY_MS));
+    passes.seed({
+      user_id: USER_ID,
+      kind: 'unlimited',
+      expires_at: new Date(NOW.getTime() + 3 * DAY_MS),
+      stripe_payment_intent_id: 'apple:2000000000000001',
+    });
+
+    const { next, status } = await guardWith(passes, NOW)();
+
+    expect(next).not.toHaveBeenCalled();
+    expect(status).toHaveBeenCalledWith(409);
+  });
+
+  it('lets the holder of a Semester Pass bought in the iOS app renew on the web', async () => {
+    const passes = new InMemoryUserPassRepository();
+    passes.seed({
+      user_id: USER_ID,
+      kind: '120d',
+      expires_at: new Date(NOW.getTime() + 5 * DAY_MS),
+      stripe_payment_intent_id: 'apple:2000000000000002',
+    });
+
+    const { next, status } = await guardWith(passes, NOW)();
+
+    expect(next).toHaveBeenCalled();
+    expect(status).not.toHaveBeenCalled();
   });
 
   it('stacks the renewal onto the current expiry, then blocks a second renewal', async () => {

@@ -96,6 +96,22 @@ describe('PassEndingRepository renewal audience SQL (postgres dialect)', () => {
     expect(sql).not.toContain(`'24h'`);
     expect(sql).not.toContain(`'7d'`);
   });
+
+  it('leaves out a holder who also has another kind of pass running', () => {
+    const repo = new PassEndingRepository(pg);
+    const sql = repo.buildSemesterPassesUpForRenewalQuery(200).toString();
+
+    expect(sql).toContain('other_passes.user_id = user_passes.user_id');
+    expect(sql).toContain('other_passes.expires_at > now()');
+    expect(sql).toContain("other_passes.kind <> '120d'");
+  });
+
+  it('keeps the other-pass exclusion out of the day-before note', () => {
+    const repo = new PassEndingRepository(pg);
+    const sql = repo.buildPassesEndingSoonQuery(24, 200).toString();
+
+    expect(sql).not.toContain('other_passes');
+  });
 });
 
 describe('InMemoryPassEndingRepository', () => {

@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 
+import { SEMESTER_RENEWAL_WINDOW_HOURS } from '../lib/passes/semesterRenewal';
 import type { PassKind } from './UserPassRepository';
 
 export interface EndingPass {
@@ -49,7 +50,7 @@ const SEMESTER_RENEWAL_AUDIENCE: EndingPassAudience = {
   campaign: 'pass_renewal',
   kinds: ['120d'],
   fromHours: 24,
-  toHours: 7 * 24,
+  toHours: SEMESTER_RENEWAL_WINDOW_HOURS,
 };
 
 export function passEmailCampaign(
@@ -137,7 +138,16 @@ export class PassEndingRepository implements IPassEndingRepository {
   }
 
   buildSemesterPassesUpForRenewalQuery(limit: number) {
-    return this.buildAudienceQuery(SEMESTER_RENEWAL_AUDIENCE, limit);
+    return this.buildAudienceQuery(
+      SEMESTER_RENEWAL_AUDIENCE,
+      limit
+    ).whereNotExists(
+      this.database('user_passes as other_passes')
+        .whereRaw('other_passes.user_id = user_passes.user_id')
+        .whereRaw('other_passes.expires_at > now()')
+        .whereRaw("other_passes.kind <> '120d'")
+        .limit(1)
+    );
   }
 
   private static toEndingPass(row: EndingPassRow): EndingPass {

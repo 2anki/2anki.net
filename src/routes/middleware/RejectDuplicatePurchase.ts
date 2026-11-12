@@ -35,6 +35,18 @@ const isAppleBilled = (
 ): boolean =>
   kind === 'unlimited' && (paymentIntentId ?? '').startsWith('apple:');
 
+const holdsOnlySemesterPasses = async (
+  owner: number,
+  now: Date,
+  deps: PurchaseGuardDeps
+): Promise<boolean> => {
+  const activePasses = await deps.userPassRepository.findActivePasses(
+    owner,
+    now
+  );
+  return activePasses.every((pass) => pass.kind === '120d');
+};
+
 export const readHeldEntitlements = async (
   owner: number,
   deps: PurchaseGuardDeps
@@ -64,11 +76,9 @@ export const readHeldEntitlements = async (
     ),
     activePassKind,
     activePassExpiresAt,
-    semesterRenewalOpen: isInSemesterRenewalWindow(
-      activePassKind,
-      activePassExpiresAt,
-      now
-    ),
+    semesterRenewalOpen:
+      isInSemesterRenewalWindow(activePassKind, activePassExpiresAt, now) &&
+      (await holdsOnlySemesterPasses(owner, now, deps)),
   };
 };
 

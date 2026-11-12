@@ -84,6 +84,11 @@ vi.mock('../data_layer/UserPassRepository', () => ({
     async findActive() {
       return mockHeldPass;
     }
+    async findActivePasses() {
+      return mockHeldPass == null
+        ? []
+        : [{ kind: mockHeldPass.kind, expiresAt: mockHeldPass.expires_at }];
+    }
   },
 }));
 
