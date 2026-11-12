@@ -5,7 +5,9 @@
 # bucket or from this box later. The private key stays with the owner, outside
 # this repo and this box.
 #
-# Keeps one dump per weekday, overwritten a week later, and one per month.
+# Keeps one dump per weekday, overwritten a week later, and one per month for
+# the newest KEEP_MONTHS months. Older monthly dumps are removed, so a deleted
+# account's data is gone from every backup within that many months.
 #
 # Restore on a machine holding the private key:
 #   aws s3 cp --endpoint-url "$SPACES_ENDPOINT" \
@@ -23,6 +25,7 @@ ENV_FILE="${BACKUP_ENV_FILE:-$HOME/src/github.com/2anki/2anki.net/.env}"
 PUBLIC_KEY="${BACKUP_PUBLIC_KEY:-$HOME/.config/2anki-backup/public.asc}"
 WORK_ROOT="${BACKUP_WORK_ROOT:-$HOME/.cache/2anki-backup}"
 ALERT_TO="${BACKUP_ALERT_EMAIL:-}"
+KEEP_MONTHS=3
 # Cron's PATH is only /usr/bin:/bin; sendmail and the aws CLI live elsewhere.
 export PATH="$PATH:$HOME/.local/bin:/usr/sbin"
 
@@ -129,10 +132,38 @@ upload() {
   [ "$local_size" = "$remote_size" ]
 }
 
+# The month before which monthly dumps go: with KEEP_MONTHS=3 in 2026-11 it
+# prints 2026-09, so 2026-09, 2026-10 and 2026-11 stay.
+oldest_kept_month() {
+  python3 -c '
+import sys
+year, month = map(int, sys.argv[1].split("-"))
+index = year * 12 + month - 1 - (int(sys.argv[2]) - 1)
+print(f"{index // 12:04d}-{index % 12 + 1:02d}")
+' "$1" "$2"
+}
+
+remove_old_monthly() {
+  stage="removing monthly dumps older than $KEEP_MONTHS months"
+  local oldest listing key month
+  oldest="$(oldest_kept_month "$(date -u +%Y-%m)" "$KEEP_MONTHS")"
+  listing="$(aws s3api list-objects-v2 --endpoint-url "$ENDPOINT" \
+    --bucket "$BUCKET" --prefix backups/postgres/monthly- \
+    --query 'Contents[].Key' --output text)"
+  for key in $listing; do
+    [[ "$key" =~ ^backups/postgres/monthly-([0-9]{4}-[0-9]{2})\.dump\.gpg$ ]] || continue
+    month="${BASH_REMATCH[1]}"
+    if [[ "$month" < "$oldest" ]]; then
+      aws s3 rm --only-show-errors --endpoint-url "$ENDPOINT" "s3://$BUCKET/$key"
+    fi
+  done
+}
+
 upload "daily-$(date -u +%a).dump.gpg"
 if [ "$(date -u +%d)" = "01" ]; then
   upload "monthly-$(date -u +%Y-%m).dump.gpg"
 fi
+remove_old_monthly
 
 stage="done"
 echo "backup finished: $(date -u +%FT%TZ)"
