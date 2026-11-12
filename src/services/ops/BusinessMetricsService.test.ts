@@ -866,6 +866,27 @@ describe('BusinessMetricsService', () => {
     }
   );
 
+  it('keeps a past_due subscription in the subscriber count and the MRR chart', async () => {
+    const { service } = buildService({
+      allSubs: [
+        sub('sub_active', [monthly(1500)], { created: daysAgoEpoch(60) }),
+        sub('sub_behind', [monthly(4000)], {
+          created: daysAgoEpoch(60),
+          status: 'past_due',
+        }),
+      ],
+    });
+
+    const result = await service.getMetrics();
+    const today = new Date(NOW_MS);
+    today.setUTCHours(0, 0, 0, 0);
+    const todayIso = today.toISOString().slice(0, 10);
+    const mrrToday = result.mrr_timeseries!.find((p) => p.t === todayIso);
+
+    expect(result.active_paying_subs).toBe(2);
+    expect(mrrToday?.mrr_usd).toBeCloseTo(55, 5);
+  });
+
   it('sums MRR across multiple items in one subscription', async () => {
     const { service } = buildService({
       allSubs: [
