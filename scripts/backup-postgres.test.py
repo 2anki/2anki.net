@@ -215,6 +215,19 @@ class BackupScriptTest(unittest.TestCase):
         )
         self.assertIn('--prefix backups/postgres/monthly-', listing)
 
+    def test_removes_nothing_when_the_upload_fails(self):
+        self.stub('aws', 'case "$1" in s3) exit 1;; esac; case "$2" in list-objects-v2) echo backups/postgres/monthly-2020-01.dump.gpg;; esac')
+        self.assert_alerted(self.run_backup(), 'uploading daily-Mon')
+        self.assertNotIn('list-objects-v2', self.calls_text())
+        self.assertEqual(self.removed_keys(), [])
+
+    def test_never_expands_a_listed_key_against_local_files(self):
+        (self.root / 'backups').mkdir()
+        self.stub_monthly_listing(['backups/postgres/monthly-*.dump.gpg', '*'])
+        result = self.run_backup()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.removed_keys(), [])
+
     def test_alerts_when_the_monthly_listing_fails(self):
         self.stub('aws', 'case "$2" in list-objects-v2) exit 1;; head-object) echo 11;; esac')
         self.assert_alerted(self.run_backup(), 'removing monthly dumps')

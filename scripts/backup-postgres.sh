@@ -150,6 +150,8 @@ remove_old_monthly() {
   listing="$(aws s3api list-objects-v2 --endpoint-url "$ENDPOINT" \
     --bucket "$BUCKET" --prefix backups/postgres/monthly- \
     --query 'Contents[].Key' --output text)"
+  # Split on whitespace only: a key holding * or ? must never expand to files.
+  set -f
   for key in $listing; do
     [[ "$key" =~ ^backups/postgres/monthly-([0-9]{4}-[0-9]{2})\.dump\.gpg$ ]] || continue
     month="${BASH_REMATCH[1]}"
@@ -157,6 +159,7 @@ remove_old_monthly() {
       aws s3 rm --only-show-errors --endpoint-url "$ENDPOINT" "s3://$BUCKET/$key"
     fi
   done
+  set +f
 }
 
 upload "daily-$(date -u +%a).dump.gpg"
