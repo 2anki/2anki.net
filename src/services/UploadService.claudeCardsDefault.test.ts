@@ -67,7 +67,6 @@ import {
   __resetFeatureFlagModuleForTests,
   __setFeatureFlagDependencies,
 } from '../lib/featureFlags/getFeatureFlag';
-import { ASYNC_SLOW_UPLOADS_FLAG } from '../lib/upload/asyncSlowUploads';
 import { AI_CHOICE_AT_KEY } from '../lib/upload/claudeCardsDefault';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 
@@ -75,10 +74,9 @@ const OWNER = 42;
 const PPTX_MIMETYPE =
   'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
-const flagsWithBackgroundSlowUploads: IFeatureFlagsRepository = {
+const noFeatureFlags: IFeatureFlagsRepository = {
   getAll: () => Promise.resolve([]),
-  get: (key: string) =>
-    Promise.resolve(key === ASYNC_SLOW_UPLOADS_FLAG ? true : null),
+  get: () => Promise.resolve(null),
   set: () => Promise.resolve(null),
 };
 
@@ -131,7 +129,7 @@ interface Sent {
 }
 
 async function send(account: Account, file: Sent) {
-  __setFeatureFlagDependencies({ repository: flagsWithBackgroundSlowUploads });
+  __setFeatureFlagDependencies({ repository: noFeatureFlags });
   const { jobs, settled } = backgroundJobs();
   const users = {
     getCardOptions: vi.fn().mockResolvedValue(account.stored ?? null),
