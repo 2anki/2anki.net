@@ -378,3 +378,199 @@ describe('AccountPage Semester Pass renewal banner', () => {
     ).toBeNull();
   });
 });
+
+describe('AccountPage Day Pass credit offer', () => {
+  const originalFetch = globalThis.fetch;
+  let creditRequests = 0;
+
+  beforeEach(() => {
+    creditRequests = 0;
+    globalThis.fetch = vi.fn(async (url: string) => {
+      if (String(url).includes('day-pass-credit')) {
+        creditRequests += 1;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          eligible: true,
+          display: '$23',
+          semesterDisplay: '$29',
+          dayPassDisplay: '$6',
+          endsAt: '2026-11-14T10:00:00.000Z',
+        }),
+      };
+    }) as unknown as typeof fetch;
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: { passKind: '24h' },
+      },
+      refetch: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.useRealTimers();
+  });
+
+  it('offers the Semester Pass with the Day Pass credited in the plan area', async () => {
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'dayPass',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(
+      await screen.findByText('Move up to the Semester Pass for $23')
+    ).toBeInstanceOf(HTMLElement);
+  });
+
+  it('does not ask for the offer from a Semester Pass holder whose renewal banner is showing', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2027-01-10T12:00:00.000Z'));
+    const passExpiresAt = '2027-01-14T12:00:00.000Z';
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: {
+          passKind: '120d',
+          passExpiresAt,
+          subscriber: true,
+          semesterRenewalOpen: true,
+        },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'semesterPass',
+      hasActivePlan: true,
+      passExpiresAt,
+    });
+
+    renderAccountPage();
+
+    expect(
+      screen.getByRole('region', { name: 'Semester Pass renewal' })
+    ).toBeInTheDocument();
+    expect(creditRequests).toBe(0);
+  });
+
+  it('offers a free account whose Day Pass already ended, starting the 120 days at payment', async () => {
+    globalThis.fetch = vi.fn(async (url: string) => {
+      if (String(url).includes('day-pass-credit')) {
+        creditRequests += 1;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          eligible: true,
+          display: '$23',
+          semesterDisplay: '$29',
+          dayPassDisplay: '$6',
+          endsAt: '2026-11-14T10:00:00.000Z',
+          semesterStartsAt: null,
+        }),
+      };
+    }) as unknown as typeof fetch;
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: { user: { email: 'learner@example.com' }, locals: {} },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'free',
+      hasActivePlan: false,
+    });
+
+    renderAccountPage();
+
+    expect(
+      await screen.findByText('The 120 days start when you pay.')
+    ).toBeInstanceOf(HTMLElement);
+    expect(creditRequests).toBe(1);
+  });
+
+  it('offers the credit to a past-due subscriber who still holds a running Day Pass', async () => {
+    mockGetSubscriptionStatus.mockReset();
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: {
+          subscriber: true,
+          passKind: '24h',
+          subscriptionInfo: { email: 'payer@example.com' },
+        },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'dayPass',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(
+      await screen.findByText('Move up to the Semester Pass for $23')
+    ).toBeInstanceOf(HTMLElement);
+    expect(creditRequests).toBe(1);
+    expect(mockGetSubscriptionStatus).not.toHaveBeenCalled();
+  });
+
+  it('stays quiet for a past-due subscriber whose Day Pass ended, so the payment notice is not crowded', async () => {
+    mockGetSubscriptionStatus.mockReset();
+    mockGetSubscriptionStatus.mockResolvedValue({
+      subscriptions: [
+        {
+          id: 'sub_test',
+          status: 'past_due',
+          created: null,
+          cancel_at_period_end: false,
+          cancel_at: null,
+          canceled_at: null,
+          current_period_end: null,
+          paused_until: null,
+          cancellation_reason: null,
+          plan: null,
+        },
+      ],
+    });
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: { subscriptionInfo: { email: 'payer@example.com' } },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'free',
+      hasActivePlan: false,
+    });
+
+    renderAccountPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-details').textContent).toBe('pastDue')
+    );
+    expect(creditRequests).toBe(0);
+  });
+
+  it('does not ask for the offer on a Pro plan', () => {
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'pro',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(creditRequests).toBe(0);
+  });
+});

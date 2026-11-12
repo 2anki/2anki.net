@@ -1,0 +1,12 @@
+{
+  "title": "Stap over op de Semester Pass voor {{price}}",
+  "body": "De prijs van de Day Pass, {{dayPassPrice}}, gaat af van de Semester Pass van {{semesterPrice}}. Eén betaling voor 120 dagen, er wordt niets verlengd.",
+  "startsLater": "De 120 dagen gaan in wanneer je Day Pass afloopt, op {{date}}.",
+  "startsNow": "De 120 dagen gaan in zodra je betaalt.",
+  "offerEnds": "Aanbod loopt tot {{date}}.",
+  "cta": "Neem de Semester Pass voor {{price}}",
+  "pending": "Afrekenen wordt geopend",
+  "unavailable": "Dit aanbod is niet meer beschikbaar.",
+  "seePlans": "Bekijk alle abonnementen",
+  "error": "Afrekenen kon niet worden geopend. Probeer het opnieuw."
+}

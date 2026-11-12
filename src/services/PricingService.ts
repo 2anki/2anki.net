@@ -9,6 +9,7 @@ export type PassPriceSource = 'stripe' | 'cache' | 'env' | 'none';
 export interface ResolvedPassPrice {
   kind: PassPriceKind;
   priceId: string | null;
+  productId: string | null;
   amount: number | null;
   currency: string | null;
   source: PassPriceSource;
@@ -106,6 +107,10 @@ export class PricingService {
       return {
         kind,
         priceId: chosen.id,
+        productId:
+          typeof chosen.product === 'string'
+            ? chosen.product
+            : chosen.product.id,
         amount: chosen.unit_amount,
         currency: chosen.currency,
         source: 'stripe',
@@ -130,6 +135,7 @@ export class PricingService {
       return {
         kind,
         priceId: fallbackPriceId,
+        productId: null,
         amount: null,
         currency: null,
         source: 'env',
@@ -139,6 +145,7 @@ export class PricingService {
     return {
       kind,
       priceId: null,
+      productId: null,
       amount: null,
       currency: null,
       source: 'none',

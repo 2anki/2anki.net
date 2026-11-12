@@ -173,6 +173,14 @@ vi.mock('../data_layer/RefundedPaymentIntentsRepository', async () => {
   };
 });
 
+const mockMarkDayPassCreditRedeemed = vi.fn().mockResolvedValue(true);
+vi.mock('../data_layer/DayPassCreditRepository', () => ({
+  __esModule: true,
+  default: vi.fn().mockImplementation(function () {
+    return { markRedeemedBySession: mockMarkDayPassCreditRedeemed };
+  }),
+}));
+
 vi.mock('../data_layer/PassClaimTokensRepository', () => ({
   __esModule: true,
   default: vi.fn().mockImplementation(function () {
@@ -316,6 +324,88 @@ describe('WebhookRouter — pass grant', () => {
       'pi_test_123',
       expect.any(Date)
     );
+    expect(mockMarkDayPassCreditRedeemed).not.toHaveBeenCalled();
+  });
+
+  it('grants an ordinary Semester Pass for a paid Day Pass credit session and marks the credit used', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      id: 'cs_credit',
+      amount_total: 2300,
+      metadata: {
+        user_id: '42',
+        pass_kind: '120d',
+        surface: 'day_pass_credit',
+        day_pass_credit: '1',
+      },
+    });
+    mockUpsert.mockResolvedValue({
+      id: 2,
+      user_id: 42,
+      kind: '120d',
+      expires_at: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
+      stripe_payment_intent_id: 'pi_test_123',
+    });
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(mockUpsert).toHaveBeenCalledWith(
+      42,
+      '120d',
+      120 * 24 * 60 * 60 * 1000,
+      'pi_test_123',
+      expect.any(Date)
+    );
+    expect(mockMarkDayPassCreditRedeemed).toHaveBeenCalledWith(
+      'cs_credit',
+      expect.any(Date)
+    );
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({
+        props: expect.objectContaining({
+          plan: '120d',
+          surface: 'day_pass_credit',
+        }),
+      })
+    );
+  });
+
+  it('leaves Day Pass credits alone for a Semester Pass bought at list price', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      metadata: { user_id: '42', pass_kind: '120d' },
+    });
+    mockUpsert.mockResolvedValue({
+      id: 3,
+      user_id: 42,
+      kind: '120d',
+      expires_at: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
+      stripe_payment_intent_id: 'pi_test_123',
+    });
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(mockMarkDayPassCreditRedeemed).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 so Stripe retries when the credit cannot be marked used', async () => {
+    mockWebhookEvent = makePassSessionEvent({
+      metadata: { user_id: '42', pass_kind: '120d', day_pass_credit: '1' },
+    });
+    mockUpsert.mockResolvedValue({
+      id: 2,
+      user_id: 42,
+      kind: '120d',
+      expires_at: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000),
+      stripe_payment_intent_id: 'pi_test_123',
+    });
+    mockMarkDayPassCreditRedeemed.mockRejectedValueOnce(new Error('db down'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(500);
   });
 
   it.each([
@@ -381,6 +471,7 @@ describe('WebhookRouter — pass grant', () => {
       'pi_7d',
       expect.any(Date)
     );
+    expect(mockMarkDayPassCreditRedeemed).not.toHaveBeenCalled();
   });
 
   it('grants 120d Semester Pass on checkout.session.completed with pass_kind=120d', async () => {
@@ -1603,6 +1694,87 @@ describe('WebhookRouter — checkout.session.expired', () => {
       expect.any(String),
       null
     );
+    expect(mockSendAbandonedCheckoutRecoveryEmail).toHaveBeenCalledWith(
+      'buyer@example.com',
+      expect.any(String)
+    );
+  });
+
+  it('sends no recovery email when a Day Pass credit checkout expires', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.expired',
+      data: {
+        object: {
+          id: 'cs_expired_credit',
+          customer_details: { email: 'buyer@example.com' },
+          metadata: {
+            pass_kind: '120d',
+            user_id: '42',
+            day_pass_credit: '1',
+          },
+        },
+      },
+    };
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
+    expect(mockClaimSession).not.toHaveBeenCalled();
+    expect(mockSendAbandonedCheckoutRecoveryEmail).not.toHaveBeenCalled();
+  });
+
+  it.each<[string, Record<string, string> | null]>([
+    ['a subscription checkout', { plan: 'unlimited', interval: 'month' }],
+    ['a credit pack', { credit_pack: '1', user_id: '42' }],
+    ['an anonymous pass', { pass_kind: '24h', pass_anonymous: '1' }],
+    ['a Day Pass', { pass_kind: '24h', user_id: '42' }],
+    ['a Week Pass', { pass_kind: '7d', user_id: '42' }],
+    ['no metadata at all', null],
+  ])(
+    'still sends the recovery email when %s checkout expires',
+    async (_label, metadata) => {
+      mockWebhookEvent = {
+        type: 'checkout.session.expired',
+        data: {
+          object: {
+            id: 'cs_expired_other',
+            customer_details: { email: 'buyer@example.com' },
+            metadata,
+          },
+        },
+      };
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(mockClaimSession).toHaveBeenCalledWith(
+        'cs_expired_other',
+        'buyer@example.com',
+        expect.any(String),
+        null
+      );
+      expect(mockSendAbandonedCheckoutRecoveryEmail).toHaveBeenCalledWith(
+        'buyer@example.com',
+        expect.any(String)
+      );
+    }
+  );
+
+  it('still sends the recovery email when an ordinary pass checkout expires', async () => {
+    mockWebhookEvent = {
+      type: 'checkout.session.expired',
+      data: {
+        object: {
+          id: 'cs_expired_pass',
+          customer_details: { email: 'buyer@example.com' },
+          metadata: { pass_kind: '120d', user_id: '42' },
+        },
+      },
+    };
+
+    const res = await postWebhook();
+
+    expect(res.status).toBe(200);
     expect(mockSendAbandonedCheckoutRecoveryEmail).toHaveBeenCalledWith(
       'buyer@example.com',
       expect.any(String)

@@ -6,6 +6,7 @@ interface FakePrice {
   unit_amount: number | null;
   currency: string;
   created: number;
+  product: string | { id: string };
 }
 
 const makeStripe = (searchImpl: Mock) =>
@@ -16,6 +17,7 @@ const price = (over: Partial<FakePrice> = {}): FakePrice => ({
   unit_amount: 600,
   currency: 'usd',
   created: 1000,
+  product: 'prod_default',
   ...over,
 });
 
@@ -37,7 +39,14 @@ describe('PricingService', () => {
 
   it('resolves the active price for a pass kind by its metadata', async () => {
     const search = vi.fn().mockResolvedValue({
-      data: [price({ id: 'price_24h', unit_amount: 600, currency: 'usd' })],
+      data: [
+        price({
+          id: 'price_24h',
+          unit_amount: 600,
+          currency: 'usd',
+          product: 'prod_day',
+        }),
+      ],
     });
     const service = new PricingService(makeStripe(search));
 
@@ -46,6 +55,7 @@ describe('PricingService', () => {
     expect(resolved).toEqual({
       kind: '24h',
       priceId: 'price_24h',
+      productId: 'prod_day',
       amount: 600,
       currency: 'usd',
       source: 'stripe',
@@ -136,10 +146,22 @@ describe('PricingService', () => {
     expect(resolved).toEqual({
       kind: '24h',
       priceId: 'price_env_24h',
+      productId: null,
       amount: null,
       currency: null,
       source: 'env',
     });
+  });
+
+  it('reads the product id from an expanded product on the chosen price', async () => {
+    const search = vi.fn().mockResolvedValue({
+      data: [price({ id: 'price_120d', product: { id: 'prod_semester' } })],
+    });
+    const service = new PricingService(makeStripe(search));
+
+    const resolved = await service.resolve('120d');
+
+    expect(resolved.productId).toBe('prod_semester');
   });
 
   it('returns a null price id when Stripe, cache, and env are all unavailable', async () => {

@@ -29,6 +29,7 @@ import {
 import { formatCreditPackExpiry } from '../../lib/credits/formatCreditPackExpiry';
 import styles from '../../styles/shared.module.css';
 import { AiCreditsReadout } from './components/AiCreditsReadout';
+import { DayPassCreditOffer } from '../../components/DayPassCreditOffer/DayPassCreditOffer';
 import { ExploreCard } from './components/ExploreCard/ExploreCard';
 import { RecentSources } from './components/RecentSources/RecentSources';
 import UploadForm from './components/UploadForm/UploadForm';
@@ -481,6 +482,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
         setErrorMessage={setErrorMessage}
         aiOn={isAiOn}
         onPassDeckStarted={() => setPassDeckStarted(true)}
+      />
+      <DayPassCreditOffer
+        placement="upload"
+        enabled={userLocals?.locals?.passKind === '24h'}
       />
       {isSignedIn && <RecentSources />}
       <ExploreCard />

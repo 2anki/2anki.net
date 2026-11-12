@@ -1,0 +1,12 @@
+{
+  "title": "Move up to the Semester Pass for {{price}}",
+  "body": "The Day Pass price, {{dayPassPrice}}, comes off the {{semesterPrice}} Semester Pass. One payment for 120 days. Nothing renews.",
+  "startsLater": "The 120 days start when your Day Pass ends on {{date}}.",
+  "startsNow": "The 120 days start when you pay.",
+  "offerEnds": "Offer ends {{date}}.",
+  "cta": "Get the Semester Pass for {{price}}",
+  "pending": "Opening checkout",
+  "unavailable": "This offer is no longer available.",
+  "seePlans": "See all plans",
+  "error": "Checkout didn't open. Try again."
+}

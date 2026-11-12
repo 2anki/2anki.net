@@ -27,6 +27,7 @@ import UserPassRepository, {
   type PassKind,
 } from '../data_layer/UserPassRepository';
 import AnonymousPassRepository from '../data_layer/AnonymousPassRepository';
+import DayPassCreditRepository from '../data_layer/DayPassCreditRepository';
 import PassClaimTokensRepository from '../data_layer/PassClaimTokensRepository';
 import RefundedPaymentIntentsRepository from '../data_layer/RefundedPaymentIntentsRepository';
 import { SendAnonymousPassClaimEmailUseCase } from '../usecases/passes/SendAnonymousPassClaimEmailUseCase';
@@ -632,6 +633,15 @@ const WebhooksRouter = () => {
                   payment_intent_id_hash: hashToken(paymentIntentId),
                 }
               );
+              if (sessionMeta.day_pass_credit === '1') {
+                const marked = await new DayPassCreditRepository(
+                  getDatabase()
+                ).markRedeemedBySession(session.id, now);
+                console.info('pass.day_pass_credit.redeemed', {
+                  user_id: passUserId,
+                  newly_marked: marked,
+                });
+              }
             } catch (passError) {
               // The upsert is keyed by payment intent, so a retry is safe.
               console.error('pass.webhook.grant_failed', passError);
@@ -806,6 +816,7 @@ const WebhooksRouter = () => {
             id: string;
             customer_details?: { email?: string | null } | null;
             customer_email?: string | null;
+            metadata?: Record<string, string> | null;
             after_expiration?: {
               recovery?: {
                 url?: string | null;
@@ -813,6 +824,12 @@ const WebhooksRouter = () => {
               } | null;
             } | null;
           };
+          // A credit checkout expires by design when its offer ends; the
+          // generic recovery email would point the buyer at list price.
+          if (expiredSession.metadata?.day_pass_credit === '1') {
+            console.info('checkout.session.expired.day_pass_credit_skipped');
+            break;
+          }
           const sessionEmail =
             expiredSession.customer_details?.email ??
             expiredSession.customer_email ??

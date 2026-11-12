@@ -1,0 +1,12 @@
+{
+  "title": "Passe au Semester Pass pour {{price}}",
+  "body": "Le prix du Day Pass, {{dayPassPrice}}, est déduit du Semester Pass à {{semesterPrice}}. Un seul paiement pour 120 jours, sans renouvellement.",
+  "startsLater": "Les 120 jours commencent à la fin de ton Day Pass, le {{date}}.",
+  "startsNow": "Les 120 jours commencent dès le paiement.",
+  "offerEnds": "Offre valable jusqu'au {{date}}.",
+  "cta": "Prendre le Semester Pass pour {{price}}",
+  "pending": "Ouverture du paiement",
+  "unavailable": "Cette offre n'est plus disponible.",
+  "seePlans": "Voir toutes les offres",
+  "error": "Le paiement ne s'est pas ouvert. Réessaie."
+}
