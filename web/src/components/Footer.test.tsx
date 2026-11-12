@@ -47,6 +47,13 @@ describe('Footer', () => {
     );
   });
 
+  it('links the Japanese seller disclosure, marked as Japanese', () => {
+    render(<Footer />);
+    const link = screen.getByRole('link', { name: '特定商取引法に基づく表記' });
+    expect(link).toHaveAttribute('href', '/tokushoho/');
+    expect(link).toHaveAttribute('lang', 'ja');
+  });
+
   it('renders Docs label, not the long Documentation label', () => {
     render(<Footer />);
     expect(

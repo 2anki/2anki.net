@@ -9,6 +9,7 @@ import {
   emitLandingPages,
   emitMetaOnlyPages,
   emitNotionMarketplacePage,
+  emitTokushohoPage,
 } from './prerenderLandingPages';
 import {
   emitDocsPages,
@@ -29,6 +30,7 @@ function emitEverything(): string {
   emitConvertHubPage(buildDir);
   emitAnswersPages(buildDir);
   emitMetaOnlyPages(buildDir);
+  emitTokushohoPage(buildDir);
   emitDocsPages(buildDir);
   return buildDir;
 }

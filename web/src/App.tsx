@@ -324,6 +324,10 @@ const SecurityPage = lazyWithRetry(
   () => import('./pages/SecurityPage/SecurityPage'),
   './pages/SecurityPage/SecurityPage'
 );
+const TokushohoPage = lazyWithRetry(
+  () => import('./pages/TokushohoPage/TokushohoPage'),
+  './pages/TokushohoPage/TokushohoPage'
+);
 const StatusPage = lazyWithRetry(
   () => import('./pages/StatusPage/StatusPage'),
   './pages/StatusPage/StatusPage'
@@ -610,6 +614,7 @@ function AppContent({
             <Route path="/about" element={<AboutPage />} />
             <Route path="/app" element={<NativeAppPage />} />
             <Route path="/security" element={<SecurityPage />} />
+            <Route path="/tokushoho" element={<TokushohoPage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/whats-new" element={<WhatsNewPage />} />
             <Route path="/documentation" element={<DocsPage />} />

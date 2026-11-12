@@ -7,7 +7,9 @@ import {
   emitLandingPages,
   emitMetaOnlyPages,
   emitNotionMarketplacePage,
+  emitTokushohoPage,
 } from './prerenderLandingPages';
+import { TOKUSHOHO_ROWS } from '../src/pages/TokushohoPage/tokushohoContent';
 import notionCopy from '../src/pages/LandingPage/copy/notion';
 import notionZuAnkiCopy from '../src/pages/LandingPage/copy/notion-zu-anki';
 import pdfZuAnkiCopy from '../src/pages/LandingPage/copy/pdf-zu-anki';
@@ -508,6 +510,44 @@ describe('emitMetaOnlyPages', () => {
     expect(countMatches(html, /<meta\s+property="og:title"/g)).toBe(1);
     expect(countMatches(html, /<meta\s+property="og:url"/g)).toBe(1);
     expect(countMatches(html, /<meta\s+name="twitter:title"/g)).toBe(1);
+  });
+});
+
+describe('emitTokushohoPage', () => {
+  const read = () =>
+    readFileSync(join(buildDir, 'tokushoho', 'index.html'), 'utf8');
+
+  it('gives /tokushoho its own Japanese title and a self canonical', () => {
+    emitTokushohoPage(buildDir);
+    const html = read();
+    expect(html).toContain('<title>特定商取引法に基づく表記 | 2anki</title>');
+    expect(countMatches(html, /<link\s+rel="canonical"/g)).toBe(1);
+    expect(html).toContain(
+      '<link rel="canonical" href="https://2anki.net/tokushoho/">'
+    );
+  });
+
+  it('declares the document Japanese', () => {
+    emitTokushohoPage(buildDir);
+    const html = read();
+    expect(html).toContain('<html lang="ja">');
+    expect(html).toContain('<meta property="og:locale" content="ja_JP">');
+    expect(countMatches(html, /<meta\s+property="og:locale"/g)).toBe(1);
+  });
+
+  it.each(TOKUSHOHO_ROWS.map((row) => row.term))(
+    'prerenders the %s field so a reader without JavaScript sees it',
+    (term) => {
+      emitTokushohoPage(buildDir);
+      expect(read()).toContain(`<th scope="row">${term}</th>`);
+    }
+  );
+
+  it('prerenders the support address as a mail link', () => {
+    emitTokushohoPage(buildDir);
+    expect(read()).toContain(
+      '<a href="mailto:support@2anki.net">support@2anki.net</a>'
+    );
   });
 });
 
