@@ -27,7 +27,31 @@ function sentencesSellingAutoSync(source: string): string[] {
     );
 }
 
+const SYNC_LINK_TO_PRICING =
+  /label:\s*'[^']*(?:sync|Synchronisierung)[^']*',\s*href:\s*'\/pricing\/?'/gi;
+
+function syncLinksToPricing(source: string): string[] {
+  return source.match(SYNC_LINK_TO_PRICING) ?? [];
+}
+
 describe('marketing copy while Auto Sync is not on sale', () => {
+  it.each(MARKETING_SOURCES)(
+    '%s links no sync promise to the pricing page',
+    (path) => {
+      const source = readFileSync(join(WEB_ROOT, path), 'utf-8');
+
+      expect(syncLinksToPricing(source)).toEqual([]);
+    }
+  );
+
+  it('flags a sync link to pricing, so the check can fail', () => {
+    expect(
+      syncLinksToPricing(
+        "{ label: 'Keep decks in sync with Notion', href: '/pricing' },"
+      )
+    ).toEqual(["label: 'Keep decks in sync with Notion', href: '/pricing'"]);
+  });
+
   it.each(MARKETING_SOURCES)('%s sends nobody to buy Auto Sync', (path) => {
     const source = readFileSync(join(WEB_ROOT, path), 'utf-8');
 

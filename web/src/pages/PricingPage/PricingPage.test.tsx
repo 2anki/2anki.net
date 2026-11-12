@@ -1047,6 +1047,18 @@ describe('PricingPage without Auto Sync for sale', () => {
         passKind: '7d' as const,
       },
     ],
+    [
+      'an Auto Sync subscriber',
+      true,
+      { subscriber: true, planSource: 'stripe' as const, passKind: null },
+    ],
+    ['a comp Auto Sync holder', true, { subscriber: false, patreon: false }],
+    ['a lifetime holder', true, { patreon: true }],
+    [
+      'an Apple subscriber',
+      true,
+      { subscriber: true, planSource: 'apple' as const },
+    ],
   ])('offers %s no Auto Sync plan', async (_who, isLoggedIn, entitlement) => {
     renderAt('/pricing', { isLoggedIn, entitlement });
 
@@ -1057,6 +1069,9 @@ describe('PricingPage without Auto Sync for sale', () => {
     expect(screen.queryByText('Sync from Notion')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Auto Sync/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /Auto Sync/ })
     ).not.toBeInTheDocument();
   });
 });
