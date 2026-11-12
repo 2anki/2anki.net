@@ -55,7 +55,6 @@
     "cancelledImmediate": "Cancelado. El acceso ha terminado.",
     "cancelFailed": "No se pudo cancelar tu suscripción. Inténtalo de nuevo en un momento.",
     "perPlanCancelFailed": "No se pudo cancelar este plan. Inténtalo de nuevo.",
-    "pauseFailed": "No se pudo pausar tu suscripción. Inténtalo de nuevo en un momento.",
     "resumeFailed": "No se pudo reanudar tu suscripción. Inténtalo de nuevo en un momento."
   },
   "cancelFlow": {
@@ -65,22 +64,7 @@
     "keepSubscription": "Mantener suscripción",
     "commentAria": "Comentario opcional",
     "commentPlaceholder": "¿Quieres añadir algo? (opcional)",
-    "commentPlaceholderTechnical": "¿Qué falló? (opcional)",
-    "stillWantToCancel": "¿Aún quieres cancelar?",
-    "pauseOrCancel": "Pausar o cancelar"
-  },
-  "pauseCard": {
-    "pauseInstead": "Ponla en pausa — sin cargos mientras no estés",
-    "notice": "¿Te tomas un descanso entre cuatrimestres? Pon tu suscripción en pausa en lugar de cancelarla. No se te cobrará mientras esté en pausa, y se reanuda sola cuando estés listo. Todo lo que hayas creado queda guardado.",
-    "pauseFor": "Pausar durante",
-    "pauseLengthAria": "Duración de la pausa",
-    "oneMonth": "1 mes",
-    "nMonths": "{{count}} meses",
-    "resumesLine": "Se reanuda el {{date}} con {{plan}}. Cancela cuando quieras antes de esa fecha.",
-    "yourPlan": "tu plan",
-    "pausing": "Pausando…",
-    "pauseSubscription": "Pausar suscripción",
-    "legacyKeeps": "Al pausar conservas tu tarifa heredada de {{plan}}. Al cancelar la pierdes."
+    "commentPlaceholderTechnical": "¿Qué falló? (opcional)"
   },
   "accountDeletion": {
     "deleteAccount": "Eliminar cuenta",

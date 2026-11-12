@@ -629,8 +629,7 @@
       "getUnlimitedMonthly": "Pro holen — monatliche Abrechnung",
       "termsYearly": "{{annualTotal}} heute fällig, verlängert sich jährlich. Jederzeit kündbar — der Zugang bleibt bis zum Ende des bezahlten Jahres.",
       "termsMonthly": "{{monthlyTotal}} heute fällig, verlängert sich monatlich. Jederzeit kündbar.",
-      "checkoutError": "Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net.",
-      "pauseReassurance": "Jederzeit kündbar — oder zwischen den Semestern pausieren, kostenlos während deiner Abwesenheit."
+      "checkoutError": "Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net."
     },
     "card": {
       "howSyncWorks": "So funktioniert die Synchronisierung"

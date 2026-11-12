@@ -604,8 +604,7 @@
       "getUnlimitedMonthly": "Get Pro — 月払い",
       "termsYearly": "本日 {{annualTotal}} を請求、毎年更新。いつでも解約可能 — お支払い済みの 1 年間はご利用いただけます。",
       "termsMonthly": "本日 {{monthlyTotal}} を請求、毎月更新。いつでも解約可能。",
-      "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。",
-      "pauseReassurance": "いつでも解約可能 — 学期の合間は一時停止でき、その間は料金がかかりません。"
+      "checkoutError": "チェックアウトを開始できませんでした。もう一度お試しいただくか、support@2anki.net までご連絡ください。"
     },
     "card": {
       "howSyncWorks": "同期の仕組み"

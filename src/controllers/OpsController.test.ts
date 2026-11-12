@@ -541,13 +541,8 @@ describe('OpsController.getCancelFunnel', () => {
     const payload = {
       stages: {
         cancel_started: 100,
-        pause_offered: 40,
-        paused: 12,
         cancelled: 70,
-        pause_offer_declined: 25,
       },
-      save_rate_pct: 30,
-      offer_reach_pct: 40,
       since: '2026-06-01T00:00:00.000Z',
       as_of: '2026-07-01T00:00:00.000Z',
     };

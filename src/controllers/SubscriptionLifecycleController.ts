@@ -4,9 +4,6 @@ import UsersService from '../services/UsersService';
 import SubscriptionService, {
   type CancelMode,
   SubscriptionNotOwnedError,
-  AnnualPlanNotPausableError,
-  SubscriptionTooNewToPauseError,
-  InvalidPauseMonthsError,
 } from '../services/SubscriptionService';
 import { pausedResumesAt } from '../lib/subscriptions/isPaused';
 import { track } from '../services/events/track';
@@ -140,61 +137,6 @@ class SubscriptionLifecycleController {
       console.info('Cancellation feedback failed');
       console.error(error);
       return res.status(500).json({ message: 'Failed to record feedback' });
-    }
-  }
-
-  async pauseSubscription(req: express.Request, res: express.Response) {
-    const { owner } = res.locals;
-    if (!owner) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
-
-    const months = Number(req.body?.months);
-    if (![1, 2, 3].includes(months)) {
-      return res
-        .status(400)
-        .json({ message: 'Choose a pause length of 1, 2, or 3 months.' });
-    }
-
-    try {
-      const user = await this.userService.getUserById(owner);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      const result = await SubscriptionService.pauseSubscription(
-        user.email,
-        months
-      );
-
-      return res.status(200).json({
-        message: 'Your subscription is paused. Resume any time.',
-        resumes_at: result.resumesAt,
-      });
-    } catch (error) {
-      if (error instanceof AnnualPlanNotPausableError) {
-        return res
-          .status(422)
-          .json({ message: 'Annual plans cannot be paused.' });
-      }
-      if (error instanceof SubscriptionTooNewToPauseError) {
-        return res.status(422).json({
-          message: 'Pausing is available after 30 days on a plan.',
-        });
-      }
-      if (error instanceof InvalidPauseMonthsError) {
-        return res
-          .status(400)
-          .json({ message: 'Choose a pause length of 1, 2, or 3 months.' });
-      }
-      if (error instanceof SubscriptionNotOwnedError) {
-        return res.status(422).json({
-          message: 'No active subscription found for this account.',
-        });
-      }
-      console.info('Pause subscription failed');
-      console.error(error);
-      return res.status(500).json({ message: 'Failed to pause subscription' });
     }
   }
 

@@ -163,9 +163,6 @@ export function UnlimitedCard({
         ) : (
           <p className={styles.cardTerms}>{terms}</p>
         )}
-        <p className={styles.cardCaption}>
-          {t('pricing.unlimited.pauseReassurance')}
-        </p>
       </div>
     </div>
   );

@@ -55,7 +55,6 @@
     "cancelledImmediate": "Opgezegd. De toegang is beëindigd.",
     "cancelFailed": "Je abonnement kon niet worden opgezegd. Probeer het zo weer.",
     "perPlanCancelFailed": "Dit abonnement kon niet worden opgezegd. Probeer het opnieuw.",
-    "pauseFailed": "Je abonnement kon niet worden gepauzeerd. Probeer het zo weer.",
     "resumeFailed": "Je abonnement kon niet worden hervat. Probeer het zo weer."
   },
   "cancelFlow": {
@@ -65,22 +64,7 @@
     "keepSubscription": "Abonnement behouden",
     "commentAria": "Optionele opmerking",
     "commentPlaceholder": "Wil je nog iets toevoegen? (optioneel)",
-    "commentPlaceholderTechnical": "Wat ging er mis? (optioneel)",
-    "stillWantToCancel": "Toch opzeggen?",
-    "pauseOrCancel": "Pauzeren of opzeggen"
-  },
-  "pauseCard": {
-    "pauseInstead": "Pauzeer in plaats daarvan — geen kosten terwijl je weg bent",
-    "notice": "Even pauze tussen semesters? Pauzeer je abonnement in plaats van op te zeggen. Je wordt niet belast tijdens de pauze en het wordt vanzelf hervat wanneer je er klaar voor bent. Alles wat je hebt gemaakt blijft bewaard.",
-    "pauseFor": "Pauzeren voor",
-    "pauseLengthAria": "Pauzeduur",
-    "oneMonth": "1 maand",
-    "nMonths": "{{count}} maanden",
-    "resumesLine": "Hervat {{date}} met {{plan}}. Voor die tijd altijd opzegbaar.",
-    "yourPlan": "je abonnement",
-    "pausing": "Pauzeren…",
-    "pauseSubscription": "Abonnement pauzeren",
-    "legacyKeeps": "Bij pauzeren houd je je oude tarief van {{plan}}. Bij opzeggen verlies je het."
+    "commentPlaceholderTechnical": "Wat ging er mis? (optioneel)"
   },
   "accountDeletion": {
     "deleteAccount": "Account verwijderen",

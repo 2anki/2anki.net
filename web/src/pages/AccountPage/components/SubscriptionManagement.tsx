@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSubscriptionCancellation } from '../hooks/useSubscriptionCancellation';
 import { usePerSubscriptionCancellation } from '../hooks/usePerSubscriptionCancellation';
-import { usePauseSubscription } from '../hooks/usePauseSubscription';
+import { useResumeSubscription } from '../hooks/useResumeSubscription';
 import { useStripeSubscriptions } from '../../../lib/hooks/useStripeSubscriptions';
 import { StripeSubscriptionSummary } from '../../../lib/backend/getSubscriptionStatus';
 import { track } from '../../../lib/analytics/track';
@@ -18,7 +18,6 @@ import { formatLongDate } from '../utils/formatLongDate';
 type CancellationReasonInput = CancellationReason | '';
 
 const SECONDS_PER_DAY = 24 * 60 * 60;
-const MIN_TENURE_DAYS_TO_PAUSE = 30;
 
 const tenureDaysOf = (sub: StripeSubscriptionSummary): number => {
   if (sub.created == null) return 0;
@@ -345,14 +344,8 @@ function StripeSubscriptionManagement({
     cancelSuccess,
   } = useSubscriptionCancellation(refetchAll);
 
-  const {
-    pauseSubscriptionForMonths,
-    resumeSubscriptionNow,
-    isPausing,
-    isResuming,
-    pauseError,
-    resumeError,
-  } = usePauseSubscription(refetchAll);
+  const { resumeSubscriptionNow, isResuming, resumeError } =
+    useResumeSubscription(refetchAll);
 
   const {
     cancelError: perSubCancelError,
@@ -396,11 +389,6 @@ function StripeSubscriptionManagement({
 
   const activeSub = view.kind === 'active' ? view.subscription : null;
   const pastDueSub = view.kind === 'past_due' ? view.subscription : null;
-  const pauseEligible =
-    activeSub != null &&
-    !isAnnual(activeSub) &&
-    tenureDaysOf(activeSub) >= MIN_TENURE_DAYS_TO_PAUSE &&
-    !hasMultipleActive;
 
   const handleOpenCancelFlow = () => {
     if (activeSub != null) {
@@ -418,12 +406,6 @@ function StripeSubscriptionManagement({
   ) => {
     if (reason) {
       submitFeedback(reason, comment);
-    }
-    if (pauseEligible) {
-      track('subscription_pause_offer_declined', {
-        tenure_days: activeSub == null ? 0 : tenureDaysOf(activeSub),
-        ...(reason ? { reason } : {}),
-      });
     }
     cancelUserSubscription(activeSub?.current_period_end, reason || undefined);
     setConfirming(false);
@@ -537,16 +519,9 @@ function StripeSubscriptionManagement({
               )}
               {confirming && (
                 <CancelFlow
-                  planLabel={formatPlan(view.subscription)}
-                  tenureDays={tenureDaysOf(view.subscription)}
-                  pauseEligible={pauseEligible}
-                  isLegacyRate={isLegacyRate(view.subscription)}
                   isCancelling={isCancelling}
-                  isPausing={isPausing}
-                  pauseError={pauseError}
                   onCancel={handleCancelFromFlow}
                   onKeep={handleKeep}
-                  onPause={(months) => pauseSubscriptionForMonths(months)}
                 />
               )}
             </>
@@ -605,16 +580,9 @@ function StripeSubscriptionManagement({
               )}
               {confirming && (
                 <CancelFlow
-                  planLabel={formatPlan(view.subscription)}
-                  tenureDays={tenureDaysOf(view.subscription)}
-                  pauseEligible={false}
-                  isLegacyRate={isLegacyRate(view.subscription)}
                   isCancelling={isCancellingPerSub}
-                  isPausing={false}
-                  pauseError=""
                   onCancel={handlePastDueCancel}
                   onKeep={handleKeep}
-                  onPause={() => undefined}
                 />
               )}
               {perSubCancelError && (

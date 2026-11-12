@@ -55,7 +55,6 @@
     "cancelledImmediate": "Annulé. L'accès est terminé.",
     "cancelFailed": "Impossible d'annuler ton abonnement. Réessaie dans un instant.",
     "perPlanCancelFailed": "Impossible d'annuler ce forfait. Réessaie.",
-    "pauseFailed": "Impossible de mettre ton abonnement en pause. Réessaie dans un instant.",
     "resumeFailed": "Impossible de reprendre ton abonnement. Réessaie dans un instant."
   },
   "cancelFlow": {
@@ -65,22 +64,7 @@
     "keepSubscription": "Garder l'abonnement",
     "commentAria": "Commentaire facultatif",
     "commentPlaceholder": "Tu veux ajouter quelque chose ? (facultatif)",
-    "commentPlaceholderTechnical": "Qu'est-ce qui n'a pas fonctionné ? (facultatif)",
-    "stillWantToCancel": "Tu veux quand même annuler ?",
-    "pauseOrCancel": "Mettre en pause ou annuler"
-  },
-  "pauseCard": {
-    "pauseInstead": "Mettre en pause plutôt — aucun débit pendant ton absence",
-    "notice": "Tu fais une pause entre deux semestres ? Mets ton abonnement en pause au lieu de l'annuler. Tu ne seras pas débité pendant la pause, et il reprend tout seul quand tu es prêt. Tout ce que tu as créé est conservé.",
-    "pauseFor": "Mettre en pause pendant",
-    "pauseLengthAria": "Durée de la pause",
-    "oneMonth": "1 mois",
-    "nMonths": "{{count}} mois",
-    "resumesLine": "Reprend le {{date}} avec {{plan}}. Annulable à tout moment d'ici là.",
-    "yourPlan": "ton forfait",
-    "pausing": "Mise en pause…",
-    "pauseSubscription": "Mettre l'abonnement en pause",
-    "legacyKeeps": "La mise en pause conserve ton ancien tarif {{plan}}. L’annulation le fait perdre."
+    "commentPlaceholderTechnical": "Qu'est-ce qui n'a pas fonctionné ? (facultatif)"
   },
   "accountDeletion": {
     "deleteAccount": "Supprimer le compte",

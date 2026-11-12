@@ -55,7 +55,6 @@
     "cancelledImmediate": "解約しました。アクセスは終了しました。",
     "cancelFailed": "サブスクリプションを解約できませんでした。しばらくしてからもう一度お試しください。",
     "perPlanCancelFailed": "このプランを解約できませんでした。もう一度お試しください。",
-    "pauseFailed": "サブスクリプションを一時停止できませんでした。しばらくしてからもう一度お試しください。",
     "resumeFailed": "サブスクリプションを再開できませんでした。しばらくしてからもう一度お試しください。"
   },
   "cancelFlow": {
@@ -65,22 +64,7 @@
     "keepSubscription": "サブスクリプションを続ける",
     "commentAria": "任意のコメント",
     "commentPlaceholder": "何か補足があればどうぞ（任意）",
-    "commentPlaceholderTechnical": "何が問題でしたか？（任意）",
-    "stillWantToCancel": "それでも解約しますか？",
-    "pauseOrCancel": "一時停止または解約"
-  },
-  "pauseCard": {
-    "pauseInstead": "代わりに一時停止 — 離れている間は請求なし",
-    "notice": "学期の合間に休みますか？解約する代わりに一時停止できます。停止中は請求されず、準備ができれば自動で再開します。作成したものはすべて保存されています。",
-    "pauseFor": "停止期間",
-    "pauseLengthAria": "停止期間",
-    "oneMonth": "1 か月",
-    "nMonths": "{{count}} か月",
-    "resumesLine": "{{date}} に {{plan}} で再開します。それまではいつでも解約できます。",
-    "yourPlan": "現在のプラン",
-    "pausing": "一時停止中…",
-    "pauseSubscription": "サブスクリプションを一時停止",
-    "legacyKeeps": "一時停止すれば、旧料金の {{plan}} を維持できます。解約すると失われます。"
+    "commentPlaceholderTechnical": "何が問題でしたか？（任意）"
   },
   "accountDeletion": {
     "deleteAccount": "アカウントを削除",

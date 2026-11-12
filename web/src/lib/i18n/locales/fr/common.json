@@ -629,8 +629,7 @@
       "getUnlimitedMonthly": "Choisir Pro — facturation mensuelle",
       "termsYearly": "{{annualTotal}} facturé aujourd'hui, se renouvelle chaque année. Annulable à tout moment — l'accès est conservé jusqu'à la fin de l'année payée.",
       "termsMonthly": "{{monthlyTotal}} facturé aujourd'hui, se renouvelle chaque mois. Annulable à tout moment.",
-      "checkoutError": "Impossible de démarrer le paiement. Réessaie, ou écris à support@2anki.net.",
-      "pauseReassurance": "Annulable à tout moment — ou mets en pause entre les semestres, sans frais pendant ton absence."
+      "checkoutError": "Impossible de démarrer le paiement. Réessaie, ou écris à support@2anki.net."
     },
     "card": {
       "howSyncWorks": "Comment fonctionne la synchro"

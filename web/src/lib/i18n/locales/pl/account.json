@@ -55,7 +55,6 @@
     "cancelledImmediate": "Anulowano. Dostęp został zakończony.",
     "cancelFailed": "Nie udało się anulować subskrypcji. Spróbuj ponownie za chwilę.",
     "perPlanCancelFailed": "Nie udało się anulować tego planu. Spróbuj ponownie.",
-    "pauseFailed": "Nie udało się wstrzymać subskrypcji. Spróbuj ponownie za chwilę.",
     "resumeFailed": "Nie udało się wznowić subskrypcji. Spróbuj ponownie za chwilę."
   },
   "cancelFlow": {
@@ -65,22 +64,7 @@
     "keepSubscription": "Zachowaj subskrypcję",
     "commentAria": "Opcjonalny komentarz",
     "commentPlaceholder": "Chcesz coś dodać? (opcjonalnie)",
-    "commentPlaceholderTechnical": "Co nie działało? (opcjonalnie)",
-    "stillWantToCancel": "Nadal chcesz anulować?",
-    "pauseOrCancel": "Wstrzymaj lub anuluj"
-  },
-  "pauseCard": {
-    "pauseInstead": "Wstrzymaj zamiast anulować — brak opłat, gdy Cię nie ma",
-    "notice": "Robisz przerwę między semestrami? Wstrzymaj subskrypcję, zamiast ją anulować. W czasie wstrzymania nie zostaniesz obciążony, a subskrypcja sama się wznowi, gdy będziesz gotowy. Wszystko, co utworzyłeś, jest zapisane.",
-    "pauseFor": "Wstrzymaj na",
-    "pauseLengthAria": "Długość wstrzymania",
-    "oneMonth": "1 miesiąc",
-    "nMonths": "{{count}} mies.",
-    "resumesLine": "Wznowienie {{date}} w planie {{plan}}. Możesz anulować w każdej chwili wcześniej.",
-    "yourPlan": "Twój plan",
-    "pausing": "Wstrzymywanie…",
-    "pauseSubscription": "Wstrzymaj subskrypcję",
-    "legacyKeeps": "Wstrzymanie zachowuje Twoją starą stawkę {{plan}}. Anulowanie oznacza jej utratę."
+    "commentPlaceholderTechnical": "Co nie działało? (opcjonalnie)"
   },
   "accountDeletion": {
     "deleteAccount": "Usuń konto",

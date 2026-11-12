@@ -679,8 +679,7 @@
       "getUnlimitedMonthly": "Kup Pro — płatność miesięczna",
       "termsYearly": "{{annualTotal}} pobierane dziś, odnawia się co roku. Anuluj w każdej chwili — zachowujesz dostęp przez opłacony rok.",
       "termsMonthly": "{{monthlyTotal}} pobierane dziś, odnawia się co miesiąc. Anuluj w każdej chwili.",
-      "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net.",
-      "pauseReassurance": "Anuluj w każdej chwili — albo wstrzymaj między semestrami, bez opłat, gdy Cię nie ma."
+      "checkoutError": "Nie udało się rozpocząć płatności. Spróbuj ponownie albo napisz na support@2anki.net."
     },
     "card": {
       "howSyncWorks": "Jak działa synchronizacja"

@@ -629,8 +629,7 @@
       "getUnlimitedMonthly": "Ottieni Pro — fatturazione mensile",
       "termsYearly": "{{annualTotal}} addebitato oggi, si rinnova ogni anno. Disdici quando vuoi — mantieni l'accesso per l'anno che hai pagato.",
       "termsMonthly": "{{monthlyTotal}} addebitato oggi, si rinnova ogni mese. Disdici quando vuoi.",
-      "checkoutError": "Non siamo riusciti ad avviare il pagamento. Riprova, oppure scrivi a support@2anki.net.",
-      "pauseReassurance": "Disdici quando vuoi — o metti in pausa tra un semestre e l'altro, nessun addebito mentre sei via."
+      "checkoutError": "Non siamo riusciti ad avviare il pagamento. Riprova, oppure scrivi a support@2anki.net."
     },
     "card": {
       "howSyncWorks": "Come funziona la sincronizzazione"

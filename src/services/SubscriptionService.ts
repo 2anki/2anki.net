@@ -35,61 +35,12 @@ async function softDeleteLocalSubscription(
     });
 }
 
-export const VALID_PAUSE_MONTHS = [1, 2, 3] as const;
-export type PauseMonths = (typeof VALID_PAUSE_MONTHS)[number];
-const MIN_TENURE_DAYS_TO_PAUSE = 30;
-const SECONDS_PER_DAY = 24 * 60 * 60;
-
 export class SubscriptionNotOwnedError extends Error {
   constructor() {
     super('Subscription not found');
     this.name = 'SubscriptionNotOwnedError';
   }
 }
-
-export class AnnualPlanNotPausableError extends Error {
-  constructor() {
-    super('Annual plans cannot be paused');
-    this.name = 'AnnualPlanNotPausableError';
-  }
-}
-
-export class SubscriptionTooNewToPauseError extends Error {
-  constructor() {
-    super('Subscription is too new to pause');
-    this.name = 'SubscriptionTooNewToPauseError';
-  }
-}
-
-export class InvalidPauseMonthsError extends Error {
-  constructor() {
-    super('Pause length must be 1, 2, or 3 months');
-    this.name = 'InvalidPauseMonthsError';
-  }
-}
-
-export interface PauseResult {
-  subscriptionId: string;
-  resumesAt: number;
-  tenureDays: number;
-}
-
-const isValidPauseMonths = (months: number): months is PauseMonths =>
-  (VALID_PAUSE_MONTHS as readonly number[]).includes(months);
-
-const subscriptionInterval = (sub: StripeTypes.Subscription): string | null =>
-  sub.items?.data?.[0]?.price?.recurring?.interval ?? null;
-
-const tenureDaysOf = (sub: StripeTypes.Subscription, now: Date): number =>
-  Math.floor(
-    (Math.floor(now.getTime() / 1000) - sub.created) / SECONDS_PER_DAY
-  );
-
-const resumesAtEpoch = (now: Date, months: PauseMonths): number => {
-  const resumeDate = new Date(now.getTime());
-  resumeDate.setMonth(resumeDate.getMonth() + months);
-  return Math.floor(resumeDate.getTime() / 1000);
-};
 
 async function collectLinkedPayerEmails(normalized: string): Promise<string[]> {
   const linked: Array<{ email: string }> = await getDatabase()('subscriptions')
@@ -406,39 +357,6 @@ export class SubscriptionService {
 
     console.log('subscription_self_serve_extra_cancel');
     return endsNow ? 'immediate' : 'period_end';
-  }
-
-  static async pauseSubscription(
-    userEmail: string,
-    months: number,
-    now: Date = new Date()
-  ): Promise<PauseResult> {
-    if (!isValidPauseMonths(months)) {
-      throw new InvalidPauseMonthsError();
-    }
-
-    const active = await this.findActiveStripeSubscriptions(userEmail);
-    const target = active.find((sub) => !isPaused(sub));
-    if (target == null) {
-      throw new SubscriptionNotOwnedError();
-    }
-
-    if (subscriptionInterval(target) === 'year') {
-      throw new AnnualPlanNotPausableError();
-    }
-
-    const tenureDays = tenureDaysOf(target, now);
-    if (tenureDays < MIN_TENURE_DAYS_TO_PAUSE) {
-      throw new SubscriptionTooNewToPauseError();
-    }
-
-    const resumesAt = resumesAtEpoch(now, months);
-    const stripe = getStripe();
-    await stripe.subscriptions.update(target.id, {
-      pause_collection: { behavior: 'void', resumes_at: resumesAt },
-    });
-
-    return { subscriptionId: target.id, resumesAt, tenureDays };
   }
 
   static async resumeSubscription(userEmail: string): Promise<string> {

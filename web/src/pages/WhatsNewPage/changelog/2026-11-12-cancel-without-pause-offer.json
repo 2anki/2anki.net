@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-12-cancel-without-pause-offer",
+  "date": "2026-11-12",
+  "type": "feature",
+  "title": "Cancelling a subscription opens straight on the optional reason and confirm step, with no pause offer first"
+}

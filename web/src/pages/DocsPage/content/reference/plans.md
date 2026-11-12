@@ -43,11 +43,9 @@ Use this when you have a week to prep for an exam or a sprint to digitize a stac
 
 Auto Sync isn't on the pricing page. On any subscription, email [support@2anki.net](mailto:support@2anki.net) and we'll switch it on for your account.
 
-## Pausing a subscription
+## Paused subscriptions
 
-Taking a break between terms? Pause a monthly subscription for 1, 2, or 3 months instead of cancelling. You won't be charged while it's paused, and it resumes on its own on the date shown. While paused, paid features are off and everything you've made stays saved. Resume early any time from your account page.
-
-Pausing is available on monthly plans after 30 days. Annual plans and passes can't be paused.
+New pauses are no longer available. If your subscription is already paused, you won't be charged and paid features are off until it resumes on its own on the date shown on your account page. Everything you've made stays saved. Resume early any time from your account page.
 
 ## Common mistakes
 

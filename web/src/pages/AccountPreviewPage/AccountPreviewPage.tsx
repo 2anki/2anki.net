@@ -95,8 +95,8 @@ const variants: Variant[] = [
     ),
   },
   {
-    label: 'Cancel flow — pause leads (legacy monthly)',
-    note: 'Pause-eligible legacy sub mid-cancel: pause card leads, legacy line names the kept rate, cancel stays a visible peer.',
+    label: 'Cancel flow — legacy monthly',
+    note: 'Legacy sub mid-cancel: the forfeit line stays above the reason step.',
     render: () => (
       <>
         <UserProfile
@@ -107,26 +107,18 @@ const variants: Variant[] = [
           <p className={accountStyles.statusLine}>
             $2.00 / month · Renews <strong>15 June 2026</strong>
           </p>
-          <CancelFlow
-            planLabel="$2.00 / month"
-            tenureDays={120}
-            pauseEligible
-            isLegacyRate
-            isCancelling={false}
-            isPausing={false}
-            pauseError=""
-            onCancel={noop}
-            onKeep={noop}
-            onPause={noop}
-          />
+          <p className={accountStyles.legacyNote}>
+            Cancelling forfeits this legacy rate.
+          </p>
+          <CancelFlow isCancelling={false} onCancel={noop} onKeep={noop} />
         </section>
         <AccountDeletion />
       </>
     ),
   },
   {
-    label: 'Cancel flow — pause leads (standard monthly)',
-    note: 'Pause-eligible standard sub mid-cancel: pause card leads, no legacy line, cancel stays a visible peer.',
+    label: 'Cancel flow — standard monthly',
+    note: 'Standard sub mid-cancel: reason step first, cancel and keep side by side.',
     render: () => (
       <>
         <UserProfile user={{ name: 'Casey Pro', email: 'casey@example.com' }} />
@@ -135,18 +127,7 @@ const variants: Variant[] = [
           <p className={accountStyles.statusLine}>
             $7.99 / month · Renews <strong>15 June 2026</strong>
           </p>
-          <CancelFlow
-            planLabel="$7.99 / month"
-            tenureDays={90}
-            pauseEligible
-            isLegacyRate={false}
-            isCancelling={false}
-            isPausing={false}
-            pauseError=""
-            onCancel={noop}
-            onKeep={noop}
-            onPause={noop}
-          />
+          <CancelFlow isCancelling={false} onCancel={noop} onKeep={noop} />
         </section>
         <AccountDeletion />
       </>

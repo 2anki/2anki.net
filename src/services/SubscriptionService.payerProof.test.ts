@@ -145,14 +145,6 @@ describe('SubscriptionService and an address the account has not proven', () => 
     expect(stripe.subscriptions.update).not.toHaveBeenCalled();
   });
 
-  it('does not let the unproven account pause the plan', async () => {
-    await expect(
-      SubscriptionService.pauseSubscription(PAYER, 1)
-    ).rejects.toBeInstanceOf(SubscriptionNotOwnedError);
-
-    expect(stripe.subscriptions.update).not.toHaveBeenCalled();
-  });
-
   it('does not let the unproven account resume the plan', async () => {
     stripe.subscriptions.list.mockResolvedValue({
       data: [

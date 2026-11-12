@@ -254,10 +254,6 @@
   border-color: var(--color-danger-border);
 }
 
-.pauseChip {
-  composes: secondaryButton;
-}
-
 .manageBillingButton {
   composes: secondaryButton;
   text-decoration: none;
@@ -267,19 +263,6 @@
   background: var(--color-bg-secondary);
   color: var(--color-text-primary);
   border-color: var(--color-border);
-}
-
-.pauseChip:hover {
-  background: var(--color-bg-secondary);
-  color: var(--color-text-primary);
-  border-color: var(--color-border);
-}
-
-.secondaryButtonActive,
-.secondaryButtonActive:hover {
-  color: var(--color-primary);
-  background: var(--color-primary-light);
-  border-color: var(--color-primary);
 }
 
 .scheduledBadge {
@@ -355,13 +338,6 @@
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
   margin-bottom: 0.75rem;
-}
-
-.planDetail {
-  margin: 0.25rem 0 0;
-  font-size: var(--text-xs);
-  color: inherit;
-  opacity: 0.85;
 }
 
 .pageFooter {
