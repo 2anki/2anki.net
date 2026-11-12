@@ -30,7 +30,7 @@ interface FakeSubscriptionItem {
 
 interface FakeSubscription {
   id: string;
-  status?: 'active' | 'canceled' | 'trialing' | 'past_due';
+  status?: 'active' | 'canceled' | 'trialing' | 'past_due' | 'unpaid';
   created?: number;
   canceled_at?: number | null;
   ended_at?: number | null;
@@ -847,6 +847,24 @@ describe('BusinessMetricsService', () => {
     expect(result.active_paying_subs).toBe(1);
     expect(result.mrr_usd).toBeCloseTo(15, 5);
   });
+
+  it.each(['past_due', 'unpaid'] as const)(
+    'leaves a subscription in %s out of MRR',
+    async (status) => {
+      const { service } = buildService({
+        allSubs: [
+          sub('sub_active', [monthly(1500)], { created: daysAgoEpoch(60) }),
+          sub('sub_behind', [monthly(4000)], {
+            created: daysAgoEpoch(60),
+            status,
+          }),
+        ],
+      });
+
+      const result = await service.getMetrics();
+      expect(result.mrr_usd).toBeCloseTo(15, 5);
+    }
+  );
 
   it('sums MRR across multiple items in one subscription', async () => {
     const { service } = buildService({
