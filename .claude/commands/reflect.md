@@ -39,7 +39,7 @@ Reflection that stays in chat evaporates. Anything durable becomes a docs PR bef
 | An outage or data incident | `Documentation/post-mortems/<yyyy-mm>-<slug>.md` |
 | A stale doc the reflection tripped over | fix the doc |
 
-Numbers never land in the repo — no baseline block, no metrics in commit bodies (`CLAUDE.md` → Memory & sensitive data). Reporter identity never lands anywhere public (`.claude/rules/support-confidentiality.md`).
+Numbers never land in the repo or a memory file — no baseline block, no metrics in commit bodies (`CLAUDE.md` → Memory & sensitive data). Reporter identity never lands anywhere public or in memory (`.claude/rules/support-confidentiality.md`).
 
 ## Output rules
 
