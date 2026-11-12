@@ -32,4 +32,4 @@ You will sometimes draft something with a name in it. The fix sequence:
 
 1. Editable artifacts first (`gh pr edit <n> --body ...`, GitHub issue body, draft spec) — those are one command away.
 2. Merged commits on `main` are harder. Force-pushing `main` to scrub a name is destructive and visible to every contributor; flag the slip to Al and let him decide whether the rewrite is worth it. Default answer is usually "no, leave it, do better next time."
-3. If the slip points at a recurring hole, capture the anonymized lesson in a repo doc (this rule, or the relevant `.claude/rules/*`) — not in a local memory file (memory is retired here; see `## Memory & sensitive data` in CLAUDE.md).
+3. If the slip points at a recurring hole, capture the anonymized lesson in a repo doc (this rule, or the relevant `.claude/rules/*`), not a memory file, so every agent on every machine sees it (see `## Memory & sensitive data` in CLAUDE.md).
