@@ -5622,6 +5622,42 @@ describe('limit state', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('shows a signed-in user with an unverified email no confirm-email card on success', async () => {
+    vi.mocked(track).mockClear();
+    setUserLocals({
+      ...loggedInData,
+      user: { id: 1, email: 'unverified@example.com', email_verified: false },
+    } as unknown as ReturnType<typeof useUserLocals>['data']);
+    stubPassUploadFetch();
+
+    const { container } = renderUploadForm(
+      <UploadForm setErrorMessage={vi.fn()} />
+    );
+    const form = container.querySelector('form')!;
+    await act(async () => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true })
+      );
+    });
+
+    expect(
+      await screen.findByText(/was saved to your downloads/)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Get back to your decks from any device')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Email me a link to sign in' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('This deck lives only on this device')
+    ).not.toBeInTheDocument();
+    expect(vi.mocked(track)).not.toHaveBeenCalledWith(
+      'account_offer_shown',
+      expect.anything()
+    );
+  });
+
   function stubPassUploadFetch(): void {
     vi.stubGlobal(
       'fetch',

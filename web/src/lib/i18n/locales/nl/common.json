@@ -519,7 +519,8 @@
       "emailPlaceholder": "E-mailadres",
       "sending": "Verzenden",
       "sendResetLink": "Reset-link versturen",
-      "backToLogin": "Terug naar inloggen"
+      "backToLogin": "Terug naar inloggen",
+      "sendError": "Kon de link nu niet versturen. Probeer het zo meteen opnieuw."
     },
     "newPassword": {
       "title": "Stel een nieuw wachtwoord in",

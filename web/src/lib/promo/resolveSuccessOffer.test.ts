@@ -7,25 +7,7 @@ describe('resolveSuccessOffer', () => {
     expect(resolveSuccessOffer({ anonymous: true })).toBe('anon_signup');
   });
 
-  it('offers a verified signed-in user nothing', () => {
-    expect(
-      resolveSuccessOffer({ anonymous: false, emailVerified: true })
-    ).toBeNull();
-  });
-
-  it('offers a signed-in user with an unverified email the confirm card', () => {
-    expect(
-      resolveSuccessOffer({ anonymous: false, emailVerified: false })
-    ).toBe('confirm_email');
-  });
-
-  it('offers nothing when verification status is unknown', () => {
+  it('offers a signed-in user nothing', () => {
     expect(resolveSuccessOffer({ anonymous: false })).toBeNull();
-  });
-
-  it('keeps the anonymous offer exclusive of the confirm card', () => {
-    expect(resolveSuccessOffer({ anonymous: true, emailVerified: false })).toBe(
-      'anon_signup'
-    );
   });
 });

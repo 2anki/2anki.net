@@ -519,7 +519,8 @@
       "emailPlaceholder": "Dirección de correo",
       "sending": "Enviando",
       "sendResetLink": "Enviar enlace de restablecimiento",
-      "backToLogin": "Volver al inicio de sesión"
+      "backToLogin": "Volver al inicio de sesión",
+      "sendError": "No se pudo enviar el enlace ahora mismo. Inténtalo de nuevo en un momento."
     },
     "newPassword": {
       "title": "Establece una nueva contraseña",

@@ -569,7 +569,8 @@
       "emailPlaceholder": "Adres e-mail",
       "sending": "Wysyłanie",
       "sendResetLink": "Wyślij link resetujący",
-      "backToLogin": "Wróć do logowania"
+      "backToLogin": "Wróć do logowania",
+      "sendError": "Nie udało się teraz wysłać linku. Spróbuj ponownie za chwilę."
     },
     "newPassword": {
       "title": "Ustaw nowe hasło",

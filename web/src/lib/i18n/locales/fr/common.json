@@ -519,7 +519,8 @@
       "emailPlaceholder": "Adresse e-mail",
       "sending": "Envoi",
       "sendResetLink": "Envoyer le lien de réinitialisation",
-      "backToLogin": "Retour à la connexion"
+      "backToLogin": "Retour à la connexion",
+      "sendError": "Impossible d'envoyer le lien pour l'instant. Réessaie dans un moment."
     },
     "newPassword": {
       "title": "Définis un nouveau mot de passe",

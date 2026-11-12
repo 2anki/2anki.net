@@ -519,7 +519,8 @@
       "emailPlaceholder": "Endereço de e-mail",
       "sending": "Enviando",
       "sendResetLink": "Enviar link de redefinição",
-      "backToLogin": "Voltar para o login"
+      "backToLogin": "Voltar para o login",
+      "sendError": "Não foi possível enviar o link agora. Tente de novo em um instante."
     },
     "newPassword": {
       "title": "Definir uma nova senha",

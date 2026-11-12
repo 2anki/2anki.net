@@ -519,7 +519,8 @@
       "emailPlaceholder": "Indirizzo email",
       "sending": "Invio in corso",
       "sendResetLink": "Invia il link di reimpostazione",
-      "backToLogin": "Torna all'accesso"
+      "backToLogin": "Torna all'accesso",
+      "sendError": "Non è stato possibile inviare il link in questo momento. Riprova tra un istante."
     },
     "newPassword": {
       "title": "Imposta una nuova password",
