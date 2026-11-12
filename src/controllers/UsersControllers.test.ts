@@ -1853,6 +1853,37 @@ describe('UsersController.loginWithApple', () => {
     expect(order).toEqual(['confirmed', 'session']);
   });
 
+  it.each([
+    ['granted', 'anon-apple-web'],
+    ['denied', null],
+  ])(
+    'hands a new web Apple account the anon id only when consent is %s',
+    async (consent, expectedAnonymousId) => {
+      const register = vi.fn().mockResolvedValue([{ id: 20 }]);
+      const { controller } = buildAppleController({
+        registerVerifiedIdentity: register,
+      });
+      const req = buildReq();
+      Object.assign(req.cookies, {
+        anon_id: 'anon-apple-web',
+        cookie_consent: consent,
+      });
+
+      await controller.loginWithApple(req, buildAppleRes());
+
+      expect(register).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'apple@example.com',
+        'apple',
+        expect.objectContaining({
+          method: 'apple',
+          anonymousId: expectedAnonymousId,
+        })
+      );
+    }
+  );
+
   it("creates a new user, links the identity, and stamps signup_origin='apple' when the email has no existing account", async () => {
     const register = vi.fn().mockResolvedValue([{ id: 20 }]);
     const { controller } = buildAppleController({

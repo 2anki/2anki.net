@@ -474,6 +474,10 @@ describe('WebhookRouter — pass grant', () => {
     const res = await postWebhook();
     expect(res.status).toBe(200);
     expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({ userId: 1, anonymousId: null })
+    );
   });
 
   it('persists anonymous pass on checkout.session.completed with pass_anonymous=1', async () => {
@@ -1139,6 +1143,10 @@ describe('WebhookRouter — credit pack grant', () => {
     const daysOut = (expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000);
     expect(daysOut).toBeGreaterThan(89);
     expect(daysOut).toBeLessThanOrEqual(90);
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({ userId: 42, anonymousId: null })
+    );
   });
 
   it('records the purchase event only when a row was actually inserted', async () => {
@@ -1176,6 +1184,10 @@ describe('WebhookRouter — credit pack grant', () => {
     const res = await postWebhook();
     expect(res.status).toBe(200);
     expect(mockInsertPackGrant).not.toHaveBeenCalled();
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({ userId: null, anonymousId: null })
+    );
     warnSpy.mockRestore();
   });
 
