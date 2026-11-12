@@ -131,7 +131,7 @@ import {
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import { ANONYMOUS_AI_PREVIEW_FLAG } from '../lib/upload/anonymousAiPreview';
 import { ANONYMOUS_PREVIEW_CARDS_FLAG } from '../lib/upload/anonymousPreviewCards';
-import { ASYNC_SLOW_UPLOADS_FLAG } from '../lib/upload/asyncSlowUploads';
+import { ASYNC_PDF_MIN_BYTES } from '../lib/upload/asyncSlowUploads';
 import {
   AiCreditsTrippedWithSalvage,
   CLAUDE_REFUSAL_USER_MESSAGE,
@@ -1465,23 +1465,6 @@ describe('UploadService.handleUpload — error paths', () => {
         headers: { 'x-pass-token': 'expired-token' },
       },
       [],
-    ],
-    [
-      'a paying slow upload with async slow uploads off',
-      { owner: 42, subscriber: true },
-      {
-        files: [
-          {
-            originalname: 'lecture.pptx',
-            mimetype:
-              'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            size: 20,
-            buffer: Buffer.from('PK'),
-          },
-        ],
-        body: {},
-      },
-      [ASYNC_SLOW_UPLOADS_FLAG],
     ],
   ])(
     'answers an expected failure from %s without logging an error',
@@ -3830,15 +3813,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     });
   }
 
-  function asyncSlowFlag(on: boolean) {
-    mockGetFeatureFlag.mockImplementation(async (key: string) =>
-      key === 'async_slow_uploads' ? on : false
-    );
-  }
-
-  it('converts a PowerPoint from a paying signed-in user in the background when the flag is on', async () => {
+  it('converts a PowerPoint from a paying signed-in user in the background', async () => {
     zeroCardUseCase();
-    asyncSlowFlag(true);
     let resolveFailed!: () => void;
     const failed = new Promise<void>((r) => {
       resolveFailed = r;
@@ -3867,7 +3843,6 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
 
   it('retries a background PowerPoint with AI when it makes no cards, as the normal path does', async () => {
     zeroCardUseCase();
-    asyncSlowFlag(true);
     let resolveFailed!: () => void;
     const failed = new Promise<void>((r) => {
       resolveFailed = r;
@@ -3910,31 +3885,8 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     );
   });
 
-  it('keeps a PowerPoint on the normal path when the flag is off', async () => {
-    zeroCardUseCase();
-    asyncSlowFlag(false);
-    const jobRepository = jobRepositoryWithFailedGate();
-    const service = new UploadService(
-      buildRepository(),
-      jobRepository,
-      buildUsersRepo(),
-      ...fakeUploadServiceDeps()
-    );
-    const { res } = entitledResponse();
-
-    await service.handleUpload(slidesRequest(), res);
-
-    expect(jobRepository.create).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-      'upload'
-    );
-  });
-
   it('keeps a PowerPoint on the normal path for an account that is not paying', async () => {
     zeroCardUseCase();
-    asyncSlowFlag(true);
     const jobRepository = jobRepositoryWithFailedGate();
     const service = new UploadService(
       buildRepository(),
@@ -3957,7 +3909,6 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
 
   it('keeps a PowerPoint on the normal path for a pass holder with no account', async () => {
     zeroCardUseCase();
-    asyncSlowFlag(true);
     const jobRepository = jobRepositoryWithFailedGate();
     const service = new UploadService(
       buildRepository(),
@@ -3969,6 +3920,92 @@ describe('UploadService.handleSyncUpload — zero-card Claude fallback', () => {
     (built.res.locals as Record<string, unknown>).subscriber = true;
 
     await service.handleUpload(slidesRequest(), built.res);
+
+    expect(jobRepository.create).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      'upload'
+    );
+  });
+
+  it('keeps a PowerPoint on the normal path for a signed-out visitor', async () => {
+    zeroCardUseCase();
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res } = buildResponse();
+
+    await service.handleUpload(slidesRequest(), res);
+
+    expect(jobRepository.create).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      'upload'
+    );
+  });
+
+  function largePdfRequest(pdfFallback: string): express.Request {
+    return buildRequest({
+      files: [
+        {
+          originalname: 'textbook.pdf',
+          mimetype: 'application/pdf',
+          size: ASYNC_PDF_MIN_BYTES,
+          path: '/tmp/textbook.pdf',
+        } as unknown as Express.Multer.File,
+      ],
+      body: { 'pdf-fallback': pdfFallback },
+    } as Partial<express.Request>);
+  }
+
+  it.each(['pairs', 'single'])(
+    'converts a large PDF already answered as %s in the background for a paying signed-in user',
+    async (pdfFallback) => {
+      zeroCardUseCase();
+      let resolveFailed!: () => void;
+      const failed = new Promise<void>((r) => {
+        resolveFailed = r;
+      });
+      const jobRepository = jobRepositoryWithFailedGate(resolveFailed);
+      const service = new UploadService(
+        buildRepository(),
+        jobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const { res, capturedStatus } = entitledResponse();
+
+      await service.handleUpload(largePdfRequest(pdfFallback), res);
+      await failed;
+
+      expect(capturedStatus()).toBe(202);
+      expect(jobRepository.create).toHaveBeenCalledWith(
+        expect.any(String),
+        '42',
+        'textbook.pdf',
+        'upload'
+      );
+    }
+  );
+
+  it('keeps a large PDF that still has to ask its question on the normal path', async () => {
+    zeroCardUseCase();
+    const jobRepository = jobRepositoryWithFailedGate();
+    const service = new UploadService(
+      buildRepository(),
+      jobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const { res } = entitledResponse();
+
+    await service.handleUpload(largePdfRequest('ask'), res);
 
     expect(jobRepository.create).not.toHaveBeenCalledWith(
       expect.anything(),
@@ -8057,13 +8094,9 @@ describe('UploadService.handleUpload — failure events for the success-rate til
     });
 
     it.each([
-      ['an AI upload', () => undefined, () => buildAiRequest()],
+      ['an AI upload', () => buildAiRequest()],
       [
         'a slow parser upload',
-        () =>
-          mockGetFeatureFlag.mockImplementation(
-            async (flag: string) => flag === ASYNC_SLOW_UPLOADS_FLAG
-          ),
         () =>
           buildRequest({
             files: [
@@ -8080,8 +8113,7 @@ describe('UploadService.handleUpload — failure events for the success-rate til
       ],
     ])(
       "stores a page range error's details with the job of %s, so My decks can translate it",
-      async (_case, arrange, request) => {
-        arrange();
+      async (_case, request) => {
         failWith(
           Object.assign(
             new Error('Pages 11-14 are past the end of this 10-page PDF.'),

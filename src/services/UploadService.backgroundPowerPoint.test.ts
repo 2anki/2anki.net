@@ -141,7 +141,72 @@ vi.mock('./events/eventsSinkInstance', () => ({
   resetEventsSinkForTesting: () => undefined,
 }));
 
+const remoteFiles = vi.hoisted(() => new Map<string, Buffer>());
+const savedDropboxFiles = vi.hoisted(
+  () => [] as { owner: number | string; names: string[] }[]
+);
+
+vi.mock('./observability/instrumentedAxios', async (importActual) => {
+  const actual =
+    await importActual<typeof import('./observability/instrumentedAxios')>();
+  const registeredGet: typeof actual.default.get = (service, url) => {
+    const bytes = remoteFiles.get(url);
+    if (bytes == null) {
+      return Promise.reject(
+        new Error(`unregistered ${service} GET in test: ${url}`)
+      );
+    }
+    return Promise.resolve({ data: bytes } as never);
+  };
+  return {
+    ...actual,
+    default: new Proxy(actual.default, {
+      get: (target, property) =>
+        property === 'get' ? registeredGet : Reflect.get(target, property),
+    }),
+  };
+});
+
+vi.mock('../data_layer/DropboxRepository', async (importActual) => {
+  const actual =
+    await importActual<typeof import('../data_layer/DropboxRepository')>();
+  class RecordingDropboxRepository {
+    async saveFiles(files: { name: string }[], owner: number | string) {
+      savedDropboxFiles.push({ owner, names: files.map((file) => file.name) });
+    }
+  }
+  return { ...actual, DropboxRepository: RecordingDropboxRepository };
+});
+
+vi.mock('../data_layer/GoogleDriveRepository', async (importActual) => {
+  const actual =
+    await importActual<typeof import('../data_layer/GoogleDriveRepository')>();
+  class RecordingGoogleDriveRepository {
+    saveFiles() {
+      return Promise.resolve();
+    }
+  }
+  return { ...actual, GoogleDriveRepository: RecordingGoogleDriveRepository };
+});
+
+import knex, { type Knex } from 'knex';
 import UploadService from './UploadService';
+import UploadController from '../controllers/Upload/UploadController';
+import NotionService from './NotionService';
+import type { INotionRepository } from '../data_layer/NotionRespository';
+import { McpToolsService } from './mcp/McpToolsService';
+import AuthenticationService from './AuthenticationService';
+import type { UserWithOwner } from './AuthenticationService';
+import {
+  InMemoryUserPassRepository,
+  type UserPass,
+} from '../data_layer/UserPassRepository';
+import { applyUserLocals } from '../routes/middleware/configureUserLocal';
+import {
+  createGoogleDriveDownloadLink,
+  createGoogleDriveExportLink,
+} from '../controllers/Upload/helpers/createGoogleDriveDownloadLink';
+import { ASYNC_PDF_MIN_BYTES } from '../lib/upload/asyncSlowUploads';
 import type JobRepository from '../data_layer/JobRepository';
 import type UsersRepository from '../data_layer/UsersRepository';
 import type { IUploadRepository } from '../data_layer/UploadRespository';
@@ -151,7 +216,6 @@ import {
   __resetFeatureFlagModuleForTests,
   __setFeatureFlagDependencies,
 } from '../lib/featureFlags/getFeatureFlag';
-import { ASYNC_SLOW_UPLOADS_FLAG } from '../lib/upload/asyncSlowUploads';
 import { fakeUploadServiceDeps } from '../test/fakes/uploadServiceDeps';
 
 const NAMESPACES =
@@ -196,12 +260,10 @@ const numberedLecture = Buffer.from(
 
 const OWNER = 42;
 
-function inMemoryFlags(
-  values: Record<string, boolean>
-): IFeatureFlagsRepository {
+function noFlagsSet(): IFeatureFlagsRepository {
   return {
     getAll: () => Promise.resolve([]),
-    get: (key: string) => Promise.resolve(values[key] ?? null),
+    get: () => Promise.resolve(null),
     set: () => Promise.resolve(null),
   };
 }
@@ -244,11 +306,13 @@ function backgroundJobs() {
   return { jobs, settled };
 }
 
-function payingResponse() {
+const SUBSCRIBER_LOCALS = { owner: OWNER, subscriber: true };
+
+function responseWith(locals: Record<string, unknown>) {
   let status = 0;
   let body: unknown = null;
   const res = {
-    locals: { owner: OWNER, subscriber: true, requestId: 'background-pptx' },
+    locals: { ...locals, requestId: 'background-pptx' },
     headersSent: false,
     status: vi.fn((code: number) => {
       status = code;
@@ -295,10 +359,11 @@ const PPTX_MIMETYPE =
   'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
 async function uploadInBackground(deck: Buffer) {
-  return upload(
-    { originalname: 'lecture.pptx', mimetype: PPTX_MIMETYPE, buffer: deck },
-    { [ASYNC_SLOW_UPLOADS_FLAG]: true }
-  );
+  return upload({
+    originalname: 'lecture.pptx',
+    mimetype: PPTX_MIMETYPE,
+    buffer: deck,
+  });
 }
 
 type UploadedTestFile = {
@@ -307,13 +372,9 @@ type UploadedTestFile = {
   buffer: Buffer;
 };
 
-async function upload(
-  file: UploadedTestFile | UploadedTestFile[],
-  flags: Record<string, boolean>,
-  body: Record<string, string> = {}
-) {
+function backgroundService() {
   __setFeatureFlagDependencies({
-    repository: inMemoryFlags(flags),
+    repository: noFlagsSet(),
   });
   const uploads = recordingUploads();
   const { jobs, settled } = backgroundJobs();
@@ -330,6 +391,15 @@ async function upload(
     } as unknown as UsersRepository,
     ...fakeUploadServiceDeps()
   );
+  return { service, jobs, settled, uploads };
+}
+
+async function upload(
+  file: UploadedTestFile | UploadedTestFile[],
+  body: Record<string, string> = {},
+  locals: Record<string, unknown> = SUBSCRIBER_LOCALS
+) {
+  const { service, jobs, settled, uploads } = backgroundService();
   const req = {
     files: (Array.isArray(file) ? file : [file]).map((f) => ({
       ...f,
@@ -340,14 +410,14 @@ async function upload(
     cookies: {},
     path: '/api/upload/file',
   } as unknown as express.Request;
-  const { res, status, body: responseBody } = payingResponse();
+  const { res, status, body: responseBody } = responseWith(locals);
 
   await service.handleUpload(req, res);
   const jobId = (responseBody() as { jobId: string }).jobId;
   return { status: status(), jobId, settled, jobs, uploads };
 }
 
-describe('a paying account with AI off uploads a PowerPoint while background conversion is on', () => {
+describe('a paying account with AI off uploads a PowerPoint', () => {
   let jobWorkspace: string | null = null;
 
   beforeAll(() => applyEnv(ENV));
@@ -430,7 +500,6 @@ describe('a paying account with AI never set uploads a zip holding only a PowerP
         mimetype: 'application/zip',
         buffer: Buffer.from(zipSync({ 'lecture.pptx': numberedLecture })),
       },
-      {},
       { template: 'notionstyle', basic_model_name: 'My Basic' }
     );
     await settled;
@@ -442,14 +511,11 @@ describe('a paying account with AI never set uploads a zip holding only a PowerP
   }, 20_000);
 
   it('falls back to Claude after the parser finds no cards and hands it slide headings as fronts, not slide numbers', async () => {
-    const { status, jobId, settled, jobs } = await upload(
-      {
-        originalname: 'slides.zip',
-        mimetype: 'application/zip',
-        buffer: Buffer.from(zipSync({ 'lecture.pptx': numberedLecture })),
-      },
-      {}
-    );
+    const { status, jobId, settled, jobs } = await upload({
+      originalname: 'slides.zip',
+      mimetype: 'application/zip',
+      buffer: Buffer.from(zipSync({ 'lecture.pptx': numberedLecture })),
+    });
     const outcome = await settled;
 
     expect(status).toBe(202);
@@ -499,7 +565,6 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
         mimetype: 'application/zip',
         buffer: Buffer.from(zipSync(declinedFileLater)),
       },
-      {},
       { 'claude-ai-flashcards': 'true' }
     );
     const outcome = await settled;
@@ -526,7 +591,6 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
         mimetype: 'text/markdown',
         buffer: Buffer.from(bytes),
       })),
-      {},
       { 'claude-ai-flashcards': 'true' }
     );
     const outcome = await settled;
@@ -544,19 +608,16 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
   }, 20_000);
 
   it('names the declined file when AI was never set and the parser found no cards', async () => {
-    const { status, settled, uploads, jobs } = await upload(
-      {
-        originalname: 'notes.zip',
-        mimetype: 'application/zip',
-        buffer: Buffer.from(
-          zipSync({
-            'lecture.pptx': numberedLecture,
-            'week 3.md': strToU8('REFUSED-BY-CLAUDE\n'),
-          })
-        ),
-      },
-      {}
-    );
+    const { status, settled, uploads, jobs } = await upload({
+      originalname: 'notes.zip',
+      mimetype: 'application/zip',
+      buffer: Buffer.from(
+        zipSync({
+          'lecture.pptx': numberedLecture,
+          'week 3.md': strToU8('REFUSED-BY-CLAUDE\n'),
+        })
+      ),
+    });
     const outcome = await settled;
 
     expect(status).toBe(202);
@@ -575,5 +636,437 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
       null,
       { skippedAiFiles: [{ name: 'week 3.md', reason: 'declined' }] }
     );
+  }, 20_000);
+});
+
+const SIGNED_IN_AT = new Date('2026-11-12T12:00:00Z');
+
+async function signedInLocals(
+  patreon: boolean,
+  passes: InMemoryUserPassRepository
+): Promise<Record<string, unknown>> {
+  const res = { locals: {} } as express.Response;
+  await applyUserLocals(
+    res,
+    {
+      owner: OWNER,
+      email: 'learner@example.com',
+      patreon,
+      chat_consent_at: null,
+    } as unknown as UserWithOwner,
+    {
+      getIsSubscriber: async () => false,
+      getSubscriptionInfo: async () => null,
+    } as unknown as AuthenticationService,
+    {} as Knex,
+    SIGNED_IN_AT,
+    passes
+  );
+  return res.locals;
+}
+
+function passHolderLocals(
+  pass: Pick<UserPass, 'kind' | 'stripe_payment_intent_id'>
+) {
+  const passes = new InMemoryUserPassRepository();
+  passes.seed({
+    ...pass,
+    user_id: OWNER,
+    expires_at: new Date(SIGNED_IN_AT.getTime() + 24 * 60 * 60 * 1000),
+  });
+  return signedInLocals(false, passes);
+}
+
+const STRIPE_DAY_PASS = {
+  kind: '24h',
+  stripe_payment_intent_id: 'pi_daypass',
+} as const;
+
+const APPLE_PASS = {
+  kind: 'unlimited',
+  stripe_payment_intent_id: 'apple:2000000000000001',
+} as const;
+
+function patreonLocals() {
+  return signedInLocals(true, new InMemoryUserPassRepository());
+}
+
+const AUTO_SYNC_PRODUCT = 'prod_auto_sync';
+
+async function autoSyncSubscriberLocals(): Promise<Record<string, unknown>> {
+  const database = knex({
+    client: 'better-sqlite3',
+    connection: { filename: ':memory:' },
+    useNullAsDefault: true,
+  });
+  await database.schema.createTable('subscriptions', (table) => {
+    table.increments('id').primary();
+    table.text('email').nullable();
+    table.text('linked_email').nullable();
+    table.boolean('active').notNullable().defaultTo(false);
+    table.text('stripe_product_id').nullable();
+  });
+  await database('subscriptions').insert({
+    email: 'learner@example.com',
+    linked_email: 'learner@example.com',
+    active: true,
+    stripe_product_id: AUTO_SYNC_PRODUCT,
+  });
+  const res = { locals: {} } as express.Response;
+  await applyUserLocals(
+    res,
+    {
+      owner: OWNER,
+      email: 'learner@example.com',
+      patreon: false,
+      chat_consent_at: null,
+    } as unknown as UserWithOwner,
+    new AuthenticationService({} as never, {} as never),
+    database,
+    SIGNED_IN_AT,
+    new InMemoryUserPassRepository()
+  );
+  await database.destroy();
+  return res.locals;
+}
+
+const lectureFromDropbox = {
+  bytes: numberedLecture.length,
+  icon: '',
+  id: 'id:lecture-slides',
+  isDir: false,
+  link: 'https://dl.dropboxusercontent.com/s/lecture.pptx',
+  linkType: 'direct',
+  name: 'lecture.pptx',
+};
+
+const lectureLink = 'https://slides.example/lecture.pptx';
+
+const largePdf = Buffer.concat([
+  Buffer.from('%PDF-1.4 textbook\n'),
+  Buffer.alloc(ASYNC_PDF_MIN_BYTES),
+]);
+
+type LargePdfSent = { answer: Record<string, unknown>; jobId: string };
+
+function mcpTools(service: UploadService) {
+  return new McpToolsService(
+    { getJobsByOwner: async () => [] },
+    {} as never,
+    {} as never,
+    (req, res) => service.handleUpload(req, res),
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    { holdForPlan: async () => null },
+    'https://mcp.test'
+  );
+}
+
+function uploadController(service: UploadService) {
+  return new UploadController(
+    service,
+    new NotionService({} as INotionRepository)
+  );
+}
+
+async function largePdfFromDropbox(
+  service: UploadService
+): Promise<LargePdfSent> {
+  const picked = {
+    ...lectureFromDropbox,
+    bytes: largePdf.length,
+    id: 'id:textbook',
+    link: 'https://dl.dropboxusercontent.com/s/textbook.pdf',
+    name: 'textbook.pdf',
+  };
+  remoteFiles.set(picked.link, largePdf);
+  const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
+  const req = {
+    body: { files: JSON.stringify([picked]) },
+    headers: {},
+    cookies: {},
+    path: '/api/upload/dropbox',
+  } as unknown as express.Request;
+
+  await uploadController(service).dropbox(req, res);
+  await vi.waitFor(() => expect(status()).not.toBe(0), { timeout: 10_000 });
+  return {
+    answer: { status: status() },
+    jobId: (body() as { jobId: string }).jobId,
+  };
+}
+
+async function largePdfFromDrive(
+  service: UploadService
+): Promise<LargePdfSent> {
+  const picked = {
+    id: 'textbook-file-id',
+    name: 'textbook.pdf',
+    mimeType: 'application/pdf',
+    iconUrl: '',
+    url: '',
+    sizeBytes: 1024,
+    embedUrl: '',
+    description: '',
+    driveSuccess: true,
+    isShared: false,
+    lastEditedUtc: 0,
+    serviceId: '',
+    type: 'document',
+  };
+  remoteFiles.set(createGoogleDriveDownloadLink(picked as never), largePdf);
+  const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
+  const req = {
+    body: {
+      files: JSON.stringify([picked]),
+      googleDriveAuth: 'drive-access-token',
+    },
+    headers: {},
+    cookies: {},
+    path: '/api/upload/google_drive',
+  } as unknown as express.Request;
+
+  await uploadController(service).googleDrive(req, res);
+  await vi.waitFor(() => expect(status()).not.toBe(0), { timeout: 10_000 });
+  return {
+    answer: { status: status() },
+    jobId: (body() as { jobId: string }).jobId,
+  };
+}
+
+async function largePdfFromMcp(service: UploadService): Promise<LargePdfSent> {
+  const link = 'https://books.example/textbook.pdf';
+  remoteFiles.set(link, largePdf);
+  const tools = mcpTools(service);
+
+  const result = (await tools.convertToDeck(
+    { url: link },
+    String(OWNER),
+    SUBSCRIBER_LOCALS
+  )) as { kind: string; jobId: string };
+  return { answer: { kind: result.kind }, jobId: result.jobId };
+}
+
+describe('a PowerPoint reaching the background path from another entry point', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let workspaceBase: string;
+
+  beforeAll(() => applyEnv(ENV));
+
+  afterAll(() => applyEnv(originalEnv));
+
+  beforeEach(() => {
+    workspaceBase = fs.mkdtempSync(path.join(os.tmpdir(), 'pptx-entry-'));
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterEach(() => {
+    __resetFeatureFlagModuleForTests();
+    builtCards.length = 0;
+    storedKeys.length = 0;
+    savedDropboxFiles.length = 0;
+    remoteFiles.clear();
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  it.each([
+    ['an active Stripe pass', () => passHolderLocals(STRIPE_DAY_PASS)],
+    ['an active Apple in-app pass', () => passHolderLocals(APPLE_PASS)],
+    ['Patreon lifetime access and no subscription', patreonLocals],
+    ['an active Auto Sync subscription', autoSyncSubscriberLocals],
+  ])(
+    'builds the deck in the background for a signed-in account with %s',
+    async (_account, buildLocals) => {
+      const locals = await buildLocals();
+      const { status, jobId, settled, jobs } = await upload(
+        {
+          originalname: 'lecture.pptx',
+          mimetype: PPTX_MIMETYPE,
+          buffer: numberedLecture,
+        },
+        {},
+        locals
+      );
+      const outcome = await settled;
+
+      expect(status).toBe(202);
+      expect(jobs.create).toHaveBeenCalledWith(
+        jobId,
+        String(OWNER),
+        'lecture.pptx',
+        'upload'
+      );
+      expect(outcome).toBe('stored in My Decks');
+    },
+    20_000
+  );
+
+  it('builds a PowerPoint from the iOS app in the background for a paying subscriber', async () => {
+    const { status, jobId, settled, jobs } = await upload(
+      {
+        originalname: 'lecture.pptx',
+        mimetype: PPTX_MIMETYPE,
+        buffer: numberedLecture,
+      },
+      { source: 'app' }
+    );
+    const outcome = await settled;
+
+    expect(status).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+    expect(outcome).toBe('stored in My Decks');
+  }, 20_000);
+
+  it('starts a background job when an MCP caller sends text named as a PowerPoint', async () => {
+    const { service, jobs, settled } = backgroundService();
+    const tools = mcpTools(service);
+
+    const result = (await tools.convertToDeck(
+      {
+        text: 'Exocytosis\nCa2+ influx triggers fusion',
+        filename: 'lecture.pptx',
+      },
+      String(OWNER),
+      SUBSCRIBER_LOCALS
+    )) as { kind: string; jobId: string };
+    await settled;
+
+    expect(result.kind).toBe('processing');
+    expect(jobs.create).toHaveBeenCalledWith(
+      result.jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+  }, 20_000);
+
+  it('builds a PowerPoint picked in Dropbox in the background for a paying account', async () => {
+    remoteFiles.set(lectureFromDropbox.link, numberedLecture);
+    const { service, jobs, settled } = backgroundService();
+    const controller = uploadController(service);
+    const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
+    const req = {
+      body: { files: JSON.stringify([lectureFromDropbox]) },
+      headers: {},
+      cookies: {},
+      path: '/api/upload/dropbox',
+    } as unknown as express.Request;
+
+    await controller.dropbox(req, res);
+    const outcome = await settled;
+
+    expect(status()).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      (body() as { jobId: string }).jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+    expect(outcome).toBe('stored in My Decks');
+    expect(savedDropboxFiles).toEqual([
+      { owner: OWNER, names: ['lecture.pptx'] },
+    ]);
+  }, 20_000);
+
+  it.each([
+    ['Dropbox', largePdfFromDropbox, { status: 202 }],
+    ['Google Drive', largePdfFromDrive, { status: 202 }],
+    ['an MCP link', largePdfFromMcp, { kind: 'processing' }],
+  ])(
+    'sends a large PDF from %s, which carries no PDF answer, to the background for a paying account',
+    async (_entryPoint, send, expectedAnswer) => {
+      const { service, jobs, settled } = backgroundService();
+
+      const { answer, jobId } = await send(service);
+      await settled;
+
+      expect(answer).toEqual(expectedAnswer);
+      expect(jobs.create).toHaveBeenCalledWith(
+        jobId,
+        String(OWNER),
+        'textbook.pdf',
+        'upload'
+      );
+    },
+    20_000
+  );
+
+  it('builds Google Slides picked in Drive in the background for a paying account', async () => {
+    const slidesFromDrive = {
+      id: 'slides-file-id',
+      name: 'lecture',
+      mimeType: 'application/vnd.google-apps.presentation',
+      iconUrl: '',
+      url: '',
+      sizeBytes: numberedLecture.length,
+      embedUrl: '',
+      description: '',
+      driveSuccess: true,
+      isShared: false,
+      lastEditedUtc: 0,
+      serviceId: '',
+      type: 'presentation',
+    };
+    remoteFiles.set(
+      createGoogleDriveExportLink(
+        slidesFromDrive as never,
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      ),
+      numberedLecture
+    );
+    const { service, jobs, settled } = backgroundService();
+    const controller = uploadController(service);
+    const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
+    const req = {
+      body: {
+        files: JSON.stringify([slidesFromDrive]),
+        googleDriveAuth: 'drive-access-token',
+      },
+      headers: {},
+      cookies: {},
+      path: '/api/upload/google_drive',
+    } as unknown as express.Request;
+
+    await controller.googleDrive(req, res);
+    const outcome = await settled;
+
+    expect(status()).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      (body() as { jobId: string }).jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+    expect(outcome).toBe('stored in My Decks');
+  }, 20_000);
+
+  it("answers a paying MCP caller's PowerPoint link as processing and builds it in the background", async () => {
+    remoteFiles.set(lectureLink, numberedLecture);
+    const { service, jobs, settled } = backgroundService();
+    const tools = mcpTools(service);
+
+    const result = await tools.convertToDeck(
+      { url: lectureLink },
+      String(OWNER),
+      SUBSCRIBER_LOCALS
+    );
+    const outcome = await settled;
+
+    expect(result).toMatchObject({ kind: 'processing' });
+    expect(jobs.create).toHaveBeenCalledWith(
+      (result as { jobId: string }).jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+    expect(outcome).toBe('stored in My Decks');
   }, 20_000);
 });

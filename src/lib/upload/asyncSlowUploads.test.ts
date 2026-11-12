@@ -10,11 +10,14 @@ describe('isSlowUpload', () => {
     }
   );
 
-  it('sends a large PDF the person already answered for', () => {
-    expect(
-      isSlowUpload([file('notes.pdf', ASYNC_PDF_MIN_BYTES)], 'pairs')
-    ).toBe(true);
-  });
+  it.each(['pairs', 'single'] as const)(
+    'sends a large PDF the person already answered as %s',
+    (pdfFallback) => {
+      expect(
+        isSlowUpload([file('notes.pdf', ASYNC_PDF_MIN_BYTES)], pdfFallback)
+      ).toBe(true);
+    }
+  );
 
   it('keeps a large PDF on the normal path while its question is unanswered', () => {
     expect(isSlowUpload([file('notes.pdf', ASYNC_PDF_MIN_BYTES)], 'ask')).toBe(
@@ -28,7 +31,7 @@ describe('isSlowUpload', () => {
     ).toBe(false);
   });
 
-  it.each(['notes.csv', 'page.html', 'notes.md', 'noextension'])(
+  it.each(['notes.csv', 'page.html', 'notes.md', 'export.zip', 'noextension'])(
     'keeps %s on the normal path',
     (name) => {
       expect(isSlowUpload([file(name, 50 * 1024 * 1024)], 'pairs')).toBe(false);
