@@ -5,6 +5,7 @@ import { parseCheckoutSurface } from '../usecases/checkout/checkoutSurface';
 import { readGaMeasurement } from '../usecases/checkout/gaClientId';
 import { readCheckoutAttribution } from '../lib/attribution/adClick';
 import { checkoutRequestProps } from '../lib/analytics/checkoutRequestProps';
+import { trackingAllowedFor } from '../lib/http/consentRegion';
 import type { PassKind } from '../data_layer/UserPassRepository';
 import type { EventsSink } from '../services/events/EventsSink';
 
@@ -24,6 +25,7 @@ class PassCheckoutController {
     const surface = parseCheckoutSurface(req.body?.surface);
     const { gaClientId, gaSessionId } = readGaMeasurement(req);
     const adClick = readCheckoutAttribution(req);
+    const anonIdTrackingAllowed = trackingAllowedFor(req);
 
     const result = await this.useCase.execute({
       userId,
@@ -31,6 +33,7 @@ class PassCheckoutController {
       stripeCustomerId,
       variant,
       anonId,
+      anonIdTrackingAllowed,
       surface,
       gaClientId,
       gaSessionId,
@@ -44,7 +47,8 @@ class PassCheckoutController {
     this.eventsSink.record({
       name: 'checkout_started',
       user_id: userId ?? null,
-      anonymous_id: userId == null ? (anonId ?? null) : null,
+      anonymous_id:
+        userId == null && anonIdTrackingAllowed ? (anonId ?? null) : null,
       props: {
         plan: this.passKind,
         ...(surface == null ? {} : { surface }),

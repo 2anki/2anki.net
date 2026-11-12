@@ -167,6 +167,31 @@ describe('AutoSyncCheckoutController', () => {
     );
   });
 
+  test.each([
+    ['granted', true],
+    ['denied', false],
+  ])(
+    'tells the use case whether the anon id may be tracked when consent is %s',
+    async (consent, expected) => {
+      const uc = makeUseCase({ url: 'https://checkout.stripe.com/test' });
+      const controller = new AutoSyncCheckoutController(uc);
+      const req = {
+        cookies: { anon_id: 'anon-uuid-123', cookie_consent: consent },
+      } as unknown as Request;
+      const res = makeResponse();
+      res.locals = { owner: 99, email: 'alice@example.com' };
+
+      await controller.createSession(req, res as unknown as Response);
+
+      expect(uc.execute as Mock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          anonId: 'anon-uuid-123',
+          anonIdTrackingAllowed: expected,
+        })
+      );
+    }
+  );
+
   test('passes owner and email from res.locals to the use case', async () => {
     const uc = makeUseCase({ url: 'https://checkout.stripe.com/test' });
     const controller = new AutoSyncCheckoutController(uc);

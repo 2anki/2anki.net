@@ -318,6 +318,47 @@ describe('WebhookRouter — pass grant', () => {
     );
   });
 
+  it.each([
+    ['granted consent', { anon_id_consent: 'granted' }, 'anon-signed-in'],
+    ['gave no consent', {}, null],
+  ])(
+    'grants a signed-in pass whose buyer %s, keeping the user and the anon id only under consent on checkout_completed',
+    async (_label, consentMeta, expectedAnonymousId) => {
+      mockWebhookEvent = makePassSessionEvent({
+        metadata: {
+          user_id: '42',
+          pass_kind: '24h',
+          anon_id: 'anon-signed-in',
+          ...consentMeta,
+        },
+      });
+      mockUpsert.mockResolvedValue({
+        id: 1,
+        user_id: 42,
+        kind: '24h',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        stripe_payment_intent_id: 'pi_test_123',
+      });
+
+      const res = await postWebhook();
+      expect(res.status).toBe(200);
+      expect(mockUpsert).toHaveBeenCalledWith(
+        42,
+        '24h',
+        24 * 60 * 60 * 1000,
+        'pi_test_123',
+        expect.any(Date)
+      );
+      expect(mockTrack).toHaveBeenCalledWith(
+        'checkout_completed',
+        expect.objectContaining({
+          userId: 42,
+          anonymousId: expectedAnonymousId,
+        })
+      );
+    }
+  );
+
   it('grants 7d pass on checkout.session.completed with pass_kind=7d', async () => {
     mockWebhookEvent = makePassSessionEvent({
       metadata: { user_id: '7', pass_kind: '7d' },
@@ -433,6 +474,10 @@ describe('WebhookRouter — pass grant', () => {
     const res = await postWebhook();
     expect(res.status).toBe(200);
     expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({ userId: 1, anonymousId: null })
+    );
   });
 
   it('persists anonymous pass on checkout.session.completed with pass_anonymous=1', async () => {
@@ -745,7 +790,11 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
         object: {
           id: 'cs_join',
           mode: 'subscription',
-          metadata: { user_id: '42', anon_id: 'anon-uuid-123' },
+          metadata: {
+            user_id: '42',
+            anon_id: 'anon-uuid-123',
+            anon_id_consent: 'granted',
+          },
         },
       },
     };
@@ -758,35 +807,68 @@ describe('WebhookRouter — checkout_completed funnel join', () => {
     );
   });
 
-  it('emits checkout_completed with anonymousId for an anonymous pass (no user_id)', async () => {
+  it.each([
+    ['granted consent', { anon_id_consent: 'granted' }, 'anon-uuid-456'],
+    ['gave no consent', {}, null],
+  ])(
+    'records an anonymous pass whose buyer %s, with the anonymous id on checkout_completed only under consent',
+    async (_label, consentMeta, expectedAnonymousId) => {
+      mockWebhookEvent = {
+        type: 'checkout.session.completed',
+        data: {
+          object: {
+            id: 'cs_anon_join',
+            mode: 'payment',
+            payment_intent: 'pi_anon_join',
+            metadata: {
+              pass_kind: '24h',
+              pass_anonymous: '1',
+              anon_id: 'anon-uuid-456',
+              ...consentMeta,
+            },
+          },
+        },
+      };
+      mockAnonInsert.mockResolvedValue({
+        id: 1,
+        stripe_session_id: 'cs_anon_join',
+        kind: '24h',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        payment_intent_id: 'pi_anon_join',
+      });
+
+      const res = await postWebhook();
+      expect(res.status).toBe(200);
+      expect(mockAnonInsert).toHaveBeenCalledWith(
+        expect.objectContaining({ stripeSessionId: 'cs_anon_join' })
+      );
+      expect(mockTrack).toHaveBeenCalledWith(
+        'checkout_completed',
+        expect.objectContaining({
+          userId: null,
+          anonymousId: expectedAnonymousId,
+        })
+      );
+    }
+  );
+
+  it('keeps the user but not the anon id on checkout_completed for a subscription session created before the consent marker existed', async () => {
     mockWebhookEvent = {
       type: 'checkout.session.completed',
       data: {
         object: {
-          id: 'cs_anon_join',
-          mode: 'payment',
-          payment_intent: 'pi_anon_join',
-          metadata: {
-            pass_kind: '24h',
-            pass_anonymous: '1',
-            anon_id: 'anon-uuid-456',
-          },
+          id: 'cs_pre_marker',
+          mode: 'subscription',
+          metadata: { user_id: '42', anon_id: 'anon-uuid-123' },
         },
       },
     };
-    mockAnonInsert.mockResolvedValue({
-      id: 1,
-      stripe_session_id: 'cs_anon_join',
-      kind: '24h',
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      payment_intent_id: 'pi_anon_join',
-    });
 
     const res = await postWebhook();
     expect(res.status).toBe(200);
     expect(mockTrack).toHaveBeenCalledWith(
       'checkout_completed',
-      expect.objectContaining({ userId: null, anonymousId: 'anon-uuid-456' })
+      expect.objectContaining({ userId: 42, anonymousId: null })
     );
   });
 
@@ -1061,6 +1143,10 @@ describe('WebhookRouter — credit pack grant', () => {
     const daysOut = (expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000);
     expect(daysOut).toBeGreaterThan(89);
     expect(daysOut).toBeLessThanOrEqual(90);
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({ userId: 42, anonymousId: null })
+    );
   });
 
   it('records the purchase event only when a row was actually inserted', async () => {
@@ -1098,6 +1184,10 @@ describe('WebhookRouter — credit pack grant', () => {
     const res = await postWebhook();
     expect(res.status).toBe(200);
     expect(mockInsertPackGrant).not.toHaveBeenCalled();
+    expect(mockTrack).toHaveBeenCalledWith(
+      'checkout_completed',
+      expect.objectContaining({ userId: null, anonymousId: null })
+    );
     warnSpy.mockRestore();
   });
 

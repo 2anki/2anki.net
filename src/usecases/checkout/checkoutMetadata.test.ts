@@ -1,4 +1,37 @@
-import { optionalMetadata } from './checkoutMetadata';
+import {
+  anonIdConsentMetadata,
+  consentedSessionAnonId,
+  optionalMetadata,
+} from './checkoutMetadata';
+
+describe('anonIdConsentMetadata', () => {
+  it('stamps the consent marker when the visitor allows tracking', () => {
+    expect(anonIdConsentMetadata(true)).toEqual({
+      anon_id_consent: 'granted',
+    });
+  });
+
+  it('stamps nothing when the visitor does not allow tracking', () => {
+    expect(anonIdConsentMetadata(false)).toEqual({});
+  });
+});
+
+describe('consentedSessionAnonId', () => {
+  it('returns the anon id of a session stamped with consent', () => {
+    expect(
+      consentedSessionAnonId({ anon_id: 'anon-1', anon_id_consent: 'granted' })
+    ).toBe('anon-1');
+  });
+
+  it.each([
+    ['no consent marker', { anon_id: 'anon-1' }],
+    ['an unexpected marker value', { anon_id: 'anon-1', anon_id_consent: '1' }],
+    ['no anon id', { anon_id_consent: 'granted' }],
+    ['an empty anon id', { anon_id: '', anon_id_consent: 'granted' }],
+  ])('returns null for a session with %s', (_label, metadata) => {
+    expect(consentedSessionAnonId(metadata)).toBe(null);
+  });
+});
 
 describe('optionalMetadata', () => {
   it('keeps present string values', () => {

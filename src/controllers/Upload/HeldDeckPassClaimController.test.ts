@@ -155,39 +155,48 @@ async function setup(
 describe('HeldDeckPassClaimController through the pass middleware', () => {
   beforeEach(() => trackMock.mockClear());
 
-  it('sends the full held deck to the visitor who bought the pass and marks it claimed', async () => {
-    const { passes, holds, hold, convertHeldFileForPass, request } =
-      await setup();
-    const pass = await passes.insert({
-      stripeSessionId: 'cs_paid',
-      kind: '24h',
-      expiresAt: new Date(Date.now() + 60_000),
-      paymentIntentId: 'pi_paid',
-    });
+  it.each([
+    ['granted consent', 'granted', BUYER],
+    ['declined', 'denied', null],
+  ])(
+    'sends the full held deck to the visitor who bought the pass and marks it claimed, with the anonymous id only when the visitor %s',
+    async (_label, consent, expectedAnonymousId) => {
+      const { passes, holds, hold, convertHeldFileForPass, request } =
+        await setup();
+      const pass = await passes.insert({
+        stripeSessionId: 'cs_paid',
+        kind: '24h',
+        expiresAt: new Date(Date.now() + 60_000),
+        paymentIntentId: 'pi_paid',
+      });
+      const req = mockReq(BUYER, 'cs_paid', {
+        'basic-reversed': 'true',
+        bogus: 42,
+      });
+      Object.assign(req.cookies, { cookie_consent: consent });
 
-    const res = await request(
-      mockReq(BUYER, 'cs_paid', { 'basic-reversed': 'true', bogus: 42 })
-    );
+      const res = await request(req);
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual(Buffer.from('APKG BYTES'));
-    expect(res.set).toHaveBeenCalledWith('X-Card-Count', '150');
-    expect(res.set).toHaveBeenCalledWith('File-Name', 'notes');
-    expect(convertHeldFileForPass).toHaveBeenCalledWith(
-      pass.id,
-      expect.objectContaining({ originalname: 'notes.html' }),
-      { 'basic-reversed': 'true' },
-      'req-1'
-    );
-    expect(
-      holds.rows.find((row) => row.id === hold.id)?.claimed_at
-    ).toBeInstanceOf(Date);
-    expect(trackMock).toHaveBeenCalledWith('anonymous_pass_held_claimed', {
-      anonymousId: BUYER,
-      anonymousPassId: pass.id,
-      props: { card_count: 150, pass_kind: '24h' },
-    });
-  });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(Buffer.from('APKG BYTES'));
+      expect(res.set).toHaveBeenCalledWith('X-Card-Count', '150');
+      expect(res.set).toHaveBeenCalledWith('File-Name', 'notes');
+      expect(convertHeldFileForPass).toHaveBeenCalledWith(
+        pass.id,
+        expect.objectContaining({ originalname: 'notes.html' }),
+        { 'basic-reversed': 'true' },
+        'req-1'
+      );
+      expect(
+        holds.rows.find((row) => row.id === hold.id)?.claimed_at
+      ).toBeInstanceOf(Date);
+      expect(trackMock).toHaveBeenCalledWith('anonymous_pass_held_claimed', {
+        anonymousId: expectedAnonymousId,
+        anonymousPassId: pass.id,
+        props: { card_count: 150, pass_kind: '24h' },
+      });
+    }
+  );
 
   it('reconciles a pass the webhook has not written yet straight from Stripe', async () => {
     const { convertHeldFileForPass, request } = await setup({

@@ -9,6 +9,7 @@ import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { getAnonymousPassId } from '../../lib/User/getOwner';
 import { track } from '../../services/events/track';
 import { anonIdCookie } from './anonIdCookie';
+import { analyticsAnonId } from '../../lib/http/consentRegion';
 
 function cardOptionsFrom(body: unknown): Record<string, string> {
   if (body == null || typeof body !== 'object' || Array.isArray(body)) {
@@ -41,7 +42,7 @@ export class HeldDeckPassClaimController {
         requestId: res.locals.requestId as string | undefined,
       });
       track('anonymous_pass_held_claimed', {
-        anonymousId: visitor,
+        anonymousId: analyticsAnonId(req, visitor),
         anonymousPassId,
         props: { card_count: cardCount, pass_kind: res.locals.passKind },
       });

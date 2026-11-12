@@ -188,6 +188,33 @@ describe('UnlimitedCheckoutUseCase', () => {
     );
   });
 
+  it('stamps the consent marker beside anon_id when tracking is allowed', async () => {
+    mockStripeCreateSession.mockResolvedValue({
+      url: 'https://checkout.stripe.com/test',
+    });
+
+    const uc = new UnlimitedCheckoutUseCase(makeStripe(), makeResolver());
+    await uc.execute({
+      userEmail: 'user@example.com',
+      userId: 8,
+      interval: 'month',
+      anonId: 'anon-uuid-123',
+      anonIdTrackingAllowed: true,
+    });
+
+    expect(mockStripeCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: {
+          user_id: '8',
+          cohort: 'v2',
+          interval: 'month',
+          anon_id: 'anon-uuid-123',
+          anon_id_consent: 'granted',
+        },
+      })
+    );
+  });
+
   it('omits anon_id from metadata when absent', async () => {
     mockStripeCreateSession.mockResolvedValue({
       url: 'https://checkout.stripe.com/test',

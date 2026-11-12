@@ -1,6 +1,6 @@
 import type StripeTypes from 'stripe';
 import hashToken from '../../lib/misc/hashToken';
-import { optionalMetadata } from './checkoutMetadata';
+import { anonIdConsentMetadata, optionalMetadata } from './checkoutMetadata';
 import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { StripePriceResolver } from '../../services/StripePriceResolver';
 import {
@@ -92,6 +92,7 @@ export class UnlimitedCheckoutUseCase {
     stripeCustomerId?: string | null;
     variant?: string;
     anonId?: string;
+    anonIdTrackingAllowed?: boolean;
     surface?: string;
     gaClientId?: string;
     gaSessionId?: string;
@@ -136,6 +137,7 @@ export class UnlimitedCheckoutUseCase {
           ga_session_id: input.gaSessionId,
           ...input.adClick,
         }),
+        ...anonIdConsentMetadata(input.anonIdTrackingAllowed === true),
       },
     };
 

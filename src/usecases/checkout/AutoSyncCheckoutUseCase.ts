@@ -1,7 +1,7 @@
 import type StripeTypes from 'stripe';
 import SubscriptionService from '../../services/SubscriptionService';
 import hashToken from '../../lib/misc/hashToken';
-import { optionalMetadata } from './checkoutMetadata';
+import { anonIdConsentMetadata, optionalMetadata } from './checkoutMetadata';
 import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { createCheckoutSession } from './createCheckoutSession';
 import {
@@ -42,6 +42,7 @@ export class AutoSyncCheckoutUseCase {
     stripeCustomerId?: string | null;
     variant?: string;
     anonId?: string;
+    anonIdTrackingAllowed?: boolean;
     surface?: string;
     gaClientId?: string;
     gaSessionId?: string;
@@ -117,6 +118,7 @@ export class AutoSyncCheckoutUseCase {
           ga_session_id: input.gaSessionId,
           ...input.adClick,
         }),
+        ...anonIdConsentMetadata(input.anonIdTrackingAllowed === true),
       },
     };
 

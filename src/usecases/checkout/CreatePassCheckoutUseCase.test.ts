@@ -256,6 +256,36 @@ describe('CreatePassCheckoutUseCase', () => {
       );
     });
 
+    it.each([
+      [true, { anon_id_consent: 'granted' }],
+      [false, {}],
+    ])(
+      'keeps anon_id for the hold binding and stamps the consent marker only when tracking allowed is %s',
+      async (anonIdTrackingAllowed, consentMeta) => {
+        mockStripeCreateSession.mockResolvedValue({
+          url: 'https://checkout.stripe.com/anon',
+        });
+
+        const uc = new CreatePassCheckoutUseCase(
+          makeStripe(),
+          'price_24h',
+          '24h'
+        );
+        await uc.execute({ anonId: 'anon-uuid-456', anonIdTrackingAllowed });
+
+        expect(mockStripeCreateSession).toHaveBeenCalledWith(
+          expect.objectContaining({
+            metadata: {
+              pass_kind: '24h',
+              pass_anonymous: '1',
+              anon_id: 'anon-uuid-456',
+              ...consentMeta,
+            },
+          })
+        );
+      }
+    );
+
     it('omits anon_id when no cookie value is supplied', async () => {
       mockStripeCreateSession.mockResolvedValue({
         url: 'https://checkout.stripe.com/a',

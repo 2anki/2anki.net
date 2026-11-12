@@ -16,3 +16,31 @@ export function optionalMetadata(
   }
   return result;
 }
+
+const ANON_ID_CONSENT_KEY = 'anon_id_consent';
+const ANON_ID_CONSENT_GRANTED = 'granted';
+
+/**
+ * A pass session's anon_id binds the held deck to the buyer's browser, so it is
+ * stamped whatever the visitor chose. This marker records, at checkout time,
+ * whether the same id may also go on the webhook's checkout_completed event.
+ */
+export function anonIdConsentMetadata(
+  trackingAllowed: boolean
+): Record<string, string> {
+  return trackingAllowed
+    ? { [ANON_ID_CONSENT_KEY]: ANON_ID_CONSENT_GRANTED }
+    : {};
+}
+
+export function consentedSessionAnonId(
+  metadata: Record<string, string | undefined>
+): string | null {
+  const anonId = metadata.anon_id;
+  if (anonId == null || anonId === '') {
+    return null;
+  }
+  return metadata[ANON_ID_CONSENT_KEY] === ANON_ID_CONSENT_GRANTED
+    ? anonId
+    : null;
+}

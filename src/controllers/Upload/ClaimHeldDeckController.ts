@@ -16,6 +16,7 @@ import {
   resolvePreviewCardsArm,
 } from '../../lib/upload/anonymousPreviewCards';
 import { anonIdCookie } from './anonIdCookie';
+import { analyticsAnonId } from '../../lib/http/consentRegion';
 
 export class ClaimHeldDeckController {
   constructor(private readonly useCase: ClaimHeldDeckUseCase) {}
@@ -47,7 +48,7 @@ export class ClaimHeldDeckController {
       if (result.kind === 'plan') {
         track('monthly_partial_claimed', {
           userId: Number(owner),
-          anonymousId: anonIdCookie(req),
+          anonymousId: analyticsAnonId(req, anonIdCookie(req)),
           props: {
             card_count: result.cardCount,
             also_claimed: result.alsoClaimed ?? 0,
@@ -59,7 +60,7 @@ export class ClaimHeldDeckController {
         const previewCardsLive = await isPreviewCardsTestLive();
         track('anonymous_partial_claimed', {
           userId: Number(owner),
-          anonymousId: anonId,
+          anonymousId: analyticsAnonId(req, anonId),
           props: {
             arm: 'treatment',
             preview_cards_arm: resolvePreviewCardsArm(anonId, previewCardsLive),

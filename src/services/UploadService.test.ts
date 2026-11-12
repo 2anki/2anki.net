@@ -129,7 +129,11 @@ import {
   anonRecoveryKey,
 } from '../lib/upload/anonymousRecovery';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
-import { ANONYMOUS_AI_PREVIEW_FLAG } from '../lib/upload/anonymousAiPreview';
+import {
+  ANONYMOUS_AI_PREVIEW_FLAG,
+  previewHoldKey,
+} from '../lib/upload/anonymousAiPreview';
+import { AiPreviewRateLimiter } from '../lib/upload/aiPreviewRateLimiter';
 import { ANONYMOUS_PREVIEW_CARDS_FLAG } from '../lib/upload/anonymousPreviewCards';
 import { ASYNC_PDF_MIN_BYTES } from '../lib/upload/asyncSlowUploads';
 import {
@@ -394,6 +398,46 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(executeMock).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['granted consent', 'granted', 'visitor-ai'],
+    ['declined', 'denied', null],
+  ])(
+    'limits and holds the AI preview under the raw anon id for a visitor who %s, recording ai_preview_shown with the analytics id',
+    async (_label, consent, expectedAnonymousId) => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({ packages: [] }),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
+      mockGetFeatureFlag.mockResolvedValue(true);
+      mockGenerateAiPreview.mockResolvedValue([{ front: 'q', back: 'a' }]);
+      const allowSpy = vi.spyOn(AiPreviewRateLimiter.prototype, 'allow');
+      const heldDeck = new InMemoryHeldDeckRepository();
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps({ heldDeck })
+      );
+      const req = anonAiMarkdownRequest('visitor-ai');
+      Object.assign(req.cookies, { cookie_consent: consent });
+      const { res, capturedJson } = buildResponse();
+
+      await service.handleUpload(req, res);
+
+      expect(capturedJson()).toMatchObject({ kind: 'ai_preview' });
+      expect(allowSpy).toHaveBeenCalledWith('visitor-ai', expect.any(String));
+      expect(heldDeck.rows[0]).toMatchObject({
+        anon_id: previewHoldKey('visitor-ai'),
+      });
+      expect(trackMock).toHaveBeenCalledWith(
+        'ai_preview_shown',
+        expect.objectContaining({ anonymousId: expectedAnonymousId })
+      );
+      allowSpy.mockRestore();
+    }
+  );
+
   it('answers a deck-writer crash with its fixed message when the AI preview flag is on but no preview came back', async () => {
     const crash = new PythonExitError('The deck writer stopped.', {
       kind: 'unknown',
@@ -461,38 +505,66 @@ describe('UploadService.handleUpload — error paths', () => {
     expect(executeMock).toHaveBeenCalledTimes(1);
   });
 
-  it('emits upload_started and conversion_failed sharing the anonymous_id from the cookie', async () => {
-    MockGeneratePackagesUseCase.mockImplementation(function () {
-      return {
-        execute: vi.fn().mockResolvedValue({ packages: [] }),
-      } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
-    });
+  it.each([
+    [
+      'a visitor who granted consent',
+      { cookies: { anon_id: 'anon-upload-1', cookie_consent: 'granted' } },
+      'anon-upload-1',
+    ],
+    [
+      'a visitor outside the EEA with no choice stored',
+      { cookies: { anon_id: 'anon-upload-1' }, ip: '8.8.8.8' },
+      'anon-upload-1',
+    ],
+    [
+      'an EEA visitor with no choice stored',
+      { cookies: { anon_id: 'anon-upload-1' }, ip: '193.99.144.80' },
+      null,
+    ],
+    [
+      'a visitor who declined',
+      {
+        cookies: { anon_id: 'anon-upload-1', cookie_consent: 'denied' },
+        ip: '8.8.8.8',
+      },
+      null,
+    ],
+  ])(
+    'emits upload_started and conversion_failed with the analytics id allowed for %s',
+    async (_label, overrides, expectedAnonymousId) => {
+      MockGeneratePackagesUseCase.mockImplementation(function () {
+        return {
+          execute: vi.fn().mockResolvedValue({ packages: [] }),
+        } as unknown as InstanceType<typeof GeneratePackagesUseCase>;
+      });
 
-    const service = new UploadService(
-      buildRepository(),
-      {} as JobRepository,
-      buildUsersRepo(),
-      ...fakeUploadServiceDeps()
-    );
-    const req = buildRequest({
-      cookies: { anon_id: 'anon-upload-1' },
-    } as Partial<express.Request>);
-    const { res } = buildResponse();
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        buildUsersRepo(),
+        ...fakeUploadServiceDeps()
+      );
+      const req = buildRequest(overrides as Partial<express.Request>);
+      const { res } = buildResponse();
 
-    await service.handleUpload(req, res);
+      await service.handleUpload(req, res);
 
-    expect(trackMock).toHaveBeenCalledWith(
-      'upload_started',
-      expect.objectContaining({ anonymousId: 'anon-upload-1', userId: null })
-    );
-    expect(trackMock).toHaveBeenCalledWith(
-      'conversion_failed',
-      expect.objectContaining({
-        anonymousId: 'anon-upload-1',
-        props: expect.objectContaining({ reason: 'empty_deck' }),
-      })
-    );
-  });
+      expect(trackMock).toHaveBeenCalledWith(
+        'upload_started',
+        expect.objectContaining({
+          anonymousId: expectedAnonymousId,
+          userId: null,
+        })
+      );
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          anonymousId: expectedAnonymousId,
+          props: expect.objectContaining({ reason: 'empty_deck' }),
+        })
+      );
+    }
+  );
 
   it('hands the request id to the package generator so Claude spend lines can be joined back', async () => {
     const executeMock = vi.fn().mockResolvedValue({ packages: [] });
@@ -731,7 +803,7 @@ describe('UploadService.handleUpload — error paths', () => {
           path: '/tmp/lecture-page.png',
         } as unknown as Express.Multer.File,
       ],
-      cookies: { anon_id: 'anon-image-only' },
+      cookies: { anon_id: 'anon-image-only', cookie_consent: 'granted' },
     } as Partial<express.Request>);
     const { res, capturedStatus, capturedJson } = buildResponse();
 
@@ -2094,7 +2166,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
-      cookies: { anon_id: 'anon-sync-start' },
+      cookies: { anon_id: 'anon-sync-start', cookie_consent: 'granted' },
     } as Partial<express.Request>);
     const { res } = buildResponse();
 
@@ -2192,6 +2264,32 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       (call) => call[0] === 'conversion_succeeded'
     );
     expect(successCall?.[1].props).toMatchObject({ entry: 'mcp' });
+  });
+
+  it('records an MCP conversion with no anonymous id, since the connector request carries no cookies', async () => {
+    mockPackages([{ name: 'deck', cardCount: 10 }]);
+
+    const service = new UploadService(
+      buildRepository(),
+      {} as JobRepository,
+      buildUsersRepo(),
+      ...fakeUploadServiceDeps()
+    );
+    const req = buildRequest({
+      headers: {},
+      cookies: {},
+    } as Partial<express.Request>);
+    const { res } = buildResponse();
+    Object.assign(res.locals, { owner: 42, mcp_auth: true });
+
+    await service.handleUpload(req, res);
+
+    for (const name of ['upload_started', 'conversion_succeeded']) {
+      expect(trackMock).toHaveBeenCalledWith(
+        name,
+        expect.objectContaining({ userId: 42, anonymousId: null })
+      );
+    }
   });
 
   it('leaves the entry off a browser upload', async () => {
@@ -2482,6 +2580,108 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       })
     );
   });
+
+  it.each([
+    [
+      'a signed-in free user over the month who declined',
+      42,
+      22,
+      { cookies: { anon_id: 'anon-wall', cookie_consent: 'denied' } },
+      null,
+      { reason: 'monthly_limit', kind: 'card_count' },
+    ],
+    [
+      'a signed-in free user over the month who granted consent',
+      42,
+      22,
+      { cookies: { anon_id: 'anon-wall', cookie_consent: 'granted' } },
+      'anon-wall',
+      { reason: 'monthly_limit', kind: 'card_count' },
+    ],
+    [
+      'a signed-out visitor over the cap who declined',
+      null,
+      22,
+      {
+        cookies: { anon_id: 'anon-wall', cookie_consent: 'denied' },
+        ip: '8.8.8.8',
+      },
+      null,
+      { reason: 'anonymous_cap', kind: 'anonymous' },
+    ],
+    [
+      'a signed-out EEA visitor over the cap with no choice stored',
+      null,
+      22,
+      { cookies: { anon_id: 'anon-wall' }, ip: '193.99.144.80' },
+      null,
+      { reason: 'anonymous_cap', kind: 'anonymous' },
+    ],
+    [
+      'a signed-out visitor over the cap outside the EEA with no choice stored',
+      null,
+      22,
+      { cookies: { anon_id: 'anon-wall' }, ip: '8.8.8.8' },
+      'anon-wall',
+      { reason: 'anonymous_cap', kind: 'anonymous' },
+    ],
+    [
+      'a signed-out visitor over the cap who granted consent',
+      null,
+      22,
+      { cookies: { anon_id: 'anon-wall', cookie_consent: 'granted' } },
+      'anon-wall',
+      { reason: 'anonymous_cap', kind: 'anonymous' },
+    ],
+  ])(
+    'walls %s, recording conversion_failed and paywall_shown with the analytics id',
+    async (
+      _label,
+      owner,
+      cardCount,
+      overrides,
+      expectedAnonymousId,
+      { reason, kind }
+    ) => {
+      mockPackages([{ name: 'deck', cardCount }]);
+      const usersRepo = buildUsersRepo({
+        getCardUsage: vi
+          .fn()
+          .mockResolvedValue({ cards_used: 90, month_started_at: new Date() }),
+      });
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        usersRepo,
+        ...fakeUploadServiceDeps()
+      );
+      const req = buildRequest(overrides as Partial<express.Request>);
+      const { res, redirectedTo } = responseWithRedirect();
+      if (owner != null) {
+        (res.locals as Record<string, unknown>).owner = owner;
+      }
+
+      await service.handleUpload(req, res);
+
+      expect(redirectedTo()).toBe(`/limit?kind=${kind}`);
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          userId: owner,
+          anonymousId: expectedAnonymousId,
+          props: expect.objectContaining({ reason }),
+        })
+      );
+      expect(trackMock).toHaveBeenCalledWith(
+        'paywall_shown',
+        expect.objectContaining({
+          userId: owner,
+          anonymousId: expectedAnonymousId,
+          props: expect.objectContaining({ kind }),
+        })
+      );
+    }
+  );
 
   it('treats a session cookie that resolves to no user as signed out', async () => {
     mockPackages([{ name: 'deck', cardCount: 22 }]);
@@ -3427,7 +3627,7 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
       ...fakeUploadServiceDeps()
     );
     const req = buildRequest({
-      cookies: { anon_id: 'anon-dup-guid-track' },
+      cookies: { anon_id: 'anon-dup-guid-track', cookie_consent: 'granted' },
     } as Partial<express.Request>);
     const { res } = buildResponse();
 
@@ -7542,7 +7742,7 @@ describe('UploadService.handleUpload — image drops without a vision path (#440
     );
     const req = buildRequest({
       files: [imageFile('lecture-page.png')],
-      cookies: { anon_id: 'anon-photo' },
+      cookies: { anon_id: 'anon-photo', cookie_consent: 'granted' },
     } as Partial<express.Request>);
     const { res, capturedStatus, capturedJson } = buildResponse();
 
@@ -7831,7 +8031,7 @@ describe('UploadService.handleUpload — failure events for the success-rate til
     async (_label, error, reason) => {
       failWith(error);
       const req = buildRequest({
-        cookies: { anon_id: 'anon-failed' },
+        cookies: { anon_id: 'anon-failed', cookie_consent: 'granted' },
       } as Partial<express.Request>);
       const { res } = buildResponse();
 
@@ -9454,11 +9654,39 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     expect(props.card_count_bucket).toBe(toCardCountBucket(30));
   });
 
+  it('holds an EEA first visit under the minted id but keeps it off the analytics events', async () => {
+    mockGetFeatureFlag.mockResolvedValue(true);
+    mockPartial([{ name: 'deck', cardCount: 21 }], 9);
+    const heldDeck = new InMemoryHeldDeckRepository();
+    const req = buildEligibleRequest();
+    Object.assign(req, { ip: '193.99.144.80' });
+    const { res, capturedStatus, capturedJson } = responseWithRedirect();
+    setMintedAnonId(res, 'anon-minted-now');
+
+    await serviceUnderTest(heldDeck).handleUpload(req, res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toMatchObject({ kind: 'held', totalCards: 30 });
+    expect(heldDeck.rows[0]).toMatchObject({ anon_id: 'anon-minted-now' });
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_started',
+      expect.objectContaining({ anonymousId: null })
+    );
+    expect(trackMock).toHaveBeenCalledWith(
+      'conversion_succeeded',
+      expect.objectContaining({
+        anonymousId: null,
+        props: expect.objectContaining({ held: true }),
+      })
+    );
+  });
+
   it('holds an over-cap upload whose anonymous id was minted on this request', async () => {
     mockGetFeatureFlag.mockResolvedValue(true);
     const execute = mockPartial([{ name: 'deck', cardCount: 21 }], 9);
     const heldDeck = new InMemoryHeldDeckRepository();
     const req = buildEligibleRequest();
+    Object.assign(req, { ip: '8.8.8.8' });
     const { res, capturedStatus, capturedJson, redirectedTo } =
       responseWithRedirect();
     setMintedAnonId(res, 'anon-minted-now');
@@ -9588,6 +9816,7 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
     mockPartial([{ name: 'deck', cardCount: 21 }], 13);
     mockStorageUploadFile.mockRejectedValueOnce(new Error('no credentials'));
     const req = buildEligibleRequest();
+    Object.assign(req, { ip: '8.8.8.8' });
     const { res, redirectedTo } = responseWithRedirect();
     setMintedAnonId(res, 'anon-minted-now');
 

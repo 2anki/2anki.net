@@ -67,9 +67,15 @@ function buildResponse(owner: number | null) {
   };
 }
 
-function buildRequest(anonId: string | null): Request {
+function buildRequest(
+  anonId: string | null,
+  consent: 'granted' | 'denied' = 'granted'
+): Request {
   return {
-    cookies: anonId == null ? {} : { anon_id: anonId },
+    cookies:
+      anonId == null
+        ? { cookie_consent: consent }
+        : { anon_id: anonId, cookie_consent: consent },
   } as unknown as Request;
 }
 
@@ -365,6 +371,27 @@ describe('ClaimHeldDeckController', () => {
     }
   );
 
+  it('claims the hold for a visitor who declined analytics, keeping the arm but not the anonymous id on the event', async () => {
+    previewCardsFlag(true);
+    const repo = new InMemoryHeldDeckRepository();
+    await seedHold(repo, undefined, 'anon-preview-1');
+    const controller = new ClaimHeldDeckController(buildUseCase(repo));
+    const { res, capturedStatus, capturedJson } = buildResponse(7);
+
+    await controller.claim(buildRequest('anon-preview-1', 'denied'), res);
+
+    expect(capturedStatus()).toBe(200);
+    expect(capturedJson()).toMatchObject({
+      downloadKey: 'owner-key.apkg',
+      kind: 'signup',
+    });
+    expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
+      userId: 7,
+      anonymousId: null,
+      props: { arm: 'treatment', preview_cards_arm: 'treatment' },
+    });
+  });
+
   it('POST 409s with monthly_limit when the account cannot take the deck this month', async () => {
     const repo = new InMemoryHeldDeckRepository();
     await seedHold(repo);
@@ -489,6 +516,34 @@ describe('ClaimHeldDeckController', () => {
         expect.anything()
       );
     });
+
+    it.each([
+      ['granted consent', 'granted' as const, 'browser-anon-1'],
+      ['declined', 'denied' as const, null],
+    ])(
+      'claims the plan deck for a paying owner whose browser carries an anon id and %s, with that id on the event only under consent',
+      async (_label, consent, expectedAnonymousId) => {
+        trackMock.mockClear();
+        const repo = new InMemoryHeldDeckRepository();
+        await seedPlanHold(repo);
+        const controller = new ClaimHeldDeckController(buildUseCase(repo));
+        const { res, capturedStatus, capturedJson } = buildResponse(42);
+        (res.locals as Record<string, unknown>).subscriber = true;
+
+        await controller.claim(buildRequest('browser-anon-1', consent), res);
+
+        expect(capturedStatus()).toBe(200);
+        expect(capturedJson()).toMatchObject({
+          downloadKey: 'owner-key.apkg',
+          kind: 'plan',
+        });
+        expect(trackMock).toHaveBeenCalledWith('monthly_partial_claimed', {
+          userId: 42,
+          anonymousId: expectedAnonymousId,
+          props: { card_count: 34, also_claimed: 0 },
+        });
+      }
+    );
 
     it('records a claim of a deck the connector saved as coming from the connector', async () => {
       trackMock.mockClear();

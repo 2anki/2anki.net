@@ -68,6 +68,7 @@ import { INotionRepository } from '../data_layer/NotionRespository';
 import { IEmailService } from '../services/EmailService/EmailService';
 import UsersRepository from '../data_layer/UsersRepository';
 import { track } from '../services/events/track';
+import { analyticsAnonId } from '../lib/http/consentRegion';
 import { parseFirstTouch } from './helpers/parseFirstTouch';
 import { classifyDevice } from '../lib/analytics/classifyDevice';
 import { isRescueRule } from '../types/RescueCandidate';
@@ -354,11 +355,14 @@ class NotionController {
     const database = getDatabase();
 
     const cookies = req.cookies as Record<string, unknown> | undefined;
-    const anonId = cookies?.anon_id;
+    const cookieAnonId = cookies?.anon_id;
+    const anonId = analyticsAnonId(
+      req,
+      typeof cookieAnonId === 'string' ? cookieAnonId : null
+    );
     track('upload_started', {
       userId: funnelUserId(owner),
-      anonymousId:
-        typeof anonId === 'string' && anonId.length > 0 ? anonId : null,
+      anonymousId: anonId,
       props: {
         source: conversionSourceFromType(type),
         device: classifyDevice(req.headers?.['user-agent']),

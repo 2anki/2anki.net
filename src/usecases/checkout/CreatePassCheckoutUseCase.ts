@@ -1,6 +1,6 @@
 import type StripeTypes from 'stripe';
 import type { PassKind } from '../../data_layer/UserPassRepository';
-import { optionalMetadata } from './checkoutMetadata';
+import { anonIdConsentMetadata, optionalMetadata } from './checkoutMetadata';
 import type { AdClickAttribution } from '../../lib/attribution/adClick';
 import { createCheckoutSession } from './createCheckoutSession';
 import {
@@ -26,6 +26,7 @@ export class CreatePassCheckoutUseCase {
     stripeCustomerId?: string | null;
     variant?: string;
     anonId?: string;
+    anonIdTrackingAllowed?: boolean;
     surface?: string;
     gaClientId?: string;
     gaSessionId?: string;
@@ -53,7 +54,8 @@ export class CreatePassCheckoutUseCase {
         ga_client_id: input.gaClientId,
         ga_session_id: input.gaSessionId,
         ...input.adClick,
-      })
+      }),
+      anonIdConsentMetadata(input.anonIdTrackingAllowed === true)
     );
 
     const sessionParams: StripeTypes.Checkout.SessionCreateParams = {

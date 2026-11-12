@@ -132,6 +132,34 @@ describe('ThinDeckAiPreviewController', () => {
     });
   });
 
+  it.each([
+    ['granted consent', 'granted', 'visitor-1'],
+    ['declined', 'denied', null],
+  ])(
+    'serves a signed-out visitor who %s the sample, with the anonymous id on the event only under consent',
+    async (_label, consent, expectedAnonymousId) => {
+      const res = makeRes();
+      const limiter = new AiPreviewRateLimiter();
+      const allowSpy = vi.spyOn(limiter, 'allow');
+
+      await new ThinDeckAiPreviewController(limiter).preview(
+        makeReq({ cookies: { anon_id: 'visitor-1', cookie_consent: consent } }),
+        res
+      );
+
+      expect(res.json).toHaveBeenCalledWith({ kind: 'preview', cards: CARDS });
+      expect(allowSpy).toHaveBeenCalledWith(
+        'anon:visitor-1',
+        expect.any(String)
+      );
+      expect(track).toHaveBeenCalledWith('thin_deck_ai_preview_shown', {
+        userId: null,
+        anonymousId: expectedAnonymousId,
+        props: { card_count: 1 },
+      });
+    }
+  );
+
   it('stops answering with cards once the visitor is over the limit', async () => {
     const controller = new ThinDeckAiPreviewController(
       new AiPreviewRateLimiter()

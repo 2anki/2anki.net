@@ -15,6 +15,7 @@ import { getSafeFilename } from '../lib/getSafeFilename';
 import { formatDeckName } from '../lib/formatDeckName';
 import JobRepository from '../data_layer/JobRepository';
 import { track } from '../services/events/track';
+import { analyticsAnonId } from '../lib/http/consentRegion';
 import { createZipArchive } from '../lib/archiver/createZipArchive';
 import { isRecoveryToken } from '../lib/upload/anonymousRecovery';
 
@@ -174,7 +175,7 @@ class DownloadController {
       (anonymousId) =>
         track('anonymous_preview_cards_served', {
           userId: null,
-          anonymousId,
+          anonymousId: analyticsAnonId(req, anonymousId),
           props: {},
         })
     );
@@ -391,7 +392,7 @@ class DownloadController {
     const identity = resolveDownloadIdentity(req, res);
     track('deck_downloaded', {
       userId: identity.userId,
-      anonymousId: identity.anonymousId,
+      anonymousId: analyticsAnonId(req, identity.anonymousId),
       props: { workspace_id: id, bulk: false },
     });
     return res.sendFile(filePath);
@@ -442,7 +443,7 @@ class DownloadController {
       const identity = resolveDownloadIdentity(req, res);
       track('deck_downloaded', {
         userId: identity.userId,
-        anonymousId: identity.anonymousId,
+        anonymousId: analyticsAnonId(req, identity.anonymousId),
         props: { workspace_id: id, bulk: true, file_count: ankiFiles.length },
       });
 
