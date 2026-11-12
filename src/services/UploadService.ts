@@ -80,6 +80,10 @@ import { toCardCountBucket } from '../lib/analytics/cardCountBucket';
 import { toPageCountBucket } from '../lib/analytics/pageCountBucket';
 import { uploadInputFormat } from '../lib/analytics/uploadInputFormat';
 import {
+  claudeCardsByDefault,
+  type UploadEntry,
+} from '../lib/upload/claudeCardsDefault';
+import {
   CONVERSION_FALLBACK_FILENAME,
   loadPdfImageFallbackNames,
   matchesPdfImageFallback,
@@ -1352,7 +1356,17 @@ class UploadService {
       }
 
       const owner = getOwner(res);
-      req.body = await this.resolveCardOptionInput(owner, req.body);
+      const storedCardOptions =
+        owner == null
+          ? null
+          : await this.usersRepository.getCardOptions(String(owner));
+      req.body = await this.withClaudeCardsByDefault(
+        req,
+        res,
+        owner,
+        storedCardOptions,
+        UploadService.mergedCardOptionInput(owner, storedCardOptions, req.body)
+      );
       const settings = new CardOption(req.body);
       const ws = new Workspace(true, 'fs');
       const paying = isPaying(res.locals);
@@ -1914,6 +1928,18 @@ class UploadService {
     owner: string | number | null | undefined,
     body: unknown
   ): Promise<Record<string, unknown>> {
+    const stored =
+      owner == null
+        ? null
+        : await this.usersRepository.getCardOptions(String(owner));
+    return UploadService.mergedCardOptionInput(owner, stored, body);
+  }
+
+  private static mergedCardOptionInput(
+    owner: string | number | null | undefined,
+    stored: unknown,
+    body: unknown
+  ): Record<string, unknown> {
     const requestOptions =
       body != null && typeof body === 'object'
         ? (body as Record<string, unknown>)
@@ -1921,8 +1947,48 @@ class UploadService {
     if (owner == null) {
       return requestOptions;
     }
-    const stored = await this.usersRepository.getCardOptions(String(owner));
     return mergeStoredCardOptions(stored, requestOptions);
+  }
+
+  private uploadEntry(
+    req: express.Request,
+    res: express.Response
+  ): UploadEntry {
+    if (res.locals.mcp_auth === true) return 'mcp';
+    return this.resolvePersistedSource(req) === 'app' ? 'app' : 'web';
+  }
+
+  private async withClaudeCardsByDefault(
+    req: express.Request,
+    res: express.Response,
+    owner: string | number | null | undefined,
+    storedCardOptions: unknown,
+    options: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    const files = (req.files as UploadedFile[] | undefined) ?? [];
+    const ownerId = owner == null ? null : Number(owner);
+    const turnOn = await claudeCardsByDefault(
+      {
+        ownerId,
+        paying: isPaying(res.locals),
+        entry: this.uploadEntry(req, res),
+        fileNames: files.map((file) => file.originalname),
+        options,
+        storedOptions: storedCardOptions,
+      },
+      this.usersRepository
+    );
+    if (!turnOn) return options;
+    // With no credits left the job would only fall back to the parser, later
+    // and through a queue, so the default is not applied.
+    if ((await getAiBudgetStatus({ userId: ownerId })).exhausted) {
+      return options;
+    }
+    track('upload_ai_default_applied', {
+      userId: ownerId,
+      props: { format: uploadInputFormat(files) },
+    });
+    return { ...options, 'claude-ai-flashcards': 'true' };
   }
 
   // A background job has nobody to answer "what should the PDF become", so it

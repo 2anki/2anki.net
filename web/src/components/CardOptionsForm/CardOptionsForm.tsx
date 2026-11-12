@@ -21,6 +21,10 @@ import { getLocalStorageBooleanValue } from '../../lib/data_layer/getLocalStorag
 import { getLocalStorageValue } from '../../lib/data_layer/getLocalStorageValue';
 import CardOption from '../../lib/data_layer/model/CardOption';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
+import {
+  hasRecordedAiChoice,
+  recordAiChoice,
+} from '../../lib/data_layer/aiChoice';
 import { track } from '../../lib/analytics/track';
 import { SettingsPayload } from '../../lib/types';
 import sharedStyles from '../../styles/shared.module.css';
@@ -529,6 +533,15 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       return () => window.removeEventListener('hashchange', openOnPdfAiAnchor);
     }, []);
 
+    const [aiChoiceRecorded, setAiChoiceRecorded] = useState(() =>
+      hasRecordedAiChoice()
+    );
+    const claudeOnForPdfsByDefault =
+      pageId == null &&
+      !aiChoiceRecorded &&
+      userLocals?.claudeCardsByDefault === true &&
+      checkboxValues['pdf-page-pairs'] !== true;
+
     useEffect(() => {
       if (!options) return;
       const next: Record<string, boolean> = {};
@@ -539,8 +552,15 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
           settings
         );
       });
+      if (
+        claudeOnForPdfsByDefault &&
+        next['pdf-page-pairs'] !== true &&
+        'claude-ai-flashcards' in next
+      ) {
+        next['claude-ai-flashcards'] = true;
+      }
       setCheckboxValues(next);
-    }, [options, settings]);
+    }, [options, settings, claudeOnForPdfsByDefault]);
 
     useEffect(() => {
       if (!pageId) {
@@ -758,6 +778,10 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       setCheckboxValues((prev) => ({ ...prev, [key]: checked }));
       saveValueInLocalStorage(key, checked.toString(), pageId);
       if (key === 'claude-ai-flashcards' && !pageId) {
+        if (isLoggedIn) {
+          recordAiChoice();
+          setAiChoiceRecorded(true);
+        }
         track(checked ? 'upload_ai_turned_on' : 'upload_ai_turned_off', {
           surface: 'card_options',
         });
@@ -1273,6 +1297,12 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
                           PREMIUM_KEYS.has(o.key) ? premiumBadge : undefined
                         }
                       />
+                      {o.key === 'claude-ai-flashcards' &&
+                        claudeOnForPdfsByDefault && (
+                          <p className={fieldStyles.sectionHint}>
+                            {t('upload.page.aiOnForPdfsBody')}
+                          </p>
+                        )}
                       {o.key === 'cherry' &&
                         pageId == null &&
                         (checkboxValues['cherry'] ?? false) && (

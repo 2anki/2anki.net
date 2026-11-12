@@ -368,6 +368,8 @@
       "aiOff": "KI ist aus",
       "aiOffBody": "Du erhältst regelbasierte Karten aus der Struktur deiner Datei.",
       "aiOffIncluded": "Claude-Karten sind in deinem Tarif enthalten.",
+      "aiOnForPdfs": "KI ist für PDF und PowerPoint an",
+      "aiOnForPdfsBody": "Dein Tarif enthält Claude-Karten, deshalb schreibt Claude sie, wenn du nur PDF- oder PowerPoint-Dateien hochlädst. Andere Uploads bekommen Karten aus ihrer Struktur.",
       "turnOnClaudeCards": "Claude-Karten aktivieren",
       "upgradeClaude": "Upgrade, um Karten mit Claude zu schreiben",
       "aiAnonIntro": "Claude kann deine Karten schreiben —",

@@ -40,6 +40,7 @@ interface GetUserLocalsResponse {
   autoSyncActive?: boolean;
   autoSyncCapReached?: boolean;
   freePrintAvailable?: boolean | null;
+  claudeCardsByDefault?: boolean;
   pending_email_change?: {
     new_email: string;
     requested_at: string;

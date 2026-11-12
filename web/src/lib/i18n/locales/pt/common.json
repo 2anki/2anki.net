@@ -368,6 +368,8 @@
       "aiOff": "A IA está desativada",
       "aiOffBody": "Você receberá cartões baseados em regras a partir da estrutura do seu arquivo.",
       "aiOffIncluded": "Os cartões do Claude estão incluídos no seu plano.",
+      "aiOnForPdfs": "A IA está ativada para PDF e PowerPoint",
+      "aiOnForPdfsBody": "Seu plano inclui os cartões do Claude, então o Claude os escreve quando você envia só arquivos PDF ou PowerPoint. Os outros envios recebem cartões a partir da estrutura deles.",
       "turnOnClaudeCards": "Ativar cartões do Claude",
       "upgradeClaude": "Faça upgrade para escrever cartões com o Claude",
       "aiAnonIntro": "O Claude pode escrever seus cartões —",

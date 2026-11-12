@@ -416,6 +416,8 @@
       "aiOff": "ИИ выключен",
       "aiOffBody": "Ты получишь карты по правилам на основе структуры твоего файла.",
       "aiOffIncluded": "Карты Claude входят в твой тариф.",
+      "aiOnForPdfs": "ИИ включён для PDF и PowerPoint",
+      "aiOnForPdfsBody": "Твой тариф включает карты Claude, поэтому Claude пишет их, когда ты загружаешь только файлы PDF или PowerPoint. Остальные загрузки получают карты по своей структуре.",
       "turnOnClaudeCards": "Включить карты Claude",
       "upgradeClaude": "Оформи улучшение, чтобы писать карты с Claude",
       "aiAnonIntro": "Claude может написать твои карты —",

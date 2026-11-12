@@ -368,6 +368,8 @@
       "aiOff": "AI staat uit",
       "aiOffBody": "Je krijgt op regels gebaseerde kaarten uit de structuur van je bestand.",
       "aiOffIncluded": "Claude-kaarten zijn inbegrepen in je plan.",
+      "aiOnForPdfs": "AI staat aan voor PDF en PowerPoint",
+      "aiOnForPdfsBody": "Je plan bevat Claude-kaarten, dus Claude schrijft ze als je alleen PDF- of PowerPoint-bestanden uploadt. Andere uploads krijgen kaarten op basis van hun structuur.",
       "turnOnClaudeCards": "Claude-kaarten inschakelen",
       "upgradeClaude": "Upgrade om kaarten met Claude te schrijven",
       "aiAnonIntro": "Claude kan je kaarten schrijven —",

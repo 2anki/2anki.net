@@ -65,6 +65,7 @@ describe('sanitizeCardOptions card-option allowlist', () => {
       'overlapping-cloze': 'separate',
       'code-theme': 'dracula',
       'style-changed-at': '1793275200',
+      'ai-choice-at': '1793275200',
       'card-size': 'large',
       'field-mapping': '{"front":"Term","back":"Definition"}',
     };
@@ -153,6 +154,7 @@ const CLIENT_CARD_OPTION_KEYS = [
   'image-quiz-html-to-anki',
   'embed-images',
   'claude-ai-flashcards',
+  'ai-choice-at',
   'ai-comprehensive',
   'share-files-for-debugging',
 ];

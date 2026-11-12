@@ -1045,6 +1045,123 @@ describe('CardOptionsForm AI checkbox analytics', () => {
     }
   );
 
+  it('marks the Claude cards setting as chosen when a signed-in account switches it', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.click(await aiCheckbox());
+
+    expect(localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
+  });
+
+  it('shows the PDF default as on, with its hint, until the account chooses', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        locals: { patreon: false, subscriber: true },
+        claudeCardsByDefault: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    const checkbox = await aiCheckbox();
+    expect(checkbox).toBeChecked();
+    expect(
+      screen.getByText(/Claude writes them when you upload only PDF/)
+    ).toBeInTheDocument();
+
+    fireEvent.click(checkbox);
+
+    expect(checkbox).not.toBeChecked();
+    expect(localStorage.getItem('claude-ai-flashcards')).toBe('false');
+    expect(localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
+  it('keeps a Notion page setting as saved, without the PDF default, when the account has one', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        locals: { patreon: false, subscriber: true },
+        claudeCardsByDefault: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    renderPageForm({ setError: vi.fn() });
+
+    expect(await aiCheckbox()).not.toBeChecked();
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
+  it('drops the PDF default once two pages make one card is on', async () => {
+    mockUseUserLocals.mockReturnValue({
+      data: {
+        locals: { patreon: false, subscriber: true },
+        claudeCardsByDefault: true,
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    mockGetSettingsCardOptions.mockResolvedValue([
+      new CardOptionModel(
+        'claude-ai-flashcards',
+        'AI flashcards',
+        'Write the cards with Claude.',
+        false
+      ),
+      new CardOptionModel(
+        'pdf-page-pairs',
+        'Two pages make one card',
+        'Pair PDF pages.',
+        false
+      ),
+    ]);
+    localStorage.setItem('pdf-page-pairs', 'true');
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    expect(await aiCheckbox()).not.toBeChecked();
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
+  it('leaves the checkbox as stored when the account has no PDF default', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    expect(await aiCheckbox()).not.toBeChecked();
+    expect(
+      screen.queryByText(/Claude writes them when you upload only PDF/)
+    ).toBeNull();
+  });
+
+  it('does not mark a choice for a signed-out visitor', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.click(await aiCheckbox());
+
+    expect(localStorage.getItem('ai-choice-at')).toBeNull();
+  });
+
+  it('does not mark a choice when another checkbox changes', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Embed images in cards' })
+    );
+
+    expect(localStorage.getItem('ai-choice-at')).toBeNull();
+  });
+
   it('records nothing for other checkboxes', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
 
@@ -1062,6 +1179,7 @@ describe('CardOptionsForm AI checkbox analytics', () => {
 
     expect(aiSwitchEvents()).toEqual([]);
     expect(localStorage.getItem('claude-ai-flashcards')).toBeNull();
+    expect(localStorage.getItem('ai-choice-at')).toBeNull();
   });
 
   it('records the switch for an empty page id, which saves to the account defaults', async () => {

@@ -57,6 +57,7 @@ export const CARD_OPTION_KEYS = [
   'image-quiz-html-to-anki',
   'embed-images',
   'claude-ai-flashcards',
+  'ai-choice-at',
   'ai-comprehensive',
   'share-files-for-debugging',
 ] as const;
