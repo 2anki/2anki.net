@@ -141,7 +141,51 @@ vi.mock('./events/eventsSinkInstance', () => ({
   resetEventsSinkForTesting: () => undefined,
 }));
 
+const remoteFiles = vi.hoisted(() => new Map<string, Buffer>());
+const savedDropboxFiles = vi.hoisted(
+  () => [] as { owner: number | string; names: string[] }[]
+);
+
+vi.mock('./observability/instrumentedAxios', async (importActual) => {
+  const actual =
+    await importActual<typeof import('./observability/instrumentedAxios')>();
+  const remoteAwareGet: typeof actual.default.get = (service, url, config) => {
+    const bytes = remoteFiles.get(url);
+    if (bytes != null) {
+      return Promise.resolve({ data: bytes } as never);
+    }
+    return actual.default.get(service, url, config);
+  };
+  return {
+    ...actual,
+    default: new Proxy(actual.default, {
+      get: (target, property) =>
+        property === 'get' ? remoteAwareGet : Reflect.get(target, property),
+    }),
+  };
+});
+
+vi.mock('../data_layer/DropboxRepository', async (importActual) => {
+  const actual =
+    await importActual<typeof import('../data_layer/DropboxRepository')>();
+  class RecordingDropboxRepository {
+    async saveFiles(files: { name: string }[], owner: number | string) {
+      savedDropboxFiles.push({ owner, names: files.map((file) => file.name) });
+    }
+  }
+  return { ...actual, DropboxRepository: RecordingDropboxRepository };
+});
+
+import type { Knex } from 'knex';
 import UploadService from './UploadService';
+import UploadController from '../controllers/Upload/UploadController';
+import NotionService from './NotionService';
+import type { INotionRepository } from '../data_layer/NotionRespository';
+import { McpToolsService } from './mcp/McpToolsService';
+import type AuthenticationService from './AuthenticationService';
+import type { UserWithOwner } from './AuthenticationService';
+import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
+import { applyUserLocals } from '../routes/middleware/configureUserLocal';
 import type JobRepository from '../data_layer/JobRepository';
 import type UsersRepository from '../data_layer/UsersRepository';
 import type { IUploadRepository } from '../data_layer/UploadRespository';
@@ -241,11 +285,13 @@ function backgroundJobs() {
   return { jobs, settled };
 }
 
-function payingResponse() {
+const SUBSCRIBER_LOCALS = { owner: OWNER, subscriber: true };
+
+function responseWith(locals: Record<string, unknown>) {
   let status = 0;
   let body: unknown = null;
   const res = {
-    locals: { owner: OWNER, subscriber: true, requestId: 'background-pptx' },
+    locals: { ...locals, requestId: 'background-pptx' },
     headersSent: false,
     status: vi.fn((code: number) => {
       status = code;
@@ -305,10 +351,7 @@ type UploadedTestFile = {
   buffer: Buffer;
 };
 
-async function upload(
-  file: UploadedTestFile | UploadedTestFile[],
-  body: Record<string, string> = {}
-) {
+function backgroundService() {
   __setFeatureFlagDependencies({
     repository: noFlagsSet(),
   });
@@ -327,6 +370,15 @@ async function upload(
     } as unknown as UsersRepository,
     ...fakeUploadServiceDeps()
   );
+  return { service, jobs, settled, uploads };
+}
+
+async function upload(
+  file: UploadedTestFile | UploadedTestFile[],
+  body: Record<string, string> = {},
+  locals: Record<string, unknown> = SUBSCRIBER_LOCALS
+) {
+  const { service, jobs, settled, uploads } = backgroundService();
   const req = {
     files: (Array.isArray(file) ? file : [file]).map((f) => ({
       ...f,
@@ -337,7 +389,7 @@ async function upload(
     cookies: {},
     path: '/api/upload/file',
   } as unknown as express.Request;
-  const { res, status, body: responseBody } = payingResponse();
+  const { res, status, body: responseBody } = responseWith(locals);
 
   await service.handleUpload(req, res);
   const jobId = (responseBody() as { jobId: string }).jobId;
@@ -563,5 +615,176 @@ describe('a paying account with AI on uploads a zip where Claude declines one fi
       null,
       { skippedAiFiles: [{ name: 'week 3.md', reason: 'declined' }] }
     );
+  }, 20_000);
+});
+
+const SIGNED_IN_AT = new Date('2026-11-12T12:00:00Z');
+
+async function signedInLocals(
+  patreon: boolean,
+  passes: InMemoryUserPassRepository
+): Promise<Record<string, unknown>> {
+  const res = { locals: {} } as express.Response;
+  await applyUserLocals(
+    res,
+    {
+      owner: OWNER,
+      email: 'learner@example.com',
+      patreon,
+      chat_consent_at: null,
+    } as unknown as UserWithOwner,
+    {
+      getIsSubscriber: async () => false,
+      getSubscriptionInfo: async () => null,
+    } as unknown as AuthenticationService,
+    {} as Knex,
+    SIGNED_IN_AT,
+    passes
+  );
+  return res.locals;
+}
+
+function passHolderLocals() {
+  const passes = new InMemoryUserPassRepository();
+  passes.seed({
+    user_id: OWNER,
+    kind: '24h',
+    expires_at: new Date(SIGNED_IN_AT.getTime() + 24 * 60 * 60 * 1000),
+    stripe_payment_intent_id: 'pi_daypass',
+  });
+  return signedInLocals(false, passes);
+}
+
+function patreonLocals() {
+  return signedInLocals(true, new InMemoryUserPassRepository());
+}
+
+const lectureFromDropbox = {
+  bytes: numberedLecture.length,
+  icon: '',
+  id: 'id:lecture-slides',
+  isDir: false,
+  link: 'https://dl.dropboxusercontent.com/s/lecture.pptx',
+  linkType: 'direct',
+  name: 'lecture.pptx',
+};
+
+const lectureLink = 'https://slides.example/lecture.pptx';
+
+describe('a PowerPoint reaching the background path from another entry point', () => {
+  const originalWorkspaceBase = process.env.WORKSPACE_BASE;
+  let workspaceBase: string;
+
+  beforeAll(() => applyEnv(ENV));
+
+  afterAll(() => applyEnv(originalEnv));
+
+  beforeEach(() => {
+    workspaceBase = fs.mkdtempSync(path.join(os.tmpdir(), 'pptx-entry-'));
+    process.env.WORKSPACE_BASE = workspaceBase;
+  });
+
+  afterEach(() => {
+    __resetFeatureFlagModuleForTests();
+    builtCards.length = 0;
+    storedKeys.length = 0;
+    savedDropboxFiles.length = 0;
+    remoteFiles.clear();
+    process.env.WORKSPACE_BASE = originalWorkspaceBase;
+    fs.rmSync(workspaceBase, { recursive: true, force: true });
+  });
+
+  it.each([
+    ['an active pass', passHolderLocals],
+    ['Patreon lifetime access and no subscription', patreonLocals],
+  ])(
+    'builds the deck in the background for a signed-in account with %s',
+    async (_account, buildLocals) => {
+      const locals = await buildLocals();
+      const { status, jobId, settled, jobs } = await upload(
+        {
+          originalname: 'lecture.pptx',
+          mimetype: PPTX_MIMETYPE,
+          buffer: numberedLecture,
+        },
+        {},
+        locals
+      );
+      const outcome = await settled;
+
+      expect(status).toBe(202);
+      expect(jobs.create).toHaveBeenCalledWith(
+        jobId,
+        String(OWNER),
+        'lecture.pptx',
+        'upload'
+      );
+      expect(outcome).toBe('stored in My Decks');
+    },
+    20_000
+  );
+
+  it('builds a PowerPoint picked in Dropbox in the background for a paying account', async () => {
+    remoteFiles.set(lectureFromDropbox.link, numberedLecture);
+    const { service, jobs, settled } = backgroundService();
+    const controller = new UploadController(
+      service,
+      new NotionService({} as INotionRepository)
+    );
+    const { res, status, body } = responseWith(SUBSCRIBER_LOCALS);
+    const req = {
+      body: { files: JSON.stringify([lectureFromDropbox]) },
+      headers: {},
+      cookies: {},
+      path: '/api/upload/dropbox',
+    } as unknown as express.Request;
+
+    await controller.dropbox(req, res);
+    const outcome = await settled;
+
+    expect(status()).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      (body() as { jobId: string }).jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+    expect(outcome).toBe('stored in My Decks');
+    expect(savedDropboxFiles).toEqual([
+      { owner: OWNER, names: ['lecture.pptx'] },
+    ]);
+  }, 20_000);
+
+  it("answers a paying MCP caller's PowerPoint link as processing and builds it in the background", async () => {
+    remoteFiles.set(lectureLink, numberedLecture);
+    const { service, jobs, settled } = backgroundService();
+    const tools = new McpToolsService(
+      { getJobsByOwner: async () => [] },
+      {} as never,
+      {} as never,
+      (req, res) => service.handleUpload(req, res),
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { holdForPlan: async () => null },
+      'https://mcp.test'
+    );
+
+    const result = await tools.convertToDeck(
+      { url: lectureLink },
+      String(OWNER),
+      SUBSCRIBER_LOCALS
+    );
+    const outcome = await settled;
+
+    expect(result).toMatchObject({ kind: 'processing' });
+    expect(jobs.create).toHaveBeenCalledWith(
+      (result as { jobId: string }).jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+    expect(outcome).toBe('stored in My Decks');
   }, 20_000);
 });
