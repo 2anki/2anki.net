@@ -2581,6 +2581,108 @@ describe('UploadService.handleSyncUpload — card-limit enforcement', () => {
     );
   });
 
+  it.each([
+    [
+      'a signed-in free user over the month who declined',
+      42,
+      22,
+      { cookies: { anon_id: 'anon-wall', cookie_consent: 'denied' } },
+      null,
+      { reason: 'monthly_limit', kind: 'card_count' },
+    ],
+    [
+      'a signed-in free user over the month who granted consent',
+      42,
+      22,
+      { cookies: { anon_id: 'anon-wall', cookie_consent: 'granted' } },
+      'anon-wall',
+      { reason: 'monthly_limit', kind: 'card_count' },
+    ],
+    [
+      'a signed-out visitor over the cap who declined',
+      null,
+      22,
+      {
+        cookies: { anon_id: 'anon-wall', cookie_consent: 'denied' },
+        ip: '8.8.8.8',
+      },
+      null,
+      { reason: 'anonymous_cap', kind: 'anonymous' },
+    ],
+    [
+      'a signed-out EEA visitor over the cap with no choice stored',
+      null,
+      22,
+      { cookies: { anon_id: 'anon-wall' }, ip: '193.99.144.80' },
+      null,
+      { reason: 'anonymous_cap', kind: 'anonymous' },
+    ],
+    [
+      'a signed-out visitor over the cap outside the EEA with no choice stored',
+      null,
+      22,
+      { cookies: { anon_id: 'anon-wall' }, ip: '8.8.8.8' },
+      'anon-wall',
+      { reason: 'anonymous_cap', kind: 'anonymous' },
+    ],
+    [
+      'a signed-out visitor over the cap who granted consent',
+      null,
+      22,
+      { cookies: { anon_id: 'anon-wall', cookie_consent: 'granted' } },
+      'anon-wall',
+      { reason: 'anonymous_cap', kind: 'anonymous' },
+    ],
+  ])(
+    'walls %s, recording conversion_failed and paywall_shown with the analytics id',
+    async (
+      _label,
+      owner,
+      cardCount,
+      overrides,
+      expectedAnonymousId,
+      { reason, kind }
+    ) => {
+      mockPackages([{ name: 'deck', cardCount }]);
+      const usersRepo = buildUsersRepo({
+        getCardUsage: vi
+          .fn()
+          .mockResolvedValue({ cards_used: 90, month_started_at: new Date() }),
+      });
+      const service = new UploadService(
+        buildRepository(),
+        {} as JobRepository,
+        usersRepo,
+        ...fakeUploadServiceDeps()
+      );
+      const req = buildRequest(overrides as Partial<express.Request>);
+      const { res, redirectedTo } = responseWithRedirect();
+      if (owner != null) {
+        (res.locals as Record<string, unknown>).owner = owner;
+      }
+
+      await service.handleUpload(req, res);
+
+      expect(redirectedTo()).toBe(`/limit?kind=${kind}`);
+      expect(trackMock).toHaveBeenCalledWith(
+        'conversion_failed',
+        expect.objectContaining({
+          userId: owner,
+          anonymousId: expectedAnonymousId,
+          props: expect.objectContaining({ reason }),
+        })
+      );
+      expect(trackMock).toHaveBeenCalledWith(
+        'paywall_shown',
+        expect.objectContaining({
+          userId: owner,
+          anonymousId: expectedAnonymousId,
+          props: expect.objectContaining({ kind }),
+        })
+      );
+    }
+  );
+
   it('treats a session cookie that resolves to no user as signed out', async () => {
     mockPackages([{ name: 'deck', cardCount: 22 }]);
     const usersRepo = buildUsersRepo();

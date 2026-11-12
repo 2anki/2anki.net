@@ -483,6 +483,37 @@ describe('NotionController', () => {
       }
     );
 
+    it.each([
+      ['granted', 'anon-notion-limit'],
+      ['denied', null],
+    ])(
+      'records the over-limit Notion conversion_failed with the anon id only when consent is %s',
+      async (consent, expectedAnonymousId) => {
+        setupConvertMocks();
+        req.cookies = { anon_id: 'anon-notion-limit', cookie_consent: consent };
+        res.locals = { ...res.locals, owner: '42' };
+        vi.spyOn(UsersRepository.prototype, 'getCardUsage').mockResolvedValue({
+          cards_used: 200,
+          month_started_at: new Date(),
+        });
+
+        await controller.convert(
+          req as express.Request,
+          res as express.Response
+        );
+
+        expect(res.status).toHaveBeenCalledWith(402);
+        expect(track).toHaveBeenCalledWith(
+          'conversion_failed',
+          expect.objectContaining({
+            userId: 42,
+            anonymousId: expectedAnonymousId,
+            props: expect.objectContaining({ reason: 'monthly_limit' }),
+          })
+        );
+      }
+    );
+
     it('returns 202 with jobId on happy path', async () => {
       setupConvertMocks();
 
