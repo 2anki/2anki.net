@@ -1,0 +1,9 @@
+{
+  "aria": "Renouvellement du Semester Pass",
+  "title": "Ton Semester Pass se termine le {{date}}",
+  "body": "Renouvelle maintenant et les 120 prochains jours commencent le {{date}} : tu ne perds aucun jour. Un seul paiement, rien ne se renouvelle tout seul.",
+  "renew": "Renouveler le Semester Pass",
+  "renewWithPrice": "Renouveler le Semester Pass · {{price}}",
+  "opening": "Ouverture du paiement",
+  "checkoutError": "Impossible de lancer le paiement. Réessaie ou écris à support@2anki.net."
+}

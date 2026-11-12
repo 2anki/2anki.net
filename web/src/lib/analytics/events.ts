@@ -143,6 +143,8 @@ export const KNOWN_EVENTS = new Set([
   'anonymous_partial_gate_shown',
   'anonymous_preview_cards_downloaded',
   'monthly_partial_offer_shown',
+  'semester_renewal_banner_shown',
+  'semester_renewal_clicked',
   'ai_preview_shown',
   'ai_preview_pass_clicked',
   'thin_deck_ai_offer_shown',

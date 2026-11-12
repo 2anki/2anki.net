@@ -27,13 +27,22 @@ export const schedulePassEndingEmails = async (
   const tick = async () => {
     try {
       const result = await useCase.execute(false, limit);
-      console.info(`[pass-ending] sent ${result.count} email(s)`);
+      console.info(
+        `[pass-ending] sent ${result.count} day-before and ${result.renewalCount} renewal email(s)`
+      );
       if (options.eventsSink != null) {
         options.eventsSink.record({
           name: 'email_batch_sent',
           props: withServerMarker({
             campaign: 'pass_ending',
             count: result.count,
+          }),
+        });
+        options.eventsSink.record({
+          name: 'email_batch_sent',
+          props: withServerMarker({
+            campaign: 'pass_renewal',
+            count: result.renewalCount,
           }),
         });
       }

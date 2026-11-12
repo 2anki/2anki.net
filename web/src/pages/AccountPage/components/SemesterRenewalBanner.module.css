@@ -1,0 +1,16 @@
+.banner {
+  border-left: 3px solid var(--color-primary);
+}
+
+.title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 0.25rem;
+}
+
+.body {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 1rem;
+}

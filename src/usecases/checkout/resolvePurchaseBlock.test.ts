@@ -7,6 +7,7 @@ const nothing: HeldEntitlements = {
   billedThroughApple: false,
   activePassKind: null,
   activePassExpiresAt: null,
+  semesterRenewalOpen: false,
 };
 
 const expiry = new Date('2026-11-01T10:00:00.000Z');
@@ -130,6 +131,79 @@ describe('resolvePurchaseBlock', () => {
         activePassExpiresAt: expiry,
       })?.code
     ).toBe('already_lifetime');
+  });
+
+  describe('semester_pass', () => {
+    const semesterHolder: HeldEntitlements = {
+      ...nothing,
+      activePassKind: '120d',
+      activePassExpiresAt: expiry,
+    };
+
+    it('lets someone who owns nothing buy a Semester Pass', () => {
+      expect(resolvePurchaseBlock('semester_pass', nothing)).toBeNull();
+    });
+
+    it('lets a Semester Pass holder in the final week renew', () => {
+      expect(
+        resolvePurchaseBlock('semester_pass', {
+          ...semesterHolder,
+          semesterRenewalOpen: true,
+        })
+      ).toBeNull();
+    });
+
+    it('blocks a Semester Pass holder with more than a week left', () => {
+      expect(resolvePurchaseBlock('semester_pass', semesterHolder)).toEqual({
+        code: 'pass_still_active',
+        message:
+          'Your pass is still running. Buy the next one when it runs out.',
+        expiresAt: '2026-11-01T10:00:00.000Z',
+      });
+    });
+
+    it.each(['24h', '7d'] as const)(
+      'blocks a Semester Pass while a %s pass is still running',
+      (activePassKind) => {
+        expect(
+          resolvePurchaseBlock('semester_pass', {
+            ...nothing,
+            activePassKind,
+            activePassExpiresAt: expiry,
+          })?.code
+        ).toBe('pass_still_active');
+      }
+    );
+
+    it('keeps a Day or Week Pass blocked for a Semester Pass holder in the final week', () => {
+      expect(
+        resolvePurchaseBlock('pass', {
+          ...semesterHolder,
+          semesterRenewalOpen: true,
+        })?.code
+      ).toBe('pass_still_active');
+    });
+
+    it.each([
+      ['lifetime', { lifetime: true }, 'already_lifetime'],
+      [
+        'active subscription',
+        { activeSubscription: true },
+        'already_subscribed',
+      ],
+      ['Apple billing', { billedThroughApple: true }, 'billed_through_apple'],
+    ] as const)(
+      'still blocks a renewal for someone with %s',
+      (_label, held, code) => {
+        expect(
+          resolvePurchaseBlock('semester_pass', {
+            ...semesterHolder,
+            semesterRenewalOpen: true,
+            ...held,
+          })?.code
+        ).toBe(code);
+      }
+    );
   });
 
   describe('auto_sync', () => {

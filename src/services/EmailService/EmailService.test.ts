@@ -537,6 +537,15 @@ describe('EmailService tags every outgoing send with a template category', () =>
       run: (s) => s.sendPassEndingEmail('user@example.com', 'tok', 'Week Pass'),
     },
     {
+      category: EMAIL_CATEGORIES.semesterRenewal,
+      run: (s) =>
+        s.sendSemesterRenewalEmail(
+          'user@example.com',
+          'tok',
+          new Date('2027-01-24T15:00:00.000Z')
+        ),
+    },
+    {
       category: EMAIL_CATEGORIES.subscriptionClaim,
       run: (s) =>
         s.sendSubscriptionClaimConfirmation(

@@ -15,6 +15,10 @@ import { ValidateAnonymousPassUseCase } from '../../usecases/checkout/ValidateAn
 import { ClaimPassFromTokenUseCase } from '../../usecases/passes/ClaimPassFromTokenUseCase';
 import { isAppleSubscriptionPass } from '../../usecases/passes/isAppleSubscriptionPass';
 import { getStripe } from '../../lib/integrations/stripe';
+import {
+  holdsOnlySemesterPasses,
+  isInSemesterRenewalWindow,
+} from '../../lib/passes/semesterRenewal';
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
 
 export type PlanSource = 'stripe' | 'apple' | 'lifetime' | null;
@@ -66,10 +70,20 @@ export async function applyUserLocals(
     res.locals.subscriber = true;
   } else {
     const passRepo = userPassRepo ?? new UserPassRepository(database);
-    activePass = await passRepo.findActive(user.owner, now ?? new Date());
+    const passClock = now ?? new Date();
+    activePass = await passRepo.findActive(user.owner, passClock);
     res.locals.subscriber = activePass != null;
     res.locals.passExpiresAt = activePass?.expires_at.toISOString() ?? null;
     res.locals.passKind = activePass?.kind ?? null;
+    res.locals.semesterRenewalOpen =
+      isInSemesterRenewalWindow(
+        activePass?.kind ?? null,
+        activePass?.expires_at ?? null,
+        passClock
+      ) &&
+      holdsOnlySemesterPasses(
+        await passRepo.findActivePasses(user.owner, passClock)
+      );
   }
   res.locals.planSource = resolvePlanSource(
     isSubscriber,

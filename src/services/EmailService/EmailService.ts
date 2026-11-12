@@ -13,6 +13,7 @@ import {
   MAGIC_LINK_TEMPLATE,
   NOTION_RECONNECT_TEMPLATE,
   PASS_ENDING_TEMPLATE,
+  SEMESTER_RENEWAL_TEMPLATE,
   PASSWORD_RESET_TEMPLATE,
   PRICE_LOCK_IN_TEMPLATE,
   RE_ENGAGEMENT_TEMPLATE,
@@ -123,6 +124,11 @@ export interface IEmailService {
     token: string,
     passLabel: string
   ): Promise<void>;
+  sendSemesterRenewalEmail(
+    to: string,
+    token: string,
+    expiresAt: Date
+  ): Promise<void>;
   sendParserCanaryAlert(to: string, summary: string): Promise<void>;
   sendAiSpendAlertEmail(
     to: string,
@@ -232,6 +238,15 @@ function deckReadyText(
   strings: DeckReadyStrings
 ): string {
   return `${strings.textReadyPrefix}${deckName}${deckReadySuffix(cardCount, strings)}`;
+}
+
+function formatRenewalDate(date: Date, language: string | null): string {
+  return new Intl.DateTimeFormat(language === 'de' ? 'de-DE' : 'en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
 }
 
 function firstRecipient(to: SgMessage['to']): string | null {
@@ -670,6 +685,52 @@ export class EmailService implements IEmailService {
     } catch (error) {
       console.error(
         `Failed to send pass ending email to ${emailHash(to)}:`,
+        error
+      );
+      throw error;
+    }
+  }
+
+  async sendSemesterRenewalEmail(
+    to: string,
+    token: string,
+    expiresAt: Date
+  ): Promise<void> {
+    const domain = process.env.DOMAIN ?? 'https://2anki.net';
+    const ctaUrl = `${domain}/r/email?t=${encodeURIComponent(token)}&c=pass_renewal&to=/account`;
+    const unsubscribeUrl = `${domain}/unsubscribe?uid=${token}`;
+    const language = await this.resolveLanguage(to);
+    const strings = getEmailStrings(language);
+    const copy = strings.semesterRenewal;
+    const endDate = formatRenewalDate(expiresAt, language);
+    const markup = SEMESTER_RENEWAL_TEMPLATE.replace('{{title}}', copy.title)
+      .replace('{{intro}}', copy.intro)
+      .replace('{{renewBody}}', copy.renewBody)
+      .replace('{{oneTime}}', copy.oneTime)
+      .replace('{{cta}}', copy.cta)
+      .replace('{{ctaNote}}', copy.ctaNote)
+      .replace('{{replyLine}}', copy.replyLine)
+      .replace('{{signoff}}', copy.signoff)
+      .replace('{{unsubscribe}}', strings.commercialShared.unsubscribe)
+      .replace('{{ctaUrl}}', ctaUrl)
+      .replace('{{unsubscribeUrl}}', unsubscribeUrl)
+      .replaceAll('{{endDate}}', escapeHtml(endDate));
+    const $ = cheerio.load(markup);
+    const text = $('body').text().replace(/\s+/g, ' ').trim();
+    const msg = {
+      to,
+      from: this.defaultSender,
+      subject: copy.subject.replaceAll('{{endDate}}', endDate),
+      text,
+      html: markup,
+      replyTo: 'support@2anki.net',
+      categories: [EMAIL_CATEGORIES.semesterRenewal],
+    };
+    try {
+      await sendMail(msg);
+    } catch (error) {
+      console.error(
+        `Failed to send semester renewal email to ${emailHash(to)}:`,
         error
       );
       throw error;
@@ -1400,6 +1461,19 @@ export class UnimplementedEmailService implements IEmailService {
     passLabel: string
   ): Promise<void> {
     console.info('sendPassEndingEmail not handled', to, token, passLabel);
+  }
+
+  async sendSemesterRenewalEmail(
+    to: string,
+    token: string,
+    expiresAt: Date
+  ): Promise<void> {
+    console.info(
+      'sendSemesterRenewalEmail not handled',
+      to,
+      token,
+      expiresAt.toISOString()
+    );
   }
 
   async sendParserCanaryAlert(to: string, summary: string): Promise<void> {

@@ -8,7 +8,7 @@ import {
 } from './schedulePassEndingEmails';
 
 function makeUseCase(
-  result = { count: 2, dryRun: false }
+  result = { count: 2, renewalCount: 0, dryRun: false }
 ): Mocked<Pick<SendPassEndingEmailsUseCase, 'execute'>> {
   return { execute: vi.fn().mockResolvedValue(result) };
 }
@@ -68,7 +68,7 @@ describe('schedulePassEndingEmails', () => {
   });
 
   it('records the batch under the pass_ending campaign', async () => {
-    const useCase = makeUseCase({ count: 3, dryRun: false });
+    const useCase = makeUseCase({ count: 3, renewalCount: 0, dryRun: false });
     const eventsSink: Mocked<Pick<EventsSink, 'record' | 'flush'>> = {
       record: vi.fn(),
       flush: vi.fn().mockResolvedValue(undefined),
@@ -86,6 +86,29 @@ describe('schedulePassEndingEmails', () => {
     expect(eventsSink.record).toHaveBeenCalledWith({
       name: 'email_batch_sent',
       props: { campaign: 'pass_ending', count: 3, server_marker: true },
+    });
+    clearInterval(handle);
+  });
+
+  it('records the renewal notes as their own pass_renewal batch', async () => {
+    const useCase = makeUseCase({ count: 3, renewalCount: 4, dryRun: false });
+    const eventsSink: Mocked<Pick<EventsSink, 'record' | 'flush'>> = {
+      record: vi.fn(),
+      flush: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const handle = await schedulePassEndingEmails(
+      useCase as unknown as SendPassEndingEmailsUseCase,
+      {
+        intervalMs: 1000,
+        lastRunAt: vi.fn().mockResolvedValue(null),
+        eventsSink: eventsSink as unknown as EventsSink,
+      }
+    );
+
+    expect(eventsSink.record).toHaveBeenCalledWith({
+      name: 'email_batch_sent',
+      props: { campaign: 'pass_renewal', count: 4, server_marker: true },
     });
     clearInterval(handle);
   });

@@ -171,6 +171,33 @@ describe('EmailRedirectRouter', () => {
       );
     });
 
+    it('resolves a pass_renewal token and sends the click to the account page', async () => {
+      mockPassWinbackRepo.findByToken.mockResolvedValueOnce({
+        id: 12,
+        userId: 78,
+      });
+      const res = await fetch(
+        `${url}/r/email?t=renewal-token&c=pass_renewal&to=/account`,
+        { redirect: 'manual' }
+      );
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe('https://2anki.net/account');
+      expect(mockPassWinbackRepo.findByToken).toHaveBeenCalledWith(
+        'renewal-token'
+      );
+      expect(mockSink.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'email_clicked',
+          user_id: 78,
+          props: expect.objectContaining({
+            campaign: 'pass_renewal',
+            email_id: 12,
+            destination: '/account',
+          }),
+        })
+      );
+    });
+
     it('records email_clicked with user_id when inactivity token resolves', async () => {
       mockInactivityRepo.findByToken.mockResolvedValueOnce({
         id: 5,
@@ -240,7 +267,7 @@ describe('resolveEmailDestination', () => {
   // The redirect target must always be a string this module owns, never the
   // caller's — an off-site value reaching res.redirect is an open redirect
   // (tssecurity:S5146), and a phished 2anki email link is the realistic abuse.
-  it.each(['/', '/upload', '/pricing', '/login'])(
+  it.each(['/', '/upload', '/pricing', '/login', '/account'])(
     'passes through the allowlisted destination %s',
     (destination) => {
       expect(resolveEmailDestination(destination)).toBe(destination);

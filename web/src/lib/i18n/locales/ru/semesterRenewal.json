@@ -1,0 +1,9 @@
+{
+  "aria": "Продление Semester Pass",
+  "title": "Твой Semester Pass заканчивается {{date}}",
+  "body": "Продли сейчас, и следующие 120 дней начнутся {{date}} — ни один день не пропадёт. Один платёж, ничего не продлевается само.",
+  "renew": "Продлить Semester Pass",
+  "renewWithPrice": "Продлить Semester Pass · {{price}}",
+  "opening": "Открываем оплату",
+  "checkoutError": "Не удалось начать оплату. Попробуй ещё раз или напиши на support@2anki.net."
+}

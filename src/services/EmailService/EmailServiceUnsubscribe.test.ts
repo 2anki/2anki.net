@@ -72,6 +72,29 @@ describe('commercial email unsubscribe links', () => {
     expect(html).toContain("Don't want emails like this? Unsubscribe");
   });
 
+  it('semester-renewal email names the end date, links the account page and resolves the unsubscribe URL', async () => {
+    const service = getDefaultEmailService();
+    await service.sendSemesterRenewalEmail(
+      'dana@example.com',
+      'tok-renewal',
+      new Date('2027-01-24T15:00:00.000Z')
+    );
+
+    const { html, subject, text } = lastMessage();
+    expect(subject).toBe('Your Semester Pass ends on 24 January 2027');
+    expect(text).toContain(
+      'Renew it now and the next 120 days start on 24 January 2027'
+    );
+    expect(html).toContain(
+      'href="https://2anki.net/r/email?t=tok-renewal&c=pass_renewal&to=/account"'
+    );
+    expect(html).toContain(
+      'href="https://2anki.net/unsubscribe?uid=tok-renewal"'
+    );
+    expect(html).not.toContain('{{');
+    expect(html).toContain("Don't want emails like this? Unsubscribe");
+  });
+
   it('abandoned-checkout-recovery email contains a resolved unsubscribe URL', async () => {
     const service = getDefaultEmailService();
     await service.sendAbandonedCheckoutRecoveryEmail(

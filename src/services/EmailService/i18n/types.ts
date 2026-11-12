@@ -84,6 +84,18 @@ export interface PassEndingStrings {
   signoff: string;
 }
 
+export interface SemesterRenewalStrings {
+  subject: string;
+  title: string;
+  intro: string;
+  renewBody: string;
+  oneTime: string;
+  cta: string;
+  ctaNote: string;
+  replyLine: string;
+  signoff: string;
+}
+
 export interface CommercialSharedStrings {
   unsubscribe: string;
 }
@@ -98,6 +110,7 @@ export interface EmailStrings {
   inactivityWarning: InactivityWarningStrings;
   abandonedCheckout: AbandonedCheckoutStrings;
   passEnding: PassEndingStrings;
+  semesterRenewal: SemesterRenewalStrings;
   commercialShared: CommercialSharedStrings;
 }
 

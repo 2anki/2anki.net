@@ -1,0 +1,9 @@
+{
+  "aria": "Semester Pass verlängern",
+  "title": "Dein Semester Pass endet am {{date}}",
+  "body": "Verlängere jetzt, und die nächsten 120 Tage beginnen am {{date}}. Du verlierst keinen Tag. Eine einmalige Zahlung, nichts verlängert sich von selbst.",
+  "renew": "Semester Pass verlängern",
+  "renewWithPrice": "Semester Pass verlängern · {{price}}",
+  "opening": "Checkout wird geöffnet",
+  "checkoutError": "Der Checkout konnte nicht gestartet werden. Versuch es erneut oder schreib an support@2anki.net."
+}
