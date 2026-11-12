@@ -496,7 +496,35 @@ describe('AccountPage Day Pass credit offer', () => {
     expect(creditRequests).toBe(1);
   });
 
-  it('stays quiet for a past-due subscriber so the payment notice is not crowded', async () => {
+  it('offers the credit to a past-due subscriber who still holds a running Day Pass', async () => {
+    mockGetSubscriptionStatus.mockReset();
+    mockUseUserLocals.mockReturnValue({
+      isLoading: false,
+      data: {
+        user: { email: 'learner@example.com' },
+        locals: {
+          subscriber: true,
+          passKind: '24h',
+          subscriptionInfo: { email: 'payer@example.com' },
+        },
+      },
+      refetch: vi.fn(),
+    });
+    mockUseSubscriptionStatus.mockReturnValue({
+      plan: 'dayPass',
+      hasActivePlan: true,
+    });
+
+    renderAccountPage();
+
+    expect(
+      await screen.findByText('Move up to the Semester Pass for $23')
+    ).toBeInstanceOf(HTMLElement);
+    expect(creditRequests).toBe(1);
+    expect(mockGetSubscriptionStatus).not.toHaveBeenCalled();
+  });
+
+  it('stays quiet for a past-due subscriber whose Day Pass ended, so the payment notice is not crowded', async () => {
     mockGetSubscriptionStatus.mockReset();
     mockGetSubscriptionStatus.mockResolvedValue({
       subscriptions: [

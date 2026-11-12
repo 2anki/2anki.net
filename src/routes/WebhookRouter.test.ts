@@ -1723,6 +1723,43 @@ describe('WebhookRouter — checkout.session.expired', () => {
     expect(mockSendAbandonedCheckoutRecoveryEmail).not.toHaveBeenCalled();
   });
 
+  it.each<[string, Record<string, string> | null]>([
+    ['a subscription checkout', { plan: 'unlimited', interval: 'month' }],
+    ['a credit pack', { credit_pack: '1', user_id: '42' }],
+    ['an anonymous pass', { pass_kind: '24h', pass_anonymous: '1' }],
+    ['a Day Pass', { pass_kind: '24h', user_id: '42' }],
+    ['a Week Pass', { pass_kind: '7d', user_id: '42' }],
+    ['no metadata at all', null],
+  ])(
+    'still sends the recovery email when %s checkout expires',
+    async (_label, metadata) => {
+      mockWebhookEvent = {
+        type: 'checkout.session.expired',
+        data: {
+          object: {
+            id: 'cs_expired_other',
+            customer_details: { email: 'buyer@example.com' },
+            metadata,
+          },
+        },
+      };
+
+      const res = await postWebhook();
+
+      expect(res.status).toBe(200);
+      expect(mockClaimSession).toHaveBeenCalledWith(
+        'cs_expired_other',
+        'buyer@example.com',
+        expect.any(String),
+        null
+      );
+      expect(mockSendAbandonedCheckoutRecoveryEmail).toHaveBeenCalledWith(
+        'buyer@example.com',
+        expect.any(String)
+      );
+    }
+  );
+
   it('still sends the recovery email when an ordinary pass checkout expires', async () => {
     mockWebhookEvent = {
       type: 'checkout.session.expired',

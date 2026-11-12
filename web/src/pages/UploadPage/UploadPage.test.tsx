@@ -50,6 +50,7 @@ let fakeLocals:
       subscriber?: boolean;
       passKind?: string | null;
       planSource?: string | null;
+      subscriptionInfo?: { email?: string };
     }
   | undefined;
 let fakeFeatures:
@@ -1272,6 +1273,43 @@ describe('UploadPage Day Pass credit offer', () => {
     globalThis.fetch = originalFetch;
     fakeUser = null;
     fakeLocals = undefined;
+    fakeFeatures = undefined;
+  });
+
+  it('shows the offer to a past-due subscriber who still holds a Day Pass', async () => {
+    fakeLocals = {
+      subscriber: true,
+      passKind: '24h',
+      planSource: null,
+      subscriptionInfo: { email: 'payer@example.com' },
+    };
+
+    renderPage('/upload');
+
+    expect(
+      await screen.findByText('Move up to the Semester Pass for $23')
+    ).toBeInTheDocument();
+    expect(creditRequests).toBe(1);
+  });
+
+  it('does not ask for the offer from a signed-out visitor', () => {
+    fakeUser = null;
+    fakeLocals = undefined;
+
+    renderPage('/upload');
+
+    expect(creditRequests).toBe(0);
+  });
+
+  it('does not ask for the offer from a signed-out visitor returning with an anonymous Day Pass', () => {
+    fakeUser = null;
+    fakeLocals = undefined;
+    fakeFeatures = { anonymousDayPassCard: true };
+
+    renderPage('/upload?pass_session=cs_test_anon_day');
+
+    expect(storePassToken).toHaveBeenCalledWith('cs_test_anon_day');
+    expect(creditRequests).toBe(0);
   });
 
   it('shows a Day Pass holder the Semester Pass with their Day Pass credited', async () => {
