@@ -197,7 +197,10 @@ import type { INotionRepository } from '../data_layer/NotionRespository';
 import { McpToolsService } from './mcp/McpToolsService';
 import AuthenticationService from './AuthenticationService';
 import type { UserWithOwner } from './AuthenticationService';
-import { InMemoryUserPassRepository } from '../data_layer/UserPassRepository';
+import {
+  InMemoryUserPassRepository,
+  type UserPass,
+} from '../data_layer/UserPassRepository';
 import { applyUserLocals } from '../routes/middleware/configureUserLocal';
 import {
   createGoogleDriveDownloadLink,
@@ -662,16 +665,27 @@ async function signedInLocals(
   return res.locals;
 }
 
-function passHolderLocals() {
+function passHolderLocals(
+  pass: Pick<UserPass, 'kind' | 'stripe_payment_intent_id'>
+) {
   const passes = new InMemoryUserPassRepository();
   passes.seed({
+    ...pass,
     user_id: OWNER,
-    kind: '24h',
     expires_at: new Date(SIGNED_IN_AT.getTime() + 24 * 60 * 60 * 1000),
-    stripe_payment_intent_id: 'pi_daypass',
   });
   return signedInLocals(false, passes);
 }
+
+const STRIPE_DAY_PASS = {
+  kind: '24h',
+  stripe_payment_intent_id: 'pi_daypass',
+} as const;
+
+const APPLE_PASS = {
+  kind: 'unlimited',
+  stripe_payment_intent_id: 'apple:2000000000000001',
+} as const;
 
 function patreonLocals() {
   return signedInLocals(true, new InMemoryUserPassRepository());
@@ -734,6 +748,21 @@ const largePdf = Buffer.concat([
 ]);
 
 type LargePdfSent = { answer: Record<string, unknown>; jobId: string };
+
+function mcpTools(service: UploadService) {
+  return new McpToolsService(
+    { getJobsByOwner: async () => [] },
+    {} as never,
+    {} as never,
+    (req, res) => service.handleUpload(req, res),
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    { holdForPlan: async () => null },
+    'https://mcp.test'
+  );
+}
 
 function uploadController(service: UploadService) {
   return new UploadController(
@@ -810,18 +839,7 @@ async function largePdfFromDrive(
 async function largePdfFromMcp(service: UploadService): Promise<LargePdfSent> {
   const link = 'https://books.example/textbook.pdf';
   remoteFiles.set(link, largePdf);
-  const tools = new McpToolsService(
-    { getJobsByOwner: async () => [] },
-    {} as never,
-    {} as never,
-    (req, res) => service.handleUpload(req, res),
-    {} as never,
-    {} as never,
-    {} as never,
-    {} as never,
-    { holdForPlan: async () => null },
-    'https://mcp.test'
-  );
+  const tools = mcpTools(service);
 
   const result = (await tools.convertToDeck(
     { url: link },
@@ -855,7 +873,8 @@ describe('a PowerPoint reaching the background path from another entry point', (
   });
 
   it.each([
-    ['an active pass', passHolderLocals],
+    ['an active Stripe pass', () => passHolderLocals(STRIPE_DAY_PASS)],
+    ['an active Apple in-app pass', () => passHolderLocals(APPLE_PASS)],
     ['Patreon lifetime access and no subscription', patreonLocals],
     ['an active Auto Sync subscription', autoSyncSubscriberLocals],
   ])(
@@ -884,6 +903,50 @@ describe('a PowerPoint reaching the background path from another entry point', (
     },
     20_000
   );
+
+  it('builds a PowerPoint from the iOS app in the background for a paying subscriber', async () => {
+    const { status, jobId, settled, jobs } = await upload(
+      {
+        originalname: 'lecture.pptx',
+        mimetype: PPTX_MIMETYPE,
+        buffer: numberedLecture,
+      },
+      { source: 'app' }
+    );
+    const outcome = await settled;
+
+    expect(status).toBe(202);
+    expect(jobs.create).toHaveBeenCalledWith(
+      jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+    expect(outcome).toBe('stored in My Decks');
+  }, 20_000);
+
+  it('builds the deck in the background when an MCP caller sends text named as a PowerPoint', async () => {
+    const { service, jobs, settled } = backgroundService();
+    const tools = mcpTools(service);
+
+    const result = (await tools.convertToDeck(
+      {
+        text: 'Exocytosis\nCa2+ influx triggers fusion',
+        filename: 'lecture.pptx',
+      },
+      String(OWNER),
+      SUBSCRIBER_LOCALS
+    )) as { kind: string; jobId: string };
+    await settled;
+
+    expect(result.kind).toBe('processing');
+    expect(jobs.create).toHaveBeenCalledWith(
+      result.jobId,
+      String(OWNER),
+      'lecture.pptx',
+      'upload'
+    );
+  }, 20_000);
 
   it('builds a PowerPoint picked in Dropbox in the background for a paying account', async () => {
     remoteFiles.set(lectureFromDropbox.link, numberedLecture);
@@ -988,18 +1051,7 @@ describe('a PowerPoint reaching the background path from another entry point', (
   it("answers a paying MCP caller's PowerPoint link as processing and builds it in the background", async () => {
     remoteFiles.set(lectureLink, numberedLecture);
     const { service, jobs, settled } = backgroundService();
-    const tools = new McpToolsService(
-      { getJobsByOwner: async () => [] },
-      {} as never,
-      {} as never,
-      (req, res) => service.handleUpload(req, res),
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      { holdForPlan: async () => null },
-      'https://mcp.test'
-    );
+    const tools = mcpTools(service);
 
     const result = await tools.convertToDeck(
       { url: lectureLink },
