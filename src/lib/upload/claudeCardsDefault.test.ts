@@ -22,6 +22,7 @@ function paidPdf(
     entry: 'web',
     fileNames: ['lecture.pdf'],
     options: {},
+    storedOptions: null,
     ...overrides,
   };
 }
@@ -40,10 +41,25 @@ describe('claudeCardsByDefault', () => {
     }
   );
 
-  it('turns Claude on when the stored off carries no record of a choice', async () => {
+  it('keeps a stored off with no recorded toggle off, since it may have been a choice', async () => {
     expect(
       await claudeCardsByDefault(
-        paidPdf({ options: { 'claude-ai-flashcards': 'false' } }),
+        paidPdf({
+          options: { 'claude-ai-flashcards': 'false' },
+          storedOptions: { 'claude-ai-flashcards': 'false' },
+        }),
+        NO_HISTORY
+      )
+    ).toBe(false);
+  });
+
+  it('follows the account, not a browser off the account never stored, so the badge and upload agree', async () => {
+    expect(
+      await claudeCardsByDefault(
+        paidPdf({
+          options: { 'claude-ai-flashcards': 'false' },
+          storedOptions: {},
+        }),
         NO_HISTORY
       )
     ).toBe(true);
@@ -162,6 +178,28 @@ describe('accountHasClaudeCardsByDefault', () => {
         historyOf('upload_ai_turned_off')
       )
     ).toBe(false);
+  });
+
+  it('is off for a stored off with no recorded toggle', async () => {
+    expect(
+      await accountHasClaudeCardsByDefault(
+        7,
+        true,
+        { 'claude-ai-flashcards': 'false' },
+        NO_HISTORY
+      )
+    ).toBe(false);
+  });
+
+  it('is on for a stored off whose latest recorded toggle was on', async () => {
+    expect(
+      await accountHasClaudeCardsByDefault(
+        7,
+        true,
+        { 'claude-ai-flashcards': 'false' },
+        historyOf('upload_ai_turned_on')
+      )
+    ).toBe(true);
   });
 
   it('is off when AI is already on, since the badge already says so', async () => {

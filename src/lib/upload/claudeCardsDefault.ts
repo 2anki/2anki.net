@@ -1,11 +1,14 @@
 import { isPDFFile, isPPTFile } from '../storage/checks';
 
 // Written by every signed-in AI toggle on the web from this change on. A stored
-// claude-ai-flashcards value without it cannot be told apart from one copied
-// in from an old browser, so only this marker or a recorded toggle event
-// counts as the person having chosen.
+// claude-ai-flashcards off without it may still be a choice made before toggles
+// were recorded (about half of recorded toggles are offs), so only an account
+// value never stored or a latest recorded "on" lets the default apply. The
+// account value decides, not the browser's, so the upload badge (which reads
+// the account) and the upload agree.
 export const AI_CHOICE_AT_KEY = 'ai-choice-at';
 
+const AI_TURNED_ON_EVENT = 'upload_ai_turned_on';
 const AI_TURNED_OFF_EVENT = 'upload_ai_turned_off';
 
 export interface AiChoiceHistoryReader {
@@ -20,6 +23,7 @@ export interface ClaudeDefaultCandidate {
   entry: UploadEntry;
   fileNames: readonly string[];
   options: Record<string, unknown>;
+  storedOptions: unknown;
 }
 
 function isPdfOrSlidesUpload(fileNames: readonly string[]): boolean {
@@ -44,21 +48,29 @@ function aiSettingLeftAtDefault(options: Record<string, unknown>): boolean {
   );
 }
 
-async function aiOffWasRecorded(
+function aiSettingNeverStored(options: Record<string, unknown>): boolean {
+  const value = options['claude-ai-flashcards'];
+  return value == null || value === '';
+}
+
+async function defaultMayApply(
   reader: AiChoiceHistoryReader,
-  userId: number
+  userId: number,
+  options: Record<string, unknown>
 ): Promise<boolean> {
+  let latest: string | null;
   try {
-    return (
-      (await reader.latestAiToggleEventName(userId)) === AI_TURNED_OFF_EVENT
-    );
+    latest = await reader.latestAiToggleEventName(userId);
   } catch (error) {
     console.warn(
       '[claude-default] toggle history read failed, keeping AI off',
       error
     );
-    return true;
+    return false;
   }
+  if (latest === AI_TURNED_OFF_EVENT) return false;
+  if (latest === AI_TURNED_ON_EVENT) return true;
+  return aiSettingNeverStored(options);
 }
 
 export async function claudeCardsByDefault(
@@ -74,7 +86,11 @@ export async function claudeCardsByDefault(
   ) {
     return false;
   }
-  return !(await aiOffWasRecorded(reader, candidate.ownerId));
+  return defaultMayApply(
+    reader,
+    candidate.ownerId,
+    storedOptionsOf(candidate.storedOptions)
+  );
 }
 
 function storedOptionsOf(stored: unknown): Record<string, unknown> {
@@ -90,8 +106,9 @@ export async function accountHasClaudeCardsByDefault(
   storedCardOptions: unknown,
   reader: AiChoiceHistoryReader
 ): Promise<boolean> {
-  if (!paying || !aiSettingLeftAtDefault(storedOptionsOf(storedCardOptions))) {
+  const stored = storedOptionsOf(storedCardOptions);
+  if (!paying || !aiSettingLeftAtDefault(stored)) {
     return false;
   }
-  return !(await aiOffWasRecorded(reader, userId));
+  return defaultMayApply(reader, userId, stored);
 }

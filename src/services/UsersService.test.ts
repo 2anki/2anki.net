@@ -837,13 +837,22 @@ describe('UsersService.hasClaudeCardsByDefault', () => {
     } as unknown as UsersRepository;
   }
 
-  it('is on for a paying account that never chose an AI setting', async () => {
+  it('is on for a paying account that never stored an AI setting', async () => {
+    const service = new UsersService(
+      repositoryWith({}, null),
+      buildEmailService()
+    );
+
+    expect(await service.hasClaudeCardsByDefault(9, true)).toBe(true);
+  });
+
+  it('is off for a paying account with a stored off and no recorded toggle', async () => {
     const service = new UsersService(
       repositoryWith({ 'claude-ai-flashcards': 'false' }, null),
       buildEmailService()
     );
 
-    expect(await service.hasClaudeCardsByDefault(9, true)).toBe(true);
+    expect(await service.hasClaudeCardsByDefault(9, true)).toBe(false);
   });
 
   it('is off for a paying account whose latest AI toggle was off', async () => {

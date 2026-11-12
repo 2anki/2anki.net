@@ -1356,11 +1356,16 @@ class UploadService {
       }
 
       const owner = getOwner(res);
+      const storedCardOptions =
+        owner == null
+          ? null
+          : await this.usersRepository.getCardOptions(String(owner));
       req.body = await this.withClaudeCardsByDefault(
         req,
         res,
         owner,
-        await this.resolveCardOptionInput(owner, req.body)
+        storedCardOptions,
+        UploadService.mergedCardOptionInput(owner, storedCardOptions, req.body)
       );
       const settings = new CardOption(req.body);
       const ws = new Workspace(true, 'fs');
@@ -1923,6 +1928,18 @@ class UploadService {
     owner: string | number | null | undefined,
     body: unknown
   ): Promise<Record<string, unknown>> {
+    const stored =
+      owner == null
+        ? null
+        : await this.usersRepository.getCardOptions(String(owner));
+    return UploadService.mergedCardOptionInput(owner, stored, body);
+  }
+
+  private static mergedCardOptionInput(
+    owner: string | number | null | undefined,
+    stored: unknown,
+    body: unknown
+  ): Record<string, unknown> {
     const requestOptions =
       body != null && typeof body === 'object'
         ? (body as Record<string, unknown>)
@@ -1930,7 +1947,6 @@ class UploadService {
     if (owner == null) {
       return requestOptions;
     }
-    const stored = await this.usersRepository.getCardOptions(String(owner));
     return mergeStoredCardOptions(stored, requestOptions);
   }
 
@@ -1946,6 +1962,7 @@ class UploadService {
     req: express.Request,
     res: express.Response,
     owner: string | number | null | undefined,
+    storedCardOptions: unknown,
     options: Record<string, unknown>
   ): Promise<Record<string, unknown>> {
     const files = (req.files as UploadedFile[] | undefined) ?? [];
@@ -1957,6 +1974,7 @@ class UploadService {
         entry: this.uploadEntry(req, res),
         fileNames: files.map((file) => file.originalname),
         options,
+        storedOptions: storedCardOptions,
       },
       this.usersRepository
     );

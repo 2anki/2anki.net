@@ -220,9 +220,23 @@ describe('a paying account uploads a PDF or PowerPoint on the web', () => {
     ]);
   }, 20_000);
 
-  it('makes Claude cards from a PowerPoint when the stored off was never chosen', async () => {
+  it('keeps AI off for a PowerPoint when a stored off has no recorded toggle', async () => {
     const { jobType } = await send(
       { ...PAYING, stored: { 'claude-ai-flashcards': 'false' } },
+      { name: 'slides.pptx', body: { 'claude-ai-flashcards': 'false' } }
+    );
+
+    expect(jobType).toBe('upload');
+    expect(defaultAppliedEvents()).toEqual([]);
+  }, 20_000);
+
+  it('makes Claude cards from a PowerPoint when the stored off follows a recorded turn on', async () => {
+    const { jobType } = await send(
+      {
+        ...PAYING,
+        stored: { 'claude-ai-flashcards': 'false' },
+        latestToggle: 'upload_ai_turned_on',
+      },
       { name: 'slides.pptx', body: { 'claude-ai-flashcards': 'false' } }
     );
 
