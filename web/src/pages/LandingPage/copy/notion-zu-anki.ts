@@ -75,7 +75,7 @@ const notionZuAnkiCopy: LandingCopy = {
     },
     {
       q: 'Aktualisiert sich der Stapel, wenn ich die Notion-Seite später ändere?',
-      a: 'Eine einmalige Konvertierung ist eine Momentaufnahme. Füge den Link erneut ein, um einen frischen Stapel zu erzeugen. Wenn Änderungen automatisch übernommen werden sollen, sieh dir Auto Sync auf der Preisseite an — es fragt Notion alle paar Minuten ab.',
+      a: 'Eine einmalige Konvertierung ist eine Momentaufnahme. Füge den Link erneut ein, um einen frischen Stapel mit deinen Änderungen zu erzeugen.',
     },
     {
       q: 'Gibt es fertige Medizin-Decks zum Herunterladen?',
@@ -84,7 +84,6 @@ const notionZuAnkiCopy: LandingCopy = {
   ],
   relatedLinks: [
     { label: 'Karten aus einem PDF', href: '/pdf-zu-anki' },
-    { label: 'Automatische Synchronisierung', href: '/pricing' },
     { label: 'Alle Konverter ansehen', href: '/convert' },
   ],
 };

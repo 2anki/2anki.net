@@ -352,10 +352,9 @@
     "checkoutStuckHint": "ご登録は確認できています。数分たっても Auto Sync が準備できない場合は support@2anki.net までご連絡ください。"
   },
   "plan": {
-    "title": "Auto Sync は独立したプラン",
+    "title": "Auto Sync は現在販売していません",
     "subtitle": "お使いのプランには含まれていません。",
     "what": "Auto Sync は専用の Anki を動かし、5 分ごとに Notion を確認して、カードと AnkiWeb を最新に保ちます。",
-    "seePricing": "Auto Sync の料金を見る",
-    "appleSupport": "Auto Sync は App Store では購入できません。support@2anki.net までご連絡ください。"
+    "convertNotion": "代わりに Notion ページを変換する"
   }
 }

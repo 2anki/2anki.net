@@ -17,16 +17,12 @@ import type { PricingEntitlement } from './components/OwnedPlanNotice';
 
 const mockStartPassCheckout = vi.fn();
 const mockStartUnlimitedCheckout = vi.fn();
-const mockStartAutoSyncCheckout = vi.fn();
-const mockGetAutoSyncPrice = vi.fn();
 
 vi.mock('../../lib/backend/get2ankiApi', () => ({
   get2ankiApi: () => ({
     startPassCheckout: mockStartPassCheckout,
     startUnlimitedCheckout: mockStartUnlimitedCheckout,
-    startAutoSyncCheckout: mockStartAutoSyncCheckout,
     getCheckoutPrices: () => Promise.resolve(null),
-    getAutoSyncPrice: mockGetAutoSyncPrice,
   }),
 }));
 
@@ -81,17 +77,12 @@ beforeEach(() => {
   vi.mocked(track).mockClear();
   mockStartPassCheckout.mockReset();
   mockStartUnlimitedCheckout.mockReset();
-  mockStartAutoSyncCheckout.mockReset();
   mockStartPassCheckout.mockResolvedValue({
     url: 'https://checkout.stripe.test/pass',
   });
   mockStartUnlimitedCheckout.mockResolvedValue({
     url: 'https://checkout.stripe.test/pro',
   });
-  mockStartAutoSyncCheckout.mockResolvedValue({
-    url: 'https://checkout.stripe.test/auto-sync',
-  });
-  mockGetAutoSyncPrice.mockResolvedValue(null);
   Object.defineProperty(globalThis, 'location', {
     writable: true,
     value: { href: '' },
@@ -209,7 +200,6 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
     renderAt('/pricing?ref=mcp&interval=year', isLoggedIn);
     expect(mockStartPassCheckout).not.toHaveBeenCalled();
     expect(mockStartUnlimitedCheckout).not.toHaveBeenCalled();
-    expect(mockStartAutoSyncCheckout).not.toHaveBeenCalled();
   });
 
   it('keeps ref=mcp through the sign-in redirect for a signed-out Pro click', () => {
@@ -255,22 +245,6 @@ describe('PricingPage for a connector visitor (ref=mcp)', () => {
         'pricing_page',
         false
       )
-    );
-  });
-
-  it('keeps ref=mcp through the sign-in redirect for a signed-out Auto Sync click', async () => {
-    mockGetAutoSyncPrice.mockResolvedValue({
-      display: '$9',
-      interval: 'month',
-    });
-    renderAt('/pricing/?ref=mcp');
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Get Auto Sync' })
-    );
-
-    expect(globalThis.location.href).toBe(
-      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp#auto-sync')}`
     );
   });
 });
@@ -488,22 +462,6 @@ describe('PricingPage for a connector visitor whose deck is saved', () => {
 
     expect(globalThis.location.href).toBe(
       `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&held_until=2026-11-09&interval=year')}`
-    );
-  });
-
-  it('keeps held_until through the sign-in redirect for a signed-out Auto Sync click', async () => {
-    mockGetAutoSyncPrice.mockResolvedValue({
-      display: '$9',
-      interval: 'month',
-    });
-    renderAt(HELD);
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Get Auto Sync' })
-    );
-
-    expect(globalThis.location.href).toBe(
-      `/login?redirect=${encodeURIComponent('/pricing?ref=mcp&held_until=2026-11-09#auto-sync')}`
     );
   });
 

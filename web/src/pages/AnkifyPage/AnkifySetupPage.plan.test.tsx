@@ -92,23 +92,47 @@ describe('AnkifySetupPage plan panel', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: /auto sync is its own plan/i,
+        name: /auto sync isn't on sale right now/i,
       })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: /see auto sync pricing/i })
-    ).toHaveAttribute('href', '/pricing');
+      screen.getByRole('link', { name: /convert a notion page instead/i })
+    ).toHaveAttribute('href', '/notion');
     expect(
       screen.queryByRole('button', { name: /start anki/i })
     ).not.toBeInTheDocument();
   });
+
+  test.each([
+    ['a free account', null],
+    ['a Stripe subscriber', 'stripe' as const],
+    ['an Apple subscriber', 'apple' as const],
+  ])(
+    'never sends %s without access towards a checkout',
+    async (_who, planSource) => {
+      vi.mocked(getUserLocals).mockResolvedValue(localsWith(false, planSource));
+
+      renderSetup(makeBackend());
+
+      await screen.findByRole('heading', {
+        name: /auto sync isn't on sale right now/i,
+      });
+      const hrefs = screen
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href'));
+      expect(hrefs).toEqual(['/notion']);
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    }
+  );
 
   test('fires ankify_plan_required_viewed once when the panel renders', async () => {
     vi.mocked(getUserLocals).mockResolvedValue(localsWith(false));
 
     renderSetup(makeBackend());
 
-    await screen.findByRole('heading', { name: /auto sync is its own plan/i });
+    await screen.findByRole('heading', {
+      name: /auto sync isn't on sale right now/i,
+    });
     await waitFor(() =>
       expect(track).toHaveBeenCalledWith('ankify_plan_required_viewed')
     );
@@ -124,7 +148,9 @@ describe('AnkifySetupPage plan panel', () => {
       await screen.findByRole('button', { name: /start anki/i })
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('heading', { name: /auto sync is its own plan/i })
+      screen.queryByRole('heading', {
+        name: /auto sync isn't on sale right now/i,
+      })
     ).not.toBeInTheDocument();
     expect(track).not.toHaveBeenCalledWith('ankify_plan_required_viewed');
   });
@@ -141,7 +167,7 @@ describe('AnkifySetupPage plan panel', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: /auto sync is its own plan/i,
+        name: /auto sync isn't on sale right now/i,
       })
     ).toBeInTheDocument();
     expect(listAnkifyClients).toHaveBeenCalledTimes(1);
@@ -177,7 +203,9 @@ describe('AnkifySetupPage plan panel', () => {
       await screen.findByText(/activating auto sync/i)
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('heading', { name: /auto sync is its own plan/i })
+      screen.queryByRole('heading', {
+        name: /auto sync isn't on sale right now/i,
+      })
     ).not.toBeInTheDocument();
   });
 
@@ -206,17 +234,6 @@ describe('AnkifySetupPage plan panel', () => {
     ).toBeInTheDocument();
   });
 
-  test('points Apple-plan users to support instead of pricing', async () => {
-    vi.mocked(getUserLocals).mockResolvedValue(localsWith(false, 'apple'));
-
-    renderSetup(makeBackend());
-
-    expect(await screen.findByText(/support@2anki\.net/i)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /see auto sync pricing/i })
-    ).not.toBeInTheDocument();
-  });
-
   test('a 403 on provisioning swaps the generic error for the plan panel', async () => {
     vi.mocked(getUserLocals).mockResolvedValue(localsWith(undefined));
     const forbidden = Object.assign(new Error('Forbidden'), { status: 403 });
@@ -233,7 +250,7 @@ describe('AnkifySetupPage plan panel', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: /auto sync is its own plan/i,
+        name: /auto sync isn't on sale right now/i,
       })
     ).toBeInTheDocument();
     expect(

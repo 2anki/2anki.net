@@ -7,6 +7,7 @@ const indexHtml = readFileSync(resolve(__dirname, '../index.html'), 'utf-8');
 
 function extractSoftwareApplicationSchema(): {
   offers: Array<{ name: string; price: string }>;
+  featureList: string[];
 } {
   const blocks = [
     ...indexHtml.matchAll(
@@ -35,6 +36,12 @@ describe('index.html SoftwareApplication schema', () => {
     const { offers } = extractSoftwareApplicationSchema();
     expect(offers.map((o) => o.name)).not.toContain('Auto Sync');
     expect(offers.map((o) => o.name)).not.toContain('Lifetime');
+  });
+
+  it('lists no Auto Sync feature while the plan is not on sale', () => {
+    const { featureList } = extractSoftwareApplicationSchema();
+    expect(featureList.length).toBeGreaterThan(0);
+    expect(featureList.filter((f) => f.includes('Auto Sync'))).toEqual([]);
   });
 
   it('lists the pass offers at their card prices', () => {

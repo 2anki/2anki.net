@@ -444,13 +444,6 @@ class UsersController {
     // featureFlags.kiUI = user?.patreon || res.locals.subscriber;
 
     const autoSyncProductId = process.env.AUTO_SYNC_PRODUCT_ID ?? '';
-    const maxSubscribers =
-      Number.parseInt(process.env.HOSTED_ANKI_MAX_SUBSCRIBERS ?? '', 10) || 50;
-    const autoSyncActiveCount =
-      autoSyncProductId === ''
-        ? 0
-        : await SubscriptionService.countActiveByProductId(autoSyncProductId);
-    const autoSyncCapReached = autoSyncActiveCount >= maxSubscribers;
 
     const userSubs = user?.email
       ? await SubscriptionService.getUserActiveSubscriptions(user.email)
@@ -491,7 +484,6 @@ class UsersController {
       linked_email: linkedEmail,
       features: featureFlags,
       hostedAnkiRequested: user?.hosted_anki_requested_at != null,
-      autoSyncCapReached,
       autoSyncActive,
       freePrintAvailable,
       pending_email_change: pendingEmailChange,

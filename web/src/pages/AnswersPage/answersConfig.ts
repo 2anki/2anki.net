@@ -51,7 +51,7 @@ const convertNotionToAnki: AnswerConfig = {
     },
     {
       heading: 'Re-convert after editing',
-      body: 'Paste the same page URL again to get a fresh deck reflecting your edits. For edits to sync automatically every 5 minutes without manual steps, use Auto Sync — included with Lifetime, see 2anki.net/pricing.',
+      body: 'Paste the same page URL again to get a fresh deck reflecting your edits.',
     },
     {
       heading: 'Use a Notion export instead',
@@ -86,7 +86,7 @@ const notionToAnkiSync: AnswerConfig = {
     },
     {
       heading: 'Set up Auto Sync',
-      body: 'Get Auto Sync at 2anki.net/pricing — included with Lifetime. Then go to 2anki.net/ankify/setup, connect your Notion workspace, and select the pages to watch. The first sync runs within 5 minutes.',
+      body: 'Auto Sync is not on sale right now. Accounts that already have it, including Lifetime, set it up at 2anki.net/ankify/setup: connect your Notion workspace and select the pages to watch. The first sync runs within 5 minutes.',
     },
     {
       heading: 'Card format requirements',
@@ -94,7 +94,7 @@ const notionToAnkiSync: AnswerConfig = {
     },
     {
       heading: 'Difference from one-off conversion',
-      body: 'One-off conversion: paste a URL, download a .apkg, import manually. Auto Sync: connect once, edits propagate automatically. Auto Sync is the right choice if you update your Notion notes regularly and want your Anki deck to stay current without manual steps.',
+      body: 'One-off conversion: paste a URL, download a .apkg, import manually. Auto Sync: connect once, edits propagate automatically. Without Auto Sync, paste the same page URL again after you edit and import the fresh deck.',
     },
   ],
   relatedLinks: [
@@ -102,7 +102,6 @@ const notionToAnkiSync: AnswerConfig = {
       label: 'How to convert Notion to Anki',
       href: '/answers/convert-notion-to-anki?ref=ai',
     },
-    { label: 'Auto Sync pricing', href: '/pricing?ref=ai' },
     { label: 'Auto Sync setup', href: '/ankify/setup?ref=ai' },
   ],
 };
@@ -261,7 +260,7 @@ const lectureNotesToAnki: AnswerConfig = {
     },
     {
       heading: 'Free for your first 100 cards a month',
-      body: 'The free plan converts 100 cards a month, enough to build a deck for one course before you decide. Pro removes the cap for a full semester load. If you keep editing your notes in Notion, Auto Sync rebuilds the deck automatically.',
+      body: 'The free plan converts 100 cards a month, enough to build a deck for one course before you decide. Pro removes the cap for a full semester load.',
     },
   ],
   faqs: [

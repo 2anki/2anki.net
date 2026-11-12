@@ -351,7 +351,7 @@ export default function AnkifySetupPage({ backend }: Props) {
         </main>
       );
     }
-    return <AnkifyPlanPanel planSource={userLocals?.locals?.planSource} />;
+    return <AnkifyPlanPanel />;
   }
 
   if (isLoading) {

@@ -114,10 +114,6 @@
       "print": {
         "label": "Imprimir",
         "body": "Imprima seu baralho em papel para estudar offline."
-      },
-      "autoSync": {
-        "label": "Auto Sync",
-        "body": "Mantenha seu baralho do Anki sincronizado com sua página do Notion."
       }
     },
     "showcase": {
@@ -1041,9 +1037,7 @@
       "payNote": "Abre a fatura em aberto. Você continua no {{plan}}.",
       "payNoteAccount": "Atualize seu cartão na sua página de conta. Você mantém seu plano atual.",
       "switchButton": "Encerrar e mudar para o Pro",
-      "switchButtonAutoSync": "Encerrar e mudar para o Auto Sync",
-      "switchNote": "Encerramos seu plano atual agora e cancelamos o pagamento em aberto; depois você paga o Pro no checkout. O {{plan}} não estará mais disponível.",
-      "switchNoteAutoSync": "Encerramos seu plano atual agora e cancelamos o pagamento em aberto; depois você paga o Auto Sync no checkout. O {{plan}} não estará mais disponível."
+      "switchNote": "Encerramos seu plano atual agora e cancelamos o pagamento em aberto; depois você paga o Pro no checkout. O {{plan}} não estará mais disponível."
     }
   }
 }

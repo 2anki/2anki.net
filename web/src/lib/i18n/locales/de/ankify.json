@@ -357,10 +357,9 @@
     "checkoutStuckHint": "Dein Abo ist bestätigt. Wenn Auto Sync in ein paar Minuten nicht bereit ist, schreib an support@2anki.net."
   },
   "plan": {
-    "title": "Auto Sync ist ein eigener Tarif",
+    "title": "Auto Sync ist gerade nicht erhältlich",
     "subtitle": "Dein Tarif enthält ihn nicht.",
     "what": "Auto Sync betreibt ein privates Anki für dich, prüft Notion alle 5 Minuten und hält deine Karten und AnkiWeb aktuell.",
-    "seePricing": "Auto Sync-Preise ansehen",
-    "appleSupport": "Auto Sync gibt es nicht über den App Store. Schreib an support@2anki.net, um ihn zu bekommen."
+    "convertNotion": "Stattdessen eine Notion-Seite umwandeln"
   }
 }

@@ -5,11 +5,7 @@ import { useTranslation } from 'react-i18next';
 import styles from '../AnkifyPage.module.css';
 import { track } from '../../../lib/analytics/track';
 
-interface Props {
-  readonly planSource?: 'stripe' | 'apple' | 'lifetime' | null;
-}
-
-export default function AnkifyPlanPanel({ planSource }: Props) {
+export default function AnkifyPlanPanel() {
   const { t } = useTranslation('ankify');
 
   useEffect(() => {
@@ -24,13 +20,9 @@ export default function AnkifyPlanPanel({ planSource }: Props) {
       </header>
       <section className={styles.setupActiveStep}>
         <p className={styles.setupActiveStepHint}>{t('plan.what')}</p>
-        {planSource === 'apple' ? (
-          <p className={styles.setupActiveStepHint}>{t('plan.appleSupport')}</p>
-        ) : (
-          <Link to="/pricing" className={styles.planLink}>
-            {t('plan.seePricing')}
-          </Link>
-        )}
+        <Link to="/notion" className={styles.planLink}>
+          {t('plan.convertNotion')}
+        </Link>
       </section>
     </main>
   );

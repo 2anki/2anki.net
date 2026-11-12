@@ -357,10 +357,9 @@
     "checkoutStuckHint": "Your subscription is confirmed. If Auto Sync isn't ready in a few minutes, email support@2anki.net."
   },
   "plan": {
-    "title": "Auto Sync is its own plan",
+    "title": "Auto Sync isn't on sale right now",
     "subtitle": "Your plan doesn't include it.",
     "what": "Auto Sync runs a private Anki for you, checks Notion every 5 minutes, and keeps your cards and AnkiWeb up to date.",
-    "seePricing": "See Auto Sync pricing",
-    "appleSupport": "Auto Sync isn't available through the App Store. Email support@2anki.net to get it."
+    "convertNotion": "Convert a Notion page instead"
   }
 }
