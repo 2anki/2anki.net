@@ -825,3 +825,44 @@ describe('UsersService.register ad-click attribution', () => {
     );
   });
 });
+
+describe('UsersService.hasClaudeCardsByDefault', () => {
+  function repositoryWith(
+    stored: Record<string, string> | null,
+    latestToggle: string | null
+  ) {
+    return {
+      getCardOptions: vi.fn().mockResolvedValue(stored),
+      latestAiToggleEventName: vi.fn().mockResolvedValue(latestToggle),
+    } as unknown as UsersRepository;
+  }
+
+  it('is on for a paying account that never chose an AI setting', async () => {
+    const service = new UsersService(
+      repositoryWith({ 'claude-ai-flashcards': 'false' }, null),
+      buildEmailService()
+    );
+
+    expect(await service.hasClaudeCardsByDefault(9, true)).toBe(true);
+  });
+
+  it('is off for a paying account whose latest AI toggle was off', async () => {
+    const service = new UsersService(
+      repositoryWith(
+        { 'claude-ai-flashcards': 'false' },
+        'upload_ai_turned_off'
+      ),
+      buildEmailService()
+    );
+
+    expect(await service.hasClaudeCardsByDefault(9, true)).toBe(false);
+  });
+
+  it('is off for a free account without reading its history', async () => {
+    const repository = repositoryWith(null, null);
+    const service = new UsersService(repository, buildEmailService());
+
+    expect(await service.hasClaudeCardsByDefault(9, false)).toBe(false);
+    expect(repository.latestAiToggleEventName).not.toHaveBeenCalled();
+  });
+});

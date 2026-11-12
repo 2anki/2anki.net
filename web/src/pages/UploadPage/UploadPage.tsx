@@ -15,6 +15,10 @@ import {
 import { markOnboarded } from '../../lib/backend/markOnboarded';
 import { storePassToken } from '../../lib/anonymousPass';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
+import {
+  hasRecordedAiChoice,
+  recordAiChoice,
+} from '../../lib/data_layer/aiChoice';
 import useQuery from '../../lib/hooks/useQuery';
 import { useUserLocals } from '../../lib/hooks/useUserLocals';
 import { hasSessionHint } from '../../lib/sessionHint';
@@ -34,7 +38,13 @@ const SIGNUP_FLAG_KEY = 'signup_completed_tracked';
 const SIGNUP_RECENCY_MS = 10 * 60 * 1000;
 const AI_FLAG_KEY = 'claude-ai-flashcards';
 
-type AiBadgeState = 'anon' | 'anonPreview' | 'free' | 'on' | 'off';
+type AiBadgeState =
+  | 'anon'
+  | 'anonPreview'
+  | 'free'
+  | 'on'
+  | 'onForPdfs'
+  | 'off';
 
 interface Props {
   setErrorMessage: ErrorHandlerType;
@@ -44,11 +54,13 @@ function deriveAiBadgeState(
   isSignedIn: boolean,
   isPaying: boolean,
   isAiOn: boolean,
-  previewEnabled: boolean
+  previewEnabled: boolean,
+  claudeOnForPdfs: boolean
 ): AiBadgeState {
   if (!isSignedIn) return previewEnabled ? 'anonPreview' : 'anon';
   if (!isPaying) return 'free';
   if (isAiOn) return 'on';
+  if (claudeOnForPdfs) return 'onForPdfs';
   return 'off';
 }
 
@@ -93,18 +105,33 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
     () => globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true'
   );
 
+  const [aiChoiceRecorded, setAiChoiceRecorded] = useState(() =>
+    hasRecordedAiChoice()
+  );
+
   useEffect(() => {
     setAiFlag(globalThis.localStorage?.getItem(AI_FLAG_KEY) === 'true');
+    setAiChoiceRecorded(hasRecordedAiChoice());
   }, [isSignedIn]);
 
   const previewEnabled = userLocals?.features?.anonymousAiPreview === true;
   const isAiOn = isSignedIn ? isPaying && aiFlag : previewEnabled && aiFlag;
   const sessionHint = hasSessionHint();
+  const claudeOnForPdfs =
+    !aiChoiceRecorded && userLocals?.claudeCardsByDefault === true;
   const aiBadgeState = userLocalsLoading
     ? pendingAiBadgeState(sessionHint)
-    : deriveAiBadgeState(isSignedIn, isPaying, isAiOn, previewEnabled);
+    : deriveAiBadgeState(
+        isSignedIn,
+        isPaying,
+        isAiOn,
+        previewEnabled,
+        claudeOnForPdfs
+      );
   const aiCredits = useAiCredits(
-    aiBadgeState === 'on' || aiBadgeState === 'off'
+    aiBadgeState === 'on' ||
+      aiBadgeState === 'onForPdfs' ||
+      aiBadgeState === 'off'
   );
   const holdSignedInBadge = userLocalsLoading && sessionHint;
   // Japanese ends a sentence with 。 and runs straight into the next; the
@@ -126,6 +153,10 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
 
   const setAi = (next: boolean) => {
     saveValueInLocalStorage(AI_FLAG_KEY, String(next), null);
+    if (isSignedIn) {
+      recordAiChoice();
+      setAiChoiceRecorded(true);
+    }
     setAiFlag(next);
     track(next ? 'upload_ai_turned_on' : 'upload_ai_turned_off', {
       surface: 'upload',
@@ -306,6 +337,33 @@ export function UploadPage({ setErrorMessage }: Readonly<Props>) {
                 to="/card-options?returnTo=/upload#pdf-ai"
                 onClick={() => track('upload_ai_settings_link_clicked')}
               >
+                {t('upload.page.manageInSettings')}
+              </Link>
+              <span>{sentenceEnd}</span>
+            </span>
+            <AiCreditsReadout credits={aiCredits} />
+          </>
+        )}
+        {aiBadgeState === 'onForPdfs' && (
+          <>
+            <button
+              type="button"
+              className={styles.aiToggle}
+              aria-pressed="true"
+              aria-label={t('upload.page.turnAiOff')}
+              onClick={() => setAi(false)}
+            >
+              <span className={styles.badgeSuccess}>
+                {t('upload.page.aiOnForPdfs')}
+              </span>
+            </button>
+            <span className={styles.aiOffBadgeBody}>
+              <span>
+                {' '}
+                {t('upload.page.aiOnForPdfsBody')}
+                {sentenceGap}
+              </span>
+              <Link to="/card-options?returnTo=/upload#pdf-ai">
                 {t('upload.page.manageInSettings')}
               </Link>
               <span>{sentenceEnd}</span>

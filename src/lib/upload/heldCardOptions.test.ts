@@ -37,6 +37,7 @@ describe('allowedHeldCardOptions', () => {
 
   it.each([
     'claude-ai-flashcards',
+    'ai-choice-at',
     'ai-comprehensive',
     'image-quiz-html-to-anki',
     'share-files-for-debugging',

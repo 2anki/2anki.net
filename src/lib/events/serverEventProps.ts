@@ -35,6 +35,7 @@ export const SERVER_ONLY_EVENT_NAMES: ReadonlySet<string> = new Set([
   'conversion_succeeded',
   'conversion_failed',
   'upload_started',
+  'upload_ai_default_applied',
   'email_batch_sent',
   'inactive_users_deleted',
   'ai_spend_alert_sent',

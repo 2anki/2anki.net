@@ -15,6 +15,7 @@ import { ALLOWED_CARD_OPTION_KEYS } from '../../data_layer/UserPreferencesReposi
 // through a chosen rescue is empty without it.
 const NEVER_HELD = new Set([
   'claude-ai-flashcards',
+  'ai-choice-at',
   'ai-comprehensive',
   'image-quiz-html-to-anki',
   'share-files-for-debugging',

@@ -368,6 +368,8 @@
       "aiOff": "L'IA è disattivata",
       "aiOffBody": "Otterrai carte basate su regole a partire dalla struttura del tuo file.",
       "aiOffIncluded": "Le carte di Claude sono incluse nel tuo piano.",
+      "aiOnForPdfs": "L'IA è attiva per PDF e PowerPoint",
+      "aiOnForPdfsBody": "Il tuo piano include le carte di Claude, quindi Claude le scrive per i file PDF e PowerPoint. Gli altri file ricevono carte dalla loro struttura.",
       "turnOnClaudeCards": "Attiva le carte di Claude",
       "upgradeClaude": "Passa a un piano superiore per scrivere carte con Claude",
       "aiAnonIntro": "Claude può scrivere le tue carte —",

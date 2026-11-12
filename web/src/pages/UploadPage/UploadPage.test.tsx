@@ -60,6 +60,7 @@ let fakeFeatures:
     }
   | undefined;
 let fakeLocalsLoading = false;
+let fakeClaudeCardsByDefault: boolean | undefined;
 const reportPurchaseConversion = vi.fn();
 const replayPendingPurchaseConversions = vi.fn();
 const storePassToken = vi.fn();
@@ -81,6 +82,7 @@ vi.mock('../../lib/hooks/useUserLocals', () => ({
             user: fakeUser ?? undefined,
             locals: fakeLocals,
             features: fakeFeatures,
+            claudeCardsByDefault: fakeClaudeCardsByDefault,
           },
     isLoading: fakeLocalsLoading,
     error: null,
@@ -407,6 +409,112 @@ describe('UploadPage AI toggle', () => {
       screen.getByRole('button', { name: /turn ai off/i })
     ).toBeInTheDocument();
     expect(callsFor('upload_ai_turned_on')).toHaveLength(1);
+  });
+});
+
+describe('UploadPage Claude cards on by default for PDFs and PowerPoint', () => {
+  beforeEach(() => {
+    trackMock.mockClear();
+    fakeUser = { id: 42 };
+    fakeLocals = { patreon: false, subscriber: true };
+    fakeFeatures = undefined;
+    fakeClaudeCardsByDefault = true;
+    globalThis.localStorage.clear();
+    globalThis.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    fakeUser = null;
+    fakeLocals = undefined;
+    fakeClaudeCardsByDefault = undefined;
+    globalThis.localStorage.clear();
+  });
+
+  it('tells a paying account with no AI choice that Claude writes PDF and PowerPoint cards', () => {
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+    renderPage();
+
+    expect(
+      screen.getByRole('button', { name: /turn ai off/i })
+    ).toHaveTextContent('AI is on for PDFs and PowerPoint');
+    expect(
+      screen.getByText(/Claude writes them for PDF and PowerPoint files/)
+    ).toBeInTheDocument();
+  });
+
+  it('records a deliberate off when the account turns it off from the badge', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /turn ai off/i }));
+
+    await waitFor(() => {
+      expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
+        'false'
+      );
+    });
+    expect(globalThis.localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
+    expect(
+      screen.getByRole('button', { name: /turn ai on/i })
+    ).toHaveTextContent('AI is off');
+    expect(callsFor('upload_ai_turned_off')).toHaveLength(1);
+  });
+
+  it('shows AI off once this browser recorded the off choice', () => {
+    globalThis.localStorage.setItem('claude-ai-flashcards', 'false');
+    globalThis.localStorage.setItem('ai-choice-at', '1762300000');
+    renderPage();
+
+    expect(
+      screen.getByRole('button', { name: /turn ai on/i })
+    ).toHaveTextContent('AI is off');
+  });
+
+  it('shows AI off when the account chose off on another device', () => {
+    fakeClaudeCardsByDefault = false;
+    renderPage();
+
+    expect(
+      screen.getByRole('button', { name: /turn ai on/i })
+    ).toHaveTextContent('AI is off');
+  });
+
+  it('records the choice when a paying account turns AI on', async () => {
+    fakeClaudeCardsByDefault = false;
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /turn ai on/i }));
+
+    await waitFor(() => {
+      expect(globalThis.localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
+    });
+  });
+
+  it('keeps the upgrade badge for a free account', () => {
+    fakeLocals = { patreon: false, subscriber: false };
+    renderPage();
+
+    expect(
+      screen.getByRole('link', { name: /upgrade to write cards with claude/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('AI is on for PDFs and PowerPoint')
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not record a choice for a signed-out visitor picking in the free preview', () => {
+    fakeUser = null;
+    fakeLocals = undefined;
+    fakeFeatures = { anonymousAiPreview: true, anonymousAiChoice: true };
+    renderPage();
+    fireEvent.click(
+      screen.getByLabelText("Cards from your file's structure: free, no AI")
+    );
+    fireEvent.click(
+      screen.getByLabelText('Claude writes the cards: free sample first')
+    );
+
+    expect(globalThis.localStorage.getItem('claude-ai-flashcards')).toBe(
+      'true'
+    );
+    expect(globalThis.localStorage.getItem('ai-choice-at')).toBeNull();
   });
 });
 

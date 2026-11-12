@@ -1045,6 +1045,32 @@ describe('CardOptionsForm AI checkbox analytics', () => {
     }
   );
 
+  it('marks the Claude cards setting as chosen when a signed-in account switches it', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.click(await aiCheckbox());
+
+    expect(localStorage.getItem('ai-choice-at')).toMatch(/^\d+$/);
+  });
+
+  it('does not mark a choice for a signed-out visitor', async () => {
+    renderForm(false, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.click(await aiCheckbox());
+
+    expect(localStorage.getItem('ai-choice-at')).toBeNull();
+  });
+
+  it('does not mark a choice when another checkbox changes', async () => {
+    renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'Embed images in cards' })
+    );
+
+    expect(localStorage.getItem('ai-choice-at')).toBeNull();
+  });
+
   it('records nothing for other checkboxes', async () => {
     renderForm(true, { onReset: vi.fn(), setError: vi.fn() });
 
@@ -1062,6 +1088,7 @@ describe('CardOptionsForm AI checkbox analytics', () => {
 
     expect(aiSwitchEvents()).toEqual([]);
     expect(localStorage.getItem('claude-ai-flashcards')).toBeNull();
+    expect(localStorage.getItem('ai-choice-at')).toBeNull();
   });
 
   it('records the switch for an empty page id, which saves to the account defaults', async () => {

@@ -80,6 +80,10 @@ import { toCardCountBucket } from '../lib/analytics/cardCountBucket';
 import { toPageCountBucket } from '../lib/analytics/pageCountBucket';
 import { uploadInputFormat } from '../lib/analytics/uploadInputFormat';
 import {
+  claudeCardsByDefault,
+  type UploadEntry,
+} from '../lib/upload/claudeCardsDefault';
+import {
   CONVERSION_FALLBACK_FILENAME,
   loadPdfImageFallbackNames,
   matchesPdfImageFallback,
@@ -1352,7 +1356,12 @@ class UploadService {
       }
 
       const owner = getOwner(res);
-      req.body = await this.resolveCardOptionInput(owner, req.body);
+      req.body = await this.withClaudeCardsByDefault(
+        req,
+        res,
+        owner,
+        await this.resolveCardOptionInput(owner, req.body)
+      );
       const settings = new CardOption(req.body);
       const ws = new Workspace(true, 'fs');
       const paying = isPaying(res.locals);
@@ -1923,6 +1932,40 @@ class UploadService {
     }
     const stored = await this.usersRepository.getCardOptions(String(owner));
     return mergeStoredCardOptions(stored, requestOptions);
+  }
+
+  private uploadEntry(
+    req: express.Request,
+    res: express.Response
+  ): UploadEntry {
+    if (res.locals.mcp_auth === true) return 'mcp';
+    return this.resolvePersistedSource(req) === 'app' ? 'app' : 'web';
+  }
+
+  private async withClaudeCardsByDefault(
+    req: express.Request,
+    res: express.Response,
+    owner: string | number | null | undefined,
+    options: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    const files = (req.files as UploadedFile[] | undefined) ?? [];
+    const ownerId = owner == null ? null : Number(owner);
+    const turnOn = await claudeCardsByDefault(
+      {
+        ownerId,
+        paying: isPaying(res.locals),
+        entry: this.uploadEntry(req, res),
+        fileNames: files.map((file) => file.originalname),
+        options,
+      },
+      this.usersRepository
+    );
+    if (!turnOn) return options;
+    track('upload_ai_default_applied', {
+      userId: ownerId,
+      props: { format: uploadInputFormat(files) },
+    });
+    return { ...options, 'claude-ai-flashcards': 'true' };
   }
 
   // A background job has nobody to answer "what should the PDF become", so it

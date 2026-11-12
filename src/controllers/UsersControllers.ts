@@ -468,6 +468,10 @@ class UsersController {
     const pendingEmailChange = await this.resolvePendingEmailChange(
       user?.owner
     );
+    const claudeCardsByDefault = await this.resolveClaudeCardsByDefault(
+      user?.owner,
+      isPaying(locals)
+    );
 
     const response = {
       user: {
@@ -491,9 +495,28 @@ class UsersController {
       autoSyncActive,
       freePrintAvailable,
       pending_email_change: pendingEmailChange,
+      claudeCardsByDefault,
     };
 
     return res.json(response);
+  }
+
+  private async resolveClaudeCardsByDefault(
+    owner: UsersId | number | undefined,
+    paying: boolean
+  ): Promise<boolean> {
+    if (owner == null || !paying) {
+      return false;
+    }
+    try {
+      return await this.userService.hasClaudeCardsByDefault(
+        Number(owner),
+        paying
+      );
+    } catch (error) {
+      console.error('[locals] Claude default read failed', error);
+      return false;
+    }
   }
 
   private async resolvePendingEmailChange(

@@ -55,6 +55,7 @@ export type CardOptions = Partial<{
   'image-quiz-html-to-anki': string;
   'embed-images': string;
   'claude-ai-flashcards': string;
+  'ai-choice-at': string;
   'ai-comprehensive': string;
   'share-files-for-debugging': string;
   'block-id-identity': string;
@@ -141,6 +142,7 @@ export const ALLOWED_CARD_OPTION_KEYS = new Set([
   'image-quiz-html-to-anki',
   'embed-images',
   'claude-ai-flashcards',
+  'ai-choice-at',
   'ai-comprehensive',
   'share-files-for-debugging',
 ]);

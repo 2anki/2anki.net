@@ -3505,6 +3505,73 @@ describe('UsersController.getLocals', () => {
     });
   });
 
+  describe('claudeCardsByDefault', () => {
+    const signedInUser = {
+      id: 6,
+      email: 'sub@example.com',
+      email_verified: true,
+      patreon: false,
+      ankify_welcome_seen: false,
+      hosted_anki_requested_at: null,
+      owner: 6,
+    };
+
+    async function localsFor(
+      locals: Record<string, unknown>,
+      hasClaudeCardsByDefault: Mock,
+      user: typeof signedInUser | null = signedInUser
+    ) {
+      const userService = {
+        getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
+        hasClaudeCardsByDefault,
+      } as unknown as UsersService;
+      const authService = {
+        getUserFrom: vi.fn().mockResolvedValue(user),
+      } as unknown as AuthenticationService;
+      const controller = new UsersController(
+        userService,
+        authService,
+        {} as ReturnType<typeof import('../data_layer').getDatabase>
+      );
+      const req = { cookies: { token: 'valid' } } as unknown as express.Request;
+      const res = {
+        locals,
+        json: vi.fn(),
+      } as unknown as express.Response & { json: Mock };
+      await controller.getLocals(req, res);
+      return res.json.mock.calls[0][0].claudeCardsByDefault;
+    }
+
+    it('says Claude cards are on by default for a paying account with no AI choice', async () => {
+      const lookup = vi.fn().mockResolvedValue(true);
+
+      expect(await localsFor({ subscriber: true }, lookup)).toBe(true);
+      expect(lookup).toHaveBeenCalledWith(6, true);
+    });
+
+    it('is false for a free account without reading its history', async () => {
+      const lookup = vi.fn().mockResolvedValue(true);
+
+      expect(await localsFor({}, lookup)).toBe(false);
+      expect(lookup).not.toHaveBeenCalled();
+    });
+
+    it('is false for a signed-out visitor', async () => {
+      const lookup = vi.fn().mockResolvedValue(true);
+
+      expect(await localsFor({ subscriber: true }, lookup, null)).toBe(false);
+      expect(lookup).not.toHaveBeenCalled();
+    });
+
+    it('is false when the lookup fails', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const lookup = vi.fn().mockRejectedValue(new Error('db down'));
+
+      expect(await localsFor({ subscriber: true }, lookup)).toBe(false);
+      error.mockRestore();
+    });
+  });
+
   it('maps a Week Pass holder to entitlement passKind 7d', async () => {
     const mockUser = {
       id: 7,

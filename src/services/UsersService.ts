@@ -14,6 +14,7 @@ import { IEmailService } from './EmailService/EmailService';
 import type { IMagicTokenRepository } from '../data_layer/MagicTokenRepository';
 import hashToken from '../lib/misc/hashToken';
 import { isResetTokenLive } from '../lib/User/isResetTokenLive';
+import { accountHasClaudeCardsByDefault } from '../lib/upload/claudeCardsDefault';
 import { track } from './events/track';
 import { sendSignUpEvent } from './GA4Service';
 import { errorName } from '../lib/log/errorName';
@@ -236,6 +237,20 @@ class UsersService {
 
   getSubscriptionLinkedEmail(owner: string) {
     return this.repository.getSubscriptionLinkedEmail(owner);
+  }
+
+  async hasClaudeCardsByDefault(
+    userId: number,
+    paying: boolean
+  ): Promise<boolean> {
+    if (!paying) return false;
+    const stored = await this.repository.getCardOptions(userId);
+    return accountHasClaudeCardsByDefault(
+      userId,
+      paying,
+      stored,
+      this.repository
+    );
   }
 
   getUserById(owner: string): Promise<Users> {

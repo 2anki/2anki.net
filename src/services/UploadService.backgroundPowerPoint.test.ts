@@ -383,6 +383,9 @@ function backgroundService() {
     jobs as unknown as JobRepository,
     {
       getCardOptions: vi.fn().mockResolvedValue(null),
+      latestAiToggleEventName: vi
+        .fn()
+        .mockResolvedValue('upload_ai_turned_off'),
       getCardUsage: vi.fn().mockResolvedValue({
         cards_used: 0,
         month_started_at: new Date('2026-10-01T00:00:00Z'),

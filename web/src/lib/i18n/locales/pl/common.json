@@ -416,6 +416,8 @@
       "aiOff": "AI jest wyłączone",
       "aiOffBody": "Otrzymasz karty tworzone według reguł na podstawie struktury Twojego pliku.",
       "aiOffIncluded": "Karty Claude są wliczone w Twój plan.",
+      "aiOnForPdfs": "AI jest włączone dla PDF i PowerPoint",
+      "aiOnForPdfsBody": "Twój plan obejmuje karty Claude, więc Claude tworzy je z plików PDF i PowerPoint. Inne pliki dostają karty na podstawie swojej struktury.",
       "turnOnClaudeCards": "Włącz karty Claude",
       "upgradeClaude": "Ulepsz plan, aby pisać karty z Claude",
       "aiAnonIntro": "Claude może napisać Twoje karty —",

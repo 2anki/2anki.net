@@ -77,6 +77,25 @@ class UsersRepository {
     return row?.card_options ?? null;
   }
 
+  buildLatestAiToggleEventQuery(userId: number) {
+    return this.database('events')
+      .select('name')
+      .where('user_id', userId)
+      .whereIn('name', ['upload_ai_turned_on', 'upload_ai_turned_off'])
+      .orderBy([
+        { column: 'created_at', order: 'desc' },
+        { column: 'id', order: 'desc' },
+      ])
+      .first();
+  }
+
+  async latestAiToggleEventName(userId: number): Promise<string | null> {
+    const row = (await this.buildLatestAiToggleEventQuery(userId)) as
+      | { name: string }
+      | undefined;
+    return row?.name ?? null;
+  }
+
   async getEmailById(id: string | number): Promise<string | undefined> {
     const row = await this.database(this.table)
       .where({ id })

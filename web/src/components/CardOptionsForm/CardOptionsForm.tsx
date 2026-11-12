@@ -21,6 +21,7 @@ import { getLocalStorageBooleanValue } from '../../lib/data_layer/getLocalStorag
 import { getLocalStorageValue } from '../../lib/data_layer/getLocalStorageValue';
 import CardOption from '../../lib/data_layer/model/CardOption';
 import { saveValueInLocalStorage } from '../../lib/data_layer/saveValueInLocalStorage';
+import { recordAiChoice } from '../../lib/data_layer/aiChoice';
 import { track } from '../../lib/analytics/track';
 import { SettingsPayload } from '../../lib/types';
 import sharedStyles from '../../styles/shared.module.css';
@@ -758,6 +759,7 @@ export const CardOptionsForm = forwardRef<CardOptionsFormHandle, Props>(
       setCheckboxValues((prev) => ({ ...prev, [key]: checked }));
       saveValueInLocalStorage(key, checked.toString(), pageId);
       if (key === 'claude-ai-flashcards' && !pageId) {
+        if (isLoggedIn) recordAiChoice();
         track(checked ? 'upload_ai_turned_on' : 'upload_ai_turned_off', {
           surface: 'card_options',
         });

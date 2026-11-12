@@ -344,6 +344,8 @@
       "aiOff": "AI はオフ",
       "aiOffBody": "ファイルの構造からルールベースのカードが作成されます。",
       "aiOffIncluded": "Claude カードはご利用のプランに含まれています。",
+      "aiOnForPdfs": "PDF と PowerPoint では AI はオン",
+      "aiOnForPdfsBody": "ご利用のプランには Claude カードが含まれているため、PDF と PowerPoint ファイルのカードは Claude が作成します。その他のファイルは構造からカードを作成します。",
       "turnOnClaudeCards": "Claude カードをオンにする",
       "upgradeClaude": "アップグレードして Claude でカードを作成",
       "aiAnonIntro": "Claude がカードを作成できます —",
