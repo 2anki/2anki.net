@@ -1306,3 +1306,23 @@ describe('PricingPage after a failed renewal', () => {
     expect(getSubscriptionStatus).not.toHaveBeenCalled();
   });
 });
+
+describe('PricingPage seller disclosure link', () => {
+  beforeEach(() => {
+    mockUseCardUsage.mockReturnValue(null);
+  });
+
+  it.each([
+    ['a signed-out visitor', false, undefined],
+    ['a signed-in free user', true, { subscriber: false, patreon: false }],
+    ['a subscriber', true, { subscriber: true, planSource: 'stripe' }],
+  ])(
+    'links the Japanese seller disclosure for %s',
+    (_who, isLoggedIn, entitlement) => {
+      renderAt('/pricing', { isLoggedIn, entitlement: entitlement as never });
+      expect(
+        screen.getByRole('link', { name: '特定商取引法に基づく表記' })
+      ).toHaveAttribute('href', '/tokushoho/');
+    }
+  );
+});

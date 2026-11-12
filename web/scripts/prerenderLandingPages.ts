@@ -28,6 +28,13 @@ import { buildFaqJsonLd as buildLandingFaqJsonLd } from '../src/pages/LandingPag
 import type { LandingCopy } from '../src/pages/LandingPage/types';
 import { canonicalUrl } from '../src/lib/seo/canonicalUrl';
 import {
+  TOKUSHOHO_DESCRIPTION,
+  TOKUSHOHO_PATH,
+  TOKUSHOHO_ROWS,
+  TOKUSHOHO_TITLE,
+  type TokushohoRow,
+} from '../src/pages/TokushohoPage/tokushohoContent';
+import {
   DEFAULT_LANDING_FORMATS,
   DEFAULT_LANDING_STEPS,
 } from '../src/pages/LandingPage/landingDefaults';
@@ -497,6 +504,56 @@ export function emitMetaOnlyPages(buildDir: string): string[] {
     emitted.push(outPath);
   }
   return emitted;
+}
+
+function tokushohoRowFragment(row: TokushohoRow): string {
+  const lines = row.details.map(
+    (line) => `<p style="margin:0 0 0.5rem;">${escapeHtml(line)}</p>`
+  );
+  if (row.link != null) {
+    lines.push(
+      `<p style="margin:0 0 0.5rem;"><a href="${escapeHtml(row.link.href)}">${escapeHtml(row.link.label)}</a></p>`
+    );
+  }
+  return `<tr><th scope="row">${escapeHtml(row.term)}</th><td>${lines.join('')}</td></tr>`;
+}
+
+export function emitTokushohoPage(buildDir: string): string {
+  const source = readFileSync(join(buildDir, 'index.html'), 'utf8');
+  const copy: LandingCopy = {
+    pathname: TOKUSHOHO_PATH,
+    title: `${TOKUSHOHO_TITLE} | 2anki`,
+    description: TOKUSHOHO_DESCRIPTION,
+    h1: TOKUSHOHO_TITLE,
+    subhead: '',
+    faqs: [],
+  };
+  const outPath = join(
+    buildDir,
+    TOKUSHOHO_PATH.replace(/^\//, ''),
+    'index.html'
+  );
+  mkdirSync(dirname(outPath), { recursive: true });
+
+  let html = rewriteHead(source, copy);
+  html = html.replace(/\s*<meta\s+property="og:locale"[^>]*>/g, '');
+  html = html.replace(
+    /<\/head>/,
+    '  <meta property="og:locale" content="ja_JP">\n</head>'
+  );
+  html = html.replace(/<html lang="en">/, '<html lang="ja">');
+  html = html.replace(
+    /<div id="root"><\/div>/,
+    [
+      '<div id="root"><section style="max-width:720px;margin:0 auto;padding:3rem 1.5rem;">',
+      `<h1 style="font-family:var(--font-display);font-size:clamp(2rem, 5vw, 2.75rem);line-height:1.15;margin:0 0 1rem;">${escapeHtml(TOKUSHOHO_TITLE)}</h1>`,
+      `<table style="${BODY_TEXT_STYLE}border-collapse:collapse;text-align:left;vertical-align:top;"><tbody>`,
+      TOKUSHOHO_ROWS.map(tokushohoRowFragment).join(''),
+      '</tbody></table></section></div>',
+    ].join('')
+  );
+  writeFileSync(outPath, html, 'utf8');
+  return outPath;
 }
 
 function buildAnswersBodyFragment(config: {

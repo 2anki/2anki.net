@@ -29,6 +29,7 @@ describe('isKnownAppRoute', () => {
     '/documentation',
     '/documentation/start-here/connect-notion',
     '/security',
+    '/tokushoho',
     '/contact',
     '/whats-new',
     '/auth/magic',

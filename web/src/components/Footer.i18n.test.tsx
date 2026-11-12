@@ -20,6 +20,13 @@ describe('Footer in German', () => {
     expect(screen.getByText('Rechtliches')).toBeInTheDocument();
   });
 
+  it('keeps the seller disclosure link in Japanese', () => {
+    render(<Footer />);
+    expect(
+      screen.getByRole('link', { name: '特定商取引法に基づく表記' })
+    ).toHaveAttribute('href', '/tokushoho/');
+  });
+
   it('translates the nav links via the common namespace', () => {
     render(<Footer />);
     expect(screen.getByRole('link', { name: 'Über uns' })).toHaveAttribute(
