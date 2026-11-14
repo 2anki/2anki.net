@@ -10,6 +10,7 @@ import { initTheme } from './lib/theme';
 import { initI18n } from './lib/i18n';
 import { rememberLandingCampaign } from './lib/adClick';
 import { isChunkLoadError, recoverFromChunkError } from './lib/chunkReload';
+import { startLayoutShiftReport } from './lib/layoutShiftReport';
 import {
   reportClientError,
   reportDeclinedChunkRecovery,
@@ -33,6 +34,7 @@ function main() {
   rememberLandingCampaign(window.location.search);
   initTheme();
   initI18n();
+  startLayoutShiftReport();
 
   const container = document.getElementById('root');
   const root = createRoot(container!);
