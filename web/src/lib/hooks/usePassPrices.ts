@@ -26,6 +26,10 @@ export function usePassPrices(): PassPriceDisplay {
   };
 }
 
+export function useLivePassPricesPending(): boolean {
+  return usePassPricingQuery().isPending;
+}
+
 export function useLivePassPrices(): LivePassPrices {
   const { data } = usePassPricingQuery();
 
