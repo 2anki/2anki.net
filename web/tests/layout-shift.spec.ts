@@ -10,6 +10,8 @@ import { test, expect, type Page } from '@playwright/test';
 test.use({ viewport: { width: 1440, height: 900 } });
 
 const SLOW_API_MS = 600;
+// Shift entries reach the observer after the frame that caused them paints.
+const SETTLE_MS = 500;
 
 async function mockBackend(page: Page): Promise<void> {
   await page.route('**/api/**', (route) =>
@@ -77,6 +79,7 @@ async function recordLayoutShifts(page: Page): Promise<void> {
 }
 
 async function layoutShifts(page: Page): Promise<string[]> {
+  await page.waitForTimeout(SETTLE_MS);
   return page.evaluate(
     () => (globalThis as unknown as { layoutShifts: string[] }).layoutShifts
   );

@@ -8,7 +8,10 @@ vi.mock('../backend/getLandingConfig', () => ({
 }));
 
 import { getLandingConfig } from '../backend/getLandingConfig';
-import { useLandingPassPricesEnabled } from './useLandingPassPrices';
+import {
+  useLandingPassPricesEnabled,
+  useLandingPassPricesPending,
+} from './useLandingPassPrices';
 
 function buildWrapper() {
   const queryClient = new QueryClient({
@@ -52,5 +55,41 @@ describe('useLandingPassPricesEnabled', () => {
 
     await waitFor(() => expect(getLandingConfig).toHaveBeenCalled());
     expect(result.current).toBe(false);
+  });
+});
+
+describe('useLandingPassPricesPending', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('is pending before the endpoint resolves', () => {
+    vi.mocked(getLandingConfig).mockReturnValue(new Promise(() => {}));
+
+    const { result } = renderHook(() => useLandingPassPricesPending(), {
+      wrapper: buildWrapper(),
+    });
+
+    expect(result.current).toBe(true);
+  });
+
+  it('stops pending once the endpoint resolves', async () => {
+    vi.mocked(getLandingConfig).mockResolvedValue({ showPassPrices: false });
+
+    const { result } = renderHook(() => useLandingPassPricesPending(), {
+      wrapper: buildWrapper(),
+    });
+
+    await waitFor(() => expect(result.current).toBe(false));
+  });
+
+  it('stops pending when the endpoint request fails', async () => {
+    vi.mocked(getLandingConfig).mockRejectedValue(new Error('network'));
+
+    const { result } = renderHook(() => useLandingPassPricesPending(), {
+      wrapper: buildWrapper(),
+    });
+
+    await waitFor(() => expect(result.current).toBe(false));
   });
 });

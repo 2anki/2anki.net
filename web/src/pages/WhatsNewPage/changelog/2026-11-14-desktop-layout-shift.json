@@ -2,5 +2,5 @@
   "id": "2026-11-14-desktop-layout-shift",
   "date": "2026-11-14",
   "type": "fix",
-  "title": "Convert pages and the print page hold still while they load on desktop"
+  "title": "Landing pages and short pages like Print stay put while they load on desktop"
 }
