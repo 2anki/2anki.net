@@ -47,6 +47,7 @@ import defaultRouter from './routes/DefaultRouter';
 import rejectScannerProbes from './routes/middleware/rejectScannerProbes';
 import { denyFraming } from './routes/middleware/denyFraming';
 import { securityHeaders } from './routes/middleware/securityHeaders';
+import { noindexAuthPages } from './routes/middleware/noindexAuthPages';
 import { noindexNonCanonicalHosts } from './routes/middleware/noindexNonCanonicalHosts';
 import { redirectNonCanonicalHosts } from './routes/middleware/redirectNonCanonicalHosts';
 import { redirectConvertDuplicates } from './routes/middleware/redirectConvertDuplicates';
@@ -191,6 +192,7 @@ const serve = async () => {
   app.use(requestIdMiddleware);
   app.use(anonIdMiddleware);
   app.use(noindexNonCanonicalHosts);
+  app.use(noindexAuthPages);
   app.use(redirectConvertDuplicates);
   app.use(redirectLegacyDocs);
 
