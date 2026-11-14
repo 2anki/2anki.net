@@ -3,7 +3,6 @@ import { ErrorPresenter } from '../errors/ErrorPresenter';
 import NavigationBar from '../NavigationBar/NavigationBar';
 import Footer from '../Footer';
 import { SkeletonPage } from '../Skeleton/Skeleton';
-import sharedStyles from '../../styles/shared.module.css';
 import styles from './Layout.module.css';
 
 interface PageLayoutProps {
@@ -21,7 +20,7 @@ export function PageLayout({
     <div className={styles.pageContent}>
       <NavigationBar isLoggedIn={isLoggedIn} />
       {error && <ErrorPresenter error={error} />}
-      <main className={sharedStyles.flexGrow}>
+      <main className={styles.main}>
         <Suspense fallback={<SkeletonPage rows={5} />}>{children}</Suspense>
       </main>
       <Footer />

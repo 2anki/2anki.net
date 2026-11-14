@@ -8,7 +8,11 @@ vi.mock('../backend/getPassPricing', () => ({
 }));
 
 import { getPassPricing } from '../backend/getPassPricing';
-import { usePassPrices, useLivePassPrices } from './usePassPrices';
+import {
+  usePassPrices,
+  useLivePassPrices,
+  useLivePassPricesPending,
+} from './usePassPrices';
 
 function buildWrapper() {
   const queryClient = new QueryClient({
@@ -139,5 +143,41 @@ describe('useLivePassPrices', () => {
 
     await waitFor(() => expect(getPassPricing).toHaveBeenCalled());
     expect(result.current).toEqual({});
+  });
+});
+
+describe('useLivePassPricesPending', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('is pending before the endpoint resolves', () => {
+    vi.mocked(getPassPricing).mockReturnValue(new Promise(() => {}));
+
+    const { result } = renderHook(() => useLivePassPricesPending(), {
+      wrapper: buildWrapper(),
+    });
+
+    expect(result.current).toBe(true);
+  });
+
+  it('stops pending once the endpoint resolves', async () => {
+    vi.mocked(getPassPricing).mockResolvedValue({ passes: {} });
+
+    const { result } = renderHook(() => useLivePassPricesPending(), {
+      wrapper: buildWrapper(),
+    });
+
+    await waitFor(() => expect(result.current).toBe(false));
+  });
+
+  it('stops pending when the endpoint request fails', async () => {
+    vi.mocked(getPassPricing).mockRejectedValue(new Error('network'));
+
+    const { result } = renderHook(() => useLivePassPricesPending(), {
+      wrapper: buildWrapper(),
+    });
+
+    await waitFor(() => expect(result.current).toBe(false));
   });
 });

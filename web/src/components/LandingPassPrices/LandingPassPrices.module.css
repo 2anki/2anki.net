@@ -7,6 +7,12 @@
   max-width: 42ch;
 }
 
+.reserved {
+  min-height: 9.8125rem;
+  border-color: transparent;
+  background: transparent;
+}
+
 .centered {
   margin-inline: auto;
 }
