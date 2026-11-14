@@ -43,12 +43,30 @@ const REGISTERED_LEGAL_PATHS = new Set([
 
 const DOCUMENTATION_PREFIX = '/documentation/';
 
-const LEGACY_PATHS = new Map<string, string>(
-  Object.entries(LEGACY_DOC_REDIRECTS).flatMap(([slug, target]) => [
-    [`/${slug}`, target],
-    [`${DOCUMENTATION_PREFIX}${slug}`, target],
-  ])
-);
+// Pages removed from the current /documentation layout. They never existed on
+// the old docs host, so they redirect under /documentation only and stay out
+// of the Netlify mapping.
+export const RETIRED_DOC_REDIRECTS: Readonly<Record<string, string>> = {
+  'advanced/napi': '/documentation/reference/mcp/',
+  'reference/api': '/documentation/reference/mcp/',
+  'start-here/sign-in-with-apple': '/documentation/start-here/what-is-2anki/',
+  'cards/transform-deck': '/documentation/cards/ai-flashcards/',
+};
+
+const LEGACY_PATHS = new Map<string, string>([
+  ...Object.entries(LEGACY_DOC_REDIRECTS).flatMap(
+    ([slug, target]): [string, string][] => [
+      [`/${slug}`, target],
+      [`${DOCUMENTATION_PREFIX}${slug}`, target],
+    ]
+  ),
+  ...Object.entries(RETIRED_DOC_REDIRECTS).map(
+    ([slug, target]): [string, string] => [
+      `${DOCUMENTATION_PREFIX}${slug}`,
+      target,
+    ]
+  ),
+]);
 
 function withoutTrailingSlash(path: string): string {
   return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
