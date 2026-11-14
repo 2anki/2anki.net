@@ -34,7 +34,6 @@ function main() {
   rememberLandingCampaign(window.location.search);
   initTheme();
   initI18n();
-  startLayoutShiftReport();
 
   const container = document.getElementById('root');
   const root = createRoot(container!);
@@ -57,6 +56,7 @@ function main() {
       </Suspense>
     </React.StrictMode>
   );
+  startLayoutShiftReport();
 }
 
 main();

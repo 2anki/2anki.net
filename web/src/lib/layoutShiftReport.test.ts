@@ -33,6 +33,10 @@ describe('shiftPath', () => {
     ['/users/r/abcdefghijklmnopqrstuvwxyzABCDEF', '/users/r/:id'],
     ['/s/9f8e7d6c', '/s/:id'],
     ['/documentation/reference/mcp/', '/documentation/reference/mcp'],
+    ['/someone@example.com', '/:id'],
+    ['/Upload', '/:id'],
+    ['/preview/apkg/My%20Deck', '/preview/apkg/:id'],
+    ['/a/b/c/d/e/f', '/a/b/c/d'],
   ])('reports %s as %s', (pathname, expected) => {
     expect(shiftPath(pathname)).toBe(expected);
   });
@@ -152,25 +156,25 @@ describe('LayoutShiftReporter', () => {
     expect(sent).toEqual([]);
   });
 
-  it('sends nothing while the score is under 0.1', () => {
+  it.each([0.099, 0.1])('sends nothing for a score of %s', (value) => {
     const { tally, reporter, sent } = build();
-    tally.add(sample({ value: 0.099 }));
+    tally.add(sample({ value }));
 
     reporter.flush();
 
     expect(sent).toEqual([]);
   });
 
-  it('sends the summary once the score reaches 0.1', () => {
+  it('sends the summary once the score is past 0.1', () => {
     const { tally, reporter, sent } = build();
-    tally.add(sample({ value: 0.1 }));
+    tally.add(sample({ value: 0.11 }));
 
     reporter.flush();
 
     expect(sent).toEqual([
       {
-        value: 0.1,
-        worst_value: 0.1,
+        value: 0.11,
+        worst_value: 0.11,
         worst_ms: 1000,
         worst_path: '/print',
         worst_target: 'footer.Footer.footer',
@@ -202,59 +206,97 @@ describe('LayoutShiftReporter', () => {
 
   it('stops after three reports for one page', () => {
     const { tally, reporter, sent } = build();
-    for (const [index, value] of [0.1, 0.2, 0.3, 0.4, 0.5].entries()) {
+    for (const [index, value] of [0.15, 0.2, 0.3, 0.4, 0.5].entries()) {
       tally.add(sample({ value, startTime: index * 10_000 }));
       reporter.flush();
     }
 
-    expect(sent.map((summary) => summary.value)).toEqual([0.1, 0.2, 0.3]);
+    expect(sent.map((summary) => summary.value)).toEqual([0.15, 0.2, 0.3]);
   });
 });
 
 describe('startLayoutShiftReport', () => {
+  const observe = vi.fn();
+  let deliver: (entries: unknown[]) => void = () => {};
+
+  function stubObserver(supportedEntryTypes: string[]): void {
+    class FakeObserver {
+      static readonly supportedEntryTypes = supportedEntryTypes;
+      constructor(callback: (list: { getEntries: () => unknown[] }) => void) {
+        deliver = (entries) => callback({ getEntries: () => entries });
+      }
+      observe = observe;
+    }
+    vi.stubGlobal('PerformanceObserver', FakeObserver);
+  }
+
+  function footerShift(value: number) {
+    const footer = document.createElement('footer');
+    footer.className = 'Footer-module__footer___I47BE';
+    return {
+      value,
+      startTime: 1500,
+      hadRecentInput: false,
+      sources: [{ node: footer }],
+    };
+  }
+
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
+    deliver = () => {};
     delete document.documentElement.dataset.auth;
   });
 
-  it('does nothing in a browser without layout shift entries', () => {
+  it('does nothing in a browser with no PerformanceObserver', () => {
     vi.stubGlobal('PerformanceObserver', undefined);
 
-    expect(() => startLayoutShiftReport()).not.toThrow();
-    document.dispatchEvent(new Event('visibilitychange'));
+    startLayoutShiftReport();
+    globalThis.dispatchEvent(new Event('pagehide'));
 
     expect(track).not.toHaveBeenCalled();
   });
 
+  it('does not observe in Safari or Firefox, which have no layout shift entries', () => {
+    stubObserver(['paint', 'largest-contentful-paint']);
+
+    startLayoutShiftReport();
+    deliver([footerShift(0.4)]);
+    globalThis.dispatchEvent(new Event('pagehide'));
+
+    expect(observe).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
+  });
+
+  it('does not observe or throw where randomUUID is missing', () => {
+    stubObserver(['layout-shift']);
+    vi.stubGlobal('crypto', {});
+
+    startLayoutShiftReport();
+    deliver([footerShift(0.4)]);
+    globalThis.dispatchEvent(new Event('pagehide'));
+
+    expect(observe).not.toHaveBeenCalled();
+    expect(track).not.toHaveBeenCalled();
+  });
+
   it('reports a page that shifted when the visitor leaves it', () => {
-    let deliver: (entries: unknown[]) => void = () => {};
-    class FakeObserver {
-      static readonly supportedEntryTypes = ['layout-shift'];
-      constructor(callback: (list: { getEntries: () => unknown[] }) => void) {
-        deliver = (entries) => callback({ getEntries: () => entries });
-      }
-      observe(): void {}
-    }
-    vi.stubGlobal('PerformanceObserver', FakeObserver);
+    stubObserver(['layout-shift']);
     vi.stubGlobal('innerWidth', 1440);
     vi.stubGlobal('innerHeight', 900);
     document.documentElement.dataset.auth = '1';
-    const footer = document.createElement('footer');
-    footer.className = 'Footer-module__footer___I47BE';
 
     startLayoutShiftReport();
     deliver([
       { value: 0.5, startTime: 200, hadRecentInput: true, sources: [] },
-      {
-        value: 0.14,
-        startTime: 1500,
-        hadRecentInput: false,
-        sources: [{ node: footer }],
-      },
+      footerShift(0.14),
     ]);
     globalThis.dispatchEvent(new Event('pagehide'));
 
+    expect(observe).toHaveBeenCalledWith({
+      type: 'layout-shift',
+      buffered: true,
+    });
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith('layout_shift_reported', {
       value: 0.14,
@@ -268,5 +310,19 @@ describe('startLayoutShiftReport', () => {
       viewport_height: 900,
       signed_in: true,
     });
+  });
+
+  it('marks a visitor who arrived without a session as signed out', () => {
+    stubObserver(['layout-shift']);
+
+    startLayoutShiftReport();
+    deliver([footerShift(0.2)]);
+    globalThis.dispatchEvent(new Event('pagehide'));
+
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(track).toHaveBeenCalledWith(
+      'layout_shift_reported',
+      expect.objectContaining({ value: 0.2, signed_in: false })
+    );
   });
 });

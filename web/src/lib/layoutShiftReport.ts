@@ -6,7 +6,8 @@ const WINDOW_GAP_MS = 1000;
 const WINDOW_MAX_MS = 5000;
 const MAX_REPORTS_PER_PAGE = 3;
 const TARGET_MAX_LENGTH = 60;
-const ID_SEGMENT_MIN_LENGTH = 24;
+const PATH_MAX_SEGMENTS = 4;
+const ROUTE_WORD = /^[a-z][a-z-]{0,23}$/;
 
 export interface ShiftSample {
   value: number;
@@ -35,17 +36,16 @@ function roundTo3(value: number): number {
 }
 
 /**
- * Routes carry ids and one-time tokens (/mindmaps/:id, /users/r/:token), which
- * must not reach the events table: any segment with a digit or of token length
- * is replaced.
+ * Routes carry ids and one-time tokens (/mindmaps/:id, /users/r/:token), and a
+ * mistyped address can carry anything. Only a segment that reads as a route
+ * word (lowercase letters and hyphens, under 24 characters) is kept, so none
+ * of that reaches the events table.
  */
 export function shiftPath(pathname: string): string {
   const segments = pathname.split('/').filter((segment) => segment !== '');
-  const safe = segments.map((segment) =>
-    /\d/.test(segment) || segment.length >= ID_SEGMENT_MIN_LENGTH
-      ? ':id'
-      : segment
-  );
+  const safe = segments
+    .slice(0, PATH_MAX_SEGMENTS)
+    .map((segment) => (ROUTE_WORD.test(segment) ? segment : ':id'));
   return `/${safe.join('/')}`;
 }
 
@@ -120,8 +120,9 @@ export class LayoutShiftTally {
 }
 
 /**
- * Decides when a page's tally is worth sending: only once it passes the
- * "needs improvement" line, again only if it grew, and a few times at most.
+ * Decides when a page's tally is worth sending: only once it is past 0.1,
+ * where "needs improvement" starts, again only if it grew, and a few times at
+ * most.
  */
 export class LayoutShiftReporter {
   private sent = 0;
@@ -134,7 +135,7 @@ export class LayoutShiftReporter {
 
   flush(): void {
     const summary = this.tally.summary();
-    if (summary == null || summary.value < REPORT_THRESHOLD) {
+    if (summary == null || summary.value <= REPORT_THRESHOLD) {
       return;
     }
     if (
@@ -155,15 +156,18 @@ interface LayoutShiftEntry extends PerformanceEntry {
   sources?: { node: Node | null }[];
 }
 
-function supportsLayoutShift(): boolean {
+// randomUUID is missing outside secure contexts and in Chromium before 92,
+// both of which still have layout shift entries.
+function canReport(): boolean {
   return (
     typeof PerformanceObserver !== 'undefined' &&
-    (PerformanceObserver.supportedEntryTypes ?? []).includes('layout-shift')
+    (PerformanceObserver.supportedEntryTypes ?? []).includes('layout-shift') &&
+    typeof globalThis.crypto?.randomUUID === 'function'
   );
 }
 
 export function startLayoutShiftReport(): void {
-  if (!supportsLayoutShift()) {
+  if (!canReport()) {
     return;
   }
   const pageId = crypto.randomUUID();
