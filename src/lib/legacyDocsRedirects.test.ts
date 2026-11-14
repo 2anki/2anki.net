@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import {
   LEGACY_DOC_REDIRECTS,
+  RETIRED_DOC_REDIRECTS,
   legacyDocsRedirectTarget,
 } from './legacyDocsRedirects';
 
@@ -76,6 +77,22 @@ describe('legacyDocsRedirectTarget', () => {
   });
 
   it.each([
+    ['/documentation/advanced/napi', '/documentation/reference/mcp/'],
+    ['/documentation/reference/api', '/documentation/reference/mcp/'],
+    ['/documentation/reference/api/', '/documentation/reference/mcp/'],
+    [
+      '/documentation/start-here/sign-in-with-apple',
+      '/documentation/start-here/what-is-2anki/',
+    ],
+    [
+      '/documentation/cards/transform-deck/',
+      '/documentation/cards/ai-flashcards/',
+    ],
+  ])('sends the retired docs page %s to %s', (from, to) => {
+    expect(legacyDocsRedirectTarget(from)).toBe(to);
+  });
+
+  it.each([
     '/documentation/misc/privacy-policy',
     '/documentation/misc/privacy-policy/',
     '/documentation/misc/terms-of-service',
@@ -98,6 +115,8 @@ describe('legacyDocsRedirectTarget', () => {
     '/guides/introduction//',
     '/constructor',
     '/documentation/constructor',
+    '/reference/api',
+    '/start-here/sign-in-with-apple',
     '/upload',
   ])('passes through %s', (path) => {
     expect(legacyDocsRedirectTarget(path)).toBeUndefined();
@@ -105,7 +124,10 @@ describe('legacyDocsRedirectTarget', () => {
 
   it('points every internal target at a page that exists', () => {
     const contentDir = join(__dirname, '../../web/src/pages/DocsPage/content');
-    const missing = Object.values(LEGACY_DOC_REDIRECTS)
+    const missing = [
+      ...Object.values(LEGACY_DOC_REDIRECTS),
+      ...Object.values(RETIRED_DOC_REDIRECTS),
+    ]
       .filter((target) => target.startsWith('/documentation/'))
       .map((target) => target.slice('/documentation/'.length, -1))
       .filter((slug) => !existsSync(join(contentDir, `${slug}.md`)));
