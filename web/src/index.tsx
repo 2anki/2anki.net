@@ -10,6 +10,7 @@ import { initTheme } from './lib/theme';
 import { initI18n } from './lib/i18n';
 import { rememberLandingCampaign } from './lib/adClick';
 import { isChunkLoadError, recoverFromChunkError } from './lib/chunkReload';
+import { startLayoutShiftReport } from './lib/layoutShiftReport';
 import {
   reportClientError,
   reportDeclinedChunkRecovery,
@@ -55,6 +56,7 @@ function main() {
       </Suspense>
     </React.StrictMode>
   );
+  startLayoutShiftReport();
 }
 
 main();
