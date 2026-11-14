@@ -25,6 +25,9 @@ describe('noindexAuthPages', () => {
     '/account/email-change',
     '/login/',
     '/Register',
+    '/users/r/3f9c1a7e5b2d',
+    '/users/r/3f9c1a7e5b2d/',
+    '/Users/R/3F9C1A7E5B2D',
   ])('tells crawlers to keep %s out of the index', (path) => {
     const { setHeader, next } = run(path);
     expect(setHeader).toHaveBeenCalledWith('X-Robots-Tag', 'noindex');
@@ -40,6 +43,9 @@ describe('noindexAuthPages', () => {
     '/login-help',
     '/register/extra',
     '/api/users/login',
+    '/api/users/r/3f9c1a7e5b2d',
+    '/users/r',
+    '/users/register',
   ])('leaves %s indexable', (path) => {
     const { setHeader, next } = run(path);
     expect(setHeader).not.toHaveBeenCalled();
