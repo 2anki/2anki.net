@@ -5,6 +5,7 @@ import {
   MIN_PDF_IMAGE_BYTES,
   MAX_PDF_IMAGES,
   PdfImagesRunner,
+  runImageTool,
 } from './extractPdfImages';
 
 function fakeRunner(files: Record<string, number | Buffer>): PdfImagesRunner {
@@ -91,5 +92,30 @@ describe('extractPdfImages', () => {
       .readdirSync(path.join(require('node:os').tmpdir()))
       .filter((d) => d.startsWith('pdf-images-')).length;
     expect(after).toBeLessThanOrEqual(before);
+  });
+});
+
+describe('runImageTool', () => {
+  const NOISY_THEN_EXIT =
+    "process.stderr.write('x'.repeat(4 * 1024 * 1024), () => process.exit(0))";
+
+  it('finishes when the tool prints more than a pipe holds', async () => {
+    await expect(
+      runImageTool(process.execPath, ['-e', NOISY_THEN_EXIT], 20_000)
+    ).resolves.toBeUndefined();
+  });
+
+  // The rejection comes from the killed tool closing: left alive, sleep
+  // would exit cleanly and this would resolve instead.
+  it('kills a tool that overruns the timeout', async () => {
+    await expect(runImageTool('/bin/sleep', ['5'], 50)).rejects.toThrow(
+      'sleep timed out'
+    );
+  });
+
+  it('rejects when the tool exits with a failure code', async () => {
+    await expect(
+      runImageTool(process.execPath, ['-e', 'process.exit(3)'], 20_000)
+    ).rejects.toThrow('exited with code 3');
   });
 });

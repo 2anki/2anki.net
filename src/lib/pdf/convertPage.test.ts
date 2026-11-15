@@ -73,6 +73,14 @@ describe('convertPage', () => {
     expect(spawnMock.mock.calls[0][1]).not.toContain('-opw');
   });
 
+  it('discards the tool output so a noisy PDF cannot block it', async () => {
+    fakePdftoppm(0, null);
+
+    await convertPage('/tmp/sample.pdf', 1, 1);
+
+    expect(spawnMock.mock.calls[0][2]).toMatchObject({ stdio: 'ignore' });
+  });
+
   it('surfaces a non-zero exit code with no signal', async () => {
     fakePdftoppm(1, null);
 

@@ -45,16 +45,22 @@ export function convertPage(
       : '/usr/bin/pdftoppm';
 
   return new Promise((resolve, reject) => {
-    const process = spawn(pdftoppmPath, [
-      '-png',
-      '-f',
-      pageNumber.toString(),
-      '-l',
-      pageNumber.toString(),
-      ...passwordArgs(credential),
-      pdfPath,
-      outputFileNameBase,
-    ]);
+    // Output is discarded: a pipe nobody reads fills up on a damaged PDF's
+    // warnings and the tool then never exits.
+    const process = spawn(
+      pdftoppmPath,
+      [
+        '-png',
+        '-f',
+        pageNumber.toString(),
+        '-l',
+        pageNumber.toString(),
+        ...passwordArgs(credential),
+        pdfPath,
+        outputFileNameBase,
+      ],
+      { stdio: 'ignore' }
+    );
 
     process.on('error', (error) => {
       reject(
