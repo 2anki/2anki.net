@@ -30,15 +30,39 @@ export type PdfImagesRunner = (
   outputRoot: string
 ) => Promise<void>;
 
-const runPdfImages: PdfImagesRunner = (pdfPath, outputRoot) =>
-  new Promise((resolve, reject) => {
-    const child = spawn(resolveBinary(), ['-png', '-p', pdfPath, outputRoot]);
-    child.on('error', reject);
+// A damaged PDF can make the tool run without end. Sixty seconds matches the
+// page-range tools; past it the deck is built without embedded images.
+export const PDF_IMAGES_TIMEOUT_MS = 60_000;
+
+// The tool's output is discarded, never piped. A damaged PDF makes pdfimages
+// print a warning per broken object; with a pipe nobody reads, it blocked on
+// the full pipe for good and held its conversion worker with it.
+export function runImageTool(
+  binary: string,
+  args: string[],
+  timeoutMs: number = PDF_IMAGES_TIMEOUT_MS
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(binary, args, { shell: false, stdio: 'ignore' });
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`${path.basename(binary)} timed out`));
+    }, timeoutMs);
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
     child.on('close', (code) => {
+      clearTimeout(timer);
       if (code === 0) resolve();
-      else reject(new Error(`pdfimages exited with code ${code}`));
+      else
+        reject(new Error(`${path.basename(binary)} exited with code ${code}`));
     });
   });
+}
+
+const runPdfImages: PdfImagesRunner = (pdfPath, outputRoot) =>
+  runImageTool(resolveBinary(), ['-png', '-p', pdfPath, outputRoot]);
 
 // `pdfimages -p` names files `<root>-<page>-<imageNumber>.png` with 1-based
 // page numbers; pageIndex converts to the 0-based index PdfPage arrays use.
