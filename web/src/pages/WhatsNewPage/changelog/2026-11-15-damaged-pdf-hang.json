@@ -2,5 +2,5 @@
   "id": "2026-11-15-damaged-pdf-hang",
   "date": "2026-11-15",
   "type": "fix",
-  "title": "A damaged PDF no longer leaves the conversion waiting without end"
+  "title": "A damaged PDF now finishes converting instead of hanging"
 }

@@ -30,23 +30,30 @@ export type PdfImagesRunner = (
   outputRoot: string
 ) => Promise<void>;
 
-// A damaged PDF can make the tool run without end. Sixty seconds matches the
-// page-range tools; past it the deck is built without embedded images.
-export const PDF_IMAGES_TIMEOUT_MS = 60_000;
+// Nothing else bounds this tool: the conversion pool has no per-job deadline.
+// Extraction time is not measured, so the limit is set wide: it exists to
+// free a worker from a run that will never end, not to cut a slow large PDF
+// short. Past it the deck is built without embedded images.
+const PDF_IMAGES_TIMEOUT_MS = 5 * 60_000;
 
 // The tool's output is discarded, never piped. A damaged PDF makes pdfimages
 // print a warning per broken object; with a pipe nobody reads, it blocked on
 // the full pipe for good and held its conversion worker with it.
+//
+// A timeout rejects only once the killed tool has closed, so the caller never
+// removes the output folder while the tool can still write into it.
 export function runImageTool(
   binary: string,
   args: string[],
   timeoutMs: number = PDF_IMAGES_TIMEOUT_MS
 ): Promise<void> {
   return new Promise((resolve, reject) => {
+    const name = path.basename(binary);
     const child = spawn(binary, args, { shell: false, stdio: 'ignore' });
+    let timedOut = false;
     const timer = setTimeout(() => {
+      timedOut = true;
       child.kill('SIGKILL');
-      reject(new Error(`${path.basename(binary)} timed out`));
     }, timeoutMs);
     child.on('error', (error) => {
       clearTimeout(timer);
@@ -54,9 +61,9 @@ export function runImageTool(
     });
     child.on('close', (code) => {
       clearTimeout(timer);
-      if (code === 0) resolve();
-      else
-        reject(new Error(`${path.basename(binary)} exited with code ${code}`));
+      if (timedOut) reject(new Error(`${name} timed out`));
+      else if (code === 0) resolve();
+      else reject(new Error(`${name} exited with code ${code}`));
     });
   });
 }

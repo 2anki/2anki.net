@@ -105,6 +105,8 @@ describe('runImageTool', () => {
     ).resolves.toBeUndefined();
   });
 
+  // The rejection comes from the killed tool closing: left alive, sleep
+  // would exit cleanly and this would resolve instead.
   it('kills a tool that overruns the timeout', async () => {
     await expect(runImageTool('/bin/sleep', ['5'], 50)).rejects.toThrow(
       'sleep timed out'

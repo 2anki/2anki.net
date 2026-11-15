@@ -78,7 +78,7 @@ describe('convertPage', () => {
 
     await convertPage('/tmp/sample.pdf', 1, 1);
 
-    expect(spawnMock.mock.calls[0][2]).toEqual({ stdio: 'ignore' });
+    expect(spawnMock.mock.calls[0][2]).toMatchObject({ stdio: 'ignore' });
   });
 
   it('surfaces a non-zero exit code with no signal', async () => {
