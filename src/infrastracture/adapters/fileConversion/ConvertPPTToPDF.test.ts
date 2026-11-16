@@ -5,6 +5,7 @@ import fsPromises from 'fs/promises';
 import { convertPPTToPDF } from './ConvertPPTToPDF';
 import Workspace from '../../../lib/parser/WorkSpace';
 import { isWorkerTerminationError } from '../../../lib/workerTermination';
+import { TOOL_TIMEOUT_MS } from '../../../lib/subprocess/killOnTimeout';
 
 vi.mock('child_process', async () => ({
   ...(await vi.importActual<typeof import('child_process')>('child_process')),
@@ -93,6 +94,32 @@ describe('convertPPTToPDF', () => {
       expect(isWorkerTerminationError(err)).toBe(true);
     }
   );
+
+  it('kills LibreOffice once it has run past the tool limit and fails the conversion', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const proc = new EventEmitter() as childProcess.ChildProcess;
+    (proc as unknown as { stdout: EventEmitter }).stdout = new EventEmitter();
+    (proc as unknown as { stderr: EventEmitter }).stderr = new EventEmitter();
+    proc.kill = (signal) => proc.emit('close', null, signal);
+    mockedSpawn.mockReturnValue(proc);
+    try {
+      const result = convertPPTToPDF(
+        'slides.pptx',
+        Buffer.from('fake'),
+        workspace
+      ).catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(TOOL_TIMEOUT_MS);
+
+      const err = await result;
+      expect(isWorkerTerminationError(err)).toBe(false);
+      expect((err as Error).message).toContain('Conversion failed');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it('still reports a SIGKILL as a failed conversion', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});

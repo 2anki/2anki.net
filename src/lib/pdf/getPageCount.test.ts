@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { getPageCount } from './getPageCount';
+import { TOOL_TIMEOUT_MS } from '../subprocess/killOnTimeout';
 import { jobFailureReasonCode } from '../../usecases/jobs/jobFailureReason';
 
 vi.mock('child_process', async () => {
@@ -68,6 +69,30 @@ describe('getPageCount', () => {
 
   afterEach(async () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('kills pdfinfo once it has run past the tool limit and reports a damaged file', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    spawnMock.mockImplementationOnce((): ChildProcess => {
+      const proc = new EventEmitter() as ChildProcess;
+      (proc as unknown as { stdout: EventEmitter }).stdout = new EventEmitter();
+      (proc as unknown as { stderr: EventEmitter }).stderr = new EventEmitter();
+      proc.kill = (signal) => proc.emit('close', null, signal);
+      return proc;
+    });
+    try {
+      const count = getPageCount(pdfPath).catch((error: Error) => error);
+      await vi.advanceTimersByTimeAsync(TOOL_TIMEOUT_MS);
+      vi.useRealTimers();
+
+      expect(((await count) as Error).message).toMatch(
+        /^pdfinfo_failed code=null signal=SIGKILL/
+      );
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   itIfPdfinfo(
