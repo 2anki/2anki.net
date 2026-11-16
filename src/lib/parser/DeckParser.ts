@@ -7,7 +7,6 @@ import {
 import type { Element } from 'domhandler';
 
 import preserveNewlinesIfApplicable from '../../services/NotionService/helpers/preserveNewlinesIfApplicable';
-import { track } from '../../services/events/track';
 import {
   collectIssuedGuids,
   collectRekeyedGuids,
@@ -210,27 +209,6 @@ function remoteImageFilename(url: string, bytes: Buffer): string {
   return `${getUniqueFileName(bytes.toString('binary'))}.${remoteImageExtension(url)}`;
 }
 
-const PARENT_CONTEXT_MAX_CHARS = 200;
-const PARENT_CONTEXT_STYLE = 'font-size:0.8em;opacity:0.6;margin-bottom:0.35em';
-const PARENT_CONTEXT_MARKER = 'class="parent-context"';
-
-function collapseContextWhitespace(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
-}
-
-function escapeContextText(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function bulletOwnText(li: cheerio.Cheerio<Element>): string {
-  const clone = li.clone();
-  clone.find('ul, ol, details').remove();
-  return collapseContextWhitespace(clone.text());
-}
-
 const MEDIA_IN_BODY = /<(img|audio|video|figure|embed)\b/i;
 
 function bodyHasContent(body: string): boolean {
@@ -283,10 +261,6 @@ export class DeckParser {
 
   private readonly knownGuids?: KnownGuids;
 
-  private readonly ownerUserId: number | null;
-
-  private parentContextEventEmitted = false;
-
   private readonly uploadIdentity?: UploadIdentityContext;
 
   private readonly uploadSourceKeyHash: string;
@@ -336,7 +310,6 @@ export class DeckParser {
     this.settings = input.settings;
     this.files = input.files || [];
     this.knownGuids = input.knownGuids;
-    this.ownerUserId = input.userId ?? null;
     this.uploadIdentity = input.uploadIdentity;
     this.uploadSourceKeyHash = hashSourceKey(input.name);
     this.firstDeckName = input.name;
@@ -1949,34 +1922,8 @@ export class DeckParser {
     this.markUploadDecks();
     this.applyLedgerGuids();
     this.applyUploadIdentityGuids();
-    this.emitParentContextEvent();
     this.payload[0].settings = this.settings;
     this.customExporter.configure(this.payload);
-  }
-
-  // Fires once per file whose finished deck kept at least one card carrying a
-  // parent-context line, counting only cards that survived cleaning so the
-  // adoption read measures real use rather than the option being toggled on.
-  // Notion HTML exports only; the Notion API path does not apply the option.
-  private emitParentContextEvent(): void {
-    if (this.parentContextEventEmitted) {
-      return;
-    }
-    const cards = this.payload.reduce(
-      (total, deck) =>
-        total +
-        deck.cards.filter((card) => card.name.includes(PARENT_CONTEXT_MARKER))
-          .length,
-      0
-    );
-    if (cards === 0) {
-      return;
-    }
-    this.parentContextEventEmitted = true;
-    track('parent_context_enabled', {
-      userId: this.ownerUserId,
-      props: { cards },
-    });
   }
 
   private applyCardLimit(): void {
@@ -2485,61 +2432,6 @@ export class DeckParser {
     return note;
   }
 
-  // Prepends the nearest enclosing bullet or parent toggle of a nested card's
-  // summary as a muted line above the question so an outline card ("ACS")
-  // carries the condition it belongs to. One level only: the closest bullet or
-  // toggle ancestor wins, mirroring the collectSectionTags ancestor walk. The
-  // muted style is inline, not a stylesheet rule, so returning users on a
-  // pinned note type and the non-notion templates still render it. Runs only
-  // after cherry/avocado filtering has kept the card, on the card's own front,
-  // so a cherry or avocado emoji in the parent never changes which cards ship.
-  // A top-level toggle has no ancestor, so its front stays byte-identical and
-  // keeps its existing guid.
-  private applyParentContext(
-    dom: cheerio.CheerioAPI,
-    summary: cheerio.Cheerio<Element>,
-    note: Note
-  ): void {
-    if (!this.settings.parentContext) {
-      return;
-    }
-    const text = this.nearestParentContextText(dom, summary);
-    if (!text) {
-      return;
-    }
-    const capped =
-      text.length > PARENT_CONTEXT_MAX_CHARS
-        ? `${text.slice(0, PARENT_CONTEXT_MAX_CHARS - 1)}…`
-        : text;
-    note.name = `<div class="parent-context" style="${PARENT_CONTEXT_STYLE}">${escapeContextText(capped)}</div>${note.name}`;
-  }
-
-  private nearestParentContextText(
-    dom: cheerio.CheerioAPI,
-    summary: cheerio.Cheerio<Element>
-  ): string {
-    const ownDetails = summary.closest('details');
-    const start = ownDetails.length > 0 ? ownDetails : summary;
-    for (const ancestor of start.parents().toArray()) {
-      const $ancestor = dom(ancestor);
-      if ($ancestor.is('details')) {
-        const text = collapseContextWhitespace(
-          $ancestor.children('summary').first().text()
-        );
-        if (text) {
-          return text;
-        }
-      }
-      if ($ancestor.is('li')) {
-        const text = bulletOwnText($ancestor);
-        if (text) {
-          return text;
-        }
-      }
-    }
-    return '';
-  }
-
   private extractCards(
     dom: cheerio.CheerioAPI,
     toggleList: Element[],
@@ -2664,9 +2556,7 @@ export class DeckParser {
                 note.sourcePageId = pageId;
                 note.sectionTags = sectionTags;
                 mcqCount++;
-                if (keepCard(note, t)) {
-                  this.applyParentContext(dom, summary, note);
-                }
+                keepCard(note, t);
                 return;
               }
 
@@ -2696,7 +2586,6 @@ export class DeckParser {
                 }
               }
               if (keepCardWithNestedBack(note, t)) {
-                this.applyParentContext(dom, summary, note);
                 foldedToggleCount += foldedToggles;
               }
               for (const child of promoted) {

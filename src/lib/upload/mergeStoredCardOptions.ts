@@ -6,19 +6,23 @@
  */
 const SUPPORT_OVERRIDE_KEYS = ['block-id-identity'] as const;
 
+// pdf-fallback is an attempt-scoped value carried only by the browser, and
+// pdf-page-range and parent-context are retired options legacy rows may still
+// hold; a stored copy of any of them must never reach a conversion.
+const NEVER_FROM_STORED = new Set([
+  'pdf-fallback',
+  'pdf-page-range',
+  'parent-context',
+]);
+
 function stringEntries(stored: unknown): Record<string, string> {
   if (stored == null || typeof stored !== 'object' || Array.isArray(stored)) {
     return {};
   }
   return Object.fromEntries(
     Object.entries(stored).filter(
-      // pdf-fallback is an attempt-scoped value carried only by the browser,
-      // and pdf-page-range is a retired option legacy rows may still hold;
-      // a stored copy of either must never merge into a conversion.
       (entry): entry is [string, string] =>
-        typeof entry[1] === 'string' &&
-        entry[0] !== 'pdf-page-range' &&
-        entry[0] !== 'pdf-fallback'
+        typeof entry[1] === 'string' && !NEVER_FROM_STORED.has(entry[0])
     )
   );
 }

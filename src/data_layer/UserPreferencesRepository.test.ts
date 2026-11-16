@@ -82,6 +82,15 @@ describe('sanitizeCardOptions card-option allowlist', () => {
     expect(result).toEqual({ cherry: 'true' });
   });
 
+  it('drops a parent-context an older browser still syncs', () => {
+    const result = sanitizeCardOptions({
+      cherry: 'true',
+      'parent-context': 'true',
+    } as CardOptions);
+
+    expect(result).toEqual({ cherry: 'true' });
+  });
+
   it('drops non-string values', () => {
     const result = sanitizeCardOptions({
       cherry: 'true',
@@ -136,7 +145,6 @@ const CLIENT_CARD_OPTION_KEYS = [
   'section-tags',
   'cloze',
   'cloze-from-toggle-content',
-  'parent-context',
   'group-cloze-per-toggle',
   'enable-input',
   'basic-reversed',

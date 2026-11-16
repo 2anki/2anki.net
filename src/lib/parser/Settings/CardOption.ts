@@ -45,8 +45,6 @@ class CardOption {
 
   readonly promoteNestedToggles: boolean;
 
-  readonly parentContext: boolean;
-
   readonly removeDeckNameNumbering: boolean;
 
   readonly useTags: boolean;
@@ -173,7 +171,6 @@ class CardOption {
     this.groupClozePerToggle = input['group-cloze-per-toggle'] === 'true';
     this.promoteNestedCloze = input['promote-nested-cloze'] === 'true';
     this.promoteNestedToggles = input['promote-nested-toggles'] === 'true';
-    this.parentContext = input['parent-context'] === 'true';
     this.removeDeckNameNumbering =
       input['remove-deck-name-numbering'] === 'true';
     this.useTags = input.tags !== 'false';

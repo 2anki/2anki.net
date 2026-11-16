@@ -225,7 +225,6 @@ const OPTION_GROUPS: Array<{ id: string; labelKey: string; keys: string[] }> = [
       'paragraph',
       'max-one-toggle-per-card',
       'promote-nested-toggles',
-      'parent-context',
       'perserve-newlines',
       'block-id-identity',
     ],

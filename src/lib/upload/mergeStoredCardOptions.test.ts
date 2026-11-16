@@ -44,6 +44,15 @@ describe('mergeStoredCardOptions', () => {
     ).toEqual({ template: 'x', deckName: 'D' });
   });
 
+  it('ignores a stored parent-context left on a legacy row', () => {
+    expect(
+      mergeStoredCardOptions(
+        { 'parent-context': 'true', template: 'x' },
+        { deckName: 'D' }
+      )
+    ).toEqual({ template: 'x', deckName: 'D' });
+  });
+
   it('ignores stored values that are not strings', () => {
     expect(
       mergeStoredCardOptions(

@@ -513,6 +513,29 @@ describe('SettingsRepository owner scoping and payload shapes', () => {
     expect(settings?.styleChangedAt).toBe(1793000000);
   });
 
+  test('loads a row that still carries parent-context as if it never had it', async () => {
+    await db('settings').insert([
+      {
+        owner: '42',
+        object_id: 'page-legacy',
+        title: 'Legacy',
+        payload: JSON.stringify({ deckName: 'Deck', 'parent-context': 'true' }),
+      },
+      {
+        owner: '42',
+        object_id: 'page-plain',
+        title: 'Plain',
+        payload: JSON.stringify({ deckName: 'Deck' }),
+      },
+    ]);
+
+    const legacy = await repo.loadIfExists('42', 'page-legacy');
+    const plain = await repo.loadIfExists('42', 'page-plain');
+
+    expect(legacy).not.toBeNull();
+    expect(legacy).toEqual(plain);
+  });
+
   test('returns null when no row exists for the owner and page', async () => {
     const settings = await repo.loadIfExists('42', 'missing');
     expect(settings).toBeNull();

@@ -43,6 +43,7 @@ describe('allowedHeldCardOptions', () => {
     'share-files-for-debugging',
     'user-instructions',
     'pdf-page-range',
+    'parent-context',
     'pdf-fallback',
   ])('never holds %s', (key) => {
     expect(

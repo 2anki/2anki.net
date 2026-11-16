@@ -182,8 +182,8 @@ const cases: [string, string, CardOption][] = [
     new CardOption({}),
   ],
   [
-    'Notion page with parent context on',
-    'parent-context.html',
+    'Notion toggle under a bullet with a retired parent-context option',
+    'notion-toggle-under-bullet.html',
     new CardOption({ 'parent-context': 'true' }),
   ],
   [
