@@ -27,6 +27,7 @@ import {
 import { buildFaqJsonLd as buildLandingFaqJsonLd } from '../src/pages/LandingPage/landingJsonLd';
 import type { LandingCopy } from '../src/pages/LandingPage/types';
 import { canonicalUrl } from '../src/lib/seo/canonicalUrl';
+import { FALLBACK_PASS_PRICES } from '../src/pages/PricingPage/payment.links';
 import {
   DEFAULT_LANDING_FORMATS,
   DEFAULT_LANDING_STEPS,
@@ -116,7 +117,10 @@ function buildBodyFragment(copy: LandingCopy): string {
     .join('');
 
   const formats = (copy.formats ?? DEFAULT_LANDING_FORMATS)
-    .map((format) => `<li style="display:inline-block;margin:0 0.75rem 0.5rem 0;">${escapeHtml(format)}</li>`)
+    .map(
+      (format) =>
+        `<li style="display:inline-block;margin:0 0.75rem 0.5rem 0;">${escapeHtml(format)}</li>`
+    )
     .join('');
 
   const whatComesAcross =
@@ -195,9 +199,7 @@ function localizedHeadTags(copy: LandingCopy): string {
   }
   if (copy.htmlLang != null) {
     const ogLocale = `${copy.htmlLang}_${copy.htmlLang.toUpperCase()}`;
-    tags.push(
-      `<meta property="og:locale" content="${escapeHtml(ogLocale)}">`
-    );
+    tags.push(`<meta property="og:locale" content="${escapeHtml(ogLocale)}">`);
   }
   return tags.join('\n  ');
 }
@@ -392,12 +394,10 @@ const META_ONLY_PAGES: MetaOnlyPageMeta[] = [
   },
   {
     pathname: '/pricing',
-    title: 'Pricing — Free, Day Pass, Pro, Lifetime | 2anki',
-    description:
-      'Compare 2anki plans. Free converts 100 cards a month. Pro at $7.99/mo or $64/yr. Day and Week Passes from $4.',
+    title: 'Pricing — Free, Pro, and one-time passes | 2anki',
+    description: `Compare 2anki plans. Free converts 100 cards a month. Pro at $7.99/mo or $64/yr. One-time passes from ${FALLBACK_PASS_PRICES['24h']}.`,
     h1: 'Pricing',
-    intro:
-      'Free converts 100 cards a month. Pro is $7.99/mo or $64/yr. A Day Pass is $4, a Week Pass $9 — one-time payments, no subscription. Cancel any subscription in one click.',
+    intro: `Free converts 100 cards a month. Pro is $7.99/mo or $64/yr. A Day Pass is ${FALLBACK_PASS_PRICES['24h']}, a Week Pass ${FALLBACK_PASS_PRICES['7d']}, a Semester Pass ${FALLBACK_PASS_PRICES['120d']} — one-time payments, no subscription. Cancel any subscription in one click.`,
   },
   {
     pathname: '/about',

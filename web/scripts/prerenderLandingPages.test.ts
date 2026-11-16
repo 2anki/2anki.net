@@ -13,6 +13,7 @@ import notionZuAnkiCopy from '../src/pages/LandingPage/copy/notion-zu-anki';
 import pdfZuAnkiCopy from '../src/pages/LandingPage/copy/pdf-zu-anki';
 import powerpointZuAnkiCopy from '../src/pages/LandingPage/copy/powerpoint-zu-anki';
 import { ANSWERS_PAGES } from '../src/pages/AnswersPage/answersConfig';
+import { FALLBACK_PASS_PRICES } from '../src/pages/PricingPage/payment.links';
 
 let buildDir: string;
 
@@ -68,9 +69,9 @@ describe('emitLandingPages', () => {
       true
     );
     expect(files.some((p) => p.endsWith('pdf-zu-anki/index.html'))).toBe(true);
-    expect(
-      files.some((p) => p.endsWith('powerpoint-zu-anki/index.html'))
-    ).toBe(true);
+    expect(files.some((p) => p.endsWith('powerpoint-zu-anki/index.html'))).toBe(
+      true
+    );
     expect(files.some((p) => p.endsWith('anki-for-japanese/index.html'))).toBe(
       true
     );
@@ -163,7 +164,10 @@ describe('emitLandingPages', () => {
     const body = html.slice(html.indexOf('<div id="root">'));
     for (const faq of notionCopy.faqs) {
       expect(body).toContain(
-        faq.q.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+        faq.q
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;')
       );
     }
     expect(body).toContain('How it works');
@@ -272,18 +276,12 @@ describe('emitLandingPages German hreflang twin', () => {
 
   const readGerman = (): string => {
     emitLandingPages(buildDir);
-    return readFileSync(
-      join(buildDir, 'notion-zu-anki', 'index.html'),
-      'utf8'
-    );
+    return readFileSync(join(buildDir, 'notion-zu-anki', 'index.html'), 'utf8');
   };
 
   const readEnglish = (): string => {
     emitLandingPages(buildDir);
-    return readFileSync(
-      join(buildDir, 'notion-to-anki', 'index.html'),
-      'utf8'
-    );
+    return readFileSync(join(buildDir, 'notion-to-anki', 'index.html'), 'utf8');
   };
 
   it('prerenders the authored German title', () => {
@@ -330,9 +328,7 @@ describe('emitLandingPages German hreflang twin', () => {
     expect(html).toContain('<html lang="en">');
     expect(html).not.toContain('<html lang="de">');
     expect(html).toContain('<meta property="og:locale" content="en_US">');
-    expect(html).not.toContain(
-      '<meta property="og:locale" content="de_DE">'
-    );
+    expect(html).not.toContain('<meta property="og:locale" content="de_DE">');
   });
 
   it('renders the German med-exam framing in the crawlable body', () => {
@@ -461,7 +457,7 @@ describe('emitMetaOnlyPages', () => {
       '<title>Upload notes and get an Anki deck — 2anki</title>'
     );
     expect(pricing).toContain(
-      '<title>Pricing — Free, Day Pass, Pro, Lifetime | 2anki</title>'
+      '<title>Pricing — Free, Pro, and one-time passes | 2anki</title>'
     );
     expect(about).toContain(
       '<title>About 2anki — open-source Notion to Anki converter</title>'
@@ -500,6 +496,22 @@ describe('emitMetaOnlyPages', () => {
     );
     expect(pricing).toContain('<h1');
     expect(pricing).toContain('$7.99/mo or $64/yr');
+  });
+
+  it('states the pass prices the pricing page shows, in the meta description and the intro', () => {
+    emitMetaOnlyPages(buildDir);
+    const pricing = readFileSync(
+      join(buildDir, 'pricing', 'index.html'),
+      'utf8'
+    );
+    const day = FALLBACK_PASS_PRICES['24h'];
+    const week = FALLBACK_PASS_PRICES['7d'];
+    const semester = FALLBACK_PASS_PRICES['120d'];
+
+    expect(pricing).toContain(`One-time passes from ${day}.`);
+    expect(pricing).toContain(
+      `A Day Pass is ${day}, a Week Pass ${week}, a Semester Pass ${semester}`
+    );
   });
 
   it('does not duplicate og:* tags from the source index', () => {
