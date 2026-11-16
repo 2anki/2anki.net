@@ -99,10 +99,10 @@ describe('conversion long task watch', () => {
     expect(ctx.sendAlert.mock.calls[0][1]).toBe(
       'An upload conversion has held a worker past 30 minutes. ' +
         'Process server-blue, worker pid 102 (31 min). ' +
-        'On the server, list its subprocesses: ps --ppid 102 -o pid,etime,cmd. ' +
         'A pdfimages, pdftoppm, pdfinfo, or soffice process that has run this long is hung. ' +
         'Nothing was stopped. Killing a hung subprocess fails that conversion and frees its worker; ' +
-        'restarting the server process frees them all, and the next deploy does that too.'
+        'restarting the server process frees them all, and the next deploy does that too. ' +
+        'To list its subprocesses on the server: ps --ppid 102 -o pid,etime,cmd'
     );
   });
 
@@ -119,8 +119,8 @@ describe('conversion long task watch', () => {
     const ctx = setup({ uploadRuns: [run(null, HUNG)], backgroundRuns: [] });
     await ctx.watch.tick();
 
-    expect(ctx.sendAlert.mock.calls[0][1]).toContain(
-      'worker pid unknown (31 min). On the server, list its subprocesses: ps --ppid <worker pid> -o pid,etime,cmd.'
+    expect(ctx.sendAlert.mock.calls[0][1]).toMatch(
+      /worker pid unknown \(31 min\)\..* To list its subprocesses on the server: ps --ppid <worker pid> -o pid,etime,cmd$/
     );
   });
 
@@ -222,8 +222,8 @@ describe('conversion long task watch', () => {
     expect(ctx.sendAlert.mock.calls[1][0]).toBe(
       '[2anki] 2 upload conversions have run past 30 minutes'
     );
-    expect(ctx.sendAlert.mock.calls[1][1]).toContain(
-      '2 upload conversions have each held a worker past 30 minutes. Process server-blue, workers pid 102 (34 min), pid 103 (31 min). On the server, list their subprocesses: ps --ppid 102,103 -o pid,etime,cmd.'
+    expect(ctx.sendAlert.mock.calls[1][1]).toMatch(
+      /^2 upload conversions have each held a worker past 30 minutes\. Process server-blue, workers pid 102 \(34 min\), pid 103 \(31 min\)\..* To list their subprocesses on the server: ps --ppid 102,103 -o pid,etime,cmd$/
     );
   });
 
@@ -451,6 +451,19 @@ describe('conversion long task watch', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('records an alert answered in time even when the clock has stepped back', async () => {
+    const ctx = setup(oneHungUpload);
+    ctx.advance(10 * MINUTE);
+    await ctx.watch.tick();
+    ctx.advance(-9 * MINUTE);
+    ctx.setSample(twoHungUploads);
+    await ctx.watch.tick();
+    ctx.advance(MINUTE);
+    await ctx.watch.tick();
+
+    expect(ctx.sendAlert).toHaveBeenCalledTimes(2);
   });
 
   it('alerts at once for a new long task after an alert that never got through', async () => {

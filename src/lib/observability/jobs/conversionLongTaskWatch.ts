@@ -66,7 +66,7 @@ interface LaneState {
   lastAlertAt: number | null;
   failedSends: number;
   retryAt: number;
-  // Counts the times the lane went quiet. An answer to a send from an earlier
+  // Goes up on every tick that finds the lane quiet. An answer to a send from an earlier
   // run of long tasks must not be written into the next one.
   episode: number;
 }
@@ -93,7 +93,7 @@ function listCommand(long: RunningTask[]): string {
   const pids = long.flatMap((task) => (task.pid == null ? [] : [task.pid]));
   const target = pids.length === 0 ? '<worker pid>' : pids.join(',');
   const whose = long.length === 1 ? 'its' : 'their';
-  return `On the server, list ${whose} subprocesses: ps --ppid ${target} -o pid,etime,cmd.`;
+  return `To list ${whose} subprocesses on the server: ps --ppid ${target} -o pid,etime,cmd`;
 }
 
 const HOW_TO_FREE =
@@ -133,7 +133,8 @@ function alertBody(
       ? `${state.one} has held a worker past ${state.limit}.`
       : `${long.length} ${state.many} have each held a worker past ${state.limit}.`;
   const where = `Process ${processName}, ${describeWorkers(long)}.`;
-  return `${what} ${where} ${listCommand(long)} ${state.hint} ${HOW_TO_FREE}`;
+  // The command comes last and takes no full stop, so it can be pasted as is.
+  return `${what} ${where} ${state.hint} ${HOW_TO_FREE} ${listCommand(long)}`;
 }
 
 // Settles with the send, or rejects once the provider has gone the limit
@@ -236,13 +237,13 @@ export function createConversionLongTaskWatch(
       ? firstAlertSubject(state, long.length)
       : reminderSubject(state, long.length);
     const episode = state.episode;
-    // An answer can arrive after the lane has gone quiet, or after a later
-    // send has already been recorded. Either way it is old news.
+    // An answer that comes after the time limit can arrive once the lane has
+    // gone quiet, or once a later send has been recorded. Either way it is old
+    // news. An answer in time is never stale, whatever the clock does.
     const isStale = () =>
       state.episode !== episode ||
       (state.lastAlertAt != null && state.lastAlertAt > at);
     const delivered = () => {
-      if (isStale()) return;
       state.alertedCount = long.length;
       state.lastAlertAt = at;
       state.failedSends = 0;
@@ -256,7 +257,7 @@ export function createConversionLongTaskWatch(
           log(
             `[conversion-pool] long-task alert email arrived late lane=${state.lane}`
           );
-          delivered();
+          if (!isStale()) delivered();
         }
       );
       delivered();
