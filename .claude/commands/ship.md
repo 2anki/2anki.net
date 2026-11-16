@@ -109,7 +109,7 @@ Never delete the branch by hand before `state: MERGED` is confirmed.
 
 ## 5. Watch the deploy
 
-A merge whose diff is only `*.md` files triggers no deploy (`paths-ignore: '**.md'`) — release the deploy lock (step 4) and go to step 7 (local cleanup still applies; it'll report `no deploy` from there).
+A merge whose diff is only `*.md` files outside `web/src/pages/DocsPage/content/` triggers no deploy (the workflow's `paths` list drops `**.md` and brings the docs pages back in, because the web build bundles them) — release the deploy lock (step 4) and go to step 7 (local cleanup still applies; it'll report `no deploy` from there).
 
 ```bash
 gh run list --repo 2anki/server --workflow deploy.2anki.net.yml --branch main --limit 5 --json databaseId,headSha,status,conclusion
