@@ -441,12 +441,13 @@ export class ConversionProcessPool {
   }
 
   // One line per task that ran, so a kill deadline can be set from measured
-  // durations per lane instead of from how long children looked busy.
+  // durations per lane instead of from the once-a-minute busy samples. A task
+  // cut off by the drain deadline is logged too: those are the longest ones.
   private logTaskEnd(
     task: QueuedTask,
-    outcome: 'ok' | 'error' | 'crashed'
+    outcome: 'ok' | 'error' | 'crashed' | 'terminated'
   ): void {
-    if (task.startedAt == null) return;
+    if (task.startedAt == null || task.settled) return;
     const lane = task.lane == null ? 'upload' : 'background';
     const at = this.now();
     this.log(
@@ -618,6 +619,9 @@ export class ConversionProcessPool {
       this.settle(task, 'reject', termination);
     }
     for (const record of this.children) {
+      if (record.current != null) {
+        this.logTaskEnd(record.current, 'terminated');
+      }
       this.settle(record.current, 'reject', termination);
       record.current = null;
       this.forceKill(record);

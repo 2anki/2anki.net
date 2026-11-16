@@ -116,6 +116,9 @@ function makeTimers() {
   };
 }
 
+const taskLines = (logs: string[]) =>
+  logs.filter((line) => line.startsWith('[conversion-pool] task '));
+
 function makePool(overrides: Partial<ProcessPoolDeps> = {}) {
   const created: FakeChild[] = [];
   let nextPid = 1000;
@@ -504,9 +507,9 @@ describe('ConversionProcessPool scheduling', () => {
     created[0].result(1, 'done');
     await task;
 
-    expect(logs).toContain(
-      '[conversion-pool] task lane=upload outcome=ok run_ms=42000 wait_ms=2000'
-    );
+    expect(taskLines(logs)).toEqual([
+      '[conversion-pool] task lane=upload outcome=ok run_ms=42000 wait_ms=2000',
+    ]);
   });
 
   it('logs a failed background task with its lane and outcome', async () => {
@@ -525,9 +528,9 @@ describe('ConversionProcessPool scheduling', () => {
     created[0].failTask(1, { name: 'Error', message: 'boom' });
     await expect(task).rejects.toThrow('boom');
 
-    expect(logs).toContain(
-      '[conversion-pool] task lane=background outcome=error run_ms=5000 wait_ms=0'
-    );
+    expect(taskLines(logs)).toEqual([
+      '[conversion-pool] task lane=background outcome=error run_ms=5000 wait_ms=0',
+    ]);
   });
 
   it('logs a task whose child crashed with how long it had run', async () => {
@@ -543,9 +546,58 @@ describe('ConversionProcessPool scheduling', () => {
     created[0].crash(1);
     await expect(task).rejects.toBeInstanceOf(ConversionChildCrashedError);
 
-    expect(logs).toContain(
-      '[conversion-pool] task lane=upload outcome=crashed run_ms=89000 wait_ms=0'
-    );
+    expect(taskLines(logs)).toEqual([
+      '[conversion-pool] task lane=upload outcome=crashed run_ms=89000 wait_ms=0',
+    ]);
+  });
+
+  it('logs a crashed task once even when its result arrives afterwards', async () => {
+    const { pool, created, logs } = makePool({ maxChildren: 1 });
+    pool.start();
+    const task = pool.runTask('upload-1');
+    created[0].ready();
+    created[0].crash(1);
+    await expect(task).rejects.toBeInstanceOf(ConversionChildCrashedError);
+    created[0].result(1, 'late');
+
+    expect(taskLines(logs)).toEqual([
+      '[conversion-pool] task lane=upload outcome=crashed run_ms=0 wait_ms=0',
+    ]);
+  });
+
+  it('logs a task the drain deadline cut off, with how long it had run', async () => {
+    let clock = 1_000;
+    const { pool, created, timers, logs } = makePool({
+      maxChildren: 1,
+      now: () => clock,
+    });
+    pool.start();
+    const task = pool.runTask('upload-1');
+    created[0].ready();
+    clock = 301_000;
+    const done = pool.shutdown(1_000);
+    timers.fireTimeouts();
+    await expect(task).rejects.toThrow('Terminating worker thread');
+    await done;
+
+    expect(taskLines(logs)).toEqual([
+      '[conversion-pool] task lane=upload outcome=terminated run_ms=300000 wait_ms=0',
+    ]);
+  });
+
+  it('logs nothing for a task still queued when the drain deadline passes', async () => {
+    const { pool, created, timers, logs } = makePool({ maxChildren: 1 });
+    pool.start();
+    const running = pool.runTask('upload-1');
+    const queued = pool.runTask('upload-2');
+    created[0].ready();
+    const done = pool.shutdown(1_000);
+    timers.fireTimeouts();
+    await expect(running).rejects.toThrow('Terminating worker thread');
+    await expect(queued).rejects.toThrow('Terminating worker thread');
+    await done;
+
+    expect(taskLines(logs)).toHaveLength(1);
   });
 
   it('describe reports no wait when no upload is queued', () => {
