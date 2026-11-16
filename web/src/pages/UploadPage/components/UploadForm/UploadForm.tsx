@@ -89,7 +89,6 @@ import {
   type AiCreditsRead,
   useAiCreditsRead,
 } from '../../../../lib/hooks/useAiCredits';
-import { LOW_CREDITS_THRESHOLD } from '../AiCreditsReadout';
 import { get2ankiApi } from '../../../../lib/backend/get2ankiApi';
 import { fireAnalyticsEvent } from '../../../../lib/analytics/fireAnalyticsEvent';
 import { track } from '../../../../lib/analytics/track';
@@ -571,8 +570,8 @@ function thinDeckNoticeReason(
   return credits.credits <= 0 ? 'fewCardsNoCredits' : 'fewCards';
 }
 
-// Requests a Claude button sent (rebuild, the empty state's and the PDF
-// question's "Make cards with AI", the thin-deck full deck), so Try again and
+// Requests a Claude button sent (the empty state's and the PDF question's
+// "Make cards with AI", the thin-deck full deck), so Try again and
 // a resumed upload can tell them from an upload that followed the settings.
 const CLAUDE_RESENDS = new WeakSet<FormData>();
 
@@ -620,15 +619,6 @@ interface KeptResend {
   formData: FormData;
   files: File[];
   isRetry: boolean;
-}
-
-type AiRebuildFormat = 'pdf' | 'ppt' | 'pptx';
-
-function aiRebuildFormatOf(filename: string): AiRebuildFormat | null {
-  if (/\.pdf$/i.test(filename)) return 'pdf';
-  if (/\.pptx$/i.test(filename)) return 'pptx';
-  if (/\.ppt$/i.test(filename)) return 'ppt';
-  return null;
 }
 
 function UploadCloudIcon({ className }: Readonly<{ className?: string }>) {
@@ -1666,32 +1656,6 @@ function UploadForm({
       : null;
   const thinDeckAiOffer = keptFilesBelongElsewhere ? null : thinDeckSlot;
 
-  // Offered only where the click brings Claude cards back. It follows what the
-  // last submit sent, not the toggle now, so turning Claude on after the deck
-  // keeps it. A signed-in paying account's AI upload always becomes a
-  // background job, so a deck shown here never ran Claude: the credits-used
-  // check only hides the offer should one ever arrive. A copy recovered from
-  // My decks after a dropped connection gets no offer, and neither does a PDF
-  // while this browser makes two pages one card: that person chose page
-  // images. At or below the badge's low-credit mark the background job can
-  // run out of credits partway through the deck.
-  const aiRebuildFormat =
-    rescueFiles.length === 1 ? aiRebuildFormatOf(rescueFiles[0].name) : null;
-  const aiRebuildEligible =
-    zoneState === 'success' &&
-    isAuthenticated &&
-    isPaying &&
-    !downloadRecovered &&
-    !lastSubmitUsedAi &&
-    !sampleRun &&
-    cardsHeldBack === 0 &&
-    creditsUsed === 0 &&
-    thinDeckSlot == null &&
-    aiRebuildFormat != null &&
-    !(
-      aiRebuildFormat === 'pdf' &&
-      globalThis.localStorage?.getItem('pdf-page-pairs') === 'true'
-    );
   const thinNoticeDeck =
     zoneState === 'success' &&
     !aiOn &&
@@ -1699,15 +1663,8 @@ function UploadForm({
     (thinDeckOfferFile == null || sampleRun || lastSubmitUsedAi) &&
     isThinPdfOrTxtDeck(cardCount, currentFilename());
   const creditsRead = useAiCreditsRead(
-    aiRebuildEligible || (thinNoticeDeck && isAuthenticated && isPaying)
+    thinNoticeDeck && isAuthenticated && isPaying
   );
-  const aiRebuildCreditsLeft = aiRebuildEligible
-    ? (creditsRead.credits?.credits ?? 0)
-    : 0;
-  const rebuildSlot =
-    aiRebuildEligible && aiRebuildCreditsLeft > LOW_CREDITS_THRESHOLD;
-  const aiRebuildOffer =
-    rebuildSlot && !keptFilesBelongElsewhere ? aiRebuildFormat : null;
   // A credits read that hangs must not hide the notice for good.
   const waitingForCredits =
     thinNoticeDeck && isAuthenticated && isPaying && !creditsRead.settled;
@@ -1732,17 +1689,11 @@ function UploadForm({
     isAuthenticated,
     creditsWaitEnded ? { credits: null, settled: true } : creditsRead
   );
-  useEffect(() => {
-    if (aiRebuildOffer != null) {
-      track('upload_ai_rebuild_shown', { format: aiRebuildOffer });
-    }
-  }, [aiRebuildOffer]);
 
   // The line saying the session changed takes the place of an offer: one this
   // deck showed before the change, or one the session now on the page would
   // get. A deck that never had an offer gets no line.
-  const successOfferOnScreen =
-    aiRebuildOffer != null || thinDeckAiOffer != null;
+  const successOfferOnScreen = thinDeckAiOffer != null;
   const [successOfferShown, setSuccessOfferShown] = useState(false);
   useEffect(() => {
     if (zoneState !== 'success') {
@@ -1752,8 +1703,7 @@ function UploadForm({
     }
   }, [zoneState, successOfferOnScreen]);
   const successSignInChanged =
-    keptFilesBelongElsewhere &&
-    (successOfferShown || rebuildSlot || thinDeckSlot != null);
+    keptFilesBelongElsewhere && (successOfferShown || thinDeckSlot != null);
 
   const networkErrorOnScreen =
     zoneState === 'error' &&
@@ -1783,14 +1733,6 @@ function UploadForm({
     }
   };
   const switchLineShown = switchLineReplacesOffers();
-
-  const handleAiRebuild = () => {
-    if (aiRebuildOffer == null) return;
-    const format = aiRebuildOffer;
-    rerunWithAi(rescueFiles, 'rebuild', () =>
-      track('upload_ai_rebuild_clicked', { format })
-    );
-  };
 
   useEffect(() => {
     if (offeredRescue != null && offeredRescue.length > 0) {
@@ -3298,39 +3240,17 @@ function UploadForm({
           onBeforeCheckout={saveThinDeckForCheckout}
         />
       )}
-      {thinNoticeDeck &&
-        !rebuildSlot &&
-        !switchLineShown &&
-        thinNoticeReason != null && (
-          <div className={formStyles.warningInline}>
-            <ThinDeckNotice
-              reason={thinNoticeReason}
-              cards={cardCount}
-              skipped={0}
-              surface="upload"
-            />
-            {thinNoticeReason === 'fewCardsNoCredits' && (
-              <BuyCreditsButton
-                source="credits_conversion"
-                variant="secondary"
-              />
-            )}
-          </div>
-        )}
-      {aiRebuildOffer != null && (
-        <div className={formStyles.aiRescueActions}>
-          <p className={formStyles.rescueLead}>
-            {t('upload.form.aiRebuildLead', { count: aiRebuildCreditsLeft })}
-          </p>
-          <button
-            type="button"
-            className={formStyles.aiRescueButton}
-            disabled={resendPending}
-            aria-busy={resendTapped === 'rebuild'}
-            onClick={handleAiRebuild}
-          >
-            {resendLabel('rebuild', t('upload.form.aiRebuildButton'))}
-          </button>
+      {thinNoticeDeck && !switchLineShown && thinNoticeReason != null && (
+        <div className={formStyles.warningInline}>
+          <ThinDeckNotice
+            reason={thinNoticeReason}
+            cards={cardCount}
+            skipped={0}
+            surface="upload"
+          />
+          {thinNoticeReason === 'fewCardsNoCredits' && (
+            <BuyCreditsButton source="credits_conversion" variant="secondary" />
+          )}
         </div>
       )}
       {renderClaudeResendHeld()}

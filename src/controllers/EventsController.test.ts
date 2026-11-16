@@ -178,6 +178,19 @@ describe('EventsController', () => {
     );
   });
 
+  it.each(['upload_ai_rebuild_shown', 'upload_ai_rebuild_clicked'])(
+    'accepts the retired %s from a page opened before its offer was removed, tagged unknown',
+    (eventName) => {
+      const { controller, req, res, executeSpy } = buildMocks({ userId: 1 });
+      req.body = { name: eventName, props: { format: 'pdf' } };
+      controller.track(req, res);
+      expect(res.status).toHaveBeenCalledWith(202);
+      expect(executeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ name: eventName, unknown: true })
+      );
+    }
+  );
+
   it('known events are NOT tagged unknown', () => {
     const { controller, req, res, executeSpy } = buildMocks({ userId: 1 });
     req.body = { name: 'deck_downloaded' };
