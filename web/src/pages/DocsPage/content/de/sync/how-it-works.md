@@ -32,6 +32,6 @@ Ein Hintergrund-Job fragt deine abonnierten Seiten ab, vergleicht sie mit dem be
 
 ## Zugang zu Auto Sync bekommen
 
-Auto Sync ist gerade nicht auf der Preisseite. Bei jedem Abo schreib eine E-Mail an [support@2anki.net](mailto:support@2anki.net), und wir schalten es frei, damit du es ausprobieren kannst. Notion verbinden, Deck herunterladen und Datei-Uploads bleiben kostenlos.
+Auto Sync ist gerade nicht erhältlich und wird auch nicht auf Anfrage freigeschaltet. Konten, die es schon haben, behalten es. Notion verbinden, Deck herunterladen und Datei-Uploads bleiben kostenlos.
 
 Siehe die [Preisseite](/pricing) für aktuelle Pläne, und [Wenn Sync hängen bleibt](/documentation/sync/troubleshooting), falls ein Sync nicht läuft.

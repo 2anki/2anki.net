@@ -38,10 +38,10 @@ Nutze das, wenn du eine Woche hast, um dich auf eine Prüfung vorzubereiten, ode
 | Karten pro Monat                                      | 100       | unbegrenzt | unbegrenzt | unbegrenzt    |
 | PDF-Unterstützung                                     | —         | ✓          | ✓          | ✓             |
 | [KI-Karteikarten](/documentation/cards/ai-flashcards) | —         | ✓          | ✓          | ✓             |
-| [Auto Sync](/documentation/sync/how-it-works)         | —         | —          | —          | auf Anfrage   |
+| [Auto Sync](/documentation/sync/how-it-works)         | —         | —          | —          | —             |
 | Wiederkehrende Belastung                              | —         | —          | —          | monatlich     |
 
-Auto Sync ist nicht auf der Preisseite. Bei jedem Abo schreib eine E-Mail an [support@2anki.net](mailto:support@2anki.net), und wir schalten es für dein Konto frei.
+Auto Sync ist gerade nicht erhältlich und wird auch nicht auf Anfrage freigeschaltet. Konten, die es schon haben, behalten es.
 
 ## Pausierte Abos
 
