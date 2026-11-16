@@ -8489,24 +8489,30 @@ describe('UploadForm deck result and resends of kept files', () => {
     expect(retiredRebuildEvents()).toEqual([]);
   });
 
-  it('tells a paying account with AI credits to turn on Claude cards on a thin PDF deck', async () => {
-    const fetchMock = stubServer([deckResponse(2)]);
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
-    );
-    await submitFiles(container, ['notes.pdf']);
+  it.each([
+    { credits: 25, balance: 'a low balance of 25 credits' },
+    { credits: 1347, balance: 'plenty of credits' },
+  ])(
+    'tells a paying account with $balance to turn on Claude cards on a thin PDF deck',
+    async ({ credits }) => {
+      const fetchMock = stubServer([deckResponse(2)], credits);
+      const { container } = renderUploadForm(
+        <UploadForm setErrorMessage={vi.fn()} aiOn={false} />
+      );
+      await submitFiles(container, ['notes.pdf']);
 
-    expect(
-      await screen.findByText(
-        'Only 2 cards came from this file. Turn on Claude cards above and convert again to get more.'
-      )
-    ).toBeInTheDocument();
-    expect(callsTo(fetchMock, '/api/ai/credits').length).toBeGreaterThan(0);
-    expect(
-      screen.queryByRole('button', { name: 'Rebuild with Claude' })
-    ).toBeNull();
-    expect(retiredRebuildEvents()).toEqual([]);
-  });
+      expect(
+        await screen.findByText(
+          'Only 2 cards came from this file. Turn on Claude cards above and convert again to get more.'
+        )
+      ).toBeInTheDocument();
+      expect(callsTo(fetchMock, '/api/ai/credits').length).toBeGreaterThan(0);
+      expect(
+        screen.queryByRole('button', { name: 'Rebuild with Claude' })
+      ).toBeNull();
+      expect(retiredRebuildEvents()).toEqual([]);
+    }
+  );
 
   it('says only how many cards came on a thin PDF deck once the plan has no AI credits left', async () => {
     const fetchMock = stubServer([deckResponse(2)], 0);
