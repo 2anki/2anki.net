@@ -1,10 +1,6 @@
 import type { PassKind } from '../../data_layer/UserPassRepository';
 
-export type PurchaseKind =
-  | 'subscription'
-  | 'pass'
-  | 'semester_pass'
-  | 'auto_sync';
+export type PurchaseKind = 'subscription' | 'pass' | 'semester_pass';
 
 export interface HeldEntitlements {
   lifetime: boolean;
@@ -64,11 +60,6 @@ export const resolvePurchaseBlock = (
       'confirm_address',
       'A plan is already billed to this email. Confirm this email with a sign-in link, then try again.'
     );
-  }
-  // Auto Sync replaces a Pro subscription in place (AutoSyncCheckoutUseCase),
-  // and it adds a capability no pass carries, so neither one is a duplicate.
-  if (kind === 'auto_sync') {
-    return null;
   }
   if (held.activeSubscription) {
     return block(

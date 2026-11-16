@@ -8,6 +8,9 @@ vi.mock('../services/EmailService/EmailService', () => ({
   getDefaultEmailService: vi.fn(() => ({})),
 }));
 
+import express from 'express';
+import http from 'node:http';
+import { AddressInfo } from 'node:net';
 import UserRouter from './UserRouter';
 
 interface RouteLayer {
@@ -37,5 +40,29 @@ describe('UserRouter subscription lifecycle routes', () => {
         '/api/users/cancellation-feedback',
       ])
     );
+  });
+});
+
+describe('UserRouter Auto Sync access requests', () => {
+  let server: http.Server;
+  let url: string;
+
+  beforeAll(async () => {
+    const app = express();
+    app.use(UserRouter());
+    server = http.createServer(app);
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+
+  afterAll(() => server.close());
+
+  it('answers 404, since Auto Sync is no longer switched on by request', async () => {
+    const res = await fetch(`${url}/api/users/request-hosted-anki-access`, {
+      method: 'POST',
+      headers: { cookie: 'token=a-session-token' },
+    });
+
+    expect(res.status).toBe(404);
   });
 });

@@ -74,7 +74,7 @@ Wenn dein Abo ausläuft, werden deine gespeicherten Decks in der nächsten tägl
 
 ## Free vs. kostenpflichtig
 
-Free deckt die Konvertierungswege ab, die die meisten Leute brauchen: eine Datei hineinziehen, ein Deck zurückbekommen. Die kostenpflichtigen Pläne fügen KI-generierte Karteikarten, größere Uploads, längere Speicherung und Notion-Sync hinzu.
+Free deckt die Konvertierungswege ab, die die meisten Leute brauchen: eine Datei hineinziehen, ein Deck zurückbekommen. Die kostenpflichtigen Pläne fügen KI-generierte Karteikarten, größere Uploads und längere Speicherung hinzu. Auto Sync (Notion → Anki) ist gerade nicht erhältlich.
 
 | Fähigkeit                                      | Free            | Subscription | Lifetime   |
 | ---------------------------------------------- | --------------- | ------------ | ---------- |

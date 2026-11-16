@@ -6,16 +6,12 @@ import {
   readHeldEntitlements,
 } from './middleware/RejectDuplicatePurchase';
 import { resolveStripeCustomer } from './middleware/ResolveStripeCustomer';
-import AutoSyncCheckoutController from '../controllers/AutoSyncCheckoutController';
-import AutoSyncPriceController from '../controllers/AutoSyncPriceController';
-import { GetAutoSyncPriceUseCase } from '../usecases/checkout/GetAutoSyncPriceUseCase';
 import PassCheckoutController from '../controllers/PassCheckoutController';
 import CheckoutReceiptController from '../controllers/CheckoutReceiptController';
 import { ipRateLimit } from './middleware/ipRateLimit';
 import { GetCheckoutReceiptUseCase } from '../usecases/checkout/GetCheckoutReceiptUseCase';
 import ResumeCheckoutController from '../controllers/ResumeCheckoutController';
 import UnlimitedCheckoutController from '../controllers/UnlimitedCheckoutController';
-import { AutoSyncCheckoutUseCase } from '../usecases/checkout/AutoSyncCheckoutUseCase';
 import { CreatePassCheckoutUseCase } from '../usecases/checkout/CreatePassCheckoutUseCase';
 import { CreateCreditPackCheckoutUseCase } from '../usecases/checkout/CreateCreditPackCheckoutUseCase';
 import CreditPackCheckoutController from '../controllers/CreditPackCheckoutController';
@@ -43,8 +39,6 @@ import { DayPassCreditEligibility } from '../usecases/checkout/dayPassCredit';
 import { GetDayPassCreditOfferUseCase } from '../usecases/checkout/GetDayPassCreditOfferUseCase';
 import { CreateDayPassCreditCheckoutUseCase } from '../usecases/checkout/CreateDayPassCreditCheckoutUseCase';
 
-const DEFAULT_MAX_SUBSCRIBERS = 50;
-
 const CheckoutRouter = () => {
   const router = express.Router();
 
@@ -56,59 +50,6 @@ const CheckoutRouter = () => {
   const lapsedSubscriptions = new StripeLapsedSubscriptions(
     getStripe(),
     (productId) => isDeveloperTierProduct(getDatabase(), productId)
-  );
-
-  const priceId = process.env.AUTO_SYNC_PRICE_ID ?? '';
-  const productId = process.env.AUTO_SYNC_PRODUCT_ID ?? '';
-  const maxSubscribers =
-    Number.parseInt(process.env.HOSTED_ANKI_MAX_SUBSCRIBERS ?? '', 10) ||
-    DEFAULT_MAX_SUBSCRIBERS;
-
-  const autoSyncPrice = new GetAutoSyncPriceUseCase(getStripe(), priceId);
-
-  /**
-   * @swagger
-   * /api/checkout/auto-sync/price:
-   *   get:
-   *     summary: Get the live Auto Sync price
-   *     description: |
-   *       Reads the Auto Sync price from Stripe so the pricing page shows what
-   *       checkout charges. 404 when no active price is configured, which
-   *       hides the offer.
-   *     tags: [Payments]
-   *     responses:
-   *       200:
-   *         description: Amount, currency, interval and display string
-   *       404:
-   *         description: Auto Sync is not on sale
-   */
-  router.get('/api/checkout/auto-sync/price', (req, res) =>
-    new AutoSyncPriceController(autoSyncPrice).getPrice(req, res)
-  );
-
-  router.post(
-    '/api/checkout/auto-sync',
-    RequireAuthentication,
-    express.json(),
-    RejectDuplicatePurchase('auto_sync'),
-    async (req, res) => {
-      if (priceId === '') {
-        return res
-          .status(404)
-          .json({ message: 'Auto Sync checkout is not available' });
-      }
-      await resolveStripeCustomer(res);
-      const useCase = new AutoSyncCheckoutUseCase(
-        getStripe(),
-        priceId,
-        productId,
-        maxSubscribers,
-        staleCustomerRefresher,
-        lapsedSubscriptions
-      );
-      const controller = new AutoSyncCheckoutController(useCase);
-      return controller.createSession(req, res);
-    }
   );
 
   const creditPackPriceId = process.env.CREDIT_PACK_PRICE_ID ?? '';
