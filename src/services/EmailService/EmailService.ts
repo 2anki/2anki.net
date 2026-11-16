@@ -48,6 +48,7 @@ export type MagicLinkSendResult = { suppressed: boolean };
 export type OpsAlertKind =
   | 'metric-tripwire'
   | 'conversion-stall'
+  | 'conversion-long-task'
   | 'stripe-access';
 
 export interface LowRatingFeedbackEmailParams {

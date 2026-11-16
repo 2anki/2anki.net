@@ -83,6 +83,7 @@ interface QueuedTask {
   payload: unknown;
   lane?: BackgroundLane;
   enqueuedAt: number;
+  startedAt: number | null;
   onProgress?: (step: string) => void;
   resolve: (value: unknown) => void;
   reject: (error: unknown) => void;
@@ -207,6 +208,7 @@ export class ConversionProcessPool {
         payload,
         lane,
         enqueuedAt: this.now(),
+        startedAt: null,
         onProgress,
         resolve,
         reject,
@@ -225,6 +227,8 @@ export class ConversionProcessPool {
     busyBackground: number;
     queuedInteractive: number;
     oldestInteractiveWaitMs: number;
+    longestUploadRunMs: number;
+    longestBackgroundRunMs: number;
   } {
     const live = this.children.length;
     const busy = this.children.filter((c) => c.status === 'busy').length;
@@ -241,7 +245,22 @@ export class ConversionProcessPool {
       busyBackground: this.busyBackgroundOwners().length,
       queuedInteractive: this.queue.filter((t) => t.lane == null).length,
       oldestInteractiveWaitMs: this.oldestInteractiveWaitMs(),
+      longestUploadRunMs: this.longestRunMs((task) => task.lane == null),
+      longestBackgroundRunMs: this.longestRunMs((task) => task.lane != null),
     };
+  }
+
+  // How long the longest task still running in a lane has held its child. A
+  // child whose subprocess hangs stays busy without queueing anything, so the
+  // queue-wait figure above never shows it.
+  private longestRunMs(inLane: (task: QueuedTask) => boolean): number {
+    const at = this.now();
+    return this.children.reduce((longest, record) => {
+      const task = record.current;
+      if (record.status !== 'busy' || task?.startedAt == null) return longest;
+      if (!inLane(task)) return longest;
+      return Math.max(longest, at - task.startedAt);
+    }, 0);
   }
 
   private oldestInteractiveWaitMs(): number {
@@ -322,6 +341,7 @@ export class ConversionProcessPool {
   private dispatchTo(record: ChildRecord, task: QueuedTask): void {
     record.status = 'busy';
     record.current = task;
+    task.startedAt = this.now();
     record.child.send({
       kind: 'task',
       taskId: task.taskId,
