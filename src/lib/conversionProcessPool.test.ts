@@ -490,6 +490,64 @@ describe('ConversionProcessPool scheduling', () => {
     expect(pool.describe().uploadRunsMs).toEqual([]);
   });
 
+  it('logs how long a finished upload task waited and ran', async () => {
+    let clock = 1_000;
+    const { pool, created, logs } = makePool({
+      maxChildren: 1,
+      now: () => clock,
+    });
+    pool.start();
+    const task = pool.runTask('upload-1');
+    clock = 3_000;
+    created[0].ready();
+    clock = 45_000;
+    created[0].result(1, 'done');
+    await task;
+
+    expect(logs).toContain(
+      '[conversion-pool] task lane=upload outcome=ok run_ms=42000 wait_ms=2000'
+    );
+  });
+
+  it('logs a failed background task with its lane and outcome', async () => {
+    let clock = 1_000;
+    const { pool, created, logs } = makePool({
+      maxChildren: 2,
+      now: () => clock,
+    });
+    pool.start();
+    const task = pool.runTask('notion-a', undefined, {
+      kind: 'background',
+      owner: 'a',
+    });
+    created[0].ready();
+    clock = 6_000;
+    created[0].failTask(1, { name: 'Error', message: 'boom' });
+    await expect(task).rejects.toThrow('boom');
+
+    expect(logs).toContain(
+      '[conversion-pool] task lane=background outcome=error run_ms=5000 wait_ms=0'
+    );
+  });
+
+  it('logs a task whose child crashed with how long it had run', async () => {
+    let clock = 1_000;
+    const { pool, created, logs } = makePool({
+      maxChildren: 1,
+      now: () => clock,
+    });
+    pool.start();
+    const task = pool.runTask('upload-1');
+    created[0].ready();
+    clock = 90_000;
+    created[0].crash(1);
+    await expect(task).rejects.toBeInstanceOf(ConversionChildCrashedError);
+
+    expect(logs).toContain(
+      '[conversion-pool] task lane=upload outcome=crashed run_ms=89000 wait_ms=0'
+    );
+  });
+
   it('describe reports no wait when no upload is queued', () => {
     const { pool } = makePool({ now: () => 5_000 });
     pool.start();

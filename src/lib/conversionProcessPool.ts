@@ -401,13 +401,22 @@ export class ConversionProcessPool {
         }
         return;
       case 'result':
-        this.completeTask(record, message.taskId, message.rssBytes, () =>
+        this.completeTask(record, message.taskId, message.rssBytes, 'ok', () =>
           this.settle(record.current, 'resolve', message.value)
         );
         return;
       case 'error':
-        this.completeTask(record, message.taskId, message.rssBytes, () =>
-          this.settle(record.current, 'reject', rebuildTaskError(message.error))
+        this.completeTask(
+          record,
+          message.taskId,
+          message.rssBytes,
+          'error',
+          () =>
+            this.settle(
+              record.current,
+              'reject',
+              rebuildTaskError(message.error)
+            )
         );
         return;
       default:
@@ -419,14 +428,30 @@ export class ConversionProcessPool {
     record: ChildRecord,
     taskId: number,
     rssBytes: number,
+    outcome: 'ok' | 'error',
     settle: () => void
   ): void {
     if (record.current?.taskId !== taskId) return;
+    this.logTaskEnd(record.current, outcome);
     settle();
     record.current = null;
     record.status = 'idle';
     record.tasksCompleted += 1;
     this.afterTask(record, rssBytes);
+  }
+
+  // One line per task that ran, so a kill deadline can be set from measured
+  // durations per lane instead of from how long children looked busy.
+  private logTaskEnd(
+    task: QueuedTask,
+    outcome: 'ok' | 'error' | 'crashed'
+  ): void {
+    if (task.startedAt == null) return;
+    const lane = task.lane == null ? 'upload' : 'background';
+    const at = this.now();
+    this.log(
+      `[conversion-pool] task lane=${lane} outcome=${outcome} run_ms=${at - task.startedAt} wait_ms=${task.startedAt - task.enqueuedAt}`
+    );
   }
 
   private afterTask(record: ChildRecord, rssBytes: number): void {
@@ -498,6 +523,7 @@ export class ConversionProcessPool {
     }
     const crashedTask = record.current;
     if (crashedTask != null && !crashedTask.settled) {
+      this.logTaskEnd(crashedTask, 'crashed');
       this.log(
         `[conversion-pool] crashed pid=${record.pid ?? 'unknown'} exit=${code ?? 'null'} signal=${signal ?? 'null'}`
       );
