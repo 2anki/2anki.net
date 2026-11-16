@@ -1,14 +1,17 @@
 import { vi, type Mock, type MockedFunction } from 'vitest';
 import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
 import * as childProcess from 'child_process';
 import fsPromises from 'fs/promises';
 import { convertPPTToPDF } from './ConvertPPTToPDF';
 import Workspace from '../../../lib/parser/WorkSpace';
 import { isWorkerTerminationError } from '../../../lib/workerTermination';
+import { TOOL_TIMEOUT_MS } from '../../../lib/subprocess/killOnTimeout';
 
 vi.mock('child_process', async () => ({
   ...(await vi.importActual<typeof import('child_process')>('child_process')),
   spawn: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
 vi.mock('fs/promises', async () => {
@@ -93,6 +96,41 @@ describe('convertPPTToPDF', () => {
       expect(isWorkerTerminationError(err)).toBe(true);
     }
   );
+
+  it('kills LibreOffice once it has run past the tool limit and fails the conversion', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const proc = Object.assign(new EventEmitter(), {
+      pid: 99999998,
+      exitCode: null,
+      signalCode: null,
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+    }) as unknown as childProcess.ChildProcess;
+    proc.kill = (signal) => proc.emit('close', null, signal);
+    mockedSpawn.mockReturnValue(proc);
+    try {
+      const result = convertPPTToPDF(
+        'slides.pptx',
+        Buffer.from('fake'),
+        workspace
+      ).catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(TOOL_TIMEOUT_MS);
+
+      const err = await result;
+      expect(isWorkerTerminationError(err)).toBe(false);
+      expect((err as Error).message).toContain('Conversion failed');
+      expect(childProcess.spawnSync).toHaveBeenCalledWith(
+        'pkill',
+        ['-KILL', '-P', '99999998'],
+        expect.anything()
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it('still reports a SIGKILL as a failed conversion', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});

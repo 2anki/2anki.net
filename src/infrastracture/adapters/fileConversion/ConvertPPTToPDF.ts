@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import { spawn } from 'child_process';
 import { getRandomUUID } from '../../../shared/helpers/getRandomUUID';
 import { createWorkerTerminationError } from '../../../lib/workerTermination';
+import { killTreeOnTimeout } from '../../../lib/subprocess/killOnTimeout';
 
 // A deploy's graceful shutdown reaches LibreOffice through pm2's tree kill, so
 // it dies with SIGINT/SIGTERM mid-conversion. That is a restart, not a bad file:
@@ -58,6 +59,7 @@ export function convertPPTToPDF(
             cwd: workspace.location,
           }
         );
+        killTreeOnTimeout(sofficeProcess, 'soffice');
 
         let stdout = '';
         let stderr = '';

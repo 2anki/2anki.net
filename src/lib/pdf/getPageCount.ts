@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
 import { passwordArgs } from './convertPage';
+import { killOnTimeout } from '../subprocess/killOnTimeout';
 
 const DIAGNOSTIC_LOG_BASENAME_MAX = 80;
 
@@ -29,6 +30,7 @@ export function getPageCount(
     const args = [...passwordArgs(credential), pdfPath];
 
     const pdfinfoProcess = spawn(pdfinfoBin, args);
+    killOnTimeout(pdfinfoProcess, 'pdfinfo');
 
     let stdout = '';
     let stderr = '';

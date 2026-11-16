@@ -1,5 +1,6 @@
 import { spawn } from 'child_process';
 import os from 'os';
+import { killOnTimeout } from '../subprocess/killOnTimeout';
 
 // pdfinfo and pdftoppm keep only the first 32 bytes of a password, while
 // pdf.js and AES-256 PDFs accept longer ones, so a longer password that
@@ -61,6 +62,7 @@ export function convertPage(
       ],
       { stdio: 'ignore' }
     );
+    killOnTimeout(process, 'pdftoppm');
 
     process.on('error', (error) => {
       reject(

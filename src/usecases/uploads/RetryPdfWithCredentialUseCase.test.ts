@@ -68,6 +68,12 @@ describe('RetryPdfWithCredentialUseCase', () => {
       'pdf_processing_failed',
     ],
     [
+      'pdfinfo killed at the tool time limit',
+      'pdfinfo_failed code=null signal=SIGKILL path=a.pdf stderr=<empty>',
+      PDF_UNREADABLE_REASON,
+      'pdf_processing_failed',
+    ],
+    [
       'pdfinfo failing to start',
       'pdfinfo_spawn_failed: ENOENT /usr/bin/pdfinfo',
       PDF_UNREADABLE_REASON,
@@ -123,6 +129,10 @@ describe('RetryPdfWithCredentialUseCase', () => {
 
   it.each([
     ['a plain tool failure', new Error('pdftoppm process exited with 1')],
+    [
+      'pdftoppm killed at the tool time limit',
+      new Error('pdftoppm process exited with code=null signal=SIGKILL'),
+    ],
     ['Claude text in a plain error', new Error('529 overloaded_error')],
     [
       'a provider API error',

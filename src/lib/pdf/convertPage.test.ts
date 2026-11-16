@@ -2,6 +2,7 @@ import { vi, type MockedFunction } from 'vitest';
 import { EventEmitter } from 'events';
 import { spawn as realSpawn, type ChildProcess } from 'child_process';
 import { convertPage } from './convertPage';
+import { TOOL_TIMEOUT_MS } from '../subprocess/killOnTimeout';
 
 vi.mock('child_process', async () => {
   const actual =
@@ -79,6 +80,31 @@ describe('convertPage', () => {
     await convertPage('/tmp/sample.pdf', 1, 1);
 
     expect(spawnMock.mock.calls[0][2]).toMatchObject({ stdio: 'ignore' });
+  });
+
+  it('kills pdftoppm once it has run past the tool limit', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    spawnMock.mockImplementationOnce((): ChildProcess => {
+      const proc = Object.assign(new EventEmitter(), {
+        pid: 4242,
+        exitCode: null,
+        signalCode: null,
+      }) as unknown as ChildProcess;
+      proc.kill = (signal) => proc.emit('close', null, signal);
+      return proc;
+    });
+    try {
+      const page = convertPage('/tmp/sample.pdf', 1, 1).catch(
+        (error: Error) => error
+      );
+      await vi.advanceTimersByTimeAsync(TOOL_TIMEOUT_MS);
+
+      expect(((await page) as Error).message).toContain('signal=SIGKILL');
+    } finally {
+      warn.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   it('surfaces a non-zero exit code with no signal', async () => {
