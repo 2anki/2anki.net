@@ -988,26 +988,6 @@ function UploadForm({
   const keptForAccountRef = useRef(false);
   const recoveryTokenRef = useRef<string | null>(null);
   const recoverySubmittedAtRef = useRef(0);
-  const pdfPageRangeRef = useRef<string | null>(null);
-
-  // Pages is an attempt-scoped value: capture it from localStorage when an
-  // upload starts and clear it right away, so follow-ups for the same file
-  // (retry, rescue, unlock) reuse the captured value while the next fresh
-  // upload starts clean.
-  const capturePdfPageRange = () => {
-    const stored = globalThis.localStorage?.getItem('pdf-page-range') ?? null;
-    pdfPageRangeRef.current =
-      stored != null && stored.trim() !== '' ? stored : null;
-    globalThis.localStorage?.removeItem('pdf-page-range');
-  };
-
-  const attachPdfPageRange = (formData: FormData) => {
-    if (pdfPageRangeRef.current != null) {
-      formData.set('pdf-page-range', pdfPageRangeRef.current);
-    } else {
-      formData.delete('pdf-page-range');
-    }
-  };
   const [dayPassError, setDayPassError] = useState<string | null>(null);
   const showSignInPrompt = userLocals != null && !isAuthenticated;
   // Held in the drop zone from first paint for a visitor with no session, so
@@ -1659,7 +1639,6 @@ function UploadForm({
           formData.append('pakker', file, file.name);
         }
         appendSavedCardSettings(formData);
-        attachPdfPageRange(formData);
         formData.set('claude-ai-flashcards', 'true');
         // The click asks for Claude: two pages make one card, saved on the
         // account or in this browser, would otherwise skip it for a PDF.
@@ -1894,7 +1873,6 @@ function UploadForm({
     forgetKeptFiles();
     setNetworkRetryFiles(null);
     setLockedPdfInfo(null);
-    capturePdfPageRange();
     setDropboxFilename(first?.name ?? null);
     setDropboxError(null);
     setSampleRun(false);
@@ -1908,7 +1886,6 @@ function UploadForm({
       formData.append('files', JSON.stringify(files));
       appendSavedCardSettings(formData);
       applyAnonymousAiFlag(formData, aiOn);
-      attachPdfPageRange(formData);
       const remotePassToken = getStoredPassToken();
       const request = await globalThis.fetch('/api/upload/dropbox', {
         method: 'post',
@@ -1953,7 +1930,6 @@ function UploadForm({
     forgetKeptFiles();
     setNetworkRetryFiles(null);
     setLockedPdfInfo(null);
-    capturePdfPageRange();
     setDriveFilename(first?.name ?? null);
     setDriveMimeType(first?.mimeType ?? null);
     setDriveError(null);
@@ -1969,7 +1945,6 @@ function UploadForm({
       formData.append('googleDriveAuth', accessToken);
       appendSavedCardSettings(formData);
       applyAnonymousAiFlag(formData, aiOn);
-      attachPdfPageRange(formData);
       const remotePassToken = getStoredPassToken();
       const request = await globalThis.fetch('/api/upload/google_drive', {
         method: 'post',
@@ -2437,7 +2412,6 @@ function UploadForm({
       recoveryToken,
       ownerId: sender ?? null,
       ownerUnknown: sender === undefined,
-      pdfPageRange: pdfPageRangeRef.current,
       aiFlag: aiFlagSent,
       claudeResend,
     });
@@ -2599,8 +2573,6 @@ function UploadForm({
       formData.append('pakker', file, file.name);
     }
     appendSavedCardSettings(formData);
-    pdfPageRangeRef.current = upload.pdfPageRange;
-    attachPdfPageRange(formData);
     applyAnonymousAiFlag(formData, aiOn);
     if (upload.aiFlag != null) {
       formData.set('claude-ai-flashcards', upload.aiFlag);
@@ -2632,7 +2604,6 @@ function UploadForm({
       recoveryToken: null,
       ownerId: rescueFilesOwner ?? null,
       ownerUnknown: rescueFilesOwner === undefined,
-      pdfPageRange: pdfPageRangeRef.current,
       aiFlag: 'true',
       claudeResend: true,
     });
@@ -2724,11 +2695,9 @@ function UploadForm({
       replace: true,
       state: null,
     });
-    capturePdfPageRange();
     const formData = new FormData();
     formData.append('pakker', handedOff, handedOff.name);
     appendSavedCardSettings(formData);
-    attachPdfPageRange(formData);
     applyAnonymousAiFlag(formData, aiOn);
     const handedOffFiles = [handedOff];
     keepSubmittedFiles(handedOffFiles);
@@ -2744,10 +2713,8 @@ function UploadForm({
   const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
-    capturePdfPageRange();
     const formData = buildFormData(form);
     applyAnonymousAiFlag(formData, aiOn);
-    attachPdfPageRange(formData);
     const uploadedFiles = Array.from(fileInputRef.current?.files ?? []);
     keepSubmittedFiles(uploadedFiles);
     return runFileUpload(formData, uploadedFiles, false, 'submit');
@@ -2793,7 +2760,6 @@ function UploadForm({
           formData.append('pakker', file, file.name);
         }
         appendSavedCardSettings(formData);
-        attachPdfPageRange(formData);
         formData.set('rescue-rule', rule);
         // Rescue builds the chosen structure, never AI.
         applyAnonymousAiFlag(formData, false);
@@ -2824,7 +2790,6 @@ function UploadForm({
           formData.append('pakker', file, file.name);
         }
         appendSavedCardSettings(formData);
-        attachPdfPageRange(formData);
         // The deck on screen came from the parser; never spend credits on it.
         formData.set('claude-ai-flashcards', 'false');
         setLocalError(null);
@@ -2852,7 +2817,6 @@ function UploadForm({
           formData.append('pakker', file, file.name);
         }
         appendSavedCardSettings(formData);
-        attachPdfPageRange(formData);
         // The gate's explicit "continue without AI" choice.
         applyAnonymousAiFlag(formData, false);
         setAiPreviewCards(null);
@@ -2889,7 +2853,6 @@ function UploadForm({
         }
         appendSavedCardSettings(formData);
         applyAnonymousAiFlag(formData, aiOn);
-        attachPdfPageRange(formData);
         // A Claude resend whose request never arrived goes again as one; any
         // other retry takes the settings on screen now.
         if (retriesClaudeResend) {

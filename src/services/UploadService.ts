@@ -160,10 +160,6 @@ import {
 } from '../lib/pdf/pdfPasswordSentinel';
 import { parsePdfFallbackChoiceSentinel } from '../lib/pdf/pdfFallbackChoice';
 import {
-  isPdfPageRangeError,
-  pdfPageRangeDetailsOf,
-} from '../lib/pdf/pdfPageRange';
-import {
   AI_CREDITS_EXHAUSTED_WARNING_CODE,
   AiCreditsWarningAudience,
   aiCreditsExhaustedWarningText,
@@ -1564,13 +1560,6 @@ class UploadService {
           message:
             'Your upload didn’t finish, so there was nothing to convert. Upload the file again.',
         });
-      } else if (isPdfPageRangeError(err)) {
-        const pageRange = pdfPageRangeDetailsOf(err);
-        return res.status(400).json({
-          code: 'pdf_page_range',
-          message: err.message,
-          ...(pageRange == null ? {} : { page_range: pageRange }),
-        });
       } else if (
         err instanceof Error &&
         parsePdfFallbackChoiceSentinel(err.message) != null
@@ -1861,28 +1850,12 @@ class UploadService {
           );
         }
         const reason = resolveAsyncFailureReason(err, ws.id);
-        // The job keeps the English sentence; a page range error's details go
-        // in the report so My decks can say it in the person's language.
-        const pageRange = isPdfPageRangeError(err)
-          ? pdfPageRangeDetailsOf(err)
-          : null;
-        if (pageRange == null) {
-          await this.jobRepository.updateJobStatus(
-            ws.id,
-            owner,
-            'failed',
-            reason
-          );
-        } else {
-          await this.jobRepository.updateJobStatus(
-            ws.id,
-            owner,
-            'failed',
-            reason,
-            undefined,
-            { page_range: pageRange, page_range_reason: reason }
-          );
-        }
+        await this.jobRepository.updateJobStatus(
+          ws.id,
+          owner,
+          'failed',
+          reason
+        );
       })
       .finally(() => {
         if (!retriedWithAi) {

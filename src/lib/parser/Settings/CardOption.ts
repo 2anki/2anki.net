@@ -109,8 +109,6 @@ class CardOption {
 
   readonly pdfFallback: PdfFallback;
 
-  readonly pdfPageRange: string;
-
   readonly downloadPdfs: boolean;
 
   readonly claudeAIFlashcards: boolean;
@@ -205,10 +203,6 @@ class CardOption {
     this.pdfExtractText = input['pdf-extract-text'] === 'true';
     this.pdfPagePairs = input['pdf-page-pairs'] === 'true';
     this.pdfFallback = validatePdfFallback(input['pdf-fallback']);
-    this.pdfPageRange =
-      typeof input['pdf-page-range'] === 'string'
-        ? input['pdf-page-range']
-        : '';
     this.downloadPdfs = input['download-pdfs'] === 'true';
     this.claudeAIFlashcards = input['claude-ai-flashcards'] === 'true';
     this.rescueRule = isRescueRule(input['rescue-rule'])

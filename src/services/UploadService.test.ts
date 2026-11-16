@@ -8108,44 +8108,6 @@ describe('UploadService.handleUpload — failure events for the success-rate til
     expect(conversionFailedReasons()).toEqual([]);
   });
 
-  it('answers a page range error with its details, so the page can translate it', async () => {
-    failWith(
-      Object.assign(
-        new Error('Pages 11-14 are past the end of this 10-page PDF.'),
-        {
-          name: 'PdfPageRangeError',
-          details: { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
-        }
-      )
-    );
-    const { res, capturedStatus, capturedJson } = buildResponse();
-
-    await buildService().handleUpload(buildRequest(), res);
-
-    expect(capturedStatus()).toBe(400);
-    expect(capturedJson()).toEqual({
-      code: 'pdf_page_range',
-      message: 'Pages 11-14 are past the end of this 10-page PDF.',
-      page_range: { reason: 'past_end', first: 11, last: 14, pageCount: 10 },
-    });
-  });
-
-  it('answers a page range error with no readable details with the sentence alone', async () => {
-    failWith(
-      Object.assign(new Error('That page range is too long.'), {
-        name: 'PdfPageRangeError',
-      })
-    );
-    const { res, capturedJson } = buildResponse();
-
-    await buildService().handleUpload(buildRequest(), res);
-
-    expect(capturedJson()).toEqual({
-      code: 'pdf_page_range',
-      message: 'That page range is too long.',
-    });
-  });
-
   it('answers a signed-out pass holder whose conversion Claude declined with the refusal copy, and does not count it', async () => {
     failWith(
       Object.assign(new Error(CLAUDE_REFUSAL_USER_MESSAGE), {
@@ -8288,67 +8250,6 @@ describe('UploadService.handleUpload — failure events for the success-rate til
       );
       expect(conversionFailedReasons()).toEqual([]);
     });
-
-    it.each([
-      ['an AI upload', () => buildAiRequest()],
-      [
-        'a slow parser upload',
-        () =>
-          buildRequest({
-            files: [
-              {
-                originalname: 'lecture.pptx',
-                mimetype:
-                  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                size: 20,
-                buffer: Buffer.from('PK'),
-              },
-            ],
-            body: {},
-          } as unknown as Partial<express.Request>),
-      ],
-    ])(
-      "stores a page range error's details with the job of %s, so My decks can translate it",
-      async (_case, request) => {
-        failWith(
-          Object.assign(
-            new Error('Pages 11-14 are past the end of this 10-page PDF.'),
-            {
-              name: 'PdfPageRangeError',
-              details: {
-                reason: 'past_end',
-                first: 11,
-                last: 14,
-                pageCount: 10,
-              },
-            }
-          )
-        );
-        const jobRepository = buildJobRepo();
-        const { res } = buildPayingResponse();
-
-        await buildService(jobRepository).handleUpload(request(), res);
-        await settle();
-
-        expect(jobRepository.updateJobStatus).toHaveBeenCalledWith(
-          expect.any(String),
-          expect.anything(),
-          'failed',
-          'Pages 11-14 are past the end of this 10-page PDF.',
-          undefined,
-          {
-            page_range: {
-              reason: 'past_end',
-              first: 11,
-              last: 14,
-              pageCount: 10,
-            },
-            page_range_reason:
-              'Pages 11-14 are past the end of this 10-page PDF.',
-          }
-        );
-      }
-    );
 
     it('records a credits error that lost its class across the worker boundary as ai_credits_exhausted', async () => {
       failWith(

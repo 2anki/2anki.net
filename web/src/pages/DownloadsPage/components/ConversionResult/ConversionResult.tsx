@@ -55,9 +55,6 @@ const EMPTY_DECK_ALL_FILTERED_MARKER = 'card filter removed';
 const EMPTY_DECK_NO_CONTENT_MARKER = 'no text we could read';
 const EMPTY_DECK_NOTION_EMPTY_PAGE_MARKER = 'Notion page looks empty';
 const EMPTY_DECK_EMPTY_ANSWERS_MARKER = 'no answer inside them';
-// A mistyped PDF page range reads "... has a page number that is too large."
-// src/lib/pdf/pdfPageRange.parity.test.ts fails if the server copy drifts.
-const PDF_PAGE_RANGE_MARKER = 'has a page number that is too large';
 // A damaged zip reads "Part of this zip file is damaged, ..."
 // src/lib/zip/damagedZip.parity.test.ts fails if the server copy drifts.
 const DAMAGED_ZIP_MARKER = 'Part of this zip file is damaged';
@@ -68,9 +65,6 @@ const FILE_FORMATS_DOCS_HREF = '/documentation/reference/file-formats';
 const CONNECT_NOTION_DOCS_HREF = '/documentation/start-here/connect-notion';
 
 function reasonCode(failureReason: string): UploadErrorCode {
-  if (failureReason.includes(PDF_PAGE_RANGE_MARKER)) {
-    return 'pdf_page_range';
-  }
   if (failureReason.includes(DAMAGED_ZIP_MARKER)) {
     return 'zip_damaged';
   }
@@ -115,9 +109,6 @@ interface FailedProps {
   variant: 'failed';
   title: string | null;
   failureReason: string;
-  // A mistyped page range's reason and values, read off the job, so the row
-  // words it in the person's language.
-  pageRange?: UploadErrorBody['page_range'];
   source: Source;
   onMapColumns: () => void;
   rescue?: RescueCandidate[];
@@ -329,7 +320,6 @@ function RescueOffer({
 
 function FailedVariant({
   failureReason,
-  pageRange,
   source,
   onMapColumns,
   rescue = [],
@@ -435,19 +425,11 @@ function FailedVariant({
     );
   }
 
-  const errorBody: UploadErrorBody =
-    pageRange == null
-      ? {
-          code:
-            CLAUDE_REASON_CODES[failureReason.trim()] ??
-            reasonCode(failureReason),
-          message: failureReason,
-        }
-      : {
-          code: 'pdf_page_range',
-          message: failureReason,
-          page_range: pageRange,
-        };
+  const errorBody: UploadErrorBody = {
+    code:
+      CLAUDE_REASON_CODES[failureReason.trim()] ?? reasonCode(failureReason),
+    message: failureReason,
+  };
   const friendly =
     errorBody.code === 'too_large' && source === 'notion'
       ? classifyNotionTooLarge()
@@ -509,7 +491,6 @@ export function ConversionResult(props: Readonly<ConversionResultProps>) {
   return (
     <FailedVariant
       failureReason={props.failureReason}
-      pageRange={props.pageRange}
       source={props.source}
       onMapColumns={props.onMapColumns}
       rescue={props.rescue}

@@ -21,7 +21,6 @@ import {
   CrossFileDedupState,
 } from '../../lib/claude/ClaudeService';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
-import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import { getPackagesFromZip } from './getPackagesFromZip';
 import { getEventsSink } from '../../services/events/eventsSinkInstance';
 import { createWorkerTerminationError } from '../../lib/workerTermination';
@@ -36,12 +35,6 @@ vi.mock('../../lib/parser/WorkSpace');
 vi.mock('../../infrastracture/adapters/fileConversion/PrepareDeck', () => ({
   PrepareDeck: vi.fn(),
 }));
-vi.mock(
-  '../../infrastracture/adapters/fileConversion/applyPdfPageRange',
-  () => ({
-    applyPdfPageRange: vi.fn(async (files: unknown) => files),
-  })
-);
 vi.mock('../../lib/pythonWorkerBudget', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/pythonWorkerBudget')>()),
   resolvePerWorkerPythonCap: () => 2,
@@ -52,7 +45,6 @@ vi.mock('./getPackagesFromZip', () => ({
 
 const mockFs = vi.mocked(fs);
 const mockPrepareDeck = vi.mocked(PrepareDeck);
-const mockApplyPdfPageRange = vi.mocked(applyPdfPageRange);
 const mockGetPackagesFromZip = vi.mocked(getPackagesFromZip);
 
 function makeClaudeSettings(): CardOption {
@@ -455,58 +447,36 @@ describe('runUploadGenerationInWorker', () => {
     });
   });
 
-  describe('page range scope', () => {
+  describe('a leftover pdf-page-range setting', () => {
+    const pdfBytes = Buffer.from('%PDF-1.4');
     const makePdf = (name: string) =>
       makeFile({
         originalname: name,
         filename: name,
         key: name,
         path: '',
-        buffer: Buffer.from('%PDF-1.4'),
+        buffer: pdfBytes,
       });
-
-    const rangeTask = (files: UploadedFile[]): UploadGenerationTask => ({
-      paying: false,
-      files,
-      settings: new CardOption({ 'pdf-page-range': '2-3' }),
-      workspace: {} as Workspace,
-      enqueuedAt: Date.now(),
-      userId: null,
-    });
 
     beforeEach(() => {
       mockPrepareDeck.mockResolvedValue(undefined);
-      mockGetPackagesFromZip.mockResolvedValue({ packages: [], warnings: [] });
     });
 
-    it('applies the range to a single uploaded PDF', async () => {
-      const rangedFiles = [
-        { name: 'lecture.pdf', contents: Buffer.from('%PDF-ranged') },
-      ];
-      mockApplyPdfPageRange.mockResolvedValueOnce(rangedFiles);
+    it('converts the whole single PDF without an error', async () => {
+      await runUploadGenerationInWorker({
+        paying: false,
+        files: [makePdf('lecture.pdf')],
+        settings: new CardOption({ 'pdf-page-range': '2-3' }),
+        workspace: {} as Workspace,
+        enqueuedAt: Date.now(),
+        userId: null,
+      });
 
-      await runUploadGenerationInWorker(rangeTask([makePdf('lecture.pdf')]));
-
-      expect(mockApplyPdfPageRange).toHaveBeenCalledTimes(1);
-      expect(mockApplyPdfPageRange.mock.calls[0][1]).toBe('2-3');
-      expect(mockApplyPdfPageRange.mock.calls[0][4]).toBe('lecture.pdf');
-      expect(mockPrepareDeck.mock.calls[0][0].files).toBe(rangedFiles);
-    });
-
-    it('leaves every PDF whole when two PDFs are uploaded together', async () => {
-      await runUploadGenerationInWorker(
-        rangeTask([makePdf('one.pdf'), makePdf('two.pdf')])
-      );
-
-      expect(mockPrepareDeck).toHaveBeenCalledTimes(2);
-      expect(mockApplyPdfPageRange).not.toHaveBeenCalled();
-    });
-
-    it('never slices a zip upload', async () => {
-      await runUploadGenerationInWorker(rangeTask([makePdf('export.zip')]));
-
-      expect(mockApplyPdfPageRange).not.toHaveBeenCalled();
-      expect(mockGetPackagesFromZip).toHaveBeenCalledTimes(1);
+      expect(mockPrepareDeck).toHaveBeenCalledTimes(1);
+      expect(mockPrepareDeck.mock.calls[0][0]).toMatchObject({
+        name: 'lecture.pdf',
+        files: [{ name: 'lecture.pdf', contents: pdfBytes }],
+      });
     });
   });
 });
