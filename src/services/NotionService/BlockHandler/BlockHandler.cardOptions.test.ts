@@ -228,3 +228,37 @@ describe('BlockHandler card-option GUID stability', () => {
     expect(decks[0].name).toBe('3. Cell Biology');
   });
 });
+
+describe('BlockHandler with the retired parent-context option', () => {
+  const toggleUnderBullet = {
+    'page-1': [
+      {
+        ...baseBlock('b0', 'bulleted_list_item', true),
+        bulleted_list_item: {
+          rich_text: richText('Acute coronary syndrome'),
+          color: 'default',
+        },
+      },
+      plainToggle('t2', 'Hypertension'),
+    ],
+    b0: [plainToggle('t1', 'ACS')],
+    t1: [bullet('b1', 'Reduced blood flow to the heart')],
+    t2: [bullet('b2', 'Chronically elevated blood pressure')],
+  };
+
+  const shapeOf = async (options: Record<string, string>) =>
+    (await convert(toggleUnderBullet, options))
+      .flatMap((d) => d.cards)
+      .map((card) => ({ name: card.name, back: card.back }));
+
+  it('converts a Notion API page exactly as without a leftover parent-context', async () => {
+    const withKey = await shapeOf({ 'parent-context': 'true' });
+    const withoutKey = await shapeOf({});
+
+    expect(withKey).toEqual(withoutKey);
+    expect(withKey.map((card) => card.name)).toEqual([
+      expect.stringContaining('ACS'),
+      expect.stringContaining('Hypertension'),
+    ]);
+  });
+});

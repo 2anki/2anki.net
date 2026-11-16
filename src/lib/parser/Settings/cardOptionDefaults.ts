@@ -14,7 +14,6 @@ export const CARD_OPTION_DEFAULTS: Record<string, string> = {
   'group-cloze-per-toggle': 'false',
   'promote-nested-cloze': 'false',
   'promote-nested-toggles': 'false',
-  'parent-context': 'false',
   'remove-deck-name-numbering': 'false',
   'enable-input': 'false',
   'basic-reversed': 'false',

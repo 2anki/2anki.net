@@ -697,33 +697,6 @@ exports[`produces a stable deck for Notion page with grandchildren 1`] = `
 ]
 `;
 
-exports[`produces a stable deck for Notion page with parent context on 1`] = `
-[
-  {
-    "cardCount": 2,
-    "cards": [
-      {
-        "back": "<p>Reduced blood flow to the heart</p>",
-        "front": "<div class="parent-context" style="font-size:0.8em;opacity:0.6;margin-bottom:0.35em">Acute coronary syndrome</div><div class='bulleted-list'>ACS</div>",
-        "media": [],
-        "tags": [],
-        "type": "cloze",
-      },
-      {
-        "back": "<p>Chronically elevated blood pressure</p>",
-        "front": "<div class='toggle'>Hypertension</div>",
-        "media": [],
-        "tags": [],
-        "type": "cloze",
-      },
-    ],
-    "globalTags": [],
-    "name": "Cardiology",
-    "styleBytes": 29965,
-  },
-]
-`;
-
 exports[`produces a stable deck for Notion page with section tags in cherry mode 1`] = `
 [
   {
@@ -1132,6 +1105,33 @@ exports[`produces a stable deck for Notion toggle headings 1`] = `
     ],
     "globalTags": [],
     "name": "Toggle Headings",
+    "styleBytes": 29965,
+  },
+]
+`;
+
+exports[`produces a stable deck for Notion toggle under a bullet with a retired parent-context option 1`] = `
+[
+  {
+    "cardCount": 2,
+    "cards": [
+      {
+        "back": "<p>Reduced blood flow to the heart</p>",
+        "front": "<div class='bulleted-list'>ACS</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+      {
+        "back": "<p>Chronically elevated blood pressure</p>",
+        "front": "<div class='toggle'>Hypertension</div>",
+        "media": [],
+        "tags": [],
+        "type": "cloze",
+      },
+    ],
+    "globalTags": [],
+    "name": "Cardiology",
     "styleBytes": 29965,
   },
 ]

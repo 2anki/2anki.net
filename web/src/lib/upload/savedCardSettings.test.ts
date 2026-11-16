@@ -35,6 +35,16 @@ describe('saved card settings', () => {
     });
   });
 
+  it('never sends a leftover parent-context from this browser', () => {
+    localStorage.setItem('cloze', 'true');
+    localStorage.setItem('parent-context', 'true');
+
+    const formData = new FormData();
+    appendSavedCardSettings(formData);
+
+    expect(Object.fromEntries(formData.entries())).toEqual({ cloze: 'true' });
+  });
+
   it('clears every setting an upload sends and keeps the pass token', () => {
     localStorage.setItem('deckName', 'x'.repeat(10));
     localStorage.setItem('share-files-for-debugging', 'true');
