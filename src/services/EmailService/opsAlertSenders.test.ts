@@ -33,7 +33,7 @@ describe('ops alert senders', () => {
     ]);
   });
 
-  it('sends the tripwire, conversion stall and Stripe access alerts as ops alerts', () => {
+  it('sends the tripwire, conversion and Stripe access alerts as ops alerts', () => {
     const server = fs.readFileSync(path.join(SRC, 'server.ts'), 'utf8');
     const stripe = fs.readFileSync(
       path.join(SRC, 'services', 'StripeAccessErrorReporter.ts'),
@@ -42,6 +42,7 @@ describe('ops alert senders', () => {
 
     expect(server).toMatch(/sendOpsAlertEmail\(\s*'metric-tripwire'/);
     expect(server).toMatch(/sendOpsAlertEmail\(\s*'conversion-stall'/);
+    expect(server).toMatch(/sendOpsAlertEmail\(\s*'conversion-long-task'/);
     expect(stripe).toMatch(/sendOpsAlertEmail\(\s*'stripe-access'/);
   });
 });

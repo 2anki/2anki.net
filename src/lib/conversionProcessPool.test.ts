@@ -427,7 +427,7 @@ describe('ConversionProcessPool scheduling', () => {
     expect(pool.describe().oldestInteractiveWaitMs).toBe(59_000);
   });
 
-  it('describe reports how long the longest running task in each lane has run', () => {
+  it('describe reports how long each running task has held its child, by lane', () => {
     let clock = 1_000;
     const { pool, created } = makePool({ maxChildren: 3, now: () => clock });
     pool.start();
@@ -439,10 +439,11 @@ describe('ConversionProcessPool scheduling', () => {
     created.forEach((child) => child.ready());
     clock = 31_000;
 
-    expect(pool.describe()).toMatchObject({
-      longestUploadRunMs: 30_000,
-      longestBackgroundRunMs: 30_000,
-    });
+    const snapshot = pool.describe();
+    expect([...snapshot.uploadRunsMs].sort((a, b) => a - b)).toEqual([
+      20_000, 30_000,
+    ]);
+    expect(snapshot.backgroundRunsMs).toEqual([30_000]);
   });
 
   it('describe counts a run from dispatch, not from when the task queued', () => {
@@ -456,10 +457,10 @@ describe('ConversionProcessPool scheduling', () => {
     created[0].result(1, 'done');
     clock = 58_000;
 
-    expect(pool.describe().longestUploadRunMs).toBe(8_000);
+    expect(pool.describe().uploadRunsMs).toEqual([8_000]);
   });
 
-  it('describe reports no running time once the task has finished', async () => {
+  it('describe stops counting a task once it has finished', async () => {
     let clock = 1_000;
     const { pool, created } = makePool({ maxChildren: 1, now: () => clock });
     pool.start();
@@ -471,9 +472,22 @@ describe('ConversionProcessPool scheduling', () => {
     clock = 500_000;
 
     expect(pool.describe()).toMatchObject({
-      longestUploadRunMs: 0,
-      longestBackgroundRunMs: 0,
+      uploadRunsMs: [],
+      backgroundRunsMs: [],
     });
+  });
+
+  it('describe stops counting a task whose child crashed', async () => {
+    let clock = 1_000;
+    const { pool, created } = makePool({ maxChildren: 1, now: () => clock });
+    pool.start();
+    const task = pool.runTask('upload-1');
+    created[0].ready();
+    clock = 90_000;
+    created[0].crash(1);
+    await expect(task).rejects.toBeInstanceOf(ConversionChildCrashedError);
+
+    expect(pool.describe().uploadRunsMs).toEqual([]);
   });
 
   it('describe reports no wait when no upload is queued', () => {

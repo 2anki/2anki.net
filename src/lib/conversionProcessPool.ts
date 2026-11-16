@@ -227,8 +227,8 @@ export class ConversionProcessPool {
     busyBackground: number;
     queuedInteractive: number;
     oldestInteractiveWaitMs: number;
-    longestUploadRunMs: number;
-    longestBackgroundRunMs: number;
+    uploadRunsMs: number[];
+    backgroundRunsMs: number[];
   } {
     const live = this.children.length;
     const busy = this.children.filter((c) => c.status === 'busy').length;
@@ -245,22 +245,21 @@ export class ConversionProcessPool {
       busyBackground: this.busyBackgroundOwners().length,
       queuedInteractive: this.queue.filter((t) => t.lane == null).length,
       oldestInteractiveWaitMs: this.oldestInteractiveWaitMs(),
-      longestUploadRunMs: this.longestRunMs((task) => task.lane == null),
-      longestBackgroundRunMs: this.longestRunMs((task) => task.lane != null),
+      uploadRunsMs: this.runningTaskMs((task) => task.lane == null),
+      backgroundRunsMs: this.runningTaskMs((task) => task.lane != null),
     };
   }
 
-  // How long the longest task still running in a lane has held its child. A
-  // child whose subprocess hangs stays busy without queueing anything, so the
+  // How long each task still running in a lane has held its child. A child
+  // whose subprocess hangs stays busy without queueing anything, so the
   // queue-wait figure above never shows it.
-  private longestRunMs(inLane: (task: QueuedTask) => boolean): number {
+  private runningTaskMs(inLane: (task: QueuedTask) => boolean): number[] {
     const at = this.now();
-    return this.children.reduce((longest, record) => {
+    return this.children.flatMap((record) => {
       const task = record.current;
-      if (record.status !== 'busy' || task?.startedAt == null) return longest;
-      if (!inLane(task)) return longest;
-      return Math.max(longest, at - task.startedAt);
-    }, 0);
+      if (record.status !== 'busy' || task?.startedAt == null) return [];
+      return inLane(task) ? [at - task.startedAt] : [];
+    });
   }
 
   private oldestInteractiveWaitMs(): number {
