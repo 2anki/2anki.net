@@ -89,6 +89,18 @@ async function timedPhase(phase: DrainPhase, run: () => Promise<void>) {
   console.info(`${phase} drained in ${Date.now() - startedAt}ms`);
 }
 
+// console.error prints nested objects past two levels as [Object], which would
+// hide which worker held which task. The run lists go in as text.
+function conversionPoolForLog() {
+  const pool = describeConversionPool();
+  if (pool == null) return null;
+  return {
+    ...pool,
+    uploadRuns: JSON.stringify(pool.uploadRuns),
+    backgroundRuns: JSON.stringify(pool.backgroundRuns),
+  };
+}
+
 export async function gracefulShutdown(
   signal: string,
   server: http.Server,
@@ -111,7 +123,7 @@ export async function gracefulShutdown(
       {
         activeResources: describeActiveResources(),
         databasePool: describeDatabasePool(database),
-        conversionPool: describeConversionPool(),
+        conversionPool: conversionPoolForLog(),
       }
     );
     process.exit(1);

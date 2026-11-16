@@ -443,10 +443,13 @@ describe('ConversionProcessPool scheduling', () => {
     clock = 31_000;
 
     const snapshot = pool.describe();
-    expect([...snapshot.uploadRunsMs].sort((a, b) => a - b)).toEqual([
-      20_000, 30_000,
+    expect([...snapshot.uploadRuns].sort((a, b) => a.runMs - b.runMs)).toEqual([
+      { pid: created[2].pid, runMs: 20_000 },
+      { pid: created[0].pid, runMs: 30_000 },
     ]);
-    expect(snapshot.backgroundRunsMs).toEqual([30_000]);
+    expect(snapshot.backgroundRuns).toEqual([
+      { pid: created[1].pid, runMs: 30_000 },
+    ]);
   });
 
   it('describe counts a run from dispatch, not from when the task queued', () => {
@@ -460,7 +463,9 @@ describe('ConversionProcessPool scheduling', () => {
     created[0].result(1, 'done');
     clock = 58_000;
 
-    expect(pool.describe().uploadRunsMs).toEqual([8_000]);
+    expect(pool.describe().uploadRuns).toEqual([
+      { pid: created[0].pid, runMs: 8_000 },
+    ]);
   });
 
   it('describe stops counting a task once it has finished', async () => {
@@ -475,8 +480,8 @@ describe('ConversionProcessPool scheduling', () => {
     clock = 500_000;
 
     expect(pool.describe()).toMatchObject({
-      uploadRunsMs: [],
-      backgroundRunsMs: [],
+      uploadRuns: [],
+      backgroundRuns: [],
     });
   });
 
@@ -490,7 +495,7 @@ describe('ConversionProcessPool scheduling', () => {
     created[0].crash(1);
     await expect(task).rejects.toBeInstanceOf(ConversionChildCrashedError);
 
-    expect(pool.describe().uploadRunsMs).toEqual([]);
+    expect(pool.describe().uploadRuns).toEqual([]);
   });
 
   it('logs how long a finished upload task waited and ran', async () => {

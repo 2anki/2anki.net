@@ -78,7 +78,12 @@ class StallReadTest(unittest.TestCase):
             request(stamp(1, 9), "/api/apkg/pdf", 200),
         ]
         cleared = f"{stamp(1, 6)}: [conversion-pool] stall cleared after 40s"
-        out = run(out_lines, [stall(stamp(1, 5)), cleared])
+        long_task = f"{stamp(1, 7)}: [conversion-pool] long-task lane=upload tasks=1 longest_min=31"
+        long_cleared = f"{stamp(1, 8)}: [conversion-pool] long-task cleared lane=upload"
+        send_failed = f"{stamp(1, 7)}: [conversion-pool] long-task alert email failed, next try in 1 min: Error: down"
+        watch_failed = f"{stamp(1, 7)}: [conversion-pool] long-task watch failed: Error: pool gone"
+        err_lines = [stall(stamp(1, 5)), cleared, long_task, long_cleared, send_failed, watch_failed]
+        out = run(out_lines, err_lines)
 
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(out.stderr, "")
@@ -87,6 +92,7 @@ class StallReadTest(unittest.TestCase):
         self.assertEqual(section(out.stdout, "no-response"), [f"10 {hour}"])
         self.assertNotIn(quiet_hour, out.stdout)
         self.assertEqual(section(out.stdout, "stall lines"), ["1"])
+        self.assertEqual(section(out.stdout, "long-task alerts"), ["1"])
         self.assertEqual(section(out.stdout, "max tempfile dwell"), ["125000"])
         self.assertEqual(section(out.stdout, "PDF 500s"), ["1"])
 
@@ -109,6 +115,7 @@ class StallReadTest(unittest.TestCase):
         self.assertEqual(section(out.stdout, "max pool_queue"), [])
         self.assertEqual(section(out.stdout, "longest pool_queue_interactive"), [])
         self.assertEqual(section(out.stdout, "stall lines"), ["0"])
+        self.assertEqual(section(out.stdout, "long-task alerts"), ["0"])
         self.assertIn(", 1 lines", out.stdout)
 
     def test_interactive_streak_needs_consecutive_samples_from_one_color(self):

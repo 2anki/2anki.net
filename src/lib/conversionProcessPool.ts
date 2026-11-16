@@ -101,6 +101,11 @@ interface ChildRecord {
   killTimer: unknown;
 }
 
+export interface RunningTask {
+  pid: number | null;
+  runMs: number;
+}
+
 const DEFAULT_KILL_GRACE_MS = 10_000;
 const DEFAULT_RSS_POLL_MS = 5_000;
 const MEMORY_LOG_INTERVAL_MS = 60_000;
@@ -227,8 +232,8 @@ export class ConversionProcessPool {
     busyBackground: number;
     queuedInteractive: number;
     oldestInteractiveWaitMs: number;
-    uploadRunsMs: number[];
-    backgroundRunsMs: number[];
+    uploadRuns: RunningTask[];
+    backgroundRuns: RunningTask[];
   } {
     const live = this.children.length;
     const busy = this.children.filter((c) => c.status === 'busy').length;
@@ -245,20 +250,21 @@ export class ConversionProcessPool {
       busyBackground: this.busyBackgroundOwners().length,
       queuedInteractive: this.queue.filter((t) => t.lane == null).length,
       oldestInteractiveWaitMs: this.oldestInteractiveWaitMs(),
-      uploadRunsMs: this.runningTaskMs((task) => task.lane == null),
-      backgroundRunsMs: this.runningTaskMs((task) => task.lane != null),
+      uploadRuns: this.runningTasks((task) => task.lane == null),
+      backgroundRuns: this.runningTasks((task) => task.lane != null),
     };
   }
 
-  // How long each task still running in a lane has held its child. A child
-  // whose subprocess hangs stays busy without queueing anything, so the
-  // queue-wait figure above never shows it.
-  private runningTaskMs(inLane: (task: QueuedTask) => boolean): number[] {
+  // How long each task still running in a lane has held its child, and which
+  // child. A child whose subprocess hangs stays busy without queueing
+  // anything, so the queue-wait figure above never shows it.
+  private runningTasks(inLane: (task: QueuedTask) => boolean): RunningTask[] {
     const at = this.now();
     return this.children.flatMap((record) => {
       const task = record.current;
       if (record.status !== 'busy' || task?.startedAt == null) return [];
-      return inLane(task) ? [at - task.startedAt] : [];
+      if (!inLane(task)) return [];
+      return [{ pid: record.pid ?? null, runMs: at - task.startedAt }];
     });
   }
 

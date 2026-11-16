@@ -16,6 +16,7 @@ import {
   ConversionProcessPool,
   ForkFn,
   PooledChild,
+  RunningTask,
   buildChildEnv,
   resolveConversionChildEntry,
 } from './conversionProcessPool';
@@ -86,8 +87,8 @@ export function describeConversionPool(): {
   busyBackground: number;
   queuedInteractive: number;
   oldestInteractiveWaitMs: number;
-  uploadRunsMs: number[];
-  backgroundRunsMs: number[];
+  uploadRuns: RunningTask[];
+  backgroundRuns: RunningTask[];
 } | null {
   if (pool == null) return null;
   return pool.describe();

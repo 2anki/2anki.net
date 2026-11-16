@@ -463,6 +463,7 @@ const serve = async () => {
           subject,
           body
         ),
+      processName: process.env.name,
       setIntervalFn: setInterval,
     })
   );
