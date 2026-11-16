@@ -2,5 +2,5 @@
   "id": "2026-11-16-stalled-file-timeout",
   "date": "2026-11-16",
   "type": "fix",
-  "title": "A PDF or PowerPoint file that stalls the converter fails after ten minutes instead of hanging"
+  "title": "A PDF or PowerPoint file that stalls now fails after about 10 minutes instead of hanging"
 }

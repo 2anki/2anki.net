@@ -86,7 +86,11 @@ describe('convertPage', () => {
     vi.useFakeTimers();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     spawnMock.mockImplementationOnce((): ChildProcess => {
-      const proc = new EventEmitter() as ChildProcess;
+      const proc = Object.assign(new EventEmitter(), {
+        pid: 4242,
+        exitCode: null,
+        signalCode: null,
+      }) as unknown as ChildProcess;
       proc.kill = (signal) => proc.emit('close', null, signal);
       return proc;
     });

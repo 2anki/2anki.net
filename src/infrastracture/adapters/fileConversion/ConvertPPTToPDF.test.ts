@@ -1,5 +1,6 @@
 import { vi, type Mock, type MockedFunction } from 'vitest';
 import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
 import * as childProcess from 'child_process';
 import fsPromises from 'fs/promises';
 import { convertPPTToPDF } from './ConvertPPTToPDF';
@@ -10,6 +11,7 @@ import { TOOL_TIMEOUT_MS } from '../../../lib/subprocess/killOnTimeout';
 vi.mock('child_process', async () => ({
   ...(await vi.importActual<typeof import('child_process')>('child_process')),
   spawn: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
 vi.mock('fs/promises', async () => {
@@ -99,9 +101,13 @@ describe('convertPPTToPDF', () => {
     vi.useFakeTimers();
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const proc = new EventEmitter() as childProcess.ChildProcess;
-    (proc as unknown as { stdout: EventEmitter }).stdout = new EventEmitter();
-    (proc as unknown as { stderr: EventEmitter }).stderr = new EventEmitter();
+    const proc = Object.assign(new EventEmitter(), {
+      pid: 99999998,
+      exitCode: null,
+      signalCode: null,
+      stdout: new PassThrough(),
+      stderr: new PassThrough(),
+    }) as unknown as childProcess.ChildProcess;
     proc.kill = (signal) => proc.emit('close', null, signal);
     mockedSpawn.mockReturnValue(proc);
     try {
@@ -116,6 +122,11 @@ describe('convertPPTToPDF', () => {
       const err = await result;
       expect(isWorkerTerminationError(err)).toBe(false);
       expect((err as Error).message).toContain('Conversion failed');
+      expect(childProcess.spawnSync).toHaveBeenCalledWith(
+        'pkill',
+        ['-KILL', '-P', '99999998'],
+        expect.anything()
+      );
     } finally {
       vi.useRealTimers();
     }

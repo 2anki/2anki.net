@@ -137,6 +137,30 @@ describe('applyPdfPageRange', () => {
     expect(deps.extract).not.toHaveBeenCalled();
   });
 
+  it('passes on a page count that was killed at the tool time limit', async () => {
+    const killed = new Error(
+      'pdfinfo_failed code=null signal=SIGKILL path=notes.pdf stderr=<empty>'
+    );
+    const deps: PdfPageRangeAdapters = {
+      getPageCount: vi.fn(async () => {
+        throw killed;
+      }),
+      extract: vi.fn(async () => Buffer.from('unreached')),
+    };
+
+    await expect(
+      applyPdfPageRange(
+        [pdf('notes.pdf', '%PDF-full')],
+        '2-3',
+        7,
+        WORKSPACE,
+        'notes.pdf',
+        deps
+      )
+    ).rejects.toBe(killed);
+    expect(deps.extract).not.toHaveBeenCalled();
+  });
+
   it('returns the original file unchanged when the range covers every page', async () => {
     const deps = adapters(3);
     const files = [pdf('notes.pdf', '%PDF-full')];

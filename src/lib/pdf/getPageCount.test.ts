@@ -1,5 +1,6 @@
 import { vi, type MockedFunction } from 'vitest';
 import { EventEmitter } from 'events';
+import { PassThrough } from 'stream';
 import { execSync, spawn as realSpawn, type ChildProcess } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
@@ -75,9 +76,13 @@ describe('getPageCount', () => {
     vi.useFakeTimers();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     spawnMock.mockImplementationOnce((): ChildProcess => {
-      const proc = new EventEmitter() as ChildProcess;
-      (proc as unknown as { stdout: EventEmitter }).stdout = new EventEmitter();
-      (proc as unknown as { stderr: EventEmitter }).stderr = new EventEmitter();
+      const proc = Object.assign(new EventEmitter(), {
+        pid: 4242,
+        exitCode: null,
+        signalCode: null,
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+      }) as unknown as ChildProcess;
       proc.kill = (signal) => proc.emit('close', null, signal);
       return proc;
     });
@@ -86,9 +91,11 @@ describe('getPageCount', () => {
       await vi.advanceTimersByTimeAsync(TOOL_TIMEOUT_MS);
       vi.useRealTimers();
 
-      expect(((await count) as Error).message).toMatch(
+      const failure = (await count) as Error;
+      expect(failure.message).toMatch(
         /^pdfinfo_failed code=null signal=SIGKILL/
       );
+      expect(jobFailureReasonCode(failure)).toBe('pdf_unreadable');
     } finally {
       warn.mockRestore();
       vi.useRealTimers();
