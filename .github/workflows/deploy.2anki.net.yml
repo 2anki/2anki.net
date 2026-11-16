@@ -2,8 +2,15 @@ name: Deploy to 2anki.net
 
 on:
   push:
-    paths-ignore:
-      - '**.md'
+    # Markdown elsewhere is documentation about the repo and needs no deploy.
+    # The docs pages under DocsPage/content are markdown the web build bundles
+    # and prerenders, so a change there is a change to the site: on 2026-11-16
+    # a docs-only correction was left unpublished because '**.md' skipped it.
+    # Later patterns win, so the last line brings those files back in.
+    paths:
+      - '**'
+      - '!**.md'
+      - 'web/src/pages/DocsPage/content/**'
     branches:
       - main
 
