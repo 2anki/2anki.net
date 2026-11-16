@@ -1,9 +1,9 @@
 ---
 title: Short plans and passes
-description: Day Pass, Week Pass and Semester Pass — when a one-time pass makes sense.
+description: Day Pass, Week Pass, and Semester Pass — when a one-time pass makes sense.
 ---
 
-Most people use Free or a monthly Subscription. But three one-time passes exist for when neither fits — a deck for the weekend, a one-off cram session, or a whole term.
+Most people use Free or a monthly Subscription. But 3 one-time passes exist for when neither fits — a deck for the weekend, a one-off cram session, or a whole term.
 
 For the full plan list and prices, see the [pricing page](/pricing).
 
@@ -48,7 +48,7 @@ Use this when you study through a whole term and don't want a recurring charge.
 | Length                                              | forever | 24 h      | 7 days    | 120 days      | until cancelled        |
 | Cards per month                                     | 100     | unlimited | unlimited | unlimited     | unlimited              |
 | AI credits                                          | —       | 300       | 500       | 1500          | 300 a month            |
-| PDF support                                         | —       | ✓         | ✓         | ✓             | ✓                      |
+| PDF pages per file                                  | 100     | unlimited | unlimited | unlimited     | unlimited              |
 | [AI flashcards](/documentation/cards/ai-flashcards) | —       | ✓         | ✓         | ✓             | ✓                      |
 | [Auto Sync](/documentation/sync/how-it-works)       | —       | —         | —         | —             | —                      |
 | Recurring charge                                    | —       | —         | —         | —             | monthly or yearly      |
@@ -61,8 +61,8 @@ New pauses are no longer available. If your subscription is already paused, you 
 
 ## Common mistakes
 
-- **Expecting the pass to renew.** Day and Week passes are one-time. When the window closes, you go back to Free. Buy another pass or move to a Subscription if you want continuous access.
-- **Mixing payment paths.** Day and Week passes are one-time Stripe checkouts; Pro is a monthly or yearly subscription.
+- **Expecting the pass to renew.** Day, Week, and Semester passes are one-time. When the window closes, you go back to Free. Buy another pass or move to a Subscription if you want continuous access.
+- **Mixing payment paths.** Day, Week, and Semester passes are one-time Stripe checkouts; Pro is a monthly or yearly subscription.
 
 ## Related
 

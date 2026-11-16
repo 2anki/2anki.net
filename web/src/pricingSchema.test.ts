@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LEGACY_UNLIMITED_PRICING } from './pages/PricingPage/pricing.constants';
+import { FALLBACK_PASS_PRICES } from './pages/PricingPage/payment.links';
 
 const indexHtml = readFileSync(resolve(__dirname, '../index.html'), 'utf-8');
 
@@ -44,9 +45,14 @@ describe('index.html SoftwareApplication schema', () => {
     expect(featureList.filter((f) => f.includes('Auto Sync'))).toEqual([]);
   });
 
-  it('lists the pass offers at their card prices', () => {
+  it.each([
+    ['Day Pass', '24h'],
+    ['Week Pass', '7d'],
+    ['Semester Pass', '120d'],
+  ] as const)('lists the %s offer at its card price', (name, kind) => {
     const { offers } = extractSoftwareApplicationSchema();
-    expect(offers.find((o) => o.name === 'Day Pass')?.price).toBe('4');
-    expect(offers.find((o) => o.name === 'Week Pass')?.price).toBe('9');
+    expect(offers.find((o) => o.name === name)?.price).toBe(
+      FALLBACK_PASS_PRICES[kind].replace('$', '')
+    );
   });
 });

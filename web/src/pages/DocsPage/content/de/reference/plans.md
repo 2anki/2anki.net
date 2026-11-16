@@ -3,7 +3,7 @@ title: Kurze Pläne und Pässe
 description: Day Pass, Week Pass und Semester Pass — wann ein einmaliger Pass sinnvoll ist.
 ---
 
-Die meisten nutzen Free oder ein monatliches Subscription. Aber drei einmalige Pässe gibt es für den Fall, dass keins davon passt — ein Deck fürs Wochenende, eine einmalige Pauk-Sitzung oder ein ganzes Semester.
+Die meisten nutzen Free oder ein monatliches Subscription. Aber 3 einmalige Pässe gibt es für den Fall, dass keins davon passt — ein Deck fürs Wochenende, eine einmalige Pauk-Sitzung oder ein ganzes Semester.
 
 Für die vollständige Planliste und Preise siehe die [Preisseite](/pricing).
 
@@ -48,7 +48,7 @@ Nutze das, wenn du ein ganzes Semester lang lernst und keine wiederkehrende Bela
 | Dauer                                                 | für immer | 24 h       | 7 Tage     | 120 Tage      | bis gekündigt                |
 | Karten pro Monat                                      | 100       | unbegrenzt | unbegrenzt | unbegrenzt    | unbegrenzt                   |
 | KI-Credits                                            | —         | 300        | 500        | 1500          | 300 pro Monat                |
-| PDF-Unterstützung                                     | —         | ✓          | ✓          | ✓             | ✓                            |
+| PDF-Seiten pro Datei                                  | 100       | unbegrenzt | unbegrenzt | unbegrenzt    | unbegrenzt                   |
 | [KI-Karteikarten](/documentation/cards/ai-flashcards) | —         | ✓          | ✓          | ✓             | ✓                            |
 | [Auto Sync](/documentation/sync/how-it-works)         | —         | —          | —          | —             | —                            |
 | Wiederkehrende Belastung                              | —         | —          | —          | —             | monatlich oder jährlich      |
@@ -61,8 +61,8 @@ Neue Pausen sind nicht mehr möglich. Ist dein Abo bereits pausiert, wirst du ni
 
 ## Häufige Fehler
 
-- **Erwarten, dass der Pass sich verlängert.** Day- und Week-Pässe sind einmalig. Wenn das Fenster schließt, gehst du zurück zu Free. Kauf einen weiteren Pass oder wechsle zu einem Subscription, wenn du durchgehenden Zugang willst.
-- **Zahlwege mischen.** Day- und Week-Pässe sind einmalige Stripe-Checkouts; Pro ist ein monatliches oder jährliches Abo.
+- **Erwarten, dass der Pass sich verlängert.** Day-, Week- und Semester-Pässe sind einmalig. Wenn das Fenster schließt, gehst du zurück zu Free. Kauf einen weiteren Pass oder wechsle zu einem Subscription, wenn du durchgehenden Zugang willst.
+- **Zahlwege mischen.** Day-, Week- und Semester-Pässe sind einmalige Stripe-Checkouts; Pro ist ein monatliches oder jährliches Abo.
 
 ## Verwandt
 

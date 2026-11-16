@@ -27,7 +27,7 @@ Cards preserve images, audio, code blocks, and cloze deletions from the source.
 2anki is also a native app for iPhone, iPad, and Mac — free on the App Store.
 Files are parsed on-device; sign in for AI deck generation and Notion sync. The
 same free/paid limits apply, with the passes sold as Apple in-app purchases
-(Day Pass, Week Pass, Pro). Details: https://2anki.net/app
+(Day Pass, Week Pass, Semester Pass, Pro). Details: https://2anki.net/app
 
 ## AI conversion (Claude)
 
