@@ -107,6 +107,7 @@ import { scheduleExportDriftCanary } from './lib/parser/canary/scheduleExportDri
 import { scheduleObservabilityCleanup } from './lib/observability/jobs/scheduleObservabilityCleanup';
 import { scheduleMemoryUsageLog } from './lib/observability/jobs/scheduleMemoryUsageLog';
 import { scheduleConversionStallWatch } from './lib/observability/jobs/conversionStallWatch';
+import { scheduleConversionLongTaskWatch } from './lib/observability/jobs/conversionLongTaskWatch';
 import { scheduleMetricTripwire } from './lib/observability/jobs/scheduleMetricTripwire';
 import { MetricTripwireRepository } from './data_layer/MetricTripwireRepository';
 import { RunMetricTripwireUseCase } from './usecases/ops/RunMetricTripwireUseCase';
@@ -448,6 +449,20 @@ const serve = async () => {
         track('conversion_stall_alert_sent', {
           props: { wait_seconds: waitSeconds },
         }),
+      setIntervalFn: setInterval,
+    })
+  );
+
+  registerSchedulerTimer(
+    scheduleConversionLongTaskWatch({
+      samplePool: describeConversionPool,
+      sendAlert: (subject, body) =>
+        emailService.sendOpsAlertEmail(
+          'conversion-long-task',
+          SUPPORT_CC_ADDRESS,
+          subject,
+          body
+        ),
       setIntervalFn: setInterval,
     })
   );

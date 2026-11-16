@@ -628,19 +628,21 @@ describe('EmailService tags every outgoing send with a template category', () =>
     expect(lastCategories()).toEqual([EMAIL_CATEGORIES.aiSpendAlert]);
   });
 
-  it.each(['metric-tripwire', 'conversion-stall', 'stripe-access'] as const)(
-    'tags a %s alert as an ops alert of that kind',
-    async (kind) => {
-      await getDefaultEmailService().sendOpsAlertEmail(
-        kind,
-        'ops@example.com',
-        'Alert',
-        'body'
-      );
+  it.each([
+    'metric-tripwire',
+    'conversion-stall',
+    'conversion-long-task',
+    'stripe-access',
+  ] as const)('tags a %s alert as an ops alert of that kind', async (kind) => {
+    await getDefaultEmailService().sendOpsAlertEmail(
+      kind,
+      'ops@example.com',
+      'Alert',
+      'body'
+    );
 
-      expect(lastCategories()).toEqual([EMAIL_CATEGORIES.opsAlert, kind]);
-    }
-  );
+    expect(lastCategories()).toEqual([EMAIL_CATEGORIES.opsAlert, kind]);
+  });
 
   it('sends an ops alert with the same fields the AI spend alert used', async () => {
     const service = getDefaultEmailService();

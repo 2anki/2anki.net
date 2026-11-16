@@ -86,6 +86,8 @@ export function describeConversionPool(): {
   busyBackground: number;
   queuedInteractive: number;
   oldestInteractiveWaitMs: number;
+  uploadRunsMs: number[];
+  backgroundRunsMs: number[];
 } | null {
   if (pool == null) return null;
   return pool.describe();
