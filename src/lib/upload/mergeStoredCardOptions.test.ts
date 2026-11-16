@@ -35,7 +35,7 @@ describe('mergeStoredCardOptions', () => {
     ).toEqual({ template: 'x', 'block-id-identity': 'true' });
   });
 
-  it('ignores a stored pdf-page-range so a legacy row never slices an upload', () => {
+  it('ignores a stored pdf-page-range left on a legacy row', () => {
     expect(
       mergeStoredCardOptions(
         { 'pdf-page-range': '12-30', template: 'x' },

@@ -17,7 +17,6 @@ import { hasUnknownExtension } from '../../lib/storage/sniffUpload';
 import { PrepareDeck } from '../../infrastracture/adapters/fileConversion/PrepareDeck';
 import { PythonExitError } from '../../lib/anki/buildPythonExitError';
 import { scrubPythonRawOutputTail } from '../../lib/anki/redactPythonOutput';
-import { applyPdfPageRange } from '../../infrastracture/adapters/fileConversion/applyPdfPageRange';
 import {
   isImageFile,
   isCompressedFile,
@@ -211,7 +210,6 @@ async function processFile(
   requestId?: string,
   uploadIdentity?: UploadIdentityContext,
   cardLimit?: number,
-  singleFileUpload: boolean = false,
   anonymousPassId?: number | null
 ): Promise<FileResult> {
   const packages: Package[] = [];
@@ -282,23 +280,9 @@ async function processFile(
     isDocxFile(filename);
 
   if (isValidSingleFile) {
-    // The Pages option applies only when the upload is a single PDF. A
-    // multi-file pick (local, Dropbox, or Drive) converts every file whole, and
-    // the zip and Claude-zip paths never reach here, so a range there is
-    // ignored too.
-    const singleFile = [{ name: filename, contents: fileContents }];
-    const rangedFiles = singleFileUpload
-      ? await applyPdfPageRange(
-          singleFile,
-          settings.pdfPageRange,
-          userId,
-          workspace.location,
-          filename
-        )
-      : singleFile;
     const d = await PrepareDeck({
       name: filename,
-      files: rangedFiles,
+      files: [{ name: filename, contents: fileContents }],
       settings: processUploadedPdf(filename, settings),
       noLimits: paying,
       workspace,
@@ -535,7 +519,6 @@ async function doGenerationWork(
       requestId,
       uploadIdentity,
       cardLimit,
-      files.length === 1,
       anonymousPassId
     );
   };

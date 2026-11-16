@@ -641,27 +641,6 @@ describe('ConversionResult — failed variant', () => {
     expect(screen.queryByText(/subpage/i)).toBeNull();
   });
 
-  it('shows a mistyped PDF page range as itself, not as a file too large', () => {
-    render(
-      <MemoryRouter>
-        <ConversionResult
-          variant="failed"
-          title="Lecture slides"
-          failureReason="'1234567' has a page number that is too large. Use page numbers from your PDF, like 12-30, 45."
-          source="upload"
-          onMapColumns={vi.fn()}
-        />
-      </MemoryRouter>
-    );
-
-    expect(
-      screen.getByText(
-        "'1234567' has a page number that is too large. Use page numbers from your PDF, like 12-30, 45."
-      )
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/smaller files/i)).toBeNull();
-  });
-
   it.each([
     [
       'This zip file is incomplete — it ends before its file index, which usually means it was still downloading or syncing when it was uploaded. Wait for the download to finish, then upload it again.',
@@ -705,25 +684,5 @@ describe('ConversionResult — failed variant', () => {
         'Part of this zip is damaged. Download or zip the files again, then upload the new zip.'
       )
     ).toBeInTheDocument();
-  });
-
-  it("words a mistyped page range from the job's details, not the stored sentence", () => {
-    render(
-      <MemoryRouter>
-        <ConversionResult
-          variant="failed"
-          title="Lecture slides"
-          failureReason="English server text"
-          pageRange={{ reason: 'past_end', first: 11, last: 14, pageCount: 10 }}
-          source="upload"
-          onMapColumns={vi.fn()}
-        />
-      </MemoryRouter>
-    );
-
-    expect(
-      screen.getByText('Pages 11-14 are past the end of this 10-page PDF.')
-    ).toBeInTheDocument();
-    expect(screen.queryByText('English server text')).toBeNull();
   });
 });

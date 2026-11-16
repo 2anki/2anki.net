@@ -1708,7 +1708,7 @@ describe('UploadForm Google Drive picker interaction', () => {
     };
   }
 
-  it('sends the captured page range on the Drive upload and clears localStorage', async () => {
+  it('never sends a leftover pdf-page-range on the Drive upload', async () => {
     stubGoogleDrivePicked();
     vi.stubGlobal('scrollTo', vi.fn());
     const fetchMock = vi.fn().mockResolvedValue({
@@ -1746,8 +1746,7 @@ describe('UploadForm Google Drive picker interaction', () => {
       (call) => call[0] === '/api/upload/google_drive'
     )!;
     const body = driveCall[1].body as FormData;
-    expect(body.get('pdf-page-range')).toBe('2-4');
-    expect(globalThis.localStorage.getItem('pdf-page-range')).toBeNull();
+    expect(body.get('pdf-page-range')).toBeNull();
   });
 
   it('offers a card options link for a Drive deck with folded toggles, since the page holds no bytes', async () => {
@@ -6649,41 +6648,6 @@ describe('UploadForm network-failure retry', () => {
     ).toBeInTheDocument();
   });
 
-  it('sends the page range on the first upload, clears localStorage, and reuses it on Try again', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockResolvedValue(successResponse());
-    vi.stubGlobal('fetch', fetchMock);
-    globalThis.localStorage.setItem('pdf-page-range', '2-4');
-
-    const { container } = renderUploadForm(
-      <UploadForm setErrorMessage={vi.fn()} />
-    );
-    selectFile(container, 'big.pdf', SMALL);
-    await submitForm(container);
-
-    const firstBody = fetchMock.mock.calls.filter(
-      ([url]) => url === '/api/upload/file'
-    )[0][1].body as FormData;
-    expect(firstBody.get('pdf-page-range')).toBe('2-4');
-    expect(globalThis.localStorage.getItem('pdf-page-range')).toBeNull();
-
-    const retry = await screen.findByRole('button', { name: 'Try again' });
-    fireEvent.click(retry);
-
-    await waitFor(() => {
-      const uploadCalls = fetchMock.mock.calls.filter(
-        ([url]) => url === '/api/upload/file'
-      );
-      expect(uploadCalls).toHaveLength(2);
-    });
-    const retryBody = fetchMock.mock.calls.filter(
-      ([url]) => url === '/api/upload/file'
-    )[1][1].body as FormData;
-    expect(retryBody.get('pdf-page-range')).toBe('2-4');
-  });
-
   it('keeps AI off on Try again for a signed-out visitor with a leftover key', async () => {
     globalThis.localStorage.removeItem('2anki_pass_token');
     globalThis.localStorage.setItem('claude-ai-flashcards', 'true');
@@ -7063,7 +7027,7 @@ describe('UploadForm reattach recovery', () => {
   });
 
   async function savePending(name: string, ownerId: number | null = null) {
-    await getPendingUploadStore().save({
+    const savedBeforePagesWasRetired = {
       files: [new File(['x'], name, { type: 'application/pdf' })],
       filename: name,
       sizeBytes: 1,
@@ -7072,7 +7036,8 @@ describe('UploadForm reattach recovery', () => {
       ownerId,
       pdfPageRange: '2-4',
       aiFlag: null,
-    });
+    };
+    await getPendingUploadStore().save(savedBeforePagesWasRetired);
   }
 
   it('never offers a file an account left behind to the next signed-out visitor', async () => {
@@ -7116,7 +7081,7 @@ describe('UploadForm reattach recovery', () => {
     );
     const body = fetchMock.mock.calls[0][1].body as FormData;
     expect((body.get('pakker') as File).name).toBe('biochem.pdf');
-    expect(body.get('pdf-page-range')).toBe('2-4');
+    expect(body.get('pdf-page-range')).toBeNull();
     expect(track).toHaveBeenCalledWith('upload_resume_clicked');
   });
 
@@ -7278,7 +7243,6 @@ describe('UploadForm signed-in deck recovery', () => {
       submittedAt: Date.now() - 5_000,
       recoveryToken: null,
       ownerId: 1,
-      pdfPageRange: null,
       aiFlag: null,
     });
     const fetchMock = vi.fn();
@@ -10068,7 +10032,6 @@ describe('UploadForm Claude rebuild offer for a paying account with AI off', () 
       submittedAt: Date.now(),
       recoveryToken: null,
       ownerId: 7,
-      pdfPageRange: null,
       aiFlag: 'false',
       ...overrides,
     });
@@ -13898,7 +13861,6 @@ describe('UploadForm thin deck resume after the Day Pass checkout', () => {
       submittedAt: Date.now(),
       recoveryToken: null,
       ownerId,
-      pdfPageRange: null,
       aiFlag: 'true',
     });
   }

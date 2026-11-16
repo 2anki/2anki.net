@@ -764,7 +764,6 @@ describe('Backend', () => {
         submittedAt: Date.now(),
         recoveryToken: null,
         ownerId: 7,
-        pdfPageRange: null,
         aiFlag: null,
       });
 

@@ -153,7 +153,6 @@ const MESSAGE_IS_REASON_NAMES = [
   'EpubTooLargeError',
   'ZipRecoveryTooLargeError',
   'NotionDatabaseColumnsError',
-  'PdfPageRangeError',
   'ClaudeRefusalError',
 ] as const;
 
@@ -197,7 +196,6 @@ export type JobFailureReasonCode =
   | 'already_anki_deck'
   | 'pdf_password'
   | 'pdf_unreadable'
-  | 'pdf_page_range'
   | 'docx_unreadable'
   | 'no_highlights'
   | 'epub_too_large'
@@ -260,9 +258,6 @@ export function jobFailureReasonCode(error: unknown): JobFailureReasonCode {
   }
   if (hasName(error, 'NotionDatabaseColumnsError')) {
     return 'notion_database_columns';
-  }
-  if (hasName(error, 'PdfPageRangeError')) {
-    return 'pdf_page_range';
   }
   if (isNoHighlightsError(error)) {
     return 'no_highlights';

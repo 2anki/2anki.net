@@ -917,11 +917,6 @@
     "comprehensiveHintLink": "Zur Kartengröße",
     "pagePairsAiNote": "Zwei Seiten ergeben eine Karte ist aktiv, daher überspringt ein Upload aus reinen PDFs die KI-Umwandlung. Je zwei Seiten werden zu einer Bildkarte.",
     "cherryDefaultsWarning": "Cherry-Pick ist für jeden Upload und jede Notion-Seite aktiv, die diese Standards nutzt. Nur Toggles mit 🍒 werden zu Karten, eine Seite ohne 🍒 ergibt also keine Karten. Markiere die gewünschten Toggles oder schalte Cherry-Pick aus.",
-    "pdfPageRange": {
-      "label": "Seiten",
-      "placeholder": "z. B. 12-30, 45",
-      "hint": "Funktioniert nur beim Hochladen eines einzelnen PDFs. Wandle nur diese Seiten um; nutze Bereiche wie 12-30, 45. Leer lassen, um das ganze PDF umzuwandeln."
-    },
     "mcq": {
       "heading": "Multiple-Choice-Fragen (MCQ)",
       "aria": "Multiple-Choice-Fragen aktivieren",

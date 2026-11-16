@@ -917,11 +917,6 @@
     "comprehensiveHintLink": "Ir para Tamanho do cartão",
     "pagePairsAiNote": "Duas páginas formam um cartão está ativado, então um envio apenas de PDFs ignora a conversão com IA. Cada duas páginas formam um cartão de imagem.",
     "cherryDefaultsWarning": "A seleção manual está ativada para todos os envios e páginas do Notion que usam estes padrões. Apenas os toggles marcados com 🍒 viram cartões, então uma página sem 🍒 não gera cartões. Marque os toggles que quiser ou desative a seleção manual.",
-    "pdfPageRange": {
-      "label": "Páginas",
-      "placeholder": "ex. 12-30, 45",
-      "hint": "Funciona apenas ao enviar um único PDF. Converta apenas estas páginas; use intervalos como 12-30, 45. Deixe em branco para converter o PDF inteiro."
-    },
     "mcq": {
       "heading": "Perguntas de múltipla escolha (MCQ)",
       "aria": "Ativar perguntas de múltipla escolha",

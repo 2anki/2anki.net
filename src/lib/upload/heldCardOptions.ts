@@ -10,9 +10,8 @@ import { ALLOWED_CARD_OPTION_KEYS } from '../../data_layer/UserPreferencesReposi
 // without AI, so its claim must not start a Claude run the hold never had.
 // user-instructions only steers Claude, which a claim never runs.
 // share-files-for-debugging is a consent given for one upload, not a deck
-// setting. pdf-page-range stays attempt-scoped, so a claim converts the whole
-// file. rescue-rule is a closed enum the parser validates, and a deck shipped
-// through a chosen rescue is empty without it.
+// setting. rescue-rule is a closed enum the parser validates, and a deck
+// shipped through a chosen rescue is empty without it.
 const NEVER_HELD = new Set([
   'claude-ai-flashcards',
   'ai-choice-at',

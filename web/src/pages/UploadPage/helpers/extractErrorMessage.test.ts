@@ -177,7 +177,7 @@ describe('extractErrorMessage', () => {
 });
 
 describe('extractErrorMessage — answers the page translates', () => {
-  test("keeps a page range answer's details", async () => {
+  test('reads a retired page range answer as an unknown error with its sentence', async () => {
     const result = await extractErrorMessage(
       jsonResponse({
         code: 'pdf_page_range',
@@ -190,23 +190,10 @@ describe('extractErrorMessage — answers the page translates', () => {
         },
       })
     );
-    expect(result.page_range).toEqual({
-      reason: 'backwards',
-      part: '30-12',
-      lower: 12,
-      upper: 30,
+    expect(result).toEqual({
+      code: 'unknown',
+      message: "'30-12' goes backwards.",
     });
-  });
-
-  test.each([
-    ['an unknown reason', { reason: 'toString' }],
-    ['a reason missing its values', { reason: 'past_end', first: 3 }],
-    ['a list', ['backwards']],
-  ])('drops page range details with %s', async (_case, page_range) => {
-    const result = await extractErrorMessage(
-      jsonResponse({ code: 'pdf_page_range', message: 'x', page_range })
-    );
-    expect(result).not.toHaveProperty('page_range');
   });
 
   test('keeps the setting an over-long answer names', async () => {

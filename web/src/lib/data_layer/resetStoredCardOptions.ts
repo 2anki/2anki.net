@@ -24,7 +24,6 @@ export const CARD_OPTION_VALUE_KEYS = [
   'tts-manual-side',
   'card-size',
   'card-style',
-  'pdf-page-range',
 ] as const;
 
 export const resetStoredCardOptions = (options: CardOption[]) => {

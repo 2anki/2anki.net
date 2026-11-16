@@ -14,7 +14,6 @@ export const UPLOAD_ERROR_CODES = [
   'corrupted_apkg',
   'password_protected_pdf',
   'pdf_processing_failed',
-  'pdf_page_range',
   'setting_too_long',
   'docx_processing_failed',
   'claude_parse_failed',
