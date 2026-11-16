@@ -514,12 +514,6 @@ const UserRouter = () => {
     (req, res) => controller.cancelEmailChange(req, res)
   );
 
-  router.post(
-    '/api/users/request-hosted-anki-access',
-    RequireAuthentication,
-    (req, res) => controller.requestHostedAnkiAccess(req, res)
-  );
-
   /**
    * @swagger
    * /api/users/cancel-subscription:

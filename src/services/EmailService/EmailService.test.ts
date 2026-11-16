@@ -288,16 +288,6 @@ describe('EmailService support notifications cc the owner', () => {
     };
   }
 
-  it('ccs the owner on Auto Sync access requests', async () => {
-    const service = getDefaultEmailService();
-
-    await service.sendHostedAnkiAccessRequestEmail('21770', 'user@example.com');
-
-    const msg = lastMessage();
-    expect(msg.to).toBe('support@2anki.net');
-    expect(msg.cc).toBe('alexander@alemayhu.com');
-  });
-
   it('ccs the owner on contact form submissions', async () => {
     const service = getDefaultEmailService();
 
@@ -499,12 +489,6 @@ describe('EmailService tags every outgoing send with a template category', () =>
       category: EMAIL_CATEGORIES.contactForm,
       run: async (s) => {
         await s.sendContactEmail('Ada', 'user@example.com', 'Hi', []);
-      },
-    },
-    {
-      category: EMAIL_CATEGORIES.autoSyncAccessRequest,
-      run: async (s) => {
-        await s.sendHostedAnkiAccessRequestEmail('21770', 'user@example.com');
       },
     },
     {

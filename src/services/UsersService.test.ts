@@ -33,9 +33,6 @@ function buildEmailService(
     sendContactEmail: vi.fn(),
     sendSubscriptionCancelledEmail: vi.fn(),
     sendSubscriptionScheduledCancellationEmail: vi.fn(),
-    sendHostedAnkiAccessRequestEmail: vi
-      .fn()
-      .mockResolvedValue({ didSend: true }),
     sendMagicLinkEmail: vi.fn().mockResolvedValue({ suppressed: false }),
     sendReEngagementEmail: vi.fn().mockResolvedValue(undefined),
     sendInactivityWarningEmail: vi.fn().mockResolvedValue(undefined),
@@ -49,18 +46,6 @@ function buildRegisterRepository() {
   } as unknown as UsersRepository & {
     createUserAndSeedFromTombstone: Mock;
   };
-}
-
-interface AccessRepoStubs {
-  getById: Mock;
-  markHostedAnkiRequested?: Mock;
-}
-
-function buildAccessRepository(stubs: AccessRepoStubs): UsersRepository {
-  return {
-    markHostedAnkiRequested: vi.fn().mockResolvedValue(1),
-    ...stubs,
-  } as unknown as UsersRepository;
 }
 
 describe('UsersService.register', () => {
@@ -344,104 +329,6 @@ describe('UsersService.sendResetEmail', () => {
     await service.sendResetEmail('nobody@example.com', authService);
 
     expect(sendResetEmail).not.toHaveBeenCalled();
-  });
-});
-
-describe('UsersService.requestHostedAnkiAccess', () => {
-  it('emails support and persists the request when the user has not asked before', async () => {
-    const sendHostedAnkiAccessRequestEmail = vi
-      .fn()
-      .mockResolvedValue({ didSend: true });
-    const markHostedAnkiRequested = vi.fn().mockResolvedValue(1);
-    const emailService = buildEmailService({
-      sendHostedAnkiAccessRequestEmail,
-    });
-    const getById = vi.fn().mockResolvedValue({
-      id: 42,
-      email: 'al@example.com',
-      hosted_anki_requested_at: null,
-    });
-    const service = new UsersService(
-      buildAccessRepository({ getById, markHostedAnkiRequested }),
-      emailService
-    );
-
-    const result = await service.requestHostedAnkiAccess('owner-uuid');
-
-    expect(getById).toHaveBeenCalledWith('owner-uuid');
-    expect(sendHostedAnkiAccessRequestEmail).toHaveBeenCalledWith(
-      '42',
-      'al@example.com'
-    );
-    expect(markHostedAnkiRequested).toHaveBeenCalledWith('owner-uuid');
-    expect(result).toEqual({ ok: true });
-  });
-
-  it('skips the email when the user already requested access', async () => {
-    const sendHostedAnkiAccessRequestEmail = vi.fn();
-    const markHostedAnkiRequested = vi.fn();
-    const emailService = buildEmailService({
-      sendHostedAnkiAccessRequestEmail,
-    });
-    const getById = vi.fn().mockResolvedValue({
-      id: 1,
-      email: 'al@example.com',
-      hosted_anki_requested_at: new Date('2026-05-01T12:00:00Z'),
-    });
-    const service = new UsersService(
-      buildAccessRepository({ getById, markHostedAnkiRequested }),
-      emailService
-    );
-
-    const result = await service.requestHostedAnkiAccess('owner-uuid');
-
-    expect(sendHostedAnkiAccessRequestEmail).not.toHaveBeenCalled();
-    expect(markHostedAnkiRequested).not.toHaveBeenCalled();
-    expect(result).toEqual({ ok: true, alreadyRequested: true });
-  });
-
-  it('returns ok:false when the user has no email on file', async () => {
-    const sendHostedAnkiAccessRequestEmail = vi.fn();
-    const emailService = buildEmailService({
-      sendHostedAnkiAccessRequestEmail,
-    });
-    const getById = vi.fn().mockResolvedValue({
-      id: 7,
-      email: null,
-      hosted_anki_requested_at: null,
-    });
-    const service = new UsersService(
-      buildAccessRepository({ getById }),
-      emailService
-    );
-
-    const result = await service.requestHostedAnkiAccess('owner-uuid');
-
-    expect(sendHostedAnkiAccessRequestEmail).not.toHaveBeenCalled();
-    expect(result).toEqual({ ok: false });
-  });
-
-  it('returns ok:false and does not persist when SendGrid reports the email did not send', async () => {
-    const markHostedAnkiRequested = vi.fn();
-    const emailService = buildEmailService({
-      sendHostedAnkiAccessRequestEmail: vi
-        .fn()
-        .mockResolvedValue({ didSend: false }),
-    });
-    const getById = vi.fn().mockResolvedValue({
-      id: 1,
-      email: 'al@example.com',
-      hosted_anki_requested_at: null,
-    });
-    const service = new UsersService(
-      buildAccessRepository({ getById, markHostedAnkiRequested }),
-      emailService
-    );
-
-    const result = await service.requestHostedAnkiAccess('owner-uuid');
-
-    expect(markHostedAnkiRequested).not.toHaveBeenCalled();
-    expect(result).toEqual({ ok: false });
   });
 });
 

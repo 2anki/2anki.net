@@ -654,26 +654,6 @@ class UsersController {
     return res.status(200).json({ cancelled: removed > 0 });
   }
 
-  async requestHostedAnkiAccess(req: express.Request, res: express.Response) {
-    const { owner } = res.locals;
-    if (owner == null) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
-
-    try {
-      const result = await this.userService.requestHostedAnkiAccess(owner);
-      if (!result.ok) {
-        return res.status(500).json({ message: 'Could not send request' });
-      }
-      return res
-        .status(200)
-        .json({ ok: true, alreadyRequested: result.alreadyRequested ?? false });
-    } catch (error) {
-      console.error('Auto Sync access request failed', error);
-      return res.status(500).json({ message: 'Could not send request' });
-    }
-  }
-
   async deleteAccount(req: express.Request, res: express.Response) {
     const { owner } = res.locals;
     if (!owner) {

@@ -15,7 +15,6 @@ vi.mock('../services/SubscriptionService', () => {
       cancelUserSubscriptions: vi.fn(),
       cancelSubscriptionById: vi.fn(),
       findRecentStripeSubscriptions: vi.fn(),
-      countActiveByProductId: vi.fn().mockResolvedValue(0),
       getUserActiveSubscriptions: vi.fn().mockResolvedValue([]),
       resumeSubscription: vi.fn(),
     },

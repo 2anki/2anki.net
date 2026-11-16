@@ -59,7 +59,7 @@ const makeDeps = (held: Held): PurchaseGuardDeps => {
 };
 
 const run = async (
-  kind: 'subscription' | 'pass' | 'semester_pass' | 'auto_sync',
+  kind: 'subscription' | 'pass' | 'semester_pass',
   held: Held,
   owner: number | null
 ) => {
@@ -108,7 +108,7 @@ describe('RejectDuplicatePurchase', () => {
     });
   });
 
-  it.each(['subscription', 'pass', 'semester_pass', 'auto_sync'] as const)(
+  it.each(['subscription', 'pass', 'semester_pass'] as const)(
     'answers 409 to a %s over a live plan the account has not proven',
     async (kind) => {
       const { next, status, json } = await run(
@@ -247,7 +247,7 @@ describe('RejectDuplicatePurchase Semester Pass renewal', () => {
     expect(status).toHaveBeenCalledWith(409);
   });
 
-  it.each(['subscription', 'auto_sync'] as const)(
+  it.each(['subscription'] as const)(
     'lets a holder in the final week start a %s checkout, as before',
     async (kind) => {
       const passes = seedSemesterPass(new Date(NOW.getTime() + 5 * DAY_MS));

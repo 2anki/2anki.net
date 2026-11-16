@@ -103,10 +103,6 @@ export interface IEmailService {
     resumeDate: Date,
     amount: string
   ): Promise<void>;
-  sendHostedAnkiAccessRequestEmail(
-    userId: string,
-    userEmail: string
-  ): Promise<EmailResponse>;
   sendMagicLinkEmail(
     email: string,
     token: string,
@@ -430,28 +426,6 @@ export class EmailService implements IEmailService {
       return { didSend: true };
     } catch (e) {
       console.error('Error sending email', e);
-      return { didSend: false, error: e as Error };
-    }
-  }
-
-  async sendHostedAnkiAccessRequestEmail(
-    userId: string,
-    userEmail: string
-  ): Promise<EmailResponse> {
-    const msg = {
-      to: SUPPORT_EMAIL_ADDRESS,
-      cc: SUPPORT_CC_ADDRESS,
-      from: DEFAULT_SENDER,
-      subject: 'Auto Sync access request',
-      text: `User ${userId} <${userEmail}> requested access to Auto Sync.`,
-      replyTo: userEmail,
-      categories: [EMAIL_CATEGORIES.autoSyncAccessRequest],
-    };
-    try {
-      await sendMail(msg);
-      return { didSend: true };
-    } catch (e) {
-      console.error('Error sending Auto Sync access request email', e);
       return { didSend: false, error: e as Error };
     }
   }
@@ -1404,18 +1378,6 @@ export class UnimplementedEmailService implements IEmailService {
       amount
     );
     return Promise.resolve();
-  }
-
-  sendHostedAnkiAccessRequestEmail(
-    userId: string,
-    userEmail: string
-  ): Promise<EmailResponse> {
-    console.info(
-      'sendHostedAnkiAccessRequestEmail not handled',
-      userId,
-      userEmail
-    );
-    return Promise.resolve({ didSend: false });
   }
 
   async sendMagicLinkEmail(

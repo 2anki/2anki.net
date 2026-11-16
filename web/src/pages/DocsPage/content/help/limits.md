@@ -96,7 +96,7 @@ If your subscription lapses, your stored decks are removed in the next daily cle
 
 ## Free vs paid
 
-Free covers the conversion paths most people need: drag in a file, get a deck back. The paid plans add AI-generated flashcards, larger uploads, longer storage, and Notion sync.
+Free covers the conversion paths most people need: drag in a file, get a deck back. The paid plans add AI-generated flashcards, larger uploads, and longer storage. Auto Sync (Notion → Anki) isn't on sale right now.
 
 | Capability                                       | Free               | Subscription | Lifetime   |
 | ------------------------------------------------ | ------------------ | ------------ | ---------- |

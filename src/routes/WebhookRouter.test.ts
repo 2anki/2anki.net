@@ -104,7 +104,6 @@ vi.mock('../services/EmailService/EmailService', () => ({
     sendContactEmail: vi.fn(),
     sendSubscriptionCancelledEmail: vi.fn(),
     sendSubscriptionScheduledCancellationEmail: vi.fn(),
-    sendHostedAnkiAccessRequestEmail: vi.fn(),
     sendMagicLinkEmail: vi.fn(),
     sendReEngagementEmail: vi.fn(),
     sendInactivityWarningEmail: vi.fn(),

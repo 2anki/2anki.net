@@ -54,7 +54,6 @@ const makeEmailService = (
   sendSubscriptionCancelledEmail: vi.fn(),
   sendSubscriptionScheduledCancellationEmail: vi.fn(),
   sendSubscriptionResumingSoonEmail: vi.fn().mockResolvedValue(undefined),
-  sendHostedAnkiAccessRequestEmail: vi.fn(),
   sendMagicLinkEmail: vi.fn(),
   sendReEngagementEmail: vi.fn(),
   sendInactivityWarningEmail: vi.fn(),

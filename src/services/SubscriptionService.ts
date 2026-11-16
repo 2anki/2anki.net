@@ -391,14 +391,6 @@ export class SubscriptionService {
       .andWhere({ active: true });
   }
 
-  static async countActiveByProductId(productId: string): Promise<number> {
-    const database = getDatabase();
-    const rows = await database('subscriptions')
-      .where({ active: true, stripe_product_id: productId })
-      .count<[{ count: string }]>('id as count');
-    return Number.parseInt(rows[0]?.count ?? '0', 10);
-  }
-
   async deactivateSubscription(subscriptionId: number): Promise<void> {
     const database = getDatabase();
 

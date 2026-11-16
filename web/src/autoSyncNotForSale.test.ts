@@ -29,6 +29,22 @@ function sentencesSellingAutoSync(source: string): string[] {
     );
 }
 
+const PLAN_DOCS = [
+  'src/pages/DocsPage/content/help/limits.md',
+  'src/pages/DocsPage/content/de/help/limits.md',
+];
+
+const PAID_PLANS = /paid plans|kostenpflichtigen Pläne/i;
+const NOTION_SYNC = /Notion[ -]sync/i;
+
+function sentencesGivingPlansSync(source: string): string[] {
+  return source
+    .split(/(?<=[.!?])\s+|\n/)
+    .filter(
+      (sentence) => PAID_PLANS.test(sentence) && NOTION_SYNC.test(sentence)
+    );
+}
+
 const SYNC_LINK_TO_PRICING =
   /label:\s*'[^']*(?:sync|Synchronisierung)[^']*',\s*href:\s*'\/pricing\/?'/gi;
 
@@ -58,6 +74,23 @@ describe('marketing copy while Auto Sync is not on sale', () => {
     const source = readFileSync(join(WEB_ROOT, path), 'utf-8');
 
     expect(sentencesSellingAutoSync(source)).toEqual([]);
+  });
+
+  it.each(PLAN_DOCS)('%s says no paid plan adds Notion sync', (path) => {
+    const source = readFileSync(join(WEB_ROOT, path), 'utf-8');
+
+    expect(sentencesGivingPlansSync(source)).toEqual([]);
+  });
+
+  it('flags a sentence that gives a paid plan Notion sync, so the check can fail', () => {
+    expect(
+      sentencesGivingPlansSync(
+        'Die kostenpflichtigen Pläne fügen größere Uploads und Notion-Sync hinzu. The paid plans add longer storage and Notion sync.'
+      )
+    ).toEqual([
+      'Die kostenpflichtigen Pläne fügen größere Uploads und Notion-Sync hinzu.',
+      'The paid plans add longer storage and Notion sync.',
+    ]);
   });
 
   it('flags a sentence that sells it, so the check can fail', () => {

@@ -261,27 +261,6 @@ class UsersService {
     return this.repository.updateLastLoginAt(id);
   }
 
-  async requestHostedAnkiAccess(
-    owner: string
-  ): Promise<{ ok: boolean; alreadyRequested?: boolean }> {
-    const user = await this.repository.getById(owner);
-    if (user?.email == null) {
-      return { ok: false };
-    }
-    if (user.hosted_anki_requested_at != null) {
-      return { ok: true, alreadyRequested: true };
-    }
-    const result = await this.emailService.sendHostedAnkiAccessRequestEmail(
-      String(user.id),
-      user.email
-    );
-    if (!result.didSend) {
-      return { ok: false };
-    }
-    await this.repository.markHostedAnkiRequested(owner);
-    return { ok: true };
-  }
-
   markAnkifyWelcomeSeen(owner: string) {
     return this.repository.markAnkifyWelcomeSeen(owner);
   }

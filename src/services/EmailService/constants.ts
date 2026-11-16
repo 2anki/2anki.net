@@ -120,7 +120,6 @@ export const EMAIL_CATEGORIES = {
   deckReady: 'deck-ready',
   deckReadyLink: 'deck-ready-link',
   contactForm: 'contact-form',
-  autoSyncAccessRequest: 'auto-sync-access-request',
   magicLinkLogin: 'magic-link-login',
   magicLinkPasswordReset: 'magic-link-password-reset',
   reEngagement: 're-engagement',

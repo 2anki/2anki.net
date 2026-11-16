@@ -134,7 +134,6 @@ describe('CheckoutRouter — pass routes', () => {
   beforeAll(async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    process.env.AUTO_SYNC_PRICE_ID = 'price_auto_sync_test';
     ({ server, url } = await buildServer());
   });
 
@@ -193,32 +192,6 @@ describe('CheckoutRouter — pass routes', () => {
 
       expect(res.status).toBe(409);
       expect((await res.json()).code).toBe('already_subscribed');
-      expect(mockStripeCreate).not.toHaveBeenCalled();
-    });
-
-    it.each([
-      ['a lifetime holder', 'already_lifetime', () => (mockHeldPatreon = true)],
-      [
-        'an Apple subscriber',
-        'billed_through_apple',
-        () =>
-          (mockHeldPass = {
-            kind: 'unlimited',
-            expires_at: new Date('2026-11-08T00:00:00.000Z'),
-            stripe_payment_intent_id: 'apple:txn',
-          }),
-      ],
-    ])('answers 409 when %s buys Auto Sync', async (_who, code, hold) => {
-      hold();
-
-      const res = await fetch(`${url}/api/checkout/auto-sync`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-
-      expect(res.status).toBe(409);
-      expect((await res.json()).code).toBe(code);
       expect(mockStripeCreate).not.toHaveBeenCalled();
     });
 
@@ -512,7 +485,7 @@ describe('CheckoutRouter — pass routes', () => {
   });
 });
 
-describe('CheckoutRouter — Auto Sync with an unpaid plan', () => {
+describe('CheckoutRouter — Auto Sync is not sold', () => {
   let server: http.Server;
   let url: string;
 
@@ -521,80 +494,33 @@ describe('CheckoutRouter — Auto Sync with an unpaid plan', () => {
     ({ server, url } = await buildServer());
   });
 
-  afterAll(() => server.close());
+  afterAll(() => {
+    delete process.env.AUTO_SYNC_PRICE_ID;
+    server.close();
+  });
 
-  it('stops the buyer with the plan Stripe holds for them', async () => {
-    const { default: SubscriptionService } =
-      await import('../services/SubscriptionService');
-    vi.spyOn(SubscriptionService, 'countActiveByProductId').mockResolvedValue(
-      0 as never
-    );
-    vi.spyOn(
-      SubscriptionService,
-      'getUserActiveSubscriptions'
-    ).mockResolvedValue([] as never);
-    mockHeldPatreon = false;
-    mockHeldSubscriber = false;
-    mockHeldPass = null;
+  beforeEach(() => {
     mockStripeCreate.mockReset();
-    mockSubscriptionList.mockResolvedValueOnce({
-      data: [
-        {
-          id: 'sub_old',
-          status: 'past_due',
-          currency: 'eur',
-          items: {
-            data: [
-              { price: { unit_amount: 200, recurring: { interval: 'month' } } },
-            ],
-          },
-          latest_invoice: null,
-        },
-      ],
-    });
-
-    const res = await fetch(`${url}/api/checkout/auto-sync`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-
-    expect(res.status).toBe(409);
-    expect((await res.json()).code).toBe('lapsed_subscription');
-    expect(mockStripeCreate).not.toHaveBeenCalled();
-  });
-});
-
-describe('CheckoutRouter — GET /api/checkout/auto-sync/price', () => {
-  let server: http.Server;
-  let url: string;
-
-  beforeAll(async () => {
-    process.env.AUTO_SYNC_PRICE_ID = 'price_auto_sync_test';
-    ({ server, url } = await buildServer());
+    mockPriceRetrieve.mockReset();
   });
 
-  afterAll(() => server.close());
+  it.each([
+    ['POST', '/api/checkout/auto-sync'],
+    ['GET', '/api/checkout/auto-sync/price'],
+  ])(
+    'answers %s %s with 404 even with a price configured',
+    async (method, path) => {
+      const res = await fetch(`${url}${path}`, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body: method === 'POST' ? JSON.stringify({}) : undefined,
+      });
 
-  it('serves the live Stripe price for the configured Auto Sync price', async () => {
-    mockPriceRetrieve.mockResolvedValue({
-      active: true,
-      unit_amount: 3000,
-      currency: 'usd',
-      recurring: { interval: 'month' },
-    });
-
-    const res = await fetch(`${url}/api/checkout/auto-sync/price`);
-
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      amount: 3000,
-      currency: 'usd',
-      interval: 'month',
-      display: '$30',
-    });
-    expect(mockPriceRetrieve).toHaveBeenCalledWith('price_auto_sync_test');
-  });
+      expect(res.status).toBe(404);
+      expect(mockStripeCreate).not.toHaveBeenCalled();
+      expect(mockPriceRetrieve).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe('CheckoutRouter — GET /api/checkout/receipt', () => {
@@ -602,7 +528,6 @@ describe('CheckoutRouter — GET /api/checkout/receipt', () => {
   let url: string;
 
   beforeAll(async () => {
-    process.env.AUTO_SYNC_PRICE_ID = 'price_auto_sync_test';
     ({ server, url } = await buildServer());
   });
 

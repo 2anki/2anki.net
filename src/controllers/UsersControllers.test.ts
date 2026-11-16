@@ -27,7 +27,6 @@ vi.mock('../services/SubscriptionService', () => {
       cancelUserSubscriptions: vi.fn(),
       cancelSubscriptionById: vi.fn(),
       findRecentStripeSubscriptions: vi.fn(),
-      countActiveByProductId: vi.fn().mockResolvedValue(0),
       getUserActiveSubscriptions: vi.fn().mockResolvedValue([]),
       resumeSubscription: vi.fn(),
     },
@@ -3334,7 +3333,6 @@ describe('UsersController.getLocals', () => {
 
   it('counts no Auto Sync seats, since the plan is not on sale', async () => {
     vi.stubEnv('AUTO_SYNC_PRODUCT_ID', 'prod_auto_sync');
-    (SubscriptionService.countActiveByProductId as Mock).mockClear();
     const userService = {
       getSubscriptionLinkedEmail: vi.fn().mockResolvedValue(null),
     } as unknown as UsersService;
@@ -3363,7 +3361,6 @@ describe('UsersController.getLocals', () => {
     const payload = res.json.mock.calls[0][0];
     expect(payload).not.toHaveProperty('autoSyncCapReached');
     expect(payload.autoSyncActive).toBe(false);
-    expect(SubscriptionService.countActiveByProductId).not.toHaveBeenCalled();
     vi.unstubAllEnvs();
   });
 

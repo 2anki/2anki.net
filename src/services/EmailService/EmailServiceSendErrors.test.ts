@@ -111,18 +111,6 @@ describe('EmailService send failures', () => {
     expect(logged).not.toContain(RECIPIENT);
   });
 
-  it('returns an Auto Sync access request failure without the API key', async () => {
-    const result = await service.sendHostedAnkiAccessRequestEmail(
-      '42',
-      RECIPIENT
-    );
-
-    expect(result.didSend).toBe(false);
-    expect(result.error).toMatchObject({ code: 'ETIMEDOUT' });
-    expect(rendered(result)).not.toContain(API_KEY);
-    expect(rendered(errorLog.mock.calls)).not.toContain(API_KEY);
-  });
-
   it('still retries a transient failure, since the code survives', async () => {
     vi.useFakeTimers();
     send.mockReset();
