@@ -552,7 +552,10 @@ describe('ConversionProcessPool scheduling', () => {
   });
 
   it('logs a crashed task once even when its result arrives afterwards', async () => {
-    const { pool, created, logs } = makePool({ maxChildren: 1 });
+    const { pool, created, logs } = makePool({
+      maxChildren: 1,
+      now: () => 1_000,
+    });
     pool.start();
     const task = pool.runTask('upload-1');
     created[0].ready();
@@ -586,7 +589,10 @@ describe('ConversionProcessPool scheduling', () => {
   });
 
   it('logs nothing for a task still queued when the drain deadline passes', async () => {
-    const { pool, created, timers, logs } = makePool({ maxChildren: 1 });
+    const { pool, created, timers, logs } = makePool({
+      maxChildren: 1,
+      now: () => 1_000,
+    });
     pool.start();
     const running = pool.runTask('upload-1');
     const queued = pool.runTask('upload-2');
@@ -597,7 +603,9 @@ describe('ConversionProcessPool scheduling', () => {
     await expect(queued).rejects.toThrow('Terminating worker thread');
     await done;
 
-    expect(taskLines(logs)).toHaveLength(1);
+    expect(taskLines(logs)).toEqual([
+      '[conversion-pool] task lane=upload outcome=terminated run_ms=0 wait_ms=0',
+    ]);
   });
 
   it('describe reports no wait when no upload is queued', () => {
