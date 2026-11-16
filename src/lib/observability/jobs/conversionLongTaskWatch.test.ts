@@ -1,5 +1,7 @@
 import { vi } from 'vitest';
 import {
+  ALERT_RETRY_BASE_MS,
+  ALERT_SEND_TIMEOUT_MS,
   LONG_BACKGROUND_TASK_THRESHOLD_MS,
   LONG_TASK_ALERT_COOLDOWN_MS,
   LONG_TASK_WATCH_INTERVAL_MS,
@@ -19,7 +21,7 @@ interface Sample {
   backgroundRuns: RunningTask[];
 }
 
-function setup(initial: Sample | null) {
+function setup(initial: Sample | null, underPm2 = true) {
   let sample = initial;
   let clock = 0;
   const logs: string[] = [];
@@ -29,7 +31,7 @@ function setup(initial: Sample | null) {
     now: () => clock,
     log: (line) => logs.push(line),
     sendAlert,
-    processName: 'server-blue',
+    processName: underPm2 ? 'server-blue' : undefined,
   });
   return {
     watch,
@@ -47,7 +49,10 @@ function setup(initial: Sample | null) {
 const MINUTE = 60_000;
 const HUNG = LONG_UPLOAD_TASK_THRESHOLD_MS + MINUTE;
 
-const run = (pid: number, runMs: number): RunningTask => ({ pid, runMs });
+const run = (pid: number | null, runMs: number): RunningTask => ({
+  pid,
+  runMs,
+});
 
 const idle: Sample = { uploadRuns: [], backgroundRuns: [] };
 
@@ -60,6 +65,9 @@ const twoHungUploads: Sample = {
   uploadRuns: [run(102, HUNG), run(103, HUNG)],
   backgroundRuns: [],
 };
+
+const FIRST_UPLOAD_LINE =
+  '[conversion-pool] long-task lane=upload tasks=1 longest_min=31';
 
 describe('conversion long task watch', () => {
   it('stays quiet while every task is under its threshold', async () => {
@@ -77,21 +85,42 @@ describe('conversion long task watch', () => {
     const ctx = setup(oneHungUpload);
     await ctx.watch.tick();
 
-    expect(ctx.logs).toEqual([
-      '[conversion-pool] long-task lane=upload tasks=1 longest_min=31',
-    ]);
+    expect(ctx.logs).toEqual([FIRST_UPLOAD_LINE]);
     expect(ctx.sendAlert).toHaveBeenCalledTimes(1);
     expect(ctx.sendAlert.mock.calls[0][0]).toBe(
       '[2anki] An upload conversion has run past 30 minutes'
     );
   });
 
-  it('says which process and which worker to look at, and for how long', async () => {
+  it('says which process and which worker to look at, for how long, and how', async () => {
     const ctx = setup(oneHungUpload);
     await ctx.watch.tick();
 
+    expect(ctx.sendAlert.mock.calls[0][1]).toBe(
+      'An upload conversion has held a worker past 30 minutes. ' +
+        'Process server-blue, worker pid 102 (31 min). ' +
+        'On the server, list what each worker is running (ps --ppid <pid> -o pid,etime,cmd). ' +
+        'A pdfimages, pdftoppm, pdfinfo or soffice process that has run this long is hung. ' +
+        'Nothing was stopped. Killing a hung subprocess fails that conversion and frees its worker; ' +
+        'restarting the server process frees them all, and the next deploy does that too.'
+    );
+  });
+
+  it('says so when the server is not running under pm2', async () => {
+    const ctx = setup(oneHungUpload, false);
+    await ctx.watch.tick();
+
     expect(ctx.sendAlert.mock.calls[0][1]).toContain(
-      'An upload conversion has held a worker for more than 30 minutes. Process server-blue, worker pid 102 (31 minutes). Nothing was stopped.'
+      'Process server (not under pm2), worker pid 102 (31 min).'
+    );
+  });
+
+  it('names a worker whose pid is not known yet', async () => {
+    const ctx = setup({ uploadRuns: [run(null, HUNG)], backgroundRuns: [] });
+    await ctx.watch.tick();
+
+    expect(ctx.sendAlert.mock.calls[0][1]).toContain(
+      'worker pid unknown (31 min).'
     );
   });
 
@@ -116,7 +145,10 @@ describe('conversion long task watch', () => {
       '[2anki] A Notion conversion has run past 4 hours'
     );
     expect(ctx.sendAlert.mock.calls[0][1]).toContain(
-      'worker pid 201 (4 h 1 min)'
+      'Process server-blue, worker pid 201 (4 h 1 min). '
+    );
+    expect(ctx.sendAlert.mock.calls[0][1]).toContain(
+      'A Notion conversion can also hang on a network call, with no subprocess to find.'
     );
   });
 
@@ -144,7 +176,7 @@ describe('conversion long task watch', () => {
     expect(ctx.logs).toHaveLength(1);
   });
 
-  it('sends a reminder that says still once the cooldown has passed', async () => {
+  it("sends a reminder with 'still running' in the subject once the cooldown has passed", async () => {
     const ctx = setup(oneHungUpload);
     await ctx.watch.tick();
     ctx.advance(LONG_TASK_ALERT_COOLDOWN_MS);
@@ -159,7 +191,18 @@ describe('conversion long task watch', () => {
       '[2anki] An upload conversion is still running past 30 minutes'
     );
     expect(ctx.sendAlert.mock.calls[1][1]).toContain(
-      'worker pid 102 (6 h 31 min)'
+      'worker pid 102 (6 h 31 min).'
+    );
+  });
+
+  it('words the reminder for several tasks in the plural', async () => {
+    const ctx = setup(twoHungUploads);
+    await ctx.watch.tick();
+    ctx.advance(LONG_TASK_ALERT_COOLDOWN_MS);
+    await ctx.watch.tick();
+
+    expect(ctx.sendAlert.mock.calls[1][0]).toBe(
+      '[2anki] 2 upload conversions are still running past 30 minutes'
     );
   });
 
@@ -180,7 +223,7 @@ describe('conversion long task watch', () => {
       '[2anki] 2 upload conversions have run past 30 minutes'
     );
     expect(ctx.sendAlert.mock.calls[1][1]).toContain(
-      '2 upload conversions have each held a worker for more than 30 minutes. Process server-blue, worker pid 102 (34 minutes), pid 103 (31 minutes).'
+      '2 upload conversions have each held a worker past 30 minutes. Process server-blue, workers pid 102 (34 min), pid 103 (31 min).'
     );
   });
 
@@ -208,7 +251,7 @@ describe('conversion long task watch', () => {
     await ctx.watch.tick();
 
     expect(ctx.logs).toEqual([
-      '[conversion-pool] long-task lane=upload tasks=1 longest_min=31',
+      FIRST_UPLOAD_LINE,
       '[conversion-pool] long-task cleared lane=upload',
     ]);
 
@@ -219,15 +262,15 @@ describe('conversion long task watch', () => {
     expect(ctx.sendAlert).toHaveBeenCalledTimes(2);
   });
 
-  it('sends the alert again on the next tick when the email failed', async () => {
+  it('sends the alert again a minute after the email failed, as a first alert', async () => {
     const ctx = setup(oneHungUpload);
     ctx.sendAlert.mockRejectedValueOnce(new Error('sendgrid down'));
     await ctx.watch.tick();
     expect(ctx.logs[1]).toBe(
-      '[conversion-pool] long-task alert email failed: Error: sendgrid down'
+      '[conversion-pool] long-task alert email failed, next try in 1 min: Error: sendgrid down'
     );
 
-    ctx.advance(MINUTE);
+    ctx.advance(ALERT_RETRY_BASE_MS);
     await ctx.watch.tick();
 
     expect(ctx.sendAlert).toHaveBeenCalledTimes(2);
@@ -240,6 +283,42 @@ describe('conversion long task watch', () => {
     expect(ctx.sendAlert).toHaveBeenCalledTimes(2);
   });
 
+  it('waits twice as long after each failed send while the provider stays down', async () => {
+    const ctx = setup(oneHungUpload);
+    ctx.sendAlert.mockRejectedValue(new Error('sendgrid down'));
+
+    for (let minute = 0; minute < 16; minute += 1) {
+      await ctx.watch.tick();
+      ctx.advance(MINUTE);
+    }
+
+    expect(ctx.sendAlert).toHaveBeenCalledTimes(5);
+    expect(
+      ctx.logs.filter((line) => line.includes('alert email failed'))
+    ).toEqual([
+      '[conversion-pool] long-task alert email failed, next try in 1 min: Error: sendgrid down',
+      '[conversion-pool] long-task alert email failed, next try in 2 min: Error: sendgrid down',
+      '[conversion-pool] long-task alert email failed, next try in 4 min: Error: sendgrid down',
+      '[conversion-pool] long-task alert email failed, next try in 8 min: Error: sendgrid down',
+      '[conversion-pool] long-task alert email failed, next try in 16 min: Error: sendgrid down',
+    ]);
+  });
+
+  it('retries a failed reminder as a reminder', async () => {
+    const ctx = setup(oneHungUpload);
+    await ctx.watch.tick();
+    ctx.advance(LONG_TASK_ALERT_COOLDOWN_MS);
+    ctx.sendAlert.mockRejectedValueOnce(new Error('sendgrid down'));
+    await ctx.watch.tick();
+    ctx.advance(ALERT_RETRY_BASE_MS);
+    await ctx.watch.tick();
+
+    expect(ctx.sendAlert).toHaveBeenCalledTimes(3);
+    expect(ctx.sendAlert.mock.calls[2][0]).toBe(
+      '[2anki] An upload conversion is still running past 30 minutes'
+    );
+  });
+
   it('still checks the other lane when one alert email fails', async () => {
     const ctx = setup({
       uploadRuns: [run(102, HUNG)],
@@ -249,11 +328,33 @@ describe('conversion long task watch', () => {
     await ctx.watch.tick();
 
     expect(ctx.logs).toEqual([
-      '[conversion-pool] long-task lane=upload tasks=1 longest_min=31',
-      '[conversion-pool] long-task alert email failed: Error: sendgrid down',
+      FIRST_UPLOAD_LINE,
+      '[conversion-pool] long-task alert email failed, next try in 1 min: Error: sendgrid down',
       '[conversion-pool] long-task lane=background tasks=1 longest_min=240',
     ]);
     expect(ctx.sendAlert).toHaveBeenCalledTimes(2);
+  });
+
+  it('starts no second send while the first is still waiting on the provider', async () => {
+    vi.useFakeTimers();
+    try {
+      const ctx = setup(oneHungUpload);
+      ctx.sendAlert.mockReturnValue(new Promise(() => undefined));
+
+      const first = ctx.watch.tick();
+      await ctx.watch.tick();
+      await ctx.watch.tick();
+      expect(ctx.sendAlert).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(ALERT_SEND_TIMEOUT_MS);
+      await first;
+
+      expect(ctx.logs[1]).toBe(
+        '[conversion-pool] long-task alert email failed, next try in 1 min: Error: no answer from the mail provider in 30000ms'
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does nothing before the pool exists', async () => {
@@ -267,8 +368,9 @@ describe('conversion long task watch', () => {
 
 describe('formatRunTime', () => {
   it.each([
-    [31 * MINUTE, '31 minutes'],
-    [59 * MINUTE, '59 minutes'],
+    [31 * MINUTE, '31 min'],
+    [59 * MINUTE, '59 min'],
+    [59.5 * MINUTE, '1 h 0 min'],
     [60 * MINUTE, '1 h 0 min'],
     [1092 * MINUTE, '18 h 12 min'],
   ])('writes %i ms as %s', (ms, text) => {

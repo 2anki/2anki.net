@@ -80,7 +80,10 @@ class StallReadTest(unittest.TestCase):
         cleared = f"{stamp(1, 6)}: [conversion-pool] stall cleared after 40s"
         long_task = f"{stamp(1, 7)}: [conversion-pool] long-task lane=upload tasks=1 longest_min=31"
         long_cleared = f"{stamp(1, 8)}: [conversion-pool] long-task cleared lane=upload"
-        out = run(out_lines, [stall(stamp(1, 5)), cleared, long_task, long_cleared])
+        send_failed = f"{stamp(1, 7)}: [conversion-pool] long-task alert email failed, next try in 1 min: Error: down"
+        watch_failed = f"{stamp(1, 7)}: [conversion-pool] long-task watch failed: Error: pool gone"
+        err_lines = [stall(stamp(1, 5)), cleared, long_task, long_cleared, send_failed, watch_failed]
+        out = run(out_lines, err_lines)
 
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(out.stderr, "")

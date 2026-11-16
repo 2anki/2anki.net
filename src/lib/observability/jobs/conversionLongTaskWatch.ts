@@ -18,6 +18,15 @@ export const LONG_TASK_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 export const LONG_TASK_WATCH_INTERVAL_MS = 60 * 1000;
 
+// The mail client sets no timeout of its own. A send that never settles would
+// otherwise hold the watch for good.
+export const ALERT_SEND_TIMEOUT_MS = 30 * 1000;
+
+// After a failed send the next try waits one minute, then two, four and so
+// on, so a provider outage during an 18-hour hang is a few log lines an hour
+// and not three a minute.
+export const ALERT_RETRY_BASE_MS = 60 * 1000;
+
 interface RunningTask {
   pid: number | null;
   runMs: number;
@@ -36,8 +45,8 @@ export interface ConversionLongTaskWatchDeps {
   samplePool: () => LongTaskSample | null;
   sendAlert: (subject: string, body: string) => Promise<void>;
   // The pm2 app the pool belongs to. Blue and green each run a pool and a
-  // watch, so the email has to say which one to look at.
-  processName: string;
+  // watch, so the email has to say which one to look at. Unset outside pm2.
+  processName?: string;
   now?: () => number;
   log?: (line: string) => void;
 }
@@ -47,46 +56,58 @@ interface LaneState {
   one: string;
   many: string;
   limit: string;
+  hint: string;
   thresholdMs: number;
   read: (sample: LongTaskSample) => RunningTask[];
   alertedCount: number;
   lastAlertAt: number | null;
+  failedSends: number;
+  retryAt: number;
 }
 
 const toMinutes = (ms: number) => Math.round(ms / 60_000);
 
 export function formatRunTime(ms: number): string {
   const minutes = toMinutes(ms);
-  if (minutes < 60) return `${minutes} minutes`;
+  if (minutes < 60) return `${minutes} min`;
   return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
-const WHAT_TO_DO =
-  'Nothing was stopped. On the server, look at the subprocesses of that ' +
-  'worker (pdfimages, pdftoppm, pdfinfo, soffice): one that has run this ' +
-  'long is hung. Killing it fails the conversion and frees the worker; so ' +
-  'does restarting the server process, which the next deploy also does. A ' +
-  'Notion conversion can also hang on a network call, with no subprocess ' +
-  'to find.';
+const TOOL_HINT =
+  'On the server, list what each worker is running (ps --ppid <pid> -o ' +
+  'pid,etime,cmd). A pdfimages, pdftoppm, pdfinfo or soffice process that ' +
+  'has run this long is hung.';
 
-function alertSubject(
-  state: LaneState,
-  count: number,
-  isReminder: boolean
-): string {
-  const verb = isReminder ? 'still running past' : 'run past';
+const NOTION_HINT =
+  'On the server, list what each worker is running (ps --ppid <pid> -o ' +
+  'pid,etime,cmd). A Notion conversion can also hang on a network call, ' +
+  'with no subprocess to find.';
+
+const HOW_TO_FREE =
+  'Nothing was stopped. Killing a hung subprocess fails that conversion and ' +
+  'frees its worker; restarting the server process frees them all, and the ' +
+  'next deploy does that too.';
+
+function firstAlertSubject(state: LaneState, count: number): string {
   return count === 1
-    ? `[2anki] ${state.one} ${isReminder ? 'is' : 'has'} ${verb} ${state.limit}`
-    : `[2anki] ${count} ${state.many} ${isReminder ? 'are' : 'have'} ${verb} ${state.limit}`;
+    ? `[2anki] ${state.one} has run past ${state.limit}`
+    : `[2anki] ${count} ${state.many} have run past ${state.limit}`;
+}
+
+function reminderSubject(state: LaneState, count: number): string {
+  return count === 1
+    ? `[2anki] ${state.one} is still running past ${state.limit}`
+    : `[2anki] ${count} ${state.many} are still running past ${state.limit}`;
 }
 
 function describeWorkers(long: RunningTask[]): string {
-  return [...long]
+  const workers = [...long]
     .sort((a, b) => b.runMs - a.runMs)
     .map(
       (task) => `pid ${task.pid ?? 'unknown'} (${formatRunTime(task.runMs)})`
     )
     .join(', ');
+  return long.length === 1 ? `worker ${workers}` : `workers ${workers}`;
 }
 
 function alertBody(
@@ -96,10 +117,29 @@ function alertBody(
 ): string {
   const what =
     long.length === 1
-      ? `${state.one} has held a worker for more than ${state.limit}.`
-      : `${long.length} ${state.many} have each held a worker for more than ${state.limit}.`;
-  const where = `Process ${processName}, worker ${describeWorkers(long)}.`;
-  return `${what} ${where} ${WHAT_TO_DO}`;
+      ? `${state.one} has held a worker past ${state.limit}.`
+      : `${long.length} ${state.many} have each held a worker past ${state.limit}.`;
+  const where = `Process ${processName}, ${describeWorkers(long)}.`;
+  return `${what} ${where} ${state.hint} ${HOW_TO_FREE}`;
+}
+
+function withTimeout(send: Promise<void>, ms: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`no answer from the mail provider in ${ms}ms`)),
+      ms
+    );
+    send.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 }
 
 export function createConversionLongTaskWatch(
@@ -107,26 +147,34 @@ export function createConversionLongTaskWatch(
 ) {
   const now = deps.now ?? Date.now;
   const log = deps.log ?? ((line: string) => console.warn(line));
+  const processName = deps.processName ?? 'server (not under pm2)';
+  let ticking = false;
   const lanes: LaneState[] = [
     {
       lane: 'upload',
       one: 'An upload conversion',
       many: 'upload conversions',
       limit: '30 minutes',
+      hint: TOOL_HINT,
       thresholdMs: LONG_UPLOAD_TASK_THRESHOLD_MS,
       read: (sample) => sample.uploadRuns,
       alertedCount: 0,
       lastAlertAt: null,
+      failedSends: 0,
+      retryAt: 0,
     },
     {
       lane: 'background',
       one: 'A Notion conversion',
       many: 'Notion conversions',
       limit: '4 hours',
+      hint: NOTION_HINT,
       thresholdMs: LONG_BACKGROUND_TASK_THRESHOLD_MS,
       read: (sample) => sample.backgroundRuns,
       alertedCount: 0,
       lastAlertAt: null,
+      failedSends: 0,
+      retryAt: 0,
     },
   ];
 
@@ -139,9 +187,11 @@ export function createConversionLongTaskWatch(
     if (long.length === 0) {
       if (state.lastAlertAt != null) {
         log(`[conversion-pool] long-task cleared lane=${state.lane}`);
-        state.lastAlertAt = null;
-        state.alertedCount = 0;
       }
+      state.lastAlertAt = null;
+      state.alertedCount = 0;
+      state.failedSends = 0;
+      state.retryAt = 0;
       return;
     }
     // One more long task than last reported is news at once; the same ones
@@ -154,30 +204,52 @@ export function createConversionLongTaskWatch(
       state.alertedCount = long.length;
       return;
     }
+    if (at < state.retryAt) return;
     const longestMs = Math.max(...long.map((task) => task.runMs));
     log(
       `[conversion-pool] long-task lane=${state.lane} tasks=${long.length} longest_min=${toMinutes(longestMs)}`
     );
+    const subject = isNewTask
+      ? firstAlertSubject(state, long.length)
+      : reminderSubject(state, long.length);
     try {
-      await deps.sendAlert(
-        alertSubject(state, long.length, !isNewTask),
-        alertBody(state, long, deps.processName)
+      await withTimeout(
+        deps.sendAlert(subject, alertBody(state, long, processName)),
+        ALERT_SEND_TIMEOUT_MS
       );
       state.alertedCount = long.length;
       state.lastAlertAt = at;
+      state.failedSends = 0;
+      state.retryAt = 0;
     } catch (error) {
-      // The state is left as it was, so the next tick sends this alert again
-      // instead of waiting out the cooldown on an email nobody received.
-      log(`[conversion-pool] long-task alert email failed: ${String(error)}`);
+      // What was reported stays as it was, so this alert is sent again, after
+      // a wait that doubles with each failure up to the reminder interval.
+      state.failedSends += 1;
+      const wait = Math.min(
+        ALERT_RETRY_BASE_MS * 2 ** (state.failedSends - 1),
+        LONG_TASK_ALERT_COOLDOWN_MS
+      );
+      state.retryAt = at + wait;
+      log(
+        `[conversion-pool] long-task alert email failed, next try in ${toMinutes(wait)} min: ${String(error)}`
+      );
     }
   };
 
+  // One tick at a time: a send still waiting on the provider when the next
+  // minute comes round must not be started a second time.
   const tick = async () => {
-    const sample = deps.samplePool();
-    if (sample == null) return;
-    const at = now();
-    for (const state of lanes) {
-      await checkLane(state, state.read(sample), at);
+    if (ticking) return;
+    ticking = true;
+    try {
+      const sample = deps.samplePool();
+      if (sample == null) return;
+      const at = now();
+      for (const state of lanes) {
+        await checkLane(state, state.read(sample), at);
+      }
+    } finally {
+      ticking = false;
     }
   };
 

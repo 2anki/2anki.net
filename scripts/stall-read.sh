@@ -82,7 +82,7 @@ echo "== stall lines"
 grep -ac '\[conversion-pool\] stall oldest_wait_s=' "$WINDOW" || true
 
 # A hung conversion child queues nothing, so no stall line shows it; the
-# long-task watch logs one line per alert it sends.
+# long-task watch logs one line each time it tries to send an alert.
 echo "== long-task alerts"
 grep -ac '\[conversion-pool\] long-task lane=' "$WINDOW" || true
 

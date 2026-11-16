@@ -11,6 +11,8 @@ vi.mock('./conversionPool', async () => {
       queueSize: 2,
       threads: 3,
       utilization: 0.5,
+      uploadRuns: [{ pid: 4242, runMs: 90_000 }],
+      backgroundRuns: [],
     })),
     POOL_CLOSE_TIMEOUT_MS: actual.POOL_CLOSE_TIMEOUT_MS,
   };
@@ -327,7 +329,13 @@ describe('gracefulShutdown', () => {
     expect(message).toContain('during conversion pool drain');
     expect(details).toMatchObject({
       databasePool: { used: 4, free: 1, pendingAcquires: 2, pendingCreates: 0 },
-      conversionPool: { queueSize: 2, threads: 3, utilization: 0.5 },
+      conversionPool: {
+        queueSize: 2,
+        threads: 3,
+        utilization: 0.5,
+        uploadRuns: '[{"pid":4242,"runMs":90000}]',
+        backgroundRuns: '[]',
+      },
     });
     expect(details.activeResources).toEqual(expect.any(Object));
     vi.useRealTimers();
