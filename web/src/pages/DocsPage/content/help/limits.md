@@ -106,8 +106,8 @@ Free covers the conversion paths most people need: drag in a file, get a deck ba
 | AI-generated flashcards (Claude)                 | —                  | ✓            | ✓          |
 | Chat (study assistant)                           | —                  | AI credits   | AI credits |
 | Long-term deck storage                           | 24 h               | active sub   | indefinite |
-| Auto Sync (Notion → Anki)                        | —                  | by request   | ✓          |
+| Auto Sync (Notion → Anki)                        | —                  | —            | ✓          |
 
-Auto Sync isn't on the pricing page. On any subscription, email [support@2anki.net](mailto:support@2anki.net) and we'll switch it on for your account. See the [pricing page](/pricing) for the current plan list. Privacy details — what we read, what we don't — are on the [privacy policy](/documentation/reference/privacy).
+Auto Sync isn't on sale right now, and it can't be switched on by request. Accounts that already have it keep it. See the [pricing page](/pricing) for the current plan list. Privacy details — what we read, what we don't — are on the [privacy policy](/documentation/reference/privacy).
 
 If something looks wrong, [contact us](/documentation/help/contact).

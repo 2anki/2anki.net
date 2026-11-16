@@ -84,8 +84,8 @@ Free deckt die Konvertierungswege ab, die die meisten Leute brauchen: eine Datei
 | KI-generierte Karteikarten (Claude)            | —               | ✓            | ✓          |
 | Chat (Lernassistent)                           | —               | KI-Credits   | KI-Credits |
 | Langzeit-Deckspeicherung                       | 24 h            | aktives Abo  | unbegrenzt |
-| Auto Sync (Notion → Anki)                      | —               | auf Anfrage  | ✓          |
+| Auto Sync (Notion → Anki)                      | —               | —            | ✓          |
 
-Siehe die [Preisseite](/pricing) für die aktuelle Planliste. Datenschutzdetails — was wir lesen, was nicht — findest du in der [Datenschutzerklärung](/documentation/reference/privacy).
+Auto Sync ist gerade nicht erhältlich und wird auch nicht auf Anfrage freigeschaltet. Konten, die es schon haben, behalten es. Siehe die [Preisseite](/pricing) für die aktuelle Planliste. Datenschutzdetails — was wir lesen, was nicht — findest du in der [Datenschutzerklärung](/documentation/reference/privacy).
 
 Wenn etwas falsch aussieht, [kontaktiere uns](/documentation/help/contact).

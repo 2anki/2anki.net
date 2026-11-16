@@ -38,10 +38,10 @@ Use this when you have a week to prep for an exam or a sprint to digitize a stac
 | Cards per month                                     | 100     | unlimited | unlimited | unlimited              |
 | PDF support                                         | —       | ✓         | ✓         | ✓                      |
 | [AI flashcards](/documentation/cards/ai-flashcards) | —       | ✓         | ✓         | ✓                      |
-| [Auto Sync](/documentation/sync/how-it-works)       | —       | —         | —         | by request             |
+| [Auto Sync](/documentation/sync/how-it-works)       | —       | —         | —         | —                      |
 | Recurring charge                                    | —       | —         | —         | monthly                |
 
-Auto Sync isn't on the pricing page. On any subscription, email [support@2anki.net](mailto:support@2anki.net) and we'll switch it on for your account.
+Auto Sync isn't on sale right now, and it can't be switched on by request. Accounts that already have it keep it.
 
 ## Paused subscriptions
 

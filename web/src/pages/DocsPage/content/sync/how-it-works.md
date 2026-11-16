@@ -32,6 +32,6 @@ A background job polls your subscribed pages, diffs them against what's already 
 
 ## Getting Auto Sync access
 
-Auto Sync isn't on the pricing page right now. On any subscription, email [support@2anki.net](mailto:support@2anki.net) and we'll switch it on so you can try it. Connect Notion, download deck, and file uploads stay free.
+Auto Sync isn't on sale right now, and it can't be switched on by request. Accounts that already have it keep it. Connect Notion, download deck, and file uploads stay free.
 
 See the [pricing page](/pricing) for current plans, and [When sync gets stuck](/documentation/sync/troubleshooting) if a sync isn't running.
