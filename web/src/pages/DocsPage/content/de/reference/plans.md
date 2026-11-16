@@ -1,9 +1,9 @@
 ---
 title: Kurze Pläne und Pässe
-description: Day Pass und Week Pass — wann ein einmaliger Pass sinnvoll ist.
+description: Day Pass, Week Pass und Semester Pass — wann ein einmaliger Pass sinnvoll ist.
 ---
 
-Die meisten nutzen Free oder ein monatliches Subscription. Aber zwei kurze Optionen gibt es für den Fall, dass keins davon passt — ein Deck fürs Wochenende oder eine einmalige Pauk-Sitzung.
+Die meisten nutzen Free oder ein monatliches Subscription. Aber 3 einmalige Pässe gibt es für den Fall, dass keins davon passt — ein Deck fürs Wochenende, eine einmalige Pauk-Sitzung oder ein ganzes Semester.
 
 Für die vollständige Planliste und Preise siehe die [Preisseite](/pricing).
 
@@ -29,17 +29,29 @@ Nutze das, wenn du ein Wochenende voller Karten zu bauen hast und keine wiederke
 
 Nutze das, wenn du eine Woche hast, um dich auf eine Prüfung vorzubereiten, oder einen Sprint, um einen Stapel Notizen zu digitalisieren.
 
-## Wie sich die kurzen Pläne von Subscription unterscheiden
+## Semester Pass — $29
 
-|                                                       | Free      | Day Pass   | Week Pass  | Pro (Abo)     |
-| ----------------------------------------------------- | --------- | ---------- | ---------- | ------------- |
-| Kosten                                                | $0        | $6         | $12        | $6 / Mon.     |
-| Dauer                                                 | für immer | 24 h       | 7 Tage     | bis gekündigt |
-| Karten pro Monat                                      | 100       | unbegrenzt | unbegrenzt | unbegrenzt    |
-| PDF-Unterstützung                                     | —         | ✓          | ✓          | ✓             |
-| [KI-Karteikarten](/documentation/cards/ai-flashcards) | —         | ✓          | ✓          | ✓             |
-| [Auto Sync](/documentation/sync/how-it-works)         | —         | —          | —          | —             |
-| Wiederkehrende Belastung                              | —         | —          | —          | monatlich     |
+120 Tage Pro-Funktionen mit 1500 KI-Credits, einmalig bezahlt.
+
+- **Dauer:** 120 Tage ab Kauf.
+- **Kosten:** $29, einmalig.
+- **Was du bekommst:** derselbe Funktionsumfang wie der Day Pass, mit 1500 KI-Credits.
+- **Wo:** **Semester Pass** auf der [Preisseite](/pricing).
+
+Nutze das, wenn du ein ganzes Semester lang lernst und keine wiederkehrende Belastung willst.
+
+## Wie sich die Pässe von Subscription unterscheiden
+
+|                                                       | Free      | Day Pass   | Week Pass  | Semester Pass | Pro (Abo)                    |
+| ----------------------------------------------------- | --------- | ---------- | ---------- | ------------- | ---------------------------- |
+| Kosten                                                | $0        | $6         | $12        | $29           | $7.99 / Mon. oder $64 / Jahr |
+| Dauer                                                 | für immer | 24 h       | 7 Tage     | 120 Tage      | bis gekündigt                |
+| Karten pro Monat                                      | 100       | unbegrenzt | unbegrenzt | unbegrenzt    | unbegrenzt                   |
+| KI-Credits                                            | —         | 300        | 500        | 1500          | 300 pro Monat                |
+| PDF-Seiten pro Datei                                  | 100       | unbegrenzt | unbegrenzt | unbegrenzt    | unbegrenzt                   |
+| [KI-Karteikarten](/documentation/cards/ai-flashcards) | —         | ✓          | ✓          | ✓             | ✓                            |
+| [Auto Sync](/documentation/sync/how-it-works)         | —         | —          | —          | —             | —                            |
+| Wiederkehrende Belastung                              | —         | —          | —          | —             | monatlich oder jährlich      |
 
 Auto Sync ist gerade nicht erhältlich und wird auch nicht auf Anfrage freigeschaltet. Konten, die es schon haben, behalten es.
 
@@ -49,8 +61,8 @@ Neue Pausen sind nicht mehr möglich. Ist dein Abo bereits pausiert, wirst du ni
 
 ## Häufige Fehler
 
-- **Erwarten, dass der Pass sich verlängert.** Day- und Week-Pässe sind einmalig. Wenn das Fenster schließt, gehst du zurück zu Free. Kauf einen weiteren Pass oder wechsle zu einem Subscription, wenn du durchgehenden Zugang willst.
-- **Zahlwege mischen.** Day- und Week-Pässe sind einmalige Stripe-Checkouts; Pro ist ein monatliches oder jährliches Abo.
+- **Erwarten, dass der Pass sich verlängert.** Day-, Week- und Semester-Pässe sind einmalig. Wenn das Fenster schließt, gehst du zurück zu Free. Kauf einen weiteren Pass oder wechsle zu einem Subscription, wenn du durchgehenden Zugang willst.
+- **Zahlwege mischen.** Day-, Week- und Semester-Pässe sind einmalige Stripe-Checkouts; Pro ist ein monatliches oder jährliches Abo.
 
 ## Verwandt
 

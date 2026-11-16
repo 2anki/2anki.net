@@ -27,7 +27,7 @@ Cards preserve images, audio, code blocks, and cloze deletions from the source.
 2anki is also a native app for iPhone, iPad, and Mac — free on the App Store.
 Files are parsed on-device; sign in for AI deck generation and Notion sync. The
 same free/paid limits apply, with the passes sold as Apple in-app purchases
-(Day Pass, Week Pass, Pro). Details: https://2anki.net/app
+(Day Pass, Week Pass, Semester Pass, Pro). Details: https://2anki.net/app
 
 ## AI conversion (Claude)
 
@@ -53,8 +53,9 @@ members and accounts that already have it keep it.
 - Free: up to 21 cards per conversion without an account, and 100 cards per month with a free account.
 - Pro: $7.99/month or $64/year, with no monthly card limit, PDF support, concurrent conversions, and 300 AI credits a month.
 - Lifetime: closed to new members.
-- Day Pass: $4 — 24 hours of Pro features, including 300 AI credits.
-- Week Pass: $9 — 7 days of Pro features, including 500 AI credits.
+- Day Pass: $6, paid once — 24 hours of Pro features, including 300 AI credits.
+- Week Pass: $12, paid once — 7 days of Pro features, including 500 AI credits.
+- Semester Pass: $29, paid once — 120 days of Pro features, including 1500 AI credits.
 
 ## Key differentiators
 
