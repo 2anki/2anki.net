@@ -81,6 +81,11 @@ grep -aE 'HTTP/1.1" - - ' "$WINDOW" | cut -c1-13 | uniq -c | awk '$1 >= 10'
 echo "== stall lines"
 grep -ac '\[conversion-pool\] stall oldest_wait_s=' "$WINDOW" || true
 
+# A hung conversion child queues nothing, so no stall line shows it; the
+# long-task watch logs one line per alert it sends.
+echo "== long-task alerts"
+grep -ac '\[conversion-pool\] long-task lane=' "$WINDOW" || true
+
 echo "== max tempfile dwell (ms)"
 grep -aoE 'dwellMs: [0-9]+' "$WINDOW" | awk '{ if ($2 > m) m = $2 } END { print m + 0 }'
 

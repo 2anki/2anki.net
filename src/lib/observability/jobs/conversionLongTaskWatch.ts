@@ -18,9 +18,14 @@ export const LONG_TASK_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 export const LONG_TASK_WATCH_INTERVAL_MS = 60 * 1000;
 
+interface RunningTask {
+  pid: number | null;
+  runMs: number;
+}
+
 interface LongTaskSample {
-  uploadRunsMs: number[];
-  backgroundRunsMs: number[];
+  uploadRuns: RunningTask[];
+  backgroundRuns: RunningTask[];
 }
 
 interface IntervalHandle {
@@ -30,6 +35,9 @@ interface IntervalHandle {
 export interface ConversionLongTaskWatchDeps {
   samplePool: () => LongTaskSample | null;
   sendAlert: (subject: string, body: string) => Promise<void>;
+  // The pm2 app the pool belongs to. Blue and green each run a pool and a
+  // watch, so the email has to say which one to look at.
+  processName: string;
   now?: () => number;
   log?: (line: string) => void;
 }
@@ -40,33 +48,58 @@ interface LaneState {
   many: string;
   limit: string;
   thresholdMs: number;
-  read: (sample: LongTaskSample) => number[];
+  read: (sample: LongTaskSample) => RunningTask[];
   alertedCount: number;
   lastAlertAt: number | null;
 }
 
 const toMinutes = (ms: number) => Math.round(ms / 60_000);
 
-const WHAT_TO_DO =
-  'Nothing was stopped. On the server, list the subprocesses of the ' +
-  'conversion workers (pdfimages, pdftoppm, pdfinfo, soffice): one that has ' +
-  'run this long is hung. Its worker stays busy until the server process ' +
-  'restarts, so restart it or let the next deploy do it.';
-
-function alertSubject(state: LaneState, count: number): string {
-  return count === 1
-    ? `[2anki] ${state.one} has run past ${state.limit}`
-    : `[2anki] ${count} ${state.many} have run past ${state.limit}`;
+export function formatRunTime(ms: number): string {
+  const minutes = toMinutes(ms);
+  if (minutes < 60) return `${minutes} minutes`;
+  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
-function alertBody(state: LaneState, count: number, longestMs: number): string {
-  const minutes = toMinutes(longestMs);
+const WHAT_TO_DO =
+  'Nothing was stopped. On the server, look at the subprocesses of that ' +
+  'worker (pdfimages, pdftoppm, pdfinfo, soffice): one that has run this ' +
+  'long is hung. Killing it fails the conversion and frees the worker; so ' +
+  'does restarting the server process, which the next deploy also does. A ' +
+  'Notion conversion can also hang on a network call, with no subprocess ' +
+  'to find.';
+
+function alertSubject(
+  state: LaneState,
+  count: number,
+  isReminder: boolean
+): string {
+  const verb = isReminder ? 'still running past' : 'run past';
+  return count === 1
+    ? `[2anki] ${state.one} ${isReminder ? 'is' : 'has'} ${verb} ${state.limit}`
+    : `[2anki] ${count} ${state.many} ${isReminder ? 'are' : 'have'} ${verb} ${state.limit}`;
+}
+
+function describeWorkers(long: RunningTask[]): string {
+  return [...long]
+    .sort((a, b) => b.runMs - a.runMs)
+    .map(
+      (task) => `pid ${task.pid ?? 'unknown'} (${formatRunTime(task.runMs)})`
+    )
+    .join(', ');
+}
+
+function alertBody(
+  state: LaneState,
+  long: RunningTask[],
+  processName: string
+): string {
   const what =
-    count === 1
-      ? `${state.one} has held a worker for ${minutes} minutes.`
-      : `${count} ${state.many} have each held a worker for more than ` +
-        `${state.limit}, the longest for ${minutes} minutes.`;
-  return `${what} ${WHAT_TO_DO}`;
+    long.length === 1
+      ? `${state.one} has held a worker for more than ${state.limit}.`
+      : `${long.length} ${state.many} have each held a worker for more than ${state.limit}.`;
+  const where = `Process ${processName}, worker ${describeWorkers(long)}.`;
+  return `${what} ${where} ${WHAT_TO_DO}`;
 }
 
 export function createConversionLongTaskWatch(
@@ -81,7 +114,7 @@ export function createConversionLongTaskWatch(
       many: 'upload conversions',
       limit: '30 minutes',
       thresholdMs: LONG_UPLOAD_TASK_THRESHOLD_MS,
-      read: (sample) => sample.uploadRunsMs,
+      read: (sample) => sample.uploadRuns,
       alertedCount: 0,
       lastAlertAt: null,
     },
@@ -91,14 +124,18 @@ export function createConversionLongTaskWatch(
       many: 'Notion conversions',
       limit: '4 hours',
       thresholdMs: LONG_BACKGROUND_TASK_THRESHOLD_MS,
-      read: (sample) => sample.backgroundRunsMs,
+      read: (sample) => sample.backgroundRuns,
       alertedCount: 0,
       lastAlertAt: null,
     },
   ];
 
-  const checkLane = async (state: LaneState, runsMs: number[], at: number) => {
-    const long = runsMs.filter((ms) => ms >= state.thresholdMs);
+  const checkLane = async (
+    state: LaneState,
+    runs: RunningTask[],
+    at: number
+  ) => {
+    const long = runs.filter((task) => task.runMs >= state.thresholdMs);
     if (long.length === 0) {
       if (state.lastAlertAt != null) {
         log(`[conversion-pool] long-task cleared lane=${state.lane}`);
@@ -113,19 +150,24 @@ export function createConversionLongTaskWatch(
     const reminderDue =
       state.lastAlertAt != null &&
       at - state.lastAlertAt >= LONG_TASK_ALERT_COOLDOWN_MS;
-    state.alertedCount = long.length;
-    if (!isNewTask && !reminderDue) return;
-    state.lastAlertAt = at;
-    const longestMs = Math.max(...long);
+    if (!isNewTask && !reminderDue) {
+      state.alertedCount = long.length;
+      return;
+    }
+    const longestMs = Math.max(...long.map((task) => task.runMs));
     log(
       `[conversion-pool] long-task lane=${state.lane} tasks=${long.length} longest_min=${toMinutes(longestMs)}`
     );
     try {
       await deps.sendAlert(
-        alertSubject(state, long.length),
-        alertBody(state, long.length, longestMs)
+        alertSubject(state, long.length, !isNewTask),
+        alertBody(state, long, deps.processName)
       );
+      state.alertedCount = long.length;
+      state.lastAlertAt = at;
     } catch (error) {
+      // The state is left as it was, so the next tick sends this alert again
+      // instead of waiting out the cooldown on an email nobody received.
       log(`[conversion-pool] long-task alert email failed: ${String(error)}`);
     }
   };
@@ -148,8 +190,13 @@ export function scheduleConversionLongTaskWatch<H extends IntervalHandle>(
   }
 ): H {
   const watch = createConversionLongTaskWatch(deps);
+  const log = deps.log ?? ((line: string) => console.warn(line));
   const handle = deps.setIntervalFn(() => {
-    void watch.tick();
+    // The server exits on an unhandled rejection, and a watch must never be
+    // the reason it does.
+    watch.tick().catch((error) => {
+      log(`[conversion-pool] long-task watch failed: ${String(error)}`);
+    });
   }, LONG_TASK_WATCH_INTERVAL_MS);
   handle.unref();
   return handle;
