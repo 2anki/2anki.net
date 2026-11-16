@@ -235,51 +235,13 @@ describe('applyConversionSuccess', () => {
     } as unknown as Response;
   }
 
-  it('keeps the recovery token this upload sent when the server stored the first cards under it', async () => {
+  it('keeps only the hold from a held body that still names the ended preview cards test', async () => {
     const handlers = buildHandlers();
 
     await applyConversionSuccess(
       heldWithPreview({ previewCardsArm: 'treatment', previewCards: true }),
-      handlers,
-      'token-sent-with-upload'
+      handlers
     );
-
-    expect(handlers.setHeldDeck).toHaveBeenCalledWith({
-      cardCount: 21,
-      cardsHeldBack: 13,
-      totalCards: 34,
-      dayPassCard: false,
-      previewCardsArm: 'treatment',
-      previewCardsToken: 'token-sent-with-upload',
-    });
-  });
-
-  it('carries the control arm with no first cards to download', async () => {
-    const handlers = buildHandlers();
-
-    await applyConversionSuccess(
-      heldWithPreview({ previewCardsArm: 'control' }),
-      handlers,
-      'token-sent-with-upload'
-    );
-
-    expect(handlers.setHeldDeck).toHaveBeenCalledWith({
-      cardCount: 21,
-      cardsHeldBack: 13,
-      totalCards: 34,
-      dayPassCard: false,
-      previewCardsArm: 'control',
-    });
-  });
-
-  it.each([
-    ['the upload sent no recovery token', { previewCards: true }, null],
-    ['the server stored no first cards', {}, 'token-sent-with-upload'],
-    ['the arm is not one the test assigns', { previewCardsArm: 'other' }, null],
-  ])('offers no first cards when %s', async (_label, extra, token) => {
-    const handlers = buildHandlers();
-
-    await applyConversionSuccess(heldWithPreview(extra), handlers, token);
 
     expect(handlers.setHeldDeck).toHaveBeenCalledWith({
       cardCount: 21,

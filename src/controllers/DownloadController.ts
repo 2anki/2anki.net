@@ -149,46 +149,10 @@ class DownloadController {
   // Serves the copy an anonymous sync upload left behind (#4651). Both the
   // anon_id cookie and the per-upload token have to match, and neither is
   // logged: the spool logs carry no owner for this path.
-  getAnonymousRecovery(req: Request, res: Response, storage: StorageHandler) {
-    return this.serveAnonymousCopy(req, res, (anonymousId, token) =>
-      this.service.getAnonymousRecoveryStream(anonymousId, token, storage)
-    );
-  }
-
-  // The first cards of a held deck, kept apart from the recovery copy. The
-  // served event fires when streaming starts, so it counts decks the server
-  // began sending rather than button clicks.
-  getAnonymousPreviewCards(
+  async getAnonymousRecovery(
     req: Request,
     res: Response,
     storage: StorageHandler
-  ) {
-    return this.serveAnonymousCopy(
-      req,
-      res,
-      (anonymousId, token) =>
-        this.service.getAnonymousPreviewCardsStream(
-          anonymousId,
-          token,
-          storage
-        ),
-      (anonymousId) =>
-        track('anonymous_preview_cards_served', {
-          userId: null,
-          anonymousId: analyticsAnonId(req, anonymousId),
-          props: {},
-        })
-    );
-  }
-
-  private async serveAnonymousCopy(
-    req: Request,
-    res: Response,
-    openStream: (
-      anonymousId: string,
-      token: string
-    ) => Promise<{ body: Readable } | undefined>,
-    onServed: (anonymousId: string) => void = () => undefined
   ) {
     const { token } = req.params;
     if (!isRecoveryToken(token)) {
@@ -199,15 +163,17 @@ class DownloadController {
       return res.status(404).send();
     }
     try {
-      const stored = await openStream(anonymousId, token);
+      const stored = await this.service.getAnonymousRecoveryStream(
+        anonymousId,
+        token,
+        storage
+      );
       if (stored == null) {
         return res.status(404).send();
       }
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader('Cache-Control', 'private, no-store');
-      if (await this.serveStoredObject(stored.body, res, null)) {
-        onServed(anonymousId);
-      }
+      await this.serveStoredObject(stored.body, res, null);
     } catch (error) {
       if (this.service.isMissingDownloadError(error)) {
         return res.status(404).send();
@@ -239,7 +205,7 @@ class DownloadController {
     body: Readable,
     res: Response,
     owner: unknown
-  ): Promise<boolean> {
+  ) {
     const spoolDir = path.join(process.env.WORKSPACE_BASE!, 'download-spool');
     const spoolPath = path.join(spoolDir, `${randomUUID()}.apkg`);
     const discardSpool = () =>
@@ -265,7 +231,7 @@ class DownloadController {
       await discardSpool();
       if (clientGone) {
         console.info('Download abandoned while spooling', { owner });
-        return false;
+        return;
       }
       console.error('Download spool failed', {
         owner,
@@ -274,11 +240,11 @@ class DownloadController {
       res
         .status(503)
         .send('Storage is busy right now. Try the download again in a moment.');
-      return false;
+      return;
     }
     if (clientGone) {
       await discardSpool();
-      return false;
+      return;
     }
 
     const { size } = await fs.promises.stat(spoolPath);
@@ -289,7 +255,7 @@ class DownloadController {
     });
     if (clientGone) {
       await discardSpool();
-      return false;
+      return;
     }
     if (!res.headersSent) {
       res.setHeader('Content-Length', String(size));
@@ -298,7 +264,7 @@ class DownloadController {
     if (clientGone) {
       file.destroy();
       await discardSpool();
-      return false;
+      return;
     }
     file.on('error', (error) => {
       console.error('Download spool read failed', {
@@ -308,7 +274,6 @@ class DownloadController {
       res.destroy(error);
     });
     file.pipe(res);
-    return true;
   }
 
   async getDownloadPage(req: Request, res: Response) {

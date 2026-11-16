@@ -14,31 +14,9 @@ import { MonthlyLimitError } from '../../usecases/users/CheckMonthlyCardLimitUse
 import { EmptyDeckError } from '../../usecases/jobs/EmptyDeckError';
 import { ClaimHeldDeckController } from './ClaimHeldDeckController';
 import { track } from '../../services/events/track';
-import {
-  __resetFeatureFlagModuleForTests,
-  __setFeatureFlagDependencies,
-} from '../../lib/featureFlags/getFeatureFlag';
-import { ANONYMOUS_PREVIEW_CARDS_FLAG } from '../../lib/upload/anonymousPreviewCards';
-import { LIMIT_WALL_PASS_FIRST_FLAG } from '../../lib/featureFlags/limitWallPassFirst';
 
 const trackMock = track as Mock;
 const ANON = 'anon-controller-1';
-
-function previewCardsFlag(on: boolean, passFirst = false) {
-  __setFeatureFlagDependencies({
-    repository: {
-      getAll: () => Promise.resolve([]),
-      get: (key: string) => {
-        if (key === ANONYMOUS_PREVIEW_CARDS_FLAG) return Promise.resolve(on);
-        if (key === LIMIT_WALL_PASS_FIRST_FLAG) {
-          return Promise.resolve(passFirst);
-        }
-        return Promise.resolve(null);
-      },
-      set: () => Promise.resolve(null),
-    },
-  });
-}
 
 function buildResponse(owner: number | null) {
   let status = 0;
@@ -107,14 +85,10 @@ function buildUseCase(repo: InMemoryHeldDeckRepository) {
   return new ClaimHeldDeckUseCase(repo, store, converter);
 }
 
-async function seedHold(
-  repo: InMemoryHeldDeckRepository,
-  expiresAt?: Date,
-  anonId = ANON
-) {
+async function seedHold(repo: InMemoryHeldDeckRepository, expiresAt?: Date) {
   await repo.insert({
     storageKey: 'held/x.html',
-    anonId,
+    anonId: ANON,
     filename: 'notes.html',
     cardCount: 21,
     cardsHeldBack: 13,
@@ -123,12 +97,7 @@ async function seedHold(
 }
 
 describe('ClaimHeldDeckController', () => {
-  beforeEach(() => {
-    trackMock.mockClear();
-    previewCardsFlag(false);
-  });
-
-  afterEach(() => __resetFeatureFlagModuleForTests());
+  beforeEach(() => trackMock.mockClear());
 
   it('GET returns 204 when there is no claimable hold', async () => {
     const controller = new ClaimHeldDeckController(
@@ -328,57 +297,17 @@ describe('ClaimHeldDeckController', () => {
     expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
       userId: 7,
       anonymousId: ANON,
-      props: { arm: 'treatment', preview_cards_arm: 'off' },
+      props: { arm: 'treatment' },
     });
   });
-
-  it('records the claim outside the test while the pass-first wall is on', async () => {
-    previewCardsFlag(true, true);
-    const repo = new InMemoryHeldDeckRepository();
-    await seedHold(repo, undefined, 'anon-preview-1');
-    const controller = new ClaimHeldDeckController(buildUseCase(repo));
-    const { res } = buildResponse(7);
-
-    await controller.claim(buildRequest('anon-preview-1'), res);
-
-    expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
-      userId: 7,
-      anonymousId: 'anon-preview-1',
-      props: { arm: 'treatment', preview_cards_arm: 'off' },
-    });
-  });
-
-  it.each([
-    ['anon-preview-1', 'treatment'],
-    ['anon-preview-0', 'control'],
-  ])(
-    'records the preview cards arm worked out for %s at claim time',
-    async (anonId, previewArm) => {
-      previewCardsFlag(true);
-      const repo = new InMemoryHeldDeckRepository();
-      await seedHold(repo, undefined, anonId);
-      const controller = new ClaimHeldDeckController(buildUseCase(repo));
-      const { res, capturedStatus } = buildResponse(7);
-
-      await controller.claim(buildRequest(anonId), res);
-
-      expect(capturedStatus()).toBe(200);
-      expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
-        userId: 7,
-        anonymousId: anonId,
-        props: { arm: 'treatment', preview_cards_arm: previewArm },
-      });
-    }
-  );
 
   it('claims the hold for a visitor who declined analytics, keeping the arm but not the anonymous id on the event', async () => {
-    previewCardsFlag(true);
     const repo = new InMemoryHeldDeckRepository();
-    await seedHold(repo, undefined, 'anon-preview-1');
+    await seedHold(repo);
     const controller = new ClaimHeldDeckController(buildUseCase(repo));
     const { res, capturedStatus, capturedJson } = buildResponse(7);
 
-    await controller.claim(buildRequest('anon-preview-1', 'denied'), res);
+    await controller.claim(buildRequest(ANON, 'denied'), res);
 
     expect(capturedStatus()).toBe(200);
     expect(capturedJson()).toMatchObject({
@@ -388,7 +317,7 @@ describe('ClaimHeldDeckController', () => {
     expect(trackMock).toHaveBeenCalledWith('anonymous_partial_claimed', {
       userId: 7,
       anonymousId: null,
-      props: { arm: 'treatment', preview_cards_arm: 'treatment' },
+      props: { arm: 'treatment' },
     });
   });
 

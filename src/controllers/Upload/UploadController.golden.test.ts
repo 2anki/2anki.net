@@ -18,7 +18,6 @@ const bridgeDecks = vi.hoisted(
 
 vi.mock('@aws-sdk/client-s3', async (importActual) => {
   const actual = await importActual<typeof import('@aws-sdk/client-s3')>();
-  const { Readable } = await import('node:stream');
   class RecordingS3Client {
     async send(command: { input?: { Key?: string; Body?: unknown } }) {
       const key = command.input?.Key ?? '';
@@ -28,12 +27,7 @@ vi.mock('@aws-sdk/client-s3', async (importActual) => {
       }
       if (command instanceof actual.GetObjectCommand && s3Objects.has(key)) {
         const bytes = s3Objects.get(key) as Buffer;
-        return {
-          Body: Object.assign(Readable.from([bytes]), {
-            transformToByteArray: async () => bytes,
-          }),
-          ContentLength: bytes.length,
-        };
+        return { Body: { transformToByteArray: async () => bytes } };
       }
       if (command instanceof actual.DeleteObjectCommand) {
         s3Objects.delete(key);
@@ -255,7 +249,6 @@ import { getDatabase } from '../../data_layer';
 import RequireAllowedOrigin from '../../routes/middleware/RequireAllowedOrigin';
 import { tellUploadOwner } from '../../routes/middleware/tellUploadOwner';
 import { anonIdMiddleware } from '../../routes/middleware/anonIdMiddleware';
-import { setMintedAnonId } from '../../lib/User/getOwner';
 import { InMemoryHeldDeckRepository } from '../../data_layer/HeldDeckRepository';
 import {
   ClaimHeldDeckUseCase,
@@ -269,11 +262,7 @@ import {
 } from '../../services/mcp/McpToolsService';
 import ApkgPreviewService from '../../services/ApkgPreviewService/ApkgPreviewService';
 import { buildMcpServer } from '../../services/mcp/McpServerFactory';
-import DownloadService from '../../services/DownloadService';
-import DownloadController from '../DownloadController';
-import type DownloadRepository from '../../data_layer/DownloadRepository';
-import { ANONYMOUS_PREVIEW_CARDS_FLAG } from '../../lib/upload/anonymousPreviewCards';
-import { ANONYMOUS_CARD_CAP } from '../../lib/limits';
+import type DownloadService from '../../services/DownloadService';
 import { AnonymousPassRepository } from '../../data_layer/AnonymousPassRepository';
 import { AiPreviewResumeController } from './AiPreviewResumeController';
 import { ResumeAnonymousAiPreviewUseCase } from '../../usecases/uploads/ResumeAnonymousAiPreviewUseCase';
@@ -357,7 +346,6 @@ interface Population {
   previewReply?: string;
   realAuth?: boolean;
   mintsAnonId?: boolean;
-  mintedAnonId?: string;
   passSpentUsd?: number;
   passCreditsReadFails?: boolean;
   alsoUploads?: keyof typeof UPLOADS;
@@ -389,19 +377,6 @@ const signedOutPassHolderWithRecoveryToken: Population = {
   },
 };
 
-const PREVIEW_RECOVERY_TOKEN = '5c4b3a29-1e0d-4f8a-9b7c-6d5e4f3a2b1c';
-
-const previewCardsTreatment: Population = {
-  ...signedOut,
-  flags: { [ANONYMOUS_PREVIEW_CARDS_FLAG]: true },
-  headers: { 'x-recovery-token': PREVIEW_RECOVERY_TOKEN },
-};
-
-const previewCardsControl: Population = {
-  ...previewCardsTreatment,
-  cookies: { anon_id: 'golden-preview-2' },
-};
-
 const cases: [string, keyof typeof UPLOADS, Population][] = [
   ['signed-out under the anonymous cap', 'small', signedOut],
   ['signed-out over the cap', 'large', signedOut],
@@ -414,21 +389,6 @@ const cases: [string, keyof typeof UPLOADS, Population][] = [
     'signed-out over the cap, pass-first wall on',
     'large',
     { ...signedOut, flags: { [LIMIT_WALL_PASS_FIRST_FLAG]: true } },
-  ],
-  [
-    'signed-out over the cap, preview cards treatment arm with a recovery token',
-    'large',
-    previewCardsTreatment,
-  ],
-  [
-    'signed-out over the cap, preview cards treatment arm without a recovery token',
-    'large',
-    { ...previewCardsTreatment, headers: {} },
-  ],
-  [
-    'signed-out over the cap, preview cards control arm with a recovery token',
-    'large',
-    previewCardsControl,
   ],
   [
     'signed-out over the cap, no anon id',
@@ -1156,9 +1116,6 @@ beforeAll(async () => {
       if (population.mintsAnonId === true) {
         return anonIdMiddleware(req, res, next);
       }
-      if (population.mintedAnonId != null) {
-        setMintedAnonId(res, population.mintedAnonId);
-      }
       next();
     },
     (req, res) => {
@@ -1199,16 +1156,6 @@ beforeAll(async () => {
       next();
     },
     (req, res) => goldenResumeController().resume(req, res)
-  );
-  app.get('/api/download/recover/:token', (req, res) =>
-    new DownloadController(
-      new DownloadService({} as DownloadRepository)
-    ).getAnonymousRecovery(req, res, new StorageHandler())
-  );
-  app.get('/api/download/recover/:token/preview', (req, res) =>
-    new DownloadController(
-      new DownloadService({} as DownloadRepository)
-    ).getAnonymousPreviewCards(req, res, new StorageHandler())
   );
   server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
@@ -1421,93 +1368,24 @@ describe('a signed-out upload held over the cap', () => {
   });
 });
 
-describe('the first cards handed over beside a held deck', () => {
-  function previewDownload(anonId: string) {
-    return fetch(
-      `${baseUrl}/api/download/recover/${PREVIEW_RECOVERY_TOKEN}/preview`,
-      { headers: { cookie: `anon_id=${anonId}` } }
-    );
-  }
-
-  function recoveryDownload(anonId: string) {
-    return fetch(`${baseUrl}/api/download/recover/${PREVIEW_RECOVERY_TOKEN}`, {
-      headers: { cookie: `anon_id=${anonId}` },
+describe('a held deck after the preview cards test ended', () => {
+  it('holds the full deck and keeps no first cards for a visitor from the former treatment arm, with the old flag row still on', async () => {
+    const result = await upload('large', {
+      ...signedOut,
+      flags: { anonymous_preview_cards: true },
+      headers: { 'x-recovery-token': '5c4b3a29-1e0d-4f8a-9b7c-6d5e4f3a2b1c' },
     });
-  }
 
-  it('serves the capped deck the conversion built from the preview download', async () => {
-    const result = await upload('large', previewCardsTreatment);
-    expect(result.body).toMatchObject({
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({
       kind: 'held',
-      cardCount: ANONYMOUS_CARD_CAP,
+      cardCount: 21,
+      cardsHeldBack: LARGE_DECK_CARDS - 21,
       totalCards: LARGE_DECK_CARDS,
-      previewCards: true,
+      deckName: 'Golden Large',
+      savedForHours: 24,
     });
-
-    const download = await previewDownload('golden-anon');
-
-    expect(download.status).toBe(200);
-    expect(await download.text()).toBe(
-      `golden-apkg cards=${ANONYMOUS_CARD_CAP}`
-    );
-  });
-
-  it('keeps the first cards out of dropped-response recovery', async () => {
-    await upload('large', previewCardsTreatment);
-
-    const download = await recoveryDownload('golden-anon');
-
-    expect(download.status).toBe(404);
-  });
-
-  it('serves the first cards only to the browser that uploaded', async () => {
-    await upload('large', previewCardsTreatment);
-
-    const download = await previewDownload('golden-preview-2');
-
-    expect(download.status).toBe(404);
-  });
-
-  it('serves nothing to a control visitor', async () => {
-    await upload('large', previewCardsControl);
-
-    const download = await previewDownload('golden-preview-2');
-
-    expect(download.status).toBe(404);
-  });
-
-  it('keeps the first cards under an anon id minted on the upload itself and serves them once the browser holds that cookie', async () => {
-    const result = await upload('large', {
-      ...previewCardsTreatment,
-      cookies: {},
-      mintedAnonId: 'golden-anon',
-    });
-
-    expect(result.body).toMatchObject({
-      kind: 'held',
-      cookieMinted: true,
-      previewCardsArm: 'treatment',
-      previewCards: true,
-    });
-    const download = await previewDownload('golden-anon');
-    expect(download.status).toBe(200);
-    expect(await download.text()).toBe(
-      `golden-apkg cards=${ANONYMOUS_CARD_CAP}`
-    );
-  });
-
-  it('stores and serves nothing while the pass-first wall is on', async () => {
-    const result = await upload('large', {
-      ...previewCardsTreatment,
-      flags: {
-        [ANONYMOUS_PREVIEW_CARDS_FLAG]: true,
-        [LIMIT_WALL_PASS_FIRST_FLAG]: true,
-      },
-    });
-
-    expect(result.body).not.toHaveProperty('previewCardsArm');
     expect(result.storedObjects).toEqual(['held source file']);
-    expect((await previewDownload('golden-anon')).status).toBe(404);
   });
 });
 

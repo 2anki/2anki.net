@@ -124,17 +124,13 @@ import UploadService, {
   resolveUploadWarning,
   walkMediaFiles,
 } from './UploadService';
-import {
-  anonPreviewCardsKey,
-  anonRecoveryKey,
-} from '../lib/upload/anonymousRecovery';
+import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
 import { LIMIT_WALL_PASS_FIRST_FLAG } from '../lib/featureFlags/limitWallPassFirst';
 import {
   ANONYMOUS_AI_PREVIEW_FLAG,
   previewHoldKey,
 } from '../lib/upload/anonymousAiPreview';
 import { AiPreviewRateLimiter } from '../lib/upload/aiPreviewRateLimiter';
-import { ANONYMOUS_PREVIEW_CARDS_FLAG } from '../lib/upload/anonymousPreviewCards';
 import { ASYNC_PDF_MIN_BYTES } from '../lib/upload/asyncSlowUploads';
 import {
   AiCreditsTrippedWithSalvage,
@@ -9938,10 +9934,10 @@ describe('UploadService.handleSyncUpload — anonymous partial delivery', () => 
   });
 });
 
-describe('UploadService.handleSyncUpload — first cards beside the held deck', () => {
+describe('UploadService.handleSyncUpload — held deck after the preview cards test', () => {
   const originalWorkspaceBase = process.env.WORKSPACE_BASE;
-  const TREATMENT_ID = 'anon-preview-1';
-  const CONTROL_ID = 'anon-preview-0';
+  const FORMER_TREATMENT_ID = 'anon-preview-1';
+  const FORMER_CONTROL_ID = 'anon-preview-0';
   const TOKEN = '7d1e4c2a-5b3f-4a6e-9c8d-2f1e0a9b8c7d';
   const HELD_BODY = {
     kind: 'held',
@@ -9969,9 +9965,9 @@ describe('UploadService.handleSyncUpload — first cards beside the held deck', 
     mockWorkspaceId = 'test-ws-id';
   });
 
-  function previewFlag(on: boolean) {
+  function flagsOn(...keys: string[]) {
     mockGetFeatureFlag.mockImplementation((key: unknown) =>
-      Promise.resolve(key === ANONYMOUS_PREVIEW_CARDS_FLAG ? on : false)
+      Promise.resolve(keys.includes(String(key)))
     );
   }
 
@@ -10032,190 +10028,43 @@ describe('UploadService.handleSyncUpload — first cards beside the held deck', 
     return (call?.[1] as { props: Record<string, unknown> }).props;
   }
 
-  it('hands a treatment visitor the capped deck as a recovery copy and still holds the full deck', async () => {
-    previewFlag(true);
-    heldPackages();
-    const heldDeck = new InMemoryHeldDeckRepository();
-    const { res, capturedStatus, capturedJson } = buildResponse();
-
-    await serviceUnderTest(heldDeck).handleUpload(
-      heldRequest(TREATMENT_ID),
-      res
-    );
-
-    expect(capturedStatus()).toBe(200);
-    expect(capturedJson()).toEqual({
-      ...HELD_BODY,
-      previewCardsArm: 'treatment',
-      previewCards: true,
-    });
-    expect(heldDeck.rows).toHaveLength(1);
-    expect(recoveryKeysStored()).toEqual([
-      anonPreviewCardsKey(TREATMENT_ID, TOKEN),
-    ]);
-    expect(mockStorageUploadFile).toHaveBeenCalledWith(
-      anonPreviewCardsKey(TREATMENT_ID, TOKEN),
-      Buffer.from('capped-apkg')
-    );
-    expect(heldEventProps()).toMatchObject({
-      held: true,
-      preview_cards_arm: 'treatment',
-      preview_cards_delivered: true,
-    });
-  });
-
-  it('gives a control visitor the hold alone, with no recovery copy', async () => {
-    previewFlag(true);
-    heldPackages();
-    const { res, capturedJson } = buildResponse();
-
-    await serviceUnderTest().handleUpload(heldRequest(CONTROL_ID), res);
-
-    expect(capturedJson()).toEqual({
-      ...HELD_BODY,
-      previewCardsArm: 'control',
-    });
-    expect(recoveryKeysStored()).toEqual([]);
-    expect(heldEventProps()).toMatchObject({
-      preview_cards_arm: 'control',
-      preview_cards_delivered: false,
-    });
-  });
-
-  it('runs no test while the pass-first wall is on, since a free account there releases only the first cards', async () => {
-    mockGetFeatureFlag.mockImplementation((key: unknown) =>
-      Promise.resolve(
-        key === ANONYMOUS_PREVIEW_CARDS_FLAG ||
-          key === LIMIT_WALL_PASS_FIRST_FLAG
-      )
-    );
-    heldPackages();
-    const { res, capturedJson } = buildResponse();
-
-    await serviceUnderTest().handleUpload(heldRequest(TREATMENT_ID), res);
-
-    expect(capturedJson()).toEqual(HELD_BODY);
-    expect(recoveryKeysStored()).toEqual([]);
-    expect(heldEventProps()).toMatchObject({
-      preview_cards_arm: 'off',
-      preview_cards_delivered: false,
-    });
-  });
-
-  it('answers exactly as before while the flag is off', async () => {
-    previewFlag(false);
-    heldPackages();
-    const { res, capturedJson } = buildResponse();
-
-    await serviceUnderTest().handleUpload(heldRequest(TREATMENT_ID), res);
-
-    expect(capturedJson()).toEqual(HELD_BODY);
-    expect(recoveryKeysStored()).toEqual([]);
-    expect(heldEventProps()).toMatchObject({
-      preview_cards_arm: 'off',
-      preview_cards_delivered: false,
-    });
-  });
-
   it.each([
-    ['no recovery token', {}],
-    ['a malformed recovery token', { 'x-recovery-token': '../held/x' }],
+    ['the former treatment arm', FORMER_TREATMENT_ID],
+    ['the former control arm', FORMER_CONTROL_ID],
   ])(
-    'holds the deck without the first cards for a treatment visitor with %s',
-    async (_label, headers) => {
-      previewFlag(true);
+    'holds the full deck and keeps no first cards for a visitor in %s, even with the old flag row still on',
+    async (_label, anonId) => {
+      flagsOn('anonymous_preview_cards');
       heldPackages();
-      const { res, capturedJson } = buildResponse();
+      const heldDeck = new InMemoryHeldDeckRepository();
+      const { res, capturedStatus, capturedJson } = buildResponse();
 
-      await serviceUnderTest().handleUpload(
-        heldRequest(TREATMENT_ID, headers),
-        res
-      );
+      await serviceUnderTest(heldDeck).handleUpload(heldRequest(anonId), res);
 
-      expect(capturedJson()).toEqual({
-        ...HELD_BODY,
-        previewCardsArm: 'treatment',
-      });
+      expect(capturedStatus()).toBe(200);
+      expect(capturedJson()).toEqual(HELD_BODY);
+      expect(heldDeck.rows).toHaveLength(1);
       expect(recoveryKeysStored()).toEqual([]);
-      expect(heldEventProps()).toMatchObject({
-        preview_cards_arm: 'treatment',
-        preview_cards_delivered: false,
-      });
+      expect(heldEventProps()).not.toHaveProperty('preview_cards_arm');
+      expect(heldEventProps()).not.toHaveProperty('preview_cards_delivered');
     }
   );
 
-  it('holds the deck without the first cards when the upload made more than one package', async () => {
-    previewFlag(true);
-    heldPackages([
-      { name: 'deck a', cardCount: 11 },
-      { name: 'deck b', cardCount: 10 },
-    ]);
-    const { res, capturedJson } = buildResponse();
-
-    await serviceUnderTest().handleUpload(heldRequest(TREATMENT_ID), res);
-
-    expect(capturedJson()).toMatchObject({
-      kind: 'held',
-      previewCardsArm: 'treatment',
-    });
-    expect(capturedJson()).not.toHaveProperty('previewCards');
-    expect(recoveryKeysStored()).toEqual([]);
-  });
-
-  it('keeps the hold when the first cards cannot be stored', async () => {
-    previewFlag(true);
+  it('holds the full deck the same way while the pass-first wall is on', async () => {
+    flagsOn(LIMIT_WALL_PASS_FIRST_FLAG);
     heldPackages();
-    mockStorageUploadFile.mockImplementation((key: unknown) =>
-      String(key).startsWith('recover/')
-        ? Promise.reject(new Error('storage down'))
-        : Promise.resolve(undefined)
-    );
     const heldDeck = new InMemoryHeldDeckRepository();
     const { res, capturedStatus, capturedJson } = buildResponse();
 
     await serviceUnderTest(heldDeck).handleUpload(
-      heldRequest(TREATMENT_ID),
+      heldRequest(FORMER_TREATMENT_ID),
       res
     );
 
     expect(capturedStatus()).toBe(200);
-    expect(capturedJson()).toEqual({
-      ...HELD_BODY,
-      previewCardsArm: 'treatment',
-    });
-    expect(heldDeck.rows).toHaveLength(1);
-    expect(heldEventProps()).toMatchObject({ preview_cards_delivered: false });
-  });
-
-  it('keeps the hold when the built deck cannot be read back', async () => {
-    previewFlag(true);
-    heldPackages();
-    mockFirstApkg = null;
-    const { res, capturedStatus, capturedJson } = buildResponse();
-
-    await serviceUnderTest().handleUpload(heldRequest(TREATMENT_ID), res);
-
-    expect(capturedStatus()).toBe(200);
-    expect(capturedJson()).toEqual({
-      ...HELD_BODY,
-      previewCardsArm: 'treatment',
-    });
-    expect(recoveryKeysStored()).toEqual([]);
-  });
-
-  it('keeps the hold, outside both arms, when the flag cannot be read', async () => {
-    mockGetFeatureFlag.mockImplementation((key: unknown) =>
-      key === ANONYMOUS_PREVIEW_CARDS_FLAG
-        ? Promise.reject(new Error('db down'))
-        : Promise.resolve(false)
-    );
-    heldPackages();
-    const { res, capturedStatus, capturedJson } = buildResponse();
-
-    await serviceUnderTest().handleUpload(heldRequest(TREATMENT_ID), res);
-
-    expect(capturedStatus()).toBe(200);
     expect(capturedJson()).toEqual(HELD_BODY);
+    expect(heldDeck.rows).toHaveLength(1);
+    expect(recoveryKeysStored()).toEqual([]);
   });
 });
 

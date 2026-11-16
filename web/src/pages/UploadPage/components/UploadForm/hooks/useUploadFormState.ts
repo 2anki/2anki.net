@@ -34,8 +34,6 @@ export interface HeldDeckState {
   savedForHours?: number;
   dayPassCard?: boolean;
   cookieMinted?: boolean;
-  previewCardsArm?: 'control' | 'treatment';
-  previewCardsToken?: string;
 }
 
 export interface AiPreviewCard {

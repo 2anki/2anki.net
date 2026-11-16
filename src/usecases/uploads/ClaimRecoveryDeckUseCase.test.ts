@@ -1,7 +1,8 @@
+import { createHash } from 'node:crypto';
 import { vi } from 'vitest';
 import {
+  ANON_RECOVERY_PREFIX,
   ANON_RECOVERY_RETENTION_MS,
-  anonPreviewCardsKey,
   anonRecoveryKey,
 } from '../../lib/upload/anonymousRecovery';
 import {
@@ -68,12 +69,12 @@ function claim(
 }
 
 describe('ClaimRecoveryDeckUseCase', () => {
-  it('never moves the first cards of a held deck into the account', async () => {
+  it('never moves the first cards an ended preview test kept beside a held deck into the account', async () => {
+    const firstCardsKey = `${ANON_RECOVERY_PREFIX}${createHash('sha256')
+      .update(`${ANON}:${TOKEN}:preview-cards`)
+      .digest('hex')}.apkg`;
     const objects = new Map([
-      [
-        anonPreviewCardsKey(ANON, TOKEN),
-        { body: DECK, at: new Date(NOW.getTime() - 60_000) },
-      ],
+      [firstCardsKey, { body: DECK, at: new Date(NOW.getTime() - 60_000) }],
     ]);
     const { saver, saveRecoveredDeck } = buildSaver();
     const useCase = new ClaimRecoveryDeckUseCase(
