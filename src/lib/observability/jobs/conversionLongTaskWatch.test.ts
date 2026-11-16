@@ -100,7 +100,7 @@ describe('conversion long task watch', () => {
       'An upload conversion has held a worker past 30 minutes. ' +
         'Process server-blue, worker pid 102 (31 min). ' +
         'On the server, list its subprocesses: ps --ppid 102 -o pid,etime,cmd. ' +
-        'A pdfimages, pdftoppm, pdfinfo or soffice process that has run this long is hung. ' +
+        'A pdfimages, pdftoppm, pdfinfo, or soffice process that has run this long is hung. ' +
         'Nothing was stopped. Killing a hung subprocess fails that conversion and frees its worker; ' +
         'restarting the server process frees them all, and the next deploy does that too.'
     );
@@ -384,6 +384,70 @@ describe('conversion long task watch', () => {
       await ctx.watch.tick();
 
       expect(ctx.sendAlert).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('ignores a late answer once the long task it reported has ended', async () => {
+    vi.useFakeTimers();
+    try {
+      const ctx = setup(oneHungUpload);
+      let finish: () => void = () => undefined;
+      ctx.sendAlert.mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+      );
+      const first = ctx.watch.tick();
+      await vi.advanceTimersByTimeAsync(ALERT_SEND_TIMEOUT_MS);
+      await first;
+
+      ctx.setSample(idle);
+      await ctx.watch.tick();
+      finish();
+      await vi.advanceTimersByTimeAsync(0);
+      ctx.setSample(oneHungUpload);
+      await ctx.watch.tick();
+
+      expect(ctx.sendAlert).toHaveBeenCalledTimes(2);
+      expect(ctx.sendAlert.mock.calls[1][0]).toBe(
+        '[2anki] An upload conversion has run past 30 minutes'
+      );
+      expect(ctx.logs.filter((line) => line.includes('cleared'))).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the newer alert when an older send answers after it', async () => {
+    vi.useFakeTimers();
+    try {
+      const ctx = setup(oneHungUpload);
+      let finish: () => void = () => undefined;
+      ctx.sendAlert.mockReturnValueOnce(
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        })
+      );
+      const first = ctx.watch.tick();
+      await vi.advanceTimersByTimeAsync(ALERT_SEND_TIMEOUT_MS);
+      await first;
+
+      ctx.advance(ALERT_RETRY_BASE_MS);
+      ctx.setSample(twoHungUploads);
+      await ctx.watch.tick();
+      expect(ctx.sendAlert).toHaveBeenCalledTimes(2);
+
+      finish();
+      await vi.advanceTimersByTimeAsync(0);
+      ctx.advance(MINUTE);
+      await ctx.watch.tick();
+
+      expect(ctx.sendAlert).toHaveBeenCalledTimes(2);
+      expect(ctx.logs).toContain(
+        '[conversion-pool] long-task alert email arrived late lane=upload'
+      );
     } finally {
       vi.useRealTimers();
     }

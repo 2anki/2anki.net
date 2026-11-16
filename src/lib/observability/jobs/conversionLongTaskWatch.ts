@@ -66,6 +66,9 @@ interface LaneState {
   lastAlertAt: number | null;
   failedSends: number;
   retryAt: number;
+  // Counts the times the lane went quiet. An answer to a send from an earlier
+  // run of long tasks must not be written into the next one.
+  episode: number;
 }
 
 const toMinutes = (ms: number) => Math.round(ms / 60_000);
@@ -79,7 +82,7 @@ export function formatRunTime(ms: number): string {
 }
 
 const TOOL_HINT =
-  'A pdfimages, pdftoppm, pdfinfo or soffice process that has run this long ' +
+  'A pdfimages, pdftoppm, pdfinfo, or soffice process that has run this long ' +
   'is hung.';
 
 const NOTION_HINT =
@@ -181,6 +184,7 @@ export function createConversionLongTaskWatch(
       lastAlertAt: null,
       failedSends: 0,
       retryAt: 0,
+      episode: 0,
     },
     {
       lane: 'background',
@@ -194,6 +198,7 @@ export function createConversionLongTaskWatch(
       lastAlertAt: null,
       failedSends: 0,
       retryAt: 0,
+      episode: 0,
     },
   ];
 
@@ -211,6 +216,7 @@ export function createConversionLongTaskWatch(
       state.alertedCount = 0;
       state.failedSends = 0;
       state.retryAt = 0;
+      state.episode += 1;
       return;
     }
     // One more long task than last reported is news at once; the same ones
@@ -229,7 +235,14 @@ export function createConversionLongTaskWatch(
     const subject = isNewTask
       ? firstAlertSubject(state, long.length)
       : reminderSubject(state, long.length);
+    const episode = state.episode;
+    // An answer can arrive after the lane has gone quiet, or after a later
+    // send has already been recorded. Either way it is old news.
+    const isStale = () =>
+      state.episode !== episode ||
+      (state.lastAlertAt != null && state.lastAlertAt > at);
     const delivered = () => {
+      if (isStale()) return;
       state.alertedCount = long.length;
       state.lastAlertAt = at;
       state.failedSends = 0;
@@ -239,7 +252,12 @@ export function createConversionLongTaskWatch(
       await withTimeout(
         deps.sendAlert(subject, alertBody(state, long, processName)),
         ALERT_SEND_TIMEOUT_MS,
-        delivered
+        () => {
+          log(
+            `[conversion-pool] long-task alert email arrived late lane=${state.lane}`
+          );
+          delivered();
+        }
       );
       delivered();
     } catch (error) {
