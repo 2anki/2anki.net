@@ -2399,11 +2399,7 @@ function UploadForm({
         keptThisRun = (await keepLastDeck(finished)) && hasAnonIdCookie();
         keptForAccountRef.current = keptThisRun;
       }
-      await applyConversionSuccess(
-        request,
-        conversionSuccessHandlers,
-        recoveryToken
-      );
+      await applyConversionSuccess(request, conversionSuccessHandlers);
     } catch (error) {
       keptForAccountRef.current = false;
       setDeckKeptForAccount(keptThisRun);

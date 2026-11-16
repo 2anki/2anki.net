@@ -473,7 +473,7 @@ test.describe('golden path @golden', () => {
     expect(realErrors(errors)).toEqual([]);
   });
 
-  test('a held deck in the preview cards treatment downloads the first 21 cards at 375px', async ({
+  test('a held deck that fits a free month offers sign-up and no first-cards download at 375px', async ({
     page,
   }) => {
     const errors = collectConsoleErrors(page);
@@ -485,10 +485,8 @@ test.describe('golden path @golden', () => {
         body: JSON.stringify({ message: 'Not authenticated' }),
       })
     );
-    const sentTokens: (string | undefined)[] = [];
-    await page.route('**/api/upload/file', (route) => {
-      sentTokens.push(route.request().headers()['x-recovery-token']);
-      return route.fulfill({
+    await page.route('**/api/upload/file', (route) =>
+      route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -501,8 +499,8 @@ test.describe('golden path @golden', () => {
           previewCardsArm: 'treatment',
           previewCards: true,
         }),
-      });
-    });
+      })
+    );
 
     await page.goto('/upload');
     await page.setInputFiles('#pakker', {
@@ -511,27 +509,15 @@ test.describe('golden path @golden', () => {
       buffer: Buffer.from('notes'),
     });
 
-    const previewLink = page.getByRole('link', {
-      name: 'Download the first 21 cards',
-    });
-    await expect(previewLink).toBeVisible({ timeout: 10_000 });
     await expect(
       page.getByText('All 84 cards are ready', { exact: true })
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(/^Create a free account to download them\./)
     ).toBeVisible();
     await expect(
-      page.getByText('Create a free account to download all 84.', {
-        exact: true,
-      })
-    ).toBeVisible();
-    const downloadStarted = page.waitForEvent('download');
-    await previewLink.click();
-    const download = await downloadStarted;
-
-    expect(download.suggestedFilename()).toBe('Organic Chemistry Ch. 4.apkg');
-    expect(sentTokens).toHaveLength(1);
-    expect(new URL(download.url()).pathname).toBe(
-      `/api/download/recover/${sentTokens[0]}/preview`
-    );
+      page.getByRole('link', { name: /Download the first/ })
+    ).toHaveCount(0);
     const scrollWidth = await page.evaluate(
       () => document.documentElement.scrollWidth
     );

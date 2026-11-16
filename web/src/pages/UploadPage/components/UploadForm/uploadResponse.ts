@@ -125,19 +125,6 @@ function isBatchResult(value: unknown): value is BatchResult {
 
 interface HeldResult extends HeldDeckState {
   kind: 'held';
-  previewCards?: unknown;
-}
-
-function previewCardsFields(
-  body: HeldResult,
-  recoveryToken: string | null
-): Pick<HeldDeckState, 'previewCardsArm' | 'previewCardsToken'> {
-  const arm = body.previewCardsArm;
-  if (arm !== 'control' && arm !== 'treatment') return {};
-  const delivered = body.previewCards === true && recoveryToken != null;
-  return delivered
-    ? { previewCardsArm: arm, previewCardsToken: recoveryToken }
-    : { previewCardsArm: arm };
 }
 
 function isHeldResult(value: unknown): value is HeldResult {
@@ -177,8 +164,7 @@ function isAiPreviewResult(value: unknown): value is AiPreviewResult {
 
 export async function applyConversionSuccess(
   response: Response,
-  handlers: ConversionSuccessHandlers,
-  recoveryToken: string | null = null
+  handlers: ConversionSuccessHandlers
 ): Promise<void> {
   const contentType = response.headers.get('Content-Type') ?? '';
   if (contentType.includes('application/json')) {
@@ -211,7 +197,6 @@ export async function applyConversionSuccess(
           ? { savedForHours: body.savedForHours }
           : {}),
         ...(body.cookieMinted === true ? { cookieMinted: true } : {}),
-        ...previewCardsFields(body, recoveryToken),
       });
       handlers.setProgressWidth(100);
       handlers.setZoneState('heldForSignup');
