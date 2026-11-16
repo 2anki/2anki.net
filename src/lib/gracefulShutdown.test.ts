@@ -20,7 +20,10 @@ vi.mock('./conversionPool', async () => {
 
 import type http from 'http';
 import type { Knex } from 'knex';
-import { shutdownConversionPool } from './conversionPool';
+import {
+  describeConversionPool,
+  shutdownConversionPool,
+} from './conversionPool';
 import {
   describeActiveResources,
   describeDatabasePool,
@@ -72,6 +75,7 @@ describe('gracefulShutdown', () => {
   let infoSpy: MockInstance;
   let errorSpy: MockInstance;
   const drainMock = shutdownConversionPool as Mock;
+  const describeMock = describeConversionPool as Mock;
 
   beforeEach(() => {
     drainMock.mockReset();
@@ -338,6 +342,24 @@ describe('gracefulShutdown', () => {
       },
     });
     expect(details.activeResources).toEqual(expect.any(Object));
+    vi.useRealTimers();
+    void done;
+  });
+
+  it('reports no conversion pool in the hard-exit log when none was ever started', async () => {
+    vi.useFakeTimers();
+    const { server } = fakeServer();
+    const { db } = fakeDatabase();
+    describeMock.mockReturnValueOnce(null);
+    drainMock.mockReturnValue(new Promise(() => undefined));
+
+    const done = gracefulShutdown('SIGINT', server, db);
+    await vi.advanceTimersByTimeAsync(SHUTDOWN_TIMEOUT_MS + 1);
+
+    const [, details] = errorSpy.mock.calls.find(([m]) =>
+      String(m).includes('forcing exit')
+    ) as [string, Record<string, unknown>];
+    expect(details.conversionPool).toBeNull();
     vi.useRealTimers();
     void done;
   });

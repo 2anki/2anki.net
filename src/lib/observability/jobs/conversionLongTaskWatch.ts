@@ -23,9 +23,12 @@ export const LONG_TASK_WATCH_INTERVAL_MS = 60 * 1000;
 export const ALERT_SEND_TIMEOUT_MS = 30 * 1000;
 
 // After a failed send the next try waits one minute, then two, four and so
-// on, so a provider outage during an 18-hour hang is a few log lines an hour
-// and not three a minute.
+// on up to an hour, so a provider outage during an 18-hour hang is a few log
+// lines an hour and not three a minute, and the alert still arrives within
+// the hour once the provider is back.
 export const ALERT_RETRY_BASE_MS = 60 * 1000;
+
+export const ALERT_RETRY_MAX_MS = 60 * 60 * 1000;
 
 interface RunningTask {
   pid: number | null;
@@ -70,18 +73,25 @@ const toMinutes = (ms: number) => Math.round(ms / 60_000);
 export function formatRunTime(ms: number): string {
   const minutes = toMinutes(ms);
   if (minutes < 60) return `${minutes} min`;
-  return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 }
 
 const TOOL_HINT =
-  'On the server, list what each worker is running (ps --ppid <pid> -o ' +
-  'pid,etime,cmd). A pdfimages, pdftoppm, pdfinfo or soffice process that ' +
-  'has run this long is hung.';
+  'A pdfimages, pdftoppm, pdfinfo or soffice process that has run this long ' +
+  'is hung.';
 
 const NOTION_HINT =
-  'On the server, list what each worker is running (ps --ppid <pid> -o ' +
-  'pid,etime,cmd). A Notion conversion can also hang on a network call, ' +
-  'with no subprocess to find.';
+  'A Notion conversion can also hang on a network call, with no subprocess ' +
+  'to find.';
+
+function listCommand(long: RunningTask[]): string {
+  const pids = long.flatMap((task) => (task.pid == null ? [] : [task.pid]));
+  const target = pids.length === 0 ? '<worker pid>' : pids.join(',');
+  const whose = long.length === 1 ? 'its' : 'their';
+  return `On the server, list ${whose} subprocesses: ps --ppid ${target} -o pid,etime,cmd.`;
+}
 
 const HOW_TO_FREE =
   'Nothing was stopped. Killing a hung subprocess fails that conversion and ' +
@@ -120,19 +130,28 @@ function alertBody(
       ? `${state.one} has held a worker past ${state.limit}.`
       : `${long.length} ${state.many} have each held a worker past ${state.limit}.`;
   const where = `Process ${processName}, ${describeWorkers(long)}.`;
-  return `${what} ${where} ${state.hint} ${HOW_TO_FREE}`;
+  return `${what} ${where} ${listCommand(long)} ${state.hint} ${HOW_TO_FREE}`;
 }
 
-function withTimeout(send: Promise<void>, ms: number): Promise<void> {
+// Settles with the send, or rejects once the provider has gone the limit
+// without answering. A send that then succeeds after all is reported through
+// onLateSuccess, so an email that did go out is not sent a second time.
+function withTimeout(
+  send: Promise<void>,
+  ms: number,
+  onLateSuccess: () => void
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`no answer from the mail provider in ${ms}ms`)),
-      ms
-    );
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      reject(new Error(`no answer from the mail provider in ${ms}ms`));
+    }, ms);
     send.then(
       () => {
         clearTimeout(timer);
-        resolve();
+        if (timedOut) onLateSuccess();
+        else resolve();
       },
       (error) => {
         clearTimeout(timer);
@@ -196,14 +215,12 @@ export function createConversionLongTaskWatch(
     }
     // One more long task than last reported is news at once; the same ones
     // still running are only a reminder.
+    state.alertedCount = Math.min(state.alertedCount, long.length);
     const isNewTask = long.length > state.alertedCount;
     const reminderDue =
       state.lastAlertAt != null &&
       at - state.lastAlertAt >= LONG_TASK_ALERT_COOLDOWN_MS;
-    if (!isNewTask && !reminderDue) {
-      state.alertedCount = long.length;
-      return;
-    }
+    if (!isNewTask && !reminderDue) return;
     if (at < state.retryAt) return;
     const longestMs = Math.max(...long.map((task) => task.runMs));
     log(
@@ -212,26 +229,30 @@ export function createConversionLongTaskWatch(
     const subject = isNewTask
       ? firstAlertSubject(state, long.length)
       : reminderSubject(state, long.length);
-    try {
-      await withTimeout(
-        deps.sendAlert(subject, alertBody(state, long, processName)),
-        ALERT_SEND_TIMEOUT_MS
-      );
+    const delivered = () => {
       state.alertedCount = long.length;
       state.lastAlertAt = at;
       state.failedSends = 0;
       state.retryAt = 0;
+    };
+    try {
+      await withTimeout(
+        deps.sendAlert(subject, alertBody(state, long, processName)),
+        ALERT_SEND_TIMEOUT_MS,
+        delivered
+      );
+      delivered();
     } catch (error) {
       // What was reported stays as it was, so this alert is sent again, after
-      // a wait that doubles with each failure up to the reminder interval.
+      // a wait that doubles with each failure up to an hour.
       state.failedSends += 1;
       const wait = Math.min(
         ALERT_RETRY_BASE_MS * 2 ** (state.failedSends - 1),
-        LONG_TASK_ALERT_COOLDOWN_MS
+        ALERT_RETRY_MAX_MS
       );
       state.retryAt = at + wait;
       log(
-        `[conversion-pool] long-task alert email failed, next try in ${toMinutes(wait)} min: ${String(error)}`
+        `[conversion-pool] long-task alert email failed, next try in ${formatRunTime(wait)}: ${String(error)}`
       );
     }
   };
