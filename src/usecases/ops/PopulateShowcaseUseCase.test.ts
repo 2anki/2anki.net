@@ -17,10 +17,8 @@ vi.mock('../../lib/storage/StorageHandler', () => {
 import { PopulateShowcaseUseCase } from './PopulateShowcaseUseCase';
 import { InMemoryShowcaseRepository } from '../../data_layer/ShowcaseRepository';
 import DownloadService from '../../services/DownloadService';
-import {
-  ApkgTooLargeError,
-  MAX_TOTAL_DECOMPRESSED_BYTES,
-} from '../../services/ApkgPreviewService/extractApkg';
+import { ApkgTooLargeError } from '../../services/ApkgPreviewService/extractApkg';
+import { PREVIEW_MAX_STORED_BYTES } from '../../services/ApkgPreviewService/previewMemoryLimits';
 
 const fakeBlock = (id: string, type = 'paragraph') => ({
   object: 'block' as const,
@@ -153,9 +151,7 @@ describe('PopulateShowcaseUseCase', () => {
   });
 
   it('refuses an oversized stored deck without reading its body', async () => {
-    storedObject.getObjectSize.mockResolvedValue(
-      MAX_TOTAL_DECOMPRESSED_BYTES + 1
-    );
+    storedObject.getObjectSize.mockResolvedValue(PREVIEW_MAX_STORED_BYTES + 1);
     storedObject.getFileContents.mockReset();
     const { notionService } = buildUseCase();
     const useCase = new PopulateShowcaseUseCase(

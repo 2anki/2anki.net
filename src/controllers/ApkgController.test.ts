@@ -24,6 +24,10 @@ import { readFile } from 'node:fs/promises';
 import { strToU8, zipSync } from 'fflate';
 import { InvalidApkgError } from '../services/ApkgPreviewService/extractApkg';
 import { ConcurrencyLimiter } from '../lib/rateLimit/ConcurrencyLimiter';
+import {
+  resetPreviewMemoryLimitsForTesting,
+  sharedPreviewLimits,
+} from '../services/ApkgPreviewService/previewMemoryLimits';
 
 vi.mock('../usecases/apkg/ImportApkgToNotionUseCase');
 vi.mock('../usecases/apkg/ExportApkgToPdfUseCase');
@@ -137,10 +141,36 @@ function makeController(
 vi.mock('../usecases/apkg/PackEditedApkgUseCase');
 import PackEditedApkgUseCase from '../usecases/apkg/PackEditedApkgUseCase';
 
+function makeEditedDownloadController(storedBody: Buffer | undefined) {
+  const downloadService = {
+    findStoredKey: vi.fn().mockResolvedValue('stored/user-1/deck.apkg'),
+    storedDeckSource: vi.fn(() => ({
+      storedSize: async () => 4096,
+      read: async () => storedBody,
+    })),
+    isMissingStoredDeckError: vi.fn().mockReturnValue(false),
+  };
+  const controller = new ApkgController(
+    downloadService as unknown as DownloadService,
+    new ApkgPreviewService()
+  );
+  return { controller, downloadService };
+}
+
+function makeSendableRes(): Response {
+  const res = makeRes() as Response;
+  (res as unknown as Record<string, Mock>).setHeader = vi.fn();
+  (res as unknown as Record<string, Mock>).send = vi.fn();
+  (res as unknown as Record<string, Mock>).once = vi.fn();
+  (res as unknown as Record<string, Mock>).json = vi.fn().mockReturnThis();
+  return res;
+}
+
 describe('ApkgController.downloadEdited', () => {
   let executeMock: Mock;
 
   beforeEach(() => {
+    resetPreviewMemoryLimitsForTesting();
     executeMock = vi.fn().mockResolvedValue({
       buffer: Buffer.from('fake-apkg'),
       filename: 'deck-edited.apkg',
@@ -174,38 +204,65 @@ describe('ApkgController.downloadEdited', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  it('returns 404 when upload not found', async () => {
-    const controller = makeController();
-    const ds = controller['downloadService'] as Mocked<DownloadService>;
-    ds.getFileBody.mockResolvedValue(null);
+  it('returns 404 when the owner has no such upload', async () => {
+    const { controller, downloadService } =
+      makeEditedDownloadController(undefined);
+    downloadService.findStoredKey.mockResolvedValue(null);
     const req = makeReq({
       params: { key: 'deck.apkg' },
       body: { edits: [] },
     }) as Request;
-    const res = makeRes() as Response;
+    const res = makeSendableRes();
     await controller.downloadEdited(req, res);
     expect(res.status).toHaveBeenCalledWith(404);
+    expect(downloadService.storedDeckSource).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when storage has no body for the upload', async () => {
+    const { controller } = makeEditedDownloadController(undefined);
+    const req = makeReq({
+      params: { key: 'deck.apkg' },
+      body: { edits: [] },
+    }) as Request;
+    const res = makeSendableRes();
+    await controller.downloadEdited(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(executeMock).not.toHaveBeenCalled();
   });
 
   it('sends the .apkg buffer when edits are valid', async () => {
-    const fakeBuffer = Buffer.from('fake-apkg');
-    const controller = makeController();
-    const ds = controller['downloadService'] as Mocked<DownloadService>;
-    ds.getFileBody.mockResolvedValue(fakeBuffer);
-    const res = makeRes() as Response;
-    (res as unknown as Record<string, Mock>).setHeader = vi.fn();
-    (res as unknown as Record<string, Mock>).send = vi.fn();
+    const stored = Buffer.from('stored-apkg');
+    const { controller } = makeEditedDownloadController(stored);
+    const res = makeSendableRes();
     const req = makeReq({
       params: { key: 'deck.apkg' },
       body: { edits: [{ cardIndex: 0, deleted: true }] },
     }) as Request;
     await controller.downloadEdited(req, res);
-    expect(executeMock).toHaveBeenCalledWith(
-      expect.objectContaining({ edits: [{ cardIndex: 0, deleted: true }] })
-    );
+    expect(executeMock).toHaveBeenCalledWith({
+      sourceBytes: stored,
+      filename: 'deck.apkg',
+      edits: [{ cardIndex: 0, deleted: true }],
+    });
     expect((res as unknown as Record<string, Mock>).send).toHaveBeenCalledWith(
       Buffer.from('fake-apkg')
     );
+    expect(sharedPreviewLimits().coldLoads.inUse).toBe(0);
+  });
+
+  it('gives back its place under the shared limit when the repack fails', async () => {
+    executeMock.mockRejectedValue(new Error('repack failed'));
+    const { controller } = makeEditedDownloadController(Buffer.from('x'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeSendableRes();
+    const req = makeReq({
+      params: { key: 'deck.apkg' },
+      body: { edits: [] },
+    }) as Request;
+    await controller.downloadEdited(req, res);
+    errorSpy.mockRestore();
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(sharedPreviewLimits().coldLoads.inUse).toBe(0);
   });
 });
 

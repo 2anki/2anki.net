@@ -5,7 +5,6 @@ import type { AddressInfo } from 'node:net';
 import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
 import { buildTinyApkg } from '../test/fixtures/apkg/buildTinyApkg';
-import { MAX_TOTAL_DECOMPRESSED_BYTES } from '../services/ApkgPreviewService/extractApkg';
 
 const send = vi.hoisted(() => vi.fn());
 const addNote = vi.hoisted(() => vi.fn());
@@ -102,6 +101,14 @@ vi.mock('../services/ankify/buildAnkiConnectClient', () => ({
 }));
 
 import AnkifyRouter from './AnkifyRouter';
+import {
+  COLD_LOAD_BUDGET_BYTES,
+  PREVIEW_MAX_STORED_BYTES,
+  resetPreviewMemoryLimitsForTesting,
+  sharedPreviewLimits,
+} from '../services/ApkgPreviewService/previewMemoryLimits';
+
+const MIB = 1024 * 1024;
 
 function storageReports(size: number | undefined) {
   const bytes = buildTinyApkg();
@@ -124,7 +131,7 @@ function bodyRequests(): number {
   ).length;
 }
 
-async function dispatch(): Promise<Response> {
+async function withServer<T>(run: (base: string) => Promise<T>): Promise<T> {
   const app = express();
   app.use(express.json());
   app.use(AnkifyRouter());
@@ -132,26 +139,44 @@ async function dispatch(): Promise<Response> {
   await new Promise<void>((resolve) => server.listen(0, resolve));
   const { port } = server.address() as AddressInfo;
   try {
-    return await fetch(`http://127.0.0.1:${port}/api/ankify/dispatch`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ upload_id: 5 }),
-    });
+    return await run(`http://127.0.0.1:${port}`);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
+}
+
+function postDispatch(base: string): Promise<Response> {
+  return fetch(`${base}/api/ankify/dispatch`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ upload_id: 5 }),
+  });
+}
+
+function dispatch(): Promise<Response> {
+  return withServer(postDispatch);
+}
+
+function heldNote(): { release: () => void } {
+  let release: () => void = () => {};
+  const pending = new Promise<number>((resolve) => {
+    release = () => resolve(101);
+  });
+  addNote.mockImplementationOnce(() => pending);
+  return { release };
 }
 
 describe('AnkifyRouter sending an upload to Ankify', () => {
   beforeEach(() => {
     process.env.SPACES_DEFAULT_BUCKET_NAME = 'test-bucket';
     process.env.SPACES_ENDPOINT = 'https://test.spaces.example.com';
+    resetPreviewMemoryLimitsForTesting();
     send.mockReset();
     addNote.mockReset().mockResolvedValue(101);
   });
 
-  it('sends an upload at the size limit after checking its size', async () => {
-    storageReports(MAX_TOTAL_DECOMPRESSED_BYTES);
+  it('sends a 200 MiB upload', async () => {
+    storageReports(200 * MIB);
 
     const res = await dispatch();
 
@@ -160,18 +185,31 @@ describe('AnkifyRouter sending an upload to Ankify', () => {
     expect(bodyRequests()).toBe(1);
   });
 
-  it('refuses an upload over the size limit with 413 and never requests its body', async () => {
-    storageReports(MAX_TOTAL_DECOMPRESSED_BYTES + 1);
+  it('sends an upload at the size limit after checking its size', async () => {
+    storageReports(PREVIEW_MAX_STORED_BYTES);
 
     const res = await dispatch();
 
-    expect(res.status).toBe(413);
-    expect(await res.json()).toEqual({
-      message: 'This Anki package is too large to process.',
-    });
-    expect(bodyRequests()).toBe(0);
-    expect(addNote).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ created: 1 });
+    expect(bodyRequests()).toBe(1);
   });
+
+  it.each([PREVIEW_MAX_STORED_BYTES + 1, 300 * MIB])(
+    'refuses an upload of %s bytes with 413 and never requests its body',
+    async (size) => {
+      storageReports(size);
+
+      const res = await dispatch();
+
+      expect(res.status).toBe(413);
+      expect(await res.json()).toEqual({
+        message: 'This Anki package is too large to process.',
+      });
+      expect(bodyRequests()).toBe(0);
+      expect(addNote).not.toHaveBeenCalled();
+    }
+  );
 
   it('refuses an upload whose size storage does not report and never requests its body', async () => {
     storageReports(undefined);
@@ -180,5 +218,76 @@ describe('AnkifyRouter sending an upload to Ankify', () => {
 
     expect(res.status).toBe(413);
     expect(bodyRequests()).toBe(0);
+  });
+
+  it('waits for room under the shared cold-load limit before reading the upload', async () => {
+    storageReports(4096);
+    const release = await sharedPreviewLimits().coldLoads.acquire(
+      COLD_LOAD_BUDGET_BYTES
+    );
+
+    const status = await withServer(async (base) => {
+      const pending = postDispatch(base);
+      await vi.waitFor(() =>
+        expect(sharedPreviewLimits().coldLoads.waiting).toBe(1)
+      );
+      expect(bodyRequests()).toBe(0);
+      release();
+      return (await pending).status;
+    });
+
+    expect(status).toBe(200);
+    expect(bodyRequests()).toBe(1);
+  });
+
+  it('gives back its place under the limit before pushing notes to Anki', async () => {
+    storageReports(4096);
+    const note = heldNote();
+
+    const status = await withServer(async (base) => {
+      const pending = postDispatch(base);
+      await vi.waitFor(() => expect(addNote).toHaveBeenCalledTimes(1));
+      expect(sharedPreviewLimits().coldLoads.inUse).toBe(0);
+      note.release();
+      return (await pending).status;
+    });
+
+    expect(status).toBe(200);
+  });
+
+  it('refuses a second send from the same account while the first is still running', async () => {
+    storageReports(4096);
+    const note = heldNote();
+
+    const [second, first, later] = await withServer(async (base) => {
+      const running = postDispatch(base);
+      await vi.waitFor(() => expect(addNote).toHaveBeenCalledTimes(1));
+      const overlapping = await postDispatch(base);
+      note.release();
+      const finished = await running;
+      const afterwards = await postDispatch(base);
+      return [overlapping, finished, afterwards];
+    });
+
+    expect(second.status).toBe(409);
+    expect(await second.json()).toEqual({
+      message:
+        'A deck is already on its way to Anki. Try again once it is done.',
+    });
+    expect(first.status).toBe(200);
+    expect(later.status).toBe(200);
+  });
+
+  it('takes a new send once a failed one has ended', async () => {
+    storageReports(4096);
+    addNote.mockRejectedValueOnce(new Error('connection dropped'));
+
+    const statuses = await withServer(async (base) => [
+      (await postDispatch(base)).status,
+      (await postDispatch(base)).status,
+    ]);
+
+    expect(statuses).toEqual([200, 200]);
+    expect(sharedPreviewLimits().coldLoads.inUse).toBe(0);
   });
 });

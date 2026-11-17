@@ -20,10 +20,11 @@ import { makeFreeQuotaReachedError } from '../../usecases/imageOcclusion/PhotoTo
 import { DeckPersistence } from './McpDeckPersistence';
 import { JobWithDownloadKey } from '../../data_layer/JobRepository';
 import ApkgPreviewService from '../ApkgPreviewService/ApkgPreviewService';
+import { ApkgTooLargeError } from '../ApkgPreviewService/extractApkg';
 import {
-  ApkgTooLargeError,
-  MAX_TOTAL_DECOMPRESSED_BYTES,
-} from '../ApkgPreviewService/extractApkg';
+  PREVIEW_MAX_STORED_BYTES,
+  resetPreviewMemoryLimitsForTesting,
+} from '../ApkgPreviewService/previewMemoryLimits';
 import { buildTinyApkg } from '../../test/fixtures/apkg/buildTinyApkg';
 import DownloadService from '../DownloadService';
 import type StorageHandler from '../../lib/storage/StorageHandler';
@@ -431,6 +432,10 @@ describe('McpToolsService.getDeckPreview', () => {
 });
 
 describe('McpToolsService.getDeckPreview, size check against storage', () => {
+  beforeEach(() => {
+    resetPreviewMemoryLimitsForTesting();
+  });
+
   function serviceOverStorage(storedSize: number) {
     const storage = {
       getObjectSize: vi.fn(async () => storedSize),
@@ -479,9 +484,27 @@ describe('McpToolsService.getDeckPreview, size check against storage', () => {
     expect(storage.getFileContents).toHaveBeenCalledTimes(1);
   });
 
+  it('previews a 200 MiB stored deck', async () => {
+    const { service, storage } = serviceOverStorage(200 * 1024 * 1024);
+
+    const preview = await service.getDeckPreview('owner', 'deck.apkg');
+
+    expect(preview.cardCount).toBe(1);
+    expect(storage.getFileContents).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a 300 MiB stored deck without reading its body', async () => {
+    const { service, storage } = serviceOverStorage(300 * 1024 * 1024);
+
+    await expect(
+      service.getDeckPreview('owner', 'deck.apkg')
+    ).rejects.toBeInstanceOf(ApkgTooLargeError);
+    expect(storage.getFileContents).not.toHaveBeenCalled();
+  });
+
   it('refuses an oversized stored deck without reading its body', async () => {
     const { service, storage } = serviceOverStorage(
-      MAX_TOTAL_DECOMPRESSED_BYTES + 1
+      PREVIEW_MAX_STORED_BYTES + 1
     );
 
     await expect(

@@ -1,4 +1,4 @@
-import { Decompress, decompress as zstdDecompress } from 'fzstd';
+import { Decompress } from 'fzstd';
 import yauzl from 'yauzl';
 
 import { readRepeatedSubmessages, readString } from './protobuf';
@@ -16,6 +16,14 @@ export interface ApkgArchive {
 export const MAX_TOTAL_DECOMPRESSED_BYTES = 1024 * 1024 * 1024;
 const MAX_COLLECTION_DECOMPRESSED_BYTES = 512 * 1024 * 1024;
 const MAX_ENTRIES = 65536;
+
+// The media list names at most MAX_ENTRIES files, well under this even with
+// the longest file names.
+export const MAX_MEDIA_MANIFEST_DECOMPRESSED_BYTES = 64 * 1024 * 1024;
+
+// Compressed input is fed to the decompressor this much at a time, so it stops
+// soon after its output passes a cap instead of running to the end.
+const ZSTD_INPUT_SLICE_BYTES = 512;
 
 export interface ExtractApkgLimits {
   maxTotalDecompressedBytes?: number;
@@ -71,23 +79,22 @@ function readEntry(
   });
 }
 
-function decompressCollectionCapped(
-  compressed: Buffer,
-  maxBytes: number
-): Buffer {
+function decompressZstdCapped(compressed: Buffer, maxBytes: number): Buffer {
   const chunks: Uint8Array[] = [];
   let produced = 0;
-  let overflow = false;
   const stream = new Decompress((chunk) => {
     produced += chunk.length;
-    if (produced > maxBytes) {
-      overflow = true;
-      return;
-    }
-    chunks.push(chunk);
+    if (produced <= maxBytes) chunks.push(chunk);
   });
-  stream.push(new Uint8Array(compressed), true);
-  if (overflow) {
+  for (
+    let offset = 0;
+    offset < compressed.length && produced <= maxBytes;
+    offset += ZSTD_INPUT_SLICE_BYTES
+  ) {
+    const end = Math.min(offset + ZSTD_INPUT_SLICE_BYTES, compressed.length);
+    stream.push(compressed.subarray(offset, end), end === compressed.length);
+  }
+  if (produced > maxBytes) {
     throw new ApkgTooLargeError();
   }
   return Buffer.concat(chunks);
@@ -172,7 +179,7 @@ export async function extractApkg(
         let collectionBuffer = collections.get(name) as Buffer;
         if (name === 'collection.anki21b') {
           try {
-            collectionBuffer = decompressCollectionCapped(
+            collectionBuffer = decompressZstdCapped(
               collectionBuffer,
               maxCollection
             );
@@ -218,7 +225,7 @@ export function parseMediaManifest(raw: Buffer | null): Map<string, string> {
   if (!raw || raw.length === 0) return new Map();
   let buf = raw;
   if (isZstdCompressed(buf)) {
-    buf = Buffer.from(zstdDecompress(new Uint8Array(buf)));
+    buf = decompressZstdCapped(buf, MAX_MEDIA_MANIFEST_DECOMPRESSED_BYTES);
   }
   try {
     const json = JSON.parse(buf.toString('utf8')) as Record<string, string>;

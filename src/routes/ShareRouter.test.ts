@@ -5,7 +5,6 @@ import type { AddressInfo } from 'node:net';
 import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
 import { buildTinyApkg } from '../test/fixtures/apkg/buildTinyApkg';
-import { MAX_TOTAL_DECOMPRESSED_BYTES } from '../services/ApkgPreviewService/extractApkg';
 import { BUFFERED_COPY_MAX_BYTES } from '../services/DownloadService';
 
 const send = vi.hoisted(() => vi.fn());
@@ -52,7 +51,12 @@ vi.mock('../data_layer/DownloadRepository', () => ({
 }));
 
 import ShareRouter from './ShareRouter';
-import { resetPreviewMemoryLimitsForTesting } from '../services/ApkgPreviewService/previewMemoryLimits';
+import {
+  PREVIEW_MAX_STORED_BYTES,
+  resetPreviewMemoryLimitsForTesting,
+} from '../services/ApkgPreviewService/previewMemoryLimits';
+
+const MIB = 1024 * 1024;
 
 beforeEach(() => {
   resetPreviewMemoryLimitsForTesting();
@@ -125,7 +129,7 @@ describe('ShareRouter shared deck preview, signed out', () => {
   });
 
   it('refuses an oversized shared deck with 413 and never reads its body', async () => {
-    storageReports(MAX_TOTAL_DECOMPRESSED_BYTES + 1);
+    storageReports(PREVIEW_MAX_STORED_BYTES + 1);
     const shared = nextToken();
 
     const [meta, cards] = await withServer(async (base) => [
@@ -142,7 +146,7 @@ describe('ShareRouter shared deck preview, signed out', () => {
   });
 
   it('refuses media from an oversized shared deck with 413 and never reads its body', async () => {
-    storageReports(MAX_TOTAL_DECOMPRESSED_BYTES + 1);
+    storageReports(PREVIEW_MAX_STORED_BYTES + 1);
     const shared = nextToken();
 
     const res = await withServer((base) =>
@@ -150,6 +154,53 @@ describe('ShareRouter shared deck preview, signed out', () => {
     );
 
     expect(res.status).toBe(413);
+    expect(bodyRead).not.toHaveBeenCalled();
+  });
+
+  it('previews a 200 MiB shared deck', async () => {
+    storageReports(200 * MIB);
+    const shared = nextToken();
+
+    const res = await withServer((base) =>
+      fetch(`${base}/api/shares/${shared}/cards`)
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).total).toBe(1);
+    expect(bodyRead).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['meta', 'cards', 'media/picture.png'])(
+    'refuses a 300 MiB shared deck with 413 and never reads its body (%s)',
+    async (route) => {
+      storageReports(300 * MIB);
+      const shared = nextToken();
+
+      const res = await withServer((base) =>
+        fetch(`${base}/api/shares/${shared}/${route}`)
+      );
+
+      expect(res.status).toBe(413);
+      expect(bodyRead).not.toHaveBeenCalled();
+    }
+  );
+
+  it('still sends a 300 MiB shared deck the preview refuses, by storage link', async () => {
+    storageReports(300 * MIB);
+    const shared = nextToken();
+
+    const [preview, download] = await withServer(async (base) => [
+      await fetch(`${base}/api/shares/${shared}/meta`),
+      await fetch(`${base}/api/shares/${shared}/download`, {
+        redirect: 'manual',
+      }),
+    ]);
+
+    expect(preview.status).toBe(413);
+    expect(download.status).toBe(302);
+    expect(download.headers.get('location')).toBe(
+      'https://storage.example.com/signed-deck'
+    );
     expect(bodyRead).not.toHaveBeenCalled();
   });
 
@@ -212,7 +263,7 @@ describe('ShareRouter shared deck preview, signed out', () => {
   });
 
   it('sends an oversized shared deck by redirect to storage without reading it', async () => {
-    storageReports(MAX_TOTAL_DECOMPRESSED_BYTES + 1);
+    storageReports(PREVIEW_MAX_STORED_BYTES + 1);
     const shared = nextToken();
 
     const res = await withServer((base) =>

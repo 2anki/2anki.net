@@ -2,10 +2,8 @@ import { vi } from 'vitest';
 import { Readable } from 'node:stream';
 
 import DownloadService, { BUFFERED_COPY_MAX_BYTES } from './DownloadService';
-import {
-  ApkgTooLargeError,
-  MAX_TOTAL_DECOMPRESSED_BYTES,
-} from './ApkgPreviewService/extractApkg';
+import { ApkgTooLargeError } from './ApkgPreviewService/extractApkg';
+import { PREVIEW_MAX_STORED_BYTES } from './ApkgPreviewService/previewMemoryLimits';
 
 function makeService() {
   return new DownloadService({} as never);
@@ -66,7 +64,7 @@ describe('DownloadService.getFileBody', () => {
   };
 
   it('reads a deck at the size limit into memory', async () => {
-    const storage = storageWithSize(MAX_TOTAL_DECOMPRESSED_BYTES);
+    const storage = storageWithSize(PREVIEW_MAX_STORED_BYTES);
     const service = new DownloadService(repo as never);
 
     const body = await service.getFileBody(
@@ -82,7 +80,7 @@ describe('DownloadService.getFileBody', () => {
   });
 
   it('refuses a deck over the size limit without reading its body', async () => {
-    const storage = storageWithSize(MAX_TOTAL_DECOMPRESSED_BYTES + 1);
+    const storage = storageWithSize(PREVIEW_MAX_STORED_BYTES + 1);
     const service = new DownloadService(repo as never);
 
     await expect(
@@ -151,7 +149,8 @@ describe('DownloadService.storedDeckSource', () => {
   });
 
   it.each([
-    MAX_TOTAL_DECOMPRESSED_BYTES + 1,
+    PREVIEW_MAX_STORED_BYTES + 1,
+    300 * 1024 * 1024,
     Number.NaN,
     Number.POSITIVE_INFINITY,
     -1,

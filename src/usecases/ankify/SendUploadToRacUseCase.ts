@@ -43,6 +43,13 @@ export class UploadNotFoundError extends Error {
   }
 }
 
+export class SendAlreadyRunningError extends Error {
+  constructor() {
+    super('A send for this account is still running');
+    this.name = 'SendAlreadyRunningError';
+  }
+}
+
 export type { AnkiWebSyncStatus };
 
 export interface SendUploadToRacResult {
@@ -61,15 +68,13 @@ export type AnkiConnectFactory = (
   apiKey: string | null
 ) => AnkiConnectClient;
 
-export type ApkgFetcher = (key: string) => Promise<Buffer>;
-
 export interface ParsedApkgForSend {
   collection: NormalizedCollection;
   mediaMap: Map<string, string>;
   mediaEntries: Map<string, Buffer>;
 }
 
-export type ApkgParser = (buffer: Buffer) => Promise<ParsedApkgForSend>;
+export type ApkgLoader = (key: string) => Promise<ParsedApkgForSend>;
 
 const CLOZE_PATTERN = /\{\{c\d+::/;
 
@@ -134,15 +139,17 @@ interface SendUploadToRacInput {
   ankiConnectHost?: string;
 }
 
+// One send per account at a time: each holds its parsed deck for the whole
+// push to Anki, which can take minutes.
 export class SendUploadToRacUseCase {
   private readonly modelCacheByClient = new Map<number, Set<string>>();
+  private readonly sendsInFlight = new Set<number>();
 
   constructor(
     private readonly clients: AnkifyClientsRepositoryInterface,
     private readonly mappings: AnkifySyncMappingsRepositoryInterface,
     private readonly uploads: IUploadRepository,
-    private readonly fetchApkgBytes: ApkgFetcher,
-    private readonly parseApkg: ApkgParser,
+    private readonly loadApkg: ApkgLoader,
     private readonly ankiConnect: AnkiConnectFactory,
     private readonly logs?: AnkifySyncLogsRepositoryInterface,
     private readonly templateOverridesProvider?: AnkifyTemplateOverridesProvider
@@ -158,6 +165,20 @@ export class SendUploadToRacUseCase {
   }
 
   async execute(input: SendUploadToRacInput): Promise<SendUploadToRacResult> {
+    if (this.sendsInFlight.has(input.owner)) {
+      throw new SendAlreadyRunningError();
+    }
+    this.sendsInFlight.add(input.owner);
+    try {
+      return await this.send(input);
+    } finally {
+      this.sendsInFlight.delete(input.owner);
+    }
+  }
+
+  private async send(
+    input: SendUploadToRacInput
+  ): Promise<SendUploadToRacResult> {
     const upload = await this.uploads.findByIdAndOwner(
       input.uploadId,
       input.owner
@@ -172,8 +193,7 @@ export class SendUploadToRacUseCase {
     }
     await this.clients.touchLastActiveAt(client.id);
 
-    const buffer = await this.fetchApkgBytes(upload.key);
-    const parsed = await this.parseApkg(buffer);
+    const parsed = await this.loadApkg(upload.key);
     const collection = parsed.collection;
 
     const host = input.ankiConnectHost ?? 'localhost';

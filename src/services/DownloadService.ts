@@ -4,10 +4,8 @@ import StorageHandler, {
 import DownloadRepository from '../data_layer/DownloadRepository';
 import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
 import type { DeckSource } from './ApkgPreviewService/ApkgPreviewService';
-import {
-  ApkgTooLargeError,
-  MAX_TOTAL_DECOMPRESSED_BYTES,
-} from './ApkgPreviewService/extractApkg';
+import { ApkgTooLargeError } from './ApkgPreviewService/extractApkg';
+import { PREVIEW_MAX_STORED_BYTES } from './ApkgPreviewService/previewMemoryLimits';
 
 const SIZE_CHECK_MISSING_NAME = 'NotFound';
 
@@ -98,7 +96,7 @@ class DownloadService {
     storage: StorageHandler
   ): Promise<number> {
     const size = await storage.getObjectSize(storageKey);
-    if (!isKnownSize(size) || size > MAX_TOTAL_DECOMPRESSED_BYTES) {
+    if (!isKnownSize(size) || size > PREVIEW_MAX_STORED_BYTES) {
       console.info('[apkg-preview] stored deck refused before read: too large');
       throw new ApkgTooLargeError();
     }

@@ -1,10 +1,29 @@
+import { vi } from 'vitest';
 import JSZip from 'jszip';
 import Database from 'better-sqlite3';
+import zlib from 'node:zlib';
+
+const unpackedByZstd = vi.hoisted(() => ({ bytes: 0 }));
+
+vi.mock('fzstd', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fzstd')>();
+  class CountingDecompress extends actual.Decompress {
+    constructor(ondata: import('fzstd').ZstdStreamHandler) {
+      super((chunk, final) => {
+        unpackedByZstd.bytes += chunk.length;
+        return ondata(chunk, final);
+      });
+    }
+  }
+  return { ...actual, Decompress: CountingDecompress };
+});
 
 import {
   extractApkg,
   InvalidApkgError,
   ApkgTooLargeError,
+  MAX_MEDIA_MANIFEST_DECOMPRESSED_BYTES,
+  parseMediaManifest,
 } from './extractApkg';
 import { parseCollection } from './parseCollection';
 
@@ -184,6 +203,36 @@ describe('extractApkg decompression caps', () => {
     ).rejects.toBeInstanceOf(ApkgTooLargeError);
   });
 
+  it('stops unpacking a zstd collection soon after it passes the collection cap', async () => {
+    unpackedByZstd.bytes = 0;
+    const cap = 1024 * 1024;
+    const compressed = zlib.zstdCompressSync(Buffer.alloc(64 * cap, 0));
+    const apkg = await buildApkgZip('collection.anki21b', compressed);
+
+    await expect(
+      extractApkg(apkg, {
+        maxTotalDecompressedBytes: 128 * cap,
+        maxCollectionDecompressedBytes: cap,
+      })
+    ).rejects.toBeInstanceOf(ApkgTooLargeError);
+    expect(unpackedByZstd.bytes).toBeGreaterThan(cap);
+    expect(unpackedByZstd.bytes).toBeLessThan(32 * cap);
+  });
+
+  it('still unpacks a zstd collection exactly at the collection cap', async () => {
+    const sqliteBuffer = buildLegacyCollectionBuffer();
+    const apkg = await buildApkgZip(
+      'collection.anki21b',
+      zlib.zstdCompressSync(sqliteBuffer)
+    );
+
+    const archive = await extractApkg(apkg, {
+      maxCollectionDecompressedBytes: sqliteBuffer.length,
+    });
+
+    expect(archive.collectionBuffer).toEqual(sqliteBuffer);
+  });
+
   it('carries a user-safe message with no archive internals', async () => {
     const zip = new JSZip();
     zip.file('collection.anki2', Buffer.alloc(64 * 1024, 0));
@@ -194,5 +243,32 @@ describe('extractApkg decompression caps', () => {
     }).catch((e) => e);
     expect(err.name).toBe('ApkgTooLargeError');
     expect(err.message).toBe('This Anki package is too large to process.');
+  });
+});
+
+describe('parseMediaManifest', () => {
+  it('reads a zstd-compressed media list', () => {
+    const raw = zlib.zstdCompressSync(
+      Buffer.from(JSON.stringify({ '0': 'picture.png', '1': 'sound.mp3' }))
+    );
+
+    expect(parseMediaManifest(raw)).toEqual(
+      new Map([
+        ['picture.png', '0'],
+        ['sound.mp3', '1'],
+      ])
+    );
+  });
+
+  it('refuses a zstd media list that unpacks past its cap, soon after the cap', () => {
+    unpackedByZstd.bytes = 0;
+    const raw = zlib.zstdCompressSync(
+      Buffer.alloc(2 * MAX_MEDIA_MANIFEST_DECOMPRESSED_BYTES, 0x20)
+    );
+
+    expect(() => parseMediaManifest(raw)).toThrow(ApkgTooLargeError);
+    expect(unpackedByZstd.bytes).toBeLessThan(
+      2 * MAX_MEDIA_MANIFEST_DECOMPRESSED_BYTES
+    );
   });
 });
