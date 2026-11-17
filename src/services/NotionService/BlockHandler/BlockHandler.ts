@@ -29,6 +29,7 @@ import { stripLeadingDeckNumbering } from '../../../lib/parser/helpers/stripLead
 import Note from '../../../lib/parser/Note';
 import type { EmptyDeckReason } from '../../../usecases/jobs/EmptyDeckError';
 import { countEmptyBacks } from '../../../lib/parser/countEmptyBacks';
+import { hasVisibleContent } from '../../../lib/parser/hasVisibleContent';
 import ParserRules from '../../../lib/parser/ParserRules';
 import CardOption from '../../../lib/parser/Settings';
 import TagRegistry from '../../../lib/parser/TagRegistry';
@@ -766,6 +767,15 @@ class BlockHandler implements IBlockRenderer {
       : undefined;
   }
 
+  private appendsNotionLink(note: Note, isBasicType: boolean): boolean {
+    if (!this.settings.addNotionLink || note.mcq) {
+      return false;
+    }
+    return (
+      !isBasicType || note.hasClozeDeletion() || hasVisibleContent(note.back)
+    );
+  }
+
   recordUnsupportedBlockType(type: string): void {
     this.unsupportedBlockTypeCounts.set(
       type,
@@ -930,7 +940,7 @@ class BlockHandler implements IBlockRenderer {
         ankiNote.back = back || '';
       }
       ankiNote.notionLink = this.__notionLink(block.id, notionBaseLink);
-      if (this.settings.addNotionLink && !ankiNote.mcq) {
+      if (this.appendsNotionLink(ankiNote, isBasicType)) {
         ankiNote.back += RenderNotionLink(ankiNote.notionLink!, this);
       }
       ankiNote.notionId = block.id;
@@ -992,7 +1002,7 @@ class BlockHandler implements IBlockRenderer {
             notionBaseLink
           );
           nestedNote.notionId = nested.block.id;
-          if (this.settings.addNotionLink) {
+          if (this.appendsNotionLink(nestedNote, true)) {
             nestedNote.back += RenderNotionLink(nestedNote.notionLink!, this);
           }
           nestedNote.name = perserveNewlinesIfApplicable(
@@ -2276,7 +2286,7 @@ class BlockHandler implements IBlockRenderer {
         this.settings.deckName || this.firstPageTitle || '',
         this.applyDeckNameNumbering(getSubDeckName(block))
       ),
-      rescue.cards,
+      Deck.CleanCards(rescue.cards),
       undefined,
       buildDeckStyle(this.settings),
       get16DigitRandomId(),

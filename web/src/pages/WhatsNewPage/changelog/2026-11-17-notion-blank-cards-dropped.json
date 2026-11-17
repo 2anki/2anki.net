@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-notion-blank-cards-dropped",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "Notion toggles with no answer stay out of your deck, with \"Add Notion link\" on and in toggle sub-decks"
+}
