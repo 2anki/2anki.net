@@ -327,7 +327,7 @@ describe('ExportApkgToPdfUseCase', () => {
   });
 });
 
-describe('ExportApkgToPdfUseCase.preview', () => {
+describe('ExportApkgToPdfUseCase print preview, parse then render', () => {
   let previewService: Mocked<ApkgPreviewService>;
   let pdfRenderService: Mocked<PdfRenderService>;
   let useCase: ExportApkgToPdfUseCase;
@@ -348,6 +348,17 @@ describe('ExportApkgToPdfUseCase.preview', () => {
     useCase = new ExportApkgToPdfUseCase(previewService, pdfRenderService);
   });
 
+  async function previewOf(
+    bytes: Buffer,
+    options?: Parameters<ExportApkgToPdfUseCase['previewParsed']>[1]
+  ) {
+    return useCase.previewParsed(
+      await useCase.parseForPreview(bytes),
+      options,
+      3
+    );
+  }
+
   it('renders the first 3 cards as a PNG without a card limit check', async () => {
     const parsed = makeParsed(1873);
     const image = Buffer.from('fake-png');
@@ -360,11 +371,7 @@ describe('ExportApkgToPdfUseCase.preview', () => {
     });
     pdfRenderService.renderPreviewImage.mockResolvedValue(image);
 
-    const result = await useCase.preview(
-      Buffer.from('fake-apkg'),
-      undefined,
-      3
-    );
+    const result = await previewOf(Buffer.from('fake-apkg'));
 
     expect(result.image).toBe(image);
     expect(result.totalCards).toBe(1873);
@@ -392,11 +399,7 @@ describe('ExportApkgToPdfUseCase.preview', () => {
     });
     pdfRenderService.renderPreviewImage.mockResolvedValue(Buffer.from('png'));
 
-    const result = await useCase.preview(
-      Buffer.from('fake-apkg'),
-      undefined,
-      3
-    );
+    const result = await previewOf(Buffer.from('fake-apkg'));
 
     expect(result.totalCards).toBe(2);
     expect(result.previewedCards).toBe(2);
@@ -407,11 +410,7 @@ describe('ExportApkgToPdfUseCase.preview', () => {
     previewService.parse.mockResolvedValue(parsed);
     previewService.getMeta.mockReturnValue({ totalCards: 0, decks: [] });
 
-    const result = await useCase.preview(
-      Buffer.from('fake-apkg'),
-      undefined,
-      3
-    );
+    const result = await previewOf(Buffer.from('fake-apkg'));
 
     expect(result.image).toBeNull();
     expect(result.totalCards).toBe(0);
@@ -436,7 +435,7 @@ describe('ExportApkgToPdfUseCase.preview', () => {
       orientation: 'landscape' as const,
       margins: 'wide' as const,
     };
-    await useCase.preview(Buffer.from('fake-apkg'), options, 3);
+    await previewOf(Buffer.from('fake-apkg'), options);
 
     const [doc, forwarded] = pdfRenderService.renderPreviewImage.mock.calls[0];
     expect(doc.html).toContain('background:#1a2b3c');
@@ -466,8 +465,8 @@ describe('ExportApkgToPdfUseCase.preview', () => {
         });
       pdfRenderService.renderPreviewImage.mockResolvedValue(Buffer.from('png'));
 
-      const first = await useCase.preview(Buffer.from('deck-a'), undefined, 3);
-      const second = await useCase.preview(Buffer.from('deck-b'), undefined, 3);
+      const first = await previewOf(Buffer.from('deck-a'));
+      const second = await previewOf(Buffer.from('deck-b'));
 
       const keyA = previewService.parse.mock.calls[0][0];
       const keyB = previewService.parse.mock.calls[1][0];

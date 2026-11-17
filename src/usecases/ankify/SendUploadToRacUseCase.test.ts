@@ -2,6 +2,7 @@ import { vi, type Mock, type Mocked } from 'vitest';
 import {
   NoActiveAnkifyClientError,
   ParsedApkgForSend,
+  SendAlreadyRunningError,
   SendUploadToRacUseCase,
   UploadNotFoundError,
 } from './SendUploadToRacUseCase';
@@ -154,7 +155,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () => buildParsed({}),
       () => ac
     );
@@ -196,7 +196,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () => buildParsed({}),
       () => ac
     );
@@ -215,7 +214,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () =>
         buildParsed({
           notes: new Map(),
@@ -249,7 +247,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () => buildParsed({}),
       () => ac
     );
@@ -289,7 +286,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () => buildParsed({}),
       () => ac
     );
@@ -313,7 +309,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () =>
         buildParsed({
           notes: new Map([
@@ -352,7 +347,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () =>
         buildParsed({
           notes: new Map([
@@ -408,7 +402,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from(''),
       async () => buildParsed({}),
       () => ac
     );
@@ -425,7 +418,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from(''),
       async () => buildParsed({}),
       () => ac
     );
@@ -445,7 +437,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () =>
         buildParsed({
           notes: new Map([
@@ -502,7 +493,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () =>
         buildParsed(
           {},
@@ -550,7 +540,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () =>
         buildParsed(
           {},
@@ -584,7 +573,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () => buildParsed({}),
       () => ac,
       undefined,
@@ -645,7 +633,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () =>
         buildParsed({
           notes: twoNotes,
@@ -678,7 +665,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () => buildParsed({}),
       () => ac,
       logs as never
@@ -700,7 +686,6 @@ describe('SendUploadToRacUseCase', () => {
       clients,
       mappings,
       uploads,
-      async () => Buffer.from('fake'),
       async () => buildParsed({}),
       () => ac,
       undefined,
@@ -715,5 +700,65 @@ describe('SendUploadToRacUseCase', () => {
         fields: { Front: 'front text', Back: 'back text' },
       })
     );
+  });
+
+  test('refuses a second send for the same account while the first runs, and takes other accounts', async () => {
+    const { clients, mappings, uploads } = makeRepos();
+    const ac = makeAnkiConnectStub();
+    let finishLoad: () => void = () => {};
+    const loadApkg = vi
+      .fn<(key: string) => Promise<ParsedApkgForSend>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishLoad = () => resolve(buildParsed({}));
+          })
+      )
+      .mockImplementation(async () => buildParsed({}));
+    const useCase = new SendUploadToRacUseCase(
+      clients,
+      mappings,
+      uploads,
+      loadApkg,
+      () => ac
+    );
+
+    const first = useCase.execute({ uploadId: 7, owner: 42 });
+    await vi.waitFor(() => expect(loadApkg).toHaveBeenCalledTimes(1));
+
+    await expect(
+      useCase.execute({ uploadId: 8, owner: 42 })
+    ).rejects.toBeInstanceOf(SendAlreadyRunningError);
+    await expect(
+      useCase.execute({ uploadId: 9, owner: 43 })
+    ).resolves.toMatchObject({ created: 1 });
+    finishLoad();
+    await expect(first).resolves.toMatchObject({ created: 1 });
+    await expect(
+      useCase.execute({ uploadId: 8, owner: 42 })
+    ).resolves.toMatchObject({ created: 1 });
+  });
+
+  test('takes a new send for an account once its previous send failed', async () => {
+    const { clients, mappings, uploads } = makeRepos();
+    const ac = makeAnkiConnectStub();
+    const loadApkg = vi
+      .fn<(key: string) => Promise<ParsedApkgForSend>>()
+      .mockRejectedValueOnce(new Error('storage dropped the read'))
+      .mockImplementation(async () => buildParsed({}));
+    const useCase = new SendUploadToRacUseCase(
+      clients,
+      mappings,
+      uploads,
+      loadApkg,
+      () => ac
+    );
+
+    await expect(useCase.execute({ uploadId: 7, owner: 42 })).rejects.toThrow(
+      'storage dropped the read'
+    );
+    await expect(
+      useCase.execute({ uploadId: 7, owner: 42 })
+    ).resolves.toMatchObject({ created: 1 });
   });
 });

@@ -566,22 +566,21 @@ class ApkgController {
           typeof (e as CardEdit).cardIndex === 'number'
       );
       const { owner } = res.locals;
-      const storage = new StorageHandler();
-      const rawBody = await this.downloadService.getFileBody(
-        owner,
-        key,
-        storage
-      );
-      if (!rawBody) {
+      const storageKey = await this.downloadService.findStoredKey(owner, key);
+      if (storageKey == null) {
         res.status(404).json({ message: 'Upload not found.' });
         return;
       }
       const useCase = new PackEditedApkgUseCase();
-      const result = await useCase.execute({
-        sourceBytes: rawBody as Buffer,
-        filename: key,
-        edits,
-      });
+      const result = await this.previewService.withStoredDeck(
+        this.downloadService.storedDeckSource(storageKey, new StorageHandler()),
+        (sourceBytes) => useCase.execute({ sourceBytes, filename: key, edits }),
+        clientGoneSignal(res)
+      );
+      if (result == null) {
+        res.status(404).json({ message: 'Upload not found.' });
+        return;
+      }
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader(
         'Content-Disposition',
@@ -589,6 +588,7 @@ class ApkgController {
       );
       res.send(result.buffer);
     } catch (error) {
+      if (error instanceof WaitAbandonedError) return;
       if (sendApkgTooLarge(res, error)) return;
       if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });

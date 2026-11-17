@@ -176,24 +176,57 @@ export default class ApkgPreviewService {
     this.limits.cacheBudget.forget(parsed);
   }
 
-  private async loadCold(
-    cacheKey: string,
+  // Reads a stored deck and runs `work` on its bytes under the same shared
+  // limit as a cold load, for callers that need the archive itself rather
+  // than the parsed deck. `work` must not wait on the network or on this
+  // service: the place is held until it settles.
+  async withStoredDeck<T>(
     source: DeckSource,
-    interest: SharedInterest
-  ): Promise<ParsedApkg | null> {
-    const weight = coldLoadWeight(await source.storedSize());
+    work: (bytes: Buffer) => Promise<T>,
+    signal: AbortSignal = new AbortController().signal
+  ): Promise<T | null> {
+    const release = await this.acquireColdLoad(
+      await source.storedSize(),
+      signal
+    );
+    try {
+      const bytes = await this.readWithinLimit(source, signal);
+      if (bytes == null) return null;
+      return await work(bytes);
+    } finally {
+      release();
+    }
+  }
+
+  private async acquireColdLoad(
+    storedBytes: number,
+    signal: AbortSignal
+  ): Promise<() => void> {
+    const weight = coldLoadWeight(storedBytes);
     const { coldLoads } = this.limits;
     const queuedAhead = coldLoads.wouldWait(weight) ? coldLoads.waiting : null;
     const queuedAt = this.limits.now();
-    const release = await coldLoads.acquire(weight, interest.signal);
+    const release = await coldLoads.acquire(weight, signal);
     if (queuedAhead != null) {
       console.info('[apkg-preview] cold load waited for a slot', {
         waitedMs: this.limits.now() - queuedAt,
         queuedAhead,
       });
     }
+    return release;
+  }
+
+  private async loadCold(
+    cacheKey: string,
+    source: DeckSource,
+    interest: SharedInterest
+  ): Promise<ParsedApkg | null> {
+    const release = await this.acquireColdLoad(
+      await source.storedSize(),
+      interest.signal
+    );
     try {
-      const bytes = await this.readWithinLimit(source, interest);
+      const bytes = await this.readWithinLimit(source, interest.signal);
       interest.commit();
       if (bytes == null) return null;
       return await this.parseFresh(cacheKey, bytes);
@@ -206,18 +239,18 @@ export default class ApkgPreviewService {
   // after it works on bytes already in memory.
   private async readWithinLimit(
     source: DeckSource,
-    interest: SharedInterest
+    callerGone: AbortSignal
   ): Promise<Buffer | null | undefined> {
     const timeLimit = new AbortController();
     const timer = setTimeout(
       () => timeLimit.abort(),
       PREVIEW_READ_TIME_LIMIT_MS
     );
-    const signal = AbortSignal.any([timeLimit.signal, interest.signal]);
+    const signal = AbortSignal.any([timeLimit.signal, callerGone]);
     try {
       return await untilAborted(source.read(signal), signal);
     } catch (error) {
-      if (interest.signal.aborted) throw new WaitAbandonedError();
+      if (callerGone.aborted) throw new WaitAbandonedError();
       if (timeLimit.signal.aborted) {
         console.info('[apkg-preview] stored deck read stopped at time limit');
         throw new PreviewReadTimedOutError();

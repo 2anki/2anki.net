@@ -456,3 +456,200 @@ describe('ApkgPreviewService cache byte budget', () => {
     expect(a.reads()).toBe(2);
   });
 });
+
+describe('ApkgPreviewService work on a stored deck', () => {
+  function heldWork() {
+    let finish: (value: string) => void = () => {};
+    let fail: (error: Error) => void = () => {};
+    const work = vi.fn(
+      (_bytes: Buffer) =>
+        new Promise<string>((resolve, reject) => {
+          finish = resolve;
+          fail = reject;
+        })
+    );
+    return {
+      work,
+      finish: (value: string) => finish(value),
+      fail: (error: Error) => fail(error),
+    };
+  }
+
+  it('runs the work under a place weighed by stored size and gives it back once the work settles', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    const held = heldWork();
+    const storedBytes = 200 * MIB;
+    const archive = buildTinyApkg('repack front', 'repack');
+
+    const result = service.withStoredDeck(
+      { storedSize: async () => storedBytes, read: async () => archive },
+      held.work
+    );
+    await vi.waitFor(() => expect(held.work).toHaveBeenCalledTimes(1));
+    expect(limits.coldLoads.inUse).toBe(storedBytes);
+
+    held.finish('packed');
+
+    expect(await result).toBe('packed');
+    expect(limits.coldLoads.inUse).toBe(0);
+    expect(held.work.mock.calls[0][0]).toBe(archive);
+  });
+
+  it('waits behind cold loads that fill the budget and reads only once one ends', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    const log: string[] = [];
+    const blockers = ['a', 'b', 'c', 'd'].map((name) =>
+      heldRead(4096, log, name)
+    );
+    const blocked = blockers.map((read, index) =>
+      service.load(`owner-1:${index}.apkg`, read.source)
+    );
+    await vi.waitFor(() => expect(log).toHaveLength(4));
+    const deck = countingSource('queued');
+
+    const result = service.withStoredDeck(deck.source, async () => 'done');
+    await vi.waitFor(() => expect(limits.coldLoads.waiting).toBe(1));
+    expect(deck.reads()).toBe(0);
+
+    blockers[0].finish();
+    expect(await result).toBe('done');
+    expect(deck.reads()).toBe(1);
+    for (const read of blockers) read.finish();
+    await Promise.all(blocked);
+  });
+
+  it('gives back its place when the work fails', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    const held = heldWork();
+
+    const result = service.withStoredDeck(
+      countingSource('fails').source,
+      held.work
+    );
+    await vi.waitFor(() => expect(held.work).toHaveBeenCalledTimes(1));
+    held.fail(new Error('repack failed'));
+
+    await expect(result).rejects.toThrow('repack failed');
+    expect(limits.coldLoads.inUse).toBe(0);
+  });
+
+  it('gives back its place and skips the work when the read fails', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    const log: string[] = [];
+    const read = heldRead(4096, log, 'broken');
+    const work = vi.fn(async () => 'never');
+
+    const result = service.withStoredDeck(read.source, work);
+    await vi.waitFor(() => expect(log).toEqual(['broken']));
+    read.fail(new Error('storage dropped the read'));
+
+    await expect(result).rejects.toThrow('storage dropped the read');
+    expect(work).not.toHaveBeenCalled();
+    expect(limits.coldLoads.inUse).toBe(0);
+  });
+
+  it('answers null without running the work when storage has no body', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    const work = vi.fn(async () => 'never');
+
+    const result = await service.withStoredDeck(
+      { storedSize: async () => 4096, read: async () => undefined },
+      work
+    );
+
+    expect(result).toBeNull();
+    expect(work).not.toHaveBeenCalled();
+    expect(limits.coldLoads.inUse).toBe(0);
+  });
+
+  it('takes no place and skips the read when the size check fails', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    const source: DeckSource = {
+      storedSize: async () => {
+        throw new Error('size check failed');
+      },
+      read: vi.fn(),
+    };
+
+    await expect(
+      service.withStoredDeck(source, async () => 'never')
+    ).rejects.toThrow('size check failed');
+    expect(limits.coldLoads.inUse).toBe(0);
+    expect(source.read).not.toHaveBeenCalled();
+  });
+
+  it('stops waiting for a place once its caller has gone, without reading', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    const release = await limits.coldLoads.acquire(COLD_LOAD_BUDGET_BYTES);
+    const deck = countingSource('left');
+    const gone = new AbortController();
+
+    const result = service.withStoredDeck(
+      deck.source,
+      async () => 'never',
+      gone.signal
+    );
+    await vi.waitFor(() => expect(limits.coldLoads.waiting).toBe(1));
+    gone.abort();
+
+    await expect(result).rejects.toBeInstanceOf(WaitAbandonedError);
+    release();
+    expect(deck.reads()).toBe(0);
+    expect(limits.coldLoads.inUse).toBe(0);
+  });
+
+  it('keeps nothing in the preview cache', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+
+    await service.withStoredDeck(
+      countingSource('uncached').source,
+      async () => 'done'
+    );
+
+    expect(limits.cacheBudget.totalBytes).toBe(0);
+  });
+});
+
+describe('ApkgPreviewService work on a stored deck, read time limit', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('stops a stalled read at the time limit and gives back its place', async () => {
+    const limits = freshLimits();
+    const service = new ApkgPreviewService(limits);
+    let readSignal: AbortSignal | undefined;
+    const source: DeckSource = {
+      storedSize: async () => 4096,
+      read: (signal) => {
+        readSignal = signal;
+        return new Promise<Buffer>(() => {});
+      },
+    };
+    const work = vi.fn(async () => 'never');
+
+    const result = service
+      .withStoredDeck(source, work)
+      .catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(PREVIEW_READ_TIME_LIMIT_MS - 1);
+    expect(readSignal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(await result).toBeInstanceOf(PreviewReadTimedOutError);
+    expect(readSignal?.aborted).toBe(true);
+    expect(work).not.toHaveBeenCalled();
+    expect(limits.coldLoads.inUse).toBe(0);
+  });
+});

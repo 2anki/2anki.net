@@ -348,22 +348,6 @@ export default class ExportApkgToPdfUseCase {
     }
   }
 
-  // A free, un-metered look at how the deck prints: the first `limit` cards
-  // (all of them when the deck is smaller) rendered through the same buildHtml
-  // path as the paid PDF, returned as a PNG of the first page. No card limit —
-  // a deck over MAX_CARDS still previews; the limit lives on the download.
-  async preview(
-    fileBuffer: Buffer,
-    options: PdfOptions = DEFAULT_PDF_OPTIONS,
-    limit = PREVIEW_CARD_LIMIT
-  ): Promise<ExportApkgToPdfPreviewResult> {
-    return this.previewParsed(
-      await this.parseForPreview(fileBuffer),
-      options,
-      limit
-    );
-  }
-
   parseForPreview(fileBuffer: Buffer): Promise<ParsedApkg> {
     return this.previewService.parse(
       `pdf-preview:${crypto.randomUUID()}`,
@@ -371,6 +355,10 @@ export default class ExportApkgToPdfUseCase {
     );
   }
 
+  // A free, un-metered look at how the deck prints: the first `limit` cards
+  // (all of them when the deck is smaller) rendered through the same buildHtml
+  // path as the paid PDF, returned as a PNG of the first page. No card limit —
+  // a deck over MAX_CARDS still previews; the limit lives on the download.
   async previewParsed(
     parsed: ParsedApkg,
     options: PdfOptions = DEFAULT_PDF_OPTIONS,

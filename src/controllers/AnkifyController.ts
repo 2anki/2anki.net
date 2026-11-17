@@ -6,6 +6,7 @@ import StopAnkifyClientUseCase from '../usecases/ankify/StopAnkifyClientUseCase'
 import RespinAnkifyClientUseCase from '../usecases/ankify/RespinAnkifyClientUseCase';
 import {
   NoActiveAnkifyClientError,
+  SendAlreadyRunningError,
   SendUploadToRacUseCase,
   UploadNotFoundError,
 } from '../usecases/ankify/SendUploadToRacUseCase';
@@ -735,6 +736,13 @@ class AnkifyController {
     } catch (error) {
       if (error instanceof UploadNotFoundError) {
         res.status(404).json({ message: 'Upload not found' });
+        return;
+      }
+      if (error instanceof SendAlreadyRunningError) {
+        res.status(409).json({
+          message:
+            'A deck is already on its way to Anki. Try again once it is done.',
+        });
         return;
       }
       if (error instanceof ApkgTooLargeError) {

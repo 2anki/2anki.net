@@ -59,11 +59,7 @@ import { UnsupportedNotionBlockRepository } from '../data_layer/UnsupportedNotio
 import StorageHandler from '../lib/storage/StorageHandler';
 import DownloadService from '../services/DownloadService';
 import DownloadRepository from '../data_layer/DownloadRepository';
-import { parseCollection } from '../services/ApkgPreviewService/parseCollection';
-import {
-  extractApkg,
-  parseMediaManifest,
-} from '../services/ApkgPreviewService/extractApkg';
+import ApkgPreviewService from '../services/ApkgPreviewService/ApkgPreviewService';
 import SettingsRepository from '../data_layer/SettingsRepository';
 import RequireAnkifyAccess from './middleware/RequireAnkifyAccess';
 import { getDefaultEmailService } from '../services/EmailService/EmailService';
@@ -295,12 +291,16 @@ const AnkifyRouter = () => {
   const storage = new StorageHandler();
   const downloadService = new DownloadService(new DownloadRepository(db));
 
-  const fetchApkgBytes = async (key: string): Promise<Buffer> => {
-    const body = await downloadService.getStoredDeckBody(key, storage);
-    if (body == null) {
+  const previewService = new ApkgPreviewService();
+  const loadApkgForSend = async (key: string) => {
+    const parsed = await previewService.load(
+      `ankify:${key}`,
+      downloadService.storedDeckSource(key, storage)
+    );
+    if (parsed == null) {
       throw new Error(`APKG body missing for key ${key}`);
     }
-    return body;
+    return parsed;
   };
 
   const ankifyNotionRepo = new NotionRepository(db);
@@ -337,15 +337,7 @@ const AnkifyRouter = () => {
       repo,
       mappings,
       uploads,
-      fetchApkgBytes,
-      async (bytes) => {
-        const archive = await extractApkg(bytes);
-        return {
-          collection: parseCollection(archive.collectionBuffer),
-          mediaMap: parseMediaManifest(archive.mediaManifestRaw),
-          mediaEntries: archive.mediaEntries,
-        };
-      },
+      loadApkgForSend,
       ankiConnectFactory,
       logsRepo,
       templateOverridesProvider
