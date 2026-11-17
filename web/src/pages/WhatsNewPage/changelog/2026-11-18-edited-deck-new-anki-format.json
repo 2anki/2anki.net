@@ -2,5 +2,5 @@
   "id": "2026-11-18-edited-deck-new-anki-format",
   "date": "2026-11-18",
   "type": "fix",
-  "title": "Edited decks download in the same format you uploaded, so decks exported from recent Anki versions import after editing"
+  "title": "Edited decks from recent Anki versions download in the same format you uploaded"
 }
