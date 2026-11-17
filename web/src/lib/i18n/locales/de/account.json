@@ -62,6 +62,8 @@
     "processing": "Wird verarbeitet …",
     "cancelSubscription": "Abo kündigen",
     "keepSubscription": "Abo behalten",
+    "accessUntil": "Du behältst den Zugang bis zum {{date}}, dem Ende des bezahlten Zeitraums. Deine Karte wird nicht mehr belastet.",
+    "accessUntilPeriodEnd": "Du behältst den Zugang bis zum Ende des bezahlten Zeitraums. Deine Karte wird nicht mehr belastet.",
     "commentAria": "Optionaler Kommentar",
     "commentPlaceholder": "Möchtest du noch etwas hinzufügen? (optional)",
     "commentPlaceholderTechnical": "Was hat nicht funktioniert? (optional)"

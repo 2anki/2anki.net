@@ -39,9 +39,9 @@ function parsePayload(payload: unknown): ParsedPause | null {
 export function formatAmount(
   amountCents: number | null,
   currency: string
-): string {
+): string | null {
   if (amountCents == null) {
-    return 'your regular price';
+    return null;
   }
   const major = (amountCents / 100).toFixed(2);
   const symbol = currency.toLowerCase() === 'eur' ? '€' : '$';

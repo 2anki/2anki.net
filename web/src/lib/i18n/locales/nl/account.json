@@ -62,6 +62,8 @@
     "processing": "Verwerken…",
     "cancelSubscription": "Abonnement opzeggen",
     "keepSubscription": "Abonnement behouden",
+    "accessUntil": "Je houdt toegang tot {{date}}, het einde van de periode die je hebt betaald. Je kaart wordt niet meer belast.",
+    "accessUntilPeriodEnd": "Je houdt toegang tot het einde van de periode die je hebt betaald. Je kaart wordt niet meer belast.",
     "commentAria": "Optionele opmerking",
     "commentPlaceholder": "Wil je nog iets toevoegen? (optioneel)",
     "commentPlaceholderTechnical": "Wat ging er mis? (optioneel)"

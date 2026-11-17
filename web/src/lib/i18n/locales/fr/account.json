@@ -62,6 +62,8 @@
     "processing": "Traitement en cours…",
     "cancelSubscription": "Annuler l'abonnement",
     "keepSubscription": "Garder l'abonnement",
+    "accessUntil": "Tu gardes l'accès jusqu'au {{date}}, à la fin de la période que tu as payée. Ta carte ne sera plus débitée.",
+    "accessUntilPeriodEnd": "Tu gardes l'accès jusqu'à la fin de la période que tu as payée. Ta carte ne sera plus débitée.",
     "commentAria": "Commentaire facultatif",
     "commentPlaceholder": "Tu veux ajouter quelque chose ? (facultatif)",
     "commentPlaceholderTechnical": "Qu'est-ce qui n'a pas fonctionné ? (facultatif)"

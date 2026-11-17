@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   render,
   screen,
@@ -48,17 +48,20 @@ function withQueryClient(ui: ReactNode) {
   return <QueryClientProvider client={client}>{ui}</QueryClientProvider>;
 }
 
-function stubStripeActive(plan?: {
-  amount: number | null;
-  currency: string | null;
-  interval: string | null;
-}) {
+function stubStripeActive(
+  plan?: {
+    amount: number | null;
+    currency: string | null;
+    interval: string | null;
+  },
+  currentPeriodEnd: number | null = 1893456000
+) {
   const subscription = {
     id: 'sub_1',
     status: 'active',
     created: Math.floor(Date.now() / 1000) - 120 * 24 * 60 * 60,
     cancel_at_period_end: false,
-    current_period_end: 1893456000,
+    current_period_end: currentPeriodEnd,
     cancel_at: null,
     canceled_at: null,
     paused_until: null,
@@ -422,6 +425,107 @@ describe('SubscriptionManagement', () => {
     ).toBeInTheDocument();
   });
 
+  describe('access end before the confirm', () => {
+    let originalZone: string | undefined;
+
+    beforeEach(() => {
+      originalZone = process.env.TZ;
+      process.env.TZ = 'UTC';
+    });
+
+    afterEach(() => {
+      process.env.TZ = originalZone;
+    });
+
+    it('tells a subscriber with a period end the date access lasts until', () => {
+      stubStripeActive();
+      renderStripeManagement();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Cancel subscription' })
+      );
+
+      expect(
+        screen.getByRole('button', { name: 'Cancel subscription' })
+      ).toHaveAccessibleDescription(
+        "You keep access until January 1, 2030 at 12:00 AM, the end of the period you paid for. Your card won't be charged again."
+      );
+    });
+
+    it('tells a yearly subscriber the end of the paid year', () => {
+      stubStripeActive(
+        { amount: 6400, currency: 'usd', interval: 'year' },
+        Date.parse('2027-03-15T09:00:00.000Z') / 1000
+      );
+      renderStripeManagement();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Cancel subscription' })
+      );
+
+      expect(
+        screen.getByText(
+          "You keep access until March 15, 2027 at 9:00 AM, the end of the period you paid for. Your card won't be charged again."
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('offers someone already set to cancel no cancel flow', () => {
+      stubStripeView('scheduled');
+      renderStripeManagement();
+
+      expect(screen.getByText(/Access continues until then/)).toBeTruthy();
+      expect(
+        screen.queryByRole('button', { name: 'Cancel subscription' })
+      ).toBeNull();
+      expect(screen.queryByText(/You keep access/)).toBeNull();
+    });
+
+    it('offers a lifetime member with no subscription no cancel flow', () => {
+      const { container } = render(
+        withQueryClient(
+          <SubscriptionManagement
+            user={user}
+            locals={{ subscriber: false, planSource: 'lifetime' }}
+            hasActivePlan
+            onRefetch={vi.fn().mockResolvedValue(undefined)}
+          />
+        )
+      );
+
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it('tells a subscriber with no period end in the data, without a date', () => {
+      stubStripeActive(undefined, null);
+      renderStripeManagement();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Cancel subscription' })
+      );
+
+      expect(
+        screen.getByText(
+          "You keep access until the end of the period you paid for. Your card won't be charged again."
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('promises no access to a past_due subscriber, whose plan ends on cancel', () => {
+      stubStripePastDue();
+      renderStripeManagement();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Cancel subscription' })
+      );
+
+      expect(
+        screen.getByText('Why are you cancelling? (optional)')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/You keep access/)).toBeNull();
+    });
+  });
+
   it('cancels at period end from the flow and records no pause event', async () => {
     stubStripeActive();
     vi.mocked(cancelSubscription).mockResolvedValue({ message: 'ok' });
@@ -770,6 +874,15 @@ describe('SubscriptionManagement for a pass holder', () => {
     expect(
       screen.queryByLabelText(/email you paid with/i)
     ).not.toBeInTheDocument();
+  });
+
+  it('offers a pass holder no subscription to cancel and no access notice', () => {
+    renderPassHolder();
+
+    expect(
+      screen.queryByRole('button', { name: 'Cancel subscription' })
+    ).toBeNull();
+    expect(screen.queryByText(/You keep access/)).toBeNull();
   });
 
   it('shows the pass they bought and when it runs out', () => {

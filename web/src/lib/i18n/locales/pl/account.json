@@ -62,6 +62,8 @@
     "processing": "Przetwarzanie…",
     "cancelSubscription": "Anuluj subskrypcję",
     "keepSubscription": "Zachowaj subskrypcję",
+    "accessUntil": "Zachowujesz dostęp do {{date}}, do końca opłaconego okresu. Twoja karta nie będzie już obciążana.",
+    "accessUntilPeriodEnd": "Zachowujesz dostęp do końca opłaconego okresu. Twoja karta nie będzie już obciążana.",
     "commentAria": "Opcjonalny komentarz",
     "commentPlaceholder": "Chcesz coś dodać? (opcjonalnie)",
     "commentPlaceholderTechnical": "Co nie działało? (opcjonalnie)"

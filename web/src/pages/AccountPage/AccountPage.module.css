@@ -226,6 +226,21 @@
   background: var(--color-danger-light);
 }
 
+.cancelConfirm {
+  composes: btnDanger from '../../styles/shared.module.css';
+}
+
+.cancelConfirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancelConfirm:disabled:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+  background: transparent;
+}
+
 .buttonRow {
   display: flex;
   gap: 0.5rem;

@@ -146,6 +146,21 @@ export const de: DeepPartial<EmailStrings> = {
     replyLine: 'Fragen zu deinem Pass? Antworte auf diese E-Mail.',
     signoff: 'Das 2anki-Team',
   },
+  subscriptionResumingSoon: {
+    subject: 'Dein 2anki-Abo läuft ab dem {{resumeDate}} weiter',
+    heading: 'Dein Abo läuft ab dem {{resumeDate}} weiter',
+    body: 'Die Pause deines 2anki.net-Abos endet am {{resumeDate}}. Ab dann werden automatisch wieder {{amount}} pro Monat abgebucht.',
+    bodyAtRegularPrice:
+      'Die Pause deines 2anki.net-Abos endet am {{resumeDate}}. Ab dann wird automatisch wieder dein regulärer Preis abgebucht.',
+    nothingToDo:
+      'Wenn du weitermachen willst, musst du nichts tun. Deine Stapel und Einstellungen sind genau so, wie du sie verlassen hast.',
+    cancelPrefix:
+      'Wenn du stattdessen kündigen willst, geh vor dem {{resumeDate}} auf deine',
+    cancelLink: 'Kontoseite',
+    cancelSuffix:
+      '. Eine Kündigung während der Pause beendet dein Abo sofort, und dir wird nichts mehr berechnet.',
+    replyLine: 'Fragen? Antworte auf diese E-Mail.',
+  },
   commercialShared: {
     unsubscribe: 'Keine E-Mails wie diese? Abmelden',
   },

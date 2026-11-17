@@ -531,12 +531,29 @@ describe('emitNotionMarketplacePage', () => {
       'utf8'
     );
     expect(html).toContain(
-      '<title>Sync Notion to Anki automatically | 2anki</title>'
+      '<title>Turn Notion pages into Anki flashcards | 2anki</title>'
     );
     expect(html).toContain(
       '<link rel="canonical" href="https://2anki.net/notion-marketplace/">'
     );
     expect(html).toContain('Your Notion notes become Anki cards');
+  });
+
+  it('promises no automatic sync to crawlers, in the head or the prerendered body', () => {
+    emitNotionMarketplacePage(buildDir);
+    const html = readFileSync(
+      join(buildDir, 'notion-marketplace', 'index.html'),
+      'utf8'
+    );
+
+    expect(html).toContain(
+      '<meta name="description" content="Turn your Notion pages into Anki flashcards. Unlimited cards on a monthly plan, or pay once with a Day Pass. No exports, no zips.">'
+    );
+    expect(html).toContain(
+      '>Your Notion notes become Anki cards</h1>'
+    );
+    expect(html).not.toMatch(/automatic|sync/i);
+    expect(html).not.toContain('$7.99');
   });
 });
 

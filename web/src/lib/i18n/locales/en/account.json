@@ -62,6 +62,8 @@
     "processing": "Processing…",
     "cancelSubscription": "Cancel subscription",
     "keepSubscription": "Keep subscription",
+    "accessUntil": "You keep access until {{date}}, the end of the period you paid for. Your card won't be charged again.",
+    "accessUntilPeriodEnd": "You keep access until the end of the period you paid for. Your card won't be charged again.",
     "commentAria": "Optional comment",
     "commentPlaceholder": "Anything you'd like to add? (optional)",
     "commentPlaceholderTechnical": "What broke? (optional)"

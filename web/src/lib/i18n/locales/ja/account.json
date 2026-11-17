@@ -62,6 +62,8 @@
     "processing": "処理中…",
     "cancelSubscription": "サブスクリプションを解約",
     "keepSubscription": "サブスクリプションを続ける",
+    "accessUntil": "お支払い済み期間の終了日である {{date}} までアクセスできます。今後料金が請求されることはありません。",
+    "accessUntilPeriodEnd": "お支払い済み期間の終了までアクセスできます。今後料金が請求されることはありません。",
     "commentAria": "任意のコメント",
     "commentPlaceholder": "何か補足があればどうぞ（任意）",
     "commentPlaceholderTechnical": "何が問題でしたか？（任意）"

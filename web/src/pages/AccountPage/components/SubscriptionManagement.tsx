@@ -520,6 +520,10 @@ function StripeSubscriptionManagement({
               {confirming && (
                 <CancelFlow
                   isCancelling={isCancelling}
+                  access={{
+                    kind: 'untilPeriodEnd',
+                    periodEnd: view.subscription.current_period_end,
+                  }}
                   onCancel={handleCancelFromFlow}
                   onKeep={handleKeep}
                 />
@@ -581,6 +585,7 @@ function StripeSubscriptionManagement({
               {confirming && (
                 <CancelFlow
                   isCancelling={isCancellingPerSub}
+                  access={{ kind: 'notPromised' }}
                   onCancel={handlePastDueCancel}
                   onKeep={handleKeep}
                 />

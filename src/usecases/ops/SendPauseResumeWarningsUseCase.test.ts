@@ -366,8 +366,8 @@ describe('SendPauseResumeWarningsUseCase', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('falls back to neutral wording when the plan amount is missing', () => {
-    expect(formatAmount(null, 'usd')).toBe('your regular price');
+  it('passes no amount when the plan amount is missing, so the email names the regular price', () => {
+    expect(formatAmount(null, 'usd')).toBeNull();
     expect(formatAmount(200, 'eur')).toBe('€2.00');
     expect(formatAmount(6400, 'usd')).toBe('$64.00');
   });

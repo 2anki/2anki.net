@@ -62,6 +62,8 @@
     "processing": "Processando…",
     "cancelSubscription": "Cancelar assinatura",
     "keepSubscription": "Manter assinatura",
+    "accessUntil": "Você mantém o acesso até {{date}}, o fim do período que você pagou. Seu cartão não será cobrado de novo.",
+    "accessUntilPeriodEnd": "Você mantém o acesso até o fim do período que você pagou. Seu cartão não será cobrado de novo.",
     "commentAria": "Comentário opcional",
     "commentPlaceholder": "Quer acrescentar algo? (opcional)",
     "commentPlaceholderTechnical": "O que deu errado? (opcional)"
