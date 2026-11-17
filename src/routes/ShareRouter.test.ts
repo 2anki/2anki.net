@@ -6,6 +6,7 @@ import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 
 import { buildTinyApkg } from '../test/fixtures/apkg/buildTinyApkg';
 import { MAX_TOTAL_DECOMPRESSED_BYTES } from '../services/ApkgPreviewService/extractApkg';
+import { BUFFERED_COPY_MAX_BYTES } from '../services/DownloadService';
 
 const send = vi.hoisted(() => vi.fn());
 const findByToken = vi.hoisted(() => vi.fn());
@@ -232,5 +233,72 @@ describe('ShareRouter shared deck preview, signed out', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('content-disposition')).toContain('attachment');
     expect(pinSharedNoteTypes).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ShareRouter shared deck download, by stored size', () => {
+  let token = 0;
+  const nextToken = () => `download-token-${(token += 1)}`;
+
+  beforeEach(() => {
+    process.env.SPACES_DEFAULT_BUCKET_NAME = 'test-bucket';
+    process.env.SPACES_ENDPOINT = 'https://test.spaces.example.com';
+    send.mockReset();
+    bodyRead.mockReset();
+    pinSharedNoteTypes.mockReset().mockImplementation(async (apkg) => apkg);
+    findByToken.mockReset().mockResolvedValue({
+      id: 1,
+      owner: 42,
+      upload_key: 'stored/42/deck.apkg',
+      revoked_at: null,
+    });
+  });
+
+  it('sends a deck at the buffered-copy limit as the pinned copy', async () => {
+    storageReports(BUFFERED_COPY_MAX_BYTES);
+    const shared = nextToken();
+
+    const res = await withServer((base) =>
+      fetch(`${base}/api/shares/${shared}/download`, { redirect: 'manual' })
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-disposition')).toContain('attachment');
+    expect(bodyRead).toHaveBeenCalledTimes(1);
+    expect(pinSharedNoteTypes).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends a deck above the buffered-copy limit by storage link, without reading or pinning it', async () => {
+    storageReports(BUFFERED_COPY_MAX_BYTES + 1);
+    const shared = nextToken();
+
+    const res = await withServer((base) =>
+      fetch(`${base}/api/shares/${shared}/download`, { redirect: 'manual' })
+    );
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(
+      'https://storage.example.com/signed-deck'
+    );
+    expect(bodyRead).not.toHaveBeenCalled();
+    expect(pinSharedNoteTypes).not.toHaveBeenCalled();
+  });
+
+  it('counts downloads sent by storage link against the per-link limit', async () => {
+    storageReports(BUFFERED_COPY_MAX_BYTES + 1);
+    const shared = nextToken();
+
+    const statuses = await withServer(async (base) => {
+      const seen: number[] = [];
+      for (let i = 0; i < 11; i += 1) {
+        const res = await fetch(`${base}/api/shares/${shared}/download`, {
+          redirect: 'manual',
+        });
+        seen.push(res.status);
+      }
+      return seen;
+    });
+
+    expect(statuses).toEqual([...Array(10).fill(302), 429]);
   });
 });

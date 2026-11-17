@@ -117,11 +117,9 @@ class StorageHandler {
     return { Body: Buffer.from(bytes) };
   }
 
-  // The deck download path. getFileContents drains the whole object into
-  // memory first, which for a media-heavy deck means the process holds the
-  // full apkg per request (a 951 MB deck pulled a dozen times put the box at
-  // 2.1 GB RSS on 2026-09-25). In Node the SDK's Body is already a Readable,
-  // so the controller can pipe it straight to the response.
+  // getFileContents reads the whole object into memory; use this for large
+  // objects. In Node the SDK's Body is already a Readable, so the caller can
+  // pipe it straight to the response.
   async getFileStream(key: string): Promise<StoredObjectStream | undefined> {
     const response = await this.s3.send(
       new GetObjectCommand({

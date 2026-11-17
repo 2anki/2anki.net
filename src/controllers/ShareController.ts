@@ -11,6 +11,8 @@ import { buildContentDisposition } from '../lib/buildContentDisposition';
 import { getSafeFilename } from '../lib/getSafeFilename';
 import { pinSharedNoteTypes } from '../lib/anki/pinSharedNoteTypes';
 import { ApkgTooLargeError } from '../services/ApkgPreviewService/extractApkg';
+import { WaitAbandonedError } from '../lib/rateLimit/WeightedSemaphore';
+import { clientGoneSignal } from '../lib/http/clientGoneSignal';
 
 const NOINDEX = 'noindex';
 const STORED_COPY_LINK_TTL_SECONDS = 300;
@@ -152,12 +154,18 @@ class ShareController {
     }
 
     try {
-      await this.downloadService.assertReadableSize(
+      const storedSize = await this.downloadService.readableStoredSize(
         share.upload_key,
         this.storage
       );
-      const parsed = await this.previewService.load(`share:${token}`, () =>
-        this.downloadService.readStoredBody(share.upload_key, this.storage)
+      const parsed = await this.previewService.load(
+        `share:${token}`,
+        {
+          storedSize: async () => storedSize,
+          read: () =>
+            this.downloadService.readStoredBody(share.upload_key, this.storage),
+        },
+        clientGoneSignal(res)
       );
       if (parsed == null) {
         res.status(404).json({ message: 'This deck is no longer available.' });
@@ -165,7 +173,8 @@ class ShareController {
       }
       return { share, parsed };
     } catch (error) {
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (error instanceof WaitAbandonedError) return null;
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).json({ message: 'This deck is no longer available.' });
         return null;
       }
@@ -266,7 +275,7 @@ class ShareController {
         : `${basename}.apkg`;
 
       if (
-        await this.downloadService.isTooLargeToRead(
+        await this.downloadService.isTooLargeToBuffer(
           share.upload_key,
           this.storage
         )
@@ -293,7 +302,7 @@ class ShareController {
       res.setHeader('Content-Disposition', buildContentDisposition(filename));
       res.send(await this.sharedCopy(fileOutput.Body));
     } catch (error) {
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).json({ message: 'This deck is no longer available.' });
         return;
       }

@@ -10,10 +10,9 @@ export interface ApkgArchive {
   mediaEntries: Map<string, Buffer>;
 }
 
-// This runs in the main Express process (single pm2 instance), so a zip bomb
-// here takes down every in-flight conversion, not one worker. Caps sized for
-// the 100MB multer limit on the apkg routes: honest media is stored ~1:1 and
-// a large collection sqlite decompresses well under these.
+// Runs in the main process; the caps bound what one archive can use. Honest
+// media is stored about 1:1 and a large collection decompresses well under
+// them.
 export const MAX_TOTAL_DECOMPRESSED_BYTES = 1024 * 1024 * 1024;
 const MAX_COLLECTION_DECOMPRESSED_BYTES = 512 * 1024 * 1024;
 const MAX_ENTRIES = 65536;

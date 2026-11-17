@@ -36,6 +36,8 @@ import {
 } from '../services/ApkgPreviewService/extractApkg';
 import { NotionService } from '../services/NotionService/NotionService';
 import { ConcurrencyLimiter } from '../lib/rateLimit/ConcurrencyLimiter';
+import { WaitAbandonedError } from '../lib/rateLimit/WeightedSemaphore';
+import { clientGoneSignal } from '../lib/http/clientGoneSignal';
 import JobRepository from '../data_layer/JobRepository';
 import sendErrorResponse from '../lib/sendErrorResponse';
 import { isPaying } from '../lib/isPaying';
@@ -238,8 +240,10 @@ class ApkgController {
       res.status(404).json({ message: 'Upload not found.' });
       return null;
     }
-    const parsed = await this.previewService.load(`${owner}:${key}`, () =>
-      this.downloadService.getStoredDeckBody(storageKey, new StorageHandler())
+    const parsed = await this.previewService.load(
+      `${owner}:${key}`,
+      this.downloadService.storedDeckSource(storageKey, new StorageHandler()),
+      clientGoneSignal(res)
     );
     if (parsed == null) {
       res.status(404).json({ message: 'Upload not found.' });
@@ -254,8 +258,9 @@ class ApkgController {
       if (!parsed) return;
       res.json(this.previewService.getMeta(parsed));
     } catch (error) {
+      if (error instanceof WaitAbandonedError) return;
       if (sendApkgTooLarge(res, error)) return;
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });
         return;
       }
@@ -285,8 +290,9 @@ class ApkgController {
         )
       );
     } catch (error) {
+      if (error instanceof WaitAbandonedError) return;
       if (sendApkgTooLarge(res, error)) return;
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });
         return;
       }
@@ -314,8 +320,9 @@ class ApkgController {
       res.setHeader('Cache-Control', 'private, max-age=300');
       res.send(buffer);
     } catch (error) {
+      if (error instanceof WaitAbandonedError) return;
       if (sendApkgTooLarge(res, error)) return;
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).send();
         return;
       }
@@ -583,7 +590,7 @@ class ApkgController {
       res.send(result.buffer);
     } catch (error) {
       if (sendApkgTooLarge(res, error)) return;
-      if (this.downloadService.isMissingDownloadError(error)) {
+      if (this.downloadService.isMissingStoredDeckError(error)) {
         res.status(404).json({ message: 'Upload is no longer available.' });
         return;
       }

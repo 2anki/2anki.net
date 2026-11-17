@@ -100,7 +100,7 @@ function makeController(
 ) {
   const downloadService = {
     getFileBody: vi.fn(),
-    isMissingDownloadError: vi.fn().mockReturnValue(false),
+    isMissingStoredDeckError: vi.fn().mockReturnValue(false),
   } as unknown as DownloadService;
   const previewService = {
     parse: vi.fn(),

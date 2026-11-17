@@ -12,6 +12,7 @@ function mockResponse(locals: Record<string, unknown> = {}): Response {
     status: vi.fn().mockReturnThis(),
     json: vi.fn(),
     send: vi.fn(),
+    once: vi.fn(),
   } as unknown as Response;
 }
 
@@ -75,9 +76,9 @@ function makePreviewService(overrides: Record<string, unknown> = {}) {
 function makeDownloadService(overrides: Record<string, unknown> = {}) {
   return {
     getFilename: vi.fn().mockResolvedValue('My Deck'),
-    isMissingDownloadError: vi.fn().mockReturnValue(false),
-    isTooLargeToRead: vi.fn().mockResolvedValue(false),
-    assertReadableSize: vi.fn().mockResolvedValue(undefined),
+    isMissingStoredDeckError: vi.fn().mockReturnValue(false),
+    isTooLargeToBuffer: vi.fn().mockResolvedValue(false),
+    readableStoredSize: vi.fn().mockResolvedValue(4096),
     ...overrides,
   };
 }

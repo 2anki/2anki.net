@@ -680,4 +680,30 @@ describe('ImportApkgToNotionUseCase', () => {
       expect(recordedEvents()).toEqual([]);
     });
   });
+
+  it('parses each import under its own key, even two started in the same millisecond', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-17T12:00:00Z'));
+    try {
+      previewService.parse.mockResolvedValue(makeParsed(1));
+      const imports = ['job-1', 'job-2'].map((jobId) =>
+        useCase.execute(
+          Buffer.from(jobId),
+          'parent-page',
+          'user-1',
+          notionApi,
+          jobId,
+          { maxNotes: 10000 }
+        )
+      );
+      await vi.runAllTimersAsync();
+      await Promise.all(imports);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const keys = previewService.parse.mock.calls.map(([key]) => key);
+    expect(keys).toHaveLength(2);
+    expect(new Set(keys).size).toBe(2);
+  });
 });

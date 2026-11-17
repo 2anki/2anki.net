@@ -57,7 +57,10 @@ function makeService(overrides: {
     findStoredKey: vi.fn(async (_owner: string, key: string) =>
       overrides.storedDeck === null ? null : `stored/${key}`
     ),
-    getStoredDeckBody: vi.fn(async () => overrides.storedDeck ?? undefined),
+    storedDeckSource: vi.fn(() => ({
+      storedSize: async () => 4096,
+      read: async () => overrides.storedDeck ?? undefined,
+    })),
   };
   const previewService = {
     parse: vi.fn(async () => ({}) as never),
@@ -72,8 +75,9 @@ function makeService(overrides: {
     })),
     ...overrides.preview,
   } as unknown as ApkgPreviewService;
-  previewService.load = vi.fn(async (cacheKey, readBytes) => {
-    const bytes = await readBytes();
+  previewService.load = vi.fn(async (cacheKey, source) => {
+    await source.storedSize();
+    const bytes = await source.read();
     return bytes == null ? null : previewService.parse(cacheKey, bytes);
   });
   const uploadEntry =
