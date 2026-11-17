@@ -167,7 +167,7 @@ describe('pass end emails', () => {
 
       const msg = lastMessage();
       expect(msg.subject).toBe(
-        'Dein Semester Pass endet am 11. Januar 2027 um 0:30 UTC'
+        'Dein Semester Pass endet am 11. Januar 2027 um 00:30 UTC'
       );
       expect(msg.text).toContain(
         'Verlängere ihn jetzt, und die nächsten 120 Tage beginnen, sobald dein aktueller Pass endet.'
@@ -192,7 +192,7 @@ describe('pass end emails', () => {
 
     it.each([
       [LATE_EVENING_UTC.toISOString(), '10 January 2027 at 23:30 UTC'],
-      [JUST_AFTER_MIDNIGHT_UTC.toISOString(), '11 January 2027 at 0:30 UTC'],
+      [JUST_AFTER_MIDNIGHT_UTC.toISOString(), '11 January 2027 at 00:30 UTC'],
     ])(
       'writes a pass ending at %s as %s in both Semester Pass emails',
       async (isoExpiry, expected) => {

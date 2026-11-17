@@ -253,7 +253,7 @@ function formatPassEndInUtc(date: Date, language: string | null): string {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
-      hour: 'numeric',
+      hour: '2-digit',
       minute: '2-digit',
       timeZone: 'UTC',
     }
