@@ -217,7 +217,7 @@ describe('RulesPage deck boundaries', () => {
 
   it('saves only the flashcard types the page offers from a stored rule', async () => {
     mockApi.getRules.mockResolvedValue({
-      flashcard_is: 'heading,toggle,Toggles',
+      flashcard_is: 'toggle,Toggles',
       sub_deck_is: 'child_page',
       tags_is: 'strikethrough',
       deck_is: 'page',
@@ -233,6 +233,26 @@ describe('RulesPage deck boundaries', () => {
     });
     const call = mockApi.saveRules.mock.calls[0];
     expect(call[1]).toEqual(['toggle']);
+  });
+
+  it('keeps a stored legacy heading type as the listed heading types', async () => {
+    mockApi.getRules.mockResolvedValue({
+      flashcard_is: 'toggle,heading',
+      sub_deck_is: 'child_page',
+      tags_is: 'strikethrough',
+      deck_is: 'page',
+      email_notification: false,
+    });
+    renderPage('page-legacy-heading');
+    await waitFor(() => {
+      expect(screen.getByText('Deck boundaries')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(mockApi.saveRules).toHaveBeenCalled();
+    });
+    const call = mockApi.saveRules.mock.calls[0];
+    expect(call[1]).toEqual(['toggle', 'heading_1', 'heading_2', 'heading_3']);
   });
 });
 

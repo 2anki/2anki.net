@@ -97,6 +97,20 @@ function loadDeckSelection(raw: string | null | undefined): string[] {
   return allowed.length > 0 ? allowed : [...deckOptions];
 }
 
+const LEGACY_HEADING_FLASHCARD_TYPE = 'heading';
+const listedHeadingFlashcardTypes = ['heading_1', 'heading_2', 'heading_3'];
+
+function loadFlashcardSelection(raw: string): string[] {
+  const types = raw
+    .split(',')
+    .map((v) => v.trim())
+    .flatMap((v) =>
+      v === LEGACY_HEADING_FLASHCARD_TYPE ? listedHeadingFlashcardTypes : [v]
+    )
+    .filter((v) => flashCardOptions.includes(v));
+  return [...new Set(types)];
+}
+
 function hasAdvancedDeckType(deckTypes: string[]): boolean {
   return deckTypes.some((type) => advancedDeckOptions.includes(type));
 }
@@ -181,9 +195,7 @@ export default function RulesPage({ setErrorMessage }: Readonly<Props>) {
         const loaded: NewRule = rule
           ? {
               ...rule,
-              flashcard_is: rule.flashcard_is
-                .split(',')
-                .filter((v: string) => flashCardOptions.includes(v)),
+              flashcard_is: loadFlashcardSelection(rule.flashcard_is),
               sub_deck_is: rule.sub_deck_is
                 .split(',')
                 .filter((v: string) => subDeckOptions.includes(v)),

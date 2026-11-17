@@ -30,7 +30,7 @@ describe('ParserRulesRepository generated SQL', () => {
     return wrapped;
   };
 
-  it('upserts on owner and page and never rewrites the owner', async () => {
+  it('upserts on owner and page, updating only the rule columns', async () => {
     const repository = new ParserRulesRepository(recordingDatabase());
 
     await repository.create('page-1', '7', {

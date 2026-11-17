@@ -528,6 +528,46 @@ describe('Backend', () => {
     });
   });
 
+  describe('getRules', () => {
+    it('returns the saved rule for the page', async () => {
+      const rule = {
+        flashcard_is: 'toggle',
+        deck_is: 'page',
+        sub_deck_is: 'child_page',
+        tags_is: 'heading',
+        email_notification: false,
+      };
+      vi.mocked(api.get).mockResolvedValue(rule);
+
+      await expect(backend.getRules('page-xyz')).resolves.toEqual(rule);
+      expect(api.get).toHaveBeenCalledWith('/api/rules/find/page-xyz');
+    });
+
+    it('returns null without logging an error when the page has no saved rule', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      vi.mocked(api.get).mockRejectedValue(
+        new SyntaxError('Unexpected end of JSON input')
+      );
+
+      await expect(backend.getRules('page-xyz')).resolves.toBeNull();
+      expect(consoleError).not.toHaveBeenCalled();
+      consoleError.mockRestore();
+    });
+
+    it('returns null and logs when the request fails', async () => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      vi.mocked(api.get).mockRejectedValue(new Error('Network error'));
+
+      await expect(backend.getRules('page-xyz')).resolves.toBeNull();
+      expect(consoleError).toHaveBeenCalledTimes(1);
+      consoleError.mockRestore();
+    });
+  });
+
   describe('saveRules', () => {
     it('posts the rules as comma-joined lists for the page', async () => {
       vi.mocked(api.post).mockResolvedValue(createMockResponse(201, true));

@@ -29,17 +29,21 @@ const toTypeList = (value: unknown): string[] =>
         .filter(Boolean)
     : [];
 
-const flashcardTypesError = (payload: unknown): string | null => {
+type FlashcardTypesCheck = { types: string[] } | { error: string };
+
+const checkFlashcardTypes = (payload: unknown): FlashcardTypesCheck => {
   const types = toTypeList(
     (payload as { FLASHCARD?: unknown } | undefined)?.FLASHCARD
   );
   if (types.length === 0) {
-    return 'Choose at least one block type to turn into flashcards.';
+    return { error: 'Choose at least one block type to turn into flashcards.' };
   }
   const supported = types.every((type) =>
     ParserRules.FLASHCARD_TYPE_ALLOWLIST.includes(type)
   );
-  return supported ? null : 'One or more flashcard types are not supported.';
+  return supported
+    ? { types }
+    : { error: 'One or more flashcard types are not supported.' };
 };
 
 class RulesController {
@@ -53,13 +57,16 @@ class RulesController {
     }
 
     const payload = req.body?.payload;
-    const validationError = flashcardTypesError(payload);
-    if (validationError != null) {
-      return res.status(400).json({ message: validationError });
+    const flashcardTypes = checkFlashcardTypes(payload);
+    if ('error' in flashcardTypes) {
+      return res.status(400).json({ message: flashcardTypes.error });
     }
 
     try {
-      await this.service.createRule(id, getOwner(res), payload);
+      await this.service.createRule(id, getOwner(res), {
+        ...payload,
+        FLASHCARD: flashcardTypes.types.join(','),
+      });
       res.status(201).json({ message: 'Rule created' });
     } catch (error) {
       console.info('Create rule failed');

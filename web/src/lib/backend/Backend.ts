@@ -268,7 +268,9 @@ export class Backend {
       }
       return result;
     } catch (error) {
-      console.error('getRules failed, falling back to empty rule', error);
+      if (!(error instanceof SyntaxError)) {
+        console.error('getRules failed, falling back to empty rule', error);
+      }
       return null;
     }
   }

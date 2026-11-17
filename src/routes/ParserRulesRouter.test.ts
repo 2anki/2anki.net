@@ -221,6 +221,23 @@ describe('ParserRulesRouter', () => {
       });
     });
 
+    it('stores the flashcard types without the spaces around them', async () => {
+      await saveRules(ACCOUNT_A, {
+        ...RULES_A,
+        FLASHCARD: ' toggle, callout ,heading_1',
+      });
+
+      const body = await (await findRules(ACCOUNT_A)).json();
+      const rules = await ParserRules.Load(ACCOUNT_A, SHARED_PAGE);
+
+      expect(body.flashcard_is).toBe('toggle,callout,heading_1');
+      expect(rules.flashcardTypes()).toEqual([
+        'toggle',
+        'callout',
+        'heading_1',
+      ]);
+    });
+
     it('accepts every flashcard type the Rules page offers', async () => {
       const response = await saveRules(ACCOUNT_A, {
         ...RULES_A,
