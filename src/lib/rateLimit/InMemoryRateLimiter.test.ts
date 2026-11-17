@@ -77,6 +77,60 @@ describe('InMemoryRateLimiter', () => {
     expect(limiter.evaluate('ip-b')).toBe('global');
   });
 
+  test('forgets keys whose window has passed once a window has elapsed', () => {
+    let now = 0;
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 1000,
+      perKeyMax: 1,
+      globalMax: Number.POSITIVE_INFINITY,
+      now: () => now,
+    });
+    limiter.check('ip-a');
+    limiter.check('ip-b');
+    limiter.check('ip-c');
+    expect(limiter.trackedKeys()).toBe(3);
+
+    now = 1001;
+    limiter.check('ip-d');
+
+    expect(limiter.trackedKeys()).toBe(1);
+  });
+
+  test('keeps a key whose window is still open through a sweep, with its count', () => {
+    let now = 0;
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 1000,
+      perKeyMax: 1,
+      globalMax: 100,
+      now: () => now,
+    });
+    limiter.check('ip-a');
+    now = 600;
+    expect(limiter.check('ip-b')).toBe(true);
+
+    now = 1001;
+    limiter.check('ip-c');
+
+    expect(limiter.trackedKeys()).toBe(2);
+    expect(limiter.check('ip-b')).toBe(false);
+    expect(limiter.check('ip-a')).toBe(true);
+  });
+
+  test('does not sweep before a full window has passed', () => {
+    let now = 0;
+    const limiter = new InMemoryRateLimiter({
+      windowMs: 1000,
+      perKeyMax: 1,
+      globalMax: 100,
+      now: () => now,
+    });
+    limiter.check('ip-a');
+    now = 999;
+    limiter.check('ip-b');
+
+    expect(limiter.trackedKeys()).toBe(2);
+  });
+
   test('a per-key rejection does not consume the global budget', () => {
     const limiter = new InMemoryRateLimiter({
       windowMs: 1000,

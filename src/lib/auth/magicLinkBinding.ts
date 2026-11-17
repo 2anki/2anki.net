@@ -29,6 +29,16 @@ const bindingCookieOptions = (): CookieOptions => ({
   path: '/',
 });
 
+// Checked before a token is read or spent, so a missing secret fails the
+// request without using up the link. A TypeError, like the one the HMAC would
+// throw, so the error handler answers its generic 500 and never shows this.
+export function requireMagicLinkSecret(): void {
+  const secret = process.env.THE_HASHING_SECRET;
+  if (secret == null || secret.length === 0) {
+    throw new TypeError('THE_HASHING_SECRET is not set');
+  }
+}
+
 export function magicLinkBindingFor(token: string): string {
   return hmacToken(`magic-link-binding:${token}`);
 }

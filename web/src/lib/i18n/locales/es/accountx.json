@@ -18,7 +18,9 @@
     "confirmLoginButton": "Iniciar sesión",
     "confirmResetButton": "Restablecer contraseña",
     "confirming": "Comprobando tu enlace",
-    "confirmRetry": "No se pudo completar. Inténtalo de nuevo en unos minutos."
+    "confirmRetry": "No se pudo completar. Inténtalo de nuevo en unos minutos.",
+    "unavailableTitle": "No se pudo comprobar tu enlace",
+    "tryAgain": "Intentar de nuevo"
   },
   "claim": {
     "goToAccount": "Ir a la cuenta",

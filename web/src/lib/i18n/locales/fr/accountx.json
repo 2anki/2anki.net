@@ -18,7 +18,9 @@
     "confirmLoginButton": "Se connecter",
     "confirmResetButton": "Réinitialiser le mot de passe",
     "confirming": "Vérification du lien",
-    "confirmRetry": "Ça n’a pas abouti. Réessaie dans quelques minutes."
+    "confirmRetry": "Ça n’a pas abouti. Réessaie dans quelques minutes.",
+    "unavailableTitle": "Impossible de vérifier ton lien",
+    "tryAgain": "Réessayer"
   },
   "claim": {
     "goToAccount": "Accéder au compte",

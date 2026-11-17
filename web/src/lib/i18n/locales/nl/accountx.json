@@ -18,7 +18,9 @@
     "confirmLoginButton": "Inloggen",
     "confirmResetButton": "Wachtwoord opnieuw instellen",
     "confirming": "Link wordt gecontroleerd",
-    "confirmRetry": "Dat is niet gelukt. Probeer het over een paar minuten opnieuw."
+    "confirmRetry": "Dat is niet gelukt. Probeer het over een paar minuten opnieuw.",
+    "unavailableTitle": "Je link kon niet worden gecontroleerd",
+    "tryAgain": "Opnieuw proberen"
   },
   "claim": {
     "goToAccount": "Naar account",

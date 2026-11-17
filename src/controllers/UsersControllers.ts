@@ -81,6 +81,7 @@ import {
   isPrefetchRequest,
   isSameOriginJsonRequest,
   rememberMagicLinkBinding,
+  requireMagicLinkSecret,
 } from '../lib/auth/magicLinkBinding';
 import { maskEmail } from '../lib/auth/maskEmail';
 import { extractCountryFromRequest } from '../lib/http/extractCountryFromRequest';
@@ -125,15 +126,22 @@ type MagicLinkOutcome =
   | 'spent'
   | 'invalid';
 
+// Measurement only: a sign-in that already spent its token must not fail
+// because the log line could not be written.
 function logMagicLink(
   outcome: MagicLinkOutcome,
   claim: { userId: number | null; purpose?: string }
 ): void {
-  console.info('password_reset.magic_link', {
-    outcome,
-    purpose: claim.purpose ?? null,
-    user_id_hash: claim.userId == null ? null : hashToken(String(claim.userId)),
-  });
+  try {
+    console.info('password_reset.magic_link', {
+      outcome,
+      purpose: claim.purpose ?? null,
+      user_id_hash:
+        claim.userId == null ? null : hashToken(String(claim.userId)),
+    });
+  } catch (error) {
+    console.error('Magic link log line failed:', error);
+  }
 }
 
 interface UnboundCallbackRefusal {
@@ -1621,6 +1629,7 @@ class UsersController {
     }
 
     try {
+      requireMagicLinkSecret();
       const pending = await this.userService.peekMagicToken(token);
       if (pending == null) {
         return await this.#refuseSpentMagicLink(req, res, token, req.query);
@@ -1665,6 +1674,7 @@ class UsersController {
     }
 
     try {
+      requireMagicLinkSecret();
       return await this.#redeemMagicLink(req, res, token, {
         via: 'confirmed',
         redirect: req.body?.redirect,

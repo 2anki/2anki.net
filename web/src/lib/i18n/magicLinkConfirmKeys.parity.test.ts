@@ -23,13 +23,15 @@ describe('magic-link confirm step i18n key parity', () => {
   );
 
   it.each(LANGS)(
-    '%s defines both hints, both buttons, the retry notice, and the busy label',
+    '%s defines both hints, both buttons, the retry notice, the busy label, and the open-failure copy',
     (lang) => {
       const keys = magicLink(lang);
       for (const key of [
         'confirmLoginHint',
         'confirmResetHint',
         'confirmRetry',
+        'unavailableTitle',
+        'tryAgain',
         'confirmLoginButton',
         'confirmResetButton',
         'confirming',

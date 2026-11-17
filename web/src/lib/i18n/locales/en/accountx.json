@@ -18,7 +18,9 @@
     "confirmLoginButton": "Sign in",
     "confirmResetButton": "Reset password",
     "confirming": "Checking your link",
-    "confirmRetry": "That didn't go through. Try again in a few minutes."
+    "confirmRetry": "That didn't go through. Try again in a few minutes.",
+    "unavailableTitle": "Couldn't check your link",
+    "tryAgain": "Try again"
   },
   "claim": {
     "goToAccount": "Go to account",

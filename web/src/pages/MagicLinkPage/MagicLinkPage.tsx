@@ -22,6 +22,7 @@ type MagicLinkState =
       notice?: string;
     }
   | { status: 'error'; message: string }
+  | { status: 'unavailable' }
   | { status: 'success' };
 
 interface MagicLinkAnswer {
@@ -43,6 +44,7 @@ interface MagicLinkReply {
 const CONFIRM_NEEDED = 428;
 const ALREADY_SIGNED_IN = 409;
 const LINK_REFUSED = 400;
+const SERVER_FAULT = 500;
 
 async function readReply(request: Promise<Response>): Promise<MagicLinkReply> {
   const response = await request;
@@ -70,20 +72,30 @@ function MagicLinkVerification() {
   });
   const [retrySending, setRetrySending] = useState(false);
   const [retryDone, setRetryDone] = useState(false);
+  const [openAttempt, setOpenAttempt] = useState(0);
 
   const token = searchParams.get('token');
   const redirect = sanitizeRelativeRedirect(searchParams.get('redirect'));
   const verification = useRef<{
     token: string;
+    attempt: number;
     reply: Promise<MagicLinkReply>;
   } | null>(null);
   const confirmHeading = useRef<HTMLHeadingElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
+  const confirmNotice = state.status === 'confirm' ? state.notice : undefined;
 
   useEffect(() => {
     if (state.status === 'confirm') {
       confirmHeading.current?.focus();
     }
   }, [state.status]);
+
+  useEffect(() => {
+    if (confirmNotice != null) {
+      confirmButton.current?.focus();
+    }
+  }, [confirmNotice]);
 
   const follow = useCallback(
     ({ ok, status, data }: MagicLinkReply, linkToken: string) => {
@@ -102,6 +114,10 @@ function MagicLinkVerification() {
         setState({ status: 'success' });
         globalThis.location.href =
           sanitizeRelativeRedirect(data.redirect) ?? '/search';
+        return;
+      }
+      if (status >= SERVER_FAULT) {
+        setState({ status: 'unavailable' });
         return;
       }
       if (!ok) {
@@ -135,9 +151,13 @@ function MagicLinkVerification() {
     const validToken = token;
     stripUrlParam('token');
 
-    if (verification.current?.token !== validToken) {
+    if (
+      verification.current?.token !== validToken ||
+      verification.current.attempt !== openAttempt
+    ) {
       verification.current = {
         token: validToken,
+        attempt: openAttempt,
         reply: readReply(
           get2ankiApi().validateMagicToken(validToken, redirect)
         ),
@@ -152,10 +172,7 @@ function MagicLinkVerification() {
         follow(answer, validToken);
       } catch {
         if (cancelled) return;
-        setState({
-          status: 'error',
-          message: t('magicLink.somethingWrong'),
-        });
+        setState({ status: 'unavailable' });
       }
     }
 
@@ -163,7 +180,12 @@ function MagicLinkVerification() {
     return () => {
       cancelled = true;
     };
-  }, [token, redirect, follow, t]);
+  }, [token, redirect, follow, t, openAttempt]);
+
+  const retryOpen = () => {
+    setState({ status: 'loading' });
+    setOpenAttempt((attempt) => attempt + 1);
+  };
 
   const keepConfirming = useCallback(() => {
     setState((current) =>
@@ -267,12 +289,42 @@ function MagicLinkVerification() {
           )}
           <div className={styles.field}>
             <button
+              ref={confirmButton}
               type="button"
               className={styles.submitButton}
               disabled={state.sending}
               onClick={() => handleConfirm(state.token)}
             >
               {state.sending ? t('magicLink.confirming') : actionLabel}
+            </button>
+          </div>
+          <p className={styles.footerText}>
+            <a rel="noreferrer" href="/login">
+              {t('magicLink.backToLogin')}
+            </a>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.status === 'unavailable') {
+    return (
+      <div className={styles.formPage}>
+        <div className={styles.formCard}>
+          <h1 className={styles.formTitle}>
+            {t('magicLink.unavailableTitle')}
+          </h1>
+          <p className={sharedStyles.formDescription}>
+            {t('magicLink.somethingWrong')}
+          </p>
+          <div className={styles.field}>
+            <button
+              type="button"
+              className={styles.submitButton}
+              onClick={retryOpen}
+            >
+              {t('magicLink.tryAgain')}
             </button>
           </div>
           <p className={styles.footerText}>

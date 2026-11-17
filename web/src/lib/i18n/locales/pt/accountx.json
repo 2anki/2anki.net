@@ -18,7 +18,9 @@
     "confirmLoginButton": "Entrar",
     "confirmResetButton": "Redefinir senha",
     "confirming": "Verificando o link",
-    "confirmRetry": "Não deu certo. Tente novamente em alguns minutos."
+    "confirmRetry": "Não deu certo. Tente novamente em alguns minutos.",
+    "unavailableTitle": "Não foi possível verificar o link",
+    "tryAgain": "Tentar novamente"
   },
   "claim": {
     "goToAccount": "Ir para a conta",

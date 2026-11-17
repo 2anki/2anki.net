@@ -18,7 +18,9 @@
     "confirmLoginButton": "Accedi",
     "confirmResetButton": "Reimposta password",
     "confirming": "Verifica del link in corso",
-    "confirmRetry": "Non è andato a buon fine. Riprova tra qualche minuto."
+    "confirmRetry": "Non è andato a buon fine. Riprova tra qualche minuto.",
+    "unavailableTitle": "Impossibile verificare il link",
+    "tryAgain": "Riprova"
   },
   "claim": {
     "goToAccount": "Vai all'account",

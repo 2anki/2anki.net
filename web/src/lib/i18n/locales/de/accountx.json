@@ -18,7 +18,9 @@
     "confirmLoginButton": "Anmelden",
     "confirmResetButton": "Passwort zurücksetzen",
     "confirming": "Dein Link wird geprüft",
-    "confirmRetry": "Das hat nicht geklappt. Versuch es in ein paar Minuten noch einmal."
+    "confirmRetry": "Das hat nicht geklappt. Versuch es in ein paar Minuten noch einmal.",
+    "unavailableTitle": "Dein Link konnte nicht geprüft werden",
+    "tryAgain": "Erneut versuchen"
   },
   "claim": {
     "goToAccount": "Zum Konto",

@@ -971,6 +971,31 @@ describe('without the hashing secret', () => {
     expect(await sessionRows(userId)).toBe(0);
   });
 
+  it('fails closed on confirm: a generic 500, nothing spent, no session', async () => {
+    const token = await issueLink(new Browser());
+    vi.stubEnv('THE_HASHING_SECRET', undefined);
+
+    const res = await confirm(new Browser(), { token });
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual(GENERIC_SERVER_ERROR);
+    expect(cookieNames(res)).toEqual([]);
+    expect(await usedAt(token)).toBeNull();
+    expect(await sessionRows(userId)).toBe(0);
+  });
+
+  it('fails closed with an empty secret too', async () => {
+    const token = await issueLink(new Browser());
+    vi.stubEnv('THE_HASHING_SECRET', '');
+
+    const opened = await openLink(new Browser(), token);
+    const confirmed = await confirm(new Browser(), { token });
+
+    expect(opened.status).toBe(500);
+    expect(confirmed.status).toBe(500);
+    expect(await usedAt(token)).toBeNull();
+  });
+
   it('fails closed on request: a generic 500, no link sent, no binding', async () => {
     vi.stubEnv('THE_HASHING_SECRET', undefined);
 
@@ -984,6 +1009,24 @@ describe('without the hashing secret', () => {
 });
 
 describe('what the magic-link log records', () => {
+  it('never turns a sign-in into an error when the log line fails', async () => {
+    const requester = new Browser();
+    const direct = await issueLink(requester);
+    const other = await issueLink(new Browser());
+    vi.spyOn(console, 'info').mockImplementation(() => {
+      throw new Error('log sink unavailable');
+    });
+
+    const opened = await openLink(requester, direct);
+    const confirmed = await confirm(new Browser(), { token: other });
+
+    expect(opened.status).toBe(200);
+    expect(await opened.json()).toEqual({ token: expect.any(String) });
+    expect(confirmed.status).toBe(200);
+    expect(await confirmed.json()).toEqual({ token: expect.any(String) });
+    expect(await sessionRows(userId)).toBe(2);
+  });
+
   it('counts confirm shown, confirmed, and signed in directly without tokens or cookie values', async () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     const requester = new Browser();

@@ -7,6 +7,7 @@ import {
   magicLinkBindingCookieName,
   magicLinkBindingFor,
   rememberMagicLinkBinding,
+  requireMagicLinkSecret,
 } from './magicLinkBinding';
 
 const DEV_COOKIE = 'magic_link_binding';
@@ -46,6 +47,17 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllEnvs();
+});
+
+describe('requireMagicLinkSecret', () => {
+  it.each([
+    ['unset', undefined],
+    ['empty', ''],
+  ])('throws a TypeError when the secret is %s', (_label, value) => {
+    vi.stubEnv('THE_HASHING_SECRET', value);
+
+    expect(() => requireMagicLinkSecret()).toThrow(TypeError);
+  });
 });
 
 describe('magicLinkBindingFor', () => {

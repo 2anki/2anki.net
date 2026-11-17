@@ -18,7 +18,9 @@
     "confirmLoginButton": "ログイン",
     "confirmResetButton": "パスワードを再設定",
     "confirming": "リンクを確認しています",
-    "confirmRetry": "処理できませんでした。数分後にもう一度お試しください。"
+    "confirmRetry": "処理できませんでした。数分後にもう一度お試しください。",
+    "unavailableTitle": "リンクを確認できませんでした",
+    "tryAgain": "もう一度試す"
   },
   "claim": {
     "goToAccount": "アカウントへ",
