@@ -8,6 +8,7 @@ export interface ApkgArchive {
   collectionName: string;
   mediaManifestRaw: Buffer | null;
   mediaEntries: Map<string, Buffer>;
+  passthroughEntries: Map<string, Buffer>;
 }
 
 // Runs in the main process; the caps bound what one archive can use. Honest
@@ -119,6 +120,7 @@ export async function extractApkg(
       const collections: Map<string, Buffer> = new Map();
       const mediaEntries: Map<string, Buffer> = new Map();
       let mediaManifestRaw: Buffer | null = null;
+      let packageMetaRaw: Buffer | null = null;
       let declaredTotal = 0;
       let inflatedTotal = 0;
       let entryCount = 0;
@@ -157,6 +159,8 @@ export async function extractApkg(
               collections.set(entry.fileName, buf);
             } else if (entry.fileName === 'media') {
               mediaManifestRaw = buf;
+            } else if (entry.fileName === 'meta') {
+              packageMetaRaw = buf;
             } else if (/^\d+$/.test(entry.fileName)) {
               mediaEntries.set(entry.fileName, buf);
             }
@@ -188,12 +192,18 @@ export async function extractApkg(
             return;
           }
         }
+        const passthroughEntries = new Map<string, Buffer>();
+        if (packageMetaRaw) passthroughEntries.set('meta', packageMetaRaw);
+        for (const [candidate, stored] of collections) {
+          if (candidate !== name) passthroughEntries.set(candidate, stored);
+        }
         settled = true;
         resolve({
           collectionBuffer,
           collectionName: name,
           mediaManifestRaw,
           mediaEntries,
+          passthroughEntries,
         });
       });
 

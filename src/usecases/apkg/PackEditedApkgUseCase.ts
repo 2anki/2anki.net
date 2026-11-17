@@ -2,10 +2,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { promisify } from 'node:util';
+import zlib from 'node:zlib';
 import Database from 'better-sqlite3';
 import { createZipArchive } from '../../lib/archiver/createZipArchive';
 import { CardEdit } from '../../services/ApkgPreviewService/applyEditsToCards';
-import { extractApkg } from '../../services/ApkgPreviewService/extractApkg';
+import {
+  ApkgArchive,
+  extractApkg,
+} from '../../services/ApkgPreviewService/extractApkg';
+
+const zstdCompress = promisify(zlib.zstdCompress);
+
+const NEW_FORMAT_COLLECTION = 'collection.anki21b';
 
 export interface PackEditedApkgInput {
   sourceBytes: Buffer;
@@ -16,6 +25,7 @@ export interface PackEditedApkgInput {
 export interface PackEditedApkgOutput {
   buffer: Buffer;
   filename: string;
+  collectionName: string;
 }
 
 function writeTempFile(buffer: Buffer, suffix: string): string {
@@ -87,12 +97,31 @@ function buildEditedSqlite(
   }
 }
 
-async function packApkg(
-  collectionBuffer: Buffer,
-  collectionName: string,
-  mediaManifestRaw: Buffer | null,
-  mediaEntries: Map<string, Buffer>
-): Promise<Buffer> {
+async function buildEntries(
+  archive: ApkgArchive,
+  editedCollection: Buffer
+): Promise<Map<string, Buffer>> {
+  const entries = new Map<string, Buffer>();
+  if (archive.collectionName === NEW_FORMAT_COLLECTION) {
+    for (const [name, stored] of archive.passthroughEntries) {
+      entries.set(name, stored);
+    }
+    entries.set(NEW_FORMAT_COLLECTION, await zstdCompress(editedCollection));
+    entries.set(
+      'media',
+      archive.mediaManifestRaw ?? (await zstdCompress(Buffer.alloc(0)))
+    );
+  } else {
+    entries.set(archive.collectionName, editedCollection);
+    entries.set('media', archive.mediaManifestRaw ?? Buffer.from('{}'));
+  }
+  for (const [name, data] of archive.mediaEntries) {
+    entries.set(name, data);
+  }
+  return entries;
+}
+
+async function packApkg(entries: Map<string, Buffer>): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const archive = createZipArchive({ store: true });
     const chunks: Buffer[] = [];
@@ -104,15 +133,7 @@ async function packApkg(
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') reject(err);
     });
 
-    archive.append(collectionBuffer, { name: collectionName });
-
-    if (mediaManifestRaw) {
-      archive.append(mediaManifestRaw, { name: 'media' });
-    } else {
-      archive.append(Buffer.from('{}'), { name: 'media' });
-    }
-
-    for (const [name, data] of mediaEntries.entries()) {
+    for (const [name, data] of entries) {
       archive.append(data, { name });
     }
 
@@ -131,13 +152,14 @@ export default class PackEditedApkgUseCase {
     );
 
     const apkgBuffer = await packApkg(
-      editedCollectionBuffer,
-      archive.collectionName,
-      archive.mediaManifestRaw,
-      archive.mediaEntries
+      await buildEntries(archive, editedCollectionBuffer)
     );
 
     const baseName = filename.replace(/\.apkg$/i, '');
-    return { buffer: apkgBuffer, filename: `${baseName}-edited.apkg` };
+    return {
+      buffer: apkgBuffer,
+      filename: `${baseName}-edited.apkg`,
+      collectionName: archive.collectionName,
+    };
   }
 }
