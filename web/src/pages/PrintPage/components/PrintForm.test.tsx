@@ -464,6 +464,19 @@ const PREVIEW_OK = {
 
 const SIGN_IN_HEADING = 'Sign in to preview and print this deck';
 
+async function expectSignInPanelReturningToPrint(): Promise<void> {
+  expect(
+    await screen.findByRole('heading', { name: SIGN_IN_HEADING })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('link', { name: 'Create a free account' })
+  ).toHaveAttribute('href', '/register?redirect=/print');
+  expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute(
+    'href',
+    '/login?redirect=/print'
+  );
+}
+
 function previewCalls(): unknown[] {
   return (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
     ([url]) => String(url).includes('/api/apkg/pdf/preview')
@@ -607,9 +620,7 @@ describe('PrintForm preview failures', () => {
 
     pickApkg();
 
-    expect(
-      await screen.findByRole('heading', { name: SIGN_IN_HEADING })
-    ).toBeInTheDocument();
+    await expectSignInPanelReturningToPrint();
   });
 
   test.each([
@@ -752,9 +763,7 @@ describe('PrintForm download failures', () => {
       await screen.findByRole('button', { name: /Download the full PDF/i })
     );
 
-    expect(
-      await screen.findByRole('heading', { name: SIGN_IN_HEADING })
-    ).toBeInTheDocument();
+    await expectSignInPanelReturningToPrint();
   });
 
   test('says the free PDF is used and offers the pass when the quota is reached', async () => {
