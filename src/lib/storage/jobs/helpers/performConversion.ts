@@ -451,7 +451,7 @@ export default async function performConversion(
         unsupportedBlockTypes: bl.unsupportedBlockTypes,
         stats: {
           decks: decks.length,
-          cards: cardLimitPartial ? deliveredCardCount : bl.cardCount,
+          cards: deliveredCardCount,
           emptyBack: bl.emptyBackCount,
         },
       },
