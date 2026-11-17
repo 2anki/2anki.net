@@ -92,7 +92,7 @@ import { SESSION_MAX_AGE_MS } from '../shared/session';
 import { track } from '../services/events/track';
 import { getFeatureFlag } from '../lib/featureFlags/getFeatureFlag';
 import {
-  MAGIC_LINK_BINDING_COOKIE,
+  magicLinkBindingCookieName,
   magicLinkBindingFor,
 } from '../lib/auth/magicLinkBinding';
 
@@ -105,7 +105,7 @@ const magicTokenLookups = (claim: Mock) => ({
 });
 
 const boundTo = (token: string) => ({
-  [MAGIC_LINK_BINDING_COOKIE]: magicLinkBindingFor(token),
+  [magicLinkBindingCookieName()]: magicLinkBindingFor(token),
 });
 
 beforeEach(() => {

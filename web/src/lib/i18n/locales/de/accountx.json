@@ -13,10 +13,12 @@
     "backToLogin": "Zurück zur Anmeldung",
     "confirmLoginTitle": "Als {{email}} bei 2anki anmelden?",
     "confirmResetTitle": "Passwort für {{email}} zurücksetzen?",
-    "confirmHint": "Dieser Link wurde in einem anderen Browser geöffnet als dem, in dem du ihn angefordert hast.",
+    "confirmLoginHint": "Bestätige, dass du es bist, um die Anmeldung abzuschließen.",
+    "confirmResetHint": "Bestätige, dass du es bist, um ein neues Passwort festzulegen.",
     "confirmLoginButton": "Anmelden",
     "confirmResetButton": "Passwort zurücksetzen",
-    "confirming": "Dein Link wird geprüft"
+    "confirming": "Dein Link wird geprüft",
+    "confirmRetry": "Das hat nicht geklappt. Versuch es in ein paar Minuten noch einmal."
   },
   "claim": {
     "goToAccount": "Zum Konto",

@@ -38,6 +38,10 @@
   letter-spacing: var(--tracking-tight);
 }
 
+.formTitle:focus {
+  outline: none;
+}
+
 .field {
   margin-bottom: 1.5rem;
 }

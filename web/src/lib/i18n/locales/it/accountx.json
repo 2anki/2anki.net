@@ -13,10 +13,12 @@
     "backToLogin": "Torna all'accesso",
     "confirmLoginTitle": "Accedere a 2anki come {{email}}?",
     "confirmResetTitle": "Reimpostare la password di {{email}}?",
-    "confirmHint": "Questo link è stato aperto in un browser diverso da quello che l’ha richiesto.",
+    "confirmLoginHint": "Conferma che sei tu per completare l’accesso.",
+    "confirmResetHint": "Conferma che sei tu per scegliere una nuova password.",
     "confirmLoginButton": "Accedi",
     "confirmResetButton": "Reimposta password",
-    "confirming": "Verifica del link in corso"
+    "confirming": "Verifica del link in corso",
+    "confirmRetry": "Non è andato a buon fine. Riprova tra qualche minuto."
   },
   "claim": {
     "goToAccount": "Vai all'account",

@@ -51,7 +51,8 @@ describe('MagicLinkPage in German', () => {
 
   it('asks in German before signing in from another browser', async () => {
     mockValidateMagicToken.mockResolvedValue({
-      ok: true,
+      ok: false,
+      status: 428,
       json: () =>
         Promise.resolve({
           confirm: true,

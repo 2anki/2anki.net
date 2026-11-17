@@ -1,7 +1,11 @@
 import crypto from 'node:crypto';
 import express from 'express';
 import { InMemoryRateLimiter } from '../lib/rateLimit/InMemoryRateLimiter';
-import { hashIp, resolveClientIp } from '../lib/rateLimit/ipHelpers';
+import {
+  hashIp,
+  ipRateLimitBucket,
+  resolveClientIp,
+} from '../lib/rateLimit/ipHelpers';
 
 // The reset-redemption endpoint is unauthenticated by nature, so throttle
 // per-IP attempts to keep it from being usable for token guessing.
@@ -101,6 +105,11 @@ function readAnalyticsAnonId(req: express.Request): string | null {
   const anonId = cookies?.anon_id;
   return analyticsAnonId(req, typeof anonId === 'string' ? anonId : null);
 }
+
+// Neither answer is a 2xx, so a page loaded before this release falls into its
+// error branch and shows the message instead of treating it as a sign-in.
+const MAGIC_LINK_CONFIRM_NEEDED = 428;
+const MAGIC_LINK_ALREADY_SIGNED_IN = 409;
 
 const MAGIC_LINK_EXPIRED = {
   message: 'This link is invalid or has expired.',
@@ -1644,7 +1653,8 @@ class UsersController {
         .status(403)
         .json({ message: 'Open the link from your email.' });
     }
-    if (!this.#magicConfirmLimiter.check(hashIp(resolveClientIp(req)))) {
+    const network = hashIp(ipRateLimitBucket(resolveClientIp(req)));
+    if (!this.#magicConfirmLimiter.check(network)) {
       return res
         .status(429)
         .json({ message: 'Too many attempts. Try again in a few minutes.' });
@@ -1665,10 +1675,13 @@ class UsersController {
     }
   }
 
+  // Keyed per network (IPv6 /64, IPv4 address) with no global cap: tokens are
+  // 512-bit, so guessing is not the threat, and a shared cap would let one
+  // network block every other-device sign-in for the window.
   readonly #magicConfirmLimiter = new InMemoryRateLimiter({
     windowMs: 15 * 60 * 1000,
     perKeyMax: 10,
-    globalMax: 500,
+    globalMax: Number.POSITIVE_INFINITY,
   });
 
   async #askToConfirmMagicLink(
@@ -1682,7 +1695,8 @@ class UsersController {
     if (user?.email == null) {
       return res.status(400).json(MAGIC_LINK_EXPIRED);
     }
-    return res.status(200).json({
+    return res.status(MAGIC_LINK_CONFIRM_NEEDED).json({
+      message: 'Open the link in your email again to finish signing in.',
       confirm: true,
       purpose: pending.purpose,
       email: maskEmail(user.email),
@@ -1701,11 +1715,13 @@ class UsersController {
       if (signedIn != null && Number(signedIn.id) === owner) {
         logMagicLink('already_signed_in', { userId: owner });
         const redirect = sanitizeRelativeRedirect(input?.redirect);
+        const answer = {
+          message: "You're already signed in. Open 2anki to continue.",
+          signedIn: true,
+        };
         return res
-          .status(200)
-          .json(
-            redirect == null ? { signedIn: true } : { signedIn: true, redirect }
-          );
+          .status(MAGIC_LINK_ALREADY_SIGNED_IN)
+          .json(redirect == null ? answer : { ...answer, redirect });
       }
     }
     logMagicLink(owner == null ? 'invalid' : 'spent', { userId: owner });

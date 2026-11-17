@@ -66,7 +66,14 @@ describe('MagicTokenRepository', () => {
       expect((await repo.findByToken('old'))?.used_at).toBeNull();
     });
 
-    it('updates only an unspent, unexpired row', () => {
+    it('leaves an email-verification token unspent', async () => {
+      await repo.create('verify', 7, 'verify_email', inFifteenMinutes());
+
+      expect(await repo.consumeValidToken('verify')).toBeNull();
+      expect((await repo.findByToken('verify'))?.used_at).toBeNull();
+    });
+
+    it('updates only an unspent, unexpired sign-in row', () => {
       const at = new Date('2026-11-17T12:00:00Z');
       const pg = knex({ client: 'pg' });
       const query = new MagicTokenRepository(pg)
@@ -74,9 +81,15 @@ describe('MagicTokenRepository', () => {
         .toSQL();
 
       expect(query.sql).toBe(
-        'update "magic_tokens" set "used_at" = ? where "token" = ? and "used_at" is null and "expires_at" > ?'
+        'update "magic_tokens" set "used_at" = ? where "token" = ? and "used_at" is null and "expires_at" > ? and "purpose" in (?, ?)'
       );
-      expect(query.bindings).toEqual([at, 'tok', at]);
+      expect(query.bindings).toEqual([
+        at,
+        'tok',
+        at,
+        'login',
+        'password_reset',
+      ]);
     });
   });
 

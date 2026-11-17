@@ -21,10 +21,20 @@ vi.mock('../../lib/backend/get2ankiApi', () => ({
 const EXPIRED_COPY =
   'This link was already used or has expired. Send yourself a new one below.';
 
-const answer = (ok: boolean, body: unknown) => ({
-  ok,
+const answer = (status: number, body: unknown) => ({
+  ok: status >= 200 && status < 300,
+  status,
   json: () => Promise.resolve(body),
 });
+
+const CONFIRM_LOGIN = {
+  message: 'Open the link in your email again to finish signing in.',
+  confirm: true,
+  purpose: 'login',
+  email: 'l•••@example.com',
+};
+
+const RETRY_COPY = "That didn't go through. Try again in a few minutes.";
 
 function renderMagicLinkPage(queryString: string) {
   return render(
@@ -85,7 +95,7 @@ describe('MagicLinkPage', () => {
 
   it('shows the expired page in the reader’s language, not the server’s English', async () => {
     mockValidateMagicToken.mockResolvedValue(
-      answer(false, {
+      answer(400, {
         message: 'This link is invalid or has expired.',
         code: 'expired',
       })
@@ -101,15 +111,9 @@ describe('MagicLinkPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  describe('when the link was opened in another browser', () => {
+  describe('when the link needs a confirming click', () => {
     it('asks which account to sign in to before using the link', async () => {
-      mockValidateMagicToken.mockResolvedValue(
-        answer(true, {
-          confirm: true,
-          purpose: 'login',
-          email: 'l•••@example.com',
-        })
-      );
+      mockValidateMagicToken.mockResolvedValue(answer(428, CONFIRM_LOGIN));
       renderMagicLinkPage('?token=abc123');
 
       expect(
@@ -118,25 +122,35 @@ describe('MagicLinkPage', () => {
         })
       ).toBeInTheDocument();
       expect(
-        screen.getByText(
-          'This link was opened in a different browser from the one that requested it.'
-        )
+        screen.getByText("Confirm it's you to finish signing in.")
       ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
+      expect(
+        screen.queryByText(
+          'Open the link in your email again to finish signing in.'
+        )
+      ).not.toBeInTheDocument();
       expect(mockConfirmMagicLink).not.toHaveBeenCalled();
+    });
+
+    it('moves focus to the question so a screen reader announces it', async () => {
+      mockValidateMagicToken.mockResolvedValue(answer(428, CONFIRM_LOGIN));
+      renderMagicLinkPage('?token=abc123');
+
+      const heading = await screen.findByRole('heading', {
+        name: 'Sign in to 2anki as l•••@example.com?',
+      });
+
+      await waitFor(() => {
+        expect(heading).toHaveFocus();
+      });
     });
 
     it('signs in on the click and follows the redirect', async () => {
       vi.stubGlobal('location', { href: '' });
-      mockValidateMagicToken.mockResolvedValue(
-        answer(true, {
-          confirm: true,
-          purpose: 'login',
-          email: 'l•••@example.com',
-        })
-      );
+      mockValidateMagicToken.mockResolvedValue(answer(428, CONFIRM_LOGIN));
       mockConfirmMagicLink.mockResolvedValue(
-        answer(true, { token: 'jwt-tok', redirect: '/upload' })
+        answer(200, { token: 'jwt-tok', redirect: '/upload' })
       );
       renderMagicLinkPage('?token=abc123&redirect=/upload');
 
@@ -148,17 +162,25 @@ describe('MagicLinkPage', () => {
       expect(mockConfirmMagicLink).toHaveBeenCalledWith('abc123', '/upload');
     });
 
+    it('disables the button and says it is checking while the click is pending', async () => {
+      mockValidateMagicToken.mockResolvedValue(answer(428, CONFIRM_LOGIN));
+      mockConfirmMagicLink.mockReturnValue(new Promise(() => {}));
+      renderMagicLinkPage('?token=abc123');
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }));
+
+      expect(
+        await screen.findByRole('button', { name: 'Checking your link' })
+      ).toBeDisabled();
+    });
+
     it('offers a password reset for a reset link and opens the reset page', async () => {
       vi.stubGlobal('location', { href: '' });
       mockValidateMagicToken.mockResolvedValue(
-        answer(true, {
-          confirm: true,
-          purpose: 'password_reset',
-          email: 'l•••@example.com',
-        })
+        answer(428, { ...CONFIRM_LOGIN, purpose: 'password_reset' })
       );
       mockConfirmMagicLink.mockResolvedValue(
-        answer(true, { purpose: 'password_reset', reset_token: 'reset-1' })
+        answer(200, { purpose: 'password_reset', reset_token: 'reset-1' })
       );
       renderMagicLinkPage('?token=abc123');
 
@@ -166,6 +188,9 @@ describe('MagicLinkPage', () => {
         await screen.findByRole('heading', {
           name: 'Reset the password for l•••@example.com?',
         })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Confirm it's you to choose a new password.")
       ).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Reset password' }));
 
@@ -175,16 +200,8 @@ describe('MagicLinkPage', () => {
     });
 
     it('shows the expired page when the confirm is refused', async () => {
-      mockValidateMagicToken.mockResolvedValue(
-        answer(true, {
-          confirm: true,
-          purpose: 'login',
-          email: 'l•••@example.com',
-        })
-      );
-      mockConfirmMagicLink.mockResolvedValue(
-        answer(false, { code: 'expired' })
-      );
+      mockValidateMagicToken.mockResolvedValue(answer(428, CONFIRM_LOGIN));
+      mockConfirmMagicLink.mockResolvedValue(answer(400, { code: 'expired' }));
       renderMagicLinkPage('?token=abc123');
 
       fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }));
@@ -192,29 +209,64 @@ describe('MagicLinkPage', () => {
       expect(await screen.findByText(EXPIRED_COPY)).toBeInTheDocument();
     });
 
-    it('says something went wrong when the confirm cannot reach the server', async () => {
-      mockValidateMagicToken.mockResolvedValue(
-        answer(true, {
-          confirm: true,
-          purpose: 'login',
-          email: 'l•••@example.com',
-        })
-      );
+    it.each([
+      ['rate-limited', 429],
+      ['refused as cross-site', 403],
+      ['hit a server error', 500],
+    ])(
+      'keeps the link usable when the confirm is %s',
+      async (_label, status) => {
+        mockValidateMagicToken.mockResolvedValue(answer(428, CONFIRM_LOGIN));
+        mockConfirmMagicLink.mockResolvedValueOnce(
+          answer(status, { message: 'Too many attempts.' })
+        );
+        renderMagicLinkPage('?token=abc123');
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(RETRY_COPY);
+        expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
+        expect(screen.queryByText(EXPIRED_COPY)).not.toBeInTheDocument();
+      }
+    );
+
+    it('signs in when the person tries again after the wait', async () => {
+      vi.stubGlobal('location', { href: '' });
+      mockValidateMagicToken.mockResolvedValue(answer(428, CONFIRM_LOGIN));
+      mockConfirmMagicLink
+        .mockResolvedValueOnce(answer(429, {}))
+        .mockResolvedValueOnce(answer(200, { token: 'jwt-tok' }));
+      renderMagicLinkPage('?token=abc123');
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }));
+      await screen.findByRole('alert');
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+      await waitFor(() => {
+        expect(globalThis.location.href).toBe('/search');
+      });
+    });
+
+    it('keeps the link usable when the confirm cannot reach the server', async () => {
+      mockValidateMagicToken.mockResolvedValue(answer(428, CONFIRM_LOGIN));
       mockConfirmMagicLink.mockRejectedValue(new Error('offline'));
       renderMagicLinkPage('?token=abc123');
 
       fireEvent.click(await screen.findByRole('button', { name: 'Sign in' }));
 
-      expect(
-        await screen.findByText('Something went wrong. Try again.')
-      ).toBeInTheDocument();
+      expect(await screen.findByRole('alert')).toHaveTextContent(RETRY_COPY);
+      expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
     });
   });
 
   it('sends someone already signed in as the link’s owner into the app', async () => {
     vi.stubGlobal('location', { href: '' });
     mockValidateMagicToken.mockResolvedValue(
-      answer(true, { signedIn: true, redirect: '/upload' })
+      answer(409, {
+        message: "You're already signed in. Open 2anki to continue.",
+        signedIn: true,
+        redirect: '/upload',
+      })
     );
     renderMagicLinkPage('?token=abc123');
 
@@ -366,9 +418,7 @@ describe('MagicLinkPage', () => {
 
   it('opens the link once even when effects run twice in strict mode', async () => {
     vi.stubGlobal('location', { href: '' });
-    mockValidateMagicToken.mockResolvedValue(
-      answer(true, { token: 'jwt-tok' })
-    );
+    mockValidateMagicToken.mockResolvedValue(answer(200, { token: 'jwt-tok' }));
     render(
       <StrictMode>
         <CookiesProvider>

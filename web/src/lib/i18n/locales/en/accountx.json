@@ -13,10 +13,12 @@
     "backToLogin": "Back to login",
     "confirmLoginTitle": "Sign in to 2anki as {{email}}?",
     "confirmResetTitle": "Reset the password for {{email}}?",
-    "confirmHint": "This link was opened in a different browser from the one that requested it.",
+    "confirmLoginHint": "Confirm it's you to finish signing in.",
+    "confirmResetHint": "Confirm it's you to choose a new password.",
     "confirmLoginButton": "Sign in",
     "confirmResetButton": "Reset password",
-    "confirming": "Checking your link"
+    "confirming": "Checking your link",
+    "confirmRetry": "That didn't go through. Try again in a few minutes."
   },
   "claim": {
     "goToAccount": "Go to account",

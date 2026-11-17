@@ -13,10 +13,12 @@
     "backToLogin": "Terug naar aanmelden",
     "confirmLoginTitle": "Inloggen bij 2anki als {{email}}?",
     "confirmResetTitle": "Wachtwoord van {{email}} opnieuw instellen?",
-    "confirmHint": "Deze link is geopend in een andere browser dan die waarin je hem hebt aangevraagd.",
+    "confirmLoginHint": "Bevestig dat jij het bent om het inloggen af te ronden.",
+    "confirmResetHint": "Bevestig dat jij het bent om een nieuw wachtwoord te kiezen.",
     "confirmLoginButton": "Inloggen",
     "confirmResetButton": "Wachtwoord opnieuw instellen",
-    "confirming": "Link wordt gecontroleerd"
+    "confirming": "Link wordt gecontroleerd",
+    "confirmRetry": "Dat is niet gelukt. Probeer het over een paar minuten opnieuw."
   },
   "claim": {
     "goToAccount": "Naar account",

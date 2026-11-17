@@ -13,10 +13,12 @@
     "backToLogin": "Назад ко входу",
     "confirmLoginTitle": "Войти в 2anki как {{email}}?",
     "confirmResetTitle": "Сбросить пароль для {{email}}?",
-    "confirmHint": "Эта ссылка открыта не в том браузере, в котором её запросили.",
+    "confirmLoginHint": "Подтверди, что это ты, чтобы завершить вход.",
+    "confirmResetHint": "Подтверди, что это ты, чтобы задать новый пароль.",
     "confirmLoginButton": "Войти",
     "confirmResetButton": "Сбросить пароль",
-    "confirming": "Проверяем ссылку"
+    "confirming": "Проверяем ссылку",
+    "confirmRetry": "Не получилось. Попробуй ещё раз через несколько минут."
   },
   "claim": {
     "goToAccount": "Перейти в аккаунт",

@@ -13,10 +13,12 @@
     "backToLogin": "Powrót do logowania",
     "confirmLoginTitle": "Zalogować się do 2anki jako {{email}}?",
     "confirmResetTitle": "Zresetować hasło dla {{email}}?",
-    "confirmHint": "Ten link otwarto w innej przeglądarce niż ta, w której o niego poproszono.",
+    "confirmLoginHint": "Potwierdź, że to ty, aby dokończyć logowanie.",
+    "confirmResetHint": "Potwierdź, że to ty, aby ustawić nowe hasło.",
     "confirmLoginButton": "Zaloguj się",
     "confirmResetButton": "Zresetuj hasło",
-    "confirming": "Sprawdzanie linku"
+    "confirming": "Sprawdzanie linku",
+    "confirmRetry": "Nie udało się. Spróbuj ponownie za kilka minut."
   },
   "claim": {
     "goToAccount": "Przejdź do konta",

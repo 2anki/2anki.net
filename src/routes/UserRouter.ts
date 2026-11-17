@@ -190,7 +190,7 @@ const UserRouter = () => {
    * /api/users/magic/{token}:
    *   get:
    *     summary: Open a magic link
-   *     description: Spends the token only when the magic_link_binding cookie shows this is the browser that requested the link, then creates a session (login) or returns reset info (password_reset). Any other browser, a HEAD request, or a prefetch gets confirm data and the token stays unspent. A spent token opened by a browser already signed in as its owner returns signedIn without a new session.
+   *     description: Spends the token only when the magic-link binding cookie (__Host-magic_link_binding in production) shows this is the browser that requested the link, then creates a session (login) or returns reset info (password_reset). Any other browser, a HEAD request, or a prefetch gets 428 with confirm data and the token stays unspent. A spent token opened by a browser already signed in as its owner gets 409 without a new session.
    *     tags: [Authentication]
    *     parameters:
    *       - in: path
@@ -200,9 +200,13 @@ const UserRouter = () => {
    *           type: string
    *     responses:
    *       200:
-   *         description: "Session created ({ token, redirect? }), reset info ({ purpose: password_reset, reset_token }), confirm data ({ confirm: true, purpose, email } with the email masked), or { signedIn: true, redirect? }"
+   *         description: "Session created ({ token, redirect? }) or reset info ({ purpose: password_reset, reset_token })"
    *       400:
-   *         description: "Token invalid, expired, or already used ({ message, code: expired })"
+   *         description: "Token invalid, expired, already used, or not a sign-in token ({ message, code: expired })"
+   *       409:
+   *         description: "Already used, and this browser is signed in as its owner ({ message, signedIn: true, redirect? })"
+   *       428:
+   *         description: "Confirmation needed ({ message, confirm: true, purpose, email } with the email masked)"
    *         content:
    *           application/json:
    *             schema:
@@ -217,7 +221,7 @@ const UserRouter = () => {
    * /api/users/magic/confirm:
    *   post:
    *     summary: Confirm a magic link opened in another browser
-   *     description: Spends the token from the JSON body and signs in (login) or returns reset info (password_reset). Accepts only a same-origin JSON request, rate-limited per IP.
+   *     description: Spends the token from the JSON body and signs in (login) or returns reset info (password_reset). Accepts only a same-origin JSON request, rate-limited to 10 per network (IPv4 address or IPv6 /64) per 15 minutes.
    *     tags: [Authentication]
    *     requestBody:
    *       required: true
@@ -233,9 +237,11 @@ const UserRouter = () => {
    *                 type: string
    *     responses:
    *       200:
-   *         description: Session created, reset info returned, or { signedIn true } for the owner's own repeat confirm
+   *         description: Session created or reset info returned
    *       400:
-   *         description: Token missing, invalid, expired, or already used
+   *         description: Token missing, invalid, expired, already used, or not a sign-in token
+   *       409:
+   *         description: Already used, and this browser is signed in as its owner
    *       403:
    *         description: Not a same-origin JSON request
    *       429:

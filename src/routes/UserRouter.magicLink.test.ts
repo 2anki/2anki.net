@@ -31,8 +31,16 @@ import ErrorHandler from './middleware/ErrorHandler';
 
 const EMAIL = 'learner@example.com';
 const OTHER_EMAIL = 'someone.else@example.org';
+const HOST = '127.0.0.1';
+const BINDING = 'magic_link_binding';
+const HOST_BINDING = '__Host-magic_link_binding';
 const AUTHORIZE_URL =
   '/mcp/authorize?response_type=code&client_id=c1&redirect_uri=https%3A%2F%2Fchatgpt.com%2Fcb&state=s1&code_challenge=abc&code_challenge_method=S256';
+const GENERIC_SERVER_ERROR = {
+  code: 'unknown',
+  message:
+    'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.',
+};
 
 async function makeDatabase(): Promise<Knex> {
   const db = knex({
@@ -83,37 +91,90 @@ async function makeDatabase(): Promise<Knex> {
   return db;
 }
 
+interface StoredCookie {
+  name: string;
+  value: string;
+  path: string;
+}
+
+function pathMatches(requestPath: string, cookiePath: string): boolean {
+  if (requestPath === cookiePath) {
+    return true;
+  }
+  return (
+    requestPath.startsWith(cookiePath) &&
+    (cookiePath.endsWith('/') || requestPath[cookiePath.length] === '/')
+  );
+}
+
+function defaultPath(requestPath: string): string {
+  const lastSlash = requestPath.lastIndexOf('/');
+  return lastSlash <= 0 ? '/' : requestPath.slice(0, lastSlash);
+}
+
+// Follows the RFC 6265 rules a browser applies on a loopback origin, which
+// browsers treat as secure: Path scoping, host-only cookies, cookie prefixes.
 class Browser {
-  private readonly jar = new Map<string, string>();
+  private cookies: StoredCookie[] = [];
 
   constructor(entries: Record<string, string> = {}) {
     for (const [name, value] of Object.entries(entries)) {
-      this.jar.set(name, value);
+      this.cookies.push({ name, value, path: '/' });
     }
   }
 
   get(name: string): string | undefined {
-    return this.jar.get(name);
+    return this.cookies.find((cookie) => cookie.name === name)?.value;
   }
 
-  set(name: string, value: string) {
-    this.jar.set(name, value);
+  header(requestPath: string): string {
+    return this.cookies
+      .filter((cookie) => pathMatches(requestPath, cookie.path))
+      .map((cookie) => `${cookie.name}=${cookie.value}`)
+      .join('; ');
   }
 
-  header(): string {
-    return [...this.jar].map(([name, value]) => `${name}=${value}`).join('; ');
-  }
-
-  absorb(res: Response) {
+  absorb(res: Response, requestPath: string) {
     for (const line of res.headers.getSetCookie()) {
-      const [pair] = line.split(';');
-      const name = pair.slice(0, pair.indexOf('='));
-      const value = pair.slice(pair.indexOf('=') + 1);
-      if (value === '' || /Expires=Thu, 01 Jan 1970/.test(line)) {
-        this.jar.delete(name);
-      } else {
-        this.jar.set(name, value);
-      }
+      this.store(line, requestPath);
+    }
+  }
+
+  store(line: string, requestPath: string) {
+    const [pair, ...parts] = line.split(';');
+    const name = pair.slice(0, pair.indexOf('=')).trim();
+    const value = pair.slice(pair.indexOf('=') + 1).trim();
+    const attributes = new Map(
+      parts.map((part) => {
+        const [key, ...rest] = part.trim().split('=');
+        return [key.toLowerCase(), rest.join('=')] as const;
+      })
+    );
+    const secure = attributes.has('secure');
+    const domain = attributes.get('domain');
+    const pathAttribute = attributes.get('path');
+    const path = pathAttribute?.startsWith('/')
+      ? pathAttribute
+      : defaultPath(requestPath);
+    if (domain != null && domain.replace(/^\./, '') !== HOST) {
+      return;
+    }
+    if (
+      name.startsWith('__Host-') &&
+      (!secure || path !== '/' || domain != null)
+    ) {
+      return;
+    }
+    this.cookies = this.cookies.filter(
+      (cookie) => !(cookie.name === name && cookie.path === path)
+    );
+    const maxAge = attributes.get('max-age');
+    const expires = attributes.get('expires');
+    const expired =
+      (maxAge != null && Number(maxAge) <= 0) ||
+      (expires != null && Date.parse(expires) <= Date.now());
+    if (!expired) {
+      this.cookies.push({ name, value, path });
     }
   }
 }
@@ -126,6 +187,7 @@ let otherUserId: number;
 beforeEach(async () => {
   vi.stubEnv('SECRET', 'route-test-secret');
   vi.stubEnv('THE_HASHING_SECRET', 'route-test-hashing-secret');
+  vi.stubEnv('NODE_ENV', 'test');
   holder.sendMagicLinkEmail = vi.fn().mockResolvedValue({ suppressed: false });
   holder.db = await makeDatabase();
   [userId] = await holder.db('users').insert({
@@ -142,6 +204,7 @@ beforeEach(async () => {
   });
 
   const app = express();
+  app.set('trust proxy', 1);
   app.use(express.json());
   app.use(cookieParser());
   app.use(UserRouter());
@@ -161,7 +224,7 @@ beforeEach(async () => {
   );
   server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
-  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  base = `http://${HOST}:${(server.address() as AddressInfo).port}`;
 });
 
 afterEach(async () => {
@@ -171,25 +234,42 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
+async function send(
+  browser: Browser,
+  target: string,
+  init: { method?: string; headers?: Record<string, string>; body?: string }
+): Promise<Response> {
+  const pathname = new URL(target, base).pathname;
+  const res = await fetch(`${base}${target}`, {
+    method: init.method ?? 'GET',
+    headers: { cookie: browser.header(pathname), ...init.headers },
+    body: init.body,
+  });
+  browser.absorb(res, pathname);
+  return res;
+}
+
 const sentTokens = (): string[] =>
   (holder.sendMagicLinkEmail?.mock.calls ?? []).map(([, token]) => token);
 
-async function requestLink(
+function requestLink(
   browser: Browser,
   email = EMAIL,
-  body: Record<string, string> = {}
+  body: Record<string, string> = {},
+  headers: Record<string, string> = {
+    'content-type': 'application/json',
+    'sec-fetch-site': 'same-origin',
+  }
 ): Promise<Response> {
-  const res = await fetch(`${base}/api/users/magic-link`, {
+  const payload = { email, ...body };
+  return send(browser, '/api/users/magic-link', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'sec-fetch-site': 'same-origin',
-      cookie: browser.header(),
-    },
-    body: JSON.stringify({ email, ...body }),
+    headers,
+    body:
+      headers['content-type'] === 'application/json'
+        ? JSON.stringify(payload)
+        : new URLSearchParams(payload).toString(),
   });
-  browser.absorb(res);
-  return res;
 }
 
 async function issueLink(browser: Browser, email = EMAIL): Promise<string> {
@@ -198,7 +278,7 @@ async function issueLink(browser: Browser, email = EMAIL): Promise<string> {
   return tokens[tokens.length - 1];
 }
 
-async function openLink(
+function openLink(
   browser: Browser,
   token: string,
   options: {
@@ -207,18 +287,13 @@ async function openLink(
     query?: string;
   } = {}
 ): Promise<Response> {
-  const res = await fetch(
-    `${base}/api/users/magic/${token}${options.query ?? ''}`,
-    {
-      method: options.method ?? 'GET',
-      headers: { cookie: browser.header(), ...options.headers },
-    }
-  );
-  browser.absorb(res);
-  return res;
+  return send(browser, `/api/users/magic/${token}${options.query ?? ''}`, {
+    method: options.method,
+    headers: options.headers,
+  });
 }
 
-async function confirm(
+function confirm(
   browser: Browser,
   body: Record<string, unknown>,
   headers: Record<string, string> = {
@@ -226,16 +301,14 @@ async function confirm(
     'sec-fetch-site': 'same-origin',
   }
 ): Promise<Response> {
-  const res = await fetch(`${base}/api/users/magic/confirm`, {
+  return send(browser, '/api/users/magic/confirm', {
     method: 'POST',
-    headers: { cookie: browser.header(), ...headers },
+    headers,
     body:
       headers['content-type'] === 'application/json'
         ? JSON.stringify(body)
         : new URLSearchParams(body as Record<string, string>).toString(),
   });
-  browser.absorb(res);
-  return res;
 }
 
 async function usedAt(token: string): Promise<unknown> {
@@ -257,31 +330,84 @@ async function signedInBrowser(owner: number): Promise<Browser> {
 const cookieNames = (res: Response) =>
   res.headers.getSetCookie().map((c) => c.split('=')[0]);
 
+const bindingLine = (res: Response, name = BINDING) =>
+  res.headers.getSetCookie().find((c) => c.startsWith(`${name}=`)) ?? '';
+
+const cookieAttributes = (line: string) =>
+  line
+    .split(';')
+    .slice(1)
+    .map((part) => part.trim().split('=')[0])
+    .sort();
+
 const EXPIRED = {
   message: 'This link is invalid or has expired.',
   code: 'expired',
 };
 
-describe('requesting a magic link', () => {
-  it('binds the requesting browser with an HttpOnly, Lax cookie scoped to the magic-link API', async () => {
-    const res = await requestLink(new Browser());
+const confirmNeeded = (purpose: string, email: string) => ({
+  message: 'Open the link in your email again to finish signing in.',
+  confirm: true,
+  purpose,
+  email,
+});
 
-    const binding = res.headers
-      .getSetCookie()
-      .find((c) => c.startsWith('magic_link_binding='));
+const ALREADY_SIGNED_IN = {
+  message: "You're already signed in. Open 2anki to continue.",
+  signedIn: true,
+};
+
+describe('the test cookie jar', () => {
+  it('does not send a cookie outside its Path', () => {
+    const browser = new Browser();
+    browser.store('scoped=1; Path=/api/users/magic', '/api/users/magic-link');
+
+    expect(browser.header('/api/users/magic/abc')).toBe('scoped=1');
+    expect(browser.header('/api/users/magic-link')).toBe('');
+  });
+
+  it.each([
+    ['without Secure', '__Host-x=1; Path=/'],
+    ['with a narrower Path', '__Host-x=1; Secure; Path=/api'],
+    ['with a Domain', `__Host-x=1; Secure; Path=/; Domain=${HOST}`],
+  ])('refuses a __Host- cookie %s', (_label, line) => {
+    const browser = new Browser();
+    browser.store(line, '/');
+
+    expect(browser.get('__Host-x')).toBeUndefined();
+  });
+
+  it('refuses a cookie for another domain', () => {
+    const browser = new Browser();
+    browser.store('tossed=1; Path=/; Domain=2anki.net', '/');
+
+    expect(browser.get('tossed')).toBeUndefined();
+  });
+});
+
+describe('requesting a magic link', () => {
+  it('binds the requesting browser with an HttpOnly, Lax cookie on every path', async () => {
+    const browser = new Browser();
+    const res = await requestLink(browser);
+
+    const binding = bindingLine(res);
     expect(res.status).toBe(200);
     expect(binding).toMatch(/^magic_link_binding=[0-9a-f]{64}; /);
     expect(binding).toMatch(/HttpOnly/);
     expect(binding).toMatch(/SameSite=Lax/);
-    expect(binding).toMatch(/Path=\/api\/users\/magic;/);
+    expect(binding).toMatch(/Path=\/;/);
     expect(binding).toMatch(/Max-Age=900/);
+    expect(binding).not.toMatch(/Domain=/);
+    expect(browser.header('/api/users/magic-link')).toMatch(
+      /^magic_link_binding=/
+    );
   });
 
   it('never puts the emailed token in the cookie', async () => {
     const browser = new Browser();
     const token = await issueLink(browser);
 
-    expect(browser.get('magic_link_binding')).not.toContain(token.slice(0, 16));
+    expect(browser.get(BINDING)).not.toContain(token.slice(0, 16));
   });
 
   it('answers a reset request for an unknown address with the same cookie shape', async () => {
@@ -292,11 +418,64 @@ describe('requesting a magic link', () => {
     expect(sentTokens()).toEqual([]);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ message: 'ok' });
-    expect(cookieNames(res)).toEqual(['magic_link_binding']);
-    expect(res.headers.getSetCookie()[0]).toMatch(
-      /^magic_link_binding=[0-9a-f]{64}; /
+    expect(cookieNames(res)).toEqual([BINDING]);
+    expect(bindingLine(res)).toMatch(/^magic_link_binding=[0-9a-f]{64}; /);
+  });
+
+  it('never echoes a binding the caller sends, so an unknown address looks like a known one', async () => {
+    const issued = await requestLink(new Browser());
+    const known = '0123456789abcdef'.repeat(4);
+    const prober = new Browser({ [BINDING]: known });
+
+    const unknown = await requestLink(prober, 'nobody@example.com', {
+      purpose: 'password_reset',
+    });
+
+    expect(sentTokens()).toHaveLength(1);
+    expect(prober.get(BINDING)).toMatch(/^[0-9a-f]{64}$/);
+    expect(prober.get(BINDING)).not.toBe(known);
+    expect(cookieAttributes(bindingLine(unknown))).toEqual(
+      cookieAttributes(bindingLine(issued))
     );
   });
+
+  it('still sends the link for a cross-site JSON request, as before, but sets no binding', async () => {
+    const res = await requestLink(
+      new Browser(),
+      EMAIL,
+      {},
+      {
+        'content-type': 'application/json',
+        'sec-fetch-site': 'cross-site',
+      }
+    );
+
+    expect(res.status).toBe(200);
+    expect(sentTokens()).toHaveLength(1);
+    expect(cookieNames(res)).toEqual([]);
+  });
+
+  it.each([
+    ['a form-encoded', 'application/x-www-form-urlencoded'],
+    ['a text/plain', 'text/plain'],
+  ])(
+    'sends nothing and sets no binding for %s body, as before',
+    async (_label, contentType) => {
+      const res = await requestLink(
+        new Browser(),
+        EMAIL,
+        {},
+        {
+          'content-type': contentType,
+        }
+      );
+
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual(GENERIC_SERVER_ERROR);
+      expect(sentTokens()).toEqual([]);
+      expect(cookieNames(res)).toEqual([]);
+    }
+  );
 });
 
 describe('opening a magic link in the browser that requested it', () => {
@@ -309,9 +488,9 @@ describe('opening a magic link in the browser that requested it', () => {
 
     expect(res.status).toBe(200);
     expect(body).toEqual({ token: expect.any(String) });
-    expect(cookieNames(res).sort()).toEqual(['magic_link_binding', 'token']);
+    expect(cookieNames(res).sort()).toEqual([BINDING, 'token']);
     expect(browser.get('token')).toBe(body.token);
-    expect(browser.get('magic_link_binding')).toBeUndefined();
+    expect(browser.get(BINDING)).toBeUndefined();
     expect(await usedAt(token)).not.toBeNull();
     expect(await sessionRows(userId)).toBe(1);
   });
@@ -365,8 +544,49 @@ describe('opening a magic link in the browser that requested it', () => {
 
     const res = await openLink(browser, first);
 
+    expect(res.status).toBe(428);
     expect(await res.json()).toMatchObject({ confirm: true });
     expect(await usedAt(first)).toBeNull();
+  });
+});
+
+describe('in production', () => {
+  beforeEach(() => {
+    vi.stubEnv('NODE_ENV', 'production');
+  });
+
+  it('binds with a Secure __Host- cookie on / with no Domain', async () => {
+    const browser = new Browser();
+    const res = await requestLink(browser);
+
+    const binding = bindingLine(res, HOST_BINDING);
+    expect(binding).toMatch(/^__Host-magic_link_binding=[0-9a-f]{64}; /);
+    expect(binding).toMatch(/Secure/);
+    expect(binding).toMatch(/Path=\/;/);
+    expect(binding).not.toMatch(/Domain=/);
+    expect(browser.get(HOST_BINDING)).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('signs in directly with the __Host- binding', async () => {
+    const browser = new Browser();
+    const token = await issueLink(browser);
+
+    const res = await openLink(browser, token);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ token: expect.any(String) });
+    expect(browser.get(HOST_BINDING)).toBeUndefined();
+  });
+
+  it('ignores a binding sent under the bare name', async () => {
+    const requester = new Browser();
+    const token = await issueLink(requester);
+    const tossed = new Browser({ [BINDING]: requester.get(HOST_BINDING)! });
+
+    const res = await openLink(tossed, token);
+
+    expect(res.status).toBe(428);
+    expect(await usedAt(token)).toBeNull();
   });
 });
 
@@ -378,12 +598,10 @@ describe('opening a magic link anywhere else', () => {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const res = await openLink(elsewhere, token);
 
-      expect(res.status).toBe(200);
-      expect(await res.json()).toEqual({
-        confirm: true,
-        purpose: 'login',
-        email: 'l•••@example.com',
-      });
+      expect(res.status).toBe(428);
+      expect(await res.json()).toEqual(
+        confirmNeeded('login', 'l•••@example.com')
+      );
       expect(cookieNames(res)).toEqual([]);
     }
     expect(await usedAt(token)).toBeNull();
@@ -393,14 +611,14 @@ describe('opening a magic link anywhere else', () => {
   it('treats a tampered binding cookie as no cookie', async () => {
     const requester = new Browser();
     const token = await issueLink(requester);
-    const binding = requester.get('magic_link_binding') ?? '';
+    const binding = requester.get(BINDING) ?? '';
     const tampered = new Browser({
-      magic_link_binding: `${binding.slice(0, -1)}${binding.endsWith('0') ? '1' : '0'}`,
+      [BINDING]: `${binding.slice(0, -1)}${binding.endsWith('0') ? '1' : '0'}`,
     });
 
     const res = await openLink(tampered, token);
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(428);
     expect(await res.json()).toMatchObject({ confirm: true });
     expect(await usedAt(token)).toBeNull();
   });
@@ -411,12 +629,9 @@ describe('opening a magic link anywhere else', () => {
   ])('treats %s in the binding cookie as no cookie', async (_label, value) => {
     const token = await issueLink(new Browser());
 
-    const res = await openLink(
-      new Browser({ magic_link_binding: value }),
-      token
-    );
+    const res = await openLink(new Browser({ [BINDING]: value }), token);
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(428);
     expect(await res.json()).toMatchObject({ confirm: true });
   });
 
@@ -442,11 +657,7 @@ describe('opening a magic link anywhere else', () => {
     const res = await openLink(new Browser(), token);
     const body = await res.json();
 
-    expect(body).toEqual({
-      confirm: true,
-      purpose: 'password_reset',
-      email: 's•••@example.org',
-    });
+    expect(body).toEqual(confirmNeeded('password_reset', 's•••@example.org'));
     expect(JSON.stringify(body)).not.toContain('someone');
   });
 });
@@ -517,6 +728,20 @@ describe('confirming a magic link', () => {
     expect(cookieNames(res)).toEqual([]);
   });
 
+  it('refuses an email-verification token and leaves it unspent', async () => {
+    const token = await issueLink(new Browser());
+    await holder.db!('magic_tokens').where({ token }).update({
+      purpose: 'verify_email',
+    });
+
+    const res = await confirm(new Browser(), { token });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual(EXPIRED);
+    expect(await usedAt(token)).toBeNull();
+    expect(cookieNames(res)).toEqual([]);
+  });
+
   it.each([
     [
       'a form post',
@@ -551,15 +776,44 @@ describe('confirming a magic link', () => {
     expect(await res.json()).toEqual({ message: 'Token is required' });
   });
 
-  it('rate-limits confirm attempts per address', async () => {
-    const statuses: number[] = [];
-    for (let attempt = 0; attempt < 11; attempt += 1) {
-      const res = await confirm(new Browser(), { token: `guess-${attempt}` });
-      statuses.push(res.status);
-    }
+  describe('rate limiting', () => {
+    const confirmFrom = (address: string, attempt: number) =>
+      confirm(
+        new Browser(),
+        { token: `guess-${attempt}` },
+        {
+          'content-type': 'application/json',
+          'sec-fetch-site': 'same-origin',
+          'x-forwarded-for': address,
+        }
+      );
 
-    expect(statuses.slice(0, 10)).toEqual(Array(10).fill(400));
-    expect(statuses[10]).toBe(429);
+    it('counts every address in one IPv6 /64 against one bucket', async () => {
+      const statuses: number[] = [];
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        const res = await confirmFrom(`2001:db8:1:1::${attempt + 1}`, attempt);
+        statuses.push(res.status);
+      }
+
+      const sameNetwork = await confirmFrom('2001:db8:1:1::ffff', 10);
+      const otherNetwork = await confirmFrom('2001:db8:2:2::1', 11);
+
+      expect(statuses).toEqual(Array(10).fill(400));
+      expect(sameNetwork.status).toBe(429);
+      expect(otherNetwork.status).toBe(400);
+    });
+
+    it('has no shared cap that many networks together can exhaust', async () => {
+      for (let network = 1; network <= 51; network += 1) {
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          await confirmFrom(`10.0.${network}.1`, attempt);
+        }
+      }
+
+      const fresh = await confirmFrom('192.0.2.1', 0);
+
+      expect(fresh.status).toBe(400);
+    });
   });
 });
 
@@ -578,13 +832,13 @@ describe('HEAD requests and prefetches', () => {
       const bound = await openLink(requester, token, options);
       const unbound = await openLink(new Browser(), token, options);
 
-      expect(bound.status).toBe(200);
-      expect(unbound.status).toBe(200);
+      expect(bound.status).toBe(428);
+      expect(unbound.status).toBe(428);
       expect(cookieNames(bound)).toEqual([]);
       expect(cookieNames(unbound)).toEqual([]);
       expect(await usedAt(token)).toBeNull();
       expect(await sessionRows(userId)).toBe(0);
-      expect(requester.get('magic_link_binding')).toMatch(/^[0-9a-f]{64}$/);
+      expect(requester.get(BINDING)).toMatch(/^[0-9a-f]{64}$/);
     }
   );
 
@@ -615,8 +869,11 @@ describe('a magic link that was already used', () => {
 
     const res = await openLink(owner, token, { query: '?redirect=%2Fupload' });
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ signedIn: true, redirect: '/upload' });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      ...ALREADY_SIGNED_IN,
+      redirect: '/upload',
+    });
     expect(cookieNames(res)).toEqual([]);
     expect(await sessionRows(userId)).toBe(sessionsBefore);
   });
@@ -627,8 +884,8 @@ describe('a magic link that was already used', () => {
 
     const res = await confirm(owner, { token });
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ signedIn: true });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual(ALREADY_SIGNED_IN);
     expect(cookieNames(res)).toEqual([]);
   });
 
@@ -697,12 +954,41 @@ describe('a magic link past its lifetime', () => {
   });
 });
 
+describe('without the hashing secret', () => {
+  it('fails closed on open: a generic 500, nothing spent, no session', async () => {
+    const requester = new Browser();
+    const token = await issueLink(requester);
+    vi.stubEnv('THE_HASHING_SECRET', undefined);
+
+    const bound = await openLink(requester, token);
+    const unbound = await openLink(new Browser(), token);
+
+    expect(bound.status).toBe(500);
+    expect(await bound.json()).toEqual(GENERIC_SERVER_ERROR);
+    expect(unbound.status).toBe(500);
+    expect(cookieNames(bound)).toEqual([]);
+    expect(await usedAt(token)).toBeNull();
+    expect(await sessionRows(userId)).toBe(0);
+  });
+
+  it('fails closed on request: a generic 500, no link sent, no binding', async () => {
+    vi.stubEnv('THE_HASHING_SECRET', undefined);
+
+    const res = await requestLink(new Browser());
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual(GENERIC_SERVER_ERROR);
+    expect(sentTokens()).toEqual([]);
+    expect(cookieNames(res)).toEqual([]);
+  });
+});
+
 describe('what the magic-link log records', () => {
   it('counts confirm shown, confirmed, and signed in directly without tokens or cookie values', async () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     const requester = new Browser();
     const direct = await issueLink(requester);
-    const binding = requester.get('magic_link_binding') ?? '';
+    const binding = requester.get(BINDING) ?? '';
     await openLink(requester, direct);
     const other = await issueLink(new Browser());
     await openLink(new Browser(), other);

@@ -13,10 +13,12 @@
     "backToLogin": "ログインに戻る",
     "confirmLoginTitle": "{{email}} として 2anki にログインしますか？",
     "confirmResetTitle": "{{email}} のパスワードを再設定しますか？",
-    "confirmHint": "このリンクは、リクエストしたブラウザとは別のブラウザで開かれました。",
+    "confirmLoginHint": "ログインを完了するには、ご本人であることを確認してください。",
+    "confirmResetHint": "新しいパスワードを設定するには、ご本人であることを確認してください。",
     "confirmLoginButton": "ログイン",
     "confirmResetButton": "パスワードを再設定",
-    "confirming": "リンクを確認しています"
+    "confirming": "リンクを確認しています",
+    "confirmRetry": "処理できませんでした。数分後にもう一度お試しください。"
   },
   "claim": {
     "goToAccount": "アカウントへ",

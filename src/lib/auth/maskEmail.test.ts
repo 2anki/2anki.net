@@ -3,11 +3,19 @@ import { maskEmail } from './maskEmail';
 describe('maskEmail', () => {
   it.each([
     ['learner@example.com', 'l•••@example.com'],
-    ['a@example.com', 'a•••@example.com'],
     ['Learner.Name+tag@mail.example.org', 'L•••@mail.example.org'],
     ['  spaced@example.com ', 's•••@example.com'],
   ])('shows only the first character and domain of %s', (email, masked) => {
     expect(maskEmail(email)).toBe(masked);
+  });
+
+  it('hides a one-character local part entirely', () => {
+    expect(maskEmail('a@x.com')).toBe('•@x.com');
+  });
+
+  it('keeps a first character outside the basic plane whole', () => {
+    expect(maskEmail('😀learner@example.com')).toBe('😀•••@example.com');
+    expect(maskEmail('😀@example.com')).toBe('•@example.com');
   });
 
   it('never reveals the rest of the local part', () => {

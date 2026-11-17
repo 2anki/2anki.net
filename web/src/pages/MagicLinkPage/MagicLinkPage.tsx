@@ -19,6 +19,7 @@ type MagicLinkState =
       purpose: MagicLinkPurpose;
       email: string;
       sending: boolean;
+      notice?: string;
     }
   | { status: 'error'; message: string }
   | { status: 'success' };
@@ -35,15 +36,24 @@ interface MagicLinkAnswer {
 
 interface MagicLinkReply {
   ok: boolean;
+  status: number;
   data: MagicLinkAnswer;
 }
+
+const CONFIRM_NEEDED = 428;
+const ALREADY_SIGNED_IN = 409;
+const LINK_REFUSED = 400;
 
 async function readReply(request: Promise<Response>): Promise<MagicLinkReply> {
   const response = await request;
   if (response.ok) {
-    return { ok: true, data: await response.json() };
+    return { ok: true, status: response.status, data: await response.json() };
   }
-  return { ok: false, data: await response.json().catch(() => ({})) };
+  return {
+    ok: false,
+    status: response.status,
+    data: await response.json().catch(() => ({})),
+  };
 }
 
 function MagicLinkVerification() {
@@ -67,18 +77,17 @@ function MagicLinkVerification() {
     token: string;
     reply: Promise<MagicLinkReply>;
   } | null>(null);
+  const confirmHeading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (state.status === 'confirm') {
+      confirmHeading.current?.focus();
+    }
+  }, [state.status]);
 
   const follow = useCallback(
-    ({ ok, data }: MagicLinkReply, linkToken: string) => {
-      if (!ok) {
-        setState({ status: 'error', message: t('magicLink.invalidOrExpired') });
-        return;
-      }
-      if (data.purpose === 'password_reset' && data.reset_token != null) {
-        globalThis.location.href = `/users/r/${data.reset_token}`;
-        return;
-      }
-      if (data.confirm === true && data.email != null) {
+    ({ ok, status, data }: MagicLinkReply, linkToken: string) => {
+      if (status === CONFIRM_NEEDED && data.email != null) {
         setState({
           status: 'confirm',
           token: linkToken,
@@ -87,6 +96,20 @@ function MagicLinkVerification() {
           email: data.email,
           sending: false,
         });
+        return;
+      }
+      if (status === ALREADY_SIGNED_IN) {
+        setState({ status: 'success' });
+        globalThis.location.href =
+          sanitizeRelativeRedirect(data.redirect) ?? '/search';
+        return;
+      }
+      if (!ok) {
+        setState({ status: 'error', message: t('magicLink.invalidOrExpired') });
+        return;
+      }
+      if (data.purpose === 'password_reset' && data.reset_token != null) {
+        globalThis.location.href = `/users/r/${data.reset_token}`;
         return;
       }
       if (data.token != null) {
@@ -142,20 +165,35 @@ function MagicLinkVerification() {
     };
   }, [token, redirect, follow, t]);
 
+  const keepConfirming = useCallback(() => {
+    setState((current) =>
+      current.status === 'confirm'
+        ? { ...current, sending: false, notice: t('magicLink.confirmRetry') }
+        : current
+    );
+  }, [t]);
+
   const handleConfirm = async (linkToken: string) => {
     setState((current) =>
-      current.status === 'confirm' ? { ...current, sending: true } : current
+      current.status === 'confirm'
+        ? { ...current, sending: true, notice: undefined }
+        : current
     );
     try {
-      follow(
-        await readReply(get2ankiApi().confirmMagicLink(linkToken, redirect)),
-        linkToken
+      const reply = await readReply(
+        get2ankiApi().confirmMagicLink(linkToken, redirect)
       );
+      const linkStillUsable =
+        !reply.ok &&
+        reply.status !== LINK_REFUSED &&
+        reply.status !== ALREADY_SIGNED_IN;
+      if (linkStillUsable) {
+        keepConfirming();
+        return;
+      }
+      follow(reply, linkToken);
     } catch {
-      setState({
-        status: 'error',
-        message: t('magicLink.somethingWrong'),
-      });
+      keepConfirming();
     }
   };
 
@@ -207,14 +245,26 @@ function MagicLinkVerification() {
     return (
       <div className={styles.formPage}>
         <div className={styles.formCard}>
-          <h1 className={styles.formTitle} data-hj-suppress>
+          <h1
+            className={styles.formTitle}
+            data-hj-suppress
+            tabIndex={-1}
+            ref={confirmHeading}
+          >
             {isReset
               ? t('magicLink.confirmResetTitle', { email: state.email })
               : t('magicLink.confirmLoginTitle', { email: state.email })}
           </h1>
           <p className={sharedStyles.formDescription}>
-            {t('magicLink.confirmHint')}
+            {isReset
+              ? t('magicLink.confirmResetHint')
+              : t('magicLink.confirmLoginHint')}
           </p>
+          {state.notice != null && (
+            <p className={sharedStyles.formDescription} role="alert">
+              {state.notice}
+            </p>
+          )}
           <div className={styles.field}>
             <button
               type="button"

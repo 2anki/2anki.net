@@ -1,10 +1,10 @@
 {
   "magicLink": {
-    "verifying": "Vérification de votre lien",
+    "verifying": "Vérification de ton lien",
     "expiredTitle": "Lien expiré ou invalide",
     "invalidOrExpired": "Ce lien a déjà été utilisé ou a expiré. Demandes-en un nouveau ci-dessous.",
-    "somethingWrong": "Une erreur s'est produite. Réessayez.",
-    "couldNotSend": "Impossible d'envoyer un nouveau lien. Réessayez.",
+    "somethingWrong": "Une erreur s'est produite. Réessaie.",
+    "couldNotSend": "Impossible d'envoyer un nouveau lien. Réessaie.",
     "newLinkSent": "Un nouveau lien a été envoyé à {{email}}.",
     "emailLabel": "E-mail",
     "emailPlaceholder": "Adresse e-mail",
@@ -13,10 +13,12 @@
     "backToLogin": "Retour à la connexion",
     "confirmLoginTitle": "Se connecter à 2anki en tant que {{email}} ?",
     "confirmResetTitle": "Réinitialiser le mot de passe de {{email}} ?",
-    "confirmHint": "Ce lien a été ouvert dans un autre navigateur que celui qui l’a demandé.",
+    "confirmLoginHint": "Confirme que c’est bien toi pour terminer la connexion.",
+    "confirmResetHint": "Confirme que c’est bien toi pour choisir un nouveau mot de passe.",
     "confirmLoginButton": "Se connecter",
     "confirmResetButton": "Réinitialiser le mot de passe",
-    "confirming": "Vérification du lien"
+    "confirming": "Vérification du lien",
+    "confirmRetry": "Ça n’a pas abouti. Réessaie dans quelques minutes."
   },
   "claim": {
     "goToAccount": "Accéder au compte",

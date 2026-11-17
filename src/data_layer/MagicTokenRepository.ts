@@ -4,6 +4,8 @@ import type MagicTokens from './public/MagicTokens';
 
 export type MagicTokenPurpose = 'login' | 'password_reset' | 'verify_email';
 
+const SIGN_IN_PURPOSES: MagicTokenPurpose[] = ['login', 'password_reset'];
+
 export interface MagicTokenRecord {
   token: string;
   owner: number;
@@ -84,6 +86,7 @@ export class MagicTokenRepository implements IMagicTokenRepository {
       .where({ token })
       .whereNull('used_at')
       .where('expires_at', '>', at)
+      .whereIn('purpose', SIGN_IN_PURPOSES)
       .update({ used_at: at });
   }
 
@@ -166,7 +169,11 @@ export class InMemoryMagicTokenRepository implements IMagicTokenRepository {
 
   async consumeValidToken(token: string): Promise<MagicTokenRecord | null> {
     const row = this.rows.find(
-      (r) => r.token === token && r.used_at == null && r.expires_at > this.now
+      (r) =>
+        r.token === token &&
+        r.used_at == null &&
+        r.expires_at > this.now &&
+        SIGN_IN_PURPOSES.includes(r.purpose)
     );
     if (row == null) {
       return null;

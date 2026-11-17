@@ -1,13 +1,16 @@
 import type { Request, Response } from 'express';
 
 import {
-  MAGIC_LINK_BINDING_COOKIE,
   isBoundToThisBrowser,
   isPrefetchRequest,
   isSameOriginJsonRequest,
+  magicLinkBindingCookieName,
   magicLinkBindingFor,
   rememberMagicLinkBinding,
 } from './magicLinkBinding';
+
+const DEV_COOKIE = 'magic_link_binding';
+const PROD_COOKIE = '__Host-magic_link_binding';
 
 const TOKEN = 'a'.repeat(128);
 
@@ -38,6 +41,7 @@ const response = () => {
 
 beforeEach(() => {
   vi.stubEnv('THE_HASHING_SECRET', 'binding-test-secret');
+  vi.stubEnv('NODE_ENV', 'test');
 });
 
 afterEach(() => {
@@ -63,7 +67,7 @@ describe('magicLinkBindingFor', () => {
 describe('isBoundToThisBrowser', () => {
   it('accepts the binding issued for this token', () => {
     const req = request({
-      cookies: { [MAGIC_LINK_BINDING_COOKIE]: magicLinkBindingFor(TOKEN) },
+      cookies: { [DEV_COOKIE]: magicLinkBindingFor(TOKEN) },
     });
 
     expect(isBoundToThisBrowser(req, TOKEN)).toBe(true);
@@ -79,10 +83,7 @@ describe('isBoundToThisBrowser', () => {
     const cookieValue =
       value === 'other' ? magicLinkBindingFor('b'.repeat(128)) : value;
     const req = request({
-      cookies:
-        cookieValue === undefined
-          ? {}
-          : { [MAGIC_LINK_BINDING_COOKIE]: cookieValue },
+      cookies: cookieValue === undefined ? {} : { [DEV_COOKIE]: cookieValue },
     });
 
     expect(isBoundToThisBrowser(req, TOKEN)).toBe(false);
@@ -92,63 +93,97 @@ describe('isBoundToThisBrowser', () => {
     const binding = magicLinkBindingFor(TOKEN);
     const tampered = `${binding.slice(0, -1)}${binding.endsWith('0') ? '1' : '0'}`;
     const req = request({
-      cookies: { [MAGIC_LINK_BINDING_COOKIE]: tampered },
+      cookies: { [DEV_COOKIE]: tampered },
     });
 
     expect(isBoundToThisBrowser(req, TOKEN)).toBe(false);
   });
 });
 
+describe('the binding cookie name', () => {
+  it('uses the __Host- prefix in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    expect(magicLinkBindingCookieName()).toBe(PROD_COOKIE);
+  });
+
+  it('uses the bare name outside production, where http cannot carry Secure', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+
+    expect(magicLinkBindingCookieName()).toBe(DEV_COOKIE);
+  });
+
+  it('ignores a binding under the bare name in production', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const binding = magicLinkBindingFor(TOKEN);
+
+    expect(
+      isBoundToThisBrowser(
+        request({ cookies: { [DEV_COOKIE]: binding } }),
+        TOKEN
+      )
+    ).toBe(false);
+    expect(
+      isBoundToThisBrowser(
+        request({ cookies: { [PROD_COOKIE]: binding } }),
+        TOKEN
+      )
+    ).toBe(true);
+  });
+});
+
 describe('rememberMagicLinkBinding', () => {
-  it('sets an HttpOnly, SameSite=Lax cookie scoped to the magic-link API', () => {
+  it('sets an HttpOnly, SameSite=Lax cookie on / outside production', () => {
     const { res, cookie } = response();
 
     rememberMagicLinkBinding(request({}), res, TOKEN);
 
     expect(cookie).toHaveBeenCalledWith(
-      MAGIC_LINK_BINDING_COOKIE,
+      DEV_COOKIE,
       magicLinkBindingFor(TOKEN),
       {
         httpOnly: true,
         sameSite: 'lax',
         secure: false,
-        path: '/api/users/magic',
+        path: '/',
         maxAge: 15 * 60 * 1000,
       }
     );
   });
 
-  it('marks the cookie Secure in production', () => {
+  it('sets a Secure __Host- cookie on / with no Domain in production', () => {
     vi.stubEnv('NODE_ENV', 'production');
     const { res, cookie } = response();
 
     rememberMagicLinkBinding(request({}), res, TOKEN);
 
-    expect(cookie.mock.calls[0][2]).toMatchObject({ secure: true });
+    expect(cookie).toHaveBeenCalledWith(
+      PROD_COOKIE,
+      magicLinkBindingFor(TOKEN),
+      {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: true,
+        path: '/',
+        maxAge: 15 * 60 * 1000,
+      }
+    );
   });
 
-  it('sets a cookie of the same shape when no link was issued', () => {
-    const { res, cookie } = response();
-
-    rememberMagicLinkBinding(request({}), res, undefined);
-
-    expect(cookie).toHaveBeenCalledTimes(1);
-    expect(cookie.mock.calls[0][0]).toBe(MAGIC_LINK_BINDING_COOKIE);
-    expect(cookie.mock.calls[0][1]).toMatch(/^[0-9a-f]{64}$/);
-    expect(cookie.mock.calls[0][1]).not.toBe(magicLinkBindingFor(TOKEN));
-  });
-
-  it('keeps the binding of an earlier link when no new link was issued', () => {
+  it('sets fresh random bytes of the same shape when no link was issued', () => {
     const earlier = magicLinkBindingFor(TOKEN);
     const { res, cookie } = response();
 
     rememberMagicLinkBinding(
-      request({ cookies: { [MAGIC_LINK_BINDING_COOKIE]: earlier } }),
+      request({ cookies: { [DEV_COOKIE]: earlier } }),
       res,
       undefined
     );
 
-    expect(cookie.mock.calls[0][1]).toBe(earlier);
+    expect(cookie).toHaveBeenCalledTimes(1);
+    expect(cookie.mock.calls[0][0]).toBe(DEV_COOKIE);
+    expect(cookie.mock.calls[0][1]).toMatch(/^[0-9a-f]{64}$/);
+    expect(cookie.mock.calls[0][1]).not.toBe(earlier);
   });
 
   it.each(['cross-site', 'same-site'])(

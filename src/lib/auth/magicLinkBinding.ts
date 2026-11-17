@@ -3,9 +3,19 @@ import type { CookieOptions, Request, Response } from 'express';
 
 import hmacToken from '../misc/hmacToken';
 
-export const MAGIC_LINK_BINDING_COOKIE = 'magic_link_binding';
 const MAGIC_LINK_BINDING_MAX_AGE_MS = 15 * 60 * 1000;
 const BINDING_PATTERN = /^[0-9a-f]{64}$/;
+
+const isProduction = () => process.env.NODE_ENV === 'production';
+
+// In production the __Host- prefix makes browsers refuse this cookie from any
+// sibling subdomain, so nobody else on 2anki.net can plant a binding for a
+// token they own. The prefix needs Secure, so plain-http development keeps the
+// bare name. Path=/ is part of the prefix contract; the value is an HttpOnly
+// HMAC that lives 15 minutes, so sending it with every request costs nothing.
+export function magicLinkBindingCookieName(): string {
+  return isProduction() ? '__Host-magic_link_binding' : 'magic_link_binding';
+}
 
 // The binding is a keyed hash of the emailed token, so it proves only that
 // this browser received the response to the request that issued the link. It
@@ -15,8 +25,8 @@ const BINDING_PATTERN = /^[0-9a-f]{64}$/;
 const bindingCookieOptions = (): CookieOptions => ({
   httpOnly: true,
   sameSite: 'lax',
-  secure: process.env.NODE_ENV === 'production',
-  path: '/api/users/magic',
+  secure: isProduction(),
+  path: '/',
 });
 
 export function magicLinkBindingFor(token: string): string {
@@ -25,7 +35,7 @@ export function magicLinkBindingFor(token: string): string {
 
 function readBinding(req: Request): string | undefined {
   const cookies = req.cookies as Record<string, unknown> | undefined;
-  const value = cookies?.[MAGIC_LINK_BINDING_COOKIE];
+  const value = cookies?.[magicLinkBindingCookieName()];
   return typeof value === 'string' && BINDING_PATTERN.test(value)
     ? value
     : undefined;
@@ -41,9 +51,9 @@ function isCrossOrigin(req: Request): boolean {
   return site != null && site !== 'same-origin';
 }
 
-// Every accepted request gets the same Set-Cookie, whether or not a link was
-// issued, so the response never says whether the address has an account.
-// Without a new link the browser keeps the binding of its earlier one.
+// Every accepted request gets a fresh cookie of the same shape, whether or not
+// a link was issued, so neither the header nor its value says whether the
+// address has an account.
 export function rememberMagicLinkBinding(
   req: Request,
   res: Response,
@@ -54,16 +64,16 @@ export function rememberMagicLinkBinding(
   }
   const value =
     issuedToken == null
-      ? (readBinding(req) ?? crypto.randomBytes(32).toString('hex'))
+      ? crypto.randomBytes(32).toString('hex')
       : magicLinkBindingFor(issuedToken);
-  res.cookie(MAGIC_LINK_BINDING_COOKIE, value, {
+  res.cookie(magicLinkBindingCookieName(), value, {
     ...bindingCookieOptions(),
     maxAge: MAGIC_LINK_BINDING_MAX_AGE_MS,
   });
 }
 
 export function clearMagicLinkBinding(res: Response): void {
-  res.clearCookie(MAGIC_LINK_BINDING_COOKIE, bindingCookieOptions());
+  res.clearCookie(magicLinkBindingCookieName(), bindingCookieOptions());
 }
 
 export function isBoundToThisBrowser(req: Request, token: string): boolean {
