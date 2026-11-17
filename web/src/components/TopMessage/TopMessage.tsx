@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom';
 import useQuery from '../../lib/hooks/useQuery';
 import styles from '../../styles/shared.module.css';
 
-const ERROR_MESSAGE_KEYS: Record<string, string> = {
-  google_signin_failed: 'auth.topMessage.googleFailed',
-  microsoft_signin_failed: 'auth.topMessage.microsoftFailed',
-  notion_cancelled: 'auth.topMessage.notionCancelled',
-};
+const ERROR_MESSAGE_KEYS = new Map([
+  ['google_signin_failed', 'auth.topMessage.googleFailed'],
+  ['microsoft_signin_failed', 'auth.topMessage.microsoftFailed'],
+  ['notion_cancelled', 'auth.topMessage.notionCancelled'],
+  ['google_signin_expired', 'auth.topMessage.googleExpired'],
+  ['microsoft_signin_expired', 'auth.topMessage.microsoftExpired'],
+  ['notion_signin_expired', 'auth.topMessage.notionExpired'],
+]);
 
 function TopMessage() {
   const { t } = useTranslation();
@@ -38,7 +41,10 @@ function TopMessage() {
     return (
       <div className={styles.alertDanger}>
         <p>
-          {t(ERROR_MESSAGE_KEYS[errorCode] ?? 'auth.topMessage.signInFallback')}
+          {t(
+            ERROR_MESSAGE_KEYS.get(errorCode) ??
+              'auth.topMessage.signInFallback'
+          )}
         </p>
       </div>
     );

@@ -43,6 +43,39 @@ describe('TopMessage', () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    [
+      'google_signin_expired',
+      'That Google sign-in timed out or was already used. Try again, or use your email below.',
+    ],
+    [
+      'microsoft_signin_expired',
+      'That Microsoft sign-in timed out or was already used. Try again, or use your email below.',
+    ],
+    [
+      'notion_signin_expired',
+      'That Notion sign-in timed out or was already used. Try again, or use your email below.',
+    ],
+  ])(
+    'tells a visitor back from %s to sign in again or use email',
+    (error, copy) => {
+      renderWithError(error);
+      expect(screen.getByText(copy)).toBeInTheDocument();
+    }
+  );
+
+  it.each(['toString', 'constructor', '__proto__'])(
+    'shows the generic message for the inherited property name %s',
+    (error) => {
+      renderWithError(error);
+      expect(
+        screen.getByText(
+          "Couldn't sign you in. Try again, or use your email below."
+        )
+      ).toBeInTheDocument();
+    }
+  );
+
   it('shows a generic message for an unknown error code instead of echoing it', () => {
     renderWithError('<script>alert(1)</script>');
     expect(

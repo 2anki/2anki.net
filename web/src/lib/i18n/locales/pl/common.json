@@ -604,7 +604,10 @@
       "signInFallback": "Nie udało się zalogować. Spróbuj ponownie albo użyj e-maila poniżej.",
       "googleFailed": "Nie udało się zalogować przez Google. Spróbuj ponownie albo użyj e-maila poniżej.",
       "microsoftFailed": "Nie udało się zalogować przez Microsoft. Spróbuj ponownie albo użyj e-maila poniżej.",
-      "notionCancelled": "Nie udało się zalogować przez Notion. Spróbuj ponownie albo użyj e-maila poniżej."
+      "notionCancelled": "Nie udało się zalogować przez Notion. Spróbuj ponownie albo użyj e-maila poniżej.",
+      "googleExpired": "To logowanie przez Google wygasło albo zostało już użyte. Spróbuj ponownie albo użyj e-maila poniżej.",
+      "microsoftExpired": "To logowanie przez Microsoft wygasło albo zostało już użyte. Spróbuj ponownie albo użyj e-maila poniżej.",
+      "notionExpired": "To logowanie przez Notion wygasło albo zostało już użyte. Spróbuj ponownie albo użyj e-maila poniżej."
     }
   },
   "pricing": {

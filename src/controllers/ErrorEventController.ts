@@ -8,17 +8,13 @@ import {
   RateLimiter,
 } from '../lib/rateLimit/InMemoryRateLimiter';
 import { hashIp, resolveClientIp } from '../lib/rateLimit/ipHelpers';
+import { isBotUserAgent } from '../lib/http/isBotUserAgent';
 
 const MAX_BODY_BYTES = 10 * 1024;
 const RATE_WINDOW_MS = 60_000;
 const PER_IP_MAX = 10;
 const GLOBAL_MAX = 1000;
-const BOT_USER_AGENT_PATTERN = /bot|crawler|spider|slurp|applebot|leikibot/i;
 const MAX_RELEASE_LENGTH = 40;
-
-function isBotUserAgent(userAgent: string | null | undefined): boolean {
-  return userAgent != null && BOT_USER_AGENT_PATTERN.test(userAgent);
-}
 
 function validatePayload(body: unknown): ErrorEventPayload | null {
   if (body == null || typeof body !== 'object' || Array.isArray(body)) {

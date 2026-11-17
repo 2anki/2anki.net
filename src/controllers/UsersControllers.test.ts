@@ -5233,7 +5233,7 @@ describe('UsersController — provider sign-ins bind the OAuth state to the brow
     {
       provider: 'Google',
       cookie: GOOGLE_STATE,
-      failure: '/login?error=google_signin_failed',
+      signInAgain: '/login?error=google_signin_expired',
       surface: 'oauth_google',
       exchange: 'loginWithGoogle' as const,
       call: googleCallback,
@@ -5242,7 +5242,7 @@ describe('UsersController — provider sign-ins bind the OAuth state to the brow
     {
       provider: 'Microsoft',
       cookie: MICROSOFT_STATE,
-      failure: '/login?error=microsoft_signin_failed',
+      signInAgain: '/login?error=microsoft_signin_expired',
       surface: 'oauth_microsoft',
       exchange: 'loginWithMicrosoft' as const,
       call: microsoftCallback,
@@ -5251,7 +5251,7 @@ describe('UsersController — provider sign-ins bind the OAuth state to the brow
     {
       provider: 'Notion',
       cookie: NOTION_STATE,
-      failure: '/login?error=notion_cancelled',
+      signInAgain: '/login?error=notion_signin_expired',
       surface: 'oauth_notion',
       exchange: 'loginWithNotion' as const,
       call: notionCallback,
@@ -5259,20 +5259,20 @@ describe('UsersController — provider sign-ins bind the OAuth state to the brow
     },
   ])(
     'the $provider callback',
-    ({ cookie, failure, surface, exchange, call, stateFor }) => {
+    ({ cookie, signInAgain, surface, exchange, call, stateFor }) => {
       it.each([
         ['a missing state', undefined, { [cookie]: 'nonce-1' }],
         ['a wrong state', stateFor('nonce-2'), { [cookie]: 'nonce-1' }],
         ['a state with no cookie', stateFor('nonce-1'), {}],
       ])(
-        'refuses %s with the generic sign-in error and signs nobody in',
+        'refuses %s with the sign-in-again message and signs nobody in',
         async (_label, state, cookies) => {
           const { controller, authService, recordError } = build();
           const res = buildStateRes();
 
           await call(controller, res, state, cookies);
 
-          expect(res.redirect).toHaveBeenCalledWith(failure);
+          expect(res.redirect).toHaveBeenCalledWith(signInAgain);
           expect(authService[exchange]).not.toHaveBeenCalled();
           expect(sessionCookies(res)).toEqual([]);
           expect(res.clearCookie).toHaveBeenCalledWith(
@@ -5282,6 +5282,43 @@ describe('UsersController — provider sign-ins bind the OAuth state to the brow
           expect(recordError.execute).toHaveBeenCalledWith(
             expect.objectContaining({ surface, code: 'oauth_state_mismatch' })
           );
+        }
+      );
+
+      it.each([
+        [
+          'a repeated callback with no state cookie',
+          {},
+          'oauth_repeat_callback',
+        ],
+        ['a wrong state', { [cookie]: 'nonce-2' }, 'oauth_state_mismatch'],
+      ])(
+        'sends a signed-in browser with %s to the signed-in landing and exchanges nothing',
+        async (_label, stateCookies, code) => {
+          const { controller, authService, recordError } = build();
+          const getUserFrom = vi
+            .fn()
+            .mockResolvedValue({ ...existingUser, owner: existingUser.id });
+          Object.assign(authService, { getUserFrom });
+          const res = buildStateRes();
+
+          await call(controller, res, stateFor('nonce-1'), {
+            ...stateCookies,
+            token: 'session-jwt',
+            [LOGIN_RETURN]: PRICING,
+          });
+
+          expect(getUserFrom).toHaveBeenCalledWith('session-jwt');
+          expect(res.redirect).toHaveBeenCalledWith('/notion');
+          expect(authService[exchange]).not.toHaveBeenCalled();
+          expect(authService.newJWTToken).not.toHaveBeenCalled();
+          expect(sessionCookies(res)).toEqual([]);
+          expect(recordError.execute).toHaveBeenCalledWith({
+            userId: existingUser.id,
+            surface,
+            code,
+            context: expect.objectContaining({ alreadySignedIn: true }),
+          });
         }
       );
 

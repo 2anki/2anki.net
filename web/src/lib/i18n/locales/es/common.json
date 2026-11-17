@@ -556,7 +556,10 @@
       "signInFallback": "No pudimos iniciar tu sesión. Inténtalo de nuevo, o usa tu correo abajo.",
       "googleFailed": "No pudimos iniciar tu sesión con Google. Inténtalo de nuevo, o usa tu correo abajo.",
       "microsoftFailed": "No pudimos iniciar tu sesión con Microsoft. Inténtalo de nuevo, o usa tu correo abajo.",
-      "notionCancelled": "No pudimos iniciar tu sesión con Notion. Inténtalo de nuevo, o usa tu correo abajo."
+      "notionCancelled": "No pudimos iniciar tu sesión con Notion. Inténtalo de nuevo, o usa tu correo abajo.",
+      "googleExpired": "Ese inicio de sesión con Google caducó o ya se usó. Inténtalo de nuevo, o usa tu correo abajo.",
+      "microsoftExpired": "Ese inicio de sesión con Microsoft caducó o ya se usó. Inténtalo de nuevo, o usa tu correo abajo.",
+      "notionExpired": "Ese inicio de sesión con Notion caducó o ya se usó. Inténtalo de nuevo, o usa tu correo abajo."
     }
   },
   "pricing": {

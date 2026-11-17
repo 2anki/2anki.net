@@ -327,6 +327,24 @@ describe('web Notion connect binds its state to the browser', () => {
     expect(res.redirect).toHaveBeenCalledWith('/notion');
   });
 
+  it('links the workspace once when the browser repeats a connect callback that already succeeded', async () => {
+    const { controller, repo } = build();
+    const { location, issued } = startConnect(controller);
+    const state = new URL(location).searchParams.get('state');
+    const callback = { code: 'auth-code', state };
+    await controller.connect(
+      fakeReq(callback, { [NOTION_CONNECT_STATE_COOKIE]: issued?.[1] }),
+      fakeRes()
+    );
+    const repeat = fakeRes();
+
+    await controller.connect(fakeReq(callback, {}), repeat);
+
+    expect(notionTokenExchanges()).toHaveLength(1);
+    expect(repo.saveNotionToken).toHaveBeenCalledTimes(1);
+    expect(repeat.redirect).toHaveBeenCalledWith('/notion');
+  });
+
   it('sends a signed-out callback to sign in and links nothing', async () => {
     const { controller, repo } = build();
     const { location, issued } = startConnect(controller);

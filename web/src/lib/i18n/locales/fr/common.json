@@ -556,7 +556,10 @@
       "signInFallback": "Impossible de te connecter. Réessaie, ou utilise ton e-mail ci-dessous.",
       "googleFailed": "Impossible de te connecter avec Google. Réessaie, ou utilise ton e-mail ci-dessous.",
       "microsoftFailed": "Impossible de te connecter avec Microsoft. Réessaie, ou utilise ton e-mail ci-dessous.",
-      "notionCancelled": "Impossible de te connecter avec Notion. Réessaie, ou utilise ton e-mail ci-dessous."
+      "notionCancelled": "Impossible de te connecter avec Notion. Réessaie, ou utilise ton e-mail ci-dessous.",
+      "googleExpired": "Cette connexion avec Google a expiré ou a déjà été utilisée. Réessaie, ou utilise ton e-mail ci-dessous.",
+      "microsoftExpired": "Cette connexion avec Microsoft a expiré ou a déjà été utilisée. Réessaie, ou utilise ton e-mail ci-dessous.",
+      "notionExpired": "Cette connexion avec Notion a expiré ou a déjà été utilisée. Réessaie, ou utilise ton e-mail ci-dessous."
     }
   },
   "pricing": {

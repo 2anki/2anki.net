@@ -556,7 +556,10 @@
       "signInFallback": "Wir konnten dich nicht anmelden. Versuch es erneut oder verwende unten deine E-Mail.",
       "googleFailed": "Wir konnten dich nicht mit Google anmelden. Versuch es erneut oder verwende unten deine E-Mail.",
       "microsoftFailed": "Wir konnten dich nicht mit Microsoft anmelden. Versuch es erneut oder verwende unten deine E-Mail.",
-      "notionCancelled": "Wir konnten dich nicht mit Notion anmelden. Versuch es erneut oder verwende unten deine E-Mail."
+      "notionCancelled": "Wir konnten dich nicht mit Notion anmelden. Versuch es erneut oder verwende unten deine E-Mail.",
+      "googleExpired": "Diese Anmeldung mit Google ist abgelaufen oder wurde schon verwendet. Versuch es erneut oder verwende unten deine E-Mail.",
+      "microsoftExpired": "Diese Anmeldung mit Microsoft ist abgelaufen oder wurde schon verwendet. Versuch es erneut oder verwende unten deine E-Mail.",
+      "notionExpired": "Diese Anmeldung mit Notion ist abgelaufen oder wurde schon verwendet. Versuch es erneut oder verwende unten deine E-Mail."
     }
   },
   "pricing": {
