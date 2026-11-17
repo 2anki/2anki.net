@@ -882,7 +882,7 @@ const UserRouter = () => {
    *     tags: [Authentication]
    *     responses:
    *       302:
-   *         description: Redirect to the post-login destination
+   *         description: Redirect to the post-login destination, or /login?error=microsoft_signin_failed. A state that does not match the cookie exchanges nothing and redirects to the signed-in landing when the browser already has a session, else to /login?error=microsoft_signin_expired
    */
   router.get('/api/users/auth/microsoft', (req, res) =>
     controller.loginWithMicrosoft(req, res)

@@ -557,9 +557,9 @@
       "googleFailed": "Kon je niet inloggen met Google. Probeer het opnieuw, of gebruik hieronder je e-mail.",
       "microsoftFailed": "Kon je niet inloggen met Microsoft. Probeer het opnieuw, of gebruik hieronder je e-mail.",
       "notionCancelled": "Kon je niet inloggen met Notion. Probeer het opnieuw, of gebruik hieronder je e-mail.",
-      "googleExpired": "Die inlogpoging met Google is verlopen of al gebruikt. Probeer het hieronder opnieuw.",
-      "microsoftExpired": "Die inlogpoging met Microsoft is verlopen of al gebruikt. Probeer het hieronder opnieuw.",
-      "notionExpired": "Die inlogpoging met Notion is verlopen of al gebruikt. Probeer het hieronder opnieuw."
+      "googleExpired": "Die inlogpoging met Google is verlopen of al gebruikt. Probeer het opnieuw, of gebruik hieronder je e-mail.",
+      "microsoftExpired": "Die inlogpoging met Microsoft is verlopen of al gebruikt. Probeer het opnieuw, of gebruik hieronder je e-mail.",
+      "notionExpired": "Die inlogpoging met Notion is verlopen of al gebruikt. Probeer het opnieuw, of gebruik hieronder je e-mail."
     }
   },
   "pricing": {

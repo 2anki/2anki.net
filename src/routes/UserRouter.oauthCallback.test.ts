@@ -1,7 +1,10 @@
 import { vi, type Mock } from 'vitest';
 import type { Knex } from 'knex';
 
-const holder = vi.hoisted(() => ({ db: null as Knex | null }));
+const holder = vi.hoisted(() => ({
+  db: null as Knex | null,
+  failingTable: null as string | null,
+}));
 
 vi.mock('../data_layer', () => ({
   getDatabase: vi.fn(() => holder.db),
@@ -26,34 +29,65 @@ import jwt from 'jsonwebtoken';
 import knex from 'knex';
 
 import UserRouter from './UserRouter';
+import NotionRouter from './NotionRouter';
+import ErrorHandler from './middleware/ErrorHandler';
 import instrumentedAxios from '../services/observability/instrumentedAxios';
-import { __resetGoogleJwksCacheForTests } from '../services/AuthenticationService';
+import {
+  __resetGoogleJwksCacheForTests,
+  __resetMicrosoftJwksCacheForTests,
+} from '../services/AuthenticationService';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const MICROSOFT_TOKEN_URL =
+  'https://login.microsoftonline.com/common/oauth2/v2.0/token';
 const NOTION_TOKEN_URL = 'https://api.notion.com/v1/oauth/token';
 const GOOGLE_CLIENT_ID = 'google-client';
-const KID = 'google-test-key';
+const MICROSOFT_CLIENT_ID = 'microsoft-client';
+const KID = 'provider-test-key';
 const EMAIL = 'learner@example.com';
 const LINK_PREVIEW_AGENT =
   'Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)';
+const GENERIC_SERVER_ERROR = {
+  code: 'unknown',
+  message:
+    'Something broke on our end. Try again — if it keeps failing, email support@2anki.net.',
+};
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
   modulusLength: 2048,
 });
 const publicJwk = publicKey.export({ format: 'jwk' });
 
+const signIdToken = (claims: Record<string, unknown>) =>
+  jwt.sign(claims, privateKey.export({ type: 'pkcs8', format: 'pem' }), {
+    algorithm: 'RS256',
+    header: { alg: 'RS256', kid: KID },
+  });
+
 const googleIdToken = () =>
-  jwt.sign(
-    {
-      iss: 'https://accounts.google.com',
-      aud: GOOGLE_CLIENT_ID,
-      sub: 'google-sub-1',
-      email: EMAIL,
-      email_verified: true,
-      name: 'Learner',
-    },
-    privateKey.export({ type: 'pkcs8', format: 'pem' }),
-    { algorithm: 'RS256', header: { alg: 'RS256', kid: KID } }
+  signIdToken({
+    iss: 'https://accounts.google.com',
+    aud: GOOGLE_CLIENT_ID,
+    sub: 'google-sub-1',
+    email: EMAIL,
+    email_verified: true,
+    name: 'Learner',
+  });
+
+const microsoftIdToken = () =>
+  signIdToken({
+    iss: 'https://login.microsoftonline.com/tenant-1/v2.0',
+    aud: MICROSOFT_CLIENT_ID,
+    sub: 'microsoft-sub-1',
+    email: EMAIL,
+    email_verified: true,
+    name: 'Learner',
+  });
+
+const databaseUnavailable = () =>
+  Object.assign(
+    new Error('terminating connection due to administrator command'),
+    { code: '57P01' }
   );
 
 async function makeDatabase(): Promise<Knex> {
@@ -61,6 +95,12 @@ async function makeDatabase(): Promise<Knex> {
     client: 'better-sqlite3',
     connection: { filename: ':memory:' },
     useNullAsDefault: true,
+    wrapIdentifier: (value, origImpl) => {
+      if (value === holder.failingTable) {
+        throw databaseUnavailable();
+      }
+      return origImpl(value);
+    },
   });
   await db.schema.createTable('users', (t) => {
     t.increments('id');
@@ -76,6 +116,14 @@ async function makeDatabase(): Promise<Knex> {
     t.string('token', 1024);
     t.integer('owner');
     t.timestamp('created_at').defaultTo(db.fn.now());
+  });
+  await db.schema.createTable('oauth_identities', (t) => {
+    t.increments('id');
+    t.string('provider');
+    t.string('subject');
+    t.integer('user_id');
+    t.string('refresh_token');
+    t.unique(['provider', 'subject']);
   });
   await db.schema.createTable('notion_tokens', (t) => {
     t.increments('id');
@@ -127,6 +175,17 @@ const cookiePair = (setCookies: string[], name: string) =>
 const setsSession = (res: Response) =>
   res.headers.getSetCookie().some((c) => /^token=[^;]+/.test(c));
 
+const cookieNames = (res: Response) =>
+  res.headers.getSetCookie().map((c) => c.split('=')[0]);
+
+const clearsOnly = (res: Response, stateCookie: string) => {
+  const setCookies = res.headers.getSetCookie();
+  expect(cookieNames(res)).toEqual([stateCookie]);
+  expect(setCookies[0]).toMatch(
+    new RegExp(`^${stateCookie}=;.*Expires=Thu, 01 Jan 1970`)
+  );
+};
+
 let server: http.Server;
 let base: string;
 let userId: number;
@@ -137,10 +196,18 @@ beforeEach(async () => {
   vi.stubEnv('GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID);
   vi.stubEnv('GOOGLE_CLIENT_SECRET', 'google-secret');
   vi.stubEnv('GOOGLE_REDIRECT_URI', 'https://2anki.net/api/users/auth/google');
+  vi.stubEnv('MICROSOFT_CLIENT_ID', MICROSOFT_CLIENT_ID);
+  vi.stubEnv('MICROSOFT_CLIENT_SECRET', 'microsoft-secret');
+  vi.stubEnv(
+    'MICROSOFT_REDIRECT_URI',
+    'https://2anki.net/api/users/auth/microsoft'
+  );
   vi.stubEnv('NOTION_CLIENT_ID', 'notion-client');
   vi.stubEnv('NOTION_CLIENT_SECRET', 'notion-secret');
   vi.stubEnv('NOTION_REDIRECT_URI', 'https://2anki.net/api/notion/connect');
   __resetGoogleJwksCacheForTests();
+  __resetMicrosoftJwksCacheForTests();
+  holder.failingTable = null;
   (instrumentedAxios.post as Mock).mockReset();
   (instrumentedAxios.get as Mock).mockReset();
   (instrumentedAxios.get as Mock).mockResolvedValue({
@@ -151,6 +218,9 @@ beforeEach(async () => {
   (instrumentedAxios.post as Mock).mockImplementation(async (_l, url) => {
     if (url === GOOGLE_TOKEN_URL) {
       return { data: { id_token: googleIdToken() } };
+    }
+    if (url === MICROSOFT_TOKEN_URL) {
+      return { data: { id_token: microsoftIdToken() } };
     }
     if (url === NOTION_TOKEN_URL) {
       return {
@@ -178,6 +248,21 @@ beforeEach(async () => {
   const app = express();
   app.use(cookieParser());
   app.use(UserRouter());
+  app.use(NotionRouter());
+  app.use(
+    (
+      err: Error,
+      req: express.Request,
+      res: express.Response,
+      next: () => void
+    ) => {
+      if (err) {
+        ErrorHandler(res, req, err);
+      } else {
+        next();
+      }
+    }
+  );
   server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -185,6 +270,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
+  holder.failingTable = null;
   await holder.db?.destroy();
   vi.unstubAllEnvs();
 });
@@ -204,6 +290,16 @@ const providers = [
     tokenUrl: GOOGLE_TOKEN_URL,
     surface: 'oauth_google',
     expired: '/login?error=google_signin_expired',
+    landing: '/upload',
+  },
+  {
+    provider: 'Microsoft',
+    init: '/api/users/auth/microsoft/init',
+    callback: '/api/users/auth/microsoft',
+    stateCookie: 'microsoft_login_state',
+    tokenUrl: MICROSOFT_TOKEN_URL,
+    surface: 'oauth_microsoft',
+    expired: '/login?error=microsoft_signin_expired',
     landing: '/upload',
   },
   {
@@ -262,7 +358,7 @@ describe.each(providers)(
 
       expect(repeat.status).toBe(302);
       expect(repeat.headers.get('location')).toBe(landing);
-      expect(setsSession(repeat)).toBe(false);
+      clearsOnly(repeat, stateCookie);
       expect(exchangesWith(tokenUrl)).toHaveLength(1);
       expect(await holder.db!('access_tokens').count('* as n')).toEqual([
         { n: 1 },
@@ -291,6 +387,7 @@ describe.each(providers)(
       );
 
       expect(repeat.headers.get('location')).toBe(landing);
+      clearsOnly(repeat, stateCookie);
     });
 
     it('refuses a callback with no state cookie and no session, and points to a fresh sign-in', async () => {
@@ -300,7 +397,7 @@ describe.each(providers)(
 
       expect(res.status).toBe(302);
       expect(res.headers.get('location')).toBe(expired);
-      expect(setsSession(res)).toBe(false);
+      clearsOnly(res, stateCookie);
       expect(exchangesWith(tokenUrl)).toHaveLength(0);
       expect(await holder.db!('access_tokens').count('* as n')).toEqual([
         { n: 0 },
@@ -326,6 +423,7 @@ describe.each(providers)(
       const res = await get(callbackUrl(state), 'token=not-a-session');
 
       expect(res.headers.get('location')).toBe(expired);
+      clearsOnly(res, stateCookie);
       expect(exchangesWith(tokenUrl)).toHaveLength(0);
       expect(await errorRows()).toMatchObject([
         { code: 'oauth_state_mismatch', context: { alreadySignedIn: false } },
@@ -338,6 +436,7 @@ describe.each(providers)(
       const res = await get(callbackUrl(state), '', LINK_PREVIEW_AGENT);
 
       expect(res.headers.get('location')).toBe(expired);
+      clearsOnly(res, stateCookie);
       expect(exchangesWith(tokenUrl)).toHaveLength(0);
       expect(await errorRows()).toEqual([]);
     });
@@ -349,7 +448,7 @@ describe.each(providers)(
       const res = await get(callbackUrl(otherState), cookie);
 
       expect(res.headers.get('location')).toBe(expired);
-      expect(setsSession(res)).toBe(false);
+      clearsOnly(res, stateCookie);
       expect(exchangesWith(tokenUrl)).toHaveLength(0);
       expect(await errorRows()).toMatchObject([
         {
@@ -368,7 +467,7 @@ describe.each(providers)(
       const res = await get(callbackUrl(otherState), `${session}; ${cookie}`);
 
       expect(res.headers.get('location')).toBe(landing);
-      expect(setsSession(res)).toBe(false);
+      clearsOnly(res, stateCookie);
       expect(exchangesWith(tokenUrl)).toHaveLength(1);
       expect(await errorRows()).toEqual([
         {
@@ -385,6 +484,19 @@ describe.each(providers)(
       ]);
     });
 
+    it('answers a refused callback with the generic 500 when the session lookup fails, exchanging nothing', async () => {
+      const { state, session } = await signIn();
+      holder.failingTable = 'access_tokens';
+
+      const res = await get(callbackUrl(state), session);
+
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual(GENERIC_SERVER_ERROR);
+      expect(setsSession(res)).toBe(false);
+      expect(cookieNames(res)).toEqual([stateCookie]);
+      expect(exchangesWith(tokenUrl)).toHaveLength(1);
+    });
+
     it('never stores the state or the code in the visible-error row', async () => {
       const { state, session } = await signIn();
 
@@ -398,6 +510,34 @@ describe.each(providers)(
     });
   }
 );
+
+describe('the Microsoft sign-in callback on a repeat', () => {
+  it('links the Microsoft identity once and leaves it alone on the repeated callback', async () => {
+    const init = await get('/api/users/auth/microsoft/init', '');
+    const state =
+      new URL(init.headers.get('location') ?? '').searchParams.get('state') ??
+      '';
+    const stateCookie = cookiePair(
+      init.headers.getSetCookie(),
+      'microsoft_login_state'
+    );
+    const url = `/api/users/auth/microsoft?code=provider-code&state=${encodeURIComponent(state)}`;
+    const first = await get(url, stateCookie);
+    const session = cookiePair(first.headers.getSetCookie(), 'token');
+    const linked = await holder.db!('oauth_identities').select('*');
+
+    await get(url, session);
+
+    expect(linked).toEqual([
+      expect.objectContaining({
+        provider: 'microsoft',
+        subject: 'microsoft-sub-1',
+        user_id: userId,
+      }),
+    ]);
+    expect(await holder.db!('oauth_identities').select('*')).toEqual(linked);
+  });
+});
 
 describe('the Notion sign-in callback on a repeat', () => {
   it('saves the workspace once and leaves it alone on the repeated callback', async () => {
@@ -419,5 +559,55 @@ describe('the Notion sign-in callback on a repeat', () => {
     expect(saved).toHaveLength(1);
     expect(await holder.db!('notion_tokens').select('*')).toEqual(saved);
     expect(exchangesWith(NOTION_TOKEN_URL)).toHaveLength(1);
+  });
+});
+
+describe('a Notion sign-in returning through /api/notion/connect', () => {
+  async function startNotionSignIn() {
+    const init = await get('/api/users/auth/notion/init', '');
+    const state =
+      new URL(init.headers.get('location') ?? '').searchParams.get('state') ??
+      '';
+    const cookie = cookiePair(
+      init.headers.getSetCookie(),
+      'notion_login_state'
+    );
+    return { state, cookie };
+  }
+
+  const connectUrl = (state: string) =>
+    `/api/notion/connect?code=provider-code&state=${encodeURIComponent(state)}`;
+
+  it('forwards the login state to the sign-in callback, which signs in once', async () => {
+    const { state, cookie } = await startNotionSignIn();
+
+    const forward = await get(connectUrl(state), cookie);
+    const forwardedTo = forward.headers.get('location') ?? '';
+    const signedIn = await get(forwardedTo, cookie);
+
+    expect(forward.status).toBe(302);
+    expect(new URL(forwardedTo, base).pathname).toBe('/api/users/auth/notion');
+    expect(exchangesWith(NOTION_TOKEN_URL)).toHaveLength(1);
+    expect(signedIn.headers.get('location')).toBe('/notion');
+    expect(setsSession(signedIn)).toBe(true);
+    expect(await holder.db!('notion_tokens').count('* as n')).toEqual([
+      { n: 1 },
+    ]);
+  });
+
+  it('refuses a forwarded callback with no state cookie and no session, and points to a fresh sign-in', async () => {
+    const { state } = await startNotionSignIn();
+
+    const forward = await get(connectUrl(state), '');
+    const refused = await get(forward.headers.get('location') ?? '', '');
+
+    expect(refused.headers.get('location')).toBe(
+      '/login?error=notion_signin_expired'
+    );
+    clearsOnly(refused, 'notion_login_state');
+    expect(exchangesWith(NOTION_TOKEN_URL)).toHaveLength(0);
+    expect(await holder.db!('notion_tokens').count('* as n')).toEqual([
+      { n: 0 },
+    ]);
   });
 });

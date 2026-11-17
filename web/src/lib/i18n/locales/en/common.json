@@ -557,9 +557,9 @@
       "googleFailed": "Couldn't sign you in with Google. Try again, or use your email below.",
       "microsoftFailed": "Couldn't sign you in with Microsoft. Try again, or use your email below.",
       "notionCancelled": "Couldn't sign you in with Notion. Try again, or use your email below.",
-      "googleExpired": "That Google sign-in timed out or was already used. Try again below.",
-      "microsoftExpired": "That Microsoft sign-in timed out or was already used. Try again below.",
-      "notionExpired": "That Notion sign-in timed out or was already used. Try again below."
+      "googleExpired": "That Google sign-in timed out or was already used. Try again, or use your email below.",
+      "microsoftExpired": "That Microsoft sign-in timed out or was already used. Try again, or use your email below.",
+      "notionExpired": "That Notion sign-in timed out or was already used. Try again, or use your email below."
     }
   },
   "pricing": {
