@@ -27,6 +27,11 @@
       "detail": "Hochgeladene Stapel werden nach einer Weile entfernt. Konvertiere oder lade ihn erneut hoch, um eine Vorschau zu sehen.",
       "action": "Zurück zu Meine Stapel"
     },
+    "apkgTooLargeToPreview": {
+      "title": "Dieser Stapel ist zu groß für eine Vorschau.",
+      "detail": "Lade ihn herunter und öffne ihn in Anki, um seine Karten zu sehen.",
+      "action": "Zurück zu Meine Stapel"
+    },
     "notionPageNotFound": {
       "title": "Wir konnten diese Notion-Seite nicht öffnen.",
       "detail": "Sie wurde vielleicht gelöscht oder ist nicht mehr mit 2anki geteilt. Teile sie erneut in Notion oder wähle eine andere Seite.",

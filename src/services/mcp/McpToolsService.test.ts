@@ -20,6 +20,11 @@ import { makeFreeQuotaReachedError } from '../../usecases/imageOcclusion/PhotoTo
 import { DeckPersistence } from './McpDeckPersistence';
 import { JobWithDownloadKey } from '../../data_layer/JobRepository';
 import ApkgPreviewService from '../ApkgPreviewService/ApkgPreviewService';
+import {
+  ApkgTooLargeError,
+  MAX_TOTAL_DECOMPRESSED_BYTES,
+} from '../ApkgPreviewService/extractApkg';
+import { buildTinyApkg } from '../../test/fixtures/apkg/buildTinyApkg';
 import DownloadService from '../DownloadService';
 import type StorageHandler from '../../lib/storage/StorageHandler';
 import {
@@ -64,6 +69,10 @@ function makeService(overrides: {
     })),
     ...overrides.preview,
   } as unknown as ApkgPreviewService;
+  previewService.load = vi.fn(async (cacheKey, readBytes) => {
+    const bytes = await readBytes();
+    return bytes == null ? null : previewService.parse(cacheKey, bytes);
+  });
   const uploadEntry =
     overrides.uploadEntry ??
     ((_req: express.Request, res: express.Response) => {
@@ -415,6 +424,66 @@ describe('McpToolsService.getDeckPreview', () => {
     await expect(service.getDeckPreview('owner', 'job-1')).rejects.toThrow(
       /Upload not found/
     );
+  });
+});
+
+describe('McpToolsService.getDeckPreview, size check against storage', () => {
+  function serviceOverStorage(storedSize: number) {
+    const storage = {
+      getObjectSize: vi.fn(async () => storedSize),
+      getFileContents: vi.fn(async () => ({ Body: buildTinyApkg() })),
+      getPresignedUrl: vi.fn(),
+    };
+    const downloadService = new DownloadService({
+      getFile: vi.fn(async () => ({ key: 'stored/owner/deck.apkg' })),
+    } as never);
+    const service = new McpToolsService(
+      { getJobsByOwner: vi.fn(async () => []) },
+      downloadService,
+      new ApkgPreviewService(),
+      (_req, res) => {
+        res.status(200);
+      },
+      storage as unknown as StorageHandler,
+      { persist: vi.fn() } as unknown as DeckPersistence,
+      { generateCards: vi.fn() } as unknown as PhotoToFlashcardsUseCase,
+      {} as UsersRepository,
+      { holdForPlan: vi.fn(async () => null) },
+      'https://mcp.test'
+    );
+    return { service, storage };
+  }
+
+  it('previews a stored deck under the size limit', async () => {
+    const { service, storage } = serviceOverStorage(4096);
+
+    const preview = await service.getDeckPreview('owner', 'deck.apkg');
+
+    expect(preview.cardCount).toBe(1);
+    expect(storage.getFileContents).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses an oversized stored deck without reading its body', async () => {
+    const { service, storage } = serviceOverStorage(
+      MAX_TOTAL_DECOMPRESSED_BYTES + 1
+    );
+
+    await expect(
+      service.getDeckPreview('owner', 'deck.apkg')
+    ).rejects.toBeInstanceOf(ApkgTooLargeError);
+    expect(storage.getFileContents).not.toHaveBeenCalled();
+  });
+
+  it('reads the deck once for concurrent previews of it', async () => {
+    const { service, storage } = serviceOverStorage(4096);
+
+    await Promise.all(
+      Array.from({ length: 4 }, () =>
+        service.getDeckPreview('owner', 'deck.apkg')
+      )
+    );
+
+    expect(storage.getFileContents).toHaveBeenCalledTimes(1);
   });
 });
 

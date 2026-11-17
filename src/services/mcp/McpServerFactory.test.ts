@@ -5,6 +5,7 @@ import {
   type McpRequestContext,
 } from './McpServerFactory';
 import type { McpToolsService } from './McpToolsService';
+import { ApkgTooLargeError } from '../ApkgPreviewService/extractApkg';
 
 const buildContext = (
   overrides: Partial<McpRequestContext> = {}
@@ -288,6 +289,28 @@ describe('get_deck_preview handler', () => {
     expect(result.content[0].text.match(/^\| \d+ \|/gm)).toHaveLength(20);
     expect(result.content[0].text).toContain(
       'Showing cards 1–20 of 34. Pass page (0-based) and pageSize for more.'
+    );
+  });
+
+  it('answers a deck too large to preview with that reason as a tool error', async () => {
+    const getDeckPreview = vi.fn(async () => {
+      throw new ApkgTooLargeError();
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const handler = getHandler(
+      buildContext({
+        owner: 'user-1',
+        toolsService: { getDeckPreview } as unknown as McpToolsService,
+      }),
+      'get_deck_preview'
+    );
+
+    const result = await handler({ jobId: 'job-1' });
+    errorSpy.mockRestore();
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain(
+      'This Anki package is too large to process.'
     );
   });
 

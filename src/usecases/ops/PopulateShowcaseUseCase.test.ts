@@ -1,15 +1,26 @@
 import { vi } from 'vitest';
+
+const storedObject = vi.hoisted(() => ({
+  getObjectSize: vi.fn(),
+  getFileContents: vi.fn(),
+}));
+
 vi.mock('../../lib/storage/StorageHandler', () => {
   return {
     __esModule: true,
     default: vi.fn().mockImplementation(function () {
-      return {};
+      return storedObject;
     }),
   };
 });
 
 import { PopulateShowcaseUseCase } from './PopulateShowcaseUseCase';
 import { InMemoryShowcaseRepository } from '../../data_layer/ShowcaseRepository';
+import DownloadService from '../../services/DownloadService';
+import {
+  ApkgTooLargeError,
+  MAX_TOTAL_DECOMPRESSED_BYTES,
+} from '../../services/ApkgPreviewService/extractApkg';
 
 const fakeBlock = (id: string, type = 'paragraph') => ({
   object: 'block' as const,
@@ -139,6 +150,27 @@ describe('PopulateShowcaseUseCase', () => {
     await expect(
       useCase.execute('owner-1', 'page-id', 'missing.apkg')
     ).rejects.toThrow('APKG file not found');
+  });
+
+  it('refuses an oversized stored deck without reading its body', async () => {
+    storedObject.getObjectSize.mockResolvedValue(
+      MAX_TOTAL_DECOMPRESSED_BYTES + 1
+    );
+    storedObject.getFileContents.mockReset();
+    const { notionService } = buildUseCase();
+    const useCase = new PopulateShowcaseUseCase(
+      new InMemoryShowcaseRepository(),
+      notionService,
+      { parse: vi.fn(), getCardsPage: vi.fn() } as never,
+      new DownloadService({
+        getFile: vi.fn().mockResolvedValue({ key: 'stored/showcase.apkg' }),
+      } as never)
+    );
+
+    await expect(
+      useCase.execute('owner-1', 'page-id', 'file.apkg')
+    ).rejects.toBeInstanceOf(ApkgTooLargeError);
+    expect(storedObject.getFileContents).not.toHaveBeenCalled();
   });
 
   it('stores empty blocks when page has no content', async () => {

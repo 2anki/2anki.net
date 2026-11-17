@@ -62,7 +62,7 @@ function makeStorage(overrides: Record<string, unknown> = {}) {
 
 function makePreviewService(overrides: Record<string, unknown> = {}) {
   return {
-    parse: vi.fn().mockResolvedValue({}),
+    load: vi.fn().mockResolvedValue({}),
     getMeta: vi.fn().mockReturnValue({ totalCards: 5, decks: [] }),
     getCardsPage: vi
       .fn()
@@ -76,6 +76,7 @@ function makeDownloadService(overrides: Record<string, unknown> = {}) {
   return {
     getFilename: vi.fn().mockResolvedValue('My Deck'),
     isMissingDownloadError: vi.fn().mockReturnValue(false),
+    isTooLargeToRead: vi.fn().mockResolvedValue(false),
     ...overrides,
   };
 }

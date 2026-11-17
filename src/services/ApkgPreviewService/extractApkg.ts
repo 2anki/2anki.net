@@ -14,7 +14,7 @@ export interface ApkgArchive {
 // here takes down every in-flight conversion, not one worker. Caps sized for
 // the 100MB multer limit on the apkg routes: honest media is stored ~1:1 and
 // a large collection sqlite decompresses well under these.
-const MAX_TOTAL_DECOMPRESSED_BYTES = 1024 * 1024 * 1024;
+export const MAX_TOTAL_DECOMPRESSED_BYTES = 1024 * 1024 * 1024;
 const MAX_COLLECTION_DECOMPRESSED_BYTES = 512 * 1024 * 1024;
 const MAX_ENTRIES = 65536;
 

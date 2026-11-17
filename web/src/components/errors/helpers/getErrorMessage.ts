@@ -169,6 +169,23 @@ export function classifyError(error: unknown): FriendlyError {
     };
   }
 
+  if (status === 413 && url?.startsWith('/api/apkg/')) {
+    return {
+      title: tr(
+        'messages.apkgTooLargeToPreview.title',
+        'This deck is too large to preview.'
+      ),
+      detail: tr(
+        'messages.apkgTooLargeToPreview.detail',
+        'Download it and open it in Anki to see its cards.'
+      ),
+      actionLink: {
+        text: tr('messages.apkgTooLargeToPreview.action', 'Back to My decks'),
+        to: '/downloads',
+      },
+    };
+  }
+
   if (lower.includes('object_not_found') || lower.includes('404')) {
     return {
       title: tr(

@@ -10,8 +10,10 @@ import DownloadService from '../services/DownloadService';
 import { buildContentDisposition } from '../lib/buildContentDisposition';
 import { getSafeFilename } from '../lib/getSafeFilename';
 import { pinSharedNoteTypes } from '../lib/anki/pinSharedNoteTypes';
+import { ApkgTooLargeError } from '../services/ApkgPreviewService/extractApkg';
 
 const NOINDEX = 'noindex';
+const STORED_COPY_LINK_TTL_SECONDS = 300;
 
 const MEDIA_CONTENT_TYPES: Record<string, string> = {
   png: 'image/png',
@@ -150,20 +152,21 @@ class ShareController {
     }
 
     try {
-      const fileOutput = await this.storage.getFileContents(share.upload_key);
-      if (fileOutput.Body == null) {
+      const parsed = await this.previewService.load(`share:${token}`, () =>
+        this.downloadService.getStoredDeckBody(share.upload_key, this.storage)
+      );
+      if (parsed == null) {
         res.status(404).json({ message: 'This deck is no longer available.' });
         return null;
       }
-      const cacheKey = `share:${token}`;
-      const parsed = await this.previewService.parse(
-        cacheKey,
-        fileOutput.Body as Buffer
-      );
       return { share, parsed };
     } catch (error) {
       if (this.downloadService.isMissingDownloadError(error)) {
         res.status(404).json({ message: 'This deck is no longer available.' });
+        return null;
+      }
+      if (error instanceof ApkgTooLargeError) {
+        res.status(413).json({ message: error.message });
         return null;
       }
       throw error;
@@ -249,12 +252,6 @@ class ShareController {
         return;
       }
 
-      const fileOutput = await this.storage.getFileContents(share.upload_key);
-      if (fileOutput.Body == null) {
-        res.status(404).json({ message: 'This deck is no longer available.' });
-        return;
-      }
-
       const dbName = await this.downloadService.getFilename(
         String(share.owner),
         share.upload_key
@@ -263,6 +260,30 @@ class ShareController {
       const filename = basename.endsWith('.apkg')
         ? basename
         : `${basename}.apkg`;
+
+      if (
+        await this.downloadService.isTooLargeToRead(
+          share.upload_key,
+          this.storage
+        )
+      ) {
+        console.info('[ShareController.download] sent by storage link: large');
+        res.redirect(
+          302,
+          await this.storage.getPresignedUrl(
+            share.upload_key,
+            STORED_COPY_LINK_TTL_SECONDS,
+            filename
+          )
+        );
+        return;
+      }
+
+      const fileOutput = await this.storage.getFileContents(share.upload_key);
+      if (fileOutput.Body == null) {
+        res.status(404).json({ message: 'This deck is no longer available.' });
+        return;
+      }
 
       res.setHeader('Content-Type', 'application/octet-stream');
       res.setHeader('Content-Disposition', buildContentDisposition(filename));

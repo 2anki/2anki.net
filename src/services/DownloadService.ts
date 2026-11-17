@@ -3,6 +3,12 @@ import StorageHandler, {
 } from '../lib/storage/StorageHandler';
 import DownloadRepository from '../data_layer/DownloadRepository';
 import { anonRecoveryKey } from '../lib/upload/anonymousRecovery';
+import {
+  ApkgTooLargeError,
+  MAX_TOTAL_DECOMPRESSED_BYTES,
+} from './ApkgPreviewService/extractApkg';
+
+const HEAD_MISSING_NAME = 'NotFound';
 
 const TRANSIENT_ERROR_NAMES = new Set([
   'TimeoutError',
@@ -55,8 +61,27 @@ class DownloadService {
     if (!fileEntry) {
       return null;
     }
-    const file = await storage.getFileContents(fileEntry.key);
+    return this.getStoredDeckBody(fileEntry.key, storage);
+  }
+
+  async getStoredDeckBody(
+    storageKey: string,
+    storage: StorageHandler
+  ): Promise<Buffer | undefined> {
+    if (await this.isTooLargeToRead(storageKey, storage)) {
+      console.info('[apkg-preview] stored deck refused before read: too large');
+      throw new ApkgTooLargeError();
+    }
+    const file = await storage.getFileContents(storageKey);
     return file?.Body;
+  }
+
+  async isTooLargeToRead(
+    storageKey: string,
+    storage: StorageHandler
+  ): Promise<boolean> {
+    const size = await storage.getObjectSize(storageKey);
+    return size == null || size > MAX_TOTAL_DECOMPRESSED_BYTES;
   }
 
   async getFileStream(
@@ -89,7 +114,8 @@ class DownloadService {
 
   isMissingDownloadError(error: unknown) {
     const errorName = getErrorName(error);
-    return errorName != null && errorName.includes('NoSuchKey');
+    if (errorName == null) return false;
+    return errorName.includes('NoSuchKey') || errorName === HEAD_MISSING_NAME;
   }
 
   isTransientStorageError(error: unknown) {

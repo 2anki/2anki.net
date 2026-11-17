@@ -27,6 +27,11 @@
       "detail": "Przesłane talie są usuwane po pewnym czasie. Przekonwertuj ją lub prześlij ponownie, aby zobaczyć podgląd.",
       "action": "Wróć do sekcji Moje talie"
     },
+    "apkgTooLargeToPreview": {
+      "title": "Ta talia jest za duża, aby wyświetlić podgląd.",
+      "detail": "Pobierz ją i otwórz w Anki, aby zobaczyć jej karty.",
+      "action": "Wróć do sekcji Moje talie"
+    },
     "notionPageNotFound": {
       "title": "Nie udało się otworzyć tej strony Notion.",
       "detail": "Mogła zostać usunięta albo nie jest już udostępniona 2anki. Udostępnij ją ponownie w Notion albo wybierz inną stronę.",

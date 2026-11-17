@@ -57,14 +57,50 @@ export interface CardRenderOptions {
 
 export default class ApkgPreviewService {
   private readonly cache = new Map<string, ParsedApkg>();
+  private readonly inFlight = new Map<string, Promise<ParsedApkg | null>>();
 
   async parse(cacheKey: string, bytes: Buffer): Promise<ParsedApkg> {
+    return (await this.load(cacheKey, async () => bytes)) as ParsedApkg;
+  }
+
+  load(
+    cacheKey: string,
+    readBytes: () => Promise<Buffer | null | undefined>
+  ): Promise<ParsedApkg | null> {
+    const cached = this.fromCache(cacheKey);
+    if (cached) return Promise.resolve(cached);
+    const pending = this.inFlight.get(cacheKey);
+    if (pending) return pending;
+    const loading = this.readAndParse(cacheKey, readBytes).finally(() => {
+      this.inFlight.delete(cacheKey);
+    });
+    this.inFlight.set(cacheKey, loading);
+    return loading;
+  }
+
+  private fromCache(cacheKey: string): ParsedApkg | null {
     const existing = this.cache.get(cacheKey);
     if (existing && Date.now() - existing.parsedAt < CACHE_TTL_MS) {
       this.cache.delete(cacheKey);
       this.cache.set(cacheKey, existing);
       return existing;
     }
+    return null;
+  }
+
+  private async readAndParse(
+    cacheKey: string,
+    readBytes: () => Promise<Buffer | null | undefined>
+  ): Promise<ParsedApkg | null> {
+    const bytes = await readBytes();
+    if (bytes == null) return null;
+    return this.parseFresh(cacheKey, bytes);
+  }
+
+  private async parseFresh(
+    cacheKey: string,
+    bytes: Buffer
+  ): Promise<ParsedApkg> {
     const archive = await extractApkg(bytes);
     const collection = parseCollection(archive.collectionBuffer);
     const mediaMap = parseMediaManifest(archive.mediaManifestRaw);

@@ -27,6 +27,11 @@
       "detail": "Baralhos enviados são removidos depois de um tempo. Converta ou envie de novo para visualizá-lo.",
       "action": "Voltar para Meus baralhos"
     },
+    "apkgTooLargeToPreview": {
+      "title": "Este baralho é grande demais para visualizar.",
+      "detail": "Baixe e abra no Anki para ver os cartões.",
+      "action": "Voltar para Meus baralhos"
+    },
     "notionPageNotFound": {
       "title": "Não conseguimos abrir essa página do Notion.",
       "detail": "Ela pode ter sido excluída, ou não está mais compartilhada com o 2anki. Compartilhe de novo no Notion, ou escolha outra página.",
