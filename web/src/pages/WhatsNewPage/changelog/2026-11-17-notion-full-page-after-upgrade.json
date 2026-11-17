@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-notion-full-page-after-upgrade",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "A long Notion page converts in full after you get a plan, instead of stopping at the first 100 blocks again"
+}

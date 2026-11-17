@@ -38,6 +38,17 @@ import { makeNotionClientLogger } from './helpers/notionClientLogger';
 const DEFAULT_PAGE_SIZE_LIMIT = 100 * 2;
 const SEARCH_MAX_PAGES = 20;
 
+// Notion clamps page_size to 100 whatever is asked for.
+const NOTION_BLOCK_WINDOW = 100;
+
+// The paid fetch follows the cursor to the end and leaves has_more set, so a
+// whole list of a long page has more than one window of results. One window
+// or less with has_more set is where a free fetch stopped. Rows like that
+// were cached until 2026-11-17 and are still in the table.
+function isFirstWindowOfLongerList(payload: ListBlockChildrenResponse) {
+  return payload.has_more && payload.results.length <= NOTION_BLOCK_WINDOW;
+}
+
 export interface GetBlockParams {
   createdAt: string;
   lastEditedAt: string;
@@ -158,7 +169,7 @@ class NotionAPIWrapper {
             lastEditedAt,
           })
         : null;
-    if (cachedPayload) {
+    if (cachedPayload && !isFirstWindowOfLongerList(cachedPayload)) {
       console.log('using payload cache');
       console.timeEnd(getBlocksLabel);
       return cachedPayload;
@@ -210,8 +221,11 @@ class NotionAPIWrapper {
         }
       }
     }
+    // A free conversion stops after the first window. Saved, that window was
+    // read back as the whole page by the same owner's next paying conversion.
+    const isWholeList = all || !response.has_more;
     if (createdAt && lastEditedAt) {
-      if (this.blocksCache && !paginationTruncated) {
+      if (this.blocksCache && !paginationTruncated && isWholeList) {
         await this.blocksCache.save({
           id,
           owner: this.owner,
