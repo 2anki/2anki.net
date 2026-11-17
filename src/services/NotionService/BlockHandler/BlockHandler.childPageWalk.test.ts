@@ -73,6 +73,12 @@ const heading = (id: string, text: string) =>
     color: 'default',
     is_toggleable: false,
   });
+const heading1 = (id: string, text: string) =>
+  block(id, 'heading_1', {
+    rich_text: richText(text),
+    color: 'default',
+    is_toggleable: false,
+  });
 const paragraph = (id: string, text: string) =>
   block(id, 'paragraph', { rich_text: richText(text), color: 'default' });
 
@@ -403,6 +409,128 @@ describe('BlockHandler child page walk', () => {
     });
   });
 
+  describe('a synced block in a child page on a paid conversion', () => {
+    it('delivers the synced toggle once with its full back', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [childPage(CHILD_PAGE, 'Child')];
+      tree[CHILD_PAGE] = [
+        block('synced-src', 'synced_block', { synced_from: null }, true),
+      ];
+      tree['synced-src'] = [toggleWithBullets(tree, 't-Q1', 'Q1')];
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+        [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+      });
+      const handler = makeHandler(sdk, true);
+      const decks = await convert(handler);
+
+      expect(delivered(decks)).toEqual([
+        {
+          name: 'Parent::Child',
+          cards: [{ name: 'Q1', back: backOf('Q1'), notionId: 't-Q1' }],
+        },
+      ]);
+      expect(handler.emptyBackCount).toBe(0);
+    });
+  });
+
+  describe('a headings-only child page on a paid conversion', () => {
+    it('rescues the child page exactly once', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [childPage(CHILD_PAGE, 'Child')];
+      tree[CHILD_PAGE] = [
+        heading('h1', 'Cells'),
+        paragraph('p1', 'Cells are the basic unit of life.'),
+        heading('h2', 'Tissues'),
+        paragraph('p2', 'Tissues are groups of similar cells.'),
+        heading('h3', 'Organs'),
+        paragraph('p3', 'Organs are groups of tissues.'),
+      ];
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+        [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+      });
+      const decks = await convert(makeHandler(sdk, true));
+
+      expect(
+        delivered(decks).map((deck) => [
+          deck.name,
+          deck.cards.map((card) => card.name),
+        ])
+      ).toEqual([['Parent::Child', ['Cells', 'Tissues', 'Organs']]]);
+    });
+  });
+
+  describe.each([
+    ['database only', ['database'], []],
+    ['heading_1 only', ['heading_1'], [heading1('h-intro', 'Intro')]],
+  ])(
+    'deck boundaries without page (%s) on a paid conversion',
+    (_label, deckTypes, parentExtras) => {
+      function pageOutsidePageDecks() {
+        const tree: Record<string, FakeBlock[]> = {};
+        tree[PARENT_PAGE] = [
+          ...parentExtras,
+          toggleWithBullets(tree, 't-P1', 'P1'),
+          childPage(CHILD_PAGE, 'Child'),
+        ];
+        tree[CHILD_PAGE] = [
+          heading1('h-child', 'Chapter'),
+          ...CHILD_TOGGLES.map((front) =>
+            toggleWithBullets(tree, `t-${front}`, front)
+          ),
+        ];
+        return makeSdk(tree, {
+          [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+          [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+        });
+      }
+
+      function rulesWithDeckTypes() {
+        const rules = new ParserRules();
+        rules.setDeckTypes(deckTypes);
+        return rules;
+      }
+
+      it('delivers the child page toggles once, with full backs and block-id guids', async () => {
+        const sdk = pageOutsidePageDecks();
+        const decks = await convert(
+          makeHandler(sdk, true),
+          rulesWithDeckTypes()
+        );
+
+        expect(delivered(decks)).toEqual([
+          {
+            name: 'Parent::Child',
+            cards: CHILD_TOGGLES.map((front) => ({
+              name: front,
+              back: backOf(front),
+              notionId: `t-${front}`,
+            })),
+          },
+        ]);
+      });
+
+      it('counts each child page toggle once', async () => {
+        const sdk = pageOutsidePageDecks();
+        const handler = makeHandler(sdk, true);
+        await convert(handler, rulesWithDeckTypes());
+
+        expect({
+          blocksSeen: handler.blocksSeen,
+          emptyBackCount: handler.emptyBackCount,
+          toggleBodyFetches: CHILD_TOGGLES.map((front) =>
+            childrenFetchesOf(sdk, `t-${front}`)
+          ),
+        }).toEqual({
+          blocksSeen: 3,
+          emptyBackCount: 0,
+          toggleBodyFetches: [1, 1, 1],
+        });
+      });
+    }
+  );
+
   describe('custom sub-deck rules', () => {
     function pageWithToggleSubDeck() {
       const tree: Record<string, FakeBlock[]> = {};
@@ -456,6 +584,46 @@ describe('BlockHandler child page walk', () => {
         ['Parent::Child', ['C1']],
         ['Parent::Chapter', CHILD_TOGGLES],
       ]);
+    });
+
+    it('still builds a heading sub-deck beside the child page when SUB_DECKS names heading_1', async () => {
+      const tree: Record<string, FakeBlock[]> = {};
+      tree[PARENT_PAGE] = [
+        block(
+          'h-Unit',
+          'heading_1',
+          {
+            rich_text: richText('Unit'),
+            color: 'default',
+            is_toggleable: true,
+          },
+          true
+        ),
+        childPage(CHILD_PAGE, 'Child'),
+      ];
+      tree['h-Unit'] = [
+        paragraph('p-unit', 'Unit summary'),
+        toggleWithBullets(tree, 't-U1', 'U1'),
+      ];
+      tree[CHILD_PAGE] = [toggleWithBullets(tree, 't-C1', 'C1')];
+      const sdk = makeSdk(tree, {
+        [PARENT_PAGE]: page(PARENT_PAGE, 'Parent'),
+        [CHILD_PAGE]: page(CHILD_PAGE, 'Child'),
+      });
+      const rules = new ParserRules();
+      rules.SUB_DECKS = ['child_page', 'heading_1'];
+      const decks = await convert(makeHandler(sdk, true), rules);
+
+      expect(
+        delivered(decks).map((deck) => [
+          deck.name,
+          deck.cards.map((card) => card.name),
+        ])
+      ).toEqual([
+        ['Parent', ['U1']],
+        ['Parent::Child', ['C1']],
+      ]);
+      expect(childrenFetchesOf(sdk, 'h-Unit')).toBe(2);
     });
 
     it('fetches the child page no more often when SUB_DECKS adds child_page to toggle', async () => {
