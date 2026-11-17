@@ -351,8 +351,6 @@ class BlockHandler implements IBlockRenderer {
 
   exporter;
 
-  skip: string[];
-
   firstPageTitle?: string;
 
   useAll: boolean = false;
@@ -470,7 +468,6 @@ class BlockHandler implements IBlockRenderer {
   ) {
     this.exporter = exporter;
     this.api = api;
-    this.skip = [];
     this.settings = settings;
     this.settingsRepository = settingsRepository;
     this.owner = owner;

@@ -1,0 +1,6 @@
+{
+  "id": "2026-11-17-notion-list-answers-kept",
+  "date": "2026-11-17",
+  "type": "fix",
+  "title": "Notion answers that are a list keep it in nested toggle cards, shared synced blocks and toggle sub-decks"
+}

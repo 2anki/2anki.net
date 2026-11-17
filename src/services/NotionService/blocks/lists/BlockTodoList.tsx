@@ -11,10 +11,17 @@ import { styleWithColors } from '../../NotionColors';
 export const BlockTodoList = async (
   block: ToDoBlockObjectResponse,
   response: ListBlockChildrenResponse | undefined,
-  handler: IBlockRenderer
+  handler: IBlockRenderer,
+  groupedListItems: Set<string>
 ) => {
   const list = block.to_do;
-  const items = await getListItems(response, handler, 'to_do', block);
+  const items = await getListItems(
+    response,
+    handler,
+    'to_do',
+    block,
+    groupedListItems
+  );
   const listItems = items.filter(Boolean);
   const markup = ReactDOMServer.renderToStaticMarkup(
     <ul id={block.id} className={`to-do-list${styleWithColors(list.color)}`}>

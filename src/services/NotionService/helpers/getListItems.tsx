@@ -41,7 +41,8 @@ export default function getListItems(
   response: ListBlockChildrenResponse | undefined,
   handler: IBlockRenderer,
   type: ListType,
-  startBlock: BlockObjectResponse
+  startBlock: BlockObjectResponse,
+  groupedListItems: Set<string>
 ) {
   if (!response) {
     return [];
@@ -54,7 +55,7 @@ export default function getListItems(
         return null;
       }
       const backSide = await getChildren(list, handler);
-      handler.skip.push(result.id);
+      groupedListItems.add(result.id);
       const todo =
         type === 'to_do' ? (list as ToDoBlockObjectResponse).to_do : null;
       const checked = todo?.checked

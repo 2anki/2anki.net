@@ -78,7 +78,8 @@ const renderSyncedBlock = async (
 export const blockToStaticMarkup = async (
   handler: IBlockRenderer,
   c: BlockObjectResponse,
-  response?: ListBlockChildrenResponse
+  response?: ListBlockChildrenResponse,
+  groupedListItems: Set<string> = new Set()
 ) => {
   let back = '';
   switch (c.type) {
@@ -122,16 +123,16 @@ export const blockToStaticMarkup = async (
       back += await BlockChildPage(c, handler);
       break;
     case 'to_do':
-      back += await BlockTodoList(c, response, handler);
+      back += await BlockTodoList(c, response, handler, groupedListItems);
       break;
     case 'callout':
       back += await BlockCallout(c, handler);
       break;
     case 'bulleted_list_item':
-      back += await BlockBulletList(c, response, handler);
+      back += await BlockBulletList(c, response, handler, groupedListItems);
       break;
     case 'numbered_list_item':
-      back += await BlockNumberedList(c, response, handler);
+      back += await BlockNumberedList(c, response, handler, groupedListItems);
       break;
     case 'toggle':
       back += await BlockToggleList(c, handler);

@@ -14,6 +14,7 @@ import CardOption from '../../../lib/parser/Settings/CardOption';
 import BlockHandler from './BlockHandler';
 import NotionAPIWrapper from '../NotionAPIWrapper';
 import { downloadMediaOrSkip } from '../helpers/downloadMediaOrSkip';
+import { MISSING_MEDIA_PLACEHOLDER } from '../helpers/renderBack';
 
 beforeEach(() => setupTests());
 
@@ -104,6 +105,16 @@ function makeFileImageBlock(url: string): ImageBlockObjectResponse {
   } as unknown as ImageBlockObjectResponse;
 }
 
+function makeBulletBlock(id: string, text: string): BlockObjectResponse {
+  const paragraph = makeParagraphBlock(text);
+  return {
+    ...paragraph,
+    id,
+    type: 'bulleted_list_item',
+    bulleted_list_item: paragraph.paragraph,
+  } as unknown as BlockObjectResponse;
+}
+
 function makeChildrenResponse(
   children: BlockObjectResponse[]
 ): ListBlockChildrenResponse {
@@ -127,9 +138,11 @@ describe('BlockHandler back-side data loss on media failure', () => {
     vi.spyOn(exporter, 'addMedia').mockImplementation(() => 'fake-abs-path');
   });
 
-  function buildHandler(): BlockHandler {
+  function buildHandler(
+    blocks: BlockObjectResponse[] = [makeParagraphBlock('Answer text')]
+  ): BlockHandler {
     const children = makeChildrenResponse([
-      makeParagraphBlock('Answer text'),
+      ...blocks,
       makeFileImageBlock('https://notion.s3/img-expired.png'),
     ]);
     const freshImage = makeFileImageBlock(
@@ -166,5 +179,20 @@ describe('BlockHandler back-side data loss on media failure', () => {
     expect(back).toContain('Answer text');
     expect(back).toMatch(/<img src="[^"]+" \/>/);
     expect(back).not.toContain("couldn't be loaded");
+  });
+
+  test('keeps a list that sat before the failing media on the retried back', async () => {
+    mockedDownload.mockRejectedValue(new Error('socket hang up'));
+    const handler = buildHandler([
+      makeBulletBlock('bullet-1', 'First point'),
+      makeBulletBlock('bullet-2', 'Second point'),
+    ]);
+
+    const back = await handler.getBackSide(makeToggleBlock());
+
+    expect(back).toBe(
+      '<ul id="bullet-1" class="bulleted-list"><li id="bullet-1" class=""><div>First point</div></li><li id="bullet-2" class=""><div>Second point</div></li></ul>' +
+        MISSING_MEDIA_PLACEHOLDER
+    );
   });
 });
