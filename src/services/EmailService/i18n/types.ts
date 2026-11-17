@@ -110,6 +110,7 @@ export interface EmailStrings {
   inactivityWarning: InactivityWarningStrings;
   abandonedCheckout: AbandonedCheckoutStrings;
   passEnding: PassEndingStrings;
+  semesterPassEnding: PassEndingStrings;
   semesterRenewal: SemesterRenewalStrings;
   commercialShared: CommercialSharedStrings;
 }

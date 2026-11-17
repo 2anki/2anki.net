@@ -31,11 +31,12 @@ describe('SemesterRenewalBanner', () => {
     livePrices.mockReturnValue({ '120d': '$29' });
   });
 
-  it('tells a holder in the final week when the pass ends and offers the renewal at the live price', () => {
+  it('heads the renewal and offers it at the live price, leaving the end date to the plan line', () => {
     render(
       <SemesterRenewalBanner
         passKind="120d"
         passExpiresAt={endsIn(5)}
+        needsConfirmedEmail={false}
         now={NOW}
       />
     );
@@ -44,8 +45,12 @@ describe('SemesterRenewalBanner', () => {
       screen.getByRole('region', { name: 'Semester Pass renewal' })
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Your Semester Pass ends on January 15, 2027')
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'Renew your Semester Pass',
+      })
     ).toBeInTheDocument();
+    expect(screen.queryByText(/2027/)).toBeNull();
     expect(
       screen.getByRole('button', { name: 'Renew Semester Pass · $29' })
     ).toBeInTheDocument();
@@ -56,6 +61,7 @@ describe('SemesterRenewalBanner', () => {
       <SemesterRenewalBanner
         passKind="120d"
         passExpiresAt={endsIn(5)}
+        needsConfirmedEmail={false}
         now={NOW}
       />
     );
@@ -63,6 +69,7 @@ describe('SemesterRenewalBanner', () => {
       <SemesterRenewalBanner
         passKind="120d"
         passExpiresAt={endsIn(5)}
+        needsConfirmedEmail={false}
         now={NOW}
       />
     );
@@ -70,6 +77,27 @@ describe('SemesterRenewalBanner', () => {
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith('semester_renewal_banner_shown', {
       days_left: 5,
+      confirm_email_first: false,
+    });
+  });
+
+  it('asks a holder whose address is not proven to confirm it first, with no renew button, and records that', () => {
+    render(
+      <SemesterRenewalBanner
+        passKind="120d"
+        passExpiresAt={endsIn(5)}
+        needsConfirmedEmail
+        now={NOW}
+      />
+    );
+
+    expect(
+      screen.getByText(/so renewing needs a confirmed email first/)
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(track).toHaveBeenCalledWith('semester_renewal_banner_shown', {
+      days_left: 5,
+      confirm_email_first: true,
     });
   });
 
@@ -80,6 +108,7 @@ describe('SemesterRenewalBanner', () => {
       <SemesterRenewalBanner
         passKind="120d"
         passExpiresAt={endsIn(5)}
+        needsConfirmedEmail={false}
         now={NOW}
       />
     );
@@ -98,6 +127,7 @@ describe('SemesterRenewalBanner', () => {
       <SemesterRenewalBanner
         passKind={passKind}
         passExpiresAt={passExpiresAt}
+        needsConfirmedEmail={false}
         now={NOW}
       />
     );
@@ -117,6 +147,7 @@ describe('SemesterRenewalBanner', () => {
       <SemesterRenewalBanner
         passKind="120d"
         passExpiresAt={endsIn(2)}
+        needsConfirmedEmail={false}
         now={NOW}
       />
     );
@@ -149,6 +180,7 @@ describe('SemesterRenewalBanner', () => {
       <SemesterRenewalBanner
         passKind="120d"
         passExpiresAt={endsIn(2)}
+        needsConfirmedEmail={false}
         now={NOW}
       />
     );
@@ -171,6 +203,7 @@ describe('SemesterRenewalBanner', () => {
       <SemesterRenewalBanner
         passKind="120d"
         passExpiresAt={endsIn(2)}
+        needsConfirmedEmail={false}
         now={NOW}
       />
     );

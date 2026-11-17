@@ -84,6 +84,9 @@ export async function applyUserLocals(
       holdsOnlySemesterPasses(
         await passRepo.findActivePasses(user.owner, passClock)
       );
+    res.locals.semesterRenewalNeedsConfirmedEmail =
+      res.locals.semesterRenewalOpen === true &&
+      (await authService.holdsUnprovenPlan(database, user.email));
   }
   res.locals.planSource = resolvePlanSource(
     isSubscriber,

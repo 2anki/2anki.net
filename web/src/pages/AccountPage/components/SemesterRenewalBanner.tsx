@@ -4,7 +4,6 @@ import { track } from '../../../lib/analytics/track';
 import { get2ankiApi } from '../../../lib/backend/get2ankiApi';
 import { purchaseConflictMessage } from '../../../lib/checkout/purchaseConflictMessage';
 import { useLivePassPrices } from '../../../lib/hooks/usePassPrices';
-import { formatLongDate } from '../utils/formatLongDate';
 import { semesterRenewalDaysLeft } from '../utils/semesterRenewalWindow';
 import accountStyles from '../AccountPage.module.css';
 import styles from './SemesterRenewalBanner.module.css';
@@ -14,12 +13,14 @@ const SURFACE = 'semester-renewal';
 interface SemesterRenewalBannerProps {
   readonly passKind: '24h' | '7d' | '120d' | 'unlimited' | null | undefined;
   readonly passExpiresAt: string | null | undefined;
+  readonly needsConfirmedEmail: boolean;
   readonly now?: Date;
 }
 
 export function SemesterRenewalBanner({
   passKind,
   passExpiresAt,
+  needsConfirmedEmail,
   now,
 }: SemesterRenewalBannerProps) {
   const [mountedAt] = useState(() => new Date());
@@ -37,14 +38,16 @@ export function SemesterRenewalBanner({
   useEffect(() => {
     if (daysLeft == null || shownRef.current) return;
     shownRef.current = true;
-    track('semester_renewal_banner_shown', { days_left: daysLeft });
-  }, [daysLeft]);
+    track('semester_renewal_banner_shown', {
+      days_left: daysLeft,
+      confirm_email_first: needsConfirmedEmail,
+    });
+  }, [daysLeft, needsConfirmedEmail]);
 
-  if (daysLeft == null || passExpiresAt == null) {
+  if (daysLeft == null) {
     return null;
   }
 
-  const date = formatLongDate(new Date(passExpiresAt), i18n.language);
   const price = prices['120d'];
 
   const renew = async () => {
@@ -77,23 +80,32 @@ export function SemesterRenewalBanner({
       className={`${accountStyles.section} ${styles.banner}`}
       aria-label={t('aria')}
     >
-      <p className={styles.title}>{t('title', { date })}</p>
-      <p className={styles.body}>{t('body', { date })}</p>
-      {error && (
-        <p className={accountStyles.helpDanger} role="alert">
-          {error}
-        </p>
+      <h2 className={styles.title}>{t('title')}</h2>
+      {needsConfirmedEmail ? (
+        <>
+          <p className={styles.body}>{t('confirmEmailFirst')}</p>
+          <p className={styles.body}>{t('confirmEmailEffects')}</p>
+        </>
+      ) : (
+        <>
+          <p className={styles.body}>{t('body')}</p>
+          {error && (
+            <p className={accountStyles.helpDanger} role="alert">
+              {error}
+            </p>
+          )}
+          <button
+            type="button"
+            className={accountStyles.primaryButton}
+            disabled={pending}
+            onClick={() => void renew()}
+          >
+            {pending && t('opening')}
+            {!pending && price != null && t('renewWithPrice', { price })}
+            {!pending && price == null && t('renew')}
+          </button>
+        </>
       )}
-      <button
-        type="button"
-        className={accountStyles.primaryButton}
-        disabled={pending}
-        onClick={() => void renew()}
-      >
-        {pending && t('opening')}
-        {!pending && price != null && t('renewWithPrice', { price })}
-        {!pending && price == null && t('renew')}
-      </button>
     </section>
   );
 }

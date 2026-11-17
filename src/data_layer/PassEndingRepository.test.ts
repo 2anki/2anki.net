@@ -112,6 +112,15 @@ describe('PassEndingRepository renewal audience SQL (postgres dialect)', () => {
 
     expect(sql).not.toContain('other_passes');
   });
+
+  it('reads whether a day-before holder has any running pass other than a Semester Pass, without excluding them', () => {
+    const repo = new PassEndingRepository(pg);
+    const sql = repo.buildPassesEndingSoonQuery(24, 200).toString();
+
+    expect(sql).toContain(
+      `exists ((select 1 from "user_passes" as "running_passes" where running_passes.user_id = user_passes.user_id and running_passes.expires_at > now() and running_passes.kind <> '120d')) as "holds_non_semester_pass"`
+    );
+  });
 });
 
 describe('InMemoryPassEndingRepository', () => {
@@ -121,6 +130,7 @@ describe('InMemoryPassEndingRepository', () => {
     email: 'ada@example.com',
     kind: '7d' as const,
     expiresAt: new Date('2027-01-20T00:00:00.000Z'),
+    holdsNonSemesterPass: false,
   };
 
   it('claims a pass once and rejects a second claim for the same pass', async () => {

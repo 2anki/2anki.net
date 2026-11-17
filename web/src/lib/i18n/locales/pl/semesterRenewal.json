@@ -1,7 +1,9 @@
 {
   "aria": "Odnowienie Semester Pass",
-  "title": "Twój Semester Pass kończy się {{date}}",
-  "body": "Odnów teraz, a kolejne 120 dni zacznie się {{date}}, więc nie stracisz ani dnia. Jedna płatność, nic nie odnawia się samo.",
+  "title": "Odnów swój Semester Pass",
+  "body": "Odnów teraz, a kolejne 120 dni zacznie się, gdy obecny Semester Pass się skończy, więc nie stracisz ani dnia. Jedna płatność, nic nie odnawia się samo.",
+  "confirmEmailFirst": "Ten adres e-mail jest już rozliczany w ramach planu, więc do odnowienia potrzebujesz najpierw potwierdzonego adresu. Wyloguj się, wybierz „Wyślij mi link do logowania” na stronie logowania i otwórz link, który ci wyślemy. Potem odnów tutaj.",
+  "confirmEmailEffects": "Potwierdzenie wyloguje cię na pozostałych urządzeniach, a twoje hasło przestanie działać. Wybierz „Nie pamiętasz hasła?” na stronie logowania, aby ustawić nowe.",
   "renew": "Odnów Semester Pass",
   "renewWithPrice": "Odnów Semester Pass · {{price}}",
   "opening": "Otwieranie płatności",

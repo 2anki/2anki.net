@@ -4,6 +4,7 @@ import type {
   PassEmailCampaign,
 } from '../../data_layer/PassEndingRepository';
 import type { IEmailService } from '../../services/EmailService/EmailService';
+import { isInSemesterRenewalWindow } from '../../lib/passes/semesterRenewal';
 import { passKindLabel } from '../passes/passKindLabel';
 
 export interface SendPassEndingEmailsResult {
@@ -22,6 +23,13 @@ export class SendPassEndingEmailsUseCase {
     private readonly emailService: IEmailService,
     private readonly isEmailSuppressed: IsEmailSuppressed = async () => false
   ) {}
+
+  private canRenew(pass: EndingPass): boolean {
+    return (
+      isInSemesterRenewalWindow(pass.kind, pass.expiresAt, new Date()) &&
+      !pass.holdsNonSemesterPass
+    );
+  }
 
   async execute(
     dryRun: boolean,
@@ -45,11 +53,17 @@ export class SendPassEndingEmailsUseCase {
       endingTomorrow,
       'pass_ending',
       (pass, token) =>
-        this.emailService.sendPassEndingEmail(
-          pass.email,
-          token,
-          passKindLabel(pass.kind)
-        )
+        this.canRenew(pass)
+          ? this.emailService.sendSemesterPassEndingEmail(
+              pass.email,
+              token,
+              pass.expiresAt
+            )
+          : this.emailService.sendPassEndingEmail(
+              pass.email,
+              token,
+              passKindLabel(pass.kind)
+            )
     );
     const renewalCount = await this.sendEach(
       upForRenewal,

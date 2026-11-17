@@ -46,6 +46,7 @@ function buildEmailService(
     sendInactivityWarningEmail: vi.fn(),
     sendAbandonedCheckoutRecoveryEmail: vi.fn(),
     sendPassEndingEmail: vi.fn(),
+    sendSemesterPassEndingEmail: vi.fn(),
     sendSemesterRenewalEmail: vi.fn(),
     sendParserCanaryAlert: vi.fn(),
     sendAiSpendAlertEmail: vi.fn(),

@@ -9,6 +9,7 @@ export interface EndingPass {
   email: string;
   kind: PassKind;
   expiresAt: Date;
+  holdsNonSemesterPass: boolean;
 }
 
 export type PassEmailCampaign = 'pass_ending' | 'pass_renewal';
@@ -33,6 +34,7 @@ interface EndingPassRow {
   email: string;
   kind: string;
   expires_at: Date | string;
+  holds_non_semester_pass: boolean;
 }
 
 interface EndingPassAudience {
@@ -82,7 +84,15 @@ export class PassEndingRepository implements IPassEndingRepository {
         'user_passes.user_id',
         'users.email',
         'user_passes.kind',
-        'user_passes.expires_at'
+        'user_passes.expires_at',
+        this.database.raw('exists (?) as ??', [
+          this.database('user_passes as running_passes')
+            .select(this.database.raw('1'))
+            .whereRaw('running_passes.user_id = user_passes.user_id')
+            .whereRaw('running_passes.expires_at > now()')
+            .whereRaw("running_passes.kind <> '120d'"),
+          'holds_non_semester_pass',
+        ])
       )
       .whereIn('user_passes.kind', audience.kinds)
       .whereRaw('user_passes.expires_at > now() + make_interval(hours => ?)', [
@@ -160,6 +170,7 @@ export class PassEndingRepository implements IPassEndingRepository {
         row.expires_at instanceof Date
           ? row.expires_at
           : new Date(row.expires_at),
+      holdsNonSemesterPass: row.holds_non_semester_pass === true,
     };
   }
 

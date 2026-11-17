@@ -167,6 +167,9 @@ export default function AccountPage() {
         <SemesterRenewalBanner
           passKind={locals.passKind}
           passExpiresAt={passExpiresAt}
+          needsConfirmedEmail={
+            locals.semesterRenewalNeedsConfirmedEmail === true
+          }
         />
       )}
 

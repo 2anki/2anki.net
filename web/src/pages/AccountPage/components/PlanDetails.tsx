@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import styles from '../AccountPage.module.css';
 import { AiCreditsAccountLine } from './AiCreditsAccountLine';
-import { formatLongDate } from '../utils/formatLongDate';
+import { formatPassEnd } from '../../../lib/checkout/formatPassEnd';
 import type { PlanName } from '../hooks/useSubscriptionStatus';
 
 interface PlanDetailsProps {
@@ -56,14 +56,16 @@ export function PlanDetails({ plan, passExpiresAt }: PlanDetailsProps) {
   }
 
   if (isDatedPass(plan)) {
+    const passEnd =
+      passExpiresAt == null
+        ? null
+        : formatPassEnd(passExpiresAt, i18n.language);
     return (
       <section className={styles.section}>
         <p className={styles.planTier}>{PLAN_NAME[plan]}</p>
-        {passExpiresAt != null && (
+        {passEnd != null && (
           <p className={styles.planMeta}>
-            {t('planDetails.passEnds', {
-              date: formatLongDate(new Date(passExpiresAt), i18n.language),
-            })}
+            {t('planDetails.passEnds', { date: passEnd })}
           </p>
         )}
         <AiCreditsAccountLine />

@@ -67,13 +67,18 @@ describe('PlanDetails', () => {
     expect(screen.getByText('Lifetime')).toBeInTheDocument();
   });
 
-  it('names a Week Pass and shows its end date', () => {
+  it('names a Week Pass and shows its end with the time in the reader zone', () => {
+    const originalZone = process.env.TZ;
+    process.env.TZ = 'Europe/Berlin';
     mockHook.mockReturnValue(null);
     render(
       <PlanDetails plan="weekPass" passExpiresAt="2026-11-18T00:00:00.000Z" />
     );
+    process.env.TZ = originalZone;
     expect(screen.getByText('Week Pass')).toBeInTheDocument();
-    expect(screen.getByText(/18 November 2026/)).toBeInTheDocument();
+    expect(
+      screen.getByText('Ends November 18, 2026 at 01:00 AM')
+    ).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'See plans' })).toBeNull();
   });
 

@@ -9,10 +9,16 @@ import type { IEmailService } from '../../services/EmailService/EmailService';
 import { SendPassEndingEmailsUseCase } from './SendPassEndingEmailsUseCase';
 
 function makeEmailService(): Mocked<
-  Pick<IEmailService, 'sendPassEndingEmail' | 'sendSemesterRenewalEmail'>
+  Pick<
+    IEmailService,
+    | 'sendPassEndingEmail'
+    | 'sendSemesterPassEndingEmail'
+    | 'sendSemesterRenewalEmail'
+  >
 > {
   return {
     sendPassEndingEmail: vi.fn().mockResolvedValue(undefined),
+    sendSemesterPassEndingEmail: vi.fn().mockResolvedValue(undefined),
     sendSemesterRenewalEmail: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -23,6 +29,7 @@ const weekPass = {
   email: 'ada@example.com',
   kind: '7d' as const,
   expiresAt: new Date('2027-01-11T00:00:00.000Z'),
+  holdsNonSemesterPass: false,
 };
 const semesterPass = {
   passId: 12,
@@ -30,6 +37,7 @@ const semesterPass = {
   email: 'bo@example.com',
   kind: '120d' as const,
   expiresAt: new Date('2027-01-11T06:00:00.000Z'),
+  holdsNonSemesterPass: false,
 };
 const renewingSemesterPass = {
   passId: 13,
@@ -37,9 +45,21 @@ const renewingSemesterPass = {
   email: 'cy@example.com',
   kind: '120d' as const,
   expiresAt: new Date('2027-01-16T00:00:00.000Z'),
+  holdsNonSemesterPass: false,
 };
 
+const NOW = new Date('2027-01-10T12:00:00.000Z');
+
 describe('SendPassEndingEmailsUseCase', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('counts candidates without sending or claiming on a dry run', async () => {
     const repo = new InMemoryPassEndingRepository();
     repo.seedPasses([weekPass, semesterPass]);
@@ -56,7 +76,7 @@ describe('SendPassEndingEmailsUseCase', () => {
     expect(repo.getClaims()).toHaveLength(0);
   });
 
-  it('emails each ending pass with its label and claims the send', async () => {
+  it('emails each ending pass and claims the send', async () => {
     const repo = new InMemoryPassEndingRepository();
     repo.seedPasses([weekPass, semesterPass]);
     const emailService = makeEmailService();
@@ -68,15 +88,16 @@ describe('SendPassEndingEmailsUseCase', () => {
     const result = await useCase.execute(false);
 
     expect(result).toEqual({ count: 2, renewalCount: 0, dryRun: false });
+    expect(emailService.sendPassEndingEmail).toHaveBeenCalledTimes(1);
     expect(emailService.sendPassEndingEmail).toHaveBeenCalledWith(
       'ada@example.com',
       expect.any(String),
       'Week Pass'
     );
-    expect(emailService.sendPassEndingEmail).toHaveBeenCalledWith(
+    expect(emailService.sendSemesterPassEndingEmail).toHaveBeenCalledWith(
       'bo@example.com',
       expect.any(String),
-      'Semester Pass'
+      semesterPass.expiresAt
     );
     expect(repo.getClaims()).toEqual([
       { userId: 7, campaign: passEndingCampaign(11) },
@@ -113,11 +134,11 @@ describe('SendPassEndingEmailsUseCase', () => {
     const result = await useCase.execute(false);
 
     expect(result).toEqual({ count: 1, renewalCount: 0, dryRun: false });
-    expect(emailService.sendPassEndingEmail).toHaveBeenCalledTimes(1);
-    expect(emailService.sendPassEndingEmail).toHaveBeenCalledWith(
+    expect(emailService.sendPassEndingEmail).not.toHaveBeenCalled();
+    expect(emailService.sendSemesterPassEndingEmail).toHaveBeenCalledWith(
       'bo@example.com',
       expect.any(String),
-      'Semester Pass'
+      semesterPass.expiresAt
     );
     expect(repo.getClaims()).toEqual([
       { userId: 8, campaign: passEndingCampaign(12) },
@@ -142,6 +163,69 @@ describe('SendPassEndingEmailsUseCase', () => {
     expect(result).toEqual({ count: 1, renewalCount: 0, dryRun: false });
     expect(repo.getClaims()).toHaveLength(2);
     errorSpy.mockRestore();
+  });
+
+  describe('day-before email by pass kind', () => {
+    it('sends a Week Pass holder the day-before email with Pro and the other passes', async () => {
+      const repo = new InMemoryPassEndingRepository();
+      repo.seedPasses([weekPass]);
+      const emailService = makeEmailService();
+      const useCase = new SendPassEndingEmailsUseCase(
+        repo,
+        emailService as unknown as IEmailService
+      );
+
+      await useCase.execute(false);
+
+      expect(emailService.sendPassEndingEmail).toHaveBeenCalledWith(
+        'ada@example.com',
+        expect.any(String),
+        'Week Pass'
+      );
+      expect(emailService.sendSemesterPassEndingEmail).not.toHaveBeenCalled();
+    });
+
+    it('offers the renewal to a Semester Pass holder whose renewal is open, under the same campaign', async () => {
+      const repo = new InMemoryPassEndingRepository();
+      repo.seedPasses([semesterPass]);
+      const emailService = makeEmailService();
+      const useCase = new SendPassEndingEmailsUseCase(
+        repo,
+        emailService as unknown as IEmailService
+      );
+
+      const result = await useCase.execute(false);
+
+      expect(result.count).toBe(1);
+      expect(emailService.sendSemesterPassEndingEmail).toHaveBeenCalledWith(
+        'bo@example.com',
+        expect.any(String),
+        semesterPass.expiresAt
+      );
+      expect(emailService.sendPassEndingEmail).not.toHaveBeenCalled();
+      expect(repo.getClaims()).toEqual([
+        { userId: 8, campaign: passEndingCampaign(12) },
+      ]);
+    });
+
+    it('keeps the email it sent before for a Semester Pass holder with another kind of pass running, whose renewal is closed', async () => {
+      const repo = new InMemoryPassEndingRepository();
+      repo.seedPasses([{ ...semesterPass, holdsNonSemesterPass: true }]);
+      const emailService = makeEmailService();
+      const useCase = new SendPassEndingEmailsUseCase(
+        repo,
+        emailService as unknown as IEmailService
+      );
+
+      await useCase.execute(false);
+
+      expect(emailService.sendPassEndingEmail).toHaveBeenCalledWith(
+        'bo@example.com',
+        expect.any(String),
+        'Semester Pass'
+      );
+      expect(emailService.sendSemesterPassEndingEmail).not.toHaveBeenCalled();
+    });
   });
 
   describe('week-before Semester Pass renewal email', () => {
