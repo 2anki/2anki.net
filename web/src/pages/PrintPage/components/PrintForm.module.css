@@ -239,6 +239,10 @@
   text-align: center;
 }
 
+.signInTitle:focus {
+  outline: none;
+}
+
 .signInFile {
   margin: 0;
   font-weight: var(--font-medium);

@@ -48,6 +48,7 @@ import { sessionCookieOptions } from '../shared/session';
 
 import { sendIndex } from './IndexController/sendIndex';
 import { consentRegionForRequest } from '../lib/http/consentRegion';
+import { hasSessionCookie } from '../lib/http/sessionHint';
 import { getRandomUUID } from '../shared/helpers/getRandomUUID';
 import SubscriptionService from '../services/SubscriptionService';
 import { OPS_OWNER_EMAIL } from '../routes/middleware/RequireOpsAccess';
@@ -770,6 +771,16 @@ class UsersController {
       rememberLoginReturn(req, res);
       sendIndex(res, '', consentRegionForRequest(req));
     }
+  }
+
+  showRegister(req: express.Request, res: express.Response) {
+    rememberLoginReturn(req, res);
+    sendIndex(
+      res,
+      req.path,
+      consentRegionForRequest(req),
+      hasSessionCookie(req)
+    );
   }
 
   patreon(req: express.Request, res: express.Response) {

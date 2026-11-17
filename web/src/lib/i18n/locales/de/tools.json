@@ -49,7 +49,7 @@
     "tryAgain": "Erneut versuchen",
     "tooLarge": "Dieser Stapel ist zu groß zum Drucken. Teile ihn in Anki in kleinere Stapel auf und versuch es erneut.",
     "tooManyPreviews": "Gerade laufen zu viele Vorschauen. Versuch es gleich erneut.",
-    "networkError": "2anki konnte nicht erreicht werden. Prüfe deine Verbindung und versuche es erneut.",
+    "networkError": "2anki konnte nicht erreicht werden. Prüfe deine Verbindung und versuch es erneut.",
     "serverError": "Bei uns ist beim Erstellen der Vorschau etwas schiefgelaufen. Versuch es gleich erneut."
   },
   "import": {

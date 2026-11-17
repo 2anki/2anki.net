@@ -148,7 +148,7 @@ test('a signed-out visitor on Print is asked to sign in and nothing is uploaded'
     });
 
   const prompt = page.getByRole('region', {
-    name: 'Sign in to preview and print this deck',
+    name: 'Log in to preview and print this deck',
   });
   await expect(prompt).toBeVisible();
   await expect(prompt.getByRole('link', { name: 'Log in' })).toHaveAttribute(

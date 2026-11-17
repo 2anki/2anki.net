@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import PrintForm from './PrintForm';
 
-const { localsHolder, trackMock } = vi.hoisted(() => ({
+const { localsHolder, trackMock, refetchMock } = vi.hoisted(() => ({
   localsHolder: {
     value: {
       data: {
@@ -16,10 +16,14 @@ const { localsHolder, trackMock } = vi.hoisted(() => ({
     } as unknown,
   },
   trackMock: vi.fn(),
+  refetchMock: vi.fn(),
 }));
 
 vi.mock('../../../lib/hooks/useUserLocals', () => ({
-  useUserLocals: () => localsHolder.value,
+  useUserLocals: () => ({
+    refetch: refetchMock,
+    ...(localsHolder.value as object),
+  }),
 }));
 
 vi.mock('../../../lib/analytics/track', () => ({
@@ -462,7 +466,7 @@ const PREVIEW_OK = {
   previewedCards: 3,
 };
 
-const SIGN_IN_HEADING = 'Sign in to preview and print this deck';
+const SIGN_IN_HEADING = 'Log in to preview and print this deck';
 
 async function expectSignInPanelReturningToPrint(): Promise<void> {
   expect(
@@ -656,7 +660,12 @@ describe('PrintForm preview failures', () => {
       jsonResponse(400, {
         message: 'This deck took too long to render. Try a smaller deck.',
       }),
-      'This deck took too long to render. Try a smaller deck.',
+      'Something went wrong while generating the PDF. Try again.',
+    ],
+    [
+      'a refused origin',
+      htmlResponse(403),
+      'Something went wrong while generating the PDF. Try again.',
     ],
     [
       'a proxy that cut the upload off',
@@ -706,6 +715,7 @@ describe('PrintForm preview failures', () => {
     ['a dropped connection', null],
     ['too many previews', 503],
     ['a proxy error', 502],
+    ['a refused origin', 403],
   ])('retries the same deck after %s', async (_case, status) => {
     const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
     if (status == null) {
@@ -786,5 +796,133 @@ describe('PrintForm download failures', () => {
     expect(
       screen.getByRole('button', { name: /Get a day pass/i })
     ).toBeInTheDocument();
+  });
+
+  test('reloads the session when the quota is reached so the page status line updates', async () => {
+    refetchMock.mockClear();
+    routeFetch({
+      preview: jsonResponse(200, PREVIEW_OK),
+      download: jsonResponse(402, {
+        message: 'Your free PDF for this month has been used.',
+      }),
+    });
+    renderForm();
+
+    pickApkg();
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Download the full PDF/i })
+    );
+
+    await waitFor(() => expect(refetchMock).toHaveBeenCalledTimes(1));
+  });
+});
+
+function signInShownCalls(): unknown[] {
+  return trackMock.mock.calls.filter(
+    ([event]) => event === 'print_sign_in_shown'
+  );
+}
+
+describe('PrintForm sign-in panel', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+    trackMock.mockClear();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  test('records one signed_out showing per panel, with no file name', async () => {
+    localsHolder.value = SIGNED_OUT;
+    renderForm();
+
+    pickApkg('Biology.apkg');
+    await screen.findByRole('heading', { name: SIGN_IN_HEADING });
+    expect(signInShownCalls()).toEqual([
+      ['print_sign_in_shown', { reason: 'signed_out' }],
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    pickApkg('Biology.apkg');
+    await screen.findByRole('heading', { name: SIGN_IN_HEADING });
+
+    expect(signInShownCalls()).toEqual([
+      ['print_sign_in_shown', { reason: 'signed_out' }],
+      ['print_sign_in_shown', { reason: 'signed_out' }],
+    ]);
+  });
+
+  test('records one signed_out showing when a loading session turns out signed out', async () => {
+    localsHolder.value = LOADING;
+    const rerender = renderRerenderableForm();
+
+    pickApkg();
+    localsHolder.value = SIGNED_OUT;
+    rerender();
+    await screen.findByRole('heading', { name: SIGN_IN_HEADING });
+    rerender();
+
+    expect(signInShownCalls()).toEqual([
+      ['print_sign_in_shown', { reason: 'signed_out' }],
+    ]);
+  });
+
+  test.each([
+    [
+      'the preview',
+      { preview: jsonResponse(401, { message: 'Authentication required' }) },
+      false,
+    ],
+    [
+      'the download',
+      {
+        preview: jsonResponse(200, PREVIEW_OK),
+        download: jsonResponse(401, { message: 'Authentication required' }),
+      },
+      true,
+    ],
+  ])(
+    'records one session_ended showing when the session ends before %s',
+    async (_step, responses, clickDownload) => {
+      localsHolder.value = SIGNED_IN;
+      routeFetch(responses);
+      renderForm();
+
+      pickApkg('Biology.apkg');
+      if (clickDownload) {
+        fireEvent.click(
+          await screen.findByRole('button', { name: /Download the full PDF/i })
+        );
+      }
+      await screen.findByRole('heading', { name: SIGN_IN_HEADING });
+
+      expect(signInShownCalls()).toEqual([
+        ['print_sign_in_shown', { reason: 'session_ended' }],
+      ]);
+    }
+  );
+
+  test('moves focus to the panel heading and back to the drop zone on Cancel', async () => {
+    localsHolder.value = SIGNED_OUT;
+    renderForm();
+
+    pickApkg();
+    const heading = await screen.findByRole('heading', {
+      name: SIGN_IN_HEADING,
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(/Drop an Anki deck/i, {
+          selector: 'input[type="file"]',
+        })
+      ).toHaveFocus()
+    );
   });
 });

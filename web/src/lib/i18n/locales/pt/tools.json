@@ -49,7 +49,7 @@
     "tryAgain": "Tentar de novo",
     "tooLarge": "Este baralho é grande demais para imprimir. Divida-o em baralhos menores no Anki e tente de novo.",
     "tooManyPreviews": "Muitas pré-visualizações ao mesmo tempo. Tente de novo em um instante.",
-    "networkError": "Não foi possível contatar o 2anki. Verifique sua conexão e tente novamente.",
+    "networkError": "Não foi possível contatar o 2anki. Verifique sua conexão e tente de novo.",
     "serverError": "Algo deu errado do nosso lado ao criar a pré-visualização. Tente de novo em um instante."
   },
   "import": {

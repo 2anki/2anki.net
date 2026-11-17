@@ -122,7 +122,7 @@ function toPreviewError(
   if (serverMessage != null && INVALID_DECK_PATTERN.test(serverMessage)) {
     return { message: messages.corrupted, retry: false };
   }
-  return { message: serverMessage ?? messages.genericError, retry: false };
+  return { message: messages.genericError, retry: true };
 }
 
 function toPreviewState(state: PrintState): PrintPreviewState {
@@ -153,7 +153,11 @@ export default function PrintForm() {
     serverError: t('print.serverError'),
   };
 
-  const { data, isError: localsFailed } = useUserLocals();
+  const {
+    data,
+    isError: localsFailed,
+    refetch: refetchLocals,
+  } = useUserLocals();
   const paying = isPayingUser(data?.locals);
   const freePrintAvailable = data?.freePrintAvailable ?? null;
   const session = sessionOf(data?.user?.id, data != null, localsFailed);
@@ -175,6 +179,8 @@ export default function PrintForm() {
   const chosenEntryRef = useRef<string | null>(null);
   const [deckChoices, setDeckChoices] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const signInHeadingRef = useRef<HTMLHeadingElement>(null);
+  const focusDropZoneRef = useRef(false);
   const previewOnSignInRef = useRef(false);
 
   const [backgroundColor, setBackgroundColor] = useState('#ffffff');
@@ -314,6 +320,20 @@ export default function PrintForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, state]);
 
+  useEffect(() => {
+    if (state === 'signIn') {
+      signInHeadingRef.current?.focus();
+    } else if (state === 'idle' && focusDropZoneRef.current) {
+      focusDropZoneRef.current = false;
+      fileInputRef.current?.focus();
+    }
+  }, [state]);
+
+  const cancelSignIn = () => {
+    resetForm();
+    focusDropZoneRef.current = true;
+  };
+
   const handleFile = async (file: File) => {
     if (!isDeckUploadName(file.name)) {
       setPickError(messages.wrongType);
@@ -383,6 +403,7 @@ export default function PrintForm() {
         askToSignIn('session_ended');
       } else if (response.status === 402) {
         setFreePrintUsedOverride(true);
+        void refetchLocals();
         setDownloadError({ status: 402, message: messages.upgrade });
       } else if (await answerDeckUpload(response)) {
         return;
@@ -599,7 +620,12 @@ export default function PrintForm() {
           className={styles.previewPanel}
           aria-labelledby="print-sign-in-title"
         >
-          <h2 id="print-sign-in-title" className={styles.signInTitle}>
+          <h2
+            id="print-sign-in-title"
+            ref={signInHeadingRef}
+            tabIndex={-1}
+            className={styles.signInTitle}
+          >
             {t('print.signInTitle')}
           </h2>
           {selectedFileRef.current != null && (
@@ -609,12 +635,12 @@ export default function PrintForm() {
           )}
           <p className={styles.previewLede}>{t('print.signInBody')}</p>
           <div className={styles.previewActions}>
-            <Link
-              to={`/register?redirect=${SIGN_IN_RETURN}`}
+            <a
+              href={`/register?redirect=${SIGN_IN_RETURN}`}
               className={`${sharedStyles.btnPrimary} ${styles.signInAction}`}
             >
               {t('limit.signUpFree', { ns: 'accountx' })}
-            </Link>
+            </a>
             <a
               href={`/login?redirect=${SIGN_IN_RETURN}`}
               className={`${sharedStyles.btnSecondary} ${styles.signInAction}`}
@@ -624,7 +650,7 @@ export default function PrintForm() {
             <button
               type="button"
               className={styles.previewAnotherLink}
-              onClick={resetForm}
+              onClick={cancelSignIn}
             >
               {t('print.cancel')}
             </button>

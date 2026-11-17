@@ -43,11 +43,11 @@
     "previewAnother": "Andere preview",
     "emptyDeck": "Dit deck heeft geen kaarten om te printen. Kies een andere .apkg.",
     "makingPreview": "Je preview wordt gemaakt",
-    "signInTitle": "Log in om dit deck te bekijken en af te drukken",
+    "signInTitle": "Log in om dit deck te bekijken en te printen",
     "signInBody": "Met een account is de preview gratis, en 1 PDF per maand ook. Voeg het deck na het inloggen hier opnieuw toe.",
     "cancel": "Annuleren",
     "tryAgain": "Opnieuw proberen",
-    "tooLarge": "Dit deck is te groot om af te drukken. Splits het in Anki in kleinere decks en probeer het opnieuw.",
+    "tooLarge": "Dit deck is te groot om te printen. Splits het in Anki in kleinere decks en probeer het opnieuw.",
     "tooManyPreviews": "Te veel previews tegelijk. Probeer het zo opnieuw.",
     "networkError": "Kon 2anki niet bereiken. Controleer je verbinding en probeer het opnieuw.",
     "serverError": "Er ging aan onze kant iets mis bij het maken van de preview. Probeer het zo opnieuw."

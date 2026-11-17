@@ -811,6 +811,29 @@ const UserRouter = () => {
 
   /**
    * @swagger
+   * /register:
+   *   get:
+   *     summary: Sign-up page
+   *     description: Serve the sign-up page and remember an allowlisted redirect for the next sign-in
+   *     tags: [Authentication]
+   *     parameters:
+   *       - in: query
+   *         name: redirect
+   *         schema:
+   *           type: string
+   *         description: Same-site page to return to after signing up
+   *     responses:
+   *       200:
+   *         description: Sign-up page HTML
+   *         content:
+   *           text/html:
+   *             schema:
+   *               type: string
+   */
+  router.get('/register', (req, res) => controller.showRegister(req, res));
+
+  /**
+   * @swagger
    * /patr*on:
    *   get:
    *     summary: Patreon integration
